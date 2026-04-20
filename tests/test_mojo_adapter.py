@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import sys
 from pathlib import Path
 
 import pytest
@@ -108,6 +109,51 @@ async def test_invoke_python_fallback_returns_supported_engine_identity() -> Non
     assert result["simulation_model"] == "qmc_sobol"
     assert result["engine_type"] == "qmc_sobol"
     assert result["summary"]["mean"] == 42.0
+
+
+@pytest.mark.asyncio
+async def test_invoke_python_fallback_reinserts_repo_root_before_import(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    repo_root = str(Path(mojo_adapter.__file__).resolve().parents[3])
+    saved_modules = {
+        name: sys.modules.get(name)
+        for name in ("mojo", "mojo.bindings", "mojo.bindings.python_adapter")
+    }
+
+    try:
+        for name in saved_modules:
+            sys.modules.pop(name, None)
+
+        filtered_path = [entry for entry in sys.path if entry and entry != repo_root]
+        monkeypatch.setattr(sys, "path", filtered_path)
+        monkeypatch.chdir(tmp_path)
+
+        result = await mojo_adapter._invoke_python_fallback(
+            {
+                "engine_type": "monte_carlo",
+                "runs": 5,
+                "seed": 1,
+                "variables": [
+                    {
+                        "name": "x",
+                        "distribution": "fixed",
+                        "params": {"value": 11.0},
+                    }
+                ],
+                "objective_function": "x",
+            }
+        )
+
+        assert sys.path[0] == repo_root
+        assert result["summary"]["mean"] == 11.0
+    finally:
+        for name, module in saved_modules.items():
+            if module is None:
+                sys.modules.pop(name, None)
+            else:
+                sys.modules[name] = module
 
 
 @pytest.mark.asyncio

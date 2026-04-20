@@ -86,6 +86,46 @@ def test_source_meta_cache_reuses_registered_schema_without_disk_reload(tmp_path
     assert read_calls["count"] == 0
 
 
+def test_source_entry_cache_reuses_registered_index_entry_without_disk_reload(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.setattr(reg, "_SOURCES_DIR", Path(tmp_path) / "sources")
+
+    reg.register_source(
+        org_id="org_entry_cache",
+        source_id="src_entry_cache",
+        name="EntryCacheSource",
+        parquet_bytes=_parquet_bytes([{"customer_id": "A"}, {"customer_id": "B"}]),
+        schema_meta={
+            "row_count": 2,
+            "columns": [{"name": "customer_id", "role": "identifier", "is_numeric": False}],
+            "roles_summary": {"identifier": 1},
+        },
+        graph_nodes={},
+        profile={},
+    )
+
+    read_calls = {"count": 0}
+    original_read_json = reg._read_json
+
+    def _counting_read_json(path: Path):  # type: ignore[no-untyped-def]
+        read_calls["count"] += 1
+        return original_read_json(path)
+
+    monkeypatch.setattr(reg, "_read_json", _counting_read_json)
+
+    first = reg.get_source_entry("org_entry_cache", "src_entry_cache")
+    second = reg.get_source_entry("org_entry_cache", "src_entry_cache")
+
+    assert first is not None
+    assert first["name"] == "EntryCacheSource"
+    assert isinstance(first["source_schema_revision"], str)
+    assert len(first["source_schema_revision"]) == 24
+    assert second == first
+    assert read_calls["count"] == 0
+
+
 @pytest.mark.asyncio
 async def test_register_source_reuses_identical_parquet_content_within_org(tmp_path, monkeypatch):
     monkeypatch.setattr(reg, "_SOURCES_DIR", Path(tmp_path) / "sources")

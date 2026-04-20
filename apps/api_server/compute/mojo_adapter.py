@@ -16,6 +16,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -68,6 +69,12 @@ class MojoEngineError(Exception):
         self.exit_code = exit_code
 
 
+def _ensure_repo_root_on_sys_path() -> None:
+    repo_root = str(_REPO_ROOT.resolve())
+    if repo_root not in sys.path:
+        sys.path.insert(0, repo_root)
+
+
 def _supports_python_fallback(payload: dict[str, Any]) -> bool:
     engine_type = payload.get("engine_type")
     return isinstance(engine_type, str) and engine_type in _PYTHON_FALLBACK_ENGINES
@@ -81,6 +88,7 @@ async def _invoke_python_fallback(payload: dict[str, Any]) -> dict[str, Any]:
             exit_code=1,
         )
 
+    _ensure_repo_root_on_sys_path()
     try:
         from mojo.bindings.python_adapter import run_simulation  # type: ignore[import]
     except ImportError as exc:

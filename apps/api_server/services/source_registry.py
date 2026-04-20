@@ -89,6 +89,10 @@ _SOURCE_META_CACHE: dict[
     tuple[str, str],
     tuple[tuple[Any, ...], dict[str, Any] | None],
 ] = {}
+_SOURCE_ENTRY_CACHE: dict[
+    tuple[str, str],
+    tuple[tuple[Any, ...], dict[str, Any] | None],
+] = {}
 _SOURCE_ENTRY_BY_NAME_CACHE: dict[
     tuple[str, str],
     tuple[tuple[Any, ...], dict[str, Any] | None],
@@ -287,6 +291,10 @@ def _source_meta_cache_key(org_id: str, source_id: str) -> tuple[str, str]:
     return (org_id, source_id)
 
 
+def _source_entry_cache_key(org_id: str, source_id: str) -> tuple[str, str]:
+    return (org_id, source_id)
+
+
 def _set_source_meta_cache(org_id: str, source_id: str, meta: dict[str, Any] | None) -> None:
     d = _org_dir(org_id)
     path = d / f"{source_id}.meta.json"
@@ -296,8 +304,21 @@ def _set_source_meta_cache(org_id: str, source_id: str, meta: dict[str, Any] | N
     )
 
 
+def _set_source_entry_cache(org_id: str, source_id: str, entry: dict[str, Any] | None) -> None:
+    d = _org_dir(org_id)
+    index_path = d / "index.json"
+    _SOURCE_ENTRY_CACHE[_source_entry_cache_key(org_id, source_id)] = (
+        (_path_fingerprint(index_path),),
+        entry,
+    )
+
+
 def _clear_source_meta_cache(org_id: str, source_id: str) -> None:
     _SOURCE_META_CACHE.pop(_source_meta_cache_key(org_id, source_id), None)
+
+
+def _clear_source_entry_cache(org_id: str, source_id: str) -> None:
+    _SOURCE_ENTRY_CACHE.pop(_source_entry_cache_key(org_id, source_id), None)
 
 
 # ── Public API ──────────────────────────────────────────────────────────────────
@@ -323,11 +344,18 @@ def list_sources(org_id: str) -> list[dict]:
 def get_source_entry(org_id: str, source_id: str) -> dict | None:
     """Return one registry index entry for a source, or None if it does not exist."""
     d = _org_dir(org_id)
-    idx = _read_json(d / "index.json") or {}
+    index_path = d / "index.json"
+    fingerprint = (_path_fingerprint(index_path),)
+    cache_key = _source_entry_cache_key(org_id, source_id)
+    cached = _SOURCE_ENTRY_CACHE.get(cache_key)
+    if cached and cached[0] == fingerprint:
+        return cached[1]
+
+    idx = _read_json(index_path) or {}
     entry = idx.get(source_id)
-    if isinstance(entry, dict):
-        return entry
-    return None
+    normalized = entry if isinstance(entry, dict) else None
+    _SOURCE_ENTRY_CACHE[cache_key] = (fingerprint, normalized)
+    return normalized
 
 
 def get_source_entry_by_name(org_id: str, source_name: str) -> dict | None:
@@ -574,6 +602,7 @@ def register_source(
     # Update index
     idx = _read_json(d / "index.json") or {}
     join_blocks = _build_join_blocks(schema_meta)
+    source_revision = source_schema_revision(org_id, source_id)
     entry = {
         "id":            source_id,
         "name":          name,
@@ -581,6 +610,7 @@ def register_source(
         "row_count":     schema_meta.get("row_count", 0),
         "roles_summary": schema_meta.get("roles_summary", {}),
         "columns":       len(schema_meta.get("columns", [])),
+        "source_schema_revision": source_revision,
         "join_blocks":   join_blocks,
     }
     for key, value in entry_meta.items():
@@ -588,6 +618,7 @@ def register_source(
             entry[key] = value
     idx[source_id] = entry
     _write_json(d / "index.json", idx)
+    _set_source_entry_cache(org_id, source_id, entry)
     _touch_schema_stamp(d)
 
     logger.info("source_registered", org=org_id, source_id=source_id, name=name)
@@ -617,6 +648,7 @@ def delete_source(org_id: str, source_id: str) -> bool:
     if existed:
         _touch_schema_stamp(d)
         _clear_source_meta_cache(org_id, source_id)
+        _set_source_entry_cache(org_id, source_id, None)
 
     if existed:
         logger.info("source_deleted", org=org_id, source_id=source_id)

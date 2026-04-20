@@ -5108,7 +5108,15 @@ async def query_sources(
         if resolved_plan_schema_revision is not None:
             schema_revision_exact = resolved_plan_schema_revision
         elif payload.dataset_id and not payload.join_path:
-            schema_revision_exact = _sreg_ex.source_schema_revision(org_id, str(payload.dataset_id))
+            dataset_source_revision = ""
+            if visible_registry_entries:
+                dataset_source_revision = str(
+                    visible_registry_entries[0].get("source_schema_revision") or ""
+                )
+            schema_revision_exact = (
+                dataset_source_revision
+                or _sreg_ex.source_schema_revision(org_id, str(payload.dataset_id))
+            )
         elif payload.join_path:
             schema_revision_exact = _sreg_ex.schema_revision(org_id)
         else:
