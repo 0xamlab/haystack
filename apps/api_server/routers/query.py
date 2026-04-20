@@ -127,6 +127,10 @@ _RESULT_CACHE_TTL = 3600.0  # 1 hour
 _RESOLVE_CACHE: dict[str, dict[str, Any]] = {}
 _RESOLVE_CACHE_MAX = 500
 _RESOLVE_CACHE_TTL = 3600.0  # 1 hour
+_GRAPH_NODE_CACHE: dict[tuple[str, str, str], dict[str, Any]] = {}
+_GRAPH_NODE_CACHE_MAX = 256
+_DATASET_EXACT_COLUMN_CACHE: dict[tuple[str, str, str], dict[str, dict[str, Any] | None]] = {}
+_DATASET_EXACT_COLUMN_CACHE_MAX = 256
 _RESOLVE_BUDGET_MS = 500.0
 _ALLOW_QUERY_HINT_PLANNING_COMPAT = True
 _MAX_RESOLVE_SOURCE_SCORES = 32
@@ -3029,6 +3033,67 @@ def _resolve_cache_put(key: str, value: dict[str, Any]) -> None:
     _RESOLVE_CACHE[key] = {**value, "_ts": time.monotonic()}
 
 
+def _graph_node_cache_get(
+    key: tuple[str, str, str],
+) -> dict[str, ColumnNode] | None:
+    cached = _GRAPH_NODE_CACHE.get(key)
+    if not cached:
+        return None
+    cached["_ts"] = time.monotonic()
+    nodes = cached.get("nodes")
+    return nodes if isinstance(nodes, dict) else None
+
+
+def _graph_node_cache_put(
+    key: tuple[str, str, str],
+    nodes: dict[str, ColumnNode],
+) -> dict[str, ColumnNode]:
+    if len(_GRAPH_NODE_CACHE) >= _GRAPH_NODE_CACHE_MAX:
+        oldest_key = min(_GRAPH_NODE_CACHE.items(), key=lambda item: item[1].get("_ts", 0.0))[0]
+        _GRAPH_NODE_CACHE.pop(oldest_key, None)
+    _GRAPH_NODE_CACHE[key] = {"nodes": nodes, "_ts": time.monotonic()}
+    return nodes
+
+
+def _dataset_exact_column_cache_get(
+    key: tuple[str, str, str],
+) -> dict[str, dict[str, Any] | None] | None:
+    cached = _DATASET_EXACT_COLUMN_CACHE.get(key)
+    if cached is None:
+        return None
+    cached["_ts"] = time.monotonic()  # type: ignore[index]
+    lookup = cached.get("lookup")  # type: ignore[assignment]
+    return lookup if isinstance(lookup, dict) else None
+
+
+def _dataset_exact_column_cache_put(
+    key: tuple[str, str, str],
+    lookup: dict[str, dict[str, Any] | None],
+) -> dict[str, dict[str, Any] | None]:
+    if len(_DATASET_EXACT_COLUMN_CACHE) >= _DATASET_EXACT_COLUMN_CACHE_MAX:
+        oldest_key = min(
+            _DATASET_EXACT_COLUMN_CACHE.items(),
+            key=lambda item: item[1].get("_ts", 0.0),
+        )[0]
+        _DATASET_EXACT_COLUMN_CACHE.pop(oldest_key, None)
+    _DATASET_EXACT_COLUMN_CACHE[key] = {"lookup": lookup, "_ts": time.monotonic()}
+    return lookup
+
+
+def _graph_nodes_from_cached_meta(
+    *,
+    org_id: str,
+    dataset_id: str,
+    schema_revision: str,
+    schema_meta: dict[str, Any],
+) -> dict[str, ColumnNode]:
+    cache_key = (org_id, dataset_id, schema_revision)
+    cached = _graph_node_cache_get(cache_key)
+    if cached is not None:
+        return cached
+    return _graph_node_cache_put(cache_key, _graph_nodes_from_meta(schema_meta))
+
+
 class ConstraintSpec(BaseModel):
     requires_derived: bool = Field(
         default=False,
@@ -3895,7 +3960,6 @@ def _resolve_scope_entries(
         get_visible_dataset_entry,
     )
 
-    visible_entries = filter_visible_datasets(_sreg_visible.list_sources(org_id), auth)
     if dataset_id:
         dataset_entry = get_visible_dataset_entry(org_id, dataset_id, auth)
         if dataset_entry is None:
@@ -3906,6 +3970,7 @@ def _resolve_scope_entries(
                 request_id=request_id,
             )
         return [dataset_entry], dataset_id
+    visible_entries = filter_visible_datasets(_sreg_visible.list_sources(org_id), auth)
     if allow_org_scope:
         return visible_entries, None
     if len(visible_entries) == 1:
@@ -3977,6 +4042,51 @@ def _find_exact_dataset_column(
     return None
 
 
+def _dataset_exact_column_lookup(
+    *,
+    org_id: str,
+    dataset_id: str,
+    schema_revision: str,
+    schema_meta: dict[str, Any],
+) -> dict[str, dict[str, Any] | None]:
+    cache_key = (org_id, dataset_id, schema_revision)
+    cached = _dataset_exact_column_cache_get(cache_key)
+    if cached is not None:
+        return cached
+
+    lookup: dict[str, dict[str, Any] | None] = {}
+    for column in schema_meta.get("columns") or []:
+        normalized_name = _normalize_hint_text(str(column.get("name", "")))
+        if not normalized_name:
+            continue
+        existing = lookup.get(normalized_name)
+        if existing is None and normalized_name in lookup:
+            continue
+        if existing is None and normalized_name not in lookup:
+            lookup[normalized_name] = column
+        else:
+            lookup[normalized_name] = None
+    return _dataset_exact_column_cache_put(cache_key, lookup)
+
+
+def _find_exact_dataset_column_cached(
+    *,
+    org_id: str,
+    dataset_id: str,
+    schema_revision: str,
+    schema_meta: dict[str, Any],
+    normalized_hint: str,
+) -> dict[str, Any] | None:
+    if not normalized_hint:
+        return None
+    return _dataset_exact_column_lookup(
+        org_id=org_id,
+        dataset_id=dataset_id,
+        schema_revision=schema_revision,
+        schema_meta=schema_meta,
+    ).get(normalized_hint)
+
+
 def _dataset_candidate_payload(
     *,
     source_name: str,
@@ -4002,6 +4112,7 @@ async def _get_resolve_dataset_meta(
     *,
     org_id: str,
     dataset_id: str,
+    schema_revision: str,
 ) -> tuple[dict[str, Any] | None, dict[str, ColumnNode] | None]:
     async with _CACHE_LOCK:
         cached = _SOURCE_CACHE.get(dataset_id)
@@ -4013,18 +4124,39 @@ async def _get_resolve_dataset_meta(
                 if isinstance(parsed, dict):
                     cached.schema_meta = parsed
                     schema_meta = parsed
+            graph_nodes = cached.graph_nodes or None
+            if graph_nodes is None and isinstance(schema_meta, dict):
+                graph_nodes = _graph_nodes_from_cached_meta(
+                    org_id=org_id,
+                    dataset_id=dataset_id,
+                    schema_revision=schema_revision,
+                    schema_meta=schema_meta,
+                )
+                cached.graph_nodes = graph_nodes
             return (
                 schema_meta if isinstance(schema_meta, dict) else None,
-                cached.graph_nodes or None,
+                graph_nodes,
             )
 
     from apps.api_server.services import source_registry as _sreg_dataset_meta
 
-    return _sreg_dataset_meta.get_source_meta(org_id, dataset_id), None
+    schema_meta = _sreg_dataset_meta.get_source_meta(org_id, dataset_id)
+    if not isinstance(schema_meta, dict):
+        return None, None
+    return (
+        schema_meta,
+        _graph_nodes_from_cached_meta(
+            org_id=org_id,
+            dataset_id=dataset_id,
+            schema_revision=schema_revision,
+            schema_meta=schema_meta,
+        ),
+    )
 
 
 def _resolve_single_dataset_fast_path(
     *,
+    org_id: str,
     payload: ResolveRequest,
     dataset_entry: dict[str, Any],
     dataset_id: str,
@@ -4124,7 +4256,13 @@ def _resolve_single_dataset_fast_path(
                 ]
             plan.append(f"COUNT anchor fallback: {source_name}.{metric_col} ({metric_role})")
     else:
-        exact_metric = _find_exact_dataset_column(schema_meta, normalized_metric_hint)
+        exact_metric = _find_exact_dataset_column_cached(
+            org_id=org_id,
+            dataset_id=dataset_id,
+            schema_revision=schema_revision,
+            schema_meta=schema_meta,
+            normalized_hint=normalized_metric_hint,
+        )
         if exact_metric is not None:
             exact_metric_name = str(exact_metric.get("name", "") or "")
             exact_metric_node = nodes.get(exact_metric_name)
@@ -4185,7 +4323,13 @@ def _resolve_single_dataset_fast_path(
     group_col: str | None = None
     group_conf = 1.0
     if normalized_group_hints:
-        exact_group = _find_exact_dataset_column(schema_meta, normalized_group_hints[0])
+        exact_group = _find_exact_dataset_column_cached(
+            org_id=org_id,
+            dataset_id=dataset_id,
+            schema_revision=schema_revision,
+            schema_meta=schema_meta,
+            normalized_hint=normalized_group_hints[0],
+        )
         if exact_group is not None:
             exact_group_name = str(exact_group.get("name", "") or "")
             exact_group_node = nodes.get(exact_group_name)
@@ -4416,8 +4560,10 @@ async def _resolve_registered_intent(
         dataset_meta, cached_nodes = await _get_resolve_dataset_meta(
             org_id=org_id,
             dataset_id=str(payload.dataset_id),
+            schema_revision=schema_revision,
         )
         dataset_response = _resolve_single_dataset_fast_path(
+            org_id=org_id,
             payload=payload,
             dataset_entry=scoped_entries[0],
             dataset_id=scoped_dataset_id or payload.dataset_id,
@@ -5085,7 +5231,12 @@ async def query_sources(
                 nodes = _SOURCE_CACHE[src_id].graph_nodes if src_id in _SOURCE_CACHE else {}
                 if not nodes:
                     schema_meta = _sreg_ex.get_source_meta(org_id, src_id) or {}
-                    nodes = _graph_nodes_from_meta(schema_meta)
+                    nodes = _graph_nodes_from_cached_meta(
+                        org_id=org_id,
+                        dataset_id=src_id,
+                        schema_revision=str(entry_meta.get("schema_revision", "") or ""),
+                        schema_meta=schema_meta,
+                    )
                 return _df_cache_records(src_id, cached_df), nodes
 
             # Tier 2: Parquet bytes in memory — parse once, store DataFrame
@@ -5107,7 +5258,12 @@ async def query_sources(
             if not parquet_bytes:
                 raise ValueError(f"No data for source '{name}'")
             schema_meta = _sreg_ex.get_source_meta(org_id, src_id) or {}
-            nodes = _graph_nodes_from_meta(schema_meta)
+            nodes = _graph_nodes_from_cached_meta(
+                org_id=org_id,
+                dataset_id=src_id,
+                schema_revision=str(entry_meta.get("schema_revision", "") or ""),
+                schema_meta=schema_meta,
+            )
             buf = io.BytesIO(parquet_bytes)
             initialize_pyarrow_parquet_runtime()
             df = pd.read_parquet(buf)
@@ -5239,9 +5395,17 @@ async def query_sources(
                 terminal_nodes_ex = (
                     metric_nodes
                     if join_group_source_ex == payload.source_name
-                    else _graph_nodes_from_meta(
-                        _sreg_ex.get_source_meta(org_id, registered_ex[join_group_source_ex]["id"])
-                        or {}
+                    else _graph_nodes_from_cached_meta(
+                        org_id=org_id,
+                        dataset_id=registered_ex[join_group_source_ex]["id"],
+                        schema_revision=str(
+                            registered_ex[join_group_source_ex].get("schema_revision", "") or ""
+                        ),
+                        schema_meta=_sreg_ex.get_source_meta(
+                            org_id,
+                            registered_ex[join_group_source_ex]["id"],
+                        )
+                        or {},
                     )
                 )
                 if group_col_ex not in terminal_nodes_ex:

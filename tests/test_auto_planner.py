@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from apps.api_server.routers import query as query_router
 from apps.api_server.routers.query import DERIVED_MEASURE, UNIT_MEASURE, ColumnNode
 from apps.api_server.services import source_registry as reg
 from apps.api_server.services.auto_planner import AutoPlanner, JoinHop, QueryPlan, _profile_records
@@ -1300,3 +1301,93 @@ def test_from_registry_uses_persisted_profiles_and_lazy_loads_records(tmp_path, 
 
     assert "S0" in planner.tables
     assert len(planner.tables["S0"]) == 2
+
+
+def test_from_registry_reuses_cached_graph_nodes_across_rebuilds(tmp_path, monkeypatch):
+    import io
+
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    monkeypatch.setattr(reg, "_SOURCES_DIR", Path(tmp_path) / "sources")
+    query_router._GRAPH_NODE_CACHE.clear()
+    AutoPlanner.from_registry.__globals__["_REGISTRY_SOURCE_ARTIFACT_CACHE"].clear()
+
+    rows = [
+        {"entity_id": "A1", "measure_total": 10.0},
+        {"entity_id": "A2", "measure_total": 20.0},
+    ]
+    buf = io.BytesIO()
+    pq.write_table(pa.Table.from_pylist(rows), buf)
+
+    reg.register_source(
+        "org_registry",
+        "src_a",
+        "S0",
+        buf.getvalue(),
+        {
+            "source": "S0",
+            "row_count": 2,
+            "columns": [
+                {"name": "entity_id", "role": "identifier", "is_numeric": False, "fill_rate": 1.0},
+                {
+                    "name": "measure_total",
+                    "role": "derived_measure",
+                    "is_numeric": True,
+                    "fill_rate": 1.0,
+                    "mean": 15.0,
+                    "magnitude": "medium",
+                },
+            ],
+            "planner_profile": {
+                "entity_id": {
+                    "is_numeric": False,
+                    "strings": ["A1", "A2"],
+                    "sample_values": ["A1", "A2"],
+                    "unique_count": 2,
+                    "total_count": 2,
+                    "fill_rate": 1.0,
+                },
+                "measure_total": {
+                    "is_numeric": True,
+                    "sample_values": ["10.0", "20.0"],
+                    "unique_count": 2,
+                    "total_count": 2,
+                    "fill_rate": 1.0,
+                    "mean": 15.0,
+                    "std": 5.0,
+                },
+            },
+            "roles_summary": {"identifier": 1, "derived_measure": 1},
+            "formulas": [],
+        },
+        graph_nodes={},
+        profile={},
+    )
+
+    calls = {"graph": 0, "profile": 0}
+    original_graph = query_router._graph_nodes_from_meta
+    original_profiles = AutoPlanner.from_registry.__globals__["_profiles_from_registry_meta"]
+
+    def _counting_graph_nodes(meta: dict) -> dict[str, ColumnNode]:
+        calls["graph"] += 1
+        return original_graph(meta)
+
+    def _counting_profiles(meta: dict) -> dict[str, dict]:
+        calls["profile"] += 1
+        return original_profiles(meta)
+
+    monkeypatch.setattr(query_router, "_graph_nodes_from_meta", _counting_graph_nodes)
+    monkeypatch.setitem(
+        AutoPlanner.from_registry.__globals__,
+        "_profiles_from_registry_meta",
+        _counting_profiles,
+    )
+
+    first = AutoPlanner.from_registry("org_registry", data_dir=Path(tmp_path), llm_policy="never")
+    second = AutoPlanner.from_registry("org_registry", data_dir=Path(tmp_path), llm_policy="never")
+
+    assert "S0" in first.graph
+    assert "S0" in second.graph
+    assert calls["graph"] == 1
+    assert calls["profile"] == 1

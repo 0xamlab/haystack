@@ -102,15 +102,12 @@ def is_identifier_field(field_name: str) -> bool:
     return False
 
 
-def coerce_scalar(field_name: str, value: Any, preserve_identifiers: bool = True) -> Any:
-    if value is None:
-        return ""
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, int | float):
-        return value
-
-    raw = str(value).strip()
+def _coerce_text_scalar(
+    field_name: str,
+    raw: str,
+    *,
+    preserve_identifiers: bool = True,
+) -> Any:
     if raw == "":
         return ""
 
@@ -144,6 +141,22 @@ def coerce_scalar(field_name: str, value: Any, preserve_identifiers: bool = True
         return -number if negative else number
 
     return raw
+
+
+def coerce_scalar(field_name: str, value: Any, preserve_identifiers: bool = True) -> Any:
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int | float):
+        return value
+
+    raw = str(value).strip()
+    return _coerce_text_scalar(
+        field_name,
+        raw,
+        preserve_identifiers=preserve_identifiers,
+    )
 
 
 def parse_delimited_records(

@@ -68,6 +68,7 @@ _DEEP_JOIN_COLUMN_LIMIT = 12
 _JOIN_PROJECTION_CACHE_MAX = 128
 _DECISIVE_ONE_TO_ONE_FAST_JOIN_OVERLAP = 0.05
 _DECISIVE_DIRECTIONAL_FAST_JOIN_OVERLAP = 0.075
+_METADATA_FAST_JOIN_MIN_SAMPLE_OVERLAP = 3
 _DEFAULT_JOIN_CANDIDATE_MIN_SCORE = 4.5
 _REDUCED_MEDIUM_JOIN_CANDIDATE_MIN_SCORE = 20.0
 _REDUCED_WIDE_MEDIUM_JOIN_CANDIDATE_MIN_SCORE = 30.0
@@ -147,6 +148,100 @@ def _has_decisive_fast_join(connections: list[dict[str, Any]]) -> bool:
         ):
             return True
     return False
+
+
+def _join_block_norm(block: dict[str, Any]) -> str:
+    name = str(block.get("name") or "").strip()
+    if not name:
+        return ""
+    return str(block.get("norm") or "".join(re.findall(r"[a-z0-9]+", name.lower())))
+
+
+def _infer_join_block_cardinality(left: dict[str, Any], right: dict[str, Any]) -> str:
+    left_unique_ratio = float(left.get("unique_ratio", 0.0) or 0.0)
+    right_unique_ratio = float(right.get("unique_ratio", 0.0) or 0.0)
+    if left_unique_ratio >= 0.98 and right_unique_ratio >= 0.98:
+        return "one_to_one"
+    if left_unique_ratio >= 0.98:
+        return "one_to_many"
+    if right_unique_ratio >= 0.98:
+        return "many_to_one"
+    return "many_to_many"
+
+
+def _metadata_fast_join_candidates(
+    *,
+    src_id: str,
+    src_name: str,
+    other_id: str,
+    other_name: str,
+    left_join_blocks: list[dict[str, Any]] | None,
+    right_join_blocks: list[dict[str, Any]] | None,
+) -> list[dict[str, Any]]:
+    if not left_join_blocks or not right_join_blocks:
+        return []
+
+    candidates: list[dict[str, Any]] = []
+    right_by_norm: dict[str, list[dict[str, Any]]] = {}
+    for block in right_join_blocks:
+        norm = _join_block_norm(block)
+        if norm:
+            right_by_norm.setdefault(norm, []).append(block)
+
+    for left in left_join_blocks:
+        left_name = str(left.get("name") or "").strip()
+        left_norm = _join_block_norm(left)
+        if not left_name or not left_norm:
+            continue
+        if not (
+            bool(left.get("key_like"))
+            or str(left.get("role") or "") == "identifier"
+            or _looks_like_entity_join_key(left_name)
+        ):
+            continue
+
+        left_samples = set(left.get("samples") or [])
+        if not left_samples:
+            continue
+
+        for right in right_by_norm.get(left_norm, []):
+            right_name = str(right.get("name") or "").strip()
+            if not right_name:
+                continue
+            if not (
+                bool(right.get("key_like"))
+                or str(right.get("role") or "") == "identifier"
+                or _looks_like_entity_join_key(right_name)
+            ):
+                continue
+
+            right_samples = set(right.get("samples") or [])
+            if not right_samples:
+                continue
+
+            sample_overlap = len(left_samples & right_samples)
+            if sample_overlap < _METADATA_FAST_JOIN_MIN_SAMPLE_OVERLAP:
+                continue
+
+            cardinality = _infer_join_block_cardinality(left, right)
+            if cardinality == "many_to_many":
+                continue
+
+            sample_union = left_samples | right_samples
+            overlap = sample_overlap / max(len(sample_union), 1)
+            candidates.append({
+                "source_a": src_id,
+                "source_a_name": src_name,
+                "col_a": left_name,
+                "source_b": other_id,
+                "source_b_name": other_name,
+                "col_b": right_name,
+                "confidence": _shared_name_join_confidence(overlap, cardinality),
+                "cardinality": cardinality,
+                "overlap": round(overlap, 4),
+            })
+
+    return candidates
 
 
 def _deep_join_projection_columns(
@@ -750,6 +845,17 @@ async def _detect_joins_between(
     Returns connection dicts.
     """
     try:
+        metadata_fast_connections = _metadata_fast_join_candidates(
+            src_id=src_id,
+            src_name=src_name,
+            other_id=other_id,
+            other_name=other_name,
+            left_join_blocks=left_join_blocks,
+            right_join_blocks=right_join_blocks,
+        )
+        if _has_decisive_fast_join(metadata_fast_connections):
+            return metadata_fast_connections
+
         if src_df is not None and other_df is not None:
             projected_src_df = src_df
             projected_other_df = other_df

@@ -63,6 +63,8 @@ def auth_overrides(app):
     query_router._RESOLVE_CACHE.clear()
     query_router._RESULT_CACHE.clear()
     query_router._SOURCE_CACHE.clear()
+    query_router._GRAPH_NODE_CACHE.clear()
+    query_router._DATASET_EXACT_COLUMN_CACHE.clear()
     query_router._DF_CACHE.clear()
 
 
@@ -162,7 +164,9 @@ async def test_resolve_returns_cached_resolved_plan(
 
     monkeypatch.setattr(
         "apps.api_server.services.source_registry.list_sources",
-        lambda org_id: [_ready_entry("src_1", "Orders")],
+        lambda org_id: (_ for _ in ()).throw(
+            AssertionError("dataset-scoped resolve should not list visible sources")
+        ),
     )
     monkeypatch.setattr(
         "apps.api_server.services.source_registry.get_source_entry",
@@ -313,6 +317,105 @@ async def test_resolve_dataset_fast_path_prefers_hot_source_cache(
     assert body["planner_mode"] == "dataset_meta_fast_path"
     assert body["schema_revision"] == "source_rev_1"
     assert body["resolved_plan"]["source_name"] == "Orders"
+
+
+@pytest.mark.asyncio
+async def test_resolve_dataset_fast_path_reuses_registry_graph_nodes_after_source_cache_eviction(
+    monkeypatch: pytest.MonkeyPatch,
+    auth_overrides,
+) -> None:
+    schema_meta = {
+        "row_count": 2,
+        "columns": [
+            {
+                "name": "order_id",
+                "role": "identifier",
+                "formula": None,
+                "is_numeric": True,
+                "magnitude": "small",
+                "semantic_type": "number",
+                "fill_rate": 1.0,
+            },
+            {
+                "name": "amount",
+                "role": "derived_measure",
+                "formula": "qty x price",
+                "is_numeric": True,
+                "magnitude": "medium",
+                "semantic_type": "number",
+                "fill_rate": 1.0,
+            },
+        ],
+        "roles_summary": {"identifier": 1, "derived_measure": 1},
+    }
+    calls = {"count": 0}
+    original = query_router._graph_nodes_from_meta
+
+    def _counting_graph_nodes(meta: dict) -> dict[str, query_router.ColumnNode]:
+        calls["count"] += 1
+        return original(meta)
+
+    monkeypatch.setattr(
+        "apps.api_server.services.source_registry.get_source_meta",
+        lambda org_id, source_id: schema_meta,
+    )
+    monkeypatch.setattr(query_router, "_graph_nodes_from_meta", _counting_graph_nodes)
+
+    first_meta, first_nodes = await query_router._get_resolve_dataset_meta(
+        org_id="org_resolve",
+        dataset_id="src_1",
+        schema_revision="source_rev_1",
+    )
+    second_meta, second_nodes = await query_router._get_resolve_dataset_meta(
+        org_id="org_resolve",
+        dataset_id="src_1",
+        schema_revision="source_rev_1",
+    )
+
+    assert first_meta == schema_meta
+    assert second_meta == schema_meta
+    assert first_nodes == second_nodes
+    assert first_nodes is second_nodes
+    assert calls["count"] == 1
+
+
+def test_find_exact_dataset_column_cached_reuses_lookup() -> None:
+    query_router._DATASET_EXACT_COLUMN_CACHE.clear()
+    schema_meta = {
+        "columns": [
+            {"name": "Order ID"},
+            {"name": "Total Amount"},
+        ]
+    }
+    calls = {"count": 0}
+    original = query_router._normalize_hint_text
+
+    def _counting_normalize(text: str) -> str:
+        calls["count"] += 1
+        return original(text)
+
+    query_router._normalize_hint_text = _counting_normalize
+    try:
+        normalized_hint = original("Total Amount")
+        first = query_router._find_exact_dataset_column_cached(
+            org_id="org_resolve",
+            dataset_id="src_1",
+            schema_revision="source_rev_1",
+            schema_meta=schema_meta,
+            normalized_hint=normalized_hint,
+        )
+        second = query_router._find_exact_dataset_column_cached(
+            org_id="org_resolve",
+            dataset_id="src_1",
+            schema_revision="source_rev_1",
+            schema_meta=schema_meta,
+            normalized_hint=normalized_hint,
+        )
+    finally:
+        query_router._normalize_hint_text = original
+
+    assert first == second == {"name": "Total Amount"}
+    assert calls["count"] == 2
 
 
 @pytest.mark.asyncio

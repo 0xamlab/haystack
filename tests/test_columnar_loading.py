@@ -17,7 +17,7 @@ from apps.api_server.services.columnar_loader import (
     delimited_text_to_arrow_table,
     records_to_arrow_table,
 )
-from apps.api_server.services.data_coercion import coerce_scalar as real_coerce_scalar
+from apps.api_server.services.data_coercion import _coerce_text_scalar as real_coerce_text_scalar
 
 
 def _serve_directory(path):
@@ -354,14 +354,23 @@ def test_delimited_text_to_arrow_table_python_fallback_reuses_per_column_coercio
     def _raise_read_csv(*_args, **_kwargs):  # type: ignore[no-untyped-def]
         raise pa.ArrowInvalid("forced parser failure")
 
-    def _counting_coerce(field_name: str, value: object, preserve_identifiers: bool = True) -> object:
+    def _counting_coerce_text(
+        field_name: str,
+        value: str,
+        *,
+        preserve_identifiers: bool = True,
+    ) -> object:
         calls.append((field_name, value))
-        return real_coerce_scalar(field_name, value, preserve_identifiers=preserve_identifiers)
+        return real_coerce_text_scalar(
+            field_name,
+            value,
+            preserve_identifiers=preserve_identifiers,
+        )
 
     monkeypatch.setattr(pacsv, "read_csv", _raise_read_csv)
     monkeypatch.setattr(
-        "apps.api_server.services.columnar_loader.coerce_scalar",
-        _counting_coerce,
+        "apps.api_server.services.columnar_loader._coerce_text_scalar",
+        _counting_coerce_text,
     )
 
     table = delimited_text_to_arrow_table(

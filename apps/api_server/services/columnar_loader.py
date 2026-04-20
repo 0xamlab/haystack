@@ -5,6 +5,7 @@ import io
 from typing import Any
 
 from apps.api_server.services.data_coercion import (
+    _coerce_text_scalar,
     canonicalize_delimited_headers,
     coerce_scalar,
     is_identifier_field,
@@ -22,7 +23,8 @@ NULL_LIKE_STRINGS = frozenset({
 
 _ARROW_RETRY_MAX_BYTES = 32 * 1024 * 1024
 _COERCION_CACHE_MAX_ENTRIES = 1024
-_COERCION_CACHE_MAX_VALUE_LEN = 64
+_COERCION_CACHE_MAX_VALUE_LEN = 128
+_CACHE_MISS = object()
 
 
 def normalize_scalar_for_arrow(
@@ -59,16 +61,24 @@ def _coerce_scalar_for_arrow(
     *,
     preserve_identifier_field: bool,
 ) -> Any:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        raw = value.strip()
+        if raw == "" or raw.lower() in NULL_LIKE_STRINGS:
+            return None
+        coerced = _coerce_text_scalar(
+            field_name,
+            raw,
+            preserve_identifiers=preserve_identifier_field,
+        )
+        return None if coerced == "" else coerced
     coerced = coerce_scalar(
         field_name,
         value,
         preserve_identifiers=preserve_identifier_field,
     )
-    return normalize_scalar_for_arrow(
-        field_name,
-        coerced,
-        assume_coerced=True,
-    )
+    return None if coerced == "" else coerced
 
 
 def _coerce_scalar_for_arrow_cached(
@@ -88,22 +98,27 @@ def _coerce_scalar_for_arrow_cached(
         )
 
     cache_key = value.strip()
+    if cache_key == "" or cache_key.lower() in NULL_LIKE_STRINGS:
+        return None
     if len(cache_key) > _COERCION_CACHE_MAX_VALUE_LEN:
-        return _coerce_scalar_for_arrow(
+        coerced = _coerce_text_scalar(
             field_name,
             cache_key,
-            preserve_identifier_field=preserve_identifier_field,
+            preserve_identifiers=preserve_identifier_field,
         )
+        return None if coerced == "" else coerced
 
-    cached_value = cache.get(cache_key)
-    if cached_value is not None or cache_key in cache:
+    cached_value = cache.get(cache_key, _CACHE_MISS)
+    if cached_value is not _CACHE_MISS:
         return cached_value
 
-    coerced = _coerce_scalar_for_arrow(
+    coerced = _coerce_text_scalar(
         field_name,
         cache_key,
-        preserve_identifier_field=preserve_identifier_field,
+        preserve_identifiers=preserve_identifier_field,
     )
+    if coerced == "":
+        coerced = None
     if len(cache) < _COERCION_CACHE_MAX_ENTRIES:
         cache[cache_key] = coerced
     return coerced
@@ -159,28 +174,31 @@ def _python_delimited_text_to_arrow_table(content: str, *, delimiter: str) -> An
     if not headers:
         return pa.table({})
 
-    identifier_fields = {
-        field_name: bool(field_name) and is_identifier_field(field_name)
-        for field_name in headers
-    }
-    columns: dict[str, list[Any]] = {field_name: [] for field_name in headers}
+    field_names = list(headers)
+    identifier_fields = [
+        bool(field_name) and is_identifier_field(field_name)
+        for field_name in field_names
+    ]
+    column_values: list[list[Any]] = [[] for _ in field_names]
+    appenders = [values.append for values in column_values]
     coercion_caches: list[dict[str, Any]] = [{} for _ in headers]
+    header_count = len(field_names)
     for row in reader:
         row_len = len(row)
-        for idx, field_name in enumerate(headers):
+        for idx in range(header_count):
             raw_value = row[idx] if idx < row_len else None
-            columns[field_name].append(
+            appenders[idx](
                 _coerce_scalar_for_arrow_cached(
-                    field_name,
+                    field_names[idx],
                     raw_value,
-                    preserve_identifier_field=identifier_fields[field_name],
+                    preserve_identifier_field=identifier_fields[idx],
                     cache=coercion_caches[idx],
                 )
             )
 
     return pa.table({
         field_name: _to_arrow_array(values)
-        for field_name, values in columns.items()
+        for field_name, values in zip(field_names, column_values, strict=False)
     })
 
 

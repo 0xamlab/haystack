@@ -417,6 +417,63 @@ async def test_detect_joins_between_infers_one_to_one_for_exact_entity_keys(monk
 
 
 @pytest.mark.asyncio
+async def test_detect_joins_between_uses_metadata_fast_join_for_same_name_key_samples(
+    monkeypatch,
+):
+    _JOIN_PROJECTION_CACHE.clear()
+
+    async def _unexpected_mojo(*_args, **_kwargs):
+        raise AssertionError("metadata fast join should not call Mojo")
+
+    def _unexpected_projection(*_args, **_kwargs):
+        raise AssertionError("metadata fast join should not load projections")
+
+    monkeypatch.setattr("apps.api_server.routers.sources._call_mojo_join_detect", _unexpected_mojo)
+    monkeypatch.setattr(
+        "apps.api_server.routers.sources._load_join_projection_cached",
+        _unexpected_projection,
+    )
+
+    joins = await _detect_joins_between(
+        "org_detect_meta",
+        "src_a",
+        "S0",
+        None,
+        "src_b",
+        "S1",
+        None,
+        left_join_blocks=[{
+            "name": "entity_key",
+            "norm": "entitykey",
+            "key_like": True,
+            "role": "identifier",
+            "unique_ratio": 1.0,
+            "samples": ["A", "B", "C"],
+        }],
+        right_join_blocks=[{
+            "name": "entity_key",
+            "norm": "entitykey",
+            "key_like": True,
+            "role": "identifier",
+            "unique_ratio": 1.0,
+            "samples": ["A", "B", "C", "D"],
+        }],
+    )
+
+    assert joins == [{
+        "source_a": "src_a",
+        "source_a_name": "S0",
+        "col_a": "entity_key",
+        "source_b": "src_b",
+        "source_b_name": "S1",
+        "col_b": "entity_key",
+        "confidence": 0.988,
+        "cardinality": "one_to_one",
+        "overlap": 0.75,
+    }]
+
+
+@pytest.mark.asyncio
 async def test_detect_joins_between_keeps_mojo_for_non_decisive_fast_key_join(monkeypatch):
     _JOIN_PROJECTION_CACHE.clear()
 

@@ -45,6 +45,23 @@ _PLANNER_MOJO_RESIDENT_ENGINES = frozenset({"field_map", "relation_detect", "str
 _PLANNER_MOJO_MAX_RESIDENT_PAYLOAD_BYTES = int(
     os.environ.get("ALGENTA_PLANNER_MOJO_MAX_RESIDENT_PAYLOAD_BYTES", "8192"),
 )
+_REGISTRY_SOURCE_ARTIFACT_CACHE_MAX = 512
+
+
+@dataclass
+class _CachedRegistrySourceArtifacts:
+    nodes: dict[str, Any]
+    profile: dict[str, dict[str, Any]]
+    query_hints: list[dict[str, Any]]
+    last_hit: float = field(default_factory=time.monotonic)
+
+    def touch(self) -> None:
+        self.last_hit = time.monotonic()
+
+
+_REGISTRY_SOURCE_ARTIFACT_CACHE: dict[
+    tuple[str, str, str], _CachedRegistrySourceArtifacts
+] = {}
 
 
 def _should_use_resident_planner_mojo(engine_type: str, payload: dict[str, Any]) -> bool:
@@ -52,6 +69,30 @@ def _should_use_resident_planner_mojo(engine_type: str, payload: dict[str, Any])
         return False
     payload_size = len(json.dumps(payload, sort_keys=True).encode("utf-8"))
     return payload_size <= _PLANNER_MOJO_MAX_RESIDENT_PAYLOAD_BYTES
+
+
+def _registry_source_artifact_cache_get(
+    key: tuple[str, str, str],
+) -> _CachedRegistrySourceArtifacts | None:
+    cached = _REGISTRY_SOURCE_ARTIFACT_CACHE.get(key)
+    if cached is None:
+        return None
+    cached.touch()
+    return cached
+
+
+def _registry_source_artifact_cache_put(
+    key: tuple[str, str, str],
+    value: _CachedRegistrySourceArtifacts,
+) -> _CachedRegistrySourceArtifacts:
+    if len(_REGISTRY_SOURCE_ARTIFACT_CACHE) >= _REGISTRY_SOURCE_ARTIFACT_CACHE_MAX:
+        oldest_key = min(
+            _REGISTRY_SOURCE_ARTIFACT_CACHE.items(),
+            key=lambda item: item[1].last_hit,
+        )[0]
+        _REGISTRY_SOURCE_ARTIFACT_CACHE.pop(oldest_key, None)
+    _REGISTRY_SOURCE_ARTIFACT_CACHE[key] = value
+    return value
 
 
 # ── Query plan ─────────────────────────────────────────────────────────────────
@@ -473,6 +514,36 @@ def _profiles_from_registry_meta(meta: dict) -> dict[str, dict]:
     return out
 
 
+def _registry_source_artifacts_from_meta(
+    *,
+    org_id: str,
+    source_id: str,
+    schema_revision: str,
+    meta: dict[str, Any],
+) -> _CachedRegistrySourceArtifacts:
+    cached = _registry_source_artifact_cache_get((org_id, source_id, schema_revision))
+    if cached is not None:
+        return cached
+
+    from apps.api_server.routers.query import _graph_nodes_from_cached_meta
+
+    query_hints = meta.get("query_hints", [])
+    normalized_query_hints = query_hints if isinstance(query_hints, list) else []
+    return _registry_source_artifact_cache_put(
+        (org_id, source_id, schema_revision),
+        _CachedRegistrySourceArtifacts(
+            nodes=_graph_nodes_from_cached_meta(
+                org_id=org_id,
+                dataset_id=source_id,
+                schema_revision=schema_revision,
+                schema_meta=meta,
+            ),
+            profile=_profiles_from_registry_meta(meta),
+            query_hints=normalized_query_hints,
+        ),
+    )
+
+
 # ── AutoPlanner ────────────────────────────────────────────────────────────────
 
 class AutoPlanner:
@@ -752,7 +823,6 @@ class AutoPlanner:
             planner = AutoPlanner.from_registry("my-org-id")
             plan = planner.plan("revenue", "product line")
         """
-        from apps.api_server.routers.query import _graph_nodes_from_meta
         from apps.api_server.services import source_registry as _reg
 
         instance = cls(
@@ -785,19 +855,28 @@ class AutoPlanner:
             meta     = _reg.get_source_meta(org_id, src_id)
             if not meta:
                 continue
+            source_schema_revision = str(
+                src_entry.get("schema_revision") or _reg.source_schema_revision(org_id, src_id)
+            )
+            artifacts = _registry_source_artifacts_from_meta(
+                org_id=org_id,
+                source_id=src_id,
+                schema_revision=source_schema_revision,
+                meta=meta,
+            )
 
             # Reconstruct ColumnNode graph from persisted metadata
-            nodes = _graph_nodes_from_meta(meta)
+            nodes = artifacts.nodes
             if nodes:
                 graph[src_name] = nodes
 
             # Store query_hints for metric resolution
-            hints = meta.get("query_hints", [])
+            hints = artifacts.query_hints
             if hints:
                 query_hints_by_src[src_name] = hints
 
             # Reuse persisted planner stats and lazy-load records only on execution.
-            instance.profiles[src_name] = _profiles_from_registry_meta(meta)
+            instance.profiles[src_name] = artifacts.profile
             parquet_path = _reg.get_source_parquet_path(org_id, src_id)
             if parquet_path is not None:
                 instance._parquet_paths[src_name] = parquet_path

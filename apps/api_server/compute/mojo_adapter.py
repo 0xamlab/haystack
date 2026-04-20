@@ -2,8 +2,10 @@
 Mojo engine adapter.
 
 Production path: delegates to MojoWorkerPool (long-lived processes, Unix socket IPC).
-Fallback path:   asyncio.create_subprocess_exec() — used only when the pool is
-                 not yet initialized (e.g. during unit tests without a running server).
+Fallback paths:
+  1. asyncio.create_subprocess_exec() for a compiled native binary.
+  2. The Python reference engine for supported simulation payloads when the
+     native binary is absent and runtime fallbacks are allowed.
 
 Phase 1: MOJO_ALLOW_SUBPROCESS_FALLBACK env var is checked before silently
          falling back. If "false" and pool raises a non-transient error,
@@ -19,10 +21,28 @@ from typing import Any
 
 import structlog
 
+from apps.api_server.config import get_settings
+
 logger = structlog.get_logger(__name__)
+settings = get_settings()
 
 _REPO_ROOT   = Path(__file__).parents[3]
 _BINARY_PATH = _REPO_ROOT / "mojo_build" / "simulate"
+_PYTHON_FALLBACK_ENGINES = frozenset(
+    {
+        "monte_carlo",
+        "qmc_sobol",
+        "lhs",
+        "bootstrap",
+        "scenario",
+        "sensitivity",
+        "mcmc",
+        "decision_tree",
+        "time_series",
+        "compare",
+        "importance_sampling",
+    }
+)
 
 
 def _env_flag(name: str, default: str = "true") -> bool:
@@ -48,12 +68,49 @@ class MojoEngineError(Exception):
         self.exit_code = exit_code
 
 
+def _supports_python_fallback(payload: dict[str, Any]) -> bool:
+    engine_type = payload.get("engine_type")
+    return isinstance(engine_type, str) and engine_type in _PYTHON_FALLBACK_ENGINES
+
+
+async def _invoke_python_fallback(payload: dict[str, Any]) -> dict[str, Any]:
+    engine_type = str(payload.get("engine_type") or "monte_carlo")
+    if not _supports_python_fallback(payload):
+        raise MojoEngineError(
+            f"Python fallback does not support engine_type '{engine_type}'.",
+            exit_code=1,
+        )
+
+    try:
+        from mojo.bindings.python_adapter import run_simulation  # type: ignore[import]
+    except ImportError as exc:
+        raise MojoEngineError(
+            "Python simulation fallback is unavailable. Ensure "
+            "`mojo/bindings/python_adapter.py` is importable or build the native engine.",
+            exit_code=1,
+        ) from exc
+
+    loop = asyncio.get_running_loop()
+    raw_result = await loop.run_in_executor(None, run_simulation, payload)
+    if not isinstance(raw_result, dict):
+        raise MojoEngineError(
+            "Python simulation fallback returned a non-object response.",
+            exit_code=1,
+        )
+
+    result = dict(raw_result)
+    result.setdefault("simulation_model", engine_type)
+    result.setdefault("engine_type", engine_type)
+    return result
+
+
 async def invoke_engine(payload: dict[str, Any]) -> dict[str, Any]:
     """
     Invoke the Mojo simulation engine.
 
     Production: routes through MojoWorkerPool (no process spawn per request).
-    Fallback: single subprocess (for tests / first request before pool warms).
+    Fallback: native subprocess when available, otherwise the Python reference
+    engine for supported simulation payloads when runtime policy allows it.
 
     Phase 1: If MOJO_ALLOW_SUBPROCESS_FALLBACK=false, non-transient pool errors
              are re-raised as MojoEngineError — no silent subprocess fallback.
@@ -99,13 +156,21 @@ async def invoke_engine(payload: dict[str, Any]) -> dict[str, Any]:
                 exit_code=1,
             ) from exc
 
-    # Fallback path — subprocess per call (dev / tests only)
+    # Fallback path — native subprocess when available, otherwise Python fallback
     return await _invoke_subprocess(payload)
 
 
 async def _invoke_subprocess(payload: dict[str, Any]) -> dict[str, Any]:
     """Single-use subprocess invocation (fallback only — not used in production)."""
     if not _BINARY_PATH.exists() or not os.access(_BINARY_PATH, os.X_OK):
+        if settings.allow_runtime_fallbacks and _supports_python_fallback(payload):
+            logger.warning(
+                "mojo_binary_missing_using_python_fallback",
+                binary_path=str(_BINARY_PATH),
+                engine_type=str(payload.get("engine_type") or "unknown"),
+                fallback_allowed=True,
+            )
+            return await _invoke_python_fallback(payload)
         raise MojoEngineError(
             f"Mojo binary not found at {_BINARY_PATH}. "
             "Run `make setup-mojo && make build-mojo` to build the native engine."
