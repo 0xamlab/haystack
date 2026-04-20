@@ -41,6 +41,7 @@ prometheus-client==0.21.0
 
 # HTTP client
 httpx==0.27.0
+python-multipart==0.0.20
 
 # MCP — Model Context Protocol (AI agent / chatbot connectivity)
 # NOTE: mcp requires pydantic>=2.7.2 which conflicts with pinned pydantic==2.6.4
