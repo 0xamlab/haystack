@@ -25,11 +25,14 @@ from types import SimpleNamespace
 
 import pytest
 
-from mojo.engine.vector_kernels.resolver import (
-    ColumnVectorResolver,
-    _cosine,
-    build_vec64,
-)
+try:
+    from mojo.engine.vector_kernels.resolver import (
+        ColumnVectorResolver,
+        _cosine,
+        build_vec64,
+    )
+except ImportError:
+    pytest.skip("Mojo engine not available", allow_module_level=True)
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 

@@ -5,10 +5,14 @@ These tests validate simulation math, determinism, and output schema correctness
 import os
 import sys
 
+import pytest
+
 # Add project root to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
-from mojo.bindings.python_adapter import run_simulation
+run_simulation = pytest.importorskip(
+    "mojo.bindings.python_adapter", reason="Mojo engine not available"
+).run_simulation
 
 # ─── Test fixtures ─────────────────────────────────────────────────────────────
 

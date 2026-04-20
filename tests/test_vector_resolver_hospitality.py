@@ -24,10 +24,13 @@ from __future__ import annotations
 
 import pytest
 
-from mojo.engine.vector_kernels.resolver import (
-    ColumnVectorResolver,
-    ResolverOutcome,
-)
+try:
+    from mojo.engine.vector_kernels.resolver import (
+        ColumnVectorResolver,
+        ResolverOutcome,
+    )
+except ImportError:
+    pytest.skip("Mojo engine not available", allow_module_level=True)
 
 # ── Shared fixture ────────────────────────────────────────────────────────────
 

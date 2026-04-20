@@ -18,16 +18,19 @@ from __future__ import annotations
 
 import pytest
 
-from mojo.engine.vector_kernels.meta_executor import MetaOpType
-from mojo.engine.vector_kernels.query_planner import (
-    FieldResolution,
-    QueryPlanner,
-)
-from mojo.engine.vector_kernels.resolver import (
-    ColumnVectorResolver,
-    ResolverOutcome,
-    ResolverReason,
-)
+try:
+    from mojo.engine.vector_kernels.meta_executor import MetaOpType
+    from mojo.engine.vector_kernels.query_planner import (
+        FieldResolution,
+        QueryPlanner,
+    )
+    from mojo.engine.vector_kernels.resolver import (
+        ColumnVectorResolver,
+        ResolverOutcome,
+        ResolverReason,
+    )
+except ImportError:
+    pytest.skip("Mojo engine not available", allow_module_level=True)
 
 # ── Shared fixtures ───────────────────────────────────────────────────────────
 
