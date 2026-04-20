@@ -1,0 +1,93 @@
+{
+  "lib": "category_theory",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 9,
+  "overall_speedup_x": 3.06,
+  "total_py_ns": 7287.05,
+  "total_mojo_ns": 2380.9,
+  "elapsed_s": 3.33,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "map_list_fn",
+      "py_ns": 606.033,
+      "mojo_ns": 292.1,
+      "speedup_x": 2.07,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "filter_fn",
+      "py_ns": 712.979,
+      "mojo_ns": 234.4,
+      "speedup_x": 3.04,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "fold_left",
+      "py_ns": 445.612,
+      "mojo_ns": 2.3,
+      "speedup_x": 193.74,
+      "py_result": 3.0,
+      "py_error": null
+    },
+    {
+      "function": "fold_right",
+      "py_ns": 537.333,
+      "mojo_ns": 2.5,
+      "speedup_x": 214.93,
+      "py_result": 3.0,
+      "py_error": null
+    },
+    {
+      "function": "compose",
+      "py_ns": 1147.404,
+      "mojo_ns": 418.2,
+      "speedup_x": 2.74,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "zip_with",
+      "py_ns": 1152.971,
+      "mojo_ns": 234.6,
+      "speedup_x": 4.91,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "scan_left",
+      "py_ns": 795.342,
+      "mojo_ns": 628.8,
+      "speedup_x": 1.26,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "take_while",
+      "py_ns": 1370.958,
+      "mojo_ns": 278.4,
+      "speedup_x": 4.92,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "drop_while",
+      "py_ns": 646.271,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "flat_map",
+      "py_ns": 518.413,
+      "mojo_ns": 289.6,
+      "speedup_x": 1.79,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

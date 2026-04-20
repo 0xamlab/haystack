@@ -1,0 +1,109 @@
+{
+  "lib": "hydrology",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 11,
+  "overall_speedup_x": 124.54,
+  "total_py_ns": 1581.7,
+  "total_mojo_ns": 12.7,
+  "elapsed_s": 1.95,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "manning_velocity",
+      "py_ns": 153.167,
+      "mojo_ns": 1.1,
+      "speedup_x": 139.24,
+      "py_result": 0.890899,
+      "py_error": null
+    },
+    {
+      "function": "manning_discharge",
+      "py_ns": 184.1,
+      "mojo_ns": 1.1,
+      "speedup_x": 167.36,
+      "py_result": 0.445449,
+      "py_error": null
+    },
+    {
+      "function": "hydraulic_radius",
+      "py_ns": 76.8,
+      "mojo_ns": 1.0,
+      "speedup_x": 76.8,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "froude_number",
+      "py_ns": 176.083,
+      "mojo_ns": 1.1,
+      "speedup_x": 160.08,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "reynolds_number_pipe",
+      "py_ns": 81.904,
+      "mojo_ns": 1.1,
+      "speedup_x": 74.46,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "darcy_weisbach_head_loss",
+      "py_ns": 190.317,
+      "mojo_ns": 1.1,
+      "speedup_x": 173.02,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "rational_method_peak_flow",
+      "py_ns": 84.675,
+      "mojo_ns": 2.2,
+      "speedup_x": 38.49,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "time_of_concentration_kirpich",
+      "py_ns": 236.3,
+      "mojo_ns": 1.0,
+      "speedup_x": 236.3,
+      "py_result": 0.005973,
+      "py_error": null
+    },
+    {
+      "function": "curve_number_runoff",
+      "py_ns": 252.642,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "evapotranspiration_hargreaves",
+      "py_ns": 247.471,
+      "mojo_ns": 1.0,
+      "speedup_x": 247.47,
+      "py_result": 0.014881,
+      "py_error": null
+    },
+    {
+      "function": "specific_yield",
+      "py_ns": 78.417,
+      "mojo_ns": 1.0,
+      "speedup_x": 78.42,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "darcy_groundwater_velocity",
+      "py_ns": 72.467,
+      "mojo_ns": 1.0,
+      "speedup_x": 72.47,
+      "py_result": 0.25,
+      "py_error": null
+    }
+  ]
+}

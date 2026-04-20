@@ -1,0 +1,109 @@
+{
+  "lib": "combustion",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 10,
+  "overall_speedup_x": 343.94,
+  "total_py_ns": 3473.76,
+  "total_mojo_ns": 10.1,
+  "elapsed_s": 1.97,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "stoichiometric_air_fuel_ratio",
+      "py_ns": 122.479,
+      "mojo_ns": 1.0,
+      "speedup_x": 122.48,
+      "py_result": 20.74392,
+      "py_error": null
+    },
+    {
+      "function": "equivalence_ratio",
+      "py_ns": 89.133,
+      "mojo_ns": 1.0,
+      "speedup_x": 89.13,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "excess_air_percentage",
+      "py_ns": 91.575,
+      "mojo_ns": 1.0,
+      "speedup_x": 91.58,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "adiabatic_flame_temp_estimate",
+      "py_ns": 200.487,
+      "mojo_ns": 1.0,
+      "speedup_x": 200.49,
+      "py_result": 2.5,
+      "py_error": null
+    },
+    {
+      "function": "lower_heating_value_methane",
+      "py_ns": 141.654,
+      "mojo_ns": 1.0,
+      "speedup_x": 141.65,
+      "py_result": 50.0,
+      "py_error": null
+    },
+    {
+      "function": "thermal_efficiency",
+      "py_ns": 1519.413,
+      "mojo_ns": 1.0,
+      "speedup_x": 1519.41,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "carnot_efficiency",
+      "py_ns": 90.146,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "brake_specific_fuel_consumption",
+      "py_ns": 115.517,
+      "mojo_ns": 1.0,
+      "speedup_x": 115.52,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "combustion_efficiency",
+      "py_ns": 99.363,
+      "mojo_ns": 1.0,
+      "speedup_x": 99.36,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "flame_speed_laminar",
+      "py_ns": 819.346,
+      "mojo_ns": 1.1,
+      "speedup_x": 744.86,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "nox_formation_rate",
+      "py_ns": 213.312,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "heat_release_rate",
+      "py_ns": 274.792,
+      "mojo_ns": 1.0,
+      "speedup_x": 274.79,
+      "py_result": -0.75,
+      "py_error": null
+    }
+  ]
+}

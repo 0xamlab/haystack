@@ -1,0 +1,86 @@
+Algenta Community License (ACL)
+Version 1.0 — March 2026
+
+Copyright (c) 2026 Algenta, Inc.
+
+TERMS AND CONDITIONS
+
+1. DEFINITIONS
+
+"Software" means the Algenta Decision Engine source code, documentation, and associated files
+distributed under this license.
+
+"Community Use" means use of the Software for non-commercial purposes, personal projects,
+research, education, open-source projects, or internal business operations at organizations
+with fewer than 50 employees AND annual gross revenue under $5,000,000 USD.
+
+"Commercial Self-Hosting" means deploying the Software as part of a commercial product or
+service offered to external customers, OR use by organizations exceeding the Community Use
+thresholds, without purchasing a commercial license from Algenta.
+
+"Engine Binary" means the compiled Mojo simulation engine binary (`mojo_build/simulate`)
+distributed alongside this Software.
+
+2. COMMUNITY USE GRANT
+
+Subject to the terms of this license, Algenta grants you a worldwide, royalty-free,
+non-exclusive license to:
+
+  (a) Use, copy, modify, and distribute the Software for Community Use;
+  (b) Build applications and integrations on top of the Software API;
+  (c) Run the Software on your own infrastructure for Community Use.
+
+3. RESTRICTIONS
+
+You may NOT, without a commercial license from Algenta:
+
+  (a) Use the Software for Commercial Self-Hosting;
+  (b) Remove or modify license notices or attribution;
+  (c) Reverse-engineer the Engine Binary;
+  (d) Sub-license the Software under different terms.
+
+4. COMMERCIAL LICENSE
+
+Organizations requiring Commercial Self-Hosting must obtain a commercial license.
+Contact: licensing@algenta.ai | https://algenta.ai/pricing
+
+5. ENGINE BINARY
+
+The Engine Binary (`mojo_build/simulate`) is provided under a separate binary license.
+It may be redistributed with this Software for Community Use purposes only.
+The Mojo source code for the engine is proprietary and not covered by this license.
+
+6. CONTRIBUTIONS
+
+Contributions to this Software are welcome. By submitting a contribution, you agree to
+the Algenta Contributor License Agreement (CLA) at https://algenta.ai/cla.
+Contributed code is licensed back to Algenta under this same license.
+
+7. CLOUD SERVICE
+
+Algenta operates a hosted version of this Software at https://api.algenta.ai.
+Use of the hosted service is governed by the Algenta Terms of Service, not this license.
+
+8. DISCLAIMER
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL ALGENTA, INC. BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY ARISING FROM THE USE OF THE SOFTWARE.
+
+9. ATTRIBUTION
+
+If you distribute the Software or a derivative work, you must retain this copyright notice
+and a link to https://algenta.ai in your documentation.
+
+---
+
+Why this license? (not legal advice)
+
+We follow the open-core model used by Supabase, n8n, Reown, and others:
+- The framework, integrations, portal, and SDKs are source-available
+- The simulation engine core remains proprietary
+- Community builders get full access to build on top of Algenta
+- Commercial deployment beyond the thresholds requires a paid license
+
+Questions? licensing@algenta.ai

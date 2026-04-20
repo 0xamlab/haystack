@@ -1,0 +1,58 @@
+"""test_viticulture.mojo — auto-generated tests for viticulture library."""
+from std.math import isnan, isinf
+from viticulture import brix_to_potential_alcohol, chaptalization_sugar, total_acidity_as_tartaric, ph_buffer_capacity, growing_degree_days_wine, winkler_index_daily, yield_tonnes_per_hectare, vine_density, pruning_weight_ratio, must_volume_from_grapes, sulfite_molecular_so2, fermentation_progress
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_brix_to_potential_alcohol = brix_to_potential_alcohol(0.5)
+    if is_finite(_v_brix_to_potential_alcohol): passed += 1; print("  ✅ viticulture::brix_to_potential_alcohol =", _v_brix_to_potential_alcohol)
+    else: failed += 1; print("  ❌ viticulture::brix_to_potential_alcohol → non-finite:", _v_brix_to_potential_alcohol)
+    var _v_chaptalization_sugar = chaptalization_sugar(0.5, 0.5, 0.5)
+    if is_finite(_v_chaptalization_sugar): passed += 1; print("  ✅ viticulture::chaptalization_sugar =", _v_chaptalization_sugar)
+    else: failed += 1; print("  ❌ viticulture::chaptalization_sugar → non-finite:", _v_chaptalization_sugar)
+    var _v_total_acidity_as_tartaric = total_acidity_as_tartaric(0.5)
+    if is_finite(_v_total_acidity_as_tartaric): passed += 1; print("  ✅ viticulture::total_acidity_as_tartaric =", _v_total_acidity_as_tartaric)
+    else: failed += 1; print("  ❌ viticulture::total_acidity_as_tartaric → non-finite:", _v_total_acidity_as_tartaric)
+    var _v_ph_buffer_capacity = ph_buffer_capacity(0.5, 0.5)
+    if is_finite(_v_ph_buffer_capacity): passed += 1; print("  ✅ viticulture::ph_buffer_capacity =", _v_ph_buffer_capacity)
+    else: failed += 1; print("  ❌ viticulture::ph_buffer_capacity → non-finite:", _v_ph_buffer_capacity)
+    var _v_growing_degree_days_wine = growing_degree_days_wine(0.5, 0.5, 0.5)
+    if is_finite(_v_growing_degree_days_wine): passed += 1; print("  ✅ viticulture::growing_degree_days_wine =", _v_growing_degree_days_wine)
+    else: failed += 1; print("  ❌ viticulture::growing_degree_days_wine → non-finite:", _v_growing_degree_days_wine)
+    var _v_winkler_index_daily = winkler_index_daily(0.5)
+    if is_finite(_v_winkler_index_daily): passed += 1; print("  ✅ viticulture::winkler_index_daily =", _v_winkler_index_daily)
+    else: failed += 1; print("  ❌ viticulture::winkler_index_daily → non-finite:", _v_winkler_index_daily)
+    var _v_yield_tonnes_per_hectare = yield_tonnes_per_hectare(0.5, 0.5)
+    if is_finite(_v_yield_tonnes_per_hectare): passed += 1; print("  ✅ viticulture::yield_tonnes_per_hectare =", _v_yield_tonnes_per_hectare)
+    else: failed += 1; print("  ❌ viticulture::yield_tonnes_per_hectare → non-finite:", _v_yield_tonnes_per_hectare)
+    var _v_vine_density = vine_density(0.5, 0.5, 0.5)
+    if is_finite(_v_vine_density): passed += 1; print("  ✅ viticulture::vine_density =", _v_vine_density)
+    else: failed += 1; print("  ❌ viticulture::vine_density → non-finite:", _v_vine_density)
+    var _v_pruning_weight_ratio = pruning_weight_ratio(0.5, 0.5)
+    if is_finite(_v_pruning_weight_ratio): passed += 1; print("  ✅ viticulture::pruning_weight_ratio =", _v_pruning_weight_ratio)
+    else: failed += 1; print("  ❌ viticulture::pruning_weight_ratio → non-finite:", _v_pruning_weight_ratio)
+    var _v_must_volume_from_grapes = must_volume_from_grapes(0.5, 0.5)
+    if is_finite(_v_must_volume_from_grapes): passed += 1; print("  ✅ viticulture::must_volume_from_grapes =", _v_must_volume_from_grapes)
+    else: failed += 1; print("  ❌ viticulture::must_volume_from_grapes → non-finite:", _v_must_volume_from_grapes)
+    var _v_sulfite_molecular_so2 = sulfite_molecular_so2(0.5, 0.5)
+    if is_finite(_v_sulfite_molecular_so2): passed += 1; print("  ✅ viticulture::sulfite_molecular_so2 =", _v_sulfite_molecular_so2)
+    else: failed += 1; print("  ❌ viticulture::sulfite_molecular_so2 → non-finite:", _v_sulfite_molecular_so2)
+    var _v_fermentation_progress = fermentation_progress(0.5, 0.5)
+    if is_finite(_v_fermentation_progress): passed += 1; print("  ✅ viticulture::fermentation_progress =", _v_fermentation_progress)
+    else: failed += 1; print("  ❌ viticulture::fermentation_progress → non-finite:", _v_fermentation_progress)
+
+    print("  [viticulture] Passed:", passed, "Failed:", failed)

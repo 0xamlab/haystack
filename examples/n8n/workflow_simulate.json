@@ -1,0 +1,119 @@
+{
+  "name": "Algenta — Simulate Decision",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "start",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.algenta.ai/v1/simulate",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "{\n  \"mode\": \"auto\",\n  \"scenario\": {\n    \"name\": \"Product launch decision\",\n    \"variables\": {\n      \"revenue\": {\"low\": 80000, \"high\": 200000},\n      \"cost\": {\"low\": 40000, \"high\": 90000}\n    },\n    \"objective\": \"maximize_net_value\"\n  },\n  \"runs\": 10000\n}",
+        "options": {}
+      },
+      "id": "simulate",
+      "name": "Simulate Decision",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [460, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "decision-engine-key",
+          "name": "Algenta API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json[\"recommended_action\"]}}",
+              "operation": "equals",
+              "value2": "proceed"
+            }
+          ]
+        }
+      },
+      "id": "check-recommendation",
+      "name": "Check Recommendation",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "message",
+              "value": "=✅ Decision: PROCEED — Confidence: {{($json[\"confidence\"] * 100).toFixed(0)}}%\nExpected Value: ${{$json[\"metrics\"][\"expected_value\"].toFixed(0).toLocaleString()}}\nRationale: {{$json[\"rationale\"]}}"
+            }
+          ]
+        }
+      },
+      "id": "proceed-message",
+      "name": "Proceed Message",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "message",
+              "value": "=⚠️ Decision: {{$json[\"recommended_action\"].toUpperCase()}} — Review needed\nRationale: {{$json[\"rationale\"]}}"
+            }
+          ]
+        }
+      },
+      "id": "caution-message",
+      "name": "Caution Message",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [900, 400]
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [[{"node": "Simulate Decision", "type": "main", "index": 0}]]
+    },
+    "Simulate Decision": {
+      "main": [[{"node": "Check Recommendation", "type": "main", "index": 0}]]
+    },
+    "Check Recommendation": {
+      "main": [
+        [{"node": "Proceed Message", "type": "main", "index": 0}],
+        [{"node": "Caution Message", "type": "main", "index": 0}]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "instanceId": "decision-engine-example"
+  },
+  "_comment": "Import this workflow into n8n. Set credentials: HTTP Header Auth with name 'Authorization' and value 'Bearer de_live_...'. Keep the hosted URL at https://api.algenta.ai unless you are self-hosting."
+}

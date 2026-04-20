@@ -1,0 +1,109 @@
+{
+  "lib": "antenna",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 9,
+  "overall_speedup_x": 218.24,
+  "total_py_ns": 1920.54,
+  "total_mojo_ns": 8.8,
+  "elapsed_s": 3.54,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "dipole_length",
+      "py_ns": 87.579,
+      "mojo_ns": 1.0,
+      "speedup_x": 87.58,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "wavelength_from_freq",
+      "py_ns": 177.3,
+      "mojo_ns": 1.0,
+      "speedup_x": 177.3,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "friis_path_loss",
+      "py_ns": null,
+      "mojo_ns": 3.0,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "module 'math' has no attribute 'math'"
+    },
+    {
+      "function": "eirp",
+      "py_ns": 168.979,
+      "mojo_ns": 1.0,
+      "speedup_x": 168.98,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "received_power",
+      "py_ns": 168.688,
+      "mojo_ns": 0.9,
+      "speedup_x": 187.43,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "directivity_from_beamwidths",
+      "py_ns": 727.267,
+      "mojo_ns": 1.0,
+      "speedup_x": 727.27,
+      "py_result": 165012.0,
+      "py_error": null
+    },
+    {
+      "function": "antenna_efficiency",
+      "py_ns": 82.346,
+      "mojo_ns": 1.0,
+      "speedup_x": 82.35,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "effective_aperture",
+      "py_ns": 118.162,
+      "mojo_ns": 1.0,
+      "speedup_x": 118.16,
+      "py_result": 0.009947,
+      "py_error": null
+    },
+    {
+      "function": "link_budget_margin",
+      "py_ns": 77.454,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "noise_figure_to_noise_temp",
+      "py_ns": 147.767,
+      "mojo_ns": 1.0,
+      "speedup_x": 147.77,
+      "py_result": 0.061009,
+      "py_error": null
+    },
+    {
+      "function": "free_space_loss_db",
+      "py_ns": null,
+      "mojo_ns": 1.0,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "module 'math' has no attribute 'math'"
+    },
+    {
+      "function": "beamwidth_from_aperture",
+      "py_ns": 242.454,
+      "mojo_ns": 0.9,
+      "speedup_x": 269.39,
+      "py_result": 70.0,
+      "py_error": null
+    }
+  ]
+}

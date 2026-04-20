@@ -1,0 +1,61 @@
+{
+  "lib": "sampling",
+  "status": "ok",
+  "n_functions": 6,
+  "n_compared": 6,
+  "overall_speedup_x": 10.76,
+  "total_py_ns": 171890.2,
+  "total_mojo_ns": 15971.8,
+  "elapsed_s": 4.8,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "halton_sequence",
+      "py_ns": 3582.821,
+      "mojo_ns": 502.2,
+      "speedup_x": 7.13,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "halton_2d",
+      "py_ns": 9084.017,
+      "mojo_ns": 2163.5,
+      "speedup_x": 4.2,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "stratified_sample_1d",
+      "py_ns": 40614.287,
+      "mojo_ns": 1463.1,
+      "speedup_x": 27.76,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "latin_hypercube_sample",
+      "py_ns": 101020.308,
+      "mojo_ns": 9255.0,
+      "speedup_x": 10.92,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "sobol_like_2d",
+      "py_ns": 12715.883,
+      "mojo_ns": 1694.2,
+      "speedup_x": 7.51,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "discrepancy_l2_star",
+      "py_ns": 4872.879,
+      "mojo_ns": 893.8,
+      "speedup_x": 5.45,
+      "py_result": 0.276446,
+      "py_error": null
+    }
+  ]
+}

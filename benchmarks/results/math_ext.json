@@ -1,0 +1,189 @@
+{
+  "lib": "math_ext",
+  "status": "ok",
+  "n_functions": 22,
+  "n_compared": 19,
+  "overall_speedup_x": 20.49,
+  "total_py_ns": 52693.17,
+  "total_mojo_ns": 2571.9,
+  "elapsed_s": 2.13,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "mean",
+      "py_ns": 406.937,
+      "mojo_ns": 2.7,
+      "speedup_x": 150.72,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "median",
+      "py_ns": 5828.125,
+      "mojo_ns": 369.6,
+      "speedup_x": 15.77,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "mode_approx",
+      "py_ns": 2985.679,
+      "mojo_ns": 463.0,
+      "speedup_x": 6.45,
+      "py_result": 0.34,
+      "py_error": null
+    },
+    {
+      "function": "stdev",
+      "py_ns": 1149.042,
+      "mojo_ns": 4.8,
+      "speedup_x": 239.38,
+      "py_result": 0.158114,
+      "py_error": null
+    },
+    {
+      "function": "variance",
+      "py_ns": 9011.088,
+      "mojo_ns": 4.8,
+      "speedup_x": 1877.31,
+      "py_result": 0.025,
+      "py_error": null
+    },
+    {
+      "function": "skewness",
+      "py_ns": 2879.025,
+      "mojo_ns": 11.4,
+      "speedup_x": 252.55,
+      "py_result": -0.0,
+      "py_error": null
+    },
+    {
+      "function": "kurtosis",
+      "py_ns": 4173.433,
+      "mojo_ns": 11.8,
+      "speedup_x": 353.68,
+      "py_result": -1.2,
+      "py_error": null
+    },
+    {
+      "function": "covariance",
+      "py_ns": 2664.563,
+      "mojo_ns": 7.0,
+      "speedup_x": 380.65,
+      "py_result": 0.025,
+      "py_error": null
+    },
+    {
+      "function": "correlation",
+      "py_ns": 2723.167,
+      "mojo_ns": 258.5,
+      "speedup_x": 10.53,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "percentile",
+      "py_ns": 2775.083,
+      "mojo_ns": 497.0,
+      "speedup_x": 5.58,
+      "py_result": 0.302,
+      "py_error": null
+    },
+    {
+      "function": "quantile",
+      "py_ns": 3554.729,
+      "mojo_ns": 294.4,
+      "speedup_x": 12.07,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "iqr",
+      "py_ns": 5254.771,
+      "mojo_ns": 636.6,
+      "speedup_x": 8.25,
+      "py_result": 0.2,
+      "py_error": null
+    },
+    {
+      "function": "z_score",
+      "py_ns": 766.025,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "t_statistic",
+      "py_ns": 193.8,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "chi_squared",
+      "py_ns": 1122.058,
+      "mojo_ns": 3.7,
+      "speedup_x": 303.26,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "erf",
+      "py_ns": 223.304,
+      "mojo_ns": 1.1,
+      "speedup_x": 203.0,
+      "py_result": 0.5205,
+      "py_error": null
+    },
+    {
+      "function": "norm_cdf",
+      "py_ns": 249.463,
+      "mojo_ns": 1.1,
+      "speedup_x": 226.78,
+      "py_result": 0.691462,
+      "py_error": null
+    },
+    {
+      "function": "norm_pdf",
+      "py_ns": 813.437,
+      "mojo_ns": 1.1,
+      "speedup_x": 739.49,
+      "py_result": 0.352065,
+      "py_error": null
+    },
+    {
+      "function": "norm_ppf",
+      "py_ns": 179.5,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "log_gamma",
+      "py_ns": 1931.221,
+      "mojo_ns": 1.1,
+      "speedup_x": 1755.66,
+      "py_result": 0.572365,
+      "py_error": null
+    },
+    {
+      "function": "gamma_fn",
+      "py_ns": 447.588,
+      "mojo_ns": 1.1,
+      "speedup_x": 406.9,
+      "py_result": 1.772454,
+      "py_error": null
+    },
+    {
+      "function": "beta_fn",
+      "py_ns": 4500.454,
+      "mojo_ns": 1.1,
+      "speedup_x": 4091.32,
+      "py_result": 3.141593,
+      "py_error": null
+    }
+  ]
+}

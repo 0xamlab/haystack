@@ -1,0 +1,101 @@
+{
+  "lib": "reliability",
+  "status": "ok",
+  "n_functions": 11,
+  "n_compared": 11,
+  "overall_speedup_x": 124.79,
+  "total_py_ns": 2558.1,
+  "total_mojo_ns": 20.5,
+  "elapsed_s": 1.83,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "exponential_reliability",
+      "py_ns": 123.096,
+      "mojo_ns": 1.1,
+      "speedup_x": 111.91,
+      "py_result": 0.778801,
+      "py_error": null
+    },
+    {
+      "function": "exponential_failure_rate",
+      "py_ns": 120.35,
+      "mojo_ns": 2.2,
+      "speedup_x": 54.7,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "weibull_reliability",
+      "py_ns": 263.817,
+      "mojo_ns": 1.0,
+      "speedup_x": 263.82,
+      "py_result": 0.367879,
+      "py_error": null
+    },
+    {
+      "function": "weibull_failure_rate",
+      "py_ns": 131.513,
+      "mojo_ns": 1.0,
+      "speedup_x": 131.51,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "mtbf",
+      "py_ns": 89.329,
+      "mojo_ns": 4.6,
+      "speedup_x": 19.42,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "availability",
+      "py_ns": 185.85,
+      "mojo_ns": 2.1,
+      "speedup_x": 88.5,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "series_reliability",
+      "py_ns": 440.371,
+      "mojo_ns": 2.6,
+      "speedup_x": 169.37,
+      "py_result": 0.0252,
+      "py_error": null
+    },
+    {
+      "function": "parallel_reliability",
+      "py_ns": 318.337,
+      "mojo_ns": 2.3,
+      "speedup_x": 138.41,
+      "py_result": 0.9748,
+      "py_error": null
+    },
+    {
+      "function": "k_of_n_reliability",
+      "py_ns": 457.046,
+      "mojo_ns": 1.6,
+      "speedup_x": 285.65,
+      "py_result": 0.03125,
+      "py_error": null
+    },
+    {
+      "function": "bathtub_rate",
+      "py_ns": 302.746,
+      "mojo_ns": 1.0,
+      "speedup_x": 302.75,
+      "py_result": 1.5,
+      "py_error": null
+    },
+    {
+      "function": "mission_reliability",
+      "py_ns": 125.646,
+      "mojo_ns": 1.0,
+      "speedup_x": 125.65,
+      "py_result": 0.778801,
+      "py_error": null
+    }
+  ]
+}

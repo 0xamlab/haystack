@@ -1,0 +1,93 @@
+{
+  "lib": "immunology",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 6,
+  "overall_speedup_x": 117.24,
+  "total_py_ns": 773.82,
+  "total_mojo_ns": 6.6,
+  "elapsed_s": 1.5,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "antibody_titer",
+      "py_ns": 95.079,
+      "mojo_ns": 1.1,
+      "speedup_x": 86.44,
+      "py_result": 4.0,
+      "py_error": null
+    },
+    {
+      "function": "seroconversion_rate",
+      "py_ns": 84.125,
+      "mojo_ns": 1.1,
+      "speedup_x": 76.48,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "antigen_antibody_binding",
+      "py_ns": 105.329,
+      "mojo_ns": 1.1,
+      "speedup_x": 95.75,
+      "py_result": 0.2,
+      "py_error": null
+    },
+    {
+      "function": "complement_activation",
+      "py_ns": 76.988,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "t_cell_proliferation",
+      "py_ns": 158.779,
+      "mojo_ns": 1.1,
+      "speedup_x": 144.34,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "innate_response_decay",
+      "py_ns": 114.408,
+      "mojo_ns": 1.1,
+      "speedup_x": 104.01,
+      "py_result": 0.3894,
+      "py_error": null
+    },
+    {
+      "function": "vaccine_efficacy",
+      "py_ns": 138.946,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "herd_immunity_threshold",
+      "py_ns": 72.333,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "antibody_avidity_index",
+      "py_ns": 216.096,
+      "mojo_ns": 1.1,
+      "speedup_x": 196.45,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "opsonisation_index",
+      "py_ns": 108.692,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

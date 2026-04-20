@@ -1,0 +1,93 @@
+{
+  "lib": "meteorology",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 10,
+  "overall_speedup_x": 130.41,
+  "total_py_ns": 4812.31,
+  "total_mojo_ns": 36.9,
+  "elapsed_s": 1.69,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "dew_point",
+      "py_ns": 276.092,
+      "mojo_ns": 1.1,
+      "speedup_x": 250.99,
+      "py_result": -55.511694,
+      "py_error": null
+    },
+    {
+      "function": "wet_bulb_temperature",
+      "py_ns": 418.008,
+      "mojo_ns": 1.1,
+      "speedup_x": 380.01,
+      "py_result": -4.467847,
+      "py_error": null
+    },
+    {
+      "function": "pressure_altitude",
+      "py_ns": 1450.621,
+      "mojo_ns": 1.0,
+      "speedup_x": 1450.62,
+      "py_result": 39996.382137,
+      "py_error": null
+    },
+    {
+      "function": "relative_humidity",
+      "py_ns": 457.862,
+      "mojo_ns": 11.9,
+      "speedup_x": 38.48,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "absolute_humidity",
+      "py_ns": 1554.242,
+      "mojo_ns": 3.7,
+      "speedup_x": 420.07,
+      "py_result": 0.025076,
+      "py_error": null
+    },
+    {
+      "function": "wind_chill",
+      "py_ns": 86.538,
+      "mojo_ns": 9.1,
+      "speedup_x": 9.51,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "heat_index",
+      "py_ns": 201.196,
+      "mojo_ns": 3.6,
+      "speedup_x": 55.89,
+      "py_result": -6.853069,
+      "py_error": null
+    },
+    {
+      "function": "potential_temperature",
+      "py_ns": 136.275,
+      "mojo_ns": 1.2,
+      "speedup_x": 113.56,
+      "py_result": 16.288608,
+      "py_error": null
+    },
+    {
+      "function": "precipitable_water",
+      "py_ns": 101.263,
+      "mojo_ns": 3.0,
+      "speedup_x": 33.75,
+      "py_result": 0.00025,
+      "py_error": null
+    },
+    {
+      "function": "visibility_extinction",
+      "py_ns": 130.217,
+      "mojo_ns": 1.2,
+      "speedup_x": 108.51,
+      "py_result": 0.778801,
+      "py_error": null
+    }
+  ]
+}

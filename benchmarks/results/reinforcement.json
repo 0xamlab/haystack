@@ -1,0 +1,77 @@
+{
+  "lib": "reinforcement",
+  "status": "ok",
+  "n_functions": 8,
+  "n_compared": 1,
+  "overall_speedup_x": 12.43,
+  "total_py_ns": 1098.73,
+  "total_mojo_ns": 88.4,
+  "elapsed_s": 2.16,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "epsilon_greedy_action",
+      "py_ns": 1098.733,
+      "mojo_ns": 88.4,
+      "speedup_x": 12.43,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "q_learning",
+      "py_ns": null,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list index out of range"
+    },
+    {
+      "function": "sarsa",
+      "py_ns": null,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list index out of range"
+    },
+    {
+      "function": "value_iteration",
+      "py_ns": null,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list index out of range"
+    },
+    {
+      "function": "policy_from_q",
+      "py_ns": 1704.237,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "policy_evaluation",
+      "py_ns": null,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list index out of range"
+    },
+    {
+      "function": "td_error",
+      "py_ns": 162.892,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "discounted_return",
+      "py_ns": 681.246,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 1.04375,
+      "py_error": null
+    }
+  ]
+}

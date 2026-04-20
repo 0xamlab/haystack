@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Usage</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script> window.FontAwesomeConfig = { autoReplaceSvg: 'nest'};</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.plot.ly/plotly-3.1.1.min.js"></script>
+    <style>
+        ::-webkit-scrollbar { display: none;}
+        * { font-family: 'Inter', sans-serif; }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#4B0082',
+                        success: '#008000',
+                        warning: '#FFA500',
+                        danger: '#FF0000',
+                        info: '#0000FF',
+                        dark: {
+                            100: '#0B0D12',
+                            200: '#0F1117',
+                            300: '#151823',
+                            400: '#1A1F2E',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-dark-100 text-gray-300">
+
+<div id="main-container" class="flex min-h-screen">
+    <aside id="sidebar" class="w-64 bg-dark-200 border-r border-gray-800 flex-shrink-0 hidden lg:block">
+        <div class="p-4 border-b border-gray-800">
+            <h1 class="text-xl font-bold text-white">ALGENTA</h1>
+            <p class="text-xs text-gray-500 mt-1">Infrastructure Console</p>
+        </div>
+        <nav class="p-3">
+            <a href="#" class="flex items-center px-3 py-2 text-gray-400 hover:bg-dark-300 hover:text-white rounded mb-1 transition-colors">
+                <i class="fa-solid fa-gauge w-5"></i>
+                <span class="ml-3 text-sm">Dashboard</span>
+            </a>
+            <a href="#" class="flex items-center px-3 py-2 text-gray-400 hover:bg-dark-300 hover:text-white rounded mb-1 transition-colors">
+                <i class="fa-solid fa-chart-line w-5"></i>
+                <span class="ml-3 text-sm">Simulations</span>
+            </a>
+            <a href="#" class="flex items-center px-3 py-2 text-gray-400 hover:bg-dark-300 hover:text-white rounded mb-1 transition-colors">
+                <i class="fa-solid fa-server w-5"></i>
+                <span class="ml-3 text-sm">Compute Clusters</span>
+            </a>
+            <a href="#" class="flex items-center px-3 py-2 text-gray-400 hover:bg-dark-300 hover:text-white rounded mb-1 transition-colors">
+                <i class="fa-solid fa-database w-5"></i>
+                <span class="ml-3 text-sm">Data Management</span>
+            </a>
+            <a href="#" class="flex items-center px-3 py-2 text-gray-400 hover:bg-dark-300 hover:text-white rounded mb-1 transition-colors">
+                <i class="fa-solid fa-wrench w-5"></i>
+                <span class="ml-3 text-sm">Tools & Libraries</span>
+            </a>
+            <a href="#" class="flex items-center px-3 py-2 bg-dark-300 text-white rounded mb-1 transition-colors">
+                <i class="fa-solid fa-gear w-5"></i>
+                <span class="ml-3 text-sm">Settings</span>
+            </a>
+        </nav>
+    </aside>
+
+    <main id="main-content" class="flex-1 overflow-x-hidden">
+        <header id="header" class="bg-dark-200 border-b border-gray-800 px-4 lg:px-6 py-3 flex items-center justify-between">
+            <div class="flex items-center">
+                <button class="lg:hidden mr-4 text-gray-400">
+                    <i class="fa-solid fa-bars text-xl"></i>
+                </button>
+                <div>
+                    <h2 class="text-lg font-semibold text-white">Usage Analytics</h2>
+                    <p class="text-xs text-gray-500">Monitor simulation consumption and performance metrics</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <div id="period-selector" class="flex bg-dark-300 border border-gray-700 rounded p-0.5">
+                    <button onclick="setPeriod('7d')" id="btn-7d" class="px-3 py-1.5 text-xs font-medium rounded transition-colors bg-primary text-white">
+                        7d
+                    </button>
+                    <button onclick="setPeriod('30d')" id="btn-30d" class="px-3 py-1.5 text-xs font-medium rounded transition-colors text-gray-400 hover:text-white">
+                        30d
+                    </button>
+                    <button onclick="setPeriod('90d')" id="btn-90d" class="px-3 py-1.5 text-xs font-medium rounded transition-colors text-gray-400 hover:text-white">
+                        90d
+                    </button>
+                </div>
+                <button class="px-3 py-1.5 bg-dark-300 text-gray-300 rounded text-sm hover:bg-dark-400 transition-colors">
+                    <i class="fa-solid fa-download mr-2"></i>
+                    <span class="hidden sm:inline">Export</span>
+                </button>
+            </div>
+        </header>
+
+        <div id="content-area" class="p-4 lg:p-6">
+            <section id="kpi-section" class="mb-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div id="kpi-simulations" class="bg-dark-200 border border-gray-800 rounded p-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs text-gray-400 uppercase tracking-wide">Simulations Used</span>
+                            <i class="fa-solid fa-chart-line text-primary text-sm"></i>
+                        </div>
+                        <div class="text-3xl font-bold text-white mb-1">14,287</div>
+                        <div class="flex items-center gap-2 text-xs">
+                            <span class="text-success flex items-center gap-1">
+                                <i class="fa-solid fa-arrow-up text-xs"></i>
+                                +18.4%
+                            </span>
+                            <span class="text-gray-500">vs last period</span>
+                        </div>
+                    </div>
+
+                    <div id="kpi-avg-latency" class="bg-dark-200 border border-gray-800 rounded p-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs text-gray-400 uppercase tracking-wide">Avg Latency</span>
+                            <i class="fa-solid fa-gauge text-info text-sm"></i>
+                        </div>
+                        <div class="text-3xl font-bold text-white mb-1">234ms</div>
+                        <div class="flex items-center gap-2 text-xs">
+                            <span class="text-success flex items-center gap-1">
+                                <i class="fa-solid fa-arrow-down text-xs"></i>
+                                -12ms
+                            </span>
+                            <span class="text-gray-500">improvement</span>
+                        </div>
+                    </div>
+
+                    <div id="kpi-p95-latency" class="bg-dark-200 border border-gray-800 rounded p-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs text-gray-400 uppercase tracking-wide">P95 Latency</span>
+                            <i class="fa-solid fa-chart-area text-warning text-sm"></i>
+                        </div>
+                        <div class="text-3xl font-bold text-white mb-1">892ms</div>
+                        <div class="flex items-center gap-2 text-xs">
+                            <span class="text-warning flex items-center gap-1">
+                                <i class="fa-solid fa-arrow-up text-xs"></i>
+                                +34ms
+                            </span>
+                            <span class="text-gray-500">vs last period</span>
+                        </div>
+                    </div>
+
+                    <div id="kpi-failures" class="bg-dark-200 border border-gray-800 rounded p-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs text-gray-400 uppercase tracking-wide">Failures</span>
+                            <i class="fa-solid fa-triangle-exclamation text-danger text-sm"></i>
+                        </div>
+                        <div class="text-3xl font-bold text-white mb-1">0.14%</div>
+                        <div class="flex items-center gap-2 text-xs">
+                            <span class="text-success flex items-center gap-1">
+                                <i class="fa-solid fa-arrow-down text-xs"></i>
+                                -0.03%
+                            </span>
+                            <span class="text-gray-500">error rate</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="charts-section" class="mb-6">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                    <div id="simulation-volume-card" class="bg-dark-200 border border-gray-800 rounded">
+                        <div class="px-4 py-3 border-b border-gray-800">
+                            <h3 class="text-sm font-semibold text-white">Simulation Volume</h3>
+                            <p class="text-xs text-gray-500 mt-0.5">Daily simulation execution count</p>
+                        </div>
+                        <div id="simulation-volume-chart" style="height: 320px;" class="p-2"></div>
+                    </div>
+
+                    <div id="latency-trend-card" class="bg-dark-200 border border-gray-800 rounded">
+                        <div class="px-4 py-3 border-b border-gray-800">
+                            <h3 class="text-sm font-semibold text-white">Latency Trend</h3>
+                            <p class="text-xs text-gray-500 mt-0.5">Average and P95 response times</p>
+                        </div>
+                        <div id="latency-trend-chart" style="height: 320px;" class="p-2"></div>
+                    </div>
+                </div>
+
+                <div id="distribution-histogram-card" class="bg-dark-200 border border-gray-800 rounded">
+                    <div class="px-4 py-3 border-b border-gray-800">
+                        <h3 class="text-sm font-semibold text-white">Latency Distribution</h3>
+                        <p class="text-xs text-gray-500 mt-0.5">Histogram of simulation response times</p>
+                    </div>
+                    <div id="distribution-histogram-chart" style="height: 320px;" class="p-2"></div>
+                </div>
+            </section>
+
+            <section id="plan-limits-section">
+                <div class="bg-dark-200 border border-gray-800 rounded">
+                    <div class="px-4 py-3 border-b border-gray-800">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="text-sm font-semibold text-white">Plan Limits & Usage</h3>
+                                <p class="text-xs text-gray-500 mt-0.5">Current billing period consumption</p>
+                            </div>
+                            <span class="px-2 py-1 bg-primary/10 border border-primary/30 rounded text-primary text-xs font-medium">Enterprise Plan</span>
+                        </div>
+                    </div>
+                    <div class="p-4">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div id="limit-simulations" class="bg-dark-300 border border-gray-700 rounded p-4">
+                                <div class="flex items-center justify-between mb-3">
+                                    <span class="text-xs text-gray-400 uppercase tracking-wide">Simulations / Month</span>
+                                    <i class="fa-solid fa-chart-line text-primary text-sm"></i>
+                                </div>
+                                <div class="mb-3">
+                                    <div class="flex items-baseline gap-2">
+                                        <span class="text-2xl font-bold text-white">14,287</span>
+                                        <span class="text-sm text-gray-500">/ 50,000</span>
+                                    </div>
+                                    <div class="text-xs text-gray-500 mt-1">28.6% used</div>
+                                </div>
+                                <div class="w-full bg-dark-400 rounded-full h-2 overflow-hidden">
+                                    <div class="bg-primary h-full rounded-full" style="width: 28.6%"></div>
+                                </div>
+                                <div class="mt-3 text-xs text-gray-400">
+                                    35,713 simulations remaining
+                                </div>
+                            </div>
+
+                            <div id="limit-max-runs" class="bg-dark-300 border border-gray-700 rounded p-4">
+                                <div class="flex items-center justify-between mb-3">
+                                    <span class="text-xs text-gray-400 uppercase tracking-wide">Max Concurrent Runs</span>
+                                    <i class="fa-solid fa-server text-success text-sm"></i>
+                                </div>
+                                <div class="mb-3">
+                                    <div class="flex items-baseline gap-2">
+                                        <span class="text-2xl font-bold text-white">47</span>
+                                        <span class="text-sm text-gray-500">/ 100</span>
+                                    </div>
+                                    <div class="text-xs text-gray-500 mt-1">47% capacity</div>
+                                </div>
+                                <div class="w-full bg-dark-400 rounded-full h-2 overflow-hidden">
+                                    <div class="bg-success h-full rounded-full" style="width: 47%"></div>
+                                </div>
+                                <div class="mt-3 text-xs text-gray-400">
+                                    Peak: 89 concurrent runs
+                                </div>
+                            </div>
+
+                            <div id="limit-rate" class="bg-dark-300 border border-gray-700 rounded p-4">
+                                <div class="flex items-center justify-between mb-3">
+                                    <span class="text-xs text-gray-400 uppercase tracking-wide">Rate Limit</span>
+                                    <i class="fa-solid fa-gauge-high text-warning text-sm"></i>
+                                </div>
+                                <div class="mb-3">
+                                    <div class="flex items-baseline gap-2">
+                                        <span class="text-2xl font-bold text-white">1,247</span>
+                                        <span class="text-sm text-gray-500">/ 5,000</span>
+                                    </div>
+                                    <div class="text-xs text-gray-500 mt-1">requests/minute</div>
+                                </div>
+                                <div class="w-full bg-dark-400 rounded-full h-2 overflow-hidden">
+                                    <div class="bg-warning h-full rounded-full" style="width: 24.94%"></div>
+                                </div>
+                                <div class="mt-3 text-xs text-gray-400">
+                                    Peak: 3,892 req/min at 14:23 UTC
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 p-3 bg-dark-400 border border-gray-700 rounded">
+                            <div class="flex items-start gap-3">
+                                <i class="fa-solid fa-info-circle text-info text-sm mt-0.5"></i>
+                                <div class="flex-1">
+                                    <p class="text-xs text-gray-300 leading-relaxed">
+                                        Your current usage is well within plan limits. Billing period resets on <span class="text-white font-medium">April 1, 2024</span>. 
+                                        <a href="#" class="text-primary hover:text-purple-400 transition-colors">Upgrade plan</a> for higher limits or 
+                                        <a href="#" class="text-primary hover:text-purple-400 transition-colors">view detailed billing</a>.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="usage-breakdown-section" class="mt-6">
+                <div class="bg-dark-200 border border-gray-800 rounded">
+                    <div class="px-4 py-3 border-b border-gray-800">
+                        <h3 class="text-sm font-semibold text-white">Usage Breakdown by Type</h3>
+                        <p class="text-xs text-gray-500 mt-0.5">Simulation distribution across categories</p>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead class="bg-dark-300 border-b border-gray-800">
+                                <tr>
+                                    <th class="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Simulation Type</th>
+                                    <th class="text-right px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Count</th>
+                                    <th class="text-right px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Avg Latency</th>
+                                    <th class="text-right px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">P95 Latency</th>
+                                    <th class="text-right px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Failure Rate</th>
+                                    <th class="text-right px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">% of Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="border-b border-gray-800 hover:bg-dark-300 transition-colors">
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-2 h-2 bg-primary rounded-full"></div>
+                                            <span class="text-white text-sm">Monte Carlo</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3 text-right text-white font-medium">5,847</td>
+                                    <td class="px-4 py-3 text-right text-gray-300">198ms</td>
+                                    <td class="px-4 py-3 text-right text-gray-300">743ms</td>
+                                    <td class="px-4 py-3 text-right text-success">0.08%</td>
+                                    <td class="px-4 py-3 text-right text-gray-300">40.9%</td>
+                                </tr>
+                                <tr class="border-b border-gray-800 hover:bg-dark-300 transition-colors">
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-2 h-2 bg-info rounded-full"></div>
+                                            <span class="text-white text-sm">Finite Element</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3 text-right text-white font-medium">3,921</td>
+                                    <td class="px-4 py-3 text-right text-gray-300">312ms</td>
+                                    <td class="px-4 py-3 text-right text-gray-300">1,124ms</td>
+                                    <td class="px-4 py-3 text-right text-success">0.12%</td>
+                                    <td class="px-4 py-3 text-right text-gray-300">27.4%</td>
+                                </tr>
+                                <tr class="border-b border-gray-800 hover:bg-dark-300 transition-colors">
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-2 h-2 bg-success rounded-full"></div>
+                                            <span class="text-white text-sm">Fluid Dynamics</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3 text-right text-white font-medium">2,614</td>
+                                    <td class="px-4 py-3 text-right text-gray-300">267ms</td>
+                                    <td class="px-4 py-3 text-right text-gray-300">891ms</td>
+                                    <td class="px-4 py-3 text-right text-success">0.19%</td>
+                                    <td class="px-4 py-3 text-right text-gray-300">18.3%</td>
+                                </tr>
+                                <tr class="border-b border-gray-800 hover:bg-dark-300 transition-colors">
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-2 h-2 bg-warning rounded-full"></div>
+                                            <span class="text-white text-sm">Agent-Based</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3 text-right text-white font-medium">1,329</td>
+                                    <td class="px-4 py-3 text-right text-gray-300">156ms</td>
+                                    <td class="px-4 py-3 text-right text-gray-300">512ms</td>
+                                    <td class="px-4 py-3 text-right text-success">0.06%</td>
+                                    <td class="px-4 py-3 text-right text-gray-300">9.3%</td>
+                                </tr>
+                                <tr class="hover:bg-dark-300 transition-colors">
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-2 h-2 bg-danger rounded-full"></div>
+                                            <span class="text-white text-sm">Other</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3 text-right text-white font-medium">576</td>
+                                    <td class="px-4 py-3 text-right text-gray-300">189ms</td>
+                                    <td class="px-4 py-3 text-right text-gray-300">678ms</td>
+                                    <td class="px-4 py-3 text-right text-warning">0.31%</td>
+                                    <td class="px-4 py-3 text-right text-gray-300">4.1%</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+</div>
+
+<script>
+window.addEventListener('load', function() {
+    try {
+        const dates7d = ['Mar 15', 'Mar 16', 'Mar 17', 'Mar 18', 'Mar 19', 'Mar 20', 'Mar 21'];
+        const volumeData = [1847, 2134, 1923, 2456, 2189, 2047, 2291];
+
+        Plotly.newPlot('simulation-volume-chart', [{
+            type: 'bar',
+            x: dates7d,
+            y: volumeData,
+            marker: {
+                color: '#4B0082',
+                line: {
+                    color: '#6A0DAD',
+                    width: 1
+                }
+            },
+            hovertemplate: '<b>%{x}</b><br>Simulations: %{y:,}<extra></extra>'
+        }], {
+            margin: { t: 10, r: 20, b: 40, l: 50 },
+            plot_bgcolor: '#0F1117',
+            paper_bgcolor: '#0F1117',
+            font: { color: '#9CA3AF', size: 11 },
+            xaxis: {
+                gridcolor: '#1A1F2E',
+                showgrid: false
+            },
+            yaxis: {
+                gridcolor: '#1A1F2E',
+                showgrid: true
+            },
+            showlegend: false
+        }, {
+            responsive: true,
+            displayModeBar: false,
+            displaylogo: false
+        });
+
+        Plotly.newPlot('latency-trend-chart', [
+            {
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Avg Latency',
+                x: dates7d,
+                y: [246, 238, 242, 229, 235, 231, 234],
+                line: { color: '#0000FF', width: 2 },
+                hovertemplate: '<b>%{x}</b><br>Avg: %{y}ms<extra></extra>'
+            },
+            {
+                type: 'scatter',
+                mode: 'lines',
+                name: 'P95 Latency',
+                x: dates7d,
+                y: [926, 887, 901, 845, 878, 863, 892],
+                line: { color: '#FFA500', width: 2 },
+                hovertemplate: '<b>%{x}</b><br>P95: %{y}ms<extra></extra>'
+            }
+        ], {
+            margin: { t: 10, r: 20, b: 40, l: 50 },
+            plot_bgcolor: '#0F1117',
+            paper_bgcolor: '#0F1117',
+            font: { color: '#9CA3AF', size: 11 },
+            xaxis: {
+                gridcolor: '#1A1F2E',
+                showgrid: false
+            },
+            yaxis: {
+                gridcolor: '#1A1F2E',
+                showgrid: true
+            },
+            showlegend: true,
+            legend: {
+                orientation: 'h',
+                x: 0,
+                y: 1.1,
+                font: { size: 10 }
+            }
+        }, {
+            responsive: true,
+            displayModeBar: false,
+            displaylogo: false
+        });
+
+        const latencyBins = [
+            50, 100, 150, 200, 250, 300, 350, 400, 450, 500,
+            550, 600, 650, 700, 750, 800, 850, 900, 950, 1000,
+            1100, 1200, 1300, 1400, 1500
+        ];
+        const frequencies = [
+            234, 567, 892, 1247, 1834, 2156, 2389, 1923, 1456, 1089,
+            847, 634, 478, 356, 267, 189, 134, 98, 67, 45,
+            28, 19, 12, 8, 5
+        ];
+
+        Plotly.newPlot('distribution-histogram-chart', [{
+            type: 'bar',
+            x: latencyBins,
+            y: frequencies,
+            marker: {
+                color: '#4B0082',
+                line: {
+                    color: '#6A0DAD',
+                    width: 1
+                }
+            },
+            hovertemplate: '<b>%{x}ms</b><br>Count: %{y:,}<extra></extra>'
+        }], {
+            margin: { t: 10, r: 20, b: 40, l: 50 },
+            plot_bgcolor: '#0F1117',
+            paper_bgcolor: '#0F1117',
+            font: { color: '#9CA3AF', size: 11 },
+            xaxis: {
+                title: 'Latency (ms)',
+                gridcolor: '#1A1F2E',
+                showgrid: false
+            },
+            yaxis: {
+                title: 'Frequency',
+                gridcolor: '#1A1F2E',
+                showgrid: true
+            },
+            showlegend: false,
+            bargap: 0.05
+        }, {
+            responsive: true,
+            displayModeBar: false,
+            displaylogo: false
+        });
+
+    } catch(e) {
+        document.getElementById('simulation-volume-chart').innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-sm">Chart rendering error</div>';
+        document.getElementById('latency-trend-chart').innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-sm">Chart rendering error</div>';
+        document.getElementById('distribution-histogram-chart').innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-sm">Chart rendering error</div>';
+    }
+});
+
+function setPeriod(period) {
+    document.getElementById('btn-7d').classList.remove('bg-primary', 'text-white');
+    document.getElementById('btn-30d').classList.remove('bg-primary', 'text-white');
+    document.getElementById('btn-90d').classList.remove('bg-primary', 'text-white');
+    
+    document.getElementById('btn-7d').classList.add('text-gray-400', 'hover:text-white');
+    document.getElementById('btn-30d').classList.add('text-gray-400', 'hover:text-white');
+    document.getElementById('btn-90d').classList.add('text-gray-400', 'hover:text-white');
+    
+    const selectedBtn = document.getElementById('btn-' + period);
+    selectedBtn.classList.remove('text-gray-400', 'hover:text-white');
+    selectedBtn.classList.add('bg-primary', 'text-white');
+}
+</script>
+
+</body>
+</html>

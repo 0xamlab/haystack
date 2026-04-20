@@ -1,0 +1,109 @@
+{
+  "lib": "archaeology",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 10,
+  "overall_speedup_x": 672.08,
+  "total_py_ns": 6586.37,
+  "total_mojo_ns": 9.8,
+  "elapsed_s": 3.58,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "radiocarbon_age_bp",
+      "py_ns": 197.154,
+      "mojo_ns": 1.0,
+      "speedup_x": 197.15,
+      "py_result": 1.386294,
+      "py_error": null
+    },
+    {
+      "function": "calibrated_date_linear",
+      "py_ns": 81.408,
+      "mojo_ns": 1.0,
+      "speedup_x": 81.41,
+      "py_result": 1950.0,
+      "py_error": null
+    },
+    {
+      "function": "stratigraphy_depth_to_age_linear",
+      "py_ns": 89.288,
+      "mojo_ns": 1.0,
+      "speedup_x": 89.29,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "artifact_density",
+      "py_ns": 86.833,
+      "mojo_ns": 0.9,
+      "speedup_x": 96.48,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "site_area_from_scatter",
+      "py_ns": 78.029,
+      "mojo_ns": 0.9,
+      "speedup_x": 86.7,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "ceramic_seriation_similarity",
+      "py_ns": 5546.079,
+      "mojo_ns": 1.0,
+      "speedup_x": 5546.08,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "dating_uncertainty_combined",
+      "py_ns": 123.763,
+      "mojo_ns": 1.0,
+      "speedup_x": 123.76,
+      "py_result": 0.707107,
+      "py_error": null
+    },
+    {
+      "function": "occupation_span",
+      "py_ns": 80.037,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "discard_rate",
+      "py_ns": 190.0,
+      "mojo_ns": 1.0,
+      "speedup_x": 190.0,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "surveyed_area_coverage",
+      "py_ns": 99.254,
+      "mojo_ns": 1.0,
+      "speedup_x": 99.25,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "excavation_volume",
+      "py_ns": 94.563,
+      "mojo_ns": 1.0,
+      "speedup_x": 94.56,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "artifact_diversity_index",
+      "py_ns": 95.279,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

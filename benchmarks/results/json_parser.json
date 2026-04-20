@@ -1,0 +1,109 @@
+{
+  "lib": "json_parser",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 10,
+  "overall_speedup_x": 2793.23,
+  "total_py_ns": 74858.5,
+  "total_mojo_ns": 26.8,
+  "elapsed_s": 2.95,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "skip_whitespace",
+      "py_ns": 2338.604,
+      "mojo_ns": 1.1,
+      "speedup_x": 2126.0,
+      "py_result": 5.0,
+      "py_error": null
+    },
+    {
+      "function": "skip_json_value",
+      "py_ns": 5843.592,
+      "mojo_ns": 1.8,
+      "speedup_x": 3246.44,
+      "py_result": 5.0,
+      "py_error": null
+    },
+    {
+      "function": "find_key",
+      "py_ns": 7443.158,
+      "mojo_ns": 3.0,
+      "speedup_x": 2481.05,
+      "py_result": -1.0,
+      "py_error": null
+    },
+    {
+      "function": "json_get_string",
+      "py_ns": 14140.258,
+      "mojo_ns": 2.8,
+      "speedup_x": 5050.09,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "json_get_float",
+      "py_ns": 11420.346,
+      "mojo_ns": 3.2,
+      "speedup_x": 3568.86,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "json_get_int",
+      "py_ns": 13004.246,
+      "mojo_ns": 3.2,
+      "speedup_x": 4063.83,
+      "py_result": 5.0,
+      "py_error": null
+    },
+    {
+      "function": "json_get_bool",
+      "py_ns": 3952.304,
+      "mojo_ns": 2.9,
+      "speedup_x": 1362.86,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "json_is_null",
+      "py_ns": 4413.6,
+      "mojo_ns": 3.0,
+      "speedup_x": 1471.2,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "json_get_object",
+      "py_ns": 5400.788,
+      "mojo_ns": 2.9,
+      "speedup_x": 1862.34,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "json_get_array",
+      "py_ns": 6901.608,
+      "mojo_ns": 2.9,
+      "speedup_x": 2379.86,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "json_array_len",
+      "py_ns": 11617.467,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "json_array_get",
+      "py_ns": 4218.321,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

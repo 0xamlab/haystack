@@ -1,0 +1,128 @@
+syntax = "proto3";
+
+package algenta.runtime.v1;
+
+// Algenta local runtime daemon — gRPC service contract.
+//
+// Wire transport: unix domain socket (macOS/Linux) or TCP loopback (Windows).
+// Default socket path: /tmp/algenta-runtime/daemon.sock
+// Default TCP port: 50099 (fallback / Windows)
+//
+// v1 surface — keep it small. Extend via new RPCs, never break existing ones.
+
+service AlgentaRuntime {
+  // Liveness check — always responds, even during warm-up.
+  rpc Health(HealthRequest) returns (HealthResponse);
+
+  // Daemon version, engine type, uptime, socket path.
+  rpc GetRuntimeInfo(RuntimeInfoRequest) returns (RuntimeInfoResponse);
+
+  // List all loaded modules and their exported functions.
+  rpc ListModules(ListModulesRequest) returns (ListModulesResponse);
+
+  // Execute a single function from a named module.
+  rpc ExecuteModule(ExecuteRequest) returns (ExecuteResponse);
+
+  // Verify + execute in one call (primary hot-path RPC).
+  rpc VerifyAndExecute(VerifyAndExecuteRequest) returns (VerifyAndExecuteResponse);
+
+  // Check local license/entitlement (stub in dev mode).
+  rpc GetEntitlementStatus(EntitlementRequest) returns (EntitlementResponse);
+}
+
+// ── Health ───────────────────────────────────────────────────────────────────
+
+message HealthRequest {}
+
+message HealthResponse {
+  bool ok = 1;
+  string version = 2;
+  double uptime_seconds = 3;
+  string engine = 4;   // "mojo" | "python-fallback"
+}
+
+// ── Runtime info ─────────────────────────────────────────────────────────────
+
+message RuntimeInfoRequest {}
+
+message RuntimeInfoResponse {
+  string version = 1;
+  string engine = 2;
+  int32 module_count = 3;
+  double uptime_seconds = 4;
+  string socket_path = 5;
+  string mojo_binary_path = 6;
+  bool mojo_available = 7;
+}
+
+// ── Modules ──────────────────────────────────────────────────────────────────
+
+message ListModulesRequest {}
+
+message ModuleInfo {
+  string name = 1;
+  string engine = 2;          // "mojo" | "python-fallback"
+  repeated string functions = 3;
+}
+
+message ListModulesResponse {
+  repeated ModuleInfo modules = 1;
+}
+
+// ── Execute ──────────────────────────────────────────────────────────────────
+
+message ExecuteRequest {
+  string module = 1;       // e.g. "scheduling_algo"
+  string function = 2;     // e.g. "fcfs"
+  string args_json = 3;    // JSON-encoded positional args array or kwargs object
+  string request_id = 4;   // caller-supplied idempotency key (optional)
+}
+
+message ExecuteResponse {
+  string result_json = 1;
+  double latency_ms = 2;
+  string engine_used = 3;   // "mojo" | "python-fallback"
+  bool success = 4;
+  string error = 5;
+  string request_id = 6;
+}
+
+// ── Verify + Execute ─────────────────────────────────────────────────────────
+
+message VerifyAndExecuteRequest {
+  string source_name = 1;
+  string metric_column = 2;
+  string aggregation = 3;
+  string group_column = 4;       // optional
+  string join_source_name = 5;   // optional
+  int32  limit = 6;
+  string order = 7;              // "asc" | "desc"
+  string request_id = 8;
+}
+
+message VerifyAndExecuteResponse {
+  bool   valid = 1;
+  repeated string errors = 2;
+  string result_json = 3;        // JSON-encoded result (scalar or table rows)
+  string result_type = 4;        // "scalar" | "table"
+  double confidence = 5;
+  bool   exact_spec = 6;
+  double latency_ms = 7;
+  string engine_used = 8;
+  string request_id = 9;
+}
+
+// ── Entitlement ──────────────────────────────────────────────────────────────
+
+message EntitlementRequest {}
+
+message EntitlementResponse {
+  bool valid = 1;
+  string tier = 2;                    // "dev" | "pro" | "enterprise"
+  repeated string permitted_modules = 3;
+  int64 expires_at = 4;               // unix timestamp; 0 = no expiry
+  string message = 5;
+  string device_id = 6;               // first 8 chars of device fingerprint
+  int32  device_limit = 7;            // 0 = unlimited
+  string source = 8;                  // "cloud" | "dev-stub" | "expired-grace"
+}

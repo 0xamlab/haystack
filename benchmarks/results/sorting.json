@@ -1,0 +1,93 @@
+{
+  "lib": "sorting",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 9,
+  "overall_speedup_x": 0.37,
+  "total_py_ns": 40756.68,
+  "total_mojo_ns": 108748.1,
+  "elapsed_s": 6.66,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "quicksort",
+      "py_ns": 3280.125,
+      "mojo_ns": 565.3,
+      "speedup_x": 5.8,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "mergesort",
+      "py_ns": 18251.188,
+      "mojo_ns": 69005.5,
+      "speedup_x": 0.26,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "heapsort",
+      "py_ns": 5658.35,
+      "mojo_ns": 721.3,
+      "speedup_x": 7.84,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "insertion_sort",
+      "py_ns": 2656.063,
+      "mojo_ns": 1874.1,
+      "speedup_x": 1.42,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "selection_sort",
+      "py_ns": 2587.221,
+      "mojo_ns": 1336.7,
+      "speedup_x": 1.94,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "bubble_sort",
+      "py_ns": 1841.612,
+      "mojo_ns": 396.4,
+      "speedup_x": 4.65,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "counting_sort_int",
+      "py_ns": 5790.979,
+      "mojo_ns": 20264.1,
+      "speedup_x": 0.29,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "is_sorted",
+      "py_ns": 356.883,
+      "mojo_ns": 1.6,
+      "speedup_x": 223.05,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "reverse_list",
+      "py_ns": 334.254,
+      "mojo_ns": 14583.1,
+      "speedup_x": 0.02,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "nth_smallest",
+      "py_ns": null,
+      "mojo_ns": 5631.7,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list index out of range"
+    }
+  ]
+}

@@ -1,0 +1,93 @@
+{
+  "lib": "inference_security",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 9,
+  "overall_speedup_x": 219.61,
+  "total_py_ns": 2020.44,
+  "total_mojo_ns": 9.2,
+  "elapsed_s": 1.78,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "prompt_injection_score",
+      "py_ns": 114.813,
+      "mojo_ns": 1.1,
+      "speedup_x": 104.38,
+      "py_result": 0.166667,
+      "py_error": null
+    },
+    {
+      "function": "token_level_safety_score",
+      "py_ns": 180.554,
+      "mojo_ns": 1.0,
+      "speedup_x": 180.55,
+      "py_result": 0.41218,
+      "py_error": null
+    },
+    {
+      "function": "tool_call_validation_score",
+      "py_ns": 233.262,
+      "mojo_ns": 1.0,
+      "speedup_x": 233.26,
+      "py_result": 0.0625,
+      "py_error": null
+    },
+    {
+      "function": "data_leakage_risk_score",
+      "py_ns": 83.258,
+      "mojo_ns": 1.0,
+      "speedup_x": 83.26,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "jailbreak_pattern_score",
+      "py_ns": 660.596,
+      "mojo_ns": 1.0,
+      "speedup_x": 660.6,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "output_toxicity_estimate",
+      "py_ns": 271.454,
+      "mojo_ns": 1.0,
+      "speedup_x": 271.45,
+      "py_result": 0.280107,
+      "py_error": null
+    },
+    {
+      "function": "pii_token_risk",
+      "py_ns": 220.708,
+      "mojo_ns": 1.0,
+      "speedup_x": 220.71,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "sandboxed_exec_trust_score",
+      "py_ns": 111.842,
+      "mojo_ns": 1.0,
+      "speedup_x": 111.84,
+      "py_result": 0.0625,
+      "py_error": null
+    },
+    {
+      "function": "rate_limit_violation_score",
+      "py_ns": 143.95,
+      "mojo_ns": 1.1,
+      "speedup_x": 130.86,
+      "py_result": 0.999996,
+      "py_error": null
+    },
+    {
+      "function": "adversarial_input_score",
+      "py_ns": 195.042,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

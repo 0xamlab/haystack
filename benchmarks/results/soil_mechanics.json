@@ -1,0 +1,93 @@
+{
+  "lib": "soil_mechanics",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 4,
+  "overall_speedup_x": 147.64,
+  "total_py_ns": 575.81,
+  "total_mojo_ns": 3.9,
+  "elapsed_s": 3.32,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "bearing_capacity_terzaghi",
+      "py_ns": null,
+      "mojo_ns": 1.6,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "No module named 'std'"
+    },
+    {
+      "function": "settlement_elastic",
+      "py_ns": 118.508,
+      "mojo_ns": 0.9,
+      "speedup_x": 131.68,
+      "py_result": 0.3075,
+      "py_error": null
+    },
+    {
+      "function": "consolidation_degree",
+      "py_ns": 192.108,
+      "mojo_ns": 1.0,
+      "speedup_x": 192.11,
+      "py_result": 0.763952,
+      "py_error": null
+    },
+    {
+      "function": "void_ratio",
+      "py_ns": 97.092,
+      "mojo_ns": 1.0,
+      "speedup_x": 97.09,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "relative_density",
+      "py_ns": 92.412,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "liquid_limit_plasticity",
+      "py_ns": 745.788,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "shear_strength_mohr_coulomb",
+      "py_ns": null,
+      "mojo_ns": 0.9,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "No module named 'std'"
+    },
+    {
+      "function": "lateral_earth_pressure_ka",
+      "py_ns": null,
+      "mojo_ns": 0.9,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "No module named 'std'"
+    },
+    {
+      "function": "compression_index",
+      "py_ns": 221.796,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "hydraulic_conductivity_hazen",
+      "py_ns": 168.1,
+      "mojo_ns": 1.0,
+      "speedup_x": 168.1,
+      "py_result": 0.25,
+      "py_error": null
+    }
+  ]
+}

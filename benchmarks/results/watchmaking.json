@@ -1,0 +1,109 @@
+{
+  "lib": "watchmaking",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 11,
+  "overall_speedup_x": 206.94,
+  "total_py_ns": 2255.66,
+  "total_mojo_ns": 10.9,
+  "elapsed_s": 2.18,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "gear_ratio",
+      "py_ns": 105.954,
+      "mojo_ns": 1.0,
+      "speedup_x": 105.95,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "gear_train_ratio",
+      "py_ns": 80.233,
+      "mojo_ns": 1.0,
+      "speedup_x": 80.23,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "beats_per_hour",
+      "py_ns": 193.696,
+      "mojo_ns": 1.0,
+      "speedup_x": 193.7,
+      "py_result": 3600.0,
+      "py_error": null
+    },
+    {
+      "function": "frequency_from_bph",
+      "py_ns": 99.821,
+      "mojo_ns": 1.0,
+      "speedup_x": 99.82,
+      "py_result": 6.9e-05,
+      "py_error": null
+    },
+    {
+      "function": "mainspring_torque",
+      "py_ns": 957.133,
+      "mojo_ns": 1.0,
+      "speedup_x": 957.13,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "power_reserve_hours",
+      "py_ns": 106.267,
+      "mojo_ns": 1.0,
+      "speedup_x": 106.27,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "balance_wheel_period",
+      "py_ns": 151.962,
+      "mojo_ns": 0.9,
+      "speedup_x": 168.85,
+      "py_result": 6.283185,
+      "py_error": null
+    },
+    {
+      "function": "escapement_error_spd",
+      "py_ns": 135.233,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "jewel_count_minimum",
+      "py_ns": 211.65,
+      "mojo_ns": 1.0,
+      "speedup_x": 211.65,
+      "py_result": 11.0,
+      "py_error": null
+    },
+    {
+      "function": "water_resistance_atm",
+      "py_ns": 99.221,
+      "mojo_ns": 1.0,
+      "speedup_x": 99.22,
+      "py_result": 1.05,
+      "py_error": null
+    },
+    {
+      "function": "case_diameter_mm",
+      "py_ns": 76.146,
+      "mojo_ns": 1.0,
+      "speedup_x": 76.15,
+      "py_result": 1.1279,
+      "py_error": null
+    },
+    {
+      "function": "crown_winding_turns",
+      "py_ns": 173.579,
+      "mojo_ns": 1.0,
+      "speedup_x": 173.58,
+      "py_result": 0.31831,
+      "py_error": null
+    }
+  ]
+}

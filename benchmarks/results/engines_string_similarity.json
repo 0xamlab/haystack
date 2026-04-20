@@ -1,0 +1,21 @@
+{
+  "lib": "engines_string_similarity",
+  "status": "ok",
+  "n_functions": 1,
+  "n_compared": 1,
+  "overall_speedup_x": 5.33,
+  "total_py_ns": 12623.7,
+  "total_mojo_ns": 2369.1,
+  "elapsed_s": 3.66,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "run_string_similarity",
+      "py_ns": 12623.7,
+      "mojo_ns": 2369.1,
+      "speedup_x": 5.33,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

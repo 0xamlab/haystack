@@ -1,0 +1,109 @@
+{
+  "lib": "fisheries",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 10,
+  "overall_speedup_x": 415.21,
+  "total_py_ns": 4442.77,
+  "total_mojo_ns": 10.7,
+  "elapsed_s": 2.09,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "catch_per_unit_effort",
+      "py_ns": 138.054,
+      "mojo_ns": 1.1,
+      "speedup_x": 125.5,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "maximum_sustainable_yield",
+      "py_ns": 148.796,
+      "mojo_ns": 1.1,
+      "speedup_x": 135.27,
+      "py_result": 0.0625,
+      "py_error": null
+    },
+    {
+      "function": "biomass_at_msy",
+      "py_ns": 177.287,
+      "mojo_ns": 1.0,
+      "speedup_x": 177.29,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "schaefer_surplus_production",
+      "py_ns": 2469.812,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "fishing_mortality",
+      "py_ns": 136.267,
+      "mojo_ns": 1.1,
+      "speedup_x": 123.88,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "total_mortality",
+      "py_ns": 113.625,
+      "mojo_ns": 1.1,
+      "speedup_x": 103.3,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "exploitation_rate",
+      "py_ns": 201.463,
+      "mojo_ns": 1.0,
+      "speedup_x": 201.46,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "survival_rate",
+      "py_ns": 1601.454,
+      "mojo_ns": 1.0,
+      "speedup_x": 1601.45,
+      "py_result": 0.606531,
+      "py_error": null
+    },
+    {
+      "function": "von_bertalanffy_length",
+      "py_ns": 188.279,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "condition_factor",
+      "py_ns": 114.754,
+      "mojo_ns": 1.1,
+      "speedup_x": 104.32,
+      "py_result": 400.0,
+      "py_error": null
+    },
+    {
+      "function": "gonadosomatic_index",
+      "py_ns": 94.813,
+      "mojo_ns": 1.1,
+      "speedup_x": 86.19,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "stock_recruitment_bevholt",
+      "py_ns": 1716.258,
+      "mojo_ns": 1.1,
+      "speedup_x": 1560.23,
+      "py_result": 0.25,
+      "py_error": null
+    }
+  ]
+}

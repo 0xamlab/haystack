@@ -1,0 +1,117 @@
+{
+  "lib": "logic_circuit",
+  "status": "ok",
+  "n_functions": 13,
+  "n_compared": 8,
+  "overall_speedup_x": 2.92,
+  "total_py_ns": 12931.27,
+  "total_mojo_ns": 4426.4,
+  "elapsed_s": 1.32,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "gate_and",
+      "py_ns": 245.296,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "gate_or",
+      "py_ns": 197.279,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "gate_not",
+      "py_ns": 234.958,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "gate_xor",
+      "py_ns": 787.871,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "gate_nand",
+      "py_ns": 216.896,
+      "mojo_ns": 5.0,
+      "speedup_x": 43.38,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "gate_nor",
+      "py_ns": 202.075,
+      "mojo_ns": 1.1,
+      "speedup_x": 183.7,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "half_adder",
+      "py_ns": 1562.179,
+      "mojo_ns": 176.0,
+      "speedup_x": 8.88,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "full_adder",
+      "py_ns": 460.625,
+      "mojo_ns": 669.1,
+      "speedup_x": 0.69,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "ripple_carry_adder",
+      "py_ns": 6952.621,
+      "mojo_ns": 2869.0,
+      "speedup_x": 2.42,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "multiplexer_2to1",
+      "py_ns": 886.4,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "decoder_2to4",
+      "py_ns": 373.208,
+      "mojo_ns": 250.1,
+      "speedup_x": 1.49,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "bits_to_int",
+      "py_ns": 2743.542,
+      "mojo_ns": 2.6,
+      "speedup_x": 1055.21,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "int_to_bits",
+      "py_ns": 420.121,
+      "mojo_ns": 453.5,
+      "speedup_x": 0.93,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

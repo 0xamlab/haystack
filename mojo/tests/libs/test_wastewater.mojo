@@ -1,0 +1,58 @@
+"""test_wastewater.mojo — auto-generated tests for wastewater library."""
+from std.math import isnan, isinf
+from wastewater import bod_removal_efficiency, hydraulic_retention_time, solids_retention_time, food_to_microorganism_ratio, sludge_volume_index, oxygen_demand, chlorine_demand, ct_value, alkalinity_consumption, sludge_production, trickling_filter_efficiency, detention_time_settling
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_bod_removal_efficiency = bod_removal_efficiency(0.5, 0.5)
+    if is_finite(_v_bod_removal_efficiency): passed += 1; print("  ✅ wastewater::bod_removal_efficiency =", _v_bod_removal_efficiency)
+    else: failed += 1; print("  ❌ wastewater::bod_removal_efficiency → non-finite:", _v_bod_removal_efficiency)
+    var _v_hydraulic_retention_time = hydraulic_retention_time(0.5, 0.5)
+    if is_finite(_v_hydraulic_retention_time): passed += 1; print("  ✅ wastewater::hydraulic_retention_time =", _v_hydraulic_retention_time)
+    else: failed += 1; print("  ❌ wastewater::hydraulic_retention_time → non-finite:", _v_hydraulic_retention_time)
+    var _v_solids_retention_time = solids_retention_time(0.5, 0.5, 0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_solids_retention_time): passed += 1; print("  ✅ wastewater::solids_retention_time =", _v_solids_retention_time)
+    else: failed += 1; print("  ❌ wastewater::solids_retention_time → non-finite:", _v_solids_retention_time)
+    var _v_food_to_microorganism_ratio = food_to_microorganism_ratio(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_food_to_microorganism_ratio): passed += 1; print("  ✅ wastewater::food_to_microorganism_ratio =", _v_food_to_microorganism_ratio)
+    else: failed += 1; print("  ❌ wastewater::food_to_microorganism_ratio → non-finite:", _v_food_to_microorganism_ratio)
+    var _v_sludge_volume_index = sludge_volume_index(0.5, 0.5)
+    if is_finite(_v_sludge_volume_index): passed += 1; print("  ✅ wastewater::sludge_volume_index =", _v_sludge_volume_index)
+    else: failed += 1; print("  ❌ wastewater::sludge_volume_index → non-finite:", _v_sludge_volume_index)
+    var _v_oxygen_demand = oxygen_demand(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_oxygen_demand): passed += 1; print("  ✅ wastewater::oxygen_demand =", _v_oxygen_demand)
+    else: failed += 1; print("  ❌ wastewater::oxygen_demand → non-finite:", _v_oxygen_demand)
+    var _v_chlorine_demand = chlorine_demand(0.5, 0.5)
+    if is_finite(_v_chlorine_demand): passed += 1; print("  ✅ wastewater::chlorine_demand =", _v_chlorine_demand)
+    else: failed += 1; print("  ❌ wastewater::chlorine_demand → non-finite:", _v_chlorine_demand)
+    var _v_ct_value = ct_value(0.5, 0.5)
+    if is_finite(_v_ct_value): passed += 1; print("  ✅ wastewater::ct_value =", _v_ct_value)
+    else: failed += 1; print("  ❌ wastewater::ct_value → non-finite:", _v_ct_value)
+    var _v_alkalinity_consumption = alkalinity_consumption(0.5)
+    if is_finite(_v_alkalinity_consumption): passed += 1; print("  ✅ wastewater::alkalinity_consumption =", _v_alkalinity_consumption)
+    else: failed += 1; print("  ❌ wastewater::alkalinity_consumption → non-finite:", _v_alkalinity_consumption)
+    var _v_sludge_production = sludge_production(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_sludge_production): passed += 1; print("  ✅ wastewater::sludge_production =", _v_sludge_production)
+    else: failed += 1; print("  ❌ wastewater::sludge_production → non-finite:", _v_sludge_production)
+    var _v_trickling_filter_efficiency = trickling_filter_efficiency(0.5, 0.5)
+    if is_finite(_v_trickling_filter_efficiency): passed += 1; print("  ✅ wastewater::trickling_filter_efficiency =", _v_trickling_filter_efficiency)
+    else: failed += 1; print("  ❌ wastewater::trickling_filter_efficiency → non-finite:", _v_trickling_filter_efficiency)
+    var _v_detention_time_settling = detention_time_settling(0.5, 0.5)
+    if is_finite(_v_detention_time_settling): passed += 1; print("  ✅ wastewater::detention_time_settling =", _v_detention_time_settling)
+    else: failed += 1; print("  ❌ wastewater::detention_time_settling → non-finite:", _v_detention_time_settling)
+
+    print("  [wastewater] Passed:", passed, "Failed:", failed)

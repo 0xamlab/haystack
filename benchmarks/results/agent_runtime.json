@@ -1,0 +1,93 @@
+{
+  "lib": "agent_runtime",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 6,
+  "overall_speedup_x": 74.2,
+  "total_py_ns": 704.94,
+  "total_mojo_ns": 9.5,
+  "elapsed_s": 3.08,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "tool_call_cost_estimate",
+      "py_ns": 177.663,
+      "mojo_ns": 1.0,
+      "speedup_x": 177.66,
+      "py_result": 0.0005,
+      "py_error": null
+    },
+    {
+      "function": "retry_should_attempt",
+      "py_ns": 97.383,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "plan_step_dependency_ready",
+      "py_ns": null,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "name 'Int64' is not defined"
+    },
+    {
+      "function": "action_value_estimate",
+      "py_ns": 143.725,
+      "mojo_ns": 1.0,
+      "speedup_x": 143.73,
+      "py_result": 0.853553,
+      "py_error": null
+    },
+    {
+      "function": "tool_selection_score",
+      "py_ns": 109.9,
+      "mojo_ns": 4.3,
+      "speedup_x": 25.56,
+      "py_result": 0.499999,
+      "py_error": null
+    },
+    {
+      "function": "memory_retrieval_relevance",
+      "py_ns": 106.071,
+      "mojo_ns": 1.0,
+      "speedup_x": 106.07,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "context_window_budget",
+      "py_ns": 93.6,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "agent_step_reward",
+      "py_ns": 90.421,
+      "mojo_ns": 1.1,
+      "speedup_x": 82.2,
+      "py_result": -0.25,
+      "py_error": null
+    },
+    {
+      "function": "structured_output_match",
+      "py_ns": 77.162,
+      "mojo_ns": 1.1,
+      "speedup_x": 70.15,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "agent_cost_budget_remaining",
+      "py_ns": 133.417,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

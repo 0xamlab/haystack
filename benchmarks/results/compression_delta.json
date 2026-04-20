@@ -1,0 +1,101 @@
+{
+  "lib": "compression_delta",
+  "status": "ok",
+  "n_functions": 11,
+  "n_compared": 10,
+  "overall_speedup_x": 3.19,
+  "total_py_ns": 44400.58,
+  "total_mojo_ns": 13905.4,
+  "elapsed_s": 2.48,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "delta_encode",
+      "py_ns": 2823.15,
+      "mojo_ns": 1334.1,
+      "speedup_x": 2.12,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "delta_decode",
+      "py_ns": 2045.196,
+      "mojo_ns": 453.3,
+      "speedup_x": 4.51,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "delta_encode_float",
+      "py_ns": 2960.825,
+      "mojo_ns": 963.6,
+      "speedup_x": 3.07,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "delta_decode_float",
+      "py_ns": 2421.483,
+      "mojo_ns": 1906.5,
+      "speedup_x": 1.27,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "xor_delta_encode",
+      "py_ns": 905.204,
+      "mojo_ns": 784.0,
+      "speedup_x": 1.15,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "xor_delta_decode",
+      "py_ns": 966.533,
+      "mojo_ns": 394.5,
+      "speedup_x": 2.45,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "zigzag_delta_encode",
+      "py_ns": 3857.721,
+      "mojo_ns": 638.9,
+      "speedup_x": 6.04,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "zigzag_delta_decode",
+      "py_ns": 17726.638,
+      "mojo_ns": 1171.3,
+      "speedup_x": 15.13,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "double_delta_encode",
+      "py_ns": 7845.388,
+      "mojo_ns": 4198.4,
+      "speedup_x": 1.87,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "double_delta_decode",
+      "py_ns": 2848.442,
+      "mojo_ns": 2060.8,
+      "speedup_x": 1.38,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "compression_savings",
+      "py_ns": 1049.596,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

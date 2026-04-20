@@ -1,0 +1,93 @@
+{
+  "lib": "stratigraphy",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 7,
+  "overall_speedup_x": 24.77,
+  "total_py_ns": 1065.2,
+  "total_mojo_ns": 43.0,
+  "elapsed_s": 1.61,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "sedimentation_rate",
+      "py_ns": 225.188,
+      "mojo_ns": 1.0,
+      "speedup_x": 225.19,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "age_from_depth",
+      "py_ns": 80.75,
+      "mojo_ns": 2.7,
+      "speedup_x": 29.91,
+      "py_result": 1.5,
+      "py_error": null
+    },
+    {
+      "function": "radiometric_age",
+      "py_ns": 110.654,
+      "mojo_ns": 2.8,
+      "speedup_x": 39.52,
+      "py_result": 0.81093,
+      "py_error": null
+    },
+    {
+      "function": "radiocarbon_age",
+      "py_ns": 172.971,
+      "mojo_ns": 1.0,
+      "speedup_x": 172.97,
+      "py_result": 5730.247742,
+      "py_error": null
+    },
+    {
+      "function": "stratigraphic_column_depth",
+      "py_ns": 84.342,
+      "mojo_ns": 1.0,
+      "speedup_x": 84.34,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "isotope_fractionation",
+      "py_ns": 5785.1,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "unconformity_gap",
+      "py_ns": 83.208,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "thermal_maturity_vitrinite",
+      "py_ns": 167.788,
+      "mojo_ns": 32.7,
+      "speedup_x": 5.13,
+      "py_result": 0.303597,
+      "py_error": null
+    },
+    {
+      "function": "compaction_correction",
+      "py_ns": 223.513,
+      "mojo_ns": 1.8,
+      "speedup_x": 124.17,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "sea_level_proxy",
+      "py_ns": 2267.425,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": -0.0,
+      "py_error": null
+    }
+  ]
+}

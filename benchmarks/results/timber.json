@@ -1,0 +1,109 @@
+{
+  "lib": "timber",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 10,
+  "overall_speedup_x": 118.15,
+  "total_py_ns": 2587.56,
+  "total_mojo_ns": 21.9,
+  "elapsed_s": 3.56,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "board_feet",
+      "py_ns": 353.187,
+      "mojo_ns": 2.1,
+      "speedup_x": 168.18,
+      "py_result": 0.010417,
+      "py_error": null
+    },
+    {
+      "function": "moisture_content",
+      "py_ns": 355.058,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "allowable_stress",
+      "py_ns": 355.233,
+      "mojo_ns": 1.0,
+      "speedup_x": 355.23,
+      "py_result": 0.0625,
+      "py_error": null
+    },
+    {
+      "function": "modulus_of_rupture_adjusted",
+      "py_ns": 525.063,
+      "mojo_ns": 8.6,
+      "speedup_x": 61.05,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "section_modulus_beam",
+      "py_ns": 91.575,
+      "mojo_ns": 1.3,
+      "speedup_x": 70.44,
+      "py_result": 0.020833,
+      "py_error": null
+    },
+    {
+      "function": "moment_capacity",
+      "py_ns": 204.567,
+      "mojo_ns": 1.7,
+      "speedup_x": 120.33,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "column_slenderness",
+      "py_ns": 190.896,
+      "mojo_ns": 1.2,
+      "speedup_x": 159.08,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "wood_density_from_sg",
+      "py_ns": 108.792,
+      "mojo_ns": 2.2,
+      "speedup_x": 49.45,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "shrinkage_estimate",
+      "py_ns": 1132.021,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "fire_char_rate",
+      "py_ns": 283.683,
+      "mojo_ns": 1.2,
+      "speedup_x": 236.4,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "remaining_section",
+      "py_ns": 133.304,
+      "mojo_ns": 1.3,
+      "speedup_x": 102.54,
+      "py_result": -0.5,
+      "py_error": null
+    },
+    {
+      "function": "log_volume_doyle",
+      "py_ns": 341.258,
+      "mojo_ns": 1.3,
+      "speedup_x": 262.51,
+      "py_result": 0.382812,
+      "py_error": null
+    }
+  ]
+}

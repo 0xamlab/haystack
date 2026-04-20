@@ -1,0 +1,58 @@
+"""test_pension.mojo — auto-generated tests for pension library."""
+from std.math import isnan, isinf
+from pension import replacement_ratio, defined_benefit_pension, defined_contribution_value, annuity_factor, pension_lump_sum_from_annuity, funding_ratio, contribution_rate_required, inflation_adjusted_pension, pension_gap, social_security_bend_points, years_to_full_vesting, withdrawal_rate
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_replacement_ratio = replacement_ratio(0.5, 0.5)
+    if is_finite(_v_replacement_ratio): passed += 1; print("  ✅ pension::replacement_ratio =", _v_replacement_ratio)
+    else: failed += 1; print("  ❌ pension::replacement_ratio → non-finite:", _v_replacement_ratio)
+    var _v_defined_benefit_pension = defined_benefit_pension(0.5, 0.5, 0.5)
+    if is_finite(_v_defined_benefit_pension): passed += 1; print("  ✅ pension::defined_benefit_pension =", _v_defined_benefit_pension)
+    else: failed += 1; print("  ❌ pension::defined_benefit_pension → non-finite:", _v_defined_benefit_pension)
+    var _v_defined_contribution_value = defined_contribution_value(0.5, 0.5, 5)
+    if is_finite(_v_defined_contribution_value): passed += 1; print("  ✅ pension::defined_contribution_value =", _v_defined_contribution_value)
+    else: failed += 1; print("  ❌ pension::defined_contribution_value → non-finite:", _v_defined_contribution_value)
+    var _v_annuity_factor = annuity_factor(0.5, 5)
+    if is_finite(_v_annuity_factor): passed += 1; print("  ✅ pension::annuity_factor =", _v_annuity_factor)
+    else: failed += 1; print("  ❌ pension::annuity_factor → non-finite:", _v_annuity_factor)
+    var _v_pension_lump_sum_from_annuity = pension_lump_sum_from_annuity(0.5, 0.5)
+    if is_finite(_v_pension_lump_sum_from_annuity): passed += 1; print("  ✅ pension::pension_lump_sum_from_annuity =", _v_pension_lump_sum_from_annuity)
+    else: failed += 1; print("  ❌ pension::pension_lump_sum_from_annuity → non-finite:", _v_pension_lump_sum_from_annuity)
+    var _v_funding_ratio = funding_ratio(0.5, 0.5)
+    if is_finite(_v_funding_ratio): passed += 1; print("  ✅ pension::funding_ratio =", _v_funding_ratio)
+    else: failed += 1; print("  ❌ pension::funding_ratio → non-finite:", _v_funding_ratio)
+    var _v_contribution_rate_required = contribution_rate_required(0.5, 5, 0.5, 0.5)
+    if is_finite(_v_contribution_rate_required): passed += 1; print("  ✅ pension::contribution_rate_required =", _v_contribution_rate_required)
+    else: failed += 1; print("  ❌ pension::contribution_rate_required → non-finite:", _v_contribution_rate_required)
+    var _v_inflation_adjusted_pension = inflation_adjusted_pension(0.5, 0.5, 5)
+    if is_finite(_v_inflation_adjusted_pension): passed += 1; print("  ✅ pension::inflation_adjusted_pension =", _v_inflation_adjusted_pension)
+    else: failed += 1; print("  ❌ pension::inflation_adjusted_pension → non-finite:", _v_inflation_adjusted_pension)
+    var _v_pension_gap = pension_gap(0.5, 0.5)
+    if is_finite(_v_pension_gap): passed += 1; print("  ✅ pension::pension_gap =", _v_pension_gap)
+    else: failed += 1; print("  ❌ pension::pension_gap → non-finite:", _v_pension_gap)
+    var _v_social_security_bend_points = social_security_bend_points(0.5, 0.5, 0.5)
+    if is_finite(_v_social_security_bend_points): passed += 1; print("  ✅ pension::social_security_bend_points =", _v_social_security_bend_points)
+    else: failed += 1; print("  ❌ pension::social_security_bend_points → non-finite:", _v_social_security_bend_points)
+    var _v_years_to_full_vesting = years_to_full_vesting(0.5, 0.5)
+    if is_finite(_v_years_to_full_vesting): passed += 1; print("  ✅ pension::years_to_full_vesting =", _v_years_to_full_vesting)
+    else: failed += 1; print("  ❌ pension::years_to_full_vesting → non-finite:", _v_years_to_full_vesting)
+    var _v_withdrawal_rate = withdrawal_rate(0.5, 0.5)
+    if is_finite(_v_withdrawal_rate): passed += 1; print("  ✅ pension::withdrawal_rate =", _v_withdrawal_rate)
+    else: failed += 1; print("  ❌ pension::withdrawal_rate → non-finite:", _v_withdrawal_rate)
+
+    print("  [pension] Passed:", passed, "Failed:", failed)

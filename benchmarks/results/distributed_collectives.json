@@ -1,0 +1,93 @@
+{
+  "lib": "distributed_collectives",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 8,
+  "overall_speedup_x": 419.34,
+  "total_py_ns": 3564.39,
+  "total_mojo_ns": 8.5,
+  "elapsed_s": 2.38,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "ring_allreduce_step",
+      "py_ns": 111.604,
+      "mojo_ns": 1.1,
+      "speedup_x": 101.46,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "reduce_scatter_element",
+      "py_ns": 110.467,
+      "mojo_ns": 1.1,
+      "speedup_x": 100.42,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "all_gather_offset",
+      "py_ns": 201.35,
+      "mojo_ns": 1.0,
+      "speedup_x": 201.35,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "broadcast_scale",
+      "py_ns": 254.517,
+      "mojo_ns": 1.1,
+      "speedup_x": 231.38,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "gradient_compression_ratio",
+      "py_ns": 1194.95,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "expert_dispatch_volume",
+      "py_ns": 117.475,
+      "mojo_ns": 1.0,
+      "speedup_x": 117.48,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "peer_bandwidth_utilization",
+      "py_ns": 357.687,
+      "mojo_ns": 1.0,
+      "speedup_x": 357.69,
+      "py_result": 2e-06,
+      "py_error": null
+    },
+    {
+      "function": "collective_latency_alpha_beta",
+      "py_ns": 2153.642,
+      "mojo_ns": 1.1,
+      "speedup_x": 1957.86,
+      "py_result": 0.2505,
+      "py_error": null
+    },
+    {
+      "function": "overlap_compute_comm_ratio",
+      "py_ns": 257.65,
+      "mojo_ns": 1.1,
+      "speedup_x": 234.23,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "allreduce_tree_step_count",
+      "py_ns": 747.608,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

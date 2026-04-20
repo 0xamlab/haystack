@@ -1,0 +1,77 @@
+{
+  "lib": "optimization_constrained",
+  "status": "ok",
+  "n_functions": 8,
+  "n_compared": 6,
+  "overall_speedup_x": 4.35,
+  "total_py_ns": 516093.28,
+  "total_mojo_ns": 118555.3,
+  "elapsed_s": 7.67,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "eval_objective_c",
+      "py_ns": 90.088,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "eval_constraint",
+      "py_ns": 133.271,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "is_feasible_c",
+      "py_ns": 575.371,
+      "mojo_ns": 190.5,
+      "speedup_x": 3.02,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "penalty_value",
+      "py_ns": 962.529,
+      "mojo_ns": 8.7,
+      "speedup_x": 110.64,
+      "py_result": 0.01,
+      "py_error": null
+    },
+    {
+      "function": "gradient_estimate",
+      "py_ns": 22295.904,
+      "mojo_ns": 4678.0,
+      "speedup_x": 4.77,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "penalty_method",
+      "py_ns": 178239.779,
+      "mojo_ns": 22318.4,
+      "speedup_x": 7.99,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "barrier_method",
+      "py_ns": 270183.021,
+      "mojo_ns": 65371.1,
+      "speedup_x": 4.13,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "augmented_lagrangian_step",
+      "py_ns": 43836.679,
+      "mojo_ns": 25988.6,
+      "speedup_x": 1.69,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

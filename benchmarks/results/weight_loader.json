@@ -1,0 +1,93 @@
+{
+  "lib": "weight_loader",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 6,
+  "overall_speedup_x": 42.92,
+  "total_py_ns": 918.52,
+  "total_mojo_ns": 21.4,
+  "elapsed_s": 2.2,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "shard_offset_bytes",
+      "py_ns": 160.479,
+      "mojo_ns": 0.9,
+      "speedup_x": 178.31,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "safetensors_header_size",
+      "py_ns": 130.829,
+      "mojo_ns": 4.7,
+      "speedup_x": 27.84,
+      "py_result": 32.25,
+      "py_error": null
+    },
+    {
+      "function": "lazy_load_priority",
+      "py_ns": 223.1,
+      "mojo_ns": 5.2,
+      "speedup_x": 42.9,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "gguf_quantized_block_size",
+      "py_ns": null,
+      "mojo_ns": 2.1,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "name 'Int64' is not defined"
+    },
+    {
+      "function": "checkpoint_resume_step",
+      "py_ns": 237.55,
+      "mojo_ns": 2.0,
+      "speedup_x": 118.77,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "weight_diff_norm",
+      "py_ns": 83.0,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "partial_load_coverage",
+      "py_ns": 80.442,
+      "mojo_ns": 0.9,
+      "speedup_x": 89.38,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "adapter_merge_ratio",
+      "py_ns": 86.121,
+      "mojo_ns": 7.7,
+      "speedup_x": 11.18,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "hf_model_index_shards",
+      "py_ns": null,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "name 'Int64' is not defined"
+    },
+    {
+      "function": "weight_hash_verify",
+      "py_ns": null,
+      "mojo_ns": 1.2,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "name 'Int64' is not defined"
+    }
+  ]
+}

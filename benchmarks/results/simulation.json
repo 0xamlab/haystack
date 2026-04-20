@@ -1,0 +1,29 @@
+{
+  "lib": "simulation",
+  "status": "ok",
+  "n_functions": 2,
+  "n_compared": 2,
+  "overall_speedup_x": 18.25,
+  "total_py_ns": 7722.42,
+  "total_mojo_ns": 423.2,
+  "elapsed_s": 1.27,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "create_sim",
+      "py_ns": 1139.779,
+      "mojo_ns": 2.2,
+      "speedup_x": 518.08,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "mm1_simulate",
+      "py_ns": 6582.642,
+      "mojo_ns": 421.0,
+      "speedup_x": 15.64,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

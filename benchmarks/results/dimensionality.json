@@ -1,0 +1,69 @@
+{
+  "lib": "dimensionality",
+  "status": "ok",
+  "n_functions": 7,
+  "n_compared": 4,
+  "overall_speedup_x": 1.32,
+  "total_py_ns": 12177.49,
+  "total_mojo_ns": 9215.0,
+  "elapsed_s": 15.09,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "column_means",
+      "py_ns": 770.504,
+      "mojo_ns": 2078.7,
+      "speedup_x": 0.37,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "center_data",
+      "py_ns": 1497.475,
+      "mojo_ns": 1855.7,
+      "speedup_x": 0.81,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "covariance_matrix",
+      "py_ns": 2871.083,
+      "mojo_ns": 2921.3,
+      "speedup_x": 0.98,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "power_iteration",
+      "py_ns": 7038.429,
+      "mojo_ns": 2359.3,
+      "speedup_x": 2.98,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "eigenvalue_from_vector",
+      "py_ns": null,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list index out of range"
+    },
+    {
+      "function": "deflate_matrix",
+      "py_ns": 1166.917,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "pca",
+      "py_ns": 1337237.371,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

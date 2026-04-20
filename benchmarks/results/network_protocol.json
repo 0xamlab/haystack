@@ -1,0 +1,101 @@
+{
+  "lib": "network_protocol",
+  "status": "ok",
+  "n_functions": 11,
+  "n_compared": 3,
+  "overall_speedup_x": 8.76,
+  "total_py_ns": 7601.45,
+  "total_mojo_ns": 867.3,
+  "elapsed_s": 1.95,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "http_status_text",
+      "py_ns": 472.396,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "is_success",
+      "py_ns": 143.963,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "is_redirect",
+      "py_ns": 140.967,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "is_client_error",
+      "py_ns": 139.867,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "is_server_error",
+      "py_ns": 136.3,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "mime_type",
+      "py_ns": 266.008,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "parse_content_type",
+      "py_ns": 913.392,
+      "mojo_ns": 26.4,
+      "speedup_x": 34.6,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "is_json_type",
+      "py_ns": 194.558,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "is_text_type",
+      "py_ns": 186.988,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "build_query_string",
+      "py_ns": 1660.271,
+      "mojo_ns": 321.5,
+      "speedup_x": 5.16,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "parse_query_string",
+      "py_ns": 5027.788,
+      "mojo_ns": 519.4,
+      "speedup_x": 9.68,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

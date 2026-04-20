@@ -1,0 +1,109 @@
+{
+  "lib": "drones",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 12,
+  "overall_speedup_x": 338.66,
+  "total_py_ns": 4063.88,
+  "total_mojo_ns": 12.0,
+  "elapsed_s": 1.91,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "thrust_to_weight_ratio",
+      "py_ns": 116.279,
+      "mojo_ns": 1.0,
+      "speedup_x": 116.28,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "hover_power",
+      "py_ns": 229.612,
+      "mojo_ns": 1.0,
+      "speedup_x": 229.61,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "flight_time_minutes",
+      "py_ns": 97.167,
+      "mojo_ns": 1.0,
+      "speedup_x": 97.17,
+      "py_result": 60.0,
+      "py_error": null
+    },
+    {
+      "function": "max_range",
+      "py_ns": 1237.733,
+      "mojo_ns": 1.0,
+      "speedup_x": 1237.73,
+      "py_result": 0.004167,
+      "py_error": null
+    },
+    {
+      "function": "payload_capacity",
+      "py_ns": 87.988,
+      "mojo_ns": 1.0,
+      "speedup_x": 87.99,
+      "py_result": -0.5,
+      "py_error": null
+    },
+    {
+      "function": "disk_loading",
+      "py_ns": 126.221,
+      "mojo_ns": 1.0,
+      "speedup_x": 126.22,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "propeller_tip_speed",
+      "py_ns": 124.867,
+      "mojo_ns": 1.0,
+      "speedup_x": 124.87,
+      "py_result": 0.01309,
+      "py_error": null
+    },
+    {
+      "function": "advance_ratio",
+      "py_ns": 156.167,
+      "mojo_ns": 1.0,
+      "speedup_x": 156.17,
+      "py_result": 120.0,
+      "py_error": null
+    },
+    {
+      "function": "battery_energy_density",
+      "py_ns": 103.679,
+      "mojo_ns": 1.0,
+      "speedup_x": 103.68,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "communication_range_los",
+      "py_ns": 135.925,
+      "mojo_ns": 1.0,
+      "speedup_x": 135.93,
+      "py_result": 0.866025,
+      "py_error": null
+    },
+    {
+      "function": "gsd_from_altitude",
+      "py_ns": 111.075,
+      "mojo_ns": 1.0,
+      "speedup_x": 111.08,
+      "py_result": 1000.0,
+      "py_error": null
+    },
+    {
+      "function": "endurance_factor",
+      "py_ns": 1537.167,
+      "mojo_ns": 1.0,
+      "speedup_x": 1537.17,
+      "py_result": 15.0,
+      "py_error": null
+    }
+  ]
+}

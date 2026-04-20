@@ -1,0 +1,77 @@
+{
+  "lib": "clustering_metrics",
+  "status": "ok",
+  "n_functions": 8,
+  "n_compared": 8,
+  "overall_speedup_x": 0.98,
+  "total_py_ns": 47752.97,
+  "total_mojo_ns": 48633.7,
+  "elapsed_s": 2.63,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "cluster_sizes",
+      "py_ns": 961.492,
+      "mojo_ns": 327.5,
+      "speedup_x": 2.94,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "cluster_centroids",
+      "py_ns": 2847.225,
+      "mojo_ns": 3882.2,
+      "speedup_x": 0.73,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "inertia",
+      "py_ns": 1423.617,
+      "mojo_ns": 5568.4,
+      "speedup_x": 0.26,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "davies_bouldin",
+      "py_ns": 24524.625,
+      "mojo_ns": 17717.4,
+      "speedup_x": 1.38,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "calinski_harabasz",
+      "py_ns": 104.121,
+      "mojo_ns": 709.0,
+      "speedup_x": 0.15,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "contingency_matrix",
+      "py_ns": 2089.096,
+      "mojo_ns": 5149.6,
+      "speedup_x": 0.41,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "purity",
+      "py_ns": 3564.896,
+      "mojo_ns": 7527.7,
+      "speedup_x": 0.47,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "adjusted_rand_index",
+      "py_ns": 12237.896,
+      "mojo_ns": 7751.9,
+      "speedup_x": 1.58,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

@@ -1,0 +1,109 @@
+{
+  "lib": "packaging",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 12,
+  "overall_speedup_x": 300.65,
+  "total_py_ns": 4690.21,
+  "total_mojo_ns": 15.6,
+  "elapsed_s": 1.87,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "box_volume",
+      "py_ns": 97.179,
+      "mojo_ns": 1.1,
+      "speedup_x": 88.34,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "box_surface_area",
+      "py_ns": 182.025,
+      "mojo_ns": 1.1,
+      "speedup_x": 165.48,
+      "py_result": 1.5,
+      "py_error": null
+    },
+    {
+      "function": "cylinder_volume",
+      "py_ns": 96.579,
+      "mojo_ns": 1.1,
+      "speedup_x": 87.8,
+      "py_result": 0.392699,
+      "py_error": null
+    },
+    {
+      "function": "cylinder_surface_area",
+      "py_ns": 108.596,
+      "mojo_ns": 3.5,
+      "speedup_x": 31.03,
+      "py_result": 3.141593,
+      "py_error": null
+    },
+    {
+      "function": "material_utilization",
+      "py_ns": 1606.225,
+      "mojo_ns": 1.1,
+      "speedup_x": 1460.2,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "compression_strength_mckee",
+      "py_ns": 239.083,
+      "mojo_ns": 1.1,
+      "speedup_x": 217.35,
+      "py_result": 1.4675,
+      "py_error": null
+    },
+    {
+      "function": "stacking_load",
+      "py_ns": 114.979,
+      "mojo_ns": 1.1,
+      "speedup_x": 104.53,
+      "py_result": -0.25,
+      "py_error": null
+    },
+    {
+      "function": "cushion_curve_g",
+      "py_ns": 113.35,
+      "mojo_ns": 1.1,
+      "speedup_x": 103.05,
+      "py_result": 1.904762,
+      "py_error": null
+    },
+    {
+      "function": "pallet_efficiency",
+      "py_ns": 1650.671,
+      "mojo_ns": 1.1,
+      "speedup_x": 1500.61,
+      "py_result": 50.0,
+      "py_error": null
+    },
+    {
+      "function": "fill_percentage",
+      "py_ns": 160.558,
+      "mojo_ns": 1.1,
+      "speedup_x": 145.96,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "shelf_life_arrhenius",
+      "py_ns": 141.446,
+      "mojo_ns": 1.1,
+      "speedup_x": 128.59,
+      "py_result": 0.067668,
+      "py_error": null
+    },
+    {
+      "function": "dimensional_weight",
+      "py_ns": 179.517,
+      "mojo_ns": 1.1,
+      "speedup_x": 163.2,
+      "py_result": 0.25,
+      "py_error": null
+    }
+  ]
+}

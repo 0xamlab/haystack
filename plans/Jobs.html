@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jobs</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script> window.FontAwesomeConfig = { autoReplaceSvg: 'nest'};</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        ::-webkit-scrollbar { display: none;}
+        * { font-family: 'Inter', sans-serif; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+        .row-expandable { cursor: pointer; transition: background-color 0.15s ease; }
+        .row-expandable:hover { background-color: #151823; }
+        .expanded-content { display: none; }
+        .expanded-content.active { display: table-row; }
+        .tab-active { border-bottom: 2px solid #4B0082; color: #fff; }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#4B0082',
+                        success: '#008000',
+                        warning: '#FFA500',
+                        danger: '#FF0000',
+                        info: '#0000FF',
+                        dark: {
+                            100: '#0B0D12',
+                            200: '#0F1117',
+                            300: '#151823',
+                            400: '#1A1F2E',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-dark-100 text-gray-300">
+
+<div id="main-container" class="flex min-h-screen">
+    <aside id="sidebar" class="w-64 bg-dark-200 border-r border-gray-800 flex-shrink-0 hidden lg:block">
+        <div class="p-4 border-b border-gray-800">
+            <h1 class="text-xl font-bold text-white">ALGENTA</h1>
+            <p class="text-xs text-gray-500 mt-1">Infrastructure Console</p>
+        </div>
+        <nav class="p-3">
+            <a href="#" class="flex items-center px-3 py-2 text-gray-400 hover:bg-dark-300 hover:text-white rounded mb-1 transition-colors">
+                <i class="fa-solid fa-gauge w-5"></i>
+                <span class="ml-3 text-sm">Dashboard</span>
+            </a>
+            <a href="#" class="flex items-center px-3 py-2 text-gray-400 hover:bg-dark-300 hover:text-white rounded mb-1 transition-colors">
+                <i class="fa-solid fa-chart-line w-5"></i>
+                <span class="ml-3 text-sm">Simulations</span>
+            </a>
+            <a href="#" class="flex items-center px-3 py-2 text-gray-400 hover:bg-dark-300 hover:text-white rounded mb-1 transition-colors">
+                <i class="fa-solid fa-server w-5"></i>
+                <span class="ml-3 text-sm">Compute Clusters</span>
+            </a>
+            <a href="#" class="flex items-center px-3 py-2 text-gray-400 hover:bg-dark-300 hover:text-white rounded mb-1 transition-colors">
+                <i class="fa-solid fa-database w-5"></i>
+                <span class="ml-3 text-sm">Data Management</span>
+            </a>
+            <a href="#" class="flex items-center px-3 py-2 text-gray-400 hover:bg-dark-300 hover:text-white rounded mb-1 transition-colors">
+                <i class="fa-solid fa-wrench w-5"></i>
+                <span class="ml-3 text-sm">Tools & Libraries</span>
+            </a>
+            <a href="#" class="flex items-center px-3 py-2 text-gray-400 hover:bg-dark-300 hover:text-white rounded mb-1 transition-colors">
+                <i class="fa-solid fa-gear w-5"></i>
+                <span class="ml-3 text-sm">Settings</span>
+            </a>
+        </nav>
+    </aside>
+
+    <main id="main-content" class="flex-1 overflow-x-hidden">
+        <header id="header" class="bg-dark-200 border-b border-gray-800 px-4 lg:px-6 py-3 flex items-center justify-between">
+            <div class="flex items-center">
+                <button class="lg:hidden mr-4 text-gray-400">
+                    <i class="fa-solid fa-bars text-xl"></i>
+                </button>
+                <div>
+                    <h2 class="text-lg font-semibold text-white">Async Job Queue</h2>
+                    <p class="text-xs text-gray-500">Monitor and manage asynchronous job execution</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <button class="px-3 py-1.5 bg-dark-300 text-gray-300 rounded text-sm hover:bg-dark-400 transition-colors">
+                    <i class="fa-solid fa-rotate mr-2"></i>
+                    <span class="hidden sm:inline">Refresh</span>
+                </button>
+                <button class="px-3 py-1.5 bg-primary text-white rounded text-sm hover:bg-purple-700 transition-colors">
+                    <i class="fa-solid fa-plus mr-2"></i>
+                    <span class="hidden sm:inline">New Job</span>
+                </button>
+            </div>
+        </header>
+
+        <div id="content-area" class="p-4 lg:p-6">
+            <section id="queue-visualization" class="mb-6">
+                <div class="bg-dark-200 border border-gray-800 rounded p-4">
+                    <h3 class="text-sm font-semibold text-white mb-4">Queue Pipeline</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="bg-dark-300 border border-gray-700 rounded p-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center gap-2">
+                                    <i class="fa-solid fa-clock text-primary text-lg"></i>
+                                    <span class="text-sm font-semibold text-white">Queued</span>
+                                </div>
+                                <span class="text-2xl font-bold text-primary">12</span>
+                            </div>
+                            <div class="text-xs text-gray-500">Waiting for execution</div>
+                            <div class="mt-3 h-2 bg-dark-400 rounded-full overflow-hidden">
+                                <div class="h-full bg-primary" style="width: 35%;"></div>
+                            </div>
+                        </div>
+                        <div class="bg-dark-300 border border-gray-700 rounded p-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center gap-2">
+                                    <i class="fa-solid fa-spinner text-info text-lg"></i>
+                                    <span class="text-sm font-semibold text-white">Running</span>
+                                </div>
+                                <span class="text-2xl font-bold text-info">8</span>
+                            </div>
+                            <div class="text-xs text-gray-500">Currently processing</div>
+                            <div class="mt-3 h-2 bg-dark-400 rounded-full overflow-hidden">
+                                <div class="h-full bg-info" style="width: 68%;"></div>
+                            </div>
+                        </div>
+                        <div class="bg-dark-300 border border-gray-700 rounded p-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center gap-2">
+                                    <i class="fa-solid fa-check-circle text-success text-lg"></i>
+                                    <span class="text-sm font-semibold text-white">Completed</span>
+                                </div>
+                                <span class="text-2xl font-bold text-success">143</span>
+                            </div>
+                            <div class="text-xs text-gray-500">Last 24 hours</div>
+                            <div class="mt-3 h-2 bg-dark-400 rounded-full overflow-hidden">
+                                <div class="h-full bg-success" style="width: 92%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="tabs-section" class="mb-4">
+                <div class="bg-dark-200 border border-gray-800 rounded">
+                    <div class="flex border-b border-gray-800 overflow-x-auto">
+                        <button onclick="filterJobs('all')" class="tab-active px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap" id="tab-all">
+                            All Jobs
+                            <span class="ml-2 px-2 py-0.5 bg-dark-300 rounded text-xs">163</span>
+                        </button>
+                        <button onclick="filterJobs('queued')" class="px-4 py-3 text-sm font-medium text-gray-400 hover:text-white transition-colors whitespace-nowrap border-b-2 border-transparent" id="tab-queued">
+                            Queued
+                            <span class="ml-2 px-2 py-0.5 bg-dark-300 rounded text-xs">12</span>
+                        </button>
+                        <button onclick="filterJobs('running')" class="px-4 py-3 text-sm font-medium text-gray-400 hover:text-white transition-colors whitespace-nowrap border-b-2 border-transparent" id="tab-running">
+                            Running
+                            <span class="ml-2 px-2 py-0.5 bg-dark-300 rounded text-xs">8</span>
+                        </button>
+                        <button onclick="filterJobs('completed')" class="px-4 py-3 text-sm font-medium text-gray-400 hover:text-white transition-colors whitespace-nowrap border-b-2 border-transparent" id="tab-completed">
+                            Completed
+                            <span class="ml-2 px-2 py-0.5 bg-dark-300 rounded text-xs">143</span>
+                        </button>
+                        <button onclick="filterJobs('failed')" class="px-4 py-3 text-sm font-medium text-gray-400 hover:text-white transition-colors whitespace-nowrap border-b-2 border-transparent" id="tab-failed">
+                            Failed
+                            <span class="ml-2 px-2 py-0.5 bg-dark-300 rounded text-xs">0</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <section id="jobs-table-section">
+                <div class="bg-dark-200 border border-gray-800 rounded overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead class="bg-dark-300 border-b border-gray-800">
+                                <tr>
+                                    <th class="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Job ID</th>
+                                    <th class="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
+                                    <th class="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Runs</th>
+                                    <th class="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Duration</th>
+                                    <th class="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Webhook</th>
+                                    <th class="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-body">
+                                <tr class="border-b border-gray-800 row-expandable" onclick="toggleRow('job1')">
+                                    <td class="px-4 py-3 text-white font-mono text-xs">JOB-2024-A7F3</td>
+                                    <td class="px-4 py-3">
+                                        <span class="status-dot bg-info mr-2"></span>
+                                        <span class="text-info text-xs font-medium">Running</span>
+                                    </td>
+                                    <td class="px-4 py-3 text-gray-300">3 / 5</td>
+                                    <td class="px-4 py-3 text-gray-300">2m 34s</td>
+                                    <td class="px-4 py-3">
+                                        <span class="text-xs text-gray-400 font-mono">https://api.algenta.io/webhook/a7f3</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <button class="px-2 py-1 bg-dark-400 text-gray-300 rounded text-xs hover:bg-gray-700 transition-colors mr-1">
+                                            <i class="fa-solid fa-eye"></i>
+                                        </button>
+                                        <button class="px-2 py-1 bg-danger text-white rounded text-xs hover:bg-red-700 transition-colors">
+                                            <i class="fa-solid fa-stop"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr class="border-b border-gray-800 expanded-content" id="job1">
+                                    <td colspan="6" class="px-4 py-4 bg-dark-300">
+                                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                                            <div class="bg-dark-200 border border-gray-700 rounded p-3">
+                                                <div class="text-xs text-gray-500 mb-2 font-semibold">Job Details</div>
+                                                <div class="space-y-2 text-xs">
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Type:</span>
+                                                        <span class="text-white font-mono">data_processing</span>
+                                                    </div>
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Priority:</span>
+                                                        <span class="text-warning">High</span>
+                                                    </div>
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Created:</span>
+                                                        <span class="text-gray-300">2024-03-21 14:52:18</span>
+                                                    </div>
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Started:</span>
+                                                        <span class="text-gray-300">2024-03-21 14:52:23</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="bg-dark-200 border border-gray-700 rounded p-3">
+                                                <div class="text-xs text-gray-500 mb-2 font-semibold">Progress</div>
+                                                <div class="space-y-3">
+                                                    <div>
+                                                        <div class="flex justify-between mb-1">
+                                                            <span class="text-xs text-gray-400">Run 3 of 5</span>
+                                                            <span class="text-xs text-info">60%</span>
+                                                        </div>
+                                                        <div class="h-2 bg-dark-400 rounded-full overflow-hidden">
+                                                            <div class="h-full bg-info" style="width: 60%;"></div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="text-xs text-gray-400">
+                                                        <div class="flex items-center gap-2 mb-1">
+                                                            <i class="fa-solid fa-check text-success"></i>
+                                                            <span>Run 1: Completed (45s)</span>
+                                                        </div>
+                                                        <div class="flex items-center gap-2 mb-1">
+                                                            <i class="fa-solid fa-check text-success"></i>
+                                                            <span>Run 2: Completed (52s)</span>
+                                                        </div>
+                                                        <div class="flex items-center gap-2">
+                                                            <i class="fa-solid fa-spinner text-info"></i>
+                                                            <span>Run 3: Processing...</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="bg-dark-200 border border-gray-700 rounded p-3 mb-4">
+                                            <div class="flex items-center justify-between mb-3">
+                                                <span class="text-xs font-semibold text-gray-400">WEBHOOK LOGS</span>
+                                                <button class="px-2 py-1 bg-dark-400 text-gray-300 rounded text-xs hover:bg-gray-700">
+                                                    <i class="fa-solid fa-download mr-1"></i>Export
+                                                </button>
+                                            </div>
+                                            <div class="bg-dark-100 rounded p-3 max-h-48 overflow-y-auto">
+                                                <div class="space-y-2 text-xs font-mono">
+                                                    <div class="text-gray-500">
+                                                        <span class="text-gray-600">[14:52:45]</span> 
+                                                        <span class="text-success">POST 200</span> 
+                                                        <span class="text-gray-400">Run 2 completed - payload: 2.4KB</span>
+                                                    </div>
+                                                    <div class="text-gray-500">
+                                                        <span class="text-gray-600">[14:52:01]</span> 
+                                                        <span class="text-success">POST 200</span> 
+                                                        <span class="text-gray-400">Run 1 completed - payload: 2.1KB</span>
+                                                    </div>
+                                                    <div class="text-gray-500">
+                                                        <span class="text-gray-600">[14:52:23]</span> 
+                                                        <span class="text-info">POST 202</span> 
+                                                        <span class="text-gray-400">Job started - acknowledged</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="flex gap-2 flex-wrap">
+                                            <button class="px-3 py-1.5 bg-danger text-white rounded text-xs hover:bg-red-700 transition-colors">
+                                                <i class="fa-solid fa-stop mr-1.5"></i>Stop Job
+                                            </button>
+                                            <button class="px-3 py-1.5 bg-dark-400 text-gray-300 rounded text-xs hover:bg-gray-700 transition-colors">
+                                                <i class="fa-solid fa-copy mr-1.5"></i>Copy ID
+                                            </button>
+                                            <button class="px-3 py-1.5 bg-dark-400 text-gray-300 rounded text-xs hover:bg-gray-700 transition-colors">
+                                                <i class="fa-solid fa-file-code mr-1.5"></i>View Payload
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <tr class="border-b border-gray-800 row-expandable" onclick="toggleRow('job2')">
+                                    <td class="px-4 py-3 text-white font-mono text-xs">JOB-2024-B2E9</td>
+                                    <td class="px-4 py-3">
+                                        <span class="status-dot bg-primary mr-2"></span>
+                                        <span class="text-primary text-xs font-medium">Queued</span>
+                                    </td>
+                                    <td class="px-4 py-3 text-gray-300">0 / 8</td>
+                                    <td class="px-4 py-3 text-gray-300">-</td>
+                                    <td class="px-4 py-3">
+                                        <span class="text-xs text-gray-400 font-mono">https://api.algenta.io/webhook/b2e9</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <button class="px-2 py-1 bg-dark-400 text-gray-300 rounded text-xs hover:bg-gray-700 transition-colors mr-1">
+                                            <i class="fa-solid fa-eye"></i>
+                                        </button>
+                                        <button class="px-2 py-1 bg-danger text-white rounded text-xs hover:bg-red-700 transition-colors">
+                                            <i class="fa-solid fa-xmark"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr class="border-b border-gray-800 expanded-content" id="job2">
+                                    <td colspan="6" class="px-4 py-4 bg-dark-300">
+                                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                                            <div class="bg-dark-200 border border-gray-700 rounded p-3">
+                                                <div class="text-xs text-gray-500 mb-2 font-semibold">Job Details</div>
+                                                <div class="space-y-2 text-xs">
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Type:</span>
+                                                        <span class="text-white font-mono">simulation_batch</span>
+                                                    </div>
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Priority:</span>
+                                                        <span class="text-gray-300">Normal</span>
+                                                    </div>
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Created:</span>
+                                                        <span class="text-gray-300">2024-03-21 14:48:32</span>
+                                                    </div>
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Queue Position:</span>
+                                                        <span class="text-primary font-semibold">3</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="bg-dark-200 border border-primary/30 rounded p-3">
+                                                <div class="flex items-start gap-3">
+                                                    <i class="fa-solid fa-clock text-primary text-lg"></i>
+                                                    <div>
+                                                        <div class="text-xs font-semibold text-primary mb-1">Waiting in Queue</div>
+                                                        <div class="text-xs text-gray-400">This job is scheduled for execution once compute resources become available.</div>
+                                                        <div class="text-xs text-gray-500 mt-2">Estimated start: 2024-03-21 15:02</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="flex gap-2 flex-wrap">
+                                            <button class="px-3 py-1.5 bg-danger text-white rounded text-xs hover:bg-red-700 transition-colors">
+                                                <i class="fa-solid fa-xmark mr-1.5"></i>Cancel Job
+                                            </button>
+                                            <button class="px-3 py-1.5 bg-dark-400 text-gray-300 rounded text-xs hover:bg-gray-700 transition-colors">
+                                                <i class="fa-solid fa-copy mr-1.5"></i>Copy ID
+                                            </button>
+                                            <button class="px-3 py-1.5 bg-dark-400 text-gray-300 rounded text-xs hover:bg-gray-700 transition-colors">
+                                                <i class="fa-solid fa-file-code mr-1.5"></i>View Payload
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <tr class="border-b border-gray-800 row-expandable" onclick="toggleRow('job3')">
+                                    <td class="px-4 py-3 text-white font-mono text-xs">JOB-2024-C5D1</td>
+                                    <td class="px-4 py-3">
+                                        <span class="status-dot bg-success mr-2"></span>
+                                        <span class="text-success text-xs font-medium">Completed</span>
+                                    </td>
+                                    <td class="px-4 py-3 text-gray-300">10 / 10</td>
+                                    <td class="px-4 py-3 text-gray-300">8m 47s</td>
+                                    <td class="px-4 py-3">
+                                        <span class="text-xs text-gray-400 font-mono">https://api.algenta.io/webhook/c5d1</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <button class="px-2 py-1 bg-dark-400 text-gray-300 rounded text-xs hover:bg-gray-700 transition-colors mr-1">
+                                            <i class="fa-solid fa-eye"></i>
+                                        </button>
+                                        <button class="px-2 py-1 bg-primary text-white rounded text-xs hover:bg-purple-700 transition-colors">
+                                            <i class="fa-solid fa-rotate-right"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr class="border-b border-gray-800 expanded-content" id="job3">
+                                    <td colspan="6" class="px-4 py-4 bg-dark-300">
+                                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                                            <div class="bg-dark-200 border border-gray-700 rounded p-3">
+                                                <div class="text-xs text-gray-500 mb-2 font-semibold">Job Details</div>
+                                                <div class="space-y-2 text-xs">
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Type:</span>
+                                                        <span class="text-white font-mono">monte_carlo_batch</span>
+                                                    </div>
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Priority:</span>
+                                                        <span class="text-warning">High</span>
+                                                    </div>
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Created:</span>
+                                                        <span class="text-gray-300">2024-03-21 14:35:12</span>
+                                                    </div>
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Completed:</span>
+                                                        <span class="text-gray-300">2024-03-21 14:43:59</span>
+                                                    </div>
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Success Rate:</span>
+                                                        <span class="text-success font-semibold">100%</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="bg-dark-200 border border-gray-700 rounded p-3">
+                                                <div class="text-xs text-gray-500 mb-2 font-semibold">Execution Summary</div>
+                                                <div class="space-y-2 text-xs">
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Total Runs:</span>
+                                                        <span class="text-white">10</span>
+                                                    </div>
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Avg Duration:</span>
+                                                        <span class="text-white">52.7s</span>
+                                                    </div>
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Data Processed:</span>
+                                                        <span class="text-white">24.8 GB</span>
+                                                    </div>
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Webhooks Sent:</span>
+                                                        <span class="text-success">10 / 10</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="bg-dark-200 border border-gray-700 rounded p-3 mb-4">
+                                            <div class="flex items-center justify-between mb-3">
+                                                <span class="text-xs font-semibold text-gray-400">WEBHOOK LOGS</span>
+                                                <button class="px-2 py-1 bg-dark-400 text-gray-300 rounded text-xs hover:bg-gray-700">
+                                                    <i class="fa-solid fa-download mr-1"></i>Export
+                                                </button>
+                                            </div>
+                                            <div class="bg-dark-100 rounded p-3 max-h-48 overflow-y-auto">
+                                                <div class="space-y-2 text-xs font-mono">
+                                                    <div class="text-gray-500">
+                                                        <span class="text-gray-600">[14:43:59]</span> 
+                                                        <span class="text-success">POST 200</span> 
+                                                        <span class="text-gray-400">Run 10 completed - payload: 3.2KB</span>
+                                                    </div>
+                                                    <div class="text-gray-500">
+                                                        <span class="text-gray-600">[14:43:06]</span> 
+                                                        <span class="text-success">POST 200</span> 
+                                                        <span class="text-gray-400">Run 9 completed - payload: 3.1KB</span>
+                                                    </div>
+                                                    <div class="text-gray-500">
+                                                        <span class="text-gray-600">[14:42:14]</span> 
+                                                        <span class="text-success">POST 200</span> 
+                                                        <span class="text-gray-400">Run 8 completed - payload: 2.9KB</span>
+                                                    </div>
+                                                    <div class="text-gray-500">
+                                                        <span class="text-gray-600">[14:41:21]</span> 
+                                                        <span class="text-success">POST 200</span> 
+                                                        <span class="text-gray-400">Run 7 completed - payload: 3.0KB</span>
+                                                    </div>
+                                                    <div class="text-gray-500">
+                                                        <span class="text-gray-600">[14:40:28]</span> 
+                                                        <span class="text-success">POST 200</span> 
+                                                        <span class="text-gray-400">Run 6 completed - payload: 2.8KB</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="flex gap-2 flex-wrap">
+                                            <button class="px-3 py-1.5 bg-primary text-white rounded text-xs hover:bg-purple-700 transition-colors">
+                                                <i class="fa-solid fa-rotate-right mr-1.5"></i>Retry Job
+                                            </button>
+                                            <button class="px-3 py-1.5 bg-dark-400 text-gray-300 rounded text-xs hover:bg-gray-700 transition-colors">
+                                                <i class="fa-solid fa-download mr-1.5"></i>Export Results
+                                            </button>
+                                            <button class="px-3 py-1.5 bg-dark-400 text-gray-300 rounded text-xs hover:bg-gray-700 transition-colors">
+                                                <i class="fa-solid fa-copy mr-1.5"></i>Copy ID
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <tr class="border-b border-gray-800 row-expandable" onclick="toggleRow('job4')">
+                                    <td class="px-4 py-3 text-white font-mono text-xs">JOB-2024-D8F4</td>
+                                    <td class="px-4 py-3">
+                                        <span class="status-dot bg-info mr-2"></span>
+                                        <span class="text-info text-xs font-medium">Running</span>
+                                    </td>
+                                    <td class="px-4 py-3 text-gray-300">1 / 3</td>
+                                    <td class="px-4 py-3 text-gray-300">1m 12s</td>
+                                    <td class="px-4 py-3">
+                                        <span class="text-xs text-gray-400 font-mono">https://api.algenta.io/webhook/d8f4</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <button class="px-2 py-1 bg-dark-400 text-gray-300 rounded text-xs hover:bg-gray-700 transition-colors mr-1">
+                                            <i class="fa-solid fa-eye"></i>
+                                        </button>
+                                        <button class="px-2 py-1 bg-danger text-white rounded text-xs hover:bg-red-700 transition-colors">
+                                            <i class="fa-solid fa-stop"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr class="border-b border-gray-800 expanded-content" id="job4">
+                                    <td colspan="6" class="px-4 py-4 bg-dark-300">
+                                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                                            <div class="bg-dark-200 border border-gray-700 rounded p-3">
+                                                <div class="text-xs text-gray-500 mb-2 font-semibold">Job Details</div>
+                                                <div class="space-y-2 text-xs">
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Type:</span>
+                                                        <span class="text-white font-mono">data_export</span>
+                                                    </div>
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Priority:</span>
+                                                        <span class="text-gray-300">Normal</span>
+                                                    </div>
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Created:</span>
+                                                        <span class="text-gray-300">2024-03-21 14:51:45</span>
+                                                    </div>
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Started:</span>
+                                                        <span class="text-gray-300">2024-03-21 14:51:48</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="bg-dark-200 border border-gray-700 rounded p-3">
+                                                <div class="text-xs text-gray-500 mb-2 font-semibold">Progress</div>
+                                                <div class="space-y-3">
+                                                    <div>
+                                                        <div class="flex justify-between mb-1">
+                                                            <span class="text-xs text-gray-400">Run 1 of 3</span>
+                                                            <span class="text-xs text-info">33%</span>
+                                                        </div>
+                                                        <div class="h-2 bg-dark-400 rounded-full overflow-hidden">
+                                                            <div class="h-full bg-info" style="width: 33%;"></div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="text-xs text-gray-400">
+                                                        <div class="flex items-center gap-2">
+                                                            <i class="fa-solid fa-spinner text-info"></i>
+                                                            <span>Run 1: Processing...</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="flex gap-2 flex-wrap">
+                                            <button class="px-3 py-1.5 bg-danger text-white rounded text-xs hover:bg-red-700 transition-colors">
+                                                <i class="fa-solid fa-stop mr-1.5"></i>Stop Job
+                                            </button>
+                                            <button class="px-3 py-1.5 bg-dark-400 text-gray-300 rounded text-xs hover:bg-gray-700 transition-colors">
+                                                <i class="fa-solid fa-copy mr-1.5"></i>Copy ID
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <tr class="border-b border-gray-800 row-expandable" onclick="toggleRow('job5')">
+                                    <td class="px-4 py-3 text-white font-mono text-xs">JOB-2024-E3A2</td>
+                                    <td class="px-4 py-3">
+                                        <span class="status-dot bg-success mr-2"></span>
+                                        <span class="text-success text-xs font-medium">Completed</span>
+                                    </td>
+                                    <td class="px-4 py-3 text-gray-300">5 / 5</td>
+                                    <td class="px-4 py-3 text-gray-300">4m 23s</td>
+                                    <td class="px-4 py-3">
+                                        <span class="text-xs text-gray-400 font-mono">https://api.algenta.io/webhook/e3a2</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <button class="px-2 py-1 bg-dark-400 text-gray-300 rounded text-xs hover:bg-gray-700 transition-colors mr-1">
+                                            <i class="fa-solid fa-eye"></i>
+                                        </button>
+                                        <button class="px-2 py-1 bg-primary text-white rounded text-xs hover:bg-purple-700 transition-colors">
+                                            <i class="fa-solid fa-rotate-right"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr class="border-b border-gray-800 expanded-content" id="job5">
+                                    <td colspan="6" class="px-4 py-4 bg-dark-300">
+                                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                                            <div class="bg-dark-200 border border-gray-700 rounded p-3">
+                                                <div class="text-xs text-gray-500 mb-2 font-semibold">Job Details</div>
+                                                <div class="space-y-2 text-xs">
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Type:</span>
+                                                        <span class="text-white font-mono">optimization_sweep</span>
+                                                    </div>
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Priority:</span>
+                                                        <span class="text-gray-300">Normal</span>
+                                                    </div>
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Created:</span>
+                                                        <span class="text-gray-300">2024-03-21 14:28:14</span>
+                                                    </div>
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Completed:</span>
+                                                        <span class="text-gray-300">2024-03-21 14:32:37</span>
+                                                    </div>
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Success Rate:</span>
+                                                        <span class="text-success font-semibold">100%</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="bg-dark-200 border border-gray-700 rounded p-3">
+                                                <div class="text-xs text-gray-500 mb-2 font-semibold">Execution Summary</div>
+                                                <div class="space-y-2 text-xs">
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Total Runs:</span>
+                                                        <span class="text-white">5</span>
+                                                    </div>
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Avg Duration:</span>
+                                                        <span class="text-white">52.6s</span>
+                                                    </div>
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Data Processed:</span>
+                                                        <span class="text-white">12.4 GB</span>
+                                                    </div>
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Webhooks Sent:</span>
+                                                        <span class="text-success">5 / 5</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="flex gap-2 flex-wrap">
+                                            <button class="px-3 py-1.5 bg-primary text-white rounded text-xs hover:bg-purple-700 transition-colors">
+                                                <i class="fa-solid fa-rotate-right mr-1.5"></i>Retry Job
+                                            </button>
+                                            <button class="px-3 py-1.5 bg-dark-400 text-gray-300 rounded text-xs hover:bg-gray-700 transition-colors">
+                                                <i class="fa-solid fa-download mr-1.5"></i>Export Results
+                                            </button>
+                                            <button class="px-3 py-1.5 bg-dark-400 text-gray-300 rounded text-xs hover:bg-gray-700 transition-colors">
+                                                <i class="fa-solid fa-copy mr-1.5"></i>Copy ID
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <tr class="border-b border-gray-800 row-expandable" onclick="toggleRow('job6')">
+                                    <td class="px-4 py-3 text-white font-mono text-xs">JOB-2024-F1B7</td>
+                                    <td class="px-4 py-3">
+                                        <span class="status-dot bg-primary mr-2"></span>
+                                        <span class="text-primary text-xs font-medium">Queued</span>
+                                    </td>
+                                    <td class="px-4 py-3 text-gray-300">0 / 12</td>
+                                    <td class="px-4 py-3 text-gray-300">-</td>
+                                    <td class="px-4 py-3">
+                                        <span class="text-xs text-gray-400 font-mono">https://api.algenta.io/webhook/f1b7</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <button class="px-2 py-1 bg-dark-400 text-gray-300 rounded text-xs hover:bg-gray-700 transition-colors mr-1">
+                                            <i class="fa-solid fa-eye"></i>
+                                        </button>
+                                        <button class="px-2 py-1 bg-danger text-white rounded text-xs hover:bg-red-700 transition-colors">
+                                            <i class="fa-solid fa-xmark"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr class="border-b border-gray-800 expanded-content" id="job6">
+                                    <td colspan="6" class="px-4 py-4 bg-dark-300">
+                                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                                            <div class="bg-dark-200 border border-gray-700 rounded p-3">
+                                                <div class="text-xs text-gray-500 mb-2 font-semibold">Job Details</div>
+                                                <div class="space-y-2 text-xs">
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Type:</span>
+                                                        <span class="text-white font-mono">parallel_compute</span>
+                                                    </div>
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Priority:</span>
+                                                        <span class="text-gray-300">Low</span>
+                                                    </div>
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Created:</span>
+                                                        <span class="text-gray-300">2024-03-21 14:42:18</span>
+                                                    </div>
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Queue Position:</span>
+                                                        <span class="text-primary font-semibold">8</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="bg-dark-200 border border-primary/30 rounded p-3">
+                                                <div class="flex items-start gap-3">
+                                                    <i class="fa-solid fa-clock text-primary text-lg"></i>
+                                                    <div>
+                                                        <div class="text-xs font-semibold text-primary mb-1">Waiting in Queue</div>
+                                                        <div class="text-xs text-gray-400">This job is scheduled for execution once compute resources become available.</div>
+                                                        <div class="text-xs text-gray-500 mt-2">Estimated start: 2024-03-21 15:18</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="flex gap-2 flex-wrap">
+                                            <button class="px-3 py-1.5 bg-danger text-white rounded text-xs hover:bg-red-700 transition-colors">
+                                                <i class="fa-solid fa-xmark mr-1.5"></i>Cancel Job
+                                            </button>
+                                            <button class="px-3 py-1.5 bg-dark-400 text-gray-300 rounded text-xs hover:bg-gray-700 transition-colors">
+                                                <i class="fa-solid fa-copy mr-1.5"></i>Copy ID
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <tr class="border-b border-gray-800 row-expandable" onclick="toggleRow('job7')">
+                                    <td class="px-4 py-3 text-white font-mono text-xs">JOB-2024-G9C3</td>
+                                    <td class="px-4 py-3">
+                                        <span class="status-dot bg-success mr-2"></span>
+                                        <span class="text-success text-xs font-medium">Completed</span>
+                                    </td>
+                                    <td class="px-4 py-3 text-gray-300">6 / 6</td>
+                                    <td class="px-4 py-3 text-gray-300">5m 12s</td>
+                                    <td class="px-4 py-3">
+                                        <span class="text-xs text-gray-400 font-mono">https://api.algenta.io/webhook/g9c3</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <button class="px-2 py-1 bg-dark-400 text-gray-300 rounded text-xs hover:bg-gray-700 transition-colors mr-1">
+                                            <i class="fa-solid fa-eye"></i>
+                                        </button>
+                                        <button class="px-2 py-1 bg-primary text-white rounded text-xs hover:bg-purple-700 transition-colors">
+                                            <i class="fa-solid fa-rotate-right"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr class="border-b border-gray-800 expanded-content" id="job7">
+                                    <td colspan="6" class="px-4 py-4 bg-dark-300">
+                                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                                            <div class="bg-dark-200 border border-gray-700 rounded p-3">
+                                                <div class="text-xs text-gray-500 mb-2 font-semibold">Job Details</div>
+                                                <div class="space-y-2 text-xs">
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Type:</span>
+                                                        <span class="text-white font-mono">risk_analysis</span>
+                                                    </div>
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Priority:</span>
+                                                        <span class="text-warning">High</span>
+                                                    </div>
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Created:</span>
+                                                        <span class="text-gray-300">2024-03-21 14:18:47</span>
+                                                    </div>
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Completed:</span>
+                                                        <span class="text-gray-300">2024-03-21 14:23:59</span>
+                                                    </div>
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Success Rate:</span>
+                                                        <span class="text-success font-semibold">100%</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="bg-dark-200 border border-gray-700 rounded p-3">
+                                                <div class="text-xs text-gray-500 mb-2 font-semibold">Execution Summary</div>
+                                                <div class="space-y-2 text-xs">
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Total Runs:</span>
+                                                        <span class="text-white">6</span>
+                                                    </div>
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Avg Duration:</span>
+                                                        <span class="text-white">52.0s</span>
+                                                    </div>
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Data Processed:</span>
+                                                        <span class="text-white">15.2 GB</span>
+                                                    </div>
+                                                    <div class="flex justify-between">
+                                                        <span class="text-gray-400">Webhooks Sent:</span>
+                                                        <span class="text-success">6 / 6</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="flex gap-2 flex-wrap">
+                                            <button class="px-3 py-1.5 bg-primary text-white rounded text-xs hover:bg-purple-700 transition-colors">
+                                                <i class="fa-solid fa-rotate-right mr-1.5"></i>Retry Job
+                                            </button>
+                                            <button class="px-3 py-1.5 bg-dark-400 text-gray-300 rounded text-xs hover:bg-gray-700 transition-colors">
+                                                <i class="fa-solid fa-download mr-1.5"></i>Export Results
+                                            </button>
+                                            <button class="px-3 py-1.5 bg-dark-400 text-gray-300 rounded text-xs hover:bg-gray-700 transition-colors">
+                                                <i class="fa-solid fa-copy mr-1.5"></i>Copy ID
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+</div>
+
+<script>
+function toggleRow(rowId) {
+    var row = document.getElementById(rowId);
+    row.classList.toggle('active');
+}
+
+function filterJobs(status) {
+    const tabs = ['all', 'queued', 'running', 'completed', 'failed'];
+    tabs.forEach(tab => {
+        const tabEl = document.getElementById('tab-' + tab);
+        if (tab === status) {
+            tabEl.classList.add('tab-active');
+            tabEl.classList.remove('text-gray-400', 'border-transparent');
+        } else {
+            tabEl.classList.remove('tab-active');
+            tabEl.classList.add('text-gray-400', 'border-transparent');
+        }
+    });
+}
+</script>
+
+</body>
+</html>

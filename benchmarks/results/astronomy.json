@@ -1,0 +1,109 @@
+{
+  "lib": "astronomy",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 12,
+  "overall_speedup_x": 320.9,
+  "total_py_ns": 66040.78,
+  "total_mojo_ns": 205.8,
+  "elapsed_s": 2.16,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "julian_date",
+      "py_ns": 443.825,
+      "mojo_ns": 1.1,
+      "speedup_x": 403.48,
+      "py_result": 1723010.5,
+      "py_error": null
+    },
+    {
+      "function": "modified_julian_date",
+      "py_ns": 165.229,
+      "mojo_ns": 1.1,
+      "speedup_x": 150.21,
+      "py_result": -2400000.0,
+      "py_error": null
+    },
+    {
+      "function": "sidereal_time",
+      "py_ns": 423.754,
+      "mojo_ns": 1.1,
+      "speedup_x": 385.23,
+      "py_result": 4.289088,
+      "py_error": null
+    },
+    {
+      "function": "solar_declination",
+      "py_ns": 425.225,
+      "mojo_ns": 1.1,
+      "speedup_x": 386.57,
+      "py_result": -22.672581,
+      "py_error": null
+    },
+    {
+      "function": "sunrise_hour_angle",
+      "py_ns": 556.821,
+      "mojo_ns": 1.1,
+      "speedup_x": 506.2,
+      "py_result": 90.004364,
+      "py_error": null
+    },
+    {
+      "function": "day_length",
+      "py_ns": 1060.612,
+      "mojo_ns": 1.1,
+      "speedup_x": 964.19,
+      "py_result": 11.972149,
+      "py_error": null
+    },
+    {
+      "function": "parallax_correction",
+      "py_ns": 149.671,
+      "mojo_ns": 1.1,
+      "speedup_x": 136.06,
+      "py_result": 1e-06,
+      "py_error": null
+    },
+    {
+      "function": "kepler_equation",
+      "py_ns": 56301.233,
+      "mojo_ns": 1.2,
+      "speedup_x": 46917.69,
+      "py_result": 2.718282,
+      "py_error": null
+    },
+    {
+      "function": "orbital_period",
+      "py_ns": 161.35,
+      "mojo_ns": 1.7,
+      "speedup_x": 94.91,
+      "py_result": 0.353553,
+      "py_error": null
+    },
+    {
+      "function": "apparent_magnitude",
+      "py_ns": 133.371,
+      "mojo_ns": 1.1,
+      "speedup_x": 121.25,
+      "py_result": -6.00515,
+      "py_error": null
+    },
+    {
+      "function": "distance_from_magnitude",
+      "py_ns": 173.258,
+      "mojo_ns": 1.1,
+      "speedup_x": 157.51,
+      "py_result": 10.0,
+      "py_error": null
+    },
+    {
+      "function": "ecliptic_to_equatorial",
+      "py_ns": 6046.433,
+      "mojo_ns": 193.0,
+      "speedup_x": 31.33,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

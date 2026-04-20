@@ -1,0 +1,109 @@
+{
+  "lib": "nuclear",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 10,
+  "overall_speedup_x": 250.83,
+  "total_py_ns": 2508.31,
+  "total_mojo_ns": 10.0,
+  "elapsed_s": 1.68,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "radioactive_decay",
+      "py_ns": 115.917,
+      "mojo_ns": 1.0,
+      "speedup_x": 115.92,
+      "py_result": 0.3894,
+      "py_error": null
+    },
+    {
+      "function": "half_life_from_lambda",
+      "py_ns": 109.508,
+      "mojo_ns": 1.0,
+      "speedup_x": 109.51,
+      "py_result": 1.386294,
+      "py_error": null
+    },
+    {
+      "function": "lambda_from_half_life",
+      "py_ns": 108.925,
+      "mojo_ns": 1.0,
+      "speedup_x": 108.92,
+      "py_result": 1.386294,
+      "py_error": null
+    },
+    {
+      "function": "activity",
+      "py_ns": 79.325,
+      "mojo_ns": 1.0,
+      "speedup_x": 79.33,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "decay_constant_from_activity",
+      "py_ns": 109.679,
+      "mojo_ns": 1.0,
+      "speedup_x": 109.68,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "binding_energy_per_nucleon",
+      "py_ns": 111.496,
+      "mojo_ns": 1.0,
+      "speedup_x": 111.5,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "mass_defect",
+      "py_ns": 97.446,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "q_value",
+      "py_ns": 123.733,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "neutron_multiplication",
+      "py_ns": 700.4,
+      "mojo_ns": 1.0,
+      "speedup_x": 700.4,
+      "py_result": 0.707107,
+      "py_error": null
+    },
+    {
+      "function": "dose_rate_inverse_square",
+      "py_ns": 125.579,
+      "mojo_ns": 1.0,
+      "speedup_x": 125.58,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "shielding_attenuation",
+      "py_ns": 108.913,
+      "mojo_ns": 1.0,
+      "speedup_x": 108.91,
+      "py_result": 0.3894,
+      "py_error": null
+    },
+    {
+      "function": "critical_mass_estimate",
+      "py_ns": 938.567,
+      "mojo_ns": 1.0,
+      "speedup_x": 938.57,
+      "py_result": 0.125,
+      "py_error": null
+    }
+  ]
+}

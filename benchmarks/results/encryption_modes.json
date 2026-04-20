@@ -1,0 +1,109 @@
+{
+  "lib": "encryption_modes",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 10,
+  "overall_speedup_x": 228.34,
+  "total_py_ns": 2762.95,
+  "total_mojo_ns": 12.1,
+  "elapsed_s": 1.98,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "ecb_block_count",
+      "py_ns": 188.783,
+      "mojo_ns": 1.1,
+      "speedup_x": 171.62,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "cbc_iv_required",
+      "py_ns": 120.533,
+      "mojo_ns": 2.4,
+      "speedup_x": 50.22,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "ctr_nonce_size",
+      "py_ns": 147.425,
+      "mojo_ns": 1.1,
+      "speedup_x": 134.02,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "gcm_tag_length_default",
+      "py_ns": 754.071,
+      "mojo_ns": 1.1,
+      "speedup_x": 685.52,
+      "py_result": 16.0,
+      "py_error": null
+    },
+    {
+      "function": "padding_pkcs7_bytes",
+      "py_ns": 309.842,
+      "mojo_ns": 1.0,
+      "speedup_x": 309.84,
+      "py_result": 5.0,
+      "py_error": null
+    },
+    {
+      "function": "ciphertext_length_cbc",
+      "py_ns": 485.717,
+      "mojo_ns": 1.1,
+      "speedup_x": 441.56,
+      "py_result": 15.0,
+      "py_error": null
+    },
+    {
+      "function": "ciphertext_length_gcm",
+      "py_ns": 139.987,
+      "mojo_ns": 1.1,
+      "speedup_x": 127.26,
+      "py_result": 10.0,
+      "py_error": null
+    },
+    {
+      "function": "aead_overhead",
+      "py_ns": 142.775,
+      "mojo_ns": 1.1,
+      "speedup_x": 129.8,
+      "py_result": 10.0,
+      "py_error": null
+    },
+    {
+      "function": "key_schedule_rounds_aes",
+      "py_ns": 7528.808,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "throughput_estimate",
+      "py_ns": 232.217,
+      "mojo_ns": 1.0,
+      "speedup_x": 232.22,
+      "py_result": 3e-06,
+      "py_error": null
+    },
+    {
+      "function": "parallel_blocks_ctr",
+      "py_ns": 241.6,
+      "mojo_ns": 1.1,
+      "speedup_x": 219.64,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "security_margin_bits",
+      "py_ns": 151.171,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

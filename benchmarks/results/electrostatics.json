@@ -1,0 +1,93 @@
+{
+  "lib": "electrostatics",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 10,
+  "overall_speedup_x": 286.96,
+  "total_py_ns": 3902.6,
+  "total_mojo_ns": 13.6,
+  "elapsed_s": 1.44,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "coulomb_force",
+      "py_ns": 156.583,
+      "mojo_ns": 4.2,
+      "speedup_x": 37.28,
+      "py_result": 8987551792.3,
+      "py_error": null
+    },
+    {
+      "function": "electric_field_point",
+      "py_ns": 118.025,
+      "mojo_ns": 1.0,
+      "speedup_x": 118.02,
+      "py_result": 17975103584.6,
+      "py_error": null
+    },
+    {
+      "function": "electric_potential",
+      "py_ns": 134.275,
+      "mojo_ns": 1.1,
+      "speedup_x": 122.07,
+      "py_result": 8987551792.3,
+      "py_error": null
+    },
+    {
+      "function": "capacitance_parallel_plate",
+      "py_ns": 120.567,
+      "mojo_ns": 1.1,
+      "speedup_x": 109.61,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "energy_stored_capacitor",
+      "py_ns": 98.333,
+      "mojo_ns": 1.1,
+      "speedup_x": 89.39,
+      "py_result": 0.0625,
+      "py_error": null
+    },
+    {
+      "function": "electric_flux",
+      "py_ns": 177.604,
+      "mojo_ns": 1.1,
+      "speedup_x": 161.46,
+      "py_result": 0.219396,
+      "py_error": null
+    },
+    {
+      "function": "surface_charge_density",
+      "py_ns": 1291.813,
+      "mojo_ns": 1.0,
+      "speedup_x": 1291.81,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "dielectric_polarization",
+      "py_ns": 135.283,
+      "mojo_ns": 1.0,
+      "speedup_x": 135.28,
+      "py_result": -0.0,
+      "py_error": null
+    },
+    {
+      "function": "breakdown_voltage",
+      "py_ns": 382.825,
+      "mojo_ns": 1.0,
+      "speedup_x": 382.82,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "image_charge_force",
+      "py_ns": 1287.292,
+      "mojo_ns": 1.0,
+      "speedup_x": 1287.29,
+      "py_result": -2246887948.075,
+      "py_error": null
+    }
+  ]
+}

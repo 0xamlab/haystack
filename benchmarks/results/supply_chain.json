@@ -1,0 +1,109 @@
+{
+  "lib": "supply_chain",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 10,
+  "overall_speedup_x": 361.32,
+  "total_py_ns": 9322.07,
+  "total_mojo_ns": 25.8,
+  "elapsed_s": 2.72,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "lead_time_demand",
+      "py_ns": 154.175,
+      "mojo_ns": 1.0,
+      "speedup_x": 154.17,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "bullwhip_effect",
+      "py_ns": 91.654,
+      "mojo_ns": 1.0,
+      "speedup_x": 91.65,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "forecast_error_mae",
+      "py_ns": 1766.742,
+      "mojo_ns": 6.1,
+      "speedup_x": 289.63,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "forecast_error_mape",
+      "py_ns": 2009.104,
+      "mojo_ns": 5.4,
+      "speedup_x": 372.06,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "forecast_bias",
+      "py_ns": 1527.642,
+      "mojo_ns": 2.3,
+      "speedup_x": 664.19,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "tracking_signal",
+      "py_ns": 797.325,
+      "mojo_ns": 2.7,
+      "speedup_x": 295.31,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "economic_production_qty",
+      "py_ns": 1064.271,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "total_cost_of_ownership",
+      "py_ns": 294.896,
+      "mojo_ns": 1.0,
+      "speedup_x": 294.9,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "service_level_type1",
+      "py_ns": 140.242,
+      "mojo_ns": 1.0,
+      "speedup_x": 140.24,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "fill_rate_type2",
+      "py_ns": 932.129,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "moving_average_forecast",
+      "py_ns": 2138.792,
+      "mojo_ns": 2.7,
+      "speedup_x": 792.15,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "exponential_smoothing_forecast",
+      "py_ns": 401.504,
+      "mojo_ns": 2.6,
+      "speedup_x": 154.42,
+      "py_result": 0.40625,
+      "py_error": null
+    }
+  ]
+}

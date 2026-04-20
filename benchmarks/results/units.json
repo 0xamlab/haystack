@@ -1,0 +1,77 @@
+{
+  "lib": "units",
+  "status": "ok",
+  "n_functions": 8,
+  "n_compared": 8,
+  "overall_speedup_x": 28.28,
+  "total_py_ns": 3589.12,
+  "total_mojo_ns": 126.9,
+  "elapsed_s": 4.04,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "convert_length",
+      "py_ns": 319.454,
+      "mojo_ns": 32.8,
+      "speedup_x": 9.74,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "convert_mass",
+      "py_ns": 344.296,
+      "mojo_ns": 14.2,
+      "speedup_x": 24.25,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "convert_temperature",
+      "py_ns": 328.95,
+      "mojo_ns": 1.3,
+      "speedup_x": 253.04,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "convert_time",
+      "py_ns": 542.796,
+      "mojo_ns": 30.6,
+      "speedup_x": 17.74,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "convert_area",
+      "py_ns": 399.129,
+      "mojo_ns": 13.9,
+      "speedup_x": 28.71,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "convert_volume",
+      "py_ns": 698.954,
+      "mojo_ns": 12.2,
+      "speedup_x": 57.29,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "convert_speed",
+      "py_ns": 364.483,
+      "mojo_ns": 14.7,
+      "speedup_x": 24.79,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "convert_data",
+      "py_ns": 591.054,
+      "mojo_ns": 7.2,
+      "speedup_x": 82.09,
+      "py_result": 0.5,
+      "py_error": null
+    }
+  ]
+}

@@ -1,0 +1,93 @@
+{
+  "lib": "distribution_fit",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 10,
+  "overall_speedup_x": 9.81,
+  "total_py_ns": 53274.3,
+  "total_mojo_ns": 5428.9,
+  "elapsed_s": 2.94,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "fit_normal",
+      "py_ns": 3301.675,
+      "mojo_ns": 346.0,
+      "speedup_x": 9.54,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "fit_exponential",
+      "py_ns": 290.971,
+      "mojo_ns": 9.5,
+      "speedup_x": 30.63,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "fit_uniform",
+      "py_ns": 1180.363,
+      "mojo_ns": 371.8,
+      "speedup_x": 3.17,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "fit_weibull",
+      "py_ns": 3650.392,
+      "mojo_ns": 306.9,
+      "speedup_x": 11.89,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "log_likelihood_normal",
+      "py_ns": 2706.125,
+      "mojo_ns": 2.4,
+      "speedup_x": 1127.55,
+      "py_result": -1.328957,
+      "py_error": null
+    },
+    {
+      "function": "log_likelihood_exponential",
+      "py_ns": 591.117,
+      "mojo_ns": 2.7,
+      "speedup_x": 218.93,
+      "py_result": -4.715736,
+      "py_error": null
+    },
+    {
+      "function": "aic",
+      "py_ns": 158.417,
+      "mojo_ns": 1.0,
+      "speedup_x": 158.42,
+      "py_result": 9.0,
+      "py_error": null
+    },
+    {
+      "function": "bic",
+      "py_ns": 871.65,
+      "mojo_ns": 1.0,
+      "speedup_x": 871.65,
+      "py_result": 7.04719,
+      "py_error": null
+    },
+    {
+      "function": "best_fit",
+      "py_ns": 26902.6,
+      "mojo_ns": 439.5,
+      "speedup_x": 61.21,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "qq_residuals",
+      "py_ns": 13620.987,
+      "mojo_ns": 3948.1,
+      "speedup_x": 3.45,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

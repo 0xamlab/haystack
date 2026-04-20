@@ -1,0 +1,117 @@
+{
+  "lib": "linalg",
+  "status": "ok",
+  "n_functions": 13,
+  "n_compared": 13,
+  "overall_speedup_x": 14.58,
+  "total_py_ns": 81136.51,
+  "total_mojo_ns": 5566.4,
+  "elapsed_s": 2.31,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "mat_zeros",
+      "py_ns": 471.079,
+      "mojo_ns": 987.7,
+      "speedup_x": 0.48,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "mat_identity",
+      "py_ns": 856.588,
+      "mojo_ns": 560.0,
+      "speedup_x": 1.53,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "mat_from_list",
+      "py_ns": 1136.625,
+      "mojo_ns": 403.4,
+      "speedup_x": 2.82,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "mat_add",
+      "py_ns": 835.404,
+      "mojo_ns": 416.7,
+      "speedup_x": 2.0,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "mat_sub",
+      "py_ns": 1300.358,
+      "mojo_ns": 438.6,
+      "speedup_x": 2.96,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "mat_scale",
+      "py_ns": 869.925,
+      "mojo_ns": 323.9,
+      "speedup_x": 2.69,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "mat_transpose",
+      "py_ns": 1738.088,
+      "mojo_ns": 323.3,
+      "speedup_x": 5.38,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "mat_mul",
+      "py_ns": 7471.496,
+      "mojo_ns": 332.9,
+      "speedup_x": 22.44,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "mat_det",
+      "py_ns": 1289.967,
+      "mojo_ns": 1.2,
+      "speedup_x": 1074.97,
+      "py_result": 8.0,
+      "py_error": null
+    },
+    {
+      "function": "mat_inv",
+      "py_ns": 64222.767,
+      "mojo_ns": 1575.4,
+      "speedup_x": 40.77,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "vec_dot",
+      "py_ns": 293.467,
+      "mojo_ns": 2.7,
+      "speedup_x": 108.69,
+      "py_result": 1.35,
+      "py_error": null
+    },
+    {
+      "function": "vec_norm",
+      "py_ns": 323.742,
+      "mojo_ns": 2.9,
+      "speedup_x": 111.64,
+      "py_result": 1.161895,
+      "py_error": null
+    },
+    {
+      "function": "vec_cross",
+      "py_ns": 327.008,
+      "mojo_ns": 197.7,
+      "speedup_x": 1.65,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

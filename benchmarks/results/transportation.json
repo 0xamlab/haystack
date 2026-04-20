@@ -1,0 +1,109 @@
+{
+  "lib": "transportation",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 11,
+  "overall_speedup_x": 192.63,
+  "total_py_ns": 2138.17,
+  "total_mojo_ns": 11.1,
+  "elapsed_s": 2.34,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "level_of_service_density",
+      "py_ns": 271.35,
+      "mojo_ns": 1.0,
+      "speedup_x": 271.35,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "highway_capacity",
+      "py_ns": 204.842,
+      "mojo_ns": 1.0,
+      "speedup_x": 204.84,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "travel_time",
+      "py_ns": 155.217,
+      "mojo_ns": 1.0,
+      "speedup_x": 155.22,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "delay_at_signal",
+      "py_ns": 367.029,
+      "mojo_ns": 1.1,
+      "speedup_x": 333.66,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "headway",
+      "py_ns": 194.942,
+      "mojo_ns": 1.0,
+      "speedup_x": 194.94,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "stopping_distance",
+      "py_ns": 145.158,
+      "mojo_ns": 1.0,
+      "speedup_x": 145.16,
+      "py_result": 0.262742,
+      "py_error": null
+    },
+    {
+      "function": "fuel_consumption_rate",
+      "py_ns": 88.104,
+      "mojo_ns": 1.0,
+      "speedup_x": 88.1,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "passenger_car_equivalent",
+      "py_ns": 76.004,
+      "mojo_ns": 1.0,
+      "speedup_x": 76.0,
+      "py_result": 0.75,
+      "py_error": null
+    },
+    {
+      "function": "intersection_capacity",
+      "py_ns": 134.433,
+      "mojo_ns": 1.0,
+      "speedup_x": 134.43,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "queue_length_estimate",
+      "py_ns": 219.0,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "vehicle_operating_cost",
+      "py_ns": 233.104,
+      "mojo_ns": 1.0,
+      "speedup_x": 233.1,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "crash_rate",
+      "py_ns": 267.983,
+      "mojo_ns": 1.0,
+      "speedup_x": 267.98,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

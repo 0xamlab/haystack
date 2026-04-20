@@ -1,0 +1,109 @@
+{
+  "lib": "quantum_computing",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 11,
+  "overall_speedup_x": 145.94,
+  "total_py_ns": 1722.11,
+  "total_mojo_ns": 11.8,
+  "elapsed_s": 1.71,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "qubit_state_probability",
+      "py_ns": 91.058,
+      "mojo_ns": 1.0,
+      "speedup_x": 91.06,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "measurement_probability_0",
+      "py_ns": 95.979,
+      "mojo_ns": 1.0,
+      "speedup_x": 95.98,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "measurement_probability_1",
+      "py_ns": 68.958,
+      "mojo_ns": 1.0,
+      "speedup_x": 68.96,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "bell_state_fidelity",
+      "py_ns": 87.533,
+      "mojo_ns": 1.0,
+      "speedup_x": 87.53,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "gate_error_rate",
+      "py_ns": 73.721,
+      "mojo_ns": 1.0,
+      "speedup_x": 73.72,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "circuit_depth_error",
+      "py_ns": 96.804,
+      "mojo_ns": 1.0,
+      "speedup_x": 96.8,
+      "py_result": 0.707107,
+      "py_error": null
+    },
+    {
+      "function": "logical_qubit_overhead",
+      "py_ns": 142.175,
+      "mojo_ns": 1.0,
+      "speedup_x": 142.18,
+      "py_result": 81.0,
+      "py_error": null
+    },
+    {
+      "function": "decoherence_time_ratio",
+      "py_ns": 217.967,
+      "mojo_ns": 1.0,
+      "speedup_x": 217.97,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "quantum_volume",
+      "py_ns": 268.483,
+      "mojo_ns": 1.7,
+      "speedup_x": 157.93,
+      "py_result": 32.0,
+      "py_error": null
+    },
+    {
+      "function": "grover_iterations",
+      "py_ns": 264.025,
+      "mojo_ns": 1.0,
+      "speedup_x": 264.03,
+      "py_result": 0.55536,
+      "py_error": null
+    },
+    {
+      "function": "shor_qubits_needed",
+      "py_ns": 315.408,
+      "mojo_ns": 1.1,
+      "speedup_x": 286.73,
+      "py_result": 13.0,
+      "py_error": null
+    },
+    {
+      "function": "error_correction_threshold",
+      "py_ns": 134.737,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

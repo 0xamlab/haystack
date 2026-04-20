@@ -1,0 +1,61 @@
+{
+  "lib": "ml_preprocessing",
+  "status": "ok",
+  "n_functions": 6,
+  "n_compared": 6,
+  "overall_speedup_x": 5.9,
+  "total_py_ns": 90744.4,
+  "total_mojo_ns": 15377.3,
+  "elapsed_s": 5.76,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "normalize_minmax",
+      "py_ns": 5025.704,
+      "mojo_ns": 349.5,
+      "speedup_x": 14.38,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "normalize_zscore",
+      "py_ns": 7621.233,
+      "mojo_ns": 413.2,
+      "speedup_x": 18.44,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "normalize_robust",
+      "py_ns": 34078.412,
+      "mojo_ns": 1449.8,
+      "speedup_x": 23.51,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "one_hot_encode",
+      "py_ns": 13607.95,
+      "mojo_ns": 1916.7,
+      "speedup_x": 7.1,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "polynomial_features",
+      "py_ns": 20153.513,
+      "mojo_ns": 9959.7,
+      "speedup_x": 2.02,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "train_test_split",
+      "py_ns": 10257.592,
+      "mojo_ns": 1288.4,
+      "speedup_x": 7.96,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

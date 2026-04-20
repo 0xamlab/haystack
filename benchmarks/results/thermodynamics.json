@@ -1,0 +1,101 @@
+{
+  "lib": "thermodynamics",
+  "status": "ok",
+  "n_functions": 11,
+  "n_compared": 9,
+  "overall_speedup_x": 243.31,
+  "total_py_ns": 3162.99,
+  "total_mojo_ns": 13.0,
+  "elapsed_s": 4.41,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "ideal_gas_pressure",
+      "py_ns": 651.05,
+      "mojo_ns": 1.2,
+      "speedup_x": 542.54,
+      "py_result": 4.157,
+      "py_error": null
+    },
+    {
+      "function": "ideal_gas_volume",
+      "py_ns": 404.738,
+      "mojo_ns": 1.3,
+      "speedup_x": 311.34,
+      "py_result": 4.157,
+      "py_error": null
+    },
+    {
+      "function": "carnot_efficiency",
+      "py_ns": 208.254,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "entropy_change",
+      "py_ns": 101.633,
+      "mojo_ns": 1.3,
+      "speedup_x": 78.18,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "heat_capacity",
+      "py_ns": 163.446,
+      "mojo_ns": 1.2,
+      "speedup_x": 136.2,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "adiabatic_process",
+      "py_ns": 266.925,
+      "mojo_ns": 1.2,
+      "speedup_x": 222.44,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "work_isothermal",
+      "py_ns": 1106.637,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "stefan_boltzmann",
+      "py_ns": 507.429,
+      "mojo_ns": 3.0,
+      "speedup_x": 169.14,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "thermal_conductivity_flux",
+      "py_ns": 178.771,
+      "mojo_ns": 1.3,
+      "speedup_x": 137.52,
+      "py_result": -0.25,
+      "py_error": null
+    },
+    {
+      "function": "gibbs_free_energy",
+      "py_ns": 92.004,
+      "mojo_ns": 1.3,
+      "speedup_x": 70.77,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "clausius_clapeyron",
+      "py_ns": 796.996,
+      "mojo_ns": 1.2,
+      "speedup_x": 664.16,
+      "py_result": 0.5,
+      "py_error": null
+    }
+  ]
+}

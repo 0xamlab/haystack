@@ -1,0 +1,58 @@
+"""test_accounting.mojo — auto-generated tests for accounting library."""
+from std.math import isnan, isinf
+from accounting import straight_line_depreciation, declining_balance, sum_of_years_digits, future_value, present_value_single, gross_profit_margin, net_profit_margin, current_ratio, debt_to_equity, return_on_equity, break_even_units, compound_annual_growth
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_straight_line_depreciation = straight_line_depreciation(0.5, 0.5, 5)
+    if is_finite(_v_straight_line_depreciation): passed += 1; print("  ✅ accounting::straight_line_depreciation =", _v_straight_line_depreciation)
+    else: failed += 1; print("  ❌ accounting::straight_line_depreciation → non-finite:", _v_straight_line_depreciation)
+    var _v_declining_balance = declining_balance(0.5, 0.5, 5)
+    if is_finite(_v_declining_balance): passed += 1; print("  ✅ accounting::declining_balance =", _v_declining_balance)
+    else: failed += 1; print("  ❌ accounting::declining_balance → non-finite:", _v_declining_balance)
+    var _v_sum_of_years_digits = sum_of_years_digits(0.5, 0.5, 5, 5)
+    if is_finite(_v_sum_of_years_digits): passed += 1; print("  ✅ accounting::sum_of_years_digits =", _v_sum_of_years_digits)
+    else: failed += 1; print("  ❌ accounting::sum_of_years_digits → non-finite:", _v_sum_of_years_digits)
+    var _v_future_value = future_value(0.5, 0.5, 5)
+    if is_finite(_v_future_value): passed += 1; print("  ✅ accounting::future_value =", _v_future_value)
+    else: failed += 1; print("  ❌ accounting::future_value → non-finite:", _v_future_value)
+    var _v_present_value_single = present_value_single(0.5, 0.5, 5)
+    if is_finite(_v_present_value_single): passed += 1; print("  ✅ accounting::present_value_single =", _v_present_value_single)
+    else: failed += 1; print("  ❌ accounting::present_value_single → non-finite:", _v_present_value_single)
+    var _v_gross_profit_margin = gross_profit_margin(0.5, 0.5)
+    if is_finite(_v_gross_profit_margin): passed += 1; print("  ✅ accounting::gross_profit_margin =", _v_gross_profit_margin)
+    else: failed += 1; print("  ❌ accounting::gross_profit_margin → non-finite:", _v_gross_profit_margin)
+    var _v_net_profit_margin = net_profit_margin(0.5, 0.5)
+    if is_finite(_v_net_profit_margin): passed += 1; print("  ✅ accounting::net_profit_margin =", _v_net_profit_margin)
+    else: failed += 1; print("  ❌ accounting::net_profit_margin → non-finite:", _v_net_profit_margin)
+    var _v_current_ratio = current_ratio(0.5, 0.5)
+    if is_finite(_v_current_ratio): passed += 1; print("  ✅ accounting::current_ratio =", _v_current_ratio)
+    else: failed += 1; print("  ❌ accounting::current_ratio → non-finite:", _v_current_ratio)
+    var _v_debt_to_equity = debt_to_equity(0.5, 0.5)
+    if is_finite(_v_debt_to_equity): passed += 1; print("  ✅ accounting::debt_to_equity =", _v_debt_to_equity)
+    else: failed += 1; print("  ❌ accounting::debt_to_equity → non-finite:", _v_debt_to_equity)
+    var _v_return_on_equity = return_on_equity(0.5, 0.5)
+    if is_finite(_v_return_on_equity): passed += 1; print("  ✅ accounting::return_on_equity =", _v_return_on_equity)
+    else: failed += 1; print("  ❌ accounting::return_on_equity → non-finite:", _v_return_on_equity)
+    var _v_break_even_units = break_even_units(0.5, 0.5, 0.5)
+    if is_finite(_v_break_even_units): passed += 1; print("  ✅ accounting::break_even_units =", _v_break_even_units)
+    else: failed += 1; print("  ❌ accounting::break_even_units → non-finite:", _v_break_even_units)
+    var _v_compound_annual_growth = compound_annual_growth(0.5, 0.5, 5)
+    if is_finite(_v_compound_annual_growth): passed += 1; print("  ✅ accounting::compound_annual_growth =", _v_compound_annual_growth)
+    else: failed += 1; print("  ❌ accounting::compound_annual_growth → non-finite:", _v_compound_annual_growth)
+
+    print("  [accounting] Passed:", passed, "Failed:", failed)

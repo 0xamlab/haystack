@@ -1,0 +1,16 @@
+filename,rows,columns,numeric_cols,parse_time_ms,map_time_ms,sim_time_ms,total_time_ms,status,rows_per_sec
+bookings_new.csv,17719,52,11,326.46,0,0,326.46,parsed,54277
+pos_new.csv,16730,147,6,765.85,0,0,765.85,parsed,21845
+quotes_new.csv,45237,80,19,1332.08,0,0,1332.08,parsed,33960
+Available_Inventory.csv,5820,244,68,618.56,0,0,618.56,parsed,9409
+Backlog.csv,1535,39,15,20.75,2.35,5.76,29.16,simulated,73991
+Bookings.csv,12558,51,11,220.21,0,0,220.21,parsed,57028
+POS.csv,12504,144,5,588.55,0,0,588.55,parsed,21245
+OPO.csv,1139,41,18,15.32,2.28,5.94,23.71,simulated,74357
+Consolidated_Table.csv,7066,12,0,28.48,0,0,28.48,parsed,248094
+Final_Merged_Tables.csv,7034,12,4,35.68,0,0,35.68,parsed,197122
+Unique_POS_Recent_Stats.csv,1677,6,1,4.75,0.3,7.04,11.98,simulated,352718
+Unique_Quotes_Recent_Stats.csv,1676,144,5,72.39,1.73,5.19,79.56,simulated,23152
+PART_NUMBER_Anomalies.csv,47,145,60,2.31,0.2,6.2,8.62,simulated,20381
+Master_Merged_File.csv,27454,12,1,130.92,0,0,130.92,parsed,209700
+Final_Table_Quality_Report.csv,12,8,3,0.12,0,0,0.12,parsed,101552

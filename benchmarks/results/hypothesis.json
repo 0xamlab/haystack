@@ -1,0 +1,61 @@
+{
+  "lib": "hypothesis",
+  "status": "ok",
+  "n_functions": 6,
+  "n_compared": 6,
+  "overall_speedup_x": 9.43,
+  "total_py_ns": 75742.81,
+  "total_mojo_ns": 8030.8,
+  "elapsed_s": 2.51,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "rank_data",
+      "py_ns": 4459.921,
+      "mojo_ns": 792.1,
+      "speedup_x": 5.63,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "mann_whitney_u",
+      "py_ns": 21780.187,
+      "mojo_ns": 2520.2,
+      "speedup_x": 8.64,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "wilcoxon_signed_rank",
+      "py_ns": 1197.546,
+      "mojo_ns": 475.8,
+      "speedup_x": 2.52,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "kruskal_wallis",
+      "py_ns": 28467.442,
+      "mojo_ns": 3539.9,
+      "speedup_x": 8.04,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "fisher_exact_2x2",
+      "py_ns": 19335.642,
+      "mojo_ns": 512.5,
+      "speedup_x": 37.73,
+      "py_result": 0.343718,
+      "py_error": null
+    },
+    {
+      "function": "sign_test",
+      "py_ns": 502.071,
+      "mojo_ns": 190.3,
+      "speedup_x": 2.64,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

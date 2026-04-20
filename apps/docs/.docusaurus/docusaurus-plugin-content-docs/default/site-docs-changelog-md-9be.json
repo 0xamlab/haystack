@@ -1,0 +1,23 @@
+{
+  "id": "changelog",
+  "title": "Changelog",
+  "description": "v1.0.0 — 2026-03 (Current)",
+  "source": "@site/docs/changelog.md",
+  "sourceDirName": ".",
+  "slug": "/changelog",
+  "permalink": "/changelog",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/decisionengine/decision-engine/tree/main/apps/docs/docs/changelog.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 99,
+  "frontMatter": {
+    "sidebar_position": 99
+  },
+  "sidebar": "docsSidebar",
+  "previous": {
+    "title": "Self-Hosting",
+    "permalink": "/self-hosting"
+  }
+}

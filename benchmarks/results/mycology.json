@@ -1,0 +1,93 @@
+{
+  "lib": "mycology",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 7,
+  "overall_speedup_x": 105.1,
+  "total_py_ns": 714.69,
+  "total_mojo_ns": 6.8,
+  "elapsed_s": 1.57,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "spore_dispersal_distance",
+      "py_ns": 96.267,
+      "mojo_ns": 1.0,
+      "speedup_x": 96.27,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "mycelial_growth_rate",
+      "py_ns": 126.675,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "fungal_biomass",
+      "py_ns": 88.987,
+      "mojo_ns": 1.0,
+      "speedup_x": 88.99,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "sporulation_index",
+      "py_ns": 95.013,
+      "mojo_ns": 1.0,
+      "speedup_x": 95.01,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "infection_efficiency",
+      "py_ns": 95.137,
+      "mojo_ns": 1.0,
+      "speedup_x": 95.14,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "latent_period",
+      "py_ns": 93.242,
+      "mojo_ns": 0.9,
+      "speedup_x": 103.6,
+      "py_result": 1000000000.0,
+      "py_error": null
+    },
+    {
+      "function": "epidemic_progress_rate",
+      "py_ns": 105.825,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "spore_germination_prob",
+      "py_ns": 167.587,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "colony_diameter",
+      "py_ns": 156.771,
+      "mojo_ns": 0.9,
+      "speedup_x": 174.19,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "competitive_exclusion_index",
+      "py_ns": 89.275,
+      "mojo_ns": 1.0,
+      "speedup_x": 89.27,
+      "py_result": 0.25,
+      "py_error": null
+    }
+  ]
+}

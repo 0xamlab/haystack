@@ -1,0 +1,109 @@
+{
+  "lib": "ceramics",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 9,
+  "overall_speedup_x": 350.79,
+  "total_py_ns": 3858.64,
+  "total_mojo_ns": 11.0,
+  "elapsed_s": 1.77,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "weibull_failure_probability",
+      "py_ns": 360.858,
+      "mojo_ns": 1.2,
+      "speedup_x": 300.72,
+      "py_result": 0.632121,
+      "py_error": null
+    },
+    {
+      "function": "weibull_characteristic_strength",
+      "py_ns": 84.125,
+      "mojo_ns": 1.2,
+      "speedup_x": 70.1,
+      "py_result": 0.55,
+      "py_error": null
+    },
+    {
+      "function": "thermal_shock_resistance",
+      "py_ns": 859.263,
+      "mojo_ns": 1.3,
+      "speedup_x": 660.97,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "youngs_modulus_porosity",
+      "py_ns": 276.221,
+      "mojo_ns": 1.2,
+      "speedup_x": 230.18,
+      "py_result": 0.3894,
+      "py_error": null
+    },
+    {
+      "function": "sintering_shrinkage",
+      "py_ns": 1394.158,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "density_from_archimedes",
+      "py_ns": 105.563,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "relative_density",
+      "py_ns": 106.054,
+      "mojo_ns": 1.2,
+      "speedup_x": 88.38,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "porosity_from_density",
+      "py_ns": 104.346,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "fracture_toughness_indentation",
+      "py_ns": 843.958,
+      "mojo_ns": 1.2,
+      "speedup_x": 703.3,
+      "py_result": 0.707107,
+      "py_error": null
+    },
+    {
+      "function": "dielectric_constant_mixture",
+      "py_ns": 135.913,
+      "mojo_ns": 1.3,
+      "speedup_x": 104.55,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "coefficient_of_thermal_expansion",
+      "py_ns": 235.604,
+      "mojo_ns": 1.2,
+      "speedup_x": 196.34,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "glass_transition_estimate",
+      "py_ns": 956.646,
+      "mojo_ns": 1.2,
+      "speedup_x": 797.2,
+      "py_result": 0.333333,
+      "py_error": null
+    }
+  ]
+}

@@ -1,0 +1,109 @@
+{
+  "lib": "compiler_theory",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 10,
+  "overall_speedup_x": 807.71,
+  "total_py_ns": 9288.69,
+  "total_mojo_ns": 11.5,
+  "elapsed_s": 2.14,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "is_terminal",
+      "py_ns": 2092.742,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "is_nonterminal",
+      "py_ns": 254.975,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "first_follow_conflict",
+      "py_ns": 241.746,
+      "mojo_ns": 1.0,
+      "speedup_x": 241.75,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "lr_shift_reduce_conflict",
+      "py_ns": 3801.638,
+      "mojo_ns": 1.0,
+      "speedup_x": 3801.64,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "reduce_reduce_conflict",
+      "py_ns": 189.129,
+      "mojo_ns": 1.0,
+      "speedup_x": 189.13,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "grammar_is_ambiguous",
+      "py_ns": 155.95,
+      "mojo_ns": 1.0,
+      "speedup_x": 155.95,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "ast_depth",
+      "py_ns": 245.546,
+      "mojo_ns": 1.0,
+      "speedup_x": 245.55,
+      "py_result": 6.0,
+      "py_error": null
+    },
+    {
+      "function": "ast_node_count",
+      "py_ns": 162.796,
+      "mojo_ns": 1.0,
+      "speedup_x": 162.8,
+      "py_result": 11.0,
+      "py_error": null
+    },
+    {
+      "function": "register_pressure",
+      "py_ns": 174.463,
+      "mojo_ns": 1.0,
+      "speedup_x": 174.46,
+      "py_result": 5.0,
+      "py_error": null
+    },
+    {
+      "function": "instruction_latency_sum",
+      "py_ns": 2076.954,
+      "mojo_ns": 2.4,
+      "speedup_x": 865.4,
+      "py_result": 10.0,
+      "py_error": null
+    },
+    {
+      "function": "basic_block_throughput",
+      "py_ns": 137.042,
+      "mojo_ns": 1.1,
+      "speedup_x": 124.58,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "loop_unroll_benefit",
+      "py_ns": 2103.429,
+      "mojo_ns": 1.0,
+      "speedup_x": 2103.43,
+      "py_result": 20.0,
+      "py_error": null
+    }
+  ]
+}

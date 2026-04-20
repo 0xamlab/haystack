@@ -1,0 +1,109 @@
+{
+  "lib": "matrix_ops",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 11,
+  "overall_speedup_x": 2.68,
+  "total_py_ns": 189098.73,
+  "total_mojo_ns": 70507.6,
+  "elapsed_s": 5.12,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "kronecker_product",
+      "py_ns": 29420.629,
+      "mojo_ns": 12943.7,
+      "speedup_x": 2.27,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "hadamard_product",
+      "py_ns": 5374.221,
+      "mojo_ns": 5823.7,
+      "speedup_x": 0.92,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "matrix_power",
+      "py_ns": 36481.071,
+      "mojo_ns": 14292.4,
+      "speedup_x": 2.55,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "outer_product",
+      "py_ns": 4830.629,
+      "mojo_ns": 5516.2,
+      "speedup_x": 0.88,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "matrix_exp_approx",
+      "py_ns": 63038.083,
+      "mojo_ns": 20851.8,
+      "speedup_x": 3.02,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "vec",
+      "py_ns": 861.325,
+      "mojo_ns": 2123.2,
+      "speedup_x": 0.41,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "unvec",
+      "py_ns": null,
+      "mojo_ns": 3006.5,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list index out of range"
+    },
+    {
+      "function": "matrix_norm_1",
+      "py_ns": 3481.1,
+      "mojo_ns": 1085.1,
+      "speedup_x": 3.21,
+      "py_result": 1.2,
+      "py_error": null
+    },
+    {
+      "function": "matrix_norm_inf",
+      "py_ns": 1008.217,
+      "mojo_ns": 649.5,
+      "speedup_x": 1.55,
+      "py_result": 1.8,
+      "py_error": null
+    },
+    {
+      "function": "commutator",
+      "py_ns": 20870.775,
+      "mojo_ns": 5167.0,
+      "speedup_x": 4.04,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "is_orthogonal",
+      "py_ns": 832.771,
+      "mojo_ns": 277.5,
+      "speedup_x": 3.0,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "gram_schmidt",
+      "py_ns": 22899.912,
+      "mojo_ns": 1777.5,
+      "speedup_x": 12.88,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

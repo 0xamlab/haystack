@@ -1,0 +1,93 @@
+{
+  "lib": "chromatography",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 8,
+  "overall_speedup_x": 140.95,
+  "total_py_ns": 1099.38,
+  "total_mojo_ns": 7.8,
+  "elapsed_s": 1.37,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "retention_factor",
+      "py_ns": 114.633,
+      "mojo_ns": 0.1,
+      "speedup_x": 1146.33,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "selectivity_factor",
+      "py_ns": 218.35,
+      "mojo_ns": 1.1,
+      "speedup_x": 198.5,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "plate_count",
+      "py_ns": 106.538,
+      "mojo_ns": 1.1,
+      "speedup_x": 96.85,
+      "py_result": 16.0,
+      "py_error": null
+    },
+    {
+      "function": "plate_height",
+      "py_ns": 175.337,
+      "mojo_ns": 1.1,
+      "speedup_x": 159.4,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "resolution",
+      "py_ns": 150.871,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "van_deemter_h",
+      "py_ns": 204.613,
+      "mojo_ns": 1.1,
+      "speedup_x": 186.01,
+      "py_result": 1.75,
+      "py_error": null
+    },
+    {
+      "function": "peak_capacity",
+      "py_ns": 81.013,
+      "mojo_ns": 1.1,
+      "speedup_x": 73.65,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "separation_number",
+      "py_ns": 114.854,
+      "mojo_ns": 1.1,
+      "speedup_x": 104.41,
+      "py_result": -1.0,
+      "py_error": null
+    },
+    {
+      "function": "retention_index_kovats",
+      "py_ns": 81.567,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "mobile_phase_velocity",
+      "py_ns": 84.042,
+      "mojo_ns": 1.1,
+      "speedup_x": 76.4,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

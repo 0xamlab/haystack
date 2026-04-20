@@ -1,0 +1,58 @@
+"""test_archaeology.mojo — auto-generated tests for archaeology library."""
+from std.math import isnan, isinf
+from archaeology import radiocarbon_age_bp, calibrated_date_linear, stratigraphy_depth_to_age_linear, artifact_density, site_area_from_scatter, ceramic_seriation_similarity, dating_uncertainty_combined, occupation_span, discard_rate, surveyed_area_coverage, excavation_volume, artifact_diversity_index
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_radiocarbon_age_bp = radiocarbon_age_bp(0.5, 0.5)
+    if is_finite(_v_radiocarbon_age_bp): passed += 1; print("  ✅ archaeology::radiocarbon_age_bp =", _v_radiocarbon_age_bp)
+    else: failed += 1; print("  ❌ archaeology::radiocarbon_age_bp → non-finite:", _v_radiocarbon_age_bp)
+    var _v_calibrated_date_linear = calibrated_date_linear(0.5, 0.5)
+    if is_finite(_v_calibrated_date_linear): passed += 1; print("  ✅ archaeology::calibrated_date_linear =", _v_calibrated_date_linear)
+    else: failed += 1; print("  ❌ archaeology::calibrated_date_linear → non-finite:", _v_calibrated_date_linear)
+    var _v_stratigraphy_depth_to_age_linear = stratigraphy_depth_to_age_linear(0.5, 0.5)
+    if is_finite(_v_stratigraphy_depth_to_age_linear): passed += 1; print("  ✅ archaeology::stratigraphy_depth_to_age_linear =", _v_stratigraphy_depth_to_age_linear)
+    else: failed += 1; print("  ❌ archaeology::stratigraphy_depth_to_age_linear → non-finite:", _v_stratigraphy_depth_to_age_linear)
+    var _v_artifact_density = artifact_density(0.5, 0.5)
+    if is_finite(_v_artifact_density): passed += 1; print("  ✅ archaeology::artifact_density =", _v_artifact_density)
+    else: failed += 1; print("  ❌ archaeology::artifact_density → non-finite:", _v_artifact_density)
+    var _v_site_area_from_scatter = site_area_from_scatter(0.5, 0.5)
+    if is_finite(_v_site_area_from_scatter): passed += 1; print("  ✅ archaeology::site_area_from_scatter =", _v_site_area_from_scatter)
+    else: failed += 1; print("  ❌ archaeology::site_area_from_scatter → non-finite:", _v_site_area_from_scatter)
+    var _v_ceramic_seriation_similarity = ceramic_seriation_similarity(0.5, 0.5, 0.5)
+    if is_finite(_v_ceramic_seriation_similarity): passed += 1; print("  ✅ archaeology::ceramic_seriation_similarity =", _v_ceramic_seriation_similarity)
+    else: failed += 1; print("  ❌ archaeology::ceramic_seriation_similarity → non-finite:", _v_ceramic_seriation_similarity)
+    var _v_dating_uncertainty_combined = dating_uncertainty_combined(0.5, 0.5)
+    if is_finite(_v_dating_uncertainty_combined): passed += 1; print("  ✅ archaeology::dating_uncertainty_combined =", _v_dating_uncertainty_combined)
+    else: failed += 1; print("  ❌ archaeology::dating_uncertainty_combined → non-finite:", _v_dating_uncertainty_combined)
+    var _v_occupation_span = occupation_span(0.5, 0.5)
+    if is_finite(_v_occupation_span): passed += 1; print("  ✅ archaeology::occupation_span =", _v_occupation_span)
+    else: failed += 1; print("  ❌ archaeology::occupation_span → non-finite:", _v_occupation_span)
+    var _v_discard_rate = discard_rate(0.5, 0.5, 0.5)
+    if is_finite(_v_discard_rate): passed += 1; print("  ✅ archaeology::discard_rate =", _v_discard_rate)
+    else: failed += 1; print("  ❌ archaeology::discard_rate → non-finite:", _v_discard_rate)
+    var _v_surveyed_area_coverage = surveyed_area_coverage(0.5, 0.5)
+    if is_finite(_v_surveyed_area_coverage): passed += 1; print("  ✅ archaeology::surveyed_area_coverage =", _v_surveyed_area_coverage)
+    else: failed += 1; print("  ❌ archaeology::surveyed_area_coverage → non-finite:", _v_surveyed_area_coverage)
+    var _v_excavation_volume = excavation_volume(0.5, 0.5, 0.5)
+    if is_finite(_v_excavation_volume): passed += 1; print("  ✅ archaeology::excavation_volume =", _v_excavation_volume)
+    else: failed += 1; print("  ❌ archaeology::excavation_volume → non-finite:", _v_excavation_volume)
+    var _v_artifact_diversity_index = artifact_diversity_index(0.5, 0.5)
+    if is_finite(_v_artifact_diversity_index): passed += 1; print("  ✅ archaeology::artifact_diversity_index =", _v_artifact_diversity_index)
+    else: failed += 1; print("  ❌ archaeology::artifact_diversity_index → non-finite:", _v_artifact_diversity_index)
+
+    print("  [archaeology] Passed:", passed, "Failed:", failed)

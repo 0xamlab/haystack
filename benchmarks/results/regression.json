@@ -1,0 +1,77 @@
+{
+  "lib": "regression",
+  "status": "ok",
+  "n_functions": 8,
+  "n_compared": 6,
+  "overall_speedup_x": 0.49,
+  "total_py_ns": 17435.8,
+  "total_mojo_ns": 35773.6,
+  "elapsed_s": 3.2,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "r_squared",
+      "py_ns": 1644.842,
+      "mojo_ns": 4.5,
+      "speedup_x": 365.52,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "mse",
+      "py_ns": 1054.671,
+      "mojo_ns": 2.2,
+      "speedup_x": 479.4,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "rmse",
+      "py_ns": 1046.438,
+      "mojo_ns": 2.2,
+      "speedup_x": 475.65,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "predict",
+      "py_ns": 775.808,
+      "mojo_ns": 729.9,
+      "speedup_x": 1.06,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "ols_simple",
+      "py_ns": 6552.692,
+      "mojo_ns": 20838.2,
+      "speedup_x": 0.31,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "ols_multiple",
+      "py_ns": null,
+      "mojo_ns": 16354.5,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list index out of range"
+    },
+    {
+      "function": "ridge_regression",
+      "py_ns": null,
+      "mojo_ns": 13979.4,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list index out of range"
+    },
+    {
+      "function": "polynomial_features",
+      "py_ns": 6361.35,
+      "mojo_ns": 14196.6,
+      "speedup_x": 0.45,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

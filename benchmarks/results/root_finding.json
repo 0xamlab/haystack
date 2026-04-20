@@ -1,0 +1,85 @@
+{
+  "lib": "root_finding",
+  "status": "ok",
+  "n_functions": 9,
+  "n_compared": 6,
+  "overall_speedup_x": 6.04,
+  "total_py_ns": 4662.32,
+  "total_mojo_ns": 772.0,
+  "elapsed_s": 4.01,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "eval_func",
+      "py_ns": 120.833,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "eval_deriv",
+      "py_ns": 207.633,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "bisection",
+      "py_ns": 329.533,
+      "mojo_ns": 0.9,
+      "speedup_x": 366.15,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "newton_raphson",
+      "py_ns": 188.475,
+      "mojo_ns": 1.0,
+      "speedup_x": 188.47,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "secant_method",
+      "py_ns": 960.233,
+      "mojo_ns": 0.9,
+      "speedup_x": 1066.93,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "fixed_point",
+      "py_ns": 203.712,
+      "mojo_ns": 1.0,
+      "speedup_x": 203.71,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "regula_falsi",
+      "py_ns": 1049.217,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "bracket_root",
+      "py_ns": 2709.362,
+      "mojo_ns": 764.1,
+      "speedup_x": 3.55,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "convergence_order",
+      "py_ns": 271.008,
+      "mojo_ns": 4.1,
+      "speedup_x": 66.1,
+      "py_result": 0.514071,
+      "py_error": null
+    }
+  ]
+}

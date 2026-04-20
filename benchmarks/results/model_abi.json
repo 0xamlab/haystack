@@ -1,0 +1,93 @@
+{
+  "lib": "model_abi",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 9,
+  "overall_speedup_x": 91.7,
+  "total_py_ns": 862.01,
+  "total_mojo_ns": 9.4,
+  "elapsed_s": 1.29,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "tensor_layout_stride",
+      "py_ns": 92.679,
+      "mojo_ns": 1.0,
+      "speedup_x": 92.68,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "dtype_byte_width",
+      "py_ns": 99.888,
+      "mojo_ns": 1.1,
+      "speedup_x": 90.81,
+      "py_result": 4.0,
+      "py_error": null
+    },
+    {
+      "function": "attention_head_dim",
+      "py_ns": 84.392,
+      "mojo_ns": 1.0,
+      "speedup_x": 84.39,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "rope_theta_scale",
+      "py_ns": 98.621,
+      "mojo_ns": 1.0,
+      "speedup_x": 98.62,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "weight_shard_offset",
+      "py_ns": 91.208,
+      "mojo_ns": 1.1,
+      "speedup_x": 82.92,
+      "py_result": 0.75,
+      "py_error": null
+    },
+    {
+      "function": "activation_layout_index",
+      "py_ns": 132.079,
+      "mojo_ns": 1.1,
+      "speedup_x": 120.07,
+      "py_result": 0.9375,
+      "py_error": null
+    },
+    {
+      "function": "model_config_head_count",
+      "py_ns": 88.804,
+      "mojo_ns": 1.0,
+      "speedup_x": 88.8,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "kv_head_group_size",
+      "py_ns": 83.588,
+      "mojo_ns": 1.0,
+      "speedup_x": 83.59,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "ffn_dim_from_model_dim",
+      "py_ns": null,
+      "mojo_ns": 1.1,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "name 'Int64' is not defined"
+    },
+    {
+      "function": "abi_version_compatible",
+      "py_ns": 90.754,
+      "mojo_ns": 1.1,
+      "speedup_x": 82.5,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

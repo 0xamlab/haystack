@@ -1,0 +1,27 @@
+{
+  "id": "sdks/python",
+  "title": "Python SDK",
+  "description": "Installation",
+  "source": "@site/docs/sdks/python.md",
+  "sourceDirName": "sdks",
+  "slug": "/sdks/python",
+  "permalink": "/sdks/python",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/decisionengine/decision-engine/tree/main/apps/docs/docs/sdks/python.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 1,
+  "frontMatter": {
+    "sidebar_position": 1
+  },
+  "sidebar": "docsSidebar",
+  "previous": {
+    "title": "Make (formerly Integromat)",
+    "permalink": "/integrations/make"
+  },
+  "next": {
+    "title": "TypeScript SDK",
+    "permalink": "/sdks/typescript"
+  }
+}

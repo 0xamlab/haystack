@@ -1,0 +1,27 @@
+{
+  "id": "concepts/auto-vs-expert",
+  "title": "Auto Mode vs Expert Mode",
+  "description": "Decision Engine supports two modes. You can switch between them — they use the same engine and return the same response format.",
+  "source": "@site/docs/concepts/auto-vs-expert.md",
+  "sourceDirName": "concepts",
+  "slug": "/concepts/auto-vs-expert",
+  "permalink": "/concepts/auto-vs-expert",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/decisionengine/decision-engine/tree/main/apps/docs/docs/concepts/auto-vs-expert.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 4,
+  "frontMatter": {
+    "sidebar_position": 4
+  },
+  "sidebar": "docsSidebar",
+  "previous": {
+    "title": "Decision Envelope",
+    "permalink": "/concepts/decision-envelope"
+  },
+  "next": {
+    "title": "Integrations Overview",
+    "permalink": "/integrations/overview"
+  }
+}

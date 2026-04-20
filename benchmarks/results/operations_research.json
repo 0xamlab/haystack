@@ -1,0 +1,117 @@
+{
+  "lib": "operations_research",
+  "status": "ok",
+  "n_functions": 13,
+  "n_compared": 13,
+  "overall_speedup_x": 136.81,
+  "total_py_ns": 1887.99,
+  "total_mojo_ns": 13.8,
+  "elapsed_s": 1.48,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "simplex_objective_value_2",
+      "py_ns": 89.679,
+      "mojo_ns": 1.1,
+      "speedup_x": 81.53,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "simplex_objective_value_3",
+      "py_ns": 111.329,
+      "mojo_ns": 1.1,
+      "speedup_x": 101.21,
+      "py_result": 0.75,
+      "py_error": null
+    },
+    {
+      "function": "transportation_cost",
+      "py_ns": 87.454,
+      "mojo_ns": 1.1,
+      "speedup_x": 79.5,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "total_transportation_cost_2x2",
+      "py_ns": 303.288,
+      "mojo_ns": 1.0,
+      "speedup_x": 303.29,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "assignment_cost_3",
+      "py_ns": 122.446,
+      "mojo_ns": 1.0,
+      "speedup_x": 122.45,
+      "py_result": 1.5,
+      "py_error": null
+    },
+    {
+      "function": "eoq_quantity",
+      "py_ns": 116.075,
+      "mojo_ns": 1.0,
+      "speedup_x": 116.08,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "eoq_total_cost",
+      "py_ns": 395.408,
+      "mojo_ns": 1.0,
+      "speedup_x": 395.41,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "newsvendor_critical_ratio",
+      "py_ns": 94.229,
+      "mojo_ns": 1.1,
+      "speedup_x": 85.66,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "little_law_l",
+      "py_ns": 193.742,
+      "mojo_ns": 1.0,
+      "speedup_x": 193.74,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "little_law_w",
+      "py_ns": 80.587,
+      "mojo_ns": 1.1,
+      "speedup_x": 73.26,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "utilization_factor",
+      "py_ns": 99.671,
+      "mojo_ns": 1.1,
+      "speedup_x": 90.61,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "mm1_expected_queue_length",
+      "py_ns": 94.221,
+      "mojo_ns": 1.1,
+      "speedup_x": 85.66,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "mm1_expected_wait_time",
+      "py_ns": 99.858,
+      "mojo_ns": 1.1,
+      "speedup_x": 90.78,
+      "py_result": 2.0,
+      "py_error": null
+    }
+  ]
+}

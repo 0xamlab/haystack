@@ -1,0 +1,58 @@
+"""test_paleontology.mojo — auto-generated tests for paleontology library."""
+from std.math import isnan, isinf
+from paleontology import radiocarbon_age, potassium_argon_age, uranium_lead_age, stratigraphic_completeness, sedimentation_rate, fossil_diversity_index, extinction_rate, origination_rate, turnover_rate, body_mass_estimate_mammal, phylogenetic_distance, completeness_metric
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_radiocarbon_age = radiocarbon_age(0.5, 0.5)
+    if is_finite(_v_radiocarbon_age): passed += 1; print("  ✅ paleontology::radiocarbon_age =", _v_radiocarbon_age)
+    else: failed += 1; print("  ❌ paleontology::radiocarbon_age → non-finite:", _v_radiocarbon_age)
+    var _v_potassium_argon_age = potassium_argon_age(0.5, 0.5)
+    if is_finite(_v_potassium_argon_age): passed += 1; print("  ✅ paleontology::potassium_argon_age =", _v_potassium_argon_age)
+    else: failed += 1; print("  ❌ paleontology::potassium_argon_age → non-finite:", _v_potassium_argon_age)
+    var _v_uranium_lead_age = uranium_lead_age(0.5, 0.5)
+    if is_finite(_v_uranium_lead_age): passed += 1; print("  ✅ paleontology::uranium_lead_age =", _v_uranium_lead_age)
+    else: failed += 1; print("  ❌ paleontology::uranium_lead_age → non-finite:", _v_uranium_lead_age)
+    var _v_stratigraphic_completeness = stratigraphic_completeness(0.5, 0.5)
+    if is_finite(_v_stratigraphic_completeness): passed += 1; print("  ✅ paleontology::stratigraphic_completeness =", _v_stratigraphic_completeness)
+    else: failed += 1; print("  ❌ paleontology::stratigraphic_completeness → non-finite:", _v_stratigraphic_completeness)
+    var _v_sedimentation_rate = sedimentation_rate(0.5, 0.5)
+    if is_finite(_v_sedimentation_rate): passed += 1; print("  ✅ paleontology::sedimentation_rate =", _v_sedimentation_rate)
+    else: failed += 1; print("  ❌ paleontology::sedimentation_rate → non-finite:", _v_sedimentation_rate)
+    var _v_fossil_diversity_index = fossil_diversity_index(0.5, 0.5)
+    if is_finite(_v_fossil_diversity_index): passed += 1; print("  ✅ paleontology::fossil_diversity_index =", _v_fossil_diversity_index)
+    else: failed += 1; print("  ❌ paleontology::fossil_diversity_index → non-finite:", _v_fossil_diversity_index)
+    var _v_extinction_rate = extinction_rate(0.5, 0.5, 0.5)
+    if is_finite(_v_extinction_rate): passed += 1; print("  ✅ paleontology::extinction_rate =", _v_extinction_rate)
+    else: failed += 1; print("  ❌ paleontology::extinction_rate → non-finite:", _v_extinction_rate)
+    var _v_origination_rate = origination_rate(0.5, 0.5, 0.5)
+    if is_finite(_v_origination_rate): passed += 1; print("  ✅ paleontology::origination_rate =", _v_origination_rate)
+    else: failed += 1; print("  ❌ paleontology::origination_rate → non-finite:", _v_origination_rate)
+    var _v_turnover_rate = turnover_rate(0.5, 0.5)
+    if is_finite(_v_turnover_rate): passed += 1; print("  ✅ paleontology::turnover_rate =", _v_turnover_rate)
+    else: failed += 1; print("  ❌ paleontology::turnover_rate → non-finite:", _v_turnover_rate)
+    var _v_body_mass_estimate_mammal = body_mass_estimate_mammal(0.5)
+    if is_finite(_v_body_mass_estimate_mammal): passed += 1; print("  ✅ paleontology::body_mass_estimate_mammal =", _v_body_mass_estimate_mammal)
+    else: failed += 1; print("  ❌ paleontology::body_mass_estimate_mammal → non-finite:", _v_body_mass_estimate_mammal)
+    var _v_phylogenetic_distance = phylogenetic_distance(0.5, 0.5)
+    if is_finite(_v_phylogenetic_distance): passed += 1; print("  ✅ paleontology::phylogenetic_distance =", _v_phylogenetic_distance)
+    else: failed += 1; print("  ❌ paleontology::phylogenetic_distance → non-finite:", _v_phylogenetic_distance)
+    var _v_completeness_metric = completeness_metric(0.5, 0.5)
+    if is_finite(_v_completeness_metric): passed += 1; print("  ✅ paleontology::completeness_metric =", _v_completeness_metric)
+    else: failed += 1; print("  ❌ paleontology::completeness_metric → non-finite:", _v_completeness_metric)
+
+    print("  [paleontology] Passed:", passed, "Failed:", failed)

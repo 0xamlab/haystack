@@ -1,0 +1,93 @@
+{
+  "lib": "population",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 8,
+  "overall_speedup_x": 1.51,
+  "total_py_ns": 7402.13,
+  "total_mojo_ns": 4907.2,
+  "elapsed_s": 1.26,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "exponential_growth",
+      "py_ns": 830.904,
+      "mojo_ns": 1.1,
+      "speedup_x": 755.37,
+      "py_result": 0.642013,
+      "py_error": null
+    },
+    {
+      "function": "logistic_growth",
+      "py_ns": 114.108,
+      "mojo_ns": 1.1,
+      "speedup_x": 103.73,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "logistic_simulate",
+      "py_ns": 1356.729,
+      "mojo_ns": 300.9,
+      "speedup_x": 4.51,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "lotka_volterra_step",
+      "py_ns": 935.133,
+      "mojo_ns": 115.7,
+      "speedup_x": 8.08,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "lotka_volterra_simulate",
+      "py_ns": 3162.904,
+      "mojo_ns": 4320.4,
+      "speedup_x": 0.73,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "carrying_capacity_estimate",
+      "py_ns": 505.833,
+      "mojo_ns": 2.3,
+      "speedup_x": 219.93,
+      "py_result": 0.77,
+      "py_error": null
+    },
+    {
+      "function": "growth_rate_estimate",
+      "py_ns": 1968.567,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "competition_model",
+      "py_ns": 338.717,
+      "mojo_ns": 164.7,
+      "speedup_x": 2.06,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "population_doubling_time",
+      "py_ns": 157.796,
+      "mojo_ns": 1.0,
+      "speedup_x": 157.8,
+      "py_result": 1.386294,
+      "py_error": null
+    },
+    {
+      "function": "extinction_risk",
+      "py_ns": 152.642,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "lib": "crypto_pbkdf2",
+  "status": "ok",
+  "n_functions": 7,
+  "n_compared": 7,
+  "overall_speedup_x": 1069.45,
+  "total_py_ns": 19424913.25,
+  "total_mojo_ns": 18163.5,
+  "elapsed_s": 195.99,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "sha256_bytes",
+      "py_ns": 2506783.442,
+      "mojo_ns": 893.6,
+      "speedup_x": 2805.26,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "bytes_from_string",
+      "py_ns": 2478.925,
+      "mojo_ns": 50.5,
+      "speedup_x": 49.09,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "bytes_to_hex",
+      "py_ns": 7726.062,
+      "mojo_ns": 78.6,
+      "speedup_x": 98.3,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "xor_byte_lists",
+      "py_ns": 4993.05,
+      "mojo_ns": 51.6,
+      "speedup_x": 96.76,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "int_to_bytes_be",
+      "py_ns": 8245.475,
+      "mojo_ns": 54.2,
+      "speedup_x": 152.13,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "hmac_sha256_bytes",
+      "py_ns": 7529679.754,
+      "mojo_ns": 2565.7,
+      "speedup_x": 2934.75,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "pbkdf2_hmac_sha256",
+      "py_ns": 9365006.546,
+      "mojo_ns": 14469.3,
+      "speedup_x": 647.23,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

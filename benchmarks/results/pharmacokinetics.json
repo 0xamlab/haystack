@@ -1,0 +1,109 @@
+{
+  "lib": "pharmacokinetics",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 11,
+  "overall_speedup_x": 166.71,
+  "total_py_ns": 1967.17,
+  "total_mojo_ns": 11.8,
+  "elapsed_s": 1.25,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "one_compartment_oral",
+      "py_ns": 313.496,
+      "mojo_ns": 1.0,
+      "speedup_x": 313.5,
+      "py_result": 6.245647,
+      "py_error": null
+    },
+    {
+      "function": "one_compartment_iv",
+      "py_ns": 300.321,
+      "mojo_ns": 1.1,
+      "speedup_x": 273.02,
+      "py_result": 0.778801,
+      "py_error": null
+    },
+    {
+      "function": "half_life",
+      "py_ns": 143.1,
+      "mojo_ns": 1.0,
+      "speedup_x": 143.1,
+      "py_result": 1.386294,
+      "py_error": null
+    },
+    {
+      "function": "elimination_rate",
+      "py_ns": 146.258,
+      "mojo_ns": 1.0,
+      "speedup_x": 146.26,
+      "py_result": 1.386294,
+      "py_error": null
+    },
+    {
+      "function": "clearance",
+      "py_ns": 100.629,
+      "mojo_ns": 1.1,
+      "speedup_x": 91.48,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "bioavailability",
+      "py_ns": 87.9,
+      "mojo_ns": 1.1,
+      "speedup_x": 79.91,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "loading_dose",
+      "py_ns": 84.042,
+      "mojo_ns": 1.1,
+      "speedup_x": 76.4,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "maintenance_dose",
+      "py_ns": 174.95,
+      "mojo_ns": 1.1,
+      "speedup_x": 159.05,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "steady_state_concentration",
+      "py_ns": 162.567,
+      "mojo_ns": 1.1,
+      "speedup_x": 147.79,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "time_to_peak",
+      "py_ns": 228.363,
+      "mojo_ns": 1.1,
+      "speedup_x": 207.6,
+      "py_result": 2.310491,
+      "py_error": null
+    },
+    {
+      "function": "accumulation_factor",
+      "py_ns": 225.542,
+      "mojo_ns": 1.1,
+      "speedup_x": 205.04,
+      "py_result": 4.520812,
+      "py_error": null
+    },
+    {
+      "function": "drug_auc_trapezoidal",
+      "py_ns": 122.925,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

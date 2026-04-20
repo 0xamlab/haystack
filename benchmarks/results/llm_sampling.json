@@ -1,0 +1,101 @@
+{
+  "lib": "llm_sampling",
+  "status": "ok",
+  "n_functions": 11,
+  "n_compared": 10,
+  "overall_speedup_x": 880.5,
+  "total_py_ns": 9685.48,
+  "total_mojo_ns": 11.0,
+  "elapsed_s": 1.63,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "temperature_scale",
+      "py_ns": 125.9,
+      "mojo_ns": 1.1,
+      "speedup_x": 114.45,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "top_k_threshold",
+      "py_ns": 132.638,
+      "mojo_ns": 1.1,
+      "speedup_x": 120.58,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "top_p_cumulative",
+      "py_ns": 1526.717,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "greedy_token_id",
+      "py_ns": 223.946,
+      "mojo_ns": 1.1,
+      "speedup_x": 203.59,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "beam_score_update",
+      "py_ns": 83.083,
+      "mojo_ns": 1.1,
+      "speedup_x": 75.53,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "repetition_penalty_scale",
+      "py_ns": 107.196,
+      "mojo_ns": 1.1,
+      "speedup_x": 97.45,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "length_penalty",
+      "py_ns": 4923.5,
+      "mojo_ns": 1.1,
+      "speedup_x": 4475.91,
+      "py_result": 0.522233,
+      "py_error": null
+    },
+    {
+      "function": "pow_approx",
+      "py_ns": 137.929,
+      "mojo_ns": 1.1,
+      "speedup_x": 125.39,
+      "py_result": 0.707107,
+      "py_error": null
+    },
+    {
+      "function": "min_p_threshold",
+      "py_ns": 3597.125,
+      "mojo_ns": 1.1,
+      "speedup_x": 3270.11,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "typical_p_score",
+      "py_ns": 119.313,
+      "mojo_ns": 1.1,
+      "speedup_x": 108.47,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "token_frequency_penalty",
+      "py_ns": 234.85,
+      "mojo_ns": 1.1,
+      "speedup_x": 213.5,
+      "py_result": -0.25,
+      "py_error": null
+    }
+  ]
+}

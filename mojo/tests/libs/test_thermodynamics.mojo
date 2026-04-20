@@ -1,0 +1,55 @@
+"""test_thermodynamics.mojo — auto-generated tests for thermodynamics library."""
+from std.math import isnan, isinf
+from thermodynamics import ideal_gas_pressure, ideal_gas_volume, carnot_efficiency, entropy_change, heat_capacity, adiabatic_process, work_isothermal, stefan_boltzmann, thermal_conductivity_flux, gibbs_free_energy, clausius_clapeyron
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_ideal_gas_pressure = ideal_gas_pressure(0.5, 0.5, 0.5)
+    if is_finite(_v_ideal_gas_pressure): passed += 1; print("  ✅ thermodynamics::ideal_gas_pressure =", _v_ideal_gas_pressure)
+    else: failed += 1; print("  ❌ thermodynamics::ideal_gas_pressure → non-finite:", _v_ideal_gas_pressure)
+    var _v_ideal_gas_volume = ideal_gas_volume(0.5, 0.5, 0.5)
+    if is_finite(_v_ideal_gas_volume): passed += 1; print("  ✅ thermodynamics::ideal_gas_volume =", _v_ideal_gas_volume)
+    else: failed += 1; print("  ❌ thermodynamics::ideal_gas_volume → non-finite:", _v_ideal_gas_volume)
+    var _v_carnot_efficiency = carnot_efficiency(0.5, 0.5)
+    if is_finite(_v_carnot_efficiency): passed += 1; print("  ✅ thermodynamics::carnot_efficiency =", _v_carnot_efficiency)
+    else: failed += 1; print("  ❌ thermodynamics::carnot_efficiency → non-finite:", _v_carnot_efficiency)
+    var _v_entropy_change = entropy_change(0.5, 0.5)
+    if is_finite(_v_entropy_change): passed += 1; print("  ✅ thermodynamics::entropy_change =", _v_entropy_change)
+    else: failed += 1; print("  ❌ thermodynamics::entropy_change → non-finite:", _v_entropy_change)
+    var _v_heat_capacity = heat_capacity(0.5, 0.5, 0.5)
+    if is_finite(_v_heat_capacity): passed += 1; print("  ✅ thermodynamics::heat_capacity =", _v_heat_capacity)
+    else: failed += 1; print("  ❌ thermodynamics::heat_capacity → non-finite:", _v_heat_capacity)
+    var _v_adiabatic_process = adiabatic_process(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_adiabatic_process): passed += 1; print("  ✅ thermodynamics::adiabatic_process =", _v_adiabatic_process)
+    else: failed += 1; print("  ❌ thermodynamics::adiabatic_process → non-finite:", _v_adiabatic_process)
+    var _v_work_isothermal = work_isothermal(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_work_isothermal): passed += 1; print("  ✅ thermodynamics::work_isothermal =", _v_work_isothermal)
+    else: failed += 1; print("  ❌ thermodynamics::work_isothermal → non-finite:", _v_work_isothermal)
+    var _v_stefan_boltzmann = stefan_boltzmann(0.5, 0.5, 0.5)
+    if is_finite(_v_stefan_boltzmann): passed += 1; print("  ✅ thermodynamics::stefan_boltzmann =", _v_stefan_boltzmann)
+    else: failed += 1; print("  ❌ thermodynamics::stefan_boltzmann → non-finite:", _v_stefan_boltzmann)
+    var _v_thermal_conductivity_flux = thermal_conductivity_flux(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_thermal_conductivity_flux): passed += 1; print("  ✅ thermodynamics::thermal_conductivity_flux =", _v_thermal_conductivity_flux)
+    else: failed += 1; print("  ❌ thermodynamics::thermal_conductivity_flux → non-finite:", _v_thermal_conductivity_flux)
+    var _v_gibbs_free_energy = gibbs_free_energy(0.5, 0.5, 0.5)
+    if is_finite(_v_gibbs_free_energy): passed += 1; print("  ✅ thermodynamics::gibbs_free_energy =", _v_gibbs_free_energy)
+    else: failed += 1; print("  ❌ thermodynamics::gibbs_free_energy → non-finite:", _v_gibbs_free_energy)
+    var _v_clausius_clapeyron = clausius_clapeyron(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_clausius_clapeyron): passed += 1; print("  ✅ thermodynamics::clausius_clapeyron =", _v_clausius_clapeyron)
+    else: failed += 1; print("  ❌ thermodynamics::clausius_clapeyron → non-finite:", _v_clausius_clapeyron)
+
+    print("  [thermodynamics] Passed:", passed, "Failed:", failed)

@@ -1,0 +1,58 @@
+"""test_urban_planning.mojo — auto-generated tests for urban_planning library."""
+from std.math import isnan, isinf
+from urban_planning import population_density, floor_area_ratio, lot_coverage, green_space_ratio, walk_score_distance_decay, vehicle_miles_traveled, parking_requirement, traffic_level_of_service, housing_affordability_ratio, jobs_housing_balance, infrastructure_cost_per_unit, impervious_surface_ratio
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_population_density = population_density(0.5, 0.5)
+    if is_finite(_v_population_density): passed += 1; print("  ✅ urban_planning::population_density =", _v_population_density)
+    else: failed += 1; print("  ❌ urban_planning::population_density → non-finite:", _v_population_density)
+    var _v_floor_area_ratio = floor_area_ratio(0.5, 0.5)
+    if is_finite(_v_floor_area_ratio): passed += 1; print("  ✅ urban_planning::floor_area_ratio =", _v_floor_area_ratio)
+    else: failed += 1; print("  ❌ urban_planning::floor_area_ratio → non-finite:", _v_floor_area_ratio)
+    var _v_lot_coverage = lot_coverage(0.5, 0.5)
+    if is_finite(_v_lot_coverage): passed += 1; print("  ✅ urban_planning::lot_coverage =", _v_lot_coverage)
+    else: failed += 1; print("  ❌ urban_planning::lot_coverage → non-finite:", _v_lot_coverage)
+    var _v_green_space_ratio = green_space_ratio(0.5, 0.5)
+    if is_finite(_v_green_space_ratio): passed += 1; print("  ✅ urban_planning::green_space_ratio =", _v_green_space_ratio)
+    else: failed += 1; print("  ❌ urban_planning::green_space_ratio → non-finite:", _v_green_space_ratio)
+    var _v_walk_score_distance_decay = walk_score_distance_decay(0.5, 0.5)
+    if is_finite(_v_walk_score_distance_decay): passed += 1; print("  ✅ urban_planning::walk_score_distance_decay =", _v_walk_score_distance_decay)
+    else: failed += 1; print("  ❌ urban_planning::walk_score_distance_decay → non-finite:", _v_walk_score_distance_decay)
+    var _v_vehicle_miles_traveled = vehicle_miles_traveled(0.5, 0.5)
+    if is_finite(_v_vehicle_miles_traveled): passed += 1; print("  ✅ urban_planning::vehicle_miles_traveled =", _v_vehicle_miles_traveled)
+    else: failed += 1; print("  ❌ urban_planning::vehicle_miles_traveled → non-finite:", _v_vehicle_miles_traveled)
+    var _v_parking_requirement = parking_requirement(0.5, 0.5)
+    if is_finite(_v_parking_requirement): passed += 1; print("  ✅ urban_planning::parking_requirement =", _v_parking_requirement)
+    else: failed += 1; print("  ❌ urban_planning::parking_requirement → non-finite:", _v_parking_requirement)
+    var _v_traffic_level_of_service = traffic_level_of_service(0.5, 0.5)
+    if is_finite(_v_traffic_level_of_service): passed += 1; print("  ✅ urban_planning::traffic_level_of_service =", _v_traffic_level_of_service)
+    else: failed += 1; print("  ❌ urban_planning::traffic_level_of_service → non-finite:", _v_traffic_level_of_service)
+    var _v_housing_affordability_ratio = housing_affordability_ratio(0.5, 0.5)
+    if is_finite(_v_housing_affordability_ratio): passed += 1; print("  ✅ urban_planning::housing_affordability_ratio =", _v_housing_affordability_ratio)
+    else: failed += 1; print("  ❌ urban_planning::housing_affordability_ratio → non-finite:", _v_housing_affordability_ratio)
+    var _v_jobs_housing_balance = jobs_housing_balance(0.5, 0.5)
+    if is_finite(_v_jobs_housing_balance): passed += 1; print("  ✅ urban_planning::jobs_housing_balance =", _v_jobs_housing_balance)
+    else: failed += 1; print("  ❌ urban_planning::jobs_housing_balance → non-finite:", _v_jobs_housing_balance)
+    var _v_infrastructure_cost_per_unit = infrastructure_cost_per_unit(0.5, 0.5)
+    if is_finite(_v_infrastructure_cost_per_unit): passed += 1; print("  ✅ urban_planning::infrastructure_cost_per_unit =", _v_infrastructure_cost_per_unit)
+    else: failed += 1; print("  ❌ urban_planning::infrastructure_cost_per_unit → non-finite:", _v_infrastructure_cost_per_unit)
+    var _v_impervious_surface_ratio = impervious_surface_ratio(0.5, 0.5)
+    if is_finite(_v_impervious_surface_ratio): passed += 1; print("  ✅ urban_planning::impervious_surface_ratio =", _v_impervious_surface_ratio)
+    else: failed += 1; print("  ❌ urban_planning::impervious_surface_ratio → non-finite:", _v_impervious_surface_ratio)
+
+    print("  [urban_planning] Passed:", passed, "Failed:", failed)

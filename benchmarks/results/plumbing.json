@@ -1,0 +1,109 @@
+{
+  "lib": "plumbing",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 12,
+  "overall_speedup_x": 130.64,
+  "total_py_ns": 1750.57,
+  "total_mojo_ns": 13.4,
+  "elapsed_s": 1.11,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "pipe_flow_velocity",
+      "py_ns": 161.883,
+      "mojo_ns": 1.1,
+      "speedup_x": 147.17,
+      "py_result": 2.546479,
+      "py_error": null
+    },
+    {
+      "function": "reynolds_number",
+      "py_ns": 119.567,
+      "mojo_ns": 1.1,
+      "speedup_x": 108.7,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "friction_factor_laminar",
+      "py_ns": 117.121,
+      "mojo_ns": 1.1,
+      "speedup_x": 106.47,
+      "py_result": 128.0,
+      "py_error": null
+    },
+    {
+      "function": "head_loss_darcy",
+      "py_ns": 206.262,
+      "mojo_ns": 1.1,
+      "speedup_x": 187.51,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "head_loss_minor",
+      "py_ns": 151.967,
+      "mojo_ns": 1.2,
+      "speedup_x": 126.64,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "total_dynamic_head",
+      "py_ns": 98.708,
+      "mojo_ns": 1.2,
+      "speedup_x": 82.26,
+      "py_result": 1.5,
+      "py_error": null
+    },
+    {
+      "function": "pump_power",
+      "py_ns": 152.229,
+      "mojo_ns": 1.1,
+      "speedup_x": 138.39,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "water_demand_fixture_units",
+      "py_ns": 81.946,
+      "mojo_ns": 1.1,
+      "speedup_x": 74.5,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "pipe_sizing_velocity_method",
+      "py_ns": 343.562,
+      "mojo_ns": 1.1,
+      "speedup_x": 312.33,
+      "py_result": 1.128379,
+      "py_error": null
+    },
+    {
+      "function": "thermal_expansion_pipe",
+      "py_ns": 109.229,
+      "mojo_ns": 1.1,
+      "speedup_x": 99.3,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "water_hammer_pressure",
+      "py_ns": 104.754,
+      "mojo_ns": 1.1,
+      "speedup_x": 95.23,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "drainage_slope_minimum",
+      "py_ns": 103.342,
+      "mojo_ns": 1.1,
+      "speedup_x": 93.95,
+      "py_result": 0.125,
+      "py_error": null
+    }
+  ]
+}

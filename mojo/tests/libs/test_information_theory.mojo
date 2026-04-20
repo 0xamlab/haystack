@@ -1,0 +1,43 @@
+"""test_information_theory.mojo — auto-generated tests for information_theory library."""
+from std.math import isnan, isinf
+from information_theory import entropy, kl_divergence, cross_entropy, binary_entropy, channel_capacity_bsc, redundancy, normalized_entropy
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_entropy = entropy(_lf5)
+    if is_finite(_v_entropy): passed += 1; print("  ✅ information_theory::entropy =", _v_entropy)
+    else: failed += 1; print("  ❌ information_theory::entropy → non-finite:", _v_entropy)
+    var _v_kl_divergence = kl_divergence(_lf5, _lf5)
+    if is_finite(_v_kl_divergence): passed += 1; print("  ✅ information_theory::kl_divergence =", _v_kl_divergence)
+    else: failed += 1; print("  ❌ information_theory::kl_divergence → non-finite:", _v_kl_divergence)
+    var _v_cross_entropy = cross_entropy(_lf5, _lf5)
+    if is_finite(_v_cross_entropy): passed += 1; print("  ✅ information_theory::cross_entropy =", _v_cross_entropy)
+    else: failed += 1; print("  ❌ information_theory::cross_entropy → non-finite:", _v_cross_entropy)
+    var _v_binary_entropy = binary_entropy(0.5)
+    if is_finite(_v_binary_entropy): passed += 1; print("  ✅ information_theory::binary_entropy =", _v_binary_entropy)
+    else: failed += 1; print("  ❌ information_theory::binary_entropy → non-finite:", _v_binary_entropy)
+    var _v_channel_capacity_bsc = channel_capacity_bsc(0.5)
+    if is_finite(_v_channel_capacity_bsc): passed += 1; print("  ✅ information_theory::channel_capacity_bsc =", _v_channel_capacity_bsc)
+    else: failed += 1; print("  ❌ information_theory::channel_capacity_bsc → non-finite:", _v_channel_capacity_bsc)
+    var _v_redundancy = redundancy(_lf5)
+    if is_finite(_v_redundancy): passed += 1; print("  ✅ information_theory::redundancy =", _v_redundancy)
+    else: failed += 1; print("  ❌ information_theory::redundancy → non-finite:", _v_redundancy)
+    var _v_normalized_entropy = normalized_entropy(_lf5)
+    if is_finite(_v_normalized_entropy): passed += 1; print("  ✅ information_theory::normalized_entropy =", _v_normalized_entropy)
+    else: failed += 1; print("  ❌ information_theory::normalized_entropy → non-finite:", _v_normalized_entropy)
+
+    print("  [information_theory] Passed:", passed, "Failed:", failed)

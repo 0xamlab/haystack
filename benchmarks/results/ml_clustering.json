@@ -1,0 +1,45 @@
+{
+  "lib": "ml_clustering",
+  "status": "ok",
+  "n_functions": 4,
+  "n_compared": 4,
+  "overall_speedup_x": 29.45,
+  "total_py_ns": 600089.74,
+  "total_mojo_ns": 20374.8,
+  "elapsed_s": 8.91,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "euclidean_distance",
+      "py_ns": 624.587,
+      "mojo_ns": 4.9,
+      "speedup_x": 127.47,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "assign_cluster",
+      "py_ns": 16199.379,
+      "mojo_ns": 683.1,
+      "speedup_x": 23.71,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "kmeans",
+      "py_ns": 555088.688,
+      "mojo_ns": 17411.7,
+      "speedup_x": 31.88,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "silhouette_score",
+      "py_ns": 28177.087,
+      "mojo_ns": 2275.1,
+      "speedup_x": 12.38,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

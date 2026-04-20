@@ -1,0 +1,109 @@
+{
+  "lib": "project_management",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 6,
+  "overall_speedup_x": 61.01,
+  "total_py_ns": 549.07,
+  "total_mojo_ns": 9.0,
+  "elapsed_s": 1.13,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "earned_value",
+      "py_ns": 98.271,
+      "mojo_ns": 1.0,
+      "speedup_x": 98.27,
+      "py_result": 0.0025,
+      "py_error": null
+    },
+    {
+      "function": "schedule_variance",
+      "py_ns": 77.742,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "cost_variance",
+      "py_ns": 77.7,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "schedule_performance_index",
+      "py_ns": 86.283,
+      "mojo_ns": 1.1,
+      "speedup_x": 78.44,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "cost_performance_index",
+      "py_ns": 86.142,
+      "mojo_ns": 1.1,
+      "speedup_x": 78.31,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "estimate_at_completion",
+      "py_ns": 86.562,
+      "mojo_ns": 1.0,
+      "speedup_x": 86.56,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "estimate_to_complete",
+      "py_ns": 77.608,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "variance_at_completion",
+      "py_ns": 87.121,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "to_complete_performance_index",
+      "py_ns": 107.375,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "critical_path_duration",
+      "py_ns": 96.483,
+      "mojo_ns": 3.7,
+      "speedup_x": 26.08,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "float_time",
+      "py_ns": 92.329,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "pert_estimate",
+      "py_ns": 95.333,
+      "mojo_ns": 1.1,
+      "speedup_x": 86.67,
+      "py_result": 0.5,
+      "py_error": null
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "lib": "queue_ds",
+  "status": "ok",
+  "n_functions": 2,
+  "n_compared": 2,
+  "overall_speedup_x": 0.33,
+  "total_py_ns": 1120.95,
+  "total_mojo_ns": 3389.7,
+  "elapsed_s": 1.53,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "pq_create",
+      "py_ns": 696.646,
+      "mojo_ns": 1.0,
+      "speedup_x": 696.65,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "cb_create",
+      "py_ns": 424.308,
+      "mojo_ns": 3388.7,
+      "speedup_x": 0.13,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

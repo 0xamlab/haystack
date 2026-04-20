@@ -1,0 +1,93 @@
+{
+  "lib": "metabolomics",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 8,
+  "overall_speedup_x": 291.25,
+  "total_py_ns": 2592.09,
+  "total_mojo_ns": 8.9,
+  "elapsed_s": 1.51,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "metabolite_fold_change",
+      "py_ns": 277.325,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "pathway_enrichment_score",
+      "py_ns": 248.942,
+      "mojo_ns": 1.1,
+      "speedup_x": 226.31,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "chemical_similarity_index",
+      "py_ns": 1546.542,
+      "mojo_ns": 1.2,
+      "speedup_x": 1288.78,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "metabolic_flux_ratio",
+      "py_ns": 221.1,
+      "mojo_ns": 1.1,
+      "speedup_x": 201.0,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "isotope_label_fraction",
+      "py_ns": 129.7,
+      "mojo_ns": 1.1,
+      "speedup_x": 117.91,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "metabolite_half_life",
+      "py_ns": 116.708,
+      "mojo_ns": 1.1,
+      "speedup_x": 106.1,
+      "py_result": 1.386294,
+      "py_error": null
+    },
+    {
+      "function": "normalization_zscore",
+      "py_ns": 107.067,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "principal_component_variance",
+      "py_ns": 93.95,
+      "mojo_ns": 1.1,
+      "speedup_x": 85.41,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "vip_score",
+      "py_ns": 129.504,
+      "mojo_ns": 1.1,
+      "speedup_x": 117.73,
+      "py_result": 0.707107,
+      "py_error": null
+    },
+    {
+      "function": "metabolic_distance",
+      "py_ns": 105.646,
+      "mojo_ns": 1.1,
+      "speedup_x": 96.04,
+      "py_result": 0.707107,
+      "py_error": null
+    }
+  ]
+}

@@ -1,0 +1,93 @@
+{
+  "lib": "positional_encoding",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 5,
+  "overall_speedup_x": 137.67,
+  "total_py_ns": 702.11,
+  "total_mojo_ns": 5.1,
+  "elapsed_s": 1.18,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "sinusoidal_pe",
+      "py_ns": null,
+      "mojo_ns": 1.1,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "name 'Int64' is not defined"
+    },
+    {
+      "function": "rope_cos_component",
+      "py_ns": null,
+      "mojo_ns": 1.0,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "name 'Int64' is not defined"
+    },
+    {
+      "function": "rope_sin_component",
+      "py_ns": null,
+      "mojo_ns": 1.1,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "name 'Int64' is not defined"
+    },
+    {
+      "function": "rope_apply_cos",
+      "py_ns": 83.558,
+      "mojo_ns": 1.0,
+      "speedup_x": 83.56,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "rope_apply_sin",
+      "py_ns": 123.867,
+      "mojo_ns": 1.0,
+      "speedup_x": 123.87,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "alibi_slope",
+      "py_ns": 136.992,
+      "mojo_ns": 1.0,
+      "speedup_x": 136.99,
+      "py_result": 0.003906,
+      "py_error": null
+    },
+    {
+      "function": "alibi_bias",
+      "py_ns": 154.812,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": -0.0,
+      "py_error": null
+    },
+    {
+      "function": "learned_pe_init",
+      "py_ns": 124.704,
+      "mojo_ns": 1.1,
+      "speedup_x": 113.37,
+      "py_result": 3.464102,
+      "py_error": null
+    },
+    {
+      "function": "relative_pe_bucket",
+      "py_ns": null,
+      "mojo_ns": 1.0,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "name 'Int64' is not defined"
+    },
+    {
+      "function": "xpos_scale",
+      "py_ns": 232.988,
+      "mojo_ns": 1.0,
+      "speedup_x": 232.99,
+      "py_result": 0.707107,
+      "py_error": null
+    }
+  ]
+}

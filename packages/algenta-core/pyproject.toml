@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "algenta-core"
+version = "0.1.0"
+description = "Algenta core runtime — local simulation, optimization, and decision-making. No API key required."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "ACL-1.0" }
+keywords = [
+    "simulation", "monte-carlo", "optimization", "decision", "forecast",
+    "risk", "probabilistic", "algenta", "fast", "mojo"
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: Other/Proprietary License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = []
+
+[project.optional-dependencies]
+cloud = ["httpx>=0.28.0"]
+benchmark = ["numpy"]
+all = ["httpx>=0.28.0", "numpy"]
+
+[project.scripts]
+algenta = "algenta.cli:main"
+
+[project.urls]
+Homepage = "https://algenta.ai"
+Documentation = "https://docs.algenta.ai/core"
+Repository = "https://github.com/algenta/decision-engine"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["algenta*"]

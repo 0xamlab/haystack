@@ -1,0 +1,29 @@
+{
+  "lib": "structs_containers",
+  "status": "ok",
+  "n_functions": 2,
+  "n_compared": 2,
+  "overall_speedup_x": 20.49,
+  "total_py_ns": 30904.64,
+  "total_mojo_ns": 1508.0,
+  "elapsed_s": 2.14,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "counter",
+      "py_ns": 13425.042,
+      "mojo_ns": 423.9,
+      "speedup_x": 31.67,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "unique",
+      "py_ns": 17479.6,
+      "mojo_ns": 1084.1,
+      "speedup_x": 16.12,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

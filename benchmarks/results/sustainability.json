@@ -1,0 +1,109 @@
+{
+  "lib": "sustainability",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 12,
+  "overall_speedup_x": 145.63,
+  "total_py_ns": 3160.16,
+  "total_mojo_ns": 21.7,
+  "elapsed_s": 5.19,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "carbon_footprint_transport",
+      "py_ns": 224.3,
+      "mojo_ns": 7.6,
+      "speedup_x": 29.51,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "energy_intensity",
+      "py_ns": 118.396,
+      "mojo_ns": 0.9,
+      "speedup_x": 131.55,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "water_intensity",
+      "py_ns": 280.333,
+      "mojo_ns": 0.9,
+      "speedup_x": 311.48,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "waste_diversion_rate",
+      "py_ns": 501.825,
+      "mojo_ns": 0.9,
+      "speedup_x": 557.58,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "renewable_energy_fraction",
+      "py_ns": 217.521,
+      "mojo_ns": 3.2,
+      "speedup_x": 67.98,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "ghg_scope1",
+      "py_ns": 274.871,
+      "mojo_ns": 2.6,
+      "speedup_x": 105.72,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "ghg_scope2",
+      "py_ns": 264.908,
+      "mojo_ns": 1.0,
+      "speedup_x": 264.91,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "ghg_scope3_estimate",
+      "py_ns": 293.758,
+      "mojo_ns": 0.9,
+      "speedup_x": 326.4,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "carbon_offset_cost",
+      "py_ns": 122.554,
+      "mojo_ns": 0.9,
+      "speedup_x": 136.17,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "circular_economy_index",
+      "py_ns": 330.158,
+      "mojo_ns": 0.9,
+      "speedup_x": 366.84,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "social_return_on_investment",
+      "py_ns": 391.771,
+      "mojo_ns": 0.9,
+      "speedup_x": 435.3,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "esg_composite_score",
+      "py_ns": 139.763,
+      "mojo_ns": 1.0,
+      "speedup_x": 139.76,
+      "py_result": 0.5,
+      "py_error": null
+    }
+  ]
+}

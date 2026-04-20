@@ -1,0 +1,109 @@
+{
+  "lib": "toxicology",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 12,
+  "overall_speedup_x": 1199.58,
+  "total_py_ns": 13195.35,
+  "total_mojo_ns": 11.0,
+  "elapsed_s": 4.67,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "ld50_dose",
+      "py_ns": 285.521,
+      "mojo_ns": 0.9,
+      "speedup_x": 317.25,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "therapeutic_index",
+      "py_ns": 223.717,
+      "mojo_ns": 1.0,
+      "speedup_x": 223.72,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "margin_of_safety",
+      "py_ns": 1285.883,
+      "mojo_ns": 1.0,
+      "speedup_x": 1285.88,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "bioconcentration_factor",
+      "py_ns": 7013.463,
+      "mojo_ns": 0.9,
+      "speedup_x": 7792.74,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "hazard_quotient",
+      "py_ns": 246.021,
+      "mojo_ns": 0.9,
+      "speedup_x": 273.36,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "hazard_index",
+      "py_ns": 191.375,
+      "mojo_ns": 0.9,
+      "speedup_x": 212.64,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "cancer_risk",
+      "py_ns": 389.454,
+      "mojo_ns": 0.9,
+      "speedup_x": 432.73,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "average_daily_dose",
+      "py_ns": 187.162,
+      "mojo_ns": 0.9,
+      "speedup_x": 207.96,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "no_observed_adverse_effect_level",
+      "py_ns": 179.554,
+      "mojo_ns": 0.9,
+      "speedup_x": 199.5,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "reference_dose",
+      "py_ns": 84.658,
+      "mojo_ns": 0.9,
+      "speedup_x": 94.06,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "dose_response_hill",
+      "py_ns": 3031.167,
+      "mojo_ns": 0.9,
+      "speedup_x": 3367.96,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "acute_exposure_ratio",
+      "py_ns": 77.379,
+      "mojo_ns": 0.9,
+      "speedup_x": 85.98,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

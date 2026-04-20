@@ -1,0 +1,109 @@
+{
+  "lib": "transform",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 10,
+  "overall_speedup_x": 3.78,
+  "total_py_ns": 23958.14,
+  "total_mojo_ns": 6331.6,
+  "elapsed_s": 4.39,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "log_transform",
+      "py_ns": 554.3,
+      "mojo_ns": 506.4,
+      "speedup_x": 1.09,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "log1p_transform",
+      "py_ns": 993.346,
+      "mojo_ns": 1061.5,
+      "speedup_x": 0.94,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "box_cox",
+      "py_ns": null,
+      "mojo_ns": 1008.7,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "module 'math' has no attribute 'math'"
+    },
+    {
+      "function": "standardize",
+      "py_ns": 7311.921,
+      "mojo_ns": 308.6,
+      "speedup_x": 23.69,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "min_max_scale",
+      "py_ns": 728.379,
+      "mojo_ns": 531.9,
+      "speedup_x": 1.37,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "robust_scale",
+      "py_ns": 2989.3,
+      "mojo_ns": 1192.8,
+      "speedup_x": 2.51,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "quantile_transform",
+      "py_ns": 5655.433,
+      "mojo_ns": 590.9,
+      "speedup_x": 9.57,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "power_transform",
+      "py_ns": null,
+      "mojo_ns": 987.7,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "No module named 'std'"
+    },
+    {
+      "function": "clamp_values",
+      "py_ns": 635.267,
+      "mojo_ns": 425.3,
+      "speedup_x": 1.49,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "rank_transform",
+      "py_ns": 3005.721,
+      "mojo_ns": 448.1,
+      "speedup_x": 6.71,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "abs_transform",
+      "py_ns": 1335.533,
+      "mojo_ns": 532.4,
+      "speedup_x": 2.51,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "reciprocal_transform",
+      "py_ns": 748.938,
+      "mojo_ns": 733.7,
+      "speedup_x": 1.02,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

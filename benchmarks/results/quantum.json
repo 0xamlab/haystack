@@ -1,0 +1,101 @@
+{
+  "lib": "quantum",
+  "status": "ok",
+  "n_functions": 11,
+  "n_compared": 11,
+  "overall_speedup_x": 0.56,
+  "total_py_ns": 4818.37,
+  "total_mojo_ns": 8667.6,
+  "elapsed_s": 1.97,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "qubit_zero",
+      "py_ns": 203.146,
+      "mojo_ns": 290.5,
+      "speedup_x": 0.7,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "qubit_one",
+      "py_ns": 334.463,
+      "mojo_ns": 175.9,
+      "speedup_x": 1.9,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "hadamard",
+      "py_ns": 607.471,
+      "mojo_ns": 192.8,
+      "speedup_x": 3.15,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "pauli_x",
+      "py_ns": 286.792,
+      "mojo_ns": 173.7,
+      "speedup_x": 1.65,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "pauli_z",
+      "py_ns": 506.729,
+      "mojo_ns": 523.9,
+      "speedup_x": 0.97,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "phase_gate",
+      "py_ns": 301.35,
+      "mojo_ns": 168.7,
+      "speedup_x": 1.79,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "measure_probability",
+      "py_ns": 596.004,
+      "mojo_ns": 111.6,
+      "speedup_x": 5.34,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "qubit_norm",
+      "py_ns": 640.825,
+      "mojo_ns": 1.0,
+      "speedup_x": 640.82,
+      "py_result": 1.26,
+      "py_error": null
+    },
+    {
+      "function": "bell_state",
+      "py_ns": 265.654,
+      "mojo_ns": 5078.5,
+      "speedup_x": 0.05,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "expectation_z",
+      "py_ns": 154.213,
+      "mojo_ns": 1.0,
+      "speedup_x": 154.21,
+      "py_result": -0.04,
+      "py_error": null
+    },
+    {
+      "function": "bloch_coords",
+      "py_ns": 921.721,
+      "mojo_ns": 1950.0,
+      "speedup_x": 0.47,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

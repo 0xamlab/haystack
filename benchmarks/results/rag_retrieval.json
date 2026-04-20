@@ -1,0 +1,93 @@
+{
+  "lib": "rag_retrieval",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 9,
+  "overall_speedup_x": 153.89,
+  "total_py_ns": 1477.35,
+  "total_mojo_ns": 9.6,
+  "elapsed_s": 1.31,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "rrf_score",
+      "py_ns": 136.442,
+      "mojo_ns": 1.0,
+      "speedup_x": 136.44,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "hybrid_search_score",
+      "py_ns": 209.608,
+      "mojo_ns": 1.0,
+      "speedup_x": 209.61,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "bm25_term_score",
+      "py_ns": 377.292,
+      "mojo_ns": 1.0,
+      "speedup_x": 377.29,
+      "py_result": 0.304099,
+      "py_error": null
+    },
+    {
+      "function": "cross_encoder_logit",
+      "py_ns": 84.508,
+      "mojo_ns": 1.1,
+      "speedup_x": 76.83,
+      "py_result": 0.75,
+      "py_error": null
+    },
+    {
+      "function": "chunk_overlap_ratio",
+      "py_ns": 151.95,
+      "mojo_ns": 1.1,
+      "speedup_x": 138.14,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "context_relevance_score",
+      "py_ns": 87.933,
+      "mojo_ns": 1.1,
+      "speedup_x": 79.94,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "answer_faithfulness_score",
+      "py_ns": 96.721,
+      "mojo_ns": 1.1,
+      "speedup_x": 87.93,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "citation_coverage",
+      "py_ns": 117.796,
+      "mojo_ns": 1.1,
+      "speedup_x": 107.09,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "retrieval_precision",
+      "py_ns": 215.1,
+      "mojo_ns": 1.1,
+      "speedup_x": 195.55,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "mmr_diversity_score",
+      "py_ns": 225.417,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

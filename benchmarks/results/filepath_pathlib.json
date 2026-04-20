@@ -1,0 +1,77 @@
+{
+  "lib": "filepath_pathlib",
+  "status": "ok",
+  "n_functions": 8,
+  "n_compared": 6,
+  "overall_speedup_x": 71.3,
+  "total_py_ns": 78569.63,
+  "total_mojo_ns": 1101.9,
+  "elapsed_s": 3.64,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "path_join",
+      "py_ns": 7501.221,
+      "mojo_ns": 226.8,
+      "speedup_x": 33.07,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "path_basename",
+      "py_ns": 5842.233,
+      "mojo_ns": 59.3,
+      "speedup_x": 98.52,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "path_dirname",
+      "py_ns": 2259.546,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "path_extension",
+      "py_ns": 19976.925,
+      "mojo_ns": 29.5,
+      "speedup_x": 677.18,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "path_stem",
+      "py_ns": 5269.133,
+      "mojo_ns": 51.7,
+      "speedup_x": 101.92,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "path_is_absolute",
+      "py_ns": 1895.975,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "path_split",
+      "py_ns": 20472.638,
+      "mojo_ns": 276.5,
+      "speedup_x": 74.04,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "path_normalize",
+      "py_ns": 19507.479,
+      "mojo_ns": 458.1,
+      "speedup_x": 42.58,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

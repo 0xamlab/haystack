@@ -1,0 +1,196 @@
+from __future__ import annotations
+
+import base64
+import io
+from types import SimpleNamespace
+
+import pytest
+
+from apps.api_server.connectors.cloud_connector import AzureBlobConnector, GCSConnector, S3Connector
+from apps.api_server.connectors.file_connector import FileConnector
+from apps.api_server.connectors.rest_connector import RESTConnector
+
+
+class _FakeBody:
+    def __init__(self, payload: bytes) -> None:
+        self._payload = payload
+
+    def read(self) -> bytes:
+        return self._payload
+
+
+class _FakeDownload:
+    def __init__(self, payload: bytes) -> None:
+        self._payload = payload
+
+    def readall(self) -> bytes:
+        return self._payload
+
+
+def _tiny_excel_b64() -> str:
+    import openpyxl
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Sheet1"
+    ws.append(["part_number", "measure_total", "region"])
+    ws.append(["00123", 10, "NE"])
+    ws.append(["00456", 20, "SW"])
+    buf = io.BytesIO()
+    wb.save(buf)
+    return base64.b64encode(buf.getvalue()).decode()
+
+
+@pytest.mark.asyncio
+async def test_file_connector_fetch_table_supports_json_records() -> None:
+    connector = FileConnector(
+        {
+            "file_type": "json",
+            "content": '[{"amount": 10, "region": "east"}, {"amount": 20, "region": "west"}]',
+        }
+    )
+
+    table = await connector.fetch_table()
+
+    assert table is not None
+    assert table.num_rows == 2
+    assert table.column_names == ["amount", "region"]
+
+
+@pytest.mark.asyncio
+async def test_file_connector_fetch_table_supports_excel_without_row_materialization(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _should_not_run(*_args, **_kwargs):  # type: ignore[no-untyped-def]
+        raise AssertionError("excel fetch_table should use direct workbook-to-arrow path")
+
+    monkeypatch.setattr(FileConnector, "_parse_excel", staticmethod(_should_not_run))
+
+    connector = FileConnector(
+        {
+            "file_type": "excel",
+            "content": _tiny_excel_b64(),
+        }
+    )
+
+    table = await connector.fetch_table()
+
+    assert table is not None
+    assert table.to_pylist() == [
+        {"part_number": "00123", "measure_total": 10, "region": "NE"},
+        {"part_number": "00456", "measure_total": 20, "region": "SW"},
+    ]
+
+
+@pytest.mark.asyncio
+async def test_rest_connector_fetch_table_returns_arrow(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def _fake_fetch_data(self) -> list[dict[str, object]]:  # type: ignore[no-untyped-def]
+        return [{"score": 1.5, "system": "a"}, {"score": 2.5, "system": "b"}]
+
+    monkeypatch.setattr(RESTConnector, "fetch_data", _fake_fetch_data)
+
+    connector = RESTConnector({"url": "https://example.com/data"})
+    table = await connector.fetch_table()
+
+    assert table is not None
+    assert table.num_rows == 2
+    assert table.column_names == ["score", "system"]
+
+
+@pytest.mark.asyncio
+async def test_s3_connector_fetch_table_uses_columnar_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    import boto3
+
+    class _FakeClient:
+        def get_object(self, **kwargs: str) -> dict[str, object]:
+            assert kwargs["Bucket"] == "public-bucket"
+            assert kwargs["Key"] == "sales.csv"
+            return {"Body": _FakeBody(b"amount\n10\n20\n")}
+
+    def _fake_client(service_name: str, **kwargs):  # type: ignore[no-untyped-def]
+        assert service_name == "s3"
+        return _FakeClient()
+
+    monkeypatch.setattr(boto3, "client", _fake_client)
+
+    connector = S3Connector(
+        {
+            "bucket": "public-bucket",
+            "key": "sales.csv",
+            "anonymous": True,
+        }
+    )
+
+    table = await connector.fetch_table()
+
+    assert table is not None
+    assert table.num_rows == 2
+    assert table.column_names == ["amount"]
+
+
+@pytest.mark.asyncio
+async def test_gcs_connector_fetch_table_uses_columnar_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    from google.cloud import storage
+
+    class _FakeBlob:
+        def download_as_bytes(self) -> bytes:
+            return b"transaction_amount\n10.5\n20.25\n"
+
+    class _FakeBucket:
+        def blob(self, name: str) -> _FakeBlob:
+            assert name == "transactions.csv"
+            return _FakeBlob()
+
+    class _FakeClient:
+        def bucket(self, name: str) -> _FakeBucket:
+            assert name == "public-bucket"
+            return _FakeBucket()
+
+    monkeypatch.setattr(storage.Client, "create_anonymous_client", staticmethod(lambda: _FakeClient()))
+
+    connector = GCSConnector(
+        {
+            "bucket": "public-bucket",
+            "blob": "transactions.csv",
+            "anonymous": True,
+        }
+    )
+
+    table = await connector.fetch_table()
+
+    assert table is not None
+    assert table.num_rows == 2
+    assert table.column_names == ["transaction_amount"]
+
+
+@pytest.mark.asyncio
+async def test_azure_blob_connector_fetch_table_uses_columnar_path(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from azure.storage import blob as azure_blob
+
+    class _FakeBlobClient:
+        def download_blob(self) -> _FakeDownload:
+            return _FakeDownload(b"damage_property\n0\n15\n")
+
+        def get_blob_properties(self) -> SimpleNamespace:
+            return SimpleNamespace(size=12)
+
+    monkeypatch.setattr(
+        azure_blob.BlobClient,
+        "from_blob_url",
+        classmethod(lambda cls, url: _FakeBlobClient()),
+    )
+
+    connector = AzureBlobConnector(
+        {
+            "blob_url": "https://example.blob.core.windows.net/samplefiles/storm.csv",
+            "anonymous": True,
+        }
+    )
+
+    table = await connector.fetch_table()
+
+    assert table is not None
+    assert table.num_rows == 2
+    assert table.column_names == ["damage_property"]

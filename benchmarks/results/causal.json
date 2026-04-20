@@ -1,0 +1,93 @@
+{
+  "lib": "causal",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 10,
+  "overall_speedup_x": 93.46,
+  "total_py_ns": 44569.98,
+  "total_mojo_ns": 476.9,
+  "elapsed_s": 3.35,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "ate",
+      "py_ns": 570.417,
+      "mojo_ns": 4.7,
+      "speedup_x": 121.37,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "att",
+      "py_ns": 741.612,
+      "mojo_ns": 5.0,
+      "speedup_x": 148.32,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "propensity_score",
+      "py_ns": 3011.583,
+      "mojo_ns": 330.5,
+      "speedup_x": 9.11,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "ipw_estimate",
+      "py_ns": 526.104,
+      "mojo_ns": 9.7,
+      "speedup_x": 54.24,
+      "py_result": -0.685714,
+      "py_error": null
+    },
+    {
+      "function": "diff_in_diff",
+      "py_ns": 2060.604,
+      "mojo_ns": 9.6,
+      "speedup_x": 214.65,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "regression_discontinuity",
+      "py_ns": 966.742,
+      "mojo_ns": 3.7,
+      "speedup_x": 261.28,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "iv_estimate",
+      "py_ns": 4047.737,
+      "mojo_ns": 19.3,
+      "speedup_x": 209.73,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "stratified_ate",
+      "py_ns": 3767.292,
+      "mojo_ns": 54.9,
+      "speedup_x": 68.62,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "cohens_d",
+      "py_ns": 28445.85,
+      "mojo_ns": 38.4,
+      "speedup_x": 740.78,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "needed_sample_size_ate",
+      "py_ns": 432.042,
+      "mojo_ns": 1.1,
+      "speedup_x": 392.77,
+      "py_result": 10.0,
+      "py_error": null
+    }
+  ]
+}

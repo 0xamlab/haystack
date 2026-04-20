@@ -1,0 +1,77 @@
+{
+  "lib": "ml_naive_bayes",
+  "status": "ok",
+  "n_functions": 8,
+  "n_compared": 6,
+  "overall_speedup_x": 3.89,
+  "total_py_ns": 110346.69,
+  "total_mojo_ns": 28364.3,
+  "elapsed_s": 3.81,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "compute_priors",
+      "py_ns": 11855.108,
+      "mojo_ns": 333.7,
+      "speedup_x": 35.53,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "gaussian_log_likelihood",
+      "py_ns": 5863.8,
+      "mojo_ns": 1.0,
+      "speedup_x": 5863.8,
+      "py_result": -0.225791,
+      "py_error": null
+    },
+    {
+      "function": "gaussian_nb_fit",
+      "py_ns": 58360.35,
+      "mojo_ns": 22099.6,
+      "speedup_x": 2.64,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "gaussian_nb_predict",
+      "py_ns": null,
+      "mojo_ns": 772.0,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list index out of range"
+    },
+    {
+      "function": "gaussian_nb_predict_batch",
+      "py_ns": null,
+      "mojo_ns": 2783.9,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list index out of range"
+    },
+    {
+      "function": "accuracy",
+      "py_ns": 543.846,
+      "mojo_ns": 1.0,
+      "speedup_x": 543.85,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "confusion_matrix",
+      "py_ns": 27149.958,
+      "mojo_ns": 5715.2,
+      "speedup_x": 4.75,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "precision_recall",
+      "py_ns": 6573.629,
+      "mojo_ns": 213.8,
+      "speedup_x": 30.75,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

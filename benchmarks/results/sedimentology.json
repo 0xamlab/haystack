@@ -1,0 +1,93 @@
+{
+  "lib": "sedimentology",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 4,
+  "overall_speedup_x": 207.01,
+  "total_py_ns": 683.15,
+  "total_mojo_ns": 3.3,
+  "elapsed_s": 1.44,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "settling_velocity_stokes",
+      "py_ns": 205.333,
+      "mojo_ns": 0.1,
+      "speedup_x": 2053.33,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "shields_parameter",
+      "py_ns": 99.721,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "critical_shear_stress",
+      "py_ns": 106.367,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "bedload_transport",
+      "py_ns": 86.6,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "suspended_load_rouse",
+      "py_ns": 83.121,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "grain_size_phi",
+      "py_ns": 135.092,
+      "mojo_ns": 1.1,
+      "speedup_x": 122.81,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "phi_to_mm",
+      "py_ns": 128.396,
+      "mojo_ns": 1.0,
+      "speedup_x": 128.4,
+      "py_result": 0.707107,
+      "py_error": null
+    },
+    {
+      "function": "sorting_coefficient",
+      "py_ns": 117.746,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "skewness_folk_ward",
+      "py_ns": 135.725,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "sediment_budget",
+      "py_ns": 214.325,
+      "mojo_ns": 1.1,
+      "speedup_x": 194.84,
+      "py_result": 0.5,
+      "py_error": null
+    }
+  ]
+}

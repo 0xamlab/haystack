@@ -1,0 +1,93 @@
+{
+  "lib": "transformer_blocks",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 10,
+  "overall_speedup_x": 173.96,
+  "total_py_ns": 1687.45,
+  "total_mojo_ns": 9.7,
+  "elapsed_s": 2.55,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "multi_head_split_head",
+      "py_ns": 234.733,
+      "mojo_ns": 1.0,
+      "speedup_x": 234.73,
+      "py_result": 0.707107,
+      "py_error": null
+    },
+    {
+      "function": "feedforward_layer1",
+      "py_ns": 178.808,
+      "mojo_ns": 0.9,
+      "speedup_x": 198.68,
+      "py_result": 0.75,
+      "py_error": null
+    },
+    {
+      "function": "feedforward_layer2",
+      "py_ns": 150.542,
+      "mojo_ns": 1.0,
+      "speedup_x": 150.54,
+      "py_result": 0.75,
+      "py_error": null
+    },
+    {
+      "function": "residual_connection",
+      "py_ns": 75.662,
+      "mojo_ns": 1.0,
+      "speedup_x": 75.66,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "pre_norm",
+      "py_ns": 123.942,
+      "mojo_ns": 0.9,
+      "speedup_x": 137.71,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "post_norm",
+      "py_ns": 395.771,
+      "mojo_ns": 1.0,
+      "speedup_x": 395.77,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "causal_mask_logit",
+      "py_ns": 123.042,
+      "mojo_ns": 1.0,
+      "speedup_x": 123.04,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "attention_head_output",
+      "py_ns": 134.004,
+      "mojo_ns": 1.0,
+      "speedup_x": 134.0,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "gated_feedforward",
+      "py_ns": 129.054,
+      "mojo_ns": 0.9,
+      "speedup_x": 143.39,
+      "py_result": 0.155615,
+      "py_error": null
+    },
+    {
+      "function": "dropout_scale",
+      "py_ns": 141.888,
+      "mojo_ns": 1.0,
+      "speedup_x": 141.89,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

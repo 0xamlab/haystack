@@ -1,0 +1,109 @@
+{
+  "lib": "mining",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 11,
+  "overall_speedup_x": 325.01,
+  "total_py_ns": 4517.6,
+  "total_mojo_ns": 13.9,
+  "elapsed_s": 2.01,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "ore_grade",
+      "py_ns": 235.196,
+      "mojo_ns": 1.3,
+      "speedup_x": 180.92,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "strip_ratio",
+      "py_ns": 301.867,
+      "mojo_ns": 1.3,
+      "speedup_x": 232.21,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "recovery_rate",
+      "py_ns": 302.404,
+      "mojo_ns": 1.2,
+      "speedup_x": 252.0,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "mill_throughput",
+      "py_ns": 209.213,
+      "mojo_ns": 1.3,
+      "speedup_x": 160.93,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "bond_work_index_energy",
+      "py_ns": 1103.563,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "cut_off_grade",
+      "py_ns": 387.6,
+      "mojo_ns": 1.3,
+      "speedup_x": 298.15,
+      "py_result": 400.0,
+      "py_error": null
+    },
+    {
+      "function": "dilution_factor",
+      "py_ns": 516.7,
+      "mojo_ns": 1.2,
+      "speedup_x": 430.58,
+      "py_result": 50.0,
+      "py_error": null
+    },
+    {
+      "function": "net_smelter_return",
+      "py_ns": 145.029,
+      "mojo_ns": 1.2,
+      "speedup_x": 120.86,
+      "py_result": -0.499987,
+      "py_error": null
+    },
+    {
+      "function": "reserve_life",
+      "py_ns": 282.6,
+      "mojo_ns": 1.2,
+      "speedup_x": 235.5,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "powder_factor",
+      "py_ns": 158.971,
+      "mojo_ns": 1.3,
+      "speedup_x": 122.29,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "ventilation_quantity",
+      "py_ns": 1731.942,
+      "mojo_ns": 1.3,
+      "speedup_x": 1332.26,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "subsidence_factor",
+      "py_ns": 246.083,
+      "mojo_ns": 1.3,
+      "speedup_x": 189.29,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

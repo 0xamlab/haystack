@@ -1,0 +1,93 @@
+{
+  "lib": "ab_testing",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 8,
+  "overall_speedup_x": 12.06,
+  "total_py_ns": 7551.46,
+  "total_mojo_ns": 625.9,
+  "elapsed_s": 3.15,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "sample_size_proportion",
+      "py_ns": 486.129,
+      "mojo_ns": 1.0,
+      "speedup_x": 486.13,
+      "py_result": 1000000.0,
+      "py_error": null
+    },
+    {
+      "function": "z_test_proportions",
+      "py_ns": 651.313,
+      "mojo_ns": 317.6,
+      "speedup_x": 2.05,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "confidence_interval_proportion",
+      "py_ns": 1339.379,
+      "mojo_ns": 122.7,
+      "speedup_x": 10.92,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "relative_uplift",
+      "py_ns": 121.104,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "is_significant",
+      "py_ns": 135.921,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "power_analysis",
+      "py_ns": 1987.988,
+      "mojo_ns": 1.0,
+      "speedup_x": 1987.99,
+      "py_result": 0.617818,
+      "py_error": null
+    },
+    {
+      "function": "mde",
+      "py_ns": 428.946,
+      "mojo_ns": 1.0,
+      "speedup_x": 428.95,
+      "py_result": 0.213197,
+      "py_error": null
+    },
+    {
+      "function": "sequential_test",
+      "py_ns": 1663.208,
+      "mojo_ns": 113.3,
+      "speedup_x": 14.68,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "epsilon_greedy_select",
+      "py_ns": 652.342,
+      "mojo_ns": 68.2,
+      "speedup_x": 9.57,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "ucb1_select",
+      "py_ns": 342.154,
+      "mojo_ns": 1.1,
+      "speedup_x": 311.05,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

@@ -1,0 +1,1828 @@
+"""
+benchmark_mojo_vs_python.py
+===========================
+For every Mojo library (A → Z):
+  1. Auto-transpile each public function to a Python equivalent.
+  2. Generate a Mojo timing-loop benchmark file that calls each function
+     N times and reports ns-per-call.
+  3. Run both, compare outputs (correctness) and wall-clock timing.
+  4. Write per-library JSON to benchmarks/results/{lib}.json.
+  5. Write benchmarks/summary.json + benchmarks/summary.txt.
+
+Usage:
+  python3 tests/benchmark_mojo_vs_python.py
+  DE_BENCH_N=50000 python3 ...        # iterations per function (default 10000)
+  DE_BENCH_WORKERS=12 python3 ...     # parallel Mojo processes (default 8)
+  DE_BENCH_TIMEOUT=60 python3 ...     # seconds per library Mojo run (default 30)
+  DE_BENCH_LIBS=accounting,finance python3 ...   # run only named libs
+
+Run from repo root.
+"""
+from __future__ import annotations
+
+import concurrent.futures
+import json
+import math
+import os
+import re
+import subprocess
+import sys
+import time
+from pathlib import Path
+from typing import Any
+
+ROOT       = Path(__file__).resolve().parent.parent
+MOJO_DIR   = ROOT / "mojo" / "engine"
+MOJO_ENV   = ROOT / "mojo_env"
+BENCH_DIR  = ROOT / "benchmarks"
+RESULTS    = BENCH_DIR / "results"
+MOJO_BENCH = BENCH_DIR / "mojo_benchmarks"
+PY_LIBS    = BENCH_DIR / "python_libs"
+
+N_ITER    = int(os.environ.get("DE_BENCH_N",        "10000"))
+WORKERS   = int(os.environ.get("DE_BENCH_WORKERS",  "8"))
+TIMEOUT   = int(os.environ.get("DE_BENCH_TIMEOUT",  "30"))
+ONLY_LIBS = set(os.environ.get("DE_BENCH_LIBS", "").split(",")) - {""}
+
+SKIP_FILES = {
+    "main", "types", "expr", "output", "request_parser", "python_bridge",
+    # engine entry points only — only have run_*(req: SimRequest) with no simple params
+    "compare", "decision_tree", "time_series", "importance_sampling",
+    "decision_tree_parser", "field_mapper", "validate",
+    # __init__ files are package markers, not libraries
+    "__init__",
+    # trie: Mojo bench crashes (Trie() default-constructor in loop causes memory corruption)
+    "trie",
+    # pure struct-only APIs — no top-level fn, only struct methods (MarkovChain, SobolGen, Scheduler)
+    "markov", "sobol", "scheduler",
+}
+
+# Subdirectory files that are engine infrastructure, not domain math libraries
+SKIP_SUBDIR_FILES = {
+    # engines — complex simulation state machines (no simple-param public fns)
+    "engines/bootstrap", "engines/lhs", "engines/mcmc",
+    "engines/qmc_sobol", "engines/scenario", "engines/sensitivity",
+    # logging — side-effect only
+    "logging/logger",
+    # net — low-level socket I/O (rate_limiter only — unix_socket has benchmarkable encode/decode fns)
+    "net/rate_limiter",
+    # json tokenizer — struct/state-based, no simple-param public fns
+    "json/tokenizer",
+    # structs — only private helpers or struct-only API
+    "structs/bloom_filter", "structs/hashmap", "structs/lru_cache",
+    # graph/algorithms — needs Graph param (in SKIP_PARAM_TYPES)
+    "graph/algorithms",
+    # automata — struct-only API
+    "automata/state_machine",
+    # data/dataframe — struct-heavy
+    "data/dataframe",
+}
+
+
+class LibEntry:
+    """One Mojo library to benchmark."""
+    def __init__(self, path: Path, import_path: str, lib_id: str):
+        self.path        = path         # absolute .mojo file path
+        self.import_path = import_path  # e.g. "accounting" or "crypto.hmac"
+        self.lib_id      = lib_id       # safe identifier for filenames, e.g. "crypto_hmac"
+
+
+def get_all_libs() -> list[LibEntry]:
+    """Collect all domain libraries (top-level + subdirectories)."""
+    entries: list[LibEntry] = []
+
+    # 1. Top-level libraries
+    for p in sorted(MOJO_DIR.glob("*.mojo")):
+        if p.stem in SKIP_FILES:
+            continue
+        if ONLY_LIBS and p.stem not in ONLY_LIBS:
+            continue
+        entries.append(LibEntry(p, p.stem, p.stem))
+
+    # 2. Subdirectory libraries (one level deep)
+    for p in sorted(MOJO_DIR.glob("*/*.mojo")):
+        subdir = p.parent.name
+        rel    = f"{subdir}/{p.stem}"
+        if p.stem in SKIP_FILES or rel in SKIP_SUBDIR_FILES:
+            continue
+        import_path = f"{subdir}.{p.stem}"
+        lib_id      = f"{subdir}_{p.stem}"
+        if ONLY_LIBS and lib_id not in ONLY_LIBS and p.stem not in ONLY_LIBS:
+            continue
+        entries.append(LibEntry(p, import_path, lib_id))
+
+    return entries
+
+# Per-function safe test arguments (avoid NaN/Inf singularities)
+_PARAM_OVERRIDES: dict[tuple[str, str], list[str]] = {
+    ("cryogenics",      "carnot_cop_cooling"):             ["200.0", "300.0"],
+    ("pharmacokinetics","time_to_peak"):                   ["0.8", "0.2"],
+    ("pharmacokinetics","one_compartment_oral"):           ["100.0", "0.8", "0.2", "10.0", "2.0"],
+    ("seismology",      "epicenter_distance_from_ts_tp"):  ["2.0", "3.5", "6.0"],
+    ("semiconductors",  "junction_capacitance"):           ["1e-12", "0.3", "0.7", "0.5"],
+    ("insurance",       "gross_premium"):                  ["100.0", "0.2", "0.1"],
+    ("geomorphology",   "shields_parameter"):              ["5.0", "2650.0", "1000.0", "9.81", "0.01"],
+    ("geomorphology",   "hypsometric_integral"):           ["500.0", "100.0", "1000.0"],
+    ("root_finding",    "regula_falsi"):                   ["-1.0", "1.0", "0"],
+    # correlation: cholesky needs positive-definite matrix + correct n
+    ("correlation",     "cholesky_lower"):                 ["[[1.0,0.0,0.0],[0.0,1.0,0.0],[0.0,0.0,1.0]]", "3"],
+    ("correlation",     "sample_correlated_normal"):       ["[[1.0,0.0,0.0],[0.0,1.0,0.0],[0.0,0.0,1.0]]", "3"],
+    # scheduling_algo: processes = [arrival, burst, priority]; results = [pid, start, finish, wait]
+    ("scheduling_algo", "fcfs"):               ["[[0,3,1],[1,5,2],[2,2,3]]"],
+    ("scheduling_algo", "sjf"):                ["[[0,3,1],[1,5,2],[2,2,3]]"],
+    ("scheduling_algo", "priority_scheduling"):["[[0,3,1],[1,5,2],[2,2,3]]"],
+    ("scheduling_algo", "round_robin"):        ["[[0,3,1],[1,5,2],[2,2,3]]", "2"],
+    ("scheduling_algo", "avg_wait_time"):      ["[[0,0,3,1],[1,3,8,2],[2,8,10,1]]"],
+    ("scheduling_algo", "avg_turnaround"):     ["[[0,0,3,1],[1,3,8,2],[2,8,10,1]]"],
+    ("scheduling_algo", "throughput"):         ["[[0,0,3,1],[1,3,8,2],[2,8,10,1]]", "10"],
+    ("scheduling_algo", "cpu_utilization"):    ["[[0,0,3,1],[1,3,8,2],[2,8,10,1]]", "10"],
+    ("scheduling_algo", "gantt_chart"):        ["[[0,0,3,1],[1,3,8,2],[2,8,10,1]]"],
+    # dimensionality: n_components must be ≤ n_features
+    ("dimensionality",  "pca"):                ["[[0.5,0.6,0.7],[0.4,0.3,0.2],[0.1,0.2,0.3]]", "2"],
+    # linalg: Matrix functions that need a Matrix arg (so they appear in linalg.py)
+    ("linalg", "mat_add"):         ["mat_from_list([1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],3,3)", "mat_from_list([1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],3,3)"],
+    ("linalg", "mat_sub"):         ["mat_from_list([1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],3,3)", "mat_from_list([1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],3,3)"],
+    ("linalg", "mat_mul"):         ["mat_from_list([1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],3,3)", "mat_from_list([1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],3,3)"],
+    ("linalg", "mat_scale"):       ["mat_from_list([1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0],3,3)", "2.0"],
+    ("linalg", "mat_transpose"):   ["mat_from_list([1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0],3,3)"],
+    ("linalg", "mat_det"):         ["mat_from_list([4.0,2.0,0.0,2.0,3.0,0.0,0.0,0.0,1.0],3,3)"],
+    ("linalg", "mat_inv"):         ["mat_from_list([4.0,2.0,0.0,2.0,3.0,0.0,0.0,0.0,1.0],3,3)"],
+    ("linalg", "mat_norm_frobenius"): ["mat_from_list([1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0],3,3)"],
+    ("linalg", "mat_trace"):       ["mat_from_list([1.0,0.0,0.0,0.0,2.0,0.0,0.0,0.0,3.0],3,3)"],
+    ("linalg", "vec_dot"):         ["[0.5,0.6,0.7,0.4,0.3]", "[0.5,0.6,0.7,0.4,0.3]"],
+    ("linalg", "vec_norm"):        ["[0.5,0.6,0.7,0.4,0.3]"],
+    # linalg_ext: Matrix comes from linalg module; use mat_from_list to construct
+    ("linalg_ext", "mat_norm_frobenius"):      ["mat_from_list([1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0],3,3)"],
+    ("linalg_ext", "mat_norm_inf"):            ["mat_from_list([1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0],3,3)"],
+    ("linalg_ext", "mat_trace"):               ["mat_from_list([1.0,0.0,0.0,0.0,2.0,0.0,0.0,0.0,3.0],3,3)"],
+    ("linalg_ext", "mat_is_symmetric"):        ["mat_from_list([1.0,2.0,3.0,2.0,5.0,6.0,3.0,6.0,9.0],3,3)", "1e-10"],
+    ("linalg_ext", "mat_is_positive_definite"):["mat_from_list([4.0,2.0,0.0,2.0,3.0,0.0,0.0,0.0,1.0],3,3)"],
+    ("linalg_ext", "mat_power_iteration"):     ["mat_from_list([4.0,1.0,0.0,1.0,3.0,0.0,0.0,0.0,2.0],3,3)", "100"],
+    ("linalg_ext", "mat_condition_number"):    ["mat_from_list([4.0,1.0,0.0,1.0,3.0,0.0,0.0,0.0,2.0],3,3)"],
+    # recommender: ratings matrix, user/item indices must be within bounds
+    ("recommender", "cosine_sim_users"):       ["[[4.0,0.0,5.0],[0.0,3.0,4.0],[3.0,4.0,0.0]]", "0", "1"],
+    ("recommender", "predict_rating"):         ["[[4.0,0.0,5.0],[0.0,3.0,4.0],[3.0,4.0,0.0]]", "0", "2", "2"],
+    ("recommender", "popularity_ranking"):     ["[[4.0,0.0,5.0],[0.0,3.0,4.0],[3.0,4.0,0.0]]"],
+    ("recommender", "mean_rating_per_item"):   ["[[4.0,0.0,5.0],[0.0,3.0,4.0],[3.0,4.0,0.0]]"],
+    ("recommender", "mean_rating_per_user"):   ["[[4.0,0.0,5.0],[0.0,3.0,4.0],[3.0,4.0,0.0]]"],
+    ("recommender", "item_overlap"):           ["[[4.0,0.0,5.0],[0.0,3.0,4.0],[3.0,4.0,0.0]]", "0", "1"],
+    ("recommender", "cold_start_recommend"):   ["[[4.0,0.0,5.0],[0.0,3.0,4.0],[3.0,4.0,0.0]]", "2"],
+    ("recommender", "rmse_ratings"):           ["[0.5,0.6,0.7,0.4,0.3]", "[0.5,0.6,0.7,0.4,0.3]"],
+    # geometry: Point struct with x, y fields
+    ("geometry", "distance_2d"):               ["Point(0.0,0.0)", "Point(3.0,4.0)"],
+    ("geometry", "cross_product_2d"):          ["Point(0.0,0.0)", "Point(1.0,0.0)", "Point(0.0,1.0)"],
+    ("geometry", "point_in_polygon"):          ["Point(0.5,0.5)", "[Point(0.0,0.0),Point(1.0,0.0),Point(1.0,1.0),Point(0.0,1.0)]"],
+    ("geometry", "polygon_area"):              ["[Point(0.0,0.0),Point(1.0,0.0),Point(1.0,1.0),Point(0.0,1.0)]"],
+    ("geometry", "polygon_perimeter"):         ["[Point(0.0,0.0),Point(1.0,0.0),Point(1.0,1.0),Point(0.0,1.0)]"],
+    ("geometry", "convex_hull"):               ["[Point(0.0,0.0),Point(1.0,0.0),Point(0.5,1.0),Point(0.5,0.5)]"],
+    ("geometry", "line_intersection"):         ["Point(0.0,0.0)","Point(1.0,1.0)","Point(1.0,0.0)","Point(0.0,1.0)"],
+    ("geometry", "centroid"):                  ["[Point(0.0,0.0),Point(1.0,0.0),Point(1.0,1.0),Point(0.0,1.0)]"],
+    ("geometry", "bounding_box"):              ["[Point(0.0,0.0),Point(1.0,0.0),Point(1.0,1.0),Point(0.0,1.0)]"],
+    # trie: Trie struct with no-arg constructor; functions mutate it
+    ("trie", "trie_count_words"):              ["Trie()"],
+    ("trie", "trie_count_nodes"):              ["Trie()"],
+    ("trie", "trie_word_list"):                ["Trie()"],
+}
+
+# Mojo-specific arg overrides (replaces _PARAM_OVERRIDES value for Mojo bench only)
+# Use pre-built vars (e.g. _llf3) to avoid per-iteration allocation overhead
+_MOJO_PARAM_OVERRIDES: dict[tuple[str, str], list[str]] = {
+    # linalg: use pre-built _mat3 Matrix to avoid per-iteration mat_from_list allocation
+    ("linalg", "mat_add"):         ["_mat3", "_mat3"],
+    ("linalg", "mat_sub"):         ["_mat3", "_mat3"],
+    ("linalg", "mat_mul"):         ["_mat3", "_mat3"],
+    ("linalg", "mat_scale"):       ["_mat3", "2.0"],
+    ("linalg", "mat_transpose"):   ["_mat3"],
+    ("linalg", "mat_det"):         ["_mat3"],
+    ("linalg", "mat_inv"):         ["_mat3"],
+    ("linalg", "mat_norm_frobenius"): ["_mat3"],
+    ("linalg", "mat_trace"):       ["_mat3"],
+    ("linalg", "vec_dot"):         ["_lf5", "_lf5"],
+    ("linalg", "vec_norm"):        ["_lf5"],
+    # linalg_ext: use mat_from_list to build Matrix once (pre-built in bench preamble)
+    ("linalg_ext", "mat_norm_frobenius"):      ["_mat3"],
+    ("linalg_ext", "mat_norm_inf"):            ["_mat3"],
+    ("linalg_ext", "mat_trace"):               ["_mat3"],
+    ("linalg_ext", "mat_is_symmetric"):        ["_mat3", "1e-10"],
+    ("linalg_ext", "mat_is_positive_definite"):["_mat3"],
+    ("linalg_ext", "mat_power_iteration"):     ["_mat3", "100"],
+    ("linalg_ext", "mat_condition_number"):    ["_mat3"],
+    # recommender: use pre-built _llf3 matrix to avoid per-iteration list allocation
+    ("recommender", "cosine_sim_users"):       ["_llf3", "0", "1"],
+    ("recommender", "predict_rating"):         ["_llf3", "0", "2", "2"],
+    ("recommender", "popularity_ranking"):     ["_llf3"],
+    ("recommender", "mean_rating_per_item"):   ["_llf3"],
+    ("recommender", "mean_rating_per_user"):   ["_llf3"],
+    ("recommender", "item_overlap"):           ["_llf3", "0", "1"],
+    ("recommender", "cold_start_recommend"):   ["_llf3", "2"],
+    ("recommender", "rmse_ratings"):           ["_lf5", "_lf5"],
+}
+
+SCALAR_VAL = "0.5"
+INT_VAL    = "5"
+LIST_VALS  = "[0.5, 0.6, 0.7, 0.4, 0.3]"
+INT_LIST   = "[0, 1, 2, 3, 4]"
+
+SKIP_PARAM_TYPES = {
+    "TTLCache", "Graph", "WeightedGraph", "Heap",
+    "BloomFilter", "PetriNet", "KalmanState", "LRUCache",
+    "CSVRow", "CSVResult",  # csv_parser — complex struct returns
+}
+
+# Type prefixes that can never be represented as Python values
+_SKIP_TYPE_PREFIXES = ("UnsafePointer[", "Pointer[", "DTypePointer[")
+
+# Extra __init__ lines for structs whose List fields need dynamic initialization
+# Appended after the auto-generated field defaults (overrides the [] placeholder)
+_STRUCT_INIT_EXTRAS: dict[tuple[str, str], list[str]] = {
+    # Matrix.__init__(rows, cols) pre-allocates data = [0.0] * (rows * cols)
+    ("linalg", "Matrix"): [
+        "        self.data = [0.0] * (self.rows * self.cols)",
+    ],
+}
+
+# Manual method stubs for structs whose methods can't be auto-transpiled
+# (e.g. because they use Mojo-specific arithmetic without Python equivalents)
+_STRUCT_MANUAL_METHODS: dict[tuple[str, str], list[str]] = {
+    # SHA256: uses UInt32 wrapping arithmetic — use hashlib for Python side
+    ("sha256", "SHA256"): [
+        "    def update(self, data):\n"
+        "        if not hasattr(self, '_hlib'):\n"
+        "            import hashlib\n"
+        "            self._hlib = hashlib.sha256()\n"
+        "        self._hlib.update(data.encode() if isinstance(data, str) else bytes(data))\n",
+        "    def hexdigest(self):\n"
+        "        if not hasattr(self, '_hlib'): return ''\n"
+        "        return self._hlib.hexdigest()\n",
+    ],
+}
+
+
+# ── Mojo parser ────────────────────────────────────────────────────────────────
+
+class Param:
+    def __init__(self, name: str, typ: str, has_default: bool, is_mut: bool,
+                 default_val: str | None = None):
+        self.name = name
+        self.typ  = typ
+        self.has_default = has_default
+        self.is_mut = is_mut
+        self.default_val = default_val  # Python-compatible default expression, or None
+
+
+class FnInfo:
+    def __init__(self, name: str, params: list[Param], ret: str,
+                 body_lines: list[str], lib: str):
+        self.name        = name
+        self.params      = params
+        self.ret         = ret
+        self.body_lines  = body_lines  # raw Mojo body lines
+        self.lib         = lib
+
+
+def _clean_type(t: str) -> str:
+    t = t.split("=")[0].strip()
+    t = re.sub(r"\s+", " ", t)
+    for prefix in ("owned ", "inout ", "ref ", "read ", "mut "):
+        if t.startswith(prefix):
+            t = t[len(prefix):]
+    return t.strip()
+
+
+def _parse_params(raw: str) -> list[Param] | None:
+    parts: list[str] = []
+    depth = 0; cur = ""
+    for ch in raw:
+        if ch in "([": depth += 1
+        elif ch in ")]": depth -= 1
+        if ch == "," and depth == 0:
+            parts.append(cur.strip()); cur = ""
+        else:
+            cur += ch
+    if cur.strip():
+        parts.append(cur.strip())
+    result = []
+    for p in parts:
+        p = p.strip()
+        if not p:
+            continue
+        is_mut = bool(re.match(r"(mut|inout)\s+", p))
+        m = re.match(r"(?:mut\s+|owned\s+|inout\s+)?(\w+)\s*:\s*(.+)", p)
+        if not m:
+            return None
+        name = m.group(1)
+        rest = m.group(2).strip()
+        has_def = "=" in rest
+        typ = _clean_type(rest)
+        # Extract Python-compatible default value (e.g. 1e-10, True, "hello", "")
+        default_val: str | None = None
+        if has_def:
+            eq_idx = rest.index("=")
+            raw_dflt = rest[eq_idx + 1:].strip()
+            # Numeric scalar or bool
+            if re.match(r"^[\d.e+\-]+$", raw_dflt) or raw_dflt in ("True", "False"):
+                default_val = raw_dflt
+            # String literals: "" or "some string"
+            elif raw_dflt.startswith('"') and raw_dflt.endswith('"'):
+                default_val = raw_dflt  # already valid Python string literal
+        result.append(Param(name, typ, has_def, is_mut, default_val))
+    return result
+
+
+def parse_library(path: Path, lib_id: str | None = None) -> list[FnInfo]:
+    lib   = lib_id if lib_id is not None else path.stem
+    lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    fns: list[FnInfo] = []
+    i = 0
+    in_docstring = False
+    while i < len(lines):
+        stripped = lines[i].strip()
+        # Track docstring state to avoid matching fn declarations inside docstrings
+        if not in_docstring and (stripped.startswith('"""') or stripped.startswith("'''")):
+            quote = stripped[:3]
+            rest = stripped[3:]
+            if (quote in rest) or (stripped.count(quote) >= 2 and len(stripped) > 3):
+                pass  # single-line docstring, no state change
+            else:
+                in_docstring = True
+                i += 1; continue
+        elif in_docstring:
+            if '"""' in stripped or "'''" in stripped:
+                in_docstring = False
+            i += 1; continue
+        # Only match top-level (unindented) function definitions — skip nested closures
+        if lines[i] and lines[i][0].isspace():
+            i += 1; continue
+        m = re.match(r"(?:fn|def)\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(", stripped)
+        if not m:
+            i += 1; continue
+        fname = m.group(1)
+
+        # Collect signature: single-line ends with ':', multi-line continues
+        sig_lines = [stripped]
+        body_start = i + 1
+        if not stripped.rstrip().endswith(":"):
+            # Multi-line signature — collect until ':' terminator
+            j = i + 1
+            while j < min(i + 15, len(lines)):
+                nxt = lines[j].strip()
+                if re.match(r"(fn|def|struct|from|var|let)\s", nxt):
+                    break
+                sig_lines.append(nxt)
+                j += 1
+                if (nxt.rstrip().endswith(":")
+                        or (re.search(r"->\s*\w", nxt) and nxt.rstrip().endswith(":"))):
+                    break
+                # Check if this line ends the sig (has ')' and '-> ...')
+                if re.search(r"\)\s*->\s*\w[\w\[\], ]*\s*:$", nxt):
+                    break
+            body_start = j  # j already incremented past last sig line
+
+        full = " ".join(sig_lines)
+
+        ret = "Float64"
+        am = re.search(r"->\s*([^\n:{]+)", full)
+        if am:
+            ret = am.group(1).strip().rstrip("{: ")
+            ret = re.sub(r"\s+", " ", ret)
+        else:
+            ret = "None"
+
+        pm = re.search(r"\(([^)]*)\)", full)
+        param_str = pm.group(1) if pm else ""
+        params = _parse_params(param_str)
+        if params is None:
+            i += 1; continue
+
+        # Collect body (until next fn/def/struct)
+        body_lines: list[str] = []
+        k = body_start
+        while k < len(lines):
+            ln = lines[k]
+            stripped_k = ln.strip()
+            # Only break on top-level (unindented) definitions, not nested closures
+            if (ln and not ln[0].isspace()
+                    and (stripped_k.startswith("fn ") or stripped_k.startswith("def ")
+                         or stripped_k.startswith("struct "))):
+                break
+            # Skip any remaining signature fragments (contain '-> Type:' pattern)
+            if re.match(r"[^#]*\)\s*->\s*\w[\w\[\], ]*\s*:", stripped_k):
+                k += 1; continue
+            body_lines.append(ln)
+            k += 1
+
+        fns.append(FnInfo(fname, params, ret, body_lines, lib))
+        i = k
+    return fns
+
+
+# ── Mojo → Python transpiler ──────────────────────────────────────────────────
+
+_MOJO_MATH_FNS = {
+    "log", "exp", "sqrt", "sin", "cos", "tan", "asin", "acos", "atan",
+    "atan2", "floor", "ceil", "fabs", "pow",
+    "log10", "log2", "sinh", "cosh", "tanh",
+}
+
+def _mojo_expr_to_python(expr: str) -> str:
+    """Convert a Mojo expression to Python."""
+    # Mojo owned/move suffix operator: result^ → result
+    # Only remove ^ that is immediately after a word char and NOT followed by space+word
+    # (to preserve XOR: a ^ b, and ^= compound assignment)
+    expr = re.sub(r'(?<=\w)\^(?=[,)\]\s;]|$)', '', expr)
+
+    # List constructor: List[T]() → []  (handles nested like List[List[Bool]]())
+    expr = re.sub(r"List\[(?:[^\[\]]+|\[[^\[\]]*\])+\]\(\)", "[]", expr)
+    # List with capacity hint: List[T](capacity=N) → []  (handles nested parens like len(...))
+    expr = re.sub(r"List\[(?:[^\[\]]+|\[[^\[\]]*\])+\]\((?:[^()]*|\([^()]*\))*\)", "[]", expr)
+    # Bare List[] type reference (not constructor) → list
+    expr = re.sub(r"\bList\[(?:[^\[\]]+|\[[^\[\]]*\])+\](?!\()", "list", expr)
+
+    # Mojo String methods
+    expr = re.sub(r'\.as_bytes\(\)', ".encode('utf-8')", expr)
+    expr = re.sub(r'\.count\(\)', ".encode('utf-8')", expr)  # byte count
+
+    # Remove Mojo type casts: Float64(x) → float(x), Int(x) → int(x)
+    expr = re.sub(r"\bFloat64\(", "float(", expr)
+    expr = re.sub(r"\bInt\(", "int(", expr)
+    expr = re.sub(r"\bFloat32\(", "float(", expr)
+    expr = re.sub(r"\bUInt64\(", "int(", expr)
+    expr = re.sub(r"\bUInt32\(", "int(", expr)
+    expr = re.sub(r"\bUInt8\(", "int(", expr)
+    expr = re.sub(r"\bString\(", "str(", expr)
+
+    # pow(a, b) → a ** b
+    expr = re.sub(r"\bpow\(([^,]+),\s*([^)]+)\)", r"(\1) ** (\2)", expr)
+    # Private helpers like _pow, _log, _sqrt, _exp, _log10, _log2
+    expr = re.sub(r"\b_pow\(([^,]+),\s*([^)]+)\)", r"(\1) ** (\2)", expr)
+    expr = re.sub(r"\b_log\b",   "math.log",   expr)
+    expr = re.sub(r"\b_log10\b", "math.log10", expr)
+    expr = re.sub(r"\b_log2\b",  "math.log2",  expr)
+    expr = re.sub(r"\b_sqrt\b",  "math.sqrt",  expr)
+    expr = re.sub(r"\b_exp\b",   "math.exp",   expr)
+    expr = re.sub(r"\b_sin\b",   "math.sin",   expr)
+    expr = re.sub(r"\b_cos\b",   "math.cos",   expr)
+
+    # Standard math functions
+    for fn in _MOJO_MATH_FNS:
+        expr = re.sub(rf"\b{fn}\(", f"math.{fn}(", expr)
+
+    # Constants
+    expr = re.sub(r"\bPI\b",    "math.pi",  expr)
+    expr = re.sub(r"\bE\b",     "math.e",   expr)
+    expr = re.sub(r"\bINF\b",   "math.inf", expr)
+
+    # Mojo bool literals (capitalize already matches Python, but aliases)
+    expr = re.sub(r"\bTrue\b",  "True",  expr)
+    expr = re.sub(r"\bFalse\b", "False", expr)
+
+    # Strip any Mojo 'var' keyword in compound statements (e.g. "x = a; var y = b")
+    expr = re.sub(r'\bvar\s+(\w+)\s*(?::[^=;]+)?\s*=', r'\1 =', expr)
+
+    return expr
+
+
+def _last_structural_colon(s: str) -> int:
+    """Return index of the last ':' not inside a string literal or brackets."""
+    depth = 0
+    in_str: str | None = None
+    last_colon = -1
+    i = 0
+    while i < len(s):
+        c = s[i]
+        if in_str:
+            if c == "\\" :
+                i += 2
+                continue
+            if c == in_str:
+                in_str = None
+        else:
+            if c in ('"', "'"):
+                in_str = c
+            elif c in ("(", "[", "{"):
+                depth += 1
+            elif c in (")", "]", "}"):
+                depth -= 1
+            elif c == ":" and depth == 0:
+                last_colon = i
+        i += 1
+    return last_colon
+
+
+def _mojo_line_to_python(line: str, indent_base: int = 0) -> str | None:
+    """Convert one Mojo body line to Python. Returns None to skip."""
+    stripped = line.strip()
+    if not stripped or stripped.startswith("\"\"\"") or stripped.startswith("#"):
+        return ""  # empty line / docstring / comment
+    # Skip Mojo-only declarations
+    # Skip Mojo decorators (e.g. @always_inline, @parameter, @staticmethod)
+    if stripped.startswith("@"):
+        return None
+    if stripped.startswith("comptime "):
+        # comptime x: Type = val  → treat as regular variable assignment
+        m = re.match(r"comptime\s+(\w+)\s*(?::[^=]+)?\s*=\s*(.+)", stripped)
+        if m:
+            indent = " " * max(0, len(line) - len(line.lstrip()) - indent_base + 4)
+            return f"{indent}{m.group(1)} = {_mojo_expr_to_python(m.group(2))}"
+        return None  # skip incomprehensible comptime lines
+    if stripped.startswith("alias "):
+        # alias NAME = value  → NAME = value
+        m = re.match(r"alias\s+(\w+)\s*(?::[^=]+)?\s*=\s*(.+)", stripped)
+        if m:
+            indent = " " * max(0, len(line) - len(line.lstrip()) - indent_base + 4)
+            return f"{indent}{m.group(1)} = {_mojo_expr_to_python(m.group(2))}"
+        return None
+    if stripped.startswith("constrained[") or stripped.startswith("debug_assert"):
+        return None  # skip Mojo debug assertions
+    if stripped.startswith("var "):
+        # var x: Type = expr  → x = expr
+        m = re.match(r"var\s+(\w+)\s*(?::[^=]+)?\s*=\s*(.+)", stripped)
+        if m:
+            indent = " " * (len(line) - len(line.lstrip()) - indent_base + 4)
+            return f"{indent}{m.group(1)} = {_mojo_expr_to_python(m.group(2))}"
+        # var x: List[T]  → x = []
+        m_list = re.match(r"var\s+(\w+)\s*:\s*List\[", stripped)
+        if m_list:
+            indent = " " * (len(line) - len(line.lstrip()) - indent_base + 4)
+            return f"{indent}{m_list.group(1)} = []"
+        m2 = re.match(r"var\s+(\w+)\s*:\s*(\w+)", stripped)
+        if m2:
+            indent = " " * (len(line) - len(line.lstrip()) - indent_base + 4)
+            default = "0.0" if "Float" in m2.group(2) else ("[]" if "List" in m2.group(2) else "0")
+            return f"{indent}{m2.group(1)} = {default}"
+        return None
+    if stripped.startswith("return "):
+        rest = stripped[7:]
+        indent = " " * (len(line) - len(line.lstrip()) - indent_base + 4)
+        return f"{indent}return {_mojo_expr_to_python(rest)}"
+    if stripped.startswith("if ") or stripped.startswith("elif ") or stripped.startswith("else"):
+        # Strip trailing comment first (# not inside strings), then find last structural colon
+        no_comment = re.split(r'\s+#', stripped)[0]  # "if cond:  # comment" → "if cond:"
+        last_colon = _last_structural_colon(no_comment)
+        head = no_comment[:last_colon] if last_colon >= 0 else no_comment
+        inline_body = no_comment[last_colon + 1:].strip() if last_colon >= 0 else ""
+        cond_match = re.match(r"(if|elif)\s+(.+)", head)
+        else_match = re.match(r"else\s*$", head)
+        indent = " " * (len(line) - len(line.lstrip()) - indent_base + 4)
+        if cond_match:
+            cond = _mojo_expr_to_python(cond_match.group(2))
+            # Multi-line condition: "if (" with unbalanced parens — don't add ":"
+            if cond.count("(") > cond.count(")"):
+                return f"{indent}{cond_match.group(1)} {cond}"
+            py_head = f"{indent}{cond_match.group(1)} {cond}:"
+            if inline_body:
+                # One-liner "if cond: body" — convert body with extra indent
+                body_indent = " " * (len(line) - len(line.lstrip()) - indent_base + 8)
+                body_converted = _mojo_line_to_python(body_indent + inline_body, indent_base)
+                if body_converted and body_converted.strip():
+                    return py_head + "\n" + body_converted
+            return py_head
+        elif else_match:
+            py_else = f"{indent}else:"
+            if inline_body:
+                body_indent = " " * (len(line) - len(line.lstrip()) - indent_base + 8)
+                body_converted = _mojo_line_to_python(body_indent + inline_body, indent_base)
+                if body_converted and body_converted.strip():
+                    return py_else + "\n" + body_converted
+            return py_else
+    if stripped.startswith("for ") or stripped.startswith("while "):
+        indent = " " * (len(line) - len(line.lstrip()) - indent_base + 4)
+        return f"{indent}{_mojo_expr_to_python(stripped)}"
+    # Assignment (including compound: +=, -=, *=, /=, ^=, |=, &=, //=)
+    # Use (?!=) to avoid matching == as an assignment (first = of ==)
+    m = re.match(r"(\w+)\s*(?:\+|-|\*|/|\^|\||\&|//)?=(?!=)\s*(.+)", stripped)
+    if m and not stripped.startswith("fn ") and not stripped.startswith("struct "):
+        indent = " " * (len(line) - len(line.lstrip()) - indent_base + 4)
+        op_match = re.match(r"\w+\s*(\+|-|\*|/|\^|\||\&|//)?=(?!=)", stripped)
+        op = op_match.group(1) if op_match and op_match.group(1) else ""
+        rhs = _mojo_expr_to_python(m.group(2))
+        return f"{indent}{m.group(1)} {op}= {rhs}" if op else f"{indent}{m.group(1)} = {rhs}"
+    # Pass through with expression conversion
+    indent = " " * (len(line) - len(line.lstrip()) - indent_base + 4)
+    return f"{indent}{_mojo_expr_to_python(stripped)}"
+
+
+def _strip_docstrings(lines: list[str]) -> list[str]:
+    """Remove Mojo/Python docstring blocks from body lines."""
+    result = []
+    in_docstring = False
+    for line in lines:
+        stripped = line.strip()
+        if in_docstring:
+            if '"""' in stripped or "'''" in stripped:
+                in_docstring = False
+            continue  # skip docstring content
+        if stripped.startswith('"""') or stripped.startswith("'''"):
+            # Check if docstring closes on same line
+            rest = stripped[3:]
+            if '"""' in rest or "'''" in rest:
+                continue  # single-line docstring — skip
+            in_docstring = True
+            continue
+        result.append(line)
+    return result
+
+
+def transpile_function(fn: FnInfo) -> str | None:
+    """Return a Python def for the given Mojo function, or None if too complex."""
+    if fn.ret.startswith("SIMD["):
+        return None
+    # Block mut only on primitive scalar types; structs/lists are pass-by-ref in Python
+    if any(p.is_mut and p.typ in _PRIMITIVE_TYPES for p in fn.params):
+        return None
+    if any(p.typ in SKIP_PARAM_TYPES for p in fn.params):
+        return None
+
+    # Build Python param list (names with defaults if available)
+    py_params = [
+        f"{p.name}={p.default_val}" if p.default_val is not None else p.name
+        for p in fn.params
+    ]
+
+    # Strip docstrings from body before processing
+    clean_body = _strip_docstrings(fn.body_lines)
+
+    # Find body indent base
+    body = [l for l in clean_body if l.strip()]
+    indent_base = len(body[0]) - len(body[0].lstrip()) if body else 4
+
+    py_lines = [f"def {fn.name}({', '.join(py_params)}):"]
+    for bl in clean_body:
+        pl = _mojo_line_to_python(bl, indent_base)
+        if pl is None:
+            continue
+        py_lines.append(pl)
+
+    # Ensure function has a body
+    body_content = [l for l in py_lines[1:] if l.strip()]
+    if not body_content:
+        return None
+
+    return "\n".join(py_lines)
+
+
+def _transpile_struct_method(method_nm: str, raw_params: str,
+                             body_lines: list[str], lib: str) -> str | None:
+    """Transpile a Mojo struct method; returns 4-space-indented Python, or None."""
+    # Strip self / mut self / out self from params
+    params_no_self = re.sub(
+        r"^(?:mut\s+|out\s+|owned\s+|ref\s+)?self\s*,?\s*", "", raw_params.strip()
+    )
+    params = _parse_params(params_no_self) if params_no_self.strip() else []
+    if params is None:
+        params = []
+    # Block mut on primitive types only (same rule as transpile_function)
+    if any(p.is_mut and p.typ in _PRIMITIVE_TYPES for p in params):
+        return None
+    fn_info = FnInfo(method_nm, params, "None", body_lines, lib)
+    result = transpile_function(fn_info)
+    if result is None:
+        return None
+    # Re-insert `self` as first parameter
+    result = re.sub(
+        rf"^def {re.escape(method_nm)}\((.*?)\)",
+        lambda m: (f"def {method_nm}(self, {m.group(1)})"
+                   if m.group(1).strip() else f"def {method_nm}(self)"),
+        result, count=1, flags=re.MULTILINE,
+    )
+    # Indent all lines 4 spaces for class body
+    return "\n".join("    " + ln for ln in result.split("\n"))
+
+
+# ── argument builder ──────────────────────────────────────────────────────────
+
+def _arg_values(fn: FnInfo) -> list[str] | None:
+    """Return Python literal arg expressions for a function call."""
+    override = _PARAM_OVERRIDES.get((fn.lib, fn.name))
+    args = []
+    for i, p in enumerate(fn.params):
+        # If we have an override for this param, skip type checks and use it directly
+        if override is not None and i < len(override):
+            args.append(override[i])
+            continue
+        if (p.is_mut and not p.typ.startswith("List[")) or p.typ in SKIP_PARAM_TYPES:
+            return None
+        if any(p.typ.startswith(pfx) for pfx in _SKIP_TYPE_PREFIXES):
+            return None
+        typ = p.typ
+        if typ in ("Float64", "Float32"):
+            args.append(SCALAR_VAL)
+        elif typ == "Int":
+            args.append(INT_VAL)
+        elif typ in ("Bool",):
+            args.append("True")
+        elif typ in ("UInt64", "UInt32", "UInt8"):
+            args.append("1")
+        elif typ == "String":
+            args.append('"test"')
+        elif typ == "List[Float64]":
+            args.append(LIST_VALS)
+        elif typ == "List[Int]":
+            args.append(INT_LIST)
+        elif typ == "List[Bool]":
+            args.append("[True, False, True, True, False]")
+        elif typ == "List[String]":
+            args.append('["a", "b", "c", "d", "e"]')
+        elif typ == "List[List[Float64]]":
+            args.append("[[0.5,0.6,0.7],[0.4,0.3,0.2],[0.1,0.2,0.3]]")
+        elif typ == "List[List[Int]]":
+            args.append("[[0,1,1],[1,0,1],[1,1,0]]")
+        elif typ == "List[UInt8]":
+            args.append("[1, 2, 3, 4, 5]")
+        elif typ.startswith("List[List"):
+            return None
+        elif any(typ.startswith(pfx) for pfx in _SKIP_TYPE_PREFIXES):
+            return None
+        else:
+            return None
+    return args
+
+
+# ── Module-level constant and helper extractor ────────────────────────────────
+
+def _extract_cross_module_imports(lib_path: Path) -> str:
+    """Parse 'from X import A, B, C' lines in a Mojo source and emit Python imports."""
+    imports: list[str] = []
+    try:
+        lines = lib_path.read_text(encoding="utf-8", errors="replace").splitlines()
+        i = 0
+        while i < len(lines):
+            s = lines[i].strip()
+            i += 1
+            if not s.startswith("from ") or " import " not in s:
+                # Stop at struct/fn (past the import section)
+                if re.match(r"(fn|struct|def)\s+\w", s):
+                    break
+                continue
+            m = re.match(r"from\s+([\w./]+)\s+import\s+(.+)", s)
+            if not m:
+                continue
+            # Convert module path to a Python module name (last component, no extension)
+            mod_path = m.group(1).replace("\\", "/")
+            mod_name = mod_path.split("/")[-1].replace(".mojo", "")
+            symbols_raw = m.group(2).strip()
+            # Handle multi-line imports: from X import (\n    A,\n    B,\n)
+            if symbols_raw.startswith("("):
+                symbol_parts = [symbols_raw[1:]]  # strip leading '('
+                while i < len(lines):
+                    cont = lines[i].strip()
+                    i += 1
+                    if cont.endswith(")"):
+                        symbol_parts.append(cont[:-1])
+                        break
+                    symbol_parts.append(cont)
+                symbols = ", ".join(p.strip().rstrip(",") for p in symbol_parts if p.strip().rstrip(","))
+            else:
+                symbols = symbols_raw
+            if not symbols:
+                continue
+            # Import each symbol separately so a missing one doesn't break the others
+            symbol_list = [s.strip() for s in symbols.split(",") if s.strip()]
+            for sym in symbol_list:
+                imports.append(
+                    f"try:\n    from {mod_name} import {sym}\nexcept Exception:\n    pass"
+                )
+    except Exception:
+        pass
+    return "\n".join(imports)
+
+
+def _extract_module_preamble(lib_path: Path) -> str:
+    """Extract module-level alias constants and var declarations as Python code."""
+    lines = lib_path.read_text(encoding="utf-8", errors="replace").splitlines()
+    preamble: list[str] = []
+    in_docstring = False
+    for ln in lines:
+        s = ln.strip()
+        # Skip docstrings first (before fn check, to handle fn refs inside docstrings)
+        if in_docstring:
+            if '"""' in s or "'''" in s:
+                in_docstring = False
+            continue
+        if s.startswith('"""') or s.startswith("'''"):
+            rest = s[3:]
+            if '"""' not in rest and "'''" not in rest:
+                in_docstring = True
+            continue
+        # Stop at first function/struct definition (module preamble ends)
+        if re.match(r"(fn|struct|def)\s+\w", s):
+            break
+        # Extract: alias NAME = VALUE  or  alias NAME: TYPE = VALUE
+        m = re.match(r"alias\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?::[^=]+)?\s*=\s*(.+)", s)
+        if m:
+            val = _mojo_expr_to_python(m.group(2).strip())
+            preamble.append(f"{m.group(1)} = {val}")
+            continue
+        # Extract: var/comptime NAME: TYPE = VALUE  (module-level constants)
+        for kw in ("var", "comptime", "let"):
+            m2 = re.match(rf"{kw}\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?::[^=]+)?\s*=\s*(.+)", s)
+            if m2:
+                val = _mojo_expr_to_python(m2.group(2).strip())
+                preamble.append(f"{m2.group(1)} = {val}")
+                break
+    return "\n".join(preamble)
+
+
+def _struct_field_default(ftype: str, known_structs: set[str]) -> str:
+    """Return a Python default initializer expression for a Mojo field type."""
+    ftype = ftype.split("=")[0].strip()
+    if "List[" in ftype:
+        return "[]"
+    if ftype in ("Int", "UInt8", "UInt32", "UInt64", "UInt16"):
+        return "0"
+    if ftype in ("Float64", "Float32"):
+        return "0.0"
+    if ftype == "Bool":
+        return "False"
+    if ftype == "String":
+        return '""'
+    if ftype in known_structs:
+        return f"{ftype}()"
+    return "None"
+
+
+def _extract_struct_stubs(lib_path: Path) -> str:
+    """Generate Python class stubs for Mojo structs with proper field defaults and methods."""
+    text = lib_path.read_text(encoding="utf-8", errors="replace")
+    all_lines = text.splitlines()
+    lib_name = lib_path.stem
+
+    # First pass: collect all struct names (for default-initializer generation)
+    known_structs: set[str] = set()
+    for ln in all_lines:
+        m = re.match(r"struct\s+([A-Za-z_][A-Za-z0-9_]*)\s*[\(:]", ln.strip())
+        if m:
+            known_structs.add(m.group(1))
+
+    stubs: list[str] = []
+    i = 0
+    in_docstring = False
+
+    while i < len(all_lines):
+        ln = all_lines[i]
+        s = ln.strip()
+
+        # Docstring tracking (top-level)
+        if in_docstring:
+            if '"""' in s or "'''" in s:
+                in_docstring = False
+            i += 1
+            continue
+        if s.startswith('"""') or s.startswith("'''"):
+            rest = s[3:]
+            if '"""' not in rest and "'''" not in rest:
+                in_docstring = True
+            i += 1
+            continue
+
+        # Detect struct at top level (no leading whitespace)
+        if not ln.startswith(" ") and not ln.startswith("\t"):
+            m = re.match(r"struct\s+([A-Za-z_][A-Za-z0-9_]*)\s*[\(:]", s)
+            if m:
+                struct_name = m.group(1)
+                # (field_name, field_type) — all var fields in the struct
+                fields_typed: list[tuple[str, str]] = []
+                # init_params: params of fn __init__ (overrides fields_typed for signature)
+                init_params: list[tuple[str, str]] | None = None
+                methods_code: list[str] = []
+                in_struct_doc = False
+                i += 1
+
+                # Parse struct body: all indented lines
+                while i < len(all_lines):
+                    inner_ln = all_lines[i]
+                    inner_s = inner_ln.strip()
+
+                    # Struct body ends at top-level non-empty line
+                    if (not inner_ln.startswith(" ") and not inner_ln.startswith("\t")
+                            and inner_s and not inner_s.startswith("#")):
+                        break
+
+                    # Track docstrings inside struct
+                    if in_struct_doc:
+                        if '"""' in inner_s or "'''" in inner_s:
+                            in_struct_doc = False
+                        i += 1
+                        continue
+                    if inner_s.startswith('"""') or inner_s.startswith("'''"):
+                        rest_d = inner_s[3:]
+                        if '"""' not in rest_d and "'''" not in rest_d:
+                            in_struct_doc = True
+                        i += 1
+                        continue
+
+                    # Collect field declarations
+                    fm = re.match(r"var\s+(\w+)\s*:\s*(.+)", inner_s)
+                    if fm:
+                        fname = fm.group(1)
+                        ftype = fm.group(2).strip().split("=")[0].strip()
+                        # Remove Mojo type prefixes (owned/mut/ref)
+                        for pfx in ("owned ", "mut ", "ref ", "inout "):
+                            if ftype.startswith(pfx):
+                                ftype = ftype[len(pfx):]
+                        fields_typed.append((fname, ftype))
+                        i += 1
+                        continue
+
+                    # Detect method declarations
+                    fn_m = re.match(r"fn\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(", inner_s)
+                    if fn_m:
+                        method_nm = fn_m.group(1)
+                        method_indent = len(inner_ln) - len(inner_ln.lstrip())
+
+                        if method_nm.startswith("__") and method_nm != "__init__":
+                            # Skip all dunder methods except __init__
+                            i += 1
+                            while i < len(all_lines):
+                                skip_ln = all_lines[i]
+                                skip_s = skip_ln.strip()
+                                if not skip_s:
+                                    i += 1
+                                    continue
+                                skip_ind = len(skip_ln) - len(skip_ln.lstrip())
+                                if skip_ind <= method_indent and re.match(r"fn\s+", skip_s):
+                                    break
+                                if not skip_ln.startswith(" ") and not skip_ln.startswith("\t"):
+                                    break
+                                i += 1
+                            continue
+
+                        if method_nm == "__init__":
+                            # Parse __init__ signature to know actual constructor params
+                            sig_i = [inner_s]
+                            i += 1
+                            while i < len(all_lines) and not inner_s.rstrip().endswith(":"):
+                                nxt = all_lines[i].strip()
+                                sig_i.append(nxt)
+                                inner_s = nxt
+                                i += 1
+                                if nxt.rstrip().endswith(":"):
+                                    break
+                            full_init_sig = " ".join(sig_i)
+                            dp = 0; ps = -1; pstr = ""
+                            for ci, ch in enumerate(full_init_sig):
+                                if ch == "(" and ps == -1:
+                                    ps = ci + 1; dp = 1
+                                elif ch == "(": dp += 1
+                                elif ch == ")":
+                                    dp -= 1
+                                    if dp == 0: pstr = full_init_sig[ps:ci]; break
+                            # Remove self/out self/mut self then parse remaining params
+                            pstr_clean = re.sub(
+                                r"^(?:mut\s+|out\s+|owned\s+|ref\s+)?self\s*,?\s*", "", pstr.strip()
+                            )
+                            if pstr_clean.strip():
+                                init_param_list = _parse_params(pstr_clean)
+                                if init_param_list is not None:
+                                    init_params = [
+                                        (p2.name, p2.typ) for p2 in init_param_list
+                                    ]
+                            # Skip __init__ body
+                            while i < len(all_lines):
+                                skip_ln = all_lines[i]
+                                skip_s = skip_ln.strip()
+                                if not skip_s:
+                                    i += 1
+                                    continue
+                                skip_ind = len(skip_ln) - len(skip_ln.lstrip())
+                                if skip_ind <= method_indent and re.match(r"fn\s+", skip_s):
+                                    break
+                                if not skip_ln.startswith(" ") and not skip_ln.startswith("\t"):
+                                    break
+                                i += 1
+                            continue
+
+                        # Collect method signature (may be multi-line)
+                        sig_parts = [inner_s]
+                        i += 1
+                        while i < len(all_lines) and not inner_s.rstrip().endswith(":"):
+                            nxt = all_lines[i].strip()
+                            sig_parts.append(nxt)
+                            inner_s = nxt
+                            i += 1
+                            if nxt.rstrip().endswith(":"):
+                                break
+
+                        full_sig = " ".join(sig_parts)
+                        # Extract params (handle nested brackets in List[X])
+                        depth_p = 0; p_start = -1; params_str = ""
+                        for ci, ch in enumerate(full_sig):
+                            if ch == "(" and p_start == -1:
+                                p_start = ci + 1; depth_p = 1
+                            elif ch == "(":
+                                depth_p += 1
+                            elif ch == ")":
+                                depth_p -= 1
+                                if depth_p == 0:
+                                    params_str = full_sig[p_start:ci]
+                                    break
+
+                        # Collect method body (indent > method_indent)
+                        body_lines: list[str] = []
+                        while i < len(all_lines):
+                            body_ln = all_lines[i]
+                            body_s = body_ln.strip()
+                            if not body_s:
+                                body_lines.append(body_ln)
+                                i += 1
+                                continue
+                            body_ind = len(body_ln) - len(body_ln.lstrip())
+                            if body_ind <= method_indent:
+                                break
+                            body_lines.append(body_ln)
+                            i += 1
+
+                        # Transpile the method
+                        method_py = _transpile_struct_method(
+                            method_nm, params_str, body_lines, lib_name
+                        )
+                        if method_py:
+                            methods_code.append(method_py)
+                        continue
+
+                    i += 1
+
+                # Generate class stub
+                if not fields_typed and not methods_code:
+                    # Check manual methods
+                    manual = _STRUCT_MANUAL_METHODS.get((lib_name, struct_name), [])
+                    if not manual:
+                        continue
+
+                # Build __init__: use init_params for signature, but initialize all struct fields
+                sig_params = init_params if init_params is not None else fields_typed
+                init_lines = ["    def __init__(self, *args, **kwargs):"]
+                sig_names = {fname for fname, _ in sig_params}
+                for fi, (fname, ftype) in enumerate(sig_params):
+                    dflt = _struct_field_default(ftype, known_structs)
+                    init_lines.append(
+                        f"        _v{fi} = args[{fi}] if {fi} < len(args) else kwargs.get('{fname}')"
+                    )
+                    init_lines.append(
+                        f"        self.{fname} = _v{fi} if _v{fi} is not None else {dflt}"
+                    )
+                # Initialize any struct fields NOT in the __init__ signature with defaults
+                for fname, ftype in fields_typed:
+                    if fname not in sig_names:
+                        dflt = _struct_field_default(ftype, known_structs)
+                        init_lines.append(f"        self.{fname} = {dflt}")
+                # Apply any dynamic init extras (e.g. pre-allocate List fields)
+                for extra_line in _STRUCT_INIT_EXTRAS.get((lib_name, struct_name), []):
+                    init_lines.append(extra_line)
+                init_lines.append("    def __repr__(self):")
+                init_lines.append(f"        return f'{struct_name}({{vars(self)}})'")
+
+                class_code = f"class {struct_name}:\n" + "\n".join(init_lines)
+
+                # Add auto-transpiled methods
+                if methods_code:
+                    class_code += "\n" + "\n".join(methods_code)
+
+                # Add manual methods (override/supplement auto ones)
+                for manual_m in _STRUCT_MANUAL_METHODS.get((lib_name, struct_name), []):
+                    class_code += "\n" + manual_m.rstrip("\n")
+
+                stubs.append(class_code)
+                continue
+
+        i += 1
+
+    return "\n\n".join(stubs)
+
+
+# ── Python lib file generator ─────────────────────────────────────────────────
+
+def generate_python_lib(lib: str, fns: list[FnInfo],
+                        import_path: str | None = None,
+                        lib_path: Path | None = None) -> tuple[str, list[FnInfo]]:
+    """Return (python source code, list of successfully transpiled functions)."""
+    src_path = import_path or lib
+    lines = [
+        f'"""Python equivalent of mojo/engine/{src_path}.mojo (auto-generated)."""',
+        "import math",
+        "import random as _rng",
+        "",
+    ]
+
+    # Add module-level constants and struct stubs if we have the source path
+    if lib_path is not None:
+        cross_imports = _extract_cross_module_imports(lib_path)
+        if cross_imports:
+            lines.append(cross_imports)
+            lines.append("")
+        preamble = _extract_module_preamble(lib_path)
+        if preamble:
+            lines.append(preamble)
+            lines.append("")
+        struct_stubs = _extract_struct_stubs(lib_path)
+        if struct_stubs:
+            lines.append(struct_stubs)
+            lines.append("")
+
+    # Common Mojo runtime stubs not in stdlib
+    lines += [
+        "def random_float64(lo=0.0, hi=1.0): return _rng.uniform(lo, hi)",
+        "def random_si64(): return _rng.randint(-2**31, 2**31)",
+        "def random_ui64(): return _rng.randint(0, 2**32)",
+        "",
+        # ── Fallback stubs for Mojo cross-module helpers ──────────────────────
+        # json/parser: stubs used by engines/* libraries when real Mojo module unavailable
+        "def json_get_string(raw, key, default=''):",
+        "    try:",
+        "        import json as _j; v = _j.loads(raw).get(key)",
+        "        return str(v) if v is not None else default",
+        "    except Exception: return default",
+        "def json_get_float(raw, key, default=0.0):",
+        "    try:",
+        "        import json as _j; v = _j.loads(raw).get(key)",
+        "        return float(v) if v is not None else default",
+        "    except Exception: return default",
+        "def json_get_int(raw, key, default=0):",
+        "    try:",
+        "        import json as _j; v = _j.loads(raw).get(key)",
+        "        return int(v) if v is not None else default",
+        "    except Exception: return default",
+        "def json_get_bool(raw, key, default=False):",
+        "    try:",
+        "        import json as _j; v = _j.loads(raw).get(key)",
+        "        return bool(v) if v is not None else default",
+        "    except Exception: return default",
+        "def json_get_object(raw, key, default='{}'):",
+        "    try:",
+        "        import json as _j; v = _j.loads(raw).get(key, {})",
+        "        return _j.dumps(v) if isinstance(v, dict) else default",
+        "    except Exception: return default",
+        "def json_get_array(raw, key, default='[]'):",
+        "    try:",
+        "        import json as _j; v = _j.loads(raw).get(key, [])",
+        "        return _j.dumps(v) if isinstance(v, list) else default",
+        "    except Exception: return default",
+        "def json_array_len(arr):",
+        "    try:",
+        "        import json as _j; return len(_j.loads(arr))",
+        "    except Exception: return 0",
+        "def json_array_get(arr, index):",
+        "    try:",
+        "        import json as _j; v = _j.loads(arr)",
+        "        return _j.dumps(v[index]) if index < len(v) else ''",
+        "    except Exception: return ''",
+        # field_mapper stubs
+        "def to_lower(s): return s.lower()",
+        "def contains_keyword(text, keyword): return keyword.lower() in text.lower()",
+        "def detect_polarity(field_name):",
+        "    n = field_name.lower()",
+        "    if any(k in n for k in ('cost','expense','loss','debit','charge','penalty','tax')): return -1",
+        "    if any(k in n for k in ('revenue','profit','income','gain','credit','sales')): return 1",
+        "    return 0",
+        "def detect_unit_hint(field_name):",
+        "    n = field_name.lower()",
+        "    if any(k in n for k in ('cost','price','revenue','profit','amount','value','dollar')): return 'currency'",
+        "    if any(k in n for k in ('pct','percent','ratio','rate','margin')): return 'percentage'",
+        "    if any(k in n for k in ('qty','quantity','count','units','volume')): return 'count'",
+        "    return ''",
+        "def infer_distribution_from_values(values): return ('normal', '{}')",
+        "def map_fields(raw): return []",
+        "def build_objective_function(mappings): return ''",
+        "def build_variables_json(mappings): return '[]'",
+        "class FieldMapping: pass",
+        # string_distance stubs
+        "def dice_coefficient(a, b):",
+        "    if not a or not b: return 0.0",
+        "    def _bg(s): return set(s[i:i+2] for i in range(len(s)-1))",
+        "    ag, bg = _bg(a), _bg(b)",
+        "    if not ag or not bg: return 0.0",
+        "    return 2.0 * len(ag & bg) / (len(ag) + len(bg))",
+        "def edit_similarity(a, b):",
+        "    if not a and not b: return 1.0",
+        "    if not a or not b: return 0.0",
+        "    m, n = len(a), len(b); dp = list(range(n+1))",
+        "    for i in range(1, m+1):",
+        "        prev, dp[0] = dp[0], i",
+        "        for j in range(1, n+1):",
+        "            t = dp[j]; dp[j] = prev if a[i-1]==b[j-1] else 1+min(prev,dp[j],dp[j-1]); prev=t",
+        "    return 1.0 - dp[n] / max(m, n)",
+        # set_ops stubs
+        "def jaccard_index(a, b):",
+        "    sa, sb = set(a), set(b)",
+        "    if not sa and not sb: return 1.0",
+        "    if not sa or not sb: return 0.0",
+        "    return len(sa & sb) / len(sa | sb)",
+        "def to_set(lst): return list(set(lst))",
+        # conv stubs
+        "def parse_float64(s, default=0.0):",
+        "    try: return float(s)",
+        "    except Exception: return default",
+        "def parse_int(s, default=0):",
+        "    try: return int(float(s))",
+        "    except Exception: return default",
+        # dimensions stubs (used by relation_detector)
+        "DIM_UNKNOWN = 0; DIM_COUNT = 1; DIM_CURRENCY = 2; DIM_RATE = 3",
+        "DIM_RATIO = 4; DIM_IDENTIFIER = 5; DIM_INVALID = -1",
+        "def infer_from_samples(values): return DIM_UNKNOWN",
+        "def propagate(a, b, op): return DIM_UNKNOWN",
+        "def role_for_dimension(dim): return 'metric'",
+        # Python interop stub (used by env.mojo)
+        "class Python:",
+        "    @staticmethod",
+        "    def import_module(name):",
+        "        import importlib; return importlib.import_module(name)",
+        "",
+    ]
+
+    # First pass: transpile ALL functions (public and private) for dependency lookup
+    all_transpiled: dict[str, str] = {}
+    all_fns_map: dict[str, FnInfo] = {}
+    for fn in fns:
+        py_fn = transpile_function(fn)
+        if py_fn:
+            all_transpiled[fn.name] = py_fn
+            all_fns_map[fn.name] = fn
+
+    # Include private helpers first (they're called by public functions)
+    for fn in fns:
+        if fn.name.startswith("_") and fn.name in all_transpiled:
+            lines.append(all_transpiled[fn.name])
+            lines.append("")
+
+    # Include public functions that have testable args
+    transpiled: list[FnInfo] = []
+    for fn in fns:
+        if fn.name.startswith("_"):
+            continue
+        if _arg_values(fn) is None:
+            continue
+        if fn.name not in all_transpiled:
+            continue
+        lines.append(all_transpiled[fn.name])
+        lines.append("")
+        transpiled.append(fn)
+
+    # If no public testable functions, fall back to private ones (e.g. csv_parser helpers)
+    if not transpiled:
+        for fn in fns:
+            if not fn.name.startswith("_"):
+                continue
+            if _arg_values(fn) is None:
+                continue
+            if fn.name not in all_transpiled:
+                continue
+            transpiled.append(fn)
+
+    return "\n".join(lines), transpiled
+
+
+# ── Mojo benchmark file generator ─────────────────────────────────────────────
+
+def _mojo_arg(p: Param, override_args: list[str] | None, idx: int) -> str:
+    # Use override if available for this index; fall through to type-based defaults otherwise
+    if override_args is not None and idx < len(override_args):
+        return override_args[idx]
+    typ = p.typ
+    if typ in ("Float64", "Float32"):
+        return "0.5"
+    if typ == "Int":
+        return "5"
+    if typ in ("Bool",):
+        return "True"
+    if typ in ("UInt64", "UInt32", "UInt8"):
+        return "UInt64(1)" if "UInt64" in typ else "1"
+    if typ == "String":
+        return '"test"'
+    if typ == "List[Float64]":
+        return "_lf5"
+    if typ == "List[Int]":
+        return "_li5"
+    if typ == "List[Bool]":
+        return "_lb5"
+    if typ == "List[String]":
+        return '["a","b","c","d","e"]'
+    if typ == "List[List[Float64]]":
+        return "[[0.5,0.6,0.7],[0.4,0.3,0.2],[0.1,0.2,0.3]]"
+    if typ == "List[List[Int]]":
+        return "[[0,1,1],[1,0,1],[1,1,0]]"
+    if typ == "List[UInt8]":
+        return "_lub5"
+    return "0.5"
+
+
+_PRIMITIVE_TYPES = {"Float64", "Float32", "Int", "Bool", "UInt64", "UInt32", "UInt8",
+                    "String", "None"}
+
+
+def _get_struct_fields(lib_path: Path | None) -> dict[str, list[tuple[str, str]]]:
+    """Return {struct_name: [(field_name, field_type), ...]} for all structs in source."""
+    if lib_path is None:
+        return {}
+    result: dict[str, list[tuple[str, str]]] = {}
+    try:
+        text = lib_path.read_text(encoding="utf-8", errors="replace")
+        lines = text.splitlines()
+        in_struct = False
+        struct_name = ""
+        in_docstring = False
+        for ln in lines:
+            s = ln.strip()
+            if in_docstring:
+                if '"""' in s or "'''" in s:
+                    in_docstring = False
+                continue
+            if s.startswith('"""') or s.startswith("'''"):
+                rest = s[3:]
+                if '"""' not in rest and "'''" not in rest:
+                    in_docstring = True
+                continue
+            if not in_struct:
+                m = re.match(r"struct\s+([A-Za-z_][A-Za-z0-9_]*)", s)
+                if m:
+                    in_struct = True
+                    struct_name = m.group(1)
+                    result[struct_name] = []
+            else:
+                m = re.match(r"var\s+(\w+)\s*:\s*(\w+)", s)
+                if m:
+                    result[struct_name].append((m.group(1), m.group(2)))
+                elif re.match(r"(fn|struct)\s+\w", s) and not ln.startswith(" ") and not ln.startswith("\t"):
+                    in_struct = False
+                    m2 = re.match(r"struct\s+([A-Za-z_][A-Za-z0-9_]*)", s)
+                    if m2:
+                        in_struct = True
+                        struct_name = m2.group(1)
+                        result[struct_name] = []
+    except Exception:
+        pass
+    return result
+
+
+def _get_copyable_structs(lib_path: Path | None) -> set[str]:
+    """Return set of struct names that implement Copyable in the given Mojo source."""
+    if lib_path is None:
+        return set()
+    copyable: set[str] = set()
+    try:
+        text = lib_path.read_text(encoding="utf-8", errors="replace")
+        for m in re.finditer(r"struct\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([^)]*)\)", text):
+            traits = m.group(2)
+            if "Copyable" in traits:
+                copyable.add(m.group(1))
+    except Exception:
+        pass
+    return copyable
+
+
+def generate_mojo_benchmark(lib: str, fns: list[FnInfo], n: int,
+                            import_path: str | None = None,
+                            lib_path: Path | None = None) -> str:
+    """Return a Mojo benchmark file that times each function over N iterations."""
+    benchable = [f for f in fns if _arg_values(f) is not None
+                 and not f.ret.startswith("SIMD[")
+                 and not any(p.is_mut and not p.typ.startswith("List[") for p in f.params)]
+    fn_imports = [f.name for f in benchable]
+    if not fn_imports:
+        return ""
+
+    copyable_structs = _get_copyable_structs(lib_path)
+    struct_fields = _get_struct_fields(lib_path)
+
+    # Also import struct types used as return values or as parameter values in overrides
+    # Only include structs that are Copyable (required for List[T])
+    _struct_type_re = re.compile(r"\b([A-Z][A-Za-z0-9_]*)\s*\(")  # e.g. "Trie(" or "Point("
+    extra_struct_types: set[str] = set()
+    for f in benchable:
+        override = _PARAM_OVERRIDES.get((lib, f.name))
+        if override:
+            for arg_str in override:
+                for m_st in _struct_type_re.finditer(arg_str):
+                    extra_struct_types.add(m_st.group(1))
+    # Get all known struct names in this module
+    all_struct_names: set[str] = set(struct_fields.keys()) | set(copyable_structs)
+    struct_imports = sorted({
+        f.ret for f in benchable
+        if f.ret not in _PRIMITIVE_TYPES and not f.ret.startswith("List[")
+        and not f.ret.startswith("SIMD[") and f.ret != "None"
+        and f.ret in copyable_structs
+    } | {t for t in extra_struct_types if t in all_struct_names})
+    all_imports = fn_imports + struct_imports
+
+    mod = import_path or lib
+    # Extra imports needed for certain libraries
+    extra_imports: list[str] = []
+    if lib == "linalg_ext":
+        extra_imports.append("from linalg import mat_from_list, Matrix")
+    lines = [
+        f'"""bench_{lib}.mojo — auto-generated timing benchmark."""',
+        "from std.math import isnan, isinf",
+        f"from {mod} import {', '.join(all_imports)}",
+        "from std.time import perf_counter_ns",
+    ] + extra_imports + [
+        "",
+        "def main() raises:",
+        "    var _lf5 = List[Float64]()",
+        "    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)",
+        "    _lf5.append(0.4); _lf5.append(0.3)",
+        "    var _li5 = List[Int]()",
+        "    _li5.append(0); _li5.append(1); _li5.append(2)",
+        "    _li5.append(3); _li5.append(4)",
+        "    var _lb5 = List[Bool]()",
+        "    _lb5.append(True); _lb5.append(False); _lb5.append(True)",
+        "    _lb5.append(True); _lb5.append(False)",
+        "    var _lub5 = List[UInt8]()",
+        "    _lub5.append(1); _lub5.append(2); _lub5.append(3)",
+        "    _lub5.append(4); _lub5.append(5)",
+        # Pre-built 3x3 float matrix (avoids repeated allocation in loop for overrides)
+        "    var _llf3 = List[List[Float64]]()",
+        "    _llf3.append(List[Float64]()); _llf3.append(List[Float64]()); _llf3.append(List[Float64]())",
+        "    _llf3[0].append(4.0); _llf3[0].append(0.0); _llf3[0].append(5.0)",
+        "    _llf3[1].append(0.0); _llf3[1].append(3.0); _llf3[1].append(4.0)",
+        "    _llf3[2].append(3.0); _llf3[2].append(4.0); _llf3[2].append(0.0)",
+        # Pre-built 3x3 Matrix (linalg and linalg_ext overrides reference _mat3)
+        *([
+            "    var _mat3_data = List[Float64]()",
+            "    _mat3_data.append(1.0); _mat3_data.append(0.0); _mat3_data.append(0.0)",
+            "    _mat3_data.append(0.0); _mat3_data.append(2.0); _mat3_data.append(0.0)",
+            "    _mat3_data.append(0.0); _mat3_data.append(0.0); _mat3_data.append(3.0)",
+            "    var _mat3 = mat_from_list(_mat3_data, 3, 3)",
+        ] if lib in {"linalg", "linalg_ext"} else []),
+        f"    var N: Int = {n}",
+        "",
+    ]
+
+    for fn in fns:
+        args_list = _arg_values(fn)
+        if args_list is None:
+            continue
+        if fn.ret.startswith("SIMD[") or any(p.is_mut and not p.typ.startswith("List[") for p in fn.params):
+            continue
+
+        mojo_args: list[str] = []
+        mojo_override = _MOJO_PARAM_OVERRIDES.get((lib, fn.name)) or _PARAM_OVERRIDES.get((lib, fn.name))
+        for idx, p in enumerate(fn.params):
+            mojo_args.append(_mojo_arg(p, mojo_override, idx))
+
+        call = f"{fn.name}({', '.join(mojo_args)})"
+        vn   = f"_acc_{fn.name}"
+        lines += [
+            f"    var {vn}: Float64 = 0.0",
+            f"    var _t0_{fn.name} = perf_counter_ns()",
+            "    for _ in range(N):",
+        ]
+        # Accumulate differently based on return type
+        _PRIMITIVES = {"Float64", "Float32", "Int", "Bool", "UInt64", "UInt32", "UInt8",
+                       "String", "None"}
+        if fn.ret == "Float64":
+            lines.append(f"        {vn} += {call}")
+        elif fn.ret in ("Int", "Bool", "UInt64", "UInt32", "UInt8"):
+            lines.append(f"        {vn} += Float64({call})")
+        elif fn.ret.startswith("List["):
+            # List-returning: accumulate length to prevent dead-code elim
+            lines.append(f"        var _r_{fn.name} = {call}")
+            lines.append(f"        {vn} += Float64(len(_r_{fn.name}))")
+        elif fn.ret not in _PRIMITIVES and fn.ret != "None" and not fn.ret.startswith("SIMD["):
+            if fn.ret in copyable_structs:
+                # Copyable struct: store in 1-element List to prevent DCE
+                lines_before = [
+                    f"    var _keeper_{fn.name} = List[{fn.ret}]()",
+                    f"    _keeper_{fn.name}.append({call})",
+                ]
+                # Insert before timing block (pop last 3 lines, insert keepers, re-add)
+                timing_lines = lines[-3:]
+                lines[-3:] = lines_before + timing_lines
+                lines.append(f"        _keeper_{fn.name}[0] = {call}")
+                lines.append(f"        {vn} += Float64(len(_keeper_{fn.name}))")
+            else:
+                # Non-Copyable struct: access a numeric field to prevent DCE
+                fields = struct_fields.get(fn.ret, [])
+                numeric_field = next(
+                    (f for f, t in fields if t in ("Float64", "Float32", "Int", "UInt32", "UInt64")),
+                    None
+                )
+                if numeric_field:
+                    lines.append(f"        var _r_{fn.name} = {call}")
+                    lines.append(f"        {vn} += Float64(_r_{fn.name}.{numeric_field})")
+                else:
+                    lines.append(f"        _ = {call}")
+        else:
+            lines.append(f"        _ = {call}")
+        lines += [
+            f"    var _t1_{fn.name} = perf_counter_ns()",
+            f"    var _ns_{fn.name} = Float64(_t1_{fn.name} - _t0_{fn.name}) / Float64(N)",
+            f'    print("MOJO_TIMING {lib}::{fn.name}", _ns_{fn.name}, {vn})',
+        ]
+
+    return "\n".join(lines) + "\n"
+
+
+# ── benchmark runner ──────────────────────────────────────────────────────────
+
+def _run_mojo_benchmark(lib: str, bench_file: Path) -> dict[str, float]:
+    """Run a Mojo benchmark file and parse per-function ns-per-call."""
+    try:
+        result = subprocess.run(
+            ["pixi", "run", "mojo", "run", f"-I{MOJO_DIR}", str(bench_file)],
+            capture_output=True, text=True,
+            timeout=TIMEOUT,
+            cwd=str(MOJO_ENV),
+        )
+        output = result.stdout + result.stderr
+    except subprocess.TimeoutExpired:
+        return {}
+    except Exception:
+        return {}
+
+    timings: dict[str, float] = {}
+    for line in output.splitlines():
+        m = re.match(r"MOJO_TIMING\s+(\S+)\s+([\d.e+\-]+)", line)
+        if m:
+            fn_key = m.group(1)  # "lib::fn"
+            ns     = float(m.group(2))
+            timings[fn_key] = ns
+    return timings
+
+
+def _run_python_benchmark(lib: str, py_src: str, fns: list[FnInfo]) -> dict[str, dict]:
+    """Import generated Python lib, call each function N times, return timing + value."""
+    ns = {}
+    try:
+        exec(compile(py_src, f"<{lib}>", "exec"), ns)
+    except Exception as e:
+        # Return all functions as errored
+        err = f"{type(e).__name__}: {e}"[:80]
+        return {f"{lib}::{fn.name}": {"py_ns": None, "py_result": None,
+                                       "py_error": err}
+                for fn in fns}
+
+    results: dict[str, dict] = {}
+    for fn in fns:
+        args = _arg_values(fn)
+        if args is None:
+            continue
+        py_fn = ns.get(fn.name)
+        if py_fn is None:
+            continue
+        try:
+            # Evaluate arg literals (use module namespace so struct types resolve)
+            py_args = [eval(a, ns) for a in args]
+            # Warmup
+            py_fn(*py_args)
+            t0 = time.perf_counter()
+            acc = 0.0
+            for _ in range(N_ITER):
+                v = py_fn(*py_args)
+                if isinstance(v, float):
+                    acc += v
+                elif isinstance(v, (int, bool)):
+                    acc += float(v)
+            t1 = time.perf_counter()
+            ns_per_call = (t1 - t0) * 1e9 / N_ITER
+            results[f"{lib}::{fn.name}"] = {
+                "py_ns": ns_per_call,
+                "py_result": float(v) if isinstance(v, (int, float, bool)) else None,
+            }
+        except Exception as e:
+            results[f"{lib}::{fn.name}"] = {"py_ns": None, "py_result": None, "py_error": str(e)[:80]}
+    return results
+
+
+def run_library_benchmark(entry: LibEntry) -> dict[str, Any]:
+    """Full benchmark for one library. Returns result dict."""
+    lib_path    = entry.path
+    lib         = entry.lib_id
+    import_path = entry.import_path
+    t_start = time.perf_counter()
+
+    # 1. Parse
+    fns = parse_library(lib_path, lib_id=lib)
+    testable = [f for f in fns
+                if _arg_values(f) is not None
+                and not f.ret.startswith("SIMD[")
+                and not any(p.is_mut and not p.typ.startswith("List[") for p in f.params)
+                and not any(p.typ in SKIP_PARAM_TYPES for p in f.params)
+                and not any(any(p.typ.startswith(pfx) for pfx in _SKIP_TYPE_PREFIXES)
+                            for p in f.params)]
+    if not testable:
+        return {"lib": lib, "status": "skipped", "reason": "no testable functions"}
+
+    # 2. Generate Python equivalent (pass ALL fns so private helpers are included)
+    py_src, transpiled = generate_python_lib(lib, fns, import_path=import_path, lib_path=lib_path)
+    (PY_LIBS / f"{lib}.py").write_text(py_src, encoding="utf-8")
+
+    # 3. Generate Mojo benchmark
+    mojo_bench_src = generate_mojo_benchmark(lib, transpiled, N_ITER, import_path=import_path, lib_path=lib_path)
+    if not mojo_bench_src:
+        return {"lib": lib, "status": "skipped", "reason": "no Mojo benchmark generated"}
+    bench_file = MOJO_BENCH / f"bench_{lib}.mojo"
+    bench_file.write_text(mojo_bench_src, encoding="utf-8")
+
+    # 4. Run Python benchmark
+    py_results = _run_python_benchmark(lib, py_src, transpiled)
+
+    # 5. Run Mojo benchmark
+    mojo_timings = _run_mojo_benchmark(lib, bench_file)
+
+    # 6. Merge results
+    fn_results: list[dict] = []
+    total_py_ns   = 0.0
+    total_mojo_ns = 0.0
+    n_compared    = 0
+
+    for fn in transpiled:
+        key = f"{lib}::{fn.name}"
+        py  = py_results.get(key, {})
+        py_ns    = py.get("py_ns")
+        py_val   = py.get("py_result")
+        py_err   = py.get("py_error")
+        mojo_ns  = mojo_timings.get(key)
+
+        speedup = None
+        if py_ns and mojo_ns and mojo_ns > 0 and py_ns > 0:
+            speedup = py_ns / mojo_ns
+            total_py_ns   += py_ns
+            total_mojo_ns += mojo_ns
+            n_compared += 1
+
+        fn_results.append({
+            "function":   fn.name,
+            "py_ns":      round(py_ns, 3) if py_ns else None,
+            "mojo_ns":    round(mojo_ns, 3) if mojo_ns else None,
+            "speedup_x":  round(speedup, 2) if speedup else None,
+            "py_result":  round(py_val, 6) if py_val is not None and not math.isnan(py_val) else py_val,
+            "py_error":   py_err,
+        })
+
+    overall_speedup = (total_py_ns / total_mojo_ns) if total_mojo_ns > 0 else None
+    elapsed = time.perf_counter() - t_start
+
+    result = {
+        "lib":             lib,
+        "status":          "ok",
+        "n_functions":     len(fn_results),
+        "n_compared":      n_compared,
+        "overall_speedup_x": round(overall_speedup, 2) if overall_speedup else None,
+        "total_py_ns":     round(total_py_ns, 2),
+        "total_mojo_ns":   round(total_mojo_ns, 2),
+        "elapsed_s":       round(elapsed, 2),
+        "n_iterations":    N_ITER,
+        "functions":       fn_results,
+    }
+
+    # Save per-library JSON
+    (RESULTS / f"{lib}.json").write_text(
+        json.dumps(result, indent=2), encoding="utf-8"
+    )
+    return result
+
+
+# ── main ──────────────────────────────────────────────────────────────────────
+
+def main() -> int:
+    for d in [RESULTS, MOJO_BENCH, PY_LIBS]:
+        d.mkdir(parents=True, exist_ok=True)
+
+    # Ensure python_libs is on sys.path so cross-module imports work inside exec()
+    import sys as _sys
+    py_libs_str = str(PY_LIBS)
+    if py_libs_str not in _sys.path:
+        _sys.path.insert(0, py_libs_str)
+
+    libs = get_all_libs()
+
+    print("=" * 72)
+    print("  Mojo vs Python — Benchmark Suite (All 350+ Libraries)")
+    print("=" * 72)
+    print(f"  Libraries:  {len(libs)} (top-level + subdirectories)")
+    print(f"  Iterations: {N_ITER:,} per function")
+    print(f"  Workers:    {WORKERS} parallel")
+    print(f"  Timeout:    {TIMEOUT}s per library")
+    print("=" * 72)
+
+    suite_start = time.perf_counter()
+    all_results: list[dict] = []
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=WORKERS) as pool:
+        futures = {pool.submit(run_library_benchmark, entry): entry for entry in libs}
+        for fut in concurrent.futures.as_completed(futures):
+            r = fut.result()
+            all_results.append(r)
+            lib = r["lib"]
+            if r["status"] == "skipped":
+                print(f"  ⏭️  {lib:<42} skipped ({r.get('reason', '')})")
+            else:
+                sp = r.get("overall_speedup_x")
+                sp_str = f"{sp:+.1f}x" if sp else "n/a"
+                icon = "✅" if (sp is None or sp > 0) else "⚠️ "
+                print(f"  {icon}  {lib:<42}  speedup={sp_str:<8}  "
+                      f"py={r['total_py_ns']:.0f}ns  "
+                      f"mojo={r['total_mojo_ns']:.0f}ns  "
+                      f"({r['elapsed_s']:.1f}s)")
+
+    suite_duration = time.perf_counter() - suite_start
+
+    # Sort alphabetically for report
+    all_results.sort(key=lambda r: r["lib"])
+
+    # ── summary JSON ──
+    summary: dict[str, Any] = {
+        "timestamp":     time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "n_iterations":  N_ITER,
+        "n_libraries":   len(all_results),
+        "suite_duration_s": round(suite_duration, 1),
+        "libraries": [],
+    }
+    total_speedups = [r["overall_speedup_x"] for r in all_results if r.get("overall_speedup_x")]
+    if total_speedups:
+        summary["median_speedup_x"] = round(sorted(total_speedups)[len(total_speedups)//2], 2)
+        summary["mean_speedup_x"]   = round(sum(total_speedups) / len(total_speedups), 2)
+        summary["max_speedup_x"]    = round(max(total_speedups), 2)
+        summary["min_speedup_x"]    = round(min(total_speedups), 2)
+
+    for r in all_results:
+        summary["libraries"].append({
+            "lib":            r["lib"],
+            "status":         r["status"],
+            "n_functions":    r.get("n_functions", 0),
+            "n_compared":     r.get("n_compared", 0),
+            "speedup_x":      r.get("overall_speedup_x"),
+            "py_total_ns":    r.get("total_py_ns"),
+            "mojo_total_ns":  r.get("total_mojo_ns"),
+        })
+
+    (BENCH_DIR / "summary.json").write_text(json.dumps(summary, indent=2))
+
+    # ── summary TXT ──
+    txt_lines = [
+        "Mojo vs Python Benchmark Summary",
+        f"Generated: {summary['timestamp']}",
+        f"Iterations per function: {N_ITER:,}",
+        f"Libraries benchmarked: {len(all_results)}",
+        f"Suite duration: {suite_duration:.1f}s",
+        "",
+    ]
+    if total_speedups:
+        txt_lines += [
+            "Overall speedup (Mojo vs Python):",
+            f"  Median: {summary['median_speedup_x']}x",
+            f"  Mean:   {summary['mean_speedup_x']}x",
+            f"  Max:    {summary['max_speedup_x']}x",
+            f"  Min:    {summary['min_speedup_x']}x",
+            "",
+        ]
+
+    txt_lines += [
+        f"{'Library':<42} {'Speedup':>9} {'Python ns':>12} {'Mojo ns':>10} {'Fns':>5}",
+        "-" * 82,
+    ]
+    for r in all_results:
+        sp   = r.get("overall_speedup_x")
+        sp_s = f"{sp:.2f}x" if sp else "n/a"
+        txt_lines.append(
+            f"  {r['lib']:<40} {sp_s:>9} "
+            f"{r.get('total_py_ns', 0):>12.1f} "
+            f"{r.get('total_mojo_ns', 0):>10.1f} "
+            f"{r.get('n_compared', 0):>5}"
+        )
+
+    # Per-function detail for top/bottom speedups
+    all_fns: list[dict] = []
+    for r in all_results:
+        for fn in r.get("functions", []):
+            if fn.get("speedup_x"):
+                all_fns.append({**fn, "lib": r["lib"]})
+    all_fns.sort(key=lambda f: -(f["speedup_x"] or 0))
+
+    if all_fns:
+        txt_lines += ["", "Top 20 Fastest Mojo Functions:", "-" * 60]
+        for fn in all_fns[:20]:
+            txt_lines.append(
+                f"  {fn['lib']:<30}::{fn['function']:<30} "
+                f"{fn['speedup_x']:>6.1f}x  "
+                f"(py={fn['py_ns']:.1f}ns  mojo={fn['mojo_ns']:.1f}ns)"
+            )
+        txt_lines += ["", "Bottom 20 (closest to Python speed):", "-" * 60]
+        for fn in all_fns[-20:]:
+            txt_lines.append(
+                f"  {fn['lib']:<30}::{fn['function']:<30} "
+                f"{fn['speedup_x']:>6.1f}x  "
+                f"(py={fn['py_ns']:.1f}ns  mojo={fn['mojo_ns']:.1f}ns)"
+            )
+
+    (BENCH_DIR / "summary.txt").write_text("\n".join(txt_lines), encoding="utf-8")
+
+    # ── console final ──
+    print()
+    print("=" * 72)
+    print("  BENCHMARK SUMMARY")
+    print("=" * 72)
+    if total_speedups:
+        print(f"  Median speedup:  {summary['median_speedup_x']}x  "
+              f"(mean={summary['mean_speedup_x']}x  "
+              f"max={summary['max_speedup_x']}x)")
+    print(f"  Total functions compared: {sum(r.get('n_compared', 0) for r in all_results)}")
+    print(f"  Suite duration: {suite_duration:.1f}s")
+    print(f"  Results written to {BENCH_DIR}/")
+    print("    summary.json, summary.txt")
+    print(f"    results/<lib>.json  ({len(all_results)} files)")
+    print("=" * 72)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

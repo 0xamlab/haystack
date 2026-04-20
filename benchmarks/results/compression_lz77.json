@@ -1,0 +1,53 @@
+{
+  "lib": "compression_lz77",
+  "status": "ok",
+  "n_functions": 5,
+  "n_compared": 5,
+  "overall_speedup_x": 11.42,
+  "total_py_ns": 24553.88,
+  "total_mojo_ns": 2151.0,
+  "elapsed_s": 1.97,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "bytes_to_ints",
+      "py_ns": 2120.983,
+      "mojo_ns": 173.5,
+      "speedup_x": 12.22,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "ints_to_string",
+      "py_ns": 1896.688,
+      "mojo_ns": 54.6,
+      "speedup_x": 34.74,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "find_longest_match",
+      "py_ns": 545.754,
+      "mojo_ns": 176.1,
+      "speedup_x": 3.1,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "lz77_encode",
+      "py_ns": 19644.221,
+      "mojo_ns": 1745.8,
+      "speedup_x": 11.25,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "compression_ratio",
+      "py_ns": 346.237,
+      "mojo_ns": 1.0,
+      "speedup_x": 346.24,
+      "py_result": 0.333333,
+      "py_error": null
+    }
+  ]
+}

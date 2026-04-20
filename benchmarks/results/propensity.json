@@ -1,0 +1,85 @@
+{
+  "lib": "propensity",
+  "status": "ok",
+  "n_functions": 9,
+  "n_compared": 9,
+  "overall_speedup_x": 1.33,
+  "total_py_ns": 18665.91,
+  "total_mojo_ns": 14042.6,
+  "elapsed_s": 2.04,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "propensity_scores",
+      "py_ns": 6270.275,
+      "mojo_ns": 8456.4,
+      "speedup_x": 0.74,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "nearest_neighbor_match",
+      "py_ns": 3030.587,
+      "mojo_ns": 2611.9,
+      "speedup_x": 1.16,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "caliper_match",
+      "py_ns": 3111.725,
+      "mojo_ns": 1463.2,
+      "speedup_x": 2.13,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "matched_ate",
+      "py_ns": 669.196,
+      "mojo_ns": 1232.1,
+      "speedup_x": 0.54,
+      "py_result": 0.1,
+      "py_error": null
+    },
+    {
+      "function": "balance_check",
+      "py_ns": 1854.613,
+      "mojo_ns": 8.9,
+      "speedup_x": 208.38,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "propensity_overlap",
+      "py_ns": 648.554,
+      "mojo_ns": 7.7,
+      "speedup_x": 84.23,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "trimmed_sample",
+      "py_ns": 351.537,
+      "mojo_ns": 209.0,
+      "speedup_x": 1.68,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "stratified_estimate",
+      "py_ns": 2347.862,
+      "mojo_ns": 48.3,
+      "speedup_x": 48.61,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "match_quality",
+      "py_ns": 381.558,
+      "mojo_ns": 5.1,
+      "speedup_x": 74.82,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

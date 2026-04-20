@@ -1,0 +1,93 @@
+{
+  "lib": "atmospheric_chemistry",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 8,
+  "overall_speedup_x": 17.93,
+  "total_py_ns": 1004.05,
+  "total_mojo_ns": 56.0,
+  "elapsed_s": 1.61,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "ozone_column_dobson",
+      "py_ns": 130.921,
+      "mojo_ns": 1.1,
+      "speedup_x": 119.02,
+      "py_result": 1120.580573,
+      "py_error": null
+    },
+    {
+      "function": "photolysis_rate",
+      "py_ns": 132.058,
+      "mojo_ns": 48.6,
+      "speedup_x": 2.72,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "hydroxyl_steady_state",
+      "py_ns": 192.371,
+      "mojo_ns": 1.1,
+      "speedup_x": 174.88,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "aerosol_optical_depth",
+      "py_ns": 111.246,
+      "mojo_ns": 1.0,
+      "speedup_x": 111.25,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "mixing_ratio_to_conc",
+      "py_ns": 109.913,
+      "mojo_ns": 1.0,
+      "speedup_x": 109.91,
+      "py_result": 3.62148525801996e+16,
+      "py_error": null
+    },
+    {
+      "function": "residence_time",
+      "py_ns": 154.542,
+      "mojo_ns": 1.1,
+      "speedup_x": 140.49,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "smog_formation_index",
+      "py_ns": 81.033,
+      "mojo_ns": 1.0,
+      "speedup_x": 81.03,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "acid_rain_ph",
+      "py_ns": null,
+      "mojo_ns": 1.0,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "module 'math' has no attribute 'math'"
+    },
+    {
+      "function": "greenhouse_forcing",
+      "py_ns": 115.883,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "lifetime_from_oh",
+      "py_ns": 91.967,
+      "mojo_ns": 1.1,
+      "speedup_x": 83.61,
+      "py_result": 4.0,
+      "py_error": null
+    }
+  ]
+}

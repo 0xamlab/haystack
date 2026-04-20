@@ -1,0 +1,93 @@
+{
+  "lib": "dimensions",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 3,
+  "overall_speedup_x": 269.91,
+  "total_py_ns": 4453.47,
+  "total_mojo_ns": 16.5,
+  "elapsed_s": 2.03,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "infer_from_samples",
+      "py_ns": 4009.079,
+      "mojo_ns": 15.2,
+      "speedup_x": 263.76,
+      "py_result": 4.0,
+      "py_error": null
+    },
+    {
+      "function": "propagate",
+      "py_ns": 227.113,
+      "mojo_ns": 1.2,
+      "speedup_x": 189.26,
+      "py_result": -1.0,
+      "py_error": null
+    },
+    {
+      "function": "propagate_is_valid",
+      "py_ns": 245.408,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "validate_formula",
+      "py_ns": 217.283,
+      "mojo_ns": 0.1,
+      "speedup_x": 2172.83,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "can_sum",
+      "py_ns": 158.5,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "can_avg",
+      "py_ns": 177.908,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "aggregation_valid",
+      "py_ns": 160.442,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "role_for_dimension",
+      "py_ns": 186.679,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "dimension_name",
+      "py_ns": 456.271,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "dimension_from_role",
+      "py_ns": 251.071,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

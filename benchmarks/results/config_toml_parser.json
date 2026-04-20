@@ -1,0 +1,21 @@
+{
+  "lib": "config_toml_parser",
+  "status": "ok",
+  "n_functions": 1,
+  "n_compared": 1,
+  "overall_speedup_x": 3.77,
+  "total_py_ns": 8088.19,
+  "total_mojo_ns": 2148.0,
+  "elapsed_s": 1.69,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "toml_parse",
+      "py_ns": 8088.192,
+      "mojo_ns": 2148.0,
+      "speedup_x": 3.77,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

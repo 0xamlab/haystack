@@ -1,0 +1,53 @@
+{
+  "lib": "metrics_agg",
+  "status": "ok",
+  "n_functions": 5,
+  "n_compared": 5,
+  "overall_speedup_x": 16.69,
+  "total_py_ns": 13131.0,
+  "total_mojo_ns": 786.8,
+  "elapsed_s": 1.78,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "counter_create",
+      "py_ns": 1392.225,
+      "mojo_ns": 1.0,
+      "speedup_x": 1392.22,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "histogram_create",
+      "py_ns": 560.771,
+      "mojo_ns": 114.1,
+      "speedup_x": 4.91,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "rate",
+      "py_ns": 166.862,
+      "mojo_ns": 1.0,
+      "speedup_x": 166.86,
+      "py_result": -0.1,
+      "py_error": null
+    },
+    {
+      "function": "compute_throughput",
+      "py_ns": 105.883,
+      "mojo_ns": 1.0,
+      "speedup_x": 105.88,
+      "py_result": 10.0,
+      "py_error": null
+    },
+    {
+      "function": "latency_stats",
+      "py_ns": 10905.258,
+      "mojo_ns": 669.7,
+      "speedup_x": 16.28,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

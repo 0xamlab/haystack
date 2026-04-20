@@ -1,0 +1,93 @@
+{
+  "lib": "audio",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 8,
+  "overall_speedup_x": 6.18,
+  "total_py_ns": 11728.4,
+  "total_mojo_ns": 1896.8,
+  "elapsed_s": 1.84,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "amplitude_to_db",
+      "py_ns": null,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "module 'math' has no attribute 'math'"
+    },
+    {
+      "function": "db_to_amplitude",
+      "py_ns": 109.004,
+      "mojo_ns": 1.0,
+      "speedup_x": 109.0,
+      "py_result": 0.529627,
+      "py_error": null
+    },
+    {
+      "function": "frequency_to_midi",
+      "py_ns": null,
+      "mojo_ns": 1.0,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "module 'math' has no attribute 'math'"
+    },
+    {
+      "function": "midi_to_frequency",
+      "py_ns": 110.733,
+      "mojo_ns": 1.1,
+      "speedup_x": 100.67,
+      "py_result": 8.415368,
+      "py_error": null
+    },
+    {
+      "function": "generate_sine",
+      "py_ns": 1694.233,
+      "mojo_ns": 480.1,
+      "speedup_x": 3.53,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "rms_amplitude",
+      "py_ns": 289.375,
+      "mojo_ns": 5.3,
+      "speedup_x": 54.6,
+      "py_result": 0.519615,
+      "py_error": null
+    },
+    {
+      "function": "zero_crossing_rate",
+      "py_ns": 345.467,
+      "mojo_ns": 6.2,
+      "speedup_x": 55.72,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "envelope",
+      "py_ns": 6009.217,
+      "mojo_ns": 466.0,
+      "speedup_x": 12.9,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "normalize_audio",
+      "py_ns": 1831.963,
+      "mojo_ns": 586.1,
+      "speedup_x": 3.13,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "mix_signals",
+      "py_ns": 1338.408,
+      "mojo_ns": 351.0,
+      "speedup_x": 3.81,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

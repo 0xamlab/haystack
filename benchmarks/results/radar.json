@@ -1,0 +1,109 @@
+{
+  "lib": "radar",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 12,
+  "overall_speedup_x": 102.54,
+  "total_py_ns": 1404.82,
+  "total_mojo_ns": 13.7,
+  "elapsed_s": 1.51,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "radar_range_equation",
+      "py_ns": 157.533,
+      "mojo_ns": 1.0,
+      "speedup_x": 157.53,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "doppler_frequency",
+      "py_ns": 193.717,
+      "mojo_ns": 1.0,
+      "speedup_x": 193.72,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "doppler_velocity",
+      "py_ns": 114.925,
+      "mojo_ns": 1.0,
+      "speedup_x": 114.92,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "range_from_time",
+      "py_ns": 177.871,
+      "mojo_ns": 1.0,
+      "speedup_x": 177.87,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "pulse_repetition_interval",
+      "py_ns": 81.821,
+      "mojo_ns": 1.1,
+      "speedup_x": 74.38,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "max_unambiguous_range",
+      "py_ns": 93.933,
+      "mojo_ns": 1.1,
+      "speedup_x": 85.39,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "max_unambiguous_velocity",
+      "py_ns": 92.208,
+      "mojo_ns": 1.1,
+      "speedup_x": 83.83,
+      "py_result": 0.0625,
+      "py_error": null
+    },
+    {
+      "function": "range_resolution",
+      "py_ns": 94.729,
+      "mojo_ns": 1.0,
+      "speedup_x": 94.73,
+      "py_result": 300000000.0,
+      "py_error": null
+    },
+    {
+      "function": "antenna_gain_from_area",
+      "py_ns": 132.817,
+      "mojo_ns": 1.0,
+      "speedup_x": 132.82,
+      "py_result": 25.132741,
+      "py_error": null
+    },
+    {
+      "function": "radar_cross_section_sphere",
+      "py_ns": 85.587,
+      "mojo_ns": 1.0,
+      "speedup_x": 85.59,
+      "py_result": 0.785398,
+      "py_error": null
+    },
+    {
+      "function": "noise_power",
+      "py_ns": 91.142,
+      "mojo_ns": 1.0,
+      "speedup_x": 91.14,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "signal_to_clutter",
+      "py_ns": 88.537,
+      "mojo_ns": 2.4,
+      "speedup_x": 36.89,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

@@ -1,0 +1,93 @@
+{
+  "lib": "pulmonology",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 8,
+  "overall_speedup_x": 100.68,
+  "total_py_ns": 1077.29,
+  "total_mojo_ns": 10.7,
+  "elapsed_s": 1.4,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "tidal_volume_predicted",
+      "py_ns": 80.733,
+      "mojo_ns": 1.0,
+      "speedup_x": 80.73,
+      "py_result": 3.0,
+      "py_error": null
+    },
+    {
+      "function": "minute_ventilation",
+      "py_ns": 95.467,
+      "mojo_ns": 3.6,
+      "speedup_x": 26.52,
+      "py_result": 0.00025,
+      "py_error": null
+    },
+    {
+      "function": "alveolar_ventilation",
+      "py_ns": 93.246,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "fev1_fvc_ratio",
+      "py_ns": 92.213,
+      "mojo_ns": 1.0,
+      "speedup_x": 92.21,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "peak_expiratory_flow",
+      "py_ns": 111.725,
+      "mojo_ns": 1.1,
+      "speedup_x": 101.57,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "alveolar_oxygen",
+      "py_ns": 238.804,
+      "mojo_ns": 1.0,
+      "speedup_x": 238.8,
+      "py_result": -23.875,
+      "py_error": null
+    },
+    {
+      "function": "a_a_gradient",
+      "py_ns": 166.413,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "respiratory_quotient",
+      "py_ns": 107.008,
+      "mojo_ns": 1.0,
+      "speedup_x": 107.01,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "compliance_static",
+      "py_ns": 174.042,
+      "mojo_ns": 1.0,
+      "speedup_x": 174.04,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "airway_resistance",
+      "py_ns": 177.3,
+      "mojo_ns": 1.0,
+      "speedup_x": 177.3,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

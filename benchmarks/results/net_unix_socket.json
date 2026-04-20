@@ -1,0 +1,125 @@
+{
+  "lib": "net_unix_socket",
+  "status": "ok",
+  "n_functions": 14,
+  "n_compared": 5,
+  "overall_speedup_x": 6.4,
+  "total_py_ns": 788726.73,
+  "total_mojo_ns": 123270.1,
+  "elapsed_s": 17.64,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "encode_u32_be",
+      "py_ns": 3134.842,
+      "mojo_ns": 1.0,
+      "speedup_x": 3134.84,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "decode_u32_be",
+      "py_ns": 9993.158,
+      "mojo_ns": 1.0,
+      "speedup_x": 9993.16,
+      "py_result": 16909060.0,
+      "py_error": null
+    },
+    {
+      "function": "encode_frame",
+      "py_ns": 3242.171,
+      "mojo_ns": 150.4,
+      "speedup_x": 21.56,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "decode_frame_length",
+      "py_ns": 2209.621,
+      "mojo_ns": 1.3,
+      "speedup_x": 1699.71,
+      "py_result": 16909060.0,
+      "py_error": null
+    },
+    {
+      "function": "libc_socket_unix",
+      "py_ns": 770146.937,
+      "mojo_ns": 123116.4,
+      "speedup_x": 6.26,
+      "py_result": -1.0,
+      "py_error": null
+    },
+    {
+      "function": "libc_bind_unix",
+      "py_ns": null,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "name 'Bool' is not defined"
+    },
+    {
+      "function": "libc_listen",
+      "py_ns": null,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "name 'Bool' is not defined"
+    },
+    {
+      "function": "libc_accept",
+      "py_ns": 6377.196,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": -1.0,
+      "py_error": null
+    },
+    {
+      "function": "libc_close",
+      "py_ns": 10420.421,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "libc_unlink",
+      "py_ns": 282443.729,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "libc_path_exists",
+      "py_ns": 18998.938,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "recv_exact",
+      "py_ns": 13564.671,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "recv_frame",
+      "py_ns": 9779.225,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "send_frame",
+      "py_ns": null,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "name 'Bool' is not defined"
+    }
+  ]
+}

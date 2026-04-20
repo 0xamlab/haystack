@@ -1,0 +1,93 @@
+{
+  "lib": "magnetism",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 9,
+  "overall_speedup_x": 296.37,
+  "total_py_ns": 2845.2,
+  "total_mojo_ns": 9.6,
+  "elapsed_s": 2.02,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "biot_savart_infinite_wire",
+      "py_ns": 157.175,
+      "mojo_ns": 1.0,
+      "speedup_x": 157.18,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "magnetic_force_wire",
+      "py_ns": null,
+      "mojo_ns": 1.1,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "No module named 'std'"
+    },
+    {
+      "function": "solenoid_field",
+      "py_ns": 161.929,
+      "mojo_ns": 1.1,
+      "speedup_x": 147.21,
+      "py_result": 1e-06,
+      "py_error": null
+    },
+    {
+      "function": "toroid_field",
+      "py_ns": 271.813,
+      "mojo_ns": 1.1,
+      "speedup_x": 247.1,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "magnetic_flux",
+      "py_ns": 112.421,
+      "mojo_ns": 1.0,
+      "speedup_x": 112.42,
+      "py_result": 0.219396,
+      "py_error": null
+    },
+    {
+      "function": "inductance_solenoid",
+      "py_ns": 1208.721,
+      "mojo_ns": 1.0,
+      "speedup_x": 1208.72,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "magnetic_energy_density",
+      "py_ns": 168.983,
+      "mojo_ns": 1.1,
+      "speedup_x": 153.62,
+      "py_result": 99471.839435,
+      "py_error": null
+    },
+    {
+      "function": "cyclotron_radius",
+      "py_ns": 142.921,
+      "mojo_ns": 1.1,
+      "speedup_x": 129.93,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "larmor_frequency",
+      "py_ns": 430.746,
+      "mojo_ns": 1.1,
+      "speedup_x": 391.59,
+      "py_result": 0.079577,
+      "py_error": null
+    },
+    {
+      "function": "hall_voltage",
+      "py_ns": 190.488,
+      "mojo_ns": 1.1,
+      "speedup_x": 173.17,
+      "py_result": 6.241509090043338e+18,
+      "py_error": null
+    }
+  ]
+}

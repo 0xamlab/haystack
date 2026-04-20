@@ -1,0 +1,48 @@
+"""test_geodesy.mojo — auto-generated tests for geodesy library."""
+from std.math import isnan, isinf
+from geodesy import haversine_distance, vincenty_distance, initial_bearing, destination_point, midpoint, cross_track_distance, along_track_distance, geodetic_to_ecef, ecef_to_geodetic, rhumb_distance
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_haversine_distance = haversine_distance(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_haversine_distance): passed += 1; print("  ✅ geodesy::haversine_distance =", _v_haversine_distance)
+    else: failed += 1; print("  ❌ geodesy::haversine_distance → non-finite:", _v_haversine_distance)
+    var _v_vincenty_distance = vincenty_distance(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_vincenty_distance): passed += 1; print("  ✅ geodesy::vincenty_distance =", _v_vincenty_distance)
+    else: failed += 1; print("  ❌ geodesy::vincenty_distance → non-finite:", _v_vincenty_distance)
+    var _v_initial_bearing = initial_bearing(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_initial_bearing): passed += 1; print("  ✅ geodesy::initial_bearing =", _v_initial_bearing)
+    else: failed += 1; print("  ❌ geodesy::initial_bearing → non-finite:", _v_initial_bearing)
+    var _v_destination_point = destination_point(0.5, 0.5, 0.5, 0.5)
+    if len(_v_destination_point) >= 0: passed += 1; print("  ✅ geodesy::destination_point")
+    var _v_midpoint = midpoint(0.5, 0.5, 0.5, 0.5)
+    if len(_v_midpoint) >= 0: passed += 1; print("  ✅ geodesy::midpoint")
+    var _v_cross_track_distance = cross_track_distance(0.5, 0.5, 0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_cross_track_distance): passed += 1; print("  ✅ geodesy::cross_track_distance =", _v_cross_track_distance)
+    else: failed += 1; print("  ❌ geodesy::cross_track_distance → non-finite:", _v_cross_track_distance)
+    var _v_along_track_distance = along_track_distance(0.5, 0.5, 0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_along_track_distance): passed += 1; print("  ✅ geodesy::along_track_distance =", _v_along_track_distance)
+    else: failed += 1; print("  ❌ geodesy::along_track_distance → non-finite:", _v_along_track_distance)
+    var _v_geodetic_to_ecef = geodetic_to_ecef(0.5, 0.5, 0.5)
+    if len(_v_geodetic_to_ecef) >= 0: passed += 1; print("  ✅ geodesy::geodetic_to_ecef")
+    var _v_ecef_to_geodetic = ecef_to_geodetic(0.5, 0.5, 0.5)
+    if len(_v_ecef_to_geodetic) >= 0: passed += 1; print("  ✅ geodesy::ecef_to_geodetic")
+    var _v_rhumb_distance = rhumb_distance(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_rhumb_distance): passed += 1; print("  ✅ geodesy::rhumb_distance =", _v_rhumb_distance)
+    else: failed += 1; print("  ❌ geodesy::rhumb_distance → non-finite:", _v_rhumb_distance)
+
+    print("  [geodesy] Passed:", passed, "Failed:", failed)

@@ -1,0 +1,44 @@
+{
+  "name": "algenta_simulate",
+  "description": "Run probabilistic Monte Carlo simulations using Algenta Decision Engine. Returns structured recommendations (PROCEED/CAUTION/REJECT/HEDGE) with confidence, expected value, probability of loss, VaR, and percentile distribution. Use this tool when you need to quantify decision risk, model uncertainty in business outcomes, or get data-driven recommendations.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "mode": {
+        "type": "string",
+        "enum": ["auto", "expert"],
+        "description": "Use 'auto' for simple scenarios with variable ranges. Use 'expert' for full probability distribution control.",
+        "default": "auto"
+      },
+      "name": {
+        "type": "string",
+        "description": "Descriptive name for this decision scenario"
+      },
+      "variables": {
+        "type": "object",
+        "description": "For auto mode: named variables with low/high ranges. E.g.: {\"revenue\": {\"low\": 80000, \"high\": 200000}, \"cost\": {\"low\": 40000, \"high\": 90000}}",
+        "additionalProperties": true
+      },
+      "objective": {
+        "type": "string",
+        "enum": ["maximize_net_value", "maximize_revenue", "minimize_cost", "minimize_risk"],
+        "description": "Optimization objective for auto mode",
+        "default": "maximize_net_value"
+      },
+      "runs": {
+        "type": "integer",
+        "description": "Number of Monte Carlo scenarios. Higher = more accurate. Default: 50000",
+        "default": 50000,
+        "minimum": 1000,
+        "maximum": 1000000
+      },
+      "simulation_model": {
+        "type": "string",
+        "enum": ["monte_carlo", "qmc_sobol", "lhs", "bootstrap", "sensitivity"],
+        "description": "Simulation engine. monte_carlo is default. Use lhs for better coverage, qmc_sobol for quasi-random, sensitivity for parameter sensitivity analysis.",
+        "default": "monte_carlo"
+      }
+    },
+    "required": []
+  }
+}

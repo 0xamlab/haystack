@@ -1,0 +1,109 @@
+{
+  "lib": "psychometrics",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 7,
+  "overall_speedup_x": 197.16,
+  "total_py_ns": 1380.14,
+  "total_mojo_ns": 7.0,
+  "elapsed_s": 1.59,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "item_difficulty",
+      "py_ns": 200.179,
+      "mojo_ns": 1.0,
+      "speedup_x": 200.18,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "item_discrimination",
+      "py_ns": 340.325,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "point_biserial",
+      "py_ns": 1624.417,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "kuder_richardson_20",
+      "py_ns": 85.221,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "cronbach_alpha",
+      "py_ns": 84.196,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "spearman_brown_prophecy",
+      "py_ns": 250.717,
+      "mojo_ns": 1.0,
+      "speedup_x": 250.72,
+      "py_result": 0.333333,
+      "py_error": null
+    },
+    {
+      "function": "standard_error_of_measurement",
+      "py_ns": 124.246,
+      "mojo_ns": 1.0,
+      "speedup_x": 124.25,
+      "py_result": 0.353553,
+      "py_error": null
+    },
+    {
+      "function": "z_score",
+      "py_ns": 117.613,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "t_score",
+      "py_ns": 202.275,
+      "mojo_ns": 1.0,
+      "speedup_x": 202.27,
+      "py_result": 55.0,
+      "py_error": null
+    },
+    {
+      "function": "stanine",
+      "py_ns": 230.017,
+      "mojo_ns": 1.0,
+      "speedup_x": 230.02,
+      "py_result": 6.0,
+      "py_error": null
+    },
+    {
+      "function": "irt_1pl_probability",
+      "py_ns": 160.146,
+      "mojo_ns": 1.0,
+      "speedup_x": 160.15,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "irt_2pl_probability",
+      "py_ns": 212.558,
+      "mojo_ns": 1.0,
+      "speedup_x": 212.56,
+      "py_result": 0.5,
+      "py_error": null
+    }
+  ]
+}

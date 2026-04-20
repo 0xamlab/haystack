@@ -1,0 +1,93 @@
+{
+  "lib": "bryology",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 7,
+  "overall_speedup_x": 199.68,
+  "total_py_ns": 1317.87,
+  "total_mojo_ns": 6.6,
+  "elapsed_s": 2.6,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "sphagnum_water_holding",
+      "py_ns": 99.4,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "moss_growth_rate",
+      "py_ns": 143.942,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "carbon_accumulation_peatland",
+      "py_ns": 83.421,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "bryophyte_desiccation_recovery",
+      "py_ns": 117.754,
+      "mojo_ns": 1.0,
+      "speedup_x": 117.75,
+      "py_result": 0.1106,
+      "py_error": null
+    },
+    {
+      "function": "nitrogen_deposition_effect",
+      "py_ns": 119.975,
+      "mojo_ns": 0.9,
+      "speedup_x": 133.31,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "moss_photosynthesis_rate",
+      "py_ns": 224.812,
+      "mojo_ns": 1.0,
+      "speedup_x": 224.81,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "peat_accumulation_rate",
+      "py_ns": 168.975,
+      "mojo_ns": 1.0,
+      "speedup_x": 168.98,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "sphagnum_acidity",
+      "py_ns": 308.083,
+      "mojo_ns": 0.9,
+      "speedup_x": 342.31,
+      "py_result": 3.01,
+      "py_error": null
+    },
+    {
+      "function": "patch_colonisation_probability",
+      "py_ns": 206.017,
+      "mojo_ns": 0.9,
+      "speedup_x": 228.91,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "biomass_to_litter_ratio",
+      "py_ns": 172.254,
+      "mojo_ns": 0.9,
+      "speedup_x": 191.39,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

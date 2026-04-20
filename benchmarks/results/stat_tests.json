@@ -1,0 +1,85 @@
+{
+  "lib": "stat_tests",
+  "status": "ok",
+  "n_functions": 9,
+  "n_compared": 9,
+  "overall_speedup_x": 22.94,
+  "total_py_ns": 439667.36,
+  "total_mojo_ns": 19169.7,
+  "elapsed_s": 7.48,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "ks_test_2sample",
+      "py_ns": 20833.904,
+      "mojo_ns": 1029.0,
+      "speedup_x": 20.25,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "ks_test_normal",
+      "py_ns": 183338.833,
+      "mojo_ns": 6040.8,
+      "speedup_x": 30.35,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "t_test_1sample",
+      "py_ns": 21775.787,
+      "mojo_ns": 254.7,
+      "speedup_x": 85.5,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "t_test_2sample",
+      "py_ns": 27680.038,
+      "mojo_ns": 443.4,
+      "speedup_x": 62.43,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "chi_squared_test",
+      "py_ns": 1143.821,
+      "mojo_ns": 1974.2,
+      "speedup_x": 0.58,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "anderson_darling_normal",
+      "py_ns": 104431.158,
+      "mojo_ns": 3116.6,
+      "speedup_x": 33.51,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "shapiro_wilk_approx",
+      "py_ns": 52827.825,
+      "mojo_ns": 2040.2,
+      "speedup_x": 25.89,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "pearson_r",
+      "py_ns": 7392.242,
+      "mojo_ns": 152.7,
+      "speedup_x": 48.41,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "spearman_r",
+      "py_ns": 20243.75,
+      "mojo_ns": 4118.1,
+      "speedup_x": 4.92,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

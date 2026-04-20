@@ -1,0 +1,109 @@
+{
+  "lib": "perfumery",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 10,
+  "overall_speedup_x": 278.75,
+  "total_py_ns": 3791.0,
+  "total_mojo_ns": 13.6,
+  "elapsed_s": 1.51,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "concentration_parfum",
+      "py_ns": 235.538,
+      "mojo_ns": 1.3,
+      "speedup_x": 181.18,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "dilution_ratio",
+      "py_ns": 725.233,
+      "mojo_ns": 1.2,
+      "speedup_x": 604.36,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "evaporation_rate_relative",
+      "py_ns": 90.917,
+      "mojo_ns": 1.3,
+      "speedup_x": 69.94,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "top_note_duration",
+      "py_ns": 57.162,
+      "mojo_ns": 1.2,
+      "speedup_x": 47.64,
+      "py_result": 30.0,
+      "py_error": null
+    },
+    {
+      "function": "middle_note_duration",
+      "py_ns": 73.521,
+      "mojo_ns": 1.2,
+      "speedup_x": 61.27,
+      "py_result": 240.0,
+      "py_error": null
+    },
+    {
+      "function": "base_note_duration",
+      "py_ns": 66.708,
+      "mojo_ns": 1.3,
+      "speedup_x": 51.31,
+      "py_result": 1440.0,
+      "py_error": null
+    },
+    {
+      "function": "triangle_accord_balance",
+      "py_ns": 87.921,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "tenacity_hours",
+      "py_ns": 98.129,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "sillage_distance",
+      "py_ns": 83.637,
+      "mojo_ns": 1.2,
+      "speedup_x": 69.7,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "cost_per_ml",
+      "py_ns": 2120.85,
+      "mojo_ns": 1.3,
+      "speedup_x": 1631.42,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "fragrance_strength_scale",
+      "py_ns": 244.75,
+      "mojo_ns": 2.4,
+      "speedup_x": 101.98,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "ingredient_proportion",
+      "py_ns": 92.683,
+      "mojo_ns": 1.2,
+      "speedup_x": 77.24,
+      "py_result": 100.0,
+      "py_error": null
+    }
+  ]
+}

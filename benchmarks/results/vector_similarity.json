@@ -1,0 +1,93 @@
+{
+  "lib": "vector_similarity",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 9,
+  "overall_speedup_x": 155.51,
+  "total_py_ns": 1290.74,
+  "total_mojo_ns": 8.3,
+  "elapsed_s": 4.01,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "cosine_similarity",
+      "py_ns": 269.113,
+      "mojo_ns": 0.9,
+      "speedup_x": 299.01,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "dot_product",
+      "py_ns": 216.729,
+      "mojo_ns": 0.9,
+      "speedup_x": 240.81,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "euclidean_distance",
+      "py_ns": 99.308,
+      "mojo_ns": 0.9,
+      "speedup_x": 110.34,
+      "py_result": 0.707107,
+      "py_error": null
+    },
+    {
+      "function": "manhattan_distance",
+      "py_ns": 89.362,
+      "mojo_ns": 0.9,
+      "speedup_x": 99.29,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "chebyshev_distance",
+      "py_ns": 82.837,
+      "mojo_ns": 0.9,
+      "speedup_x": 92.04,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "hamming_distance_bits",
+      "py_ns": 83.796,
+      "mojo_ns": 1.0,
+      "speedup_x": 83.8,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "jaccard_similarity",
+      "py_ns": 92.979,
+      "mojo_ns": 0.9,
+      "speedup_x": 103.31,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "pearson_correlation",
+      "py_ns": 183.625,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "minkowski_distance",
+      "py_ns": 214.271,
+      "mojo_ns": 0.9,
+      "speedup_x": 238.08,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "angular_distance",
+      "py_ns": 142.346,
+      "mojo_ns": 1.0,
+      "speedup_x": 142.35,
+      "py_result": -1.0,
+      "py_error": null
+    }
+  ]
+}

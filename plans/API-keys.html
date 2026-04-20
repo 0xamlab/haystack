@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Keys</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script> window.FontAwesomeConfig = { autoReplaceSvg: 'nest'};</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        ::-webkit-scrollbar { display: none;}
+        * { font-family: 'Inter', sans-serif; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+        .modal { display: none; }
+        .modal.active { display: flex; }
+        .key-masked { font-family: 'Courier New', monospace; letter-spacing: 2px; }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#4B0082',
+                        success: '#008000',
+                        warning: '#FFA500',
+                        danger: '#FF0000',
+                        info: '#0000FF',
+                        dark: {
+                            100: '#0B0D12',
+                            200: '#0F1117',
+                            300: '#151823',
+                            400: '#1A1F2E',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-dark-100 text-gray-300">
+
+<div id="main-container" class="flex min-h-screen">
+    <aside id="sidebar" class="w-64 bg-dark-200 border-r border-gray-800 flex-shrink-0 hidden lg:block">
+        <div class="p-4 border-b border-gray-800">
+            <h1 class="text-xl font-bold text-white">ALGENTA</h1>
+            <p class="text-xs text-gray-500 mt-1">Infrastructure Console</p>
+        </div>
+        <nav class="p-3">
+            <a href="#" class="flex items-center px-3 py-2 text-gray-400 hover:bg-dark-300 hover:text-white rounded mb-1 transition-colors">
+                <i class="fa-solid fa-gauge w-5"></i>
+                <span class="ml-3 text-sm">Dashboard</span>
+            </a>
+            <a href="#" class="flex items-center px-3 py-2 text-gray-400 hover:bg-dark-300 hover:text-white rounded mb-1 transition-colors">
+                <i class="fa-solid fa-chart-line w-5"></i>
+                <span class="ml-3 text-sm">Simulations</span>
+            </a>
+            <a href="#" class="flex items-center px-3 py-2 text-gray-400 hover:bg-dark-300 hover:text-white rounded mb-1 transition-colors">
+                <i class="fa-solid fa-server w-5"></i>
+                <span class="ml-3 text-sm">Compute Clusters</span>
+            </a>
+            <a href="#" class="flex items-center px-3 py-2 text-gray-400 hover:bg-dark-300 hover:text-white rounded mb-1 transition-colors">
+                <i class="fa-solid fa-database w-5"></i>
+                <span class="ml-3 text-sm">Data Management</span>
+            </a>
+            <a href="#" class="flex items-center px-3 py-2 text-gray-400 hover:bg-dark-300 hover:text-white rounded mb-1 transition-colors">
+                <i class="fa-solid fa-wrench w-5"></i>
+                <span class="ml-3 text-sm">Tools & Libraries</span>
+            </a>
+            <a href="#" class="flex items-center px-3 py-2 bg-dark-300 text-white rounded mb-1 transition-colors">
+                <i class="fa-solid fa-gear w-5"></i>
+                <span class="ml-3 text-sm">Settings</span>
+            </a>
+        </nav>
+    </aside>
+
+    <main id="main-content" class="flex-1 overflow-x-hidden">
+        <header id="header" class="bg-dark-200 border-b border-gray-800 px-4 lg:px-6 py-3 flex items-center justify-between">
+            <div class="flex items-center">
+                <button class="lg:hidden mr-4 text-gray-400">
+                    <i class="fa-solid fa-bars text-xl"></i>
+                </button>
+                <div>
+                    <h2 class="text-lg font-semibold text-white">API Keys</h2>
+                    <p class="text-xs text-gray-500">Manage authentication credentials for API access</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <button class="px-3 py-1.5 bg-dark-300 text-gray-300 rounded text-sm hover:bg-dark-400 transition-colors">
+                    <i class="fa-solid fa-book mr-2"></i>
+                    <span class="hidden sm:inline">Documentation</span>
+                </button>
+            </div>
+        </header>
+
+        <div id="content-area" class="p-4 lg:p-6">
+            <section id="security-notice" class="mb-6">
+                <div class="bg-dark-200 border border-warning/30 rounded p-4">
+                    <div class="flex items-start gap-3">
+                        <i class="fa-solid fa-triangle-exclamation text-warning text-lg mt-0.5"></i>
+                        <div class="flex-1">
+                            <h3 class="text-sm font-semibold text-warning mb-1">Security Notice</h3>
+                            <p class="text-xs text-gray-400 leading-relaxed mb-2">API keys provide complete access to your ALGENTA infrastructure. Keep them secure and never share them in publicly accessible areas such as GitHub, client-side code, or public repositories.</p>
+                            <ul class="text-xs text-gray-400 space-y-1 ml-4">
+                                <li class="flex items-start gap-2">
+                                    <span class="text-warning">•</span>
+                                    <span>API keys are shown only once upon creation. Store them securely immediately.</span>
+                                </li>
+                                <li class="flex items-start gap-2">
+                                    <span class="text-warning">•</span>
+                                    <span>Rotate keys regularly and revoke unused or compromised keys immediately.</span>
+                                </li>
+                                <li class="flex items-start gap-2">
+                                    <span class="text-warning">•</span>
+                                    <span>Monitor key usage and last activity to detect unauthorized access.</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="create-key-section" class="mb-6">
+                <div class="bg-dark-200 border border-gray-800 rounded p-4">
+                    <h3 class="text-sm font-semibold text-white mb-4">Create New API Key</h3>
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-3">
+                        <div class="lg:col-span-8">
+                            <label class="block text-xs text-gray-400 mb-1.5">Key Label</label>
+                            <input type="text" id="key-label-input" placeholder="e.g., Production Server, CI/CD Pipeline, Development Environment" class="w-full bg-dark-300 border border-gray-700 rounded px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-primary transition-colors">
+                            <p class="text-xs text-gray-500 mt-1.5">A descriptive name to identify this API key's purpose</p>
+                        </div>
+                        <div class="lg:col-span-4 flex items-end">
+                            <button onclick="createApiKey()" class="w-full px-4 py-2 bg-primary text-white rounded text-sm font-medium hover:bg-purple-700 transition-colors">
+                                <i class="fa-solid fa-plus mr-2"></i>Create API Key
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="api-keys-table-section">
+                <div class="bg-dark-200 border border-gray-800 rounded overflow-hidden">
+                    <div class="px-4 py-3 border-b border-gray-800 flex items-center justify-between">
+                        <div>
+                            <h3 class="text-sm font-semibold text-white">Active API Keys</h3>
+                            <p class="text-xs text-gray-500 mt-0.5">7 keys created</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button class="px-3 py-1.5 bg-dark-300 text-gray-300 rounded text-xs hover:bg-dark-400 transition-colors">
+                                <i class="fa-solid fa-filter mr-1.5"></i>Filter
+                            </button>
+                            <button class="px-3 py-1.5 bg-dark-300 text-gray-300 rounded text-xs hover:bg-dark-400 transition-colors">
+                                <i class="fa-solid fa-download mr-1.5"></i>Export
+                            </button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead class="bg-dark-300 border-b border-gray-800">
+                                <tr>
+                                    <th class="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Name</th>
+                                    <th class="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Key</th>
+                                    <th class="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Created</th>
+                                    <th class="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Last Used</th>
+                                    <th class="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
+                                    <th class="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="keys-table-body">
+                                <tr class="border-b border-gray-800 hover:bg-dark-300 transition-colors">
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-2">
+                                            <i class="fa-solid fa-key text-primary text-xs"></i>
+                                            <span class="text-white text-sm font-medium">Production Server</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-gray-400 text-xs font-mono key-masked">sk_live_••••••••••••••••7f3a</span>
+                                            <button onclick="copyKey('sk_live_4B8F92E1A3D6C5H9K2L7M4N8P1Q5R7f3a')" class="text-gray-500 hover:text-primary transition-colors">
+                                                <i class="fa-solid fa-copy text-xs"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3 text-gray-300 text-xs">2024-01-15 09:23:41</td>
+                                    <td class="px-4 py-3 text-gray-300 text-xs">2024-03-21 14:52:18</td>
+                                    <td class="px-4 py-3">
+                                        <span class="inline-flex items-center gap-1.5 px-2 py-1 bg-success/10 border border-success/30 rounded text-success text-xs">
+                                            <span class="status-dot bg-success"></span>
+                                            Active
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-1">
+                                            <button onclick="rotateKey('Production Server')" class="px-2 py-1 bg-dark-400 text-gray-300 rounded text-xs hover:bg-gray-700 transition-colors">
+                                                <i class="fa-solid fa-rotate"></i>
+                                            </button>
+                                            <button onclick="revokeKey('Production Server')" class="px-2 py-1 bg-danger/10 text-danger border border-danger/30 rounded text-xs hover:bg-danger hover:text-white transition-colors">
+                                                <i class="fa-solid fa-ban"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <tr class="border-b border-gray-800 hover:bg-dark-300 transition-colors">
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-2">
+                                            <i class="fa-solid fa-key text-primary text-xs"></i>
+                                            <span class="text-white text-sm font-medium">CI/CD Pipeline</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-gray-400 text-xs font-mono key-masked">sk_live_••••••••••••••••2b9e</span>
+                                            <button onclick="copyKey('sk_live_7A3C8D2E9F1G4H6J8K5L3M9N2P7Q4R2b9e')" class="text-gray-500 hover:text-primary transition-colors">
+                                                <i class="fa-solid fa-copy text-xs"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3 text-gray-300 text-xs">2024-02-03 11:45:22</td>
+                                    <td class="px-4 py-3 text-gray-300 text-xs">2024-03-21 13:28:45</td>
+                                    <td class="px-4 py-3">
+                                        <span class="inline-flex items-center gap-1.5 px-2 py-1 bg-success/10 border border-success/30 rounded text-success text-xs">
+                                            <span class="status-dot bg-success"></span>
+                                            Active
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-1">
+                                            <button onclick="rotateKey('CI/CD Pipeline')" class="px-2 py-1 bg-dark-400 text-gray-300 rounded text-xs hover:bg-gray-700 transition-colors">
+                                                <i class="fa-solid fa-rotate"></i>
+                                            </button>
+                                            <button onclick="revokeKey('CI/CD Pipeline')" class="px-2 py-1 bg-danger/10 text-danger border border-danger/30 rounded text-xs hover:bg-danger hover:text-white transition-colors">
+                                                <i class="fa-solid fa-ban"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <tr class="border-b border-gray-800 hover:bg-dark-300 transition-colors">
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-2">
+                                            <i class="fa-solid fa-key text-primary text-xs"></i>
+                                            <span class="text-white text-sm font-medium">Development Environment</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-gray-400 text-xs font-mono key-masked">sk_test_••••••••••••••••5d1c</span>
+                                            <button onclick="copyKey('sk_test_9B2D5E7F3G8H1J4K6L2M5N8P3Q9R1S5d1c')" class="text-gray-500 hover:text-primary transition-colors">
+                                                <i class="fa-solid fa-copy text-xs"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3 text-gray-300 text-xs">2024-02-18 14:12:08</td>
+                                    <td class="px-4 py-3 text-gray-300 text-xs">2024-03-21 12:15:33</td>
+                                    <td class="px-4 py-3">
+                                        <span class="inline-flex items-center gap-1.5 px-2 py-1 bg-success/10 border border-success/30 rounded text-success text-xs">
+                                            <span class="status-dot bg-success"></span>
+                                            Active
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-1">
+                                            <button onclick="rotateKey('Development Environment')" class="px-2 py-1 bg-dark-400 text-gray-300 rounded text-xs hover:bg-gray-700 transition-colors">
+                                                <i class="fa-solid fa-rotate"></i>
+                                            </button>
+                                            <button onclick="revokeKey('Development Environment')" class="px-2 py-1 bg-danger/10 text-danger border border-danger/30 rounded text-xs hover:bg-danger hover:text-white transition-colors">
+                                                <i class="fa-solid fa-ban"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <tr class="border-b border-gray-800 hover:bg-dark-300 transition-colors">
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-2">
+                                            <i class="fa-solid fa-key text-primary text-xs"></i>
+                                            <span class="text-white text-sm font-medium">Mobile Application</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-gray-400 text-xs font-mono key-masked">sk_live_••••••••••••••••8f4a</span>
+                                            <button onclick="copyKey('sk_live_3C6E9F2G5H8J1K4L7M3N6P9Q2R5S8T8f4a')" class="text-gray-500 hover:text-primary transition-colors">
+                                                <i class="fa-solid fa-copy text-xs"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3 text-gray-300 text-xs">2024-03-01 08:34:55</td>
+                                    <td class="px-4 py-3 text-gray-300 text-xs">2024-03-20 18:42:11</td>
+                                    <td class="px-4 py-3">
+                                        <span class="inline-flex items-center gap-1.5 px-2 py-1 bg-success/10 border border-success/30 rounded text-success text-xs">
+                                            <span class="status-dot bg-success"></span>
+                                            Active
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-1">
+                                            <button onclick="rotateKey('Mobile Application')" class="px-2 py-1 bg-dark-400 text-gray-300 rounded text-xs hover:bg-gray-700 transition-colors">
+                                                <i class="fa-solid fa-rotate"></i>
+                                            </button>
+                                            <button onclick="revokeKey('Mobile Application')" class="px-2 py-1 bg-danger/10 text-danger border border-danger/30 rounded text-xs hover:bg-danger hover:text-white transition-colors">
+                                                <i class="fa-solid fa-ban"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <tr class="border-b border-gray-800 hover:bg-dark-300 transition-colors">
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-2">
+                                            <i class="fa-solid fa-key text-gray-600 text-xs"></i>
+                                            <span class="text-gray-500 text-sm font-medium">Legacy Integration</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-gray-600 text-xs font-mono key-masked">sk_live_••••••••••••••••3a2b</span>
+                                            <button class="text-gray-700 cursor-not-allowed">
+                                                <i class="fa-solid fa-copy text-xs"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3 text-gray-500 text-xs">2023-11-22 16:48:33</td>
+                                    <td class="px-4 py-3 text-gray-500 text-xs">2024-01-08 09:12:47</td>
+                                    <td class="px-4 py-3">
+                                        <span class="inline-flex items-center gap-1.5 px-2 py-1 bg-danger/10 border border-danger/30 rounded text-danger text-xs">
+                                            <span class="status-dot bg-danger"></span>
+                                            Revoked
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-1">
+                                            <button class="px-2 py-1 bg-dark-400 text-gray-600 rounded text-xs cursor-not-allowed opacity-50">
+                                                <i class="fa-solid fa-rotate"></i>
+                                            </button>
+                                            <button class="px-2 py-1 bg-danger/10 text-danger border border-danger/30 rounded text-xs opacity-50 cursor-not-allowed">
+                                                <i class="fa-solid fa-ban"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <tr class="border-b border-gray-800 hover:bg-dark-300 transition-colors">
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-2">
+                                            <i class="fa-solid fa-key text-primary text-xs"></i>
+                                            <span class="text-white text-sm font-medium">Analytics Dashboard</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-gray-400 text-xs font-mono key-masked">sk_live_••••••••••••••••1b7c</span>
+                                            <button onclick="copyKey('sk_live_6D9F2G5H8J3K6L9M2N5P8Q3R6S9T2U1b7c')" class="text-gray-500 hover:text-primary transition-colors">
+                                                <i class="fa-solid fa-copy text-xs"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3 text-gray-300 text-xs">2024-03-10 13:27:19</td>
+                                    <td class="px-4 py-3 text-gray-300 text-xs">2024-03-21 11:38:52</td>
+                                    <td class="px-4 py-3">
+                                        <span class="inline-flex items-center gap-1.5 px-2 py-1 bg-success/10 border border-success/30 rounded text-success text-xs">
+                                            <span class="status-dot bg-success"></span>
+                                            Active
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-1">
+                                            <button onclick="rotateKey('Analytics Dashboard')" class="px-2 py-1 bg-dark-400 text-gray-300 rounded text-xs hover:bg-gray-700 transition-colors">
+                                                <i class="fa-solid fa-rotate"></i>
+                                            </button>
+                                            <button onclick="revokeKey('Analytics Dashboard')" class="px-2 py-1 bg-danger/10 text-danger border border-danger/30 rounded text-xs hover:bg-danger hover:text-white transition-colors">
+                                                <i class="fa-solid fa-ban"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <tr class="border-b border-gray-800 hover:bg-dark-300 transition-colors">
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-2">
+                                            <i class="fa-solid fa-key text-primary text-xs"></i>
+                                            <span class="text-white text-sm font-medium">Monitoring Service</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-gray-400 text-xs font-mono key-masked">sk_live_••••••••••••••••9c3d</span>
+                                            <button onclick="copyKey('sk_live_2E5G8H1J4K7L3M6N9P2Q5R8S1T4U7V9c3d')" class="text-gray-500 hover:text-primary transition-colors">
+                                                <i class="fa-solid fa-copy text-xs"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3 text-gray-300 text-xs">2024-03-15 10:55:42</td>
+                                    <td class="px-4 py-3 text-gray-300 text-xs">2024-03-21 14:48:26</td>
+                                    <td class="px-4 py-3">
+                                        <span class="inline-flex items-center gap-1.5 px-2 py-1 bg-success/10 border border-success/30 rounded text-success text-xs">
+                                            <span class="status-dot bg-success"></span>
+                                            Active
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-1">
+                                            <button onclick="rotateKey('Monitoring Service')" class="px-2 py-1 bg-dark-400 text-gray-300 rounded text-xs hover:bg-gray-700 transition-colors">
+                                                <i class="fa-solid fa-rotate"></i>
+                                            </button>
+                                            <button onclick="revokeKey('Monitoring Service')" class="px-2 py-1 bg-danger/10 text-danger border border-danger/30 rounded text-xs hover:bg-danger hover:text-white transition-colors">
+                                                <i class="fa-solid fa-ban"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <section id="usage-metrics" class="mt-6">
+                <div class="bg-dark-200 border border-gray-800 rounded p-4">
+                    <h3 class="text-sm font-semibold text-white mb-4">API Usage Overview</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div class="bg-dark-300 border border-gray-700 rounded p-3">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs text-gray-400">Total Requests (24h)</span>
+                                <i class="fa-solid fa-arrow-trend-up text-success text-sm"></i>
+                            </div>
+                            <div class="text-2xl font-bold text-white">1,247,893</div>
+                            <div class="text-xs text-success mt-1">+12.4% from yesterday</div>
+                        </div>
+                        <div class="bg-dark-300 border border-gray-700 rounded p-3">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs text-gray-400">Active Keys</span>
+                                <i class="fa-solid fa-key text-primary text-sm"></i>
+                            </div>
+                            <div class="text-2xl font-bold text-white">6</div>
+                            <div class="text-xs text-gray-500 mt-1">1 revoked</div>
+                        </div>
+                        <div class="bg-dark-300 border border-gray-700 rounded p-3">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs text-gray-400">Success Rate</span>
+                                <i class="fa-solid fa-check-circle text-success text-sm"></i>
+                            </div>
+                            <div class="text-2xl font-bold text-white">99.97%</div>
+                            <div class="text-xs text-gray-500 mt-1">Last 7 days</div>
+                        </div>
+                        <div class="bg-dark-300 border border-gray-700 rounded p-3">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs text-gray-400">Avg Response Time</span>
+                                <i class="fa-solid fa-gauge text-info text-sm"></i>
+                            </div>
+                            <div class="text-2xl font-bold text-white">142ms</div>
+                            <div class="text-xs text-success mt-1">-8ms improvement</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+</div>
+
+<div id="key-created-modal" class="modal fixed inset-0 bg-black/80 items-center justify-center z-50 p-4">
+    <div class="bg-dark-200 border border-primary rounded-lg max-w-2xl w-full">
+        <div class="p-4 border-b border-gray-800 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-success/10 border border-success/30 rounded-full flex items-center justify-center">
+                    <i class="fa-solid fa-check text-success"></i>
+                </div>
+                <div>
+                    <h3 class="text-base font-semibold text-white">API Key Created Successfully</h3>
+                    <p class="text-xs text-gray-400">Save this key immediately - it will only be shown once</p>
+                </div>
+            </div>
+            <button onclick="closeModal()" class="text-gray-400 hover:text-white transition-colors">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+        </div>
+        <div class="p-4">
+            <div class="bg-dark-300 border border-gray-700 rounded p-4 mb-4">
+                <label class="block text-xs text-gray-400 mb-2">Key Name</label>
+                <div class="text-sm text-white font-medium mb-4" id="modal-key-name">Production Server v2</div>
+                
+                <label class="block text-xs text-gray-400 mb-2">API Key</label>
+                <div class="bg-dark-100 border border-primary/30 rounded p-3 flex items-center justify-between gap-3">
+                    <code class="text-sm font-mono text-primary flex-1 break-all" id="modal-key-value">sk_live_8F3D9A2E7C1B5G4H6J9K2L5M8N3P7Q1R4S6T</code>
+                    <button onclick="copyNewKey()" class="px-3 py-1.5 bg-primary text-white rounded text-xs hover:bg-purple-700 transition-colors whitespace-nowrap">
+                        <i class="fa-solid fa-copy mr-1.5"></i>Copy
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-warning/10 border border-warning/30 rounded p-3 mb-4">
+                <div class="flex items-start gap-3">
+                    <i class="fa-solid fa-triangle-exclamation text-warning text-lg mt-0.5"></i>
+                    <div>
+                        <h4 class="text-sm font-semibold text-warning mb-1">Important Security Notice</h4>
+                        <ul class="text-xs text-gray-400 space-y-1">
+                            <li>• This is the only time you will see this key. Store it securely now.</li>
+                            <li>• Do not share this key or commit it to version control.</li>
+                            <li>• If you lose this key, you will need to rotate it to generate a new one.</li>
+                            <li>• This key has full access to your ALGENTA infrastructure.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex gap-2">
+                <button onclick="downloadKey()" class="flex-1 px-4 py-2 bg-dark-400 text-gray-300 rounded text-sm hover:bg-gray-700 transition-colors">
+                    <i class="fa-solid fa-download mr-2"></i>Download as .txt
+                </button>
+                <button onclick="closeModal()" class="flex-1 px-4 py-2 bg-primary text-white rounded text-sm hover:bg-purple-700 transition-colors">
+                    <i class="fa-solid fa-check mr-2"></i>I've Saved the Key
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function createApiKey() {
+    const labelInput = document.getElementById('key-label-input');
+    const label = labelInput.value.trim();
+    
+    if (!label) {
+        return;
+    }
+    
+    document.getElementById('modal-key-name').textContent = label;
+    document.getElementById('key-created-modal').classList.add('active');
+    labelInput.value = '';
+}
+
+function closeModal() {
+    document.getElementById('key-created-modal').classList.remove('active');
+}
+
+function copyKey(key) {
+    const textarea = document.createElement('textarea');
+    textarea.value = key;
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+        document.execCommand('copy');
+    } catch(err) {
+    }
+    document.body.removeChild(textarea);
+}
+
+function copyNewKey() {
+    const keyValue = document.getElementById('modal-key-value').textContent;
+    copyKey(keyValue);
+}
+
+function downloadKey() {
+    const keyName = document.getElementById('modal-key-name').textContent;
+    const keyValue = document.getElementById('modal-key-value').textContent;
+    const content = 'ALGENTA API Key\n\nKey Name: ' + keyName + '\nAPI Key: ' + keyValue + '\n\nCreated: ' + new Date().toISOString() + '\n\nIMPORTANT: Keep this key secure and do not share it.';
+    
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'algenta-api-key-' + keyName.toLowerCase().replace(/\s+/g, '-') + '.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+}
+
+function rotateKey(keyName) {
+}
+
+function revokeKey(keyName) {
+}
+</script>
+
+</body>
+</html>

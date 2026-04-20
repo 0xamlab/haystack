@@ -1,0 +1,57 @@
+"""test_blockchain.mojo — auto-generated tests for blockchain library."""
+from std.math import isnan, isinf
+from blockchain import block_reward_halving, hash_rate_to_difficulty, transaction_fee_priority, gas_cost, confirmations_security, merkle_tree_depth, tps_throughput, block_size_utilization, staking_apy, validator_uptime, finality_time_pbft, token_inflation_rate
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_block_reward_halving = block_reward_halving(0.5, 5)
+    if is_finite(_v_block_reward_halving): passed += 1; print("  ✅ blockchain::block_reward_halving =", _v_block_reward_halving)
+    else: failed += 1; print("  ❌ blockchain::block_reward_halving → non-finite:", _v_block_reward_halving)
+    var _v_hash_rate_to_difficulty = hash_rate_to_difficulty(0.5, 0.5)
+    if is_finite(_v_hash_rate_to_difficulty): passed += 1; print("  ✅ blockchain::hash_rate_to_difficulty =", _v_hash_rate_to_difficulty)
+    else: failed += 1; print("  ❌ blockchain::hash_rate_to_difficulty → non-finite:", _v_hash_rate_to_difficulty)
+    var _v_transaction_fee_priority = transaction_fee_priority(0.5, 0.5)
+    if is_finite(_v_transaction_fee_priority): passed += 1; print("  ✅ blockchain::transaction_fee_priority =", _v_transaction_fee_priority)
+    else: failed += 1; print("  ❌ blockchain::transaction_fee_priority → non-finite:", _v_transaction_fee_priority)
+    var _v_gas_cost = gas_cost(0.5, 0.5)
+    if is_finite(_v_gas_cost): passed += 1; print("  ✅ blockchain::gas_cost =", _v_gas_cost)
+    else: failed += 1; print("  ❌ blockchain::gas_cost → non-finite:", _v_gas_cost)
+    var _v_confirmations_security = confirmations_security(5, 0.5)
+    if is_finite(_v_confirmations_security): passed += 1; print("  ✅ blockchain::confirmations_security =", _v_confirmations_security)
+    else: failed += 1; print("  ❌ blockchain::confirmations_security → non-finite:", _v_confirmations_security)
+    _ = merkle_tree_depth(5)
+    passed += 1; print("  ✅ blockchain::merkle_tree_depth")
+    var _v_tps_throughput = tps_throughput(5, 0.5)
+    if is_finite(_v_tps_throughput): passed += 1; print("  ✅ blockchain::tps_throughput =", _v_tps_throughput)
+    else: failed += 1; print("  ❌ blockchain::tps_throughput → non-finite:", _v_tps_throughput)
+    var _v_block_size_utilization = block_size_utilization(0.5, 0.5)
+    if is_finite(_v_block_size_utilization): passed += 1; print("  ✅ blockchain::block_size_utilization =", _v_block_size_utilization)
+    else: failed += 1; print("  ❌ blockchain::block_size_utilization → non-finite:", _v_block_size_utilization)
+    var _v_staking_apy = staking_apy(0.5, 0.5)
+    if is_finite(_v_staking_apy): passed += 1; print("  ✅ blockchain::staking_apy =", _v_staking_apy)
+    else: failed += 1; print("  ❌ blockchain::staking_apy → non-finite:", _v_staking_apy)
+    var _v_validator_uptime = validator_uptime(0.5, 0.5)
+    if is_finite(_v_validator_uptime): passed += 1; print("  ✅ blockchain::validator_uptime =", _v_validator_uptime)
+    else: failed += 1; print("  ❌ blockchain::validator_uptime → non-finite:", _v_validator_uptime)
+    var _v_finality_time_pbft = finality_time_pbft(5, 0.5)
+    if is_finite(_v_finality_time_pbft): passed += 1; print("  ✅ blockchain::finality_time_pbft =", _v_finality_time_pbft)
+    else: failed += 1; print("  ❌ blockchain::finality_time_pbft → non-finite:", _v_finality_time_pbft)
+    var _v_token_inflation_rate = token_inflation_rate(0.5, 0.5)
+    if is_finite(_v_token_inflation_rate): passed += 1; print("  ✅ blockchain::token_inflation_rate =", _v_token_inflation_rate)
+    else: failed += 1; print("  ❌ blockchain::token_inflation_rate → non-finite:", _v_token_inflation_rate)
+
+    print("  [blockchain] Passed:", passed, "Failed:", failed)

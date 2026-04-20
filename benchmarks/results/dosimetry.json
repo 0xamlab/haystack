@@ -1,0 +1,93 @@
+{
+  "lib": "dosimetry",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 10,
+  "overall_speedup_x": 417.4,
+  "total_py_ns": 4215.75,
+  "total_mojo_ns": 10.1,
+  "elapsed_s": 1.89,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "absorbed_dose",
+      "py_ns": 160.992,
+      "mojo_ns": 1.0,
+      "speedup_x": 160.99,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "equivalent_dose",
+      "py_ns": 90.237,
+      "mojo_ns": 1.0,
+      "speedup_x": 90.24,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "effective_dose",
+      "py_ns": 80.842,
+      "mojo_ns": 1.0,
+      "speedup_x": 80.84,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "dose_rate",
+      "py_ns": 112.317,
+      "mojo_ns": 1.0,
+      "speedup_x": 112.32,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "activity_decay",
+      "py_ns": 1113.638,
+      "mojo_ns": 1.0,
+      "speedup_x": 1113.64,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "specific_activity",
+      "py_ns": 152.867,
+      "mojo_ns": 1.0,
+      "speedup_x": 152.87,
+      "py_result": 1.6696529285327964e+24,
+      "py_error": null
+    },
+    {
+      "function": "tenth_value_layer",
+      "py_ns": 135.262,
+      "mojo_ns": 1.0,
+      "speedup_x": 135.26,
+      "py_result": 1.660964,
+      "py_error": null
+    },
+    {
+      "function": "buildup_factor",
+      "py_ns": 2130.263,
+      "mojo_ns": 1.0,
+      "speedup_x": 2130.26,
+      "py_result": 0.3894,
+      "py_error": null
+    },
+    {
+      "function": "kerma",
+      "py_ns": 125.771,
+      "mojo_ns": 1.1,
+      "speedup_x": 114.34,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "radiation_weighting",
+      "py_ns": 113.563,
+      "mojo_ns": 1.0,
+      "speedup_x": 113.56,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

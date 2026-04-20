@@ -1,0 +1,58 @@
+"""test_power_systems.mojo — auto-generated tests for power_systems library."""
+from std.math import isnan, isinf
+from power_systems import active_power, reactive_power, apparent_power, power_factor_from_pq, three_phase_power, transformer_turns_ratio, transformer_secondary_voltage, line_loss, voltage_drop, power_efficiency, capacitor_reactive_power, load_factor
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_active_power = active_power(0.5, 0.5, 0.5)
+    if is_finite(_v_active_power): passed += 1; print("  ✅ power_systems::active_power =", _v_active_power)
+    else: failed += 1; print("  ❌ power_systems::active_power → non-finite:", _v_active_power)
+    var _v_reactive_power = reactive_power(0.5, 0.5, 0.5)
+    if is_finite(_v_reactive_power): passed += 1; print("  ✅ power_systems::reactive_power =", _v_reactive_power)
+    else: failed += 1; print("  ❌ power_systems::reactive_power → non-finite:", _v_reactive_power)
+    var _v_apparent_power = apparent_power(0.5, 0.5)
+    if is_finite(_v_apparent_power): passed += 1; print("  ✅ power_systems::apparent_power =", _v_apparent_power)
+    else: failed += 1; print("  ❌ power_systems::apparent_power → non-finite:", _v_apparent_power)
+    var _v_power_factor_from_pq = power_factor_from_pq(0.5, 0.5)
+    if is_finite(_v_power_factor_from_pq): passed += 1; print("  ✅ power_systems::power_factor_from_pq =", _v_power_factor_from_pq)
+    else: failed += 1; print("  ❌ power_systems::power_factor_from_pq → non-finite:", _v_power_factor_from_pq)
+    var _v_three_phase_power = three_phase_power(0.5, 0.5, 0.5)
+    if is_finite(_v_three_phase_power): passed += 1; print("  ✅ power_systems::three_phase_power =", _v_three_phase_power)
+    else: failed += 1; print("  ❌ power_systems::three_phase_power → non-finite:", _v_three_phase_power)
+    var _v_transformer_turns_ratio = transformer_turns_ratio(0.5, 0.5)
+    if is_finite(_v_transformer_turns_ratio): passed += 1; print("  ✅ power_systems::transformer_turns_ratio =", _v_transformer_turns_ratio)
+    else: failed += 1; print("  ❌ power_systems::transformer_turns_ratio → non-finite:", _v_transformer_turns_ratio)
+    var _v_transformer_secondary_voltage = transformer_secondary_voltage(0.5, 0.5)
+    if is_finite(_v_transformer_secondary_voltage): passed += 1; print("  ✅ power_systems::transformer_secondary_voltage =", _v_transformer_secondary_voltage)
+    else: failed += 1; print("  ❌ power_systems::transformer_secondary_voltage → non-finite:", _v_transformer_secondary_voltage)
+    var _v_line_loss = line_loss(0.5, 0.5)
+    if is_finite(_v_line_loss): passed += 1; print("  ✅ power_systems::line_loss =", _v_line_loss)
+    else: failed += 1; print("  ❌ power_systems::line_loss → non-finite:", _v_line_loss)
+    var _v_voltage_drop = voltage_drop(0.5, 0.5, 0.5)
+    if is_finite(_v_voltage_drop): passed += 1; print("  ✅ power_systems::voltage_drop =", _v_voltage_drop)
+    else: failed += 1; print("  ❌ power_systems::voltage_drop → non-finite:", _v_voltage_drop)
+    var _v_power_efficiency = power_efficiency(0.5, 0.5)
+    if is_finite(_v_power_efficiency): passed += 1; print("  ✅ power_systems::power_efficiency =", _v_power_efficiency)
+    else: failed += 1; print("  ❌ power_systems::power_efficiency → non-finite:", _v_power_efficiency)
+    var _v_capacitor_reactive_power = capacitor_reactive_power(0.5, 0.5, 0.5)
+    if is_finite(_v_capacitor_reactive_power): passed += 1; print("  ✅ power_systems::capacitor_reactive_power =", _v_capacitor_reactive_power)
+    else: failed += 1; print("  ❌ power_systems::capacitor_reactive_power → non-finite:", _v_capacitor_reactive_power)
+    var _v_load_factor = load_factor(0.5, 0.5)
+    if is_finite(_v_load_factor): passed += 1; print("  ✅ power_systems::load_factor =", _v_load_factor)
+    else: failed += 1; print("  ❌ power_systems::load_factor → non-finite:", _v_load_factor)
+
+    print("  [power_systems] Passed:", passed, "Failed:", failed)

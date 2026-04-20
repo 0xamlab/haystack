@@ -1,0 +1,93 @@
+{
+  "lib": "data_pipeline",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 9,
+  "overall_speedup_x": 196.53,
+  "total_py_ns": 2043.95,
+  "total_mojo_ns": 10.4,
+  "elapsed_s": 1.58,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "sequence_packing_efficiency",
+      "py_ns": 125.992,
+      "mojo_ns": 2.6,
+      "speedup_x": 48.46,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "deduplication_minhash_band",
+      "py_ns": 113.387,
+      "mojo_ns": 1.0,
+      "speedup_x": 113.39,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "curriculum_difficulty_score",
+      "py_ns": 138.0,
+      "mojo_ns": 1.0,
+      "speedup_x": 138.0,
+      "py_result": 0.405465,
+      "py_error": null
+    },
+    {
+      "function": "dataset_mixing_weight",
+      "py_ns": 528.937,
+      "mojo_ns": 0.9,
+      "speedup_x": 587.71,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "token_accounting_cost",
+      "py_ns": 87.475,
+      "mojo_ns": 0.9,
+      "speedup_x": 97.19,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "quality_filter_score",
+      "py_ns": 371.046,
+      "mojo_ns": 1.0,
+      "speedup_x": 371.05,
+      "py_result": 0.3,
+      "py_error": null
+    },
+    {
+      "function": "shard_balance_score",
+      "py_ns": 307.754,
+      "mojo_ns": 1.0,
+      "speedup_x": 307.75,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "streaming_buffer_fullness",
+      "py_ns": 238.025,
+      "mojo_ns": 1.0,
+      "speedup_x": 238.03,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "epoch_sample_index",
+      "py_ns": null,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "name 'Int64' is not defined"
+    },
+    {
+      "function": "data_augmentation_weight",
+      "py_ns": 133.333,
+      "mojo_ns": 1.0,
+      "speedup_x": 133.33,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "lib": "survival",
+  "status": "ok",
+  "n_functions": 5,
+  "n_compared": 5,
+  "overall_speedup_x": 2.72,
+  "total_py_ns": 123678.46,
+  "total_mojo_ns": 45393.8,
+  "elapsed_s": 6.15,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "kaplan_meier",
+      "py_ns": 25690.3,
+      "mojo_ns": 532.2,
+      "speedup_x": 48.27,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "nelson_aalen",
+      "py_ns": 46110.717,
+      "mojo_ns": 8533.8,
+      "speedup_x": 5.4,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "log_rank_statistic",
+      "py_ns": 10064.492,
+      "mojo_ns": 3022.3,
+      "speedup_x": 3.33,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "hazard_rate",
+      "py_ns": 28602.396,
+      "mojo_ns": 10133.5,
+      "speedup_x": 2.82,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "life_table",
+      "py_ns": 13210.554,
+      "mojo_ns": 23172.0,
+      "speedup_x": 0.57,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

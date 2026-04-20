@@ -1,0 +1,27 @@
+{
+  "id": "integrations/overview",
+  "title": "Integrations Overview",
+  "description": "Decision Engine connects to your existing tools with zero code.",
+  "source": "@site/docs/integrations/overview.md",
+  "sourceDirName": "integrations",
+  "slug": "/integrations/overview",
+  "permalink": "/integrations/overview",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/decisionengine/decision-engine/tree/main/apps/docs/docs/integrations/overview.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 1,
+  "frontMatter": {
+    "sidebar_position": 1
+  },
+  "sidebar": "docsSidebar",
+  "previous": {
+    "title": "Auto Mode vs Expert Mode",
+    "permalink": "/concepts/auto-vs-expert"
+  },
+  "next": {
+    "title": "ChatGPT Actions",
+    "permalink": "/integrations/chatgpt-actions"
+  }
+}

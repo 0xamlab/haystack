@@ -1,0 +1,109 @@
+{
+  "lib": "elevator",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 12,
+  "overall_speedup_x": 193.59,
+  "total_py_ns": 2555.44,
+  "total_mojo_ns": 13.2,
+  "elapsed_s": 1.35,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "round_trip_time",
+      "py_ns": 209.646,
+      "mojo_ns": 1.1,
+      "speedup_x": 190.59,
+      "py_result": 2.25,
+      "py_error": null
+    },
+    {
+      "function": "handling_capacity",
+      "py_ns": 161.283,
+      "mojo_ns": 1.1,
+      "speedup_x": 146.62,
+      "py_result": 300.0,
+      "py_error": null
+    },
+    {
+      "function": "interval_time",
+      "py_ns": 83.463,
+      "mojo_ns": 1.1,
+      "speedup_x": 75.88,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "probable_stops",
+      "py_ns": 195.171,
+      "mojo_ns": 1.1,
+      "speedup_x": 177.43,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "motor_power",
+      "py_ns": 178.146,
+      "mojo_ns": 1.1,
+      "speedup_x": 161.95,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "counterweight_mass",
+      "py_ns": 125.983,
+      "mojo_ns": 1.1,
+      "speedup_x": 114.53,
+      "py_result": 0.75,
+      "py_error": null
+    },
+    {
+      "function": "shaft_area",
+      "py_ns": 846.175,
+      "mojo_ns": 1.1,
+      "speedup_x": 769.25,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "annual_energy_consumption",
+      "py_ns": 174.558,
+      "mojo_ns": 1.1,
+      "speedup_x": 158.69,
+      "py_result": 1.7e-05,
+      "py_error": null
+    },
+    {
+      "function": "waiting_time_average",
+      "py_ns": 100.162,
+      "mojo_ns": 1.1,
+      "speedup_x": 91.06,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "traffic_intensity",
+      "py_ns": 89.3,
+      "mojo_ns": 1.1,
+      "speedup_x": 81.18,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "rope_factor_of_safety",
+      "py_ns": 218.45,
+      "mojo_ns": 1.1,
+      "speedup_x": 198.59,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "pit_depth_requirement",
+      "py_ns": 173.1,
+      "mojo_ns": 1.1,
+      "speedup_x": 157.36,
+      "py_result": 0.506371,
+      "py_error": null
+    }
+  ]
+}

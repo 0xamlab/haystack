@@ -1,0 +1,93 @@
+{
+  "lib": "population_genetics",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 6,
+  "overall_speedup_x": 122.26,
+  "total_py_ns": 758.03,
+  "total_mojo_ns": 6.2,
+  "elapsed_s": 1.14,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "hardy_weinberg_freq",
+      "py_ns": 117.975,
+      "mojo_ns": 1.1,
+      "speedup_x": 107.25,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "allele_frequency_drift",
+      "py_ns": 154.896,
+      "mojo_ns": 1.1,
+      "speedup_x": 140.81,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "selection_coefficient",
+      "py_ns": 126.025,
+      "mojo_ns": 1.0,
+      "speedup_x": 126.02,
+      "py_result": 0.09375,
+      "py_error": null
+    },
+    {
+      "function": "effective_population_size",
+      "py_ns": 125.85,
+      "mojo_ns": 1.0,
+      "speedup_x": 125.85,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "nucleotide_diversity",
+      "py_ns": 297.479,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "tajimas_d_simplified",
+      "py_ns": 165.233,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "fst_wright",
+      "py_ns": 280.446,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "inbreeding_coefficient",
+      "py_ns": 267.696,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "mutation_load",
+      "py_ns": 142.708,
+      "mojo_ns": 1.0,
+      "speedup_x": 142.71,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "linkage_disequilibrium",
+      "py_ns": 90.571,
+      "mojo_ns": 1.0,
+      "speedup_x": 90.57,
+      "py_result": 0.25,
+      "py_error": null
+    }
+  ]
+}

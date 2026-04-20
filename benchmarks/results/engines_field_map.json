@@ -1,0 +1,21 @@
+{
+  "lib": "engines_field_map",
+  "status": "ok",
+  "n_functions": 1,
+  "n_compared": 1,
+  "overall_speedup_x": 310.79,
+  "total_py_ns": 4288.88,
+  "total_mojo_ns": 13.8,
+  "elapsed_s": 3.87,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "run_field_map",
+      "py_ns": 4288.875,
+      "mojo_ns": 13.8,
+      "speedup_x": 310.79,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

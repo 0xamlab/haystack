@@ -1,0 +1,93 @@
+{
+  "lib": "limnology",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 8,
+  "overall_speedup_x": 259.09,
+  "total_py_ns": 4197.22,
+  "total_mojo_ns": 16.2,
+  "elapsed_s": 1.77,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "lake_volume_ellipsoid",
+      "py_ns": 626.883,
+      "mojo_ns": 1.1,
+      "speedup_x": 569.89,
+      "py_result": 0.523599,
+      "py_error": null
+    },
+    {
+      "function": "hydraulic_retention_time",
+      "py_ns": 604.675,
+      "mojo_ns": 1.1,
+      "speedup_x": 549.7,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "thermal_stratification_index",
+      "py_ns": 504.321,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "secchi_depth_estimate",
+      "py_ns": 377.963,
+      "mojo_ns": 1.1,
+      "speedup_x": 343.6,
+      "py_result": 33.416171,
+      "py_error": null
+    },
+    {
+      "function": "trophic_state_index",
+      "py_ns": 147.058,
+      "mojo_ns": 1.0,
+      "speedup_x": 147.06,
+      "py_result": 69.988251,
+      "py_error": null
+    },
+    {
+      "function": "phosphorus_loading",
+      "py_ns": 248.712,
+      "mojo_ns": 1.1,
+      "speedup_x": 226.1,
+      "py_result": 0.00025,
+      "py_error": null
+    },
+    {
+      "function": "oxygen_saturation",
+      "py_ns": 1972.217,
+      "mojo_ns": 8.6,
+      "speedup_x": 229.33,
+      "py_result": 14.366193,
+      "py_error": null
+    },
+    {
+      "function": "attenuation_coefficient",
+      "py_ns": 87.117,
+      "mojo_ns": 1.1,
+      "speedup_x": 79.2,
+      "py_result": 3.4,
+      "py_error": null
+    },
+    {
+      "function": "lake_flushing_rate",
+      "py_ns": 132.596,
+      "mojo_ns": 1.1,
+      "speedup_x": 120.54,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "nitrogen_fixation_rate",
+      "py_ns": 709.425,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

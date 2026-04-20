@@ -1,0 +1,85 @@
+{
+  "lib": "convex",
+  "status": "ok",
+  "n_functions": 9,
+  "n_compared": 8,
+  "overall_speedup_x": 4.12,
+  "total_py_ns": 141783.73,
+  "total_mojo_ns": 34447.6,
+  "elapsed_s": 3.08,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "eval_function",
+      "py_ns": 135.912,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "compute_gradient",
+      "py_ns": 294.858,
+      "mojo_ns": 1118.0,
+      "speedup_x": 0.26,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "l2_norm",
+      "py_ns": 866.488,
+      "mojo_ns": 2.6,
+      "speedup_x": 333.26,
+      "py_result": 1.161895,
+      "py_error": null
+    },
+    {
+      "function": "vector_sub",
+      "py_ns": 446.4,
+      "mojo_ns": 318.7,
+      "speedup_x": 1.4,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "proximal_l1",
+      "py_ns": 2160.808,
+      "mojo_ns": 2158.3,
+      "speedup_x": 1.0,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "line_search_backtrack",
+      "py_ns": 73768.188,
+      "mojo_ns": 25183.6,
+      "speedup_x": 2.93,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "gradient_descent",
+      "py_ns": 1755.483,
+      "mojo_ns": 607.9,
+      "speedup_x": 2.89,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "projected_gradient_descent",
+      "py_ns": 16624.863,
+      "mojo_ns": 1694.0,
+      "speedup_x": 9.81,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "adam_optimizer",
+      "py_ns": 45866.646,
+      "mojo_ns": 3364.5,
+      "speedup_x": 13.63,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

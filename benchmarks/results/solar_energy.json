@@ -1,0 +1,109 @@
+{
+  "lib": "solar_energy",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 12,
+  "overall_speedup_x": 16.64,
+  "total_py_ns": 3332.28,
+  "total_mojo_ns": 200.2,
+  "elapsed_s": 3.7,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "solar_irradiance_on_surface",
+      "py_ns": 110.8,
+      "mojo_ns": 0.9,
+      "speedup_x": 123.11,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "panel_power_output",
+      "py_ns": 89.85,
+      "mojo_ns": 0.9,
+      "speedup_x": 99.83,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "temperature_derate",
+      "py_ns": 97.421,
+      "mojo_ns": 0.9,
+      "speedup_x": 108.25,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "cell_temperature_noct",
+      "py_ns": 117.146,
+      "mojo_ns": 0.9,
+      "speedup_x": 130.16,
+      "py_result": 0.487812,
+      "py_error": null
+    },
+    {
+      "function": "solar_declination",
+      "py_ns": 818.162,
+      "mojo_ns": 0.9,
+      "speedup_x": 909.07,
+      "py_result": -23.049628,
+      "py_error": null
+    },
+    {
+      "function": "hour_angle",
+      "py_ns": 88.829,
+      "mojo_ns": 0.9,
+      "speedup_x": 98.7,
+      "py_result": -172.5,
+      "py_error": null
+    },
+    {
+      "function": "solar_altitude",
+      "py_ns": 1194.742,
+      "mojo_ns": 0.9,
+      "speedup_x": 1327.49,
+      "py_result": 89.500019,
+      "py_error": null
+    },
+    {
+      "function": "capacity_factor_solar",
+      "py_ns": 231.721,
+      "mojo_ns": 1.0,
+      "speedup_x": 231.72,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "lcoe",
+      "py_ns": 201.021,
+      "mojo_ns": 1.0,
+      "speedup_x": 201.02,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "payback_period",
+      "py_ns": 120.488,
+      "mojo_ns": 1.0,
+      "speedup_x": 120.49,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "inverter_efficiency",
+      "py_ns": 140.242,
+      "mojo_ns": 1.0,
+      "speedup_x": 140.24,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "string_voltage",
+      "py_ns": 121.862,
+      "mojo_ns": 189.9,
+      "speedup_x": 0.64,
+      "py_result": 0.25,
+      "py_error": null
+    }
+  ]
+}

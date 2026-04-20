@@ -1,0 +1,101 @@
+{
+  "lib": "climate",
+  "status": "ok",
+  "n_functions": 11,
+  "n_compared": 10,
+  "overall_speedup_x": 196.76,
+  "total_py_ns": 2164.41,
+  "total_mojo_ns": 11.0,
+  "elapsed_s": 1.12,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "celsius_to_fahrenheit",
+      "py_ns": 87.35,
+      "mojo_ns": 1.1,
+      "speedup_x": 79.41,
+      "py_result": 32.9,
+      "py_error": null
+    },
+    {
+      "function": "fahrenheit_to_celsius",
+      "py_ns": 91.183,
+      "mojo_ns": 1.1,
+      "speedup_x": 82.89,
+      "py_result": -17.5,
+      "py_error": null
+    },
+    {
+      "function": "heat_index",
+      "py_ns": 113.104,
+      "mojo_ns": 1.1,
+      "speedup_x": 102.82,
+      "py_result": -9.7265,
+      "py_error": null
+    },
+    {
+      "function": "wind_chill",
+      "py_ns": 82.921,
+      "mojo_ns": 1.1,
+      "speedup_x": 75.38,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "saturation_vapor_pressure",
+      "py_ns": 248.067,
+      "mojo_ns": 1.1,
+      "speedup_x": 225.52,
+      "py_result": 6.333663,
+      "py_error": null
+    },
+    {
+      "function": "dew_point",
+      "py_ns": 199.225,
+      "mojo_ns": 1.1,
+      "speedup_x": 181.11,
+      "py_result": -55.417787,
+      "py_error": null
+    },
+    {
+      "function": "wet_bulb_approx",
+      "py_ns": 264.008,
+      "mojo_ns": 1.1,
+      "speedup_x": 240.01,
+      "py_result": -4.448859,
+      "py_error": null
+    },
+    {
+      "function": "relative_humidity",
+      "py_ns": 469.45,
+      "mojo_ns": 1.1,
+      "speedup_x": 426.77,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "apparent_temperature",
+      "py_ns": 421.467,
+      "mojo_ns": 1.1,
+      "speedup_x": 383.15,
+      "py_result": -3.839555,
+      "py_error": null
+    },
+    {
+      "function": "cloud_base_height",
+      "py_ns": 151.65,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "pressure_altitude",
+      "py_ns": 187.638,
+      "mojo_ns": 1.1,
+      "speedup_x": 170.58,
+      "py_result": 33902.308464,
+      "py_error": null
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+"""test_composites.mojo — auto-generated tests for composites library."""
+from std.math import isnan, isinf
+from composites import rule_of_mixtures_modulus, inverse_rule_of_mixtures, composite_density, fiber_volume_fraction, laminate_thickness, specific_stiffness, specific_strength, halpin_tsai, critical_fiber_length, shear_lag_stress_transfer, impact_energy_charpy, void_content
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_rule_of_mixtures_modulus = rule_of_mixtures_modulus(0.5, 0.5, 0.5)
+    if is_finite(_v_rule_of_mixtures_modulus): passed += 1; print("  ✅ composites::rule_of_mixtures_modulus =", _v_rule_of_mixtures_modulus)
+    else: failed += 1; print("  ❌ composites::rule_of_mixtures_modulus → non-finite:", _v_rule_of_mixtures_modulus)
+    var _v_inverse_rule_of_mixtures = inverse_rule_of_mixtures(0.5, 0.5, 0.5)
+    if is_finite(_v_inverse_rule_of_mixtures): passed += 1; print("  ✅ composites::inverse_rule_of_mixtures =", _v_inverse_rule_of_mixtures)
+    else: failed += 1; print("  ❌ composites::inverse_rule_of_mixtures → non-finite:", _v_inverse_rule_of_mixtures)
+    var _v_composite_density = composite_density(0.5, 0.5, 0.5)
+    if is_finite(_v_composite_density): passed += 1; print("  ✅ composites::composite_density =", _v_composite_density)
+    else: failed += 1; print("  ❌ composites::composite_density → non-finite:", _v_composite_density)
+    var _v_fiber_volume_fraction = fiber_volume_fraction(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_fiber_volume_fraction): passed += 1; print("  ✅ composites::fiber_volume_fraction =", _v_fiber_volume_fraction)
+    else: failed += 1; print("  ❌ composites::fiber_volume_fraction → non-finite:", _v_fiber_volume_fraction)
+    var _v_laminate_thickness = laminate_thickness(0.5, 0.5)
+    if is_finite(_v_laminate_thickness): passed += 1; print("  ✅ composites::laminate_thickness =", _v_laminate_thickness)
+    else: failed += 1; print("  ❌ composites::laminate_thickness → non-finite:", _v_laminate_thickness)
+    var _v_specific_stiffness = specific_stiffness(0.5, 0.5)
+    if is_finite(_v_specific_stiffness): passed += 1; print("  ✅ composites::specific_stiffness =", _v_specific_stiffness)
+    else: failed += 1; print("  ❌ composites::specific_stiffness → non-finite:", _v_specific_stiffness)
+    var _v_specific_strength = specific_strength(0.5, 0.5)
+    if is_finite(_v_specific_strength): passed += 1; print("  ✅ composites::specific_strength =", _v_specific_strength)
+    else: failed += 1; print("  ❌ composites::specific_strength → non-finite:", _v_specific_strength)
+    var _v_halpin_tsai = halpin_tsai(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_halpin_tsai): passed += 1; print("  ✅ composites::halpin_tsai =", _v_halpin_tsai)
+    else: failed += 1; print("  ❌ composites::halpin_tsai → non-finite:", _v_halpin_tsai)
+    var _v_critical_fiber_length = critical_fiber_length(0.5, 0.5, 0.5)
+    if is_finite(_v_critical_fiber_length): passed += 1; print("  ✅ composites::critical_fiber_length =", _v_critical_fiber_length)
+    else: failed += 1; print("  ❌ composites::critical_fiber_length → non-finite:", _v_critical_fiber_length)
+    var _v_shear_lag_stress_transfer = shear_lag_stress_transfer(0.5, 0.5, 0.5)
+    if is_finite(_v_shear_lag_stress_transfer): passed += 1; print("  ✅ composites::shear_lag_stress_transfer =", _v_shear_lag_stress_transfer)
+    else: failed += 1; print("  ❌ composites::shear_lag_stress_transfer → non-finite:", _v_shear_lag_stress_transfer)
+    var _v_impact_energy_charpy = impact_energy_charpy(0.5, 0.5)
+    if is_finite(_v_impact_energy_charpy): passed += 1; print("  ✅ composites::impact_energy_charpy =", _v_impact_energy_charpy)
+    else: failed += 1; print("  ❌ composites::impact_energy_charpy → non-finite:", _v_impact_energy_charpy)
+    var _v_void_content = void_content(0.5, 0.5)
+    if is_finite(_v_void_content): passed += 1; print("  ✅ composites::void_content =", _v_void_content)
+    else: failed += 1; print("  ❌ composites::void_content → non-finite:", _v_void_content)
+
+    print("  [composites] Passed:", passed, "Failed:", failed)

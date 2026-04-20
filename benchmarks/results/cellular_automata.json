@@ -1,0 +1,93 @@
+{
+  "lib": "cellular_automata",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 5,
+  "overall_speedup_x": 38.55,
+  "total_py_ns": 14052.21,
+  "total_mojo_ns": 364.5,
+  "elapsed_s": 1.79,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "elementary_rule",
+      "py_ns": 230.896,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "rule_step_1d",
+      "py_ns": 3345.946,
+      "mojo_ns": 243.2,
+      "speedup_x": 13.76,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "game_of_life_cell",
+      "py_ns": 196.271,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "game_of_life_step",
+      "py_ns": null,
+      "mojo_ns": 8.1,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list index out of range"
+    },
+    {
+      "function": "totalistic_rule",
+      "py_ns": 630.121,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "langtons_ant_step",
+      "py_ns": 391.046,
+      "mojo_ns": 118.0,
+      "speedup_x": 3.31,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "wireworld_cell",
+      "py_ns": 322.796,
+      "mojo_ns": 1.1,
+      "speedup_x": 293.45,
+      "py_result": 3.0,
+      "py_error": null
+    },
+    {
+      "function": "rule110_cell",
+      "py_ns": 495.733,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "majority_rule",
+      "py_ns": 9860.654,
+      "mojo_ns": 1.1,
+      "speedup_x": 8964.23,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "parity_rule",
+      "py_ns": 131.771,
+      "mojo_ns": 1.1,
+      "speedup_x": 119.79,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

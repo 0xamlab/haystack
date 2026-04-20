@@ -1,0 +1,93 @@
+{
+  "lib": "continuous_batching",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 7,
+  "overall_speedup_x": 121.62,
+  "total_py_ns": 887.82,
+  "total_mojo_ns": 7.3,
+  "elapsed_s": 1.75,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "iteration_level_batch_size",
+      "py_ns": null,
+      "mojo_ns": 1.0,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "name 'Int64' is not defined"
+    },
+    {
+      "function": "preemption_score",
+      "py_ns": 101.458,
+      "mojo_ns": 1.1,
+      "speedup_x": 92.23,
+      "py_result": 0.666667,
+      "py_error": null
+    },
+    {
+      "function": "admission_control_accept",
+      "py_ns": 91.321,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "chunked_prefill_chunks",
+      "py_ns": null,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "name 'Int64' is not defined"
+    },
+    {
+      "function": "decode_throughput_tokens",
+      "py_ns": 100.746,
+      "mojo_ns": 1.0,
+      "speedup_x": 100.75,
+      "py_result": 1000.0,
+      "py_error": null
+    },
+    {
+      "function": "streaming_first_token_latency",
+      "py_ns": 141.837,
+      "mojo_ns": 1.1,
+      "speedup_x": 128.94,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "sequence_completion_fraction",
+      "py_ns": 88.717,
+      "mojo_ns": 1.1,
+      "speedup_x": 80.65,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "head_of_line_blocking_score",
+      "py_ns": 96.992,
+      "mojo_ns": 1.0,
+      "speedup_x": 96.99,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "beam_memory_per_request",
+      "py_ns": 138.2,
+      "mojo_ns": 1.0,
+      "speedup_x": 138.2,
+      "py_result": 0.03125,
+      "py_error": null
+    },
+    {
+      "function": "batching_efficiency",
+      "py_ns": 219.871,
+      "mojo_ns": 1.0,
+      "speedup_x": 219.87,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

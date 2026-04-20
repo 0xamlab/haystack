@@ -1,0 +1,109 @@
+{
+  "lib": "nanotechnology",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 12,
+  "overall_speedup_x": 278.97,
+  "total_py_ns": 3877.64,
+  "total_mojo_ns": 13.9,
+  "elapsed_s": 1.78,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "surface_to_volume_sphere",
+      "py_ns": 112.921,
+      "mojo_ns": 1.0,
+      "speedup_x": 112.92,
+      "py_result": 6.0,
+      "py_error": null
+    },
+    {
+      "function": "nanoparticle_surface_area",
+      "py_ns": 182.871,
+      "mojo_ns": 1.0,
+      "speedup_x": 182.87,
+      "py_result": 3.141593,
+      "py_error": null
+    },
+    {
+      "function": "nanoparticle_volume",
+      "py_ns": 111.321,
+      "mojo_ns": 1.0,
+      "speedup_x": 111.32,
+      "py_result": 0.523599,
+      "py_error": null
+    },
+    {
+      "function": "specific_surface_area",
+      "py_ns": 138.442,
+      "mojo_ns": 3.2,
+      "speedup_x": 43.26,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "quantum_confinement_energy",
+      "py_ns": 995.121,
+      "mojo_ns": 1.0,
+      "speedup_x": 995.12,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "mean_free_path",
+      "py_ns": 225.388,
+      "mojo_ns": 1.0,
+      "speedup_x": 225.39,
+      "py_result": 0.450158,
+      "py_error": null
+    },
+    {
+      "function": "knudsen_number",
+      "py_ns": 171.967,
+      "mojo_ns": 0.9,
+      "speedup_x": 191.07,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "van_der_waals_force",
+      "py_ns": 1544.979,
+      "mojo_ns": 1.0,
+      "speedup_x": 1544.98,
+      "py_result": 0.166667,
+      "py_error": null
+    },
+    {
+      "function": "diffusion_coefficient_stokes_einstein",
+      "py_ns": 118.662,
+      "mojo_ns": 1.0,
+      "speedup_x": 118.66,
+      "py_result": 0.053052,
+      "py_error": null
+    },
+    {
+      "function": "zeta_potential_mobility",
+      "py_ns": 101.117,
+      "mojo_ns": 0.9,
+      "speedup_x": 112.35,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "aspect_ratio",
+      "py_ns": 93.767,
+      "mojo_ns": 0.9,
+      "speedup_x": 104.19,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "packing_fraction_fcc",
+      "py_ns": 81.088,
+      "mojo_ns": 1.0,
+      "speedup_x": 81.09,
+      "py_result": 0.74048,
+      "py_error": null
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+# ─── Algenta MCP Server — SEPARATE VIRTUAL ENVIRONMENT ─────────────────────────
+#
+# The MCP server must be installed in its own virtualenv because it requires
+# mcp>=1.26 → starlette>=0.52 which CONFLICTS with FastAPI 0.110 (needs starlette<0.37).
+#
+# ── Quick start ──────────────────────────────────────────────────────────────────
+#
+#   python3 -m venv mcp_venv
+#   source mcp_venv/bin/activate
+#   pip install -r requirements-mcp.txt
+#
+#   # stdio transport (Claude Desktop, Cursor)
+#   ALGENTA_API_KEY=de_live_... python -m apps.mcp_server.server
+#
+#   # HTTP/SSE transport (n8n, LangChain, remote agents)
+#   ALGENTA_API_KEY=de_live_... python -m apps.mcp_server.server --transport http --port 8001
+#
+# ── Claude Desktop config (~/.config/claude/claude_desktop_config.json) ──────────
+#
+#   {
+#     "mcpServers": {
+#       "algenta": {
+#         "command": "/path/to/mcp_venv/bin/python",
+#         "args": ["-m", "apps.mcp_server.server"],
+#         "env": {
+#           "ALGENTA_API_KEY": "de_live_YOUR_KEY",
+#           "ALGENTA_BASE_URL": "https://api.algenta.ai"
+#         }
+#       }
+#     }
+#   }
+#
+# ────────────────────────────────────────────────────────────────────────────────
+
+mcp>=1.26.0
+httpx>=0.28.0
+structlog>=24.1.0
+anyio[trio]>=4.5
+pydantic>=2.11.0
+pydantic-settings>=2.5.0
+# HTTP transport extras
+uvicorn>=0.42.0
+starlette>=0.52.0
+sse-starlette>=1.6.1

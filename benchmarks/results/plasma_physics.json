@@ -1,0 +1,93 @@
+{
+  "lib": "plasma_physics",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 10,
+  "overall_speedup_x": 203.54,
+  "total_py_ns": 2238.98,
+  "total_mojo_ns": 11.0,
+  "elapsed_s": 1.11,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "debye_length",
+      "py_ns": 154.267,
+      "mojo_ns": 1.1,
+      "speedup_x": 140.24,
+      "py_result": 7434.272963,
+      "py_error": null
+    },
+    {
+      "function": "plasma_frequency",
+      "py_ns": 164.467,
+      "mojo_ns": 1.1,
+      "speedup_x": 149.52,
+      "py_result": 39.888013,
+      "py_error": null
+    },
+    {
+      "function": "thermal_velocity",
+      "py_ns": 238.258,
+      "mojo_ns": 1.1,
+      "speedup_x": 216.6,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "larmor_radius",
+      "py_ns": 159.012,
+      "mojo_ns": 1.1,
+      "speedup_x": 144.56,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "coulomb_logarithm",
+      "py_ns": 366.567,
+      "mojo_ns": 1.1,
+      "speedup_x": 333.24,
+      "py_result": 30.561182,
+      "py_error": null
+    },
+    {
+      "function": "spitzer_resistivity",
+      "py_ns": 224.392,
+      "mojo_ns": 1.1,
+      "speedup_x": 203.99,
+      "py_result": 0.001103,
+      "py_error": null
+    },
+    {
+      "function": "alfven_speed",
+      "py_ns": 391.025,
+      "mojo_ns": 1.1,
+      "speedup_x": 355.48,
+      "py_result": 630.792432,
+      "py_error": null
+    },
+    {
+      "function": "mhd_beta",
+      "py_ns": 226.121,
+      "mojo_ns": 1.1,
+      "speedup_x": 205.56,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "fusion_lawson_criterion",
+      "py_ns": 115.917,
+      "mojo_ns": 1.1,
+      "speedup_x": 105.38,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "bremsstrahlung_power",
+      "py_ns": 198.954,
+      "mojo_ns": 1.1,
+      "speedup_x": 180.87,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

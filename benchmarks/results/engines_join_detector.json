@@ -1,0 +1,21 @@
+{
+  "lib": "engines_join_detector",
+  "status": "ok",
+  "n_functions": 1,
+  "n_compared": 1,
+  "overall_speedup_x": 586.4,
+  "total_py_ns": 7154.03,
+  "total_mojo_ns": 12.2,
+  "elapsed_s": 3.78,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "run_join_detect",
+      "py_ns": 7154.029,
+      "mojo_ns": 12.2,
+      "speedup_x": 586.4,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

@@ -1,0 +1,175 @@
+{
+  "contract_version": "v1.2",
+  "brand": "Algenta",
+  "api_base_url": "https://api.algenta.ai",
+  "mcp_endpoint": "https://api.algenta.ai/mcp/sse",
+  "mcp_tools_endpoint": "https://api.algenta.ai/mcp/tools",
+  "auth_scheme": "bearer_api_key",
+  "api_key_prefixes": {
+    "live": "de_live_",
+    "test": "de_test_"
+  },
+  "compatibility": {
+    "legacy_headers": [
+      "X-API-Key"
+    ],
+    "legacy_env_vars": [
+      "DE_API_KEY",
+      "DE_BASE_URL"
+    ],
+    "legacy_domains": [
+      "api.algenta.io",
+      "api.decisionengine.io"
+    ],
+    "deprecation_window_days": 90
+  },
+  "defaults": {
+    "read_only_default": true,
+    "write_confirmation_required": true,
+    "plan_limits": {
+      "free": {
+        "requests_per_minute": 60,
+        "simulations_per_month": 500
+      },
+      "developer": {
+        "requests_per_minute": 300,
+        "simulations_per_month": 10000
+      },
+      "pro": {
+        "requests_per_minute": 1000,
+        "simulations_per_month": 100000
+      },
+      "enterprise": {
+        "requests_per_minute": 10000,
+        "simulations_per_month": "unlimited"
+      }
+    }
+  },
+  "integrations": [
+    {
+      "name": "ChatGPT",
+      "description": "Hosted app and actions surface for Algenta simulations, datasets, and MCP tools.",
+      "icon": "chatgpt",
+      "capabilities": [
+        "read",
+        "write"
+      ],
+      "auth_scheme": "bearer_api_key",
+      "required_scopes": [
+        "read"
+      ],
+      "read_only_default": true,
+      "write_actions": [
+        "connect_data",
+        "refresh_data",
+        "disconnect_data"
+      ],
+      "admin_controls": [
+        "tool_allowlist",
+        "read_only_mode",
+        "dataset_scope"
+      ],
+      "docs_url": "https://docs.algenta.ai/integrations/chatgpt-actions",
+      "privacy_url": "https://algenta.ai/privacy",
+      "terms_url": "https://algenta.ai/terms",
+      "support_url": "https://algenta.ai/support",
+      "regions": [
+        "global"
+      ],
+      "status": "active"
+    },
+    {
+      "name": "Claude and Codex",
+      "description": "Remote MCP connection for Claude Desktop, Codex, and other MCP clients.",
+      "icon": "mcp",
+      "capabilities": [
+        "read",
+        "write"
+      ],
+      "auth_scheme": "bearer_api_key",
+      "required_scopes": [
+        "read"
+      ],
+      "read_only_default": true,
+      "write_actions": [
+        "connect_data",
+        "refresh_data",
+        "disconnect_data"
+      ],
+      "admin_controls": [
+        "tool_allowlist",
+        "read_only_mode",
+        "dataset_scope"
+      ],
+      "docs_url": "https://docs.algenta.ai/integrations/overview",
+      "privacy_url": "https://algenta.ai/privacy",
+      "terms_url": "https://algenta.ai/terms",
+      "support_url": "https://algenta.ai/support",
+      "regions": [
+        "global"
+      ],
+      "status": "active"
+    },
+    {
+      "name": "n8n",
+      "description": "HTTP and MCP workflows for automation and agent orchestration.",
+      "icon": "n8n",
+      "capabilities": [
+        "read",
+        "write"
+      ],
+      "auth_scheme": "bearer_api_key",
+      "required_scopes": [
+        "read"
+      ],
+      "read_only_default": true,
+      "write_actions": [
+        "connect_data",
+        "refresh_data"
+      ],
+      "admin_controls": [
+        "read_only_mode",
+        "dataset_scope"
+      ],
+      "docs_url": "https://docs.algenta.ai/integrations/n8n",
+      "privacy_url": "https://algenta.ai/privacy",
+      "terms_url": "https://algenta.ai/terms",
+      "support_url": "https://algenta.ai/support",
+      "regions": [
+        "global"
+      ],
+      "status": "active"
+    },
+    {
+      "name": "Azure AI Foundry",
+      "description": "Remote MCP and OpenAPI integration for Azure-hosted copilots and agents.",
+      "icon": "azure",
+      "capabilities": [
+        "read",
+        "write"
+      ],
+      "auth_scheme": "bearer_api_key",
+      "required_scopes": [
+        "read"
+      ],
+      "read_only_default": true,
+      "write_actions": [
+        "connect_data",
+        "refresh_data"
+      ],
+      "admin_controls": [
+        "read_only_mode",
+        "tool_allowlist",
+        "dataset_scope"
+      ],
+      "docs_url": "https://docs.algenta.ai/integrations/overview",
+      "privacy_url": "https://algenta.ai/privacy",
+      "terms_url": "https://algenta.ai/terms",
+      "support_url": "https://algenta.ai/support",
+      "regions": [
+        "global"
+      ],
+      "status": "active"
+    }
+  ]
+}

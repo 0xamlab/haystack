@@ -1,0 +1,7 @@
+[mcp_servers.qdrant-roo]
+command = "python3"
+args = ["/Users/angel/Developer/decision-engine/.codex/qdrant_roo_repo_wrapper.py"]
+default_tools_approval_mode = "auto"
+
+[mcp_servers.qdrant-roo.tools.qdrant-find]
+approval_mode = "approve"

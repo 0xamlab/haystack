@@ -1,0 +1,109 @@
+{
+  "lib": "economic_indicators",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 7,
+  "overall_speedup_x": 8.79,
+  "total_py_ns": 5171.43,
+  "total_mojo_ns": 588.4,
+  "elapsed_s": 1.78,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "gdp_growth",
+      "py_ns": 120.613,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "inflation_rate",
+      "py_ns": 116.792,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "unemployment_rate",
+      "py_ns": 103.925,
+      "mojo_ns": 1.0,
+      "speedup_x": 103.92,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "real_gdp",
+      "py_ns": 157.896,
+      "mojo_ns": 1.1,
+      "speedup_x": 143.54,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "gini_coefficient",
+      "py_ns": 3728.533,
+      "mojo_ns": 582.1,
+      "speedup_x": 6.41,
+      "py_result": 0.16,
+      "py_error": null
+    },
+    {
+      "function": "phillips_curve",
+      "py_ns": 104.708,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "okuns_law",
+      "py_ns": 174.946,
+      "mojo_ns": 1.1,
+      "speedup_x": 159.04,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "velocity_of_money",
+      "py_ns": 777.467,
+      "mojo_ns": 1.1,
+      "speedup_x": 706.79,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "fisher_equation",
+      "py_ns": 80.358,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "trade_balance",
+      "py_ns": 76.712,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "gdp_per_capita",
+      "py_ns": 117.737,
+      "mojo_ns": 1.0,
+      "speedup_x": 117.74,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "purchasing_power_parity",
+      "py_ns": 110.925,
+      "mojo_ns": 1.0,
+      "speedup_x": 110.93,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

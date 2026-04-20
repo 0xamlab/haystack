@@ -1,0 +1,69 @@
+{
+  "lib": "ml_classifiers",
+  "status": "ok",
+  "n_functions": 7,
+  "n_compared": 7,
+  "overall_speedup_x": 33.0,
+  "total_py_ns": 305980.84,
+  "total_mojo_ns": 9272.5,
+  "elapsed_s": 5.94,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "euclidean_distance",
+      "py_ns": 492.763,
+      "mojo_ns": 2.3,
+      "speedup_x": 214.24,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "manhattan_distance",
+      "py_ns": 4859.604,
+      "mojo_ns": 2.3,
+      "speedup_x": 2112.87,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "cosine_similarity",
+      "py_ns": 5705.592,
+      "mojo_ns": 2.9,
+      "speedup_x": 1967.45,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "logistic_sigmoid",
+      "py_ns": 770.992,
+      "mojo_ns": 5.6,
+      "speedup_x": 137.68,
+      "py_result": 0.622459,
+      "py_error": null
+    },
+    {
+      "function": "softmax",
+      "py_ns": 2318.254,
+      "mojo_ns": 647.2,
+      "speedup_x": 3.58,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "knn_predict",
+      "py_ns": 24017.583,
+      "mojo_ns": 1726.4,
+      "speedup_x": 13.91,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "kmeans_cluster",
+      "py_ns": 267816.05,
+      "mojo_ns": 6885.8,
+      "speedup_x": 38.89,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

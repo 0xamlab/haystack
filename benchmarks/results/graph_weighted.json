@@ -1,0 +1,37 @@
+{
+  "lib": "graph_weighted",
+  "status": "ok",
+  "n_functions": 3,
+  "n_compared": 1,
+  "overall_speedup_x": 13.02,
+  "total_py_ns": 5417.46,
+  "total_mojo_ns": 416.2,
+  "elapsed_s": 3.06,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "union_find_create",
+      "py_ns": 5417.458,
+      "mojo_ns": 416.2,
+      "speedup_x": 13.02,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "union_find_find",
+      "py_ns": null,
+      "mojo_ns": 1.5,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list index out of range"
+    },
+    {
+      "function": "union_find_union",
+      "py_ns": null,
+      "mojo_ns": 9.0,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list index out of range"
+    }
+  ]
+}

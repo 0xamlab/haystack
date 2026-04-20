@@ -1,0 +1,93 @@
+{
+  "lib": "multimodal",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 8,
+  "overall_speedup_x": 128.74,
+  "total_py_ns": 1004.2,
+  "total_mojo_ns": 7.8,
+  "elapsed_s": 1.71,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "image_patch_embed",
+      "py_ns": 84.917,
+      "mojo_ns": 1.0,
+      "speedup_x": 84.92,
+      "py_result": 0.75,
+      "py_error": null
+    },
+    {
+      "function": "image_patch_count",
+      "py_ns": 102.254,
+      "mojo_ns": 1.0,
+      "speedup_x": 102.25,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "spectrogram_mel_freq",
+      "py_ns": 126.8,
+      "mojo_ns": 1.0,
+      "speedup_x": 126.8,
+      "py_result": 0.804708,
+      "py_error": null
+    },
+    {
+      "function": "spectrogram_stft_magnitude",
+      "py_ns": 111.492,
+      "mojo_ns": 0.9,
+      "speedup_x": 123.88,
+      "py_result": 0.707107,
+      "py_error": null
+    },
+    {
+      "function": "audio_feature_norm",
+      "py_ns": 96.075,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "vision_attention_scale",
+      "py_ns": 236.096,
+      "mojo_ns": 0.9,
+      "speedup_x": 262.33,
+      "py_result": 1.414214,
+      "py_error": null
+    },
+    {
+      "function": "cross_modal_similarity",
+      "py_ns": 129.95,
+      "mojo_ns": 1.0,
+      "speedup_x": 129.95,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "image_token_count",
+      "py_ns": null,
+      "mojo_ns": 1.0,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "name 'Int64' is not defined"
+    },
+    {
+      "function": "ocr_confidence_score",
+      "py_ns": 123.108,
+      "mojo_ns": 1.0,
+      "speedup_x": 123.11,
+      "py_result": 2.718282,
+      "py_error": null
+    },
+    {
+      "function": "multimodal_fusion_weight",
+      "py_ns": 89.588,
+      "mojo_ns": 1.0,
+      "speedup_x": 89.59,
+      "py_result": 0.25,
+      "py_error": null
+    }
+  ]
+}

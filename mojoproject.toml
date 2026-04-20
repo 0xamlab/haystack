@@ -1,0 +1,18 @@
+[project]
+name = "decision-engine-mojo"
+version = "0.2.0"
+description = "Algenta Decision Engine — Mojo simulation core (nightly)"
+authors = ["Algenta <eng@algenta.io>"]
+channels = ["https://conda.modular.com/max-nightly/", "conda-forge"]
+platforms = ["osx-arm64", "osx-64", "linux-64", "linux-aarch64"]
+
+[tasks]
+# Build the native binary (output to mojo_build/simulate relative to repo root)
+build = "mojo build ../mojo/engine/main.mojo -o ../mojo_build/simulate"
+# Smoke-test the binary
+test = "echo '{\"runs\":100,\"variables\":[{\"name\":\"x\",\"distribution\":\"normal\",\"params\":{\"mean\":100000,\"std\":20000}}],\"objective_function\":\"x\"}' | ../mojo_build/simulate"
+# Version check
+version = "mojo --version"
+
+[dependencies]
+mojo = ">=0.26"

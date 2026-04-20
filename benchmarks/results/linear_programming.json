@@ -1,0 +1,77 @@
+{
+  "lib": "linear_programming",
+  "status": "ok",
+  "n_functions": 8,
+  "n_compared": 6,
+  "overall_speedup_x": 5.57,
+  "total_py_ns": 214686.33,
+  "total_mojo_ns": 38516.7,
+  "elapsed_s": 4.37,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "line_intersection_2d",
+      "py_ns": 255.717,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "is_feasible",
+      "py_ns": 1474.242,
+      "mojo_ns": 559.3,
+      "speedup_x": 2.64,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "objective_value",
+      "py_ns": 548.646,
+      "mojo_ns": 3.2,
+      "speedup_x": 171.45,
+      "py_result": 1.35,
+      "py_error": null
+    },
+    {
+      "function": "enumerate_vertices_2d",
+      "py_ns": 80028.204,
+      "mojo_ns": 15293.3,
+      "speedup_x": 5.23,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "lp_solve_2var",
+      "py_ns": 34010.396,
+      "mojo_ns": 7403.6,
+      "speedup_x": 4.59,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "dual_value",
+      "py_ns": 45023.613,
+      "mojo_ns": 4996.7,
+      "speedup_x": 9.01,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "sensitivity_rhs",
+      "py_ns": 53601.225,
+      "mojo_ns": 10260.6,
+      "speedup_x": 5.22,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "transportation_cost",
+      "py_ns": null,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list index out of range"
+    }
+  ]
+}

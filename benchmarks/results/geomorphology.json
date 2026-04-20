@@ -1,0 +1,109 @@
+{
+  "lib": "geomorphology",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 11,
+  "overall_speedup_x": 77.92,
+  "total_py_ns": 1729.9,
+  "total_mojo_ns": 22.2,
+  "elapsed_s": 1.31,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "stream_power",
+      "py_ns": 94.729,
+      "mojo_ns": 1.1,
+      "speedup_x": 86.12,
+      "py_result": 0.0625,
+      "py_error": null
+    },
+    {
+      "function": "shear_stress_flow",
+      "py_ns": 93.846,
+      "mojo_ns": 1.1,
+      "speedup_x": 85.31,
+      "py_result": 0.0625,
+      "py_error": null
+    },
+    {
+      "function": "shields_parameter",
+      "py_ns": 106.046,
+      "mojo_ns": 1.1,
+      "speedup_x": 96.41,
+      "py_result": 0.03089,
+      "py_error": null
+    },
+    {
+      "function": "settling_velocity_stokes",
+      "py_ns": 214.046,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "erosion_rate_spl",
+      "py_ns": 174.646,
+      "mojo_ns": 11.2,
+      "speedup_x": 15.59,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "hillslope_diffusion",
+      "py_ns": 101.246,
+      "mojo_ns": 1.1,
+      "speedup_x": 92.04,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "drainage_density",
+      "py_ns": 87.688,
+      "mojo_ns": 1.1,
+      "speedup_x": 79.72,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "relief_ratio",
+      "py_ns": 87.696,
+      "mojo_ns": 1.1,
+      "speedup_x": 79.72,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "sinuosity",
+      "py_ns": 88.083,
+      "mojo_ns": 1.1,
+      "speedup_x": 80.08,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "hack_law_length",
+      "py_ns": 107.554,
+      "mojo_ns": 1.1,
+      "speedup_x": 97.78,
+      "py_result": 0.353553,
+      "py_error": null
+    },
+    {
+      "function": "ruggedness_number",
+      "py_ns": 84.746,
+      "mojo_ns": 1.1,
+      "speedup_x": 77.04,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "hypsometric_integral",
+      "py_ns": 703.621,
+      "mojo_ns": 1.1,
+      "speedup_x": 639.66,
+      "py_result": 0.444444,
+      "py_error": null
+    }
+  ]
+}

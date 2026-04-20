@@ -1,0 +1,58 @@
+"""test_game_physics.mojo — auto-generated tests for game_physics library."""
+from std.math import isnan, isinf
+from game_physics import position_update, velocity_update, verlet_position, elastic_collision_1d, coefficient_of_restitution, kinetic_energy, gravitational_force, projectile_range, drag_force_quadratic, spring_force, angular_velocity_from_linear, moment_of_inertia_sphere
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_position_update = position_update(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_position_update): passed += 1; print("  ✅ game_physics::position_update =", _v_position_update)
+    else: failed += 1; print("  ❌ game_physics::position_update → non-finite:", _v_position_update)
+    var _v_velocity_update = velocity_update(0.5, 0.5, 0.5)
+    if is_finite(_v_velocity_update): passed += 1; print("  ✅ game_physics::velocity_update =", _v_velocity_update)
+    else: failed += 1; print("  ❌ game_physics::velocity_update → non-finite:", _v_velocity_update)
+    var _v_verlet_position = verlet_position(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_verlet_position): passed += 1; print("  ✅ game_physics::verlet_position =", _v_verlet_position)
+    else: failed += 1; print("  ❌ game_physics::verlet_position → non-finite:", _v_verlet_position)
+    var _v_elastic_collision_1d = elastic_collision_1d(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_elastic_collision_1d): passed += 1; print("  ✅ game_physics::elastic_collision_1d =", _v_elastic_collision_1d)
+    else: failed += 1; print("  ❌ game_physics::elastic_collision_1d → non-finite:", _v_elastic_collision_1d)
+    var _v_coefficient_of_restitution = coefficient_of_restitution(0.5, 0.5)
+    if is_finite(_v_coefficient_of_restitution): passed += 1; print("  ✅ game_physics::coefficient_of_restitution =", _v_coefficient_of_restitution)
+    else: failed += 1; print("  ❌ game_physics::coefficient_of_restitution → non-finite:", _v_coefficient_of_restitution)
+    var _v_kinetic_energy = kinetic_energy(0.5, 0.5)
+    if is_finite(_v_kinetic_energy): passed += 1; print("  ✅ game_physics::kinetic_energy =", _v_kinetic_energy)
+    else: failed += 1; print("  ❌ game_physics::kinetic_energy → non-finite:", _v_kinetic_energy)
+    var _v_gravitational_force = gravitational_force(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_gravitational_force): passed += 1; print("  ✅ game_physics::gravitational_force =", _v_gravitational_force)
+    else: failed += 1; print("  ❌ game_physics::gravitational_force → non-finite:", _v_gravitational_force)
+    var _v_projectile_range = projectile_range(0.5, 0.5, 0.5)
+    if is_finite(_v_projectile_range): passed += 1; print("  ✅ game_physics::projectile_range =", _v_projectile_range)
+    else: failed += 1; print("  ❌ game_physics::projectile_range → non-finite:", _v_projectile_range)
+    var _v_drag_force_quadratic = drag_force_quadratic(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_drag_force_quadratic): passed += 1; print("  ✅ game_physics::drag_force_quadratic =", _v_drag_force_quadratic)
+    else: failed += 1; print("  ❌ game_physics::drag_force_quadratic → non-finite:", _v_drag_force_quadratic)
+    var _v_spring_force = spring_force(0.5, 0.5)
+    if is_finite(_v_spring_force): passed += 1; print("  ✅ game_physics::spring_force =", _v_spring_force)
+    else: failed += 1; print("  ❌ game_physics::spring_force → non-finite:", _v_spring_force)
+    var _v_angular_velocity_from_linear = angular_velocity_from_linear(0.5, 0.5)
+    if is_finite(_v_angular_velocity_from_linear): passed += 1; print("  ✅ game_physics::angular_velocity_from_linear =", _v_angular_velocity_from_linear)
+    else: failed += 1; print("  ❌ game_physics::angular_velocity_from_linear → non-finite:", _v_angular_velocity_from_linear)
+    var _v_moment_of_inertia_sphere = moment_of_inertia_sphere(0.5, 0.5)
+    if is_finite(_v_moment_of_inertia_sphere): passed += 1; print("  ✅ game_physics::moment_of_inertia_sphere =", _v_moment_of_inertia_sphere)
+    else: failed += 1; print("  ❌ game_physics::moment_of_inertia_sphere → non-finite:", _v_moment_of_inertia_sphere)
+
+    print("  [game_physics] Passed:", passed, "Failed:", failed)

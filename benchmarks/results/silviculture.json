@@ -1,0 +1,93 @@
+{
+  "lib": "silviculture",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 8,
+  "overall_speedup_x": 105.08,
+  "total_py_ns": 893.19,
+  "total_mojo_ns": 8.5,
+  "elapsed_s": 1.21,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "basal_area",
+      "py_ns": 105.15,
+      "mojo_ns": 1.1,
+      "speedup_x": 95.59,
+      "py_result": 0.19635,
+      "py_error": null
+    },
+    {
+      "function": "stand_basal_area",
+      "py_ns": 115.225,
+      "mojo_ns": 1.0,
+      "speedup_x": 115.23,
+      "py_result": 1e-05,
+      "py_error": null
+    },
+    {
+      "function": "site_index",
+      "py_ns": 107.408,
+      "mojo_ns": 1.1,
+      "speedup_x": 97.64,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "volume_scribner",
+      "py_ns": 121.3,
+      "mojo_ns": 1.1,
+      "speedup_x": 110.27,
+      "py_result": -0.150078,
+      "py_error": null
+    },
+    {
+      "function": "timber_yield_per_ha",
+      "py_ns": 89.117,
+      "mojo_ns": 1.0,
+      "speedup_x": 89.12,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "relative_density_index",
+      "py_ns": 137.408,
+      "mojo_ns": 1.0,
+      "speedup_x": 137.41,
+      "py_result": 0.000932,
+      "py_error": null
+    },
+    {
+      "function": "reineke_sdi",
+      "py_ns": 130.804,
+      "mojo_ns": 1.1,
+      "speedup_x": 118.91,
+      "py_result": 273.4521,
+      "py_error": null
+    },
+    {
+      "function": "mean_annual_increment",
+      "py_ns": 86.779,
+      "mojo_ns": 1.1,
+      "speedup_x": 78.89,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "current_annual_increment",
+      "py_ns": 95.387,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "thinning_ratio",
+      "py_ns": 102.179,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

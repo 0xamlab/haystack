@@ -1,0 +1,45 @@
+{
+  "lib": "crypto_base64",
+  "status": "ok",
+  "n_functions": 4,
+  "n_compared": 4,
+  "overall_speedup_x": 121.26,
+  "total_py_ns": 34728.55,
+  "total_mojo_ns": 286.4,
+  "elapsed_s": 1.55,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "b64_encode",
+      "py_ns": 3030.129,
+      "mojo_ns": 48.3,
+      "speedup_x": 62.74,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "b64_decode",
+      "py_ns": 2618.146,
+      "mojo_ns": 61.0,
+      "speedup_x": 42.92,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "b64_url_encode",
+      "py_ns": 9893.487,
+      "mojo_ns": 97.4,
+      "speedup_x": 101.58,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "b64_url_decode",
+      "py_ns": 19186.787,
+      "mojo_ns": 79.7,
+      "speedup_x": 240.74,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

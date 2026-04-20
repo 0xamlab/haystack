@@ -1,0 +1,109 @@
+{
+  "lib": "agriculture",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 11,
+  "overall_speedup_x": 110.99,
+  "total_py_ns": 1121.03,
+  "total_mojo_ns": 10.1,
+  "elapsed_s": 2.95,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "growing_degree_days",
+      "py_ns": 95.521,
+      "mojo_ns": 0.1,
+      "speedup_x": 955.21,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "crop_water_need",
+      "py_ns": 78.442,
+      "mojo_ns": 1.0,
+      "speedup_x": 78.44,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "irrigation_efficiency",
+      "py_ns": 83.429,
+      "mojo_ns": 0.9,
+      "speedup_x": 92.7,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "fertilizer_rate",
+      "py_ns": 103.096,
+      "mojo_ns": 1.0,
+      "speedup_x": 103.1,
+      "py_result": -0.5,
+      "py_error": null
+    },
+    {
+      "function": "seed_rate",
+      "py_ns": 98.275,
+      "mojo_ns": 1.2,
+      "speedup_x": 81.9,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "harvest_index",
+      "py_ns": 142.146,
+      "mojo_ns": 0.9,
+      "speedup_x": 157.94,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "yield_per_hectare",
+      "py_ns": 80.342,
+      "mojo_ns": 1.0,
+      "speedup_x": 80.34,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "soil_ph_lime_requirement",
+      "py_ns": 96.762,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "water_use_efficiency",
+      "py_ns": 93.529,
+      "mojo_ns": 1.0,
+      "speedup_x": 93.53,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "photosynthetically_active_radiation",
+      "py_ns": 89.037,
+      "mojo_ns": 1.0,
+      "speedup_x": 89.04,
+      "py_result": 0.24,
+      "py_error": null
+    },
+    {
+      "function": "leaf_area_index",
+      "py_ns": 93.221,
+      "mojo_ns": 1.0,
+      "speedup_x": 93.22,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "nitrogen_use_efficiency",
+      "py_ns": 163.992,
+      "mojo_ns": 1.0,
+      "speedup_x": 163.99,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

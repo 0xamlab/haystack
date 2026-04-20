@@ -1,0 +1,109 @@
+{
+  "lib": "forensics",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 9,
+  "overall_speedup_x": 248.47,
+  "total_py_ns": 2857.35,
+  "total_mojo_ns": 11.5,
+  "elapsed_s": 1.77,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "time_of_death_newton",
+      "py_ns": 118.429,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "algor_mortis_rate",
+      "py_ns": 212.35,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "blood_alcohol_widmark",
+      "py_ns": 161.9,
+      "mojo_ns": 1.3,
+      "speedup_x": 124.54,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "alcohol_elimination_rate",
+      "py_ns": 94.087,
+      "mojo_ns": 1.3,
+      "speedup_x": 72.37,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "rigor_mortis_stage",
+      "py_ns": 135.488,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "ballistic_drop",
+      "py_ns": 966.513,
+      "mojo_ns": 1.2,
+      "speedup_x": 805.43,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "bloodstain_impact_angle",
+      "py_ns": 286.875,
+      "mojo_ns": 1.3,
+      "speedup_x": 220.67,
+      "py_result": 1.570796,
+      "py_error": null
+    },
+    {
+      "function": "dna_match_probability",
+      "py_ns": 92.429,
+      "mojo_ns": 1.3,
+      "speedup_x": 71.1,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "fingerprint_minutiae_score",
+      "py_ns": 150.262,
+      "mojo_ns": 1.2,
+      "speedup_x": 125.22,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "glass_refractive_index_match",
+      "py_ns": 914.425,
+      "mojo_ns": 1.3,
+      "speedup_x": 703.4,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "decomposition_add",
+      "py_ns": 99.146,
+      "mojo_ns": 1.3,
+      "speedup_x": 76.27,
+      "py_result": 0.510417,
+      "py_error": null
+    },
+    {
+      "function": "toxicology_lethal_dose",
+      "py_ns": 91.713,
+      "mojo_ns": 1.3,
+      "speedup_x": 70.55,
+      "py_result": 0.25,
+      "py_error": null
+    }
+  ]
+}

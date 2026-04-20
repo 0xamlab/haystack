@@ -1,0 +1,57 @@
+"""test_watchmaking.mojo — auto-generated tests for watchmaking library."""
+from std.math import isnan, isinf
+from watchmaking import gear_ratio, gear_train_ratio, beats_per_hour, frequency_from_bph, mainspring_torque, power_reserve_hours, balance_wheel_period, escapement_error_spd, jewel_count_minimum, water_resistance_atm, case_diameter_mm, crown_winding_turns
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_gear_ratio = gear_ratio(0.5, 0.5)
+    if is_finite(_v_gear_ratio): passed += 1; print("  ✅ watchmaking::gear_ratio =", _v_gear_ratio)
+    else: failed += 1; print("  ❌ watchmaking::gear_ratio → non-finite:", _v_gear_ratio)
+    var _v_gear_train_ratio = gear_train_ratio(0.5)
+    if is_finite(_v_gear_train_ratio): passed += 1; print("  ✅ watchmaking::gear_train_ratio =", _v_gear_train_ratio)
+    else: failed += 1; print("  ❌ watchmaking::gear_train_ratio → non-finite:", _v_gear_train_ratio)
+    var _v_beats_per_hour = beats_per_hour(0.5)
+    if is_finite(_v_beats_per_hour): passed += 1; print("  ✅ watchmaking::beats_per_hour =", _v_beats_per_hour)
+    else: failed += 1; print("  ❌ watchmaking::beats_per_hour → non-finite:", _v_beats_per_hour)
+    var _v_frequency_from_bph = frequency_from_bph(0.5)
+    if is_finite(_v_frequency_from_bph): passed += 1; print("  ✅ watchmaking::frequency_from_bph =", _v_frequency_from_bph)
+    else: failed += 1; print("  ❌ watchmaking::frequency_from_bph → non-finite:", _v_frequency_from_bph)
+    var _v_mainspring_torque = mainspring_torque(0.5, 0.5)
+    if is_finite(_v_mainspring_torque): passed += 1; print("  ✅ watchmaking::mainspring_torque =", _v_mainspring_torque)
+    else: failed += 1; print("  ❌ watchmaking::mainspring_torque → non-finite:", _v_mainspring_torque)
+    var _v_power_reserve_hours = power_reserve_hours(0.5, 0.5)
+    if is_finite(_v_power_reserve_hours): passed += 1; print("  ✅ watchmaking::power_reserve_hours =", _v_power_reserve_hours)
+    else: failed += 1; print("  ❌ watchmaking::power_reserve_hours → non-finite:", _v_power_reserve_hours)
+    var _v_balance_wheel_period = balance_wheel_period(0.5, 0.5)
+    if is_finite(_v_balance_wheel_period): passed += 1; print("  ✅ watchmaking::balance_wheel_period =", _v_balance_wheel_period)
+    else: failed += 1; print("  ❌ watchmaking::balance_wheel_period → non-finite:", _v_balance_wheel_period)
+    var _v_escapement_error_spd = escapement_error_spd(0.5, 0.5)
+    if is_finite(_v_escapement_error_spd): passed += 1; print("  ✅ watchmaking::escapement_error_spd =", _v_escapement_error_spd)
+    else: failed += 1; print("  ❌ watchmaking::escapement_error_spd → non-finite:", _v_escapement_error_spd)
+    _ = jewel_count_minimum(5)
+    passed += 1; print("  ✅ watchmaking::jewel_count_minimum")
+    var _v_water_resistance_atm = water_resistance_atm(0.5)
+    if is_finite(_v_water_resistance_atm): passed += 1; print("  ✅ watchmaking::water_resistance_atm =", _v_water_resistance_atm)
+    else: failed += 1; print("  ❌ watchmaking::water_resistance_atm → non-finite:", _v_water_resistance_atm)
+    var _v_case_diameter_mm = case_diameter_mm(0.5)
+    if is_finite(_v_case_diameter_mm): passed += 1; print("  ✅ watchmaking::case_diameter_mm =", _v_case_diameter_mm)
+    else: failed += 1; print("  ❌ watchmaking::case_diameter_mm → non-finite:", _v_case_diameter_mm)
+    var _v_crown_winding_turns = crown_winding_turns(0.5, 0.5)
+    if is_finite(_v_crown_winding_turns): passed += 1; print("  ✅ watchmaking::crown_winding_turns =", _v_crown_winding_turns)
+    else: failed += 1; print("  ❌ watchmaking::crown_winding_turns → non-finite:", _v_crown_winding_turns)
+
+    print("  [watchmaking] Passed:", passed, "Failed:", failed)

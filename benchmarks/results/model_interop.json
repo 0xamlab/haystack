@@ -1,0 +1,93 @@
+{
+  "lib": "model_interop",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 9,
+  "overall_speedup_x": 145.86,
+  "total_py_ns": 1414.87,
+  "total_mojo_ns": 9.7,
+  "elapsed_s": 1.46,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "safetensors_tensor_offset",
+      "py_ns": null,
+      "mojo_ns": 1.1,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "name 'Int64' is not defined"
+    },
+    {
+      "function": "gguf_kv_metadata_size",
+      "py_ns": 257.425,
+      "mojo_ns": 1.1,
+      "speedup_x": 234.02,
+      "py_result": 6.5,
+      "py_error": null
+    },
+    {
+      "function": "onnx_node_flops",
+      "py_ns": 258.208,
+      "mojo_ns": 1.0,
+      "speedup_x": 258.21,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "hf_config_head_dim",
+      "py_ns": 207.104,
+      "mojo_ns": 1.1,
+      "speedup_x": 188.28,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "hf_rope_theta_scale",
+      "py_ns": 167.554,
+      "mojo_ns": 1.1,
+      "speedup_x": 152.32,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "dtype_convert_scale",
+      "py_ns": 90.092,
+      "mojo_ns": 1.0,
+      "speedup_x": 90.09,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "checkpoint_version_compat",
+      "py_ns": 100.867,
+      "mojo_ns": 1.1,
+      "speedup_x": 91.7,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "weight_remap_cost",
+      "py_ns": 85.121,
+      "mojo_ns": 1.1,
+      "speedup_x": 77.38,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "tokenizer_vocab_overlap",
+      "py_ns": 102.638,
+      "mojo_ns": 1.1,
+      "speedup_x": 93.31,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "model_card_perplexity",
+      "py_ns": 145.858,
+      "mojo_ns": 1.1,
+      "speedup_x": 132.6,
+      "py_result": 0.367879,
+      "py_error": null
+    }
+  ]
+}

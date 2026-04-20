@@ -1,0 +1,93 @@
+{
+  "lib": "evaluation_feedback",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 4,
+  "overall_speedup_x": 503.62,
+  "total_py_ns": 2115.19,
+  "total_mojo_ns": 4.2,
+  "elapsed_s": 2.34,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "accuracy_rolling_update",
+      "py_ns": 95.825,
+      "mojo_ns": 1.2,
+      "speedup_x": 79.85,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "model_drift_ks_stat",
+      "py_ns": 87.058,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "population_stability_index",
+      "py_ns": 134.988,
+      "mojo_ns": 0.1,
+      "speedup_x": 1349.88,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "prediction_shift_score",
+      "py_ns": 109.617,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "feedback_reward_signal",
+      "py_ns": 83.471,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "label_noise_rate_estimate",
+      "py_ns": 81.779,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "online_auc_update",
+      "py_ns": 1628.363,
+      "mojo_ns": 1.6,
+      "speedup_x": 1017.73,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "calibration_drift_score",
+      "py_ns": 82.742,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "shadow_model_divergence",
+      "py_ns": 138.671,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "evaluation_sample_efficiency",
+      "py_ns": 256.017,
+      "mojo_ns": 1.3,
+      "speedup_x": 196.94,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

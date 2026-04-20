@@ -1,0 +1,21 @@
+{
+  "lib": "engines_column_matcher",
+  "status": "ok",
+  "n_functions": 1,
+  "n_compared": 1,
+  "overall_speedup_x": 1482.04,
+  "total_py_ns": 45943.35,
+  "total_mojo_ns": 31.0,
+  "elapsed_s": 3.71,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "run_column_match",
+      "py_ns": 45943.346,
+      "mojo_ns": 31.0,
+      "speedup_x": 1482.04,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

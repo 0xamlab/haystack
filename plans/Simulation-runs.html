@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulation Runs</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script> window.FontAwesomeConfig = { autoReplaceSvg: 'nest'};</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://cdn.plot.ly/plotly-3.1.1.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        ::-webkit-scrollbar { display: none;}
+        * { font-family: 'Inter', sans-serif; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+        .row-expandable { cursor: pointer; transition: background-color 0.15s ease; }
+        .row-expandable:hover { background-color: #151823; }
+        .expanded-content { display: none; }
+        .expanded-content.active { display: table-row; }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#4B0082',
+                        success: '#008000',
+                        warning: '#FFA500',
+                        danger: '#FF0000',
+                        info: '#0000FF',
+                        dark: {
+                            100: '#0B0D12',
+                            200: '#0F1117',
+                            300: '#151823',
+                            400: '#1A1F2E',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-dark-100 text-gray-300">
+
+<div id="main-container" class="flex min-h-screen">
+    <aside id="sidebar" class="w-64 bg-dark-200 border-r border-gray-800 flex-shrink-0 hidden lg:block">
+        <div class="p-4 border-b border-gray-800">
+            <h1 class="text-xl font-bold text-white">ALGENTA</h1>
+            <p class="text-xs text-gray-500 mt-1">Infrastructure Console</p>
+        </div>
+        <nav class="p-3">
+            <a href="#" class="flex items-center px-3 py-2 text-gray-400 hover:bg-dark-300 hover:text-white rounded mb-1 transition-colors">
+                <i class="fa-solid fa-gauge w-5"></i>
+                <span class="ml-3 text-sm">Dashboard</span>
+            </a>
+            <a href="#" class="flex items-center px-3 py-2 bg-primary text-white rounded mb-1">
+                <i class="fa-solid fa-chart-line w-5"></i>
+                <span class="ml-3 text-sm font-medium">Simulations</span>
+            </a>
+            <a href="#" class="flex items-center px-3 py-2 text-gray-400 hover:bg-dark-300 hover:text-white rounded mb-1 transition-colors">
+                <i class="fa-solid fa-server w-5"></i>
+                <span class="ml-3 text-sm">Compute Clusters</span>
+            </a>
+            <a href="#" class="flex items-center px-3 py-2 text-gray-400 hover:bg-dark-300 hover:text-white rounded mb-1 transition-colors">
+                <i class="fa-solid fa-database w-5"></i>
+                <span class="ml-3 text-sm">Data Management</span>
+            </a>
+            <a href="#" class="flex items-center px-3 py-2 text-gray-400 hover:bg-dark-300 hover:text-white rounded mb-1 transition-colors">
+                <i class="fa-solid fa-wrench w-5"></i>
+                <span class="ml-3 text-sm">Tools & Libraries</span>
+            </a>
+            <a href="#" class="flex items-center px-3 py-2 text-gray-400 hover:bg-dark-300 hover:text-white rounded mb-1 transition-colors">
+                <i class="fa-solid fa-gear w-5"></i>
+                <span class="ml-3 text-sm">Settings</span>
+            </a>
+        </nav>
+    </aside>
+
+    <main id="main-content" class="flex-1 overflow-x-hidden">
+        <header id="header" class="bg-dark-200 border-b border-gray-800 px-4 lg:px-6 py-3 flex items-center justify-between">
+            <div class="flex items-center">
+                <button class="lg:hidden mr-4 text-gray-400">
+                    <i class="fa-solid fa-bars text-xl"></i>
+                </button>
+                <div>
+                    <h2 class="text-lg font-semibold text-white">Simulation Runs</h2>
+                    <p class="text-xs text-gray-500">Monitor and analyze simulation executions</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <button class="px-3 py-1.5 bg-dark-300 text-gray-300 rounded text-sm hover:bg-dark-400 transition-colors">
+                    <i class="fa-solid fa-download mr-2"></i>
+                    <span class="hidden sm:inline">Export All</span>
+                </button>
+                <button class="px-3 py-1.5 bg-primary text-white rounded text-sm hover:bg-purple-700 transition-colors">
+                    <i class="fa-solid fa-plus mr-2"></i>
+                    <span class="hidden sm:inline">New Run</span>
+                </button>
+            </div>
+        </header>
+
+        <div id="content-area" class="p-4 lg:p-6">
+            <section id="scatter-visualization" class="mb-6">
+                <div class="bg-dark-200 border border-gray-800 rounded p-4">
+                    <h3 class="text-sm font-semibold text-white mb-3">Expected Value vs Risk Analysis</h3>
+                    <div id="scatter-chart" style="height: 320px;"></div>
+                </div>
+            </section>
+
+            <section id="filter-section" class="mb-4">
+                <div class="bg-dark-200 border border-gray-800 rounded p-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                        <div>
+                            <label class="text-xs text-gray-500 mb-1 block">Search</label>
+                            <div class="relative">
+                                <i class="fa-solid fa-search absolute left-3 top-2.5 text-gray-500 text-sm"></i>
+                                <input type="text" placeholder="Run ID, scenario..." class="w-full bg-dark-300 border border-gray-700 rounded px-9 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-primary">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500 mb-1 block">Mode</label>
+                            <select class="w-full bg-dark-300 border border-gray-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-primary">
+                                <option>All Modes</option>
+                                <option>Monte Carlo</option>
+                                <option>Deterministic</option>
+                                <option>Hybrid</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500 mb-1 block">Status</label>
+                            <select class="w-full bg-dark-300 border border-gray-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-primary">
+                                <option>All Status</option>
+                                <option>Completed</option>
+                                <option>Running</option>
+                                <option>Failed</option>
+                                <option>Queued</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500 mb-1 block">Date Range</label>
+                            <select class="w-full bg-dark-300 border border-gray-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-primary">
+                                <option>Last 7 days</option>
+                                <option>Last 30 days</option>
+                                <option>Last 90 days</option>
+                                <option>Custom</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="runs-table-section">
+                <div class="bg-dark-200 border border-gray-800 rounded overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead class="bg-dark-300 border-b border-gray-800">
+                                <tr>
+                                    <th class="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Run ID</th>
+                                    <th class="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Mode</th>
+                                    <th class="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
+                                    <th class="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Scenarios</th>
+                                    <th class="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Duration</th>
+                                    <th class="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Created</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-body">
+                                <tr class="border-b border-gray-800 row-expandable" onclick="toggleRow('row1')">
+                                    <td class="px-4 py-3 text-white font-mono text-xs">RUN-2024-0847</td>
+                                    <td class="px-4 py-3 text-gray-300">Monte Carlo</td>
+                                    <td class="px-4 py-3">
+                                        <span class="status-dot bg-success mr-2"></span>
+                                        <span class="text-success text-xs">Completed</span>
+                                    </td>
+                                    <td class="px-4 py-3 text-gray-300">10,000</td>
+                                    <td class="px-4 py-3 text-gray-300">4m 23s</td>
+                                    <td class="px-4 py-3 text-gray-400 text-xs">2024-03-21 14:32</td>
+                                </tr>
+                                <tr class="border-b border-gray-800 expanded-content" id="row1">
+                                    <td colspan="6" class="px-4 py-4 bg-dark-300">
+                                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+                                            <div class="bg-dark-200 border border-gray-700 rounded p-3">
+                                                <div class="text-xs text-gray-500 mb-1">Expected Value</div>
+                                                <div class="text-2xl font-bold text-white">$2,847,392</div>
+                                                <div class="text-xs text-success mt-1">+12.4% vs baseline</div>
+                                            </div>
+                                            <div class="bg-dark-200 border border-gray-700 rounded p-3">
+                                                <div class="text-xs text-gray-500 mb-1">Probability of Loss</div>
+                                                <div class="text-2xl font-bold text-white">8.3%</div>
+                                                <div class="text-xs text-success mt-1">-2.1% vs baseline</div>
+                                            </div>
+                                            <div class="bg-dark-200 border border-gray-700 rounded p-3">
+                                                <div class="text-xs text-gray-500 mb-1">Confidence Interval</div>
+                                                <div class="text-2xl font-bold text-white">95%</div>
+                                                <div class="text-xs text-gray-400 mt-1">[$2.1M - $3.6M]</div>
+                                            </div>
+                                        </div>
+                                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                                            <div class="bg-dark-200 border border-gray-700 rounded p-3">
+                                                <div class="text-xs text-gray-500 mb-2">Value Distribution</div>
+                                                <div id="dist-chart-1" style="height: 200px;"></div>
+                                            </div>
+                                            <div class="bg-dark-200 border border-gray-700 rounded p-3">
+                                                <div class="text-xs text-gray-500 mb-2">Convergence</div>
+                                                <div id="conv-chart-1" style="height: 200px;"></div>
+                                            </div>
+                                        </div>
+                                        <div class="bg-dark-200 border border-gray-700 rounded p-3 mb-4">
+                                            <button onclick="togglePayload('payload1')" class="flex items-center justify-between w-full text-left">
+                                                <span class="text-xs font-semibold text-gray-400">JSON PAYLOAD</span>
+                                                <i class="fa-solid fa-chevron-down text-gray-500 text-xs"></i>
+                                            </button>
+                                            <div id="payload1" class="hidden mt-3">
+                                                <pre class="text-xs text-gray-400 bg-dark-100 p-3 rounded overflow-x-auto">{
+  "run_id": "RUN-2024-0847",
+  "mode": "monte_carlo",
+  "scenarios": 10000,
+  "parameters": {
+    "volatility": 0.23,
+    "drift": 0.08,
+    "time_horizon": 365
+  },
+  "results": {
+    "expected_value": 2847392.45,
+    "std_deviation": 428392.12
+  }
+}</pre>
+                                            </div>
+                                        </div>
+                                        <div class="flex gap-2 flex-wrap">
+                                            <button class="px-3 py-1.5 bg-primary text-white rounded text-xs hover:bg-purple-700 transition-colors">
+                                                <i class="fa-solid fa-rotate-right mr-1.5"></i>Re-run
+                                            </button>
+                                            <button class="px-3 py-1.5 bg-dark-400 text-gray-300 rounded text-xs hover:bg-gray-700 transition-colors">
+                                                <i class="fa-solid fa-download mr-1.5"></i>Export
+                                            </button>
+                                            <button class="px-3 py-1.5 bg-dark-400 text-gray-300 rounded text-xs hover:bg-gray-700 transition-colors">
+                                                <i class="fa-solid fa-copy mr-1.5"></i>Copy ID
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <tr class="border-b border-gray-800 row-expandable" onclick="toggleRow('row2')">
+                                    <td class="px-4 py-3 text-white font-mono text-xs">RUN-2024-0846</td>
+                                    <td class="px-4 py-3 text-gray-300">Deterministic</td>
+                                    <td class="px-4 py-3">
+                                        <span class="status-dot bg-info mr-2"></span>
+                                        <span class="text-info text-xs">Running</span>
+                                    </td>
+                                    <td class="px-4 py-3 text-gray-300">5,000</td>
+                                    <td class="px-4 py-3 text-gray-300">2m 14s</td>
+                                    <td class="px-4 py-3 text-gray-400 text-xs">2024-03-21 14:28</td>
+                                </tr>
+                                <tr class="border-b border-gray-800 expanded-content" id="row2">
+                                    <td colspan="6" class="px-4 py-4 bg-dark-300">
+                                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+                                            <div class="bg-dark-200 border border-gray-700 rounded p-3">
+                                                <div class="text-xs text-gray-500 mb-1">Expected Value</div>
+                                                <div class="text-2xl font-bold text-white">$1,924,581</div>
+                                                <div class="text-xs text-warning mt-1">+5.2% vs baseline</div>
+                                            </div>
+                                            <div class="bg-dark-200 border border-gray-700 rounded p-3">
+                                                <div class="text-xs text-gray-500 mb-1">Probability of Loss</div>
+                                                <div class="text-2xl font-bold text-white">12.7%</div>
+                                                <div class="text-xs text-danger mt-1">+1.8% vs baseline</div>
+                                            </div>
+                                            <div class="bg-dark-200 border border-gray-700 rounded p-3">
+                                                <div class="text-xs text-gray-500 mb-1">Progress</div>
+                                                <div class="text-2xl font-bold text-white">68%</div>
+                                                <div class="text-xs text-info mt-1">3,400 / 5,000 scenarios</div>
+                                            </div>
+                                        </div>
+                                        <div class="flex gap-2 flex-wrap">
+                                            <button class="px-3 py-1.5 bg-danger text-white rounded text-xs hover:bg-red-700 transition-colors">
+                                                <i class="fa-solid fa-stop mr-1.5"></i>Stop Run
+                                            </button>
+                                            <button class="px-3 py-1.5 bg-dark-400 text-gray-300 rounded text-xs hover:bg-gray-700 transition-colors">
+                                                <i class="fa-solid fa-copy mr-1.5"></i>Copy ID
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <tr class="border-b border-gray-800 row-expandable" onclick="toggleRow('row3')">
+                                    <td class="px-4 py-3 text-white font-mono text-xs">RUN-2024-0845</td>
+                                    <td class="px-4 py-3 text-gray-300">Hybrid</td>
+                                    <td class="px-4 py-3">
+                                        <span class="status-dot bg-success mr-2"></span>
+                                        <span class="text-success text-xs">Completed</span>
+                                    </td>
+                                    <td class="px-4 py-3 text-gray-300">15,000</td>
+                                    <td class="px-4 py-3 text-gray-300">6m 47s</td>
+                                    <td class="px-4 py-3 text-gray-400 text-xs">2024-03-21 13:58</td>
+                                </tr>
+                                <tr class="border-b border-gray-800 expanded-content" id="row3">
+                                    <td colspan="6" class="px-4 py-4 bg-dark-300">
+                                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+                                            <div class="bg-dark-200 border border-gray-700 rounded p-3">
+                                                <div class="text-xs text-gray-500 mb-1">Expected Value</div>
+                                                <div class="text-2xl font-bold text-white">$3,142,928</div>
+                                                <div class="text-xs text-success mt-1">+18.7% vs baseline</div>
+                                            </div>
+                                            <div class="bg-dark-200 border border-gray-700 rounded p-3">
+                                                <div class="text-xs text-gray-500 mb-1">Probability of Loss</div>
+                                                <div class="text-2xl font-bold text-white">6.1%</div>
+                                                <div class="text-xs text-success mt-1">-3.4% vs baseline</div>
+                                            </div>
+                                            <div class="bg-dark-200 border border-gray-700 rounded p-3">
+                                                <div class="text-xs text-gray-500 mb-1">Confidence Interval</div>
+                                                <div class="text-2xl font-bold text-white">98%</div>
+                                                <div class="text-xs text-gray-400 mt-1">[$2.4M - $3.9M]</div>
+                                            </div>
+                                        </div>
+                                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                                            <div class="bg-dark-200 border border-gray-700 rounded p-3">
+                                                <div class="text-xs text-gray-500 mb-2">Value Distribution</div>
+                                                <div id="dist-chart-3" style="height: 200px;"></div>
+                                            </div>
+                                            <div class="bg-dark-200 border border-gray-700 rounded p-3">
+                                                <div class="text-xs text-gray-500 mb-2">Convergence</div>
+                                                <div id="conv-chart-3" style="height: 200px;"></div>
+                                            </div>
+                                        </div>
+                                        <div class="bg-dark-200 border border-gray-700 rounded p-3 mb-4">
+                                            <button onclick="togglePayload('payload3')" class="flex items-center justify-between w-full text-left">
+                                                <span class="text-xs font-semibold text-gray-400">JSON PAYLOAD</span>
+                                                <i class="fa-solid fa-chevron-down text-gray-500 text-xs"></i>
+                                            </button>
+                                            <div id="payload3" class="hidden mt-3">
+                                                <pre class="text-xs text-gray-400 bg-dark-100 p-3 rounded overflow-x-auto">{
+  "run_id": "RUN-2024-0845",
+  "mode": "hybrid",
+  "scenarios": 15000,
+  "parameters": {
+    "volatility": 0.19,
+    "drift": 0.11,
+    "time_horizon": 365
+  },
+  "results": {
+    "expected_value": 3142928.73,
+    "std_deviation": 387291.45
+  }
+}</pre>
+                                            </div>
+                                        </div>
+                                        <div class="flex gap-2 flex-wrap">
+                                            <button class="px-3 py-1.5 bg-primary text-white rounded text-xs hover:bg-purple-700 transition-colors">
+                                                <i class="fa-solid fa-rotate-right mr-1.5"></i>Re-run
+                                            </button>
+                                            <button class="px-3 py-1.5 bg-dark-400 text-gray-300 rounded text-xs hover:bg-gray-700 transition-colors">
+                                                <i class="fa-solid fa-download mr-1.5"></i>Export
+                                            </button>
+                                            <button class="px-3 py-1.5 bg-dark-400 text-gray-300 rounded text-xs hover:bg-gray-700 transition-colors">
+                                                <i class="fa-solid fa-copy mr-1.5"></i>Copy ID
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <tr class="border-b border-gray-800 row-expandable" onclick="toggleRow('row4')">
+                                    <td class="px-4 py-3 text-white font-mono text-xs">RUN-2024-0844</td>
+                                    <td class="px-4 py-3 text-gray-300">Monte Carlo</td>
+                                    <td class="px-4 py-3">
+                                        <span class="status-dot bg-danger mr-2"></span>
+                                        <span class="text-danger text-xs">Failed</span>
+                                    </td>
+                                    <td class="px-4 py-3 text-gray-300">8,000</td>
+                                    <td class="px-4 py-3 text-gray-300">1m 52s</td>
+                                    <td class="px-4 py-3 text-gray-400 text-xs">2024-03-21 13:42</td>
+                                </tr>
+                                <tr class="border-b border-gray-800 expanded-content" id="row4">
+                                    <td colspan="6" class="px-4 py-4 bg-dark-300">
+                                        <div class="bg-dark-200 border border-red-900 rounded p-4 mb-4">
+                                            <div class="flex items-start gap-3">
+                                                <i class="fa-solid fa-circle-exclamation text-danger text-xl"></i>
+                                                <div>
+                                                    <div class="text-sm font-semibold text-danger mb-1">Execution Failed</div>
+                                                    <div class="text-xs text-gray-400">Error: Memory allocation failed at iteration 4,283. Insufficient compute resources available.</div>
+                                                    <div class="text-xs text-gray-500 mt-2">Error Code: MEM_ALLOC_FAIL_0x4A2B</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="flex gap-2 flex-wrap">
+                                            <button class="px-3 py-1.5 bg-primary text-white rounded text-xs hover:bg-purple-700 transition-colors">
+                                                <i class="fa-solid fa-rotate-right mr-1.5"></i>Retry with More Resources
+                                            </button>
+                                            <button class="px-3 py-1.5 bg-dark-400 text-gray-300 rounded text-xs hover:bg-gray-700 transition-colors">
+                                                <i class="fa-solid fa-bug mr-1.5"></i>View Logs
+                                            </button>
+                                            <button class="px-3 py-1.5 bg-dark-400 text-gray-300 rounded text-xs hover:bg-gray-700 transition-colors">
+                                                <i class="fa-solid fa-copy mr-1.5"></i>Copy ID
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <tr class="border-b border-gray-800 row-expandable" onclick="toggleRow('row5')">
+                                    <td class="px-4 py-3 text-white font-mono text-xs">RUN-2024-0843</td>
+                                    <td class="px-4 py-3 text-gray-300">Deterministic</td>
+                                    <td class="px-4 py-3">
+                                        <span class="status-dot bg-warning mr-2"></span>
+                                        <span class="text-warning text-xs">Queued</span>
+                                    </td>
+                                    <td class="px-4 py-3 text-gray-300">12,000</td>
+                                    <td class="px-4 py-3 text-gray-300">-</td>
+                                    <td class="px-4 py-3 text-gray-400 text-xs">2024-03-21 13:35</td>
+                                </tr>
+                                <tr class="border-b border-gray-800 expanded-content" id="row5">
+                                    <td colspan="6" class="px-4 py-4 bg-dark-300">
+                                        <div class="bg-dark-200 border border-orange-900 rounded p-4 mb-4">
+                                            <div class="flex items-start gap-3">
+                                                <i class="fa-solid fa-clock text-warning text-xl"></i>
+                                                <div>
+                                                    <div class="text-sm font-semibold text-warning mb-1">Queued for Execution</div>
+                                                    <div class="text-xs text-gray-400">Waiting for available compute resources. Position in queue: 3</div>
+                                                    <div class="text-xs text-gray-500 mt-2">Estimated start time: 2024-03-21 14:45</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="flex gap-2 flex-wrap">
+                                            <button class="px-3 py-1.5 bg-danger text-white rounded text-xs hover:bg-red-700 transition-colors">
+                                                <i class="fa-solid fa-xmark mr-1.5"></i>Cancel
+                                            </button>
+                                            <button class="px-3 py-1.5 bg-dark-400 text-gray-300 rounded text-xs hover:bg-gray-700 transition-colors">
+                                                <i class="fa-solid fa-copy mr-1.5"></i>Copy ID
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <tr class="border-b border-gray-800 row-expandable" onclick="toggleRow('row6')">
+                                    <td class="px-4 py-3 text-white font-mono text-xs">RUN-2024-0842</td>
+                                    <td class="px-4 py-3 text-gray-300">Monte Carlo</td>
+                                    <td class="px-4 py-3">
+                                        <span class="status-dot bg-success mr-2"></span>
+                                        <span class="text-success text-xs">Completed</span>
+                                    </td>
+                                    <td class="px-4 py-3 text-gray-300">20,000</td>
+                                    <td class="px-4 py-3 text-gray-300">8m 12s</td>
+                                    <td class="px-4 py-3 text-gray-400 text-xs">2024-03-21 12:54</td>
+                                </tr>
+                                <tr class="border-b border-gray-800 expanded-content" id="row6">
+                                    <td colspan="6" class="px-4 py-4 bg-dark-300">
+                                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+                                            <div class="bg-dark-200 border border-gray-700 rounded p-3">
+                                                <div class="text-xs text-gray-500 mb-1">Expected Value</div>
+                                                <div class="text-2xl font-bold text-white">$2,583,947</div>
+                                                <div class="text-xs text-success mt-1">+9.8% vs baseline</div>
+                                            </div>
+                                            <div class="bg-dark-200 border border-gray-700 rounded p-3">
+                                                <div class="text-xs text-gray-500 mb-1">Probability of Loss</div>
+                                                <div class="text-2xl font-bold text-white">9.4%</div>
+                                                <div class="text-xs text-danger mt-1">+0.9% vs baseline</div>
+                                            </div>
+                                            <div class="bg-dark-200 border border-gray-700 rounded p-3">
+                                                <div class="text-xs text-gray-500 mb-1">Confidence Interval</div>
+                                                <div class="text-2xl font-bold text-white">96%</div>
+                                                <div class="text-xs text-gray-400 mt-1">[$1.9M - $3.3M]</div>
+                                            </div>
+                                        </div>
+                                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                                            <div class="bg-dark-200 border border-gray-700 rounded p-3">
+                                                <div class="text-xs text-gray-500 mb-2">Value Distribution</div>
+                                                <div id="dist-chart-6" style="height: 200px;"></div>
+                                            </div>
+                                            <div class="bg-dark-200 border border-gray-700 rounded p-3">
+                                                <div class="text-xs text-gray-500 mb-2">Convergence</div>
+                                                <div id="conv-chart-6" style="height: 200px;"></div>
+                                            </div>
+                                        </div>
+                                        <div class="bg-dark-200 border border-gray-700 rounded p-3 mb-4">
+                                            <button onclick="togglePayload('payload6')" class="flex items-center justify-between w-full text-left">
+                                                <span class="text-xs font-semibold text-gray-400">JSON PAYLOAD</span>
+                                                <i class="fa-solid fa-chevron-down text-gray-500 text-xs"></i>
+                                            </button>
+                                            <div id="payload6" class="hidden mt-3">
+                                                <pre class="text-xs text-gray-400 bg-dark-100 p-3 rounded overflow-x-auto">{
+  "run_id": "RUN-2024-0842",
+  "mode": "monte_carlo",
+  "scenarios": 20000,
+  "parameters": {
+    "volatility": 0.21,
+    "drift": 0.09,
+    "time_horizon": 365
+  },
+  "results": {
+    "expected_value": 2583947.28,
+    "std_deviation": 412847.91
+  }
+}</pre>
+                                            </div>
+                                        </div>
+                                        <div class="flex gap-2 flex-wrap">
+                                            <button class="px-3 py-1.5 bg-primary text-white rounded text-xs hover:bg-purple-700 transition-colors">
+                                                <i class="fa-solid fa-rotate-right mr-1.5"></i>Re-run
+                                            </button>
+                                            <button class="px-3 py-1.5 bg-dark-400 text-gray-300 rounded text-xs hover:bg-gray-700 transition-colors">
+                                                <i class="fa-solid fa-download mr-1.5"></i>Export
+                                            </button>
+                                            <button class="px-3 py-1.5 bg-dark-400 text-gray-300 rounded text-xs hover:bg-gray-700 transition-colors">
+                                                <i class="fa-solid fa-copy mr-1.5"></i>Copy ID
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <tr class="border-b border-gray-800 row-expandable" onclick="toggleRow('row7')">
+                                    <td class="px-4 py-3 text-white font-mono text-xs">RUN-2024-0841</td>
+                                    <td class="px-4 py-3 text-gray-300">Hybrid</td>
+                                    <td class="px-4 py-3">
+                                        <span class="status-dot bg-success mr-2"></span>
+                                        <span class="text-success text-xs">Completed</span>
+                                    </td>
+                                    <td class="px-4 py-3 text-gray-300">7,500</td>
+                                    <td class="px-4 py-3 text-gray-300">3m 38s</td>
+                                    <td class="px-4 py-3 text-gray-400 text-xs">2024-03-21 11:29</td>
+                                </tr>
+                                <tr class="border-b border-gray-800 expanded-content" id="row7">
+                                    <td colspan="6" class="px-4 py-4 bg-dark-300">
+                                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+                                            <div class="bg-dark-200 border border-gray-700 rounded p-3">
+                                                <div class="text-xs text-gray-500 mb-1">Expected Value</div>
+                                                <div class="text-2xl font-bold text-white">$2,194,728</div>
+                                                <div class="text-xs text-success mt-1">+7.3% vs baseline</div>
+                                            </div>
+                                            <div class="bg-dark-200 border border-gray-700 rounded p-3">
+                                                <div class="text-xs text-gray-500 mb-1">Probability of Loss</div>
+                                                <div class="text-2xl font-bold text-white">11.2%</div>
+                                                <div class="text-xs text-success mt-1">-1.3% vs baseline</div>
+                                            </div>
+                                            <div class="bg-dark-200 border border-gray-700 rounded p-3">
+                                                <div class="text-xs text-gray-500 mb-1">Confidence Interval</div>
+                                                <div class="text-2xl font-bold text-white">94%</div>
+                                                <div class="text-xs text-gray-400 mt-1">[$1.7M - $2.8M]</div>
+                                            </div>
+                                        </div>
+                                        <div class="flex gap-2 flex-wrap">
+                                            <button class="px-3 py-1.5 bg-primary text-white rounded text-xs hover:bg-purple-700 transition-colors">
+                                                <i class="fa-solid fa-rotate-right mr-1.5"></i>Re-run
+                                            </button>
+                                            <button class="px-3 py-1.5 bg-dark-400 text-gray-300 rounded text-xs hover:bg-gray-700 transition-colors">
+                                                <i class="fa-solid fa-download mr-1.5"></i>Export
+                                            </button>
+                                            <button class="px-3 py-1.5 bg-dark-400 text-gray-300 rounded text-xs hover:bg-gray-700 transition-colors">
+                                                <i class="fa-solid fa-copy mr-1.5"></i>Copy ID
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+</div>
+
+<script>
+window.addEventListener('load', function() {
+    try {
+        var scatterData = [{
+            x: [2847392, 1924581, 3142928, 2583947, 2194728, 2456789, 2923847, 2738291, 2091847, 2647382],
+            y: [8.3, 12.7, 6.1, 9.4, 11.2, 10.8, 7.5, 8.9, 13.2, 9.1],
+            mode: 'markers',
+            type: 'scatter',
+            marker: {
+                size: 12,
+                color: ['#008000', '#0000FF', '#008000', '#008000', '#008000', '#008000', '#008000', '#008000', '#FFA500', '#008000'],
+                line: {
+                    color: 'rgba(255,255,255,0.3)',
+                    width: 1
+                }
+            },
+            text: ['RUN-0847', 'RUN-0846', 'RUN-0845', 'RUN-0842', 'RUN-0841', 'RUN-0840', 'RUN-0839', 'RUN-0838', 'RUN-0837', 'RUN-0836'],
+            hovertemplate: '<b>%{text}</b><br>EV: $%{x:,.0f}<br>Risk: %{y:.1f}%<extra></extra>'
+        }];
+
+        var scatterLayout = {
+            xaxis: { 
+                title: 'Expected Value ($)',
+                gridcolor: '#1A1F2E',
+                color: '#9CA3AF'
+            },
+            yaxis: { 
+                title: 'Probability of Loss (%)',
+                gridcolor: '#1A1F2E',
+                color: '#9CA3AF'
+            },
+            plot_bgcolor: '#0F1117',
+            paper_bgcolor: '#0F1117',
+            margin: { t: 20, r: 20, b: 60, l: 80 },
+            showlegend: false,
+            font: { color: '#9CA3AF', size: 11 }
+        };
+
+        Plotly.newPlot('scatter-chart', scatterData, scatterLayout, {responsive: true, displayModeBar: false, displaylogo: false});
+
+        var distData1 = [{
+            x: Array.from({length: 50}, (_, i) => 1500000 + i * 50000),
+            y: Array.from({length: 50}, (_, i) => Math.exp(-Math.pow((i - 25), 2) / 100) * 120),
+            type: 'scatter',
+            mode: 'lines',
+            fill: 'tozeroy',
+            line: { color: '#4B0082', width: 2 },
+            fillcolor: 'rgba(75, 0, 130, 0.3)'
+        }];
+
+        var distLayout = {
+            xaxis: { gridcolor: '#1A1F2E', color: '#9CA3AF', showticklabels: false },
+            yaxis: { gridcolor: '#1A1F2E', color: '#9CA3AF', showticklabels: false },
+            plot_bgcolor: '#0F1117',
+            paper_bgcolor: '#0F1117',
+            margin: { t: 10, r: 10, b: 20, l: 30 },
+            showlegend: false
+        };
+
+        Plotly.newPlot('dist-chart-1', distData1, distLayout, {responsive: true, displayModeBar: false, displaylogo: false});
+
+        var convData1 = [{
+            x: Array.from({length: 100}, (_, i) => i * 100),
+            y: Array.from({length: 100}, (_, i) => 2500000 + Math.random() * 700000 - (i * 3000)),
+            type: 'scatter',
+            mode: 'lines',
+            line: { color: '#008000', width: 2 }
+        }];
+
+        Plotly.newPlot('conv-chart-1', convData1, distLayout, {responsive: true, displayModeBar: false, displaylogo: false});
+
+        var distData3 = [{
+            x: Array.from({length: 50}, (_, i) => 1800000 + i * 60000),
+            y: Array.from({length: 50}, (_, i) => Math.exp(-Math.pow((i - 22), 2) / 90) * 140),
+            type: 'scatter',
+            mode: 'lines',
+            fill: 'tozeroy',
+            line: { color: '#4B0082', width: 2 },
+            fillcolor: 'rgba(75, 0, 130, 0.3)'
+        }];
+
+        Plotly.newPlot('dist-chart-3', distData3, distLayout, {responsive: true, displayModeBar: false, displaylogo: false});
+
+        var convData3 = [{
+            x: Array.from({length: 150}, (_, i) => i * 100),
+            y: Array.from({length: 150}, (_, i) => 2800000 + Math.random() * 800000 - (i * 3500)),
+            type: 'scatter',
+            mode: 'lines',
+            line: { color: '#008000', width: 2 }
+        }];
+
+        Plotly.newPlot('conv-chart-3', convData3, distLayout, {responsive: true, displayModeBar: false, displaylogo: false});
+
+        var distData6 = [{
+            x: Array.from({length: 50}, (_, i) => 1400000 + i * 55000),
+            y: Array.from({length: 50}, (_, i) => Math.exp(-Math.pow((i - 24), 2) / 95) * 130),
+            type: 'scatter',
+            mode: 'lines',
+            fill: 'tozeroy',
+            line: { color: '#4B0082', width: 2 },
+            fillcolor: 'rgba(75, 0, 130, 0.3)'
+        }];
+
+        Plotly.newPlot('dist-chart-6', distData6, distLayout, {responsive: true, displayModeBar: false, displaylogo: false});
+
+        var convData6 = [{
+            x: Array.from({length: 200}, (_, i) => i * 100),
+            y: Array.from({length: 200}, (_, i) => 2300000 + Math.random() * 750000 - (i * 2800)),
+            type: 'scatter',
+            mode: 'lines',
+            line: { color: '#008000', width: 2 }
+        }];
+
+        Plotly.newPlot('conv-chart-6', convData6, distLayout, {responsive: true, displayModeBar: false, displaylogo: false});
+
+    } catch(e) {
+        console.error('Chart rendering error:', e);
+    }
+});
+
+function toggleRow(rowId) {
+    var row = document.getElementById(rowId);
+    row.classList.toggle('active');
+}
+
+function togglePayload(payloadId) {
+    var payload = document.getElementById(payloadId);
+    payload.classList.toggle('hidden');
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,109 @@
+{
+  "lib": "corrosion",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 10,
+  "overall_speedup_x": 326.34,
+  "total_py_ns": 3491.82,
+  "total_mojo_ns": 10.7,
+  "elapsed_s": 1.51,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "corrosion_rate_mpy",
+      "py_ns": 187.35,
+      "mojo_ns": 1.1,
+      "speedup_x": 170.32,
+      "py_result": 2136.0,
+      "py_error": null
+    },
+    {
+      "function": "corrosion_rate_mmpy",
+      "py_ns": 189.5,
+      "mojo_ns": 1.1,
+      "speedup_x": 172.27,
+      "py_result": 350400.0,
+      "py_error": null
+    },
+    {
+      "function": "pitting_rate",
+      "py_ns": 802.013,
+      "mojo_ns": 1.0,
+      "speedup_x": 802.01,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "pitting_factor",
+      "py_ns": 92.196,
+      "mojo_ns": 1.1,
+      "speedup_x": 83.81,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "galvanic_potential_difference",
+      "py_ns": 99.513,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "nernst_potential",
+      "py_ns": 163.779,
+      "mojo_ns": 1.1,
+      "speedup_x": 148.89,
+      "py_result": 0.50006,
+      "py_error": null
+    },
+    {
+      "function": "passivation_current_density",
+      "py_ns": 706.383,
+      "mojo_ns": 1.0,
+      "speedup_x": 706.38,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "tafel_overpotential",
+      "py_ns": 197.813,
+      "mojo_ns": 1.1,
+      "speedup_x": 179.83,
+      "py_result": 0.349485,
+      "py_error": null
+    },
+    {
+      "function": "metal_loss_from_rate",
+      "py_ns": 299.579,
+      "mojo_ns": 1.1,
+      "speedup_x": 272.34,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "remaining_wall_thickness",
+      "py_ns": 81.133,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "cathodic_protection_current",
+      "py_ns": 712.975,
+      "mojo_ns": 1.1,
+      "speedup_x": 648.16,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "service_life_estimate",
+      "py_ns": 140.229,
+      "mojo_ns": 1.0,
+      "speedup_x": 140.23,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

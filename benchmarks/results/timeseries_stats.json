@@ -1,0 +1,85 @@
+{
+  "lib": "timeseries_stats",
+  "status": "ok",
+  "n_functions": 9,
+  "n_compared": 8,
+  "overall_speedup_x": 9.15,
+  "total_py_ns": 257842.66,
+  "total_mojo_ns": 28188.7,
+  "elapsed_s": 7.59,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "autocorrelation",
+      "py_ns": 186.846,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "autocorrelation_function",
+      "py_ns": 44865.742,
+      "mojo_ns": 503.4,
+      "speedup_x": 89.13,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "partial_autocorrelation",
+      "py_ns": 118215.75,
+      "mojo_ns": 6412.3,
+      "speedup_x": 18.44,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "rolling_mean",
+      "py_ns": 6305.292,
+      "mojo_ns": 345.4,
+      "speedup_x": 18.26,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "rolling_std",
+      "py_ns": 40281.55,
+      "mojo_ns": 1326.1,
+      "speedup_x": 30.38,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "exponential_smoothing",
+      "py_ns": 2248.167,
+      "mojo_ns": 7473.3,
+      "speedup_x": 0.3,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "difference",
+      "py_ns": 4512.992,
+      "mojo_ns": 11278.7,
+      "speedup_x": 0.4,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "adf_test_statistic",
+      "py_ns": 33272.85,
+      "mojo_ns": 7.6,
+      "speedup_x": 4378.01,
+      "py_result": -0.625543,
+      "py_error": null
+    },
+    {
+      "function": "holt_linear",
+      "py_ns": 8140.317,
+      "mojo_ns": 841.9,
+      "speedup_x": 9.67,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

@@ -1,0 +1,109 @@
+{
+  "lib": "semiconductors",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 11,
+  "overall_speedup_x": 87.25,
+  "total_py_ns": 2277.3,
+  "total_mojo_ns": 26.1,
+  "elapsed_s": 1.59,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "intrinsic_carrier_concentration",
+      "py_ns": 204.171,
+      "mojo_ns": 1.1,
+      "speedup_x": 185.61,
+      "py_result": 0.18394,
+      "py_error": null
+    },
+    {
+      "function": "drift_velocity",
+      "py_ns": 101.292,
+      "mojo_ns": 1.1,
+      "speedup_x": 92.08,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "resistivity",
+      "py_ns": 235.021,
+      "mojo_ns": 1.1,
+      "speedup_x": 213.66,
+      "py_result": 8.0,
+      "py_error": null
+    },
+    {
+      "function": "conductivity",
+      "py_ns": 164.046,
+      "mojo_ns": 1.1,
+      "speedup_x": 149.13,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "depletion_width",
+      "py_ns": 142.983,
+      "mojo_ns": 1.1,
+      "speedup_x": 129.98,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "built_in_potential",
+      "py_ns": 336.038,
+      "mojo_ns": 0.1,
+      "speedup_x": 3360.38,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "thermal_voltage",
+      "py_ns": 180.787,
+      "mojo_ns": 1.1,
+      "speedup_x": 164.35,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "diode_current",
+      "py_ns": 124.683,
+      "mojo_ns": 1.1,
+      "speedup_x": 113.35,
+      "py_result": 3.194528,
+      "py_error": null
+    },
+    {
+      "function": "mosfet_saturation_current",
+      "py_ns": 207.696,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "junction_capacitance",
+      "py_ns": 299.846,
+      "mojo_ns": 16.3,
+      "speedup_x": 18.4,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "diffusion_length",
+      "py_ns": 314.942,
+      "mojo_ns": 1.0,
+      "speedup_x": 314.94,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "band_gap_temperature",
+      "py_ns": 173.488,
+      "mojo_ns": 1.0,
+      "speedup_x": 173.49,
+      "py_result": 0.375,
+      "py_error": null
+    }
+  ]
+}

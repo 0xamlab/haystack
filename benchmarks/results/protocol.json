@@ -1,0 +1,93 @@
+{
+  "lib": "protocol",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 10,
+  "overall_speedup_x": 0.67,
+  "total_py_ns": 16060.55,
+  "total_mojo_ns": 24059.9,
+  "elapsed_s": 2.15,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "encode_varint",
+      "py_ns": 342.392,
+      "mojo_ns": 51.2,
+      "speedup_x": 6.69,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "decode_varint",
+      "py_ns": 465.258,
+      "mojo_ns": 117.7,
+      "speedup_x": 3.95,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "zigzag_encode",
+      "py_ns": 533.883,
+      "mojo_ns": 1.1,
+      "speedup_x": 485.35,
+      "py_result": 10.0,
+      "py_error": null
+    },
+    {
+      "function": "zigzag_decode",
+      "py_ns": 301.425,
+      "mojo_ns": 1.1,
+      "speedup_x": 274.02,
+      "py_result": -3.0,
+      "py_error": null
+    },
+    {
+      "function": "encode_field",
+      "py_ns": 1756.942,
+      "mojo_ns": 237.6,
+      "speedup_x": 7.39,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "decode_field",
+      "py_ns": 955.383,
+      "mojo_ns": 406.4,
+      "speedup_x": 2.35,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "encode_string_field",
+      "py_ns": 2094.908,
+      "mojo_ns": 6581.8,
+      "speedup_x": 0.32,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "decode_string_field",
+      "py_ns": 2578.404,
+      "mojo_ns": 834.2,
+      "speedup_x": 3.09,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "encode_message",
+      "py_ns": 4084.425,
+      "mojo_ns": 4161.0,
+      "speedup_x": 0.98,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "decode_message",
+      "py_ns": 2947.529,
+      "mojo_ns": 11667.8,
+      "speedup_x": 0.25,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

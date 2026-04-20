@@ -1,0 +1,93 @@
+{
+  "lib": "oceanography",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 8,
+  "overall_speedup_x": 133.88,
+  "total_py_ns": 1071.01,
+  "total_mojo_ns": 8.0,
+  "elapsed_s": 1.85,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "seawater_density",
+      "py_ns": 236.042,
+      "mojo_ns": 1.0,
+      "speedup_x": 236.04,
+      "py_result": 999.969827,
+      "py_error": null
+    },
+    {
+      "function": "buoyancy_frequency",
+      "py_ns": 156.137,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "tidal_force",
+      "py_ns": 116.625,
+      "mojo_ns": 1.0,
+      "speedup_x": 116.63,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "geostrophic_velocity",
+      "py_ns": 114.088,
+      "mojo_ns": 1.0,
+      "speedup_x": 114.09,
+      "py_result": -2.0,
+      "py_error": null
+    },
+    {
+      "function": "ekman_depth",
+      "py_ns": 199.925,
+      "mojo_ns": 1.0,
+      "speedup_x": 199.93,
+      "py_result": 0.628319,
+      "py_error": null
+    },
+    {
+      "function": "mixed_layer_heat_flux",
+      "py_ns": 107.817,
+      "mojo_ns": 1.0,
+      "speedup_x": 107.82,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "salinity_from_chlorinity",
+      "py_ns": 77.533,
+      "mojo_ns": 1.0,
+      "speedup_x": 77.53,
+      "py_result": 0.903275,
+      "py_error": null
+    },
+    {
+      "function": "wave_celerity_shallow",
+      "py_ns": 109.933,
+      "mojo_ns": 1.0,
+      "speedup_x": 109.93,
+      "py_result": 2.214723,
+      "py_error": null
+    },
+    {
+      "function": "wave_celerity_deep",
+      "py_ns": 109.05,
+      "mojo_ns": 1.0,
+      "speedup_x": 109.05,
+      "py_result": 0.780655,
+      "py_error": null
+    },
+    {
+      "function": "freshwater_flux",
+      "py_ns": 85.263,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

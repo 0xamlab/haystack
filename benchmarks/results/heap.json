@@ -1,0 +1,117 @@
+{
+  "lib": "heap",
+  "status": "ok",
+  "n_functions": 13,
+  "n_compared": 13,
+  "overall_speedup_x": 1.62,
+  "total_py_ns": 17091.58,
+  "total_mojo_ns": 10546.1,
+  "elapsed_s": 3.34,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "heapify_min",
+      "py_ns": 554.637,
+      "mojo_ns": 21.3,
+      "speedup_x": 26.04,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "heapify_max",
+      "py_ns": 468.713,
+      "mojo_ns": 17.1,
+      "speedup_x": 27.41,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "heap_push_min",
+      "py_ns": 282.65,
+      "mojo_ns": 8.4,
+      "speedup_x": 33.65,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "heap_pop_min",
+      "py_ns": 92.475,
+      "mojo_ns": 2.0,
+      "speedup_x": 46.24,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "heap_push_max",
+      "py_ns": 456.6,
+      "mojo_ns": 0.7,
+      "speedup_x": 652.29,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "heap_pop_max",
+      "py_ns": 92.042,
+      "mojo_ns": 2.1,
+      "speedup_x": 43.83,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "heap_peek_min",
+      "py_ns": 123.321,
+      "mojo_ns": 1.0,
+      "speedup_x": 123.32,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "heap_peek_max",
+      "py_ns": 93.208,
+      "mojo_ns": 1.0,
+      "speedup_x": 93.21,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "k_smallest",
+      "py_ns": 2663.075,
+      "mojo_ns": 510.1,
+      "speedup_x": 5.22,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "k_largest",
+      "py_ns": 2945.229,
+      "mojo_ns": 454.4,
+      "speedup_x": 6.48,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "merge_sorted_lists",
+      "py_ns": 3353.129,
+      "mojo_ns": 1179.7,
+      "speedup_x": 2.84,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "running_median",
+      "py_ns": 5232.012,
+      "mojo_ns": 8345.4,
+      "speedup_x": 0.63,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "is_min_heap",
+      "py_ns": 734.492,
+      "mojo_ns": 2.9,
+      "speedup_x": 253.27,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

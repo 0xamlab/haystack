@@ -1,0 +1,101 @@
+{
+  "lib": "transformer_attention",
+  "status": "ok",
+  "n_functions": 11,
+  "n_compared": 9,
+  "overall_speedup_x": 318.27,
+  "total_py_ns": 2800.82,
+  "total_mojo_ns": 8.8,
+  "elapsed_s": 2.78,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "scaled_dot_product_attention",
+      "py_ns": 193.392,
+      "mojo_ns": 1.0,
+      "speedup_x": 193.39,
+      "py_result": 0.707107,
+      "py_error": null
+    },
+    {
+      "function": "attention_softmax_stable",
+      "py_ns": 185.379,
+      "mojo_ns": 1.0,
+      "speedup_x": 185.38,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "multi_head_split",
+      "py_ns": 476.279,
+      "mojo_ns": 0.9,
+      "speedup_x": 529.2,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "causal_mask_value",
+      "py_ns": 229.604,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "attention_entropy",
+      "py_ns": 385.358,
+      "mojo_ns": 1.0,
+      "speedup_x": 385.36,
+      "py_result": 0.346574,
+      "py_error": null
+    },
+    {
+      "function": "kv_cache_memory_bytes",
+      "py_ns": 317.471,
+      "mojo_ns": 0.9,
+      "speedup_x": 352.75,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "flash_attention_block_score",
+      "py_ns": 154.908,
+      "mojo_ns": 1.0,
+      "speedup_x": 154.91,
+      "py_result": 1.414214,
+      "py_error": null
+    },
+    {
+      "function": "rope_rotation_angle",
+      "py_ns": 571.067,
+      "mojo_ns": 1.0,
+      "speedup_x": 571.07,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "pow_approx",
+      "py_ns": 277.942,
+      "mojo_ns": 1.0,
+      "speedup_x": 277.94,
+      "py_result": 0.707107,
+      "py_error": null
+    },
+    {
+      "function": "relative_position_bias",
+      "py_ns": 170.046,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "cross_attention_score",
+      "py_ns": 239.021,
+      "mojo_ns": 1.0,
+      "speedup_x": 239.02,
+      "py_result": 0.353553,
+      "py_error": null
+    }
+  ]
+}

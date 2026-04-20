@@ -1,0 +1,109 @@
+{
+  "lib": "viticulture",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 9,
+  "overall_speedup_x": 71.2,
+  "total_py_ns": 2335.26,
+  "total_mojo_ns": 32.8,
+  "elapsed_s": 3.94,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "brix_to_potential_alcohol",
+      "py_ns": 411.479,
+      "mojo_ns": 0.9,
+      "speedup_x": 457.2,
+      "py_result": 0.275,
+      "py_error": null
+    },
+    {
+      "function": "chaptalization_sugar",
+      "py_ns": 171.308,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "total_acidity_as_tartaric",
+      "py_ns": 114.087,
+      "mojo_ns": 0.9,
+      "speedup_x": 126.76,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "ph_buffer_capacity",
+      "py_ns": 250.713,
+      "mojo_ns": 0.9,
+      "speedup_x": 278.57,
+      "py_result": -0.075,
+      "py_error": null
+    },
+    {
+      "function": "growing_degree_days_wine",
+      "py_ns": 313.162,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "winkler_index_daily",
+      "py_ns": 118.708,
+      "mojo_ns": 0.9,
+      "speedup_x": 131.9,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "yield_tonnes_per_hectare",
+      "py_ns": 163.725,
+      "mojo_ns": 25.3,
+      "speedup_x": 6.47,
+      "py_result": 0.001,
+      "py_error": null
+    },
+    {
+      "function": "vine_density",
+      "py_ns": 301.804,
+      "mojo_ns": 0.9,
+      "speedup_x": 335.34,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "pruning_weight_ratio",
+      "py_ns": 383.458,
+      "mojo_ns": 1.0,
+      "speedup_x": 383.46,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "must_volume_from_grapes",
+      "py_ns": 256.904,
+      "mojo_ns": 1.0,
+      "speedup_x": 256.9,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "sulfite_molecular_so2",
+      "py_ns": 334.383,
+      "mojo_ns": 1.0,
+      "speedup_x": 334.38,
+      "py_result": 0.476654,
+      "py_error": null
+    },
+    {
+      "function": "fermentation_progress",
+      "py_ns": 121.417,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

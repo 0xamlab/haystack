@@ -1,0 +1,109 @@
+{
+  "lib": "pipeline",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 11,
+  "overall_speedup_x": 1.9,
+  "total_py_ns": 7925.72,
+  "total_mojo_ns": 4162.5,
+  "elapsed_s": 1.2,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "map_list",
+      "py_ns": 521.704,
+      "mojo_ns": 314.7,
+      "speedup_x": 1.66,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "filter_list",
+      "py_ns": 367.767,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "reduce_sum",
+      "py_ns": 210.538,
+      "mojo_ns": 2.6,
+      "speedup_x": 80.98,
+      "py_result": 2.5,
+      "py_error": null
+    },
+    {
+      "function": "reduce_product",
+      "py_ns": 209.487,
+      "mojo_ns": 2.7,
+      "speedup_x": 77.59,
+      "py_result": 0.0252,
+      "py_error": null
+    },
+    {
+      "function": "reduce_min",
+      "py_ns": 257.792,
+      "mojo_ns": 2.2,
+      "speedup_x": 117.18,
+      "py_result": 0.3,
+      "py_error": null
+    },
+    {
+      "function": "reduce_max",
+      "py_ns": 205.992,
+      "mojo_ns": 2.4,
+      "speedup_x": 85.83,
+      "py_result": 0.7,
+      "py_error": null
+    },
+    {
+      "function": "chain_map_filter",
+      "py_ns": 909.592,
+      "mojo_ns": 263.4,
+      "speedup_x": 3.45,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "batch",
+      "py_ns": 694.917,
+      "mojo_ns": 443.7,
+      "speedup_x": 1.57,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "flatten",
+      "py_ns": 963.083,
+      "mojo_ns": 1043.7,
+      "speedup_x": 0.92,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "zip_lists",
+      "py_ns": 1606.204,
+      "mojo_ns": 1372.1,
+      "speedup_x": 1.17,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "window",
+      "py_ns": 668.638,
+      "mojo_ns": 436.8,
+      "speedup_x": 1.53,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "unique_values",
+      "py_ns": 1677.775,
+      "mojo_ns": 278.2,
+      "speedup_x": 6.03,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

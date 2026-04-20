@@ -1,0 +1,61 @@
+{
+  "lib": "differentiate",
+  "status": "ok",
+  "n_functions": 6,
+  "n_compared": 6,
+  "overall_speedup_x": 1.59,
+  "total_py_ns": 4918.15,
+  "total_mojo_ns": 3088.5,
+  "elapsed_s": 1.22,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "derivative_forward",
+      "py_ns": 389.858,
+      "mojo_ns": 354.2,
+      "speedup_x": 1.1,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "derivative_central",
+      "py_ns": 788.288,
+      "mojo_ns": 252.1,
+      "speedup_x": 3.13,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "derivative_backward",
+      "py_ns": 519.979,
+      "mojo_ns": 267.7,
+      "speedup_x": 1.94,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "second_derivative",
+      "py_ns": 1219.063,
+      "mojo_ns": 878.9,
+      "speedup_x": 1.39,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "gradient",
+      "py_ns": 1554.904,
+      "mojo_ns": 936.8,
+      "speedup_x": 1.66,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "poly_derivative_coeffs",
+      "py_ns": 446.063,
+      "mojo_ns": 398.8,
+      "speedup_x": 1.12,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

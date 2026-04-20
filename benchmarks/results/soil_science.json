@@ -1,0 +1,109 @@
+{
+  "lib": "soil_science",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 9,
+  "overall_speedup_x": 211.76,
+  "total_py_ns": 2392.9,
+  "total_mojo_ns": 11.3,
+  "elapsed_s": 3.39,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "soil_texture_sand_silt_clay",
+      "py_ns": 193.375,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "bulk_density",
+      "py_ns": 92.625,
+      "mojo_ns": 1.3,
+      "speedup_x": 71.25,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "particle_density_typical",
+      "py_ns": 57.375,
+      "mojo_ns": 1.3,
+      "speedup_x": 44.13,
+      "py_result": 2.65,
+      "py_error": null
+    },
+    {
+      "function": "total_porosity",
+      "py_ns": 106.179,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "volumetric_water_content",
+      "py_ns": 93.271,
+      "mojo_ns": 1.2,
+      "speedup_x": 77.73,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "gravimetric_water_content",
+      "py_ns": 177.667,
+      "mojo_ns": 1.3,
+      "speedup_x": 136.67,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "field_capacity_estimate",
+      "py_ns": 841.133,
+      "mojo_ns": 1.2,
+      "speedup_x": 700.94,
+      "py_result": 0.1525,
+      "py_error": null
+    },
+    {
+      "function": "wilting_point_estimate",
+      "py_ns": 160.929,
+      "mojo_ns": 1.3,
+      "speedup_x": 123.79,
+      "py_result": 0.0415,
+      "py_error": null
+    },
+    {
+      "function": "available_water",
+      "py_ns": 154.15,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "cation_exchange_capacity_estimate",
+      "py_ns": 102.954,
+      "mojo_ns": 1.2,
+      "speedup_x": 85.8,
+      "py_result": 1.25,
+      "py_error": null
+    },
+    {
+      "function": "soil_organic_carbon",
+      "py_ns": 96.5,
+      "mojo_ns": 1.3,
+      "speedup_x": 74.23,
+      "py_result": 0.290023,
+      "py_error": null
+    },
+    {
+      "function": "infiltration_rate_horton",
+      "py_ns": 770.442,
+      "mojo_ns": 1.2,
+      "speedup_x": 642.03,
+      "py_result": 0.5,
+      "py_error": null
+    }
+  ]
+}

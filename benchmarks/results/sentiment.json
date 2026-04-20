@@ -1,0 +1,93 @@
+{
+  "lib": "sentiment",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 9,
+  "overall_speedup_x": 0.67,
+  "total_py_ns": 65639.97,
+  "total_mojo_ns": 97273.5,
+  "elapsed_s": 3.84,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "tokenize_lower",
+      "py_ns": 2018.871,
+      "mojo_ns": 291.2,
+      "speedup_x": 6.93,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "word_sentiment",
+      "py_ns": 8614.204,
+      "mojo_ns": 3846.6,
+      "speedup_x": 2.24,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "sentiment_score",
+      "py_ns": 7152.025,
+      "mojo_ns": 20262.8,
+      "speedup_x": 0.35,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "polarity",
+      "py_ns": 6148.558,
+      "mojo_ns": 3151.7,
+      "speedup_x": 1.95,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "sentiment_label",
+      "py_ns": 271.567,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "subjectivity",
+      "py_ns": 5375.7,
+      "mojo_ns": 10022.6,
+      "speedup_x": 0.54,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "count_positive_words",
+      "py_ns": 5160.087,
+      "mojo_ns": 23285.9,
+      "speedup_x": 0.22,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "count_negative_words",
+      "py_ns": 6748.279,
+      "mojo_ns": 9662.8,
+      "speedup_x": 0.7,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "most_positive_word",
+      "py_ns": 8078.204,
+      "mojo_ns": 8929.1,
+      "speedup_x": 0.9,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "most_negative_word",
+      "py_ns": 16344.038,
+      "mojo_ns": 17820.8,
+      "speedup_x": 0.92,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

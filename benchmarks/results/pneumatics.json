@@ -1,0 +1,109 @@
+{
+  "lib": "pneumatics",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 10,
+  "overall_speedup_x": 168.61,
+  "total_py_ns": 1871.57,
+  "total_mojo_ns": 11.1,
+  "elapsed_s": 1.09,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "ideal_gas_volume",
+      "py_ns": 290.183,
+      "mojo_ns": 1.1,
+      "speedup_x": 263.8,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "flow_rate_orifice",
+      "py_ns": 169.8,
+      "mojo_ns": 1.1,
+      "speedup_x": 154.36,
+      "py_result": 0.353553,
+      "py_error": null
+    },
+    {
+      "function": "compressor_power",
+      "py_ns": 202.296,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "pressure_drop_pipe",
+      "py_ns": 248.142,
+      "mojo_ns": 1.1,
+      "speedup_x": 225.58,
+      "py_result": 0.03125,
+      "py_error": null
+    },
+    {
+      "function": "air_consumption",
+      "py_ns": 141.296,
+      "mojo_ns": 1.1,
+      "speedup_x": 128.45,
+      "py_result": 0.000484,
+      "py_error": null
+    },
+    {
+      "function": "cylinder_force",
+      "py_ns": 82.246,
+      "mojo_ns": 1.2,
+      "speedup_x": 68.54,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "bore_area",
+      "py_ns": 129.675,
+      "mojo_ns": 1.1,
+      "speedup_x": 117.89,
+      "py_result": 0.19635,
+      "py_error": null
+    },
+    {
+      "function": "piston_speed",
+      "py_ns": 279.521,
+      "mojo_ns": 1.1,
+      "speedup_x": 254.11,
+      "py_result": 0.008333,
+      "py_error": null
+    },
+    {
+      "function": "receiver_volume",
+      "py_ns": 219.662,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "free_air_delivery",
+      "py_ns": 151.063,
+      "mojo_ns": 1.1,
+      "speedup_x": 137.33,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "specific_power",
+      "py_ns": 252.35,
+      "mojo_ns": 1.1,
+      "speedup_x": 229.41,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "dew_point_pressure",
+      "py_ns": 127.296,
+      "mojo_ns": 1.1,
+      "speedup_x": 115.72,
+      "py_result": -6.431472,
+      "py_error": null
+    }
+  ]
+}

@@ -1,0 +1,125 @@
+{
+  "lib": "formal_logic",
+  "status": "ok",
+  "n_functions": 14,
+  "n_compared": 10,
+  "overall_speedup_x": 13.65,
+  "total_py_ns": 4540.67,
+  "total_mojo_ns": 332.6,
+  "elapsed_s": 1.95,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "truth_and",
+      "py_ns": 144.917,
+      "mojo_ns": 1.1,
+      "speedup_x": 131.74,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "truth_or",
+      "py_ns": 142.363,
+      "mojo_ns": 1.1,
+      "speedup_x": 129.42,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "truth_not",
+      "py_ns": 798.225,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "truth_implies",
+      "py_ns": 239.667,
+      "mojo_ns": 1.1,
+      "speedup_x": 217.88,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "truth_iff",
+      "py_ns": 147.733,
+      "mojo_ns": 1.0,
+      "speedup_x": 147.73,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "truth_xor",
+      "py_ns": 153.488,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "truth_nand",
+      "py_ns": 157.417,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "truth_nor",
+      "py_ns": 144.875,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "modus_ponens",
+      "py_ns": 147.121,
+      "mojo_ns": 1.1,
+      "speedup_x": 133.75,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "modus_tollens",
+      "py_ns": 386.35,
+      "mojo_ns": 1.1,
+      "speedup_x": 351.23,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "hypothetical_syllogism",
+      "py_ns": 946.521,
+      "mojo_ns": 1.1,
+      "speedup_x": 860.47,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "disjunctive_syllogism",
+      "py_ns": 151.35,
+      "mojo_ns": 1.0,
+      "speedup_x": 151.35,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "is_tautology_2var",
+      "py_ns": 999.967,
+      "mojo_ns": 119.4,
+      "speedup_x": 8.37,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "is_contradiction_2var",
+      "py_ns": 1234.679,
+      "mojo_ns": 204.6,
+      "speedup_x": 6.03,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

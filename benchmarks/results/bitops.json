@@ -1,0 +1,117 @@
+{
+  "lib": "bitops",
+  "status": "ok",
+  "n_functions": 13,
+  "n_compared": 10,
+  "overall_speedup_x": 831.9,
+  "total_py_ns": 9317.31,
+  "total_mojo_ns": 11.2,
+  "elapsed_s": 1.06,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "popcount",
+      "py_ns": 412.967,
+      "mojo_ns": 1.2,
+      "speedup_x": 344.14,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "leading_zeros",
+      "py_ns": 4340.471,
+      "mojo_ns": 1.1,
+      "speedup_x": 3945.88,
+      "py_result": 61.0,
+      "py_error": null
+    },
+    {
+      "function": "trailing_zeros",
+      "py_ns": 165.1,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "next_power_of_2",
+      "py_ns": 215.729,
+      "mojo_ns": 1.1,
+      "speedup_x": 196.12,
+      "py_result": 8.0,
+      "py_error": null
+    },
+    {
+      "function": "is_power_of_2",
+      "py_ns": 338.725,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "reverse_bits",
+      "py_ns": 2299.546,
+      "mojo_ns": 1.1,
+      "speedup_x": 2090.5,
+      "py_result": 2147483648.0,
+      "py_error": null
+    },
+    {
+      "function": "rotate_left",
+      "py_ns": 370.583,
+      "mojo_ns": 1.1,
+      "speedup_x": 336.89,
+      "py_result": 32.0,
+      "py_error": null
+    },
+    {
+      "function": "rotate_right",
+      "py_ns": 291.929,
+      "mojo_ns": 1.1,
+      "speedup_x": 265.39,
+      "py_result": 134217728.0,
+      "py_error": null
+    },
+    {
+      "function": "bit_set",
+      "py_ns": 161.121,
+      "mojo_ns": 1.2,
+      "speedup_x": 134.27,
+      "py_result": 37.0,
+      "py_error": null
+    },
+    {
+      "function": "bit_clear",
+      "py_ns": 173.546,
+      "mojo_ns": 1.1,
+      "speedup_x": 157.77,
+      "py_result": 5.0,
+      "py_error": null
+    },
+    {
+      "function": "bit_test",
+      "py_ns": 166.958,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "bit_toggle",
+      "py_ns": 196.108,
+      "mojo_ns": 1.1,
+      "speedup_x": 178.28,
+      "py_result": 37.0,
+      "py_error": null
+    },
+    {
+      "function": "fnv1a_hash",
+      "py_ns": 855.312,
+      "mojo_ns": 1.1,
+      "speedup_x": 777.56,
+      "py_result": 8.783962037831871e+18,
+      "py_error": null
+    }
+  ]
+}

@@ -1,0 +1,109 @@
+{
+  "lib": "food_science",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 12,
+  "overall_speedup_x": 476.57,
+  "total_py_ns": 5861.76,
+  "total_mojo_ns": 12.3,
+  "elapsed_s": 1.72,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "water_activity",
+      "py_ns": 174.35,
+      "mojo_ns": 1.0,
+      "speedup_x": 174.35,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "ph_from_h_concentration",
+      "py_ns": 274.229,
+      "mojo_ns": 1.1,
+      "speedup_x": 249.3,
+      "py_result": 0.30103,
+      "py_error": null
+    },
+    {
+      "function": "shelf_life_q10",
+      "py_ns": 1735.221,
+      "mojo_ns": 1.0,
+      "speedup_x": 1735.22,
+      "py_result": 0.517632,
+      "py_error": null
+    },
+    {
+      "function": "thermal_death_time",
+      "py_ns": 758.767,
+      "mojo_ns": 1.0,
+      "speedup_x": 758.77,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "d_value_from_z",
+      "py_ns": 260.254,
+      "mojo_ns": 1.0,
+      "speedup_x": 260.25,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "pasteurization_units",
+      "py_ns": 320.737,
+      "mojo_ns": 1.0,
+      "speedup_x": 320.74,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "brix_to_sugar_g_per_l",
+      "py_ns": 1486.75,
+      "mojo_ns": 1.0,
+      "speedup_x": 1486.75,
+      "py_result": 5.0,
+      "py_error": null
+    },
+    {
+      "function": "caloric_density",
+      "py_ns": 354.5,
+      "mojo_ns": 1.1,
+      "speedup_x": 322.27,
+      "py_result": 12.0,
+      "py_error": null
+    },
+    {
+      "function": "moisture_content_wet_basis",
+      "py_ns": 126.492,
+      "mojo_ns": 1.0,
+      "speedup_x": 126.49,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "moisture_content_dry_basis",
+      "py_ns": 105.413,
+      "mojo_ns": 1.0,
+      "speedup_x": 105.41,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "freezing_point_depression",
+      "py_ns": 133.517,
+      "mojo_ns": 1.1,
+      "speedup_x": 121.38,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "blanching_time_estimate",
+      "py_ns": 131.533,
+      "mojo_ns": 1.0,
+      "speedup_x": 131.53,
+      "py_result": 0.125,
+      "py_error": null
+    }
+  ]
+}

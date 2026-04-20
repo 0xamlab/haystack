@@ -1,0 +1,101 @@
+{
+  "lib": "probability",
+  "status": "ok",
+  "n_functions": 11,
+  "n_compared": 11,
+  "overall_speedup_x": 3.36,
+  "total_py_ns": 7110.18,
+  "total_mojo_ns": 2115.9,
+  "elapsed_s": 1.18,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "bayes",
+      "py_ns": 155.925,
+      "mojo_ns": 1.1,
+      "speedup_x": 141.75,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "joint_probability",
+      "py_ns": 163.829,
+      "mojo_ns": 1.1,
+      "speedup_x": 148.94,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "total_probability",
+      "py_ns": 384.5,
+      "mojo_ns": 2.6,
+      "speedup_x": 147.88,
+      "py_result": 1.35,
+      "py_error": null
+    },
+    {
+      "function": "factorial",
+      "py_ns": 457.367,
+      "mojo_ns": 2.2,
+      "speedup_x": 207.89,
+      "py_result": 120.0,
+      "py_error": null
+    },
+    {
+      "function": "combinations",
+      "py_ns": 272.329,
+      "mojo_ns": 1.1,
+      "speedup_x": 247.57,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "permutations",
+      "py_ns": 373.087,
+      "mojo_ns": 2.6,
+      "speedup_x": 143.5,
+      "py_result": 120.0,
+      "py_error": null
+    },
+    {
+      "function": "binomial_pmf",
+      "py_ns": 372.092,
+      "mojo_ns": 281.2,
+      "speedup_x": 1.32,
+      "py_result": 0.03125,
+      "py_error": null
+    },
+    {
+      "function": "poisson_pmf",
+      "py_ns": 369.704,
+      "mojo_ns": 2.2,
+      "speedup_x": 168.05,
+      "py_result": 0.000158,
+      "py_error": null
+    },
+    {
+      "function": "entropy",
+      "py_ns": 808.1,
+      "mojo_ns": 22.8,
+      "speedup_x": 35.44,
+      "py_result": 2.352241,
+      "py_error": null
+    },
+    {
+      "function": "kl_divergence",
+      "py_ns": 715.479,
+      "mojo_ns": 42.5,
+      "speedup_x": 16.83,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "mutual_information",
+      "py_ns": 3037.771,
+      "mojo_ns": 1756.5,
+      "speedup_x": 1.73,
+      "py_result": -5.548603,
+      "py_error": null
+    }
+  ]
+}

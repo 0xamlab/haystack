@@ -1,0 +1,109 @@
+{
+  "lib": "autonomous_vehicles",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 12,
+  "overall_speedup_x": 90.58,
+  "total_py_ns": 1684.71,
+  "total_mojo_ns": 18.6,
+  "elapsed_s": 1.24,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "safe_following_distance",
+      "py_ns": 138.35,
+      "mojo_ns": 1.0,
+      "speedup_x": 138.35,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "time_to_collision",
+      "py_ns": 112.388,
+      "mojo_ns": 1.1,
+      "speedup_x": 102.17,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "braking_distance",
+      "py_ns": 197.263,
+      "mojo_ns": 1.1,
+      "speedup_x": 179.33,
+      "py_result": 0.012742,
+      "py_error": null
+    },
+    {
+      "function": "sensor_range_required",
+      "py_ns": 155.196,
+      "mojo_ns": 1.0,
+      "speedup_x": 155.2,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "lane_change_distance",
+      "py_ns": 120.087,
+      "mojo_ns": 7.2,
+      "speedup_x": 16.68,
+      "py_result": 0.707107,
+      "py_error": null
+    },
+    {
+      "function": "perception_latency_distance",
+      "py_ns": 184.562,
+      "mojo_ns": 1.0,
+      "speedup_x": 184.56,
+      "py_result": 0.00025,
+      "py_error": null
+    },
+    {
+      "function": "comfort_deceleration",
+      "py_ns": 53.471,
+      "mojo_ns": 1.0,
+      "speedup_x": 53.47,
+      "py_result": 3.0,
+      "py_error": null
+    },
+    {
+      "function": "emergency_deceleration",
+      "py_ns": 92.333,
+      "mojo_ns": 1.0,
+      "speedup_x": 92.33,
+      "py_result": 8.0,
+      "py_error": null
+    },
+    {
+      "function": "headway_time",
+      "py_ns": 130.425,
+      "mojo_ns": 1.1,
+      "speedup_x": 118.57,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "fuel_efficiency_at_speed",
+      "py_ns": 112.175,
+      "mojo_ns": 1.1,
+      "speedup_x": 101.98,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "v2x_communication_range",
+      "py_ns": 309.121,
+      "mojo_ns": 1.0,
+      "speedup_x": 309.12,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "localization_error_gps",
+      "py_ns": 79.338,
+      "mojo_ns": 1.0,
+      "speedup_x": 79.34,
+      "py_result": 0.25,
+      "py_error": null
+    }
+  ]
+}

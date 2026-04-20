@@ -1,0 +1,93 @@
+{
+  "lib": "data_feedback_loop",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 8,
+  "overall_speedup_x": 120.34,
+  "total_py_ns": 974.74,
+  "total_mojo_ns": 8.1,
+  "elapsed_s": 1.65,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "sample_informativeness",
+      "py_ns": 88.05,
+      "mojo_ns": 1.0,
+      "speedup_x": 88.05,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "auto_label_confidence",
+      "py_ns": 119.071,
+      "mojo_ns": 1.0,
+      "speedup_x": 119.07,
+      "py_result": 1.648721,
+      "py_error": null
+    },
+    {
+      "function": "data_drift_detection_score",
+      "py_ns": 109.933,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "retraining_trigger_score",
+      "py_ns": 208.938,
+      "mojo_ns": 1.1,
+      "speedup_x": 189.94,
+      "py_result": 5.405465,
+      "py_error": null
+    },
+    {
+      "function": "dataset_freshness_score",
+      "py_ns": 126.208,
+      "mojo_ns": 1.0,
+      "speedup_x": 126.21,
+      "py_result": 0.500074,
+      "py_error": null
+    },
+    {
+      "function": "annotation_effort_estimate",
+      "py_ns": 96.3,
+      "mojo_ns": 1.0,
+      "speedup_x": 96.3,
+      "py_result": 0.375,
+      "py_error": null
+    },
+    {
+      "function": "deployment_readiness_score",
+      "py_ns": 112.15,
+      "mojo_ns": 1.0,
+      "speedup_x": 112.15,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "online_evaluation_stat",
+      "py_ns": 144.367,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "feedback_signal_quality",
+      "py_ns": 111.558,
+      "mojo_ns": 1.0,
+      "speedup_x": 111.56,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "continuous_learning_rate",
+      "py_ns": 112.462,
+      "mojo_ns": 1.0,
+      "speedup_x": 112.46,
+      "py_result": 0.4125,
+      "py_error": null
+    }
+  ]
+}

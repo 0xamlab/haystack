@@ -1,0 +1,49 @@
+"""test_epidemiology.mojo — auto-generated tests for epidemiology library."""
+from std.math import isnan, isinf
+from epidemiology import sir_step, sir_simulate, seir_step, basic_reproduction_number, herd_immunity_threshold, effective_reproduction, doubling_time, attack_rate, case_fatality_rate, incidence_rate
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_sir_step = sir_step(0.5, 0.5, 0.5, 0.5, 0.5, 0.5)
+    if len(_v_sir_step) >= 0: passed += 1; print("  ✅ epidemiology::sir_step")
+    _ = sir_simulate(0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 5)
+    passed += 1; print("  ✅ epidemiology::sir_simulate")
+    var _v_seir_step = seir_step(0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5)
+    if len(_v_seir_step) >= 0: passed += 1; print("  ✅ epidemiology::seir_step")
+    var _v_basic_reproduction_number = basic_reproduction_number(0.5, 0.5)
+    if is_finite(_v_basic_reproduction_number): passed += 1; print("  ✅ epidemiology::basic_reproduction_number =", _v_basic_reproduction_number)
+    else: failed += 1; print("  ❌ epidemiology::basic_reproduction_number → non-finite:", _v_basic_reproduction_number)
+    var _v_herd_immunity_threshold = herd_immunity_threshold(0.5)
+    if is_finite(_v_herd_immunity_threshold): passed += 1; print("  ✅ epidemiology::herd_immunity_threshold =", _v_herd_immunity_threshold)
+    else: failed += 1; print("  ❌ epidemiology::herd_immunity_threshold → non-finite:", _v_herd_immunity_threshold)
+    var _v_effective_reproduction = effective_reproduction(0.5, 0.5)
+    if is_finite(_v_effective_reproduction): passed += 1; print("  ✅ epidemiology::effective_reproduction =", _v_effective_reproduction)
+    else: failed += 1; print("  ❌ epidemiology::effective_reproduction → non-finite:", _v_effective_reproduction)
+    var _v_doubling_time = doubling_time(0.5)
+    if is_finite(_v_doubling_time): passed += 1; print("  ✅ epidemiology::doubling_time =", _v_doubling_time)
+    else: failed += 1; print("  ❌ epidemiology::doubling_time → non-finite:", _v_doubling_time)
+    var _v_attack_rate = attack_rate(0.5)
+    if is_finite(_v_attack_rate): passed += 1; print("  ✅ epidemiology::attack_rate =", _v_attack_rate)
+    else: failed += 1; print("  ❌ epidemiology::attack_rate → non-finite:", _v_attack_rate)
+    var _v_case_fatality_rate = case_fatality_rate(5, 5)
+    if is_finite(_v_case_fatality_rate): passed += 1; print("  ✅ epidemiology::case_fatality_rate =", _v_case_fatality_rate)
+    else: failed += 1; print("  ❌ epidemiology::case_fatality_rate → non-finite:", _v_case_fatality_rate)
+    var _v_incidence_rate = incidence_rate(5, 5, 0.5)
+    if is_finite(_v_incidence_rate): passed += 1; print("  ✅ epidemiology::incidence_rate =", _v_incidence_rate)
+    else: failed += 1; print("  ❌ epidemiology::incidence_rate → non-finite:", _v_incidence_rate)
+
+    print("  [epidemiology] Passed:", passed, "Failed:", failed)

@@ -1,0 +1,77 @@
+{
+  "lib": "robustness",
+  "status": "ok",
+  "n_functions": 8,
+  "n_compared": 8,
+  "overall_speedup_x": 4.91,
+  "total_py_ns": 435428.36,
+  "total_mojo_ns": 88746.7,
+  "elapsed_s": 6.93,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "eval_test_func",
+      "py_ns": 1444.958,
+      "mojo_ns": 2.5,
+      "speedup_x": 577.98,
+      "py_result": 6.9,
+      "py_error": null
+    },
+    {
+      "function": "perturbation_test",
+      "py_ns": 2658.825,
+      "mojo_ns": 664.9,
+      "speedup_x": 4.0,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "sensitivity_one_at_a_time",
+      "py_ns": 2740.233,
+      "mojo_ns": 7544.1,
+      "speedup_x": 0.36,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "morris_screening",
+      "py_ns": 145882.196,
+      "mojo_ns": 20520.0,
+      "speedup_x": 7.11,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "sobol_first_order_estimate",
+      "py_ns": 234519.821,
+      "mojo_ns": 30416.9,
+      "speedup_x": 7.71,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "input_range_sweep",
+      "py_ns": 5864.788,
+      "mojo_ns": 15877.1,
+      "speedup_x": 0.37,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "tornado_data",
+      "py_ns": 39156.596,
+      "mojo_ns": 13716.2,
+      "speedup_x": 2.85,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "robustness_score",
+      "py_ns": 3160.942,
+      "mojo_ns": 5.0,
+      "speedup_x": 632.19,
+      "py_result": 0.282843,
+      "py_error": null
+    }
+  ]
+}

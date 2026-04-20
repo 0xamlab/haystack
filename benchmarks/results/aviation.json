@@ -1,0 +1,93 @@
+{
+  "lib": "aviation",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 8,
+  "overall_speedup_x": 122.81,
+  "total_py_ns": 1043.87,
+  "total_mojo_ns": 8.5,
+  "elapsed_s": 1.22,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "lift_force",
+      "py_ns": 128.183,
+      "mojo_ns": 1.0,
+      "speedup_x": 128.18,
+      "py_result": 0.015625,
+      "py_error": null
+    },
+    {
+      "function": "drag_force",
+      "py_ns": 183.9,
+      "mojo_ns": 1.1,
+      "speedup_x": 167.18,
+      "py_result": 0.015625,
+      "py_error": null
+    },
+    {
+      "function": "lift_to_drag_ratio",
+      "py_ns": 102.783,
+      "mojo_ns": 1.1,
+      "speedup_x": 93.44,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "thrust_required",
+      "py_ns": 96.242,
+      "mojo_ns": 1.1,
+      "speedup_x": 87.49,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "range_breguet",
+      "py_ns": 89.937,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "endurance_breguet",
+      "py_ns": 90.929,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "indicated_airspeed",
+      "py_ns": 119.425,
+      "mojo_ns": 1.0,
+      "speedup_x": 119.42,
+      "py_result": 0.903508,
+      "py_error": null
+    },
+    {
+      "function": "true_airspeed",
+      "py_ns": 108.646,
+      "mojo_ns": 1.1,
+      "speedup_x": 98.77,
+      "py_result": 0.707107,
+      "py_error": null
+    },
+    {
+      "function": "mach_number",
+      "py_ns": 128.071,
+      "mojo_ns": 1.1,
+      "speedup_x": 116.43,
+      "py_result": 0.035272,
+      "py_error": null
+    },
+    {
+      "function": "rate_of_climb",
+      "py_ns": 176.617,
+      "mojo_ns": 1.0,
+      "speedup_x": 176.62,
+      "py_result": 0.5,
+      "py_error": null
+    }
+  ]
+}

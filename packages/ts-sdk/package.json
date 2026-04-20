@@ -1,0 +1,29 @@
+{
+  "name": "decision-engine-sdk",
+  "version": "0.1.0",
+  "description": "TypeScript/JavaScript SDK for the Universal Decision Engine API",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "keywords": ["decision", "simulation", "monte-carlo", "api"],
+  "license": "BSL-1.1",
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "vitest": "^1.4.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

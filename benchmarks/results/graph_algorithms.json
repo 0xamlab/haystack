@@ -1,0 +1,93 @@
+{
+  "lib": "graph_algorithms",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 6,
+  "overall_speedup_x": 153.99,
+  "total_py_ns": 877.74,
+  "total_mojo_ns": 5.7,
+  "elapsed_s": 1.55,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "dijkstra_relax",
+      "py_ns": 147.171,
+      "mojo_ns": 1.0,
+      "speedup_x": 147.17,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "bellman_ford_relax",
+      "py_ns": 217.171,
+      "mojo_ns": 1.0,
+      "speedup_x": 217.17,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "pagerank_update",
+      "py_ns": 179.517,
+      "mojo_ns": 0.9,
+      "speedup_x": 199.46,
+      "py_result": 1.5,
+      "py_error": null
+    },
+    {
+      "function": "betweenness_centrality_norm",
+      "py_ns": 144.808,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "clustering_coefficient",
+      "py_ns": 81.838,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "degree_centrality",
+      "py_ns": 81.408,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "closeness_centrality",
+      "py_ns": 101.642,
+      "mojo_ns": 1.0,
+      "speedup_x": 101.64,
+      "py_result": -1.0,
+      "py_error": null
+    },
+    {
+      "function": "eigenvector_centrality_update",
+      "py_ns": 114.846,
+      "mojo_ns": 0.9,
+      "speedup_x": 127.61,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "modularity_contribution",
+      "py_ns": 117.392,
+      "mojo_ns": 0.9,
+      "speedup_x": 130.44,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "graph_density",
+      "py_ns": 85.133,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

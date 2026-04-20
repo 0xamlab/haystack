@@ -1,0 +1,109 @@
+{
+  "lib": "demographics",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 11,
+  "overall_speedup_x": 480.38,
+  "total_py_ns": 5476.38,
+  "total_mojo_ns": 11.4,
+  "elapsed_s": 2.08,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "crude_birth_rate",
+      "py_ns": 205.85,
+      "mojo_ns": 1.0,
+      "speedup_x": 205.85,
+      "py_result": 1000.0,
+      "py_error": null
+    },
+    {
+      "function": "crude_death_rate",
+      "py_ns": 101.675,
+      "mojo_ns": 1.1,
+      "speedup_x": 92.43,
+      "py_result": 1000.0,
+      "py_error": null
+    },
+    {
+      "function": "natural_increase_rate",
+      "py_ns": 102.883,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "total_fertility_rate",
+      "py_ns": 174.679,
+      "mojo_ns": 1.1,
+      "speedup_x": 158.8,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "infant_mortality_rate",
+      "py_ns": 233.846,
+      "mojo_ns": 1.1,
+      "speedup_x": 212.59,
+      "py_result": 1000.0,
+      "py_error": null
+    },
+    {
+      "function": "life_expectancy_approx",
+      "py_ns": 2177.625,
+      "mojo_ns": 1.0,
+      "speedup_x": 2177.62,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "dependency_ratio",
+      "py_ns": 189.367,
+      "mojo_ns": 1.0,
+      "speedup_x": 189.37,
+      "py_result": 200.0,
+      "py_error": null
+    },
+    {
+      "function": "sex_ratio",
+      "py_ns": 362.154,
+      "mojo_ns": 1.0,
+      "speedup_x": 362.15,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "population_growth_rate",
+      "py_ns": 222.325,
+      "mojo_ns": 1.0,
+      "speedup_x": 222.33,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "doubling_time",
+      "py_ns": 141.213,
+      "mojo_ns": 1.1,
+      "speedup_x": 128.38,
+      "py_result": 140.0,
+      "py_error": null
+    },
+    {
+      "function": "urbanization_rate",
+      "py_ns": 1531.146,
+      "mojo_ns": 1.0,
+      "speedup_x": 1531.15,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "median_age_estimate",
+      "py_ns": 136.5,
+      "mojo_ns": 1.0,
+      "speedup_x": 136.5,
+      "py_result": 64.7,
+      "py_error": null
+    }
+  ]
+}

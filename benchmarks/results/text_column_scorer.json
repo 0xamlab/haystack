@@ -1,0 +1,45 @@
+{
+  "lib": "text_column_scorer",
+  "status": "ok",
+  "n_functions": 4,
+  "n_compared": 4,
+  "overall_speedup_x": 1.76,
+  "total_py_ns": 11179.14,
+  "total_mojo_ns": 6363.8,
+  "elapsed_s": 3.2,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "score_token_overlap",
+      "py_ns": 1740.217,
+      "mojo_ns": 300.6,
+      "speedup_x": 5.79,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "score_ngram_overlap",
+      "py_ns": 250.075,
+      "mojo_ns": 4.5,
+      "speedup_x": 55.57,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "score_prefix_match",
+      "py_ns": 469.142,
+      "mojo_ns": 1.2,
+      "speedup_x": 390.95,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "score_column_hint",
+      "py_ns": 8719.708,
+      "mojo_ns": 6057.5,
+      "speedup_x": 1.44,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

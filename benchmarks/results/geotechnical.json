@@ -1,0 +1,109 @@
+{
+  "lib": "geotechnical",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 11,
+  "overall_speedup_x": 88.87,
+  "total_py_ns": 1697.44,
+  "total_mojo_ns": 19.1,
+  "elapsed_s": 1.23,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "bearing_capacity_terzaghi",
+      "py_ns": 129.196,
+      "mojo_ns": 1.2,
+      "speedup_x": 107.66,
+      "py_result": 0.4375,
+      "py_error": null
+    },
+    {
+      "function": "effective_stress",
+      "py_ns": 83.5,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "overburden_pressure",
+      "py_ns": 83.604,
+      "mojo_ns": 1.2,
+      "speedup_x": 69.67,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "coefficient_of_earth_pressure_at_rest",
+      "py_ns": 134.404,
+      "mojo_ns": 1.3,
+      "speedup_x": 103.39,
+      "py_result": 0.520574,
+      "py_error": null
+    },
+    {
+      "function": "rankine_ka",
+      "py_ns": 226.187,
+      "mojo_ns": 1.2,
+      "speedup_x": 188.49,
+      "py_result": 0.351876,
+      "py_error": null
+    },
+    {
+      "function": "rankine_kp",
+      "py_ns": 217.104,
+      "mojo_ns": 1.3,
+      "speedup_x": 167.0,
+      "py_result": 2.84191,
+      "py_error": null
+    },
+    {
+      "function": "active_earth_pressure",
+      "py_ns": 122.025,
+      "mojo_ns": 1.3,
+      "speedup_x": 93.87,
+      "py_result": -0.457107,
+      "py_error": null
+    },
+    {
+      "function": "settlement_elastic",
+      "py_ns": 153.258,
+      "mojo_ns": 1.2,
+      "speedup_x": 127.72,
+      "py_result": 0.375,
+      "py_error": null
+    },
+    {
+      "function": "factor_of_safety_slope",
+      "py_ns": 133.196,
+      "mojo_ns": 5.5,
+      "speedup_x": 24.22,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "void_ratio",
+      "py_ns": 108.229,
+      "mojo_ns": 2.4,
+      "speedup_x": 45.1,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "porosity_from_void_ratio",
+      "py_ns": 292.217,
+      "mojo_ns": 1.3,
+      "speedup_x": 224.78,
+      "py_result": 0.333333,
+      "py_error": null
+    },
+    {
+      "function": "degree_of_saturation",
+      "py_ns": 98.021,
+      "mojo_ns": 1.2,
+      "speedup_x": 81.68,
+      "py_result": 0.5,
+      "py_error": null
+    }
+  ]
+}

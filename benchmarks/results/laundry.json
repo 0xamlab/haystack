@@ -1,0 +1,109 @@
+{
+  "lib": "laundry",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 8,
+  "overall_speedup_x": 90.63,
+  "total_py_ns": 788.45,
+  "total_mojo_ns": 8.7,
+  "elapsed_s": 1.62,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "water_usage_liters",
+      "py_ns": 72.883,
+      "mojo_ns": 1.0,
+      "speedup_x": 72.88,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "detergent_dose_ml",
+      "py_ns": 76.867,
+      "mojo_ns": 1.2,
+      "speedup_x": 64.06,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "wash_temperature_energy",
+      "py_ns": 183.004,
+      "mojo_ns": 1.1,
+      "speedup_x": 166.37,
+      "py_result": 3.5e-05,
+      "py_error": null
+    },
+    {
+      "function": "spin_g_force",
+      "py_ns": 115.733,
+      "mojo_ns": 1.1,
+      "speedup_x": 105.21,
+      "py_result": 0.00014,
+      "py_error": null
+    },
+    {
+      "function": "moisture_retention",
+      "py_ns": 157.463,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "drying_time_estimate",
+      "py_ns": 83.283,
+      "mojo_ns": 1.1,
+      "speedup_x": 75.71,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "energy_per_cycle",
+      "py_ns": 83.138,
+      "mojo_ns": 1.1,
+      "speedup_x": 75.58,
+      "py_result": 0.004167,
+      "py_error": null
+    },
+    {
+      "function": "cost_per_wash",
+      "py_ns": 84.671,
+      "mojo_ns": 1.0,
+      "speedup_x": 84.67,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "fabric_wear_cycles",
+      "py_ns": 85.062,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "stain_removal_efficiency",
+      "py_ns": 85.138,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "color_fastness_delta_e",
+      "py_ns": 148.725,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "water_hardness_compensation",
+      "py_ns": 88.871,
+      "mojo_ns": 1.1,
+      "speedup_x": 80.79,
+      "py_result": 0.500125,
+      "py_error": null
+    }
+  ]
+}

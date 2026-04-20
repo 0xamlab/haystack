@@ -1,0 +1,93 @@
+{
+  "lib": "conv",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 6,
+  "overall_speedup_x": 61.98,
+  "total_py_ns": 6210.71,
+  "total_mojo_ns": 100.2,
+  "elapsed_s": 1.82,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "is_digit",
+      "py_ns": 174.154,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "is_whitespace",
+      "py_ns": 318.683,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "digit_value",
+      "py_ns": 241.463,
+      "mojo_ns": 1.1,
+      "speedup_x": 219.51,
+      "py_result": -47.0,
+      "py_error": null
+    },
+    {
+      "function": "span_to_str",
+      "py_ns": 432.0,
+      "mojo_ns": 2.4,
+      "speedup_x": 180.0,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "span_to_str_end",
+      "py_ns": 396.246,
+      "mojo_ns": 2.4,
+      "speedup_x": 165.1,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "strip_whitespace",
+      "py_ns": 1096.15,
+      "mojo_ns": 20.0,
+      "speedup_x": 54.81,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "parse_float64",
+      "py_ns": 1487.608,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "parse_int",
+      "py_ns": 2520.642,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "float_to_string",
+      "py_ns": 299.333,
+      "mojo_ns": 50.1,
+      "speedup_x": 5.97,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "int_to_hex",
+      "py_ns": 3745.517,
+      "mojo_ns": 24.2,
+      "speedup_x": 154.77,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

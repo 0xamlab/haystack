@@ -1,0 +1,29 @@
+{
+  "lib": "interval",
+  "status": "ok",
+  "n_functions": 2,
+  "n_compared": 2,
+  "overall_speedup_x": 427.74,
+  "total_py_ns": 941.04,
+  "total_mojo_ns": 2.2,
+  "elapsed_s": 2.02,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "interval",
+      "py_ns": 574.558,
+      "mojo_ns": 1.1,
+      "speedup_x": 522.33,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "empty_interval",
+      "py_ns": 366.479,
+      "mojo_ns": 1.1,
+      "speedup_x": 333.16,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

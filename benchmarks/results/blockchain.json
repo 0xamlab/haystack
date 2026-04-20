@@ -1,0 +1,109 @@
+{
+  "lib": "blockchain",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 11,
+  "overall_speedup_x": 175.6,
+  "total_py_ns": 2177.48,
+  "total_mojo_ns": 12.4,
+  "elapsed_s": 1.1,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "block_reward_halving",
+      "py_ns": 137.125,
+      "mojo_ns": 1.1,
+      "speedup_x": 124.66,
+      "py_result": 0.015625,
+      "py_error": null
+    },
+    {
+      "function": "hash_rate_to_difficulty",
+      "py_ns": 283.438,
+      "mojo_ns": 1.2,
+      "speedup_x": 236.2,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "transaction_fee_priority",
+      "py_ns": 87.5,
+      "mojo_ns": 1.1,
+      "speedup_x": 79.55,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "gas_cost",
+      "py_ns": 95.5,
+      "mojo_ns": 1.1,
+      "speedup_x": 86.82,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "confirmations_security",
+      "py_ns": 201.575,
+      "mojo_ns": 1.1,
+      "speedup_x": 183.25,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "merkle_tree_depth",
+      "py_ns": null,
+      "mojo_ns": 1.1,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "module 'math' has no attribute 'math'"
+    },
+    {
+      "function": "tps_throughput",
+      "py_ns": 250.1,
+      "mojo_ns": 1.1,
+      "speedup_x": 227.36,
+      "py_result": 10.0,
+      "py_error": null
+    },
+    {
+      "function": "block_size_utilization",
+      "py_ns": 102.329,
+      "mojo_ns": 1.1,
+      "speedup_x": 93.03,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "staking_apy",
+      "py_ns": 161.725,
+      "mojo_ns": 1.1,
+      "speedup_x": 147.02,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "validator_uptime",
+      "py_ns": 141.971,
+      "mojo_ns": 1.2,
+      "speedup_x": 118.31,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "finality_time_pbft",
+      "py_ns": 529.129,
+      "mojo_ns": 1.1,
+      "speedup_x": 481.03,
+      "py_result": 1.5,
+      "py_error": null
+    },
+    {
+      "function": "token_inflation_rate",
+      "py_ns": 187.083,
+      "mojo_ns": 1.2,
+      "speedup_x": 155.9,
+      "py_result": 100.0,
+      "py_error": null
+    }
+  ]
+}

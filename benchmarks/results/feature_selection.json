@@ -1,0 +1,85 @@
+{
+  "lib": "feature_selection",
+  "status": "ok",
+  "n_functions": 9,
+  "n_compared": 9,
+  "overall_speedup_x": 21.04,
+  "total_py_ns": 254199.55,
+  "total_mojo_ns": 12079.2,
+  "elapsed_s": 4.94,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "column_mean",
+      "py_ns": 947.2,
+      "mojo_ns": 603.4,
+      "speedup_x": 1.57,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "column_variance",
+      "py_ns": 6683.421,
+      "mojo_ns": 492.5,
+      "speedup_x": 13.57,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "variance_threshold",
+      "py_ns": 14723.142,
+      "mojo_ns": 363.1,
+      "speedup_x": 40.55,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "correlation_filter",
+      "py_ns": 31914.842,
+      "mojo_ns": 1191.2,
+      "speedup_x": 26.79,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "f_test_scores",
+      "py_ns": 5485.096,
+      "mojo_ns": 554.2,
+      "speedup_x": 9.9,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "select_k_best",
+      "py_ns": 17466.292,
+      "mojo_ns": 175.6,
+      "speedup_x": 99.47,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "forward_selection_greedy",
+      "py_ns": 90342.654,
+      "mojo_ns": 6975.5,
+      "speedup_x": 12.95,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "information_gain",
+      "py_ns": 23900.35,
+      "mojo_ns": 809.1,
+      "speedup_x": 29.54,
+      "py_result": 1.609438,
+      "py_error": null
+    },
+    {
+      "function": "feature_importance_permutation",
+      "py_ns": 62736.55,
+      "mojo_ns": 914.6,
+      "speedup_x": 68.59,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

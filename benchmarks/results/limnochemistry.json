@@ -1,0 +1,101 @@
+{
+  "lib": "limnochemistry",
+  "status": "ok",
+  "n_functions": 11,
+  "n_compared": 10,
+  "overall_speedup_x": 364.87,
+  "total_py_ns": 3794.7,
+  "total_mojo_ns": 10.4,
+  "elapsed_s": 1.64,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "carbonate_alkalinity",
+      "py_ns": 105.267,
+      "mojo_ns": 1.1,
+      "speedup_x": 95.7,
+      "py_result": 1.5,
+      "py_error": null
+    },
+    {
+      "function": "ionic_strength",
+      "py_ns": 78.996,
+      "mojo_ns": 1.0,
+      "speedup_x": 79.0,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "activity_coefficient_davies",
+      "py_ns": 229.946,
+      "mojo_ns": 1.1,
+      "speedup_x": 209.04,
+      "py_result": 0.925576,
+      "py_error": null
+    },
+    {
+      "function": "pow_10",
+      "py_ns": 127.575,
+      "mojo_ns": 1.1,
+      "speedup_x": 115.98,
+      "py_result": 3.162278,
+      "py_error": null
+    },
+    {
+      "function": "saturation_index_calcite",
+      "py_ns": 1617.254,
+      "mojo_ns": 1.0,
+      "speedup_x": 1617.25,
+      "py_result": -11.80556,
+      "py_error": null
+    },
+    {
+      "function": "silicon_weathering_flux",
+      "py_ns": 133.938,
+      "mojo_ns": 1.0,
+      "speedup_x": 133.94,
+      "py_result": 15778.8,
+      "py_error": null
+    },
+    {
+      "function": "redox_pe_eh",
+      "py_ns": 434.4,
+      "mojo_ns": 1.1,
+      "speedup_x": 394.91,
+      "py_result": 0.021203,
+      "py_error": null
+    },
+    {
+      "function": "phosphorus_fractionation",
+      "py_ns": 162.675,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "nitrogen_speciation",
+      "py_ns": 96.442,
+      "mojo_ns": 1.0,
+      "speedup_x": 96.44,
+      "py_result": 1.5,
+      "py_error": null
+    },
+    {
+      "function": "doc_light_attenuation",
+      "py_ns": 392.446,
+      "mojo_ns": 1.0,
+      "speedup_x": 392.45,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "epilimnion_mixing_depth",
+      "py_ns": 578.433,
+      "mojo_ns": 1.0,
+      "speedup_x": 578.43,
+      "py_result": 0.5,
+      "py_error": null
+    }
+  ]
+}

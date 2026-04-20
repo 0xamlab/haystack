@@ -1,0 +1,93 @@
+{
+  "lib": "training_stability",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 10,
+  "overall_speedup_x": 71.7,
+  "total_py_ns": 2516.83,
+  "total_mojo_ns": 35.1,
+  "elapsed_s": 4.1,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "loss_scale_adjust",
+      "py_ns": 478.087,
+      "mojo_ns": 1.0,
+      "speedup_x": 478.09,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "is_finite_check",
+      "py_ns": 150.246,
+      "mojo_ns": 1.2,
+      "speedup_x": 125.2,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "gradient_accumulation_step",
+      "py_ns": 100.3,
+      "mojo_ns": 26.3,
+      "speedup_x": 3.81,
+      "py_result": 1.5,
+      "py_error": null
+    },
+    {
+      "function": "warmup_lr_schedule",
+      "py_ns": 189.175,
+      "mojo_ns": 1.0,
+      "speedup_x": 189.18,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "cosine_warmup_schedule",
+      "py_ns": 118.942,
+      "mojo_ns": 1.0,
+      "speedup_x": 118.94,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "ema_weight_update",
+      "py_ns": 238.817,
+      "mojo_ns": 0.9,
+      "speedup_x": 265.35,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "overflow_skip_step",
+      "py_ns": 239.054,
+      "mojo_ns": 1.0,
+      "speedup_x": 239.05,
+      "py_result": 1.5,
+      "py_error": null
+    },
+    {
+      "function": "grad_norm_finite",
+      "py_ns": 403.629,
+      "mojo_ns": 0.9,
+      "speedup_x": 448.48,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "loss_spike_detector",
+      "py_ns": 440.1,
+      "mojo_ns": 0.9,
+      "speedup_x": 489.0,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "training_step_budget",
+      "py_ns": 158.483,
+      "mojo_ns": 0.9,
+      "speedup_x": 176.09,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

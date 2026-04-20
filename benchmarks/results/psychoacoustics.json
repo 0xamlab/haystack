@@ -1,0 +1,93 @@
+{
+  "lib": "psychoacoustics",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 8,
+  "overall_speedup_x": 58.19,
+  "total_py_ns": 1286.0,
+  "total_mojo_ns": 22.1,
+  "elapsed_s": 1.61,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "loudness_phon_to_sone",
+      "py_ns": 132.717,
+      "mojo_ns": 1.0,
+      "speedup_x": 132.72,
+      "py_result": 9e-06,
+      "py_error": null
+    },
+    {
+      "function": "loudness_sone_to_phon",
+      "py_ns": 109.375,
+      "mojo_ns": 8.1,
+      "speedup_x": 13.5,
+      "py_result": 30.780144,
+      "py_error": null
+    },
+    {
+      "function": "critical_bandwidth",
+      "py_ns": 184.358,
+      "mojo_ns": 1.0,
+      "speedup_x": 184.36,
+      "py_result": 24.75397,
+      "py_error": null
+    },
+    {
+      "function": "bark_scale",
+      "py_ns": 159.329,
+      "mojo_ns": 1.0,
+      "speedup_x": 159.33,
+      "py_result": -0.523162,
+      "py_error": null
+    },
+    {
+      "function": "masking_threshold",
+      "py_ns": 258.596,
+      "mojo_ns": 1.0,
+      "speedup_x": 258.6,
+      "py_result": -9.5,
+      "py_error": null
+    },
+    {
+      "function": "speech_intelligibility_index",
+      "py_ns": 225.083,
+      "mojo_ns": 1.0,
+      "speedup_x": 225.08,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "equal_loudness_correction",
+      "py_ns": null,
+      "mojo_ns": 1.0,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "module 'math' has no attribute 'math'"
+    },
+    {
+      "function": "frequency_just_noticeable",
+      "py_ns": 83.346,
+      "mojo_ns": 8.0,
+      "speedup_x": 10.42,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "temporal_masking_decay",
+      "py_ns": 133.196,
+      "mojo_ns": 1.0,
+      "speedup_x": 133.2,
+      "py_result": 0.487655,
+      "py_error": null
+    },
+    {
+      "function": "binaural_masking_level_diff",
+      "py_ns": 87.412,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

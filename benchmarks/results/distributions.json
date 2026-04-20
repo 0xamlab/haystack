@@ -1,0 +1,213 @@
+{
+  "lib": "distributions",
+  "status": "ok",
+  "n_functions": 25,
+  "n_compared": 16,
+  "overall_speedup_x": 7.3,
+  "total_py_ns": 18850.57,
+  "total_mojo_ns": 2583.5,
+  "elapsed_s": 3.33,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "sample_normal",
+      "py_ns": null,
+      "mojo_ns": 145.3,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "name 'randn_float64' is not defined"
+    },
+    {
+      "function": "sample_uniform",
+      "py_ns": 464.108,
+      "mojo_ns": 57.6,
+      "speedup_x": 8.06,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "sample_triangular",
+      "py_ns": 6487.321,
+      "mojo_ns": 53.6,
+      "speedup_x": 121.03,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "sample_lognormal",
+      "py_ns": null,
+      "mojo_ns": 221.6,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "name 'randn_float64' is not defined"
+    },
+    {
+      "function": "sample_exponential",
+      "py_ns": 374.821,
+      "mojo_ns": 93.0,
+      "speedup_x": 4.03,
+      "py_result": 0.674006,
+      "py_error": null
+    },
+    {
+      "function": "sample_weibull",
+      "py_ns": null,
+      "mojo_ns": 196.4,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "'float' object is not iterable"
+    },
+    {
+      "function": "sample_gamma_mt",
+      "py_ns": null,
+      "mojo_ns": 224.9,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "'float' object is not iterable"
+    },
+    {
+      "function": "sample_beta",
+      "py_ns": null,
+      "mojo_ns": 5766.6,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "'float' object is not iterable"
+    },
+    {
+      "function": "sample_pert",
+      "py_ns": 144.983,
+      "mojo_ns": 1.1,
+      "speedup_x": 131.8,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "sample_bernoulli",
+      "py_ns": 180.108,
+      "mojo_ns": 77.9,
+      "speedup_x": 2.31,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "sample_poisson",
+      "py_ns": 1098.825,
+      "mojo_ns": 1155.7,
+      "speedup_x": 0.95,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "sample_student_t",
+      "py_ns": null,
+      "mojo_ns": 759.0,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "name 'randn_float64' is not defined"
+    },
+    {
+      "function": "sample_cauchy",
+      "py_ns": 2006.342,
+      "mojo_ns": 82.1,
+      "speedup_x": 24.44,
+      "py_result": -192.690034,
+      "py_error": null
+    },
+    {
+      "function": "sample_laplace",
+      "py_ns": 1497.3,
+      "mojo_ns": 79.0,
+      "speedup_x": 18.95,
+      "py_result": -0.146428,
+      "py_error": null
+    },
+    {
+      "function": "sample_pareto",
+      "py_ns": 412.0,
+      "mojo_ns": 553.8,
+      "speedup_x": 0.74,
+      "py_result": 0.655399,
+      "py_error": null
+    },
+    {
+      "function": "sample_gumbel",
+      "py_ns": 428.313,
+      "mojo_ns": 139.9,
+      "speedup_x": 3.06,
+      "py_result": 0.115905,
+      "py_error": null
+    },
+    {
+      "function": "sample_rayleigh",
+      "py_ns": 610.167,
+      "mojo_ns": 37.4,
+      "speedup_x": 16.31,
+      "py_result": 0.640768,
+      "py_error": null
+    },
+    {
+      "function": "sample_arcsine",
+      "py_ns": 619.854,
+      "mojo_ns": 27.3,
+      "speedup_x": 22.71,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "sample_logistic",
+      "py_ns": 683.429,
+      "mojo_ns": 38.7,
+      "speedup_x": 17.66,
+      "py_result": 0.40329,
+      "py_error": null
+    },
+    {
+      "function": "sample_halfnormal",
+      "py_ns": null,
+      "mojo_ns": 99.1,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "name 'randn_float64' is not defined"
+    },
+    {
+      "function": "acos_approx",
+      "py_ns": 490.654,
+      "mojo_ns": 1.1,
+      "speedup_x": 446.05,
+      "py_result": 1.047619,
+      "py_error": null
+    },
+    {
+      "function": "sample_vonmises",
+      "py_ns": 3070.312,
+      "mojo_ns": 162.6,
+      "speedup_x": 18.88,
+      "py_result": -0.220599,
+      "py_error": null
+    },
+    {
+      "function": "sample_neg_binomial",
+      "py_ns": null,
+      "mojo_ns": 363.2,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "'float' object is not iterable"
+    },
+    {
+      "function": "sample_hypergeometric",
+      "py_ns": 282.033,
+      "mojo_ns": 22.7,
+      "speedup_x": 12.42,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "sample_one",
+      "py_ns": null,
+      "mojo_ns": 700.1,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "'float' object is not iterable"
+    }
+  ]
+}

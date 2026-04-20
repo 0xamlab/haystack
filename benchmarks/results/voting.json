@@ -1,0 +1,101 @@
+{
+  "lib": "voting",
+  "status": "ok",
+  "n_functions": 11,
+  "n_compared": 7,
+  "overall_speedup_x": 10.9,
+  "total_py_ns": 8033.53,
+  "total_mojo_ns": 737.0,
+  "elapsed_s": 2.49,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "plurality_winner",
+      "py_ns": 1049.812,
+      "mojo_ns": 729.5,
+      "speedup_x": 1.44,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "borda_score",
+      "py_ns": null,
+      "mojo_ns": 1.0,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list index out of range"
+    },
+    {
+      "function": "condorcet_pairwise",
+      "py_ns": 1027.742,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "approval_score",
+      "py_ns": 3444.733,
+      "mojo_ns": 2.3,
+      "speedup_x": 1497.71,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "majority_threshold",
+      "py_ns": 810.108,
+      "mojo_ns": 1.1,
+      "speedup_x": 736.46,
+      "py_result": 3.0,
+      "py_error": null
+    },
+    {
+      "function": "quota_droop",
+      "py_ns": 799.437,
+      "mojo_ns": 1.0,
+      "speedup_x": 799.44,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "quota_hare",
+      "py_ns": 361.992,
+      "mojo_ns": 1.1,
+      "speedup_x": 329.08,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "dhondt_divisor",
+      "py_ns": 1221.733,
+      "mojo_ns": 1.0,
+      "speedup_x": 1221.73,
+      "py_result": 6.0,
+      "py_error": null
+    },
+    {
+      "function": "sainte_lague_divisor",
+      "py_ns": 345.708,
+      "mojo_ns": 1.0,
+      "speedup_x": 345.71,
+      "py_result": 11.0,
+      "py_error": null
+    },
+    {
+      "function": "power_index_banzhaf",
+      "py_ns": 420.775,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "spoiler_effect",
+      "py_ns": 345.554,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

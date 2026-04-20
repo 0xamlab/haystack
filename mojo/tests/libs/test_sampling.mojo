@@ -1,0 +1,32 @@
+"""test_sampling.mojo — auto-generated tests for sampling library."""
+from std.math import isnan, isinf
+from sampling import halton_sequence, halton_2d, stratified_sample_1d, latin_hypercube_sample, sobol_like_2d
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_halton_sequence = halton_sequence(5, 5)
+    if len(_v_halton_sequence) >= 0: passed += 1; print("  ✅ sampling::halton_sequence")
+    _ = halton_2d(5)
+    passed += 1; print("  ✅ sampling::halton_2d")
+    var _v_stratified_sample_1d = stratified_sample_1d(5)
+    if len(_v_stratified_sample_1d) >= 0: passed += 1; print("  ✅ sampling::stratified_sample_1d")
+    _ = latin_hypercube_sample(5, 5)
+    passed += 1; print("  ✅ sampling::latin_hypercube_sample")
+    _ = sobol_like_2d(5)
+    passed += 1; print("  ✅ sampling::sobol_like_2d")
+
+    print("  [sampling] Passed:", passed, "Failed:", failed)

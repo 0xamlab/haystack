@@ -1,0 +1,101 @@
+{
+  "lib": "network_analysis",
+  "status": "ok",
+  "n_functions": 11,
+  "n_compared": 8,
+  "overall_speedup_x": 0.73,
+  "total_py_ns": 19479.79,
+  "total_mojo_ns": 26680.5,
+  "elapsed_s": 2.75,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "degree",
+      "py_ns": null,
+      "mojo_ns": 367.3,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list index out of range"
+    },
+    {
+      "function": "degree_distribution",
+      "py_ns": 408.317,
+      "mojo_ns": 715.3,
+      "speedup_x": 0.57,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "density",
+      "py_ns": 267.025,
+      "mojo_ns": 7716.6,
+      "speedup_x": 0.03,
+      "py_result": 1.5,
+      "py_error": null
+    },
+    {
+      "function": "bfs_distances",
+      "py_ns": null,
+      "mojo_ns": 8723.7,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list assignment index out of range"
+    },
+    {
+      "function": "pagerank",
+      "py_ns": 1828.225,
+      "mojo_ns": 815.7,
+      "speedup_x": 2.24,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "degree_centrality",
+      "py_ns": 499.883,
+      "mojo_ns": 4241.2,
+      "speedup_x": 0.12,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "closeness_centrality",
+      "py_ns": 6967.617,
+      "mojo_ns": 8469.0,
+      "speedup_x": 0.82,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "clustering_coefficient",
+      "py_ns": null,
+      "mojo_ns": 462.8,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list index out of range"
+    },
+    {
+      "function": "avg_clustering_coefficient",
+      "py_ns": 5075.146,
+      "mojo_ns": 618.9,
+      "speedup_x": 8.2,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "is_connected",
+      "py_ns": 1232.796,
+      "mojo_ns": 1128.0,
+      "speedup_x": 1.09,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "connected_components",
+      "py_ns": 3200.779,
+      "mojo_ns": 2975.8,
+      "speedup_x": 1.08,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

@@ -1,0 +1,174 @@
+version: "3.9"
+
+# Algenta Decision Engine — Self-Hosted Production Stack
+# One-line install: curl -fsSL https://algenta.ai/install | bash
+#
+# Services:
+#   api       — FastAPI backend (port 8000)
+#   portal    — Next.js frontend (port 3000)
+#   worker    — Async job worker
+#   postgres  — PostgreSQL 16
+#   redis     — Redis 7
+#   minio     — S3-compatible object storage
+
+name: algenta
+
+services:
+  # ── API Server ────────────────────────────────────────────────────────────
+  api:
+    image: ghcr.io/algenta/decision-engine-api:latest
+    restart: unless-stopped
+    ports:
+      - "${API_PORT:-8000}:8000"
+    environment:
+      API_ENV: ${API_ENV:-production}
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      API_KEY_PREFIX: ${API_KEY_PREFIX:-de_live_}
+      API_KEY_TEST_PREFIX: ${API_KEY_TEST_PREFIX:-de_test_}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      MOJO_BINARY_PATH: /app/mojo_build/simulate
+      MOJO_TIMEOUT_SECONDS: ${MOJO_TIMEOUT_SECONDS:-30}
+      MOJO_MAX_CONCURRENT: ${MOJO_MAX_CONCURRENT:-4}
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME:-algenta-results}
+      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-http://minio:9000}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-algenta_minio}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-algenta_minio_secret}
+      WEBHOOK_SIGNING_SECRET: ${WEBHOOK_SIGNING_SECRET}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      EMAIL_FROM: ${EMAIL_FROM:-noreply@algenta.local}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    volumes:
+      - ./data/logs:/app/logs
+
+  # ── Portal UI ─────────────────────────────────────────────────────────────
+  portal:
+    image: ghcr.io/algenta/decision-engine-portal:latest
+    restart: unless-stopped
+    ports:
+      - "${PORTAL_PORT:-3000}:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:${API_PORT:-8000}
+      NODE_ENV: production
+    depends_on:
+      - api
+
+  # ── Async Worker ──────────────────────────────────────────────────────────
+  worker:
+    image: ghcr.io/algenta/decision-engine-api:latest
+    restart: unless-stopped
+    command: python -m apps.worker.main
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      MOJO_BINARY_PATH: /app/mojo_build/simulate
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME:-algenta-results}
+      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-http://minio:9000}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-algenta_minio}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-algenta_minio_secret}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ── PostgreSQL ────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-algenta}
+      POSTGRES_USER: ${POSTGRES_USER:-algenta}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-algenta_secret}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-algenta} -d ${POSTGRES_DB:-algenta}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    ports:
+      - "127.0.0.1:5432:5432"  # Localhost only — do not expose publicly
+
+  # ── Redis ─────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    ports:
+      - "127.0.0.1:6379:6379"  # Localhost only
+
+  # ── MinIO (S3-compatible object storage) ──────────────────────────────────
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:-algenta_minio}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:-algenta_minio_secret}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "127.0.0.1:9000:9000"   # S3 API (localhost only)
+      - "127.0.0.1:9001:9001"   # MinIO Console (localhost only)
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── MinIO setup (create bucket on first run) ──────────────────────────────
+  minio-setup:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 ${S3_ACCESS_KEY_ID:-algenta_minio} ${S3_SECRET_ACCESS_KEY:-algenta_minio_secret} &&
+      mc mb --ignore-existing local/${S3_BUCKET_NAME:-algenta-results} &&
+      mc anonymous set download local/${S3_BUCKET_NAME:-algenta-results} &&
+      echo 'MinIO bucket ready'
+      "
+    restart: on-failure
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  minio_data:
+    driver: local
+
+networks:
+  default:
+    name: algenta_network

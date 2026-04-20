@@ -1,0 +1,93 @@
+{
+  "lib": "paged_kv_cache",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 7,
+  "overall_speedup_x": 410.58,
+  "total_py_ns": 3202.49,
+  "total_mojo_ns": 7.8,
+  "elapsed_s": 1.78,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "page_table_lookup",
+      "py_ns": 83.538,
+      "mojo_ns": 1.1,
+      "speedup_x": 75.94,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "cache_compaction_gain",
+      "py_ns": 127.654,
+      "mojo_ns": 1.2,
+      "speedup_x": 106.38,
+      "py_result": 0.015625,
+      "py_error": null
+    },
+    {
+      "function": "prefix_sharing_savings",
+      "py_ns": 180.496,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "speculative_branch_memory",
+      "py_ns": 117.183,
+      "mojo_ns": 1.1,
+      "speedup_x": 106.53,
+      "py_result": 0.03125,
+      "py_error": null
+    },
+    {
+      "function": "cache_eviction_lru_score",
+      "py_ns": 2012.942,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "cache_eviction_beladys_score",
+      "py_ns": 88.496,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "block_copy_cost",
+      "py_ns": 172.858,
+      "mojo_ns": 1.1,
+      "speedup_x": 157.14,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "cache_hit_latency_saving",
+      "py_ns": 2485.079,
+      "mojo_ns": 1.1,
+      "speedup_x": 2259.16,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "dynamic_ntk_rope_scale",
+      "py_ns": 116.613,
+      "mojo_ns": 1.1,
+      "speedup_x": 106.01,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "context_extension_factor",
+      "py_ns": 99.567,
+      "mojo_ns": 1.1,
+      "speedup_x": 90.52,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

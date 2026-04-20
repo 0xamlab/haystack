@@ -1,0 +1,80 @@
+from __future__ import annotations
+
+import importlib
+import json
+import sys
+from pathlib import Path
+from unittest.mock import patch
+
+
+def _reload(module_name: str):
+    if module_name in sys.modules:
+        return importlib.reload(sys.modules[module_name])
+    return importlib.import_module(module_name)
+
+
+def test_issue_and_store_requires_hosted_registration(monkeypatch) -> None:
+    monkeypatch.delenv("ALGENTA_RUNTIME_DEV_MODE", raising=False)
+    monkeypatch.setenv("ALGENTA_RUNTIME_DIR", str(Path.cwd() / ".tmp_runtime_contract_issue"))
+    license_mod = _reload("apps.runtime.license")
+
+    with patch.object(license_mod, "_exchange_api_key_for_license", return_value=None):
+        lic = license_mod.issue_and_store("de_live_example")
+
+    assert lic.valid is False
+    assert "hosted license" in lic.message.lower()
+
+
+def test_load_license_uses_dev_stub_only_when_explicit(monkeypatch) -> None:
+    runtime_dir = Path.cwd() / ".tmp_runtime_contract_load"
+    monkeypatch.setenv("ALGENTA_RUNTIME_DIR", str(runtime_dir))
+    monkeypatch.setenv("ALGENTA_RUNTIME_DEV_MODE", "1")
+    license_mod = _reload("apps.runtime.license")
+
+    lic = license_mod.load_license("")
+
+    assert lic.valid is True
+    assert lic.source == "dev-stub"
+
+
+def test_executor_appends_runtime_ledger(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("ALGENTA_RUNTIME_DIR", str(tmp_path))
+    _reload("apps.runtime.ledger")
+    credits = _reload("apps.runtime.credits")
+    executor_mod = _reload("apps.runtime.executor")
+
+    store = credits.CreditStore(tmp_path / "credits.json")
+    store.initialize_sync(credits_granted=5, billing_period="2026-04")
+    old_store = credits._store
+    credits._store = store
+    try:
+        executor = executor_mod.Executor()
+        with patch.object(executor, "_mojo_available", return_value=False):
+            with patch("apps.runtime.executor._python_fallback", return_value={"result": {"value": 42}}):
+                result = _run_async(executor.execute_module("monte_carlo", "run", {"trials": 10}, request_id="req-ledger"))
+    finally:
+        credits._store = old_store
+
+    assert result["success"] is True
+    ledger_path = tmp_path / "history.jsonl"
+    assert ledger_path.exists()
+    events = [json.loads(line) for line in ledger_path.read_text().splitlines()]
+    statuses = [event["status"] for event in events]
+    assert statuses == ["started", "completed"]
+    assert all(event["request_id"] == "req-ledger" for event in events)
+
+
+def _run_async(coro):
+    import asyncio
+
+    previous = None
+    loop = asyncio.new_event_loop()
+    try:
+        asyncio.set_event_loop(loop)
+        return loop.run_until_complete(coro)
+    finally:
+        loop.close()
+        if previous is None:
+            asyncio.set_event_loop(asyncio.new_event_loop())
+        else:
+            asyncio.set_event_loop(previous)

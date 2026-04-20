@@ -1,0 +1,109 @@
+{
+  "lib": "behavioral_economics",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 10,
+  "overall_speedup_x": 169.47,
+  "total_py_ns": 1881.16,
+  "total_mojo_ns": 11.1,
+  "elapsed_s": 1.39,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "prospect_theory_value",
+      "py_ns": 146.325,
+      "mojo_ns": 1.1,
+      "speedup_x": 133.02,
+      "py_result": 0.707107,
+      "py_error": null
+    },
+    {
+      "function": "probability_weighting",
+      "py_ns": 369.908,
+      "mojo_ns": 1.1,
+      "speedup_x": 336.28,
+      "py_result": 0.353553,
+      "py_error": null
+    },
+    {
+      "function": "hyperbolic_discount",
+      "py_ns": 167.9,
+      "mojo_ns": 1.1,
+      "speedup_x": 152.64,
+      "py_result": 0.4,
+      "py_error": null
+    },
+    {
+      "function": "quasi_hyperbolic_discount",
+      "py_ns": 430.083,
+      "mojo_ns": 1.1,
+      "speedup_x": 390.98,
+      "py_result": 0.176777,
+      "py_error": null
+    },
+    {
+      "function": "anchoring_adjusted_estimate",
+      "py_ns": 89.104,
+      "mojo_ns": 1.1,
+      "speedup_x": 81.0,
+      "py_result": 0.75,
+      "py_error": null
+    },
+    {
+      "function": "endowment_effect_wta_wtp_ratio",
+      "py_ns": 115.192,
+      "mojo_ns": 1.1,
+      "speedup_x": 104.72,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "loss_aversion_coefficient",
+      "py_ns": 133.721,
+      "mojo_ns": 1.1,
+      "speedup_x": 121.56,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "mental_accounting_total",
+      "py_ns": 194.967,
+      "mojo_ns": 1.1,
+      "speedup_x": 177.24,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "status_quo_bias",
+      "py_ns": 144.229,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "sunk_cost_ratio",
+      "py_ns": 115.45,
+      "mojo_ns": 1.2,
+      "speedup_x": 96.21,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "fairness_ultimatum_threshold",
+      "py_ns": 118.508,
+      "mojo_ns": 1.1,
+      "speedup_x": 107.73,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "nudge_effectiveness",
+      "py_ns": 83.279,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

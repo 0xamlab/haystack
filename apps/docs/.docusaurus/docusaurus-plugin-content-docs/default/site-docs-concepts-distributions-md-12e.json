@@ -1,0 +1,27 @@
+{
+  "id": "concepts/distributions",
+  "title": "Probability Distributions",
+  "description": "In Expert Mode, you choose the distribution that best represents each variable's uncertainty. Choosing the right distribution produces more realistic simulations.",
+  "source": "@site/docs/concepts/distributions.md",
+  "sourceDirName": "concepts",
+  "slug": "/concepts/distributions",
+  "permalink": "/concepts/distributions",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/decisionengine/decision-engine/tree/main/apps/docs/docs/concepts/distributions.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 2,
+  "frontMatter": {
+    "sidebar_position": 2
+  },
+  "sidebar": "docsSidebar",
+  "previous": {
+    "title": "Monte Carlo Simulation",
+    "permalink": "/concepts/monte-carlo"
+  },
+  "next": {
+    "title": "Decision Envelope",
+    "permalink": "/concepts/decision-envelope"
+  }
+}

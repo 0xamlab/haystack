@@ -1,0 +1,77 @@
+{
+  "lib": "game_theory",
+  "status": "ok",
+  "n_functions": 8,
+  "n_compared": 7,
+  "overall_speedup_x": 0.99,
+  "total_py_ns": 7166.8,
+  "total_mojo_ns": 7258.5,
+  "elapsed_s": 1.46,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "nash_2x2",
+      "py_ns": 415.058,
+      "mojo_ns": 840.7,
+      "speedup_x": 0.49,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "minimax_value",
+      "py_ns": 848.796,
+      "mojo_ns": 1510.8,
+      "speedup_x": 0.56,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "dominated_strategy_check",
+      "py_ns": 810.392,
+      "mojo_ns": 1619.5,
+      "speedup_x": 0.5,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "expected_payoff",
+      "py_ns": 918.996,
+      "mojo_ns": 551.8,
+      "speedup_x": 1.67,
+      "py_result": 1.128,
+      "py_error": null
+    },
+    {
+      "function": "prisoners_dilemma_payoff",
+      "py_ns": 170.458,
+      "mojo_ns": 121.5,
+      "speedup_x": 1.4,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "iterated_pd",
+      "py_ns": 1925.225,
+      "mojo_ns": 1106.4,
+      "speedup_x": 1.74,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "shapley_value_3player",
+      "py_ns": null,
+      "mojo_ns": 587.7,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list index out of range"
+    },
+    {
+      "function": "pareto_optimal_outcomes",
+      "py_ns": 2077.879,
+      "mojo_ns": 1507.8,
+      "speedup_x": 1.38,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

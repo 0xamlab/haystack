@@ -1,0 +1,109 @@
+{
+  "lib": "marine",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 10,
+  "overall_speedup_x": 659.09,
+  "total_py_ns": 6854.58,
+  "total_mojo_ns": 10.4,
+  "elapsed_s": 1.86,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "seawater_density",
+      "py_ns": 165.075,
+      "mojo_ns": 1.1,
+      "speedup_x": 150.07,
+      "py_result": 1002.275,
+      "py_error": null
+    },
+    {
+      "function": "wave_speed_deep",
+      "py_ns": 251.362,
+      "mojo_ns": 1.0,
+      "speedup_x": 251.36,
+      "py_result": 0.199471,
+      "py_error": null
+    },
+    {
+      "function": "wave_speed_shallow",
+      "py_ns": 2625.15,
+      "mojo_ns": 1.1,
+      "speedup_x": 2386.5,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "wave_period",
+      "py_ns": 96.796,
+      "mojo_ns": 1.0,
+      "speedup_x": 96.8,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "significant_wave_height",
+      "py_ns": 114.667,
+      "mojo_ns": 1.1,
+      "speedup_x": 104.24,
+      "py_result": 2.828427,
+      "py_error": null
+    },
+    {
+      "function": "tidal_range",
+      "py_ns": 119.333,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "mixed_layer_depth_estimate",
+      "py_ns": 155.892,
+      "mojo_ns": 1.0,
+      "speedup_x": 155.89,
+      "py_result": 10.125,
+      "py_error": null
+    },
+    {
+      "function": "ekman_depth",
+      "py_ns": 2843.221,
+      "mojo_ns": 1.0,
+      "speedup_x": 2843.22,
+      "py_result": 4.442883,
+      "py_error": null
+    },
+    {
+      "function": "coriolis_parameter",
+      "py_ns": 271.708,
+      "mojo_ns": 1.1,
+      "speedup_x": 247.01,
+      "py_result": 1e-06,
+      "py_error": null
+    },
+    {
+      "function": "buoyancy_frequency",
+      "py_ns": 207.504,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "salinity_from_conductivity",
+      "py_ns": 162.517,
+      "mojo_ns": 1.0,
+      "speedup_x": 162.52,
+      "py_result": 0.3725,
+      "py_error": null
+    },
+    {
+      "function": "ocean_pressure_at_depth",
+      "py_ns": 168.188,
+      "mojo_ns": 1.0,
+      "speedup_x": 168.19,
+      "py_result": 0.125,
+      "py_error": null
+    }
+  ]
+}

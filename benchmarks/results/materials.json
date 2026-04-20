@@ -1,0 +1,109 @@
+{
+  "lib": "materials",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 11,
+  "overall_speedup_x": 360.38,
+  "total_py_ns": 4036.28,
+  "total_mojo_ns": 11.2,
+  "elapsed_s": 1.53,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "youngs_modulus",
+      "py_ns": 117.575,
+      "mojo_ns": 1.0,
+      "speedup_x": 117.58,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "shear_modulus",
+      "py_ns": 138.604,
+      "mojo_ns": 1.0,
+      "speedup_x": 138.6,
+      "py_result": 0.906094,
+      "py_error": null
+    },
+    {
+      "function": "bulk_modulus",
+      "py_ns": 172.913,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "stress_from_force",
+      "py_ns": 185.846,
+      "mojo_ns": 1.0,
+      "speedup_x": 185.85,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "strain_from_deformation",
+      "py_ns": 173.375,
+      "mojo_ns": 1.0,
+      "speedup_x": 173.38,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "thermal_expansion",
+      "py_ns": 1594.771,
+      "mojo_ns": 1.0,
+      "speedup_x": 1594.77,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "safety_factor",
+      "py_ns": 120.537,
+      "mojo_ns": 1.0,
+      "speedup_x": 120.54,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "stress_concentration",
+      "py_ns": 86.417,
+      "mojo_ns": 1.0,
+      "speedup_x": 86.42,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "fatigue_life",
+      "py_ns": 1078.029,
+      "mojo_ns": 1.0,
+      "speedup_x": 1078.03,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "beam_deflection_cantilever",
+      "py_ns": 235.167,
+      "mojo_ns": 1.0,
+      "speedup_x": 235.17,
+      "py_result": 0.015328,
+      "py_error": null
+    },
+    {
+      "function": "moment_of_inertia_rect",
+      "py_ns": 170.963,
+      "mojo_ns": 1.1,
+      "speedup_x": 155.42,
+      "py_result": 0.005208,
+      "py_error": null
+    },
+    {
+      "function": "poisson_ratio_from_moduli",
+      "py_ns": 134.996,
+      "mojo_ns": 1.1,
+      "speedup_x": 122.72,
+      "py_result": 1.718282,
+      "py_error": null
+    }
+  ]
+}

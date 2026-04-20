@@ -1,0 +1,109 @@
+{
+  "lib": "hydraulics",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 11,
+  "overall_speedup_x": 120.54,
+  "total_py_ns": 1253.59,
+  "total_mojo_ns": 10.4,
+  "elapsed_s": 2.08,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "pascals_law_force",
+      "py_ns": 102.95,
+      "mojo_ns": 1.1,
+      "speedup_x": 93.59,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "pascals_law_pressure",
+      "py_ns": 93.696,
+      "mojo_ns": 1.1,
+      "speedup_x": 85.18,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "hydraulic_advantage",
+      "py_ns": 181.908,
+      "mojo_ns": 1.0,
+      "speedup_x": 181.91,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "flow_rate_cylinder",
+      "py_ns": 75.942,
+      "mojo_ns": 1.0,
+      "speedup_x": 75.94,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "cylinder_velocity",
+      "py_ns": 80.879,
+      "mojo_ns": 1.1,
+      "speedup_x": 73.53,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "pump_displacement",
+      "py_ns": 80.083,
+      "mojo_ns": 1.0,
+      "speedup_x": 80.08,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "hydraulic_power",
+      "py_ns": 76.083,
+      "mojo_ns": 1.0,
+      "speedup_x": 76.08,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "system_pressure_loss",
+      "py_ns": 80.604,
+      "mojo_ns": 1.0,
+      "speedup_x": 80.6,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "accumulator_volume",
+      "py_ns": 90.792,
+      "mojo_ns": 0.1,
+      "speedup_x": 907.92,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "relief_valve_flow",
+      "py_ns": 76.887,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "oil_compressibility",
+      "py_ns": 107.083,
+      "mojo_ns": 1.0,
+      "speedup_x": 107.08,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "cylinder_bore_from_force",
+      "py_ns": 283.567,
+      "mojo_ns": 1.0,
+      "speedup_x": 283.57,
+      "py_result": 1.128379,
+      "py_error": null
+    }
+  ]
+}

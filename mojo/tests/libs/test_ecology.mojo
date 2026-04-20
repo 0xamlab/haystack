@@ -1,0 +1,58 @@
+"""test_ecology.mojo — auto-generated tests for ecology library."""
+from std.math import isnan, isinf
+from ecology import logistic_growth, exponential_growth, carrying_capacity_estimate, lotka_volterra_prey, lotka_volterra_predator, species_richness_margalef, shannon_diversity, simpson_index, simpson_diversity, jaccard_similarity, sorensen_similarity, species_area_relationship
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_logistic_growth = logistic_growth(0.5, 0.5, 0.5)
+    if is_finite(_v_logistic_growth): passed += 1; print("  ✅ ecology::logistic_growth =", _v_logistic_growth)
+    else: failed += 1; print("  ❌ ecology::logistic_growth → non-finite:", _v_logistic_growth)
+    var _v_exponential_growth = exponential_growth(0.5, 0.5, 0.5)
+    if is_finite(_v_exponential_growth): passed += 1; print("  ✅ ecology::exponential_growth =", _v_exponential_growth)
+    else: failed += 1; print("  ❌ ecology::exponential_growth → non-finite:", _v_exponential_growth)
+    var _v_carrying_capacity_estimate = carrying_capacity_estimate(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_carrying_capacity_estimate): passed += 1; print("  ✅ ecology::carrying_capacity_estimate =", _v_carrying_capacity_estimate)
+    else: failed += 1; print("  ❌ ecology::carrying_capacity_estimate → non-finite:", _v_carrying_capacity_estimate)
+    var _v_lotka_volterra_prey = lotka_volterra_prey(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_lotka_volterra_prey): passed += 1; print("  ✅ ecology::lotka_volterra_prey =", _v_lotka_volterra_prey)
+    else: failed += 1; print("  ❌ ecology::lotka_volterra_prey → non-finite:", _v_lotka_volterra_prey)
+    var _v_lotka_volterra_predator = lotka_volterra_predator(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_lotka_volterra_predator): passed += 1; print("  ✅ ecology::lotka_volterra_predator =", _v_lotka_volterra_predator)
+    else: failed += 1; print("  ❌ ecology::lotka_volterra_predator → non-finite:", _v_lotka_volterra_predator)
+    var _v_species_richness_margalef = species_richness_margalef(0.5, 0.5)
+    if is_finite(_v_species_richness_margalef): passed += 1; print("  ✅ ecology::species_richness_margalef =", _v_species_richness_margalef)
+    else: failed += 1; print("  ❌ ecology::species_richness_margalef → non-finite:", _v_species_richness_margalef)
+    var _v_shannon_diversity = shannon_diversity(0.5)
+    if is_finite(_v_shannon_diversity): passed += 1; print("  ✅ ecology::shannon_diversity =", _v_shannon_diversity)
+    else: failed += 1; print("  ❌ ecology::shannon_diversity → non-finite:", _v_shannon_diversity)
+    var _v_simpson_index = simpson_index(0.5)
+    if is_finite(_v_simpson_index): passed += 1; print("  ✅ ecology::simpson_index =", _v_simpson_index)
+    else: failed += 1; print("  ❌ ecology::simpson_index → non-finite:", _v_simpson_index)
+    var _v_simpson_diversity = simpson_diversity(0.5)
+    if is_finite(_v_simpson_diversity): passed += 1; print("  ✅ ecology::simpson_diversity =", _v_simpson_diversity)
+    else: failed += 1; print("  ❌ ecology::simpson_diversity → non-finite:", _v_simpson_diversity)
+    var _v_jaccard_similarity = jaccard_similarity(0.5, 0.5, 0.5)
+    if is_finite(_v_jaccard_similarity): passed += 1; print("  ✅ ecology::jaccard_similarity =", _v_jaccard_similarity)
+    else: failed += 1; print("  ❌ ecology::jaccard_similarity → non-finite:", _v_jaccard_similarity)
+    var _v_sorensen_similarity = sorensen_similarity(0.5, 0.5, 0.5)
+    if is_finite(_v_sorensen_similarity): passed += 1; print("  ✅ ecology::sorensen_similarity =", _v_sorensen_similarity)
+    else: failed += 1; print("  ❌ ecology::sorensen_similarity → non-finite:", _v_sorensen_similarity)
+    var _v_species_area_relationship = species_area_relationship(0.5, 0.5, 0.5)
+    if is_finite(_v_species_area_relationship): passed += 1; print("  ✅ ecology::species_area_relationship =", _v_species_area_relationship)
+    else: failed += 1; print("  ❌ ecology::species_area_relationship → non-finite:", _v_species_area_relationship)
+
+    print("  [ecology] Passed:", passed, "Failed:", failed)

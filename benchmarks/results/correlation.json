@@ -1,0 +1,45 @@
+{
+  "lib": "correlation",
+  "status": "ok",
+  "n_functions": 4,
+  "n_compared": 3,
+  "overall_speedup_x": 19.09,
+  "total_py_ns": 18095.05,
+  "total_mojo_ns": 947.7,
+  "elapsed_s": 2.07,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "cholesky_lower",
+      "py_ns": 15879.271,
+      "mojo_ns": 945.6,
+      "speedup_x": 16.79,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "sample_correlated_normal",
+      "py_ns": null,
+      "mojo_ns": 8845.2,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "name 'randn_float64' is not defined"
+    },
+    {
+      "function": "probit",
+      "py_ns": 529.708,
+      "mojo_ns": 1.0,
+      "speedup_x": 529.71,
+      "py_result": -0.0,
+      "py_error": null
+    },
+    {
+      "function": "icdf",
+      "py_ns": 1686.075,
+      "mojo_ns": 1.1,
+      "speedup_x": 1532.8,
+      "py_result": 0.5,
+      "py_error": null
+    }
+  ]
+}

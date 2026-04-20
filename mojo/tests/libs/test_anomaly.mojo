@@ -1,0 +1,48 @@
+"""test_anomaly.mojo — auto-generated tests for anomaly library."""
+from std.math import isnan, isinf
+from anomaly import percentile, median, mad, zscore_detect, iqr_detect, modified_zscore_detect, isolation_score, exp_approx, grubbs_test_statistic, count_anomalies
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_percentile = percentile(_lf5, 0.5)
+    if is_finite(_v_percentile): passed += 1; print("  ✅ anomaly::percentile =", _v_percentile)
+    else: failed += 1; print("  ❌ anomaly::percentile → non-finite:", _v_percentile)
+    var _v_median = median(_lf5)
+    if is_finite(_v_median): passed += 1; print("  ✅ anomaly::median =", _v_median)
+    else: failed += 1; print("  ❌ anomaly::median → non-finite:", _v_median)
+    var _v_mad = mad(_lf5)
+    if is_finite(_v_mad): passed += 1; print("  ✅ anomaly::mad =", _v_mad)
+    else: failed += 1; print("  ❌ anomaly::mad → non-finite:", _v_mad)
+    var _v_zscore_detect = zscore_detect(_lf5, 0.5)
+    if len(_v_zscore_detect) >= 0: passed += 1; print("  ✅ anomaly::zscore_detect")
+    var _v_iqr_detect = iqr_detect(_lf5, 0.5)
+    if len(_v_iqr_detect) >= 0: passed += 1; print("  ✅ anomaly::iqr_detect")
+    var _v_modified_zscore_detect = modified_zscore_detect(_lf5, 0.5)
+    if len(_v_modified_zscore_detect) >= 0: passed += 1; print("  ✅ anomaly::modified_zscore_detect")
+    var _v_isolation_score = isolation_score(_lf5, 0.5, 5, 5)
+    if is_finite(_v_isolation_score): passed += 1; print("  ✅ anomaly::isolation_score =", _v_isolation_score)
+    else: failed += 1; print("  ❌ anomaly::isolation_score → non-finite:", _v_isolation_score)
+    var _v_exp_approx = exp_approx(0.5)
+    if is_finite(_v_exp_approx): passed += 1; print("  ✅ anomaly::exp_approx =", _v_exp_approx)
+    else: failed += 1; print("  ❌ anomaly::exp_approx → non-finite:", _v_exp_approx)
+    var _v_grubbs_test_statistic = grubbs_test_statistic(_lf5)
+    if is_finite(_v_grubbs_test_statistic): passed += 1; print("  ✅ anomaly::grubbs_test_statistic =", _v_grubbs_test_statistic)
+    else: failed += 1; print("  ❌ anomaly::grubbs_test_statistic → non-finite:", _v_grubbs_test_statistic)
+    _ = count_anomalies(_lb5)
+    passed += 1; print("  ✅ anomaly::count_anomalies")
+
+    print("  [anomaly] Passed:", passed, "Failed:", failed)

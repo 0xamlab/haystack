@@ -1,0 +1,138 @@
+{
+  "docusaurus-plugin-content-docs": {
+    "default": {
+      "path": "/",
+      "versions": [
+        {
+          "name": "current",
+          "label": "Next",
+          "isLast": true,
+          "path": "/",
+          "mainDocId": "index",
+          "docs": [
+            {
+              "id": "api-reference/authentication",
+              "path": "/api-reference/authentication",
+              "sidebar": "docsSidebar"
+            },
+            {
+              "id": "api-reference/errors",
+              "path": "/api-reference/errors",
+              "sidebar": "docsSidebar"
+            },
+            {
+              "id": "api-reference/index",
+              "path": "/api-reference/",
+              "sidebar": "docsSidebar"
+            },
+            {
+              "id": "api-reference/simulate",
+              "path": "/api-reference/simulate",
+              "sidebar": "docsSidebar"
+            },
+            {
+              "id": "changelog",
+              "path": "/changelog",
+              "sidebar": "docsSidebar"
+            },
+            {
+              "id": "concepts/auto-vs-expert",
+              "path": "/concepts/auto-vs-expert",
+              "sidebar": "docsSidebar"
+            },
+            {
+              "id": "concepts/decision-envelope",
+              "path": "/concepts/decision-envelope",
+              "sidebar": "docsSidebar"
+            },
+            {
+              "id": "concepts/distributions",
+              "path": "/concepts/distributions",
+              "sidebar": "docsSidebar"
+            },
+            {
+              "id": "concepts/monte-carlo",
+              "path": "/concepts/monte-carlo",
+              "sidebar": "docsSidebar"
+            },
+            {
+              "id": "index",
+              "path": "/",
+              "sidebar": "docsSidebar"
+            },
+            {
+              "id": "integrations/chatgpt-actions",
+              "path": "/integrations/chatgpt-actions",
+              "sidebar": "docsSidebar"
+            },
+            {
+              "id": "integrations/langgraph",
+              "path": "/integrations/langgraph",
+              "sidebar": "docsSidebar"
+            },
+            {
+              "id": "integrations/make",
+              "path": "/integrations/make",
+              "sidebar": "docsSidebar"
+            },
+            {
+              "id": "integrations/n8n",
+              "path": "/integrations/n8n",
+              "sidebar": "docsSidebar"
+            },
+            {
+              "id": "integrations/overview",
+              "path": "/integrations/overview",
+              "sidebar": "docsSidebar"
+            },
+            {
+              "id": "integrations/power-automate",
+              "path": "/integrations/power-automate",
+              "sidebar": "docsSidebar"
+            },
+            {
+              "id": "integrations/zapier",
+              "path": "/integrations/zapier",
+              "sidebar": "docsSidebar"
+            },
+            {
+              "id": "quickstart",
+              "path": "/quickstart",
+              "sidebar": "docsSidebar"
+            },
+            {
+              "id": "sdks/cli",
+              "path": "/sdks/cli",
+              "sidebar": "docsSidebar"
+            },
+            {
+              "id": "sdks/python",
+              "path": "/sdks/python",
+              "sidebar": "docsSidebar"
+            },
+            {
+              "id": "sdks/typescript",
+              "path": "/sdks/typescript",
+              "sidebar": "docsSidebar"
+            },
+            {
+              "id": "self-hosting",
+              "path": "/self-hosting",
+              "sidebar": "docsSidebar"
+            }
+          ],
+          "draftIds": [],
+          "sidebars": {
+            "docsSidebar": {
+              "link": {
+                "path": "/",
+                "label": "Overview"
+              }
+            }
+          }
+        }
+      ],
+      "breadcrumbs": true
+    }
+  }
+}

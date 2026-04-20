@@ -1,0 +1,7 @@
+"""Generated from apps/docs/integration_manifest.v1.json by scripts/generate_platform_contract_artifacts.py."""
+
+DEFAULT_BASE_URL = 'https://api.algenta.ai'
+AUTH_SCHEME = 'bearer_api_key'
+API_KEY_PREFIX_LIVE = 'de_live_'
+API_KEY_PREFIX_TEST = 'de_test_'
+LEGACY_ENV_VARS = ('DE_API_KEY', 'DE_BASE_URL')

@@ -1,0 +1,93 @@
+{
+  "lib": "virology",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 8,
+  "overall_speedup_x": 195.3,
+  "total_py_ns": 1288.95,
+  "total_mojo_ns": 6.6,
+  "elapsed_s": 4.18,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "basic_reproduction_number",
+      "py_ns": 126.804,
+      "mojo_ns": 1.0,
+      "speedup_x": 126.8,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "viral_doubling_time",
+      "py_ns": 209.604,
+      "mojo_ns": 1.0,
+      "speedup_x": 209.6,
+      "py_result": 1.386294,
+      "py_error": null
+    },
+    {
+      "function": "plaque_forming_units",
+      "py_ns": 238.121,
+      "mojo_ns": 0.9,
+      "speedup_x": 264.58,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "burst_size",
+      "py_ns": 86.358,
+      "mojo_ns": 0.9,
+      "speedup_x": 95.95,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "eclipse_period",
+      "py_ns": 115.838,
+      "mojo_ns": 0.1,
+      "speedup_x": 1158.38,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "neutralisation_titre",
+      "py_ns": 114.487,
+      "mojo_ns": 0.9,
+      "speedup_x": 127.21,
+      "py_result": 1.414214,
+      "py_error": null
+    },
+    {
+      "function": "antiviral_ic50",
+      "py_ns": 129.487,
+      "mojo_ns": 0.9,
+      "speedup_x": 143.87,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "virus_decay_rate",
+      "py_ns": 406.187,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "infection_threshold",
+      "py_ns": 268.254,
+      "mojo_ns": 0.9,
+      "speedup_x": 298.06,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "herd_immunity_threshold_viro",
+      "py_ns": 337.279,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

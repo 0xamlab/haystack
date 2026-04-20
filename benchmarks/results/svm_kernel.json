@@ -1,0 +1,85 @@
+{
+  "lib": "svm_kernel",
+  "status": "ok",
+  "n_functions": 9,
+  "n_compared": 9,
+  "overall_speedup_x": 1.15,
+  "total_py_ns": 34034.54,
+  "total_mojo_ns": 29586.4,
+  "elapsed_s": 7.01,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "kernel_linear",
+      "py_ns": 340.867,
+      "mojo_ns": 2.2,
+      "speedup_x": 154.94,
+      "py_result": 1.35,
+      "py_error": null
+    },
+    {
+      "function": "kernel_rbf",
+      "py_ns": 501.896,
+      "mojo_ns": 3.7,
+      "speedup_x": 135.65,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "kernel_polynomial",
+      "py_ns": 736.012,
+      "mojo_ns": 4.1,
+      "speedup_x": 179.52,
+      "py_result": 21.669987,
+      "py_error": null
+    },
+    {
+      "function": "kernel_sigmoid",
+      "py_ns": 359.429,
+      "mojo_ns": 5.9,
+      "speedup_x": 60.92,
+      "py_result": 0.825868,
+      "py_error": null
+    },
+    {
+      "function": "kernel_matrix",
+      "py_ns": 17019.092,
+      "mojo_ns": 10723.0,
+      "speedup_x": 1.59,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "kernel_center",
+      "py_ns": 8115.938,
+      "mojo_ns": 2614.8,
+      "speedup_x": 3.1,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "frobenius_norm",
+      "py_ns": 3312.042,
+      "mojo_ns": 608.0,
+      "speedup_x": 5.45,
+      "py_result": 1.236932,
+      "py_error": null
+    },
+    {
+      "function": "kernel_alignment",
+      "py_ns": 3321.842,
+      "mojo_ns": 685.2,
+      "speedup_x": 4.85,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "is_positive_semidefinite",
+      "py_ns": 327.421,
+      "mojo_ns": 14939.5,
+      "speedup_x": 0.02,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

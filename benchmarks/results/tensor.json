@@ -1,0 +1,53 @@
+{
+  "lib": "tensor",
+  "status": "ok",
+  "n_functions": 5,
+  "n_compared": 5,
+  "overall_speedup_x": 0.09,
+  "total_py_ns": 2509.04,
+  "total_mojo_ns": 27137.8,
+  "elapsed_s": 6.34,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "zeros",
+      "py_ns": 399.046,
+      "mojo_ns": 297.0,
+      "speedup_x": 1.34,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "ones",
+      "py_ns": 448.937,
+      "mojo_ns": 303.4,
+      "speedup_x": 1.48,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "full",
+      "py_ns": 544.279,
+      "mojo_ns": 12662.5,
+      "speedup_x": 0.04,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "arange",
+      "py_ns": 426.433,
+      "mojo_ns": 1.0,
+      "speedup_x": 426.43,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "linspace",
+      "py_ns": 690.346,
+      "mojo_ns": 13873.9,
+      "speedup_x": 0.05,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

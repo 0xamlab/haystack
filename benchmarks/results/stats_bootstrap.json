@@ -1,0 +1,93 @@
+{
+  "lib": "stats_bootstrap",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 9,
+  "overall_speedup_x": 2.32,
+  "total_py_ns": 351606.97,
+  "total_mojo_ns": 151231.2,
+  "elapsed_s": 10.87,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "bootstrap_replicate",
+      "py_ns": 22718.787,
+      "mojo_ns": 1243.0,
+      "speedup_x": 18.28,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "bootstrap_mean_ci",
+      "py_ns": 53076.163,
+      "mojo_ns": 19473.1,
+      "speedup_x": 2.73,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "bootstrap_std_ci",
+      "py_ns": 58399.925,
+      "mojo_ns": 10394.6,
+      "speedup_x": 5.62,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "bootstrap_median_ci",
+      "py_ns": 35679.75,
+      "mojo_ns": 45217.6,
+      "speedup_x": 0.79,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "bootstrap_bias",
+      "py_ns": 38041.163,
+      "mojo_ns": 33309.4,
+      "speedup_x": 1.14,
+      "py_result": -0.052,
+      "py_error": null
+    },
+    {
+      "function": "bootstrap_se",
+      "py_ns": 73808.683,
+      "mojo_ns": 6391.6,
+      "speedup_x": 11.55,
+      "py_result": 0.065422,
+      "py_error": null
+    },
+    {
+      "function": "bootstrap_test",
+      "py_ns": 59537.446,
+      "mojo_ns": 33956.1,
+      "speedup_x": 1.75,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "jackknife_mean",
+      "py_ns": 4176.667,
+      "mojo_ns": 912.7,
+      "speedup_x": 4.58,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "jackknife_se",
+      "py_ns": 6168.383,
+      "mojo_ns": 333.1,
+      "speedup_x": 18.52,
+      "py_result": 0.070711,
+      "py_error": null
+    },
+    {
+      "function": "bca_correction",
+      "py_ns": null,
+      "mojo_ns": 29194.8,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "No module named 'std'"
+    }
+  ]
+}

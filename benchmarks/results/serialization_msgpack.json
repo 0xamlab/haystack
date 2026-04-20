@@ -1,0 +1,93 @@
+{
+  "lib": "serialization_msgpack",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 9,
+  "overall_speedup_x": 65.5,
+  "total_py_ns": 52644.49,
+  "total_mojo_ns": 803.7,
+  "elapsed_s": 4.38,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "msgpack_encode_int",
+      "py_ns": 1532.3,
+      "mojo_ns": 194.7,
+      "speedup_x": 7.87,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "msgpack_encode_float",
+      "py_ns": null,
+      "mojo_ns": 1052.5,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "name 'bitcast' is not defined"
+    },
+    {
+      "function": "msgpack_encode_string",
+      "py_ns": 16431.6,
+      "mojo_ns": 359.3,
+      "speedup_x": 45.73,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "msgpack_encode_bool",
+      "py_ns": 1841.346,
+      "mojo_ns": 44.7,
+      "speedup_x": 41.19,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "msgpack_encode_nil",
+      "py_ns": 267.579,
+      "mojo_ns": 44.6,
+      "speedup_x": 6.0,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "msgpack_encode_array_header",
+      "py_ns": 3968.475,
+      "mojo_ns": 44.7,
+      "speedup_x": 88.78,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "msgpack_encode_map_header",
+      "py_ns": 4758.4,
+      "mojo_ns": 105.4,
+      "speedup_x": 45.15,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "msgpack_decode_int",
+      "py_ns": 5308.367,
+      "mojo_ns": 1.2,
+      "speedup_x": 4423.64,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "msgpack_decode_float",
+      "py_ns": 6268.3,
+      "mojo_ns": 2.7,
+      "speedup_x": 2321.59,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "msgpack_decode_string",
+      "py_ns": 12268.125,
+      "mojo_ns": 6.4,
+      "speedup_x": 1916.89,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

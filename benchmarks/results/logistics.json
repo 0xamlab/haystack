@@ -1,0 +1,109 @@
+{
+  "lib": "logistics",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 11,
+  "overall_speedup_x": 232.08,
+  "total_py_ns": 4432.7,
+  "total_mojo_ns": 19.1,
+  "elapsed_s": 1.41,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "vehicle_utilization",
+      "py_ns": 116.975,
+      "mojo_ns": 1.1,
+      "speedup_x": 106.34,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "order_fill_rate",
+      "py_ns": 96.958,
+      "mojo_ns": 1.1,
+      "speedup_x": 88.14,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "perfect_order_rate",
+      "py_ns": 1683.379,
+      "mojo_ns": 1.1,
+      "speedup_x": 1530.34,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "inventory_turns",
+      "py_ns": 152.921,
+      "mojo_ns": 1.1,
+      "speedup_x": 139.02,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "days_of_supply",
+      "py_ns": 175.438,
+      "mojo_ns": 2.8,
+      "speedup_x": 62.66,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "warehouse_utilization",
+      "py_ns": 135.579,
+      "mojo_ns": 1.1,
+      "speedup_x": 123.25,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "cost_per_unit_shipped",
+      "py_ns": 1365.408,
+      "mojo_ns": 1.1,
+      "speedup_x": 1241.28,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "on_time_delivery_rate",
+      "py_ns": 151.546,
+      "mojo_ns": 1.1,
+      "speedup_x": 137.77,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "dwell_time",
+      "py_ns": 173.004,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "cross_dock_throughput",
+      "py_ns": 212.742,
+      "mojo_ns": 1.1,
+      "speedup_x": 193.4,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "route_efficiency",
+      "py_ns": 151.754,
+      "mojo_ns": 1.1,
+      "speedup_x": 137.96,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "carbon_per_tonne_km",
+      "py_ns": 190.004,
+      "mojo_ns": 6.4,
+      "speedup_x": 29.69,
+      "py_result": 2.0,
+      "py_error": null
+    }
+  ]
+}

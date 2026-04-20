@@ -1,0 +1,93 @@
+{
+  "lib": "model_router",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 6,
+  "overall_speedup_x": 18.26,
+  "total_py_ns": 1015.17,
+  "total_mojo_ns": 55.6,
+  "elapsed_s": 1.45,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "capability_match_score",
+      "py_ns": 203.329,
+      "mojo_ns": 1.0,
+      "speedup_x": 203.33,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "model_load_score",
+      "py_ns": 109.779,
+      "mojo_ns": 1.0,
+      "speedup_x": 109.78,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "fallback_trigger_score",
+      "py_ns": 140.708,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "ensemble_weight",
+      "py_ns": 109.792,
+      "mojo_ns": 1.0,
+      "speedup_x": 109.79,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "hybrid_pipeline_stage_score",
+      "py_ns": 344.138,
+      "mojo_ns": 1.0,
+      "speedup_x": 344.14,
+      "py_result": -0.5,
+      "py_error": null
+    },
+    {
+      "function": "model_selection_utility",
+      "py_ns": 104.542,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "routing_uncertainty",
+      "py_ns": 455.042,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "latency_tier_assignment",
+      "py_ns": 271.254,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "model_freshness_score",
+      "py_ns": 146.662,
+      "mojo_ns": 50.5,
+      "speedup_x": 2.9,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "shadow_routing_fraction",
+      "py_ns": 101.471,
+      "mojo_ns": 1.1,
+      "speedup_x": 92.25,
+      "py_result": 0.5,
+      "py_error": null
+    }
+  ]
+}

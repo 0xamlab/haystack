@@ -1,0 +1,93 @@
+{
+  "lib": "execution_planner",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 8,
+  "overall_speedup_x": 240.8,
+  "total_py_ns": 2046.79,
+  "total_mojo_ns": 8.5,
+  "elapsed_s": 2.25,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "fusion_opportunity_score",
+      "py_ns": 157.917,
+      "mojo_ns": 1.0,
+      "speedup_x": 157.92,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "device_placement_score",
+      "py_ns": 120.663,
+      "mojo_ns": 0.9,
+      "speedup_x": 134.07,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "kv_policy_eviction_priority",
+      "py_ns": 110.921,
+      "mojo_ns": 1.0,
+      "speedup_x": 110.92,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "batching_strategy_score",
+      "py_ns": 85.383,
+      "mojo_ns": 1.0,
+      "speedup_x": 85.38,
+      "py_result": -1.0,
+      "py_error": null
+    },
+    {
+      "function": "scheduling_priority_score",
+      "py_ns": 129.429,
+      "mojo_ns": 1.6,
+      "speedup_x": 80.89,
+      "py_result": 3.0,
+      "py_error": null
+    },
+    {
+      "function": "prefetch_benefit_estimate",
+      "py_ns": 1132.342,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "graph_rewrite_gain",
+      "py_ns": 159.929,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "memory_placement_affinity",
+      "py_ns": 117.004,
+      "mojo_ns": 1.0,
+      "speedup_x": 117.0,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "pipeline_depth_optimal",
+      "py_ns": 117.825,
+      "mojo_ns": 1.0,
+      "speedup_x": 117.83,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "adaptive_batch_size",
+      "py_ns": 1207.65,
+      "mojo_ns": 1.0,
+      "speedup_x": 1207.65,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

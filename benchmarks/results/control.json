@@ -1,0 +1,77 @@
+{
+  "lib": "control",
+  "status": "ok",
+  "n_functions": 8,
+  "n_compared": 7,
+  "overall_speedup_x": 21.64,
+  "total_py_ns": 4255.69,
+  "total_mojo_ns": 196.7,
+  "elapsed_s": 1.81,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "create_pid",
+      "py_ns": 892.046,
+      "mojo_ns": 1.1,
+      "speedup_x": 810.95,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "pid_simulate",
+      "py_ns": null,
+      "mojo_ns": 57.6,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "name 'pid_update' is not defined"
+    },
+    {
+      "function": "bang_bang",
+      "py_ns": 407.396,
+      "mojo_ns": 1.0,
+      "speedup_x": 407.4,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "step_response",
+      "py_ns": 656.888,
+      "mojo_ns": 107.1,
+      "speedup_x": 6.13,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "ramp_response",
+      "py_ns": 1213.45,
+      "mojo_ns": 81.6,
+      "speedup_x": 14.87,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "settling_time",
+      "py_ns": 411.579,
+      "mojo_ns": 2.8,
+      "speedup_x": 146.99,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "overshoot",
+      "py_ns": 498.404,
+      "mojo_ns": 2.1,
+      "speedup_x": 237.34,
+      "py_result": 0.4,
+      "py_error": null
+    },
+    {
+      "function": "steady_state_error",
+      "py_ns": 175.929,
+      "mojo_ns": 1.0,
+      "speedup_x": 175.93,
+      "py_result": 0.2,
+      "py_error": null
+    }
+  ]
+}

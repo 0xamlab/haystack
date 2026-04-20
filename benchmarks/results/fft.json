@@ -1,0 +1,45 @@
+{
+  "lib": "fft",
+  "status": "ok",
+  "n_functions": 4,
+  "n_compared": 2,
+  "overall_speedup_x": 6.56,
+  "total_py_ns": 2525.82,
+  "total_mojo_ns": 384.8,
+  "elapsed_s": 2.16,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "next_power_of_2",
+      "py_ns": 253.471,
+      "mojo_ns": 1.1,
+      "speedup_x": 230.43,
+      "py_result": 8.0,
+      "py_error": null
+    },
+    {
+      "function": "zero_pad",
+      "py_ns": 2272.35,
+      "mojo_ns": 383.7,
+      "speedup_x": 5.92,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "fft",
+      "py_ns": null,
+      "mojo_ns": 18327.5,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "module 'math' has no attribute 'math'"
+    },
+    {
+      "function": "power_spectrum",
+      "py_ns": null,
+      "mojo_ns": 6570.6,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "module 'math' has no attribute 'math'"
+    }
+  ]
+}

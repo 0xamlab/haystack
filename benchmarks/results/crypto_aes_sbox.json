@@ -1,0 +1,77 @@
+{
+  "lib": "crypto_aes_sbox",
+  "status": "ok",
+  "n_functions": 8,
+  "n_compared": 6,
+  "overall_speedup_x": 40.69,
+  "total_py_ns": 81543.41,
+  "total_mojo_ns": 2003.8,
+  "elapsed_s": 1.98,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "aes_sbox",
+      "py_ns": 3482.6,
+      "mojo_ns": 95.4,
+      "speedup_x": 36.51,
+      "py_result": 107.0,
+      "py_error": null
+    },
+    {
+      "function": "aes_inv_sbox",
+      "py_ns": 27370.096,
+      "mojo_ns": 559.4,
+      "speedup_x": 48.93,
+      "py_result": 54.0,
+      "py_error": null
+    },
+    {
+      "function": "sub_bytes",
+      "py_ns": 14627.8,
+      "mojo_ns": 361.2,
+      "speedup_x": 40.5,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "inv_sub_bytes",
+      "py_ns": 31972.183,
+      "mojo_ns": 857.5,
+      "speedup_x": 37.29,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "shift_rows",
+      "py_ns": null,
+      "mojo_ns": 73.8,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list index out of range"
+    },
+    {
+      "function": "inv_shift_rows",
+      "py_ns": null,
+      "mojo_ns": 134.4,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list index out of range"
+    },
+    {
+      "function": "xor_bytes",
+      "py_ns": 620.563,
+      "mojo_ns": 68.6,
+      "speedup_x": 9.05,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "add_round_key",
+      "py_ns": 3470.171,
+      "mojo_ns": 61.7,
+      "speedup_x": 56.24,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

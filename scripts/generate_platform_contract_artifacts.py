@@ -1,0 +1,80 @@
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+from pprint import pformat
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from apps.platform_contract import load_platform_contract
+
+
+def _write(path: Path, content: str) -> None:
+    path.write_text(content.rstrip() + "\n")
+
+
+def _python_dict(value: object) -> str:
+    return pformat(value, width=88, sort_dicts=False)
+
+
+def main() -> None:
+    contract = load_platform_contract()
+
+    _write(
+        ROOT / "apps" / "platform_contract_constants.py",
+        f'''"""Generated from apps/docs/integration_manifest.v1.json by scripts/generate_platform_contract_artifacts.py."""
+
+CONTRACT_VERSION = {contract.contract_version!r}
+BRAND = {contract.brand!r}
+API_BASE_URL = {contract.api_base_url!r}
+MCP_ENDPOINT = {contract.mcp_endpoint!r}
+MCP_TOOLS_ENDPOINT = {contract.mcp_tools_endpoint!r}
+AUTH_SCHEME = {contract.auth_scheme!r}
+API_KEY_PREFIX_LIVE = {contract.api_key_prefix_live!r}
+API_KEY_PREFIX_TEST = {contract.api_key_prefix_test!r}
+LEGACY_HEADERS = {tuple(contract.legacy_headers)!r}
+LEGACY_ENV_VARS = {tuple(contract.legacy_env_vars)!r}
+LEGACY_DOMAINS = {tuple(contract.legacy_domains)!r}
+DEPRECATION_WINDOW_DAYS = {contract.deprecation_window_days}
+PLAN_LIMITS = {_python_dict(contract.plan_limits)}
+''',
+    )
+
+    for rel_path in (
+        ("packages", "python-sdk", "decision_engine", "_contract.py"),
+        ("packages", "algenta-core", "algenta", "_contract.py"),
+    ):
+        _write(
+            ROOT.joinpath(*rel_path),
+            f'''"""Generated from apps/docs/integration_manifest.v1.json by scripts/generate_platform_contract_artifacts.py."""
+
+DEFAULT_BASE_URL = {contract.api_base_url!r}
+AUTH_SCHEME = {contract.auth_scheme!r}
+API_KEY_PREFIX_LIVE = {contract.api_key_prefix_live!r}
+API_KEY_PREFIX_TEST = {contract.api_key_prefix_test!r}
+LEGACY_ENV_VARS = {tuple(contract.legacy_env_vars)!r}
+''',
+        )
+
+    _write(
+        ROOT / "packages" / "ts-sdk" / "src" / "contract.ts",
+        f"""// Generated from apps/docs/integration_manifest.v1.json by scripts/generate_platform_contract_artifacts.py.
+
+export const CONTRACT_VERSION = {json.dumps(contract.contract_version)};
+export const BRAND = {json.dumps(contract.brand)};
+export const DEFAULT_BASE_URL = {json.dumps(contract.api_base_url)};
+export const MCP_ENDPOINT = {json.dumps(contract.mcp_endpoint)};
+export const MCP_TOOLS_ENDPOINT = {json.dumps(contract.mcp_tools_endpoint)};
+export const AUTH_SCHEME = {json.dumps(contract.auth_scheme)};
+export const API_KEY_PREFIX_LIVE = {json.dumps(contract.api_key_prefix_live)};
+export const API_KEY_PREFIX_TEST = {json.dumps(contract.api_key_prefix_test)};
+export const LEGACY_ENV_VARS = {json.dumps(list(contract.legacy_env_vars))} as const;
+""",
+    )
+
+
+if __name__ == "__main__":
+    main()

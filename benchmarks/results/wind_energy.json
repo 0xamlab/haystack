@@ -1,0 +1,109 @@
+{
+  "lib": "wind_energy",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 12,
+  "overall_speedup_x": 127.8,
+  "total_py_ns": 1495.25,
+  "total_mojo_ns": 11.7,
+  "elapsed_s": 2.11,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "wind_power_available",
+      "py_ns": 167.683,
+      "mojo_ns": 1.0,
+      "speedup_x": 167.68,
+      "py_result": 0.015625,
+      "py_error": null
+    },
+    {
+      "function": "betz_limit",
+      "py_ns": 49.721,
+      "mojo_ns": 1.0,
+      "speedup_x": 49.72,
+      "py_result": 0.592593,
+      "py_error": null
+    },
+    {
+      "function": "power_coefficient",
+      "py_ns": 104.233,
+      "mojo_ns": 1.0,
+      "speedup_x": 104.23,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "tip_speed_ratio",
+      "py_ns": 108.454,
+      "mojo_ns": 1.0,
+      "speedup_x": 108.45,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "swept_area",
+      "py_ns": 84.812,
+      "mojo_ns": 0.9,
+      "speedup_x": 94.24,
+      "py_result": 0.785398,
+      "py_error": null
+    },
+    {
+      "function": "annual_energy_production",
+      "py_ns": 91.025,
+      "mojo_ns": 1.0,
+      "speedup_x": 91.03,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "capacity_factor",
+      "py_ns": 245.179,
+      "mojo_ns": 1.0,
+      "speedup_x": 245.18,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "wind_shear_power_law",
+      "py_ns": 216.325,
+      "mojo_ns": 0.9,
+      "speedup_x": 240.36,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "weibull_mean_wind_speed",
+      "py_ns": 71.904,
+      "mojo_ns": 0.9,
+      "speedup_x": 79.89,
+      "py_result": 0.443,
+      "py_error": null
+    },
+    {
+      "function": "energy_density",
+      "py_ns": 81.892,
+      "mojo_ns": 1.0,
+      "speedup_x": 81.89,
+      "py_result": 0.03125,
+      "py_error": null
+    },
+    {
+      "function": "rotor_thrust",
+      "py_ns": 91.771,
+      "mojo_ns": 1.0,
+      "speedup_x": 91.77,
+      "py_result": 0.015625,
+      "py_error": null
+    },
+    {
+      "function": "wake_velocity",
+      "py_ns": 182.246,
+      "mojo_ns": 1.0,
+      "speedup_x": 182.25,
+      "py_result": 0.373275,
+      "py_error": null
+    }
+  ]
+}

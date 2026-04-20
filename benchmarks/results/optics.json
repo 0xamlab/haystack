@@ -1,0 +1,93 @@
+{
+  "lib": "optics",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 9,
+  "overall_speedup_x": 155.21,
+  "total_py_ns": 1474.51,
+  "total_mojo_ns": 9.5,
+  "elapsed_s": 1.45,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "snells_law",
+      "py_ns": 315.792,
+      "mojo_ns": 1.1,
+      "speedup_x": 287.08,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "critical_angle",
+      "py_ns": 76.263,
+      "mojo_ns": 1.0,
+      "speedup_x": 76.26,
+      "py_result": -1.0,
+      "py_error": null
+    },
+    {
+      "function": "fresnel_reflectance_normal",
+      "py_ns": 117.008,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "thin_lens_equation",
+      "py_ns": 99.338,
+      "mojo_ns": 1.1,
+      "speedup_x": 90.31,
+      "py_result": 1e+18,
+      "py_error": null
+    },
+    {
+      "function": "magnification",
+      "py_ns": 86.483,
+      "mojo_ns": 1.1,
+      "speedup_x": 78.62,
+      "py_result": -1.0,
+      "py_error": null
+    },
+    {
+      "function": "wavelength_to_frequency",
+      "py_ns": 98.004,
+      "mojo_ns": 1.1,
+      "speedup_x": 89.09,
+      "py_result": 6e+17,
+      "py_error": null
+    },
+    {
+      "function": "photon_energy",
+      "py_ns": 116.3,
+      "mojo_ns": 1.0,
+      "speedup_x": 116.3,
+      "py_result": 2481.64794,
+      "py_error": null
+    },
+    {
+      "function": "diffraction_limit",
+      "py_ns": 163.825,
+      "mojo_ns": 1.0,
+      "speedup_x": 163.83,
+      "py_result": 0.251643,
+      "py_error": null
+    },
+    {
+      "function": "brewster_angle",
+      "py_ns": 358.862,
+      "mojo_ns": 1.0,
+      "speedup_x": 358.86,
+      "py_result": 45.0,
+      "py_error": null
+    },
+    {
+      "function": "numerical_aperture",
+      "py_ns": 159.646,
+      "mojo_ns": 1.1,
+      "speedup_x": 145.13,
+      "py_result": 0.004363,
+      "py_error": null
+    }
+  ]
+}

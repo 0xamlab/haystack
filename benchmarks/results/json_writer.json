@@ -1,0 +1,101 @@
+{
+  "lib": "json_writer",
+  "status": "ok",
+  "n_functions": 11,
+  "n_compared": 10,
+  "overall_speedup_x": 65.78,
+  "total_py_ns": 170372.02,
+  "total_mojo_ns": 2590.1,
+  "elapsed_s": 4.88,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "json_escape_string",
+      "py_ns": 8843.712,
+      "mojo_ns": 41.3,
+      "speedup_x": 214.13,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "json_object_start",
+      "py_ns": 170.054,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "json_object_end",
+      "py_ns": 1674.025,
+      "mojo_ns": 8.7,
+      "speedup_x": 192.42,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "json_add_string",
+      "py_ns": 29485.775,
+      "mojo_ns": 117.9,
+      "speedup_x": 250.09,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "json_add_int",
+      "py_ns": 6439.258,
+      "mojo_ns": 132.0,
+      "speedup_x": 48.78,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "json_add_float",
+      "py_ns": 11400.437,
+      "mojo_ns": 154.7,
+      "speedup_x": 73.69,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "json_add_bool",
+      "py_ns": 10121.796,
+      "mojo_ns": 83.4,
+      "speedup_x": 121.36,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "json_add_null",
+      "py_ns": 7388.229,
+      "mojo_ns": 50.8,
+      "speedup_x": 145.44,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "json_add_array_float",
+      "py_ns": 34739.408,
+      "mojo_ns": 664.9,
+      "speedup_x": 52.25,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "json_add_array_string",
+      "py_ns": 40870.512,
+      "mojo_ns": 1243.3,
+      "speedup_x": 32.87,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "json_add_raw",
+      "py_ns": 19408.871,
+      "mojo_ns": 93.1,
+      "speedup_x": 208.47,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

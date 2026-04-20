@@ -1,0 +1,93 @@
+{
+  "lib": "pandas_groupby",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 8,
+  "overall_speedup_x": 130.75,
+  "total_py_ns": 1438.2,
+  "total_mojo_ns": 11.0,
+  "elapsed_s": 1.11,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "group_mean_update",
+      "py_ns": 104.762,
+      "mojo_ns": 1.1,
+      "speedup_x": 95.24,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "group_variance_update",
+      "py_ns": 111.375,
+      "mojo_ns": 1.1,
+      "speedup_x": 101.25,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "group_min_update",
+      "py_ns": 85.508,
+      "mojo_ns": 1.1,
+      "speedup_x": 77.73,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "group_max_update",
+      "py_ns": 83.863,
+      "mojo_ns": 1.1,
+      "speedup_x": 76.24,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "group_sum_update",
+      "py_ns": 88.779,
+      "mojo_ns": 2.3,
+      "speedup_x": 38.6,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "group_count_update",
+      "py_ns": 690.6,
+      "mojo_ns": 1.1,
+      "speedup_x": 627.82,
+      "py_result": 1.5,
+      "py_error": null
+    },
+    {
+      "function": "group_std_from_variance",
+      "py_ns": 106.646,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "weighted_group_mean",
+      "py_ns": 110.342,
+      "mojo_ns": 1.1,
+      "speedup_x": 100.31,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "group_median_approx",
+      "py_ns": 162.967,
+      "mojo_ns": 2.1,
+      "speedup_x": 77.6,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "group_skewness_term",
+      "py_ns": 3138.821,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

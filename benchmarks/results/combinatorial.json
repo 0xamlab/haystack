@@ -1,0 +1,93 @@
+{
+  "lib": "combinatorial",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 3,
+  "overall_speedup_x": 6.56,
+  "total_py_ns": 19075.68,
+  "total_mojo_ns": 2910.0,
+  "elapsed_s": 2.6,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "knapsack_01",
+      "py_ns": 11781.9,
+      "mojo_ns": 1069.5,
+      "speedup_x": 11.02,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "knapsack_01_value",
+      "py_ns": 5340.271,
+      "mojo_ns": 784.2,
+      "speedup_x": 6.81,
+      "py_result": 5.0,
+      "py_error": null
+    },
+    {
+      "function": "tsp_greedy",
+      "py_ns": 1953.504,
+      "mojo_ns": 1056.3,
+      "speedup_x": 1.85,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "tsp_tour_length",
+      "py_ns": null,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list index out of range"
+    },
+    {
+      "function": "bin_packing_first_fit",
+      "py_ns": 2094.313,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 5.0,
+      "py_error": null
+    },
+    {
+      "function": "bin_packing_first_fit_decreasing",
+      "py_ns": 6323.246,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 5.0,
+      "py_error": null
+    },
+    {
+      "function": "assignment_greedy",
+      "py_ns": 1279.375,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "max_subarray_sum",
+      "py_ns": 1220.842,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 2.5,
+      "py_error": null
+    },
+    {
+      "function": "longest_increasing_subsequence",
+      "py_ns": 1090.2,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 3.0,
+      "py_error": null
+    },
+    {
+      "function": "coin_change",
+      "py_ns": 3588.146,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 2.0,
+      "py_error": null
+    }
+  ]
+}

@@ -1,0 +1,93 @@
+{
+  "lib": "stateful_runtime",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 9,
+  "overall_speedup_x": 239.49,
+  "total_py_ns": 2155.39,
+  "total_mojo_ns": 9.0,
+  "elapsed_s": 2.51,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "session_memory_relevance",
+      "py_ns": 138.388,
+      "mojo_ns": 0.9,
+      "speedup_x": 153.76,
+      "py_result": 0.050683,
+      "py_error": null
+    },
+    {
+      "function": "memory_decay_score",
+      "py_ns": 221.413,
+      "mojo_ns": 0.9,
+      "speedup_x": 246.01,
+      "py_result": 0.3894,
+      "py_error": null
+    },
+    {
+      "function": "state_transition_validity",
+      "py_ns": 334.142,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "replay_buffer_priority",
+      "py_ns": 146.633,
+      "mojo_ns": 0.9,
+      "speedup_x": 162.93,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "memory_consolidation_score",
+      "py_ns": 118.258,
+      "mojo_ns": 0.9,
+      "speedup_x": 131.4,
+      "py_result": -0.625,
+      "py_error": null
+    },
+    {
+      "function": "working_memory_capacity_used",
+      "py_ns": 82.054,
+      "mojo_ns": 0.9,
+      "speedup_x": 91.17,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "long_term_retrieval_score",
+      "py_ns": 133.292,
+      "mojo_ns": 0.9,
+      "speedup_x": 148.1,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "state_compression_ratio",
+      "py_ns": 86.137,
+      "mojo_ns": 0.9,
+      "speedup_x": 95.71,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "replayability_score",
+      "py_ns": 119.221,
+      "mojo_ns": 1.7,
+      "speedup_x": 70.13,
+      "py_result": 0.1875,
+      "py_error": null
+    },
+    {
+      "function": "session_continuity_score",
+      "py_ns": 1109.996,
+      "mojo_ns": 1.0,
+      "speedup_x": 1110.0,
+      "py_result": 0.75,
+      "py_error": null
+    }
+  ]
+}

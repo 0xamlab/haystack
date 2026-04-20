@@ -1,0 +1,53 @@
+{
+  "lib": "net_url",
+  "status": "ok",
+  "n_functions": 5,
+  "n_compared": 5,
+  "overall_speedup_x": 96.93,
+  "total_py_ns": 111055.54,
+  "total_mojo_ns": 1145.7,
+  "elapsed_s": 4.46,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "url_parse",
+      "py_ns": 57522.371,
+      "mojo_ns": 73.7,
+      "speedup_x": 780.49,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "url_encode",
+      "py_ns": 22447.621,
+      "mojo_ns": 22.9,
+      "speedup_x": 980.25,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "url_decode",
+      "py_ns": 3659.658,
+      "mojo_ns": 49.1,
+      "speedup_x": 74.53,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "query_parse",
+      "py_ns": 9105.767,
+      "mojo_ns": 636.5,
+      "speedup_x": 14.31,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "query_get",
+      "py_ns": 18320.121,
+      "mojo_ns": 363.5,
+      "speedup_x": 50.4,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

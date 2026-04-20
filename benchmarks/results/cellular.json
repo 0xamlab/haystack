@@ -1,0 +1,101 @@
+{
+  "lib": "cellular",
+  "status": "ok",
+  "n_functions": 11,
+  "n_compared": 4,
+  "overall_speedup_x": 3.32,
+  "total_py_ns": 34558.15,
+  "total_mojo_ns": 10403.7,
+  "elapsed_s": 3.8,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "grid_create",
+      "py_ns": 2175.029,
+      "mojo_ns": 3992.4,
+      "speedup_x": 0.54,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "grid_randomize",
+      "py_ns": 13529.246,
+      "mojo_ns": 5757.1,
+      "speedup_x": 2.35,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "count_alive",
+      "py_ns": 17972.679,
+      "mojo_ns": 263.6,
+      "speedup_x": 68.18,
+      "py_result": 6.0,
+      "py_error": null
+    },
+    {
+      "function": "grid_to_density",
+      "py_ns": 881.196,
+      "mojo_ns": 390.6,
+      "speedup_x": 2.26,
+      "py_result": 0.666667,
+      "py_error": null
+    },
+    {
+      "function": "count_neighbors",
+      "py_ns": null,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list index out of range"
+    },
+    {
+      "function": "game_of_life_step",
+      "py_ns": null,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list index out of range"
+    },
+    {
+      "function": "is_still_life",
+      "py_ns": null,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list index out of range"
+    },
+    {
+      "function": "population_history",
+      "py_ns": null,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list index out of range"
+    },
+    {
+      "function": "rule_lookup",
+      "py_ns": 205.992,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "elementary_ca_step",
+      "py_ns": 7129.221,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "run_elementary_ca",
+      "py_ns": 117865.033,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

@@ -1,0 +1,93 @@
+{
+  "lib": "hematology",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 10,
+  "overall_speedup_x": 165.0,
+  "total_py_ns": 1649.97,
+  "total_mojo_ns": 10.0,
+  "elapsed_s": 2.52,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "hematocrit",
+      "py_ns": 92.508,
+      "mojo_ns": 1.0,
+      "speedup_x": 92.51,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "mean_corpuscular_volume",
+      "py_ns": 214.821,
+      "mojo_ns": 1.0,
+      "speedup_x": 214.82,
+      "py_result": 10000.0,
+      "py_error": null
+    },
+    {
+      "function": "mean_corpuscular_hemoglobin",
+      "py_ns": 100.592,
+      "mojo_ns": 1.0,
+      "speedup_x": 100.59,
+      "py_result": 10.0,
+      "py_error": null
+    },
+    {
+      "function": "mchc",
+      "py_ns": 167.892,
+      "mojo_ns": 1.0,
+      "speedup_x": 167.89,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "red_cell_distribution_width",
+      "py_ns": 288.275,
+      "mojo_ns": 1.0,
+      "speedup_x": 288.28,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "oxygen_carrying_capacity",
+      "py_ns": 154.717,
+      "mojo_ns": 1.0,
+      "speedup_x": 154.72,
+      "py_result": 0.67,
+      "py_error": null
+    },
+    {
+      "function": "coagulation_inr",
+      "py_ns": 197.363,
+      "mojo_ns": 1.0,
+      "speedup_x": 197.36,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "platelet_count_index",
+      "py_ns": 96.454,
+      "mojo_ns": 1.0,
+      "speedup_x": 96.45,
+      "py_result": 0.0025,
+      "py_error": null
+    },
+    {
+      "function": "blood_viscosity_relative",
+      "py_ns": 152.738,
+      "mojo_ns": 1.0,
+      "speedup_x": 152.74,
+      "py_result": 5.656854,
+      "py_error": null
+    },
+    {
+      "function": "erythrocyte_sedimentation",
+      "py_ns": 184.613,
+      "mojo_ns": 1.0,
+      "speedup_x": 184.61,
+      "py_result": 0.7325,
+      "py_error": null
+    }
+  ]
+}

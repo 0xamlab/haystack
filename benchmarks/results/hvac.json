@@ -1,0 +1,109 @@
+{
+  "lib": "hvac",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 10,
+  "overall_speedup_x": 65.72,
+  "total_py_ns": 1544.32,
+  "total_mojo_ns": 23.5,
+  "elapsed_s": 2.32,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "sensible_heat_load",
+      "py_ns": 137.954,
+      "mojo_ns": 2.4,
+      "speedup_x": 57.48,
+      "py_result": 0.27,
+      "py_error": null
+    },
+    {
+      "function": "latent_heat_load",
+      "py_ns": 86.129,
+      "mojo_ns": 1.0,
+      "speedup_x": 86.13,
+      "py_result": 0.17,
+      "py_error": null
+    },
+    {
+      "function": "total_heat_load",
+      "py_ns": 260.921,
+      "mojo_ns": 5.9,
+      "speedup_x": 44.22,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "sensible_heat_ratio",
+      "py_ns": 94.325,
+      "mojo_ns": 1.0,
+      "speedup_x": 94.32,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "cooling_tons",
+      "py_ns": 85.429,
+      "mojo_ns": 1.0,
+      "speedup_x": 85.43,
+      "py_result": 4.2e-05,
+      "py_error": null
+    },
+    {
+      "function": "btu_from_tons",
+      "py_ns": 89.838,
+      "mojo_ns": 4.1,
+      "speedup_x": 21.91,
+      "py_result": 6000.0,
+      "py_error": null
+    },
+    {
+      "function": "air_changes_per_hour",
+      "py_ns": 334.275,
+      "mojo_ns": 0.9,
+      "speedup_x": 371.42,
+      "py_result": 60.0,
+      "py_error": null
+    },
+    {
+      "function": "duct_velocity",
+      "py_ns": 299.137,
+      "mojo_ns": 0.9,
+      "speedup_x": 332.37,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "cop_to_eer",
+      "py_ns": 76.325,
+      "mojo_ns": 4.7,
+      "speedup_x": 16.24,
+      "py_result": 1.706,
+      "py_error": null
+    },
+    {
+      "function": "eer_to_cop",
+      "py_ns": 79.988,
+      "mojo_ns": 1.6,
+      "speedup_x": 49.99,
+      "py_result": 0.146542,
+      "py_error": null
+    },
+    {
+      "function": "heating_degree_days",
+      "py_ns": 87.367,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "cooling_degree_days",
+      "py_ns": 86.946,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "lib": "integrate",
+  "status": "ok",
+  "n_functions": 6,
+  "n_compared": 6,
+  "overall_speedup_x": 5.54,
+  "total_py_ns": 6479.54,
+  "total_mojo_ns": 1170.5,
+  "elapsed_s": 2.06,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "trapezoid",
+      "py_ns": 418.946,
+      "mojo_ns": 1.7,
+      "speedup_x": 246.44,
+      "py_result": 1.05,
+      "py_error": null
+    },
+    {
+      "function": "simpson",
+      "py_ns": 527.392,
+      "mojo_ns": 4.5,
+      "speedup_x": 117.2,
+      "py_result": 1.033333,
+      "py_error": null
+    },
+    {
+      "function": "romberg",
+      "py_ns": 2108.517,
+      "mojo_ns": 365.0,
+      "speedup_x": 5.78,
+      "py_result": 1.022222,
+      "py_error": null
+    },
+    {
+      "function": "cumulative_trapezoid",
+      "py_ns": 923.817,
+      "mojo_ns": 222.2,
+      "speedup_x": 4.16,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "integrate_poly",
+      "py_ns": 1693.117,
+      "mojo_ns": 12.0,
+      "speedup_x": 141.09,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "quad_gauss_legendre",
+      "py_ns": 807.75,
+      "mojo_ns": 565.1,
+      "speedup_x": 1.43,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

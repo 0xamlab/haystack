@@ -1,0 +1,317 @@
+from __future__ import annotations
+
+import csv
+import io
+from typing import Any
+
+from apps.api_server.services.data_coercion import (
+    canonicalize_delimited_headers,
+    coerce_scalar,
+    is_identifier_field,
+)
+
+NULL_LIKE_STRINGS = frozenset({
+    "",
+    "?",
+    "none",
+    "null",
+    "nan",
+    "n/a",
+    "na",
+})
+
+_ARROW_RETRY_MAX_BYTES = 32 * 1024 * 1024
+_COERCION_CACHE_MAX_ENTRIES = 1024
+_COERCION_CACHE_MAX_VALUE_LEN = 64
+
+
+def normalize_scalar_for_arrow(
+    field_name: str,
+    value: Any,
+    *,
+    assume_coerced: bool = False,
+) -> Any:
+    if value is None:
+        return None
+    if isinstance(value, str) and value.strip().lower() in NULL_LIKE_STRINGS:
+        return None
+    if assume_coerced:
+        return None if value == "" else value
+    coerced = coerce_scalar(field_name, value, preserve_identifiers=True)
+    return None if coerced == "" else coerced
+
+
+def _to_arrow_array(values: list[Any]) -> Any:
+    import pyarrow as pa
+
+    try:
+        return pa.array(values)
+    except Exception:
+        return pa.array(
+            [str(value) if value is not None else None for value in values],
+            type=pa.string(),
+        )
+
+
+def _coerce_scalar_for_arrow(
+    field_name: str,
+    value: Any,
+    *,
+    preserve_identifier_field: bool,
+) -> Any:
+    coerced = coerce_scalar(
+        field_name,
+        value,
+        preserve_identifiers=preserve_identifier_field,
+    )
+    return normalize_scalar_for_arrow(
+        field_name,
+        coerced,
+        assume_coerced=True,
+    )
+
+
+def _coerce_scalar_for_arrow_cached(
+    field_name: str,
+    value: Any,
+    *,
+    preserve_identifier_field: bool,
+    cache: dict[str, Any],
+) -> Any:
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        return _coerce_scalar_for_arrow(
+            field_name,
+            value,
+            preserve_identifier_field=preserve_identifier_field,
+        )
+
+    cache_key = value.strip()
+    if len(cache_key) > _COERCION_CACHE_MAX_VALUE_LEN:
+        return _coerce_scalar_for_arrow(
+            field_name,
+            cache_key,
+            preserve_identifier_field=preserve_identifier_field,
+        )
+
+    cached_value = cache.get(cache_key)
+    if cached_value is not None or cache_key in cache:
+        return cached_value
+
+    coerced = _coerce_scalar_for_arrow(
+        field_name,
+        cache_key,
+        preserve_identifier_field=preserve_identifier_field,
+    )
+    if len(cache) < _COERCION_CACHE_MAX_ENTRIES:
+        cache[cache_key] = coerced
+    return coerced
+
+
+def records_to_arrow_table(
+    records: list[dict[str, Any]],
+    *,
+    assume_coerced: bool = False,
+) -> Any:
+    import pyarrow as pa
+
+    if not records:
+        return pa.table({})
+
+    field_names: list[str] = []
+    seen_fields: set[str] = set()
+    for row in records:
+        for field_name in row.keys():
+            if field_name is None:
+                continue
+            normalized_name = str(field_name)
+            if normalized_name not in seen_fields:
+                seen_fields.add(normalized_name)
+                field_names.append(normalized_name)
+
+    columns: dict[str, list[Any]] = {field_name: [] for field_name in field_names}
+    for row in records:
+        for field_name in field_names:
+            columns[field_name].append(
+                normalize_scalar_for_arrow(
+                    field_name,
+                    row.get(field_name),
+                    assume_coerced=assume_coerced,
+                )
+            )
+
+    return pa.table({
+        field_name: _to_arrow_array(values)
+        for field_name, values in columns.items()
+    })
+
+
+def _python_delimited_text_to_arrow_table(content: str, *, delimiter: str) -> Any:
+    import pyarrow as pa
+
+    reader = csv.reader(io.StringIO(content), delimiter=delimiter)
+    try:
+        headers = canonicalize_delimited_headers(next(reader))
+    except StopIteration:
+        return pa.table({})
+
+    if not headers:
+        return pa.table({})
+
+    identifier_fields = {
+        field_name: bool(field_name) and is_identifier_field(field_name)
+        for field_name in headers
+    }
+    columns: dict[str, list[Any]] = {field_name: [] for field_name in headers}
+    coercion_caches: list[dict[str, Any]] = [{} for _ in headers]
+    for row in reader:
+        row_len = len(row)
+        for idx, field_name in enumerate(headers):
+            raw_value = row[idx] if idx < row_len else None
+            columns[field_name].append(
+                _coerce_scalar_for_arrow_cached(
+                    field_name,
+                    raw_value,
+                    preserve_identifier_field=identifier_fields[field_name],
+                    cache=coercion_caches[idx],
+                )
+            )
+
+    return pa.table({
+        field_name: _to_arrow_array(values)
+        for field_name, values in columns.items()
+    })
+
+
+def _choose_delimiter(text: str, delimiter: str | None = ",", sniff: bool = True) -> str:
+    chosen_delimiter = delimiter or ","
+    if sniff and delimiter in (None, "", ","):
+        try:
+            sample = text[:4096]
+            sniffed = csv.Sniffer().sniff(sample, delimiters=",;\t|")
+            chosen_delimiter = sniffed.delimiter
+        except csv.Error:
+            chosen_delimiter = delimiter or ","
+    return chosen_delimiter
+
+
+def _delimited_headers(text: str, delimiter: str) -> list[str]:
+    reader = csv.reader(io.StringIO(text), delimiter=delimiter)
+    try:
+        return canonicalize_delimited_headers(next(reader))
+    except StopIteration:
+        return []
+
+
+def looks_arrow_friendly_delimited_text(
+    content: str,
+    *,
+    delimiter: str | None = ",",
+    sniff: bool = True,
+) -> bool:
+    if not content or not content.strip():
+        return True
+
+    text = content.lstrip("\ufeff")
+    chosen_delimiter = _choose_delimiter(text, delimiter=delimiter, sniff=sniff)
+    headers = _delimited_headers(text, chosen_delimiter)
+    if len(headers) > 96:
+        return False
+
+    sample = text[:200_000]
+    lines = [line for line in sample.splitlines() if line.strip()][:64]
+    if len(lines) <= 1:
+        return True
+
+    counts = [line.count(chosen_delimiter) for line in lines]
+    if max(counts) - min(counts) > 2:
+        return False
+
+    quote_density = sample.count('"') / max(len(sample), 1)
+    if quote_density > 0.009:
+        return False
+
+    return True
+
+
+def delimited_text_to_arrow_table(
+    content: str,
+    *,
+    delimiter: str | None = ",",
+    sniff: bool = True,
+) -> Any:
+    if not content or not content.strip():
+        import pyarrow as pa
+        return pa.table({})
+
+    import pyarrow as pa
+    import pyarrow.csv as pacsv
+
+    text = content.lstrip("\ufeff")
+    raw_bytes = text.encode("utf-8")
+    arrow_friendly = looks_arrow_friendly_delimited_text(text, delimiter=delimiter, sniff=sniff)
+    allow_retry = len(raw_bytes) <= _ARROW_RETRY_MAX_BYTES
+    chosen_delimiter = _choose_delimiter(text, delimiter=delimiter, sniff=sniff)
+    headers = _delimited_headers(text, chosen_delimiter)
+    column_types = {
+        header: pa.string()
+        for header in headers
+        if header and is_identifier_field(header)
+    }
+
+    convert_options = pacsv.ConvertOptions(
+        column_types=column_types or None,
+        null_values=sorted(NULL_LIKE_STRINGS),
+        strings_can_be_null=True,
+    )
+    read_options_kwargs: dict[str, Any] = {
+        "use_threads": True,
+        "block_size": 1 << 20,
+    }
+    if headers:
+        read_options_kwargs["column_names"] = headers
+        read_options_kwargs["skip_rows"] = 1
+    read_options = pacsv.ReadOptions(**read_options_kwargs)
+    standard_parse_options = pacsv.ParseOptions(delimiter=chosen_delimiter)
+    retry_parse_options = pacsv.ParseOptions(
+        delimiter=chosen_delimiter,
+        newlines_in_values=True,
+    )
+    last_error: Exception | None = None
+
+    if arrow_friendly:
+        try:
+            return pacsv.read_csv(
+                pa.BufferReader(raw_bytes),
+                read_options=read_options,
+                parse_options=standard_parse_options,
+                convert_options=convert_options,
+            )
+        except Exception as exc:
+            last_error = exc
+    elif not allow_retry:
+        last_error = ValueError(
+            "delimited source is not Arrow-friendly enough for fast-path parsing"
+        )
+
+    if allow_retry:
+        try:
+            return pacsv.read_csv(
+                pa.BufferReader(raw_bytes),
+                read_options=read_options,
+                parse_options=retry_parse_options,
+                convert_options=convert_options,
+            )
+        except Exception as exc:
+            last_error = exc
+
+    try:
+        return _python_delimited_text_to_arrow_table(
+            text,
+            delimiter=chosen_delimiter,
+        )
+    except Exception as exc:
+        if last_error is not None:
+            raise last_error from exc
+        raise

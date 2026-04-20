@@ -1,0 +1,11 @@
+[workspace]
+authors = ["Angel Marinov <angel@eplane.com>"]
+channels = ["https://conda.modular.com/max-nightly", "conda-forge"]
+name = "mojo_env"
+platforms = ["osx-arm64"]
+version = "0.1.0"
+
+[tasks]
+
+[dependencies]
+mojo = ">=0.26.3.0.dev2026032005,<0.27"

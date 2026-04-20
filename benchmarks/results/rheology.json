@@ -1,0 +1,93 @@
+{
+  "lib": "rheology",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 10,
+  "overall_speedup_x": 1.51,
+  "total_py_ns": 1441.61,
+  "total_mojo_ns": 955.2,
+  "elapsed_s": 2.53,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "shear_stress",
+      "py_ns": 87.104,
+      "mojo_ns": 946.5,
+      "speedup_x": 0.09,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "shear_rate",
+      "py_ns": 87.029,
+      "mojo_ns": 0.9,
+      "speedup_x": 96.7,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "dynamic_viscosity",
+      "py_ns": 87.083,
+      "mojo_ns": 1.0,
+      "speedup_x": 87.08,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "power_law_viscosity",
+      "py_ns": 114.154,
+      "mojo_ns": 0.9,
+      "speedup_x": 126.84,
+      "py_result": 0.707107,
+      "py_error": null
+    },
+    {
+      "function": "bingham_yield_stress",
+      "py_ns": 91.825,
+      "mojo_ns": 1.0,
+      "speedup_x": 91.82,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "reynolds_number_non_newton",
+      "py_ns": 299.808,
+      "mojo_ns": 1.0,
+      "speedup_x": 299.81,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "creep_compliance",
+      "py_ns": 221.283,
+      "mojo_ns": 0.9,
+      "speedup_x": 245.87,
+      "py_result": 0.31606,
+      "py_error": null
+    },
+    {
+      "function": "stress_relaxation_modulus",
+      "py_ns": 126.262,
+      "mojo_ns": 1.0,
+      "speedup_x": 126.26,
+      "py_result": 0.18394,
+      "py_error": null
+    },
+    {
+      "function": "viscosity_arrhenius",
+      "py_ns": 218.279,
+      "mojo_ns": 1.0,
+      "speedup_x": 218.28,
+      "py_result": 0.563906,
+      "py_error": null
+    },
+    {
+      "function": "thixotropy_index",
+      "py_ns": 108.783,
+      "mojo_ns": 1.0,
+      "speedup_x": 108.78,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

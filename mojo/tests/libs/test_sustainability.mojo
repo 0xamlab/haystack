@@ -1,0 +1,58 @@
+"""test_sustainability.mojo — auto-generated tests for sustainability library."""
+from std.math import isnan, isinf
+from sustainability import carbon_footprint_transport, energy_intensity, water_intensity, waste_diversion_rate, renewable_energy_fraction, ghg_scope1, ghg_scope2, ghg_scope3_estimate, carbon_offset_cost, circular_economy_index, social_return_on_investment, esg_composite_score
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_carbon_footprint_transport = carbon_footprint_transport(0.5, 0.5)
+    if is_finite(_v_carbon_footprint_transport): passed += 1; print("  ✅ sustainability::carbon_footprint_transport =", _v_carbon_footprint_transport)
+    else: failed += 1; print("  ❌ sustainability::carbon_footprint_transport → non-finite:", _v_carbon_footprint_transport)
+    var _v_energy_intensity = energy_intensity(0.5, 0.5)
+    if is_finite(_v_energy_intensity): passed += 1; print("  ✅ sustainability::energy_intensity =", _v_energy_intensity)
+    else: failed += 1; print("  ❌ sustainability::energy_intensity → non-finite:", _v_energy_intensity)
+    var _v_water_intensity = water_intensity(0.5, 0.5)
+    if is_finite(_v_water_intensity): passed += 1; print("  ✅ sustainability::water_intensity =", _v_water_intensity)
+    else: failed += 1; print("  ❌ sustainability::water_intensity → non-finite:", _v_water_intensity)
+    var _v_waste_diversion_rate = waste_diversion_rate(0.5, 0.5)
+    if is_finite(_v_waste_diversion_rate): passed += 1; print("  ✅ sustainability::waste_diversion_rate =", _v_waste_diversion_rate)
+    else: failed += 1; print("  ❌ sustainability::waste_diversion_rate → non-finite:", _v_waste_diversion_rate)
+    var _v_renewable_energy_fraction = renewable_energy_fraction(0.5, 0.5)
+    if is_finite(_v_renewable_energy_fraction): passed += 1; print("  ✅ sustainability::renewable_energy_fraction =", _v_renewable_energy_fraction)
+    else: failed += 1; print("  ❌ sustainability::renewable_energy_fraction → non-finite:", _v_renewable_energy_fraction)
+    var _v_ghg_scope1 = ghg_scope1(0.5)
+    if is_finite(_v_ghg_scope1): passed += 1; print("  ✅ sustainability::ghg_scope1 =", _v_ghg_scope1)
+    else: failed += 1; print("  ❌ sustainability::ghg_scope1 → non-finite:", _v_ghg_scope1)
+    var _v_ghg_scope2 = ghg_scope2(0.5, 0.5)
+    if is_finite(_v_ghg_scope2): passed += 1; print("  ✅ sustainability::ghg_scope2 =", _v_ghg_scope2)
+    else: failed += 1; print("  ❌ sustainability::ghg_scope2 → non-finite:", _v_ghg_scope2)
+    var _v_ghg_scope3_estimate = ghg_scope3_estimate(0.5, 0.5)
+    if is_finite(_v_ghg_scope3_estimate): passed += 1; print("  ✅ sustainability::ghg_scope3_estimate =", _v_ghg_scope3_estimate)
+    else: failed += 1; print("  ❌ sustainability::ghg_scope3_estimate → non-finite:", _v_ghg_scope3_estimate)
+    var _v_carbon_offset_cost = carbon_offset_cost(0.5, 0.5)
+    if is_finite(_v_carbon_offset_cost): passed += 1; print("  ✅ sustainability::carbon_offset_cost =", _v_carbon_offset_cost)
+    else: failed += 1; print("  ❌ sustainability::carbon_offset_cost → non-finite:", _v_carbon_offset_cost)
+    var _v_circular_economy_index = circular_economy_index(0.5, 0.5)
+    if is_finite(_v_circular_economy_index): passed += 1; print("  ✅ sustainability::circular_economy_index =", _v_circular_economy_index)
+    else: failed += 1; print("  ❌ sustainability::circular_economy_index → non-finite:", _v_circular_economy_index)
+    var _v_social_return_on_investment = social_return_on_investment(0.5, 0.5)
+    if is_finite(_v_social_return_on_investment): passed += 1; print("  ✅ sustainability::social_return_on_investment =", _v_social_return_on_investment)
+    else: failed += 1; print("  ❌ sustainability::social_return_on_investment → non-finite:", _v_social_return_on_investment)
+    var _v_esg_composite_score = esg_composite_score(0.5, 0.5, 0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_esg_composite_score): passed += 1; print("  ✅ sustainability::esg_composite_score =", _v_esg_composite_score)
+    else: failed += 1; print("  ❌ sustainability::esg_composite_score → non-finite:", _v_esg_composite_score)
+
+    print("  [sustainability] Passed:", passed, "Failed:", failed)

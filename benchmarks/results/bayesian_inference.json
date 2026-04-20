@@ -1,0 +1,93 @@
+{
+  "lib": "bayesian_inference",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 7,
+  "overall_speedup_x": 58.51,
+  "total_py_ns": 1193.57,
+  "total_mojo_ns": 20.4,
+  "elapsed_s": 1.41,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "bayes_update_log",
+      "py_ns": 83.371,
+      "mojo_ns": 1.1,
+      "speedup_x": 75.79,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "prior_predictive",
+      "py_ns": 83.592,
+      "mojo_ns": 1.1,
+      "speedup_x": 75.99,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "variational_elbo_term",
+      "py_ns": 145.513,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "mean_field_update_mean",
+      "py_ns": 104.479,
+      "mojo_ns": 13.8,
+      "speedup_x": 7.57,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "mean_field_update_var",
+      "py_ns": 325.262,
+      "mojo_ns": 1.1,
+      "speedup_x": 295.69,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "laplace_approx_log_posterior",
+      "py_ns": 422.817,
+      "mojo_ns": 1.1,
+      "speedup_x": 384.38,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "expected_information_gain",
+      "py_ns": 87.738,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "credible_interval_half_width",
+      "py_ns": 83.304,
+      "mojo_ns": 1.1,
+      "speedup_x": 75.73,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "kl_gaussians",
+      "py_ns": 315.817,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "jeffreys_prior_gaussian",
+      "py_ns": 90.75,
+      "mojo_ns": 1.1,
+      "speedup_x": 82.5,
+      "py_result": 2.0,
+      "py_error": null
+    }
+  ]
+}

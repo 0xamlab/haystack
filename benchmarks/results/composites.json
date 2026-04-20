@@ -1,0 +1,109 @@
+{
+  "lib": "composites",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 11,
+  "overall_speedup_x": 601.46,
+  "total_py_ns": 8420.48,
+  "total_mojo_ns": 14.0,
+  "elapsed_s": 2.19,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "rule_of_mixtures_modulus",
+      "py_ns": 112.562,
+      "mojo_ns": 3.0,
+      "speedup_x": 37.52,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "inverse_rule_of_mixtures",
+      "py_ns": 170.263,
+      "mojo_ns": 1.5,
+      "speedup_x": 113.51,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "composite_density",
+      "py_ns": 2874.046,
+      "mojo_ns": 1.1,
+      "speedup_x": 2612.77,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "fiber_volume_fraction",
+      "py_ns": 161.975,
+      "mojo_ns": 1.1,
+      "speedup_x": 147.25,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "laminate_thickness",
+      "py_ns": 111.271,
+      "mojo_ns": 1.1,
+      "speedup_x": 101.16,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "specific_stiffness",
+      "py_ns": 179.638,
+      "mojo_ns": 1.1,
+      "speedup_x": 163.31,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "specific_strength",
+      "py_ns": 1688.292,
+      "mojo_ns": 1.1,
+      "speedup_x": 1534.81,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "halpin_tsai",
+      "py_ns": 407.367,
+      "mojo_ns": 1.0,
+      "speedup_x": 407.37,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "critical_fiber_length",
+      "py_ns": 349.046,
+      "mojo_ns": 1.0,
+      "speedup_x": 349.05,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "shear_lag_stress_transfer",
+      "py_ns": 2237.396,
+      "mojo_ns": 1.0,
+      "speedup_x": 2237.4,
+      "py_result": 0.5625,
+      "py_error": null
+    },
+    {
+      "function": "impact_energy_charpy",
+      "py_ns": 128.621,
+      "mojo_ns": 1.0,
+      "speedup_x": 128.62,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "void_content",
+      "py_ns": 148.679,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

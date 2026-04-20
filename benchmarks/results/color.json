@@ -1,0 +1,29 @@
+{
+  "lib": "color",
+  "status": "ok",
+  "n_functions": 2,
+  "n_compared": 1,
+  "overall_speedup_x": 76.95,
+  "total_py_ns": 92.34,
+  "total_mojo_ns": 1.2,
+  "elapsed_s": 0.99,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "clamp01",
+      "py_ns": 92.342,
+      "mojo_ns": 1.2,
+      "speedup_x": 76.95,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "hex_to_rgb",
+      "py_ns": null,
+      "mojo_ns": 18.1,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "index out of range"
+    }
+  ]
+}

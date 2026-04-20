@@ -1,0 +1,83 @@
+{
+  "lib": "engines_prefilter_vs_fullscan",
+  "status": "ok",
+  "date": "2026-04-15",
+  "description": "Token-posting prefilter vs full-scan across 4 schema sizes. 4 paths measured.",
+  "config": {
+    "vec_dim": 64,
+    "vocab_size": 128,
+    "tokens_per_column": 4,
+    "query_tokens": 4,
+    "shortlist_cap": 64,
+    "batch_size": 10,
+    "simd_width": 8
+  },
+  "paths": {
+    "A": "full_scan_single   — SIMD cosine over all N columns",
+    "B": "prefilter_single   — posting walk → SIMD on shortlist only",
+    "C": "full_scan_batch10  — 10-query batch, full scan each",
+    "D": "prefilter_batch10  — 10-query batch, prefilter + score each"
+  },
+  "results": [
+    {
+      "n_columns": 32,
+      "shortlist_size": 5,
+      "shortlist_fraction": 0.156,
+      "full_scan_ns":     127,
+      "prefilter_ns":      37,
+      "speedup_B_over_A":  3.4,
+      "batch_scan_ns":    138,
+      "batch_pre_ns":      36,
+      "speedup_D_over_C":  3.8,
+      "note": "Even at small N, prefilter wins: shortlist=5 vs scan=32"
+    },
+    {
+      "n_columns": 128,
+      "shortlist_size": 14,
+      "shortlist_fraction": 0.109,
+      "full_scan_ns":     538,
+      "prefilter_ns":      91,
+      "speedup_B_over_A":  5.9,
+      "batch_scan_ns":    554,
+      "batch_pre_ns":      88,
+      "speedup_D_over_C":  6.3,
+      "note": "Prefilter already 6× at medium N; cache warmth helps batch"
+    },
+    {
+      "n_columns": 512,
+      "shortlist_size": 56,
+      "shortlist_fraction": 0.109,
+      "full_scan_ns":    2974,
+      "prefilter_ns":     332,
+      "speedup_B_over_A":  9.0,
+      "batch_scan_ns":   3406,
+      "batch_pre_ns":     450,
+      "speedup_D_over_C":  7.6,
+      "note": "9× single; shortlist near cap (56/64)"
+    },
+    {
+      "n_columns": 2048,
+      "shortlist_size": 64,
+      "shortlist_fraction": 0.031,
+      "full_scan_ns":   13952,
+      "prefilter_ns":     674,
+      "speedup_B_over_A": 20.7,
+      "batch_scan_ns":  27975,
+      "batch_pre_ns":     650,
+      "speedup_D_over_C": 43.0,
+      "note": "Shortlist capped at 64 — score cost constant, walk cost grows sub-linearly. Batch full_scan cost is 2× single (cache pressure) but batch prefilter flat."
+    }
+  ],
+  "scaling_analysis": {
+    "full_scan_scales": "O(N) — 4× N gives ~4× cost",
+    "prefilter_walk_scales": "O(N/vocab × query_toks) — grows sub-linearly when shortlist cap hit",
+    "prefilter_score_scales": "O(min(N/8, SLIST_CAP)) — flat at 64 for N≥512",
+    "crossover": "Prefilter wins at ALL tested schema sizes (N≥32)",
+    "production_sweet_spot": "N=512–2048: 9–21× single-query speedup, 8–43× batch speedup"
+  },
+  "comparison_with_prior_results": {
+    "all_column_scan_10cols_ns": 1764,
+    "prefilter_10cols_equivalent_ns": 37,
+    "effective_speedup_at_production_size_N2048": "43× (batch) vs 51× (Python→Mojo single-op baseline)"
+  }
+}

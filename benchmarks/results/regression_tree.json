@@ -1,0 +1,37 @@
+{
+  "lib": "regression_tree",
+  "status": "ok",
+  "n_functions": 3,
+  "n_compared": 1,
+  "overall_speedup_x": 11.84,
+  "total_py_ns": 9637.15,
+  "total_mojo_ns": 813.8,
+  "elapsed_s": 2.45,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "mse_reduction",
+      "py_ns": 9637.15,
+      "mojo_ns": 813.8,
+      "speedup_x": 11.84,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "best_split",
+      "py_ns": null,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list index out of range"
+    },
+    {
+      "function": "build_tree",
+      "py_ns": null,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list index out of range"
+    }
+  ]
+}

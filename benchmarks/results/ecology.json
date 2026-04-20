@@ -1,0 +1,109 @@
+{
+  "lib": "ecology",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 11,
+  "overall_speedup_x": 264.83,
+  "total_py_ns": 3098.57,
+  "total_mojo_ns": 11.7,
+  "elapsed_s": 1.77,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "logistic_growth",
+      "py_ns": 255.042,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "exponential_growth",
+      "py_ns": 218.487,
+      "mojo_ns": 1.1,
+      "speedup_x": 198.62,
+      "py_result": 0.642013,
+      "py_error": null
+    },
+    {
+      "function": "carrying_capacity_estimate",
+      "py_ns": 384.188,
+      "mojo_ns": 1.1,
+      "speedup_x": 349.26,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "lotka_volterra_prey",
+      "py_ns": 144.133,
+      "mojo_ns": 1.0,
+      "speedup_x": 144.13,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "lotka_volterra_predator",
+      "py_ns": 185.812,
+      "mojo_ns": 1.1,
+      "speedup_x": 168.92,
+      "py_result": -0.125,
+      "py_error": null
+    },
+    {
+      "function": "species_richness_margalef",
+      "py_ns": 1374.692,
+      "mojo_ns": 1.0,
+      "speedup_x": 1374.69,
+      "py_result": 0.721348,
+      "py_error": null
+    },
+    {
+      "function": "shannon_diversity",
+      "py_ns": 74.938,
+      "mojo_ns": 1.1,
+      "speedup_x": 68.13,
+      "py_result": -0.5,
+      "py_error": null
+    },
+    {
+      "function": "simpson_index",
+      "py_ns": 70.354,
+      "mojo_ns": 1.1,
+      "speedup_x": 63.96,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "simpson_diversity",
+      "py_ns": 75.583,
+      "mojo_ns": 1.0,
+      "speedup_x": 75.58,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "jaccard_similarity",
+      "py_ns": 126.442,
+      "mojo_ns": 1.0,
+      "speedup_x": 126.44,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "sorensen_similarity",
+      "py_ns": 194.671,
+      "mojo_ns": 1.1,
+      "speedup_x": 176.97,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "species_area_relationship",
+      "py_ns": 249.267,
+      "mojo_ns": 1.1,
+      "speedup_x": 226.61,
+      "py_result": 0.353553,
+      "py_error": null
+    }
+  ]
+}

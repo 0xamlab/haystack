@@ -1,0 +1,34 @@
+{
+  "pythonVersion": "3.12",
+  "pythonPlatform": "Darwin",
+  "pythonPath": "/usr/local/bin/python3",
+  "include": [
+    "apps/api_server",
+    "mojo/bindings",
+    "tests",
+    "scripts"
+  ],
+  "exclude": [
+    "apps/api-server",
+    "apps/api_server/alembic",
+    "mojo_build",
+    "node_modules",
+    "**/.*",
+    "**/__pycache__",
+    "**/.pytest_cache",
+    "**/*.pyc"
+  ],
+  "extraPaths": [
+    ".",
+    "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages"
+  ],
+  "typeCheckingMode": "basic",
+  "reportMissingImports": "none",
+  "reportMissingModuleSource": "none",
+  "reportAttributeAccessIssue": "none",
+  "reportCallIssue": "none",
+  "reportOptionalMemberAccess": "warning",
+  "reportGeneralTypeIssues": "warning",
+  "useLibraryCodeForTypes": true,
+  "autoSearchPaths": true
+}

@@ -1,0 +1,93 @@
+{
+  "lib": "autograd_ops",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 10,
+  "overall_speedup_x": 139.18,
+  "total_py_ns": 1503.09,
+  "total_mojo_ns": 10.8,
+  "elapsed_s": 1.62,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "grad_add",
+      "py_ns": 114.479,
+      "mojo_ns": 1.1,
+      "speedup_x": 104.07,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "grad_mul",
+      "py_ns": 123.633,
+      "mojo_ns": 1.1,
+      "speedup_x": 112.39,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "grad_exp",
+      "py_ns": 156.996,
+      "mojo_ns": 1.0,
+      "speedup_x": 157.0,
+      "py_result": 0.824361,
+      "py_error": null
+    },
+    {
+      "function": "grad_log",
+      "py_ns": 163.908,
+      "mojo_ns": 1.0,
+      "speedup_x": 163.91,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "grad_relu",
+      "py_ns": 177.896,
+      "mojo_ns": 1.1,
+      "speedup_x": 161.72,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "grad_sigmoid",
+      "py_ns": 201.171,
+      "mojo_ns": 1.1,
+      "speedup_x": 182.88,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "grad_tanh",
+      "py_ns": 198.229,
+      "mojo_ns": 1.1,
+      "speedup_x": 180.21,
+      "py_result": 0.375,
+      "py_error": null
+    },
+    {
+      "function": "grad_pow",
+      "py_ns": 145.163,
+      "mojo_ns": 1.1,
+      "speedup_x": 131.97,
+      "py_result": 0.353553,
+      "py_error": null
+    },
+    {
+      "function": "chain_rule",
+      "py_ns": 121.292,
+      "mojo_ns": 1.1,
+      "speedup_x": 110.27,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "grad_softmax_diag",
+      "py_ns": 100.325,
+      "mojo_ns": 1.1,
+      "speedup_x": 91.2,
+      "py_result": 0.125,
+      "py_error": null
+    }
+  ]
+}

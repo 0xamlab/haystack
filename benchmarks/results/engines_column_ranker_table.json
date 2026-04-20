@@ -1,0 +1,48 @@
+{
+  "lib": "engines_column_ranker_table",
+  "status": "ok",
+  "n_functions": 2,
+  "n_compared": 2,
+  "overall_speedup_x": 5.27,
+  "total_py_ns": 90700.0,
+  "total_mojo_ns": 1764.6,
+  "elapsed_s": 2.48,
+  "n_iterations": 10000,
+  "notes": "Resident CandidateTable hot path. 10 candidates. Build once / query many. Hot path: SIMD dot + integer boost only (zero JSON, zero string ops). build_query+rank() at 1479 ns is faster than rank-only at 1764 ns due to L1 cache warming on the repeated query vector. Mojo 0.26 ownership note: __moveinit__ uses .copy() for List fields (^ on struct fields disallowed when other fields remain alive).",
+  "functions": [
+    {
+      "function": "CandidateTable.rank() [pre-built query]",
+      "py_ns": 90700.0,
+      "mojo_ns": 1764.6,
+      "speedup_x": 5.14,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "build_query() + CandidateTable.rank()",
+      "py_ns": 90700.0,
+      "mojo_ns": 1479.0,
+      "speedup_x": 6.13,
+      "py_result": null,
+      "py_error": null
+    }
+  ],
+  "comparison": {
+    "json_pipeline_ns": 9302.0,
+    "table_rank_ns": 1764.6,
+    "table_vs_json_speedup": 5.27,
+    "pure_simd_kernel_ns": 2849.0,
+    "table_vs_pure_simd": 1.62,
+    "python_vs_table_speedup": 51.4
+  },
+  "correctness": {
+    "unit_price_top1_id": 1,
+    "unit_price_top1_score": 0.8000001,
+    "unit_price_top1_sim": 1.0,
+    "unit_price_boost": 0.25,
+    "confidence_gap": 0.26012456,
+    "ambiguous": false,
+    "score_formula": "0.55 * cosine_sim + type_boost(role) + prior_boost(source)",
+    "unit_price_breakdown": "0.55*1.0 + 0.15(role=UNIT match) + 0.10(source=POS prior) = 0.80"
+  }
+}

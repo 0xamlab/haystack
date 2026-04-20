@@ -1,0 +1,37 @@
+{
+  "lib": "trie",
+  "status": "ok",
+  "n_functions": 3,
+  "n_compared": 0,
+  "overall_speedup_x": null,
+  "total_py_ns": 0.0,
+  "total_mojo_ns": 0.0,
+  "elapsed_s": 1.18,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "trie_count_words",
+      "py_ns": 187.267,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "trie_count_nodes",
+      "py_ns": 139.7,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "trie_word_list",
+      "py_ns": null,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list index out of range"
+    }
+  ]
+}

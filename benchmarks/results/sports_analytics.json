@@ -1,0 +1,109 @@
+{
+  "lib": "sports_analytics",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 12,
+  "overall_speedup_x": 883.1,
+  "total_py_ns": 13069.89,
+  "total_mojo_ns": 14.8,
+  "elapsed_s": 5.4,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "batting_average",
+      "py_ns": 296.542,
+      "mojo_ns": 0.9,
+      "speedup_x": 329.49,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "on_base_percentage",
+      "py_ns": 623.496,
+      "mojo_ns": 1.0,
+      "speedup_x": 623.5,
+      "py_result": 0.75,
+      "py_error": null
+    },
+    {
+      "function": "slugging_percentage",
+      "py_ns": 951.396,
+      "mojo_ns": 1.0,
+      "speedup_x": 951.4,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "ops",
+      "py_ns": 888.392,
+      "mojo_ns": 1.0,
+      "speedup_x": 888.39,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "era",
+      "py_ns": 1353.154,
+      "mojo_ns": 0.9,
+      "speedup_x": 1503.5,
+      "py_result": 9.0,
+      "py_error": null
+    },
+    {
+      "function": "whip",
+      "py_ns": 2245.542,
+      "mojo_ns": 0.9,
+      "speedup_x": 2495.05,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "passer_rating_nfl",
+      "py_ns": 3129.258,
+      "mojo_ns": 0.9,
+      "speedup_x": 3476.95,
+      "py_result": 79.166667,
+      "py_error": null
+    },
+    {
+      "function": "pythagorean_wins",
+      "py_ns": 586.408,
+      "mojo_ns": 0.9,
+      "speedup_x": 651.56,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "elo_expected_score",
+      "py_ns": 670.988,
+      "mojo_ns": 0.9,
+      "speedup_x": 745.54,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "elo_new_rating",
+      "py_ns": 289.392,
+      "mojo_ns": 2.7,
+      "speedup_x": 107.18,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "true_shooting_percentage",
+      "py_ns": 243.15,
+      "mojo_ns": 2.8,
+      "speedup_x": 86.84,
+      "py_result": 0.347222,
+      "py_error": null
+    },
+    {
+      "function": "player_efficiency_rating_approx",
+      "py_ns": 1792.171,
+      "mojo_ns": 0.9,
+      "speedup_x": 1991.3,
+      "py_result": 0.02,
+      "py_error": null
+    }
+  ]
+}

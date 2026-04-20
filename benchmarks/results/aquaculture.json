@@ -1,0 +1,109 @@
+{
+  "lib": "aquaculture",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 11,
+  "overall_speedup_x": 242.06,
+  "total_py_ns": 3461.44,
+  "total_mojo_ns": 14.3,
+  "elapsed_s": 3.43,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "stocking_density",
+      "py_ns": 179.521,
+      "mojo_ns": 1.3,
+      "speedup_x": 138.09,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "feed_conversion_ratio",
+      "py_ns": 106.367,
+      "mojo_ns": 1.7,
+      "speedup_x": 62.57,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "specific_growth_rate",
+      "py_ns": 214.113,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "dissolved_oxygen_consumption",
+      "py_ns": 76.333,
+      "mojo_ns": 1.3,
+      "speedup_x": 58.72,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "water_exchange_rate",
+      "py_ns": 755.325,
+      "mojo_ns": 2.1,
+      "speedup_x": 359.68,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "ammonia_production",
+      "py_ns": 101.858,
+      "mojo_ns": 1.2,
+      "speedup_x": 84.88,
+      "py_result": 7.5e-05,
+      "py_error": null
+    },
+    {
+      "function": "carrying_capacity",
+      "py_ns": 112.179,
+      "mojo_ns": 1.3,
+      "speedup_x": 86.29,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "harvest_weight",
+      "py_ns": 118.7,
+      "mojo_ns": 1.6,
+      "speedup_x": 74.19,
+      "py_result": 0.501252,
+      "py_error": null
+    },
+    {
+      "function": "survival_rate",
+      "py_ns": 111.9,
+      "mojo_ns": 1.0,
+      "speedup_x": 111.9,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "production_per_cycle",
+      "py_ns": 1645.046,
+      "mojo_ns": 0.9,
+      "speedup_x": 1827.83,
+      "py_result": 0.00125,
+      "py_error": null
+    },
+    {
+      "function": "biofilter_capacity",
+      "py_ns": 114.883,
+      "mojo_ns": 0.9,
+      "speedup_x": 127.65,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "cost_per_kg_produced",
+      "py_ns": 139.329,
+      "mojo_ns": 1.0,
+      "speedup_x": 139.33,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

@@ -1,0 +1,93 @@
+{
+  "lib": "phytochemistry",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 5,
+  "overall_speedup_x": 85.19,
+  "total_py_ns": 477.06,
+  "total_mojo_ns": 5.6,
+  "elapsed_s": 0.91,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "phenolic_content_folin",
+      "py_ns": 119.233,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "flavonoid_content",
+      "py_ns": 234.85,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "anthocyanin_concentration",
+      "py_ns": 149.963,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "tannin_content",
+      "py_ns": 87.55,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "essential_oil_yield",
+      "py_ns": 90.55,
+      "mojo_ns": 1.1,
+      "speedup_x": 82.32,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "alkaloid_gravimetric",
+      "py_ns": 90.775,
+      "mojo_ns": 1.2,
+      "speedup_x": 75.65,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "chlorophyll_a",
+      "py_ns": 88.062,
+      "mojo_ns": 1.1,
+      "speedup_x": 80.06,
+      "py_result": 4.7,
+      "py_error": null
+    },
+    {
+      "function": "chlorophyll_b",
+      "py_ns": 88.692,
+      "mojo_ns": 1.1,
+      "speedup_x": 80.63,
+      "py_result": 7.55,
+      "py_error": null
+    },
+    {
+      "function": "carotenoid_content",
+      "py_ns": 118.983,
+      "mojo_ns": 1.1,
+      "speedup_x": 108.17,
+      "py_result": 1.949192,
+      "py_error": null
+    },
+    {
+      "function": "dpph_radical_scavenging",
+      "py_ns": 142.546,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

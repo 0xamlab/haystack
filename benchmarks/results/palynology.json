@@ -1,0 +1,93 @@
+{
+  "lib": "palynology",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 9,
+  "overall_speedup_x": 64.01,
+  "total_py_ns": 998.62,
+  "total_mojo_ns": 15.6,
+  "elapsed_s": 1.08,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "pollen_concentration",
+      "py_ns": 120.121,
+      "mojo_ns": 2.4,
+      "speedup_x": 50.05,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "pollen_accumulation_rate",
+      "py_ns": 112.521,
+      "mojo_ns": 1.3,
+      "speedup_x": 86.55,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "taxa_diversity_index",
+      "py_ns": 124.617,
+      "mojo_ns": 1.2,
+      "speedup_x": 103.85,
+      "py_result": 0.173287,
+      "py_error": null
+    },
+    {
+      "function": "relative_pollen_percentage",
+      "py_ns": 95.925,
+      "mojo_ns": 1.3,
+      "speedup_x": 73.79,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "r_value_correction",
+      "py_ns": 92.458,
+      "mojo_ns": 2.1,
+      "speedup_x": 44.03,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "arboreal_non_arboreal_ratio",
+      "py_ns": 102.85,
+      "mojo_ns": 1.1,
+      "speedup_x": 93.5,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "pollen_influx",
+      "py_ns": 92.446,
+      "mojo_ns": 4.0,
+      "speedup_x": 23.11,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "spore_germination_index",
+      "py_ns": 96.213,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "pollen_productivity_estimate",
+      "py_ns": 156.212,
+      "mojo_ns": 1.1,
+      "speedup_x": 142.01,
+      "py_result": 1.001,
+      "py_error": null
+    },
+    {
+      "function": "pollen_transport_distance",
+      "py_ns": 101.467,
+      "mojo_ns": 1.1,
+      "speedup_x": 92.24,
+      "py_result": 0.5,
+      "py_error": null
+    }
+  ]
+}

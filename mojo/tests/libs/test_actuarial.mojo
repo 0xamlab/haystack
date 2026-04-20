@@ -1,0 +1,58 @@
+"""test_actuarial.mojo — auto-generated tests for actuarial library."""
+from std.math import isnan, isinf
+from actuarial import present_value, future_value, annuity_present_value, annuity_future_value, life_expectancy_curtate, mortality_rate, survival_probability, force_of_mortality, net_single_premium, loss_ratio, combined_ratio, reserve_prospective
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_present_value = present_value(0.5, 0.5, 0.5)
+    if is_finite(_v_present_value): passed += 1; print("  ✅ actuarial::present_value =", _v_present_value)
+    else: failed += 1; print("  ❌ actuarial::present_value → non-finite:", _v_present_value)
+    var _v_future_value = future_value(0.5, 0.5, 0.5)
+    if is_finite(_v_future_value): passed += 1; print("  ✅ actuarial::future_value =", _v_future_value)
+    else: failed += 1; print("  ❌ actuarial::future_value → non-finite:", _v_future_value)
+    var _v_annuity_present_value = annuity_present_value(0.5, 0.5, 0.5)
+    if is_finite(_v_annuity_present_value): passed += 1; print("  ✅ actuarial::annuity_present_value =", _v_annuity_present_value)
+    else: failed += 1; print("  ❌ actuarial::annuity_present_value → non-finite:", _v_annuity_present_value)
+    var _v_annuity_future_value = annuity_future_value(0.5, 0.5, 0.5)
+    if is_finite(_v_annuity_future_value): passed += 1; print("  ✅ actuarial::annuity_future_value =", _v_annuity_future_value)
+    else: failed += 1; print("  ❌ actuarial::annuity_future_value → non-finite:", _v_annuity_future_value)
+    var _v_life_expectancy_curtate = life_expectancy_curtate(0.5, 5, 5)
+    if is_finite(_v_life_expectancy_curtate): passed += 1; print("  ✅ actuarial::life_expectancy_curtate =", _v_life_expectancy_curtate)
+    else: failed += 1; print("  ❌ actuarial::life_expectancy_curtate → non-finite:", _v_life_expectancy_curtate)
+    var _v_mortality_rate = mortality_rate(0.5, 0.5)
+    if is_finite(_v_mortality_rate): passed += 1; print("  ✅ actuarial::mortality_rate =", _v_mortality_rate)
+    else: failed += 1; print("  ❌ actuarial::mortality_rate → non-finite:", _v_mortality_rate)
+    var _v_survival_probability = survival_probability(0.5)
+    if is_finite(_v_survival_probability): passed += 1; print("  ✅ actuarial::survival_probability =", _v_survival_probability)
+    else: failed += 1; print("  ❌ actuarial::survival_probability → non-finite:", _v_survival_probability)
+    var _v_force_of_mortality = force_of_mortality(0.5)
+    if is_finite(_v_force_of_mortality): passed += 1; print("  ✅ actuarial::force_of_mortality =", _v_force_of_mortality)
+    else: failed += 1; print("  ❌ actuarial::force_of_mortality → non-finite:", _v_force_of_mortality)
+    var _v_net_single_premium = net_single_premium(0.5, 0.5, 0.5)
+    if is_finite(_v_net_single_premium): passed += 1; print("  ✅ actuarial::net_single_premium =", _v_net_single_premium)
+    else: failed += 1; print("  ❌ actuarial::net_single_premium → non-finite:", _v_net_single_premium)
+    var _v_loss_ratio = loss_ratio(0.5, 0.5)
+    if is_finite(_v_loss_ratio): passed += 1; print("  ✅ actuarial::loss_ratio =", _v_loss_ratio)
+    else: failed += 1; print("  ❌ actuarial::loss_ratio → non-finite:", _v_loss_ratio)
+    var _v_combined_ratio = combined_ratio(0.5, 0.5)
+    if is_finite(_v_combined_ratio): passed += 1; print("  ✅ actuarial::combined_ratio =", _v_combined_ratio)
+    else: failed += 1; print("  ❌ actuarial::combined_ratio → non-finite:", _v_combined_ratio)
+    var _v_reserve_prospective = reserve_prospective(0.5, 0.5)
+    if is_finite(_v_reserve_prospective): passed += 1; print("  ✅ actuarial::reserve_prospective =", _v_reserve_prospective)
+    else: failed += 1; print("  ❌ actuarial::reserve_prospective → non-finite:", _v_reserve_prospective)
+
+    print("  [actuarial] Passed:", passed, "Failed:", failed)

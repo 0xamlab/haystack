@@ -1,0 +1,57 @@
+"""test_perfumery.mojo — auto-generated tests for perfumery library."""
+from std.math import isnan, isinf
+from perfumery import concentration_parfum, dilution_ratio, evaporation_rate_relative, top_note_duration, middle_note_duration, base_note_duration, triangle_accord_balance, tenacity_hours, sillage_distance, cost_per_ml, fragrance_strength_scale, ingredient_proportion
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_concentration_parfum = concentration_parfum(0.5, 0.5)
+    if is_finite(_v_concentration_parfum): passed += 1; print("  ✅ perfumery::concentration_parfum =", _v_concentration_parfum)
+    else: failed += 1; print("  ❌ perfumery::concentration_parfum → non-finite:", _v_concentration_parfum)
+    var _v_dilution_ratio = dilution_ratio(0.5, 0.5)
+    if is_finite(_v_dilution_ratio): passed += 1; print("  ✅ perfumery::dilution_ratio =", _v_dilution_ratio)
+    else: failed += 1; print("  ❌ perfumery::dilution_ratio → non-finite:", _v_dilution_ratio)
+    var _v_evaporation_rate_relative = evaporation_rate_relative(0.5, 0.5)
+    if is_finite(_v_evaporation_rate_relative): passed += 1; print("  ✅ perfumery::evaporation_rate_relative =", _v_evaporation_rate_relative)
+    else: failed += 1; print("  ❌ perfumery::evaporation_rate_relative → non-finite:", _v_evaporation_rate_relative)
+    var _v_top_note_duration = top_note_duration()
+    if is_finite(_v_top_note_duration): passed += 1; print("  ✅ perfumery::top_note_duration =", _v_top_note_duration)
+    else: failed += 1; print("  ❌ perfumery::top_note_duration → non-finite:", _v_top_note_duration)
+    var _v_middle_note_duration = middle_note_duration()
+    if is_finite(_v_middle_note_duration): passed += 1; print("  ✅ perfumery::middle_note_duration =", _v_middle_note_duration)
+    else: failed += 1; print("  ❌ perfumery::middle_note_duration → non-finite:", _v_middle_note_duration)
+    var _v_base_note_duration = base_note_duration()
+    if is_finite(_v_base_note_duration): passed += 1; print("  ✅ perfumery::base_note_duration =", _v_base_note_duration)
+    else: failed += 1; print("  ❌ perfumery::base_note_duration → non-finite:", _v_base_note_duration)
+    var _v_triangle_accord_balance = triangle_accord_balance(0.5, 0.5, 0.5)
+    if is_finite(_v_triangle_accord_balance): passed += 1; print("  ✅ perfumery::triangle_accord_balance =", _v_triangle_accord_balance)
+    else: failed += 1; print("  ❌ perfumery::triangle_accord_balance → non-finite:", _v_triangle_accord_balance)
+    var _v_tenacity_hours = tenacity_hours(0.5, 0.5, 0.5)
+    if is_finite(_v_tenacity_hours): passed += 1; print("  ✅ perfumery::tenacity_hours =", _v_tenacity_hours)
+    else: failed += 1; print("  ❌ perfumery::tenacity_hours → non-finite:", _v_tenacity_hours)
+    var _v_sillage_distance = sillage_distance(0.5, 0.5)
+    if is_finite(_v_sillage_distance): passed += 1; print("  ✅ perfumery::sillage_distance =", _v_sillage_distance)
+    else: failed += 1; print("  ❌ perfumery::sillage_distance → non-finite:", _v_sillage_distance)
+    var _v_cost_per_ml = cost_per_ml(0.5, 0.5)
+    if is_finite(_v_cost_per_ml): passed += 1; print("  ✅ perfumery::cost_per_ml =", _v_cost_per_ml)
+    else: failed += 1; print("  ❌ perfumery::cost_per_ml → non-finite:", _v_cost_per_ml)
+    _ = fragrance_strength_scale(0.5)
+    passed += 1; print("  ✅ perfumery::fragrance_strength_scale")
+    var _v_ingredient_proportion = ingredient_proportion(0.5, 0.5)
+    if is_finite(_v_ingredient_proportion): passed += 1; print("  ✅ perfumery::ingredient_proportion =", _v_ingredient_proportion)
+    else: failed += 1; print("  ❌ perfumery::ingredient_proportion → non-finite:", _v_ingredient_proportion)
+
+    print("  [perfumery] Passed:", passed, "Failed:", failed)

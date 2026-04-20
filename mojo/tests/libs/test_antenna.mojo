@@ -1,0 +1,58 @@
+"""test_antenna.mojo — auto-generated tests for antenna library."""
+from std.math import isnan, isinf
+from antenna import dipole_length, wavelength_from_freq, friis_path_loss, eirp, received_power, directivity_from_beamwidths, antenna_efficiency, effective_aperture, link_budget_margin, noise_figure_to_noise_temp, free_space_loss_db, beamwidth_from_aperture
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_dipole_length = dipole_length(0.5)
+    if is_finite(_v_dipole_length): passed += 1; print("  ✅ antenna::dipole_length =", _v_dipole_length)
+    else: failed += 1; print("  ❌ antenna::dipole_length → non-finite:", _v_dipole_length)
+    var _v_wavelength_from_freq = wavelength_from_freq(0.5, 0.5)
+    if is_finite(_v_wavelength_from_freq): passed += 1; print("  ✅ antenna::wavelength_from_freq =", _v_wavelength_from_freq)
+    else: failed += 1; print("  ❌ antenna::wavelength_from_freq → non-finite:", _v_wavelength_from_freq)
+    var _v_friis_path_loss = friis_path_loss(0.5, 0.5)
+    if is_finite(_v_friis_path_loss): passed += 1; print("  ✅ antenna::friis_path_loss =", _v_friis_path_loss)
+    else: failed += 1; print("  ❌ antenna::friis_path_loss → non-finite:", _v_friis_path_loss)
+    var _v_eirp = eirp(0.5, 0.5)
+    if is_finite(_v_eirp): passed += 1; print("  ✅ antenna::eirp =", _v_eirp)
+    else: failed += 1; print("  ❌ antenna::eirp → non-finite:", _v_eirp)
+    var _v_received_power = received_power(0.5, 0.5, 0.5)
+    if is_finite(_v_received_power): passed += 1; print("  ✅ antenna::received_power =", _v_received_power)
+    else: failed += 1; print("  ❌ antenna::received_power → non-finite:", _v_received_power)
+    var _v_directivity_from_beamwidths = directivity_from_beamwidths(0.5, 0.5)
+    if is_finite(_v_directivity_from_beamwidths): passed += 1; print("  ✅ antenna::directivity_from_beamwidths =", _v_directivity_from_beamwidths)
+    else: failed += 1; print("  ❌ antenna::directivity_from_beamwidths → non-finite:", _v_directivity_from_beamwidths)
+    var _v_antenna_efficiency = antenna_efficiency(0.5, 0.5)
+    if is_finite(_v_antenna_efficiency): passed += 1; print("  ✅ antenna::antenna_efficiency =", _v_antenna_efficiency)
+    else: failed += 1; print("  ❌ antenna::antenna_efficiency → non-finite:", _v_antenna_efficiency)
+    var _v_effective_aperture = effective_aperture(0.5, 0.5)
+    if is_finite(_v_effective_aperture): passed += 1; print("  ✅ antenna::effective_aperture =", _v_effective_aperture)
+    else: failed += 1; print("  ❌ antenna::effective_aperture → non-finite:", _v_effective_aperture)
+    var _v_link_budget_margin = link_budget_margin(0.5, 0.5)
+    if is_finite(_v_link_budget_margin): passed += 1; print("  ✅ antenna::link_budget_margin =", _v_link_budget_margin)
+    else: failed += 1; print("  ❌ antenna::link_budget_margin → non-finite:", _v_link_budget_margin)
+    var _v_noise_figure_to_noise_temp = noise_figure_to_noise_temp(0.5, 0.5)
+    if is_finite(_v_noise_figure_to_noise_temp): passed += 1; print("  ✅ antenna::noise_figure_to_noise_temp =", _v_noise_figure_to_noise_temp)
+    else: failed += 1; print("  ❌ antenna::noise_figure_to_noise_temp → non-finite:", _v_noise_figure_to_noise_temp)
+    var _v_free_space_loss_db = free_space_loss_db(0.5, 0.5)
+    if is_finite(_v_free_space_loss_db): passed += 1; print("  ✅ antenna::free_space_loss_db =", _v_free_space_loss_db)
+    else: failed += 1; print("  ❌ antenna::free_space_loss_db → non-finite:", _v_free_space_loss_db)
+    var _v_beamwidth_from_aperture = beamwidth_from_aperture(0.5, 0.5)
+    if is_finite(_v_beamwidth_from_aperture): passed += 1; print("  ✅ antenna::beamwidth_from_aperture =", _v_beamwidth_from_aperture)
+    else: failed += 1; print("  ❌ antenna::beamwidth_from_aperture → non-finite:", _v_beamwidth_from_aperture)
+
+    print("  [antenna] Passed:", passed, "Failed:", failed)

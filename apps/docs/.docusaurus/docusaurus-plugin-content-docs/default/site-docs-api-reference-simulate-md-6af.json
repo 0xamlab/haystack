@@ -1,0 +1,27 @@
+{
+  "id": "api-reference/simulate",
+  "title": "POST /v1/simulate",
+  "description": "Run a Monte Carlo simulation and receive a structured decision envelope.",
+  "source": "@site/docs/api-reference/simulate.md",
+  "sourceDirName": "api-reference",
+  "slug": "/api-reference/simulate",
+  "permalink": "/api-reference/simulate",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/decisionengine/decision-engine/tree/main/apps/docs/docs/api-reference/simulate.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 2,
+  "frontMatter": {
+    "sidebar_position": 2
+  },
+  "sidebar": "docsSidebar",
+  "previous": {
+    "title": "API Reference",
+    "permalink": "/api-reference/"
+  },
+  "next": {
+    "title": "Authentication",
+    "permalink": "/api-reference/authentication"
+  }
+}

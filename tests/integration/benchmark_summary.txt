@@ -1,0 +1,83 @@
+================================================================================
+  ALGENTA DECISION ENGINE — BENCHMARK SUMMARY
+  Generated: 2026-04-14T14:43:35.679094+00:00
+================================================================================
+
+═══ ENGINE SCALING (3 variables, median of 3 runs) ═══
+
+  Engine                         100       500      1000      5000     10000     50000  (runs)
+  --------------------------------------------------------------------------------------------
+  monte_carlo                   111ms      110ms      110ms      107ms      109ms      113ms
+  lhs                           112ms      116ms      113ms      116ms      114ms      163ms
+  qmc_sobol                     158ms      110ms      119ms      113ms      117ms      125ms
+  bootstrap                     120ms      123ms      109ms      118ms      138ms      191ms
+  scenario                      120ms      121ms      114ms      118ms      119ms      127ms
+  sensitivity                   129ms      112ms      116ms      115ms      116ms      123ms
+  decision_tree                 120ms      123ms      123ms      116ms      124ms      118ms
+  time_series                   120ms      128ms      117ms      119ms      118ms      180ms
+  mcmc                          118ms      112ms      119ms      131ms      123ms      140ms
+  importance_sampling           123ms      130ms      109ms      110ms      112ms      128ms
+
+--- Fastest / Slowest Engines at 1,000 runs ---
+  Fastest: importance_sampling (109ms)
+  Slowest: decision_tree (123ms)
+  Ratio:   1.1x
+
+═══ VARIABLE SCALING (monte_carlo, 1000 runs) ═══
+
+  Variables      Latency (ms)
+  ----------------------------
+  1                      121ms
+  3                      124ms
+  5                      117ms
+  10                     111ms
+  20                     116ms
+
+═══ DISTRIBUTION TYPE BENCHMARKS (monte_carlo, 1000 runs, 3 vars) ═══
+
+  Distribution       Latency (ms)
+  --------------------------------
+  normal                     122ms
+  uniform                    113ms
+  triangular                 110ms
+  lognormal                  110ms
+  beta                       113ms
+
+═══ CONCURRENCY SCALING (monte_carlo, 1000 runs, 3 vars) ═══
+
+  Concurrency      Total (ms)    Avg/Req        Min        Max
+  ----------------------------------------------------------
+  1                      113ms       113ms       113ms       113ms
+  5                      269ms       259ms       247ms       268ms
+  10                     397ms       358ms       280ms       394ms
+  20                     478ms       409ms       270ms       475ms
+
+═══ END-TO-END LATENCY BREAKDOWN ═══
+
+  Endpoint                               Latency (ms)
+  ----------------------------------------------------
+  Health (HTTP overhead)                           2ms
+  Simple sim (auto, 100 runs)                    139ms
+  Complex sim (expert, 10v, 10k runs)            106ms
+  Recommend endpoint                               2ms
+  What-if comparison                             106ms
+  Run listing (GET /v1/runs)                       7ms
+
+═══ WARM vs COLD PERFORMANCE ═══
+
+  Cold start (1st request):         117ms
+  Warm (10th request):              106ms
+  Warm (median of 9):               110ms
+  Cold/Warm ratio:                 1.13x
+
+═══ OVERALL STATISTICS ═══
+
+  Total benchmarks:    70
+  Mean latency:        121ms
+  Median latency:      118ms
+  Min latency:         107ms
+  Max latency:         191ms
+  Std deviation:       15ms
+  Timeouts:            0
+
+================================================================================

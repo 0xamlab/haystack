@@ -1,0 +1,587 @@
+Mojo vs Python Benchmark Summary
+Generated: 2026-04-14T23:52:00
+Iterations per function: 10,000
+Libraries benchmarked: 450
+Functions compared: 3721
+Suite duration: 328.3s
+
+Overall speedup (Mojo vs Python):
+  Median: 101.24x
+  Mean:   191.89x
+  Max:    7221.48x
+  Min:    0.09x
+
+Library                                      Speedup    Python ns    Mojo ns   Fns
+----------------------------------------------------------------------------------
+  ab_testing                                  12.06x       7551.5      625.9     8
+  accounting                                  12.01x       1456.3      121.3     7
+  acoustics                                  107.28x        751.0        7.0     7
+  activations                                373.21x       3769.4       10.1    10
+  actuarial                                   41.65x       1532.6       36.8    10
+  adhesives                                  242.63x       2790.2       11.5    12
+  aerospace                                  302.23x       3052.6       10.1    10
+  agent_runtime                               74.20x        704.9        9.5     6
+  agriculture                                110.99x       1121.0       10.1    11
+  agronomy                                    82.45x       1005.9       12.2     7
+  allocation                                   1.20x       7785.8     6504.0    10
+  anomaly                                     16.60x     150435.0     9065.0    10
+  antenna                                    218.24x       1920.5        8.8     9
+  apiculture                                  60.76x       1871.4       30.8    12
+  aquaculture                                242.06x       3461.4       14.3    11
+  archaeology                                672.08x       6586.4        9.8    10
+  astrobiology                               831.71x       8483.5       10.2    10
+  astronomy                                  320.90x      66040.8      205.8    12
+  atmospheric_chemistry                       17.93x       1004.0       56.0     8
+  auction                                     13.34x       7876.4      590.6    11
+  audio                                        6.18x      11728.4     1896.8     8
+  autograd_graph                             238.34x       2192.7        9.2     9
+  autograd_ops                               139.18x       1503.1       10.8    10
+  autonomous_vehicles                         90.58x       1684.7       18.6    12
+  aviation                                   122.81x       1043.9        8.5     8
+  battery                                    101.69x       1372.8       13.5    11
+  bayesian                                     4.24x      43038.2    10144.1    10
+  bayesian_inference                          58.51x       1193.6       20.4     7
+  behavioral_economics                       169.47x       1881.2       11.1    10
+  biogeochemistry                            363.87x       3493.2        9.6     8
+  bioinformatics                             139.58x       1702.9       12.2    11
+  biomechanics                               109.81x       1372.6       12.5    11
+  biomedical                                 192.26x       2134.1       11.1    10
+  bitops                                     831.90x       9317.3       11.2    10
+  blockchain                                 175.60x       2177.5       12.4    11
+  bloom_counting                               3.54x       2045.1      577.7     3
+  boolean_algebra                              0.86x       6988.1     8156.6    11
+  bpe_tokenizer                               84.96x        756.2        8.9     8
+  brewing                                    106.65x       1194.4       11.2     9
+  bryology                                   199.68x       1317.9        6.6     7
+  cache                                      832.77x        749.5        0.9     1
+  cardiology                                 103.29x        371.9        3.6     4
+  cartography                                138.15x       2003.2       14.5    11
+  category_theory                              3.06x       7287.1     2380.9     9
+  causal                                      93.46x      44570.0      476.9    10
+  cellular                                     3.32x      34558.2    10403.7     4
+  cellular_automata                           38.55x      14052.2      364.5     5
+  ceramics                                   350.79x       3858.6       11.0     9
+  chaos                                        1.96x      24939.0    12719.3     8
+  checksum                                   266.47x      20518.3       77.0     9
+  chromatography                             140.95x       1099.4        7.8     8
+  climate                                    196.76x       2164.4       11.0    10
+  clustering_metrics                           0.98x      47753.0    48633.7     8
+  color                                       76.95x         92.3        1.2     1
+  color_science                              118.33x       1100.5        9.3     9
+  combinatorial                                6.56x      19075.7     2910.0     3
+  combustion                                 343.94x       3473.8       10.1    10
+  compiler_theory                            807.71x       9288.7       11.5    10
+  composites                                 601.46x       8420.5       14.0    11
+  compression_delta                            3.19x      44400.6    13905.4    10
+  compression_huffman                          5.03x      86890.4    17266.7     5
+  compression_lz77                            11.42x      24553.9     2151.0     5
+  compression_rle                              7.61x       5203.3      683.8     5
+  concrete                                   125.46x       1555.7       12.4    11
+  config_toml_parser                           3.77x       8088.2     2148.0     1
+  config_yaml_parser                          20.78x       8108.5      390.2     1
+  constraint                                   0.88x      31973.0    36480.5     7
+  continuous_batching                        121.62x        887.8        7.3     7
+  contrastive_learning                       122.15x       1026.1        8.4     8
+  control                                     21.64x       4255.7      196.7     7
+  conv                                        61.98x       6210.7      100.2     6
+  convex                                       4.12x     141783.7    34447.6     8
+  copula                                      14.19x      80732.8     5690.5     4
+  correlation                                 19.09x      18095.0      947.7     3
+  corrosion                                  326.34x       3491.8       10.7    10
+  cosmology                                    7.54x       1435.3      190.4    11
+  cost_router                                336.53x       1749.9        5.2     5
+  cryogenics                                  62.30x        672.9       10.8     8
+  cryology                                    80.86x        808.6       10.0     8
+  cryptanalysis                              152.71x       1435.5        9.4     8
+  crypto_aes_sbox                             40.69x      81543.4     2003.8     6
+  crypto_base64                              121.26x      34728.6      286.4     4
+  crypto_chacha20                             26.70x       3177.4      119.0     3
+  crypto_crc32                               233.61x    6146476.5    26310.9     3
+  crypto_hash_chain                            5.50x     272096.2    49501.9     9
+  crypto_hmac                               1520.30x   13756904.9     9048.8     2
+  crypto_pbkdf2                             1069.45x   19424913.2    18163.5     7
+  crypto_uuid                                  7.72x     112214.6    14538.9     2
+  crystallography                            221.14x       2919.0       13.2    12
+  currency                                     1.17x       4800.1     4111.4    12
+  cytology                                    91.23x        811.9        8.9     8
+  cytometry                                  111.20x       1100.8        9.9     9
+  data_csv_parser                             56.76x      44664.1      786.9     3
+  data_feedback_loop                         120.34x        974.7        8.1     8
+  data_pipeline                              196.53x       2044.0       10.4     9
+  database                                     1.01x        713.9      709.9     1
+  datetime                                    53.86x      11558.4      214.6     8
+  decision_analysis                            8.13x      51357.1     6318.4     8
+  decision_ml_fusion                         130.57x        679.0        5.2     5
+  demographics                               480.38x       5476.4       11.4    11
+  dendrochronology                           548.67x       5761.1       10.5     8
+  dendrology                                 143.72x       2083.9       14.5    12
+  dentistry                                  106.58x       1247.0       11.7    11
+  dependency                                   1.25x      12277.4     9839.7     8
+  differentiate                                1.59x       4918.1     3088.5     6
+  diffusion_models                            47.94x       2099.8       43.8    10
+  dimensionality                               1.32x      12177.5     9215.0     4
+  dimensions                                 269.91x       4453.5       16.5     3
+  distillation                               384.82x       6080.2       15.8    10
+  distributed_collectives                    419.34x       3564.4        8.5     8
+  distribution_fit                             9.81x      53274.3     5428.9    10
+  distributions                                7.30x      18850.6     2583.5    16
+  dosimetry                                  417.40x       4215.8       10.1    10
+  drones                                     338.66x       4063.9       12.0    12
+  earth                                       29.79x      21502.0      721.9    10
+  ecohydrology                               146.90x       1674.7       11.4     6
+  ecology                                    264.83x       3098.6       11.7    11
+  economic_indicators                          8.79x       5171.4      588.4     7
+  ecophysiology                              192.47x       1289.5        6.7     6
+  election                                     1.81x      50772.8    28124.1     8
+  electrical                                 168.42x       5861.2       34.8    14
+  electrochemistry                           227.88x       2233.3        9.8     9
+  electrostatics                             286.96x       3902.6       13.6    10
+  elevator                                   193.59x       2555.4       13.2    12
+  embeddings                                  10.67x      92567.3     8675.1    12
+  encoding                                     3.47x      46879.5    13505.4     7
+  encryption_modes                           228.34x       2762.9       12.1    10
+  endocrinology                              184.80x       1755.6        9.5     9
+  engines_column_matcher                    1482.04x      45943.3       31.0     1
+  engines_column_profiler                     55.83x        385.2        6.9     1
+  engines_column_ranker                      118.82x       4776.5       40.2     1
+  engines_field_map                          310.79x       4288.9       13.8     1
+  engines_join_detector                      586.40x       7154.0       12.2     1
+  engines_monte_carlo                       7221.48x      12998.7        1.8     2
+  engines_relation_detector                   96.86x      37544.6      387.6     1
+  engines_string_similarity                    5.33x      12623.7     2369.1     1
+  entomology                                 101.24x       1245.2       12.3    10
+  env                                          0.26x      20036.6    77448.5     5
+  epidemiology                                 0.83x      13882.2    16737.2     9
+  epigenetics                                279.96x       2295.6        8.2     8
+  ergonomics                                   8.11x       1005.0      123.9     9
+  etiology                                   221.32x       1726.3        7.8     8
+  evaluation_feedback                        503.62x       2115.2        4.2     4
+  execution_planner                          240.80x       2046.8        8.5     8
+  fault_tolerance                            292.75x       2986.0       10.2    10
+  feature_engineering                        147.50x       1755.3       11.9     6
+  feature_selection                           21.04x     254199.5    12079.2     9
+  fermentation                               606.60x       8492.5       14.0     7
+  fft                                          6.56x       2525.8      384.8     2
+  filepath_pathlib                            71.30x      78569.6     1101.9     6
+  finance                                     61.76x      68489.1     1108.9    11
+  fire_safety                               1188.29x      16873.7       14.2    11
+  fisheries                                  415.21x       4442.8       10.7    10
+  flash_attention                            335.15x       3284.5        9.8     9
+  fluid                                      271.33x       4748.3       17.5    10
+  food_science                               476.57x       5861.8       12.3    12
+  forensics                                  248.47x       2857.3       11.5     9
+  formal_logic                                13.65x       4540.7      332.6    10
+  fused_kernels                              207.21x       1761.3        8.5     8
+  fuzzy_logic                                 14.74x       3454.2      234.4     9
+  game_physics                               185.34x       2483.6       13.4    12
+  game_theory                                  0.99x       7166.8     7258.5     7
+  generation_loop                             84.15x        740.5        8.8     7
+  genetic                                      5.20x        575.7      110.7     1
+  genomics                                    93.45x       1046.6       11.2    10
+  geochemistry                               114.70x       1147.0       10.0     9
+  geodesy                                      5.44x      13027.3     2395.7     8
+  geometry                                     9.31x      21618.5     2321.6     9
+  geomorphology                               77.92x       1729.9       22.2    11
+  geophysics                                 135.92x       1807.8       13.3     9
+  geotechnical                                88.87x       1697.4       19.1    11
+  glaciology                                 168.83x       1688.3       10.0     9
+  gpu_kernels                                 82.95x        978.9       11.8     9
+  gradient_descent                           210.32x       2313.6       11.0    10
+  graph_algorithms                           153.99x        877.7        5.7     6
+  graph_compiler                             107.53x        752.7        7.0     7
+  graph_decision                              91.76x       1036.8       11.3     9
+  graph_weighted                              13.02x       5417.5      416.2     1
+  greenhouse                                 251.80x       2215.8        8.8     9
+  heap                                         1.62x      17091.6    10546.1    13
+  hematology                                 165.00x       1650.0       10.0    10
+  horticulture                               260.67x       2293.9        8.8     7
+  hvac                                        65.72x       1544.3       23.5    10
+  hybrid_reasoning                           121.55x        972.4        8.0     8
+  hydraulics                                 120.54x       1253.6       10.4    11
+  hydrogeology                                33.48x        713.1       21.3     7
+  hydrology                                  124.54x       1581.7       12.7    11
+  hydrometeorology                           157.14x       1618.5       10.3     7
+  hydroponics                                211.13x       2132.4       10.1     9
+  hypothesis                                   9.43x      75742.8     8030.8     6
+  image_ops                                    0.33x      28470.8    85059.0    11
+  immunology                                 117.24x        773.8        6.6     6
+  inference_engine                            21.91x       1073.8       49.0     8
+  inference_security                         219.61x       2020.4        9.2     9
+  information_theory                           1.64x       9789.8     5954.3     9
+  insurance                                   94.11x       1383.5       14.7    12
+  integrate                                    5.54x       6479.5     1170.5     6
+  interpolate                                  3.87x      11262.7     2910.9     6
+  interval                                   427.74x        941.0        2.2     2
+  inventory                                    5.64x       5294.4      938.6    10
+  json_parser                               2793.23x      74858.5       26.8    10
+  json_writer                                 65.78x     170372.0     2590.1    10
+  kalman                                       1.89x      29876.8    15796.1     9
+  kinetics                                   158.81x       1540.5        9.7     9
+  kv_cache                                   175.32x       1227.2        7.0     7
+  latency_optimizer                           17.34x        537.6       31.0     5
+  laundry                                     90.63x        788.5        8.7     8
+  lidar                                       42.14x       1226.4       29.1     9
+  lidar_mapping                              113.53x        794.7        7.0     7
+  limnochemistry                             364.87x       3794.7       10.4    10
+  limnology                                  259.09x       4197.2       16.2     8
+  linalg                                      14.58x      81136.5     5566.4    13
+  linalg_ext                                  17.92x     538030.3    30021.7     7
+  linear_programming                           5.57x     214686.3    38516.7     6
+  linguistics                                875.96x      10599.1       12.1    11
+  llm_sampling                               880.50x       9685.5       11.0    10
+  logic_circuit                                2.92x      12931.3     4426.4     8
+  logistics                                  232.08x       4432.7       19.1    11
+  lora_adapters                              379.98x       4217.7       11.1    10
+  loss_functions                              87.77x       7091.5       80.8     6
+  lottery                                    549.34x       5823.1       10.6     9
+  magnetism                                  296.37x       2845.2        9.6     9
+  marine                                     659.09x       6854.6       10.4    10
+  materials                                  360.38x       4036.3       11.2    11
+  math_ext                                    20.49x      52693.2     2571.9    19
+  matrix_decomp                                1.79x      16197.2     9030.9     7
+  matrix_ops                                   2.68x     189098.7    70507.6    11
+  memory_system                               64.40x       1519.9       23.6     6
+  metabolomics                               291.25x       2592.1        8.9     8
+  metallurgy                                 438.67x       5132.4       11.7    11
+  meteorology                                130.41x       4812.3       36.9    10
+  metrics_agg                                 16.69x      13131.0      786.8     5
+  microbiology                                85.65x       1601.6       18.7     8
+  mineralogy                                 101.51x        954.1        9.4     7
+  mining                                     325.01x       4517.6       13.9    11
+  mixture_of_experts                         430.54x       3530.4        8.2     8
+  ml_classifiers                              33.00x     305980.8     9272.5     7
+  ml_clustering                               29.45x     600089.7    20374.8     4
+  ml_knn                                      12.38x     454428.9    36704.5    10
+  ml_metrics                                   8.93x      84788.1     9499.2     7
+  ml_metrics_extended                         25.45x       1751.1       68.8     5
+  ml_naive_bayes                               3.89x     110346.7    28364.3     6
+  ml_preprocessing                             5.90x      90744.4    15377.3     6
+  ml_random_forest                             9.63x    8643676.7   897687.3     7
+  model_abi                                   91.70x        862.0        9.4     9
+  model_interop                              145.86x       1414.9        9.7     9
+  model_parallel                             121.90x       1243.4       10.2     8
+  model_router                                18.26x       1015.2       55.6     6
+  model_serialization                        156.64x       1519.4        9.7     9
+  moe_production                             102.17x        868.4        8.5     8
+  moe_routing                                152.75x       1344.2        8.8     8
+  multi_objective                              1.35x      29987.5    22219.1     6
+  multimodal                                 128.74x       1004.2        7.8     8
+  museum                                      23.84x       1397.3       58.6    11
+  music_theory                               245.33x       5691.7       23.2     8
+  mycology                                   105.10x        714.7        6.8     7
+  nanotechnology                             278.97x       3877.6       13.9    12
+  nephrology                                 158.93x       1430.3        9.0     9
+  net_unix_socket                              6.40x     788726.7   123270.1     5
+  net_url                                     96.93x     111055.5     1145.7     5
+  network_analysis                             0.73x      19479.8    26680.5     8
+  network_protocol                             8.76x       7601.4      867.3     3
+  neuropharmacology                           93.71x       1171.3       12.5    10
+  neurophysics                               103.81x        965.5        9.3     6
+  nlp                                          1.08x      19472.5    18082.5     9
+  nn_layers                                    1.12x      36468.2    32660.4    11
+  normalization_layers                       260.97x       2766.2       10.6    10
+  nuclear                                    250.83x       2508.3       10.0    10
+  number_theory                                1.35x       4838.7     3594.4     9
+  numerical_stability                          0.53x       6171.9    11569.8    11
+  numismatics                                 93.08x       1759.2       18.9     9
+  numpy_ops                                  132.60x       1511.6       11.4     9
+  nutrition                                    6.16x       1780.1      289.2    11
+  observability                              147.64x       1476.4       10.0    10
+  oceanography                               133.88x       1071.0        8.0     8
+  ode                                          0.98x      16415.3    16720.1     8
+  online_learning                            174.32x       1516.5        8.7     8
+  operations_research                        136.81x       1888.0       13.8    13
+  ophthalmology                              152.40x       1524.0       10.0    10
+  optics                                     155.21x       1474.5        9.5     9
+  optimization_constrained                     4.35x     516093.3   118555.3     6
+  optimization_meta                            8.81x     437715.2    49666.7     7
+  optimize                                   681.91x      47324.3       69.4     8
+  optimizer_full                             397.27x       4528.9       11.4     9
+  option_pricing                               6.34x      19028.6     3002.0     4
+  orthodontics                               355.29x       3908.2       11.0    10
+  packaging                                  300.65x       4690.2       15.6    12
+  paged_kv_cache                             410.58x       3202.5        7.8     7
+  paleomagnetism                             597.49x       7229.7       12.1    11
+  paleontology                               104.87x       1982.1       18.9    11
+  palynology                                  64.01x        998.6       15.6     9
+  pandas_groupby                             130.75x       1438.2       11.0     8
+  paper_science                               40.57x       2288.4       56.4    11
+  pattern                                     19.19x      54257.5     2828.1    12
+  pde                                          2.65x      61900.8    23347.5     9
+  pedology                                  1077.44x      11528.6       10.7    10
+  pension                                    366.71x       8911.0       24.3    11
+  perfumery                                  278.75x       3791.0       13.6    10
+  persistence                                  5.97x       4480.9      750.4     2
+  pest_control                                46.61x       1766.5       37.9    11
+  petri_net                                  326.57x       3559.6       10.9     9
+  pharmacokinetics                           166.71x       1967.2       11.8    11
+  pharmacology                                22.93x       1373.5       59.9    10
+  photonics                                   78.68x       1030.7       13.1     9
+  photovoltaics                               96.26x       1222.5       12.7    10
+  physics                                     11.17x       1917.6      171.7    12
+  phytochemistry                              85.19x        477.1        5.6     5
+  pipeline                                     1.90x       7925.7     4162.5    11
+  plasma_physics                             203.54x       2239.0       11.0    10
+  plumbing                                   130.64x       1750.6       13.4    12
+  pneumatics                                 168.61x       1871.6       11.1    10
+  polymer                                     93.29x       1725.9       18.5    12
+  polynomial                                   3.78x      30983.8     8186.4    10
+  population                                   1.51x       7402.1     4907.2     8
+  population_genetics                        122.26x        758.0        6.2     6
+  positional_encoding                        137.67x        702.1        5.1     5
+  power_systems                              121.10x       1562.2       12.9    12
+  printing                                   148.43x       1573.3       10.6    10
+  privacy                                      8.92x       5385.2      603.9    10
+  probability                                  3.36x       7110.2     2115.9    11
+  procurement                                 98.23x        992.1       10.1     8
+  project_management                          61.01x        549.1        9.0     6
+  propensity                                   1.33x      18665.9    14042.6     9
+  proteomics                                 306.98x       4113.6       13.4    10
+  protocol                                     0.67x      16060.5    24059.9    10
+  psychoacoustics                             58.19x       1286.0       22.1     8
+  psychometrics                              197.16x       1380.1        7.0     7
+  pulmonology                                100.68x       1077.3       10.7     8
+  quantization                                95.54x        382.1        4.0     4
+  quantization_stack                         116.39x        989.3        8.5     8
+  quantum                                      0.56x       4818.4     8667.6    11
+  quantum_computing                          145.94x       1722.1       11.8    11
+  queue_ds                                     0.33x       1121.0     3389.7     2
+  queueing                                   110.90x       6864.8       61.9    11
+  radar                                      102.54x       1404.8       13.7    12
+  radiometry                                 102.03x        857.1        8.4     8
+  rag_retrieval                              153.89x       1477.3        9.6     9
+  random_utils                                 1.87x       7526.9     4023.5     7
+  real_estate                                220.70x       2295.3       10.4    10
+  recommender                                  3.44x      11379.7     3305.2     9
+  refrigeration                              108.73x        804.6        7.4     7
+  regex_engine                                59.61x      53083.4      890.5     8
+  regression                                   0.49x      17435.8    35773.6     6
+  regression_tree                             11.84x       9637.1      813.8     1
+  reinforcement                               12.43x       1098.7       88.4     1
+  reliability                                124.79x       2558.1       20.5    11
+  reservoir                                    1.49x      15530.6    10406.6     7
+  rheology                                     1.51x       1441.6      955.2    10
+  risk                                        14.53x      13277.9      913.9    11
+  rlhf_dpo                                   220.70x       1567.0        7.1     7
+  robotics                                    97.01x       1367.8       14.1    10
+  robustness                                   4.91x     435428.4    88746.7     8
+  root_finding                                 6.04x       4662.3      772.0     6
+  rubber                                     241.76x       1619.8        6.7     7
+  sampling                                    10.76x     171890.2    15971.8     6
+  scheduler_ops                             1418.66x      17307.7       12.2     9
+  scheduling_algo                              2.34x      70343.8    30044.9     9
+  scipy_optimize_ops                         289.87x       2319.0        8.0     8
+  scipy_stats_ops                            527.19x       5430.1       10.3    10
+  scoring                                     98.57x      27756.7      281.6     8
+  security_governance                        475.62x       3995.2        8.4     8
+  sedimentology                              207.01x        683.1        3.3     4
+  seismology                                 110.46x        983.1        8.9     7
+  semiconductors                              87.25x       2277.3       26.1    11
+  sentiment                                    0.67x      65640.0    97273.5     9
+  serialization_msgpack                       65.50x      52644.5      803.7     9
+  series                                       5.25x      23381.6     4451.3    10
+  set_ops                                      2.61x       8360.6     3199.0    12
+  sha256                                       0.80x       2016.8     2510.2     1
+  signal_dsp                                  28.41x      98375.0     3463.1    10
+  signal_filter                               12.80x      68081.5     5319.1    10
+  signal_processing                            6.98x      11170.8     1599.3    10
+  silviculture                               105.08x        893.2        8.5     8
+  simulation                                  18.25x       7722.4      423.2     2
+  sketch                                       0.22x       5257.6    23370.0     5
+  social_network                               0.52x      66779.6   128798.9     7
+  soil_mechanics                             147.64x        575.8        3.9     4
+  soil_science                               211.76x       2392.9       11.3     9
+  solar_energy                                16.64x       3332.3      200.2    12
+  sorting                                      0.37x      40756.7   108748.1     9
+  sparse                                       0.64x       2162.3     3358.9     1
+  sparse_attention                           191.81x       1899.0        9.9     8
+  sparse_vector                                2.00x       9067.2     4543.6     9
+  special_functions                            1.22x      74767.1    61042.6    12
+  spectral                                    81.41x      15264.7      187.5     7
+  spectroscopy                               436.09x       4491.7       10.3    10
+  speculative_decoding                        68.60x      15201.6      221.6     8
+  speleology                                 370.80x       6377.7       17.2     9
+  sports_analytics                           883.10x      13069.9       14.8    12
+  stat_tests                                  22.94x     439667.4    19169.7     9
+  state_space_models                         786.16x       7311.3        9.3    10
+  stateful_runtime                           239.49x       2155.4        9.0     9
+  stats                                      858.15x      11499.2       13.4     5
+  stats_bootstrap                              2.32x     351607.0   151231.2     9
+  stochastic                                   4.35x      94638.3    21770.5    10
+  stratigraphy                                24.77x       1065.2       43.0     7
+  string_distance                              9.18x      71747.2     7815.3    10
+  structs_containers                          20.49x      30904.6     1508.0     2
+  structural                                 610.14x       9457.1       15.5    12
+  structured_output                          140.09x       1779.2       12.7    10
+  supply_chain                               361.32x       9322.1       25.8    10
+  survival                                     2.72x     123678.5    45393.8     5
+  sustainability                             145.63x       3160.2       21.7    12
+  svm_kernel                                   1.15x      34034.5    29586.4     9
+  taphonomy                                  148.05x       1080.8        7.3     8
+  telecommunications                          65.92x       1199.7       18.2     8
+  tensor                                       0.09x       2509.0    27137.8     5
+  tensor_ops                                 125.07x        950.5        7.6     8
+  text_column_scorer                           1.76x      11179.1     6363.8     4
+  text_fuzzy                                  27.53x     134572.9     4888.3     6
+  text_regex                                 117.45x        129.2        1.1     1
+  text_string_utils                          135.30x     155891.0     1152.2    15
+  text_tokenizer                              30.22x     187518.0     6204.9     8
+  textile                                    182.12x       3077.9       16.9    10
+  thermodynamics                             243.31x       3163.0       13.0     9
+  timber                                     118.15x       2587.6       21.9    10
+  time_series_decompose                        3.42x     328551.2    96043.6     9
+  time_zone                                   35.96x      39479.1     1098.0     9
+  timeseries_stats                             9.15x     257842.7    28188.7     8
+  token_bucket                              4376.64x      11816.9        2.7     3
+  topology                                     6.59x     218648.0    33192.7    10
+  toxicokinetics                             334.60x       2509.5        7.5     8
+  toxicology                                1199.58x      13195.4       11.0    12
+  traffic_signal                            1424.21x      16093.6       11.3    12
+  training_stability                          71.70x       2516.8       35.1    10
+  transform                                    3.78x      23958.1     6331.6    10
+  transformer_attention                      318.27x       2800.8        8.8     9
+  transformer_blocks                         173.96x       1687.5        9.7    10
+  transportation                             192.63x       2138.2       11.1    11
+  tribochemistry                             200.53x       2045.4       10.2    10
+  tribology                                  102.42x       1843.5       18.0    12
+  ultrasonics                                 95.79x        996.2       10.4     8
+  units                                       28.28x       3589.1      126.9     8
+  urban_planning                             205.25x       2114.1       10.3    11
+  vector_search                              177.54x       1686.7        9.5     6
+  vector_similarity                          155.51x       1290.7        8.3     9
+  veterinary                                  19.68x       3330.2      169.2     7
+  virology                                   195.30x       1289.0        6.6     8
+  viticulture                                 71.20x       2335.3       32.8     9
+  volcanology                                287.64x       3451.6       12.0    12
+  voting                                      10.90x       8033.5      737.0     7
+  wastewater                                 117.51x        963.6        8.2     8
+  watchmaking                                206.94x       2255.7       10.9    11
+  water_chemistry                            257.80x       1289.0        5.0     5
+  wavelet                                      1.34x      31019.1    23233.5    10
+  weight_loader                               42.92x        918.5       21.4     6
+  welding                                    224.24x       3498.1       15.6    11
+  wind_energy                                127.80x       1495.2       11.7    12
+  wood_science                               143.95x       1252.3        8.7     9
+  workflow_engine                             89.61x       1783.2       19.9     9
+
+Top 20 Fastest Mojo Functions:
+------------------------------------------------------------
+  astronomy                     ::kepler_equation                46917.7x  (py=56301.2ns  mojo=1.2ns)
+  text_string_utils             ::str_endswith                   17422.0x  (py=15679.8ns  mojo=0.9ns)
+  engines_monte_carlo           ::thread_seed                    11265.7x  (py=10139.1ns  mojo=0.9ns)
+  special_functions             ::incomplete_gamma_lower         11019.2x  (py=9917.3ns  mojo=0.9ns)
+  net_unix_socket               ::decode_u32_be                  9993.2x  (py=9993.2ns  mojo=1.0ns)
+  scoring                       ::woe                            9160.3x  (py=916.0ns  mojo=0.1ns)
+  cellular_automata             ::majority_rule                  8964.2x  (py=9860.7ns  mojo=1.1ns)
+  speculative_decoding          ::constrained_beam_score         8737.0x  (py=8737.0ns  mojo=1.0ns)
+  scheduler_ops                 ::exponential_backoff_delay      8722.2x  (py=8722.2ns  mojo=1.0ns)
+  toxicology                    ::bioconcentration_factor        7792.7x  (py=7013.5ns  mojo=0.9ns)
+  token_bucket                  ::tb_create                      6680.9x  (py=6012.8ns  mojo=0.9ns)
+  pedology                      ::biological_weathering_index    6660.7x  (py=7326.8ns  mojo=1.1ns)
+  linguistics                   ::mean_word_length               6465.2x  (py=7111.7ns  mojo=1.1ns)
+  scheduler_ops                 ::latency_sla_headroom           6290.5x  (py=6290.5ns  mojo=1.0ns)
+  ml_naive_bayes                ::gaussian_log_likelihood        5863.8x  (py=5863.8ns  mojo=1.0ns)
+  archaeology                   ::ceramic_seriation_similarity   5546.1x  (py=5546.1ns  mojo=1.0ns)
+  fire_safety                   ::occupant_load                  5476.2x  (py=7119.0ns  mojo=1.3ns)
+  json_parser                   ::json_get_string                5050.1x  (py=14140.3ns  mojo=2.8ns)
+  llm_sampling                  ::length_penalty                 4475.9x  (py=4923.5ns  mojo=1.1ns)
+  pattern                       ::count_occurrences              4430.9x  (py=4430.9ns  mojo=1.0ns)
+
+Bottom 20 (closest to Python speed):
+------------------------------------------------------------
+  image_ops                     ::invert                            0.2x  (py=1585.8ns  mojo=8005.1ns)
+  social_network                ::influence_spread_ic               0.2x  (py=9523.4ns  mojo=61101.9ns)
+  clustering_metrics            ::calinski_harabasz                 0.1x  (py=104.1ns  mojo=709.0ns)
+  env                           ::env_get                           0.1x  (py=7197.3ns  mojo=48588.3ns)
+  queue_ds                      ::cb_create                         0.1x  (py=424.3ns  mojo=3388.7ns)
+  network_analysis              ::degree_centrality                 0.1x  (py=499.9ns  mojo=4241.2ns)
+  nn_layers                     ::softmax_layer                     0.1x  (py=991.3ns  mojo=11210.3ns)
+  rheology                      ::shear_stress                      0.1x  (py=87.1ns  mojo=946.5ns)
+  sketch                        ::create_cms                        0.1x  (py=2010.1ns  mojo=22507.5ns)
+  image_ops                     ::sobel_y_kernel                    0.1x  (py=1193.9ns  mojo=17052.4ns)
+  image_ops                     ::contrast                          0.1x  (py=1978.3ns  mojo=29979.1ns)
+  numerical_stability           ::normalize_probabilities           0.1x  (py=594.3ns  mojo=10291.2ns)
+  quantum                       ::bell_state                        0.1x  (py=265.7ns  mojo=5078.5ns)
+  social_network                ::network_density                   0.1x  (py=658.7ns  mojo=13097.0ns)
+  tensor                        ::linspace                          0.1x  (py=690.3ns  mojo=13873.9ns)
+  tensor                        ::full                              0.0x  (py=544.3ns  mojo=12662.5ns)
+  network_analysis              ::density                           0.0x  (py=267.0ns  mojo=7716.6ns)
+  constraint                    ::sudoku_valid                      0.0x  (py=219.8ns  mojo=8879.1ns)
+
+==============================================================================
+Vector Kernel Layer — Prefilter vs Full-Scan Scaling Benchmark
+Measured: 2026-04-15  bench_prefilter.mojo  VEC_DIM=64  VOCAB=128  SIMD_W=8
+==============================================================================
+
+Paths:
+  A  full_scan_single   — SIMD cosine over all N columns       O(N × 64)
+  B  prefilter_single   — posting walk → shortlist SIMD        O(posts + K × 64)
+  C  full_scan_batch10  — 10-query batch, full scan each
+  D  prefilter_batch10  — 10-query batch, prefilter + score each
+
+N     shortlist  A(ns)   B(ns)  B/A     C(ns)   D(ns)  D/C
+----  ---------  ------  -----  ------  ------  -----  ------
+32         5     127      37    3.4×    138      36    3.8×
+128       14     538      91    5.9×    554      88    6.3×
+512       56    2974     332    9.0×   3406     450    7.6×
+2048      64*  13952     674   20.7×  27975     650   43.0×
+              (* shortlist capped at 64)
+
+Key findings:
+  - Prefilter wins at ALL schema sizes, even N=32 (5 candidates vs 32 scanned)
+  - Single-query speedup:  3.4× at N=32 → 20.7× at N=2048
+  - Batch-10 speedup:      3.8× at N=32 → 43.0× at N=2048
+  - At N≥512, prefilter score cost is constant (cap=64); walk cost grows O(N/vocab)
+  - Full-scan batch cost 2× single at N=2048 (cache pressure); prefilter batch flat
+
+Prior result (all-column scan, 10 columns, table.mojo):
+  CandidateTable.rank()  1765 ns   Python 90700 ns   51× speedup
+  New baseline:          prefilter + rank on N=2048 → 650 ns/query (batch)
+
+Architecture validated:
+  query text → tokenizer.py → token IDs → prefilter.mojo shortlist
+  → batch_ranker.mojo SIMD score → top-k + planner flags
+  sorting                       ::reverse_list                      0.0x  (py=334.3ns  mojo=14583.1ns)
+  svm_kernel                    ::is_positive_semidefinite          0.0x  (py=327.4ons  mojo=14939.5ns)
+
+==============================================================================
+Resolver Accuracy — Hospitality Schema (restaurant server performance)
+Measured: 2026-04-15  resolver.py  28 columns × 4 sources
+Source: "Server Performance Current Month" xlsx (Grand Total/Food/Beverage/Alcohol)
+==============================================================================
+
+Schema structure:
+  4 sources (Totals, Food, Beverage, Alcohol) × 7 columns each = 28 total
+  Columns: Net_Sales, Tips, Sold, Avg_Sold_Per_Guest, Avg_Order_Time, Guests, PPA
+
+Query accuracy progression:
+  Before alias + effective-name improvements:  8/13  (61%)
+  After improvements:                         12/13  (92%)
+
+Remaining miss:
+  "server count" — meta-query (rows are servers, no column represents count)
+  Correct behavior: falls through to existing NLP logic
+
+Improvements applied (2026-04-15):
+  tokenizer.py ALIASES additions:
+    "ppa"  → ["per","person","average"]   PPA abbreviation
+    "avg"  → ["average"]                  bidirectional
+    "average" → ["avg"]
+    "guests" → ["guest","covers","diners"]
+    "guest" → ["guests","covers"]
+    "covers" → ["guests","guest"]         hospitality term for table guests
+    "sold" → ["quantity","qty"]
+    "revenue" → ["sales","income"]
+    "sales" → ["revenue"]
+    "tips" → ["gratuity"]  /  "gratuity" → ["tips"]
+
+  resolver.py changes:
+    1. Bidirectional overlap scoring: both query and column tokens alias-expanded
+       before computing token_hit bonus (0.05 × min(hits,3))
+    2. Abbreviation effective-name expansion for cosine vec:
+       Rule: token ≤ 3 chars AND avg alias length ≥ 5
+       PPA  → vec built from "ppa per person average"  (not "PPA")
+       avg  → vec built from "avg average"             (not "AVG")
+       oh   → vec built from "oh overhead"             (not "OH")
+       Synonym pairs (sales↔revenue, price↔cost) NOT expanded — stays in
+       posting/overlap layer only to avoid cosine dilution.

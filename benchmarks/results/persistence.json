@@ -1,0 +1,29 @@
+{
+  "lib": "persistence",
+  "status": "ok",
+  "n_functions": 2,
+  "n_compared": 2,
+  "overall_speedup_x": 5.97,
+  "total_py_ns": 4480.85,
+  "total_mojo_ns": 750.4,
+  "elapsed_s": 1.77,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "kv_create",
+      "py_ns": 1180.246,
+      "mojo_ns": 1.1,
+      "speedup_x": 1072.95,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "restore",
+      "py_ns": 3300.608,
+      "mojo_ns": 749.3,
+      "speedup_x": 4.4,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

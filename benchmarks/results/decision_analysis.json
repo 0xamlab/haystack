@@ -1,0 +1,93 @@
+{
+  "lib": "decision_analysis",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 8,
+  "overall_speedup_x": 8.13,
+  "total_py_ns": 51357.07,
+  "total_mojo_ns": 6318.4,
+  "elapsed_s": 2.49,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "expected_value",
+      "py_ns": 262.379,
+      "mojo_ns": 2.6,
+      "speedup_x": 100.92,
+      "py_result": 1.35,
+      "py_error": null
+    },
+    {
+      "function": "expected_utility",
+      "py_ns": 10573.008,
+      "mojo_ns": 421.0,
+      "speedup_x": 25.11,
+      "py_result": 3.642545,
+      "py_error": null
+    },
+    {
+      "function": "decision_matrix_best",
+      "py_ns": null,
+      "mojo_ns": 358.7,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list index out of range"
+    },
+    {
+      "function": "minimax_regret",
+      "py_ns": 1909.058,
+      "mojo_ns": 540.7,
+      "speedup_x": 3.53,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "hurwicz_criterion",
+      "py_ns": 1671.096,
+      "mojo_ns": 270.5,
+      "speedup_x": 6.18,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "value_of_perfect_info",
+      "py_ns": null,
+      "mojo_ns": 432.2,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list index out of range"
+    },
+    {
+      "function": "sensitivity_range",
+      "py_ns": 23583.492,
+      "mojo_ns": 3666.0,
+      "speedup_x": 6.43,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "maximin",
+      "py_ns": 5646.929,
+      "mojo_ns": 289.6,
+      "speedup_x": 19.5,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "maximax",
+      "py_ns": 3040.596,
+      "mojo_ns": 450.4,
+      "speedup_x": 6.75,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "laplace_criterion",
+      "py_ns": 4670.508,
+      "mojo_ns": 677.6,
+      "speedup_x": 6.89,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

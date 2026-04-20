@@ -1,0 +1,58 @@
+"""test_physics.mojo — auto-generated tests for physics library."""
+from std.math import isnan, isinf
+from physics import kinematic_distance, kinematic_velocity, kinetic_energy, potential_energy, momentum, gravitational_force, projectile_range, projectile_max_height, projectile_time, work, power, elastic_collision_v1
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_kinematic_distance = kinematic_distance(0.5, 0.5, 0.5)
+    if is_finite(_v_kinematic_distance): passed += 1; print("  ✅ physics::kinematic_distance =", _v_kinematic_distance)
+    else: failed += 1; print("  ❌ physics::kinematic_distance → non-finite:", _v_kinematic_distance)
+    var _v_kinematic_velocity = kinematic_velocity(0.5, 0.5, 0.5)
+    if is_finite(_v_kinematic_velocity): passed += 1; print("  ✅ physics::kinematic_velocity =", _v_kinematic_velocity)
+    else: failed += 1; print("  ❌ physics::kinematic_velocity → non-finite:", _v_kinematic_velocity)
+    var _v_kinetic_energy = kinetic_energy(0.5, 0.5)
+    if is_finite(_v_kinetic_energy): passed += 1; print("  ✅ physics::kinetic_energy =", _v_kinetic_energy)
+    else: failed += 1; print("  ❌ physics::kinetic_energy → non-finite:", _v_kinetic_energy)
+    var _v_potential_energy = potential_energy(0.5, 0.5, 0.5)
+    if is_finite(_v_potential_energy): passed += 1; print("  ✅ physics::potential_energy =", _v_potential_energy)
+    else: failed += 1; print("  ❌ physics::potential_energy → non-finite:", _v_potential_energy)
+    var _v_momentum = momentum(0.5, 0.5)
+    if is_finite(_v_momentum): passed += 1; print("  ✅ physics::momentum =", _v_momentum)
+    else: failed += 1; print("  ❌ physics::momentum → non-finite:", _v_momentum)
+    var _v_gravitational_force = gravitational_force(0.5, 0.5, 0.5)
+    if is_finite(_v_gravitational_force): passed += 1; print("  ✅ physics::gravitational_force =", _v_gravitational_force)
+    else: failed += 1; print("  ❌ physics::gravitational_force → non-finite:", _v_gravitational_force)
+    var _v_projectile_range = projectile_range(0.5, 0.5, 0.5)
+    if is_finite(_v_projectile_range): passed += 1; print("  ✅ physics::projectile_range =", _v_projectile_range)
+    else: failed += 1; print("  ❌ physics::projectile_range → non-finite:", _v_projectile_range)
+    var _v_projectile_max_height = projectile_max_height(0.5, 0.5, 0.5)
+    if is_finite(_v_projectile_max_height): passed += 1; print("  ✅ physics::projectile_max_height =", _v_projectile_max_height)
+    else: failed += 1; print("  ❌ physics::projectile_max_height → non-finite:", _v_projectile_max_height)
+    var _v_projectile_time = projectile_time(0.5, 0.5, 0.5)
+    if is_finite(_v_projectile_time): passed += 1; print("  ✅ physics::projectile_time =", _v_projectile_time)
+    else: failed += 1; print("  ❌ physics::projectile_time → non-finite:", _v_projectile_time)
+    var _v_work = work(0.5, 0.5, 0.5)
+    if is_finite(_v_work): passed += 1; print("  ✅ physics::work =", _v_work)
+    else: failed += 1; print("  ❌ physics::work → non-finite:", _v_work)
+    var _v_power = power(0.5, 0.5)
+    if is_finite(_v_power): passed += 1; print("  ✅ physics::power =", _v_power)
+    else: failed += 1; print("  ❌ physics::power → non-finite:", _v_power)
+    var _v_elastic_collision_v1 = elastic_collision_v1(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_elastic_collision_v1): passed += 1; print("  ✅ physics::elastic_collision_v1 =", _v_elastic_collision_v1)
+    else: failed += 1; print("  ❌ physics::elastic_collision_v1 → non-finite:", _v_elastic_collision_v1)
+
+    print("  [physics] Passed:", passed, "Failed:", failed)

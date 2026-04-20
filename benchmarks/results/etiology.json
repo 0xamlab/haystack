@@ -1,0 +1,93 @@
+{
+  "lib": "etiology",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 8,
+  "overall_speedup_x": 221.32,
+  "total_py_ns": 1726.29,
+  "total_mojo_ns": 7.8,
+  "elapsed_s": 1.98,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "relative_risk",
+      "py_ns": 95.638,
+      "mojo_ns": 0.9,
+      "speedup_x": 106.26,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "odds_ratio",
+      "py_ns": 108.1,
+      "mojo_ns": 1.0,
+      "speedup_x": 108.1,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "attributable_risk",
+      "py_ns": 79.275,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "population_attributable_risk",
+      "py_ns": 115.6,
+      "mojo_ns": 1.0,
+      "speedup_x": 115.6,
+      "py_result": -0.333333,
+      "py_error": null
+    },
+    {
+      "function": "number_needed_to_treat",
+      "py_ns": 95.696,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "sensitivity_test",
+      "py_ns": 868.012,
+      "mojo_ns": 0.9,
+      "speedup_x": 964.46,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "specificity_test",
+      "py_ns": 172.142,
+      "mojo_ns": 1.0,
+      "speedup_x": 172.14,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "positive_predictive_value",
+      "py_ns": 134.267,
+      "mojo_ns": 1.0,
+      "speedup_x": 134.27,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "negative_predictive_value",
+      "py_ns": 132.079,
+      "mojo_ns": 1.0,
+      "speedup_x": 132.08,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "likelihood_ratio_positive",
+      "py_ns": 100.454,
+      "mojo_ns": 1.0,
+      "speedup_x": 100.45,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

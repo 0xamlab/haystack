@@ -1,0 +1,69 @@
+{
+  "lib": "ml_metrics",
+  "status": "ok",
+  "n_functions": 7,
+  "n_compared": 7,
+  "overall_speedup_x": 8.93,
+  "total_py_ns": 84788.11,
+  "total_mojo_ns": 9499.2,
+  "elapsed_s": 4.03,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "accuracy",
+      "py_ns": 14837.987,
+      "mojo_ns": 5.2,
+      "speedup_x": 2853.46,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "mse",
+      "py_ns": 10127.792,
+      "mojo_ns": 2.3,
+      "speedup_x": 4403.39,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "rmse",
+      "py_ns": 5921.508,
+      "mojo_ns": 10.4,
+      "speedup_x": 569.38,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "mae",
+      "py_ns": 6106.254,
+      "mojo_ns": 2.3,
+      "speedup_x": 2654.89,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "r2_score",
+      "py_ns": 13665.096,
+      "mojo_ns": 21.8,
+      "speedup_x": 626.84,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "confusion_matrix",
+      "py_ns": 18719.829,
+      "mojo_ns": 9414.6,
+      "speedup_x": 1.99,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "precision_recall_f1",
+      "py_ns": 15409.642,
+      "mojo_ns": 42.6,
+      "speedup_x": 361.73,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "lib": "ml_random_forest",
+  "status": "ok",
+  "n_functions": 8,
+  "n_compared": 7,
+  "overall_speedup_x": 9.63,
+  "total_py_ns": 8643676.68,
+  "total_mojo_ns": 897687.3,
+  "elapsed_s": 99.35,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "bootstrap_indices",
+      "py_ns": 6789.908,
+      "mojo_ns": 504.9,
+      "speedup_x": 13.45,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "feature_subsample",
+      "py_ns": 11467.467,
+      "mojo_ns": 983.9,
+      "speedup_x": 11.66,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "tree_predict_simple",
+      "py_ns": null,
+      "mojo_ns": 15108.8,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list index out of range"
+    },
+    {
+      "function": "random_forest_predict",
+      "py_ns": 828515.558,
+      "mojo_ns": 155760.2,
+      "speedup_x": 5.32,
+      "py_result": 0.59,
+      "py_error": null
+    },
+    {
+      "function": "random_forest_predict_batch",
+      "py_ns": 2428475.808,
+      "mojo_ns": 255819.4,
+      "speedup_x": 9.49,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "oob_score",
+      "py_ns": 856464.375,
+      "mojo_ns": 45532.5,
+      "speedup_x": 18.81,
+      "py_result": 0.777778,
+      "py_error": null
+    },
+    {
+      "function": "feature_importance_rf",
+      "py_ns": 4502312.771,
+      "mojo_ns": 438085.1,
+      "speedup_x": 10.28,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "bagging_variance",
+      "py_ns": 9650.796,
+      "mojo_ns": 1001.3,
+      "speedup_x": 9.64,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

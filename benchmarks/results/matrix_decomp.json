@@ -1,0 +1,101 @@
+{
+  "lib": "matrix_decomp",
+  "status": "ok",
+  "n_functions": 11,
+  "n_compared": 7,
+  "overall_speedup_x": 1.79,
+  "total_py_ns": 16197.25,
+  "total_mojo_ns": 9030.9,
+  "elapsed_s": 1.64,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "det_2x2",
+      "py_ns": 186.079,
+      "mojo_ns": 485.2,
+      "speedup_x": 0.38,
+      "py_result": -0.09,
+      "py_error": null
+    },
+    {
+      "function": "det_3x3",
+      "py_ns": 1375.038,
+      "mojo_ns": 267.3,
+      "speedup_x": 5.14,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "trace",
+      "py_ns": 1819.758,
+      "mojo_ns": 379.7,
+      "speedup_x": 4.79,
+      "py_result": 1.1,
+      "py_error": null
+    },
+    {
+      "function": "is_symmetric",
+      "py_ns": 1213.521,
+      "mojo_ns": 551.9,
+      "speedup_x": 2.2,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "cholesky",
+      "py_ns": 2786.871,
+      "mojo_ns": 1853.9,
+      "speedup_x": 1.5,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "is_positive_definite",
+      "py_ns": 5517.529,
+      "mojo_ns": 4444.6,
+      "speedup_x": 1.24,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "lu_decompose",
+      "py_ns": null,
+      "mojo_ns": 2614.0,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "name 'List' is not defined"
+    },
+    {
+      "function": "eigen_2x2",
+      "py_ns": 3298.458,
+      "mojo_ns": 1048.3,
+      "speedup_x": 3.15,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "forward_substitution",
+      "py_ns": null,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list index out of range"
+    },
+    {
+      "function": "back_substitution",
+      "py_ns": null,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list index out of range"
+    },
+    {
+      "function": "solve_lu",
+      "py_ns": null,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list index out of range"
+    }
+  ]
+}

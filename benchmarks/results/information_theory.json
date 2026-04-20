@@ -1,0 +1,93 @@
+{
+  "lib": "information_theory",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 9,
+  "overall_speedup_x": 1.64,
+  "total_py_ns": 9789.75,
+  "total_mojo_ns": 5954.3,
+  "elapsed_s": 2.49,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "entropy",
+      "py_ns": 370.013,
+      "mojo_ns": 36.2,
+      "speedup_x": 10.22,
+      "py_result": 2.352241,
+      "py_error": null
+    },
+    {
+      "function": "joint_entropy",
+      "py_ns": 1013.142,
+      "mojo_ns": 595.1,
+      "speedup_x": 1.7,
+      "py_result": 4.134295,
+      "py_error": null
+    },
+    {
+      "function": "conditional_entropy",
+      "py_ns": 1979.958,
+      "mojo_ns": 1975.7,
+      "speedup_x": 1.0,
+      "py_result": 5.081708,
+      "py_error": null
+    },
+    {
+      "function": "mutual_information",
+      "py_ns": 3198.863,
+      "mojo_ns": 2861.8,
+      "speedup_x": 1.12,
+      "py_result": -5.548603,
+      "py_error": null
+    },
+    {
+      "function": "kl_divergence",
+      "py_ns": 896.725,
+      "mojo_ns": 162.8,
+      "speedup_x": 5.51,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "cross_entropy",
+      "py_ns": 703.408,
+      "mojo_ns": 66.9,
+      "speedup_x": 10.51,
+      "py_result": 2.352241,
+      "py_error": null
+    },
+    {
+      "function": "binary_entropy",
+      "py_ns": 207.613,
+      "mojo_ns": 2.9,
+      "speedup_x": 71.59,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "channel_capacity_bsc",
+      "py_ns": 386.962,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "redundancy",
+      "py_ns": 770.521,
+      "mojo_ns": 213.0,
+      "speedup_x": 3.62,
+      "py_result": -0.030313,
+      "py_error": null
+    },
+    {
+      "function": "normalized_entropy",
+      "py_ns": 649.513,
+      "mojo_ns": 39.9,
+      "speedup_x": 16.28,
+      "py_result": 1.013055,
+      "py_error": null
+    }
+  ]
+}

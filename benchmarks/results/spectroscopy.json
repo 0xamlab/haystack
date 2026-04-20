@@ -1,0 +1,109 @@
+{
+  "lib": "spectroscopy",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 10,
+  "overall_speedup_x": 436.09,
+  "total_py_ns": 4491.72,
+  "total_mojo_ns": 10.3,
+  "elapsed_s": 6.89,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "wavenumber_from_wavelength",
+      "py_ns": 816.987,
+      "mojo_ns": 1.0,
+      "speedup_x": 816.99,
+      "py_result": 20000.0,
+      "py_error": null
+    },
+    {
+      "function": "wavelength_from_wavenumber",
+      "py_ns": 85.317,
+      "mojo_ns": 1.7,
+      "speedup_x": 50.19,
+      "py_result": 20000.0,
+      "py_error": null
+    },
+    {
+      "function": "energy_from_wavelength",
+      "py_ns": 91.037,
+      "mojo_ns": 0.9,
+      "speedup_x": 101.15,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "absorbance_from_transmittance",
+      "py_ns": 284.892,
+      "mojo_ns": 1.0,
+      "speedup_x": 284.89,
+      "py_result": 2.30103,
+      "py_error": null
+    },
+    {
+      "function": "transmittance_from_absorbance",
+      "py_ns": 1896.929,
+      "mojo_ns": 1.0,
+      "speedup_x": 1896.93,
+      "py_result": 31.622777,
+      "py_error": null
+    },
+    {
+      "function": "beer_lambert_concentration",
+      "py_ns": 207.221,
+      "mojo_ns": 1.0,
+      "speedup_x": 207.22,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "resolution_spectrometer",
+      "py_ns": 174.671,
+      "mojo_ns": 0.9,
+      "speedup_x": 194.08,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "snr_coadd",
+      "py_ns": 236.158,
+      "mojo_ns": 0.9,
+      "speedup_x": 262.4,
+      "py_result": 0.353553,
+      "py_error": null
+    },
+    {
+      "function": "raman_shift",
+      "py_ns": 193.462,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "fluorescence_quantum_yield",
+      "py_ns": 117.142,
+      "mojo_ns": 0.9,
+      "speedup_x": 130.16,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "stokes_shift",
+      "py_ns": 170.937,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "spectral_bandwidth",
+      "py_ns": 581.367,
+      "mojo_ns": 1.0,
+      "speedup_x": 581.37,
+      "py_result": 0.5,
+      "py_error": null
+    }
+  ]
+}

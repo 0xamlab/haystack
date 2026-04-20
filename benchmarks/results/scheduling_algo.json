@@ -1,0 +1,85 @@
+{
+  "lib": "scheduling_algo",
+  "status": "ok",
+  "n_functions": 9,
+  "n_compared": 9,
+  "overall_speedup_x": 2.34,
+  "total_py_ns": 70343.81,
+  "total_mojo_ns": 30044.9,
+  "elapsed_s": 3.56,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "fcfs",
+      "py_ns": 3122.142,
+      "mojo_ns": 5252.1,
+      "speedup_x": 0.59,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "sjf",
+      "py_ns": 13421.45,
+      "mojo_ns": 5848.9,
+      "speedup_x": 2.29,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "priority_scheduling",
+      "py_ns": 6646.892,
+      "mojo_ns": 6368.3,
+      "speedup_x": 1.04,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "round_robin",
+      "py_ns": 21213.35,
+      "mojo_ns": 5907.2,
+      "speedup_x": 3.59,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "avg_wait_time",
+      "py_ns": 302.142,
+      "mojo_ns": 248.8,
+      "speedup_x": 1.21,
+      "py_result": 1.333333,
+      "py_error": null
+    },
+    {
+      "function": "avg_turnaround",
+      "py_ns": 6029.162,
+      "mojo_ns": 257.7,
+      "speedup_x": 23.4,
+      "py_result": 4.666667,
+      "py_error": null
+    },
+    {
+      "function": "throughput",
+      "py_ns": 1018.958,
+      "mojo_ns": 262.4,
+      "speedup_x": 3.88,
+      "py_result": 0.3,
+      "py_error": null
+    },
+    {
+      "function": "cpu_utilization",
+      "py_ns": 14384.583,
+      "mojo_ns": 1050.1,
+      "speedup_x": 13.7,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "gantt_chart",
+      "py_ns": 4205.133,
+      "mojo_ns": 4849.4,
+      "speedup_x": 0.87,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

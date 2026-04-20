@@ -1,0 +1,109 @@
+{
+  "lib": "real_estate",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 10,
+  "overall_speedup_x": 220.7,
+  "total_py_ns": 2295.33,
+  "total_mojo_ns": 10.4,
+  "elapsed_s": 1.01,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "cap_rate",
+      "py_ns": 240.512,
+      "mojo_ns": 1.1,
+      "speedup_x": 218.65,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "gross_rent_multiplier",
+      "py_ns": 110.683,
+      "mojo_ns": 1.0,
+      "speedup_x": 110.68,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "cash_on_cash_return",
+      "py_ns": 286.229,
+      "mojo_ns": 1.1,
+      "speedup_x": 260.21,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "debt_service_coverage",
+      "py_ns": 110.738,
+      "mojo_ns": 1.1,
+      "speedup_x": 100.67,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "loan_to_value",
+      "py_ns": 132.533,
+      "mojo_ns": 1.0,
+      "speedup_x": 132.53,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "net_operating_income",
+      "py_ns": 161.317,
+      "mojo_ns": 1.0,
+      "speedup_x": 161.32,
+      "py_result": -0.25,
+      "py_error": null
+    },
+    {
+      "function": "mortgage_payment",
+      "py_ns": 561.667,
+      "mojo_ns": 1.1,
+      "speedup_x": 510.61,
+      "py_result": 0.287915,
+      "py_error": null
+    },
+    {
+      "function": "price_per_sqft",
+      "py_ns": 288.096,
+      "mojo_ns": 1.0,
+      "speedup_x": 288.1,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "break_even_ratio",
+      "py_ns": 147.079,
+      "mojo_ns": 1.0,
+      "speedup_x": 147.08,
+      "py_result": 200.0,
+      "py_error": null
+    },
+    {
+      "function": "internal_rate_of_return_approx",
+      "py_ns": 1030.108,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "equity_buildup",
+      "py_ns": 84.2,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "appreciation_value",
+      "py_ns": 256.471,
+      "mojo_ns": 1.0,
+      "speedup_x": 256.47,
+      "py_result": 3.796875,
+      "py_error": null
+    }
+  ]
+}

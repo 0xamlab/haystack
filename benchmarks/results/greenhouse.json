@@ -1,0 +1,109 @@
+{
+  "lib": "greenhouse",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 9,
+  "overall_speedup_x": 251.8,
+  "total_py_ns": 2215.82,
+  "total_mojo_ns": 8.8,
+  "elapsed_s": 2.54,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "heat_loss_conduction",
+      "py_ns": 96.646,
+      "mojo_ns": 1.0,
+      "speedup_x": 96.65,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "ventilation_rate",
+      "py_ns": 96.804,
+      "mojo_ns": 1.0,
+      "speedup_x": 96.8,
+      "py_result": 6.9e-05,
+      "py_error": null
+    },
+    {
+      "function": "solar_gain",
+      "py_ns": 88.992,
+      "mojo_ns": 1.0,
+      "speedup_x": 88.99,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "heating_requirement",
+      "py_ns": 92.517,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "co2_enrichment_rate",
+      "py_ns": 104.683,
+      "mojo_ns": 0.9,
+      "speedup_x": 116.31,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "light_supplementation_hours",
+      "py_ns": 92.725,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "irrigation_volume",
+      "py_ns": 725.329,
+      "mojo_ns": 1.0,
+      "speedup_x": 725.33,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "growing_area_utilization",
+      "py_ns": 174.462,
+      "mojo_ns": 0.9,
+      "speedup_x": 193.85,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "energy_cost_heating",
+      "py_ns": 83.3,
+      "mojo_ns": 1.0,
+      "speedup_x": 83.3,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "yield_per_sq_meter",
+      "py_ns": 113.583,
+      "mojo_ns": 1.0,
+      "speedup_x": 113.58,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "temperature_setpoint_night",
+      "py_ns": 82.542,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "shade_factor",
+      "py_ns": 732.021,
+      "mojo_ns": 1.0,
+      "speedup_x": 732.02,
+      "py_result": 0.995,
+      "py_error": null
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "lib": "crypto_crc32",
+  "status": "ok",
+  "n_functions": 3,
+  "n_compared": 3,
+  "overall_speedup_x": 233.61,
+  "total_py_ns": 6146476.47,
+  "total_mojo_ns": 26310.9,
+  "elapsed_s": 63.41,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "crc32",
+      "py_ns": 2099312.15,
+      "mojo_ns": 2282.8,
+      "speedup_x": 919.62,
+      "py_result": 3632233996.0,
+      "py_error": null
+    },
+    {
+      "function": "crc32_hex",
+      "py_ns": 2407448.75,
+      "mojo_ns": 2340.9,
+      "speedup_x": 1028.43,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "crc32_combine",
+      "py_ns": 1639715.571,
+      "mojo_ns": 21687.2,
+      "speedup_x": 75.61,
+      "py_result": 1029712305.0,
+      "py_error": null
+    }
+  ]
+}

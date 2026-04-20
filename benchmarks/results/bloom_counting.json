@@ -1,0 +1,45 @@
+{
+  "lib": "bloom_counting",
+  "status": "ok",
+  "n_functions": 4,
+  "n_compared": 3,
+  "overall_speedup_x": 3.54,
+  "total_py_ns": 2045.07,
+  "total_mojo_ns": 577.7,
+  "elapsed_s": 1.11,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "cb_create",
+      "py_ns": 1255.075,
+      "mojo_ns": 574.0,
+      "speedup_x": 2.19,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "cb_hash",
+      "py_ns": 268.817,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "cb_false_positive_rate",
+      "py_ns": 551.7,
+      "mojo_ns": 2.6,
+      "speedup_x": 212.19,
+      "py_result": 0.966761,
+      "py_error": null
+    },
+    {
+      "function": "cb_optimal_hashes",
+      "py_ns": 238.296,
+      "mojo_ns": 1.1,
+      "speedup_x": 216.63,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

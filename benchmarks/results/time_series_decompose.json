@@ -1,0 +1,85 @@
+{
+  "lib": "time_series_decompose",
+  "status": "ok",
+  "n_functions": 9,
+  "n_compared": 9,
+  "overall_speedup_x": 3.42,
+  "total_py_ns": 328551.22,
+  "total_mojo_ns": 96043.6,
+  "elapsed_s": 8.73,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "moving_average_trend",
+      "py_ns": 1233.813,
+      "mojo_ns": 569.6,
+      "speedup_x": 2.17,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "detrend",
+      "py_ns": 1025.675,
+      "mojo_ns": 311.1,
+      "speedup_x": 3.3,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "seasonal_component",
+      "py_ns": 29174.3,
+      "mojo_ns": 1703.5,
+      "speedup_x": 17.13,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "residual",
+      "py_ns": 3799.862,
+      "mojo_ns": 547.1,
+      "speedup_x": 6.95,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "decompose_additive",
+      "py_ns": 45934.404,
+      "mojo_ns": 3693.7,
+      "speedup_x": 12.44,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "seasonal_strength",
+      "py_ns": 11834.85,
+      "mojo_ns": 35.8,
+      "speedup_x": 330.58,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "trend_strength",
+      "py_ns": 6198.3,
+      "mojo_ns": 1264.9,
+      "speedup_x": 4.9,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "detect_period",
+      "py_ns": 6948.587,
+      "mojo_ns": 10.8,
+      "speedup_x": 643.39,
+      "py_result": 4.0,
+      "py_error": null
+    },
+    {
+      "function": "stl_like",
+      "py_ns": 222401.425,
+      "mojo_ns": 87907.1,
+      "speedup_x": 2.53,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

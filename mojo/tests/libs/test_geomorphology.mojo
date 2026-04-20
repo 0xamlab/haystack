@@ -1,0 +1,58 @@
+"""test_geomorphology.mojo — auto-generated tests for geomorphology library."""
+from std.math import isnan, isinf
+from geomorphology import stream_power, shear_stress_flow, shields_parameter, settling_velocity_stokes, erosion_rate_spl, hillslope_diffusion, drainage_density, relief_ratio, sinuosity, hack_law_length, ruggedness_number, hypsometric_integral
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_stream_power = stream_power(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_stream_power): passed += 1; print("  ✅ geomorphology::stream_power =", _v_stream_power)
+    else: failed += 1; print("  ❌ geomorphology::stream_power → non-finite:", _v_stream_power)
+    var _v_shear_stress_flow = shear_stress_flow(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_shear_stress_flow): passed += 1; print("  ✅ geomorphology::shear_stress_flow =", _v_shear_stress_flow)
+    else: failed += 1; print("  ❌ geomorphology::shear_stress_flow → non-finite:", _v_shear_stress_flow)
+    var _v_shields_parameter = shields_parameter(5.0, 2650.0, 1000.0, 9.81, 0.01)
+    if is_finite(_v_shields_parameter): passed += 1; print("  ✅ geomorphology::shields_parameter =", _v_shields_parameter)
+    else: failed += 1; print("  ❌ geomorphology::shields_parameter → non-finite:", _v_shields_parameter)
+    var _v_settling_velocity_stokes = settling_velocity_stokes(0.5, 0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_settling_velocity_stokes): passed += 1; print("  ✅ geomorphology::settling_velocity_stokes =", _v_settling_velocity_stokes)
+    else: failed += 1; print("  ❌ geomorphology::settling_velocity_stokes → non-finite:", _v_settling_velocity_stokes)
+    var _v_erosion_rate_spl = erosion_rate_spl(0.5, 0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_erosion_rate_spl): passed += 1; print("  ✅ geomorphology::erosion_rate_spl =", _v_erosion_rate_spl)
+    else: failed += 1; print("  ❌ geomorphology::erosion_rate_spl → non-finite:", _v_erosion_rate_spl)
+    var _v_hillslope_diffusion = hillslope_diffusion(0.5, 0.5)
+    if is_finite(_v_hillslope_diffusion): passed += 1; print("  ✅ geomorphology::hillslope_diffusion =", _v_hillslope_diffusion)
+    else: failed += 1; print("  ❌ geomorphology::hillslope_diffusion → non-finite:", _v_hillslope_diffusion)
+    var _v_drainage_density = drainage_density(0.5, 0.5)
+    if is_finite(_v_drainage_density): passed += 1; print("  ✅ geomorphology::drainage_density =", _v_drainage_density)
+    else: failed += 1; print("  ❌ geomorphology::drainage_density → non-finite:", _v_drainage_density)
+    var _v_relief_ratio = relief_ratio(0.5, 0.5)
+    if is_finite(_v_relief_ratio): passed += 1; print("  ✅ geomorphology::relief_ratio =", _v_relief_ratio)
+    else: failed += 1; print("  ❌ geomorphology::relief_ratio → non-finite:", _v_relief_ratio)
+    var _v_sinuosity = sinuosity(0.5, 0.5)
+    if is_finite(_v_sinuosity): passed += 1; print("  ✅ geomorphology::sinuosity =", _v_sinuosity)
+    else: failed += 1; print("  ❌ geomorphology::sinuosity → non-finite:", _v_sinuosity)
+    var _v_hack_law_length = hack_law_length(0.5, 0.5, 0.5)
+    if is_finite(_v_hack_law_length): passed += 1; print("  ✅ geomorphology::hack_law_length =", _v_hack_law_length)
+    else: failed += 1; print("  ❌ geomorphology::hack_law_length → non-finite:", _v_hack_law_length)
+    var _v_ruggedness_number = ruggedness_number(0.5, 0.5)
+    if is_finite(_v_ruggedness_number): passed += 1; print("  ✅ geomorphology::ruggedness_number =", _v_ruggedness_number)
+    else: failed += 1; print("  ❌ geomorphology::ruggedness_number → non-finite:", _v_ruggedness_number)
+    var _v_hypsometric_integral = hypsometric_integral(500.0, 100.0, 1000.0)
+    if is_finite(_v_hypsometric_integral): passed += 1; print("  ✅ geomorphology::hypsometric_integral =", _v_hypsometric_integral)
+    else: failed += 1; print("  ❌ geomorphology::hypsometric_integral → non-finite:", _v_hypsometric_integral)
+
+    print("  [geomorphology] Passed:", passed, "Failed:", failed)

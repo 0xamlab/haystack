@@ -1,0 +1,101 @@
+{
+  "lib": "loss_functions",
+  "status": "ok",
+  "n_functions": 11,
+  "n_compared": 6,
+  "overall_speedup_x": 87.77,
+  "total_py_ns": 7091.47,
+  "total_mojo_ns": 80.8,
+  "elapsed_s": 2.16,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "binary_cross_entropy",
+      "py_ns": 410.429,
+      "mojo_ns": 62.3,
+      "speedup_x": 6.59,
+      "py_result": 0.693147,
+      "py_error": null
+    },
+    {
+      "function": "categorical_cross_entropy",
+      "py_ns": 1373.883,
+      "mojo_ns": 6.3,
+      "speedup_x": 218.08,
+      "py_result": 0.346574,
+      "py_error": null
+    },
+    {
+      "function": "focal_loss",
+      "py_ns": 342.062,
+      "mojo_ns": 2.0,
+      "speedup_x": 171.03,
+      "py_result": 0.245065,
+      "py_error": null
+    },
+    {
+      "function": "pow_approx",
+      "py_ns": 1015.838,
+      "mojo_ns": 8.1,
+      "speedup_x": 125.41,
+      "py_result": 0.707107,
+      "py_error": null
+    },
+    {
+      "function": "huber_loss",
+      "py_ns": 112.271,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "kl_divergence",
+      "py_ns": 136.525,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "contrastive_loss",
+      "py_ns": 113.746,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "triplet_loss",
+      "py_ns": 214.221,
+      "mojo_ns": 1.1,
+      "speedup_x": 194.75,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "mse_loss",
+      "py_ns": 180.05,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "mae_loss",
+      "py_ns": 99.788,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "label_smoothing_loss",
+      "py_ns": 3735.033,
+      "mojo_ns": 1.0,
+      "speedup_x": 3735.03,
+      "py_result": 0.866434,
+      "py_error": null
+    }
+  ]
+}

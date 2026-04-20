@@ -1,0 +1,93 @@
+{
+  "lib": "mixture_of_experts",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 8,
+  "overall_speedup_x": 430.54,
+  "total_py_ns": 3530.43,
+  "total_mojo_ns": 8.2,
+  "elapsed_s": 1.92,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "topk_gate_score",
+      "py_ns": 103.325,
+      "mojo_ns": 1.0,
+      "speedup_x": 103.33,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "expert_load_fraction",
+      "py_ns": 283.254,
+      "mojo_ns": 1.1,
+      "speedup_x": 257.5,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "load_balance_loss",
+      "py_ns": 191.588,
+      "mojo_ns": 1.0,
+      "speedup_x": 191.59,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "router_z_loss",
+      "py_ns": 1006.388,
+      "mojo_ns": 1.0,
+      "speedup_x": 1006.39,
+      "py_result": 1.648721,
+      "py_error": null
+    },
+    {
+      "function": "expert_capacity",
+      "py_ns": null,
+      "mojo_ns": 1.1,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "name 'Int64' is not defined"
+    },
+    {
+      "function": "token_dispatch_weight",
+      "py_ns": 190.504,
+      "mojo_ns": 1.1,
+      "speedup_x": 173.19,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "sparse_gate_entropy",
+      "py_ns": 167.712,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "soft_moe_slot_score",
+      "py_ns": 283.221,
+      "mojo_ns": 1.0,
+      "speedup_x": 283.22,
+      "py_result": 3.297443,
+      "py_error": null
+    },
+    {
+      "function": "expert_utilization",
+      "py_ns": 1338.546,
+      "mojo_ns": 1.0,
+      "speedup_x": 1338.55,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "moe_ffn_output",
+      "py_ns": 133.6,
+      "mojo_ns": 1.0,
+      "speedup_x": 133.6,
+      "py_result": 0.25,
+      "py_error": null
+    }
+  ]
+}

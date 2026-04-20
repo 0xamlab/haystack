@@ -1,0 +1,21 @@
+{
+  "lib": "engines_column_profiler",
+  "status": "ok",
+  "n_functions": 1,
+  "n_compared": 1,
+  "overall_speedup_x": 55.83,
+  "total_py_ns": 385.21,
+  "total_mojo_ns": 6.9,
+  "elapsed_s": 3.91,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "run_column_profile",
+      "py_ns": 385.213,
+      "mojo_ns": 6.9,
+      "speedup_x": 55.83,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

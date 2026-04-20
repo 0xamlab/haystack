@@ -1,0 +1,109 @@
+{
+  "lib": "urban_planning",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 11,
+  "overall_speedup_x": 205.25,
+  "total_py_ns": 2114.12,
+  "total_mojo_ns": 10.3,
+  "elapsed_s": 4.05,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "population_density",
+      "py_ns": 118.146,
+      "mojo_ns": 0.9,
+      "speedup_x": 131.27,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "floor_area_ratio",
+      "py_ns": 147.842,
+      "mojo_ns": 0.9,
+      "speedup_x": 164.27,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "lot_coverage",
+      "py_ns": 189.658,
+      "mojo_ns": 1.0,
+      "speedup_x": 189.66,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "green_space_ratio",
+      "py_ns": 438.725,
+      "mojo_ns": 1.0,
+      "speedup_x": 438.72,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "walk_score_distance_decay",
+      "py_ns": 215.763,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "vehicle_miles_traveled",
+      "py_ns": 115.762,
+      "mojo_ns": 0.9,
+      "speedup_x": 128.62,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "parking_requirement",
+      "py_ns": 77.437,
+      "mojo_ns": 1.0,
+      "speedup_x": 77.44,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "traffic_level_of_service",
+      "py_ns": 79.692,
+      "mojo_ns": 0.9,
+      "speedup_x": 88.55,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "housing_affordability_ratio",
+      "py_ns": 100.221,
+      "mojo_ns": 0.9,
+      "speedup_x": 111.36,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "jobs_housing_balance",
+      "py_ns": 463.788,
+      "mojo_ns": 0.9,
+      "speedup_x": 515.32,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "infrastructure_cost_per_unit",
+      "py_ns": 181.542,
+      "mojo_ns": 1.0,
+      "speedup_x": 181.54,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "impervious_surface_ratio",
+      "py_ns": 201.304,
+      "mojo_ns": 0.9,
+      "speedup_x": 223.67,
+      "py_result": 100.0,
+      "py_error": null
+    }
+  ]
+}

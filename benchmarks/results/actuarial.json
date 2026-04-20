@@ -1,0 +1,109 @@
+{
+  "lib": "actuarial",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 10,
+  "overall_speedup_x": 41.65,
+  "total_py_ns": 1532.59,
+  "total_mojo_ns": 36.8,
+  "elapsed_s": 3.09,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "present_value",
+      "py_ns": 205.388,
+      "mojo_ns": 0.9,
+      "speedup_x": 228.21,
+      "py_result": 0.408248,
+      "py_error": null
+    },
+    {
+      "function": "future_value",
+      "py_ns": 204.487,
+      "mojo_ns": 12.9,
+      "speedup_x": 15.85,
+      "py_result": 0.612372,
+      "py_error": null
+    },
+    {
+      "function": "annuity_present_value",
+      "py_ns": 279.858,
+      "mojo_ns": 1.0,
+      "speedup_x": 279.86,
+      "py_result": 0.183503,
+      "py_error": null
+    },
+    {
+      "function": "annuity_future_value",
+      "py_ns": 250.346,
+      "mojo_ns": 1.0,
+      "speedup_x": 250.35,
+      "py_result": 0.224745,
+      "py_error": null
+    },
+    {
+      "function": "life_expectancy_curtate",
+      "py_ns": 204.579,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "mortality_rate",
+      "py_ns": 95.604,
+      "mojo_ns": 1.4,
+      "speedup_x": 68.29,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "survival_probability",
+      "py_ns": 73.008,
+      "mojo_ns": 15.6,
+      "speedup_x": 4.68,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "force_of_mortality",
+      "py_ns": 102.513,
+      "mojo_ns": 1.0,
+      "speedup_x": 102.51,
+      "py_result": 0.693147,
+      "py_error": null
+    },
+    {
+      "function": "net_single_premium",
+      "py_ns": 81.271,
+      "mojo_ns": 1.0,
+      "speedup_x": 81.27,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "loss_ratio",
+      "py_ns": 150.05,
+      "mojo_ns": 1.0,
+      "speedup_x": 150.05,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "combined_ratio",
+      "py_ns": 90.067,
+      "mojo_ns": 1.0,
+      "speedup_x": 90.07,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "reserve_prospective",
+      "py_ns": 261.087,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

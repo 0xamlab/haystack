@@ -1,0 +1,93 @@
+{
+  "lib": "series",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 10,
+  "overall_speedup_x": 5.25,
+  "total_py_ns": 23381.58,
+  "total_mojo_ns": 4451.3,
+  "elapsed_s": 1.9,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "sma_forecast",
+      "py_ns": 467.533,
+      "mojo_ns": 602.0,
+      "speedup_x": 0.78,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "linear_extrapolation",
+      "py_ns": 2749.45,
+      "mojo_ns": 613.8,
+      "speedup_x": 4.48,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "weighted_moving_avg",
+      "py_ns": 945.412,
+      "mojo_ns": 2.8,
+      "speedup_x": 337.65,
+      "py_result": 0.54,
+      "py_error": null
+    },
+    {
+      "function": "exponential_forecast",
+      "py_ns": 1000.779,
+      "mojo_ns": 582.0,
+      "speedup_x": 1.72,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "naive_forecast",
+      "py_ns": 311.621,
+      "mojo_ns": 634.1,
+      "speedup_x": 0.49,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "seasonal_naive",
+      "py_ns": 1392.354,
+      "mojo_ns": 469.9,
+      "speedup_x": 2.96,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "drift_forecast",
+      "py_ns": 783.004,
+      "mojo_ns": 778.7,
+      "speedup_x": 1.01,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "forecast_accuracy",
+      "py_ns": 5973.171,
+      "mojo_ns": 442.5,
+      "speedup_x": 13.5,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "trend_strength",
+      "py_ns": 2421.504,
+      "mojo_ns": 304.5,
+      "speedup_x": 7.95,
+      "py_result": 0.36,
+      "py_error": null
+    },
+    {
+      "function": "detect_seasonality",
+      "py_ns": 7336.75,
+      "mojo_ns": 21.0,
+      "speedup_x": 349.37,
+      "py_result": 4.0,
+      "py_error": null
+    }
+  ]
+}

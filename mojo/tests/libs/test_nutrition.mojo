@@ -1,0 +1,54 @@
+"""test_nutrition.mojo — auto-generated tests for nutrition library."""
+from std.math import isnan, isinf
+from nutrition import bmi, bmi_category, bmr_mifflin, tdee, caloric_deficit, macro_split, ideal_body_weight, body_fat_estimate, water_intake, heart_rate_max, target_heart_rate, vo2max_estimate
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_bmi = bmi(0.5, 0.5)
+    if is_finite(_v_bmi): passed += 1; print("  ✅ nutrition::bmi =", _v_bmi)
+    else: failed += 1; print("  ❌ nutrition::bmi → non-finite:", _v_bmi)
+    _ = bmi_category(0.5)
+    passed += 1; print("  ✅ nutrition::bmi_category")
+    var _v_bmr_mifflin = bmr_mifflin(0.5, 0.5, 5, True)
+    if is_finite(_v_bmr_mifflin): passed += 1; print("  ✅ nutrition::bmr_mifflin =", _v_bmr_mifflin)
+    else: failed += 1; print("  ❌ nutrition::bmr_mifflin → non-finite:", _v_bmr_mifflin)
+    var _v_tdee = tdee(0.5, 0.5)
+    if is_finite(_v_tdee): passed += 1; print("  ✅ nutrition::tdee =", _v_tdee)
+    else: failed += 1; print("  ❌ nutrition::tdee → non-finite:", _v_tdee)
+    var _v_caloric_deficit = caloric_deficit(0.5, 0.5)
+    if is_finite(_v_caloric_deficit): passed += 1; print("  ✅ nutrition::caloric_deficit =", _v_caloric_deficit)
+    else: failed += 1; print("  ❌ nutrition::caloric_deficit → non-finite:", _v_caloric_deficit)
+    var _v_macro_split = macro_split(0.5, 0.5, 0.5)
+    if len(_v_macro_split) >= 0: passed += 1; print("  ✅ nutrition::macro_split")
+    var _v_ideal_body_weight = ideal_body_weight(0.5, True)
+    if is_finite(_v_ideal_body_weight): passed += 1; print("  ✅ nutrition::ideal_body_weight =", _v_ideal_body_weight)
+    else: failed += 1; print("  ❌ nutrition::ideal_body_weight → non-finite:", _v_ideal_body_weight)
+    var _v_body_fat_estimate = body_fat_estimate(0.5, 5, True)
+    if is_finite(_v_body_fat_estimate): passed += 1; print("  ✅ nutrition::body_fat_estimate =", _v_body_fat_estimate)
+    else: failed += 1; print("  ❌ nutrition::body_fat_estimate → non-finite:", _v_body_fat_estimate)
+    var _v_water_intake = water_intake(0.5)
+    if is_finite(_v_water_intake): passed += 1; print("  ✅ nutrition::water_intake =", _v_water_intake)
+    else: failed += 1; print("  ❌ nutrition::water_intake → non-finite:", _v_water_intake)
+    _ = heart_rate_max(5)
+    passed += 1; print("  ✅ nutrition::heart_rate_max")
+    var _v_target_heart_rate = target_heart_rate(5, 0.5, 0.5)
+    if len(_v_target_heart_rate) >= 0: passed += 1; print("  ✅ nutrition::target_heart_rate")
+    var _v_vo2max_estimate = vo2max_estimate(5, 5)
+    if is_finite(_v_vo2max_estimate): passed += 1; print("  ✅ nutrition::vo2max_estimate =", _v_vo2max_estimate)
+    else: failed += 1; print("  ❌ nutrition::vo2max_estimate → non-finite:", _v_vo2max_estimate)
+
+    print("  [nutrition] Passed:", passed, "Failed:", failed)

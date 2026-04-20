@@ -1,0 +1,255 @@
+openapi: "3.1.0"
+info:
+  title: "Algenta Decision Engine"
+  description: |
+    Probabilistic decision engine API. Run Monte Carlo simulations with any distributions,
+    get structured recommendations (PROCEED/DELAY/REJECT/HEDGE), expected value,
+    probability of loss, VaR, and SHA-256 chain-of-custody hashes.
+  version: "1.0.0"
+servers:
+  - url: "https://api.algenta.ai"
+    description: "Production API"
+paths:
+  /v1/simulate:
+    post:
+      operationId: "runSimulation"
+      summary: "Run a probabilistic simulation"
+      description: |
+        Execute a simulation. Use mode 'auto' with variable low/high ranges for easy setup,
+        or 'expert' for full distribution control (27 distributions supported).
+        Returns recommended_action, confidence, expected_value, probability_of_loss,
+        percentiles, and SHA-256 result_hash for auditability.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: ["mode"]
+              properties:
+                mode:
+                  type: string
+                  enum: ["auto", "expert"]
+                  description: "Use 'auto' for simple scenarios or 'expert' for full distribution control"
+                runs:
+                  type: integer
+                  default: 10000
+                  minimum: 100
+                  maximum: 1000000
+                  description: "Number of Monte Carlo scenarios to simulate"
+                seed:
+                  type: integer
+                  description: "Random seed for reproducible results"
+                simulation_model:
+                  type: string
+                  enum:
+                    [
+                      "monte_carlo",
+                      "qmc_sobol",
+                      "lhs",
+                      "bootstrap",
+                      "scenario",
+                      "sensitivity",
+                      "mcmc",
+                    ]
+                  default: "monte_carlo"
+                  description: "Simulation engine model"
+                scenario:
+                  type: object
+                  description: "Required for auto mode"
+                  properties:
+                    name:
+                      type: string
+                    variables:
+                      type: object
+                      description: "Named variables with low/high bounds. E.g.: {revenue: {low: 80000, high: 200000}}"
+                      additionalProperties:
+                        type: object
+                        properties:
+                          low: { type: number }
+                          high: { type: number }
+                    objective:
+                      type: string
+                      enum:
+                        - "maximize_net_value"
+                        - "maximize_revenue"
+                        - "minimize_cost"
+                        - "minimize_risk"
+                simulation:
+                  type: object
+                  description: "Required for expert mode"
+                  properties:
+                    variables:
+                      type: array
+                      items:
+                        type: object
+                        required: ["name", "distribution", "params"]
+                        properties:
+                          name: { type: string }
+                          distribution:
+                            type: string
+                            description: "Distribution type: normal, lognormal, triangular, uniform, beta, gamma, poisson, etc."
+                          params:
+                            type: object
+                            additionalProperties: true
+                          unit: { type: string }
+                    objective_function:
+                      type: string
+                      description: "Mathematical expression using variable names. E.g.: revenue - cost"
+                    output_labels:
+                      type: array
+                      items: { type: string }
+                    scoring:
+                      type: object
+                      properties:
+                        expected_value: { type: number }
+                        downside_risk: { type: number }
+      responses:
+        "200":
+          description: "Simulation completed — DecisionEnvelope"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  run_id:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    enum: ["completed", "failed"]
+                  recommended_action:
+                    type: string
+                    enum: ["proceed", "caution", "reject", "hedge"]
+                  confidence:
+                    type: number
+                    description: "0.0 to 1.0 confidence in the recommendation"
+                  rationale:
+                    type: string
+                    description: "Human-readable explanation of the recommendation"
+                  metrics:
+                    type: object
+                    properties:
+                      expected_value: { type: number }
+                      median: { type: number }
+                      std_deviation: { type: number }
+                      probability_of_loss: { type: number }
+                      var_95: { type: number }
+                      cvar_95: { type: number }
+                  percentiles:
+                    type: object
+                    properties:
+                      p5: { type: number }
+                      p25: { type: number }
+                      p50: { type: number }
+                      p75: { type: number }
+                      p95: { type: number }
+                  scenarios_run:
+                    type: integer
+                  execution_ms:
+                    type: integer
+                  simulation_model:
+                    type: string
+                  request_hash:
+                    type: string
+                    description: "SHA-256 hash of input payload for chain-of-custody"
+                  result_hash:
+                    type: string
+                    description: "SHA-256 hash of output (binds to request_hash)"
+        "401":
+          description: "Unauthorized — invalid or missing API key"
+        "422":
+          description: "Validation error — check request body"
+        "429":
+          description: "Rate limit exceeded"
+
+  /v1/runs:
+    get:
+      operationId: "listRuns"
+      summary: "List recent simulation runs"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20, maximum: 100 }
+        - name: status
+          in: query
+          schema:
+            { type: string, enum: ["completed", "failed", "running", "queued"] }
+      responses:
+        "200":
+          description: "List of runs"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  runs:
+                    type: array
+                    items:
+                      type: object
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+
+  /v1/simulate/templates:
+    get:
+      operationId: "listTemplates"
+      summary: "List domain simulation templates"
+      description: "Get all 18+ ready-to-run templates across 12 industries"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: domain
+          in: query
+          schema: { type: string }
+        - name: tag
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: "Templates list"
+
+  /v1/usage:
+    get:
+      operationId: "getUsage"
+      summary: "Get current billing period usage"
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: "Usage summary"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  simulations_run: { type: integer }
+                  quota_limit: { type: integer }
+                  quota_used_pct: { type: number }
+                  plan: { type: string }
+
+  /health:
+    get:
+      operationId: "healthCheck"
+      summary: "Health check"
+      responses:
+        "200":
+          description: "API is healthy"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: "Use your Algenta API key as Bearer token. Get yours at https://app.algenta.ai/dashboard/api-keys"
+
+security:
+  - BearerAuth: []

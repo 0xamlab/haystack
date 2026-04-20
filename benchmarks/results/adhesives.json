@@ -1,0 +1,109 @@
+{
+  "lib": "adhesives",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 12,
+  "overall_speedup_x": 242.63,
+  "total_py_ns": 2790.23,
+  "total_mojo_ns": 11.5,
+  "elapsed_s": 3.11,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "lap_shear_strength",
+      "py_ns": 170.662,
+      "mojo_ns": 1.0,
+      "speedup_x": 170.66,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "peel_strength",
+      "py_ns": 126.6,
+      "mojo_ns": 0.9,
+      "speedup_x": 140.67,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "bond_line_thickness",
+      "py_ns": 167.208,
+      "mojo_ns": 0.9,
+      "speedup_x": 185.79,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "coverage_rate",
+      "py_ns": 733.621,
+      "mojo_ns": 1.0,
+      "speedup_x": 733.62,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "pot_life_temperature_adjusted",
+      "py_ns": 166.121,
+      "mojo_ns": 1.0,
+      "speedup_x": 166.12,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "cure_time_temperature",
+      "py_ns": 201.646,
+      "mojo_ns": 1.0,
+      "speedup_x": 201.65,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "joint_efficiency",
+      "py_ns": 87.087,
+      "mojo_ns": 0.9,
+      "speedup_x": 96.76,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "thermal_cycle_life",
+      "py_ns": 685.8,
+      "mojo_ns": 0.9,
+      "speedup_x": 762.0,
+      "py_result": 4.0,
+      "py_error": null
+    },
+    {
+      "function": "viscosity_temperature",
+      "py_ns": 131.9,
+      "mojo_ns": 1.0,
+      "speedup_x": 131.9,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "surface_energy_contact_angle",
+      "py_ns": 140.142,
+      "mojo_ns": 1.0,
+      "speedup_x": 140.14,
+      "py_result": 0.499981,
+      "py_error": null
+    },
+    {
+      "function": "open_time_estimate",
+      "py_ns": 93.554,
+      "mojo_ns": 1.0,
+      "speedup_x": 93.55,
+      "py_result": 0.011125,
+      "py_error": null
+    },
+    {
+      "function": "bond_area_from_load",
+      "py_ns": 85.892,
+      "mojo_ns": 0.9,
+      "speedup_x": 95.44,
+      "py_result": 0.5,
+      "py_error": null
+    }
+  ]
+}

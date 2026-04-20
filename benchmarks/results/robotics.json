@@ -1,0 +1,109 @@
+{
+  "lib": "robotics",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 10,
+  "overall_speedup_x": 97.01,
+  "total_py_ns": 1367.81,
+  "total_mojo_ns": 14.1,
+  "elapsed_s": 3.2,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "forward_kinematics_2dof",
+      "py_ns": 135.154,
+      "mojo_ns": 1.1,
+      "speedup_x": 122.87,
+      "py_result": 0.708942,
+      "py_error": null
+    },
+    {
+      "function": "forward_kinematics_2dof_y",
+      "py_ns": 164.667,
+      "mojo_ns": 1.0,
+      "speedup_x": 164.67,
+      "py_result": 0.660448,
+      "py_error": null
+    },
+    {
+      "function": "inverse_kinematics_2dof_theta2",
+      "py_ns": 156.25,
+      "mojo_ns": 4.9,
+      "speedup_x": 31.89,
+      "py_result": 1.570796,
+      "py_error": null
+    },
+    {
+      "function": "jacobian_2dof_j11",
+      "py_ns": 168.2,
+      "mojo_ns": 1.0,
+      "speedup_x": 168.2,
+      "py_result": -0.660448,
+      "py_error": null
+    },
+    {
+      "function": "pid_control",
+      "py_ns": 140.625,
+      "mojo_ns": 1.0,
+      "speedup_x": 140.62,
+      "py_result": 0.75,
+      "py_error": null
+    },
+    {
+      "function": "dead_reckoning_x",
+      "py_ns": 101.746,
+      "mojo_ns": 1.0,
+      "speedup_x": 101.75,
+      "py_result": 0.719396,
+      "py_error": null
+    },
+    {
+      "function": "dead_reckoning_y",
+      "py_ns": 101.179,
+      "mojo_ns": 1.0,
+      "speedup_x": 101.18,
+      "py_result": 0.619856,
+      "py_error": null
+    },
+    {
+      "function": "wheel_odometry_distance",
+      "py_ns": 121.346,
+      "mojo_ns": 1.0,
+      "speedup_x": 121.35,
+      "py_result": 3.141593,
+      "py_error": null
+    },
+    {
+      "function": "differential_drive_omega",
+      "py_ns": 157.921,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "differential_drive_velocity",
+      "py_ns": 92.588,
+      "mojo_ns": 1.0,
+      "speedup_x": 92.59,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "workspace_radius",
+      "py_ns": 186.054,
+      "mojo_ns": 1.1,
+      "speedup_x": 169.14,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "manipulability_index",
+      "py_ns": null,
+      "mojo_ns": 1.0,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "name '_abs' is not defined"
+    }
+  ]
+}

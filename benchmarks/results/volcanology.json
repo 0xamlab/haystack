@@ -1,0 +1,109 @@
+{
+  "lib": "volcanology",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 12,
+  "overall_speedup_x": 287.64,
+  "total_py_ns": 3451.63,
+  "total_mojo_ns": 12.0,
+  "elapsed_s": 3.68,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "vei_energy_estimate",
+      "py_ns": 196.225,
+      "mojo_ns": 1.5,
+      "speedup_x": 130.82,
+      "py_result": 31622776.601684,
+      "py_error": null
+    },
+    {
+      "function": "lava_flow_velocity",
+      "py_ns": 491.354,
+      "mojo_ns": 0.9,
+      "speedup_x": 545.95,
+      "py_result": 0.000364,
+      "py_error": null
+    },
+    {
+      "function": "eruption_column_height",
+      "py_ns": 148.021,
+      "mojo_ns": 1.0,
+      "speedup_x": 148.02,
+      "py_result": 0.210224,
+      "py_error": null
+    },
+    {
+      "function": "tephra_fallout_thickness",
+      "py_ns": 361.867,
+      "mojo_ns": 0.9,
+      "speedup_x": 402.07,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "magma_viscosity_estimate",
+      "py_ns": 390.421,
+      "mojo_ns": 0.9,
+      "speedup_x": 433.8,
+      "py_result": 0.000112,
+      "py_error": null
+    },
+    {
+      "function": "effusion_rate",
+      "py_ns": 213.796,
+      "mojo_ns": 1.0,
+      "speedup_x": 213.8,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "lahar_velocity",
+      "py_ns": 362.229,
+      "mojo_ns": 1.0,
+      "speedup_x": 362.23,
+      "py_result": 1.566046,
+      "py_error": null
+    },
+    {
+      "function": "volcanic_gas_emission_rate",
+      "py_ns": 160.696,
+      "mojo_ns": 1.0,
+      "speedup_x": 160.7,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "recurrence_interval",
+      "py_ns": 197.783,
+      "mojo_ns": 0.9,
+      "speedup_x": 219.76,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "alert_level",
+      "py_ns": 554.45,
+      "mojo_ns": 0.9,
+      "speedup_x": 616.06,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "pyroclastic_flow_runout",
+      "py_ns": 160.258,
+      "mojo_ns": 1.0,
+      "speedup_x": 160.26,
+      "py_result": 2.5,
+      "py_error": null
+    },
+    {
+      "function": "caldera_collapse_volume",
+      "py_ns": 214.529,
+      "mojo_ns": 1.0,
+      "speedup_x": 214.53,
+      "py_result": 0.098175,
+      "py_error": null
+    }
+  ]
+}

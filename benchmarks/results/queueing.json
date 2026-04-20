@@ -1,0 +1,101 @@
+{
+  "lib": "queueing",
+  "status": "ok",
+  "n_functions": 11,
+  "n_compared": 11,
+  "overall_speedup_x": 110.9,
+  "total_py_ns": 6864.83,
+  "total_mojo_ns": 61.9,
+  "elapsed_s": 1.69,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "factorial",
+      "py_ns": 238.938,
+      "mojo_ns": 3.3,
+      "speedup_x": 72.41,
+      "py_result": 120.0,
+      "py_error": null
+    },
+    {
+      "function": "mm1_utilization",
+      "py_ns": 87.242,
+      "mojo_ns": 1.3,
+      "speedup_x": 67.11,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "mm1_avg_queue_length",
+      "py_ns": 266.379,
+      "mojo_ns": 1.2,
+      "speedup_x": 221.98,
+      "py_result": 1e+18,
+      "py_error": null
+    },
+    {
+      "function": "mm1_avg_system_size",
+      "py_ns": 136.542,
+      "mojo_ns": 1.2,
+      "speedup_x": 113.78,
+      "py_result": 1e+18,
+      "py_error": null
+    },
+    {
+      "function": "mm1_avg_wait_time",
+      "py_ns": 87.183,
+      "mojo_ns": 1.3,
+      "speedup_x": 67.06,
+      "py_result": 1e+18,
+      "py_error": null
+    },
+    {
+      "function": "mm1_avg_system_time",
+      "py_ns": 84.471,
+      "mojo_ns": 1.2,
+      "speedup_x": 70.39,
+      "py_result": 1e+18,
+      "py_error": null
+    },
+    {
+      "function": "mmc_erlang_c",
+      "py_ns": 2146.575,
+      "mojo_ns": 19.2,
+      "speedup_x": 111.8,
+      "py_result": 0.003831,
+      "py_error": null
+    },
+    {
+      "function": "mmc_avg_wait_time",
+      "py_ns": 2852.262,
+      "mojo_ns": 20.4,
+      "speedup_x": 139.82,
+      "py_result": 0.001916,
+      "py_error": null
+    },
+    {
+      "function": "erlang_b",
+      "py_ns": 790.75,
+      "mojo_ns": 10.3,
+      "speedup_x": 76.77,
+      "py_result": 0.000158,
+      "py_error": null
+    },
+    {
+      "function": "littles_law_L",
+      "py_ns": 80.696,
+      "mojo_ns": 1.3,
+      "speedup_x": 62.07,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "littles_law_W",
+      "py_ns": 93.796,
+      "mojo_ns": 1.2,
+      "speedup_x": 78.16,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

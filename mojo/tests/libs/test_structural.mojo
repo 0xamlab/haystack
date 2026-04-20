@@ -1,0 +1,58 @@
+"""test_structural.mojo — auto-generated tests for structural library."""
+from std.math import isnan, isinf
+from structural import bending_stress, shear_stress_beam, moment_of_inertia_rect, section_modulus_rect, deflection_cantilever_point, deflection_simply_supported_center, euler_buckling_load, slenderness_ratio, axial_stress, combined_stress_von_mises, safety_factor, natural_frequency_cantilever
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_bending_stress = bending_stress(0.5, 0.5)
+    if is_finite(_v_bending_stress): passed += 1; print("  ✅ structural::bending_stress =", _v_bending_stress)
+    else: failed += 1; print("  ❌ structural::bending_stress → non-finite:", _v_bending_stress)
+    var _v_shear_stress_beam = shear_stress_beam(0.5, 0.5)
+    if is_finite(_v_shear_stress_beam): passed += 1; print("  ✅ structural::shear_stress_beam =", _v_shear_stress_beam)
+    else: failed += 1; print("  ❌ structural::shear_stress_beam → non-finite:", _v_shear_stress_beam)
+    var _v_moment_of_inertia_rect = moment_of_inertia_rect(0.5, 0.5)
+    if is_finite(_v_moment_of_inertia_rect): passed += 1; print("  ✅ structural::moment_of_inertia_rect =", _v_moment_of_inertia_rect)
+    else: failed += 1; print("  ❌ structural::moment_of_inertia_rect → non-finite:", _v_moment_of_inertia_rect)
+    var _v_section_modulus_rect = section_modulus_rect(0.5, 0.5)
+    if is_finite(_v_section_modulus_rect): passed += 1; print("  ✅ structural::section_modulus_rect =", _v_section_modulus_rect)
+    else: failed += 1; print("  ❌ structural::section_modulus_rect → non-finite:", _v_section_modulus_rect)
+    var _v_deflection_cantilever_point = deflection_cantilever_point(0.5, 0.5, 0.5)
+    if is_finite(_v_deflection_cantilever_point): passed += 1; print("  ✅ structural::deflection_cantilever_point =", _v_deflection_cantilever_point)
+    else: failed += 1; print("  ❌ structural::deflection_cantilever_point → non-finite:", _v_deflection_cantilever_point)
+    var _v_deflection_simply_supported_center = deflection_simply_supported_center(0.5, 0.5, 0.5)
+    if is_finite(_v_deflection_simply_supported_center): passed += 1; print("  ✅ structural::deflection_simply_supported_center =", _v_deflection_simply_supported_center)
+    else: failed += 1; print("  ❌ structural::deflection_simply_supported_center → non-finite:", _v_deflection_simply_supported_center)
+    var _v_euler_buckling_load = euler_buckling_load(0.5, 0.5, 0.5)
+    if is_finite(_v_euler_buckling_load): passed += 1; print("  ✅ structural::euler_buckling_load =", _v_euler_buckling_load)
+    else: failed += 1; print("  ❌ structural::euler_buckling_load → non-finite:", _v_euler_buckling_load)
+    var _v_slenderness_ratio = slenderness_ratio(0.5, 0.5)
+    if is_finite(_v_slenderness_ratio): passed += 1; print("  ✅ structural::slenderness_ratio =", _v_slenderness_ratio)
+    else: failed += 1; print("  ❌ structural::slenderness_ratio → non-finite:", _v_slenderness_ratio)
+    var _v_axial_stress = axial_stress(0.5, 0.5)
+    if is_finite(_v_axial_stress): passed += 1; print("  ✅ structural::axial_stress =", _v_axial_stress)
+    else: failed += 1; print("  ❌ structural::axial_stress → non-finite:", _v_axial_stress)
+    var _v_combined_stress_von_mises = combined_stress_von_mises(0.5, 0.5, 0.5)
+    if is_finite(_v_combined_stress_von_mises): passed += 1; print("  ✅ structural::combined_stress_von_mises =", _v_combined_stress_von_mises)
+    else: failed += 1; print("  ❌ structural::combined_stress_von_mises → non-finite:", _v_combined_stress_von_mises)
+    var _v_safety_factor = safety_factor(0.5, 0.5)
+    if is_finite(_v_safety_factor): passed += 1; print("  ✅ structural::safety_factor =", _v_safety_factor)
+    else: failed += 1; print("  ❌ structural::safety_factor → non-finite:", _v_safety_factor)
+    var _v_natural_frequency_cantilever = natural_frequency_cantilever(0.5, 0.5, 0.5)
+    if is_finite(_v_natural_frequency_cantilever): passed += 1; print("  ✅ structural::natural_frequency_cantilever =", _v_natural_frequency_cantilever)
+    else: failed += 1; print("  ❌ structural::natural_frequency_cantilever → non-finite:", _v_natural_frequency_cantilever)
+
+    print("  [structural] Passed:", passed, "Failed:", failed)

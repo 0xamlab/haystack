@@ -1,0 +1,93 @@
+{
+  "lib": "vector_search",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 6,
+  "overall_speedup_x": 177.54,
+  "total_py_ns": 1686.65,
+  "total_mojo_ns": 9.5,
+  "elapsed_s": 4.03,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "hnsw_layer_probability",
+      "py_ns": 533.521,
+      "mojo_ns": 2.8,
+      "speedup_x": 190.54,
+      "py_result": 0.367879,
+      "py_error": null
+    },
+    {
+      "function": "hnsw_search_ef_scale",
+      "py_ns": 113.646,
+      "mojo_ns": 1.2,
+      "speedup_x": 94.7,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "ivf_coarse_quantizer_dist",
+      "py_ns": 129.429,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "pq_quantization_error",
+      "py_ns": 372.987,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "lsh_hash_bit",
+      "py_ns": null,
+      "mojo_ns": 1.3,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "name 'Int64' is not defined"
+    },
+    {
+      "function": "recall_at_k",
+      "py_ns": 186.6,
+      "mojo_ns": 1.3,
+      "speedup_x": 143.54,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "mrr_score",
+      "py_ns": 166.275,
+      "mojo_ns": 1.6,
+      "speedup_x": 103.92,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "beam_search_score",
+      "py_ns": 421.892,
+      "mojo_ns": 1.3,
+      "speedup_x": 324.53,
+      "py_result": 0.707107,
+      "py_error": null
+    },
+    {
+      "function": "faiss_nprobe_coverage",
+      "py_ns": 264.712,
+      "mojo_ns": 1.3,
+      "speedup_x": 203.62,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "ann_distance_bound",
+      "py_ns": 204.671,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

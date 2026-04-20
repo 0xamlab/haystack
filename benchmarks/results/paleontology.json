@@ -1,0 +1,109 @@
+{
+  "lib": "paleontology",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 11,
+  "overall_speedup_x": 104.87,
+  "total_py_ns": 1982.09,
+  "total_mojo_ns": 18.9,
+  "elapsed_s": 1.14,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "radiocarbon_age",
+      "py_ns": 124.846,
+      "mojo_ns": 1.1,
+      "speedup_x": 113.5,
+      "py_result": 1.386294,
+      "py_error": null
+    },
+    {
+      "function": "potassium_argon_age",
+      "py_ns": 140.708,
+      "mojo_ns": 1.1,
+      "speedup_x": 127.92,
+      "py_result": 0.81093,
+      "py_error": null
+    },
+    {
+      "function": "uranium_lead_age",
+      "py_ns": 266.517,
+      "mojo_ns": 1.1,
+      "speedup_x": 242.29,
+      "py_result": 0.81093,
+      "py_error": null
+    },
+    {
+      "function": "stratigraphic_completeness",
+      "py_ns": 217.788,
+      "mojo_ns": 7.8,
+      "speedup_x": 27.92,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "sedimentation_rate",
+      "py_ns": 157.967,
+      "mojo_ns": 1.1,
+      "speedup_x": 143.61,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "fossil_diversity_index",
+      "py_ns": 304.083,
+      "mojo_ns": 1.1,
+      "speedup_x": 276.44,
+      "py_result": 0.721348,
+      "py_error": null
+    },
+    {
+      "function": "extinction_rate",
+      "py_ns": 123.75,
+      "mojo_ns": 1.1,
+      "speedup_x": 112.5,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "origination_rate",
+      "py_ns": 128.787,
+      "mojo_ns": 1.1,
+      "speedup_x": 117.08,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "turnover_rate",
+      "py_ns": 261.121,
+      "mojo_ns": 1.1,
+      "speedup_x": 237.38,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "body_mass_estimate_mammal",
+      "py_ns": null,
+      "mojo_ns": 1.1,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "No module named 'std'"
+    },
+    {
+      "function": "phylogenetic_distance",
+      "py_ns": 165.992,
+      "mojo_ns": 1.1,
+      "speedup_x": 150.9,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "completeness_metric",
+      "py_ns": 90.533,
+      "mojo_ns": 1.2,
+      "speedup_x": 75.44,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

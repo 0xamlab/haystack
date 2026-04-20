@@ -1,0 +1,58 @@
+"""test_aquaculture.mojo — auto-generated tests for aquaculture library."""
+from std.math import isnan, isinf
+from aquaculture import stocking_density, feed_conversion_ratio, specific_growth_rate, dissolved_oxygen_consumption, water_exchange_rate, ammonia_production, carrying_capacity, harvest_weight, survival_rate, production_per_cycle, biofilter_capacity, cost_per_kg_produced
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_stocking_density = stocking_density(0.5, 0.5)
+    if is_finite(_v_stocking_density): passed += 1; print("  ✅ aquaculture::stocking_density =", _v_stocking_density)
+    else: failed += 1; print("  ❌ aquaculture::stocking_density → non-finite:", _v_stocking_density)
+    var _v_feed_conversion_ratio = feed_conversion_ratio(0.5, 0.5)
+    if is_finite(_v_feed_conversion_ratio): passed += 1; print("  ✅ aquaculture::feed_conversion_ratio =", _v_feed_conversion_ratio)
+    else: failed += 1; print("  ❌ aquaculture::feed_conversion_ratio → non-finite:", _v_feed_conversion_ratio)
+    var _v_specific_growth_rate = specific_growth_rate(0.5, 0.5, 0.5)
+    if is_finite(_v_specific_growth_rate): passed += 1; print("  ✅ aquaculture::specific_growth_rate =", _v_specific_growth_rate)
+    else: failed += 1; print("  ❌ aquaculture::specific_growth_rate → non-finite:", _v_specific_growth_rate)
+    var _v_dissolved_oxygen_consumption = dissolved_oxygen_consumption(0.5, 0.5)
+    if is_finite(_v_dissolved_oxygen_consumption): passed += 1; print("  ✅ aquaculture::dissolved_oxygen_consumption =", _v_dissolved_oxygen_consumption)
+    else: failed += 1; print("  ❌ aquaculture::dissolved_oxygen_consumption → non-finite:", _v_dissolved_oxygen_consumption)
+    var _v_water_exchange_rate = water_exchange_rate(0.5, 0.5)
+    if is_finite(_v_water_exchange_rate): passed += 1; print("  ✅ aquaculture::water_exchange_rate =", _v_water_exchange_rate)
+    else: failed += 1; print("  ❌ aquaculture::water_exchange_rate → non-finite:", _v_water_exchange_rate)
+    var _v_ammonia_production = ammonia_production(0.5, 0.5)
+    if is_finite(_v_ammonia_production): passed += 1; print("  ✅ aquaculture::ammonia_production =", _v_ammonia_production)
+    else: failed += 1; print("  ❌ aquaculture::ammonia_production → non-finite:", _v_ammonia_production)
+    var _v_carrying_capacity = carrying_capacity(0.5, 0.5)
+    if is_finite(_v_carrying_capacity): passed += 1; print("  ✅ aquaculture::carrying_capacity =", _v_carrying_capacity)
+    else: failed += 1; print("  ❌ aquaculture::carrying_capacity → non-finite:", _v_carrying_capacity)
+    var _v_harvest_weight = harvest_weight(0.5, 0.5, 0.5)
+    if is_finite(_v_harvest_weight): passed += 1; print("  ✅ aquaculture::harvest_weight =", _v_harvest_weight)
+    else: failed += 1; print("  ❌ aquaculture::harvest_weight → non-finite:", _v_harvest_weight)
+    var _v_survival_rate = survival_rate(0.5, 0.5)
+    if is_finite(_v_survival_rate): passed += 1; print("  ✅ aquaculture::survival_rate =", _v_survival_rate)
+    else: failed += 1; print("  ❌ aquaculture::survival_rate → non-finite:", _v_survival_rate)
+    var _v_production_per_cycle = production_per_cycle(0.5, 0.5, 0.5)
+    if is_finite(_v_production_per_cycle): passed += 1; print("  ✅ aquaculture::production_per_cycle =", _v_production_per_cycle)
+    else: failed += 1; print("  ❌ aquaculture::production_per_cycle → non-finite:", _v_production_per_cycle)
+    var _v_biofilter_capacity = biofilter_capacity(0.5, 0.5)
+    if is_finite(_v_biofilter_capacity): passed += 1; print("  ✅ aquaculture::biofilter_capacity =", _v_biofilter_capacity)
+    else: failed += 1; print("  ❌ aquaculture::biofilter_capacity → non-finite:", _v_biofilter_capacity)
+    var _v_cost_per_kg_produced = cost_per_kg_produced(0.5, 0.5)
+    if is_finite(_v_cost_per_kg_produced): passed += 1; print("  ✅ aquaculture::cost_per_kg_produced =", _v_cost_per_kg_produced)
+    else: failed += 1; print("  ❌ aquaculture::cost_per_kg_produced → non-finite:", _v_cost_per_kg_produced)
+
+    print("  [aquaculture] Passed:", passed, "Failed:", failed)

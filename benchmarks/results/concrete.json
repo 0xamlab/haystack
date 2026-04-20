@@ -1,0 +1,109 @@
+{
+  "lib": "concrete",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 11,
+  "overall_speedup_x": 125.46,
+  "total_py_ns": 1555.72,
+  "total_mojo_ns": 12.4,
+  "elapsed_s": 1.71,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "water_cement_ratio",
+      "py_ns": 115.883,
+      "mojo_ns": 1.0,
+      "speedup_x": 115.88,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "compressive_strength_abrams",
+      "py_ns": 132.742,
+      "mojo_ns": 1.0,
+      "speedup_x": 132.74,
+      "py_result": 0.3894,
+      "py_error": null
+    },
+    {
+      "function": "cement_content",
+      "py_ns": 115.229,
+      "mojo_ns": 1.0,
+      "speedup_x": 115.23,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "aggregate_volume",
+      "py_ns": 113.604,
+      "mojo_ns": 1.1,
+      "speedup_x": 103.28,
+      "py_result": -0.5025,
+      "py_error": null
+    },
+    {
+      "function": "slump_estimate",
+      "py_ns": 92.812,
+      "mojo_ns": 1.0,
+      "speedup_x": 92.81,
+      "py_result": 60.0,
+      "py_error": null
+    },
+    {
+      "function": "maturity_nurse_saul",
+      "py_ns": 102.029,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "modulus_of_elasticity",
+      "py_ns": 106.008,
+      "mojo_ns": 1.0,
+      "speedup_x": 106.01,
+      "py_result": 3323.401872,
+      "py_error": null
+    },
+    {
+      "function": "splitting_tensile_strength",
+      "py_ns": 164.925,
+      "mojo_ns": 1.0,
+      "speedup_x": 164.92,
+      "py_result": 0.39598,
+      "py_error": null
+    },
+    {
+      "function": "drying_shrinkage_estimate",
+      "py_ns": 150.083,
+      "mojo_ns": 1.1,
+      "speedup_x": 136.44,
+      "py_result": 0.000298,
+      "py_error": null
+    },
+    {
+      "function": "carbonation_depth",
+      "py_ns": 118.758,
+      "mojo_ns": 1.0,
+      "speedup_x": 118.76,
+      "py_result": 0.353553,
+      "py_error": null
+    },
+    {
+      "function": "rebar_development_length",
+      "py_ns": 208.975,
+      "mojo_ns": 1.0,
+      "speedup_x": 208.97,
+      "py_result": 0.157836,
+      "py_error": null
+    },
+    {
+      "function": "concrete_density_estimate",
+      "py_ns": 236.696,
+      "mojo_ns": 2.2,
+      "speedup_x": 107.59,
+      "py_result": 1.4925,
+      "py_error": null
+    }
+  ]
+}

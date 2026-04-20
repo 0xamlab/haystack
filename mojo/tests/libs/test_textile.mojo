@@ -1,0 +1,58 @@
+"""test_textile.mojo — auto-generated tests for textile library."""
+from std.math import isnan, isinf
+from textile import tex_to_denier, denier_to_tex, yarn_count_ne, tex_from_diameter_density, twist_per_meter, twist_multiplier, fabric_gsm, fabric_cover_factor, pilling_resistance_score, moisture_regain, shrinkage_percentage, breaking_tenacity
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_tex_to_denier = tex_to_denier(0.5)
+    if is_finite(_v_tex_to_denier): passed += 1; print("  ✅ textile::tex_to_denier =", _v_tex_to_denier)
+    else: failed += 1; print("  ❌ textile::tex_to_denier → non-finite:", _v_tex_to_denier)
+    var _v_denier_to_tex = denier_to_tex(0.5)
+    if is_finite(_v_denier_to_tex): passed += 1; print("  ✅ textile::denier_to_tex =", _v_denier_to_tex)
+    else: failed += 1; print("  ❌ textile::denier_to_tex → non-finite:", _v_denier_to_tex)
+    var _v_yarn_count_ne = yarn_count_ne(0.5, 0.5)
+    if is_finite(_v_yarn_count_ne): passed += 1; print("  ✅ textile::yarn_count_ne =", _v_yarn_count_ne)
+    else: failed += 1; print("  ❌ textile::yarn_count_ne → non-finite:", _v_yarn_count_ne)
+    var _v_tex_from_diameter_density = tex_from_diameter_density(0.5, 0.5)
+    if is_finite(_v_tex_from_diameter_density): passed += 1; print("  ✅ textile::tex_from_diameter_density =", _v_tex_from_diameter_density)
+    else: failed += 1; print("  ❌ textile::tex_from_diameter_density → non-finite:", _v_tex_from_diameter_density)
+    var _v_twist_per_meter = twist_per_meter(0.5)
+    if is_finite(_v_twist_per_meter): passed += 1; print("  ✅ textile::twist_per_meter =", _v_twist_per_meter)
+    else: failed += 1; print("  ❌ textile::twist_per_meter → non-finite:", _v_twist_per_meter)
+    var _v_twist_multiplier = twist_multiplier(0.5, 0.5)
+    if is_finite(_v_twist_multiplier): passed += 1; print("  ✅ textile::twist_multiplier =", _v_twist_multiplier)
+    else: failed += 1; print("  ❌ textile::twist_multiplier → non-finite:", _v_twist_multiplier)
+    var _v_fabric_gsm = fabric_gsm(0.5, 0.5)
+    if is_finite(_v_fabric_gsm): passed += 1; print("  ✅ textile::fabric_gsm =", _v_fabric_gsm)
+    else: failed += 1; print("  ❌ textile::fabric_gsm → non-finite:", _v_fabric_gsm)
+    var _v_fabric_cover_factor = fabric_cover_factor(0.5, 0.5)
+    if is_finite(_v_fabric_cover_factor): passed += 1; print("  ✅ textile::fabric_cover_factor =", _v_fabric_cover_factor)
+    else: failed += 1; print("  ❌ textile::fabric_cover_factor → non-finite:", _v_fabric_cover_factor)
+    var _v_pilling_resistance_score = pilling_resistance_score(5, 0.5)
+    if is_finite(_v_pilling_resistance_score): passed += 1; print("  ✅ textile::pilling_resistance_score =", _v_pilling_resistance_score)
+    else: failed += 1; print("  ❌ textile::pilling_resistance_score → non-finite:", _v_pilling_resistance_score)
+    var _v_moisture_regain = moisture_regain(0.5, 0.5)
+    if is_finite(_v_moisture_regain): passed += 1; print("  ✅ textile::moisture_regain =", _v_moisture_regain)
+    else: failed += 1; print("  ❌ textile::moisture_regain → non-finite:", _v_moisture_regain)
+    var _v_shrinkage_percentage = shrinkage_percentage(0.5, 0.5)
+    if is_finite(_v_shrinkage_percentage): passed += 1; print("  ✅ textile::shrinkage_percentage =", _v_shrinkage_percentage)
+    else: failed += 1; print("  ❌ textile::shrinkage_percentage → non-finite:", _v_shrinkage_percentage)
+    var _v_breaking_tenacity = breaking_tenacity(0.5, 0.5)
+    if is_finite(_v_breaking_tenacity): passed += 1; print("  ✅ textile::breaking_tenacity =", _v_breaking_tenacity)
+    else: failed += 1; print("  ❌ textile::breaking_tenacity → non-finite:", _v_breaking_tenacity)
+
+    print("  [textile] Passed:", passed, "Failed:", failed)

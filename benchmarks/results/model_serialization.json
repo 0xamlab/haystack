@@ -1,0 +1,93 @@
+{
+  "lib": "model_serialization",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 9,
+  "overall_speedup_x": 156.64,
+  "total_py_ns": 1519.41,
+  "total_mojo_ns": 9.7,
+  "elapsed_s": 1.36,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "weight_quantization_bits",
+      "py_ns": 78.954,
+      "mojo_ns": 1.1,
+      "speedup_x": 71.78,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "checkpoint_size_estimate",
+      "py_ns": 103.742,
+      "mojo_ns": 1.1,
+      "speedup_x": 94.31,
+      "py_result": 0.03125,
+      "py_error": null
+    },
+    {
+      "function": "delta_compression_ratio",
+      "py_ns": 90.783,
+      "mojo_ns": 1.1,
+      "speedup_x": 82.53,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "weight_sparsity_ratio",
+      "py_ns": 88.058,
+      "mojo_ns": 1.1,
+      "speedup_x": 80.05,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "model_flops_estimate",
+      "py_ns": 287.746,
+      "mojo_ns": 1.0,
+      "speedup_x": 287.75,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "onnx_op_count_estimate",
+      "py_ns": 90.471,
+      "mojo_ns": 1.1,
+      "speedup_x": 82.25,
+      "py_result": 1.25,
+      "py_error": null
+    },
+    {
+      "function": "lora_parameter_count",
+      "py_ns": 95.433,
+      "mojo_ns": 1.1,
+      "speedup_x": 86.76,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "pruning_sparsity_speedup",
+      "py_ns": 453.879,
+      "mojo_ns": 1.0,
+      "speedup_x": 453.88,
+      "py_result": 1.499998,
+      "py_error": null
+    },
+    {
+      "function": "weight_sharing_ratio",
+      "py_ns": 230.346,
+      "mojo_ns": 1.1,
+      "speedup_x": 209.41,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "version_hash_component",
+      "py_ns": null,
+      "mojo_ns": 1.1,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "name 'Int64' is not defined"
+    }
+  ]
+}

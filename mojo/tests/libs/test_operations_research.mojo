@@ -1,0 +1,61 @@
+"""test_operations_research.mojo — auto-generated tests for operations_research library."""
+from std.math import isnan, isinf
+from operations_research import simplex_objective_value_2, simplex_objective_value_3, transportation_cost, total_transportation_cost_2x2, assignment_cost_3, eoq_quantity, eoq_total_cost, newsvendor_critical_ratio, little_law_l, little_law_w, utilization_factor, mm1_expected_queue_length, mm1_expected_wait_time
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_simplex_objective_value_2 = simplex_objective_value_2(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_simplex_objective_value_2): passed += 1; print("  ✅ operations_research::simplex_objective_value_2 =", _v_simplex_objective_value_2)
+    else: failed += 1; print("  ❌ operations_research::simplex_objective_value_2 → non-finite:", _v_simplex_objective_value_2)
+    var _v_simplex_objective_value_3 = simplex_objective_value_3(0.5, 0.5, 0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_simplex_objective_value_3): passed += 1; print("  ✅ operations_research::simplex_objective_value_3 =", _v_simplex_objective_value_3)
+    else: failed += 1; print("  ❌ operations_research::simplex_objective_value_3 → non-finite:", _v_simplex_objective_value_3)
+    var _v_transportation_cost = transportation_cost(0.5, 0.5)
+    if is_finite(_v_transportation_cost): passed += 1; print("  ✅ operations_research::transportation_cost =", _v_transportation_cost)
+    else: failed += 1; print("  ❌ operations_research::transportation_cost → non-finite:", _v_transportation_cost)
+    var _v_total_transportation_cost_2x2 = total_transportation_cost_2x2(0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_total_transportation_cost_2x2): passed += 1; print("  ✅ operations_research::total_transportation_cost_2x2 =", _v_total_transportation_cost_2x2)
+    else: failed += 1; print("  ❌ operations_research::total_transportation_cost_2x2 → non-finite:", _v_total_transportation_cost_2x2)
+    var _v_assignment_cost_3 = assignment_cost_3(0.5, 0.5, 0.5)
+    if is_finite(_v_assignment_cost_3): passed += 1; print("  ✅ operations_research::assignment_cost_3 =", _v_assignment_cost_3)
+    else: failed += 1; print("  ❌ operations_research::assignment_cost_3 → non-finite:", _v_assignment_cost_3)
+    var _v_eoq_quantity = eoq_quantity(0.5, 0.5, 0.5)
+    if is_finite(_v_eoq_quantity): passed += 1; print("  ✅ operations_research::eoq_quantity =", _v_eoq_quantity)
+    else: failed += 1; print("  ❌ operations_research::eoq_quantity → non-finite:", _v_eoq_quantity)
+    var _v_eoq_total_cost = eoq_total_cost(0.5, 0.5, 0.5)
+    if is_finite(_v_eoq_total_cost): passed += 1; print("  ✅ operations_research::eoq_total_cost =", _v_eoq_total_cost)
+    else: failed += 1; print("  ❌ operations_research::eoq_total_cost → non-finite:", _v_eoq_total_cost)
+    var _v_newsvendor_critical_ratio = newsvendor_critical_ratio(0.5, 0.5)
+    if is_finite(_v_newsvendor_critical_ratio): passed += 1; print("  ✅ operations_research::newsvendor_critical_ratio =", _v_newsvendor_critical_ratio)
+    else: failed += 1; print("  ❌ operations_research::newsvendor_critical_ratio → non-finite:", _v_newsvendor_critical_ratio)
+    var _v_little_law_l = little_law_l(0.5, 0.5)
+    if is_finite(_v_little_law_l): passed += 1; print("  ✅ operations_research::little_law_l =", _v_little_law_l)
+    else: failed += 1; print("  ❌ operations_research::little_law_l → non-finite:", _v_little_law_l)
+    var _v_little_law_w = little_law_w(0.5, 0.5)
+    if is_finite(_v_little_law_w): passed += 1; print("  ✅ operations_research::little_law_w =", _v_little_law_w)
+    else: failed += 1; print("  ❌ operations_research::little_law_w → non-finite:", _v_little_law_w)
+    var _v_utilization_factor = utilization_factor(0.5, 0.5)
+    if is_finite(_v_utilization_factor): passed += 1; print("  ✅ operations_research::utilization_factor =", _v_utilization_factor)
+    else: failed += 1; print("  ❌ operations_research::utilization_factor → non-finite:", _v_utilization_factor)
+    var _v_mm1_expected_queue_length = mm1_expected_queue_length(0.5)
+    if is_finite(_v_mm1_expected_queue_length): passed += 1; print("  ✅ operations_research::mm1_expected_queue_length =", _v_mm1_expected_queue_length)
+    else: failed += 1; print("  ❌ operations_research::mm1_expected_queue_length → non-finite:", _v_mm1_expected_queue_length)
+    var _v_mm1_expected_wait_time = mm1_expected_wait_time(0.5, 0.5)
+    if is_finite(_v_mm1_expected_wait_time): passed += 1; print("  ✅ operations_research::mm1_expected_wait_time =", _v_mm1_expected_wait_time)
+    else: failed += 1; print("  ❌ operations_research::mm1_expected_wait_time → non-finite:", _v_mm1_expected_wait_time)
+
+    print("  [operations_research] Passed:", passed, "Failed:", failed)

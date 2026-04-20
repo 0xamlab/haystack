@@ -1,0 +1,109 @@
+{
+  "lib": "embeddings",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 12,
+  "overall_speedup_x": 10.67,
+  "total_py_ns": 92567.26,
+  "total_mojo_ns": 8675.1,
+  "elapsed_s": 2.8,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "dot_product",
+      "py_ns": 290.242,
+      "mojo_ns": 2.5,
+      "speedup_x": 116.1,
+      "py_result": 1.35,
+      "py_error": null
+    },
+    {
+      "function": "vector_magnitude",
+      "py_ns": 337.192,
+      "mojo_ns": 2.9,
+      "speedup_x": 116.27,
+      "py_result": 1.161895,
+      "py_error": null
+    },
+    {
+      "function": "cosine_similarity",
+      "py_ns": 1747.475,
+      "mojo_ns": 7.1,
+      "speedup_x": 246.12,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "euclidean_distance",
+      "py_ns": 2199.258,
+      "mojo_ns": 2.4,
+      "speedup_x": 916.36,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "manhattan_distance",
+      "py_ns": 746.983,
+      "mojo_ns": 2.6,
+      "speedup_x": 287.3,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "normalize_vector",
+      "py_ns": 1459.354,
+      "mojo_ns": 244.0,
+      "speedup_x": 5.98,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "centroid",
+      "py_ns": 2960.762,
+      "mojo_ns": 792.0,
+      "speedup_x": 3.74,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "nearest_neighbor",
+      "py_ns": 9867.821,
+      "mojo_ns": 408.6,
+      "speedup_x": 24.15,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "k_nearest_neighbors",
+      "py_ns": 40674.383,
+      "mojo_ns": 1186.5,
+      "speedup_x": 34.28,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "cosine_similarity_matrix",
+      "py_ns": 24205.146,
+      "mojo_ns": 4425.0,
+      "speedup_x": 5.47,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "vector_add",
+      "py_ns": 4043.829,
+      "mojo_ns": 786.7,
+      "speedup_x": 5.14,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "vector_scale",
+      "py_ns": 4034.817,
+      "mojo_ns": 814.8,
+      "speedup_x": 4.95,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

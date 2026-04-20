@@ -1,0 +1,58 @@
+"""test_tribology.mojo — auto-generated tests for tribology library."""
+from std.math import isnan, isinf
+from tribology import coulomb_friction_force, kinetic_friction, static_friction_max, coefficient_of_friction, hertz_contact_pressure, archard_wear_volume, bearing_pressure, sommerfeld_number, stribeck_parameter, flash_temperature_rise, lubrication_film_thickness, friction_power_loss
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_coulomb_friction_force = coulomb_friction_force(0.5, 0.5)
+    if is_finite(_v_coulomb_friction_force): passed += 1; print("  ✅ tribology::coulomb_friction_force =", _v_coulomb_friction_force)
+    else: failed += 1; print("  ❌ tribology::coulomb_friction_force → non-finite:", _v_coulomb_friction_force)
+    var _v_kinetic_friction = kinetic_friction(0.5, 0.5)
+    if is_finite(_v_kinetic_friction): passed += 1; print("  ✅ tribology::kinetic_friction =", _v_kinetic_friction)
+    else: failed += 1; print("  ❌ tribology::kinetic_friction → non-finite:", _v_kinetic_friction)
+    var _v_static_friction_max = static_friction_max(0.5, 0.5)
+    if is_finite(_v_static_friction_max): passed += 1; print("  ✅ tribology::static_friction_max =", _v_static_friction_max)
+    else: failed += 1; print("  ❌ tribology::static_friction_max → non-finite:", _v_static_friction_max)
+    var _v_coefficient_of_friction = coefficient_of_friction(0.5, 0.5)
+    if is_finite(_v_coefficient_of_friction): passed += 1; print("  ✅ tribology::coefficient_of_friction =", _v_coefficient_of_friction)
+    else: failed += 1; print("  ❌ tribology::coefficient_of_friction → non-finite:", _v_coefficient_of_friction)
+    var _v_hertz_contact_pressure = hertz_contact_pressure(0.5, 0.5)
+    if is_finite(_v_hertz_contact_pressure): passed += 1; print("  ✅ tribology::hertz_contact_pressure =", _v_hertz_contact_pressure)
+    else: failed += 1; print("  ❌ tribology::hertz_contact_pressure → non-finite:", _v_hertz_contact_pressure)
+    var _v_archard_wear_volume = archard_wear_volume(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_archard_wear_volume): passed += 1; print("  ✅ tribology::archard_wear_volume =", _v_archard_wear_volume)
+    else: failed += 1; print("  ❌ tribology::archard_wear_volume → non-finite:", _v_archard_wear_volume)
+    var _v_bearing_pressure = bearing_pressure(0.5, 0.5)
+    if is_finite(_v_bearing_pressure): passed += 1; print("  ✅ tribology::bearing_pressure =", _v_bearing_pressure)
+    else: failed += 1; print("  ❌ tribology::bearing_pressure → non-finite:", _v_bearing_pressure)
+    var _v_sommerfeld_number = sommerfeld_number(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_sommerfeld_number): passed += 1; print("  ✅ tribology::sommerfeld_number =", _v_sommerfeld_number)
+    else: failed += 1; print("  ❌ tribology::sommerfeld_number → non-finite:", _v_sommerfeld_number)
+    var _v_stribeck_parameter = stribeck_parameter(0.5, 0.5, 0.5)
+    if is_finite(_v_stribeck_parameter): passed += 1; print("  ✅ tribology::stribeck_parameter =", _v_stribeck_parameter)
+    else: failed += 1; print("  ❌ tribology::stribeck_parameter → non-finite:", _v_stribeck_parameter)
+    var _v_flash_temperature_rise = flash_temperature_rise(0.5, 0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_flash_temperature_rise): passed += 1; print("  ✅ tribology::flash_temperature_rise =", _v_flash_temperature_rise)
+    else: failed += 1; print("  ❌ tribology::flash_temperature_rise → non-finite:", _v_flash_temperature_rise)
+    var _v_lubrication_film_thickness = lubrication_film_thickness(0.5, 0.5, 0.5)
+    if is_finite(_v_lubrication_film_thickness): passed += 1; print("  ✅ tribology::lubrication_film_thickness =", _v_lubrication_film_thickness)
+    else: failed += 1; print("  ❌ tribology::lubrication_film_thickness → non-finite:", _v_lubrication_film_thickness)
+    var _v_friction_power_loss = friction_power_loss(0.5, 0.5)
+    if is_finite(_v_friction_power_loss): passed += 1; print("  ✅ tribology::friction_power_loss =", _v_friction_power_loss)
+    else: failed += 1; print("  ❌ tribology::friction_power_loss → non-finite:", _v_friction_power_loss)
+
+    print("  [tribology] Passed:", passed, "Failed:", failed)

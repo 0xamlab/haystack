@@ -1,0 +1,109 @@
+{
+  "lib": "aerospace",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 10,
+  "overall_speedup_x": 302.23,
+  "total_py_ns": 3052.57,
+  "total_mojo_ns": 10.1,
+  "elapsed_s": 3.19,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "dynamic_pressure",
+      "py_ns": 82.983,
+      "mojo_ns": 1.0,
+      "speedup_x": 82.98,
+      "py_result": 0.0625,
+      "py_error": null
+    },
+    {
+      "function": "lift_force",
+      "py_ns": 80.571,
+      "mojo_ns": 1.0,
+      "speedup_x": 80.57,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "drag_force",
+      "py_ns": 90.183,
+      "mojo_ns": 1.0,
+      "speedup_x": 90.18,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "lift_to_drag_ratio",
+      "py_ns": 91.054,
+      "mojo_ns": 1.0,
+      "speedup_x": 91.05,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "thrust_required",
+      "py_ns": 89.167,
+      "mojo_ns": 1.0,
+      "speedup_x": 89.17,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "specific_impulse",
+      "py_ns": 1790.954,
+      "mojo_ns": 1.1,
+      "speedup_x": 1628.14,
+      "py_result": 0.101972,
+      "py_error": null
+    },
+    {
+      "function": "tsiolkovsky_delta_v",
+      "py_ns": null,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "name '_ln' is not defined"
+    },
+    {
+      "function": "mach_number",
+      "py_ns": 92.467,
+      "mojo_ns": 1.0,
+      "speedup_x": 92.47,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "speed_of_sound",
+      "py_ns": 105.108,
+      "mojo_ns": 1.0,
+      "speedup_x": 105.11,
+      "py_result": 0.353553,
+      "py_error": null
+    },
+    {
+      "function": "orbital_velocity",
+      "py_ns": 126.417,
+      "mojo_ns": 1.0,
+      "speedup_x": 126.42,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "escape_velocity",
+      "py_ns": 503.667,
+      "mojo_ns": 1.0,
+      "speedup_x": 503.67,
+      "py_result": 1.414214,
+      "py_error": null
+    },
+    {
+      "function": "hohmann_delta_v",
+      "py_ns": 261.979,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

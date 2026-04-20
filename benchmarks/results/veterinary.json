@@ -1,0 +1,109 @@
+{
+  "lib": "veterinary",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 7,
+  "overall_speedup_x": 19.68,
+  "total_py_ns": 3330.25,
+  "total_mojo_ns": 169.2,
+  "elapsed_s": 4.48,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "dose_mg",
+      "py_ns": 134.779,
+      "mojo_ns": 1.0,
+      "speedup_x": 134.78,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "fluid_rate_ml_hr",
+      "py_ns": 87.5,
+      "mojo_ns": 1.0,
+      "speedup_x": 87.5,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "fluid_deficit",
+      "py_ns": 95.6,
+      "mojo_ns": 0.9,
+      "speedup_x": 106.22,
+      "py_result": 2.5,
+      "py_error": null
+    },
+    {
+      "function": "maintenance_fluid_dog",
+      "py_ns": 119.142,
+      "mojo_ns": 1.0,
+      "speedup_x": 119.14,
+      "py_result": 30.0,
+      "py_error": null
+    },
+    {
+      "function": "caloric_requirement_dog",
+      "py_ns": 2215.979,
+      "mojo_ns": 163.4,
+      "speedup_x": 13.56,
+      "py_result": 41.622249,
+      "py_error": null
+    },
+    {
+      "function": "body_condition_score_ideal",
+      "py_ns": 570.808,
+      "mojo_ns": 0.9,
+      "speedup_x": 634.23,
+      "py_result": 5.0,
+      "py_error": null
+    },
+    {
+      "function": "anesthesia_mac",
+      "py_ns": 106.437,
+      "mojo_ns": 1.0,
+      "speedup_x": 106.44,
+      "py_result": 3.1,
+      "py_error": null
+    },
+    {
+      "function": "gestation_period_days",
+      "py_ns": 90.404,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "heart_rate_normal_range_low",
+      "py_ns": 86.754,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "heart_rate_normal_range_high",
+      "py_ns": 174.058,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "packed_cell_volume_normal",
+      "py_ns": 146.4,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "blood_volume_estimate",
+      "py_ns": 135.138,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

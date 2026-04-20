@@ -1,0 +1,85 @@
+{
+  "lib": "geometry",
+  "status": "ok",
+  "n_functions": 9,
+  "n_compared": 9,
+  "overall_speedup_x": 9.31,
+  "total_py_ns": 21618.47,
+  "total_mojo_ns": 2321.6,
+  "elapsed_s": 1.69,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "distance_2d",
+      "py_ns": 149.271,
+      "mojo_ns": 1.1,
+      "speedup_x": 135.7,
+      "py_result": 5.0,
+      "py_error": null
+    },
+    {
+      "function": "cross_product_2d",
+      "py_ns": 149.271,
+      "mojo_ns": 1.1,
+      "speedup_x": 135.7,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "point_in_polygon",
+      "py_ns": 1193.833,
+      "mojo_ns": 69.7,
+      "speedup_x": 17.13,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "polygon_area",
+      "py_ns": 465.4,
+      "mojo_ns": 210.6,
+      "speedup_x": 2.21,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "polygon_perimeter",
+      "py_ns": 1080.517,
+      "mojo_ns": 65.1,
+      "speedup_x": 16.6,
+      "py_result": 4.0,
+      "py_error": null
+    },
+    {
+      "function": "convex_hull",
+      "py_ns": 13552.25,
+      "mojo_ns": 1328.1,
+      "speedup_x": 10.2,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "line_intersection",
+      "py_ns": 1108.825,
+      "mojo_ns": 1.2,
+      "speedup_x": 924.02,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "centroid",
+      "py_ns": 3022.55,
+      "mojo_ns": 124.2,
+      "speedup_x": 24.34,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "bounding_box",
+      "py_ns": 896.55,
+      "mojo_ns": 520.5,
+      "speedup_x": 1.72,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

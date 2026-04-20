@@ -1,0 +1,109 @@
+{
+  "lib": "set_ops",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 12,
+  "overall_speedup_x": 2.61,
+  "total_py_ns": 8360.65,
+  "total_mojo_ns": 3199.0,
+  "elapsed_s": 1.74,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "set_union",
+      "py_ns": 850.467,
+      "mojo_ns": 405.0,
+      "speedup_x": 2.1,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "set_intersection",
+      "py_ns": 675.725,
+      "mojo_ns": 1065.8,
+      "speedup_x": 0.63,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "set_difference",
+      "py_ns": 588.162,
+      "mojo_ns": 6.5,
+      "speedup_x": 90.49,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "set_symmetric_difference",
+      "py_ns": 572.329,
+      "mojo_ns": 19.2,
+      "speedup_x": 29.81,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "is_subset",
+      "py_ns": 692.354,
+      "mojo_ns": 4.1,
+      "speedup_x": 168.87,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "is_superset",
+      "py_ns": 520.783,
+      "mojo_ns": 4.1,
+      "speedup_x": 127.02,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "set_equals",
+      "py_ns": 357.925,
+      "mojo_ns": 1.1,
+      "speedup_x": 325.39,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "power_set_size",
+      "py_ns": 279.787,
+      "mojo_ns": 1.1,
+      "speedup_x": 254.35,
+      "py_result": 32.0,
+      "py_error": null
+    },
+    {
+      "function": "jaccard_index",
+      "py_ns": 1408.538,
+      "mojo_ns": 594.5,
+      "speedup_x": 2.37,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "to_set",
+      "py_ns": 1901.0,
+      "mojo_ns": 1092.7,
+      "speedup_x": 1.74,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "set_contains",
+      "py_ns": 362.038,
+      "mojo_ns": 3.9,
+      "speedup_x": 92.83,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "set_cardinality",
+      "py_ns": 151.537,
+      "mojo_ns": 1.0,
+      "speedup_x": 151.54,
+      "py_result": 5.0,
+      "py_error": null
+    }
+  ]
+}

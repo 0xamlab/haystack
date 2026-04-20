@@ -1,0 +1,93 @@
+{
+  "lib": "autograd_graph",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 9,
+  "overall_speedup_x": 238.34,
+  "total_py_ns": 2192.7,
+  "total_mojo_ns": 9.2,
+  "elapsed_s": 1.68,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "node_output_count",
+      "py_ns": 111.992,
+      "mojo_ns": 1.0,
+      "speedup_x": 111.99,
+      "py_result": 1.5,
+      "py_error": null
+    },
+    {
+      "function": "grad_accumulate",
+      "py_ns": 101.804,
+      "mojo_ns": 1.1,
+      "speedup_x": 92.55,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "checkpointing_cost",
+      "py_ns": 157.213,
+      "mojo_ns": 1.0,
+      "speedup_x": 157.21,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "topological_sort_key",
+      "py_ns": 175.525,
+      "mojo_ns": 1.0,
+      "speedup_x": 175.52,
+      "py_result": 0.75,
+      "py_error": null
+    },
+    {
+      "function": "grad_scale_loss",
+      "py_ns": 158.754,
+      "mojo_ns": 1.0,
+      "speedup_x": 158.75,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "memory_efficient_backward_step",
+      "py_ns": 117.887,
+      "mojo_ns": 1.0,
+      "speedup_x": 117.89,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "jacobian_vector_product",
+      "py_ns": 138.879,
+      "mojo_ns": 1.0,
+      "speedup_x": 138.88,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "vector_jacobian_product",
+      "py_ns": 1123.363,
+      "mojo_ns": 1.0,
+      "speedup_x": 1123.36,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "dead_node_prune_score",
+      "py_ns": 186.967,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "gradient_norm_clip_scale",
+      "py_ns": 107.287,
+      "mojo_ns": 1.1,
+      "speedup_x": 97.53,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

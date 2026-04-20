@@ -1,0 +1,109 @@
+{
+  "lib": "cosmology",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 11,
+  "overall_speedup_x": 7.54,
+  "total_py_ns": 1435.28,
+  "total_mojo_ns": 190.4,
+  "elapsed_s": 1.35,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "hubble_velocity",
+      "py_ns": 110.812,
+      "mojo_ns": 1.2,
+      "speedup_x": 92.34,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "hubble_distance",
+      "py_ns": 91.267,
+      "mojo_ns": 1.1,
+      "speedup_x": 82.97,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "lookback_time_approx",
+      "py_ns": 117.329,
+      "mojo_ns": 1.1,
+      "speedup_x": 106.66,
+      "py_result": 2.0571333333333336e+19,
+      "py_error": null
+    },
+    {
+      "function": "comoving_distance_approx",
+      "py_ns": 89.158,
+      "mojo_ns": 178.3,
+      "speedup_x": 0.5,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "luminosity_distance",
+      "py_ns": 80.675,
+      "mojo_ns": 1.3,
+      "speedup_x": 62.06,
+      "py_result": 0.75,
+      "py_error": null
+    },
+    {
+      "function": "angular_diameter_distance",
+      "py_ns": 89.846,
+      "mojo_ns": 1.2,
+      "speedup_x": 74.87,
+      "py_result": 0.333333,
+      "py_error": null
+    },
+    {
+      "function": "redshift_from_wavelength",
+      "py_ns": 90.446,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "cosmic_scale_factor",
+      "py_ns": 134.604,
+      "mojo_ns": 1.2,
+      "speedup_x": 112.17,
+      "py_result": 0.666667,
+      "py_error": null
+    },
+    {
+      "function": "critical_density",
+      "py_ns": 394.929,
+      "mojo_ns": 1.3,
+      "speedup_x": 303.79,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "schwarzschild_radius",
+      "py_ns": 107.996,
+      "mojo_ns": 1.3,
+      "speedup_x": 83.07,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "stefan_boltzmann_luminosity",
+      "py_ns": 135.496,
+      "mojo_ns": 1.2,
+      "speedup_x": 112.91,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "wien_peak_wavelength",
+      "py_ns": 83.171,
+      "mojo_ns": 1.2,
+      "speedup_x": 69.31,
+      "py_result": 0.005796,
+      "py_error": null
+    }
+  ]
+}

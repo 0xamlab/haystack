@@ -1,0 +1,109 @@
+{
+  "lib": "pest_control",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 11,
+  "overall_speedup_x": 46.61,
+  "total_py_ns": 1766.51,
+  "total_mojo_ns": 37.9,
+  "elapsed_s": 1.29,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "economic_threshold",
+      "py_ns": 90.221,
+      "mojo_ns": 1.1,
+      "speedup_x": 82.02,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "economic_injury_level",
+      "py_ns": 81.187,
+      "mojo_ns": 27.3,
+      "speedup_x": 2.97,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "pest_density",
+      "py_ns": 127.346,
+      "mojo_ns": 1.0,
+      "speedup_x": 127.35,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "trap_catch_rate",
+      "py_ns": 212.071,
+      "mojo_ns": 1.1,
+      "speedup_x": 192.79,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "spray_coverage",
+      "py_ns": 709.187,
+      "mojo_ns": 1.1,
+      "speedup_x": 644.72,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "dilution_rate",
+      "py_ns": 91.471,
+      "mojo_ns": 1.0,
+      "speedup_x": 91.47,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "residual_effectiveness",
+      "py_ns": 116.021,
+      "mojo_ns": 1.0,
+      "speedup_x": 116.02,
+      "py_result": 0.250037,
+      "py_error": null
+    },
+    {
+      "function": "resistance_ratio",
+      "py_ns": 83.488,
+      "mojo_ns": 1.1,
+      "speedup_x": 75.9,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "biocontrol_release_rate",
+      "py_ns": 90.142,
+      "mojo_ns": 1.0,
+      "speedup_x": 90.14,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "fumigation_ct",
+      "py_ns": 79.192,
+      "mojo_ns": 1.1,
+      "speedup_x": 71.99,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "bait_station_density",
+      "py_ns": 86.188,
+      "mojo_ns": 1.1,
+      "speedup_x": 78.35,
+      "py_result": 10000.0,
+      "py_error": null
+    },
+    {
+      "function": "population_reduction",
+      "py_ns": 304.75,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

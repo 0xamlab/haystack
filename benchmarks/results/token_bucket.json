@@ -1,0 +1,37 @@
+{
+  "lib": "token_bucket",
+  "status": "ok",
+  "n_functions": 3,
+  "n_compared": 3,
+  "overall_speedup_x": 4376.64,
+  "total_py_ns": 11816.92,
+  "total_mojo_ns": 2.7,
+  "elapsed_s": 4.16,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "tb_create",
+      "py_ns": 6012.767,
+      "mojo_ns": 0.9,
+      "speedup_x": 6680.85,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "lb_create",
+      "py_ns": 2968.396,
+      "mojo_ns": 0.9,
+      "speedup_x": 3298.22,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "sw_create",
+      "py_ns": 2835.763,
+      "mojo_ns": 0.9,
+      "speedup_x": 3150.85,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

@@ -1,0 +1,93 @@
+{
+  "lib": "water_chemistry",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 5,
+  "overall_speedup_x": 257.8,
+  "total_py_ns": 1288.98,
+  "total_mojo_ns": 5.0,
+  "elapsed_s": 1.94,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "ph_from_hydrogen_ion",
+      "py_ns": null,
+      "mojo_ns": 1.1,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "module 'math' has no attribute 'math'"
+    },
+    {
+      "function": "hydrogen_ion_from_ph",
+      "py_ns": 103.658,
+      "mojo_ns": 1.0,
+      "speedup_x": 103.66,
+      "py_result": 0.316228,
+      "py_error": null
+    },
+    {
+      "function": "water_hardness",
+      "py_ns": 80.704,
+      "mojo_ns": 1.0,
+      "speedup_x": 80.7,
+      "py_result": 3.3075,
+      "py_error": null
+    },
+    {
+      "function": "alkalinity_as_caco3",
+      "py_ns": 192.546,
+      "mojo_ns": 1.0,
+      "speedup_x": 192.55,
+      "py_result": 2.715,
+      "py_error": null
+    },
+    {
+      "function": "langelier_saturation_index",
+      "py_ns": 150.1,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "turbidity_ntu_to_sdd",
+      "py_ns": 803.963,
+      "mojo_ns": 1.0,
+      "speedup_x": 803.96,
+      "py_result": 1.700929,
+      "py_error": null
+    },
+    {
+      "function": "chlorine_demand",
+      "py_ns": 84.804,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "dissolved_oxygen_deficit",
+      "py_ns": 90.258,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "conductivity_tds",
+      "py_ns": 108.108,
+      "mojo_ns": 1.0,
+      "speedup_x": 108.11,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "bod_removal",
+      "py_ns": 140.983,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

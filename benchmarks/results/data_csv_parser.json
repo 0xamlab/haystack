@@ -1,0 +1,69 @@
+{
+  "lib": "data_csv_parser",
+  "status": "ok",
+  "n_functions": 7,
+  "n_compared": 3,
+  "overall_speedup_x": 56.76,
+  "total_py_ns": 44664.1,
+  "total_mojo_ns": 786.9,
+  "elapsed_s": 4.04,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "_try_parse_float",
+      "py_ns": 7265.508,
+      "mojo_ns": 560.5,
+      "speedup_x": 12.96,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "_can_parse_float",
+      "py_ns": null,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "name '_SPACE' is not defined"
+    },
+    {
+      "function": "_try_parse_int",
+      "py_ns": 18642.679,
+      "mojo_ns": 207.2,
+      "speedup_x": 89.97,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "_can_parse_int",
+      "py_ns": null,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "name '_SPACE' is not defined"
+    },
+    {
+      "function": "_parse_fields",
+      "py_ns": null,
+      "mojo_ns": 210.5,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "name '_DQUOTE' is not defined"
+    },
+    {
+      "function": "_split_csv_records",
+      "py_ns": null,
+      "mojo_ns": 238.2,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "name '_DQUOTE' is not defined"
+    },
+    {
+      "function": "_escape_json_string",
+      "py_ns": 18755.917,
+      "mojo_ns": 19.2,
+      "speedup_x": 976.87,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

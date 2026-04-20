@@ -1,0 +1,109 @@
+{
+  "lib": "game_physics",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 12,
+  "overall_speedup_x": 185.34,
+  "total_py_ns": 2483.58,
+  "total_mojo_ns": 13.4,
+  "elapsed_s": 1.32,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "position_update",
+      "py_ns": 198.504,
+      "mojo_ns": 1.2,
+      "speedup_x": 165.42,
+      "py_result": 0.8125,
+      "py_error": null
+    },
+    {
+      "function": "velocity_update",
+      "py_ns": 169.646,
+      "mojo_ns": 1.1,
+      "speedup_x": 154.22,
+      "py_result": 0.75,
+      "py_error": null
+    },
+    {
+      "function": "verlet_position",
+      "py_ns": 374.671,
+      "mojo_ns": 1.1,
+      "speedup_x": 340.61,
+      "py_result": 0.625,
+      "py_error": null
+    },
+    {
+      "function": "elastic_collision_1d",
+      "py_ns": 283.146,
+      "mojo_ns": 1.1,
+      "speedup_x": 257.41,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "coefficient_of_restitution",
+      "py_ns": 375.358,
+      "mojo_ns": 1.1,
+      "speedup_x": 341.23,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "kinetic_energy",
+      "py_ns": 272.413,
+      "mojo_ns": 1.2,
+      "speedup_x": 227.01,
+      "py_result": 0.0625,
+      "py_error": null
+    },
+    {
+      "function": "gravitational_force",
+      "py_ns": 214.95,
+      "mojo_ns": 1.1,
+      "speedup_x": 195.41,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "projectile_range",
+      "py_ns": 207.692,
+      "mojo_ns": 1.1,
+      "speedup_x": 188.81,
+      "py_result": 0.420735,
+      "py_error": null
+    },
+    {
+      "function": "drag_force_quadratic",
+      "py_ns": 96.517,
+      "mojo_ns": 1.1,
+      "speedup_x": 87.74,
+      "py_result": 0.015625,
+      "py_error": null
+    },
+    {
+      "function": "spring_force",
+      "py_ns": 100.275,
+      "mojo_ns": 1.1,
+      "speedup_x": 91.16,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "angular_velocity_from_linear",
+      "py_ns": 107.104,
+      "mojo_ns": 1.1,
+      "speedup_x": 97.37,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "moment_of_inertia_sphere",
+      "py_ns": 83.3,
+      "mojo_ns": 1.1,
+      "speedup_x": 75.73,
+      "py_result": 0.05,
+      "py_error": null
+    }
+  ]
+}

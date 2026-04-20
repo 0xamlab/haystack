@@ -1,0 +1,180 @@
+from __future__ import annotations
+
+import uuid
+from types import SimpleNamespace
+
+import pytest
+from fastapi import HTTPException
+
+from apps.api_server.models.job import JobStatus
+from apps.api_server.models.simulation_run import RunStatus
+from apps.api_server.services import job_service
+
+
+class _FakeResult:
+    def __init__(self, value: object | None) -> None:
+        self._value = value
+
+    def scalar_one_or_none(self) -> object | None:
+        return self._value
+
+
+class _FakeSession:
+    def __init__(self, values: list[object | None]) -> None:
+        self._values = list(values)
+
+    async def execute(self, _query: object) -> _FakeResult:
+        if not self._values:
+            raise AssertionError("No more fake query results configured.")
+        return _FakeResult(self._values.pop(0))
+
+
+@pytest.mark.asyncio
+async def test_get_job_denies_cross_org_access_with_structured_error() -> None:
+    job = SimpleNamespace(id=uuid.uuid4(), org_id=uuid.uuid4())
+    db = _FakeSession([job])
+
+    with pytest.raises(HTTPException) as exc_info:
+        await job_service.get_job(uuid.uuid4(), uuid.uuid4(), db)  # type: ignore[arg-type]
+
+    exc = exc_info.value
+    assert exc.status_code == 403
+    assert exc.detail == {
+        "error": {
+            "code": "job_access_denied",
+            "message": "Access to this job is not allowed.",
+        }
+    }
+
+
+@pytest.mark.asyncio
+async def test_cancel_job_rejects_terminal_state_with_structured_error() -> None:
+    org_id = uuid.uuid4()
+    job = SimpleNamespace(id=uuid.uuid4(), org_id=org_id, status=JobStatus.COMPLETED)
+    db = _FakeSession([job])
+
+    with pytest.raises(HTTPException) as exc_info:
+        await job_service.cancel_job(job.id, org_id, db)  # type: ignore[arg-type]
+
+    exc = exc_info.value
+    assert exc.status_code == 409
+    assert exc.detail == {
+        "error": {
+            "code": "job_already_terminal",
+            "message": "Job is already in terminal state: completed. Cannot cancel.",
+        }
+    }
+
+
+@pytest.mark.asyncio
+async def test_execute_job_returns_fallback_payload_for_terminal_job(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    org_id = uuid.uuid4()
+    run_id = uuid.uuid4()
+    job = SimpleNamespace(
+        id=uuid.uuid4(),
+        org_id=org_id,
+        run_id=run_id,
+        status=JobStatus.COMPLETED,
+    )
+    run = SimpleNamespace(id=run_id, status=RunStatus.COMPLETED)
+    db = _FakeSession([job, run])
+
+    async def _fake_get_job_result(
+        job_id: uuid.UUID,
+        result_org_id: uuid.UUID,
+        _db: object,
+    ) -> None:
+        assert job_id == job.id
+        assert result_org_id == org_id
+        return None
+
+    monkeypatch.setattr(job_service, "get_job_result", _fake_get_job_result)
+
+    result = await job_service.execute_job(job.id, {}, db)  # type: ignore[arg-type]
+
+    assert result == {
+        "status": "completed",
+        "job_id": str(job.id),
+        "run_id": str(run_id),
+    }
+
+
+@pytest.mark.asyncio
+async def test_get_job_result_returns_full_payload_from_object_storage(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    org_id = uuid.uuid4()
+    run_id = uuid.uuid4()
+    job = SimpleNamespace(
+        id=uuid.uuid4(),
+        org_id=org_id,
+        run_id=run_id,
+        status=JobStatus.COMPLETED,
+    )
+    run = SimpleNamespace(
+        id=run_id,
+        org_id=org_id,
+        result_url="https://storage.example/run.json",
+        output_blob_ref="s3://decision-engine-results/org/run.json",
+    )
+    db = _FakeSession([job, run])
+
+    async def _fake_get_result(result_url: str) -> dict[str, object]:
+        assert result_url == "https://storage.example/run.json"
+        return {"recommended_action": "proceed", "confidence": 0.91}
+
+    monkeypatch.setattr("apps.api_server.services.storage_service.get_result", _fake_get_result)
+
+    result = await job_service.get_job_result(job.id, org_id, db)  # type: ignore[arg-type]
+
+    assert result == {"recommended_action": "proceed", "confidence": 0.91}
+
+
+@pytest.mark.asyncio
+async def test_get_job_result_falls_back_to_summary_when_blob_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    org_id = uuid.uuid4()
+    run_id = uuid.uuid4()
+    job = SimpleNamespace(
+        id=uuid.uuid4(),
+        org_id=org_id,
+        run_id=run_id,
+        status=JobStatus.COMPLETED,
+    )
+    run = SimpleNamespace(
+        id=run_id,
+        org_id=org_id,
+        engine_version="0.1.0",
+        scenarios_run=500,
+        duration_ms=12,
+        output_blob_ref="s3://decision-engine-results/org/run.json",
+        result_url=None,
+    )
+    db = _FakeSession([job, run])
+
+    monkeypatch.setattr(
+        "apps.api_server.services.storage_service.generate_presigned_download_url",
+        lambda org_id, run_id: "https://storage.example/run.json",
+    )
+
+    async def _fake_get_result(result_url: str) -> None:
+        assert result_url == "https://storage.example/run.json"
+        return None
+
+    monkeypatch.setattr("apps.api_server.services.storage_service.get_result", _fake_get_result)
+
+    result = await job_service.get_job_result(job.id, org_id, db)  # type: ignore[arg-type]
+
+    assert result == {
+        "job_id": str(job.id),
+        "run_id": str(run_id),
+        "status": "completed",
+        "engine_version": "0.1.0",
+        "scenarios_run": 500,
+        "duration_ms": 12,
+        "output_blob_ref": "s3://decision-engine-results/org/run.json",
+        "message": "Full result stored. Fetch via output_blob_ref if provided.",
+    }

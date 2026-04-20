@@ -1,0 +1,93 @@
+{
+  "lib": "geophysics",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 9,
+  "overall_speedup_x": 135.92,
+  "total_py_ns": 1807.79,
+  "total_mojo_ns": 13.3,
+  "elapsed_s": 1.22,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "gravity_anomaly_bouguer",
+      "py_ns": 316.692,
+      "mojo_ns": 2.1,
+      "speedup_x": 150.81,
+      "py_result": -978.576749,
+      "py_error": null
+    },
+    {
+      "function": "gravitational_acceleration",
+      "py_ns": 160.846,
+      "mojo_ns": 1.1,
+      "speedup_x": 146.22,
+      "py_result": 9.784668,
+      "py_error": null
+    },
+    {
+      "function": "magnetic_inclination",
+      "py_ns": 141.362,
+      "mojo_ns": 1.1,
+      "speedup_x": 128.51,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "seismic_p_wave_velocity",
+      "py_ns": 267.033,
+      "mojo_ns": 1.1,
+      "speedup_x": 242.76,
+      "py_result": 48304.589154,
+      "py_error": null
+    },
+    {
+      "function": "seismic_s_wave_velocity",
+      "py_ns": 198.842,
+      "mojo_ns": 1.1,
+      "speedup_x": 180.77,
+      "py_result": 31622.776602,
+      "py_error": null
+    },
+    {
+      "function": "depth_from_reflection",
+      "py_ns": 152.704,
+      "mojo_ns": 1.1,
+      "speedup_x": 138.82,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "vp_vs_ratio",
+      "py_ns": 135.779,
+      "mojo_ns": 1.1,
+      "speedup_x": 123.44,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "earth_radius_at_latitude",
+      "py_ns": 346.846,
+      "mojo_ns": 3.5,
+      "speedup_x": 99.1,
+      "py_result": 6373253.462897,
+      "py_error": null
+    },
+    {
+      "function": "free_air_correction",
+      "py_ns": 87.683,
+      "mojo_ns": 1.1,
+      "speedup_x": 79.71,
+      "py_result": 0.1543,
+      "py_error": null
+    },
+    {
+      "function": "isostasy_airy",
+      "py_ns": 95.071,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

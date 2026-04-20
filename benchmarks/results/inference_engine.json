@@ -1,0 +1,93 @@
+{
+  "lib": "inference_engine",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 8,
+  "overall_speedup_x": 21.91,
+  "total_py_ns": 1073.78,
+  "total_mojo_ns": 49.0,
+  "elapsed_s": 2.04,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "batch_padding_mask",
+      "py_ns": 90.738,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "dynamic_batching_priority",
+      "py_ns": 243.55,
+      "mojo_ns": 1.0,
+      "speedup_x": 243.55,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "kv_cache_hit_ratio",
+      "py_ns": 128.154,
+      "mojo_ns": 1.1,
+      "speedup_x": 116.5,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "latency_percentile_estimate",
+      "py_ns": 167.7,
+      "mojo_ns": 1.1,
+      "speedup_x": 152.45,
+      "py_result": 0.944169,
+      "py_error": null
+    },
+    {
+      "function": "throughput_tokens_per_sec",
+      "py_ns": 111.658,
+      "mojo_ns": 1.0,
+      "speedup_x": 111.66,
+      "py_result": 500.0,
+      "py_error": null
+    },
+    {
+      "function": "speculative_decode_accept_rate",
+      "py_ns": 100.892,
+      "mojo_ns": 1.1,
+      "speedup_x": 91.72,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "continuous_batching_capacity",
+      "py_ns": 100.537,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "quantized_inference_speedup",
+      "py_ns": 83.267,
+      "mojo_ns": 1.0,
+      "speedup_x": 83.27,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "prefill_time_estimate",
+      "py_ns": 122.037,
+      "mojo_ns": 1.0,
+      "speedup_x": 122.04,
+      "py_result": 1000.0,
+      "py_error": null
+    },
+    {
+      "function": "decode_time_per_token",
+      "py_ns": 116.525,
+      "mojo_ns": 41.7,
+      "speedup_x": 2.79,
+      "py_result": 2000.0,
+      "py_error": null
+    }
+  ]
+}

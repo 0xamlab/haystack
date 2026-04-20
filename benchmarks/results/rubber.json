@@ -1,0 +1,109 @@
+{
+  "lib": "rubber",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 7,
+  "overall_speedup_x": 241.76,
+  "total_py_ns": 1619.78,
+  "total_mojo_ns": 6.7,
+  "elapsed_s": 3.55,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "shore_a_to_youngs_modulus",
+      "py_ns": 207.771,
+      "mojo_ns": 1.0,
+      "speedup_x": 207.77,
+      "py_result": 0.510101,
+      "py_error": null
+    },
+    {
+      "function": "mooney_viscosity_index",
+      "py_ns": 95.533,
+      "mojo_ns": 1.0,
+      "speedup_x": 95.53,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "tensile_set",
+      "py_ns": 233.65,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "compression_set",
+      "py_ns": 825.563,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "elongation_at_break",
+      "py_ns": 112.971,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "tear_strength",
+      "py_ns": 210.183,
+      "mojo_ns": 0.9,
+      "speedup_x": 233.54,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "resilience_rebound",
+      "py_ns": 109.779,
+      "mojo_ns": 1.0,
+      "speedup_x": 109.78,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "hardness_change_aging",
+      "py_ns": 84.608,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "swelling_percentage",
+      "py_ns": 114.508,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "crosslink_density_estimate",
+      "py_ns": 804.842,
+      "mojo_ns": 0.9,
+      "speedup_x": 894.27,
+      "py_result": 0.666667,
+      "py_error": null
+    },
+    {
+      "function": "abrasion_loss_volume",
+      "py_ns": 82.779,
+      "mojo_ns": 1.0,
+      "speedup_x": 82.78,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "heat_buildup",
+      "py_ns": 108.896,
+      "mojo_ns": 0.9,
+      "speedup_x": 121.0,
+      "py_result": 0.000125,
+      "py_error": null
+    }
+  ]
+}

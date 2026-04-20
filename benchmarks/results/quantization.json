@@ -1,0 +1,93 @@
+{
+  "lib": "quantization",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 4,
+  "overall_speedup_x": 95.54,
+  "total_py_ns": 382.15,
+  "total_mojo_ns": 4.0,
+  "elapsed_s": 1.6,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "quantize_symmetric",
+      "py_ns": null,
+      "mojo_ns": 1.0,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "name 'Int64' is not defined"
+    },
+    {
+      "function": "dequantize_symmetric",
+      "py_ns": 81.008,
+      "mojo_ns": 1.0,
+      "speedup_x": 81.01,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "quantize_asymmetric",
+      "py_ns": null,
+      "mojo_ns": 1.0,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "name 'Int64' is not defined"
+    },
+    {
+      "function": "dequantize_asymmetric",
+      "py_ns": 84.067,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "quantization_error",
+      "py_ns": null,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "name 'Int64' is not defined"
+    },
+    {
+      "function": "scale_from_range",
+      "py_ns": 131.292,
+      "mojo_ns": 1.0,
+      "speedup_x": 131.29,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "zero_point_from_range",
+      "py_ns": 110.275,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "clamp_to_int8",
+      "py_ns": 81.033,
+      "mojo_ns": 1.0,
+      "speedup_x": 81.03,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "fp16_to_fp32_scale",
+      "py_ns": 88.821,
+      "mojo_ns": 1.0,
+      "speedup_x": 88.82,
+      "py_result": 8e-06,
+      "py_error": null
+    },
+    {
+      "function": "int4_pack_error",
+      "py_ns": null,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "name 'Int64' is not defined"
+    }
+  ]
+}

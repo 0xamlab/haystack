@@ -1,0 +1,93 @@
+{
+  "lib": "epidemiology",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 9,
+  "overall_speedup_x": 0.83,
+  "total_py_ns": 13882.18,
+  "total_mojo_ns": 16737.2,
+  "elapsed_s": 2.41,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "sir_step",
+      "py_ns": 2393.375,
+      "mojo_ns": 492.2,
+      "speedup_x": 4.86,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "sir_simulate",
+      "py_ns": 7814.442,
+      "mojo_ns": 15854.3,
+      "speedup_x": 0.49,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "seir_step",
+      "py_ns": 670.529,
+      "mojo_ns": 384.5,
+      "speedup_x": 1.74,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "basic_reproduction_number",
+      "py_ns": 743.296,
+      "mojo_ns": 1.0,
+      "speedup_x": 743.3,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "herd_immunity_threshold",
+      "py_ns": 186.217,
+      "mojo_ns": 1.0,
+      "speedup_x": 186.22,
+      "py_result": -1.0,
+      "py_error": null
+    },
+    {
+      "function": "effective_reproduction",
+      "py_ns": 158.354,
+      "mojo_ns": 1.1,
+      "speedup_x": 143.96,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "doubling_time",
+      "py_ns": 905.146,
+      "mojo_ns": 1.0,
+      "speedup_x": 905.15,
+      "py_result": 1.386294,
+      "py_error": null
+    },
+    {
+      "function": "attack_rate",
+      "py_ns": 99.508,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "case_fatality_rate",
+      "py_ns": 122.512,
+      "mojo_ns": 1.1,
+      "speedup_x": 111.37,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "incidence_rate",
+      "py_ns": 888.313,
+      "mojo_ns": 1.0,
+      "speedup_x": 888.31,
+      "py_result": 2.0,
+      "py_error": null
+    }
+  ]
+}

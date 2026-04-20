@@ -1,0 +1,93 @@
+{
+  "lib": "observability",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 10,
+  "overall_speedup_x": 147.64,
+  "total_py_ns": 1476.36,
+  "total_mojo_ns": 10.0,
+  "elapsed_s": 1.71,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "p99_latency_estimate",
+      "py_ns": 83.046,
+      "mojo_ns": 1.0,
+      "speedup_x": 83.05,
+      "py_result": 1.663,
+      "py_error": null
+    },
+    {
+      "function": "memory_pressure_score",
+      "py_ns": 170.454,
+      "mojo_ns": 1.0,
+      "speedup_x": 170.45,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "token_throughput_ema",
+      "py_ns": 117.925,
+      "mojo_ns": 1.0,
+      "speedup_x": 117.93,
+      "py_result": 500.25,
+      "py_error": null
+    },
+    {
+      "function": "cache_miss_rate",
+      "py_ns": 88.262,
+      "mojo_ns": 1.0,
+      "speedup_x": 88.26,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "batch_queue_wait_percentile",
+      "py_ns": 145.108,
+      "mojo_ns": 1.0,
+      "speedup_x": 145.11,
+      "py_result": 0.944169,
+      "py_error": null
+    },
+    {
+      "function": "gpu_utilization_rolling",
+      "py_ns": 95.683,
+      "mojo_ns": 1.0,
+      "speedup_x": 95.68,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "request_success_rate",
+      "py_ns": 89.625,
+      "mojo_ns": 1.0,
+      "speedup_x": 89.63,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "model_drift_alert_score",
+      "py_ns": 103.129,
+      "mojo_ns": 1.0,
+      "speedup_x": 103.13,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "cost_per_token_rolling",
+      "py_ns": 461.271,
+      "mojo_ns": 1.0,
+      "speedup_x": 461.27,
+      "py_result": 0.75,
+      "py_error": null
+    },
+    {
+      "function": "health_check_score",
+      "py_ns": 121.858,
+      "mojo_ns": 1.0,
+      "speedup_x": 121.86,
+      "py_result": 0.5,
+      "py_error": null
+    }
+  ]
+}

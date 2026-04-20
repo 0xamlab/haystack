@@ -1,0 +1,93 @@
+{
+  "lib": "geodesy",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 8,
+  "overall_speedup_x": 5.44,
+  "total_py_ns": 13027.32,
+  "total_mojo_ns": 2395.7,
+  "elapsed_s": 1.61,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "haversine_distance",
+      "py_ns": 545.617,
+      "mojo_ns": 1.1,
+      "speedup_x": 496.02,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "vincenty_distance",
+      "py_ns": 1630.842,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "initial_bearing",
+      "py_ns": 913.029,
+      "mojo_ns": 1.1,
+      "speedup_x": 830.03,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "destination_point",
+      "py_ns": 999.183,
+      "mojo_ns": 135.9,
+      "speedup_x": 7.35,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "midpoint",
+      "py_ns": 1168.392,
+      "mojo_ns": 125.3,
+      "speedup_x": 9.32,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "cross_track_distance",
+      "py_ns": 2286.638,
+      "mojo_ns": 4.5,
+      "speedup_x": 508.14,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "along_track_distance",
+      "py_ns": 3429.075,
+      "mojo_ns": 12.8,
+      "speedup_x": 267.9,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "geodetic_to_ecef",
+      "py_ns": 531.775,
+      "mojo_ns": 228.3,
+      "speedup_x": 2.33,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "ecef_to_geodetic",
+      "py_ns": 3153.612,
+      "mojo_ns": 1886.7,
+      "speedup_x": 1.67,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "rhumb_distance",
+      "py_ns": 542.408,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

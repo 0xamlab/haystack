@@ -1,0 +1,109 @@
+{
+  "lib": "metallurgy",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 11,
+  "overall_speedup_x": 438.67,
+  "total_py_ns": 5132.43,
+  "total_mojo_ns": 11.7,
+  "elapsed_s": 1.61,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "hall_petch",
+      "py_ns": 186.629,
+      "mojo_ns": 1.1,
+      "speedup_x": 169.66,
+      "py_result": 1.207107,
+      "py_error": null
+    },
+    {
+      "function": "johnson_cook_flow_stress",
+      "py_ns": 181.433,
+      "mojo_ns": 1.1,
+      "speedup_x": 164.94,
+      "py_result": 0.853553,
+      "py_error": null
+    },
+    {
+      "function": "hardness_to_tensile",
+      "py_ns": 193.442,
+      "mojo_ns": 1.0,
+      "speedup_x": 193.44,
+      "py_result": 1.725,
+      "py_error": null
+    },
+    {
+      "function": "carbon_equivalent",
+      "py_ns": 144.413,
+      "mojo_ns": 1.1,
+      "speedup_x": 131.28,
+      "py_result": 0.916667,
+      "py_error": null
+    },
+    {
+      "function": "jominy_distance_to_hardness",
+      "py_ns": 121.425,
+      "mojo_ns": 1.1,
+      "speedup_x": 110.39,
+      "py_result": 0.3894,
+      "py_error": null
+    },
+    {
+      "function": "avrami_fraction",
+      "py_ns": 194.962,
+      "mojo_ns": 1.1,
+      "speedup_x": 177.24,
+      "py_result": 0.297811,
+      "py_error": null
+    },
+    {
+      "function": "quench_severity",
+      "py_ns": 134.317,
+      "mojo_ns": 1.1,
+      "speedup_x": 122.11,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "tempering_parameter",
+      "py_ns": 3423.2,
+      "mojo_ns": 1.0,
+      "speedup_x": 3423.2,
+      "py_result": 0.099485,
+      "py_error": null
+    },
+    {
+      "function": "density_of_alloy_rule_of_mixtures",
+      "py_ns": 105.271,
+      "mojo_ns": 1.0,
+      "speedup_x": 105.27,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "thermal_conductivity_wiedemann_franz",
+      "py_ns": 89.829,
+      "mojo_ns": 1.0,
+      "speedup_x": 89.83,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "strain_hardening_exponent_from_points",
+      "py_ns": 1622.329,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "fatigue_life_basquin",
+      "py_ns": 357.504,
+      "mojo_ns": 1.1,
+      "speedup_x": 325.0,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

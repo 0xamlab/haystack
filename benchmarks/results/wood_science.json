@@ -1,0 +1,93 @@
+{
+  "lib": "wood_science",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 9,
+  "overall_speedup_x": 143.95,
+  "total_py_ns": 1252.35,
+  "total_mojo_ns": 8.7,
+  "elapsed_s": 2.28,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "moisture_content",
+      "py_ns": 106.179,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "fiber_saturation_point",
+      "py_ns": 78.846,
+      "mojo_ns": 0.9,
+      "speedup_x": 87.61,
+      "py_result": 29.5,
+      "py_error": null
+    },
+    {
+      "function": "shrinkage_coefficient",
+      "py_ns": 94.675,
+      "mojo_ns": 1.0,
+      "speedup_x": 94.68,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "modulus_of_rupture",
+      "py_ns": 112.667,
+      "mojo_ns": 0.9,
+      "speedup_x": 125.19,
+      "py_result": 3.0,
+      "py_error": null
+    },
+    {
+      "function": "modulus_of_elasticity",
+      "py_ns": 202.329,
+      "mojo_ns": 1.0,
+      "speedup_x": 202.33,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "wood_density_at_mc",
+      "py_ns": 158.587,
+      "mojo_ns": 1.0,
+      "speedup_x": 158.59,
+      "py_result": 0.494262,
+      "py_error": null
+    },
+    {
+      "function": "thermal_conductivity_wood",
+      "py_ns": 171.187,
+      "mojo_ns": 1.0,
+      "speedup_x": 171.19,
+      "py_result": 9e-06,
+      "py_error": null
+    },
+    {
+      "function": "charring_rate",
+      "py_ns": 158.279,
+      "mojo_ns": 1.0,
+      "speedup_x": 158.28,
+      "py_result": 0.284599,
+      "py_error": null
+    },
+    {
+      "function": "section_modulus",
+      "py_ns": 94.05,
+      "mojo_ns": 1.0,
+      "speedup_x": 94.05,
+      "py_result": 0.020833,
+      "py_error": null
+    },
+    {
+      "function": "wood_hardness_janka",
+      "py_ns": 181.729,
+      "mojo_ns": 0.9,
+      "speedup_x": 201.92,
+      "py_result": 1186.75,
+      "py_error": null
+    }
+  ]
+}

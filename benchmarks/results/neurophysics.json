@@ -1,0 +1,93 @@
+{
+  "lib": "neurophysics",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 6,
+  "overall_speedup_x": 103.81,
+  "total_py_ns": 965.46,
+  "total_mojo_ns": 9.3,
+  "elapsed_s": 1.41,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "nernst_potential",
+      "py_ns": 328.658,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "goldman_equation",
+      "py_ns": 284.35,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "membrane_time_constant",
+      "py_ns": 93.096,
+      "mojo_ns": 1.1,
+      "speedup_x": 84.63,
+      "py_result": 0.00025,
+      "py_error": null
+    },
+    {
+      "function": "cable_length_constant",
+      "py_ns": 184.579,
+      "mojo_ns": 3.2,
+      "speedup_x": 57.68,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "action_potential_threshold",
+      "py_ns": 89.946,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "firing_rate_simple",
+      "py_ns": 90.629,
+      "mojo_ns": 1.2,
+      "speedup_x": 75.52,
+      "py_result": 1000.0,
+      "py_error": null
+    },
+    {
+      "function": "synaptic_current",
+      "py_ns": 79.929,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "integrate_and_fire_voltage",
+      "py_ns": 163.504,
+      "mojo_ns": 1.2,
+      "speedup_x": 136.25,
+      "py_result": 0.65803,
+      "py_error": null
+    },
+    {
+      "function": "eeg_spectral_power",
+      "py_ns": 328.725,
+      "mojo_ns": 1.3,
+      "speedup_x": 252.87,
+      "py_result": 1.414214,
+      "py_error": null
+    },
+    {
+      "function": "conduction_velocity",
+      "py_ns": 104.929,
+      "mojo_ns": 1.3,
+      "speedup_x": 80.71,
+      "py_result": 3.889087,
+      "py_error": null
+    }
+  ]
+}

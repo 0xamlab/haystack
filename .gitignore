@@ -1,0 +1,126 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+develop-eggs/
+.installed.cfg
+lib/
+lib64/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.tox/
+.nox/
+venv/
+.venv/
+env/
+ENV/
+
+# Secrets and environment
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+secrets/
+
+# ─── Proprietary engine source (NOT in public repo) ─────────────────────────
+# The Mojo simulation engine source is proprietary IP.
+# The compiled binary is distributed separately via GitHub Releases.
+mojo/engine/main.mojo
+mojo/engine/*.mojo
+mojo/bindings/python_adapter.py
+
+# Mojo build artifacts (compiled binary distributed via releases, not repo)
+mojo_build/
+*.mojopkg
+
+# Pixi/Mojo environment (local, not committed — created by make setup-mojo)
+mojo_env/.pixi/
+mojo_env/pixi.lock
+*.🔥
+
+# MCP virtualenv
+mcp_venv/
+
+# Node / TypeScript
+node_modules/
+.npm
+.pnp
+.pnp.js
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+*.tsbuildinfo
+.next/
+out/
+.nuxt/
+dist/
+.cache/
+
+# Docker
+.dockerignore
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# VSCode
+.vscode/settings.json
+.vscode/launch.json
+*.code-workspace
+
+# JetBrains
+.idea/
+*.iml
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Alembic generated (keep migration files, ignore local state)
+alembic/versions/__pycache__/
+
+# Test artifacts
+.pytest_cache/
+test_results/
+junit.xml
+
+# Local caches and debug artifacts
+.bench_cache/
+.algenta_cache/
+.tmp_resolve_debug/
+
+# OS
+Thumbs.db

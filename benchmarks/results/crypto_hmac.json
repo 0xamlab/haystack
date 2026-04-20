@@ -1,0 +1,29 @@
+{
+  "lib": "crypto_hmac",
+  "status": "ok",
+  "n_functions": 2,
+  "n_compared": 2,
+  "overall_speedup_x": 1520.3,
+  "total_py_ns": 13756904.95,
+  "total_mojo_ns": 9048.8,
+  "elapsed_s": 139.77,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "hmac_sha256",
+      "py_ns": 9389813.579,
+      "mojo_ns": 4782.9,
+      "speedup_x": 1963.21,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "hmac_sha256_verify",
+      "py_ns": 4367091.375,
+      "mojo_ns": 4265.9,
+      "speedup_x": 1023.72,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

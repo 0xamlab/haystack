@@ -1,0 +1,93 @@
+{
+  "lib": "cardiology",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 4,
+  "overall_speedup_x": 103.29,
+  "total_py_ns": 371.85,
+  "total_mojo_ns": 3.6,
+  "elapsed_s": 2.54,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "cardiac_output",
+      "py_ns": 96.175,
+      "mojo_ns": 0.9,
+      "speedup_x": 106.86,
+      "py_result": 0.00025,
+      "py_error": null
+    },
+    {
+      "function": "stroke_volume",
+      "py_ns": 91.887,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "ejection_fraction",
+      "py_ns": 107.921,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "mean_arterial_pressure",
+      "py_ns": 101.883,
+      "mojo_ns": 0.9,
+      "speedup_x": 113.2,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "pulse_pressure",
+      "py_ns": 102.937,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "systemic_vascular_resistance",
+      "py_ns": 150.2,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "rate_pressure_product",
+      "py_ns": 82.658,
+      "mojo_ns": 0.9,
+      "speedup_x": 91.84,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "left_ventricular_work",
+      "py_ns": 91.129,
+      "mojo_ns": 0.9,
+      "speedup_x": 101.25,
+      "py_result": 3.4,
+      "py_error": null
+    },
+    {
+      "function": "coronary_perfusion_pressure",
+      "py_ns": 83.125,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "fick_cardiac_output",
+      "py_ns": 93.233,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

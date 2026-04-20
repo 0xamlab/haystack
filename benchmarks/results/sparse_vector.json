@@ -1,0 +1,93 @@
+{
+  "lib": "sparse_vector",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 9,
+  "overall_speedup_x": 2.0,
+  "total_py_ns": 9067.2,
+  "total_mojo_ns": 4543.6,
+  "elapsed_s": 6.38,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "sv_dot",
+      "py_ns": 647.462,
+      "mojo_ns": 13.1,
+      "speedup_x": 49.42,
+      "py_result": 1.35,
+      "py_error": null
+    },
+    {
+      "function": "sv_add",
+      "py_ns": 1177.6,
+      "mojo_ns": 1808.5,
+      "speedup_x": 0.65,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "sv_scale",
+      "py_ns": 456.371,
+      "mojo_ns": 975.8,
+      "speedup_x": 0.47,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "sv_norm",
+      "py_ns": 723.287,
+      "mojo_ns": 7.0,
+      "speedup_x": 103.33,
+      "py_result": 1.161895,
+      "py_error": null
+    },
+    {
+      "function": "sv_cosine",
+      "py_ns": 1998.758,
+      "mojo_ns": 9.8,
+      "speedup_x": 203.95,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "sv_to_dense",
+      "py_ns": 642.571,
+      "mojo_ns": 756.2,
+      "speedup_x": 0.85,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "dense_to_sparse",
+      "py_ns": 874.537,
+      "mojo_ns": 966.0,
+      "speedup_x": 0.91,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "sv_nnz",
+      "py_ns": 2061.638,
+      "mojo_ns": 4.0,
+      "speedup_x": 515.41,
+      "py_result": 5.0,
+      "py_error": null
+    },
+    {
+      "function": "sv_sparsity",
+      "py_ns": 874.613,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "sv_max",
+      "py_ns": 484.971,
+      "mojo_ns": 3.2,
+      "speedup_x": 151.55,
+      "py_result": 0.7,
+      "py_error": null
+    }
+  ]
+}

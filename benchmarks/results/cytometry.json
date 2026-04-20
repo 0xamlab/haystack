@@ -1,0 +1,93 @@
+{
+  "lib": "cytometry",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 9,
+  "overall_speedup_x": 111.2,
+  "total_py_ns": 1100.84,
+  "total_mojo_ns": 9.9,
+  "elapsed_s": 1.23,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "percent_positive_gate",
+      "py_ns": 104.058,
+      "mojo_ns": 1.1,
+      "speedup_x": 94.6,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "median_fluorescence_intensity",
+      "py_ns": 106.888,
+      "mojo_ns": 1.1,
+      "speedup_x": 97.17,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "staining_index",
+      "py_ns": 132.492,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "coefficient_of_variation_peak",
+      "py_ns": 126.533,
+      "mojo_ns": 1.1,
+      "speedup_x": 115.03,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "cell_cycle_g1_fraction",
+      "py_ns": 122.475,
+      "mojo_ns": 1.1,
+      "speedup_x": 111.34,
+      "py_result": 0.333333,
+      "py_error": null
+    },
+    {
+      "function": "apoptosis_annexin_pi",
+      "py_ns": 224.308,
+      "mojo_ns": 1.1,
+      "speedup_x": 203.92,
+      "py_result": 200.0,
+      "py_error": null
+    },
+    {
+      "function": "lymphocyte_subset_ratio",
+      "py_ns": 101.567,
+      "mojo_ns": 1.1,
+      "speedup_x": 92.33,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "absolute_count",
+      "py_ns": 97.15,
+      "mojo_ns": 1.1,
+      "speedup_x": 88.32,
+      "py_result": 0.0025,
+      "py_error": null
+    },
+    {
+      "function": "compensation_spillover",
+      "py_ns": 96.846,
+      "mojo_ns": 1.1,
+      "speedup_x": 88.04,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "sensitivity_lod_cytometry",
+      "py_ns": 121.013,
+      "mojo_ns": 1.1,
+      "speedup_x": 110.01,
+      "py_result": 0.75,
+      "py_error": null
+    }
+  ]
+}

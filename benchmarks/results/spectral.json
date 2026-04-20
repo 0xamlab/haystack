@@ -1,0 +1,93 @@
+{
+  "lib": "spectral",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 7,
+  "overall_speedup_x": 81.41,
+  "total_py_ns": 15264.66,
+  "total_mojo_ns": 187.5,
+  "elapsed_s": 8.8,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "power_spectral_density",
+      "py_ns": null,
+      "mojo_ns": 2220.1,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "module 'math' has no attribute 'math'"
+    },
+    {
+      "function": "cross_spectral_density",
+      "py_ns": null,
+      "mojo_ns": 4416.7,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "module 'math' has no attribute 'math'"
+    },
+    {
+      "function": "coherence",
+      "py_ns": null,
+      "mojo_ns": 41853.9,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "module 'math' has no attribute 'math'"
+    },
+    {
+      "function": "spectral_centroid",
+      "py_ns": 2134.179,
+      "mojo_ns": 2.6,
+      "speedup_x": 820.84,
+      "py_result": 0.54,
+      "py_error": null
+    },
+    {
+      "function": "spectral_bandwidth",
+      "py_ns": 2103.513,
+      "mojo_ns": 2.3,
+      "speedup_x": 914.57,
+      "py_result": 0.141421,
+      "py_error": null
+    },
+    {
+      "function": "spectral_rolloff",
+      "py_ns": 1889.437,
+      "mojo_ns": 5.6,
+      "speedup_x": 337.4,
+      "py_result": 0.7,
+      "py_error": null
+    },
+    {
+      "function": "spectral_flatness",
+      "py_ns": 5352.85,
+      "mojo_ns": 74.0,
+      "speedup_x": 72.34,
+      "py_result": 0.957878,
+      "py_error": null
+    },
+    {
+      "function": "spectral_entropy",
+      "py_ns": 2103.6,
+      "mojo_ns": 94.4,
+      "speedup_x": 22.28,
+      "py_result": 1.568471,
+      "py_error": null
+    },
+    {
+      "function": "band_energy",
+      "py_ns": 251.992,
+      "mojo_ns": 4.5,
+      "speedup_x": 56.0,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "peak_frequency",
+      "py_ns": 1429.088,
+      "mojo_ns": 4.1,
+      "speedup_x": 348.56,
+      "py_result": 0.7,
+      "py_error": null
+    }
+  ]
+}

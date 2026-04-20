@@ -1,0 +1,109 @@
+{
+  "lib": "linguistics",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 11,
+  "overall_speedup_x": 875.96,
+  "total_py_ns": 10599.09,
+  "total_mojo_ns": 12.1,
+  "elapsed_s": 1.62,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "type_token_ratio",
+      "py_ns": 190.783,
+      "mojo_ns": 1.1,
+      "speedup_x": 173.44,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "hapax_legomena_ratio",
+      "py_ns": 168.379,
+      "mojo_ns": 1.1,
+      "speedup_x": 153.07,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "yules_k",
+      "py_ns": 251.608,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "heaps_law",
+      "py_ns": 980.838,
+      "mojo_ns": 1.1,
+      "speedup_x": 891.67,
+      "py_result": 0.353553,
+      "py_error": null
+    },
+    {
+      "function": "zipfs_frequency",
+      "py_ns": 222.575,
+      "mojo_ns": 1.1,
+      "speedup_x": 202.34,
+      "py_result": 0.707107,
+      "py_error": null
+    },
+    {
+      "function": "flesch_reading_ease",
+      "py_ns": 136.95,
+      "mojo_ns": 1.1,
+      "speedup_x": 124.5,
+      "py_result": 121.22,
+      "py_error": null
+    },
+    {
+      "function": "flesch_kincaid_grade",
+      "py_ns": 126.637,
+      "mojo_ns": 1.1,
+      "speedup_x": 115.12,
+      "py_result": -3.4,
+      "py_error": null
+    },
+    {
+      "function": "gunning_fog_index",
+      "py_ns": 1252.092,
+      "mojo_ns": 1.1,
+      "speedup_x": 1138.27,
+      "py_result": 40.4,
+      "py_error": null
+    },
+    {
+      "function": "automated_readability_index",
+      "py_ns": 161.846,
+      "mojo_ns": 1.1,
+      "speedup_x": 147.13,
+      "py_result": -16.22,
+      "py_error": null
+    },
+    {
+      "function": "coleman_liau_index",
+      "py_ns": 99.037,
+      "mojo_ns": 1.1,
+      "speedup_x": 90.03,
+      "py_result": -15.9186,
+      "py_error": null
+    },
+    {
+      "function": "lexical_density",
+      "py_ns": 148.233,
+      "mojo_ns": 1.1,
+      "speedup_x": 134.76,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "mean_word_length",
+      "py_ns": 7111.717,
+      "mojo_ns": 1.1,
+      "speedup_x": 6465.2,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

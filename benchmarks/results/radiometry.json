@@ -1,0 +1,93 @@
+{
+  "lib": "radiometry",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 8,
+  "overall_speedup_x": 102.03,
+  "total_py_ns": 857.08,
+  "total_mojo_ns": 8.4,
+  "elapsed_s": 1.42,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "planck_spectral_radiance",
+      "py_ns": 170.892,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "stefan_boltzmann_radiance",
+      "py_ns": 122.796,
+      "mojo_ns": 1.0,
+      "speedup_x": 122.8,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "photon_energy",
+      "py_ns": 121.729,
+      "mojo_ns": 1.0,
+      "speedup_x": 121.73,
+      "py_result": 2479.993508,
+      "py_error": null
+    },
+    {
+      "function": "photon_flux",
+      "py_ns": 126.871,
+      "mojo_ns": 1.1,
+      "speedup_x": 115.34,
+      "py_result": 1258510805171050.0,
+      "py_error": null
+    },
+    {
+      "function": "solid_angle_cone",
+      "py_ns": 105.942,
+      "mojo_ns": 1.0,
+      "speedup_x": 105.94,
+      "py_result": 0.769171,
+      "py_error": null
+    },
+    {
+      "function": "lambertian_irradiance",
+      "py_ns": 98.712,
+      "mojo_ns": 1.1,
+      "speedup_x": 89.74,
+      "py_result": 1.378503,
+      "py_error": null
+    },
+    {
+      "function": "radiant_exitance_blackbody",
+      "py_ns": 94.937,
+      "mojo_ns": 1.1,
+      "speedup_x": 86.31,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "luminous_efficacy",
+      "py_ns": 102.625,
+      "mojo_ns": 1.0,
+      "speedup_x": 102.63,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "absorptance_from_reflectance",
+      "py_ns": 94.317,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "noise_equivalent_power",
+      "py_ns": 83.467,
+      "mojo_ns": 1.1,
+      "speedup_x": 75.88,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

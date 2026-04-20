@@ -1,0 +1,93 @@
+{
+  "lib": "polynomial",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 10,
+  "overall_speedup_x": 3.78,
+  "total_py_ns": 30983.75,
+  "total_mojo_ns": 8186.4,
+  "elapsed_s": 1.55,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "poly_eval",
+      "py_ns": 243.05,
+      "mojo_ns": 2.5,
+      "speedup_x": 97.22,
+      "py_result": 1.04375,
+      "py_error": null
+    },
+    {
+      "function": "poly_add",
+      "py_ns": 501.637,
+      "mojo_ns": 461.4,
+      "speedup_x": 1.09,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "poly_multiply",
+      "py_ns": 1921.092,
+      "mojo_ns": 452.5,
+      "speedup_x": 4.25,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "poly_derivative",
+      "py_ns": 511.987,
+      "mojo_ns": 2199.5,
+      "speedup_x": 0.23,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "poly_integral",
+      "py_ns": 490.942,
+      "mojo_ns": 393.0,
+      "speedup_x": 1.25,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "poly_degree",
+      "py_ns": 203.596,
+      "mojo_ns": 1.1,
+      "speedup_x": 185.09,
+      "py_result": 4.0,
+      "py_error": null
+    },
+    {
+      "function": "quadratic_roots",
+      "py_ns": 238.308,
+      "mojo_ns": 0.1,
+      "speedup_x": 2383.08,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "poly_scale",
+      "py_ns": 470.917,
+      "mojo_ns": 583.0,
+      "speedup_x": 0.81,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "poly_compose",
+      "py_ns": 19297.637,
+      "mojo_ns": 2129.2,
+      "speedup_x": 9.06,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "poly_from_roots",
+      "py_ns": 7104.579,
+      "mojo_ns": 1964.1,
+      "speedup_x": 3.62,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

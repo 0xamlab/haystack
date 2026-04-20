@@ -1,0 +1,93 @@
+{
+  "lib": "tensor_ops",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 8,
+  "overall_speedup_x": 125.07,
+  "total_py_ns": 950.54,
+  "total_mojo_ns": 7.6,
+  "elapsed_s": 5.92,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "matmul_element",
+      "py_ns": 79.425,
+      "mojo_ns": 0.9,
+      "speedup_x": 88.25,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "broadcast_index",
+      "py_ns": 216.408,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "stride_from_shape",
+      "py_ns": 166.633,
+      "mojo_ns": 1.0,
+      "speedup_x": 166.63,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "flatten_index",
+      "py_ns": 130.679,
+      "mojo_ns": 1.0,
+      "speedup_x": 130.68,
+      "py_result": 0.75,
+      "py_error": null
+    },
+    {
+      "function": "unflatten_index_dim",
+      "py_ns": null,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "name 'Int64' is not defined"
+    },
+    {
+      "function": "transpose_index",
+      "py_ns": 185.962,
+      "mojo_ns": 0.9,
+      "speedup_x": 206.62,
+      "py_result": 0.75,
+      "py_error": null
+    },
+    {
+      "function": "outer_product_element",
+      "py_ns": 95.183,
+      "mojo_ns": 1.0,
+      "speedup_x": 95.18,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "tensor_norm_contribution",
+      "py_ns": 80.292,
+      "mojo_ns": 1.0,
+      "speedup_x": 80.29,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "softmax_stable_element",
+      "py_ns": 117.804,
+      "mojo_ns": 0.9,
+      "speedup_x": 130.89,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "tensor_dot_contribution",
+      "py_ns": 94.558,
+      "mojo_ns": 0.9,
+      "speedup_x": 105.06,
+      "py_result": 0.5,
+      "py_error": null
+    }
+  ]
+}

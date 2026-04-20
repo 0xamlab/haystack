@@ -1,0 +1,109 @@
+{
+  "lib": "crystallography",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 12,
+  "overall_speedup_x": 221.14,
+  "total_py_ns": 2919.03,
+  "total_mojo_ns": 13.2,
+  "elapsed_s": 1.19,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "bragg_angle",
+      "py_ns": 176.463,
+      "mojo_ns": 1.1,
+      "speedup_x": 160.42,
+      "py_result": 0.25268,
+      "py_error": null
+    },
+    {
+      "function": "d_spacing_cubic",
+      "py_ns": 298.075,
+      "mojo_ns": 1.1,
+      "speedup_x": 270.98,
+      "py_result": 0.57735,
+      "py_error": null
+    },
+    {
+      "function": "lattice_parameter_from_d",
+      "py_ns": 160.875,
+      "mojo_ns": 1.1,
+      "speedup_x": 146.25,
+      "py_result": 0.433013,
+      "py_error": null
+    },
+    {
+      "function": "unit_cell_volume_cubic",
+      "py_ns": 87.329,
+      "mojo_ns": 1.1,
+      "speedup_x": 79.39,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "unit_cell_volume_tetragonal",
+      "py_ns": 90.375,
+      "mojo_ns": 1.1,
+      "speedup_x": 82.16,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "unit_cell_volume_orthorhombic",
+      "py_ns": 89.021,
+      "mojo_ns": 1.1,
+      "speedup_x": 80.93,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "atomic_packing_factor_fcc",
+      "py_ns": 103.463,
+      "mojo_ns": 1.1,
+      "speedup_x": 94.06,
+      "py_result": 0.74048,
+      "py_error": null
+    },
+    {
+      "function": "atomic_packing_factor_bcc",
+      "py_ns": 103.246,
+      "mojo_ns": 1.1,
+      "speedup_x": 93.86,
+      "py_result": 0.680175,
+      "py_error": null
+    },
+    {
+      "function": "scherrer_crystallite_size",
+      "py_ns": 571.412,
+      "mojo_ns": 1.1,
+      "speedup_x": 519.47,
+      "py_result": 0.569747,
+      "py_error": null
+    },
+    {
+      "function": "interplanar_angle_cubic",
+      "py_ns": 814.542,
+      "mojo_ns": 1.1,
+      "speedup_x": 740.49,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "density_from_crystal",
+      "py_ns": 145.254,
+      "mojo_ns": 1.1,
+      "speedup_x": 132.05,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "structure_factor_magnitude",
+      "py_ns": 278.971,
+      "mojo_ns": 1.1,
+      "speedup_x": 253.61,
+      "py_result": 0.707107,
+      "py_error": null
+    }
+  ]
+}

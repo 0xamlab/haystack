@@ -1,0 +1,58 @@
+"""test_autonomous_vehicles.mojo — auto-generated tests for autonomous_vehicles library."""
+from std.math import isnan, isinf
+from autonomous_vehicles import safe_following_distance, time_to_collision, braking_distance, sensor_range_required, lane_change_distance, perception_latency_distance, comfort_deceleration, emergency_deceleration, headway_time, fuel_efficiency_at_speed, v2x_communication_range, localization_error_gps
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_safe_following_distance = safe_following_distance(0.5, 0.5, 0.5)
+    if is_finite(_v_safe_following_distance): passed += 1; print("  ✅ autonomous_vehicles::safe_following_distance =", _v_safe_following_distance)
+    else: failed += 1; print("  ❌ autonomous_vehicles::safe_following_distance → non-finite:", _v_safe_following_distance)
+    var _v_time_to_collision = time_to_collision(0.5, 0.5)
+    if is_finite(_v_time_to_collision): passed += 1; print("  ✅ autonomous_vehicles::time_to_collision =", _v_time_to_collision)
+    else: failed += 1; print("  ❌ autonomous_vehicles::time_to_collision → non-finite:", _v_time_to_collision)
+    var _v_braking_distance = braking_distance(0.5, 0.5, 0.5)
+    if is_finite(_v_braking_distance): passed += 1; print("  ✅ autonomous_vehicles::braking_distance =", _v_braking_distance)
+    else: failed += 1; print("  ❌ autonomous_vehicles::braking_distance → non-finite:", _v_braking_distance)
+    var _v_sensor_range_required = sensor_range_required(0.5, 0.5, 0.5)
+    if is_finite(_v_sensor_range_required): passed += 1; print("  ✅ autonomous_vehicles::sensor_range_required =", _v_sensor_range_required)
+    else: failed += 1; print("  ❌ autonomous_vehicles::sensor_range_required → non-finite:", _v_sensor_range_required)
+    var _v_lane_change_distance = lane_change_distance(0.5, 0.5, 0.5)
+    if is_finite(_v_lane_change_distance): passed += 1; print("  ✅ autonomous_vehicles::lane_change_distance =", _v_lane_change_distance)
+    else: failed += 1; print("  ❌ autonomous_vehicles::lane_change_distance → non-finite:", _v_lane_change_distance)
+    var _v_perception_latency_distance = perception_latency_distance(0.5, 0.5)
+    if is_finite(_v_perception_latency_distance): passed += 1; print("  ✅ autonomous_vehicles::perception_latency_distance =", _v_perception_latency_distance)
+    else: failed += 1; print("  ❌ autonomous_vehicles::perception_latency_distance → non-finite:", _v_perception_latency_distance)
+    var _v_comfort_deceleration = comfort_deceleration()
+    if is_finite(_v_comfort_deceleration): passed += 1; print("  ✅ autonomous_vehicles::comfort_deceleration =", _v_comfort_deceleration)
+    else: failed += 1; print("  ❌ autonomous_vehicles::comfort_deceleration → non-finite:", _v_comfort_deceleration)
+    var _v_emergency_deceleration = emergency_deceleration()
+    if is_finite(_v_emergency_deceleration): passed += 1; print("  ✅ autonomous_vehicles::emergency_deceleration =", _v_emergency_deceleration)
+    else: failed += 1; print("  ❌ autonomous_vehicles::emergency_deceleration → non-finite:", _v_emergency_deceleration)
+    var _v_headway_time = headway_time(0.5, 0.5)
+    if is_finite(_v_headway_time): passed += 1; print("  ✅ autonomous_vehicles::headway_time =", _v_headway_time)
+    else: failed += 1; print("  ❌ autonomous_vehicles::headway_time → non-finite:", _v_headway_time)
+    var _v_fuel_efficiency_at_speed = fuel_efficiency_at_speed(0.5, 0.5, 0.5)
+    if is_finite(_v_fuel_efficiency_at_speed): passed += 1; print("  ✅ autonomous_vehicles::fuel_efficiency_at_speed =", _v_fuel_efficiency_at_speed)
+    else: failed += 1; print("  ❌ autonomous_vehicles::fuel_efficiency_at_speed → non-finite:", _v_fuel_efficiency_at_speed)
+    var _v_v2x_communication_range = v2x_communication_range(0.5, 0.5, 0.5)
+    if is_finite(_v_v2x_communication_range): passed += 1; print("  ✅ autonomous_vehicles::v2x_communication_range =", _v_v2x_communication_range)
+    else: failed += 1; print("  ❌ autonomous_vehicles::v2x_communication_range → non-finite:", _v_v2x_communication_range)
+    var _v_localization_error_gps = localization_error_gps(0.5, 0.5)
+    if is_finite(_v_localization_error_gps): passed += 1; print("  ✅ autonomous_vehicles::localization_error_gps =", _v_localization_error_gps)
+    else: failed += 1; print("  ❌ autonomous_vehicles::localization_error_gps → non-finite:", _v_localization_error_gps)
+
+    print("  [autonomous_vehicles] Passed:", passed, "Failed:", failed)

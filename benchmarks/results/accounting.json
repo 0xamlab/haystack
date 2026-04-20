@@ -1,0 +1,109 @@
+{
+  "lib": "accounting",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 7,
+  "overall_speedup_x": 12.01,
+  "total_py_ns": 1456.33,
+  "total_mojo_ns": 121.3,
+  "elapsed_s": 3.08,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "straight_line_depreciation",
+      "py_ns": 112.3,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "declining_balance",
+      "py_ns": 127.383,
+      "mojo_ns": 107.5,
+      "speedup_x": 1.18,
+      "py_result": 0.015625,
+      "py_error": null
+    },
+    {
+      "function": "sum_of_years_digits",
+      "py_ns": 259.658,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "future_value",
+      "py_ns": 835.6,
+      "mojo_ns": 2.4,
+      "speedup_x": 348.17,
+      "py_result": 3.796875,
+      "py_error": null
+    },
+    {
+      "function": "present_value_single",
+      "py_ns": 138.904,
+      "mojo_ns": 1.0,
+      "speedup_x": 138.9,
+      "py_result": 0.065844,
+      "py_error": null
+    },
+    {
+      "function": "gross_profit_margin",
+      "py_ns": 93.321,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "net_profit_margin",
+      "py_ns": 100.383,
+      "mojo_ns": 1.0,
+      "speedup_x": 100.38,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "current_ratio",
+      "py_ns": 83.279,
+      "mojo_ns": 7.4,
+      "speedup_x": 11.25,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "debt_to_equity",
+      "py_ns": 85.021,
+      "mojo_ns": 1.0,
+      "speedup_x": 85.02,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "return_on_equity",
+      "py_ns": 85.763,
+      "mojo_ns": 1.0,
+      "speedup_x": 85.76,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "break_even_units",
+      "py_ns": 130.825,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "compound_annual_growth",
+      "py_ns": 185.879,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

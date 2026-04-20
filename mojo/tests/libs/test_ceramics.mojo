@@ -1,0 +1,58 @@
+"""test_ceramics.mojo — auto-generated tests for ceramics library."""
+from std.math import isnan, isinf
+from ceramics import weibull_failure_probability, weibull_characteristic_strength, thermal_shock_resistance, youngs_modulus_porosity, sintering_shrinkage, density_from_archimedes, relative_density, porosity_from_density, fracture_toughness_indentation, dielectric_constant_mixture, coefficient_of_thermal_expansion, glass_transition_estimate
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_weibull_failure_probability = weibull_failure_probability(0.5, 0.5, 0.5)
+    if is_finite(_v_weibull_failure_probability): passed += 1; print("  ✅ ceramics::weibull_failure_probability =", _v_weibull_failure_probability)
+    else: failed += 1; print("  ❌ ceramics::weibull_failure_probability → non-finite:", _v_weibull_failure_probability)
+    var _v_weibull_characteristic_strength = weibull_characteristic_strength(0.5, 0.5)
+    if is_finite(_v_weibull_characteristic_strength): passed += 1; print("  ✅ ceramics::weibull_characteristic_strength =", _v_weibull_characteristic_strength)
+    else: failed += 1; print("  ❌ ceramics::weibull_characteristic_strength → non-finite:", _v_weibull_characteristic_strength)
+    var _v_thermal_shock_resistance = thermal_shock_resistance(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_thermal_shock_resistance): passed += 1; print("  ✅ ceramics::thermal_shock_resistance =", _v_thermal_shock_resistance)
+    else: failed += 1; print("  ❌ ceramics::thermal_shock_resistance → non-finite:", _v_thermal_shock_resistance)
+    var _v_youngs_modulus_porosity = youngs_modulus_porosity(0.5, 0.5, 0.5)
+    if is_finite(_v_youngs_modulus_porosity): passed += 1; print("  ✅ ceramics::youngs_modulus_porosity =", _v_youngs_modulus_porosity)
+    else: failed += 1; print("  ❌ ceramics::youngs_modulus_porosity → non-finite:", _v_youngs_modulus_porosity)
+    var _v_sintering_shrinkage = sintering_shrinkage(0.5, 0.5)
+    if is_finite(_v_sintering_shrinkage): passed += 1; print("  ✅ ceramics::sintering_shrinkage =", _v_sintering_shrinkage)
+    else: failed += 1; print("  ❌ ceramics::sintering_shrinkage → non-finite:", _v_sintering_shrinkage)
+    var _v_density_from_archimedes = density_from_archimedes(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_density_from_archimedes): passed += 1; print("  ✅ ceramics::density_from_archimedes =", _v_density_from_archimedes)
+    else: failed += 1; print("  ❌ ceramics::density_from_archimedes → non-finite:", _v_density_from_archimedes)
+    var _v_relative_density = relative_density(0.5, 0.5)
+    if is_finite(_v_relative_density): passed += 1; print("  ✅ ceramics::relative_density =", _v_relative_density)
+    else: failed += 1; print("  ❌ ceramics::relative_density → non-finite:", _v_relative_density)
+    var _v_porosity_from_density = porosity_from_density(0.5, 0.5)
+    if is_finite(_v_porosity_from_density): passed += 1; print("  ✅ ceramics::porosity_from_density =", _v_porosity_from_density)
+    else: failed += 1; print("  ❌ ceramics::porosity_from_density → non-finite:", _v_porosity_from_density)
+    var _v_fracture_toughness_indentation = fracture_toughness_indentation(0.5, 0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_fracture_toughness_indentation): passed += 1; print("  ✅ ceramics::fracture_toughness_indentation =", _v_fracture_toughness_indentation)
+    else: failed += 1; print("  ❌ ceramics::fracture_toughness_indentation → non-finite:", _v_fracture_toughness_indentation)
+    var _v_dielectric_constant_mixture = dielectric_constant_mixture(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_dielectric_constant_mixture): passed += 1; print("  ✅ ceramics::dielectric_constant_mixture =", _v_dielectric_constant_mixture)
+    else: failed += 1; print("  ❌ ceramics::dielectric_constant_mixture → non-finite:", _v_dielectric_constant_mixture)
+    var _v_coefficient_of_thermal_expansion = coefficient_of_thermal_expansion(0.5, 0.5, 0.5)
+    if is_finite(_v_coefficient_of_thermal_expansion): passed += 1; print("  ✅ ceramics::coefficient_of_thermal_expansion =", _v_coefficient_of_thermal_expansion)
+    else: failed += 1; print("  ❌ ceramics::coefficient_of_thermal_expansion → non-finite:", _v_coefficient_of_thermal_expansion)
+    var _v_glass_transition_estimate = glass_transition_estimate(0.5)
+    if is_finite(_v_glass_transition_estimate): passed += 1; print("  ✅ ceramics::glass_transition_estimate =", _v_glass_transition_estimate)
+    else: failed += 1; print("  ❌ ceramics::glass_transition_estimate → non-finite:", _v_glass_transition_estimate)
+
+    print("  [ceramics] Passed:", passed, "Failed:", failed)

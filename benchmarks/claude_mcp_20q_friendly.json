@@ -1,0 +1,550 @@
+{
+  "generated_at": "2026-04-15T00:00:39Z",
+  "mcp_url": "http://127.0.0.1:8003/sse",
+  "question_count": 20,
+  "results": [
+    {
+      "id": "Q1",
+      "question": "What is the total extended price of all items in the backlog?",
+      "tool_args": {
+        "sources": [
+          {
+            "name": "Backlog"
+          }
+        ],
+        "metric": {
+          "role": "derived_measure",
+          "hint": "extended price"
+        },
+        "aggregation": "sum",
+        "order": "desc"
+      },
+      "elapsed_ms": 1541.9,
+      "confidence": 0.95,
+      "resolved_source": "Backlog",
+      "resolved_column": "EXT_PRICE",
+      "row_count": 1535,
+      "result_type": "scalar",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "id": "Q2",
+      "question": "How many orders are currently in backlog status?",
+      "tool_args": {
+        "sources": [
+          {
+            "name": "Backlog"
+          }
+        ],
+        "metric": {
+          "role": "base_measure",
+          "hint": "quantity"
+        },
+        "aggregation": "count",
+        "order": "desc"
+      },
+      "elapsed_ms": 270.5,
+      "confidence": 1.0,
+      "resolved_source": "Backlog",
+      "resolved_column": "QUANTITY",
+      "row_count": 1535,
+      "result_type": "scalar",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "id": "Q3",
+      "question": "What is the average unit price across all backlog items?",
+      "tool_args": {
+        "sources": [
+          {
+            "name": "Backlog"
+          },
+          {
+            "name": "Quotes"
+          }
+        ],
+        "metric": {
+          "role": "unit_measure",
+          "hint": "unit price"
+        },
+        "aggregation": "avg",
+        "order": "desc"
+      },
+      "elapsed_ms": 750.3,
+      "confidence": 1.08,
+      "resolved_source": "Backlog",
+      "resolved_column": "UNIT_PRICE",
+      "row_count": 1535,
+      "result_type": "scalar",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "id": "Q4",
+      "question": "Which state has the highest total extended price for backlog shipments?",
+      "tool_args": {
+        "sources": [
+          {
+            "name": "Backlog"
+          }
+        ],
+        "metric": {
+          "role": "derived_measure",
+          "hint": "extended price"
+        },
+        "aggregation": "sum",
+        "order": "desc",
+        "group_by": [
+          "state"
+        ],
+        "limit": 5
+      },
+      "elapsed_ms": 184.5,
+      "confidence": 0.95,
+      "resolved_source": "Backlog",
+      "resolved_column": "EXT_PRICE",
+      "row_count": 1535,
+      "result_type": "table",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "id": "Q5",
+      "question": "What is the total quantity ordered across all recent quotes?",
+      "tool_args": {
+        "sources": [
+          {
+            "name": "Quotes"
+          }
+        ],
+        "metric": {
+          "role": "base_measure",
+          "hint": "quantity"
+        },
+        "aggregation": "sum",
+        "order": "desc"
+      },
+      "elapsed_ms": 385.8,
+      "confidence": 1.0,
+      "resolved_source": "Quotes",
+      "resolved_column": "QUANTITY",
+      "row_count": 1676,
+      "result_type": "scalar",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "id": "Q6",
+      "question": "How many unique customers are represented in recent quote statistics?",
+      "tool_args": {
+        "sources": [
+          {
+            "name": "Quotes"
+          }
+        ],
+        "metric": {
+          "role": "base_measure",
+          "hint": "quantity"
+        },
+        "aggregation": "count",
+        "order": "desc"
+      },
+      "elapsed_ms": 301.0,
+      "confidence": 1.0,
+      "resolved_source": "Quotes",
+      "resolved_column": "QUANTITY",
+      "row_count": 1676,
+      "result_type": "scalar",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "id": "Q7",
+      "question": "What is the average extended cost for items in the recent purchase orders data?",
+      "tool_args": {
+        "sources": [
+          {
+            "name": "OPO"
+          }
+        ],
+        "metric": {
+          "role": "base_measure",
+          "hint": "average extended cost"
+        },
+        "aggregation": "avg",
+        "order": "desc"
+      },
+      "elapsed_ms": 398.1,
+      "confidence": 0.6,
+      "resolved_source": "OPO",
+      "resolved_column": "Profit Center",
+      "row_count": 1139,
+      "result_type": "scalar",
+      "ok": true,
+      "note": "Low confidence. Multiple columns match the requested role. Check 'candidates' and consider asking the user to clarify."
+    },
+    {
+      "id": "Q8",
+      "question": "Which part number has the highest unit cost in recent POS data?",
+      "tool_args": {
+        "sources": [
+          {
+            "name": "POS"
+          }
+        ],
+        "metric": {
+          "role": "unit_measure",
+          "hint": "unit cost"
+        },
+        "aggregation": "max",
+        "order": "desc",
+        "group_by": [
+          "part number"
+        ],
+        "limit": 5
+      },
+      "elapsed_ms": 293.8,
+      "confidence": 0.0,
+      "resolved_source": "",
+      "resolved_column": "",
+      "row_count": 0,
+      "result_type": "none",
+      "ok": false,
+      "note": "Low confidence. Multiple columns match the requested role. Check 'candidates' and consider asking the user to clarify."
+    },
+    {
+      "id": "Q9",
+      "question": "What is the total extended price grouped by order status in the backlog?",
+      "tool_args": {
+        "sources": [
+          {
+            "name": "Backlog"
+          }
+        ],
+        "metric": {
+          "role": "derived_measure",
+          "hint": "extended price"
+        },
+        "aggregation": "sum",
+        "order": "desc",
+        "group_by": [
+          "status"
+        ]
+      },
+      "elapsed_ms": 377.7,
+      "confidence": 0.95,
+      "resolved_source": "Backlog",
+      "resolved_column": "EXT_PRICE",
+      "row_count": 1535,
+      "result_type": "table",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "id": "Q10",
+      "question": "How many vendors are listed in the OPO dataset?",
+      "tool_args": {
+        "sources": [
+          {
+            "name": "OPO"
+          }
+        ],
+        "metric": {
+          "role": "base_measure",
+          "hint": "quantity"
+        },
+        "aggregation": "count",
+        "order": "desc"
+      },
+      "elapsed_ms": 178.2,
+      "confidence": 0.9,
+      "resolved_source": "OPO",
+      "resolved_column": "Quantity Ordered",
+      "row_count": 1139,
+      "result_type": "scalar",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "id": "Q11",
+      "question": "What is the average unit price for items ordered on a specific project in the backlog?",
+      "tool_args": {
+        "sources": [
+          {
+            "name": "Backlog"
+          },
+          {
+            "name": "Quotes"
+          }
+        ],
+        "metric": {
+          "role": "unit_measure",
+          "hint": "unit price"
+        },
+        "aggregation": "avg",
+        "order": "desc"
+      },
+      "elapsed_ms": 207.3,
+      "confidence": 1.08,
+      "resolved_source": "Backlog",
+      "resolved_column": "UNIT_PRICE",
+      "row_count": 1535,
+      "result_type": "scalar",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "id": "Q12",
+      "question": "Which division has the highest order count in the OPO data?",
+      "tool_args": {
+        "sources": [
+          {
+            "name": "OPO"
+          }
+        ],
+        "metric": {
+          "role": "base_measure",
+          "hint": "quantity"
+        },
+        "aggregation": "count",
+        "order": "desc",
+        "group_by": [
+          "division"
+        ],
+        "limit": 5
+      },
+      "elapsed_ms": 186.4,
+      "confidence": 0.9,
+      "resolved_source": "OPO",
+      "resolved_column": "Quantity Ordered",
+      "row_count": 1139,
+      "result_type": "table",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "id": "Q13",
+      "question": "What is the total quantity of items with a unit price above the average in recent quotes?",
+      "tool_args": {
+        "sources": [
+          {
+            "name": "Quotes"
+          }
+        ],
+        "metric": {
+          "role": "unit_measure",
+          "hint": "unit price"
+        },
+        "aggregation": "avg",
+        "order": "desc"
+      },
+      "elapsed_ms": 266.8,
+      "confidence": 1.0,
+      "resolved_source": "Quotes",
+      "resolved_column": "UNIT_PRICE",
+      "row_count": 1676,
+      "result_type": "scalar",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "id": "Q14",
+      "question": "How many part numbers appear in both the backlog and recent quotes data?",
+      "tool_args": {
+        "sources": [
+          {
+            "name": "Backlog"
+          },
+          {
+            "name": "Quotes"
+          }
+        ],
+        "metric": {
+          "role": "base_measure",
+          "hint": "quantity"
+        },
+        "aggregation": "count",
+        "order": "desc"
+      },
+      "elapsed_ms": 363.4,
+      "confidence": 1.0,
+      "resolved_source": "Backlog",
+      "resolved_column": "QUANTITY",
+      "row_count": 1535,
+      "result_type": "scalar",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "id": "Q15",
+      "question": "What is the average extended price of backlog items by ship-to state?",
+      "tool_args": {
+        "sources": [
+          {
+            "name": "Backlog"
+          }
+        ],
+        "metric": {
+          "role": "derived_measure",
+          "hint": "extended price"
+        },
+        "aggregation": "avg",
+        "order": "desc",
+        "group_by": [
+          "state"
+        ]
+      },
+      "elapsed_ms": 189.7,
+      "confidence": 0.95,
+      "resolved_source": "Backlog",
+      "resolved_column": "EXT_PRICE",
+      "row_count": 1535,
+      "result_type": "table",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "id": "Q16",
+      "question": "Which OEM has the most items in the recent POS statistics?",
+      "tool_args": {
+        "sources": [
+          {
+            "name": "POS"
+          }
+        ],
+        "metric": {
+          "role": "base_measure",
+          "hint": "quantity"
+        },
+        "aggregation": "count",
+        "order": "desc",
+        "group_by": [
+          "oem"
+        ],
+        "limit": 5
+      },
+      "elapsed_ms": 146.5,
+      "confidence": 0.0,
+      "resolved_source": "",
+      "resolved_column": "",
+      "row_count": 0,
+      "result_type": "none",
+      "ok": false,
+      "note": "Low confidence. Multiple columns match the requested role. Check 'candidates' and consider asking the user to clarify."
+    },
+    {
+      "id": "Q17",
+      "question": "What is the total extended price for all quote items ordered within the last month?",
+      "tool_args": {
+        "sources": [
+          {
+            "name": "Quotes"
+          }
+        ],
+        "metric": {
+          "role": "derived_measure",
+          "hint": "extended price"
+        },
+        "aggregation": "sum",
+        "order": "desc",
+        "filter": {
+          "time_filter": "last_month"
+        }
+      },
+      "elapsed_ms": 268.9,
+      "confidence": 0.8,
+      "resolved_source": "Quotes",
+      "resolved_column": "EXT_COST",
+      "row_count": 0,
+      "result_type": "none",
+      "ok": false,
+      "note": ""
+    },
+    {
+      "id": "Q18",
+      "question": "How many buyers are represented in the OPO dataset?",
+      "tool_args": {
+        "sources": [
+          {
+            "name": "OPO"
+          }
+        ],
+        "metric": {
+          "role": "base_measure",
+          "hint": "quantity"
+        },
+        "aggregation": "count",
+        "order": "desc"
+      },
+      "elapsed_ms": 170.9,
+      "confidence": 0.9,
+      "resolved_source": "OPO",
+      "resolved_column": "Quantity Ordered",
+      "row_count": 1139,
+      "result_type": "scalar",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "id": "Q19",
+      "question": "What is the average unit cost for part numbers that appear in recent purchase orders?",
+      "tool_args": {
+        "sources": [
+          {
+            "name": "OPO"
+          },
+          {
+            "name": "POS"
+          }
+        ],
+        "metric": {
+          "role": "unit_measure",
+          "hint": "unit cost"
+        },
+        "aggregation": "avg",
+        "order": "desc"
+      },
+      "elapsed_ms": 173.1,
+      "confidence": 1.03,
+      "resolved_source": "OPO",
+      "resolved_column": "Unit Cost",
+      "row_count": 1139,
+      "result_type": "scalar",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "id": "Q20",
+      "question": "Which customer in recent quotes has the highest total extended price?",
+      "tool_args": {
+        "sources": [
+          {
+            "name": "Quotes"
+          }
+        ],
+        "metric": {
+          "role": "derived_measure",
+          "hint": "extended price"
+        },
+        "aggregation": "sum",
+        "order": "desc",
+        "group_by": [
+          "customer"
+        ],
+        "limit": 5
+      },
+      "elapsed_ms": 256.4,
+      "confidence": 0.8,
+      "resolved_source": "Quotes",
+      "resolved_column": "EXT_COST",
+      "row_count": 1676,
+      "result_type": "table",
+      "ok": true,
+      "note": ""
+    }
+  ],
+  "avg_elapsed_ms": 345.6,
+  "passed": 17
+}

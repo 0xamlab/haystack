@@ -1,0 +1,109 @@
+{
+  "lib": "cryptanalysis",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 8,
+  "overall_speedup_x": 152.71,
+  "total_py_ns": 1435.47,
+  "total_mojo_ns": 9.4,
+  "elapsed_s": 1.07,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "frequency_score_2",
+      "py_ns": 251.862,
+      "mojo_ns": 0.1,
+      "speedup_x": 2518.62,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "index_of_coincidence_2",
+      "py_ns": 158.762,
+      "mojo_ns": 1.1,
+      "speedup_x": 144.33,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "expected_ic_random",
+      "py_ns": 98.95,
+      "mojo_ns": 1.1,
+      "speedup_x": 89.95,
+      "py_result": 0.2,
+      "py_error": null
+    },
+    {
+      "function": "expected_ic_english",
+      "py_ns": 53.329,
+      "mojo_ns": 1.1,
+      "speedup_x": 48.48,
+      "py_result": 0.0667,
+      "py_error": null
+    },
+    {
+      "function": "friedman_key_length",
+      "py_ns": 140.0,
+      "mojo_ns": 1.1,
+      "speedup_x": 127.27,
+      "py_result": -0.444333,
+      "py_error": null
+    },
+    {
+      "function": "kasiski_distance_gcd",
+      "py_ns": 195.096,
+      "mojo_ns": 1.2,
+      "speedup_x": 162.58,
+      "py_result": 5.0,
+      "py_error": null
+    },
+    {
+      "function": "caesar_decrypt_score",
+      "py_ns": 89.046,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "hamming_distance_bytes",
+      "py_ns": 156.046,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "entropy_bits_2",
+      "py_ns": null,
+      "mojo_ns": 1.1,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "module 'math' has no attribute 'math'"
+    },
+    {
+      "function": "entropy_bits_4",
+      "py_ns": null,
+      "mojo_ns": 1.1,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "module 'math' has no attribute 'math'"
+    },
+    {
+      "function": "brute_force_time_estimate",
+      "py_ns": 334.658,
+      "mojo_ns": 2.6,
+      "speedup_x": 128.71,
+      "py_result": 64.0,
+      "py_error": null
+    },
+    {
+      "function": "avalanche_effect",
+      "py_ns": 202.808,
+      "mojo_ns": 1.1,
+      "speedup_x": 184.37,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

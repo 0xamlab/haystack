@@ -1,0 +1,21 @@
+{
+  "lib": "cache",
+  "status": "ok",
+  "n_functions": 1,
+  "n_compared": 1,
+  "overall_speedup_x": 832.77,
+  "total_py_ns": 749.5,
+  "total_mojo_ns": 0.9,
+  "elapsed_s": 2.56,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "create_ttl_cache",
+      "py_ns": 749.496,
+      "mojo_ns": 0.9,
+      "speedup_x": 832.77,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

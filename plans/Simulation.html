@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+        window.FontAwesomeConfig = {
+          autoReplaceSvg: 'nest'
+        };
+      </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulation Playground</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/js/all.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdn.plot.ly/plotly-3.1.1.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            bg: '#0B0D12',
+                            card: '#11131A',
+                            border: '#1F2430',
+                            text: '#E6E8EC',
+                            muted: '#8A90A2',
+                            primary: '#6B42FC',
+                            success: '#00D395',
+                            warning: '#F59E0B',
+                            danger: '#EF4444',
+                            editor: '#0F1117',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0B0D12;
+            color: #E6E8EC;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0B0D12;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1F2430;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #8A90A2;
+        }
+        .technical-border {
+            border: 1px solid #1F2430;
+        }
+        .card-bg {
+            background-color: #11131A;
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+        }
+        input[type="range"]::-webkit-slider-track {
+            background: #1F2430;
+            height: 4px;
+            border-radius: 2px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            background: #6B42FC;
+            height: 14px;
+            width: 14px;
+            border-radius: 50%;
+            margin-top: -5px;
+        }
+        input[type="range"]::-moz-range-track {
+            background: #1F2430;
+            height: 4px;
+            border-radius: 2px;
+        }
+        input[type="range"]::-moz-range-thumb {
+            background: #6B42FC;
+            height: 14px;
+            width: 14px;
+            border-radius: 50%;
+            border: none;
+        }
+        .code-editor {
+            background: #0F1117;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        .json-key { color: #6B42FC; }
+        .json-string { color: #00D395; }
+        .json-number { color: #F59E0B; }
+        .json-boolean { color: #3b82f6; }
+    </style>
+</head>
+<body class="w-full min-h-screen m-0 p-0 flex flex-col md:flex-row antialiased selection:bg-brand-primary selection:text-white">
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="hidden md:flex flex-col w-[240px] fixed h-screen card-bg technical-border border-y-0 border-l-0 border-r z-50">
+        <div class="p-6 flex items-center gap-3 border-b border-brand-border h-20">
+            <div class="w-8 h-8 rounded bg-brand-primary flex items-center justify-center shadow-glow">
+                <i class="fa-solid fa-cube text-white text-sm"></i>
+            </div>
+            <span class="font-bold text-lg tracking-tight">ALGENTA</span>
+        </div>
+
+        <div class="flex-1 overflow-y-auto py-6 px-4 flex flex-col gap-8">
+            <div>
+                <h3 class="text-xs font-semibold text-brand-muted uppercase tracking-wider mb-3 px-3">Infrastructure</h3>
+                <nav class="flex flex-col gap-1">
+                    <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-brand-muted hover:text-brand-text hover:bg-brand-border/50 transition-colors">
+                        <i class="fa-solid fa-chart-line w-5"></i>
+                        Dashboard
+                    </a>
+                    <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-brand-primary/10 text-brand-primary font-medium transition-colors">
+                        <i class="fa-solid fa-flask w-5"></i>
+                        Simulations
+                    </a>
+                    <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-brand-muted hover:text-brand-text hover:bg-brand-border/50 transition-colors">
+                        <i class="fa-solid fa-server w-5"></i>
+                        Compute Clusters
+                    </a>
+                    <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-brand-muted hover:text-brand-text hover:bg-brand-border/50 transition-colors">
+                        <i class="fa-solid fa-database w-5"></i>
+                        Data Management
+                    </a>
+                </nav>
+            </div>
+
+            <div>
+                <h3 class="text-xs font-semibold text-brand-muted uppercase tracking-wider mb-3 px-3">Utilities</h3>
+                <nav class="flex flex-col gap-1">
+                    <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-brand-muted hover:text-brand-text hover:bg-brand-border/50 transition-colors">
+                        <i class="fa-solid fa-wrench w-5"></i>
+                        Tools & Libraries
+                    </a>
+                    <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-brand-muted hover:text-brand-text hover:bg-brand-border/50 transition-colors">
+                        <i class="fa-solid fa-sliders w-5"></i>
+                        Settings
+                    </a>
+                </nav>
+            </div>
+        </div>
+
+        <div class="p-4 border-t border-brand-border">
+            <div class="flex items-center gap-3 p-3 rounded-lg bg-brand-border/30 hover:bg-brand-border/50 transition-colors cursor-pointer">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/avatars/avatar-4.jpg" alt="User" class="w-8 h-8 rounded-full border border-brand-border">
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium truncate">DevOps Admin</p>
+                    <p class="text-xs text-brand-muted truncate">admin@algenta.io</p>
+                </div>
+                <i class="fa-solid fa-chevron-right text-xs text-brand-muted"></i>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main id="main-content" class="flex-1 md:ml-[240px] flex flex-col min-h-screen bg-brand-bg relative w-full">
+        
+        <!-- Mobile Header -->
+        <header class="md:hidden flex items-center justify-between p-4 card-bg border-b border-brand-border z-40 sticky top-0">
+            <div class="flex items-center gap-2">
+                <div class="w-6 h-6 rounded bg-brand-primary flex items-center justify-center">
+                    <i class="fa-solid fa-cube text-white text-[10px]"></i>
+                </div>
+                <span class="font-bold text-md tracking-tight">ALGENTA</span>
+            </div>
+            <button class="text-brand-text p-2">
+                <i class="fa-solid fa-bars text-xl"></i>
+            </button>
+        </header>
+
+        <!-- Topbar -->
+        <header id="topbar" class="hidden md:flex h-20 items-center justify-between px-6 border-b border-brand-border card-bg sticky top-0 z-40">
+            <div class="flex items-center gap-4">
+                <div>
+                    <h1 class="text-xl font-semibold tracking-tight">Simulation Playground</h1>
+                    <p class="text-sm text-brand-muted">Interactive scenario modeling and decision analysis</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <select class="bg-brand-bg border border-brand-border rounded-md px-4 py-2 text-sm focus:outline-none focus:border-brand-primary text-brand-text transition-colors">
+                    <option>Product Launch</option>
+                    <option>Investment Risk</option>
+                    <option>Market Entry</option>
+                </select>
+                
+                <button class="px-4 py-2 text-sm font-medium text-brand-muted hover:text-brand-text bg-brand-border/50 hover:bg-brand-border rounded-md transition-colors">
+                    <i class="fa-solid fa-rotate-left mr-2"></i>Reset
+                </button>
+                
+                <button class="px-6 py-2 text-sm font-semibold text-white bg-brand-primary hover:bg-brand-primary/90 rounded-md transition-colors shadow-glow">
+                    <i class="fa-solid fa-play mr-2"></i>Run Simulation
+                </button>
+            </div>
+        </header>
+
+        <!-- Playground Grid -->
+        <div id="playground-container" class="flex-1 flex flex-col lg:flex-row overflow-hidden">
+            
+            <!-- LEFT PANEL: Variables & Controls -->
+            <section id="left-panel" class="w-full lg:w-[300px] border-r border-brand-border card-bg overflow-y-auto flex-shrink-0">
+                
+                <!-- Execution Mode -->
+                <div class="p-4 border-b border-brand-border">
+                    <h3 class="text-xs font-semibold text-brand-muted uppercase tracking-wider mb-3">Execution Mode</h3>
+                    <div class="flex gap-2">
+                        <button class="flex-1 px-4 py-2 text-sm font-medium bg-brand-primary text-white rounded-md">
+                            Auto
+                        </button>
+                        <button class="flex-1 px-4 py-2 text-sm font-medium bg-brand-border/50 text-brand-muted hover:text-brand-text rounded-md transition-colors">
+                            Expert
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Variables -->
+                <div class="p-4 border-b border-brand-border">
+                    <h3 class="text-xs font-semibold text-brand-muted uppercase tracking-wider mb-4">Variables</h3>
+                    
+                    <!-- Revenue -->
+                    <div class="mb-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="text-xs font-medium text-brand-text">revenue</label>
+                            <input type="number" value="250000" class="w-24 bg-brand-bg border border-brand-border rounded px-2 py-1 text-xs font-mono text-brand-text focus:outline-none focus:border-brand-primary">
+                        </div>
+                        <input type="range" min="0" max="500000" value="250000" class="w-full">
+                        <div class="flex justify-between text-[10px] text-brand-muted mt-1">
+                            <span>0</span>
+                            <span>500k</span>
+                        </div>
+                    </div>
+
+                    <!-- Cost -->
+                    <div class="mb-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="text-xs font-medium text-brand-text">cost</label>
+                            <input type="number" value="180000" class="w-24 bg-brand-bg border border-brand-border rounded px-2 py-1 text-xs font-mono text-brand-text focus:outline-none focus:border-brand-primary">
+                        </div>
+                        <input type="range" min="0" max="400000" value="180000" class="w-full">
+                        <div class="flex justify-between text-[10px] text-brand-muted mt-1">
+                            <span>0</span>
+                            <span>400k</span>
+                        </div>
+                    </div>
+
+                    <!-- Market Share -->
+                    <div class="mb-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="text-xs font-medium text-brand-text">market_share</label>
+                            <input type="number" value="0.15" step="0.01" class="w-24 bg-brand-bg border border-brand-border rounded px-2 py-1 text-xs font-mono text-brand-text focus:outline-none focus:border-brand-primary">
+                        </div>
+                        <input type="range" min="0" max="1" step="0.01" value="0.15" class="w-full">
+                        <div class="flex justify-between text-[10px] text-brand-muted mt-1">
+                            <span>0%</span>
+                            <span>100%</span>
+                        </div>
+                    </div>
+
+                    <!-- Growth Rate -->
+                    <div class="mb-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="text-xs font-medium text-brand-text">growth_rate</label>
+                            <input type="number" value="0.08" step="0.01" class="w-24 bg-brand-bg border border-brand-border rounded px-2 py-1 text-xs font-mono text-brand-text focus:outline-none focus:border-brand-primary">
+                        </div>
+                        <input type="range" min="-0.5" max="0.5" step="0.01" value="0.08" class="w-full">
+                        <div class="flex justify-between text-[10px] text-brand-muted mt-1">
+                            <span>-50%</span>
+                            <span>+50%</span>
+                        </div>
+                    </div>
+
+                    <button class="w-full px-3 py-2 text-xs font-medium text-brand-primary border border-brand-primary/30 hover:bg-brand-primary/10 rounded-md transition-colors">
+                        <i class="fa-solid fa-plus mr-2"></i>Add Variable
+                    </button>
+                </div>
+
+                <!-- Simulation Parameters -->
+                <div class="p-4">
+                    <h3 class="text-xs font-semibold text-brand-muted uppercase tracking-wider mb-4">Simulation Parameters</h3>
+                    
+                    <div class="mb-3">
+                        <label class="text-xs font-medium text-brand-text mb-2 block">Number of runs</label>
+                        <input type="number" value="10000" class="w-full bg-brand-bg border border-brand-border rounded px-3 py-2 text-sm font-mono text-brand-text focus:outline-none focus:border-brand-primary">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="text-xs font-medium text-brand-text mb-2 block">Random seed</label>
+                        <input type="number" value="42" class="w-full bg-brand-bg border border-brand-border rounded px-3 py-2 text-sm font-mono text-brand-text focus:outline-none focus:border-brand-primary">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="text-xs font-medium text-brand-text mb-2 block">Confidence level</label>
+                        <select class="w-full bg-brand-bg border border-brand-border rounded px-3 py-2 text-sm font-mono text-brand-text focus:outline-none focus:border-brand-primary">
+                            <option>95%</option>
+                            <option>99%</option>
+                            <option>90%</option>
+                        </select>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- CENTER PANEL: Scenario Editor -->
+            <section id="center-panel" class="flex-1 flex flex-col overflow-hidden">
+                
+                <!-- Toolbar -->
+                <div class="h-12 border-b border-brand-border bg-brand-card flex items-center justify-between px-4">
+                    <div class="flex items-center gap-2">
+                        <button class="px-3 py-1.5 text-xs font-medium bg-brand-primary text-white rounded-md">
+                            JSON
+                        </button>
+                        <button class="px-3 py-1.5 text-xs font-medium bg-brand-border/50 text-brand-muted hover:text-brand-text rounded-md transition-colors">
+                            Visual
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button class="px-3 py-1.5 text-xs font-medium text-brand-muted hover:text-brand-text transition-colors">
+                            <i class="fa-solid fa-copy mr-1"></i>Copy
+                        </button>
+                        <button class="px-3 py-1.5 text-xs font-medium text-brand-muted hover:text-brand-text transition-colors">
+                            <i class="fa-solid fa-download mr-1"></i>Export
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Code Editor -->
+                <div class="flex-1 overflow-auto code-editor p-4">
+                    <pre class="text-xs leading-relaxed"><code><span class="json-key">{</span>
+  <span class="json-key">"scenario"</span>: <span class="json-key">{</span>
+    <span class="json-key">"name"</span>: <span class="json-string">"Product Launch Analysis"</span>,
+    <span class="json-key">"description"</span>: <span class="json-string">"Q1 2024 revenue projection model"</span>,
+    <span class="json-key">"version"</span>: <span class="json-string">"2.4.1"</span>
+  <span class="json-key">}</span>,
+  <span class="json-key">"variables"</span>: <span class="json-key">{</span>
+    <span class="json-key">"revenue"</span>: <span class="json-key">{</span>
+      <span class="json-key">"type"</span>: <span class="json-string">"normal"</span>,
+      <span class="json-key">"mean"</span>: <span class="json-number">250000</span>,
+      <span class="json-key">"std"</span>: <span class="json-number">35000</span>,
+      <span class="json-key">"unit"</span>: <span class="json-string">"USD"</span>
+    <span class="json-key">}</span>,
+    <span class="json-key">"cost"</span>: <span class="json-key">{</span>
+      <span class="json-key">"type"</span>: <span class="json-string">"normal"</span>,
+      <span class="json-key">"mean"</span>: <span class="json-number">180000</span>,
+      <span class="json-key">"std"</span>: <span class="json-number">22000</span>,
+      <span class="json-key">"unit"</span>: <span class="json-string">"USD"</span>
+    <span class="json-key">}</span>,
+    <span class="json-key">"market_share"</span>: <span class="json-key">{</span>
+      <span class="json-key">"type"</span>: <span class="json-string">"beta"</span>,
+      <span class="json-key">"alpha"</span>: <span class="json-number">2</span>,
+      <span class="json-key">"beta"</span>: <span class="json-number">5</span>,
+      <span class="json-key">"min"</span>: <span class="json-number">0.05</span>,
+      <span class="json-key">"max"</span>: <span class="json-number">0.35</span>
+    <span class="json-key">}</span>,
+    <span class="json-key">"growth_rate"</span>: <span class="json-key">{</span>
+      <span class="json-key">"type"</span>: <span class="json-string">"triangular"</span>,
+      <span class="json-key">"min"</span>: <span class="json-number">0.02</span>,
+      <span class="json-key">"mode"</span>: <span class="json-number">0.08</span>,
+      <span class="json-key">"max"</span>: <span class="json-number">0.15</span>
+    <span class="json-key">}</span>
+  <span class="json-key">}</span>,
+  <span class="json-key">"constraints"</span>: <span class="json-key">{</span>
+    <span class="json-key">"min_profit_margin"</span>: <span class="json-number">0.15</span>,
+    <span class="json-key">"max_risk_exposure"</span>: <span class="json-number">0.25</span>,
+    <span class="json-key">"regulatory_compliance"</span>: <span class="json-boolean">true</span>
+  <span class="json-key">}</span>,
+  <span class="json-key">"outputs"</span>: <span class="json-key">{</span>
+    <span class="json-key">"net_profit"</span>: <span class="json-string">"revenue - cost"</span>,
+    <span class="json-key">"roi"</span>: <span class="json-string">"(revenue - cost) / cost"</span>,
+    <span class="json-key">"projected_value"</span>: <span class="json-string">"net_profit * (1 + growth_rate)"</span>
+  <span class="json-key">}</span>,
+  <span class="json-key">"monte_carlo"</span>: <span class="json-key">{</span>
+    <span class="json-key">"iterations"</span>: <span class="json-number">10000</span>,
+    <span class="json-key">"seed"</span>: <span class="json-number">42</span>,
+    <span class="json-key">"method"</span>: <span class="json-string">"latin_hypercube"</span>
+  <span class="json-key">}</span>
+<span class="json-key">}</span></code></pre>
+                </div>
+
+                <!-- Status Bar -->
+                <div class="h-8 border-t border-brand-border bg-brand-card flex items-center justify-between px-4 text-xs text-brand-muted">
+                    <div class="flex items-center gap-4">
+                        <span><i class="fa-solid fa-check-circle text-brand-success mr-1"></i>Valid JSON</span>
+                        <span>Lines: 45</span>
+                        <span>Size: 1.2 KB</span>
+                    </div>
+                    <div>
+                        <span>UTF-8</span>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- RIGHT PANEL: Decision Output -->
+            <section id="right-panel" class="w-full lg:w-[360px] border-l border-brand-border card-bg overflow-y-auto flex-shrink-0">
+                
+                <!-- Decision Envelope -->
+                <div class="p-4 border-b border-brand-border">
+                    <h3 class="text-xs font-semibold text-brand-muted uppercase tracking-wider mb-4">Decision Envelope</h3>
+                    
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="bg-brand-bg border border-brand-border rounded-lg p-3">
+                            <p class="text-[10px] text-brand-muted mb-1">Expected Value</p>
+                            <p class="text-lg font-bold font-mono text-brand-text">$72,450</p>
+                            <p class="text-xs text-brand-success mt-1"><i class="fa-solid fa-arrow-up"></i> 8.2%</p>
+                        </div>
+                        <div class="bg-brand-bg border border-brand-border rounded-lg p-3">
+                            <p class="text-[10px] text-brand-muted mb-1">Prob. of Loss</p>
+                            <p class="text-lg font-bold font-mono text-brand-text">12.4%</p>
+                            <p class="text-xs text-brand-success mt-1"><i class="fa-solid fa-arrow-down"></i> 3.1%</p>
+                        </div>
+                        <div class="bg-brand-bg border border-brand-border rounded-lg p-3">
+                            <p class="text-[10px] text-brand-muted mb-1">Std Deviation</p>
+                            <p class="text-lg font-bold font-mono text-brand-text">$28,120</p>
+                        </div>
+                        <div class="bg-brand-bg border border-brand-border rounded-lg p-3">
+                            <p class="text-[10px] text-brand-muted mb-1">VaR 95%</p>
+                            <p class="text-lg font-bold font-mono text-brand-text">$24,890</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts -->
+                <div class="p-4 border-b border-brand-border">
+                    <h3 class="text-xs font-semibold text-brand-muted uppercase tracking-wider mb-3">Distribution Analysis</h3>
+                    
+                    <!-- Distribution Chart -->
+                    <div class="mb-4">
+                        <p class="text-xs text-brand-muted mb-2">Probability Density</p>
+                        <div id="distribution-chart" style="height: 180px;"></div>
+                    </div>
+
+                    <!-- Percentile Bars -->
+                    <div class="mb-4">
+                        <p class="text-xs text-brand-muted mb-2">Percentile Range</p>
+                        <div class="space-y-2">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-brand-muted w-8">P5</span>
+                                <div class="flex-1 bg-brand-bg rounded-full h-6 overflow-hidden flex items-center">
+                                    <div class="bg-brand-danger h-full flex items-center justify-end px-2" style="width: 15%;">
+                                        <span class="text-[10px] font-mono text-white">$18k</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-brand-muted w-8">P25</span>
+                                <div class="flex-1 bg-brand-bg rounded-full h-6 overflow-hidden flex items-center">
+                                    <div class="bg-brand-warning h-full flex items-center justify-end px-2" style="width: 45%;">
+                                        <span class="text-[10px] font-mono text-white">$52k</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-brand-muted w-8">P50</span>
+                                <div class="flex-1 bg-brand-bg rounded-full h-6 overflow-hidden flex items-center">
+                                    <div class="bg-brand-primary h-full flex items-center justify-end px-2" style="width: 65%;">
+                                        <span class="text-[10px] font-mono text-white">$72k</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-brand-muted w-8">P75</span>
+                                <div class="flex-1 bg-brand-bg rounded-full h-6 overflow-hidden flex items-center">
+                                    <div class="bg-brand-success h-full flex items-center justify-end px-2" style="width: 82%;">
+                                        <span class="text-[10px] font-mono text-white">$91k</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-brand-muted w-8">P95</span>
+                                <div class="flex-1 bg-brand-bg rounded-full h-6 overflow-hidden flex items-center">
+                                    <div class="bg-brand-success h-full flex items-center justify-end px-2" style="width: 95%;">
+                                        <span class="text-[10px] font-mono text-white">$118k</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CDF Chart -->
+                    <div>
+                        <p class="text-xs text-brand-muted mb-2">Cumulative Distribution</p>
+                        <div id="cdf-chart" style="height: 160px;"></div>
+                    </div>
+                </div>
+
+                <!-- Integrity -->
+                <div class="p-4 border-b border-brand-border">
+                    <h3 class="text-xs font-semibold text-brand-muted uppercase tracking-wider mb-3">Integrity</h3>
+                    <div class="bg-brand-bg border border-brand-border rounded-lg p-3">
+                        <p class="text-[10px] text-brand-muted mb-1">SHA-256 Hash</p>
+                        <p class="text-xs font-mono text-brand-text break-all leading-relaxed">a3f2e9c8d1b4...7e6f8a2c</p>
+                        <div class="flex items-center gap-2 mt-2">
+                            <i class="fa-solid fa-shield-halved text-brand-success text-xs"></i>
+                            <span class="text-xs text-brand-success">Verified</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recommendation -->
+                <div class="p-4">
+                    <h3 class="text-xs font-semibold text-brand-muted uppercase tracking-wider mb-3">Recommendation</h3>
+                    <div class="bg-brand-success/10 border border-brand-success/30 rounded-lg p-4">
+                        <div class="flex items-center gap-2 mb-2">
+                            <i class="fa-solid fa-circle-check text-brand-success text-xl"></i>
+                            <span class="text-lg font-bold text-brand-success">PROCEED</span>
+                        </div>
+                        <p class="text-xs text-brand-text leading-relaxed">
+                            Expected value significantly exceeds break-even threshold with acceptable risk profile. Probability of loss remains within tolerance (12.4% < 15% threshold). Monte Carlo analysis shows 87.6% confidence in positive outcome.
+                        </p>
+                        <div class="mt-3 pt-3 border-t border-brand-success/20">
+                            <p class="text-xs text-brand-muted">Confidence Score: <span class="font-mono text-brand-success font-semibold">94.2%</span></p>
+                        </div>
+                    </div>
+                </div>
+
+            </section>
+
+        </div>
+    </main>
+
+    <script>
+        window.addEventListener('load', function() {
+            try {
+                const commonLayout = {
+                    plot_bgcolor: 'transparent',
+                    paper_bgcolor: 'transparent',
+                    font: { family: 'Inter, sans-serif', color: '#8A90A2', size: 10 },
+                    margin: { t: 10, r: 10, b: 25, l: 35 },
+                    showlegend: false,
+                    hovermode: 'closest',
+                };
+
+                const commonXAxis = {
+                    showgrid: false,
+                    zeroline: false,
+                    linecolor: '#1F2430',
+                };
+
+                const commonYAxis = {
+                    showgrid: true,
+                    gridcolor: '#1F2430',
+                    zeroline: false,
+                    linecolor: 'transparent',
+                };
+
+                // Distribution Chart
+                const xVals = [];
+                const yVals = [];
+                for (let i = 0; i <= 100; i++) {
+                    const x = 20000 + (i * 1000);
+                    const mean = 72450;
+                    const std = 28120;
+                    const y = Math.exp(-0.5 * Math.pow((x - mean) / std, 2)) / (std * Math.sqrt(2 * Math.PI));
+                    xVals.push(x);
+                    yVals.push(y);
+                }
+
+                const distData = [{
+                    type: 'scatter',
+                    mode: 'lines',
+                    x: xVals,
+                    y: yVals,
+                    line: { color: '#6B42FC', width: 2 },
+                    fill: 'tozeroy',
+                    fillcolor: 'rgba(107, 66, 252, 0.15)'
+                }, {
+                    type: 'scatter',
+                    mode: 'lines',
+                    x: [72450, 72450],
+                    y: [0, Math.max(...yVals)],
+                    line: { color: '#00D395', width: 2, dash: 'dash' },
+                    name: 'EV'
+                }];
+
+                const distLayout = {
+                    ...commonLayout,
+                    xaxis: { ...commonXAxis, tickformat: '$,.0f' },
+                    yaxis: { ...commonYAxis, showticklabels: false },
+                };
+
+                Plotly.newPlot('distribution-chart', distData, distLayout, {responsive: true, displayModeBar: false});
+
+                // CDF Chart
+                const cdfY = [];
+                let cumSum = 0;
+                const total = yVals.reduce((a, b) => a + b, 0);
+                for (let i = 0; i < yVals.length; i++) {
+                    cumSum += yVals[i];
+                    cdfY.push(cumSum / total);
+                }
+
+                const cdfData = [{
+                    type: 'scatter',
+                    mode: 'lines',
+                    x: xVals,
+                    y: cdfY,
+                    line: { color: '#3b82f6', width: 2, shape: 'spline' },
+                    fill: 'tozeroy',
+                    fillcolor: 'rgba(59, 130, 246, 0.1)'
+                }];
+
+                const cdfLayout = {
+                    ...commonLayout,
+                    xaxis: { ...commonXAxis, tickformat: '$,.0f' },
+                    yaxis: { ...commonYAxis, tickformat: '.0%', range: [0, 1] },
+                };
+
+                Plotly.newPlot('cdf-chart', cdfData, cdfLayout, {responsive: true, displayModeBar: false});
+
+            } catch(e) {
+                console.error("Chart rendering error:", e);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,109 @@
+{
+  "lib": "traffic_signal",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 12,
+  "overall_speedup_x": 1424.21,
+  "total_py_ns": 16093.57,
+  "total_mojo_ns": 11.3,
+  "elapsed_s": 4.65,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "cycle_length_webster",
+      "py_ns": 285.787,
+      "mojo_ns": 0.9,
+      "speedup_x": 317.54,
+      "py_result": 11.5,
+      "py_error": null
+    },
+    {
+      "function": "effective_green",
+      "py_ns": 183.425,
+      "mojo_ns": 1.0,
+      "speedup_x": 183.42,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "green_ratio",
+      "py_ns": 235.838,
+      "mojo_ns": 1.0,
+      "speedup_x": 235.84,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "capacity_lane",
+      "py_ns": 223.429,
+      "mojo_ns": 1.0,
+      "speedup_x": 223.43,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "volume_to_capacity",
+      "py_ns": 298.304,
+      "mojo_ns": 0.9,
+      "speedup_x": 331.45,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "delay_uniform",
+      "py_ns": 3551.833,
+      "mojo_ns": 0.9,
+      "speedup_x": 3946.48,
+      "py_result": 0.083333,
+      "py_error": null
+    },
+    {
+      "function": "pedestrian_crossing_time",
+      "py_ns": 548.675,
+      "mojo_ns": 0.9,
+      "speedup_x": 609.64,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "yellow_interval",
+      "py_ns": 1774.858,
+      "mojo_ns": 0.9,
+      "speedup_x": 1972.06,
+      "py_result": 0.546253,
+      "py_error": null
+    },
+    {
+      "function": "all_red_interval",
+      "py_ns": 3659.875,
+      "mojo_ns": 0.9,
+      "speedup_x": 4066.53,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "level_of_service_delay",
+      "py_ns": 2064.454,
+      "mojo_ns": 1.0,
+      "speedup_x": 2064.45,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "intersection_capacity_utilization",
+      "py_ns": 2911.888,
+      "mojo_ns": 1.0,
+      "speedup_x": 2911.89,
+      "py_result": 1.5,
+      "py_error": null
+    },
+    {
+      "function": "peak_hour_factor",
+      "py_ns": 355.2,
+      "mojo_ns": 0.9,
+      "speedup_x": 394.67,
+      "py_result": 0.25,
+      "py_error": null
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "lib": "engines_column_ranker_v2",
+  "status": "ok",
+  "n_functions": 1,
+  "n_compared": 1,
+  "overall_speedup_x": 9.75,
+  "total_py_ns": 90700.0,
+  "total_mojo_ns": 9302.0,
+  "elapsed_s": 5.84,
+  "n_iterations": 10000,
+  "notes": "Full JSON pipeline, 10 candidates. SIMD Float32 8-wide dot product. Pure computation speedup (no JSON) is ~32x (2849 ns Mojo vs ~90700 ns Python). JSON parsing in Python uses C-optimised json module vs pure Mojo string ops.",
+  "functions": [
+    {
+      "function": "run_column_rank_v2",
+      "py_ns": 90700.0,
+      "mojo_ns": 9302.0,
+      "speedup_x": 9.75,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

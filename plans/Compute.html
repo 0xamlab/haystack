@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infrastructure</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script> window.FontAwesomeConfig = { autoReplaceSvg: 'nest'};</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        ::-webkit-scrollbar { display: none;}
+        * { font-family: 'Inter', sans-serif; }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#6B42FC',
+                        success: '#00D395',
+                        warning: '#F59E0B',
+                        danger: '#EF4444',
+                        info: '#3B82F6',
+                        dark: {
+                            100: '#0B0D12',
+                            200: '#11131A',
+                            300: '#151823',
+                            400: '#1A1F2E',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-dark-100 text-[#E6E8EC]">
+
+<div id="main-container" class="flex min-h-screen">
+    <aside id="sidebar" class="w-64 bg-dark-200 border-r border-[#1F2430] flex-shrink-0 hidden lg:block">
+        <div class="p-4 border-b border-[#1F2430]">
+            <h1 class="text-xl font-bold text-white">ALGENTA</h1>
+            <p class="text-xs text-[#8A90A2] mt-1">Infrastructure Console</p>
+        </div>
+        <nav class="p-3">
+            <a href="#" class="flex items-center px-3 py-2 text-[#8A90A2] hover:bg-dark-300 hover:text-white rounded mb-1 transition-colors">
+                <i class="fa-solid fa-gauge w-5"></i>
+                <span class="ml-3 text-sm">Dashboard</span>
+            </a>
+            <a href="#" class="flex items-center px-3 py-2 text-[#8A90A2] hover:bg-dark-300 hover:text-white rounded mb-1 transition-colors">
+                <i class="fa-solid fa-chart-line w-5"></i>
+                <span class="ml-3 text-sm">Simulations</span>
+            </a>
+            <a href="#" class="flex items-center px-3 py-2 bg-dark-300 text-white rounded mb-1 transition-colors">
+                <i class="fa-solid fa-server w-5"></i>
+                <span class="ml-3 text-sm">Compute Clusters</span>
+            </a>
+            <a href="#" class="flex items-center px-3 py-2 text-[#8A90A2] hover:bg-dark-300 hover:text-white rounded mb-1 transition-colors">
+                <i class="fa-solid fa-database w-5"></i>
+                <span class="ml-3 text-sm">Data Management</span>
+            </a>
+            <a href="#" class="flex items-center px-3 py-2 text-[#8A90A2] hover:bg-dark-300 hover:text-white rounded mb-1 transition-colors">
+                <i class="fa-solid fa-wrench w-5"></i>
+                <span class="ml-3 text-sm">Tools & Libraries</span>
+            </a>
+            <a href="#" class="flex items-center px-3 py-2 text-[#8A90A2] hover:bg-dark-300 hover:text-white rounded mb-1 transition-colors">
+                <i class="fa-solid fa-gear w-5"></i>
+                <span class="ml-3 text-sm">Settings</span>
+            </a>
+        </nav>
+    </aside>
+
+    <main id="main-content" class="flex-1 overflow-x-hidden">
+        <header id="header" class="bg-dark-200 border-b border-[#1F2430] px-4 lg:px-6 py-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <button class="lg:hidden mr-4 text-[#8A90A2]">
+                        <i class="fa-solid fa-bars text-xl"></i>
+                    </button>
+                    <div>
+                        <h2 class="text-lg font-semibold text-white">Infrastructure</h2>
+                        <p class="text-xs text-[#8A90A2]">Deployment configuration and compute node health</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-2">
+                        <div class="w-2 h-2 bg-success rounded-full"></div>
+                        <span class="text-xs text-[#8A90A2]">Engine healthy</span>
+                    </div>
+                    <div class="h-4 w-px bg-[#1F2430]"></div>
+                    <span class="text-xs text-[#8A90A2]">Version: <span class="text-white font-mono">v0.2.0-mojo-native</span></span>
+                </div>
+            </div>
+        </header>
+
+        <div id="content-area" class="p-4 lg:p-6">
+            <section id="deployment-modes-section" class="mb-6">
+                <div class="mb-4">
+                    <h3 class="text-sm font-semibold text-white mb-1">Deployment Modes</h3>
+                    <p class="text-xs text-[#8A90A2]">Select your infrastructure deployment strategy</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div id="algenta-cloud-card" class="bg-dark-200 border-2 border-success/40 rounded p-4 relative overflow-hidden">
+                        <div class="absolute inset-0 bg-success/5 pointer-events-none"></div>
+                        <div class="relative">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="w-10 h-10 bg-success/10 border border-success/30 rounded flex items-center justify-center">
+                                    <i class="fa-solid fa-cloud text-success text-lg"></i>
+                                </div>
+                                <span class="px-2 py-0.5 bg-success/20 border border-success/40 rounded text-success text-xs font-semibold">ACTIVE</span>
+                            </div>
+                            <h4 class="text-base font-semibold text-white mb-1">Algenta Cloud</h4>
+                            <p class="text-xs text-[#8A90A2] mb-4">Fully managed infrastructure with auto-scaling</p>
+                            <div class="space-y-2 mb-4">
+                                <div class="flex items-start gap-2 text-xs">
+                                    <i class="fa-solid fa-check text-success text-xs mt-0.5"></i>
+                                    <span class="text-[#E6E8EC]">Zero infrastructure management</span>
+                                </div>
+                                <div class="flex items-start gap-2 text-xs">
+                                    <i class="fa-solid fa-check text-success text-xs mt-0.5"></i>
+                                    <span class="text-[#E6E8EC]">Global edge deployment</span>
+                                </div>
+                                <div class="flex items-start gap-2 text-xs">
+                                    <i class="fa-solid fa-check text-success text-xs mt-0.5"></i>
+                                    <span class="text-[#E6E8EC]">Automatic failover & redundancy</span>
+                                </div>
+                                <div class="flex items-start gap-2 text-xs">
+                                    <i class="fa-solid fa-check text-success text-xs mt-0.5"></i>
+                                    <span class="text-[#E6E8EC]">99.99% SLA guarantee</span>
+                                </div>
+                            </div>
+                            <div class="pt-3 border-t border-[#1F2430]">
+                                <div class="text-xs text-[#8A90A2]">Region: <span class="text-white font-mono">us-east-1</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="self-hosted-card" class="bg-dark-200 border border-[#1F2430] rounded p-4 hover:border-primary/30 transition-colors">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="w-10 h-10 bg-dark-300 border border-[#1F2430] rounded flex items-center justify-center">
+                                <i class="fa-solid fa-server text-[#8A90A2] text-lg"></i>
+                            </div>
+                            <span class="px-2 py-0.5 bg-dark-300 border border-[#1F2430] rounded text-[#8A90A2] text-xs font-medium">AVAILABLE</span>
+                        </div>
+                        <h4 class="text-base font-semibold text-white mb-1">Self-Hosted</h4>
+                        <p class="text-xs text-[#8A90A2] mb-4">Deploy on your own infrastructure</p>
+                        <div class="space-y-2 mb-4">
+                            <div class="flex items-start gap-2 text-xs">
+                                <i class="fa-solid fa-check text-[#8A90A2] text-xs mt-0.5"></i>
+                                <span class="text-[#E6E8EC]">Full data sovereignty</span>
+                            </div>
+                            <div class="flex items-start gap-2 text-xs">
+                                <i class="fa-solid fa-check text-[#8A90A2] text-xs mt-0.5"></i>
+                                <span class="text-[#E6E8EC]">Custom network policies</span>
+                            </div>
+                            <div class="flex items-start gap-2 text-xs">
+                                <i class="fa-solid fa-check text-[#8A90A2] text-xs mt-0.5"></i>
+                                <span class="text-[#E6E8EC]">Air-gapped deployment option</span>
+                            </div>
+                            <div class="flex items-start gap-2 text-xs">
+                                <i class="fa-solid fa-check text-[#8A90A2] text-xs mt-0.5"></i>
+                                <span class="text-[#E6E8EC]">Kubernetes & Docker support</span>
+                            </div>
+                        </div>
+                        <div class="pt-3 border-t border-[#1F2430]">
+                            <button class="w-full px-3 py-2 bg-dark-300 hover:bg-dark-400 text-white rounded text-xs font-medium transition-colors border border-[#1F2430]">
+                                Configure Deployment
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="hybrid-card" class="bg-dark-200 border border-[#1F2430] rounded p-4 hover:border-primary/30 transition-colors">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="w-10 h-10 bg-dark-300 border border-[#1F2430] rounded flex items-center justify-center">
+                                <i class="fa-solid fa-code-branch text-[#8A90A2] text-lg"></i>
+                            </div>
+                            <span class="px-2 py-0.5 bg-dark-300 border border-[#1F2430] rounded text-[#8A90A2] text-xs font-medium">AVAILABLE</span>
+                        </div>
+                        <h4 class="text-base font-semibold text-white mb-1">Hybrid</h4>
+                        <p class="text-xs text-[#8A90A2] mb-4">Cloud control plane + on-prem compute</p>
+                        <div class="space-y-2 mb-4">
+                            <div class="flex items-start gap-2 text-xs">
+                                <i class="fa-solid fa-check text-[#8A90A2] text-xs mt-0.5"></i>
+                                <span class="text-[#E6E8EC]">Best of both worlds</span>
+                            </div>
+                            <div class="flex items-start gap-2 text-xs">
+                                <i class="fa-solid fa-check text-[#8A90A2] text-xs mt-0.5"></i>
+                                <span class="text-[#E6E8EC]">Sensitive data stays on-prem</span>
+                            </div>
+                            <div class="flex items-start gap-2 text-xs">
+                                <i class="fa-solid fa-check text-[#8A90A2] text-xs mt-0.5"></i>
+                                <span class="text-[#E6E8EC]">Cloud bursting for peak loads</span>
+                            </div>
+                            <div class="flex items-start gap-2 text-xs">
+                                <i class="fa-solid fa-check text-[#8A90A2] text-xs mt-0.5"></i>
+                                <span class="text-[#E6E8EC]">Unified management console</span>
+                            </div>
+                        </div>
+                        <div class="pt-3 border-t border-[#1F2430]">
+                            <button class="w-full px-3 py-2 bg-dark-300 hover:bg-dark-400 text-white rounded text-xs font-medium transition-colors border border-[#1F2430]">
+                                Contact Sales
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="engine-health-section" class="mb-6">
+                <div class="mb-4">
+                    <h3 class="text-sm font-semibold text-white mb-1">Engine Health</h3>
+                    <p class="text-xs text-[#8A90A2]">Real-time performance metrics</p>
+                </div>
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div id="latency-metric" class="bg-dark-200 border border-[#1F2430] rounded p-4">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-lg">⚡</span>
+                            <span class="text-xs text-[#8A90A2]">LATENCY</span>
+                        </div>
+                        <div class="text-2xl font-bold text-white mb-1">171ms</div>
+                        <div class="text-xs text-[#8A90A2]">p95: 427ms</div>
+                    </div>
+
+                    <div id="throughput-metric" class="bg-dark-200 border border-[#1F2430] rounded p-4">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-lg">🚀</span>
+                            <span class="text-xs text-[#8A90A2]">THROUGHPUT</span>
+                        </div>
+                        <div class="text-2xl font-bold text-white mb-1">352</div>
+                        <div class="text-xs text-[#8A90A2]">runs/min</div>
+                    </div>
+
+                    <div id="error-rate-metric" class="bg-dark-200 border border-[#1F2430] rounded p-4">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-lg">⚠</span>
+                            <span class="text-xs text-[#8A90A2]">ERROR RATE</span>
+                        </div>
+                        <div class="text-2xl font-bold text-white mb-1">0.02%</div>
+                        <div class="text-xs text-success">Within SLA</div>
+                    </div>
+
+                    <div id="uptime-metric" class="bg-dark-200 border border-[#1F2430] rounded p-4">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-lg">⏱</span>
+                            <span class="text-xs text-[#8A90A2]">UPTIME</span>
+                        </div>
+                        <div class="text-2xl font-bold text-white mb-1">99.90%</div>
+                        <div class="text-xs text-[#8A90A2]">Last 30 days</div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="compute-nodes-section">
+                <div class="bg-dark-200 border border-[#1F2430] rounded">
+                    <div class="px-4 py-3 border-b border-[#1F2430] flex items-center justify-between">
+                        <div>
+                            <h3 class="text-sm font-semibold text-white mb-0.5">Compute Nodes</h3>
+                            <p class="text-xs text-[#8A90A2]">Active execution infrastructure</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button class="px-3 py-1.5 bg-primary hover:bg-purple-700 text-white rounded text-xs font-medium transition-colors">
+                                <i class="fa-solid fa-plus mr-1"></i>Add Node
+                            </button>
+                            <button class="px-3 py-1.5 bg-dark-300 hover:bg-dark-400 text-white rounded text-xs font-medium transition-colors border border-[#1F2430]">
+                                <i class="fa-solid fa-rotate-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead>
+                                <tr class="border-b border-[#1F2430]">
+                                    <th class="px-4 py-2 text-left text-xs font-semibold text-[#8A90A2] uppercase tracking-wider">Node ID</th>
+                                    <th class="px-4 py-2 text-left text-xs font-semibold text-[#8A90A2] uppercase tracking-wider">Status</th>
+                                    <th class="px-4 py-2 text-left text-xs font-semibold text-[#8A90A2] uppercase tracking-wider">CPU</th>
+                                    <th class="px-4 py-2 text-left text-xs font-semibold text-[#8A90A2] uppercase tracking-wider">Memory</th>
+                                    <th class="px-4 py-2 text-left text-xs font-semibold text-[#8A90A2] uppercase tracking-wider">Throughput</th>
+                                    <th class="px-4 py-2 text-left text-xs font-semibold text-[#8A90A2] uppercase tracking-wider">Region</th>
+                                    <th class="px-4 py-2 text-left text-xs font-semibold text-[#8A90A2] uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="border-b border-[#1F2430] hover:bg-dark-300 transition-colors">
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-2">
+                                            <i class="fa-solid fa-desktop text-[#8A90A2]"></i>
+                                            <span class="text-sm text-white font-mono">algenta-primary</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-2 h-2 bg-success rounded-full"></div>
+                                            <span class="text-xs text-success font-medium">Healthy</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div>
+                                            <div class="text-xs text-white mb-1">42%</div>
+                                            <div class="w-20 bg-dark-400 rounded-full h-1">
+                                                <div class="bg-primary rounded-full h-1" style="width: 42%"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div>
+                                            <div class="text-xs text-white mb-1">58%</div>
+                                            <div class="w-20 bg-dark-400 rounded-full h-1">
+                                                <div class="bg-warning rounded-full h-1" style="width: 58%"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="text-xs text-[#8A90A2]">—</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="text-xs text-white font-mono">local</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-2">
+                                            <button class="px-2 py-1 bg-dark-300 hover:bg-dark-400 text-white rounded text-xs transition-colors border border-[#1F2430]">
+                                                <i class="fa-solid fa-file-lines mr-1"></i>Logs
+                                            </button>
+                                            <button class="px-2 py-1 bg-dark-300 hover:bg-dark-400 text-white rounded text-xs transition-colors border border-[#1F2430]">
+                                                <i class="fa-solid fa-rotate-right"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr class="border-b border-[#1F2430] hover:bg-dark-300 transition-colors">
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-2">
+                                            <i class="fa-solid fa-server text-[#8A90A2]"></i>
+                                            <span class="text-sm text-white font-mono">algenta-worker-01</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-2 h-2 bg-success rounded-full"></div>
+                                            <span class="text-xs text-success font-medium">Healthy</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div>
+                                            <div class="text-xs text-white mb-1">67%</div>
+                                            <div class="w-20 bg-dark-400 rounded-full h-1">
+                                                <div class="bg-warning rounded-full h-1" style="width: 67%"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div>
+                                            <div class="text-xs text-white mb-1">73%</div>
+                                            <div class="w-20 bg-dark-400 rounded-full h-1">
+                                                <div class="bg-warning rounded-full h-1" style="width: 73%"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="text-xs text-white">124 runs/min</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="text-xs text-white font-mono">us-east-1</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-2">
+                                            <button class="px-2 py-1 bg-dark-300 hover:bg-dark-400 text-white rounded text-xs transition-colors border border-[#1F2430]">
+                                                <i class="fa-solid fa-file-lines mr-1"></i>Logs
+                                            </button>
+                                            <button class="px-2 py-1 bg-dark-300 hover:bg-dark-400 text-white rounded text-xs transition-colors border border-[#1F2430]">
+                                                <i class="fa-solid fa-rotate-right"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr class="border-b border-[#1F2430] hover:bg-dark-300 transition-colors">
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-2">
+                                            <i class="fa-solid fa-server text-[#8A90A2]"></i>
+                                            <span class="text-sm text-white font-mono">algenta-worker-02</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-2 h-2 bg-warning rounded-full"></div>
+                                            <span class="text-xs text-warning font-medium">Warning</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div>
+                                            <div class="text-xs text-white mb-1">89%</div>
+                                            <div class="w-20 bg-dark-400 rounded-full h-1">
+                                                <div class="bg-danger rounded-full h-1" style="width: 89%"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div>
+                                            <div class="text-xs text-white mb-1">91%</div>
+                                            <div class="w-20 bg-dark-400 rounded-full h-1">
+                                                <div class="bg-danger rounded-full h-1" style="width: 91%"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="text-xs text-white">228 runs/min</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="text-xs text-white font-mono">us-west-2</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-2">
+                                            <button class="px-2 py-1 bg-dark-300 hover:bg-dark-400 text-white rounded text-xs transition-colors border border-[#1F2430]">
+                                                <i class="fa-solid fa-file-lines mr-1"></i>Logs
+                                            </button>
+                                            <button class="px-2 py-1 bg-dark-300 hover:bg-dark-400 text-white rounded text-xs transition-colors border border-[#1F2430]">
+                                                <i class="fa-solid fa-rotate-right"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="px-4 py-3 border-t border-[#1F2430] bg-dark-300">
+                        <p class="text-xs text-[#8A90A2]">
+                            <span class="text-white font-medium">3 nodes</span> · 
+                            <span class="text-white font-medium">3 live</span> · 
+                            Engine: <span class="text-white font-mono">binary</span>
+                        </p>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+</div>
+
+</body>
+</html>

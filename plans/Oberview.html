@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Algenta Overview Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/js/all.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdn.plot.ly/plotly-3.1.1.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            bg: '#0B0D12',
+                            card: '#11131A',
+                            border: '#1F2430',
+                            text: '#E6E8EC',
+                            muted: '#8A90A2',
+                            primary: '#6B42FC',
+                            success: '#00D395',
+                            warning: '#F59E0B',
+                            danger: '#EF4444',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    boxShadow: {
+                        'glow': '0 0 20px rgba(107, 66, 252, 0.15)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0B0D12;
+            color: #E6E8EC;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0B0D12;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1F2430;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #8A90A2;
+        }
+        .technical-border {
+            border: 1px solid #1F2430;
+        }
+        .card-bg {
+            background-color: #11131A;
+        }
+        .text-muted {
+            color: #8A90A2;
+        }
+        .text-primary {
+            color: #6B42FC;
+        }
+        .text-success {
+            color: #00D395;
+        }
+        .text-warning {
+            color: #F59E0B;
+        }
+        .text-danger {
+            color: #EF4444;
+        }
+        .glass-panel {
+            background: rgba(17, 19, 26, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(31, 36, 48, 0.8);
+        }
+    </style>
+</head>
+<body class="w-full min-h-screen m-0 p-0 flex flex-col md:flex-row antialiased selection:bg-brand-primary selection:text-white">
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="hidden md:flex flex-col w-[240px] fixed h-screen card-bg technical-border border-y-0 border-l-0 border-r z-50">
+        <div class="p-6 flex items-center gap-3 border-b border-brand-border h-20">
+            <div class="w-8 h-8 rounded bg-brand-primary flex items-center justify-center shadow-glow">
+                <i class="fa-solid fa-cube text-white text-sm"></i>
+            </div>
+            <span class="font-bold text-lg tracking-tight">ALGENTA</span>
+        </div>
+
+        <div class="flex-1 overflow-y-auto py-6 px-4 flex flex-col gap-8">
+            <!-- Navigation Group 1 -->
+            <div>
+                <h3 class="text-xs font-semibold text-brand-muted uppercase tracking-wider mb-3 px-3">Infrastructure</h3>
+                <nav class="flex flex-col gap-1">
+                    <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-brand-primary/10 text-brand-primary font-medium transition-colors">
+                        <i class="fa-solid fa-chart-line w-5"></i>
+                        Overview
+                    </a>
+                    <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-brand-muted hover:text-brand-text hover:bg-brand-border/50 transition-colors">
+                        <i class="fa-solid fa-server w-5"></i>
+                        Compute Nodes
+                    </a>
+                    <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-brand-muted hover:text-brand-text hover:bg-brand-border/50 transition-colors">
+                        <i class="fa-solid fa-network-wired w-5"></i>
+                        Network Map
+                    </a>
+                </nav>
+            </div>
+
+            <!-- Navigation Group 2 -->
+            <div>
+                <h3 class="text-xs font-semibold text-brand-muted uppercase tracking-wider mb-3 px-3">Execution</h3>
+                <nav class="flex flex-col gap-1">
+                    <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-brand-muted hover:text-brand-text hover:bg-brand-border/50 transition-colors">
+                        <i class="fa-solid fa-play w-5"></i>
+                        Active Runs
+                        <span class="ml-auto bg-brand-border text-xs px-2 py-0.5 rounded-full">12</span>
+                    </a>
+                    <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-brand-muted hover:text-brand-text hover:bg-brand-border/50 transition-colors">
+                        <i class="fa-solid fa-history w-5"></i>
+                        History
+                    </a>
+                    <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-brand-muted hover:text-brand-text hover:bg-brand-border/50 transition-colors">
+                        <i class="fa-solid fa-code-compare w-5"></i>
+                        Simulations
+                    </a>
+                </nav>
+            </div>
+
+            <!-- Navigation Group 3 -->
+            <div>
+                <h3 class="text-xs font-semibold text-brand-muted uppercase tracking-wider mb-3 px-3">Settings</h3>
+                <nav class="flex flex-col gap-1">
+                    <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-brand-muted hover:text-brand-text hover:bg-brand-border/50 transition-colors">
+                        <i class="fa-solid fa-sliders w-5"></i>
+                        Configuration
+                    </a>
+                    <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-brand-muted hover:text-brand-text hover:bg-brand-border/50 transition-colors">
+                        <i class="fa-solid fa-shield-halved w-5"></i>
+                        Access Control
+                    </a>
+                </nav>
+            </div>
+        </div>
+
+        <div class="p-4 border-t border-brand-border">
+            <div class="flex items-center gap-3 p-3 rounded-lg bg-brand-border/30 hover:bg-brand-border/50 transition-colors cursor-pointer">
+                <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/avatars/avatar-4.jpg" alt="User" class="w-8 h-8 rounded-full border border-brand-border">
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium truncate">DevOps Admin</p>
+                    <p class="text-xs text-brand-muted truncate">admin@algenta.io</p>
+                </div>
+                <i class="fa-solid fa-chevron-right text-xs text-brand-muted"></i>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main id="main-content" class="flex-1 md:ml-[240px] flex flex-col min-h-screen bg-brand-bg relative w-full">
+        
+        <!-- Mobile Header -->
+        <header class="md:hidden flex items-center justify-between p-4 card-bg border-b border-brand-border z-40 sticky top-0">
+            <div class="flex items-center gap-2">
+                <div class="w-6 h-6 rounded bg-brand-primary flex items-center justify-center">
+                    <i class="fa-solid fa-cube text-white text-[10px]"></i>
+                </div>
+                <span class="font-bold text-md tracking-tight">ALGENTA</span>
+            </div>
+            <button class="text-brand-text p-2">
+                <i class="fa-solid fa-bars text-xl"></i>
+            </button>
+        </header>
+
+        <!-- Topbar Desktop -->
+        <header id="topbar" class="hidden md:flex h-20 items-center justify-between px-8 border-b border-brand-border card-bg sticky top-0 z-40">
+            <div>
+                <h1 class="text-xl font-semibold tracking-tight">Overview</h1>
+                <p class="text-sm text-brand-muted">System performance and execution metrics</p>
+            </div>
+            
+            <div class="flex items-center gap-6">
+                <!-- Search -->
+                <div class="relative hidden lg:block">
+                    <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-brand-muted text-sm"></i>
+                    <input type="text" placeholder="Search resources, runs..." class="bg-brand-bg border border-brand-border rounded-md pl-9 pr-4 py-1.5 text-sm focus:outline-none focus:border-brand-primary w-64 text-brand-text placeholder-brand-muted transition-colors">
+                    <div class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                        <kbd class="hidden xl:inline-block bg-brand-border rounded px-1.5 py-0.5 text-[10px] font-mono text-brand-muted text-brand-muted">⌘</kbd>
+                        <kbd class="hidden xl:inline-block bg-brand-border rounded px-1.5 py-0.5 text-[10px] font-mono text-brand-muted text-brand-muted">K</kbd>
+                    </div>
+                </div>
+
+                <!-- Status Badge -->
+                <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-success/10 border border-brand-success/20">
+                    <div class="w-2 h-2 rounded-full bg-brand-success animate-pulse"></div>
+                    <span class="text-xs font-medium text-brand-success">Engine healthy ● v0.9.4</span>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex items-center gap-3 border-l border-brand-border pl-6">
+                    <button class="w-8 h-8 flex items-center justify-center rounded-md hover:bg-brand-border/50 text-brand-muted hover:text-brand-text transition-colors relative">
+                        <i class="fa-regular fa-bell"></i>
+                        <span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-brand-danger"></span>
+                    </button>
+                    <button class="w-8 h-8 flex items-center justify-center rounded-md hover:bg-brand-border/50 text-brand-muted hover:text-brand-text transition-colors">
+                        <i class="fa-solid fa-gear"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Dashboard Content -->
+        <div class="p-4 md:p-8 flex-1 flex flex-col gap-6 max-w-[1600px] mx-auto w-full">
+            
+            <!-- Row 1: Key Metrics (4 Cards) -->
+            <section id="metrics-row" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                
+                <!-- Card 1: Engine Status -->
+                <div class="card-bg rounded-xl border border-brand-border p-5 flex flex-col relative overflow-hidden group hover:border-brand-primary/50 transition-colors">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-brand-primary/5 rounded-full blur-3xl -mr-10 -mt-10 group-hover:bg-brand-primary/10 transition-colors"></div>
+                    <div class="flex justify-between items-start mb-4 relative z-10">
+                        <h3 class="text-sm font-medium text-brand-muted flex items-center gap-2">
+                            <i class="fa-solid fa-microchip"></i> ENGINE STATUS
+                        </h3>
+                        <button class="text-brand-muted hover:text-brand-text"><i class="fa-solid fa-ellipsis"></i></button>
+                    </div>
+                    <div class="mb-4 relative z-10">
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-3xl font-bold font-mono text-brand-text">255<span class="text-lg text-brand-muted">ms</span></span>
+                            <span class="text-xs text-brand-success flex items-center gap-1 bg-brand-success/10 px-1.5 py-0.5 rounded">
+                                <i class="fa-solid fa-arrow-down text-[10px]"></i> 12%
+                            </span>
+                        </div>
+                        <p class="text-xs text-brand-muted mt-1">p50 Latency</p>
+                    </div>
+                    <div class="mt-auto grid grid-cols-2 gap-y-2 gap-x-4 text-xs border-t border-brand-border/50 pt-3 relative z-10">
+                        <div><span class="text-brand-muted">p95:</span> <span class="font-mono text-brand-text float-right">842ms</span></div>
+                        <div><span class="text-brand-muted">Thru:</span> <span class="font-mono text-brand-text float-right">1.2k/s</span></div>
+                        <div><span class="text-brand-muted">Err:</span> <span class="font-mono text-brand-success float-right">0.01%</span></div>
+                        <div><span class="text-brand-muted">Mode:</span> <span class="font-mono text-brand-primary float-right">Mojo Sub</span></div>
+                    </div>
+                </div>
+
+                <!-- Card 2: Active Execution -->
+                <div class="card-bg rounded-xl border border-brand-border p-5 flex flex-col relative overflow-hidden group hover:border-brand-success/30 transition-colors">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-brand-success/5 rounded-full blur-3xl -mr-10 -mt-10 group-hover:bg-brand-success/10 transition-colors"></div>
+                    <div class="flex justify-between items-start mb-4 relative z-10">
+                        <h3 class="text-sm font-medium text-brand-muted flex items-center gap-2">
+                            <i class="fa-solid fa-server"></i> ACTIVE EXECUTION
+                        </h3>
+                        <span class="flex h-2 w-2 rounded-full bg-brand-success animate-ping absolute right-1 top-1"></span>
+                        <span class="flex h-2 w-2 rounded-full bg-brand-success absolute right-1 top-1"></span>
+                    </div>
+                    <div class="mb-4 relative z-10">
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-3xl font-bold font-mono text-brand-text">1 / 1</span>
+                        </div>
+                        <p class="text-xs text-brand-muted mt-1">Nodes Live</p>
+                    </div>
+                    <div class="mt-auto flex flex-col gap-2 border-t border-brand-border/50 pt-3 relative z-10">
+                        <div class="flex justify-between text-xs">
+                            <span class="text-brand-muted flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-brand-warning"></span> Queued</span>
+                            <span class="font-mono">45</span>
+                        </div>
+                        <div class="flex justify-between text-xs">
+                            <span class="text-brand-muted flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-brand-primary"></span> Running</span>
+                            <span class="font-mono">12</span>
+                        </div>
+                        <div class="flex justify-between text-xs">
+                            <span class="text-brand-muted flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-brand-success"></span> Completed (1h)</span>
+                            <span class="font-mono">8,492</span>
+                        </div>
+                        <div class="w-full bg-brand-border h-1.5 rounded-full mt-1 overflow-hidden flex">
+                            <div class="bg-brand-success h-full" style="width: 99.9%"></div>
+                        </div>
+                        <div class="text-[10px] text-right text-brand-muted">99.9% Uptime</div>
+                    </div>
+                </div>
+
+                <!-- Card 3: Decision Outputs -->
+                <div class="card-bg rounded-xl border border-brand-border p-5 flex flex-col relative overflow-hidden group hover:border-brand-warning/30 transition-colors">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-brand-warning/5 rounded-full blur-3xl -mr-10 -mt-10 group-hover:bg-brand-warning/10 transition-colors"></div>
+                    <div class="flex justify-between items-start mb-4 relative z-10">
+                        <h3 class="text-sm font-medium text-brand-muted flex items-center gap-2">
+                            <i class="fa-solid fa-code-branch"></i> DECISION OUTPUTS
+                        </h3>
+                        <div class="text-xs bg-brand-border/50 px-2 py-1 rounded text-brand-text">Last 24h</div>
+                    </div>
+                    
+                    <div class="flex-1 flex flex-col justify-center relative z-10 mb-2">
+                        <!-- Custom mini stacked bar -->
+                        <div class="flex h-8 w-full rounded-md overflow-hidden mb-2">
+                            <div class="bg-brand-success flex items-center justify-center text-[10px] font-bold text-brand-bg" style="width: 68%">68%</div>
+                            <div class="bg-brand-warning flex items-center justify-center text-[10px] font-bold text-brand-bg" style="width: 24%">24%</div>
+                            <div class="bg-brand-danger flex items-center justify-center text-[10px] font-bold text-white" style="width: 8%">8%</div>
+                        </div>
+                        <div class="flex justify-between text-xs px-1">
+                            <span class="text-brand-success">Proceed</span>
+                            <span class="text-brand-warning">Caution</span>
+                            <span class="text-brand-danger">Reject</span>
+                        </div>
+                    </div>
+
+                    <div class="mt-auto grid grid-cols-2 gap-4 border-t border-brand-border/50 pt-3 relative z-10">
+                        <div>
+                            <p class="text-xs text-brand-muted mb-1">Avg Confidence</p>
+                            <p class="font-mono text-sm">94.2%</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-brand-muted mb-1">Total Runs</p>
+                            <p class="font-mono text-sm">1.2M</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 4: Quota -->
+                <div class="card-bg rounded-xl border border-brand-border p-5 flex flex-col relative overflow-hidden group hover:border-brand-primary/30 transition-colors">
+                    <div class="flex justify-between items-start mb-4 relative z-10">
+                        <h3 class="text-sm font-medium text-brand-muted flex items-center gap-2">
+                            <i class="fa-solid fa-chart-pie"></i> QUOTA
+                        </h3>
+                        <span class="text-xs text-brand-primary bg-brand-primary/10 px-2 py-1 rounded-full border border-brand-primary/20">Enterprise</span>
+                    </div>
+                    
+                    <div class="flex-1 flex items-center justify-center relative z-10 py-2">
+                        <!-- Circular Progress (CSS based) -->
+                        <div class="relative w-24 h-24 flex items-center justify-center">
+                            <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                                <path class="text-brand-border" stroke-width="3" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                <path class="text-brand-primary" stroke-dasharray="82, 100" stroke-width="3" stroke-linecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                            </svg>
+                            <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                <span class="text-xl font-bold font-mono">82%</span>
+                                <span class="text-[9px] text-brand-muted uppercase">Used</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-auto flex flex-col gap-1.5 border-t border-brand-border/50 pt-3 relative z-10">
+                        <div class="flex justify-between text-xs">
+                            <span class="text-brand-muted">Compute Hours</span>
+                            <span class="font-mono"><span class="text-brand-text">8.2k</span> / 10k</span>
+                        </div>
+                        <div class="flex justify-between text-xs">
+                            <span class="text-brand-muted">Remaining</span>
+                            <span class="font-mono text-brand-success">1.8k hrs</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Row 2: Charts and Tables -->
+            <section id="analytics-row" class="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6">
+                
+                <!-- Simulation Volume Chart (8 cols) -->
+                <div class="lg:col-span-8 card-bg rounded-xl border border-brand-border p-5 flex flex-col">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                        <div>
+                            <h2 class="text-lg font-semibold tracking-tight">Simulation Volume</h2>
+                            <p class="text-sm text-brand-muted">Execution requests over the last 30 days</p>
+                        </div>
+                        <div class="flex items-center gap-2 bg-brand-bg rounded-lg p-1 border border-brand-border">
+                            <button class="px-3 py-1 text-xs font-medium rounded-md text-brand-muted hover:text-brand-text transition-colors">7D</button>
+                            <button class="px-3 py-1 text-xs font-medium rounded-md bg-brand-border text-brand-text shadow-sm">30D</button>
+                            <button class="px-3 py-1 text-xs font-medium rounded-md text-brand-muted hover:text-brand-text transition-colors">3M</button>
+                        </div>
+                    </div>
+                    
+                    <div class="flex-1 w-full min-h-[300px] relative">
+                        <div id="volume-chart" class="w-full h-full absolute inset-0"></div>
+                        <!-- Chart overlay stats -->
+                        <div class="absolute top-4 left-4 bg-brand-bg/80 backdrop-blur-sm border border-brand-border rounded-lg p-3 pointer-events-none">
+                            <p class="text-xs text-brand-muted mb-1">Total Volume</p>
+                            <p class="text-xl font-bold font-mono text-brand-primary">1,245,892</p>
+                            <p class="text-xs text-brand-success mt-1"><i class="fa-solid fa-arrow-up"></i> 14.5% vs prev 30d</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Runs Table (4 cols) -->
+                <div class="lg:col-span-4 card-bg rounded-xl border border-brand-border flex flex-col overflow-hidden">
+                    <div class="p-5 border-b border-brand-border flex justify-between items-center bg-brand-bg/30">
+                        <h2 class="text-lg font-semibold tracking-tight">Recent Runs</h2>
+                        <button class="text-xs text-brand-primary hover:text-brand-primary/80 transition-colors flex items-center gap-1">
+                            View All <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="flex-1 overflow-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-brand-border bg-brand-bg/50 text-xs text-brand-muted uppercase tracking-wider">
+                                    <th class="px-4 py-3 font-medium">Run ID</th>
+                                    <th class="px-4 py-3 font-medium">Mode</th>
+                                    <th class="px-4 py-3 font-medium">Status</th>
+                                    <th class="px-4 py-3 font-medium text-right">Duration</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-sm divide-y divide-brand-border/50">
+                                <tr class="hover:bg-brand-border/20 transition-colors group cursor-pointer">
+                                    <td class="px-4 py-3 font-mono text-brand-text group-hover:text-brand-primary transition-colors">#rn_8f2a</td>
+                                    <td class="px-4 py-3 text-brand-muted">Mojo</td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-brand-success"></span>
+                                            <span class="text-xs">Success</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3 text-right font-mono text-brand-muted">245ms</td>
+                                </tr>
+                                <tr class="hover:bg-brand-border/20 transition-colors group cursor-pointer">
+                                    <td class="px-4 py-3 font-mono text-brand-text group-hover:text-brand-primary transition-colors">#rn_8f29</td>
+                                    <td class="px-4 py-3 text-brand-muted">Python</td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-brand-success"></span>
+                                            <span class="text-xs">Success</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3 text-right font-mono text-brand-muted">1.2s</td>
+                                </tr>
+                                <tr class="hover:bg-brand-border/20 transition-colors group cursor-pointer">
+                                    <td class="px-4 py-3 font-mono text-brand-text group-hover:text-brand-primary transition-colors">#rn_8f28</td>
+                                    <td class="px-4 py-3 text-brand-muted">Mojo</td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-brand-danger"></span>
+                                            <span class="text-xs">Failed</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3 text-right font-mono text-brand-muted">85ms</td>
+                                </tr>
+                                <tr class="hover:bg-brand-border/20 transition-colors group cursor-pointer bg-brand-primary/5">
+                                    <td class="px-4 py-3 font-mono text-brand-text group-hover:text-brand-primary transition-colors">#rn_8f27</td>
+                                    <td class="px-4 py-3 text-brand-muted">Mojo</td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-brand-warning animate-pulse"></span>
+                                            <span class="text-xs">Running</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3 text-right font-mono text-brand-muted">...</td>
+                                </tr>
+                                <tr class="hover:bg-brand-border/20 transition-colors group cursor-pointer">
+                                    <td class="px-4 py-3 font-mono text-brand-text group-hover:text-brand-primary transition-colors">#rn_8f26</td>
+                                    <td class="px-4 py-3 text-brand-muted">Rust</td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-brand-success"></span>
+                                            <span class="text-xs">Success</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3 text-right font-mono text-brand-muted">112ms</td>
+                                </tr>
+                                <tr class="hover:bg-brand-border/20 transition-colors group cursor-pointer">
+                                    <td class="px-4 py-3 font-mono text-brand-text group-hover:text-brand-primary transition-colors">#rn_8f25</td>
+                                    <td class="px-4 py-3 text-brand-muted">Mojo</td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-brand-success"></span>
+                                            <span class="text-xs">Success</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3 text-right font-mono text-brand-muted">230ms</td>
+                                </tr>
+                                <tr class="hover:bg-brand-border/20 transition-colors group cursor-pointer">
+                                    <td class="px-4 py-3 font-mono text-brand-text group-hover:text-brand-primary transition-colors">#rn_8f24</td>
+                                    <td class="px-4 py-3 text-brand-muted">Mojo</td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-brand-success"></span>
+                                            <span class="text-xs">Success</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3 text-right font-mono text-brand-muted">241ms</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Row 3: Advanced Analytics -->
+            <section id="advanced-analytics" class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-8">
+                
+                <!-- System Health Timeline -->
+                <div class="card-bg rounded-xl border border-brand-border p-5 flex flex-col">
+                    <div class="flex justify-between items-center mb-6">
+                        <div>
+                            <h2 class="text-lg font-semibold tracking-tight">System Health Timeline</h2>
+                            <p class="text-xs text-brand-muted mt-1">Latency distribution & error spikes (24h)</p>
+                        </div>
+                        <div class="flex gap-3 text-xs">
+                            <span class="flex items-center gap-1.5 text-brand-muted"><span class="w-2 h-2 rounded-full bg-brand-primary"></span> p50</span>
+                            <span class="flex items-center gap-1.5 text-brand-muted"><span class="w-2 h-2 rounded-full bg-[#3b82f6]"></span> p95</span>
+                            <span class="flex items-center gap-1.5 text-brand-muted"><span class="w-2 h-2 rounded-full bg-brand-danger"></span> Errors</span>
+                        </div>
+                    </div>
+                    <div class="flex-1 w-full min-h-[250px] relative">
+                        <div id="health-timeline-chart" class="w-full h-full absolute inset-0"></div>
+                    </div>
+                </div>
+
+                <!-- Execution Distribution -->
+                <div class="card-bg rounded-xl border border-brand-border p-5 flex flex-col">
+                    <div class="flex justify-between items-center mb-6">
+                        <div>
+                            <h2 class="text-lg font-semibold tracking-tight">Execution Distribution</h2>
+                            <p class="text-xs text-brand-muted mt-1">Categorized by runtime mode</p>
+                        </div>
+                        <button class="text-brand-muted hover:text-brand-text"><i class="fa-solid fa-expand"></i></button>
+                    </div>
+                    <div class="flex-1 w-full min-h-[250px] relative">
+                        <div id="execution-dist-chart" class="w-full h-full absolute inset-0"></div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- Plotly Chart Scripts -->
+    <script>
+        window.addEventListener('load', function() {
+            try {
+                // Common layout settings for dark theme
+                const commonLayout = {
+                    plot_bgcolor: 'transparent',
+                    paper_bgcolor: 'transparent',
+                    font: { family: 'Inter, sans-serif', color: '#8A90A2', size: 11 },
+                    margin: { t: 10, r: 10, b: 30, l: 40 },
+                    showlegend: false,
+                    hovermode: 'x unified',
+                    hoverlabel: {
+                        bgcolor: '#11131A',
+                        bordercolor: '#1F2430',
+                        font: { family: 'JetBrains Mono, monospace', size: 12, color: '#E6E8EC' }
+                    }
+                };
+
+                const commonXAxis = {
+                    showgrid: false,
+                    zeroline: false,
+                    linecolor: '#1F2430',
+                    tickcolor: '#1F2430',
+                };
+
+                const commonYAxis = {
+                    showgrid: true,
+                    gridcolor: '#1F2430',
+                    zeroline: false,
+                    linecolor: 'transparent',
+                };
+
+                // 1. Simulation Volume Chart (Smooth Line with Gradient Fill)
+                const volumeData = [{
+                    type: 'scatter',
+                    mode: 'lines',
+                    x: Array.from({length: 30}, (_, i) => `Day ${i+1}`),
+                    y: Array.from({length: 30}, () => Math.floor(Math.random() * 50000) + 20000),
+                    line: { color: '#6B42FC', width: 3, shape: 'spline', smoothing: 1.3 },
+                    fill: 'tozeroy',
+                    fillcolor: 'rgba(107, 66, 252, 0.1)', // Fallback if gradient not supported perfectly
+                    name: 'Volume'
+                }];
+
+                const volumeLayout = {
+                    ...commonLayout,
+                    xaxis: { ...commonXAxis, tickmode: 'auto', nticks: 10 },
+                    yaxis: { ...commonYAxis, tickformat: '.2s' },
+                };
+
+                Plotly.newPlot('volume-chart', volumeData, volumeLayout, {responsive: true, displayModeBar: false});
+
+                // 2. System Health Timeline (Multi-line + Spikes)
+                const timePoints = Array.from({length: 24}, (_, i) => `${i}:00`);
+                const p50Data = Array.from({length: 24}, () => Math.floor(Math.random() * 100) + 200);
+                const p95Data = p50Data.map(val => val + Math.floor(Math.random() * 300) + 100);
+                
+                // Add a simulated error spike
+                const errorSpikes = Array.from({length: 24}, () => 0);
+                errorSpikes[14] = 45; // Spike at 14:00
+                errorSpikes[15] = 12;
+
+                const healthData = [
+                    {
+                        type: 'scatter',
+                        mode: 'lines',
+                        x: timePoints,
+                        y: p95Data,
+                        line: { color: '#3b82f6', width: 2, shape: 'spline' },
+                        name: 'p95'
+                    },
+                    {
+                        type: 'scatter',
+                        mode: 'lines',
+                        x: timePoints,
+                        y: p50Data,
+                        line: { color: '#6B42FC', width: 2, shape: 'spline' },
+                        name: 'p50'
+                    },
+                    {
+                        type: 'bar',
+                        x: timePoints,
+                        y: errorSpikes,
+                        marker: { color: '#EF4444' },
+                        name: 'Errors',
+                        yaxis: 'y2',
+                        opacity: 0.7
+                    }
+                ];
+
+                const healthLayout = {
+                    ...commonLayout,
+                    margin: { t: 10, r: 40, b: 30, l: 40 },
+                    xaxis: { ...commonXAxis, nticks: 8 },
+                    yaxis: { ...commonYAxis, title: 'Latency (ms)', titlefont: {size: 10} },
+                    yaxis2: {
+                        title: 'Error Count',
+                        titlefont: {size: 10},
+                        overlaying: 'y',
+                        side: 'right',
+                        showgrid: false,
+                        range: [0, 100]
+                    }
+                };
+
+                Plotly.newPlot('health-timeline-chart', healthData, healthLayout, {responsive: true, displayModeBar: false});
+
+                // 3. Execution Distribution (Horizontal Bar / Histogram style)
+                const distData = [{
+                    type: 'bar',
+                    orientation: 'h',
+                    y: ['Python (Legacy)', 'Rust (Core)', 'Mojo (Compute)', 'WASM (Edge)'],
+                    x: [125000, 450000, 850000, 220000],
+                    marker: {
+                        color: ['#1F2430', '#F59E0B', '#6B42FC', '#00D395'],
+                        line: { width: 0 }
+                    },
+                    text: ['125k', '450k', '850k', '220k'],
+                    textposition: 'auto',
+                    insidetextanchor: 'end',
+                    textfont: { family: 'JetBrains Mono', color: '#E6E8EC' }
+                }];
+
+                const distLayout = {
+                    ...commonLayout,
+                    margin: { t: 10, r: 20, b: 30, l: 100 },
+                    xaxis: { ...commonXAxis, showgrid: true, gridcolor: '#1F2430' },
+                    yaxis: { showgrid: false, linecolor: 'transparent', tickfont: {size: 12, color: '#E6E8EC'} }
+                };
+
+                Plotly.newPlot('execution-dist-chart', distData, distLayout, {responsive: true, displayModeBar: false});
+
+            } catch(e) {
+                console.error("Plotly chart rendering error:", e);
+            }
+        });
+    </script>
+</body>
+</html>

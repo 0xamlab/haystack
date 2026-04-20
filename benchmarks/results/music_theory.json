@@ -1,0 +1,109 @@
+{
+  "lib": "music_theory",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 8,
+  "overall_speedup_x": 245.33,
+  "total_py_ns": 5691.7,
+  "total_mojo_ns": 23.2,
+  "elapsed_s": 1.82,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "frequency_from_midi",
+      "py_ns": 3701.737,
+      "mojo_ns": 16.1,
+      "speedup_x": 229.92,
+      "py_result": 10.913382,
+      "py_error": null
+    },
+    {
+      "function": "midi_from_frequency",
+      "py_ns": null,
+      "mojo_ns": 1.0,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "module 'math' has no attribute 'math'"
+    },
+    {
+      "function": "cents_between",
+      "py_ns": null,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "module 'math' has no attribute 'math'"
+    },
+    {
+      "function": "semitones_between",
+      "py_ns": 173.133,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "note_in_scale",
+      "py_ns": 281.079,
+      "mojo_ns": 1.0,
+      "speedup_x": 281.08,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "interval_ratio_just",
+      "py_ns": 112.621,
+      "mojo_ns": 1.0,
+      "speedup_x": 112.62,
+      "py_result": 1.333333,
+      "py_error": null
+    },
+    {
+      "function": "beat_frequency",
+      "py_ns": 113.942,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "tempo_to_beat_duration",
+      "py_ns": 119.008,
+      "mojo_ns": 1.0,
+      "speedup_x": 119.01,
+      "py_result": 120.0,
+      "py_error": null
+    },
+    {
+      "function": "measures_duration",
+      "py_ns": 775.692,
+      "mojo_ns": 1.1,
+      "speedup_x": 705.17,
+      "py_result": 3000.0,
+      "py_error": null
+    },
+    {
+      "function": "transpose_midi",
+      "py_ns": 300.629,
+      "mojo_ns": 1.0,
+      "speedup_x": 300.63,
+      "py_result": 10.0,
+      "py_error": null
+    },
+    {
+      "function": "octave_from_midi",
+      "py_ns": 154.454,
+      "mojo_ns": 1.0,
+      "speedup_x": 154.45,
+      "py_result": -1.0,
+      "py_error": null
+    },
+    {
+      "function": "is_enharmonic",
+      "py_ns": 246.479,
+      "mojo_ns": 1.0,
+      "speedup_x": 246.48,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

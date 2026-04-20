@@ -1,0 +1,109 @@
+{
+  "lib": "paper_science",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 11,
+  "overall_speedup_x": 40.57,
+  "total_py_ns": 2288.36,
+  "total_mojo_ns": 56.4,
+  "elapsed_s": 1.02,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "basis_weight",
+      "py_ns": 106.904,
+      "mojo_ns": 2.4,
+      "speedup_x": 44.54,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "caliper_to_density",
+      "py_ns": 94.408,
+      "mojo_ns": 1.1,
+      "speedup_x": 85.83,
+      "py_result": 0.001,
+      "py_error": null
+    },
+    {
+      "function": "bulk",
+      "py_ns": 95.079,
+      "mojo_ns": 1.1,
+      "speedup_x": 86.44,
+      "py_result": 1000.0,
+      "py_error": null
+    },
+    {
+      "function": "tearing_resistance_index",
+      "py_ns": 87.671,
+      "mojo_ns": 42.7,
+      "speedup_x": 2.05,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "tensile_index",
+      "py_ns": 745.604,
+      "mojo_ns": 1.2,
+      "speedup_x": 621.34,
+      "py_result": 1000.0,
+      "py_error": null
+    },
+    {
+      "function": "burst_index",
+      "py_ns": 94.233,
+      "mojo_ns": 2.4,
+      "speedup_x": 39.26,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "freeness_csf",
+      "py_ns": 84.846,
+      "mojo_ns": 1.1,
+      "speedup_x": 77.13,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "kappa_number_to_lignin",
+      "py_ns": 98.0,
+      "mojo_ns": 1.1,
+      "speedup_x": 89.09,
+      "py_result": 0.075,
+      "py_error": null
+    },
+    {
+      "function": "pulp_yield",
+      "py_ns": 113.796,
+      "mojo_ns": 1.1,
+      "speedup_x": 103.45,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "moisture_content_paper",
+      "py_ns": 104.183,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "stiffness_index",
+      "py_ns": 669.775,
+      "mojo_ns": 1.1,
+      "speedup_x": 608.89,
+      "py_result": 4.0,
+      "py_error": null
+    },
+    {
+      "function": "recycled_fiber_content",
+      "py_ns": 98.042,
+      "mojo_ns": 1.1,
+      "speedup_x": 89.13,
+      "py_result": 100.0,
+      "py_error": null
+    }
+  ]
+}

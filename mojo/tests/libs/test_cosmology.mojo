@@ -1,0 +1,58 @@
+"""test_cosmology.mojo — auto-generated tests for cosmology library."""
+from std.math import isnan, isinf
+from cosmology import hubble_velocity, hubble_distance, lookback_time_approx, comoving_distance_approx, luminosity_distance, angular_diameter_distance, redshift_from_wavelength, cosmic_scale_factor, critical_density, schwarzschild_radius, stefan_boltzmann_luminosity, wien_peak_wavelength
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_hubble_velocity = hubble_velocity(0.5, 0.5)
+    if is_finite(_v_hubble_velocity): passed += 1; print("  ✅ cosmology::hubble_velocity =", _v_hubble_velocity)
+    else: failed += 1; print("  ❌ cosmology::hubble_velocity → non-finite:", _v_hubble_velocity)
+    var _v_hubble_distance = hubble_distance(0.5, 0.5)
+    if is_finite(_v_hubble_distance): passed += 1; print("  ✅ cosmology::hubble_distance =", _v_hubble_distance)
+    else: failed += 1; print("  ❌ cosmology::hubble_distance → non-finite:", _v_hubble_distance)
+    var _v_lookback_time_approx = lookback_time_approx(0.5, 0.5)
+    if is_finite(_v_lookback_time_approx): passed += 1; print("  ✅ cosmology::lookback_time_approx =", _v_lookback_time_approx)
+    else: failed += 1; print("  ❌ cosmology::lookback_time_approx → non-finite:", _v_lookback_time_approx)
+    var _v_comoving_distance_approx = comoving_distance_approx(0.5, 0.5, 0.5)
+    if is_finite(_v_comoving_distance_approx): passed += 1; print("  ✅ cosmology::comoving_distance_approx =", _v_comoving_distance_approx)
+    else: failed += 1; print("  ❌ cosmology::comoving_distance_approx → non-finite:", _v_comoving_distance_approx)
+    var _v_luminosity_distance = luminosity_distance(0.5, 0.5)
+    if is_finite(_v_luminosity_distance): passed += 1; print("  ✅ cosmology::luminosity_distance =", _v_luminosity_distance)
+    else: failed += 1; print("  ❌ cosmology::luminosity_distance → non-finite:", _v_luminosity_distance)
+    var _v_angular_diameter_distance = angular_diameter_distance(0.5, 0.5)
+    if is_finite(_v_angular_diameter_distance): passed += 1; print("  ✅ cosmology::angular_diameter_distance =", _v_angular_diameter_distance)
+    else: failed += 1; print("  ❌ cosmology::angular_diameter_distance → non-finite:", _v_angular_diameter_distance)
+    var _v_redshift_from_wavelength = redshift_from_wavelength(0.5, 0.5)
+    if is_finite(_v_redshift_from_wavelength): passed += 1; print("  ✅ cosmology::redshift_from_wavelength =", _v_redshift_from_wavelength)
+    else: failed += 1; print("  ❌ cosmology::redshift_from_wavelength → non-finite:", _v_redshift_from_wavelength)
+    var _v_cosmic_scale_factor = cosmic_scale_factor(0.5)
+    if is_finite(_v_cosmic_scale_factor): passed += 1; print("  ✅ cosmology::cosmic_scale_factor =", _v_cosmic_scale_factor)
+    else: failed += 1; print("  ❌ cosmology::cosmic_scale_factor → non-finite:", _v_cosmic_scale_factor)
+    var _v_critical_density = critical_density(0.5)
+    if is_finite(_v_critical_density): passed += 1; print("  ✅ cosmology::critical_density =", _v_critical_density)
+    else: failed += 1; print("  ❌ cosmology::critical_density → non-finite:", _v_critical_density)
+    var _v_schwarzschild_radius = schwarzschild_radius(0.5)
+    if is_finite(_v_schwarzschild_radius): passed += 1; print("  ✅ cosmology::schwarzschild_radius =", _v_schwarzschild_radius)
+    else: failed += 1; print("  ❌ cosmology::schwarzschild_radius → non-finite:", _v_schwarzschild_radius)
+    var _v_stefan_boltzmann_luminosity = stefan_boltzmann_luminosity(0.5, 0.5)
+    if is_finite(_v_stefan_boltzmann_luminosity): passed += 1; print("  ✅ cosmology::stefan_boltzmann_luminosity =", _v_stefan_boltzmann_luminosity)
+    else: failed += 1; print("  ❌ cosmology::stefan_boltzmann_luminosity → non-finite:", _v_stefan_boltzmann_luminosity)
+    var _v_wien_peak_wavelength = wien_peak_wavelength(0.5)
+    if is_finite(_v_wien_peak_wavelength): passed += 1; print("  ✅ cosmology::wien_peak_wavelength =", _v_wien_peak_wavelength)
+    else: failed += 1; print("  ❌ cosmology::wien_peak_wavelength → non-finite:", _v_wien_peak_wavelength)
+
+    print("  [cosmology] Passed:", passed, "Failed:", failed)

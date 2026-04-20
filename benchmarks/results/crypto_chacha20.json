@@ -1,0 +1,77 @@
+{
+  "lib": "crypto_chacha20",
+  "status": "ok",
+  "n_functions": 8,
+  "n_compared": 3,
+  "overall_speedup_x": 26.7,
+  "total_py_ns": 3177.4,
+  "total_mojo_ns": 119.0,
+  "elapsed_s": 1.05,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "rotl32",
+      "py_ns": 370.779,
+      "mojo_ns": 1.1,
+      "speedup_x": 337.07,
+      "py_result": 160.0,
+      "py_error": null
+    },
+    {
+      "function": "quarter_round",
+      "py_ns": null,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list index out of range"
+    },
+    {
+      "function": "chacha20_init_state",
+      "py_ns": null,
+      "mojo_ns": 102.2,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list index out of range"
+    },
+    {
+      "function": "add_states",
+      "py_ns": 1590.812,
+      "mojo_ns": 60.8,
+      "speedup_x": 26.16,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "xor_states",
+      "py_ns": 1215.804,
+      "mojo_ns": 57.1,
+      "speedup_x": 21.29,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "chacha20_block",
+      "py_ns": null,
+      "mojo_ns": 468.5,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list index out of range"
+    },
+    {
+      "function": "chacha20_encrypt",
+      "py_ns": null,
+      "mojo_ns": 631.5,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list index out of range"
+    },
+    {
+      "function": "chacha20_decrypt",
+      "py_ns": null,
+      "mojo_ns": 797.9,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "list index out of range"
+    }
+  ]
+}

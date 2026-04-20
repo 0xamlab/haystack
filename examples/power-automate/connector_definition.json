@@ -1,0 +1,181 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Algenta",
+    "description": "Run Monte Carlo simulations and get structured decision recommendations with a single API call.",
+    "version": "1.0.0"
+  },
+  "host": "api.algenta.ai",
+  "basePath": "/",
+  "schemes": ["https"],
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
+  "paths": {
+    "/v1/simulate": {
+      "post": {
+        "summary": "Run Simulation",
+        "description": "Execute a Monte Carlo simulation and get a decision recommendation. Use mode 'auto' with variable ranges for the simplest setup.",
+        "operationId": "RunSimulation",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["mode"],
+              "properties": {
+                "mode": {
+                  "type": "string",
+                  "enum": ["auto", "expert"],
+                  "description": "Simulation mode",
+                  "x-ms-summary": "Mode",
+                  "default": "auto"
+                },
+                "scenario": {
+                  "type": "object",
+                  "description": "Scenario definition (for auto mode)",
+                  "x-ms-summary": "Scenario",
+                  "properties": {
+                    "variables": {
+                      "type": "object",
+                      "description": "Named variables with low/high bounds",
+                      "x-ms-summary": "Variables"
+                    },
+                    "objective": {
+                      "type": "string",
+                      "description": "Optimization objective",
+                      "x-ms-summary": "Objective",
+                      "enum": ["maximize_net_value", "maximize_revenue", "minimize_cost", "minimize_risk"],
+                      "default": "maximize_net_value"
+                    }
+                  }
+                },
+                "runs": {
+                  "type": "integer",
+                  "description": "Number of simulations to run",
+                  "x-ms-summary": "Runs",
+                  "default": 10000
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Simulation completed successfully",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "run_id": {
+                  "type": "string",
+                  "x-ms-summary": "Run ID"
+                },
+                "recommended_action": {
+                  "type": "string",
+                  "x-ms-summary": "Recommended Action",
+                  "description": "proceed, caution, or reject"
+                },
+                "confidence": {
+                  "type": "number",
+                  "x-ms-summary": "Confidence",
+                  "description": "0.0 to 1.0"
+                },
+                "rationale": {
+                  "type": "string",
+                  "x-ms-summary": "Rationale"
+                },
+                "expected_value": {
+                  "type": "number",
+                  "x-ms-summary": "Expected Value"
+                },
+                "probability_of_loss": {
+                  "type": "number",
+                  "x-ms-summary": "Probability of Loss"
+                },
+                "scenarios_run": {
+                  "type": "integer",
+                  "x-ms-summary": "Scenarios Run"
+                }
+              }
+            }
+          }
+        },
+        "security": [{"apiKey": []}]
+      }
+    },
+    "/v1/recommend": {
+      "post": {
+        "summary": "Get Recommendation",
+        "description": "Compare 2-10 named decision options and get a ranked recommendation.",
+        "operationId": "GetRecommendation",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["actions"],
+              "properties": {
+                "actions": {
+                  "type": "array",
+                  "x-ms-summary": "Actions",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {"type": "string"},
+                      "request": {"type": "object"}
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recommendation returned",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "recommended_action": {"type": "string", "x-ms-summary": "Recommended Action"},
+                "confidence": {"type": "number", "x-ms-summary": "Confidence"},
+                "rationale": {"type": "string", "x-ms-summary": "Rationale"}
+              }
+            }
+          }
+        },
+        "security": [{"apiKey": []}]
+      }
+    },
+    "/v1/health": {
+      "get": {
+        "summary": "Health Check",
+        "description": "Check if the Decision Engine API is available.",
+        "operationId": "HealthCheck",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "API is healthy",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {"type": "string", "x-ms-summary": "Status"}
+              }
+            }
+          }
+        },
+        "security": [{"apiKey": []}]
+      }
+    }
+  },
+  "securityDefinitions": {
+    "apiKey": {
+      "type": "apiKey",
+      "in": "header",
+      "name": "X-API-Key"
+    }
+  },
+  "_comment": "Import this connector definition in Power Automate → Custom Connectors → Import from OpenAPI file. Set your API key in the connector's security settings."
+}

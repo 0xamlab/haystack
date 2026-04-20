@@ -1,0 +1,13 @@
+Column,Non-Missing Count,Non-Missing (%),Data Type,Most Frequent,Summary,Earliest,Latest
+CLEANED_PART_NUMBER,7034,100.0,object,0007040000000,,,
+PART_NUMBER,7034,100.0,object,'-PIC18F25K80-H/MM,,,
+ALTERNATE_PN,432,6.14,object,,Unsupported column type,,
+DESCRIPTION,4972,70.69,object,,Unsupported column type,,
+CONDITION,5176,73.59,object,,Unsupported column type,,
+PRODUCT_LINE,5019,71.35,object,,Unsupported column type,,
+MFG_NAME,5198,73.9,object,,Unsupported column type,,
+OEM,3139,44.63,object,,Unsupported column type,,
+MOQ,480,6.82,object,,Unsupported column type,,
+LEAD_TIME,2753,39.14,object,,Unsupported column type,,
+UNIT_COST,1771,25.18,object,,Unsupported column type,,
+DATE,6547,93.08,datetime64[ns],,,2019-09-28 07:36:13,2026-06-05

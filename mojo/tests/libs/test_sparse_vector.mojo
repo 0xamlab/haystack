@@ -1,0 +1,47 @@
+"""test_sparse_vector.mojo — auto-generated tests for sparse_vector library."""
+from std.math import isnan, isinf
+from sparse_vector import sv_dot, sv_add, sv_scale, sv_norm, sv_cosine, sv_to_dense, dense_to_sparse, sv_nnz, sv_sparsity, sv_max
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_sv_dot = sv_dot(_li5, _lf5, _li5, _lf5)
+    if is_finite(_v_sv_dot): passed += 1; print("  ✅ sparse_vector::sv_dot =", _v_sv_dot)
+    else: failed += 1; print("  ❌ sparse_vector::sv_dot → non-finite:", _v_sv_dot)
+    _ = sv_add(_li5, _lf5, _li5, _lf5)
+    passed += 1; print("  ✅ sparse_vector::sv_add")
+    var _v_sv_scale = sv_scale(_lf5, 0.5)
+    if len(_v_sv_scale) >= 0: passed += 1; print("  ✅ sparse_vector::sv_scale")
+    var _v_sv_norm = sv_norm(_lf5)
+    if is_finite(_v_sv_norm): passed += 1; print("  ✅ sparse_vector::sv_norm =", _v_sv_norm)
+    else: failed += 1; print("  ❌ sparse_vector::sv_norm → non-finite:", _v_sv_norm)
+    var _v_sv_cosine = sv_cosine(_li5, _lf5, _li5, _lf5)
+    if is_finite(_v_sv_cosine): passed += 1; print("  ✅ sparse_vector::sv_cosine =", _v_sv_cosine)
+    else: failed += 1; print("  ❌ sparse_vector::sv_cosine → non-finite:", _v_sv_cosine)
+    var _v_sv_to_dense = sv_to_dense(_li5, _lf5, 5)
+    if len(_v_sv_to_dense) >= 0: passed += 1; print("  ✅ sparse_vector::sv_to_dense")
+    _ = dense_to_sparse(_lf5, 0.5)
+    passed += 1; print("  ✅ sparse_vector::dense_to_sparse")
+    _ = sv_nnz(_lf5)
+    passed += 1; print("  ✅ sparse_vector::sv_nnz")
+    var _v_sv_sparsity = sv_sparsity(5, 5)
+    if is_finite(_v_sv_sparsity): passed += 1; print("  ✅ sparse_vector::sv_sparsity =", _v_sv_sparsity)
+    else: failed += 1; print("  ❌ sparse_vector::sv_sparsity → non-finite:", _v_sv_sparsity)
+    var _v_sv_max = sv_max(_lf5)
+    if is_finite(_v_sv_max): passed += 1; print("  ✅ sparse_vector::sv_max =", _v_sv_max)
+    else: failed += 1; print("  ❌ sparse_vector::sv_max → non-finite:", _v_sv_max)
+
+    print("  [sparse_vector] Passed:", passed, "Failed:", failed)

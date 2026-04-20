@@ -1,0 +1,29 @@
+{
+  "lib": "crypto_uuid",
+  "status": "ok",
+  "n_functions": 2,
+  "n_compared": 2,
+  "overall_speedup_x": 7.72,
+  "total_py_ns": 112214.56,
+  "total_mojo_ns": 14538.9,
+  "elapsed_s": 4.19,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "uuid4",
+      "py_ns": 50951.475,
+      "mojo_ns": 2042.1,
+      "speedup_x": 24.95,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "uuid4_hex",
+      "py_ns": 61263.087,
+      "mojo_ns": 12496.8,
+      "speedup_x": 4.9,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

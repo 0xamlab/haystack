@@ -1,0 +1,93 @@
+{
+  "lib": "ultrasonics",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 8,
+  "overall_speedup_x": 95.79,
+  "total_py_ns": 996.19,
+  "total_mojo_ns": 10.4,
+  "elapsed_s": 2.64,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "acoustic_impedance",
+      "py_ns": 147.521,
+      "mojo_ns": 0.9,
+      "speedup_x": 163.91,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "reflection_coefficient",
+      "py_ns": 174.137,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "attenuation_loss",
+      "py_ns": 73.6,
+      "mojo_ns": 1.0,
+      "speedup_x": 73.6,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "doppler_frequency_shift",
+      "py_ns": 106.242,
+      "mojo_ns": 1.1,
+      "speedup_x": 96.58,
+      "py_result": 0.877583,
+      "py_error": null
+    },
+    {
+      "function": "pulse_repetition_frequency",
+      "py_ns": 93.9,
+      "mojo_ns": 1.0,
+      "speedup_x": 93.9,
+      "py_result": 50.0,
+      "py_error": null
+    },
+    {
+      "function": "axial_resolution",
+      "py_ns": 83.079,
+      "mojo_ns": 1.0,
+      "speedup_x": 83.08,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "lateral_resolution",
+      "py_ns": 137.254,
+      "mojo_ns": 0.9,
+      "speedup_x": 152.5,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "acoustic_pressure_spl",
+      "py_ns": null,
+      "mojo_ns": 0.9,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "module 'math' has no attribute 'math'"
+    },
+    {
+      "function": "ultrasound_power",
+      "py_ns": 179.35,
+      "mojo_ns": 3.6,
+      "speedup_x": 49.82,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "thermal_index",
+      "py_ns": 175.242,
+      "mojo_ns": 0.9,
+      "speedup_x": 194.71,
+      "py_result": 0.000595,
+      "py_error": null
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "lib": "optimize",
+  "status": "ok",
+  "n_functions": 8,
+  "n_compared": 8,
+  "overall_speedup_x": 681.91,
+  "total_py_ns": 47324.33,
+  "total_mojo_ns": 69.4,
+  "elapsed_s": 1.53,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "eval_poly",
+      "py_ns": 823.883,
+      "mojo_ns": 2.3,
+      "speedup_x": 358.21,
+      "py_result": 1.04375,
+      "py_error": null
+    },
+    {
+      "function": "eval_poly_deriv",
+      "py_ns": 3387.704,
+      "mojo_ns": 2.2,
+      "speedup_x": 1539.87,
+      "py_result": 1.75,
+      "py_error": null
+    },
+    {
+      "function": "minimize_scalar_golden",
+      "py_ns": 7568.721,
+      "mojo_ns": 2.3,
+      "speedup_x": 3290.75,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "minimize_brent",
+      "py_ns": 2954.829,
+      "mojo_ns": 5.6,
+      "speedup_x": 527.65,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "root_bisection",
+      "py_ns": 4373.733,
+      "mojo_ns": 5.6,
+      "speedup_x": 781.02,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "root_newton",
+      "py_ns": 11292.467,
+      "mojo_ns": 26.5,
+      "speedup_x": 426.13,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "gradient_descent_1d",
+      "py_ns": 5457.267,
+      "mojo_ns": 7.0,
+      "speedup_x": 779.61,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "linear_regression",
+      "py_ns": 11465.725,
+      "mojo_ns": 17.9,
+      "speedup_x": 640.54,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

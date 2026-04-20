@@ -1,0 +1,85 @@
+{
+  "lib": "nlp",
+  "status": "ok",
+  "n_functions": 9,
+  "n_compared": 9,
+  "overall_speedup_x": 1.08,
+  "total_py_ns": 19472.46,
+  "total_mojo_ns": 18082.5,
+  "elapsed_s": 1.93,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "tokenize",
+      "py_ns": 2641.754,
+      "mojo_ns": 87.4,
+      "speedup_x": 30.23,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "ngrams",
+      "py_ns": 692.417,
+      "mojo_ns": 150.3,
+      "speedup_x": 4.61,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "term_frequency",
+      "py_ns": 3317.196,
+      "mojo_ns": 14588.6,
+      "speedup_x": 0.23,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "tf",
+      "py_ns": 328.083,
+      "mojo_ns": 117.9,
+      "speedup_x": 2.78,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "cosine_similarity_vec",
+      "py_ns": 1111.712,
+      "mojo_ns": 3.2,
+      "speedup_x": 347.41,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "jaccard_similarity",
+      "py_ns": 6512.854,
+      "mojo_ns": 1438.2,
+      "speedup_x": 4.53,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "word_count",
+      "py_ns": 1845.854,
+      "mojo_ns": 1.0,
+      "speedup_x": 1845.85,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "char_count",
+      "py_ns": 1348.742,
+      "mojo_ns": 1.1,
+      "speedup_x": 1226.13,
+      "py_result": 4.0,
+      "py_error": null
+    },
+    {
+      "function": "unique_tokens",
+      "py_ns": 1673.85,
+      "mojo_ns": 1694.8,
+      "speedup_x": 0.99,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

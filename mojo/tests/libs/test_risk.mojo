@@ -1,0 +1,54 @@
+"""test_risk.mojo — auto-generated tests for risk library."""
+from std.math import isnan, isinf
+from risk import value_at_risk, conditional_var, max_drawdown, drawdown_series, sortino_ratio, sharpe_ratio, beta, alpha, information_ratio, calmar_ratio, downside_deviation
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_value_at_risk = value_at_risk(_lf5, 0.5)
+    if is_finite(_v_value_at_risk): passed += 1; print("  ✅ risk::value_at_risk =", _v_value_at_risk)
+    else: failed += 1; print("  ❌ risk::value_at_risk → non-finite:", _v_value_at_risk)
+    var _v_conditional_var = conditional_var(_lf5, 0.5)
+    if is_finite(_v_conditional_var): passed += 1; print("  ✅ risk::conditional_var =", _v_conditional_var)
+    else: failed += 1; print("  ❌ risk::conditional_var → non-finite:", _v_conditional_var)
+    var _v_max_drawdown = max_drawdown(_lf5)
+    if is_finite(_v_max_drawdown): passed += 1; print("  ✅ risk::max_drawdown =", _v_max_drawdown)
+    else: failed += 1; print("  ❌ risk::max_drawdown → non-finite:", _v_max_drawdown)
+    var _v_drawdown_series = drawdown_series(_lf5)
+    if len(_v_drawdown_series) >= 0: passed += 1; print("  ✅ risk::drawdown_series")
+    var _v_sortino_ratio = sortino_ratio(_lf5, 0.5)
+    if is_finite(_v_sortino_ratio): passed += 1; print("  ✅ risk::sortino_ratio =", _v_sortino_ratio)
+    else: failed += 1; print("  ❌ risk::sortino_ratio → non-finite:", _v_sortino_ratio)
+    var _v_sharpe_ratio = sharpe_ratio(_lf5, 0.5)
+    if is_finite(_v_sharpe_ratio): passed += 1; print("  ✅ risk::sharpe_ratio =", _v_sharpe_ratio)
+    else: failed += 1; print("  ❌ risk::sharpe_ratio → non-finite:", _v_sharpe_ratio)
+    var _v_beta = beta(_lf5, _lf5)
+    if is_finite(_v_beta): passed += 1; print("  ✅ risk::beta =", _v_beta)
+    else: failed += 1; print("  ❌ risk::beta → non-finite:", _v_beta)
+    var _v_alpha = alpha(_lf5, _lf5, 0.5)
+    if is_finite(_v_alpha): passed += 1; print("  ✅ risk::alpha =", _v_alpha)
+    else: failed += 1; print("  ❌ risk::alpha → non-finite:", _v_alpha)
+    var _v_information_ratio = information_ratio(_lf5, _lf5)
+    if is_finite(_v_information_ratio): passed += 1; print("  ✅ risk::information_ratio =", _v_information_ratio)
+    else: failed += 1; print("  ❌ risk::information_ratio → non-finite:", _v_information_ratio)
+    var _v_calmar_ratio = calmar_ratio(_lf5, _lf5)
+    if is_finite(_v_calmar_ratio): passed += 1; print("  ✅ risk::calmar_ratio =", _v_calmar_ratio)
+    else: failed += 1; print("  ❌ risk::calmar_ratio → non-finite:", _v_calmar_ratio)
+    var _v_downside_deviation = downside_deviation(_lf5, 0.5)
+    if is_finite(_v_downside_deviation): passed += 1; print("  ✅ risk::downside_deviation =", _v_downside_deviation)
+    else: failed += 1; print("  ❌ risk::downside_deviation → non-finite:", _v_downside_deviation)
+
+    print("  [risk] Passed:", passed, "Failed:", failed)

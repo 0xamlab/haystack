@@ -1,0 +1,27 @@
+{
+  "id": "api-reference/authentication",
+  "title": "Authentication",
+  "description": "All API endpoints require an API key. The key is sent as a request header.",
+  "source": "@site/docs/api-reference/authentication.md",
+  "sourceDirName": "api-reference",
+  "slug": "/api-reference/authentication",
+  "permalink": "/api-reference/authentication",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/decisionengine/decision-engine/tree/main/apps/docs/docs/api-reference/authentication.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 3,
+  "frontMatter": {
+    "sidebar_position": 3
+  },
+  "sidebar": "docsSidebar",
+  "previous": {
+    "title": "POST /v1/simulate",
+    "permalink": "/api-reference/simulate"
+  },
+  "next": {
+    "title": "Errors",
+    "permalink": "/api-reference/errors"
+  }
+}

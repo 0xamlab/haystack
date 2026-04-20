@@ -1,0 +1,69 @@
+{
+  "lib": "encoding",
+  "status": "ok",
+  "n_functions": 7,
+  "n_compared": 7,
+  "overall_speedup_x": 3.47,
+  "total_py_ns": 46879.49,
+  "total_mojo_ns": 13505.4,
+  "elapsed_s": 2.34,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "build_vocabulary",
+      "py_ns": 3738.413,
+      "mojo_ns": 631.4,
+      "speedup_x": 5.92,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "label_encode",
+      "py_ns": 10956.312,
+      "mojo_ns": 2874.9,
+      "speedup_x": 3.81,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "label_decode",
+      "py_ns": 1232.033,
+      "mojo_ns": 349.9,
+      "speedup_x": 3.52,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "one_hot_encode",
+      "py_ns": 5023.092,
+      "mojo_ns": 4600.5,
+      "speedup_x": 1.09,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "ordinal_encode",
+      "py_ns": 5013.629,
+      "mojo_ns": 1851.6,
+      "speedup_x": 2.71,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "binary_encode",
+      "py_ns": 1094.275,
+      "mojo_ns": 1194.7,
+      "speedup_x": 0.92,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "frequency_encode",
+      "py_ns": 19821.737,
+      "mojo_ns": 2002.4,
+      "speedup_x": 9.9,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

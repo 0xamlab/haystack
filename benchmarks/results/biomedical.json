@@ -1,0 +1,109 @@
+{
+  "lib": "biomedical",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 10,
+  "overall_speedup_x": 192.26,
+  "total_py_ns": 2134.1,
+  "total_mojo_ns": 11.1,
+  "elapsed_s": 1.1,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "cardiac_output",
+      "py_ns": 96.237,
+      "mojo_ns": 1.1,
+      "speedup_x": 87.49,
+      "py_result": 0.00025,
+      "py_error": null
+    },
+    {
+      "function": "mean_arterial_pressure",
+      "py_ns": 112.854,
+      "mojo_ns": 1.1,
+      "speedup_x": 102.59,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "body_surface_area_dubois",
+      "py_ns": 299.813,
+      "mojo_ns": 1.1,
+      "speedup_x": 272.56,
+      "py_result": 0.003237,
+      "py_error": null
+    },
+    {
+      "function": "glomerular_filtration_rate",
+      "py_ns": 272.696,
+      "mojo_ns": 1.2,
+      "speedup_x": 227.25,
+      "py_result": 1.646875,
+      "py_error": null
+    },
+    {
+      "function": "oxygen_delivery",
+      "py_ns": 245.746,
+      "mojo_ns": 1.1,
+      "speedup_x": 223.41,
+      "py_result": 1.51675,
+      "py_error": null
+    },
+    {
+      "function": "alveolar_gas_equation",
+      "py_ns": 446.358,
+      "mojo_ns": 1.1,
+      "speedup_x": 405.78,
+      "py_result": -1.0,
+      "py_error": null
+    },
+    {
+      "function": "bmi",
+      "py_ns": 161.967,
+      "mojo_ns": 1.1,
+      "speedup_x": 147.24,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "drug_clearance",
+      "py_ns": 120.604,
+      "mojo_ns": 1.1,
+      "speedup_x": 109.64,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "anion_gap",
+      "py_ns": 195.488,
+      "mojo_ns": 1.1,
+      "speedup_x": 177.72,
+      "py_result": -0.5,
+      "py_error": null
+    },
+    {
+      "function": "corrected_qt_bazett",
+      "py_ns": 182.333,
+      "mojo_ns": 1.1,
+      "speedup_x": 165.76,
+      "py_result": 0.707107,
+      "py_error": null
+    },
+    {
+      "function": "fick_cardiac_output",
+      "py_ns": 259.908,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "pulse_pressure",
+      "py_ns": 93.779,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

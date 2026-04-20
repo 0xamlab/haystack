@@ -1,0 +1,109 @@
+{
+  "lib": "distillation",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 10,
+  "overall_speedup_x": 384.82,
+  "total_py_ns": 6080.21,
+  "total_mojo_ns": 15.8,
+  "elapsed_s": 2.43,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "relative_volatility",
+      "py_ns": 168.808,
+      "mojo_ns": 1.0,
+      "speedup_x": 168.81,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "min_reflux_underwood",
+      "py_ns": 276.167,
+      "mojo_ns": 1.1,
+      "speedup_x": 251.06,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "actual_reflux",
+      "py_ns": 939.175,
+      "mojo_ns": 1.0,
+      "speedup_x": 939.17,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "fenske_min_stages",
+      "py_ns": 94.75,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "gilliland_stages",
+      "py_ns": 354.679,
+      "mojo_ns": 1.1,
+      "speedup_x": 322.44,
+      "py_result": 1.625,
+      "py_error": null
+    },
+    {
+      "function": "mccabe_thiele_operating_line_enriching",
+      "py_ns": 2322.842,
+      "mojo_ns": 1.0,
+      "speedup_x": 2322.84,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "mccabe_thiele_operating_line_stripping",
+      "py_ns": 258.45,
+      "mojo_ns": 1.1,
+      "speedup_x": 234.95,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "boiling_point_elevation",
+      "py_ns": 86.088,
+      "mojo_ns": 1.1,
+      "speedup_x": 78.26,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "raoults_law_partial_pressure",
+      "py_ns": 1480.133,
+      "mojo_ns": 1.0,
+      "speedup_x": 1480.13,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "daltons_law_total_pressure",
+      "py_ns": 91.2,
+      "mojo_ns": 6.3,
+      "speedup_x": 14.48,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "stage_efficiency",
+      "py_ns": 118.087,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "heat_duty_condenser",
+      "py_ns": 102.667,
+      "mojo_ns": 1.1,
+      "speedup_x": 93.33,
+      "py_result": 0.25,
+      "py_error": null
+    }
+  ]
+}

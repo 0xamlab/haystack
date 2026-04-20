@@ -1,0 +1,109 @@
+{
+  "lib": "insurance",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 12,
+  "overall_speedup_x": 94.11,
+  "total_py_ns": 1383.46,
+  "total_mojo_ns": 14.7,
+  "elapsed_s": 2.01,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "pure_premium",
+      "py_ns": 83.642,
+      "mojo_ns": 1.0,
+      "speedup_x": 83.64,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "gross_premium",
+      "py_ns": 97.633,
+      "mojo_ns": 1.0,
+      "speedup_x": 97.63,
+      "py_result": 142.857143,
+      "py_error": null
+    },
+    {
+      "function": "loss_ratio",
+      "py_ns": 84.654,
+      "mojo_ns": 1.1,
+      "speedup_x": 76.96,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "expense_ratio",
+      "py_ns": 90.392,
+      "mojo_ns": 1.0,
+      "speedup_x": 90.39,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "combined_ratio",
+      "py_ns": 80.813,
+      "mojo_ns": 1.0,
+      "speedup_x": 80.81,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "expected_claim_frequency",
+      "py_ns": 132.433,
+      "mojo_ns": 1.0,
+      "speedup_x": 132.43,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "expected_claim_severity",
+      "py_ns": 125.925,
+      "mojo_ns": 1.0,
+      "speedup_x": 125.92,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "burning_cost",
+      "py_ns": 85.046,
+      "mojo_ns": 1.0,
+      "speedup_x": 85.05,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "credibility_buhlmann",
+      "py_ns": 143.713,
+      "mojo_ns": 2.9,
+      "speedup_x": 49.56,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "risk_load",
+      "py_ns": 101.279,
+      "mojo_ns": 1.2,
+      "speedup_x": 84.4,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "aggregate_deductible_savings",
+      "py_ns": 165.35,
+      "mojo_ns": 1.3,
+      "speedup_x": 127.19,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "retention_rate",
+      "py_ns": 192.583,
+      "mojo_ns": 1.2,
+      "speedup_x": 160.49,
+      "py_result": 100.0,
+      "py_error": null
+    }
+  ]
+}

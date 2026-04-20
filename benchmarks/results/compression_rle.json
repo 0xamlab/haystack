@@ -1,0 +1,53 @@
+{
+  "lib": "compression_rle",
+  "status": "ok",
+  "n_functions": 5,
+  "n_compared": 5,
+  "overall_speedup_x": 7.61,
+  "total_py_ns": 5203.33,
+  "total_mojo_ns": 683.8,
+  "elapsed_s": 1.86,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "rle_encode",
+      "py_ns": 1737.967,
+      "mojo_ns": 389.5,
+      "speedup_x": 4.46,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "rle_decode",
+      "py_ns": 421.117,
+      "mojo_ns": 182.2,
+      "speedup_x": 2.31,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "rle_encode_string",
+      "py_ns": 1619.442,
+      "mojo_ns": 93.2,
+      "speedup_x": 17.38,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "rle_decode_string",
+      "py_ns": 1316.6,
+      "mojo_ns": 17.9,
+      "speedup_x": 73.55,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "compression_ratio",
+      "py_ns": 108.204,
+      "mojo_ns": 1.0,
+      "speedup_x": 108.2,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

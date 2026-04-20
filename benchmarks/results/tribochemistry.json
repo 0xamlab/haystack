@@ -1,0 +1,93 @@
+{
+  "lib": "tribochemistry",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 10,
+  "overall_speedup_x": 200.53,
+  "total_py_ns": 2045.39,
+  "total_mojo_ns": 10.2,
+  "elapsed_s": 2.29,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "friction_coefficient",
+      "py_ns": 139.379,
+      "mojo_ns": 1.0,
+      "speedup_x": 139.38,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "archard_wear_rate",
+      "py_ns": 242.546,
+      "mojo_ns": 1.0,
+      "speedup_x": 242.55,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "hertz_contact_radius",
+      "py_ns": 199.183,
+      "mojo_ns": 1.0,
+      "speedup_x": 199.18,
+      "py_result": 0.721125,
+      "py_error": null
+    },
+    {
+      "function": "hertz_max_pressure",
+      "py_ns": 196.958,
+      "mojo_ns": 1.0,
+      "speedup_x": 196.96,
+      "py_result": 0.95493,
+      "py_error": null
+    },
+    {
+      "function": "flash_temperature",
+      "py_ns": 191.942,
+      "mojo_ns": 1.0,
+      "speedup_x": 191.94,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "film_thickness_ehd",
+      "py_ns": 369.796,
+      "mojo_ns": 1.1,
+      "speedup_x": 336.18,
+      "py_result": 1.17577,
+      "py_error": null
+    },
+    {
+      "function": "lambda_ratio",
+      "py_ns": 77.696,
+      "mojo_ns": 1.0,
+      "speedup_x": 77.7,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "surface_energy_work",
+      "py_ns": 220.517,
+      "mojo_ns": 1.0,
+      "speedup_x": 220.52,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "tribocorrosion_rate",
+      "py_ns": 239.075,
+      "mojo_ns": 1.1,
+      "speedup_x": 217.34,
+      "py_result": 1.5,
+      "py_error": null
+    },
+    {
+      "function": "wear_volume",
+      "py_ns": 168.3,
+      "mojo_ns": 1.0,
+      "speedup_x": 168.3,
+      "py_result": 0.25,
+      "py_error": null
+    }
+  ]
+}

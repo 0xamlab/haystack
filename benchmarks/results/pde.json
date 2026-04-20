@@ -1,0 +1,93 @@
+{
+  "lib": "pde",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 9,
+  "overall_speedup_x": 2.65,
+  "total_py_ns": 61900.85,
+  "total_mojo_ns": 23347.5,
+  "elapsed_s": 2.57,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "heat_equation_1d",
+      "py_ns": 14571.275,
+      "mojo_ns": 812.5,
+      "speedup_x": 17.93,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "wave_equation_1d",
+      "py_ns": 23480.858,
+      "mojo_ns": 2089.3,
+      "speedup_x": 11.24,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "laplace_2d",
+      "py_ns": 10656.508,
+      "mojo_ns": 19074.0,
+      "speedup_x": 0.56,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "diffusion_cfl",
+      "py_ns": 799.854,
+      "mojo_ns": 1.0,
+      "speedup_x": 799.85,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "wave_cfl",
+      "py_ns": 98.642,
+      "mojo_ns": 1.0,
+      "speedup_x": 98.64,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "is_stable_heat",
+      "py_ns": 517.662,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "finite_difference_second",
+      "py_ns": 7052.358,
+      "mojo_ns": 769.8,
+      "speedup_x": 9.16,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "gaussian_initial",
+      "py_ns": 3383.158,
+      "mojo_ns": 595.2,
+      "speedup_x": 5.68,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "max_norm",
+      "py_ns": 1541.979,
+      "mojo_ns": 2.4,
+      "speedup_x": 642.49,
+      "py_result": 0.7,
+      "py_error": null
+    },
+    {
+      "function": "energy",
+      "py_ns": 316.221,
+      "mojo_ns": 2.3,
+      "speedup_x": 137.49,
+      "py_result": 0.675,
+      "py_error": null
+    }
+  ]
+}

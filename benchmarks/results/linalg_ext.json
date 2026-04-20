@@ -1,0 +1,69 @@
+{
+  "lib": "linalg_ext",
+  "status": "ok",
+  "n_functions": 7,
+  "n_compared": 7,
+  "overall_speedup_x": 17.92,
+  "total_py_ns": 538030.29,
+  "total_mojo_ns": 30021.7,
+  "elapsed_s": 8.07,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "mat_norm_frobenius",
+      "py_ns": 777.454,
+      "mojo_ns": 4.2,
+      "speedup_x": 185.11,
+      "py_result": 16.881943,
+      "py_error": null
+    },
+    {
+      "function": "mat_norm_inf",
+      "py_ns": 1821.775,
+      "mojo_ns": 14.3,
+      "speedup_x": 127.4,
+      "py_result": 24.0,
+      "py_error": null
+    },
+    {
+      "function": "mat_trace",
+      "py_ns": 397.587,
+      "mojo_ns": 1.8,
+      "speedup_x": 220.88,
+      "py_result": 6.0,
+      "py_error": null
+    },
+    {
+      "function": "mat_is_symmetric",
+      "py_ns": 2782.913,
+      "mojo_ns": 17.1,
+      "speedup_x": 162.74,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "mat_is_positive_definite",
+      "py_ns": 12495.104,
+      "mojo_ns": 709.5,
+      "speedup_x": 17.61,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "mat_power_iteration",
+      "py_ns": 472532.958,
+      "mojo_ns": 27394.8,
+      "speedup_x": 17.25,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "mat_condition_number",
+      "py_ns": 47222.5,
+      "mojo_ns": 1880.0,
+      "speedup_x": 25.12,
+      "py_result": 2.5,
+      "py_error": null
+    }
+  ]
+}

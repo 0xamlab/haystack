@@ -1,0 +1,93 @@
+{
+  "lib": "security_governance",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 8,
+  "overall_speedup_x": 475.62,
+  "total_py_ns": 3995.25,
+  "total_mojo_ns": 8.4,
+  "elapsed_s": 1.94,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "model_provenance_hash",
+      "py_ns": 231.7,
+      "mojo_ns": 1.0,
+      "speedup_x": 231.7,
+      "py_result": 999994.0,
+      "py_error": null
+    },
+    {
+      "function": "prompt_policy_score",
+      "py_ns": 163.062,
+      "mojo_ns": 1.1,
+      "speedup_x": 148.24,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "output_safety_score",
+      "py_ns": 218.112,
+      "mojo_ns": 1.0,
+      "speedup_x": 218.11,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "tenant_quota_remaining",
+      "py_ns": 96.517,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "audit_log_hash",
+      "py_ns": 97.875,
+      "mojo_ns": 1.1,
+      "speedup_x": 88.98,
+      "py_result": 500501.0,
+      "py_error": null
+    },
+    {
+      "function": "pii_sensitivity_score",
+      "py_ns": 2064.975,
+      "mojo_ns": 1.1,
+      "speedup_x": 1877.25,
+      "py_result": 0.6,
+      "py_error": null
+    },
+    {
+      "function": "differential_privacy_noise",
+      "py_ns": 360.917,
+      "mojo_ns": 1.1,
+      "speedup_x": 328.11,
+      "py_result": 1.353729,
+      "py_error": null
+    },
+    {
+      "function": "permission_access_check",
+      "py_ns": 738.029,
+      "mojo_ns": 1.0,
+      "speedup_x": 738.03,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "data_retention_decay",
+      "py_ns": 141.033,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "governance_compliance_score",
+      "py_ns": 120.575,
+      "mojo_ns": 1.0,
+      "speedup_x": 120.58,
+      "py_result": 0.5,
+      "py_error": null
+    }
+  ]
+}

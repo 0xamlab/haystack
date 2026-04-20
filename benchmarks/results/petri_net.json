@@ -1,0 +1,117 @@
+{
+  "lib": "petri_net",
+  "status": "ok",
+  "n_functions": 13,
+  "n_compared": 9,
+  "overall_speedup_x": 326.57,
+  "total_py_ns": 3559.64,
+  "total_mojo_ns": 10.9,
+  "elapsed_s": 1.28,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "is_transition_enabled_2p",
+      "py_ns": 344.263,
+      "mojo_ns": 1.0,
+      "speedup_x": 344.26,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "fire_transition_2p",
+      "py_ns": 345.375,
+      "mojo_ns": 1.1,
+      "speedup_x": 313.98,
+      "py_result": 10.0,
+      "py_error": null
+    },
+    {
+      "function": "token_count_3p",
+      "py_ns": 270.817,
+      "mojo_ns": 1.1,
+      "speedup_x": 246.2,
+      "py_result": 15.0,
+      "py_error": null
+    },
+    {
+      "function": "is_deadlocked_1t_2p",
+      "py_ns": 218.95,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "is_deadlocked_2t_2p",
+      "py_ns": 222.058,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "reachable_from_firing",
+      "py_ns": 223.583,
+      "mojo_ns": 1.1,
+      "speedup_x": 203.26,
+      "py_result": 5.0,
+      "py_error": null
+    },
+    {
+      "function": "place_bounded",
+      "py_ns": 371.112,
+      "mojo_ns": 1.0,
+      "speedup_x": 371.11,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "is_live_transition",
+      "py_ns": 368.242,
+      "mojo_ns": 1.1,
+      "speedup_x": 334.77,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "coverability_check",
+      "py_ns": 181.217,
+      "mojo_ns": 1.0,
+      "speedup_x": 181.22,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "incidence_value",
+      "py_ns": 138.238,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "siphon_empty_3p",
+      "py_ns": 163.508,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "is_transition_enabled_list",
+      "py_ns": 473.554,
+      "mojo_ns": 1.0,
+      "speedup_x": 473.55,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "fire_transition_list",
+      "py_ns": 981.475,
+      "mojo_ns": 2.5,
+      "speedup_x": 392.59,
+      "py_result": 10.0,
+      "py_error": null
+    }
+  ]
+}

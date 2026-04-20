@@ -1,0 +1,58 @@
+"""test_toxicology.mojo — auto-generated tests for toxicology library."""
+from std.math import isnan, isinf
+from toxicology import ld50_dose, therapeutic_index, margin_of_safety, bioconcentration_factor, hazard_quotient, hazard_index, cancer_risk, average_daily_dose, no_observed_adverse_effect_level, reference_dose, dose_response_hill, acute_exposure_ratio
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_ld50_dose = ld50_dose(0.5, 0.5)
+    if is_finite(_v_ld50_dose): passed += 1; print("  ✅ toxicology::ld50_dose =", _v_ld50_dose)
+    else: failed += 1; print("  ❌ toxicology::ld50_dose → non-finite:", _v_ld50_dose)
+    var _v_therapeutic_index = therapeutic_index(0.5, 0.5)
+    if is_finite(_v_therapeutic_index): passed += 1; print("  ✅ toxicology::therapeutic_index =", _v_therapeutic_index)
+    else: failed += 1; print("  ❌ toxicology::therapeutic_index → non-finite:", _v_therapeutic_index)
+    var _v_margin_of_safety = margin_of_safety(0.5, 0.5)
+    if is_finite(_v_margin_of_safety): passed += 1; print("  ✅ toxicology::margin_of_safety =", _v_margin_of_safety)
+    else: failed += 1; print("  ❌ toxicology::margin_of_safety → non-finite:", _v_margin_of_safety)
+    var _v_bioconcentration_factor = bioconcentration_factor(0.5, 0.5)
+    if is_finite(_v_bioconcentration_factor): passed += 1; print("  ✅ toxicology::bioconcentration_factor =", _v_bioconcentration_factor)
+    else: failed += 1; print("  ❌ toxicology::bioconcentration_factor → non-finite:", _v_bioconcentration_factor)
+    var _v_hazard_quotient = hazard_quotient(0.5, 0.5)
+    if is_finite(_v_hazard_quotient): passed += 1; print("  ✅ toxicology::hazard_quotient =", _v_hazard_quotient)
+    else: failed += 1; print("  ❌ toxicology::hazard_quotient → non-finite:", _v_hazard_quotient)
+    var _v_hazard_index = hazard_index(0.5)
+    if is_finite(_v_hazard_index): passed += 1; print("  ✅ toxicology::hazard_index =", _v_hazard_index)
+    else: failed += 1; print("  ❌ toxicology::hazard_index → non-finite:", _v_hazard_index)
+    var _v_cancer_risk = cancer_risk(0.5, 0.5)
+    if is_finite(_v_cancer_risk): passed += 1; print("  ✅ toxicology::cancer_risk =", _v_cancer_risk)
+    else: failed += 1; print("  ❌ toxicology::cancer_risk → non-finite:", _v_cancer_risk)
+    var _v_average_daily_dose = average_daily_dose(0.5, 0.5, 0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_average_daily_dose): passed += 1; print("  ✅ toxicology::average_daily_dose =", _v_average_daily_dose)
+    else: failed += 1; print("  ❌ toxicology::average_daily_dose → non-finite:", _v_average_daily_dose)
+    var _v_no_observed_adverse_effect_level = no_observed_adverse_effect_level(0.5, 0.5)
+    if is_finite(_v_no_observed_adverse_effect_level): passed += 1; print("  ✅ toxicology::no_observed_adverse_effect_level =", _v_no_observed_adverse_effect_level)
+    else: failed += 1; print("  ❌ toxicology::no_observed_adverse_effect_level → non-finite:", _v_no_observed_adverse_effect_level)
+    var _v_reference_dose = reference_dose(0.5, 0.5)
+    if is_finite(_v_reference_dose): passed += 1; print("  ✅ toxicology::reference_dose =", _v_reference_dose)
+    else: failed += 1; print("  ❌ toxicology::reference_dose → non-finite:", _v_reference_dose)
+    var _v_dose_response_hill = dose_response_hill(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_dose_response_hill): passed += 1; print("  ✅ toxicology::dose_response_hill =", _v_dose_response_hill)
+    else: failed += 1; print("  ❌ toxicology::dose_response_hill → non-finite:", _v_dose_response_hill)
+    var _v_acute_exposure_ratio = acute_exposure_ratio(0.5, 0.5)
+    if is_finite(_v_acute_exposure_ratio): passed += 1; print("  ✅ toxicology::acute_exposure_ratio =", _v_acute_exposure_ratio)
+    else: failed += 1; print("  ❌ toxicology::acute_exposure_ratio → non-finite:", _v_acute_exposure_ratio)
+
+    print("  [toxicology] Passed:", passed, "Failed:", failed)

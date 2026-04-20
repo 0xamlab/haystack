@@ -1,0 +1,109 @@
+{
+  "lib": "dentistry",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 11,
+  "overall_speedup_x": 106.58,
+  "total_py_ns": 1246.95,
+  "total_mojo_ns": 11.7,
+  "elapsed_s": 1.38,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "dmft_index",
+      "py_ns": 191.5,
+      "mojo_ns": 1.0,
+      "speedup_x": 191.5,
+      "py_result": 15.0,
+      "py_error": null
+    },
+    {
+      "function": "dmft_prevalence",
+      "py_ns": 113.971,
+      "mojo_ns": 1.0,
+      "speedup_x": 113.97,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "plaque_index_score",
+      "py_ns": 100.171,
+      "mojo_ns": 1.1,
+      "speedup_x": 91.06,
+      "py_result": 0.1,
+      "py_error": null
+    },
+    {
+      "function": "gingival_index",
+      "py_ns": 103.104,
+      "mojo_ns": 1.0,
+      "speedup_x": 103.1,
+      "py_result": 0.1,
+      "py_error": null
+    },
+    {
+      "function": "attachment_loss",
+      "py_ns": 77.625,
+      "mojo_ns": 1.0,
+      "speedup_x": 77.63,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "bone_loss_percentage",
+      "py_ns": 96.254,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "fluoride_concentration_ppm",
+      "py_ns": 84.554,
+      "mojo_ns": 1.1,
+      "speedup_x": 76.87,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "anesthesia_dose_mg",
+      "py_ns": 80.504,
+      "mojo_ns": 1.1,
+      "speedup_x": 73.19,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "max_anesthesia_dose",
+      "py_ns": 75.996,
+      "mojo_ns": 1.1,
+      "speedup_x": 69.09,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "restoration_longevity_estimate",
+      "py_ns": 93.213,
+      "mojo_ns": 1.1,
+      "speedup_x": 84.74,
+      "py_result": 10.0,
+      "py_error": null
+    },
+    {
+      "function": "tooth_surface_area_estimate",
+      "py_ns": 104.433,
+      "mojo_ns": 1.1,
+      "speedup_x": 94.94,
+      "py_result": 2.5,
+      "py_error": null
+    },
+    {
+      "function": "treatment_cost_estimate",
+      "py_ns": 221.883,
+      "mojo_ns": 1.1,
+      "speedup_x": 201.71,
+      "py_result": 1.25,
+      "py_error": null
+    }
+  ]
+}

@@ -1,0 +1,101 @@
+{
+  "lib": "inventory",
+  "status": "ok",
+  "n_functions": 11,
+  "n_compared": 10,
+  "overall_speedup_x": 5.64,
+  "total_py_ns": 5294.37,
+  "total_mojo_ns": 938.6,
+  "elapsed_s": 2.27,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "eoq",
+      "py_ns": 192.617,
+      "mojo_ns": 1.0,
+      "speedup_x": 192.62,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "reorder_point",
+      "py_ns": 98.221,
+      "mojo_ns": 1.1,
+      "speedup_x": 89.29,
+      "py_result": 0.75,
+      "py_error": null
+    },
+    {
+      "function": "safety_stock",
+      "py_ns": 198.675,
+      "mojo_ns": 1.1,
+      "speedup_x": 180.61,
+      "py_result": 0.176777,
+      "py_error": null
+    },
+    {
+      "function": "total_inventory_cost",
+      "py_ns": 225.771,
+      "mojo_ns": 1.1,
+      "speedup_x": 205.25,
+      "py_result": 0.625,
+      "py_error": null
+    },
+    {
+      "function": "newsvendor_qty",
+      "py_ns": 577.817,
+      "mojo_ns": 1.1,
+      "speedup_x": 525.29,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "service_level",
+      "py_ns": 1114.529,
+      "mojo_ns": 1.1,
+      "speedup_x": 1013.21,
+      "py_result": 0.691462,
+      "py_error": null
+    },
+    {
+      "function": "abc_classify",
+      "py_ns": 2347.362,
+      "mojo_ns": 928.9,
+      "speedup_x": 2.53,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "days_of_supply",
+      "py_ns": 85.871,
+      "mojo_ns": 1.1,
+      "speedup_x": 78.06,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "inventory_turnover",
+      "py_ns": 323.946,
+      "mojo_ns": 1.0,
+      "speedup_x": 323.95,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "fill_rate",
+      "py_ns": 129.558,
+      "mojo_ns": 1.1,
+      "speedup_x": 117.78,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "periodic_review_order",
+      "py_ns": 244.475,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

@@ -1,0 +1,4062 @@
+{
+  "timestamp": "2026-04-14T23:52:00",
+  "n_iterations": 10000,
+  "n_libraries": 450,
+  "suite_duration_s": 328.3,
+  "median_speedup_x": 101.24,
+  "mean_speedup_x": 191.89,
+  "max_speedup_x": 7221.48,
+  "min_speedup_x": 0.09,
+  "libraries": [
+    {
+      "lib": "ab_testing",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 12.06,
+      "py_total_ns": 7551.46,
+      "mojo_total_ns": 625.9
+    },
+    {
+      "lib": "accounting",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 7,
+      "speedup_x": 12.01,
+      "py_total_ns": 1456.33,
+      "mojo_total_ns": 121.3
+    },
+    {
+      "lib": "acoustics",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 7,
+      "speedup_x": 107.28,
+      "py_total_ns": 750.95,
+      "mojo_total_ns": 7.0
+    },
+    {
+      "lib": "activations",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 373.21,
+      "py_total_ns": 3769.37,
+      "mojo_total_ns": 10.1
+    },
+    {
+      "lib": "actuarial",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 10,
+      "speedup_x": 41.65,
+      "py_total_ns": 1532.59,
+      "mojo_total_ns": 36.8
+    },
+    {
+      "lib": "adhesives",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 12,
+      "speedup_x": 242.63,
+      "py_total_ns": 2790.23,
+      "mojo_total_ns": 11.5
+    },
+    {
+      "lib": "aerospace",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 10,
+      "speedup_x": 302.23,
+      "py_total_ns": 3052.57,
+      "mojo_total_ns": 10.1
+    },
+    {
+      "lib": "agent_runtime",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 6,
+      "speedup_x": 74.2,
+      "py_total_ns": 704.94,
+      "mojo_total_ns": 9.5
+    },
+    {
+      "lib": "agriculture",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 11,
+      "speedup_x": 110.99,
+      "py_total_ns": 1121.03,
+      "mojo_total_ns": 10.1
+    },
+    {
+      "lib": "agronomy",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 7,
+      "speedup_x": 82.45,
+      "py_total_ns": 1005.92,
+      "mojo_total_ns": 12.2
+    },
+    {
+      "lib": "allocation",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 1.2,
+      "py_total_ns": 7785.79,
+      "mojo_total_ns": 6504.0
+    },
+    {
+      "lib": "anomaly",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 16.6,
+      "py_total_ns": 150434.96,
+      "mojo_total_ns": 9065.0
+    },
+    {
+      "lib": "antenna",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 9,
+      "speedup_x": 218.24,
+      "py_total_ns": 1920.54,
+      "mojo_total_ns": 8.8
+    },
+    {
+      "lib": "apiculture",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 12,
+      "speedup_x": 60.76,
+      "py_total_ns": 1871.39,
+      "mojo_total_ns": 30.8
+    },
+    {
+      "lib": "aquaculture",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 11,
+      "speedup_x": 242.06,
+      "py_total_ns": 3461.44,
+      "mojo_total_ns": 14.3
+    },
+    {
+      "lib": "archaeology",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 10,
+      "speedup_x": 672.08,
+      "py_total_ns": 6586.37,
+      "mojo_total_ns": 9.8
+    },
+    {
+      "lib": "astrobiology",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 831.71,
+      "py_total_ns": 8483.49,
+      "mojo_total_ns": 10.2
+    },
+    {
+      "lib": "astronomy",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 12,
+      "speedup_x": 320.9,
+      "py_total_ns": 66040.78,
+      "mojo_total_ns": 205.8
+    },
+    {
+      "lib": "atmospheric_chemistry",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 17.93,
+      "py_total_ns": 1004.05,
+      "mojo_total_ns": 56.0
+    },
+    {
+      "lib": "auction",
+      "status": "ok",
+      "n_functions": 11,
+      "n_compared": 11,
+      "speedup_x": 13.34,
+      "py_total_ns": 7876.43,
+      "mojo_total_ns": 590.6
+    },
+    {
+      "lib": "audio",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 6.18,
+      "py_total_ns": 11728.4,
+      "mojo_total_ns": 1896.8
+    },
+    {
+      "lib": "autograd_graph",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 9,
+      "speedup_x": 238.34,
+      "py_total_ns": 2192.7,
+      "mojo_total_ns": 9.2
+    },
+    {
+      "lib": "autograd_ops",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 139.18,
+      "py_total_ns": 1503.09,
+      "mojo_total_ns": 10.8
+    },
+    {
+      "lib": "autonomous_vehicles",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 12,
+      "speedup_x": 90.58,
+      "py_total_ns": 1684.71,
+      "mojo_total_ns": 18.6
+    },
+    {
+      "lib": "aviation",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 122.81,
+      "py_total_ns": 1043.87,
+      "mojo_total_ns": 8.5
+    },
+    {
+      "lib": "battery",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 11,
+      "speedup_x": 101.69,
+      "py_total_ns": 1372.8,
+      "mojo_total_ns": 13.5
+    },
+    {
+      "lib": "bayesian",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 4.24,
+      "py_total_ns": 43038.25,
+      "mojo_total_ns": 10144.1
+    },
+    {
+      "lib": "bayesian_inference",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 7,
+      "speedup_x": 58.51,
+      "py_total_ns": 1193.57,
+      "mojo_total_ns": 20.4
+    },
+    {
+      "lib": "behavioral_economics",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 10,
+      "speedup_x": 169.47,
+      "py_total_ns": 1881.16,
+      "mojo_total_ns": 11.1
+    },
+    {
+      "lib": "biogeochemistry",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 363.87,
+      "py_total_ns": 3493.16,
+      "mojo_total_ns": 9.6
+    },
+    {
+      "lib": "bioinformatics",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 11,
+      "speedup_x": 139.58,
+      "py_total_ns": 1702.88,
+      "mojo_total_ns": 12.2
+    },
+    {
+      "lib": "biomechanics",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 11,
+      "speedup_x": 109.81,
+      "py_total_ns": 1372.57,
+      "mojo_total_ns": 12.5
+    },
+    {
+      "lib": "biomedical",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 10,
+      "speedup_x": 192.26,
+      "py_total_ns": 2134.1,
+      "mojo_total_ns": 11.1
+    },
+    {
+      "lib": "bitops",
+      "status": "ok",
+      "n_functions": 13,
+      "n_compared": 10,
+      "speedup_x": 831.9,
+      "py_total_ns": 9317.31,
+      "mojo_total_ns": 11.2
+    },
+    {
+      "lib": "blockchain",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 11,
+      "speedup_x": 175.6,
+      "py_total_ns": 2177.48,
+      "mojo_total_ns": 12.4
+    },
+    {
+      "lib": "bloom_counting",
+      "status": "ok",
+      "n_functions": 4,
+      "n_compared": 3,
+      "speedup_x": 3.54,
+      "py_total_ns": 2045.07,
+      "mojo_total_ns": 577.7
+    },
+    {
+      "lib": "boolean_algebra",
+      "status": "ok",
+      "n_functions": 13,
+      "n_compared": 11,
+      "speedup_x": 0.86,
+      "py_total_ns": 6988.13,
+      "mojo_total_ns": 8156.6
+    },
+    {
+      "lib": "bpe_tokenizer",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 84.96,
+      "py_total_ns": 756.16,
+      "mojo_total_ns": 8.9
+    },
+    {
+      "lib": "brewing",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 9,
+      "speedup_x": 106.65,
+      "py_total_ns": 1194.44,
+      "mojo_total_ns": 11.2
+    },
+    {
+      "lib": "bryology",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 7,
+      "speedup_x": 199.68,
+      "py_total_ns": 1317.87,
+      "mojo_total_ns": 6.6
+    },
+    {
+      "lib": "cache",
+      "status": "ok",
+      "n_functions": 1,
+      "n_compared": 1,
+      "speedup_x": 832.77,
+      "py_total_ns": 749.5,
+      "mojo_total_ns": 0.9
+    },
+    {
+      "lib": "cardiology",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 4,
+      "speedup_x": 103.29,
+      "py_total_ns": 371.85,
+      "mojo_total_ns": 3.6
+    },
+    {
+      "lib": "cartography",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 11,
+      "speedup_x": 138.15,
+      "py_total_ns": 2003.18,
+      "mojo_total_ns": 14.5
+    },
+    {
+      "lib": "category_theory",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 9,
+      "speedup_x": 3.06,
+      "py_total_ns": 7287.05,
+      "mojo_total_ns": 2380.9
+    },
+    {
+      "lib": "causal",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 93.46,
+      "py_total_ns": 44569.98,
+      "mojo_total_ns": 476.9
+    },
+    {
+      "lib": "cellular",
+      "status": "ok",
+      "n_functions": 11,
+      "n_compared": 4,
+      "speedup_x": 3.32,
+      "py_total_ns": 34558.15,
+      "mojo_total_ns": 10403.7
+    },
+    {
+      "lib": "cellular_automata",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 5,
+      "speedup_x": 38.55,
+      "py_total_ns": 14052.21,
+      "mojo_total_ns": 364.5
+    },
+    {
+      "lib": "ceramics",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 9,
+      "speedup_x": 350.79,
+      "py_total_ns": 3858.64,
+      "mojo_total_ns": 11.0
+    },
+    {
+      "lib": "chaos",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 1.96,
+      "py_total_ns": 24939.0,
+      "mojo_total_ns": 12719.3
+    },
+    {
+      "lib": "checksum",
+      "status": "ok",
+      "n_functions": 11,
+      "n_compared": 9,
+      "speedup_x": 266.47,
+      "py_total_ns": 20518.32,
+      "mojo_total_ns": 77.0
+    },
+    {
+      "lib": "chromatography",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 140.95,
+      "py_total_ns": 1099.38,
+      "mojo_total_ns": 7.8
+    },
+    {
+      "lib": "climate",
+      "status": "ok",
+      "n_functions": 11,
+      "n_compared": 10,
+      "speedup_x": 196.76,
+      "py_total_ns": 2164.41,
+      "mojo_total_ns": 11.0
+    },
+    {
+      "lib": "clustering_metrics",
+      "status": "ok",
+      "n_functions": 8,
+      "n_compared": 8,
+      "speedup_x": 0.98,
+      "py_total_ns": 47752.97,
+      "mojo_total_ns": 48633.7
+    },
+    {
+      "lib": "color",
+      "status": "ok",
+      "n_functions": 2,
+      "n_compared": 1,
+      "speedup_x": 76.95,
+      "py_total_ns": 92.34,
+      "mojo_total_ns": 1.2
+    },
+    {
+      "lib": "color_science",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 9,
+      "speedup_x": 118.33,
+      "py_total_ns": 1100.45,
+      "mojo_total_ns": 9.3
+    },
+    {
+      "lib": "combinatorial",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 3,
+      "speedup_x": 6.56,
+      "py_total_ns": 19075.68,
+      "mojo_total_ns": 2910.0
+    },
+    {
+      "lib": "combustion",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 10,
+      "speedup_x": 343.94,
+      "py_total_ns": 3473.76,
+      "mojo_total_ns": 10.1
+    },
+    {
+      "lib": "compiler_theory",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 10,
+      "speedup_x": 807.71,
+      "py_total_ns": 9288.69,
+      "mojo_total_ns": 11.5
+    },
+    {
+      "lib": "composites",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 11,
+      "speedup_x": 601.46,
+      "py_total_ns": 8420.48,
+      "mojo_total_ns": 14.0
+    },
+    {
+      "lib": "compression_delta",
+      "status": "ok",
+      "n_functions": 11,
+      "n_compared": 10,
+      "speedup_x": 3.19,
+      "py_total_ns": 44400.58,
+      "mojo_total_ns": 13905.4
+    },
+    {
+      "lib": "compression_huffman",
+      "status": "ok",
+      "n_functions": 5,
+      "n_compared": 5,
+      "speedup_x": 5.03,
+      "py_total_ns": 86890.45,
+      "mojo_total_ns": 17266.7
+    },
+    {
+      "lib": "compression_lz77",
+      "status": "ok",
+      "n_functions": 5,
+      "n_compared": 5,
+      "speedup_x": 11.42,
+      "py_total_ns": 24553.88,
+      "mojo_total_ns": 2151.0
+    },
+    {
+      "lib": "compression_rle",
+      "status": "ok",
+      "n_functions": 5,
+      "n_compared": 5,
+      "speedup_x": 7.61,
+      "py_total_ns": 5203.33,
+      "mojo_total_ns": 683.8
+    },
+    {
+      "lib": "concrete",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 11,
+      "speedup_x": 125.46,
+      "py_total_ns": 1555.72,
+      "mojo_total_ns": 12.4
+    },
+    {
+      "lib": "config_toml_parser",
+      "status": "ok",
+      "n_functions": 1,
+      "n_compared": 1,
+      "speedup_x": 3.77,
+      "py_total_ns": 8088.19,
+      "mojo_total_ns": 2148.0
+    },
+    {
+      "lib": "config_yaml_parser",
+      "status": "ok",
+      "n_functions": 1,
+      "n_compared": 1,
+      "speedup_x": 20.78,
+      "py_total_ns": 8108.5,
+      "mojo_total_ns": 390.2
+    },
+    {
+      "lib": "constraint",
+      "status": "ok",
+      "n_functions": 8,
+      "n_compared": 7,
+      "speedup_x": 0.88,
+      "py_total_ns": 31972.97,
+      "mojo_total_ns": 36480.5
+    },
+    {
+      "lib": "continuous_batching",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 7,
+      "speedup_x": 121.62,
+      "py_total_ns": 887.82,
+      "mojo_total_ns": 7.3
+    },
+    {
+      "lib": "contrastive_learning",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 122.15,
+      "py_total_ns": 1026.08,
+      "mojo_total_ns": 8.4
+    },
+    {
+      "lib": "control",
+      "status": "ok",
+      "n_functions": 8,
+      "n_compared": 7,
+      "speedup_x": 21.64,
+      "py_total_ns": 4255.69,
+      "mojo_total_ns": 196.7
+    },
+    {
+      "lib": "conv",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 6,
+      "speedup_x": 61.98,
+      "py_total_ns": 6210.71,
+      "mojo_total_ns": 100.2
+    },
+    {
+      "lib": "convex",
+      "status": "ok",
+      "n_functions": 9,
+      "n_compared": 8,
+      "speedup_x": 4.12,
+      "py_total_ns": 141783.73,
+      "mojo_total_ns": 34447.6
+    },
+    {
+      "lib": "copula",
+      "status": "ok",
+      "n_functions": 5,
+      "n_compared": 4,
+      "speedup_x": 14.19,
+      "py_total_ns": 80732.79,
+      "mojo_total_ns": 5690.5
+    },
+    {
+      "lib": "correlation",
+      "status": "ok",
+      "n_functions": 4,
+      "n_compared": 3,
+      "speedup_x": 19.09,
+      "py_total_ns": 18095.05,
+      "mojo_total_ns": 947.7
+    },
+    {
+      "lib": "corrosion",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 10,
+      "speedup_x": 326.34,
+      "py_total_ns": 3491.82,
+      "mojo_total_ns": 10.7
+    },
+    {
+      "lib": "cosmology",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 11,
+      "speedup_x": 7.54,
+      "py_total_ns": 1435.28,
+      "mojo_total_ns": 190.4
+    },
+    {
+      "lib": "cost_router",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 5,
+      "speedup_x": 336.53,
+      "py_total_ns": 1749.94,
+      "mojo_total_ns": 5.2
+    },
+    {
+      "lib": "cryogenics",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 8,
+      "speedup_x": 62.3,
+      "py_total_ns": 672.86,
+      "mojo_total_ns": 10.8
+    },
+    {
+      "lib": "cryology",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 80.86,
+      "py_total_ns": 808.56,
+      "mojo_total_ns": 10.0
+    },
+    {
+      "lib": "cryptanalysis",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 8,
+      "speedup_x": 152.71,
+      "py_total_ns": 1435.47,
+      "mojo_total_ns": 9.4
+    },
+    {
+      "lib": "crypto_aes_sbox",
+      "status": "ok",
+      "n_functions": 8,
+      "n_compared": 6,
+      "speedup_x": 40.69,
+      "py_total_ns": 81543.41,
+      "mojo_total_ns": 2003.8
+    },
+    {
+      "lib": "crypto_base64",
+      "status": "ok",
+      "n_functions": 4,
+      "n_compared": 4,
+      "speedup_x": 121.26,
+      "py_total_ns": 34728.55,
+      "mojo_total_ns": 286.4
+    },
+    {
+      "lib": "crypto_chacha20",
+      "status": "ok",
+      "n_functions": 8,
+      "n_compared": 3,
+      "speedup_x": 26.7,
+      "py_total_ns": 3177.4,
+      "mojo_total_ns": 119.0
+    },
+    {
+      "lib": "crypto_crc32",
+      "status": "ok",
+      "n_functions": 3,
+      "n_compared": 3,
+      "speedup_x": 233.61,
+      "py_total_ns": 6146476.47,
+      "mojo_total_ns": 26310.9
+    },
+    {
+      "lib": "crypto_hash_chain",
+      "status": "ok",
+      "n_functions": 9,
+      "n_compared": 9,
+      "speedup_x": 5.5,
+      "py_total_ns": 272096.2,
+      "mojo_total_ns": 49501.9
+    },
+    {
+      "lib": "crypto_hmac",
+      "status": "ok",
+      "n_functions": 2,
+      "n_compared": 2,
+      "speedup_x": 1520.3,
+      "py_total_ns": 13756904.95,
+      "mojo_total_ns": 9048.8
+    },
+    {
+      "lib": "crypto_pbkdf2",
+      "status": "ok",
+      "n_functions": 7,
+      "n_compared": 7,
+      "speedup_x": 1069.45,
+      "py_total_ns": 19424913.25,
+      "mojo_total_ns": 18163.5
+    },
+    {
+      "lib": "crypto_uuid",
+      "status": "ok",
+      "n_functions": 2,
+      "n_compared": 2,
+      "speedup_x": 7.72,
+      "py_total_ns": 112214.56,
+      "mojo_total_ns": 14538.9
+    },
+    {
+      "lib": "crystallography",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 12,
+      "speedup_x": 221.14,
+      "py_total_ns": 2919.03,
+      "mojo_total_ns": 13.2
+    },
+    {
+      "lib": "currency",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 12,
+      "speedup_x": 1.17,
+      "py_total_ns": 4800.14,
+      "mojo_total_ns": 4111.4
+    },
+    {
+      "lib": "cytology",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 91.23,
+      "py_total_ns": 811.93,
+      "mojo_total_ns": 8.9
+    },
+    {
+      "lib": "cytometry",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 9,
+      "speedup_x": 111.2,
+      "py_total_ns": 1100.84,
+      "mojo_total_ns": 9.9
+    },
+    {
+      "lib": "data_csv_parser",
+      "status": "ok",
+      "n_functions": 7,
+      "n_compared": 3,
+      "speedup_x": 56.76,
+      "py_total_ns": 44664.1,
+      "mojo_total_ns": 786.9
+    },
+    {
+      "lib": "data_feedback_loop",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 120.34,
+      "py_total_ns": 974.74,
+      "mojo_total_ns": 8.1
+    },
+    {
+      "lib": "data_pipeline",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 9,
+      "speedup_x": 196.53,
+      "py_total_ns": 2043.95,
+      "mojo_total_ns": 10.4
+    },
+    {
+      "lib": "database",
+      "status": "ok",
+      "n_functions": 1,
+      "n_compared": 1,
+      "speedup_x": 1.01,
+      "py_total_ns": 713.93,
+      "mojo_total_ns": 709.9
+    },
+    {
+      "lib": "datetime",
+      "status": "ok",
+      "n_functions": 14,
+      "n_compared": 8,
+      "speedup_x": 53.86,
+      "py_total_ns": 11558.4,
+      "mojo_total_ns": 214.6
+    },
+    {
+      "lib": "decision_analysis",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 8.13,
+      "py_total_ns": 51357.07,
+      "mojo_total_ns": 6318.4
+    },
+    {
+      "lib": "decision_ml_fusion",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 5,
+      "speedup_x": 130.57,
+      "py_total_ns": 678.95,
+      "mojo_total_ns": 5.2
+    },
+    {
+      "lib": "demographics",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 11,
+      "speedup_x": 480.38,
+      "py_total_ns": 5476.38,
+      "mojo_total_ns": 11.4
+    },
+    {
+      "lib": "dendrochronology",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 548.67,
+      "py_total_ns": 5761.06,
+      "mojo_total_ns": 10.5
+    },
+    {
+      "lib": "dendrology",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 12,
+      "speedup_x": 143.72,
+      "py_total_ns": 2083.89,
+      "mojo_total_ns": 14.5
+    },
+    {
+      "lib": "dentistry",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 11,
+      "speedup_x": 106.58,
+      "py_total_ns": 1246.95,
+      "mojo_total_ns": 11.7
+    },
+    {
+      "lib": "dependency",
+      "status": "ok",
+      "n_functions": 8,
+      "n_compared": 8,
+      "speedup_x": 1.25,
+      "py_total_ns": 12277.4,
+      "mojo_total_ns": 9839.7
+    },
+    {
+      "lib": "differentiate",
+      "status": "ok",
+      "n_functions": 6,
+      "n_compared": 6,
+      "speedup_x": 1.59,
+      "py_total_ns": 4918.15,
+      "mojo_total_ns": 3088.5
+    },
+    {
+      "lib": "diffusion_models",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 47.94,
+      "py_total_ns": 2099.76,
+      "mojo_total_ns": 43.8
+    },
+    {
+      "lib": "dimensionality",
+      "status": "ok",
+      "n_functions": 7,
+      "n_compared": 4,
+      "speedup_x": 1.32,
+      "py_total_ns": 12177.49,
+      "mojo_total_ns": 9215.0
+    },
+    {
+      "lib": "dimensions",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 3,
+      "speedup_x": 269.91,
+      "py_total_ns": 4453.47,
+      "mojo_total_ns": 16.5
+    },
+    {
+      "lib": "distillation",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 10,
+      "speedup_x": 384.82,
+      "py_total_ns": 6080.21,
+      "mojo_total_ns": 15.8
+    },
+    {
+      "lib": "distributed_collectives",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 419.34,
+      "py_total_ns": 3564.39,
+      "mojo_total_ns": 8.5
+    },
+    {
+      "lib": "distribution_fit",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 9.81,
+      "py_total_ns": 53274.3,
+      "mojo_total_ns": 5428.9
+    },
+    {
+      "lib": "distributions",
+      "status": "ok",
+      "n_functions": 25,
+      "n_compared": 16,
+      "speedup_x": 7.3,
+      "py_total_ns": 18850.57,
+      "mojo_total_ns": 2583.5
+    },
+    {
+      "lib": "dosimetry",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 417.4,
+      "py_total_ns": 4215.75,
+      "mojo_total_ns": 10.1
+    },
+    {
+      "lib": "drones",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 12,
+      "speedup_x": 338.66,
+      "py_total_ns": 4063.88,
+      "mojo_total_ns": 12.0
+    },
+    {
+      "lib": "earth",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 29.79,
+      "py_total_ns": 21501.98,
+      "mojo_total_ns": 721.9
+    },
+    {
+      "lib": "ecohydrology",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 6,
+      "speedup_x": 146.9,
+      "py_total_ns": 1674.65,
+      "mojo_total_ns": 11.4
+    },
+    {
+      "lib": "ecology",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 11,
+      "speedup_x": 264.83,
+      "py_total_ns": 3098.57,
+      "mojo_total_ns": 11.7
+    },
+    {
+      "lib": "economic_indicators",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 7,
+      "speedup_x": 8.79,
+      "py_total_ns": 5171.43,
+      "mojo_total_ns": 588.4
+    },
+    {
+      "lib": "ecophysiology",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 6,
+      "speedup_x": 192.47,
+      "py_total_ns": 1289.55,
+      "mojo_total_ns": 6.7
+    },
+    {
+      "lib": "election",
+      "status": "ok",
+      "n_functions": 8,
+      "n_compared": 8,
+      "speedup_x": 1.81,
+      "py_total_ns": 50772.75,
+      "mojo_total_ns": 28124.1
+    },
+    {
+      "lib": "electrical",
+      "status": "ok",
+      "n_functions": 14,
+      "n_compared": 14,
+      "speedup_x": 168.42,
+      "py_total_ns": 5861.18,
+      "mojo_total_ns": 34.8
+    },
+    {
+      "lib": "electrochemistry",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 9,
+      "speedup_x": 227.88,
+      "py_total_ns": 2233.27,
+      "mojo_total_ns": 9.8
+    },
+    {
+      "lib": "electrostatics",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 286.96,
+      "py_total_ns": 3902.6,
+      "mojo_total_ns": 13.6
+    },
+    {
+      "lib": "elevator",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 12,
+      "speedup_x": 193.59,
+      "py_total_ns": 2555.44,
+      "mojo_total_ns": 13.2
+    },
+    {
+      "lib": "embeddings",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 12,
+      "speedup_x": 10.67,
+      "py_total_ns": 92567.26,
+      "mojo_total_ns": 8675.1
+    },
+    {
+      "lib": "encoding",
+      "status": "ok",
+      "n_functions": 7,
+      "n_compared": 7,
+      "speedup_x": 3.47,
+      "py_total_ns": 46879.49,
+      "mojo_total_ns": 13505.4
+    },
+    {
+      "lib": "encryption_modes",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 10,
+      "speedup_x": 228.34,
+      "py_total_ns": 2762.95,
+      "mojo_total_ns": 12.1
+    },
+    {
+      "lib": "endocrinology",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 9,
+      "speedup_x": 184.8,
+      "py_total_ns": 1755.58,
+      "mojo_total_ns": 9.5
+    },
+    {
+      "lib": "engines_column_matcher",
+      "status": "ok",
+      "n_functions": 1,
+      "n_compared": 1,
+      "speedup_x": 1482.04,
+      "py_total_ns": 45943.35,
+      "mojo_total_ns": 31.0
+    },
+    {
+      "lib": "engines_column_profiler",
+      "status": "ok",
+      "n_functions": 1,
+      "n_compared": 1,
+      "speedup_x": 55.83,
+      "py_total_ns": 385.21,
+      "mojo_total_ns": 6.9
+    },
+    {
+      "lib": "engines_column_ranker",
+      "status": "ok",
+      "n_functions": 1,
+      "n_compared": 1,
+      "speedup_x": 118.82,
+      "py_total_ns": 4776.48,
+      "mojo_total_ns": 40.2
+    },
+    {
+      "lib": "engines_field_map",
+      "status": "ok",
+      "n_functions": 1,
+      "n_compared": 1,
+      "speedup_x": 310.79,
+      "py_total_ns": 4288.88,
+      "mojo_total_ns": 13.8
+    },
+    {
+      "lib": "engines_join_detector",
+      "status": "ok",
+      "n_functions": 1,
+      "n_compared": 1,
+      "speedup_x": 586.4,
+      "py_total_ns": 7154.03,
+      "mojo_total_ns": 12.2
+    },
+    {
+      "lib": "engines_monte_carlo",
+      "status": "ok",
+      "n_functions": 3,
+      "n_compared": 2,
+      "speedup_x": 7221.48,
+      "py_total_ns": 12998.67,
+      "mojo_total_ns": 1.8
+    },
+    {
+      "lib": "engines_relation_detector",
+      "status": "ok",
+      "n_functions": 1,
+      "n_compared": 1,
+      "speedup_x": 96.86,
+      "py_total_ns": 37544.58,
+      "mojo_total_ns": 387.6
+    },
+    {
+      "lib": "engines_string_similarity",
+      "status": "ok",
+      "n_functions": 1,
+      "n_compared": 1,
+      "speedup_x": 5.33,
+      "py_total_ns": 12623.7,
+      "mojo_total_ns": 2369.1
+    },
+    {
+      "lib": "entomology",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 10,
+      "speedup_x": 101.24,
+      "py_total_ns": 1245.25,
+      "mojo_total_ns": 12.3
+    },
+    {
+      "lib": "env",
+      "status": "ok",
+      "n_functions": 5,
+      "n_compared": 5,
+      "speedup_x": 0.26,
+      "py_total_ns": 20036.58,
+      "mojo_total_ns": 77448.5
+    },
+    {
+      "lib": "epidemiology",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 9,
+      "speedup_x": 0.83,
+      "py_total_ns": 13882.18,
+      "mojo_total_ns": 16737.2
+    },
+    {
+      "lib": "epigenetics",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 279.96,
+      "py_total_ns": 2295.63,
+      "mojo_total_ns": 8.2
+    },
+    {
+      "lib": "ergonomics",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 9,
+      "speedup_x": 8.11,
+      "py_total_ns": 1005.0,
+      "mojo_total_ns": 123.9
+    },
+    {
+      "lib": "etiology",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 221.32,
+      "py_total_ns": 1726.29,
+      "mojo_total_ns": 7.8
+    },
+    {
+      "lib": "evaluation_feedback",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 4,
+      "speedup_x": 503.62,
+      "py_total_ns": 2115.19,
+      "mojo_total_ns": 4.2
+    },
+    {
+      "lib": "execution_planner",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 240.8,
+      "py_total_ns": 2046.79,
+      "mojo_total_ns": 8.5
+    },
+    {
+      "lib": "fault_tolerance",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 292.75,
+      "py_total_ns": 2986.03,
+      "mojo_total_ns": 10.2
+    },
+    {
+      "lib": "feature_engineering",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 6,
+      "speedup_x": 147.5,
+      "py_total_ns": 1755.28,
+      "mojo_total_ns": 11.9
+    },
+    {
+      "lib": "feature_selection",
+      "status": "ok",
+      "n_functions": 9,
+      "n_compared": 9,
+      "speedup_x": 21.04,
+      "py_total_ns": 254199.55,
+      "mojo_total_ns": 12079.2
+    },
+    {
+      "lib": "fermentation",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 7,
+      "speedup_x": 606.6,
+      "py_total_ns": 8492.45,
+      "mojo_total_ns": 14.0
+    },
+    {
+      "lib": "fft",
+      "status": "ok",
+      "n_functions": 4,
+      "n_compared": 2,
+      "speedup_x": 6.56,
+      "py_total_ns": 2525.82,
+      "mojo_total_ns": 384.8
+    },
+    {
+      "lib": "filepath_pathlib",
+      "status": "ok",
+      "n_functions": 8,
+      "n_compared": 6,
+      "speedup_x": 71.3,
+      "py_total_ns": 78569.63,
+      "mojo_total_ns": 1101.9
+    },
+    {
+      "lib": "finance",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 11,
+      "speedup_x": 61.76,
+      "py_total_ns": 68489.07,
+      "mojo_total_ns": 1108.9
+    },
+    {
+      "lib": "fire_safety",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 11,
+      "speedup_x": 1188.29,
+      "py_total_ns": 16873.73,
+      "mojo_total_ns": 14.2
+    },
+    {
+      "lib": "fisheries",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 10,
+      "speedup_x": 415.21,
+      "py_total_ns": 4442.77,
+      "mojo_total_ns": 10.7
+    },
+    {
+      "lib": "flash_attention",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 9,
+      "speedup_x": 335.15,
+      "py_total_ns": 3284.49,
+      "mojo_total_ns": 9.8
+    },
+    {
+      "lib": "fluid",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 10,
+      "speedup_x": 271.33,
+      "py_total_ns": 4748.33,
+      "mojo_total_ns": 17.5
+    },
+    {
+      "lib": "food_science",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 12,
+      "speedup_x": 476.57,
+      "py_total_ns": 5861.76,
+      "mojo_total_ns": 12.3
+    },
+    {
+      "lib": "forensics",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 9,
+      "speedup_x": 248.47,
+      "py_total_ns": 2857.35,
+      "mojo_total_ns": 11.5
+    },
+    {
+      "lib": "formal_logic",
+      "status": "ok",
+      "n_functions": 14,
+      "n_compared": 10,
+      "speedup_x": 13.65,
+      "py_total_ns": 4540.67,
+      "mojo_total_ns": 332.6
+    },
+    {
+      "lib": "fused_kernels",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 207.21,
+      "py_total_ns": 1761.28,
+      "mojo_total_ns": 8.5
+    },
+    {
+      "lib": "fuzzy_logic",
+      "status": "ok",
+      "n_functions": 11,
+      "n_compared": 9,
+      "speedup_x": 14.74,
+      "py_total_ns": 3454.16,
+      "mojo_total_ns": 234.4
+    },
+    {
+      "lib": "game_physics",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 12,
+      "speedup_x": 185.34,
+      "py_total_ns": 2483.58,
+      "mojo_total_ns": 13.4
+    },
+    {
+      "lib": "game_theory",
+      "status": "ok",
+      "n_functions": 8,
+      "n_compared": 7,
+      "speedup_x": 0.99,
+      "py_total_ns": 7166.8,
+      "mojo_total_ns": 7258.5
+    },
+    {
+      "lib": "generation_loop",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 7,
+      "speedup_x": 84.15,
+      "py_total_ns": 740.55,
+      "mojo_total_ns": 8.8
+    },
+    {
+      "lib": "genetic",
+      "status": "ok",
+      "n_functions": 1,
+      "n_compared": 1,
+      "speedup_x": 5.2,
+      "py_total_ns": 575.69,
+      "mojo_total_ns": 110.7
+    },
+    {
+      "lib": "genomics",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 93.45,
+      "py_total_ns": 1046.63,
+      "mojo_total_ns": 11.2
+    },
+    {
+      "lib": "geochemistry",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 9,
+      "speedup_x": 114.7,
+      "py_total_ns": 1147.03,
+      "mojo_total_ns": 10.0
+    },
+    {
+      "lib": "geodesy",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 5.44,
+      "py_total_ns": 13027.32,
+      "mojo_total_ns": 2395.7
+    },
+    {
+      "lib": "geometry",
+      "status": "ok",
+      "n_functions": 9,
+      "n_compared": 9,
+      "speedup_x": 9.31,
+      "py_total_ns": 21618.47,
+      "mojo_total_ns": 2321.6
+    },
+    {
+      "lib": "geomorphology",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 11,
+      "speedup_x": 77.92,
+      "py_total_ns": 1729.9,
+      "mojo_total_ns": 22.2
+    },
+    {
+      "lib": "geophysics",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 9,
+      "speedup_x": 135.92,
+      "py_total_ns": 1807.79,
+      "mojo_total_ns": 13.3
+    },
+    {
+      "lib": "geotechnical",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 11,
+      "speedup_x": 88.87,
+      "py_total_ns": 1697.44,
+      "mojo_total_ns": 19.1
+    },
+    {
+      "lib": "glaciology",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 9,
+      "speedup_x": 168.83,
+      "py_total_ns": 1688.34,
+      "mojo_total_ns": 10.0
+    },
+    {
+      "lib": "gpu_kernels",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 9,
+      "speedup_x": 82.95,
+      "py_total_ns": 978.87,
+      "mojo_total_ns": 11.8
+    },
+    {
+      "lib": "gradient_descent",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 210.32,
+      "py_total_ns": 2313.55,
+      "mojo_total_ns": 11.0
+    },
+    {
+      "lib": "graph_algorithms",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 6,
+      "speedup_x": 153.99,
+      "py_total_ns": 877.74,
+      "mojo_total_ns": 5.7
+    },
+    {
+      "lib": "graph_compiler",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 7,
+      "speedup_x": 107.53,
+      "py_total_ns": 752.73,
+      "mojo_total_ns": 7.0
+    },
+    {
+      "lib": "graph_decision",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 9,
+      "speedup_x": 91.76,
+      "py_total_ns": 1036.84,
+      "mojo_total_ns": 11.3
+    },
+    {
+      "lib": "graph_weighted",
+      "status": "ok",
+      "n_functions": 3,
+      "n_compared": 1,
+      "speedup_x": 13.02,
+      "py_total_ns": 5417.46,
+      "mojo_total_ns": 416.2
+    },
+    {
+      "lib": "greenhouse",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 9,
+      "speedup_x": 251.8,
+      "py_total_ns": 2215.82,
+      "mojo_total_ns": 8.8
+    },
+    {
+      "lib": "heap",
+      "status": "ok",
+      "n_functions": 13,
+      "n_compared": 13,
+      "speedup_x": 1.62,
+      "py_total_ns": 17091.58,
+      "mojo_total_ns": 10546.1
+    },
+    {
+      "lib": "hematology",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 165.0,
+      "py_total_ns": 1649.97,
+      "mojo_total_ns": 10.0
+    },
+    {
+      "lib": "horticulture",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 7,
+      "speedup_x": 260.67,
+      "py_total_ns": 2293.87,
+      "mojo_total_ns": 8.8
+    },
+    {
+      "lib": "hvac",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 10,
+      "speedup_x": 65.72,
+      "py_total_ns": 1544.32,
+      "mojo_total_ns": 23.5
+    },
+    {
+      "lib": "hybrid_reasoning",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 121.55,
+      "py_total_ns": 972.38,
+      "mojo_total_ns": 8.0
+    },
+    {
+      "lib": "hydraulics",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 11,
+      "speedup_x": 120.54,
+      "py_total_ns": 1253.59,
+      "mojo_total_ns": 10.4
+    },
+    {
+      "lib": "hydrogeology",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 7,
+      "speedup_x": 33.48,
+      "py_total_ns": 713.09,
+      "mojo_total_ns": 21.3
+    },
+    {
+      "lib": "hydrology",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 11,
+      "speedup_x": 124.54,
+      "py_total_ns": 1581.7,
+      "mojo_total_ns": 12.7
+    },
+    {
+      "lib": "hydrometeorology",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 7,
+      "speedup_x": 157.14,
+      "py_total_ns": 1618.53,
+      "mojo_total_ns": 10.3
+    },
+    {
+      "lib": "hydroponics",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 9,
+      "speedup_x": 211.13,
+      "py_total_ns": 2132.42,
+      "mojo_total_ns": 10.1
+    },
+    {
+      "lib": "hypothesis",
+      "status": "ok",
+      "n_functions": 6,
+      "n_compared": 6,
+      "speedup_x": 9.43,
+      "py_total_ns": 75742.81,
+      "mojo_total_ns": 8030.8
+    },
+    {
+      "lib": "image_ops",
+      "status": "ok",
+      "n_functions": 11,
+      "n_compared": 11,
+      "speedup_x": 0.33,
+      "py_total_ns": 28470.85,
+      "mojo_total_ns": 85059.0
+    },
+    {
+      "lib": "immunology",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 6,
+      "speedup_x": 117.24,
+      "py_total_ns": 773.82,
+      "mojo_total_ns": 6.6
+    },
+    {
+      "lib": "inference_engine",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 21.91,
+      "py_total_ns": 1073.78,
+      "mojo_total_ns": 49.0
+    },
+    {
+      "lib": "inference_security",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 9,
+      "speedup_x": 219.61,
+      "py_total_ns": 2020.44,
+      "mojo_total_ns": 9.2
+    },
+    {
+      "lib": "information_theory",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 9,
+      "speedup_x": 1.64,
+      "py_total_ns": 9789.75,
+      "mojo_total_ns": 5954.3
+    },
+    {
+      "lib": "insurance",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 12,
+      "speedup_x": 94.11,
+      "py_total_ns": 1383.46,
+      "mojo_total_ns": 14.7
+    },
+    {
+      "lib": "integrate",
+      "status": "ok",
+      "n_functions": 6,
+      "n_compared": 6,
+      "speedup_x": 5.54,
+      "py_total_ns": 6479.54,
+      "mojo_total_ns": 1170.5
+    },
+    {
+      "lib": "interpolate",
+      "status": "ok",
+      "n_functions": 6,
+      "n_compared": 6,
+      "speedup_x": 3.87,
+      "py_total_ns": 11262.72,
+      "mojo_total_ns": 2910.9
+    },
+    {
+      "lib": "interval",
+      "status": "ok",
+      "n_functions": 2,
+      "n_compared": 2,
+      "speedup_x": 427.74,
+      "py_total_ns": 941.04,
+      "mojo_total_ns": 2.2
+    },
+    {
+      "lib": "inventory",
+      "status": "ok",
+      "n_functions": 11,
+      "n_compared": 10,
+      "speedup_x": 5.64,
+      "py_total_ns": 5294.37,
+      "mojo_total_ns": 938.6
+    },
+    {
+      "lib": "json_parser",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 10,
+      "speedup_x": 2793.23,
+      "py_total_ns": 74858.5,
+      "mojo_total_ns": 26.8
+    },
+    {
+      "lib": "json_writer",
+      "status": "ok",
+      "n_functions": 11,
+      "n_compared": 10,
+      "speedup_x": 65.78,
+      "py_total_ns": 170372.02,
+      "mojo_total_ns": 2590.1
+    },
+    {
+      "lib": "kalman",
+      "status": "ok",
+      "n_functions": 9,
+      "n_compared": 9,
+      "speedup_x": 1.89,
+      "py_total_ns": 29876.85,
+      "mojo_total_ns": 15796.1
+    },
+    {
+      "lib": "kinetics",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 9,
+      "speedup_x": 158.81,
+      "py_total_ns": 1540.45,
+      "mojo_total_ns": 9.7
+    },
+    {
+      "lib": "kv_cache",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 7,
+      "speedup_x": 175.32,
+      "py_total_ns": 1227.25,
+      "mojo_total_ns": 7.0
+    },
+    {
+      "lib": "latency_optimizer",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 5,
+      "speedup_x": 17.34,
+      "py_total_ns": 537.65,
+      "mojo_total_ns": 31.0
+    },
+    {
+      "lib": "laundry",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 8,
+      "speedup_x": 90.63,
+      "py_total_ns": 788.45,
+      "mojo_total_ns": 8.7
+    },
+    {
+      "lib": "lidar",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 9,
+      "speedup_x": 42.14,
+      "py_total_ns": 1226.37,
+      "mojo_total_ns": 29.1
+    },
+    {
+      "lib": "lidar_mapping",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 7,
+      "speedup_x": 113.53,
+      "py_total_ns": 794.68,
+      "mojo_total_ns": 7.0
+    },
+    {
+      "lib": "limnochemistry",
+      "status": "ok",
+      "n_functions": 11,
+      "n_compared": 10,
+      "speedup_x": 364.87,
+      "py_total_ns": 3794.7,
+      "mojo_total_ns": 10.4
+    },
+    {
+      "lib": "limnology",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 259.09,
+      "py_total_ns": 4197.22,
+      "mojo_total_ns": 16.2
+    },
+    {
+      "lib": "linalg",
+      "status": "ok",
+      "n_functions": 13,
+      "n_compared": 13,
+      "speedup_x": 14.58,
+      "py_total_ns": 81136.51,
+      "mojo_total_ns": 5566.4
+    },
+    {
+      "lib": "linalg_ext",
+      "status": "ok",
+      "n_functions": 7,
+      "n_compared": 7,
+      "speedup_x": 17.92,
+      "py_total_ns": 538030.29,
+      "mojo_total_ns": 30021.7
+    },
+    {
+      "lib": "linear_programming",
+      "status": "ok",
+      "n_functions": 8,
+      "n_compared": 6,
+      "speedup_x": 5.57,
+      "py_total_ns": 214686.33,
+      "mojo_total_ns": 38516.7
+    },
+    {
+      "lib": "linguistics",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 11,
+      "speedup_x": 875.96,
+      "py_total_ns": 10599.09,
+      "mojo_total_ns": 12.1
+    },
+    {
+      "lib": "llm_sampling",
+      "status": "ok",
+      "n_functions": 11,
+      "n_compared": 10,
+      "speedup_x": 880.5,
+      "py_total_ns": 9685.48,
+      "mojo_total_ns": 11.0
+    },
+    {
+      "lib": "logic_circuit",
+      "status": "ok",
+      "n_functions": 13,
+      "n_compared": 8,
+      "speedup_x": 2.92,
+      "py_total_ns": 12931.27,
+      "mojo_total_ns": 4426.4
+    },
+    {
+      "lib": "logistics",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 11,
+      "speedup_x": 232.08,
+      "py_total_ns": 4432.7,
+      "mojo_total_ns": 19.1
+    },
+    {
+      "lib": "lora_adapters",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 379.98,
+      "py_total_ns": 4217.74,
+      "mojo_total_ns": 11.1
+    },
+    {
+      "lib": "loss_functions",
+      "status": "ok",
+      "n_functions": 11,
+      "n_compared": 6,
+      "speedup_x": 87.77,
+      "py_total_ns": 7091.47,
+      "mojo_total_ns": 80.8
+    },
+    {
+      "lib": "lottery",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 9,
+      "speedup_x": 549.34,
+      "py_total_ns": 5823.05,
+      "mojo_total_ns": 10.6
+    },
+    {
+      "lib": "magnetism",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 9,
+      "speedup_x": 296.37,
+      "py_total_ns": 2845.2,
+      "mojo_total_ns": 9.6
+    },
+    {
+      "lib": "marine",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 10,
+      "speedup_x": 659.09,
+      "py_total_ns": 6854.58,
+      "mojo_total_ns": 10.4
+    },
+    {
+      "lib": "materials",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 11,
+      "speedup_x": 360.38,
+      "py_total_ns": 4036.28,
+      "mojo_total_ns": 11.2
+    },
+    {
+      "lib": "math_ext",
+      "status": "ok",
+      "n_functions": 22,
+      "n_compared": 19,
+      "speedup_x": 20.49,
+      "py_total_ns": 52693.17,
+      "mojo_total_ns": 2571.9
+    },
+    {
+      "lib": "matrix_decomp",
+      "status": "ok",
+      "n_functions": 11,
+      "n_compared": 7,
+      "speedup_x": 1.79,
+      "py_total_ns": 16197.25,
+      "mojo_total_ns": 9030.9
+    },
+    {
+      "lib": "matrix_ops",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 11,
+      "speedup_x": 2.68,
+      "py_total_ns": 189098.73,
+      "mojo_total_ns": 70507.6
+    },
+    {
+      "lib": "memory_system",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 6,
+      "speedup_x": 64.4,
+      "py_total_ns": 1519.89,
+      "mojo_total_ns": 23.6
+    },
+    {
+      "lib": "metabolomics",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 291.25,
+      "py_total_ns": 2592.09,
+      "mojo_total_ns": 8.9
+    },
+    {
+      "lib": "metallurgy",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 11,
+      "speedup_x": 438.67,
+      "py_total_ns": 5132.43,
+      "mojo_total_ns": 11.7
+    },
+    {
+      "lib": "meteorology",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 130.41,
+      "py_total_ns": 4812.31,
+      "mojo_total_ns": 36.9
+    },
+    {
+      "lib": "metrics_agg",
+      "status": "ok",
+      "n_functions": 5,
+      "n_compared": 5,
+      "speedup_x": 16.69,
+      "py_total_ns": 13131.0,
+      "mojo_total_ns": 786.8
+    },
+    {
+      "lib": "microbiology",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 85.65,
+      "py_total_ns": 1601.62,
+      "mojo_total_ns": 18.7
+    },
+    {
+      "lib": "mineralogy",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 7,
+      "speedup_x": 101.51,
+      "py_total_ns": 954.15,
+      "mojo_total_ns": 9.4
+    },
+    {
+      "lib": "mining",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 11,
+      "speedup_x": 325.01,
+      "py_total_ns": 4517.6,
+      "mojo_total_ns": 13.9
+    },
+    {
+      "lib": "mixture_of_experts",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 430.54,
+      "py_total_ns": 3530.43,
+      "mojo_total_ns": 8.2
+    },
+    {
+      "lib": "ml_classifiers",
+      "status": "ok",
+      "n_functions": 7,
+      "n_compared": 7,
+      "speedup_x": 33.0,
+      "py_total_ns": 305980.84,
+      "mojo_total_ns": 9272.5
+    },
+    {
+      "lib": "ml_clustering",
+      "status": "ok",
+      "n_functions": 4,
+      "n_compared": 4,
+      "speedup_x": 29.45,
+      "py_total_ns": 600089.74,
+      "mojo_total_ns": 20374.8
+    },
+    {
+      "lib": "ml_knn",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 12.38,
+      "py_total_ns": 454428.91,
+      "mojo_total_ns": 36704.5
+    },
+    {
+      "lib": "ml_metrics",
+      "status": "ok",
+      "n_functions": 7,
+      "n_compared": 7,
+      "speedup_x": 8.93,
+      "py_total_ns": 84788.11,
+      "mojo_total_ns": 9499.2
+    },
+    {
+      "lib": "ml_metrics_extended",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 5,
+      "speedup_x": 25.45,
+      "py_total_ns": 1751.09,
+      "mojo_total_ns": 68.8
+    },
+    {
+      "lib": "ml_naive_bayes",
+      "status": "ok",
+      "n_functions": 8,
+      "n_compared": 6,
+      "speedup_x": 3.89,
+      "py_total_ns": 110346.69,
+      "mojo_total_ns": 28364.3
+    },
+    {
+      "lib": "ml_preprocessing",
+      "status": "ok",
+      "n_functions": 6,
+      "n_compared": 6,
+      "speedup_x": 5.9,
+      "py_total_ns": 90744.4,
+      "mojo_total_ns": 15377.3
+    },
+    {
+      "lib": "ml_random_forest",
+      "status": "ok",
+      "n_functions": 8,
+      "n_compared": 7,
+      "speedup_x": 9.63,
+      "py_total_ns": 8643676.68,
+      "mojo_total_ns": 897687.3
+    },
+    {
+      "lib": "model_abi",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 9,
+      "speedup_x": 91.7,
+      "py_total_ns": 862.01,
+      "mojo_total_ns": 9.4
+    },
+    {
+      "lib": "model_interop",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 9,
+      "speedup_x": 145.86,
+      "py_total_ns": 1414.87,
+      "mojo_total_ns": 9.7
+    },
+    {
+      "lib": "model_parallel",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 121.9,
+      "py_total_ns": 1243.38,
+      "mojo_total_ns": 10.2
+    },
+    {
+      "lib": "model_router",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 6,
+      "speedup_x": 18.26,
+      "py_total_ns": 1015.17,
+      "mojo_total_ns": 55.6
+    },
+    {
+      "lib": "model_serialization",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 9,
+      "speedup_x": 156.64,
+      "py_total_ns": 1519.41,
+      "mojo_total_ns": 9.7
+    },
+    {
+      "lib": "moe_production",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 102.17,
+      "py_total_ns": 868.4,
+      "mojo_total_ns": 8.5
+    },
+    {
+      "lib": "moe_routing",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 152.75,
+      "py_total_ns": 1344.2,
+      "mojo_total_ns": 8.8
+    },
+    {
+      "lib": "multi_objective",
+      "status": "ok",
+      "n_functions": 7,
+      "n_compared": 6,
+      "speedup_x": 1.35,
+      "py_total_ns": 29987.47,
+      "mojo_total_ns": 22219.1
+    },
+    {
+      "lib": "multimodal",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 128.74,
+      "py_total_ns": 1004.2,
+      "mojo_total_ns": 7.8
+    },
+    {
+      "lib": "museum",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 11,
+      "speedup_x": 23.84,
+      "py_total_ns": 1397.29,
+      "mojo_total_ns": 58.6
+    },
+    {
+      "lib": "music_theory",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 8,
+      "speedup_x": 245.33,
+      "py_total_ns": 5691.7,
+      "mojo_total_ns": 23.2
+    },
+    {
+      "lib": "mycology",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 7,
+      "speedup_x": 105.1,
+      "py_total_ns": 714.69,
+      "mojo_total_ns": 6.8
+    },
+    {
+      "lib": "nanotechnology",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 12,
+      "speedup_x": 278.97,
+      "py_total_ns": 3877.64,
+      "mojo_total_ns": 13.9
+    },
+    {
+      "lib": "nephrology",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 9,
+      "speedup_x": 158.93,
+      "py_total_ns": 1430.35,
+      "mojo_total_ns": 9.0
+    },
+    {
+      "lib": "net_unix_socket",
+      "status": "ok",
+      "n_functions": 14,
+      "n_compared": 5,
+      "speedup_x": 6.4,
+      "py_total_ns": 788726.73,
+      "mojo_total_ns": 123270.1
+    },
+    {
+      "lib": "net_url",
+      "status": "ok",
+      "n_functions": 5,
+      "n_compared": 5,
+      "speedup_x": 96.93,
+      "py_total_ns": 111055.54,
+      "mojo_total_ns": 1145.7
+    },
+    {
+      "lib": "network_analysis",
+      "status": "ok",
+      "n_functions": 11,
+      "n_compared": 8,
+      "speedup_x": 0.73,
+      "py_total_ns": 19479.79,
+      "mojo_total_ns": 26680.5
+    },
+    {
+      "lib": "network_protocol",
+      "status": "ok",
+      "n_functions": 11,
+      "n_compared": 3,
+      "speedup_x": 8.76,
+      "py_total_ns": 7601.45,
+      "mojo_total_ns": 867.3
+    },
+    {
+      "lib": "neuropharmacology",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 93.71,
+      "py_total_ns": 1171.35,
+      "mojo_total_ns": 12.5
+    },
+    {
+      "lib": "neurophysics",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 6,
+      "speedup_x": 103.81,
+      "py_total_ns": 965.46,
+      "mojo_total_ns": 9.3
+    },
+    {
+      "lib": "nlp",
+      "status": "ok",
+      "n_functions": 9,
+      "n_compared": 9,
+      "speedup_x": 1.08,
+      "py_total_ns": 19472.46,
+      "mojo_total_ns": 18082.5
+    },
+    {
+      "lib": "nn_layers",
+      "status": "ok",
+      "n_functions": 11,
+      "n_compared": 11,
+      "speedup_x": 1.12,
+      "py_total_ns": 36468.25,
+      "mojo_total_ns": 32660.4
+    },
+    {
+      "lib": "normalization_layers",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 260.97,
+      "py_total_ns": 2766.24,
+      "mojo_total_ns": 10.6
+    },
+    {
+      "lib": "nuclear",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 10,
+      "speedup_x": 250.83,
+      "py_total_ns": 2508.31,
+      "mojo_total_ns": 10.0
+    },
+    {
+      "lib": "number_theory",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 9,
+      "speedup_x": 1.35,
+      "py_total_ns": 4838.68,
+      "mojo_total_ns": 3594.4
+    },
+    {
+      "lib": "numerical_stability",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 11,
+      "speedup_x": 0.53,
+      "py_total_ns": 6171.85,
+      "mojo_total_ns": 11569.8
+    },
+    {
+      "lib": "numismatics",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 9,
+      "speedup_x": 93.08,
+      "py_total_ns": 1759.18,
+      "mojo_total_ns": 18.9
+    },
+    {
+      "lib": "numpy_ops",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 9,
+      "speedup_x": 132.6,
+      "py_total_ns": 1511.62,
+      "mojo_total_ns": 11.4
+    },
+    {
+      "lib": "nutrition",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 11,
+      "speedup_x": 6.16,
+      "py_total_ns": 1780.12,
+      "mojo_total_ns": 289.2
+    },
+    {
+      "lib": "observability",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 147.64,
+      "py_total_ns": 1476.36,
+      "mojo_total_ns": 10.0
+    },
+    {
+      "lib": "oceanography",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 133.88,
+      "py_total_ns": 1071.01,
+      "mojo_total_ns": 8.0
+    },
+    {
+      "lib": "ode",
+      "status": "ok",
+      "n_functions": 8,
+      "n_compared": 8,
+      "speedup_x": 0.98,
+      "py_total_ns": 16415.28,
+      "mojo_total_ns": 16720.1
+    },
+    {
+      "lib": "online_learning",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 174.32,
+      "py_total_ns": 1516.55,
+      "mojo_total_ns": 8.7
+    },
+    {
+      "lib": "operations_research",
+      "status": "ok",
+      "n_functions": 13,
+      "n_compared": 13,
+      "speedup_x": 136.81,
+      "py_total_ns": 1887.99,
+      "mojo_total_ns": 13.8
+    },
+    {
+      "lib": "ophthalmology",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 152.4,
+      "py_total_ns": 1524.0,
+      "mojo_total_ns": 10.0
+    },
+    {
+      "lib": "optics",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 9,
+      "speedup_x": 155.21,
+      "py_total_ns": 1474.51,
+      "mojo_total_ns": 9.5
+    },
+    {
+      "lib": "optimization_constrained",
+      "status": "ok",
+      "n_functions": 8,
+      "n_compared": 6,
+      "speedup_x": 4.35,
+      "py_total_ns": 516093.28,
+      "mojo_total_ns": 118555.3
+    },
+    {
+      "lib": "optimization_meta",
+      "status": "ok",
+      "n_functions": 7,
+      "n_compared": 7,
+      "speedup_x": 8.81,
+      "py_total_ns": 437715.23,
+      "mojo_total_ns": 49666.7
+    },
+    {
+      "lib": "optimize",
+      "status": "ok",
+      "n_functions": 8,
+      "n_compared": 8,
+      "speedup_x": 681.91,
+      "py_total_ns": 47324.33,
+      "mojo_total_ns": 69.4
+    },
+    {
+      "lib": "optimizer_full",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 9,
+      "speedup_x": 397.27,
+      "py_total_ns": 4528.92,
+      "mojo_total_ns": 11.4
+    },
+    {
+      "lib": "option_pricing",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 4,
+      "speedup_x": 6.34,
+      "py_total_ns": 19028.58,
+      "mojo_total_ns": 3002.0
+    },
+    {
+      "lib": "orthodontics",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 355.29,
+      "py_total_ns": 3908.23,
+      "mojo_total_ns": 11.0
+    },
+    {
+      "lib": "packaging",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 12,
+      "speedup_x": 300.65,
+      "py_total_ns": 4690.21,
+      "mojo_total_ns": 15.6
+    },
+    {
+      "lib": "paged_kv_cache",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 7,
+      "speedup_x": 410.58,
+      "py_total_ns": 3202.49,
+      "mojo_total_ns": 7.8
+    },
+    {
+      "lib": "paleomagnetism",
+      "status": "ok",
+      "n_functions": 13,
+      "n_compared": 11,
+      "speedup_x": 597.49,
+      "py_total_ns": 7229.67,
+      "mojo_total_ns": 12.1
+    },
+    {
+      "lib": "paleontology",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 11,
+      "speedup_x": 104.87,
+      "py_total_ns": 1982.09,
+      "mojo_total_ns": 18.9
+    },
+    {
+      "lib": "palynology",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 9,
+      "speedup_x": 64.01,
+      "py_total_ns": 998.62,
+      "mojo_total_ns": 15.6
+    },
+    {
+      "lib": "pandas_groupby",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 130.75,
+      "py_total_ns": 1438.2,
+      "mojo_total_ns": 11.0
+    },
+    {
+      "lib": "paper_science",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 11,
+      "speedup_x": 40.57,
+      "py_total_ns": 2288.36,
+      "mojo_total_ns": 56.4
+    },
+    {
+      "lib": "pattern",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 12,
+      "speedup_x": 19.19,
+      "py_total_ns": 54257.48,
+      "mojo_total_ns": 2828.1
+    },
+    {
+      "lib": "pde",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 9,
+      "speedup_x": 2.65,
+      "py_total_ns": 61900.85,
+      "mojo_total_ns": 23347.5
+    },
+    {
+      "lib": "pedology",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 1077.44,
+      "py_total_ns": 11528.56,
+      "mojo_total_ns": 10.7
+    },
+    {
+      "lib": "pension",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 11,
+      "speedup_x": 366.71,
+      "py_total_ns": 8910.97,
+      "mojo_total_ns": 24.3
+    },
+    {
+      "lib": "perfumery",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 10,
+      "speedup_x": 278.75,
+      "py_total_ns": 3791.0,
+      "mojo_total_ns": 13.6
+    },
+    {
+      "lib": "persistence",
+      "status": "ok",
+      "n_functions": 2,
+      "n_compared": 2,
+      "speedup_x": 5.97,
+      "py_total_ns": 4480.85,
+      "mojo_total_ns": 750.4
+    },
+    {
+      "lib": "pest_control",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 11,
+      "speedup_x": 46.61,
+      "py_total_ns": 1766.51,
+      "mojo_total_ns": 37.9
+    },
+    {
+      "lib": "petri_net",
+      "status": "ok",
+      "n_functions": 13,
+      "n_compared": 9,
+      "speedup_x": 326.57,
+      "py_total_ns": 3559.64,
+      "mojo_total_ns": 10.9
+    },
+    {
+      "lib": "pharmacokinetics",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 11,
+      "speedup_x": 166.71,
+      "py_total_ns": 1967.17,
+      "mojo_total_ns": 11.8
+    },
+    {
+      "lib": "pharmacology",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 22.93,
+      "py_total_ns": 1373.48,
+      "mojo_total_ns": 59.9
+    },
+    {
+      "lib": "photonics",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 9,
+      "speedup_x": 78.68,
+      "py_total_ns": 1030.74,
+      "mojo_total_ns": 13.1
+    },
+    {
+      "lib": "photovoltaics",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 96.26,
+      "py_total_ns": 1222.51,
+      "mojo_total_ns": 12.7
+    },
+    {
+      "lib": "physics",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 12,
+      "speedup_x": 11.17,
+      "py_total_ns": 1917.57,
+      "mojo_total_ns": 171.7
+    },
+    {
+      "lib": "phytochemistry",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 5,
+      "speedup_x": 85.19,
+      "py_total_ns": 477.06,
+      "mojo_total_ns": 5.6
+    },
+    {
+      "lib": "pipeline",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 11,
+      "speedup_x": 1.9,
+      "py_total_ns": 7925.72,
+      "mojo_total_ns": 4162.5
+    },
+    {
+      "lib": "plasma_physics",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 203.54,
+      "py_total_ns": 2238.98,
+      "mojo_total_ns": 11.0
+    },
+    {
+      "lib": "plumbing",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 12,
+      "speedup_x": 130.64,
+      "py_total_ns": 1750.57,
+      "mojo_total_ns": 13.4
+    },
+    {
+      "lib": "pneumatics",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 10,
+      "speedup_x": 168.61,
+      "py_total_ns": 1871.57,
+      "mojo_total_ns": 11.1
+    },
+    {
+      "lib": "polymer",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 12,
+      "speedup_x": 93.29,
+      "py_total_ns": 1725.9,
+      "mojo_total_ns": 18.5
+    },
+    {
+      "lib": "polynomial",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 3.78,
+      "py_total_ns": 30983.75,
+      "mojo_total_ns": 8186.4
+    },
+    {
+      "lib": "population",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 1.51,
+      "py_total_ns": 7402.13,
+      "mojo_total_ns": 4907.2
+    },
+    {
+      "lib": "population_genetics",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 6,
+      "speedup_x": 122.26,
+      "py_total_ns": 758.03,
+      "mojo_total_ns": 6.2
+    },
+    {
+      "lib": "positional_encoding",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 5,
+      "speedup_x": 137.67,
+      "py_total_ns": 702.11,
+      "mojo_total_ns": 5.1
+    },
+    {
+      "lib": "power_systems",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 12,
+      "speedup_x": 121.1,
+      "py_total_ns": 1562.15,
+      "mojo_total_ns": 12.9
+    },
+    {
+      "lib": "printing",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 10,
+      "speedup_x": 148.43,
+      "py_total_ns": 1573.33,
+      "mojo_total_ns": 10.6
+    },
+    {
+      "lib": "privacy",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 8.92,
+      "py_total_ns": 5385.2,
+      "mojo_total_ns": 603.9
+    },
+    {
+      "lib": "probability",
+      "status": "ok",
+      "n_functions": 11,
+      "n_compared": 11,
+      "speedup_x": 3.36,
+      "py_total_ns": 7110.18,
+      "mojo_total_ns": 2115.9
+    },
+    {
+      "lib": "procurement",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 8,
+      "speedup_x": 98.23,
+      "py_total_ns": 992.13,
+      "mojo_total_ns": 10.1
+    },
+    {
+      "lib": "project_management",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 6,
+      "speedup_x": 61.01,
+      "py_total_ns": 549.07,
+      "mojo_total_ns": 9.0
+    },
+    {
+      "lib": "propensity",
+      "status": "ok",
+      "n_functions": 9,
+      "n_compared": 9,
+      "speedup_x": 1.33,
+      "py_total_ns": 18665.91,
+      "mojo_total_ns": 14042.6
+    },
+    {
+      "lib": "proteomics",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 306.98,
+      "py_total_ns": 4113.58,
+      "mojo_total_ns": 13.4
+    },
+    {
+      "lib": "protocol",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 0.67,
+      "py_total_ns": 16060.55,
+      "mojo_total_ns": 24059.9
+    },
+    {
+      "lib": "psychoacoustics",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 58.19,
+      "py_total_ns": 1286.0,
+      "mojo_total_ns": 22.1
+    },
+    {
+      "lib": "psychometrics",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 7,
+      "speedup_x": 197.16,
+      "py_total_ns": 1380.14,
+      "mojo_total_ns": 7.0
+    },
+    {
+      "lib": "pulmonology",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 100.68,
+      "py_total_ns": 1077.29,
+      "mojo_total_ns": 10.7
+    },
+    {
+      "lib": "quantization",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 4,
+      "speedup_x": 95.54,
+      "py_total_ns": 382.15,
+      "mojo_total_ns": 4.0
+    },
+    {
+      "lib": "quantization_stack",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 116.39,
+      "py_total_ns": 989.3,
+      "mojo_total_ns": 8.5
+    },
+    {
+      "lib": "quantum",
+      "status": "ok",
+      "n_functions": 11,
+      "n_compared": 11,
+      "speedup_x": 0.56,
+      "py_total_ns": 4818.37,
+      "mojo_total_ns": 8667.6
+    },
+    {
+      "lib": "quantum_computing",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 11,
+      "speedup_x": 145.94,
+      "py_total_ns": 1722.11,
+      "mojo_total_ns": 11.8
+    },
+    {
+      "lib": "queue_ds",
+      "status": "ok",
+      "n_functions": 2,
+      "n_compared": 2,
+      "speedup_x": 0.33,
+      "py_total_ns": 1120.95,
+      "mojo_total_ns": 3389.7
+    },
+    {
+      "lib": "queueing",
+      "status": "ok",
+      "n_functions": 11,
+      "n_compared": 11,
+      "speedup_x": 110.9,
+      "py_total_ns": 6864.83,
+      "mojo_total_ns": 61.9
+    },
+    {
+      "lib": "radar",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 12,
+      "speedup_x": 102.54,
+      "py_total_ns": 1404.82,
+      "mojo_total_ns": 13.7
+    },
+    {
+      "lib": "radiometry",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 102.03,
+      "py_total_ns": 857.08,
+      "mojo_total_ns": 8.4
+    },
+    {
+      "lib": "rag_retrieval",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 9,
+      "speedup_x": 153.89,
+      "py_total_ns": 1477.35,
+      "mojo_total_ns": 9.6
+    },
+    {
+      "lib": "random_utils",
+      "status": "ok",
+      "n_functions": 7,
+      "n_compared": 7,
+      "speedup_x": 1.87,
+      "py_total_ns": 7526.93,
+      "mojo_total_ns": 4023.5
+    },
+    {
+      "lib": "real_estate",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 10,
+      "speedup_x": 220.7,
+      "py_total_ns": 2295.33,
+      "mojo_total_ns": 10.4
+    },
+    {
+      "lib": "recommender",
+      "status": "ok",
+      "n_functions": 9,
+      "n_compared": 9,
+      "speedup_x": 3.44,
+      "py_total_ns": 11379.71,
+      "mojo_total_ns": 3305.2
+    },
+    {
+      "lib": "refrigeration",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 7,
+      "speedup_x": 108.73,
+      "py_total_ns": 804.58,
+      "mojo_total_ns": 7.4
+    },
+    {
+      "lib": "regex_engine",
+      "status": "ok",
+      "n_functions": 9,
+      "n_compared": 8,
+      "speedup_x": 59.61,
+      "py_total_ns": 53083.42,
+      "mojo_total_ns": 890.5
+    },
+    {
+      "lib": "regression",
+      "status": "ok",
+      "n_functions": 8,
+      "n_compared": 6,
+      "speedup_x": 0.49,
+      "py_total_ns": 17435.8,
+      "mojo_total_ns": 35773.6
+    },
+    {
+      "lib": "regression_tree",
+      "status": "ok",
+      "n_functions": 3,
+      "n_compared": 1,
+      "speedup_x": 11.84,
+      "py_total_ns": 9637.15,
+      "mojo_total_ns": 813.8
+    },
+    {
+      "lib": "reinforcement",
+      "status": "ok",
+      "n_functions": 8,
+      "n_compared": 1,
+      "speedup_x": 12.43,
+      "py_total_ns": 1098.73,
+      "mojo_total_ns": 88.4
+    },
+    {
+      "lib": "reliability",
+      "status": "ok",
+      "n_functions": 11,
+      "n_compared": 11,
+      "speedup_x": 124.79,
+      "py_total_ns": 2558.1,
+      "mojo_total_ns": 20.5
+    },
+    {
+      "lib": "reservoir",
+      "status": "ok",
+      "n_functions": 7,
+      "n_compared": 7,
+      "speedup_x": 1.49,
+      "py_total_ns": 15530.57,
+      "mojo_total_ns": 10406.6
+    },
+    {
+      "lib": "rheology",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 1.51,
+      "py_total_ns": 1441.61,
+      "mojo_total_ns": 955.2
+    },
+    {
+      "lib": "risk",
+      "status": "ok",
+      "n_functions": 11,
+      "n_compared": 11,
+      "speedup_x": 14.53,
+      "py_total_ns": 13277.9,
+      "mojo_total_ns": 913.9
+    },
+    {
+      "lib": "rlhf_dpo",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 7,
+      "speedup_x": 220.7,
+      "py_total_ns": 1566.95,
+      "mojo_total_ns": 7.1
+    },
+    {
+      "lib": "robotics",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 10,
+      "speedup_x": 97.01,
+      "py_total_ns": 1367.81,
+      "mojo_total_ns": 14.1
+    },
+    {
+      "lib": "robustness",
+      "status": "ok",
+      "n_functions": 8,
+      "n_compared": 8,
+      "speedup_x": 4.91,
+      "py_total_ns": 435428.36,
+      "mojo_total_ns": 88746.7
+    },
+    {
+      "lib": "root_finding",
+      "status": "ok",
+      "n_functions": 9,
+      "n_compared": 6,
+      "speedup_x": 6.04,
+      "py_total_ns": 4662.32,
+      "mojo_total_ns": 772.0
+    },
+    {
+      "lib": "rubber",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 7,
+      "speedup_x": 241.76,
+      "py_total_ns": 1619.78,
+      "mojo_total_ns": 6.7
+    },
+    {
+      "lib": "sampling",
+      "status": "ok",
+      "n_functions": 6,
+      "n_compared": 6,
+      "speedup_x": 10.76,
+      "py_total_ns": 171890.2,
+      "mojo_total_ns": 15971.8
+    },
+    {
+      "lib": "scheduler_ops",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 9,
+      "speedup_x": 1418.66,
+      "py_total_ns": 17307.7,
+      "mojo_total_ns": 12.2
+    },
+    {
+      "lib": "scheduling_algo",
+      "status": "ok",
+      "n_functions": 9,
+      "n_compared": 9,
+      "speedup_x": 2.34,
+      "py_total_ns": 70343.81,
+      "mojo_total_ns": 30044.9
+    },
+    {
+      "lib": "scipy_optimize_ops",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 289.87,
+      "py_total_ns": 2319.0,
+      "mojo_total_ns": 8.0
+    },
+    {
+      "lib": "scipy_stats_ops",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 527.19,
+      "py_total_ns": 5430.08,
+      "mojo_total_ns": 10.3
+    },
+    {
+      "lib": "scoring",
+      "status": "ok",
+      "n_functions": 11,
+      "n_compared": 8,
+      "speedup_x": 98.57,
+      "py_total_ns": 27756.68,
+      "mojo_total_ns": 281.6
+    },
+    {
+      "lib": "security_governance",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 475.62,
+      "py_total_ns": 3995.25,
+      "mojo_total_ns": 8.4
+    },
+    {
+      "lib": "sedimentology",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 4,
+      "speedup_x": 207.01,
+      "py_total_ns": 683.15,
+      "mojo_total_ns": 3.3
+    },
+    {
+      "lib": "seismology",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 7,
+      "speedup_x": 110.46,
+      "py_total_ns": 983.08,
+      "mojo_total_ns": 8.9
+    },
+    {
+      "lib": "semiconductors",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 11,
+      "speedup_x": 87.25,
+      "py_total_ns": 2277.3,
+      "mojo_total_ns": 26.1
+    },
+    {
+      "lib": "sentiment",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 9,
+      "speedup_x": 0.67,
+      "py_total_ns": 65639.97,
+      "mojo_total_ns": 97273.5
+    },
+    {
+      "lib": "serialization_msgpack",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 9,
+      "speedup_x": 65.5,
+      "py_total_ns": 52644.49,
+      "mojo_total_ns": 803.7
+    },
+    {
+      "lib": "series",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 5.25,
+      "py_total_ns": 23381.58,
+      "mojo_total_ns": 4451.3
+    },
+    {
+      "lib": "set_ops",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 12,
+      "speedup_x": 2.61,
+      "py_total_ns": 8360.65,
+      "mojo_total_ns": 3199.0
+    },
+    {
+      "lib": "sha256",
+      "status": "ok",
+      "n_functions": 1,
+      "n_compared": 1,
+      "speedup_x": 0.8,
+      "py_total_ns": 2016.8,
+      "mojo_total_ns": 2510.2
+    },
+    {
+      "lib": "signal_dsp",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 28.41,
+      "py_total_ns": 98374.99,
+      "mojo_total_ns": 3463.1
+    },
+    {
+      "lib": "signal_filter",
+      "status": "ok",
+      "n_functions": 11,
+      "n_compared": 10,
+      "speedup_x": 12.8,
+      "py_total_ns": 68081.47,
+      "mojo_total_ns": 5319.1
+    },
+    {
+      "lib": "signal_processing",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 6.98,
+      "py_total_ns": 11170.83,
+      "mojo_total_ns": 1599.3
+    },
+    {
+      "lib": "silviculture",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 105.08,
+      "py_total_ns": 893.19,
+      "mojo_total_ns": 8.5
+    },
+    {
+      "lib": "simulation",
+      "status": "ok",
+      "n_functions": 2,
+      "n_compared": 2,
+      "speedup_x": 18.25,
+      "py_total_ns": 7722.42,
+      "mojo_total_ns": 423.2
+    },
+    {
+      "lib": "sketch",
+      "status": "ok",
+      "n_functions": 5,
+      "n_compared": 5,
+      "speedup_x": 0.22,
+      "py_total_ns": 5257.58,
+      "mojo_total_ns": 23370.0
+    },
+    {
+      "lib": "social_network",
+      "status": "ok",
+      "n_functions": 9,
+      "n_compared": 7,
+      "speedup_x": 0.52,
+      "py_total_ns": 66779.55,
+      "mojo_total_ns": 128798.9
+    },
+    {
+      "lib": "soil_mechanics",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 4,
+      "speedup_x": 147.64,
+      "py_total_ns": 575.81,
+      "mojo_total_ns": 3.9
+    },
+    {
+      "lib": "soil_science",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 9,
+      "speedup_x": 211.76,
+      "py_total_ns": 2392.9,
+      "mojo_total_ns": 11.3
+    },
+    {
+      "lib": "solar_energy",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 12,
+      "speedup_x": 16.64,
+      "py_total_ns": 3332.28,
+      "mojo_total_ns": 200.2
+    },
+    {
+      "lib": "sorting",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 9,
+      "speedup_x": 0.37,
+      "py_total_ns": 40756.68,
+      "mojo_total_ns": 108748.1
+    },
+    {
+      "lib": "sparse",
+      "status": "ok",
+      "n_functions": 1,
+      "n_compared": 1,
+      "speedup_x": 0.64,
+      "py_total_ns": 2162.29,
+      "mojo_total_ns": 3358.9
+    },
+    {
+      "lib": "sparse_attention",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 191.81,
+      "py_total_ns": 1898.96,
+      "mojo_total_ns": 9.9
+    },
+    {
+      "lib": "sparse_vector",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 9,
+      "speedup_x": 2.0,
+      "py_total_ns": 9067.2,
+      "mojo_total_ns": 4543.6
+    },
+    {
+      "lib": "special_functions",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 12,
+      "speedup_x": 1.22,
+      "py_total_ns": 74767.14,
+      "mojo_total_ns": 61042.6
+    },
+    {
+      "lib": "spectral",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 7,
+      "speedup_x": 81.41,
+      "py_total_ns": 15264.66,
+      "mojo_total_ns": 187.5
+    },
+    {
+      "lib": "spectroscopy",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 10,
+      "speedup_x": 436.09,
+      "py_total_ns": 4491.72,
+      "mojo_total_ns": 10.3
+    },
+    {
+      "lib": "speculative_decoding",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 68.6,
+      "py_total_ns": 15201.63,
+      "mojo_total_ns": 221.6
+    },
+    {
+      "lib": "speleology",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 9,
+      "speedup_x": 370.8,
+      "py_total_ns": 6377.69,
+      "mojo_total_ns": 17.2
+    },
+    {
+      "lib": "sports_analytics",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 12,
+      "speedup_x": 883.1,
+      "py_total_ns": 13069.89,
+      "mojo_total_ns": 14.8
+    },
+    {
+      "lib": "stat_tests",
+      "status": "ok",
+      "n_functions": 9,
+      "n_compared": 9,
+      "speedup_x": 22.94,
+      "py_total_ns": 439667.36,
+      "mojo_total_ns": 19169.7
+    },
+    {
+      "lib": "state_space_models",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 786.16,
+      "py_total_ns": 7311.27,
+      "mojo_total_ns": 9.3
+    },
+    {
+      "lib": "stateful_runtime",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 9,
+      "speedup_x": 239.49,
+      "py_total_ns": 2155.39,
+      "mojo_total_ns": 9.0
+    },
+    {
+      "lib": "stats",
+      "status": "ok",
+      "n_functions": 8,
+      "n_compared": 5,
+      "speedup_x": 858.15,
+      "py_total_ns": 11499.21,
+      "mojo_total_ns": 13.4
+    },
+    {
+      "lib": "stats_bootstrap",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 9,
+      "speedup_x": 2.32,
+      "py_total_ns": 351606.97,
+      "mojo_total_ns": 151231.2
+    },
+    {
+      "lib": "stochastic",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 4.35,
+      "py_total_ns": 94638.33,
+      "mojo_total_ns": 21770.5
+    },
+    {
+      "lib": "stratigraphy",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 7,
+      "speedup_x": 24.77,
+      "py_total_ns": 1065.2,
+      "mojo_total_ns": 43.0
+    },
+    {
+      "lib": "string_distance",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 9.18,
+      "py_total_ns": 71747.17,
+      "mojo_total_ns": 7815.3
+    },
+    {
+      "lib": "structs_containers",
+      "status": "ok",
+      "n_functions": 2,
+      "n_compared": 2,
+      "speedup_x": 20.49,
+      "py_total_ns": 30904.64,
+      "mojo_total_ns": 1508.0
+    },
+    {
+      "lib": "structural",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 12,
+      "speedup_x": 610.14,
+      "py_total_ns": 9457.14,
+      "mojo_total_ns": 15.5
+    },
+    {
+      "lib": "structured_output",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 140.09,
+      "py_total_ns": 1779.2,
+      "mojo_total_ns": 12.7
+    },
+    {
+      "lib": "supply_chain",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 10,
+      "speedup_x": 361.32,
+      "py_total_ns": 9322.07,
+      "mojo_total_ns": 25.8
+    },
+    {
+      "lib": "survival",
+      "status": "ok",
+      "n_functions": 5,
+      "n_compared": 5,
+      "speedup_x": 2.72,
+      "py_total_ns": 123678.46,
+      "mojo_total_ns": 45393.8
+    },
+    {
+      "lib": "sustainability",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 12,
+      "speedup_x": 145.63,
+      "py_total_ns": 3160.16,
+      "mojo_total_ns": 21.7
+    },
+    {
+      "lib": "svm_kernel",
+      "status": "ok",
+      "n_functions": 9,
+      "n_compared": 9,
+      "speedup_x": 1.15,
+      "py_total_ns": 34034.54,
+      "mojo_total_ns": 29586.4
+    },
+    {
+      "lib": "taphonomy",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 148.05,
+      "py_total_ns": 1080.79,
+      "mojo_total_ns": 7.3
+    },
+    {
+      "lib": "telecommunications",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 8,
+      "speedup_x": 65.92,
+      "py_total_ns": 1199.72,
+      "mojo_total_ns": 18.2
+    },
+    {
+      "lib": "tensor",
+      "status": "ok",
+      "n_functions": 5,
+      "n_compared": 5,
+      "speedup_x": 0.09,
+      "py_total_ns": 2509.04,
+      "mojo_total_ns": 27137.8
+    },
+    {
+      "lib": "tensor_ops",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 125.07,
+      "py_total_ns": 950.54,
+      "mojo_total_ns": 7.6
+    },
+    {
+      "lib": "text_column_scorer",
+      "status": "ok",
+      "n_functions": 4,
+      "n_compared": 4,
+      "speedup_x": 1.76,
+      "py_total_ns": 11179.14,
+      "mojo_total_ns": 6363.8
+    },
+    {
+      "lib": "text_fuzzy",
+      "status": "ok",
+      "n_functions": 7,
+      "n_compared": 6,
+      "speedup_x": 27.53,
+      "py_total_ns": 134572.85,
+      "mojo_total_ns": 4888.3
+    },
+    {
+      "lib": "text_regex",
+      "status": "ok",
+      "n_functions": 7,
+      "n_compared": 1,
+      "speedup_x": 117.45,
+      "py_total_ns": 129.2,
+      "mojo_total_ns": 1.1
+    },
+    {
+      "lib": "text_string_utils",
+      "status": "ok",
+      "n_functions": 16,
+      "n_compared": 15,
+      "speedup_x": 135.3,
+      "py_total_ns": 155890.99,
+      "mojo_total_ns": 1152.2
+    },
+    {
+      "lib": "text_tokenizer",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 30.22,
+      "py_total_ns": 187517.95,
+      "mojo_total_ns": 6204.9
+    },
+    {
+      "lib": "textile",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 10,
+      "speedup_x": 182.12,
+      "py_total_ns": 3077.9,
+      "mojo_total_ns": 16.9
+    },
+    {
+      "lib": "thermodynamics",
+      "status": "ok",
+      "n_functions": 11,
+      "n_compared": 9,
+      "speedup_x": 243.31,
+      "py_total_ns": 3162.99,
+      "mojo_total_ns": 13.0
+    },
+    {
+      "lib": "timber",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 10,
+      "speedup_x": 118.15,
+      "py_total_ns": 2587.56,
+      "mojo_total_ns": 21.9
+    },
+    {
+      "lib": "time_series_decompose",
+      "status": "ok",
+      "n_functions": 9,
+      "n_compared": 9,
+      "speedup_x": 3.42,
+      "py_total_ns": 328551.22,
+      "mojo_total_ns": 96043.6
+    },
+    {
+      "lib": "time_zone",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 9,
+      "speedup_x": 35.96,
+      "py_total_ns": 39479.1,
+      "mojo_total_ns": 1098.0
+    },
+    {
+      "lib": "timeseries_stats",
+      "status": "ok",
+      "n_functions": 9,
+      "n_compared": 8,
+      "speedup_x": 9.15,
+      "py_total_ns": 257842.66,
+      "mojo_total_ns": 28188.7
+    },
+    {
+      "lib": "token_bucket",
+      "status": "ok",
+      "n_functions": 3,
+      "n_compared": 3,
+      "speedup_x": 4376.64,
+      "py_total_ns": 11816.92,
+      "mojo_total_ns": 2.7
+    },
+    {
+      "lib": "topology",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 6.59,
+      "py_total_ns": 218647.97,
+      "mojo_total_ns": 33192.7
+    },
+    {
+      "lib": "toxicokinetics",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 334.6,
+      "py_total_ns": 2509.52,
+      "mojo_total_ns": 7.5
+    },
+    {
+      "lib": "toxicology",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 12,
+      "speedup_x": 1199.58,
+      "py_total_ns": 13195.35,
+      "mojo_total_ns": 11.0
+    },
+    {
+      "lib": "traffic_signal",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 12,
+      "speedup_x": 1424.21,
+      "py_total_ns": 16093.57,
+      "mojo_total_ns": 11.3
+    },
+    {
+      "lib": "training_stability",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 71.7,
+      "py_total_ns": 2516.83,
+      "mojo_total_ns": 35.1
+    },
+    {
+      "lib": "transform",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 10,
+      "speedup_x": 3.78,
+      "py_total_ns": 23958.14,
+      "mojo_total_ns": 6331.6
+    },
+    {
+      "lib": "transformer_attention",
+      "status": "ok",
+      "n_functions": 11,
+      "n_compared": 9,
+      "speedup_x": 318.27,
+      "py_total_ns": 2800.82,
+      "mojo_total_ns": 8.8
+    },
+    {
+      "lib": "transformer_blocks",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 173.96,
+      "py_total_ns": 1687.45,
+      "mojo_total_ns": 9.7
+    },
+    {
+      "lib": "transportation",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 11,
+      "speedup_x": 192.63,
+      "py_total_ns": 2138.17,
+      "mojo_total_ns": 11.1
+    },
+    {
+      "lib": "tribochemistry",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 200.53,
+      "py_total_ns": 2045.39,
+      "mojo_total_ns": 10.2
+    },
+    {
+      "lib": "tribology",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 12,
+      "speedup_x": 102.42,
+      "py_total_ns": 1843.53,
+      "mojo_total_ns": 18.0
+    },
+    {
+      "lib": "ultrasonics",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 95.79,
+      "py_total_ns": 996.19,
+      "mojo_total_ns": 10.4
+    },
+    {
+      "lib": "units",
+      "status": "ok",
+      "n_functions": 8,
+      "n_compared": 8,
+      "speedup_x": 28.28,
+      "py_total_ns": 3589.12,
+      "mojo_total_ns": 126.9
+    },
+    {
+      "lib": "urban_planning",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 11,
+      "speedup_x": 205.25,
+      "py_total_ns": 2114.12,
+      "mojo_total_ns": 10.3
+    },
+    {
+      "lib": "vector_search",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 6,
+      "speedup_x": 177.54,
+      "py_total_ns": 1686.65,
+      "mojo_total_ns": 9.5
+    },
+    {
+      "lib": "vector_similarity",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 9,
+      "speedup_x": 155.51,
+      "py_total_ns": 1290.74,
+      "mojo_total_ns": 8.3
+    },
+    {
+      "lib": "veterinary",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 7,
+      "speedup_x": 19.68,
+      "py_total_ns": 3330.25,
+      "mojo_total_ns": 169.2
+    },
+    {
+      "lib": "virology",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 8,
+      "speedup_x": 195.3,
+      "py_total_ns": 1288.95,
+      "mojo_total_ns": 6.6
+    },
+    {
+      "lib": "viticulture",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 9,
+      "speedup_x": 71.2,
+      "py_total_ns": 2335.26,
+      "mojo_total_ns": 32.8
+    },
+    {
+      "lib": "volcanology",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 12,
+      "speedup_x": 287.64,
+      "py_total_ns": 3451.63,
+      "mojo_total_ns": 12.0
+    },
+    {
+      "lib": "voting",
+      "status": "ok",
+      "n_functions": 11,
+      "n_compared": 7,
+      "speedup_x": 10.9,
+      "py_total_ns": 8033.53,
+      "mojo_total_ns": 737.0
+    },
+    {
+      "lib": "wastewater",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 8,
+      "speedup_x": 117.51,
+      "py_total_ns": 963.57,
+      "mojo_total_ns": 8.2
+    },
+    {
+      "lib": "watchmaking",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 11,
+      "speedup_x": 206.94,
+      "py_total_ns": 2255.66,
+      "mojo_total_ns": 10.9
+    },
+    {
+      "lib": "water_chemistry",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 5,
+      "speedup_x": 257.8,
+      "py_total_ns": 1288.98,
+      "mojo_total_ns": 5.0
+    },
+    {
+      "lib": "wavelet",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 1.34,
+      "py_total_ns": 31019.08,
+      "mojo_total_ns": 23233.5
+    },
+    {
+      "lib": "weight_loader",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 6,
+      "speedup_x": 42.92,
+      "py_total_ns": 918.52,
+      "mojo_total_ns": 21.4
+    },
+    {
+      "lib": "welding",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 11,
+      "speedup_x": 224.24,
+      "py_total_ns": 3498.09,
+      "mojo_total_ns": 15.6
+    },
+    {
+      "lib": "wind_energy",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 12,
+      "speedup_x": 127.8,
+      "py_total_ns": 1495.25,
+      "mojo_total_ns": 11.7
+    },
+    {
+      "lib": "wood_science",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 9,
+      "speedup_x": 143.95,
+      "py_total_ns": 1252.35,
+      "mojo_total_ns": 8.7
+    },
+    {
+      "lib": "workflow_engine",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 9,
+      "speedup_x": 89.61,
+      "py_total_ns": 1783.17,
+      "mojo_total_ns": 19.9
+    }
+  ]
+}

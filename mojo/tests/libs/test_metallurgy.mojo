@@ -1,0 +1,58 @@
+"""test_metallurgy.mojo — auto-generated tests for metallurgy library."""
+from std.math import isnan, isinf
+from metallurgy import hall_petch, johnson_cook_flow_stress, hardness_to_tensile, carbon_equivalent, jominy_distance_to_hardness, avrami_fraction, quench_severity, tempering_parameter, density_of_alloy_rule_of_mixtures, thermal_conductivity_wiedemann_franz, strain_hardening_exponent_from_points, fatigue_life_basquin
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_hall_petch = hall_petch(0.5, 0.5, 0.5)
+    if is_finite(_v_hall_petch): passed += 1; print("  ✅ metallurgy::hall_petch =", _v_hall_petch)
+    else: failed += 1; print("  ❌ metallurgy::hall_petch → non-finite:", _v_hall_petch)
+    var _v_johnson_cook_flow_stress = johnson_cook_flow_stress(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_johnson_cook_flow_stress): passed += 1; print("  ✅ metallurgy::johnson_cook_flow_stress =", _v_johnson_cook_flow_stress)
+    else: failed += 1; print("  ❌ metallurgy::johnson_cook_flow_stress → non-finite:", _v_johnson_cook_flow_stress)
+    var _v_hardness_to_tensile = hardness_to_tensile(0.5)
+    if is_finite(_v_hardness_to_tensile): passed += 1; print("  ✅ metallurgy::hardness_to_tensile =", _v_hardness_to_tensile)
+    else: failed += 1; print("  ❌ metallurgy::hardness_to_tensile → non-finite:", _v_hardness_to_tensile)
+    var _v_carbon_equivalent = carbon_equivalent(0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_carbon_equivalent): passed += 1; print("  ✅ metallurgy::carbon_equivalent =", _v_carbon_equivalent)
+    else: failed += 1; print("  ❌ metallurgy::carbon_equivalent → non-finite:", _v_carbon_equivalent)
+    var _v_jominy_distance_to_hardness = jominy_distance_to_hardness(0.5, 0.5, 0.5)
+    if is_finite(_v_jominy_distance_to_hardness): passed += 1; print("  ✅ metallurgy::jominy_distance_to_hardness =", _v_jominy_distance_to_hardness)
+    else: failed += 1; print("  ❌ metallurgy::jominy_distance_to_hardness → non-finite:", _v_jominy_distance_to_hardness)
+    var _v_avrami_fraction = avrami_fraction(0.5, 0.5, 0.5)
+    if is_finite(_v_avrami_fraction): passed += 1; print("  ✅ metallurgy::avrami_fraction =", _v_avrami_fraction)
+    else: failed += 1; print("  ❌ metallurgy::avrami_fraction → non-finite:", _v_avrami_fraction)
+    var _v_quench_severity = quench_severity(0.5, 0.5)
+    if is_finite(_v_quench_severity): passed += 1; print("  ✅ metallurgy::quench_severity =", _v_quench_severity)
+    else: failed += 1; print("  ❌ metallurgy::quench_severity → non-finite:", _v_quench_severity)
+    var _v_tempering_parameter = tempering_parameter(0.5, 0.5, 0.5)
+    if is_finite(_v_tempering_parameter): passed += 1; print("  ✅ metallurgy::tempering_parameter =", _v_tempering_parameter)
+    else: failed += 1; print("  ❌ metallurgy::tempering_parameter → non-finite:", _v_tempering_parameter)
+    var _v_density_of_alloy_rule_of_mixtures = density_of_alloy_rule_of_mixtures(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_density_of_alloy_rule_of_mixtures): passed += 1; print("  ✅ metallurgy::density_of_alloy_rule_of_mixtures =", _v_density_of_alloy_rule_of_mixtures)
+    else: failed += 1; print("  ❌ metallurgy::density_of_alloy_rule_of_mixtures → non-finite:", _v_density_of_alloy_rule_of_mixtures)
+    var _v_thermal_conductivity_wiedemann_franz = thermal_conductivity_wiedemann_franz(0.5, 0.5, 0.5)
+    if is_finite(_v_thermal_conductivity_wiedemann_franz): passed += 1; print("  ✅ metallurgy::thermal_conductivity_wiedemann_franz =", _v_thermal_conductivity_wiedemann_franz)
+    else: failed += 1; print("  ❌ metallurgy::thermal_conductivity_wiedemann_franz → non-finite:", _v_thermal_conductivity_wiedemann_franz)
+    var _v_strain_hardening_exponent_from_points = strain_hardening_exponent_from_points(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_strain_hardening_exponent_from_points): passed += 1; print("  ✅ metallurgy::strain_hardening_exponent_from_points =", _v_strain_hardening_exponent_from_points)
+    else: failed += 1; print("  ❌ metallurgy::strain_hardening_exponent_from_points → non-finite:", _v_strain_hardening_exponent_from_points)
+    var _v_fatigue_life_basquin = fatigue_life_basquin(0.5, 0.5, 0.5)
+    if is_finite(_v_fatigue_life_basquin): passed += 1; print("  ✅ metallurgy::fatigue_life_basquin =", _v_fatigue_life_basquin)
+    else: failed += 1; print("  ❌ metallurgy::fatigue_life_basquin → non-finite:", _v_fatigue_life_basquin)
+
+    print("  [metallurgy] Passed:", passed, "Failed:", failed)

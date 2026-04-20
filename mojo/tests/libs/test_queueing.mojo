@@ -1,0 +1,55 @@
+"""test_queueing.mojo — auto-generated tests for queueing library."""
+from std.math import isnan, isinf
+from queueing import factorial, mm1_utilization, mm1_avg_queue_length, mm1_avg_system_size, mm1_avg_wait_time, mm1_avg_system_time, mmc_erlang_c, mmc_avg_wait_time, erlang_b, littles_law_L, littles_law_W
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_factorial = factorial(5)
+    if is_finite(_v_factorial): passed += 1; print("  ✅ queueing::factorial =", _v_factorial)
+    else: failed += 1; print("  ❌ queueing::factorial → non-finite:", _v_factorial)
+    var _v_mm1_utilization = mm1_utilization(0.5, 0.5)
+    if is_finite(_v_mm1_utilization): passed += 1; print("  ✅ queueing::mm1_utilization =", _v_mm1_utilization)
+    else: failed += 1; print("  ❌ queueing::mm1_utilization → non-finite:", _v_mm1_utilization)
+    var _v_mm1_avg_queue_length = mm1_avg_queue_length(0.5, 0.5)
+    if is_finite(_v_mm1_avg_queue_length): passed += 1; print("  ✅ queueing::mm1_avg_queue_length =", _v_mm1_avg_queue_length)
+    else: failed += 1; print("  ❌ queueing::mm1_avg_queue_length → non-finite:", _v_mm1_avg_queue_length)
+    var _v_mm1_avg_system_size = mm1_avg_system_size(0.5, 0.5)
+    if is_finite(_v_mm1_avg_system_size): passed += 1; print("  ✅ queueing::mm1_avg_system_size =", _v_mm1_avg_system_size)
+    else: failed += 1; print("  ❌ queueing::mm1_avg_system_size → non-finite:", _v_mm1_avg_system_size)
+    var _v_mm1_avg_wait_time = mm1_avg_wait_time(0.5, 0.5)
+    if is_finite(_v_mm1_avg_wait_time): passed += 1; print("  ✅ queueing::mm1_avg_wait_time =", _v_mm1_avg_wait_time)
+    else: failed += 1; print("  ❌ queueing::mm1_avg_wait_time → non-finite:", _v_mm1_avg_wait_time)
+    var _v_mm1_avg_system_time = mm1_avg_system_time(0.5, 0.5)
+    if is_finite(_v_mm1_avg_system_time): passed += 1; print("  ✅ queueing::mm1_avg_system_time =", _v_mm1_avg_system_time)
+    else: failed += 1; print("  ❌ queueing::mm1_avg_system_time → non-finite:", _v_mm1_avg_system_time)
+    var _v_mmc_erlang_c = mmc_erlang_c(0.5, 0.5, 5)
+    if is_finite(_v_mmc_erlang_c): passed += 1; print("  ✅ queueing::mmc_erlang_c =", _v_mmc_erlang_c)
+    else: failed += 1; print("  ❌ queueing::mmc_erlang_c → non-finite:", _v_mmc_erlang_c)
+    var _v_mmc_avg_wait_time = mmc_avg_wait_time(0.5, 0.5, 5)
+    if is_finite(_v_mmc_avg_wait_time): passed += 1; print("  ✅ queueing::mmc_avg_wait_time =", _v_mmc_avg_wait_time)
+    else: failed += 1; print("  ❌ queueing::mmc_avg_wait_time → non-finite:", _v_mmc_avg_wait_time)
+    var _v_erlang_b = erlang_b(0.5, 5)
+    if is_finite(_v_erlang_b): passed += 1; print("  ✅ queueing::erlang_b =", _v_erlang_b)
+    else: failed += 1; print("  ❌ queueing::erlang_b → non-finite:", _v_erlang_b)
+    var _v_littles_law_L = littles_law_L(0.5, 0.5)
+    if is_finite(_v_littles_law_L): passed += 1; print("  ✅ queueing::littles_law_L =", _v_littles_law_L)
+    else: failed += 1; print("  ❌ queueing::littles_law_L → non-finite:", _v_littles_law_L)
+    var _v_littles_law_W = littles_law_W(0.5, 0.5)
+    if is_finite(_v_littles_law_W): passed += 1; print("  ✅ queueing::littles_law_W =", _v_littles_law_W)
+    else: failed += 1; print("  ❌ queueing::littles_law_W → non-finite:", _v_littles_law_W)
+
+    print("  [queueing] Passed:", passed, "Failed:", failed)

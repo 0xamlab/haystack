@@ -1,0 +1,27 @@
+{
+  "id": "self-hosting",
+  "title": "Self-Hosting",
+  "description": "Run Decision Engine on your own infrastructure.",
+  "source": "@site/docs/self-hosting.md",
+  "sourceDirName": ".",
+  "slug": "/self-hosting",
+  "permalink": "/self-hosting",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/decisionengine/decision-engine/tree/main/apps/docs/docs/self-hosting.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 10,
+  "frontMatter": {
+    "sidebar_position": 10
+  },
+  "sidebar": "docsSidebar",
+  "previous": {
+    "title": "CLI Reference",
+    "permalink": "/sdks/cli"
+  },
+  "next": {
+    "title": "Changelog",
+    "permalink": "/changelog"
+  }
+}

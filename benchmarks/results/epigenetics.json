@@ -1,0 +1,93 @@
+{
+  "lib": "epigenetics",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 8,
+  "overall_speedup_x": 279.96,
+  "total_py_ns": 2295.63,
+  "total_mojo_ns": 8.2,
+  "elapsed_s": 2.06,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "methylation_index",
+      "py_ns": 246.308,
+      "mojo_ns": 1.0,
+      "speedup_x": 246.31,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "dna_methylation_age",
+      "py_ns": 258.642,
+      "mojo_ns": 1.0,
+      "speedup_x": 258.64,
+      "py_result": 0.75,
+      "py_error": null
+    },
+    {
+      "function": "histone_acetylation_ratio",
+      "py_ns": 149.883,
+      "mojo_ns": 1.0,
+      "speedup_x": 149.88,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "chromatin_accessibility",
+      "py_ns": 254.079,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "imprinting_ratio",
+      "py_ns": 1138.138,
+      "mojo_ns": 1.0,
+      "speedup_x": 1138.14,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "cpg_observed_expected",
+      "py_ns": 132.521,
+      "mojo_ns": 1.0,
+      "speedup_x": 132.52,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "gene_silencing_efficiency",
+      "py_ns": 106.696,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "enhancer_activity_index",
+      "py_ns": 130.971,
+      "mojo_ns": 1.1,
+      "speedup_x": 119.06,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "polycomb_enrichment",
+      "py_ns": 152.321,
+      "mojo_ns": 1.1,
+      "speedup_x": 138.47,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "transcription_factor_occupancy",
+      "py_ns": 86.85,
+      "mojo_ns": 1.0,
+      "speedup_x": 86.85,
+      "py_result": 0.125,
+      "py_error": null
+    }
+  ]
+}

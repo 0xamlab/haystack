@@ -1,0 +1,93 @@
+{
+  "lib": "text_tokenizer",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 8,
+  "overall_speedup_x": 30.22,
+  "total_py_ns": 187517.95,
+  "total_mojo_ns": 6204.9,
+  "elapsed_s": 7.48,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "is_stopword",
+      "py_ns": 605.167,
+      "mojo_ns": 54.9,
+      "speedup_x": 11.02,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "word_tokenize",
+      "py_ns": 34706.062,
+      "mojo_ns": 112.0,
+      "speedup_x": 309.88,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "sentence_tokenize",
+      "py_ns": 17455.033,
+      "mojo_ns": 143.2,
+      "speedup_x": 121.89,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "char_ngrams",
+      "py_ns": 1679.133,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "word_ngrams",
+      "py_ns": 11383.021,
+      "mojo_ns": 200.8,
+      "speedup_x": 56.69,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "remove_stopwords",
+      "py_ns": 36602.279,
+      "mojo_ns": 706.3,
+      "speedup_x": 51.82,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "stem_simple",
+      "py_ns": 5833.458,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "vocabulary_size",
+      "py_ns": 43236.9,
+      "mojo_ns": 681.5,
+      "speedup_x": 63.44,
+      "py_result": 5.0,
+      "py_error": null
+    },
+    {
+      "function": "token_frequency",
+      "py_ns": 39827.804,
+      "mojo_ns": 3353.2,
+      "speedup_x": 11.88,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "pad_sequence",
+      "py_ns": 3701.679,
+      "mojo_ns": 953.0,
+      "speedup_x": 3.88,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

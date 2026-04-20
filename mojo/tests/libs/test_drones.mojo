@@ -1,0 +1,58 @@
+"""test_drones.mojo — auto-generated tests for drones library."""
+from std.math import isnan, isinf
+from drones import thrust_to_weight_ratio, hover_power, flight_time_minutes, max_range, payload_capacity, disk_loading, propeller_tip_speed, advance_ratio, battery_energy_density, communication_range_los, gsd_from_altitude, endurance_factor
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_thrust_to_weight_ratio = thrust_to_weight_ratio(0.5, 0.5)
+    if is_finite(_v_thrust_to_weight_ratio): passed += 1; print("  ✅ drones::thrust_to_weight_ratio =", _v_thrust_to_weight_ratio)
+    else: failed += 1; print("  ❌ drones::thrust_to_weight_ratio → non-finite:", _v_thrust_to_weight_ratio)
+    var _v_hover_power = hover_power(0.5, 0.5, 0.5)
+    if is_finite(_v_hover_power): passed += 1; print("  ✅ drones::hover_power =", _v_hover_power)
+    else: failed += 1; print("  ❌ drones::hover_power → non-finite:", _v_hover_power)
+    var _v_flight_time_minutes = flight_time_minutes(0.5, 0.5)
+    if is_finite(_v_flight_time_minutes): passed += 1; print("  ✅ drones::flight_time_minutes =", _v_flight_time_minutes)
+    else: failed += 1; print("  ❌ drones::flight_time_minutes → non-finite:", _v_flight_time_minutes)
+    var _v_max_range = max_range(0.5, 0.5)
+    if is_finite(_v_max_range): passed += 1; print("  ✅ drones::max_range =", _v_max_range)
+    else: failed += 1; print("  ❌ drones::max_range → non-finite:", _v_max_range)
+    var _v_payload_capacity = payload_capacity(0.5, 0.5, 0.5)
+    if is_finite(_v_payload_capacity): passed += 1; print("  ✅ drones::payload_capacity =", _v_payload_capacity)
+    else: failed += 1; print("  ❌ drones::payload_capacity → non-finite:", _v_payload_capacity)
+    var _v_disk_loading = disk_loading(0.5, 0.5)
+    if is_finite(_v_disk_loading): passed += 1; print("  ✅ drones::disk_loading =", _v_disk_loading)
+    else: failed += 1; print("  ❌ drones::disk_loading → non-finite:", _v_disk_loading)
+    var _v_propeller_tip_speed = propeller_tip_speed(0.5, 0.5)
+    if is_finite(_v_propeller_tip_speed): passed += 1; print("  ✅ drones::propeller_tip_speed =", _v_propeller_tip_speed)
+    else: failed += 1; print("  ❌ drones::propeller_tip_speed → non-finite:", _v_propeller_tip_speed)
+    var _v_advance_ratio = advance_ratio(0.5, 0.5, 0.5)
+    if is_finite(_v_advance_ratio): passed += 1; print("  ✅ drones::advance_ratio =", _v_advance_ratio)
+    else: failed += 1; print("  ❌ drones::advance_ratio → non-finite:", _v_advance_ratio)
+    var _v_battery_energy_density = battery_energy_density(0.5, 0.5)
+    if is_finite(_v_battery_energy_density): passed += 1; print("  ✅ drones::battery_energy_density =", _v_battery_energy_density)
+    else: failed += 1; print("  ❌ drones::battery_energy_density → non-finite:", _v_battery_energy_density)
+    var _v_communication_range_los = communication_range_los(0.5, 0.5)
+    if is_finite(_v_communication_range_los): passed += 1; print("  ✅ drones::communication_range_los =", _v_communication_range_los)
+    else: failed += 1; print("  ❌ drones::communication_range_los → non-finite:", _v_communication_range_los)
+    var _v_gsd_from_altitude = gsd_from_altitude(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_gsd_from_altitude): passed += 1; print("  ✅ drones::gsd_from_altitude =", _v_gsd_from_altitude)
+    else: failed += 1; print("  ❌ drones::gsd_from_altitude → non-finite:", _v_gsd_from_altitude)
+    var _v_endurance_factor = endurance_factor(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_endurance_factor): passed += 1; print("  ✅ drones::endurance_factor =", _v_endurance_factor)
+    else: failed += 1; print("  ❌ drones::endurance_factor → non-finite:", _v_endurance_factor)
+
+    print("  [drones] Passed:", passed, "Failed:", failed)

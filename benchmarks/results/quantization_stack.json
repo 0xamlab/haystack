@@ -1,0 +1,93 @@
+{
+  "lib": "quantization_stack",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 8,
+  "overall_speedup_x": 116.39,
+  "total_py_ns": 989.3,
+  "total_mojo_ns": 8.5,
+  "elapsed_s": 1.65,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "bf16_to_fp32_round",
+      "py_ns": null,
+      "mojo_ns": 1.1,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "name 'Int64' is not defined"
+    },
+    {
+      "function": "fp16_overflow_check",
+      "py_ns": 85.642,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "absmax_calibration_scale",
+      "py_ns": 116.492,
+      "mojo_ns": 1.0,
+      "speedup_x": 116.49,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "percentile_calibration_scale",
+      "py_ns": 117.754,
+      "mojo_ns": 1.0,
+      "speedup_x": 117.75,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "smooth_quant_scale",
+      "py_ns": 216.292,
+      "mojo_ns": 1.1,
+      "speedup_x": 196.63,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "gptq_hessian_update",
+      "py_ns": 172.217,
+      "mojo_ns": 1.1,
+      "speedup_x": 156.56,
+      "py_result": 1.5,
+      "py_error": null
+    },
+    {
+      "function": "awq_activation_scale",
+      "py_ns": 115.975,
+      "mojo_ns": 1.1,
+      "speedup_x": 105.43,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "bnb_double_quant_scale",
+      "py_ns": 79.621,
+      "mojo_ns": 1.1,
+      "speedup_x": 72.38,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "kv_cache_int8_scale",
+      "py_ns": 85.233,
+      "mojo_ns": 1.1,
+      "speedup_x": 77.48,
+      "py_result": 0.003937,
+      "py_error": null
+    },
+    {
+      "function": "quant_aware_straight_through",
+      "py_ns": 85.713,
+      "mojo_ns": 1.0,
+      "speedup_x": 85.71,
+      "py_result": 0.5,
+      "py_error": null
+    }
+  ]
+}

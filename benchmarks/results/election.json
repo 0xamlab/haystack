@@ -1,0 +1,77 @@
+{
+  "lib": "election",
+  "status": "ok",
+  "n_functions": 8,
+  "n_compared": 8,
+  "overall_speedup_x": 1.81,
+  "total_py_ns": 50772.75,
+  "total_mojo_ns": 28124.1,
+  "elapsed_s": 2.78,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "pairwise_matrix",
+      "py_ns": 2940.337,
+      "mojo_ns": 4670.6,
+      "speedup_x": 0.63,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "plurality",
+      "py_ns": 1786.121,
+      "mojo_ns": 1110.7,
+      "speedup_x": 1.61,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "borda_count",
+      "py_ns": 6450.838,
+      "mojo_ns": 736.7,
+      "speedup_x": 8.76,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "borda_winner",
+      "py_ns": 6845.204,
+      "mojo_ns": 1357.7,
+      "speedup_x": 5.04,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "condorcet_winner",
+      "py_ns": 14403.237,
+      "mojo_ns": 8428.8,
+      "speedup_x": 1.71,
+      "py_result": -1.0,
+      "py_error": null
+    },
+    {
+      "function": "instant_runoff",
+      "py_ns": 1046.896,
+      "mojo_ns": 2668.7,
+      "speedup_x": 0.39,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "approval_voting",
+      "py_ns": 4015.062,
+      "mojo_ns": 3101.7,
+      "speedup_x": 1.29,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "copeland_scores",
+      "py_ns": 13285.054,
+      "mojo_ns": 6049.2,
+      "speedup_x": 2.2,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

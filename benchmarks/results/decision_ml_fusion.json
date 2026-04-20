@@ -1,0 +1,93 @@
+{
+  "lib": "decision_ml_fusion",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 5,
+  "overall_speedup_x": 130.57,
+  "total_py_ns": 678.95,
+  "total_mojo_ns": 5.2,
+  "elapsed_s": 2.04,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "ml_to_simulation_weight",
+      "py_ns": 211.962,
+      "mojo_ns": 1.0,
+      "speedup_x": 211.96,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "simulation_to_objective",
+      "py_ns": 162.771,
+      "mojo_ns": 1.1,
+      "speedup_x": 147.97,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "expected_value_under_model",
+      "py_ns": 127.879,
+      "mojo_ns": 1.1,
+      "speedup_x": 116.25,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "regret_from_prediction",
+      "py_ns": 104.425,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "counterfactual_utility",
+      "py_ns": 91.887,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "policy_gradient_advantage",
+      "py_ns": 196.271,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "reward_shaping_potential",
+      "py_ns": 88.971,
+      "mojo_ns": 1.0,
+      "speedup_x": 88.97,
+      "py_result": -0.25,
+      "py_error": null
+    },
+    {
+      "function": "multi_objective_scalarize",
+      "py_ns": 166.292,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "model_confidence_gate",
+      "py_ns": 87.371,
+      "mojo_ns": 1.0,
+      "speedup_x": 87.37,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "adaptive_exploration_rate",
+      "py_ns": null,
+      "mojo_ns": 0.4,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "math domain error"
+    }
+  ]
+}

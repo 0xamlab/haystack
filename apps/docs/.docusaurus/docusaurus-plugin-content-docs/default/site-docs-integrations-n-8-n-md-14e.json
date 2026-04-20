@@ -1,0 +1,27 @@
+{
+  "id": "integrations/n8n",
+  "title": "n8n",
+  "description": "Use the Decision Engine HTTP node in n8n to add Monte Carlo simulations to any workflow.",
+  "source": "@site/docs/integrations/n8n.md",
+  "sourceDirName": "integrations",
+  "slug": "/integrations/n8n",
+  "permalink": "/integrations/n8n",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/decisionengine/decision-engine/tree/main/apps/docs/docs/integrations/n8n.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 4,
+  "frontMatter": {
+    "sidebar_position": 4
+  },
+  "sidebar": "docsSidebar",
+  "previous": {
+    "title": "LangGraph",
+    "permalink": "/integrations/langgraph"
+  },
+  "next": {
+    "title": "Power Automate",
+    "permalink": "/integrations/power-automate"
+  }
+}

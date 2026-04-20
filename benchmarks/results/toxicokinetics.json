@@ -1,0 +1,93 @@
+{
+  "lib": "toxicokinetics",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 8,
+  "overall_speedup_x": 334.6,
+  "total_py_ns": 2509.52,
+  "total_mojo_ns": 7.5,
+  "elapsed_s": 5.53,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "internal_dose",
+      "py_ns": 85.663,
+      "mojo_ns": 0.9,
+      "speedup_x": 95.18,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "peak_plasma_concentration",
+      "py_ns": 1079.971,
+      "mojo_ns": 1.0,
+      "speedup_x": 1079.97,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "time_to_peak",
+      "py_ns": 862.196,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "plasma_auc",
+      "py_ns": 136.571,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "apparent_volume_distribution",
+      "py_ns": 100.946,
+      "mojo_ns": 1.0,
+      "speedup_x": 100.95,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "elimination_half_life",
+      "py_ns": 188.15,
+      "mojo_ns": 0.9,
+      "speedup_x": 209.06,
+      "py_result": 1.386294,
+      "py_error": null
+    },
+    {
+      "function": "systemic_clearance",
+      "py_ns": 129.4,
+      "mojo_ns": 0.9,
+      "speedup_x": 143.78,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "bioconcentration_factor",
+      "py_ns": 208.604,
+      "mojo_ns": 0.9,
+      "speedup_x": 231.78,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "toxic_equivalency_factor",
+      "py_ns": 386.492,
+      "mojo_ns": 0.9,
+      "speedup_x": 429.44,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "margin_of_exposure",
+      "py_ns": 330.292,
+      "mojo_ns": 1.0,
+      "speedup_x": 330.29,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

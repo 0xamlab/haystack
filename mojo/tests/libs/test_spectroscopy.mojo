@@ -1,0 +1,58 @@
+"""test_spectroscopy.mojo — auto-generated tests for spectroscopy library."""
+from std.math import isnan, isinf
+from spectroscopy import wavenumber_from_wavelength, wavelength_from_wavenumber, energy_from_wavelength, absorbance_from_transmittance, transmittance_from_absorbance, beer_lambert_concentration, resolution_spectrometer, snr_coadd, raman_shift, fluorescence_quantum_yield, stokes_shift, spectral_bandwidth
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_wavenumber_from_wavelength = wavenumber_from_wavelength(0.5)
+    if is_finite(_v_wavenumber_from_wavelength): passed += 1; print("  ✅ spectroscopy::wavenumber_from_wavelength =", _v_wavenumber_from_wavelength)
+    else: failed += 1; print("  ❌ spectroscopy::wavenumber_from_wavelength → non-finite:", _v_wavenumber_from_wavelength)
+    var _v_wavelength_from_wavenumber = wavelength_from_wavenumber(0.5)
+    if is_finite(_v_wavelength_from_wavenumber): passed += 1; print("  ✅ spectroscopy::wavelength_from_wavenumber =", _v_wavelength_from_wavenumber)
+    else: failed += 1; print("  ❌ spectroscopy::wavelength_from_wavenumber → non-finite:", _v_wavelength_from_wavenumber)
+    var _v_energy_from_wavelength = energy_from_wavelength(0.5)
+    if is_finite(_v_energy_from_wavelength): passed += 1; print("  ✅ spectroscopy::energy_from_wavelength =", _v_energy_from_wavelength)
+    else: failed += 1; print("  ❌ spectroscopy::energy_from_wavelength → non-finite:", _v_energy_from_wavelength)
+    var _v_absorbance_from_transmittance = absorbance_from_transmittance(0.5)
+    if is_finite(_v_absorbance_from_transmittance): passed += 1; print("  ✅ spectroscopy::absorbance_from_transmittance =", _v_absorbance_from_transmittance)
+    else: failed += 1; print("  ❌ spectroscopy::absorbance_from_transmittance → non-finite:", _v_absorbance_from_transmittance)
+    var _v_transmittance_from_absorbance = transmittance_from_absorbance(0.5)
+    if is_finite(_v_transmittance_from_absorbance): passed += 1; print("  ✅ spectroscopy::transmittance_from_absorbance =", _v_transmittance_from_absorbance)
+    else: failed += 1; print("  ❌ spectroscopy::transmittance_from_absorbance → non-finite:", _v_transmittance_from_absorbance)
+    var _v_beer_lambert_concentration = beer_lambert_concentration(0.5, 0.5, 0.5)
+    if is_finite(_v_beer_lambert_concentration): passed += 1; print("  ✅ spectroscopy::beer_lambert_concentration =", _v_beer_lambert_concentration)
+    else: failed += 1; print("  ❌ spectroscopy::beer_lambert_concentration → non-finite:", _v_beer_lambert_concentration)
+    var _v_resolution_spectrometer = resolution_spectrometer(0.5, 0.5)
+    if is_finite(_v_resolution_spectrometer): passed += 1; print("  ✅ spectroscopy::resolution_spectrometer =", _v_resolution_spectrometer)
+    else: failed += 1; print("  ❌ spectroscopy::resolution_spectrometer → non-finite:", _v_resolution_spectrometer)
+    var _v_snr_coadd = snr_coadd(0.5, 0.5)
+    if is_finite(_v_snr_coadd): passed += 1; print("  ✅ spectroscopy::snr_coadd =", _v_snr_coadd)
+    else: failed += 1; print("  ❌ spectroscopy::snr_coadd → non-finite:", _v_snr_coadd)
+    var _v_raman_shift = raman_shift(0.5, 0.5)
+    if is_finite(_v_raman_shift): passed += 1; print("  ✅ spectroscopy::raman_shift =", _v_raman_shift)
+    else: failed += 1; print("  ❌ spectroscopy::raman_shift → non-finite:", _v_raman_shift)
+    var _v_fluorescence_quantum_yield = fluorescence_quantum_yield(0.5, 0.5)
+    if is_finite(_v_fluorescence_quantum_yield): passed += 1; print("  ✅ spectroscopy::fluorescence_quantum_yield =", _v_fluorescence_quantum_yield)
+    else: failed += 1; print("  ❌ spectroscopy::fluorescence_quantum_yield → non-finite:", _v_fluorescence_quantum_yield)
+    var _v_stokes_shift = stokes_shift(0.5, 0.5)
+    if is_finite(_v_stokes_shift): passed += 1; print("  ✅ spectroscopy::stokes_shift =", _v_stokes_shift)
+    else: failed += 1; print("  ❌ spectroscopy::stokes_shift → non-finite:", _v_stokes_shift)
+    var _v_spectral_bandwidth = spectral_bandwidth(0.5)
+    if is_finite(_v_spectral_bandwidth): passed += 1; print("  ✅ spectroscopy::spectral_bandwidth =", _v_spectral_bandwidth)
+    else: failed += 1; print("  ❌ spectroscopy::spectral_bandwidth → non-finite:", _v_spectral_bandwidth)
+
+    print("  [spectroscopy] Passed:", passed, "Failed:", failed)

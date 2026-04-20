@@ -1,0 +1,101 @@
+{
+  "lib": "risk",
+  "status": "ok",
+  "n_functions": 11,
+  "n_compared": 11,
+  "overall_speedup_x": 14.53,
+  "total_py_ns": 13277.9,
+  "total_mojo_ns": 913.9,
+  "elapsed_s": 3.78,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "value_at_risk",
+      "py_ns": 1241.258,
+      "mojo_ns": 197.3,
+      "speedup_x": 6.29,
+      "py_result": -0.5,
+      "py_error": null
+    },
+    {
+      "function": "conditional_var",
+      "py_ns": 1741.829,
+      "mojo_ns": 88.9,
+      "speedup_x": 19.59,
+      "py_result": -0.4,
+      "py_error": null
+    },
+    {
+      "function": "max_drawdown",
+      "py_ns": 484.737,
+      "mojo_ns": 14.7,
+      "speedup_x": 32.98,
+      "py_result": 0.571429,
+      "py_error": null
+    },
+    {
+      "function": "drawdown_series",
+      "py_ns": 716.021,
+      "mojo_ns": 240.7,
+      "speedup_x": 2.97,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "sortino_ratio",
+      "py_ns": 728.612,
+      "mojo_ns": 4.5,
+      "speedup_x": 161.91,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "sharpe_ratio",
+      "py_ns": 1338.288,
+      "mojo_ns": 6.5,
+      "speedup_x": 205.89,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "beta",
+      "py_ns": 1604.467,
+      "mojo_ns": 10.0,
+      "speedup_x": 160.45,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "alpha",
+      "py_ns": 2244.862,
+      "mojo_ns": 14.1,
+      "speedup_x": 159.21,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "information_ratio",
+      "py_ns": 2248.554,
+      "mojo_ns": 327.4,
+      "speedup_x": 6.87,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "calmar_ratio",
+      "py_ns": 606.058,
+      "mojo_ns": 7.1,
+      "speedup_x": 85.36,
+      "py_result": 220.5,
+      "py_error": null
+    },
+    {
+      "function": "downside_deviation",
+      "py_ns": 323.217,
+      "mojo_ns": 2.7,
+      "speedup_x": 119.71,
+      "py_result": 0.1,
+      "py_error": null
+    }
+  ]
+}

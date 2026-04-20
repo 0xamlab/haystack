@@ -1,0 +1,69 @@
+{
+  "lib": "text_fuzzy",
+  "status": "ok",
+  "n_functions": 7,
+  "n_compared": 6,
+  "overall_speedup_x": 27.53,
+  "total_py_ns": 134572.85,
+  "total_mojo_ns": 4888.3,
+  "elapsed_s": 3.2,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "levenshtein_distance",
+      "py_ns": 35409.25,
+      "mojo_ns": 605.5,
+      "speedup_x": 58.48,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "normalized_levenshtein",
+      "py_ns": 32393.958,
+      "mojo_ns": 890.7,
+      "speedup_x": 36.37,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "jaro_similarity",
+      "py_ns": 7008.279,
+      "mojo_ns": 1150.9,
+      "speedup_x": 6.09,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "jaro_winkler_similarity",
+      "py_ns": 13152.9,
+      "mojo_ns": 428.5,
+      "speedup_x": 30.7,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "hamming_distance",
+      "py_ns": 5777.629,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "longest_common_subsequence",
+      "py_ns": 17720.487,
+      "mojo_ns": 684.2,
+      "speedup_x": 25.9,
+      "py_result": 4.0,
+      "py_error": null
+    },
+    {
+      "function": "fuzzy_ratio",
+      "py_ns": 28887.979,
+      "mojo_ns": 1128.5,
+      "speedup_x": 25.6,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

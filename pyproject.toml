@@ -1,0 +1,80 @@
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = [
+    ".codex",
+    "apps/api-server",
+    "benchmarks/python_libs",
+    "hello-world",
+    "mojo_env",
+    "examples/google-colab/*.ipynb",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "N",   # pep8-naming
+    "S",   # bandit security
+    "T20", # flake8-print
+]
+ignore = [
+    "S101", # allow assert in tests
+    "S104", # allow binding to 0.0.0.0 in config
+    "B008", # do not perform function calls in default arguments (FastAPI Depends pattern)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"apps/api_server/simulation_templates.py" = ["E501"]
+"apps/api_server/alembic/**/*.py" = ["E501", "UP007", "UP035"]
+"apps/cli/*.py" = ["T20"]
+"benchmarks/**/*.py" = ["S311", "T20"]
+"packages/algenta-core/algenta/cli.py" = ["T20"]
+"tests/**/*.py" = ["E501", "S", "T20"]
+"training/**/*.py" = ["S311", "T20"]
+"scripts/**/*.py" = ["T20"]
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true
+exclude = ["alembic/", "mojo_build/"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+filterwarnings = [
+    "ignore:'HTTP_422_UNPROCESSABLE_ENTITY' is deprecated\\. Use 'HTTP_422_UNPROCESSABLE_CONTENT' instead\\.:DeprecationWarning:fastapi\\..*",
+    "ignore:Please use `import python_multipart` instead\\.:PendingDeprecationWarning",
+]
+log_cli = true
+log_cli_level = "INFO"
+log_format = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+# Default run skips I/O-heavy tests (~74s saved).
+# Run the full suite with:  pytest -m ""
+# Run only slow tests with: pytest -m slow
+addopts = "-v --tb=short -m 'not slow'"
+markers = [
+    "slow: I/O-heavy or long-running integration tests (real network, large CSV files, sustained load)",
+]
+
+[tool.coverage.run]
+source = ["apps"]
+omit = ["*/tests/*", "*/alembic/*", "*/__init__.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+]

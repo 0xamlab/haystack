@@ -1,0 +1,109 @@
+{
+  "lib": "tribology",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 12,
+  "overall_speedup_x": 102.42,
+  "total_py_ns": 1843.53,
+  "total_mojo_ns": 18.0,
+  "elapsed_s": 2.11,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "coulomb_friction_force",
+      "py_ns": 81.471,
+      "mojo_ns": 4.1,
+      "speedup_x": 19.87,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "kinetic_friction",
+      "py_ns": 205.313,
+      "mojo_ns": 1.3,
+      "speedup_x": 157.93,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "static_friction_max",
+      "py_ns": 155.55,
+      "mojo_ns": 1.3,
+      "speedup_x": 119.65,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "coefficient_of_friction",
+      "py_ns": 124.196,
+      "mojo_ns": 1.2,
+      "speedup_x": 103.5,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "hertz_contact_pressure",
+      "py_ns": 226.029,
+      "mojo_ns": 1.3,
+      "speedup_x": 173.87,
+      "py_result": 0.95493,
+      "py_error": null
+    },
+    {
+      "function": "archard_wear_volume",
+      "py_ns": 92.804,
+      "mojo_ns": 1.3,
+      "speedup_x": 71.39,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "bearing_pressure",
+      "py_ns": 89.75,
+      "mojo_ns": 1.2,
+      "speedup_x": 74.79,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "sommerfeld_number",
+      "py_ns": 202.187,
+      "mojo_ns": 1.3,
+      "speedup_x": 155.53,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "stribeck_parameter",
+      "py_ns": 150.525,
+      "mojo_ns": 1.2,
+      "speedup_x": 125.44,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "flash_temperature_rise",
+      "py_ns": 144.604,
+      "mojo_ns": 1.3,
+      "speedup_x": 111.23,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "lubrication_film_thickness",
+      "py_ns": 230.508,
+      "mojo_ns": 1.2,
+      "speedup_x": 192.09,
+      "py_result": 0.629961,
+      "py_error": null
+    },
+    {
+      "function": "friction_power_loss",
+      "py_ns": 140.596,
+      "mojo_ns": 1.3,
+      "speedup_x": 108.15,
+      "py_result": 0.25,
+      "py_error": null
+    }
+  ]
+}

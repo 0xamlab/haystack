@@ -1,0 +1,109 @@
+{
+  "lib": "lottery",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 9,
+  "overall_speedup_x": 549.34,
+  "total_py_ns": 5823.05,
+  "total_mojo_ns": 10.6,
+  "elapsed_s": 2.01,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "combinations",
+      "py_ns": 269.075,
+      "mojo_ns": 1.1,
+      "speedup_x": 244.61,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "permutations",
+      "py_ns": 355.229,
+      "mojo_ns": 2.5,
+      "speedup_x": 142.09,
+      "py_result": 120.0,
+      "py_error": null
+    },
+    {
+      "function": "lottery_odds",
+      "py_ns": 1749.513,
+      "mojo_ns": 1.0,
+      "speedup_x": 1749.51,
+      "py_result": 5.0,
+      "py_error": null
+    },
+    {
+      "function": "expected_value",
+      "py_ns": 85.687,
+      "mojo_ns": 1.0,
+      "speedup_x": 85.69,
+      "py_result": 0.25,
+      "py_error": null
+    },
+    {
+      "function": "expected_value_net",
+      "py_ns": 135.763,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "house_edge",
+      "py_ns": 306.087,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "probability_at_least_one_win",
+      "py_ns": 1265.158,
+      "mojo_ns": 1.0,
+      "speedup_x": 1265.16,
+      "py_result": 0.96875,
+      "py_error": null
+    },
+    {
+      "function": "annuity_vs_lump_sum",
+      "py_ns": 296.246,
+      "mojo_ns": 1.0,
+      "speedup_x": 296.25,
+      "py_result": 0.183503,
+      "py_error": null
+    },
+    {
+      "function": "tax_after_winnings",
+      "py_ns": 110.85,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "odds_to_probability",
+      "py_ns": 1325.942,
+      "mojo_ns": 1.0,
+      "speedup_x": 1325.94,
+      "py_result": 0.666667,
+      "py_error": null
+    },
+    {
+      "function": "probability_to_odds",
+      "py_ns": 311.663,
+      "mojo_ns": 1.0,
+      "speedup_x": 311.66,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "jackpot_ev_threshold",
+      "py_ns": 164.533,
+      "mojo_ns": 1.0,
+      "speedup_x": 164.53,
+      "py_result": 0.25,
+      "py_error": null
+    }
+  ]
+}

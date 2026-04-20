@@ -1,0 +1,58 @@
+"""test_real_estate.mojo — auto-generated tests for real_estate library."""
+from std.math import isnan, isinf
+from real_estate import cap_rate, gross_rent_multiplier, cash_on_cash_return, debt_service_coverage, loan_to_value, net_operating_income, mortgage_payment, price_per_sqft, break_even_ratio, internal_rate_of_return_approx, equity_buildup, appreciation_value
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_cap_rate = cap_rate(0.5, 0.5)
+    if is_finite(_v_cap_rate): passed += 1; print("  ✅ real_estate::cap_rate =", _v_cap_rate)
+    else: failed += 1; print("  ❌ real_estate::cap_rate → non-finite:", _v_cap_rate)
+    var _v_gross_rent_multiplier = gross_rent_multiplier(0.5, 0.5)
+    if is_finite(_v_gross_rent_multiplier): passed += 1; print("  ✅ real_estate::gross_rent_multiplier =", _v_gross_rent_multiplier)
+    else: failed += 1; print("  ❌ real_estate::gross_rent_multiplier → non-finite:", _v_gross_rent_multiplier)
+    var _v_cash_on_cash_return = cash_on_cash_return(0.5, 0.5)
+    if is_finite(_v_cash_on_cash_return): passed += 1; print("  ✅ real_estate::cash_on_cash_return =", _v_cash_on_cash_return)
+    else: failed += 1; print("  ❌ real_estate::cash_on_cash_return → non-finite:", _v_cash_on_cash_return)
+    var _v_debt_service_coverage = debt_service_coverage(0.5, 0.5)
+    if is_finite(_v_debt_service_coverage): passed += 1; print("  ✅ real_estate::debt_service_coverage =", _v_debt_service_coverage)
+    else: failed += 1; print("  ❌ real_estate::debt_service_coverage → non-finite:", _v_debt_service_coverage)
+    var _v_loan_to_value = loan_to_value(0.5, 0.5)
+    if is_finite(_v_loan_to_value): passed += 1; print("  ✅ real_estate::loan_to_value =", _v_loan_to_value)
+    else: failed += 1; print("  ❌ real_estate::loan_to_value → non-finite:", _v_loan_to_value)
+    var _v_net_operating_income = net_operating_income(0.5, 0.5, 0.5)
+    if is_finite(_v_net_operating_income): passed += 1; print("  ✅ real_estate::net_operating_income =", _v_net_operating_income)
+    else: failed += 1; print("  ❌ real_estate::net_operating_income → non-finite:", _v_net_operating_income)
+    var _v_mortgage_payment = mortgage_payment(0.5, 0.5, 5)
+    if is_finite(_v_mortgage_payment): passed += 1; print("  ✅ real_estate::mortgage_payment =", _v_mortgage_payment)
+    else: failed += 1; print("  ❌ real_estate::mortgage_payment → non-finite:", _v_mortgage_payment)
+    var _v_price_per_sqft = price_per_sqft(0.5, 0.5)
+    if is_finite(_v_price_per_sqft): passed += 1; print("  ✅ real_estate::price_per_sqft =", _v_price_per_sqft)
+    else: failed += 1; print("  ❌ real_estate::price_per_sqft → non-finite:", _v_price_per_sqft)
+    var _v_break_even_ratio = break_even_ratio(0.5, 0.5, 0.5)
+    if is_finite(_v_break_even_ratio): passed += 1; print("  ✅ real_estate::break_even_ratio =", _v_break_even_ratio)
+    else: failed += 1; print("  ❌ real_estate::break_even_ratio → non-finite:", _v_break_even_ratio)
+    var _v_internal_rate_of_return_approx = internal_rate_of_return_approx(0.5, 0.5, 5)
+    if is_finite(_v_internal_rate_of_return_approx): passed += 1; print("  ✅ real_estate::internal_rate_of_return_approx =", _v_internal_rate_of_return_approx)
+    else: failed += 1; print("  ❌ real_estate::internal_rate_of_return_approx → non-finite:", _v_internal_rate_of_return_approx)
+    var _v_equity_buildup = equity_buildup(0.5, 0.5)
+    if is_finite(_v_equity_buildup): passed += 1; print("  ✅ real_estate::equity_buildup =", _v_equity_buildup)
+    else: failed += 1; print("  ❌ real_estate::equity_buildup → non-finite:", _v_equity_buildup)
+    var _v_appreciation_value = appreciation_value(0.5, 0.5, 5)
+    if is_finite(_v_appreciation_value): passed += 1; print("  ✅ real_estate::appreciation_value =", _v_appreciation_value)
+    else: failed += 1; print("  ❌ real_estate::appreciation_value → non-finite:", _v_appreciation_value)
+
+    print("  [real_estate] Passed:", passed, "Failed:", failed)

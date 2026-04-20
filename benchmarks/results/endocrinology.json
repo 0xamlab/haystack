@@ -1,0 +1,93 @@
+{
+  "lib": "endocrinology",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 9,
+  "overall_speedup_x": 184.8,
+  "total_py_ns": 1755.58,
+  "total_mojo_ns": 9.5,
+  "elapsed_s": 1.89,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "hormone_clearance_rate",
+      "py_ns": 98.962,
+      "mojo_ns": 1.1,
+      "speedup_x": 89.97,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "receptor_binding_bmax",
+      "py_ns": 138.183,
+      "mojo_ns": 1.0,
+      "speedup_x": 138.18,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "feedback_gain",
+      "py_ns": 147.025,
+      "mojo_ns": 1.1,
+      "speedup_x": 133.66,
+      "py_result": 0.4,
+      "py_error": null
+    },
+    {
+      "function": "hormone_pulsatility",
+      "py_ns": 130.275,
+      "mojo_ns": 1.0,
+      "speedup_x": 130.27,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "cortisol_circadian",
+      "py_ns": 424.096,
+      "mojo_ns": 1.1,
+      "speedup_x": 385.54,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "insulin_sensitivity_index",
+      "py_ns": 110.146,
+      "mojo_ns": 1.1,
+      "speedup_x": 100.13,
+      "py_result": 0.001852,
+      "py_error": null
+    },
+    {
+      "function": "thyroid_free_fraction",
+      "py_ns": 131.446,
+      "mojo_ns": 1.1,
+      "speedup_x": 119.5,
+      "py_result": 0.8,
+      "py_error": null
+    },
+    {
+      "function": "growth_rate_igf",
+      "py_ns": 89.975,
+      "mojo_ns": 1.0,
+      "speedup_x": 89.98,
+      "py_result": 0.75,
+      "py_error": null
+    },
+    {
+      "function": "testosterone_free",
+      "py_ns": 485.467,
+      "mojo_ns": 1.0,
+      "speedup_x": 485.47,
+      "py_result": 0.318638,
+      "py_error": null
+    },
+    {
+      "function": "negative_feedback_strength",
+      "py_ns": null,
+      "mojo_ns": 1.0,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "pow expected 2 arguments, got 1"
+    }
+  ]
+}

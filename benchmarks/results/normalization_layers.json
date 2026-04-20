@@ -1,0 +1,93 @@
+{
+  "lib": "normalization_layers",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 10,
+  "overall_speedup_x": 260.97,
+  "total_py_ns": 2766.24,
+  "total_mojo_ns": 10.6,
+  "elapsed_s": 1.49,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "layer_norm",
+      "py_ns": 338.333,
+      "mojo_ns": 1.1,
+      "speedup_x": 307.58,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "rms_norm",
+      "py_ns": 303.863,
+      "mojo_ns": 1.1,
+      "speedup_x": 276.24,
+      "py_result": 0.288675,
+      "py_error": null
+    },
+    {
+      "function": "batch_norm_inference",
+      "py_ns": 854.608,
+      "mojo_ns": 1.0,
+      "speedup_x": 854.61,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "group_norm_scale",
+      "py_ns": 220.313,
+      "mojo_ns": 1.0,
+      "speedup_x": 220.31,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "instance_norm",
+      "py_ns": 135.133,
+      "mojo_ns": 1.1,
+      "speedup_x": 122.85,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "weight_norm_magnitude",
+      "py_ns": 90.483,
+      "mojo_ns": 1.1,
+      "speedup_x": 82.26,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "spectral_norm_estimate",
+      "py_ns": 189.242,
+      "mojo_ns": 1.1,
+      "speedup_x": 172.04,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "adaptive_layer_norm",
+      "py_ns": 287.637,
+      "mojo_ns": 1.0,
+      "speedup_x": 287.64,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "deep_norm_alpha",
+      "py_ns": 152.742,
+      "mojo_ns": 1.0,
+      "speedup_x": 152.74,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "pre_norm_residual",
+      "py_ns": 193.883,
+      "mojo_ns": 1.1,
+      "speedup_x": 176.26,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

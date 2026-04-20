@@ -1,0 +1,101 @@
+{
+  "lib": "nn_layers",
+  "status": "ok",
+  "n_functions": 11,
+  "n_compared": 11,
+  "overall_speedup_x": 1.12,
+  "total_py_ns": 36468.25,
+  "total_mojo_ns": 32660.4,
+  "elapsed_s": 2.32,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "dense_forward",
+      "py_ns": 700.563,
+      "mojo_ns": 1166.6,
+      "speedup_x": 0.6,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "relu",
+      "py_ns": 437.392,
+      "mojo_ns": 789.2,
+      "speedup_x": 0.55,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "sigmoid_activation",
+      "py_ns": 591.358,
+      "mojo_ns": 326.4,
+      "speedup_x": 1.81,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "tanh_activation",
+      "py_ns": 543.375,
+      "mojo_ns": 444.4,
+      "speedup_x": 1.22,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "softmax_layer",
+      "py_ns": 991.342,
+      "mojo_ns": 11210.3,
+      "speedup_x": 0.09,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "mse_loss",
+      "py_ns": 406.446,
+      "mojo_ns": 18.1,
+      "speedup_x": 22.46,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "cross_entropy_loss",
+      "py_ns": 1195.563,
+      "mojo_ns": 202.2,
+      "speedup_x": 5.91,
+      "py_result": 0.65218,
+      "py_error": null
+    },
+    {
+      "function": "dropout",
+      "py_ns": 2956.825,
+      "mojo_ns": 1920.7,
+      "speedup_x": 1.54,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "batch_norm",
+      "py_ns": 2079.012,
+      "mojo_ns": 1281.5,
+      "speedup_x": 1.62,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "leaky_relu",
+      "py_ns": 485.963,
+      "mojo_ns": 252.9,
+      "speedup_x": 1.92,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "init_weights_xavier",
+      "py_ns": 26080.408,
+      "mojo_ns": 15048.1,
+      "speedup_x": 1.73,
+      "py_result": null,
+      "py_error": null
+    }
+  ]
+}

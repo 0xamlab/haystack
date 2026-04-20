@@ -1,0 +1,58 @@
+"""test_hvac.mojo — auto-generated tests for hvac library."""
+from std.math import isnan, isinf
+from hvac import sensible_heat_load, latent_heat_load, total_heat_load, sensible_heat_ratio, cooling_tons, btu_from_tons, air_changes_per_hour, duct_velocity, cop_to_eer, eer_to_cop, heating_degree_days, cooling_degree_days
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_sensible_heat_load = sensible_heat_load(0.5, 0.5)
+    if is_finite(_v_sensible_heat_load): passed += 1; print("  ✅ hvac::sensible_heat_load =", _v_sensible_heat_load)
+    else: failed += 1; print("  ❌ hvac::sensible_heat_load → non-finite:", _v_sensible_heat_load)
+    var _v_latent_heat_load = latent_heat_load(0.5, 0.5)
+    if is_finite(_v_latent_heat_load): passed += 1; print("  ✅ hvac::latent_heat_load =", _v_latent_heat_load)
+    else: failed += 1; print("  ❌ hvac::latent_heat_load → non-finite:", _v_latent_heat_load)
+    var _v_total_heat_load = total_heat_load(0.5, 0.5)
+    if is_finite(_v_total_heat_load): passed += 1; print("  ✅ hvac::total_heat_load =", _v_total_heat_load)
+    else: failed += 1; print("  ❌ hvac::total_heat_load → non-finite:", _v_total_heat_load)
+    var _v_sensible_heat_ratio = sensible_heat_ratio(0.5, 0.5)
+    if is_finite(_v_sensible_heat_ratio): passed += 1; print("  ✅ hvac::sensible_heat_ratio =", _v_sensible_heat_ratio)
+    else: failed += 1; print("  ❌ hvac::sensible_heat_ratio → non-finite:", _v_sensible_heat_ratio)
+    var _v_cooling_tons = cooling_tons(0.5)
+    if is_finite(_v_cooling_tons): passed += 1; print("  ✅ hvac::cooling_tons =", _v_cooling_tons)
+    else: failed += 1; print("  ❌ hvac::cooling_tons → non-finite:", _v_cooling_tons)
+    var _v_btu_from_tons = btu_from_tons(0.5)
+    if is_finite(_v_btu_from_tons): passed += 1; print("  ✅ hvac::btu_from_tons =", _v_btu_from_tons)
+    else: failed += 1; print("  ❌ hvac::btu_from_tons → non-finite:", _v_btu_from_tons)
+    var _v_air_changes_per_hour = air_changes_per_hour(0.5, 0.5)
+    if is_finite(_v_air_changes_per_hour): passed += 1; print("  ✅ hvac::air_changes_per_hour =", _v_air_changes_per_hour)
+    else: failed += 1; print("  ❌ hvac::air_changes_per_hour → non-finite:", _v_air_changes_per_hour)
+    var _v_duct_velocity = duct_velocity(0.5, 0.5)
+    if is_finite(_v_duct_velocity): passed += 1; print("  ✅ hvac::duct_velocity =", _v_duct_velocity)
+    else: failed += 1; print("  ❌ hvac::duct_velocity → non-finite:", _v_duct_velocity)
+    var _v_cop_to_eer = cop_to_eer(0.5)
+    if is_finite(_v_cop_to_eer): passed += 1; print("  ✅ hvac::cop_to_eer =", _v_cop_to_eer)
+    else: failed += 1; print("  ❌ hvac::cop_to_eer → non-finite:", _v_cop_to_eer)
+    var _v_eer_to_cop = eer_to_cop(0.5)
+    if is_finite(_v_eer_to_cop): passed += 1; print("  ✅ hvac::eer_to_cop =", _v_eer_to_cop)
+    else: failed += 1; print("  ❌ hvac::eer_to_cop → non-finite:", _v_eer_to_cop)
+    var _v_heating_degree_days = heating_degree_days(0.5, 0.5)
+    if is_finite(_v_heating_degree_days): passed += 1; print("  ✅ hvac::heating_degree_days =", _v_heating_degree_days)
+    else: failed += 1; print("  ❌ hvac::heating_degree_days → non-finite:", _v_heating_degree_days)
+    var _v_cooling_degree_days = cooling_degree_days(0.5, 0.5)
+    if is_finite(_v_cooling_degree_days): passed += 1; print("  ✅ hvac::cooling_degree_days =", _v_cooling_degree_days)
+    else: failed += 1; print("  ❌ hvac::cooling_degree_days → non-finite:", _v_cooling_degree_days)
+
+    print("  [hvac] Passed:", passed, "Failed:", failed)

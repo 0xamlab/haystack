@@ -1,0 +1,109 @@
+{
+  "lib": "telecommunications",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 8,
+  "overall_speedup_x": 65.92,
+  "total_py_ns": 1199.72,
+  "total_mojo_ns": 18.2,
+  "elapsed_s": 5.8,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "shannon_capacity",
+      "py_ns": null,
+      "mojo_ns": 121.1,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "module 'math' has no attribute 'math'"
+    },
+    {
+      "function": "erlang_b",
+      "py_ns": 482.363,
+      "mojo_ns": 2.2,
+      "speedup_x": 219.26,
+      "py_result": 0.000158,
+      "py_error": null
+    },
+    {
+      "function": "bit_error_rate_bpsk",
+      "py_ns": 117.688,
+      "mojo_ns": 0.9,
+      "speedup_x": 130.76,
+      "py_result": 0.303265,
+      "py_error": null
+    },
+    {
+      "function": "spectral_efficiency",
+      "py_ns": 94.204,
+      "mojo_ns": 0.9,
+      "speedup_x": 104.67,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "link_margin",
+      "py_ns": 79.229,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "thermal_noise_power",
+      "py_ns": 80.446,
+      "mojo_ns": 0.9,
+      "speedup_x": 89.38,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "signal_to_noise_ratio",
+      "py_ns": 83.646,
+      "mojo_ns": 1.0,
+      "speedup_x": 83.65,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "snr_db",
+      "py_ns": null,
+      "mojo_ns": 0.9,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "module 'math' has no attribute 'math'"
+    },
+    {
+      "function": "data_rate_nyquist",
+      "py_ns": 108.813,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "propagation_delay",
+      "py_ns": 84.287,
+      "mojo_ns": 5.9,
+      "speedup_x": 14.29,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "throughput",
+      "py_ns": 146.467,
+      "mojo_ns": 5.4,
+      "speedup_x": 27.12,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "availability_percentage",
+      "py_ns": 110.621,
+      "mojo_ns": 1.0,
+      "speedup_x": 110.62,
+      "py_result": 100.0,
+      "py_error": null
+    }
+  ]
+}

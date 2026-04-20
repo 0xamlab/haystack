@@ -1,0 +1,93 @@
+{
+  "lib": "orthodontics",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 10,
+  "overall_speedup_x": 355.29,
+  "total_py_ns": 3908.23,
+  "total_mojo_ns": 11.0,
+  "elapsed_s": 1.18,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "tooth_movement_rate",
+      "py_ns": 107.062,
+      "mojo_ns": 1.1,
+      "speedup_x": 97.33,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "moment_to_force_ratio",
+      "py_ns": 93.437,
+      "mojo_ns": 1.1,
+      "speedup_x": 84.94,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "anchorage_loss_estimate",
+      "py_ns": 93.138,
+      "mojo_ns": 1.1,
+      "speedup_x": 84.67,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "arch_wire_force",
+      "py_ns": 947.592,
+      "mojo_ns": 1.1,
+      "speedup_x": 861.45,
+      "py_result": 2e-06,
+      "py_error": null
+    },
+    {
+      "function": "levelling_torque",
+      "py_ns": 235.95,
+      "mojo_ns": 1.1,
+      "speedup_x": 214.5,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "bolton_ratio",
+      "py_ns": 112.346,
+      "mojo_ns": 1.1,
+      "speedup_x": 102.13,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "pont_index",
+      "py_ns": 120.625,
+      "mojo_ns": 1.1,
+      "speedup_x": 109.66,
+      "py_result": 0.625,
+      "py_error": null
+    },
+    {
+      "function": "arch_perimeter_estimate",
+      "py_ns": 1912.663,
+      "mojo_ns": 1.1,
+      "speedup_x": 1738.78,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "growth_prediction_cephalometric",
+      "py_ns": 169.55,
+      "mojo_ns": 1.1,
+      "speedup_x": 154.14,
+      "py_result": -0.05,
+      "py_error": null
+    },
+    {
+      "function": "retainer_force_decay",
+      "py_ns": 115.871,
+      "mojo_ns": 1.1,
+      "speedup_x": 105.34,
+      "py_result": 0.3894,
+      "py_error": null
+    }
+  ]
+}

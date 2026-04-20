@@ -1,0 +1,101 @@
+{
+  "lib": "checksum",
+  "status": "ok",
+  "n_functions": 11,
+  "n_compared": 9,
+  "overall_speedup_x": 266.47,
+  "total_py_ns": 20518.32,
+  "total_mojo_ns": 77.0,
+  "elapsed_s": 1.84,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "adler32",
+      "py_ns": 1494.15,
+      "mojo_ns": 15.6,
+      "speedup_x": 95.78,
+      "py_result": 1638411.0,
+      "py_error": null
+    },
+    {
+      "function": "fletcher16",
+      "py_ns": 1654.833,
+      "mojo_ns": 6.6,
+      "speedup_x": 250.73,
+      "py_result": 5130.0,
+      "py_error": null
+    },
+    {
+      "function": "luhn_check",
+      "py_ns": 3050.496,
+      "mojo_ns": 4.1,
+      "speedup_x": 744.02,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "luhn_checksum",
+      "py_ns": 1298.062,
+      "mojo_ns": 5.0,
+      "speedup_x": 259.61,
+      "py_result": 4.0,
+      "py_error": null
+    },
+    {
+      "function": "isbn10_check",
+      "py_ns": 1757.104,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "isbn13_check",
+      "py_ns": 1365.242,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "xor_checksum",
+      "py_ns": 2331.363,
+      "mojo_ns": 2.6,
+      "speedup_x": 896.68,
+      "py_result": 4.0,
+      "py_error": null
+    },
+    {
+      "function": "modular_sum",
+      "py_ns": 1410.087,
+      "mojo_ns": 3.0,
+      "speedup_x": 470.03,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "parity_bit",
+      "py_ns": 5174.85,
+      "mojo_ns": 3.0,
+      "speedup_x": 1724.95,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "internet_checksum",
+      "py_ns": 793.542,
+      "mojo_ns": 2.1,
+      "speedup_x": 377.88,
+      "py_result": 63995.0,
+      "py_error": null
+    },
+    {
+      "function": "verhoeff_check",
+      "py_ns": 3310.933,
+      "mojo_ns": 35.0,
+      "speedup_x": 94.6,
+      "py_result": 0.0,
+      "py_error": null
+    }
+  ]
+}

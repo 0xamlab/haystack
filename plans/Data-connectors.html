@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Connectors</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script> window.FontAwesomeConfig = { autoReplaceSvg: 'nest'};</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.plot.ly/plotly-3.1.1.min.js"></script>
+    <style>
+        ::-webkit-scrollbar { display: none;}
+        * { font-family: 'Inter', sans-serif; }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#6B42FC',
+                        success: '#00D395',
+                        warning: '#F59E0B',
+                        danger: '#EF4444',
+                        info: '#3B82F6',
+                        dark: {
+                            100: '#0B0D12',
+                            200: '#11131A',
+                            300: '#151823',
+                            400: '#1A1F2E',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-dark-100 text-[#E6E8EC]">
+
+<div id="main-container" class="flex min-h-screen">
+    <aside id="sidebar" class="w-64 bg-dark-200 border-r border-[#1F2430] flex-shrink-0 hidden lg:block">
+        <div class="p-4 border-b border-[#1F2430]">
+            <h1 class="text-xl font-bold text-white">ALGENTA</h1>
+            <p class="text-xs text-[#8A90A2] mt-1">Infrastructure Console</p>
+        </div>
+        <nav class="p-3">
+            <a href="#" class="flex items-center px-3 py-2 text-[#8A90A2] hover:bg-dark-300 hover:text-white rounded mb-1 transition-colors">
+                <i class="fa-solid fa-gauge w-5"></i>
+                <span class="ml-3 text-sm">Dashboard</span>
+            </a>
+            <a href="#" class="flex items-center px-3 py-2 text-[#8A90A2] hover:bg-dark-300 hover:text-white rounded mb-1 transition-colors">
+                <i class="fa-solid fa-chart-line w-5"></i>
+                <span class="ml-3 text-sm">Simulations</span>
+            </a>
+            <a href="#" class="flex items-center px-3 py-2 text-[#8A90A2] hover:bg-dark-300 hover:text-white rounded mb-1 transition-colors">
+                <i class="fa-solid fa-server w-5"></i>
+                <span class="ml-3 text-sm">Compute Clusters</span>
+            </a>
+            <a href="#" class="flex items-center px-3 py-2 bg-dark-300 text-white rounded mb-1 transition-colors">
+                <i class="fa-solid fa-database w-5"></i>
+                <span class="ml-3 text-sm">Data Management</span>
+            </a>
+            <a href="#" class="flex items-center px-3 py-2 text-[#8A90A2] hover:bg-dark-300 hover:text-white rounded mb-1 transition-colors">
+                <i class="fa-solid fa-wrench w-5"></i>
+                <span class="ml-3 text-sm">Tools & Libraries</span>
+            </a>
+            <a href="#" class="flex items-center px-3 py-2 text-[#8A90A2] hover:bg-dark-300 hover:text-white rounded mb-1 transition-colors">
+                <i class="fa-solid fa-gear w-5"></i>
+                <span class="ml-3 text-sm">Settings</span>
+            </a>
+        </nav>
+    </aside>
+
+    <main id="main-content" class="flex-1 overflow-x-hidden">
+        <header id="header" class="bg-dark-200 border-b border-[#1F2430] px-4 lg:px-6 py-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <button class="lg:hidden mr-4 text-[#8A90A2]">
+                        <i class="fa-solid fa-bars text-xl"></i>
+                    </button>
+                    <div>
+                        <h2 class="text-lg font-semibold text-white">Data Connectors</h2>
+                        <p class="text-xs text-[#8A90A2]">External Data Sources</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button class="px-3 py-1.5 bg-primary hover:bg-purple-700 text-white rounded text-xs font-medium transition-colors">
+                        <i class="fa-solid fa-plus mr-1"></i>Add Custom Connector
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <div id="content-area" class="p-4 lg:p-6">
+            <section id="metrics-strip" class="mb-6">
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div id="total-connectors-metric" class="bg-dark-200 border border-[#1F2430] rounded p-3">
+                        <div class="text-xs text-[#8A90A2] mb-1">TOTAL CONNECTORS</div>
+                        <div class="text-xl font-bold text-white">8</div>
+                    </div>
+
+                    <div id="connected-metric" class="bg-dark-200 border border-[#1F2430] rounded p-3">
+                        <div class="text-xs text-[#8A90A2] mb-1">CONNECTED</div>
+                        <div class="text-xl font-bold text-white">0</div>
+                    </div>
+
+                    <div id="health-metric" class="bg-dark-200 border border-[#1F2430] rounded p-3">
+                        <div class="text-xs text-[#8A90A2] mb-1">AVG HEALTH</div>
+                        <div class="text-xl font-bold text-white">99.1%</div>
+                    </div>
+
+                    <div id="volume-metric" class="bg-dark-200 border border-[#1F2430] rounded p-3">
+                        <div class="text-xs text-[#8A90A2] mb-1">RECORDS (7D)</div>
+                        <div class="text-xl font-bold text-white">2.4M</div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="available-connectors-section" class="mb-6">
+                <div class="mb-4">
+                    <h3 class="text-sm font-semibold text-white mb-1">Available Connectors</h3>
+                    <p class="text-xs text-[#8A90A2]">Connect external data sources to your simulation pipelines</p>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div id="aws-s3-connector" class="bg-dark-200 border border-[#1F2430] rounded p-3 hover:border-primary/40 hover:bg-dark-300 transition-all cursor-pointer group">
+                        <div class="flex items-start justify-between mb-3">
+                            <div class="w-8 h-8 bg-dark-300 border border-[#1F2430] rounded flex items-center justify-center">
+                                <i class="fa-brands fa-aws text-[#8A90A2] text-sm"></i>
+                            </div>
+                            <span class="px-2 py-0.5 bg-dark-300 border border-[#1F2430] rounded text-[#8A90A2] text-xs">Not Connected</span>
+                        </div>
+                        <h4 class="text-sm font-semibold text-white mb-1">AWS S3</h4>
+                        <p class="text-xs text-[#8A90A2] mb-3">Object storage for simulation data</p>
+                        <button class="w-full px-3 py-1.5 bg-dark-300 hover:bg-dark-400 text-white rounded text-xs font-medium transition-colors border border-[#1F2430] group-hover:border-primary/30">
+                            <i class="fa-solid fa-plus mr-1"></i>Connect
+                        </button>
+                    </div>
+
+                    <div id="gcs-connector" class="bg-dark-200 border border-[#1F2430] rounded p-3 hover:border-primary/40 hover:bg-dark-300 transition-all cursor-pointer group">
+                        <div class="flex items-start justify-between mb-3">
+                            <div class="w-8 h-8 bg-dark-300 border border-[#1F2430] rounded flex items-center justify-center">
+                                <i class="fa-brands fa-google text-[#8A90A2] text-sm"></i>
+                            </div>
+                            <span class="px-2 py-0.5 bg-dark-300 border border-[#1F2430] rounded text-[#8A90A2] text-xs">Not Connected</span>
+                        </div>
+                        <h4 class="text-sm font-semibold text-white mb-1">Google Cloud Storage</h4>
+                        <p class="text-xs text-[#8A90A2] mb-3">Scalable cloud object storage</p>
+                        <button class="w-full px-3 py-1.5 bg-dark-300 hover:bg-dark-400 text-white rounded text-xs font-medium transition-colors border border-[#1F2430] group-hover:border-primary/30">
+                            <i class="fa-solid fa-plus mr-1"></i>Connect
+                        </button>
+                    </div>
+
+                    <div id="azure-connector" class="bg-dark-200 border border-[#1F2430] rounded p-3 hover:border-primary/40 hover:bg-dark-300 transition-all cursor-pointer group">
+                        <div class="flex items-start justify-between mb-3">
+                            <div class="w-8 h-8 bg-dark-300 border border-[#1F2430] rounded flex items-center justify-center">
+                                <i class="fa-brands fa-microsoft text-[#8A90A2] text-sm"></i>
+                            </div>
+                            <span class="px-2 py-0.5 bg-dark-300 border border-[#1F2430] rounded text-[#8A90A2] text-xs">Not Connected</span>
+                        </div>
+                        <h4 class="text-sm font-semibold text-white mb-1">Azure Blob Storage</h4>
+                        <p class="text-xs text-[#8A90A2] mb-3">Microsoft cloud blob storage</p>
+                        <button class="w-full px-3 py-1.5 bg-dark-300 hover:bg-dark-400 text-white rounded text-xs font-medium transition-colors border border-[#1F2430] group-hover:border-primary/30">
+                            <i class="fa-solid fa-plus mr-1"></i>Connect
+                        </button>
+                    </div>
+
+                    <div id="bigquery-connector" class="bg-dark-200 border border-[#1F2430] rounded p-3 hover:border-primary/40 hover:bg-dark-300 transition-all cursor-pointer group">
+                        <div class="flex items-start justify-between mb-3">
+                            <div class="w-8 h-8 bg-dark-300 border border-[#1F2430] rounded flex items-center justify-center">
+                                <i class="fa-solid fa-chart-simple text-[#8A90A2] text-sm"></i>
+                            </div>
+                            <span class="px-2 py-0.5 bg-dark-300 border border-[#1F2430] rounded text-[#8A90A2] text-xs">Not Connected</span>
+                        </div>
+                        <h4 class="text-sm font-semibold text-white mb-1">BigQuery</h4>
+                        <p class="text-xs text-[#8A90A2] mb-3">Serverless data warehouse analytics</p>
+                        <button class="w-full px-3 py-1.5 bg-dark-300 hover:bg-dark-400 text-white rounded text-xs font-medium transition-colors border border-[#1F2430] group-hover:border-primary/30">
+                            <i class="fa-solid fa-plus mr-1"></i>Connect
+                        </button>
+                    </div>
+
+                    <div id="snowflake-connector" class="bg-dark-200 border border-[#1F2430] rounded p-3 hover:border-primary/40 hover:bg-dark-300 transition-all cursor-pointer group">
+                        <div class="flex items-start justify-between mb-3">
+                            <div class="w-8 h-8 bg-dark-300 border border-[#1F2430] rounded flex items-center justify-center">
+                                <i class="fa-solid fa-snowflake text-[#8A90A2] text-sm"></i>
+                            </div>
+                            <span class="px-2 py-0.5 bg-dark-300 border border-[#1F2430] rounded text-[#8A90A2] text-xs">Not Connected</span>
+                        </div>
+                        <h4 class="text-sm font-semibold text-white mb-1">Snowflake</h4>
+                        <p class="text-xs text-[#8A90A2] mb-3">Cloud data platform integration</p>
+                        <button class="w-full px-3 py-1.5 bg-dark-300 hover:bg-dark-400 text-white rounded text-xs font-medium transition-colors border border-[#1F2430] group-hover:border-primary/30">
+                            <i class="fa-solid fa-plus mr-1"></i>Connect
+                        </button>
+                    </div>
+
+                    <div id="postgres-connector" class="bg-dark-200 border border-[#1F2430] rounded p-3 hover:border-primary/40 hover:bg-dark-300 transition-all cursor-pointer group">
+                        <div class="flex items-start justify-between mb-3">
+                            <div class="w-8 h-8 bg-dark-300 border border-[#1F2430] rounded flex items-center justify-center">
+                                <i class="fa-solid fa-database text-[#8A90A2] text-sm"></i>
+                            </div>
+                            <span class="px-2 py-0.5 bg-dark-300 border border-[#1F2430] rounded text-[#8A90A2] text-xs">Not Connected</span>
+                        </div>
+                        <h4 class="text-sm font-semibold text-white mb-1">PostgreSQL</h4>
+                        <p class="text-xs text-[#8A90A2] mb-3">Relational database connector</p>
+                        <button class="w-full px-3 py-1.5 bg-dark-300 hover:bg-dark-400 text-white rounded text-xs font-medium transition-colors border border-[#1F2430] group-hover:border-primary/30">
+                            <i class="fa-solid fa-plus mr-1"></i>Connect
+                        </button>
+                    </div>
+
+                    <div id="rest-api-connector" class="bg-dark-200 border border-[#1F2430] rounded p-3 hover:border-primary/40 hover:bg-dark-300 transition-all cursor-pointer group">
+                        <div class="flex items-start justify-between mb-3">
+                            <div class="w-8 h-8 bg-dark-300 border border-[#1F2430] rounded flex items-center justify-center">
+                                <i class="fa-solid fa-code text-[#8A90A2] text-sm"></i>
+                            </div>
+                            <span class="px-2 py-0.5 bg-dark-300 border border-[#1F2430] rounded text-[#8A90A2] text-xs">Not Connected</span>
+                        </div>
+                        <h4 class="text-sm font-semibold text-white mb-1">REST API</h4>
+                        <p class="text-xs text-[#8A90A2] mb-3">Custom HTTP API endpoints</p>
+                        <button class="w-full px-3 py-1.5 bg-dark-300 hover:bg-dark-400 text-white rounded text-xs font-medium transition-colors border border-[#1F2430] group-hover:border-primary/30">
+                            <i class="fa-solid fa-plus mr-1"></i>Connect
+                        </button>
+                    </div>
+
+                    <div id="file-upload-connector" class="bg-dark-200 border border-[#1F2430] rounded p-3 hover:border-primary/40 hover:bg-dark-300 transition-all cursor-pointer group">
+                        <div class="flex items-start justify-between mb-3">
+                            <div class="w-8 h-8 bg-dark-300 border border-[#1F2430] rounded flex items-center justify-center">
+                                <i class="fa-solid fa-file-arrow-up text-[#8A90A2] text-sm"></i>
+                            </div>
+                            <span class="px-2 py-0.5 bg-dark-300 border border-[#1F2430] rounded text-[#8A90A2] text-xs">Not Connected</span>
+                        </div>
+                        <h4 class="text-sm font-semibold text-white mb-1">File Upload</h4>
+                        <p class="text-xs text-[#8A90A2] mb-3">Direct CSV/JSON file upload</p>
+                        <button class="w-full px-3 py-1.5 bg-dark-300 hover:bg-dark-400 text-white rounded text-xs font-medium transition-colors border border-[#1F2430] group-hover:border-primary/30">
+                            <i class="fa-solid fa-plus mr-1"></i>Connect
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <section id="active-connections-section" class="mb-6">
+                <div class="bg-dark-200 border border-[#1F2430] rounded">
+                    <div class="px-4 py-3 border-b border-[#1F2430]">
+                        <h3 class="text-sm font-semibold text-white mb-0.5">Active Connections</h3>
+                        <p class="text-xs text-[#8A90A2]">Configured data source connections</p>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead>
+                                <tr class="border-b border-[#1F2430]">
+                                    <th class="px-4 py-2 text-left text-xs font-semibold text-[#8A90A2] uppercase tracking-wider">Name</th>
+                                    <th class="px-4 py-2 text-left text-xs font-semibold text-[#8A90A2] uppercase tracking-wider">Type</th>
+                                    <th class="px-4 py-2 text-left text-xs font-semibold text-[#8A90A2] uppercase tracking-wider">Status</th>
+                                    <th class="px-4 py-2 text-left text-xs font-semibold text-[#8A90A2] uppercase tracking-wider">Last Tested</th>
+                                    <th class="px-4 py-2 text-left text-xs font-semibold text-[#8A90A2] uppercase tracking-wider">Schema</th>
+                                    <th class="px-4 py-2 text-left text-xs font-semibold text-[#8A90A2] uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="border-b border-[#1F2430] hover:bg-dark-300 transition-colors">
+                                    <td class="px-4 py-3">
+                                        <span class="text-sm text-white font-mono">analytics-db</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="text-xs text-[#8A90A2]">PostgreSQL</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-2 h-2 bg-success rounded-full"></div>
+                                            <span class="text-xs text-success font-medium">Live</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="text-xs text-[#8A90A2]">2m ago</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="text-xs text-white">14 tables</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-2">
+                                            <button class="px-2 py-1 bg-dark-300 hover:bg-dark-400 text-white rounded text-xs transition-colors border border-[#1F2430]">
+                                                Browse
+                                            </button>
+                                            <button class="px-2 py-1 bg-dark-300 hover:bg-dark-400 text-white rounded text-xs transition-colors border border-[#1F2430]">
+                                                Test
+                                            </button>
+                                            <button class="px-2 py-1 bg-dark-300 hover:bg-dark-400 text-danger rounded text-xs transition-colors border border-[#1F2430]">
+                                                Delete
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr class="border-b border-[#1F2430] hover:bg-dark-300 transition-colors">
+                                    <td class="px-4 py-3">
+                                        <span class="text-sm text-white font-mono">simulation-data</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="text-xs text-[#8A90A2]">AWS S3</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-2 h-2 bg-warning rounded-full"></div>
+                                            <span class="text-xs text-warning font-medium">Degraded</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="text-xs text-[#8A90A2]">15m ago</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="text-xs text-white">247 objects</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-2">
+                                            <button class="px-2 py-1 bg-dark-300 hover:bg-dark-400 text-white rounded text-xs transition-colors border border-[#1F2430]">
+                                                Browse
+                                            </button>
+                                            <button class="px-2 py-1 bg-dark-300 hover:bg-dark-400 text-white rounded text-xs transition-colors border border-[#1F2430]">
+                                                Test
+                                            </button>
+                                            <button class="px-2 py-1 bg-dark-300 hover:bg-dark-400 text-danger rounded text-xs transition-colors border border-[#1F2430]">
+                                                Delete
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr class="border-b border-[#1F2430] hover:bg-dark-300 transition-colors">
+                                    <td class="px-4 py-3">
+                                        <span class="text-sm text-white font-mono">market-feed</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="text-xs text-[#8A90A2]">REST API</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-2 h-2 bg-danger rounded-full"></div>
+                                            <span class="text-xs text-danger font-medium">Error</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="text-xs text-[#8A90A2]">1h ago</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="text-xs text-white">3 endpoints</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-2">
+                                            <button class="px-2 py-1 bg-dark-300 hover:bg-dark-400 text-white rounded text-xs transition-colors border border-[#1F2430]">
+                                                Browse
+                                            </button>
+                                            <button class="px-2 py-1 bg-dark-300 hover:bg-dark-400 text-white rounded text-xs transition-colors border border-[#1F2430]">
+                                                Test
+                                            </button>
+                                            <button class="px-2 py-1 bg-dark-300 hover:bg-dark-400 text-danger rounded text-xs transition-colors border border-[#1F2430]">
+                                                Delete
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="px-4 py-3 border-t border-[#1F2430] bg-dark-300">
+                        <p class="text-xs text-[#8A90A2]">
+                            <span class="text-white font-medium">3 connections</span> · 
+                            <span class="text-white font-medium">1 live</span> · 
+                            <span class="text-white font-medium">1 degraded</span> · 
+                            <span class="text-white font-medium">1 error</span>
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <section id="connection-health-section">
+                    <div class="bg-dark-200 border border-[#1F2430] rounded p-4">
+                        <div class="mb-3">
+                            <h3 class="text-sm font-semibold text-white mb-0.5">Connection Health</h3>
+                            <p class="text-xs text-[#8A90A2]">Success rate — last 24h</p>
+                        </div>
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="w-10 h-10 bg-success/10 border border-success/30 rounded flex items-center justify-center">
+                                <i class="fa-solid fa-check text-success text-lg"></i>
+                            </div>
+                            <div>
+                                <div class="text-sm font-medium text-white">All operational</div>
+                                <div class="text-xs text-[#8A90A2]">99.1% success rate</div>
+                            </div>
+                        </div>
+                        <div id="health-chart" style="height: 200px"></div>
+                    </div>
+                </section>
+
+                <section id="data-transfer-section">
+                    <div class="bg-dark-200 border border-[#1F2430] rounded p-4">
+                        <div class="mb-3">
+                            <h3 class="text-sm font-semibold text-white mb-0.5">Data Transfer Volume</h3>
+                            <p class="text-xs text-[#8A90A2]">Records processed — last 7d</p>
+                        </div>
+                        <div class="flex items-center gap-4 mb-4">
+                            <div>
+                                <div class="text-xs text-[#8A90A2]">Total Records</div>
+                                <div class="text-lg font-bold text-white">2.4M</div>
+                            </div>
+                            <div>
+                                <div class="text-xs text-[#8A90A2]">Avg Daily</div>
+                                <div class="text-lg font-bold text-white">343K</div>
+                            </div>
+                        </div>
+                        <div id="transfer-chart" style="height: 200px"></div>
+                    </div>
+                </section>
+            </div>
+
+            <section id="recent-activity-section">
+                <div class="bg-dark-200 border border-[#1F2430] rounded">
+                    <div class="px-4 py-3 border-b border-[#1F2430]">
+                        <h3 class="text-sm font-semibold text-white mb-0.5">Recent Activity</h3>
+                        <p class="text-xs text-[#8A90A2]">Connection events and data transfers</p>
+                    </div>
+                    <div class="p-4">
+                        <div class="space-y-3">
+                            <div class="flex items-start gap-3 pb-3 border-b border-[#1F2430]">
+                                <div class="w-8 h-8 bg-success/10 border border-success/30 rounded flex items-center justify-center flex-shrink-0">
+                                    <i class="fa-solid fa-check text-success text-xs"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="text-sm text-white mb-0.5">Data sync completed</div>
+                                    <div class="text-xs text-[#8A90A2]">analytics-db · 142,381 records · 2m ago</div>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-3 pb-3 border-b border-[#1F2430]">
+                                <div class="w-8 h-8 bg-warning/10 border border-warning/30 rounded flex items-center justify-center flex-shrink-0">
+                                    <i class="fa-solid fa-triangle-exclamation text-warning text-xs"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="text-sm text-white mb-0.5">Connection timeout detected</div>
+                                    <div class="text-xs text-[#8A90A2]">simulation-data · Retrying · 15m ago</div>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-3 pb-3 border-b border-[#1F2430]">
+                                <div class="w-8 h-8 bg-danger/10 border border-danger/30 rounded flex items-center justify-center flex-shrink-0">
+                                    <i class="fa-solid fa-xmark text-danger text-xs"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="text-sm text-white mb-0.5">Authentication failed</div>
+                                    <div class="text-xs text-[#8A90A2]">market-feed · Invalid credentials · 1h ago</div>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-3">
+                                <div class="w-8 h-8 bg-success/10 border border-success/30 rounded flex items-center justify-center flex-shrink-0">
+                                    <i class="fa-solid fa-check text-success text-xs"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="text-sm text-white mb-0.5">Schema validation passed</div>
+                                    <div class="text-xs text-[#8A90A2]">analytics-db · 14 tables validated · 2h ago</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+</div>
+
+<script>
+window.addEventListener('load', function() {
+    try {
+        var healthData = [{
+            type: 'scatter',
+            mode: 'lines',
+            x: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '23:59'],
+            y: [99.2, 99.1, 98.9, 99.3, 99.4, 99.0, 99.1],
+            line: {
+                color: '#00D395',
+                width: 2
+            },
+            fill: 'tozeroy',
+            fillcolor: 'rgba(0, 211, 149, 0.1)'
+        }];
+
+        var healthLayout = {
+            margin: { t: 10, r: 10, b: 30, l: 40 },
+            plot_bgcolor: '#11131A',
+            paper_bgcolor: '#11131A',
+            xaxis: {
+                gridcolor: '#1F2430',
+                color: '#8A90A2'
+            },
+            yaxis: {
+                gridcolor: '#1F2430',
+                color: '#8A90A2',
+                range: [98, 100]
+            },
+            showlegend: false
+        };
+
+        Plotly.newPlot('health-chart', healthData, healthLayout, {responsive: true, displayModeBar: false, displaylogo: false});
+
+        var transferData = [{
+            type: 'bar',
+            x: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+            y: [320000, 350000, 280000, 410000, 380000, 290000, 340000],
+            marker: {
+                color: '#6B42FC'
+            }
+        }];
+
+        var transferLayout = {
+            margin: { t: 10, r: 10, b: 30, l: 60 },
+            plot_bgcolor: '#11131A',
+            paper_bgcolor: '#11131A',
+            xaxis: {
+                gridcolor: '#1F2430',
+                color: '#8A90A2'
+            },
+            yaxis: {
+                gridcolor: '#1F2430',
+                color: '#8A90A2'
+            },
+            showlegend: false
+        };
+
+        Plotly.newPlot('transfer-chart', transferData, transferLayout, {responsive: true, displayModeBar: false, displaylogo: false});
+    } catch(e) {
+        console.error('Chart rendering failed');
+    }
+});
+</script>
+
+</body>
+</html>

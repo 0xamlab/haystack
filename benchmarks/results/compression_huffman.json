@@ -1,0 +1,53 @@
+{
+  "lib": "compression_huffman",
+  "status": "ok",
+  "n_functions": 5,
+  "n_compared": 5,
+  "overall_speedup_x": 5.03,
+  "total_py_ns": 86890.45,
+  "total_mojo_ns": 17266.7,
+  "elapsed_s": 2.85,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "frequency_count",
+      "py_ns": 8828.975,
+      "mojo_ns": 1692.0,
+      "speedup_x": 5.22,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "build_huffman_tree",
+      "py_ns": 13826.104,
+      "mojo_ns": 2580.6,
+      "speedup_x": 5.36,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "huffman_encode",
+      "py_ns": 58321.996,
+      "mojo_ns": 11952.3,
+      "speedup_x": 4.88,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "compression_ratio_huffman",
+      "py_ns": 2616.675,
+      "mojo_ns": 1.0,
+      "speedup_x": 2616.68,
+      "py_result": 8.0,
+      "py_error": null
+    },
+    {
+      "function": "avg_code_length",
+      "py_ns": 3296.704,
+      "mojo_ns": 1040.8,
+      "speedup_x": 3.17,
+      "py_result": 0.5,
+      "py_error": null
+    }
+  ]
+}

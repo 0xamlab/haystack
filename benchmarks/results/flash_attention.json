@@ -1,0 +1,93 @@
+{
+  "lib": "flash_attention",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 9,
+  "overall_speedup_x": 335.15,
+  "total_py_ns": 3284.49,
+  "total_mojo_ns": 9.8,
+  "elapsed_s": 1.83,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "flash_block_max",
+      "py_ns": 81.363,
+      "mojo_ns": 1.0,
+      "speedup_x": 81.36,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "flash_block_sum_exp",
+      "py_ns": 149.121,
+      "mojo_ns": 1.1,
+      "speedup_x": 135.56,
+      "py_result": 1.5,
+      "py_error": null
+    },
+    {
+      "function": "flash_block_output",
+      "py_ns": 160.25,
+      "mojo_ns": 1.1,
+      "speedup_x": 145.68,
+      "py_result": 0.75,
+      "py_error": null
+    },
+    {
+      "function": "flash_rescale_output",
+      "py_ns": 117.033,
+      "mojo_ns": 1.1,
+      "speedup_x": 106.39,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "flash_final_normalize",
+      "py_ns": 1391.708,
+      "mojo_ns": 1.0,
+      "speedup_x": 1391.71,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "paged_attention_block_score",
+      "py_ns": 195.35,
+      "mojo_ns": 1.0,
+      "speedup_x": 195.35,
+      "py_result": 0.353553,
+      "py_error": null
+    },
+    {
+      "function": "sliding_window_attention",
+      "py_ns": 121.558,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_error": null
+    },
+    {
+      "function": "sparse_attention_block_density",
+      "py_ns": 162.179,
+      "mojo_ns": 1.1,
+      "speedup_x": 147.44,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "grouped_query_attention_scale",
+      "py_ns": 839.058,
+      "mojo_ns": 1.2,
+      "speedup_x": 699.22,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "ring_attention_chunk_size",
+      "py_ns": 188.425,
+      "mojo_ns": 1.2,
+      "speedup_x": 157.02,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

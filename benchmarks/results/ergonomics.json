@@ -1,0 +1,109 @@
+{
+  "lib": "ergonomics",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 9,
+  "overall_speedup_x": 8.11,
+  "total_py_ns": 1005.0,
+  "total_mojo_ns": 123.9,
+  "elapsed_s": 2.14,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "niosh_rwl",
+      "py_ns": 107.888,
+      "mojo_ns": 1.0,
+      "speedup_x": 107.89,
+      "py_result": 0.007812,
+      "py_error": null
+    },
+    {
+      "function": "lifting_index",
+      "py_ns": 103.575,
+      "mojo_ns": 101.0,
+      "speedup_x": 1.03,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "metabolic_rate_walking",
+      "py_ns": 122.033,
+      "mojo_ns": 6.4,
+      "speedup_x": 19.07,
+      "py_result": 1.8125,
+      "py_error": null
+    },
+    {
+      "function": "heat_stress_index",
+      "py_ns": 107.433,
+      "mojo_ns": 9.1,
+      "speedup_x": 11.81,
+      "py_result": 100.0,
+      "py_error": null
+    },
+    {
+      "function": "decibel_addition",
+      "py_ns": null,
+      "mojo_ns": 1.2,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "module 'math' has no attribute 'math'"
+    },
+    {
+      "function": "noise_dose",
+      "py_ns": 93.317,
+      "mojo_ns": 1.3,
+      "speedup_x": 71.78,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "cumulative_noise_dose_2",
+      "py_ns": 105.533,
+      "mojo_ns": 1.3,
+      "speedup_x": 81.18,
+      "py_result": 2.0,
+      "py_error": null
+    },
+    {
+      "function": "visual_angle_minutes",
+      "py_ns": 158.888,
+      "mojo_ns": 1.3,
+      "speedup_x": 122.22,
+      "py_result": 3187.806141,
+      "py_error": null
+    },
+    {
+      "function": "fitts_law_movement_time",
+      "py_ns": null,
+      "mojo_ns": 1.2,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "module 'math' has no attribute 'math'"
+    },
+    {
+      "function": "hicks_law_reaction_time",
+      "py_ns": null,
+      "mojo_ns": 1.3,
+      "speedup_x": null,
+      "py_result": null,
+      "py_error": "module 'math' has no attribute 'math'"
+    },
+    {
+      "function": "comfort_temperature_pmv_simplified",
+      "py_ns": 110.821,
+      "mojo_ns": 1.3,
+      "speedup_x": 85.25,
+      "py_result": -22.5,
+      "py_error": null
+    },
+    {
+      "function": "body_mass_index",
+      "py_ns": 95.508,
+      "mojo_ns": 1.2,
+      "speedup_x": 79.59,
+      "py_result": 2.0,
+      "py_error": null
+    }
+  ]
+}

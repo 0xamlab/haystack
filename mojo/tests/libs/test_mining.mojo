@@ -1,0 +1,58 @@
+"""test_mining.mojo — auto-generated tests for mining library."""
+from std.math import isnan, isinf
+from mining import ore_grade, strip_ratio, recovery_rate, mill_throughput, bond_work_index_energy, cut_off_grade, dilution_factor, net_smelter_return, reserve_life, powder_factor, ventilation_quantity, subsidence_factor
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_ore_grade = ore_grade(0.5, 0.5)
+    if is_finite(_v_ore_grade): passed += 1; print("  ✅ mining::ore_grade =", _v_ore_grade)
+    else: failed += 1; print("  ❌ mining::ore_grade → non-finite:", _v_ore_grade)
+    var _v_strip_ratio = strip_ratio(0.5, 0.5)
+    if is_finite(_v_strip_ratio): passed += 1; print("  ✅ mining::strip_ratio =", _v_strip_ratio)
+    else: failed += 1; print("  ❌ mining::strip_ratio → non-finite:", _v_strip_ratio)
+    var _v_recovery_rate = recovery_rate(0.5, 0.5)
+    if is_finite(_v_recovery_rate): passed += 1; print("  ✅ mining::recovery_rate =", _v_recovery_rate)
+    else: failed += 1; print("  ❌ mining::recovery_rate → non-finite:", _v_recovery_rate)
+    var _v_mill_throughput = mill_throughput(0.5, 0.5)
+    if is_finite(_v_mill_throughput): passed += 1; print("  ✅ mining::mill_throughput =", _v_mill_throughput)
+    else: failed += 1; print("  ❌ mining::mill_throughput → non-finite:", _v_mill_throughput)
+    var _v_bond_work_index_energy = bond_work_index_energy(0.5, 0.5, 0.5)
+    if is_finite(_v_bond_work_index_energy): passed += 1; print("  ✅ mining::bond_work_index_energy =", _v_bond_work_index_energy)
+    else: failed += 1; print("  ❌ mining::bond_work_index_energy → non-finite:", _v_bond_work_index_energy)
+    var _v_cut_off_grade = cut_off_grade(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_cut_off_grade): passed += 1; print("  ✅ mining::cut_off_grade =", _v_cut_off_grade)
+    else: failed += 1; print("  ❌ mining::cut_off_grade → non-finite:", _v_cut_off_grade)
+    var _v_dilution_factor = dilution_factor(0.5, 0.5)
+    if is_finite(_v_dilution_factor): passed += 1; print("  ✅ mining::dilution_factor =", _v_dilution_factor)
+    else: failed += 1; print("  ❌ mining::dilution_factor → non-finite:", _v_dilution_factor)
+    var _v_net_smelter_return = net_smelter_return(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_net_smelter_return): passed += 1; print("  ✅ mining::net_smelter_return =", _v_net_smelter_return)
+    else: failed += 1; print("  ❌ mining::net_smelter_return → non-finite:", _v_net_smelter_return)
+    var _v_reserve_life = reserve_life(0.5, 0.5)
+    if is_finite(_v_reserve_life): passed += 1; print("  ✅ mining::reserve_life =", _v_reserve_life)
+    else: failed += 1; print("  ❌ mining::reserve_life → non-finite:", _v_reserve_life)
+    var _v_powder_factor = powder_factor(0.5, 0.5)
+    if is_finite(_v_powder_factor): passed += 1; print("  ✅ mining::powder_factor =", _v_powder_factor)
+    else: failed += 1; print("  ❌ mining::powder_factor → non-finite:", _v_powder_factor)
+    var _v_ventilation_quantity = ventilation_quantity(0.5, 0.5)
+    if is_finite(_v_ventilation_quantity): passed += 1; print("  ✅ mining::ventilation_quantity =", _v_ventilation_quantity)
+    else: failed += 1; print("  ❌ mining::ventilation_quantity → non-finite:", _v_ventilation_quantity)
+    var _v_subsidence_factor = subsidence_factor(0.5, 0.5)
+    if is_finite(_v_subsidence_factor): passed += 1; print("  ✅ mining::subsidence_factor =", _v_subsidence_factor)
+    else: failed += 1; print("  ❌ mining::subsidence_factor → non-finite:", _v_subsidence_factor)
+
+    print("  [mining] Passed:", passed, "Failed:", failed)

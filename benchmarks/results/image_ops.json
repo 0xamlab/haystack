@@ -1,0 +1,101 @@
+{
+  "lib": "image_ops",
+  "status": "ok",
+  "n_functions": 11,
+  "n_compared": 11,
+  "overall_speedup_x": 0.33,
+  "total_py_ns": 28470.85,
+  "total_mojo_ns": 85059.0,
+  "elapsed_s": 3.65,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "convolve_2d",
+      "py_ns": 3024.354,
+      "mojo_ns": 1147.3,
+      "speedup_x": 2.64,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "sobel_x_kernel",
+      "py_ns": 464.821,
+      "mojo_ns": 1196.6,
+      "speedup_x": 0.39,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "sobel_y_kernel",
+      "py_ns": 1193.942,
+      "mojo_ns": 17052.4,
+      "speedup_x": 0.07,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "gaussian_kernel_3x3",
+      "py_ns": 3039.229,
+      "mojo_ns": 14709.4,
+      "speedup_x": 0.21,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "sharpen_kernel",
+      "py_ns": 1314.15,
+      "mojo_ns": 1739.4,
+      "speedup_x": 0.76,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "histogram",
+      "py_ns": 7283.775,
+      "mojo_ns": 1011.4,
+      "speedup_x": 7.2,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "threshold",
+      "py_ns": 2445.896,
+      "mojo_ns": 1813.5,
+      "speedup_x": 1.35,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "invert",
+      "py_ns": 1585.783,
+      "mojo_ns": 8005.1,
+      "speedup_x": 0.2,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "brightness",
+      "py_ns": 4208.946,
+      "mojo_ns": 4260.1,
+      "speedup_x": 0.99,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "contrast",
+      "py_ns": 1978.3,
+      "mojo_ns": 29979.1,
+      "speedup_x": 0.07,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "mean_pixel",
+      "py_ns": 1931.658,
+      "mojo_ns": 4144.7,
+      "speedup_x": 0.47,
+      "py_result": 0.366667,
+      "py_error": null
+    }
+  ]
+}

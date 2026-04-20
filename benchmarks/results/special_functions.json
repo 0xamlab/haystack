@@ -1,0 +1,109 @@
+{
+  "lib": "special_functions",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 12,
+  "overall_speedup_x": 1.22,
+  "total_py_ns": 74767.14,
+  "total_mojo_ns": 61042.6,
+  "elapsed_s": 8.59,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "gamma_function",
+      "py_ns": 1571.742,
+      "mojo_ns": 813.6,
+      "speedup_x": 1.93,
+      "py_result": 1.772454,
+      "py_error": null
+    },
+    {
+      "function": "log_gamma",
+      "py_ns": 9538.825,
+      "mojo_ns": 3162.0,
+      "speedup_x": 3.02,
+      "py_result": 0.572365,
+      "py_error": null
+    },
+    {
+      "function": "beta_function",
+      "py_ns": 11100.896,
+      "mojo_ns": 35845.7,
+      "speedup_x": 0.31,
+      "py_result": 3.141593,
+      "py_error": null
+    },
+    {
+      "function": "digamma",
+      "py_ns": 610.208,
+      "mojo_ns": 7.4,
+      "speedup_x": 82.46,
+      "py_result": -1.96351,
+      "py_error": null
+    },
+    {
+      "function": "incomplete_gamma_lower",
+      "py_ns": 9917.262,
+      "mojo_ns": 0.9,
+      "speedup_x": 11019.18,
+      "py_result": 1.210036,
+      "py_error": null
+    },
+    {
+      "function": "regularized_gamma",
+      "py_ns": 34935.1,
+      "mojo_ns": 21177.9,
+      "speedup_x": 1.65,
+      "py_result": 0.682689,
+      "py_error": null
+    },
+    {
+      "function": "erf",
+      "py_ns": 589.042,
+      "mojo_ns": 0.9,
+      "speedup_x": 654.49,
+      "py_result": 0.5205,
+      "py_error": null
+    },
+    {
+      "function": "erfc",
+      "py_ns": 964.942,
+      "mojo_ns": 0.9,
+      "speedup_x": 1072.16,
+      "py_result": 0.4795,
+      "py_error": null
+    },
+    {
+      "function": "bessel_j0",
+      "py_ns": 4086.475,
+      "mojo_ns": 28.9,
+      "speedup_x": 141.4,
+      "py_result": 0.93847,
+      "py_error": null
+    },
+    {
+      "function": "factorial_float",
+      "py_ns": 812.35,
+      "mojo_ns": 1.9,
+      "speedup_x": 427.55,
+      "py_result": 120.0,
+      "py_error": null
+    },
+    {
+      "function": "double_factorial",
+      "py_ns": 472.629,
+      "mojo_ns": 1.6,
+      "speedup_x": 295.39,
+      "py_result": 15.0,
+      "py_error": null
+    },
+    {
+      "function": "binomial_coefficient",
+      "py_ns": 167.667,
+      "mojo_ns": 0.9,
+      "speedup_x": 186.3,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

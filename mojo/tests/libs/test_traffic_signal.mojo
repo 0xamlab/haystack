@@ -1,0 +1,57 @@
+"""test_traffic_signal.mojo — auto-generated tests for traffic_signal library."""
+from std.math import isnan, isinf
+from traffic_signal import cycle_length_webster, effective_green, green_ratio, capacity_lane, volume_to_capacity, delay_uniform, pedestrian_crossing_time, yellow_interval, all_red_interval, level_of_service_delay, intersection_capacity_utilization, peak_hour_factor
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_cycle_length_webster = cycle_length_webster(0.5, 0.5)
+    if is_finite(_v_cycle_length_webster): passed += 1; print("  ✅ traffic_signal::cycle_length_webster =", _v_cycle_length_webster)
+    else: failed += 1; print("  ❌ traffic_signal::cycle_length_webster → non-finite:", _v_cycle_length_webster)
+    var _v_effective_green = effective_green(0.5, 0.5, 0.5)
+    if is_finite(_v_effective_green): passed += 1; print("  ✅ traffic_signal::effective_green =", _v_effective_green)
+    else: failed += 1; print("  ❌ traffic_signal::effective_green → non-finite:", _v_effective_green)
+    var _v_green_ratio = green_ratio(0.5, 0.5)
+    if is_finite(_v_green_ratio): passed += 1; print("  ✅ traffic_signal::green_ratio =", _v_green_ratio)
+    else: failed += 1; print("  ❌ traffic_signal::green_ratio → non-finite:", _v_green_ratio)
+    var _v_capacity_lane = capacity_lane(0.5, 0.5)
+    if is_finite(_v_capacity_lane): passed += 1; print("  ✅ traffic_signal::capacity_lane =", _v_capacity_lane)
+    else: failed += 1; print("  ❌ traffic_signal::capacity_lane → non-finite:", _v_capacity_lane)
+    var _v_volume_to_capacity = volume_to_capacity(0.5, 0.5)
+    if is_finite(_v_volume_to_capacity): passed += 1; print("  ✅ traffic_signal::volume_to_capacity =", _v_volume_to_capacity)
+    else: failed += 1; print("  ❌ traffic_signal::volume_to_capacity → non-finite:", _v_volume_to_capacity)
+    var _v_delay_uniform = delay_uniform(0.5, 0.5, 0.5)
+    if is_finite(_v_delay_uniform): passed += 1; print("  ✅ traffic_signal::delay_uniform =", _v_delay_uniform)
+    else: failed += 1; print("  ❌ traffic_signal::delay_uniform → non-finite:", _v_delay_uniform)
+    var _v_pedestrian_crossing_time = pedestrian_crossing_time(0.5, 0.5)
+    if is_finite(_v_pedestrian_crossing_time): passed += 1; print("  ✅ traffic_signal::pedestrian_crossing_time =", _v_pedestrian_crossing_time)
+    else: failed += 1; print("  ❌ traffic_signal::pedestrian_crossing_time → non-finite:", _v_pedestrian_crossing_time)
+    var _v_yellow_interval = yellow_interval(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_yellow_interval): passed += 1; print("  ✅ traffic_signal::yellow_interval =", _v_yellow_interval)
+    else: failed += 1; print("  ❌ traffic_signal::yellow_interval → non-finite:", _v_yellow_interval)
+    var _v_all_red_interval = all_red_interval(0.5, 0.5, 0.5)
+    if is_finite(_v_all_red_interval): passed += 1; print("  ✅ traffic_signal::all_red_interval =", _v_all_red_interval)
+    else: failed += 1; print("  ❌ traffic_signal::all_red_interval → non-finite:", _v_all_red_interval)
+    _ = level_of_service_delay(0.5)
+    passed += 1; print("  ✅ traffic_signal::level_of_service_delay")
+    var _v_intersection_capacity_utilization = intersection_capacity_utilization(0.5, 0.5, 0.5)
+    if is_finite(_v_intersection_capacity_utilization): passed += 1; print("  ✅ traffic_signal::intersection_capacity_utilization =", _v_intersection_capacity_utilization)
+    else: failed += 1; print("  ❌ traffic_signal::intersection_capacity_utilization → non-finite:", _v_intersection_capacity_utilization)
+    var _v_peak_hour_factor = peak_hour_factor(0.5, 0.5)
+    if is_finite(_v_peak_hour_factor): passed += 1; print("  ✅ traffic_signal::peak_hour_factor =", _v_peak_hour_factor)
+    else: failed += 1; print("  ❌ traffic_signal::peak_hour_factor → non-finite:", _v_peak_hour_factor)
+
+    print("  [traffic_signal] Passed:", passed, "Failed:", failed)

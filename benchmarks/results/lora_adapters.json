@@ -1,0 +1,93 @@
+{
+  "lib": "lora_adapters",
+  "status": "ok",
+  "n_functions": 10,
+  "n_compared": 10,
+  "overall_speedup_x": 379.98,
+  "total_py_ns": 4217.74,
+  "total_mojo_ns": 11.1,
+  "elapsed_s": 1.26,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "lora_forward",
+      "py_ns": 104.767,
+      "mojo_ns": 1.1,
+      "speedup_x": 95.24,
+      "py_result": 0.0625,
+      "py_error": null
+    },
+    {
+      "function": "lora_merge_weight",
+      "py_ns": 140.729,
+      "mojo_ns": 1.2,
+      "speedup_x": 117.27,
+      "py_result": 0.625,
+      "py_error": null
+    },
+    {
+      "function": "qlora_dequant_forward",
+      "py_ns": 152.825,
+      "mojo_ns": 1.1,
+      "speedup_x": 138.93,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "lora_gradient_a",
+      "py_ns": 1553.642,
+      "mojo_ns": 1.1,
+      "speedup_x": 1412.4,
+      "py_result": 0.0625,
+      "py_error": null
+    },
+    {
+      "function": "lora_gradient_b",
+      "py_ns": 270.396,
+      "mojo_ns": 1.1,
+      "speedup_x": 245.81,
+      "py_result": 0.125,
+      "py_error": null
+    },
+    {
+      "function": "adapter_scaling_factor",
+      "py_ns": 202.229,
+      "mojo_ns": 1.1,
+      "speedup_x": 183.84,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "prefix_tuning_key_aug",
+      "py_ns": 1286.004,
+      "mojo_ns": 1.1,
+      "speedup_x": 1169.09,
+      "py_result": 0.75,
+      "py_error": null
+    },
+    {
+      "function": "prompt_tuning_embed",
+      "py_ns": 147.908,
+      "mojo_ns": 1.1,
+      "speedup_x": 134.46,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "dora_magnitude_scale",
+      "py_ns": 211.183,
+      "mojo_ns": 1.1,
+      "speedup_x": 191.98,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "adapter_param_efficiency",
+      "py_ns": 148.058,
+      "mojo_ns": 1.1,
+      "speedup_x": 134.6,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

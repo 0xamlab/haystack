@@ -1,0 +1,58 @@
+"""test_logistics.mojo — auto-generated tests for logistics library."""
+from std.math import isnan, isinf
+from logistics import vehicle_utilization, order_fill_rate, perfect_order_rate, inventory_turns, days_of_supply, warehouse_utilization, cost_per_unit_shipped, on_time_delivery_rate, dwell_time, cross_dock_throughput, route_efficiency, carbon_per_tonne_km
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_vehicle_utilization = vehicle_utilization(0.5, 0.5)
+    if is_finite(_v_vehicle_utilization): passed += 1; print("  ✅ logistics::vehicle_utilization =", _v_vehicle_utilization)
+    else: failed += 1; print("  ❌ logistics::vehicle_utilization → non-finite:", _v_vehicle_utilization)
+    var _v_order_fill_rate = order_fill_rate(0.5, 0.5)
+    if is_finite(_v_order_fill_rate): passed += 1; print("  ✅ logistics::order_fill_rate =", _v_order_fill_rate)
+    else: failed += 1; print("  ❌ logistics::order_fill_rate → non-finite:", _v_order_fill_rate)
+    var _v_perfect_order_rate = perfect_order_rate(0.5, 0.5)
+    if is_finite(_v_perfect_order_rate): passed += 1; print("  ✅ logistics::perfect_order_rate =", _v_perfect_order_rate)
+    else: failed += 1; print("  ❌ logistics::perfect_order_rate → non-finite:", _v_perfect_order_rate)
+    var _v_inventory_turns = inventory_turns(0.5, 0.5)
+    if is_finite(_v_inventory_turns): passed += 1; print("  ✅ logistics::inventory_turns =", _v_inventory_turns)
+    else: failed += 1; print("  ❌ logistics::inventory_turns → non-finite:", _v_inventory_turns)
+    var _v_days_of_supply = days_of_supply(0.5, 0.5)
+    if is_finite(_v_days_of_supply): passed += 1; print("  ✅ logistics::days_of_supply =", _v_days_of_supply)
+    else: failed += 1; print("  ❌ logistics::days_of_supply → non-finite:", _v_days_of_supply)
+    var _v_warehouse_utilization = warehouse_utilization(0.5, 0.5)
+    if is_finite(_v_warehouse_utilization): passed += 1; print("  ✅ logistics::warehouse_utilization =", _v_warehouse_utilization)
+    else: failed += 1; print("  ❌ logistics::warehouse_utilization → non-finite:", _v_warehouse_utilization)
+    var _v_cost_per_unit_shipped = cost_per_unit_shipped(0.5, 0.5)
+    if is_finite(_v_cost_per_unit_shipped): passed += 1; print("  ✅ logistics::cost_per_unit_shipped =", _v_cost_per_unit_shipped)
+    else: failed += 1; print("  ❌ logistics::cost_per_unit_shipped → non-finite:", _v_cost_per_unit_shipped)
+    var _v_on_time_delivery_rate = on_time_delivery_rate(0.5, 0.5)
+    if is_finite(_v_on_time_delivery_rate): passed += 1; print("  ✅ logistics::on_time_delivery_rate =", _v_on_time_delivery_rate)
+    else: failed += 1; print("  ❌ logistics::on_time_delivery_rate → non-finite:", _v_on_time_delivery_rate)
+    var _v_dwell_time = dwell_time(0.5, 0.5)
+    if is_finite(_v_dwell_time): passed += 1; print("  ✅ logistics::dwell_time =", _v_dwell_time)
+    else: failed += 1; print("  ❌ logistics::dwell_time → non-finite:", _v_dwell_time)
+    var _v_cross_dock_throughput = cross_dock_throughput(0.5, 0.5)
+    if is_finite(_v_cross_dock_throughput): passed += 1; print("  ✅ logistics::cross_dock_throughput =", _v_cross_dock_throughput)
+    else: failed += 1; print("  ❌ logistics::cross_dock_throughput → non-finite:", _v_cross_dock_throughput)
+    var _v_route_efficiency = route_efficiency(0.5, 0.5)
+    if is_finite(_v_route_efficiency): passed += 1; print("  ✅ logistics::route_efficiency =", _v_route_efficiency)
+    else: failed += 1; print("  ❌ logistics::route_efficiency → non-finite:", _v_route_efficiency)
+    var _v_carbon_per_tonne_km = carbon_per_tonne_km(0.5, 0.5, 0.5)
+    if is_finite(_v_carbon_per_tonne_km): passed += 1; print("  ✅ logistics::carbon_per_tonne_km =", _v_carbon_per_tonne_km)
+    else: failed += 1; print("  ❌ logistics::carbon_per_tonne_km → non-finite:", _v_carbon_per_tonne_km)
+
+    print("  [logistics] Passed:", passed, "Failed:", failed)

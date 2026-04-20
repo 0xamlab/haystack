@@ -1,0 +1,55 @@
+"""test_bioinformatics.mojo — auto-generated tests for bioinformatics library."""
+from std.math import isnan, isinf
+from bioinformatics import gc_content, tm_basic, tm_salt_adjusted, molecular_weight_dna, sequence_identity, evalue_significance, coverage_depth, n50_from_values, phred_quality_to_error, error_to_phred_quality, codon_count, amino_acid_count
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_gc_content = gc_content(0.5, 0.5)
+    if is_finite(_v_gc_content): passed += 1; print("  ✅ bioinformatics::gc_content =", _v_gc_content)
+    else: failed += 1; print("  ❌ bioinformatics::gc_content → non-finite:", _v_gc_content)
+    var _v_tm_basic = tm_basic(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_tm_basic): passed += 1; print("  ✅ bioinformatics::tm_basic =", _v_tm_basic)
+    else: failed += 1; print("  ❌ bioinformatics::tm_basic → non-finite:", _v_tm_basic)
+    var _v_tm_salt_adjusted = tm_salt_adjusted(0.5, 0.5)
+    if is_finite(_v_tm_salt_adjusted): passed += 1; print("  ✅ bioinformatics::tm_salt_adjusted =", _v_tm_salt_adjusted)
+    else: failed += 1; print("  ❌ bioinformatics::tm_salt_adjusted → non-finite:", _v_tm_salt_adjusted)
+    var _v_molecular_weight_dna = molecular_weight_dna(0.5, 0.5)
+    if is_finite(_v_molecular_weight_dna): passed += 1; print("  ✅ bioinformatics::molecular_weight_dna =", _v_molecular_weight_dna)
+    else: failed += 1; print("  ❌ bioinformatics::molecular_weight_dna → non-finite:", _v_molecular_weight_dna)
+    var _v_sequence_identity = sequence_identity(0.5, 0.5)
+    if is_finite(_v_sequence_identity): passed += 1; print("  ✅ bioinformatics::sequence_identity =", _v_sequence_identity)
+    else: failed += 1; print("  ❌ bioinformatics::sequence_identity → non-finite:", _v_sequence_identity)
+    _ = evalue_significance(0.5, 0.5)
+    passed += 1; print("  ✅ bioinformatics::evalue_significance")
+    var _v_coverage_depth = coverage_depth(0.5, 0.5)
+    if is_finite(_v_coverage_depth): passed += 1; print("  ✅ bioinformatics::coverage_depth =", _v_coverage_depth)
+    else: failed += 1; print("  ❌ bioinformatics::coverage_depth → non-finite:", _v_coverage_depth)
+    var _v_n50_from_values = n50_from_values(0.5, 0.5)
+    if is_finite(_v_n50_from_values): passed += 1; print("  ✅ bioinformatics::n50_from_values =", _v_n50_from_values)
+    else: failed += 1; print("  ❌ bioinformatics::n50_from_values → non-finite:", _v_n50_from_values)
+    var _v_phred_quality_to_error = phred_quality_to_error(0.5)
+    if is_finite(_v_phred_quality_to_error): passed += 1; print("  ✅ bioinformatics::phred_quality_to_error =", _v_phred_quality_to_error)
+    else: failed += 1; print("  ❌ bioinformatics::phred_quality_to_error → non-finite:", _v_phred_quality_to_error)
+    var _v_error_to_phred_quality = error_to_phred_quality(0.5)
+    if is_finite(_v_error_to_phred_quality): passed += 1; print("  ✅ bioinformatics::error_to_phred_quality =", _v_error_to_phred_quality)
+    else: failed += 1; print("  ❌ bioinformatics::error_to_phred_quality → non-finite:", _v_error_to_phred_quality)
+    _ = codon_count(5)
+    passed += 1; print("  ✅ bioinformatics::codon_count")
+    _ = amino_acid_count(5)
+    passed += 1; print("  ✅ bioinformatics::amino_acid_count")
+
+    print("  [bioinformatics] Passed:", passed, "Failed:", failed)

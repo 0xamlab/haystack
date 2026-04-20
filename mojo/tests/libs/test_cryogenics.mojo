@@ -1,0 +1,58 @@
+"""test_cryogenics.mojo — auto-generated tests for cryogenics library."""
+from std.math import isnan, isinf
+from cryogenics import ideal_gas_density, joule_thomson_cooling, carnot_cop_cooling, liquefaction_yield, boiloff_rate, thermal_contraction, heat_leak_through_wall, superconductor_critical_temp_estimate, residual_resistivity_ratio, cryocooler_input_power, vacuum_insulation_heat_flux, helium_lambda_point
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_ideal_gas_density = ideal_gas_density(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_ideal_gas_density): passed += 1; print("  ✅ cryogenics::ideal_gas_density =", _v_ideal_gas_density)
+    else: failed += 1; print("  ❌ cryogenics::ideal_gas_density → non-finite:", _v_ideal_gas_density)
+    var _v_joule_thomson_cooling = joule_thomson_cooling(0.5, 0.5)
+    if is_finite(_v_joule_thomson_cooling): passed += 1; print("  ✅ cryogenics::joule_thomson_cooling =", _v_joule_thomson_cooling)
+    else: failed += 1; print("  ❌ cryogenics::joule_thomson_cooling → non-finite:", _v_joule_thomson_cooling)
+    var _v_carnot_cop_cooling = carnot_cop_cooling(200.0, 300.0)
+    if is_finite(_v_carnot_cop_cooling): passed += 1; print("  ✅ cryogenics::carnot_cop_cooling =", _v_carnot_cop_cooling)
+    else: failed += 1; print("  ❌ cryogenics::carnot_cop_cooling → non-finite:", _v_carnot_cop_cooling)
+    var _v_liquefaction_yield = liquefaction_yield(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_liquefaction_yield): passed += 1; print("  ✅ cryogenics::liquefaction_yield =", _v_liquefaction_yield)
+    else: failed += 1; print("  ❌ cryogenics::liquefaction_yield → non-finite:", _v_liquefaction_yield)
+    var _v_boiloff_rate = boiloff_rate(0.5, 0.5, 0.5)
+    if is_finite(_v_boiloff_rate): passed += 1; print("  ✅ cryogenics::boiloff_rate =", _v_boiloff_rate)
+    else: failed += 1; print("  ❌ cryogenics::boiloff_rate → non-finite:", _v_boiloff_rate)
+    var _v_thermal_contraction = thermal_contraction(0.5, 0.5, 0.5)
+    if is_finite(_v_thermal_contraction): passed += 1; print("  ✅ cryogenics::thermal_contraction =", _v_thermal_contraction)
+    else: failed += 1; print("  ❌ cryogenics::thermal_contraction → non-finite:", _v_thermal_contraction)
+    var _v_heat_leak_through_wall = heat_leak_through_wall(0.5, 0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_heat_leak_through_wall): passed += 1; print("  ✅ cryogenics::heat_leak_through_wall =", _v_heat_leak_through_wall)
+    else: failed += 1; print("  ❌ cryogenics::heat_leak_through_wall → non-finite:", _v_heat_leak_through_wall)
+    var _v_superconductor_critical_temp_estimate = superconductor_critical_temp_estimate(0.5, 0.5, 0.5)
+    if is_finite(_v_superconductor_critical_temp_estimate): passed += 1; print("  ✅ cryogenics::superconductor_critical_temp_estimate =", _v_superconductor_critical_temp_estimate)
+    else: failed += 1; print("  ❌ cryogenics::superconductor_critical_temp_estimate → non-finite:", _v_superconductor_critical_temp_estimate)
+    var _v_residual_resistivity_ratio = residual_resistivity_ratio(0.5, 0.5)
+    if is_finite(_v_residual_resistivity_ratio): passed += 1; print("  ✅ cryogenics::residual_resistivity_ratio =", _v_residual_resistivity_ratio)
+    else: failed += 1; print("  ❌ cryogenics::residual_resistivity_ratio → non-finite:", _v_residual_resistivity_ratio)
+    var _v_cryocooler_input_power = cryocooler_input_power(0.5, 0.5)
+    if is_finite(_v_cryocooler_input_power): passed += 1; print("  ✅ cryogenics::cryocooler_input_power =", _v_cryocooler_input_power)
+    else: failed += 1; print("  ❌ cryogenics::cryocooler_input_power → non-finite:", _v_cryocooler_input_power)
+    var _v_vacuum_insulation_heat_flux = vacuum_insulation_heat_flux(0.5, 0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_vacuum_insulation_heat_flux): passed += 1; print("  ✅ cryogenics::vacuum_insulation_heat_flux =", _v_vacuum_insulation_heat_flux)
+    else: failed += 1; print("  ❌ cryogenics::vacuum_insulation_heat_flux → non-finite:", _v_vacuum_insulation_heat_flux)
+    var _v_helium_lambda_point = helium_lambda_point()
+    if is_finite(_v_helium_lambda_point): passed += 1; print("  ✅ cryogenics::helium_lambda_point =", _v_helium_lambda_point)
+    else: failed += 1; print("  ❌ cryogenics::helium_lambda_point → non-finite:", _v_helium_lambda_point)
+
+    print("  [cryogenics] Passed:", passed, "Failed:", failed)

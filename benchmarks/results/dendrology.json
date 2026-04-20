@@ -1,0 +1,109 @@
+{
+  "lib": "dendrology",
+  "status": "ok",
+  "n_functions": 12,
+  "n_compared": 12,
+  "overall_speedup_x": 143.72,
+  "total_py_ns": 2083.89,
+  "total_mojo_ns": 14.5,
+  "elapsed_s": 1.4,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "tree_height_from_hypsometer",
+      "py_ns": 485.35,
+      "mojo_ns": 1.0,
+      "speedup_x": 485.35,
+      "py_result": 0.008727,
+      "py_error": null
+    },
+    {
+      "function": "sin_approx",
+      "py_ns": 116.542,
+      "mojo_ns": 1.1,
+      "speedup_x": 105.95,
+      "py_result": 0.479427,
+      "py_error": null
+    },
+    {
+      "function": "cos_approx",
+      "py_ns": 112.042,
+      "mojo_ns": 1.0,
+      "speedup_x": 112.04,
+      "py_result": 0.877604,
+      "py_error": null
+    },
+    {
+      "function": "crown_area",
+      "py_ns": 81.771,
+      "mojo_ns": 1.0,
+      "speedup_x": 81.77,
+      "py_result": 0.785398,
+      "py_error": null
+    },
+    {
+      "function": "crown_competition_factor",
+      "py_ns": 99.921,
+      "mojo_ns": 2.9,
+      "speedup_x": 34.46,
+      "py_result": 0.000193,
+      "py_error": null
+    },
+    {
+      "function": "stem_taper_percentage",
+      "py_ns": 83.817,
+      "mojo_ns": 1.1,
+      "speedup_x": 76.2,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "heartwood_ratio",
+      "py_ns": 93.296,
+      "mojo_ns": 1.0,
+      "speedup_x": 93.3,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "sapwood_area_from_dbh",
+      "py_ns": 92.229,
+      "mojo_ns": 1.0,
+      "speedup_x": 92.23,
+      "py_result": 0.143587,
+      "py_error": null
+    },
+    {
+      "function": "root_biomass_allometric",
+      "py_ns": 267.392,
+      "mojo_ns": 1.1,
+      "speedup_x": 243.08,
+      "py_result": 0.00327,
+      "py_error": null
+    },
+    {
+      "function": "leaf_biomass_allometric",
+      "py_ns": 336.571,
+      "mojo_ns": 1.1,
+      "speedup_x": 305.97,
+      "py_result": 0.025658,
+      "py_error": null
+    },
+    {
+      "function": "tree_age_from_rings",
+      "py_ns": 219.883,
+      "mojo_ns": 1.1,
+      "speedup_x": 199.89,
+      "py_result": 1.0,
+      "py_error": null
+    },
+    {
+      "function": "foliar_nitrogen_content",
+      "py_ns": 95.075,
+      "mojo_ns": 1.1,
+      "speedup_x": 86.43,
+      "py_result": 1.0,
+      "py_error": null
+    }
+  ]
+}

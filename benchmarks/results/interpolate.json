@@ -1,0 +1,61 @@
+{
+  "lib": "interpolate",
+  "status": "ok",
+  "n_functions": 6,
+  "n_compared": 6,
+  "overall_speedup_x": 3.87,
+  "total_py_ns": 11262.72,
+  "total_mojo_ns": 2910.9,
+  "elapsed_s": 2.77,
+  "n_iterations": 10000,
+  "functions": [
+    {
+      "function": "linear_interp",
+      "py_ns": 123.342,
+      "mojo_ns": 1.0,
+      "speedup_x": 123.34,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "nearest_interp",
+      "py_ns": 117.471,
+      "mojo_ns": 1.1,
+      "speedup_x": 106.79,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "cubic_spline_natural",
+      "py_ns": 5527.129,
+      "mojo_ns": 2597.4,
+      "speedup_x": 2.13,
+      "py_result": 0.3,
+      "py_error": null
+    },
+    {
+      "function": "lagrange_interp",
+      "py_ns": 3836.038,
+      "mojo_ns": 46.8,
+      "speedup_x": 81.97,
+      "py_result": 0.5,
+      "py_error": null
+    },
+    {
+      "function": "interp_array",
+      "py_ns": 824.812,
+      "mojo_ns": 262.7,
+      "speedup_x": 3.14,
+      "py_result": null,
+      "py_error": null
+    },
+    {
+      "function": "extrapolate_linear",
+      "py_ns": 833.925,
+      "mojo_ns": 1.9,
+      "speedup_x": 438.91,
+      "py_result": 0.5,
+      "py_error": null
+    }
+  ]
+}

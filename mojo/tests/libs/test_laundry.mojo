@@ -1,0 +1,58 @@
+"""test_laundry.mojo — auto-generated tests for laundry library."""
+from std.math import isnan, isinf
+from laundry import water_usage_liters, detergent_dose_ml, wash_temperature_energy, spin_g_force, moisture_retention, drying_time_estimate, energy_per_cycle, cost_per_wash, fabric_wear_cycles, stain_removal_efficiency, color_fastness_delta_e, water_hardness_compensation
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_water_usage_liters = water_usage_liters(0.5, 0.5)
+    if is_finite(_v_water_usage_liters): passed += 1; print("  ✅ laundry::water_usage_liters =", _v_water_usage_liters)
+    else: failed += 1; print("  ❌ laundry::water_usage_liters → non-finite:", _v_water_usage_liters)
+    var _v_detergent_dose_ml = detergent_dose_ml(0.5, 0.5, 0.5)
+    if is_finite(_v_detergent_dose_ml): passed += 1; print("  ✅ laundry::detergent_dose_ml =", _v_detergent_dose_ml)
+    else: failed += 1; print("  ❌ laundry::detergent_dose_ml → non-finite:", _v_detergent_dose_ml)
+    var _v_wash_temperature_energy = wash_temperature_energy(0.5, 0.5, 0.5)
+    if is_finite(_v_wash_temperature_energy): passed += 1; print("  ✅ laundry::wash_temperature_energy =", _v_wash_temperature_energy)
+    else: failed += 1; print("  ❌ laundry::wash_temperature_energy → non-finite:", _v_wash_temperature_energy)
+    var _v_spin_g_force = spin_g_force(0.5, 0.5)
+    if is_finite(_v_spin_g_force): passed += 1; print("  ✅ laundry::spin_g_force =", _v_spin_g_force)
+    else: failed += 1; print("  ❌ laundry::spin_g_force → non-finite:", _v_spin_g_force)
+    var _v_moisture_retention = moisture_retention(0.5, 0.5)
+    if is_finite(_v_moisture_retention): passed += 1; print("  ✅ laundry::moisture_retention =", _v_moisture_retention)
+    else: failed += 1; print("  ❌ laundry::moisture_retention → non-finite:", _v_moisture_retention)
+    var _v_drying_time_estimate = drying_time_estimate(0.5, 0.5)
+    if is_finite(_v_drying_time_estimate): passed += 1; print("  ✅ laundry::drying_time_estimate =", _v_drying_time_estimate)
+    else: failed += 1; print("  ❌ laundry::drying_time_estimate → non-finite:", _v_drying_time_estimate)
+    var _v_energy_per_cycle = energy_per_cycle(0.5, 0.5)
+    if is_finite(_v_energy_per_cycle): passed += 1; print("  ✅ laundry::energy_per_cycle =", _v_energy_per_cycle)
+    else: failed += 1; print("  ❌ laundry::energy_per_cycle → non-finite:", _v_energy_per_cycle)
+    var _v_cost_per_wash = cost_per_wash(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_cost_per_wash): passed += 1; print("  ✅ laundry::cost_per_wash =", _v_cost_per_wash)
+    else: failed += 1; print("  ❌ laundry::cost_per_wash → non-finite:", _v_cost_per_wash)
+    var _v_fabric_wear_cycles = fabric_wear_cycles(0.5, 0.5, 0.5)
+    if is_finite(_v_fabric_wear_cycles): passed += 1; print("  ✅ laundry::fabric_wear_cycles =", _v_fabric_wear_cycles)
+    else: failed += 1; print("  ❌ laundry::fabric_wear_cycles → non-finite:", _v_fabric_wear_cycles)
+    var _v_stain_removal_efficiency = stain_removal_efficiency(0.5, 0.5)
+    if is_finite(_v_stain_removal_efficiency): passed += 1; print("  ✅ laundry::stain_removal_efficiency =", _v_stain_removal_efficiency)
+    else: failed += 1; print("  ❌ laundry::stain_removal_efficiency → non-finite:", _v_stain_removal_efficiency)
+    var _v_color_fastness_delta_e = color_fastness_delta_e(0.5, 0.5, 0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_color_fastness_delta_e): passed += 1; print("  ✅ laundry::color_fastness_delta_e =", _v_color_fastness_delta_e)
+    else: failed += 1; print("  ❌ laundry::color_fastness_delta_e → non-finite:", _v_color_fastness_delta_e)
+    var _v_water_hardness_compensation = water_hardness_compensation(0.5, 0.5, 0.5)
+    if is_finite(_v_water_hardness_compensation): passed += 1; print("  ✅ laundry::water_hardness_compensation =", _v_water_hardness_compensation)
+    else: failed += 1; print("  ❌ laundry::water_hardness_compensation → non-finite:", _v_water_hardness_compensation)
+
+    print("  [laundry] Passed:", passed, "Failed:", failed)

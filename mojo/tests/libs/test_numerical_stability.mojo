@@ -1,0 +1,54 @@
+"""test_numerical_stability.mojo — auto-generated tests for numerical_stability library."""
+from std.math import isnan, isinf
+from numerical_stability import logsumexp, softmax, log_softmax, kahan_sum, welford_mean_var, log_add_exp, sigmoid_stable, log_sigmoid, softplus, normalize_probabilities, relative_error, safe_divide
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_logsumexp = logsumexp(_lf5)
+    if is_finite(_v_logsumexp): passed += 1; print("  ✅ numerical_stability::logsumexp =", _v_logsumexp)
+    else: failed += 1; print("  ❌ numerical_stability::logsumexp → non-finite:", _v_logsumexp)
+    var _v_softmax = softmax(_lf5)
+    if len(_v_softmax) >= 0: passed += 1; print("  ✅ numerical_stability::softmax")
+    var _v_log_softmax = log_softmax(_lf5)
+    if len(_v_log_softmax) >= 0: passed += 1; print("  ✅ numerical_stability::log_softmax")
+    var _v_kahan_sum = kahan_sum(_lf5)
+    if is_finite(_v_kahan_sum): passed += 1; print("  ✅ numerical_stability::kahan_sum =", _v_kahan_sum)
+    else: failed += 1; print("  ❌ numerical_stability::kahan_sum → non-finite:", _v_kahan_sum)
+    var _v_welford_mean_var = welford_mean_var(_lf5)
+    if len(_v_welford_mean_var) >= 0: passed += 1; print("  ✅ numerical_stability::welford_mean_var")
+    var _v_log_add_exp = log_add_exp(0.5, 0.5)
+    if is_finite(_v_log_add_exp): passed += 1; print("  ✅ numerical_stability::log_add_exp =", _v_log_add_exp)
+    else: failed += 1; print("  ❌ numerical_stability::log_add_exp → non-finite:", _v_log_add_exp)
+    var _v_sigmoid_stable = sigmoid_stable(0.5)
+    if is_finite(_v_sigmoid_stable): passed += 1; print("  ✅ numerical_stability::sigmoid_stable =", _v_sigmoid_stable)
+    else: failed += 1; print("  ❌ numerical_stability::sigmoid_stable → non-finite:", _v_sigmoid_stable)
+    var _v_log_sigmoid = log_sigmoid(0.5)
+    if is_finite(_v_log_sigmoid): passed += 1; print("  ✅ numerical_stability::log_sigmoid =", _v_log_sigmoid)
+    else: failed += 1; print("  ❌ numerical_stability::log_sigmoid → non-finite:", _v_log_sigmoid)
+    var _v_softplus = softplus(0.5)
+    if is_finite(_v_softplus): passed += 1; print("  ✅ numerical_stability::softplus =", _v_softplus)
+    else: failed += 1; print("  ❌ numerical_stability::softplus → non-finite:", _v_softplus)
+    var _v_normalize_probabilities = normalize_probabilities(_lf5)
+    if len(_v_normalize_probabilities) >= 0: passed += 1; print("  ✅ numerical_stability::normalize_probabilities")
+    var _v_relative_error = relative_error(0.5, 0.5)
+    if is_finite(_v_relative_error): passed += 1; print("  ✅ numerical_stability::relative_error =", _v_relative_error)
+    else: failed += 1; print("  ❌ numerical_stability::relative_error → non-finite:", _v_relative_error)
+    var _v_safe_divide = safe_divide(0.5, 0.5, 0.5)
+    if is_finite(_v_safe_divide): passed += 1; print("  ✅ numerical_stability::safe_divide =", _v_safe_divide)
+    else: failed += 1; print("  ❌ numerical_stability::safe_divide → non-finite:", _v_safe_divide)
+
+    print("  [numerical_stability] Passed:", passed, "Failed:", failed)

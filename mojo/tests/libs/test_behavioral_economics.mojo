@@ -1,0 +1,58 @@
+"""test_behavioral_economics.mojo — auto-generated tests for behavioral_economics library."""
+from std.math import isnan, isinf
+from behavioral_economics import prospect_theory_value, probability_weighting, hyperbolic_discount, quasi_hyperbolic_discount, anchoring_adjusted_estimate, endowment_effect_wta_wtp_ratio, loss_aversion_coefficient, mental_accounting_total, status_quo_bias, sunk_cost_ratio, fairness_ultimatum_threshold, nudge_effectiveness
+
+fn is_finite(x: Float64) -> Bool:
+    return not isnan(x) and not isinf(x)
+
+def main() raises:
+    var _lf5 = List[Float64]()
+    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
+    _lf5.append(0.4); _lf5.append(0.3)
+    var _li5 = List[Int]()
+    _li5.append(1); _li5.append(2); _li5.append(3)
+    _li5.append(4); _li5.append(5)
+    var _lb5 = List[Bool]()
+    _lb5.append(True); _lb5.append(False); _lb5.append(True)
+    _lb5.append(True); _lb5.append(False)
+    var passed: Int = 0
+    var failed: Int = 0
+
+    var _v_prospect_theory_value = prospect_theory_value(0.5, 0.5, 0.5)
+    if is_finite(_v_prospect_theory_value): passed += 1; print("  ✅ behavioral_economics::prospect_theory_value =", _v_prospect_theory_value)
+    else: failed += 1; print("  ❌ behavioral_economics::prospect_theory_value → non-finite:", _v_prospect_theory_value)
+    var _v_probability_weighting = probability_weighting(0.5, 0.5)
+    if is_finite(_v_probability_weighting): passed += 1; print("  ✅ behavioral_economics::probability_weighting =", _v_probability_weighting)
+    else: failed += 1; print("  ❌ behavioral_economics::probability_weighting → non-finite:", _v_probability_weighting)
+    var _v_hyperbolic_discount = hyperbolic_discount(0.5, 0.5, 0.5)
+    if is_finite(_v_hyperbolic_discount): passed += 1; print("  ✅ behavioral_economics::hyperbolic_discount =", _v_hyperbolic_discount)
+    else: failed += 1; print("  ❌ behavioral_economics::hyperbolic_discount → non-finite:", _v_hyperbolic_discount)
+    var _v_quasi_hyperbolic_discount = quasi_hyperbolic_discount(0.5, 0.5, 0.5, 0.5)
+    if is_finite(_v_quasi_hyperbolic_discount): passed += 1; print("  ✅ behavioral_economics::quasi_hyperbolic_discount =", _v_quasi_hyperbolic_discount)
+    else: failed += 1; print("  ❌ behavioral_economics::quasi_hyperbolic_discount → non-finite:", _v_quasi_hyperbolic_discount)
+    var _v_anchoring_adjusted_estimate = anchoring_adjusted_estimate(0.5, 0.5, 0.5)
+    if is_finite(_v_anchoring_adjusted_estimate): passed += 1; print("  ✅ behavioral_economics::anchoring_adjusted_estimate =", _v_anchoring_adjusted_estimate)
+    else: failed += 1; print("  ❌ behavioral_economics::anchoring_adjusted_estimate → non-finite:", _v_anchoring_adjusted_estimate)
+    var _v_endowment_effect_wta_wtp_ratio = endowment_effect_wta_wtp_ratio(0.5, 0.5)
+    if is_finite(_v_endowment_effect_wta_wtp_ratio): passed += 1; print("  ✅ behavioral_economics::endowment_effect_wta_wtp_ratio =", _v_endowment_effect_wta_wtp_ratio)
+    else: failed += 1; print("  ❌ behavioral_economics::endowment_effect_wta_wtp_ratio → non-finite:", _v_endowment_effect_wta_wtp_ratio)
+    var _v_loss_aversion_coefficient = loss_aversion_coefficient(0.5, 0.5)
+    if is_finite(_v_loss_aversion_coefficient): passed += 1; print("  ✅ behavioral_economics::loss_aversion_coefficient =", _v_loss_aversion_coefficient)
+    else: failed += 1; print("  ❌ behavioral_economics::loss_aversion_coefficient → non-finite:", _v_loss_aversion_coefficient)
+    var _v_mental_accounting_total = mental_accounting_total(0.5, 0.5)
+    if is_finite(_v_mental_accounting_total): passed += 1; print("  ✅ behavioral_economics::mental_accounting_total =", _v_mental_accounting_total)
+    else: failed += 1; print("  ❌ behavioral_economics::mental_accounting_total → non-finite:", _v_mental_accounting_total)
+    var _v_status_quo_bias = status_quo_bias(0.5, 0.5)
+    if is_finite(_v_status_quo_bias): passed += 1; print("  ✅ behavioral_economics::status_quo_bias =", _v_status_quo_bias)
+    else: failed += 1; print("  ❌ behavioral_economics::status_quo_bias → non-finite:", _v_status_quo_bias)
+    var _v_sunk_cost_ratio = sunk_cost_ratio(0.5, 0.5)
+    if is_finite(_v_sunk_cost_ratio): passed += 1; print("  ✅ behavioral_economics::sunk_cost_ratio =", _v_sunk_cost_ratio)
+    else: failed += 1; print("  ❌ behavioral_economics::sunk_cost_ratio → non-finite:", _v_sunk_cost_ratio)
+    var _v_fairness_ultimatum_threshold = fairness_ultimatum_threshold(0.5, 0.5)
+    if is_finite(_v_fairness_ultimatum_threshold): passed += 1; print("  ✅ behavioral_economics::fairness_ultimatum_threshold =", _v_fairness_ultimatum_threshold)
+    else: failed += 1; print("  ❌ behavioral_economics::fairness_ultimatum_threshold → non-finite:", _v_fairness_ultimatum_threshold)
+    var _v_nudge_effectiveness = nudge_effectiveness(0.5, 0.5)
+    if is_finite(_v_nudge_effectiveness): passed += 1; print("  ✅ behavioral_economics::nudge_effectiveness =", _v_nudge_effectiveness)
+    else: failed += 1; print("  ❌ behavioral_economics::nudge_effectiveness → non-finite:", _v_nudge_effectiveness)
+
+    print("  [behavioral_economics] Passed:", passed, "Failed:", failed)
