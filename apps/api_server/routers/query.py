@@ -6421,6 +6421,16 @@ async def query_sources(
 # ── Schema endpoint — call this before querying to give the LLM full context ──
 
 
+class SchemaRequest(BaseModel):
+    sources: list[DataSource] = Field(
+        default=[],
+        description=(
+            "Data sources to profile. Pass an empty list (or omit) to return schemas for "
+            "ALL sources registered for this org via POST /v1/sources/register."
+        ),
+    )
+
+
 @router.post(
     "/v1/sources/schema",
     summary="Infer and return the structural schema of data sources",
@@ -6599,16 +6609,6 @@ async def infer_schema(
         "sources": result,
         "latency_ms": round((time.monotonic() - t0) * 1000, 1),
     }
-
-
-class SchemaRequest(BaseModel):
-    sources: list[DataSource] = Field(
-        default=[],
-        description=(
-            "Data sources to profile. Pass an empty list (or omit) to return schemas for "
-            "ALL sources registered for this org via POST /v1/sources/register."
-        ),
-    )
 
 
 # ── Plan verification — LLM submits exact plan, Mojo validates before executing ──
