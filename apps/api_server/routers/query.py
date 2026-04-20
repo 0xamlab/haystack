@@ -5223,6 +5223,169 @@ async def query_sources(
                 },
             )
 
+        metric_entry_meta = registered_ex[payload.source_name]
+        metric_source_id = str(metric_entry_meta["id"])
+        metric_cached_source = _SOURCE_CACHE.get(metric_source_id)
+        metric_schema_meta = _sreg_ex.get_source_meta(org_id, metric_source_id) or {}
+        if (
+            metric_cached_source
+            and metric_cached_source.is_fresh()
+            and metric_cached_source.graph_nodes
+        ):
+            metric_cached_source.touch()
+            metric_nodes = metric_cached_source.graph_nodes
+        else:
+            metric_nodes = _graph_nodes_from_cached_meta(
+                org_id=org_id,
+                dataset_id=metric_source_id,
+                schema_revision=str(metric_entry_meta.get("schema_revision", "") or ""),
+                schema_meta=metric_schema_meta,
+            )
+
+        # Validate metric column exists
+        if payload.metric_column not in metric_nodes:
+            available = sorted(metric_nodes.keys())
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": {
+                        "code": "column_not_found",
+                        "message": (
+                            f"Column '{payload.metric_column}' not in "
+                            f"'{payload.source_name}'. Available columns: {available[:20]}"
+                        ),
+                        "suggestions": [
+                            c for c in available if payload.metric_column.lower() in c.lower()
+                        ][:5],
+                    }
+                },
+            )
+
+        metric_node = metric_nodes[payload.metric_column]
+
+        # ── Constraint enforcement ────────────────────────────────────────────────
+        if payload.constraints.requires_derived and metric_node.role != "derived_measure":
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": {
+                        "code": "constraint_violated",
+                        "constraint": "requires_derived",
+                        "reason": (
+                            f"Column '{payload.metric_column}' has role "
+                            f"'{metric_node.role}', not 'derived_measure'."
+                        ),
+                        "suggestion": (
+                            "Use a column with role=derived_measure. "
+                            f"Available in {payload.source_name}: "
+                        )
+                        + str(
+                            [c for c, n in metric_nodes.items() if n.role == "derived_measure"][:5]
+                        ),
+                    }
+                },
+            )
+
+        if payload.constraints.no_cross_source and payload.join_path and payload.join_path.edges:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": {
+                        "code": "constraint_violated",
+                        "constraint": "no_cross_source",
+                        "reason": "Cross-source join requested but no_cross_source=true.",
+                    }
+                },
+            )
+
+        direct_count_fast_path = (
+            payload.aggregation == "count"
+            and payload.group_column is None
+            and payload.join_path is None
+            and not (payload.filter and payload.filter.time_filter)
+        )
+        if direct_count_fast_path:
+            row_count_exact = int(
+                metric_entry_meta.get("row_count")
+                or metric_schema_meta.get("row_count")
+                or 0
+            )
+            result_ex = float(row_count_exact)
+            result_type_ex = "scalar"
+            computed_confidence, col_conf, agg_conf = _compute_exact_confidence(
+                metric_node,
+                payload.aggregation,
+                1.0,
+            )
+            if col_conf < payload.constraints.min_column_confidence:
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "error": {
+                            "code": "constraint_violated",
+                            "constraint": "min_column_confidence",
+                            "reason": (
+                                f"Column '{payload.metric_column}' has "
+                                f"column_confidence={col_conf:.2f}, which is below "
+                                "min_column_confidence="
+                                f"{payload.constraints.min_column_confidence:.2f}."
+                            ),
+                        }
+                    },
+                )
+
+            explanation = [
+                f"Source: {payload.source_name}",
+                f"Column: {payload.metric_column}  role={metric_node.role}"
+                + (f"  formula={metric_node.formula}" if metric_node.formula else ""),
+                f"Aggregation: {payload.aggregation}",
+                f"Result: {result_type_ex}  = {result_ex}",
+                "Confidence: "
+                f"{computed_confidence:.3f} = col({col_conf:.2f}) × agg({agg_conf:.2f})",
+            ]
+            if len(_RESULT_CACHE) >= _RESULT_CACHE_MAX:
+                oldest = min(_RESULT_CACHE.items(), key=lambda x: x[1].get("_ts", 0))
+                del _RESULT_CACHE[oldest[0]]
+            _RESULT_CACHE[exact_plan_hash] = {
+                "result": result_ex,
+                "result_type": result_type_ex,
+                "row_count": row_count_exact,
+                "confidence": computed_confidence,
+                "resolved_role": metric_node.role,
+                "resolved_source": payload.source_name,
+                "explanation": explanation,
+                "_ts": time.monotonic(),
+            }
+            plan.append(f"COUNT: {row_count_exact:,} rows (metadata fast path)")
+            plan.append(f"Result cache STORED [{exact_plan_hash[:8]}]")
+            return _build_query_response(
+                query_id=query_id,
+                request_id=request_id,
+                result=result_ex,
+                result_type=result_type_ex,
+                confidence=computed_confidence,
+                plan=plan,
+                resolved_column=payload.metric_column,
+                resolved_role=metric_node.role,
+                resolved_source=payload.source_name,
+                row_count=row_count_exact,
+                candidates=[],
+                source_scores={},
+                ambiguous=False,
+                exact_spec=True,
+                explanation=explanation,
+                latency_ms=round((time.monotonic() - t0) * 1000, 1),
+                decision_path="exact_spec",
+                schema_revision=schema_revision_exact,
+                validated=True,
+                confidence_source="exact_spec_validation",
+                plan_basis=exact_plan_basis,
+                source_set=[payload.source_name],
+                join_path=[],
+                planner_mode="exact_spec",
+                plan_hash_override=exact_plan_hash,
+            )
+
         def _load_exact(name: str) -> tuple[list[dict], dict[str, ColumnNode]]:
             """Load records + graph nodes for an exact-spec source.
             Three-tier cache: DataFrame cache → Parquet bytes cache → disk.
@@ -5287,62 +5450,6 @@ async def query_sources(
                 status_code=404,
                 detail={"error": {"code": "load_error", "message": str(_e)}},
             ) from _e
-
-        # Validate metric column exists
-        if payload.metric_column not in metric_nodes:
-            available = sorted(metric_nodes.keys())
-            raise HTTPException(
-                status_code=400,
-                detail={
-                    "error": {
-                        "code": "column_not_found",
-                        "message": (
-                            f"Column '{payload.metric_column}' not in "
-                            f"'{payload.source_name}'. Available columns: {available[:20]}"
-                        ),
-                        "suggestions": [
-                            c for c in available if payload.metric_column.lower() in c.lower()
-                        ][:5],
-                    }
-                },
-            )
-
-        metric_node = metric_nodes[payload.metric_column]
-
-        # ── Constraint enforcement ────────────────────────────────────────────────
-        if payload.constraints.requires_derived and metric_node.role != "derived_measure":
-            raise HTTPException(
-                status_code=400,
-                detail={
-                    "error": {
-                        "code": "constraint_violated",
-                        "constraint": "requires_derived",
-                        "reason": (
-                            f"Column '{payload.metric_column}' has role "
-                            f"'{metric_node.role}', not 'derived_measure'."
-                        ),
-                        "suggestion": (
-                            "Use a column with role=derived_measure. "
-                            f"Available in {payload.source_name}: "
-                        )
-                        + str(
-                            [c for c, n in metric_nodes.items() if n.role == "derived_measure"][:5]
-                        ),
-                    }
-                },
-            )
-
-        if payload.constraints.no_cross_source and payload.join_path and payload.join_path.edges:
-            raise HTTPException(
-                status_code=400,
-                detail={
-                    "error": {
-                        "code": "constraint_violated",
-                        "constraint": "no_cross_source",
-                        "reason": "Cross-source join requested but no_cross_source=true.",
-                    }
-                },
-            )
 
         # Validate group column if given
         group_col_ex: str | None = payload.group_column

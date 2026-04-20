@@ -14,9 +14,11 @@ Phase 1: MOJO_ALLOW_SUBPROCESS_FALLBACK env var is checked before silently
 from __future__ import annotations
 
 import asyncio
+import importlib.util
 import json
 import os
-import sys
+from collections.abc import Callable
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -29,6 +31,7 @@ settings = get_settings()
 
 _REPO_ROOT   = Path(__file__).parents[3]
 _BINARY_PATH = _REPO_ROOT / "mojo_build" / "simulate"
+_PYTHON_ADAPTER_PATH = _REPO_ROOT / "mojo" / "bindings" / "python_adapter.py"
 _PYTHON_FALLBACK_ENGINES = frozenset(
     {
         "monte_carlo",
@@ -69,10 +72,37 @@ class MojoEngineError(Exception):
         self.exit_code = exit_code
 
 
-def _ensure_repo_root_on_sys_path() -> None:
-    repo_root = str(_REPO_ROOT.resolve())
-    if repo_root not in sys.path:
-        sys.path.insert(0, repo_root)
+@lru_cache(maxsize=1)
+def _load_python_fallback_runner() -> Callable[[dict[str, Any]], dict[str, Any]]:
+    if not _PYTHON_ADAPTER_PATH.is_file():
+        raise MojoEngineError(
+            "Python simulation fallback is unavailable. "
+            f"Expected adapter at `{_PYTHON_ADAPTER_PATH}` or build the native engine.",
+            exit_code=1,
+        )
+
+    spec = importlib.util.spec_from_file_location(
+        "decision_engine_python_adapter",
+        _PYTHON_ADAPTER_PATH,
+    )
+    if spec is None or spec.loader is None:
+        raise MojoEngineError(
+            "Python simulation fallback is unavailable. "
+            f"Could not load adapter spec from `{_PYTHON_ADAPTER_PATH}`.",
+            exit_code=1,
+        )
+
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    run_simulation = getattr(module, "run_simulation", None)
+    if not callable(run_simulation):
+        raise MojoEngineError(
+            "Python simulation fallback is unavailable. "
+            f"`{_PYTHON_ADAPTER_PATH}` does not expose callable `run_simulation`.",
+            exit_code=1,
+        )
+
+    return run_simulation
 
 
 def _supports_python_fallback(payload: dict[str, Any]) -> bool:
@@ -88,13 +118,14 @@ async def _invoke_python_fallback(payload: dict[str, Any]) -> dict[str, Any]:
             exit_code=1,
         )
 
-    _ensure_repo_root_on_sys_path()
     try:
-        from mojo.bindings.python_adapter import run_simulation  # type: ignore[import]
-    except ImportError as exc:
+        run_simulation = _load_python_fallback_runner()
+    except MojoEngineError:
+        raise
+    except Exception as exc:
         raise MojoEngineError(
             "Python simulation fallback is unavailable. Ensure "
-            "`mojo/bindings/python_adapter.py` is importable or build the native engine.",
+            f"`{_PYTHON_ADAPTER_PATH}` is loadable or build the native engine.",
             exit_code=1,
         ) from exc
 

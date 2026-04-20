@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import sys
+import types
 from pathlib import Path
 
 import pytest
@@ -112,23 +113,22 @@ async def test_invoke_python_fallback_returns_supported_engine_identity() -> Non
 
 
 @pytest.mark.asyncio
-async def test_invoke_python_fallback_reinserts_repo_root_before_import(
+async def test_invoke_python_fallback_loads_adapter_by_file_path_when_mojo_is_shadowed(
     monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
 ) -> None:
-    repo_root = str(Path(mojo_adapter.__file__).resolve().parents[3])
     saved_modules = {
         name: sys.modules.get(name)
         for name in ("mojo", "mojo.bindings", "mojo.bindings.python_adapter")
     }
 
     try:
+        mojo_adapter._load_python_fallback_runner.cache_clear()
         for name in saved_modules:
             sys.modules.pop(name, None)
 
-        filtered_path = [entry for entry in sys.path if entry and entry != repo_root]
-        monkeypatch.setattr(sys, "path", filtered_path)
-        monkeypatch.chdir(tmp_path)
+        shadow_mojo = types.ModuleType("mojo")
+        shadow_mojo.__path__ = ["/tmp/shadow-mojo"]
+        sys.modules["mojo"] = shadow_mojo
 
         result = await mojo_adapter._invoke_python_fallback(
             {
@@ -146,9 +146,9 @@ async def test_invoke_python_fallback_reinserts_repo_root_before_import(
             }
         )
 
-        assert sys.path[0] == repo_root
         assert result["summary"]["mean"] == 11.0
     finally:
+        mojo_adapter._load_python_fallback_runner.cache_clear()
         for name, module in saved_modules.items():
             if module is None:
                 sys.modules.pop(name, None)
