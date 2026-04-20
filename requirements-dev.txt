@@ -25,6 +25,7 @@ pydantic-settings==2.2.1
 # Database (needed for model imports)
 sqlalchemy[asyncio]==2.0.28
 asyncpg==0.29.0
+psycopg2-binary==2.9.10
 alembic==1.13.1
 greenlet==3.0.3
 
@@ -63,6 +64,10 @@ pandas==2.2.2
 
 # Anthropic SDK (used in tests)
 anthropic==0.94.1
+
+# gRPC / protobuf (used in apps/runtime)
+grpcio==1.76.0
+protobuf==6.33.4
 
 # Type stubs
 types-redis==4.6.0.20240425
