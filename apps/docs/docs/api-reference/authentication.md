@@ -43,9 +43,9 @@ curl -X POST https://api.algenta.ai/auth/signup \
 
 Returns `api_key.raw_key` — the only time the full key is shown.
 
-### Via developer portal
+### Via hosted account interface
 
-Sign in at [https://app.algenta.ai](https://app.algenta.ai) → API Keys → Create Key.
+Sign in to your Algenta account interface and create a key from the API Keys screen.
 
 ### Via CLI
 

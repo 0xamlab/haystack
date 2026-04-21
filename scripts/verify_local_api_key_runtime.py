@@ -10,7 +10,8 @@ This is a user-facing self-check, not a mock smoke test:
 
 Examples:
   DE_API_KEY=de_live_... python3 scripts/verify_local_api_key_runtime.py
-  DE_API_KEY=de_live_... DE_BASE_URL=https://api.algenta.ai python3 scripts/verify_local_api_key_runtime.py
+  DE_API_KEY=de_live_... DE_BASE_URL=https://api.algenta.ai \
+      python3 scripts/verify_local_api_key_runtime.py
 """
 from __future__ import annotations
 
@@ -23,7 +24,7 @@ from pathlib import Path
 
 import httpx
 
-PASS = "✅"
+PASS = "✅"  # noqa: S105 - status glyph, not a credential
 FAIL = "❌"
 
 
@@ -53,12 +54,32 @@ def _print_result(ok: bool, name: str, detail: str = "") -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Verify local runtime execution with a real API key")
-    parser.add_argument("--api-key", default="", help="API key to verify. Defaults to ALGENTA_API_KEY / DE_API_KEY.")
-    parser.add_argument("--base-url", default="", help="API base URL. Defaults to ALGENTA_BASE_URL / DE_BASE_URL / ALGENTA_API_URL.")
-    parser.add_argument("--timeout", type=float, default=20.0, help="Request timeout in seconds.")
-    parser.add_argument("--runtime-dir", default="", help="Optional runtime dir. Defaults to a temporary isolated dir.")
-    parser.add_argument("--keep-runtime-dir", action="store_true", help="Keep the runtime dir after the check.")
+    parser = argparse.ArgumentParser(
+        description="Verify local runtime execution with a real API key"
+    )
+    parser.add_argument(
+        "--api-key",
+        default="",
+        help="API key to verify. Defaults to ALGENTA_API_KEY / DE_API_KEY.",
+    )
+    parser.add_argument(
+        "--base-url",
+        default="",
+        help="API base URL. Defaults to ALGENTA_BASE_URL / DE_BASE_URL / ALGENTA_API_URL.",
+    )
+    parser.add_argument(
+        "--timeout", type=float, default=20.0, help="Request timeout in seconds."
+    )
+    parser.add_argument(
+        "--runtime-dir",
+        default="",
+        help="Optional runtime dir. Defaults to a temporary isolated dir.",
+    )
+    parser.add_argument(
+        "--keep-runtime-dir",
+        action="store_true",
+        help="Keep the runtime dir after the check.",
+    )
     args = parser.parse_args()
 
     api_key = _api_key(args)
@@ -67,7 +88,11 @@ def main() -> int:
         print(f"  {FAIL} API key missing: set DE_API_KEY or pass --api-key")
         return 1
 
-    runtime_dir = Path(args.runtime_dir) if args.runtime_dir else Path(tempfile.mkdtemp(prefix="algenta-runtime-verify-"))
+    runtime_dir = (
+        Path(args.runtime_dir)
+        if args.runtime_dir
+        else Path(tempfile.mkdtemp(prefix="algenta-runtime-verify-"))
+    )
     daemon_sock = runtime_dir / "daemon.sock"
     mojo_sock = runtime_dir / "mojo.sock"
 
@@ -113,8 +138,9 @@ def main() -> int:
 
         try:
             _cleanup_daemon()
-        except Exception:
-            pass
+        except Exception as err:
+            _print_result(False, "_cleanup_daemon()", str(err))
+            return 1
 
         try:
             lic = issue_and_store(api_key)
@@ -139,7 +165,9 @@ def main() -> int:
         try:
             lic = load_license(api_key)
             if not lic.valid:
-                _print_result(False, "load_license(api_key)", lic.message or "stored license invalid")
+                _print_result(
+                    False, "load_license(api_key)", lic.message or "stored license invalid"
+                )
                 return 1
             _print_result(True, "load_license(api_key)", f"plan={lic.plan} source={lic.source}")
         except Exception as exc:
@@ -160,15 +188,19 @@ def main() -> int:
                 return 1
             engine_used = str(result.get("engine_used", "unknown"))
             latency_ms = result.get("latency_ms", "n/a")
-            _print_result(True, "Runtime(mode='local').execute()", f"engine={engine_used} latency_ms={latency_ms}")
+            _print_result(
+                True,
+                "Runtime(mode='local').execute()",
+                f"engine={engine_used} latency_ms={latency_ms}",
+            )
         except Exception as exc:
             _print_result(False, "Runtime(mode='local').execute()", str(exc))
             return 1
         finally:
             try:
                 _cleanup_daemon()
-            except Exception:
-                pass
+            except Exception as err:
+                _print_result(False, "_cleanup_daemon()", str(err))
 
         print("=" * 72)
         print("  Local API-key runtime verification passed")

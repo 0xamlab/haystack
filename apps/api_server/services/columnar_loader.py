@@ -9,6 +9,7 @@ from apps.api_server.services.data_coercion import (
     canonicalize_delimited_headers,
     coerce_scalar,
     is_identifier_field,
+    looks_like_header_alias_row,
 )
 
 NULL_LIKE_STRINGS = frozenset({
@@ -22,6 +23,7 @@ NULL_LIKE_STRINGS = frozenset({
 })
 
 _ARROW_RETRY_MAX_BYTES = 32 * 1024 * 1024
+_PANDAS_FALLBACK_MIN_BYTES = 1 * 1024 * 1024
 _COERCION_CACHE_MAX_ENTRIES = 1024
 _COERCION_CACHE_MAX_VALUE_LEN = 128
 _CACHE_MISS = object()
@@ -62,6 +64,20 @@ def _to_arrow_array(values: list[Any]) -> Any:
             [str(value) if value is not None else None for value in values],
             type=pa.string(),
         )
+
+
+def _strip_header_alias_row_from_table(table: Any) -> Any:
+    if table is None or table.num_rows <= 0:
+        return table
+    try:
+        first_row = table.slice(0, 1).to_pylist()[0]
+    except Exception:
+        return table
+    field_names = list(table.column_names)
+    values = [first_row.get(field_name) for field_name in field_names]
+    if looks_like_header_alias_row(field_names, values):
+        return table.slice(1)
+    return table
 
 
 def _coerce_scalar_for_arrow(
@@ -193,10 +209,11 @@ def records_to_arrow_table(
                 )
             )
 
-    return pa.table({
+    table = pa.table({
         field_name: _to_arrow_array(values)
         for field_name, values in columns.items()
     })
+    return _strip_header_alias_row_from_table(table)
 
 
 def _python_delimited_text_to_arrow_table(content: str, *, delimiter: str) -> Any:
@@ -236,10 +253,40 @@ def _python_delimited_text_to_arrow_table(content: str, *, delimiter: str) -> An
         for idx in range(shared_count, header_count):
             appenders[idx](None)
 
-    return pa.table({
+    table = pa.table({
         field_name: _to_arrow_array(values)
         for field_name, values in zip(field_names, column_values, strict=False)
     })
+    return _strip_header_alias_row_from_table(table)
+
+
+def _pandas_delimited_text_to_arrow_table(
+    content: str,
+    *,
+    delimiter: str,
+    headers: list[str],
+) -> Any:
+    import pandas as pd
+    import pyarrow as pa
+
+    dtype_map = {
+        header: "string"
+        for header in headers
+        if header and is_identifier_field(header)
+    }
+    dataframe = pd.read_csv(
+        io.StringIO(content),
+        sep=delimiter,
+        engine="c",
+        dtype=dtype_map or None,
+        keep_default_na=False,
+        na_values=sorted(NULL_LIKE_STRINGS),
+        on_bad_lines="error",
+        low_memory=False,
+    )
+    return _strip_header_alias_row_from_table(
+        pa.Table.from_pandas(dataframe, preserve_index=False)
+    )
 
 
 def _choose_delimiter(text: str, delimiter: str | None = ",", sniff: bool = True) -> str:
@@ -340,11 +387,13 @@ def delimited_text_to_arrow_table(
 
     if arrow_friendly:
         try:
-            return pacsv.read_csv(
-                pa.BufferReader(raw_bytes),
-                read_options=read_options,
-                parse_options=standard_parse_options,
-                convert_options=convert_options,
+            return _strip_header_alias_row_from_table(
+                pacsv.read_csv(
+                    pa.BufferReader(raw_bytes),
+                    read_options=read_options,
+                    parse_options=standard_parse_options,
+                    convert_options=convert_options,
+                )
             )
         except Exception as exc:
             last_error = exc
@@ -355,19 +404,35 @@ def delimited_text_to_arrow_table(
 
     if allow_retry:
         try:
-            return pacsv.read_csv(
-                pa.BufferReader(raw_bytes),
-                read_options=read_options,
-                parse_options=retry_parse_options,
-                convert_options=convert_options,
+            return _strip_header_alias_row_from_table(
+                pacsv.read_csv(
+                    pa.BufferReader(raw_bytes),
+                    read_options=read_options,
+                    parse_options=retry_parse_options,
+                    convert_options=convert_options,
+                )
+            )
+        except Exception as exc:
+            last_error = exc
+
+    if len(raw_bytes) >= _PANDAS_FALLBACK_MIN_BYTES:
+        try:
+            return _strip_header_alias_row_from_table(
+                _pandas_delimited_text_to_arrow_table(
+                    text,
+                    delimiter=chosen_delimiter,
+                    headers=headers,
+                )
             )
         except Exception as exc:
             last_error = exc
 
     try:
-        return _python_delimited_text_to_arrow_table(
-            text,
-            delimiter=chosen_delimiter,
+        return _strip_header_alias_row_from_table(
+            _python_delimited_text_to_arrow_table(
+                text,
+                delimiter=chosen_delimiter,
+            )
         )
     except Exception as exc:
         if last_error is not None:

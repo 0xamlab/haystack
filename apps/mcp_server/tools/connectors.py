@@ -8,7 +8,10 @@ from apps.mcp_server.client import api
 
 SPEC: dict[str, Any] = {
     "name": "list_connectors",
-    "description": "Advanced tool. List configured data connectors (databases, spreadsheets, APIs).",
+    "description": (
+        "Advanced tool. List configured data connectors "
+        "(databases, spreadsheets, APIs)."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {

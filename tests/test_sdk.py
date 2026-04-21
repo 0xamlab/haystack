@@ -664,4 +664,4 @@ async def test_result_latency_is_numeric():
 
     rt = Runtime(mode="cloud")
     result = await rt.aexecute("scheduling_algo", "fcfs", {})
-    assert isinstance(result["latency_ms"], (int, float))
+    assert isinstance(result["latency_ms"], int | float)

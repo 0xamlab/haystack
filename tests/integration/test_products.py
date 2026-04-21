@@ -31,7 +31,9 @@ BASE_URL = os.environ.get("DE_BASE_URL", "http://localhost:8000")
 API_KEY  = os.environ.get("DE_API_KEY",  "de_live_LrL6UWSAfgXsTjgfyaboI9aolrsznjLU")
 SKIP_API = os.environ.get("DE_SKIP_API", "0") == "1"
 
-PASS = "✅"; FAIL = "❌"; SKIP = "⏭️ "
+PASS = "✅"
+FAIL = "❌"
+SKIP = "⏭️ "
 _results: list[tuple[str, bool, str]] = []
 
 
@@ -183,7 +185,7 @@ def test_agent_run_json_output():
     check("POST /v1/agent/run json format → 200", status == 200, f"got {status}")
     if status == 200:
         result = body.get("result")
-        check("agent json result is dict or str", isinstance(result, (dict, str)))
+        check("agent json result is dict or str", isinstance(result, dict | str))
 
 
 def test_optimize_basic():

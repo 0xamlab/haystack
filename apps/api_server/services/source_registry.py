@@ -48,6 +48,26 @@ _JOIN_KEY_NAME_TOKENS = frozenset({
     "vendor",
     "warehouse",
 })
+_DIMENSION_JOIN_TOKENS = frozenset({
+    "branch",
+    "location",
+    "merchant",
+    "outlet",
+    "restaurant",
+    "site",
+    "store",
+})
+_DIMENSION_JOIN_MODIFIER_TOKENS = frozenset({
+    "as",
+    "eats",
+    "external",
+    "local",
+    "manager",
+    "name",
+    "per",
+    "uber",
+    "ubereats",
+})
 _GENERIC_JOIN_TOKENS = frozenset({
     "a",
     "an",
@@ -107,6 +127,30 @@ def _looks_like_entity_join_key(name: str) -> bool:
     return any(token in lowered for token in ("_id", "_key", "_code", "_ref", "_uuid", "_guid"))
 
 
+def _looks_like_low_cardinality_dimension(name: str) -> bool:
+    tokens = set(re.findall(r"[a-z0-9]+", name.lower()))
+    if not tokens & _DIMENSION_JOIN_TOKENS:
+        return False
+    return bool(_dimension_join_family(name))
+
+
+def _dimension_join_family(name: str) -> str:
+    tokens = set(re.findall(r"[a-z0-9]+", name.lower()))
+    families = {"store" for token in tokens if token in _DIMENSION_JOIN_TOKENS}
+    if len(families) != 1:
+        return ""
+    non_dimension = {
+        token
+        for token in tokens
+        if token not in _DIMENSION_JOIN_TOKENS
+        and token not in _DIMENSION_JOIN_MODIFIER_TOKENS
+        and token not in _GENERIC_JOIN_TOKENS
+    }
+    if len(non_dimension) > 1:
+        return ""
+    return next(iter(families))
+
+
 def _join_tokens(name: str) -> list[str]:
     return [token for token in re.findall(r"[a-z0-9]+", name.lower()) if token]
 
@@ -136,13 +180,14 @@ def _build_join_blocks(schema_meta: dict) -> list[dict[str, Any]]:
         if fill_rate < 0.05 or total_count <= 0 or unique_count <= 1:
             continue
         key_like = _looks_like_entity_join_key(col_name)
+        dimension_like = _looks_like_low_cardinality_dimension(col_name)
         if role in _NON_JOINABLE_ROLES and not key_like:
             continue
         if is_numeric and not key_like and role not in {"identifier", "time", "text"}:
             continue
 
         unique_ratio = unique_count / max(total_count, 1)
-        if not key_like and unique_count <= 3 and unique_ratio < 0.10:
+        if not key_like and not dimension_like and unique_count <= 3 and unique_ratio < 0.10:
             continue
 
         tokens = _join_tokens(col_name)
@@ -163,11 +208,12 @@ def _build_join_blocks(schema_meta: dict) -> list[dict[str, Any]]:
         ]
         joinability = (
             (1.2 if key_like else 0.0)
+            + (0.35 if dimension_like else 0.0)
             + (0.7 if role == "identifier" else 0.0)
             + min(unique_ratio, 1.0) * 0.8
             + min(fill_rate, 1.0) * 0.2
         )
-        if not key_like and unique_ratio < 0.02:
+        if not key_like and not dimension_like and unique_ratio < 0.02:
             joinability -= 0.6
 
         blocks.append({
@@ -192,6 +238,12 @@ def _build_join_blocks(schema_meta: dict) -> list[dict[str, Any]]:
 
 def _score_join_block_pair(left: dict[str, Any], right: dict[str, Any]) -> float:
     score = 0.0
+    left_dimension_family = _dimension_join_family(str(left.get("name") or ""))
+    right_dimension_family = _dimension_join_family(str(right.get("name") or ""))
+    same_dimension_family = (
+        bool(left_dimension_family)
+        and left_dimension_family == right_dimension_family
+    )
     if left.get("norm") and left.get("norm") == right.get("norm"):
         score += 6.0
 
@@ -220,7 +272,7 @@ def _score_join_block_pair(left: dict[str, Any], right: dict[str, Any]) -> float
         if sample_overlap:
             score += 2.0 + min(sample_overlap, 3) * 0.5
 
-    if not left.get("key_like") and not right.get("key_like"):
+    if not left.get("key_like") and not right.get("key_like") and not same_dimension_family:
         if (
             token_jaccard < 0.34
             and left.get("unique_count", 0) <= 5

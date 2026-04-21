@@ -61,7 +61,12 @@ class AzureProvisioner(BaseProvisioner):
             "deploy_name": deploy_name,
         }
 
-        logger.info("azure_provisioning", org_id=str(org_id), deployment_id=str(deployment_id), region=region)
+        logger.info(
+            "azure_provisioning",
+            org_id=str(org_id),
+            deployment_id=str(deployment_id),
+            region=region,
+        )
         return ProvisionResult(success=True, endpoint_url=endpoint_url, resource_ids=resource_ids)
 
     async def deprovision(self, deployment_id: uuid.UUID, resource_ids: dict[str, Any]) -> bool:

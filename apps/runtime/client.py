@@ -15,14 +15,21 @@ from __future__ import annotations
 
 import json
 import os
+import tempfile
 from typing import Any
 
 import structlog
 
 logger = structlog.get_logger(__name__)
 
-_DAEMON_SOCK = os.environ.get("ALGENTA_DAEMON_SOCK", "/tmp/algenta-runtime/daemon.sock")
-_DAEMON_TCP  = os.environ.get("ALGENTA_DAEMON_TCP",  "127.0.0.1:50099")
+
+def _default_daemon_socket() -> str:
+    base_dir = os.path.join(tempfile.gettempdir(), "algenta-runtime")
+    return os.path.join(base_dir, "daemon.sock")
+
+
+_DAEMON_SOCK = os.environ.get("ALGENTA_DAEMON_SOCK", _default_daemon_socket())
+_DAEMON_TCP = os.environ.get("ALGENTA_DAEMON_TCP", "127.0.0.1:50099")
 _DEFAULT_TIMEOUT = 30.0
 
 
@@ -57,6 +64,7 @@ class DaemonClient:
         from pathlib import Path
 
         import grpc
+
         if Path(self._sock_path).exists():
             target = f"unix://{self._sock_path}"
         else:
@@ -81,8 +89,9 @@ class DaemonClient:
 
     def _stub(self):
         from apps.runtime.proto import runtime_pb2_grpc
-        ch = self._channel or self._make_channel()
-        return runtime_pb2_grpc.AlgentaRuntimeStub(ch)
+
+        channel = self._channel or self._make_channel()
+        return runtime_pb2_grpc.AlgentaRuntimeStub(channel)
 
     # ── RPCs ──────────────────────────────────────────────────────────────────
 
@@ -207,7 +216,7 @@ class DaemonClient:
     def is_daemon_running(
         cls,
         sock_path: str = _DAEMON_SOCK,
-        tcp_addr:  str = _DAEMON_TCP,
+        tcp_addr: str = _DAEMON_TCP,
     ) -> bool:
         """
         Quick sync check — does the daemon socket / TCP port exist?
@@ -215,6 +224,7 @@ class DaemonClient:
         """
         import socket
         from pathlib import Path
+
         if Path(sock_path).exists():
             return True
         # Try TCP fallback

@@ -21,7 +21,13 @@ Usage:
   result = simulate.run(
       variables=[
           {"name": "revenue", "distribution": "normal", "mean": 100000, "std": 15000},
-          {"name": "cost",    "distribution": "triangular", "low": 60000, "mode": 70000, "high": 90000},
+          {
+              "name": "cost",
+              "distribution": "triangular",
+              "low": 60000,
+              "mode": 70000,
+              "high": 90000,
+          },
       ],
       runs=50000,
   )
@@ -76,14 +82,14 @@ class SimulationResult:
 
 def _box_muller(mu: float, sigma: float) -> float:
     """Box-Muller normal sample — no numpy required."""
-    u1 = random.random()
-    u2 = random.random()
+    u1 = random.random()  # noqa: S311 - Monte Carlo sampling needs a fast non-crypto PRNG
+    u2 = random.random()  # noqa: S311 - Monte Carlo sampling needs a fast non-crypto PRNG
     z = math.sqrt(-2 * math.log(u1 + 1e-15)) * math.cos(2 * math.pi * u2)
     return mu + sigma * z
 
 
 def _triangular_sample(low: float, mode: float, high: float) -> float:
-    u = random.random()
+    u = random.random()  # noqa: S311 - Monte Carlo sampling needs a fast non-crypto PRNG
     fc = (mode - low) / (high - low + 1e-15)
     if u < fc:
         return low + math.sqrt(u * (high - low) * (mode - low))
@@ -102,7 +108,9 @@ def _sample_variable(spec: dict[str, Any]) -> float:
     elif dist == "triangular":
         return _triangular_sample(p.get("low", 0), p.get("mode", 50), p.get("high", 100))
     elif dist == "uniform":
-        return random.uniform(p.get("low", 0), p.get("high", 1))
+        return random.uniform(  # noqa: S311 - Monte Carlo sampling needs a fast non-crypto PRNG
+            p.get("low", 0), p.get("high", 1)
+        )
     elif dist == "fixed":
         return float(p.get("value", 0))
     elif dist == "lognormal":
@@ -111,7 +119,8 @@ def _sample_variable(spec: dict[str, Any]) -> float:
         return math.exp(_box_muller(mu, sigma))
     elif dist == "exponential":
         rate = p.get("rate", p.get("lambda", 1))
-        return -math.log(random.random() + 1e-15) / rate
+        uniform_sample = random.random()  # noqa: S311 - Monte Carlo sampling needs a fast non-crypto PRNG
+        return -math.log(uniform_sample + 1e-15) / rate
     else:
         return _box_muller(p.get("mean", 0), p.get("std", 1))
 
@@ -125,7 +134,9 @@ def _percentile(sorted_vals: list[float], p: float) -> float:
     return sorted_vals[lo] + (idx - lo) * (sorted_vals[hi] - sorted_vals[lo])
 
 
-def _summarize(values: list[float], latency_ms: float = 0.0, engine: str = "local") -> SimulationResult:
+def _summarize(
+    values: list[float], latency_ms: float = 0.0, engine: str = "local"
+) -> SimulationResult:
     n = len(values)
     if n == 0:
         return SimulationResult(0, 0, 0, 0, 0, 0, 0, 0, 0, engine, latency_ms)
@@ -163,7 +174,10 @@ def triangular(low: float, mode: float, high: float, n: int = 10000) -> list[flo
 
 def uniform(low: float, high: float, n: int = 10000) -> list[float]:
     """Sample from a uniform distribution."""
-    return [random.uniform(low, high) for _ in range(n)]
+    return [
+        random.uniform(low, high)  # noqa: S311 - Monte Carlo sampling needs a fast non-crypto PRNG
+        for _ in range(n)
+    ]
 
 
 def run(variables: list[dict[str, Any]], runs: int = 10000, mode: str = "local",
@@ -205,7 +219,10 @@ def risk(
       result = simulate.risk(revenue=120000, cost=70000, runs=50000)
     """
     if not named_inputs:
-        raise ValueError("Pass at least one named input, e.g. simulate.risk(revenue=100000, cost=70000)")
+        raise ValueError(
+            "Pass at least one named input, e.g. "
+            "simulate.risk(revenue=100000, cost=70000)"
+        )
 
     if mode == "cloud":
         variables = [
@@ -221,7 +238,7 @@ def risk(
     values: list[float] = []
     for _ in range(runs):
         total = 0.0
-        for name, val in named_inputs.items():
+        for _name, val in named_inputs.items():
             # Treat as revenue-like (positive) or cost-like (negative) by convention
             sample = _box_muller(val, abs(val) * 0.20)
             total += sample

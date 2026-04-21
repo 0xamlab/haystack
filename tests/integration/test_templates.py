@@ -41,7 +41,7 @@ _PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
-from apps.api_server.simulation_templates import (
+from apps.api_server.simulation_templates import (  # noqa: E402
     TEMPLATES,
     get_all_domains,
     get_all_tags,
@@ -138,7 +138,7 @@ def test_registry_required_fields():
     for tid, t in TEMPLATES.items():
         for field in required:
             val = getattr(t, field, None)
-            if val is None or (isinstance(val, (str, list)) and len(val) == 0):
+            if val is None or (isinstance(val, str | list) and len(val) == 0):
                 bad.append(f"{tid}.{field}")
                 ok = False
     record("all_templates_have_required_fields", ok, "; ".join(bad[:5]))
@@ -401,8 +401,6 @@ def test_all_templates_e2e():
             # Validate response has essential fields
             has_run_id = bool(run_id)
             has_metrics = bool(metrics) and isinstance(metrics, dict)
-            has_recommendation = bool(rec)
-
             if has_run_id and has_metrics:
                 is_ok = True
             else:

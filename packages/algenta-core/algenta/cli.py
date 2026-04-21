@@ -21,8 +21,8 @@ def _bench_normal(n: int = 100_000) -> float:
     """Baseline Python: Box-Muller normal sampling."""
     t0 = time.perf_counter()
     for _ in range(n):
-        u1 = random.random()
-        u2 = random.random()
+        u1 = random.random()  # noqa: S311 - benchmark intentionally measures fast local PRNG
+        u2 = random.random()  # noqa: S311 - benchmark intentionally measures fast local PRNG
         math.sqrt(-2 * math.log(u1 + 1e-15)) * math.cos(2 * math.pi * u2)
     return (time.perf_counter() - t0) * 1000
 
@@ -43,14 +43,14 @@ def _format_ms(ms: float) -> str:
 
 
 def cmd_benchmark() -> None:
-    N = 50_000
+    n_samples = 50_000
     print("\n" + "─" * 58)
     print("  Algenta Core — Local Benchmark")
     print("─" * 58)
-    print(f"  Sampling {N:,} normal variates\n")
+    print(f"  Sampling {n_samples:,} normal variates\n")
 
-    python_ms  = _bench_normal(N)
-    algenta_ms = _bench_simulate(N)
+    python_ms = _bench_normal(n_samples)
+    algenta_ms = _bench_simulate(n_samples)
     ratio = python_ms / (algenta_ms + 1e-9)
 
     print(f"  Python baseline:    {_format_ms(python_ms)}")
@@ -117,7 +117,11 @@ def cmd_map(args: list[str]) -> None:
     ms = (time.perf_counter() - t0) * 1000
 
     print("─" * 62)
-    print(f"  Sources:  {result.sources_analyzed}    Fields:  {result.total_fields}    Mappings:  {len(result.mappings)}")
+    print(
+        "  Sources:  "
+        f"{result.sources_analyzed}    Fields:  {result.total_fields}    "
+        f"Mappings:  {len(result.mappings)}"
+    )
     print(f"  Completed in {ms:.0f}ms")
     print("─" * 62)
 
@@ -126,7 +130,10 @@ def cmd_map(args: list[str]) -> None:
         for m in result.mappings[:15]:
             bar = "█" * int(m.confidence * 10)
             pad = " " * (10 - len(bar))
-            print(f"  [{bar}{pad}] {m.confidence:.0%}  {m.source}.{m.source_field}  →  {m.target}.{m.target_field}")
+            print(
+                f"  [{bar}{pad}] {m.confidence:.0%}  "
+                f"{m.source}.{m.source_field}  →  {m.target}.{m.target_field}"
+            )
             print(f"              {' · '.join(m.reason)}")
         if len(result.mappings) > 15:
             print(f"\n  ... and {len(result.mappings) - 15} more mappings")
@@ -134,7 +141,11 @@ def cmd_map(args: list[str]) -> None:
     if result.join_keys:
         print("\n  Join Keys:\n")
         for jk in result.join_keys:
-            print(f"  {jk['source']}.{jk['field']} → {jk['in_source']}.{jk['maps_to']}  (confidence: {jk['confidence']:.0%})")
+            print(
+                f"  {jk['source']}.{jk['field']} → "
+                f"{jk['in_source']}.{jk['maps_to']}  "
+                f"(confidence: {jk['confidence']:.0%})"
+            )
 
     if result.simulation_ready:
         print("\n  ✓ Simulation ready — run `algenta simulate` or POST /v1/ingest")

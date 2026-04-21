@@ -107,7 +107,6 @@ def find_best(
 
     def _obj(**kwargs: float) -> float:
         vals = [kwargs[n] for n in names]
-        mid = [(lo + hi) / 2 for lo, hi in bounds]
         if is_maximize:
             return sum(v * (hi / (hi - lo + 1)) for v, (lo, hi) in zip(vals, bounds, strict=False))
         else:
@@ -136,7 +135,10 @@ def _run_local(
     for i in range(iterations):
         if i < iterations // 2:
             # Random sampling
-            candidate = {n: random.uniform(lo, hi) for n, (lo, hi) in zip(names, bounds, strict=False)}
+            candidate = {
+                n: random.uniform(lo, hi)  # noqa: S311 - optimization search, not security
+                for n, (lo, hi) in zip(names, bounds, strict=False)
+            }
         else:
             # Hill-climbing around best
             candidate = {}
@@ -150,9 +152,12 @@ def _run_local(
         if not ok:
             continue
 
+        obj: float | None
         try:
             obj = objective(**candidate)
         except Exception:
+            obj = None
+        if obj is None:
             continue
 
         if (maximize and obj > best_obj) or (not maximize and obj < best_obj):

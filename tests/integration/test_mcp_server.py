@@ -84,13 +84,17 @@ def req(method: str, path: str, body=None, headers=None, auth=True, timeout=10):
         except Exception:
             body_data = body_bytes.decode("utf-8", errors="replace")
         return e.code, body_data, dict(e.headers), elapsed
-    except TimeoutError:
+    except TimeoutError as err:
         elapsed = time.perf_counter() - t0
-        raise TimeoutError(f"Request to {url} timed out after {timeout}s (elapsed: {elapsed:.1f}s)")
+        raise TimeoutError(
+            f"Request to {url} timed out after {timeout}s (elapsed: {elapsed:.1f}s)"
+        ) from err
     except urllib.error.URLError as e:
         if "timed out" in str(e):
             elapsed = time.perf_counter() - t0
-            raise TimeoutError(f"Request to {url} timed out after {timeout}s (elapsed: {elapsed:.1f}s)")
+            raise TimeoutError(
+                f"Request to {url} timed out after {timeout}s (elapsed: {elapsed:.1f}s)"
+            ) from e
         raise RuntimeError(f"Cannot connect to {BASE_URL} — is the API server running?") from e
 
 

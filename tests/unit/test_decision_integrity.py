@@ -186,11 +186,17 @@ class TestHashDecisionEnvelope:
         e2 = _make_envelope({"execution_ms": 9999, "score": 0.99})
         assert hash_decision_envelope(e1) == hash_decision_envelope(e2)
 
-    def test_result_hash_field_does_not_affect_hash(self):
-        """result_hash itself is excluded from canonical form (no circular dependency)."""
+    def test_invalid_result_hash_field_does_not_affect_hash(self):
+        """Invalid embedded hashes are ignored and canonical hashing still matches."""
         e1 = _make_envelope({"result_hash": None})
-        e2 = _make_envelope({"result_hash": "deadbeef" * 8})
+        e2 = _make_envelope({"result_hash": "not_a_valid_hash"})
         assert hash_decision_envelope(e1) == hash_decision_envelope(e2)
+
+    def test_valid_result_hash_field_is_used_when_present(self):
+        """A valid precomputed Mojo hash should be returned directly."""
+        precomputed_hash = "deadbeef" * 8
+        envelope = _make_envelope({"result_hash": precomputed_hash})
+        assert hash_decision_envelope(envelope) == precomputed_hash
 
     def test_correct_sha256_algorithm(self):
         """Verify hash matches manual SHA-256 computation."""
@@ -262,6 +268,13 @@ class TestVerifyDecisionHash:
         envelope["score"] = 0.88
         # Should still verify because volatile fields are excluded from hash
         assert verify_decision_hash(envelope, stored_hash) is True
+
+    def test_verify_ignores_embedded_result_hash(self):
+        """Verification must recompute the canonical hash, not trust embedded result_hash."""
+        envelope = _make_envelope()
+        stored_hash = hash_decision_envelope(envelope)
+        tampered = {**envelope, "confidence": 0.99, "result_hash": stored_hash}
+        assert verify_decision_hash(tampered, stored_hash) is False
 
 
 # ─── format_result_hash_header ────────────────────────────────────────────────

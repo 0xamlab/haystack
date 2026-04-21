@@ -148,3 +148,69 @@ def test_df_cache_records_materializes_rows_only_once() -> None:
     assert first == [{"amount": 10.0}, {"amount": 20.0}]
     assert second == first
     assert frame.calls == 1
+
+
+def _cached_source_for_eviction(last_hit: float) -> query_router._CachedSource:
+    entry = query_router._CachedSource(
+        parquet_bytes=b"parquet",
+        parquet_schema_meta=b"{}",
+        profile={},
+        mojo_profile={},
+        relations=[],
+        graph_nodes={},
+        schema_meta={},
+        mojo_profiling_status={},
+        content_keyed=True,
+    )
+    entry.created_at = last_hit
+    entry.last_hit = last_hit
+    return entry
+
+
+@pytest.mark.asyncio
+async def test_source_cache_put_uses_unique_entry_capacity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(query_router, "_CACHE_MAX_SOURCES", 2)
+    async with query_router._CACHE_LOCK:
+        query_router._SOURCE_CACHE.clear()
+        try:
+            first = _cached_source_for_eviction(1.0)
+            second = _cached_source_for_eviction(2.0)
+
+            query_router._source_cache_put(first, "src_a", "alias_a")
+            query_router._source_cache_put(second, "src_b")
+
+            assert set(query_router._SOURCE_CACHE) == {"src_a", "alias_a", "src_b"}
+            assert len({id(entry) for entry in query_router._SOURCE_CACHE.values()}) == 2
+            assert query_router._SOURCE_CACHE["src_a"] is first
+            assert query_router._SOURCE_CACHE["alias_a"] is first
+            assert query_router._SOURCE_CACHE["src_b"] is second
+        finally:
+            query_router._SOURCE_CACHE.clear()
+
+
+@pytest.mark.asyncio
+async def test_source_cache_put_evicts_oldest_unique_entry_and_aliases(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(query_router, "_CACHE_MAX_SOURCES", 2)
+    async with query_router._CACHE_LOCK:
+        query_router._SOURCE_CACHE.clear()
+        try:
+            first = _cached_source_for_eviction(1.0)
+            second = _cached_source_for_eviction(2.0)
+            third = _cached_source_for_eviction(3.0)
+
+            query_router._source_cache_put(first, "src_a", "alias_a")
+            query_router._source_cache_put(second, "src_b")
+            query_router._source_cache_put(third, "src_c")
+
+            assert set(query_router._SOURCE_CACHE) == {"src_b", "src_c"}
+            assert "src_a" not in query_router._SOURCE_CACHE
+            assert "alias_a" not in query_router._SOURCE_CACHE
+            assert len({id(entry) for entry in query_router._SOURCE_CACHE.values()}) == 2
+            assert query_router._SOURCE_CACHE["src_b"] is second
+            assert query_router._SOURCE_CACHE["src_c"] is third
+        finally:
+            query_router._SOURCE_CACHE.clear()

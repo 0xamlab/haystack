@@ -30,28 +30,65 @@ logging.disable(logging.CRITICAL)
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
-from apps.api_server.services.auto_planner import AutoPlanner
-
-G = "\033[92m"; R = "\033[91m"; Y = "\033[93m"
-C = "\033[96m"; B = "\033[1m";  D = "\033[2m";  X = "\033[0m"
+G = "\033[92m"
+R = "\033[91m"
+Y = "\033[93m"
+C = "\033[96m"
+B = "\033[1m"
+D = "\033[2m"
+X = "\033[0m"
 W = 76
 
 QUESTIONS = [
-    # (label, metric_hint, dim_hint, agg, preferred, description)
-    ("Q1",  "revenue",             "product line",   "sum",  "Bookings",  "Revenue by product line"),
-    ("Q2",  "revenue",             "customer type",  "sum",  "Quotes",    "Revenue by customer type (Quotes)"),
-    ("Q3",  "revenue",             "business unit",  "sum",  "Bookings",  "Revenue by business unit — tests LEACH_BU acronym"),
-    ("Q4",  "unit price",          "manufacturer",   "avg",  "Bookings",  "Avg unit price by manufacturer — hard case (MFG)"),
-    ("Q5",  "aar margin percent",  "customer type",  "avg",  "Quotes",    "AAR margin% by customer — cross-source join"),
-    ("Q6",  "extended cost",       "vendor",         "sum",  "Inventory", "Extended cost by vendor"),
-    ("Q7",  "quantity",            "condition",      "sum",  "Inventory", "Qty by condition (Inventory)"),
-    ("Q8",  "revenue",             "sales rep",      "sum",  "Bookings",  "Revenue by sales rep"),
-    ("Q9",  "revenue",             None,             "sum",  "POS",       "Total POS revenue (scalar, no dim)"),
-    ("Q10", "unit price",          "product line",   "avg",  "Bookings",  "Avg unit price by product line — cross-check LLM"),
+    # (label, metric_hint, dim_hint, agg, preferred, description, expected_error)
+    ("Q1", "revenue", "product line", "sum", "Bookings", "Revenue by product line", None),
+    ("Q2", "revenue", "customer type", "sum", "Quotes", "Revenue by customer type (Quotes)", None),
+    (
+        "Q3",
+        "revenue",
+        "business unit",
+        "sum",
+        "Bookings",
+        "Revenue by business unit - tests LEACH_BU acronym",
+        None,
+    ),
+    (
+        "Q4",
+        "unit price",
+        "manufacturer",
+        "avg",
+        "Bookings",
+        "Avg unit price by manufacturer - hard case (MFG)",
+        None,
+    ),
+    (
+        "Q5",
+        "aar margin percent",
+        "customer type",
+        "avg",
+        "Quotes",
+        "AAR margin% by customer - cross-source join (expected reject)",
+        "No safe join path",
+    ),
+    ("Q6", "extended cost", "vendor", "sum", "Inventory", "Extended cost by vendor", None),
+    ("Q7", "quantity", "condition", "sum", "Inventory", "Qty by condition (Inventory)", None),
+    ("Q8", "revenue", "sales rep", "sum", "Bookings", "Revenue by sales rep", None),
+    ("Q9", "revenue", None, "sum", "POS", "Total POS revenue (scalar, no dim)", None),
+    (
+        "Q10",
+        "unit price",
+        "product line",
+        "avg",
+        "Bookings",
+        "Avg unit price by product line - cross-check LLM",
+        None,
+    ),
 ]
 
 
 def run():
+    from apps.api_server.services.auto_planner import AutoPlanner
+
     print(f"\n{B}{'═'*W}{X}")
     print(f"{B}{C}  A-Z Test: Mojo + LLM Query Planner — 10 Questions{X}")
     print(f"{B}{'═'*W}{X}")
@@ -78,7 +115,8 @@ def run():
     })
     load_ms = (time.perf_counter() - t0) * 1000
     cached  = load_ms < 3000
-    print(f"  load: {load_ms:.0f}ms  {'(from Parquet cache)' if cached else '(cold — building cache)'}")
+    cache_status = "(from Parquet cache)" if cached else "(cold - building cache)"
+    print(f"  load: {load_ms:.0f}ms  {cache_status}")
     print(f"  engines: {C}{', '.join(planner.mojo_engines)}{X}")
     print(f"  llm: {G+'enabled' if api_key else R+'disabled (no API key)'}{X}")
 
@@ -89,7 +127,7 @@ def run():
     total_llm_ms   = 0.0
     llm_corrections = 0
 
-    for label, metric, dim, agg, pref, desc in QUESTIONS:
+    for label, metric, dim, agg, pref, desc, expected_error in QUESTIONS:
         print(f"\n{B}{'─'*W}{X}")
         print(f"{B}{C}  {label}{X}  {desc}")
         print(f"  {D}metric={metric!r}  dim={dim!r}  agg={agg}  src={pref}{X}")
@@ -99,13 +137,39 @@ def run():
 
         # Temporarily monkey-patch to measure Mojo-only time
         _orig_llm = planner._llm_confirm_plan
-        planner._llm_confirm_plan = lambda **kw: None  # disable LLM for phase 1 measurement
-        plan_no_llm = planner.plan(metric_hint=metric, dim_hint=dim,
-                                    agg=agg, preferred_source=pref)
+        planner._llm_confirm_plan = lambda **_kw: None  # disable LLM for phase 1 measurement
+        plan_no_llm = planner.plan(
+            metric_hint=metric,
+            dim_hint=dim,
+            agg=agg,
+            preferred_source=pref,
+        )
         mojo_ms = (time.perf_counter() - t_plan) * 1000
 
         # Phase 2: LLM confirmation (restore and call)
         planner._llm_confirm_plan = _orig_llm
+        if plan_no_llm.error:
+            ok = expected_error is not None and expected_error in plan_no_llm.error
+            sym = f"{G}✓{X}" if ok else f"{R}✗{X}"
+            qualifier = "expected reject" if ok else "plan error"
+            print(
+                f"  {D}Mojo plan:{X} {mojo_ms:6.0f}ms  "
+                f"{D}LLM:{X} {0:5.0f}ms  "
+                f"{D}exec:{X} {0.0:5.1f}ms"
+            )
+            print(f"  {sym} {B}{label}{X}  {qualifier}: {plan_no_llm.error}")
+            results.append({
+                "label": label,
+                "ok": ok,
+                "mojo_ms": mojo_ms,
+                "llm_ms": 0.0,
+                "exec_ms": 0.0,
+                "rows": 0,
+                "corrected": False,
+                "llm_reasoning": "",
+            })
+            total_plan_ms += mojo_ms
+            continue
         t_llm = time.perf_counter()
         llm_result = planner._llm_confirm_plan(
             question=f"{agg}({metric})" + (f" by {dim}" if dim else ""),
@@ -146,19 +210,27 @@ def run():
             llm_tag = f"  {G}[LLM ✓]{X}" if agreed else f"  {Y}[LLM ✎ corrected]{X}"
             llm_reasoning = llm_result.get("reasoning", "")
 
-        print(f"  {D}Mojo plan:{X} {mojo_ms:6.0f}ms  "
-              f"{D}LLM:{X} {llm_ms:5.0f}ms  "
-              f"{D}exec:{X} {exec_ms:5.1f}ms{llm_tag}")
-        print(f"  {D}metric → {final_plan.metric_src}.{final_plan.metric_col}"
-              f"  conf={final_plan.metric_conf:.3f}"
-              f"  role={final_plan.metric_role}{X}")
+        print(
+            f"  {D}Mojo plan:{X} {mojo_ms:6.0f}ms  "
+            f"{D}LLM:{X} {llm_ms:5.0f}ms  "
+            f"{D}exec:{X} {exec_ms:5.1f}ms{llm_tag}"
+        )
+        print(
+            f"  {D}metric -> {final_plan.metric_src}.{final_plan.metric_col}"
+            f"  conf={final_plan.metric_conf:.3f}"
+            f"  role={final_plan.metric_role}{X}"
+        )
         if final_plan.group_col:
-            print(f"  {D}dim    → {final_plan.group_src}.{final_plan.group_col}"
-                  f"  conf={final_plan.group_conf:.3f}{X}")
+            print(
+                f"  {D}dim    -> {final_plan.group_src}.{final_plan.group_col}"
+                f"  conf={final_plan.group_conf:.3f}{X}"
+            )
         if final_plan.join_key_metric:
-            print(f"  {D}join   → {final_plan.metric_src}.{final_plan.join_key_metric}"
-                  f" ↔ {final_plan.group_src}.{final_plan.join_key_group}"
-                  f"  conf={final_plan.join_conf:.3f}{X}")
+            print(
+                f"  {D}join   -> {final_plan.metric_src}.{final_plan.join_key_metric}"
+                f" <-> {final_plan.group_src}.{final_plan.join_key_group}"
+                f"  conf={final_plan.join_conf:.3f}{X}"
+            )
         if llm_reasoning:
             print(f"  {C}LLM:{X} {D}{llm_reasoning}{X}")
 
@@ -168,10 +240,10 @@ def run():
             preview = " | ".join(f"{r['group']}={r['value']:,.2f}" for r in top)
             tail = f" +{len(result)-3} more" if len(result) > 3 else ""
             print(f"  {D}→ {preview}{tail}{X}")
-        elif isinstance(result, (int, float)):
+        elif isinstance(result, int | float):
             print(f"  {D}→ scalar={result:,.2f}{X}")
 
-        ok = bool(result) or isinstance(result, (int, float))
+        ok = bool(result) or isinstance(result, int | float)
         sym = f"{G}✓{X}" if ok else f"{R}✗{X}"
         print(f"  {sym} {B}{label}{X}  rows={row_count}  "
               f"total={(mojo_ms+llm_ms+exec_ms):.0f}ms")
@@ -199,8 +271,8 @@ def run():
     print(f"    LLM confirm   : {total_llm_ms/n:7.0f}ms")
     print(f"    Execution     : {total_exec_ms/n:7.1f}ms")
     print(f"    Total         : {(total_plan_ms+total_llm_ms+total_exec_ms)/n:7.0f}ms")
-    print(f"\n  {D}Data load (one-time): {load_ms:.0f}ms "
-          f"{'(Parquet cache)' if cached else '(cold — next run will be fast)'}{X}")
+    load_note = "(Parquet cache)" if cached else "(cold - next run will be fast)"
+    print(f"\n  {D}Data load (one-time): {load_ms:.0f}ms {load_note}{X}")
 
     print("\n  Per-question breakdown:")
     print(f"  {'Q':>3}  {'Mojo':>7}  {'LLM':>7}  {'Exec':>6}  {'Rows':>6}  LLM note")
@@ -209,8 +281,10 @@ def run():
         note = r["llm_reasoning"][:40] if r["llm_reasoning"] else "(no key / skipped)"
         sym  = f"{G}✓{X}" if r["ok"] else f"{R}✗{X}"
         corr = f"  {Y}↑corrected{X}" if r["corrected"] else ""
-        print(f"  {r['label']:>3}  {r['mojo_ms']:6.0f}ms  {r['llm_ms']:6.0f}ms  "
-              f"{r['exec_ms']:5.1f}ms  {r['rows']:6d}  {D}{note}{X}{corr}  {sym}")
+        print(
+            f"  {r['label']:>3}  {r['mojo_ms']:6.0f}ms  {r['llm_ms']:6.0f}ms  "
+            f"{r['exec_ms']:5.1f}ms  {r['rows']:6d}  {D}{note}{X}{corr}  {sym}"
+        )
 
     print(f"\n{B}{'═'*W}{X}\n")
 

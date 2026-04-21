@@ -157,6 +157,78 @@ class AdaptiveSourceContext:
     column_distinctiveness: tuple[tuple[float, int], ...] = ()
 
 
+_SEMANTIC_TOKEN_ALIASES: dict[str, tuple[str, ...]] = {
+    "amt": ("amount",),
+    "bu": ("business", "unit"),
+    "cat": ("category",),
+    "cond": ("condition",),
+    "cust": ("customer",),
+    "dept": ("department",),
+    "ext": ("extended",),
+    "manuf": ("manufacturer",),
+    "mfgr": ("manufacturer",),
+    "mfg": ("manufacturer",),
+    "pct": ("percent",),
+    "prod": ("product",),
+    "qty": ("quantity",),
+}
+
+_JOIN_KEY_ENTITY_TOKENS = {
+    "booking",
+    "catalog",
+    "code",
+    "customer",
+    "id",
+    "identifier",
+    "invoice",
+    "item",
+    "key",
+    "name",
+    "number",
+    "order",
+    "part",
+    "project",
+    "quote",
+    "request",
+    "sku",
+    "vendor",
+}
+
+_JOIN_KEY_MEASURE_TOKENS = {
+    "amount",
+    "cost",
+    "extended",
+    "margin",
+    "percent",
+    "price",
+    "qty",
+    "quantity",
+    "rate",
+    "ratio",
+    "revenue",
+    "sales",
+    "total",
+    "unit",
+    "value",
+}
+
+_MEASURE_LIKE_ROLES = {
+    "base_measure",
+    "derived_measure",
+    "metric",
+    "ratio",
+    "unit_measure",
+}
+
+
+def _semantic_token_set(text: str) -> set[str]:
+    tokens = set(re.findall(r"[a-z0-9]+", text.lower()))
+    expanded = set(tokens)
+    for token in tokens:
+        expanded.update(_SEMANTIC_TOKEN_ALIASES.get(token, ()))
+    return expanded
+
+
 def _fuzzy_token_sim(a: str, b: str) -> float:
     """
     Generic string similarity — NO hardcoded domain maps.
@@ -262,6 +334,8 @@ def _acronym_score(hint_words: list[str], col_token: str) -> float:
     content_words = [w for w in hint_words if w.lower() not in stop_words and w]
     if not content_words:
         return 0.0
+    if len(col_token) > len(content_words):
+        return 0.0
     initials = "".join(w[0].upper() for w in content_words)
     if col_token == initials:
         return 1.0
@@ -343,7 +417,7 @@ def _normalize_match_value(value: Any) -> str | None:
 
 
 def _tokenize_identifier(text: str) -> set[str]:
-    return set(re.findall(r"[a-z0-9]+", text.lower()))
+    return _semantic_token_set(text)
 
 
 # ── Data helpers ───────────────────────────────────────────────────────────────
@@ -1263,6 +1337,141 @@ class AutoPlanner:
             logger.debug("auto_planner_vector_resolver_skip", reason=str(exc))
             self._vector_resolver = None
 
+    def _append_vector_resolver_source(self, source_name: str) -> bool:
+        """
+        Incrementally append one new source to the current vector resolver.
+
+        Returns True when the current resolver was updated in place or no
+        resolver update was needed for that source. Returns False when the
+        resolver must be rebuilt from the full graph.
+        """
+        resolver = self._vector_resolver
+        if resolver is None:
+            return False
+        graph_cols = self.graph.get(source_name)
+        if not graph_cols:
+            return True
+        append_source = getattr(resolver, "append_planner_graph_source", None)
+        if not callable(append_source):
+            return False
+        fill_rates = {
+            (source_name, column_name): float(getattr(node, "fill_rate", 1.0) or 1.0)
+            for column_name, node in graph_cols.items()
+            if getattr(node, "is_numeric", True)
+            and float(getattr(node, "fill_rate", 1.0) or 1.0) >= 0.02
+        }
+        handled = bool(
+            append_source(
+                source_name,
+                graph_cols,
+                fill_rates=fill_rates,
+            )
+        )
+        if handled:
+            logger.debug(
+                "auto_planner_vector_resolver_appended",
+                source=source_name,
+                n_columns=sum(len(cols) for cols in self.graph.values()),
+                mode=resolver.__class__.__name__,
+            )
+        return handled
+
+    def refresh_registry_source(
+        self,
+        *,
+        org_id: str,
+        source_id: str,
+        source_name: str,
+        schema_meta: dict[str, Any],
+        source_schema_revision: str,
+        parquet_path: Path | None,
+        new_connections: list[dict[str, Any]],
+    ) -> None:
+        """
+        Incrementally apply one newly registered source to an existing registry planner.
+
+        This avoids reconstructing the full planner graph from source-registry
+        metadata on every registration when a warm planner for the same
+        org/visibility already exists.
+        """
+        had_graph_source = source_name in self.graph
+        artifacts = _registry_source_artifacts_from_meta(
+            org_id=org_id,
+            source_id=source_id,
+            schema_revision=source_schema_revision,
+            meta=schema_meta,
+        )
+
+        if artifacts.nodes:
+            self.graph[source_name] = artifacts.nodes
+        self.profiles[source_name] = artifacts.profile
+        if artifacts.query_hints:
+            self._query_hints_by_src[source_name] = artifacts.query_hints
+        else:
+            self._query_hints_by_src.pop(source_name, None)
+
+        self.tables.pop(source_name, None)
+        self._mojo_profiles.pop(source_name, None)
+        self._relations.pop(source_name, None)
+        if parquet_path is not None:
+            self._parquet_paths[source_name] = parquet_path
+        else:
+            self._parquet_paths.pop(source_name, None)
+
+        # Query planning caches are schema-dependent and must be cleared after a
+        # new source or join graph edge is introduced.
+        self._plan_cache.clear()
+        self._metric_resolution_cache.clear()
+        self._dimension_resolution_cache.clear()
+        self._join_candidate_columns.clear()
+        self._join_evidence_cache.clear()
+        self._group_join_evidence_cache.clear()
+
+        # Replace any stale connection state involving this source, then append
+        # the newly detected registry-backed joins.
+        self._connections = [
+            conn
+            for conn in self._connections
+            if conn.get("source_a") != source_id
+            and conn.get("source_b") != source_id
+            and conn.get("source_a_name") != source_name
+            and conn.get("source_b_name") != source_name
+        ]
+        if new_connections:
+            self._connections.extend(new_connections)
+
+        # Re-prime the join cache from persisted registry edges. Any
+        # query-computed join-key fallbacks will be repopulated lazily.
+        self._join_cache = {}
+        for conn in self._connections:
+            src_a = str(conn.get("source_a_name") or "")
+            src_b = str(conn.get("source_b_name") or "")
+            if not src_a or not src_b:
+                continue
+            cache_key = (min(src_a, src_b), max(src_a, src_b))
+            self._join_cache.setdefault(cache_key, []).append(
+                {
+                    "field_a": conn["col_a"],
+                    "source_a": src_a,
+                    "field_b": conn["col_b"],
+                    "source_b": src_b,
+                    "confidence": conn.get("confidence", 0.70),
+                    "overlap": conn.get("overlap", 0.5),
+                    "cardinality": conn.get("cardinality", "many_to_many"),
+                }
+            )
+
+        self._adaptive_source_context[source_name] = AdaptiveSourceContext(
+            join_distinctiveness=tuple(
+                self._build_source_distinctiveness(source_name, join_only=True)
+            ),
+            column_distinctiveness=tuple(
+                self._build_source_distinctiveness(source_name, join_only=False)
+            ),
+        )
+        if had_graph_source or not self._append_vector_resolver_source(source_name):
+            self._build_vector_resolver()
+
     def _mojo_profile_source(self, args: tuple) -> tuple[str, dict]:
         name, prof = args
         result = self._call_mojo({
@@ -1532,8 +1741,11 @@ class AutoPlanner:
         best_overlap  = 0.0
         hint_tokens   = set(re.findall(r"[a-z0-9]+", hint.lower()))
 
-        sources = ([preferred_source] + [s for s in self.tables if s != preferred_source]
-                   if preferred_source else list(self.tables.keys()))
+        sources = (
+            [preferred_source] + [s for s in self.profiles if s != preferred_source]
+            if preferred_source
+            else list(self.profiles.keys())
+        )
 
         for src in sources:
             if src not in self.profiles:
@@ -1571,13 +1783,13 @@ class AutoPlanner:
         """Lightweight field_map without Mojo."""
         h = hint.lower()
         # Unit
-        if any(w in h for w in ("revenue", "price", "cost", "amount", "sales", "margin",
-                                "spend", "invoice", "value", "ext", "total")):
+        if any(w in h for w in ("rate", "pct", "percent", "ratio", "margin_%", "share")):
+            unit = "percentage"
+        elif any(w in h for w in ("revenue", "price", "cost", "amount", "sales", "margin",
+                                  "spend", "invoice", "value", "ext", "total")):
             unit = "currency"
         elif any(w in h for w in ("qty", "quantity", "count", "units", "volume")):
             unit = "count"
-        elif any(w in h for w in ("rate", "pct", "percent", "ratio", "margin_%", "share")):
-            unit = "percentage"
         elif any(w in h for w in ("days", "time", "duration", "lead", "delivery")):
             unit = "time"
         else:
@@ -1743,8 +1955,11 @@ class AutoPlanner:
                 "mean":          0.0,
                 "std":           0.0,
             }
-            sources = ([preferred_source] + [s for s in self.tables if s != preferred_source]
-                       if preferred_source else list(self.tables.keys()))
+            sources = (
+                [preferred_source] + [s for s in self.graph if s != preferred_source]
+                if preferred_source
+                else list(self.graph.keys())
+            )
 
             for src in sources:
                 if src not in self.profiles:
@@ -1927,6 +2142,30 @@ class AutoPlanner:
             self._metric_resolution_cache[cache_key] = result
             return src, col, conf, role, list(steps)
 
+        if preferred_source:
+            fallback_src, fallback_col, fallback_conf, fallback_role, fallback_steps = (
+                self.resolve_metric(hint, None, agg)
+            )
+            if fallback_src:
+                steps.append(
+                    "[resolve_metric/preferred_source_miss] "
+                    f"broadened search beyond {preferred_source}"
+                )
+                steps.extend(
+                    step
+                    for step in fallback_steps
+                    if step not in steps
+                )
+                result = (
+                    fallback_src,
+                    fallback_col,
+                    fallback_conf,
+                    fallback_role,
+                    list(steps),
+                )
+                self._metric_resolution_cache[cache_key] = result
+                return fallback_src, fallback_col, fallback_conf, fallback_role, list(steps)
+
         steps = steps + ["[resolve_metric_column] no match found"]
         result = ("", "", 0.0, METRIC, list(steps))
         self._metric_resolution_cache[cache_key] = result
@@ -1987,7 +2226,7 @@ class AutoPlanner:
         # Pass 1 uses the token-overlap algorithm in query.py which does exact
         # token intersection.  We pass the raw hint words (no hardcoded expansion).
         dim_hints = hint_words
-        hint_token_set = set(dim_hints)
+        hint_token_set = _semantic_token_set(" ".join(dim_hints))
         hinted_sources = {
             src for src in self.graph
             if hint_token_set & _source_token_set(src)
@@ -2077,7 +2316,7 @@ class AutoPlanner:
                 return g_src, g_col, g_score, list(steps)
 
         if preferred_source and preferred_source in self.graph:
-            pref_dim_tokens = set(dim_hints)
+            pref_dim_tokens = _semantic_token_set(" ".join(dim_hints))
             pref_exact: tuple[str, str, float] | None = None
             pref_src_tokens = _source_token_set(preferred_source)
             for col, node in self.graph[preferred_source].items():
@@ -2168,7 +2407,7 @@ class AutoPlanner:
             fuzzy0, acro0, val_sem0 = _dimension_semantic_evidence(
                 hint_words, g_col, prof_info.get("strings", [])[:30]
             )
-            col_tokens0 = set(re.findall(r"[a-z0-9]+", g_col.lower()))
+            col_tokens0 = _semantic_token_set(g_col)
             query_cov0 = len(hint_token_set & col_tokens0) / max(len(hint_token_set), 1)
             col_cov0 = len(hint_token_set & col_tokens0) / max(len(col_tokens0), 1)
             node0 = self.graph.get(g_src, {}).get(g_col)
@@ -2267,7 +2506,7 @@ class AutoPlanner:
             prof_info = self.profiles.get(src, {}).get(col, {})
             sample_vals = prof_info.get("strings", [])[:30]
             val_sem = _value_semantic_score(hint_words, sample_vals)
-            col_tokens = set(re.findall(r"[a-z0-9]+", col.lower()))
+            col_tokens = _semantic_token_set(col)
             source_tokens = _source_token_set(src)
             query_cov = len(hint_token_set & col_tokens) / max(len(hint_token_set), 1)
             col_cov = len(hint_token_set & col_tokens) / max(len(col_tokens), 1)
@@ -2423,7 +2662,7 @@ class AutoPlanner:
             "with",
         }
         hint_words = [w for w in raw_hint_words if w not in stop_words] or raw_hint_words
-        hint_token_set = set(hint_words)
+        hint_token_set = _semantic_token_set(" ".join(hint_words))
         best_src, best_col, best_score = "", "", 0.0
         steps: list[str] = []
 
@@ -2448,18 +2687,20 @@ class AutoPlanner:
             if fill < 0.02:
                 continue
 
-            col_tokens = set(re.findall(r"[a-z0-9]+", col.lower()))
+            col_tokens = _semantic_token_set(col)
             if not col_tokens:
                 continue
             query_cov = len(hint_token_set & col_tokens) / max(len(hint_token_set), 1)
             col_cov = len(hint_token_set & col_tokens) / max(len(col_tokens), 1)
             exact_cover = min(query_cov, col_cov)
-            if query_cov < 0.95 or col_cov < 0.66:
-                continue
-
             fuzzy, acro, val_sem = _dimension_semantic_evidence(
                 hint_words, col, prof.get("strings", [])[:30]
             )
+            if query_cov < 0.60 and acro < 0.80 and fuzzy < 0.55:
+                continue
+            if col_cov < 0.40 and acro < 0.95:
+                continue
+
             score = (
                 base + max(fuzzy * 0.70, exact_cover * 1.05, acro * 0.50) + val_sem
             ) * max(fill, 0.0)
@@ -2939,6 +3180,49 @@ class AutoPlanner:
             multiplier *= 1.35
         return multiplier
 
+    def _join_key_semantic_multiplier(
+        self,
+        left_source: str,
+        right_source: str,
+        left_key: str,
+        right_key: str,
+    ) -> tuple[float, bool]:
+        left_tokens = _semantic_token_set(left_key)
+        right_tokens = _semantic_token_set(right_key)
+        left_node = self.graph.get(left_source, {}).get(left_key)
+        right_node = self.graph.get(right_source, {}).get(right_key)
+        left_measure_like = bool(
+            _JOIN_KEY_MEASURE_TOKENS & left_tokens
+            or (left_node and left_node.role in _MEASURE_LIKE_ROLES)
+        )
+        right_measure_like = bool(
+            _JOIN_KEY_MEASURE_TOKENS & right_tokens
+            or (right_node and right_node.role in _MEASURE_LIKE_ROLES)
+        )
+        multiplier = 1.0
+        if left_measure_like and right_measure_like:
+            multiplier *= 0.52
+        elif left_measure_like or right_measure_like:
+            multiplier *= 0.76
+
+        left_entity_like = bool(_JOIN_KEY_ENTITY_TOKENS & left_tokens)
+        right_entity_like = bool(_JOIN_KEY_ENTITY_TOKENS & right_tokens)
+        if left_entity_like and right_entity_like:
+            multiplier *= 1.12
+        elif left_entity_like or right_entity_like:
+            multiplier *= 1.04
+
+        if (
+            left_node
+            and right_node
+            and left_node.is_numeric
+            and right_node.is_numeric
+            and not (left_entity_like or right_entity_like)
+        ):
+            multiplier *= 0.82
+
+        return multiplier, left_measure_like and right_measure_like
+
     def _join_candidate_effective_conf(
         self,
         candidate: dict[str, Any],
@@ -2982,6 +3266,8 @@ class AutoPlanner:
                     left_key_raw,
                     right_key_raw,
                 )
+                if evidence["coverage"] <= 0.0 and not group_col:
+                    return 0.0
                 effective *= 0.60 + 0.40 * evidence["coverage"]
                 stability = evidence["single_match_ratio"]
                 fanout_risk = evidence["fanout_risk"]
@@ -2993,6 +3279,8 @@ class AutoPlanner:
                         right_key_raw,
                         group_col,
                     )
+                    if evidence["coverage"] <= 0.0 and group_evidence["coverage"] <= 0.0:
+                        return 0.0
                     stability = max(stability, group_evidence["stable_ratio"])
                     fanout_risk = max(0.0, fanout_risk - 0.80 * group_evidence["stable_ratio"])
                     effective *= 0.70 + 0.30 * group_evidence["coverage"]
@@ -3013,6 +3301,13 @@ class AutoPlanner:
                 left_key_raw,
                 right_key_raw,
             )
+            join_key_multiplier, both_measure_like = self._join_key_semantic_multiplier(
+                left_source,
+                right_source,
+                left_key_raw,
+                right_key_raw,
+            )
+            effective *= join_key_multiplier
             known_unique_counts = [
                 count for count in (left_unique_count, right_unique_count) if count > 0
             ]
@@ -3020,7 +3315,15 @@ class AutoPlanner:
                 effective *= 0.82
             elif known_unique_counts and max(known_unique_counts) <= 100:
                 effective *= 0.92
-        if penalty < 1.0 and left_key and right_key and left_key == right_key:
+        else:
+            both_measure_like = False
+        if (
+            penalty < 1.0
+            and left_key
+            and right_key
+            and left_key == right_key
+            and not both_measure_like
+        ):
             effective += 0.06
         return round(min(effective, 1.0), 6)
 
@@ -3334,7 +3637,7 @@ class AutoPlanner:
                 group_col  = d_col
                 group_conf = d_conf
 
-                hint_tokens = set(re.findall(r"[a-z0-9]+", dim_hint.lower()))
+                hint_tokens = _semantic_token_set(dim_hint)
                 hinted_sources = {
                     src for src in self.graph
                     if hint_tokens & _source_token_set(src)
@@ -3343,8 +3646,8 @@ class AutoPlanner:
                     fb_src, fb_col, fb_score, fb_steps = (
                         self._same_source_dimension_candidate(metric_src, dim_hint)
                     )
-                    current_tokens = set(re.findall(r"[a-z0-9]+", (group_col or "").lower()))
-                    fallback_tokens = set(re.findall(r"[a-z0-9]+", (fb_col or "").lower()))
+                    current_tokens = _semantic_token_set(group_col or "")
+                    fallback_tokens = _semantic_token_set(fb_col or "")
                     same_named_dimension = bool(
                         fallback_tokens and fallback_tokens == current_tokens
                     )

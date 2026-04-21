@@ -112,8 +112,13 @@ class DeploymentRoutingMiddleware(BaseHTTPMiddleware):
                 if cached is not None:
                     decoded = cached.decode() if isinstance(cached, bytes) else str(cached)
                     return decoded if decoded != "shared" else None
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug(
+                "deployment_endpoint_cache_read_failed",
+                org_id=org_id,
+                cache_key=cache_key,
+                error=str(exc),
+            )
 
         # Cache miss — query DB
         try:
@@ -144,8 +149,13 @@ class DeploymentRoutingMiddleware(BaseHTTPMiddleware):
                         endpoint_url or "shared",
                         ex=_CACHE_TTL,
                     )
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug(
+                    "deployment_endpoint_cache_write_failed",
+                    org_id=org_id,
+                    cache_key=cache_key,
+                    error=str(exc),
+                )
 
             return endpoint_url
 
@@ -208,5 +218,9 @@ def invalidate_deployment_cache(org_id: str, redis_client: object) -> None:
         redis: aioredis.Redis = redis_client  # type: ignore
         cache_key = f"{_CACHE_PREFIX}{org_id}"
         asyncio.create_task(redis.delete(cache_key))
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug(
+            "deployment_cache_invalidation_failed",
+            org_id=org_id,
+            error=str(exc),
+        )

@@ -18,21 +18,32 @@ import json
 import os
 import urllib.request
 from typing import Any
+from urllib.parse import urlparse
 
 BASE_URL = os.environ.get("DE_BASE_URL", "http://localhost:8000")
 API_KEY = os.environ.get("DE_API_KEY", "")
 
 
+def _validated_base_url() -> str:
+    parsed = urlparse(BASE_URL)
+    if parsed.scheme not in {"http", "https"}:
+        raise ValueError(f"Unsupported Decision Engine base URL scheme: {parsed.scheme!r}")
+    return BASE_URL
+
+
 def _api(method: str, path: str, body: dict[str, Any] | None = None) -> dict[str, Any]:
     """Internal HTTP helper — no external dependencies."""
     data = json.dumps(body).encode() if body else None
-    req = urllib.request.Request(
-        f"{BASE_URL}{path}",
+    req = urllib.request.Request(  # noqa: S310
+        f"{_validated_base_url()}{path}",
         data=data,
-        headers={"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"},
+        headers={
+            "Authorization": f"Bearer {API_KEY}",
+            "Content-Type": "application/json",
+        },
         method=method,
     )
-    with urllib.request.urlopen(req, timeout=120) as resp:
+    with urllib.request.urlopen(req, timeout=120) as resp:  # noqa: S310
         return json.loads(resp.read())  # type: ignore[return-value]
 
 
@@ -105,7 +116,9 @@ def recommend_action(
 
     Args:
         actions: List of {name, variables, objective} dicts to compare.
-                 Example: [{"name": "option_a", "variables": {"revenue": {"low": 80000, "high": 200000}}, "objective": "maximize_net_value"}]
+                 Example: [{"name": "option_a", "variables": {"revenue":
+                 {"low": 80000, "high": 200000}}, "objective":
+                 "maximize_net_value"}]
         runs: Number of Monte Carlo iterations per action (default: 10000)
 
     Returns:
@@ -170,14 +183,22 @@ print(result["messages"][-1].content)
 '''
 
 if __name__ == "__main__":
+    import sys
+
+    def _emit(message: str = "") -> None:
+        sys.stdout.write(f"{message}\n")
+
     # Quick test without LangChain
-    print("Testing Decision Engine LangGraph tool directly...\n")
+    _emit("Testing Decision Engine LangGraph tool directly...\n")
     result = simulate_decision(  # type: ignore[call-arg]
-        variables={"revenue": {"low": 80000, "high": 200000}, "cost": {"low": 40000, "high": 90000}},
+        variables={
+            "revenue": {"low": 80000, "high": 200000},
+            "cost": {"low": 40000, "high": 90000},
+        },
         objective="maximize_net_value",
         runs=5000,
     )
-    print("simulate_decision result:")
-    print(result)
-    print("\nAgent usage example:")
-    print(EXAMPLE_AGENT_CODE)
+    _emit("simulate_decision result:")
+    _emit(result)
+    _emit("\nAgent usage example:")
+    _emit(EXAMPLE_AGENT_CODE)

@@ -103,14 +103,18 @@ def req(method: str, path: str, body=None, headers=None, auth=True, timeout=10) 
         except Exception:
             body_data = body_bytes.decode("utf-8", errors="replace")
         return e.code, body_data, dict(e.headers), elapsed
-    except TimeoutError:
+    except TimeoutError as err:
         elapsed = time.perf_counter() - t0
-        raise TimeoutError(f"Request to {url} timed out after {timeout}s (elapsed: {elapsed:.1f}s)")
-    except urllib.error.URLError as e:
-        if "timed out" in str(e):
+        raise TimeoutError(
+            f"Request to {url} timed out after {timeout}s (elapsed: {elapsed:.1f}s)"
+        ) from err
+    except urllib.error.URLError as err:
+        if "timed out" in str(err):
             elapsed = time.perf_counter() - t0
-            raise TimeoutError(f"Request to {url} timed out after {timeout}s (elapsed: {elapsed:.1f}s)")
-        raise RuntimeError(f"Cannot connect to {BASE_URL} — is the API server running?") from e
+            raise TimeoutError(
+                f"Request to {url} timed out after {timeout}s (elapsed: {elapsed:.1f}s)"
+            ) from err
+        raise RuntimeError(f"Cannot connect to {BASE_URL} — is the API server running?") from err
 
 
 def check(name: str, fn):
@@ -215,7 +219,7 @@ def _value_matches_type(value, declared_type: str) -> bool:
     if declared_type == "string":
         return isinstance(value, str)
     elif declared_type == "number":
-        return isinstance(value, (int, float))
+        return isinstance(value, int | float)
     elif declared_type == "integer":
         return isinstance(value, int) and not isinstance(value, bool)
     elif declared_type == "boolean":
@@ -668,10 +672,9 @@ check("GET /v1/runs response matches declared schema", test_runs_response_compli
 
 
 def test_templates_response_compliance():
-    spec = get_spec()
     status, body, hdrs, elapsed = req("GET", "/v1/templates")
     assert status == 200, f"Templates returned {status}"
-    assert isinstance(body, (list, dict)), f"Templates response is not list/dict: {type(body)}"
+    assert isinstance(body, list | dict), f"Templates response is not list/dict: {type(body)}"
     if isinstance(body, list) and len(body) > 0:
         item = body[0]
         assert "slug" in item or "name" in item or "id" in item, \
@@ -684,10 +687,9 @@ check("GET /v1/templates response matches declared schema", test_templates_respo
 
 
 def test_connectors_response_compliance():
-    spec = get_spec()
     status, body, hdrs, elapsed = req("GET", "/v1/connectors")
     assert status == 200, f"Connectors returned {status}"
-    assert isinstance(body, (list, dict)), f"Connectors response is not list/dict: {type(body)}"
+    assert isinstance(body, list | dict), f"Connectors response is not list/dict: {type(body)}"
     ct = hdrs.get("Content-Type", hdrs.get("content-type", ""))
     assert "application/json" in ct, f"Content-Type is not JSON: {ct}"
     timings.append(("GET /v1/connectors (compliance)", elapsed))
@@ -711,10 +713,9 @@ check("GET /v1/analytics returns valid JSON response", test_analytics_response_c
 
 
 def test_distributions_response_compliance():
-    spec = get_spec()
     status, body, hdrs, elapsed = req("GET", "/v1/distributions")
     assert status == 200, f"Distributions returned {status}"
-    assert isinstance(body, (list, dict)), f"Unexpected type: {type(body)}"
+    assert isinstance(body, list | dict), f"Unexpected type: {type(body)}"
     ct = hdrs.get("Content-Type", hdrs.get("content-type", ""))
     assert "application/json" in ct, f"Content-Type is not JSON: {ct}"
     timings.append(("GET /v1/distributions (compliance)", elapsed))
@@ -845,7 +846,7 @@ def test_bearer_auth_scheme():
     spec = get_spec()
     schemes = spec.get("components", {}).get("securitySchemes", {})
     has_bearer = False
-    for name, scheme in schemes.items():
+    for _, scheme in schemes.items():
         if scheme.get("type") == "http" and scheme.get("scheme") == "bearer":
             has_bearer = True
     assert has_bearer, f"No HTTP Bearer auth scheme found. Schemes: {list(schemes.keys())}"
@@ -923,7 +924,7 @@ def test_simulate_numeric_fields():
     status, body, _, elapsed = req("POST", "/v1/simulate", body=AUTO_PAYLOAD)
     assert status == 200, f"Simulate returned {status}: {body}"
     if "confidence" in body:
-        assert isinstance(body["confidence"], (int, float)), \
+        assert isinstance(body["confidence"], int | float), \
             f"confidence is {type(body['confidence']).__name__}, expected number"
     if "scenarios_run" in body:
         assert isinstance(body["scenarios_run"], int), \
@@ -935,7 +936,7 @@ def test_simulate_numeric_fields():
         metrics = body["metrics"]
         for field in ["expected_value", "median", "std_deviation", "variance"]:
             if field in metrics:
-                assert isinstance(metrics[field], (int, float)), \
+                assert isinstance(metrics[field], int | float), \
                     f"metrics.{field} is {type(metrics[field]).__name__}, expected number"
     timings.append(("POST /v1/simulate (type check)", elapsed))
 
@@ -962,7 +963,7 @@ def test_simulate_percentiles_numeric():
     if "percentiles" in body and isinstance(body["percentiles"], dict):
         for key, val in body["percentiles"].items():
             if val is not None:
-                assert isinstance(val, (int, float)), \
+                assert isinstance(val, int | float), \
                     f"percentiles.{key} is {type(val).__name__}, expected number"
     timings.append(("POST /v1/simulate (percentiles check)", elapsed))
 
@@ -1227,7 +1228,7 @@ def test_all_refs_resolve():
 check("All $ref references resolve correctly", test_all_refs_resolve)
 
 
-def test_oneOf_discriminator_for_simulate():
+def test_oneof_discriminator_for_simulate():
     """POST /v1/simulate uses oneOf with discriminator for auto/expert."""
     spec = get_spec()
     simulate = spec.get("paths", {}).get("/v1/simulate", {}).get("post", {})
@@ -1241,7 +1242,7 @@ def test_oneOf_discriminator_for_simulate():
         assert disc.get("propertyName") == "mode", \
             f"Discriminator property should be 'mode', got {disc.get('propertyName')}"
 
-check("Simulate request uses oneOf with 'mode' discriminator", test_oneOf_discriminator_for_simulate)
+check("Simulate request uses oneOf with 'mode' discriminator", test_oneof_discriminator_for_simulate)
 
 
 def test_spec_has_descriptions():

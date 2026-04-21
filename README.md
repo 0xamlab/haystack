@@ -260,7 +260,7 @@ Like **Supabase**, **n8n**, and **Reown** — the framework is open, the engine 
 
 | Component | Status |
 |-----------|--------|
-| API server, portal, SDKs, MCP, integrations | Open source (ACL 1.0) |
+| API server, SDKs, MCP, integrations, docs content | Open source (ACL 1.0) |
 | Simulation engine binary | Free to run, proprietary |
 | Mojo engine source | Proprietary |
 
@@ -278,10 +278,11 @@ cp .env.example .env
 
 pip install -r requirements-dev.txt
 make dev-api      # API on :8000
-make dev-portal   # Portal on :3000
 
 pytest tests/ -v  # Run tests
 ```
+
+The web interface is maintained outside this repository.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide.
 

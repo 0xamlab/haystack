@@ -74,14 +74,18 @@ def req(method: str, path: str, body=None, headers=None, auth=True, timeout=10):
         except Exception:
             body_data = body_bytes.decode("utf-8", errors="replace")
         return e.code, body_data, dict(e.headers), elapsed
-    except TimeoutError:
+    except TimeoutError as err:
         elapsed = time.perf_counter() - t0
-        raise TimeoutError(f"Request to {url} timed out after {timeout}s (elapsed: {elapsed:.1f}s)")
-    except urllib.error.URLError as e:
-        if "timed out" in str(e):
+        raise TimeoutError(
+            f"Request to {url} timed out after {timeout}s (elapsed: {elapsed:.1f}s)"
+        ) from err
+    except urllib.error.URLError as err:
+        if "timed out" in str(err):
             elapsed = time.perf_counter() - t0
-            raise TimeoutError(f"Request to {url} timed out after {timeout}s")
-        raise RuntimeError(f"Cannot connect to {BASE_URL} — is the API server running?") from e
+            raise TimeoutError(f"Request to {url} timed out after {timeout}s") from err
+        raise RuntimeError(
+            f"Cannot connect to {BASE_URL} — is the API server running?"
+        ) from err
 
 
 def raw_req(method: str, path: str, raw_data: bytes = None, headers: dict = None, timeout=10):
@@ -107,14 +111,16 @@ def raw_req(method: str, path: str, raw_data: bytes = None, headers: dict = None
         except Exception:
             body_data = body_bytes.decode("utf-8", errors="replace")
         return e.code, body_data, dict(e.headers), elapsed
-    except TimeoutError:
+    except TimeoutError as err:
         elapsed = time.perf_counter() - t0
-        raise TimeoutError(f"Request to {url} timed out after {timeout}s")
-    except urllib.error.URLError as e:
-        if "timed out" in str(e):
+        raise TimeoutError(f"Request to {url} timed out after {timeout}s") from err
+    except urllib.error.URLError as err:
+        if "timed out" in str(err):
             elapsed = time.perf_counter() - t0
-            raise TimeoutError(f"Request to {url} timed out after {timeout}s")
-        raise RuntimeError(f"Cannot connect to {BASE_URL} — is the API server running?") from e
+            raise TimeoutError(f"Request to {url} timed out after {timeout}s") from err
+        raise RuntimeError(
+            f"Cannot connect to {BASE_URL} — is the API server running?"
+        ) from err
 
 
 def check(name: str, fn):
@@ -482,7 +488,6 @@ def test_headers_cors_present():
         },
     )
     # The server allows CORS for localhost:3000 per config
-    acl = hdrs.get("Access-Control-Allow-Origin", hdrs.get("access-control-allow-origin", ""))
     # If CORS is configured, it should return an Allow-Origin header
     # It may be * or the specific origin
     assert status == 200, f"Expected 200 for OPTIONS, got {status}"

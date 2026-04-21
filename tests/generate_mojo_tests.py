@@ -102,8 +102,10 @@ def _parse_params(raw: str) -> list[Param] | None:
     depth = 0
     cur   = ""
     for ch in raw:
-        if ch in "([": depth += 1
-        elif ch in ")]": depth -= 1
+        if ch in "([":
+            depth += 1
+        elif ch in ")]":
+            depth -= 1
         if ch == "," and depth == 0:
             params_raw.append(cur.strip())
             cur = ""
@@ -178,7 +180,8 @@ def parse_library(path: Path) -> list[FnSig]:
             depth = 1
             buf = ""
             for ch in paren_text:
-                if ch == "(": depth += 1
+                if ch == "(":
+                    depth += 1
                 elif ch == ")":
                     depth -= 1
                     if depth == 0:

@@ -93,11 +93,15 @@ class Runtime:
         auto_start_daemon: bool  = True,
         base_url:          str   = "",
     ) -> None:
-        self._api_key   = api_key or os.environ.get("ALGENTA_API_KEY", "") or os.environ.get("DE_API_KEY", "")
-        self._mode      = mode
-        self._timeout   = timeout
-        self._auto_start= auto_start_daemon
-        self._base_url  = (
+        self._api_key = (
+            api_key
+            or os.environ.get("ALGENTA_API_KEY", "")
+            or os.environ.get("DE_API_KEY", "")
+        )
+        self._mode = mode
+        self._timeout = timeout
+        self._auto_start = auto_start_daemon
+        self._base_url = (
             base_url
             or os.environ.get("ALGENTA_BASE_URL", "")
             or os.environ.get("DE_BASE_URL", "")
@@ -106,7 +110,9 @@ class Runtime:
         )
 
         if mode not in ("auto", "local", "cloud", "direct"):
-            raise ValueError(f"Invalid mode '{mode}'. Use: auto | local | cloud | direct")
+            raise ValueError(
+                f"Invalid mode '{mode}'. Use: auto | local | cloud | direct"
+            )
 
     # ── Sync public API ───────────────────────────────────────────────────────
 
@@ -160,6 +166,7 @@ class Runtime:
         mode = self._resolve_mode("")
         if mode in ("local", "auto"):
             from apps.runtime.client import DaemonClient
+
             client = DaemonClient(timeout=self._timeout)
             return await client.health()
         return await self._cloud_health()
@@ -169,6 +176,7 @@ class Runtime:
         if mode == "cloud":
             return _CLOUD_MODULE_LIST
         from apps.runtime.client import DaemonClient
+
         client = DaemonClient(timeout=self._timeout)
         modules = await client.list_modules()
         return modules if modules else _CLOUD_MODULE_LIST
@@ -186,6 +194,7 @@ class Runtime:
 
         # "auto" — prefer local if daemon is running
         from apps.runtime.client import DaemonClient
+
         if DaemonClient.is_daemon_running():
             return "local"
         # Domain libraries require local runtime
@@ -193,7 +202,10 @@ class Runtime:
             logger.warning(
                 "sdk_domain_library_no_daemon",
                 module=module,
-                hint="Domain libraries require the local daemon. Run: python -m apps.runtime.daemon start",
+                hint=(
+                    "Domain libraries require the local daemon. "
+                    "Run: python -m apps.runtime.daemon start"
+                ),
             )
         return "cloud"
 
@@ -277,6 +289,7 @@ class Runtime:
         config.setdefault("simulation_model", module)
 
         import httpx
+
         t0 = time.monotonic()
         try:
             async with httpx.AsyncClient(timeout=self._timeout) as client:
@@ -316,13 +329,16 @@ class Runtime:
 
     async def _cloud_health(self) -> dict:
         import httpx
+
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
                 resp = await client.get(
                     f"{self._base_url}/health",
                     headers=self._auth_headers(),
                 )
-            return resp.json() if resp.status_code == 200 else {"status": "error", "code": resp.status_code}
+            if resp.status_code == 200:
+                return resp.json()
+            return {"status": "error", "code": resp.status_code}
         except Exception as exc:
             return {"status": "unreachable", "error": str(exc)}
 
@@ -331,6 +347,7 @@ class Runtime:
     async def _direct_execute(self, module: str, function: str, args: Any) -> dict:
         """Execute directly in-process via Executor (no daemon needed)."""
         from apps.runtime.executor import Executor
+
         executor = Executor()
         return await executor.execute_module(module, function, args)
 

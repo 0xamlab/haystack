@@ -1,0 +1,46 @@
+Store,External Store ID,Country,Country Code,City,Inaccurate Items,Inaccurate Customizations,External Item ID,External Data,Order Issue,Item Issue,Count
+Serafina (Aventura),,United States,USA,Miami,Chocolate Cake,,,,ISSUE_WITH_ITEMS,MISSING_ITEM,7
+Serafina (Aventura),,United States,USA,Miami,Margherita Pizza,,399EAF71-51ED-4B6D-B4FD-B3365BDB2725,"{""id"":""2CF539F5-BF89-410C-8A65-3E45C72D55AE"",""type"":""item""}",ISSUE_WITH_ITEMS,MISSING_ITEM,3
+Serafina (Aventura),,United States,USA,Miami,Tartufo Nero,,B89DFD3E-84A3-48C9-8729-8A5A24659685,"{""id"":""FE8AEFB4-AFC4-4D60-AE4C-3515A2E22ECF"",""type"":""item""}",ISSUE_WITH_ITEMS,MISSING_ITEM,2
+Serafina (Aventura),,United States,USA,Miami,Rigatoni Alla Bolognese,,001D4332-02B6-4101-ACD6-9E1A08CE666F,"{""id"":""6465C1FD-51FD-4C04-AE08-AE3E4E3C919E"",""type"":""item""}",ISSUE_WITH_ITEMS,WRONG_ORDER,2
+Serafina (Aventura),,United States,USA,Miami,Margherita Pizza,,399EAF71-51ED-4B6D-B4FD-B3365BDB2725,"{""id"":""2CF539F5-BF89-410C-8A65-3E45C72D55AE"",""type"":""item""}",WRONG_ORDER,WRONG_ORDER,2
+Serafina (Aventura),,United States,USA,Miami,Rigatoni Alla Bolognese,Add Chicken,001D4332-02B6-4101-ACD6-9E1A08CE666F,"{""id"":""6465C1FD-51FD-4C04-AE08-AE3E4E3C919E"",""type"":""item""}",ISSUE_WITH_ITEMS,WRONG_ITEM,2
+Serafina (Aventura),,United States,USA,Miami,Linguine Frutti Di Mare,,9108547B-3870-4F1C-9E98-B09663CE7379,"{""id"":""8FF23A16-44FB-4057-9DCB-7B4AA846CD49"",""type"":""item""}",ISSUE_WITH_ITEMS,FOOD_QUALITY-BURNT,1
+Serafina (Aventura),,United States,USA,Miami,Rigatoni Alla Bolognese,,001D4332-02B6-4101-ACD6-9E1A08CE666F,"{""id"":""6465C1FD-51FD-4C04-AE08-AE3E4E3C919E"",""type"":""item""}",ISSUE_WITH_ITEMS,MISSING_ITEM,1
+Serafina (Aventura),,United States,USA,Miami,Penne all’arrabbiata,,,,WRONG_ORDER,WRONG_ORDER,1
+Serafina (Aventura),,United States,USA,Miami,Pepperoni Pizza,,8CD395FD-83CD-4815-A65D-4B041BA6CDBE,"{""id"":""212D909C-B614-4BAB-A482-025812E6851F"",""type"":""item""}",WRONG_ORDER,WRONG_ORDER,1
+Serafina (Aventura),,United States,USA,Miami,Di Sofia,,0FEFEB11-1EE7-486F-ABBE-B779B438D675,"{""id"":""B58F55F3-9237-4DAB-8918-40DDB79C0854"",""type"":""item""}",ISSUE_WITH_ITEMS,MISSING_ITEM,1
+Serafina (Aventura),,United States,USA,Miami,Margherita Pizza,,399EAF71-51ED-4B6D-B4FD-B3365BDB2725,"{""id"":""2CF539F5-BF89-410C-8A65-3E45C72D55AE"",""type"":""item""}",ISSUE_WITH_ITEMS,FOOD_QUALITY-UNDERCOOKED,1
+Serafina (Aventura),,United States,USA,Miami,Strawberry Cheesecake,,13013F8E-9EEA-4883-A388-E9DDED0E518E,"{""id"":""84AEE59B-8EEF-4AE6-AEE5-C86D6A12273A"",""type"":""item""}",ISSUE_WITH_ITEMS,WRONG_ITEM,1
+Serafina (Aventura),,United States,USA,Miami,Margherita Pizza,Add Sausage,399EAF71-51ED-4B6D-B4FD-B3365BDB2725,"{""id"":""2CF539F5-BF89-410C-8A65-3E45C72D55AE"",""type"":""item""}",ISSUE_WITH_ITEMS,MISSING_ITEM,1
+Serafina (Aventura),,United States,USA,Miami,Rigatoni Alla Bolognese,Add Chicken,001D4332-02B6-4101-ACD6-9E1A08CE666F,"{""id"":""6465C1FD-51FD-4C04-AE08-AE3E4E3C919E"",""type"":""item""}",ISSUE_WITH_ITEMS,MISSING_ITEM,1
+Serafina (Aventura),,United States,USA,Miami,Cauliflower Crust,,,,ISSUE_WITH_ITEMS,MISSING_ITEM,1
+Serafina (Aventura),,United States,USA,Miami,Farfalle Limoncello,,62821EE7-B214-4B66-AC83-F3B63D6FB349,"{""id"":""1D183AF5-89F3-4337-ABE5-EA7C2A94C612"",""type"":""item""}",ISSUE_WITH_ITEMS,PARTIAL_MISSING_ITEM,1
+Serafina (Aventura),,United States,USA,Miami,Tartufo Nero,,B89DFD3E-84A3-48C9-8729-8A5A24659685,"{""id"":""FE8AEFB4-AFC4-4D60-AE4C-3515A2E22ECF"",""type"":""item""}",ISSUE_WITH_ITEMS,FOOD_QUALITY-SPOILED_OR_STALE,1
+Serafina (Aventura),,United States,USA,Miami,Rigatoni Alla Bolognese,,001D4332-02B6-4101-ACD6-9E1A08CE666F,"{""id"":""6465C1FD-51FD-4C04-AE08-AE3E4E3C919E"",""type"":""item""}",ISSUE_WITH_ITEMS,PARTIAL_MISSING_ITEM,1
+Serafina (Aventura),,United States,USA,Miami,Gnocchi Di Mamma,,516F3733-38F5-4CC0-888B-135C11813016,"{""id"":""E8CBA0DF-A077-45E3-A307-4BDDD071C362"",""type"":""item""}",ISSUE_WITH_ITEMS,FOOD_QUALITY-SPOILED_OR_STALE,1
+Serafina (Aventura),,United States,USA,Miami,Veal Chop Milanese,,16B8102F-1ED7-42D0-A147-2B8B2E03B993,"{""id"":""6D0F65BE-A0EE-4D2F-91FE-29A3F4109548"",""type"":""item""}",ISSUE_WITH_ITEMS,MISSING_ITEM,1
+Serafina (Aventura),,United States,USA,Miami,Cacio e Pepe,,2DBA85FC-2000-4324-A467-AF753198FA0C,"{""id"":""B055E92F-FB38-470F-A8C0-E8EB1B6D7169"",""type"":""item""}",ISSUE_WITH_ITEMS,MISSING_ITEM,1
+Serafina (Aventura),,United States,USA,Miami,Strawberry Cheesecake,,13013F8E-9EEA-4883-A388-E9DDED0E518E,"{""id"":""84AEE59B-8EEF-4AE6-AEE5-C86D6A12273A"",""type"":""item""}",ISSUE_WITH_ITEMS,MISSING_ITEM,1
+Serafina (Aventura),,United States,USA,Miami,Margherita Pizza,,399EAF71-51ED-4B6D-B4FD-B3365BDB2725,"{""id"":""2CF539F5-BF89-410C-8A65-3E45C72D55AE"",""type"":""item""}",ISSUE_WITH_ITEMS,FOOD_QUALITY-SPOILED_OR_STALE,1
+Serafina (Downtown),,United States,USA,Miami,PANACOTTA,,F5BD6765-6D12-4DAA-A5E0-85C056460FC1,"{""id"":""AA53B56A-CA31-4D23-A7A2-DBB81C042679"",""type"":""item""}",ISSUE_WITH_ITEMS,MISSING_ITEM,2
+Serafina (Downtown),,United States,USA,Miami,CHICKEN PAILLAIRD,,0AFEF98F-7D22-4889-8B6B-2A27E102728D,"{""id"":""2202D53F-8767-457C-A33A-BEFF1154A013"",""type"":""item""}",ISSUE_WITH_ITEMS,MISSING_ITEM,2
+Serafina (Downtown),,United States,USA,Miami,PENNE VODKA,Chicken,,,ISSUE_WITH_ITEMS,MISSING_ITEM,2
+Serafina (Downtown),,United States,USA,Miami,LEMON CAKE,,F227A10A-3C08-4BB7-83BB-D0FA630AC63F,"{""id"":""1B6337E7-F826-4E78-96F8-F0DCF1975665"",""type"":""item""}",ISSUE_WITH_ITEMS,MISSING_ITEM,1
+Serafina (Downtown),,United States,USA,Miami,TIRAMISU,,,,ISSUE_WITH_ITEMS,FOOD_QUALITY-BURNT,1
+Serafina (Downtown),,United States,USA,Miami,DI SOFIA PIZZA,Prosciutto,,,ISSUE_WITH_ITEMS,MISSING_ITEM,1
+Serafina (Downtown),,United States,USA,Miami,PEPPERONI,,,,ISSUE_WITH_ITEMS,FOOD_QUALITY-BURNT,1
+Serafina (Downtown),,United States,USA,Miami,CALAMARI,,2DDD13BC-0C61-48D5-99A0-2F3BE351E98D,"{""id"":""48C0552F-AE9B-4E30-B234-3924D4C38DF6"",""type"":""item""}",ISSUE_WITH_ITEMS,MISSING_ITEM,1
+Serafina (Downtown),,United States,USA,Miami,MEATBALLS,,,,ISSUE_WITH_ITEMS,MISSING_ITEM,1
+Serafina (Downtown),,United States,USA,Miami,Spinach & Goat Cheese,Salmon,,,ISSUE_WITH_ITEMS,MISSING_ITEM,1
+Serafina (Downtown),,United States,USA,Miami,DI SOFIA,Chicken,EDF00E85-2656-41EC-97A5-1507D26F3995,"{""id"":""4B603862-1098-4912-835B-A142BD6D6587"",""type"":""item""}",ISSUE_WITH_ITEMS,MISSING_ITEM,1
+Serafina (Downtown),,United States,USA,Miami,Maccheroni,,,,ISSUE_WITH_ITEMS,MISSING_ITEM,1
+Serafina (Downtown),,United States,USA,Miami,PENNE VODKA,,,,ISSUE_WITH_ITEMS,MISSING_ITEM,1
+Serafina (Downtown),,United States,USA,Miami,PEPPERONI,Sausage,,,ISSUE_WITH_ITEMS,MISSING_ITEM,1
+Serafina (Downtown),,United States,USA,Miami,Spinach & Goat Cheese,,,,ISSUE_WITH_ITEMS,MISSING_ITEM,1
+Serafina (Downtown),,United States,USA,Miami,UE Focaccia,,,,ISSUE_WITH_ITEMS,MISSING_ITEM,1
+Serafina (Downtown),,United States,USA,Miami,Lobster Ravioli,,,,ISSUE_WITH_ITEMS,MISSING_ITEM,1
+Serafina (Downtown),,United States,USA,Miami,PENNE VODKA,,,,ISSUE_WITH_ITEMS,FOOD_QUALITY-BURNT,1
+Serafina (Downtown),,United States,USA,Miami,BRANZINO,,3B8A7108-08A2-4EA2-942D-7173A9223D8A,"{""id"":""68BC3DAA-4D81-4DDA-B3BD-632CEB904BBA"",""type"":""item""}",ISSUE_WITH_ITEMS,MISSING_ITEM,1
+Serafina (Downtown),,United States,USA,Miami,MARGHERITA,Prosciutto,75D83DF4-FC91-4C55-A083-BEBFA1CA3F76,"{""id"":""F6144DD5-67EE-4229-826C-19C565CA301B"",""type"":""item""}",ISSUE_WITH_ITEMS,MISSING_ITEM,1
+Serafina (Downtown),,United States,USA,Miami,PENNE ARRABIATA,,,,ISSUE_WITH_ITEMS,WRONG_ITEM,1

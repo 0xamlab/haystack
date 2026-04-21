@@ -15,10 +15,10 @@ sidebar_position: 1
 | Method | Path | Description |
 |--------|------|-------------|
 | `POST` | [`/v1/simulate`](/api-reference/simulate) | Run a Monte Carlo simulation |
-| `POST` | [`/v1/recommend`](/api-reference/recommend) | Pick the best action from multiple options |
-| `POST` | [`/v1/score`](/api-reference/score) | Score a single scenario (0.0–1.0) |
-| `POST` | [`/v1/batch`](/api-reference/batch) | Run multiple simulations in one request |
-| `POST` | [`/v1/compare`](/api-reference/compare) | Compare named scenarios head-to-head |
+| `POST` | `/v1/recommend` | Pick the best action from multiple options |
+| `POST` | `/v1/score` | Score a single scenario (0.0–1.0) |
+| `POST` | `/v1/batch` | Run multiple simulations in one request |
+| `POST` | `/v1/compare` | Compare named scenarios head-to-head |
 | `POST` | `/v1/jobs` | Submit async simulation job |
 | `GET`  | `/v1/jobs/{id}` | Poll job status |
 | `GET`  | `/v1/jobs/{id}/result` | Retrieve completed job result |

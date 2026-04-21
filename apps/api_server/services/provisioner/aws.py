@@ -31,7 +31,10 @@ class AWSProvisioner(BaseProvisioner):
             import boto3
             self._boto3 = boto3
         except ImportError:
-            logger.warning("boto3_not_installed", hint="pip install boto3 to enable AWS provisioning")
+            logger.warning(
+                "boto3_not_installed",
+                hint="pip install boto3 to enable AWS provisioning",
+            )
             self._boto3 = None
 
     async def provision(
@@ -60,21 +63,25 @@ class AWSProvisioner(BaseProvisioner):
         config: dict[str, Any],
     ) -> ProvisionResult:
         """Synchronous AWS provisioning — runs in executor thread."""
-        from apps.api_server.config import get_settings
-        settings = get_settings()
-
         deploy_name = f"algenta-{str(deployment_id)[:8]}"
         endpoint_url = f"https://{str(deployment_id)[:8]}.deploy.algenta.ai"
 
         resource_ids = {
-            "ecs_cluster_arn":     f"arn:aws:ecs:{region}:000000000000:cluster/{deploy_name}",
-            "ecs_service_arn":     f"arn:aws:ecs:{region}:000000000000:service/{deploy_name}/{deploy_name}-api",
-            "rds_instance_id":     f"{deploy_name}-db",
+            "ecs_cluster_arn": (
+                f"arn:aws:ecs:{region}:000000000000:cluster/{deploy_name}"
+            ),
+            "ecs_service_arn": (
+                f"arn:aws:ecs:{region}:000000000000:service/"
+                f"{deploy_name}/{deploy_name}-api"
+            ),
+            "rds_instance_id": f"{deploy_name}-db",
             "elasticache_cluster_id": f"{deploy_name}-redis",
-            "alb_dns_name":        f"{deploy_name}.{region}.elb.amazonaws.com",
+            "alb_dns_name": f"{deploy_name}.{region}.elb.amazonaws.com",
             "route53_hosted_zone_id": "Z000000000",
-            "acm_certificate_arn": f"arn:aws:acm:{region}:000000000000:certificate/{deployment_id}",
-            "region":      region,
+            "acm_certificate_arn": (
+                f"arn:aws:acm:{region}:000000000000:certificate/{deployment_id}"
+            ),
+            "region": region,
             "deploy_name": deploy_name,
         }
 

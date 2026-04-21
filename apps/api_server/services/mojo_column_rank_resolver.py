@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import atexit
-import hashlib
 import json
 import os
 import socket
@@ -10,6 +9,7 @@ import subprocess
 import tempfile
 import threading
 import time
+import zlib
 from collections.abc import Callable
 from itertools import count
 from pathlib import Path
@@ -215,8 +215,12 @@ class _PlannerMojoClientPool:
         init_payload: dict[str, Any] | None = None,
     ) -> dict[str, Any] | None:
         with self._lock:
-            client = self._clients[self._next_index]
-            self._next_index = (self._next_index + 1) % len(self._clients)
+            if session_key:
+                client_index = zlib.adler32(session_key.encode("utf-8")) % len(self._clients)
+                client = self._clients[client_index]
+            else:
+                client = self._clients[self._next_index]
+                self._next_index = (self._next_index + 1) % len(self._clients)
         return client.invoke(
             payload,
             timeout,
@@ -229,10 +233,8 @@ class _PlannerMojoClientPool:
             client.close()
 
 
-def _get_planner_pool(binary_path: Path, session_key: str | None = None) -> _PlannerMojoClientPool:
+def _get_planner_pool(binary_path: Path) -> _PlannerMojoClientPool:
     key = str(binary_path.resolve())
-    if session_key:
-        key = f"{key}::{session_key}"
     with _CLIENTS_LOCK:
         pool = _CLIENT_POOLS.get(key)
         if pool is None:
@@ -257,7 +259,7 @@ def invoke_column_rank(
     session_key: str | None = None,
     init_payload: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
-    return _get_planner_pool(binary_path, session_key=session_key).invoke(
+    return _get_planner_pool(binary_path).invoke(
         payload,
         timeout,
         session_key=session_key,
@@ -296,10 +298,12 @@ class MojoColumnRankResolver:
         self._entry_lookup = {
             (entry.source, entry.name): entry for entry in self._base_resolver._entries
         }
+        self._resident_entries: list[dict[str, Any]] = []
+        self._resident_generation = 0
         self._resident_session_key: str | None = None
         self._resident_init_payload: dict[str, Any] | None = None
-        if self._binary_path is not None:
-            resident_entries = [
+        self._refresh_resident_session_from_entries(
+            [
                 {
                     "id": idx,
                     "source": entry.source,
@@ -309,16 +313,66 @@ class MojoColumnRankResolver:
                 }
                 for idx, entry in enumerate(self._base_resolver._entries)
             ]
-            if resident_entries:
-                resident_digest = hashlib.sha256(
-                    json.dumps(resident_entries, sort_keys=True).encode("utf-8")
-                ).hexdigest()[:24]
-                self._resident_session_key = resident_digest
-                self._resident_init_payload = {
-                    "type": "column_rank_init",
-                    "engine_type": "column_rank_init",
-                    "entries": resident_entries,
+        )
+
+    def _set_resident_session_state(self) -> None:
+        self._resident_session_key = None
+        self._resident_init_payload = None
+        if self._binary_path is None:
+            return
+        if not self._resident_entries:
+            return
+        self._resident_generation += 1
+        self._resident_session_key = (
+            f"{id(self):x}:{self._resident_generation:x}:{len(self._resident_entries):x}"
+        )
+        self._resident_init_payload = {
+            "type": "column_rank_init",
+            "engine_type": "column_rank_init",
+            "entries": self._resident_entries,
+        }
+
+    def _refresh_resident_session_from_entries(
+        self,
+        entries: list[dict[str, Any]],
+    ) -> None:
+        self._resident_entries = list(entries)
+        self._set_resident_session_state()
+
+    def append_planner_graph_source(
+        self,
+        source: str,
+        columns: dict[str, Any],
+        *,
+        fill_rates: dict[tuple[str, str], float] | None = None,
+    ) -> bool:
+        handled = self._base_resolver.append_planner_graph_source(
+            source,
+            columns,
+            fill_rates=fill_rates,
+        )
+        if not handled:
+            return False
+        if fill_rates:
+            self._fill_rates.update(fill_rates)
+        new_resident_entries: list[dict[str, Any]] = []
+        for entry in self._base_resolver._entries:
+            if entry.source != source:
+                continue
+            self._entry_lookup[(entry.source, entry.name)] = entry
+            new_resident_entries.append(
+                {
+                    "id": int(entry.column_id),
+                    "source": entry.source,
+                    "column": entry.name,
+                    "source_id": int(entry.source_id),
+                    "role_id": int(entry.role_id),
                 }
+            )
+        if new_resident_entries:
+            self._resident_entries.extend(new_resident_entries)
+            self._set_resident_session_state()
+        return True
 
     def resolve(
         self,

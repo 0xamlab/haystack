@@ -8,7 +8,7 @@ import traceback
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-PASS = "✅"
+PASS = "✅"  # noqa: S105
 FAIL = "❌"
 WARN = "⚠️ "
 
@@ -95,15 +95,21 @@ check("Auto mode SimulateRequest validates", test_auto_schema)
 # ── 6. Expert mode schema validates ───────────────────────────────────────────
 def test_expert_schema():
     from apps.api_server.schemas.simulate import SimulateRequestExpert
-    req = SimulateRequestExpert.model_validate({
-        "mode": "expert",
-        "simulation": {
-            "variables": [
-                {"name": "revenue", "distribution": "normal", "params": {"mean": 100000, "std": 20000}},
-            ],
-        },
-        "seed": 42,
-    })
+    req = SimulateRequestExpert.model_validate(
+        {
+            "mode": "expert",
+            "simulation": {
+                "variables": [
+                    {
+                        "name": "revenue",
+                        "distribution": "normal",
+                        "params": {"mean": 100000, "std": 20000},
+                    },
+                ],
+            },
+            "seed": 42,
+        }
+    )
     assert req.seed == 42
 
 check("Expert mode SimulateRequest validates", test_expert_schema)

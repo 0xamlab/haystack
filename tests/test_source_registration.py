@@ -2,6 +2,7 @@ import base64
 import io
 from pathlib import Path
 
+import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
@@ -10,12 +11,23 @@ from fastapi import HTTPException
 from apps.api_server.routers.data_map import DataSource, MojoInstrumentationError
 from apps.api_server.routers.query import _CACHE_LOCK, _PLANNER_CACHE, _SOURCE_CACHE
 from apps.api_server.routers.sources import (
+    _JOIN_NAME_STATS_CACHE,
     _JOIN_PROJECTION_CACHE,
+    _JOIN_VALUE_CANDIDATE_CACHE,
     RegisterRequest,
+    _bounded_fast_join_connections,
+    _build_join_name_stats,
+    _build_join_value_candidates,
     _deep_join_projection_columns,
     _detect_joins_between,
+    _has_sufficient_fast_join_evidence,
+    _infer_shared_column_cardinality_from_stats,
+    _join_candidate_limit,
+    _join_candidate_min_score,
+    _load_join_name_stats_cached,
     _load_join_projection,
     _load_join_projection_cached,
+    _load_join_value_candidates_cached,
     register_source,
 )
 from apps.api_server.services import source_registry as reg
@@ -189,6 +201,169 @@ async def test_register_source_reuses_identical_excel_content_within_org(tmp_pat
 
 
 @pytest.mark.asyncio
+async def test_register_source_builds_connected_graph_for_real_march_corpus(tmp_path, monkeypatch):
+    monkeypatch.setattr(reg, "_SOURCES_DIR", Path(tmp_path) / "sources")
+
+    async with _CACHE_LOCK:
+        _SOURCE_CACHE.clear()
+        _PLANNER_CACHE.clear()
+    _JOIN_PROJECTION_CACHE.clear()
+    _JOIN_VALUE_CANDIDATE_CACHE.clear()
+    _JOIN_NAME_STATS_CACHE.clear()
+
+    auth = {"org_id": "org_march_real"}
+    test_files = Path(__file__).resolve().parents[1] / "test_files"
+
+    def _csv_text(filename: str) -> str:
+        return (test_files / filename).read_text(encoding="utf-8-sig", errors="replace")
+
+    orders_detail = await register_source(
+        RegisterRequest(
+            source=DataSource(
+                name="orders_detail",
+                csv=_csv_text("850a28da-a6f7-4ecc-9e7a-51a9cf7f501b-united_states.csv"),
+            )
+        ),
+        auth=auth,
+    )
+    top_inaccurate_items = await register_source(
+        RegisterRequest(
+            source=DataSource(
+                name="top_inaccurate_items",
+                csv=_csv_text(
+                    "630a0f6c-a250-4bd7-af2e-bed6184619ac_top_inaccurate_items_v3_2026-03-01_2026-03-31.csv"
+                ),
+            )
+        ),
+        auth=auth,
+    )
+    orders_financial = await register_source(
+        RegisterRequest(
+            source=DataSource(
+                name="orders_financial",
+                csv=_csv_text("aaeff3ab-19ac-494e-9e58-e507bd7e3893-united_states.csv"),
+            )
+        ),
+        auth=auth,
+    )
+    restaurant_rating = await register_source(
+        RegisterRequest(
+            source=DataSource(
+                name="restaurant_rating_sku_local",
+                csv=_csv_text(
+                    "3d9b2e55-c7ea-4e31-90ea-ca5797a69c2b_restaurant_rating_sku_local_2026-03-01_2026-03-31.csv"
+                ),
+            )
+        ),
+        auth=auth,
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        await register_source(
+            RegisterRequest(
+                source=DataSource(
+                    name="store_pause",
+                    csv=_csv_text("549c63c8-3300-416c-8b45-55fec4c6529a_store_pause_2026-03-01_2026-03-31.csv"),
+                )
+            ),
+            auth=auth,
+        )
+
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.detail["error"]["code"] == "empty_source"
+
+    financial_meta = reg.get_source_meta("org_march_real", str(orders_financial["source_id"]))
+    assert financial_meta is not None
+    assert financial_meta["row_count"] == 2026
+
+    connections = reg.get_connections("org_march_real")
+
+    def _has_connection(
+        left_name: str,
+        left_col: str,
+        right_name: str,
+        right_col: str,
+        *,
+        cardinality: str | None = None,
+    ) -> bool:
+        for connection in connections:
+            if connection.get("source_a_name") != left_name:
+                continue
+            if connection.get("col_a") != left_col:
+                continue
+            if connection.get("source_b_name") != right_name:
+                continue
+            if connection.get("col_b") != right_col:
+                continue
+            if cardinality is not None and connection.get("cardinality") != cardinality:
+                continue
+            return True
+        return False
+
+    assert orders_detail["status"] == "registered"
+    assert top_inaccurate_items["status"] == "registered"
+    assert restaurant_rating["status"] == "registered"
+    assert _has_connection(
+        "orders_financial",
+        "Order ID as per Uber Eats manager",
+        "orders_detail",
+        "Order ID",
+    )
+    assert _has_connection(
+        "restaurant_rating_sku_local",
+        "Store",
+        "top_inaccurate_items",
+        "Store",
+        cardinality="many_to_many",
+    )
+    assert _has_connection(
+        "orders_financial",
+        "Store name as per Uber Eats manager",
+        "top_inaccurate_items",
+        "Store",
+        cardinality="many_to_many",
+    )
+
+
+@pytest.mark.asyncio
+async def test_register_source_reuses_incremental_planner_cache_update(tmp_path, monkeypatch):
+    monkeypatch.setattr(reg, "_SOURCES_DIR", Path(tmp_path) / "sources")
+
+    async with _CACHE_LOCK:
+        _SOURCE_CACHE.clear()
+        _PLANNER_CACHE.clear()
+
+    async def _fake_incremental(*args, **kwargs):  # type: ignore[no-untyped-def]
+        return True, "rev_inc"
+
+    async def _planner_should_not_rebuild(*args, **kwargs):  # type: ignore[no-untyped-def]
+        raise AssertionError("_get_registry_planner should not rebuild when incremental update succeeds")
+
+    monkeypatch.setattr(
+        "apps.api_server.routers.sources._try_incremental_registry_planner_update",
+        _fake_incremental,
+    )
+    monkeypatch.setattr(
+        "apps.api_server.routers.sources._get_registry_planner",
+        _planner_should_not_rebuild,
+    )
+
+    response = await register_source(
+        RegisterRequest(
+            source=DataSource(
+                name="IncPlanner",
+                csv="account_code,measure_total\n00123,10\n00456,20\n",
+            )
+        ),
+        auth={"org_id": "org_inc"},
+    )
+
+    assert response["status"] == "registered"
+    assert response["planner_cache_hit"] is True
+    assert response["planner_schema_revision"] == "rev_inc"
+
+
+@pytest.mark.asyncio
 async def test_register_source_preserves_sparse_numeric_csv_columns(tmp_path, monkeypatch):
     monkeypatch.setattr(reg, "_SOURCES_DIR", Path(tmp_path) / "sources")
 
@@ -316,6 +491,29 @@ def test_deep_join_projection_columns_caps_and_deduplicates():
     assert projected == ["entity_key", "measure_total"]
 
 
+def test_deep_join_projection_columns_keeps_low_cardinality_dimension_extensions():
+    join_blocks = [
+        {"name": f"ranked_{idx}"}
+        for idx in range(12)
+    ] + [
+        {
+            "name": "Store name as per Uber Eats manager",
+            "unique_count": 2,
+            "unique_ratio": 0.001,
+        },
+        {
+            "name": "Merchant location",
+            "unique_count": 3,
+            "unique_ratio": 0.01,
+        },
+    ]
+
+    projected = _deep_join_projection_columns(join_blocks, limit=12)
+
+    assert "Store name as per Uber Eats manager" in projected
+    assert "Merchant location" in projected
+
+
 def test_load_join_projection_reads_ranked_join_columns_only():
     parquet_bytes = _parquet_bytes([
         {
@@ -343,6 +541,7 @@ def test_load_join_projection_cached_reuses_projection_until_source_revision_cha
 ):
     monkeypatch.setattr(reg, "_SOURCES_DIR", Path(tmp_path) / "sources")
     _JOIN_PROJECTION_CACHE.clear()
+    _JOIN_VALUE_CANDIDATE_CACHE.clear()
 
     meta = _schema_meta_for_columns(
         2,
@@ -403,6 +602,314 @@ def test_load_join_projection_cached_reuses_projection_until_source_revision_cha
         source_id="s_cached",
         parquet_path=parquet_path,
         join_blocks=[{"name": "entity_key"}],
+    )
+
+    assert calls == 2
+
+
+def test_build_join_value_candidates_prefers_joinable_high_uniqueness_columns():
+    df = pd.DataFrame(
+        {
+            "entity_key": [f"K{i:03d}" for i in range(20)],
+            "noise_code": [f"N{i:03d}" for i in range(20)],
+            "low_cardinality": ["A"] * 20,
+        }
+    )
+
+    candidates = _build_join_value_candidates(
+        df,
+        [
+            {"name": "entity_key", "joinability": 2.5},
+            {"name": "noise_code", "joinability": 0.2},
+            {"name": "low_cardinality", "joinability": 3.0},
+        ],
+    )
+
+    assert list(candidates)[:2] == ["entity_key", "noise_code"]
+    assert "low_cardinality" not in candidates
+    assert candidates["entity_key"]["sample_size"] == 20
+    assert candidates["entity_key"]["values"][:3] == ["K000", "K001", "K002"]
+
+
+def test_build_join_name_stats_captures_counts_and_unique_ratio():
+    df = pd.DataFrame(
+        {
+            "entity_key": ["A", "A", "B", None],
+            "segment_code": ["X", "Y", "Y", "Y"],
+        }
+    )
+
+    stats = _build_join_name_stats(df)
+
+    assert stats["entity_key"]["counts"] == {"A": 2, "B": 1}
+    assert stats["entity_key"]["values"] == {"A", "B"}
+    assert stats["entity_key"]["unique_ratio"] == 0.5
+    assert stats["entity_key"]["all_unique"] is False
+    assert stats["segment_code"]["counts"] == {"Y": 3, "X": 1}
+
+
+def test_build_join_name_stats_skips_count_map_for_exact_unique_columns():
+    df = pd.DataFrame(
+        {
+            "entity_key": ["A", "B", "C", None],
+            "segment_code": ["X", "Y", "Y", "Y"],
+        }
+    )
+
+    stats = _build_join_name_stats(df)
+
+    assert stats["entity_key"]["all_unique"] is True
+    assert stats["entity_key"]["counts"] == {}
+    assert stats["entity_key"]["values"] == {"A", "B", "C"}
+    assert stats["segment_code"]["all_unique"] is False
+    assert stats["segment_code"]["counts"] == {"Y": 3, "X": 1}
+
+
+def test_infer_shared_column_cardinality_from_stats_uses_exact_unique_shortcut():
+    left_stats = {
+        "counts": {},
+        "values": {"A", "B", "C"},
+        "unique_ratio": 0.75,
+        "all_unique": True,
+    }
+    right_stats = {
+        "counts": {"A": 2, "B": 1},
+        "values": {"A", "B"},
+        "unique_ratio": 0.5,
+        "all_unique": False,
+    }
+
+    cardinality = _infer_shared_column_cardinality_from_stats(
+        left_stats,
+        right_stats,
+        {"A", "B"},
+    )
+
+    assert cardinality == "one_to_many"
+
+
+def test_load_join_value_candidates_cached_reuses_candidates_until_source_revision_changes(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.setattr(reg, "_SOURCES_DIR", Path(tmp_path) / "sources")
+    _JOIN_PROJECTION_CACHE.clear()
+    _JOIN_VALUE_CANDIDATE_CACHE.clear()
+
+    meta = _schema_meta_for_columns(
+        6,
+        [{"name": "entity_key", "role": "identifier", "unique_count": 6, "samples": ["A", "B", "C"]}],
+    )
+    reg.register_source(
+        "org_cached_join_candidates",
+        "s_join_cached",
+        "JoinCandidateSource",
+        _parquet_bytes(
+            [
+                {"entity_key": "A"},
+                {"entity_key": "B"},
+                {"entity_key": "C"},
+                {"entity_key": "D"},
+                {"entity_key": "E"},
+                {"entity_key": "F"},
+            ]
+        ),
+        meta,
+        graph_nodes={},
+        profile={},
+    )
+    parquet_path = reg.get_source_parquet_path("org_cached_join_candidates", "s_join_cached")
+    assert parquet_path is not None
+
+    calls = 0
+    original = _build_join_value_candidates
+
+    def _counting_build(df, join_blocks, *, limit=20):  # type: ignore[no-untyped-def]
+        nonlocal calls
+        calls += 1
+        return original(df, join_blocks, limit=limit)
+
+    monkeypatch.setattr(
+        "apps.api_server.routers.sources._build_join_value_candidates",
+        _counting_build,
+    )
+
+    first = _load_join_value_candidates_cached(
+        org_id="org_cached_join_candidates",
+        source_id="s_join_cached",
+        parquet_path=parquet_path,
+        join_blocks=[{"name": "entity_key", "joinability": 2.5}],
+    )
+    second = _load_join_value_candidates_cached(
+        org_id="org_cached_join_candidates",
+        source_id="s_join_cached",
+        parquet_path=parquet_path,
+        join_blocks=[{"name": "entity_key", "joinability": 2.5}],
+    )
+
+    assert calls == 1
+    assert first is second
+
+    reg.update_source_meta(
+        "org_cached_join_candidates",
+        "s_join_cached",
+        {"semantic_aliases": {"entity": ["entity_key"]}},
+    )
+
+    _load_join_value_candidates_cached(
+        org_id="org_cached_join_candidates",
+        source_id="s_join_cached",
+        parquet_path=parquet_path,
+        join_blocks=[{"name": "entity_key", "joinability": 2.5}],
+    )
+
+    assert calls == 2
+
+
+def test_load_join_value_candidates_cached_separates_cache_by_candidate_limit(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.setattr(reg, "_SOURCES_DIR", Path(tmp_path) / "sources")
+    _JOIN_PROJECTION_CACHE.clear()
+    _JOIN_VALUE_CANDIDATE_CACHE.clear()
+
+    meta = _schema_meta_for_columns(
+        6,
+        [{"name": "entity_key", "role": "identifier", "unique_count": 6, "samples": ["A", "B", "C"]}],
+    )
+    reg.register_source(
+        "org_cached_join_candidates_limit",
+        "s_join_limit",
+        "JoinCandidateSourceLimit",
+        _parquet_bytes(
+            [
+                {"entity_key": "A"},
+                {"entity_key": "B"},
+                {"entity_key": "C"},
+                {"entity_key": "D"},
+                {"entity_key": "E"},
+                {"entity_key": "F"},
+            ]
+        ),
+        meta,
+        graph_nodes={},
+        profile={},
+    )
+    parquet_path = reg.get_source_parquet_path("org_cached_join_candidates_limit", "s_join_limit")
+    assert parquet_path is not None
+
+    calls = 0
+    original = _build_join_value_candidates
+
+    def _counting_build(df, join_blocks, *, limit=20):  # type: ignore[no-untyped-def]
+        nonlocal calls
+        calls += 1
+        return original(df, join_blocks, limit=limit)
+
+    monkeypatch.setattr(
+        "apps.api_server.routers.sources._build_join_value_candidates",
+        _counting_build,
+    )
+
+    first = _load_join_value_candidates_cached(
+        org_id="org_cached_join_candidates_limit",
+        source_id="s_join_limit",
+        parquet_path=parquet_path,
+        join_blocks=[{"name": "entity_key", "joinability": 2.5}],
+        limit=8,
+    )
+    second = _load_join_value_candidates_cached(
+        org_id="org_cached_join_candidates_limit",
+        source_id="s_join_limit",
+        parquet_path=parquet_path,
+        join_blocks=[{"name": "entity_key", "joinability": 2.5}],
+        limit=8,
+    )
+    third = _load_join_value_candidates_cached(
+        org_id="org_cached_join_candidates_limit",
+        source_id="s_join_limit",
+        parquet_path=parquet_path,
+        join_blocks=[{"name": "entity_key", "joinability": 2.5}],
+        limit=20,
+    )
+
+    assert calls == 2
+    assert first is second
+    assert third is not first
+
+
+def test_load_join_name_stats_cached_reuses_stats_until_source_revision_changes(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.setattr(reg, "_SOURCES_DIR", Path(tmp_path) / "sources")
+    _JOIN_PROJECTION_CACHE.clear()
+    _JOIN_NAME_STATS_CACHE.clear()
+
+    meta = _schema_meta_for_columns(
+        4,
+        [{"name": "entity_key", "role": "identifier", "unique_count": 3, "samples": ["A", "B", "C"]}],
+    )
+    reg.register_source(
+        "org_cached_name_stats",
+        "s_name_stats",
+        "NameStatsSource",
+        _parquet_bytes(
+            [
+                {"entity_key": "A"},
+                {"entity_key": "A"},
+                {"entity_key": "B"},
+                {"entity_key": "C"},
+            ]
+        ),
+        meta,
+        graph_nodes={},
+        profile={},
+    )
+    parquet_path = reg.get_source_parquet_path("org_cached_name_stats", "s_name_stats")
+    assert parquet_path is not None
+
+    calls = 0
+    original = _build_join_name_stats
+
+    def _counting_build(df):  # type: ignore[no-untyped-def]
+        nonlocal calls
+        calls += 1
+        return original(df)
+
+    monkeypatch.setattr(
+        "apps.api_server.routers.sources._build_join_name_stats",
+        _counting_build,
+    )
+
+    first = _load_join_name_stats_cached(
+        org_id="org_cached_name_stats",
+        source_id="s_name_stats",
+        parquet_path=parquet_path,
+        join_blocks=[{"name": "entity_key", "joinability": 2.5}],
+    )
+    second = _load_join_name_stats_cached(
+        org_id="org_cached_name_stats",
+        source_id="s_name_stats",
+        parquet_path=parquet_path,
+        join_blocks=[{"name": "entity_key", "joinability": 2.5}],
+    )
+
+    assert calls == 1
+    assert first is second
+
+    reg.update_source_meta(
+        "org_cached_name_stats",
+        "s_name_stats",
+        {"semantic_aliases": {"entity": ["entity_key"]}},
+    )
+
+    _load_join_name_stats_cached(
+        org_id="org_cached_name_stats",
+        source_id="s_name_stats",
+        parquet_path=parquet_path,
+        join_blocks=[{"name": "entity_key", "joinability": 2.5}],
     )
 
     assert calls == 2
@@ -559,6 +1066,53 @@ async def test_detect_joins_between_keeps_mojo_for_non_decisive_fast_key_join(mo
 
 
 @pytest.mark.asyncio
+async def test_detect_joins_between_reduces_value_candidate_limit_when_fast_connections_exist(
+    monkeypatch,
+):
+    _JOIN_PROJECTION_CACHE.clear()
+    captured_limits: list[tuple[str, int]] = []
+
+    async def _fake_mojo(*_args, **_kwargs):
+        return None
+
+    def _fake_value_candidates(*, source_id, limit=20, **_kwargs):  # type: ignore[no-untyped-def]
+        captured_limits.append((source_id, limit))
+        return {
+            "part_number": {
+                "values": [f"P{i:03d}" for i in range(12)],
+                "unique_ratio": 1.0,
+                "sample_size": 12,
+            }
+        }
+
+    monkeypatch.setattr("apps.api_server.routers.sources._call_mojo_join_detect", _fake_mojo)
+    monkeypatch.setattr(
+        "apps.api_server.routers.sources._load_join_value_candidates_cached",
+        _fake_value_candidates,
+    )
+
+    left_rows = [{"part_number": f"P{i:03d}", "measure_total": float(i)} for i in range(100)]
+    right_rows = []
+    for i in range(6):
+        right_rows.append({"part_number": f"P{i:03d}", "segment_label": f"seg_{i}"})
+        right_rows.append({"part_number": f"P{i:03d}", "segment_label": f"seg_{i}_dup"})
+
+    await _detect_joins_between(
+        "org_detect_non_decisive_limit",
+        "src_a",
+        "S0",
+        _parquet_bytes(left_rows),
+        "src_b",
+        "S1",
+        _parquet_bytes(right_rows),
+        left_join_blocks=[{"name": "part_number"}],
+        right_join_blocks=[{"name": "part_number"}],
+    )
+
+    assert captured_limits == [("src_a", 8), ("src_b", 8)]
+
+
+@pytest.mark.asyncio
 async def test_detect_joins_between_accepts_preloaded_source_projection(monkeypatch):
     _JOIN_PROJECTION_CACHE.clear()
 
@@ -689,6 +1243,63 @@ async def test_detect_joins_between_skips_generic_many_to_many_same_name_columns
     assert joins == []
 
 
+@pytest.mark.asyncio
+async def test_detect_joins_between_skips_mojo_when_fast_joins_already_prove_pair(monkeypatch):
+    _JOIN_PROJECTION_CACHE.clear()
+
+    async def _should_not_call_mojo(*_args, **_kwargs):
+        raise AssertionError("Mojo join detect should not run when fast joins already prove the pair")
+
+    monkeypatch.setattr(
+        "apps.api_server.routers.sources._call_mojo_join_detect",
+        _should_not_call_mojo,
+    )
+
+    left = _parquet_bytes(
+        [
+            {"customer_id": "C1", "part_number": "P1", "measure_total": 10.0},
+            {"customer_id": "C1", "part_number": "P2", "measure_total": 12.0},
+            {"customer_id": "C2", "part_number": "P2", "measure_total": 14.0},
+            {"customer_id": "C2", "part_number": "P3", "measure_total": 16.0},
+            {"customer_id": "C3", "part_number": "P3", "measure_total": 18.0},
+            {"customer_id": "C3", "part_number": "P4", "measure_total": 20.0},
+            {"customer_id": "C4", "part_number": "P4", "measure_total": 22.0},
+            {"customer_id": "C4", "part_number": "P1", "measure_total": 24.0},
+        ]
+    )
+    right = _parquet_bytes(
+        [
+            {"customer_id": "C1", "part_number": "P1", "segment_label": "s1"},
+            {"customer_id": "C1", "part_number": "P2", "segment_label": "s2"},
+            {"customer_id": "C2", "part_number": "P2", "segment_label": "s3"},
+            {"customer_id": "C2", "part_number": "P3", "segment_label": "s4"},
+            {"customer_id": "C3", "part_number": "P3", "segment_label": "s5"},
+            {"customer_id": "C3", "part_number": "P4", "segment_label": "s6"},
+            {"customer_id": "C4", "part_number": "P4", "segment_label": "s7"},
+            {"customer_id": "C4", "part_number": "P1", "segment_label": "s8"},
+        ]
+    )
+
+    joins = await _detect_joins_between(
+        "org_detect_fast_only",
+        "src_a",
+        "L0",
+        left,
+        "src_b",
+        "S0",
+        right,
+        left_join_blocks=[{"name": "customer_id"}, {"name": "part_number"}],
+        right_join_blocks=[{"name": "customer_id"}, {"name": "part_number"}],
+    )
+
+    assert _has_sufficient_fast_join_evidence(joins) is True
+    assert joins == _bounded_fast_join_connections(joins)
+    assert {(join["col_a"], join["col_b"]) for join in joins} == {
+        ("customer_id", "customer_id"),
+        ("part_number", "part_number"),
+    }
+
+
 def test_schema_revision_changes_with_registered_sources_and_connections(tmp_path, monkeypatch):
     monkeypatch.setattr(reg, "_SOURCES_DIR", Path(tmp_path) / "sources")
 
@@ -799,6 +1410,97 @@ async def test_register_source_prewarms_registry_planner_for_registered_and_alre
     assert second["planner_cache_hit"] is True
     assert len(calls) == 2
     assert calls == [("org_a", "never"), ("org_a", "never")]
+
+
+@pytest.mark.asyncio
+async def test_register_source_reuses_new_source_join_stats_across_join_pairs(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.setattr(reg, "_SOURCES_DIR", Path(tmp_path) / "sources")
+
+    async with _CACHE_LOCK:
+        _SOURCE_CACHE.clear()
+        _PLANNER_CACHE.clear()
+
+    for idx in range(2):
+        meta = _schema_meta_for_columns(
+            100,
+            [
+                {
+                    "name": "customer_id",
+                    "role": "identifier",
+                    "unique_count": 100,
+                    "samples": [f"C{idx:03d}", f"C{idx + 1:03d}", f"C{idx + 2:03d}"],
+                },
+                {
+                    "name": "measure_total",
+                    "role": "derived_measure",
+                    "is_numeric": True,
+                    "samples": [10, 20, 30],
+                },
+            ],
+        )
+        reg.register_source(
+            "org_join_precompute",
+            f"s_{idx}",
+            f"S{idx}",
+            _parquet_bytes(
+                [
+                    {"customer_id": f"C{idx:03d}", "measure_total": 10},
+                    {"customer_id": f"C{idx + 1:03d}", "measure_total": 20},
+                ]
+            ),
+            meta,
+            graph_nodes={},
+            profile={},
+        )
+
+    seen_name_stats: list[dict[str, dict[str, object]]] = []
+    async def _fake_detect(
+        org_id,
+        src_id,
+        src_name,
+        src_parquet,
+        other_id,
+        other_name,
+        other_parquet,
+        **kwargs,
+    ):
+        seen_name_stats.append(kwargs["src_name_stats"])
+        return []
+
+    async def _fake_profile(*_args, **_kwargs):
+        return {"profiles": {}}
+
+    async def _fake_relations(*_args, **_kwargs):
+        return []
+
+    async def _fake_get_registry_planner(org_id: str, *, llm_policy: str = "never", **_kwargs):
+        return object(), False, "rev_join_precompute"
+
+    monkeypatch.setattr("apps.api_server.routers.sources._detect_joins_between", _fake_detect)
+    monkeypatch.setattr("apps.api_server.routers.sources._call_mojo_column_profile", _fake_profile)
+    monkeypatch.setattr("apps.api_server.routers.sources._detect_relations", _fake_relations)
+    monkeypatch.setattr("apps.api_server.routers.sources._get_registry_planner", _fake_get_registry_planner)
+
+    payload = RegisterRequest(
+        source=DataSource(
+            name="Incoming",
+            csv=(
+                "customer_id,measure_total\n"
+                + "\n".join(f"C{i:03d},{i}" for i in range(100))
+                + "\n"
+            ),
+        )
+    )
+
+    registered = await register_source(payload, auth={"org_id": "org_join_precompute"})
+
+    assert registered["join_existing_total"] == 2
+    assert len(seen_name_stats) == 2
+    assert len({id(item) for item in seen_name_stats}) == 1
+    assert seen_name_stats[0]
 
 
 def test_candidate_join_sources_blocks_large_org_to_likely_matches(tmp_path, monkeypatch):
@@ -1283,8 +1985,44 @@ async def test_register_source_uses_scored_join_scan_for_low_row_mid_org_sources
 
     assert registered["join_existing_total"] == 8
     assert registered["join_scan_mode"] == "scored"
+    assert registered["join_candidate_limit"] == 8
+    assert registered["join_candidate_min_score"] == 6.0
     assert registered["join_candidates_considered"] == 1
     assert join_calls == ["match_src"]
+
+
+def test_low_row_join_candidate_policy_tightens_candidate_budget_and_score():
+    schema_meta = _schema_meta_for_columns(
+        500,
+        [
+            {
+                "name": "customer_id",
+                "role": "identifier",
+                "unique_count": 500,
+                "samples": ["C001", "C002"],
+            },
+            {
+                "name": "measure_total",
+                "role": "derived_measure",
+                "is_numeric": True,
+                "samples": [10, 20],
+            },
+        ],
+    )
+
+    assert _join_candidate_limit(row_count=1_500, schema_meta=schema_meta, existing_total=16) == 8
+    assert _join_candidate_limit(row_count=128, schema_meta=schema_meta, existing_total=16) == 6
+    assert _join_candidate_limit(row_count=128, schema_meta=schema_meta, existing_total=24) == 4
+    assert _join_candidate_min_score(
+        row_count=1_500,
+        schema_meta=schema_meta,
+        existing_total=16,
+    ) == 6.0
+    assert _join_candidate_min_score(
+        row_count=128,
+        schema_meta=schema_meta,
+        existing_total=16,
+    ) == 8.0
 
 
 @pytest.mark.asyncio

@@ -85,14 +85,20 @@ def req(method: str, path: str, body=None, headers=None, auth=True, timeout=10) 
         except Exception:
             body_data2 = body_bytes.decode("utf-8", errors="replace")
         return e.code, body_data2, dict(e.headers), elapsed
-    except TimeoutError:
+    except TimeoutError as err:
         elapsed = time.perf_counter() - t0
-        raise TimeoutError(f"Request to {url} timed out after {timeout}s (elapsed: {elapsed:.1f}s)")
-    except urllib.error.URLError as e:
-        if "timed out" in str(e):
+        raise TimeoutError(
+            f"Request to {url} timed out after {timeout}s (elapsed: {elapsed:.1f}s)"
+        ) from err
+    except urllib.error.URLError as err:
+        if "timed out" in str(err):
             elapsed = time.perf_counter() - t0
-            raise TimeoutError(f"Request to {url} timed out after {timeout}s (elapsed: {elapsed:.1f}s)")
-        raise RuntimeError(f"Cannot connect to {BASE_URL} — is the API server running?") from e
+            raise TimeoutError(
+                f"Request to {url} timed out after {timeout}s (elapsed: {elapsed:.1f}s)"
+            ) from err
+        raise RuntimeError(
+            f"Cannot connect to {BASE_URL} — is the API server running?"
+        ) from err
 
 
 def check(name: str, fn):
@@ -542,7 +548,9 @@ def test_python_module_direct():
         from apps.api_server.connectors import BaseConnector
         try:
             BaseConnector(config={})  # type: ignore[abstract]
-            assert False, "Should not be able to instantiate abstract BaseConnector"
+            raise AssertionError(
+                "Should not be able to instantiate abstract BaseConnector"
+            )
         except TypeError:
             pass  # Expected
 
@@ -579,7 +587,7 @@ def test_python_module_direct():
         from apps.api_server.connectors import ConnectorRegistry
         try:
             ConnectorRegistry.create("nonexistent", {})
-            assert False, "Should raise ValueError"
+            raise AssertionError("Should raise ValueError")
         except ValueError as e:
             assert "Unknown connector type" in str(e)
 
@@ -686,12 +694,20 @@ def test_file_connector_direct():
         records = _run(c.fetch_data())
         assert records == [], f"Expected empty list, got {records}"
 
-    def file_unsupported_type_returns_empty():
-        """FileConnector with unsupported file_type returns empty."""
+    def file_parquet_invalid_content_raises():
+        """FileConnector fail-closes on invalid parquet payloads."""
         from apps.api_server.connectors import FileConnector
+
+        try:
+            import pyarrow.lib as pa_lib
+
+            expected_error = pa_lib.ArrowInvalid
+        except ImportError:
+            expected_error = ImportError
+
         c = FileConnector({"file_type": "parquet", "content": "some data"})
-        records = _run(c.fetch_data())
-        assert records == [], f"Expected empty list for parquet, got {records}"
+        with pytest.raises(expected_error):
+            _run(c.fetch_data())
 
     def file_connector_with_filepath():
         """FileConnector with file_path reads from disk."""
@@ -709,7 +725,7 @@ def test_file_connector_direct():
         c = FileConnector({"file_type": "csv", "file_path": "/nonexistent/path/data.csv"})
         try:
             _run(c.fetch_data())
-            assert False, "Should have raised FileNotFoundError"
+            raise AssertionError("Should have raised FileNotFoundError")
         except FileNotFoundError:
             pass
         except OSError:
@@ -735,7 +751,10 @@ def test_file_connector_direct():
     check("FileConnector.fetch_data() JSON async", file_fetch_data_json_async)
     check("FileConnector.validate_connection() async", file_validate_async)
     check("FileConnector empty content returns []", file_empty_returns_empty)
-    check("FileConnector unsupported type returns []", file_unsupported_type_returns_empty)
+    check(
+        "FileConnector invalid parquet content fails cleanly",
+        file_parquet_invalid_content_raises,
+    )
     check("FileConnector with file_path reads from disk", file_connector_with_filepath)
     check("FileConnector nonexistent file_path raises error", file_connector_missing_filepath)
     check("Parse real CSV (bookings_new.csv)", file_parse_real_csv)
@@ -779,7 +798,7 @@ def test_sql_connector_direct():
         c = SQLConnector({"connection_string": "", "query": ""})
         try:
             _run(c.fetch_data())
-            assert False, "Should have raised ValueError"
+            raise AssertionError("Should have raised ValueError")
         except ValueError as e:
             assert "required" in str(e).lower(), f"Expected 'required' in error: {e}"
 

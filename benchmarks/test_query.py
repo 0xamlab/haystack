@@ -26,7 +26,7 @@ TEST_FILES = ROOT / "test_files"
 
 sys.path.insert(0, str(ROOT))
 
-from apps.api_server.routers.query import (
+from apps.api_server.routers.query import (  # noqa: E402
     BASE_MEASURE,
     CATEGORY,
     COMPONENT,
@@ -89,33 +89,35 @@ def _profile(records: list[dict]) -> dict[str, dict]:
             v = rec.get(f)
             if v is None:
                 continue
-            if isinstance(v, (int, float)):
+            if isinstance(v, int | float):
                 nums.append(float(v))
             else:
                 strs.append(str(v))
         mean = sum(nums) / len(nums) if nums else 0.0
         std = math.sqrt(sum((x - mean) ** 2 for x in nums) / max(len(nums) - 1, 1)) if nums else 0.0
         profile[f] = {
-            "numeric": nums, "strings": strs,
+            "numeric": nums,
+            "strings": strs,
             "is_numeric": len(nums) > len(strs),
             "sample_values": [str(v) for v in nums[:30]] + strs[:30],
-            "unique_count": len(set(str(v) for v in (nums or strs)[:200])),
+            "unique_count": len({str(v) for v in (nums or strs)[:200]}),
             "total_count": len(nums) + len(strs),
-            "mean": mean, "std": std,
+            "mean": mean,
+            "std": std,
         }
     return profile
 
 
 def _call_mojo(payload: dict) -> dict | None:
     try:
-        r = subprocess.run(
+        r = subprocess.run(  # noqa: S603
             [str(BINARY)], input=json.dumps(payload).encode(),
             capture_output=True, timeout=30,
         )
         if r.returncode == 0:
             return json.loads(r.stdout)
     except Exception:
-        pass
+        return None
     return None
 
 
@@ -123,9 +125,11 @@ def _mojo_profile(prof: dict) -> dict:
     result = _call_mojo({
         "engine_type": "column_profile",
         "columns": {
-            col: {"values": info["sample_values"][:30],
-                  "strings": info["strings"][:20],
-                  "sample_size": info["total_count"]}
+            col: {
+                "values": info["sample_values"][:30],
+                "strings": info["strings"][:20],
+                "sample_size": info["total_count"],
+            }
             for col, info in prof.items()
         },
     })
@@ -220,7 +224,11 @@ class Engine:
             for item in result[:5]:
                 g = item.get("group", "?")
                 v = item.get("value", 0)
-                v_fmt = f"${v:,.2f}" if node.role in (DERIVED_MEASURE, UNIT_MEASURE) else f"{v:,.2f}"
+                v_fmt = (
+                    f"${v:,.2f}"
+                    if node.role in (DERIVED_MEASURE, UNIT_MEASURE)
+                    else f"{v:,.2f}"
+                )
                 print(f"  {GREEN}  {g:<32} {v_fmt}{RESET}")
             if len(result) > 5:
                 print(f"  {DIM}  … and {len(result)-5} more{RESET}")
@@ -228,7 +236,11 @@ class Engine:
             print(f"  {YELLOW}A: No data{RESET}  {DIM}{ms(elapsed)}{RESET}")
         else:
             v = result
-            v_fmt = f"${v:,.2f}" if isinstance(v, float) and node.role in (DERIVED_MEASURE, UNIT_MEASURE) else str(v)
+            v_fmt = (
+                f"${v:,.2f}"
+                if isinstance(v, float) and node.role in (DERIVED_MEASURE, UNIT_MEASURE)
+                else str(v)
+            )
             if isinstance(v, float) and abs(v) >= 1_000_000:
                 v_fmt = f"${v/1_000_000:.2f}M"
             print(f"  {GREEN}A:{RESET} {v_fmt}  {GREEN}{ms(elapsed)}{RESET}")
@@ -264,7 +276,10 @@ def main() -> None:
             recs = _load_csv(p)
             tables[name] = recs
             profiles[name] = _profile(recs)
-    print(f" {GREEN}{len(tables)} tables, {sum(len(v) for v in tables.values()):,} rows{RESET}  ({ms(time.perf_counter()-t0)})")
+    print(
+        f" {GREEN}{len(tables)} tables, {sum(len(v) for v in tables.values()):,} rows{RESET}  "
+        f"({ms(time.perf_counter() - t0)})"
+    )
 
     # ── Mojo (parallel) ───────────────────────────────────────────────────────
     print(f"{DIM}Mojo profile + relation detect…{RESET}", end="", flush=True)
@@ -303,8 +318,10 @@ def main() -> None:
         cols = role_groups.get(role, [])
         if cols:
             c = colors.get(role, RESET)
-            print(f"  {c}  {role:<18} {', '.join(cols[:6])}"
-                  f"{'  …' if len(cols)>6 else ''}{RESET}")
+            print(
+                f"  {c}  {role:<18} {', '.join(cols[:6])}"
+                f"{'  …' if len(cols) > 6 else ''}{RESET}"
+            )
 
     # ── Role verification ─────────────────────────────────────────────────────
     print(f"\n{BOLD}  Verification — known ground truth:{RESET}")

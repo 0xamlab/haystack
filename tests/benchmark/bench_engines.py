@@ -14,8 +14,14 @@ from __future__ import annotations
 import asyncio
 import os
 import statistics
+import sys
 import time
+from pathlib import Path
 from typing import Any
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 # Number of requests per engine for the measured phase
 N_WARMUP  = int(os.environ.get("BENCH_WARMUP", "5"))
@@ -37,10 +43,14 @@ def _mc_payload(runs: int = 5000) -> dict[str, Any]:
     }
 
 def _qmc_payload(runs: int = 5000) -> dict[str, Any]:
-    p = _mc_payload(runs); p["engine_type"] = "qmc_sobol"; return p
+    payload = _mc_payload(runs)
+    payload["engine_type"] = "qmc_sobol"
+    return payload
 
 def _lhs_payload(runs: int = 5000) -> dict[str, Any]:
-    p = _mc_payload(runs); p["engine_type"] = "lhs"; return p
+    payload = _mc_payload(runs)
+    payload["engine_type"] = "lhs"
+    return payload
 
 def _bootstrap_payload(runs: int = 2000) -> dict[str, Any]:
     import random
@@ -66,7 +76,9 @@ def _scenario_payload() -> dict[str, Any]:
     }
 
 def _sensitivity_payload(runs: int = 2000) -> dict[str, Any]:
-    p = _mc_payload(runs); p["engine_type"] = "sensitivity"; return p
+    payload = _mc_payload(runs)
+    payload["engine_type"] = "sensitivity"
+    return payload
 
 def _mcmc_payload(runs: int = 500) -> dict[str, Any]:
     import random
@@ -142,16 +154,68 @@ ALL_PAYLOADS = {
     "importance_sampling": _importance_sampling_payload(),
 }
 
+_invoke_fn = None
+_runtime_mode: str = "unknown"
+
+
+async def _setup_engine() -> None:
+    """Initialize the Mojo runtime for standalone benchmark execution."""
+    global _invoke_fn, _runtime_mode
+
+    try:
+        from apps.api_server.compute.mojo_pool import MojoWorkerPool, set_pool
+
+        pool = MojoWorkerPool(size=max(1, (os.cpu_count() or 4) - 1))
+        await pool.start()
+        if pool._running:
+            set_pool(pool)
+            from apps.api_server.compute.mojo_adapter import invoke_engine
+
+            _invoke_fn = invoke_engine
+            _runtime_mode = "pool"
+            print(f"  ✅ Mojo pool started ({pool.size} workers)")
+            return
+        print("  ⚠️  Mojo pool could not start (binary may lack --server mode)")
+    except Exception as exc:
+        print(f"  ⚠️  Mojo pool init failed: {exc}")
+
+    try:
+        from apps.api_server.compute.mojo_adapter import _BINARY_PATH, _invoke_subprocess
+
+        if _BINARY_PATH.exists():
+            _invoke_fn = _invoke_subprocess
+            _runtime_mode = "subprocess"
+            print("  ⚠️  Using subprocess fallback (binary works but no pool)")
+            return
+        print(f"  ❌ Mojo binary not found at {_BINARY_PATH}")
+    except Exception as exc:
+        print(f"  ❌ Could not initialize subprocess fallback: {exc}")
+
+    _invoke_fn = None
+    _runtime_mode = "unavailable"
+
+
+async def _teardown_engine() -> None:
+    """Stop the Mojo pool if this benchmark started it."""
+    try:
+        from apps.api_server.compute.mojo_pool import get_pool_sync
+
+        pool = get_pool_sync()
+        if pool._running:
+            await pool.stop()
+    except Exception:
+        pass
+
 
 async def _time_invoke(engine_type: str, payload: dict[str, Any]) -> tuple[float, str]:
     """Invoke engine and return (elapsed_seconds, runtime_mode)."""
-    from apps.api_server.compute.mojo_adapter import invoke_engine
+    if _invoke_fn is None:
+        raise RuntimeError("engine unavailable")
+
     t0 = time.perf_counter()
-    result = await invoke_engine(payload)
+    _ = await _invoke_fn(payload)
     elapsed = time.perf_counter() - t0
-    # Detect runtime path from structured log or result field
-    mode = "pool" if result.get("_proto") == 1 else "subprocess"
-    return elapsed, mode
+    return elapsed, _runtime_mode
 
 
 async def benchmark_engine(
@@ -201,12 +265,16 @@ async def benchmark_engine(
 
 async def run_all_benchmarks() -> list[dict[str, Any]]:
     """Run benchmarks for all 11 engine types sequentially."""
+    await _setup_engine()
     results = []
-    for engine_type, payload in ALL_PAYLOADS.items():
-        print(f"  Benchmarking {engine_type}...", flush=True)
-        stats = await benchmark_engine(engine_type, payload)
-        results.append(stats)
-    return results
+    try:
+        for engine_type, payload in ALL_PAYLOADS.items():
+            print(f"  Benchmarking {engine_type}...", flush=True)
+            stats = await benchmark_engine(engine_type, payload)
+            results.append(stats)
+        return results
+    finally:
+        await _teardown_engine()
 
 
 def print_markdown_table(results: list[dict[str, Any]]) -> None:

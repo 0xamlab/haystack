@@ -102,7 +102,7 @@ def _samples_to_str(samples: list[Any]) -> list[str]:
 
 
 def _looks_like_date(samples: list[str]) -> bool:
-    _DATE_RE = re.compile(
+    date_re = re.compile(
         r"\d{4}[-/]\d{1,2}[-/]\d{1,2}"
         r"|\d{1,2}[-/]\d{1,2}[-/]\d{2,4}"
         r"|\d{4}-\d{2}-\d{2}T"
@@ -110,7 +110,7 @@ def _looks_like_date(samples: list[str]) -> bool:
     non_empty = [s.strip() for s in samples if s.strip()]
     if not non_empty:
         return False
-    return sum(1 for s in non_empty if _DATE_RE.search(s)) / len(non_empty) >= 0.6
+    return sum(1 for s in non_empty if date_re.search(s)) / len(non_empty) >= 0.6
 
 
 def _looks_like_ratio(samples: list[str]) -> bool:
@@ -280,7 +280,7 @@ def _read_excel(path: Path, sample_rows: int, sheet: str | int = 0) -> dict[str,
         raise ImportError(
             "Reading Excel requires pandas or openpyxl: "
             "pip install pandas  OR  pip install openpyxl"
-        )
+        ) from None
 
 
 def _read_parquet(path: Path, sample_rows: int) -> dict[str, list[Any]]:
@@ -288,20 +288,22 @@ def _read_parquet(path: Path, sample_rows: int) -> dict[str, list[Any]]:
     try:
         import pyarrow.parquet as pq  # type: ignore[import]
         table = pq.read_table(path)
-        df    = table.slice(0, sample_rows).to_pandas()
+        df = table.slice(0, sample_rows).to_pandas()
         return {str(c): df[c].dropna().astype(str).tolist() for c in df.columns}
     except ImportError:
         pass
     try:
         import pandas as pd  # type: ignore[import]
         df = pd.read_parquet(path)
-        return {str(c): df[c].dropna().astype(str).tolist()[:sample_rows]
-                for c in df.columns}
+        return {
+            str(c): df[c].dropna().astype(str).tolist()[:sample_rows]
+            for c in df.columns
+        }
     except ImportError:
         raise ImportError(
             "Reading Parquet requires pyarrow or pandas: "
             "pip install pyarrow  OR  pip install pandas"
-        )
+        ) from None
 
 
 # ── Unified ingest() ──────────────────────────────────────────────────────────
@@ -340,7 +342,7 @@ def ingest(
         pass
 
     # ── File path ─────────────────────────────────────────────────────────────
-    if isinstance(source, (str, Path)):
+    if isinstance(source, str | Path):
         return ingest_file(
             Path(source),
             source_name=source_name,
@@ -362,12 +364,16 @@ def ingest(
     # ── dict ──────────────────────────────────────────────────────────────────
     if isinstance(source, dict):
         # {col: [values]} or {col: role_str}
-        if all(isinstance(v, (list, tuple)) or v is None
-               for v in source.values()):
+        if all(
+            isinstance(v, list | tuple) or v is None
+            for v in source.values()
+        ):
             return ingest_column_data(source, source_name or "data", sample_rows)
         # Treat as {col: role} (pre-classified)
-        entries = [[k, v or _classify_role(k, [])]
-                   for k, v in source.items()]
+        entries = [
+            [k, v or _classify_role(k, [])]
+            for k, v in source.items()
+        ]
         return {source_name or "data": entries}
 
     raise TypeError(
@@ -568,7 +574,7 @@ def suggest_aliases(
     aliases: dict[str, list[str]] = {}
     for _src, entries in schema.items():
         for entry in entries:
-            col_name = entry[0] if isinstance(entry, (list, tuple)) else entry
+            col_name = entry[0] if isinstance(entry, list | tuple) else entry
             for tok in _tokenize_col(col_name):
                 if tok in aliases:
                     continue
@@ -585,13 +591,17 @@ def suggest_unknown_abbrevs(schema: dict[str, list]) -> list[str]:
     known expansion.  These are candidates for manual alias entries.
     """
     found: list[str] = []
-    seen:  set[str]  = set()
+    seen: set[str] = set()
     for _src, entries in schema.items():
         for entry in entries:
-            col_name = entry[0] if isinstance(entry, (list, tuple)) else entry
+            col_name = entry[0] if isinstance(entry, list | tuple) else entry
             for tok in _tokenize_col(col_name):
-                if len(tok) <= 4 and tok not in _AUTO_EXPANSIONS \
-                        and tok not in _KNOWN_ABBREVS and tok not in seen:
+                if (
+                    len(tok) <= 4
+                    and tok not in _AUTO_EXPANSIONS
+                    and tok not in _KNOWN_ABBREVS
+                    and tok not in seen
+                ):
                     found.append(tok)
                     seen.add(tok)
     return sorted(found)
@@ -606,8 +616,8 @@ def describe_schema(schema: dict[str, list]) -> str:
         lines.append(f"[{source}]  {len(entries)} columns")
         by_role: dict[str, list[str]] = {}
         for e in entries:
-            col  = e[0] if isinstance(e, (list, tuple)) else e
-            role = e[1] if isinstance(e, (list, tuple)) and len(e) > 1 else "other"
+            col = e[0] if isinstance(e, list | tuple) else e
+            role = e[1] if isinstance(e, list | tuple) and len(e) > 1 else "other"
             by_role.setdefault(role, []).append(col)
         for role, cols in sorted(by_role.items()):
             preview = ", ".join(cols[:8]) + (f" … +{len(cols)-8}" if len(cols) > 8 else "")

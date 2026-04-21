@@ -92,8 +92,6 @@ def test_docs_use_canonical_urls_and_bearer_examples() -> None:
         ROOT / "apps" / "docs" / "docs" / "integrations" / "local-runtime.md",
         ROOT / "apps" / "docs" / "docs" / "integrations" / "overview.md",
         ROOT / "apps" / "docs" / "docs" / "integrations" / "make.md",
-        ROOT / "apps" / "docs" / "docusaurus.config.js",
-        ROOT / "apps" / "docs" / "sidebars.js",
         ROOT / "apps" / "mcp_server" / "README.md",
         ROOT / "apps" / "mcp_server" / "server.py",
         ROOT / "apps" / "mcp_server" / "config.py",
@@ -142,18 +140,7 @@ def test_error_docs_cover_scope_and_idempotency_contract() -> None:
 
 
 def test_integration_docs_cover_primary_surfaces() -> None:
-    sidebar = (ROOT / "apps" / "docs" / "sidebars.js").read_text()
     overview = (ROOT / "apps" / "docs" / "docs" / "integrations" / "overview.md").read_text()
-
-    required_ids = [
-        "integrations/chatgpt-actions",
-        "integrations/claude-codex",
-        "integrations/n8n",
-        "integrations/azure-ai-studio",
-        "integrations/local-runtime",
-    ]
-    for entry in required_ids:
-        assert entry in sidebar
 
     required_paths = [
         ROOT / "apps" / "docs" / "docs" / "integrations" / "claude-codex.md",

@@ -46,7 +46,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 try:
     import torch
     import torch.nn as nn
-    import torch.nn.functional as F
+    import torch.nn.functional as functional
     from torch.utils.data import DataLoader, Dataset
 except ImportError:
     print("PyTorch not found. Install with: pip install torch")
@@ -205,16 +205,16 @@ def train(
 
             out  = model(tids, mask)
             loss = (
-                F.cross_entropy(out["intent"], labels["intent"])
-                + F.cross_entropy(out["agg"],  labels["agg"])
-                + 0.5 * F.cross_entropy(out["family"], labels["family"])
+                functional.cross_entropy(out["intent"], labels["intent"])
+                + functional.cross_entropy(out["agg"], labels["agg"])
+                + 0.5 * functional.cross_entropy(out["family"], labels["family"])
             )
 
             # Contrastive alignment: pull query embedding toward column embedding
             # Only applies to schema-derived examples (has_col == 1)
             if has_col.sum() > 0:
                 col_emb = model.encode(col_ids, col_msk)     # [B, D]
-                cos_sim = F.cosine_similarity(out["emb"], col_emb, dim=-1)  # [B]
+                cos_sim = functional.cosine_similarity(out["emb"], col_emb, dim=-1)  # [B]
                 contrastive = ((1.0 - cos_sim) * has_col).sum() / has_col.sum().clamp(min=1)
                 loss = loss + CONTRASTIVE_ALPHA * contrastive
 
@@ -297,10 +297,14 @@ def main():
 
     if not args.train or not args.vocab:
         parser.error("--train and --vocab are required")
-    vocab     = json.loads(args.vocab.read_text())
-    records   = [json.loads(l) for l in args.train.read_text().splitlines() if l.strip()]
-    val_n     = max(1, int(len(records) * args.val_split))
-    val_recs  = records[-val_n:]
+    vocab = json.loads(args.vocab.read_text())
+    records = [
+        json.loads(line)
+        for line in args.train.read_text().splitlines()
+        if line.strip()
+    ]
+    val_n = max(1, int(len(records) * args.val_split))
+    val_recs = records[-val_n:]
     train_recs = records[:-val_n]
 
     print(f"Training: {len(train_recs)}  Validation: {len(val_recs)}")

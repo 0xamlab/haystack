@@ -76,7 +76,13 @@ LIST_SPEC: dict[str, Any] = {
         "type": "object",
         "properties": {
             "page": {"type": "integer", "description": "Page number (default 1)."},
-            "limit": {"type": "integer", "description": "Results per page (default: all visible datasets, max 200 when set)."},
+            "limit": {
+                "type": "integer",
+                "description": (
+                    "Results per page "
+                    "(default: all visible datasets, max 200 when set)."
+                ),
+            },
         },
     },
 }
@@ -156,7 +162,10 @@ STATUS_SPEC: dict[str, Any] = {
         "type": "object",
         "required": ["dataset_id"],
         "properties": {
-            "dataset_id": {"type": "string", "description": "Dataset ID from onboard_dataset or list_datasets."},
+            "dataset_id": {
+                "type": "string",
+                "description": "Dataset ID from onboard_dataset or list_datasets.",
+            },
         },
     },
 }

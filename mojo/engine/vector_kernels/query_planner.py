@@ -368,6 +368,11 @@ class QueryPlanner:
 # ── Self-test ─────────────────────────────────────────────────────────────────
 
 def _run_self_test():
+    import sys
+
+    def _emit(message: str = "") -> None:
+        sys.stdout.write(f"{message}\n")
+
     schema = {
         "POS": [
             ("UNIT_PRICE",    "unit_measure"),
@@ -388,69 +393,76 @@ def _run_self_test():
     r = ColumnVectorResolver(schema)
     qp = QueryPlanner(r)
 
-    print("=== query_planner self-test ===\n")
+    _emit("=== query_planner self-test ===\n")
     all_ok = True
 
     # ── Case 1: metric + group_by + date ──────────────────────────────────────
     plan1 = qp.plan(
-        metric   = ("extended price",  "POS",  "derived_measure"),
-        group_by = [("customer name",  "POS",  "other")],
-        date     = ("order date",      "POS",  "other"),
+        metric=("extended price", "POS", "derived_measure"),
+        group_by=[("customer name", "POS", "other")],
+        date=("order date", "POS", "other"),
     )
     ok1 = (
         plan1.metric is not None and plan1.metric.column == "EXT_PRICE"
         and len(plan1.group_by) == 1
         and plan1.date_filter is not None
     )
-    if not ok1: all_ok = False
-    print(f"  {'PASS' if ok1 else 'FAIL'}  metric+group_by+date")
-    print(f"  sql: {plan1.sql_sketch.replace(chr(10), ' | ')}\n")
+    if not ok1:
+        all_ok = False
+    _emit(f"  {'PASS' if ok1 else 'FAIL'}  metric+group_by+date")
+    _emit(f"  sql: {plan1.sql_sketch.replace(chr(10), ' | ')}\n")
 
     # ── Case 2: meta query (server count) ────────────────────────────────────
     plan2 = qp.plan(
-        metric   = ("server count", "POS", "base_measure"),
-        group_by = [],
+        metric=("server count", "POS", "base_measure"),
+        group_by=[],
     )
     ok2 = (
         plan2.meta_op is not None
         and plan2.meta_op.op_type == MetaOpType.COUNT_ROWS
     )
-    if not ok2: all_ok = False
-    print(f"  {'PASS' if ok2 else 'FAIL'}  meta COUNT_ROWS")
-    print(f"  sql: {plan2.sql_sketch.replace(chr(10), ' | ')}\n")
+    if not ok2:
+        all_ok = False
+    _emit(f"  {'PASS' if ok2 else 'FAIL'}  meta COUNT_ROWS")
+    _emit(f"  sql: {plan2.sql_sketch.replace(chr(10), ' | ')}\n")
 
     # ── Case 3: meta + group_by embedded ("number of orders per customer") ────
     plan3 = qp.plan(
-        metric   = ("how many guests",        "Totals", "base_measure"),
-        group_by = [("per person average",    "Totals", "ratio")],
+        metric=("how many guests", "Totals", "base_measure"),
+        group_by=[("per person average", "Totals", "ratio")],
     )
     ok3 = (
         plan3.meta_op is not None
         and plan3.meta_op.op_type == MetaOpType.COUNT_NON_NULL
         and plan3.meta_op.column == "Guests"
     )
-    if not ok3: all_ok = False
-    print(f"  {'PASS' if ok3 else 'FAIL'}  meta COUNT_NON_NULL(Guests) + group_by")
-    print(f"  sql: {plan3.sql_sketch.replace(chr(10), ' | ')}\n")
+    if not ok3:
+        all_ok = False
+    _emit(
+        f"  {'PASS' if ok3 else 'FAIL'}  meta COUNT_NON_NULL(Guests) + group_by"
+    )
+    _emit(f"  sql: {plan3.sql_sketch.replace(chr(10), ' | ')}\n")
 
     # ── Case 4: per person average (PPA) with date filter ────────────────────
     plan4 = qp.plan(
-        metric = ("per person average", "Totals", "ratio"),
-        date   = ("order date", "POS", "other"),
+        metric=("per person average", "Totals", "ratio"),
+        date=("order date", "POS", "other"),
     )
     ok4 = plan4.metric is not None and plan4.metric.column == "PPA"
-    if not ok4: all_ok = False
-    print(f"  {'PASS' if ok4 else 'FAIL'}  PPA metric + date filter")
-    print(f"  sql: {plan4.sql_sketch.replace(chr(10), ' | ')}\n")
+    if not ok4:
+        all_ok = False
+    _emit(f"  {'PASS' if ok4 else 'FAIL'}  PPA metric + date filter")
+    _emit(f"  sql: {plan4.sql_sketch.replace(chr(10), ' | ')}\n")
 
     # ── Case 5: to_log_dict ───────────────────────────────────────────────────
     log = plan1.to_log_dict()
     ok5 = "metric" in log and "sql_sketch" in log and "sources" in log
-    if not ok5: all_ok = False
-    print(f"  {'PASS' if ok5 else 'FAIL'}  to_log_dict has expected keys")
-    print(f"  keys: {sorted(log.keys())}\n")
+    if not ok5:
+        all_ok = False
+    _emit(f"  {'PASS' if ok5 else 'FAIL'}  to_log_dict has expected keys")
+    _emit(f"  keys: {sorted(log.keys())}\n")
 
-    print(f"{'All tests passed.' if all_ok else 'FAILURES above.'}")
+    _emit(f"{'All tests passed.' if all_ok else 'FAILURES above.'}")
     return all_ok
 
 

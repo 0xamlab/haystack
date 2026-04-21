@@ -30,7 +30,8 @@ Goal:
 - Mix scalar, grouped, top-N, average, count, cross-source, and multi-hop join questions.
 - Include some harder but realistic questions that require choosing the right source.
 - Prefer questions about totals, averages, counts, top categories, and simple time windows.
-- Avoid unsupported requests such as correlation, percent-of-total, distinct counts, nested comparisons,
+    - Avoid unsupported requests such as correlation, percent-of-total, distinct counts,
+      nested comparisons,
   top-N within top-N, multi-metric outputs, boolean filters, and free-form date arithmetic.
 - Do not mention SQL, schemas, or internal implementation.
 
@@ -78,7 +79,13 @@ def _canonical_source_name(value: str) -> str | None:
         return None
     if "backlog" in norm:
         return "Backlog"
-    if norm == "opo" or "purchase order" in norm or "vendor" in norm or "buyer" in norm or "division" in norm:
+    if (
+        norm == "opo"
+        or "purchase order" in norm
+        or "vendor" in norm
+        or "buyer" in norm
+        or "division" in norm
+    ):
         return "OPO"
     if norm == "pos" or "recent pos" in norm or "oem" in norm:
         return "POS"
@@ -96,8 +103,14 @@ def _infer_sources(question: str, draft_sources: list[dict] | None) -> list[str]
 
     q = question.lower()
     rules = [
-        ("Backlog", ["backlog", "projected ship", "ship date", "ordered on", "status", "project id"]),
-        ("OPO", ["opo", "vendor", "buyer", "division", "profit center", "purchase order", "order type"]),
+        (
+            "Backlog",
+            ["backlog", "projected ship", "ship date", "ordered on", "status", "project id"],
+        ),
+        (
+            "OPO",
+            ["opo", "vendor", "buyer", "division", "profit center", "purchase order", "order type"],
+        ),
         ("POS", ["recent pos", " pos ", "oem", "unit cost"]),
         ("Quotes", ["quote", "quotes", "recent quote", "unit price"]),
     ]
@@ -141,7 +154,13 @@ def _infer_metric(question: str, aggregation: str, draft_metric: dict | None) ->
         return {"role": "base_measure", "hint": "quantity"}
     if aggregation == "count":
         return {"role": "base_measure", "hint": "quantity"}
-    if draft_metric and draft_metric.get("role") in {"derived_measure", "base_measure", "unit_measure", "ratio", "metric"}:
+    if draft_metric and draft_metric.get("role") in {
+        "derived_measure",
+        "base_measure",
+        "unit_measure",
+        "ratio",
+        "metric",
+    }:
         hint = str(draft_metric.get("hint", "") or "").strip()
         return {"role": str(draft_metric["role"]), "hint": hint or "value"}
     return {"role": "metric", "hint": "value"}
@@ -169,8 +188,18 @@ def _infer_group_by(question: str) -> list[str]:
     return []
 
 
-def _build_exact_spec_if_possible(source_names: list[str], metric: dict, aggregation: str, group_by: list[str]) -> dict | None:
-    if source_names == ["POS"] and metric.get("hint") == "unit cost" and aggregation == "avg" and not group_by:
+def _build_exact_spec_if_possible(
+    source_names: list[str],
+    metric: dict,
+    aggregation: str,
+    group_by: list[str],
+) -> dict | None:
+    if (
+        source_names == ["POS"]
+        and metric.get("hint") == "unit cost"
+        and aggregation == "avg"
+        and not group_by
+    ):
         return {
             "source_name": "POS",
             "metric_column": "UNIT_COST",
@@ -191,7 +220,9 @@ def _postprocess_tool_args(question: str, draft: dict) -> dict:
         "sources": [{"name": name} for name in source_names],
         "metric": metric,
         "aggregation": aggregation,
-        "order": "asc" if any(token in q for token in ["lowest", "smallest", "least"]) else "desc",
+        "order": (
+            "asc" if any(token in q for token in ["lowest", "smallest", "least"]) else "desc"
+        ),
     }
     if group_by:
         args["group_by"] = group_by
@@ -217,11 +248,13 @@ Real CSV assets available under test_files:
 
 1. Backlog.csv
 - 1,535 rows, 39 columns
-- Key fields include: ORDERED_ON, CUSTOMER_MASKED, PART_NUMBER, ALT_PART_NUMBER, QUANTITY, UNIT_PRICE, EXT_PRICE, STATUS, PROJECTED_SHIP, PROJECT_ID, SHIP_TO_STATE
+- Key fields include: ORDERED_ON, CUSTOMER_MASKED, PART_NUMBER, ALT_PART_NUMBER,
+  QUANTITY, UNIT_PRICE, EXT_PRICE, STATUS, PROJECTED_SHIP, PROJECT_ID, SHIP_TO_STATE
 
 2. OPO.csv
 - 1,139 rows, 41 columns
-- Key fields include: Profit Center, Division, Vendor No, Vendor Name, Buyer No, Buyer First, Buyer Last, Customer PO, Order Type, Order Number
+- Key fields include: Profit Center, Division, Vendor No, Vendor Name, Buyer No,
+  Buyer First, Buyer Last, Customer PO, Order Type, Order Number
 
 3. Unique_POS_Recent_Stats.csv
 - 1,677 rows, 6 columns
@@ -229,13 +262,16 @@ Real CSV assets available under test_files:
 
 4. Unique_Quotes_Recent_Stats.csv
 - 1,676 rows, 144 columns
-- Key fields include: INVOICE_DATE, CUSTOMER, PART_NUMBER, QUANTITY, UNIT_COST, UNIT_PRICE, EXT_COST, EXT_PRICE, ORDERED_ON, STATUS, ORDER_NUMBER, PROJECT_ID
+- Key fields include: INVOICE_DATE, CUSTOMER, PART_NUMBER, QUANTITY, UNIT_COST,
+  UNIT_PRICE, EXT_COST, EXT_PRICE, ORDERED_ON, STATUS, ORDER_NUMBER, PROJECT_ID
 
 Likely common join anchors across sources:
 - PART_NUMBER
 - PROJECT_ID / ORDER_NUMBER in some flows
 
-Prefer business-natural analytics questions such as totals, averages, counts, top categories, trends, margin/cost/value comparisons, and questions that may require combining quote/backlog/POS style sources.
+Prefer business-natural analytics questions such as totals, averages, counts,
+top categories, trends, margin/cost/value comparisons, and questions that may
+require combining quote/backlog/POS style sources.
 """.strip()
 
 
@@ -352,10 +388,19 @@ async def main() -> None:
     headers = {"Authorization": f"Bearer {os.environ['ALGENTA_API_KEY']}"}
     results: list[dict] = []
     csv_by_name = {
-        "Backlog": (ROOT / "test_files" / "Backlog.csv").read_text(encoding="utf-8-sig", errors="replace"),
+        "Backlog": (ROOT / "test_files" / "Backlog.csv").read_text(
+            encoding="utf-8-sig",
+            errors="replace",
+        ),
         "OPO": (ROOT / "test_files" / "OPO.csv").read_text(encoding="utf-8-sig", errors="replace"),
-        "POS": (ROOT / "test_files" / "Unique_POS_Recent_Stats.csv").read_text(encoding="utf-8-sig", errors="replace"),
-        "Quotes": (ROOT / "test_files" / "Unique_Quotes_Recent_Stats.csv").read_text(encoding="utf-8-sig", errors="replace"),
+        "POS": (ROOT / "test_files" / "Unique_POS_Recent_Stats.csv").read_text(
+            encoding="utf-8-sig",
+            errors="replace",
+        ),
+        "Quotes": (ROOT / "test_files" / "Unique_Quotes_Recent_Stats.csv").read_text(
+            encoding="utf-8-sig",
+            errors="replace",
+        ),
     }
 
     async with sse_client(MCP_URL, headers=headers) as streams:
@@ -371,7 +416,9 @@ async def main() -> None:
                 for src in args.get("sources", []):
                     src_name = src.get("name")
                     if src_name in csv_by_name:
-                        resolved_sources.append({"name": src_name, "csv": csv_by_name[src_name]})
+                        resolved_sources.append(
+                            {"name": src_name, "csv": csv_by_name[src_name]}
+                        )
                 args["sources"] = resolved_sources
                 outcome = await _call_mcp_tool(session, "query_data", args)
                 payload = outcome["payload"]
@@ -394,7 +441,10 @@ async def main() -> None:
         "mcp_url": MCP_URL,
         "question_count": len(questions),
         "results": results,
-        "avg_elapsed_ms": round(sum(r["elapsed_ms"] for r in results) / max(len(results), 1), 1),
+        "avg_elapsed_ms": round(
+            sum(r["elapsed_ms"] for r in results) / max(len(results), 1),
+            1,
+        ),
         "passed": sum(1 for r in results if r["ok"]),
     }
     out_path = ROOT / "benchmarks" / "claude_mcp_20q_results.json"

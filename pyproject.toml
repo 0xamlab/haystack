@@ -4,6 +4,7 @@ target-version = "py312"
 extend-exclude = [
     ".codex",
     "apps/api-server",
+    "apps/runtime/proto",
     "benchmarks/python_libs",
     "hello-world",
     "mojo_env",
@@ -33,6 +34,7 @@ ignore = [
 "apps/api_server/simulation_templates.py" = ["E501"]
 "apps/api_server/alembic/**/*.py" = ["E501", "UP007", "UP035"]
 "apps/cli/*.py" = ["T20"]
+"apps/platform_contract_constants.py" = ["E501"]
 "benchmarks/**/*.py" = ["S311", "T20"]
 "packages/algenta-core/algenta/cli.py" = ["T20"]
 "tests/**/*.py" = ["E501", "S", "T20"]

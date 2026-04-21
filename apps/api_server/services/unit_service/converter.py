@@ -72,11 +72,21 @@ def unit_convert(value: float, from_unit: str, to_unit: str) -> float:
 
     # ── Temperature (non-linear) ──────────────────────────────────────────────
     if fu in _TEMP_ALIASES and tu in _TEMP_ALIASES:
-        fn = _TEMP_ALIASES[fu]; tn = _TEMP_ALIASES[tu]
-        to_k = {"c": value + 273.15, "f": (value + 459.67) * 5/9,
-                "k": value, "r": value * 5/9}
+        fn = _TEMP_ALIASES[fu]
+        tn = _TEMP_ALIASES[tu]
+        to_k = {
+            "c": value + 273.15,
+            "f": (value + 459.67) * 5 / 9,
+            "k": value,
+            "r": value * 5 / 9,
+        }
         k = to_k.get(fn, value)
-        from_k = {"c": k - 273.15, "f": k * 9/5 - 459.67, "k": k, "r": k * 9/5}
+        from_k = {
+            "c": k - 273.15,
+            "f": k * 9 / 5 - 459.67,
+            "k": k,
+            "r": k * 9 / 5,
+        }
         return from_k.get(tn, k)
 
     # ── Linear conversion via SI base ─────────────────────────────────────────

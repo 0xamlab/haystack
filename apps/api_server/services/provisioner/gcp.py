@@ -34,15 +34,25 @@ class GCPProvisioner(BaseProvisioner):
         endpoint_url = f"https://{str(deployment_id)[:8]}.deploy.algenta.ai"
 
         resource_ids = {
-            "cloud_run_service":   f"projects/algenta-prod/locations/{region}/services/{deploy_name}",
-            "cloud_sql_instance":  f"algenta-prod:{region}:{deploy_name}-db",
-            "memorystore_instance": f"projects/algenta-prod/locations/{region}/instances/{deploy_name}-redis",
-            "project_id":  "algenta-prod",
-            "region":      region,
+            "cloud_run_service": (
+                f"projects/algenta-prod/locations/{region}/services/{deploy_name}"
+            ),
+            "cloud_sql_instance": f"algenta-prod:{region}:{deploy_name}-db",
+            "memorystore_instance": (
+                f"projects/algenta-prod/locations/{region}/instances/"
+                f"{deploy_name}-redis"
+            ),
+            "project_id": "algenta-prod",
+            "region": region,
             "deploy_name": deploy_name,
         }
 
-        logger.info("gcp_provisioning", org_id=str(org_id), deployment_id=str(deployment_id), region=region)
+        logger.info(
+            "gcp_provisioning",
+            org_id=str(org_id),
+            deployment_id=str(deployment_id),
+            region=region,
+        )
         return ProvisionResult(success=True, endpoint_url=endpoint_url, resource_ids=resource_ids)
 
     async def deprovision(self, deployment_id: uuid.UUID, resource_ids: dict[str, Any]) -> bool:

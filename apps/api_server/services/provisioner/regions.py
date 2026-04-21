@@ -247,7 +247,13 @@ async def get_available_regions() -> dict[str, list[dict[str, str]]]:
 
 # Synchronous static snapshot for callers that don't need live data
 REGIONS: dict[str, list[dict[str, str]]] = {
-    "algenta_shared": [{"id": "algenta-shared", "label": "Algenta Managed (Multi-tenant)", "flag": "🌐"}],
+    "algenta_shared": [
+        {
+            "id": "algenta-shared",
+            "label": "Algenta Managed (Multi-tenant)",
+            "flag": "🌐",
+        }
+    ],
     "aws":   _static_aws_regions(),
     "azure": _static_azure_regions(),
     "gcp":   _static_gcp_regions(),

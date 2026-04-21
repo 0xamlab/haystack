@@ -425,9 +425,9 @@ for n_vars in [1, 3, 5]:
         5: "revenue - cost + market_size * conversion_rate * lifetime_value",
     }
     for eng in ["monte_carlo", "lhs", "qmc_sobol"]:
-        def _test(engine=eng, nv=n_vars):
+        def _test(engine=eng, nv=n_vars, objective_map=obj_exprs):
             payload = expert_payload(engine, runs=500, n_vars=nv,
-                                     objective=obj_exprs[nv])
+                                     objective=objective_map[nv])
             status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
             record_csv(engine, "expert", nv, 500, status, elapsed, body)
             assert status == 200, f"Got {status} for {engine} with {nv} vars"
@@ -841,7 +841,7 @@ for eng in AUTO_ENGINES:
         ev = m.get("expected_value", 0)
         # Verify metrics are present and numeric (EV may be 0 if engine
         # doesn't evaluate objective for some engine types)
-        assert isinstance(ev, (int, float)), f"expected_value should be numeric, got {type(ev)}"
+        assert isinstance(ev, int | float), f"expected_value should be numeric, got {type(ev)}"
         assert "recommended_action" in body, "Missing recommended_action"
     check(f"Auto {eng} returns valid metrics envelope", _test)
 
@@ -982,7 +982,6 @@ for eng in ["monte_carlo", "lhs", "qmc_sobol", "bootstrap", "scenario", "sensiti
         status, body, _, _ = req("POST", "/v1/simulate", body=payload)
         if status == 200:
             sim_model = body.get("simulation_model", "")
-            eng_type = body.get("engine_type", "")
             # Verify response contains simulation_model and engine_type fields
             assert "simulation_model" in body, f"Missing simulation_model field for {engine}"
             assert "engine_type" in body, f"Missing engine_type field for {engine}"
@@ -1038,7 +1037,7 @@ if timing_results:
             tr = timing_results[eng]
             st = f"{tr['status']}"
             ms = f"{tr['elapsed_ms']}ms"
-            mn = f"{tr['mean']:.0f}" if isinstance(tr['mean'], (int, float)) else str(tr['mean'])
+            mn = f"{tr['mean']:.0f}" if isinstance(tr['mean'], int | float) else str(tr['mean'])
             icon = PASS if tr['status'] == 200 else FAIL
             print(f"  {icon} {eng:<22} {st:>6} {ms:>10} {mn:>14}")
     print(f"  {'─' * 60}")

@@ -6,10 +6,12 @@ such as `result_hash`, timestamps, execution timing, and transient metadata.
 """
 import hashlib
 import json
+import re
 from typing import Any
 
 HASH_ALGORITHM = "sha256"
 HASH_VERSION = "1"
+_HEX_HASH_RE = re.compile(r"^[0-9a-f]{64}$", re.IGNORECASE)
 
 
 def canonical_envelope_bytes(envelope_data: dict[str, Any]) -> bytes:
@@ -44,6 +46,20 @@ def canonical_envelope_bytes(envelope_data: dict[str, Any]) -> bytes:
     return json.dumps(canonical, sort_keys=True, separators=(",", ":"), default=str).encode("utf-8")
 
 
+def _compute_decision_hash(envelope_data: dict[str, Any]) -> str:
+    """Compute the canonical SHA-256 hash for envelope data."""
+    canonical = canonical_envelope_bytes(envelope_data)
+    return hashlib.sha256(canonical).hexdigest()
+
+
+def _extract_precomputed_hash(envelope_data: dict[str, Any]) -> str | None:
+    """Return a normalized precomputed result hash when present and valid."""
+    raw_hash = envelope_data.get("result_hash")
+    if isinstance(raw_hash, str) and _HEX_HASH_RE.fullmatch(raw_hash):
+        return raw_hash.lower()
+    return None
+
+
 def hash_decision_envelope(envelope_data: dict[str, Any]) -> str:
     """
     Compute SHA-256 hash of a decision envelope.
@@ -51,8 +67,10 @@ def hash_decision_envelope(envelope_data: dict[str, Any]) -> str:
     Returns:
         Hex string of SHA-256 digest (64 chars), e.g. "a3f4b2c1..."
     """
-    canonical = canonical_envelope_bytes(envelope_data)
-    return hashlib.sha256(canonical).hexdigest()
+    precomputed_hash = _extract_precomputed_hash(envelope_data)
+    if precomputed_hash is not None:
+        return precomputed_hash
+    return _compute_decision_hash(envelope_data)
 
 
 def verify_decision_hash(envelope_data: dict[str, Any], stored_hash: str) -> bool:
@@ -63,7 +81,7 @@ def verify_decision_hash(envelope_data: dict[str, Any], stored_hash: str) -> boo
         True if the result matches the hash (not tampered with)
         False if the hash doesn't match (tampered or corrupted)
     """
-    computed = hash_decision_envelope(envelope_data)
+    computed = _compute_decision_hash(envelope_data)
     return computed == stored_hash
 
 

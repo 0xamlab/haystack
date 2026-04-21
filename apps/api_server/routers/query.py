@@ -53,6 +53,7 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 import structlog
@@ -85,7 +86,7 @@ router = APIRouter(tags=["Semantic Query"])
 #     Same content always produces same result — the hash IS the freshness guarantee.
 #   path/url/connection-keyed: path+mtime → TTL-based (data can change under same key).
 #
-# LRU eviction when > _CACHE_MAX_SOURCES entries.
+# LRU eviction when > _CACHE_MAX_SOURCES unique cached sources.
 
 _PATH_CACHE_TTL = 1800  # 30 min for file/url/connection sources (content can change)
 _CACHE_MAX_SOURCES = 30  # evict LRU when exceeded
@@ -114,7 +115,7 @@ class _CachedSource:
         self.last_hit = time.monotonic()
 
 
-_SOURCE_CACHE: dict[str, _CachedSource] = {}  # cache_key → entry
+_SOURCE_CACHE: dict[str, _CachedSource] = {}  # source/cache alias key → entry
 _CACHE_LOCK = asyncio.Lock()
 
 _RESULT_CACHE: dict[
@@ -369,6 +370,103 @@ async def _get_registry_planner(
     return planner, False, schema_revision
 
 
+async def _try_incremental_registry_planner_update(
+    org_id: str,
+    *,
+    llm_policy: str,
+    auth: AuthContext | None,
+    source_id: str,
+    source_name: str,
+    schema_meta: dict[str, Any],
+    source_schema_revision: str,
+    parquet_path: Path | None,
+    new_connections: list[dict[str, Any]],
+) -> tuple[bool, str]:
+    from apps.api_server.services import source_registry as _sreg
+    from apps.api_server.services.data_visibility import (
+        filter_visible_datasets,
+        visibility_hash,
+    )
+
+    schema_revision = _sreg.schema_revision(org_id)
+    all_entries = _sreg.list_sources(org_id)
+    visible_entries = (
+        filter_visible_datasets(all_entries, auth)
+        if auth is not None
+        else all_entries
+    )
+    visibility_fingerprint = visibility_hash(visible_entries)
+    visible_ids = {str(entry.get("id")) for entry in visible_entries if entry.get("id")}
+    cache_key = (org_id, llm_policy, visibility_fingerprint)
+
+    async with _CACHE_LOCK:
+        cached = _PLANNER_CACHE.get(cache_key)
+        prior_cache_key = cache_key
+        if cached is None:
+            candidates = [
+                (key, entry)
+                for key, entry in _PLANNER_CACHE.items()
+                if key[0] == org_id and key[1] == llm_policy
+            ]
+            if len(candidates) == 1:
+                prior_cache_key, cached = candidates[0]
+
+    if cached is None:
+        return False, schema_revision
+
+    # Org-level schema revision changes even when the new source is outside the
+    # current visibility scope. Keep the cached planner live in that case
+    # instead of forcing a pointless rebuild on the next request.
+    if source_id not in visible_ids:
+        async with _CACHE_LOCK:
+            live = _PLANNER_CACHE.get(prior_cache_key)
+            if live is cached:
+                live.schema_revision = schema_revision
+                live.touch()
+                if prior_cache_key != cache_key:
+                    _PLANNER_CACHE.pop(prior_cache_key, None)
+                    _evict_planner_lru()
+                    _PLANNER_CACHE[cache_key] = live
+        return True, schema_revision
+
+    planner = cached.planner
+    refresh_registry_source = getattr(planner, "refresh_registry_source", None)
+    if refresh_registry_source is None:
+        return False, schema_revision
+
+    try:
+        await asyncio.to_thread(
+            refresh_registry_source,
+            org_id=org_id,
+            source_id=source_id,
+            source_name=source_name,
+            schema_meta=schema_meta,
+            source_schema_revision=source_schema_revision,
+            parquet_path=parquet_path,
+            new_connections=new_connections,
+        )
+    except Exception as exc:
+        logger.debug(
+            "registry_planner_incremental_update_failed",
+            org_id=org_id,
+            source_id=source_id,
+            error=str(exc),
+        )
+        return False, schema_revision
+
+    async with _CACHE_LOCK:
+        live = _PLANNER_CACHE.get(prior_cache_key)
+        if live is cached:
+            live.schema_revision = schema_revision
+            live.touch()
+            if prior_cache_key != cache_key:
+                _PLANNER_CACHE.pop(prior_cache_key, None)
+                _evict_planner_lru()
+                _PLANNER_CACHE[cache_key] = live
+
+    return True, schema_revision
+
+
 async def _run_cached_planner_method(
     planner: Any,
     method_name: str,
@@ -614,12 +712,48 @@ def _raise_empty_source(source_name: str) -> None:
     )
 
 
-def _evict_lru() -> None:
-    """Remove least-recently-used entry when cache is full."""
-    if len(_SOURCE_CACHE) >= _CACHE_MAX_SOURCES:
-        oldest = min(_SOURCE_CACHE, key=lambda k: _SOURCE_CACHE[k].last_hit)
-        del _SOURCE_CACHE[oldest]
-        logger.debug("source_cache_evict", key=oldest[:8])
+def _source_cache_unique_entries() -> list[tuple[_CachedSource, list[str]]]:
+    grouped: dict[int, tuple[_CachedSource, list[str]]] = {}
+    for key, entry in _SOURCE_CACHE.items():
+        cached = grouped.get(id(entry))
+        if cached is None:
+            grouped[id(entry)] = (entry, [key])
+            continue
+        cached[1].append(key)
+    return list(grouped.values())
+
+
+def _evict_lru(exempt_entry: _CachedSource | None = None) -> None:
+    """Remove least-recently-used cached source objects when the unique-entry cache is full."""
+    while True:
+        unique_entries = _source_cache_unique_entries()
+        if len(unique_entries) <= _CACHE_MAX_SOURCES:
+            return
+        evictable = [
+            (entry, keys)
+            for entry, keys in unique_entries
+            if exempt_entry is None or entry is not exempt_entry
+        ]
+        if not evictable:
+            return
+        oldest_entry, oldest_keys = min(evictable, key=lambda item: item[0].last_hit)
+        for key in oldest_keys:
+            _SOURCE_CACHE.pop(key, None)
+        logger.debug(
+            "source_cache_evict",
+            key=oldest_keys[0][:8],
+            alias_count=len(oldest_keys),
+            last_hit=oldest_entry.last_hit,
+        )
+
+
+def _source_cache_put(entry: _CachedSource, *keys: str) -> None:
+    unique_keys = [key for key in dict.fromkeys(keys) if key]
+    if not unique_keys:
+        raise ValueError("source cache insert requires at least one key")
+    for key in unique_keys:
+        _SOURCE_CACHE[key] = entry
+    _evict_lru(exempt_entry=entry)
 
 
 def _build_schema_metadata(
@@ -2793,20 +2927,41 @@ def _profile_arrow_table(table: Any) -> dict[str, dict]:
                 break
         return sample_values
 
+    def _sample_distinct_non_null_values(array: Any, limit: int) -> list[Any]:
+        if limit <= 0:
+            return []
+        try:
+            unique = pc.unique(pc.drop_null(array))
+            return [value for value in unique.to_pylist() if value is not None][:limit]
+        except Exception:
+            seen: set[Any] = set()
+            distinct_values: list[Any] = []
+            for value in _sample_non_null_values(array, limit * 4):
+                if value in seen:
+                    continue
+                seen.add(value)
+                distinct_values.append(value)
+                if len(distinct_values) >= limit:
+                    break
+            return distinct_values
+
     for field_name in table.column_names:
         column = table[field_name]
         if pa.types.is_dictionary(column.type):
             column = pc.dictionary_decode(column)
-
-        total_count = int(pc.count(column, mode="only_valid").as_py() or 0)
-        fill_rate = round(total_count / n_total, 4) if n_total else 0.0
-        sample_values = _sample_non_null_values(column, _TARGET_SAMPLES)
 
         is_numeric = (
             pa.types.is_integer(column.type)
             or pa.types.is_floating(column.type)
             or pa.types.is_decimal(column.type)
         )
+        total_count = int(pc.count(column, mode="only_valid").as_py() or 0)
+        fill_rate = round(total_count / n_total, 4) if n_total else 0.0
+        unique_count = _distinct_count(column)
+        if not is_numeric and 1 < unique_count <= 32:
+            sample_values = _sample_distinct_non_null_values(column, _TARGET_SAMPLES)
+        else:
+            sample_values = _sample_non_null_values(column, _TARGET_SAMPLES)
 
         nums: list[float] = []
         strs: list[str] = []
@@ -2826,7 +2981,7 @@ def _profile_arrow_table(table: Any) -> dict[str, dict]:
             "strings": strs,
             "is_numeric": is_numeric,
             "sample_values": [str(v) for v in sample_values[:50]],
-            "unique_count": _distinct_count(column),
+            "unique_count": unique_count,
             "total_count": total_count,
             "non_empty": total_count,
             "fill_rate": fill_rate,
@@ -6190,8 +6345,7 @@ async def query_sources(
                     content_keyed=True,
                 )
                 async with _CACHE_LOCK:
-                    _evict_lru()
-                    _SOURCE_CACHE[registered_id] = reg_entry
+                    _source_cache_put(reg_entry, registered_id)
                 cache_entries[src.name] = reg_entry
                 plan.append(f"Registry HIT (dataset/source id) [{src.name}]")
                 continue
@@ -6295,8 +6449,7 @@ async def query_sources(
                         content_keyed=ck_content,
                     )
                     async with _CACHE_LOCK:
-                        _evict_lru()
-                        _SOURCE_CACHE[ck] = entry
+                        _source_cache_put(entry, ck)
                     cache_entries[name] = entry
                     break
 
@@ -6896,8 +7049,7 @@ async def infer_schema(
             content_keyed=content_keyed,
         )
         async with _CACHE_LOCK:
-            _evict_lru()
-            _SOURCE_CACHE[cache_key] = entry
+            _source_cache_put(entry, cache_key)
 
         result.append(
             {

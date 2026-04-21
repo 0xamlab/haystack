@@ -106,7 +106,10 @@ def _make_step_request(
             break
 
     if not modified:
-        raise HTTPException(400, f"Variable '{variable_name}' or param '{param}' not found in request")
+        raise HTTPException(
+            400,
+            f"Variable '{variable_name}' or param '{param}' not found in request",
+        )
 
     # Rebuild the request with modified variable
     payload = base_request.model_dump()
@@ -205,26 +208,31 @@ async def _run_what_if(
     # Build WhatIfStep list
     steps: list[WhatIfStep] = []
     for i, val, stats in step_results:
-        pct_label = f"{((val - base_value) / (abs(base_value) or 1.0) * 100):+.1f}%" if base_value != 0 else f"{val:+.3g}"
-        steps.append(WhatIfStep(
-            step=i,
-            value=val,
-            label=f"{variable}={val:.4g} ({pct_label})",
-            mean=stats["mean"],
-            std=stats["std"],
-            p5=stats["p5"],
-            p25=stats["p25"],
-            p50=stats["p50"],
-            p75=stats["p75"],
-            p95=stats["p95"],
-            probability_of_loss=stats["pol"],
-            score=stats["score"],
-        ))
+        pct_label = (
+            f"{((val - base_value) / (abs(base_value) or 1.0) * 100):+.1f}%"
+            if base_value != 0
+            else f"{val:+.3g}"
+        )
+        steps.append(
+            WhatIfStep(
+                step=i,
+                value=val,
+                label=f"{variable}={val:.4g} ({pct_label})",
+                mean=stats["mean"],
+                std=stats["std"],
+                p5=stats["p5"],
+                p25=stats["p25"],
+                p50=stats["p50"],
+                p75=stats["p75"],
+                p95=stats["p95"],
+                probability_of_loss=stats["pol"],
+                score=stats["score"],
+            )
+        )
 
     # Compute sensitivity metrics
     ev_values = [s.mean for s in steps]
-    ev_range = max(ev_values) - min(ev_values) if ev_values else 0.0
-    base_ev = steps[len(steps)//2].mean if steps else 0.0
+    base_ev = steps[len(steps) // 2].mean if steps else 0.0
 
     # Elasticity: (% change in EV) / (% change in variable)
     if base_value != 0.0 and base_ev != 0.0 and len(steps) >= 2:

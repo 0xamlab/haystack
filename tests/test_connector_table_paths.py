@@ -57,6 +57,29 @@ def _write_tiny_excel(path: Path) -> None:
     path.write_bytes(base64.b64decode(_tiny_excel_b64()))
 
 
+def _multi_sheet_excel_b64() -> str:
+    import openpyxl
+
+    wb = openpyxl.Workbook()
+    ws1 = wb.active
+    ws1.title = "First"
+    ws1.append(["part_number", "measure_total"])
+    ws1.append(["00123", 10])
+
+    ws2 = wb.create_sheet("Second")
+    ws2.append(["part_number", "measure_total"])
+    ws2.append(["00456", 20])
+    ws2.append(["00789", 30])
+
+    ws3 = wb.create_sheet("Third")
+    ws3.append(["part_number", "measure_total"])
+    ws3.append(["00001", 1])
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    return base64.b64encode(buf.getvalue()).decode()
+
+
 @pytest.mark.asyncio
 async def test_file_connector_fetch_table_supports_json_records() -> None:
     connector = FileConnector(
@@ -128,6 +151,24 @@ async def test_file_connector_fetch_table_uses_raw_excel_bytes_for_file_path(
     assert table is not None
     assert table.num_rows == 1
     assert seen == {"content_type": bytes, "sheet": 0}
+
+
+def test_open_excel_sheet_loads_only_requested_sheet() -> None:
+    workbook_b64 = _multi_sheet_excel_b64()
+
+    wb, ws = FileConnector._open_excel_sheet(workbook_b64, sheet=1)
+    try:
+        rows = ws.values
+        headers = next(rows)
+        records = [dict(zip(headers, row, strict=False)) for row in rows]
+        assert ws.title == "Second"
+        assert len(wb._sheets) == 1
+        assert records == [
+            {"part_number": "00456", "measure_total": 20},
+            {"part_number": "00789", "measure_total": 30},
+        ]
+    finally:
+        wb.close()
 
 
 @pytest.mark.asyncio

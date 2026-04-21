@@ -32,7 +32,9 @@ SKIP_API = os.environ.get("DE_SKIP_API", "0") == "1"
 CLI = [sys.executable, str(_ROOT / "apps" / "cli" / "main.py")]
 ENV = {**os.environ, "DE_API_KEY": API_KEY, "DE_BASE_URL": BASE_URL, "DE_NO_COLOR": "1"}
 
-PASS = "✅"; FAIL = "❌"; SKIP = "⏭️ "
+PASS = "✅"
+FAIL = "❌"
+SKIP = "⏭️ "
 _results: list[tuple[str, bool, str]] = []
 
 

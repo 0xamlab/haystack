@@ -6,16 +6,16 @@ sidebar_position: 99
 
 ## v1.0.0 — 2026-03 (Current)
 
-### Phase 5B — Full Developer Portal + Billing
-- **Next.js developer portal** at `apps/portal/` — login, dashboard, API keys, playground, usage, billing, settings
+### Phase 5B — Hosted Account Interface + Billing
+- **Hosted account interface** — login, dashboard, API keys, playground, usage, billing, settings
 - **Stripe billing integration** — checkout sessions, customer portal, webhook handler, plan upgrades
 - **Quota alert emails** — HTML emails at 80% and 100% monthly usage via SMTP
 - **Welcome email** on signup with quickstart snippet
 - Billing endpoints: `POST /v1/billing/checkout`, `POST /v1/billing/portal`, `GET /v1/billing/info`, `POST /v1/billing/webhook`
 - 223 unit tests total
 
-### Phase 5A — Minimal Docs Shell + Rate Limiting + Usage Recording
-- **Docusaurus docs site** at `apps/docs/` — quickstart, API reference, integration guides
+### Phase 5A — Documentation Set + Rate Limiting + Usage Recording
+- **Documentation set** under `apps/docs/docs/` — quickstart, API reference, integration guides
 - **Rate limiting** — Redis per-minute sliding window per org
 - **Monthly quota enforcement** — HTTP 429 when quota exhausted
 - **Usage records** — `usage_records` table, `UsageRecord` model, migration 0004

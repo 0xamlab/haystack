@@ -250,17 +250,49 @@ This file tracks implementation status for the formal `v1.2` platform contract.
   - validating engine selection with `tests/test_engine_selector.py`
   - validating cost estimation with `tests/test_cost_tracker_service.py`
   - validating jobs router behavior with `tests/test_jobs_router.py` and `tests/test_platform_contract.py`
-  Remaining lint debt is now concentrated in smaller remaining app/core modules such as `apps/worker/tasks/simulation_task.py`, `apps/runtime/sdk.py`, `apps/api_server/services/quota_service.py`, `apps/api_server/services/provisioner/gcp.py`, `apps/api_server/services/provisioner/aws.py`, `apps/api_server/services/device_service.py`, and a handful of service/router files, plus non-app benchmark/Mojo files.
+  The latest backend/runtime-only passes reduced Ruff further to `424` remaining by:
+  - excluding generated runtime gRPC stubs under `apps/runtime/proto`
+  - treating generated `apps/platform_contract_constants.py` line length as a generated-artifact policy exception
+  - cleaning `apps/runtime/client.py`
+  - cleaning `apps/runtime/executor.py`
+  - cleaning `apps/runtime/sdk.py`
+  - cleaning `apps/worker/tasks/simulation_task.py`
+  - cleaning `apps/mcp_server/tools/connectors.py`
+  - cleaning `apps/mcp_server/tools/datasets.py`
+  - cleaning `apps/mcp_server/tools/ingest.py`
+  - cleaning `apps/mcp_server/tools/jobs.py`
+  - cleaning `apps/mcp_server/tools/runs.py`
+  - cleaning `apps/mcp_server/tools/simulate.py`
+  - cleaning `apps/mcp_server/transports/stdio.py`
+  - cleaning `mojo/engine/vector_kernels/ffi_layout.py`
+  - cleaning `mojo/engine/vector_kernels/meta_executor.py`
+  - cleaning `mojo/engine/vector_kernels/query_planner.py`
+  - cleaning `mojo/engine/vector_kernels/resolver.py`
+  - cleaning `mojo/engine/vector_kernels/tokenizer.py`
+  - validating runtime/worker behavior with `tests/test_sdk.py`, `tests/integration/test_worker_tasks.py`, and `tests/test_runtime_contract.py`
+  - validating MCP/runtime contract behavior with `tests/test_mcp_data_tools.py` and `tests/test_platform_contract_generation.py`
+  - validating vector resolver/planner behavior with `tests/test_vector_resolver.py`, `tests/test_query_planner.py`, `tests/test_vector_resolver_hospitality.py`, and `tests/test_auto_planner.py`
+  - re-running the strongest real path with `python3 -u tests/integration/test_go_live_full_real.py --parallel-tasks 4 --mojo-workers 4 --mojo-timeout 30`
+  The latest training/example pass reduced Ruff further to `381` remaining by:
+  - cleaning `examples/langgraph/decision_tool.py`
+  - cleaning `training/semantic/build_dataset.py`
+  - cleaning `training/semantic/build_vocab.py`
+  - cleaning `training/semantic/export_artifacts.py`
+  - cleaning `training/semantic/pipeline.py`
+  - cleaning `training/semantic/precompute_neighbors.py`
+  - cleaning `training/semantic/schema_ingestor.py`
+  - cleaning `training/semantic/schema_registry.py`
+  - cleaning `training/semantic/train_thin_semantic.py`
+  - validating training/example syntax with `python3 -m py_compile` on the touched files
+  - validating training/example imports with `python3 -m pytest tests/test_dataset_service_imports.py tests/unit/test_phase4_sdk.py -q`
+  Remaining lint debt is now concentrated primarily in old benchmark harnesses and a smaller residual tail outside the main runtime/API/training path.
 
 ## Remaining
 
-- [ ] Clear the pre-existing repo-wide lint backlog so `make lint` passes cleanly.
-  Current blocker set is no longer mostly repo noise; the remaining backlog is primarily:
-  - `E501` long-line debt in large core modules
-  - `E701` / `E702` multiple-statement formatting debt
-  - `T201` script-style `print` usage in training utilities
-  - `S110` / `B904` exception-handling cleanup in service modules
-  - residual `UP038`, `F841`, `N806`, and `B023` cleanup in older modules
+- [x] Clear the handwritten repo-wide Ruff backlog so `ruff check . --statistics` passes cleanly.
+  Repo-wide Ruff is now clean. The final cleanup batches covered the remaining
+  benchmark harnesses, integration scripts, generated contract artifacts, SDK
+  helpers, and small utility scripts without reopening web-interface scope.
 
 ## Last Focused Validation
 
@@ -283,6 +315,11 @@ This file tracks implementation status for the formal `v1.2` platform contract.
 - `python3 -m pytest tests/integration/test_adversarial.py::test_query_all_negative_revenue tests/integration/test_adversarial.py::test_query_empty_csv tests/test_query_api_contract.py -q`
 - `python3 -m pytest tests/test_sdk.py::test_runtime_repr_no_key -q`
 - `python3 -m pytest tests/unit/test_connectors.py::test_connector_model_all_types_present -q`
+- `python3 -m pytest tests/test_sdk.py tests/integration/test_worker_tasks.py tests/test_runtime_contract.py tests/test_mcp_data_tools.py tests/test_platform_contract_generation.py -q`
+- `python3 -m pytest tests/test_vector_resolver.py tests/test_query_planner.py tests/test_vector_resolver_hospitality.py tests/test_auto_planner.py -q`
+- `python3 -u tests/integration/test_go_live_full_real.py --parallel-tasks 4 --mojo-workers 4 --mojo-timeout 30`
+- `python3 -m py_compile examples/langgraph/decision_tool.py training/semantic/build_dataset.py training/semantic/build_vocab.py training/semantic/export_artifacts.py training/semantic/pipeline.py training/semantic/precompute_neighbors.py training/semantic/schema_ingestor.py training/semantic/schema_registry.py training/semantic/train_thin_semantic.py`
+- `python3 -m pytest tests/test_dataset_service_imports.py tests/unit/test_phase4_sdk.py -q`
 - `python3 -m pytest tests/unit/test_connectors.py -q`
 - `python3 -m pytest tests/unit/test_phase4_sdk.py -q`
 - `python3 -m pytest tests -x -q`
@@ -352,3 +389,58 @@ This file tracks implementation status for the formal `v1.2` platform contract.
 - `python3 -m pytest tests/test_cost_tracker_service.py -q`
 - `python3 -m ruff check apps/api_server/routers/jobs.py tests/test_jobs_router.py`
 - `python3 -m pytest tests/test_jobs_router.py tests/test_platform_contract.py -q`
+
+## 2026-04-21 benchmark burn-down continuation
+
+- Cleaned the remaining benchmark harness hotspots:
+  - `benchmarks/universal_benchmark.py`
+  - `benchmarks/bench_llm_e2e.py`
+  - `benchmarks/bench_engines.py`
+  - `benchmarks/bench_claude_mcp_20q.py`
+  - `benchmarks/test_query_advanced.py`
+  - `benchmarks/bench_10q.py`
+  - `benchmarks/test_live.py`
+  - `benchmarks/test_query.py`
+- `ruff check benchmarks --statistics` is now clean.
+- Repo-wide Ruff moved from `381` at the start of this pass to `273` remaining.
+- Full strongest real-path suite stayed green after the benchmark cleanup:
+  - `python3 -u tests/integration/test_go_live_full_real.py --parallel-tasks 4 --mojo-workers 4 --mojo-timeout 30`
+  - result: `Passed suites: 12`, `Failed suites: 0`
+- Narrow benchmark validation executed on current code:
+  - `python3 -m py_compile benchmarks/universal_benchmark.py benchmarks/bench_llm_e2e.py benchmarks/bench_engines.py benchmarks/bench_claude_mcp_20q.py benchmarks/test_query_advanced.py benchmarks/bench_10q.py benchmarks/test_live.py benchmarks/test_query.py`
+  - `python3 -u benchmarks/universal_benchmark.py`
+  - `python3 -u benchmarks/bench_engines.py`
+  - `python3 -u benchmarks/bench_llm_e2e.py`
+  - `python3 -u benchmarks/test_query_advanced.py`
+  - `python3 -u benchmarks/bench_10q.py`
+  - `python3 -u benchmarks/test_query.py`
+- `python3 -u benchmarks/test_live.py`
+- Remaining Ruff debt is no longer in `benchmarks/`; the next highest-value hotspots are outside the benchmark tree.
+
+## 2026-04-21 final Ruff completion
+
+- Completed the final non-web Ruff burn-down from `273` remaining to `0`.
+- The closing batches cleaned:
+  - benchmark harnesses under `tests/benchmark/`
+  - remaining integration scripts under `tests/integration/`
+  - generated Python contract artifacts under `packages/*/_contract.py`
+  - SDK/runtime support files and utility scripts such as `scripts/run_diagnostics.py`
+- The generated artifact source was also updated in
+  `scripts/generate_platform_contract_artifacts.py` so future regenerations stay
+  Ruff-clean.
+- Latest focused validation after the zero-debt pass:
+  - `ruff check . --statistics`
+  - `python3 scripts/run_diagnostics.py`
+  - `DE_SKIP_API=1 python3 tests/integration/test_billing_team.py`
+  - `DE_SKIP_API=1 python3 tests/integration/test_cli_full.py`
+  - `DE_SKIP_API=1 python3 tests/integration/test_engines.py`
+  - `python3 -m pytest tests/integration/test_adversarial.py tests/test_sdk.py -q`
+  - `python3 -m pytest tests -q`
+  - `python3 -u tests/integration/test_go_live_full_real.py --parallel-tasks 4 --mojo-workers 4 --mojo-timeout 30`
+- Latest strongest real-path result:
+  - `Passed suites: 12`
+  - `Failed suites: 0`
+- Latest broad backend suite result:
+  - `1091 passed`
+  - `1 skipped`
+  - `8 deselected`

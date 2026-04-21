@@ -263,8 +263,13 @@ async def device_register(
             _key = f"credits_issued:{api_key_row.org_id}:{billing_period}"
             await redis_client.incrby(_key, credit_batch)
             await redis_client.expire(_key, 35 * 86_400)
-    except Exception:
-        pass   # Redis unavailable — not fatal for registration
+    except Exception as exc:
+        logger.debug(
+            "device_registration_credit_cache_write_failed",
+            org_id=str(api_key_row.org_id),
+            billing_period=billing_period,
+            error=str(exc),
+        )
 
     return RegisterResponse(
         license_token=token,

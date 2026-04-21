@@ -11,7 +11,7 @@ Decision: Based on typical measurements on modern hardware:
   - json.loads() on a 10-var payload ≈ 0.04–0.10 ms
   - 10k MC compute via Mojo pool ≈ 5–15 ms
   - Parse fraction ≈ 0.4–2% → Python JSON boundary is kept (no tokenizer needed)
-  
+
 See mojo/engine/request_parser.mojo for the documented result inline.
 
 Usage:
@@ -153,13 +153,13 @@ async def main() -> None:
     print(f"invoke_engine() total: {invoke_mean:.2f} ms")
     print(f"Parse fraction:        {parse_pct:.2f}%\n")
 
-    THRESHOLD_PCT = 10.0
-    if parse_pct > THRESHOLD_PCT:
-        print(f"⚠️  DECISION: Parse fraction {parse_pct:.1f}% > {THRESHOLD_PCT}% threshold.")
+    threshold_pct = 10.0
+    if parse_pct > threshold_pct:
+        print(f"⚠️  DECISION: Parse fraction {parse_pct:.1f}% > {threshold_pct}% threshold.")
         print("   Recommendation: Implement Mojo-native tokenizer in")
         print("   mojo/engine/json/tokenizer.mojo for the hot-path fields.")
     else:
-        print(f"✅ DECISION: Parse fraction {parse_pct:.1f}% ≤ {THRESHOLD_PCT}% threshold.")
+        print(f"✅ DECISION: Parse fraction {parse_pct:.1f}% ≤ {threshold_pct}% threshold.")
         print("   Python JSON boundary is kept — no Mojo tokenizer needed.")
         print("   See: mojo/engine/request_parser.mojo (Phase 4 note)")
     print()

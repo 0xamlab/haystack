@@ -24,7 +24,7 @@ class UsageRecord(UUIDMixin, TimestampMixin, Base):
     Written synchronously in the hot path (simulation service).
     Used for:
     - Monthly quota checks (count rows per org per billing_period)
-    - Usage dashboard in portal (group by day/endpoint)
+    - Usage dashboard in the external web interface (group by day/endpoint)
     - Stripe metered billing hooks (future)
     """
     __tablename__ = "usage_records"
@@ -53,7 +53,11 @@ class UsageRecord(UUIDMixin, TimestampMixin, Base):
         index=True,
     )
     endpoint: Mapped[UsageEndpoint] = mapped_column(
-        Enum(UsageEndpoint, name="usage_endpoint", values_callable=lambda obj: [e.value for e in obj]),
+        Enum(
+            UsageEndpoint,
+            name="usage_endpoint",
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
         nullable=False,
     )
     billing_units: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
@@ -64,4 +68,7 @@ class UsageRecord(UUIDMixin, TimestampMixin, Base):
     )
 
     def __repr__(self) -> str:
-        return f"<UsageRecord id={self.id} org={self.org_id} period={self.billing_period} endpoint={self.endpoint}>"
+        return (
+            f"<UsageRecord id={self.id} org={self.org_id} "
+            f"period={self.billing_period} endpoint={self.endpoint}>"
+        )

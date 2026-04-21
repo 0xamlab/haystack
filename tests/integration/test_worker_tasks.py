@@ -22,7 +22,9 @@ sys.path.insert(0, str(_ROOT))
 SKIP_CELERY = os.environ.get("DE_CELERY", "0") != "1"
 REDIS_URL   = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 
-PASS = "✅"; FAIL = "❌"; SKIP = "⏭️ "
+PASS = "✅"
+FAIL = "❌"
+SKIP = "⏭️ "
 _results: list[tuple[str, bool, str]] = []
 
 
@@ -36,7 +38,9 @@ def check(name: str, cond: bool, detail: str = "") -> None:
 
 def test_worker_tasks_importable():
     try:
-        from apps.worker import tasks as worker_tasks
+        import importlib
+
+        importlib.import_module("apps.worker.tasks")
         check("apps.worker.tasks importable", True)
     except ImportError as e:
         check("apps.worker.tasks importable", False, str(e))

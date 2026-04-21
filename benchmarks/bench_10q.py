@@ -16,36 +16,42 @@ from pathlib import Path
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
-from apps.api_server.services.auto_planner import AutoPlanner
-
 # ── ANSI ──────────────────────────────────────────────────────────────────────
-G = "\033[92m"; R = "\033[91m"; Y = "\033[93m"
-C = "\033[96m"; B = "\033[1m";  D = "\033[2m";  X = "\033[0m"
+G = "\033[92m"
+R = "\033[91m"
+Y = "\033[93m"
+C = "\033[96m"
+B = "\033[1m"
+D = "\033[2m"
+X = "\033[0m"
 
 W = 72
 
 QUESTIONS = [
-    # (label, description, metric_hint, dim_hint, agg, preferred_source, cross_source)
+    # (
+    #   label, description, metric_hint, dim_hint, agg,
+    #   preferred_source, cross_source, expected_error
+    # )
     ("Q1",  "Revenue by product line (Bookings)",
-     "revenue",        "product line",   "sum",  "Bookings",  False),
+     "revenue",        "product line",   "sum",  "Bookings",  False, None),
     ("Q2",  "Revenue by customer type (Quotes)",
-     "revenue",        "customer type",  "sum",  "Quotes",    False),
+     "revenue",        "customer type",  "sum",  "Quotes",    False, None),
     ("Q3",  "Revenue by business unit (Bookings)",
-     "revenue",        "business unit",  "sum",  "Bookings",  False),
+     "revenue",        "business unit",  "sum",  "Bookings",  False, None),
     ("Q4",  "Revenue by sales rep (Bookings)",
-     "revenue",        "sales rep",      "sum",  "Bookings",  False),
+     "revenue",        "sales rep",      "sum",  "Bookings",  False, None),
     ("Q5",  "Unit price by manufacturer (Bookings)",
-     "unit price",     "manufacturer",   "avg",  "Bookings",  False),
+     "unit price",     "manufacturer",   "avg",  "Bookings",  False, None),
     ("Q6",  "Extended cost by vendor (Inventory)",
-     "extended cost",  "vendor",         "sum",  "Inventory", False),
+     "extended cost",  "vendor",         "sum",  "Inventory", False, None),
     ("Q7",  "Quantity by condition (Inventory)",
-     "quantity",       "condition",      "sum",  "Inventory", False),
+     "quantity",       "condition",      "sum",  "Inventory", False, None),
     ("Q8",  "Revenue by product line [POS → cross join Quotes]",
-     "revenue",        "product line",   "sum",  "POS",       True),
-    ("Q9",  "AAR margin % by customer type (Quotes cross-source)",
-     "aar margin percent", "customer type", "avg", "Quotes",  True),
+     "revenue",        "product line",   "sum",  "POS",       True, None),
+    ("Q9",  "AAR margin % by customer type (Quotes cross-source, expected reject)",
+     "aar margin percent", "customer type", "avg", "Quotes",  True, "No safe join path"),
     ("Q10", "Revenue total scalar (Bookings no dim)",
-     "revenue",        None,             "sum",  "Bookings",  False),
+     "revenue",        None,             "sum",  "Bookings",  False, None),
 ]
 
 
@@ -59,7 +65,7 @@ def bar(v: float, w: int = 10) -> str:
 
 
 def result_preview(result, agg: str, metric_col: str) -> str:
-    if isinstance(result, (int, float)):
+    if isinstance(result, int | float):
         return f"scalar={result:,.2f}"
     if isinstance(result, list) and result:
         top = result[:3]
@@ -70,6 +76,8 @@ def result_preview(result, agg: str, metric_col: str) -> str:
 
 
 def run_benchmark():
+    from apps.api_server.services.auto_planner import AutoPlanner
+
     print(f"\n{B}{'═'*W}{X}")
     print(f"{B}{C}  Decision Engine — 10-Question Cross-Reference Benchmark{X}")
     print(f"{B}{'═'*W}{X}")
@@ -99,7 +107,16 @@ def run_benchmark():
     # ── Per-question results ─────────────────────────────────────────────────
     timings: list[dict] = []
 
-    for (label, desc, metric_hint, dim_hint, agg, preferred, is_cross) in QUESTIONS:
+    for (
+        label,
+        desc,
+        metric_hint,
+        dim_hint,
+        agg,
+        preferred,
+        is_cross,
+        expected_error,
+    ) in QUESTIONS:
         print(f"\n{B}{'─'*W}{X}")
         cross_tag = f"  {Y}[cross-source]{X}" if is_cross else ""
         print(f"{B}{C}  {label}{X}  {desc}{cross_tag}")
@@ -116,22 +133,43 @@ def run_benchmark():
         plan_ms = time.perf_counter() - t_plan
 
         if plan.error:
-            print(f"  {R}✗ plan error: {plan.error}{X}")
-            timings.append({"label": label, "ok": False})
+            error_matches = expected_error is not None and expected_error in plan.error
+            sym = f"{G}✓{X}" if error_matches else f"{R}✗{X}"
+            qualifier = "expected reject" if error_matches else "plan error"
+            print(f"  {sym} {qualifier}: {plan.error}{X}")
+            timings.append({
+                "label": label,
+                "ok": error_matches,
+                "expected_reject": bool(expected_error),
+                "cold_plan_ms": plan_ms * 1000,
+                "cold_exec_ms": 0.0,
+                "cold_total_ms": plan_ms * 1000,
+                "hot_total_ms": 0.0,
+                "speedup": 0.0,
+                "rows": 0,
+                "join": False,
+            })
             continue
 
         mojo_tag = f"  {D}mojo=[{' · '.join(plan.mojo_ops) or 'python'}]{X}"
         print(f"  {D}plan {X}{fmt_ms(plan_ms)}{mojo_tag}")
 
         # Metric + dim + join info
-        print(f"  {D}  metric → {plan.metric_src}.{plan.metric_col}"
-              f"  conf={plan.metric_conf:.3f}  role={plan.metric_role}{X}")
+        print(
+            f"  {D}  metric → {plan.metric_src}.{plan.metric_col}"
+            f"  conf={plan.metric_conf:.3f}  role={plan.metric_role}{X}"
+        )
         if plan.group_col:
-            print(f"  {D}  dim    → {plan.group_src}.{plan.group_col}  conf={plan.group_conf:.3f}{X}")
+            print(
+                f"  {D}  dim    → {plan.group_src}.{plan.group_col}  "
+                f"conf={plan.group_conf:.3f}{X}"
+            )
         if plan.join_key_metric:
-            print(f"  {D}  join   → {plan.metric_src}.{plan.join_key_metric}"
-                  f" ↔ {plan.group_src}.{plan.join_key_group}"
-                  f"  conf={plan.join_conf:.3f}  card={plan.join_cardinality}{X}")
+            print(
+                f"  {D}  join   → {plan.metric_src}.{plan.join_key_metric}"
+                f" ↔ {plan.group_src}.{plan.join_key_group}"
+                f"  conf={plan.join_conf:.3f}  card={plan.join_cardinality}{X}"
+            )
 
         # ── Cold: execute ─────────────────────────────────────────────────────
         t_exec = time.perf_counter()
@@ -144,25 +182,29 @@ def run_benchmark():
         print(f"  {D}  → {prev}{X}")
 
         # ── Hot: repeat plan + execute ─────────────────────────────────────────
-        HOT_RUNS = 3
+        hot_runs = 3
         hot_plan_total  = 0.0
         hot_exec_total  = 0.0
-        for _ in range(HOT_RUNS):
+        for _ in range(hot_runs):
             t = time.perf_counter()
-            planner.plan(metric_hint=metric_hint, dim_hint=dim_hint,
-                         agg=agg, preferred_source=preferred)
+            planner.plan(
+                metric_hint=metric_hint,
+                dim_hint=dim_hint,
+                agg=agg,
+                preferred_source=preferred,
+            )
             hot_plan_total += time.perf_counter() - t
 
             t = time.perf_counter()
             planner.execute_plan(plan, limit=10)
             hot_exec_total += time.perf_counter() - t
 
-        hot_plan_ms = hot_plan_total / HOT_RUNS
-        hot_exec_ms = hot_exec_total / HOT_RUNS
+        hot_plan_ms = hot_plan_total / hot_runs
+        hot_exec_ms = hot_exec_total / hot_runs
         hot_total   = hot_plan_ms + hot_exec_ms
         speedup     = cold_total / max(hot_total, 1e-6)
 
-        ok = bool(result) or isinstance(result, (int, float))
+        ok = bool(result) or isinstance(result, int | float)
         sym = f"{G}✓{X}" if ok else f"{R}✗{X}"
 
         print(f"\n  {sym}  {B}{label}{X}  "
@@ -202,14 +244,22 @@ def run_benchmark():
     print(f"\n{B}{'═'*W}{X}")
     print(f"{B}{C}  SUMMARY{X}")
     print(f"{B}{'═'*W}{X}")
-    print(f"  Questions   : {len(timings)}   "
-          f"{G}pass={passed}{X}   {R}fail={failed}{X}   "
-          f"cross-join={joined}")
-    print(f"\n  Cold  avg   : {avg_cold:7.1f}ms   (plan={avg_plan:.1f}ms  exec={avg_exec:.1f}ms)")
+    print(
+        f"  Questions   : {len(timings)}   "
+        f"{G}pass={passed}{X}   {R}fail={failed}{X}   "
+        f"cross-join={joined}"
+    )
+    print(
+        f"\n  Cold  avg   : {avg_cold:7.1f}ms   "
+        f"(plan={avg_plan:.1f}ms  exec={avg_exec:.1f}ms)"
+    )
     print(f"  Hot   avg   : {avg_hot:7.1f}ms   (3-run mean)")
     print(f"  Speedup     : {avg_spdup:6.1f}×   (cold→hot)")
     print("\n  Per-question breakdown:")
-    print(f"  {'Label':<5}  {'Cold':>8}  {'Hot':>7}  {'Speedup':>8}  {'Rows':>6}  {'Join?':>6}  Result")
+    print(
+        f"  {'Label':<5}  {'Cold':>8}  {'Hot':>7}  {'Speedup':>8}  "
+        f"{'Rows':>6}  {'Join?':>6}  Result"
+    )
     print(f"  {'─'*5}  {'─'*8}  {'─'*7}  {'─'*8}  {'─'*6}  {'─'*6}  {'─'*6}")
     for t in timings:
         if "cold_total_ms" not in t:

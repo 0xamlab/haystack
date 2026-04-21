@@ -32,7 +32,9 @@ BASE_URL = os.environ.get("DE_BASE_URL", "http://localhost:8000")
 API_KEY  = os.environ.get("DE_API_KEY",  "de_live_LrL6UWSAfgXsTjgfyaboI9aolrsznjLU")
 SKIP_API = os.environ.get("DE_SKIP_API", "0") == "1"
 
-PASS = "✅"; FAIL = "❌"; SKIP = "⏭️ "
+PASS = "✅"
+FAIL = "❌"
+SKIP = "⏭️ "
 _results: list[tuple[str, bool, str]] = []
 
 

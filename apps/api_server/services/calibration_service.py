@@ -29,6 +29,8 @@ import math
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 # ── Constants ─────────────────────────────────────────────────────────────────
 
 MIN_SAMPLES = 5          # minimum outcomes before calibration kicks in
@@ -187,7 +189,7 @@ def calibrate_confidence(
 
 async def refresh_calibration_from_db(
     org_id: str,
-    db: AsyncSession,  # type: ignore[name-defined]
+    db: AsyncSession,
 ) -> CalibrationStats:
     """
     Pull all logged outcomes for this org from the DB and recompute calibration.
@@ -212,5 +214,5 @@ async def refresh_calibration_from_db(
     )
     rows = list(result.all())
     expected_vals = [float(r[0]) for r in rows]
-    actual_vals   = [float(r[1]) for r in rows]
+    actual_vals = [float(r[1]) for r in rows]
     return update_calibration(org_id, expected_vals, actual_vals)

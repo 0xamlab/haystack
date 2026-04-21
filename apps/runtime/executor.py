@@ -18,6 +18,7 @@ import asyncio
 import json
 import os
 import struct
+import tempfile
 import time
 import uuid
 from pathlib import Path
@@ -28,10 +29,13 @@ import structlog
 logger = structlog.get_logger(__name__)
 
 # Default socket path — must match daemon.py
-_DEFAULT_MOJO_SOCK = os.environ.get(
-    "ALGENTA_MOJO_SOCK",
-    "/tmp/algenta-mojo/worker-0.sock",
-)
+
+def _default_mojo_socket() -> str:
+    base_dir = Path(tempfile.gettempdir()) / "algenta-mojo"
+    return str(base_dir / "worker-0.sock")
+
+
+_DEFAULT_MOJO_SOCK = os.environ.get("ALGENTA_MOJO_SOCK", _default_mojo_socket())
 
 # Module registry: maps library name → list of known public functions.
 # Populated lazily from the test suite file names and MOJO_TIMING output.
@@ -76,7 +80,7 @@ async def _mojo_call(payload: dict, sock_path: str = _DEFAULT_MOJO_SOCK) -> dict
     reader, writer = await asyncio.open_unix_connection(sock_path)
     try:
         # Consume the ready handshake
-        _ready = await _mojo_recv(reader)   # {"status":"ready"}
+        _ready = await _mojo_recv(reader)  # {"status":"ready"}
 
         await _mojo_send(writer, json.dumps(payload))
         raw = await _mojo_recv(reader)
@@ -85,8 +89,8 @@ async def _mojo_call(payload: dict, sock_path: str = _DEFAULT_MOJO_SOCK) -> dict
         writer.close()
         try:
             await writer.wait_closed()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("mojo_socket_close_failed", error=str(exc), socket=sock_path)
 
 
 # ── Python fallback ───────────────────────────────────────────────────────────
@@ -98,8 +102,14 @@ def _python_fallback(module: str, function: str, args: Any) -> dict:
     binary is built and the library is wired into main.mojo's dispatch.
     """
     # Simulation engine fallback — delegates to existing python_adapter
-    if module in ("monte_carlo", "scenario", "bootstrap", "sensitivity",
-                  "decision_tree", "time_series"):
+    if module in (
+        "monte_carlo",
+        "scenario",
+        "bootstrap",
+        "sensitivity",
+        "decision_tree",
+        "time_series",
+    ):
         from mojo.bindings.python_adapter import run_simulation  # type: ignore[import]
         if isinstance(args, list) and len(args) > 0:
             config = args[0]
@@ -194,9 +204,17 @@ class Executor:
         # Simulation engines use engine_type dispatch.
         # Domain libraries use module::function dispatch (added in future main.mojo).
         mojo_payload: dict = {}
-        is_sim_engine = module in ("monte_carlo", "scenario", "bootstrap",
-                                   "sensitivity", "decision_tree", "time_series",
-                                   "mcmc", "lhs", "qmc_sobol")
+        is_sim_engine = module in (
+            "monte_carlo",
+            "scenario",
+            "bootstrap",
+            "sensitivity",
+            "decision_tree",
+            "time_series",
+            "mcmc",
+            "lhs",
+            "qmc_sobol",
+        )
         if is_sim_engine:
             if isinstance(args, dict):
                 mojo_payload = {**args, "engine_type": module}

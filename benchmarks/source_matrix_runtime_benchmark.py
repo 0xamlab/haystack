@@ -75,6 +75,7 @@ from apps.api_server.routers.query import (
     QueryRequest,
     ResolveRequest,
     _resolve_registered_intent,
+    _select_count_anchor_column,
     query_sources,
 )
 from apps.api_server.routers.sources import RegisterRequest, register_source
@@ -187,10 +188,14 @@ def _discover_local_parquet_paths() -> list[Path]:
     ]
 
 
-def _parse_csv_records(path: Path) -> tuple[str, list[dict[str, Any]]]:
+def _parse_csv_records(
+    path: Path,
+    *,
+    allow_empty: bool = False,
+) -> tuple[str, list[dict[str, Any]]]:
     text = path.read_text(encoding="utf-8-sig", errors="replace")
     records = parse_delimited_records(text, delimiter=",", sniff=True)
-    if not records:
+    if not records and not allow_empty:
         raise RuntimeError(f"{path} parsed to zero records")
     return text, records
 
@@ -285,7 +290,11 @@ async def _register_case(
         if canonical_entry
         else source.name
     )
-    metric_column, metric_role = _choose_count_target(schema)
+    count_anchor = _select_count_anchor_column(schema)
+    if count_anchor is not None:
+        metric_column, metric_role = count_anchor
+    else:
+        metric_column, metric_role = _choose_count_target(schema)
     return PreparedSourceCase(
         label=label,
         category=category,
@@ -306,8 +315,9 @@ async def _prepare_local_csv_cases(
     auth: dict[str, str],
     include_processed_variants: bool,
     local_limit: int | None,
-) -> list[PreparedSourceCase]:
+) -> tuple[list[PreparedSourceCase], list[str]]:
     prepared: list[PreparedSourceCase] = []
+    skipped_empty: list[str] = []
     for index, path in enumerate(
         _discover_local_csv_paths(
             include_processed_variants,
@@ -315,7 +325,10 @@ async def _prepare_local_csv_cases(
         ),
         start=1,
     ):
-        csv_text, records = _parse_csv_records(path)
+        csv_text, records = _parse_csv_records(path, allow_empty=True)
+        if not records:
+            skipped_empty.append(str(path.relative_to(ROOT)))
+            continue
         relative = path.relative_to(ROOT)
         prepared.append(
             await _register_case(
@@ -327,7 +340,7 @@ async def _prepare_local_csv_cases(
                 expected_count=len(records),
             )
         )
-    return prepared
+    return prepared, skipped_empty
 
 
 async def _prepare_local_non_csv_cases(*, auth: dict[str, str]) -> list[PreparedSourceCase]:
@@ -797,7 +810,7 @@ async def _run(
             "role": "owner",
             "key_id": str(uuid.uuid4()),
         }
-        local_cases = await _prepare_local_csv_cases(
+        local_cases, skipped_empty_local_csvs = await _prepare_local_csv_cases(
             auth=local_auth,
             include_processed_variants=include_processed_variants,
             local_limit=local_limit,
@@ -843,6 +856,7 @@ async def _run(
     summary = {
         "benchmark": "source_matrix_runtime_benchmark",
         "local_csv_files": len(local_cases),
+        "skipped_empty_local_csv_files": skipped_empty_local_csvs,
         "local_non_csv_sources": len(local_non_csv_cases),
         "database_sources": len(db_measurements),
         "public_sources": len(public_measurements),

@@ -73,14 +73,15 @@ def _profile(records: list[dict[str, Any]]) -> dict[str, dict]:
             v = rec.get(field)
             if v is None:
                 continue
-            if isinstance(v, (int, float)):
+            if isinstance(v, int | float):
                 nums.append(float(v))
             else:
                 strs.append(str(v))
         profile[field] = {
-            "numeric": nums, "strings": strs,
+            "numeric": nums,
+            "strings": strs,
             "is_numeric": len(nums) > len(strs),
-            "unique_count": len(set(str(v) for v in (nums or strs)[:200])),
+            "unique_count": len({str(v) for v in (nums or strs)[:200]}),
             "total_count": len(nums) + len(strs),
             "sample_values": [str(v) for v in nums[:30]] + strs[:30],
         }
@@ -98,8 +99,12 @@ def _call_mojo(payload: dict) -> tuple[dict | None, float]:
     raw = json.dumps(payload)
     t0 = time.perf_counter()
     try:
-        r = subprocess.run([str(BINARY)], input=raw.encode(),
-                           capture_output=True, timeout=60)
+        r = subprocess.run(  # noqa: S603
+            [str(BINARY)],
+            input=raw.encode(),
+            capture_output=True,
+            timeout=60,
+        )
         elapsed = time.perf_counter() - t0
         if r.returncode != 0:
             return None, elapsed
@@ -184,8 +189,11 @@ async def main() -> None:
         profiles[name] = prof
         ncols = len(records[0]) if records else 0
         nnum  = sum(1 for v in prof.values() if v["is_numeric"])
-        print(f"  {BOLD}{name:<12}{RESET} {len(records):>5,} rows  "
-              f"{ncols:>4} cols  {nnum:>3} numeric   {GREEN}{ms(time.perf_counter()-t0)}{RESET}")
+        print(
+            f"  {BOLD}{name:<12}{RESET} {len(records):>5,} rows  "
+            f"{ncols:>4} cols  {nnum:>3} numeric   "
+            f"{GREEN}{ms(time.perf_counter() - t0)}{RESET}"
+        )
 
     total_load = time.perf_counter() - t_load
     print(f"\n  {BOLD}Total load + profile:{RESET} {GREEN}{ms(total_load)}{RESET}")
@@ -236,7 +244,10 @@ async def main() -> None:
         return [
             {
                 "name": f,
-                "semantic_type": mp.get(f, {}).get("semantic_type", "metric" if info["is_numeric"] else "category"),
+                "semantic_type": mp.get(f, {}).get(
+                    "semantic_type",
+                    "metric" if info["is_numeric"] else "category",
+                ),
                 "polarity": mp.get(f, {}).get("polarity", 0),
                 "distribution": mp.get(f, {}).get("distribution", ""),
                 "mean": info.get("mean", 0.0),
@@ -288,14 +299,23 @@ async def main() -> None:
             print(f"  {DIM}  Strong matches (≥0.85):{RESET}")
             for m in sorted(strong, key=lambda x: x["score"], reverse=True)[:6]:
                 b_str = bar(m["score"])
-                print(f"    {DIM}{m['field_a']:<28} → {m['field_b']:<28} [{b_str}] {m['score']:.3f}{RESET}")
+                print(
+                    f"    {DIM}{m['field_a']:<28} → {m['field_b']:<28} "
+                    f"[{b_str}] {m['score']:.3f}{RESET}"
+                )
         if suggest:
             print(f"  {DIM}  Suggested (0.60–0.85):{RESET}")
             for m in sorted(suggest, key=lambda x: x["score"], reverse=True)[:4]:
                 b_str = bar(m["score"])
-                print(f"    {DIM}{m['field_a']:<28} → {m['field_b']:<28} [{b_str}] {m['score']:.3f}{RESET}")
+                print(
+                    f"    {DIM}{m['field_a']:<28} → {m['field_b']:<28} "
+                    f"[{b_str}] {m['score']:.3f}{RESET}"
+                )
 
-    print(f"\n  {BOLD}All {len(valid_pairs)} pairs wall-clock (parallel):{RESET} {GREEN}{ms(t_match)}{RESET}")
+        print(
+            f"\n  {BOLD}All {len(valid_pairs)} pairs wall-clock (parallel):{RESET} "
+            f"{GREEN}{ms(t_match)}{RESET}"
+        )
 
     # ── Q2: What join keys connect the tables? ────────────────────────────────
     section("Q&A — Join Keys")
@@ -337,7 +357,10 @@ async def main() -> None:
             print(f"    {DIM}{jk['field_a']:<30} ↔ {jk['field_b']:<30}"
                   f"  conf={jk['confidence']:.3f}  cardinality={jk['cardinality']}{RESET}")
 
-    print(f"\n  {BOLD}All {len(join_pair_labels)} pairs wall-clock (parallel):{RESET} {GREEN}{ms(t_join)}{RESET}")
+    print(
+        f"\n  {BOLD}All {len(join_pair_labels)} pairs wall-clock (parallel):{RESET} "
+        f"{GREEN}{ms(t_join)}{RESET}"
+    )
 
     # ── Q3: What formulas exist in each table? ────────────────────────────────
     section("Q&A — Derived Formulas (A×B≈C, A+B≈C)")
@@ -383,7 +406,11 @@ async def main() -> None:
         pct     = f"{evaled/max(triples,1)*100:.0f}%"
 
         if not rels:
-            answer(question, f"No formulas found  ({triples:,} triples, {pct} evaluated)", elapsed)
+            answer(
+                question,
+                f"No formulas found  ({triples:,} triples, {pct} evaluated)",
+                elapsed,
+            )
         else:
             top = sorted(rels, key=lambda r: r["confidence"], reverse=True)
             answer(question,
@@ -395,7 +422,10 @@ async def main() -> None:
             if len(rels) > 6:
                 print(f"    {DIM}  … and {len(rels)-6} more{RESET}")
 
-    print(f"\n  {BOLD}All {len(rel_labels)} sources wall-clock (parallel):{RESET} {GREEN}{ms(t_rel)}{RESET}")
+    print(
+        f"\n  {BOLD}All {len(rel_labels)} sources wall-clock (parallel):{RESET} "
+        f"{GREEN}{ms(t_rel)}{RESET}"
+    )
 
     # ── Q4: Spot questions ────────────────────────────────────────────────────
     section("Q&A — Spot Questions")

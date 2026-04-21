@@ -131,13 +131,21 @@ _AGG_WORDS: frozenset[str] = frozenset({
 # Patterns → (MetaOpType, agg_word)  — checked in priority order
 _AGG_PATTERNS: list[tuple[re.Pattern, MetaOpType, str]] = [
     # DISTINCT must come before plain COUNT to avoid mis-match
-    (re.compile(r'\b(unique|distinct|different)\b',                          re.I),  MetaOpType.COUNT_DISTINCT, "distinct"),
-    (re.compile(r'\b(how many|number of|count of|row count|total count)\b',  re.I),  MetaOpType.COUNT_ROWS,     "count"),
-    (re.compile(r'\bcount\b',                                                re.I),  MetaOpType.COUNT_ROWS,     "count"),
-    (re.compile(r'\b(total|sum)\b',                                          re.I),  MetaOpType.SUM_COLUMN,     "total"),
-    (re.compile(r'\b(max|maximum|highest|top)\b',                            re.I),  MetaOpType.MAX_COLUMN,     "max"),
-    (re.compile(r'\b(min|minimum|lowest|bottom)\b',                          re.I),  MetaOpType.MIN_COLUMN,     "min"),
-    (re.compile(r'\b(avg|average|mean)\b',                                   re.I),  MetaOpType.AVG_COLUMN,     "avg"),
+    (
+        re.compile(r"\b(unique|distinct|different)\b", re.I),
+        MetaOpType.COUNT_DISTINCT,
+        "distinct",
+    ),
+    (
+        re.compile(r"\b(how many|number of|count of|row count|total count)\b", re.I),
+        MetaOpType.COUNT_ROWS,
+        "count",
+    ),
+    (re.compile(r"\bcount\b", re.I), MetaOpType.COUNT_ROWS, "count"),
+    (re.compile(r"\b(total|sum)\b", re.I), MetaOpType.SUM_COLUMN, "total"),
+    (re.compile(r"\b(max|maximum|highest|top)\b", re.I), MetaOpType.MAX_COLUMN, "max"),
+    (re.compile(r"\b(min|minimum|lowest|bottom)\b", re.I), MetaOpType.MIN_COLUMN, "min"),
+    (re.compile(r"\b(avg|average|mean)\b", re.I), MetaOpType.AVG_COLUMN, "avg"),
 ]
 
 # Group-by signal: "per X", "by X", "for each X", "grouped by X"
@@ -163,9 +171,9 @@ def _extract_entity(hint: str) -> str:
     Remove aggregation words and common stop-words; return remaining noun(s).
     Falls back to the full hint if nothing remains.
     """
-    _STOPS = frozenset({"the", "a", "an", "of", "per", "by", "from", "in", "at"})
+    stop_words = frozenset({"the", "a", "an", "of", "per", "by", "from", "in", "at"})
     tokens = tokenize_name(hint)
-    noun_tokens = [t for t in tokens if t not in _AGG_WORDS and t not in _STOPS]
+    noun_tokens = [t for t in tokens if t not in _AGG_WORDS and t not in stop_words]
     return " ".join(noun_tokens) if noun_tokens else hint.strip()
 
 
@@ -219,7 +227,11 @@ def interpret_meta_query(
             op_type = MetaOpType.COUNT_NON_NULL
         elif base_op == MetaOpType.SUM_COLUMN:
             op_type = MetaOpType.SUM_COLUMN
-        elif base_op in (MetaOpType.MAX_COLUMN, MetaOpType.MIN_COLUMN, MetaOpType.AVG_COLUMN):
+        elif base_op in (
+            MetaOpType.MAX_COLUMN,
+            MetaOpType.MIN_COLUMN,
+            MetaOpType.AVG_COLUMN,
+        ):
             op_type = base_op
         else:
             op_type = MetaOpType.SUM_COLUMN
@@ -236,7 +248,11 @@ def interpret_meta_query(
         )
     else:
         # Entity IS the row entity — COUNT_ROWS (or COUNT_DISTINCT for "unique X")
-        op_type = MetaOpType.COUNT_DISTINCT if base_op == MetaOpType.COUNT_DISTINCT else MetaOpType.COUNT_ROWS
+        op_type = (
+            MetaOpType.COUNT_DISTINCT
+            if base_op == MetaOpType.COUNT_DISTINCT
+            else MetaOpType.COUNT_ROWS
+        )
         return MetaQueryOp(
             op_type=op_type,
             source=vr.source,
@@ -289,18 +305,36 @@ def meta_op_to_sql_fragment(op: MetaQueryOp) -> str:
 # ── Self-test ─────────────────────────────────────────────────────────────────
 
 def _run_self_test():
+    import sys
+
+    def _emit(message: str = "") -> None:
+        sys.stdout.write(f"{message}\n")
+
     from mojo.engine.vector_kernels.resolver import ColumnVectorResolver, ResolverOutcome
 
     schema = {
-        "Totals":   [("Net_Sales","derived_measure"),("Guests","base_measure"),
-                     ("PPA","ratio"),("Tips","derived_measure"),("Sold","base_measure")],
-        "Beverage": [("Beverage_Net_Sales","derived_measure"),("Beverage_Guests","base_measure")],
+        "Totals": [
+            ("Net_Sales", "derived_measure"),
+            ("Guests", "base_measure"),
+            ("PPA", "ratio"),
+            ("Tips", "derived_measure"),
+            ("Sold", "base_measure"),
+        ],
+        "Beverage": [
+            ("Beverage_Net_Sales", "derived_measure"),
+            ("Beverage_Guests", "base_measure"),
+        ],
     }
     hosp = ColumnVectorResolver(schema)
 
     proc_schema = {
-        "POS": [("UNIT_PRICE","unit_measure"),("EXT_PRICE","derived_measure"),
-                ("QTY","base_measure"),("CUSTOMER_NAME","other"),("ORDER_DATE","other")],
+        "POS": [
+            ("UNIT_PRICE", "unit_measure"),
+            ("EXT_PRICE", "derived_measure"),
+            ("QTY", "base_measure"),
+            ("CUSTOMER_NAME", "other"),
+            ("ORDER_DATE", "other"),
+        ],
     }
     proc = ColumnVectorResolver(proc_schema)
 
@@ -308,37 +342,43 @@ def _run_self_test():
         # (resolver, hint, src, role, expected_op, expected_col_or_none)
         # "total guests" is intentionally omitted: "total" alone is a column prefix
         # in many schemas (Total_Guests), so it stays AMBIGUOUS — correct behavior.
-        (hosp, "server count",      "Totals", "base_measure",  MetaOpType.COUNT_ROWS,      None),
-        (hosp, "how many guests",   "Totals", None,            MetaOpType.COUNT_NON_NULL,  "Guests"),
-        (hosp, "number of guests",  "Totals", None,            MetaOpType.COUNT_NON_NULL,  "Guests"),
-        (hosp, "number of servers", "Totals", None,            MetaOpType.COUNT_ROWS,      None),
-        (proc, "how many orders",   "POS",    None,            MetaOpType.COUNT_ROWS,      None),
+        (hosp, "server count", "Totals", "base_measure", MetaOpType.COUNT_ROWS, None),
+        (hosp, "how many guests", "Totals", None, MetaOpType.COUNT_NON_NULL, "Guests"),
+        (hosp, "number of guests", "Totals", None, MetaOpType.COUNT_NON_NULL, "Guests"),
+        (hosp, "number of servers", "Totals", None, MetaOpType.COUNT_ROWS, None),
+        (proc, "how many orders", "POS", None, MetaOpType.COUNT_ROWS, None),
     ]
 
     all_ok = True
-    print("=== meta_executor self-test ===\n")
+    _emit("=== meta_executor self-test ===\n")
     for res, hint, src, role, exp_op, exp_col in cases:
         vr = res.resolve(hint, preferred_source=src, role_hint=role)
         if vr is None or vr.outcome != ResolverOutcome.META_QUERY:
-            ok = False
             all_ok = False
-            print(f"  FAIL  {hint!r} — resolver didn't return META_QUERY "
-                  f"(outcome={vr.outcome.value if vr else 'None'})")
+            _emit(
+                f"  FAIL  {hint!r} — resolver didn't return META_QUERY "
+                f"(outcome={vr.outcome.value if vr else 'None'})"
+            )
             continue
         op = interpret_meta_query(hint, vr)
-        ok_op  = op.op_type == exp_op
+        ok_op = op.op_type == exp_op
         ok_col = op.column == exp_col
         ok = ok_op and ok_col
-        if not ok: all_ok = False
+        if not ok:
+            all_ok = False
         sym = "PASS" if ok else "FAIL"
-        print(f"  {sym}  {hint!r}")
-        print(f"        op={op.op_type.value}  col={op.column}  "
-              f"entity={op.entity!r}  derivation={op.derivation}")
-        print(f"        sql: {meta_op_to_sql_fragment(op)}")
-        if not ok_op:  print(f"        !! expected op={exp_op.value}")
-        if not ok_col: print(f"        !! expected col={exp_col}")
+        _emit(f"  {sym}  {hint!r}")
+        _emit(
+            f"        op={op.op_type.value}  col={op.column}  "
+            f"entity={op.entity!r}  derivation={op.derivation}"
+        )
+        _emit(f"        sql: {meta_op_to_sql_fragment(op)}")
+        if not ok_op:
+            _emit(f"        !! expected op={exp_op.value}")
+        if not ok_col:
+            _emit(f"        !! expected col={exp_col}")
 
-    print(f"\n{'All tests passed.' if all_ok else 'FAILURES above.'}")
+    _emit(f"\n{'All tests passed.' if all_ok else 'FAILURES above.'}")
     return all_ok
 
 

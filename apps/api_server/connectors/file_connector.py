@@ -125,21 +125,58 @@ class FileConnector(BaseConnector):
     @staticmethod
     def _open_excel_sheet(content_b64: str | bytes, sheet: int | str = 0) -> tuple[Any, Any]:
         try:
-            import openpyxl  # lazy — optional dependency
+            from openpyxl.reader.excel import ExcelReader, apply_stylesheet
+            from openpyxl.worksheet._read_only import ReadOnlyWorksheet
         except ImportError as exc:
             raise ImportError(
                 "Excel support requires openpyxl: pip install openpyxl"
             ) from exc
 
         raw = FileConnector._decode_binary_content(content_b64)
-        wb = openpyxl.load_workbook(
+        reader = ExcelReader(
             io.BytesIO(raw),
             read_only=True,
             data_only=True,
             keep_links=False,
         )
-        ws = wb.worksheets[sheet] if isinstance(sheet, int) else wb[sheet]
-        return wb, ws
+        reader.read_manifest()
+        reader.read_strings()
+        reader.read_workbook()
+        reader.read_properties()
+        reader.read_custom()
+        reader.read_theme()
+        apply_stylesheet(reader.archive, reader.wb)
+
+        worksheet_entries: list[tuple[Any, Any]] = []
+        for sheet_meta, rel in reader.parser.find_sheets():
+            if rel.target not in reader.valid_files or "chartsheet" in rel.Type:
+                continue
+            worksheet_entries.append((sheet_meta, rel))
+
+        if isinstance(sheet, int):
+            try:
+                sheet_meta, rel = worksheet_entries[sheet]
+            except IndexError:
+                reader.archive.close()
+                raise
+        else:
+            selected = next(
+                (
+                    (sheet_meta, rel)
+                    for sheet_meta, rel in worksheet_entries
+                    if sheet_meta.name == sheet
+                ),
+                None,
+            )
+            if selected is None:
+                reader.archive.close()
+                raise KeyError(sheet)
+            sheet_meta, rel = selected
+
+        ws = ReadOnlyWorksheet(reader.wb, sheet_meta.name, rel.target, reader.shared_strings)
+        ws.sheet_state = sheet_meta.state
+        reader.wb._sheets.append(ws)
+        return reader.wb, ws
 
     @staticmethod
     def _excel_headers(header_row: tuple[Any, ...]) -> list[str]:

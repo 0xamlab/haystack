@@ -125,7 +125,7 @@ def _semantic_similarity(name_a: str, name_b: str) -> tuple[float, list[str]]:
 
 def _parse_source(src: str | Path | list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Accept a file path (str/Path) or pre-loaded records list."""
-    if isinstance(src, (str, Path)):
+    if isinstance(src, str | Path):
         path = Path(src)
         text = path.read_text(encoding="utf-8")
         if path.suffix.lower() == ".csv":
@@ -154,14 +154,14 @@ def _parse_csv(text: str) -> list[dict[str, Any]]:
 
 
 def _profile_field(values: list[Any]) -> dict[str, Any]:
-    nums = [v for v in values if isinstance(v, (int, float))]
-    strs = [str(v) for v in values if not isinstance(v, (int, float))]
+    nums = [v for v in values if isinstance(v, int | float)]
+    strs = [str(v) for v in values if not isinstance(v, int | float)]
     is_num = len(nums) > len(strs)
     p: dict[str, Any] = {
         "is_numeric": is_num,
         "numeric": nums,
         "strings": strs,
-        "unique_count": len(set(str(v) for v in values[:500])),
+        "unique_count": len({str(v) for v in values[:500]}),
         "total_count": len(values),
     }
     if nums and len(nums) > 1:
@@ -220,7 +220,12 @@ def map_data(
             for fa, ia in profiles[sa].items():
                 for fb, ib in profiles[sb].items():
                     score, reasons = _semantic_similarity(fa, fb)
-                    match_type = "exact" if score >= 1.0 else "semantic" if score > 0.5 else "no_match"
+                    if score >= 1.0:
+                        match_type = "exact"
+                    elif score > 0.5:
+                        match_type = "semantic"
+                    else:
+                        match_type = "no_match"
 
                     # Boost with statistical similarity for numeric fields
                     if ia["is_numeric"] and ib["is_numeric"] and ia["numeric"] and ib["numeric"]:
@@ -284,7 +289,8 @@ def map_data(
     num_metric_fields = sum(
         1 for prof in profiles.values()
         for f, info in prof.items()
-        if info["is_numeric"] and not any(kw in _normalize(f) for kw in {"id", "key", "number", "code"})
+        if info["is_numeric"]
+        and not any(kw in _normalize(f) for kw in {"id", "key", "number", "code"})
     )
     simulation_ready = num_metric_fields >= 2
 
@@ -344,7 +350,7 @@ def query_data(
         rows = query_data("top 10 orders by amount", "orders.csv")
     """
     all_records: list[dict[str, Any]] = []
-    for i, src in enumerate(sources):
+    for _i, src in enumerate(sources):
         all_records.extend(_parse_source(src))
 
     if not all_records:
@@ -378,7 +384,11 @@ def query_data(
 
         def _best_field(hint: str | None, numeric_only: bool) -> str | None:
             if hint is None:
-                candidates = [f for f in fields if _is_numeric_field(f, all_records)] if numeric_only else fields
+                candidates = (
+                    [f for f in fields if _is_numeric_field(f, all_records)]
+                    if numeric_only
+                    else fields
+                )
                 return candidates[0] if candidates else None
             best, best_score = None, -1.0
             for f in fields:
@@ -427,7 +437,11 @@ def query_data(
 
     def _best_field(hint: str | None, numeric_only: bool) -> str | None:
         if hint is None:
-            candidates = [f for f in fields if _is_numeric_field(f, all_records)] if numeric_only else fields
+            candidates = (
+                [f for f in fields if _is_numeric_field(f, all_records)]
+                if numeric_only
+                else fields
+            )
             return candidates[0] if candidates else None
         best, best_score = None, -1.0
         for f in fields:
@@ -461,7 +475,7 @@ def _is_numeric_field(f: str, records: list[dict[str, Any]]) -> bool:
         return False
     step = max(1, n // 50)
     for i in range(0, n, step):
-        if isinstance(records[i].get(f), (int, float)):
+        if isinstance(records[i].get(f), int | float):
             return True
     return False
 
@@ -476,13 +490,21 @@ def _execute(
     if not group_field:
         if not metric_field:
             return [{"count": len(records)}]
-        vals = [r[metric_field] for r in records if isinstance(r.get(metric_field), (int, float))]
+        vals = [
+            r[metric_field]
+            for r in records
+            if isinstance(r.get(metric_field), int | float)
+        ]
         return [{metric_field: round(_agg(vals, aggregation), 4), "count": len(vals)}]
 
     groups: dict[Any, list[float]] = {}
     for rec in records:
         gk = rec.get(group_field, "__unknown__")
-        val = float(rec.get(metric_field, 1)) if metric_field and isinstance(rec.get(metric_field), (int, float)) else 1.0
+        val = (
+            float(rec.get(metric_field, 1))
+            if metric_field and isinstance(rec.get(metric_field), int | float)
+            else 1.0
+        )
         groups.setdefault(gk, []).append(val)
 
     rows = []
@@ -517,6 +539,6 @@ def _stat_similarity(a: list[float], b: list[float]) -> float:
 
 
 def _source_name(src: Any, idx: int) -> str:
-    if isinstance(src, (str, Path)):
+    if isinstance(src, str | Path):
         return Path(src).stem
     return f"source{idx}"

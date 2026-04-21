@@ -93,7 +93,7 @@ def build_vocab_from_sources(
     # Add all tokens from schema column names (expanded with combined aliases)
     for _src, cols in schema.items():
         for col_entry in cols:
-            col_name = col_entry[0] if isinstance(col_entry, (list, tuple)) else col_entry
+            col_name = col_entry[0] if isinstance(col_entry, list | tuple) else col_entry
             tokens = tokenize_name(col_name)
             for tok, _ in expand_tokens(tokens, combined):
                 all_tokens.add(tok)

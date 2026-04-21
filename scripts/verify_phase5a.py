@@ -1,10 +1,11 @@
 """Phase 5A live verification: quota, usage recording, rate limiting."""
 import json
+import os
 import sys
 import urllib.request
 
 BASE = "http://localhost:8000"
-KEY = "de_live_mqY1soUd-ZUzv6cOXHZOmbPw_LEGQUvz"
+KEY = os.environ.get("DE_API_KEY", "de_live_LrL6UWSAfgXsTjgfyaboI9aolrsznjLU")
 HDR = {"Content-Type": "application/json", "X-API-Key": KEY}
 
 PASSED = []
@@ -22,9 +23,14 @@ def check(label: str, condition: bool, detail: str = "") -> None:
 
 def http(method: str, path: str, body=None, headers=HDR):
     data = json.dumps(body).encode() if body else None
-    req = urllib.request.Request(f"{BASE}{path}", data=data, headers=headers, method=method)
+    req = urllib.request.Request(  # noqa: S310 - local verification target only
+        f"{BASE}{path}",
+        data=data,
+        headers=headers,
+        method=method,
+    )
     try:
-        with urllib.request.urlopen(req) as resp:
+        with urllib.request.urlopen(req) as resp:  # noqa: S310 - local verification target only
             return resp.status, json.loads(resp.read()), resp.headers
     except urllib.request.HTTPError as e:
         return e.code, json.loads(e.read()), None
@@ -50,7 +56,11 @@ status, body, headers = http(
 )
 check("status=200", status == 200, str(status))
 result_hash = body.get("result_hash", "")
-check("result_hash in body (64 chars)", bool(result_hash) and len(result_hash) == 64, result_hash[:16] + "...")
+check(
+    "result_hash in body (64 chars)",
+    bool(result_hash) and len(result_hash) == 64,
+    result_hash[:16] + "...",
+)
 x_hash_hdr = headers["X-Decision-Hash"] if headers else "MISSING"
 check("X-Decision-Hash header present", x_hash_hdr != "MISSING", x_hash_hdr[:30] + "...")
 check("header contains hash", bool(result_hash) and result_hash in x_hash_hdr)
@@ -79,7 +89,11 @@ try:
     row = cur.fetchone()
     conn.close()
     if row:
-        check("usage_record exists in DB", True, f"endpoint={row[1]} billing_units={row[2]} scenarios={row[3]}")
+        check(
+            "usage_record exists in DB",
+            True,
+            f"endpoint={row[1]} billing_units={row[2]} scenarios={row[3]}",
+        )
         check("endpoint=simulate", row[1] == "simulate", str(row[1]))
         check("billing_units=1", row[2] == 1, str(row[2]))
     else:

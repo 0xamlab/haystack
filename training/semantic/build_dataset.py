@@ -190,21 +190,25 @@ def _schema_examples(
     examples: list[tuple[str, int, int, int, list[str]]] = []
     family_counts: dict[int, int] = {}
     combined = merge_aliases(domain_aliases)
-    _DATE_TOKENS = {"date", "time", "period", "year", "month", "day"}
-    _MEASURE_ROLES = {"derived_measure", "base_measure", "unit_measure", "ratio"}
+    date_tokens = {"date", "time", "period", "year", "month", "day"}
+    measure_roles = {"derived_measure", "base_measure", "unit_measure", "ratio"}
     for _src, cols in schema.items():
         for col_entry in cols:
-            col_name = col_entry[0] if isinstance(col_entry, (list, tuple)) else col_entry
-            role     = col_entry[1] if isinstance(col_entry, (list, tuple)) and len(col_entry) > 1 else "other"
-            tokens   = tokenize_name(col_name)
+            col_name = col_entry[0] if isinstance(col_entry, list | tuple) else col_entry
+            role = (
+                col_entry[1]
+                if isinstance(col_entry, list | tuple) and len(col_entry) > 1
+                else "other"
+            )
+            tokens = tokenize_name(col_name)
             # Build natural query form by expanding the column name
-            expanded = list(t for t, _ in expand_tokens(tokens, combined))
-            query    = " ".join(expanded)
+            expanded = [token for token, _ in expand_tokens(tokens, combined)]
+            query = " ".join(expanded)
             # Infer family from role and tokens
             tset = set(tokens)
-            if tset & _DATE_TOKENS:
+            if tset & date_tokens:
                 family = FAMILY_DATE
-            elif role in _MEASURE_ROLES:
+            elif role in measure_roles:
                 family = FAMILY_MEASURE
             elif role == "other":
                 family = FAMILY_DIMENSION
@@ -373,12 +377,16 @@ def _run_self_test():
 
     # Schema-derived examples must carry col_tokens
     schema_examples = [r for r in records if r["col_tokens"] is not None]
-    assert len(schema_examples) >= len(schema["POS"]), \
-        f"Expected ≥{len(schema['POS'])} schema examples with col_tokens, got {len(schema_examples)}"
+    assert len(schema_examples) >= len(schema["POS"]), (
+        f"Expected ≥{len(schema['POS'])} schema examples with col_tokens, "
+        f"got {len(schema_examples)}"
+    )
 
-    print(f"Self-test PASSED  {len(records)} examples  "
-          f"{len(meta_examples)} meta-query  "
-          f"{len(schema_examples)} with col_tokens")
+    print(
+        f"Self-test PASSED  {len(records)} examples  "
+        f"{len(meta_examples)} meta-query  "
+        f"{len(schema_examples)} with col_tokens"
+    )
 
 
 if __name__ == "__main__":

@@ -71,14 +71,18 @@ def req(method: str, path: str, body=None, headers=None, auth=True, timeout=20):
         except Exception:
             body_data = body_bytes.decode("utf-8", errors="replace")
         return e.code, body_data, dict(e.headers), elapsed
-    except TimeoutError:
+    except TimeoutError as err:
         elapsed = time.perf_counter() - t0
-        raise TimeoutError(f"Request to {url} timed out after {timeout}s (elapsed: {elapsed:.1f}s)")
-    except urllib.error.URLError as e:
-        if "timed out" in str(e):
+        raise TimeoutError(
+            f"Request to {url} timed out after {timeout}s (elapsed: {elapsed:.1f}s)"
+        ) from err
+    except urllib.error.URLError as err:
+        if "timed out" in str(err):
             elapsed = time.perf_counter() - t0
-            raise TimeoutError(f"Request to {url} timed out after {timeout}s (elapsed: {elapsed:.1f}s)")
-        raise RuntimeError(f"Cannot connect to {BASE_URL} — is the API server running?") from e
+            raise TimeoutError(
+                f"Request to {url} timed out after {timeout}s (elapsed: {elapsed:.1f}s)"
+            ) from err
+        raise RuntimeError(f"Cannot connect to {BASE_URL} — is the API server running?") from err
 
 
 def check(name: str, fn):
@@ -276,8 +280,6 @@ def test_mixed_endpoints():
             ("GET", "/v1/health", False, None),
             ("POST", "/v1/simulate", True, _sim_payload(runs=500)),
         ]
-        expected_ok = {200, 201, 422}  # recommend might 422 with sim payload
-
         def make_req(ep):
             method, path, auth, body = ep
             return req(method, path, body=body, auth=auth, timeout=25)
@@ -332,13 +334,13 @@ def test_sequential_burst():
 
     # 3.2 — 50 rapid sequential requests, measure throughput
     def sequential_50():
-        BURST_COUNT = 50
+        burst_count = 50
         elapsed_times = []
         success_count = 0
         error_count = 0
         burst_start = time.perf_counter()
 
-        for i in range(BURST_COUNT):
+        for _i in range(burst_count):
             try:
                 status, body, hdrs, elapsed = req("POST", "/v1/simulate",
                                                    body=_sim_payload(runs=500),
@@ -355,17 +357,17 @@ def test_sequential_burst():
                 error_count += 1
 
         burst_elapsed = time.perf_counter() - burst_start
-        throughput = BURST_COUNT / burst_elapsed if burst_elapsed > 0 else 0
+        throughput = burst_count / burst_elapsed if burst_elapsed > 0 else 0
 
         stats_str = _format_timing_stats(elapsed_times)
         perf_stats.append(("50-sequential burst latency", stats_str))
         perf_stats.append(("50-sequential throughput", f"{throughput:.2f} req/s ({burst_elapsed:.1f}s total)"))
-        print(f"    📊 Throughput: {throughput:.2f} req/s ({BURST_COUNT} reqs in {burst_elapsed:.1f}s)")
+        print(f"    📊 Throughput: {throughput:.2f} req/s ({burst_count} reqs in {burst_elapsed:.1f}s)")
         print(f"    📊 {stats_str}")
         print(f"    📊 Success: {success_count}, Errors: {error_count}")
 
-        assert success_count >= BURST_COUNT * 0.8, (
-            f"Too many failures: {success_count}/{BURST_COUNT} succeeded"
+        assert success_count >= burst_count * 0.8, (
+            f"Too many failures: {success_count}/{burst_count} succeeded"
         )
     check("50 rapid sequential simulations with throughput measurement", sequential_50)
 
@@ -393,7 +395,7 @@ def test_connection_stress():
         fns = [lambda: req("GET", "/v1/health", auth=False, timeout=15) for _ in range(20)]
         out = _run_concurrent(fns, max_workers=20)
         ok_count = 0
-        for i, r in enumerate(out):
+        for _, r in enumerate(out):
             if isinstance(r, Exception):
                 continue
             status, body, hdrs, elapsed = r
@@ -453,7 +455,7 @@ def test_data_integrity():
         out = _run_concurrent(fns, max_workers=10)
 
         evs = []
-        for i, r in enumerate(out):
+        for _i, r in enumerate(out):
             if isinstance(r, Exception):
                 continue
             status, body, hdrs, elapsed = r
@@ -494,7 +496,7 @@ def test_data_integrity():
 
         run_ids = set()
         success_count = 0
-        for i, r in enumerate(out):
+        for _i, r in enumerate(out):
             if isinstance(r, Exception):
                 continue
             status, body, hdrs, elapsed = r
@@ -627,7 +629,7 @@ def test_rate_limits():
     # 7.2 — Remaining counter decreases
     def rate_limit_decreasing():
         remaining_values = []
-        for i in range(5):
+        for _ in range(5):
             status, body, hdrs, elapsed = req("POST", "/v1/simulate",
                                                body=_sim_payload(runs=500), timeout=25)
             hdrs_lower = {k.lower(): v for k, v in hdrs.items()}
@@ -657,14 +659,16 @@ def test_rate_limits():
     def rate_limit_429_response():
         """Send many rapid requests to try to trigger rate limiting."""
         got_429 = False
-        for i in range(30):
+        for request_idx in range(30):
             status, body, hdrs, elapsed = req("POST", "/v1/simulate",
                                                body=_sim_payload(runs=500), timeout=25)
             if status == 429:
                 got_429 = True
                 hdrs_lower = {k.lower(): v for k, v in hdrs.items()}
                 retry_after = hdrs_lower.get("retry-after")
-                print(f"    📊 Got 429 after {i + 1} requests. Retry-After: {retry_after}")
+                print(
+                    f"    📊 Got 429 after {request_idx + 1} requests. Retry-After: {retry_after}"
+                )
                 # If we got 429, we expect some indication of when to retry
                 # (Retry-After header or error body with info)
                 break
@@ -775,18 +779,18 @@ def test_sustained_load():
     # 9.1 — 30-second sustained concurrent load
     def sustained_30s():
         """Run concurrent requests for ~15 seconds, measure stability."""
-        DURATION = 15  # seconds
-        CONCURRENCY = 5
+        duration_seconds = 15
+        concurrency = 5
         request_count = 0
         success_count = 0
         error_count = 0
         all_times = []
         start = time.perf_counter()
 
-        while time.perf_counter() - start < DURATION:
+        while time.perf_counter() - start < duration_seconds:
             fns = [lambda: req("POST", "/v1/simulate", body=_sim_payload(runs=500), timeout=25)
-                   for _ in range(CONCURRENCY)]
-            out = _run_concurrent(fns, max_workers=CONCURRENCY)
+                   for _ in range(concurrency)]
+            out = _run_concurrent(fns, max_workers=concurrency)
             for r in out:
                 request_count += 1
                 if isinstance(r, Exception):
@@ -821,7 +825,7 @@ def test_sustained_load():
     def latency_stability():
         """Fire 20 sequential requests, check latency doesn't keep increasing."""
         times = []
-        for i in range(20):
+        for _ in range(20):
             try:
                 status, body, hdrs, elapsed = req("POST", "/v1/simulate",
                                                    body=_sim_payload(runs=500), timeout=25)

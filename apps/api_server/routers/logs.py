@@ -37,7 +37,17 @@ def push_log_event(event: dict) -> None:
 async def _generate_log_stream(request: Request, node_id: str | None = None) -> AsyncIterator[str]:
     """Yield SSE events from the log queue until client disconnects."""
     # Send initial connection event
-    yield f"data: {json.dumps({'type': 'connected', 'ts': datetime.now(tz=UTC).isoformat(), 'message': 'Log stream connected'})}\n\n"
+    yield (
+        "data: "
+        + json.dumps(
+            {
+                "type": "connected",
+                "ts": datetime.now(tz=UTC).isoformat(),
+                "message": "Log stream connected",
+            }
+        )
+        + "\n\n"
+    )
 
     while True:
         # Check if client disconnected

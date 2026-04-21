@@ -49,12 +49,13 @@ logger = structlog.get_logger(__name__)
 
 # ── Plan limits (derived from plan_limits.py — do not duplicate here) ────────
 
-def _DEVICE_LIMITS_compat() -> dict[str, int]:
+def _device_limits_compat() -> dict[str, int]:
     """Compatibility shim — prefer plan_limits.device_limit(plan) directly."""
     from apps.api_server.services.plan_limits import _PLANS
+
     return {name: cfg.devices for name, cfg in _PLANS.items()}
 
-_DEVICE_LIMITS = _DEVICE_LIMITS_compat()
+_DEVICE_LIMITS = _device_limits_compat()
 
 # License JWT config
 _JWT_ALGORITHM = "HS256"
@@ -270,7 +271,10 @@ async def register_device(
         device_limit=device_limit_val,
         device_count=current_count,
         api_key_prefix=api_key_row.key_prefix,
-        message=f"Device registered. {current_count}/{device_limit_val or '∞'} devices on {plan} plan.",
+        message=(
+            f"Device registered. {current_count}/{device_limit_val or '∞'} "
+            f"devices on {plan} plan."
+        ),
     )
 
 
@@ -315,7 +319,10 @@ async def record_heartbeat(
         status, message = "ok", f"{device_count} device(s) active — unlimited plan"
     elif device_count > device_limit:
         status = "over_limit"
-        message = f"{device_count}/{device_limit} devices — over limit, please upgrade or revoke devices"
+        message = (
+            f"{device_count}/{device_limit} devices — over limit, "
+            "please upgrade or revoke devices"
+        )
     elif device_count >= device_limit * 0.8:
         status = "approaching_limit"
         message = f"{device_count}/{device_limit} devices — approaching limit"

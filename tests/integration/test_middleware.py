@@ -412,7 +412,7 @@ def test_rbac_middleware():
         from apps.api_server.middleware.rbac import require_role
         try:
             require_role("superuser")
-            assert False, "Should have raised ValueError"
+            raise AssertionError("Should have raised ValueError")
         except ValueError as e:
             assert "Unknown role" in str(e), f"Unexpected error: {e}"
     check("require_role('superuser') raises ValueError", t_require_role_invalid)
@@ -911,7 +911,6 @@ def test_middleware_chain():
                          headers={"Origin": "http://example.com",
                                   "Access-Control-Request-Method": "POST"})
         # Should get CORS headers
-        cors_origin = h.get("Access-Control-Allow-Origin") or h.get("access-control-allow-origin")
         # Either returns the origin or * or nothing if not in allowed list
         # At minimum it shouldn't be a 500
         assert s != 500, f"OPTIONS should not cause 500, got {s}"

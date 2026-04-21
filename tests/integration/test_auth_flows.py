@@ -30,7 +30,9 @@ sys.path.insert(0, str(_ROOT))
 BASE_URL = os.environ.get("DE_BASE_URL", "http://localhost:8000")
 SKIP_API = os.environ.get("DE_SKIP_API", "0") == "1"
 
-PASS = "✅"; FAIL = "❌"; SKIP = "⏭️ "
+PASS = "✅"
+FAIL = "❌"
+SKIP = "⏭️ "
 _results: list[tuple[str, bool, str]] = []
 
 
@@ -85,7 +87,9 @@ def test_auth_router_importable():
 
 def test_auth_schemas_importable():
     try:
-        from apps.api_server.schemas import auth as auth_schemas
+        import importlib
+
+        importlib.import_module("apps.api_server.schemas.auth")
         check("auth schemas importable", True)
     except ImportError as e:
         check("auth schemas importable", False, str(e))

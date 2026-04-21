@@ -73,7 +73,11 @@ async def verify_api_key(
                     return AuthContext(
                         org_id=uuid.UUID(cached[b"org_id"].decode()),
                         key_id=uuid.UUID(cached[b"key_id"].decode()),
-                        user_id=uuid.UUID(cached[b"user_id"].decode()) if cached.get(b"user_id") else None,
+                        user_id=(
+                            uuid.UUID(cached[b"user_id"].decode())
+                            if cached.get(b"user_id")
+                            else None
+                        ),
                         plan=cached[b"plan"].decode(),
                         role=cached.get(b"role", b"owner").decode(),
                         email=cached.get(b"email", b"api_key").decode(),
@@ -106,7 +110,8 @@ async def verify_api_key(
         # Fetch linked user's role + email (if any)
         from apps.api_server.models.user import User
         actor_email = "api_key"
-        actor_role = "member"  # API keys without a user default to member-level access (principle of least privilege)
+        # API keys without a linked user keep least-privilege member access.
+        actor_role = "member"
         actor_user_id: uuid.UUID | None = None
         if api_key.user_id is not None:
             user_result = await session.execute(
@@ -115,7 +120,9 @@ async def verify_api_key(
             user = user_result.scalar_one_or_none()
             if user is not None:
                 actor_email = user.email
-                actor_role = user.role.value if hasattr(user.role, "value") else str(user.role)
+                actor_role = (
+                    user.role.value if hasattr(user.role, "value") else str(user.role)
+                )
                 actor_user_id = user.id
 
         # Update last_used_at
@@ -125,8 +132,12 @@ async def verify_api_key(
                 .where(APIKey.id == api_key.id)
                 .values(last_used_at=datetime.now(UTC))
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug(
+                "api_key_last_used_update_failed",
+                key_id=str(api_key.id),
+                error=str(exc),
+            )
 
         # Cache the result
         try:

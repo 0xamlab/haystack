@@ -340,8 +340,11 @@ def _test_tokenizer():
     for name, expected in cases:
         got = tokenize_name(name)
         ok = got == expected
-        print(f"  {'PASS' if ok else 'FAIL'} tokenize({name!r}) = {got} {'✓' if ok else f'≠ {expected}'}")
-    print()
+        _emit(
+            f"  {'PASS' if ok else 'FAIL'} tokenize({name!r}) = {got} "
+            f"{'✓' if ok else f'≠ {expected}'}"
+        )
+    _emit()
 
 
 def _test_alias_expand():
@@ -351,9 +354,9 @@ def _test_alias_expand():
     assert "price" in expanded and expanded["price"] == 1.0
     assert "cost"  in expanded and expanded["cost"]  == 0.8
     assert "each"  in expanded and expanded["each"]  == 0.8
-    print("  PASS alias expansion for ['unit', 'price']")
-    print(f"       → tokens: {sorted(expanded.keys())}")
-    print()
+    _emit("  PASS alias expansion for ['unit', 'price']")
+    _emit(f"       → tokens: {sorted(expanded.keys())}")
+    _emit()
 
 
 def _test_vocab_and_index():
@@ -372,33 +375,40 @@ def _test_vocab_and_index():
     vocab = build_vocab(columns)
     index = build_index_data(vocab, columns)
 
-    print(f"  PASS vocab size = {vocab.size} tokens")
-    print(f"  PASS index has {len(index.col_token_ids)} columns")
+    _emit(f"  PASS vocab size = {vocab.size} tokens")
+    _emit(f"  PASS index has {len(index.col_token_ids)} columns")
 
     # "unit_price" should share token IDs with "unit_cost"
-    ids_up = set(tid for tid, _ in index.col_token_ids[0])   # unit_price
-    ids_uc = set(tid for tid, _ in index.col_token_ids[7])   # unit_cost
+    ids_up = {token_id for token_id, _ in index.col_token_ids[0]}  # unit_price
+    ids_uc = {token_id for token_id, _ in index.col_token_ids[7]}  # unit_cost
     shared = ids_up & ids_uc
     assert len(shared) >= 1, f"unit_price and unit_cost should share tokens, shared={shared}"
-    print(f"  PASS unit_price ∩ unit_cost = {len(shared)} shared token IDs")
+    _emit(f"  PASS unit_price ∩ unit_cost = {len(shared)} shared token IDs")
 
     # Query for "unit_price" should return known IDs
     q_ids = make_query_token_ids(vocab, "unit_price")
     assert len(q_ids) >= 2, f"Expected ≥2 query IDs, got {q_ids}"
-    print(f"  PASS query_ids('unit_price') = {q_ids}")
-    print(f"       tokens: {[vocab.id_to_token[i] for i in q_ids]}")
-    print()
+    _emit(f"  PASS query_ids('unit_price') = {q_ids}")
+    _emit(f"       tokens: {[vocab.id_to_token[i] for i in q_ids]}")
+    _emit()
+
+
+def _emit(message: str = "") -> None:
+    import sys
+
+    sys.stdout.write(f"{message}\n")
 
 
 if __name__ == "__main__":
     import sys
-    print("=== tokenizer.py self-test ===")
-    print()
-    print("[1] tokenize_name():")
+
+    _emit("=== tokenizer.py self-test ===")
+    _emit()
+    _emit("[1] tokenize_name():")
     _test_tokenizer()
-    print("[2] expand_tokens() aliases:")
+    _emit("[2] expand_tokens() aliases:")
     _test_alias_expand()
-    print("[3] Vocab + IndexData:")
+    _emit("[3] Vocab + IndexData:")
     _test_vocab_and_index()
-    print("All tests passed.")
+    _emit("All tests passed.")
     sys.exit(0)

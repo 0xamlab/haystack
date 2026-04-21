@@ -291,12 +291,16 @@ def _clean_type(t: str) -> str:
 
 def _parse_params(raw: str) -> list[Param] | None:
     parts: list[str] = []
-    depth = 0; cur = ""
+    depth = 0
+    cur = ""
     for ch in raw:
-        if ch in "([": depth += 1
-        elif ch in ")]": depth -= 1
+        if ch in "([":
+            depth += 1
+        elif ch in ")]":
+            depth -= 1
         if ch == "," and depth == 0:
-            parts.append(cur.strip()); cur = ""
+            parts.append(cur.strip())
+            cur = ""
         else:
             cur += ch
     if cur.strip():
@@ -330,7 +334,7 @@ def _parse_params(raw: str) -> list[Param] | None:
 
 
 def parse_library(path: Path, lib_id: str | None = None) -> list[FnInfo]:
-    lib   = lib_id if lib_id is not None else path.stem
+    lib = lib_id if lib_id is not None else path.stem
     lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
     fns: list[FnInfo] = []
     i = 0
@@ -345,17 +349,21 @@ def parse_library(path: Path, lib_id: str | None = None) -> list[FnInfo]:
                 pass  # single-line docstring, no state change
             else:
                 in_docstring = True
-                i += 1; continue
+                i += 1
+                continue
         elif in_docstring:
             if '"""' in stripped or "'''" in stripped:
                 in_docstring = False
-            i += 1; continue
+            i += 1
+            continue
         # Only match top-level (unindented) function definitions — skip nested closures
         if lines[i] and lines[i][0].isspace():
-            i += 1; continue
+            i += 1
+            continue
         m = re.match(r"(?:fn|def)\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(", stripped)
         if not m:
-            i += 1; continue
+            i += 1
+            continue
         fname = m.group(1)
 
         # Collect signature: single-line ends with ':', multi-line continues
@@ -392,7 +400,8 @@ def parse_library(path: Path, lib_id: str | None = None) -> list[FnInfo]:
         param_str = pm.group(1) if pm else ""
         params = _parse_params(param_str)
         if params is None:
-            i += 1; continue
+            i += 1
+            continue
 
         # Collect body (until next fn/def/struct)
         body_lines: list[str] = []
@@ -407,7 +416,8 @@ def parse_library(path: Path, lib_id: str | None = None) -> list[FnInfo]:
                 break
             # Skip any remaining signature fragments (contain '-> Type:' pattern)
             if re.match(r"[^#]*\)\s*->\s*\w[\w\[\], ]*\s*:", stripped_k):
-                k += 1; continue
+                k += 1
+                continue
             body_lines.append(ln)
             k += 1
 
@@ -643,7 +653,7 @@ def transpile_function(fn: FnInfo) -> str | None:
     clean_body = _strip_docstrings(fn.body_lines)
 
     # Find body indent base
-    body = [l for l in clean_body if l.strip()]
+    body = [line for line in clean_body if line.strip()]
     indent_base = len(body[0]) - len(body[0].lstrip()) if body else 4
 
     py_lines = [f"def {fn.name}({', '.join(py_params)}):"]
@@ -654,7 +664,7 @@ def transpile_function(fn: FnInfo) -> str | None:
         py_lines.append(pl)
 
     # Ensure function has a body
-    body_content = [l for l in py_lines[1:] if l.strip()]
+    body_content = [line for line in py_lines[1:] if line.strip()]
     if not body_content:
         return None
 
@@ -959,14 +969,20 @@ def _extract_struct_stubs(lib_path: Path) -> str:
                                 if nxt.rstrip().endswith(":"):
                                     break
                             full_init_sig = " ".join(sig_i)
-                            dp = 0; ps = -1; pstr = ""
+                            dp = 0
+                            ps = -1
+                            pstr = ""
                             for ci, ch in enumerate(full_init_sig):
                                 if ch == "(" and ps == -1:
-                                    ps = ci + 1; dp = 1
-                                elif ch == "(": dp += 1
+                                    ps = ci + 1
+                                    dp = 1
+                                elif ch == "(":
+                                    dp += 1
                                 elif ch == ")":
                                     dp -= 1
-                                    if dp == 0: pstr = full_init_sig[ps:ci]; break
+                                    if dp == 0:
+                                        pstr = full_init_sig[ps:ci]
+                                        break
                             # Remove self/out self/mut self then parse remaining params
                             pstr_clean = re.sub(
                                 r"^(?:mut\s+|out\s+|owned\s+|ref\s+)?self\s*,?\s*", "", pstr.strip()
@@ -1005,10 +1021,13 @@ def _extract_struct_stubs(lib_path: Path) -> str:
 
                         full_sig = " ".join(sig_parts)
                         # Extract params (handle nested brackets in List[X])
-                        depth_p = 0; p_start = -1; params_str = ""
+                        depth_p = 0
+                        p_start = -1
+                        params_str = ""
                         for ci, ch in enumerate(full_sig):
                             if ch == "(" and p_start == -1:
-                                p_start = ci + 1; depth_p = 1
+                                p_start = ci + 1
+                                depth_p = 1
                             elif ch == "(":
                                 depth_p += 1
                             elif ch == ")":
@@ -1466,8 +1485,17 @@ def generate_mojo_benchmark(lib: str, fns: list[FnInfo], n: int,
             "    for _ in range(N):",
         ]
         # Accumulate differently based on return type
-        _PRIMITIVES = {"Float64", "Float32", "Int", "Bool", "UInt64", "UInt32", "UInt8",
-                       "String", "None"}
+        primitive_types = {
+            "Float64",
+            "Float32",
+            "Int",
+            "Bool",
+            "UInt64",
+            "UInt32",
+            "UInt8",
+            "String",
+            "None",
+        }
         if fn.ret == "Float64":
             lines.append(f"        {vn} += {call}")
         elif fn.ret in ("Int", "Bool", "UInt64", "UInt32", "UInt8"):
@@ -1476,7 +1504,11 @@ def generate_mojo_benchmark(lib: str, fns: list[FnInfo], n: int,
             # List-returning: accumulate length to prevent dead-code elim
             lines.append(f"        var _r_{fn.name} = {call}")
             lines.append(f"        {vn} += Float64(len(_r_{fn.name}))")
-        elif fn.ret not in _PRIMITIVES and fn.ret != "None" and not fn.ret.startswith("SIMD["):
+        elif (
+            fn.ret not in primitive_types
+            and fn.ret != "None"
+            and not fn.ret.startswith("SIMD[")
+        ):
             if fn.ret in copyable_structs:
                 # Copyable struct: store in 1-element List to prevent DCE
                 lines_before = [
@@ -1563,19 +1595,19 @@ def _run_python_benchmark(lib: str, py_src: str, fns: list[FnInfo]) -> dict[str,
             py_args = [eval(a, ns) for a in args]
             # Warmup
             py_fn(*py_args)
-            t0 = time.perf_counter()
+            start_time = time.perf_counter()
             acc = 0.0
             for _ in range(N_ITER):
                 v = py_fn(*py_args)
                 if isinstance(v, float):
                     acc += v
-                elif isinstance(v, (int, bool)):
+                elif isinstance(v, int | bool):
                     acc += float(v)
             t1 = time.perf_counter()
-            ns_per_call = (t1 - t0) * 1e9 / N_ITER
+            ns_per_call = (t1 - start_time) * 1e9 / N_ITER
             results[f"{lib}::{fn.name}"] = {
                 "py_ns": ns_per_call,
-                "py_result": float(v) if isinstance(v, (int, float, bool)) else None,
+                "py_result": float(v) if isinstance(v, int | float | bool) else None,
             }
         except Exception as e:
             results[f"{lib}::{fn.name}"] = {"py_ns": None, "py_result": None, "py_error": str(e)[:80]}

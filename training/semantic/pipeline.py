@@ -58,7 +58,6 @@ from typing import Literal
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 try:
-    import numpy as np
     import torch
 except ImportError:
     print("torch and numpy required: pip install torch numpy")
@@ -241,10 +240,9 @@ def stage_column_embeddings(
         return artifacts_dir  # No model yet — nothing to do
 
     col_embeddings: dict[str, list[float]] = {}
-    combined = merge_aliases(domain_aliases)
     for _src, cols in schema.items():
         for col_entry in cols:
-            col_name = col_entry[0] if isinstance(col_entry, (list, tuple)) else col_entry
+            col_name = col_entry[0] if isinstance(col_entry, list | tuple) else col_entry
             vec = resolver.embed(col_name, domain_aliases)
             col_embeddings[col_name] = vec.tolist()
 
@@ -299,9 +297,16 @@ def run_pipeline(
         print("[fast] Column embeddings written → col_embeddings.json")
         return art_dir
 
-    token_to_id, _   = stage_vocab(schema, domain_aliases, art_dir)
-    records           = stage_dataset(token_to_id, schema, domain_aliases, art_dir)
-    model             = stage_train(len(token_to_id), records, art_dir, epochs, batch_size, val_split)
+    token_to_id, _ = stage_vocab(schema, domain_aliases, art_dir)
+    records = stage_dataset(token_to_id, schema, domain_aliases, art_dir)
+    model = stage_train(
+        len(token_to_id),
+        records,
+        art_dir,
+        epochs,
+        batch_size,
+        val_split,
+    )
     stage_export(model, len(token_to_id), art_dir)
 
     from training.semantic.train_thin_semantic import EMB_DIM
@@ -511,14 +516,18 @@ def train_async(
 
 def main():
     parser = argparse.ArgumentParser(description="Run end-to-end semantic model pipeline")
-    parser.add_argument("--schema",       type=Path, default=None)
-    parser.add_argument("--aliases",      type=Path, default=None)
-    parser.add_argument("--out-dir",      type=Path, default=None,
-                        help="Override artifact directory (default: ~/.decision-engine/semantic/<hash>)")
-    parser.add_argument("--epochs",       type=int,  default=80)
-    parser.add_argument("--batch",        type=int,  default=32)
-    parser.add_argument("--val-split",    type=float, default=0.15)
-    parser.add_argument("--nn-k",         type=int,  default=8)
+    parser.add_argument("--schema", type=Path, default=None)
+    parser.add_argument("--aliases", type=Path, default=None)
+    parser.add_argument(
+        "--out-dir",
+        type=Path,
+        default=None,
+        help="Override artifact directory (default: ~/.decision-engine/semantic/<hash>)",
+    )
+    parser.add_argument("--epochs", type=int, default=80)
+    parser.add_argument("--batch", type=int, default=32)
+    parser.add_argument("--val-split", type=float, default=0.15)
+    parser.add_argument("--nn-k", type=int, default=8)
     parser.add_argument("--nn-min-score", type=float, default=0.70)
     parser.add_argument("--build-base",   action="store_true",
                         help="Build the global base model (run once per machine)")
@@ -573,9 +582,15 @@ def _run_self_test():
     domain_aliases = {"ppa": ["per", "person", "average"]}
     unknown_schema = {"Other": [["UNKNOWN_COL", "other"]]}
 
-    _FAST = dict(epochs=5, batch_size=16, val_split=0.15, nn_k=8, nn_min_score=0.0)
+    fast_opts = {
+        "epochs": 5,
+        "batch_size": 16,
+        "val_split": 0.15,
+        "nn_k": 8,
+        "nn_min_score": 0.0,
+    }
 
-    _ALL_BINS = [
+    all_bins = [
         "vocab.json", "id_to_token.json", "train.jsonl", "model.pt",
         "embeddings.bin",
         "intent_fc1_weight.bin", "intent_fc1_bias.bin",
@@ -590,20 +605,24 @@ def _run_self_test():
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         schema_dir = root / "schema_model"
-        base_dir   = root / "base_model"
+        base_dir = root / "base_model"
 
         # ── Test 1: schema pipeline ───────────────────────────────────────────
         print("\n── Test 1: schema pipeline")
-        art_dir = run_pipeline(schema=schema, domain_aliases=domain_aliases,
-                               out_dir=schema_dir, **_FAST)
-        for fname in _ALL_BINS:
+        art_dir = run_pipeline(
+            schema=schema,
+            domain_aliases=domain_aliases,
+            out_dir=schema_dir,
+            **fast_opts,
+        )
+        for fname in all_bins:
             assert (art_dir / fname).exists(), f"Missing: {fname}"
         manifest = json.loads((art_dir / "manifest.json").read_text())
         assert "schema_hash" in manifest and "vocab_size" in manifest
         found = locate_artifacts(schema, domain_aliases, base=art_dir)
         assert found is not None, "locate_artifacts should find schema model"
         vocab_size = manifest["vocab_size"]
-        print(f"   PASSED  vocab_size={vocab_size}  files={len(_ALL_BINS)}")
+        print(f"   PASSED  vocab_size={vocab_size}  files={len(all_bins)}")
 
         # ── Test 2: base model ────────────────────────────────────────────────
         print("\n── Test 2: base model")
@@ -617,20 +636,32 @@ def _run_self_test():
         print("\n── Test 3: resolve_artifacts")
 
         # Tier 1: schema model present
-        path, tier = resolve_artifacts(schema, domain_aliases,
-                                       schema_base=schema_dir, base_model_dir=base_dir)
+        path, tier = resolve_artifacts(
+            schema,
+            domain_aliases,
+            schema_base=schema_dir,
+            base_model_dir=base_dir,
+        )
         assert tier == "schema", f"Expected tier='schema', got {tier!r}"
         assert path == schema_dir
 
         # Tier 2: schema model absent, base present
-        path, tier = resolve_artifacts(unknown_schema, None,
-                                       schema_base=None, base_model_dir=base_dir)
+        path, tier = resolve_artifacts(
+            unknown_schema,
+            None,
+            schema_base=None,
+            base_model_dir=base_dir,
+        )
         assert tier == "base", f"Expected tier='base', got {tier!r}"
         assert path == base_dir
 
         # Tier 3: nothing present
-        path, tier = resolve_artifacts(unknown_schema, None,
-                                       schema_base=None, base_model_dir=None)
+        path, tier = resolve_artifacts(
+            unknown_schema,
+            None,
+            schema_base=None,
+            base_model_dir=None,
+        )
         assert tier == "none", f"Expected tier='none', got {tier!r}"
         assert path is None
         print("   PASSED  schema→Tier1  unknown+base→Tier2  unknown+none→Tier3")
@@ -638,20 +669,29 @@ def _run_self_test():
         # ── Test 4: train_async ───────────────────────────────────────────────
         print("\n── Test 4: train_async")
         async_out = root / "async_model"
-        future = train_async(schema, domain_aliases, out_dir=async_out, **_FAST)
+        future = train_async(schema, domain_aliases, out_dir=async_out, **fast_opts)
         # Resolve immediately — should be Tier 2 (base) while training
-        _, tier_before = resolve_artifacts(schema, domain_aliases,
-                                           schema_base=async_out,
-                                           base_model_dir=base_dir)
-        assert tier_before in ("schema", "base"), \
+        _, tier_before = resolve_artifacts(
+            schema,
+            domain_aliases,
+            schema_base=async_out,
+            base_model_dir=base_dir,
+        )
+        assert tier_before in ("schema", "base"), (
             f"Should be base or schema before future resolves, got {tier_before!r}"
+        )
         result_path = future.result(timeout=120)
         assert result_path == async_out
         assert (async_out / "manifest.json").exists(), "async training must write manifest"
-        path_after, tier_after = resolve_artifacts(schema, domain_aliases,
-                                                   schema_base=async_out,
-                                                   base_model_dir=base_dir)
-        assert tier_after == "schema", f"After async training, expected Tier1, got {tier_after!r}"
+        path_after, tier_after = resolve_artifacts(
+            schema,
+            domain_aliases,
+            schema_base=async_out,
+            base_model_dir=base_dir,
+        )
+        assert tier_after == "schema", (
+            f"After async training, expected Tier1, got {tier_after!r}"
+        )
         print(f"   PASSED  async training complete  tier_after={tier_after!r}")
 
     print("\nSelf-test PASSED  (4/4 subtests)")

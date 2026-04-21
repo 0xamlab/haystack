@@ -37,14 +37,17 @@ SPEC: dict[str, Any] = {
                 "items": {
                     "type": "object",
                     "properties": {
-                        "name":  {"type": "string"},
-                        "low":   {"type": "number"},
-                        "mode":  {"type": "number"},
-                        "high":  {"type": "number"},
+                        "name": {"type": "string"},
+                        "low": {"type": "number"},
+                        "mode": {"type": "number"},
+                        "high": {"type": "number"},
                     },
                     "required": ["name", "low", "high"],
                 },
-                "description": "Input variables as triangular distributions (low, most-likely, high)",
+                "description": (
+                    "Input variables as triangular distributions "
+                    "(low, most-likely, high)"
+                ),
             },
         },
         "required": ["variables"],

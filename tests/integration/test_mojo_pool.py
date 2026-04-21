@@ -74,14 +74,18 @@ def req(method: str, path: str, body=None, headers=None, auth=True, timeout=10):
         except Exception:
             body_data = body_bytes.decode("utf-8", errors="replace")
         return e.code, body_data, dict(e.headers), elapsed
-    except TimeoutError:
+    except TimeoutError as err:
         elapsed = time.perf_counter() - t0
-        raise TimeoutError(f"Request to {url} timed out after {timeout}s (elapsed: {elapsed:.1f}s)")
-    except urllib.error.URLError as e:
-        if "timed out" in str(e):
+        raise TimeoutError(
+            f"Request to {url} timed out after {timeout}s (elapsed: {elapsed:.1f}s)"
+        ) from err
+    except urllib.error.URLError as err:
+        if "timed out" in str(err):
             elapsed = time.perf_counter() - t0
-            raise TimeoutError(f"Request to {url} timed out after {timeout}s (elapsed: {elapsed:.1f}s)")
-        raise RuntimeError(f"Cannot connect to {BASE_URL} — is the API server running?") from e
+            raise TimeoutError(
+                f"Request to {url} timed out after {timeout}s (elapsed: {elapsed:.1f}s)"
+            ) from err
+        raise RuntimeError(f"Cannot connect to {BASE_URL} — is the API server running?") from err
 
 
 def check(name: str, fn):
@@ -534,7 +538,10 @@ def test_worker_verification():
                 ["ps", "aux"],
                 capture_output=True, text=True, timeout=5,
             )
-            lines = [l for l in result.stdout.split("\n") if "simulate" in l and "--server" in l and "grep" not in l]
+            lines = [
+                line for line in result.stdout.split("\n")
+                if "simulate" in line and "--server" in line and "grep" not in line
+            ]
             assert len(lines) >= 2, \
                 f"Expected >=2 Mojo worker processes, found {len(lines)}"
     check("Active Mojo worker processes detected (>=2)", count_worker_processes)
@@ -552,8 +559,11 @@ def test_worker_verification():
                 ["ps", "aux"],
                 capture_output=True, text=True, timeout=5,
             )
-            lines = [l for l in result.stdout.split("\n") if "simulate" in l and "--server" in l and "grep" not in l]
-            pids = [l.split()[1] for l in lines if len(l.split()) > 1]
+            lines = [
+                line for line in result.stdout.split("\n")
+                if "simulate" in line and "--server" in line and "grep" not in line
+            ]
+            pids = [line.split()[1] for line in lines if len(line.split()) > 1]
 
         assert len(pids) > 0, "No worker PIDs found"
         unique = set(pids)
@@ -579,7 +589,9 @@ def test_worker_verification():
                  ).stdout.replace("\n", ",").strip(",")],
                 capture_output=True, text=True, timeout=5,
             )
-            lines = [l.strip() for l in result.stdout.strip().split("\n")[1:] if l.strip()]
+            lines = [
+                line.strip() for line in result.stdout.strip().split("\n")[1:] if line.strip()
+            ]
             for line in lines:
                 parts = line.split()
                 if len(parts) >= 2:
@@ -587,14 +599,14 @@ def test_worker_verification():
                     rss_mb = rss_kb / 1024
                     # Each worker should use less than 512MB
                     assert rss_mb < 512, f"Worker PID {parts[0]} using {rss_mb:.0f}MB (limit 512MB)"
-        except Exception as e:
+        except Exception as err:
             # If we can't check memory, just verify workers exist
             result = subprocess.run(
                 ["pgrep", "-c", "-f", "simulate.*--server"],
                 capture_output=True, text=True, timeout=5,
             )
             count = int(result.stdout.strip()) if result.stdout.strip() else 0
-            assert count > 0, f"No workers found to check memory: {e}"
+            assert count > 0, f"No workers found to check memory: {err}"
     check("Worker process memory < 512MB each", worker_memory)
 
     # 5.5 — Binary file size is reasonable
@@ -622,8 +634,8 @@ def test_concurrent():
                 payload = _auto_payload(runs=5000, seed=idx + 500)
                 code, body, _, elapsed = req("POST", "/v1/simulate", body=payload, timeout=15)
                 results_map[idx] = (code, body, elapsed)
-            except Exception as e:
-                errors.append(f"Thread {idx}: {e}")
+            except Exception as err:
+                errors.append(f"Thread {idx}: {err}")
 
         threads = [threading.Thread(target=_run, args=(i,)) for i in range(5)]
         t0 = time.perf_counter()
@@ -636,7 +648,7 @@ def test_concurrent():
 
         assert not errors, f"Concurrent errors: {errors}"
         assert len(results_map) == 5, f"Only {len(results_map)}/5 requests completed"
-        for idx, (code, body, elapsed) in results_map.items():
+        for idx, (code, body, _elapsed) in results_map.items():
             assert code == 200, f"Request {idx} returned {code}: {body}"
             _assert_valid_envelope(body)
     check("5 concurrent requests all complete successfully", concurrent_5)
@@ -709,8 +721,8 @@ def test_concurrent():
                 payload = _auto_payload(runs=3000, seed=idx + 900)
                 code, body, _, _ = req("POST", "/v1/simulate", body=payload, timeout=15)
                 results_map[idx] = code
-            except Exception as e:
-                errors.append(f"Thread {idx}: {e}")
+            except Exception as err:
+                errors.append(f"Thread {idx}: {err}")
 
         threads = [threading.Thread(target=_run, args=(i,)) for i in range(8)]
         t0 = time.perf_counter()
@@ -744,7 +756,7 @@ def test_concurrent():
             t.join(timeout=20)
 
         assert len(results_map) == 5, f"Only {len(results_map)}/5 completed"
-        for idx, (code, eng, elapsed) in results_map.items():
+        for idx, (code, eng, _elapsed) in results_map.items():
             assert code == 200, f"{eng} (thread {idx}) returned {code}"
     check("Mixed engine types work concurrently", mixed_concurrent)
 
@@ -779,20 +791,20 @@ def test_protocol():
     def socket_naming():
         socks = list(SOCKET_DIR.glob("worker-*.sock"))
         pattern = re.compile(r"^worker-\d+-[0-9a-f]{8}\.sock$")
-        for s in socks:
-            assert pattern.match(s.name), \
-                f"Socket name doesn't match expected pattern: {s.name}"
+        for socket_path in socks:
+            assert pattern.match(socket_path.name), \
+                f"Socket name doesn't match expected pattern: {socket_path.name}"
     check("Socket files match naming pattern worker-{id}-{uuid}.sock", socket_naming)
 
     # 7.4 — Multiple simulations reuse same worker sockets (persistent connections)
     def persistent_sockets():
-        socks_before = set(s.name for s in SOCKET_DIR.glob("worker-*.sock"))
+        socks_before = {socket_path.name for socket_path in SOCKET_DIR.glob("worker-*.sock")}
         # Run a few simulations
         for i in range(3):
             payload = _auto_payload(runs=1000, seed=i + 1100)
             code, _, _, _ = req("POST", "/v1/simulate", body=payload)
             assert code == 200
-        socks_after = set(s.name for s in SOCKET_DIR.glob("worker-*.sock"))
+        socks_after = {socket_path.name for socket_path in SOCKET_DIR.glob("worker-*.sock")}
         # Sockets should remain the same (no new sockets created per request)
         assert socks_before == socks_after, \
             f"Sockets changed: before={socks_before}, after={socks_after}"
@@ -940,8 +952,8 @@ def main():
     try:
         code, _, _, _ = req("GET", "/v1/health", auth=False, timeout=5)
         assert code == 200
-    except Exception as e:
-        print(f"\n  {FAIL} Cannot reach API at {BASE_URL}: {e}")
+    except Exception as err:
+        print(f"\n  {FAIL} Cannot reach API at {BASE_URL}: {err}")
         print("  Make sure the API server is running: make dev-api")
         sys.exit(1)
 

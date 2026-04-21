@@ -12,8 +12,16 @@ LIST_RUNS_SPEC: dict[str, Any] = {
     "inputSchema": {
         "type": "object",
         "properties": {
-            "limit":  {"type": "integer", "default": 20, "description": "Max results (1-100)"},
-            "mode":   {"type": "string", "enum": ["auto", "expert"], "description": "Filter by mode"},
+            "limit": {
+                "type": "integer",
+                "default": 20,
+                "description": "Max results (1-100)",
+            },
+            "mode": {
+                "type": "string",
+                "enum": ["auto", "expert"],
+                "description": "Filter by mode",
+            },
             "status": {"type": "string", "enum": ["completed", "failed", "running"]},
         },
     },

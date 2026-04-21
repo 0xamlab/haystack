@@ -74,7 +74,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from tests.integration.connector_validation_catalog import THIRD_PARTY_PUBLIC_CASES
+from tests.integration.connector_validation_catalog import THIRD_PARTY_PUBLIC_CASES  # noqa: E402
 
 TEST_FILES = ROOT / "test_files"
 DEFAULT_DB_URL = os.environ.get("DATABASE_URL", "postgresql+asyncpg://angel:@localhost:5432/decision_engine")
@@ -189,10 +189,14 @@ async def seed_api_key(database_url: str) -> tuple[str, str]:
     from apps.api_server.services.auth_service import generate_api_key
 
     engine = create_async_engine(database_url, echo=False)
-    Session = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+    session_factory = async_sessionmaker(
+        bind=engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+    )
 
     slug = "go-live-connectivity"
-    async with Session() as session:
+    async with session_factory() as session:
         org_result = await session.execute(select(Organization).where(Organization.slug == slug))
         org = org_result.scalar_one_or_none()
         if org is None:
@@ -305,7 +309,7 @@ def parse_number(value: Any) -> float | None:
         return None
     if isinstance(value, bool):
         return None
-    if isinstance(value, (int, float)):
+    if isinstance(value, int | float):
         if isinstance(value, float) and math.isnan(value):
             return None
         return float(value)

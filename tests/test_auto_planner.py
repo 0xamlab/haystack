@@ -1,9 +1,21 @@
 from pathlib import Path
+from types import SimpleNamespace
 
 from apps.api_server.routers import query as query_router
 from apps.api_server.routers.query import DERIVED_MEASURE, UNIT_MEASURE, ColumnNode
+from apps.api_server.services import auto_planner as auto_planner_module
 from apps.api_server.services import source_registry as reg
 from apps.api_server.services.auto_planner import AutoPlanner, JoinHop, QueryPlan, _profile_records
+
+
+def _planner_node(role: str, *, is_numeric: bool = True, fill_rate: float = 1.0):
+    node = SimpleNamespace()
+    node.role = role
+    node.is_numeric = is_numeric
+    node.fill_rate = fill_rate
+    node.formula = None
+    node.magnitude_class = None
+    return node
 
 
 def test_plan_skips_llm_for_confident_same_source_resolution(tmp_path):
@@ -215,6 +227,62 @@ def test_rebuild_adaptive_context_uses_current_source_profiles(tmp_path):
     assert planner._adaptive_source_context["Alpha"].join_distinctiveness
     assert planner._adaptive_source_context["Beta"].join_distinctiveness
     assert planner._adaptive_source_context["Alpha"] != planner._adaptive_source_context["Beta"]
+
+
+def test_refresh_registry_source_reuses_incremental_vector_resolver_for_new_source(
+    tmp_path,
+    monkeypatch,
+):
+    planner = AutoPlanner(data_dir=Path(tmp_path), llm_policy="never")
+    planner.mojo_engines = []
+    planner.graph = {
+        "POS": {
+            "UNIT_PRICE": _planner_node("unit_measure"),
+            "EXT_PRICE": _planner_node("derived_measure"),
+        }
+    }
+    planner.profiles = {"POS": {}}
+    planner._connections = []
+    planner._build_vector_resolver()
+
+    rebuild_calls = {"count": 0}
+
+    def _count_rebuild():
+        rebuild_calls["count"] += 1
+
+    monkeypatch.setattr(planner, "_build_vector_resolver", _count_rebuild)
+    monkeypatch.setattr(
+        auto_planner_module,
+        "_registry_source_artifacts_from_meta",
+        lambda **_kwargs: auto_planner_module._CachedRegistrySourceArtifacts(
+            nodes={
+                "UNIT_COST": _planner_node("unit_measure"),
+                "EXT_COST": _planner_node("derived_measure"),
+            },
+            profile={},
+            query_hints=[],
+        ),
+    )
+
+    planner.refresh_registry_source(
+        org_id="org-1",
+        source_id="src-backlog",
+        source_name="BACKLOG",
+        schema_meta={},
+        source_schema_revision="schema-rev-backlog",
+        parquet_path=None,
+        new_connections=[],
+    )
+
+    assert rebuild_calls["count"] == 0
+    result = planner._vector_resolver.resolve(
+        "extended cost",
+        preferred_source="BACKLOG",
+        role_hint="derived_measure",
+    )
+    assert result is not None
+    assert result.source == "BACKLOG"
+    assert result.column == "EXT_COST"
 
 
 def test_profile_records_scans_full_loaded_rows_for_sparse_late_columns():
@@ -1391,3 +1459,345 @@ def test_from_registry_reuses_cached_graph_nodes_across_rebuilds(tmp_path, monke
     assert "S0" in second.graph
     assert calls["graph"] == 1
     assert calls["profile"] == 1
+
+
+def test_python_field_map_prefers_percentage_when_hint_mentions_percent():
+    analysis = AutoPlanner._python_field_map("aar margin percent")
+
+    assert analysis["unit"] == "percentage"
+    assert analysis["semantic_type"] == "percentage"
+
+
+def test_resolve_dimension_prefers_business_unit_alias_over_acronym_false_positive(tmp_path):
+    planner = AutoPlanner(data_dir=Path(tmp_path), llm_policy="never")
+    planner.mojo_engines = []
+    planner.graph = {
+        "Bookings": {
+            "LEACH_BU": ColumnNode(
+                name="LEACH_BU",
+                role=query_router.CATEGORY,
+                is_numeric=False,
+                fill_rate=1.0,
+            ),
+        },
+        "Inventory": {
+            "BUY_INIT": ColumnNode(
+                name="BUY_INIT",
+                role=query_router.CATEGORY,
+                is_numeric=False,
+                fill_rate=1.0,
+            ),
+        },
+    }
+    planner.profiles = {
+        "Bookings": {
+            "LEACH_BU": {
+                "strings": ["Contactors", "Relays"],
+                "sample_values": ["Contactors", "Relays"],
+                "unique_count": 2,
+                "total_count": 10,
+                "fill_rate": 1.0,
+            },
+        },
+        "Inventory": {
+            "BUY_INIT": {
+                "strings": ["AC", "CS"],
+                "sample_values": ["AC", "CS"],
+                "unique_count": 2,
+                "total_count": 10,
+                "fill_rate": 1.0,
+            },
+        },
+    }
+
+    src, col, score, _steps = planner.resolve_dimension("business unit", "Bookings")
+
+    assert (src, col) == ("Bookings", "LEACH_BU")
+    assert score > 0.8
+
+
+def test_resolve_dimension_matches_manufacturer_alias_to_mfg_name(tmp_path):
+    planner = AutoPlanner(data_dir=Path(tmp_path), llm_policy="never")
+    planner.mojo_engines = []
+    planner.graph = {
+        "Bookings": {
+            "MFG_NAME": ColumnNode(
+                name="MFG_NAME",
+                role=query_router.CATEGORY,
+                is_numeric=False,
+                fill_rate=1.0,
+            ),
+            "TYPE": ColumnNode(
+                name="TYPE",
+                role=query_router.CATEGORY,
+                is_numeric=False,
+                fill_rate=1.0,
+            ),
+        },
+    }
+    planner.profiles = {
+        "Bookings": {
+            "MFG_NAME": {
+                "strings": ["Leach International", "Grayhill Inc."],
+                "sample_values": ["Leach International", "Grayhill Inc."],
+                "unique_count": 2,
+                "total_count": 10,
+                "fill_rate": 1.0,
+            },
+            "TYPE": {
+                "strings": ["COMMERCIAL", "DEFENSE"],
+                "sample_values": ["COMMERCIAL", "DEFENSE"],
+                "unique_count": 2,
+                "total_count": 10,
+                "fill_rate": 1.0,
+            },
+        },
+    }
+
+    src, col, score, _steps = planner.resolve_dimension("manufacturer", "Bookings")
+
+    assert (src, col) == ("Bookings", "MFG_NAME")
+    assert score > 0.7
+
+
+def test_join_candidate_effective_conf_penalizes_measure_on_measure_join_keys(tmp_path):
+    planner = AutoPlanner(data_dir=Path(tmp_path), llm_policy="never")
+    planner.graph = {
+        "Bookings": {
+            "EXT_PRICE": ColumnNode(
+                name="EXT_PRICE",
+                role=DERIVED_MEASURE,
+                is_numeric=True,
+                fill_rate=1.0,
+            ),
+            "ORDER_NUMBER": ColumnNode(
+                name="ORDER_NUMBER",
+                role=query_router.IDENTIFIER,
+                is_numeric=False,
+                fill_rate=1.0,
+            ),
+        },
+        "Quotes": {
+            "EXT_PRICE": ColumnNode(
+                name="EXT_PRICE",
+                role=DERIVED_MEASURE,
+                is_numeric=True,
+                fill_rate=1.0,
+            ),
+            "ORDER_NUMBER": ColumnNode(
+                name="ORDER_NUMBER",
+                role=query_router.IDENTIFIER,
+                is_numeric=False,
+                fill_rate=1.0,
+            ),
+            "CUST_TYPE": ColumnNode(
+                name="CUST_TYPE",
+                role=query_router.CATEGORY,
+                is_numeric=False,
+                fill_rate=1.0,
+            ),
+        },
+    }
+    planner.profiles = {
+        "Bookings": {
+            "EXT_PRICE": {
+                "unique_count": 2500,
+                "total_count": 3000,
+                "fill_rate": 1.0,
+                "is_numeric": True,
+            },
+            "ORDER_NUMBER": {
+                "unique_count": 1800,
+                "total_count": 3000,
+                "fill_rate": 1.0,
+                "strings": ["A1", "A2", "A3"],
+            },
+        },
+        "Quotes": {
+            "EXT_PRICE": {
+                "unique_count": 2200,
+                "total_count": 2600,
+                "fill_rate": 0.88,
+                "is_numeric": True,
+            },
+            "ORDER_NUMBER": {
+                "unique_count": 450,
+                "total_count": 500,
+                "fill_rate": 0.9,
+                "strings": ["A1", "A2", "A3"],
+            },
+            "CUST_TYPE": {
+                "unique_count": 10,
+                "total_count": 500,
+                "fill_rate": 0.9,
+                "strings": ["OEM", "DIST"],
+            },
+        },
+    }
+
+    measure_join = {
+        "field_a": "EXT_PRICE",
+        "source_a": "Bookings",
+        "field_b": "EXT_PRICE",
+        "source_b": "Quotes",
+        "confidence": 0.49,
+        "cardinality": "one_to_one",
+        "overlap": 0.0,
+        "evidence_source": "registry",
+    }
+    identifier_join = {
+        "field_a": "ORDER_NUMBER",
+        "source_a": "Bookings",
+        "field_b": "ORDER_NUMBER",
+        "source_b": "Quotes",
+        "confidence": 0.47,
+        "cardinality": "many_to_one",
+        "overlap": 0.0,
+        "evidence_source": "registry",
+    }
+
+    measure_effective = planner._join_candidate_effective_conf(
+        measure_join,
+        group_col="CUST_TYPE",
+    )
+    identifier_effective = planner._join_candidate_effective_conf(
+        identifier_join,
+        group_col="CUST_TYPE",
+    )
+
+    assert identifier_effective > measure_effective
+
+
+def test_resolve_metric_broadens_after_preferred_source_miss(tmp_path):
+    planner = AutoPlanner(data_dir=Path(tmp_path), llm_policy="never")
+    planner.mojo_engines = []
+    planner.graph = {
+        "Quotes": {
+            "EXT_PRICE": ColumnNode(
+                name="EXT_PRICE",
+                role=DERIVED_MEASURE,
+                is_numeric=True,
+                fill_rate=1.0,
+            ),
+        },
+        "Bookings": {
+            "AAR_MARGIN_%": ColumnNode(
+                name="AAR_MARGIN_%",
+                role=query_router.RATIO,
+                is_numeric=True,
+                fill_rate=1.0,
+            ),
+        },
+    }
+    planner.profiles = {
+        "Quotes": {
+            "EXT_PRICE": {
+                "is_numeric": True,
+                "numeric": [10.0, 12.0],
+                "fill_rate": 1.0,
+                "mean": 11.0,
+                "std": 1.0,
+                "sample_values": [10.0, 12.0],
+                "strings": [],
+                "unique_count": 2,
+                "total_count": 2,
+            },
+        },
+        "Bookings": {
+            "AAR_MARGIN_%": {
+                "is_numeric": True,
+                "numeric": [0.25, 0.30],
+                "fill_rate": 1.0,
+                "mean": 0.275,
+                "std": 0.035,
+                "sample_values": [0.25, 0.30],
+                "strings": [],
+                "unique_count": 2,
+                "total_count": 2,
+            },
+        },
+    }
+
+    src, col, conf, role, steps = planner.resolve_metric(
+        "aar margin percent",
+        "Quotes",
+        "avg",
+    )
+
+    assert (src, col) == ("Bookings", "AAR_MARGIN_%")
+    assert role == query_router.RATIO
+    assert conf > 0.5
+    assert any("preferred_source_miss" in step for step in steps)
+
+
+def test_join_candidate_effective_conf_rejects_zero_coverage_join_candidate(tmp_path):
+    planner = AutoPlanner(data_dir=Path(tmp_path), llm_policy="never")
+    planner.graph = {
+        "Bookings": {
+            "ORDER_NUMBER": ColumnNode(
+                name="ORDER_NUMBER",
+                role=query_router.IDENTIFIER,
+                is_numeric=False,
+                fill_rate=1.0,
+            ),
+        },
+        "Quotes": {
+            "ORDER_NUMBER": ColumnNode(
+                name="ORDER_NUMBER",
+                role=query_router.IDENTIFIER,
+                is_numeric=False,
+                fill_rate=1.0,
+            ),
+            "CUST_TYPE": ColumnNode(
+                name="CUST_TYPE",
+                role=query_router.CATEGORY,
+                is_numeric=False,
+                fill_rate=1.0,
+            ),
+        },
+    }
+    planner.tables = {
+        "Bookings": [{"ORDER_NUMBER": "B-1"}, {"ORDER_NUMBER": "B-2"}],
+        "Quotes": [
+            {"ORDER_NUMBER": "Q-1", "CUST_TYPE": "OEM"},
+            {"ORDER_NUMBER": "Q-2", "CUST_TYPE": "DIST"},
+        ],
+    }
+    planner.profiles = {
+        "Bookings": {
+            "ORDER_NUMBER": {
+                "unique_count": 2,
+                "total_count": 2,
+                "fill_rate": 1.0,
+                "strings": ["B-1", "B-2"],
+            },
+        },
+        "Quotes": {
+            "ORDER_NUMBER": {
+                "unique_count": 2,
+                "total_count": 2,
+                "fill_rate": 1.0,
+                "strings": ["Q-1", "Q-2"],
+            },
+            "CUST_TYPE": {
+                "unique_count": 2,
+                "total_count": 2,
+                "fill_rate": 1.0,
+                "strings": ["OEM", "DIST"],
+            },
+        },
+    }
+
+    effective = planner._join_candidate_effective_conf(
+        {
+            "field_a": "ORDER_NUMBER",
+            "source_a": "Bookings",
+            "field_b": "ORDER_NUMBER",
+            "source_b": "Quotes",
+            "confidence": 0.48,
+            "cardinality": "many_to_one",
+        },
+        group_col="CUST_TYPE",
+    )
+
+    assert effective == 0.0

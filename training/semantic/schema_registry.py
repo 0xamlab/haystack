@@ -370,7 +370,7 @@ def _run_self_test():
     }
     domain_aliases = {"ppa": ["per", "person", "average"]}
 
-    _FAST = dict(epochs=5, batch_size=16)
+    fast_opts = {"epochs": 5, "batch_size": 16}
 
     with tempfile.TemporaryDirectory() as tmp:
         base = Path(tmp)
@@ -378,7 +378,7 @@ def _run_self_test():
 
         # ── Test 1: register → trains in background ───────────────────────────
         print("── Test 1: register + async training")
-        entry = reg.register(schema, domain_aliases, train=True, **_FAST)
+        entry = reg.register(schema, domain_aliases, train=True, **fast_opts)
         assert entry["status"] in ("training", "ready"), entry
         h = entry["schema_hash"]
         assert len(h) == 8

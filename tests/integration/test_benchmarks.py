@@ -142,7 +142,7 @@ def median_of(values):
 def _engine_scaling_check(s, t, e, r):
     def _fn():
         if t:
-            assert False, f"{e} @ {r} runs timed out"
+            raise AssertionError(f"{e} @ {r} runs timed out")
         assert s in (200, 500), f"Expected 200/500, got {s}"
     return _fn
 
@@ -150,7 +150,7 @@ def _engine_scaling_check(s, t, e, r):
 def _var_scaling_check(s, t, v):
     def _fn():
         if t:
-            assert False, f"monte_carlo @ {v} vars timed out"
+            raise AssertionError(f"monte_carlo @ {v} vars timed out")
         assert s in (200, 500), f"Got {s}"
     return _fn
 
@@ -158,7 +158,7 @@ def _var_scaling_check(s, t, v):
 def _dist_bench_check(s, t, d):
     def _fn():
         if t:
-            assert False, f"dist={d} timed out"
+            raise AssertionError(f"dist={d} timed out")
         assert s in (200, 500), f"Got {s}"
     return _fn
 
@@ -364,7 +364,7 @@ def run_benchmark(label, payload, timeout=TIMEOUT_SECONDS):
     last_mean = ""
     last_std = ""
 
-    for i in range(REPEATS):
+    for _i in range(REPEATS):
         status, body, hdrs, elapsed = req("POST", "/v1/simulate", body=payload,
                                           timeout=timeout)
         latency_ms = elapsed * 1000
@@ -384,7 +384,7 @@ def run_benchmark(label, payload, timeout=TIMEOUT_SECONDS):
 
     med_latency = median_of(latencies)
     # For server exec, take median of numeric values
-    numeric_execs = [x for x in server_execs if isinstance(x, (int, float))]
+    numeric_execs = [x for x in server_execs if isinstance(x, int | float)]
     med_server = median_of(numeric_execs) if numeric_execs else ""
 
     return med_latency, med_server, last_status, last_mean, last_std, False
@@ -526,10 +526,9 @@ for n_conc in CONCURRENCY_LEVELS:
     payload = engine_payload("monte_carlo", runs=1000, n_vars=3)
     all_latencies = []
 
-    def _single_request(idx):
+    def _single_request(_idx, request_payload=payload):
         """Execute a single request and return (latency_ms, status)."""
-        t0 = time.perf_counter()
-        status, body, hdrs, elapsed = req("POST", "/v1/simulate", body=payload,
+        status, body, hdrs, elapsed = req("POST", "/v1/simulate", body=request_payload,
                                           timeout=TIMEOUT_SECONDS)
         return elapsed * 1000, status
 
@@ -699,7 +698,7 @@ print(f"{cold_ms:.0f}ms")
 
 # Now run 9 more to get warm timing
 warm_latencies = []
-for i in range(9):
+for _ in range(9):
     _, _, hdrs, elapsed = req("POST", "/v1/simulate", body=warmup_payload,
                                timeout=TIMEOUT_SECONDS)
     warm_latencies.append(elapsed * 1000)
@@ -769,7 +768,7 @@ for eng in ALL_ENGINES:
         val = engine_scaling.get(eng, {}).get(rc, "")
         if val == "timeout":
             row += f"{'TIMEOUT':>10}"
-        elif isinstance(val, (int, float)):
+        elif isinstance(val, int | float):
             row += f"{val:>9.0f}ms"  # note: '>9' + 'ms' = 11 chars, but we want 10
         else:
             row += f"{'N/A':>10}"
@@ -778,8 +777,7 @@ for eng in ALL_ENGINES:
 # --- Fastest / Slowest at 1000 runs ---
 sprint("\n--- Fastest / Slowest Engines at 1,000 runs ---")
 timing_1k = {e: engine_scaling.get(e, {}).get(1000) for e in ALL_ENGINES}
-timing_1k_valid = {e: v for e, v in timing_1k.items()
-                   if isinstance(v, (int, float))}
+timing_1k_valid = {e: v for e, v in timing_1k.items() if isinstance(v, int | float)}
 if timing_1k_valid:
     fastest = min(timing_1k_valid, key=lambda e: timing_1k_valid[e])
     slowest = max(timing_1k_valid, key=lambda e: timing_1k_valid[e])
@@ -796,7 +794,7 @@ for nv in VAR_COUNTS:
     val = var_scaling.get(nv, "")
     if val == "timeout":
         sprint(f"  {nv:<12} {'TIMEOUT':>14}")
-    elif isinstance(val, (int, float)):
+    elif isinstance(val, int | float):
         sprint(f"  {nv:<12} {val:>13.0f}ms")
     else:
         sprint(f"  {nv:<12} {'N/A':>14}")
@@ -809,7 +807,7 @@ for dist in DIST_TYPES:
     val = dist_benchmarks.get(dist, "")
     if val == "timeout":
         sprint(f"  {dist:<16} {'TIMEOUT':>14}")
-    elif isinstance(val, (int, float)):
+    elif isinstance(val, int | float):
         sprint(f"  {dist:<16} {val:>13.0f}ms")
     else:
         sprint(f"  {dist:<16} {'N/A':>14}")
@@ -840,7 +838,7 @@ breakdown_labels = {
 }
 for key, label in breakdown_labels.items():
     val = latency_breakdown.get(key, "")
-    if isinstance(val, (int, float)):
+    if isinstance(val, int | float):
         sprint(f"  {label:<36} {val:>13.0f}ms")
     else:
         sprint(f"  {label:<36} {'N/A':>14}")
@@ -858,15 +856,15 @@ all_latencies = []
 for eng in ALL_ENGINES:
     for rc in RUN_COUNTS:
         val = engine_scaling.get(eng, {}).get(rc)
-        if isinstance(val, (int, float)):
+        if isinstance(val, int | float):
             all_latencies.append(val)
 for nv in VAR_COUNTS:
     val = var_scaling.get(nv)
-    if isinstance(val, (int, float)):
+    if isinstance(val, int | float):
         all_latencies.append(val)
 for dist in DIST_TYPES:
     val = dist_benchmarks.get(dist)
-    if isinstance(val, (int, float)):
+    if isinstance(val, int | float):
         all_latencies.append(val)
 
 if all_latencies:

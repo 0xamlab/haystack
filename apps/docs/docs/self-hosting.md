@@ -22,7 +22,7 @@ When self-hosted, **all client code still works unchanged** — just set `ALGENT
 - **Python 3.12+**
 - **PostgreSQL 14+**
 - **Redis 7+**
-- **Node.js 20+** (for the portal UI, optional)
+- **Node.js 20+** (optional, only if you need Node-based tooling alongside this repo)
 - **Docker + Docker Compose** (optional — or run natively)
 
 ---
@@ -98,15 +98,9 @@ curl -X POST http://localhost:8000/v1/simulate \
 
 Expected: `{"recommended_action": "proceed", "confidence": 0.84, ...}`
 
-### 7. Start the portal UI (optional)
+### 7. Connect an external web interface (optional)
 
-```bash
-make dev-portal
-# or:
-cd apps/portal && npm install && npm run dev
-```
-
-Open http://localhost:3000 — log in with `dev@example.com` / `password123` (seed default).
+This repository does not include a bundled web interface. Point your external UI at `http://localhost:8000` after the API is running.
 
 ---
 
@@ -170,8 +164,8 @@ const client = new DecisionEngineClient({
 }
 ```
 
-### Portal UI
-Set `NEXT_PUBLIC_API_URL=http://localhost:8000` in `apps/portal/.env.local`.
+### External web interface
+Set your UI's API base URL to `http://localhost:8000`.
 
 ---
 
@@ -195,7 +189,7 @@ curl -X DELETE http://localhost:8000/v1/api-keys/KEY_ID \
   -H "Authorization: Bearer de_test_SEED_KEY"
 ```
 
-Or use the portal UI at http://localhost:3000/dashboard/api-keys.
+Or use your external account interface against the same local API server.
 
 ---
 

@@ -30,13 +30,15 @@ _ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(_ROOT))
 sys.path.insert(0, str(_ROOT / "packages" / "python-sdk"))
 
-from decision_engine import AsyncDecisionEngineClient, DecisionEngineClient
+from decision_engine import AsyncDecisionEngineClient, DecisionEngineClient  # noqa: E402
 
 BASE_URL = os.environ.get("DE_BASE_URL", "http://localhost:8000")
 API_KEY  = os.environ.get("DE_API_KEY",  "de_live_LrL6UWSAfgXsTjgfyaboI9aolrsznjLU")
 SKIP_API = os.environ.get("DE_SKIP_API", "0") == "1"
 
-PASS = "✅"; FAIL = "❌"; SKIP = "⏭️ "
+PASS = "✅"
+FAIL = "❌"
+SKIP = "⏭️ "
 _results: list[tuple[str, bool, str]] = []
 
 
@@ -154,7 +156,7 @@ def test_compare():
     ]
     with client() as c:
         result = c.compare(scenarios)
-        check("compare() returns dict or list", isinstance(result, (dict, list)))
+        check("compare() returns dict or list", isinstance(result, dict | list))
 
 
 def test_api_key_lifecycle():

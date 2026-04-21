@@ -80,8 +80,7 @@ async def test_csv_pipeline(csv_path: str, description: str) -> bool | None:
     # ── 3. Field analysis ────────────────────────────────────────────────
     sample = sample_data[0]
     all_fields = list(sample.keys())
-    numeric_fields = [k for k, v in sample.items() if isinstance(v, (int, float))]
-    string_fields = [k for k in all_fields if k not in numeric_fields]
+    numeric_fields = [k for k, v in sample.items() if isinstance(v, int | float)]
 
     print(f"    Total fields: {len(all_fields)}")
     print(f"    Numeric fields ({len(numeric_fields)}): {', '.join(numeric_fields[:8])}"

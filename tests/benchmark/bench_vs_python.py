@@ -26,8 +26,14 @@ import asyncio
 import os
 import random
 import statistics
+import sys
 import time
+from pathlib import Path
 from typing import Any
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 N_WARMUP  = int(os.environ.get("BENCH_VS_PYTHON_WARMUP",  "5"))
 N_MEASURE = int(os.environ.get("BENCH_VS_PYTHON_MEASURE", "20"))
@@ -82,7 +88,7 @@ def _python_mc_light(n: int = LIGHT_RUNS) -> float:
     cost = rng.triangular(40_000, 55_000, 70_000, n)
     vol  = rng.lognormal(11.0, 0.15, n)
     out  = rev - cost
-    _ = out.mean(), np.percentile(out, [5, 25, 50, 75, 95])
+    _ = vol.mean(), out.mean(), np.percentile(out, [5, 25, 50, 75, 95])
     return float(out.mean())
 
 
@@ -102,7 +108,7 @@ def _python_lhs_light(n: int = LIGHT_RUNS) -> float:
     cost = triang.ppf(samples[:, 1], c=c_val, loc=40_000, scale=30_000)
     vol  = lognorm.ppf(samples[:, 2], s=0.15, scale=np.exp(11.0))
     out  = rev - cost
-    _ = out.mean(), np.percentile(out, [5, 50, 95])
+    _ = vol.mean(), out.mean(), np.percentile(out, [5, 50, 95])
     return float(out.mean())
 
 
@@ -134,7 +140,13 @@ def _python_mc_production(n: int = PROD_RUNS) -> float:
     discount   = rng.uniform(0.05, 0.25, n)
     tax_rate   = rng.triangular(0.15, 0.22, 0.35, n)
     out = revenue - cogs - opex + price * volume * (1 - discount) - tax_rate * revenue
-    _ = out.mean(), np.percentile(out, [5, 25, 50, 75, 95])
+    _ = (
+        headcount.mean(),
+        churn.mean(),
+        conversion.mean(),
+        out.mean(),
+        np.percentile(out, [5, 25, 50, 75, 95]),
+    )
     return float(out.mean())
 
 
@@ -163,7 +175,13 @@ def _python_lhs_production(n: int = PROD_RUNS) -> float:
     c_tax      = (0.22 - 0.15) / (0.35 - 0.15)
     tax_rate   = triang.ppf(samples[:, 9], c=c_tax, loc=0.15, scale=0.20)
     out = revenue - cogs - opex + price * volume * (1 - discount) - tax_rate * revenue
-    _ = out.mean(), np.percentile(out, [5, 50, 95])
+    _ = (
+        headcount.mean(),
+        churn.mean(),
+        conversion.mean(),
+        out.mean(),
+        np.percentile(out, [5, 50, 95]),
+    )
     return float(out.mean())
 
 
@@ -294,7 +312,7 @@ async def _bench_mojo(payload: dict[str, Any], n_warmup: int, n_measure: int) ->
     for _ in range(n_measure):
         t0 = time.perf_counter()
         try:
-            result = await _invoke_fn(payload)
+            _ = await _invoke_fn(payload)
             elapsed = (time.perf_counter() - t0) * 1000
             latencies.append(elapsed)
         except Exception:

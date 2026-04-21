@@ -43,7 +43,9 @@ SKIP_API = os.environ.get("DE_SKIP_API", "0") == "1"
 CSV_DIR   = _ROOT / "tests" / "integration"
 DATA_DIR  = _ROOT / "test_files"
 
-PASS = "✅"; FAIL = "❌"; SKIP = "⏭️ "
+PASS = "✅"
+FAIL = "❌"
+SKIP = "⏭️ "
 _results: list[tuple[str, bool, str]] = []
 
 
@@ -301,13 +303,13 @@ def test_replay_benchmark_scaling():
 
     # Only engines that work without extra config (specialized engines need
     # sensitivity_config, mcmc_config, etc. and are tested separately)
-    _BASIC_ENGINES = {"monte_carlo", "lhs", "qmc_sobol", "bootstrap", "scenario"}
+    basic_engines = {"monte_carlo", "lhs", "qmc_sobol", "bootstrap", "scenario"}
 
     # Only rows with a valid engine and run count (skip latency/concurrency rows)
     sample = [r for r in rows
               if r.get("engine", "").strip() and r.get("runs", "").strip()
               and int(r["runs"]) == 1000
-              and r["engine"] in _BASIC_ENGINES]
+              and r["engine"] in basic_engines]
 
     for r in sample:
         engine  = r["engine"]

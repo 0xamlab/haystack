@@ -207,7 +207,10 @@ async def get_analytics(
         )
         .group_by(SimulationRun.status)
     )
-    by_status = {str(row.st.value if hasattr(row.st, "value") else row.st): row.cnt for row in status_result}
+    by_status = {
+        str(row.st.value if hasattr(row.st, "value") else row.st): row.cnt
+        for row in status_result
+    }
 
     # ── By mode ────────────────────────────────────────────────────────────────
     mode_result = await db.execute(
@@ -221,7 +224,10 @@ async def get_analytics(
         )
         .group_by(SimulationRun.mode)
     )
-    by_mode = {str(row.md.value if hasattr(row.md, "value") else row.md): row.cnt for row in mode_result}
+    by_mode = {
+        str(row.md.value if hasattr(row.md, "value") else row.md): row.cnt
+        for row in mode_result
+    }
 
     # ── By recommended_action (from migration 0006) ────────────────────────────
     action_result = await db.execute(

@@ -44,7 +44,11 @@ class SimulationRun(UUIDMixin, TimestampMixin, Base):
         index=True,
     )
     mode: Mapped[SimulationMode] = mapped_column(
-        Enum(SimulationMode, name="simulation_mode", values_callable=lambda obj: [e.value for e in obj]),
+        Enum(
+            SimulationMode,
+            name="simulation_mode",
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
         nullable=False,
     )
     engine_version: Mapped[str] = mapped_column(String(50), nullable=False, default="0.1.0")
@@ -56,7 +60,11 @@ class SimulationRun(UUIDMixin, TimestampMixin, Base):
         index=True,
     )
     execution_type: Mapped[ExecutionType] = mapped_column(
-        Enum(ExecutionType, name="execution_type", values_callable=lambda obj: [e.value for e in obj]),
+        Enum(
+            ExecutionType,
+            name="execution_type",
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
         default=ExecutionType.SYNC,
         nullable=False,
     )

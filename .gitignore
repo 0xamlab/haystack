@@ -76,6 +76,7 @@ node_modules/
 .yarn/install-state.gz
 *.tsbuildinfo
 .next/
+.docusaurus/
 out/
 .nuxt/
 dist/

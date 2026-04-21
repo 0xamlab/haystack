@@ -42,7 +42,10 @@ async def get_current_org(
             detail={
                 "error": {
                     "code": "authentication_required",
-                    "message": "API key required. Use Authorization: Bearer <key> header (X-API-Key also accepted for legacy clients).",
+                    "message": (
+                        "API key required. Use Authorization: Bearer <key> "
+                        "header (X-API-Key also accepted for legacy clients)."
+                    ),
                     "request_id": getattr(request.state, "request_id", None),
                     "docs_url": "https://docs.algenta.ai/errors/authentication_required",
                 }

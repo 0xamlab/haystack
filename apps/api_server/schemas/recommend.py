@@ -79,7 +79,8 @@ class RecommendResponse(BaseModel):
         description=(
             "Structured decision summary with all ranked options. "
             "Best entry point for LLMs and dashboards — contains recommended_action, "
-            "expected_value, risk (p5/p95/PoL), all options ranked, rationale, and integrity hashes."
+            "expected_value, risk (p5/p95/PoL), all options ranked, rationale, "
+            "and integrity hashes."
         ),
     )
 
@@ -93,7 +94,10 @@ class ScoreRequest(BaseModel):
     request: SimulateRequest
     scoring_weights: dict[str, float] | None = Field(
         default=None,
-        description="Custom scoring weights. Keys: 'expected_value', 'downside_risk'. Must sum to 1.0.",
+        description=(
+            "Custom scoring weights. Keys: 'expected_value', "
+            "'downside_risk'. Must sum to 1.0."
+        ),
     )
 
 

@@ -81,14 +81,20 @@ def req(method: str, path: str, body=None, headers=None, auth=True, timeout=15):
         except Exception:
             body_data = body_bytes.decode("utf-8", errors="replace")
         return e.code, body_data, dict(e.headers), elapsed
-    except TimeoutError:
+    except TimeoutError as err:
         elapsed = time.perf_counter() - t0
-        raise TimeoutError(f"Request to {url} timed out after {timeout}s (elapsed: {elapsed:.1f}s)")
-    except urllib.error.URLError as e:
-        if "timed out" in str(e):
+        raise TimeoutError(
+            f"Request to {url} timed out after {timeout}s (elapsed: {elapsed:.1f}s)"
+        ) from err
+    except urllib.error.URLError as err:
+        if "timed out" in str(err):
             elapsed = time.perf_counter() - t0
-            raise TimeoutError(f"Request to {url} timed out after {timeout}s (elapsed: {elapsed:.1f}s)")
-        raise RuntimeError(f"Cannot connect to {BASE_URL} — is the API server running?") from e
+            raise TimeoutError(
+                f"Request to {url} timed out after {timeout}s (elapsed: {elapsed:.1f}s)"
+            ) from err
+        raise RuntimeError(
+            f"Cannot connect to {BASE_URL} — is the API server running?"
+        ) from err
 
 
 def check(name: str, fn):
@@ -887,7 +893,7 @@ print("─" * 70)
 def test_import_job_model():
     """Import Job model and JobStatus enum."""
     try:
-        from apps.api_server.models.job import Job, JobStatus
+        from apps.api_server.models.job import Job
         assert hasattr(Job, "__tablename__"), "Job missing __tablename__"
         assert Job.__tablename__ == "jobs", f"Expected 'jobs', got {Job.__tablename__}"
         results.append((PASS, "Import Job model"))

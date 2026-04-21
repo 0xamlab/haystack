@@ -11,6 +11,7 @@ import pyarrow.parquet as pq
 import pytest
 
 import apps.api_server.routers.data_map as data_map_router
+import apps.api_server.services.columnar_loader as columnar_loader_module
 from apps.api_server.routers.data_map import DataSource, _load_source, _load_source_table
 from apps.api_server.routers.query import _load_profiled_source, _source_cache_key
 from apps.api_server.services.columnar_loader import (
@@ -393,6 +394,79 @@ def test_delimited_text_to_arrow_table_python_fallback_reuses_per_column_coercio
         ("status", "Open"),
         ("measure_total", "10"),
     ]
+
+
+def test_delimited_text_to_arrow_table_large_fallback_handles_real_quotes_new_with_pandas(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import pyarrow.csv as pacsv
+
+    csv_text = (
+        Path(__file__).resolve().parents[1]
+        / "test_files"
+        / "quotes_new.csv"
+    ).read_text(encoding="utf-8-sig", errors="replace")
+
+    def _raise_read_csv(*_args, **_kwargs):  # type: ignore[no-untyped-def]
+        raise pa.ArrowInvalid("forced parser failure")
+
+    def _should_not_run(*_args, **_kwargs):  # type: ignore[no-untyped-def]
+        raise AssertionError("large malformed fallback should use pandas before python fallback")
+
+    monkeypatch.setattr(pacsv, "read_csv", _raise_read_csv)
+    monkeypatch.setattr(columnar_loader_module, "_PANDAS_FALLBACK_MIN_BYTES", 0)
+    monkeypatch.setattr(
+        columnar_loader_module,
+        "_python_delimited_text_to_arrow_table",
+        _should_not_run,
+    )
+
+    table = delimited_text_to_arrow_table(
+        csv_text,
+        delimiter=",",
+        sniff=True,
+    )
+
+    assert table.num_rows == 45237
+    assert table.num_columns == 80
+    assert str(table.schema.field("CH_NUMBER").type) == "string"
+
+
+def test_delimited_text_to_arrow_table_large_fallback_uses_pandas_c_engine(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import pandas as pd
+    import pyarrow.csv as pacsv
+
+    csv_text = (
+        Path(__file__).resolve().parents[1]
+        / "test_files"
+        / "quotes_new.csv"
+    ).read_text(encoding="utf-8-sig", errors="replace")
+
+    read_csv_kwargs: dict[str, object] = {}
+    real_read_csv = pd.read_csv
+
+    def _raise_read_csv(*_args, **_kwargs):  # type: ignore[no-untyped-def]
+        raise pa.ArrowInvalid("forced parser failure")
+
+    def _tracking_read_csv(*args, **kwargs):  # type: ignore[no-untyped-def]
+        read_csv_kwargs.update(kwargs)
+        return real_read_csv(*args, **kwargs)
+
+    monkeypatch.setattr(pacsv, "read_csv", _raise_read_csv)
+    monkeypatch.setattr(columnar_loader_module, "_PANDAS_FALLBACK_MIN_BYTES", 0)
+    monkeypatch.setattr(pd, "read_csv", _tracking_read_csv)
+
+    table = delimited_text_to_arrow_table(
+        csv_text,
+        delimiter=",",
+        sniff=True,
+    )
+
+    assert table.num_rows == 45237
+    assert read_csv_kwargs["engine"] == "c"
+    assert read_csv_kwargs["low_memory"] is False
 
 
 @pytest.mark.asyncio

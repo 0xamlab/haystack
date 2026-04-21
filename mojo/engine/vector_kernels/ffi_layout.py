@@ -273,9 +273,16 @@ def make_rank_request(
 if __name__ == "__main__":
     import sys
 
+    def _emit(message: str) -> None:
+        sys.stdout.write(f"{message}\n")
+
     # Verify struct sizes
-    assert ctypes.sizeof(TopKEntry) == 16,  f"TopKEntry size={ctypes.sizeof(TopKEntry)}, expected 16"
-    assert ctypes.sizeof(RankResult) == 136, f"RankResult size={ctypes.sizeof(RankResult)}, expected 136"
+    assert ctypes.sizeof(TopKEntry) == 16, (
+        f"TopKEntry size={ctypes.sizeof(TopKEntry)}, expected 16"
+    )
+    assert ctypes.sizeof(RankResult) == 136, (
+        f"RankResult size={ctypes.sizeof(RankResult)}, expected 136"
+    )
 
     # Test build_vec64 — exact match
     req = make_rank_request("unit_price", SOURCE_POS, ROLE_UNIT)
@@ -288,8 +295,8 @@ if __name__ == "__main__":
     # "unit_price" should have a non-zero bucket at h=25
     assert req.query_vec_data[25] > 0.0, "bigram bucket for 'un' should be non-zero"
 
-    print("[PASS] TopKEntry size = 16")
-    print("[PASS] RankResult size = 136")
-    print("[PASS] build_vec64('unit_price') norm_inv =", req.query_norm_inv)
-    print("[PASS] ffi_layout.py self-test complete")
+    _emit("[PASS] TopKEntry size = 16")
+    _emit("[PASS] RankResult size = 136")
+    _emit(f"[PASS] build_vec64('unit_price') norm_inv = {req.query_norm_inv}")
+    _emit("[PASS] ffi_layout.py self-test complete")
     sys.exit(0)

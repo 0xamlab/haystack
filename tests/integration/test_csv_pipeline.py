@@ -30,6 +30,7 @@ import csv as csv_stdlib
 import io
 import json
 import os
+import re as _re
 import socket
 import sys
 import time
@@ -92,14 +93,18 @@ def req(method: str, path: str, body=None, headers=None, auth=True, timeout=30) 
         except Exception:
             body_data2 = body_bytes.decode("utf-8", errors="replace")
         return e.code, body_data2, dict(e.headers), elapsed
-    except TimeoutError:
+    except TimeoutError as err:
         elapsed = time.perf_counter() - t0
-        raise TimeoutError(f"Request to {url} timed out after {timeout}s (elapsed: {elapsed:.1f}s)")
-    except urllib.error.URLError as e:
-        if "timed out" in str(e):
+        raise TimeoutError(
+            f"Request to {url} timed out after {timeout}s (elapsed: {elapsed:.1f}s)"
+        ) from err
+    except urllib.error.URLError as err:
+        if "timed out" in str(err):
             elapsed = time.perf_counter() - t0
-            raise TimeoutError(f"Request to {url} timed out after {timeout}s (elapsed: {elapsed:.1f}s)")
-        raise RuntimeError(f"Cannot connect to {BASE_URL} — is the API server running?") from e
+            raise TimeoutError(
+                f"Request to {url} timed out after {timeout}s (elapsed: {elapsed:.1f}s)"
+            ) from err
+        raise RuntimeError(f"Cannot connect to {BASE_URL} — is the API server running?") from err
 
 
 def check(name: str, fn):
@@ -152,13 +157,10 @@ def _count_numeric_cols(records: list[dict]) -> int:
     count = 0
     for key in records[0].keys():
         for r in records[:min(20, len(records))]:
-            if isinstance(r.get(key), (int, float)):
+            if isinstance(r.get(key), int | float):
                 count += 1
                 break
     return count
-
-
-import re as _re
 
 
 def _sanitize_var_name(name: str) -> str:
@@ -259,7 +261,7 @@ def test_csv_parsing():
             assert expected_col in cols, f"Missing column {expected_col} in {cols[:10]}..."
         # Check numeric conversion
         for r in records[:100]:
-            if isinstance(r.get("QUANTITY"), (int, float)):
+            if isinstance(r.get("QUANTITY"), int | float):
                 break
         else:
             # Some rows may have empty QUANTITY; just verify UNIT_PRICE is numeric somewhere
@@ -284,7 +286,6 @@ def test_csv_parsing():
         # POS has 100+ columns
         assert len(cols) >= 80, f"Expected ≥80 columns, got {len(cols)}"
         # Verify quoted fields handled (CUSTOMER has commas in names like "SGB Enterprises, Inc.")
-        has_quoted = any("," in str(r.get("CUSTOMER", "")) for r in records[:100])
         # quoted fields should be parsed correctly (not split)
         assert "CUSTOMER" in cols, "Missing CUSTOMER column"
         pipeline_results.append({
@@ -639,7 +640,7 @@ def test_data_mapping():
         var_names = {v["name"] for v in payload["variables"]}
         # All variables should correspond to numeric columns from first record
         sample = records[0]
-        numeric_keys = {k for k, v in sample.items() if isinstance(v, (int, float))}
+        numeric_keys = {k for k, v in sample.items() if isinstance(v, int | float)}
         # Variables should be subset of numeric keys
         assert var_names.issubset(numeric_keys), \
             f"Variable names {var_names - numeric_keys} not in numeric columns"
@@ -866,7 +867,6 @@ def test_end_to_end_pipeline(api_available: bool):
             "simulation_model": "monte_carlo",
         }
 
-        t_sim_start = time.perf_counter()
         status, body, _, sim_elapsed = req("POST", "/v1/simulate", body=api_payload, timeout=30)
         t_sim_ms = sim_elapsed * 1000
 
@@ -890,14 +890,14 @@ def test_end_to_end_pipeline(api_available: bool):
         metrics = body["metrics"]
         for field in ["expected_value", "std_deviation", "probability_of_loss"]:
             assert field in metrics, f"Missing metric '{field}'"
-            assert isinstance(metrics[field], (int, float)), \
+            assert isinstance(metrics[field], int | float), \
                 f"Metric '{field}' should be numeric, got {type(metrics[field])}"
 
         # Validate percentiles
         pct = body["percentiles"]
         for p in ["p5", "p25", "p50", "p75", "p95"]:
             assert p in pct, f"Missing percentile '{p}'"
-            assert isinstance(pct[p], (int, float)), \
+            assert isinstance(pct[p], int | float), \
                 f"Percentile '{p}' should be numeric"
 
         # Validate recommendation
@@ -1341,7 +1341,7 @@ def test_full_api_pipeline(api_available: bool):
 
         status, body, _, elapsed = req("POST", "/v1/simulate", body=api_body)
         assert status == 200, f"Expected 200, got {status}: {body}"
-        assert isinstance(body["metrics"]["expected_value"], (int, float))
+        assert isinstance(body["metrics"]["expected_value"], int | float)
         assert "recommended_action" in body
         assert body["recommended_action"] in ("proceed", "caution", "reject")
         assert body.get("scenarios_run", 0) >= 1000
@@ -1381,7 +1381,7 @@ def test_full_api_pipeline(api_available: bool):
 
         status, body, _, _ = req("POST", "/v1/simulate", body=api_body)
         assert status == 200, f"Got {status}: {body}"
-        assert isinstance(body["metrics"]["expected_value"], (int, float))
+        assert isinstance(body["metrics"]["expected_value"], int | float)
         assert body["recommended_action"] in ("proceed", "caution", "reject")
 
     def api_execution_time_reasonable():

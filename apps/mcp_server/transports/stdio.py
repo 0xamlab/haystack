@@ -32,7 +32,11 @@ async def run_stdio_server() -> None:
     @server.list_tools()
     async def handle_list_tools() -> list[Tool]:
         return [
-            Tool(name=spec["name"], description=spec["description"], inputSchema=spec["inputSchema"])
+            Tool(
+                name=spec["name"],
+                description=spec["description"],
+                inputSchema=spec["inputSchema"],
+            )
             for spec in get_tool_specs()
         ]
 

@@ -24,9 +24,9 @@ settings = get_settings()
 
 async def seed() -> None:
     engine = create_async_engine(settings.database_url, echo=False)
-    SessionLocal = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+    session_local = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
 
-    async with SessionLocal() as session:
+    async with session_local() as session:
         # Check if dev org already exists
         from sqlalchemy import select
         result = await session.execute(

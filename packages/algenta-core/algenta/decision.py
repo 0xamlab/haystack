@@ -109,7 +109,7 @@ def analyze(
     values: list[float] = []
     for _ in range(runs):
         total = 0.0
-        for name, val, lo, hi in specs:
+        for _name, val, lo, hi in specs:
             if lo is not None and hi is not None:
                 s = _triangular_sample(lo, val, hi)
             else:

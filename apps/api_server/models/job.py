@@ -75,7 +75,11 @@ class Job(UUIDMixin, TimestampMixin, Base):
     max_retries: Mapped[int] = mapped_column(Integer, default=3, nullable=False)
     callback_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     callback_status: Mapped[WebhookStatus] = mapped_column(
-        Enum(WebhookStatus, name="webhook_status", values_callable=lambda obj: [e.value for e in obj]),
+        Enum(
+            WebhookStatus,
+            name="webhook_status",
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
         default=WebhookStatus.NOT_CONFIGURED,
         nullable=False,
     )

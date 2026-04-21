@@ -51,11 +51,12 @@ from apps.api_server.routers.query import (
     _CachedSource,
     _call_mojo_column_profile,
     _detect_relations,
-    _evict_lru,
     _get_registry_planner,
     _http_error,
     _load_profiled_source,
     _source_cache_key,
+    _source_cache_put,
+    _try_incremental_registry_planner_update,
     build_schema_graph,
 )
 from apps.api_server.services import source_registry as reg
@@ -66,17 +67,37 @@ logger = structlog.get_logger(__name__)
 router = APIRouter(tags=["Source Registry"])
 
 _DEEP_JOIN_COLUMN_LIMIT = 12
+_DEEP_JOIN_DIMENSION_EXTENSION_LIMIT = 4
 _JOIN_PROJECTION_CACHE_MAX = 128
 _DECISIVE_ONE_TO_ONE_FAST_JOIN_OVERLAP = 0.05
 _DECISIVE_DIRECTIONAL_FAST_JOIN_OVERLAP = 0.075
 _METADATA_FAST_JOIN_MIN_SAMPLE_OVERLAP = 3
+_SUFFICIENT_FAST_JOIN_MIN_CONFIDENCE = 0.72
+_SUFFICIENT_FAST_JOIN_MIN_OVERLAP = 0.08
+_MAX_FAST_JOIN_CONNECTIONS_PER_PAIR = 6
+_DEFAULT_JOIN_VALUE_CANDIDATE_LIMIT = 20
+_FAST_JOIN_VALUE_CANDIDATE_LIMIT = 8
 _DEFAULT_JOIN_CANDIDATE_MIN_SCORE = 4.5
 _REDUCED_MEDIUM_JOIN_CANDIDATE_MIN_SCORE = 20.0
 _REDUCED_WIDE_MEDIUM_JOIN_CANDIDATE_MIN_SCORE = 30.0
+_LOW_ROW_JOIN_CANDIDATE_MIN_SCORE = 6.0
+_VERY_LOW_ROW_JOIN_CANDIDATE_MIN_SCORE = 8.0
 _SMALL_ORG_SINGLE_JOIN_PAIR_COST_BUDGET = 5_000_000
 _SMALL_ORG_TOTAL_JOIN_PAIR_COST_BUDGET = 12_000_000
 _JOIN_PROJECTION_CACHE: dict[tuple[str, str, str, tuple[str, ...]], pd.DataFrame] = {}
 _JOIN_PROJECTION_CACHE_LOCK = threading.Lock()
+_JOIN_VALUE_CANDIDATE_CACHE_MAX = 128
+_JOIN_VALUE_CANDIDATE_CACHE: dict[
+    tuple[str, str, str, tuple[str, ...]],
+    dict[str, dict[str, Any]],
+] = {}
+_JOIN_VALUE_CANDIDATE_CACHE_LOCK = threading.Lock()
+_JOIN_NAME_STATS_CACHE_MAX = 128
+_JOIN_NAME_STATS_CACHE: dict[
+    tuple[str, str, str, tuple[str, ...]],
+    dict[str, dict[str, Any]],
+] = {}
+_JOIN_NAME_STATS_CACHE_LOCK = threading.Lock()
 
 
 # ── Register ────────────────────────────────────────────────────────────────────
@@ -93,6 +114,29 @@ _JOIN_KEY_NAME_TOKENS = frozenset({
     "serial",
     "uuid",
 })
+_DIMENSION_FAMILY_TOKEN_MAP = {
+    "branch": "store",
+    "location": "store",
+    "merchant": "store",
+    "outlet": "store",
+    "restaurant": "store",
+    "site": "store",
+    "store": "store",
+}
+_DIMENSION_JOIN_MODIFIER_TOKENS = frozenset({
+    "as",
+    "eats",
+    "external",
+    "local",
+    "manager",
+    "name",
+    "per",
+    "uber",
+    "ubereats",
+})
+_LOW_CARDINALITY_DIMENSION_MAX_DOMAIN = 32
+_LOW_CARDINALITY_DIMENSION_MIN_OVERLAP = 2
+_LOW_CARDINALITY_DIMENSION_MIN_JACCARD = 0.95
 
 
 def _looks_like_entity_join_key(name: str) -> bool:
@@ -101,6 +145,26 @@ def _looks_like_entity_join_key(name: str) -> bool:
     if tokens & _JOIN_KEY_NAME_TOKENS:
         return True
     return any(token in lowered for token in ("_id", "_key", "_code", "_ref", "_uuid", "_guid"))
+
+
+def _dimension_join_family(name: str) -> str:
+    tokens = set(re.findall(r"[a-z0-9]+", name.lower()))
+    families = {
+        _DIMENSION_FAMILY_TOKEN_MAP[token]
+        for token in tokens
+        if token in _DIMENSION_FAMILY_TOKEN_MAP
+    }
+    if len(families) != 1:
+        return ""
+    non_dimension = {
+        token
+        for token in tokens
+        if token not in _DIMENSION_FAMILY_TOKEN_MAP
+        and token not in _DIMENSION_JOIN_MODIFIER_TOKENS
+    }
+    if len(non_dimension) > 1:
+        return ""
+    return next(iter(families))
 
 
 def _infer_shared_column_cardinality(
@@ -123,12 +187,79 @@ def _infer_shared_column_cardinality(
     return "many_to_many"
 
 
+def _infer_shared_column_cardinality_from_stats(
+    left_stats: dict[str, Any],
+    right_stats: dict[str, Any],
+    shared_values: set[str],
+) -> str:
+    if not shared_values:
+        return "many_to_many"
+
+    left_all_unique = bool(left_stats.get("all_unique"))
+    right_all_unique = bool(right_stats.get("all_unique"))
+    if left_all_unique and right_all_unique:
+        return "one_to_one"
+    if left_all_unique:
+        return "one_to_many"
+    if right_all_unique:
+        return "many_to_one"
+
+    return _infer_shared_column_cardinality(
+        left_stats.get("counts") or {},
+        right_stats.get("counts") or {},
+        shared_values,
+    )
+
+
 def _shared_name_join_confidence(jaccard: float, cardinality: str) -> float:
     if cardinality == "one_to_one":
         return round(min(0.99, 0.80 + jaccard * 0.25), 3)
     if cardinality in {"one_to_many", "many_to_one"}:
         return round(min(0.97, 0.74 + jaccard * 0.22), 3)
     return round(min(0.90, 0.60 + jaccard * 0.18), 3)
+
+
+def _dimension_family_join_confidence(jaccard: float) -> float:
+    return round(min(0.79, 0.55 + jaccard * 0.20), 3)
+
+
+def _is_low_cardinality_dimension_join(
+    left_name: str,
+    left_stats: dict[str, Any],
+    right_name: str,
+    right_stats: dict[str, Any],
+    shared_values: set[str],
+    jaccard: float,
+    cardinality: str,
+) -> bool:
+    if cardinality != "many_to_many":
+        return False
+    left_family = _dimension_join_family(left_name)
+    if not left_family or left_family != _dimension_join_family(right_name):
+        return False
+    if len(shared_values) < _LOW_CARDINALITY_DIMENSION_MIN_OVERLAP:
+        return False
+    if jaccard < _LOW_CARDINALITY_DIMENSION_MIN_JACCARD:
+        return False
+    left_domain = len(left_stats.get("values") or ())
+    right_domain = len(right_stats.get("values") or ())
+    if left_domain < 2 or right_domain < 2:
+        return False
+    return max(left_domain, right_domain) <= _LOW_CARDINALITY_DIMENSION_MAX_DOMAIN
+
+
+def _dimension_family_columns(
+    stats_by_column: dict[str, dict[str, Any]],
+) -> dict[str, list[tuple[str, dict[str, Any]]]]:
+    families: dict[str, list[tuple[str, dict[str, Any]]]] = {}
+    for column_name, column_stats in stats_by_column.items():
+        family = _dimension_join_family(column_name)
+        if not family:
+            continue
+        domain_size = len(column_stats.get("values") or ())
+        if 2 <= domain_size <= _LOW_CARDINALITY_DIMENSION_MAX_DOMAIN:
+            families.setdefault(family, []).append((column_name, column_stats))
+    return families
 
 
 def _has_decisive_fast_join(connections: list[dict[str, Any]]) -> bool:
@@ -147,6 +278,46 @@ def _has_decisive_fast_join(connections: list[dict[str, Any]]) -> bool:
             cardinality in {"one_to_many", "many_to_one"}
             and overlap >= _DECISIVE_DIRECTIONAL_FAST_JOIN_OVERLAP
         ):
+            return True
+    return False
+
+
+def _sorted_fast_join_connections(connections: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return sorted(
+        connections,
+        key=lambda connection: (
+            float(connection.get("confidence") or 0.0),
+            float(connection.get("overlap") or 0.0),
+            str(connection.get("col_a") or ""),
+            str(connection.get("col_b") or ""),
+        ),
+        reverse=True,
+    )
+
+
+def _bounded_fast_join_connections(connections: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return _sorted_fast_join_connections(connections)[:_MAX_FAST_JOIN_CONNECTIONS_PER_PAIR]
+
+
+def _has_sufficient_fast_join_evidence(connections: list[dict[str, Any]]) -> bool:
+    strong_key_like = 0
+    strong_total = 0
+    for connection in connections:
+        confidence = float(connection.get("confidence") or 0.0)
+        overlap = float(connection.get("overlap") or 0.0)
+        if (
+            confidence < _SUFFICIENT_FAST_JOIN_MIN_CONFIDENCE
+            and overlap < _SUFFICIENT_FAST_JOIN_MIN_OVERLAP
+        ):
+            continue
+        strong_total += 1
+        col_a = str(connection.get("col_a") or "")
+        col_b = str(connection.get("col_b") or "")
+        if _looks_like_entity_join_key(col_a) or _looks_like_entity_join_key(col_b):
+            strong_key_like += 1
+            if strong_key_like >= 2:
+                return True
+        if strong_total >= 4:
             return True
     return False
 
@@ -260,6 +431,18 @@ def _deep_join_projection_columns(
         projected.append(name)
         if len(projected) >= limit:
             break
+    dimension_extensions = 0
+    for block in join_blocks or []:
+        if dimension_extensions >= _DEEP_JOIN_DIMENSION_EXTENSION_LIMIT:
+            break
+        name = str(block.get("name") or "").strip()
+        if not name or name in seen:
+            continue
+        if not _dimension_join_family(name):
+            continue
+        projected.append(name)
+        seen.add(name)
+        dimension_extensions += 1
     return projected
 
 
@@ -289,6 +472,14 @@ def _load_join_projection(
 def _join_projection_signature(join_blocks: list[dict[str, Any]] | None) -> tuple[str, ...]:
     projected = _deep_join_projection_columns(join_blocks)
     return tuple(projected) if projected else ("*",)
+
+
+def _join_value_candidate_signature(
+    join_blocks: list[dict[str, Any]] | None,
+    *,
+    limit: int,
+) -> tuple[str, ...]:
+    return _join_projection_signature(join_blocks) + (f"limit:{limit}",)
 
 
 def _join_projection_cache_get(
@@ -336,6 +527,177 @@ def _load_join_projection_cached(
         cache_key,
         _load_join_projection(parquet_bytes, join_blocks, parquet_path=parquet_path),
     )
+
+
+def _join_value_candidate_cache_get(
+    cache_key: tuple[str, str, str, tuple[str, ...]],
+) -> dict[str, dict[str, Any]] | None:
+    with _JOIN_VALUE_CANDIDATE_CACHE_LOCK:
+        cached = _JOIN_VALUE_CANDIDATE_CACHE.get(cache_key)
+        if cached is None:
+            return None
+        _JOIN_VALUE_CANDIDATE_CACHE.pop(cache_key, None)
+        _JOIN_VALUE_CANDIDATE_CACHE[cache_key] = cached
+        return cached
+
+
+def _join_value_candidate_cache_put(
+    cache_key: tuple[str, str, str, tuple[str, ...]],
+    candidates: dict[str, dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    with _JOIN_VALUE_CANDIDATE_CACHE_LOCK:
+        _JOIN_VALUE_CANDIDATE_CACHE.pop(cache_key, None)
+        while len(_JOIN_VALUE_CANDIDATE_CACHE) >= _JOIN_VALUE_CANDIDATE_CACHE_MAX:
+            _JOIN_VALUE_CANDIDATE_CACHE.pop(next(iter(_JOIN_VALUE_CANDIDATE_CACHE)))
+        _JOIN_VALUE_CANDIDATE_CACHE[cache_key] = candidates
+    return candidates
+
+
+def _build_join_value_candidates(
+    df: pd.DataFrame,
+    join_blocks: list[dict[str, Any]] | None,
+    *,
+    limit: int = 20,
+) -> dict[str, dict[str, Any]]:
+    n_rows = len(df)
+    joinability_by_name = {
+        str(block.get("name") or ""): float(block.get("joinability") or 0.0)
+        for block in (join_blocks or [])
+        if block.get("name")
+    }
+    scored: list[tuple[float, float, str, list[str]]] = []
+    for col in df.columns:
+        unique_vals = df[col].dropna().astype(str).unique()
+        unique_count = len(unique_vals)
+        unique_ratio = unique_count / max(n_rows, 1)
+        if unique_ratio <= 0.25 or unique_count <= 5:
+            continue
+        scored.append(
+            (
+                joinability_by_name.get(col, 0.0),
+                unique_ratio,
+                col,
+                unique_vals[:1000].tolist(),
+            )
+        )
+
+    scored.sort(key=lambda item: (item[0], item[1], item[2]), reverse=True)
+    return {
+        col: {
+            "values": values,
+            "unique_ratio": round(unique_ratio, 4),
+            "sample_size": n_rows,
+        }
+        for _joinability, unique_ratio, col, values in scored[:limit]
+    }
+
+
+def _load_join_value_candidates_cached(
+    *,
+    org_id: str,
+    source_id: str,
+    join_blocks: list[dict[str, Any]] | None,
+    limit: int = _DEFAULT_JOIN_VALUE_CANDIDATE_LIMIT,
+    df: pd.DataFrame | None = None,
+    parquet_bytes: bytes | None = None,
+    parquet_path: Path | None = None,
+) -> dict[str, dict[str, Any]]:
+    cache_key = (
+        org_id,
+        source_id,
+        reg.source_schema_revision(org_id, source_id),
+        _join_value_candidate_signature(join_blocks, limit=limit),
+    )
+    cached = _join_value_candidate_cache_get(cache_key)
+    if cached is not None:
+        return cached
+    projected_df = df
+    if projected_df is None:
+        projected_df = _load_join_projection_cached(
+            org_id=org_id,
+            source_id=source_id,
+            parquet_bytes=parquet_bytes,
+            parquet_path=parquet_path,
+            join_blocks=join_blocks,
+        )
+    return _join_value_candidate_cache_put(
+        cache_key,
+        _build_join_value_candidates(projected_df, join_blocks, limit=limit),
+    )
+
+
+def _join_name_stats_cache_get(
+    cache_key: tuple[str, str, str, tuple[str, ...]],
+) -> dict[str, dict[str, Any]] | None:
+    with _JOIN_NAME_STATS_CACHE_LOCK:
+        cached = _JOIN_NAME_STATS_CACHE.get(cache_key)
+        if cached is None:
+            return None
+        _JOIN_NAME_STATS_CACHE.pop(cache_key, None)
+        _JOIN_NAME_STATS_CACHE[cache_key] = cached
+        return cached
+
+
+def _join_name_stats_cache_put(
+    cache_key: tuple[str, str, str, tuple[str, ...]],
+    stats: dict[str, dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    with _JOIN_NAME_STATS_CACHE_LOCK:
+        _JOIN_NAME_STATS_CACHE.pop(cache_key, None)
+        while len(_JOIN_NAME_STATS_CACHE) >= _JOIN_NAME_STATS_CACHE_MAX:
+            _JOIN_NAME_STATS_CACHE.pop(next(iter(_JOIN_NAME_STATS_CACHE)))
+        _JOIN_NAME_STATS_CACHE[cache_key] = stats
+    return stats
+
+
+def _build_join_name_stats(df: pd.DataFrame) -> dict[str, dict[str, Any]]:
+    row_count = len(df)
+    stats: dict[str, dict[str, Any]] = {}
+    for col in df.columns:
+        non_null = df[col].dropna().astype(str)
+        unique_values = non_null.unique().tolist()
+        values = set(unique_values)
+        unique_count = len(values)
+        non_null_count = len(non_null)
+        all_unique = non_null_count > 0 and unique_count == non_null_count
+        counts = {} if all_unique else non_null.value_counts().to_dict()
+        stats[col] = {
+            "counts": counts,
+            "values": values,
+            "unique_ratio": unique_count / max(row_count, 1),
+            "all_unique": all_unique,
+        }
+    return stats
+
+
+def _load_join_name_stats_cached(
+    *,
+    org_id: str,
+    source_id: str,
+    join_blocks: list[dict[str, Any]] | None,
+    df: pd.DataFrame | None = None,
+    parquet_bytes: bytes | None = None,
+    parquet_path: Path | None = None,
+) -> dict[str, dict[str, Any]]:
+    cache_key = (
+        org_id,
+        source_id,
+        reg.source_schema_revision(org_id, source_id),
+        _join_projection_signature(join_blocks),
+    )
+    cached = _join_name_stats_cache_get(cache_key)
+    if cached is not None:
+        return cached
+    projected_df = df
+    if projected_df is None:
+        projected_df = _load_join_projection_cached(
+            org_id=org_id,
+            source_id=source_id,
+            parquet_bytes=parquet_bytes,
+            parquet_path=parquet_path,
+            join_blocks=join_blocks,
+        )
+    return _join_name_stats_cache_put(cache_key, _build_join_name_stats(projected_df))
 
 
 def _estimated_join_pair_cost(
@@ -397,6 +759,11 @@ def _join_candidate_limit(
     schema_meta: dict[str, Any],
     existing_total: int,
 ) -> int:
+    if existing_total >= 8:
+        if row_count <= 256:
+            return 4 if existing_total >= 24 else 6
+        if row_count <= 2_000:
+            return 8
     if existing_total <= 4:
         return 24
     column_count = len(schema_meta.get("columns") or [])
@@ -419,6 +786,10 @@ def _join_candidate_min_score(
     existing_total: int,
 ) -> float:
     join_block_count = len(reg._build_join_blocks(schema_meta))
+    if existing_total >= 8 and row_count <= 256:
+        return _VERY_LOW_ROW_JOIN_CANDIDATE_MIN_SCORE
+    if existing_total >= 8 and row_count <= 2_000:
+        return _LOW_ROW_JOIN_CANDIDATE_MIN_SCORE
     if existing_total >= 12 and 10_000 <= row_count < 30_000 and join_block_count >= 6:
         return _REDUCED_WIDE_MEDIUM_JOIN_CANDIDATE_MIN_SCORE
     if existing_total >= 12 and 3_000 <= row_count < 30_000 and 3 <= join_block_count <= 4:
@@ -629,10 +1000,7 @@ async def _register_source_impl(
             content_keyed       = content_keyed,
         )
         async with _CACHE_LOCK:
-            _evict_lru()
-            _SOURCE_CACHE[source_id] = entry
-            if cache_key != source_id:
-                _SOURCE_CACHE[cache_key] = entry
+            _source_cache_put(entry, source_id, cache_key)
     else:
         entry = cached_entry
         profile = entry.profile
@@ -708,6 +1076,13 @@ async def _register_source_impl(
         parquet_path=src_parquet_path,
         join_blocks=src_join_blocks,
     )
+    src_name_stats = _load_join_name_stats_cached(
+        org_id=org_id,
+        source_id=source_id,
+        join_blocks=src_join_blocks,
+        df=src_df,
+        parquet_path=src_parquet_path,
+    )
     for ex in existing:
         ex_id = ex["id"]
         if ex_id == source_id:
@@ -728,6 +1103,7 @@ async def _register_source_impl(
             src_parquet_path=src_parquet_path,
             other_parquet_path=ex_parquet_path,
             src_df=src_df,
+            src_name_stats=src_name_stats,
             left_join_blocks=src_join_blocks,
             right_join_blocks=ex.get("join_blocks") or [],
         ))
@@ -746,11 +1122,27 @@ async def _register_source_impl(
                     count=len(new_connections))
 
     prewarm_t0 = time.monotonic()
-    _, planner_cache_hit, schema_revision = await _get_registry_planner(
+    source_schema_revision = str(
+        registered_entry.get("source_schema_revision")
+        or reg.source_schema_revision(org_id, source_id)
+    )
+    planner_cache_hit, schema_revision = await _try_incremental_registry_planner_update(
         org_id,
         llm_policy="never",
         auth=auth,
+        source_id=source_id,
+        source_name=src.name,
+        schema_meta=schema_meta,
+        source_schema_revision=source_schema_revision,
+        parquet_path=src_parquet_path,
+        new_connections=new_connections,
     )
+    if not planner_cache_hit:
+        _, planner_cache_hit, schema_revision = await _get_registry_planner(
+            org_id,
+            llm_policy="never",
+            auth=auth,
+        )
     schema_meta = (
         reg.update_source_meta(org_id, source_id, {"schema_revision": schema_revision})
         or schema_meta
@@ -836,6 +1228,10 @@ async def _detect_joins_between(
     other_parquet_path: Path | None = None,
     src_df: pd.DataFrame | None = None,
     other_df: pd.DataFrame | None = None,
+    src_name_stats: dict[str, dict[str, Any]] | None = None,
+    other_name_stats: dict[str, dict[str, Any]] | None = None,
+    src_value_candidates: dict[str, dict[str, Any]] | None = None,
+    other_value_candidates: dict[str, dict[str, Any]] | None = None,
     left_join_blocks: list[dict[str, Any]] | None = None,
     right_join_blocks: list[dict[str, Any]] | None = None,
 ) -> list[dict]:
@@ -856,7 +1252,7 @@ async def _detect_joins_between(
             right_join_blocks=right_join_blocks,
         )
         if _has_decisive_fast_join(metadata_fast_connections):
-            return metadata_fast_connections
+            return _bounded_fast_join_connections(metadata_fast_connections)
 
         if src_df is not None and other_df is not None:
             projected_src_df = src_df
@@ -899,26 +1295,57 @@ async def _detect_joins_between(
         # Two columns with the same name (case-insensitive) across different
         # sources are almost certainly a join key. Confirm with value overlap.
         connections_fast: list[dict] = []
+        if src_name_stats is None:
+            src_name_stats = _load_join_name_stats_cached(
+                org_id=org_id,
+                source_id=src_id,
+                join_blocks=left_join_blocks,
+                df=projected_src_df,
+                parquet_bytes=src_parquet,
+                parquet_path=src_parquet_path,
+            )
+        if other_name_stats is None:
+            other_name_stats = _load_join_name_stats_cached(
+                org_id=org_id,
+                source_id=other_id,
+                join_blocks=right_join_blocks,
+                df=projected_other_df,
+                parquet_bytes=other_parquet,
+                parquet_path=other_parquet_path,
+            )
         src_col_lower   = {col.lower(): col for col in projected_src_df.columns}
         other_col_lower = {col.lower(): col for col in projected_other_df.columns}
         shared_names = set(src_col_lower) & set(other_col_lower)
         for name_lower in shared_names:
             src_col   = src_col_lower[name_lower]
             other_col = other_col_lower[name_lower]
-            src_counts = projected_src_df[src_col].dropna().astype(str).value_counts().to_dict()
-            other_counts = (
-                projected_other_df[other_col].dropna().astype(str).value_counts().to_dict()
-            )
-            src_vals = set(src_counts)
-            other_vals = set(other_counts)
+            src_stats = src_name_stats.get(src_col)
+            other_stats = other_name_stats.get(other_col)
+            if src_stats is None or other_stats is None:
+                continue
+            src_vals = src_stats["values"]
+            other_vals = other_stats["values"]
             if not src_vals or not other_vals:
                 continue
             intersection = src_vals & other_vals
             union = src_vals | other_vals
             jaccard = len(intersection) / len(union) if union else 0.0
-            cardinality = _infer_shared_column_cardinality(src_counts, other_counts, intersection)
-            src_ur = len(src_vals) / max(len(projected_src_df), 1)
-            other_ur = len(other_vals) / max(len(projected_other_df), 1)
+            cardinality = _infer_shared_column_cardinality_from_stats(
+                src_stats,
+                other_stats,
+                intersection,
+            )
+            dimension_like = _is_low_cardinality_dimension_join(
+                src_col,
+                src_stats,
+                other_col,
+                other_stats,
+                intersection,
+                jaccard,
+                cardinality,
+            )
+            src_ur = float(src_stats["unique_ratio"])
+            other_ur = float(other_stats["unique_ratio"])
             looks_like_key = (
                 _looks_like_entity_join_key(src_col)
                 or _looks_like_entity_join_key(other_col)
@@ -928,12 +1355,13 @@ async def _detect_joins_between(
                 cardinality in {"one_to_one", "one_to_many", "many_to_one"}
                 and len(intersection) >= 2
                 and jaccard >= 0.50
-            )
+            ) or dimension_like
             if jaccard > 0.05 and enough_overlap:
                 if (
                     cardinality == "many_to_many"
                     and not looks_like_key
                     and max(src_ur, other_ur) < 0.80
+                    and not dimension_like
                 ):
                     continue
                 connections_fast.append({
@@ -943,40 +1371,104 @@ async def _detect_joins_between(
                     "source_b":      other_id,
                     "source_b_name": other_name,
                     "col_b":         other_col,
-                    "confidence":    _shared_name_join_confidence(jaccard, cardinality),
+                    "confidence":    (
+                        _dimension_family_join_confidence(jaccard)
+                        if dimension_like
+                        else _shared_name_join_confidence(jaccard, cardinality)
+                    ),
                     "cardinality":   cardinality,
                     "overlap":       round(jaccard, 4),
                 })
 
+        seen_fast_pairs = {(c["col_a"], c["col_b"]) for c in connections_fast}
+        src_family_columns = _dimension_family_columns(src_name_stats)
+        other_family_columns = _dimension_family_columns(other_name_stats)
+        for family in set(src_family_columns) & set(other_family_columns):
+            for src_col, src_stats in src_family_columns[family]:
+                for other_col, other_stats in other_family_columns[family]:
+                    if (src_col, other_col) in seen_fast_pairs:
+                        continue
+                    src_vals = src_stats.get("values") or set()
+                    other_vals = other_stats.get("values") or set()
+                    if not src_vals or not other_vals:
+                        continue
+                    intersection = src_vals & other_vals
+                    union = src_vals | other_vals
+                    jaccard = len(intersection) / len(union) if union else 0.0
+                    cardinality = _infer_shared_column_cardinality_from_stats(
+                        src_stats,
+                        other_stats,
+                        intersection,
+                    )
+                    if not _is_low_cardinality_dimension_join(
+                        src_col,
+                        src_stats,
+                        other_col,
+                        other_stats,
+                        intersection,
+                        jaccard,
+                        cardinality,
+                    ):
+                        continue
+                    connections_fast.append({
+                        "source_a": src_id,
+                        "source_a_name": src_name,
+                        "col_a": src_col,
+                        "source_b": other_id,
+                        "source_b_name": other_name,
+                        "col_b": other_col,
+                        "confidence": _dimension_family_join_confidence(jaccard),
+                        "cardinality": cardinality,
+                        "overlap": round(jaccard, 4),
+                    })
+                    seen_fast_pairs.add((src_col, other_col))
+
         # A strong exact-name key join is already sufficient to connect the
         # sources. Do not spend additional time on value-based Mojo search.
         if _has_decisive_fast_join(connections_fast):
-            return connections_fast
+            return _bounded_fast_join_connections(connections_fast)
+        if _has_sufficient_fast_join_evidence(connections_fast):
+            return _bounded_fast_join_connections(connections_fast)
 
         # ── Mojo path: value-based join detection for remaining columns ───────
-        # Cap at 20 highest-uniqueness columns per source to bound payload size.
-        def _col_candidates(df: pd.DataFrame, label: str, limit: int = 20) -> dict[str, dict]:
-            n = len(df)
-            scored = []
-            for col in df.columns:
-                unique_vals = df[col].dropna().astype(str).unique()
-                ur = len(unique_vals) / max(n, 1)
-                if ur > 0.25 and len(unique_vals) > 5:
-                    scored.append((ur, col, unique_vals))
-            # Keep only top-limit by uniqueness ratio
-            scored.sort(reverse=True)
-            cols: dict[str, dict] = {}
-            for ur, col, unique_vals in scored[:limit]:
-                cols[f"{label}.{col}"] = {
-                    "values":       unique_vals[:1000].tolist(),
-                    "unique_ratio": round(ur, 4),
-                    "sample_size":  n,
-                }
-            return cols
+        # Candidate extraction is cached per source revision so one registration
+        # can reuse the same uniqueness/value work across many join pairs.
+        value_candidate_limit = (
+            _FAST_JOIN_VALUE_CANDIDATE_LIMIT
+            if connections_fast
+            else _DEFAULT_JOIN_VALUE_CANDIDATE_LIMIT
+        )
+        if src_value_candidates is None:
+            src_value_candidates = _load_join_value_candidates_cached(
+                org_id=org_id,
+                source_id=src_id,
+                join_blocks=left_join_blocks,
+                limit=value_candidate_limit,
+                df=projected_src_df,
+                parquet_bytes=src_parquet,
+                parquet_path=src_parquet_path,
+            )
+        if other_value_candidates is None:
+            other_value_candidates = _load_join_value_candidates_cached(
+                org_id=org_id,
+                source_id=other_id,
+                join_blocks=right_join_blocks,
+                limit=value_candidate_limit,
+                df=projected_other_df,
+                parquet_bytes=other_parquet,
+                parquet_path=other_parquet_path,
+            )
 
-        columns: dict[str, dict] = {}
-        columns.update(_col_candidates(projected_src_df, src_name))
-        columns.update(_col_candidates(projected_other_df, other_name))
+        columns: dict[str, dict] = {
+            f"{src_name}.{col_name}": payload
+            for col_name, payload in src_value_candidates.items()
+        }
+        columns.update(
+            {
+                f"{other_name}.{col_name}": payload
+                for col_name, payload in other_value_candidates.items()
+            }
+        )
 
         if not columns:
             return connections_fast

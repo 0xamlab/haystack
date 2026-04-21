@@ -102,7 +102,7 @@ def req_json(method: str, path: str, body=None, headers=None, auth=True, timeout
 
 def req_raw_stream(method: str, path: str, body=None, auth=True, timeout=5, max_bytes=512):
     """Read up to max_bytes from a streaming endpoint (SSE). Returns raw bytes.
-    
+
     For SSE endpoints, the server holds the connection open.  We use
     http.client directly with a short socket timeout to grab initial bytes.
     """
@@ -281,14 +281,14 @@ def phase_setup():
     # Wait for DB commit propagation, then verify export accessibility
     if _run_ids:
         accessible = False
-        for attempt in range(8):
+        for _attempt in range(8):
             time.sleep(0.3)
             s, _, _, _ = req("GET", f"/v1/runs/{_run_ids[0]}/export.json")
             if s == 200:
                 accessible = True
                 break
         record("setup_runs_accessible", accessible,
-               f"run accessible after {attempt+1} attempts (status={s})")
+               f"run accessible after {_attempt + 1} attempts (status={s})")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -343,7 +343,7 @@ def phase_json_export():
     # Test 6: JSON contains numeric fields (duration_ms, scenarios_run, etc.)
     if isinstance(data, dict):
         has_numeric = any(
-            isinstance(data.get(k), (int, float))
+            isinstance(data.get(k), int | float)
             for k in ["scenarios_run", "duration_ms", "expected_value", "confidence"]
             if k in data
         )

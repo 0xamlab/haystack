@@ -4,6 +4,7 @@ import csv
 import io
 import re
 from functools import lru_cache
+from itertools import chain
 from typing import Any
 
 _IDENTIFIER_TOKENS = {
@@ -58,6 +59,11 @@ _LEADING_ZERO_INT_RE = re.compile(r"^[+-]?0\d+$")
 _TOKEN_RE = re.compile(r"[a-z0-9]+")
 _CURRENCY_PREFIX = "$£€¥"
 _NUMERIC_LIKE_CHARS = frozenset("0123456789+-.,()%$£€¥eE ")
+_HEADER_ALIAS_MIN_COLUMNS = 3
+_HEADER_ALIAS_MAX_COLUMNS = 8
+_HEADER_ALIAS_MIN_MATCH_RATIO = 0.6
+_HEADER_ALIAS_MATCH_SCORE = 0.34
+_HEADER_ALIAS_AVG_SCORE = 0.45
 
 
 def canonicalize_delimited_headers(headers: list[Any]) -> list[str]:
@@ -69,6 +75,10 @@ def canonicalize_delimited_headers(headers: list[Any]) -> list[str]:
         counts[base_name] = count
         canonical.append(base_name if count == 1 else f"{base_name}__{count}")
     return canonical
+
+
+def _base_header_name(field_name: str) -> str:
+    return field_name.split("__", 1)[0]
 
 
 @lru_cache(maxsize=512)
@@ -159,6 +169,45 @@ def coerce_scalar(field_name: str, value: Any, preserve_identifiers: bool = True
     )
 
 
+def looks_like_header_alias_row(
+    field_names: list[str],
+    values: list[Any],
+) -> bool:
+    comparable_threshold = min(
+        _HEADER_ALIAS_MAX_COLUMNS,
+        max(_HEADER_ALIAS_MIN_COLUMNS, len(field_names)),
+    )
+    if len(field_names) < _HEADER_ALIAS_MIN_COLUMNS:
+        return False
+
+    scores: list[float] = []
+    for field_name, value in zip(field_names, values, strict=False):
+        raw = str(value or "").strip()
+        if raw == "":
+            continue
+        value_tokens = field_tokens(raw)
+        if not value_tokens:
+            continue
+        header_tokens = field_tokens(_base_header_name(field_name))
+        if not header_tokens:
+            continue
+        if is_identifier_field(field_name):
+            unmatched_tokens = value_tokens - header_tokens
+            if any(any(char.isdigit() for char in token) for token in unmatched_tokens):
+                return False
+        overlap = len(header_tokens & value_tokens) / len(value_tokens)
+        scores.append(overlap)
+
+    if len(scores) < comparable_threshold:
+        return False
+
+    matching = sum(score >= _HEADER_ALIAS_MATCH_SCORE for score in scores)
+    return (
+        matching / len(scores) >= _HEADER_ALIAS_MIN_MATCH_RATIO
+        and (sum(scores) / len(scores)) >= _HEADER_ALIAS_AVG_SCORE
+    )
+
+
 def parse_delimited_records(
     content: str,
     delimiter: str | None = ",",
@@ -180,7 +229,17 @@ def parse_delimited_records(
     reader = csv.DictReader(io.StringIO(text), delimiter=chosen_delimiter)
     reader.fieldnames = canonicalize_delimited_headers(reader.fieldnames or [])
     records: list[dict[str, Any]] = []
-    for row in reader:
+    first_row = next(reader, None)
+    if first_row is None:
+        return records
+    if looks_like_header_alias_row(
+        reader.fieldnames,
+        [first_row.get(field_name) for field_name in reader.fieldnames],
+    ):
+        rows_iter = reader
+    else:
+        rows_iter = chain((first_row,), reader)
+    for row in rows_iter:
         rec: dict[str, Any] = {}
         for key, value in row.items():
             if key is None:

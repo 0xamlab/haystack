@@ -38,15 +38,14 @@ import re
 import socket
 import sys
 import time
+import urllib.error
+import urllib.request
 from typing import Any
 
 # ── project root on path ───────────────────────────────────────────────────────
 _PROJECT_ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", ".."))
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
-
-import urllib.error
-import urllib.request
 
 socket.setdefaulttimeout(30)
 
@@ -204,7 +203,7 @@ for _dist_name, _dist_params in _DISTRIBUTIONS:
             assert status == 200, f"[{dist_name}] Expected 200, got {status}: {body}"
             assert "confidence" in body, f"[{dist_name}] Missing confidence"
             assert "metrics" in body, f"[{dist_name}] Missing metrics"
-            assert isinstance(body["confidence"], (int, float)), \
+            assert isinstance(body["confidence"], int | float), \
                 f"[{dist_name}] confidence is {type(body['confidence'])}"
             timings.append((f"POST /v1/simulate ({dist_name})", elapsed))
         return _test
@@ -968,7 +967,7 @@ def test_pos_unit_price_simulate():
     )
     status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
     assert status == 200, f"Expected 200, got {status}: {body}"
-    assert isinstance(body["metrics"]["expected_value"], (int, float)), \
+    assert isinstance(body["metrics"]["expected_value"], int | float), \
         "Expected numeric EV for unit price"
     timings.append(("POST /v1/simulate (POS unit_price)", elapsed))
     print(f"    → POS unit_price: min={stats['min']:.2f}, "
@@ -1101,7 +1100,7 @@ def test_opo_purchase_cost_simulate():
     )
     status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
     assert status == 200, f"Expected 200, got {status}: {body}"
-    assert isinstance(body["metrics"]["expected_value"], (int, float)), \
+    assert isinstance(body["metrics"]["expected_value"], int | float), \
         "Expected numeric EV for purchase cost"
     timings.append(("POST /v1/simulate (OPO purchase cost)", elapsed))
     print(f"    → OPO cost*qty EV={body['metrics']['expected_value']:.2f}, "

@@ -10,7 +10,12 @@ On the hot path for a 128-column schema:
   - Still 50–200× faster than LLM disambiguation
 
 Algorithm mirrors batch_ranker.mojo exactly:
-  score = W_NAME × cosine(bigram) + type_boost(role) + prior_boost(source) + 0.05 × min(token_hits, 3)
+  score = (
+      W_NAME × cosine(bigram)
+      + type_boost(role)
+      + prior_boost(source)
+      + 0.05 × min(token_hits, 3)
+  )
   confident = score >= MIN_ACCEPT AND gap >= AMBIG_GAP
 
 Public API:
@@ -31,7 +36,6 @@ from enum import Enum
 
 from mojo.engine.vector_kernels.tokenizer import (
     Vocab,
-    build_index_data,
     build_vocab,
     expand_tokens,
     make_query_token_ids,
@@ -282,9 +286,12 @@ def _prior_boost(query_src: int, cand_src: int, cand_role: int) -> float:
         return 0.0
     if cand_src != SOURCE_UNKNOWN and cand_src != query_src:
         return 0.0
-    if query_src == SOURCE_POS     and cand_role == ROLE_UNIT:    return 0.10
-    if query_src == SOURCE_BACKLOG and cand_role == ROLE_DERIVED: return 0.10
-    if query_src == SOURCE_INVOICE and cand_role == ROLE_DERIVED: return 0.10
+    if query_src == SOURCE_POS and cand_role == ROLE_UNIT:
+        return 0.10
+    if query_src == SOURCE_BACKLOG and cand_role == ROLE_DERIVED:
+        return 0.10
+    if query_src == SOURCE_INVOICE and cand_role == ROLE_DERIVED:
+        return 0.10
     return 0.0
 
 
@@ -343,58 +350,96 @@ class ColumnVectorResolver:
         self._aliases: dict[str, list[str]] = merge_aliases(_da)
 
         self._entries: list[ColumnEntry] = []
-        self._vocab: Vocab | None = None
-
-        # Build flat column list
-        col_names: list[str] = []
-        for src, cols in source_map.items():
-            for col_name, role_str in cols:
-                src_id  = _SOURCE_MAP.get(src.lower(), SOURCE_UNKNOWN)
-                role_id = _ROLE_MAP.get(role_str.lower(), ROLE_OTHER)
-                tokens  = tokenize_name(col_name)
-                # tokens_expanded uses the combined alias table so domain synonyms
-                # benefit bidirectional overlap scoring without manual entries.
-                tokens_expanded = set(t for t, _ in expand_tokens(tokens, self._aliases))
-                # Build effective name for bigram vec: expand genuine abbreviations
-                # so cosine sees the canonical form ("ppa"→"per person average").
-                # Rule: token ≤ 3 chars AND average alias length ≥ 5.
-                eff_parts: list[str] = []
-                for tok in tokens:
-                    eff_parts.append(tok)
-                    if tok in self._aliases and len(tok) <= 3:
-                        exp = self._aliases[tok]
-                        avg_alias_len = sum(len(a) for a in exp) / len(exp)
-                        if avg_alias_len >= 5.0:
-                            eff_parts.extend(exp)
-                eff_name = " ".join(eff_parts) if eff_parts else col_name
-                vec, norm_inv = build_vec64(eff_name)
-                entry = ColumnEntry(
-                    column_id=len(self._entries),
-                    source=src,
-                    name=col_name,
-                    source_id=src_id,
-                    role_id=role_id,
-                    norm_inv=norm_inv,
-                    vec=vec,
-                    tokens=tokens,
-                    tokens_expanded=tokens_expanded,
-                )
-                self._entries.append(entry)
-                col_names.append(col_name)
-
-        # Build token vocabulary and posting index from column names
-        self._vocab = build_vocab(col_names, _da)
-        index_data = build_index_data(self._vocab, col_names)
-
-        # Posting index: token_id → list of column indices
+        col_names = [
+            col_name
+            for cols in source_map.values()
+            for col_name, _role_str in cols
+        ]
+        self._vocab: Vocab = build_vocab(col_names, _da)
         self._posting: dict[int, list[int]] = {}
-        for col_idx, tok_weight_pairs in enumerate(index_data.col_token_ids):
-            for tok_id, _w in tok_weight_pairs:
-                if tok_id not in self._posting:
-                    self._posting[tok_id] = []
-                self._posting[tok_id].append(col_idx)
+        self._sources: set[str] = set()
+
+        for source_name, columns in source_map.items():
+            self.append_source(source_name, columns)
 
         self._n_columns = len(self._entries)
+
+    def _expanded_name_tokens(self, name: str) -> list[tuple[str, float]]:
+        return expand_tokens(tokenize_name(name), self._aliases)
+
+    def _effective_name_tokens(self, tokens: list[str]) -> list[str]:
+        eff_parts: list[str] = []
+        for tok in tokens:
+            eff_parts.append(tok)
+            if tok in self._aliases and len(tok) <= 3:
+                exp = self._aliases[tok]
+                avg_alias_len = sum(len(alias) for alias in exp) / len(exp)
+                if avg_alias_len >= 5.0:
+                    eff_parts.extend(exp)
+        return eff_parts
+
+    def _append_entry(self, source: str, col_name: str, role_str: str) -> None:
+        tokens = tokenize_name(col_name)
+        tokens_expanded = {
+            token for token, _weight in expand_tokens(tokens, self._aliases)
+        }
+        eff_tokens = self._effective_name_tokens(tokens)
+        eff_name = " ".join(eff_tokens) if eff_tokens else col_name
+        vec, norm_inv = build_vec64(eff_name)
+        entry = ColumnEntry(
+            column_id=len(self._entries),
+            source=source,
+            name=col_name,
+            source_id=_SOURCE_MAP.get(source.lower(), SOURCE_UNKNOWN),
+            role_id=_ROLE_MAP.get(role_str.lower(), ROLE_OTHER),
+            norm_inv=norm_inv,
+            vec=vec,
+            tokens=tokens,
+            tokens_expanded=tokens_expanded,
+        )
+        self._entries.append(entry)
+        for token, _weight in self._expanded_name_tokens(col_name):
+            token_id = self._vocab.intern(token)
+            self._posting.setdefault(token_id, []).append(entry.column_id)
+        self._n_columns = len(self._entries)
+
+    def append_source(
+        self,
+        source: str,
+        columns: list[tuple[str, str]],
+    ) -> bool:
+        """
+        Incrementally append a brand-new source to the resolver.
+
+        Returns True when the source was handled in-place. Returns False only if
+        the resolver already contains the source and a full rebuild is required
+        to replace it safely.
+        """
+        if source in self._sources:
+            return False
+        if not columns:
+            return True
+        self._sources.add(source)
+        for col_name, role_str in columns:
+            self._append_entry(source, col_name, role_str)
+        return True
+
+    def append_planner_graph_source(
+        self,
+        source: str,
+        columns: dict[str, object],
+        *,
+        fill_rates: dict[tuple[str, str], float] | None = None,
+    ) -> bool:
+        del fill_rates
+        eligible: list[tuple[str, str]] = []
+        for col_name, node in columns.items():
+            if not getattr(node, "is_numeric", True):
+                continue
+            if getattr(node, "fill_rate", 1.0) < 0.02:
+                continue
+            eligible.append((col_name, getattr(node, "role", "metric")))
+        return self.append_source(source, eligible)
 
     def _prefilter(
         self,
@@ -503,7 +548,7 @@ class ColumnVectorResolver:
         # synonyms benefit overlap scoring without any extra config.
         query_token_ids = make_query_token_ids(self._vocab, hint)
         query_tokens    = tokenize_name(hint)
-        query_tokens_ex = set(t for t, _ in expand_tokens(query_tokens, self._aliases))
+        query_tokens_ex = {token for token, _ in expand_tokens(query_tokens, self._aliases)}
 
         # Prefilter to shortlist
         cand_indices, fallback_used = self._prefilter(query_token_ids, query_src, query_role)
@@ -743,7 +788,9 @@ def _test_build_vec64():
     assert n1 > 0.0
     sim = _cosine(v1, v1, n1, n1)
     assert abs(sim - 1.0) < 1e-5, f"Self-cosine should be 1.0, got {sim}"
-    print(f"  PASS build_vec64: unit_price norm_inv={n1:.4f}  self_cosine={sim:.6f}")
+    _emit(
+        f"  PASS build_vec64: unit_price norm_inv={n1:.4f}  self_cosine={sim:.6f}"
+    )
 
 
 def _test_resolver_unit_price():
@@ -765,10 +812,16 @@ def _test_resolver_unit_price():
     assert r.column == "UNIT_PRICE", f"Expected UNIT_PRICE, got {r.column}"
     assert r.score >= 0.72, f"Expected score >= 0.72, got {r.score}"
     assert r.confident, f"Expected confident=True, got flags: confident={r.confident}"
-    print(f"  PASS unit_price → {r.source}.{r.column}  score={r.score:.4f}  gap={r.confidence_gap:.4f}")
+    _emit(
+        f"  PASS unit_price → {r.source}.{r.column}  "
+        f"score={r.score:.4f}  gap={r.confidence_gap:.4f}"
+    )
     for tk in r.top_k[:3]:
-        print(f"       {tk.source}.{tk.column:20s} score={tk.score:.4f}  sim={tk.name_sim:.4f}")
-    print()
+        _emit(
+            f"       {tk.source}.{tk.column:20s} "
+            f"score={tk.score:.4f}  sim={tk.name_sim:.4f}"
+        )
+    _emit()
 
 
 def _test_resolver_ambiguity():
@@ -786,10 +839,14 @@ def _test_resolver_ambiguity():
 
     r = resolver.resolve("extended cost", preferred_source="BACKLOG", role_hint="derived_measure")
     assert r is not None
-    print(f"  INFO extended_cost → {r.source}.{r.column}  score={r.score:.4f}  gap={r.confidence_gap:.4f}  ambiguous={r.ambiguous}")
+    _emit(
+        f"  INFO extended_cost → {r.source}.{r.column}  "
+        f"score={r.score:.4f}  gap={r.confidence_gap:.4f}  "
+        f"ambiguous={r.ambiguous}"
+    )
     for tk in r.top_k[:3]:
-        print(f"       {tk.source}.{tk.column:20s} score={tk.score:.4f}")
-    print()
+        _emit(f"       {tk.source}.{tk.column:20s} score={tk.score:.4f}")
+    _emit()
 
 
 def _test_batch():
@@ -818,22 +875,31 @@ def _test_batch():
     for i, (hint, _, _) in enumerate(requests):
         r = results[i]
         assert r is not None, f"Expected result for '{hint}'"
-        print(f"  PASS batch[{i}] '{hint}' → {r.source}.{r.column}  score={r.score:.4f}")
-    print()
+        _emit(
+            f"  PASS batch[{i}] '{hint}' → {r.source}.{r.column}  score={r.score:.4f}"
+        )
+    _emit()
+
+
+def _emit(message: str = "") -> None:
+    import sys
+
+    sys.stdout.write(f"{message}\n")
 
 
 if __name__ == "__main__":
     import sys
-    print("=== resolver.py self-test ===")
-    print()
-    print("[1] build_vec64 bigram encoder:")
+
+    _emit("=== resolver.py self-test ===")
+    _emit()
+    _emit("[1] build_vec64 bigram encoder:")
     _test_build_vec64()
-    print()
-    print("[2] unit_price resolution:")
+    _emit()
+    _emit("[2] unit_price resolution:")
     _test_resolver_unit_price()
-    print("[3] ambiguity detection (ext_price vs ext_cost):")
+    _emit("[3] ambiguity detection (ext_price vs ext_cost):")
     _test_resolver_ambiguity()
-    print("[4] batch resolution:")
+    _emit("[4] batch resolution:")
     _test_batch()
-    print("All tests passed.")
+    _emit("All tests passed.")
     sys.exit(0)

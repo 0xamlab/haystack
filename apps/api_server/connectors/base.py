@@ -82,7 +82,7 @@ class BaseConnector(ABC):
                 non_empty += 1
                 if isinstance(coerced, bool):
                     continue
-                if isinstance(coerced, (int, float)):
+                if isinstance(coerced, int | float):
                     fv = float(coerced)
                     values.append(fv)
                     distinct_numeric.add(fv)

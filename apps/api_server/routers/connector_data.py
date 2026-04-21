@@ -69,13 +69,16 @@ async def fetch_and_map(request: ConnectorFetchRequest) -> ConnectorFetchRespons
 
     try:
         connector = ConnectorRegistry.create(request.connector_type, request.config)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     try:
         data = await connector.fetch_data()
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Failed to fetch data: {str(e)}")
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Failed to fetch data: {str(exc)}",
+        ) from exc
 
     if not data:
         raise HTTPException(status_code=404, detail="No data returned from source")
@@ -104,8 +107,8 @@ async def test_connection(request: ConnectorTestRequest) -> ConnectorTestRespons
 
     try:
         connector = ConnectorRegistry.create(request.connector_type, request.config)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     success, message = await connector.validate_connection()
     return ConnectorTestResponse(success=success, message=message)

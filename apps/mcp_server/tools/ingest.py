@@ -55,7 +55,10 @@ SPEC: dict[str, Any] = {
             },
             "domain": {
                 "type": "string",
-                "description": "Optional domain hint (finance, supply_chain, hr) for better field mapping.",
+                "description": (
+                    "Optional domain hint (finance, supply_chain, hr) "
+                    "for better field mapping."
+                ),
             },
         },
     },

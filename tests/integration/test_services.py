@@ -438,7 +438,7 @@ def test_decision_integrity():
         }
         status, body, hdrs, _ = req("POST", "/v1/simulate", payload)
         if status != 200:
-            assert False, f"API returned {status}: {body}"
+            raise AssertionError(f"API returned {status}: {body}")
         # Check result_hash in body
         result_hash = body.get("result_hash")
         assert result_hash and len(result_hash) == 64, "No valid result_hash in response"
@@ -579,9 +579,9 @@ def test_unit_service():
     def t_convert_incompatible():
         try:
             unit_convert(1, "kg", "m")
-            assert False, "Should raise ValueError"
-        except ValueError as e:
-            assert "incompatible" in str(e).lower()
+            raise AssertionError("Should raise ValueError")
+        except ValueError as err:
+            assert "incompatible" in str(err).lower()
     check("unit_convert: incompatible raises ValueError", t_convert_incompatible)
 
     # ── validate_unit_compatibility ────────────────────────────────────────
@@ -846,8 +846,8 @@ def test_simulation_service():
         assert status == 200, f"Expert mode returned {status}: {body}"
         assert body.get("simulation_model") in ("monte_carlo", "mojo-native-expr")
         m = body.get("metrics", {})
-        assert isinstance(m.get("expected_value"), (int, float))
-        assert isinstance(m.get("probability_of_loss"), (int, float))
+        assert isinstance(m.get("expected_value"), int | float)
+        assert isinstance(m.get("probability_of_loss"), int | float)
     check("Expert mode: lognormal + triangular", t_expert_mode)
 
     # ── Recommendation derivation: proceed ────────────────────────────────
@@ -993,7 +993,7 @@ def test_schema_validation():
     def t_auto_var_invalid():
         try:
             AutoVariable(low=100, high=50)
-            assert False, "Should reject high <= low"
+            raise AssertionError("Should reject high <= low")
         except ValidationError:
             pass
     check("AutoVariable: rejects high <= low", t_auto_var_invalid)
@@ -1010,7 +1010,7 @@ def test_schema_validation():
                 ),
                 runs=50,  # below 100 minimum
             )
-            assert False, "Should reject runs < 100"
+            raise AssertionError("Should reject runs < 100")
         except ValidationError:
             pass
     check("SimulateRequestAuto: rejects runs < 100", t_auto_runs_limits)
@@ -1043,7 +1043,7 @@ def test_schema_validation():
                 distribution=DistributionType.NORMAL,
                 params=DistributionParams(mean=100),  # missing std
             )
-            assert False, "Should reject missing std"
+            raise AssertionError("Should reject missing std")
         except ValidationError:
             pass
     check("VariableSpec: normal rejects missing std", t_var_spec_normal_missing)
@@ -1056,7 +1056,7 @@ def test_schema_validation():
                 distribution=DistributionType.NORMAL,
                 params=DistributionParams(mean=100, std=0),
             )
-            assert False, "Should reject std=0"
+            raise AssertionError("Should reject std=0")
         except ValidationError:
             pass
     check("VariableSpec: normal rejects std=0", t_var_spec_normal_zero_std)
@@ -1078,7 +1078,7 @@ def test_schema_validation():
                 distribution=DistributionType.TRIANGULAR,
                 params=DistributionParams(low=100, mode=50, high=10),  # mode not in [low,high]
             )
-            assert False, "Should reject invalid triangular"
+            raise AssertionError("Should reject invalid triangular")
         except ValidationError:
             pass
     check("VariableSpec: triangular rejects mode out of range", t_var_spec_triangular_invalid)
@@ -1100,7 +1100,7 @@ def test_schema_validation():
                 distribution=DistributionType.BETA,
                 params=DistributionParams(alpha=2),  # missing beta
             )
-            assert False, "Should reject missing beta"
+            raise AssertionError("Should reject missing beta")
         except ValidationError:
             pass
     check("VariableSpec: beta rejects missing beta param", t_var_spec_beta_missing)
@@ -1109,7 +1109,7 @@ def test_schema_validation():
     def t_scoring_sum():
         try:
             ScoringWeights(expected_value=0.5, downside_risk=0.3)
-            assert False, "Should reject weights not summing to 1.0"
+            raise AssertionError("Should reject weights not summing to 1.0")
         except ValidationError:
             pass
     check("ScoringWeights: rejects non-1.0 sum", t_scoring_sum)
@@ -1138,7 +1138,7 @@ def test_schema_validation():
                 expected_value=100, median=100, std_deviation=10,
                 variance=100, probability_of_loss=1.5,
             )
-            assert False, "Should reject PoL > 1.0"
+            raise AssertionError("Should reject PoL > 1.0")
         except ValidationError:
             pass
     check("MetricsSummary: probability_of_loss [0,1]", t_metrics_pol_range)
@@ -1377,9 +1377,13 @@ def test_quota_headers():
         status, body, hdrs, _ = req("POST", "/v1/simulate", payload)
         assert status == 200
         # Check for common rate-limit headers (may or may not be present)
-        rl_headers = {k.lower(): v for k, v in hdrs.items()
-                      if "ratelimit" in k.lower() or "x-ratelimit" in k.lower()
-                      or "retry-after" in k.lower() or "x-quota" in k.lower()}
+        _ = {
+            k.lower(): v for k, v in hdrs.items()
+            if "ratelimit" in k.lower()
+            or "x-ratelimit" in k.lower()
+            or "retry-after" in k.lower()
+            or "x-quota" in k.lower()
+        }
         # At minimum, log what headers are present
         # Not all deployments expose these, so we just verify the request succeeds
         assert status == 200, "Quota-checked request should succeed"
@@ -1458,7 +1462,7 @@ def test_cross_service():
                 "std": body["metrics"]["std_deviation"],
                 "median": body["metrics"]["median"],
             },
-            "percentiles": {k: v for k, v in body.get("percentiles", {}).items()},
+            "percentiles": dict(body.get("percentiles", {})),
             "risk": {"probability_of_loss": body["metrics"]["probability_of_loss"]},
             "scenarios_run": body["scenarios_run"],
         }
@@ -1515,7 +1519,7 @@ def test_cross_service():
         status, body, _, _ = req("POST", "/v1/simulate", payload)
         assert status == 200
         env = DecisionEnvelope(**body)
-        assert isinstance(env.metrics.expected_value, (int, float))
+        assert isinstance(env.metrics.expected_value, int | float)
         assert env.percentiles.p5 <= env.percentiles.p95
         assert env.scenarios_run >= 5000
     check("Schema: live expert response validates as DecisionEnvelope", t_schema_live_response)

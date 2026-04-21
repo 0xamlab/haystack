@@ -47,7 +47,9 @@ class Result:
                     lines.append(f"    {k}: {v:,.2f}")
                 else:
                     lines.append(f"    {k}: {v}")
-        lines.append(f"  ({self.latency_ms:.0f}ms · {self.details.get('scenarios', 0):,} scenarios)")
+        lines.append(
+            f"  ({self.latency_ms:.0f}ms · {self.details.get('scenarios', 0):,} scenarios)"
+        )
         return "\n".join(lines) + "\n"
 
 
@@ -136,7 +138,10 @@ class _Decision:
         if action == "proceed":
             reasons.append(f"Risk within tolerance — confidence {conf:.0%}")
         elif action == "pause":
-            reasons.append(f"Elevated risk ({pol:.0%} chance of loss) — reduce exposure before committing")
+            reasons.append(
+                f"Elevated risk ({pol:.0%} chance of loss) — "
+                "reduce exposure before committing"
+            )
         else:
             reasons.append(f"Negative outcome too likely ({pol:.0%}) — reject or redesign")
         return reasons
@@ -165,8 +170,10 @@ class _Optimize:
     ) -> Result:
         t0 = time.monotonic()
 
-        variables = {k: v for k, v in variable_ranges.items()
-                     if isinstance(v, (tuple, list)) and len(v) == 2}
+        variables = {
+            k: v for k, v in variable_ranges.items()
+            if isinstance(v, tuple | list) and len(v) == 2
+        }
 
         from algenta.optimize import find_best
         res = find_best(objective, variables, iterations=iterations)
@@ -251,8 +258,14 @@ class _Simulate:
 
         why = [
             f"Expected outcome: {ev:,.0f} across {runs:,} scenarios",
-            f"Probability of loss: {pol:.1%} (p5={r.percentile_5:,.0f}, p95={r.percentile_95:,.0f})",
-            f"Std deviation: {r.std_deviation:,.0f} — {'stable' if r.std_deviation < abs(ev)*0.2 else 'volatile'} outcome",
+            (
+                f"Probability of loss: {pol:.1%} "
+                f"(p5={r.percentile_5:,.0f}, p95={r.percentile_95:,.0f})"
+            ),
+            (
+                f"Std deviation: {r.std_deviation:,.0f} — "
+                f"{'stable' if r.std_deviation < abs(ev) * 0.2 else 'volatile'} outcome"
+            ),
         ]
         return Result(
             action=action, value=round(ev, 2), confidence=round(1.0 - pol, 4),

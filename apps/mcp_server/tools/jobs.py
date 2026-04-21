@@ -19,7 +19,10 @@ SUBMIT_JOB_SPEC: dict[str, Any] = {
             "variables":     {"type": "array",  "items": {"type": "object"}},
             "objective":     {"type": "string", "default": "maximize"},
             "n_simulations": {"type": "integer", "default": 1000000},
-            "callback_url":  {"type": "string",  "description": "Webhook URL for completion notification"},
+            "callback_url": {
+                "type": "string",
+                "description": "Webhook URL for completion notification",
+            },
         },
         "required": ["variables"],
     },

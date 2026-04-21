@@ -1,4 +1,4 @@
-.PHONY: dev dev-api dev-portal dev-local dev-up dev-build down logs seed \
+.PHONY: dev dev-api dev-local dev-up dev-build down logs seed \
         migrate migrate-down migrate-new mcp-setup mcp-stdio mcp-http \
         test test-unit test-integration test-contract test-load \
         lint format typecheck openapi clean help stop-api logs-api-local \
@@ -51,11 +51,6 @@ mcp-http:
 	ALGENTA_API_KEY=$(ALGENTA_API_KEY) ALGENTA_BASE_URL=$${ALGENTA_BASE_URL:-https://api.algenta.ai} \
 		PYTHONPATH=. mcp_venv/bin/python -m apps.mcp_server.server --transport http --port $${ALGENTA_MCP_PORT:-8001}
 
-## Start Algenta portal locally (Next.js dev server, port 3000)
-dev-portal:
-	@kill $$(lsof -ti :3000) 2>/dev/null || true; sleep 1
-	cd apps/portal && npm run dev
-
 ## Start the full local development stack (build images if needed)
 dev:
 	@cp -n .env.example .env 2>/dev/null || true
@@ -72,13 +67,12 @@ dev-up:
 		$(MAKE) dev-local; \
 	fi
 
-## Start without Docker — API (port 8000) in background + Portal (port 3000) in foreground
+## Start without Docker — API (port 8000) in background.
 ## API log: /tmp/algenta-api.log  |  Stop API: make stop-api
 dev-local:
 	@cp -n .env.example .env 2>/dev/null || true
-	@echo "Stopping any existing processes on :8000 and :3000..."
+	@echo "Stopping any existing process on :8000..."
 	@kill $$(lsof -ti :8000) 2>/dev/null || true
-	@kill $$(lsof -ti :3000) 2>/dev/null || true
 	@sleep 1
 	@echo "Starting API server on :8000 (log: /tmp/algenta-api.log)..."
 	@(set -a && . ./.env && set +a && \
@@ -87,8 +81,7 @@ dev-local:
 		echo $$! > /tmp/algenta-api.pid && \
 		echo "API PID: $$!")
 	@sleep 2
-	@echo "API running — starting Portal on :3000 (Ctrl+C stops portal, API keeps running)..."
-	@cd apps/portal && npm run dev
+	@echo "API running on :8000. The web interface is maintained outside this repository."
 
 ## Stop API server (started with dev-local)
 stop-api:

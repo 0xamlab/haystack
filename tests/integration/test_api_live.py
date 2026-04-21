@@ -62,14 +62,20 @@ def req(method: str, path: str, body=None, headers=None, auth=True, timeout=10):
         except Exception:
             body_data = body_bytes.decode("utf-8", errors="replace")
         return e.code, body_data, dict(e.headers), elapsed
-    except TimeoutError:
+    except TimeoutError as err:
         elapsed = time.perf_counter() - t0
-        raise TimeoutError(f"Request to {url} timed out after {timeout}s (elapsed: {elapsed:.1f}s)")
-    except urllib.error.URLError as e:
-        if "timed out" in str(e):
+        raise TimeoutError(
+            f"Request to {url} timed out after {timeout}s (elapsed: {elapsed:.1f}s)"
+        ) from err
+    except urllib.error.URLError as err:
+        if "timed out" in str(err):
             elapsed = time.perf_counter() - t0
-            raise TimeoutError(f"Request to {url} timed out after {timeout}s (elapsed: {elapsed:.1f}s)")
-        raise RuntimeError(f"Cannot connect to {BASE_URL} — is the API server running?") from e
+            raise TimeoutError(
+                f"Request to {url} timed out after {timeout}s (elapsed: {elapsed:.1f}s)"
+            ) from err
+        raise RuntimeError(
+            f"Cannot connect to {BASE_URL} — is the API server running?"
+        ) from err
 
 
 def check(name: str, fn):
@@ -509,7 +515,6 @@ def test_cors_headers():
     status, body, headers, elapsed = req("GET", "/v1/health", auth=False)
     # After CORS middleware, OPTIONS would return Access-Control headers
     # For regular GET, check if the header is present
-    acl = headers.get("access-control-allow-origin") or headers.get("Access-Control-Allow-Origin")
     # May not be present on same-origin requests, so just ensure no error
     assert status == 200
 

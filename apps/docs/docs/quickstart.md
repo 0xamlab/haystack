@@ -126,8 +126,8 @@ console.log(`Confidence: ${(result.confidence * 100).toFixed(0)}%`);
 
 ## Next steps
 
-- **More complex scenarios**: Use [Expert Mode](/api-reference/simulate#expert-mode) for full control over distributions and correlations
-- **Compare options**: Use [`/v1/recommend`](/api-reference/recommend) to automatically pick the best of multiple scenarios
+- **More complex scenarios**: Use [Expert Mode](/api-reference/simulate#expert-mode-full-control) for full control over distributions and correlations
+- **Compare options**: Use `POST /v1/recommend` to automatically pick the best of multiple scenarios
 - **Automate decisions**: Connect to [ChatGPT Actions](/integrations/chatgpt-actions), [Claude and Codex](/integrations/claude-codex), [n8n](/integrations/n8n), or [Azure AI Foundry and Studio](/integrations/azure-ai-studio)
 - **Run locally**: Use the [Local Runtime](/integrations/local-runtime) when you want hosted licensing with local execution and offline task history
 - **Verify integrity**: The `result_hash` lets you verify a decision result hasn't been tampered with

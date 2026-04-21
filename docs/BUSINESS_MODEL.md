@@ -96,7 +96,7 @@ One runtime. One API. One bill.
 ## Revenue Streams
 
 ### 1. API subscriptions (primary)
-Recurring monthly/annual subscription per organization. Checkout and billing via Stripe. Plan upgrades self-serve through the portal.
+Recurring monthly/annual subscription per organization. Checkout and billing via Stripe. Plan upgrades self-serve through the hosted account interface.
 
 ### 2. Compute overages
 Usage above monthly simulation quota billed per additional billing unit. Metered via `usage_records` table, invoiced monthly.
@@ -146,7 +146,7 @@ Like Supabase, n8n, and Grafana — the framework is open, the engine is proprie
 
 | Layer | License | Who gets it |
 |---|---|---|
-| API server, SDKs, CLI, portal, integrations | ACL 1.0 (source-available) | Everyone |
+| API server, SDKs, CLI, integrations, docs content | ACL 1.0 (source-available) | Everyone |
 | 444 Mojo math libraries (compiled binary) | Proprietary — free to run | All paying plans |
 | Mojo engine source code | Proprietary | Enterprise contract only |
 | Security & Governance Engine | Proprietary | Enterprise only |

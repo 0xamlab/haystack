@@ -64,9 +64,21 @@ class DataConnector(UUIDMixin, TimestampMixin, Base):
         DateTime(timezone=True), nullable=True
     )
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
-    visibility: Mapped[str] = mapped_column(String(16), nullable=False, default=ConnectorVisibility.PRIVATE.value)
-    owner_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
-    owner_key_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    visibility: Mapped[str] = mapped_column(
+        String(16),
+        nullable=False,
+        default=ConnectorVisibility.PRIVATE.value,
+    )
+    owner_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        nullable=True,
+        index=True,
+    )
+    owner_key_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        nullable=True,
+        index=True,
+    )
 
     def __repr__(self) -> str:
         return f"<DataConnector id={self.id} name={self.name} type={self.connector_type}>"

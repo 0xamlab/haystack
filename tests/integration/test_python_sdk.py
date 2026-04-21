@@ -22,7 +22,7 @@ socket.setdefaulttimeout(15)
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "packages", "python-sdk"))
 
-from decision_engine import (
+from decision_engine import (  # noqa: E402
     AsyncDecisionEngineClient,
     AuthenticationError,
     DecisionEngineClient,
@@ -204,7 +204,9 @@ def test_envelope_metrics():
             },
         )
         m = result.metrics
-        assert isinstance(m.expected_value, (int, float)), f"expected_value not numeric: {m.expected_value}"
+        assert isinstance(m.expected_value, int | float), (
+            f"expected_value not numeric: {m.expected_value}"
+        )
         assert m.std_deviation >= 0, f"std_deviation negative: {m.std_deviation}"
         assert m.variance >= 0, f"variance negative: {m.variance}"
         assert 0 <= m.probability_of_loss <= 1, f"probability_of_loss out of range: {m.probability_of_loss}"
@@ -251,10 +253,15 @@ check("Envelope run_id is valid UUID", test_envelope_run_id_is_uuid)
 def test_simulate_seeded_determinism():
     """Two seeded simulations with same seed should produce identical confidence."""
     with DecisionEngineClient(api_key=API_KEY, base_url=BASE_URL) as client:
-        kwargs = dict(
-            mode="auto", runs=100, seed=42,
-            scenario={"variables": {"x": {"low": 0, "high": 100}}, "objective": "maximize_net_value"},
-        )
+        kwargs = {
+            "mode": "auto",
+            "runs": 100,
+            "seed": 42,
+            "scenario": {
+                "variables": {"x": {"low": 0, "high": 100}},
+                "objective": "maximize_net_value",
+            },
+        }
         r1 = client.simulate(**kwargs)
         r2 = client.simulate(**kwargs)
         assert r1.confidence == r2.confidence, \

@@ -46,8 +46,8 @@ if not ANTHROPIC_API_KEY:
     )
 
 # ── Imports ───────────────────────────────────────────────────────────────────
-import anthropic
-import httpx
+import anthropic  # noqa: E402
+import httpx  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
@@ -80,7 +80,7 @@ def _make_csv(n_rows: int = 150, seed: int = 42) -> str:
     """Generate a synthetic restaurant sales CSV."""
     rng = random.Random(seed)
     rows = []
-    for i in range(n_rows):
+    for _i in range(n_rows):
         month   = rng.randint(1, 12)
         day     = rng.randint(1, 28)
         date    = f"2024-{month:02d}-{day:02d}"
@@ -122,7 +122,7 @@ CSV_HEADER = SALES_CSV.splitlines()[0]
 _rows_list = list(csv.DictReader(io.StringIO(SALES_CSV)))
 _TOTAL_NET  = round(sum(float(r["net_sales"]) for r in _rows_list), 2)
 _N_ROWS     = len(_rows_list)
-_LOCATIONS_SET = set(r["location"] for r in _rows_list)
+_LOCATIONS_SET = {r["location"] for r in _rows_list}
 
 
 # ── FastAPI TestClient patcher ────────────────────────────────────────────────
@@ -134,7 +134,7 @@ def _build_test_app():
     from apps.api_server.middleware.auth import get_current_org
     from apps.api_server.services.auth_service import AuthContext
 
-    _TEST_ORG = AuthContext(
+    _test_org = AuthContext(
         org_id=uuid.UUID("00000000-0000-0000-0000-000000000001"),
         key_id=uuid.UUID("00000000-0000-0000-0000-000000000002"),
         plan="pro",
@@ -143,7 +143,7 @@ def _build_test_app():
     )
 
     async def _fake_auth() -> AuthContext:  # type: ignore[return]
-        return _TEST_ORG
+        return _test_org
 
     app.dependency_overrides[get_current_org] = _fake_auth
     return app

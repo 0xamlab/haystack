@@ -20,7 +20,7 @@ class LoginRequest(BaseModel):
 
 class TokenResponse(BaseModel):
     access_token: str
-    token_type: str = "bearer"
+    token_type: str = Field(default="bearer")  # noqa: S105 - protocol constant, not a secret
     expires_in: int
 
 

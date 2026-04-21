@@ -60,7 +60,7 @@ def _build_test_app():
     from apps.api_server.middleware.auth import get_current_org, get_redis
     from apps.api_server.services.auth_service import AuthContext
 
-    _TEST_ORG = AuthContext(
+    test_org = AuthContext(
         org_id=_uuid.UUID("00000000-0000-0000-0000-000000000001"),
         key_id=_uuid.UUID("00000000-0000-0000-0000-000000000002"),
         plan="pro",
@@ -69,7 +69,7 @@ def _build_test_app():
     )
 
     async def _fake_auth() -> AuthContext:
-        return _TEST_ORG
+        return test_org
 
     async def _fake_redis() -> _MockRedis:
         return _MockRedis()

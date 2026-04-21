@@ -274,7 +274,7 @@ def run_engine(tc: DistTestCase, n: int = N_RUNS) -> dict:
     try:
         output = result.stdout.decode().strip()
         # Handle multi-line streaming output — take last complete JSON line
-        lines = [l for l in output.split("\n") if l.strip()]
+        lines = [line for line in output.split("\n") if line.strip()]
         if not lines:
             return {"_error": "empty stdout"}
         return json.loads(lines[-1])

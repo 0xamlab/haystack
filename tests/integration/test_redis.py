@@ -197,7 +197,7 @@ check("Connected to correct Redis database (db0)", test_redis_correct_database)
 def test_redis_connection_pool():
     """Verify connection pool is functional — can issue multiple commands."""
     r = get_redis_client()
-    for i in range(5):
+    for _i in range(5):
         assert r.ping() is True
     r.close()
 
@@ -378,8 +378,6 @@ def test_api_request_creates_ratelimit_key():
     """After hitting /v1/simulate, verify a ratelimit:* key appears in Redis."""
     r = get_redis_client()
     # Snapshot ratelimit keys before
-    before_keys = set(r.keys("ratelimit:*"))
-
     # Make a simulation request
     status, body, hdrs, elapsed = req("POST", "/v1/simulate", body=SIM_PAYLOAD)
     # Accept 200 (success) or 429 (rate limited) — both prove the system works

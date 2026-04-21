@@ -119,8 +119,12 @@ async def create_user_and_org(
     try:
         user.email_verification_token = verification_token  # type: ignore[assignment]
         user.email_verification_expires_at = verification_expires  # type: ignore[assignment]
-    except Exception:
-        pass  # token columns may not exist if migration not yet applied
+    except Exception as exc:
+        logger.debug(
+            "user_verification_columns_unavailable",
+            user_id=str(user.id),
+            error=str(exc),
+        )
 
     logger.info(
         "user_signed_up",

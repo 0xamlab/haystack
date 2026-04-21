@@ -16,7 +16,6 @@ import hashlib
 import json
 import math
 import os
-import pickle
 import subprocess
 import sys
 import time
@@ -66,20 +65,20 @@ def bar(v: float, width: int = 12) -> str:
 
 def _file_fingerprint(path: Path) -> str:
     st = path.stat()
-    return hashlib.md5(f"{path}|{st.st_mtime}|{st.st_size}".encode()).hexdigest()[:12]
+    return hashlib.sha256(f"{path}|{st.st_mtime}|{st.st_size}".encode()).hexdigest()[:12]
 
 
 def _cache_path(name: str, fingerprint: str) -> Path:
     CACHE_DIR.mkdir(exist_ok=True)
-    return CACHE_DIR / f"{name}_{fingerprint}.pkl"
+    return CACHE_DIR / f"{name}_{fingerprint}.json"
 
 
-def call_mojo(payload: dict) -> tuple[dict | None, float]:
+def call_mojo(payload: dict[str, Any]) -> tuple[dict | None, float]:
     """Call Mojo binary with JSON payload. Returns (result, elapsed_seconds)."""
     raw = json.dumps(payload)
     t0 = time.perf_counter()
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: S603
             [str(BINARY)],
             input=raw.encode(),
             capture_output=True,
@@ -117,19 +116,19 @@ def load_csv(path: Path, max_rows: int = PROFILE_ROWS) -> tuple[list[dict], floa
 
 
 def _load_csv_cached(name: str, path: Path, use_cache: bool) -> tuple[list[dict], float, bool]:
-    """Load CSV, using pickle cache if available. Returns (records, elapsed, was_cached)."""
+    """Load CSV, using JSON cache if available. Returns (records, elapsed, was_cached)."""
     fp = _file_fingerprint(path)
     cp = _cache_path(name, fp)
     if use_cache and cp.exists():
         t0 = time.perf_counter()
-        with open(cp, "rb") as f:
-            records = pickle.load(f)
+        with cp.open(encoding="utf-8") as f:
+            records = json.load(f)
         return records, time.perf_counter() - t0, True
 
     records, elapsed = load_csv(path, max_rows=PROFILE_ROWS)
     if use_cache:
-        with open(cp, "wb") as f:
-            pickle.dump(records, f)
+        with cp.open("w", encoding="utf-8") as f:
+            json.dump(records, f)
     return records, elapsed, False
 
 
@@ -147,7 +146,7 @@ def profile_columns(records: list[dict], max_rows: int = PROFILE_ROWS) -> dict[s
             v = rec.get(field)
             if v is None:
                 continue
-            if isinstance(v, (int, float)):
+            if isinstance(v, int | float):
                 all_nums.append(float(v))
             else:
                 all_strs.append(str(v))
@@ -156,7 +155,7 @@ def profile_columns(records: list[dict], max_rows: int = PROFILE_ROWS) -> dict[s
             "numeric": all_nums,
             "strings": all_strs,
             "is_numeric": len(all_nums) > len(all_strs),
-            "unique_count": len(set(str(v) for v in (all_nums or all_strs)[:200])),
+            "unique_count": len({str(v) for v in (all_nums or all_strs)[:200]}),
             "total_count": len(all_nums) + len(all_strs),
             "sample_values": [str(v) for v in all_nums[:SAMPLE_ROWS]] + all_strs[:SAMPLE_ROWS],
         }
@@ -177,7 +176,10 @@ def section(title: str) -> None:
 
 
 def row_result(label: str, value: str, timing: str, extra: str = "") -> None:
-    print(f"  {BOLD}{label:<22}{RESET} {value:<30} {GREEN}{timing:>10}{RESET}  {DIM}{extra}{RESET}")
+    print(
+        f"  {BOLD}{label:<22}{RESET} {value:<30} "
+        f"{GREEN}{timing:>10}{RESET}  {DIM}{extra}{RESET}"
+    )
 
 
 # ── parallel Mojo caller ──────────────────────────────────────────────────────
@@ -197,19 +199,29 @@ def call_mojo_parallel(payloads: list[dict]) -> list[tuple[dict | None, float]]:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--no-cache", action="store_true", help="Force cold run, ignore pickle cache")
+    parser.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Force cold run, ignore JSON cache",
+    )
     args = parser.parse_args()
     use_cache = not args.no_cache
 
     if not BINARY.exists():
         print(f"{RED}Mojo binary not found at {BINARY}{RESET}")
-        print("Build with: cd mojo_env && pixi run mojo build ../mojo/engine/main.mojo -o ../mojo_build/simulate")
+        print(
+            "Build with: cd mojo_env && pixi run mojo build "
+            "../mojo/engine/main.mojo -o ../mojo_build/simulate"
+        )
         sys.exit(1)
 
     print(f"\n{BOLD}{'='*70}{RESET}")
     print(f"{BOLD}  Algenta Decision Engine — Full Pipeline Benchmark{RESET}")
     if use_cache:
-        print(f"{DIM}  Cache: ON  (run with --no-cache to force cold)  Cache dir: {CACHE_DIR}{RESET}")
+        print(
+            f"{DIM}  Cache: ON  (run with --no-cache to force cold)  "
+            f"Cache dir: {CACHE_DIR}{RESET}"
+        )
     else:
         print(f"{YELLOW}  Cache: OFF (cold run){RESET}")
     print(f"{BOLD}{'='*70}{RESET}")
@@ -218,7 +230,11 @@ def main() -> None:
     section("Stage 1 · CSV Loading  [parallel + cache]")
     loaded: dict[str, tuple[list[dict], int]] = {}
     load_times: dict[str, float] = {}
-    file_list = [(name, TEST_FILES / fname) for name, fname in SOURCES if (TEST_FILES / fname).exists()]
+    file_list = [
+        (name, TEST_FILES / fname)
+        for name, fname in SOURCES
+        if (TEST_FILES / fname).exists()
+    ]
 
     t_load_start = time.perf_counter()
 
@@ -243,7 +259,10 @@ def main() -> None:
             ms(elapsed),
             f"{size_mb:.1f} MB  {cache_tag}",
         )
-    print(f"\n  {BOLD}Wall-clock total:{RESET} {GREEN}{ms(total_load)}{RESET}  {DIM}(parallel){RESET}")
+    print(
+        f"\n  {BOLD}Wall-clock total:{RESET} {GREEN}{ms(total_load)}{RESET}  "
+        f"{DIM}(parallel){RESET}"
+    )
 
     # ── Stage 2: Column profiling (Python) ───────────────────────────────────
     section("Stage 2 · Column Profiling (Python)")
@@ -292,7 +311,10 @@ def main() -> None:
         else:
             row_result(name, f"{RED}ERROR{RESET}", ms(elapsed))
 
-    print(f"\n  {BOLD}Wall-clock total:{RESET} {GREEN}{ms(total_mp)}{RESET}  {DIM}(parallel, vs sequential Python: {ms(total_prof)}){RESET}")
+    print(
+        f"\n  {BOLD}Wall-clock total:{RESET} {GREEN}{ms(total_mp)}{RESET}  "
+        f"{DIM}(parallel, vs sequential Python: {ms(total_prof)}){RESET}"
+    )
 
     # ── Stage 4: Mojo column_match (parallel) ─────────────────────────────────
     section("Stage 4 · Mojo column_match  [parallel, N×M + Hungarian]")
@@ -307,7 +329,10 @@ def main() -> None:
         return [
             {
                 "name": f,
-                "semantic_type": mp.get(f, {}).get("semantic_type", "metric" if info["is_numeric"] else "category"),
+                "semantic_type": mp.get(f, {}).get(
+                    "semantic_type",
+                    "metric" if info["is_numeric"] else "category",
+                ),
                 "polarity": mp.get(f, {}).get("polarity", 0),
                 "distribution": mp.get(f, {}).get("distribution", ""),
                 "mean": info.get("mean", 0.0),
@@ -350,14 +375,22 @@ def main() -> None:
             )
             for m in sorted(matches, key=lambda x: x["score"], reverse=True)[:4]:
                 conf_bar = bar(m["score"])
-                tier = ("strong" if m["score"] >= 0.85
-                        else "suggest" if m["score"] >= 0.60 else "weak")
-                print(f"    {DIM}{m['field_a']:<25} → {m['field_b']:<25} "
-                      f"[{conf_bar}] {m['score']:.3f}  [{tier}]{RESET}")
+                tier = (
+                    "strong"
+                    if m["score"] >= 0.85
+                    else "suggest" if m["score"] >= 0.60 else "weak"
+                )
+                print(
+                    f"    {DIM}{m['field_a']:<25} -> {m['field_b']:<25} "
+                    f"[{conf_bar}] {m['score']:.3f}  [{tier}]{RESET}"
+                )
         else:
             row_result(f"{src_a} ↔ {src_b}", f"{RED}ERROR{RESET}", ms(elapsed))
 
-    print(f"\n  {BOLD}Wall-clock total:{RESET} {GREEN}{ms(total_cm)}{RESET}  {DIM}(parallel){RESET}")
+    print(
+        f"\n  {BOLD}Wall-clock total:{RESET} {GREEN}{ms(total_cm)}{RESET}  "
+        f"{DIM}(parallel){RESET}"
+    )
 
     # ── Stage 5: Mojo join_detect (parallel) ──────────────────────────────────
     section("Stage 5 · Mojo join_detect  [parallel]")
@@ -399,12 +432,17 @@ def main() -> None:
                 ms(elapsed),
             )
             for jk in sorted(keys, key=lambda x: x["confidence"], reverse=True)[:3]:
-                print(f"    {DIM}{jk['field_a']:<25} ↔ {jk['field_b']:<25} "
-                      f"conf={jk['confidence']:.3f}  card={jk['cardinality']}{RESET}")
+                print(
+                    f"    {DIM}{jk['field_a']:<25} <-> {jk['field_b']:<25} "
+                    f"conf={jk['confidence']:.3f}  card={jk['cardinality']}{RESET}"
+                )
         else:
             row_result(f"{src_a} ↔ {src_b}", "0 keys", ms(elapsed))
 
-    print(f"\n  {BOLD}Wall-clock total:{RESET} {GREEN}{ms(total_jd)}{RESET}  {DIM}(parallel){RESET}")
+    print(
+        f"\n  {BOLD}Wall-clock total:{RESET} {GREEN}{ms(total_jd)}{RESET}  "
+        f"{DIM}(parallel){RESET}"
+    )
 
     # ── Stage 6: Mojo relation_detect (parallel) ──────────────────────────────
     section("Stage 6 · Mojo relation_detect  [parallel + magnitude pre-filter]")
@@ -445,7 +483,7 @@ def main() -> None:
             triples = result.get("triples_tested", 0)
             evaluated = result.get("triples_evaluated", triples)
             ncols = result.get("columns_scanned", nnum)
-            pct = f"{evaluated/max(triples,1)*100:.0f}% evaluated" if triples > 0 else ""
+            pct = f"{evaluated / max(triples, 1) * 100:.0f}% evaluated" if triples > 0 else ""
             row_result(
                 name,
                 f"{len(rels)} formula(s)  {triples:,} triples",
@@ -458,17 +496,20 @@ def main() -> None:
         else:
             row_result(name, f"{RED}ERROR{RESET}", ms(elapsed))
 
-    print(f"\n  {BOLD}Wall-clock total:{RESET} {GREEN}{ms(total_rd)}{RESET}  {DIM}(parallel){RESET}")
+    print(
+        f"\n  {BOLD}Wall-clock total:{RESET} {GREEN}{ms(total_rd)}{RESET}  "
+        f"{DIM}(parallel){RESET}"
+    )
 
     # ── Summary ───────────────────────────────────────────────────────────────
     section("Pipeline Summary")
     stages = [
-        ("CSV loading (wall)",        total_load),
-        ("Column profiling (Py)",      total_prof),
+        ("CSV loading (wall)", total_load),
+        ("Column profiling (Py)", total_prof),
         ("Mojo column_profile (wall)", total_mp),
-        ("Mojo column_match (wall)",   total_cm),
-        ("Mojo join_detect (wall)",    total_jd),
-        ("Mojo relation_detect (wall)",total_rd),
+        ("Mojo column_match (wall)", total_cm),
+        ("Mojo join_detect (wall)", total_jd),
+        ("Mojo relation_detect (wall)", total_rd),
     ]
     grand_total = sum(t for _, t in stages)
     max_t = max(t for _, t in stages)

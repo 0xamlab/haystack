@@ -196,8 +196,14 @@ def _run_self_test():
         assert (out_dir / "nn_ids.bin").exists()
         assert (out_dir / "nn_scores.bin").exists()
         # Round-trip check
-        reloaded_ids    = np.frombuffer((out_dir / "nn_ids.bin").read_bytes(),    dtype="<u4").reshape(vocab_size, k)
-        reloaded_scores = np.frombuffer((out_dir / "nn_scores.bin").read_bytes(), dtype="<f4").reshape(vocab_size, k)
+        reloaded_ids = np.frombuffer(
+            (out_dir / "nn_ids.bin").read_bytes(),
+            dtype="<u4",
+        ).reshape(vocab_size, k)
+        reloaded_scores = np.frombuffer(
+            (out_dir / "nn_scores.bin").read_bytes(),
+            dtype="<f4",
+        ).reshape(vocab_size, k)
         assert np.array_equal(nn_ids, reloaded_ids)
         assert np.allclose(nn_scores, reloaded_scores)
 

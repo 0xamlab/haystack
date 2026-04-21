@@ -117,7 +117,7 @@ def _make_persist_task():  # type: ignore[return]
                 error=str(exc),
                 exc_info=True,
             )
-            raise self.retry(exc=exc)
+            raise self.retry(exc=exc) from exc
 
     return _persist_simulation
 
@@ -158,7 +158,11 @@ def _make_job_task():  # type: ignore[return]
         acks_late=True,
         max_retries=1,
     )
-    def _run_simulation_job(self: Any, job_id: str, request_payload: dict[str, Any]) -> dict[str, Any]:
+    def _run_simulation_job(
+        self: Any,
+        job_id: str,
+        request_payload: dict[str, Any],
+    ) -> dict[str, Any]:
         """Execute an async simulation job end-to-end."""
         from apps.api_server.db.session import AsyncSessionLocal
         from apps.api_server.services.job_service import execute_job
@@ -175,7 +179,7 @@ def _make_job_task():  # type: ignore[return]
             return asyncio.run(_run())
         except Exception as exc:
             logger.error("job_execution_failed", job_id=job_id, error=str(exc), exc_info=True)
-            raise self.retry(exc=exc)
+            raise self.retry(exc=exc) from exc
 
     return _run_simulation_job
 

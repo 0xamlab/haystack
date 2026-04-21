@@ -9,7 +9,7 @@ import urllib.error
 import urllib.request
 
 BASE_URL = "http://localhost:8000"
-PASS = "✅"
+PASS = "✅"  # noqa: S105 - status glyph, not a credential
 FAIL = "❌"
 results = []
 
@@ -21,9 +21,9 @@ def req(method, path, body=None, headers=None):
     h = {"Content-Type": "application/json"}
     if headers:
         h.update(headers)
-    request = urllib.request.Request(url, data=data, headers=h, method=method)
+    request = urllib.request.Request(url, data=data, headers=h, method=method)  # noqa: S310 - verification script uses an explicit local HTTP endpoint
     try:
-        with urllib.request.urlopen(request) as resp:
+        with urllib.request.urlopen(request) as resp:  # noqa: S310 - explicit local HTTP endpoint
             return resp.status, json.loads(resp.read())
     except urllib.error.HTTPError as e:
         return e.code, json.loads(e.read())
@@ -88,7 +88,13 @@ check("POST /v1/simulate without auth → 401", test_auth_required)
 def test_invalid_key():
     status, body = req(
         "POST", "/v1/simulate",
-        body={"mode": "auto", "scenario": {"variables": {"x": {"low": 1, "high": 10}}, "objective": "maximize_net_value"}},
+        body={
+            "mode": "auto",
+            "scenario": {
+                "variables": {"x": {"low": 1, "high": 10}},
+                "objective": "maximize_net_value",
+            },
+        },
         headers={"X-API-Key": "de_live_totally_invalid_key_that_does_not_exist"},
     )
     assert status == 401, f"Expected 401 with invalid key, got {status}"
@@ -112,12 +118,17 @@ check("POST /v1/simulate with bad payload → 401 or 422", test_malformed_body)
 # ── 7. X-Request-Id present in responses ─────────────────────────────────────
 def test_request_id_header():
     url = f"{BASE_URL}/v1/health"
-    request = urllib.request.Request(url, method="GET")
-    with urllib.request.urlopen(request) as resp:
+    request = urllib.request.Request(  # noqa: S310 - verification script uses an explicit local HTTP endpoint
+        url, method="GET"
+    )
+    with urllib.request.urlopen(request) as resp:  # noqa: S310 - explicit local HTTP endpoint
         headers = dict(resp.headers)
         # Header names are case-insensitive, check lowercase
         lower_headers = {k.lower(): v for k, v in headers.items()}
-        assert "x-request-id" in lower_headers, f"X-Request-Id not in response headers: {list(lower_headers.keys())}"
+        assert "x-request-id" in lower_headers, (
+            "X-Request-Id not in response headers: "
+            f"{list(lower_headers.keys())}"
+        )
 
 check("GET /v1/health response has X-Request-Id header", test_request_id_header)
 

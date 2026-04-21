@@ -1411,7 +1411,7 @@ def list_templates(domain: str | None = None, industry: str | None = None) -> li
 
 
 def get_all_domains() -> list[str]:
-    return sorted(set(t.domain for t in TEMPLATES.values()))
+    return sorted({t.domain for t in TEMPLATES.values()})
 
 
 def get_all_tags() -> list[str]:

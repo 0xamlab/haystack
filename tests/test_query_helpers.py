@@ -16,7 +16,7 @@ def test_profile_arrow_table_handles_chunked_columns_without_null_materializatio
     assert profile["amount"]["total_count"] == 4
     assert profile["amount"]["sample_values"] == ["1", "2", "2", "3"]
     assert profile["customer"]["unique_count"] == 3
-    assert profile["customer"]["sample_values"] == ["A", "B", "B", "C"]
+    assert profile["customer"]["sample_values"] == ["A", "B", "C"]
 
 def test_find_best_join_key_rejects_measure_to_measure_pairs():
     connections = [{

@@ -16,12 +16,14 @@ import csv
 import io
 import json
 import random
+import re
 import sqlite3
 import sys
 import tempfile
 import time
 import uuid
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -31,18 +33,6 @@ import pyarrow.parquet as pq
 
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
-
-from apps.api_server.routers.data_map import DataSource
-from apps.api_server.routers.query import (
-    _CACHE_LOCK,
-    _DF_CACHE,
-    _RESULT_CACHE,
-    _SOURCE_CACHE,
-    _VERIFY_CACHE,
-)
-from apps.api_server.routers.sources import RegisterRequest, register_source
-from apps.api_server.services import source_registry as reg
-from apps.api_server.services.auto_planner import AutoPlanner
 
 
 @dataclass(frozen=True)
@@ -69,6 +59,42 @@ class IngestCheck:
 
 
 _API_RESULT_PRECISION = 4
+_SQLITE_TABLE_NAME_RE = re.compile(r"^[a-z0-9_]+$")
+
+
+@lru_cache(maxsize=1)
+def _runtime_modules() -> dict[str, Any]:
+    from apps.api_server.routers.data_map import DataSource
+    from apps.api_server.routers.query import (
+        _CACHE_LOCK,
+        _DF_CACHE,
+        _RESULT_CACHE,
+        _SOURCE_CACHE,
+        _VERIFY_CACHE,
+    )
+    from apps.api_server.routers.sources import RegisterRequest, register_source
+    from apps.api_server.services import source_registry as reg
+    from apps.api_server.services.auto_planner import AutoPlanner
+
+    return {
+        "DataSource": DataSource,
+        "RegisterRequest": RegisterRequest,
+        "register_source": register_source,
+        "source_registry": reg,
+        "AutoPlanner": AutoPlanner,
+        "cache_lock": _CACHE_LOCK,
+        "df_cache": _DF_CACHE,
+        "result_cache": _RESULT_CACHE,
+        "source_cache": _SOURCE_CACHE,
+        "verify_cache": _VERIFY_CACHE,
+    }
+
+
+def _sqlite_table_name(name: str) -> str:
+    table_name = f"t_{name.lower()}"
+    if not _SQLITE_TABLE_NAME_RE.fullmatch(table_name):
+        raise ValueError(f"Invalid sqlite table name derived from source {name!r}")
+    return table_name
 
 
 def _rows_to_csv(rows: list[dict[str, Any]]) -> str:
@@ -99,10 +125,13 @@ def _rows_to_parquet_b64(rows: list[dict[str, Any]]) -> str:
 def _normalize_result(result: Any) -> Any:
     if isinstance(result, list):
         return [
-            {"group": str(item["group"]), "value": round(float(item["value"]), _API_RESULT_PRECISION)}
+            {
+                "group": str(item["group"]),
+                "value": round(float(item["value"]), _API_RESULT_PRECISION),
+            }
             for item in result
         ]
-    if isinstance(result, (int, float)):
+    if isinstance(result, int | float):
         return round(float(result), _API_RESULT_PRECISION)
     return result
 
@@ -111,13 +140,26 @@ def _ingest_value_matches(actual: Any, expected_type: str, expected_value: Any) 
     if expected_type == "str":
         return isinstance(actual, str) and actual == expected_value
     if expected_type == "float":
-        return isinstance(actual, (int, float)) and not isinstance(actual, bool) and abs(float(actual) - float(expected_value)) <= 1e-9
+        return (
+            isinstance(actual, int | float)
+            and not isinstance(actual, bool)
+            and abs(float(actual) - float(expected_value)) <= 1e-9
+        )
     if expected_type == "int":
-        return isinstance(actual, int) and not isinstance(actual, bool) and actual == expected_value
+        return (
+            isinstance(actual, int)
+            and not isinstance(actual, bool)
+            and actual == expected_value
+        )
     return type(actual).__name__ == expected_type and actual == expected_value
 
 
-def _group_rows(rows: list[dict[str, Any]], value_col: str, group_col: str, agg: str) -> list[dict[str, Any]]:
+def _group_rows(
+    rows: list[dict[str, Any]],
+    value_col: str,
+    group_col: str,
+    agg: str,
+) -> list[dict[str, Any]]:
     grouped: dict[str, list[float]] = {}
     for row in rows:
         group = str(row[group_col])
@@ -230,9 +272,27 @@ def _generate_sources() -> dict[str, list[dict[str, Any]]]:
         })
 
     i0 = [
-        {"account_code": "00123", "serial_number": "00004567", "zip_code": "02139", "local_group": "g_a", "measure_total": 10.0},
-        {"account_code": "00124", "serial_number": "00004568", "zip_code": "60601", "local_group": "g_b", "measure_total": 15.0},
-        {"account_code": "00125", "serial_number": "00004569", "zip_code": "02139", "local_group": "g_a", "measure_total": 20.0},
+        {
+            "account_code": "00123",
+            "serial_number": "00004567",
+            "zip_code": "02139",
+            "local_group": "g_a",
+            "measure_total": 10.0,
+        },
+        {
+            "account_code": "00124",
+            "serial_number": "00004568",
+            "zip_code": "60601",
+            "local_group": "g_b",
+            "measure_total": 15.0,
+        },
+        {
+            "account_code": "00125",
+            "serial_number": "00004569",
+            "zip_code": "02139",
+            "local_group": "g_a",
+            "measure_total": 20.0,
+        },
     ]
 
     l0: list[dict[str, Any]] = []
@@ -262,7 +322,7 @@ def _build_query_cases(sources: dict[str, list[dict[str, Any]]]) -> list[QueryCa
     s3 = sources["S3"]
     c0 = sources["C0"]
     i0 = sources["I0"]
-    l0 = [row for row in sources["L0"] if isinstance(row["late_value"], (int, float))]
+    l0 = [row for row in sources["L0"] if isinstance(row["late_value"], int | float)]
 
     entity_to_segment = {row["entity_key"]: row["segment_label"] for row in s1}
     entity_to_bridge = {row["entity_key"]: row["bridge_key"] for row in s1}
@@ -463,7 +523,14 @@ def _build_ingest_checks() -> list[IngestCheck]:
         IngestCheck("I0 account code preserved", "I0", 0, "account_code", "str", "00123"),
         IngestCheck("I0 serial preserved", "I0", 0, "serial_number", "str", "00004567"),
         IngestCheck("I0 zip preserved", "I0", 0, "zip_code", "str", "02139"),
-        IngestCheck("L0 late sparse field remains numeric when populated", "L0", 4, "late_value", "float", 110.0),
+        IngestCheck(
+            "L0 late sparse field remains numeric when populated",
+            "L0",
+            4,
+            "late_value",
+            "float",
+            110.0,
+        ),
     ]
 
 
@@ -474,38 +541,53 @@ def _materialize_source(
     name: str,
     rows: list[dict[str, Any]],
     sqlite_path: Path | None,
-) -> DataSource:
+) -> Any:
+    runtime_modules = _runtime_modules()
+    data_source_cls = runtime_modules["DataSource"]
     if backend == "csv":
-        return DataSource(name=name, csv=_rows_to_csv(rows))
+        return data_source_cls(name=name, csv=_rows_to_csv(rows))
     if backend == "parquet":
-        return DataSource(name=name, parquet_b64=_rows_to_parquet_b64(rows))
+        return data_source_cls(name=name, parquet_b64=_rows_to_parquet_b64(rows))
     if backend == "sqlite":
         if sqlite_path is None:
             raise ValueError("sqlite_path is required for sqlite backend")
-        table_name = f"t_{name.lower()}"
+        table_name = _sqlite_table_name(name)
         with sqlite3.connect(sqlite_path) as conn:
             pd.DataFrame(rows).to_sql(table_name, conn, index=False, if_exists="replace")
-        return DataSource(
+        return data_source_cls(
             name=name,
             connection={
                 "type": "sql",
                 "connection_string": f"sqlite+pysqlite:///{sqlite_path}",
-                "query": f'SELECT * FROM "{table_name}"',
+                "query": f'SELECT * FROM "{table_name}"',  # noqa: S608
             },
         )
     raise ValueError(f"Unsupported backend: {backend}")
 
 
 async def _reset_runtime_state(registry_dir: Path) -> None:
-    reg._SOURCES_DIR = registry_dir
-    async with _CACHE_LOCK:
-        _SOURCE_CACHE.clear()
-    _RESULT_CACHE.clear()
-    _VERIFY_CACHE.clear()
-    _DF_CACHE.clear()
+    runtime_modules = _runtime_modules()
+    source_registry = runtime_modules["source_registry"]
+    cache_lock = runtime_modules["cache_lock"]
+    source_cache = runtime_modules["source_cache"]
+    result_cache = runtime_modules["result_cache"]
+    verify_cache = runtime_modules["verify_cache"]
+    df_cache = runtime_modules["df_cache"]
+
+    source_registry._SOURCES_DIR = registry_dir
+    async with cache_lock:
+        source_cache.clear()
+    result_cache.clear()
+    verify_cache.clear()
+    df_cache.clear()
 
 
 async def _run_backend(backend: str, workdir: Path) -> dict[str, Any]:
+    runtime_modules = _runtime_modules()
+    register_request_cls = runtime_modules["RegisterRequest"]
+    register_source = runtime_modules["register_source"]
+    auto_planner_cls = runtime_modules["AutoPlanner"]
+
     sources = _generate_sources()
     query_cases = _build_query_cases(sources)
     ingest_checks = _build_ingest_checks()
@@ -526,12 +608,15 @@ async def _run_backend(backend: str, workdir: Path) -> dict[str, Any]:
             sqlite_path=sqlite_path,
         )
         t0 = time.perf_counter()
-        resp = await register_source(RegisterRequest(source=data_source), auth={"org_id": org_id})
+        resp = await register_source(
+            register_request_cls(source=data_source),
+            auth={"org_id": org_id},
+        )
         register_latencies.append((time.perf_counter() - t0) * 1000)
         if resp["status"] not in {"registered", "already_registered"}:
             raise RuntimeError(f"{backend}: registration failed for {name}: {resp}")
 
-    planner = AutoPlanner.from_registry(org_id, llm_policy="never")
+    planner = auto_planner_cls.from_registry(org_id, llm_policy="never")
 
     ingest_passed = 0
     ingest_details: list[dict[str, Any]] = []
@@ -640,11 +725,26 @@ async def _run_all() -> dict[str, Any]:
         "totals": {
             "queries": total_queries,
             "ingest_checks": total_ingest,
-            "metric_accuracy": round(sum(item["metric_passed"] for item in results) / total_queries, 4),
-            "group_accuracy": round(sum(item["group_passed"] for item in results) / total_queries, 4),
-            "join_accuracy": round(sum(item["join_passed"] for item in results) / total_queries, 4),
-            "query_accuracy": round(sum(item["query_passed"] for item in results) / total_queries, 4),
-            "ingest_accuracy": round(sum(item["ingest_passed"] for item in results) / total_ingest, 4),
+            "metric_accuracy": round(
+                sum(item["metric_passed"] for item in results) / total_queries,
+                4,
+            ),
+            "group_accuracy": round(
+                sum(item["group_passed"] for item in results) / total_queries,
+                4,
+            ),
+            "join_accuracy": round(
+                sum(item["join_passed"] for item in results) / total_queries,
+                4,
+            ),
+            "query_accuracy": round(
+                sum(item["query_passed"] for item in results) / total_queries,
+                4,
+            ),
+            "ingest_accuracy": round(
+                sum(item["ingest_passed"] for item in results) / total_ingest,
+                4,
+            ),
         },
         "results": results,
     }

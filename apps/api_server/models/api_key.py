@@ -34,7 +34,11 @@ class APIKey(UUIDMixin, TimestampMixin, Base):
     key_prefix: Mapped[str] = mapped_column(String(20), nullable=False)
     hashed_key: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
     status: Mapped[APIKeyStatus] = mapped_column(
-        Enum(APIKeyStatus, name="api_key_status", values_callable=lambda obj: [e.value for e in obj]),
+        Enum(
+            APIKeyStatus,
+            name="api_key_status",
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
         default=APIKeyStatus.ACTIVE,
         nullable=False,
         index=True,

@@ -145,7 +145,12 @@ class _RedisCoordinationStore:
 
     async def acquire_write_lock(self, key: str, ttl_seconds: int) -> str | None:
         token = uuid.uuid4().hex
-        acquired = await self._redis.set(_write_lock_storage_key(key), token, ex=ttl_seconds, nx=True)
+        acquired = await self._redis.set(
+            _write_lock_storage_key(key),
+            token,
+            ex=ttl_seconds,
+            nx=True,
+        )
         if acquired:
             return token
         return None
@@ -241,7 +246,10 @@ def _write_conflict_response(request: Request) -> JSONResponse:
         content={
             "error": {
                 "code": "resource_write_conflict",
-                "message": "Another write is already in progress for this resource scope. Retry after it completes.",
+                "message": (
+                    "Another write is already in progress for this resource "
+                    "scope. Retry after it completes."
+                ),
                 "request_id": request_id,
                 "docs_url": "https://docs.algenta.ai/errors/resource_write_conflict",
             }
@@ -256,7 +264,10 @@ def _idempotency_conflict_response(request: Request, issue: str) -> JSONResponse
         content={
             "error": {
                 "code": "idempotency_key_conflict",
-                "message": "The supplied Idempotency-Key was already used with a different request payload.",
+                "message": (
+                    "The supplied Idempotency-Key was already used with a "
+                    "different request payload."
+                ),
                 "details": [{"field": "Idempotency-Key", "issue": issue}],
                 "request_id": request_id,
                 "docs_url": "https://docs.algenta.ai/errors/idempotency_key_conflict",

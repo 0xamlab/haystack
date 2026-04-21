@@ -122,23 +122,23 @@ def verify_export(out_dir: Path, vocab_size: int):
     Sanity-check: reload every binary file and verify shapes match meta.json.
     """
     meta = json.loads((out_dir / "meta.json").read_text())
-    D    = meta["emb_dim"]
-    H    = meta["hidden_dim"]
+    emb_dim = meta["emb_dim"]
+    hidden_dim = meta["hidden_dim"]
 
     checks = [
-        ("embeddings.bin",        (vocab_size, D)),
-        ("intent_fc1_weight.bin", (H, D)),
-        ("intent_fc1_bias.bin",   (H,)),
-        ("intent_fc2_weight.bin", (meta["intent_classes"], H)),
-        ("intent_fc2_bias.bin",   (meta["intent_classes"],)),
-        ("agg_fc1_weight.bin",    (H, D)),
-        ("agg_fc1_bias.bin",      (H,)),
-        ("agg_fc2_weight.bin",    (meta["agg_classes"], H)),
-        ("agg_fc2_bias.bin",      (meta["agg_classes"],)),
-        ("family_fc1_weight.bin", (H, D)),
-        ("family_fc1_bias.bin",   (H,)),
-        ("family_fc2_weight.bin", (meta["family_classes"], H)),
-        ("family_fc2_bias.bin",   (meta["family_classes"],)),
+        ("embeddings.bin", (vocab_size, emb_dim)),
+        ("intent_fc1_weight.bin", (hidden_dim, emb_dim)),
+        ("intent_fc1_bias.bin", (hidden_dim,)),
+        ("intent_fc2_weight.bin", (meta["intent_classes"], hidden_dim)),
+        ("intent_fc2_bias.bin", (meta["intent_classes"],)),
+        ("agg_fc1_weight.bin", (hidden_dim, emb_dim)),
+        ("agg_fc1_bias.bin", (hidden_dim,)),
+        ("agg_fc2_weight.bin", (meta["agg_classes"], hidden_dim)),
+        ("agg_fc2_bias.bin", (meta["agg_classes"],)),
+        ("family_fc1_weight.bin", (hidden_dim, emb_dim)),
+        ("family_fc1_bias.bin", (hidden_dim,)),
+        ("family_fc2_weight.bin", (meta["family_classes"], hidden_dim)),
+        ("family_fc2_bias.bin", (meta["family_classes"],)),
     ]
 
     all_ok = True
@@ -149,7 +149,7 @@ def verify_export(out_dir: Path, vocab_size: int):
             all_ok = False
             continue
         arr = _read_f32(p, expected_shape)
-        ok  = arr.shape == expected_shape
+        ok = arr.shape == expected_shape
         sym = "OK" if ok else "SHAPE_MISMATCH"
         if not ok:
             all_ok = False
@@ -205,7 +205,7 @@ def _run_self_test():
 
     with tempfile.TemporaryDirectory() as tmp:
         out_dir = Path(tmp)
-        meta = export(model, out_dir)
+        export(model, out_dir)
 
         # Check all files present
         expected_bins = [

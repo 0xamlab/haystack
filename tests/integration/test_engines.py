@@ -22,8 +22,8 @@ _ROOT = Path(__file__).resolve().parents[2]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from apps.api_server.routers.engines import router
-from engines import ALL_ENGINE_LIBS, ENGINES, ENGINES_BY_SLUG, ENGINES_BY_TIER
+from apps.api_server.routers.engines import router  # noqa: E402
+from engines import ALL_ENGINE_LIBS, ENGINES, ENGINES_BY_SLUG, ENGINES_BY_TIER  # noqa: E402
 
 BASE_URL   = os.environ.get("DE_BASE_URL", "http://localhost:8000")
 API_KEY    = os.environ.get("DE_API_KEY",  "de_live_LrL6UWSAfgXsTjgfyaboI9aolrsznjLU")

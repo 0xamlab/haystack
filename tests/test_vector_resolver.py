@@ -342,6 +342,51 @@ class TestPlannerIntegration:
         planner._build_vector_resolver()
         assert planner._vector_resolver is not None
 
+    def test_append_planner_graph_source_updates_existing_resolver(self):
+        graph = {
+            "POS": {
+                "UNIT_PRICE": _node("unit_measure"),
+                "EXT_PRICE": _node("derived_measure"),
+            }
+        }
+        resolver = ColumnVectorResolver.from_planner_graph(graph)
+
+        appended = resolver.append_planner_graph_source(
+            "BACKLOG",
+            {
+                "UNIT_COST": _node("unit_measure"),
+                "EXT_COST": _node("derived_measure"),
+            },
+        )
+
+        assert appended is True
+        assert resolver._n_columns == 4
+        result = resolver.resolve(
+            "extended cost",
+            preferred_source="BACKLOG",
+            role_hint="derived_measure",
+        )
+        assert result is not None
+        assert result.source == "BACKLOG"
+        assert result.column == "EXT_COST"
+
+    def test_append_planner_graph_source_requires_rebuild_for_existing_source(self):
+        graph = {
+            "POS": {
+                "UNIT_PRICE": _node("unit_measure"),
+            }
+        }
+        resolver = ColumnVectorResolver.from_planner_graph(graph)
+
+        appended = resolver.append_planner_graph_source(
+            "POS",
+            {
+                "EXT_PRICE": _node("derived_measure"),
+            },
+        )
+
+        assert appended is False
+
     def test_probe_engines_includes_column_rank(self, tmp_path, monkeypatch):
         from apps.api_server.services.auto_planner import AutoPlanner
 
@@ -695,6 +740,44 @@ class TestPlannerIntegration:
         assert [item["client_id"] for item in outputs] == [0, 1, 2, 0]
         assert seen == [0, 1, 2, 0]
 
+    def test_planner_mojo_rank_pool_keeps_session_bound_calls_on_one_client(self, monkeypatch):
+        import apps.api_server.services.mojo_column_rank_resolver as rank_resolver
+
+        seen = []
+
+        class _FakeClient:
+            _next_id = 0
+
+            def __init__(self, binary_path):
+                self.binary_path = binary_path
+                self.client_id = _FakeClient._next_id
+                _FakeClient._next_id += 1
+
+            def invoke(self, payload, timeout, **_kwargs):
+                seen.append(self.client_id)
+                return {"client_id": self.client_id}
+
+            def close(self):
+                return None
+
+        monkeypatch.setattr(rank_resolver, "_PlannerMojoSocketClient", _FakeClient)
+        monkeypatch.setattr(rank_resolver, "_PLANNER_MOJO_POOL_SIZE", 3)
+        rank_resolver._close_planner_clients()
+
+        binary = Path("mojo_build/simulate")
+        outputs = [
+            rank_resolver.invoke_column_rank(
+                {"engine_type": "column_rank"},
+                binary_path=binary,
+                session_key="org_a:session_1",
+                init_payload={"type": "column_rank_init", "entries": []},
+            )
+            for _ in range(4)
+        ]
+
+        assert len({item["client_id"] for item in outputs}) == 1
+        assert len(set(seen)) == 1
+
     def test_planner_mojo_clients_use_distinct_socket_paths(self, tmp_path):
         import apps.api_server.services.mojo_column_rank_resolver as rank_resolver
 
@@ -979,6 +1062,55 @@ class TestPlannerIntegration:
         assert results["metric"].column == "UNIT_PRICE"
         assert results["group_by"] is not None
         assert results["group_by"].column == "CUSTOMER_NAME"
+
+    def test_mojo_column_rank_resident_session_appends_new_source_incrementally(
+        self,
+        monkeypatch,
+        tmp_path,
+    ):
+        import apps.api_server.services.mojo_column_rank_resolver as rank_resolver
+
+        binary = tmp_path / "simulate"
+        binary.write_text("")
+        binary.chmod(0o755)
+
+        base_resolver = ColumnVectorResolver(
+            {
+                "POS": [
+                    ("UNIT_PRICE", "unit_measure"),
+                    ("EXT_PRICE", "derived_measure"),
+                ]
+            }
+        )
+        resolver = rank_resolver.MojoColumnRankResolver(
+            base_resolver,
+            call_mojo=lambda payload, timeout=1: {},
+            binary_path=binary,
+        )
+        initial_session = resolver._resident_session_key
+        initial_entries = list(resolver._resident_init_payload["entries"])
+
+        appended = resolver.append_planner_graph_source(
+            "BACKLOG",
+            {
+                "UNIT_COST": _node("unit_measure"),
+                "EXT_COST": _node("derived_measure"),
+            },
+            fill_rates={
+                ("BACKLOG", "UNIT_COST"): 1.0,
+                ("BACKLOG", "EXT_COST"): 1.0,
+            },
+        )
+
+        assert appended is True
+        assert resolver._resident_session_key != initial_session
+        assert len(initial_entries) == 2
+        assert len(resolver._resident_init_payload["entries"]) == 4
+        assert resolver._resident_init_payload["entries"][:2] == initial_entries
+        assert [entry["source"] for entry in resolver._resident_init_payload["entries"][2:]] == [
+            "BACKLOG",
+            "BACKLOG",
+        ]
 
     def test_planner_resolve_plan_fields_decodes_compact_batch_payload(
         self,
