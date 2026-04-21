@@ -123,7 +123,7 @@ def print_data_connect_result(
     *,
     rich_enabled: bool,
 ) -> None:
-    if format == "json" or not rich_enabled:
+    if format == "json":
         print(json.dumps(data, indent=2, default=str))
         return
 
@@ -190,7 +190,7 @@ def cmd_data_list(format: str = "table", *, api_request: ApiRequest, rich_enable
     if status != 200:
         print(f"❌ Error {status}: {json.dumps(data, indent=2)}", file=sys.stderr)
         sys.exit(1)
-    if format == "json" or not rich_enabled:
+    if format == "json":
         print(json.dumps(data, indent=2, default=str))
         return
     datasets = data.get("datasets", [])
@@ -214,7 +214,7 @@ def cmd_data_inspect(
     if status != 200:
         print(f"❌ Error {status}: {json.dumps(data, indent=2)}", file=sys.stderr)
         sys.exit(1)
-    if format == "json" or not rich_enabled:
+    if format == "json":
         print(json.dumps(data, indent=2, default=str))
         return
     dataset = data.get("dataset", {})
@@ -263,7 +263,7 @@ def cmd_data_disconnect(
     if status != 200:
         print(f"❌ Error {status}: {json.dumps(data, indent=2)}", file=sys.stderr)
         sys.exit(1)
-    if format == "json" or not rich_enabled:
+    if format == "json":
         print(json.dumps(data, indent=2, default=str))
         return
     print(

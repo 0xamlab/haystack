@@ -15,6 +15,7 @@ def _capture_stdout(fn, *args, **kwargs) -> str:  # type: ignore[no-untyped-def]
 
 
 def test_cmd_data_connect_with_request_file(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr(cli, "_RICH", False)
     request_path = tmp_path / "connect.json"
     request_path.write_text(json.dumps({
         "connection_type": "file_upload",
@@ -43,6 +44,7 @@ def test_cmd_data_connect_with_request_file(monkeypatch, tmp_path) -> None:
 
 
 def test_cmd_data_list_prints_datasets(monkeypatch) -> None:
+    monkeypatch.setattr(cli, "_RICH", False)
     monkeypatch.setattr(
         cli,
         "api_request",
@@ -61,6 +63,7 @@ def test_cmd_data_list_prints_datasets(monkeypatch) -> None:
 
 
 def test_cmd_data_inspect_prints_schema(monkeypatch) -> None:
+    monkeypatch.setattr(cli, "_RICH", False)
     monkeypatch.setattr(
         cli,
         "api_request",
@@ -78,6 +81,7 @@ def test_cmd_data_inspect_prints_schema(monkeypatch) -> None:
 
 
 def test_cmd_data_refresh_prints_ready(monkeypatch) -> None:
+    monkeypatch.setattr(cli, "_RICH", False)
     monkeypatch.setattr(
         cli,
         "api_request",
@@ -100,6 +104,7 @@ def test_cmd_data_refresh_prints_ready(monkeypatch) -> None:
 
 
 def test_cmd_data_disconnect_prints_deleted(monkeypatch) -> None:
+    monkeypatch.setattr(cli, "_RICH", False)
     monkeypatch.setattr(
         cli,
         "api_request",

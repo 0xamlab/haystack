@@ -628,6 +628,33 @@ async def test_credits_refresh_response_expiry_in_future():
     assert response.refresh_after < response.expires_at
 
 
+@pytest.mark.asyncio
+async def test_get_issued_falls_back_to_db_sum_when_redis_is_unavailable(monkeypatch):
+    import redis.asyncio as aioredis
+
+    from apps.api_server.routers import credits
+
+    mock_db = AsyncMock()
+    mock_result = MagicMock()
+    mock_result.scalar_one.return_value = 42
+    mock_db.execute.return_value = mock_result
+
+    def _broken_from_url(*args, **kwargs):  # type: ignore[no-untyped-def]
+        raise RuntimeError("redis unavailable")
+
+    monkeypatch.setattr(aioredis, "from_url", _broken_from_url)
+
+    issued = await credits._get_issued(
+        "credits_issued:test-org:2026-04",
+        uuid.uuid4(),
+        "2026-04",
+        mock_db,
+    )
+
+    assert issued == 42
+    mock_db.execute.assert_awaited_once()
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # 39–44  Device register includes credit fields
 # ══════════════════════════════════════════════════════════════════════════════

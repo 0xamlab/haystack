@@ -1105,6 +1105,23 @@ def _build_mojo_column_profile_columns(
     return payload
 
 
+def _mojo_column_profile_sample_limits(column_count: int) -> tuple[int, int]:
+    """
+    Bound Mojo profiling payload size deterministically for wide schemas.
+
+    Wide sources do not need the same per-column sample budget as narrow ones.
+    Keeping the budget proportional to schema width reduces registration latency
+    without changing the set of profiled columns.
+    """
+    if column_count >= 192:
+        return 12, 12
+    if column_count >= 96:
+        return 16, 12
+    if column_count >= 48:
+        return 24, 16
+    return 50, 50
+
+
 async def _call_mojo_column_profile(
     columns: dict[str, dict[str, Any]],
 ) -> dict[str, Any] | None:
@@ -1127,9 +1144,9 @@ async def _call_mojo_column_profile(
             ),
         }
     try:
-        from apps.api_server.compute.mojo_adapter import _invoke_subprocess
+        from apps.api_server.compute.mojo_adapter import invoke_engine
         payload = {"engine_type": "column_profile", "columns": columns}
-        result = await _invoke_subprocess(payload)
+        result = await invoke_engine(payload)
         if result is None:
             return {
                 "profiles": {},
@@ -1177,7 +1194,7 @@ async def _call_mojo_column_match(
     if not columns_a or not columns_b:
         return None
     try:
-        from apps.api_server.compute.mojo_adapter import _invoke_subprocess
+        from apps.api_server.compute.mojo_adapter import invoke_engine
         payload = {
             "engine_type": "column_match",
             "source_a": source_a,
@@ -1186,7 +1203,7 @@ async def _call_mojo_column_match(
             "columns_b": columns_b,
             "min_confidence": min_confidence,
         }
-        return await _invoke_subprocess(payload)
+        return await invoke_engine(payload)
     except Exception as exc:
         logger.debug("column_match_mojo_error", error=str(exc))
         return None
@@ -1206,7 +1223,7 @@ async def _call_mojo_join_detect(
     if not columns:
         return None
     try:
-        from apps.api_server.compute.mojo_adapter import _invoke_subprocess
+        from apps.api_server.compute.mojo_adapter import invoke_engine
         payload = {
             "engine_type": "join_detect",
             "source_a": source_a,
@@ -1214,7 +1231,7 @@ async def _call_mojo_join_detect(
             "min_confidence": min_confidence,
             "columns": columns,
         }
-        return await _invoke_subprocess(payload)
+        return await invoke_engine(payload)
     except Exception as exc:
         logger.debug("join_detect_mojo_error", error=str(exc))
         return None
@@ -1233,14 +1250,14 @@ async def _call_mojo_relation_detect(
     if len(columns) < 3:
         return None
     try:
-        from apps.api_server.compute.mojo_adapter import _invoke_subprocess
+        from apps.api_server.compute.mojo_adapter import invoke_engine
         payload = {
             "engine_type": "relation_detect",
             "source": source,
             "min_confidence": min_confidence,
             "columns": columns,
         }
-        return await _invoke_subprocess(payload)
+        return await invoke_engine(payload)
     except Exception as exc:
         logger.debug("relation_detect_mojo_error", error=str(exc))
         return None

@@ -67,6 +67,46 @@ def test_build_mojo_column_profile_columns_separates_finite_numeric_and_string_s
     assert payload["measure_total"]["strings"] == ["10", "20.5"]
 
 
+def test_mojo_column_profile_sample_limits_shrink_for_wide_schemas() -> None:
+    assert data_map._mojo_column_profile_sample_limits(12) == (50, 50)
+    assert data_map._mojo_column_profile_sample_limits(48) == (24, 16)
+    assert data_map._mojo_column_profile_sample_limits(96) == (16, 12)
+    assert data_map._mojo_column_profile_sample_limits(220) == (12, 12)
+
+
+@pytest.mark.asyncio
+async def test_detect_relations_uses_bounded_sample_limit_for_wide_schemas(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    async def _fake_invoke_engine(payload: dict[str, object]) -> dict[str, object]:
+        captured["payload"] = payload
+        return {"relationships": []}
+
+    monkeypatch.setattr("apps.api_server.compute.mojo_adapter.invoke_engine", _fake_invoke_engine)
+
+    profiles = {
+        "WideSource": {
+            f"metric_{index:03d}": {
+                "is_numeric": True,
+                "fill_rate": 1.0,
+                "numeric": [float(value) for value in range(300)],
+            }
+            for index in range(140)
+        }
+    }
+
+    result = await query_router._detect_relations("WideSource", profiles)
+
+    assert result == []
+    payload = captured["payload"]
+    assert isinstance(payload, dict)
+    assert payload["engine_type"] == "relation_detect"
+    assert len(payload["columns"]) == 140
+    assert all(len(values) == 64 for values in payload["columns"].values())
+
+
 @pytest.mark.asyncio
 async def test_call_mojo_column_profile_returns_disabled_status_when_policy_optional(
     monkeypatch: pytest.MonkeyPatch,
@@ -75,7 +115,7 @@ async def test_call_mojo_column_profile_returns_disabled_status_when_policy_opti
         raise RuntimeError("profiling boom")
 
     monkeypatch.setattr(data_map.settings, "mojo_profiling_policy", "optional")
-    monkeypatch.setattr("apps.api_server.compute.mojo_adapter._invoke_subprocess", _raise)
+    monkeypatch.setattr("apps.api_server.compute.mojo_adapter.invoke_engine", _raise)
 
     result = await data_map._call_mojo_column_profile(_sample_profile_payload())
 
@@ -98,10 +138,10 @@ async def test_call_mojo_column_profile_skips_mojo_when_policy_disabled(
     async def _should_not_run(*_args, **_kwargs):  # type: ignore[no-untyped-def]
         nonlocal invoked
         invoked = True
-        raise AssertionError("profiling subprocess must not run when disabled")
+        raise AssertionError("profiling engine must not run when disabled")
 
     monkeypatch.setattr(data_map.settings, "mojo_profiling_policy", "disabled")
-    monkeypatch.setattr("apps.api_server.compute.mojo_adapter._invoke_subprocess", _should_not_run)
+    monkeypatch.setattr("apps.api_server.compute.mojo_adapter.invoke_engine", _should_not_run)
 
     result = await data_map._call_mojo_column_profile(_sample_profile_payload())
 
@@ -124,7 +164,7 @@ async def test_call_mojo_column_profile_raises_when_policy_required(
         raise RuntimeError("profiling boom")
 
     monkeypatch.setattr(data_map.settings, "mojo_profiling_policy", "required")
-    monkeypatch.setattr("apps.api_server.compute.mojo_adapter._invoke_subprocess", _raise)
+    monkeypatch.setattr("apps.api_server.compute.mojo_adapter.invoke_engine", _raise)
 
     with pytest.raises(data_map.MojoInstrumentationError) as excinfo:
         await data_map._call_mojo_column_profile(_sample_profile_payload())
@@ -196,12 +236,12 @@ async def test_infer_schema_returns_disabled_profiling_status_when_policy_disabl
         return []
 
     async def _should_not_run(*_args, **_kwargs):  # type: ignore[no-untyped-def]
-        raise AssertionError("profiling subprocess must not run when disabled")
+        raise AssertionError("profiling engine must not run when disabled")
 
     monkeypatch.setattr(data_map.settings, "mojo_profiling_policy", "disabled")
     monkeypatch.setattr(query_router, "_load_profiled_source", _fake_load_profiled_source)
     monkeypatch.setattr(query_router, "_detect_relations", _fake_relations)
-    monkeypatch.setattr("apps.api_server.compute.mojo_adapter._invoke_subprocess", _should_not_run)
+    monkeypatch.setattr("apps.api_server.compute.mojo_adapter.invoke_engine", _should_not_run)
     query_router._SOURCE_CACHE.clear()
 
     result = await query_router.infer_schema(

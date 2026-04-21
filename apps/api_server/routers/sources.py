@@ -41,6 +41,7 @@ from apps.api_server.routers.data_map import (
     MojoInstrumentationError,
     _build_mojo_column_profile_columns,
     _call_mojo_join_detect,
+    _mojo_column_profile_sample_limits,
     _mojo_profiling_status_from_result,
 )
 from apps.api_server.routers.query import (
@@ -544,12 +545,13 @@ async def _register_source_impl(
 
         # ── Mojo: profile + relation detect (parallel) ────────────────────────
         try:
+            value_limit, string_limit = _mojo_column_profile_sample_limits(len(profile))
             profiler_result, relations = await asyncio.gather(
                 _call_mojo_column_profile(
                     _build_mojo_column_profile_columns(
                         profile,
-                        value_limit=50,
-                        string_limit=50,
+                        value_limit=value_limit,
+                        string_limit=string_limit,
                         include_fill_rate=True,
                     )
                 ),

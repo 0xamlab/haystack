@@ -49,12 +49,10 @@ import io
 import json
 import math
 import re
-import subprocess
 import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
-from pathlib import Path
 from typing import Any
 
 import structlog
@@ -69,6 +67,7 @@ from apps.api_server.routers.data_map import (
     _call_mojo_column_profile,
     _load_source,
     _load_source_table,
+    _mojo_column_profile_sample_limits,
     _mojo_profiling_disabled_status,
     _mojo_profiling_status_from_result,
 )
@@ -719,10 +718,6 @@ def _build_schema_metadata(
         "mojo_profiling_status": profiling_status
         or _mojo_profiling_disabled_status("column_profile", "not_recorded"),
     }
-
-
-BINARY = Path(__file__).parent.parent.parent.parent / "mojo_build" / "simulate"
-
 
 # ── Universal structural roles ─────────────────────────────────────────────────
 
@@ -2506,7 +2501,7 @@ async def _detect_relations(
     col_nums = {col: info.get("numeric", []) for col, info in numeric_cols.items()}
     n_sample = min(
         min((len(v) for v in col_nums.values() if v), default=0),
-        _TARGET_SAMPLES,
+        _relation_detect_sample_limit(len(col_nums)),
     )
     if n_sample < 3:
         return []
@@ -2520,29 +2515,32 @@ async def _detect_relations(
         "min_confidence": min_confidence,
         "columns": cols_payload,
     }
-    loop = asyncio.get_event_loop()
+    try:
+        from apps.api_server.compute.mojo_adapter import invoke_engine
 
-    def _run() -> list[dict]:
-        try:
-            r = subprocess.run(  # noqa: S603 - fixed local Mojo binary path
-                [str(BINARY)],
-                input=json.dumps(payload).encode(),
-                capture_output=True,
-                timeout=30,
-            )
-            if r.returncode == 0:
-                return json.loads(r.stdout).get("relationships", [])
-        except Exception as exc:
-            logger.debug("query_relation_detect_error", error=str(exc))
+        result = await invoke_engine(payload)
+        if result is None:
+            return []
+        return result.get("relationships", [])
+    except Exception as exc:
+        logger.debug("query_relation_detect_error", error=str(exc))
         return []
-
-    return await loop.run_in_executor(None, _run)
 
 
 _FAST_SCAN_ROWS = 200  # rows checked in fast path
 _SPARSE_THRESHOLD = 10  # if fewer non-empty values in fast scan → deep scan
 _TARGET_SAMPLES = 500  # non-empty values to collect per column (stop early)
 _NUM_COERCE_CHARS = str.maketrans("", "", ",$% \t")  # strip before float() attempt
+
+
+def _relation_detect_sample_limit(column_count: int) -> int:
+    if column_count >= 128:
+        return 64
+    if column_count >= 64:
+        return 128
+    if column_count >= 32:
+        return 192
+    return _TARGET_SAMPLES
 
 
 def _try_numeric(v: object) -> float | None:
@@ -6187,15 +6185,17 @@ async def query_sources(
     # ── Mojo: profiling + relation detection (concurrent, only for misses) ──
     miss_names = list(parsed_tables.keys())
     if miss_names:
-        profiler_coros = [
-            _call_mojo_column_profile(
-                _build_mojo_column_profile_columns(
-                    profiles[name],
-                    value_limit=50,
-                    string_limit=50,
-                    include_fill_rate=True,
-                )
+        def _adaptive_profile_payload(name: str) -> dict[str, dict[str, Any]]:
+            value_limit, string_limit = _mojo_column_profile_sample_limits(len(profiles[name]))
+            return _build_mojo_column_profile_columns(
+                profiles[name],
+                value_limit=value_limit,
+                string_limit=string_limit,
+                include_fill_rate=True,
             )
+
+        profiler_coros = [
+            _call_mojo_column_profile(_adaptive_profile_payload(name))
             for name in miss_names
         ]
         relation_coros = [_detect_relations(name, profiles) for name in miss_names]
@@ -6815,12 +6815,13 @@ async def infer_schema(
         arrow_table = loaded.arrow_table
 
         try:
+            value_limit, string_limit = _mojo_column_profile_sample_limits(len(profile))
             profiler_result, rels = await asyncio.gather(
                 _call_mojo_column_profile(
                     _build_mojo_column_profile_columns(
                         profile,
-                        value_limit=50,
-                        string_limit=50,
+                        value_limit=value_limit,
+                        string_limit=string_limit,
                         include_fill_rate=True,
                     )
                 ),

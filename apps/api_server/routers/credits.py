@@ -184,11 +184,16 @@ async def _get_issued(
         await r.aclose()
         if val is not None:
             return int(val)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug(
+            "credits_issued_redis_read_failed",
+            org_id=str(org_id),
+            billing_period=billing_period,
+            error=str(exc),
+        )
 
     # Redis unavailable — fall back to DB count
-    from sqlalchemy import func
+    from sqlalchemy import func, select
 
     from apps.api_server.models.usage_record import UsageRecord
     result = await db.execute(
@@ -217,8 +222,14 @@ async def _increment_issued(
             await r.expire(redis_key, _COUNTER_TTL)
         await r.aclose()
         return
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug(
+            "credits_issued_redis_increment_failed",
+            org_id=str(org_id),
+            billing_period=billing_period,
+            amount=amount,
+            error=str(exc),
+        )
 
     # Redis unavailable — persist as a usage_record (approximate but durable)
     from apps.api_server.models.usage_record import UsageEndpoint, UsageRecord
