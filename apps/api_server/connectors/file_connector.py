@@ -12,6 +12,7 @@ from apps.api_server.services.columnar_loader import (
     records_to_arrow_table,
 )
 from apps.api_server.services.data_coercion import (
+    _coerce_text_scalar,
     coerce_scalar,
     is_identifier_field,
     parse_delimited_records,
@@ -38,20 +39,30 @@ class FileConnector(BaseConnector):
     """
 
     connector_type: str = "file"
+    _COERCION_CACHE_MAX_ENTRIES = 1024
+    _COERCION_CACHE_MAX_VALUE_LEN = 128
+    _CACHE_MISS = object()
 
-    async def fetch_data(self) -> list[dict[str, Any]]:
-        file_type: str = self.config.get("file_type", "csv").lower()
-        content: str = self.config.get("content", "")
-        file_path: str = self.config.get("file_path", "")
-
+    @staticmethod
+    def _load_content(file_type: str, content: str | bytes, file_path: str) -> str | bytes:
         if file_path and not content:
             mode = "rb" if file_type in ("excel", "parquet") else "r"
             with open(file_path, mode) as f:
-                raw = f.read()
-            if isinstance(raw, bytes):
-                content = base64.b64encode(raw).decode()
-            else:
-                content = raw
+                return f.read()
+        return content
+
+    @staticmethod
+    def _decode_binary_content(content_b64: str | bytes) -> bytes:
+        if isinstance(content_b64, bytes):
+            return content_b64
+        return base64.b64decode(content_b64)
+
+    async def fetch_data(self) -> list[dict[str, Any]]:
+        file_type: str = self.config.get("file_type", "csv").lower()
+        content: str | bytes = self.config.get("content", "")
+        file_path: str = self.config.get("file_path", "")
+
+        content = self._load_content(file_type, content, file_path)
 
         if not content:
             return []
@@ -71,17 +82,10 @@ class FileConnector(BaseConnector):
 
     async def fetch_table(self) -> Any | None:
         file_type: str = self.config.get("file_type", "csv").lower()
-        content: str = self.config.get("content", "")
+        content: str | bytes = self.config.get("content", "")
         file_path: str = self.config.get("file_path", "")
 
-        if file_path and not content:
-            mode = "rb" if file_type in ("excel", "parquet") else "r"
-            with open(file_path, mode) as f:
-                raw = f.read()
-            if isinstance(raw, bytes):
-                content = base64.b64encode(raw).decode()
-            else:
-                content = raw
+        content = self._load_content(file_type, content, file_path)
 
         if not content:
             return None
@@ -111,7 +115,7 @@ class FileConnector(BaseConnector):
             import pyarrow as pa
             import pyarrow.parquet as pq
 
-            raw = base64.b64decode(content)
+            raw = self._decode_binary_content(content)
             initialize_pyarrow_parquet_runtime()
             return pq.read_table(pa.BufferReader(raw))
         return None
@@ -119,7 +123,7 @@ class FileConnector(BaseConnector):
     # ── Parsers ───────────────────────────────────────────────────────────────
 
     @staticmethod
-    def _open_excel_sheet(content_b64: str, sheet: int | str = 0) -> tuple[Any, Any]:
+    def _open_excel_sheet(content_b64: str | bytes, sheet: int | str = 0) -> tuple[Any, Any]:
         try:
             import openpyxl  # lazy — optional dependency
         except ImportError as exc:
@@ -127,7 +131,7 @@ class FileConnector(BaseConnector):
                 "Excel support requires openpyxl: pip install openpyxl"
             ) from exc
 
-        raw = base64.b64decode(content_b64)
+        raw = FileConnector._decode_binary_content(content_b64)
         wb = openpyxl.load_workbook(
             io.BytesIO(raw),
             read_only=True,
@@ -145,24 +149,121 @@ class FileConnector(BaseConnector):
         ]
 
     @staticmethod
-    def _coerce_excel_record_value(field_name: str, value: Any) -> Any:
+    def _cacheable_excel_text_value(value: Any) -> str | None:
+        if not isinstance(value, str):
+            return None
+        cache_key = value.strip()
+        if cache_key == "" or len(cache_key) > FileConnector._COERCION_CACHE_MAX_VALUE_LEN:
+            return None
+        return cache_key
+
+    @staticmethod
+    def _coerce_excel_record_value(
+        field_name: str,
+        value: Any,
+        *,
+        preserve_identifier_field: bool | None = None,
+    ) -> Any:
         if value is None:
             return ""
         if is_identifier_field(field_name) and isinstance(value, int | float):
             if isinstance(value, float) and value.is_integer():
                 return str(int(value))
             return str(value)
+        if isinstance(value, str):
+            preserve_identifiers = (
+                is_identifier_field(field_name)
+                if preserve_identifier_field is None
+                else preserve_identifier_field
+            )
+            return _coerce_text_scalar(
+                field_name,
+                value.strip(),
+                preserve_identifiers=preserve_identifiers,
+            )
         return coerce_scalar(field_name, value, preserve_identifiers=True)
 
     @staticmethod
-    def _coerce_excel_arrow_value(field_name: str, value: Any) -> Any:
+    def _coerce_excel_arrow_value(
+        field_name: str,
+        value: Any,
+        *,
+        preserve_identifier_field: bool | None = None,
+    ) -> Any:
         if value is None:
             return None
         if is_identifier_field(field_name) and isinstance(value, int | float):
             if isinstance(value, float) and value.is_integer():
                 return str(int(value))
             return str(value)
+        if isinstance(value, str):
+            preserve_identifiers = (
+                is_identifier_field(field_name)
+                if preserve_identifier_field is None
+                else preserve_identifier_field
+            )
+            coerced = _coerce_text_scalar(
+                field_name,
+                value.strip(),
+                preserve_identifiers=preserve_identifiers,
+            )
+            return None if coerced == "" else coerced
         return normalize_scalar_for_arrow(field_name, value)
+
+    @staticmethod
+    def _coerce_excel_record_value_cached(
+        field_name: str,
+        value: Any,
+        *,
+        preserve_identifier_field: bool,
+        cache: dict[str, Any],
+    ) -> Any:
+        cache_key = FileConnector._cacheable_excel_text_value(value)
+        if cache_key is None:
+            return FileConnector._coerce_excel_record_value(
+                field_name,
+                value,
+                preserve_identifier_field=preserve_identifier_field,
+            )
+        cached = cache.get(cache_key, FileConnector._CACHE_MISS)
+        if cached is not FileConnector._CACHE_MISS:
+            return cached
+        coerced = _coerce_text_scalar(
+            field_name,
+            cache_key,
+            preserve_identifiers=preserve_identifier_field,
+        )
+        if len(cache) < FileConnector._COERCION_CACHE_MAX_ENTRIES:
+            cache[cache_key] = coerced
+        return coerced
+
+    @staticmethod
+    def _coerce_excel_arrow_value_cached(
+        field_name: str,
+        value: Any,
+        *,
+        preserve_identifier_field: bool,
+        cache: dict[str, Any],
+    ) -> Any:
+        cache_key = FileConnector._cacheable_excel_text_value(value)
+        if cache_key is None:
+            return FileConnector._coerce_excel_arrow_value(
+                field_name,
+                value,
+                preserve_identifier_field=preserve_identifier_field,
+            )
+        cached = cache.get(cache_key, FileConnector._CACHE_MISS)
+        if cached is not FileConnector._CACHE_MISS:
+            return cached
+        coerced = _coerce_text_scalar(
+            field_name,
+            cache_key,
+            preserve_identifiers=preserve_identifier_field,
+        )
+        normalized = None if coerced == "" else coerced
+        if len(cache) < FileConnector._COERCION_CACHE_MAX_ENTRIES:
+            cache[cache_key] = normalized
+        return normalized
 
     @staticmethod
     def _parse_csv(content: str, delimiter: str = ",") -> list[dict[str, Any]]:
@@ -199,32 +300,46 @@ class FileConnector(BaseConnector):
         return [_flatten_dict(r) for r in data if isinstance(r, dict)]
 
     @staticmethod
-    def _parse_excel(content_b64: str, sheet: int | str = 0) -> list[dict[str, Any]]:
+    def _parse_excel(content_b64: str | bytes, sheet: int | str = 0) -> list[dict[str, Any]]:
         wb, ws = FileConnector._open_excel_sheet(content_b64, sheet=sheet)
         try:
-            rows = ws.iter_rows(values_only=True)
+            rows = ws.values
             try:
                 headers = FileConnector._excel_headers(next(rows))
             except StopIteration:
                 return []
 
+            header_count = len(headers)
+            identifier_fields = [
+                bool(header) and is_identifier_field(header)
+                for header in headers
+            ]
+            coercion_caches: list[dict[str, Any]] = [{} for _ in headers]
             records: list[dict[str, Any]] = []
             for row in rows:
                 rec: dict[str, Any] = {}
-                for header, value in zip(headers, row, strict=False):
-                    rec[header] = FileConnector._coerce_excel_record_value(header, value)
+                row_len = len(row)
+                for idx in range(header_count):
+                    header = headers[idx]
+                    value = row[idx] if idx < row_len else None
+                    rec[header] = FileConnector._coerce_excel_record_value_cached(
+                        header,
+                        value,
+                        preserve_identifier_field=identifier_fields[idx],
+                        cache=coercion_caches[idx],
+                    )
                 records.append(rec)
             return records
         finally:
             wb.close()
 
     @staticmethod
-    def _excel_to_arrow_table(content_b64: str, sheet: int | str = 0) -> Any | None:
+    def _excel_to_arrow_table(content_b64: str | bytes, sheet: int | str = 0) -> Any | None:
         import pyarrow as pa
 
         wb, ws = FileConnector._open_excel_sheet(content_b64, sheet=sheet)
         try:
-            rows = ws.iter_rows(values_only=True)
+            rows = ws.values
             try:
                 headers = FileConnector._excel_headers(next(rows))
             except StopIteration:
@@ -239,13 +354,27 @@ class FileConnector(BaseConnector):
                 if last_index[header] == index
             ]
             final_indexes = [last_index[header] for header in final_headers]
+            identifier_fields = [
+                bool(header) and is_identifier_field(header)
+                for header in final_headers
+            ]
             columns: dict[str, list[Any]] = {header: [] for header in final_headers}
+            appenders = [columns[header].append for header in final_headers]
+            coercion_caches: list[dict[str, Any]] = [{} for _ in final_headers]
+            header_count = len(final_headers)
 
             for row in rows:
-                for header, index in zip(final_headers, final_indexes, strict=True):
-                    value = row[index] if index < len(row) else None
-                    columns[header].append(
-                        FileConnector._coerce_excel_arrow_value(header, value)
+                row_len = len(row)
+                for idx in range(header_count):
+                    index = final_indexes[idx]
+                    value = row[index] if index < row_len else None
+                    appenders[idx](
+                        FileConnector._coerce_excel_arrow_value_cached(
+                            final_headers[idx],
+                            value,
+                            preserve_identifier_field=identifier_fields[idx],
+                            cache=coercion_caches[idx],
+                        )
                     )
 
             arrays: dict[str, Any] = {}
@@ -262,7 +391,7 @@ class FileConnector(BaseConnector):
             wb.close()
 
     @staticmethod
-    def _parse_parquet(content_b64: str) -> list[dict[str, Any]]:
+    def _parse_parquet(content_b64: str | bytes) -> list[dict[str, Any]]:
         try:
             import pyarrow as pa
             import pyarrow.parquet as pq  # lazy — optional dependency
@@ -271,7 +400,7 @@ class FileConnector(BaseConnector):
                 "Parquet support requires pyarrow: pip install pyarrow"
             ) from exc
 
-        raw = base64.b64decode(content_b64)
+        raw = FileConnector._decode_binary_content(content_b64)
         initialize_pyarrow_parquet_runtime()
         table = pq.read_table(pa.BufferReader(raw))
         return table.to_pydict() and [

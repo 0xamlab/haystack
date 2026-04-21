@@ -48,6 +48,7 @@ secrets/
 mojo/engine/main.mojo
 mojo/engine/*.mojo
 mojo/bindings/python_adapter.py
+!mojo/bindings/python_adapter.py
 
 # Mojo build artifacts (compiled binary distributed via releases, not repo)
 mojo_build/

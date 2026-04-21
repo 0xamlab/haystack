@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import base64
 import io
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
+from apps.api_server.connectors import file_connector as file_connector_module
 from apps.api_server.connectors.cloud_connector import AzureBlobConnector, GCSConnector, S3Connector
 from apps.api_server.connectors.file_connector import FileConnector
 from apps.api_server.connectors.rest_connector import RESTConnector
@@ -39,6 +41,10 @@ def _tiny_excel_b64() -> str:
     buf = io.BytesIO()
     wb.save(buf)
     return base64.b64encode(buf.getvalue()).decode()
+
+
+def _write_tiny_excel(path: Path) -> None:
+    path.write_bytes(base64.b64decode(_tiny_excel_b64()))
 
 
 @pytest.mark.asyncio
@@ -79,6 +85,76 @@ async def test_file_connector_fetch_table_supports_excel_without_row_materializa
     assert table.to_pylist() == [
         {"part_number": "00123", "measure_total": 10, "region": "NE"},
         {"part_number": "00456", "measure_total": 20, "region": "SW"},
+    ]
+
+
+@pytest.mark.asyncio
+async def test_file_connector_fetch_table_uses_raw_excel_bytes_for_file_path(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import pyarrow as pa
+
+    workbook_path = tmp_path / "tiny.xlsx"
+    _write_tiny_excel(workbook_path)
+    seen: dict[str, object] = {}
+
+    def _capture(content: str | bytes, sheet: int | str = 0):  # type: ignore[no-untyped-def]
+        seen["content_type"] = type(content)
+        seen["sheet"] = sheet
+        return pa.table({"part_number": ["00123"]})
+
+    monkeypatch.setattr(FileConnector, "_excel_to_arrow_table", staticmethod(_capture))
+
+    connector = FileConnector(
+        {
+            "file_type": "excel",
+            "file_path": str(workbook_path),
+        }
+    )
+
+    table = await connector.fetch_table()
+
+    assert table is not None
+    assert table.num_rows == 1
+    assert seen == {"content_type": bytes, "sheet": 0}
+
+
+@pytest.mark.asyncio
+async def test_file_connector_fetch_table_caches_repeated_excel_text_coercions(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import openpyxl
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.append(["region", "status"])
+    ws.append(["NE", "Open"])
+    ws.append(["NE", "Open"])
+    ws.append(["NE", "Open"])
+    buf = io.BytesIO()
+    wb.save(buf)
+    workbook_b64 = base64.b64encode(buf.getvalue()).decode()
+    calls: list[tuple[str, str, bool]] = []
+
+    def _fake_text_coerce(field_name: str, value: str, *, preserve_identifiers: bool):  # type: ignore[no-untyped-def]
+        calls.append((field_name, value, preserve_identifiers))
+        return value
+
+    monkeypatch.setattr(file_connector_module, "_coerce_text_scalar", _fake_text_coerce)
+
+    connector = FileConnector({"file_type": "excel", "content": workbook_b64})
+    table = await connector.fetch_table()
+
+    assert table is not None
+    assert table.to_pylist() == [
+        {"region": "NE", "status": "Open"},
+        {"region": "NE", "status": "Open"},
+        {"region": "NE", "status": "Open"},
+    ]
+    assert calls == [
+        ("region", "NE", False),
+        ("status", "Open", False),
     ]
 
 

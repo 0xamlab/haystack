@@ -2910,7 +2910,7 @@ class AutoPlanner:
         metadata_only = str(candidate.get("evidence_source", "") or "") == "registry"
         if left_source and right_source and left_key_raw and right_key_raw:
             if metadata_only:
-                overlap = max(0.0, min(float(candidate.get("overlap", 0.0) or 0.0), 1.0))
+                overlap = max(0.0, min(float(candidate.get("overlap", 0.5) or 0.5), 1.0))
                 effective *= 0.72 + 0.28 * overlap
                 if card in {"", "one_to_one", "many_to_one"}:
                     stability = 1.0
@@ -2966,9 +2966,12 @@ class AutoPlanner:
                 left_key_raw,
                 right_key_raw,
             )
-            if max(left_unique_count, right_unique_count) <= 20:
+            known_unique_counts = [
+                count for count in (left_unique_count, right_unique_count) if count > 0
+            ]
+            if known_unique_counts and max(known_unique_counts) <= 20:
                 effective *= 0.82
-            elif max(left_unique_count, right_unique_count) <= 100:
+            elif known_unique_counts and max(known_unique_counts) <= 100:
                 effective *= 0.92
         if penalty < 1.0 and left_key and right_key and left_key == right_key:
             effective += 0.06
@@ -3024,7 +3027,7 @@ class AutoPlanner:
                     "source_b": right_source,
                     "confidence": float(conn.get("confidence", 0.0) or 0.0),
                     "cardinality": str(conn.get("cardinality", "") or ""),
-                    "overlap": float(conn.get("overlap", 0.0) or 0.0),
+                    "overlap": float(conn.get("overlap", 0.5) or 0.5),
                     "evidence_source": "registry",
                 })
             elif src_a == right_source and src_b == left_source:
@@ -3037,7 +3040,7 @@ class AutoPlanner:
                     "cardinality": self._reverse_join_cardinality(
                         str(conn.get("cardinality", "") or "")
                     ),
-                    "overlap": float(conn.get("overlap", 0.0) or 0.0),
+                    "overlap": float(conn.get("overlap", 0.5) or 0.5),
                     "evidence_source": "registry",
                 })
         matches.sort(key=lambda x: x.get("confidence", 0.0), reverse=True)

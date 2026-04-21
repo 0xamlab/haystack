@@ -23,6 +23,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 # Set test environment before importing app
 os.environ.setdefault("API_ENV", "development")
+os.environ.setdefault("PYTEST_RUNNING", "1")
 os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://angel:@localhost:5432/decision_engine")
 os.environ.setdefault("DATABASE_URL_SYNC", "postgresql://angel:@localhost:5432/decision_engine")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/1")  # DB 1 for tests
