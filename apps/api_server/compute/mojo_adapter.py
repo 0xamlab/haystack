@@ -17,6 +17,7 @@ import asyncio
 import importlib.util
 import json
 import os
+import subprocess
 from collections.abc import Callable
 from functools import lru_cache
 from pathlib import Path
@@ -143,6 +144,63 @@ async def _invoke_python_fallback(payload: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
+def _invoke_python_fallback_sync(payload: dict[str, Any]) -> dict[str, Any]:
+    engine_type = str(payload.get("engine_type") or "monte_carlo")
+    if not _supports_python_fallback(payload):
+        raise MojoEngineError(
+            f"Python fallback does not support engine_type '{engine_type}'.",
+            exit_code=1,
+        )
+
+    try:
+        run_simulation = _load_python_fallback_runner()
+    except MojoEngineError:
+        raise
+    except Exception as exc:
+        raise MojoEngineError(
+            "Python simulation fallback is unavailable. Ensure "
+            f"`{_PYTHON_ADAPTER_PATH}` is loadable or build the native engine.",
+            exit_code=1,
+        ) from exc
+
+    raw_result = run_simulation(payload)
+    if not isinstance(raw_result, dict):
+        raise MojoEngineError(
+            "Python simulation fallback returned a non-object response.",
+            exit_code=1,
+        )
+
+    result = dict(raw_result)
+    result.setdefault("simulation_model", engine_type)
+    result.setdefault("engine_type", engine_type)
+    return result
+
+
+def _decode_engine_output(stdout: bytes, stderr: bytes) -> dict[str, Any]:
+    raw_output = stdout.decode()
+    last_line = ""
+    for line in raw_output.strip().splitlines():
+        stripped = line.strip()
+        if stripped:
+            last_line = stripped
+
+    try:
+        result = json.loads(last_line)
+    except json.JSONDecodeError as exc:
+        raise MojoEngineError(
+            f"Mojo engine returned invalid JSON: {exc}",
+            stderr=stderr.decode(errors="replace"),
+        ) from exc
+
+    if isinstance(result, dict) and "error" in result:
+        raise MojoEngineError(
+            str(result["error"]),
+            stderr=stderr.decode(errors="replace"),
+            exit_code=1,
+        )
+    return result
+
+
 async def invoke_engine(payload: dict[str, Any]) -> dict[str, Any]:
     """
     Invoke the Mojo simulation engine.
@@ -199,6 +257,57 @@ async def invoke_engine(payload: dict[str, Any]) -> dict[str, Any]:
     return await _invoke_subprocess(payload)
 
 
+def invoke_engine_sync(payload: dict[str, Any], *, timeout: float | None = None) -> dict[str, Any]:
+    """
+    Synchronous Mojo invocation for sync planner code running off the event loop.
+
+    This prefers the shared MojoWorkerPool when available, then falls back to
+    the single-use subprocess path under the same runtime policy as invoke_engine().
+    """
+    try:
+        from apps.api_server.compute.mojo_pool import MojoEngineError as PoolError
+        from apps.api_server.compute.mojo_pool import get_pool_sync
+
+        pool = get_pool_sync()
+        try:
+            return pool.invoke_sync(payload, timeout=timeout)
+        except PoolError as exc:
+            err_msg = str(exc)
+            fallbackable = (
+                any(msg in err_msg for msg in _POOL_NOT_RUNNING_MSGS)
+                or "Mojo pool loop is not available" in err_msg
+                or "Mojo pool sync invocation cannot run" in err_msg
+            )
+            if not fallbackable:
+                raise MojoEngineError(
+                    err_msg,
+                    exit_code=getattr(exc, "exit_code", 1),
+                ) from exc
+            if not _ALLOW_SUBPROCESS_FALLBACK:
+                raise MojoEngineError(
+                    f"{err_msg} and MOJO_ALLOW_SUBPROCESS_FALLBACK=false. "
+                    "Cannot serve sync Mojo requests without a running pool.",
+                    exit_code=1,
+                ) from exc
+            logger.debug(
+                "mojo_pool_sync_fallback_to_subprocess",
+                reason=err_msg,
+                allow_fallback=True,
+                engine_type=str(payload.get("engine_type") or "unknown"),
+            )
+    except MojoEngineError:
+        raise
+    except Exception as exc:
+        if not _ALLOW_SUBPROCESS_FALLBACK:
+            raise MojoEngineError(
+                "Mojo pool not initialized and MOJO_ALLOW_SUBPROCESS_FALLBACK=false. "
+                "Cannot serve sync Mojo requests without a running pool.",
+                exit_code=1,
+            ) from exc
+
+    return _invoke_subprocess_sync(payload, timeout=timeout or 60.0)
+
+
 async def _invoke_subprocess(payload: dict[str, Any]) -> dict[str, Any]:
     """Single-use subprocess invocation (fallback only — not used in production)."""
     if not _BINARY_PATH.exists() or not os.access(_BINARY_PATH, os.X_OK):
@@ -240,27 +349,44 @@ async def _invoke_subprocess(payload: dict[str, Any]) -> dict[str, Any]:
             exit_code=proc.returncode or -1,
         )
 
-    # Handle multi-line output (streaming mode emits NDJSON progress + final)
-    raw_output = stdout.decode()
-    last_line = ""
-    for line in raw_output.strip().splitlines():
-        stripped = line.strip()
-        if stripped:
-            last_line = stripped
+    return _decode_engine_output(stdout, stderr)
 
-    try:
-        result = json.loads(last_line)
-    except json.JSONDecodeError as exc:
-        raise MojoEngineError(
-            f"Mojo engine returned invalid JSON: {exc}",
-            stderr=stderr.decode(errors="replace"),
-        ) from exc
 
-    if isinstance(result, dict) and "error" in result:
+def _invoke_subprocess_sync(payload: dict[str, Any], *, timeout: float = 60.0) -> dict[str, Any]:
+    """Single-use synchronous subprocess invocation for sync planner paths."""
+    if not _BINARY_PATH.exists() or not os.access(_BINARY_PATH, os.X_OK):
+        if settings.allow_runtime_fallbacks and _supports_python_fallback(payload):
+            logger.warning(
+                "mojo_binary_missing_using_python_fallback",
+                binary_path=str(_BINARY_PATH),
+                engine_type=str(payload.get("engine_type") or "unknown"),
+                fallback_allowed=True,
+            )
+            return _invoke_python_fallback_sync(payload)
         raise MojoEngineError(
-            str(result["error"]),
-            stderr=stderr.decode(errors="replace"),
-            exit_code=1,
+            f"Mojo binary not found at {_BINARY_PATH}. "
+            "Run `make setup-mojo && make build-mojo` to build the native engine."
         )
 
-    return result
+    payload_bytes = json.dumps(payload).encode()
+    try:
+        proc = subprocess.run(  # noqa: S603 - fixed local binary path discovered by module constant
+            [str(_BINARY_PATH)],
+            input=payload_bytes,
+            capture_output=True,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise MojoEngineError(
+            f"Mojo engine timed out after {timeout}s",
+            exit_code=124,
+        ) from exc
+
+    if proc.returncode != 0:
+        raise MojoEngineError(
+            f"Mojo engine exited with code {proc.returncode}",
+            stderr=proc.stderr.decode(errors="replace"),
+            exit_code=proc.returncode or -1,
+        )
+
+    return _decode_engine_output(proc.stdout, proc.stderr)

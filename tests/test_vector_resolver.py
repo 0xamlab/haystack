@@ -362,7 +362,43 @@ class TestPlannerIntegration:
         assert "column_rank" in engines
         assert "column_rank" in seen_engines
 
-    def test_planner_call_mojo_prefers_resident_transport_for_small_supported_engine(
+    def test_planner_call_mojo_auto_prefers_shared_engine_transport(
+        self,
+        tmp_path,
+        monkeypatch,
+    ):
+        import apps.api_server.services.auto_planner as auto_planner
+
+        binary = tmp_path / "simulate"
+        binary.write_text("")
+        binary.chmod(0o755)
+        planner = auto_planner.AutoPlanner(data_dir=tmp_path, mojo_binary=binary)
+
+        seen = {}
+
+        def _fake_invoke_engine_sync(payload, *, timeout=None):
+            seen["payload"] = payload
+            seen["timeout"] = timeout
+            return {"ok": True}
+
+        def _unexpected_resident(*_args, **_kwargs):
+            raise AssertionError("resident transport should not run when shared engine transport succeeds")
+
+        def _unexpected_subprocess(*_args, **_kwargs):
+            raise AssertionError("subprocess transport should not run when shared engine transport succeeds")
+
+        monkeypatch.setattr(auto_planner, "_PLANNER_MOJO_TRANSPORT", "auto")
+        monkeypatch.setattr(auto_planner, "invoke_engine_sync", _fake_invoke_engine_sync)
+        monkeypatch.setattr(auto_planner, "invoke_planner_mojo", _unexpected_resident)
+        monkeypatch.setattr(auto_planner.subprocess, "run", _unexpected_subprocess)
+
+        result = planner._call_mojo({"engine_type": "field_map", "data": {"x": [1.0, 2.0]}}, timeout=7)
+
+        assert result == {"ok": True}
+        assert seen["payload"]["engine_type"] == "field_map"
+        assert seen["timeout"] == 7.0
+
+    def test_planner_call_mojo_resident_mode_prefers_resident_transport(
         self,
         tmp_path,
         monkeypatch,
@@ -382,10 +418,14 @@ class TestPlannerIntegration:
             seen["timeout"] = timeout
             return {"ok": True}
 
+        def _unexpected_shared(*_args, **_kwargs):
+            raise AssertionError("shared engine transport should stay disabled in resident mode")
+
         def _unexpected_subprocess(*_args, **_kwargs):
             raise AssertionError("subprocess transport should not run when resident transport succeeds")
 
-        monkeypatch.setattr(auto_planner, "_PLANNER_MOJO_TRANSPORT", "auto")
+        monkeypatch.setattr(auto_planner, "_PLANNER_MOJO_TRANSPORT", "resident")
+        monkeypatch.setattr(auto_planner, "invoke_engine_sync", _unexpected_shared)
         monkeypatch.setattr(auto_planner, "invoke_planner_mojo", _fake_invoke)
         monkeypatch.setattr(auto_planner.subprocess, "run", _unexpected_subprocess)
 
@@ -396,7 +436,7 @@ class TestPlannerIntegration:
         assert seen["binary_path"] == binary
         assert seen["timeout"] == 7.0
 
-    def test_planner_call_mojo_can_fallback_to_subprocess(self, tmp_path, monkeypatch):
+    def test_planner_call_mojo_auto_can_fallback_to_subprocess(self, tmp_path, monkeypatch):
         import apps.api_server.services.auto_planner as auto_planner
 
         binary = tmp_path / "simulate"
@@ -404,27 +444,26 @@ class TestPlannerIntegration:
         binary.chmod(0o755)
         planner = auto_planner.AutoPlanner(data_dir=tmp_path, mojo_binary=binary)
 
-        def _missing_resident(_payload, *, binary_path, timeout=1.0):
-            assert binary_path == binary
+        def _missing_shared(_payload, *, timeout=None):
             assert timeout == 5.0
-            return None
+            raise RuntimeError("pool unavailable")
 
         def _fake_subprocess(_argv, *, input, capture_output, timeout):
             assert timeout == 5
             assert capture_output is True
             payload = json.loads(input.decode())
-            assert payload["engine_type"] == "field_map"
+            assert payload["engine_type"] == "column_match"
             return SimpleNamespace(returncode=0, stdout=b'{"mapped": true}')
 
         monkeypatch.setattr(auto_planner, "_PLANNER_MOJO_TRANSPORT", "auto")
-        monkeypatch.setattr(auto_planner, "invoke_planner_mojo", _missing_resident)
+        monkeypatch.setattr(auto_planner, "invoke_engine_sync", _missing_shared)
         monkeypatch.setattr(auto_planner.subprocess, "run", _fake_subprocess)
 
-        result = planner._call_mojo({"engine_type": "field_map"}, timeout=5)
+        result = planner._call_mojo({"engine_type": "column_match"}, timeout=5)
 
         assert result == {"mapped": True}
 
-    def test_planner_call_mojo_auto_keeps_large_join_detect_on_subprocess(
+    def test_planner_call_mojo_auto_prefers_shared_transport_for_join_detect(
         self,
         tmp_path,
         monkeypatch,
@@ -436,19 +475,23 @@ class TestPlannerIntegration:
         binary.chmod(0o755)
         planner = auto_planner.AutoPlanner(data_dir=tmp_path, mojo_binary=binary)
 
-        def _unexpected_resident(*_args, **_kwargs):
-            raise AssertionError("resident transport should stay disabled for large join_detect payloads")
+        seen = {}
 
-        def _fake_subprocess(_argv, *, input, capture_output, timeout):
-            assert timeout == 4
-            assert capture_output is True
-            payload = json.loads(input.decode())
-            assert payload["engine_type"] == "join_detect"
-            return SimpleNamespace(returncode=0, stdout=b'{"join_keys": []}')
+        def _fake_invoke_engine_sync(payload, *, timeout=None):
+            seen["payload"] = payload
+            seen["timeout"] = timeout
+            return {"join_keys": []}
+
+        def _unexpected_resident(*_args, **_kwargs):
+            raise AssertionError("resident transport should stay disabled when shared engine transport succeeds")
+
+        def _unexpected_subprocess(*_args, **_kwargs):
+            raise AssertionError("subprocess transport should stay disabled when shared engine transport succeeds")
 
         monkeypatch.setattr(auto_planner, "_PLANNER_MOJO_TRANSPORT", "auto")
+        monkeypatch.setattr(auto_planner, "invoke_engine_sync", _fake_invoke_engine_sync)
         monkeypatch.setattr(auto_planner, "invoke_planner_mojo", _unexpected_resident)
-        monkeypatch.setattr(auto_planner.subprocess, "run", _fake_subprocess)
+        monkeypatch.setattr(auto_planner.subprocess, "run", _unexpected_subprocess)
 
         result = planner._call_mojo(
             {
@@ -461,6 +504,8 @@ class TestPlannerIntegration:
         )
 
         assert result == {"join_keys": []}
+        assert seen["payload"]["engine_type"] == "join_detect"
+        assert seen["timeout"] == 4.0
 
     def test_planner_prefers_mojo_column_rank_when_available(self, monkeypatch):
         import apps.api_server.services.auto_planner as auto_planner

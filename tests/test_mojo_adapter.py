@@ -199,3 +199,42 @@ async def test_invoke_engine_routes_inactive_pool_to_fallback_path(
 
     assert result["engine_version"] == "0.1.0-python-fallback"
     assert result["simulation_model"] == "monte_carlo"
+
+
+def test_invoke_engine_sync_prefers_pool_sync(monkeypatch: pytest.MonkeyPatch) -> None:
+    from apps.api_server.compute import mojo_pool
+
+    class _FakePool:
+        def invoke_sync(self, payload: dict[str, object], timeout: float | None = None) -> dict[str, object]:
+            assert timeout == 7.0
+            assert payload["engine_type"] == "field_map"
+            return {"engine_type": "field_map", "mapped": True}
+
+    monkeypatch.setattr(mojo_pool, "get_pool_sync", lambda: _FakePool())
+
+    result = mojo_adapter.invoke_engine_sync({"engine_type": "field_map"}, timeout=7.0)
+
+    assert result == {"engine_type": "field_map", "mapped": True}
+
+
+def test_invoke_engine_sync_routes_inactive_pool_to_sync_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from apps.api_server.compute import mojo_pool
+
+    class _InactivePool:
+        def invoke_sync(self, payload: dict[str, object], timeout: float | None = None) -> dict[str, object]:
+            raise mojo_pool.MojoEngineError("Mojo pool is not running")
+
+    monkeypatch.setattr(mojo_pool, "get_pool_sync", lambda: _InactivePool())
+
+    def _fake_invoke_subprocess_sync(payload: dict[str, object], *, timeout: float = 60.0) -> dict[str, object]:
+        assert payload["engine_type"] == "field_map"
+        assert timeout == 5.0
+        return {"engine_type": "field_map", "mapped": True}
+
+    monkeypatch.setattr(mojo_adapter, "_invoke_subprocess_sync", _fake_invoke_subprocess_sync)
+
+    result = mojo_adapter.invoke_engine_sync({"engine_type": "field_map"}, timeout=5.0)
+
+    assert result == {"engine_type": "field_map", "mapped": True}

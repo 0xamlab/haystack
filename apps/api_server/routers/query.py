@@ -346,7 +346,8 @@ async def _get_registry_planner(
             cached.touch()
             return cached.planner, True, schema_revision
 
-    planner = AutoPlanner.from_registry(
+    planner = await asyncio.to_thread(
+        AutoPlanner.from_registry,
         org_id,
         llm_policy=llm_policy,
         allowed_source_ids=visible_ids,
@@ -366,6 +367,23 @@ async def _get_registry_planner(
         _PLANNER_CACHE[cache_key] = built
 
     return planner, False, schema_revision
+
+
+async def _run_cached_planner_method(
+    planner: Any,
+    method_name: str,
+    *args: Any,
+    **kwargs: Any,
+) -> Any:
+    def _invoke() -> Any:
+        method = getattr(planner, method_name)
+        state_lock = getattr(planner, "_state_lock", None)
+        if state_lock is None:
+            return method(*args, **kwargs)
+        with state_lock:
+            return method(*args, **kwargs)
+
+    return await asyncio.to_thread(_invoke)
 
 
 async def _load_profiled_source(
@@ -4600,7 +4618,9 @@ async def _resolve_registered_intent(
         f"Planner cache {'HIT' if planner_cache_hit else 'MISS'} [{schema_revision[:8]}]",
     ]
 
-    qplan = planner.plan(
+    qplan = await _run_cached_planner_method(
+        planner,
+        "plan",
         metric_hint=metric_hint,
         dim_hint=dim_hint,
         agg=payload.aggregation,
@@ -5883,7 +5903,9 @@ async def query_sources(
             f"Planner cache {'HIT' if planner_cache_hit else 'MISS'} [{schema_revision[:8]}]"
         )
 
-        qplan = planner.plan(
+        qplan = await _run_cached_planner_method(
+            planner,
+            "plan",
             metric_hint=metric_hint,
             dim_hint=dim_hint,
             agg=payload.aggregation,
@@ -5982,7 +6004,9 @@ async def query_sources(
                 planner_mode="registry_planner",
             )
 
-        result, row_count, exec_plan = planner.execute_plan(
+        result, row_count, exec_plan = await _run_cached_planner_method(
+            planner,
+            "execute_plan",
             qplan,
             limit=payload.limit,
             order=payload.order,

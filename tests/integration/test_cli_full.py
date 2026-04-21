@@ -171,7 +171,6 @@ def test_job_submit():
         check("job submit exits 0", r.returncode == 0, r.stderr.strip()[:120])
         out = r.stdout.strip()
         check("job submit outputs job_id or content", bool(out))
-        return out
     finally:
         Path(filepath).unlink(missing_ok=True)
 

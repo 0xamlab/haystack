@@ -139,9 +139,10 @@ def test_run_simulation_job_delay():
         check("run_simulation_job.delay() accepted", False, f"{type(e).__name__}: {e}")
 
 
-def test_redis_reachable():
+def _redis_reachable() -> bool:
     """Verify Redis (Celery broker) is reachable before running broker tests."""
     import socket
+
     host = "localhost"
     port = 6379
     try:
@@ -152,6 +153,10 @@ def test_redis_reachable():
     except (ConnectionRefusedError, OSError) as e:
         check(f"Redis reachable at {host}:{port}", False, str(e))
         return False
+
+
+def test_redis_reachable() -> None:
+    assert _redis_reachable()
 
 
 # ── Runner ────────────────────────────────────────────────────────────────────
@@ -179,7 +184,7 @@ def main() -> None:
     if SKIP_CELERY:
         print(f"  {SKIP}  Skipped (set DE_CELERY=1 to enable)")
     else:
-        redis_ok = test_redis_reachable()
+        redis_ok = _redis_reachable()
         if redis_ok:
             for fn in [test_persist_simulation_delay, test_run_simulation_job_delay]:
                 try:

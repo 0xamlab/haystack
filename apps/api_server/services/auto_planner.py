@@ -20,6 +20,7 @@ import os
 import random
 import re
 import subprocess
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field, replace
@@ -28,6 +29,7 @@ from typing import Any
 
 import structlog
 
+from apps.api_server.compute.mojo_adapter import invoke_engine_sync
 from apps.api_server.routers.data_map import _build_mojo_column_profile_columns
 from apps.api_server.services.data_coercion import parse_delimited_records
 from apps.api_server.services.mojo_column_rank_resolver import (
@@ -42,6 +44,17 @@ _CACHE_VERSION = 2
 _MOJO_COLUMN_RANK_MODE = os.environ.get("ALGENTA_MOJO_COLUMN_RANK_MODE", "auto").lower()
 _PLANNER_MOJO_TRANSPORT = os.environ.get("ALGENTA_PLANNER_MOJO_TRANSPORT", "auto").lower()
 _PLANNER_MOJO_RESIDENT_ENGINES = frozenset({"field_map", "relation_detect", "string_similarity"})
+_PLANNER_MOJO_SHARED_ENGINES = frozenset(
+    {
+        "column_profile",
+        "relation_detect",
+        "field_map",
+        "column_match",
+        "join_detect",
+        "string_similarity",
+        "monte_carlo",
+    }
+)
 _PLANNER_MOJO_MAX_RESIDENT_PAYLOAD_BYTES = int(
     os.environ.get("ALGENTA_PLANNER_MOJO_MAX_RESIDENT_PAYLOAD_BYTES", "8192"),
 )
@@ -599,6 +612,9 @@ class AutoPlanner:
             tuple[str, str | None],
             tuple[str, str, float, list[str]],
         ] = {}
+        # Cached planners are shared across requests, so public execution
+        # entrypoints must serialize mutation of internal caches and tables.
+        self._state_lock = threading.RLock()
         # Vector resolver — built once after graph is populated, used in resolve_metric/dimension
         self._vector_resolver: Any = None
 
@@ -627,6 +643,37 @@ class AutoPlanner:
         if not self._mojo_binary:
             return None
         engine_type = str(payload.get("engine_type", "unknown"))
+        should_try_pool = (
+            _PLANNER_MOJO_TRANSPORT in {"auto", "pool"}
+            and engine_type in _PLANNER_MOJO_SHARED_ENGINES
+        )
+        if should_try_pool:
+            try:
+                result = invoke_engine_sync(payload, timeout=float(timeout))
+                if result is not None and "error" not in result:
+                    return result
+                if _PLANNER_MOJO_TRANSPORT == "pool":
+                    return None
+                logger.debug(
+                    "auto_planner_mojo_transport_fallback",
+                    engine=engine_type,
+                    transport="pool_to_legacy",
+                )
+            except Exception as exc:
+                if _PLANNER_MOJO_TRANSPORT == "pool":
+                    logger.debug(
+                        "auto_planner_mojo_error",
+                        error=str(exc),
+                        engine=engine_type,
+                        transport="pool",
+                    )
+                    return None
+                logger.debug(
+                    "auto_planner_mojo_transport_fallback",
+                    error=str(exc),
+                    engine=engine_type,
+                    transport="pool_to_legacy",
+                )
         should_try_resident = _PLANNER_MOJO_TRANSPORT == "resident" or (
             _PLANNER_MOJO_TRANSPORT == "auto"
             and _should_use_resident_planner_mojo(engine_type, payload)

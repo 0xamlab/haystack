@@ -1,5 +1,5 @@
 """Team management endpoints — /v1/team, /v1/audit-logs."""
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Annotated
 from uuid import UUID, uuid4
 
@@ -64,7 +64,7 @@ class TeamListResponse(BaseModel):
 
 
 def _generate_demo_audit_log(org_id: UUID) -> list[AuditLogEntry]:
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     return [
         AuditLogEntry(
             id=str(uuid4()),

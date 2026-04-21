@@ -22,10 +22,12 @@ Phase 1: MOJO_ALLOW_SUBPROCESS_FALLBACK env var controls fallback behavior.
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
 import json
 import os
 import struct
 import tempfile
+import threading
 import time
 import uuid
 from asyncio import Queue
@@ -229,6 +231,8 @@ class MojoWorkerPool:
         self._workers:    list[_Worker] = []
         self._queue:      Queue[_Worker] = Queue()
         self._monitor:    asyncio.Task[None] | None = None
+        self._loop:       asyncio.AbstractEventLoop | None = None
+        self._loop_thread_id: int | None = None
         self._running     = False
 
     async def _binary_supports_server_mode(self) -> bool:
@@ -370,6 +374,8 @@ class MojoWorkerPool:
             self._running = False
             return
 
+        self._loop = asyncio.get_running_loop()
+        self._loop_thread_id = threading.get_ident()
         self._running = True
         logger.info("mojo_pool_starting", size=self._size, binary=str(_BINARY_PATH))
         logger.info("mojo_runtime_mode", mode="pool",
@@ -449,6 +455,8 @@ class MojoWorkerPool:
     async def stop(self) -> None:
         """Stop all workers and cancel health monitor."""
         self._running = False
+        self._loop = None
+        self._loop_thread_id = None
 
         if self._monitor:
             self._monitor.cancel()
@@ -474,6 +482,38 @@ class MojoWorkerPool:
     @property
     def available(self) -> int:
         return self._queue.qsize()
+
+    def invoke_sync(self, payload: dict[str, Any], timeout: float | None = None) -> dict[str, Any]:
+        """
+        Synchronous bridge into the running Mojo pool.
+
+        Used by synchronous planner code that is intentionally offloaded to a
+        worker thread. This must never block the pool's owning event-loop
+        thread; callers on that thread must use the async invoke path directly.
+        """
+        if not self._running:
+            raise MojoEngineError("Mojo pool is not running")
+        if self._loop is None or self._loop.is_closed():
+            raise MojoEngineError("Mojo pool loop is not available")
+        if self._loop_thread_id == threading.get_ident():
+            raise MojoEngineError(
+                "Mojo pool sync invocation cannot run on the pool event-loop thread"
+            )
+
+        wait_timeout = timeout if timeout is not None else (ACQUIRE_TIMEOUT_S + COMPUTE_TIMEOUT_S)
+        try:
+            future = asyncio.run_coroutine_threadsafe(self.invoke(payload), self._loop)
+        except RuntimeError as exc:
+            raise MojoEngineError("Mojo pool loop is not available") from exc
+
+        try:
+            return future.result(timeout=wait_timeout)
+        except concurrent.futures.TimeoutError as exc:
+            future.cancel()
+            raise MojoEngineError(
+                f"Mojo pool sync invoke timed out after {wait_timeout}s",
+                exit_code=124,
+            ) from exc
 
 
 # ─── Module-level singleton ────────────────────────────────────────────────────

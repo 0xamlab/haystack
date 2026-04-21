@@ -2,7 +2,7 @@
 # Install with: pip3 install -r requirements-dev.txt
 
 # ─── Export API optional dependencies ─────────────────────────────────────
-# openpyxl>=3.1.0                       # xlsx export: pip install openpyxl
+openpyxl==3.1.5                         # xlsx export + Excel-path test coverage
 # fpdf2>=2.7.0                          # pdf export:  pip install fpdf2
 
 # ─── Data Connector SDKs (install for production use) ─────────────────────
