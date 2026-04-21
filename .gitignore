@@ -52,6 +52,9 @@ mojo/bindings/python_adapter.py
 
 # Mojo build artifacts (compiled binary distributed via releases, not repo)
 mojo_build/
+!mojo_build/
+mojo_build/*
+!mojo_build/.gitkeep
 *.mojopkg
 
 # Pixi/Mojo environment (local, not committed — created by make setup-mojo)

@@ -137,6 +137,30 @@ def _coerce_scalar_for_arrow_cached(
     return coerced
 
 
+def _build_delimited_column_handler(
+    field_name: str,
+    *,
+    preserve_identifier_field: bool,
+    cache: dict[str, Any] | None = None,
+):
+    if preserve_identifier_field:
+        def _handle_identifier(value: Any) -> Any:
+            return _normalized_delimited_scalar(value)
+        return _handle_identifier
+
+    assert cache is not None
+
+    def _handle_cached(value: Any) -> Any:
+        return _coerce_scalar_for_arrow_cached(
+            field_name,
+            value,
+            preserve_identifier_field=False,
+            cache=cache,
+        )
+
+    return _handle_cached
+
+
 def records_to_arrow_table(
     records: list[dict[str, Any]],
     *,
@@ -195,19 +219,22 @@ def _python_delimited_text_to_arrow_table(content: str, *, delimiter: str) -> An
     column_values: list[list[Any]] = [[] for _ in field_names]
     appenders = [values.append for values in column_values]
     coercion_caches: list[dict[str, Any]] = [{} for _ in headers]
+    handlers = [
+        _build_delimited_column_handler(
+            field_name,
+            preserve_identifier_field=identifier_fields[idx],
+            cache=None if identifier_fields[idx] else coercion_caches[idx],
+        )
+        for idx, field_name in enumerate(field_names)
+    ]
     header_count = len(field_names)
     for row in reader:
         row_len = len(row)
-        for idx in range(header_count):
-            raw_value = row[idx] if idx < row_len else None
-            appenders[idx](
-                _coerce_scalar_for_arrow_cached(
-                    field_names[idx],
-                    raw_value,
-                    preserve_identifier_field=identifier_fields[idx],
-                    cache=coercion_caches[idx],
-                )
-            )
+        shared_count = min(row_len, header_count)
+        for idx in range(shared_count):
+            appenders[idx](handlers[idx](row[idx]))
+        for idx in range(shared_count, header_count):
+            appenders[idx](None)
 
     return pa.table({
         field_name: _to_arrow_array(values)
