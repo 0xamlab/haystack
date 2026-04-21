@@ -997,9 +997,9 @@ async def _call_mojo_field_map(
     if not numeric_fields:
         return None
     try:
-        from apps.api_server.compute.mojo_adapter import _invoke_subprocess
+        from apps.api_server.compute.mojo_adapter import invoke_engine
         payload = {"engine_type": "field_map", "data": numeric_fields}
-        return await _invoke_subprocess(payload)
+        return await invoke_engine(payload)
     except Exception as exc:
         logger.debug("field_map_mojo_error", error=str(exc))
         return None

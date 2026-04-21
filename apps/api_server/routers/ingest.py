@@ -196,10 +196,10 @@ async def _map_via_mojo(
     Returns parsed result dict or None if binary call fails.
     """
     try:
-        from apps.api_server.compute.mojo_adapter import _invoke_subprocess
+        from apps.api_server.compute.mojo_adapter import invoke_engine
         data = dict(numeric_fields)
         payload = {"engine_type": "field_map", "data": data}
-        result = await _invoke_subprocess(payload)
+        result = await invoke_engine(payload)
         return result
     except Exception as exc:
         logger.debug("field_map_mojo_failed", error=str(exc))
