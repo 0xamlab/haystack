@@ -27,6 +27,15 @@ _COERCION_CACHE_MAX_VALUE_LEN = 128
 _CACHE_MISS = object()
 
 
+def _normalized_delimited_scalar(value: Any) -> str | None:
+    if value is None:
+        return None
+    normalized = value.strip() if isinstance(value, str) else str(value).strip()
+    if normalized == "" or normalized.lower() in NULL_LIKE_STRINGS:
+        return None
+    return normalized
+
+
 def normalize_scalar_for_arrow(
     field_name: str,
     value: Any,
@@ -64,9 +73,11 @@ def _coerce_scalar_for_arrow(
     if value is None:
         return None
     if isinstance(value, str):
-        raw = value.strip()
-        if raw == "" or raw.lower() in NULL_LIKE_STRINGS:
+        raw = _normalized_delimited_scalar(value)
+        if raw is None:
             return None
+        if preserve_identifier_field:
+            return raw
         coerced = _coerce_text_scalar(
             field_name,
             raw,
@@ -97,9 +108,11 @@ def _coerce_scalar_for_arrow_cached(
             preserve_identifier_field=preserve_identifier_field,
         )
 
-    cache_key = value.strip()
-    if cache_key == "" or cache_key.lower() in NULL_LIKE_STRINGS:
+    cache_key = _normalized_delimited_scalar(value)
+    if cache_key is None:
         return None
+    if preserve_identifier_field:
+        return cache_key
     if len(cache_key) > _COERCION_CACHE_MAX_VALUE_LEN:
         coerced = _coerce_text_scalar(
             field_name,

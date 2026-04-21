@@ -391,7 +391,6 @@ def test_delimited_text_to_arrow_table_python_fallback_reuses_per_column_coercio
     ]
     assert calls == [
         ("status", "Open"),
-        ("part_number", "00123"),
         ("measure_total", "10"),
     ]
 
