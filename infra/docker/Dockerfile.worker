@@ -13,6 +13,10 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir --prefix=/install -r requirements.txt && \
     pip install --no-cache-dir --prefix=/install "dramatiq[redis]>=1.15"
 
+# Stage repository sources and guarantee optional build directories exist.
+COPY . /build/context/
+RUN mkdir -p /build/context/mojo_build
+
 # ─── Runtime stage ─────────────────────────────────────────────────────────────
 FROM python:3.12-slim AS runtime
 
@@ -26,8 +30,8 @@ RUN groupadd --gid 1001 appgroup && \
 WORKDIR /app
 
 COPY --from=builder /install /usr/local
-COPY apps/ ./apps/
-COPY mojo_build/ ./mojo_build/
+COPY --from=builder /build/context/apps/ ./apps/
+COPY --from=builder /build/context/mojo_build/ ./mojo_build/
 
 RUN chmod +x ./mojo_build/simulate 2>/dev/null || true
 RUN chown -R appuser:appgroup /app
