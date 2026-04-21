@@ -94,7 +94,7 @@ class RunMetadata(BaseModel):
 
 class DecisionEnvelope(BaseModel):
     """Full decision output returned by /v1/simulate, /v1/recommend, and /v1/score."""
-    model_config = ConfigDict(strict=False)
+    model_config = ConfigDict(strict=False, protected_namespaces=())
 
     run_id: uuid.UUID
     status: str = Field(default="completed")

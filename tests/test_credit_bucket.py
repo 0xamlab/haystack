@@ -733,36 +733,54 @@ def test_metering_delta_advances_baseline():
 # 49–50  End-to-end flow
 # ══════════════════════════════════════════════════════════════════════════════
 
-def test_end_to_end_drain_then_block():
+def test_end_to_end_drain_then_block(monkeypatch: pytest.MonkeyPatch):
     """
     Full local flow: seed 3 credits → execute 3 times → 4th call blocked.
     """
     import apps.runtime.credits as cmod
+
+    monkeypatch.delenv("ALGENTA_API_KEY", raising=False)
+    monkeypatch.delenv("DE_API_KEY", raising=False)
+
     store = _tmp_store()
     store.initialize_sync(credits_granted=3, billing_period="2026-04")
     old_store = cmod._store
     cmod._store = store
+
+    async def _noop_refresh() -> None:
+        return None
+
     try:
-        assert run(cmod.consume_credit()) is True    # 2 remaining
-        assert run(cmod.consume_credit()) is True    # 1 remaining
-        assert run(cmod.consume_credit()) is True    # 0 remaining
-        assert run(cmod.consume_credit()) is False   # blocked
+        with patch.object(cmod, "_background_refresh", _noop_refresh):
+            assert run(cmod.consume_credit()) is True    # 2 remaining
+            assert run(cmod.consume_credit()) is True    # 1 remaining
+            assert run(cmod.consume_credit()) is True    # 0 remaining
+            assert run(cmod.consume_credit()) is False   # blocked
     finally:
         cmod._store = old_store
 
 
-def test_end_to_end_refresh_restores_execution():
+def test_end_to_end_refresh_restores_execution(monkeypatch: pytest.MonkeyPatch):
     """
     After exhaustion, applying a refresh batch re-enables execution.
     """
     import apps.runtime.credits as cmod
+
+    monkeypatch.delenv("ALGENTA_API_KEY", raising=False)
+    monkeypatch.delenv("DE_API_KEY", raising=False)
+
     store = _tmp_store()
     store.initialize_sync(credits_granted=1, billing_period="2026-04")
     old_store = cmod._store
     cmod._store = store
+
+    async def _noop_refresh() -> None:
+        return None
+
     try:
-        run(cmod.consume_credit())   # drain to 0
-        assert run(cmod.consume_credit()) is False   # blocked
+        with patch.object(cmod, "_background_refresh", _noop_refresh):
+            run(cmod.consume_credit())   # drain to 0
+            assert run(cmod.consume_credit()) is False   # blocked
 
         # Simulate a successful refresh
         run(store.apply_refresh(

@@ -24,7 +24,7 @@ from typing import Any
 
 import structlog
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from apps.api_server.middleware.auth import get_current_org
 from apps.api_server.pagination import paginate_sequence
@@ -69,6 +69,8 @@ class OnboardRequest(BaseModel):
 
 
 class DatasetStatusResponse(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+
     dataset_id:     str
     name:           str
     schema_hash:    str
