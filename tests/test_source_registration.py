@@ -1021,6 +1021,55 @@ async def test_detect_joins_between_uses_metadata_fast_join_for_same_name_key_sa
 
 
 @pytest.mark.asyncio
+async def test_detect_joins_between_matches_normalized_key_alias_without_mojo(monkeypatch):
+    _JOIN_PROJECTION_CACHE.clear()
+
+    async def _no_mojo(*_args, **_kwargs):
+        return None
+
+    monkeypatch.setattr("apps.api_server.routers.sources._call_mojo_join_detect", _no_mojo)
+
+    left = _parquet_bytes([
+        {"Order ID": "A100", "Sales": 10.0},
+        {"Order ID": "A101", "Sales": 12.0},
+        {"Order ID": "A101", "Sales": 14.0},
+        {"Order ID": "A102", "Sales": 16.0},
+        {"Order ID": "A103", "Sales": 18.0},
+    ])
+    right = _parquet_bytes([
+        {"Order ID as per Uber Eats manager": "A100", "Payout": 7.0},
+        {"Order ID as per Uber Eats manager": "A101", "Payout": 8.0},
+        {"Order ID as per Uber Eats manager": "A101", "Payout": 9.0},
+        {"Order ID as per Uber Eats manager": "A102", "Payout": 10.0},
+        {"Order ID as per Uber Eats manager": "A103", "Payout": 11.0},
+    ])
+
+    joins = await _detect_joins_between(
+        "org_detect_alias",
+        "src_a",
+        "orders_detail",
+        left,
+        "src_b",
+        "orders_financial",
+        right,
+        left_join_blocks=[{"name": "Order ID"}],
+        right_join_blocks=[{"name": "Order ID as per Uber Eats manager"}],
+    )
+
+    assert joins == [{
+        "source_a": "src_a",
+        "source_a_name": "orders_detail",
+        "col_a": "Order ID",
+        "source_b": "src_b",
+        "source_b_name": "orders_financial",
+        "col_b": "Order ID as per Uber Eats manager",
+        "confidence": 0.78,
+        "cardinality": "many_to_many",
+        "overlap": 1.0,
+    }]
+
+
+@pytest.mark.asyncio
 async def test_detect_joins_between_keeps_mojo_for_non_decisive_fast_key_join(monkeypatch):
     _JOIN_PROJECTION_CACHE.clear()
 

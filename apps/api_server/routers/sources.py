@@ -326,7 +326,87 @@ def _join_block_norm(block: dict[str, Any]) -> str:
     name = str(block.get("name") or "").strip()
     if not name:
         return ""
+    normalized_key = _normalized_join_key_name(name)
+    if normalized_key:
+        return normalized_key
     return str(block.get("norm") or "".join(re.findall(r"[a-z0-9]+", name.lower())))
+
+
+def _normalized_join_key_name(name: str) -> str:
+    if not _looks_like_entity_join_key(name):
+        return ""
+    tokens = [
+        token
+        for token in re.findall(r"[a-z0-9]+", name.lower())
+        if token not in _DIMENSION_JOIN_MODIFIER_TOKENS
+    ]
+    return "".join(tokens)
+
+
+def _build_shared_value_fast_connection(
+    *,
+    src_id: str,
+    src_name: str,
+    src_col: str,
+    src_stats: dict[str, Any],
+    other_id: str,
+    other_name: str,
+    other_col: str,
+    other_stats: dict[str, Any],
+) -> dict[str, Any] | None:
+    src_vals = src_stats.get("values") or set()
+    other_vals = other_stats.get("values") or set()
+    if not src_vals or not other_vals:
+        return None
+    intersection = src_vals & other_vals
+    union = src_vals | other_vals
+    jaccard = len(intersection) / len(union) if union else 0.0
+    cardinality = _infer_shared_column_cardinality_from_stats(
+        src_stats,
+        other_stats,
+        intersection,
+    )
+    dimension_like = _is_low_cardinality_dimension_join(
+        src_col,
+        src_stats,
+        other_col,
+        other_stats,
+        intersection,
+        jaccard,
+        cardinality,
+    )
+    src_ur = float(src_stats.get("unique_ratio") or 0.0)
+    other_ur = float(other_stats.get("unique_ratio") or 0.0)
+    looks_like_key = _looks_like_entity_join_key(src_col) or _looks_like_entity_join_key(other_col)
+    enough_overlap = len(intersection) > 3 or (
+        cardinality in {"one_to_one", "one_to_many", "many_to_one"}
+        and len(intersection) >= 2
+        and jaccard >= 0.50
+    ) or dimension_like
+    if jaccard <= 0.05 or not enough_overlap:
+        return None
+    if (
+        cardinality == "many_to_many"
+        and not looks_like_key
+        and max(src_ur, other_ur) < 0.80
+        and not dimension_like
+    ):
+        return None
+    return {
+        "source_a": src_id,
+        "source_a_name": src_name,
+        "col_a": src_col,
+        "source_b": other_id,
+        "source_b_name": other_name,
+        "col_b": other_col,
+        "confidence": (
+            _dimension_family_join_confidence(jaccard)
+            if dimension_like
+            else _shared_name_join_confidence(jaccard, cardinality)
+        ),
+        "cardinality": cardinality,
+        "overlap": round(jaccard, 4),
+    }
 
 
 def _infer_join_block_cardinality(left: dict[str, Any], right: dict[str, Any]) -> str:
@@ -1316,6 +1396,7 @@ async def _detect_joins_between(
         src_col_lower   = {col.lower(): col for col in projected_src_df.columns}
         other_col_lower = {col.lower(): col for col in projected_other_df.columns}
         shared_names = set(src_col_lower) & set(other_col_lower)
+        seen_fast_pairs: set[tuple[str, str]] = set()
         for name_lower in shared_names:
             src_col   = src_col_lower[name_lower]
             other_col = other_col_lower[name_lower]
@@ -1323,64 +1404,55 @@ async def _detect_joins_between(
             other_stats = other_name_stats.get(other_col)
             if src_stats is None or other_stats is None:
                 continue
-            src_vals = src_stats["values"]
-            other_vals = other_stats["values"]
-            if not src_vals or not other_vals:
+            connection = _build_shared_value_fast_connection(
+                src_id=src_id,
+                src_name=src_name,
+                src_col=src_col,
+                src_stats=src_stats,
+                other_id=other_id,
+                other_name=other_name,
+                other_col=other_col,
+                other_stats=other_stats,
+            )
+            if connection is None:
                 continue
-            intersection = src_vals & other_vals
-            union = src_vals | other_vals
-            jaccard = len(intersection) / len(union) if union else 0.0
-            cardinality = _infer_shared_column_cardinality_from_stats(
-                src_stats,
-                other_stats,
-                intersection,
-            )
-            dimension_like = _is_low_cardinality_dimension_join(
-                src_col,
-                src_stats,
-                other_col,
-                other_stats,
-                intersection,
-                jaccard,
-                cardinality,
-            )
-            src_ur = float(src_stats["unique_ratio"])
-            other_ur = float(other_stats["unique_ratio"])
-            looks_like_key = (
-                _looks_like_entity_join_key(src_col)
-                or _looks_like_entity_join_key(other_col)
-            )
-            # Any non-trivial overlap on a same-named column is a join
-            enough_overlap = len(intersection) > 3 or (
-                cardinality in {"one_to_one", "one_to_many", "many_to_one"}
-                and len(intersection) >= 2
-                and jaccard >= 0.50
-            ) or dimension_like
-            if jaccard > 0.05 and enough_overlap:
-                if (
-                    cardinality == "many_to_many"
-                    and not looks_like_key
-                    and max(src_ur, other_ur) < 0.80
-                    and not dimension_like
-                ):
-                    continue
-                connections_fast.append({
-                    "source_a":      src_id,
-                    "source_a_name": src_name,
-                    "col_a":         src_col,
-                    "source_b":      other_id,
-                    "source_b_name": other_name,
-                    "col_b":         other_col,
-                    "confidence":    (
-                        _dimension_family_join_confidence(jaccard)
-                        if dimension_like
-                        else _shared_name_join_confidence(jaccard, cardinality)
-                    ),
-                    "cardinality":   cardinality,
-                    "overlap":       round(jaccard, 4),
-                })
+            connections_fast.append(connection)
+            seen_fast_pairs.add((src_col, other_col))
 
-        seen_fast_pairs = {(c["col_a"], c["col_b"]) for c in connections_fast}
+        src_key_norms: dict[str, list[str]] = {}
+        other_key_norms: dict[str, list[str]] = {}
+        for column_name in projected_src_df.columns:
+            normalized = _normalized_join_key_name(column_name)
+            if normalized:
+                src_key_norms.setdefault(normalized, []).append(column_name)
+        for column_name in projected_other_df.columns:
+            normalized = _normalized_join_key_name(column_name)
+            if normalized:
+                other_key_norms.setdefault(normalized, []).append(column_name)
+        for normalized_name in set(src_key_norms) & set(other_key_norms):
+            for src_col in src_key_norms[normalized_name]:
+                for other_col in other_key_norms[normalized_name]:
+                    if (src_col, other_col) in seen_fast_pairs:
+                        continue
+                    src_stats = src_name_stats.get(src_col)
+                    other_stats = other_name_stats.get(other_col)
+                    if src_stats is None or other_stats is None:
+                        continue
+                    connection = _build_shared_value_fast_connection(
+                        src_id=src_id,
+                        src_name=src_name,
+                        src_col=src_col,
+                        src_stats=src_stats,
+                        other_id=other_id,
+                        other_name=other_name,
+                        other_col=other_col,
+                        other_stats=other_stats,
+                    )
+                    if connection is None:
+                        continue
+                    connections_fast.append(connection)
+                    seen_fast_pairs.add((src_col, other_col))
+
         src_family_columns = _dimension_family_columns(src_name_stats)
         other_family_columns = _dimension_family_columns(other_name_stats)
         for family in set(src_family_columns) & set(other_family_columns):
@@ -1388,13 +1460,11 @@ async def _detect_joins_between(
                 for other_col, other_stats in other_family_columns[family]:
                     if (src_col, other_col) in seen_fast_pairs:
                         continue
-                    src_vals = src_stats.get("values") or set()
-                    other_vals = other_stats.get("values") or set()
-                    if not src_vals or not other_vals:
-                        continue
-                    intersection = src_vals & other_vals
-                    union = src_vals | other_vals
-                    jaccard = len(intersection) / len(union) if union else 0.0
+                    src_values = src_stats.get("values") or set()
+                    other_values = other_stats.get("values") or set()
+                    intersection = src_values & other_values
+                    union = src_values | other_values
+                    jaccard = len(intersection) / max(len(union), 1)
                     cardinality = _infer_shared_column_cardinality_from_stats(
                         src_stats,
                         other_stats,
@@ -1410,17 +1480,19 @@ async def _detect_joins_between(
                         cardinality,
                     ):
                         continue
-                    connections_fast.append({
-                        "source_a": src_id,
-                        "source_a_name": src_name,
-                        "col_a": src_col,
-                        "source_b": other_id,
-                        "source_b_name": other_name,
-                        "col_b": other_col,
-                        "confidence": _dimension_family_join_confidence(jaccard),
-                        "cardinality": cardinality,
-                        "overlap": round(jaccard, 4),
-                    })
+                    connection = _build_shared_value_fast_connection(
+                        src_id=src_id,
+                        src_name=src_name,
+                        src_col=src_col,
+                        src_stats=src_stats,
+                        other_id=other_id,
+                        other_name=other_name,
+                        other_col=other_col,
+                        other_stats=other_stats,
+                    )
+                    if connection is None:
+                        continue
+                    connections_fast.append(connection)
                     seen_fast_pairs.add((src_col, other_col))
 
         # A strong exact-name key join is already sufficient to connect the
