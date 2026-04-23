@@ -198,15 +198,15 @@ def _current_billing_period() -> str:
 
 # ── Hot-path helpers ──────────────────────────────────────────────────────────
 
-async def consume_credit() -> bool:
+async def consume_credit(*, allow_background_refresh: bool = True) -> bool:
     """
     Consume one execution credit.
-    Triggers a background refresh when the bucket runs low.
+    Optionally triggers a background refresh when the bucket runs low.
     Returns False when exhausted — caller must block execution.
     """
     permitted = await _store.decrement()
 
-    if _store.should_refresh() and not _store._refreshing:
+    if allow_background_refresh and _store.should_refresh() and not _store._refreshing:
         try:
             asyncio.get_running_loop().create_task(_background_refresh())
         except RuntimeError:

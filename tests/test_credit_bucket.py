@@ -340,6 +340,31 @@ def test_consume_credit_no_double_refresh():
     store._refreshing = False
 
 
+def test_consume_credit_can_disable_background_refresh():
+    """Callers can enforce a fully local quota drain without scheduling refresh."""
+    import apps.runtime.credits as cmod
+    from apps.runtime.credits import CreditState
+
+    store = _tmp_store()
+    store._write(CreditState(**_make_state(remaining=100, total=10_000)))
+    old_store = cmod._store
+    cmod._store = store
+
+    refresh_called = []
+
+    async def _fake_refresh():
+        refresh_called.append(True)
+
+    try:
+        with patch.object(cmod, "_background_refresh", _fake_refresh):
+            run(cmod.consume_credit(allow_background_refresh=False))
+    finally:
+        cmod._store = old_store
+
+    assert refresh_called == []
+    assert store.should_refresh() is True
+
+
 def test_background_refresh_offline_failure_is_nonfatal(monkeypatch):
     """Network failure during refresh must not raise or corrupt local credits."""
     import urllib.error

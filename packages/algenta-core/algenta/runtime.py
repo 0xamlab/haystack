@@ -1583,7 +1583,7 @@ class Runtime:
                     "distribution before enabling enforce_limits."
                 ),
             ) from exc
-        permitted = bool(_run_sync(consume_credit()))
+        permitted = bool(_run_sync(consume_credit(allow_background_refresh=False)))
         if not permitted:
             raise RuntimeValidationError(
                 "quota_exhausted",
