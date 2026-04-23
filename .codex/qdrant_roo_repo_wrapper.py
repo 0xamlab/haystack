@@ -7,4 +7,5 @@ os.environ["OPENAI_API_KEY"] = "sk-proj-YrMtRpdBOvl0gU8ajl5-OoBhXAwBJNNP7WTb8Ipw
 os.environ["COLLECTION_NAME"] = "ws-fd69a63ccb0ad2ab"
 
 os.chdir("/Users/angel/Developer/decision-engine")
-os.execvp("uv", ["uv", "run", "/Users/angel/.codex/mcp-servers/qdrant_roo.py"])
+UV = "/Users/angel/.local/bin/uv"
+os.execvp(UV, [UV, "run", "/Users/angel/.codex/mcp-servers/qdrant_roo.py"])
