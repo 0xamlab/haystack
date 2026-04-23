@@ -5,13 +5,13 @@ build-backend = "setuptools.backends.legacy:build"
 [project]
 name = "algenta-core"
 version = "0.1.0"
-description = "Algenta core runtime — local simulation, optimization, and decision-making. No API key required."
+description = "Algenta core runtime — local-first deterministic resolve and query execution."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "ACL-1.0" }
 keywords = [
-    "simulation", "monte-carlo", "optimization", "decision", "forecast",
-    "risk", "probabilistic", "algenta", "fast", "mojo"
+    "runtime", "deterministic", "structured-data", "query", "resolve",
+    "simulation", "optimization", "decision", "algenta", "mojo"
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -28,9 +28,9 @@ classifiers = [
 dependencies = []
 
 [project.optional-dependencies]
-cloud = ["httpx>=0.28.0"]
+cloud = ["algenta-sdk>=1.0.0"]
 benchmark = ["numpy"]
-all = ["httpx>=0.28.0", "numpy"]
+all = ["algenta-sdk>=1.0.0", "numpy"]
 
 [project.scripts]
 algenta = "algenta.cli:main"

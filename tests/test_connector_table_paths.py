@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import io
 import sys
+from datetime import datetime
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 
@@ -104,6 +105,11 @@ async def test_file_connector_fetch_table_supports_excel_without_row_materializa
         raise AssertionError("excel fetch_table should use direct workbook-to-arrow path")
 
     monkeypatch.setattr(FileConnector, "_parse_excel", staticmethod(_should_not_run))
+    monkeypatch.setattr(
+        FileConnector,
+        "_fast_xlsx_to_arrow_table",
+        staticmethod(_should_not_run),
+    )
 
     connector = FileConnector(
         {
@@ -116,6 +122,30 @@ async def test_file_connector_fetch_table_supports_excel_without_row_materializa
 
     assert table is not None
     assert table.to_pylist() == [
+        {"part_number": "00123", "measure_total": 10, "region": "NE"},
+        {"part_number": "00456", "measure_total": 20, "region": "SW"},
+    ]
+
+
+@pytest.mark.asyncio
+async def test_file_connector_fetch_data_prefers_openpyxl_excel_path(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _should_not_run(*_args, **_kwargs):  # type: ignore[no-untyped-def]
+        raise AssertionError("excel fetch_data should prefer openpyxl sheet loading")
+
+    monkeypatch.setattr(FileConnector, "_iter_fast_xlsx_rows", staticmethod(_should_not_run))
+
+    connector = FileConnector(
+        {
+            "file_type": "excel",
+            "content": _tiny_excel_b64(),
+        }
+    )
+
+    records = await connector.fetch_data()
+
+    assert records == [
         {"part_number": "00123", "measure_total": 10, "region": "NE"},
         {"part_number": "00456", "measure_total": 20, "region": "SW"},
     ]
@@ -153,6 +183,51 @@ async def test_file_connector_fetch_table_uses_raw_excel_bytes_for_file_path(
     assert seen == {"content_type": bytes, "sheet": 0}
 
 
+@pytest.mark.asyncio
+async def test_file_connector_fast_excel_path_preserves_typed_values() -> None:
+    import openpyxl
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.append(["created_at", "active", "measure_total"])
+    ws.append([datetime(2026, 3, 1, 14, 30, 0), True, 10.5])
+    ws.append([datetime(2026, 3, 2, 9, 15, 0), False, 12])
+    buf = io.BytesIO()
+    wb.save(buf)
+    workbook_b64 = base64.b64encode(buf.getvalue()).decode()
+
+    connector = FileConnector({"file_type": "excel", "content": workbook_b64})
+
+    table = await connector.fetch_table()
+    records = await connector.fetch_data()
+
+    assert table is not None
+    assert table.to_pylist() == [
+        {
+            "created_at": "2026-03-01 14:30:00",
+            "active": True,
+            "measure_total": 10.5,
+        },
+        {
+            "created_at": "2026-03-02 09:15:00",
+            "active": False,
+            "measure_total": 12,
+        },
+    ]
+    assert records == [
+        {
+            "created_at": "2026-03-01 14:30:00",
+            "active": True,
+            "measure_total": 10.5,
+        },
+        {
+            "created_at": "2026-03-02 09:15:00",
+            "active": False,
+            "measure_total": 12,
+        },
+    ]
+
+
 def test_open_excel_sheet_loads_only_requested_sheet() -> None:
     workbook_b64 = _multi_sheet_excel_b64()
 
@@ -169,6 +244,92 @@ def test_open_excel_sheet_loads_only_requested_sheet() -> None:
         ]
     finally:
         wb.close()
+
+
+def test_open_excel_sheet_skips_nonessential_metadata_loading(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from openpyxl.reader import excel as excel_reader_module
+
+    def _should_not_run(*_args, **_kwargs):  # type: ignore[no-untyped-def]
+        raise AssertionError("nonessential workbook metadata should not be loaded")
+
+    monkeypatch.setattr(excel_reader_module.ExcelReader, "read_properties", _should_not_run)
+    monkeypatch.setattr(excel_reader_module.ExcelReader, "read_custom", _should_not_run)
+    monkeypatch.setattr(excel_reader_module.ExcelReader, "read_theme", _should_not_run)
+    monkeypatch.setattr(excel_reader_module, "apply_stylesheet", _should_not_run)
+
+    wb, ws = FileConnector._open_excel_sheet(_tiny_excel_b64(), sheet=0)
+    try:
+        rows = ws.values
+        headers = next(rows)
+        records = [dict(zip(headers, row, strict=False)) for row in rows]
+        assert ws.title == "Sheet1"
+        assert records == [
+            {"part_number": "00123", "measure_total": 10, "region": "NE"},
+            {"part_number": "00456", "measure_total": 20, "region": "SW"},
+        ]
+    finally:
+        wb.close()
+
+
+@pytest.mark.asyncio
+async def test_file_connector_fetch_data_falls_back_to_fast_excel_parser_on_openpyxl_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _fail_openpyxl(*_args, **_kwargs):  # type: ignore[no-untyped-def]
+        raise ValueError("openpyxl failed")
+
+    monkeypatch.setattr(FileConnector, "_open_excel_sheet", staticmethod(_fail_openpyxl))
+
+    connector = FileConnector(
+        {
+            "file_type": "excel",
+            "content": _tiny_excel_b64(),
+        }
+    )
+
+    table = await connector.fetch_table()
+    records = await connector.fetch_data()
+
+    assert table is not None
+    assert table.to_pylist() == [
+        {"part_number": "00123", "measure_total": 10, "region": "NE"},
+        {"part_number": "00456", "measure_total": 20, "region": "SW"},
+    ]
+    assert records == [
+        {"part_number": "00123", "measure_total": 10, "region": "NE"},
+        {"part_number": "00456", "measure_total": 20, "region": "SW"},
+    ]
+
+
+@pytest.mark.asyncio
+async def test_file_connector_fetch_table_falls_back_to_fast_excel_parser_on_openpyxl_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _fail_openpyxl(*_args, **_kwargs):  # type: ignore[no-untyped-def]
+        raise ValueError("openpyxl failed")
+
+    monkeypatch.setattr(
+        FileConnector,
+        "_openpyxl_excel_to_arrow_table",
+        staticmethod(_fail_openpyxl),
+    )
+
+    connector = FileConnector(
+        {
+            "file_type": "excel",
+            "content": _tiny_excel_b64(),
+        }
+    )
+
+    table = await connector.fetch_table()
+
+    assert table is not None
+    assert table.to_pylist() == [
+        {"part_number": "00123", "measure_total": 10, "region": "NE"},
+        {"part_number": "00456", "measure_total": 20, "region": "SW"},
+    ]
 
 
 @pytest.mark.asyncio

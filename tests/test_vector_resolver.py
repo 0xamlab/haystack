@@ -26,6 +26,7 @@ from types import SimpleNamespace
 import pytest
 
 try:
+    import mojo.engine.vector_kernels.resolver as resolver_module
     from mojo.engine.vector_kernels.resolver import (
         ColumnVectorResolver,
         _cosine,
@@ -117,6 +118,44 @@ class TestResolverConstruction:
         result = r.resolve("unit price", preferred_source="POS")
         assert result is not None
         assert result.column == "UNIT_PRICE"
+
+    def test_append_source_reuses_cached_column_artifacts_for_repeated_names(self, monkeypatch):
+        tokenize_calls = {"count": 0}
+        build_calls = {"count": 0}
+        real_tokenize = resolver_module.tokenize_name
+        real_build_vec = resolver_module.build_vec64
+
+        def _count_tokenize(name: str):
+            tokenize_calls["count"] += 1
+            return real_tokenize(name)
+
+        def _count_build_vec(name: str):
+            build_calls["count"] += 1
+            return real_build_vec(name)
+
+        monkeypatch.setattr(resolver_module, "tokenize_name", _count_tokenize)
+        monkeypatch.setattr(resolver_module, "build_vec64", _count_build_vec)
+
+        resolver = ColumnVectorResolver({
+            "POS": [
+                ("UNIT_PRICE", "unit_measure"),
+                ("EXT_PRICE", "derived_measure"),
+            ]
+        })
+
+        assert tokenize_calls["count"] == 2
+        assert build_calls["count"] == 2
+
+        resolver.append_source(
+            "BACKLOG",
+            [
+                ("UNIT_PRICE", "unit_measure"),
+                ("EXT_PRICE", "derived_measure"),
+            ],
+        )
+
+        assert tokenize_calls["count"] == 2
+        assert build_calls["count"] == 2
 
 
 # ── Regression: unit-cost / extended-cost disambiguation ─────────────────────
@@ -386,6 +425,52 @@ class TestPlannerIntegration:
         )
 
         assert appended is False
+
+    def test_from_planner_graph_caps_wide_source_to_high_signal_columns(self, monkeypatch):
+        monkeypatch.setattr(resolver_module, "MAX_PLANNER_SOURCE_COLUMNS", 2)
+        graph = {
+            "WIDE": {
+                "DERIVED_HIGH": _node("derived_measure", fill_rate=0.95),
+                "BASE_HIGH": _node("base_measure", fill_rate=0.90),
+                "UNIT_HIGH": _node("unit_measure", fill_rate=0.99),
+                "METRIC_HIGH": _node("metric", fill_rate=1.0),
+            }
+        }
+
+        resolver = ColumnVectorResolver.from_planner_graph(graph)
+
+        assert resolver._n_columns == 2
+        assert [(entry.source, entry.name) for entry in resolver._entries] == [
+            ("WIDE", "DERIVED_HIGH"),
+            ("WIDE", "BASE_HIGH"),
+        ]
+
+    def test_append_planner_graph_source_caps_incremental_wide_source(self, monkeypatch):
+        monkeypatch.setattr(resolver_module, "MAX_PLANNER_SOURCE_COLUMNS", 2)
+        resolver = ColumnVectorResolver.from_planner_graph(
+            {
+                "POS": {
+                    "UNIT_PRICE": _node("unit_measure"),
+                }
+            }
+        )
+
+        appended = resolver.append_planner_graph_source(
+            "WIDE",
+            {
+                "DERIVED_HIGH": _node("derived_measure", fill_rate=0.95),
+                "BASE_HIGH": _node("base_measure", fill_rate=0.90),
+                "UNIT_HIGH": _node("unit_measure", fill_rate=0.99),
+                "METRIC_HIGH": _node("metric", fill_rate=1.0),
+            },
+        )
+
+        assert appended is True
+        assert resolver._n_columns == 3
+        assert [(entry.source, entry.name) for entry in resolver._entries[1:]] == [
+            ("WIDE", "DERIVED_HIGH"),
+            ("WIDE", "BASE_HIGH"),
+        ]
 
     def test_probe_engines_includes_column_rank(self, tmp_path, monkeypatch):
         from apps.api_server.services.auto_planner import AutoPlanner
@@ -792,6 +877,27 @@ class TestPlannerIntegration:
         finally:
             client_a.close()
             client_b.close()
+
+    def test_planner_mojo_client_cooldown_skips_repeated_start_failures(self, monkeypatch, tmp_path):
+        import apps.api_server.services.mojo_column_rank_resolver as rank_resolver
+
+        binary = tmp_path / "simulate"
+        binary.write_text("")
+        binary.chmod(0o755)
+
+        client = rank_resolver._PlannerMojoSocketClient(binary)
+        calls = {"count": 0}
+
+        def _fail_start(_timeout):
+            calls["count"] += 1
+            raise RuntimeError("planner Mojo rank server exited during startup")
+
+        monkeypatch.setattr(client, "_ensure_started", _fail_start)
+        monkeypatch.setattr(rank_resolver, "_PLANNER_MOJO_FAILURE_COOLDOWN_S", 60.0)
+
+        assert client.invoke({"engine_type": "column_rank"}, timeout=1.0) is None
+        assert client.invoke({"engine_type": "column_rank"}, timeout=1.0) is None
+        assert calls["count"] == 1
 
     def test_planner_uses_resident_query_payload_when_binary_available(self, monkeypatch, tmp_path):
         import apps.api_server.services.auto_planner as auto_planner

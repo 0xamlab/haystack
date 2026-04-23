@@ -66,8 +66,8 @@ from apps.api_server.services.pyarrow_runtime import initialize_pyarrow_parquet_
 logger = structlog.get_logger(__name__)
 router = APIRouter(tags=["Source Registry"])
 
-_DEEP_JOIN_COLUMN_LIMIT = 12
-_DEEP_JOIN_DIMENSION_EXTENSION_LIMIT = 4
+_DEEP_JOIN_COLUMN_LIMIT = 8
+_DEEP_JOIN_DIMENSION_EXTENSION_LIMIT = 2
 _JOIN_PROJECTION_CACHE_MAX = 128
 _DECISIVE_ONE_TO_ONE_FAST_JOIN_OVERLAP = 0.05
 _DECISIVE_DIRECTIONAL_FAST_JOIN_OVERLAP = 0.075
@@ -77,9 +77,11 @@ _SUFFICIENT_FAST_JOIN_MIN_OVERLAP = 0.08
 _MAX_FAST_JOIN_CONNECTIONS_PER_PAIR = 6
 _DEFAULT_JOIN_VALUE_CANDIDATE_LIMIT = 20
 _FAST_JOIN_VALUE_CANDIDATE_LIMIT = 8
+_WIDE_LARGE_JOIN_VALUE_CANDIDATE_LIMIT = 6
 _DEFAULT_JOIN_CANDIDATE_MIN_SCORE = 4.5
 _REDUCED_MEDIUM_JOIN_CANDIDATE_MIN_SCORE = 20.0
 _REDUCED_WIDE_MEDIUM_JOIN_CANDIDATE_MIN_SCORE = 30.0
+_REDUCED_WIDE_LARGE_SPARSE_JOIN_CANDIDATE_MIN_SCORE = 25.0
 _LOW_ROW_JOIN_CANDIDATE_MIN_SCORE = 6.0
 _VERY_LOW_ROW_JOIN_CANDIDATE_MIN_SCORE = 8.0
 _SMALL_ORG_SINGLE_JOIN_PAIR_COST_BUDGET = 5_000_000
@@ -320,6 +322,63 @@ def _has_sufficient_fast_join_evidence(connections: list[dict[str, Any]]) -> boo
         if strong_total >= 4:
             return True
     return False
+
+
+def _has_wide_pair_fast_join_evidence(
+    connections: list[dict[str, Any]],
+    *,
+    left_join_blocks: list[dict[str, Any]] | None,
+    right_join_blocks: list[dict[str, Any]] | None,
+    left_rows: int,
+    right_rows: int,
+) -> bool:
+    max_join_blocks = max(len(left_join_blocks or []), len(right_join_blocks or []))
+    max_rows = max(left_rows, right_rows)
+    if max_join_blocks < 12 and max_rows < 5_000:
+        return False
+
+    strong_key_like = 0
+    strong_total = 0
+    for connection in connections:
+        confidence = float(connection.get("confidence") or 0.0)
+        overlap = float(connection.get("overlap") or 0.0)
+        if (
+            confidence < _SUFFICIENT_FAST_JOIN_MIN_CONFIDENCE
+            and overlap < _SUFFICIENT_FAST_JOIN_MIN_OVERLAP
+        ):
+            continue
+
+        strong_total += 1
+        col_a = str(connection.get("col_a") or "")
+        col_b = str(connection.get("col_b") or "")
+        if _looks_like_entity_join_key(col_a) or _looks_like_entity_join_key(col_b):
+            strong_key_like += 1
+
+        if strong_key_like >= 1 and strong_total >= 2:
+            return True
+
+    return False
+
+
+def _should_accept_fast_join_connections(
+    connections: list[dict[str, Any]],
+    *,
+    left_join_blocks: list[dict[str, Any]] | None,
+    right_join_blocks: list[dict[str, Any]] | None,
+    left_rows: int,
+    right_rows: int,
+) -> bool:
+    if _has_decisive_fast_join(connections):
+        return True
+    if _has_sufficient_fast_join_evidence(connections):
+        return True
+    return _has_wide_pair_fast_join_evidence(
+        connections,
+        left_join_blocks=left_join_blocks,
+        right_join_blocks=right_join_blocks,
+        left_rows=left_rows,
+        right_rows=right_rows,
+    )
 
 
 def _join_block_norm(block: dict[str, Any]) -> str:
@@ -839,15 +898,17 @@ def _join_candidate_limit(
     schema_meta: dict[str, Any],
     existing_total: int,
 ) -> int:
+    column_count = len(schema_meta.get("columns") or [])
+    estimated_cells = row_count * max(column_count, 1)
     if existing_total >= 8:
         if row_count <= 256:
             return 4 if existing_total >= 24 else 6
         if row_count <= 2_000:
             return 8
+    if existing_total >= 24 and row_count >= 8_000 and column_count >= 56:
+        return 6
     if existing_total <= 4:
         return 24
-    column_count = len(schema_meta.get("columns") or [])
-    estimated_cells = row_count * max(column_count, 1)
     if row_count >= 50_000 or estimated_cells >= 1_500_000:
         return 6
     if row_count >= 30_000 or column_count >= 96 or estimated_cells >= 750_000:
@@ -866,15 +927,33 @@ def _join_candidate_min_score(
     existing_total: int,
 ) -> float:
     join_block_count = len(reg._build_join_blocks(schema_meta))
+    column_count = len(schema_meta.get("columns") or [])
     if existing_total >= 8 and row_count <= 256:
         return _VERY_LOW_ROW_JOIN_CANDIDATE_MIN_SCORE
     if existing_total >= 8 and row_count <= 2_000:
         return _LOW_ROW_JOIN_CANDIDATE_MIN_SCORE
     if existing_total >= 12 and 10_000 <= row_count < 30_000 and join_block_count >= 6:
         return _REDUCED_WIDE_MEDIUM_JOIN_CANDIDATE_MIN_SCORE
+    if existing_total >= 24 and row_count >= 8_000 and column_count >= 56:
+        return _REDUCED_WIDE_LARGE_SPARSE_JOIN_CANDIDATE_MIN_SCORE
     if existing_total >= 12 and 3_000 <= row_count < 30_000 and 3 <= join_block_count <= 4:
         return _REDUCED_MEDIUM_JOIN_CANDIDATE_MIN_SCORE
     return _DEFAULT_JOIN_CANDIDATE_MIN_SCORE
+
+
+def _join_value_candidate_limit(
+    *,
+    left_df: pd.DataFrame,
+    right_df: pd.DataFrame,
+    fast_connections: list[dict[str, Any]],
+) -> int:
+    if fast_connections:
+        return _FAST_JOIN_VALUE_CANDIDATE_LIMIT
+    max_rows = max(len(left_df), len(right_df))
+    max_columns = max(len(left_df.columns), len(right_df.columns))
+    if max_rows >= 8_000 and max_columns >= 56:
+        return _WIDE_LARGE_JOIN_VALUE_CANDIDATE_LIMIT
+    return _DEFAULT_JOIN_VALUE_CANDIDATE_LIMIT
 
 
 class RegisterRequest(BaseModel):
@@ -1150,25 +1229,53 @@ async def _register_source_impl(
     blocked_join_scan = scored_join_scan
 
     join_tasks = []
-    src_df = _load_join_projection_cached(
-        org_id=org_id,
-        source_id=source_id,
-        parquet_path=src_parquet_path,
-        join_blocks=src_join_blocks,
-    )
-    src_name_stats = _load_join_name_stats_cached(
-        org_id=org_id,
-        source_id=source_id,
-        join_blocks=src_join_blocks,
-        df=src_df,
-        parquet_path=src_parquet_path,
-    )
+    pending_join_sources: list[tuple[dict[str, Any], list[dict[str, Any]]]] = []
     for ex in existing:
         ex_id = ex["id"]
         if ex_id == source_id:
             continue
         if blocked_join_scan and ex_id not in candidate_ids:
             continue
+        ex_join_blocks = ex.get("join_blocks") or []
+        metadata_fast_connections = _metadata_fast_join_candidates(
+            src_id=source_id,
+            src_name=src.name,
+            other_id=ex_id,
+            other_name=ex["name"],
+            left_join_blocks=src_join_blocks,
+            right_join_blocks=ex_join_blocks,
+        )
+        if _should_accept_fast_join_connections(
+            metadata_fast_connections,
+            left_join_blocks=src_join_blocks,
+            right_join_blocks=ex_join_blocks,
+            left_rows=row_count,
+            right_rows=int(ex.get("row_count", 0) or 0),
+        ):
+            new_connections.extend(_bounded_fast_join_connections(metadata_fast_connections))
+            continue
+        pending_join_sources.append((ex, ex_join_blocks))
+
+    if pending_join_sources:
+        src_df = _load_join_projection_cached(
+            org_id=org_id,
+            source_id=source_id,
+            parquet_path=src_parquet_path,
+            join_blocks=src_join_blocks,
+        )
+        src_name_stats = _load_join_name_stats_cached(
+            org_id=org_id,
+            source_id=source_id,
+            join_blocks=src_join_blocks,
+            df=src_df,
+            parquet_path=src_parquet_path,
+        )
+    else:
+        src_df = None
+        src_name_stats = None
+
+    for ex, ex_join_blocks in pending_join_sources:
+        ex_id = ex["id"]
         ex_parquet_path = reg.get_source_parquet_path(org_id, ex_id)
         if ex_parquet_path is None:
             continue
@@ -1185,7 +1292,7 @@ async def _register_source_impl(
             src_df=src_df,
             src_name_stats=src_name_stats,
             left_join_blocks=src_join_blocks,
-            right_join_blocks=ex.get("join_blocks") or [],
+            right_join_blocks=ex_join_blocks,
         ))
 
     if join_tasks:
@@ -1499,16 +1606,22 @@ async def _detect_joins_between(
         # sources. Do not spend additional time on value-based Mojo search.
         if _has_decisive_fast_join(connections_fast):
             return _bounded_fast_join_connections(connections_fast)
-        if _has_sufficient_fast_join_evidence(connections_fast):
+        if _should_accept_fast_join_connections(
+            connections_fast,
+            left_join_blocks=left_join_blocks,
+            right_join_blocks=right_join_blocks,
+            left_rows=len(projected_src_df),
+            right_rows=len(projected_other_df),
+        ):
             return _bounded_fast_join_connections(connections_fast)
 
         # ── Mojo path: value-based join detection for remaining columns ───────
         # Candidate extraction is cached per source revision so one registration
         # can reuse the same uniqueness/value work across many join pairs.
-        value_candidate_limit = (
-            _FAST_JOIN_VALUE_CANDIDATE_LIMIT
-            if connections_fast
-            else _DEFAULT_JOIN_VALUE_CANDIDATE_LIMIT
+        value_candidate_limit = _join_value_candidate_limit(
+            left_df=projected_src_df,
+            right_df=projected_other_df,
+            fast_connections=connections_fast,
         )
         if src_value_candidates is None:
             src_value_candidates = _load_join_value_candidates_cached(

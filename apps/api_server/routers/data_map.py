@@ -22,6 +22,7 @@ from __future__ import annotations
 import asyncio
 import json
 import math
+import os
 import statistics
 import time
 import urllib.parse
@@ -33,6 +34,15 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, model_validator
 
+from apps.api_server.compute.mojo_errors import (
+    MojoEngineError,
+    build_mojo_engine_status,
+    coerce_mojo_engine_error,
+    is_global_optional_mojo_circuit_error,
+    is_optional_mojo_circuit_error,
+    mojo_failure_reason,
+    validate_mojo_payload,
+)
 from apps.api_server.config import get_settings
 from apps.api_server.middleware.auth import get_current_org
 from apps.api_server.schemas.common import ErrorDetail, ErrorResponse
@@ -43,10 +53,26 @@ from apps.api_server.services.columnar_loader import (
 )
 from apps.api_server.services.data_coercion import parse_delimited_records
 from apps.api_server.services.pyarrow_runtime import initialize_pyarrow_parquet_runtime
+from apps.api_server.services.source_artifact_cache import (
+    load_cached_arrow_table,
+    source_content_artifact_key,
+    store_cached_arrow_table,
+)
 
 logger = structlog.get_logger(__name__)
 router = APIRouter(tags=["Data Mapping"])
 settings = get_settings()
+_MOJO_WARNING_COOLDOWN_S = 60.0
+_MOJO_WARNING_STATE: dict[tuple[str, str], float] = {}
+_MOJO_OPTIONAL_ENGINE_COOLDOWN_S = 60.0
+_MOJO_OPTIONAL_ENGINE_FAILURE_STATE: dict[str, tuple[float, str]] = {}
+_GLOBAL_OPTIONAL_MOJO_ENGINE_KEY = "__global__"
+_OPTIONAL_MOJO_TIMEOUT_S = float(
+    os.environ.get("ALGENTA_OPTIONAL_MOJO_TIMEOUT_S", "2.0"),
+)
+_OPTIONAL_MOJO_MAX_PAYLOAD_BYTES = int(
+    os.environ.get("ALGENTA_OPTIONAL_MOJO_MAX_PAYLOAD_BYTES", "1048576"),
+)
 
 # ── Two-speed pipeline store ──────────────────────────────────────────────────
 # Keyed by map_id. Each entry holds the completed deep-analysis payload.
@@ -61,6 +87,61 @@ class MojoInstrumentationError(RuntimeError):
     def __init__(self, engine_type: str, message: str) -> None:
         super().__init__(message)
         self.engine_type = engine_type
+
+
+def _log_mojo_warning(event: str, *, reason: str, **kwargs: Any) -> None:
+    cache_key = (event, reason)
+    now = time.monotonic()
+    last_warning_at = _MOJO_WARNING_STATE.get(cache_key)
+    if last_warning_at is not None and now - last_warning_at < _MOJO_WARNING_COOLDOWN_S:
+        logger.debug(
+            f"{event}_suppressed",
+            cooldown_s=_MOJO_WARNING_COOLDOWN_S,
+            reason=reason,
+            **kwargs,
+        )
+        return
+
+    _MOJO_WARNING_STATE[cache_key] = now
+    logger.warning(
+        event,
+        cooldown_s=_MOJO_WARNING_COOLDOWN_S,
+        reason=reason,
+        **kwargs,
+    )
+
+
+def _get_optional_mojo_engine_reason(cache_key: str) -> str | None:
+    cached = _MOJO_OPTIONAL_ENGINE_FAILURE_STATE.get(cache_key)
+    if cached is None:
+        return None
+    failed_at, reason = cached
+    if time.monotonic() - failed_at < _MOJO_OPTIONAL_ENGINE_COOLDOWN_S:
+        return reason
+    _MOJO_OPTIONAL_ENGINE_FAILURE_STATE.pop(cache_key, None)
+    return None
+
+
+def _get_optional_mojo_engine_skip_reason(engine_type: str) -> str | None:
+    global_reason = _get_optional_mojo_engine_reason(_GLOBAL_OPTIONAL_MOJO_ENGINE_KEY)
+    if global_reason is not None:
+        return global_reason
+    return _get_optional_mojo_engine_reason(engine_type)
+
+
+def _record_optional_mojo_engine_failure(engine_type: str, reason: BaseException | str) -> None:
+    normalized_reason = mojo_failure_reason(reason)
+    if not is_optional_mojo_circuit_error(reason):
+        return
+    failure = (time.monotonic(), normalized_reason)
+    _MOJO_OPTIONAL_ENGINE_FAILURE_STATE[engine_type] = failure
+    if is_global_optional_mojo_circuit_error(reason):
+        _MOJO_OPTIONAL_ENGINE_FAILURE_STATE[_GLOBAL_OPTIONAL_MOJO_ENGINE_KEY] = failure
+
+
+def _clear_optional_mojo_engine_failure(engine_type: str) -> None:
+    _MOJO_OPTIONAL_ENGINE_FAILURE_STATE.pop(engine_type, None)
+    _MOJO_OPTIONAL_ENGINE_FAILURE_STATE.pop(_GLOBAL_OPTIONAL_MOJO_ENGINE_KEY, None)
 
 
 def _http_error(
@@ -996,21 +1077,142 @@ async def _call_mojo_field_map(
     """Call the Mojo field_map engine. Returns result dict or None."""
     if not numeric_fields:
         return None
+    payload = {"engine_type": "field_map", "data": numeric_fields}
+    result, engine_status = await _invoke_optional_mojo_engine(
+        "field_map",
+        payload,
+    )
+    if result is None:
+        if engine_status["reason"] != "engine_circuit_open":
+            logger.debug("field_map_mojo_error", engine_status=engine_status)
+        return None
+    return result
+
+
+def _optional_mojo_payload_bytes(payload: dict[str, Any]) -> int:
+    try:
+        return len(
+            json.dumps(
+                payload,
+                separators=(",", ":"),
+                ensure_ascii=False,
+            ).encode("utf-8")
+        )
+    except (TypeError, ValueError) as exc:
+        raise MojoEngineError(
+            "Invalid Mojo payload: could not serialize engine payload to JSON.",
+            code="invalid_payload",
+            recoverable=False,
+            engine_type=str(payload.get("engine_type") or "unknown"),
+            stage="preflight",
+        ) from exc
+
+
+def _optional_mojo_preflight_status(
+    engine_type: str,
+    payload: dict[str, Any],
+    *,
+    reason: str | None = None,
+) -> dict[str, Any] | None:
+    validate_mojo_payload(payload)
+    if reason is not None:
+        return build_mojo_engine_status(
+            engine_type=engine_type,
+            status="disabled",
+            reason=reason,
+            message=f"Optional Mojo engine skipped during preflight: {reason}.",
+            details={},
+        )
+
+    payload_bytes = _optional_mojo_payload_bytes(payload)
+    if payload_bytes > _OPTIONAL_MOJO_MAX_PAYLOAD_BYTES:
+        return build_mojo_engine_status(
+            engine_type=engine_type,
+            status="disabled",
+            reason="preflight_payload_too_large",
+            message=(
+                "Optional Mojo payload exceeds configured limit and will use the "
+                "deterministic fallback path instead."
+            ),
+            details={
+                "payload_bytes": payload_bytes,
+                "payload_limit_bytes": _OPTIONAL_MOJO_MAX_PAYLOAD_BYTES,
+            },
+        )
+    return None
+
+
+async def _invoke_optional_mojo_engine(
+    engine_type: str,
+    payload: dict[str, Any],
+    *,
+    preflight_reason: str | None = None,
+    timeout_s: float = _OPTIONAL_MOJO_TIMEOUT_S,
+) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+    preflight_status = _optional_mojo_preflight_status(
+        engine_type,
+        payload,
+        reason=preflight_reason,
+    )
+    if preflight_status is not None:
+        logger.debug(
+            f"{engine_type}_mojo_preflight_skip",
+            engine_status=preflight_status,
+        )
+        return None, preflight_status
+
+    skip_reason = _get_optional_mojo_engine_skip_reason(engine_type)
+    if skip_reason is not None:
+        engine_status = build_mojo_engine_status(
+            engine_type=engine_type,
+            status="disabled",
+            reason="engine_circuit_open",
+            message=skip_reason,
+            details={"cooldown_s": _MOJO_OPTIONAL_ENGINE_COOLDOWN_S},
+        )
+        logger.debug(
+            f"{engine_type}_mojo_circuit_open",
+            engine_status=engine_status,
+        )
+        return None, engine_status
+
     try:
         from apps.api_server.compute.mojo_adapter import invoke_engine
-        payload = {"engine_type": "field_map", "data": numeric_fields}
-        return await invoke_engine(payload)
+
+        result = await invoke_engine(payload, timeout=timeout_s)
+        _clear_optional_mojo_engine_failure(engine_type)
+        return result, build_mojo_engine_status(
+            engine_type=engine_type,
+            status="enabled",
+            reason=None,
+            details={"timeout_s": timeout_s},
+        )
     except Exception as exc:
-        logger.debug("field_map_mojo_error", error=str(exc))
-        return None
+        error = coerce_mojo_engine_error(
+            exc,
+            engine_type=engine_type,
+            stage="optional_exec",
+        )
+        _record_optional_mojo_engine_failure(engine_type, error)
+        return None, error.as_error_details()
 
 
-def _mojo_profiling_enabled_status(engine_type: str) -> dict[str, Any]:
+def _mojo_profiling_enabled_status(
+    engine_type: str,
+    *,
+    engine_status: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     return {
         "status": "enabled",
         "engine_type": engine_type,
         "reason": None,
         "message": None,
+        "engine_status": engine_status
+        or build_mojo_engine_status(
+            engine_type=engine_type,
+            status="enabled",
+            reason=None,
+        ),
     }
 
 
@@ -1019,12 +1221,20 @@ def _mojo_profiling_disabled_status(
     reason: str,
     *,
     message: str | None = None,
+    engine_status: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     return {
         "status": "disabled",
         "engine_type": engine_type,
         "reason": reason,
         "message": message,
+        "engine_status": engine_status
+        or build_mojo_engine_status(
+            engine_type=engine_type,
+            status="disabled",
+            reason=reason,
+            message=message,
+        ),
     }
 
 
@@ -1122,6 +1332,29 @@ def _mojo_column_profile_sample_limits(column_count: int) -> tuple[int, int]:
     return 50, 50
 
 
+def _mojo_column_profile_preflight_skip_reason(
+    columns: dict[str, dict[str, Any]],
+) -> str | None:
+    """
+    Return a deterministic skip reason when Mojo profiling is not worthwhile.
+
+    Very small sources provide too little signal for Mojo profiling while still
+    paying the full engine startup / IPC boundary cost. Skipping these payloads
+    keeps first-touch behavior stable and relies on the existing Python path for
+    equivalent profiling semantics.
+    """
+    sample_sizes = [max(int(column.get("sample_size", 0) or 0), 0) for column in columns.values()]
+    if not sample_sizes:
+        return "preflight_no_samples"
+
+    max_sample_size = max(sample_sizes)
+    total_sample_size = sum(sample_sizes)
+    minimum_total = max(8, len(sample_sizes) * 2)
+    if max_sample_size < 4 or total_sample_size < minimum_total:
+        return "preflight_insufficient_samples"
+    return None
+
+
 async def _call_mojo_column_profile(
     columns: dict[str, dict[str, Any]],
 ) -> dict[str, Any] | None:
@@ -1143,41 +1376,78 @@ async def _call_mojo_column_profile(
                 "configured_disabled",
             ),
         }
-    try:
-        from apps.api_server.compute.mojo_adapter import invoke_engine
-        payload = {"engine_type": "column_profile", "columns": columns}
-        result = await invoke_engine(payload)
-        if result is None:
-            return {
-                "profiles": {},
-                "_profiling_status": _mojo_profiling_disabled_status(
-                    "column_profile",
-                    "no_result",
-                ),
-            }
+    preflight_skip_reason = _mojo_column_profile_preflight_skip_reason(columns)
+    if preflight_skip_reason is not None:
+        return {
+            "profiles": {},
+            "_profiling_status": _mojo_profiling_disabled_status(
+                "column_profile",
+                preflight_skip_reason,
+            ),
+        }
+    payload = {"engine_type": "column_profile", "columns": columns}
+    result, engine_status = await _invoke_optional_mojo_engine(
+        "column_profile",
+        payload,
+        timeout_s=_OPTIONAL_MOJO_TIMEOUT_S,
+    )
+    if result is not None:
         return {
             **result,
-            "_profiling_status": _mojo_profiling_enabled_status("column_profile"),
+            "_profiling_status": _mojo_profiling_enabled_status(
+                "column_profile",
+                engine_status=engine_status,
+            ),
         }
-    except Exception as exc:
-        logger.warning(
-            "column_profile_mojo_error",
-            error=str(exc),
-            profiling_policy=settings.normalized_mojo_profiling_policy,
-        )
+
+    if engine_status["reason"] == "engine_circuit_open":
         if settings.mojo_profiling_required:
             raise MojoInstrumentationError(
                 "column_profile",
-                "Mojo column profiling failed while profiling policy is required.",
-            ) from exc
+                "Mojo column profiling is temporarily disabled after a recent engine failure "
+                "while profiling policy is required.",
+            )
         return {
             "profiles": {},
             "_profiling_status": _mojo_profiling_disabled_status(
                 "column_profile",
                 "engine_error",
-                message=str(exc),
+                message=str(engine_status.get("message") or ""),
+                engine_status=engine_status,
             ),
         }
+
+    if engine_status["reason"] == "preflight_payload_too_large":
+        return {
+            "profiles": {},
+            "_profiling_status": _mojo_profiling_disabled_status(
+                "column_profile",
+                "preflight_payload_too_large",
+                message=str(engine_status.get("message") or ""),
+                engine_status=engine_status,
+            ),
+        }
+
+    _log_mojo_warning(
+        "column_profile_mojo_error",
+        error=str(engine_status.get("message") or ""),
+        profiling_policy=settings.normalized_mojo_profiling_policy,
+        reason=mojo_failure_reason(str(engine_status.get("message") or engine_status["reason"])),
+    )
+    if settings.mojo_profiling_required:
+        raise MojoInstrumentationError(
+            "column_profile",
+            "Mojo column profiling failed while profiling policy is required.",
+        )
+    return {
+        "profiles": {},
+        "_profiling_status": _mojo_profiling_disabled_status(
+            "column_profile",
+            "engine_error",
+            message=str(engine_status.get("message") or ""),
+            engine_status=engine_status,
+        ),
+    }
 
 
 async def _call_mojo_column_match(
@@ -1193,20 +1463,24 @@ async def _call_mojo_column_match(
     """
     if not columns_a or not columns_b:
         return None
-    try:
-        from apps.api_server.compute.mojo_adapter import invoke_engine
-        payload = {
-            "engine_type": "column_match",
-            "source_a": source_a,
-            "source_b": source_b,
-            "columns_a": columns_a,
-            "columns_b": columns_b,
-            "min_confidence": min_confidence,
-        }
-        return await invoke_engine(payload)
-    except Exception as exc:
-        logger.debug("column_match_mojo_error", error=str(exc))
+    payload = {
+        "engine_type": "column_match",
+        "source_a": source_a,
+        "source_b": source_b,
+        "columns_a": columns_a,
+        "columns_b": columns_b,
+        "min_confidence": min_confidence,
+    }
+    result, engine_status = await _invoke_optional_mojo_engine(
+        "column_match",
+        payload,
+        timeout_s=_OPTIONAL_MOJO_TIMEOUT_S,
+    )
+    if result is None:
+        if engine_status["reason"] != "engine_circuit_open":
+            logger.debug("column_match_mojo_error", engine_status=engine_status)
         return None
+    return result
 
 
 async def _call_mojo_join_detect(
@@ -1222,19 +1496,23 @@ async def _call_mojo_join_detect(
     """
     if not columns:
         return None
-    try:
-        from apps.api_server.compute.mojo_adapter import invoke_engine
-        payload = {
-            "engine_type": "join_detect",
-            "source_a": source_a,
-            "source_b": source_b,
-            "min_confidence": min_confidence,
-            "columns": columns,
-        }
-        return await invoke_engine(payload)
-    except Exception as exc:
-        logger.debug("join_detect_mojo_error", error=str(exc))
+    payload = {
+        "engine_type": "join_detect",
+        "source_a": source_a,
+        "source_b": source_b,
+        "min_confidence": min_confidence,
+        "columns": columns,
+    }
+    result, engine_status = await _invoke_optional_mojo_engine(
+        "join_detect",
+        payload,
+        timeout_s=_OPTIONAL_MOJO_TIMEOUT_S,
+    )
+    if result is None:
+        if engine_status["reason"] != "engine_circuit_open":
+            logger.debug("join_detect_mojo_error", engine_status=engine_status)
         return None
+    return result
 
 
 async def _call_mojo_relation_detect(
@@ -1249,18 +1527,22 @@ async def _call_mojo_relation_detect(
     """
     if len(columns) < 3:
         return None
-    try:
-        from apps.api_server.compute.mojo_adapter import invoke_engine
-        payload = {
-            "engine_type": "relation_detect",
-            "source": source,
-            "min_confidence": min_confidence,
-            "columns": columns,
-        }
-        return await invoke_engine(payload)
-    except Exception as exc:
-        logger.debug("relation_detect_mojo_error", error=str(exc))
+    payload = {
+        "engine_type": "relation_detect",
+        "source": source,
+        "min_confidence": min_confidence,
+        "columns": columns,
+    }
+    result, engine_status = await _invoke_optional_mojo_engine(
+        "relation_detect",
+        payload,
+        timeout_s=_OPTIONAL_MOJO_TIMEOUT_S,
+    )
+    if result is None:
+        if engine_status["reason"] != "engine_circuit_open":
+            logger.debug("relation_detect_mojo_error", engine_status=engine_status)
         return None
+    return result
 
 
 def _parse_csv(text: str) -> list[dict[str, Any]]:
@@ -1448,46 +1730,53 @@ async def _load_source_table(
         if registered_id:
             return _load_registered_source_table(registered_id, org_id)
 
-        if src.records is not None:
-            return records_to_arrow_table(src.records)
+        artifact_cache_key = source_content_artifact_key(src)
+        if artifact_cache_key is not None:
+            cached_table = load_cached_arrow_table(artifact_cache_key)
+            if cached_table is not None:
+                return cached_table
 
-        if src.csv:
+        table = None
+
+        if src.records is not None:
+            table = records_to_arrow_table(src.records)
+
+        elif src.csv:
             try:
-                return delimited_text_to_arrow_table(src.csv, delimiter=",", sniff=True)
+                table = delimited_text_to_arrow_table(src.csv, delimiter=",", sniff=True)
             except Exception:
                 return None
 
-        if src.json_str:
-            return records_to_arrow_table(_parse_json_records(src.json_str))
+        elif src.json_str:
+            table = records_to_arrow_table(_parse_json_records(src.json_str))
 
-        if src.excel_b64:
+        elif src.excel_b64:
             from apps.api_server.connectors import FileConnector
 
             fc = FileConnector({"file_type": "excel", "content": src.excel_b64})
             table = await fc.fetch_table()
-            if table is not None:
-                return table
-            return None
+            if table is None:
+                return None
 
-        if src.parquet_b64:
+        elif src.parquet_b64:
             from apps.api_server.connectors import FileConnector
 
             fc = FileConnector({"file_type": "parquet", "content": src.parquet_b64})
             table = await fc.fetch_table()
-            if table is not None:
-                return table
-            return None
-
-        if src.url:
-            raw, ct = _read_url_text(src.url)
-            if "json" in ct or src.url.rstrip("/").endswith(".json"):
-                return records_to_arrow_table(_parse_json_records(raw))
-            try:
-                return delimited_text_to_arrow_table(raw, delimiter=",", sniff=True)
-            except Exception:
+            if table is None:
                 return None
 
-        if src.connection:
+        elif src.url:
+            raw, ct = _read_url_text(src.url)
+            if "json" in ct or src.url.rstrip("/").endswith(".json"):
+                table = records_to_arrow_table(_parse_json_records(raw))
+            else:
+                try:
+                    table = delimited_text_to_arrow_table(raw, delimiter=",", sniff=True)
+                except Exception:
+                    return None
+
+        elif src.connection:
             from apps.api_server.connectors import ConnectorRegistry
 
             conn_type = src.connection.get("type", "")
@@ -1506,11 +1795,10 @@ async def _load_source_table(
                 )
             connector = ConnectorRegistry.create(conn_type, src.connection)
             table = await connector.fetch_table()
-            if table is not None:
-                return table
-            return None
+            if table is None:
+                return None
 
-        if src.table:
+        elif src.table:
             table_message = (
                 f"Source '{src.name}': use a SQL connection with an explicit "
                 "query instead of table."
@@ -1520,13 +1808,19 @@ async def _load_source_table(
                 detail={"error": {"code": "use_connection", "message": table_message}},
             )
 
-        raise HTTPException(
-            status_code=400,
-            detail={"error": {"code": "empty_source",
-                               "message": f"Source '{src.name}' has no data. "
-                                          "Provide one of: records, csv, json_str, excel_b64, "
-                                          "parquet_b64, url, or connection."}},
-        )
+        if table is None:
+            raise HTTPException(
+                status_code=400,
+                detail={"error": {"code": "empty_source",
+                                   "message": f"Source '{src.name}' has no data. "
+                                              "Provide one of: records, csv, json_str, excel_b64, "
+                                              "parquet_b64, url, or connection."}},
+            )
+
+        if artifact_cache_key is not None:
+            store_cached_arrow_table(artifact_cache_key, table)
+
+        return table
     except HTTPException:
         raise
     except Exception as exc:

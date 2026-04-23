@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.testclient import TestClient
 
 from apps.api_server.middleware.request_id import RequestIDMiddleware
 from apps.api_server.middleware.response_contract import ResponseContractMiddleware
+from tests._asgi_client import SyncASGIClient
 
 
 def _build_app() -> FastAPI:
@@ -38,7 +38,7 @@ def _build_app() -> FastAPI:
 
 def test_v1_success_responses_include_observability_headers() -> None:
     app = _build_app()
-    with TestClient(app) as client:
+    with SyncASGIClient(app) as client:
         response = client.get("/v1/ping")
 
     assert response.status_code == 200
@@ -51,7 +51,7 @@ def test_v1_success_responses_include_observability_headers() -> None:
 
 def test_v1_error_responses_include_rate_limit_and_execution_headers() -> None:
     app = _build_app()
-    with TestClient(app) as client:
+    with SyncASGIClient(app) as client:
         response = client.get("/v1/fail")
 
     assert response.status_code == 429
@@ -64,7 +64,7 @@ def test_v1_error_responses_include_rate_limit_and_execution_headers() -> None:
 
 def test_non_v1_responses_do_not_get_contract_headers() -> None:
     app = _build_app()
-    with TestClient(app) as client:
+    with SyncASGIClient(app) as client:
         response = client.get("/health")
 
     assert response.status_code == 200

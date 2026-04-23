@@ -66,6 +66,7 @@ async def list_runs(
     auth: Annotated[AuthContext, Depends(get_current_org)],
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=200),
+    offset: int | None = Query(default=None, ge=0),
     status: str | None = Query(default=None),
     mode: str | None = Query(default=None),
 ) -> RunsResponse:
@@ -81,8 +82,9 @@ async def list_runs(
     total_result = await db.execute(count_q)
     total = total_result.scalar_one()
 
-    offset = (page - 1) * limit
-    items_q = base_q.order_by(desc(SimulationRun.created_at)).offset(offset).limit(limit)
+    effective_offset = offset if offset is not None else (page - 1) * limit
+    effective_page = page if offset is None else (effective_offset // limit) + 1
+    items_q = base_q.order_by(desc(SimulationRun.created_at)).offset(effective_offset).limit(limit)
     result = await db.execute(items_q)
     runs = result.scalars().all()
 
@@ -108,7 +110,7 @@ async def list_runs(
             for r in runs
         ],
         total=total,
-        page=page,
+        page=effective_page,
         limit=limit,
         pages=max(1, (total + limit - 1) // limit),
     )

@@ -1,29 +1,18 @@
 """
-algenta-core — Local simulation, optimization, and decision-making.
+algenta-core — runtime-first local package for deterministic structured-data execution.
 
-Zero dependencies. No API key. Works offline. 100× faster than Python.
+Primary path:
 
-Quick start:
+  from algenta import Runtime
 
-  from algenta import decision, optimize, simulate, forecast
+  rt = Runtime()
+  rt.connect("orders.csv")
+  plan = rt.resolve({"metric": "revenue", "group_by": "product_line"})
+  result = rt.query(plan)
 
-  # One line. No docs needed.
-  decision("Should I launch this product?", revenue=120000, cost=70000)
-  optimize("maximize profit", price=(10, 200), quantity=(100, 5000))
-  simulate(revenue=100000, cost=70000, runs=50000)
-  forecast.predict([80k, 85k, 90k, 95k, 100k], horizon=6)
+Supported secondary modes remain available:
 
-  # Cloud: same API, infinite scale
-  from algenta import AlgentaClient
-  client = AlgentaClient(api_key="de_live_...")
-  client.simulate.risk(revenue=100000, cost=70000, runs=1_000_000)
-
-Bundles:
-  pip install algenta-core      # this package — local only
-  pip install algenta-finance   # financial modeling
-  pip install algenta-ml        # ML scoring + feature engineering
-  pip install algenta-ai        # LLM inference + agents
-  pip install algenta-ops       # DevOps + capacity planning
+  from algenta import decision, optimize, simulate, forecast, map_data, query_data
 """
 from __future__ import annotations
 
@@ -31,10 +20,36 @@ from algenta import forecast
 from algenta.client import AlgentaClient
 from algenta.map import FieldMapping as MappedField
 from algenta.map import MapResult, map_data, query_data
+from algenta.runtime import (
+    AlgentaRuntimeError,
+    ImportBundlePreview,
+    ImportFailure,
+    ImportPreview,
+    QueryOutput,
+    ResolvedPlan,
+    ResolveOutput,
+    Runtime,
+    RuntimeConfigurationError,
+    RuntimeValidationError,
+    SourceRegistration,
+    VerifyOutput,
+)
 from algenta.simple import Result, decision, optimize, simulate
 
 __version__ = "0.1.0"
 __all__ = [
+    "Runtime",
+    "ResolvedPlan",
+    "ResolveOutput",
+    "QueryOutput",
+    "VerifyOutput",
+    "SourceRegistration",
+    "ImportPreview",
+    "ImportBundlePreview",
+    "ImportFailure",
+    "AlgentaRuntimeError",
+    "RuntimeConfigurationError",
+    "RuntimeValidationError",
     "decision", "optimize", "simulate", "forecast",
     "AlgentaClient", "Result",
     "map_data", "query_data", "MapResult", "MappedField",

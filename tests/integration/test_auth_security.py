@@ -27,6 +27,8 @@ import time
 import urllib.error
 import urllib.request
 
+import pytest
+
 # Ensure project root is on sys.path
 PROJECT_ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", ".."))
 if PROJECT_ROOT not in sys.path:
@@ -43,6 +45,8 @@ FAIL = "❌"
 SKIP = "⏭️"
 results: list[tuple] = []
 timings: list[tuple[str, float]] = []
+
+pytestmark = pytest.mark.usefixtures("legacy_live_api_server")
 
 
 # ─── HTTP helpers ─────────────────────────────────────────────────────────────

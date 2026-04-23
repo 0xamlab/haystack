@@ -285,6 +285,71 @@ def test_refresh_registry_source_reuses_incremental_vector_resolver_for_new_sour
     assert result.column == "EXT_COST"
 
 
+def test_refresh_registry_source_invalidates_adaptive_context_until_lazy_rebuild(
+    tmp_path,
+    monkeypatch,
+):
+    planner = AutoPlanner(data_dir=Path(tmp_path), llm_policy="never")
+    planner.mojo_engines = []
+    planner.graph = {
+        "POS": {
+            "UNIT_PRICE": _planner_node("unit_measure"),
+            "EXT_PRICE": _planner_node("derived_measure"),
+        }
+    }
+    planner.profiles = {
+        "POS": {
+            "EXT_PRICE": {
+                "fill_rate": 1.0,
+                "unique_count": 12,
+                "total_count": 12,
+                "strings": [f"P{i}" for i in range(4)],
+            }
+        }
+    }
+    planner._adaptive_source_context = {
+        "POS": auto_planner_module.AdaptiveSourceContext(
+            join_distinctiveness=((1.0, 12),),
+            column_distinctiveness=((1.0, 12),),
+        )
+    }
+
+    monkeypatch.setattr(
+        auto_planner_module,
+        "_registry_source_artifacts_from_meta",
+        lambda **_kwargs: auto_planner_module._CachedRegistrySourceArtifacts(
+            nodes={"EXT_COST": _planner_node("derived_measure")},
+            profile={
+                "EXT_COST": {
+                    "fill_rate": 1.0,
+                    "unique_count": 8,
+                    "total_count": 8,
+                    "strings": [f"C{i}" for i in range(4)],
+                }
+            },
+            query_hints=[],
+        ),
+    )
+    monkeypatch.setattr(planner, "_build_vector_resolver", lambda: None)
+
+    planner.refresh_registry_source(
+        org_id="org-1",
+        source_id="src-backlog",
+        source_name="BACKLOG",
+        schema_meta={},
+        source_schema_revision="schema-rev-backlog",
+        parquet_path=None,
+        new_connections=[],
+    )
+
+    assert "BACKLOG" not in planner._adaptive_source_context
+
+    rebuilt = planner._source_distinctiveness_distribution("BACKLOG", join_only=False)
+
+    assert rebuilt
+    assert "BACKLOG" in planner._adaptive_source_context
+
+
 def test_profile_records_scans_full_loaded_rows_for_sparse_late_columns():
     records = [
         {"sparse_dim": "", "measure_x": 1.0},

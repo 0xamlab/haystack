@@ -29,11 +29,21 @@ router = APIRouter(tags=["Data"])
 
 
 class ConnectDataRequest(BaseModel):
-    connection_type: str = Field(..., description="database | api | object_storage | file_upload")
+    connection_type: str | None = Field(
+        default=None,
+        description="database | api | object_storage | file_upload",
+    )
     dataset_name: str = Field(..., description="Public dataset name.")
     provider: str | None = Field(
         default=None,
         description="Specific provider such as postgres, snowflake, s3, rest.",
+    )
+    connector: dict[str, Any] | None = Field(
+        default=None,
+        description=(
+            "Canonical connector envelope with type/location/auth/options. "
+            "Preferred for cross-SDK and MCP compatibility."
+        ),
     )
     connection_id: str | None = Field(
         default=None,

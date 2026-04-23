@@ -510,6 +510,14 @@ def update_source_meta(org_id: str, source_id: str, updates: dict[str, Any]) -> 
     _write_json(path, meta)
     _touch_schema_stamp(d)
     _set_source_meta_cache(org_id, source_id, meta)
+    source_revision = source_schema_revision(org_id, source_id)
+    idx = _read_json(d / "index.json") or {}
+    entry = idx.get(source_id)
+    if isinstance(entry, dict):
+        entry["source_schema_revision"] = source_revision
+        idx[source_id] = entry
+        _write_json(d / "index.json", idx)
+        _set_source_entry_cache(org_id, source_id, entry)
     return meta
 
 

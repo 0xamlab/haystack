@@ -234,7 +234,7 @@ class Runtime:
         return await client.execute(module, function, args)
 
     async def _start_daemon(self) -> None:
-        """Start the daemon in the background and wait up to 5s for it."""
+        """Start the daemon in the background and wait until it is reachable."""
         try:
             from apps.runtime.daemon import cmd_start
             env_updates: dict[str, str] = {}
@@ -257,15 +257,20 @@ class Runtime:
                             del os.environ[key]
                     else:
                         os.environ[key] = old_value
-            # Wait up to 5s for the socket to appear
             from apps.runtime.client import DaemonClient
-            deadline = time.monotonic() + 5.0
+
+            wait_timeout_s = max(15.0, min(self._timeout, 30.0))
+            deadline = time.monotonic() + wait_timeout_s
             while time.monotonic() < deadline:
                 if DaemonClient.is_daemon_running():
-                    logger.info("sdk_daemon_auto_started")
-                    return
-                await asyncio.sleep(0.2)
-            logger.warning("sdk_daemon_start_timeout")
+                    health = await DaemonClient(
+                        timeout=min(self._timeout, 5.0),
+                    ).health()
+                    if health.get("status") != "unreachable":
+                        logger.info("sdk_daemon_auto_started", status=health.get("status"))
+                        return
+                await asyncio.sleep(0.25)
+            logger.warning("sdk_daemon_start_timeout", timeout_s=wait_timeout_s)
         except Exception as exc:
             logger.warning("sdk_daemon_auto_start_failed", error=str(exc))
 

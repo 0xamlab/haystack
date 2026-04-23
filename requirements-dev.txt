@@ -5,13 +5,13 @@
 openpyxl==3.1.5                         # xlsx export + Excel-path test coverage
 # fpdf2>=2.7.0                          # pdf export:  pip install fpdf2
 
-# ─── Data Connector SDKs (install for production use) ─────────────────────
-# boto3>=1.34.0                         # AWS S3 connector
-# google-cloud-storage>=2.16.0          # GCS connector
+# ─── Data Connector SDKs (required for clean-env connector coverage) ───────
+boto3==1.34.122                        # AWS S3 connector
+google-cloud-storage==2.17.0           # GCS connector
+azure-storage-blob==12.20.0            # Azure Blob connector
+# Optional heavier connector SDKs:
 # google-cloud-bigquery>=3.20.0         # BigQuery connector
 # snowflake-connector-python>=3.9.0     # Snowflake connector
-# azure-storage-blob>=12.20.0           # Azure Blob connector
-# To enable: pip install boto3 google-cloud-storage google-cloud-bigquery snowflake-connector-python azure-storage-blob
 
 # Core web framework (needed for import resolution even in unit tests)
 fastapi==0.110.0

@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from fastapi import HTTPException
 
 _BENCHMARK_PATH = (
     Path(__file__).resolve().parents[1] / "benchmarks" / "source_matrix_runtime_benchmark.py"
@@ -167,7 +168,7 @@ async def test_register_case_prefers_runtime_count_anchor_when_available(
             name="AnchorSource",
             csv="record_id,nullable_metric\n1,10\n",
         ),
-        expected_count=10,
+        expected_count=None,
     )
 
     assert case.metric_column == "record_id"
@@ -192,6 +193,11 @@ async def test_prepare_local_csv_cases_skips_empty_exports(
     )
 
     async def _fake_register_case(**kwargs):  # type: ignore[no-untyped-def]
+        if kwargs["origin"] == str(empty_path.relative_to(Path(__file__).resolve().parents[1])):
+            raise HTTPException(
+                status_code=400,
+                detail={"error": {"code": "empty_source", "message": "empty"}},
+            )
         return {"origin": kwargs["origin"]}
 
     monkeypatch.setattr(_BENCHMARK, "_register_case", _fake_register_case)

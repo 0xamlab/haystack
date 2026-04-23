@@ -10,5 +10,11 @@ BASE_URL = (
 ).rstrip("/")
 API_KEY  = os.environ.get("ALGENTA_API_KEY", "") or os.environ.get("DE_API_KEY", "")
 TIMEOUT  = float(os.environ.get("ALGENTA_MCP_TIMEOUT", "60"))
+CONNECT_TIMEOUT = float(
+    os.environ.get(
+        "ALGENTA_MCP_CONNECT_TIMEOUT",
+        os.environ.get("ALGENTA_MCP_TIMEOUT", "120"),
+    )
+)
 PORT     = int(os.environ.get("ALGENTA_MCP_PORT", "8001"))
 VERSION  = "1.0.0"

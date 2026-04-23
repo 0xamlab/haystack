@@ -152,9 +152,16 @@ async def lifespan(app: FastAPI):  # type: ignore[type-arg]
 
     # ── Shutdown ─────────────────────────────────────────────────────────────
     logger.info("shutting_down")
+    from apps.api_server.compute.mojo_pool import set_pool
+
     if mojo_pool is not None:
         await mojo_pool.stop()
-    await redis_client.aclose()
+    set_pool(None)
+    try:
+        await redis_client.aclose()
+    finally:
+        app.state.mojo_pool = None
+        app.state.redis = None
     logger.info("shutdown_complete")
 
 

@@ -4,6 +4,7 @@ import asyncio
 import sys
 import types
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -89,6 +90,145 @@ async def test_invoke_subprocess_uses_python_fallback_when_binary_missing_and_al
 
 
 @pytest.mark.asyncio
+async def test_invoke_subprocess_suppresses_repeated_missing_binary_warnings(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(mojo_adapter, "_BINARY_PATH", Path("/tmp/does-not-exist-mojo"))
+    monkeypatch.setattr(mojo_adapter.os, "access", lambda path, mode: False)
+    monkeypatch.setattr(mojo_adapter.settings, "runtime_fallback_mode", "allow")
+    monkeypatch.setattr(mojo_adapter, "_FALLBACK_WARNING_STATE", {})
+
+    warnings: list[tuple[str, dict[str, object | None]]] = []
+    debugs: list[tuple[str, dict[str, object | None]]] = []
+    monotonic_values = [0.0, 1.0]
+
+    async def _fake_invoke_python_fallback(payload: dict[str, object]) -> dict[str, object]:
+        return {
+            "engine_version": "0.1.0-python-fallback",
+            "summary": {"mean": 123.0},
+            "simulation_model": payload["engine_type"],
+            "engine_type": payload["engine_type"],
+        }
+
+    monkeypatch.setattr(
+        mojo_adapter.logger,
+        "warning",
+        lambda event, **kwargs: warnings.append((event, kwargs)),
+    )
+    monkeypatch.setattr(
+        mojo_adapter.logger,
+        "debug",
+        lambda event, **kwargs: debugs.append((event, kwargs)),
+    )
+    monkeypatch.setattr(
+        mojo_adapter.time,
+        "monotonic",
+        lambda: monotonic_values.pop(0) if monotonic_values else 1.0,
+    )
+    monkeypatch.setattr(mojo_adapter, "_invoke_python_fallback", _fake_invoke_python_fallback)
+
+    await mojo_adapter._invoke_subprocess({"engine_type": "lhs", "runs": 10})
+    await mojo_adapter._invoke_subprocess({"engine_type": "lhs", "runs": 10})
+
+    assert [event for event, _ in warnings] == ["mojo_binary_missing_using_python_fallback"]
+    assert [event for event, _ in debugs] == ["mojo_binary_missing_using_python_fallback_suppressed"]
+
+
+@pytest.mark.asyncio
+async def test_invoke_subprocess_uses_python_fallback_when_engine_crashes_and_allowed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(mojo_adapter, "_BINARY_PATH", Path(__file__))
+    monkeypatch.setattr(mojo_adapter.os, "access", lambda path, mode: True)
+    monkeypatch.setattr(mojo_adapter.settings, "runtime_fallback_mode", "allow")
+
+    async def _fake_create_subprocess_exec(*args, **kwargs):  # type: ignore[no-untyped-def]
+        return _FakeProcess(stdout=b"", stderr=b"segfault", returncode=-5)
+
+    async def _fake_invoke_python_fallback(payload: dict[str, object]) -> dict[str, object]:
+        return {
+            "engine_version": "0.1.0-python-fallback",
+            "scenarios_run": payload["runs"],
+            "summary": {"mean": 123.0},
+            "percentiles": {"p5": 1.0, "p25": 2.0, "p50": 3.0, "p75": 4.0, "p95": 5.0},
+            "risk": {"probability_of_loss": 0.0, "var_95": 1.0},
+            "simulation_model": payload["engine_type"],
+            "engine_type": payload["engine_type"],
+        }
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", _fake_create_subprocess_exec)
+    monkeypatch.setattr(mojo_adapter, "_invoke_python_fallback", _fake_invoke_python_fallback)
+
+    result = await mojo_adapter._invoke_subprocess({"engine_type": "monte_carlo", "runs": 250})
+
+    assert result["engine_version"] == "0.1.0-python-fallback"
+    assert result["simulation_model"] == "monte_carlo"
+    assert result["engine_type"] == "monte_carlo"
+    assert result["scenarios_run"] == 250
+
+
+def test_invoke_subprocess_sync_rewarns_after_cooldown_when_engine_crashes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(mojo_adapter, "_BINARY_PATH", Path(__file__))
+    monkeypatch.setattr(mojo_adapter.os, "access", lambda path, mode: True)
+    monkeypatch.setattr(mojo_adapter.settings, "runtime_fallback_mode", "allow")
+    monkeypatch.setattr(mojo_adapter, "_FALLBACK_WARNING_STATE", {})
+
+    warnings: list[tuple[str, dict[str, object | None]]] = []
+    debugs: list[tuple[str, dict[str, object | None]]] = []
+    monotonic_values = [0.0, 1.0, 61.0]
+
+    class _FakeCompletedProcess:
+        returncode = -5
+        stdout = b""
+        stderr = b"segfault"
+
+    def _fake_run(*args, **kwargs):  # type: ignore[no-untyped-def]
+        return _FakeCompletedProcess()
+
+    def _fake_invoke_python_fallback_sync(payload: dict[str, object]) -> dict[str, object]:
+        return {
+            "engine_version": "0.1.0-python-fallback",
+            "summary": {"mean": 123.0},
+            "simulation_model": payload["engine_type"],
+            "engine_type": payload["engine_type"],
+        }
+
+    monkeypatch.setattr(
+        mojo_adapter.logger,
+        "warning",
+        lambda event, **kwargs: warnings.append((event, kwargs)),
+    )
+    monkeypatch.setattr(
+        mojo_adapter.logger,
+        "debug",
+        lambda event, **kwargs: debugs.append((event, kwargs)),
+    )
+    monkeypatch.setattr(
+        mojo_adapter.time,
+        "monotonic",
+        lambda: monotonic_values.pop(0) if monotonic_values else 61.0,
+    )
+    monkeypatch.setattr(mojo_adapter.subprocess, "run", _fake_run)
+    monkeypatch.setattr(
+        mojo_adapter,
+        "_invoke_python_fallback_sync",
+        _fake_invoke_python_fallback_sync,
+    )
+
+    mojo_adapter._invoke_subprocess_sync({"engine_type": "monte_carlo", "runs": 10})
+    mojo_adapter._invoke_subprocess_sync({"engine_type": "monte_carlo", "runs": 10})
+    mojo_adapter._invoke_subprocess_sync({"engine_type": "monte_carlo", "runs": 10})
+
+    assert [event for event, _ in warnings] == [
+        "mojo_engine_crashed_using_python_fallback",
+        "mojo_engine_crashed_using_python_fallback",
+    ]
+    assert [event for event, _ in debugs] == ["mojo_engine_crashed_using_python_fallback_suppressed"]
+
+
+@pytest.mark.asyncio
 async def test_invoke_python_fallback_returns_supported_engine_identity() -> None:
     result = await mojo_adapter._invoke_python_fallback(
         {
@@ -168,6 +308,27 @@ async def test_invoke_subprocess_raises_when_binary_missing_and_runtime_fallback
         await mojo_adapter._invoke_subprocess({"engine_type": "monte_carlo", "runs": 100})
 
     assert "Mojo binary not found" in str(exc_info.value)
+    assert exc_info.value.code == "binary_missing"
+
+
+@pytest.mark.asyncio
+async def test_invoke_engine_rejects_invalid_payload_before_touching_mojo(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    called = False
+
+    async def _should_not_run(*args, **kwargs):  # type: ignore[no-untyped-def]
+        nonlocal called
+        called = True
+        raise AssertionError("Mojo path must not run for invalid payloads")
+
+    monkeypatch.setattr(mojo_adapter, "_invoke_subprocess", _should_not_run)
+
+    with pytest.raises(mojo_adapter.MojoEngineError) as exc_info:
+        await mojo_adapter.invoke_engine({"runs": 100})
+
+    assert called is False
+    assert exc_info.value.code == "invalid_payload"
 
 
 @pytest.mark.asyncio
@@ -177,17 +338,73 @@ async def test_invoke_engine_routes_inactive_pool_to_fallback_path(
     from apps.api_server.compute import mojo_pool
 
     class _InactivePool:
-        async def invoke(self, payload: dict[str, object]) -> dict[str, object]:
+        async def invoke(
+            self,
+            payload: dict[str, object],
+            *,
+            timeout: float | None = None,
+        ) -> dict[str, object]:
             raise mojo_pool.MojoEngineError("Mojo pool is not running")
 
     monkeypatch.setattr(mojo_pool, "get_pool_sync", lambda: _InactivePool())
 
-    async def _fake_invoke_subprocess(payload: dict[str, object]) -> dict[str, object]:
+    async def _fake_invoke_subprocess(
+        payload: dict[str, object],
+        *,
+        timeout: float = 60.0,
+    ) -> dict[str, object]:
+        assert timeout == 60.0
         return {
             "engine_version": "0.1.0-python-fallback",
             "summary": {"mean": 42.0},
             "percentiles": {"p5": 1.0, "p25": 2.0, "p50": 3.0, "p75": 4.0, "p95": 5.0},
             "risk": {"probability_of_loss": 0.0, "var_95": 1.0},
+            "simulation_model": payload["engine_type"],
+            "engine_type": payload["engine_type"],
+            "scenarios_run": 100,
+        }
+
+    monkeypatch.setattr(mojo_adapter, "_invoke_subprocess", _fake_invoke_subprocess)
+
+    result = await mojo_adapter.invoke_engine({"engine_type": "monte_carlo", "runs": 100})
+
+    assert result["engine_version"] == "0.1.0-python-fallback"
+    assert result["simulation_model"] == "monte_carlo"
+
+
+@pytest.mark.asyncio
+async def test_invoke_engine_routes_unhealthy_pool_worker_to_fallback_path(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from apps.api_server.compute import mojo_pool
+
+    class _UnhealthyPool:
+        async def invoke(
+            self,
+            payload: dict[str, object],
+            *,
+            timeout: float | None = None,
+        ) -> dict[str, object]:
+            raise mojo_pool.MojoEngineError(
+                "Worker 2 became unhealthy during engine execution.",
+                code="worker_unhealthy",
+                recoverable=True,
+                engine_type=str(payload.get("engine_type") or "unknown"),
+                stage="pool_dispatch",
+                details={"worker_id": 2},
+            )
+
+    monkeypatch.setattr(mojo_pool, "get_pool_sync", lambda: _UnhealthyPool())
+
+    async def _fake_invoke_subprocess(
+        payload: dict[str, object],
+        *,
+        timeout: float = 60.0,
+    ) -> dict[str, object]:
+        assert timeout == 60.0
+        return {
+            "engine_version": "0.1.0-python-fallback",
+            "summary": {"mean": 42.0},
             "simulation_model": payload["engine_type"],
             "engine_type": payload["engine_type"],
             "scenarios_run": 100,
@@ -238,3 +455,88 @@ def test_invoke_engine_sync_routes_inactive_pool_to_sync_fallback(
     result = mojo_adapter.invoke_engine_sync({"engine_type": "field_map"}, timeout=5.0)
 
     assert result == {"engine_type": "field_map", "mapped": True}
+
+
+def test_invoke_subprocess_sync_uses_python_fallback_when_engine_crashes_and_allowed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(mojo_adapter, "_BINARY_PATH", Path(__file__))
+    monkeypatch.setattr(mojo_adapter.os, "access", lambda path, mode: True)
+    monkeypatch.setattr(mojo_adapter.settings, "runtime_fallback_mode", "allow")
+
+    class _FakeCompletedProcess:
+        returncode = -5
+        stdout = b""
+        stderr = b"segfault"
+
+    def _fake_run(*args, **kwargs):  # type: ignore[no-untyped-def]
+        return _FakeCompletedProcess()
+
+    def _fake_invoke_python_fallback_sync(payload: dict[str, object]) -> dict[str, object]:
+        return {
+            "engine_version": "0.1.0-python-fallback",
+            "scenarios_run": payload["runs"],
+            "summary": {"mean": 123.0},
+            "percentiles": {"p5": 1.0, "p25": 2.0, "p50": 3.0, "p75": 4.0, "p95": 5.0},
+            "risk": {"probability_of_loss": 0.0, "var_95": 1.0},
+            "simulation_model": payload["engine_type"],
+            "engine_type": payload["engine_type"],
+        }
+
+    monkeypatch.setattr(mojo_adapter.subprocess, "run", _fake_run)
+    monkeypatch.setattr(
+        mojo_adapter,
+        "_invoke_python_fallback_sync",
+        _fake_invoke_python_fallback_sync,
+    )
+
+    result = mojo_adapter._invoke_subprocess_sync({"engine_type": "monte_carlo", "runs": 250})
+
+    assert result["engine_version"] == "0.1.0-python-fallback"
+    assert result["simulation_model"] == "monte_carlo"
+    assert result["engine_type"] == "monte_carlo"
+    assert result["scenarios_run"] == 250
+
+
+@pytest.mark.asyncio
+async def test_pool_invoke_raises_structured_error_when_worker_becomes_unhealthy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from apps.api_server.compute import mojo_pool
+
+    class _DeadWorker:
+        id = 7
+        healthy = False
+
+        async def invoke(
+            self,
+            payload: dict[str, object],
+            *,
+            timeout: float | None = None,
+        ) -> dict[str, object]:
+            raise mojo_pool.MojoEngineError(
+                "Worker 7 timed out after 60s",
+                code="timeout",
+                recoverable=True,
+                engine_type=str(payload.get("engine_type") or "unknown"),
+                stage="worker_exec",
+                details={"worker_id": 7},
+            )
+
+    scheduled: list[str] = []
+
+    def _fake_create_task(coro):  # type: ignore[no-untyped-def]
+        scheduled.append("replace")
+        coro.close()
+        return SimpleNamespace()
+
+    pool = mojo_pool.MojoWorkerPool(size=1)
+    pool._running = True
+    await pool._queue.put(_DeadWorker())
+    monkeypatch.setattr(asyncio, "create_task", _fake_create_task)
+
+    with pytest.raises(mojo_pool.MojoEngineError) as exc_info:
+        await pool.invoke({"engine_type": "field_map"})
+
+    assert exc_info.value.code == "worker_unhealthy"
+    assert scheduled == ["replace"]

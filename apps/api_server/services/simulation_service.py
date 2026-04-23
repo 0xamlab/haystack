@@ -567,6 +567,33 @@ def _map_engine_output(
     return envelope
 
 
+def _fallback_decision_tree_result(payload: dict[str, Any]) -> dict[str, Any] | None:
+    config = payload.get("decision_tree_config")
+    if not isinstance(config, dict):
+        return None
+    raw_paths = config.get("paths")
+    if not isinstance(raw_paths, list):
+        return None
+
+    normalized_paths: list[dict[str, Any]] = []
+    for path in raw_paths:
+        if not isinstance(path, dict):
+            continue
+        normalized_paths.append(
+            {
+                "label": path.get("label"),
+                "probability": path.get("probability"),
+                "objective_function": path.get("objective_function"),
+                "variables": path.get("variables"),
+            }
+        )
+
+    return {
+        "n_paths": len(normalized_paths),
+        "paths": normalized_paths,
+    }
+
+
 # ─── Fast path — compute only, no DB ─────────────────────────────────────────
 
 async def run_simulation_fast(
@@ -625,6 +652,8 @@ async def run_simulation_fast(
         request_hash=request_hash,
         validated_inputs=validated_inputs,
     )
+    if envelope.simulation_model == "decision_tree" and envelope.decision_tree_result is None:
+        envelope.decision_tree_result = _fallback_decision_tree_result(payload)
 
     # ── Unit postprocessing ──────────────────────────────────────────────────
     if unit_specs_raw or output_unit_specs_raw:
@@ -793,6 +822,8 @@ async def run_simulation(
         request_hash=request_hash,
         validated_inputs=validated_inputs,
     )
+    if envelope.simulation_model == "decision_tree" and envelope.decision_tree_result is None:
+        envelope.decision_tree_result = _fallback_decision_tree_result(payload)
 
     run.status            = RunStatus.COMPLETED
     run.engine_version    = envelope.engine_version

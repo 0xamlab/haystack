@@ -1461,14 +1461,11 @@ class AutoPlanner:
                 }
             )
 
-        self._adaptive_source_context[source_name] = AdaptiveSourceContext(
-            join_distinctiveness=tuple(
-                self._build_source_distinctiveness(source_name, join_only=True)
-            ),
-            column_distinctiveness=tuple(
-                self._build_source_distinctiveness(source_name, join_only=False)
-            ),
-        )
+        # Adaptive distinctiveness is query-time planning state. Keep
+        # registration/prewarm bounded by invalidating only this source and let
+        # the existing lazy rebuild path compute it on demand if a later query
+        # actually needs the signal.
+        self._adaptive_source_context.pop(source_name, None)
         if had_graph_source or not self._append_vector_resolver_source(source_name):
             self._build_vector_resolver()
 

@@ -340,6 +340,33 @@ def test_consume_credit_no_double_refresh():
     store._refreshing = False
 
 
+def test_background_refresh_offline_failure_is_nonfatal(monkeypatch):
+    """Network failure during refresh must not raise or corrupt local credits."""
+    import urllib.error
+
+    import apps.runtime.credits as cmod
+
+    monkeypatch.setenv("DE_API_KEY", "de_live_offline")
+    monkeypatch.setenv("ALGENTA_CONTROL_PLANE_URL", "https://offline.invalid")
+
+    store = _tmp_store()
+    store.initialize_sync(credits_granted=5, billing_period="2026-04")
+    old_store = cmod._store
+    cmod._store = store
+    try:
+        with patch("urllib.request.urlopen", side_effect=urllib.error.URLError("offline")):
+            run(cmod._background_refresh())
+
+        state = run(store.get_state())
+        assert state is not None
+        assert state.credits_remaining == 5
+        assert cmod._store._refreshing is False
+    finally:
+        cmod._store = old_store
+        monkeypatch.delenv("DE_API_KEY", raising=False)
+        monkeypatch.delenv("ALGENTA_CONTROL_PLANE_URL", raising=False)
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # 21–26  Executor integration
 # ══════════════════════════════════════════════════════════════════════════════

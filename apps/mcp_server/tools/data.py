@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from apps.mcp_server import config
 from apps.mcp_server.client import api
 
 
@@ -22,12 +23,15 @@ CONNECT_SPEC: dict[str, Any] = {
     ),
     "inputSchema": {
         "type": "object",
-        "required": ["connection_type", "dataset_name"],
+        "required": ["dataset_name"],
         "properties": {
             "connection_type": {
                 "type": "string",
                 "enum": ["database", "api", "object_storage", "file_upload"],
-                "description": "User-facing connection type.",
+                "description": (
+                    "Legacy compatibility field. Prefer connector.type with the "
+                    "canonical connector envelope."
+                ),
             },
             "dataset_name": {
                 "type": "string",
@@ -36,8 +40,16 @@ CONNECT_SPEC: dict[str, Any] = {
             "provider": {
                 "type": "string",
                 "description": (
-                    "Specific provider such as postgres, sqlite, snowflake, "
-                    "s3, gcs, azure, or rest."
+                    "Legacy compatibility field for provider selection. Prefer "
+                    "connector.type plus connector.location/auth/options."
+                ),
+            },
+            "connector": {
+                "type": "object",
+                "description": (
+                    "Canonical connector envelope with type/location/auth/options. "
+                    "Preferred when the same request shape should work across "
+                    "Python Runtime, TypeScript Runtime, and MCP."
                 ),
             },
             "connection_id": {
@@ -50,13 +62,17 @@ CONNECT_SPEC: dict[str, Any] = {
             },
             "connection_config": {
                 "type": "object",
-                "description": "Connector credentials/config for the first connect call.",
+                "description": (
+                    "Legacy compatibility field for connector credentials/config. "
+                    "Prefer connector.location and connector.auth.credentials."
+                ),
             },
             "selection": {
                 "type": "object",
                 "description": (
-                    "Chosen table/query/path. Use the selection object "
-                    "returned in choices."
+                    "Legacy compatibility field for chosen table/query/path. "
+                    "Use the selection object returned in choices when resuming "
+                    "a legacy connection flow."
                 ),
             },
             "description": {"type": "string"},
@@ -157,6 +173,7 @@ async def connect_handler(arguments: dict[str, Any]) -> str:
         "connection_type": arguments.get("connection_type"),
         "dataset_name": arguments.get("dataset_name"),
         "provider": arguments.get("provider"),
+        "connector": arguments.get("connector"),
         "connection_id": arguments.get("connection_id"),
         "connection_name": arguments.get("connection_name"),
         "connection_config": arguments.get("connection_config"),
@@ -170,7 +187,12 @@ async def connect_handler(arguments: dict[str, Any]) -> str:
         "excel_b64": arguments.get("excel_b64"),
         "parquet_b64": arguments.get("parquet_b64"),
     })
-    result = await api("POST", "/v1/data/connect", json=body)
+    result = await api(
+        "POST",
+        "/v1/data/connect",
+        json=body,
+        timeout=config.CONNECT_TIMEOUT,
+    )
     output = _strip_none({
         "status": result.get("status"),
         "message": result.get("message"),

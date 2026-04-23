@@ -13,6 +13,7 @@ async def test_connect_data_tool_returns_needs_selection(monkeypatch) -> None:
         assert method == "POST"
         assert path == "/v1/data/connect"
         assert kwargs["json"]["dataset_name"] == "Orders"
+        assert kwargs["timeout"] == data.config.CONNECT_TIMEOUT
         return {
             "status": "needs_selection",
             "connection_id": "conn_1",
@@ -31,6 +32,131 @@ async def test_connect_data_tool_returns_needs_selection(monkeypatch) -> None:
     assert body["status"] == "needs_selection"
     assert body["connection_id"] == "conn_1"
     assert body["choices"][0]["selection"]["table"] == "main.orders"
+
+
+@pytest.mark.asyncio
+async def test_connect_data_tool_forwards_object_storage_descriptor(monkeypatch) -> None:
+    seen: dict[str, object] = {}
+
+    async def _fake_api(method: str, path: str, **kwargs):  # type: ignore[no-untyped-def]
+        seen["json"] = kwargs["json"]
+        return {
+            "status": "ready",
+            "dataset_id": "ds_object",
+            "connection_type": "object_storage",
+            "provider": "s3",
+        }
+
+    monkeypatch.setattr(data, "api", _fake_api)
+
+    raw = await data.connect_handler(
+        {
+            "connection_type": "object_storage",
+            "provider": "s3",
+            "dataset_name": "WarehouseExport",
+            "connection_config": {"bucket": "algenta-fixtures", "region": "us-east-1"},
+            "selection": {"object_path": "exports/orders.parquet"},
+        }
+    )
+    body = json.loads(raw)
+    assert seen["json"] == {
+        "connection_type": "object_storage",
+        "dataset_name": "WarehouseExport",
+        "provider": "s3",
+        "connection_config": {"bucket": "algenta-fixtures", "region": "us-east-1"},
+        "selection": {"object_path": "exports/orders.parquet"},
+    }
+    assert body["dataset_id"] == "ds_object"
+
+
+@pytest.mark.asyncio
+async def test_connect_data_tool_forwards_api_descriptor(monkeypatch) -> None:
+    seen: dict[str, object] = {}
+
+    async def _fake_api(method: str, path: str, **kwargs):  # type: ignore[no-untyped-def]
+        seen["json"] = kwargs["json"]
+        return {
+            "status": "ready",
+            "dataset_id": "ds_api",
+            "connection_type": "api",
+            "provider": "rest",
+        }
+
+    monkeypatch.setattr(data, "api", _fake_api)
+
+    raw = await data.connect_handler(
+        {
+            "connection_type": "api",
+            "provider": "rest",
+            "dataset_name": "OrdersApi",
+            "connection_config": {
+                "url": "https://example.com/orders",
+                "headers": {"Authorization": "Bearer test"},
+                "data_path": "items",
+            },
+        }
+    )
+    body = json.loads(raw)
+    assert seen["json"] == {
+        "connection_type": "api",
+        "dataset_name": "OrdersApi",
+        "provider": "rest",
+        "connection_config": {
+            "url": "https://example.com/orders",
+            "headers": {"Authorization": "Bearer test"},
+            "data_path": "items",
+        },
+    }
+    assert body["dataset_id"] == "ds_api"
+
+
+@pytest.mark.asyncio
+async def test_connect_data_tool_forwards_canonical_connector_envelope(monkeypatch) -> None:
+    seen: dict[str, object] = {}
+
+    async def _fake_api(method: str, path: str, **kwargs):  # type: ignore[no-untyped-def]
+        seen["json"] = kwargs["json"]
+        return {
+            "status": "ready",
+            "dataset_id": "ds_connector",
+            "connection_type": "database",
+            "provider": "postgres",
+        }
+
+    monkeypatch.setattr(data, "api", _fake_api)
+
+    raw = await data.connect_handler(
+        {
+            "dataset_name": "OrdersPg",
+            "connector": {
+                "type": "postgres",
+                "location": {
+                    "host": "localhost",
+                    "port": 5432,
+                    "database": "orders",
+                    "schema": "public",
+                    "table": "orders",
+                },
+                "auth": {"credentials": {"user": "analytics", "password": "secret"}},
+            },
+        }
+    )
+    body = json.loads(raw)
+    assert seen["json"] == {
+        "dataset_name": "OrdersPg",
+        "connector": {
+            "type": "postgres",
+            "location": {
+                "host": "localhost",
+                "port": 5432,
+                "database": "orders",
+                "schema": "public",
+                "table": "orders",
+            },
+            "auth": {"credentials": {"user": "analytics", "password": "secret"}},
+        },
+    }
+    assert body["dataset_id"] == "ds_connector"
 
 
 @pytest.mark.asyncio

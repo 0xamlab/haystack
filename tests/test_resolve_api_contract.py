@@ -559,6 +559,143 @@ async def test_query_executes_resolved_plan_exact_path(
 
 
 @pytest.mark.asyncio
+async def test_verify_accepts_resolved_plan_exact_path_with_source_schema_revision(
+    app,
+    client,
+    monkeypatch: pytest.MonkeyPatch,
+    auth_overrides,
+) -> None:
+    schema_meta = {
+        "row_count": 2,
+        "columns": [
+            {
+                "name": "amount",
+                "role": "derived_measure",
+                "formula": "qty x price",
+                "is_numeric": True,
+                "magnitude": "medium",
+                "semantic_type": "number",
+                "fill_rate": 1.0,
+            },
+            {
+                "name": "customer",
+                "role": "category",
+                "formula": None,
+                "is_numeric": False,
+                "magnitude": "small",
+                "semantic_type": "text",
+                "fill_rate": 1.0,
+            },
+        ],
+        "roles_summary": {"derived_measure": 1, "category": 1},
+    }
+
+    monkeypatch.setattr(
+        "apps.api_server.services.source_registry.get_source_entry_by_name",
+        lambda org_id, source_name: _ready_entry(
+            "src_1",
+            "Orders",
+            schema_revision="source_rev_1",
+        )
+        if source_name == "Orders"
+        else None,
+    )
+    monkeypatch.setattr(
+        "apps.api_server.services.source_registry.source_schema_revision",
+        lambda org_id, source_id: "source_rev_1",
+    )
+    monkeypatch.setattr(
+        "apps.api_server.services.source_registry.get_source_meta",
+        lambda org_id, source_id: schema_meta,
+    )
+    monkeypatch.setattr(
+        "apps.api_server.services.source_registry.schema_revision",
+        lambda org_id: "org_schema_rev",
+    )
+
+    resp = await client.post(
+        "/v1/verify",
+        json={
+            "resolved_plan": {
+                "source_name": "Orders",
+                "metric_column": "amount",
+                "group_column": "customer",
+                "aggregation": "sum",
+                "schema_revision": "source_rev_1",
+            }
+        },
+    )
+
+    body = resp.json()
+    assert resp.status_code == 200
+    assert body["valid"] is True
+    assert body["verified"] is True
+    assert body["schema_revision"] == "source_rev_1"
+    assert body["resolved"]["source_name"] == "Orders"
+
+
+@pytest.mark.asyncio
+async def test_verify_accepts_count_on_non_numeric_exact_column(
+    app,
+    client,
+    monkeypatch: pytest.MonkeyPatch,
+    auth_overrides,
+) -> None:
+    schema_meta = {
+        "row_count": 2,
+        "columns": [
+            {
+                "name": "order_id",
+                "role": "identifier",
+                "formula": None,
+                "is_numeric": False,
+                "magnitude": "small",
+                "semantic_type": "id",
+                "fill_rate": 1.0,
+            },
+        ],
+        "roles_summary": {"identifier": 1},
+    }
+
+    monkeypatch.setattr(
+        "apps.api_server.services.source_registry.get_source_entry_by_name",
+        lambda org_id, source_name: _ready_entry(
+            "src_1",
+            "Orders",
+            schema_revision="source_rev_1",
+        )
+        if source_name == "Orders"
+        else None,
+    )
+    monkeypatch.setattr(
+        "apps.api_server.services.source_registry.source_schema_revision",
+        lambda org_id, source_id: "source_rev_1",
+    )
+    monkeypatch.setattr(
+        "apps.api_server.services.source_registry.get_source_meta",
+        lambda org_id, source_id: schema_meta,
+    )
+
+    resp = await client.post(
+        "/v1/verify",
+        json={
+            "resolved_plan": {
+                "source_name": "Orders",
+                "metric_column": "order_id",
+                "aggregation": "count",
+                "schema_revision": "source_rev_1",
+            }
+        },
+    )
+
+    body = resp.json()
+    assert resp.status_code == 200
+    assert body["valid"] is True
+    assert body["verified"] is True
+    assert body["resolved"]["metric_column"] == "order_id"
+
+
+@pytest.mark.asyncio
 async def test_resolve_org_scope_single_source_returns_source_schema_revision_for_query_handoff(
     app,
     client,

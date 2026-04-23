@@ -17,6 +17,7 @@ from apps.api_server.models.data_connector import (
     DataConnector,
 )
 from apps.api_server.services.auth_service import AuthContext
+from apps.api_server.services.connector_contract import normalize_connect_payload
 from apps.api_server.services.connectors import test_connector_real
 from apps.api_server.services.data_connection_specs import (
     _build_object_storage_connection,
@@ -130,6 +131,8 @@ async def connect_data(
     payload: dict[str, Any],
 ) -> dict[str, Any]:
     from apps.api_server.routers.sources import RegisterRequest, _register_source_impl
+
+    payload = normalize_connect_payload(payload)
 
     dataset_name = str(payload.get("dataset_name", "")).strip()
     if not dataset_name:

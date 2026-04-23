@@ -44,6 +44,10 @@ _PLANNER_MOJO_POOL_SIZE = max(
     1,
     int(os.environ.get("ALGENTA_PLANNER_MOJO_POOL_SIZE", str(min(4, max(1, os.cpu_count() or 1))))),
 )
+_PLANNER_MOJO_FAILURE_COOLDOWN_S = max(
+    1.0,
+    float(os.environ.get("ALGENTA_PLANNER_MOJO_FAILURE_COOLDOWN_S", "15.0")),
+)
 
 _ROLE_ID_TO_NAME: dict[int, str] = {
     ROLE_OTHER: "other",
@@ -72,6 +76,7 @@ class _PlannerMojoSocketClient:
         )
         self._lock = threading.RLock()
         self._initialized_session_key: str | None = None
+        self._disabled_until = 0.0
 
     def invoke(
         self,
@@ -82,6 +87,8 @@ class _PlannerMojoSocketClient:
         init_payload: dict[str, Any] | None = None,
     ) -> dict[str, Any] | None:
         with self._lock:
+            if time.monotonic() < self._disabled_until:
+                return None
             try:
                 self._ensure_started(timeout)
                 if (
@@ -101,6 +108,7 @@ class _PlannerMojoSocketClient:
                     return result
             except Exception as exc:
                 logger.debug("planner_mojo_rank_client_error", error=str(exc))
+                self._disabled_until = time.monotonic() + _PLANNER_MOJO_FAILURE_COOLDOWN_S
                 self.close()
         return None
 

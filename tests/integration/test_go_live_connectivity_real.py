@@ -151,10 +151,40 @@ def free_port() -> int:
         return int(sock.getsockname()[1])
 
 
-def wait_for_http(url: str, timeout: float = 45.0) -> None:
+def _read_log_tail(log_path: str | Path | None, *, lines: int = 40) -> str:
+    if not log_path:
+        return ""
+    path = Path(log_path)
+    if not path.exists():
+        return ""
+    text = path.read_text(encoding="utf-8", errors="replace").strip()
+    if not text:
+        return ""
+    tail = text.splitlines()[-lines:]
+    return "\n".join(tail)
+
+
+def wait_for_http(
+    url: str,
+    timeout: float = 45.0,
+    *,
+    proc: subprocess.Popen[str] | None = None,
+    log_path: str | Path | None = None,
+) -> None:
     start = time.monotonic()
     last_error = "no response"
     while time.monotonic() - start < timeout:
+        if proc is not None:
+            exit_code = proc.poll()
+            if exit_code is not None:
+                path = log_path or getattr(proc, "algenta_log_path", None)
+                log_tail = _read_log_tail(path)
+                detail = f"Process exited with code {exit_code}"
+                if log_tail:
+                    detail += f"\n--- process log tail ---\n{log_tail}"
+                raise RuntimeError(
+                    f"Timed out waiting for {url}: {detail}"
+                )
         try:
             resp = httpx.get(url, timeout=2.0)
             if resp.status_code == 200:
@@ -163,7 +193,12 @@ def wait_for_http(url: str, timeout: float = 45.0) -> None:
         except Exception as exc:
             last_error = str(exc)
         time.sleep(0.5)
-    raise RuntimeError(f"Timed out waiting for {url}: {last_error}")
+    path = log_path or getattr(proc, "algenta_log_path", None)
+    log_tail = _read_log_tail(path)
+    detail = f"Timed out waiting for {url}: {last_error}"
+    if log_tail:
+        detail += f"\n--- process log tail ---\n{log_tail}"
+    raise RuntimeError(detail)
 
 
 def ensure_port_open(host: str, port: int, label: str) -> None:
@@ -267,6 +302,10 @@ def start_api_server(port: int, sources_dir: Path, env: dict[str, str]) -> subpr
         "PYTHONPATH": str(ROOT),
         "ALGENTA_SOURCES_DIR": str(sources_dir),
     }
+    if "MOJO_POOL_SIZE" not in proc_env:
+        requested_workers = proc_env.get("DE_MOJO_WORKERS", "").strip()
+        if requested_workers:
+            proc_env["MOJO_POOL_SIZE"] = requested_workers
     log_path = sources_dir.parent / f"api_server_{port}.log"
     log_handle = log_path.open("w", encoding="utf-8")
     proc = subprocess.Popen(
@@ -479,9 +518,12 @@ def fetch_public_gcs_records() -> list[dict[str, Any]]:
 def fetch_public_azure_records() -> list[dict[str, Any]]:
     from azure.storage.blob import BlobClient
 
+    from apps.api_server.services.pyarrow_runtime import initialize_pyarrow_parquet_runtime
+
     body = BlobClient.from_blob_url(
         "https://azureopendatastorage.blob.core.windows.net/mlsamples/diabetes/part-00000-tid-6082354649623433283-5a3d3599-0872-4a3e-a027-bddf5f6d57ca-1951182-c000.snappy.parquet"
     ).download_blob().readall()
+    initialize_pyarrow_parquet_runtime()
     table = pq.read_table(io.BytesIO(body))
     return table.to_pylist()
 
@@ -657,7 +699,12 @@ def main() -> int:
         )
         if api_server is None:
             raise RuntimeError("API server failed to start")
-        wait_for_http(f"http://127.0.0.1:{args.api_port}/v1/health")
+        wait_for_http(
+            f"http://127.0.0.1:{args.api_port}/v1/health",
+            timeout=90.0,
+            proc=api_server,
+            log_path=getattr(api_server, "algenta_log_path", None),
+        )
 
         client = httpx.Client(base_url=f"http://127.0.0.1:{args.api_port}")
 

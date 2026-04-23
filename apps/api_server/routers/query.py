@@ -48,6 +48,7 @@ import hashlib
 import io
 import json
 import math
+import os
 import re
 import time
 import uuid
@@ -60,23 +61,63 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field
 
+from apps.api_server.compute.mojo_errors import (
+    is_global_optional_mojo_circuit_error,
+    mojo_failure_reason,
+)
 from apps.api_server.middleware.auth import get_current_org
 from apps.api_server.routers.data_map import (
     DataSource,
     MojoInstrumentationError,
     _build_mojo_column_profile_columns,
     _call_mojo_column_profile,
+    _clear_optional_mojo_engine_failure,
+    _get_optional_mojo_engine_skip_reason,
+    _invoke_optional_mojo_engine,
     _load_source,
     _load_source_table,
     _mojo_column_profile_sample_limits,
     _mojo_profiling_disabled_status,
     _mojo_profiling_status_from_result,
+    _record_optional_mojo_engine_failure,
 )
 from apps.api_server.schemas.common import ErrorDetail, ErrorResponse
 from apps.api_server.services.auth_service import AuthContext
 from apps.api_server.services.pyarrow_runtime import initialize_pyarrow_parquet_runtime
 
 logger = structlog.get_logger(__name__)
+_QUERY_RELATION_DETECT_COOLDOWN_S = 60.0
+_QUERY_RELATION_DETECT_FAILURE: tuple[float, str] | None = None
+
+
+def _get_query_relation_detect_skip_reason() -> str | None:
+    global _QUERY_RELATION_DETECT_FAILURE
+
+    shared_reason = _get_optional_mojo_engine_skip_reason("relation_detect")
+    if shared_reason is not None:
+        return shared_reason
+    if _QUERY_RELATION_DETECT_FAILURE is None:
+        return None
+    failed_at, reason = _QUERY_RELATION_DETECT_FAILURE
+    if time.monotonic() - failed_at < _QUERY_RELATION_DETECT_COOLDOWN_S:
+        return reason
+    _QUERY_RELATION_DETECT_FAILURE = None
+    return None
+
+
+def _record_query_relation_detect_failure(reason: BaseException | str) -> None:
+    global _QUERY_RELATION_DETECT_FAILURE
+
+    _record_optional_mojo_engine_failure("relation_detect", reason)
+    if is_global_optional_mojo_circuit_error(reason):
+        _QUERY_RELATION_DETECT_FAILURE = (time.monotonic(), mojo_failure_reason(reason))
+
+
+def _clear_query_relation_detect_failure() -> None:
+    global _QUERY_RELATION_DETECT_FAILURE
+
+    _QUERY_RELATION_DETECT_FAILURE = None
+    _clear_optional_mojo_engine_failure("relation_detect")
 router = APIRouter(tags=["Semantic Query"])
 
 
@@ -89,7 +130,9 @@ router = APIRouter(tags=["Semantic Query"])
 # LRU eviction when > _CACHE_MAX_SOURCES unique cached sources.
 
 _PATH_CACHE_TTL = 1800  # 30 min for file/url/connection sources (content can change)
-_CACHE_MAX_SOURCES = 30  # evict LRU when exceeded
+_CACHE_MAX_SOURCES = int(
+    os.environ.get("ALGENTA_SOURCE_CACHE_MAX_SOURCES", "96")
+)  # keep medium-size multi-source corpora hot
 
 
 @dataclass
@@ -2661,22 +2704,33 @@ async def _detect_relations(
     cols_payload: dict[str, list[float]] = {
         col: nums[:n_sample] for col, nums in col_nums.items() if nums
     }
+    skip_reason = _get_query_relation_detect_skip_reason()
+    if skip_reason is not None:
+        logger.debug(
+            "query_relation_detect_circuit_open",
+            cooldown_s=_QUERY_RELATION_DETECT_COOLDOWN_S,
+            reason=skip_reason,
+        )
+        return []
     payload = {
         "engine_type": "relation_detect",
         "source": source,
         "min_confidence": min_confidence,
         "columns": cols_payload,
     }
-    try:
-        from apps.api_server.compute.mojo_adapter import invoke_engine
-
-        result = await invoke_engine(payload)
-        if result is None:
-            return []
-        return result.get("relationships", [])
-    except Exception as exc:
-        logger.debug("query_relation_detect_error", error=str(exc))
+    result, engine_status = await _invoke_optional_mojo_engine(
+        "relation_detect",
+        payload,
+    )
+    if result is None:
+        _record_query_relation_detect_failure(
+            str(engine_status.get("message") or engine_status["reason"]),
+        )
+        if engine_status["reason"] != "engine_circuit_open":
+            logger.debug("query_relation_detect_error", engine_status=engine_status)
         return []
+    _clear_query_relation_detect_failure()
+    return result.get("relationships", [])
 
 
 _FAST_SCAN_ROWS = 200  # rows checked in fast path
@@ -7156,6 +7210,10 @@ async def verify_plan(
 
     schema_revision = _sreg.schema_revision(org_id)
     if payload.resolved_plan is not None:
+        schema_revision = _resolved_plan_current_schema_revision(
+            org_id=org_id,
+            resolved_plan=payload.resolved_plan,
+        )
         if payload.resolved_plan.schema_revision != schema_revision:
             return VerifyResponse(
                 valid=False,
@@ -7264,13 +7322,28 @@ async def verify_plan(
     resolved: dict[str, str] = {}
 
     # ── 1. Source exists? ──────────────────────────────────────────────────────
-    from apps.api_server.services.data_visibility import filter_visible_datasets
+    from apps.api_server.services.data_visibility import (
+        dataset_visible,
+        filter_visible_datasets,
+    )
 
     registered = filter_visible_datasets(_sreg.list_sources(org_id), auth)
     src_map = {s["name"]: s for s in registered}
+
+    def _resolve_visible_source_entry(source_name: str) -> dict[str, Any] | None:
+        entry = src_map.get(source_name)
+        if entry is not None:
+            return entry
+        fallback = _sreg.get_source_entry_by_name(org_id, source_name)
+        if fallback is None or not dataset_visible(fallback, auth):
+            return None
+        src_map[source_name] = fallback
+        return fallback
+
     visible_ids = {s["id"] for s in registered}
 
-    if payload.source_name not in src_map:
+    resolved_source_entry = _resolve_visible_source_entry(payload.source_name)
+    if resolved_source_entry is None:
         errors.append(f"Source '{payload.source_name}' not found in registry.")
         # Offer closest match
         close = [
@@ -7296,9 +7369,10 @@ async def verify_plan(
             latency_ms=round((time.monotonic() - t0) * 1000, 1),
         )
 
-    src_entry = src_map[payload.source_name]
+    src_entry = resolved_source_entry
     src_id = src_entry["id"]
     resolved["source"] = payload.source_name
+    resolved["source_name"] = payload.source_name
 
     # ── 2. Load schema (cache or disk) ────────────────────────────────────────
     schema_meta: dict = {}
@@ -7336,7 +7410,9 @@ async def verify_plan(
         col_role = col_meta.get("role", "metric")
         is_numeric = col_meta.get("is_numeric", False)
 
-        if not is_numeric:
+        if payload.aggregation == "count":
+            pass
+        elif not is_numeric:
             errors.append(
                 f"Column '{payload.metric_column}' is not numeric (role={col_role}). "
                 f"Choose a numeric column for aggregation."
@@ -7455,11 +7531,11 @@ async def verify_plan(
 
     # ── 6. Join source + join key validation ───────────────────────────────────
     if payload.join_source_name:
-        if payload.join_source_name not in src_map:
+        join_src_entry = _resolve_visible_source_entry(payload.join_source_name)
+        if join_src_entry is None:
             errors.append(f"Join source '{payload.join_source_name}' not found in registry.")
             suggestions.append(f"Available sources: {', '.join(src_map.keys())}")
         else:
-            join_src_entry = src_map[payload.join_source_name]
             join_src_id = join_src_entry["id"]
 
             # Load join source schema

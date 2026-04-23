@@ -143,23 +143,65 @@ def _build_fastapi_router():
     """
     Return a FastAPI APIRouter mounting MCP SSE at /mcp/*.
     Called from apps/api_server/main.py to embed MCP into the main API process.
-    Returns None if mcp package is not installed.
+    Returns a tools-only router if the optional mcp package is not installed.
     """
     try:
         from fastapi import APIRouter
+        from starlette.responses import JSONResponse
+
+        from apps.mcp_server.registry import get_tool_specs
+    except ImportError:
+        return None
+
+    router = APIRouter(tags=["MCP"])
+
+    @router.get("/mcp/tools", summary="List available MCP tools")
+    async def list_tools():
+        return JSONResponse({"tools": get_tool_specs()})
+
+    try:
         from mcp.server import NotificationOptions, Server
         from mcp.server.models import InitializationOptions
         from mcp.server.sse import SseServerTransport
         from mcp.types import TextContent, Tool
-        from starlette.responses import JSONResponse
 
         from apps.mcp_server.errors import serialize_tool_error
-        from apps.mcp_server.registry import call_tool, get_tool_specs
+        from apps.mcp_server.registry import call_tool
     except ImportError:
-        return None
+        def _mcp_transport_unavailable_response() -> JSONResponse:
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "error": {
+                        "code": "mcp_transport_unavailable",
+                        "message": (
+                            "The MCP SSE transport is unavailable in this environment."
+                        ),
+                        "details": {
+                            "hint": (
+                                "Install requirements-mcp.txt to enable "
+                                "/mcp/sse and /mcp/messages."
+                            )
+                        },
+                    }
+                },
+            )
 
-    router        = APIRouter(tags=["MCP"])
-    mcp_server    = Server("algenta-decision-engine")
+        @router.get("/mcp/sse", summary="MCP SSE transport unavailable")
+        async def mcp_sse_unavailable():
+            return _mcp_transport_unavailable_response()
+
+        @router.post("/mcp/messages", summary="MCP message transport unavailable")
+        async def mcp_messages_unavailable():
+            return _mcp_transport_unavailable_response()
+
+        logger.warning(
+            "mcp_sse_transport_unavailable",
+            hint="Install requirements-mcp.txt to enable /mcp/sse and /mcp/messages.",
+        )
+        return router
+
+    mcp_server = Server("algenta-decision-engine")
     sse_transport = SseServerTransport("/mcp/messages")
     from apps.mcp_server.client import request_overrides
 
@@ -210,10 +252,6 @@ def _build_fastapi_router():
             logger.error("tool_error", tool=name, error=str(exc))
             result = serialize_tool_error(exc, tool_name=name)
         return [TextContent(type="text", text=result)]
-
-    @router.get("/mcp/tools", summary="List available MCP tools")
-    async def list_tools():
-        return JSONResponse({"tools": get_tool_specs()})
 
     router.add_route("/mcp/sse", _SSEEndpointApp(), methods=["GET"])
     router.add_route(

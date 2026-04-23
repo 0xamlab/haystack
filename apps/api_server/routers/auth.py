@@ -6,7 +6,7 @@ Auth endpoints:
   POST /auth/forgot-password  — request password reset email
   POST /auth/reset-password   — complete password reset with token
 """
-import secrets
+import uuid
 from datetime import UTC, datetime, timedelta
 
 import structlog
@@ -18,7 +18,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from apps.api_server.config import get_settings
 from apps.api_server.db.session import get_db
 from apps.api_server.schemas.auth import (
+    ForgotPasswordRequest,
     LoginRequest,
+    ResetPasswordRequest,
     SignUpRequest,
     SignUpResponse,
     TokenResponse,
@@ -28,6 +30,12 @@ from apps.api_server.services.user_service import (
     get_user_by_email,
     hash_password,
     verify_password,
+)
+from apps.api_server.services.auth_tokens import (
+    AuthTokenError,
+    issue_password_reset_token,
+    verify_email_verification_token,
+    verify_password_reset_token,
 )
 
 logger = structlog.get_logger(__name__)
@@ -118,39 +126,49 @@ async def verify_email(
     """Verify a user's email address. Token sent on signup."""
     from apps.api_server.models.user import User
 
-    result = await db.execute(
-        select(User).where(
-            User.email_verification_token == token,  # type: ignore[attr-defined]
-            User.email_verified == False,  # noqa: E712
+    try:
+        claims = verify_email_verification_token(token)
+    except AuthTokenError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": {
+                    "code": exc.code,
+                    "message": exc.message,
+                }
+            },
         )
-    )
-    user = result.scalar_one_or_none()
-    if user is None:
+
+    try:
+        user_id = uuid.UUID(claims.subject)
+    except ValueError:
         raise HTTPException(
             status_code=400,
             detail={
                 "error": {
                     "code": "invalid_token",
-                    "message": "Invalid or expired verification token.",
-                }
-            },
-        )
-    # Check expiry
-    expires = getattr(user, "email_verification_expires_at", None)
-    if expires and datetime.now(UTC) > expires.replace(tzinfo=UTC):
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "error": {
-                    "code": "token_expired",
-                    "message": "Verification link has expired. Request a new one.",
+                    "message": "Invalid token.",
                 }
             },
         )
 
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user is None or user.email.lower() != claims.email:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": {
+                    "code": "invalid_token",
+                    "message": "Invalid token.",
+                }
+            },
+        )
+
+    if user.email_verified:
+        return {"message": "Email already verified."}
+
     user.email_verified = True  # type: ignore[assignment]
-    user.email_verification_token = None  # type: ignore[assignment]
-    user.email_verification_expires_at = None  # type: ignore[assignment]
     await db.commit()
 
     logger.info("email_verified", user_id=str(user.id))
@@ -159,36 +177,21 @@ async def verify_email(
 
 @router.post("/forgot-password", summary="Request a password reset email")
 async def forgot_password(
-    request: Request,
+    payload: ForgotPasswordRequest,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Send a password reset link to the user's email."""
     from apps.api_server.models.user import User
     from apps.api_server.services.email_service import send_password_reset_email
 
-    body = await request.json()
-    email = body.get("email", "").lower().strip()
-    if not email:
-        raise HTTPException(
-            status_code=422,
-            detail={
-                "error": {
-                    "code": "missing_email",
-                    "message": "Email required.",
-                }
-            },
-        )
+    email = str(payload.email).lower().strip()
 
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
 
     # Always return success (don't reveal if email exists)
     if user is not None:
-        token = secrets.token_urlsafe(48)
-        expires = datetime.now(UTC) + timedelta(minutes=15)
-        user.password_reset_token = token  # type: ignore[assignment]
-        user.password_reset_expires_at = expires  # type: ignore[assignment]
-        await db.commit()
+        token = issue_password_reset_token(str(user.id), email)
         try:
             await send_password_reset_email(email, token)
         except Exception as exc:
@@ -199,68 +202,55 @@ async def forgot_password(
 
 @router.post("/reset-password", summary="Complete password reset with token")
 async def reset_password(
-    request: Request,
+    payload: ResetPasswordRequest,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Reset a user's password using a valid reset token."""
     from apps.api_server.models.user import User
 
-    body = await request.json()
-    token = body.get("token", "").strip()
-    new_password = body.get("password", "").strip()
+    token = payload.token.strip()
+    new_password = payload.new_password.strip()
 
-    if not token or not new_password:
+    try:
+        claims = verify_password_reset_token(token)
+    except AuthTokenError as exc:
         raise HTTPException(
-            status_code=422,
+            status_code=400,
             detail={
                 "error": {
-                    "code": "missing_fields",
-                    "message": "token and password required.",
+                    "code": exc.code,
+                    "message": exc.message,
                 }
             },
         )
 
-    if len(new_password) < 8:
-        raise HTTPException(
-            status_code=422,
-            detail={
-                "error": {
-                    "code": "password_too_short",
-                    "message": "Password must be at least 8 characters.",
-                }
-            },
-        )
-
-    result = await db.execute(
-        select(User).where(User.password_reset_token == token)  # type: ignore[attr-defined]
-    )
-    user = result.scalar_one_or_none()
-    if user is None:
+    try:
+        user_id = uuid.UUID(claims.subject)
+    except ValueError:
         raise HTTPException(
             status_code=400,
             detail={
                 "error": {
                     "code": "invalid_token",
-                    "message": "Invalid or expired reset token.",
+                    "message": "Invalid token.",
                 }
             },
         )
 
-    expires = getattr(user, "password_reset_expires_at", None)
-    if expires and datetime.now(UTC) > expires.replace(tzinfo=UTC):
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user is None or user.email.lower() != claims.email:
         raise HTTPException(
             status_code=400,
             detail={
                 "error": {
-                    "code": "token_expired",
-                    "message": "Reset link has expired. Request a new one.",
+                    "code": "invalid_token",
+                    "message": "Invalid token.",
                 }
             },
         )
 
     user.password_hash = hash_password(new_password)  # type: ignore[assignment]
-    user.password_reset_token = None  # type: ignore[assignment]
-    user.password_reset_expires_at = None  # type: ignore[assignment]
     await db.commit()
 
     logger.info("password_reset_completed", user_id=str(user.id))

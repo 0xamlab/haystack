@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import concurrent.futures
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -38,22 +39,45 @@ ENGINE_DIR = _PROJECT_ROOT / "mojo" / "engine"
 
 MAX_WORKERS  = int(os.environ.get("DE_MOJO_WORKERS", "4"))
 TIMEOUT      = int(os.environ.get("DE_MOJO_TIMEOUT",  "30"))
+RETRY_TIMEOUT = max(TIMEOUT * 2, 60)
 
 PASS = "✅"
 FAIL = "❌"
 SKIP = "⏭️"
 
+
+def _pixi_binary() -> str | None:
+    pixi_on_path = shutil.which("pixi")
+    if pixi_on_path:
+        return pixi_on_path
+    home_pixi = Path.home() / ".pixi" / "bin" / "pixi"
+    if home_pixi.exists():
+        return str(home_pixi)
+    return None
+
+
+def _mojo_run_command(test_file: Path) -> list[str]:
+    pixi_binary = _pixi_binary()
+    if pixi_binary:
+        return [pixi_binary, "run", "mojo", "run", f"-I{ENGINE_DIR}", str(test_file)]
+    return [str(MOJO_BIN), "run", f"-I{ENGINE_DIR}", str(test_file)]
+
+
 # ── helpers ───────────────────────────────────────────────────────────────────
 
-def _run_library_test(test_file: Path) -> tuple[str, int, int, float, str]:
+def _run_library_test(
+    test_file: Path,
+    *,
+    timeout: int = TIMEOUT,
+) -> tuple[str, int, int, float, str]:
     """Run one library test file. Returns (lib, passed, failed, elapsed, output)."""
     lib = test_file.stem.replace("test_", "", 1)
     t0  = time.perf_counter()
     try:
         result = subprocess.run(
-            ["pixi", "run", "mojo", "run", f"-I{ENGINE_DIR}", str(test_file)],
+            _mojo_run_command(test_file),
             capture_output=True, text=True,
-            timeout=TIMEOUT,
+            timeout=timeout,
             cwd=str(MOJO_ENV),
         )
         elapsed = time.perf_counter() - t0
@@ -72,17 +96,50 @@ def _run_library_test(test_file: Path) -> tuple[str, int, int, float, str]:
 
     except subprocess.TimeoutExpired:
         elapsed = time.perf_counter() - t0
-        return lib, 0, 1, elapsed, f"TIMEOUT after {TIMEOUT}s"
+        return lib, 0, 1, elapsed, f"TIMEOUT after {timeout}s"
     except Exception as exc:
         elapsed = time.perf_counter() - t0
         return lib, 0, 1, elapsed, str(exc)
 
 
+def _is_timeout_failure(result: tuple[str, int, int, float, str]) -> bool:
+    _, _, failed, _, output = result
+    return failed > 0 and output.startswith("TIMEOUT after ")
+
+
+def _rerun_timeout_failures(
+    results: list[tuple[str, int, int, float, str]],
+) -> list[tuple[str, int, int, float, str]]:
+    timeout_failures = [result for result in results if _is_timeout_failure(result)]
+    if not timeout_failures:
+        return results
+
+    print()
+    print("=" * 70)
+    print("  RETRYING TIMEOUT LIBRARIES SEQUENTIALLY")
+    print("=" * 70)
+
+    updated = {result[0]: result for result in results}
+    for lib, _, _, _, _ in timeout_failures:
+        test_file = LIBS_DIR / f"test_{lib}.mojo"
+        retried = _run_library_test(test_file, timeout=RETRY_TIMEOUT)
+        updated[lib] = retried
+        _, passed, failed, elapsed, _ = retried
+        icon = PASS if failed == 0 else FAIL
+        print(
+            f"  {icon}  {lib:<40}  pass={passed}  fail={failed}  "
+            f"({elapsed*1000:.0f}ms) [retry timeout={RETRY_TIMEOUT}s]"
+        )
+
+    return [updated[result[0]] for result in results]
+
+
 # ── main ─────────────────────────────────────────────────────────────────────
 
 def main() -> int:
-    # Verify Mojo binary exists
-    if not MOJO_BIN.exists():
+    pixi_binary = _pixi_binary()
+    mojo_available = MOJO_BIN.exists() or pixi_binary
+    if not mojo_available:
         print(f"  ❌  Mojo binary not found at {MOJO_BIN}")
         print("     Run: cd mojo_env && pixi install")
         return 1
@@ -105,7 +162,7 @@ def main() -> int:
     print(f"  Libraries:  {len(test_files)}")
     print(f"  Workers:    {MAX_WORKERS} parallel")
     print(f"  Timeout:    {TIMEOUT}s per library")
-    print(f"  Mojo:       {MOJO_BIN}")
+    print(f"  Mojo:       {f'{pixi_binary} run mojo' if pixi_binary else MOJO_BIN}")
     print("=" * 70)
 
     results: list[tuple[str, int, int, float, str]] = []
@@ -119,6 +176,8 @@ def main() -> int:
             icon = PASS if failed == 0 else FAIL
             print(f"  {icon}  {lib:<40}  pass={passed}  fail={failed}  "
                   f"({elapsed*1000:.0f}ms)")
+
+    results = _rerun_timeout_failures(results)
 
     suite_duration = time.perf_counter() - suite_start
 

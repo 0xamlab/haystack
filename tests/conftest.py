@@ -39,7 +39,9 @@ _LIVE_SERVER_LOG_DIR: Path | None = None
 _LIVE_SERVER_LOG_PATH: Path | None = None
 _LIVE_SERVER_PROC: subprocess.Popen[str] | None = None
 _PYTEST_SOURCES_DIR = Path(tempfile.mkdtemp(prefix="algenta-pytest-sources-"))
+_PYTEST_ARTIFACT_CACHE_DIR = Path(tempfile.mkdtemp(prefix="algenta-pytest-artifacts-"))
 os.environ.setdefault("ALGENTA_SOURCES_DIR", str(_PYTEST_SOURCES_DIR))
+os.environ.setdefault("ALGENTA_SOURCE_ARTIFACT_CACHE_DIR", str(_PYTEST_ARTIFACT_CACHE_DIR))
 _BASE_PROCESS_ENV_KEYS = (
     "PATH",
     "HOME",
@@ -72,6 +74,7 @@ _BASE_TEST_ENV = {
     "DE_BASE_URL": "http://localhost:8000",
     "ALGENTA_BASE_URL": "http://localhost:8000",
     "ALGENTA_SOURCES_DIR": str(_PYTEST_SOURCES_DIR),
+    "ALGENTA_SOURCE_ARTIFACT_CACHE_DIR": str(_PYTEST_ARTIFACT_CACHE_DIR),
 }
 
 

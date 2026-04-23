@@ -5,14 +5,25 @@ import pytest
 from apps.api_server.routers import data_map, ingest
 
 
+@pytest.fixture(autouse=True)
+def _reset_optional_mojo_state() -> None:
+    data_map._MOJO_WARNING_STATE.clear()
+    data_map._MOJO_OPTIONAL_ENGINE_FAILURE_STATE.clear()
+
+
 @pytest.mark.asyncio
 async def test_call_mojo_field_map_routes_through_invoke_engine(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     seen: dict[str, object] = {}
 
-    async def _fake_invoke_engine(payload: dict[str, object]) -> dict[str, object]:
+    async def _fake_invoke_engine(
+        payload: dict[str, object],
+        *,
+        timeout: float | None = None,
+    ) -> dict[str, object]:
         seen["payload"] = payload
+        seen["timeout"] = timeout
         return {"mapped_fields": {"revenue": "revenue"}}
 
     monkeypatch.setattr("apps.api_server.compute.mojo_adapter.invoke_engine", _fake_invoke_engine)
@@ -24,6 +35,7 @@ async def test_call_mojo_field_map_routes_through_invoke_engine(
         "engine_type": "field_map",
         "data": {"revenue": [10.0, 12.0]},
     }
+    assert seen["timeout"] == data_map._OPTIONAL_MOJO_TIMEOUT_S
 
 
 @pytest.mark.asyncio
@@ -32,8 +44,13 @@ async def test_map_via_mojo_routes_through_invoke_engine(
 ) -> None:
     seen: dict[str, object] = {}
 
-    async def _fake_invoke_engine(payload: dict[str, object]) -> dict[str, object]:
+    async def _fake_invoke_engine(
+        payload: dict[str, object],
+        *,
+        timeout: float | None = None,
+    ) -> dict[str, object]:
         seen["payload"] = payload
+        seen["timeout"] = timeout
         return {"mapped_fields": {"cost": "cost"}}
 
     monkeypatch.setattr("apps.api_server.compute.mojo_adapter.invoke_engine", _fake_invoke_engine)
@@ -45,3 +62,4 @@ async def test_map_via_mojo_routes_through_invoke_engine(
         "engine_type": "field_map",
         "data": {"cost": [1.0, 2.0, 3.0]},
     }
+    assert seen["timeout"] is None

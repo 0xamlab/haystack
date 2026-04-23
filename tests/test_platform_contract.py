@@ -156,3 +156,38 @@ def test_integration_docs_cover_primary_surfaces() -> None:
     assert "/integrations/claude-codex" in overview
     assert "/integrations/azure-ai-studio" in overview
     assert "/integrations/local-runtime" in overview
+
+
+def test_runtime_first_docs_cover_typescript_and_competitor_matrix() -> None:
+    ts_sdk = (ROOT / "apps" / "docs" / "docs" / "sdks" / "typescript.md").read_text()
+    competitor = (ROOT / "apps" / "docs" / "docs" / "competitor-compatibility.md").read_text()
+    readme = (ROOT / "README.md").read_text()
+    cli_sdk = (ROOT / "apps" / "docs" / "docs" / "sdks" / "cli.md").read_text()
+    connect_docs = (ROOT / "apps" / "docs" / "docs" / "connect-register-sources.md").read_text()
+    local_runtime = (ROOT / "apps" / "docs" / "docs" / "integrations" / "local-runtime.md").read_text()
+    trust_model = (ROOT / "apps" / "docs" / "docs" / "trust-model.md").read_text()
+
+    assert 'import { Runtime } from "decision-engine-sdk";' in ts_sdk
+    assert "rt.importPreview(" in ts_sdk
+    assert "rt.importBundlePreview(" in ts_sdk
+    assert 'new Runtime({' in ts_sdk
+    assert 'apiKey: process.env.ALGENTA_API_KEY' in ts_sdk
+    assert 'host: "db.example.com"' in ts_sdk
+    assert 'database: "orders"' in ts_sdk
+    assert 'user: "analytics"' in ts_sdk
+    assert "direct API client" in ts_sdk
+    assert "Vanna" in competitor
+    assert "Cube" in competitor
+    assert "LlamaIndex" in competitor
+    assert "Competitor Compatibility" in readme
+    assert '"host": "db.example.com"' in readme
+    assert '"database": "orders"' in readme
+    assert '"user": "analytics"' in readme
+    assert "algenta import" in cli_sdk
+    assert "does **not** persist" in cli_sdk
+    assert "algenta import" in connect_docs
+    assert '"host": "db.example.com"' in connect_docs
+    assert '"database": "orders"' in connect_docs
+    assert '"user": "analytics"' in connect_docs
+    assert 'new Runtime({ apiKey: process.env.ALGENTA_API_KEY })' in local_runtime
+    assert 'new Runtime({ apiKey: "de_live_..." })' in trust_model

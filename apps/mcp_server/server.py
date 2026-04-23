@@ -30,7 +30,8 @@ def create_fastapi_router():
     Return a FastAPI router that mounts the MCP server at /mcp/*.
     Called from apps/api_server/main.py to embed MCP into the main API process.
 
-    Returns None (with a warning) if the mcp package is not installed.
+    Always exposes /mcp/tools when FastAPI dependencies are available.
+    The optional mcp package enables /mcp/sse and /mcp/messages.
     """
     try:
         from apps.mcp_server.transports.http_sse import _build_fastapi_router

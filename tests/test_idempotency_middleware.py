@@ -4,10 +4,10 @@ import threading
 import time
 
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
 
 from apps.api_server.middleware.idempotency import IdempotencyMiddleware
 from apps.api_server.middleware.request_id import RequestIDMiddleware
+from tests._asgi_client import SyncASGIClient
 
 
 class _FakeRedis:
@@ -78,7 +78,7 @@ def _build_app(redis_client: object | None = None, delay_seconds: float = 0.0) -
 
 def test_duplicate_write_replays_original_response() -> None:
     app, counters = _build_app()
-    with TestClient(app) as client:
+    with SyncASGIClient(app) as client:
         headers = {"Idempotency-Key": "idem-1", "X-Request-Id": "req-first"}
         first = client.post("/v1/widgets", json={"name": "alpha"}, headers=headers)
         second = client.post("/v1/widgets", json={"name": "alpha"}, headers={"Idempotency-Key": "idem-1"})
@@ -92,7 +92,7 @@ def test_duplicate_write_replays_original_response() -> None:
 
 def test_duplicate_key_with_different_payload_conflicts() -> None:
     app, counters = _build_app()
-    with TestClient(app) as client:
+    with SyncASGIClient(app) as client:
         first = client.post("/v1/widgets", json={"name": "alpha"}, headers={"Idempotency-Key": "idem-2"})
         second = client.post("/v1/widgets", json={"name": "beta"}, headers={"Idempotency-Key": "idem-2"})
 
@@ -104,7 +104,7 @@ def test_duplicate_key_with_different_payload_conflicts() -> None:
 
 def test_requests_without_idempotency_key_do_not_collapse() -> None:
     app, counters = _build_app()
-    with TestClient(app) as client:
+    with SyncASGIClient(app) as client:
         first = client.post("/v1/widgets", json={"name": "alpha"})
         second = client.post("/v1/widgets", json={"name": "alpha"})
 
@@ -117,7 +117,7 @@ def test_requests_without_idempotency_key_do_not_collapse() -> None:
 
 def test_read_endpoints_ignore_idempotency_key() -> None:
     app, counters = _build_app()
-    with TestClient(app) as client:
+    with SyncASGIClient(app) as client:
         response = client.get("/v1/widgets", headers={"Idempotency-Key": "idem-read"})
 
     assert response.status_code == 200
@@ -130,10 +130,10 @@ def test_duplicate_write_replays_from_shared_redis_store() -> None:
     app_one, counters = _build_app(redis_client=redis_client)
     app_two, _ = _build_app(redis_client=redis_client)
 
-    with TestClient(app_one) as first_client:
+    with SyncASGIClient(app_one) as first_client:
         first = first_client.post("/v1/widgets", json={"name": "alpha"}, headers={"Idempotency-Key": "idem-redis"})
 
-    with TestClient(app_two) as second_client:
+    with SyncASGIClient(app_two) as second_client:
         second = second_client.post("/v1/widgets", json={"name": "alpha"}, headers={"Idempotency-Key": "idem-redis"})
 
     assert first.status_code == 200
@@ -148,7 +148,7 @@ def test_concurrent_write_conflict_returns_explicit_409() -> None:
     results: list[tuple[int, dict]] = []
 
     def _send(body: dict[str, str]) -> None:
-        with TestClient(app) as client:
+        with SyncASGIClient(app) as client:
             response = client.post("/v1/widgets", json=body)
             results.append((response.status_code, response.json()))
 
@@ -173,7 +173,7 @@ def test_concurrent_query_posts_do_not_trigger_write_conflict() -> None:
     results: list[tuple[int, dict]] = []
 
     def _send(body: dict[str, str]) -> None:
-        with TestClient(app) as client:
+        with SyncASGIClient(app) as client:
             response = client.post("/v1/query", json=body)
             results.append((response.status_code, response.json()))
 

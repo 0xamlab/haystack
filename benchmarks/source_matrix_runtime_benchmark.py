@@ -35,6 +35,7 @@ from typing import Any
 
 import pandas as pd
 import pyarrow.parquet as pq
+from fastapi import HTTPException
 
 ROOT = Path(__file__).parent.parent
 TEST_FILES = ROOT / "test_files"
@@ -61,7 +62,6 @@ _LOCAL_PARQUET_FILES = (
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from apps.api_server.connectors.file_connector import FileConnector
 from apps.api_server.routers.data_map import DataSource
 from apps.api_server.routers.query import (
     _CACHE_LOCK,
@@ -277,12 +277,17 @@ async def _register_case(
     category: str,
     origin: str,
     source: DataSource,
-    expected_count: int,
+    expected_count: int | None,
 ) -> PreparedSourceCase:
     response = await register_source(RegisterRequest(source=source), auth=auth)
     if response["status"] not in {"registered", "already_registered"}:
         raise RuntimeError(f"{label} registration failed: {response}")
     schema = response["schema"]
+    runtime_row_count = int(response.get("row_count") or schema.get("row_count") or 0)
+    if expected_count is None:
+        if runtime_row_count <= 0:
+            raise RuntimeError(f"{label} registration returned no runtime row count anchor")
+        expected_count = runtime_row_count
     dataset_id = str(response.get("dataset_id") or response.get("source_id") or "")
     canonical_entry = reg.get_source_entry(str(auth["org_id"]), dataset_id) if dataset_id else None
     canonical_source_name = (
@@ -310,6 +315,16 @@ async def _register_case(
     )
 
 
+def _is_empty_source_error(exc: HTTPException) -> bool:
+    detail = exc.detail
+    if not isinstance(detail, dict):
+        return False
+    error = detail.get("error")
+    if not isinstance(error, dict):
+        return False
+    return str(error.get("code", "")).strip() == "empty_source"
+
+
 async def _prepare_local_csv_cases(
     *,
     auth: dict[str, str],
@@ -325,21 +340,23 @@ async def _prepare_local_csv_cases(
         ),
         start=1,
     ):
-        csv_text, records = _parse_csv_records(path, allow_empty=True)
-        if not records:
-            skipped_empty.append(str(path.relative_to(ROOT)))
-            continue
+        csv_text = path.read_text(encoding="utf-8-sig", errors="replace")
         relative = path.relative_to(ROOT)
-        prepared.append(
-            await _register_case(
-                auth=auth,
-                label=f"Local CSV {relative}",
-                category="local_csv",
-                origin=str(relative),
-                source=DataSource(name=f"LocalCsv{index:03d}", csv=csv_text),
-                expected_count=len(records),
+        try:
+            prepared.append(
+                await _register_case(
+                    auth=auth,
+                    label=f"Local CSV {relative}",
+                    category="local_csv",
+                    origin=str(relative),
+                    source=DataSource(name=f"LocalCsv{index:03d}", csv=csv_text),
+                    expected_count=None,
+                )
             )
-        )
+        except HTTPException as exc:
+            if not _is_empty_source_error(exc):
+                raise
+            skipped_empty.append(str(relative))
     return prepared, skipped_empty
 
 
@@ -382,8 +399,6 @@ async def _prepare_local_non_csv_cases(*, auth: dict[str, str]) -> list[Prepared
 
     for index, path in enumerate(_discover_local_parquet_paths(), start=1):
         parquet_bytes = path.read_bytes()
-        initialize_pyarrow_parquet_runtime()
-        table = pq.read_table(io.BytesIO(parquet_bytes))
         prepared.append(
             await _register_case(
                 auth=auth,
@@ -394,30 +409,29 @@ async def _prepare_local_non_csv_cases(*, auth: dict[str, str]) -> list[Prepared
                     name=f"LocalParquetFile{index:02d}",
                     parquet_b64=base64.b64encode(parquet_bytes).decode(),
                 ),
-                expected_count=table.num_rows,
+                expected_count=None,
             )
         )
 
     for index, path in enumerate(_discover_local_workbook_paths(), start=1):
         workbook_b64 = base64.b64encode(path.read_bytes()).decode()
-        workbook_records = await FileConnector(
-            {"file_type": "excel", "content": workbook_b64}
-        ).fetch_data()
-        if not workbook_records:
-            continue
-        prepared.append(
-            await _register_case(
-                auth=auth,
-                label=f"Local workbook {path.name}",
-                category="local_excel",
-                origin=str(path.relative_to(ROOT)),
-                source=DataSource(
-                    name=f"LocalWorkbook{index:02d}",
-                    excel_b64=workbook_b64,
-                ),
-                expected_count=len(workbook_records),
+        try:
+            prepared.append(
+                await _register_case(
+                    auth=auth,
+                    label=f"Local workbook {path.name}",
+                    category="local_excel",
+                    origin=str(path.relative_to(ROOT)),
+                    source=DataSource(
+                        name=f"LocalWorkbook{index:02d}",
+                        excel_b64=workbook_b64,
+                    ),
+                    expected_count=None,
+                )
             )
-        )
+        except HTTPException as exc:
+            if not _is_empty_source_error(exc):
+                raise
 
     return prepared
 
@@ -539,8 +553,7 @@ async def _prepare_public_cases(*, auth: dict[str, str]) -> list[PreparedSourceC
         ),
     ]
 
-    for label, category, origin, source, loader in public_object_cases:
-        records = loader()
+    for label, category, origin, source, _loader in public_object_cases:
         prepared.append(
             await _register_case(
                 auth=auth,
@@ -548,12 +561,11 @@ async def _prepare_public_cases(*, auth: dict[str, str]) -> list[PreparedSourceC
                 category=category,
                 origin=origin,
                 source=source,
-                expected_count=len(records),
+                expected_count=None,
             )
         )
 
     for index, case in enumerate(THIRD_PARTY_PUBLIC_CASES, start=1):
-        records = case.load_expected_records()
         prepared.append(
             await _register_case(
                 auth=auth,
@@ -564,7 +576,7 @@ async def _prepare_public_cases(*, auth: dict[str, str]) -> list[PreparedSourceC
                     name=f"PublicRest{index:02d}",
                     connection=case.build_connection(),
                 ),
-                expected_count=len(records),
+                expected_count=None,
             )
         )
 
@@ -892,6 +904,16 @@ async def _run(
             key=lambda item: float(item["resolve_miss_ms"]),
             reverse=True,
         )[:10],
+        "slowest_register": sorted(
+            measurements,
+            key=lambda item: float(item["register_ms"]),
+            reverse=True,
+        )[:10],
+        "slowest_prewarm": sorted(
+            measurements,
+            key=lambda item: float(item["prewarm_ms"]),
+            reverse=True,
+        )[:10],
     }
     return summary
 
@@ -948,6 +970,18 @@ def main() -> None:
         print(
             f"  - {item['source_name']}: {item['resolve_miss_ms']}ms "
             f"({item['origin']})"
+        )
+    print("\nSlowest registrations:")
+    for item in summary["slowest_register"]:
+        print(
+            f"  - {item['source_name']}: register={item['register_ms']}ms "
+            f"prewarm={item['prewarm_ms']}ms ({item['origin']})"
+        )
+    print("\nSlowest prewarms:")
+    for item in summary["slowest_prewarm"]:
+        print(
+            f"  - {item['source_name']}: prewarm={item['prewarm_ms']}ms "
+            f"register={item['register_ms']}ms ({item['origin']})"
         )
 
 

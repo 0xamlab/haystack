@@ -411,6 +411,45 @@ async def test_runtime_local_returns_error_when_daemon_not_running():
     assert "daemon" in result["error"].lower()
 
 
+@pytest.mark.asyncio
+async def test_runtime_start_daemon_waits_for_health_before_returning():
+    import apps.runtime.client as client_mod
+    from apps.runtime.sdk import Runtime
+
+    rt = Runtime(mode="local", auto_start_daemon=True, api_key="de_test")
+    daemon_running = iter([False, True, True])
+    health_responses = iter(
+        [
+            {"status": "unreachable"},
+            {"status": "ok", "version": "1.0.0"},
+        ]
+    )
+    sleep_calls: list[float] = []
+    started: list[bool] = []
+
+    class _FakeDaemonClient:
+        def __init__(self, timeout=30.0, **_kwargs):
+            self.timeout = timeout
+
+        @classmethod
+        def is_daemon_running(cls):
+            return next(daemon_running, True)
+
+        async def health(self):
+            return next(health_responses)
+
+    async def _fake_sleep(delay: float) -> None:
+        sleep_calls.append(delay)
+
+    with patch("apps.runtime.daemon.cmd_start", side_effect=lambda foreground=False: started.append(foreground)), \
+         patch.object(client_mod, "DaemonClient", _FakeDaemonClient), \
+         patch("apps.runtime.sdk.asyncio.sleep", _fake_sleep):
+        await rt._start_daemon()
+
+    assert started == [False]
+    assert sleep_calls
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # 26–30  Runtime cloud mode
 # ══════════════════════════════════════════════════════════════════════════════

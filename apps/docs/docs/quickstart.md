@@ -2,145 +2,195 @@
 sidebar_position: 2
 ---
 
-# Quickstart
+# Runtime Quickstart
 
-Make your first API call in under 2 minutes.
+This quickstart is intentionally runtime-first. It shows the primary Algenta path as it exists today.
 
-## Step 1: Get an API key
+## What this proves
 
-[Sign up at algenta.ai →](https://algenta.ai/signup)
+By the end of this guide you will have:
 
-Your API key looks like: `de_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxx`
+- installed the local-first package
+- run the zero-friction demo
+- connected local data
+- resolved a deterministic plan
+- queried that plan
 
-## Step 2: Make your first call
-
-### curl
+## Step 1: Install the package
 
 ```bash
-curl -X POST https://api.algenta.ai/v1/simulate \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer de_live_YOUR_KEY_HERE" \
-  -d '{
-    "mode": "auto",
-    "scenario": {
-      "variables": {
-        "revenue": { "low": 80000, "high": 200000 },
-        "cost":    { "low": 30000, "high": 90000 }
-      },
-      "objective": "maximize_net_value"
-    }
-  }'
+pip install algenta-core
 ```
 
-### Python
+## Step 2: Run the branded local demo
 
-```python
-pip install decision-engine-sdk
+```bash
+python -m algenta.demo
+# or
+algenta demo
 ```
 
+The demo:
+
+- runs locally
+- requires no API key
+- uses a bundled deterministic dataset
+- prints the resolved plan and query result
+
+## Step 3: Use the runtime in code
+
 ```python
-from decision_engine import DecisionEngineClient
+from algenta import Runtime
 
-client = DecisionEngineClient(api_key="de_live_YOUR_KEY_HERE")
+rt = Runtime()
+rt.connect(
+    [
+        {"product_line": "Electronics", "revenue": 42193221},
+        {"product_line": "Apparel", "revenue": 28114992},
+        {"product_line": "Home", "revenue": 19852111},
+    ],
+    name="orders",
+)
 
-result = client.simulate(
-    mode="auto",
-    scenario={
-        "variables": {
-            "revenue": {"low": 80000, "high": 200000},
-            "cost":    {"low": 30000, "high": 90000},
-        },
-        "objective": "maximize_net_value",
+plan = rt.resolve(
+    {
+        "source_name": "orders",
+        "metric": "revenue",
+        "group_by": "product_line",
     }
 )
 
-print(f"Recommendation: {result.recommended_action}")
-print(f"Confidence: {result.confidence:.0%}")
-print(f"Expected value: ${result.metrics.expected_value:,.0f}")
+verified = rt.verify(plan)
+if not verified.valid:
+    raise RuntimeError(verified.errors)
+
+result = rt.query(plan)
+print(result.result)
 ```
 
-### TypeScript
+## Step 4: Connect a real CSV file
+
+If you want a branded terminal preflight before moving into code, run:
 
 ```bash
-npm install @decision-engine/sdk
+algenta import orders.csv --name orders
 ```
 
-```typescript
-import { DecisionEngineClient } from '@decision-engine/sdk';
+That validates local registration and schema discovery and prints a branded summary. It does not persist a session across separate CLI commands.
 
-const client = new DecisionEngineClient({ apiKey: 'de_live_YOUR_KEY_HERE' });
+For related local exports, you can preview a bundle in one step:
 
-const result = await client.simulate({
-  mode: 'auto',
-  scenario: {
-    variables: {
-      revenue: { low: 80000, high: 200000 },
-      cost:    { low: 30000, high: 90000 },
+```bash
+algenta import orders.csv financial.csv ratings.csv
+```
+
+That prints a branded bundle summary with imported sources, explicit per-file failures, and deterministic shared-field overlap hints.
+
+```python
+from algenta import Runtime
+
+rt = Runtime()
+imported = rt.import_preview("orders.csv", name="orders")
+print(imported.preview)
+
+registration = imported.registration
+
+plan = rt.resolve(
+    {
+        "source_name": registration.name,
+        "metric": "revenue",
+        "group_by": "product_line",
+    }
+)
+result = rt.query(plan)
+```
+
+The same local runtime surface also accepts Parquet and Excel files directly:
+
+```python
+from algenta import Runtime
+
+rt = Runtime()
+orders = rt.connect("orders.parquet", name="orders_parquet")
+price_book = rt.connect("price_book.xlsx", name="price_book")
+```
+
+You can also connect a local SQLite table on the same public runtime surface:
+
+```python
+from algenta import Runtime
+
+rt = Runtime()
+registration = rt.connect(
+    {
+        "provider": "sqlite",
+        "path": "/data/orders.db",
+        "table": "orders",
     },
-    objective: 'maximize_net_value',
-  },
-});
+    name="orders",
+)
 
-console.log(`Recommendation: ${result.recommended_action}`);
-console.log(`Confidence: ${(result.confidence * 100).toFixed(0)}%`);
+plan = rt.resolve(
+    {
+        "source_name": registration.name,
+        "metric": "revenue",
+        "group_by": "product_line",
+    }
+)
+result = rt.query(plan)
 ```
 
-## Step 3: Understand the response
+Local Python runtime mode currently supports CSV, JSON, Parquet, Excel, SQLite descriptors, and in-memory records on the primary `resolve -> query` path.
 
-```json
-{
-  "run_id": "a9a017f9-6479-45a8-9405-b3362f24a68c",
-  "status": "completed",
-  "recommended_action": "proceed",
-  "confidence": 0.82,
-  "rationale": "Expected value is positive in 82% of scenarios. Mean: $105,000.",
-  "metrics": {
-    "expected_value": 105000.0,
-    "median": 102000.0,
-    "std_deviation": 38000.0,
-    "probability_of_loss": 0.18,
-    "var_95": -15000.0
-  },
-  "percentiles": {
-    "p5": 42000.0,
-    "p25": 72000.0,
-    "p50": 102000.0,
-    "p75": 135000.0,
-    "p95": 175000.0
-  },
-  "scenarios_run": 10000,
-  "execution_ms": 42,
-  "result_hash": "40a76a11a4d1f7abec6e6105a817d72b82f3ed46..."
-}
+## Step 5: Switch to API mode when needed
+
+API mode is optional and explicit.
+
+```bash
+pip install "algenta-core[cloud]"
+# or
+pip install algenta-sdk
 ```
 
-| Field | Description |
-|-------|-------------|
-| `recommended_action` | `proceed`, `caution`, or `reject` |
-| `confidence` | Probability of a positive outcome (0.0–1.0) |
-| `rationale` | Human-readable explanation |
-| `metrics.expected_value` | Mean simulation outcome |
-| `metrics.probability_of_loss` | Fraction of scenarios with negative outcome |
-| `percentiles` | p5 through p95 of outcome distribution |
-| `result_hash` | SHA-256 fingerprint for tamper detection |
+```python
+from algenta import Runtime
+
+rt = Runtime(mode="api", api_key="de_live_YOUR_KEY_HERE")
+
+plan = rt.resolve(
+    {
+        "source_name": "orders",
+        "metric": "revenue",
+        "group_by": "product_line",
+    }
+)
+result = rt.query(plan)
+```
+
+If you want to hit the hosted API directly, use the canonical Bearer contract:
+
+```bash
+curl https://api.algenta.ai/v1/resolve \
+  -H "Authorization: Bearer de_live_YOUR_KEY_HERE" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "source_name": "orders",
+    "metric": "revenue",
+    "group_by": "product_line"
+  }'
+```
+
+## Notes
+
+- `verify()` is supported and recommended when you want explicit plan validation before execution.
+- `Runtime()` defaults to local mode.
+- `Runtime(api_key="de_live_...")` in Python, or `new Runtime({ apiKey: "de_live_..." })` in TypeScript, keeps execution local but can enforce a stored device license and local credits for offline hosted usage when the advanced runtime components are available.
+- Simulation, MCP, and local helper APIs remain supported, but they are not the first path shown in the docs anymore.
 
 ## Next steps
 
-- **More complex scenarios**: Use [Expert Mode](/api-reference/simulate#expert-mode-full-control) for full control over distributions and correlations
-- **Compare options**: Use `POST /v1/recommend` to automatically pick the best of multiple scenarios
-- **Automate decisions**: Connect to [ChatGPT Actions](/integrations/chatgpt-actions), [Claude and Codex](/integrations/claude-codex), [n8n](/integrations/n8n), or [Azure AI Foundry and Studio](/integrations/azure-ai-studio)
-- **Run locally**: Use the [Local Runtime](/integrations/local-runtime) when you want hosted licensing with local execution and offline task history
-- **Verify integrity**: The `result_hash` lets you verify a decision result hasn't been tampered with
-
-## Rate limits
-
-| Plan | Requests/minute | Simulations/month |
-|------|----------------|------------------|
-| Free | 60 | 500 |
-| Developer | 300 | 10,000 |
-| Pro | 1,000 | 100,000 |
-| Enterprise | 10,000 | Unlimited |
-
-Returns `HTTP 429` with `Retry-After` header when rate limit is exceeded.
-
-Legacy clients can continue using `X-API-Key` during the `v1` compatibility window, but new integrations should use `Authorization: Bearer`.
+- [Connect / Register Sources](/connect-register-sources)
+- [Resolve](/resolve)
+- [Query](/query)
+- [Verify](/verify)
+- [Trust Model](/trust-model)

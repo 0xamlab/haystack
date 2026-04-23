@@ -30,6 +30,7 @@ Self-test:
 from __future__ import annotations
 
 import math
+import os
 import re
 from dataclasses import dataclass
 from enum import Enum
@@ -49,6 +50,10 @@ VEC_DIM    = 64
 W_NAME     = 0.55
 MIN_ACCEPT = 0.72
 AMBIG_GAP  = 0.08
+MAX_PLANNER_SOURCE_COLUMNS = max(
+    16,
+    int(os.environ.get("ALGENTA_VECTOR_RESOLVER_MAX_COLUMNS_PER_SOURCE", "64")),
+)
 
 # Source IDs
 SOURCE_UNKNOWN = 0
@@ -74,6 +79,15 @@ _ROLE_MAP: dict[str, int] = {
     "base_measure":    ROLE_DERIVED,
     "metric":          ROLE_OTHER,
     "other":           ROLE_OTHER,
+}
+
+_PLANNER_ROLE_PRIORITY: dict[str, int] = {
+    "derived_measure": 0,
+    "base_measure": 1,
+    "unit_measure": 2,
+    "ratio": 3,
+    "metric": 4,
+    "other": 5,
 }
 
 # ── Bigram vector encoder ─────────────────────────────────────────────────────
@@ -267,6 +281,15 @@ class VectorResolverResult:
     steps:          list[str]
 
 
+@dataclass(frozen=True)
+class _ColumnEntryArtifacts:
+    tokens: tuple[str, ...]
+    tokens_expanded: frozenset[str]
+    posting_tokens: tuple[str, ...]
+    vec: tuple[float, ...]
+    norm_inv: float
+
+
 # ── Scoring helpers ───────────────────────────────────────────────────────────
 
 def _type_boost(query_role: int, cand_role: int) -> float:
@@ -358,6 +381,7 @@ class ColumnVectorResolver:
         self._vocab: Vocab = build_vocab(col_names, _da)
         self._posting: dict[int, list[int]] = {}
         self._sources: set[str] = set()
+        self._column_artifact_cache: dict[str, _ColumnEntryArtifacts] = {}
 
         for source_name, columns in source_map.items():
             self.append_source(source_name, columns)
@@ -378,27 +402,42 @@ class ColumnVectorResolver:
                     eff_parts.extend(exp)
         return eff_parts
 
-    def _append_entry(self, source: str, col_name: str, role_str: str) -> None:
+    def _column_entry_artifacts(self, col_name: str) -> _ColumnEntryArtifacts:
+        cached = self._column_artifact_cache.get(col_name)
+        if cached is not None:
+            return cached
+
         tokens = tokenize_name(col_name)
-        tokens_expanded = {
-            token for token, _weight in expand_tokens(tokens, self._aliases)
-        }
+        expanded = expand_tokens(tokens, self._aliases)
+        tokens_expanded = frozenset(token for token, _weight in expanded)
         eff_tokens = self._effective_name_tokens(tokens)
         eff_name = " ".join(eff_tokens) if eff_tokens else col_name
         vec, norm_inv = build_vec64(eff_name)
+        artifacts = _ColumnEntryArtifacts(
+            tokens=tuple(tokens),
+            tokens_expanded=tokens_expanded,
+            posting_tokens=tuple(token for token, _weight in expanded),
+            vec=tuple(vec),
+            norm_inv=norm_inv,
+        )
+        self._column_artifact_cache[col_name] = artifacts
+        return artifacts
+
+    def _append_entry(self, source: str, col_name: str, role_str: str) -> None:
+        artifacts = self._column_entry_artifacts(col_name)
         entry = ColumnEntry(
             column_id=len(self._entries),
             source=source,
             name=col_name,
             source_id=_SOURCE_MAP.get(source.lower(), SOURCE_UNKNOWN),
             role_id=_ROLE_MAP.get(role_str.lower(), ROLE_OTHER),
-            norm_inv=norm_inv,
-            vec=vec,
-            tokens=tokens,
-            tokens_expanded=tokens_expanded,
+            norm_inv=artifacts.norm_inv,
+            vec=list(artifacts.vec),
+            tokens=list(artifacts.tokens),
+            tokens_expanded=set(artifacts.tokens_expanded),
         )
         self._entries.append(entry)
-        for token, _weight in self._expanded_name_tokens(col_name):
+        for token in artifacts.posting_tokens:
             token_id = self._vocab.intern(token)
             self._posting.setdefault(token_id, []).append(entry.column_id)
         self._n_columns = len(self._entries)
@@ -424,6 +463,44 @@ class ColumnVectorResolver:
             self._append_entry(source, col_name, role_str)
         return True
 
+    @staticmethod
+    def _planner_graph_entries_for_source(
+        columns: dict[str, object],
+        *,
+        include_non_numeric: bool,
+    ) -> list[tuple[str, str]]:
+        entries: list[tuple[str, str]] = []
+        ranked_entries: list[tuple[str, str, float, int]] = []
+        for col_name, node in columns.items():
+            fill_rate = float(getattr(node, "fill_rate", 1.0) or 0.0)
+            if fill_rate < 0.02:
+                continue
+            is_numeric = bool(getattr(node, "is_numeric", True))
+            if not include_non_numeric and not is_numeric:
+                continue
+            role_str = getattr(node, "role", "other" if include_non_numeric else "metric")
+            entries.append((col_name, role_str))
+            priority = _PLANNER_ROLE_PRIORITY.get(role_str, _PLANNER_ROLE_PRIORITY["other"])
+            ranked_entries.append((col_name, role_str, fill_rate, priority))
+
+        if len(entries) <= MAX_PLANNER_SOURCE_COLUMNS:
+            return entries
+
+        ranked_entries.sort(
+            key=lambda item: (
+                item[3],
+                -item[2],
+                len(item[0]),
+                item[0].lower(),
+            )
+        )
+        return [
+            (col_name, role_str)
+            for col_name, role_str, _fill_rate, _priority in ranked_entries[
+                :MAX_PLANNER_SOURCE_COLUMNS
+            ]
+        ]
+
     def append_planner_graph_source(
         self,
         source: str,
@@ -432,13 +509,10 @@ class ColumnVectorResolver:
         fill_rates: dict[tuple[str, str], float] | None = None,
     ) -> bool:
         del fill_rates
-        eligible: list[tuple[str, str]] = []
-        for col_name, node in columns.items():
-            if not getattr(node, "is_numeric", True):
-                continue
-            if getattr(node, "fill_rate", 1.0) < 0.02:
-                continue
-            eligible.append((col_name, getattr(node, "role", "metric")))
+        eligible = self._planner_graph_entries_for_source(
+            columns,
+            include_non_numeric=False,
+        )
         return self.append_source(source, eligible)
 
     def _prefilter(
@@ -741,14 +815,10 @@ class ColumnVectorResolver:
         """
         source_map: dict[str, list[tuple[str, str]]] = {}
         for src, cols in graph.items():
-            entries = []
-            for col_name, node in cols.items():
-                if not getattr(node, 'is_numeric', True):
-                    continue
-                if getattr(node, 'fill_rate', 1.0) < 0.02:
-                    continue
-                role_str = getattr(node, 'role', 'metric')
-                entries.append((col_name, role_str))
+            entries = cls._planner_graph_entries_for_source(
+                cols,
+                include_non_numeric=False,
+            )
             if entries:
                 source_map[src] = entries
         return cls(source_map, extra_aliases)
@@ -765,12 +835,10 @@ class ColumnVectorResolver:
         """
         source_map: dict[str, list[tuple[str, str]]] = {}
         for src, cols in graph.items():
-            entries = []
-            for col_name, node in cols.items():
-                if getattr(node, 'fill_rate', 1.0) < 0.02:
-                    continue
-                role_str = getattr(node, 'role', 'other')
-                entries.append((col_name, role_str))
+            entries = cls._planner_graph_entries_for_source(
+                cols,
+                include_non_numeric=True,
+            )
             if entries:
                 source_map[src] = entries
         return cls(source_map, extra_aliases)

@@ -1,11 +1,14 @@
 """
-algenta CLI — local benchmark, quick simulation, and cloud upgrade tool.
+algenta CLI — runtime-first local demo, deterministic querying, and secondary local tools.
 
 Usage:
+  algenta demo                   # branded local runtime demo
+  algenta import orders.csv      # branded local import preview
+  algenta import a.csv b.csv     # branded local bundle preview
+  algenta map file1.csv [file2]  # instant local schema mapping
+  algenta query "..." file.csv   # deterministic local query helper
   algenta benchmark              # show local speedup vs Python baseline
   algenta simulate               # run a quick local simulation
-  algenta map file1.csv [file2]  # instantly map and join datasets
-  algenta query "..." file.csv   # query any data in plain English
   algenta version                # show version and capabilities
   algenta upgrade                # show how to switch to cloud API
 """
@@ -15,6 +18,8 @@ import math
 import random
 import sys
 import time
+
+from algenta.branding import runtime_banner
 
 
 def _bench_normal(n: int = 100_000) -> float:
@@ -86,12 +91,136 @@ def cmd_simulate_quick() -> None:
     print("  → client.simulate.risk(revenue=100000, cost=70000, runs=1_000_000)\n")
 
 
+def cmd_demo() -> None:
+    from algenta.demo import main as demo_main
+
+    raise SystemExit(demo_main())
+
+
 def cmd_version() -> None:
     from algenta import __version__
-    print(f"\n  algenta-core {__version__}")
-    print("  Local simulation engine — no API key required")
-    print("  Functions: simulate, decision, optimize, forecast")
-    print("  Upgrade:   pip install algenta-sdk   →  cloud API, 100× more scale\n")
+    print()
+    print(
+        runtime_banner(
+            f"algenta-core {__version__}",
+            [
+                "Primary path: Runtime.resolve() -> Runtime.query()",
+                "Secondary modes: simulate, decision, optimize, forecast, map_data, query_data",
+                "Cloud/API mode: install algenta-sdk or algenta-core[cloud]",
+            ],
+        )
+    )
+    print()
+
+
+def _parse_import_args(args: list[str]) -> tuple[list[str], str | None]:
+    source_paths: list[str] = []
+    source_name: str | None = None
+    index = 0
+    while index < len(args):
+        current_arg = args[index]
+        if current_arg == "--name":
+            if index + 1 >= len(args):
+                print("\n  Error: --name requires a value.\n")
+                sys.exit(1)
+            source_name = args[index + 1]
+            index += 2
+            continue
+        if current_arg.startswith("--name="):
+            source_name = current_arg.split("=", 1)[1]
+            index += 1
+            continue
+        source_paths.append(current_arg)
+        index += 1
+
+    if not source_paths:
+        print("\n  Usage: algenta import <file.csv> [more.csv ...] [--name orders]\n")
+        print("  Example: algenta import orders.csv --name orders")
+        print("           algenta import orders.csv financial.csv ratings.csv\n")
+        sys.exit(1)
+
+    if len(source_paths) > 1 and source_name is not None:
+        print("\n  Error: --name is only supported when importing a single source.\n")
+        sys.exit(1)
+
+    return source_paths, source_name
+
+
+def cmd_import(args: list[str]) -> None:
+    from pathlib import Path
+
+    from algenta import AlgentaRuntimeError, Runtime
+
+    source_paths, source_name = _parse_import_args(args)
+    paths = [Path(source_path).expanduser() for source_path in source_paths]
+    missing_paths = [path for path in paths if not path.exists()]
+    if missing_paths:
+        missing = ", ".join(str(path) for path in missing_paths)
+        print(f"\n  Error: file not found: {missing}\n")
+        sys.exit(1)
+
+    runtime = Runtime()
+    if len(paths) == 1:
+        path = paths[0]
+        try:
+            imported = runtime.import_preview(path, name=source_name, source_ref=str(path))
+        except AlgentaRuntimeError as exc:
+            print()
+            print(
+                runtime_banner(
+                    "Algenta Import Failed",
+                    [
+                        f"Code: {exc.code}",
+                        str(exc),
+                        f"Source: {path}",
+                    ],
+                )
+            )
+            print()
+            sys.exit(1)
+
+        registration = imported.registration
+        connected_name = registration.name or path.stem
+        print()
+        print(imported.preview)
+        print()
+        print("  Import preview complete.")
+        print("  This command validates local registration and schema discovery only.")
+        print("  Use Python Runtime() for a persistent local session:")
+        print()
+        print("    from algenta import Runtime")
+        print("    rt = Runtime()")
+        print(f"    rt.connect({str(path)!r}, name={connected_name!r})")
+        print("    plan = rt.resolve({\"source_name\": \""
+              f"{connected_name}\", \"metric\": \"revenue\"}})")
+        print("    result = rt.query(plan)")
+        print()
+        return
+
+    bundle = runtime.import_bundle_preview(paths, source_refs=[str(path) for path in paths])
+    print()
+    print(bundle.preview)
+    print()
+    if bundle.failures:
+        print("  Explicit import issues")
+        for failure in bundle.failures:
+            print(f"    - {failure.name or failure.source_ref}: {failure.code} — {failure.message}")
+        print()
+    print("  Bundle preview complete.")
+    print("  This command validates local registration and schema discovery only.")
+    print("  Use Python Runtime() for a persistent local session:")
+    print()
+    print("    from algenta import Runtime")
+    print("    rt = Runtime()")
+    rendered_paths = ", ".join(repr(str(path)) for path in paths)
+    print(f"    rt.connect_many([{rendered_paths}])")
+    if bundle.registrations:
+        first_name = bundle.registrations[0].name or paths[0].stem
+        print(f"    plan = rt.resolve({{'source_name': '{first_name}', 'metric': 'revenue'}})")
+        print("    result = rt.query(plan)")
+    print()
+    if not bundle.registrations:
+        sys.exit(1)
 
 
 def cmd_map(args: list[str]) -> None:
@@ -220,21 +349,22 @@ def cmd_upgrade() -> None:
 
   2. Install the SDK:
        pip install algenta-sdk
+       # or
+       pip install "algenta-core[cloud]"
 
-  3. Switch from local to cloud in one line:
+  3. Switch from local runtime to direct API mode:
 
      Before:
-       from algenta import simulate
-       result = simulate.risk(revenue=100000, cost=70000, runs=10000)
+       from algenta import Runtime
+       rt = Runtime()
+       plan = rt.resolve({"metric": "revenue", "group_by": "product_line"})
+       result = rt.query(plan)
 
      After:
-       from algenta import AlgentaClient
-       client = AlgentaClient(api_key="de_live_...")
-       result = client.simulate.risk(revenue=100000, cost=70000, runs=1_000_000)
-
-  Free tier:  500 simulations/month
-  Developer:  10,000 simulations/month
-  Pro:        100,000 simulations/month + all engines
+       from algenta import Runtime
+       rt = Runtime(mode="api", api_key="de_live_...")
+       plan = rt.resolve({"source_name": "orders", "metric": "revenue", "group_by": "product_line"})
+       result = rt.query(plan)
 """)
 
 
@@ -242,8 +372,12 @@ def main() -> None:
     args = sys.argv[1:]
     cmd = args[0] if args else "help"
 
-    if cmd == "benchmark":
+    if cmd == "demo":
+        cmd_demo()
+    elif cmd == "benchmark":
         cmd_benchmark()
+    elif cmd == "import":
+        cmd_import(args[1:])
     elif cmd in ("simulate", "sim"):
         cmd_simulate_quick()
     elif cmd == "map":
@@ -255,6 +389,18 @@ def main() -> None:
     elif cmd == "upgrade":
         cmd_upgrade()
     else:
+        print(
+            runtime_banner(
+                "Algenta CLI",
+                [
+                    "Primary path: algenta demo",
+                    "Brandable import preview: algenta import <file.csv> --name orders",
+                    "Deterministic local runtime: Runtime.resolve() -> Runtime.query()",
+                    "Secondary tools remain available: map, query, simulate, benchmark",
+                ],
+            )
+        )
+        print()
         print(__doc__)
         sys.exit(0 if cmd == "help" else 1)
 

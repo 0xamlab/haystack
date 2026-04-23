@@ -30,7 +30,8 @@ from datetime import UTC
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from fastapi import FastAPI, HTTPException
-from fastapi.testclient import TestClient
+
+from tests._asgi_client import SyncASGIClient
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -78,7 +79,7 @@ def test_metering_ingest_valid_batch():
     from apps.api_server.routers import metering as _mr
     with patch.object(_mr, "_increment_metering_counter", new=AsyncMock()):
         app = _build_app()
-        with TestClient(app) as client:
+        with SyncASGIClient(app) as client:
             resp = client.post("/v1/metering", json={
                 "device_id": "dev-test-0001",
                 "events":    [_event() for _ in range(5)],
@@ -94,7 +95,7 @@ def test_metering_ingest_empty_events():
     from apps.api_server.routers import metering as _mr
     with patch.object(_mr, "_increment_metering_counter", new=AsyncMock()):
         app = _build_app()
-        with TestClient(app) as client:
+        with SyncASGIClient(app) as client:
             resp = client.post("/v1/metering", json={
                 "device_id": "dev-001",
                 "events":    [],
@@ -126,7 +127,7 @@ def test_metering_ingest_no_auth():
     app.include_router(_mr.router)
     app.dependency_overrides[get_current_org] = _deny
 
-    with TestClient(app, raise_server_exceptions=False) as client:
+    with SyncASGIClient(app, raise_app_exceptions=False) as client:
         resp = client.post("/v1/metering", json={
             "device_id": "dev-001",
             "events":    [_event()],
@@ -142,7 +143,7 @@ def test_metering_ingest_billing_period_from_timestamps():
     with patch.object(_mr, "_increment_metering_counter", new=AsyncMock()):
         app = _build_app()
         now = time.time()
-        with TestClient(app) as client:
+        with SyncASGIClient(app) as client:
             resp = client.post("/v1/metering", json={
                 "device_id": "dev-001",
                 "events":    [_event(ts=now), _event(ts=now - 3600)],
@@ -161,7 +162,7 @@ def test_metering_ingest_redis_failure_still_200():
 
     app = _build_app()
     with patch.object(aioredis, "from_url", side_effect=ConnectionError("Redis down")):
-        with TestClient(app) as client:
+        with SyncASGIClient(app) as client:
             resp = client.post("/v1/metering", json={
                 "device_id": "dev-001",
                 "events":    [_event()],

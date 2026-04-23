@@ -4,83 +4,94 @@ sidebar_position: 6
 
 # Local Runtime
 
-Use the hosted control plane with local execution, offline continuity, and an append-only local task ledger.
+There are two related but different local-runtime stories in this repository.
 
-## What you get
+## 1. Primary local runtime: `algenta.Runtime`
+
+This is the default local-first path and the one we recommend first.
+
+```python
+from algenta import Runtime
+
+rt = Runtime()
+rt.connect("orders.csv", name="orders")
+plan = rt.resolve({"source_name": "orders", "metric": "revenue"})
+result = rt.query(plan)
+```
+
+This path:
+
+- runs locally
+- requires no API key
+- is the primary docs and SDK path
+- supports local CSV, JSON, in-memory records, and deterministic SQLite descriptors on Python today
+- remains outside the hosted device-license and credit-bucket enforcement path unless you explicitly opt into hosted local mode
+
+## 2. Hosted control plane with local execution
+
+This repo also supports a more advanced runtime/device flow where the hosted control plane verifies the machine and a local daemon performs execution.
+
+Use this when you need:
 
 - hosted API-key verification
-- a local device license
-- a local daemon for execution
-- offline history at `~/.algenta/runtime/history.jsonl`
+- local device licensing
+- daemon-managed local execution
+- local task history
 
-## Step 1: Verify the machine
-
-Run the real local verifier:
+### Verify the machine
 
 ```bash
 ALGENTA_API_KEY=de_live_... python3 scripts/verify_local_api_key_runtime.py
 ```
 
-That check performs:
+If you already have a stored device license from that advanced path, the public runtimes can also execute locally with hosted enforcement enabled.
 
-- `/v1/health`
-- device-license exchange
-- local credit seeding
-- daemon start
-- one real local execution
+Python:
 
-## Step 2: Register the machine
+```python
+from algenta import Runtime
 
-```bash
-de login de_live_...
+rt = Runtime(api_key="de_live_...")
+rt.connect("orders.csv", name="orders")
+plan = rt.resolve({"source_name": "orders", "metric": "revenue"})
+result = rt.query(plan)
 ```
 
-Or:
+TypeScript:
 
-```bash
-ALGENTA_API_KEY=de_live_... de login
+```typescript
+import { Runtime } from "decision-engine-sdk";
+
+const rt = new Runtime({ apiKey: process.env.ALGENTA_API_KEY });
+await rt.connect("orders.csv", { name: "orders" });
+const plan = await rt.resolve({ source_name: "orders", metric: "revenue" });
+const result = await rt.query(plan);
 ```
 
-## Step 3: Start the runtime
+For local database-backed development, the public runtimes now diverge slightly:
+
+- Python local mode supports deterministic SQLite descriptors directly
+- TypeScript local mode also supports SQLite descriptors when the active Node runtime exposes `node:sqlite`
+
+That keeps execution local while enforcing the stored local device license and local credit bucket offline.
+
+### Start the daemon runtime
 
 ```bash
 de runtime start
 de runtime status
 ```
 
-## Step 4: Inspect local history
+### Inspect local runtime history
 
 ```bash
 de runtime history --limit 20
-de runtime history --limit 20 --format json
 ```
 
-## Python runtime usage
+## What this page proves
 
-```python
-from apps.runtime.sdk import Runtime
+- The simple primary local runtime exists in `algenta-core`
+- The more advanced hosted-control-plane local runtime also exists in this repo
+- These are both real, but they are not the same surface
 
-rt = Runtime(mode="local", api_key="de_live_...")
-result = rt.execute("monte_carlo", "run", {})
-print(result["success"], result["engine_used"])
-```
-
-## Offline behavior
-
-- First-time hosted registration must succeed
-- Offline execution is allowed only from a previously issued valid or grace-period license
-- Reconnect updates sync state, not prior local history
-
-## Stop or revoke
-
-```bash
-de runtime stop
-de logout
-```
-
-## Troubleshooting
-
-- `hosted license required`: first-time registration failed
-- no local history file: nothing has executed yet
-- credits not seeded: rerun the verifier or `de login`
-- daemon not running: restart with `de runtime start`
+The docs now lead with the simpler `Runtime.resolve() -> Runtime.query()` story and keep the daemon/device path as an advanced operating mode.

@@ -4,7 +4,14 @@ from __future__ import annotations
 import base64
 import io
 import json
+import zipfile
+from datetime import date, datetime, time
 from typing import Any
+
+try:
+    from defusedxml import ElementTree
+except ModuleNotFoundError:  # pragma: no cover - exercised in clean envs
+    from xml.etree import ElementTree
 
 from apps.api_server.services.columnar_loader import (
     delimited_text_to_arrow_table,
@@ -42,6 +49,15 @@ class FileConnector(BaseConnector):
     _COERCION_CACHE_MAX_ENTRIES = 1024
     _COERCION_CACHE_MAX_VALUE_LEN = 128
     _CACHE_MISS = object()
+    _XLSX_MAIN_NS = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+    _XLSX_REL_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+    _XLSX_PKG_REL_NS = "http://schemas.openxmlformats.org/package/2006/relationships"
+    _XLSX_TAG_ROW = f"{{{_XLSX_MAIN_NS}}}row"
+    _XLSX_TAG_CELL = f"{{{_XLSX_MAIN_NS}}}c"
+    _XLSX_TAG_VALUE = f"{{{_XLSX_MAIN_NS}}}v"
+    _XLSX_TAG_TEXT = f"{{{_XLSX_MAIN_NS}}}t"
+    _XLSX_TAG_SHARED_STRING = f"{{{_XLSX_MAIN_NS}}}si"
+    _XLSX_COLUMN_INDEX_CACHE_MAX = 128
 
     @staticmethod
     def _load_content(file_type: str, content: str | bytes, file_path: str) -> str | bytes:
@@ -56,6 +72,226 @@ class FileConnector(BaseConnector):
         if isinstance(content_b64, bytes):
             return content_b64
         return base64.b64decode(content_b64)
+
+    @staticmethod
+    def _xlsx_normalize_member_path(target: str) -> str:
+        normalized = target.lstrip("/")
+        if not normalized.startswith("xl/"):
+            normalized = f"xl/{normalized}"
+        return normalized
+
+    @staticmethod
+    def _xlsx_read_shared_strings(archive: zipfile.ZipFile) -> list[str]:
+        try:
+            with archive.open("xl/sharedStrings.xml") as handle:
+                strings: list[str] = []
+                for _event, element in ElementTree.iterparse(handle, events=("end",)):  # noqa: S314
+                    if element.tag == FileConnector._XLSX_TAG_SHARED_STRING:
+                        strings.append("".join(element.itertext()))
+                        element.clear()
+                return strings
+        except KeyError:
+            return []
+
+    @staticmethod
+    def _xlsx_sheet_target(
+        archive: zipfile.ZipFile,
+        *,
+        sheet: int | str = 0,
+    ) -> tuple[str, datetime]:
+        workbook_root = ElementTree.fromstring(archive.read("xl/workbook.xml"))  # noqa: S314
+        workbook_props = workbook_root.find(f"{{{FileConnector._XLSX_MAIN_NS}}}workbookPr")
+        date_epoch = datetime(1899, 12, 30)
+        if workbook_props is not None and workbook_props.get("date1904") in {"1", "true", "True"}:
+            date_epoch = datetime(1904, 1, 1)
+
+        rels_root = ElementTree.fromstring(archive.read("xl/_rels/workbook.xml.rels"))  # noqa: S314
+        rel_map = {
+            rel.get("Id", ""): FileConnector._xlsx_normalize_member_path(rel.get("Target", ""))
+            for rel in rels_root.findall(f"{{{FileConnector._XLSX_PKG_REL_NS}}}Relationship")
+        }
+
+        sheets_parent = workbook_root.find(f"{{{FileConnector._XLSX_MAIN_NS}}}sheets")
+        if sheets_parent is None:
+            raise KeyError("Workbook has no sheets")
+
+        sheet_entries: list[tuple[str, str]] = []
+        rel_attr = f"{{{FileConnector._XLSX_REL_NS}}}id"
+        for sheet_meta in sheets_parent.findall(f"{{{FileConnector._XLSX_MAIN_NS}}}sheet"):
+            rel_id = sheet_meta.get(rel_attr, "")
+            target = rel_map.get(rel_id)
+            if not target:
+                continue
+            sheet_entries.append((sheet_meta.get("name", ""), target))
+
+        if isinstance(sheet, int):
+            try:
+                _sheet_name, target = sheet_entries[sheet]
+            except IndexError as exc:
+                raise IndexError(sheet) from exc
+            return target, date_epoch
+
+        for sheet_name, target in sheet_entries:
+            if sheet_name == sheet:
+                return target, date_epoch
+        raise KeyError(sheet)
+
+    @staticmethod
+    def _xlsx_date_style_indexes(archive: zipfile.ZipFile) -> set[int]:
+        try:
+            styles_root = ElementTree.fromstring(archive.read("xl/styles.xml"))  # noqa: S314
+        except KeyError:
+            return set()
+
+        from openpyxl.styles.numbers import BUILTIN_FORMATS, is_date_format
+
+        custom_formats: dict[int, str] = {}
+        num_fmts = styles_root.find(f"{{{FileConnector._XLSX_MAIN_NS}}}numFmts")
+        if num_fmts is not None:
+            for num_fmt in num_fmts.findall(f"{{{FileConnector._XLSX_MAIN_NS}}}numFmt"):
+                num_fmt_id = num_fmt.get("numFmtId")
+                if num_fmt_id is None:
+                    continue
+                custom_formats[int(num_fmt_id)] = num_fmt.get("formatCode", "")
+
+        date_styles: set[int] = set()
+        cell_xfs = styles_root.find(f"{{{FileConnector._XLSX_MAIN_NS}}}cellXfs")
+        if cell_xfs is None:
+            return date_styles
+
+        for style_index, xf in enumerate(cell_xfs.findall(f"{{{FileConnector._XLSX_MAIN_NS}}}xf")):
+            num_fmt_id = xf.get("numFmtId")
+            if num_fmt_id is None:
+                continue
+            format_code = custom_formats.get(int(num_fmt_id)) or BUILTIN_FORMATS.get(
+                int(num_fmt_id)
+            )
+            if format_code and is_date_format(format_code):
+                date_styles.add(style_index)
+        return date_styles
+
+    @staticmethod
+    def _xlsx_column_index_from_ref(
+        ref: str | None,
+        default_index: int,
+        *,
+        column_cache: dict[str, int] | None = None,
+    ) -> int:
+        if not ref:
+            return default_index
+        letters: list[str] = []
+        for char in ref:
+            if char.isalpha():
+                letters.append(char.upper())
+            else:
+                break
+        if not letters:
+            return default_index
+        cache_key = "".join(letters)
+        if column_cache is not None:
+            cached_index = column_cache.get(cache_key)
+            if cached_index is not None:
+                return cached_index
+        column_index = 0
+        for char in cache_key:
+            column_index = (column_index * 26) + (ord(char) - 64)
+        resolved_index = max(column_index - 1, default_index)
+        if (
+            column_cache is not None
+            and len(column_cache) < FileConnector._XLSX_COLUMN_INDEX_CACHE_MAX
+        ):
+            column_cache[cache_key] = resolved_index
+        return resolved_index
+
+    @staticmethod
+    def _xlsx_parse_cell_value(
+        cell: ElementTree.Element,
+        *,
+        shared_strings: list[str],
+        date_styles: set[int],
+        date_epoch: datetime,
+    ) -> Any:
+        from openpyxl.utils.datetime import from_excel
+
+        cell_type = cell.get("t")
+        style_index = int(cell.get("s", "-1"))
+
+        if cell_type == "inlineStr":
+            value = "".join(
+                text_node.text or ""
+                for text_node in cell.iter(FileConnector._XLSX_TAG_TEXT)
+            )
+            return None if value == "" else value
+
+        value_node = cell.find(FileConnector._XLSX_TAG_VALUE)
+        if value_node is None or value_node.text is None:
+            return None
+        raw_value = value_node.text
+
+        if cell_type == "s":
+            shared_index = int(raw_value)
+            if 0 <= shared_index < len(shared_strings):
+                value = shared_strings[shared_index]
+                return None if value == "" else value
+            return raw_value
+        if cell_type == "b":
+            return raw_value == "1"
+        if cell_type in {"str", "e"}:
+            return raw_value
+        if cell_type == "d":
+            try:
+                return datetime.fromisoformat(raw_value)
+            except ValueError:
+                return raw_value
+
+        try:
+            numeric_value = float(raw_value)
+        except ValueError:
+            return raw_value
+
+        if style_index in date_styles:
+            return from_excel(numeric_value, epoch=date_epoch)
+        if numeric_value.is_integer():
+            return int(numeric_value)
+        return numeric_value
+
+    @staticmethod
+    def _iter_fast_xlsx_rows(content_b64: str | bytes, *, sheet: int | str = 0):
+        raw = FileConnector._decode_binary_content(content_b64)
+        archive = zipfile.ZipFile(io.BytesIO(raw))
+        try:
+            shared_strings = FileConnector._xlsx_read_shared_strings(archive)
+            sheet_target, date_epoch = FileConnector._xlsx_sheet_target(archive, sheet=sheet)
+            date_styles = FileConnector._xlsx_date_style_indexes(archive)
+            column_index_cache: dict[str, int] = {}
+            with archive.open(sheet_target) as handle:
+                current_row: list[Any] = []
+                next_default_index = 0
+                for _event, element in ElementTree.iterparse(handle, events=("end",)):  # noqa: S314
+                    if element.tag == FileConnector._XLSX_TAG_CELL:
+                        column_index = FileConnector._xlsx_column_index_from_ref(
+                            element.get("r"),
+                            next_default_index,
+                            column_cache=column_index_cache,
+                        )
+                        if column_index >= len(current_row):
+                            current_row.extend([None] * (column_index + 1 - len(current_row)))
+                        current_row[column_index] = FileConnector._xlsx_parse_cell_value(
+                            element,
+                            shared_strings=shared_strings,
+                            date_styles=date_styles,
+                            date_epoch=date_epoch,
+                        )
+                        next_default_index = column_index + 1
+                        element.clear()
+                        continue
+                    if element.tag == FileConnector._XLSX_TAG_ROW:
+                        yield tuple(current_row)
+                        current_row = []
+                        next_default_index = 0
+                        element.clear()
+        finally:
+            archive.close()
 
     async def fetch_data(self) -> list[dict[str, Any]]:
         file_type: str = self.config.get("file_type", "csv").lower()
@@ -123,7 +359,12 @@ class FileConnector(BaseConnector):
     # ── Parsers ───────────────────────────────────────────────────────────────
 
     @staticmethod
-    def _open_excel_sheet(content_b64: str | bytes, sheet: int | str = 0) -> tuple[Any, Any]:
+    def _open_excel_sheet(
+        content_b64: str | bytes,
+        sheet: int | str = 0,
+        *,
+        apply_styles: bool = False,
+    ) -> tuple[Any, Any]:
         try:
             from openpyxl.reader.excel import ExcelReader, apply_stylesheet
             from openpyxl.worksheet._read_only import ReadOnlyWorksheet
@@ -142,10 +383,8 @@ class FileConnector(BaseConnector):
         reader.read_manifest()
         reader.read_strings()
         reader.read_workbook()
-        reader.read_properties()
-        reader.read_custom()
-        reader.read_theme()
-        apply_stylesheet(reader.archive, reader.wb)
+        if apply_styles:
+            apply_stylesheet(reader.archive, reader.wb)
 
         worksheet_entries: list[tuple[Any, Any]] = []
         for sheet_meta, rel in reader.parser.find_sheets():
@@ -207,6 +446,12 @@ class FileConnector(BaseConnector):
             if isinstance(value, float) and value.is_integer():
                 return str(int(value))
             return str(value)
+        if isinstance(value, datetime | date | time):
+            return str(value)
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, int | float):
+            return value
         if isinstance(value, str):
             preserve_identifiers = (
                 is_identifier_field(field_name)
@@ -233,6 +478,12 @@ class FileConnector(BaseConnector):
             if isinstance(value, float) and value.is_integer():
                 return str(int(value))
             return str(value)
+        if isinstance(value, datetime | date | time):
+            return str(value)
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, int | float):
+            return value
         if isinstance(value, str):
             preserve_identifiers = (
                 is_identifier_field(field_name)
@@ -303,6 +554,115 @@ class FileConnector(BaseConnector):
         return normalized
 
     @staticmethod
+    def _final_excel_headers(
+        headers: list[str],
+    ) -> tuple[list[str], list[int]]:
+        last_index: dict[str, int] = {}
+        for index, header in enumerate(headers):
+            last_index[header] = index
+        final_headers = [
+            header
+            for index, header in enumerate(headers)
+            if last_index[header] == index
+        ]
+        final_indexes = [last_index[header] for header in final_headers]
+        return final_headers, final_indexes
+
+    @staticmethod
+    def _arrow_table_from_excel_columns(columns: dict[str, list[Any]]) -> Any | None:
+        import pyarrow as pa
+
+        arrays: dict[str, Any] = {}
+        for header, values in columns.items():
+            try:
+                arrays[header] = pa.array(values)
+            except Exception:
+                arrays[header] = pa.array(
+                    [str(value) if value is not None else None for value in values],
+                    type=pa.string(),
+                )
+        return pa.table(arrays)
+
+    @staticmethod
+    def _fast_xlsx_to_arrow_table(content_b64: str | bytes, *, sheet: int | str = 0) -> Any | None:
+        import pyarrow as pa
+
+        raw = FileConnector._decode_binary_content(content_b64)
+        archive = zipfile.ZipFile(io.BytesIO(raw))
+        try:
+            shared_strings = FileConnector._xlsx_read_shared_strings(archive)
+            sheet_target, date_epoch = FileConnector._xlsx_sheet_target(archive, sheet=sheet)
+            date_styles = FileConnector._xlsx_date_style_indexes(archive)
+            column_index_cache: dict[str, int] = {}
+            with archive.open(sheet_target) as handle:
+                current_row: list[Any] = []
+                next_default_index = 0
+                final_headers: list[str] | None = None
+                final_indexes: list[int] = []
+                identifier_fields: list[bool] = []
+                columns: dict[str, list[Any]] | None = None
+                appenders: list[Any] = []
+                coercion_caches: list[dict[str, Any]] = []
+                header_count = 0
+
+                for _event, element in ElementTree.iterparse(handle, events=("end",)):  # noqa: S314
+                    if element.tag == FileConnector._XLSX_TAG_CELL:
+                        column_index = FileConnector._xlsx_column_index_from_ref(
+                            element.get("r"),
+                            next_default_index,
+                            column_cache=column_index_cache,
+                        )
+                        if column_index >= len(current_row):
+                            current_row.extend([None] * (column_index + 1 - len(current_row)))
+                        current_row[column_index] = FileConnector._xlsx_parse_cell_value(
+                            element,
+                            shared_strings=shared_strings,
+                            date_styles=date_styles,
+                            date_epoch=date_epoch,
+                        )
+                        next_default_index = column_index + 1
+                        element.clear()
+                        continue
+
+                    if element.tag != FileConnector._XLSX_TAG_ROW:
+                        continue
+
+                    if final_headers is None:
+                        headers = FileConnector._excel_headers(tuple(current_row))
+                        final_headers, final_indexes = FileConnector._final_excel_headers(headers)
+                        identifier_fields = [
+                            bool(header) and is_identifier_field(header)
+                            for header in final_headers
+                        ]
+                        columns = {header: [] for header in final_headers}
+                        appenders = [columns[header].append for header in final_headers]
+                        coercion_caches = [{} for _ in final_headers]
+                        header_count = len(final_headers)
+                    else:
+                        row_len = len(current_row)
+                        for idx in range(header_count):
+                            column_index = final_indexes[idx]
+                            value = current_row[column_index] if column_index < row_len else None
+                            appenders[idx](
+                                FileConnector._coerce_excel_arrow_value_cached(
+                                    final_headers[idx],
+                                    value,
+                                    preserve_identifier_field=identifier_fields[idx],
+                                    cache=coercion_caches[idx],
+                                )
+                            )
+
+                    current_row = []
+                    next_default_index = 0
+                    element.clear()
+
+            if columns is None:
+                return pa.table({})
+            return FileConnector._arrow_table_from_excel_columns(columns)
+        finally:
+            archive.close()
+
+    @staticmethod
     def _parse_csv(content: str, delimiter: str = ",") -> list[dict[str, Any]]:
         return parse_delimited_records(content, delimiter=delimiter, sniff=True)
 
@@ -338,94 +698,122 @@ class FileConnector(BaseConnector):
 
     @staticmethod
     def _parse_excel(content_b64: str | bytes, sheet: int | str = 0) -> list[dict[str, Any]]:
-        wb, ws = FileConnector._open_excel_sheet(content_b64, sheet=sheet)
         try:
-            rows = ws.values
+            wb, ws = FileConnector._open_excel_sheet(
+                content_b64,
+                sheet=sheet,
+                apply_styles=True,
+            )
             try:
-                headers = FileConnector._excel_headers(next(rows))
-            except StopIteration:
-                return []
+                return FileConnector._records_from_excel_rows(ws.values)
+            finally:
+                wb.close()
+        except Exception:
+            rows = FileConnector._iter_fast_xlsx_rows(content_b64, sheet=sheet)
+            return FileConnector._records_from_excel_rows(rows)
 
-            header_count = len(headers)
-            identifier_fields = [
-                bool(header) and is_identifier_field(header)
-                for header in headers
-            ]
-            coercion_caches: list[dict[str, Any]] = [{} for _ in headers]
-            records: list[dict[str, Any]] = []
-            for row in rows:
-                rec: dict[str, Any] = {}
-                row_len = len(row)
-                for idx in range(header_count):
-                    header = headers[idx]
-                    value = row[idx] if idx < row_len else None
-                    rec[header] = FileConnector._coerce_excel_record_value_cached(
-                        header,
-                        value,
-                        preserve_identifier_field=identifier_fields[idx],
-                        cache=coercion_caches[idx],
-                    )
-                records.append(rec)
-            return records
+    @staticmethod
+    def _openpyxl_excel_to_arrow_table(
+        content_b64: str | bytes,
+        sheet: int | str = 0,
+    ) -> Any | None:
+        wb, ws = FileConnector._open_excel_sheet(
+            content_b64,
+            sheet=sheet,
+            apply_styles=True,
+        )
+        try:
+            return FileConnector._arrow_table_from_excel_rows(ws.values)
         finally:
             wb.close()
 
     @staticmethod
     def _excel_to_arrow_table(content_b64: str | bytes, sheet: int | str = 0) -> Any | None:
+        try:
+            return FileConnector._openpyxl_excel_to_arrow_table(content_b64, sheet=sheet)
+        except Exception:
+            return FileConnector._fast_xlsx_to_arrow_table(content_b64, sheet=sheet)
+
+    @staticmethod
+    def _records_from_excel_rows(rows: Any) -> list[dict[str, Any]]:
+        try:
+            headers = FileConnector._excel_headers(next(rows))
+        except StopIteration:
+            return []
+
+        header_count = len(headers)
+        identifier_fields = [
+            bool(header) and is_identifier_field(header)
+            for header in headers
+        ]
+        coercion_caches: list[dict[str, Any]] = [{} for _ in headers]
+        records: list[dict[str, Any]] = []
+        for row in rows:
+            rec: dict[str, Any] = {}
+            row_len = len(row)
+            for idx in range(header_count):
+                header = headers[idx]
+                value = row[idx] if idx < row_len else None
+                rec[header] = FileConnector._coerce_excel_record_value_cached(
+                    header,
+                    value,
+                    preserve_identifier_field=identifier_fields[idx],
+                    cache=coercion_caches[idx],
+                )
+            records.append(rec)
+        return records
+
+    @staticmethod
+    def _arrow_table_from_excel_rows(rows: Any) -> Any | None:
         import pyarrow as pa
 
-        wb, ws = FileConnector._open_excel_sheet(content_b64, sheet=sheet)
         try:
-            rows = ws.values
+            headers = FileConnector._excel_headers(next(rows))
+        except StopIteration:
+            return pa.table({})
+
+        last_index: dict[str, int] = {}
+        for index, header in enumerate(headers):
+            last_index[header] = index
+        final_headers = [
+            header
+            for index, header in enumerate(headers)
+            if last_index[header] == index
+        ]
+        final_indexes = [last_index[header] for header in final_headers]
+        identifier_fields = [
+            bool(header) and is_identifier_field(header)
+            for header in final_headers
+        ]
+        columns: dict[str, list[Any]] = {header: [] for header in final_headers}
+        appenders = [columns[header].append for header in final_headers]
+        coercion_caches: list[dict[str, Any]] = [{} for _ in final_headers]
+        header_count = len(final_headers)
+
+        for row in rows:
+            row_len = len(row)
+            for idx in range(header_count):
+                index = final_indexes[idx]
+                value = row[index] if index < row_len else None
+                appenders[idx](
+                    FileConnector._coerce_excel_arrow_value_cached(
+                        final_headers[idx],
+                        value,
+                        preserve_identifier_field=identifier_fields[idx],
+                        cache=coercion_caches[idx],
+                    )
+                )
+
+        arrays: dict[str, Any] = {}
+        for header, values in columns.items():
             try:
-                headers = FileConnector._excel_headers(next(rows))
-            except StopIteration:
-                return pa.table({})
-
-            last_index: dict[str, int] = {}
-            for index, header in enumerate(headers):
-                last_index[header] = index
-            final_headers = [
-                header
-                for index, header in enumerate(headers)
-                if last_index[header] == index
-            ]
-            final_indexes = [last_index[header] for header in final_headers]
-            identifier_fields = [
-                bool(header) and is_identifier_field(header)
-                for header in final_headers
-            ]
-            columns: dict[str, list[Any]] = {header: [] for header in final_headers}
-            appenders = [columns[header].append for header in final_headers]
-            coercion_caches: list[dict[str, Any]] = [{} for _ in final_headers]
-            header_count = len(final_headers)
-
-            for row in rows:
-                row_len = len(row)
-                for idx in range(header_count):
-                    index = final_indexes[idx]
-                    value = row[index] if index < row_len else None
-                    appenders[idx](
-                        FileConnector._coerce_excel_arrow_value_cached(
-                            final_headers[idx],
-                            value,
-                            preserve_identifier_field=identifier_fields[idx],
-                            cache=coercion_caches[idx],
-                        )
-                    )
-
-            arrays: dict[str, Any] = {}
-            for header, values in columns.items():
-                try:
-                    arrays[header] = pa.array(values)
-                except Exception:
-                    arrays[header] = pa.array(
-                        [str(value) if value is not None else None for value in values],
-                        type=pa.string(),
-                    )
-            return pa.table(arrays)
-        finally:
-            wb.close()
+                arrays[header] = pa.array(values)
+            except Exception:
+                arrays[header] = pa.array(
+                    [str(value) if value is not None else None for value in values],
+                    type=pa.string(),
+                )
+        return pa.table(arrays)
 
     @staticmethod
     def _parse_parquet(content_b64: str | bytes) -> list[dict[str, Any]]:

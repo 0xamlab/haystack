@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
@@ -680,6 +681,41 @@ def build_source_spec(
         )
         return source, True, None
 
+    file_path = str(
+        cfg.get("file_path")
+        or cfg.get("path")
+        or sel.get("path")
+        or direct_payload.get("path")
+        or ""
+    ).strip()
+    if file_path:
+        file_type = str(
+            cfg.get("file_type")
+            or cfg.get("format")
+            or Path(file_path).suffix.lstrip(".")
+            or "csv"
+        ).strip().lower()
+        if file_type in {"xlsx", "xls"}:
+            file_type = "excel"
+        source = DataSource(
+            name=dataset_name,
+            connection=strip_none(
+                {
+                    "type": "file",
+                    "file_type": file_type,
+                    "file_path": file_path,
+                    "delimiter": cfg.get("delimiter"),
+                    "json_path": cfg.get("json_path"),
+                    "sheet": cfg.get("sheet"),
+                }
+            ),
+        )
+        return (
+            source,
+            True,
+            {"direct": strip_none({"path": file_path, "file_type": file_type})},
+        )
+
     source_payload = strip_none(
         {
             "records": direct_payload.get("records"),
@@ -697,8 +733,8 @@ def build_source_spec(
                 "error": {
                     "code": "no_data",
                     "message": (
-                        "file_upload datasets require records, csv, json_str, url, "
-                        "excel_b64, or parquet_b64."
+                        "file_upload datasets require a file path or one of "
+                        "records, csv, json_str, url, excel_b64, or parquet_b64."
                     ),
                 }
             },

@@ -2,7 +2,7 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, EmailStr, Field
 
 
 class SignUpRequest(BaseModel):
@@ -16,6 +16,22 @@ class LoginRequest(BaseModel):
     model_config = ConfigDict(strict=False)
     email: EmailStr
     password: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    model_config = ConfigDict(strict=False)
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    model_config = ConfigDict(strict=False)
+    token: str = Field(..., min_length=1)
+    new_password: str = Field(
+        ...,
+        validation_alias=AliasChoices("new_password", "password"),
+        min_length=8,
+        max_length=128,
+    )
 
 
 class TokenResponse(BaseModel):

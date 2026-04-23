@@ -36,6 +36,8 @@ from typing import Any
 
 import structlog
 
+from apps.api_server.compute.mojo_errors import MojoEngineError
+
 logger = structlog.get_logger(__name__)
 
 _REPO_ROOT   = Path(__file__).parents[3]
@@ -62,15 +64,6 @@ WORKER_READY_TIMEOUT_S = float(os.environ.get("MOJO_WORKER_READY_TIMEOUT_S", "5.
 # "true"  — allow transparent subprocess fallback (dev default, slower but safe)
 # "false" — hard fail if pool cannot start; no subprocess fallback (production)
 _ALLOW_SUBPROCESS_FALLBACK = _env_flag("MOJO_ALLOW_SUBPROCESS_FALLBACK")
-
-
-class MojoEngineError(Exception):
-    """Raised when the Mojo worker returns an error or is unavailable."""
-    def __init__(self, message: str, stderr: str = "", exit_code: int = 0) -> None:
-        super().__init__(message)
-        self.stderr    = stderr
-        self.exit_code = exit_code
-
 
 class _Worker:
     """One Mojo worker process + its persistent socket connection."""
@@ -105,6 +98,10 @@ class _Worker:
             if time.monotonic() > deadline:
                 raise MojoEngineError(
                     f"Worker {self.id} did not create socket within {WORKER_READY_TIMEOUT_S}s",
+                    code="worker_start_timeout",
+                    recoverable=True,
+                    stage="worker_start",
+                    details={"worker_id": self.id},
                 )
             await asyncio.sleep(0.01)
 
@@ -116,16 +113,31 @@ class _Worker:
             )
             ready = json.loads(ready_data)
             if ready.get("status") != "ready":
-                raise MojoEngineError(f"Worker {self.id} sent unexpected handshake: {ready}")
+                raise MojoEngineError(
+                    f"Worker {self.id} sent unexpected handshake: {ready}",
+                    code="worker_handshake_invalid",
+                    recoverable=True,
+                    stage="worker_start",
+                    details={"worker_id": self.id},
+                )
         except TimeoutError as exc:
             raise MojoEngineError(
-                f"Worker {self.id} did not send ready handshake"
+                f"Worker {self.id} did not send ready handshake",
+                code="worker_handshake_timeout",
+                recoverable=True,
+                stage="worker_start",
+                details={"worker_id": self.id},
             ) from exc
 
         self.healthy = True
         logger.debug("mojo_worker_ready", worker_id=self.id, socket=str(self.socket_path))
 
-    async def invoke(self, payload: dict[str, Any]) -> dict[str, Any]:
+    async def invoke(
+        self,
+        payload: dict[str, Any],
+        *,
+        timeout: float | None = None,
+    ) -> dict[str, Any]:
         """
         Send payload to worker, return result.
         Phase 1: fallback re-dispatch REMOVED — Mojo now handles all 11 engine types
@@ -139,18 +151,32 @@ class _Worker:
         self.writer.write(frame)
         await self.writer.drain()
 
+        compute_timeout = timeout if timeout is not None else COMPUTE_TIMEOUT_S
         try:
-            raw = await asyncio.wait_for(self._recv_frame(), timeout=COMPUTE_TIMEOUT_S)
+            raw = await asyncio.wait_for(self._recv_frame(), timeout=compute_timeout)
         except TimeoutError as exc:
             self.healthy = False
             raise MojoEngineError(
-                f"Worker {self.id} timed out after {COMPUTE_TIMEOUT_S}s",
+                f"Worker {self.id} timed out after {compute_timeout}s",
                 exit_code=124,
+                code="timeout",
+                recoverable=True,
+                engine_type=str(payload.get("engine_type") or "unknown"),
+                stage="worker_exec",
+                details={"worker_id": self.id},
             ) from exc
 
         result = json.loads(raw)
         if "error" in result:
-            raise MojoEngineError(result["error"], exit_code=1)
+            raise MojoEngineError(
+                result["error"],
+                exit_code=1,
+                code="engine_reported_error",
+                recoverable=False,
+                engine_type=str(payload.get("engine_type") or "unknown"),
+                stage="worker_exec",
+                details={"worker_id": self.id},
+            )
 
         # Phase 5: protocol version check — v1 is current JSON, v2+ = future binary
         proto = result.get("_proto", 1)
@@ -168,6 +194,11 @@ class _Worker:
                     "but MOJO_ALLOW_SUBPROCESS_FALLBACK=false. "
                     "Rebuild the Mojo binary: make build-mojo",
                     exit_code=1,
+                    code="unexpected_subprocess_fallback",
+                    recoverable=False,
+                    engine_type=str(payload.get("engine_type") or "unknown"),
+                    stage="worker_exec",
+                    details={"worker_id": self.id},
                 )
             logger.warning(
                 "mojo_pool_unexpected_fallback",
@@ -347,7 +378,12 @@ class MojoWorkerPool:
                 "Run `make setup-mojo && make build-mojo` first."
             )
             if not _ALLOW_SUBPROCESS_FALLBACK:
-                raise MojoEngineError(msg)
+                raise MojoEngineError(
+                    msg,
+                    code="binary_missing",
+                    recoverable=True,
+                    stage="pool_start",
+                )
             logger.warning("mojo_pool_binary_missing", hint=msg)
             logger.info("mojo_runtime_mode", mode="subprocess_fallback",
                         reason="binary_not_found",
@@ -362,7 +398,10 @@ class MojoWorkerPool:
                 raise MojoEngineError(
                     f"Binary at {_BINARY_PATH} does not support --server mode "
                     "and MOJO_ALLOW_SUBPROCESS_FALLBACK=false. "
-                    "Run `make build-mojo` to rebuild."
+                    "Run `make build-mojo` to rebuild.",
+                    code="server_mode_unavailable",
+                    recoverable=True,
+                    stage="pool_start",
                 )
             logger.warning(
                 "mojo_pool_server_mode_not_supported",
@@ -397,31 +436,53 @@ class MojoWorkerPool:
         except Exception as exc:
             logger.error("mojo_worker_spawn_failed", worker_id=worker_id, error=str(exc))
 
-    async def invoke(self, payload: dict[str, Any]) -> dict[str, Any]:
+    async def invoke(
+        self,
+        payload: dict[str, Any],
+        *,
+        timeout: float | None = None,
+    ) -> dict[str, Any]:
         """
         Dispatch payload to an available worker.
         Raises MojoEngineError("Mojo pool is not running") when pool is inactive —
         mojo_adapter.py catches this and routes to subprocess fallback (if allowed).
         """
         if not self._running:
-            raise MojoEngineError("Mojo pool is not running")
+            raise MojoEngineError(
+                "Mojo pool is not running",
+                code="pool_not_running",
+                recoverable=True,
+                stage="pool_dispatch",
+            )
 
         try:
             worker = await asyncio.wait_for(self._queue.get(), timeout=ACQUIRE_TIMEOUT_S)
         except TimeoutError as exc:
             raise MojoEngineError(
                 f"All {self._size} Mojo workers busy — no worker available after "
-                f"{ACQUIRE_TIMEOUT_S}s. Increase MOJO_POOL_SIZE or reduce request rate."
+                f"{ACQUIRE_TIMEOUT_S}s. Increase MOJO_POOL_SIZE or reduce request rate.",
+                code="workers_busy",
+                recoverable=True,
+                engine_type=str(payload.get("engine_type") or "unknown"),
+                stage="pool_acquire",
             ) from exc
 
         try:
-            result = await worker.invoke(payload)
+            result = await worker.invoke(payload, timeout=timeout)
             return result
-        except MojoEngineError:
+        except MojoEngineError as exc:
             if not worker.healthy:
                 logger.warning("mojo_worker_unhealthy", worker_id=worker.id)
                 asyncio.create_task(self._replace_worker(worker))
-                return {}
+                raise MojoEngineError(
+                    f"Worker {worker.id} became unhealthy during engine execution.",
+                    exit_code=getattr(exc, "exit_code", 1),
+                    code="worker_unhealthy",
+                    recoverable=True,
+                    engine_type=str(payload.get("engine_type") or "unknown"),
+                    stage="pool_dispatch",
+                    details={"worker_id": worker.id, "cause": exc.code},
+                ) from exc
             raise
         finally:
             if worker.healthy:
@@ -492,19 +553,40 @@ class MojoWorkerPool:
         thread; callers on that thread must use the async invoke path directly.
         """
         if not self._running:
-            raise MojoEngineError("Mojo pool is not running")
+            raise MojoEngineError(
+                "Mojo pool is not running",
+                code="pool_not_running",
+                recoverable=True,
+                stage="pool_dispatch",
+            )
         if self._loop is None or self._loop.is_closed():
-            raise MojoEngineError("Mojo pool loop is not available")
+            raise MojoEngineError(
+                "Mojo pool loop is not available",
+                code="pool_loop_unavailable",
+                recoverable=True,
+                stage="pool_dispatch",
+            )
         if self._loop_thread_id == threading.get_ident():
             raise MojoEngineError(
-                "Mojo pool sync invocation cannot run on the pool event-loop thread"
+                "Mojo pool sync invocation cannot run on the pool event-loop thread",
+                code="sync_on_pool_thread",
+                recoverable=True,
+                stage="pool_dispatch",
             )
 
         wait_timeout = timeout if timeout is not None else (ACQUIRE_TIMEOUT_S + COMPUTE_TIMEOUT_S)
         try:
-            future = asyncio.run_coroutine_threadsafe(self.invoke(payload), self._loop)
+            future = asyncio.run_coroutine_threadsafe(
+                self.invoke(payload, timeout=timeout),
+                self._loop,
+            )
         except RuntimeError as exc:
-            raise MojoEngineError("Mojo pool loop is not available") from exc
+            raise MojoEngineError(
+                "Mojo pool loop is not available",
+                code="pool_loop_unavailable",
+                recoverable=True,
+                stage="pool_dispatch",
+            ) from exc
 
         try:
             return future.result(timeout=wait_timeout)
@@ -513,6 +595,10 @@ class MojoWorkerPool:
             raise MojoEngineError(
                 f"Mojo pool sync invoke timed out after {wait_timeout}s",
                 exit_code=124,
+                code="timeout",
+                recoverable=True,
+                engine_type=str(payload.get("engine_type") or "unknown"),
+                stage="pool_dispatch",
             ) from exc
 
 
@@ -521,14 +607,19 @@ class MojoWorkerPool:
 _pool: MojoWorkerPool | None = None
 
 
-def set_pool(pool: MojoWorkerPool) -> None:
+def set_pool(pool: MojoWorkerPool | None) -> None:
     global _pool
     _pool = pool
 
 
 def get_pool_sync() -> MojoWorkerPool:
     if _pool is None:
-        raise MojoEngineError("Mojo pool not initialized. Check FastAPI lifespan.")
+        raise MojoEngineError(
+            "Mojo pool not initialized. Check FastAPI lifespan.",
+            code="pool_not_initialized",
+            recoverable=True,
+            stage="pool_dispatch",
+        )
     return _pool
 
 

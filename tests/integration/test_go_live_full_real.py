@@ -66,23 +66,27 @@ def run_suite(
     timeout: int,
 ) -> tuple[bool, float, str]:
     t0 = time.perf_counter()
-    try:
-        proc = subprocess.run(
-            cmd,
-            cwd=str(ROOT),
-            env={**os.environ, **env},
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-        )
-        elapsed = time.perf_counter() - t0
-        output = proc.stdout + proc.stderr
-        ok = proc.returncode == 0
-    except subprocess.TimeoutExpired as exc:
-        elapsed = time.perf_counter() - t0
-        output = _text_output(exc.stdout) + _text_output(exc.stderr)
-        output += f"\n[TIMEOUT after {timeout}s]"
-        ok = False
+    output = ""
+    with tempfile.TemporaryFile(mode="w+", encoding="utf-8") as output_file:
+        try:
+            proc = subprocess.run(
+                cmd,
+                cwd=str(ROOT),
+                env={**os.environ, **env},
+                stdout=output_file,
+                stderr=subprocess.STDOUT,
+                text=True,
+                timeout=timeout,
+            )
+            elapsed = time.perf_counter() - t0
+            ok = proc.returncode == 0
+        except subprocess.TimeoutExpired:
+            elapsed = time.perf_counter() - t0
+            ok = False
+            output += f"\n[TIMEOUT after {timeout}s]"
+        finally:
+            output_file.seek(0)
+            output = output_file.read() + output
 
     icon = PASS if ok else FAIL
     print(f"  {icon} {name} ({elapsed:.1f}s)")
@@ -103,28 +107,71 @@ def run_live_suite_with_fresh_server(
     timeout: int,
 ) -> tuple[bool, float]:
     tmp_root = Path(tempfile.mkdtemp(prefix="go-live-live-suite-"))
-    sources_dir = tmp_root / "sources"
-    sources_dir.mkdir(parents=True, exist_ok=True)
-    api_port = free_port()
     api_server: subprocess.Popen[str] | None = None
 
     try:
         api_key, org_id = asyncio.run(seed_api_key(DEFAULT_DB_URL))
-        env_live = {
-            **env_base,
-            "DE_BASE_URL": f"http://127.0.0.1:{api_port}",
-            "DE_API_KEY": api_key,
-            "ALGENTA_BASE_URL": f"http://127.0.0.1:{api_port}",
-            "ALGENTA_API_KEY": api_key,
-        }
-        api_server = start_api_server(api_port, sources_dir, env_live)
-        wait_for_http(f"http://127.0.0.1:{api_port}/v1/health")
-        print(f"  {PASS} Fresh API server ready on :{api_port} for org {org_id}")
-        ok, elapsed, _ = run_suite(name, cmd, env=env_live, timeout=timeout)
-        return ok, elapsed
+        last_start_error: Exception | None = None
+        for attempt in range(1, 3):
+            api_port = free_port()
+            sources_dir = tmp_root / f"sources_{attempt}"
+            sources_dir.mkdir(parents=True, exist_ok=True)
+            env_live = {
+                **env_base,
+                "DE_BASE_URL": f"http://127.0.0.1:{api_port}",
+                "DE_API_KEY": api_key,
+                "ALGENTA_BASE_URL": f"http://127.0.0.1:{api_port}",
+                "ALGENTA_API_KEY": api_key,
+            }
+            try:
+                api_server = start_api_server(api_port, sources_dir, env_live)
+                wait_for_http(
+                    f"http://127.0.0.1:{api_port}/v1/health",
+                    timeout=120.0,
+                    proc=api_server,
+                    log_path=getattr(api_server, "algenta_log_path", None),
+                )
+                print(f"  {PASS} Fresh API server ready on :{api_port} for org {org_id}")
+                ok, elapsed, _ = run_suite(name, cmd, env=env_live, timeout=timeout)
+                return ok, elapsed
+            except Exception as exc:
+                last_start_error = exc
+                stop_process(api_server)
+                api_server = None
+                if attempt >= 2:
+                    raise
+                print(
+                    f"  ⚠️ Fresh API server startup attempt {attempt} failed on :{api_port}; "
+                    f"retrying once: {exc}"
+                )
+                time.sleep(1.0)
+        if last_start_error is not None:
+            raise last_start_error
+        raise RuntimeError("Fresh API server startup failed without an explicit exception.")
     finally:
         stop_process(api_server)
         shutil.rmtree(tmp_root, ignore_errors=True)
+
+
+def _print_summary(results: list[tuple[str, bool, float]]) -> int:
+    passed = sum(1 for _, ok, _ in results if ok)
+    failed = len(results) - passed
+
+    print("\n" + "=" * 72)
+    print(f"Passed suites: {passed}")
+    print(f"Failed suites: {failed}")
+    if failed:
+        print("Failed suite names:")
+        for name, ok, _elapsed in results:
+            if not ok:
+                print(f"  - {name}")
+    slowest = sorted(results, key=lambda item: item[2], reverse=True)
+    print("Slowest suites:")
+    for name, ok, elapsed in slowest[:10]:
+        icon = PASS if ok else FAIL
+        print(f"  - {icon} {name}: {elapsed:.1f}s")
+    print("=" * 72)
+    return failed
 
 
 def main() -> int:
@@ -168,7 +215,10 @@ def main() -> int:
     # Phase 2: live suites, each behind a fresh server to avoid state poisoning.
     live_suites = [
         ("Live MCP integration", [sys.executable, "tests/integration/test_mcp_server.py"], 300),
+        ("Live MCP runtime compatibility", [sys.executable, "tests/integration/test_mcp_runtime_live.py"], 420),
         ("Live Python SDK integration", [sys.executable, "tests/integration/test_python_sdk.py"], 300),
+        ("Live Python Runtime integration", [sys.executable, "tests/integration/test_algenta_runtime_live.py"], 420),
+        ("Live TypeScript Runtime integration", [sys.executable, "tests/integration/test_typescript_runtime_live.py"], 420),
         ("Live CLI integration", [sys.executable, "tests/integration/test_cli_full.py"], 300),
         ("Live local runtime integration", [sys.executable, "tests/integration/test_local_runtime_real.py"], 300),
         ("Real-data Mojo engines", [sys.executable, "tests/integration/test_mojo_engines_realdata.py"], 600),
@@ -225,18 +275,7 @@ def main() -> int:
     )
     results.append(("Mojo libraries A-Z", ok, elapsed))
 
-    passed = sum(1 for _, ok, _ in results if ok)
-    failed = len(results) - passed
-
-    print("\n" + "=" * 72)
-    print(f"Passed suites: {passed}")
-    print(f"Failed suites: {failed}")
-    slowest = sorted(results, key=lambda item: item[2], reverse=True)
-    print("Slowest suites:")
-    for name, ok, elapsed in slowest[:10]:
-        icon = PASS if ok else FAIL
-        print(f"  - {icon} {name}: {elapsed:.1f}s")
-    print("=" * 72)
+    failed = _print_summary(results)
     return 0 if failed == 0 else 1
 
 

@@ -328,12 +328,16 @@ export class DecisionEngineClient {
 
   async registerSource(
     source: SourceRegistrationRequest | Record<string, unknown>,
-    options: { description?: string } = {},
+    options: { description?: string; name?: string } = {},
   ): Promise<SourceRegistrationResponse> {
     return this.request<SourceRegistrationResponse>(
       'POST',
       '/v1/sources/register',
-      normalizeSourceRegistrationRequest(source, options.description),
+      normalizeSourceRegistrationRequest(
+        source,
+        options.description,
+        options.name ? { name: options.name } : {},
+      ),
     );
   }
 

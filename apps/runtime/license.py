@@ -31,6 +31,8 @@ import hashlib
 import json
 import os
 import time
+import urllib.error
+import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlparse
@@ -57,6 +59,17 @@ _CONTROL_PLANE_URL = os.environ.get(
         os.environ.get("DE_BASE_URL", API_BASE_URL),
     ),
 )
+_CONTROL_PLANE_TIMEOUT_SECONDS = float(
+    os.environ.get("ALGENTA_CONTROL_PLANE_TIMEOUT_SECONDS", "20")
+)
+_CONTROL_PLANE_MAX_ATTEMPTS = max(
+    1,
+    int(os.environ.get("ALGENTA_CONTROL_PLANE_MAX_ATTEMPTS", "3")),
+)
+_CONTROL_PLANE_RETRY_BASE_SECONDS = float(
+    os.environ.get("ALGENTA_CONTROL_PLANE_RETRY_BASE_SECONDS", "0.5")
+)
+_RETRYABLE_CONTROL_PLANE_HTTP_CODES = frozenset({409, 429, 500, 502, 503, 504})
 
 # Grace period: continue working this many days after license expiry
 _DEFAULT_GRACE_DAYS = 14
@@ -104,6 +117,41 @@ def _control_plane_verification_secrets() -> list[tuple[str, str]]:
         seen.add(secret)
         deduped.append((secret, source))
     return deduped
+
+
+def _device_registration_idempotency_key(device_id: str) -> str:
+    digest = hashlib.sha256(device_id.encode("utf-8")).hexdigest()
+    return f"device-register:{digest}"
+
+
+def _device_register_request(
+    control_plane_url: str,
+    api_key: str,
+    device_info: dict,
+    body: bytes,
+) -> urllib.request.Request:
+    return urllib.request.Request(  # noqa: S310
+        f"{control_plane_url}/v1/device/register",
+        data=body,
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}",
+            "Idempotency-Key": _device_registration_idempotency_key(
+                device_info.get("device_id", "")
+            ),
+        },
+        method="POST",
+    )
+
+
+def _is_retryable_control_plane_error(exc: Exception) -> bool:
+    if isinstance(exc, urllib.error.HTTPError):
+        return exc.code in _RETRYABLE_CONTROL_PLANE_HTTP_CODES
+    return isinstance(exc, TimeoutError | urllib.error.URLError | OSError)
+
+
+def _license_retry_delay_seconds(attempt: int) -> float:
+    return max(0.0, _CONTROL_PLANE_RETRY_BASE_SECONDS) * (2 ** max(0, attempt - 1))
 
 
 @dataclass
@@ -267,9 +315,6 @@ def _exchange_api_key_for_license(api_key: str, device_info: dict) -> str | None
 
     Returns raw JWT string or None on failure.
     """
-    import urllib.error
-    import urllib.request
-
     control_plane_url = _validated_control_plane_url()
     body = json.dumps({
         "device": {
@@ -280,57 +325,90 @@ def _exchange_api_key_for_license(api_key: str, device_info: dict) -> str | None
             "sdk_version":      device_info.get("sdk_version", ""),
         }
     }).encode()
+    for attempt in range(1, _CONTROL_PLANE_MAX_ATTEMPTS + 1):
+        req = _device_register_request(control_plane_url, api_key, device_info, body)
+        try:
+            with urllib.request.urlopen(  # noqa: S310
+                req,
+                timeout=_CONTROL_PLANE_TIMEOUT_SECONDS,
+            ) as resp:
+                data = json.loads(resp.read())
+                token = data.get("license_token")
+                if token:
+                    logger.info(
+                        "license_from_control_plane",
+                        plan=data.get("plan"),
+                        device_count=data.get("device_count"),
+                        device_limit=data.get("device_limit"),
+                    )
+                    credits_granted = data.get("credits_granted", 0)
+                    if credits_granted > 0:
+                        try:
+                            from apps.runtime.credits import get_store
 
-    req = urllib.request.Request(  # noqa: S310
-        f"{control_plane_url}/v1/device/register",
-        data=body,
-        headers={
-            "Content-Type":  "application/json",
-            "Authorization": f"Bearer {api_key}",
-        },
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=10) as resp:  # noqa: S310
-            data = json.loads(resp.read())
-            token = data.get("license_token")
-            if token:
-                logger.info(
-                    "license_from_control_plane",
-                    plan=data.get("plan"),
-                    device_count=data.get("device_count"),
-                    device_limit=data.get("device_limit"),
-                )
-                # Seed the local credit store with the initial grant
-                credits_granted = data.get("credits_granted", 0)
-                if credits_granted > 0:
-                    try:
-                        from apps.runtime.credits import get_store
-                        get_store().initialize_sync(
-                            credits_granted=credits_granted,
-                            billing_period=data.get("credits_billing_period", ""),
-                            ttl_seconds=max(1, int(
-                                data.get("credits_expires_at", time.time() + 86_400)
-                                - time.time()
-                            )),
+                            get_store().initialize_sync(
+                                credits_granted=credits_granted,
+                                billing_period=data.get("credits_billing_period", ""),
+                                ttl_seconds=max(
+                                    1,
+                                    int(
+                                        data.get(
+                                            "credits_expires_at",
+                                            time.time() + 86_400,
+                                        )
+                                        - time.time()
+                                    ),
+                                ),
+                            )
+                        except Exception as credit_error:
+                            logger.debug(
+                                "credit_seed_failed",
+                                error=str(credit_error),
+                            )
+                    return token
+        except urllib.error.HTTPError as exc:
+            if exc.code == 402:
+                try:
+                    detail = json.loads(exc.read().decode())
+                    logger.error("device_limit_reached", detail=detail)
+                    raise PermissionError(
+                        detail.get("detail", {}).get(
+                            "message",
+                            "Device limit reached.",
                         )
-                    except Exception as _ce:
-                        logger.debug("credit_seed_failed", error=str(_ce))
-                return token
-    except urllib.error.HTTPError as exc:
-        if exc.code == 402:
-            # Device limit reached — surface this clearly
-            try:
-                detail = json.loads(exc.read().decode())
-                logger.error("device_limit_reached", detail=detail)
-                raise PermissionError(
-                    detail.get("detail", {}).get("message", "Device limit reached.")
-                ) from exc
-            except (json.JSONDecodeError, KeyError):
-                raise PermissionError("Device limit reached. Upgrade your plan.") from exc
-        logger.warning("license_exchange_http_error", status=exc.code, error=str(exc))
-    except Exception as exc:
-        logger.warning("license_exchange_failed", error=str(exc))
+                    ) from exc
+                except (json.JSONDecodeError, KeyError):
+                    raise PermissionError(
+                        "Device limit reached. Upgrade your plan."
+                    ) from exc
+            if (
+                _is_retryable_control_plane_error(exc)
+                and attempt < _CONTROL_PLANE_MAX_ATTEMPTS
+            ):
+                logger.warning(
+                    "license_exchange_retryable_http_error",
+                    attempt=attempt,
+                    max_attempts=_CONTROL_PLANE_MAX_ATTEMPTS,
+                    status=exc.code,
+                    error=str(exc),
+                )
+                time.sleep(_license_retry_delay_seconds(attempt))
+                continue
+            logger.warning("license_exchange_http_error", status=exc.code, error=str(exc))
+        except Exception as exc:
+            if (
+                _is_retryable_control_plane_error(exc)
+                and attempt < _CONTROL_PLANE_MAX_ATTEMPTS
+            ):
+                logger.warning(
+                    "license_exchange_retryable_failure",
+                    attempt=attempt,
+                    max_attempts=_CONTROL_PLANE_MAX_ATTEMPTS,
+                    error=str(exc),
+                )
+                time.sleep(_license_retry_delay_seconds(attempt))
+                continue
+            logger.warning("license_exchange_failed", error=str(exc))
 
     return None
 

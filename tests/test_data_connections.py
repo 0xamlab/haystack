@@ -280,6 +280,112 @@ async def test_connect_data_returns_ready_for_direct_file_upload(monkeypatch) ->
     assert captured["kwargs"]["refreshable"] is False
 
 
+@pytest.mark.asyncio
+async def test_connect_data_accepts_canonical_database_connector(monkeypatch) -> None:
+    connector = SimpleNamespace(
+        id=uuid.uuid4(),
+        connector_type=SimpleNamespace(value="postgres"),
+        visibility="private",
+        config_json=json.dumps({"connection_string": "postgresql://analytics:secret@localhost:5432/orders"}),
+    )
+    captured: dict[str, object] = {}
+
+    async def _fake_create_or_reuse_connector(**_kwargs):
+        return connector
+
+    async def _fake_test_and_persist_connector(_connector, _db):
+        return True, "ok", 9
+
+    async def _fake_register_source_impl(payload, auth, **kwargs):  # type: ignore[no-untyped-def]
+        captured["payload"] = payload
+        captured["auth"] = auth
+        captured["kwargs"] = kwargs
+        return {
+            "source_id": "pg_dataset",
+            "schema": {
+                "row_count": 3,
+                "columns": [{"name": "amount"}],
+                "roles_summary": {"derived_measure": 1},
+            },
+            "latency_ms": 21,
+        }
+
+    monkeypatch.setattr(dcs, "create_or_reuse_connector", _fake_create_or_reuse_connector)
+    monkeypatch.setattr(dcs, "_test_and_persist_connector", _fake_test_and_persist_connector)
+    monkeypatch.setattr("apps.api_server.routers.sources._register_source_impl", _fake_register_source_impl)
+
+    result = await dcs.connect_data(
+        db=object(),  # type: ignore[arg-type]
+        auth={"org_id": "org_a", "role": "owner"},
+        payload={
+            "dataset_name": "Orders",
+            "connector": {
+                "type": "postgres",
+                "location": {
+                    "connection_string": "postgresql://analytics:secret@localhost:5432/orders",
+                    "schema": "public",
+                    "table": "orders",
+                },
+            },
+        },
+    )
+
+    assert result["status"] == "ready"
+    assert result["provider"] == "postgres"
+    assert result["connection_id"] == str(connector.id)
+    assert captured["kwargs"]["selection"] == {"table": "public.orders"}
+    assert captured["payload"].source.connection["query"] == 'SELECT * FROM "public"."orders"'
+
+
+@pytest.mark.asyncio
+async def test_connect_data_accepts_canonical_file_connector_path(monkeypatch, tmp_path: Path) -> None:
+    captured: dict[str, object] = {}
+    csv_path = tmp_path / "orders.csv"
+    csv_path.write_text("amount,qty\n10,1\n20,2\n", encoding="utf-8")
+
+    async def _fake_register_source_impl(payload, auth, **kwargs):  # type: ignore[no-untyped-def]
+        captured["payload"] = payload
+        captured["auth"] = auth
+        captured["kwargs"] = kwargs
+        return {
+            "source_id": "ds_file",
+            "schema": {
+                "row_count": 2,
+                "columns": [{"name": "amount"}],
+                "roles_summary": {"derived_measure": 1},
+            },
+            "latency_ms": 11,
+        }
+
+    monkeypatch.setattr("apps.api_server.routers.sources._register_source_impl", _fake_register_source_impl)
+
+    result = await dcs.connect_data(
+        db=object(),  # type: ignore[arg-type]
+        auth={"org_id": "org_a", "role": "owner"},
+        payload={
+            "dataset_name": "Orders CSV",
+            "connector": {
+                "type": "csv",
+                "location": {"path": str(csv_path)},
+                "options": {"delimiter": ","},
+            },
+        },
+    )
+
+    assert result["status"] == "ready"
+    assert result["provider"] == "file"
+    assert result["refreshable"] is True
+    assert captured["payload"].source.connection == {
+        "type": "file",
+        "file_type": "csv",
+        "file_path": str(csv_path),
+        "delimiter": ",",
+    }
+    assert captured["kwargs"]["source_definition"] == {
+        "direct": {"path": str(csv_path), "file_type": "csv"}
+    }
+
+
 def test_dataset_visibility_filters_private_and_shared() -> None:
     auth = {"org_id": "org_a", "role": "member", "user_id": "u1", "key_id": "k1"}
     entries = [

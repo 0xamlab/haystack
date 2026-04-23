@@ -1,8 +1,5 @@
 """User and Organization creation service — handles self-serve signup."""
 import re
-import secrets
-from datetime import UTC, datetime, timedelta
-
 import bcrypt
 import structlog
 from fastapi import HTTPException
@@ -19,6 +16,7 @@ from apps.api_server.schemas.auth import (
     SignUpResponse,
     UserInfo,
 )
+from apps.api_server.services.auth_tokens import issue_email_verification_token
 from apps.api_server.services.auth_service import generate_api_key
 
 logger = structlog.get_logger(__name__)
@@ -114,17 +112,7 @@ async def create_user_and_org(
     await db.flush()
 
     # ── Generate email verification token ─────────────────────────────────────
-    verification_token = secrets.token_urlsafe(48)
-    verification_expires = datetime.now(UTC) + timedelta(hours=24)
-    try:
-        user.email_verification_token = verification_token  # type: ignore[assignment]
-        user.email_verification_expires_at = verification_expires  # type: ignore[assignment]
-    except Exception as exc:
-        logger.debug(
-            "user_verification_columns_unavailable",
-            user_id=str(user.id),
-            error=str(exc),
-        )
+    verification_token = issue_email_verification_token(str(user.id), user.email)
 
     logger.info(
         "user_signed_up",

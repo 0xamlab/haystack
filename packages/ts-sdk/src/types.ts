@@ -264,10 +264,12 @@ export interface SourceRegistrationResponse {
   status: string;
   ingest_mode?: string | null;
   schema?: Record<string, unknown> | null;
+  source_schema?: Record<string, unknown> | null;
   planner_cache_hit?: boolean | null;
   planner_schema_revision?: string | null;
   planner_prewarm_ms?: number | null;
   latency_ms?: number | null;
+  row_count?: number | null;
   [key: string]: unknown;
 }
 

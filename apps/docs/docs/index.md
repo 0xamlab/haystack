@@ -3,67 +3,58 @@ slug: /
 sidebar_position: 1
 ---
 
-# Algenta
+# Start Here
 
-**Monte Carlo simulation API for smarter, faster decisions.**
+Algenta is a **deterministic execution layer for structured data**.
 
-Algenta turns your uncertainty into structured recommendations in a single API call. Instead of spreadsheet guessing, you get probability distributions, confidence intervals, and actionable recommendations backed by simulated scenarios.
+This repository currently supports multiple real usage modes, but the primary path we now recommend is:
 
-## What it does
+```python
+from algenta import Runtime
 
-```bash
-curl -X POST https://api.algenta.ai/v1/simulate \
-  -H "Authorization: Bearer de_live_..." \
-  -d '{
-    "mode": "auto",
-    "scenario": {
-      "variables": {
-        "revenue": { "low": 80000, "high": 200000 },
-        "cost":    { "low": 30000, "high": 90000 }
-      },
-      "objective": "maximize_net_value"
-    }
-  }'
+rt = Runtime()
+plan = rt.resolve({...})
+result = rt.query(plan)
 ```
 
-Returns:
+## Current truth
 
-```json
-{
-  "recommended_action": "proceed",
-  "confidence": 0.82,
-  "rationale": "Expected value is positive in 82% of scenarios. Mean: $105,000.",
-  "metrics": { "expected_value": 105000, "probability_of_loss": 0.18 },
-  "result_hash": "40a76a11a4d1f7abec6e6105a817d72b..."
-}
-```
+Algenta today is a hybrid backend/runtime system with:
 
-## Key features
+- deterministic data-runtime queries
+- simulation workflows
+- local helper APIs
+- MCP/agent integration
+- local runtime/device flows
 
-| Feature | Description |
-|---------|-------------|
-| **Simple Mode** | Just define variable ranges — we handle everything else |
-| **Expert Mode** | Full control: distributions, correlations, objective functions |
-| **Decision Envelope** | Structured output with metrics, percentiles, and recommendations |
-| **SHA-256 Integrity** | Every decision is cryptographically hashed for tamper detection |
-| **Async Jobs** | Submit long-running simulations, poll for results |
-| **Webhooks** | Get notified when async jobs complete |
-| **SDKs** | Python, TypeScript, CLI — all officially supported |
-| **Integrations** | ChatGPT, Claude/Codex MCP, Azure AI Foundry, n8n, local runtime, and more |
+## Primary path
 
-## Plans
+The primary published path is:
 
-| Plan | Simulations/month | Price |
-|------|------------------|-------|
-| Free | 500 | Free forever |
-| Developer | 10,000 | $29/month |
-| Pro | 100,000 | $99/month |
-| Enterprise | Unlimited | Custom |
+- `Runtime.connect(...)`
+- `Runtime.resolve(...)`
+- `Runtime.verify(...)` (optional trust/introspection step)
+- `Runtime.query(...)`
 
-`DE` remains the canonical API key prefix in `v1` for compatibility. Public brand and base URL are `Algenta` and `https://api.algenta.ai`.
+This path is strongly tested and benchmarked today.
 
-## Next steps
+## Target model
 
-- [**Quickstart →**](/quickstart) — Make your first API call in under 2 minutes
-- [**API Reference →**](/api-reference) — Full endpoint documentation
-- [**Integrations →**](/integrations/overview) — Connect to your tools
+Algenta is converging toward a **local-first deterministic runtime**:
+
+- local execution by default
+- optional cloud/API assist
+- deterministic `resolve -> query` as the core user model
+
+## Read this next
+
+- [Runtime Quickstart](/quickstart)
+- [Connect / Register Sources](/connect-register-sources)
+- [Resolve](/resolve)
+- [Query](/query)
+- [Verify](/verify)
+- [How Algenta Works Today](/how-algenta-works-today)
+- [Competitor Compatibility](/competitor-compatibility)
+- [Trust Model](/trust-model)
+- [Supported Secondary Modes](/supported-secondary-modes)
+- [Direct API Client](/direct-api-client)

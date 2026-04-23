@@ -73,6 +73,39 @@ async def test_api_maps_transport_error_to_upstream_unavailable() -> None:
         mcp_client.httpx.AsyncClient = original  # type: ignore[assignment]
 
 
+@pytest.mark.asyncio
+async def test_api_uses_explicit_timeout_override() -> None:
+    seen: dict[str, object] = {}
+
+    class _Client:
+        def __init__(self, *args, **kwargs) -> None:
+            seen["timeout"] = kwargs["timeout"]
+            seen["headers"] = kwargs["headers"]
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def get(self, url: str, **kwargs):
+            return httpx.Response(200, json={"ok": True}, request=httpx.Request("GET", url))
+
+    original = mcp_client.httpx.AsyncClient
+    mcp_client.httpx.AsyncClient = _Client  # type: ignore[assignment]
+    try:
+        with mcp_client.request_overrides(
+            api_key="de_test_override",
+            base_url="http://127.0.0.1:8000",
+        ):
+            response = await mcp_client.api("GET", "/v1/health", timeout=123.0)
+    finally:
+        mcp_client.httpx.AsyncClient = original  # type: ignore[assignment]
+
+    assert response == {"ok": True}
+    assert seen["timeout"] == 123.0
+
+
 def test_serialize_tool_error_returns_contract_payloads() -> None:
     auth_error = UnsupportedMCPAuthConfigurationError("missing auth")
     upstream_error = MCPUpstreamUnavailableError("temporary outage")

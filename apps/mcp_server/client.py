@@ -71,11 +71,18 @@ def _headers() -> dict[str, str]:
     }
 
 
-async def api(method: str, path: str, **kwargs: Any) -> dict[str, Any]:
+async def api(
+    method: str,
+    path: str,
+    *,
+    timeout: float | None = None,
+    **kwargs: Any,
+) -> dict[str, Any]:
     """Make an authenticated request to the Algenta API."""
     base_url = _resolve_base_url()
+    request_timeout = config.TIMEOUT if timeout is None else timeout
     try:
-        async with httpx.AsyncClient(timeout=config.TIMEOUT, headers=_headers()) as client:
+        async with httpx.AsyncClient(timeout=request_timeout, headers=_headers()) as client:
             response = await getattr(client, method.lower())(f"{base_url}{path}", **kwargs)
     except httpx.TimeoutException as exc:
         raise MCPUpstreamUnavailableError(

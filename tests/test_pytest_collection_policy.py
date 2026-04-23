@@ -16,3 +16,8 @@ def test_pytest_ignore_collect_skips_standalone_go_live_runner():
 def test_pytest_ignore_collect_keeps_pytest_native_integration_suite():
     path = _TESTS_DIR / "integration" / "test_adversarial.py"
     assert _pytest_ignore_collect(path, None) is False
+
+
+def test_pytest_ignore_collect_skips_standalone_typescript_runtime_runner():
+    path = _TESTS_DIR / "integration" / "test_typescript_runtime_live.py"
+    assert _pytest_ignore_collect(path, None) is True

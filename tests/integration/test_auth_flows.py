@@ -24,6 +24,8 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
+import pytest
+
 _ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(_ROOT))
 
@@ -34,6 +36,8 @@ PASS = "✅"
 FAIL = "❌"
 SKIP = "⏭️ "
 _results: list[tuple[str, bool, str]] = []
+
+pytestmark = pytest.mark.usefixtures("legacy_live_api_server")
 
 
 def check(name: str, cond: bool, detail: str = "") -> None:

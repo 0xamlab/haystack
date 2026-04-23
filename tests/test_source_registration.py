@@ -138,6 +138,50 @@ def test_source_entry_cache_reuses_registered_index_entry_without_disk_reload(
     assert read_calls["count"] == 0
 
 
+def test_update_source_meta_refreshes_entry_source_schema_revision(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.setattr(reg, "_SOURCES_DIR", Path(tmp_path) / "sources")
+
+    reg.register_source(
+        org_id="org_source_revision_sync",
+        source_id="src_revision_sync",
+        name="RevisionSyncSource",
+        parquet_bytes=_parquet_bytes([{"customer_id": "A"}, {"customer_id": "B"}]),
+        schema_meta={
+            "row_count": 2,
+            "columns": [{"name": "customer_id", "role": "identifier", "is_numeric": False}],
+            "roles_summary": {"identifier": 1},
+        },
+        graph_nodes={},
+        profile={},
+    )
+
+    before = reg.get_source_entry("org_source_revision_sync", "src_revision_sync")
+    assert before is not None
+    before_revision = str(before.get("source_schema_revision") or "")
+    assert before_revision
+
+    updated_meta = reg.update_source_meta(
+        "org_source_revision_sync",
+        "src_revision_sync",
+        {"schema_revision": "planner_revision_after_prewarm"},
+    )
+
+    assert updated_meta is not None
+
+    after = reg.get_source_entry("org_source_revision_sync", "src_revision_sync")
+    assert after is not None
+    after_revision = str(after.get("source_schema_revision") or "")
+    assert after_revision
+    assert after_revision == reg.source_schema_revision(
+        "org_source_revision_sync",
+        "src_revision_sync",
+    )
+    assert after_revision != before_revision
+
+
 @pytest.mark.asyncio
 async def test_register_source_reuses_identical_parquet_content_within_org(tmp_path, monkeypatch):
     monkeypatch.setattr(reg, "_SOURCES_DIR", Path(tmp_path) / "sources")
@@ -1021,6 +1065,186 @@ async def test_detect_joins_between_uses_metadata_fast_join_for_same_name_key_sa
 
 
 @pytest.mark.asyncio
+async def test_register_source_uses_metadata_fast_join_before_projection_preload(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.setattr(reg, "_SOURCES_DIR", Path(tmp_path) / "sources")
+
+    async with _CACHE_LOCK:
+        _SOURCE_CACHE.clear()
+        _PLANNER_CACHE.clear()
+
+    reg.register_source(
+        "org_register_meta_fast",
+        "src_existing",
+        "ExistingSource",
+        _parquet_bytes([{"entity_key": "A100"}]),
+        _schema_meta_for_columns(
+            100,
+            [
+                {
+                    "name": "entity_key",
+                    "role": "identifier",
+                    "unique_count": 100,
+                    "samples": ["A100", "A101", "A102"],
+                }
+            ],
+        ),
+        graph_nodes={},
+        profile={},
+    )
+
+    async def _fake_profile(*_args, **_kwargs):
+        return {"profiles": {}}
+
+    async def _fake_relations(*_args, **_kwargs):
+        return []
+
+    async def _fake_get_registry_planner(org_id: str, *, llm_policy: str = "never", **_kwargs):
+        return object(), False, "rev_register_meta_fast"
+
+    async def _unexpected_detect(*_args, **_kwargs):
+        raise AssertionError("metadata-fast registration should skip deep join detection")
+
+    def _unexpected_projection(*_args, **_kwargs):
+        raise AssertionError("metadata-fast registration should skip projection preload")
+
+    monkeypatch.setattr("apps.api_server.routers.sources._call_mojo_column_profile", _fake_profile)
+    monkeypatch.setattr("apps.api_server.routers.sources._detect_relations", _fake_relations)
+    monkeypatch.setattr("apps.api_server.routers.sources._get_registry_planner", _fake_get_registry_planner)
+    monkeypatch.setattr("apps.api_server.routers.sources._detect_joins_between", _unexpected_detect)
+    monkeypatch.setattr(
+        "apps.api_server.routers.sources._load_join_projection_cached",
+        _unexpected_projection,
+    )
+
+    payload = RegisterRequest(
+        source=DataSource(
+            name="IncomingSource",
+            csv="entity_key,measure_total\nA100,10\nA101,20\nA102,30\n",
+        )
+    )
+
+    registered = await register_source(payload, auth={"org_id": "org_register_meta_fast"})
+
+    assert registered["join_candidates_considered"] == 1
+    assert registered["join_existing_total"] == 1
+    assert len(registered["connections_found"]) == 1
+    assert registered["connections_found"][0]["col_a"] == "entity_key"
+    assert registered["connections_found"][0]["col_b"] == "entity_key"
+
+
+@pytest.mark.asyncio
+async def test_register_source_uses_sufficient_metadata_fast_join_before_projection_preload(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.setattr(reg, "_SOURCES_DIR", Path(tmp_path) / "sources")
+    _JOIN_PROJECTION_CACHE.clear()
+
+    org_id = "org_register_meta_fast_sufficient"
+    existing_meta = _schema_meta_for_columns(
+        512,
+        [
+            {
+                "name": "customer_id",
+                "role": "identifier",
+                "unique_count": 400,
+                "samples": ["C100", "C101", "C102"],
+            },
+            {
+                "name": "part_number",
+                "role": "identifier",
+                "unique_count": 420,
+                "samples": ["P100", "P101", "P102"],
+            },
+        ],
+    )
+    reg.register_source(
+        org_id,
+        "src_existing_sufficient",
+        "ExistingSource",
+        _parquet_bytes([{"customer_id": "C100", "part_number": "P100"}]),
+        existing_meta,
+        graph_nodes={},
+        profile={},
+    )
+
+    async def _fake_profile(*_args, **_kwargs):
+        return {"profiles": {}}
+
+    async def _fake_relations(*_args, **_kwargs):
+        return []
+
+    async def _fake_get_registry_planner(org_id: str, *, llm_policy: str = "never", **_kwargs):
+        return object(), False, "rev_register_meta_fast_sufficient"
+
+    async def _unexpected_detect(*_args, **_kwargs):
+        raise AssertionError("sufficient metadata-fast registration should skip deep join detection")
+
+    def _unexpected_projection(*_args, **_kwargs):
+        raise AssertionError("sufficient metadata-fast registration should skip projection preload")
+
+    monkeypatch.setattr("apps.api_server.routers.sources._call_mojo_column_profile", _fake_profile)
+    monkeypatch.setattr("apps.api_server.routers.sources._detect_relations", _fake_relations)
+    monkeypatch.setattr("apps.api_server.routers.sources._get_registry_planner", _fake_get_registry_planner)
+    monkeypatch.setattr("apps.api_server.routers.sources._detect_joins_between", _unexpected_detect)
+    monkeypatch.setattr(
+        "apps.api_server.routers.sources._load_join_projection_cached",
+        _unexpected_projection,
+    )
+    monkeypatch.setattr(
+        "apps.api_server.routers.sources._metadata_fast_join_candidates",
+        lambda **_kwargs: [
+            {
+                "source_a": "incoming",
+                "source_a_name": "IncomingSource",
+                "col_a": "customer_id",
+                "source_b": "src_existing_sufficient",
+                "source_b_name": "ExistingSource",
+                "col_b": "customer_id",
+                "confidence": 0.83,
+                "cardinality": "one_to_many",
+                "overlap": 0.35,
+            },
+            {
+                "source_a": "incoming",
+                "source_a_name": "IncomingSource",
+                "col_a": "part_number",
+                "source_b": "src_existing_sufficient",
+                "source_b_name": "ExistingSource",
+                "col_b": "part_number",
+                "confidence": 0.82,
+                "cardinality": "many_to_one",
+                "overlap": 0.31,
+            },
+        ],
+    )
+
+    payload = RegisterRequest(
+        source=DataSource(
+            name="IncomingSource",
+            csv=(
+                "customer_id,part_number,measure_total\n"
+                "C100,P100,10\n"
+                "C101,P101,20\n"
+                "C102,P102,30\n"
+            ),
+        )
+    )
+
+    registered = await register_source(payload, auth={"org_id": org_id})
+
+    assert registered["join_candidates_considered"] == 1
+    assert registered["join_existing_total"] == 1
+    assert {(connection["col_a"], connection["col_b"]) for connection in registered["connections_found"]} == {
+        ("customer_id", "customer_id"),
+        ("part_number", "part_number"),
+    }
+
+
+@pytest.mark.asyncio
 async def test_detect_joins_between_matches_normalized_key_alias_without_mojo(monkeypatch):
     _JOIN_PROJECTION_CACHE.clear()
 
@@ -1159,6 +1383,64 @@ async def test_detect_joins_between_reduces_value_candidate_limit_when_fast_conn
     )
 
     assert captured_limits == [("src_a", 8), ("src_b", 8)]
+
+
+@pytest.mark.asyncio
+async def test_detect_joins_between_reduces_value_candidate_limit_for_wide_large_sources(
+    monkeypatch,
+):
+    _JOIN_PROJECTION_CACHE.clear()
+    captured_limits: list[tuple[str, int]] = []
+
+    async def _fake_mojo(*_args, **_kwargs):
+        return None
+
+    def _fake_name_stats(*, source_id, **_kwargs):  # type: ignore[no-untyped-def]
+        return {
+            f"{source_id}_key": {
+                "counts": {},
+                "values": set(),
+                "unique_ratio": 1.0,
+                "all_unique": True,
+            }
+        }
+
+    def _fake_value_candidates(*, source_id, limit=20, **_kwargs):  # type: ignore[no-untyped-def]
+        captured_limits.append((source_id, limit))
+        return {
+            "part_number": {
+                "values": [f"P{i:03d}" for i in range(12)],
+                "unique_ratio": 1.0,
+                "sample_size": 12,
+            }
+        }
+
+    monkeypatch.setattr("apps.api_server.routers.sources._call_mojo_join_detect", _fake_mojo)
+    monkeypatch.setattr(
+        "apps.api_server.routers.sources._load_join_name_stats_cached",
+        _fake_name_stats,
+    )
+    monkeypatch.setattr(
+        "apps.api_server.routers.sources._load_join_value_candidates_cached",
+        _fake_value_candidates,
+    )
+
+    left_df = pd.DataFrame({f"left_{i:02d}": [f"L{i}_{row}" for row in range(8_100)] for i in range(56)})
+    right_df = pd.DataFrame({f"right_{i:02d}": [f"R{i}_{row}" for row in range(8_050)] for i in range(57)})
+
+    await _detect_joins_between(
+        "org_detect_wide_large_limit",
+        "src_a",
+        "S0",
+        None,
+        "src_b",
+        "S1",
+        None,
+        src_df=left_df,
+        other_df=right_df,
+    )
+
+    assert captured_limits == [("src_a", 6), ("src_b", 6)]
 
 
 @pytest.mark.asyncio
@@ -1349,6 +1631,65 @@ async def test_detect_joins_between_skips_mojo_when_fast_joins_already_prove_pai
     }
 
 
+@pytest.mark.asyncio
+async def test_detect_joins_between_skips_mojo_for_wide_pair_with_strong_fast_edges(
+    monkeypatch,
+):
+    _JOIN_PROJECTION_CACHE.clear()
+
+    async def _should_not_call_mojo(*_args, **_kwargs):
+        raise AssertionError("Mojo join detect should not run for a wide pair already connected by fast edges")
+
+    monkeypatch.setattr(
+        "apps.api_server.routers.sources._call_mojo_join_detect",
+        _should_not_call_mojo,
+    )
+
+    left_rows = [
+        {
+            "customer_id": f"C{i % 8}",
+            "store_name": f"Store {i % 4}",
+            "measure_total": float(i),
+        }
+        for i in range(128)
+    ]
+    right_rows = [
+        {
+            "customer_id": f"C{i % 8}",
+            "store_name": f"Store {i % 4}",
+            "segment_label": f"seg_{i}",
+        }
+        for i in range(16)
+    ]
+    left_join_blocks = [
+        {"name": "customer_id"},
+        {"name": "store_name"},
+        *({"name": f"wide_key_{i:02d}"} for i in range(10)),
+    ]
+    right_join_blocks = [
+        {"name": "customer_id"},
+        {"name": "store_name"},
+        *({"name": f"wide_key_{i:02d}"} for i in range(10)),
+    ]
+
+    joins = await _detect_joins_between(
+        "org_detect_fast_wide_pair",
+        "src_a",
+        "L0",
+        _parquet_bytes(left_rows),
+        "src_b",
+        "S0",
+        _parquet_bytes(right_rows),
+        left_join_blocks=left_join_blocks,
+        right_join_blocks=right_join_blocks,
+    )
+
+    assert {(join["col_a"], join["col_b"]) for join in joins} == {
+        ("customer_id", "customer_id"),
+        ("store_name", "store_name"),
+    }
+
+
 def test_schema_revision_changes_with_registered_sources_and_connections(tmp_path, monkeypatch):
     monkeypatch.setattr(reg, "_SOURCES_DIR", Path(tmp_path) / "sources")
 
@@ -1528,6 +1869,7 @@ async def test_register_source_reuses_new_source_join_stats_across_join_pairs(
     async def _fake_get_registry_planner(org_id: str, *, llm_policy: str = "never", **_kwargs):
         return object(), False, "rev_join_precompute"
 
+    monkeypatch.setattr("apps.api_server.routers.sources._metadata_fast_join_candidates", lambda **_kwargs: [])
     monkeypatch.setattr("apps.api_server.routers.sources._detect_joins_between", _fake_detect)
     monkeypatch.setattr("apps.api_server.routers.sources._call_mojo_column_profile", _fake_profile)
     monkeypatch.setattr("apps.api_server.routers.sources._detect_relations", _fake_relations)
@@ -2073,6 +2415,32 @@ def test_low_row_join_candidate_policy_tightens_candidate_budget_and_score():
         existing_total=16,
     ) == 8.0
 
+    wide_large_schema = _schema_meta_for_columns(
+        10_500,
+        [
+            {"name": "part_number", "role": "identifier", "unique_count": 10_100, "samples": ["P001", "P002"]},
+            {"name": "order_number", "role": "identifier", "unique_count": 9_900, "samples": ["O001", "O002"]},
+            *[
+                {
+                    "name": f"attribute_{i:02d}",
+                    "role": "text",
+                    "samples": [f"Value{i:02d}", f"Value{i + 1:02d}"],
+                }
+                for i in range(58)
+            ],
+        ],
+    )
+    assert _join_candidate_limit(
+        row_count=10_500,
+        schema_meta=wide_large_schema,
+        existing_total=52,
+    ) == 6
+    assert _join_candidate_min_score(
+        row_count=10_500,
+        schema_meta=wide_large_schema,
+        existing_total=52,
+    ) == 30.0
+
 
 @pytest.mark.asyncio
 async def test_register_source_reduces_exhaustive_join_scan_for_low_row_mid_org_sources(
@@ -2574,6 +2942,111 @@ async def test_register_source_raises_join_candidate_min_score_for_wide_medium_s
         "limit": 12,
         "exhaustive_threshold": 0,
         "min_score": 30.0,
+    }
+
+
+@pytest.mark.asyncio
+async def test_register_source_tightens_join_candidate_budget_for_wide_large_sparse_sources(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.setattr(reg, "_SOURCES_DIR", Path(tmp_path) / "sources")
+
+    async with _CACHE_LOCK:
+        _SOURCE_CACHE.clear()
+        _PLANNER_CACHE.clear()
+
+    for i in range(30):
+        meta = _schema_meta_for_columns(
+            12_000,
+            [
+                {
+                    "name": "part_number",
+                    "role": "identifier",
+                    "unique_count": 11_500,
+                    "samples": [f"P{i}1", f"P{i}2"],
+                },
+                {
+                    "name": "order_number",
+                    "role": "identifier",
+                    "unique_count": 11_000,
+                    "samples": [f"O{i}1", f"O{i}2"],
+                },
+                *[
+                    {
+                        "name": f"attribute_{j:02d}_{i}",
+                        "role": "text",
+                        "samples": [f"Value{j:02d}", f"Value{j + 1:02d}"],
+                    }
+                    for j in range(58)
+                ],
+            ],
+        )
+        reg.register_source(
+            "org_wide_large_sparse_floor",
+            f"u_{i}",
+            f"U{i}",
+            _parquet_bytes(
+                [{"part_number": f"P{i}1", "order_number": f"O{i}1"}]
+            ),
+            meta,
+            graph_nodes={},
+            profile={},
+        )
+
+    captured: dict[str, float | int] = {}
+
+    def _fake_candidate_join_sources(
+        org_id: str,
+        source_id: str,
+        schema_meta: dict,
+        *,
+        limit: int = 24,
+        exhaustive_threshold: int = 24,
+        min_score: float = 4.5,
+    ) -> list[dict]:
+        captured["limit"] = limit
+        captured["exhaustive_threshold"] = exhaustive_threshold
+        captured["min_score"] = min_score
+        return []
+
+    async def _fake_profile(*_args, **_kwargs):
+        return {"profiles": {}}
+
+    async def _fake_relations(*_args, **_kwargs):
+        return []
+
+    async def _fake_get_registry_planner(org_id: str, *, llm_policy: str = "never", **_kwargs):
+        return object(), False, "rev_wide_large_sparse_floor"
+
+    monkeypatch.setattr(reg, "candidate_join_sources", _fake_candidate_join_sources)
+    monkeypatch.setattr("apps.api_server.routers.sources._call_mojo_column_profile", _fake_profile)
+    monkeypatch.setattr("apps.api_server.routers.sources._detect_relations", _fake_relations)
+    monkeypatch.setattr("apps.api_server.routers.sources._get_registry_planner", _fake_get_registry_planner)
+
+    header = ["part_number", "order_number", *[f"attribute_{i:02d}" for i in range(58)]]
+    lines = [",".join(header)]
+    for i in range(10_500):
+        values = [
+            f"P{i:05d}",
+            f"O{i:05d}",
+            *[f"Value{j:02d}" for j in range(58)],
+        ]
+        lines.append(",".join(values))
+    payload = RegisterRequest(
+        source=DataSource(name="IncomingWideLargeSparse", csv="\n".join(lines) + "\n")
+    )
+
+    registered = await register_source(payload, auth={"org_id": "org_wide_large_sparse_floor"})
+
+    assert registered["join_existing_total"] == 30
+    assert registered["join_scan_mode"] == "scored"
+    assert registered["join_candidate_limit"] == 6
+    assert registered["join_candidate_min_score"] == 25.0
+    assert captured == {
+        "limit": 6,
+        "exhaustive_threshold": 0,
+        "min_score": 25.0,
     }
 
 

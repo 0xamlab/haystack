@@ -12,6 +12,8 @@ import pytest
 
 import apps.api_server.routers.data_map as data_map_router
 import apps.api_server.services.columnar_loader as columnar_loader_module
+import apps.api_server.services.source_artifact_cache as source_artifact_cache
+from apps.api_server.connectors.file_connector import FileConnector
 from apps.api_server.routers.data_map import DataSource, _load_source, _load_source_table
 from apps.api_server.routers.query import _load_profiled_source, _source_cache_key
 from apps.api_server.services.columnar_loader import (
@@ -480,6 +482,80 @@ async def test_load_source_table_excel_returns_arrow_table():
         {"part_number": "00123", "measure_total": 10, "region": "NE"},
         {"part_number": "00456", "measure_total": 20, "region": "SW"},
     ]
+
+
+@pytest.mark.asyncio
+async def test_load_source_table_reuses_persisted_csv_artifact_cache(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv("ALGENTA_SOURCE_ARTIFACT_CACHE_DIR", str(tmp_path))
+    src = DataSource(
+        name="CsvCached",
+        csv="part_number,measure_total\n00123,10\n00456,20\n",
+    )
+
+    first_table = await _load_source_table(src)
+    cache_key = source_artifact_cache.source_content_artifact_key(src)
+
+    assert cache_key is not None
+    assert (tmp_path / f"{cache_key}.parquet").exists()
+
+    def _should_not_parse(*_args, **_kwargs):  # type: ignore[no-untyped-def]
+        raise AssertionError("cached inline CSV should not be reparsed")
+
+    monkeypatch.setattr(data_map_router, "delimited_text_to_arrow_table", _should_not_parse)
+
+    second_table = await _load_source_table(src)
+
+    assert second_table.to_pylist() == first_table.to_pylist()
+
+
+@pytest.mark.asyncio
+async def test_load_source_table_reuses_persisted_excel_artifact_cache(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv("ALGENTA_SOURCE_ARTIFACT_CACHE_DIR", str(tmp_path))
+    src = DataSource(name="ExcelCached", excel_b64=_tiny_excel_b64())
+
+    first_table = await _load_source_table(src)
+    cache_key = source_artifact_cache.source_content_artifact_key(src)
+
+    assert cache_key is not None
+    assert (tmp_path / f"{cache_key}.parquet").exists()
+
+    async def _should_not_fetch(self):  # type: ignore[no-untyped-def]
+        raise AssertionError("cached inline workbook should not refetch from connector")
+
+    monkeypatch.setattr(FileConnector, "fetch_table", _should_not_fetch)
+
+    second_table = await _load_source_table(src)
+
+    assert second_table.to_pylist() == first_table.to_pylist()
+
+
+@pytest.mark.asyncio
+async def test_load_source_table_does_not_persist_artifacts_for_url_sources(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv("ALGENTA_SOURCE_ARTIFACT_CACHE_DIR", str(tmp_path))
+    calls = {"count": 0}
+
+    def _fake_read_url_text(_url: str) -> tuple[str, str]:
+        calls["count"] += 1
+        return "part_number,measure_total\n00123,10\n00456,20\n", "text/csv"
+
+    monkeypatch.setattr(data_map_router, "_read_url_text", _fake_read_url_text)
+    src = DataSource(name="UrlMutable", url="https://example.com/facts.csv")
+
+    first_table = await _load_source_table(src)
+    second_table = await _load_source_table(src)
+
+    assert first_table.to_pylist() == second_table.to_pylist()
+    assert calls["count"] == 2
+    assert list(tmp_path.iterdir()) == []
 
 
 @pytest.mark.asyncio
