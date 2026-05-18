@@ -42,11 +42,6 @@ ENV/
 *.cert
 secrets/
 
-# ─── Proprietary engine source (NOT in public repo) ─────────────────────────
-# The Mojo simulation engine source is proprietary IP.
-# The compiled binary is distributed separately via GitHub Releases.
-mojo/engine/main.mojo
-mojo/engine/*.mojo
 mojo/bindings/python_adapter.py
 !mojo/bindings/python_adapter.py
 
