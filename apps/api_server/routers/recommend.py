@@ -5,6 +5,7 @@ Decision endpoints:
   POST /v1/batch     — run multiple simulations
   POST /v1/compare   — side-by-side scenario comparison
 """
+
 import asyncio
 from typing import Any
 
@@ -114,7 +115,11 @@ async def recommend(
     try:
         from apps.api_server.services.calibration_service import calibrate_confidence
 
-        cal_conf, cal_stats = calibrate_confidence(decision_plan.confidence, str(auth["org_id"]))
+        cal_conf, cal_stats = calibrate_confidence(
+            decision_plan.confidence,
+            str(auth["org_id"]),
+            workspace_id=str(auth["workspace_id"]) if auth.get("workspace_id") else None,
+        )
         decision_plan.confidence = cal_conf
         if cal_stats.is_reliable:
             decision_plan.calibration = cal_stats.summary()
@@ -242,9 +247,7 @@ async def compare(
         return (name, envelope)
 
     scenario_results: list[tuple[str, DecisionEnvelope]] = list(
-        await asyncio.gather(
-            *[_run_scenario(s.name, s.request) for s in payload.scenarios]
-        )
+        await asyncio.gather(*[_run_scenario(s.name, s.request) for s in payload.scenarios])
     )
 
     # Find winner by expected value
@@ -254,24 +257,20 @@ async def compare(
     for name, envelope in scenario_results:
         delta = ComparisonDelta(
             expected_value_delta=(
-                envelope.metrics.expected_value
-                - best_envelope.metrics.expected_value
+                envelope.metrics.expected_value - best_envelope.metrics.expected_value
             ),
             probability_of_loss_delta=(
-                envelope.metrics.probability_of_loss
-                - best_envelope.metrics.probability_of_loss
+                envelope.metrics.probability_of_loss - best_envelope.metrics.probability_of_loss
             ),
             score_delta=0.0,
         )
         comparisons.append(ScenarioComparison(name=name, envelope=envelope, delta_vs_best=delta))
 
     winner_delta = ComparisonDelta(
-        expected_value_delta=best_envelope.metrics.expected_value - min(
-            e.metrics.expected_value for _, e in scenario_results
-        ),
-        probability_of_loss_delta=best_envelope.metrics.probability_of_loss - max(
-            e.metrics.probability_of_loss for _, e in scenario_results
-        ),
+        expected_value_delta=best_envelope.metrics.expected_value
+        - min(e.metrics.expected_value for _, e in scenario_results),
+        probability_of_loss_delta=best_envelope.metrics.probability_of_loss
+        - max(e.metrics.probability_of_loss for _, e in scenario_results),
         score_delta=0.0,
     )
 

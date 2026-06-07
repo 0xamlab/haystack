@@ -55,62 +55,189 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
-from apps.api_server.compute.mojo_errors import (
-    is_global_optional_mojo_circuit_error,
-    mojo_failure_reason,
-)
 from apps.api_server.middleware.auth import get_current_org
 from apps.api_server.routers.data_map import (
-    DataSource,
-    MojoInstrumentationError,
-    _build_mojo_column_profile_columns,
     _call_mojo_column_profile,
     _clear_optional_mojo_engine_failure,
     _get_optional_mojo_engine_skip_reason,
     _invoke_optional_mojo_engine,
     _load_source,
     _load_source_table,
+    _record_optional_mojo_engine_failure,
+)
+from apps.api_server.routers.query_contract import (
+    _DECISION_AUTO_ACCEPT_CONFIDENCE,
+    _MAX_JOIN_PATH_HOPS,
+    ALL_ROLES,
+    BASE_MEASURE,
+    CATEGORY,
+    COMPONENT,
+    DERIVED_MEASURE,
+    IDENTIFIER,
+    METRIC,
+    RATIO,
+    TEXT,
+    TIME,
+    UNIT_MEASURE,
+    CandidateColumn,
+    ConstraintSpec,
+    FilterConditionSpec,
+    FilterSpec,
+    JoinEdgeSpec,
+    JoinPathSpec,
+    QueryBatchDefaults,
+    QueryBatchError,
+    QueryBatchItemRequest,
+    QueryBatchItemResponse,
+    QueryBatchRequest,
+    QueryBatchResponse,
+    QueryExecutionMetadata,
+    QueryRequest,
+    QueryResponse,
+    ResolvedPlan,
+    ResolveRequest,
+    ResolveResponse,
+    SQLReportRequest,
+    SQLReportResponse,
+    _classify_query_rejection,
+    _decision_contract_flags,
+    _http_error,
+    _query_plan_hash,
+    _select_count_anchor_column,
+)
+from apps.api_server.routers.query_contract import (
+    _DEFAULT_JOIN_PATH_HOPS as _QUERY_CONTRACT_DEFAULT_JOIN_PATH_HOPS,
+)
+from apps.api_server.routers.query_contract import (
+    MetricSpec as _MetricSpec,
+)
+from apps.api_server.routers.query_contract import (
+    QueryPayload as _QueryPayload,
+)
+from apps.api_server.routers.query_profiling import (
+    _profile_arrow_table,
+    _profile_records_and_arrow,
+    _relation_detect_sample_limit,
+)
+from apps.api_server.routers.query_profiling import (
+    _profile_records as _query_profile_records,
+)
+from apps.api_server.routers.query_profiling import (
+    _try_numeric as _query_try_numeric,
+)
+from apps.api_server.routers.query_registry_planner import (
+    get_registry_planner as _get_registry_planner_impl,
+)
+from apps.api_server.routers.query_registry_planner import (
+    planner_auth_scope_key as _query_planner_auth_scope_key,
+)
+from apps.api_server.routers.query_registry_planner import (
+    run_cached_planner_method as _query_run_cached_planner_method,
+)
+from apps.api_server.routers.query_registry_planner import (
+    try_incremental_registry_planner_update as _try_incremental_registry_planner_update_impl,
+)
+from apps.api_server.routers.query_resolve_dataset_meta import (
+    dataset_exact_column_lookup as _dataset_exact_column_lookup_impl,
+)
+from apps.api_server.routers.query_resolve_dataset_meta import (
+    find_exact_dataset_column as _find_exact_dataset_column_impl,
+)
+from apps.api_server.routers.query_resolve_dataset_meta import (
+    find_exact_dataset_column_cached as _find_exact_dataset_column_cached_impl,
+)
+from apps.api_server.routers.query_resolve_dataset_meta import (
+    get_resolve_dataset_meta as _get_resolve_dataset_meta_impl,
+)
+from apps.api_server.routers.query_resolve_fast_path import (
+    _dataset_candidate_payload as _query_dataset_candidate_payload,
+)
+from apps.api_server.routers.query_resolve_fast_path import (
+    _resolve_entry_ready,
+    _resolved_plan_current_schema_revision,
+)
+from apps.api_server.routers.query_resolve_fast_path import (
+    _resolve_scope_entries as _query_resolve_scope_entries,
+)
+from apps.api_server.routers.query_resolve_fast_path import (
+    resolve_single_dataset_fast_path as _resolve_single_dataset_fast_path_impl,
+)
+from apps.api_server.routers.query_resolve_registered import (
+    resolve_registered_intent as _resolve_registered_intent_impl,
+)
+from apps.api_server.routers.query_response_helpers import (
+    _MAX_RESOLVE_CANDIDATES,
+    _build_query_response,
+    _build_resolve_response,
+    _compute_exact_confidence,
+    _dedupe_source_values,
+    _exact_plan_basis,
+    _immutable_plan_hash,
+    _normalize_constraint_spec,
+    _normalize_filter_spec,
+    _resolve_to_query_response,
+)
+from apps.api_server.routers.query_response_helpers import (
+    _MAX_RESOLVE_SOURCE_SCORES as _QUERY_RESPONSE_MAX_RESOLVE_SOURCE_SCORES,
+)
+from apps.api_server.routers.query_response_helpers import (
+    _normalize_candidates as _query_normalize_candidates,
+)
+from apps.api_server.routers.query_response_helpers import (
+    _normalize_join_path as _query_normalize_join_path,
+)
+from apps.api_server.routers.query_response_helpers import (
+    _normalize_join_path_spec as _query_normalize_join_path_spec,
+)
+from apps.api_server.routers.query_response_helpers import (
+    _resolved_source_set as _query_resolved_source_set,
+)
+from apps.api_server.schemas.data_map import DataSource
+from apps.api_server.services.auth_service import AuthContext
+from apps.api_server.services.data_map_errors import MojoInstrumentationError
+from apps.api_server.services.data_map_mojo_profiles import (
+    _build_mojo_column_profile_columns,
     _mojo_column_profile_sample_limits,
     _mojo_profiling_disabled_status,
     _mojo_profiling_status_from_result,
-    _record_optional_mojo_engine_failure,
 )
-from apps.api_server.schemas.common import ErrorDetail, ErrorResponse
-from apps.api_server.services.auth_service import AuthContext
 from apps.api_server.services.pyarrow_runtime import initialize_pyarrow_parquet_runtime
+from apps.api_server.services.sql_report_service import (
+    SQLReportServiceError,
+    execute_sql_report,
+    normalize_sql_report_alias,
+)
 
 logger = structlog.get_logger(__name__)
+MetricSpec = _MetricSpec
+QueryPayload = _QueryPayload
+_DEFAULT_JOIN_PATH_HOPS = _QUERY_CONTRACT_DEFAULT_JOIN_PATH_HOPS
+_profile_records = _query_profile_records
+_try_numeric = _query_try_numeric
+_MAX_RESOLVE_SOURCE_SCORES = _QUERY_RESPONSE_MAX_RESOLVE_SOURCE_SCORES
+_normalize_candidates = _query_normalize_candidates
+_normalize_join_path = _query_normalize_join_path
+_normalize_join_path_spec = _query_normalize_join_path_spec
+_resolved_source_set = _query_resolved_source_set
+_dataset_candidate_payload = _query_dataset_candidate_payload
+_planner_auth_scope_key = _query_planner_auth_scope_key
+_run_cached_planner_method = _query_run_cached_planner_method
 _QUERY_RELATION_DETECT_COOLDOWN_S = 60.0
 _QUERY_RELATION_DETECT_FAILURE: tuple[float, str] | None = None
 
 
 def _get_query_relation_detect_skip_reason() -> str | None:
-    global _QUERY_RELATION_DETECT_FAILURE
-
-    shared_reason = _get_optional_mojo_engine_skip_reason("relation_detect")
-    if shared_reason is not None:
-        return shared_reason
-    if _QUERY_RELATION_DETECT_FAILURE is None:
-        return None
-    failed_at, reason = _QUERY_RELATION_DETECT_FAILURE
-    if time.monotonic() - failed_at < _QUERY_RELATION_DETECT_COOLDOWN_S:
-        return reason
-    _QUERY_RELATION_DETECT_FAILURE = None
-    return None
+    return _get_optional_mojo_engine_skip_reason("relation_detect")
 
 
 def _record_query_relation_detect_failure(reason: BaseException | str) -> None:
-    global _QUERY_RELATION_DETECT_FAILURE
-
     _record_optional_mojo_engine_failure("relation_detect", reason)
-    if is_global_optional_mojo_circuit_error(reason):
-        _QUERY_RELATION_DETECT_FAILURE = (time.monotonic(), mojo_failure_reason(reason))
 
 
 def _clear_query_relation_detect_failure() -> None:
@@ -118,6 +245,26 @@ def _clear_query_relation_detect_failure() -> None:
 
     _QUERY_RELATION_DETECT_FAILURE = None
     _clear_optional_mojo_engine_failure("relation_detect")
+
+
+def _resolve_scope_entries(
+    *,
+    org_id: str,
+    auth: AuthContext,
+    dataset_id: str | None,
+    allow_org_scope: bool,
+    request_id: str | None,
+) -> tuple[list[dict[str, Any]], str | None]:
+    return _query_resolve_scope_entries(
+        org_id=org_id,
+        auth=auth,
+        dataset_id=dataset_id,
+        allow_org_scope=allow_org_scope,
+        request_id=request_id,
+        http_error_fn=_http_error,
+    )
+
+
 router = APIRouter(tags=["Semantic Query"])
 
 
@@ -139,9 +286,9 @@ _CACHE_MAX_SOURCES = int(
 class _CachedSource:
     parquet_bytes: bytes  # DataFrame serialized as Parquet (Arrow)
     parquet_schema_meta: bytes  # Arrow schema + embedded algenta metadata (JSON)
-    profile: dict[str, dict]  # Python-computed column stats
-    mojo_profile: dict[str, dict]  # Mojo semantic types
-    relations: list[dict]  # detected A×B≈C formulas
+    profile: dict[str, dict[str, Any]]  # Python-computed column stats
+    mojo_profile: dict[str, dict[str, Any]]  # Mojo semantic types
+    relations: list[dict[str, Any]]  # detected A×B≈C formulas
     graph_nodes: dict[str, ColumnNode]  # fully-built schema nodes
     schema_meta: dict[str, Any] = field(default_factory=dict)
     mojo_profiling_status: dict[str, Any] = field(default_factory=dict)
@@ -162,7 +309,7 @@ _SOURCE_CACHE: dict[str, _CachedSource] = {}  # source/cache alias key → entry
 _CACHE_LOCK = asyncio.Lock()
 
 _RESULT_CACHE: dict[
-    str, dict
+    str, dict[str, Any]
 ] = {}  # plan_hash → {"result", "result_type", "row_count", "confidence", "explanation"}
 _RESULT_CACHE_MAX = 200
 _RESULT_CACHE_TTL = 3600.0  # 1 hour
@@ -172,28 +319,28 @@ _RESOLVE_CACHE_MAX = 500
 _RESOLVE_CACHE_TTL = 3600.0  # 1 hour
 _GRAPH_NODE_CACHE: dict[tuple[str, str, str], dict[str, Any]] = {}
 _GRAPH_NODE_CACHE_MAX = 256
-_DATASET_EXACT_COLUMN_CACHE: dict[tuple[str, str, str], dict[str, dict[str, Any] | None]] = {}
+_DATASET_EXACT_COLUMN_CACHE: dict[tuple[str, str, str], dict[str, Any]] = {}
 _DATASET_EXACT_COLUMN_CACHE_MAX = 256
 _RESOLVE_BUDGET_MS = 500.0
 _ALLOW_QUERY_HINT_PLANNING_COMPAT = True
-_MAX_RESOLVE_SOURCE_SCORES = 32
-_MAX_RESOLVE_CANDIDATES = 5
-_STOP_TOKENS = frozenset({
-    "a",
-    "an",
-    "and",
-    "by",
-    "for",
-    "from",
-    "in",
-    "of",
-    "on",
-    "the",
-    "to",
-    "with",
-})
+_STOP_TOKENS = frozenset(
+    {
+        "a",
+        "an",
+        "and",
+        "by",
+        "for",
+        "from",
+        "in",
+        "of",
+        "on",
+        "the",
+        "to",
+        "with",
+    }
+)
 
-_VERIFY_CACHE: dict[str, tuple[dict, float]] = {}  # plan_key → (response_dict, timestamp)
+_VERIFY_CACHE: dict[str, tuple[dict[str, Any], float]] = {}  # plan_key → (response_dict, timestamp)
 _VERIFY_CACHE_MAX = 500
 _VERIFY_CACHE_TTL = 300.0  # 5 minutes (schema changes are rare; 5 min is safe)
 
@@ -214,6 +361,7 @@ class _CachedPlanner:
     planner: Any
     schema_revision: str
     llm_policy: str
+    auth_scope_key: tuple[str, str, str] = ("", "", "")
     created_at: float = field(default_factory=time.monotonic)
     last_hit: float = field(default_factory=time.monotonic)
 
@@ -226,7 +374,7 @@ _PLANNER_CACHE: dict[tuple[str, str, str], _CachedPlanner] = {}
 
 @dataclass(frozen=True)
 class _LoadedProfiledSource:
-    profile: dict[str, dict]
+    profile: dict[str, dict[str, Any]]
     arrow_table: Any | None
     row_count: int
     ingest_mode: str
@@ -258,9 +406,7 @@ def _planner_query_confidence(plan: Any) -> float:
     if join_hops:
         join_conf = max(
             0.0,
-            float(
-                getattr(plan, "path_confidence", 0.0) or getattr(plan, "join_conf", 0.0) or 0.0
-            ),
+            float(getattr(plan, "path_confidence", 0.0) or getattr(plan, "join_conf", 0.0) or 0.0),
         )
         if _planner_join_is_execution_safe(plan):
             values.append(1.0)
@@ -282,11 +428,7 @@ def _planner_load_bearing_validation_notes(plan: Any) -> list[str]:
         "fanout",
         "plan verification failed",
     )
-    return [
-        note
-        for note in notes
-        if any(token in note.lower() for token in load_bearing_tokens)
-    ]
+    return [note for note in notes if any(token in note.lower() for token in load_bearing_tokens)]
 
 
 def _planner_join_is_execution_safe(plan: Any) -> bool:
@@ -339,14 +481,12 @@ def _planner_metric_candidate_payloads(
     authoritative_metric_selection = bool(
         selected_payload is not None
         and metric_conf >= _DECISION_AUTO_ACCEPT_CONFIDENCE
-        and any(
-            str(step).startswith(authoritative_prefixes)
-            for step in getattr(plan, "steps", [])
-        )
+        and any(str(step).startswith(authoritative_prefixes) for step in getattr(plan, "steps", []))
     )
     if authoritative_metric_selection:
-        selected_payload["notes"].append("planner-authoritative-selection")
-        return [selected_payload]
+        if selected_payload is not None:
+            selected_payload["notes"].append("planner-authoritative-selection")
+            return [selected_payload]
 
     if not metric_candidate_payloads and selected_payload is not None:
         return [selected_payload]
@@ -354,63 +494,33 @@ def _planner_metric_candidate_payloads(
 
 
 def _evict_planner_lru() -> None:
-    if len(_PLANNER_CACHE) < _PLANNER_CACHE_MAX:
-        return
-    oldest_key = min(_PLANNER_CACHE.items(), key=lambda item: item[1].last_hit)[0]
-    _PLANNER_CACHE.pop(oldest_key, None)
+    from apps.api_server.routers.query_registry_planner import evict_planner_lru
+
+    evict_planner_lru(
+        planner_cache=_PLANNER_CACHE,
+        planner_cache_max=_PLANNER_CACHE_MAX,
+    )
 
 
 async def _get_registry_planner(
     org_id: str,
     *,
     llm_policy: str = "never",
-    auth: AuthContext | None = None,
+    auth: AuthContext | None,  # required (no default): forces every caller to decide scope —
+    # passing auth scopes datasets to the caller's workspace; explicit None = trusted org-wide
+    # internal planning. Prevents a future request handler from silently leaking org-wide data.
     visible_entries: list[dict[str, Any]] | None = None,
 ) -> tuple[Any, bool, str]:
-    from apps.api_server.services import source_registry as _sreg
-    from apps.api_server.services.auto_planner import AutoPlanner
-    from apps.api_server.services.data_visibility import (
-        filter_visible_datasets,
-        visibility_hash,
-    )
-
-    schema_revision = _sreg.schema_revision(org_id)
-    if visible_entries is None:
-        all_entries = _sreg.list_sources(org_id)
-        visible_entries = (
-            filter_visible_datasets(all_entries, auth) if auth is not None else all_entries
-        )
-    visible_ids = {str(entry.get("id")) for entry in visible_entries if entry.get("id")}
-    visibility_fingerprint = visibility_hash(visible_entries)
-    cache_key = (org_id, llm_policy, visibility_fingerprint)
-
-    async with _CACHE_LOCK:
-        cached = _PLANNER_CACHE.get(cache_key)
-        if cached and cached.schema_revision == schema_revision:
-            cached.touch()
-            return cached.planner, True, schema_revision
-
-    planner = await asyncio.to_thread(
-        AutoPlanner.from_registry,
+    return await _get_registry_planner_impl(
         org_id,
         llm_policy=llm_policy,
-        allowed_source_ids=visible_ids,
+        auth=auth,
+        visible_entries=visible_entries,
+        cache_lock=_CACHE_LOCK,
+        planner_cache=_PLANNER_CACHE,
+        planner_cache_max=_PLANNER_CACHE_MAX,
+        cached_planner_cls=_CachedPlanner,
     )
-    built = _CachedPlanner(
-        planner=planner,
-        schema_revision=schema_revision,
-        llm_policy=llm_policy,
-    )
-
-    async with _CACHE_LOCK:
-        cached = _PLANNER_CACHE.get(cache_key)
-        if cached and cached.schema_revision == schema_revision:
-            cached.touch()
-            return cached.planner, True, schema_revision
-        _evict_planner_lru()
-        _PLANNER_CACHE[cache_key] = built
-
-    return planner, False, schema_revision
 
 
 async def _try_incremental_registry_planner_update(
@@ -425,106 +535,20 @@ async def _try_incremental_registry_planner_update(
     parquet_path: Path | None,
     new_connections: list[dict[str, Any]],
 ) -> tuple[bool, str]:
-    from apps.api_server.services import source_registry as _sreg
-    from apps.api_server.services.data_visibility import (
-        filter_visible_datasets,
-        visibility_hash,
+    return await _try_incremental_registry_planner_update_impl(
+        org_id,
+        llm_policy=llm_policy,
+        auth=auth,
+        source_id=source_id,
+        source_name=source_name,
+        schema_meta=schema_meta,
+        source_schema_revision=source_schema_revision,
+        parquet_path=parquet_path,
+        new_connections=new_connections,
+        cache_lock=_CACHE_LOCK,
+        planner_cache=_PLANNER_CACHE,
+        planner_cache_max=_PLANNER_CACHE_MAX,
     )
-
-    schema_revision = _sreg.schema_revision(org_id)
-    all_entries = _sreg.list_sources(org_id)
-    visible_entries = (
-        filter_visible_datasets(all_entries, auth)
-        if auth is not None
-        else all_entries
-    )
-    visibility_fingerprint = visibility_hash(visible_entries)
-    visible_ids = {str(entry.get("id")) for entry in visible_entries if entry.get("id")}
-    cache_key = (org_id, llm_policy, visibility_fingerprint)
-
-    async with _CACHE_LOCK:
-        cached = _PLANNER_CACHE.get(cache_key)
-        prior_cache_key = cache_key
-        if cached is None:
-            candidates = [
-                (key, entry)
-                for key, entry in _PLANNER_CACHE.items()
-                if key[0] == org_id and key[1] == llm_policy
-            ]
-            if len(candidates) == 1:
-                prior_cache_key, cached = candidates[0]
-
-    if cached is None:
-        return False, schema_revision
-
-    # Org-level schema revision changes even when the new source is outside the
-    # current visibility scope. Keep the cached planner live in that case
-    # instead of forcing a pointless rebuild on the next request.
-    if source_id not in visible_ids:
-        async with _CACHE_LOCK:
-            live = _PLANNER_CACHE.get(prior_cache_key)
-            if live is cached:
-                live.schema_revision = schema_revision
-                live.touch()
-                if prior_cache_key != cache_key:
-                    _PLANNER_CACHE.pop(prior_cache_key, None)
-                    _evict_planner_lru()
-                    _PLANNER_CACHE[cache_key] = live
-        return True, schema_revision
-
-    planner = cached.planner
-    refresh_registry_source = getattr(planner, "refresh_registry_source", None)
-    if refresh_registry_source is None:
-        return False, schema_revision
-
-    try:
-        await asyncio.to_thread(
-            refresh_registry_source,
-            org_id=org_id,
-            source_id=source_id,
-            source_name=source_name,
-            schema_meta=schema_meta,
-            source_schema_revision=source_schema_revision,
-            parquet_path=parquet_path,
-            new_connections=new_connections,
-        )
-    except Exception as exc:
-        logger.debug(
-            "registry_planner_incremental_update_failed",
-            org_id=org_id,
-            source_id=source_id,
-            error=str(exc),
-        )
-        return False, schema_revision
-
-    async with _CACHE_LOCK:
-        live = _PLANNER_CACHE.get(prior_cache_key)
-        if live is cached:
-            live.schema_revision = schema_revision
-            live.touch()
-            if prior_cache_key != cache_key:
-                _PLANNER_CACHE.pop(prior_cache_key, None)
-                _evict_planner_lru()
-                _PLANNER_CACHE[cache_key] = live
-
-    return True, schema_revision
-
-
-async def _run_cached_planner_method(
-    planner: Any,
-    method_name: str,
-    *args: Any,
-    **kwargs: Any,
-) -> Any:
-    def _invoke() -> Any:
-        method = getattr(planner, method_name)
-        state_lock = getattr(planner, "_state_lock", None)
-        if state_lock is None:
-            return method(*args, **kwargs)
-        with state_lock:
-            return method(*args, **kwargs)
-
-    return await asyncio.to_thread(_invoke)
 
 
 async def _load_profiled_source(
@@ -595,7 +619,7 @@ _SOURCE_BEHAVIOR_RULES: dict[str, dict[str, str]] = {
 }
 
 
-def _infer_source_behavior(schema_meta: dict) -> str:
+def _infer_source_behavior(schema_meta: dict[str, Any]) -> str:
     """
     Infer source_type from structural roles in schema_meta.
 
@@ -711,11 +735,14 @@ def _infer_source_behavior(schema_meta: dict) -> str:
     return "snapshot"
 
 
-def _source_cache_key(src: DataSource, records: list[dict] | None = None) -> tuple[str, bool]:
+def _source_cache_key(
+    src: DataSource,
+    records: list[dict[str, Any]] | None = None,
+) -> tuple[str, bool]:
     """
     Returns (cache_key, content_keyed).
     content_keyed=True  → hash of actual bytes; permanent, no TTL.
-    content_keyed=False → path/name/type; short TTL since content can change.
+    content_keyed=False → url/connection identity; short TTL since content can change.
     """
     registered_id = src.dataset_id or src.source_id
     if registered_id:
@@ -739,7 +766,10 @@ def _source_cache_key(src: DataSource, records: list[dict] | None = None) -> tup
     connection_fingerprint = (
         json.dumps(src.connection, sort_keys=True, default=str) if src.connection else ""
     )
-    raw = f"{src_type}:{src.url or ''}:{src.name}:{connection_fingerprint}"
+    if src_type == "named":
+        raw = f"{src_type}:{src.name}"
+    else:
+        raw = f"{src_type}:{src.url or ''}:{connection_fingerprint}"
     return hashlib.sha256(raw.encode()).hexdigest()[:32], False
 
 
@@ -799,13 +829,29 @@ def _source_cache_put(entry: _CachedSource, *keys: str) -> None:
     _evict_lru(exempt_entry=entry)
 
 
+def _arrow_physical_types(arrow_schema: Any | None) -> dict[str, str]:
+    if arrow_schema is None:
+        return {}
+    physical_types: dict[str, str] = {}
+    try:
+        for field in arrow_schema:
+            name = str(getattr(field, "name", "") or "")
+            if not name:
+                continue
+            physical_types[name] = str(getattr(field, "type", "") or "")
+    except Exception:
+        return {}
+    return physical_types
+
+
 def _build_schema_metadata(
     src_name: str,
     graph_nodes: dict[str, ColumnNode],
-    relations: list[dict],
-    profile: dict[str, dict],
+    relations: list[dict[str, Any]],
+    profile: dict[str, dict[str, Any]],
     profiling_status: dict[str, Any] | None = None,
-) -> dict:
+    physical_types: dict[str, str] | None = None,
+) -> dict[str, Any]:
     """
     Build the Algenta schema metadata dict embedded into the Parquet file.
     This is what the LLM reads to understand the data before querying.
@@ -819,11 +865,26 @@ def _build_schema_metadata(
       roles_summary — counts per role (quick overview for the LLM)
       query_hints   — structured hints the LLM should use in POST /v1/query
     """
-    columns: list[dict] = []
+    columns: list[dict[str, Any]] = []
     role_counts: dict[str, int] = {}
     planner_profile: dict[str, dict[str, Any]] = {}
 
-    for col, node in sorted(graph_nodes.items()):
+    ordered_columns: list[str]
+    if physical_types:
+        seen_columns: set[str] = set()
+        ordered_columns = []
+        for col in physical_types:
+            if col in graph_nodes and col not in seen_columns:
+                ordered_columns.append(col)
+                seen_columns.add(col)
+        for col in sorted(graph_nodes):
+            if col not in seen_columns:
+                ordered_columns.append(col)
+    else:
+        ordered_columns = sorted(graph_nodes)
+
+    for col in ordered_columns:
+        node = graph_nodes[col]
         role_counts[node.role] = role_counts.get(node.role, 0) + 1
         prof = profile.get(col, {})
         planner_profile[col] = {
@@ -838,12 +899,15 @@ def _build_schema_metadata(
             "mean": round(float(prof.get("mean", node.mean) or 0.0), 4),
             "std": round(float(prof.get("std", node.std) or 0.0), 4),
         }
-        col_meta: dict = {
+        col_meta: dict[str, Any] = {
             "name": col,
             "role": node.role,
             "is_numeric": node.is_numeric,
             "semantic_type": node.semantic_type or None,
         }
+        physical_type = str((physical_types or {}).get(col, "") or "").strip()
+        if physical_type:
+            col_meta["physical_type"] = physical_type
         if node.formula:
             col_meta["formula"] = node.formula
         col_meta["fill_rate"] = round(prof.get("fill_rate", 1.0), 4)
@@ -871,7 +935,7 @@ def _build_schema_metadata(
     # Group columns by role, sorted by fill_rate desc within each group
     from collections import defaultdict
 
-    role_groups: dict[str, list[dict]] = defaultdict(list)
+    role_groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for col_meta in columns:
         role = col_meta["role"]
         if role in role_labels:
@@ -879,13 +943,13 @@ def _build_schema_metadata(
     for role in role_groups:
         role_groups[role].sort(key=lambda c: c.get("fill_rate", 0), reverse=True)
 
-    hints: list[dict] = []
+    hints: list[dict[str, Any]] = []
     # Emit in priority order: formula-detected roles first, then statistical
     for role in ("derived_measure", "unit_measure", "base_measure", "ratio", "metric"):
         cols = role_groups.get(role, [])
         if not cols:
             continue
-        hint: dict = {
+        hint: dict[str, Any] = {
             "metric_role": role,
             "description": role_labels[role],
             "columns": [
@@ -914,31 +978,6 @@ def _build_schema_metadata(
         or _mojo_profiling_disabled_status("column_profile", "not_recorded"),
     }
 
-# ── Universal structural roles ─────────────────────────────────────────────────
-
-DERIVED_MEASURE = "derived_measure"
-BASE_MEASURE = "base_measure"
-UNIT_MEASURE = "unit_measure"
-COMPONENT = "component"
-RATIO = "ratio"
-IDENTIFIER = "identifier"
-TIME = "time"
-CATEGORY = "category"
-TEXT = "text"
-METRIC = "metric"
-
-ALL_ROLES = {
-    DERIVED_MEASURE,
-    BASE_MEASURE,
-    UNIT_MEASURE,
-    COMPONENT,
-    RATIO,
-    IDENTIFIER,
-    TIME,
-    CATEGORY,
-    TEXT,
-    METRIC,
-}
 
 # ── Dimensional algebra (mirrors dimensions.mojo exactly — no column names) ────
 #
@@ -1113,9 +1152,9 @@ def _looks_like_date(s: str) -> bool:
 
 
 def build_schema_graph(
-    profiles: dict[str, dict[str, dict]],
-    mojo_profiles: dict[str, dict],
-    relations_by_source: dict[str, list[dict]],
+    profiles: dict[str, dict[str, dict[str, Any]]],
+    mojo_profiles: dict[str, dict[str, Any]],
+    relations_by_source: dict[str, list[dict[str, Any]]],
 ) -> SchemaGraph:
     """
     Build structural graph for all sources.
@@ -1597,7 +1636,7 @@ def resolve_metric_column(
     hint_tokens: set[str],  # weak signal from user question / LLM semantic hint
     graph: SchemaGraph,
     preferred_source: str | None = None,
-) -> tuple[str, str, float, list[dict]]:
+) -> tuple[str, str, float, list[dict[str, Any]]]:
     """
     Returns (source, column, confidence, all_candidates).
     Primary: structural role match.
@@ -1605,7 +1644,7 @@ def resolve_metric_column(
     Tiebreaker: token overlap with hint_tokens (weak, 15% weight max).
     """
     best = ("", "", 0.0)
-    candidates: list[dict] = []
+    candidates: list[dict[str, Any]] = []
 
     sources = [preferred_source] if preferred_source else list(graph.keys())
 
@@ -1744,7 +1783,7 @@ def resolve_group_column_graph(
     return best_src, best_col, round(best_score, 3)
 
 
-def _graph_nodes_from_meta(schema_meta: dict) -> dict[str, ColumnNode]:
+def _graph_nodes_from_meta(schema_meta: dict[str, Any]) -> dict[str, ColumnNode]:
     """Reconstruct ColumnNode dict from persisted schema metadata."""
     nodes: dict[str, ColumnNode] = {}
     for col in schema_meta.get("columns", []):
@@ -1769,7 +1808,7 @@ _MIN_JOIN_CONFIDENCE = 0.85  # default threshold — only statistically solid en
 def _find_best_join_key(
     src_a_name: str,
     src_b_name: str,
-    connections: list[dict],
+    connections: list[dict[str, Any]],
     min_confidence: float = _MIN_JOIN_CONFIDENCE,
 ) -> tuple[str, str, float, str] | None:
     """
@@ -1796,9 +1835,9 @@ def _find_best_join_key(
     )
     entity_roles = frozenset({"category", "text", "identifier"})
 
-    def _col_role(c: dict, side: str) -> str:
+    def _col_role(c: dict[str, Any], side: str) -> str:
         # connections.json may store col_a_role/col_b_role if present; otherwise unknown
-        return c.get(f"{side}_role", "")
+        return str(c.get(f"{side}_role", "") or "")
 
     entity_best: tuple[str, str, float, str] | None = None
     entity_conf = min_confidence
@@ -1861,7 +1900,10 @@ def _reverse_cardinality(cardinality: str) -> str:
     return cardinality
 
 
-def _match_join_path_edge(edge: JoinEdgeSpec, connections: list[dict]) -> tuple[float, str]:
+def _match_join_path_edge(
+    edge: JoinEdgeSpec,
+    connections: list[dict[str, Any]],
+) -> tuple[float, str]:
     for conn in connections:
         src_a = conn.get("source_a_name", "")
         src_b = conn.get("source_b_name", "")
@@ -1895,7 +1937,7 @@ def _match_join_path_edge(edge: JoinEdgeSpec, connections: list[dict]) -> tuple[
 def _resolve_join_path(
     metric_source: str,
     join_path: JoinPathSpec,
-    connections: list[dict],
+    connections: list[dict[str, Any]],
 ) -> tuple[list[JoinEdgeSpec], str, float, list[tuple[float, str]]]:
     if join_path.base_source != metric_source:
         raise ValueError(
@@ -1970,7 +2012,7 @@ def _resolve_join_path(
 
 
 def execute_join_path(
-    records_by_source: dict[str, list[dict]],
+    records_by_source: dict[str, list[dict[str, Any]]],
     base_source: str,
     metric_col: str,
     group_source: str,
@@ -1994,13 +2036,18 @@ def execute_join_path(
         metric_col = resolved_metric_col
 
     current_rows: list[dict[str, Any]] = []
-    for row in base_records:
-        value = _num(row, metric_col)
-        if value is None:
-            continue
-        current_rows.append({"metric": value, "row": row})
+    if agg == "count":
+        current_rows = [{"row": row} for row in base_records]
+    else:
+        for row in base_records:
+            value = _num(row, metric_col)
+            if value is None:
+                continue
+            current_rows.append({"metric": value, "row": row})
 
     if not current_rows:
+        if agg == "count":
+            return None, 0, plan + ["No rows available for join-path count"]
         return None, 0, plan + [f"No numeric rows available for metric '{metric_col}'"]
 
     resolved_group_col = group_col
@@ -2029,10 +2076,10 @@ def execute_join_path(
             collapse_field = _resolve_col_name(next_edge.left_key, right_records)
             collapse_label = f"downstream key '{collapse_field}'"
 
-        right_index: dict[str, list[dict]] = {}
+        right_index: dict[str, list[dict[str, Any]]] = {}
         for right_row in right_records:
-            key = str(right_row.get(resolved_right_key, "")).strip()
-            if key:
+            key = _blankish_value(right_row.get(resolved_right_key))
+            if key is not None:
                 right_index.setdefault(key, []).append(right_row)
 
         collapsed_keys = 0
@@ -2074,8 +2121,8 @@ def execute_join_path(
         next_rows: list[dict[str, Any]] = []
         for item in current_rows:
             left_row = item["row"]
-            join_val = str(left_row.get(resolved_left_key, "")).strip()
-            if not join_val:
+            join_val = _blankish_value(left_row.get(resolved_left_key))
+            if join_val is None:
                 continue
             matches = right_index.get(join_val, [])
             if not matches:
@@ -2102,7 +2149,10 @@ def execute_join_path(
                     )
             selected = matches[:1] if reject_on_ambiguity else matches
             for match in selected:
-                next_rows.append({"metric": item["metric"], "row": match})
+                next_item = {"row": match}
+                if "metric" in item:
+                    next_item["metric"] = item["metric"]
+                next_rows.append(next_item)
 
         current_rows = next_rows
         plan.append(f"Hop {idx}: matched {len(current_rows)} projected rows")
@@ -2116,10 +2166,23 @@ def execute_join_path(
         if grp is None:
             continue
         matched += 1
-        buckets.setdefault(grp, []).append(float(item["metric"]))
+        if agg == "count":
+            buckets.setdefault(grp, []).append(1.0)
+        else:
+            buckets.setdefault(grp, []).append(float(item["metric"]))
 
     if not buckets:
         return None, matched, plan + ["No rows matched in join-path execution"]
+
+    if agg == "count":
+        count_result: list[dict[str, str | float]] = [
+            {"group": k, "value": float(len(v))} for k, v in buckets.items()
+        ]
+        count_result.sort(key=lambda x: cast(float, x["value"]), reverse=(order == "desc"))
+        if limit:
+            count_result = count_result[:limit]
+        plan.append(f"COUNT(*) BY `{resolved_group_col}` (join-path) -> {len(count_result)} groups")
+        return count_result, matched, plan
 
     def _agg_fn(vals: list[float]) -> float:
         if not vals:
@@ -2134,8 +2197,10 @@ def execute_join_path(
             return min(vals)
         return sum(vals)
 
-    result = [{"group": k, "value": round(_agg_fn(v), 4)} for k, v in buckets.items()]
-    result.sort(key=lambda x: x["value"], reverse=(order == "desc"))
+    result: list[dict[str, str | float]] = [
+        {"group": k, "value": round(_agg_fn(v), 4)} for k, v in buckets.items()
+    ]
+    result.sort(key=lambda x: cast(float, x["value"]), reverse=(order == "desc"))
     if limit:
         result = result[:limit]
 
@@ -2147,9 +2212,9 @@ def execute_join_path(
 
 
 def execute_cross_source(
-    metric_records: list[dict],
+    metric_records: list[dict[str, Any]],
     metric_col: str,
-    group_records: list[dict],
+    group_records: list[dict[str, Any]],
     group_col: str,
     join_metric_col: str,  # column in metric_records used for join
     join_group_col: str,  # column in group_records used for join
@@ -2211,9 +2276,9 @@ def execute_cross_source(
     join_map: dict[str, str] = {}
     for r in group_records:
         k = str(r.get(join_group_col, "")).strip()
-        v = str(r.get(group_col, "?")).strip()
+        group_value = str(r.get(group_col, "?")).strip()
         if k:
-            join_map[k] = v
+            join_map[k] = group_value
 
     plan.append(f"Join map size: {len(join_map)} keys from {len(group_records)} group rows")
 
@@ -2251,8 +2316,10 @@ def execute_cross_source(
             return min(vals)
         return sum(vals)
 
-    result = [{"group": k, "value": round(_agg_fn(v), 4)} for k, v in buckets.items()]
-    result.sort(key=lambda x: x["value"], reverse=(order == "desc"))
+    result: list[dict[str, str | float]] = [
+        {"group": k, "value": round(_agg_fn(v), 4)} for k, v in buckets.items()
+    ]
+    result.sort(key=lambda x: cast(float, x["value"]), reverse=(order == "desc"))
     if limit:
         result = result[:limit]
 
@@ -2367,7 +2434,7 @@ async def _call_mojo_source_score(
     if not graph:
         return None
 
-    sources_payload: dict[str, dict] = {}
+    sources_payload: dict[str, dict[str, Any]] = {}
     for src_name, nodes in graph.items():
         sources_payload[src_name] = {
             "columns": [
@@ -2459,7 +2526,7 @@ def _parse_date(v: Any) -> date | None:
     return None
 
 
-def _num(r: dict, col: str) -> float | None:
+def _num(r: dict[str, Any], col: str) -> float | None:
     v = r.get(col)
     try:
         if v is None:
@@ -2517,7 +2584,7 @@ def _has_populated_cell(v: Any) -> bool:
     return True
 
 
-def _resolve_col_name(col: str, records: list[dict]) -> str:
+def _resolve_col_name(col: str, records: list[dict[str, Any]]) -> str:
     """
     Resolve a column name to the actual key in the records, applying two fallbacks:
 
@@ -2562,8 +2629,338 @@ def _resolve_col_name(col: str, records: list[dict]) -> str:
     return col  # unknown column; caller handles the miss
 
 
+_FILTER_NUMERIC_OPS = frozenset({"gt", "gte", "lt", "lte"})
+_FILTER_NULL_OPS = frozenset({"is_null", "is_not_null"})
+_FILTER_DIMENSION_ROLES = frozenset({CATEGORY, TEXT, IDENTIFIER, TIME})
+_FILTER_TRUE_VALUES = frozenset({"1", "true", "t", "yes", "y"})
+_FILTER_FALSE_VALUES = frozenset({"0", "false", "f", "no", "n"})
+
+
+@dataclass(frozen=True)
+class ResolvedFilterCondition:
+    source_name: str
+    column: str
+    op: str
+    value: Any | None = None
+    values: tuple[Any, ...] = field(default_factory=tuple)
+
+
+def _filter_number_like(value: Any) -> float | None:
+    try:
+        if value is None or isinstance(value, bool):
+            return None
+        number = float(value)
+        if not math.isfinite(number):
+            return None
+        return number
+    except (TypeError, ValueError):
+        return None
+
+
+def _filter_boolean_like(value: Any) -> bool | None:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int) and value in {0, 1}:
+        return bool(value)
+    if isinstance(value, float) and math.isfinite(value) and value in {0.0, 1.0}:
+        return bool(int(value))
+    if value is None:
+        return None
+    normalized = str(value).strip().casefold()
+    if normalized in _FILTER_TRUE_VALUES:
+        return True
+    if normalized in _FILTER_FALSE_VALUES:
+        return False
+    return None
+
+
+def _filter_value_is_nullish(value: Any) -> bool:
+    return not _has_populated_cell(value)
+
+
+def _filter_value_equals(row_value: Any, expected: Any) -> bool:
+    row_bool = _filter_boolean_like(row_value)
+    expected_bool = _filter_boolean_like(expected)
+    if row_bool is not None and expected_bool is not None:
+        return row_bool is expected_bool
+
+    row_number = _filter_number_like(row_value)
+    expected_number = _filter_number_like(expected)
+    if row_number is not None and expected_number is not None:
+        return row_number == expected_number
+
+    row_text = _blankish_value(row_value)
+    expected_text = _blankish_value(expected)
+    if row_text is None or expected_text is None:
+        return False
+    return row_text.casefold() == expected_text.casefold()
+
+
+def _sample_numeric_field(records: list[dict[str, Any]], field_name: str) -> bool:
+    observed = 0
+    for row in records[:50]:
+        value = row.get(field_name)
+        if _filter_value_is_nullish(value):
+            continue
+        observed += 1
+        if _filter_number_like(value) is None:
+            return False
+    return observed > 0
+
+
+def _sample_boolean_field(records: list[dict[str, Any]], field_name: str) -> bool:
+    observed = 0
+    for row in records[:50]:
+        value = row.get(field_name)
+        if _filter_value_is_nullish(value):
+            continue
+        observed += 1
+        if _filter_boolean_like(value) is None:
+            return False
+    return observed > 0
+
+
+def _filter_field_match_score(field_name: str, normalized_hint: str) -> tuple[float, bool]:
+    normalized_field = _normalize_hint_text(field_name)
+    if not normalized_field or not normalized_hint:
+        return 0.0, False
+    if normalized_field == normalized_hint:
+        return 1.0, True
+    if normalized_field.startswith(normalized_hint) or normalized_hint.startswith(normalized_field):
+        return 0.95, False
+    if normalized_hint in normalized_field or normalized_field in normalized_hint:
+        return 0.9, False
+
+    hint_tokens = set(normalized_hint.split())
+    field_tokens = set(normalized_field.split())
+    if not hint_tokens or not field_tokens:
+        return 0.0, False
+    overlap_forward = len(hint_tokens & field_tokens) / len(field_tokens)
+    overlap_backward = len(hint_tokens & field_tokens) / len(hint_tokens)
+    overlap = (overlap_forward + overlap_backward) / 2
+    return round(overlap, 4), False
+
+
+def _preferred_filter_value_type(
+    condition: FilterConditionSpec,
+) -> str | None:
+    if condition.op in _FILTER_NUMERIC_OPS:
+        return "numeric"
+    if condition.op in _FILTER_NULL_OPS:
+        return None
+    if condition.op == "in":
+        values = list(condition.values or [])
+        if values and all(_filter_boolean_like(value) is not None for value in values):
+            return "boolean"
+        if values and all(_filter_number_like(value) is not None for value in values):
+            return "numeric"
+        return None
+    if _filter_boolean_like(condition.value) is not None:
+        return "boolean"
+    if _filter_number_like(condition.value) is not None:
+        return "numeric"
+    return None
+
+
+def _resolve_filter_condition_column(
+    *,
+    condition: FilterConditionSpec,
+    source_name: str,
+    graph_nodes: dict[str, ColumnNode],
+    records: list[dict[str, Any]],
+) -> str:
+    first_row = records[0] if records else {}
+    if condition.column:
+        if records:
+            resolved = _resolve_col_name(condition.column, records)
+            if resolved in first_row:
+                return resolved
+        for field_name in graph_nodes:
+            if _normalize_hint_text(field_name) == _normalize_hint_text(condition.column):
+                return field_name
+        raise ValueError(
+            f"Filter column '{condition.column}' was not found in source '{source_name}'."
+        )
+
+    normalized_hint = _normalize_hint_text(condition.dimension_hint)
+    if not normalized_hint:
+        raise ValueError(
+            f"Filter dimension_hint for source '{source_name}' is empty after normalization."
+        )
+
+    field_names: list[str] = []
+    for field_name in graph_nodes:
+        if field_name not in field_names:
+            field_names.append(field_name)
+    for field_name in first_row:
+        if field_name not in field_names:
+            field_names.append(field_name)
+
+    value_type = _preferred_filter_value_type(condition)
+    candidates: list[tuple[float, bool, str]] = []
+    for field_name in field_names:
+        lexical_score, exact_match = _filter_field_match_score(field_name, normalized_hint)
+        if lexical_score <= 0.0:
+            continue
+        node = graph_nodes.get(field_name)
+        is_numeric = (
+            bool(node.is_numeric)
+            if node is not None
+            else _sample_numeric_field(records, field_name)
+        )
+        is_boolean = _sample_boolean_field(records, field_name)
+        suitability = 0.0
+        if value_type == "numeric":
+            suitability = 0.35 if is_numeric else -0.25
+        elif value_type == "boolean":
+            if is_boolean:
+                suitability = 0.35
+            elif is_numeric:
+                suitability = -0.10
+        elif condition.op in {"eq", "in"}:
+            suitability = (
+                0.12
+                if (not is_numeric or (node and node.role in _FILTER_DIMENSION_ROLES))
+                else -0.08
+            )
+        elif condition.op in _FILTER_NULL_OPS:
+            suitability = (
+                0.08 if (not is_numeric or (node and node.role in _FILTER_DIMENSION_ROLES)) else 0.0
+            )
+        overall_score = round(lexical_score + suitability, 4)
+        if overall_score < 0.60 and not exact_match:
+            continue
+        candidates.append((overall_score, exact_match, field_name))
+
+    if not candidates:
+        raise ValueError(
+            f"Filter dimension_hint '{condition.dimension_hint}' did not resolve in source "
+            f"'{source_name}'."
+        )
+
+    candidates.sort(key=lambda item: (item[0], item[1], item[2]), reverse=True)
+    best_score, best_exact, best_field = candidates[0]
+    if len(candidates) > 1 and not best_exact:
+        second_score = candidates[1][0]
+        if second_score >= best_score - 0.05:
+            ambiguous_fields = ", ".join(candidate[2] for candidate in candidates[:3])
+            raise ValueError(
+                f"Filter dimension_hint '{condition.dimension_hint}' is ambiguous in source "
+                f"'{source_name}'. Candidates: {ambiguous_fields}."
+            )
+    return best_field
+
+
+def _resolve_filter_conditions(
+    *,
+    source_name: str,
+    filter_spec: FilterSpec | None,
+    graph_nodes: dict[str, ColumnNode],
+    records: list[dict[str, Any]],
+) -> list[ResolvedFilterCondition]:
+    if filter_spec is None or not filter_spec.conditions:
+        return []
+    resolved: list[ResolvedFilterCondition] = []
+    for condition in filter_spec.conditions:
+        resolved_column = _resolve_filter_condition_column(
+            condition=condition,
+            source_name=source_name,
+            graph_nodes=graph_nodes,
+            records=records,
+        )
+        preferred_value_type = _preferred_filter_value_type(condition)
+        resolved_node = graph_nodes.get(resolved_column)
+        is_numeric = (
+            bool(resolved_node.is_numeric)
+            if resolved_node is not None
+            else _sample_numeric_field(records, resolved_column)
+        )
+        if preferred_value_type == "numeric" and not is_numeric:
+            raise ValueError(
+                f"Filter column '{resolved_column}' in source '{source_name}' is not numeric."
+            )
+        resolved.append(
+            ResolvedFilterCondition(
+                source_name=source_name,
+                column=resolved_column,
+                op=condition.op,
+                value=condition.value,
+                values=tuple(condition.values or ()),
+            )
+        )
+    return resolved
+
+
+def _row_matches_filter_condition(
+    row: dict[str, Any],
+    condition: ResolvedFilterCondition,
+) -> bool:
+    row_value = row.get(condition.column)
+    if condition.op == "eq":
+        return _filter_value_equals(row_value, condition.value)
+    if condition.op == "in":
+        return any(_filter_value_equals(row_value, candidate) for candidate in condition.values)
+    if condition.op == "gt":
+        row_number = _filter_number_like(row_value)
+        expected_number = _filter_number_like(condition.value)
+        return (
+            row_number is not None and expected_number is not None and row_number > expected_number
+        )
+    if condition.op == "gte":
+        row_number = _filter_number_like(row_value)
+        expected_number = _filter_number_like(condition.value)
+        return (
+            row_number is not None and expected_number is not None and row_number >= expected_number
+        )
+    if condition.op == "lt":
+        row_number = _filter_number_like(row_value)
+        expected_number = _filter_number_like(condition.value)
+        return (
+            row_number is not None and expected_number is not None and row_number < expected_number
+        )
+    if condition.op == "lte":
+        row_number = _filter_number_like(row_value)
+        expected_number = _filter_number_like(condition.value)
+        return (
+            row_number is not None and expected_number is not None and row_number <= expected_number
+        )
+    if condition.op == "is_null":
+        return _filter_value_is_nullish(row_value)
+    if condition.op == "is_not_null":
+        return not _filter_value_is_nullish(row_value)
+    return False
+
+
+def _apply_filter_conditions(
+    rows: list[dict[str, Any]],
+    conditions: list[ResolvedFilterCondition],
+) -> tuple[list[dict[str, Any]], list[str]]:
+    if not conditions:
+        return rows, []
+    filtered_rows = rows
+    plan: list[str] = []
+    for condition in conditions:
+        before = len(filtered_rows)
+        filtered_rows = [
+            row for row in filtered_rows if _row_matches_filter_condition(row, condition)
+        ]
+        value_repr = (
+            list(condition.values)
+            if condition.op == "in"
+            else condition.value
+            if condition.op not in _FILTER_NULL_OPS
+            else None
+        )
+        if condition.op in _FILTER_NULL_OPS:
+            description = f"{condition.column} {condition.op}"
+        else:
+            description = f"{condition.column} {condition.op} {value_repr!r}"
+        plan.append(f"Filter `{description}`: {before}->{len(filtered_rows)} rows")
+    return filtered_rows, plan
+
+
 def execute(
-    records: list[dict],
+    records: list[dict[str, Any]],
     metric_col: str,
     agg: str,
     group_col: str | None,
@@ -2608,8 +3005,13 @@ def execute(
                 if k is None:
                     continue
                 count_buckets[k] = count_buckets.get(k, 0) + 1
-            table_result = [{"group": k, "value": float(v)} for k, v in count_buckets.items()]
-            table_result.sort(key=lambda x: x["value"], reverse=(order == "desc"))
+            table_result: list[dict[str, str | float]] = [
+                {"group": k, "value": float(v)} for k, v in count_buckets.items()
+            ]
+            table_result.sort(
+                key=lambda x: cast(float, x["value"]),
+                reverse=(order == "desc"),
+            )
             if limit:
                 table_result = table_result[:limit]
             plan.append(f"COUNT(*) BY `{group_col}` → {len(table_result)} groups")
@@ -2646,12 +3048,19 @@ def execute(
                 return min(vals)
             return sum(vals)  # should never reach here
 
-        table_result = [{"group": k, "value": round(_agg_fn(v), 4)} for k, v in buckets.items()]
-        table_result.sort(key=lambda x: x["value"], reverse=(order == "desc"))
+        grouped_table_result: list[dict[str, str | float]] = [
+            {"group": k, "value": round(_agg_fn(v), 4)} for k, v in buckets.items()
+        ]
+        grouped_table_result.sort(
+            key=lambda x: cast(float, x["value"]),
+            reverse=(order == "desc"),
+        )
         if limit:
-            table_result = table_result[:limit]
-        plan.append(f"{agg.upper()}(`{metric_col}`) BY `{group_col}` → {len(table_result)} groups")
-        return table_result, len(rows), plan
+            grouped_table_result = grouped_table_result[:limit]
+        plan.append(
+            f"{agg.upper()}(`{metric_col}`) BY `{group_col}` → {len(grouped_table_result)} groups"
+        )
+        return grouped_table_result, len(rows), plan
 
     vals = [v for r in rows if (v := _num(r, metric_col)) is not None]
     if not vals:
@@ -2678,9 +3087,9 @@ def execute(
 
 async def _detect_relations(
     source: str,
-    profiles: dict[str, dict],
+    profiles: dict[str, dict[str, Any]],
     min_confidence: float = 0.70,
-) -> list[dict]:
+) -> list[dict[str, Any]]:
     prof = profiles.get(source, {})
     # Only columns with a meaningful fill rate — skips columns that were all-empty
     numeric_cols = {
@@ -2723,359 +3132,21 @@ async def _detect_relations(
         payload,
     )
     if result is None:
+        if engine_status["reason"] == "engine_circuit_open":
+            logger.debug(
+                "query_relation_detect_circuit_open",
+                cooldown_s=_QUERY_RELATION_DETECT_COOLDOWN_S,
+                reason=str(engine_status.get("message") or engine_status["reason"]),
+            )
+            return []
         _record_query_relation_detect_failure(
             str(engine_status.get("message") or engine_status["reason"]),
         )
-        if engine_status["reason"] != "engine_circuit_open":
-            logger.debug("query_relation_detect_error", engine_status=engine_status)
+        logger.debug("query_relation_detect_error", engine_status=engine_status)
         return []
     _clear_query_relation_detect_failure()
-    return result.get("relationships", [])
-
-
-_FAST_SCAN_ROWS = 200  # rows checked in fast path
-_SPARSE_THRESHOLD = 10  # if fewer non-empty values in fast scan → deep scan
-_TARGET_SAMPLES = 500  # non-empty values to collect per column (stop early)
-_NUM_COERCE_CHARS = str.maketrans("", "", ",$% \t")  # strip before float() attempt
-
-
-def _relation_detect_sample_limit(column_count: int) -> int:
-    if column_count >= 128:
-        return 64
-    if column_count >= 64:
-        return 128
-    if column_count >= 32:
-        return 192
-    return _TARGET_SAMPLES
-
-
-def _try_numeric(v: object) -> float | None:
-    """Return float if v is numeric or a string that parses as a number, else None."""
-    if isinstance(v, bool):
-        return None
-    if isinstance(v, int | float):
-        f = float(v)
-        return None if math.isnan(f) or math.isinf(f) else f
-    if isinstance(v, str):
-        s = v.strip().translate(_NUM_COERCE_CHARS)
-        if not s:
-            return None
-        try:
-            f = float(s)
-            return None if math.isnan(f) or math.isinf(f) else f
-        except ValueError:
-            return None
-    return None
-
-
-def _profile_records(records: list[dict]) -> dict[str, dict]:
-    """
-    Column-first profiler with lazy deep scan.
-
-    Strategy per column:
-      Fast path  — scan first _FAST_SCAN_ROWS rows.
-      Deep scan  — if fewer than _SPARSE_THRESHOLD non-empty values found,
-                   scan the entire dataset.  Stops once _TARGET_SAMPLES collected.
-
-    This handles columns where data only appears further down the file
-    (sparse columns, late-loaded enrichments, etc.).
-    """
-    if not records:
-        return {}
-
-    n_total = len(records)
-    fields = list(records[0].keys())
-    profile: dict[str, dict] = {}
-
-    for f in fields:
-        nums: list[float] = []
-        strs: list[str] = []
-        non_empty_count = 0  # true fill counter — keeps going after sample target
-        unique_values: set[str] = set()
-
-        def _ingest(
-            v: object,
-            *,
-            unique_values_ref: set[str] = unique_values,
-            nums_ref: list[float] = nums,
-            strs_ref: list[str] = strs,
-        ) -> None:
-            nonlocal non_empty_count
-            if v is None:
-                return
-            s = str(v).strip() if not isinstance(v, int | float) else None
-            if s == "":
-                return
-            non_empty_count += 1
-            fn = _try_numeric(v)
-            if fn is not None:
-                unique_values_ref.add(str(int(fn)) if float(fn).is_integer() else str(fn))
-            else:
-                unique_values_ref.add(s if s is not None else str(v))
-            if len(nums_ref) + len(strs_ref) >= _TARGET_SAMPLES:
-                return  # still counting non_empty, but don't store the sample
-            if fn is not None:
-                nums_ref.append(fn)
-            else:
-                strs_ref.append(s if s is not None else str(v))
-
-        # ── Fast path ──────────────────────────────────────────────────────
-        fast_limit = min(_FAST_SCAN_ROWS, n_total)
-        for i in range(fast_limit):
-            _ingest(records[i].get(f))
-
-        # ── Extend scan if sparse OR haven't hit sample target ─────────────
-        # Always scan remaining rows: samples stop at _TARGET_SAMPLES,
-        # but non_empty_count continues so fill_rate is always exact.
-        if n_total > fast_limit:
-            for i in range(fast_limit, n_total):
-                _ingest(records[i].get(f))
-
-        entry: dict = {
-            "numeric": nums,
-            "strings": strs,
-            "is_numeric": len(nums) > len(strs),
-            "sample_values": [str(v) for v in nums[:50]] + strs[:50],
-            "unique_count": len(unique_values),
-            "total_count": non_empty_count,
-            "non_empty": non_empty_count,
-            "fill_rate": round(non_empty_count / n_total, 4),
-        }
-        if nums:
-            mean = sum(nums) / len(nums)
-            entry["mean"] = mean
-            entry["std"] = math.sqrt(sum((x - mean) ** 2 for x in nums) / max(len(nums) - 1, 1))
-        profile[f] = entry
-
-    return profile
-
-
-def _profile_records_and_arrow(records: list[dict]) -> tuple[dict[str, dict], Any]:
-    """
-    Build planner profile stats and Arrow columns in one pass over row records.
-
-    The upload/register path previously did two full Python scans after parse:
-      1. `_profile_records(records)`
-      2. build per-column Arrow arrays for Parquet serialization
-
-    Combining them keeps the same profiling semantics while removing the second
-    row-scale walk from hot registration paths.
-    """
-    import pyarrow as pa
-
-    if not records:
-        return {}, pa.table({})
-
-    n_total = len(records)
-    fields = list(records[0].keys())
-
-    numeric_samples: dict[str, list[float]] = {field: [] for field in fields}
-    string_samples: dict[str, list[str]] = {field: [] for field in fields}
-    non_empty_counts: dict[str, int] = dict.fromkeys(fields, 0)
-    unique_values: dict[str, set[str]] = {field: set() for field in fields}
-    column_values: dict[str, list[Any]] = {field: [] for field in fields}
-
-    for row in records:
-        for field_name in fields:
-            value = row.get(field_name)
-
-            if value is None:
-                column_values[field_name].append(None)
-                continue
-
-            stripped: str | None = None
-            if isinstance(value, str):
-                stripped = value.strip()
-                if stripped.lower() in {"", "?", "none", "null", "nan"}:
-                    column_values[field_name].append(None)
-                else:
-                    column_values[field_name].append(value)
-            else:
-                column_values[field_name].append(value)
-
-            if stripped == "":
-                continue
-
-            non_empty_counts[field_name] += 1
-
-            numeric_value = _try_numeric(value)
-            if numeric_value is not None:
-                unique_values[field_name].add(
-                    str(int(numeric_value))
-                    if float(numeric_value).is_integer()
-                    else str(numeric_value)
-                )
-                if (
-                    len(numeric_samples[field_name]) + len(string_samples[field_name])
-                    < _TARGET_SAMPLES
-                ):
-                    numeric_samples[field_name].append(numeric_value)
-                continue
-
-            string_value = stripped if stripped is not None else str(value)
-            unique_values[field_name].add(string_value)
-            if len(numeric_samples[field_name]) + len(string_samples[field_name]) < _TARGET_SAMPLES:
-                string_samples[field_name].append(string_value)
-
-    profile: dict[str, dict] = {}
-    arrays: dict[str, Any] = {}
-
-    for field_name in fields:
-        nums = numeric_samples[field_name]
-        strs = string_samples[field_name]
-        entry: dict[str, Any] = {
-            "numeric": nums,
-            "strings": strs,
-            "is_numeric": len(nums) > len(strs),
-            "sample_values": [str(v) for v in nums[:50]] + strs[:50],
-            "unique_count": len(unique_values[field_name]),
-            "total_count": non_empty_counts[field_name],
-            "non_empty": non_empty_counts[field_name],
-            "fill_rate": round(non_empty_counts[field_name] / n_total, 4),
-        }
-        if nums:
-            mean = sum(nums) / len(nums)
-            entry["mean"] = mean
-            entry["std"] = math.sqrt(sum((x - mean) ** 2 for x in nums) / max(len(nums) - 1, 1))
-        profile[field_name] = entry
-
-        try:
-            arrays[field_name] = pa.array(column_values[field_name])
-        except Exception:
-            arrays[field_name] = pa.array(
-                [str(value) if value is not None else None for value in column_values[field_name]],
-                type=pa.string(),
-            )
-
-    return profile, pa.table(arrays)
-
-
-def _profile_arrow_table(table: Any) -> dict[str, dict]:
-    import pyarrow as pa
-    import pyarrow.compute as pc
-
-    if table is None or getattr(table, "num_rows", 0) == 0:
-        return {}
-
-    n_total = int(table.num_rows)
-    profile: dict[str, dict] = {}
-
-    def _distinct_count(array: Any) -> int:
-        try:
-            return int(pc.count_distinct(array, mode="only_valid").as_py() or 0)
-        except Exception:
-            return len({value for value in array.to_pylist() if value is not None})
-
-    def _sample_non_null_values(array: Any, limit: int) -> list[Any]:
-        if limit <= 0:
-            return []
-        sample_values: list[Any] = []
-        chunks = array.iterchunks() if hasattr(array, "iterchunks") else (array,)
-        for chunk in chunks:
-            valid_chunk = pc.drop_null(chunk)
-            if len(valid_chunk) == 0:
-                continue
-            remaining = limit - len(sample_values)
-            sample_values.extend(valid_chunk.slice(0, remaining).to_pylist())
-            if len(sample_values) >= limit:
-                break
-        return sample_values
-
-    def _sample_distinct_non_null_values(array: Any, limit: int) -> list[Any]:
-        if limit <= 0:
-            return []
-        try:
-            unique = pc.unique(pc.drop_null(array))
-            return [value for value in unique.to_pylist() if value is not None][:limit]
-        except Exception:
-            seen: set[Any] = set()
-            distinct_values: list[Any] = []
-            for value in _sample_non_null_values(array, limit * 4):
-                if value in seen:
-                    continue
-                seen.add(value)
-                distinct_values.append(value)
-                if len(distinct_values) >= limit:
-                    break
-            return distinct_values
-
-    for field_name in table.column_names:
-        column = table[field_name]
-        if pa.types.is_dictionary(column.type):
-            column = pc.dictionary_decode(column)
-
-        is_numeric = (
-            pa.types.is_integer(column.type)
-            or pa.types.is_floating(column.type)
-            or pa.types.is_decimal(column.type)
-        )
-        total_count = int(pc.count(column, mode="only_valid").as_py() or 0)
-        fill_rate = round(total_count / n_total, 4) if n_total else 0.0
-        unique_count = _distinct_count(column)
-        if not is_numeric and 1 < unique_count <= 32:
-            sample_values = _sample_distinct_non_null_values(column, _TARGET_SAMPLES)
-        else:
-            sample_values = _sample_non_null_values(column, _TARGET_SAMPLES)
-
-        nums: list[float] = []
-        strs: list[str] = []
-        if is_numeric:
-            for value in sample_values:
-                try:
-                    fv = float(value)
-                except (TypeError, ValueError):
-                    continue
-                if not math.isnan(fv) and not math.isinf(fv):
-                    nums.append(fv)
-        else:
-            strs = [str(value) for value in sample_values if value is not None]
-
-        entry: dict[str, Any] = {
-            "numeric": nums,
-            "strings": strs,
-            "is_numeric": is_numeric,
-            "sample_values": [str(v) for v in sample_values[:50]],
-            "unique_count": unique_count,
-            "total_count": total_count,
-            "non_empty": total_count,
-            "fill_rate": fill_rate,
-        }
-        if nums:
-            mean = sum(nums) / len(nums)
-            entry["mean"] = mean
-            entry["std"] = math.sqrt(sum((x - mean) ** 2 for x in nums) / max(len(nums) - 1, 1))
-        profile[field_name] = entry
-
-    return profile
-
-
-# ── Request / Response schemas ─────────────────────────────────────────────────
-
-
-def _error_details(items: list[tuple[str | None, str]] | None) -> list[ErrorDetail]:
-    return [
-        ErrorDetail(field=field, issue=issue)
-        for field, issue in (items or [])
-    ]
-
-
-def _http_error(
-    status_code: int,
-    *,
-    code: str,
-    message: str,
-    request_id: str | None = None,
-    details: list[tuple[str | None, str]] | None = None,
-) -> HTTPException:
-    return HTTPException(
-        status_code=status_code,
-        detail=ErrorResponse.make(
-            code=code,
-            message=message,
-            request_id=request_id,
-            details=_error_details(details),
-        ).model_dump(mode="python"),
-    )
+    relationships = result.get("relationships", [])
+    return relationships if isinstance(relationships, list) else []
 
 
 def _normalize_hint_text(value: str | None) -> str:
@@ -3104,60 +3175,6 @@ def _weak_raw_text_intent(raw_text: str | None) -> tuple[str, list[str]]:
 def _stable_list(values: list[str]) -> list[str]:
     normalized = [_normalize_hint_text(value) for value in values]
     return sorted({value for value in normalized if value})
-
-
-def _normalize_filter_spec(filter_spec: FilterSpec | None) -> dict[str, Any] | None:
-    if filter_spec is None:
-        return None
-    data = filter_spec.model_dump(mode="python")
-    return {key: value for key, value in data.items() if value is not None}
-
-
-def _normalize_constraint_spec(constraints: ConstraintSpec | None) -> dict[str, Any]:
-    if constraints is None:
-        return {}
-    return constraints.model_dump(mode="python")
-
-
-def _normalize_join_path_spec(join_path: JoinPathSpec | None) -> dict[str, Any] | None:
-    if join_path is None:
-        return None
-    return join_path.model_dump(mode="python")
-
-
-def _exact_plan_basis(
-    *,
-    source_name: str,
-    metric_column: str,
-    aggregation: str,
-    group_column: str | None,
-    join_path: JoinPathSpec | None,
-    filter_spec: FilterSpec | None,
-    limit: int | None,
-    order: str,
-    constraints: ConstraintSpec,
-) -> dict[str, Any]:
-    return {
-        "source_name": source_name,
-        "metric_column": metric_column,
-        "aggregation": aggregation,
-        "group_column": group_column or "",
-        "join_path": _normalize_join_path_spec(join_path),
-        "filter": _normalize_filter_spec(filter_spec),
-        "limit": limit,
-        "order": order,
-        "constraints": _normalize_constraint_spec(constraints),
-    }
-
-
-def _immutable_plan_hash(*, schema_revision: str | None, basis: dict[str, Any]) -> str:
-    payload = {
-        "schema_revision": schema_revision or "",
-        "basis": basis,
-    }
-    return hashlib.sha256(
-        json.dumps(payload, sort_keys=True, default=str).encode()
-    ).hexdigest()[:24]
 
 
 def _exact_query_required_sources(payload: QueryRequest) -> list[str]:
@@ -3226,9 +3243,9 @@ def _intent_signature_payload(
 
 
 def _intent_signature(payload: dict[str, Any]) -> str:
-    return hashlib.sha256(
-        json.dumps(payload, sort_keys=True, default=str).encode()
-    ).hexdigest()[:24]
+    return hashlib.sha256(json.dumps(payload, sort_keys=True, default=str).encode()).hexdigest()[
+        :24
+    ]
 
 
 def _prune_resolve_cache(org_id: str, schema_revision: str) -> None:
@@ -3286,8 +3303,8 @@ def _dataset_exact_column_cache_get(
     cached = _DATASET_EXACT_COLUMN_CACHE.get(key)
     if cached is None:
         return None
-    cached["_ts"] = time.monotonic()  # type: ignore[index]
-    lookup = cached.get("lookup")  # type: ignore[assignment]
+    cached["_ts"] = time.monotonic()
+    lookup = cached.get("lookup")
     return lookup if isinstance(lookup, dict) else None
 
 
@@ -3298,7 +3315,7 @@ def _dataset_exact_column_cache_put(
     if len(_DATASET_EXACT_COLUMN_CACHE) >= _DATASET_EXACT_COLUMN_CACHE_MAX:
         oldest_key = min(
             _DATASET_EXACT_COLUMN_CACHE.items(),
-            key=lambda item: item[1].get("_ts", 0.0),
+            key=lambda item: float(item[1].get("_ts", 0.0) or 0.0),
         )[0]
         _DATASET_EXACT_COLUMN_CACHE.pop(oldest_key, None)
     _DATASET_EXACT_COLUMN_CACHE[key] = {"lookup": lookup, "_ts": time.monotonic()}
@@ -3319,522 +3336,6 @@ def _graph_nodes_from_cached_meta(
     return _graph_node_cache_put(cache_key, _graph_nodes_from_meta(schema_meta))
 
 
-class ConstraintSpec(BaseModel):
-    requires_derived: bool = Field(
-        default=False,
-        description="Reject if metric column is not a derived_measure (formula-proven).",
-    )
-    no_cross_source: bool = Field(
-        default=False,
-        description="Reject if query requires a cross-source join.",
-    )
-    min_column_confidence: float = Field(
-        default=0.0,
-        ge=0.0,
-        le=1.0,
-        description="Reject if column_confidence component < this value.",
-    )
-
-
-class MetricSpec(BaseModel):
-    """
-    Structural role target. The LLM selects based on what the user wants.
-
-    Use 'derived_measure' for revenue, spend, total value — the computed aggregate.
-    Use 'base_measure' for counts, quantities, discrete amounts.
-    Use 'unit_measure' for prices, rates, per-unit values.
-    Use 'ratio' for percentages, margins, fill rates.
-    Use 'metric' to let the engine pick the best numeric column.
-    """
-
-    role: str = Field(
-        default=DERIVED_MEASURE,
-        description=(
-            f"Structural role. One of: {', '.join(sorted(ALL_ROLES))}. "
-            "derived_measure = computed aggregate (revenue, total value). "
-            "base_measure = count/quantity. unit_measure = price/rate. "
-            "ratio = percentage/margin. metric = best numeric column."
-        ),
-    )
-    hint: str | None = Field(
-        default=None,
-        description=(
-            "Optional weak signal — a word from the user's question. "
-            "Used only as a tiebreaker when multiple columns share the same role. "
-            "Never the primary signal. Examples: 'revenue', 'quantity', 'price'."
-        ),
-    )
-
-
-class FilterSpec(BaseModel):
-    """Time or value filter."""
-
-    time_filter: str | None = Field(
-        default=None,
-        description=(
-            "Relative time window. One of: last_quarter, this_quarter, "
-            "last_month, this_month, last_year, this_year."
-        ),
-    )
-
-
-class JoinEdgeSpec(BaseModel):
-    """One explicit edge in a multi-hop join path."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    left_source: str = Field(..., description="Source on the left side of the join edge.")
-    right_source: str = Field(..., description="Source on the right side of the join edge.")
-    left_key: str = Field(..., description="Exact join key column in left_source.")
-    right_key: str = Field(..., description="Exact join key column in right_source.")
-    join_type: str = Field(
-        default="inner", description="Join type. Initial implementation supports inner."
-    )
-    min_confidence: float = Field(
-        default=0.0, ge=0.0, le=1.0, description="Minimum acceptable confidence for this hop."
-    )
-    expected_cardinality: str | None = Field(
-        default=None,
-        description=(
-            "Optional expected cardinality such as one_to_many, many_to_one, or many_to_many."
-        ),
-    )
-    allow_many_to_many: bool = Field(
-        default=False,
-        description="If false, planner/executor must reject many_to_many fanout on this hop.",
-    )
-
-
-class JoinPathSpec(BaseModel):
-    """Explicit multi-hop join contract replacing single-hop join fields."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    base_source: str = Field(
-        ..., description="Source that owns the metric column and anchors the path."
-    )
-    group_source: str | None = Field(
-        default=None,
-        description=(
-            "Final source expected to provide the group column, if different from base_source."
-        ),
-    )
-    edges: list[JoinEdgeSpec] = Field(
-        default_factory=list,
-        description="Ordered join edges from base_source toward the dimension source.",
-    )
-    max_hops: int = Field(
-        default=4, ge=1, le=4, description="Maximum allowed join hops for this request."
-    )
-    min_path_confidence: float = Field(
-        default=0.0,
-        ge=0.0,
-        le=1.0,
-        description="Minimum acceptable composed confidence across the full join path.",
-    )
-    reject_on_ambiguity: bool = Field(
-        default=True,
-        description=(
-            "Reject if more than one viable path exists with insufficient score separation."
-        ),
-    )
-    reject_on_fanout: bool = Field(
-        default=True,
-        description="Reject if estimated path fanout exceeds safe execution thresholds.",
-    )
-
-
-class ResolvedPlan(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    source_name: str
-    metric_column: str
-    aggregation: str = Field(default="sum", description="sum | avg | count | max | min")
-    group_column: str | None = None
-    join_path: JoinPathSpec | None = None
-    filter: FilterSpec | None = None
-    limit: int | None = None
-    order: str = Field(default="desc", description="desc | asc")
-    constraints: ConstraintSpec = Field(default_factory=ConstraintSpec)
-    schema_revision: str
-
-
-class ResolveRequest(BaseModel):
-    """Bounded planning request that returns an exact executable plan."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    dataset_id: str | None = Field(
-        default=None,
-        description=(
-            "Public dataset ID alias for a registered source. "
-            "Required unless allow_org_scope=true or only one visible dataset exists."
-        ),
-    )
-    metric: MetricSpec = Field(default_factory=MetricSpec)
-    group_by: list[str] = Field(default_factory=list)
-    preferred_source: str | None = Field(default=None)
-    reject_on_ambiguity: bool = Field(default=False)
-    min_source_confidence: float = Field(default=0.0, ge=0.0, le=1.0)
-    aggregation: str = Field(default="sum", description="sum | avg | count | max | min")
-    filter: FilterSpec | None = None
-    limit: int | None = Field(default=None, description="Top-N limit")
-    order: str = Field(default="desc", description="desc | asc")
-    constraints: ConstraintSpec = Field(default_factory=ConstraintSpec)
-    raw_text: str | None = Field(
-        default=None,
-        description=(
-            "Optional non-authoritative raw text hint. "
-            "Structured intent remains the source of truth."
-        ),
-    )
-    include_explanation: bool = Field(default=False)
-    allow_org_scope: bool = Field(
-        default=False,
-        description="When true, resolve can consider all visible datasets in the org.",
-    )
-
-
-class QueryRequest(BaseModel):
-    """
-    Structured query execution request.
-
-    ═══════════════════════════════════════════════════════════
-    PRIMARY PATH  —  Exact spec  (use after reading the schema)
-    ═══════════════════════════════════════════════════════════
-    The correct flow:
-      1. Call POST /v1/sources/register or POST /v1/sources/schema
-      2. LLM reads the returned schema (column names, roles, formulas)
-      3. LLM sends exact column names — Mojo validates and executes
-
-    Example (top 5 customers by revenue):
-      {
-        "source_name": "S0",
-        "metric_column": "measure_total",
-        "group_column": "dimension_label",
-        "aggregation": "sum",
-        "limit": 5
-      }
-
-    For multi-hop joins:
-      {
-        "source_name": "S0",
-        "metric_column": "measure_total",
-        "group_column": "dimension_label",
-        "join_path": {
-          "base_source": "S0",
-          "group_source": "S2",
-          "edges": [
-            {
-              "left_source": "S0",
-              "right_source": "S1",
-              "left_key": "k01_left",
-              "right_key": "k01_right"
-            },
-            {
-              "left_source": "S1",
-              "right_source": "S2",
-              "left_key": "k12_left",
-              "right_key": "k12_right"
-            }
-          ]
-        },
-        "aggregation": "sum"
-      }
-
-    ═══════════════════════════════════════════════════════════
-    FALLBACK PATH  —  Hint spec  (when schema is not yet known)
-    ═══════════════════════════════════════════════════════════
-    The engine resolves source and columns from structural role hints.
-    Use this ONLY for exploratory queries. Always migrate to exact spec
-    once you have the schema — it is faster and never ambiguous.
-
-    Example:
-      {
-        "metric": {"role": "derived_measure", "hint": "total value"},
-        "group_by": ["segment"],
-        "aggregation": "sum",
-        "limit": 5
-      }
-    """
-
-    model_config = ConfigDict(extra="forbid")
-
-    dataset_id: str | None = Field(
-        default=None,
-        description=(
-            "Public dataset ID alias for a registered source. "
-            "When provided, query execution is scoped to that one registered dataset."
-        ),
-    )
-
-    # ── Exact spec (primary path) ─────────────────────────────────────────
-    source_name: str | None = Field(
-        default=None,
-        description=(
-            "EXACT source name from the registry "
-            "(e.g. 'Bookings'). Bypasses source resolver entirely. "
-            "Get this from POST /v1/sources/schema or the registration response."
-        ),
-    )
-    metric_column: str | None = Field(
-        default=None,
-        description=(
-            "EXACT column name for the metric "
-            "(e.g. 'EXT_PRICE'). Bypasses column resolver. "
-            "The engine validates this column exists in source_name."
-        ),
-    )
-    group_column: str | None = Field(
-        default=None,
-        description=(
-            "EXACT column name for group-by "
-            "(e.g. 'CUSTOMER'). Bypasses group resolver. "
-            "Can be in source_name or in the terminal source of join_path."
-        ),
-    )
-    join_path: JoinPathSpec | None = Field(
-        default=None,
-        description=(
-            "Explicit multi-hop join graph. Breaking replacement for single-hop join fields. "
-            "Supports 1-hop to 4-hop paths with per-edge constraints "
-            "and path-level confidence gates."
-        ),
-    )
-
-    # ── Fallback / hint spec ──────────────────────────────────────────────
-    sources: list[DataSource] = Field(
-        default=[],
-        description="Raw data sources (inline CSV/JSON). Usually empty — use registry.",
-    )
-    metric: MetricSpec = Field(default_factory=MetricSpec)
-    group_by: list[str] = Field(
-        default=[],
-        description=(
-            "Hint mode only: dimension words from the user's question "
-            "(e.g. ['customer', 'region']). Ignored when group_column is set."
-        ),
-    )
-    preferred_source: str | None = Field(
-        default=None,
-        description=(
-            "Hint mode only: source name the LLM believes is correct. "
-            "Hard-locks the source resolver. Ignored when source_name is set."
-        ),
-    )
-    reject_on_ambiguity: bool = Field(
-        default=False,
-        description=(
-            "Hint mode only: when True and resolver confidence < 0.40, "
-            "return null result with source candidates instead of guessing."
-        ),
-    )
-    min_source_confidence: float = Field(
-        default=0.0,
-        ge=0.0,
-        le=1.0,
-        description="Hint mode only: minimum resolver confidence threshold.",
-    )
-
-    # ── Execution spec (shared) ──────────────────────────────────────────
-    aggregation: str = Field(default="sum", description="sum | avg | count | max | min")
-    filter: FilterSpec | None = None
-    limit: int | None = Field(default=None, description="Top-N limit")
-    order: str = Field(default="desc", description="desc | asc")
-    min_confidence: float = Field(default=0.5, ge=0.0, le=1.0)
-    constraints: ConstraintSpec = Field(default_factory=ConstraintSpec)
-    resolved_plan: ResolvedPlan | None = Field(
-        default=None,
-        description="Exact plan returned by POST /v1/resolve.",
-    )
-
-
-class CandidateColumn(BaseModel):
-    source: str
-    column: str
-    role: str
-    magnitude: str
-    formula: str | None
-    confidence: float
-    score_components: dict[str, float] = Field(default_factory=dict)
-    notes: list[str] = Field(default_factory=list)
-
-
-class QueryResponse(BaseModel):
-    query_id: str
-    result: Any
-    result_type: str  # scalar | table | none
-    confidence: float
-    plan: list[str]  # reasoning chain
-    resolved_column: str
-    resolved_role: str
-    resolved_source: str
-    row_count: int
-    candidates: list[CandidateColumn]  # all scored column candidates
-    source_scores: dict[str, float]  # source resolver scores — for LLM disambiguation
-    ambiguous: bool  # True when source resolver confidence < 0.40
-    exact_spec: bool  # True when LLM provided exact source+column names
-    explanation: list[str] = []  # human-readable execution explanation
-    latency_ms: float
-    decision_path: str
-    plan_hash: str
-    schema_revision: str | None = None
-    validated: bool
-    deterministic_scope: str
-    confidence_source: str
-    clarification_required: bool = False
-    rejection_reason: str | None = None
-    request_id: str | None = None
-    source_set: list[str] = []
-    join_path: list[dict[str, Any]] = []
-    planner_mode: str = "planner_hint"
-
-
-class ResolveResponse(BaseModel):
-    resolved_plan: ResolvedPlan | None = None
-    confidence: float
-    plan: list[str]
-    explanation: list[str] = Field(default_factory=list)
-    resolved_column: str = ""
-    resolved_role: str = ""
-    resolved_source: str = ""
-    candidates: list[CandidateColumn] = Field(default_factory=list)
-    source_scores: dict[str, float] = Field(default_factory=dict)
-    latency_ms: float
-    decision_path: str
-    plan_hash: str | None = None
-    schema_revision: str
-    validated: bool
-    deterministic_scope: str
-    confidence_source: str
-    clarification_required: bool = False
-    rejection_reason: str | None = None
-    request_id: str | None = None
-    intent_signature: str
-    source_set: list[str] = Field(default_factory=list)
-    join_path: list[dict[str, Any]] = Field(default_factory=list)
-    planner_mode: str = "registry_planner"
-
-
-QueryPayload = QueryRequest
-
-
-_DECISION_AUTO_ACCEPT_CONFIDENCE = 0.85
-_DECISION_CLARIFY_CONFIDENCE = 0.70
-_DECISION_MIN_CANDIDATE_GAP = 0.10
-_COUNT_ANCHOR_ROLE_PRIORITY = (
-    "identifier",
-    "base_measure",
-    "metric",
-    "derived_measure",
-    "unit_measure",
-    "text",
-    "category",
-    "time",
-)
-
-
-def _candidate_confidence(candidate: CandidateColumn | dict[str, Any]) -> float:
-    if isinstance(candidate, CandidateColumn):
-        return float(candidate.confidence)
-    return float(candidate.get("confidence", 0.0) or 0.0)
-
-
-def _candidate_confidence_gap(
-    candidates: list[CandidateColumn] | list[dict[str, Any]],
-) -> float | None:
-    if len(candidates) < 2:
-        return None
-    ordered = sorted(candidates, key=_candidate_confidence, reverse=True)
-    return round(_candidate_confidence(ordered[0]) - _candidate_confidence(ordered[1]), 3)
-
-
-def _classify_query_rejection(error_text: str | None) -> str | None:
-    if not error_text:
-        return None
-
-    lowered = error_text.lower()
-    if any(token in lowered for token in ("stale", "freshness")):
-        return "stale_source"
-    if any(token in lowered for token in ("verify", "verification", "constraint")):
-        return "plan_verification_failed"
-    if any(
-        token in lowered
-        for token in (
-            "fanout",
-            "many_to_many",
-            "join path",
-            "join_path",
-            "join key",
-            "join candidates",
-            "no join path",
-            "ambiguous multi-hop",
-            "cross-source",
-        )
-    ):
-        return "join_ambiguity"
-    if any(token in lowered for token in ("schema", "column", "dimension", "source", "metadata")):
-        return "schema_incomplete"
-    return "schema_unresolved"
-
-
-def _decision_contract_flags(
-    confidence: float,
-    candidates: list[CandidateColumn] | list[dict[str, Any]],
-    *,
-    error_text: str | None = None,
-) -> tuple[bool, bool, str | None]:
-    rejection_reason = _classify_query_rejection(error_text)
-    if rejection_reason is not None:
-        return False, False, rejection_reason
-    if confidence < _DECISION_CLARIFY_CONFIDENCE:
-        return False, False, "schema_unresolved"
-    gap = _candidate_confidence_gap(candidates)
-    if confidence < _DECISION_AUTO_ACCEPT_CONFIDENCE:
-        return False, True, None
-    if gap is not None and gap < _DECISION_MIN_CANDIDATE_GAP:
-        return False, True, None
-    return True, False, None
-
-
-def _select_count_anchor_column(schema_meta: dict[str, Any]) -> tuple[str, str] | None:
-    columns = schema_meta.get("columns") or []
-    normalized = [
-        column
-        for column in columns
-        if str(column.get("name", "")).strip()
-    ]
-    if not normalized:
-        return None
-
-    for role in _COUNT_ANCHOR_ROLE_PRIORITY:
-        for column in normalized:
-            if str(column.get("role", "")).strip() == role:
-                return str(column["name"]), role
-
-    first = normalized[0]
-    fallback_role = str(first.get("role", "")).strip() or "metric"
-    if fallback_role not in _COUNT_ANCHOR_ROLE_PRIORITY:
-        fallback_role = "metric"
-    return str(first["name"]), fallback_role
-
-
-def _query_plan_hash(
-    *,
-    decision_path: str,
-    schema_revision: str | None,
-    basis: dict[str, Any],
-) -> str:
-    payload = {
-        "decision_path": decision_path,
-        "schema_revision": schema_revision or "",
-        "basis": basis,
-    }
-    return hashlib.sha256(
-        json.dumps(payload, sort_keys=True, default=str).encode()
-    ).hexdigest()[:24]
-
-
 def _inline_schema_revision(graph: SchemaGraph) -> str:
     payload = {
         src: [
@@ -3850,421 +3351,20 @@ def _inline_schema_revision(graph: SchemaGraph) -> str:
         ]
         for src, nodes in sorted(graph.items())
     }
-    return hashlib.sha256(
-        json.dumps(payload, sort_keys=True, default=str).encode()
-    ).hexdigest()[:24]
-
-
-def _normalize_candidates(
-    candidates: list[CandidateColumn] | list[dict[str, Any]],
-) -> list[CandidateColumn]:
-    normalized: list[CandidateColumn] = []
-    for candidate in candidates:
-        normalized.append(
-            candidate
-            if isinstance(candidate, CandidateColumn)
-            else CandidateColumn(**candidate)
-        )
-    return normalized
-
-
-def _resolved_source_set(resolved_source: str) -> list[str]:
-    return _dedupe_source_values(resolved_source.split("⋈"))
-
-
-def _dedupe_source_values(values: list[str]) -> list[str]:
-    seen: set[str] = set()
-    ordered: list[str] = []
-    for value in values:
-        normalized = value.strip()
-        if not normalized or normalized in seen:
-            continue
-        seen.add(normalized)
-        ordered.append(normalized)
-    return ordered
-
-
-def _normalize_join_path(join_path: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
-    return [dict(hop) for hop in (join_path or []) if isinstance(hop, dict)]
-
-
-def _build_query_response(
-    *,
-    query_id: str,
-    request_id: str | None,
-    result: Any,
-    result_type: str,
-    confidence: float,
-    plan: list[str],
-    resolved_column: str,
-    resolved_role: str,
-    resolved_source: str,
-    row_count: int,
-    candidates: list[CandidateColumn] | list[dict[str, Any]],
-    source_scores: dict[str, float],
-    ambiguous: bool,
-    exact_spec: bool,
-    explanation: list[str] | None,
-    latency_ms: float,
-    decision_path: str,
-    schema_revision: str | None,
-    validated: bool,
-    confidence_source: str,
-    plan_basis: dict[str, Any],
-    clarification_required: bool = False,
-    rejection_reason: str | None = None,
-    deterministic_scope: str | None = None,
-    source_set: list[str] | None = None,
-    join_path: list[dict[str, Any]] | None = None,
-    planner_mode: str | None = None,
-    plan_hash_override: str | None = None,
-) -> QueryResponse:
-    normalized_candidates = _normalize_candidates(candidates)
-    resolved_sources = source_set or _resolved_source_set(resolved_source)
-    normalized_join_path = _normalize_join_path(join_path)
-    response_planner_mode = planner_mode or ("exact_spec" if exact_spec else decision_path)
-    plan_hash = plan_hash_override or _query_plan_hash(
-        decision_path=decision_path,
-        schema_revision=schema_revision,
-        basis=plan_basis,
-    )
-    response = QueryResponse(
-        query_id=query_id,
-        result=result,
-        result_type=result_type,
-        confidence=confidence,
-        plan=plan,
-        resolved_column=resolved_column,
-        resolved_role=resolved_role,
-        resolved_source=resolved_source,
-        row_count=row_count,
-        candidates=normalized_candidates,
-        source_scores=source_scores,
-        ambiguous=ambiguous,
-        exact_spec=exact_spec,
-        explanation=explanation or [],
-        latency_ms=latency_ms,
-        decision_path=decision_path,
-        plan_hash=plan_hash,
-        schema_revision=schema_revision,
-        validated=validated,
-        deterministic_scope=(
-            deterministic_scope
-            or ("verified_execution" if validated else "planning_only")
-        ),
-        confidence_source=confidence_source,
-        clarification_required=clarification_required,
-        rejection_reason=rejection_reason,
-        request_id=request_id,
-        source_set=resolved_sources,
-        join_path=normalized_join_path,
-        planner_mode=response_planner_mode,
-    )
-    logger.info(
-        "query_response",
-        request_id=request_id,
-        query_id=query_id,
-        plan_hash=plan_hash,
-        schema_revision=schema_revision,
-        decision_path=decision_path,
-        validated=validated,
-        clarification_required=clarification_required,
-        rejection_reason=rejection_reason,
-        confidence=round(confidence, 3),
-        exact_spec=exact_spec,
-        resolved_source=resolved_source,
-        source_set=resolved_sources,
-        planner_mode=response_planner_mode,
-    )
-    return response
-
-
-def _build_resolve_response(
-    *,
-    resolved_plan: ResolvedPlan | None,
-    confidence: float,
-    plan: list[str],
-    explanation: list[str] | None,
-    resolved_column: str,
-    resolved_role: str,
-    resolved_source: str,
-    candidates: list[CandidateColumn] | list[dict[str, Any]],
-    source_scores: dict[str, float],
-    latency_ms: float,
-    schema_revision: str,
-    validated: bool,
-    confidence_source: str,
-    request_id: str | None,
-    intent_signature: str,
-    clarification_required: bool = False,
-    rejection_reason: str | None = None,
-    source_set: list[str] | None = None,
-    join_path: list[dict[str, Any]] | None = None,
-    planner_mode: str = "registry_planner",
-) -> ResolveResponse:
-    normalized_candidates = _normalize_candidates(candidates)[:_MAX_RESOLVE_CANDIDATES]
-    normalized_source_scores = dict(
-        sorted(
-            source_scores.items(),
-            key=lambda item: item[1],
-            reverse=True,
-        )[:_MAX_RESOLVE_SOURCE_SCORES]
-    )
-    exact_basis = (
-        _exact_plan_basis(
-            source_name=resolved_plan.source_name,
-            metric_column=resolved_plan.metric_column,
-            aggregation=resolved_plan.aggregation,
-            group_column=resolved_plan.group_column,
-            join_path=resolved_plan.join_path,
-            filter_spec=resolved_plan.filter,
-            limit=resolved_plan.limit,
-            order=resolved_plan.order,
-            constraints=resolved_plan.constraints,
-        )
-        if resolved_plan is not None
-        else None
-    )
-    return ResolveResponse(
-        resolved_plan=resolved_plan,
-        confidence=confidence,
-        plan=plan,
-        explanation=explanation or [],
-        resolved_column=resolved_column,
-        resolved_role=resolved_role,
-        resolved_source=resolved_source,
-        candidates=normalized_candidates,
-        source_scores=normalized_source_scores,
-        latency_ms=latency_ms,
-        decision_path="resolve",
-        plan_hash=(
-            _immutable_plan_hash(schema_revision=schema_revision, basis=exact_basis)
-            if exact_basis is not None
-            else None
-        ),
-        schema_revision=schema_revision,
-        validated=validated,
-        deterministic_scope="resolved_execution_plan" if validated else "planning_only",
-        confidence_source=confidence_source,
-        clarification_required=clarification_required,
-        rejection_reason=rejection_reason,
-        request_id=request_id,
-        intent_signature=intent_signature,
-        source_set=source_set or _resolved_source_set(resolved_source),
-        join_path=_normalize_join_path(join_path),
-        planner_mode=planner_mode,
-    )
-
-
-def _resolve_to_query_response(
-    *,
-    query_id: str,
-    resolve_response: ResolveResponse,
-) -> QueryResponse:
-    return _build_query_response(
-        query_id=query_id,
-        request_id=resolve_response.request_id,
-        result=None,
-        result_type="none",
-        confidence=resolve_response.confidence,
-        plan=resolve_response.plan,
-        resolved_column=resolve_response.resolved_column,
-        resolved_role=resolve_response.resolved_role,
-        resolved_source=resolve_response.resolved_source,
-        row_count=0,
-        candidates=resolve_response.candidates,
-        source_scores=resolve_response.source_scores,
-        ambiguous=True,
-        exact_spec=False,
-        explanation=resolve_response.explanation,
-        latency_ms=resolve_response.latency_ms,
-        decision_path="resolve",
-        schema_revision=resolve_response.schema_revision,
-        validated=False,
-        confidence_source=resolve_response.confidence_source,
-        plan_basis={"intent_signature": resolve_response.intent_signature},
-        clarification_required=resolve_response.clarification_required,
-        rejection_reason=resolve_response.rejection_reason,
-        deterministic_scope="planning_only",
-        source_set=resolve_response.source_set,
-        join_path=resolve_response.join_path,
-        planner_mode=resolve_response.planner_mode,
-        plan_hash_override=resolve_response.plan_hash,
-    )
-
-
-def _compute_exact_confidence(
-    metric_node: ColumnNode,
-    aggregation: str,
-    join_confidence: float = 1.0,
-) -> tuple[float, float, float]:
-    """
-    Returns (final_confidence, col_conf, agg_conf).
-
-    Confidence = column_confidence × aggregation_confidence × join_confidence
-
-    column_confidence — how structurally certain we are this is the right column:
-      derived_measure with formula → 1.00
-      derived_measure no formula   → 0.90
-      base_measure / unit_measure  → 0.85
-      component                    → 0.80
-      metric (unclassified)        → 0.75
-      anything else                → 0.65
-
-    aggregation_confidence — does the aggregation make sense for this role:
-      sum   on derived_measure / component  → 1.00
-      sum   on base_measure / unit_measure  → 0.90
-      sum   on metric                       → 0.85
-      avg   on unit_measure / metric        → 1.00
-      avg   on derived_measure              → 0.85
-      avg   on base_measure                 → 0.80
-      count (always valid)                  → 0.95
-      max/min (always valid)                → 0.95
-      anything else                         → 0.80
-
-    join_confidence — from the join key registry confidence (0.0–1.0).
-      No join → 1.0
-    """
-    role = metric_node.role
-    has_formula = bool(metric_node.formula)
-
-    # column_confidence
-    if role == "derived_measure":
-        col_conf = 1.00 if has_formula else 0.90
-    elif role in ("base_measure", "unit_measure"):
-        col_conf = 0.85
-    elif role == "component":
-        col_conf = 0.80
-    elif role == "metric":
-        col_conf = 0.75
-    else:
-        col_conf = 0.65
-
-    # aggregation_confidence
-    agg = aggregation.lower()
-    if agg == "count":
-        agg_conf = 0.95
-    elif agg in ("max", "min"):
-        agg_conf = 0.95
-    elif agg == "sum":
-        if role in ("derived_measure", "component"):
-            agg_conf = 1.00
-        elif role in ("base_measure", "unit_measure"):
-            agg_conf = 0.90
-        else:
-            agg_conf = 0.85
-    elif agg == "avg":
-        if role in ("unit_measure", "metric"):
-            agg_conf = 1.00
-        elif role == "derived_measure":
-            agg_conf = 0.85
-        else:
-            agg_conf = 0.80
-    else:
-        agg_conf = 0.80
-
-    final = round(col_conf * agg_conf * join_confidence, 3)
-    return final, col_conf, agg_conf
-
-
-def _resolve_entry_ready(entry: dict[str, Any]) -> bool:
-    return bool(entry.get("schema_revision")) and bool(entry.get("decision_mode"))
-
-
-def _resolve_scope_entries(
-    *,
-    org_id: str,
-    auth: AuthContext,
-    dataset_id: str | None,
-    allow_org_scope: bool,
-    request_id: str | None,
-) -> tuple[list[dict[str, Any]], str | None]:
-    from apps.api_server.services import source_registry as _sreg_visible
-    from apps.api_server.services.data_visibility import (
-        filter_visible_datasets,
-        get_visible_dataset_entry,
-    )
-
-    if dataset_id:
-        dataset_entry = get_visible_dataset_entry(org_id, dataset_id, auth)
-        if dataset_entry is None:
-            raise _http_error(
-                404,
-                code="not_found",
-                message=f"Dataset '{dataset_id}' not found.",
-                request_id=request_id,
-            )
-        return [dataset_entry], dataset_id
-    visible_entries = filter_visible_datasets(_sreg_visible.list_sources(org_id), auth)
-    if allow_org_scope:
-        return visible_entries, None
-    if len(visible_entries) == 1:
-        only_entry = visible_entries[0]
-        return [only_entry], str(only_entry.get("id") or "")
-    raise _http_error(
-        422,
-        code="dataset_scope_required",
-        message=(
-            "resolve requires dataset_id unless allow_org_scope=true "
-            "or only one visible dataset exists."
-        ),
-        request_id=request_id,
-    )
-
-
-def _resolved_plan_current_schema_revision(
-    *,
-    org_id: str,
-    resolved_plan: ResolvedPlan,
-    dataset_id: str | None = None,
-    visible_entries: list[dict[str, Any]] | None = None,
-) -> str:
-    from apps.api_server.services import source_registry as _sreg_resolved
-
-    join_edges = getattr(resolved_plan.join_path, "edges", None)
-    if join_edges:
-        return _sreg_resolved.schema_revision(org_id)
-
-    source_id = dataset_id
-    if not source_id:
-        matched_entry: dict[str, Any] | None = None
-        if visible_entries is not None:
-            matched_entry = next(
-                (
-                    entry
-                    for entry in visible_entries
-                    if str(entry.get("name") or "") == resolved_plan.source_name
-                ),
-                None,
-            )
-        else:
-            matched_entry = _sreg_resolved.get_source_entry_by_name(
-                org_id,
-                resolved_plan.source_name,
-            )
-        if matched_entry is not None:
-            source_id = str(matched_entry.get("id") or "")
-
-    if source_id:
-        return _sreg_resolved.source_schema_revision(org_id, source_id)
-    return _sreg_resolved.schema_revision(org_id)
+    return hashlib.sha256(json.dumps(payload, sort_keys=True, default=str).encode()).hexdigest()[
+        :24
+    ]
 
 
 def _find_exact_dataset_column(
     schema_meta: dict[str, Any],
     normalized_hint: str,
 ) -> dict[str, Any] | None:
-    if not normalized_hint:
-        return None
-
-    matches = [
-        column
-        for column in (schema_meta.get("columns") or [])
-        if _normalize_hint_text(str(column.get("name", ""))) == normalized_hint
-    ]
-    if len(matches) == 1:
-        return matches[0]
-    return None
+    return _find_exact_dataset_column_impl(
+        schema_meta=schema_meta,
+        normalized_hint=normalized_hint,
+        normalize_hint_text=_normalize_hint_text,
+    )
 
 
 def _dataset_exact_column_lookup(
@@ -4274,24 +3374,15 @@ def _dataset_exact_column_lookup(
     schema_revision: str,
     schema_meta: dict[str, Any],
 ) -> dict[str, dict[str, Any] | None]:
-    cache_key = (org_id, dataset_id, schema_revision)
-    cached = _dataset_exact_column_cache_get(cache_key)
-    if cached is not None:
-        return cached
-
-    lookup: dict[str, dict[str, Any] | None] = {}
-    for column in schema_meta.get("columns") or []:
-        normalized_name = _normalize_hint_text(str(column.get("name", "")))
-        if not normalized_name:
-            continue
-        existing = lookup.get(normalized_name)
-        if existing is None and normalized_name in lookup:
-            continue
-        if existing is None and normalized_name not in lookup:
-            lookup[normalized_name] = column
-        else:
-            lookup[normalized_name] = None
-    return _dataset_exact_column_cache_put(cache_key, lookup)
+    return _dataset_exact_column_lookup_impl(
+        org_id=org_id,
+        dataset_id=dataset_id,
+        schema_revision=schema_revision,
+        schema_meta=schema_meta,
+        dataset_exact_column_cache_get=_dataset_exact_column_cache_get,
+        dataset_exact_column_cache_put=_dataset_exact_column_cache_put,
+        normalize_hint_text=_normalize_hint_text,
+    )
 
 
 def _find_exact_dataset_column_cached(
@@ -4302,35 +3393,14 @@ def _find_exact_dataset_column_cached(
     schema_meta: dict[str, Any],
     normalized_hint: str,
 ) -> dict[str, Any] | None:
-    if not normalized_hint:
-        return None
-    return _dataset_exact_column_lookup(
+    return _find_exact_dataset_column_cached_impl(
         org_id=org_id,
         dataset_id=dataset_id,
         schema_revision=schema_revision,
         schema_meta=schema_meta,
-    ).get(normalized_hint)
-
-
-def _dataset_candidate_payload(
-    *,
-    source_name: str,
-    column_name: str,
-    node: ColumnNode,
-    confidence: float,
-    notes: list[str],
-    score_components: dict[str, float] | None = None,
-) -> dict[str, Any]:
-    return {
-        "source": source_name,
-        "column": column_name,
-        "role": node.role,
-        "magnitude": node.magnitude_class,
-        "formula": node.formula,
-        "confidence": round(confidence, 3),
-        "score_components": score_components or {},
-        "notes": list(dict.fromkeys(notes)),
-    }
+        normalized_hint=normalized_hint,
+        dataset_exact_column_lookup_fn=_dataset_exact_column_lookup,
+    )
 
 
 async def _get_resolve_dataset_meta(
@@ -4339,43 +3409,16 @@ async def _get_resolve_dataset_meta(
     dataset_id: str,
     schema_revision: str,
 ) -> tuple[dict[str, Any] | None, dict[str, ColumnNode] | None]:
-    async with _CACHE_LOCK:
-        cached = _SOURCE_CACHE.get(dataset_id)
-        if cached and cached.is_fresh():
-            cached.touch()
-            schema_meta = cached.schema_meta
-            if not schema_meta and cached.parquet_schema_meta:
-                parsed = json.loads(cached.parquet_schema_meta)
-                if isinstance(parsed, dict):
-                    cached.schema_meta = parsed
-                    schema_meta = parsed
-            graph_nodes = cached.graph_nodes or None
-            if graph_nodes is None and isinstance(schema_meta, dict):
-                graph_nodes = _graph_nodes_from_cached_meta(
-                    org_id=org_id,
-                    dataset_id=dataset_id,
-                    schema_revision=schema_revision,
-                    schema_meta=schema_meta,
-                )
-                cached.graph_nodes = graph_nodes
-            return (
-                schema_meta if isinstance(schema_meta, dict) else None,
-                graph_nodes,
-            )
-
     from apps.api_server.services import source_registry as _sreg_dataset_meta
 
-    schema_meta = _sreg_dataset_meta.get_source_meta(org_id, dataset_id)
-    if not isinstance(schema_meta, dict):
-        return None, None
-    return (
-        schema_meta,
-        _graph_nodes_from_cached_meta(
-            org_id=org_id,
-            dataset_id=dataset_id,
-            schema_revision=schema_revision,
-            schema_meta=schema_meta,
-        ),
+    return await _get_resolve_dataset_meta_impl(
+        org_id=org_id,
+        dataset_id=dataset_id,
+        schema_revision=schema_revision,
+        cache_lock=_CACHE_LOCK,
+        source_cache=_SOURCE_CACHE,
+        graph_nodes_from_cached_meta=_graph_nodes_from_cached_meta,
+        get_source_meta_fn=_sreg_dataset_meta.get_source_meta,
     )
 
 
@@ -4394,267 +3437,31 @@ def _resolve_single_dataset_fast_path(
     intent_signature: str,
     started_at: float,
 ) -> ResolveResponse:
-    source_name = str(dataset_entry.get("name", "") or "")
-    plan = [
-        f"Resolve scope: dataset={dataset_id}",
-        "Planner mode: dataset_meta_fast_path",
-    ]
-
-    if not source_name or not isinstance(schema_meta, dict):
-        return _build_resolve_response(
-            resolved_plan=None,
-            confidence=0.0,
-            plan=plan + ["Dataset metadata missing for single-source resolve."],
-            explanation=[],
-            resolved_column="",
-            resolved_role="",
-            resolved_source=source_name,
-            candidates=[],
-            source_scores={source_name: 1.0} if source_name else {},
-            latency_ms=round((time.monotonic() - started_at) * 1000, 1),
-            schema_revision=schema_revision,
-            validated=False,
-            confidence_source="dataset_metadata_confidence",
-            request_id=request_id,
-            intent_signature=intent_signature,
-            clarification_required=False,
-            rejection_reason="schema_incomplete",
-            source_set=[source_name] if source_name else [],
-            join_path=[],
-            planner_mode="dataset_meta_fast_path",
-        )
-
-    graph_nodes = cached_nodes or _graph_nodes_from_meta(schema_meta)
-    graph = {source_name: graph_nodes}
-    nodes = graph.get(source_name, {})
-    if not nodes:
-        return _build_resolve_response(
-            resolved_plan=None,
-            confidence=0.0,
-            plan=plan + ["Dataset schema graph is empty."],
-            explanation=[],
-            resolved_column="",
-            resolved_role="",
-            resolved_source=source_name,
-            candidates=[],
-            source_scores={source_name: 1.0},
-            latency_ms=round((time.monotonic() - started_at) * 1000, 1),
-            schema_revision=schema_revision,
-            validated=False,
-            confidence_source="dataset_metadata_confidence",
-            request_id=request_id,
-            intent_signature=intent_signature,
-            clarification_required=False,
-            rejection_reason="schema_incomplete",
-            source_set=[source_name],
-            join_path=[],
-            planner_mode="dataset_meta_fast_path",
-        )
-
-    normalized_metric_hint = _normalize_hint_text(metric_hint)
-    normalized_group_hints = _stable_list(combined_group_by)
-    metric_candidates: list[dict[str, Any]] = []
-    validation_notes: list[str] = []
-
-    metric_col = ""
-    metric_role = payload.metric.role
-    metric_conf = 0.0
-
-    if payload.aggregation == "count":
-        count_anchor = _select_count_anchor_column(schema_meta)
-        if count_anchor is None:
-            validation_notes.append("Dataset metadata is missing a COUNT anchor column.")
-        else:
-            metric_col, metric_role = count_anchor
-            metric_conf = 1.0
-            metric_node = nodes.get(metric_col)
-            if metric_node is not None:
-                metric_candidates = [
-                    _dataset_candidate_payload(
-                        source_name=source_name,
-                        column_name=metric_col,
-                        node=metric_node,
-                        confidence=1.0,
-                        notes=["count-anchor", "dataset-scope"],
-                        score_components={"count_anchor": 1.0},
-                    )
-                ]
-            plan.append(f"COUNT anchor fallback: {source_name}.{metric_col} ({metric_role})")
-    else:
-        exact_metric = _find_exact_dataset_column_cached(
-            org_id=org_id,
-            dataset_id=dataset_id,
-            schema_revision=schema_revision,
-            schema_meta=schema_meta,
-            normalized_hint=normalized_metric_hint,
-        )
-        if exact_metric is not None:
-            exact_metric_name = str(exact_metric.get("name", "") or "")
-            exact_metric_node = nodes.get(exact_metric_name)
-            if exact_metric_node is None:
-                validation_notes.append(
-                    "Dataset metadata column "
-                    f"'{exact_metric_name}' is not available in the schema graph."
-                )
-            elif not exact_metric_node.is_numeric:
-                validation_notes.append(
-                    f"Dataset column '{exact_metric_name}' is not numeric "
-                    "and cannot be used as a metric."
-                )
-            else:
-                metric_col = exact_metric_name
-                metric_role = exact_metric_node.role
-                metric_conf = 1.0
-                metric_candidates = [
-                    _dataset_candidate_payload(
-                        source_name=source_name,
-                        column_name=metric_col,
-                        node=exact_metric_node,
-                        confidence=1.0,
-                        notes=["exact-column-match", "dataset-scope"],
-                        score_components={"exact_match": 1.0},
-                    )
-                ]
-                plan.append(
-                    f"Metric exact match: {source_name}.{metric_col} ({metric_role})"
-                )
-        if not metric_col:
-            hint_tokens = set(re.findall(r"[a-z0-9]+", normalized_metric_hint.lower()))
-            metric_src, resolved_metric_col, resolved_metric_conf, metric_candidates = (
-                resolve_metric_column(
-                    payload.metric.role,
-                    hint_tokens,
-                    graph,
-                    source_name,
-                )
-            )
-            if metric_src and resolved_metric_col:
-                metric_col = resolved_metric_col
-                metric_conf = resolved_metric_conf
-                metric_role = (
-                    str(metric_candidates[0]["role"])
-                    if metric_candidates
-                    else payload.metric.role
-                )
-                plan.append(
-                    f"Metric resolved: {metric_src}.{metric_col} ({metric_role})"
-                )
-            else:
-                validation_notes.append(
-                    "No dataset-scoped metric column found for "
-                    f"hint='{metric_hint or payload.metric.role}'."
-                )
-
-    group_col: str | None = None
-    group_conf = 1.0
-    if normalized_group_hints:
-        exact_group = _find_exact_dataset_column_cached(
-            org_id=org_id,
-            dataset_id=dataset_id,
-            schema_revision=schema_revision,
-            schema_meta=schema_meta,
-            normalized_hint=normalized_group_hints[0],
-        )
-        if exact_group is not None:
-            exact_group_name = str(exact_group.get("name", "") or "")
-            exact_group_node = nodes.get(exact_group_name)
-            allowed_group_roles = {CATEGORY, TEXT, TIME, IDENTIFIER}
-            if exact_group_node is None or exact_group_node.role not in allowed_group_roles:
-                validation_notes.append(
-                    f"Dataset column '{exact_group_name}' is not a valid group-by dimension."
-                )
-            else:
-                group_col = exact_group_name
-                group_conf = 1.0
-                plan.append(f"Group exact match: {source_name}.{group_col}")
-        if group_col is None:
-            group_src, resolved_group_col, resolved_group_conf = resolve_group_column_graph(
-                normalized_group_hints,
-                source_name,
-                graph,
-            )
-            if group_src and resolved_group_col:
-                group_col = resolved_group_col
-                group_conf = resolved_group_conf
-                plan.append(f"Group resolved: {group_src}.{group_col}")
-            else:
-                validation_notes.append(
-                    "No dataset-scoped group column found for the requested dimension hint."
-                )
-
-    confidence = round(
-        min(
-            metric_conf,
-            group_conf if normalized_group_hints else 1.0,
-        ),
-        3,
-    )
-    plan_error_text = "; ".join(validation_notes) or None
-    validated, clarification_required, rejection_reason = _decision_contract_flags(
-        confidence,
-        metric_candidates[:_MAX_RESOLVE_CANDIDATES],
-        error_text=plan_error_text,
-    )
-
-    if (time.monotonic() - started_at) * 1000 > _RESOLVE_BUDGET_MS:
-        raise _http_error(
-            503,
-            code="resolve_budget_exceeded",
-            message="resolve exceeded the bounded 500ms planning budget.",
-            request_id=request_id,
-        )
-
-    explanation: list[str] = []
-    if payload.include_explanation:
-        explanation = [
-            f"Metric hint: {metric_hint}",
-            (
-                f"Resolved metric: {source_name}.{metric_col}"
-                if metric_col
-                else "Resolved metric: none"
-            ),
-            f"Aggregation: {payload.aggregation}",
-        ]
-        if group_col:
-            explanation.append(f"Group by: {source_name}.{group_col}")
-        explanation.append(f"Confidence: {confidence:.3f}")
-
-    resolved_plan: ResolvedPlan | None = None
-    if validated and metric_col:
-        resolved_plan = ResolvedPlan(
-            source_name=source_name,
-            metric_column=metric_col,
-            aggregation=payload.aggregation,
-            group_column=group_col,
-            join_path=None,
-            filter=payload.filter,
-            limit=payload.limit,
-            order=payload.order,
-            constraints=payload.constraints,
-            schema_revision=schema_revision,
-        )
-
-    return _build_resolve_response(
-        resolved_plan=resolved_plan,
-        confidence=confidence,
-        plan=plan,
-        explanation=explanation,
-        resolved_column=metric_col,
-        resolved_role=metric_role if metric_col else "",
-        resolved_source=source_name,
-        candidates=metric_candidates[:_MAX_RESOLVE_CANDIDATES],
-        source_scores={source_name: 1.0},
-        latency_ms=round((time.monotonic() - started_at) * 1000, 1),
+    return _resolve_single_dataset_fast_path_impl(
+        org_id=org_id,
+        payload=payload,
+        dataset_entry=dataset_entry,
+        dataset_id=dataset_id,
+        schema_meta=schema_meta,
+        cached_nodes=cached_nodes,
         schema_revision=schema_revision,
-        validated=resolved_plan is not None,
-        confidence_source="dataset_metadata_confidence",
+        metric_hint=metric_hint,
+        combined_group_by=combined_group_by,
         request_id=request_id,
         intent_signature=intent_signature,
-        clarification_required=clarification_required,
-        rejection_reason=rejection_reason,
-        source_set=[source_name],
-        join_path=[],
-        planner_mode="dataset_meta_fast_path",
+        started_at=started_at,
+        graph_nodes_from_meta=_graph_nodes_from_meta,
+        normalize_hint_text=_normalize_hint_text,
+        stable_list=_stable_list,
+        find_exact_dataset_column_cached=_find_exact_dataset_column_cached,
+        select_count_anchor_column=_select_count_anchor_column,
+        decision_contract_flags=_decision_contract_flags,
+        resolve_metric_column_fn=resolve_metric_column,
+        resolve_group_column_graph_fn=resolve_group_column_graph,
+        build_resolve_response_fn=_build_resolve_response,
+        http_error_fn=_http_error,
+        max_resolve_candidates=_MAX_RESOLVE_CANDIDATES,
+        resolve_budget_ms=_RESOLVE_BUDGET_MS,
     )
 
 
@@ -4664,379 +3471,42 @@ async def _resolve_registered_intent(
     auth: AuthContext,
     request_id: str | None,
 ) -> ResolveResponse:
-    t0 = time.monotonic()
-    org_id = str(auth["org_id"])
     from apps.api_server.services import source_registry as _sreg_visible
 
-    scoped_entries, scoped_dataset_id = _resolve_scope_entries(
-        org_id=org_id,
+    return await _resolve_registered_intent_impl(
+        payload,
         auth=auth,
-        dataset_id=payload.dataset_id,
-        allow_org_scope=payload.allow_org_scope,
         request_id=request_id,
+        resolve_scope_entries_fn=_resolve_scope_entries,
+        resolve_entry_ready_fn=_resolve_entry_ready,
+        schema_revision_fn=_sreg_visible.schema_revision,
+        source_schema_revision_fn=_sreg_visible.source_schema_revision,
+        get_source_meta_fn=_sreg_visible.get_source_meta,
+        normalize_hint_text_fn=_normalize_hint_text,
+        stable_list_fn=_stable_list,
+        weak_raw_text_intent_fn=_weak_raw_text_intent,
+        intent_signature_payload_fn=_intent_signature_payload,
+        intent_signature_fn=_intent_signature,
+        prune_resolve_cache_fn=_prune_resolve_cache,
+        resolve_cache_get_fn=_resolve_cache_get,
+        resolve_cache_put_fn=_resolve_cache_put,
+        get_resolve_dataset_meta_fn=_get_resolve_dataset_meta,
+        resolve_single_dataset_fast_path_fn=_resolve_single_dataset_fast_path,
+        get_registry_planner_fn=_get_registry_planner,
+        run_cached_planner_method_fn=_run_cached_planner_method,
+        planner_query_confidence_fn=_planner_query_confidence,
+        planner_metric_candidate_payloads_fn=_planner_metric_candidate_payloads,
+        planner_load_bearing_validation_notes_fn=_planner_load_bearing_validation_notes,
+        decision_contract_flags_fn=_decision_contract_flags,
+        build_resolve_response_fn=_build_resolve_response,
+        dedupe_source_values_fn=_dedupe_source_values,
+        resolved_plan_current_schema_revision_fn=_resolved_plan_current_schema_revision,
+        select_count_anchor_column_fn=_select_count_anchor_column,
+        http_error_fn=_http_error,
+        max_resolve_candidates=_MAX_RESOLVE_CANDIDATES,
+        max_join_path_hops=_MAX_JOIN_PATH_HOPS,
+        resolve_budget_ms=_RESOLVE_BUDGET_MS,
     )
-    ready_entries = [entry for entry in scoped_entries if _resolve_entry_ready(entry)]
-    if payload.dataset_id and not ready_entries:
-        raise _http_error(
-            409,
-            code="source_not_ready",
-            message=f"Dataset '{payload.dataset_id}' is not ready for resolve.",
-            request_id=request_id,
-        )
-    if not payload.dataset_id:
-        scoped_entries = ready_entries
-    if not scoped_entries:
-        schema_revision_empty = _sreg_visible.schema_revision(org_id)
-        signature_payload = _intent_signature_payload(
-            dataset_id=scoped_dataset_id,
-            allow_org_scope=payload.allow_org_scope,
-            metric_role=payload.metric.role,
-            metric_hint=payload.metric.hint or "",
-            group_by=payload.group_by,
-            preferred_source=payload.preferred_source,
-            aggregation=payload.aggregation,
-            filter_spec=payload.filter,
-            limit=payload.limit,
-            order=payload.order,
-            constraints=payload.constraints,
-            raw_text=payload.raw_text,
-            schema_revision=schema_revision_empty,
-        )
-        signature = _intent_signature(signature_payload)
-        return _build_resolve_response(
-            resolved_plan=None,
-            confidence=0.0,
-            plan=["No ready registered sources found. Use POST /v1/sources/register first."],
-            explanation=[],
-            resolved_column="",
-            resolved_role="",
-            resolved_source="",
-            candidates=[],
-            source_scores={},
-            latency_ms=round((time.monotonic() - t0) * 1000, 1),
-            schema_revision=schema_revision_empty,
-            validated=False,
-            confidence_source="planner_query_confidence",
-            request_id=request_id,
-            intent_signature=signature,
-            clarification_required=False,
-            rejection_reason="schema_incomplete",
-            source_set=[],
-            join_path=[],
-        )
-
-    single_dataset_fast_path = bool(payload.dataset_id and len(scoped_entries) == 1)
-    if single_dataset_fast_path:
-        schema_revision = _sreg_visible.source_schema_revision(
-            org_id,
-            scoped_dataset_id or str(payload.dataset_id),
-        )
-    else:
-        schema_revision = _sreg_visible.schema_revision(org_id)
-        _prune_resolve_cache(org_id, schema_revision)
-
-    raw_metric_hint, raw_group_by = _weak_raw_text_intent(payload.raw_text)
-    metric_hint = _normalize_hint_text(payload.metric.hint) or raw_metric_hint or (
-        payload.metric.role.replace("_", " ")
-    )
-    combined_group_by = payload.group_by or raw_group_by
-    dim_hint = " ".join(_stable_list(combined_group_by)) or None
-    signature_payload = _intent_signature_payload(
-        dataset_id=scoped_dataset_id,
-        allow_org_scope=payload.allow_org_scope,
-        metric_role=payload.metric.role,
-        metric_hint=metric_hint,
-        group_by=combined_group_by,
-        preferred_source=payload.preferred_source,
-        aggregation=payload.aggregation,
-        filter_spec=payload.filter,
-        limit=payload.limit,
-        order=payload.order,
-        constraints=payload.constraints,
-        raw_text=payload.raw_text,
-        schema_revision=schema_revision,
-    )
-    signature = _intent_signature(signature_payload)
-    resolve_cache_key = hashlib.sha256(
-        json.dumps(
-            {
-                "org": org_id,
-                "scope": scoped_dataset_id or "__org__",
-                "signature": signature,
-            },
-            sort_keys=True,
-        ).encode()
-    ).hexdigest()[:24]
-
-    cached = _resolve_cache_get(resolve_cache_key)
-    if cached is not None:
-        cached_plan = list(cached.get("plan", []))
-        cached_plan.insert(0, f"Resolve cache HIT [{resolve_cache_key[:8]}]")
-        return ResolveResponse(
-            **{
-                **cached["response"],
-                "plan": cached_plan,
-                "latency_ms": round((time.monotonic() - t0) * 1000, 1),
-                "request_id": request_id,
-            }
-        )
-
-    if single_dataset_fast_path:
-        dataset_meta, cached_nodes = await _get_resolve_dataset_meta(
-            org_id=org_id,
-            dataset_id=str(payload.dataset_id),
-            schema_revision=schema_revision,
-        )
-        dataset_response = _resolve_single_dataset_fast_path(
-            org_id=org_id,
-            payload=payload,
-            dataset_entry=scoped_entries[0],
-            dataset_id=scoped_dataset_id or payload.dataset_id,
-            schema_meta=dataset_meta,
-            cached_nodes=cached_nodes,
-            schema_revision=schema_revision,
-            metric_hint=metric_hint,
-            combined_group_by=combined_group_by,
-            request_id=request_id,
-            intent_signature=signature,
-            started_at=t0,
-        )
-        _resolve_cache_put(
-            resolve_cache_key,
-            {
-                "org_id": org_id,
-                "schema_revision": schema_revision,
-                "response": dataset_response.model_dump(mode="python"),
-                "plan": list(dataset_response.plan),
-            },
-        )
-        return dataset_response
-
-    planner, planner_cache_hit, schema_revision = await _get_registry_planner(
-        org_id,
-        llm_policy="never",
-        auth=auth,
-        visible_entries=scoped_entries,
-    )
-    plan = [
-        (
-            f"Resolve scope: dataset={scoped_dataset_id}"
-            if scoped_dataset_id
-            else f"Resolve scope: org_visible={len(scoped_entries)}"
-        ),
-        f"Planner cache {'HIT' if planner_cache_hit else 'MISS'} [{schema_revision[:8]}]",
-    ]
-
-    qplan = await _run_cached_planner_method(
-        planner,
-        "plan",
-        metric_hint=metric_hint,
-        dim_hint=dim_hint,
-        agg=payload.aggregation,
-        preferred_source=payload.preferred_source,
-    )
-    plan.extend(qplan.steps)
-
-    if payload.aggregation == "count" and payload.dataset_id and not combined_group_by:
-        dataset_entry = scoped_entries[0] if scoped_entries else None
-        dataset_meta = (
-            _sreg_visible.get_source_meta(org_id, str(payload.dataset_id))
-            if payload.dataset_id
-            else None
-        )
-        count_anchor = (
-            _select_count_anchor_column(dataset_meta)
-            if isinstance(dataset_meta, dict)
-            else None
-        )
-        source_name = str(dataset_entry.get("name", "") if dataset_entry else "")
-        if count_anchor and source_name:
-            anchor_col, anchor_role = count_anchor
-            qplan.metric_src = source_name
-            qplan.metric_col = anchor_col
-            qplan.metric_role = anchor_role
-            qplan.metric_conf = 1.0
-            qplan.error = None
-            qplan.steps.append(
-                f"COUNT anchor: {source_name}.{anchor_col} ({anchor_role})"
-            )
-            plan.append(qplan.steps[-1])
-
-    confidence = _planner_query_confidence(qplan)
-    metric_candidate_payloads = _planner_metric_candidate_payloads(
-        plan=qplan,
-        graph=planner.graph,
-        metric_hint=metric_hint,
-        target_role=qplan.metric_role or payload.metric.role,
-        preferred_source=payload.preferred_source,
-    )
-
-    plan_error_text = "; ".join(
-        note
-        for note in [qplan.error or "", *_planner_load_bearing_validation_notes(qplan)]
-        if note
-    ) or None
-    validated, clarification_required, rejection_reason = _decision_contract_flags(
-        confidence,
-        metric_candidate_payloads[:_MAX_RESOLVE_CANDIDATES],
-        error_text=plan_error_text,
-    )
-    source_scores = (
-        {qplan.metric_src: round(qplan.metric_conf, 3)}
-        if qplan.metric_src
-        else {}
-    )
-    if payload.preferred_source and source_scores:
-        source_scores[payload.preferred_source] = max(
-            source_scores.get(payload.preferred_source, 0.0),
-            source_scores.get(qplan.metric_src or "", 0.0),
-        )
-
-    if (time.monotonic() - t0) * 1000 > _RESOLVE_BUDGET_MS:
-        raise _http_error(
-            503,
-            code="resolve_budget_exceeded",
-            message="resolve exceeded the bounded 500ms planning budget.",
-            request_id=request_id,
-        )
-
-    join_path_payload = [
-        {
-            "left_source": hop.left_source,
-            "left_key": hop.left_key,
-            "right_source": hop.right_source,
-            "right_key": hop.right_key,
-            "confidence": round(float(getattr(hop, "confidence", 0.0) or 0.0), 3),
-            "cardinality": getattr(hop, "cardinality", None),
-        }
-        for hop in qplan.join_hops[:4]
-    ]
-    explanation: list[str] = []
-    if payload.include_explanation:
-        explanation = [
-            f"Metric hint: {metric_hint}",
-            f"Resolved metric: {qplan.metric_src}.{qplan.metric_col}"
-            if qplan.metric_src and qplan.metric_col
-            else "Resolved metric: none",
-            f"Aggregation: {payload.aggregation}",
-        ]
-        if qplan.group_col and qplan.group_src:
-            explanation.append(f"Group by: {qplan.group_src}.{qplan.group_col}")
-        if qplan.join_hops:
-            explanation.append(
-                "Join path: "
-                + " -> ".join(
-                    f"{hop.left_source}.{hop.left_key}={hop.right_source}.{hop.right_key}"
-                    for hop in qplan.join_hops[:4]
-                )
-            )
-        explanation.append(f"Confidence: {confidence:.3f}")
-
-    resolved_plan: ResolvedPlan | None = None
-    if validated and qplan.metric_src and qplan.metric_col:
-        join_path_spec = None
-        if qplan.join_hops:
-            planner_path_has_fanout = any(
-                str(getattr(hop, "cardinality", "") or "").lower()
-                in {"one_to_many", "many_to_many", "1:n", "n:n"}
-                for hop in qplan.join_hops[:4]
-            )
-            join_path_spec = JoinPathSpec(
-                base_source=qplan.metric_src,
-                group_source=qplan.group_src or qplan.metric_src,
-                edges=[
-                    JoinEdgeSpec(
-                        left_source=hop.left_source,
-                        right_source=hop.right_source,
-                        left_key=hop.left_key,
-                        right_key=hop.right_key,
-                        min_confidence=round(float(getattr(hop, "confidence", 0.0) or 0.0), 3),
-                        expected_cardinality=(
-                            str(getattr(hop, "cardinality", "") or "") or None
-                        ),
-                        allow_many_to_many=(
-                            str(getattr(hop, "cardinality", "") or "").lower() == "many_to_many"
-                        ),
-                    )
-                    for hop in qplan.join_hops[:4]
-                ],
-                max_hops=4,
-                min_path_confidence=round(
-                    float(
-                        getattr(qplan, "path_confidence", 0.0)
-                        or getattr(qplan, "join_conf", 0.0)
-                        or 0.0
-                    ),
-                    3,
-                ),
-                reject_on_ambiguity=True,
-                reject_on_fanout=not planner_path_has_fanout,
-            )
-        resolved_plan = ResolvedPlan(
-            source_name=qplan.metric_src,
-            metric_column=qplan.metric_col,
-            aggregation=payload.aggregation,
-            group_column=qplan.group_col,
-            join_path=join_path_spec,
-            filter=payload.filter,
-            limit=payload.limit,
-            order=payload.order,
-            constraints=payload.constraints,
-            schema_revision=schema_revision,
-        )
-
-    response_schema_revision = schema_revision
-    if resolved_plan is not None:
-        response_schema_revision = _resolved_plan_current_schema_revision(
-            org_id=org_id,
-            resolved_plan=resolved_plan,
-            dataset_id=scoped_dataset_id,
-            visible_entries=scoped_entries,
-        )
-        if resolved_plan.schema_revision != response_schema_revision:
-            resolved_plan = resolved_plan.model_copy(
-                update={"schema_revision": response_schema_revision}
-            )
-
-    response = _build_resolve_response(
-        resolved_plan=resolved_plan,
-        confidence=confidence,
-        plan=plan,
-        explanation=explanation,
-        resolved_column=qplan.metric_col or "",
-        resolved_role=qplan.metric_role or "",
-        resolved_source=qplan.metric_src or "",
-        candidates=metric_candidate_payloads[:_MAX_RESOLVE_CANDIDATES],
-        source_scores=source_scores,
-        latency_ms=round((time.monotonic() - t0) * 1000, 1),
-        schema_revision=response_schema_revision,
-        validated=resolved_plan is not None,
-        confidence_source="planner_query_confidence",
-        request_id=request_id,
-        intent_signature=signature,
-        clarification_required=clarification_required,
-        rejection_reason=rejection_reason,
-        source_set=_dedupe_source_values(
-            [
-                qplan.metric_src or "",
-                qplan.group_src or "",
-                *[hop.right_source for hop in qplan.join_hops[:4]],
-            ]
-        ),
-        join_path=join_path_payload,
-        planner_mode="registry_planner",
-    )
-
-    _resolve_cache_put(
-        resolve_cache_key,
-        {
-            "org_id": org_id,
-            "schema_revision": schema_revision,
-            "response": response.model_dump(mode="python"),
-            "plan": list(plan),
-        },
-    )
-    return response
 
 
 def _query_uses_legacy_planning(payload: QueryRequest) -> bool:
@@ -5045,6 +3515,44 @@ def _query_uses_legacy_planning(payload: QueryRequest) -> bool:
     if payload.source_name and payload.metric_column:
         return False
     return not payload.sources
+
+
+def _query_execution_metadata(response: QueryResponse) -> QueryExecutionMetadata:
+    return QueryExecutionMetadata(
+        request_id=response.request_id,
+        latency_ms=response.latency_ms,
+    )
+
+
+def _merge_query_batch_defaults(
+    defaults: QueryBatchDefaults | None,
+    item: QueryBatchItemRequest,
+) -> QueryRequest:
+    if defaults is None:
+        return item.request
+    default_payload = defaults.model_dump(mode="python", exclude_none=True)
+    request_payload = item.request.model_dump(mode="python")
+    for field_name, value in default_payload.items():
+        if field_name not in item.request.model_fields_set:
+            request_payload[field_name] = value
+    return QueryRequest.model_validate(request_payload)
+
+
+def _query_batch_error_from_exception(exc: HTTPException) -> QueryBatchError:
+    detail: dict[str, Any] = exc.detail if isinstance(exc.detail, dict) else {}
+    error: dict[str, Any] = detail.get("error", {}) if isinstance(detail, dict) else {}
+    details = error.get("details") if isinstance(error, dict) else None
+    if isinstance(details, list):
+        normalized_details: dict[str, Any] = {"items": details}
+    elif isinstance(details, dict):
+        normalized_details = details
+    else:
+        normalized_details = {}
+    return QueryBatchError(
+        code=str(error.get("code") or "query_batch_item_failed"),
+        message=str(error.get("message") or str(exc.detail)),
+        details=normalized_details,
+    )
 
 
 # ── Endpoint ───────────────────────────────────────────────────────────────────
@@ -5100,7 +3608,7 @@ async def resolve_sources(
 )
 async def query_sources(
     payload: QueryRequest,
-    request: Request = None,
+    request: Request = cast(Request, None),
     auth: AuthContext = Depends(get_current_org),
 ) -> QueryResponse:
     t0 = time.monotonic()
@@ -5112,7 +3620,9 @@ async def query_sources(
     from apps.api_server.services.data_visibility import (
         filter_visible_datasets,
         get_visible_dataset_entry,
+        get_visible_source_entry_by_name,
     )
+
     visible_registry_entries: list[dict[str, Any]] | None = None
     resolved_plan_schema_revision: str | None = None
 
@@ -5161,9 +3671,10 @@ async def query_sources(
             basis=owner_plan_basis,
         )
         owner_cached_result = _RESULT_CACHE.get(owner_plan_hash)
-        if owner_cached_result and (
-            time.monotonic() - owner_cached_result.get("_ts", 0)
-        ) < _RESULT_CACHE_TTL:
+        if (
+            owner_cached_result
+            and (time.monotonic() - owner_cached_result.get("_ts", 0)) < _RESULT_CACHE_TTL
+        ):
             plan.extend(
                 [
                     f"Resolved plan accepted [{payload.resolved_plan.schema_revision[:8]}]",
@@ -5196,6 +3707,7 @@ async def query_sources(
                 confidence_source="exact_spec_validation",
                 plan_basis=owner_plan_basis,
                 plan_hash_override=owner_plan_hash,
+                log_response=False,
             )
 
     if payload.dataset_id:
@@ -5246,16 +3758,13 @@ async def query_sources(
             )
         if payload.dataset_id:
             allowed_sources = {
-                str(entry.get("name") or "")
-                for entry in _visible_registry_entries()
+                str(entry.get("name") or "") for entry in _visible_registry_entries()
             }
             if payload.resolved_plan.source_name not in allowed_sources:
                 raise _http_error(
                     422,
                     code="dataset_scope_violation",
-                    message=(
-                        "resolved_plan source_name is outside the requested dataset scope."
-                    ),
+                    message=("resolved_plan source_name is outside the requested dataset scope."),
                     request_id=request_id,
                 )
         payload.source_name = payload.resolved_plan.source_name
@@ -5267,9 +3776,7 @@ async def query_sources(
         payload.limit = payload.resolved_plan.limit
         payload.order = payload.resolved_plan.order
         payload.constraints = payload.resolved_plan.constraints
-        plan.append(
-            f"Resolved plan accepted [{payload.resolved_plan.schema_revision[:8]}]"
-        )
+        plan.append(f"Resolved plan accepted [{payload.resolved_plan.schema_revision[:8]}]")
 
     if _query_uses_legacy_planning(payload):
         if not _ALLOW_QUERY_HINT_PLANNING_COMPAT:
@@ -5332,6 +3839,7 @@ async def query_sources(
         import pandas as pd
 
         from apps.api_server.services import source_registry as _sreg_ex
+
         if resolved_plan_schema_revision is not None:
             schema_revision_exact = resolved_plan_schema_revision
         elif payload.dataset_id and not payload.join_path:
@@ -5340,9 +3848,8 @@ async def query_sources(
                 dataset_source_revision = str(
                     visible_registry_entries[0].get("source_schema_revision") or ""
                 )
-            schema_revision_exact = (
-                dataset_source_revision
-                or _sreg_ex.source_schema_revision(org_id, str(payload.dataset_id))
+            schema_revision_exact = dataset_source_revision or _sreg_ex.source_schema_revision(
+                org_id, str(payload.dataset_id)
             )
         elif payload.join_path:
             schema_revision_exact = _sreg_ex.schema_revision(org_id)
@@ -5413,29 +3920,27 @@ async def query_sources(
                 confidence_source="exact_spec_validation",
                 plan_basis=exact_plan_basis,
                 plan_hash_override=exact_plan_hash,
+                log_response=False,
             )
 
         if payload.dataset_id and visible_registry_entries is not None:
             registered_ex = {
-                str(entry.get("name") or ""): entry
-                for entry in visible_registry_entries
+                str(entry.get("name") or ""): entry for entry in visible_registry_entries
             }
         elif str(auth.get("role", "")).lower() == "owner" and payload.source_name:
-            owner_entry = _sreg_visible.get_source_entry_by_name(org_id, payload.source_name)
+            # Workspace/visibility-gated by-name lookup (was an unscoped cross-tenant read).
+            owner_entry = get_visible_source_entry_by_name(org_id, payload.source_name, auth)
             registered_ex = (
-                {str(owner_entry.get("name") or ""): owner_entry}
-                if owner_entry is not None
-                else {}
+                {str(owner_entry.get("name") or ""): owner_entry} if owner_entry is not None else {}
             )
         else:
             registered_ex = {
-                str(entry.get("name") or ""): entry
-                for entry in _visible_registry_entries()
+                str(entry.get("name") or ""): entry for entry in _visible_registry_entries()
             }
         for exact_source_name in _exact_query_required_sources(payload):
             if exact_source_name in registered_ex:
                 continue
-            extra_entry = _sreg_visible.get_source_entry_by_name(org_id, exact_source_name)
+            extra_entry = get_visible_source_entry_by_name(org_id, exact_source_name, auth)
             if extra_entry is not None:
                 registered_ex[exact_source_name] = extra_entry
         if payload.source_name not in registered_ex:
@@ -5529,13 +4034,11 @@ async def query_sources(
             payload.aggregation == "count"
             and payload.group_column is None
             and payload.join_path is None
-            and not (payload.filter and payload.filter.time_filter)
+            and not (payload.filter and (payload.filter.time_filter or payload.filter.conditions))
         )
         if direct_count_fast_path:
             row_count_exact = int(
-                metric_entry_meta.get("row_count")
-                or metric_schema_meta.get("row_count")
-                or 0
+                metric_entry_meta.get("row_count") or metric_schema_meta.get("row_count") or 0
             )
             result_ex = float(row_count_exact)
             result_type_ex = "scalar"
@@ -5613,7 +4116,7 @@ async def query_sources(
                 plan_hash_override=exact_plan_hash,
             )
 
-        def _load_exact(name: str) -> tuple[list[dict], dict[str, ColumnNode]]:
+        def _load_exact(name: str) -> tuple[list[dict[str, Any]], dict[str, ColumnNode]]:
             """Load records + graph nodes for an exact-spec source.
             Three-tier cache: DataFrame cache → Parquet bytes cache → disk.
             """
@@ -5678,6 +4181,30 @@ async def query_sources(
                 detail={"error": {"code": "load_error", "message": str(_e)}},
             ) from _e
 
+        try:
+            resolved_filter_conditions_ex = _resolve_filter_conditions(
+                source_name=payload.source_name,
+                filter_spec=payload.filter,
+                graph_nodes=metric_nodes,
+                records=metric_records,
+            )
+        except ValueError as _e:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": {
+                        "code": "invalid_filter_condition",
+                        "message": str(_e),
+                    }
+                },
+            ) from _e
+
+        metric_records, filter_plan_ex = _apply_filter_conditions(
+            metric_records,
+            resolved_filter_conditions_ex,
+        )
+        plan.extend(filter_plan_ex)
+
         # Validate group column if given
         group_col_ex: str | None = payload.group_column
         cross_ex = False
@@ -5685,7 +4212,7 @@ async def query_sources(
         join_path_edges_ex: list[JoinEdgeSpec] = []
         join_group_source_ex: str | None = None
         join_edge_meta_ex: list[tuple[float, str]] = []
-        join_records_ex: dict[str, list[dict]] = {payload.source_name: metric_records}
+        join_records_ex: dict[str, list[dict[str, Any]]] = {payload.source_name: metric_records}
 
         if group_col_ex:
             if group_col_ex in metric_nodes:
@@ -5837,14 +4364,12 @@ async def query_sources(
                 confidence_source="exact_spec_validation",
                 plan_basis=exact_plan_basis,
                 source_set=(
-                    [payload.source_name]
-                    + [edge.right_source for edge in join_path_edges_ex]
+                    [payload.source_name] + [edge.right_source for edge in join_path_edges_ex]
                 ),
-                join_path=[
-                    edge.model_dump(mode="python") for edge in join_path_edges_ex
-                ],
+                join_path=[edge.model_dump(mode="python") for edge in join_path_edges_ex],
                 planner_mode="exact_spec",
                 plan_hash_override=exact_plan_hash,
+                log_response=False,
             )
 
         # Execute
@@ -5912,7 +4437,7 @@ async def query_sources(
             )
 
         # Build explanation
-        explanation: list[str] = [
+        exact_explanation: list[str] = [
             f"Source: {payload.source_name}",
             f"Column: {payload.metric_column}  role={metric_node.role}"
             + (f"  formula={metric_node.formula}" if metric_node.formula else ""),
@@ -5924,21 +4449,21 @@ async def query_sources(
                     f"{edge.left_source}.{edge.left_key}={edge.right_source}.{edge.right_key}"
                     for edge in join_path_edges_ex
                 )
-                explanation.append(
+                exact_explanation.append(
                     f"Group by: {group_col_ex} from {join_group_source_ex} "
                     f"via join_path ({hop_text})"
                 )
             else:
-                explanation.append(f"Group by: {group_col_ex} (same source)")
+                exact_explanation.append(f"Group by: {group_col_ex} (same source)")
         if tr_ex:
-            explanation.append(
+            exact_explanation.append(
                 f"Time filter: {payload.filter.time_filter if payload.filter else '?'} → {tr_ex}"
             )
-        explanation.append(
+        exact_explanation.append(
             f"Result: {result_type_ex}"
             + (f"  {row_count_ex} groups" if result_type_ex == "table" else f"  = {result_ex}")
         )
-        explanation.append(
+        exact_explanation.append(
             f"Confidence: {computed_confidence:.3f} = col({col_conf:.2f}) × agg({agg_conf:.2f})"
             + (f" × join({join_confidence_ex:.2f})" if cross_ex else "")
         )
@@ -5955,7 +4480,7 @@ async def query_sources(
             "confidence": computed_confidence,
             "resolved_role": metric_node.role,
             "resolved_source": resolved_src_ex,
-            "explanation": explanation,
+            "explanation": exact_explanation,
             "_ts": time.monotonic(),
         }
         plan.append(f"Result cache STORED [{_plan_key[:8]}]")
@@ -5975,17 +4500,14 @@ async def query_sources(
             source_scores={},
             ambiguous=False,
             exact_spec=True,
-            explanation=explanation,
+            explanation=exact_explanation,
             latency_ms=round((time.monotonic() - t0) * 1000, 1),
             decision_path="exact_spec",
             schema_revision=schema_revision_exact,
             validated=True,
             confidence_source="exact_spec_validation",
             plan_basis=exact_plan_basis,
-            source_set=(
-                [payload.source_name]
-                + [edge.right_source for edge in join_path_edges_ex]
-            ),
+            source_set=([payload.source_name] + [edge.right_source for edge in join_path_edges_ex]),
             join_path=[edge.model_dump(mode="python") for edge in join_path_edges_ex],
             planner_mode="exact_spec",
             plan_hash_override=exact_plan_hash,
@@ -6052,6 +4574,7 @@ async def query_sources(
         dim_hint = (
             " ".join(part.strip() for part in payload.group_by if part and part.strip()) or None
         )
+        normalized_filter_spec = _normalize_filter_spec(payload.filter)
         time_filter = payload.filter.time_filter if payload.filter else None
 
         hint_result_key = hashlib.sha256(
@@ -6065,7 +4588,7 @@ async def query_sources(
                     "agg": payload.aggregation,
                     "limit": payload.limit,
                     "order": payload.order,
-                    "time_filter": time_filter or "",
+                    "filter": normalized_filter_spec or {},
                 },
                 sort_keys=True,
             ).encode()
@@ -6105,6 +4628,7 @@ async def query_sources(
                 source_set=cached_hint.get("source_set", []),
                 join_path=cached_hint.get("join_path", []),
                 planner_mode="registry_planner",
+                log_response=False,
             )
 
         plan.append(f"Registry: {len(registered)} registered sources for org {org_id}")
@@ -6132,20 +4656,21 @@ async def query_sources(
             preferred_source=payload.preferred_source,
         )
 
-        plan_error_text = "; ".join(
-            note
-            for note in [qplan.error or "", *_planner_load_bearing_validation_notes(qplan)]
-            if note
-        ) or None
+        plan_error_text = (
+            "; ".join(
+                note
+                for note in [qplan.error or "", *_planner_load_bearing_validation_notes(qplan)]
+                if note
+            )
+            or None
+        )
         validated, clarification_required, rejection_reason = _decision_contract_flags(
             confidence,
             metric_candidate_payloads,
             error_text=plan_error_text,
         )
         source_scores_hint = (
-            {qplan.metric_src: round(qplan.metric_conf, 3)}
-            if qplan.metric_src
-            else {}
+            {qplan.metric_src: round(qplan.metric_conf, 3)} if qplan.metric_src else {}
         )
         if not validated:
             if clarification_required:
@@ -6154,9 +4679,7 @@ async def query_sources(
                     "did not meet deterministic execution threshold."
                 )
             else:
-                plan.append(
-                    f"Rejected: {rejection_reason or 'schema_unresolved'} before execution"
-                )
+                plan.append(f"Rejected: {rejection_reason or 'schema_unresolved'} before execution")
             explanation = [
                 f"Metric hint: {metric_hint}",
                 f"Planner confidence: {confidence:.3f}",
@@ -6213,14 +4736,26 @@ async def query_sources(
                 planner_mode="registry_planner",
             )
 
-        result, row_count, exec_plan = await _run_cached_planner_method(
-            planner,
-            "execute_plan",
-            qplan,
-            limit=payload.limit,
-            order=payload.order,
-            time_filter=time_filter,
-        )
+        try:
+            result, row_count, exec_plan = await _run_cached_planner_method(
+                planner,
+                "execute_plan",
+                qplan,
+                limit=payload.limit,
+                order=payload.order,
+                time_filter=time_filter,
+                filter_spec=payload.filter,
+            )
+        except ValueError as _e:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": {
+                        "code": "invalid_filter_condition",
+                        "message": str(_e),
+                    }
+                },
+            ) from _e
         plan.extend(exec_plan)
 
         if result is None:
@@ -6362,11 +4897,11 @@ async def query_sources(
 
     # ── Load + profile all sources (cache-aware) ─────────────────────────────
     parsed_tables: dict[str, Any] = {}
-    profiles: dict[str, dict[str, dict]] = {}
+    profiles: dict[str, dict[str, dict[str, Any]]] = {}
     cache_hits: set[str] = set()
     cache_entries: dict[str, _CachedSource] = {}  # src.name → cached entry
     # Registry connections (populated when loading from registry; used for cross-source joins)
-    _reg_connections: list[dict] = []
+    _reg_connections: list[dict[str, Any]] = []
 
     for src in payload.sources:
         cache_key, content_keyed = _source_cache_key(src)
@@ -6417,6 +4952,7 @@ async def query_sources(
     # ── Mojo: profiling + relation detection (concurrent, only for misses) ──
     miss_names = list(parsed_tables.keys())
     if miss_names:
+
         def _adaptive_profile_payload(name: str) -> dict[str, dict[str, Any]]:
             value_limit, string_limit = _mojo_column_profile_sample_limits(len(profiles[name]))
             return _build_mojo_column_profile_columns(
@@ -6427,8 +4963,7 @@ async def query_sources(
             )
 
         profiler_coros = [
-            _call_mojo_column_profile(_adaptive_profile_payload(name))
-            for name in miss_names
+            _call_mojo_column_profile(_adaptive_profile_payload(name)) for name in miss_names
         ]
         relation_coros = [_detect_relations(name, profiles) for name in miss_names]
         try:
@@ -6472,6 +5007,7 @@ async def query_sources(
                 rels,
                 profiles[name],
                 profiling_status,
+                _arrow_physical_types(parsed_tables[name].schema),
             )
             arrow_table = parsed_tables[name]
             # Embed schema metadata in Arrow custom_metadata
@@ -6734,14 +5270,38 @@ async def query_sources(
     # ── Load records for execution (from cache or parsed) ────────────────────
     import pandas as pd
 
-    def _load_records(name: str) -> list[dict]:
+    def _load_records(name: str) -> list[dict[str, Any]]:
         if name in parsed_tables:
-            return parsed_tables[name].to_pylist()
+            records: list[dict[str, Any]] = parsed_tables[name].to_pylist()
+            return records
         buf = io.BytesIO(cache_entries[name].parquet_bytes)
         initialize_pyarrow_parquet_runtime()
-        return pd.read_parquet(buf).to_dict(orient="records")
+        records = pd.read_parquet(buf).to_dict(orient="records")
+        return records
 
     exec_records = _load_records(src_name)
+    try:
+        resolved_filter_conditions = _resolve_filter_conditions(
+            source_name=src_name,
+            filter_spec=payload.filter,
+            graph_nodes=graph.get(src_name, {}),
+            records=exec_records,
+        )
+    except ValueError as _e:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": {
+                    "code": "invalid_filter_condition",
+                    "message": str(_e),
+                }
+            },
+        ) from _e
+    exec_records, filter_plan = _apply_filter_conditions(
+        exec_records,
+        resolved_filter_conditions,
+    )
+    plan.extend(filter_plan)
 
     # ── Execute (same-source or cross-source join) ────────────────────────────
     cross_source = bool(group_col and group_src != src_name)
@@ -6777,8 +5337,7 @@ async def query_sources(
                     schema_revision=schema_revision_inline,
                     validated=False,
                     confidence_source=(
-                        "min(source_resolver, metric_resolver, "
-                        "group_resolver, join_confidence)"
+                        "min(source_resolver, metric_resolver, group_resolver, join_confidence)"
                     ),
                     clarification_required=False,
                     rejection_reason="join_ambiguity",
@@ -6963,13 +5522,13 @@ class SchemaRequest(BaseModel):
 async def infer_schema(
     payload: SchemaRequest,
     auth: AuthContext = Depends(get_current_org),
-) -> dict:
+) -> dict[str, Any]:
     import base64
 
     import pyarrow.parquet as pq
 
     t0 = time.monotonic()
-    result: list[dict] = []
+    result: list[dict[str, Any]] = []
     org_id = str(auth["org_id"])
 
     # ── Registry mode: no sources given → return all registered schemas ──────
@@ -7044,6 +5603,7 @@ async def infer_schema(
             _raise_empty_source(src.name)
         profile = loaded.profile
         arrow_table = loaded.arrow_table
+        assert arrow_table is not None
 
         try:
             value_limit, string_limit = _mojo_column_profile_sample_limits(len(profile))
@@ -7078,6 +5638,7 @@ async def infer_schema(
             rels,
             profile,
             profiling_status,
+            _arrow_physical_types(arrow_table.schema),
         )
 
         # Serialize Parquet with embedded metadata
@@ -7121,6 +5682,132 @@ async def infer_schema(
     }
 
 
+@router.post(
+    "/v1/query/batch",
+    response_model=QueryBatchResponse,
+    summary="Execute multiple governed exact queries in one request",
+)
+async def query_batch(
+    payload: QueryBatchRequest,
+    request: Request,
+    auth: AuthContext = Depends(get_current_org),
+) -> QueryBatchResponse:
+    request_id = getattr(request.state, "request_id", None)
+    defaults = payload.defaults
+    items = payload.queries
+    seen_keys: set[str] = set()
+    for item in items:
+        if item.key in seen_keys:
+            raise _http_error(
+                422,
+                code="invalid_query_batch",
+                message=f"Duplicate query batch key '{item.key}'.",
+                request_id=request_id,
+            )
+        seen_keys.add(item.key)
+
+    results: list[QueryBatchItemResponse] = []
+    for item in items:
+        try:
+            merged_request = _merge_query_batch_defaults(defaults, item)
+            query_result = await query_sources(
+                payload=merged_request,
+                request=request,
+                auth=auth,
+            )
+            results.append(
+                QueryBatchItemResponse(
+                    key=item.key,
+                    data=query_result,
+                    metadata=_query_execution_metadata(query_result),
+                )
+            )
+        except HTTPException as exc:
+            results.append(
+                QueryBatchItemResponse(
+                    key=item.key,
+                    error=_query_batch_error_from_exception(exc),
+                )
+            )
+        except Exception as exc:  # pragma: no cover - defensive conversion
+            logger.exception("query_batch_item_failed", key=item.key, request_id=request_id)
+            results.append(
+                QueryBatchItemResponse(
+                    key=item.key,
+                    error=QueryBatchError(
+                        code="internal_error",
+                        message="Query batch item failed unexpectedly.",
+                        details={"reason": str(exc)},
+                    ),
+                )
+            )
+
+    return QueryBatchResponse(results=results, request_id=request_id)
+
+
+@router.post(
+    "/v1/query/sql-report",
+    response_model=SQLReportResponse,
+    summary="Execute a constrained read-only SQL report over authorized datasets",
+)
+async def query_sql_report(
+    payload: SQLReportRequest,
+    request: Request,
+    auth: AuthContext = Depends(get_current_org),
+) -> SQLReportResponse:
+    request_id = getattr(request.state, "request_id", None)
+    t0 = time.monotonic()
+    org_id = str(auth["org_id"])
+    from apps.api_server.services.data_visibility import get_visible_dataset_entry
+
+    source_bindings: list[tuple[str, str]] = []
+    seen_aliases: set[str] = set()
+    for source in payload.sources:
+        entry = get_visible_dataset_entry(org_id, source.dataset_id, auth)
+        if entry is None:
+            raise _http_error(
+                404,
+                code="not_found",
+                message=f"Dataset '{source.dataset_id}' not found.",
+                request_id=request_id,
+            )
+        alias = normalize_sql_report_alias(source.dataset_id, source.alias)
+        if alias in seen_aliases:
+            raise _http_error(
+                422,
+                code="sql_report_duplicate_source_alias",
+                message=f"Duplicate SQL report alias '{alias}'.",
+                request_id=request_id,
+            )
+        seen_aliases.add(alias)
+        source_bindings.append((alias, source.dataset_id))
+
+    try:
+        result = execute_sql_report(
+            org_id=org_id,
+            sources=source_bindings,
+            sql=payload.sql,
+            max_rows=payload.max_rows,
+        )
+    except SQLReportServiceError as exc:
+        raise _http_error(
+            exc.status_code,
+            code=exc.code,
+            message=exc.message,
+            request_id=request_id,
+            details=[(None, str(exc.details or {}))] if exc.details else None,
+        ) from exc
+
+    return SQLReportResponse(
+        columns=result["columns"],
+        rows=result["rows"],
+        row_count=result["row_count"],
+        truncated=result["truncated"],
+        request_id=request_id,
+        latency_ms=round((time.monotonic() - t0) * 1000, 1),
+    )
+
+
 # ── Plan verification — LLM submits exact plan, Mojo validates before executing ──
 
 
@@ -7132,6 +5819,13 @@ class VerifyRequest(BaseModel):
     """
 
     source_name: str | None = Field(default=None, description="Exact source name from schema")
+    dataset_id: str | None = Field(
+        default=None,
+        description=(
+            "Public dataset ID alias for a registered source. "
+            "When provided, verification is scoped to that one registered dataset."
+        ),
+    )
     metric_column: str | None = Field(default=None, description="Exact column name to aggregate")
     aggregation: str | None = Field(default=None, description="sum | avg | count | max | min")
     group_column: str | None = Field(default=None, description="Exact column name for group-by")
@@ -7213,13 +5907,13 @@ async def verify_plan(
         schema_revision = _resolved_plan_current_schema_revision(
             org_id=org_id,
             resolved_plan=payload.resolved_plan,
+            dataset_id=payload.dataset_id,
         )
         if payload.resolved_plan.schema_revision != schema_revision:
             return VerifyResponse(
                 valid=False,
                 errors=[
-                    "resolved_plan schema_revision no longer matches "
-                    "the current registry state."
+                    "resolved_plan schema_revision no longer matches the current registry state."
                 ],
                 suggestions=[],
                 resolved={},
@@ -7248,8 +5942,7 @@ async def verify_plan(
             422,
             code="invalid_verify_request",
             message=(
-                "verify requires source_name, metric_column, and aggregation "
-                "or a resolved_plan."
+                "verify requires source_name, metric_column, and aggregation or a resolved_plan."
             ),
             request_id=request_id,
         )
@@ -7263,6 +5956,9 @@ async def verify_plan(
             "group_column": payload.group_column or "",
             "join_source_name": payload.join_source_name or "",
             "min_join_confidence": round(payload.min_join_confidence, 3),
+            "filter": _normalize_filter_spec(
+                payload.resolved_plan.filter if payload.resolved_plan else None
+            ),
         },
     )
     if payload.resolved_plan is not None:
@@ -7296,6 +5992,9 @@ async def verify_plan(
                 "group": payload.group_column or "",
                 "join_src": payload.join_source_name or "",
                 "min_conf": round(payload.min_join_confidence, 3),
+                "filter": _normalize_filter_spec(
+                    payload.resolved_plan.filter if payload.resolved_plan else None
+                ),
             },
             sort_keys=True,
         ).encode()
@@ -7375,7 +6074,7 @@ async def verify_plan(
     resolved["source_name"] = payload.source_name
 
     # ── 2. Load schema (cache or disk) ────────────────────────────────────────
-    schema_meta: dict = {}
+    schema_meta: dict[str, Any] = {}
     async with _CACHE_LOCK:
         cached = _SOURCE_CACHE.get(src_id)
         if cached and cached.is_fresh():
@@ -7386,6 +6085,7 @@ async def verify_plan(
         schema_meta = _sreg.get_source_meta(org_id, src_id) or {}
 
     columns_meta = {c["name"]: c for c in schema_meta.get("columns", [])}
+    source_nodes = _graph_nodes_from_meta(schema_meta)
 
     # ── 3. metric_column exists? ───────────────────────────────────────────────
     if payload.metric_column not in columns_meta:
@@ -7505,6 +6205,22 @@ async def verify_plan(
         else:
             resolved["aggregation"] = payload.aggregation
 
+    if payload.resolved_plan and payload.resolved_plan.filter:
+        try:
+            resolved_filter_conditions = _resolve_filter_conditions(
+                source_name=payload.source_name,
+                filter_spec=payload.resolved_plan.filter,
+                graph_nodes=source_nodes,
+                records=[],
+            )
+        except ValueError as exc:
+            errors.append(str(exc))
+        else:
+            if resolved_filter_conditions:
+                resolved["filter_columns"] = ", ".join(
+                    condition.column for condition in resolved_filter_conditions
+                )
+
     # ── 5. group_column exists? ────────────────────────────────────────────────
     if payload.group_column:
         # Check primary source first, then join source
@@ -7539,7 +6255,7 @@ async def verify_plan(
             join_src_id = join_src_entry["id"]
 
             # Load join source schema
-            join_schema_meta: dict = {}
+            join_schema_meta: dict[str, Any] = {}
             async with _CACHE_LOCK:
                 join_cached = _SOURCE_CACHE.get(join_src_id)
                 if join_cached and join_cached.is_fresh():

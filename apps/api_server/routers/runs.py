@@ -1,4 +1,6 @@
+from apps.api_server.services.workspace_scope import workspace_scope_clauses
 """GET /v1/runs — simulation run history for the authenticated org."""
+
 from datetime import UTC, datetime
 from typing import Annotated
 from uuid import UUID
@@ -48,8 +50,9 @@ class RunsResponse(BaseModel):
 
 class AnalyticsSummary(BaseModel):
     """Aggregated analytics for dashboard charts."""
+
     total_runs: int
-    runs_by_day: list[dict]      # [{date, count}]
+    runs_by_day: list[dict[str, object]]  # [{date, count}]
     runs_by_status: dict[str, int]
     runs_by_mode: dict[str, int]
     avg_duration_ms: float | None
@@ -71,7 +74,7 @@ async def list_runs(
     mode: str | None = Query(default=None),
 ) -> RunsResponse:
     """Return paginated simulation run history for the authenticated org."""
-    base_q = select(SimulationRun).where(SimulationRun.org_id == auth["org_id"])
+    base_q = select(SimulationRun).where(*workspace_scope_clauses(SimulationRun, auth))
 
     if status:
         base_q = base_q.where(SimulationRun.status == status)
@@ -132,7 +135,7 @@ async def get_run(
     result = await db.execute(
         select(SimulationRun).where(
             SimulationRun.id == run_id,
-            SimulationRun.org_id == auth["org_id"],
+            *workspace_scope_clauses(SimulationRun, auth),
         )
     )
     run = result.scalar_one_or_none()
@@ -176,7 +179,7 @@ async def get_analytics(
     # ── Total count ────────────────────────────────────────────────────────────
     total_result = await db.execute(
         select(func.count(SimulationRun.id)).where(
-            SimulationRun.org_id == auth["org_id"],
+            *workspace_scope_clauses(SimulationRun, auth),
             SimulationRun.created_at >= since,
         )
     )
@@ -189,7 +192,7 @@ async def get_analytics(
             func.count(SimulationRun.id).label("cnt"),
         )
         .where(
-            SimulationRun.org_id == auth["org_id"],
+            *workspace_scope_clauses(SimulationRun, auth),
             SimulationRun.created_at >= since,
         )
         .group_by(cast(SimulationRun.created_at, Date))
@@ -204,14 +207,13 @@ async def get_analytics(
             func.count(SimulationRun.id).label("cnt"),
         )
         .where(
-            SimulationRun.org_id == auth["org_id"],
+            *workspace_scope_clauses(SimulationRun, auth),
             SimulationRun.created_at >= since,
         )
         .group_by(SimulationRun.status)
     )
     by_status = {
-        str(row.st.value if hasattr(row.st, "value") else row.st): row.cnt
-        for row in status_result
+        str(row.st.value if hasattr(row.st, "value") else row.st): row.cnt for row in status_result
     }
 
     # ── By mode ────────────────────────────────────────────────────────────────
@@ -221,14 +223,13 @@ async def get_analytics(
             func.count(SimulationRun.id).label("cnt"),
         )
         .where(
-            SimulationRun.org_id == auth["org_id"],
+            *workspace_scope_clauses(SimulationRun, auth),
             SimulationRun.created_at >= since,
         )
         .group_by(SimulationRun.mode)
     )
     by_mode = {
-        str(row.md.value if hasattr(row.md, "value") else row.md): row.cnt
-        for row in mode_result
+        str(row.md.value if hasattr(row.md, "value") else row.md): row.cnt for row in mode_result
     }
 
     # ── By recommended_action (from migration 0006) ────────────────────────────
@@ -238,7 +239,7 @@ async def get_analytics(
             func.count(SimulationRun.id).label("cnt"),
         )
         .where(
-            SimulationRun.org_id == auth["org_id"],
+            *workspace_scope_clauses(SimulationRun, auth),
             SimulationRun.created_at >= since,
             SimulationRun.recommended_action.isnot(None),
         )
@@ -251,12 +252,9 @@ async def get_analytics(
     latency_result = await db.execute(
         select(
             func.avg(SimulationRun.duration_ms).label("avg_ms"),
-            func.percentile_cont(0.95).within_group(
-                SimulationRun.duration_ms
-            ).label("p95_ms"),
-        )
-        .where(
-            SimulationRun.org_id == auth["org_id"],
+            func.percentile_cont(0.95).within_group(SimulationRun.duration_ms).label("p95_ms"),
+        ).where(
+            *workspace_scope_clauses(SimulationRun, auth),
             SimulationRun.created_at >= since,
             SimulationRun.duration_ms.isnot(None),
         )

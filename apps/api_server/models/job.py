@@ -1,7 +1,8 @@
 """Job model — tracks async simulation job lifecycle."""
-import enum
+
 import uuid
 from datetime import datetime
+from enum import StrEnum
 
 from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
@@ -10,7 +11,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from apps.api_server.db.base import Base, TimestampMixin, UUIDMixin
 
 
-class JobStatus(str, enum.Enum):
+class JobStatus(StrEnum):
     QUEUED = "queued"
     VALIDATING = "validating"
     RUNNING = "running"
@@ -20,7 +21,7 @@ class JobStatus(str, enum.Enum):
     EXPIRED = "expired"
 
 
-class WebhookStatus(str, enum.Enum):
+class WebhookStatus(StrEnum):
     PENDING = "pending"
     DELIVERED = "delivered"
     FAILED = "failed"
@@ -29,13 +30,13 @@ class WebhookStatus(str, enum.Enum):
 
 # Valid state transitions
 _VALID_TRANSITIONS: dict[JobStatus, set[JobStatus]] = {
-    JobStatus.QUEUED:     {JobStatus.VALIDATING, JobStatus.CANCELLED},
+    JobStatus.QUEUED: {JobStatus.VALIDATING, JobStatus.CANCELLED},
     JobStatus.VALIDATING: {JobStatus.RUNNING, JobStatus.FAILED, JobStatus.CANCELLED},
-    JobStatus.RUNNING:    {JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.CANCELLED},
-    JobStatus.COMPLETED:  {JobStatus.EXPIRED},
-    JobStatus.FAILED:     set(),
-    JobStatus.CANCELLED:  set(),
-    JobStatus.EXPIRED:    set(),
+    JobStatus.RUNNING: {JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.CANCELLED},
+    JobStatus.COMPLETED: {JobStatus.EXPIRED},
+    JobStatus.FAILED: set(),
+    JobStatus.CANCELLED: set(),
+    JobStatus.EXPIRED: set(),
 }
 
 
@@ -62,6 +63,12 @@ class Job(UUIDMixin, TimestampMixin, Base):
         UUID(as_uuid=True),
         ForeignKey("organizations.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
+    )
+    # Workspace sub-tenant scope (platform key via X-Workspace-Id). NULL = org-wide.
+    workspace_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        nullable=True,
         index=True,
     )
     queue_name: Mapped[str] = mapped_column(String(100), nullable=False, default="default")

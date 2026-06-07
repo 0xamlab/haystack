@@ -1,16 +1,17 @@
 """APIKey model — authenticates API requests on behalf of an Organization."""
+
 import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, String
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from apps.api_server.db.base import Base, TimestampMixin, UUIDMixin
 
 
-class APIKeyStatus(str, enum.Enum):
+class APIKeyStatus(enum.StrEnum):
     ACTIVE = "active"
     REVOKED = "revoked"
 
@@ -42,6 +43,12 @@ class APIKey(UUIDMixin, TimestampMixin, Base):
         default=APIKeyStatus.ACTIVE,
         nullable=False,
         index=True,
+    )
+    device_limit: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Platform keys (e.g. Mission's company key) may act on behalf of any workspace
+    # within the org by sending an X-Workspace-Id header. Tenant keys may not.
+    is_platform: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
     )
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

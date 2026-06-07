@@ -6,10 +6,12 @@ Async job endpoints:
   POST   /v1/jobs/{job_id}/cancel    — cancel a queued/running job
   POST   /v1/webhooks/test           — test webhook delivery
 """
+
 import asyncio
 import json
 import uuid
 from datetime import UTC, datetime
+from typing import Any
 
 import structlog
 from fastapi import APIRouter, Depends, Query, Request
@@ -30,6 +32,11 @@ from apps.api_server.schemas.simulate import (
     SimulateRequestAuto,
 )
 from apps.api_server.services.auth_service import AuthContext
+from apps.api_server.services.workspace_scope import (
+    workspace_id_for_write,
+    workspace_scope_clauses,
+)
+from apps.api_server.services.egress_guard import audit_context_from_auth
 from apps.api_server.services.job_service import (
     cancel_job,
     create_job,
@@ -37,7 +44,7 @@ from apps.api_server.services.job_service import (
     get_job,
     get_job_result,
 )
-from apps.api_server.services.simulation_service import (
+from apps.api_server.services.simulation_payloads import (
     _build_auto_mojo_payload,
     _build_expert_mojo_payload,
 )
@@ -52,6 +59,7 @@ router = APIRouter(tags=["Async Jobs"])
 
 class SubmitJobRequest(BaseModel):
     """Request to submit an async simulation job."""
+
     model_config = ConfigDict(strict=False)
 
     request: SimulateRequest
@@ -63,6 +71,7 @@ class SubmitJobRequest(BaseModel):
 
 class JobStatusResponse(BaseModel):
     """Job status returned by poll endpoint."""
+
     job_id: uuid.UUID
     run_id: uuid.UUID
     org_id: uuid.UUID
@@ -81,6 +90,7 @@ class JobStatusResponse(BaseModel):
 
 class SubmitJobResponse(BaseModel):
     """Returned immediately on job submission."""
+
     job_id: uuid.UUID
     run_id: uuid.UUID
     status: str
@@ -128,11 +138,11 @@ async def list_jobs(
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=25, ge=1, le=200),
     status: str | None = None,
-) -> dict:
+) -> dict[str, Any]:
     """Paginated list of all jobs for the authenticated org."""
     from sqlalchemy import desc, func, select
 
-    base_q = select(Job).where(Job.org_id == auth["org_id"])
+    base_q = select(Job).where(*workspace_scope_clauses(Job, auth))
     if status:
         try:
             status_val = JobStatus(status)
@@ -143,10 +153,10 @@ async def list_jobs(
     total = (await db.execute(count_q)).scalar_one()
     offset = (page - 1) * limit
     items = (
-        await db.execute(
-            base_q.order_by(desc(Job.created_at)).offset(offset).limit(limit)
-        )
-    ).scalars().all()
+        (await db.execute(base_q.order_by(desc(Job.created_at)).offset(offset).limit(limit)))
+        .scalars()
+        .all()
+    )
     pages = max(1, (total + limit - 1) // limit)
     return {
         "jobs": [_job_to_response(j).model_dump() for j in items],
@@ -191,6 +201,7 @@ async def submit_job(
     # Create SimulationRun in QUEUED state
     run = SimulationRun(
         org_id=auth["org_id"],
+        workspace_id=workspace_id_for_write(auth),
         api_key_id=auth["key_id"],
         mode=mode,
         request_hash=request_hash,
@@ -207,6 +218,7 @@ async def submit_job(
         org_id=auth["org_id"],
         db=db,
         callback_url=payload.callback_url,
+        workspace_id=workspace_id_for_write(auth),
     )
 
     request_payload = sim_request.model_dump(mode="json")
@@ -214,6 +226,7 @@ async def submit_job(
     enqueued = False
     try:
         from apps.worker.tasks.simulation_task import enqueue_simulation_job
+
         enqueued = enqueue_simulation_job(str(job.id), request_payload)
     except Exception as exc:
         logger.warning("job_enqueue_failed", error=str(exc), job_id=str(job.id))
@@ -246,7 +259,7 @@ async def get_job_status(
     auth: AuthContext = Depends(get_current_org),
     db: AsyncSession = Depends(get_db),
 ) -> JobStatusResponse:
-    job = await get_job(job_id, auth["org_id"], db)
+    job = await get_job(job_id, auth["org_id"], db, workspace_id=auth.get("workspace_id"))
     base_url = str(request.base_url).rstrip("/")
     return _job_to_response(job, base_url)
 
@@ -269,11 +282,12 @@ async def get_job_result_endpoint(
     job_id: uuid.UUID,
     auth: AuthContext = Depends(get_current_org),
     db: AsyncSession = Depends(get_db),
-) -> dict:
-    job = await get_job(job_id, auth["org_id"], db)
+) -> dict[str, Any]:
+    _ws = auth.get("workspace_id")
+    job = await get_job(job_id, auth["org_id"], db, workspace_id=_ws)
 
     if job.status == JobStatus.COMPLETED:
-        result = await get_job_result(job_id, auth["org_id"], db)
+        result = await get_job_result(job_id, auth["org_id"], db, workspace_id=_ws)
         return {"status": "completed", "result": result}
     elif job.status == JobStatus.FAILED:
         return {"status": "failed", "error": job.error_message}
@@ -294,7 +308,7 @@ async def cancel_job_endpoint(
     auth: AuthContext = Depends(get_current_org),
     db: AsyncSession = Depends(get_db),
 ) -> JobStatusResponse:
-    job = await cancel_job(job_id, auth["org_id"], db)
+    job = await cancel_job(job_id, auth["org_id"], db, workspace_id=auth.get("workspace_id"))
     base_url = str(request.base_url).rstrip("/")
     return _job_to_response(job, base_url)
 
@@ -314,11 +328,12 @@ async def test_webhook(
         job_id=uuid.uuid4(),
         run_id=uuid.uuid4(),
         org_id=auth["org_id"],
-        result={"message": "This is a test webhook from the Decision Engine."},
+        result={"message": "This is a test webhook from the Algenta API."},
     )
     success, status_code, message = await deliver_webhook(
         callback_url=payload.callback_url,
         payload=test_payload,
         max_retries=0,  # No retries for test delivery
+        audit_context=audit_context_from_auth(auth),
     )
     return WebhookTestResponse(success=success, status_code=status_code, message=message)

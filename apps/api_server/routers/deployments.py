@@ -8,6 +8,7 @@ Endpoints:
   DELETE /v1/deployments/{deployment_id}  — Deprovision a deployment
   GET    /v1/deployments/{deployment_id}/cost — Get current month cloud cost
 """
+
 import uuid
 from datetime import UTC, datetime
 from typing import Annotated, Any
@@ -18,12 +19,14 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.api_server.db.session import get_db
+from apps.api_server.db.session import AsyncSessionLocal, get_db
 from apps.api_server.middleware.auth import get_current_org
 from apps.api_server.middleware.rbac import require_role
 from apps.api_server.models.deployment import Deployment, DeploymentStatus
 from apps.api_server.services.auth_service import AuthContext
+from apps.api_server.services.workspace_scope import workspace_id_for_write, workspace_scope_clauses
 from apps.api_server.services.provisioner_service import (
+    REGIONS,
     get_available_regions,
     get_provisioner,
     provision_deployment,
@@ -36,6 +39,7 @@ AsyncSessionDep = Annotated[AsyncSession, Depends(get_db)]
 
 
 # ─── Schemas ──────────────────────────────────────────────────────────────────
+
 
 class DeploymentCreate(BaseModel):
     provider: str = Field(
@@ -96,6 +100,7 @@ class DeploymentResponse(BaseModel):
 
 # ─── Endpoints ────────────────────────────────────────────────────────────────
 
+
 @router.get(
     "/v1/deployments/regions",
     summary="List available cloud providers and regions",
@@ -109,7 +114,14 @@ async def list_regions(
     otherwise returns a comprehensive static fallback list.
     Use the region `id` field when creating a deployment.
     """
-    live_regions = await get_available_regions()
+    live_regions = {
+        **REGIONS,
+        **(await get_available_regions()),
+    }
+
+    def _regions(provider_id: str) -> list[dict[str, Any]]:
+        return list(live_regions.get(provider_id) or REGIONS.get(provider_id) or [])
+
     return {
         "providers": [
             {
@@ -117,7 +129,7 @@ async def list_regions(
                 "name": "Algenta Managed",
                 "description": "Multi-tenant shared pool — default tier, no setup required.",
                 "icon": "🌐",
-                "regions": live_regions["algenta_shared"],
+                "regions": _regions("algenta_shared"),
             },
             {
                 "id": "aws",
@@ -127,7 +139,7 @@ async def list_regions(
                     "HIPAA-eligible. SOC2 Type II."
                 ),
                 "icon": "☁️",
-                "regions": live_regions["aws"],
+                "regions": _regions("aws"),
             },
             {
                 "id": "azure",
@@ -137,14 +149,14 @@ async def list_regions(
                     "Flexible + Redis Cache."
                 ),
                 "icon": "☁️",
-                "regions": live_regions["azure"],
+                "regions": _regions("azure"),
             },
             {
                 "id": "gcp",
                 "name": "Google Cloud Platform",
                 "description": "Isolated deployment on Cloud Run + Cloud SQL + Memorystore Redis.",
                 "icon": "☁️",
-                "regions": live_regions["gcp"],
+                "regions": _regions("gcp"),
             },
         ]
     }
@@ -161,15 +173,20 @@ async def get_deployment(
 ) -> DeploymentResponse | None:
     """Return the active deployment for this org, or None if using shared pool."""
     result = await db.execute(
-        select(Deployment).where(
-            Deployment.org_id == auth["org_id"],
-            Deployment.status.in_([
-                DeploymentStatus.ACTIVE,
-                DeploymentStatus.PROVISIONING,
-                DeploymentStatus.REQUESTED,
-                DeploymentStatus.UPDATING,
-            ]),
-        ).order_by(Deployment.created_at.desc()).limit(1)
+        select(Deployment)
+        .where(
+            *workspace_scope_clauses(Deployment, auth),
+            Deployment.status.in_(
+                [
+                    DeploymentStatus.ACTIVE,
+                    DeploymentStatus.PROVISIONING,
+                    DeploymentStatus.REQUESTED,
+                    DeploymentStatus.UPDATING,
+                ]
+            ),
+        )
+        .order_by(Deployment.created_at.desc())
+        .limit(1)
     )
     deployment = result.scalar_one_or_none()
     if deployment is None:
@@ -199,12 +216,14 @@ async def create_deployment(
     # Check for existing active/in-progress deployment
     existing = await db.execute(
         select(Deployment).where(
-            Deployment.org_id == auth["org_id"],
-            Deployment.status.in_([
-                DeploymentStatus.ACTIVE,
-                DeploymentStatus.PROVISIONING,
-                DeploymentStatus.REQUESTED,
-            ]),
+            *workspace_scope_clauses(Deployment, auth),
+            Deployment.status.in_(
+                [
+                    DeploymentStatus.ACTIVE,
+                    DeploymentStatus.PROVISIONING,
+                    DeploymentStatus.REQUESTED,
+                ]
+            ),
         )
     )
     if existing.scalar_one_or_none():
@@ -223,6 +242,7 @@ async def create_deployment(
 
     # Validate provider + region
     from apps.api_server.services.provisioner_service import REGIONS as ALL_REGIONS
+
     if payload.provider not in ALL_REGIONS:
         raise HTTPException(
             status_code=422,
@@ -230,8 +250,7 @@ async def create_deployment(
                 "error": {
                     "code": "invalid_provider",
                     "message": (
-                        f"Unknown provider '{payload.provider}'. "
-                        f"Valid: {list(ALL_REGIONS.keys())}"
+                        f"Unknown provider '{payload.provider}'. Valid: {list(ALL_REGIONS.keys())}"
                     ),
                 }
             },
@@ -254,12 +273,13 @@ async def create_deployment(
     # Create deployment record
     deployment = Deployment(
         org_id=auth["org_id"],
+        workspace_id=workspace_id_for_write(auth),
         provider=payload.provider,
         region=payload.region,
         status=DeploymentStatus.REQUESTED,
         config=payload.config,
         billing_markup_pct=payload.billing_markup_pct,
-        requested_by_user_id=auth.get("key_id"),
+        requested_by_user_id=auth.get("user_id"),
     )
     db.add(deployment)
     await db.commit()
@@ -267,13 +287,16 @@ async def create_deployment(
 
     # Start async provisioning (fire-and-forget)
     import asyncio
-    asyncio.create_task(_provision_async(
-        deployment.id,
-        auth["org_id"],
-        payload.provider,
-        payload.region,
-        payload.config or {},
-    ))
+
+    asyncio.create_task(
+        _provision_async(
+            deployment.id,
+            auth["org_id"],
+            payload.provider,
+            payload.region,
+            payload.config or {},
+        )
+    )
 
     logger.info(
         "deployment_requested",
@@ -303,7 +326,7 @@ async def delete_deployment(
     result = await db.execute(
         select(Deployment).where(
             Deployment.id == deployment_id,
-            Deployment.org_id == auth["org_id"],
+            *workspace_scope_clauses(Deployment, auth),
         )
     )
     deployment = result.scalar_one_or_none()
@@ -328,6 +351,7 @@ async def delete_deployment(
     await db.commit()
 
     import asyncio
+
     asyncio.create_task(
         _deprovision_async(
             deployment_id,
@@ -351,7 +375,7 @@ async def get_deployment_cost(
     result = await db.execute(
         select(Deployment).where(
             Deployment.id == deployment_id,
-            Deployment.org_id == auth["org_id"],
+            *workspace_scope_clauses(Deployment, auth),
         )
     )
     deployment = result.scalar_one_or_none()
@@ -377,6 +401,7 @@ async def get_deployment_cost(
 
 # ─── Async provisioning helpers ───────────────────────────────────────────────
 
+
 async def _provision_async(
     deployment_id: uuid.UUID,
     org_id: uuid.UUID,
@@ -385,9 +410,7 @@ async def _provision_async(
     config: dict[str, Any],
 ) -> None:
     """Background task: provision cloud resources and update deployment record."""
-    from apps.api_server.db.session import async_session_factory
-
-    async with async_session_factory() as db:
+    async with AsyncSessionLocal() as db:
         try:
             result = await db.execute(select(Deployment).where(Deployment.id == deployment_id))
             deployment = result.scalar_one_or_none()
@@ -454,12 +477,10 @@ async def _deprovision_async(
     resource_ids: dict[str, Any],
 ) -> None:
     """Background task: tear down cloud resources."""
-    from apps.api_server.db.session import async_session_factory
-
     provider_str = provider.value if hasattr(provider, "value") else str(provider)
     provisioner = get_provisioner(provider_str)
 
-    async with async_session_factory() as db:
+    async with AsyncSessionLocal() as db:
         success = True
         if provisioner:
             success = await provisioner.deprovision(deployment_id, resource_ids)
@@ -468,9 +489,7 @@ async def _deprovision_async(
         deployment = result.scalar_one_or_none()
         if deployment:
             deployment.status = (
-                DeploymentStatus.DEPROVISIONED
-                if success
-                else DeploymentStatus.FAILED
+                DeploymentStatus.DEPROVISIONED if success else DeploymentStatus.FAILED
             )
             deployment.endpoint_url = None
             await db.commit()

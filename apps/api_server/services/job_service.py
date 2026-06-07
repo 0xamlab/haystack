@@ -1,4 +1,5 @@
 """Job lifecycle service — create, get, update, cancel async simulation jobs."""
+
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -18,11 +19,34 @@ from apps.api_server.models.job import (
 )
 from apps.api_server.models.simulation_run import RunStatus, SimulationRun
 from apps.api_server.schemas.simulate import SimulateRequest
+from apps.api_server.services.egress_guard import EgressAuditContext
 
 logger = structlog.get_logger(__name__)
 
 _DEFAULT_TTL_HOURS = 24
-_SIMULATE_REQUEST_ADAPTER = TypeAdapter(SimulateRequest)
+_SIMULATE_REQUEST_ADAPTER: TypeAdapter[Any] = TypeAdapter(SimulateRequest)
+
+
+async def _get_job_for_update(job_id: uuid.UUID, db: AsyncSession) -> Job | None:
+    """Load a job row with an update lock for terminal state transitions."""
+    result = await db.execute(
+        select(Job)
+        .where(Job.id == job_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    return result.scalar_one_or_none()
+
+
+async def _get_run_for_update(run_id: uuid.UUID, db: AsyncSession) -> SimulationRun | None:
+    """Load a simulation run row with an update lock for terminal state transitions."""
+    result = await db.execute(
+        select(SimulationRun)
+        .where(SimulationRun.id == run_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    return result.scalar_one_or_none()
 
 
 async def create_job(
@@ -31,12 +55,14 @@ async def create_job(
     db: AsyncSession,
     callback_url: str | None = None,
     queue_name: str = "default",
+    workspace_id: uuid.UUID | None = None,
 ) -> Job:
     """Create a new Job record in QUEUED state."""
     ttl = datetime.now(UTC) + timedelta(hours=_DEFAULT_TTL_HOURS)
     job = Job(
         run_id=run_id,
         org_id=org_id,
+        workspace_id=workspace_id,
         queue_name=queue_name,
         status=JobStatus.QUEUED,
         callback_url=callback_url,
@@ -49,15 +75,26 @@ async def create_job(
     return job
 
 
-async def get_job(job_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession) -> Job:
-    """Fetch a job, enforcing org isolation. Raises 404 or 403."""
+def _job_not_found(job_id: uuid.UUID) -> HTTPException:
+    return HTTPException(
+        status_code=404,
+        detail={"error": {"code": "job_not_found", "message": f"Job {job_id} not found."}},
+    )
+
+
+async def get_job(
+    job_id: uuid.UUID,
+    org_id: uuid.UUID,
+    db: AsyncSession,
+    workspace_id: uuid.UUID | None = None,
+) -> Job:
+    """Fetch a job, enforcing org isolation (and workspace isolation when ``workspace_id``
+    is set). Raises 404 or 403. A None workspace_id means org-wide (internal callers and
+    org-wide platform calls), mirroring workspace_scope_clauses semantics."""
     result = await db.execute(select(Job).where(Job.id == job_id))
     job = result.scalar_one_or_none()
     if job is None:
-        raise HTTPException(
-            status_code=404,
-            detail={"error": {"code": "job_not_found", "message": f"Job {job_id} not found."}},
-        )
+        raise _job_not_found(job_id)
     if job.org_id != org_id:
         raise HTTPException(
             status_code=403,
@@ -68,6 +105,9 @@ async def get_job(job_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession) -> Job
                 }
             },
         )
+    # Cross-workspace (same org): treat as not-found to avoid leaking existence to a sibling workspace.
+    if workspace_id is not None and job.workspace_id != workspace_id:
+        raise _job_not_found(job_id)
     return job
 
 
@@ -99,9 +139,29 @@ async def update_job_status(
     return job
 
 
-async def cancel_job(job_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession) -> Job:
-    """Cancel a job if it's still in a cancellable state."""
-    job = await get_job(job_id, org_id, db)
+async def cancel_job(
+    job_id: uuid.UUID,
+    org_id: uuid.UUID,
+    db: AsyncSession,
+    workspace_id: uuid.UUID | None = None,
+) -> Job:
+    """Cancel a job if it's still in a cancellable state. Enforces org isolation, and
+    workspace isolation when ``workspace_id`` is set."""
+    job = await _get_job_for_update(job_id, db)
+    if job is None:
+        raise _job_not_found(job_id)
+    if job.org_id != org_id:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": {
+                    "code": "job_access_denied",
+                    "message": "Access to this job is not allowed.",
+                }
+            },
+        )
+    if workspace_id is not None and job.workspace_id != workspace_id:
+        raise _job_not_found(job_id)
     if is_terminal(job.status):
         raise HTTPException(
             status_code=409,
@@ -109,8 +169,7 @@ async def cancel_job(job_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession) -> 
                 "error": {
                     "code": "job_already_terminal",
                     "message": (
-                        f"Job is already in terminal state: {job.status.value}. "
-                        "Cannot cancel."
+                        f"Job is already in terminal state: {job.status.value}. Cannot cancel."
                     ),
                 }
             },
@@ -125,23 +184,40 @@ async def cancel_job(job_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession) -> 
                 }
             },
         )
-    return await update_job_status(job.id, JobStatus.CANCELLED, db)
+    cancelled_at = datetime.now(UTC)
+    job.status = JobStatus.CANCELLED
+    job.completed_at = cancelled_at
+    job.error_message = None
+
+    run = await _get_run_for_update(job.run_id, db)
+    if run is not None and run.status not in {
+        RunStatus.COMPLETED,
+        RunStatus.FAILED,
+        RunStatus.CANCELLED,
+    }:
+        run.status = RunStatus.CANCELLED
+        run.completed_at = cancelled_at
+        run.error_message = "Job cancelled by user."
+        await db.flush()
+    await db.commit()
+    await db.refresh(job)
+    return job
 
 
 async def get_job_result(
     job_id: uuid.UUID,
     org_id: uuid.UUID,
     db: AsyncSession,
+    workspace_id: uuid.UUID | None = None,
 ) -> dict[str, Any] | None:
-    """Get the simulation result for a completed job, or None if not ready."""
-    job = await get_job(job_id, org_id, db)
+    """Get the simulation result for a completed job, or None if not ready. Enforces
+    org isolation, and workspace isolation when ``workspace_id`` is set."""
+    job = await get_job(job_id, org_id, db, workspace_id=workspace_id)
     if job.status != JobStatus.COMPLETED:
         return None
 
     # Fetch associated SimulationRun
-    run_result = await db.execute(
-        select(SimulationRun).where(SimulationRun.id == job.run_id)
-    )
+    run_result = await db.execute(select(SimulationRun).where(SimulationRun.id == job.run_id))
     run = run_result.scalar_one_or_none()
     if run is None:
         return None
@@ -191,6 +267,29 @@ async def execute_job(
         raise ValueError(f"SimulationRun {job.run_id} not found for job {job_id}")
 
     if is_terminal(job.status):
+        result = await get_job_result(job_id, job.org_id, db)
+        return result or {
+            "status": job.status.value,
+            "job_id": str(job.id),
+            "run_id": str(job.run_id),
+        }
+
+    locked_job = await _get_job_for_update(job.id, db)
+    locked_run = await _get_run_for_update(run.id, db)
+    if locked_job is None:
+        raise ValueError(f"Job {job.id} not found during startup.")
+    if locked_run is None:
+        raise ValueError(f"SimulationRun {run.id} not found during startup.")
+
+    job = locked_job
+    run = locked_run
+
+    if is_terminal(job.status):
+        if job.status == JobStatus.CANCELLED and run.status != RunStatus.CANCELLED:
+            run.status = RunStatus.CANCELLED
+            run.completed_at = run.completed_at or datetime.now(UTC)
+            run.error_message = run.error_message or "Job cancelled by user."
+            await db.commit()
         result = await get_job_result(job_id, job.org_id, db)
         return result or {
             "status": job.status.value,
@@ -254,7 +353,7 @@ async def execute_job(
         run.std_deviation = envelope.metrics.std_deviation
         run.rationale = envelope.rationale
         try:
-            run.simulation_model = envelope.simulation_model  # type: ignore[assignment]
+            run.simulation_model = str(envelope.simulation_model)
         except Exception as exc:
             logger.debug(
                 "job_simulation_model_persist_failed",
@@ -262,11 +361,68 @@ async def execute_job(
                 run_id=str(run.id),
                 error=str(exc),
             )
+        locked_job = await _get_job_for_update(job.id, db)
+        locked_run = await _get_run_for_update(run.id, db)
+        if locked_job is None:
+            raise ValueError(f"Job {job.id} not found during completion.")
+        if locked_run is None:
+            raise ValueError(f"SimulationRun {run.id} not found during completion.")
 
-        job.status = JobStatus.COMPLETED
-        job.completed_at = datetime.now(UTC)
-        job.error_message = None
+        if locked_job.status == JobStatus.CANCELLED:
+            if locked_run.status != RunStatus.CANCELLED:
+                locked_run.status = RunStatus.CANCELLED
+                locked_run.completed_at = locked_run.completed_at or datetime.now(UTC)
+                locked_run.error_message = locked_run.error_message or "Job cancelled by user."
+            await db.commit()
+            return {
+                "status": JobStatus.CANCELLED.value,
+                "job_id": str(locked_job.id),
+                "run_id": str(locked_job.run_id),
+            }
+
+        completed_at = datetime.now(UTC)
+        locked_run.status = RunStatus.COMPLETED
+        locked_run.engine_version = envelope.engine_version
+        locked_run.scenarios_run = envelope.scenarios_run
+        locked_run.billing_units = 1
+        locked_run.completed_at = completed_at
+        locked_run.duration_ms = envelope.execution_ms
+        locked_run.result_hash = envelope.result_hash
+        locked_run.recommended_action = envelope.recommended_action
+        locked_run.confidence = envelope.confidence
+        locked_run.expected_value = envelope.metrics.expected_value
+        locked_run.probability_of_loss = envelope.metrics.probability_of_loss
+        locked_run.std_deviation = envelope.metrics.std_deviation
+        locked_run.rationale = envelope.rationale
+        try:
+            locked_run.simulation_model = str(envelope.simulation_model)
+        except Exception as exc:
+            logger.debug(
+                "job_simulation_model_persist_failed",
+                job_id=str(locked_job.id),
+                run_id=str(locked_run.id),
+                error=str(exc),
+            )
+
+        locked_job.status = JobStatus.COMPLETED
+        locked_job.completed_at = completed_at
+        locked_job.error_message = None
         await db.commit()
+        job = locked_job
+        run = locked_run
+
+    await db.refresh(job)
+    await db.refresh(run)
+    if job.status == JobStatus.CANCELLED:
+        run.status = RunStatus.CANCELLED
+        run.completed_at = run.completed_at or datetime.now(UTC)
+        run.error_message = run.error_message or "Job cancelled by user."
+        await db.commit()
+        return {
+            "status": JobStatus.CANCELLED.value,
+            "job_id": str(job.id),
+            "run_id": str(job.run_id),
+        }
 
     result = await get_job_result(job_id, job.org_id, db)
     result_payload = result or {
@@ -283,7 +439,11 @@ async def execute_job(
             org_id=job.org_id,
             result=result_payload,
         )
-        delivered, _status_code, _message = await deliver_webhook(job.callback_url, webhook_payload)
+        delivered, _status_code, _message = await deliver_webhook(
+            job.callback_url,
+            webhook_payload,
+            audit_context=EgressAuditContext(org_id=job.org_id),
+        )
         await db.refresh(job)
         job.callback_status = WebhookStatus.DELIVERED if delivered else WebhookStatus.FAILED
         await db.commit()
@@ -304,4 +464,4 @@ async def _load_run_result_payload(run: SimulationRun) -> dict[str, Any] | None:
     result_url = run.result_url or generate_presigned_download_url(run.org_id, run.id)
     if not result_url:
         return None
-    return await get_result(result_url)
+    return await get_result(result_url, org_id=run.org_id)

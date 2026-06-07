@@ -8,15 +8,16 @@ Hot path:
   4. Return HTTP 200 to client  ← client receives here, ~13ms total
   5. Celery task persists run/audit/usage asynchronously
 """
+
 import time
-from typing import Annotated
+from typing import Annotated, Any
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.background import BackgroundTasks
 from fastapi.responses import JSONResponse
 
-from apps.api_server.config import get_settings
+from apps.api_server.config import SettingsProxy
 from apps.api_server.middleware.auth import get_current_org, get_redis
 from apps.api_server.middleware.metrics import record_simulation_error, record_simulation_latency
 from apps.api_server.schemas.response import DecisionEnvelope, build_decision_plan
@@ -28,7 +29,7 @@ from apps.api_server.services.simulation_service import run_simulation_fast
 
 logger = structlog.get_logger(__name__)
 router = APIRouter(tags=["Simulation"])
-settings = get_settings()
+settings = SettingsProxy()
 
 
 @router.post(
@@ -83,7 +84,12 @@ async def simulate(
     # Apply historical calibration to confidence (raw stays in envelope.confidence)
     try:
         from apps.api_server.services.calibration_service import calibrate_confidence
-        cal_conf, cal_stats = calibrate_confidence(envelope.confidence, str(auth["org_id"]))
+
+        cal_conf, cal_stats = calibrate_confidence(
+            envelope.confidence,
+            str(auth["org_id"]),
+            workspace_id=str(auth["workspace_id"]) if auth.get("workspace_id") else None,
+        )
         envelope.decision_plan.confidence = cal_conf
         if cal_stats.is_reliable:
             envelope.decision_plan.calibration = cal_stats.summary()
@@ -152,7 +158,7 @@ async def simulate(
 
 
 def _dispatch_persist(
-    persist_meta: dict,
+    persist_meta: dict[str, Any],
     auth: AuthContext,
     client_ip: str,
     background_tasks: BackgroundTasks,
@@ -166,7 +172,11 @@ def _dispatch_persist(
     """
     try:
         from apps.worker.tasks.simulation_task import persist_simulation
-        persist_simulation.delay(
+
+        persist_task = persist_simulation
+        if persist_task is None:
+            raise RuntimeError("celery_persist_task_unavailable")
+        persist_task.delay(
             persist_meta=persist_meta,
             plan=auth["plan"],
             actor_email=auth.get("email", "api_key"),
@@ -214,7 +224,7 @@ def _dispatch_persist(
 
 
 async def _persist_in_process(
-    persist_meta: dict,
+    persist_meta: dict[str, Any],
     auth: AuthContext,
     client_ip: str,
     redis_client: object,

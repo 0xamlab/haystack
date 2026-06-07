@@ -1,6 +1,7 @@
 """UsageRecord model — per-request billing unit tracking."""
-import enum
+
 import uuid
+from enum import StrEnum
 
 from sqlalchemy import Enum, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
@@ -9,7 +10,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from apps.api_server.db.base import Base, TimestampMixin, UUIDMixin
 
 
-class UsageEndpoint(str, enum.Enum):
+class UsageEndpoint(StrEnum):
     SIMULATE = "simulate"
     RECOMMEND = "recommend"
     SCORE = "score"
@@ -27,12 +28,19 @@ class UsageRecord(UUIDMixin, TimestampMixin, Base):
     - Usage dashboard in the external web interface (group by day/endpoint)
     - Stripe metered billing hooks (future)
     """
+
     __tablename__ = "usage_records"
 
     org_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("organizations.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
+    )
+    # Workspace sub-tenant scope (platform key via X-Workspace-Id). NULL = org-wide.
+    workspace_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        nullable=True,
         index=True,
     )
     api_key_id: Mapped[uuid.UUID | None] = mapped_column(

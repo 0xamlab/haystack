@@ -10,6 +10,7 @@ Account endpoints:
   POST   /v1/api-keys        — create new API key
   DELETE /v1/api-keys/{id}   — revoke API key
 """
+
 import uuid
 from datetime import UTC, datetime
 
@@ -18,8 +19,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from apps.api_server.config import get_settings
 from apps.api_server.db.session import get_db
 from apps.api_server.middleware.auth import get_current_org, get_redis
 from apps.api_server.middleware.rbac import require_role
@@ -45,11 +46,32 @@ from apps.api_server.services.auth_service import (
     AuthContext,
     generate_api_key,
     invalidate_api_key_cache,
+    is_api_key_expired,
+)
+from apps.api_server.services.workspace_scope import workspace_scope_clauses
+from apps.api_server.services.plan_limits import (
+    effective_device_limit,
+    validate_api_key_device_limit,
 )
 
 logger = structlog.get_logger(__name__)
 router = APIRouter(tags=["Account"])
-settings = get_settings()
+
+
+def _api_key_info_device_limit(auth: AuthContext, api_key: APIKey) -> int:
+    plan = auth.get("plan")
+    if plan is None:
+        organization = getattr(api_key, "organization", None)
+        organization_plan = getattr(organization, "plan", None)
+        if organization_plan is not None:
+            plan = getattr(organization_plan, "value", organization_plan)
+    stored_limit = getattr(api_key, "device_limit", None)
+    if plan is None:
+        return stored_limit if isinstance(stored_limit, int) else 0
+    return effective_device_limit(
+        plan,
+        stored_limit if isinstance(stored_limit, int) else None,
+    )
 
 
 class DistributionListResponse(BaseModel):
@@ -75,8 +97,9 @@ class APIKeyListResponse(BaseModel):
     limit: int
     pages: int
 
+
 # Plan → quota mapping
-_PLAN_QUOTAS: dict[str, dict] = {
+_PLAN_QUOTAS: dict[str, dict[str, int | bool]] = {
     "free": {
         "simulations": 500,
         "max_runs": 10_000,
@@ -118,7 +141,8 @@ async def me(
     db: AsyncSession = Depends(get_db),
 ) -> MeResponse:
     user_result = await db.execute(
-        select(User).join(Organization, User.org_id == Organization.id)
+        select(User)
+        .join(Organization, User.org_id == Organization.id)
         .where(User.org_id == auth["org_id"])
         .order_by(User.created_at)
         .limit(1)
@@ -165,10 +189,7 @@ async def update_me(
     db: AsyncSession = Depends(get_db),
 ) -> MeResponse:
     user_result = await db.execute(
-        select(User)
-        .where(User.org_id == auth["org_id"])
-        .order_by(User.created_at)
-        .limit(1)
+        select(User).where(User.org_id == auth["org_id"]).order_by(User.created_at).limit(1)
     )
     user = user_result.scalar_one_or_none()
     if user is None:
@@ -234,7 +255,7 @@ async def usage(
     # Count from usage_records (accurate billing count — only successful calls)
     count_result = await db.execute(
         select(func.count(UsageRecord.id))
-        .where(UsageRecord.org_id == auth["org_id"])
+        .where(*workspace_scope_clauses(UsageRecord, auth))
         .where(UsageRecord.billing_period == billing_period)
     )
     sim_count = count_result.scalar_one() or 0
@@ -264,12 +285,12 @@ async def limits(auth: AuthContext = Depends(get_current_org)) -> LimitsResponse
     quota = _PLAN_QUOTAS.get(plan, _PLAN_QUOTAS["free"])
     return LimitsResponse(
         plan=plan,
-        max_simulations_per_month=quota["simulations"],
-        max_runs_per_simulation=quota["max_runs"],
-        max_batch_items=quota["max_batch"],
-        rate_limit_per_minute=quota["rate"],
-        async_jobs_enabled=quota["async"],
-        webhooks_enabled=quota["webhooks"],
+        max_simulations_per_month=int(quota["simulations"]),
+        max_runs_per_simulation=int(quota["max_runs"]),
+        max_batch_items=int(quota["max_batch"]),
+        rate_limit_per_minute=int(quota["rate"]),
+        async_jobs_enabled=bool(quota["async"]),
+        webhooks_enabled=bool(quota["webhooks"]),
     )
 
 
@@ -344,7 +365,9 @@ async def templates(
 ) -> list[TemplateInfo] | TemplateListResponse:
     entries = [
         TemplateInfo(
-            id="product-launch", name="Product Launch Decision", category="business",
+            id="product-launch",
+            name="Product Launch Decision",
+            category="business",
             description="Compare launch vs no-launch with revenue and cost uncertainty.",
             example_request={
                 "mode": "auto",
@@ -363,8 +386,7 @@ async def templates(
             name="Investment Risk Assessment",
             category="finance",
             description=(
-                "Model investment returns with normal distribution and assess "
-                "downside risk."
+                "Model investment returns with normal distribution and assess downside risk."
             ),
             example_request={
                 "mode": "expert",
@@ -388,7 +410,9 @@ async def templates(
             },
         ),
         TemplateInfo(
-            id="pricing-decision", name="Pricing Decision", category="business",
+            id="pricing-decision",
+            name="Pricing Decision",
+            category="business",
             description="Evaluate the expected revenue impact of different pricing scenarios.",
             example_request={
                 "mode": "auto",
@@ -417,6 +441,7 @@ async def templates(
 
 # ─── API Key Management ────────────────────────────────────────────────────────
 
+
 @router.get(
     "/v1/api-keys",
     response_model=list[APIKeyInfo] | APIKeyListResponse,
@@ -428,17 +453,29 @@ async def list_api_keys(
     page: int | None = Query(default=None, ge=1),
     limit: int | None = Query(default=None, ge=1, le=200),
 ) -> list[APIKeyInfo] | APIKeyListResponse:
+    now = datetime.now(UTC)
     result = await db.execute(
         select(APIKey)
+        .options(selectinload(APIKey.organization))
         .where(APIKey.org_id == auth["org_id"])
         .where(APIKey.status == APIKeyStatus.ACTIVE)
         .order_by(APIKey.created_at.desc())
     )
-    keys = result.scalars().all()
+    keys = [
+        api_key
+        for api_key in result.scalars().all()
+        if not is_api_key_expired(api_key.expires_at, now=now)
+    ]
     entries = [
         APIKeyInfo(
-            id=k.id, label=k.label, key_prefix=k.key_prefix,
-            status=k.status.value, created_at=k.created_at, last_used_at=k.last_used_at,
+            id=k.id,
+            label=k.label,
+            key_prefix=k.key_prefix,
+            device_limit=_api_key_info_device_limit(auth, k),
+            status=k.status.value,
+            created_at=k.created_at,
+            last_used_at=k.last_used_at,
+            expires_at=k.expires_at,
         )
         for k in keys
     ]
@@ -465,29 +502,59 @@ async def create_api_key(
     auth: AuthContext = Depends(require_role("member")),
     db: AsyncSession = Depends(get_db),
 ) -> APIKeyCreated:
+    try:
+        stored_device_limit = validate_api_key_device_limit(auth["plan"], payload.device_limit)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": {
+                    "code": "invalid_device_limit",
+                    "message": str(exc),
+                }
+            },
+        ) from exc
+
     raw_key, key_prefix, hashed_key = generate_api_key()
     api_key = APIKey(
         org_id=auth["org_id"],
         label=payload.label,
         key_prefix=key_prefix,
         hashed_key=hashed_key,
+        device_limit=stored_device_limit,
         expires_at=payload.expires_at,
     )
     db.add(api_key)
     await db.flush()
-    logger.info("api_key_created", org_id=str(auth["org_id"]), label=payload.label)
+    device_limit = effective_device_limit(auth["plan"], api_key.device_limit)
+    logger.info(
+        "api_key_created",
+        org_id=str(auth["org_id"]),
+        label=payload.label,
+        device_limit=device_limit,
+    )
 
     # Audit write
     from apps.api_server.services.audit_service import write_audit_event
+
     await write_audit_event(
-        db=db, org_id=auth["org_id"], action="api_key.create",
-        actor_email=auth.get("email", "api_key"), resource_type="api_key",
-        resource_id=str(api_key.id), metadata={"label": payload.label},
+        db=db,
+        org_id=auth["org_id"],
+        action="api_key.create",
+        actor_email=auth.get("email", "api_key"),
+        resource_type="api_key",
+        resource_id=str(api_key.id),
+        metadata={"label": payload.label, "device_limit": device_limit},
     )
 
     return APIKeyCreated(
-        id=api_key.id, label=api_key.label, key_prefix=api_key.key_prefix,
-        raw_key=raw_key, created_at=api_key.created_at,
+        id=api_key.id,
+        label=api_key.label,
+        key_prefix=api_key.key_prefix,
+        device_limit=device_limit,
+        raw_key=raw_key,
+        created_at=api_key.created_at,
+        expires_at=api_key.expires_at,
     )
 
 
@@ -500,9 +567,7 @@ async def revoke_api_key(
     redis_client: object = Depends(get_redis),
 ) -> None:
     result = await db.execute(
-        select(APIKey)
-        .where(APIKey.id == key_id)
-        .where(APIKey.org_id == auth["org_id"])
+        select(APIKey).where(APIKey.id == key_id).where(APIKey.org_id == auth["org_id"])
     )
     api_key = result.scalar_one_or_none()
     if api_key is None:
@@ -518,20 +583,23 @@ async def revoke_api_key(
 
     # Prevent revoking the last active key
     count_result = await db.execute(
-        select(func.count(APIKey.id))
+        select(APIKey)
         .where(APIKey.org_id == auth["org_id"])
         .where(APIKey.status == APIKeyStatus.ACTIVE)
     )
-    active_count = count_result.scalar_one() or 0
+    now = datetime.now(UTC)
+    active_count = sum(
+        1
+        for candidate in count_result.scalars().all()
+        if not is_api_key_expired(candidate.expires_at, now=now)
+    )
     if active_count <= 1:
         raise HTTPException(
             status_code=400,
             detail={
                 "error": {
                     "code": "cannot_revoke_last_key",
-                    "message": (
-                        "Cannot revoke the last active API key. Create a new key first."
-                    ),
+                    "message": ("Cannot revoke the last active API key. Create a new key first."),
                 }
             },
         )
@@ -543,9 +611,14 @@ async def revoke_api_key(
 
     # Audit write
     from apps.api_server.services.audit_service import get_client_ip, write_audit_event
+
     await write_audit_event(
-        db=db, org_id=auth["org_id"], action="api_key.revoke",
-        actor_email=auth.get("email", "api_key"), resource_type="api_key",
-        resource_id=str(key_id), ip_address=get_client_ip(request),
+        db=db,
+        org_id=auth["org_id"],
+        action="api_key.revoke",
+        actor_email=auth.get("email", "api_key"),
+        resource_type="api_key",
+        resource_id=str(key_id),
+        ip_address=get_client_ip(request),
         metadata={"label": api_key.label},
     )

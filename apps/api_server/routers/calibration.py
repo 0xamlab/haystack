@@ -6,6 +6,7 @@ how much to trust confidence scores and how the auto-learning loop is performing
 
 No new MCP tool needed — this is a transparency endpoint for dashboards and audit.
 """
+
 from __future__ import annotations
 
 from typing import Annotated
@@ -24,6 +25,7 @@ router = APIRouter(tags=["Calibration"])
 
 class CalibrationResponse(BaseModel):
     """Org-level confidence calibration state."""
+
     org_id: str
     is_reliable: bool
     n_samples: int
@@ -56,7 +58,8 @@ async def get_calibration_status(
     auth: Annotated[AuthContext, Depends(get_current_org)],
 ) -> CalibrationResponse:
     org_id_str = str(auth["org_id"])
-    stats: CalibrationStats = get_calibration(org_id_str)
+    _ws = auth.get("workspace_id")
+    stats: CalibrationStats = get_calibration(org_id_str, str(_ws) if _ws else None)
 
     return CalibrationResponse(
         org_id=org_id_str,

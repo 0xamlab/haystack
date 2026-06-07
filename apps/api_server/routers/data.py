@@ -19,6 +19,13 @@ from apps.api_server.services.data_connection_service import (
     connect_data,
     refresh_dataset,
 )
+from apps.api_server.services.data_discovery import (
+    discovery_dataset_id,
+    discovery_dataset_name,
+    discovery_dataset_status,
+    discovery_source_names,
+    filter_discovery_entries,
+)
 from apps.api_server.services.data_visibility import (
     dataset_manageable,
     filter_visible_datasets,
@@ -26,6 +33,25 @@ from apps.api_server.services.data_visibility import (
 )
 
 router = APIRouter(tags=["Data"])
+
+
+def _coerce_optional_text(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    trimmed = value.strip()
+    return trimmed or None
+
+
+def _coerce_page(value: Any) -> int:
+    return value if isinstance(value, int) and value >= 1 else 1
+
+
+def _coerce_limit(value: Any) -> int | None:
+    return value if isinstance(value, int) and value >= 1 else None
+
+
+def _coerce_compact(value: Any) -> bool:
+    return value if isinstance(value, bool) else False
 
 
 class ConnectDataRequest(BaseModel):
@@ -68,11 +94,27 @@ class ConnectDataRequest(BaseModel):
     parquet_b64: str | None = None
 
 
-def _dataset_summary(entry: dict[str, Any]) -> dict[str, Any]:
+def _dataset_summary(
+    entry: dict[str, Any],
+    *,
+    compact: bool = False,
+) -> dict[str, Any]:
+    dataset_id = discovery_dataset_id(entry)
+    dataset_name = discovery_dataset_name(entry)
+    summary = {
+        "dataset_id": dataset_id,
+        "source_id": dataset_id,
+        "dataset_name": dataset_name,
+        "name": dataset_name,
+        "status": discovery_dataset_status(entry),
+        "source_names": discovery_source_names(entry),
+        "column_count": int(entry.get("column_count") or entry.get("columns") or 0),
+        "registered_at": entry.get("registered_at"),
+    }
+    if compact:
+        return summary
     return {
-        "dataset_id": entry.get("id"),
-        "source_id": entry.get("id"),
-        "dataset_name": entry.get("dataset_name") or entry.get("name") or entry.get("id"),
+        **summary,
         "source_name": entry.get("name"),
         "description": entry.get("description"),
         "connection_id": entry.get("connector_id"),
@@ -85,8 +127,37 @@ def _dataset_summary(entry: dict[str, Any]) -> dict[str, Any]:
         "row_count": entry.get("row_count", 0),
         "columns": entry.get("columns", 0),
         "roles_summary": entry.get("roles_summary", {}),
-        "registered_at": entry.get("registered_at"),
+        "discovery_labels": entry.get("discovery_labels"),
+        "discovery_metadata": entry.get("discovery_metadata"),
         "selection": entry.get("selection"),
+    }
+
+
+def _dataset_selection_summary(
+    entry: dict[str, Any],
+    *,
+    schema_meta: dict[str, Any] | None,
+) -> dict[str, Any]:
+    query_hints = schema_meta.get("query_hints") if isinstance(schema_meta, dict) else None
+    row_count = (
+        schema_meta.get("row_count")
+        if isinstance(schema_meta, dict) and schema_meta.get("row_count") is not None
+        else entry.get("row_count", 0)
+    )
+    column_count = (
+        len(schema_meta.get("columns", []))
+        if isinstance(schema_meta, dict) and isinstance(schema_meta.get("columns"), list)
+        else int(entry.get("column_count") or entry.get("columns") or 0)
+    )
+    return {
+        "dataset_id": discovery_dataset_id(entry),
+        "name": discovery_dataset_name(entry),
+        "status": discovery_dataset_status(entry),
+        "source_names": discovery_source_names(entry),
+        "row_count": row_count,
+        "column_count": column_count,
+        "registered_at": entry.get("registered_at"),
+        "query_hints": list(query_hints[:10]) if isinstance(query_hints, list) else [],
     }
 
 
@@ -104,21 +175,61 @@ async def list_data(
     auth: Annotated[AuthContext, Depends(get_current_org)],
     page: int = Query(default=1, ge=1),
     limit: int | None = Query(default=None, ge=1, le=200),
+    search: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    source_name: str | None = Query(default=None),
+    compact: bool = Query(default=False),
 ) -> dict[str, Any]:
     org_id = str(auth["org_id"])
-    datasets = [
-        _dataset_summary(entry)
-        for entry in filter_visible_datasets(sreg.list_sources(org_id), auth)
-    ]
-    paged = paginate_sequence(datasets, page=page, limit=limit)
+    visible_entries = filter_visible_datasets(sreg.list_sources(org_id), auth)
+    resolved_page = _coerce_page(page)
+    resolved_limit = _coerce_limit(limit)
+    resolved_search = _coerce_optional_text(search)
+    resolved_status = _coerce_optional_text(status)
+    resolved_source_name = _coerce_optional_text(source_name)
+    resolved_compact = _coerce_compact(compact)
+    total = len(visible_entries)
+    filtered_entries = filter_discovery_entries(
+        visible_entries,
+        search=resolved_search,
+        status=resolved_status,
+        source_name=resolved_source_name,
+    )
+    datasets = [_dataset_summary(entry, compact=resolved_compact) for entry in filtered_entries]
+    paged = paginate_sequence(datasets, page=resolved_page, limit=resolved_limit)
     return {
         "datasets": paged.items,
         "count": len(paged.items),
-        "total": paged.total,
+        "total": total,
+        "matched_total": len(filtered_entries),
         "page": paged.page,
         "limit": paged.limit,
         "pages": paged.pages,
     }
+
+
+@router.get(
+    "/v1/data/{dataset_id}/summary",
+    summary="Get low-token discovery summary for one dataset.",
+)
+async def get_data_summary(
+    dataset_id: str,
+    auth: Annotated[AuthContext, Depends(get_current_org)],
+) -> dict[str, Any]:
+    org_id = str(auth["org_id"])
+    entry = get_visible_dataset_entry(org_id, dataset_id, auth)
+    if entry is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error": {
+                    "code": "not_found",
+                    "message": f"Dataset '{dataset_id}' not found.",
+                }
+            },
+        )
+    schema_meta = sreg.get_source_meta(org_id, dataset_id)
+    return _dataset_selection_summary(entry, schema_meta=schema_meta)
 
 
 @router.get("/v1/data/{dataset_id}", summary="Get one dataset plus its schema.")
@@ -200,9 +311,13 @@ async def disconnect_data(
 
     connector_deleted = False
     if connector_id:
+        # Count remaining datasets for this connector WITHIN the caller's workspace only —
+        # an org-wide raw list_sources would let a sibling workspace's datasets keep (or a
+        # cross-workspace dataset GC) the connector, mismatching the workspace-scoped
+        # get_visible_connector fetch below.
         remaining = [
             item
-            for item in sreg.list_sources(org_id)
+            for item in filter_visible_datasets(sreg.list_sources(org_id), auth)
             if item.get("connector_id") == connector_id and item.get("id") != dataset_id
         ]
         if not remaining:

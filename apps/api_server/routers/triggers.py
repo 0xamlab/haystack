@@ -19,6 +19,7 @@ POST   /v1/triggers/{id}/fire   — manually fire / force evaluate
 PATCH  /v1/triggers/{id}/pause  — pause a trigger
 DELETE /v1/triggers/{id}        — remove a trigger
 """
+
 from __future__ import annotations
 
 import uuid
@@ -26,12 +27,18 @@ from datetime import UTC, datetime
 from typing import Annotated, Any, Literal
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pydantic import BaseModel, Field, TypeAdapter
 
 from apps.api_server.middleware.auth import get_current_org
 from apps.api_server.pagination import paginate_sequence
 from apps.api_server.services.auth_service import AuthContext
+from apps.api_server.services.egress_guard import (
+    EgressAuditContext,
+    EgressPolicyDeniedError,
+    async_http_request,
+    audit_context_from_auth,
+)
 
 logger = structlog.get_logger(__name__)
 router = APIRouter(tags=["Triggers"])
@@ -43,6 +50,7 @@ _TRIGGER_STORE: dict[str, dict[str, Any]] = {}  # trigger_id → trigger_record
 
 
 # ─── Request / Response schemas ───────────────────────────────────────────────
+
 
 class TriggerCondition(BaseModel):
     source_id: str
@@ -121,11 +129,12 @@ class FireTriggerResponse(BaseModel):
     expected_value: float | None
     confidence: float | None
     fired_at: datetime | None
-    execution_status: str | None = None    # "delivered" | "failed" | None (not attempted)
+    execution_status: str | None = None  # "delivered" | "failed" | None (not attempted)
     message: str
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
+
 
 def _trigger_key(org_id: str, trigger_id: str) -> str:
     return f"{org_id}:{trigger_id}"
@@ -145,6 +154,7 @@ async def _evaluate_condition(
     Returns (condition_met, current_value).
     """
     from apps.api_server.routers.query import _run_query_internal  # lazy import
+
     try:
         current_val = await _run_query_internal(
             org_id=uuid.UUID(org_id),
@@ -176,8 +186,9 @@ async def _run_simulation(
     from apps.api_server.schemas.response import build_decision_plan
     from apps.api_server.schemas.simulate import SimulateRequest
     from apps.api_server.services.simulation_service import run_simulation_fast
+
     try:
-        req = SimulateRequest.model_validate(template)
+        req: Any = TypeAdapter(SimulateRequest).validate_python(template)
         envelope, _ = await run_simulation_fast(
             request=req,
             org_id=uuid.UUID(org_id),
@@ -185,28 +196,43 @@ async def _run_simulation(
         )
         decision_plan = build_decision_plan(envelope)
         return {
-            "run_id":             str(envelope.run_id),
+            "run_id": str(envelope.run_id),
             "recommended_action": envelope.recommended_action,
-            "expected_value":     envelope.metrics.expected_value,
-            "confidence":         envelope.confidence,
-            "decision_plan":      decision_plan.model_dump(mode="json"),
+            "expected_value": envelope.metrics.expected_value,
+            "confidence": envelope.confidence,
+            "decision_plan": decision_plan.model_dump(mode="json"),
         }
     except Exception as exc:
         logger.warning("trigger_simulation_failed", error=str(exc))
         return None
 
 
-async def _dispatch_webhook(url: str, payload: dict[str, Any]) -> None:
+async def _dispatch_webhook(
+    url: str,
+    payload: dict[str, Any],
+    *,
+    audit_context: EgressAuditContext | None = None,
+) -> None:
     """Fire-and-forget webhook POST."""
     try:
-        import httpx
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            await client.post(url, json=payload)
+        await async_http_request(
+            method="POST",
+            url=url,
+            surface="trigger_webhook",
+            explicit_configured=True,
+            egress_class="customer_connector",
+            audit_context=audit_context,
+            client_kwargs={"timeout": 10.0},
+            json=payload,
+        )
+    except EgressPolicyDeniedError as exc:
+        logger.warning("trigger_webhook_blocked", url=url, reason=exc.decision.reason)
     except Exception as exc:
         logger.warning("trigger_webhook_failed", url=url, error=str(exc))
 
 
 # ─── Endpoints ────────────────────────────────────────────────────────────────
+
 
 @router.post(
     "/v1/triggers",
@@ -223,20 +249,20 @@ async def register_trigger(
     now = datetime.now(UTC)
 
     record: dict[str, Any] = {
-        "trigger_id":            trigger_id,
-        "org_id":                org_id,
-        "name":                  payload.name,
-        "status":                "active",
-        "condition":             payload.condition.model_dump(),
-        "simulation_template":   payload.simulation_template,
-        "webhook_url":           payload.webhook_url,
+        "trigger_id": trigger_id,
+        "org_id": org_id,
+        "name": payload.name,
+        "status": "active",
+        "condition": payload.condition.model_dump(),
+        "simulation_template": payload.simulation_template,
+        "webhook_url": payload.webhook_url,
         "execution_webhook_url": payload.execution_webhook_url,
-        "auto_execute":          payload.auto_execute,
-        "description":           payload.description,
-        "created_at":            now.isoformat(),
-        "last_checked_at":       None,
-        "last_fired_at":         None,
-        "last_result_summary":   None,
+        "auto_execute": payload.auto_execute,
+        "description": payload.description,
+        "created_at": now.isoformat(),
+        "last_checked_at": None,
+        "last_fired_at": None,
+        "last_result_summary": None,
     }
     _TRIGGER_STORE[_trigger_key(org_id, trigger_id)] = record
 
@@ -288,14 +314,10 @@ async def list_triggers(
             auto_execute=r.get("auto_execute", False),
             created_at=datetime.fromisoformat(r["created_at"]),
             last_checked_at=(
-                datetime.fromisoformat(r["last_checked_at"])
-                if r.get("last_checked_at")
-                else None
+                datetime.fromisoformat(r["last_checked_at"]) if r.get("last_checked_at") else None
             ),
             last_fired_at=(
-                datetime.fromisoformat(r["last_fired_at"])
-                if r.get("last_fired_at")
-                else None
+                datetime.fromisoformat(r["last_fired_at"]) if r.get("last_fired_at") else None
             ),
             last_result_summary=r.get("last_result_summary"),
         )
@@ -317,13 +339,13 @@ async def list_triggers(
     response_model=FireTriggerResponse,
     summary="Fire a trigger",
     description=(
-        "Evaluate the trigger condition and run the simulation template "
-        "if met (or forced)."
+        "Evaluate the trigger condition and run the simulation template if met (or forced)."
     ),
 )
 async def fire_trigger(
     trigger_id: str,
     payload: FireTriggerRequest,
+    request: Request,
     auth: Annotated[AuthContext, Depends(get_current_org)],
 ) -> FireTriggerResponse:
     org_id = str(auth["org_id"])
@@ -354,7 +376,7 @@ async def fire_trigger(
 
     should_fire = condition_met or payload.force
     sim_result: dict[str, Any] | None = None
-    _auto_exec_allowed: bool = True    # updated below if auto_execute path is entered
+    _auto_exec_allowed: bool = True  # updated below if auto_execute path is entered
 
     if should_fire:
         sim_result = await _run_simulation(
@@ -368,20 +390,32 @@ async def fire_trigger(
                 f"confidence={sim_result['confidence']:.2f}"
             )
             import asyncio
+
+            egress_audit_context = audit_context_from_auth(
+                auth,
+                request_id=getattr(request.state, "request_id", None),
+            )
+
             # ── Notification webhook — lightweight result summary ──────────
             if record.get("webhook_url"):
                 notification_payload = {
-                    "event":        "trigger.fired",
-                    "trigger_id":   trigger_id,
+                    "event": "trigger.fired",
+                    "trigger_id": trigger_id,
                     "trigger_name": record["name"],
                     "condition_met": condition_met,
                     "current_value": current_value,
-                    "run_id":             sim_result["run_id"],
+                    "run_id": sim_result["run_id"],
                     "recommended_action": sim_result["recommended_action"],
-                    "expected_value":     sim_result["expected_value"],
-                    "confidence":         sim_result["confidence"],
+                    "expected_value": sim_result["expected_value"],
+                    "confidence": sim_result["confidence"],
                 }
-                asyncio.create_task(_dispatch_webhook(record["webhook_url"], notification_payload))
+                asyncio.create_task(
+                    _dispatch_webhook(
+                        record["webhook_url"],
+                        notification_payload,
+                        audit_context=egress_audit_context,
+                    )
+                )
 
             # ── Execution webhook — full DecisionPlan for automated action ─
             if record.get("auto_execute") and record.get("execution_webhook_url"):
@@ -394,7 +428,11 @@ async def fire_trigger(
                         check_auto_execute_allowed,
                         get_policy,
                     )
-                    _cal_stats = get_calibration(org_id)
+
+                    _cal_stats = get_calibration(
+                        org_id,
+                        str(auth["workspace_id"]) if auth.get("workspace_id") else None,
+                    )
                     _policy = get_policy(org_id)
                     _auto_exec_allowed, _auto_exec_skip_reason = check_auto_execute_allowed(
                         _policy, _cal_stats.is_reliable
@@ -408,14 +446,19 @@ async def fire_trigger(
 
                 if _auto_exec_allowed:
                     execution_payload = {
-                        "event":         "decision.execute",
-                        "trigger_id":    trigger_id,
-                        "trigger_name":  record["name"],
-                        "fired_at":      now.isoformat(),
+                        "event": "decision.execute",
+                        "trigger_id": trigger_id,
+                        "trigger_name": record["name"],
+                        "fired_at": now.isoformat(),
+                        "policy_snapshot_id": _policy.snapshot_id,
                         "decision_plan": sim_result.get("decision_plan"),
                     }
                     asyncio.create_task(
-                        _dispatch_webhook(record["execution_webhook_url"], execution_payload)
+                        _dispatch_webhook(
+                            record["execution_webhook_url"],
+                            execution_payload,
+                            audit_context=egress_audit_context,
+                        )
                     )
                 else:
                     logger.warning(
@@ -453,8 +496,10 @@ async def fire_trigger(
         fired_at=now if should_fire else None,
         execution_status=_exec_status,
         message=(
-            f"Fired: {sim_result['recommended_action']}" if sim_result
-            else "Condition not met." if not condition_met
+            f"Fired: {sim_result['recommended_action']}"
+            if sim_result
+            else "Condition not met."
+            if not condition_met
             else "Simulation failed."
         ),
     )

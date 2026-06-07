@@ -14,33 +14,92 @@ This is the foundation of the self-improving engine:
   Δ = actual_outcome - expected_value
   Over time, track which decision types are over/under-confident.
 """
+
 from __future__ import annotations
 
 import json
+import os
 import uuid
 from datetime import UTC, datetime
-from typing import Annotated
+from functools import cache
+from typing import Annotated, Any
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api_server.db.session import get_db
-from apps.api_server.middleware.auth import get_current_org
+from apps.api_server.middleware.auth import get_current_org, get_redis
 from apps.api_server.models.decision_log import DecisionLog
-from apps.api_server.schemas.response import DecisionPlan
+from apps.api_server.schemas.response import DecisionPlan, build_decision_plan
+from apps.api_server.schemas.simulate import SimulateRequest
+from apps.api_server.services.audit_service import get_client_ip, write_audit_event
+from apps.api_server.services.workspace_scope import workspace_id_for_write, workspace_scope_clauses
 from apps.api_server.services.auth_service import AuthContext
+from apps.api_server.services.egress_guard import (
+    EgressPolicyDeniedError,
+    async_http_request,
+    audit_context_from_auth,
+)
+from apps.api_server.services.quota_service import check_quota_redis, check_rate_limit
+from apps.api_server.services.simulation_service import run_simulation_fast
+from apps.runtime_manifest import load_runtime_manifest
 
 logger = structlog.get_logger(__name__)
 router = APIRouter(tags=["Decision Memory"])
 
 
+@cache
+def _runtime_manifest_metadata() -> dict[str, str]:
+    manifest = load_runtime_manifest(
+        api_env=os.environ.get("API_ENV", "local"),
+        runtime_library_http_api_enabled=os.environ.get(
+            "RUNTIME_LIBRARY_HTTP_API_ENABLED",
+            "",
+        ).lower()
+        in {"1", "true", "yes", "on"},
+        deployment_mode=os.environ.get("ALGENTA_DEPLOYMENT_MODE", "local_dev_daemon"),
+    )
+    return {
+        "schema_snapshot_id": manifest.schema_snapshot.snapshot_id,
+        "manifest_version": manifest.module_manifest_version,
+    }
+
+
+def _current_policy_snapshot_id(org_id: str) -> str:
+    from apps.api_server.services.execution_policy_service import get_policy
+
+    return get_policy(org_id).snapshot_id
+
+
+def _decision_audit_metadata(
+    entry: DecisionLog,
+    *,
+    extra: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    metadata: dict[str, Any] = {
+        "decision_id": str(entry.id),
+        "chosen_action": entry.chosen_action,
+        "run_id": str(entry.run_id) if entry.run_id else None,
+        "request_hash": entry.request_hash,
+        "result_hash": entry.result_hash,
+        "policy_snapshot_id": entry.policy_snapshot_id,
+        "schema_snapshot_id": entry.schema_snapshot_id,
+        "manifest_version": entry.manifest_version,
+    }
+    if extra:
+        metadata.update(extra)
+    return {key: value for key, value in metadata.items() if value is not None}
+
+
 # ─── Request / Response schemas ───────────────────────────────────────────────
+
 
 class LogDecisionRequest(BaseModel):
     """Body for POST /v1/decisions — log a decision that was made."""
+
     run_id: uuid.UUID | None = Field(
         None,
         description=(
@@ -80,6 +139,7 @@ class LogDecisionRequest(BaseModel):
     ) -> LogDecisionRequest:
         """Convenience: build a LogDecisionRequest from a DecisionPlan."""
         return cls(
+            run_id=None,
             context=context,
             chosen_action=plan.recommended_action,
             options_considered=[o.name for o in plan.options],
@@ -96,6 +156,7 @@ class LogDecisionRequest(BaseModel):
 
 class RecordOutcomeRequest(BaseModel):
     """Body for PATCH /v1/decisions/{id}/outcome — close the feedback loop."""
+
     actual_outcome: float = Field(
         ...,
         description="Observed outcome value (e.g. actual monthly revenue).",
@@ -105,13 +166,16 @@ class RecordOutcomeRequest(BaseModel):
 
 class ExecuteDecisionRequest(BaseModel):
     """Body for POST /v1/decisions/{id}/execute — fire the decision to a webhook."""
+
     webhook_url: str = Field(
         ...,
         max_length=2048,
         description="HTTPS endpoint that will receive and act on this decision.",
     )
     timeout_seconds: float = Field(
-        default=10.0, ge=1.0, le=60.0,
+        default=10.0,
+        ge=1.0,
+        le=60.0,
         description="Webhook request timeout in seconds.",
     )
     force: bool = Field(
@@ -128,7 +192,7 @@ class ExecuteDecisionRequest(BaseModel):
             "Requires explicit intent. Logs the override for audit."
         ),
     )
-    metadata: dict | None = Field(
+    metadata: dict[str, Any] | None = Field(
         None,
         description="Optional extra key-value pairs merged into the webhook payload.",
     )
@@ -136,17 +200,22 @@ class ExecuteDecisionRequest(BaseModel):
 
 class ExecutionReceipt(BaseModel):
     """Returned by POST /v1/decisions/{id}/execute."""
+
     decision_id: uuid.UUID
     webhook_url: str
-    execution_status: str          # "delivered" | "failed"
+    execution_status: str  # "delivered" | "failed"
     response_code: int | None
     executed_at: datetime
-    payload_summary: dict          # Compact preview of what was sent
-    safety_overridden: bool = False   # True when override_safety was used
+    policy_snapshot_id: str
+    schema_snapshot_id: str
+    manifest_version: str
+    payload_summary: dict[str, Any]  # Compact preview of what was sent
+    safety_overridden: bool = False  # True when override_safety was used
 
 
 class DecisionLogResponse(BaseModel):
     """Single decision log entry."""
+
     id: uuid.UUID
     org_id: uuid.UUID
     run_id: uuid.UUID | None
@@ -161,6 +230,9 @@ class DecisionLogResponse(BaseModel):
     risk_pol: float | None
     request_hash: str | None
     result_hash: str | None
+    policy_snapshot_id: str | None
+    schema_snapshot_id: str | None
+    manifest_version: str | None
     actual_outcome: float | None
     outcome_delta: float | None
     outcome_notes: str | None
@@ -195,6 +267,9 @@ class DecisionLogResponse(BaseModel):
             risk_pol=m.risk_pol,
             request_hash=m.request_hash,
             result_hash=m.result_hash,
+            policy_snapshot_id=m.policy_snapshot_id,
+            schema_snapshot_id=m.schema_snapshot_id,
+            manifest_version=m.manifest_version,
             actual_outcome=m.actual_outcome,
             outcome_delta=m.outcome_delta,
             outcome_notes=m.outcome_notes,
@@ -219,6 +294,68 @@ class DecisionListResponse(BaseModel):
 
 # ─── Endpoints ────────────────────────────────────────────────────────────────
 
+
+@router.post(
+    "/v1/decisions/plan",
+    response_model=DecisionPlan,
+    status_code=200,
+    summary="Generate a structured decision plan",
+    description=(
+        "Run the same validated simulation request contract as /v1/simulate, but return only "
+        "the structured DecisionPlan summary. This is intended for LLM and dashboard clients "
+        "that need the compact plan object without the full DecisionEnvelope payload."
+    ),
+)
+async def plan_decision(
+    request: Request,
+    payload: SimulateRequest,
+    auth: Annotated[AuthContext, Depends(get_current_org)],
+    redis_client: object = Depends(get_redis),
+) -> DecisionPlan:
+    await check_rate_limit(
+        auth["org_id"],
+        auth["plan"],
+        redis_client,
+        request_state=request.state,
+    )
+    await check_quota_redis(auth["org_id"], auth["plan"], redis_client)
+
+    envelope, _persist_meta = await run_simulation_fast(
+        request=payload,
+        org_id=auth["org_id"],
+        api_key_id=auth["key_id"],
+    )
+    plan = build_decision_plan(envelope)
+
+    try:
+        from apps.api_server.services.calibration_service import calibrate_confidence
+
+        calibrated_confidence, calibration_stats = calibrate_confidence(
+            plan.confidence,
+            str(auth["org_id"]),
+            workspace_id=str(auth["workspace_id"]) if auth.get("workspace_id") else None,
+        )
+        plan.confidence = calibrated_confidence
+        if calibration_stats.is_reliable:
+            plan.calibration = calibration_stats.summary()
+    except Exception as exc:
+        logger.debug(
+            "decision_plan_calibration_skipped",
+            error=str(exc),
+            request_id=getattr(request.state, "request_id", None),
+            org_id=str(auth["org_id"]),
+        )
+
+    logger.info(
+        "decision_plan_generated",
+        request_id=getattr(request.state, "request_id", None),
+        run_id=str(envelope.run_id),
+        recommended_action=plan.recommended_action,
+        org_id=str(auth["org_id"]),
+    )
+    return plan
+
+
 @router.post(
     "/v1/decisions",
     response_model=DecisionLogResponse,
@@ -231,18 +368,20 @@ class DecisionListResponse(BaseModel):
 )
 async def log_decision(
     payload: LogDecisionRequest,
+    request: Request,
     auth: Annotated[AuthContext, Depends(get_current_org)],
     db: AsyncSession = Depends(get_db),
 ) -> DecisionLogResponse:
+    org_id_str = str(auth["org_id"])
+    runtime_metadata = _runtime_manifest_metadata()
     entry = DecisionLog(
         org_id=auth["org_id"],
+        workspace_id=workspace_id_for_write(auth),
         run_id=payload.run_id,
         context=payload.context,
         chosen_action=payload.chosen_action,
         options_considered=(
-            json.dumps(payload.options_considered)
-            if payload.options_considered
-            else None
+            json.dumps(payload.options_considered) if payload.options_considered else None
         ),
         expected_value=payload.expected_value,
         confidence=payload.confidence,
@@ -252,16 +391,34 @@ async def log_decision(
         risk_pol=payload.risk_pol,
         request_hash=payload.request_hash,
         result_hash=payload.result_hash,
+        policy_snapshot_id=_current_policy_snapshot_id(org_id_str),
+        schema_snapshot_id=runtime_metadata["schema_snapshot_id"],
+        manifest_version=runtime_metadata["manifest_version"],
     )
     db.add(entry)
+    await db.flush()
+    await write_audit_event(
+        db,
+        org_id=auth["org_id"],
+        actor_email=auth.get("email", "system"),
+        actor_user_id=auth.get("user_id"),
+        action="decision.log",
+        resource_type="decision_log",
+        resource_id=str(entry.id),
+        ip_address=get_client_ip(request),
+        metadata=_decision_audit_metadata(entry),
+    )
     await db.commit()
     await db.refresh(entry)
 
     logger.info(
         "decision_logged",
         decision_id=str(entry.id),
-        org_id=str(auth["org_id"]),
+        org_id=org_id_str,
         chosen_action=entry.chosen_action,
+        policy_snapshot_id=entry.policy_snapshot_id,
+        schema_snapshot_id=entry.schema_snapshot_id,
+        manifest_version=entry.manifest_version,
     )
     return DecisionLogResponse.from_model(entry)
 
@@ -292,7 +449,7 @@ async def list_decisions(
     offset = (page - 1) * effective_limit
     stmt = (
         select(DecisionLog)
-        .where(DecisionLog.org_id == auth["org_id"])
+        .where(*workspace_scope_clauses(DecisionLog, auth))
         .order_by(DecisionLog.created_at.desc())
         .offset(offset)
         .limit(effective_limit)
@@ -305,10 +462,9 @@ async def list_decisions(
 
     # Total count
     from sqlalchemy import func
+
     count_stmt = (
-        select(func.count())
-        .select_from(DecisionLog)
-        .where(DecisionLog.org_id == auth["org_id"])
+        select(func.count()).select_from(DecisionLog).where(*workspace_scope_clauses(DecisionLog, auth))
     )
     if with_outcome_only:
         count_stmt = count_stmt.where(DecisionLog.actual_outcome.is_not(None))
@@ -335,8 +491,9 @@ async def get_decision(
     db: AsyncSession = Depends(get_db),
 ) -> DecisionLogResponse:
     result = await db.execute(
-        select(DecisionLog)
-        .where(DecisionLog.id == decision_id, DecisionLog.org_id == auth["org_id"])
+        select(DecisionLog).where(
+            DecisionLog.id == decision_id, *workspace_scope_clauses(DecisionLog, auth)
+        )
     )
     entry = result.scalar_one_or_none()
     if not entry:
@@ -357,12 +514,14 @@ async def get_decision(
 async def record_outcome(
     decision_id: uuid.UUID,
     payload: RecordOutcomeRequest,
+    request: Request,
     auth: Annotated[AuthContext, Depends(get_current_org)],
     db: AsyncSession = Depends(get_db),
 ) -> DecisionLogResponse:
     result = await db.execute(
-        select(DecisionLog)
-        .where(DecisionLog.id == decision_id, DecisionLog.org_id == auth["org_id"])
+        select(DecisionLog).where(
+            DecisionLog.id == decision_id, *workspace_scope_clauses(DecisionLog, auth)
+        )
     )
     entry = result.scalar_one_or_none()
     if not entry:
@@ -374,6 +533,23 @@ async def record_outcome(
     if entry.expected_value is not None:
         entry.outcome_delta = payload.actual_outcome - entry.expected_value
 
+    await write_audit_event(
+        db,
+        org_id=auth["org_id"],
+        actor_email=auth.get("email", "system"),
+        actor_user_id=auth.get("user_id"),
+        action="decision.outcome",
+        resource_type="decision_log",
+        resource_id=str(entry.id),
+        ip_address=get_client_ip(request),
+        metadata=_decision_audit_metadata(
+            entry,
+            extra={
+                "actual_outcome": payload.actual_outcome,
+                "outcome_delta": entry.outcome_delta,
+            },
+        ),
+    )
     await db.commit()
     await db.refresh(entry)
 
@@ -381,7 +557,12 @@ async def record_outcome(
     # Runs synchronously (fast: DB query + in-memory update) after every outcome.
     try:
         from apps.api_server.services.calibration_service import refresh_calibration_from_db
-        await refresh_calibration_from_db(str(auth["org_id"]), db)
+
+        await refresh_calibration_from_db(
+            str(auth["org_id"]),
+            db,
+            workspace_id=str(auth["workspace_id"]) if auth.get("workspace_id") else None,
+        )
     except Exception as _cal_exc:
         logger.warning("calibration_refresh_failed", error=str(_cal_exc))
 
@@ -411,12 +592,14 @@ async def record_outcome(
 async def execute_decision(
     decision_id: uuid.UUID,
     payload: ExecuteDecisionRequest,
+    request: Request,
     auth: Annotated[AuthContext, Depends(get_current_org)],
     db: AsyncSession = Depends(get_db),
 ) -> ExecutionReceipt:
     result = await db.execute(
-        select(DecisionLog)
-        .where(DecisionLog.id == decision_id, DecisionLog.org_id == auth["org_id"])
+        select(DecisionLog).where(
+            DecisionLog.id == decision_id, *workspace_scope_clauses(DecisionLog, auth)
+        )
     )
     entry = result.scalar_one_or_none()
     if not entry:
@@ -427,8 +610,10 @@ async def execute_decision(
         check_execution_gates,
         get_policy,
     )
+
     org_id_str = str(auth["org_id"])
     policy = get_policy(org_id_str)
+    runtime_metadata = _runtime_manifest_metadata()
     already_executed = entry.execution_status == "delivered"
     violation = check_execution_gates(
         policy=policy,
@@ -452,9 +637,13 @@ async def execute_decision(
         )
 
     if payload.override_safety and (
-        entry.confidence is not None and entry.confidence < policy.min_confidence
-        or (policy.risk_floor is not None and entry.risk_p5 is not None
-            and entry.risk_p5 < -policy.risk_floor)
+        entry.confidence is not None
+        and entry.confidence < policy.min_confidence
+        or (
+            policy.risk_floor is not None
+            and entry.risk_p5 is not None
+            and entry.risk_p5 < -policy.risk_floor
+        )
     ):
         logger.warning(
             "execution_safety_override",
@@ -472,30 +661,38 @@ async def execute_decision(
         except (json.JSONDecodeError, TypeError):
             options = [entry.options_considered]
 
-    webhook_payload: dict = {
-        "event":         "decision.execute",
-        "decision_id":   str(entry.id),
-        "org_id":        str(entry.org_id),
+    webhook_payload: dict[str, Any] = {
+        "event": "decision.execute",
+        "decision_id": str(entry.id),
+        "org_id": str(entry.org_id),
         "decision": {
-            "chosen_action":      entry.chosen_action,
-            "context":            entry.context,
-            "expected_value":     entry.expected_value,
-            "confidence":         entry.confidence,
-            "rationale":          entry.rationale,
+            "chosen_action": entry.chosen_action,
+            "context": entry.context,
+            "expected_value": entry.expected_value,
+            "confidence": entry.confidence,
+            "rationale": entry.rationale,
             "options_considered": options,
             "risk": {
-                "p5":  entry.risk_p5,
+                "p5": entry.risk_p5,
                 "p95": entry.risk_p95,
                 "probability_of_loss": entry.risk_pol,
             },
-            "run_id":    str(entry.run_id) if entry.run_id else None,
+            "run_id": str(entry.run_id) if entry.run_id else None,
         },
         "integrity": {
-            k: v for k, v in {
+            k: v
+            for k, v in {
                 "request_hash": entry.request_hash,
-                "result_hash":  entry.result_hash,
-            }.items() if v
-        } or None,
+                "result_hash": entry.result_hash,
+                "policy_snapshot_id": policy.snapshot_id,
+                "schema_snapshot_id": entry.schema_snapshot_id
+                or runtime_metadata["schema_snapshot_id"],
+                "manifest_version": entry.manifest_version
+                or runtime_metadata["manifest_version"],
+            }.items()
+            if v
+        }
+        or None,
     }
     if payload.metadata:
         webhook_payload["metadata"] = payload.metadata
@@ -506,11 +703,29 @@ async def execute_decision(
     execution_status = "failed"
 
     try:
-        import httpx
-        async with httpx.AsyncClient(timeout=payload.timeout_seconds) as client:
-            resp = await client.post(payload.webhook_url, json=webhook_payload)
-            response_code = resp.status_code
-            execution_status = "delivered" if resp.is_success else "failed"
+        resp = await async_http_request(
+            method="POST",
+            url=payload.webhook_url,
+            surface="decision_execution_webhook",
+            explicit_configured=True,
+            egress_class="customer_connector",
+            audit_context=audit_context_from_auth(
+                auth,
+                request_id=getattr(request.state, "request_id", None),
+            ),
+            client_kwargs={"timeout": payload.timeout_seconds},
+            json=webhook_payload,
+        )
+        response_code = resp.status_code
+        execution_status = "delivered" if resp.is_success else "failed"
+    except EgressPolicyDeniedError as exc:
+        logger.warning(
+            "execution_webhook_blocked",
+            decision_id=str(decision_id),
+            webhook_url=payload.webhook_url,
+            reason=exc.decision.reason,
+        )
+        execution_status = "failed"
     except Exception as exc:
         logger.warning(
             "execution_webhook_failed",
@@ -525,12 +740,43 @@ async def execute_decision(
     entry.execution_status = execution_status
     entry.execution_webhook_url = payload.webhook_url
     entry.execution_response_code = response_code
-    entry.execution_receipt = json.dumps({
-        "webhook_url":   payload.webhook_url,
-        "response_code": response_code,
-        "executed_at":   executed_at.isoformat(),
-        "status":        execution_status,
-    })
+    if entry.policy_snapshot_id is None:
+        entry.policy_snapshot_id = policy.snapshot_id
+    if entry.schema_snapshot_id is None:
+        entry.schema_snapshot_id = runtime_metadata["schema_snapshot_id"]
+    if entry.manifest_version is None:
+        entry.manifest_version = runtime_metadata["manifest_version"]
+    entry.execution_receipt = json.dumps(
+        {
+            "webhook_url": payload.webhook_url,
+            "response_code": response_code,
+            "executed_at": executed_at.isoformat(),
+            "status": execution_status,
+            "policy_snapshot_id": policy.snapshot_id,
+            "schema_snapshot_id": entry.schema_snapshot_id,
+            "manifest_version": entry.manifest_version,
+        }
+    )
+    await write_audit_event(
+        db,
+        org_id=auth["org_id"],
+        actor_email=auth.get("email", "system"),
+        actor_user_id=auth.get("user_id"),
+        action="decision.execute",
+        resource_type="decision_log",
+        resource_id=str(entry.id),
+        ip_address=get_client_ip(request),
+        result="success" if execution_status == "delivered" else "failure",
+        metadata=_decision_audit_metadata(
+            entry,
+            extra={
+                "webhook_url": payload.webhook_url,
+                "response_code": response_code,
+                "execution_status": execution_status,
+                "safety_overridden": payload.override_safety,
+            },
+        ),
+    )
     await db.commit()
 
     logger.info(
@@ -539,6 +785,7 @@ async def execute_decision(
         webhook_url=payload.webhook_url,
         status=execution_status,
         response_code=response_code,
+        policy_snapshot_id=policy.snapshot_id,
     )
 
     return ExecutionReceipt(
@@ -547,10 +794,13 @@ async def execute_decision(
         execution_status=execution_status,
         response_code=response_code,
         executed_at=executed_at,
+        policy_snapshot_id=policy.snapshot_id,
+        schema_snapshot_id=entry.schema_snapshot_id or runtime_metadata["schema_snapshot_id"],
+        manifest_version=entry.manifest_version or runtime_metadata["manifest_version"],
         payload_summary={
-            "chosen_action":  entry.chosen_action,
+            "chosen_action": entry.chosen_action,
             "expected_value": entry.expected_value,
-            "confidence":     entry.confidence,
+            "confidence": entry.confidence,
         },
         safety_overridden=payload.override_safety,
     )
@@ -564,17 +814,32 @@ async def execute_decision(
 )
 async def delete_decision(
     decision_id: uuid.UUID,
+    request: Request,
     auth: Annotated[AuthContext, Depends(get_current_org)],
     db: AsyncSession = Depends(get_db),
 ) -> None:
     result = await db.execute(
-        select(DecisionLog)
-        .where(DecisionLog.id == decision_id, DecisionLog.org_id == auth["org_id"])
+        select(DecisionLog).where(
+            DecisionLog.id == decision_id, *workspace_scope_clauses(DecisionLog, auth)
+        )
     )
-    if not result.scalar_one_or_none():
+    entry = result.scalar_one_or_none()
+    if not entry:
         raise HTTPException(status_code=404, detail="Decision not found")
+    await write_audit_event(
+        db,
+        org_id=auth["org_id"],
+        actor_email=auth.get("email", "system"),
+        actor_user_id=auth.get("user_id"),
+        action="decision.delete",
+        resource_type="decision_log",
+        resource_id=str(decision_id),
+        ip_address=get_client_ip(request),
+        metadata=_decision_audit_metadata(entry),
+    )
     await db.execute(
-        delete(DecisionLog)
-        .where(DecisionLog.id == decision_id, DecisionLog.org_id == auth["org_id"])
+        delete(DecisionLog).where(
+            DecisionLog.id == decision_id, *workspace_scope_clauses(DecisionLog, auth)
+        )
     )
     await db.commit()

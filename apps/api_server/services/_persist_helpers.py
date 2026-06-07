@@ -8,6 +8,7 @@ Used by:
 Writes SimulationRun, AuditEvent, UsageRecord, increments Redis quota counter,
 and optionally stores the full result in object storage.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -17,10 +18,11 @@ from typing import Any
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.api_server.config import get_settings
+from apps.api_server.config import SettingsProxy
+from apps.api_server.services.egress_guard import EgressAuditContext
 
 logger = structlog.get_logger(__name__)
-settings = get_settings()
+settings = SettingsProxy()
 
 
 async def persist_simulation_run(
@@ -49,15 +51,19 @@ async def persist_simulation_run(
     from apps.api_server.models.usage_record import UsageEndpoint, UsageRecord
     from apps.api_server.services.audit_service import write_audit_event
 
-    run_id     = uuid.UUID(persist_meta["run_id"])
-    org_id     = uuid.UUID(persist_meta["org_id"])
+    run_id = uuid.UUID(persist_meta["run_id"])
+    org_id = uuid.UUID(persist_meta["org_id"])
+    workspace_id = (
+        uuid.UUID(persist_meta["workspace_id"]) if persist_meta.get("workspace_id") else None
+    )
     api_key_id = uuid.UUID(persist_meta["api_key_id"]) if persist_meta.get("api_key_id") else None
-    now        = datetime.now(UTC)
+    now = datetime.now(UTC)
 
     # ── 1. Insert SimulationRun ────────────────────────────────────────────
     run = SimulationRun(
         id=run_id,
         org_id=org_id,
+        workspace_id=workspace_id,
         api_key_id=api_key_id,
         mode=SimulationMode(persist_meta["mode"]),
         request_hash=persist_meta["request_hash"],
@@ -78,7 +84,7 @@ async def persist_simulation_run(
         rationale=persist_meta["rationale"],
     )
     try:
-        run.simulation_model = persist_meta["simulation_model"]  # type: ignore[assignment]
+        run.simulation_model = persist_meta["simulation_model"]
     except Exception as exc:
         logger.debug("simulation_model_persist_failed", run_id=str(run_id), error=str(exc))
     db.add(run)
@@ -89,6 +95,7 @@ async def persist_simulation_run(
     await write_audit_event(
         db=db,
         org_id=org_id,
+        workspace_id=workspace_id,
         action="simulate",
         actor_email=actor_email,
         resource_type="simulation_run",
@@ -102,9 +109,11 @@ async def persist_simulation_run(
 
     # ── 3. Usage record ───────────────────────────────────────────────────
     from apps.api_server.services.quota_service import _current_billing_period
+
     period = _current_billing_period()
     record = UsageRecord(
         org_id=org_id,
+        workspace_id=workspace_id,
         api_key_id=api_key_id,
         simulation_run_id=run_id,
         billing_period=period,
@@ -119,12 +128,14 @@ async def persist_simulation_run(
     if redis_client is not None:
         try:
             from apps.api_server.services.quota_service import incr_quota_counter
+
             await incr_quota_counter(org_id, period, redis_client)
         except Exception as exc:
             logger.warning("quota_counter_incr_failed", org_id=str(org_id), error=str(exc))
 
     # ── 5. Push Stripe usage (fire-and-forget) ────────────────────────────
     import asyncio
+
     asyncio.create_task(_push_stripe_usage(org_id=org_id, billing_units=1, db=db))
 
     # ── 6. Object storage (enterprise — off hot path) ─────────────────────
@@ -140,10 +151,15 @@ async def _push_stripe_usage(org_id: uuid.UUID, billing_units: int, db: AsyncSes
     try:
         from sqlalchemy import select
 
-        from apps.api_server.config import get_settings
         from apps.api_server.models.organization import Organization
-        settings = get_settings()
+        from apps.api_server.services.stripe_service import (
+            stripe_api_request,
+            stripe_metering_enabled,
+        )
+
         if not settings.stripe_secret_key or settings.stripe_secret_key.startswith("sk_test"):
+            return
+        if not stripe_metering_enabled():
             return
         org_result = await db.execute(select(Organization).where(Organization.id == org_id))
         org = org_result.scalar_one_or_none()
@@ -151,18 +167,20 @@ async def _push_stripe_usage(org_id: uuid.UUID, billing_units: int, db: AsyncSes
             return
         import time as _time
 
-        import httpx
-        async with httpx.AsyncClient(timeout=8) as client:
-            await client.post(
-                "https://api.stripe.com/v1/billing/meter_events",
-                headers={"Authorization": f"Bearer {settings.stripe_secret_key}"},
-                data={
-                    "event_name": "simulation_run",
-                    "payload[stripe_customer_id]": org.stripe_customer_id,
-                    "payload[value]": str(billing_units),
-                    "timestamp": str(int(_time.time())),
-                },
-            )
+        await stripe_api_request(
+            method="POST",
+            path="/v1/billing/meter_events",
+            surface="persist_metering_flush",
+            audit_context=EgressAuditContext(org_id=org_id),
+            timeout=8,
+            headers={"Authorization": f"Bearer {settings.stripe_secret_key}"},
+            data={
+                "event_name": "simulation_run",
+                "payload[stripe_customer_id]": org.stripe_customer_id,
+                "payload[value]": str(billing_units),
+                "timestamp": str(int(_time.time())),
+            },
+        )
     except Exception as exc:
         logger.warning("stripe_usage_push_failed", org_id=str(org_id), error=str(exc))
 

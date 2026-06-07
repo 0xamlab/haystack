@@ -1,4 +1,5 @@
 """High-level Connections/Datasets orchestration on top of connectors + source registry."""
+
 from __future__ import annotations
 
 import json
@@ -17,11 +18,27 @@ from apps.api_server.models.data_connector import (
     DataConnector,
 )
 from apps.api_server.services.auth_service import AuthContext
+from apps.api_server.services.config_crypto import (
+    config_fingerprint,
+    decrypt_config_json,
+    encrypt_config_json,
+)
 from apps.api_server.services.connector_contract import normalize_connect_payload
+from apps.api_server.services.workspace_scope import (
+    workspace_id_for_write,
+    workspace_scope_clauses,
+)
 from apps.api_server.services.connectors import test_connector_real
+from apps.api_server.services.data_connection_browse import (
+    browse_connector_real,
+    browse_connector_real_detailed,
+)
+from apps.api_server.services.data_connection_discovery import (
+    build_discovery_labels,
+    build_discovery_metadata,
+)
 from apps.api_server.services.data_connection_specs import (
     _build_object_storage_connection,
-    browse_connector_real,
     build_source_spec,
     normalize_connection_provider,
 )
@@ -65,15 +82,63 @@ def _json_config(config: dict[str, Any] | None) -> str:
     return json.dumps(config or {}, sort_keys=True, separators=(",", ":"))
 
 
+def _should_return_full_database_choices(config: dict[str, Any]) -> bool:
+    return bool(str(config.get("schema", "") or "").strip())
+
+
+def _selection_is_complete(
+    *,
+    provider: str,
+    broad_type: str,
+    selection: dict[str, Any],
+    connector_config: dict[str, Any],
+) -> bool:
+    if broad_type == "database":
+        if provider == "elasticsearch":
+            return bool(selection.get("index") or connector_config.get("index"))
+        if provider == "neo4j":
+            return bool(
+                selection.get("label")
+                or selection.get("relationship_type")
+                or connector_config.get("label")
+                or connector_config.get("relationship_type")
+                or selection.get("query")
+                or selection.get("cypher")
+                or connector_config.get("query")
+                or connector_config.get("cypher")
+            )
+        if provider == "redis":
+            return bool(selection.get("keys") or connector_config.get("keys"))
+        return bool(
+            selection.get("table")
+            or selection.get("sql_query")
+            or connector_config.get("table")
+            or connector_config.get("sql_query")
+            or connector_config.get("query")
+        )
+    if broad_type == "object_storage":
+        return bool(
+            selection.get("object_path")
+            or connector_config.get("object_path")
+            or connector_config.get("key")
+            or connector_config.get("blob")
+            or connector_config.get("blob_url")
+        )
+    return True
+
+
 async def _test_and_persist_connector(
     connector: DataConnector,
     db: AsyncSession,
 ) -> tuple[bool, str, int]:
-    config = json.loads(connector.config_json or "{}")
+    parsed_config = json.loads(
+        decrypt_config_json(connector.config_json, org_id=getattr(connector, "org_id", "")) or "{}"
+    )
+    config = parsed_config if isinstance(parsed_config, dict) else {}
     success, message, latency_ms = await test_connector_real(connector.connector_type.value, config)
-    connector.status = ConnectorStatus.LIVE if success else ConnectorStatus.ERROR  # type: ignore[assignment]
-    connector.last_tested_at = datetime.now(tz=UTC)  # type: ignore[assignment]
-    connector.error_message = None if success else message  # type: ignore[assignment]
+    connector.status = ConnectorStatus.LIVE if success else ConnectorStatus.ERROR
+    connector.last_tested_at = datetime.now(tz=UTC)
+    connector.error_message = None if success else message
     await db.commit()
     await db.refresh(connector)
     return success, message, latency_ms
@@ -90,14 +155,18 @@ async def create_or_reuse_connector(
     visibility: str,
 ) -> DataConnector:
     config_json = _json_config(config)
+    config_fp = config_fingerprint(config)
     owner_user_id = auth.get("user_id")
     owner_key_id = auth.get("key_id")
+    workspace_id = workspace_id_for_write(auth)
+    # Dedupe on the deterministic fingerprint (config_json is now encrypted →
+    # non-deterministic, so equality matching no longer works).
     result = await db.execute(
         select(DataConnector).where(
-            DataConnector.org_id == auth["org_id"],
+            *workspace_scope_clauses(DataConnector, auth),
             DataConnector.name == name,
             DataConnector.connector_type == ConnectorType(connector_type),
-            DataConnector.config_json == config_json,
+            DataConnector.config_fingerprint == config_fp,
             DataConnector.visibility == visibility,
             DataConnector.owner_user_id == owner_user_id,
             DataConnector.owner_key_id == owner_key_id,
@@ -109,10 +178,12 @@ async def create_or_reuse_connector(
 
     connector = DataConnector(
         org_id=auth["org_id"],
+        workspace_id=workspace_id,
         name=name,
         description=description,
         connector_type=ConnectorType(connector_type),
-        config_json=config_json,
+        config_json=encrypt_config_json(config_json, org_id=auth["org_id"]),
+        config_fingerprint=config_fp,
         status=ConnectorStatus.UNTESTED,
         visibility=visibility,
         owner_user_id=owner_user_id,
@@ -174,21 +245,41 @@ async def connect_data(
 
     connector: DataConnector | None = None
     connector_config: dict[str, Any] = dict(connection_config)
+    discovery_labels = build_discovery_labels(
+        str(payload.get("provider") or payload.get("connection_type") or "file"),
+        config=connector_config,
+    )
+    discovery_metadata = build_discovery_metadata(
+        str(payload.get("provider") or payload.get("connection_type") or "file"),
+        config=connector_config,
+    )
     connector_id = payload.get("connection_id")
     if connector_id:
         connector = await get_visible_connector(db, uuid.UUID(str(connector_id)), auth)
-        connector_config = json.loads(connector.config_json or "{}")
+        connector_config = json.loads(
+            decrypt_config_json(connector.config_json, org_id=getattr(connector, "org_id", "")) or "{}"
+        )
         broad_type, provider = normalize_connection_provider(
             connector.connector_type.value,
             connector_config,
         )
         visibility = str(connector.visibility or visibility)
+        discovery_labels = build_discovery_labels(
+            connector.connector_type.value,
+            config=connector_config,
+        )
+        discovery_metadata = build_discovery_metadata(
+            connector.connector_type.value,
+            config=connector_config,
+        )
     else:
         broad_type, provider = normalize_connection_provider(
             str(payload.get("connection_type", "")),
             connection_config,
             provider=payload.get("provider"),
         )
+        discovery_labels = build_discovery_labels(provider, config=connector_config)
+        discovery_metadata = build_discovery_metadata(provider, config=connector_config)
     if connector is None and broad_type != "file_upload":
         connector = await create_or_reuse_connector(
             db=db,
@@ -212,26 +303,30 @@ async def connect_data(
                 "visibility": visibility,
                 "latency_ms": latency_ms,
             }
-        needs_database_selection = broad_type == "database" and not (
-            selection.get("table")
-            or selection.get("sql_query")
-            or connector_config.get("table")
-            or connector_config.get("sql_query")
-            or connector_config.get("query")
+        needs_database_selection = broad_type == "database" and not _selection_is_complete(
+            provider=provider,
+            broad_type=broad_type,
+            selection=selection,
+            connector_config=connector_config,
         )
-        needs_object_selection = broad_type == "object_storage" and not (
-            selection.get("object_path")
-            or connector_config.get("object_path")
-            or connector_config.get("key")
-            or connector_config.get("blob")
-            or connector_config.get("blob_url")
+        needs_object_selection = broad_type == "object_storage" and not _selection_is_complete(
+            provider=provider,
+            broad_type=broad_type,
+            selection=selection,
+            connector_config=connector_config,
         )
         should_browse = needs_database_selection or needs_object_selection
         if should_browse:
             try:
-                choices, browse_message = await browse_connector_real(
+                choices, browse_message, discovery_metadata = await browse_connector_real_detailed(
                     connector.connector_type.value,
                     connector_config,
+                )
+                discovery_labels = build_discovery_labels(
+                    connector.connector_type.value,
+                    config=connector_config,
+                    provider_metadata=discovery_metadata,
+                    items=choices,
                 )
             except Exception as exc:
                 return {
@@ -250,12 +345,11 @@ async def connect_data(
         choices, browse_message = [], "Direct dataset payload"
 
     if broad_type == "database":
-        if not (
-            selection.get("table")
-            or selection.get("sql_query")
-            or connector_config.get("table")
-            or connector_config.get("sql_query")
-            or connector_config.get("query")
+        if not _selection_is_complete(
+            provider=provider,
+            broad_type=broad_type,
+            selection=selection,
+            connector_config=connector_config,
         ):
             if len(choices) == 1:
                 selection = dict(choices[0].get("selection") or {})
@@ -266,8 +360,14 @@ async def connect_data(
                     "connection_id": str(connector.id) if connector else None,
                     "connection_type": broad_type,
                     "provider": provider,
+                    "labels": discovery_labels,
+                    "discovery": discovery_metadata,
                     "visibility": visibility,
-                    "choices": choices[:50],
+                    "choices": (
+                        choices
+                        if _should_return_full_database_choices(connector_config)
+                        else choices[:50]
+                    ),
                 }
     elif broad_type == "object_storage":
         if not (
@@ -286,6 +386,8 @@ async def connect_data(
                     "connection_id": str(connector.id) if connector else None,
                     "connection_type": broad_type,
                     "provider": provider,
+                    "labels": discovery_labels,
+                    "discovery": discovery_metadata,
                     "visibility": visibility,
                     "choices": choices[:50],
                 }
@@ -313,6 +415,8 @@ async def connect_data(
         provider=provider,
         refreshable=refreshable,
         source_definition=direct_definition,
+        discovery_labels=discovery_labels,
+        discovery_metadata=discovery_metadata,
     )
 
     schema = register_result.get("schema", {})
@@ -331,6 +435,8 @@ async def connect_data(
         "connection_id": str(connector.id) if connector else None,
         "connection_type": broad_type,
         "provider": provider,
+        "labels": discovery_labels,
+        "discovery": discovery_metadata,
         "visibility": visibility,
         "selection": selection or None,
         "refreshable": refreshable,

@@ -1,9 +1,10 @@
 """Deployment model — per-org cloud isolation with pass-through billing."""
+
 from __future__ import annotations
 
-import enum
 import uuid
 from datetime import datetime
+from enum import StrEnum
 from typing import Any
 
 from sqlalchemy import (
@@ -21,18 +22,18 @@ from sqlalchemy.orm import Mapped, mapped_column
 from apps.api_server.db.base import Base, TimestampMixin, UUIDMixin
 
 
-class CloudProvider(str, enum.Enum):
+class CloudProvider(StrEnum):
     ALGENTA_SHARED = "algenta_shared"  # Default multi-tenant pool
     AWS = "aws"
     AZURE = "azure"
     GCP = "gcp"
 
 
-class DeploymentStatus(str, enum.Enum):
-    REQUESTED = "requested"           # User submitted request
-    PROVISIONING = "provisioning"     # Control plane is creating cloud resources
-    ACTIVE = "active"                 # Deployment is live and routing traffic
-    UPDATING = "updating"             # In-place update in progress
+class DeploymentStatus(StrEnum):
+    REQUESTED = "requested"  # User submitted request
+    PROVISIONING = "provisioning"  # Control plane is creating cloud resources
+    ACTIVE = "active"  # Deployment is live and routing traffic
+    UPDATING = "updating"  # In-place update in progress
     DEPROVISIONING = "deprovisioning"
     DEPROVISIONED = "deprovisioned"
     FAILED = "failed"
@@ -66,6 +67,12 @@ class Deployment(UUIDMixin, TimestampMixin, Base):
         nullable=False,
         index=True,
     )
+    # Workspace sub-tenant scope (platform key via X-Workspace-Id). NULL = org-wide.
+    workspace_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        nullable=True,
+        index=True,
+    )
 
     # ─── Cloud target ──────────────────────────────────────────────────────────
     provider: Mapped[str] = mapped_column(
@@ -95,9 +102,7 @@ class Deployment(UUIDMixin, TimestampMixin, Base):
     provisioning_started_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    provisioned_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    provisioned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # ─── Cloud resource references ─────────────────────────────────────────────
     cloud_resource_ids: Mapped[dict[str, Any] | None] = mapped_column(

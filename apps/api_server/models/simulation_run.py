@@ -1,7 +1,8 @@
 """SimulationRun model — record of every simulation execution."""
-import enum
+
 import uuid
 from datetime import datetime
+from enum import StrEnum
 
 from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
@@ -10,7 +11,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from apps.api_server.db.base import Base, TimestampMixin, UUIDMixin
 
 
-class RunStatus(str, enum.Enum):
+class RunStatus(StrEnum):
     QUEUED = "queued"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -18,12 +19,12 @@ class RunStatus(str, enum.Enum):
     CANCELLED = "cancelled"
 
 
-class ExecutionType(str, enum.Enum):
+class ExecutionType(StrEnum):
     SYNC = "sync"
     ASYNC = "async"
 
 
-class SimulationMode(str, enum.Enum):
+class SimulationMode(StrEnum):
     AUTO = "auto"
     EXPERT = "expert"
 
@@ -35,6 +36,12 @@ class SimulationRun(UUIDMixin, TimestampMixin, Base):
         UUID(as_uuid=True),
         ForeignKey("organizations.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
+    )
+    # Workspace sub-tenant scope (platform key via X-Workspace-Id). NULL = org-wide.
+    workspace_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        nullable=True,
         index=True,
     )
     api_key_id: Mapped[uuid.UUID | None] = mapped_column(
