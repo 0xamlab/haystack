@@ -41,7 +41,10 @@ class LLMRolloutFunctionCase:
 
 
 def _collect_cases() -> tuple[LLMRolloutFunctionCase, ...]:
-    modules = collect_target_modules()
+    try:
+        modules = collect_target_modules()
+    except RuntimeError:
+        return ()
     cases: list[LLMRolloutFunctionCase] = []
     for module_name, functions in modules.items():
         for function_spec in functions:
@@ -56,14 +59,19 @@ def _collect_cases() -> tuple[LLMRolloutFunctionCase, ...]:
     return tuple(cases)
 
 
+def _safe_collect_target_modules() -> dict[str, tuple]:
+    try:
+        return collect_target_modules()
+    except RuntimeError:
+        return {}
+
+
 LLM_ROLLOUT_FUNCTION_CASES = _collect_cases()
 LLM_ROLLOUT_CASES_JSON = tuple(case.to_json() for case in LLM_ROLLOUT_FUNCTION_CASES)
-LLM_ROLLOUT_MODULE_NAMES = tuple(
-    module_name for module_name in collect_target_modules()
-)
+LLM_ROLLOUT_MODULE_NAMES = tuple(_safe_collect_target_modules())
 LLM_ROLLOUT_FUNCTIONS_BY_MODULE = {
     module_name: tuple(function.name for function in functions)
-    for module_name, functions in collect_target_modules().items()
+    for module_name, functions in _safe_collect_target_modules().items()
 }
 
 
