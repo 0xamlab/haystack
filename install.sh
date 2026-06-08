@@ -1,6 +1,6 @@
 #!/bin/bash
-# Algenta Decision Engine — One-line installer
-# Usage: curl -fsSL https://algenta.ai/install | bash
+# Algenta Decision Engine — one-line self-hosted installer
+# Usage: curl -fsSL https://algenta.ai/install.sh | bash
 # Or:    curl -fsSL https://raw.githubusercontent.com/algenta/decision-engine/main/install.sh | bash
 
 set -euo pipefail
@@ -8,7 +8,14 @@ set -euo pipefail
 REPO="algenta/decision-engine"
 INSTALL_DIR="${ALGENTA_DIR:-$HOME/.algenta}"
 API_PORT="${ALGENTA_API_PORT:-8000}"
-PORTAL_PORT="${ALGENTA_PORTAL_PORT:-3000}"
+DOCS_URL="${ALGENTA_DOCS_URL:-https://docs.algenta.ai/self-hosting}"
+IMAGE_REGISTRY="${ALGENTA_IMAGE_REGISTRY:-ghcr.io/algenta/decision-engine}"
+RELEASE_REF="${ALGENTA_VERSION:-}"
+IMAGE_TAG="${ALGENTA_IMAGE_TAG:-}"
+COMPOSE_BUNDLE_URL="${ALGENTA_COMPOSE_URL:-}"
+SKIP_IMAGE_PULL="${ALGENTA_SKIP_IMAGE_PULL:-0}"
+COMPOSE_CMD=()
+COMPOSE_DISPLAY=""
 
 # ── Colors ──────────────────────────────────────────────────────────────────
 RED='\033[0;31m'
@@ -26,7 +33,7 @@ print_logo() {
   echo '/_/ \_\|_| \__, |\___||_| \_,_|'
   echo '           |___/               '
   echo -e "${NC}"
-  echo -e "${BOLD}Algenta Decision Engine — Self-Hosted Installer${NC}"
+  echo -e "${BOLD}Algenta Decision Engine — Self-Hosted Service Installer${NC}"
   echo ""
 }
 
@@ -35,7 +42,7 @@ check_requirements() {
   local missing=()
 
   command -v docker >/dev/null 2>&1 || missing+=("docker")
-  command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1 || missing+=("docker-compose")
+  command -v curl >/dev/null 2>&1 || command -v wget >/dev/null 2>&1 || missing+=("curl-or-wget")
 
   if [ ${#missing[@]} -gt 0 ]; then
     echo -e "${RED}Missing requirements: ${missing[*]}${NC}"
@@ -44,7 +51,32 @@ check_requirements() {
     exit 1
   fi
 
-  echo -e "${GREEN}✓ Docker and Docker Compose found${NC}"
+  if docker compose version >/dev/null 2>&1; then
+    COMPOSE_CMD=("docker" "compose")
+    COMPOSE_DISPLAY="docker compose"
+  elif command -v docker-compose >/dev/null 2>&1 && docker-compose version >/dev/null 2>&1; then
+    COMPOSE_CMD=("docker-compose")
+    COMPOSE_DISPLAY="docker-compose"
+  else
+    echo -e "${RED}Missing requirement: Docker Compose${NC}"
+    echo ""
+    echo "Install either the Docker Compose v2 plugin or the standalone docker-compose CLI."
+    exit 1
+  fi
+
+  echo -e "${GREEN}✓ Docker and Docker Compose found (${COMPOSE_DISPLAY})${NC}"
+
+  if ! docker info >/dev/null 2>&1; then
+    echo -e "${RED}Docker daemon is not running or not reachable.${NC}"
+    echo "Start Docker Desktop, Colima, or your Docker daemon before running the installer."
+    exit 1
+  fi
+
+  echo -e "${GREEN}✓ Docker daemon is reachable${NC}"
+}
+
+compose() {
+  "${COMPOSE_CMD[@]}" "$@"
 }
 
 detect_os() {
@@ -55,19 +87,90 @@ detect_os() {
   esac
 }
 
+fetch_text() {
+  local url="$1"
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL "$url"
+    return
+  fi
+  if command -v wget >/dev/null 2>&1; then
+    wget -qO- "$url"
+    return
+  fi
+  return 1
+}
+
+http_ok() {
+  local url="$1"
+  if command -v curl >/dev/null 2>&1; then
+    curl -sf "$url" >/dev/null 2>&1
+    return $?
+  fi
+  if command -v wget >/dev/null 2>&1; then
+    wget -qO- "$url" >/dev/null 2>&1
+    return $?
+  fi
+  return 1
+}
+
+is_truthy() {
+  local lowered
+  lowered="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
+  case "$lowered" in
+    1|true|yes|on) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+is_git_sha() {
+  local value="$1"
+  [[ "$value" =~ ^[a-f0-9]{7,40}$ ]]
+}
+
+resolve_release_ref() {
+  if [ -n "$RELEASE_REF" ]; then
+    if [ -z "$IMAGE_TAG" ]; then
+      if is_git_sha "$RELEASE_REF"; then
+        IMAGE_TAG="git-${RELEASE_REF:0:7}"
+      else
+        IMAGE_TAG="$RELEASE_REF"
+      fi
+    fi
+    echo -e "${GREEN}✓ Using requested release ref ${RELEASE_REF}${NC}"
+    echo -e "${GREEN}✓ Using pinned image tag ${IMAGE_TAG}${NC}"
+    return
+  fi
+
+  local latest_sha=""
+  latest_sha=$(fetch_text "https://api.github.com/repos/$REPO/commits/main" 2>/dev/null | \
+    grep -m1 '"sha"' | sed -E 's/.*"sha": "([a-f0-9]+)".*/\1/' || true)
+
+  if [ -n "$latest_sha" ]; then
+    RELEASE_REF="$latest_sha"
+    if [ -z "$IMAGE_TAG" ]; then
+      IMAGE_TAG="git-${latest_sha:0:7}"
+    fi
+    echo -e "${GREEN}✓ Resolved release ref ${RELEASE_REF}${NC}"
+    echo -e "${GREEN}✓ Using pinned image tag ${IMAGE_TAG}${NC}"
+    return
+  fi
+
+  echo -e "${RED}Could not resolve a pinned release ref from GitHub.${NC}"
+  echo "Set ALGENTA_VERSION and, if needed, ALGENTA_IMAGE_TAG explicitly before retrying."
+  exit 1
+}
+
 download_release() {
   echo -e "${BLUE}Downloading Algenta Decision Engine...${NC}"
 
   mkdir -p "$INSTALL_DIR"
   cd "$INSTALL_DIR"
 
-  # Download the self-hosted Docker Compose bundle
+  local compose_url="${COMPOSE_BUNDLE_URL:-https://raw.githubusercontent.com/$REPO/$RELEASE_REF/infra/docker/docker-compose.selfhosted.yml}"
   if command -v curl >/dev/null 2>&1; then
-    curl -fsSL "https://algenta.ai/docker-compose.yml" -o docker-compose.yml 2>/dev/null || \
-    curl -fsSL "https://raw.githubusercontent.com/$REPO/main/infra/docker/docker-compose.selfhosted.yml" -o docker-compose.yml
+    curl -fsSL "$compose_url" -o docker-compose.yml
   elif command -v wget >/dev/null 2>&1; then
-    wget -qO docker-compose.yml "https://algenta.ai/docker-compose.yml" 2>/dev/null || \
-    wget -qO docker-compose.yml "https://raw.githubusercontent.com/$REPO/main/infra/docker/docker-compose.selfhosted.yml"
+    wget -qO docker-compose.yml "$compose_url"
   fi
 
   echo -e "${GREEN}✓ Downloaded${NC}"
@@ -76,23 +179,19 @@ download_release() {
 generate_env() {
   echo -e "${BLUE}Generating configuration...${NC}"
 
-  if [ -f ".env" ]; then
-    echo -e "${YELLOW}⚠ .env already exists, skipping generation${NC}"
-    return
-  fi
+  if [ ! -f ".env" ]; then
+    # Generate secrets
+    JWT_SECRET=$(LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 64 2>/dev/null || openssl rand -hex 32)
+    WEBHOOK_SECRET=$(LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 32 2>/dev/null || openssl rand -hex 16)
 
-  # Generate secrets
-  JWT_SECRET=$(LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 64 2>/dev/null || openssl rand -hex 32)
-  WEBHOOK_SECRET=$(LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 32 2>/dev/null || openssl rand -hex 16)
-
-  cat > .env << EOF
+    cat > .env << EOF
 # Algenta Decision Engine — Self-Hosted Configuration
 # Generated: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
 
 # ── Application ──────────────────────────────────────────────────────────────
 API_ENV=production
 LOG_LEVEL=info
-CORS_ORIGINS=http://localhost:${PORTAL_PORT}
+CORS_ORIGINS=http://localhost:3000,http://localhost:${API_PORT}
 
 # ── Database (managed by Docker Compose) ─────────────────────────────────────
 DATABASE_URL=postgresql+asyncpg://algenta:algenta_secret@postgres:5432/algenta
@@ -113,12 +212,35 @@ API_KEY_TEST_PREFIX=de_test_
 
 # ── Ports ────────────────────────────────────────────────────────────────────
 API_PORT=${API_PORT}
-PORTAL_PORT=${PORTAL_PORT}
+POSTGRES_HOST_PORT=${POSTGRES_HOST_PORT:-5432}
+REDIS_HOST_PORT=${REDIS_HOST_PORT:-6379}
+MINIO_API_HOST_PORT=${MINIO_API_HOST_PORT:-9000}
+MINIO_CONSOLE_HOST_PORT=${MINIO_CONSOLE_HOST_PORT:-9001}
 
 # ── Engine ───────────────────────────────────────────────────────────────────
 MOJO_BINARY_PATH=/app/mojo_build/simulate
 MOJO_TIMEOUT_SECONDS=30
 MOJO_MAX_CONCURRENT=4
+RUNTIME_FALLBACK_MODE=allow
+ALGENTA_SOURCES_DIR=/home/app/.algenta/sources
+
+# ── Privacy / Deployment ────────────────────────────────────────────────────
+ALGENTA_DEPLOYMENT_MODE=self_hosted
+ALGENTA_DISABLE_CLOUD=1
+ALGENTA_DISABLE_TELEMETRY=1
+ALGENTA_TELEMETRY_MODE=local_audit
+ALGENTA_METERING_MODE=local_audit
+ALGENTA_REQUIRE_LOCAL_LICENSE=0
+ALGENTA_CONTROL_PLANE_URL=
+ALGENTA_ALLOW_OUTBOUND_NETWORK=0
+ALGENTA_EGRESS_ALLOWLIST=minio:9000
+ALGENTA_LOCAL_LICENSE_PUBLIC_KEY_FILE=
+ALGENTA_API_PUBLIC_BASE_URL=http://localhost:${API_PORT}
+ALGENTA_APP_BASE_URL=
+
+# ── Release Artifacts ────────────────────────────────────────────────────────
+ALGENTA_IMAGE_REGISTRY=${IMAGE_REGISTRY}
+ALGENTA_IMAGE_TAG=${IMAGE_TAG}
 
 # ── Object Storage (MinIO — managed by Docker Compose) ───────────────────────
 S3_BUCKET_NAME=algenta-results
@@ -126,6 +248,7 @@ S3_ENDPOINT_URL=http://minio:9000
 S3_ACCESS_KEY_ID=algenta_minio
 S3_SECRET_ACCESS_KEY=algenta_minio_secret
 S3_REGION=us-east-1
+RESULT_STORAGE_ENABLED=true
 
 # ── Webhooks ─────────────────────────────────────────────────────────────────
 WEBHOOK_SIGNING_SECRET=${WEBHOOK_SECRET}
@@ -142,24 +265,60 @@ SMTP_PASSWORD=
 EMAIL_FROM=noreply@algenta.local
 EOF
 
-  echo -e "${GREEN}✓ Configuration generated: .env${NC}"
-  echo -e "${YELLOW}  Edit .env before production use — especially CORS_ORIGINS and SMTP settings${NC}"
+    echo -e "${GREEN}✓ Configuration generated: .env${NC}"
+  else
+    echo -e "${YELLOW}⚠ .env already exists, preserving local configuration${NC}"
+  fi
+
+  ensure_env_default "DATABASE_URL_SYNC" "postgresql://algenta:algenta_secret@postgres:5432/algenta"
+  ensure_env_default "ALGENTA_IMAGE_REGISTRY" "$IMAGE_REGISTRY"
+  ensure_env_default "ALGENTA_IMAGE_TAG" "$IMAGE_TAG"
+  ensure_env_default "RESULT_STORAGE_ENABLED" "true"
+  ensure_env_default "ALGENTA_DEPLOYMENT_MODE" "self_hosted"
+  ensure_env_default "ALGENTA_DISABLE_CLOUD" "1"
+  ensure_env_default "ALGENTA_DISABLE_TELEMETRY" "1"
+  ensure_env_default "ALGENTA_TELEMETRY_MODE" "local_audit"
+  ensure_env_default "ALGENTA_METERING_MODE" "local_audit"
+  ensure_env_default "ALGENTA_REQUIRE_LOCAL_LICENSE" "0"
+  ensure_env_default "ALGENTA_CONTROL_PLANE_URL" ""
+  ensure_env_default "ALGENTA_ALLOW_OUTBOUND_NETWORK" "0"
+  ensure_env_default "ALGENTA_EGRESS_ALLOWLIST" "minio:9000"
+  ensure_env_default "ALGENTA_LOCAL_LICENSE_PUBLIC_KEY_FILE" ""
+
+  echo -e "${YELLOW}  Review .env before production use — especially CORS_ORIGINS, TLS, and SMTP settings${NC}"
+}
+
+ensure_env_default() {
+  local key="$1"
+  local value="$2"
+  if grep -q "^${key}=" .env 2>/dev/null; then
+    return
+  fi
+  echo "${key}=${value}" >> .env
 }
 
 start_services() {
   echo -e "${BLUE}Starting Algenta Decision Engine...${NC}"
-  docker compose pull --quiet
-  docker compose up -d
+  if ! is_truthy "$SKIP_IMAGE_PULL"; then
+    if ! compose pull --quiet; then
+      echo -e "${RED}Failed to pull images for tag ${IMAGE_TAG}.${NC}"
+      echo "Check ALGENTA_IMAGE_REGISTRY / ALGENTA_IMAGE_TAG in ${INSTALL_DIR}/.env."
+      exit 1
+    fi
+  else
+    echo -e "${YELLOW}⚠ Skipping image pull because ALGENTA_SKIP_IMAGE_PULL=${SKIP_IMAGE_PULL}${NC}"
+  fi
+  compose up -d
   echo -e "${GREEN}✓ Services started${NC}"
 }
 
 wait_healthy() {
   echo -e "${BLUE}Waiting for API to be ready...${NC}"
-  local max_wait=60
+  local max_wait="${ALGENTA_HEALTH_WAIT_SECONDS:-60}"
   local waited=0
 
   while [ $waited -lt $max_wait ]; do
-    if curl -sf "http://localhost:${API_PORT}/health" >/dev/null 2>&1; then
+    if http_ok "http://localhost:${API_PORT}/v1/health"; then
       echo -e "${GREEN}✓ API is ready${NC}"
       return 0
     fi
@@ -169,66 +328,120 @@ wait_healthy() {
   done
 
   echo ""
-  echo -e "${YELLOW}⚠ API did not respond in ${max_wait}s — check: docker compose logs api${NC}"
+  echo -e "${YELLOW}⚠ API did not respond in ${max_wait}s — check: ${COMPOSE_DISPLAY} logs api${NC}"
   return 1
 }
 
 run_migrations() {
   echo -e "${BLUE}Running database migrations...${NC}"
-  docker compose exec -T api python -m alembic -c apps/api_server/alembic.ini upgrade head
+  if ! compose exec -T api python -m alembic -c apps/api_server/alembic.ini upgrade head; then
+    echo -e "${RED}Database migrations failed.${NC}"
+    return 1
+  fi
   echo -e "${GREEN}✓ Migrations complete${NC}"
 }
 
 seed_initial_user() {
-  echo -e "${BLUE}Creating initial admin user...${NC}"
+  echo -e "${BLUE}Creating bootstrap owner and API key...${NC}"
   echo ""
 
   local seed_output
-  seed_output=$(docker compose exec -T api python scripts/seed_dev.py 2>&1) || true
+  local seed_status=0
+  seed_output=$(compose exec -T api python scripts/bootstrap_self_host.py 2>&1) || seed_status=$?
 
-  echo "$seed_output"
-
-  # Extract the API key from seed output
   local api_key
-  api_key=$(echo "$seed_output" | grep -o 'de_[a-zA-Z0-9_]*' | head -1 || true)
+  local api_key_id
+  local api_key_prefix
+  local user_email
+  local user_password
+  api_key=$(echo "$seed_output" | sed -n 's/^BOOTSTRAP_API_KEY=//p' | head -1 || true)
+  api_key_id=$(echo "$seed_output" | sed -n 's/^BOOTSTRAP_API_KEY_ID=//p' | head -1 || true)
+  api_key_prefix=$(echo "$seed_output" | sed -n 's/^BOOTSTRAP_API_KEY_PREFIX=//p' | head -1 || true)
+  user_email=$(echo "$seed_output" | sed -n 's/^BOOTSTRAP_USER_EMAIL=//p' | head -1 || true)
+  user_password=$(echo "$seed_output" | sed -n 's/^BOOTSTRAP_USER_PASSWORD=//p' | head -1 || true)
+
+  if [ "$seed_status" -ne 0 ]; then
+    echo "$seed_output"
+    echo -e "${RED}Bootstrap command failed.${NC}"
+    return 1
+  fi
 
   if [ -n "$api_key" ]; then
     echo ""
     echo -e "${GREEN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${GREEN}${BOLD} Algenta Decision Engine is ready! 🚀${NC}"
+    echo -e "${GREEN}${BOLD} Algenta is running.${NC}"
     echo -e "${GREEN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
-    echo -e "  ${BOLD}Portal UI:${NC}    http://localhost:${PORTAL_PORT}"
     echo -e "  ${BOLD}API:${NC}          http://localhost:${API_PORT}"
+    echo -e "  ${BOLD}Health:${NC}       curl http://localhost:${API_PORT}/v1/health"
     echo -e "  ${BOLD}API Docs:${NC}     http://localhost:${API_PORT}/docs"
     echo ""
-    echo -e "  ${BOLD}Login:${NC}        dev@example.com"
     echo -e "  ${BOLD}API Key:${NC}      ${YELLOW}${api_key}${NC}"
+    if [ -n "$api_key_id" ]; then
+      echo -e "  ${BOLD}Bootstrap key id:${NC} ${api_key_id}"
+    fi
+    if [ -n "$api_key_prefix" ]; then
+      echo -e "  ${BOLD}Bootstrap key prefix:${NC} ${api_key_prefix}"
+    fi
+    if [ -n "$user_email" ]; then
+      echo -e "  ${BOLD}Bootstrap user:${NC} ${user_email}"
+    fi
+    if [ -n "$user_password" ]; then
+      echo -e "  ${BOLD}Bootstrap password:${NC} ${YELLOW}${user_password}${NC}"
+    fi
     echo ""
-    echo -e "  ${BOLD}Test:${NC}"
+    echo -e "  ${BOLD}Run your first decision:${NC}"
     echo -e "  ${BLUE}curl -X POST http://localhost:${API_PORT}/v1/simulate \\${NC}"
-    echo -e "  ${BLUE}  -H 'Authorization: Bearer ${api_key}' \\${NC}"
-    echo -e "  ${BLUE}  -H 'Content-Type: application/json' \\${NC}"
-    echo -e "  ${BLUE}  -d '{\"mode\":\"auto\",\"runs\":1000,\"scenario\":{\"variables\":{\"x\":{\"low\":100,\"high\":500}},\"objective\":\"maximize_net_value\"}}'${NC}"
+    echo -e "  ${BLUE}  -H \"Authorization: Bearer \${ALGENTA_API_KEY}\" \\${NC}"
+    echo -e "  ${BLUE}  -H \"Content-Type: application/json\" \\${NC}"
+    echo -e "  ${BLUE}  -d '{${NC}"
+    echo -e "  ${BLUE}    \"mode\": \"auto\",${NC}"
+    echo -e "  ${BLUE}    \"scenario\": {${NC}"
+    echo -e "  ${BLUE}      \"variables\": {${NC}"
+    echo -e "  ${BLUE}        \"revenue\": { \"low\": 80000, \"high\": 200000 },${NC}"
+    echo -e "  ${BLUE}        \"cost\": { \"low\": 30000, \"high\": 90000 }${NC}"
+    echo -e "  ${BLUE}      },${NC}"
+    echo -e "  ${BLUE}      \"objective\": \"maximize_net_value\"${NC}"
+    echo -e "  ${BLUE}    },${NC}"
+    echo -e "  ${BLUE}    \"runs\": 10000,${NC}"
+    echo -e "  ${BLUE}    \"seed\": 42${NC}"
+    echo -e "  ${BLUE}  }'${NC}"
     echo ""
-    echo -e "  ${BOLD}Docs:${NC}         https://docs.algenta.ai"
+    echo -e "  ${BOLD}Set temporarily:${NC} export ALGENTA_API_KEY='<paste the bootstrap key above>'"
+    echo ""
+    echo -e "  ${BOLD}Rotate the bootstrap key:${NC}"
+    echo -e "  ${BLUE}curl -X POST http://localhost:${API_PORT}/v1/api-keys \\${NC}"
+    echo -e "  ${BLUE}  -H \"Authorization: Bearer \${ALGENTA_API_KEY}\" \\${NC}"
+    echo -e "  ${BLUE}  -H \"Content-Type: application/json\" \\${NC}"
+    echo -e "  ${BLUE}  -d '{\"label\":\"mission-runtime\",\"expires_at\":\"2028-05-19T00:00:00Z\"}'${NC}"
+    echo -e "  ${BOLD}Store it:${NC}     The returned raw_key is shown once; store it with id, key_prefix, and expires_at before revoking the bootstrap key."
+    echo -e "  ${BOLD}Replace it:${NC}  export ALGENTA_API_KEY='<paste the replacement key returned above>'"
+    echo -e "  ${BOLD}Note:${NC}         No SDK or Python install is required to use Algenta."
+    echo ""
+    echo -e "  ${BOLD}Docs:${NC}         ${DOCS_URL}"
     echo -e "  ${BOLD}Support:${NC}      https://algenta.ai/support"
     echo ""
+    return 0
   fi
+
+  echo "$seed_output"
+  echo -e "${RED}Bootstrap completed without a printable API key.${NC}"
+  return 1
 }
 
 print_next_steps() {
   echo -e "${BOLD}Next steps:${NC}"
-  echo "  1. Open http://localhost:${PORTAL_PORT} in your browser"
+  echo "  1. Rotate the bootstrap key with POST /v1/api-keys and a bounded expires_at"
   echo "  2. Edit ${INSTALL_DIR}/.env for production configuration"
   echo "  3. Set up TLS with nginx or Caddy in front of port ${API_PORT}"
-  echo "  4. Read the docs: https://docs.algenta.ai/self-hosting"
+  echo "  4. Read the self-hosted docs: ${DOCS_URL}"
   echo ""
   echo -e "${BOLD}Useful commands:${NC}"
-  echo "  algenta logs     — View logs"
-  echo "  algenta stop     — Stop services"
-  echo "  algenta update   — Update to latest version"
-  echo "  algenta status   — Check service health"
+  echo "  cd ${INSTALL_DIR} && ${COMPOSE_DISPLAY} ps"
+  echo "  cd ${INSTALL_DIR} && ${COMPOSE_DISPLAY} logs -f api"
+  echo "  cd ${INSTALL_DIR} && ${COMPOSE_DISPLAY} logs -f worker"
+  echo "  cd ${INSTALL_DIR} && ${COMPOSE_DISPLAY} stop"
+  echo "  cd ${INSTALL_DIR} && ${COMPOSE_DISPLAY} pull && ${COMPOSE_DISPLAY} up -d"
   echo ""
 }
 
@@ -237,10 +450,22 @@ main() {
   print_logo
   detect_os
   check_requirements
+  resolve_release_ref
   download_release
   generate_env
   start_services
-  wait_healthy && run_migrations && seed_initial_user || true
+  if ! wait_healthy; then
+    echo -e "${RED}Self-hosted install failed because the API did not become ready.${NC}"
+    exit 1
+  fi
+  if ! run_migrations; then
+    echo -e "${RED}Self-hosted install failed during database migrations.${NC}"
+    exit 1
+  fi
+  if ! seed_initial_user; then
+    echo -e "${RED}Self-hosted install failed during bootstrap initialization.${NC}"
+    exit 1
+  fi
   print_next_steps
 }
 
