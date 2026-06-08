@@ -4,6 +4,7 @@ Revision ID: 0009
 Revises: 0008
 Create Date: 2026-03-21
 """
+
 from alembic import op
 from sqlalchemy import text
 
@@ -15,7 +16,8 @@ depends_on = None
 
 def upgrade() -> None:
     bind = op.get_bind()
-    bind.execute(text("""
+    bind.execute(
+        text("""
         CREATE TABLE IF NOT EXISTS subscriptions (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
@@ -30,10 +32,21 @@ def upgrade() -> None:
             created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
             updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
         )
-    """))
-    bind.execute(text("CREATE INDEX IF NOT EXISTS ix_subscriptions_org_id ON subscriptions (org_id)"))
-    bind.execute(text("CREATE INDEX IF NOT EXISTS ix_subscriptions_stripe_subscription_id ON subscriptions (stripe_subscription_id)"))
-    bind.execute(text("CREATE INDEX IF NOT EXISTS ix_subscriptions_stripe_customer_id ON subscriptions (stripe_customer_id)"))
+    """)
+    )
+    bind.execute(
+        text("CREATE INDEX IF NOT EXISTS ix_subscriptions_org_id ON subscriptions (org_id)")
+    )
+    bind.execute(
+        text(
+            "CREATE INDEX IF NOT EXISTS ix_subscriptions_stripe_subscription_id ON subscriptions (stripe_subscription_id)"
+        )
+    )
+    bind.execute(
+        text(
+            "CREATE INDEX IF NOT EXISTS ix_subscriptions_stripe_customer_id ON subscriptions (stripe_customer_id)"
+        )
+    )
 
 
 def downgrade() -> None:

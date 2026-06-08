@@ -1,4 +1,5 @@
 """Abstract base provisioner and shared result type."""
+
 from __future__ import annotations
 
 import abc
@@ -16,10 +17,10 @@ class ProvisionResult:
         resource_ids: dict[str, Any] | None = None,
         error: str | None = None,
     ) -> None:
-        self.success      = success
+        self.success = success
         self.endpoint_url = endpoint_url
         self.resource_ids = resource_ids or {}
-        self.error        = error
+        self.error = error
 
 
 class BaseProvisioner(abc.ABC):

@@ -12,6 +12,7 @@ Use cases:
 The endpoint returns a sweep: one simulation result per step, all computed
 in parallel via asyncio.gather using the Mojo worker pool.
 """
+
 import asyncio
 from typing import Any
 
@@ -30,6 +31,7 @@ router = APIRouter(tags=["What-If Analysis"])
 
 class WhatIfStep(BaseModel):
     """A single point in the what-if sweep."""
+
     model_config = ConfigDict(strict=False)
     step: int
     value: float
@@ -47,6 +49,7 @@ class WhatIfStep(BaseModel):
 
 class WhatIfResponse(BaseModel):
     """Full what-if sweep result."""
+
     model_config = ConfigDict(strict=False)
     variable: str
     n_steps: int
@@ -62,24 +65,27 @@ class WhatIfResponse(BaseModel):
 
 class WhatIfRequest(BaseModel):
     """Inline what-if request (no stored run needed)."""
+
     model_config = ConfigDict(strict=False)
     request: SimulateRequest = Field(..., description="Base simulation request")
     variable: str = Field(..., description="Variable name to sweep")
     param: str = Field(
-        default="mean",
-        description="Which parameter to vary: mean, std, low, high, mode, value"
+        default="mean", description="Which parameter to vary: mean, std, low, high, mode, value"
     )
     range_pct: float = Field(
-        default=0.30,
-        description="Sweep range as fraction of base value (e.g. 0.30 = ±30%)"
+        default=0.30, description="Sweep range as fraction of base value (e.g. 0.30 = ±30%)"
     )
     n_steps: int = Field(
-        default=11, ge=3, le=51,
-        description="Number of steps (odd number recommended for symmetric sweep)"
+        default=11,
+        ge=3,
+        le=51,
+        description="Number of steps (odd number recommended for symmetric sweep)",
     )
     runs_per_step: int = Field(
-        default=5000, ge=100, le=100_000,
-        description="Monte Carlo runs per step. Lower for faster response."
+        default=5000,
+        ge=100,
+        le=100_000,
+        description="Monte Carlo runs per step. Lower for faster response.",
     )
 
 
@@ -188,21 +194,23 @@ async def _run_what_if(
             org_id=auth["org_id"],
             api_key_id=auth.get("key_id"),
         )
-        return (step_idx, val, {
-            "mean": envelope.metrics.expected_value,
-            "std": envelope.metrics.std_deviation,
-            "p5":  envelope.percentiles.p5,
-            "p25": envelope.percentiles.p25,
-            "p50": envelope.percentiles.p50,
-            "p75": envelope.percentiles.p75,
-            "p95": envelope.percentiles.p95,
-            "pol": envelope.metrics.probability_of_loss,
-            "score": envelope.score,
-        })
+        return (
+            step_idx,
+            val,
+            {
+                "mean": envelope.metrics.expected_value,
+                "std": envelope.metrics.std_deviation,
+                "p5": envelope.percentiles.p5,
+                "p25": envelope.percentiles.p25,
+                "p50": envelope.percentiles.p50,
+                "p75": envelope.percentiles.p75,
+                "p95": envelope.percentiles.p95,
+                "pol": envelope.metrics.probability_of_loss,
+                "score": envelope.score,
+            },
+        )
 
-    step_results = await asyncio.gather(
-        *[_run_step(i, v) for i, v in enumerate(step_values)]
-    )
+    step_results = await asyncio.gather(*[_run_step(i, v) for i, v in enumerate(step_values)])
     step_results = sorted(step_results, key=lambda x: x[0])
 
     # Build WhatIfStep list

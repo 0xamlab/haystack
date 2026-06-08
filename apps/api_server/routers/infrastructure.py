@@ -1,6 +1,7 @@
 """GET /v1/infrastructure — real compute node health and engine status.
 POST /v1/nodes/register — self-hosted worker node registration.
 """
+
 import time
 from datetime import UTC, datetime
 from typing import Annotated, Any
@@ -11,6 +12,7 @@ from pydantic import BaseModel
 
 from apps.api_server.config import get_settings
 from apps.api_server.middleware.auth import AuthContext, get_current_org
+from apps.privacy_policy import DeploymentMode
 
 # In-memory node registry (replace with DB table for persistence across restarts)
 _registered_nodes: dict[str, dict[str, Any]] = {}
@@ -28,7 +30,7 @@ _PROBE_PAYLOAD = {
 
 class NodeInfo(BaseModel):
     node_id: str
-    status: str           # live | idle | error | updating
+    status: str  # live | idle | error | updating
     engine_version: str
     cpu_pct: float | None
     memory_gb: float | None
@@ -38,7 +40,7 @@ class NodeInfo(BaseModel):
 
 
 class InfrastructureResponse(BaseModel):
-    deployment_mode: str
+    deployment_mode: DeploymentMode
     engine_version: str
     api_version: str
     nodes: list[NodeInfo]
@@ -93,6 +95,7 @@ async def _check_engine_health() -> tuple[str, float, str, str]:
     Returns (status, latency_ms, engine_version, engine_mode).
     """
     from apps.api_server.compute.mojo_adapter import _BINARY_PATH, invoke_engine
+
     engine_mode = "binary" if _BINARY_PATH.exists() else "missing"
     try:
         start = time.perf_counter()
@@ -140,9 +143,7 @@ async def get_infrastructure(
             jobs_per_sec=n.get("jobs_per_sec"),
             region=n.get("region", "unknown"),
             last_heartbeat=(
-                datetime.fromisoformat(n["last_heartbeat"])
-                if n.get("last_heartbeat")
-                else now
+                datetime.fromisoformat(n["last_heartbeat"]) if n.get("last_heartbeat") else now
             ),
         )
         for n in _registered_nodes.values()
@@ -153,7 +154,7 @@ async def get_infrastructure(
     throughput_rpm = round(60000 / max(latency_ms, 1), 0) if latency_ms > 0 else 0.0
 
     return InfrastructureResponse(
-        deployment_mode="self_hosted" if settings.is_development else "hosted",
+        deployment_mode=settings.privacy_policy.deployment_mode,
         engine_version=engine_version,
         api_version="1.0.0",
         nodes=nodes,
@@ -168,8 +169,9 @@ async def get_infrastructure(
 
 # ── Node registration ─────────────────────────────────────────────────────
 
+
 class NodeRegisterRequest(BaseModel):
-    node_id: str | None = None     # auto-generated if not provided
+    node_id: str | None = None  # auto-generated if not provided
     region: str = "local"
     engine_version: str | None = None
     cpu_count: int | None = None
@@ -225,8 +227,7 @@ async def register_node(
         node_id=node_id,
         registered_at=now.isoformat(),
         message=(
-            f"Node '{node_id}' registered successfully. Send heartbeats to "
-            "POST /v1/nodes/heartbeat"
+            f"Node '{node_id}' registered successfully. Send heartbeats to POST /v1/nodes/heartbeat"
         ),
     )
 
@@ -235,7 +236,7 @@ async def register_node(
 async def node_heartbeat(
     payload: NodeHeartbeatRequest,
     auth: Annotated[AuthContext, Depends(get_current_org)],
-) -> dict:
+) -> dict[str, object]:
     """Update node status and metrics. Call every 30s from worker nodes."""
     if payload.node_id not in _registered_nodes:
         raise HTTPException(
@@ -244,8 +245,7 @@ async def node_heartbeat(
                 "error": {
                     "code": "node_not_found",
                     "message": (
-                        f"Node '{payload.node_id}' not registered. Call "
-                        "/v1/nodes/register first."
+                        f"Node '{payload.node_id}' not registered. Call /v1/nodes/register first."
                     ),
                 }
             },
@@ -262,13 +262,15 @@ async def node_heartbeat(
             },
         )
 
-    node.update({
-        "status": payload.status,
-        "cpu_pct": payload.cpu_pct,
-        "memory_gb": payload.memory_gb,
-        "jobs_per_sec": payload.jobs_per_sec,
-        "last_heartbeat": datetime.now(tz=UTC).isoformat(),
-    })
+    node.update(
+        {
+            "status": payload.status,
+            "cpu_pct": payload.cpu_pct,
+            "memory_gb": payload.memory_gb,
+            "jobs_per_sec": payload.jobs_per_sec,
+            "last_heartbeat": datetime.now(tz=UTC).isoformat(),
+        }
+    )
 
     return {"node_id": payload.node_id, "accepted": True}
 

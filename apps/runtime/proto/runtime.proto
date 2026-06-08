@@ -38,7 +38,7 @@ message HealthResponse {
   bool ok = 1;
   string version = 2;
   double uptime_seconds = 3;
-  string engine = 4;   // "mojo" | "python-fallback"
+  string engine = 4;   // "mojo" | "unavailable"
 }
 
 // ── Runtime info ─────────────────────────────────────────────────────────────
@@ -61,7 +61,7 @@ message ListModulesRequest {}
 
 message ModuleInfo {
   string name = 1;
-  string engine = 2;          // "mojo" | "python-fallback"
+  string engine = 2;          // "mojo" | "unavailable"
   repeated string functions = 3;
 }
 
@@ -81,7 +81,7 @@ message ExecuteRequest {
 message ExecuteResponse {
   string result_json = 1;
   double latency_ms = 2;
-  string engine_used = 3;   // "mojo" | "python-fallback"
+  string engine_used = 3;   // "mojo" | "unavailable" | "blocked"
   bool success = 4;
   string error = 5;
   string request_id = 6;

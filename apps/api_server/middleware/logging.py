@@ -1,8 +1,9 @@
 """Structured JSON request logging middleware."""
+
 import time
 
 import structlog
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import Response
 
@@ -12,14 +13,14 @@ _SKIP_PATHS = {"/health", "/metrics", "/favicon.ico"}
 
 
 class StructuredLoggingMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next: object) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         if request.url.path in _SKIP_PATHS:
-            return await call_next(request)  # type: ignore[operator]
+            return await call_next(request)
 
         start = time.perf_counter()
 
         try:
-            response: Response = await call_next(request)  # type: ignore[operator]
+            response = await call_next(request)
         except Exception as exc:
             duration_ms = int((time.perf_counter() - start) * 1000)
             # Read request_id after inner middleware has set it

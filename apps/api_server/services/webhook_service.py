@@ -6,10 +6,11 @@ Features:
 - Exponential backoff retry (3 attempts: 5s, 30s, 120s)
 - Delivery status tracked in DB
 """
+
+import asyncio
 import hashlib
 import hmac
 import json
-import time
 import uuid
 from datetime import UTC, datetime
 from typing import Any
@@ -17,10 +18,15 @@ from typing import Any
 import httpx
 import structlog
 
-from apps.api_server.config import get_settings
+from apps.api_server.config import SettingsProxy
+from apps.api_server.services.egress_guard import (
+    EgressAuditContext,
+    EgressPolicyDeniedError,
+    async_http_request,
+)
 
 logger = structlog.get_logger(__name__)
-settings = get_settings()
+settings = SettingsProxy()
 
 _RETRY_DELAYS = [5, 30, 120]  # seconds between retries
 _TIMEOUT_SECONDS = 10
@@ -63,6 +69,7 @@ async def deliver_webhook(
     payload: dict[str, Any],
     secret: str | None = None,
     max_retries: int = 3,
+    audit_context: EgressAuditContext | None = None,
 ) -> tuple[bool, int, str]:
     """
     Deliver webhook payload to callback_url with retry logic.
@@ -98,34 +105,45 @@ async def deliver_webhook(
                 delay_seconds=delay,
                 callback_url=callback_url[:50],
             )
-            time.sleep(delay)
+            await asyncio.sleep(delay)
 
         try:
-            async with httpx.AsyncClient(timeout=_TIMEOUT_SECONDS) as client:
-                response = await client.post(
-                    callback_url,
-                    content=payload_bytes,
-                    headers=headers,
-                )
-                last_status = response.status_code
-                last_message = f"HTTP {response.status_code}"
+            response = await async_http_request(
+                method="POST",
+                url=callback_url,
+                surface="webhook_delivery",
+                explicit_configured=True,
+                egress_class="customer_connector",
+                audit_context=audit_context,
+                client_kwargs={"timeout": _TIMEOUT_SECONDS},
+                content=payload_bytes,
+                headers=headers,
+            )
+            last_status = response.status_code
+            last_message = f"HTTP {response.status_code}"
 
-                if 200 <= response.status_code < 300:
-                    logger.info(
-                        "webhook_delivered",
-                        status_code=response.status_code,
-                        attempt=attempt + 1,
-                        callback_url=callback_url[:50],
-                    )
-                    return True, last_status, "delivered"
-
-                logger.warning(
-                    "webhook_delivery_failed",
+            if 200 <= response.status_code < 300:
+                logger.info(
+                    "webhook_delivered",
                     status_code=response.status_code,
                     attempt=attempt + 1,
                     callback_url=callback_url[:50],
                 )
+                return True, last_status, "delivered"
 
+            logger.warning(
+                "webhook_delivery_failed",
+                status_code=response.status_code,
+                attempt=attempt + 1,
+                callback_url=callback_url[:50],
+            )
+        except EgressPolicyDeniedError as exc:
+            logger.warning(
+                "webhook_delivery_blocked",
+                reason=exc.decision.reason,
+                callback_url=callback_url[:50],
+            )
+            return False, 0, f"egress_policy_denied: {exc.decision.reason}"
         except Exception as exc:
             last_status = 0
             last_message = str(exc)
@@ -157,5 +175,5 @@ def verify_webhook_signature(
     if not signature_header.startswith("sha256="):
         return False
     expected = _sign_payload(payload_bytes, secret)
-    received = signature_header[len("sha256="):]
+    received = signature_header[len("sha256=") :]
     return hmac.compare_digest(expected, received)

@@ -1,13 +1,50 @@
 """Response schemas — the Decision Envelope returned by all simulation endpoints."""
+
 import uuid
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
 # ─── DecisionPlan — headline structured output ────────────────────────────────
 
+JSONDict = dict[str, Any]
+
+
+class TokenReductionMetrics(BaseModel):
+    """Token-budget compression produced by deterministic repository narrowing."""
+
+    model_config = ConfigDict(strict=False)
+
+    raw_repo_token_estimate: int = Field(..., ge=0)
+    evidence_bundle_token_count: int = Field(..., ge=0)
+    reduction_ratio: float = Field(..., ge=1.0)
+
+
+class RepositoryAnalysis(BaseModel):
+    """Repository-intelligence extension block for DecisionPlan."""
+
+    model_config = ConfigDict(strict=False)
+
+    root_cause: str
+    planner_model_id: str
+    planner_execution_mode: str
+    planner_provider_backend: str | None = None
+    candidate_fixes: list[str] = Field(default_factory=list)
+    impacted_services: list[str] = Field(default_factory=list)
+    impacted_symbols: list[str] = Field(default_factory=list)
+    likely_failing_tests: list[str] = Field(default_factory=list)
+    rollback_complexity: str
+    blast_radius: str
+    workspace_evidence_refs: list[str] = Field(default_factory=list)
+    generated_patch_ref: str | None = None
+    patch_impact_report_ref: str | None = None
+    token_reduction_metrics: TokenReductionMetrics
+
+
 class RiskProfile(BaseModel):
     """Quantified downside and upside for a single outcome distribution."""
+
     model_config = ConfigDict(strict=False)
     p5: float = Field(..., description="5th-percentile outcome (downside risk floor)")
     p95: float = Field(..., description="95th-percentile outcome (upside ceiling)")
@@ -17,6 +54,7 @@ class RiskProfile(BaseModel):
 
 class DecisionOption(BaseModel):
     """One named alternative in a multi-option decision comparison."""
+
     model_config = ConfigDict(strict=False)
     name: str
     rank: int = Field(..., ge=1)
@@ -33,6 +71,7 @@ class DecisionPlan(BaseModel):
     in a compact, consistent shape regardless of simulation model used.
     Populate ``options`` with all ranked alternatives when using /v1/recommend.
     """
+
     model_config = ConfigDict(strict=False)
 
     recommended_action: str
@@ -47,7 +86,7 @@ class DecisionPlan(BaseModel):
         ),
     )
     rationale: str
-    integrity: dict | None = Field(
+    integrity: JSONDict | None = Field(
         None,
         description="Cryptographic proof of inputs/outputs: {request_hash, result_hash}.",
     )
@@ -57,6 +96,13 @@ class DecisionPlan(BaseModel):
             "Human-readable calibration summary, "
             "e.g. '12 outcomes | bias=-8.3% (over-optimistic) | hit_rate=75%'. "
             "Null until MIN_SAMPLES (5) outcomes are recorded for this org."
+        ),
+    )
+    repository_analysis: RepositoryAnalysis | None = Field(
+        None,
+        description=(
+            "Repository-intelligence context including root cause, candidate fixes, "
+            "workspace evidence refs, patch impact, and token reduction metrics."
         ),
     )
 
@@ -94,6 +140,7 @@ class RunMetadata(BaseModel):
 
 class DecisionEnvelope(BaseModel):
     """Full decision output returned by /v1/simulate, /v1/recommend, and /v1/score."""
+
     model_config = ConfigDict(strict=False, protected_namespaces=())
 
     run_id: uuid.UUID
@@ -138,18 +185,17 @@ class DecisionEnvelope(BaseModel):
     assumptions_hash: str | None = Field(
         None,
         description=(
-            "Stable fingerprint of the validated simulation assumptions "
-            "executed by the engine."
+            "Stable fingerprint of the validated simulation assumptions executed by the engine."
         ),
     )
-    validated_inputs: dict | None = Field(
+    validated_inputs: JSONDict | None = Field(
         None,
         description=(
             "Normalized summary of the validated request inputs used for execution. "
             "Includes mode, runs, variable counts, and model selection."
         ),
     )
-    confidence_interval: dict | None = Field(
+    confidence_interval: JSONDict | None = Field(
         None,
         description="Primary outcome confidence interval derived from the simulated distribution.",
     )
@@ -159,37 +205,34 @@ class DecisionEnvelope(BaseModel):
     )
 
     # ─── Extended model results ───────────────────────────────────────────────
-    scenario_analysis: dict | None = Field(
+    scenario_analysis: JSONDict | None = Field(
         None,
         description=(
-            "Populated for simulation_model='scenario': "
-            "expected_value, best_case, scenarios list"
+            "Populated for simulation_model='scenario': expected_value, best_case, scenarios list"
         ),
     )
-    sensitivity_analysis: dict | None = Field(
+    sensitivity_analysis: JSONDict | None = Field(
         None,
         description=(
             "Populated for simulation_model='sensitivity': "
             "tornado_chart, first_order_sobol, variable_importance"
         ),
     )
-    bootstrap_result: dict | None = Field(
+    bootstrap_result: JSONDict | None = Field(
         None,
         description=(
-            "Populated for simulation_model='bootstrap': "
-            "statistic, observed_value, CI, bias, SE"
+            "Populated for simulation_model='bootstrap': statistic, observed_value, CI, bias, SE"
         ),
     )
-    mcmc_result: dict | None = Field(
+    mcmc_result: JSONDict | None = Field(
         None,
         description=(
-            "Populated for simulation_model='mcmc': "
-            "posterior summaries, R-hat, acceptance_rate"
+            "Populated for simulation_model='mcmc': posterior summaries, R-hat, acceptance_rate"
         ),
     )
 
     # ─── Importance sampling result ───────────────────────────────────────────
-    importance_sampling_result: dict | None = Field(
+    importance_sampling_result: JSONDict | None = Field(
         None,
         description=(
             "Populated for simulation_model='importance_sampling'. Contains: "
@@ -200,23 +243,22 @@ class DecisionEnvelope(BaseModel):
         ),
     )
 
-    scenario_ranking: list[dict] | None = None
-    sensitivity_ranking: list[dict] | None = None
+    scenario_ranking: list[JSONDict] | None = None
+    sensitivity_ranking: list[JSONDict] | None = None
     score: float | None = Field(None, ge=0.0, le=1.0)
-    score_breakdown: dict | None = None
+    score_breakdown: JSONDict | None = None
     created_at: datetime | None = None
 
     # ─── Decision tree ────────────────────────────────────────────────────────
-    decision_tree_result: dict | None = Field(
+    decision_tree_result: JSONDict | None = Field(
         None,
         description=(
-            "Populated for simulation_model='decision_tree': "
-            "n_paths, expected_value, paths[]"
+            "Populated for simulation_model='decision_tree': n_paths, expected_value, paths[]"
         ),
     )
 
     # ─── Time series ──────────────────────────────────────────────────────────
-    time_series_result: dict | None = Field(
+    time_series_result: JSONDict | None = Field(
         None,
         description=(
             "Populated for simulation_model='time_series'. Contains: "
@@ -227,7 +269,7 @@ class DecisionEnvelope(BaseModel):
     )
 
     # ─── Universal Unit Context ───────────────────────────────────────────────
-    formatted_result: dict | None = Field(
+    formatted_result: JSONDict | None = Field(
         None,
         description=(
             "Human-readable formatted output values with units. "
@@ -235,7 +277,7 @@ class DecisionEnvelope(BaseModel):
             "Contains: mean_formatted, p5_formatted, p95_formatted, unit, unit_type, etc."
         ),
     )
-    unit_context: dict | None = Field(
+    unit_context: JSONDict | None = Field(
         None,
         description=(
             "Unit metadata for all variables and outputs. "
@@ -253,7 +295,7 @@ class DecisionEnvelope(BaseModel):
     )
 
     # ─── Chart-ready output ───────────────────────────────────────────────────
-    charts: dict | None = Field(
+    charts: JSONDict | None = Field(
         None,
         description=(
             "Pre-computed Vega-Lite compatible chart specs for instant rendering. "
@@ -263,7 +305,7 @@ class DecisionEnvelope(BaseModel):
             "Each value is a complete Vega-Lite spec that can be passed to vega-embed."
         ),
     )
-    histogram_data: dict | None = Field(
+    histogram_data: JSONDict | None = Field(
         None,
         description="Pre-computed histogram bins (50 bins) for the primary output distribution.",
     )
@@ -332,10 +374,12 @@ def build_decision_plan(
     integrity = None
     if envelope.request_hash or envelope.result_hash:
         integrity = {
-            k: v for k, v in {
+            k: v
+            for k, v in {
                 "request_hash": envelope.request_hash,
-                "result_hash":  envelope.result_hash,
-            }.items() if v
+                "result_hash": envelope.result_hash,
+            }.items()
+            if v
         }
 
     return DecisionPlan(
@@ -346,4 +390,6 @@ def build_decision_plan(
         options=options,
         rationale=envelope.rationale,
         integrity=integrity,
+        calibration=None,
+        repository_analysis=None,
     )

@@ -12,13 +12,16 @@ Design:
     Background semantic training automatically improves accuracy once complete.
     No user action required after onboarding.
 """
+
 from __future__ import annotations
 
 import csv
+import importlib
 import io
 import os
 import tempfile
 import time
+import types
 from pathlib import Path
 from typing import Any
 
@@ -28,14 +31,48 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from apps.api_server.middleware.auth import get_current_org
 from apps.api_server.pagination import paginate_sequence
-from apps.api_server.services import dataset_service as ds
 from apps.api_server.services.auth_service import AuthContext
+from apps.api_server.services.data_discovery import filter_discovery_entries
 
 logger = structlog.get_logger(__name__)
 router = APIRouter(tags=["Datasets"])
 
 
+def _coerce_optional_text(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    trimmed = value.strip()
+    return trimmed or None
+
+
+def _coerce_page(value: Any) -> int:
+    return value if isinstance(value, int) and value >= 1 else 1
+
+
+def _coerce_limit(value: Any) -> int | None:
+    return value if isinstance(value, int) and value >= 1 else None
+
+
+def _coerce_compact(value: Any) -> bool:
+    return value if isinstance(value, bool) else False
+
+
+def _dataset_service() -> types.ModuleType:
+    return importlib.import_module("apps.api_server.services.dataset_service")
+
+
+class _DatasetServiceProxy:
+    """Compatibility proxy for legacy router-level monkeypatch paths."""
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(_dataset_service(), name)
+
+
+ds = _DatasetServiceProxy()
+
+
 # ── Pydantic models ───────────────────────────────────────────────────────────
+
 
 class OnboardRequest(BaseModel):
     """
@@ -48,6 +85,7 @@ class OnboardRequest(BaseModel):
 
     For file uploads use POST /v1/datasets/onboard/file.
     """
+
     name: str = Field("dataset", description="Human-readable dataset name")
     source_name: str | None = Field(None, description="Table name used in the schema")
     records: list[dict[str, Any]] | None = Field(
@@ -71,28 +109,48 @@ class OnboardRequest(BaseModel):
 class DatasetStatusResponse(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
 
-    dataset_id:     str
-    name:           str
-    schema_hash:    str
-    status:         str           # "untrained" | "training" | "ready" | "failed"
-    model_tier:     str           # "schema" | "base" | "none"
-    decision_mode:  str
-    source_names:   list[str]
-    column_count:   int
+    dataset_id: str
+    name: str
+    schema_hash: str
+    status: str  # "untrained" | "training" | "ready" | "failed"
+    model_tier: str  # "schema" | "base" | "none"
+    decision_mode: str
+    source_names: list[str]
+    column_count: int
     domain_aliases: dict[str, list[str]] | None
-    registered_at:  str | None
-    updated_at:     str | None
+    registered_at: str | None
+    updated_at: str | None
 
 
 class OnboardResponse(DatasetStatusResponse):
-    dataset_schema:    dict[str, Any] = Field(alias="schema")
+    dataset_schema: dict[str, Any] = Field(alias="schema")
     suggested_aliases: dict[str, list[str]]
-    latency_ms:        float
+    latency_ms: float
 
     model_config = {"populate_by_name": True}
 
 
+def _dataset_list_item(manifest: dict[str, Any], *, compact: bool = False) -> dict[str, Any]:
+    item = {
+        "dataset_id": manifest["dataset_id"],
+        "name": manifest["name"],
+        "status": manifest["status"],
+        "source_names": manifest.get("source_names", []),
+        "column_count": manifest.get("column_count", 0),
+        "registered_at": manifest.get("registered_at"),
+    }
+    if compact:
+        return item
+    return {
+        **item,
+        "schema_hash": manifest["schema_hash"],
+        "model_tier": manifest["model_tier"],
+        "decision_mode": ds.decision_mode_for_tier(manifest["model_tier"]),
+    }
+
+
 # ── JSON-body onboarding ──────────────────────────────────────────────────────
+
 
 @router.post(
     "/v1/datasets/onboard",
@@ -103,16 +161,16 @@ class OnboardResponse(DatasetStatusResponse):
         "- Accepts JSON records, inline CSV, or column names only\n"
         "- Profiles schema and role-classifies every column automatically\n"
         "- Auto-suggests domain aliases (PPA → per/person/average, etc.)\n"
-        "- Fires background semantic training immediately\n"
+        "- Fires background semantic training immediately when the training runtime is installed\n"
         "- Returns model tier — queries work immediately via base/deterministic fallback\n\n"
         "For file uploads (CSV, Excel, Parquet, JSON) use `POST /v1/datasets/onboard/file`."
     ),
 )
 async def onboard_dataset(
     payload: OnboardRequest,
-    auth:    AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org),
 ) -> OnboardResponse:
-    t0     = time.monotonic()
+    t0 = time.monotonic()
     org_id = str(auth["org_id"])
 
     # Resolve source from request fields
@@ -125,8 +183,9 @@ async def onboard_dataset(
     else:
         raise HTTPException(
             status_code=400,
-            detail={"error": {"code": "no_data",
-                              "message": "Provide one of: records, csv, or columns"}},
+            detail={
+                "error": {"code": "no_data", "message": "Provide one of: records, csv, or columns"}
+            },
         )
 
     return await _run_onboard(
@@ -145,39 +204,45 @@ async def onboard_dataset(
 
 # ── File-upload onboarding ────────────────────────────────────────────────────
 
+
 @router.post(
     "/v1/datasets/onboard/file",
     response_model=OnboardResponse,
     summary="Onboard from file upload — CSV, Excel, Parquet, JSON, JSONL",
 )
 async def onboard_file(
-    file:               UploadFile = File(...),
-    name:               str        = Form("dataset"),
-    source_name:        str | None = Form(None),
+    file: UploadFile = File(...),
+    name: str = Form("dataset"),
+    source_name: str | None = Form(None),
     domain_aliases_json: str | None = Form(None, alias="domain_aliases"),
-    async_train:        bool = Form(True),
-    epochs:             int  = Form(80),
-    batch_size:         int  = Form(32),
+    async_train: bool = Form(True),
+    epochs: int = Form(80),
+    batch_size: int = Form(32),
     auth: AuthContext = Depends(get_current_org),
 ) -> OnboardResponse:
-    t0     = time.monotonic()
+    t0 = time.monotonic()
     org_id = str(auth["org_id"])
 
     # Parse optional JSON-encoded domain_aliases form field
     domain_aliases: dict[str, list[str]] | None = None
     if domain_aliases_json:
         import json as _json
+
         try:
             domain_aliases = _json.loads(domain_aliases_json)
         except Exception as exc:
             raise HTTPException(
                 status_code=400,
-                detail={"error": {"code": "invalid_aliases",
-                                  "message": "domain_aliases must be valid JSON"}},
+                detail={
+                    "error": {
+                        "code": "invalid_aliases",
+                        "message": "domain_aliases must be valid JSON",
+                    }
+                },
             ) from exc
 
     # Write upload to a temp file with the original extension
-    suffix  = Path(file.filename or "upload.csv").suffix or ".csv"
+    suffix = Path(file.filename or "upload.csv").suffix or ".csv"
     content = await file.read()
 
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
@@ -203,6 +268,7 @@ async def onboard_file(
 
 # ── Status ────────────────────────────────────────────────────────────────────
 
+
 @router.get(
     "/v1/datasets/{dataset_id}/status",
     response_model=DatasetStatusResponse,
@@ -210,32 +276,33 @@ async def onboard_file(
 )
 async def get_dataset_status(
     dataset_id: str,
-    auth:       AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org),
 ) -> DatasetStatusResponse:
-    org_id   = str(auth["org_id"])
-    manifest = ds.get_status(org_id, dataset_id)
+    svc = ds
+    org_id = str(auth["org_id"])
+    manifest = svc.get_status(org_id, dataset_id)
     if manifest is None:
         raise HTTPException(
             status_code=404,
-            detail={"error": {"code": "not_found",
-                              "message": f"Dataset '{dataset_id}' not found"}},
+            detail={"error": {"code": "not_found", "message": f"Dataset '{dataset_id}' not found"}},
         )
     return DatasetStatusResponse(
-        dataset_id    = manifest["dataset_id"],
-        name          = manifest["name"],
-        schema_hash   = manifest["schema_hash"],
-        status        = manifest["status"],
-        model_tier    = manifest["model_tier"],
-        decision_mode = ds.decision_mode_for_tier(manifest["model_tier"]),
-        source_names  = manifest.get("source_names", []),
-        column_count  = manifest.get("column_count", 0),
-        domain_aliases = manifest.get("domain_aliases"),
-        registered_at = manifest.get("registered_at"),
-        updated_at    = manifest.get("updated_at"),
+        dataset_id=manifest["dataset_id"],
+        name=manifest["name"],
+        schema_hash=manifest["schema_hash"],
+        status=manifest["status"],
+        model_tier=manifest["model_tier"],
+        decision_mode=svc.decision_mode_for_tier(manifest["model_tier"]),
+        source_names=manifest.get("source_names", []),
+        column_count=manifest.get("column_count", 0),
+        domain_aliases=manifest.get("domain_aliases"),
+        registered_at=manifest.get("registered_at"),
+        updated_at=manifest.get("updated_at"),
     )
 
 
 # ── List ──────────────────────────────────────────────────────────────────────
+
 
 @router.get(
     "/v1/datasets",
@@ -245,27 +312,33 @@ async def list_datasets(
     auth: AuthContext = Depends(get_current_org),
     page: int = Query(default=1, ge=1),
     limit: int | None = Query(default=None, ge=1, le=200),
-) -> dict:
-    org_id   = str(auth["org_id"])
-    datasets = ds.list_datasets(org_id)
-    paged = paginate_sequence(datasets, page=page, limit=limit)
+    search: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    source_name: str | None = Query(default=None),
+    compact: bool = Query(default=False),
+) -> dict[str, Any]:
+    svc = ds
+    org_id = str(auth["org_id"])
+    datasets = svc.list_datasets(org_id)
+    resolved_page = _coerce_page(page)
+    resolved_limit = _coerce_limit(limit)
+    resolved_search = _coerce_optional_text(search)
+    resolved_status = _coerce_optional_text(status)
+    resolved_source_name = _coerce_optional_text(source_name)
+    resolved_compact = _coerce_compact(compact)
+    total = len(datasets)
+    filtered = filter_discovery_entries(
+        datasets,
+        search=resolved_search,
+        status=resolved_status,
+        source_name=resolved_source_name,
+    )
+    paged = paginate_sequence(filtered, page=resolved_page, limit=resolved_limit)
     return {
-        "datasets": [
-            {
-                "dataset_id":    d["dataset_id"],
-                "name":          d["name"],
-                "schema_hash":   d["schema_hash"],
-                "status":        d["status"],
-                "model_tier":    d["model_tier"],
-                "decision_mode": ds.decision_mode_for_tier(d["model_tier"]),
-                "column_count":  d.get("column_count", 0),
-                "source_names":  d.get("source_names", []),
-                "registered_at": d.get("registered_at"),
-            }
-            for d in paged.items
-        ],
+        "datasets": [_dataset_list_item(d, compact=resolved_compact) for d in paged.items],
         "count": len(paged.items),
-        "total": paged.total,
+        "total": total,
+        "matched_total": len(filtered),
         "page": paged.page,
         "limit": paged.limit,
         "pages": paged.pages,
@@ -274,51 +347,64 @@ async def list_datasets(
 
 # ── Retrain ───────────────────────────────────────────────────────────────────
 
+
 @router.post(
     "/v1/datasets/{dataset_id}/retrain",
     summary="Re-trigger semantic training for a dataset",
 )
 async def retrain_dataset(
     dataset_id: str,
-    epochs:     int = 80,
+    epochs: int = 80,
     batch_size: int = 32,
-    auth:       AuthContext = Depends(get_current_org),
-) -> dict:
-    org_id   = str(auth["org_id"])
-    manifest = ds.retrain(org_id, dataset_id, epochs=epochs, batch_size=batch_size)
+    auth: AuthContext = Depends(get_current_org),
+) -> dict[str, Any]:
+    svc = ds
+    org_id = str(auth["org_id"])
+    try:
+        manifest = svc.retrain(org_id, dataset_id, epochs=epochs, batch_size=batch_size)
+    except svc.SemanticTrainingUnavailableError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": {
+                    "code": "semantic_training_unavailable",
+                    "message": str(exc),
+                }
+            },
+        ) from exc
     if manifest is None:
         raise HTTPException(
             status_code=404,
-            detail={"error": {"code": "not_found",
-                              "message": f"Dataset '{dataset_id}' not found"}},
+            detail={"error": {"code": "not_found", "message": f"Dataset '{dataset_id}' not found"}},
         )
     return {
-        "dataset_id":  manifest["dataset_id"],
+        "dataset_id": manifest["dataset_id"],
         "schema_hash": manifest["schema_hash"],
-        "status":      manifest["status"],
-        "message":     "Retraining triggered in background",
+        "status": manifest["status"],
+        "message": "Retraining triggered in background",
     }
 
 
 # ── Shared onboard runner ─────────────────────────────────────────────────────
 
+
 async def _run_onboard(
     *,
-    org_id:         str,
-    source:         Any,
-    name:           str,
-    source_name:    str | None,
+    org_id: str,
+    source: Any,
+    name: str,
+    source_name: str | None,
     domain_aliases: dict[str, list[str]] | None,
-    async_train:    bool,
-    epochs:         int,
-    batch_size:     int,
-    t0:             float,
-    log_extra:      dict,
+    async_train: bool,
+    epochs: int,
+    batch_size: int,
+    t0: float,
+    log_extra: dict[str, Any],
 ) -> OnboardResponse:
-    from training.semantic.schema_ingestor import suggest_aliases as _suggest
+    svc = ds
 
     try:
-        manifest = ds.onboard(
+        manifest = svc.onboard(
             org_id=org_id,
             source=source,
             name=name,
@@ -335,8 +421,8 @@ async def _run_onboard(
             detail={"error": {"code": "onboard_failed", "message": str(exc)}},
         ) from exc
 
-    suggested  = _suggest(manifest["schema"])
-    elapsed    = round((time.monotonic() - t0) * 1000, 1)
+    suggested = svc.suggest_aliases(manifest["schema"])
+    elapsed = round((time.monotonic() - t0) * 1000, 1)
 
     logger.info(
         "dataset_onboarded",
@@ -350,28 +436,29 @@ async def _run_onboard(
     )
 
     return OnboardResponse(
-        dataset_id    = manifest["dataset_id"],
-        name          = manifest["name"],
-        schema_hash   = manifest["schema_hash"],
-        status        = manifest["status"],
-        model_tier    = manifest["model_tier"],
-        decision_mode = ds.decision_mode_for_tier(manifest["model_tier"]),
-        source_names  = manifest.get("source_names", []),
-        column_count  = manifest.get("column_count", 0),
-        domain_aliases = manifest.get("domain_aliases"),
-        registered_at = manifest.get("registered_at"),
-        updated_at    = manifest.get("updated_at"),
-        dataset_schema = manifest["schema"],
-        suggested_aliases = suggested,
-        latency_ms    = elapsed,
+        dataset_id=manifest["dataset_id"],
+        name=manifest["name"],
+        schema_hash=manifest["schema_hash"],
+        status=manifest["status"],
+        model_tier=manifest["model_tier"],
+        decision_mode=svc.decision_mode_for_tier(manifest["model_tier"]),
+        source_names=manifest.get("source_names", []),
+        column_count=manifest.get("column_count", 0),
+        domain_aliases=manifest.get("domain_aliases"),
+        registered_at=manifest.get("registered_at"),
+        updated_at=manifest.get("updated_at"),
+        schema=manifest["schema"],
+        suggested_aliases=suggested,
+        latency_ms=elapsed,
     )
 
 
 # ── CSV helper ────────────────────────────────────────────────────────────────
 
+
 def _parse_csv_text(csv_text: str) -> list[dict[str, Any]]:
     """Parse raw CSV text into a list of record dicts with numeric coercion."""
-    reader  = csv.DictReader(io.StringIO(csv_text.strip()))
+    reader = csv.DictReader(io.StringIO(csv_text.strip()))
     records: list[dict[str, Any]] = []
     for row in reader:
         record: dict[str, Any] = {}

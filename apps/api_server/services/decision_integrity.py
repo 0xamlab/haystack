@@ -4,6 +4,7 @@ Decision integrity service — SHA-256 hashing of simulation outputs.
 The canonical form intentionally excludes volatile or self-referential fields
 such as `result_hash`, timestamps, execution timing, and transient metadata.
 """
+
 import hashlib
 import json
 import re
@@ -34,7 +35,7 @@ def canonical_envelope_bytes(envelope_data: dict[str, Any]) -> bytes:
             "var_95": envelope_data.get("metrics", {}).get("var_95"),
         },
         "percentiles": {
-            "p5":  envelope_data.get("percentiles", {}).get("p5", 0.0),
+            "p5": envelope_data.get("percentiles", {}).get("p5", 0.0),
             "p25": envelope_data.get("percentiles", {}).get("p25", 0.0),
             "p50": envelope_data.get("percentiles", {}).get("p50", 0.0),
             "p75": envelope_data.get("percentiles", {}).get("p75", 0.0),

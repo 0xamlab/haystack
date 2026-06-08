@@ -1,0 +1,28 @@
+from __future__ import annotations
+
+from apps.api_server.services.repository_intelligence_adapters import (
+    puppet_analysis_support as repository_puppet_analysis_support,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    puppet_primitives as repository_puppet_primitives,
+)
+
+StableIdentifier = repository_puppet_primitives.StableIdentifier
+NormalizeRepositoryRelativePath = repository_puppet_primitives.NormalizeRepositoryRelativePath
+ResolveSuffixMatch = repository_puppet_primitives.ResolveSuffixMatch
+
+_KNOWN_PUPPET_SUFFIXES = repository_puppet_primitives._KNOWN_PUPPET_SUFFIXES
+_PUPPET_MANIFEST_BASENAMES = repository_puppet_primitives._PUPPET_MANIFEST_BASENAMES
+_PUPPET_SOURCE_ROOTS = repository_puppet_primitives._PUPPET_SOURCE_ROOTS
+has_puppet_path_hints = repository_puppet_primitives.has_puppet_path_hints
+is_probable_puppet_source = repository_puppet_primitives.is_probable_puppet_source
+iter_definition_entries = repository_puppet_primitives.iter_definition_entries
+iter_dependency_targets = repository_puppet_primitives.iter_dependency_targets
+iter_symbol_entries = repository_puppet_primitives.iter_symbol_entries
+module_name_from_metadata_name = repository_puppet_primitives.module_name_from_metadata_name
+puppet_metadata_name = repository_puppet_primitives.puppet_metadata_name
+strip_comments = repository_puppet_primitives.strip_comments
+
+module_aliases_for_path = repository_puppet_analysis_support.module_aliases_for_path
+parse_dependencies_only = repository_puppet_analysis_support.parse_dependencies_only
+parse_file = repository_puppet_analysis_support.parse_file

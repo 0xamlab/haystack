@@ -1,6 +1,7 @@
 """
 UnitSpec — parsed unit specification dataclass with full shorthand resolution.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -35,8 +36,19 @@ class UnitSpec:
 
     Full dict form: {type, code, precision, scale, format, base_unit, sim_scale, label}
     """
-    __slots__ = ("type", "code", "precision", "scale", "format",
-                 "base_unit", "sim_scale", "label", "range_min", "range_max")
+
+    __slots__ = (
+        "type",
+        "code",
+        "precision",
+        "scale",
+        "format",
+        "base_unit",
+        "sim_scale",
+        "label",
+        "range_min",
+        "range_max",
+    )
 
     def __init__(
         self,
@@ -51,14 +63,14 @@ class UnitSpec:
         range_min: float | None = None,
         range_max: float | None = None,
     ) -> None:
-        self.type      = unit_type
-        self.code      = code
+        self.type = unit_type
+        self.code = code
         self.precision = precision
-        self.scale     = scale
-        self.format    = fmt
+        self.scale = scale
+        self.format = fmt
         self.base_unit = base_unit
         self.sim_scale = sim_scale
-        self.label     = label
+        self.label = label
         self.range_min = range_min
         self.range_max = range_max
 
@@ -72,7 +84,7 @@ class UnitSpec:
 
     @classmethod
     def _from_string(cls, s: str) -> UnitSpec:  # noqa: C901
-        s  = s.strip()
+        s = s.strip()
         su = s.upper()
         sl = s.lower()
 
@@ -82,14 +94,22 @@ class UnitSpec:
         if sl in {k.lower() for k in CRYPTO_SUB_UNITS}:
             key = next(k for k in CRYPTO_SUB_UNITS if k.lower() == sl)
             lbl, sim_scale, parent = CRYPTO_SUB_UNITS[key]
-            return cls(unit_type="crypto_sub", code=key,
-                       precision=0 if sim_scale >= 1e6 else 4,
-                       sim_scale=sim_scale, base_unit=lbl, label=f"{lbl} ({parent})")
+            return cls(
+                unit_type="crypto_sub",
+                code=key,
+                precision=0 if sim_scale >= 1e6 else 4,
+                sim_scale=sim_scale,
+                base_unit=lbl,
+                label=f"{lbl} ({parent})",
+            )
 
         _shorthand_map = {
-            "satoshi": "BTC_sat", "sat": "BTC_sat",
-            "gwei": "ETH_gwei", "wei": "ETH_wei",
-            "lamport": "SOL_lamport", "lamp": "SOL_lamport",
+            "satoshi": "BTC_sat",
+            "sat": "BTC_sat",
+            "gwei": "ETH_gwei",
+            "wei": "ETH_wei",
+            "lamport": "SOL_lamport",
+            "lamp": "SOL_lamport",
             "drop": "XRP_drop",
         }
         if sl in _shorthand_map:
@@ -99,15 +119,21 @@ class UnitSpec:
             return cls(unit_type="crypto", code=su, precision=CRYPTO_DISPLAY_DECIMALS[su])
 
         if s in ("%", "pct", "percent", "percentage"):
-            return cls(unit_type="percentage", code="%", precision=2,
-                       range_min=-100.0, range_max=100.0)
+            return cls(
+                unit_type="percentage", code="%", precision=2, range_min=-100.0, range_max=100.0
+            )
 
         if sl in ("bps", "basis_points", "bp"):
             return cls(unit_type="bps", code="bps", precision=1, scale=10000.0)
 
         if sl in ("probability", "prob", "p"):
-            return cls(unit_type="probability", code="probability", precision=4,
-                       range_min=0.0, range_max=1.0)
+            return cls(
+                unit_type="probability",
+                code="probability",
+                precision=4,
+                range_min=0.0,
+                range_max=1.0,
+            )
 
         if sl in ("count", "integer", "int", "#"):
             return cls(unit_type="count", code="count", precision=0, range_min=0.0)
@@ -115,13 +141,38 @@ class UnitSpec:
         if sl in ("date", "datetime", "timestamp", "epoch_days"):
             return cls(unit_type="date", code="date", precision=0)
 
-        _duration_explicit = ("h", "hours", "hour", "d", "days", "day",
-                               "min", "minutes", "minute",
-                               "y", "yr", "years", "year",
-                               "mo", "months", "month",
-                               "w", "wk", "week", "weeks",
-                               "ms", "us", "ns", "μs", "sec", "second", "seconds",
-                               "q", "quarter", "quarters")
+        _duration_explicit = (
+            "h",
+            "hours",
+            "hour",
+            "d",
+            "days",
+            "day",
+            "min",
+            "minutes",
+            "minute",
+            "y",
+            "yr",
+            "years",
+            "year",
+            "mo",
+            "months",
+            "month",
+            "w",
+            "wk",
+            "week",
+            "weeks",
+            "ms",
+            "us",
+            "ns",
+            "μs",
+            "sec",
+            "second",
+            "seconds",
+            "q",
+            "quarter",
+            "quarters",
+        )
         if (sl in DURATION_TO_SECONDS and sl not in ("m", "n", "s")) or sl in _duration_explicit:
             return cls(unit_type="duration", code=sl, precision=2)
 
@@ -308,8 +359,19 @@ class UnitSpec:
             code = s if s in VOLUME_TO_L else "L"
             return cls(unit_type="volume", code=code, precision=3, range_min=0.0)
 
-        if sl in ("kg/m³", "kg/m3", "g/cm³", "g/cm3", "g/ml", "g/mL",
-                  "kg/l", "kg/L", "lb/ft³", "lb/ft3", "density"):
+        if sl in (
+            "kg/m³",
+            "kg/m3",
+            "g/cm³",
+            "g/cm3",
+            "g/ml",
+            "g/mL",
+            "kg/l",
+            "kg/L",
+            "lb/ft³",
+            "lb/ft3",
+            "density",
+        ):
             code = s.replace("3", "³").replace("/l", "/L")
             return cls(unit_type="density", code=code, precision=3, range_min=0.0)
 
@@ -439,13 +501,13 @@ class UnitSpec:
     @classmethod
     def _from_dict(cls, d: dict[str, Any]) -> UnitSpec:
         unit_type = str(d.get("type", d.get("unit_type", "raw"))).lower()
-        code      = str(d.get("code", d.get("unit", "")))
+        code = str(d.get("code", d.get("unit", "")))
         precision = d.get("precision")
-        scale     = float(d.get("scale", 1.0))
-        fmt       = str(d.get("format", "standard"))
+        scale = float(d.get("scale", 1.0))
+        fmt = str(d.get("format", "standard"))
         base_unit = str(d.get("base_unit", ""))
         sim_scale = float(d.get("sim_scale", 1.0))
-        label     = str(d.get("label", ""))
+        label = str(d.get("label", ""))
         range_min = d.get("range_min")
         range_max = d.get("range_max")
 
@@ -467,6 +529,15 @@ class UnitSpec:
         if range_max is not None:
             range_max = float(range_max)
 
-        return cls(unit_type=unit_type, code=code, precision=precision,
-                   scale=scale, fmt=fmt, base_unit=base_unit, sim_scale=sim_scale,
-                   label=label, range_min=range_min, range_max=range_max)
+        return cls(
+            unit_type=unit_type,
+            code=code,
+            precision=precision,
+            scale=scale,
+            fmt=fmt,
+            base_unit=base_unit,
+            sim_scale=sim_scale,
+            label=label,
+            range_min=range_min,
+            range_max=range_max,
+        )

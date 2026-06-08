@@ -6,6 +6,7 @@ Auth endpoints:
   POST /auth/forgot-password  — request password reset email
   POST /auth/reset-password   — complete password reset with token
 """
+
 import uuid
 from datetime import UTC, datetime, timedelta
 
@@ -15,7 +16,7 @@ from jose import jwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.api_server.config import get_settings
+from apps.api_server.config import SettingsProxy
 from apps.api_server.db.session import get_db
 from apps.api_server.schemas.auth import (
     ForgotPasswordRequest,
@@ -25,22 +26,22 @@ from apps.api_server.schemas.auth import (
     SignUpResponse,
     TokenResponse,
 )
-from apps.api_server.services.user_service import (
-    create_user_and_org,
-    get_user_by_email,
-    hash_password,
-    verify_password,
-)
 from apps.api_server.services.auth_tokens import (
     AuthTokenError,
     issue_password_reset_token,
     verify_email_verification_token,
     verify_password_reset_token,
 )
+from apps.api_server.services.user_service import (
+    create_user_and_org,
+    get_user_by_email,
+    hash_password,
+    verify_password,
+)
 
 logger = structlog.get_logger(__name__)
 router = APIRouter(tags=["Auth"], prefix="/auth")
-settings = get_settings()
+settings = SettingsProxy()
 
 
 @router.post(
@@ -73,8 +74,7 @@ async def signup(
     response_model=TokenResponse,
     summary="Login and get a session token",
     description=(
-        "Returns a JWT bearer token valid for 7 days. "
-        "Use as `Authorization: Bearer <token>`."
+        "Returns a JWT bearer token valid for 7 days. Use as `Authorization: Bearer <token>`."
     ),
 )
 async def login(
@@ -105,9 +105,7 @@ async def login(
         "role": user.role.value,
         "exp": expire,
     }
-    access_token = jwt.encode(
-        token_data, settings.jwt_secret, algorithm=settings.jwt_algorithm
-    )
+    access_token = jwt.encode(token_data, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
     logger.info("login_success", user_id=str(user.id), org_id=str(user.org_id))
 
@@ -122,7 +120,7 @@ async def login(
 async def verify_email(
     token: str = Query(..., description="Verification token from email"),
     db: AsyncSession = Depends(get_db),
-) -> dict:
+) -> dict[str, str]:
     """Verify a user's email address. Token sent on signup."""
     from apps.api_server.models.user import User
 
@@ -137,11 +135,11 @@ async def verify_email(
                     "message": exc.message,
                 }
             },
-        )
+        ) from exc
 
     try:
         user_id = uuid.UUID(claims.subject)
-    except ValueError:
+    except ValueError as exc:
         raise HTTPException(
             status_code=400,
             detail={
@@ -150,7 +148,7 @@ async def verify_email(
                     "message": "Invalid token.",
                 }
             },
-        )
+        ) from exc
 
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
@@ -168,7 +166,7 @@ async def verify_email(
     if user.email_verified:
         return {"message": "Email already verified."}
 
-    user.email_verified = True  # type: ignore[assignment]
+    user.email_verified = True
     await db.commit()
 
     logger.info("email_verified", user_id=str(user.id))
@@ -179,7 +177,7 @@ async def verify_email(
 async def forgot_password(
     payload: ForgotPasswordRequest,
     db: AsyncSession = Depends(get_db),
-) -> dict:
+) -> dict[str, str]:
     """Send a password reset link to the user's email."""
     from apps.api_server.models.user import User
     from apps.api_server.services.email_service import send_password_reset_email
@@ -204,7 +202,7 @@ async def forgot_password(
 async def reset_password(
     payload: ResetPasswordRequest,
     db: AsyncSession = Depends(get_db),
-) -> dict:
+) -> dict[str, str]:
     """Reset a user's password using a valid reset token."""
     from apps.api_server.models.user import User
 
@@ -222,11 +220,11 @@ async def reset_password(
                     "message": exc.message,
                 }
             },
-        )
+        ) from exc
 
     try:
         user_id = uuid.UUID(claims.subject)
-    except ValueError:
+    except ValueError as exc:
         raise HTTPException(
             status_code=400,
             detail={
@@ -235,7 +233,7 @@ async def reset_password(
                     "message": "Invalid token.",
                 }
             },
-        )
+        ) from exc
 
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
@@ -250,7 +248,7 @@ async def reset_password(
             },
         )
 
-    user.password_hash = hash_password(new_password)  # type: ignore[assignment]
+    user.password_hash = hash_password(new_password)
     await db.commit()
 
     logger.info("password_reset_completed", user_id=str(user.id))

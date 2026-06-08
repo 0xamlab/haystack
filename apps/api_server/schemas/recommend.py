@@ -1,4 +1,5 @@
 """Request/response schemas for /v1/recommend, /v1/score, /v1/batch, /v1/compare."""
+
 from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -10,8 +11,10 @@ from apps.api_server.schemas.simulate import (
 
 # ─── /v1/recommend ────────────────────────────────────────────────────────────
 
+
 class NamedAction(BaseModel):
     """A named simulation scenario for comparison."""
+
     model_config = ConfigDict(strict=False)
 
     name: str = Field(..., min_length=1, max_length=200)
@@ -20,6 +23,7 @@ class NamedAction(BaseModel):
 
 class RecommendRequest(BaseModel):
     """Request body for /v1/recommend — compare 2-10 named actions."""
+
     model_config = ConfigDict(strict=False)
 
     actions: list[NamedAction] = Field(..., min_length=2, max_length=10)
@@ -59,6 +63,7 @@ class RecommendRequest(BaseModel):
 
 class ActionResult(BaseModel):
     """Result for a single action in a recommend response."""
+
     name: str
     rank: int
     envelope: DecisionEnvelope
@@ -69,6 +74,7 @@ class ActionResult(BaseModel):
 
 class RecommendResponse(BaseModel):
     """Response from /v1/recommend."""
+
     recommended_action: str
     confidence: float = Field(..., ge=0.0, le=1.0)
     rationale: str
@@ -87,22 +93,24 @@ class RecommendResponse(BaseModel):
 
 # ─── /v1/score ────────────────────────────────────────────────────────────────
 
+
 class ScoreRequest(BaseModel):
     """Request body for /v1/score."""
+
     model_config = ConfigDict(strict=False)
 
     request: SimulateRequest
     scoring_weights: dict[str, float] | None = Field(
         default=None,
         description=(
-            "Custom scoring weights. Keys: 'expected_value', "
-            "'downside_risk'. Must sum to 1.0."
+            "Custom scoring weights. Keys: 'expected_value', 'downside_risk'. Must sum to 1.0."
         ),
     )
 
 
 class ScoreResponse(BaseModel):
     """Response from /v1/score — DecisionEnvelope with score breakdown."""
+
     envelope: DecisionEnvelope
     score: float = Field(..., ge=0.0, le=1.0)
     score_breakdown: dict[str, float]
@@ -110,8 +118,10 @@ class ScoreResponse(BaseModel):
 
 # ─── /v1/batch ────────────────────────────────────────────────────────────────
 
+
 class BatchRequest(BaseModel):
     """Request body for /v1/batch."""
+
     model_config = ConfigDict(strict=False)
 
     items: list[SimulateRequest] = Field(..., min_length=1, max_length=100)
@@ -119,6 +129,7 @@ class BatchRequest(BaseModel):
 
 class BatchItemResult(BaseModel):
     """Result for one item in a batch."""
+
     index: int
     success: bool
     envelope: DecisionEnvelope | None = None
@@ -127,6 +138,7 @@ class BatchItemResult(BaseModel):
 
 class BatchResponse(BaseModel):
     """Response from /v1/batch."""
+
     total: int
     succeeded: int
     failed: int
@@ -135,8 +147,10 @@ class BatchResponse(BaseModel):
 
 # ─── /v1/compare ──────────────────────────────────────────────────────────────
 
+
 class NamedScenario(BaseModel):
     """A named scenario for side-by-side comparison."""
+
     model_config = ConfigDict(strict=False)
 
     name: str = Field(..., min_length=1, max_length=200)
@@ -145,6 +159,7 @@ class NamedScenario(BaseModel):
 
 class CompareRequest(BaseModel):
     """Request body for /v1/compare."""
+
     model_config = ConfigDict(strict=False)
 
     scenarios: list[NamedScenario] = Field(..., min_length=2, max_length=10)
@@ -154,6 +169,7 @@ class CompareRequest(BaseModel):
 
 class ComparisonDelta(BaseModel):
     """Delta between a scenario and the best scenario."""
+
     expected_value_delta: float
     probability_of_loss_delta: float
     score_delta: float
@@ -161,6 +177,7 @@ class ComparisonDelta(BaseModel):
 
 class ScenarioComparison(BaseModel):
     """One scenario in the comparison table."""
+
     name: str
     envelope: DecisionEnvelope
     delta_vs_best: ComparisonDelta
@@ -168,6 +185,7 @@ class ScenarioComparison(BaseModel):
 
 class CompareResponse(BaseModel):
     """Response from /v1/compare."""
+
     winner: str
     margin: ComparisonDelta
     scenarios: list[ScenarioComparison]

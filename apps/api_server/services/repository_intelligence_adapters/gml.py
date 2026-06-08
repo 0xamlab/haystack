@@ -1,0 +1,36 @@
+from __future__ import annotations
+
+from apps.api_server.services import (
+    repository_intelligence_contracts as repository_contracts,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    gml_analysis_support as repository_gml_analysis_support,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    gml_primitives as repository_gml_primitives,
+)
+
+_Dependency = repository_contracts._Dependency
+_Symbol = repository_contracts._Symbol
+_SymbolReferenceCandidate = repository_contracts._SymbolReferenceCandidate
+
+StableIdentifier = repository_gml_primitives.StableIdentifier
+NormalizeRepositoryRelativePath = repository_gml_primitives.NormalizeRepositoryRelativePath
+ResolveSuffixMatch = repository_gml_primitives.ResolveSuffixMatch
+
+_KNOWN_SUFFIXES = repository_gml_primitives._KNOWN_SUFFIXES
+
+_ordered_names = repository_gml_primitives._ordered_names
+event_symbol_name = repository_gml_primitives.event_symbol_name
+has_gml_path_hints = repository_gml_primitives.has_gml_path_hints
+is_probable_gml_source = repository_gml_primitives.is_probable_gml_source
+is_probable_operational_entrypoint = repository_gml_primitives.is_probable_operational_entrypoint
+load_game_maker_json = repository_gml_primitives.load_game_maker_json
+module_symbol_name = repository_gml_primitives.module_symbol_name
+object_resource_name = repository_gml_primitives.object_resource_name
+script_resource_name = repository_gml_primitives.script_resource_name
+strip_comments = repository_gml_primitives.strip_comments
+
+module_aliases_for_path = repository_gml_analysis_support.module_aliases_for_path
+parse_dependencies_only = repository_gml_analysis_support.parse_dependencies_only
+parse_file = repository_gml_analysis_support.parse_file

@@ -11,14 +11,21 @@ Connection:
 The client is stateless — each method creates a short-lived channel.
 A persistent channel with keep-alive is planned for v2 (connection pool).
 """
+
 from __future__ import annotations
 
 import json
 import os
 import tempfile
+from pathlib import Path
+from types import TracebackType
 from typing import Any
 
+import grpc
+import grpc.aio
 import structlog
+
+from apps.runtime.proto import runtime_pb2, runtime_pb2_grpc
 
 logger = structlog.get_logger(__name__)
 
@@ -50,21 +57,17 @@ class DaemonClient:
     def __init__(
         self,
         sock_path: str = _DAEMON_SOCK,
-        tcp_addr:  str = _DAEMON_TCP,
-        timeout:   float = _DEFAULT_TIMEOUT,
+        tcp_addr: str = _DAEMON_TCP,
+        timeout: float = _DEFAULT_TIMEOUT,
     ) -> None:
         self._sock_path = sock_path
-        self._tcp_addr  = tcp_addr
-        self._timeout   = timeout
-        self._channel   = None
+        self._tcp_addr = tcp_addr
+        self._timeout = timeout
+        self._channel: grpc.aio.Channel | None = None
 
     # ── Connection management ─────────────────────────────────────────────────
 
-    def _make_channel(self):
-        from pathlib import Path
-
-        import grpc
-
+    def _make_channel(self) -> grpc.aio.Channel:
         if Path(self._sock_path).exists():
             target = f"unix://{self._sock_path}"
         else:
@@ -77,67 +80,65 @@ class DaemonClient:
         await self._channel.channel_ready()
 
     async def close(self) -> None:
-        if self._channel:
+        if self._channel is not None:
             await self._channel.close()
             self._channel = None
 
     async def __aenter__(self) -> DaemonClient:
         return self
 
-    async def __aexit__(self, *_) -> None:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
+        del exc_type, exc, traceback
         await self.close()
 
-    def _stub(self):
-        from apps.runtime.proto import runtime_pb2_grpc
-
-        channel = self._channel or self._make_channel()
-        return runtime_pb2_grpc.AlgentaRuntimeStub(channel)
+    def _stub(self) -> Any:
+        channel = self._channel if self._channel is not None else self._make_channel()
+        return runtime_pb2_grpc.AlgentaRuntimeStub(channel)  # type: ignore[no-untyped-call]
 
     # ── RPCs ──────────────────────────────────────────────────────────────────
 
-    async def health(self) -> dict:
+    async def health(self) -> dict[str, object]:
         """Returns {"status", "uptime_s", "version", "mojo_available"}."""
-        import grpc
-
-        from apps.runtime.proto import runtime_pb2
         try:
             stub = self._stub()
             resp = await stub.Health(
-                runtime_pb2.HealthRequest(),
+                runtime_pb2.HealthRequest(),  # type: ignore[attr-defined]
                 timeout=self._timeout,
             )
             return {
-                "status":         resp.status,
-                "uptime_s":       resp.uptime_s,
-                "version":        resp.version,
-                "mojo_available": resp.mojo_available,
+                "status": "ok" if resp.ok else "error",
+                "uptime_s": resp.uptime_seconds,
+                "version": resp.version,
+                "mojo_available": resp.engine != "unavailable",
+                "engine": resp.engine,
             }
         except grpc.aio.AioRpcError as exc:
             return {"status": "unreachable", "error": str(exc.details())}
 
     async def execute(
         self,
-        module:     str,
-        function:   str,
-        args:       Any = None,
+        module: str,
+        function: str,
+        args: Any = None,
         request_id: str = "",
-    ) -> dict:
+    ) -> dict[str, Any]:
         """
         Execute module::function(args) on the local daemon.
         Returns {"result", "latency_ms", "engine_used", "success", "error"}.
         """
         import time
 
-        import grpc
-
-        from apps.runtime.proto import runtime_pb2
-
         args_json = json.dumps(args) if args is not None else "null"
         t0 = time.monotonic()
         try:
             stub = self._stub()
             resp = await stub.ExecuteModule(
-                runtime_pb2.ExecuteRequest(
+                runtime_pb2.ExecuteRequest(  # type: ignore[attr-defined]
                     module=module,
                     function=function,
                     args_json=args_json,
@@ -147,37 +148,34 @@ class DaemonClient:
             )
             latency = round((time.monotonic() - t0) * 1000, 2)
             return {
-                "result":      json.loads(resp.result_json) if resp.result_json else None,
-                "latency_ms":  latency,
+                "result": json.loads(resp.result_json) if resp.result_json else None,
+                "latency_ms": latency,
                 "engine_used": resp.engine_used,
-                "success":     resp.success,
-                "error":       resp.error or "",
+                "success": resp.success,
+                "error": resp.error or "",
             }
         except grpc.aio.AioRpcError as exc:
             latency = round((time.monotonic() - t0) * 1000, 2)
             return {
-                "result":      None,
-                "latency_ms":  latency,
+                "result": None,
+                "latency_ms": latency,
                 "engine_used": "grpc-error",
-                "success":     False,
-                "error":       f"gRPC error {exc.code()}: {exc.details()}",
+                "success": False,
+                "error": f"gRPC error {exc.code()}: {exc.details()}",
             }
 
-    async def list_modules(self) -> list[dict]:
+    async def list_modules(self) -> list[dict[str, object]]:
         """Return all available modules with their functions."""
-        import grpc
-
-        from apps.runtime.proto import runtime_pb2
         try:
             stub = self._stub()
             resp = await stub.ListModules(
-                runtime_pb2.ListModulesRequest(),
+                runtime_pb2.ListModulesRequest(),  # type: ignore[attr-defined]
                 timeout=self._timeout,
             )
             return [
                 {
-                    "name":      m.name,
-                    "engine":    m.engine,
+                    "name": m.name,
+                    "engine": m.engine,
                     "functions": list(m.functions),
                 }
                 for m in resp.modules
@@ -186,26 +184,23 @@ class DaemonClient:
             logger.warning("list_modules_grpc_error", error=str(exc.details()))
             return []
 
-    async def entitlement(self) -> dict:
+    async def entitlement(self) -> dict[str, object]:
         """Return current entitlement status from the daemon."""
-        import grpc
-
-        from apps.runtime.proto import runtime_pb2
         try:
             stub = self._stub()
             resp = await stub.GetEntitlementStatus(
-                runtime_pb2.EntitlementRequest(),
+                runtime_pb2.EntitlementRequest(),  # type: ignore[attr-defined]
                 timeout=self._timeout,
             )
             return {
-                "valid":              resp.valid,
-                "tier":               resp.tier,
-                "permitted_modules":  list(resp.permitted_modules),
-                "expires_at":         resp.expires_at,
-                "device_id":          resp.device_id,
-                "device_limit":       resp.device_limit,
-                "source":             resp.source,
-                "message":            resp.message,
+                "valid": resp.valid,
+                "tier": resp.tier,
+                "permitted_modules": list(resp.permitted_modules),
+                "expires_at": resp.expires_at,
+                "device_id": resp.device_id,
+                "device_limit": resp.device_limit,
+                "source": resp.source,
+                "message": resp.message,
             }
         except grpc.aio.AioRpcError as exc:
             return {"valid": False, "error": str(exc.details())}
@@ -223,7 +218,6 @@ class DaemonClient:
         Does NOT verify the process is healthy — use health() for that.
         """
         import socket
-        from pathlib import Path
 
         if Path(sock_path).exists():
             return True

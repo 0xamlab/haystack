@@ -1,0 +1,26 @@
+from __future__ import annotations
+
+from apps.api_server.services.repository_intelligence_adapters import (
+    prolog_support as repository_prolog_support,
+)
+
+StableIdentifier = repository_prolog_support.StableIdentifier
+ResolveSuffixMatch = repository_prolog_support.ResolveSuffixMatch
+ResolveImport = repository_prolog_support.ResolveImport
+ResolveTarget = repository_prolog_support.ResolveTarget
+
+_KNOWN_PROLOG_SUFFIXES = repository_prolog_support._KNOWN_PROLOG_SUFFIXES
+_PROLOG_SOURCE_ROOTS = repository_prolog_support._PROLOG_SOURCE_ROOTS
+RESERVED_SYMBOL_NAMES = repository_prolog_support.RESERVED_SYMBOL_NAMES
+
+normalize_identifier = repository_prolog_support.normalize_identifier
+strip_comments = repository_prolog_support.strip_comments
+has_prolog_markers = repository_prolog_support.has_prolog_markers
+is_probable_prolog_source = repository_prolog_support.is_probable_prolog_source
+collect_symbol_entries = repository_prolog_support.collect_symbol_entries
+module_aliases_for_path = repository_prolog_support.module_aliases_for_path
+resolve_import = repository_prolog_support.resolve_import
+resolve_target = repository_prolog_support.resolve_target
+extract_import_bindings = repository_prolog_support.extract_import_bindings
+parse_dependencies_only = repository_prolog_support.parse_dependencies_only
+parse_file = repository_prolog_support.parse_file

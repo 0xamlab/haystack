@@ -1,6 +1,7 @@
 """User model — member of an Organization."""
-import enum
+
 import uuid
+from enum import StrEnum
 
 from sqlalchemy import Boolean, Enum, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
@@ -9,14 +10,14 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from apps.api_server.db.base import Base, TimestampMixin, UUIDMixin
 
 
-class UserRole(str, enum.Enum):
+class UserRole(StrEnum):
     OWNER = "owner"
     ADMIN = "admin"
     MEMBER = "member"
     VIEWER = "viewer"
 
 
-class UserStatus(str, enum.Enum):
+class UserStatus(StrEnum):
     ACTIVE = "active"
     INVITED = "invited"
     SUSPENDED = "suspended"

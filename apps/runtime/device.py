@@ -14,9 +14,11 @@ The device_id that reaches the server is:
 
 It cannot be reversed to identify the machine or user.
 """
+
 from __future__ import annotations
 
 import hashlib
+import importlib
 import os
 import platform
 import shutil
@@ -34,6 +36,7 @@ _SALT = "algenta-device-v1"  # version-namespaced, non-secret
 
 
 # ── OS-native machine ID readers ──────────────────────────────────────────────
+
 
 def _read_macos_machine_id() -> str | None:
     """IOPlatformUUID — stable across reboots, unique per hardware."""
@@ -73,7 +76,7 @@ def _read_linux_machine_id() -> str | None:
 def _read_windows_machine_id() -> str | None:
     """HKLM\\SOFTWARE\\Microsoft\\Cryptography\\MachineGuid."""
     try:
-        import winreg  # type: ignore[import]
+        winreg = importlib.import_module("winreg")
         key = winreg.OpenKey(
             winreg.HKEY_LOCAL_MACHINE,
             r"SOFTWARE\Microsoft\Cryptography",
@@ -130,15 +133,13 @@ def get_device_id() -> str:
     return hashed
 
 
-def get_device_info() -> dict:
+def get_device_info() -> dict[str, str]:
     """Return non-sensitive device context for the license request."""
     return {
         "device_id": get_device_id(),
         "platform": platform.system(),
         "platform_version": platform.release(),
-        "hostname_hash": hashlib.sha256(
-            (platform.node() + ":" + _SALT).encode()
-        ).hexdigest()[:16],
+        "hostname_hash": hashlib.sha256((platform.node() + ":" + _SALT).encode()).hexdigest()[:16],
         "python_version": platform.python_version(),
         "sdk_version": "0.1.0",
     }

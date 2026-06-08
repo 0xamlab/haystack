@@ -1,4 +1,5 @@
 """GCP Cloud Run provisioner."""
+
 from __future__ import annotations
 
 import uuid
@@ -30,7 +31,7 @@ class GCPProvisioner(BaseProvisioner):
         region: str,
         config: dict[str, Any],
     ) -> ProvisionResult:
-        deploy_name  = f"algenta-{str(deployment_id)[:8]}"
+        deploy_name = f"algenta-{str(deployment_id)[:8]}"
         endpoint_url = f"https://{str(deployment_id)[:8]}.deploy.algenta.ai"
 
         resource_ids = {
@@ -39,8 +40,7 @@ class GCPProvisioner(BaseProvisioner):
             ),
             "cloud_sql_instance": f"algenta-prod:{region}:{deploy_name}-db",
             "memorystore_instance": (
-                f"projects/algenta-prod/locations/{region}/instances/"
-                f"{deploy_name}-redis"
+                f"projects/algenta-prod/locations/{region}/instances/{deploy_name}-redis"
             ),
             "project_id": "algenta-prod",
             "region": region,

@@ -1,53 +1,100 @@
 """Request schemas for simulation endpoints."""
+
 import enum
-from typing import Annotated, Any, Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Discriminator, Field, model_validator
 
+from apps.api_server.schemas.simulate_model_configs import (
+    BootstrapConfig,
+    CorrelationSpec,
+    DecisionNode,
+    DecisionTreeConfig,
+    ImportanceSamplingConfig,
+    MCMCConfig,
+    ScenarioConfig,
+    ScenarioItem,
+    ScoringWeights,
+    SensitivityConfig,
+    StochasticParam,
+    TimeSeriesConfig,
+)
+
+__all__ = [
+    "AutoScenario",
+    "AutoVariable",
+    "BootstrapConfig",
+    "CorrelationSpec",
+    "DecisionNode",
+    "DecisionTreeConfig",
+    "DistributionParams",
+    "DistributionType",
+    "ExpertSimulation",
+    "ImportanceSamplingConfig",
+    "MCMCConfig",
+    "ObjectiveType",
+    "ScoringWeights",
+    "ScenarioConfig",
+    "ScenarioItem",
+    "SensitivityConfig",
+    "SimulateRequest",
+    "SimulateRequestAuto",
+    "SimulateRequestExpert",
+    "SimulationModel",
+    "StochasticParam",
+    "TimeSeriesConfig",
+    "UnitSpec",
+    "VariableSpec",
+]
+
 # ── Distribution types ────────────────────────────────────────────────────────
 
-class DistributionType(str, enum.Enum):
+
+class DistributionType(enum.StrEnum):
     """
     Universal distribution library — no restrictions on domain or data type.
     Applicable to any industry: finance, medical, manufacturing, aerospace,
     defense, energy, hospitality, insurance, pharma, supply chain, and more.
     """
+
     # Core (all industries)
-    NORMAL      = "normal"
-    UNIFORM     = "uniform"
-    TRIANGULAR  = "triangular"
-    LOGNORMAL   = "lognormal"
-    FIXED       = "fixed"
-    DISCRETE    = "discrete"
+    NORMAL = "normal"
+    UNIFORM = "uniform"
+    TRIANGULAR = "triangular"
+    LOGNORMAL = "lognormal"
+    FIXED = "fixed"
+    DISCRETE = "discrete"
     CATEGORICAL = "categorical"
     # Statistical
-    BETA        = "beta"
+    BETA = "beta"
     EXPONENTIAL = "exponential"
-    WEIBULL     = "weibull"
-    GAMMA       = "gamma"
-    PERT        = "pert"
-    BERNOULLI   = "bernoulli"
-    POISSON     = "poisson"
+    WEIBULL = "weibull"
+    GAMMA = "gamma"
+    PERT = "pert"
+    BERNOULLI = "bernoulli"
+    POISSON = "poisson"
     # Extended — universal
-    STUDENT_T        = "student_t"         # medical/finance: heavy-tailed
-    CAUCHY           = "cauchy"             # physics: resonance, fault lines
-    LAPLACE          = "laplace"            # signal processing, finance
-    PARETO           = "pareto"             # wealth, city sizes, failures
-    GUMBEL           = "gumbel"             # extreme events, floods, wind
-    RAYLEIGH         = "rayleigh"           # signal strength, aerospace
-    ARCSINE          = "arcsine"            # time-in-state, reliability
-    LOGISTIC         = "logistic"           # growth, epidemic curves
-    HALFNORMAL       = "halfnormal"         # always-positive measurements
-    VONMISES         = "vonmises"           # circular: wind direction, seasonality
-    NEG_BINOMIAL     = "neg_binomial"       # overdispersed counts
-    HYPERGEOMETRIC   = "hypergeometric"     # sampling without replacement
-    NEGATIVE_BINOMIAL = "negative_binomial" # alias
+    STUDENT_T = "student_t"  # medical/finance: heavy-tailed
+    CAUCHY = "cauchy"  # physics: resonance, fault lines
+    LAPLACE = "laplace"  # signal processing, finance
+    PARETO = "pareto"  # wealth, city sizes, failures
+    GUMBEL = "gumbel"  # extreme events, floods, wind
+    RAYLEIGH = "rayleigh"  # signal strength, aerospace
+    ARCSINE = "arcsine"  # time-in-state, reliability
+    LOGISTIC = "logistic"  # growth, epidemic curves
+    HALFNORMAL = "halfnormal"  # always-positive measurements
+    VONMISES = "vonmises"  # circular: wind direction, seasonality
+    NEG_BINOMIAL = "neg_binomial"  # overdispersed counts
+    HYPERGEOMETRIC = "hypergeometric"  # sampling without replacement
+    NEGATIVE_BINOMIAL = "negative_binomial"  # alias
 
 
 # ── Simulation model selector ─────────────────────────────────────────────────
 
-class SimulationModel(str, enum.Enum):
+
+class SimulationModel(enum.StrEnum):
     """Which simulation algorithm to use. ALL run natively in Mojo — zero Python bottlenecks."""
+
     MONTE_CARLO = "monte_carlo"  # standard MC (default) — parallel on all CPU cores
     QMC_SOBOL = "qmc_sobol"  # quasi-MC Sobol sequences — better low-run convergence
     LHS = "lhs"  # Latin Hypercube Sampling — stratified coverage
@@ -63,15 +110,17 @@ class SimulationModel(str, enum.Enum):
 
 # ── Objective types ───────────────────────────────────────────────────────────
 
-class ObjectiveType(str, enum.Enum):
+
+class ObjectiveType(enum.StrEnum):
     MAXIMIZE_NET_VALUE = "maximize_net_value"
-    MAXIMIZE_REVENUE   = "maximize_revenue"
-    MINIMIZE_COST      = "minimize_cost"
-    MINIMIZE_RISK      = "minimize_risk"
-    MAXIMIZE_SCORE     = "maximize_score"
+    MAXIMIZE_REVENUE = "maximize_revenue"
+    MINIMIZE_COST = "minimize_cost"
+    MINIMIZE_RISK = "minimize_risk"
+    MAXIMIZE_SCORE = "maximize_score"
 
 
 # ── Auto mode schemas ─────────────────────────────────────────────────────────
+
 
 class AutoVariable(BaseModel):
     model_config = ConfigDict(strict=False)
@@ -94,6 +143,7 @@ class AutoScenario(BaseModel):
 
 
 # ── Expert mode schemas ───────────────────────────────────────────────────────
+
 
 class DistributionParams(BaseModel):
     model_config = ConfigDict(strict=False, extra="allow")
@@ -128,13 +178,15 @@ class VariableSpec(BaseModel):
     A single simulation variable. No domain restrictions — works for any
     physical, financial, clinical, operational, or scientific measurement.
     """
+
     model_config = ConfigDict(strict=False)
     name: str = Field(..., min_length=1, max_length=500)
     distribution: DistributionType
     params: DistributionParams
     unit: str | None = Field(
-        None, max_length=200,
-        description="Short-hand unit string: 'USD', 'BTC', '%', 'bps', 'days', 'Pa', etc."
+        None,
+        max_length=200,
+        description="Short-hand unit string: 'USD', 'BTC', '%', 'bps', 'days', 'Pa', etc.",
     )
     unit_spec: "UnitSpec | None" = Field(
         None,
@@ -143,11 +195,12 @@ class VariableSpec(BaseModel):
             "Supersedes 'unit' if both provided. "
             "Enables preprocessing (date→epoch, crypto satoshi→BTC), "
             "range validation, and formatted output."
-        )
+        ),
     )
     description: str | None = Field(None, max_length=1000)
     domain_hint: str | None = Field(
-        None, max_length=200,
+        None,
+        max_length=200,
         description=(
             "Optional domain hint e.g. 'time_to_failure', "
             "'patient_recovery_days', 'material_yield_strength'"
@@ -155,8 +208,7 @@ class VariableSpec(BaseModel):
     )
     # For categorical distributions: map indices to label strings
     labels: list[str] | None = Field(
-        None,
-        description="For categorical/discrete: human-readable labels for each outcome index"
+        None, description="For categorical/discrete: human-readable labels for each outcome index"
     )
 
     @model_validator(mode="after")
@@ -210,6 +262,7 @@ class VariableSpec(BaseModel):
 
 # ── Universal unit specification ──────────────────────────────────────────────
 
+
 class UnitSpec(BaseModel):
     """
     Universal unit specification — supports any numeric domain.
@@ -236,6 +289,7 @@ class UnitSpec(BaseModel):
         "sim_scale": 1.0         # divide input by this before simulation
       }
     """
+
     model_config = ConfigDict(strict=False, extra="allow")
 
     type: str = Field(
@@ -243,71 +297,59 @@ class UnitSpec(BaseModel):
         description=(
             "Unit category: currency | crypto | date | duration | percentage | "
             "bps | scientific | si | count | probability | custom | raw"
-        )
+        ),
     )
     code: str = Field(
         default="",
         max_length=50,
-        description="Unit identifier: ISO 4217 currency, crypto ticker, SI symbol, etc."
+        description="Unit identifier: ISO 4217 currency, crypto ticker, SI symbol, etc.",
     )
     precision: int | None = Field(
-        None, ge=0, le=18,
-        description="Display decimal places. None = auto-inferred from type/code."
+        None,
+        ge=0,
+        le=18,
+        description="Display decimal places. None = auto-inferred from type/code.",
     )
     scale: float = Field(
         default=1.0,
-        description="Multiply raw simulation output by this for display (e.g. 100 for percentage)."
+        description="Multiply raw simulation output by this for display (e.g. 100 for percentage).",
     )
     format: str = Field(
         default="standard",
-        description="Display format: standard | compact ($1.2M) | scientific (1.23e-9)"
+        description="Display format: standard | compact ($1.2M) | scientific (1.23e-9)",
     )
     base_unit: str = Field(
         default="",
         max_length=50,
-        description="Sub-unit label (informational). E.g. 'satoshi' for BTC, 'wei' for ETH."
+        description="Sub-unit label (informational). E.g. 'satoshi' for BTC, 'wei' for ETH.",
     )
     sim_scale: float = Field(
         default=1.0,
         description=(
             "Divide input params by this before simulation. "
             "E.g. sim_scale=1e8 if BTC inputs are in satoshis, converts to whole BTC for Mojo."
-        )
+        ),
     )
 
     @classmethod
     def from_shorthand(cls, value: str) -> "UnitSpec":
         """Create from a short-hand string (e.g. 'USD', 'BTC', '%', 'days')."""
         from apps.api_server.services.unit_service import UnitSpec as _UnitSvc
+
         svc = _UnitSvc.from_raw(value)
         return cls(
-            type=svc.type, code=svc.code,
-            precision=svc.precision, scale=svc.scale,
-            format=svc.format, base_unit=svc.base_unit, sim_scale=svc.sim_scale,
+            type=svc.type,
+            code=svc.code,
+            precision=svc.precision,
+            scale=svc.scale,
+            format=svc.format,
+            base_unit=svc.base_unit,
+            sim_scale=svc.sim_scale,
         )
 
 
 # Resolve forward reference now that UnitSpec is defined
 VariableSpec.model_rebuild()
-
-
-class CorrelationSpec(BaseModel):
-    model_config = ConfigDict(strict=False)
-    variables: list[str] = Field(..., min_length=2, max_length=2)
-    coefficient: float = Field(..., ge=-1.0, le=1.0)
-
-
-class ScoringWeights(BaseModel):
-    model_config = ConfigDict(strict=False)
-    expected_value: float = Field(default=0.6, ge=0.0, le=1.0)
-    downside_risk: float = Field(default=0.4, ge=0.0, le=1.0)
-
-    @model_validator(mode="after")
-    def weights_must_sum_to_one(self) -> "ScoringWeights":
-        total = self.expected_value + self.downside_risk
-        if abs(total - 1.0) > 0.001:
-            raise ValueError(f"Scoring weights must sum to 1.0, got {total:.3f}")
-        return self
 
 
 class ExpertSimulation(BaseModel):
@@ -344,6 +386,7 @@ class ExpertSimulation(BaseModel):
       "fibonacci(growth_stage)"      # Fibonacci growth model
       "revenue - cost | revenue / cost | norm_cdf(revenue - target)"  # multi-output
     """
+
     model_config = ConfigDict(strict=False)
     variables: list[VariableSpec] = Field(..., min_length=1)  # no upper limit
     correlations: list[CorrelationSpec] = Field(default_factory=list)
@@ -353,28 +396,25 @@ class ExpertSimulation(BaseModel):
             "Expression evaluated each scenario. Supports all math functions. "
             "Multi-output: separate with | pipe character. "
             "Example: 'revenue - cost | (revenue - cost) / revenue * 100 | min(cash_flow, 0)'"
-        )
+        ),
     )
     scoring: ScoringWeights = Field(default_factory=ScoringWeights)
     # Domain metadata (informational — does not affect simulation)
     domain: str | None = Field(
-        None, max_length=200,
+        None,
+        max_length=200,
         description=(
-            "Industry/domain hint: finance, medical, manufacturing, "
-            "aerospace, defense, etc."
+            "Industry/domain hint: finance, medical, manufacturing, aerospace, defense, etc."
         ),
     )
     domain_template: str | None = Field(
-        None, max_length=200,
-        description="Name of predefined domain template used (for reference)"
+        None, max_length=200, description="Name of predefined domain template used (for reference)"
     )
     output_labels: list[str] | None = Field(
-        None,
-        description="Labels for multi-output objectives (matches | separator count)"
+        None, description="Labels for multi-output objectives (matches | separator count)"
     )
     output_units: list[str] | None = Field(
-        None,
-        description="Physical/currency units for each output. E.g. ['USD', '%', 'years']"
+        None, description="Physical/currency units for each output. E.g. ['USD', '%', 'years']"
     )
     output_unit_specs: "list[UnitSpec] | None" = Field(
         None,
@@ -383,340 +423,16 @@ class ExpertSimulation(BaseModel):
             "Enables formatted_result in the response with currency symbols, "
             "compact notation ($1.2M), scientific notation (1.23e-9 Pa), etc. "
             "Example: [{'type':'currency','code':'USD','format':'compact'}, {'type':'percentage'}]"
-        )
-    )
-
-
-# ── Model-specific config schemas ─────────────────────────────────────────────
-
-# ── Decision tree schemas ─────────────────────────────────────────────────────
-
-class DecisionNode(BaseModel):
-    """
-    A node in a multi-layered decision tree.
-
-    Node types:
-      decision  — represents a controllable choice (e.g. "Launch" vs "Don't Launch")
-      chance    — represents an uncertain outcome with a probability (e.g. "Market Accepts")
-      terminal  — leaf node; variables + objective_function evaluated here
-
-    Each node can override any parent variable with a new distribution or scalar.
-    Variable overrides cascade top-down: child inherits parent, then applies its own.
-    """
-    model_config = ConfigDict(strict=False)
-    id:                 str = Field(..., min_length=1, max_length=200)
-    type:               str = Field(
-        default="terminal",
-        description="Node type: decision | chance | terminal"
-    )
-    name:               str = Field(default="", max_length=500)
-    probability:        float = Field(
-        default=1.0, ge=0.0, le=1.0,
-        description="Branch probability (for chance nodes). All siblings should sum to 1.0."
-    )
-    condition:          str | None = Field(
-        None, max_length=500,
-        description="Optional expression condition for this branch to be active"
-    )
-    variables:          dict[str, Any] = Field(
-        default_factory=dict,
-        description=(
-            "Variable overrides for this branch. "
-            "Scalar value → treated as fixed distribution. "
-            "Dict → full VariableSpec override {distribution, params}."
-        )
-    )
-    objective_function: str | None = Field(
-        None, max_length=1000,
-        description="Expression override for this node. Inherits top-level if not set."
-    )
-    branches:           list["DecisionNode"] = Field(
-        default_factory=list,
-        max_length=50,
-        description="Child branches. Empty = terminal node."
-    )
-
-
-DecisionNode.model_rebuild()  # resolve forward reference
-
-
-class DecisionTreeConfig(BaseModel):
-    """
-    Config for engine_type='decision_tree' — multi-layered decisions with branches.
-
-    Example (2-level tree):
-      nodes: [
-        {
-          id: "launch_decision", type: "decision", name: "Launch Product?",
-          branches: [
-            {
-              id: "launch_yes", type: "chance", name: "Launch", probability: 1.0,
-              branches: [
-                { id: "accept", type: "terminal", name: "Market Accepts",
-                  probability: 0.7, objective_function: "revenue - launch_cost" },
-                { id: "reject", type: "terminal", name: "Market Rejects",
-                  probability: 0.3, variables: {"revenue": 0},
-                  objective_function: "-launch_cost" }
-              ]
-            }
-          ]
-        }
-      ]
-    """
-    model_config = ConfigDict(strict=False)
-    nodes: list[DecisionNode] = Field(
-        ..., min_length=1, max_length=50,
-        description=(
-            "Root nodes of the decision tree. Multiple roots = parallel "
-            "independent decisions."
         ),
-    )
-    max_depth: int = Field(default=10, ge=1, le=20, description="Maximum allowed tree depth")
-
-
-class ScenarioItem(BaseModel):
-    """A single named scenario for discrete scenario analysis."""
-    model_config = ConfigDict(strict=False)
-    name: str = Field(..., max_length=200)
-    probability: float = Field(..., ge=0.0, le=1.0)
-    variables: dict[str, float] = Field(default_factory=dict)
-    objective_function: str | None = Field(None, max_length=500)
-
-
-class ScenarioConfig(BaseModel):
-    """Config for engine_type='scenario' — discrete weighted scenarios."""
-    model_config = ConfigDict(strict=False)
-    scenarios: list[ScenarioItem] = Field(..., min_length=1, max_length=50)
-
-
-class BootstrapConfig(BaseModel):
-    """Config for engine_type='bootstrap' — non-parametric resampling."""
-    model_config = ConfigDict(strict=False)
-    historical_data: list[float] = Field(..., min_length=2, max_length=100_000)
-    statistic: str = Field(
-        default="mean",
-        description=(
-            "Statistic to compute on each resample. "
-            "One of: mean, median, std, variance, sum, min, max, sharpe, "
-            "percentile_5, percentile_25, percentile_75, percentile_95, range, cv"
-        ),
-    )
-    confidence_level: float = Field(default=0.95, ge=0.0, le=1.0)
-
-
-class MCMCConfig(BaseModel):
-    """Config for engine_type='mcmc' — Metropolis-Hastings Bayesian MCMC."""
-    model_config = ConfigDict(strict=False)
-    observed_data: list[float] = Field(..., min_length=2, max_length=100_000)
-    parameter_priors: dict[str, Any] = Field(
-        default_factory=dict,
-        description=(
-            "Dict of param_name → {distribution, params}. "
-            "Auto-inferred from data if empty. "
-            "Example: {'mean': {'distribution': 'normal', 'params': "
-            "{'mean': 500000, 'std': 100000}}}"
-        ),
-    )
-    likelihood: str = Field(
-        default="normal",
-        description="Likelihood model: normal | lognormal | poisson",
-    )
-    chains: int = Field(default=4, ge=1, le=16)
-    burn_in: int = Field(default=1000, ge=100, le=50_000)
-
-
-class SensitivityConfig(BaseModel):
-    """Config for engine_type='sensitivity' — sensitivity analysis."""
-    model_config = ConfigDict(strict=False)
-    method: str = Field(
-        default="both",
-        description="tornado | sobol | both",
-    )
-
-
-class ImportanceSamplingConfig(BaseModel):
-    """
-    Config for engine_type='importance_sampling' — exponential tilting for rare tail events.
-
-    Use when you need accurate estimates of very low-probability events
-    (e.g. 1-in-10,000 loss scenarios) without running millions of MC trials.
-
-    The engine shifts sampling mass toward the target tail using exponential tilting
-    (θ optimal tilt), then corrects back with likelihood ratio weights.
-    Reports: tail_probability, tail_probability_se, cvar_tail, ESS, variance_reduction_factor.
-
-    Typical usage:
-      - Insurance: P(total claims > retention limit)
-      - Banking: P(daily P&L < -VaR threshold)
-      - Engineering: P(component failure in service life)
-      - Finance: P(portfolio loss > regulatory capital)
-
-    Example:
-      importance_sampling_config:
-        target_threshold: -500000    # threshold for the rare event
-        tail_direction: "lower"      # "lower" (loss) or "upper" (extreme gain)
-        tilt_variable: "revenue"     # which variable to tilt (auto-detect if omitted)
-    """
-    model_config = ConfigDict(strict=False)
-    target_threshold: float = Field(
-        ...,
-        description=(
-            "The rare event level. E.g. -500000 for a $500k loss, or 2.5 for "
-            "an extreme gain."
-        ),
-    )
-    tail_direction: str = Field(
-        default="lower",
-        description=(
-            "'lower' for loss events (outcome < threshold), 'upper' for "
-            "extreme gains (outcome > threshold)."
-        ),
-    )
-    tilt_variable: str | None = Field(
-        default=None,
-        description=(
-            "Name of the normal-distributed variable to apply exponential "
-            "tilting to. Auto-detects the highest-variance normal variable if "
-            "omitted."
-        ),
-    )
-    tilt_sigma: float = Field(
-        default=0.0,
-        description=(
-            "Override the tilt parameter θ directly (0 = auto-compute from "
-            "threshold). Advanced use only."
-        ),
-    )
-
-
-# ── Stochastic parameter for drift/volatility ─────────────────────────────────
-
-class StochasticParam(BaseModel):
-    """
-    A simulation parameter that is itself stochastic (drawn fresh for each path).
-    Use for uncertain drift, volatility, or any time-series parameter.
-    """
-    model_config = ConfigDict(strict=False)
-    type: str = Field(
-        default="fixed",
-        description="fixed | normal | uniform | lognormal"
-    )
-    value: float = Field(default=0.0, description="Fixed value (for type='fixed')")
-    mean: float = Field(default=0.0, description="Mean (for type='normal' or 'lognormal')")
-    std: float = Field(default=0.0, description="Std dev (for type='normal' or 'lognormal')")
-    low: float = Field(default=0.0, description="Lower bound (for type='uniform')")
-    high: float = Field(default=0.0, description="Upper bound (for type='uniform')")
-
-
-class TimeSeriesConfig(BaseModel):
-    """
-    Config for engine_type='time_series' — multi-horizon stochastic path simulation.
-
-    Supported models:
-      gbm        — Geometric Brownian Motion: S(t+1) = S(t)·exp((μ-σ²/2)dt + σ√dt·Z)
-                   Use for: stocks, crypto, commodities, any positive-valued process
-      ou         — Ornstein-Uhlenbeck mean-reversion: dX = θ(μ-X)dt + σdW
-                   Use for: interest rates, credit spreads, energy prices, physiological signals
-      arithmetic — Arithmetic Brownian Motion: S(t+1) = S(t) + μdt + σ√dt·Z
-                   Use for: P&L, temperature anomalies, absolute additive processes
-      compound   — Compound return: S(T) = S(0) × ∏(1 + r_t)
-                   Use for: compounded growth, portfolio accumulation
-      custom     — Expression: value(t) = f(value, t, dt, drift, vol, z, initial)
-                   Use for: any domain with custom path dynamics
-
-    Granularities: ms, s, min, h, day, week, month, quarter, year
-
-    Example — BTC price 12-month fan chart:
-      model: gbm
-      initial_value: 50000
-      horizons: [1, 3, 6, 9, 12]
-      granularity: month
-      drift: {type: fixed, value: 0.6}    # 60% annualized drift
-      volatility: {type: normal, mean: 0.80, std: 0.15}  # stochastic vol
-      fan_chart_percentiles: [5, 25, 50, 75, 95]
-    """
-    model_config = ConfigDict(strict=False)
-
-    model: str = Field(
-        default="gbm",
-        description="Path model: gbm | ou | arithmetic | compound | custom"
-    )
-    initial_value: float = Field(
-        ...,
-        description="Starting value of the process (e.g. current stock price, balance, etc.)"
-    )
-    horizons: list[int] = Field(
-        default=[1, 3, 6, 12],
-        min_length=1, max_length=100,
-        description=(
-            "Time steps at which to record distributions. E.g. [1,3,6,12] for "
-            "1/3/6/12 months."
-        ),
-    )
-    granularity: str = Field(
-        default="month",
-        description=(
-            "Time unit per step. One of: ms, s, min, h, day, week, month, quarter, year. "
-            "All drift/vol parameters assumed annualized unless granularity='custom'."
-        )
-    )
-    drift: StochasticParam | float = Field(
-        default=0.0,
-        description=(
-            "Annualized drift / expected return. "
-            "Float shorthand or StochasticParam for uncertain drift. "
-            "GBM: annual log-return. OU: not used (use long_run_mean). Compound: annual return."
-        )
-    )
-    volatility: StochasticParam | float = Field(
-        default=0.20,
-        description="Annualized volatility (σ). Float or StochasticParam."
-    )
-    autocorrelation: float = Field(
-        default=0.0, ge=-0.99, le=0.99,
-        description=(
-            "AR(1) autocorrelation coefficient for innovations (0 = i.i.d., "
-            ">0 = trending, <0 = mean-reverting noise)"
-        ),
-    )
-    long_run_mean: float | None = Field(
-        None,
-        description="OU model: long-run mean (μ∞). Defaults to initial_value."
-    )
-    mean_reversion_speed: float = Field(
-        default=0.5, ge=0.0,
-        description="OU model: speed of mean reversion (θ). Higher = faster pull to mean."
-    )
-    path_expression: str | None = Field(
-        None, max_length=500,
-        description=(
-            "Custom model: Python expression for next step value. "
-            "Variables: value, t, dt, drift, vol, z, initial. "
-            "Example: 'value * exp((drift - 0.5*vol**2)*dt + vol*dt**0.5*z)'"
-        )
-    )
-    fan_chart_percentiles: list[int] = Field(
-        default=[5, 10, 25, 50, 75, 90, 95],
-        min_length=1, max_length=20,
-        description="Percentile levels to include in the fan chart output at each horizon."
-    )
-    output_paths: bool = Field(
-        default=False,
-        description=(
-            "Include sample path data in response (for fan chart visualization). "
-            "Adds ~50 paths."
-        ),
-    )
-    n_sample_paths: int = Field(
-        default=50, ge=1, le=500,
-        description="Number of sample paths to include when output_paths=True."
     )
 
 
 # ── Request models ────────────────────────────────────────────────────────────
 
+
 class SimulateRequestAuto(BaseModel):
     """Auto-mode simulation request — minimal setup, engine infers distributions."""
+
     model_config = ConfigDict(
         strict=False,
         json_schema_extra={
@@ -733,7 +449,7 @@ class SimulateRequestAuto(BaseModel):
                 },
                 "runs": 10000,
             }
-        }
+        },
     )
 
     mode: Literal["auto"]
@@ -752,6 +468,7 @@ class SimulateRequestAuto(BaseModel):
 
 class SimulateRequestExpert(BaseModel):
     """Expert-mode simulation request — full distribution and objective control."""
+
     model_config = ConfigDict(
         strict=False,
         json_schema_extra={
@@ -777,7 +494,7 @@ class SimulateRequestExpert(BaseModel):
                 "runs": 50000,
                 "seed": 42,
             }
-        }
+        },
     )
 
     mode: Literal["expert"]
@@ -789,10 +506,10 @@ class SimulateRequestExpert(BaseModel):
         description="Simulation algorithm. All run natively in Mojo.",
     )
     # Model-specific configs
-    bootstrap_config:      BootstrapConfig | None = None
-    scenario_config:       ScenarioConfig | None = None
-    mcmc_config:           MCMCConfig | None = None
-    sensitivity_config:         SensitivityConfig | None = None
+    bootstrap_config: BootstrapConfig | None = None
+    scenario_config: ScenarioConfig | None = None
+    mcmc_config: MCMCConfig | None = None
+    sensitivity_config: SensitivityConfig | None = None
     importance_sampling_config: ImportanceSamplingConfig | None = Field(
         None,
         description=(
@@ -801,19 +518,19 @@ class SimulateRequestExpert(BaseModel):
             "Required when simulation_model='importance_sampling'. "
             "Provides unbiased tail probability and CVaR estimates with "
             "100–10,000× fewer samples than brute-force MC."
-        )
+        ),
     )
-    decision_tree_config:  DecisionTreeConfig | None = Field(
+    decision_tree_config: DecisionTreeConfig | None = Field(
         None,
-        description="Config for engine_type='decision_tree' — multi-layered branching decisions."
+        description="Config for engine_type='decision_tree' — multi-layered branching decisions.",
     )
-    time_series_config:    TimeSeriesConfig | None = Field(
+    time_series_config: TimeSeriesConfig | None = Field(
         None,
         description=(
             "Config for engine_type='time_series' — multi-horizon stochastic path simulation. "
             "Models: GBM (stocks/crypto), OU (rates/spreads), arithmetic, compound, custom. "
             "Granularities: ms, s, min, h, day, week, month, quarter, year."
-        )
+        ),
     )
     include_charts: bool = Field(
         default=False,
@@ -822,14 +539,14 @@ class SimulateRequestExpert(BaseModel):
             "When true, adds 'charts' dict with histogram, CDF, tornado (if sensitivity), "
             "fan_chart (if time_series). Ready to pass to vega-embed for instant rendering. "
             "Adds ~5ms to response time."
-        )
+        ),
     )
     include_histogram: bool = Field(
         default=False,
         description=(
             "Include pre-computed 50-bin histogram data (lighter than full chart spec). "
             "Adds 'histogram_data' to response. Useful for quick distribution preview."
-        )
+        ),
     )
 
 

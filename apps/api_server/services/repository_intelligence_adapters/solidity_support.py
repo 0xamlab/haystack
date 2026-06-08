@@ -1,0 +1,53 @@
+from __future__ import annotations
+
+from apps.api_server.services.repository_intelligence_adapters import (
+    solidity_analysis_support as repository_solidity_analysis_support,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    solidity_primitives as repository_solidity_primitives,
+)
+
+StableIdentifier = repository_solidity_primitives.StableIdentifier
+ResolveImport = repository_solidity_primitives.ResolveImport
+
+_KNOWN_SOLIDITY_SUFFIXES = repository_solidity_primitives._KNOWN_SOLIDITY_SUFFIXES
+_SOLIDITY_SOURCE_ROOTS = repository_solidity_primitives._SOLIDITY_SOURCE_ROOTS
+_PACKAGE_PREFIX_CACHE = repository_solidity_primitives._PACKAGE_PREFIX_CACHE
+
+RESERVED_SYMBOL_NAMES = repository_solidity_primitives.RESERVED_SYMBOL_NAMES
+BUILTIN_TYPE_NAMES = repository_solidity_primitives.BUILTIN_TYPE_NAMES
+IMPORT_RE = repository_solidity_primitives.IMPORT_RE
+CONTRACT_DECL_RE = repository_solidity_primitives.CONTRACT_DECL_RE
+FUNCTION_DECL_RE = repository_solidity_primitives.FUNCTION_DECL_RE
+TYPE_DECL_RE = repository_solidity_primitives.TYPE_DECL_RE
+USING_RE = repository_solidity_primitives.USING_RE
+QUALIFIED_REFERENCE_RE = repository_solidity_primitives.QUALIFIED_REFERENCE_RE
+NEW_REFERENCE_RE = repository_solidity_primitives.NEW_REFERENCE_RE
+INHERITANCE_ITEM_RE = repository_solidity_primitives.INHERITANCE_ITEM_RE
+
+_normalize_repository_relative_path = (
+    repository_solidity_primitives._normalize_repository_relative_path
+)
+strip_comments = repository_solidity_primitives.strip_comments
+normalize_identifier = repository_solidity_primitives.normalize_identifier
+normalize_import_target = repository_solidity_primitives.normalize_import_target
+_is_candidate_symbol_name = repository_solidity_primitives._is_candidate_symbol_name
+_path_aliases = repository_solidity_primitives._path_aliases
+_package_name_prefixes = repository_solidity_primitives._package_name_prefixes
+_line_number = repository_solidity_primitives._line_number
+_declaration_entries = repository_solidity_primitives._declaration_entries
+collect_symbol_entries = repository_solidity_primitives.collect_symbol_entries
+resolve_import = repository_solidity_primitives.resolve_import
+
+module_aliases_for_path = repository_solidity_analysis_support.module_aliases_for_path
+_append_dependency = repository_solidity_analysis_support._append_dependency
+_module_index_aliases_for_file = (
+    repository_solidity_analysis_support._module_index_aliases_for_file
+)
+_parse_import_context = repository_solidity_analysis_support._parse_import_context
+_resolve_reference_binding = (
+    repository_solidity_analysis_support._resolve_reference_binding
+)
+_reference_bindings = repository_solidity_analysis_support._reference_bindings
+parse_dependencies_only = repository_solidity_analysis_support.parse_dependencies_only
+parse_file = repository_solidity_analysis_support.parse_file

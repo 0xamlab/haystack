@@ -1,0 +1,38 @@
+from __future__ import annotations
+
+from apps.api_server.services import (
+    repository_intelligence_contracts as repository_contracts,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    gams_analysis_support as repository_gams_analysis_support,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    gams_primitives as repository_gams_primitives,
+)
+
+_Dependency = repository_contracts._Dependency
+_Symbol = repository_contracts._Symbol
+_SymbolReferenceCandidate = repository_contracts._SymbolReferenceCandidate
+
+StableIdentifier = repository_gams_primitives.StableIdentifier
+
+_KNOWN_SUFFIXES = repository_gams_primitives._KNOWN_SUFFIXES
+_SOURCE_SUFFIXES = repository_gams_primitives._SOURCE_SUFFIXES
+_INCLUDE_RE = repository_gams_primitives._INCLUDE_RE
+_STATEMENT_KEYWORD_RE = repository_gams_primitives._STATEMENT_KEYWORD_RE
+_EQUATION_DEF_RE = repository_gams_primitives._EQUATION_DEF_RE
+_IDENTIFIER_RE = repository_gams_primitives._IDENTIFIER_RE
+_BUILTIN_NAMES = repository_gams_primitives._BUILTIN_NAMES
+
+strip_comments = repository_gams_primitives.strip_comments
+has_gams_path_hints = repository_gams_primitives.has_gams_path_hints
+normalize_import_target = repository_gams_primitives.normalize_import_target
+is_probable_gams_source = repository_gams_primitives.is_probable_gams_source
+import_targets_for_text = repository_gams_primitives.import_targets_for_text
+module_symbol_name = repository_gams_primitives.module_symbol_name
+collect_symbol_entries = repository_gams_primitives.collect_symbol_entries
+
+module_aliases_for_path = repository_gams_analysis_support.module_aliases_for_path
+resolve_import = repository_gams_analysis_support.resolve_import
+parse_dependencies_only = repository_gams_analysis_support.parse_dependencies_only
+parse_file = repository_gams_analysis_support.parse_file

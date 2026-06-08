@@ -1,4 +1,5 @@
 """Pydantic schemas for the data connectors API."""
+
 from datetime import datetime
 from typing import Any
 
@@ -20,6 +21,11 @@ class ConnectorUpdate(BaseModel):
     config: dict[str, Any] | None = None
 
 
+class ConnectorPreviewRequest(BaseModel):
+    connector_type: str
+    config: dict[str, Any] | None = None
+
+
 class ConnectorResponse(BaseModel):
     id: str
     name: str
@@ -38,19 +44,56 @@ class ConnectorTestResult(BaseModel):
     success: bool
     message: str
     latency_ms: int | None = None
+    status: str | None = None
+    error_type: str | None = None
+    recoverable: bool | None = None
 
 
 # ─── Connector type constants ─────────────────────────────────────────────────
 
 VALID_TYPES = {
-    "s3", "gcs", "azure", "bigquery", "snowflake", "redshift",
-    "postgres", "postgresql", "sqlite", "mysql", "mssql", "rest", "rest_api", "file", "file_upload",
+    "s3",
+    "gcs",
+    "azure",
+    "clickhouse",
+    "bigquery",
+    "snowflake",
+    "redshift",
+    "postgres",
+    "postgresql",
+    "sqlite",
+    "mysql",
+    "mssql",
+    "neo4j",
+    "redis",
+    "elastic",
+    "elasticsearch",
+    "rest",
+    "rest_api",
+    "file",
+    "file_upload",
+    "github_repo",
+    "gitlab_repo",
+    "bitbucket_repo",
+    "local_repo",
+    "repo_archive",
 }
 
 TYPE_NORMALIZE: dict[str, str] = {
-    "postgresql":  "postgres",
-    "rest_api":    "rest",
+    "postgresql": "postgres",
+    "click_house": "clickhouse",
+    "redis_cache": "redis",
+    "elastic": "elasticsearch",
+    "rest_api": "rest",
     "file_upload": "file",
+    "github": "github_repo",
+    "github_repository": "github_repo",
+    "gitlab": "gitlab_repo",
+    "gitlab_repository": "gitlab_repo",
+    "bitbucket": "bitbucket_repo",
+    "bitbucket_repository": "bitbucket_repo",
+    "local_repository": "local_repo",
+    "archive_repository": "repo_archive",
 }
 
 

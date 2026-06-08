@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import io
 import re
+from collections.abc import Iterator
 from functools import lru_cache
 from itertools import chain
 from typing import Any
@@ -147,8 +148,8 @@ def _coerce_text_scalar(
         return raw
 
     if _FLOAT_RE.fullmatch(normalized):
-        number = float(normalized)
-        return -number if negative else number
+        float_number = float(normalized)
+        return -float_number if negative else float_number
 
     return raw
 
@@ -227,7 +228,7 @@ def parse_delimited_records(
             chosen_delimiter = delimiter or ","
 
     reader = csv.DictReader(io.StringIO(text), delimiter=chosen_delimiter)
-    reader.fieldnames = canonicalize_delimited_headers(reader.fieldnames or [])
+    reader.fieldnames = canonicalize_delimited_headers(list(reader.fieldnames or []))
     records: list[dict[str, Any]] = []
     first_row = next(reader, None)
     if first_row is None:
@@ -236,7 +237,7 @@ def parse_delimited_records(
         reader.fieldnames,
         [first_row.get(field_name) for field_name in reader.fieldnames],
     ):
-        rows_iter = reader
+        rows_iter: Iterator[dict[str | Any, str | Any]] = reader
     else:
         rows_iter = chain((first_row,), reader)
     for row in rows_iter:

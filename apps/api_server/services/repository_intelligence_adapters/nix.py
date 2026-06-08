@@ -1,0 +1,45 @@
+from __future__ import annotations
+
+from apps.api_server.services import (
+    repository_intelligence_contracts as repository_contracts,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    nix_analysis_support as repository_nix_analysis_support,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    nix_primitives as repository_nix_primitives,
+)
+
+_Dependency = repository_contracts._Dependency
+_Symbol = repository_contracts._Symbol
+_SymbolReferenceCandidate = repository_contracts._SymbolReferenceCandidate
+
+StableIdentifier = repository_nix_primitives.StableIdentifier
+
+_KNOWN_SUFFIXES = repository_nix_primitives._KNOWN_SUFFIXES
+_NIX_FILE_BASENAMES = repository_nix_primitives._NIX_FILE_BASENAMES
+_IDENTIFIER_RE = repository_nix_primitives._IDENTIFIER_RE
+_ASSIGNMENT_RE = repository_nix_primitives._ASSIGNMENT_RE
+_IMPORT_RE = repository_nix_primitives._IMPORT_RE
+_CALLPACKAGE_RE = repository_nix_primitives._CALLPACKAGE_RE
+_IMPORTS_ARRAY_RE = repository_nix_primitives._IMPORTS_ARRAY_RE
+_PATH_LITERAL_RE = repository_nix_primitives._PATH_LITERAL_RE
+_IMPORT_ASSIGN_RE = repository_nix_primitives._IMPORT_ASSIGN_RE
+_INHERIT_IMPORT_RE = repository_nix_primitives._INHERIT_IMPORT_RE
+_QUALIFIED_REFERENCE_RE = repository_nix_primitives._QUALIFIED_REFERENCE_RE
+_NIX_KEYWORDS = repository_nix_primitives._NIX_KEYWORDS
+
+strip_comments = repository_nix_primitives.strip_comments
+has_nix_path_hints = repository_nix_primitives.has_nix_path_hints
+normalize_identifier = repository_nix_primitives.normalize_identifier
+normalize_import_target = repository_nix_primitives.normalize_import_target
+is_probable_nix_source = repository_nix_primitives.is_probable_nix_source
+import_targets_for_text = repository_nix_primitives.import_targets_for_text
+import_bindings_for_text = repository_nix_primitives.import_bindings_for_text
+module_symbol_name = repository_nix_primitives.module_symbol_name
+collect_symbol_entries = repository_nix_primitives.collect_symbol_entries
+
+module_aliases_for_path = repository_nix_analysis_support.module_aliases_for_path
+resolve_import = repository_nix_analysis_support.resolve_import
+parse_dependencies_only = repository_nix_analysis_support.parse_dependencies_only
+parse_file = repository_nix_analysis_support.parse_file

@@ -1,0 +1,46 @@
+from __future__ import annotations
+
+from apps.api_server.services import (
+    repository_intelligence_contracts as repository_contracts,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    awk_analysis_support as repository_awk_analysis_support,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    awk_primitives as repository_awk_primitives,
+)
+
+_Dependency = repository_contracts._Dependency
+_Symbol = repository_contracts._Symbol
+_SymbolReferenceCandidate = repository_contracts._SymbolReferenceCandidate
+
+StableIdentifier = repository_awk_primitives.StableIdentifier
+NormalizeRepositoryRelativePath = repository_awk_primitives.NormalizeRepositoryRelativePath
+ResolveSuffixMatch = repository_awk_primitives.ResolveSuffixMatch
+
+_KNOWN_SUFFIXES = repository_awk_primitives._KNOWN_SUFFIXES
+_INCLUDE_RE = repository_awk_primitives._INCLUDE_RE
+_FUNCTION_DECL_RE = repository_awk_primitives._FUNCTION_DECL_RE
+_BLOCK_DECL_RE = repository_awk_primitives._BLOCK_DECL_RE
+_CALL_RE = repository_awk_primitives._CALL_RE
+_RESERVED_SYMBOL_NAMES = repository_awk_primitives._RESERVED_SYMBOL_NAMES
+_BUILTIN_FUNCTION_NAMES = repository_awk_primitives._BUILTIN_FUNCTION_NAMES
+_CollectedSymbol = repository_awk_primitives._CollectedSymbol
+
+_line_number = repository_awk_primitives._line_number
+_line_count = repository_awk_primitives._line_count
+_iter_function_entries = repository_awk_primitives._iter_function_entries
+_iter_block_entries = repository_awk_primitives._iter_block_entries
+is_operational_reference_name = repository_awk_primitives.is_operational_reference_name
+has_awk_shebang = repository_awk_primitives.has_awk_shebang
+is_probable_awk_source = repository_awk_primitives.is_probable_awk_source
+import_targets_for_text = repository_awk_primitives.import_targets_for_text
+module_symbol_name = repository_awk_primitives.module_symbol_name
+strip_comments = repository_awk_primitives.strip_comments
+
+module_aliases_for_path = repository_awk_analysis_support.module_aliases_for_path
+resolve_import = repository_awk_analysis_support.resolve_import
+_collect_symbols = repository_awk_analysis_support._collect_symbols
+_source_symbol_id_for_line = repository_awk_analysis_support._source_symbol_id_for_line
+parse_dependencies_only = repository_awk_analysis_support.parse_dependencies_only
+parse_file = repository_awk_analysis_support.parse_file

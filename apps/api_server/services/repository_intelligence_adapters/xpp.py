@@ -1,0 +1,54 @@
+from __future__ import annotations
+
+from apps.api_server.services import (
+    repository_intelligence_contracts as repository_contracts,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    xpp_analysis_support as repository_xpp_analysis_support,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    xpp_primitives as repository_xpp_primitives,
+)
+
+_Dependency = repository_contracts._Dependency
+_Symbol = repository_contracts._Symbol
+_SymbolReferenceCandidate = repository_contracts._SymbolReferenceCandidate
+
+StableIdentifier = repository_xpp_primitives.StableIdentifier
+NormalizeRepositoryRelativePath = repository_xpp_primitives.NormalizeRepositoryRelativePath
+ResolveSuffixMatch = repository_xpp_primitives.ResolveSuffixMatch
+
+_KNOWN_SUFFIXES = repository_xpp_primitives._KNOWN_SUFFIXES
+_PATH_HINT_PARTS = repository_xpp_primitives._PATH_HINT_PARTS
+_XML_SOURCE_ROOT_RE = repository_xpp_primitives._XML_SOURCE_ROOT_RE
+_XML_DESCRIPTOR_ROOT_RE = repository_xpp_primitives._XML_DESCRIPTOR_ROOT_RE
+_CLASS_DECL_RE = repository_xpp_primitives._CLASS_DECL_RE
+_METHOD_DECL_RE = repository_xpp_primitives._METHOD_DECL_RE
+_EXTENSION_OF_RE = repository_xpp_primitives._EXTENSION_OF_RE
+_INCLUDE_RE = repository_xpp_primitives._INCLUDE_RE
+_STATIC_CALL_RE = repository_xpp_primitives._STATIC_CALL_RE
+_NEW_REFERENCE_RE = repository_xpp_primitives._NEW_REFERENCE_RE
+_TYPED_BINDING_RE = repository_xpp_primitives._TYPED_BINDING_RE
+_INSTANCE_CALL_RE = repository_xpp_primitives._INSTANCE_CALL_RE
+_XppDocument = repository_xpp_primitives._XppDocument
+_XppMethod = repository_xpp_primitives._XppMethod
+_CollectedSymbol = repository_xpp_primitives._CollectedSymbol
+
+_line_count = repository_xpp_primitives._line_count
+_line_number = repository_xpp_primitives._line_number
+declared_object_name = repository_xpp_primitives.declared_object_name
+has_xpp_path_hints = repository_xpp_primitives.has_xpp_path_hints
+include_targets_for_document = repository_xpp_primitives.include_targets_for_document
+instance_call_targets = repository_xpp_primitives.instance_call_targets
+is_probable_xpp_descriptor_config = repository_xpp_primitives.is_probable_xpp_descriptor_config
+is_probable_xpp_source = repository_xpp_primitives.is_probable_xpp_source
+new_reference_targets = repository_xpp_primitives.new_reference_targets
+parse_xpp_document = repository_xpp_primitives.parse_xpp_document
+relation_targets_for_document = repository_xpp_primitives.relation_targets_for_document
+static_call_targets = repository_xpp_primitives.static_call_targets
+strip_comments = repository_xpp_primitives.strip_comments
+typed_variable_bindings = repository_xpp_primitives.typed_variable_bindings
+
+module_aliases_for_path = repository_xpp_analysis_support.module_aliases_for_path
+parse_dependencies_only = repository_xpp_analysis_support.parse_dependencies_only
+parse_file = repository_xpp_analysis_support.parse_file

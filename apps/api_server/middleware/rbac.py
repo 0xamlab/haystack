@@ -23,15 +23,18 @@ Sensitive route policy:
   - billing webhook       → no auth (Stripe HMAC)
   - simulate/recommend    → any authenticated key (no role check)
 """
+
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from typing import Annotated
 
 import structlog
 from fastapi import Depends, HTTPException, Request
 
 from apps.api_server.error_payloads import access_scope_denied_error
-from apps.api_server.middleware.auth import AuthContext, get_current_org
+from apps.api_server.middleware.auth import get_current_org
+from apps.api_server.services.auth_service import AuthContext
 
 logger = structlog.get_logger(__name__)
 
@@ -49,7 +52,9 @@ def _rank(role: str) -> int:
     return _ROLE_RANK.get(role.lower(), 0)
 
 
-def require_role(minimum_role: str) -> type:
+def require_role(
+    minimum_role: str,
+) -> Callable[[Request, AuthContext], Awaitable[AuthContext]]:
     """
     Return a FastAPI dependency that enforces a minimum role.
 
@@ -70,7 +75,7 @@ def require_role(minimum_role: str) -> type:
         request: Request,
         auth: Annotated[AuthContext, Depends(get_current_org)],
     ) -> AuthContext:
-        actor_role = auth.get("role", "owner")  # type: ignore[union-attr]
+        actor_role = str(auth.get("role", "owner"))
         actor_rank = _rank(actor_role)
 
         if actor_rank < minimum_rank:
@@ -98,4 +103,4 @@ def require_role(minimum_role: str) -> type:
 
     # Give FastAPI a stable name for OpenAPI docs / dependency caching
     _dependency.__name__ = f"require_{minimum_role}_role"
-    return _dependency  # type: ignore[return-value]
+    return _dependency

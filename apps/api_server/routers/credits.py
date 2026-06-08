@@ -19,10 +19,12 @@ Enforcement guarantee:
   Max overage = one credit batch.  A PRO org (500k/mo, 10k batch) can overshoot
   by at most 10k executions — <2%.  Enterprise gets 100k batches but is unlimited.
 """
+
 from __future__ import annotations
 
 import time
-from typing import Annotated
+import uuid
+from typing import Annotated, Any
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
@@ -42,29 +44,32 @@ from apps.api_server.services.plan_limits import (
 logger = structlog.get_logger(__name__)
 router = APIRouter(tags=["credits"])
 
-_CREDIT_TTL      = 86_400        # 24h per batch
-_COUNTER_TTL     = 35 * 86_400   # Redis key lifetime
+_CREDIT_TTL = 86_400  # 24h per batch
+_COUNTER_TTL = 35 * 86_400  # Redis key lifetime
 
 
 # ── Request / response ────────────────────────────────────────────────────────
 
+
 class CreditRefreshRequest(BaseModel):
-    device_id:      str
-    billing_period: str   # "YYYY-MM"
-    credits_used:   int = 0   # client-reported, for analytics only
+    device_id: str
+    billing_period: str  # "YYYY-MM"
+    credits_used: int = 0  # client-reported, for analytics only
 
 
 class CreditRefreshResponse(BaseModel):
-    credits_granted:           int
+    credits_granted: int
     credits_issued_this_month: int
-    monthly_limit:             int    # 0 = unlimited
-    monthly_remaining:         int    # 0 when unlimited
-    billing_period:            str
-    expires_at:                float  # unix timestamp — credits expire after this
-    refresh_after:             float  # daemon should refresh again after this
+    monthly_limit: int  # 0 = unlimited
+    monthly_remaining: int  # 0 when unlimited
+    billing_period: str
+    expires_at: float  # unix timestamp — credits expire after this
+    refresh_after: float  # daemon should refresh again after this
+    server_time: float
 
 
 # ── Endpoint ──────────────────────────────────────────────────────────────────
+
 
 @router.post(
     "/v1/credits/refresh",
@@ -78,9 +83,9 @@ class CreditRefreshResponse(BaseModel):
     ),
 )
 async def refresh_credits(
-    body:  CreditRefreshRequest,
-    ctx:   Annotated[AuthContext, Depends(get_current_org)],
-    db:    Annotated[AsyncSession, Depends(get_db)],
+    body: CreditRefreshRequest,
+    ctx: Annotated[AuthContext, Depends(get_current_org)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> CreditRefreshResponse:
     from sqlalchemy import select
     from sqlalchemy.orm import selectinload
@@ -88,22 +93,25 @@ async def refresh_credits(
     from apps.api_server.models.api_key import APIKey
 
     result = await db.execute(
-        select(APIKey)
-        .options(selectinload(APIKey.organization))
-        .where(APIKey.id == ctx["key_id"])
+        select(APIKey).options(selectinload(APIKey.organization)).where(APIKey.id == ctx["key_id"])
     )
     api_key_row = result.scalar_one()
-    plan         = str(api_key_row.organization.plan)
-    org_id       = api_key_row.org_id
+    plan = str(api_key_row.organization.plan)
+    org_id = api_key_row.org_id
 
-    batch       = _batch_size(plan)
-    monthly_max = _monthly_limit(plan)   # 0 = unlimited
+    batch = _batch_size(plan)
+    monthly_max = _monthly_limit(plan)  # 0 = unlimited
 
     # ── Unlimited plan — grant full batch immediately ──────────────────────
     if monthly_max == 0:
         now = time.time()
-        logger.info("credits_granted_unlimited", org_id=str(org_id), plan=plan,
-                    granted=batch, device_id=body.device_id[:8])
+        logger.info(
+            "credits_granted_unlimited",
+            org_id=str(org_id),
+            plan=plan,
+            granted=batch,
+            device_id=body.device_id[:8],
+        )
         return CreditRefreshResponse(
             credits_granted=batch,
             credits_issued_this_month=0,
@@ -112,17 +120,22 @@ async def refresh_credits(
             billing_period=body.billing_period,
             expires_at=now + _CREDIT_TTL,
             refresh_after=now + _CREDIT_TTL * 0.9,
+            server_time=now,
         )
 
     # ── Fetch issued-this-month from Redis (or DB fallback) ────────────────
-    redis_key    = f"credits_issued:{org_id}:{body.billing_period}"
+    redis_key = f"credits_issued:{org_id}:{body.billing_period}"
     issued_so_far = await _get_issued(redis_key, org_id, body.billing_period, db)
     monthly_remaining = max(0, monthly_max - issued_so_far)
 
     if monthly_remaining <= 0:
-        logger.warning("credit_refresh_denied_quota",
-                       org_id=str(org_id), plan=plan,
-                       issued=issued_so_far, limit=monthly_max)
+        logger.warning(
+            "credit_refresh_denied_quota",
+            org_id=str(org_id),
+            plan=plan,
+            issued=issued_so_far,
+            limit=monthly_max,
+        )
         raise HTTPException(
             status_code=429,
             detail={
@@ -132,10 +145,10 @@ async def refresh_credits(
                     f"({monthly_max:,} executions/mo).  "
                     f"Upgrade your plan or wait for the next billing period."
                 ),
-                "monthly_limit":    monthly_max,
+                "monthly_limit": monthly_max,
                 "issued_this_month": issued_so_far,
-                "billing_period":   body.billing_period,
-                "upgrade_url":      "https://algenta.io/pricing",
+                "billing_period": body.billing_period,
+                "upgrade_url": "https://algenta.io/pricing",
             },
         )
 
@@ -162,14 +175,16 @@ async def refresh_credits(
         billing_period=body.billing_period,
         expires_at=now + _CREDIT_TTL,
         refresh_after=now + _CREDIT_TTL * 0.9,
+        server_time=now,
     )
 
 
 # ── Redis helpers (with DB fallback) ─────────────────────────────────────────
 
+
 async def _get_issued(
     redis_key: str,
-    org_id,
+    org_id: uuid.UUID,
     billing_period: str,
     db: AsyncSession,
 ) -> int:
@@ -179,7 +194,9 @@ async def _get_issued(
         import redis.asyncio as aioredis
 
         from apps.api_server.config import get_settings
-        r = aioredis.from_url(get_settings().redis_url, decode_responses=True)
+
+        aioredis_module: Any = aioredis
+        r = aioredis_module.from_url(get_settings().redis_url, decode_responses=True)
         val = await r.get(redis_key)
         await r.aclose()
         if val is not None:
@@ -196,6 +213,7 @@ async def _get_issued(
     from sqlalchemy import func, select
 
     from apps.api_server.models.usage_record import UsageRecord
+
     result = await db.execute(
         select(func.coalesce(func.sum(UsageRecord.billing_units), 0))
         .where(UsageRecord.org_id == org_id)
@@ -207,7 +225,7 @@ async def _get_issued(
 async def _increment_issued(
     redis_key: str,
     amount: int,
-    org_id,
+    org_id: uuid.UUID,
     billing_period: str,
     db: AsyncSession,
 ) -> None:
@@ -216,7 +234,9 @@ async def _increment_issued(
         import redis.asyncio as aioredis
 
         from apps.api_server.config import get_settings
-        r = aioredis.from_url(get_settings().redis_url, decode_responses=True)
+
+        aioredis_module: Any = aioredis
+        r = aioredis_module.from_url(get_settings().redis_url, decode_responses=True)
         new_val = await r.incrby(redis_key, amount)
         if new_val == amount:
             await r.expire(redis_key, _COUNTER_TTL)
@@ -233,11 +253,14 @@ async def _increment_issued(
 
     # Redis unavailable — persist as a usage_record (approximate but durable)
     from apps.api_server.models.usage_record import UsageEndpoint, UsageRecord
-    db.add(UsageRecord(
-        org_id=org_id,
-        billing_period=billing_period,
-        endpoint=UsageEndpoint.SIMULATE,
-        billing_units=amount,
-        scenarios_run=0,
-    ))
+
+    db.add(
+        UsageRecord(
+            org_id=org_id,
+            billing_period=billing_period,
+            endpoint=UsageEndpoint.SIMULATE,
+            billing_units=amount,
+            scenarios_run=0,
+        )
+    )
     await db.flush()

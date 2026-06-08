@@ -1,4 +1,5 @@
 """Append-only local runtime ledger for offline auditability."""
+
 from __future__ import annotations
 
 import json

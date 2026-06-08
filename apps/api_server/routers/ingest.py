@@ -17,6 +17,7 @@ Powered by the Algenta FieldMapper (field_mapper.mojo via the Mojo binary) which
 
 Falls back to Python mirror of field_mapper.mojo logic when binary is unavailable.
 """
+
 from __future__ import annotations
 
 import csv
@@ -41,24 +42,68 @@ router = APIRouter(tags=["Ingest"])
 # ── Field Mapper (Python mirror of field_mapper.mojo) ────────────────────────
 
 _POS_KEYWORDS = {
-    "revenue", "profit", "income", "sales", "growth", "return",
-    "gain", "value", "benefit", "savings", "yield", "appreciation",
-    "upside", "margin", "throughput", "capacity", "output",
+    "revenue",
+    "profit",
+    "income",
+    "sales",
+    "growth",
+    "return",
+    "gain",
+    "value",
+    "benefit",
+    "savings",
+    "yield",
+    "appreciation",
+    "upside",
+    "margin",
+    "throughput",
+    "capacity",
+    "output",
 }
 _NEG_KEYWORDS = {
-    "cost", "expense", "loss", "risk", "churn", "debt",
-    "liability", "depreciation", "penalty", "fee", "overhead",
-    "downside", "deficit", "waste", "error", "failure", "delay",
-    "attrition", "writeoff", "default", "shortage",
+    "cost",
+    "expense",
+    "loss",
+    "risk",
+    "churn",
+    "debt",
+    "liability",
+    "depreciation",
+    "penalty",
+    "fee",
+    "overhead",
+    "downside",
+    "deficit",
+    "waste",
+    "error",
+    "failure",
+    "delay",
+    "attrition",
+    "writeoff",
+    "default",
+    "shortage",
 }
 _UNIT_HINTS = {
-    "price": "currency", "revenue": "currency", "cost": "currency",
-    "salary": "currency", "budget": "currency", "sales": "currency",
-    "rate": "rate", "percent": "percentage", "pct": "percentage",
-    "ratio": "percentage", "yield": "percentage",
-    "count": "count", "quantity": "count", "units": "count",
-    "days": "time", "months": "time", "years": "time", "hours": "time",
-    "weight": "weight", "mass": "weight",
+    "price": "currency",
+    "revenue": "currency",
+    "cost": "currency",
+    "salary": "currency",
+    "budget": "currency",
+    "sales": "currency",
+    "rate": "rate",
+    "percent": "percentage",
+    "pct": "percentage",
+    "ratio": "percentage",
+    "yield": "percentage",
+    "count": "count",
+    "quantity": "count",
+    "units": "count",
+    "days": "time",
+    "months": "time",
+    "years": "time",
+    "hours": "time",
+    "weight": "weight",
+    "mass": "weight",
 }
 
 
@@ -115,7 +160,7 @@ def _infer_distribution(values: list[float]) -> tuple[str, dict[str, float]]:
         median_v = statistics.median(values)
         skew_approx = (mean_v - median_v) / (std_v + 1e-9)
         if cv > 0.3 and skew_approx > 0.1:
-            sigma2 = math.log(1 + cv ** 2)
+            sigma2 = math.log(1 + cv**2)
             mu = math.log(mean_v + 1e-9) - sigma2 / 2
             return "lognormal", {
                 "mean": round(mu, 6),
@@ -148,14 +193,46 @@ def _field_stats(values: list[float]) -> dict[str, float]:
 
 
 _ID_KEYWORDS = {
-    "id", "_id", "number", "no", "num", "code", "key", "ref",
-    "order", "po", "sku", "upc", "serial", "barcode", "masked",
-    "line", "sequence", "seq", "index",
+    "id",
+    "_id",
+    "number",
+    "no",
+    "num",
+    "code",
+    "key",
+    "ref",
+    "order",
+    "po",
+    "sku",
+    "upc",
+    "serial",
+    "barcode",
+    "masked",
+    "line",
+    "sequence",
+    "seq",
+    "index",
 }
-_METRIC_KEYWORDS = _POS_KEYWORDS | _NEG_KEYWORDS | {
-    "quantity", "qty", "amount", "total", "avg", "average", "rate",
-    "percent", "pct", "score", "count", "days", "hours", "weight",
-}
+_METRIC_KEYWORDS = (
+    _POS_KEYWORDS
+    | _NEG_KEYWORDS
+    | {
+        "quantity",
+        "qty",
+        "amount",
+        "total",
+        "avg",
+        "average",
+        "rate",
+        "percent",
+        "pct",
+        "score",
+        "count",
+        "days",
+        "hours",
+        "weight",
+    }
+)
 
 
 def _is_likely_id_field(name: str, values: list[Any]) -> bool:
@@ -197,6 +274,7 @@ async def _map_via_mojo(
     """
     try:
         from apps.api_server.compute.mojo_adapter import invoke_engine
+
         data = dict(numeric_fields)
         payload = {"engine_type": "field_map", "data": data}
         result = await invoke_engine(payload)
@@ -272,12 +350,14 @@ def map_records(
         dist, params = _infer_distribution(num_vals)
         stats = _field_stats(num_vals)
 
-        variables.append({
-            "name": field,
-            "distribution": dist,
-            "params": params,
-            "unit": unit,
-        })
+        variables.append(
+            {
+                "name": field,
+                "distribution": dist,
+                "params": params,
+                "unit": unit,
+            }
+        )
 
         field_analysis[field] = {
             "type": "numeric",
@@ -305,6 +385,7 @@ def map_records(
 
     # Auto-select engine
     from apps.api_server.services.engine_selector import select_engine
+
     sel = select_engine(variables, runs=10000, objective=obj_fn)
 
     return {
@@ -320,8 +401,8 @@ def map_records(
 def _find_join_keys(
     analysis_a: dict[str, Any],
     analysis_b: dict[str, Any],
-    records_a: list[dict],
-    records_b: list[dict],
+    records_a: list[dict[str, Any]],
+    records_b: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     """
     Find potential join keys between two tables using:
@@ -341,11 +422,14 @@ def _find_join_keys(
     # Exact name match — highest confidence
     exact = keys_a & keys_b
     for k in exact:
-        join_suggestions.append({
-            "field_a": k, "field_b": k,
-            "match_type": "exact_name",
-            "confidence": 0.95,
-        })
+        join_suggestions.append(
+            {
+                "field_a": k,
+                "field_b": k,
+                "match_type": "exact_name",
+                "confidence": 0.95,
+            }
+        )
 
     # Fuzzy name match — check if names share common root
     if not join_suggestions:
@@ -356,11 +440,14 @@ def _find_join_keys(
                     continue  # already in exact
                 # Simple containment check
                 if ka_lower in kb_lower or kb_lower in ka_lower:
-                    join_suggestions.append({
-                        "field_a": ka, "field_b": kb,
-                        "match_type": "fuzzy_name",
-                        "confidence": 0.70,
-                    })
+                    join_suggestions.append(
+                        {
+                            "field_a": ka,
+                            "field_b": kb,
+                            "match_type": "fuzzy_name",
+                            "confidence": 0.70,
+                        }
+                    )
 
     # Value overlap check for remaining candidates
     if not join_suggestions and records_a and records_b:
@@ -370,11 +457,14 @@ def _find_join_keys(
                 vals_b = {str(r.get(fb, "")) for r in records_b[:100]}
                 overlap = len(vals_a & vals_b) / max(len(vals_a | vals_b), 1)
                 if overlap > 0.3:
-                    join_suggestions.append({
-                        "field_a": fa, "field_b": fb,
-                        "match_type": "value_overlap",
-                        "confidence": round(overlap, 2),
-                    })
+                    join_suggestions.append(
+                        {
+                            "field_a": fa,
+                            "field_b": fb,
+                            "match_type": "value_overlap",
+                            "confidence": round(overlap, 2),
+                        }
+                    )
 
     # Sort by confidence
     join_suggestions.sort(key=lambda x: x["confidence"], reverse=True)
@@ -382,18 +472,18 @@ def _find_join_keys(
 
 
 def _merge_records(
-    records_a: list[dict],
-    records_b: list[dict],
+    records_a: list[dict[str, Any]],
+    records_b: list[dict[str, Any]],
     key_a: str,
     key_b: str,
-) -> list[dict]:
+) -> list[dict[str, Any]]:
     """Inner join two record lists on key columns."""
-    index: dict[str, list[dict]] = {}
+    index: dict[str, list[dict[str, Any]]] = {}
     for r in records_b:
         k = str(r.get(key_b, ""))
         index.setdefault(k, []).append(r)
 
-    merged: list[dict] = []
+    merged: list[dict[str, Any]] = []
     for r in records_a:
         k = str(r.get(key_a, ""))
         for match in index.get(k, []):
@@ -408,8 +498,10 @@ def _merge_records(
 
 # ── Request / Response models ─────────────────────────────────────────────────
 
+
 class IngestTable(BaseModel):
     """A single table of data."""
+
     name: str = Field("table", description="Label for this table")
     records: list[dict[str, Any]] = Field(
         default_factory=list,
@@ -431,6 +523,7 @@ class IngestRequest(BaseModel):
 
     No configuration required. The engine auto-detects everything.
     """
+
     tables: list[IngestTable] = Field(
         ...,
         min_length=1,
@@ -439,8 +532,7 @@ class IngestRequest(BaseModel):
     domain: str = Field(
         "",
         description=(
-            "Optional domain hint (finance, supply_chain, hr, etc.) "
-            "for better field mapping"
+            "Optional domain hint (finance, supply_chain, hr, etc.) for better field mapping"
         ),
     )
     runs: int = Field(
@@ -456,7 +548,7 @@ class IngestRequest(BaseModel):
     join_on: dict[str, str] | None = Field(
         None,
         description="Explicit join keys: {'table_a_field': 'table_b_field'}. "
-                    "If omitted, auto-detected.",
+        "If omitted, auto-detected.",
     )
 
 
@@ -487,6 +579,7 @@ class IngestResponse(BaseModel):
 
 
 # ── Endpoint ──────────────────────────────────────────────────────────────────
+
 
 @router.post(
     "/v1/ingest",
@@ -519,14 +612,22 @@ async def ingest(
         else:
             raise HTTPException(
                 status_code=400,
-                detail={"error": {"code": "empty_table",
-                                   "message": f"Table '{tbl.name}' has neither records nor csv"}},
+                detail={
+                    "error": {
+                        "code": "empty_table",
+                        "message": f"Table '{tbl.name}' has neither records nor csv",
+                    }
+                },
             )
         if not records:
             raise HTTPException(
                 status_code=400,
-                detail={"error": {"code": "empty_table",
-                                   "message": f"Table '{tbl.name}' parsed to 0 records"}},
+                detail={
+                    "error": {
+                        "code": "empty_table",
+                        "message": f"Table '{tbl.name}' parsed to 0 records",
+                    }
+                },
             )
         parsed_tables.append((tbl.name, records))
 
@@ -593,7 +694,8 @@ async def ingest(
                 join_key_used = {key_a: key_b}
                 logger.info(
                     "ingest_join_detected",
-                    key_a=key_a, key_b=key_b,
+                    key_a=key_a,
+                    key_b=key_b,
                     match_type=best["match_type"],
                     confidence=best["confidence"],
                 )
@@ -632,6 +734,7 @@ async def ingest(
         try:
             from apps.api_server.schemas.simulate import SimulateRequestExpert
             from apps.api_server.services.simulation_service import run_simulation_fast
+
             req = SimulateRequestExpert.model_validate(sim_payload)
             envelope, _ = await run_simulation_fast(
                 request=req,
@@ -641,16 +744,15 @@ async def ingest(
             m = envelope.metrics
             p = envelope.percentiles
             sim_result = {
-                "run_id":              str(envelope.run_id),
-                "recommended_action":  envelope.recommended_action,
-                "confidence":          envelope.confidence,
-                "expected_value":      m.expected_value,
-                "std_deviation":       m.std_deviation,
+                "run_id": str(envelope.run_id),
+                "recommended_action": envelope.recommended_action,
+                "confidence": envelope.confidence,
+                "expected_value": m.expected_value,
+                "std_deviation": m.std_deviation,
                 "probability_of_loss": m.probability_of_loss,
-                "percentiles": {"p5": p.p5, "p25": p.p25, "p50": p.p50,
-                                 "p75": p.p75, "p95": p.p95},
-                "scenarios_run":       envelope.scenarios_run,
-                "execution_ms":        envelope.execution_ms,
+                "percentiles": {"p5": p.p5, "p25": p.p25, "p50": p.p50, "p75": p.p75, "p95": p.p95},
+                "scenarios_run": envelope.scenarios_run,
+                "execution_ms": envelope.execution_ms,
             }
         except Exception as exc:
             logger.warning("ingest_auto_run_failed", error=str(exc))

@@ -1,0 +1,19 @@
+from __future__ import annotations
+
+from apps.api_server.services.repository_intelligence_adapters import (
+    solidity_support as repository_solidity_support,
+)
+
+StableIdentifier = repository_solidity_support.StableIdentifier
+ResolveImport = repository_solidity_support.ResolveImport
+
+RESERVED_SYMBOL_NAMES = repository_solidity_support.RESERVED_SYMBOL_NAMES
+BUILTIN_TYPE_NAMES = repository_solidity_support.BUILTIN_TYPE_NAMES
+strip_comments = repository_solidity_support.strip_comments
+normalize_identifier = repository_solidity_support.normalize_identifier
+normalize_import_target = repository_solidity_support.normalize_import_target
+collect_symbol_entries = repository_solidity_support.collect_symbol_entries
+resolve_import = repository_solidity_support.resolve_import
+module_aliases_for_path = repository_solidity_support.module_aliases_for_path
+parse_dependencies_only = repository_solidity_support.parse_dependencies_only
+parse_file = repository_solidity_support.parse_file

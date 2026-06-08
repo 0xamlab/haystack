@@ -12,6 +12,7 @@ Each manifest holds:
 The semantic model lifecycle (training, 3-tier resolution) is fully delegated
 to SchemaRegistry — this layer only handles dataset identity and metadata.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -31,10 +32,23 @@ from training.semantic.schema_ingestor import ingest, suggest_aliases
 _LOCK = threading.Lock()
 
 
-def _schema_registry():
+class SemanticTrainingUnavailableError(RuntimeError):
+    """Raised when explicit semantic training is requested without runtime deps."""
+
+
+def _schema_registry() -> Any:
     from training.semantic.schema_registry import SchemaRegistry
 
     return SchemaRegistry()
+
+
+def _semantic_training_dependency_error() -> str | None:
+    from training.semantic.pipeline import semantic_training_dependency_error
+
+    error = semantic_training_dependency_error()
+    if error is None or isinstance(error, str):
+        return error
+    return str(error)
 
 
 def decision_mode_for_tier(model_tier: str) -> str:
@@ -71,11 +85,14 @@ def _find_by_raw_hash(org_id: str, raw_hash: str) -> str | None:
     """Return existing dataset_id for a raw-input hash, or None."""
     for m in _list_manifests(org_id):
         if m.get("raw_hash") == raw_hash:
-            return m["dataset_id"]
+            dataset_id = m.get("dataset_id")
+            if isinstance(dataset_id, str):
+                return dataset_id
     return None
 
 
 # ── Filesystem helpers ────────────────────────────────────────────────────────
+
 
 def _datasets_dir(org_id: str) -> Path:
     p = Path.home() / ".decision-engine" / "datasets" / org_id
@@ -92,15 +109,16 @@ def _load_manifest(org_id: str, dataset_id: str) -> dict[str, Any] | None:
     if not p.exists():
         return None
     try:
-        return json.loads(p.read_text())
+        manifest = json.loads(p.read_text())
     except Exception:
         return None
+    if not isinstance(manifest, dict):
+        return None
+    return manifest
 
 
 def _save_manifest(org_id: str, dataset_id: str, manifest: dict[str, Any]) -> None:
-    _manifest_path(org_id, dataset_id).write_text(
-        json.dumps(manifest, indent=2, default=str)
-    )
+    _manifest_path(org_id, dataset_id).write_text(json.dumps(manifest, indent=2, default=str))
 
 
 def _list_manifests(org_id: str) -> list[dict[str, Any]]:
@@ -118,22 +136,25 @@ def _find_by_hash(org_id: str, schema_hash: str) -> str | None:
     """Return existing dataset_id for a schema hash, or None."""
     for m in _list_manifests(org_id):
         if m.get("schema_hash") == schema_hash:
-            return m["dataset_id"]
+            dataset_id = m.get("dataset_id")
+            if isinstance(dataset_id, str):
+                return dataset_id
     return None
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
+
 def onboard(
-    org_id:         str,
-    source:         Any,
+    org_id: str,
+    source: Any,
     *,
-    name:           str | None = None,
-    source_name:    str | None = None,
+    name: str | None = None,
+    source_name: str | None = None,
     domain_aliases: dict[str, list[str]] | None = None,
-    async_train:    bool = True,
-    epochs:         int = 80,
-    batch_size:     int = 32,
+    async_train: bool = True,
+    epochs: int = 80,
+    batch_size: int = 32,
 ) -> dict[str, Any]:
     """
     Profile a data source, register schema, and optionally fire async training.
@@ -149,16 +170,16 @@ def onboard(
         with _LOCK:
             existing_id = _find_by_raw_hash(org_id, rh)
             if existing_id is not None:
-                manifest = _load_manifest(org_id, existing_id)
-                if manifest is not None:
+                existing_manifest = _load_manifest(org_id, existing_id)
+                if existing_manifest is not None:
                     # Still probe live model tier — training may have completed
                     reg = _schema_registry()
-                    schema = manifest.get("schema", {})
-                    da = manifest.get("domain_aliases")
-                    manifest["status"] = reg.status(schema, da)
+                    schema = existing_manifest.get("schema", {})
+                    da = existing_manifest.get("domain_aliases")
+                    existing_manifest["status"] = reg.status(schema, da)
                     _art_dir, tier = reg.resolve(schema, da)
-                    manifest["model_tier"] = tier
-                    return manifest
+                    existing_manifest["model_tier"] = tier
+                    return existing_manifest
 
     reg = _schema_registry()
 
@@ -171,13 +192,20 @@ def onboard(
         auto = suggest_aliases(schema)
         domain_aliases = auto if auto else None
 
+    training_unavailable_reason: str | None = None
+    should_train = async_train
+    if async_train:
+        training_unavailable_reason = _semantic_training_dependency_error()
+        if training_unavailable_reason is not None:
+            should_train = False
+
     # Register with SchemaRegistry — fires async training if needed
     entry = reg.register(
         schema,
         domain_aliases=domain_aliases,
         epochs=epochs,
         batch_size=batch_size,
-        train=async_train,
+        train=should_train,
     )
     schema_hash = entry["schema_hash"]
 
@@ -191,19 +219,20 @@ def onboard(
             dataset_id = f"ds_{uuid.uuid4().hex[:12]}"
 
         manifest: dict[str, Any] = {
-            "dataset_id":    dataset_id,
-            "org_id":        org_id,
-            "name":          name or effective_source_name,
-            "schema_hash":   schema_hash,
-            "raw_hash":      rh,              # stored for future fast-path lookups
-            "status":        entry["status"],
-            "model_tier":    tier,
-            "schema":        schema,
+            "dataset_id": dataset_id,
+            "org_id": org_id,
+            "name": name or effective_source_name,
+            "schema_hash": schema_hash,
+            "raw_hash": rh,  # stored for future fast-path lookups
+            "status": entry["status"],
+            "model_tier": tier,
+            "schema": schema,
             "domain_aliases": domain_aliases,
-            "source_names":  entry.get("source_names", []),
-            "column_count":  entry.get("column_count", 0),
+            "source_names": entry.get("source_names", []),
+            "column_count": entry.get("column_count", 0),
             "registered_at": entry.get("registered_at"),
-            "updated_at":    datetime.now(UTC).isoformat(),
+            "updated_at": datetime.now(UTC).isoformat(),
+            "training_unavailable_reason": training_unavailable_reason,
         }
         _save_manifest(org_id, dataset_id, manifest)
 
@@ -221,19 +250,19 @@ def get_status(org_id: str, dataset_id: str) -> dict[str, Any] | None:
         return None
 
     reg = _schema_registry()
-    schema         = manifest.get("schema", {})
+    schema = manifest.get("schema", {})
     domain_aliases = manifest.get("domain_aliases")
 
-    manifest["status"]     = reg.status(schema, domain_aliases)
-    _art_dir, tier         = reg.resolve(schema, domain_aliases)
+    manifest["status"] = reg.status(schema, domain_aliases)
+    _art_dir, tier = reg.resolve(schema, domain_aliases)
     manifest["model_tier"] = tier
     return manifest
 
 
 def retrain(
-    org_id:     str,
+    org_id: str,
     dataset_id: str,
-    epochs:     int = 80,
+    epochs: int = 80,
     batch_size: int = 32,
 ) -> dict[str, Any] | None:
     """
@@ -245,8 +274,12 @@ def retrain(
     if manifest is None:
         return None
 
-    reg            = _schema_registry()
-    schema         = manifest.get("schema", {})
+    training_unavailable_reason = _semantic_training_dependency_error()
+    if training_unavailable_reason is not None:
+        raise SemanticTrainingUnavailableError(training_unavailable_reason)
+
+    reg = _schema_registry()
+    schema = manifest.get("schema", {})
     domain_aliases = manifest.get("domain_aliases")
 
     entry = reg.register(
@@ -258,7 +291,7 @@ def retrain(
     )
 
     with _LOCK:
-        manifest["status"]     = entry["status"]
+        manifest["status"] = entry["status"]
         manifest["updated_at"] = datetime.now(UTC).isoformat()
         _save_manifest(org_id, dataset_id, manifest)
 
@@ -270,11 +303,11 @@ def list_datasets(org_id: str) -> list[dict[str, Any]]:
     reg = _schema_registry()
     result = []
     for manifest in _list_manifests(org_id):
-        schema         = manifest.get("schema", {})
+        schema = manifest.get("schema", {})
         domain_aliases = manifest.get("domain_aliases")
-        m              = dict(manifest)
-        m["status"]     = reg.status(schema, domain_aliases)
-        _art_dir, tier  = reg.resolve(schema, domain_aliases)
+        m = dict(manifest)
+        m["status"] = reg.status(schema, domain_aliases)
+        _art_dir, tier = reg.resolve(schema, domain_aliases)
         m["model_tier"] = tier
         result.append(m)
     return result

@@ -11,6 +11,7 @@ v1: events are logged locally only (no network flush).
 v4+: flush to Algenta control plane via POST /v1/metering
      heartbeat to POST /v1/device/heartbeat
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -18,24 +19,23 @@ import os
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from urllib.parse import urlparse
 
 import structlog
+
+from apps.privacy_policy import policy_from_environment
 
 logger = structlog.get_logger(__name__)
 
 _FLUSH_INTERVAL_S = 60.0
-_HEARTBEAT_INTERVAL_S = 86_400.0   # 24h
+_HEARTBEAT_INTERVAL_S = 86_400.0  # 24h
 _MAX_QUEUE = 10_000
-_RUNTIME_DIR = Path(
-    os.environ.get("ALGENTA_RUNTIME_DIR", Path.home() / ".algenta" / "runtime")
-)
+_RUNTIME_DIR = Path(os.environ.get("ALGENTA_RUNTIME_DIR", Path.home() / ".algenta" / "runtime"))
 _LAST_HEARTBEAT_FILE = _RUNTIME_DIR / "last_heartbeat"
 
 
 @dataclass
 class UsageEvent:
-    event_type: str       # "execute_module" | "verify_and_execute" | "health" | etc.
+    event_type: str  # "execute_module" | "verify_and_execute" | "health" | etc.
     module: str = ""
     function: str = ""
     engine_used: str = ""
@@ -53,28 +53,19 @@ class MeteringQueue:
         self._queue: list[UsageEvent] = []
         self._total_enqueued: int = 0
         self._total_flushed: int = 0
-        self._executions_at_last_heartbeat: int = 0   # delta counter for reconciliation
-        self._flush_task: asyncio.Task | None = None       # type: ignore[type-arg]
-        self._heartbeat_task: asyncio.Task | None = None   # type: ignore[type-arg]
+        self._executions_at_last_heartbeat: int = 0  # delta counter for reconciliation
+        self._flush_task: asyncio.Task[None] | None = None
+        self._heartbeat_task: asyncio.Task[None] | None = None
 
     def record(self, event: UsageEvent) -> None:
         """Non-blocking: append event to queue. Never raises."""
         try:
             if len(self._queue) >= _MAX_QUEUE:
-                self._queue.pop(0)   # drop oldest
+                self._queue.pop(0)  # drop oldest
             self._queue.append(event)
             self._total_enqueued += 1
         except Exception as exc:
             logger.debug("metering_record_failed", error=str(exc))
-
-    @staticmethod
-    def _validated_control_plane_url(base_url: str) -> str:
-        parsed = urlparse(base_url)
-        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-            raise ValueError(
-                "ALGENTA_CONTROL_PLANE_URL must use an absolute http(s) URL."
-            )
-        return base_url.rstrip("/")
 
     def executions_since_last_heartbeat(self) -> int:
         """Delta executions since the last heartbeat was sent."""
@@ -82,8 +73,17 @@ class MeteringQueue:
 
     def start_background_flush(self, loop: asyncio.AbstractEventLoop) -> None:
         """Start flush + heartbeat coroutines (call once at daemon startup)."""
-        self._flush_task     = loop.create_task(self._flush_loop())
-        self._heartbeat_task = loop.create_task(self._heartbeat_loop())
+        policy = policy_from_environment()
+        if policy.metering_mode != "control_plane_sync":
+            logger.info(
+                "metering_background_sync_disabled",
+                metering_mode=policy.metering_mode,
+                deployment_mode=policy.deployment_mode,
+            )
+            return
+        self._flush_task = loop.create_task(self._flush_loop())
+        if policy.mandatory_heartbeat_enabled:
+            self._heartbeat_task = loop.create_task(self._heartbeat_loop())
 
     async def _flush_loop(self) -> None:
         while True:
@@ -107,39 +107,41 @@ class MeteringQueue:
 
     def _send_metering_batch_sync(self, batch: list[UsageEvent]) -> None:
         """Send metering batch to control plane (blocking; called via asyncio.to_thread)."""
+        if policy_from_environment().metering_mode != "control_plane_sync":
+            return
         try:
             import json
             import urllib.request
 
-            from apps.runtime.license import _CONTROL_PLANE_URL, load_license
+            from apps.runtime.license import _validated_control_plane_url, load_license
 
             api_key = os.environ.get("ALGENTA_API_KEY", "") or os.environ.get("DE_API_KEY", "")
-            lic     = load_license(api_key)
-            control_plane_url = self._validated_control_plane_url(_CONTROL_PLANE_URL)
+            lic = load_license(api_key)
+            control_plane_url = _validated_control_plane_url(surface="metering_flush")
 
             payload = {
                 "device_id": lic.device_id,
                 "events": [
                     {
-                        "event_type":  e.event_type,
-                        "module":      e.module,
-                        "function":    e.function,
+                        "event_type": e.event_type,
+                        "module": e.module,
+                        "function": e.function,
                         "engine_used": e.engine_used,
-                        "latency_ms":  e.latency_ms,
-                        "success":     e.success,
-                        "timestamp":   e.timestamp,
-                        "request_id":  e.request_id,
+                        "latency_ms": e.latency_ms,
+                        "success": e.success,
+                        "timestamp": e.timestamp,
+                        "request_id": e.request_id,
                     }
                     for e in batch
                 ],
             }
 
             body = json.dumps(payload).encode()
-            req  = urllib.request.Request(  # noqa: S310
+            req = urllib.request.Request(  # noqa: S310
                 f"{control_plane_url}/v1/metering",
                 data=body,
                 headers={
-                    "Content-Type":  "application/json",
+                    "Content-Type": "application/json",
                     "Authorization": f"Bearer {api_key}",
                 },
                 method="POST",
@@ -156,12 +158,16 @@ class MeteringQueue:
 
     async def _heartbeat_loop(self) -> None:
         """Fire device heartbeat every 24h — tells control plane this machine is active."""
+        if not policy_from_environment().mandatory_heartbeat_enabled:
+            return
+        from apps.runtime.trusted_time import trusted_now_epoch
+
         # Check if we already sent one recently
         last = self._last_heartbeat_ts()
         if last > 0:
-            wait = max(0.0, _HEARTBEAT_INTERVAL_S - (time.time() - last))
+            wait = max(0.0, _HEARTBEAT_INTERVAL_S - (trusted_now_epoch() - last))
         else:
-            wait = 5.0   # small delay on first run so daemon is fully up
+            wait = 5.0  # small delay on first run so daemon is fully up
 
         await asyncio.sleep(wait)
 
@@ -176,7 +182,7 @@ class MeteringQueue:
         Payload:
           {
             "device_id": "abc123...",
-            "api_key_prefix": "de_live_d36l",
+            "api_key_prefix": "<API_KEY_PREFIX>",
             "sdk_version": "0.1.0",
             "plan": "pro",
             "usage_since_last": { "executions": N, "modules_used": [...] }
@@ -193,9 +199,11 @@ class MeteringQueue:
         v1: writes heartbeat to local file only (no network).
         v4+: POST to ALGENTA_CONTROL_PLANE_URL/v1/device/heartbeat
         """
+        if not policy_from_environment().mandatory_heartbeat_enabled:
+            return
         try:
             from apps.runtime.device import get_device_info
-            from apps.runtime.license import load_license
+            from apps.runtime.license import _validated_control_plane_url, load_license
 
             api_key = os.environ.get("ALGENTA_API_KEY", "") or os.environ.get("DE_API_KEY", "")
             lic = load_license(api_key)
@@ -216,7 +224,7 @@ class MeteringQueue:
                 "executions_queued": self._total_enqueued,
                 "executions_since_last_heartbeat": executions_delta,
                 "modules_used": modules_used,
-                "timestamp": time.time(),
+                "timestamp": _trusted_now_epoch(),
             }
 
             logger.info(
@@ -231,19 +239,19 @@ class MeteringQueue:
             import json as _json
             import urllib.request
 
-            from apps.runtime.license import _CONTROL_PLANE_URL
-
-            control_plane_url = self._validated_control_plane_url(_CONTROL_PLANE_URL)
-            hb_body = _json.dumps({
-                "device_id": heartbeat["device_id"],
-                "usage": {
-                    "executions": heartbeat["executions_queued"],
-                    "executions_since_last_heartbeat": executions_delta,
-                    "modules_used": heartbeat["modules_used"],
-                    "platform": heartbeat["platform"],
-                    "sdk_version": heartbeat["sdk_version"],
-                },
-            }).encode()
+            control_plane_url = _validated_control_plane_url(surface="device_heartbeat")
+            hb_body = _json.dumps(
+                {
+                    "device_id": heartbeat["device_id"],
+                    "usage": {
+                        "executions": heartbeat["executions_queued"],
+                        "executions_since_last_heartbeat": executions_delta,
+                        "modules_used": heartbeat["modules_used"],
+                        "platform": heartbeat["platform"],
+                        "sdk_version": heartbeat["sdk_version"],
+                    },
+                }
+            ).encode()
             hb_req = urllib.request.Request(  # noqa: S310
                 f"{control_plane_url}/v1/device/heartbeat",
                 data=hb_body,
@@ -256,6 +264,12 @@ class MeteringQueue:
             try:
                 with urllib.request.urlopen(hb_req, timeout=10) as resp:  # noqa: S310
                     data = _json.loads(resp.read())
+                    from apps.runtime.trusted_time import observe_time
+
+                    observe_time(
+                        float(data.get("server_time", time.time())),
+                        source="control-plane-heartbeat",
+                    )
                     if data.get("status") == "over_limit":
                         logger.warning("device_over_limit", message=data.get("message"))
                     elif data.get("status") == "approaching_limit":
@@ -278,12 +292,14 @@ class MeteringQueue:
 
     def _save_heartbeat_ts(self) -> None:
         try:
+            from apps.runtime.trusted_time import trusted_now_epoch
+
             _RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
-            _LAST_HEARTBEAT_FILE.write_text(str(time.time()))
+            _LAST_HEARTBEAT_FILE.write_text(str(trusted_now_epoch()))
         except Exception as exc:
             logger.debug("heartbeat_timestamp_write_failed", error=str(exc))
 
-    def snapshot(self) -> dict:
+    def snapshot(self) -> dict[str, int | float]:
         return {
             "queued": len(self._queue),
             "total_enqueued": self._total_enqueued,
@@ -299,3 +315,9 @@ class MeteringQueue:
 
 # Singleton queue — imported by server.py
 metering = MeteringQueue()
+
+
+def _trusted_now_epoch() -> float:
+    from apps.runtime.trusted_time import trusted_now_epoch
+
+    return trusted_now_epoch()

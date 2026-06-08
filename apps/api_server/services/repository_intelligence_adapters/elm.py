@@ -1,0 +1,49 @@
+from __future__ import annotations
+
+from apps.api_server.services import (
+    repository_intelligence_contracts as repository_contracts,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    elm_analysis_support as repository_elm_analysis_support,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    elm_primitives as repository_elm_primitives,
+)
+
+_Dependency = repository_contracts._Dependency
+_Symbol = repository_contracts._Symbol
+_SymbolReferenceCandidate = repository_contracts._SymbolReferenceCandidate
+
+StableIdentifier = repository_elm_primitives.StableIdentifier
+NormalizeRepositoryRelativePath = repository_elm_primitives.NormalizeRepositoryRelativePath
+ResolveSuffixMatch = repository_elm_primitives.ResolveSuffixMatch
+
+_KNOWN_SUFFIXES = repository_elm_primitives._KNOWN_SUFFIXES
+_MODULE_RE = repository_elm_primitives._MODULE_RE
+_IMPORT_RE = repository_elm_primitives._IMPORT_RE
+_TYPE_ALIAS_RE = repository_elm_primitives._TYPE_ALIAS_RE
+_TYPE_RE = repository_elm_primitives._TYPE_RE
+_FUNCTION_SIGNATURE_RE = repository_elm_primitives._FUNCTION_SIGNATURE_RE
+_FUNCTION_DEF_RE = repository_elm_primitives._FUNCTION_DEF_RE
+_QUALIFIED_REFERENCE_RE = repository_elm_primitives._QUALIFIED_REFERENCE_RE
+_TYPE_REFERENCE_RE = repository_elm_primitives._TYPE_REFERENCE_RE
+_CALL_RE = repository_elm_primitives._CALL_RE
+_EXPOSING_ITEM_RE = repository_elm_primitives._EXPOSING_ITEM_RE
+_RESERVED_SYMBOL_NAMES = repository_elm_primitives._RESERVED_SYMBOL_NAMES
+_CollectedSymbol = repository_elm_primitives._CollectedSymbol
+
+_line_number = repository_elm_primitives._line_number
+_line_count = repository_elm_primitives._line_count
+exposing_all = repository_elm_primitives.exposing_all
+has_elm_path_hints = repository_elm_primitives.has_elm_path_hints
+is_probable_elm_source = repository_elm_primitives.is_probable_elm_source
+iter_symbol_entries = repository_elm_primitives.iter_symbol_entries
+module_name_from_path = repository_elm_primitives.module_name_from_path
+parse_exposing_names = repository_elm_primitives.parse_exposing_names
+strip_comments = repository_elm_primitives.strip_comments
+
+module_aliases_for_path = repository_elm_analysis_support.module_aliases_for_path
+resolve_import = repository_elm_analysis_support.resolve_import
+_collect_symbols = repository_elm_analysis_support._collect_symbols
+parse_dependencies_only = repository_elm_analysis_support.parse_dependencies_only
+parse_file = repository_elm_analysis_support.parse_file

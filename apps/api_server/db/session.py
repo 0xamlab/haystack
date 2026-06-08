@@ -18,6 +18,7 @@ PgBouncer config (infra/pgbouncer/pgbouncer.ini):
   max_client_conn = 10000
   default_pool_size = 25
 """
+
 from __future__ import annotations
 
 import os
@@ -46,7 +47,7 @@ def _async_engine_kwargs(
 ) -> dict[str, Any]:
     kwargs: dict[str, Any] = {
         "echo": echo,
-        "pool_pre_ping": True,     # detect stale PgBouncer connections
+        "pool_pre_ping": True,  # detect stale PgBouncer connections
     }
     if url.startswith("postgresql"):
         kwargs["connect_args"] = {
@@ -61,10 +62,11 @@ def _async_engine_kwargs(
         kwargs.update(
             pool_size=pool_size,
             max_overflow=max_overflow,
-            pool_recycle=3600,      # recycle connections every hour
+            pool_recycle=3600,  # recycle connections every hour
         )
 
     return kwargs
+
 
 # ─── Primary (read + write) ───────────────────────────────────────────────────
 
@@ -112,6 +114,7 @@ AsyncReadSessionLocal = async_sessionmaker(
 
 # ─── FastAPI dependencies ─────────────────────────────────────────────────────
 
+
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Read/write session — use for INSERT, UPDATE, DELETE."""
     async with AsyncSessionLocal() as session:
@@ -135,5 +138,5 @@ async def get_read_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 # Type aliases for router signatures
-AsyncSessionDep     = Annotated[AsyncSession, Depends(get_db)]
+AsyncSessionDep = Annotated[AsyncSession, Depends(get_db)]
 AsyncReadSessionDep = Annotated[AsyncSession, Depends(get_read_db)]

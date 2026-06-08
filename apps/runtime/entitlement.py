@@ -4,6 +4,7 @@ Entitlement — thin adapter over license.py for use in the gRPC server.
 Entitlement = license + runtime permission checks.
 License handles storage/JWT; entitlement handles per-call decisions.
 """
+
 from __future__ import annotations
 
 import os

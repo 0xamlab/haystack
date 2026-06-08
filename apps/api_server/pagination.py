@@ -1,12 +1,16 @@
 """Shared additive pagination helpers for v1 list payloads."""
+
 from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
 
 
 @dataclass(frozen=True)
-class PaginationEnvelope[T]:
+class PaginationEnvelope(Generic[T]):  # noqa: UP046
     items: list[T]
     total: int
     page: int
@@ -14,7 +18,7 @@ class PaginationEnvelope[T]:
     pages: int
 
 
-def paginate_sequence[T](
+def paginate_sequence(  # noqa: UP047
     items: Sequence[T],
     *,
     page: int,

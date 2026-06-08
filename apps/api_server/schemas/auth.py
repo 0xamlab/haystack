@@ -1,8 +1,10 @@
 """Auth and account schemas."""
-import uuid
-from datetime import datetime
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, EmailStr, Field
+import uuid
+from datetime import UTC, datetime
+from typing import Any
+
+from pydantic import AliasChoices, BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 class SignUpRequest(BaseModel):
@@ -42,27 +44,58 @@ class TokenResponse(BaseModel):
 
 class APIKeyInfo(BaseModel):
     """API key info shown in list (never includes hash or raw key)."""
+
     id: uuid.UUID
     label: str
     key_prefix: str
+    device_limit: int = Field(
+        ...,
+        ge=0,
+        description=(
+            "Max registered devices for this key on the local runtime path. "
+            "0 preserves the plan's unlimited or no-local-runtime behavior."
+        ),
+    )
     status: str
     created_at: datetime
     last_used_at: datetime | None = None
+    expires_at: datetime | None = None
 
 
 class APIKeyCreated(BaseModel):
     """Returned once at key creation — raw key shown here only."""
+
     id: uuid.UUID
     label: str
     key_prefix: str
+    device_limit: int = Field(
+        ...,
+        ge=0,
+        description=(
+            "Max registered devices for this key on the local runtime path. "
+            "0 preserves the plan's unlimited or no-local-runtime behavior."
+        ),
+    )
     raw_key: str = Field(..., description="The full API key — shown ONCE, store it securely.")
     created_at: datetime
+    expires_at: datetime | None = None
 
 
 class CreateAPIKeyRequest(BaseModel):
     model_config = ConfigDict(strict=False)
     label: str = Field(..., min_length=1, max_length=255)
     expires_at: datetime | None = Field(default=None)
+    device_limit: int | None = Field(default=None, ge=0)
+
+    @field_validator("expires_at")
+    @classmethod
+    def validate_expires_at(cls, value: datetime | None) -> datetime | None:
+        if value is None:
+            return None
+        normalized = value if value.tzinfo is not None else value.replace(tzinfo=UTC)
+        if normalized <= datetime.now(UTC):
+            raise ValueError("expires_at must be in the future.")
+        return normalized
 
 
 class OrgInfo(BaseModel):
@@ -119,7 +152,7 @@ class DistributionInfo(BaseModel):
     description: str
     required_params: list[str]
     optional_params: list[str]
-    example: dict
+    example: dict[str, Any]
 
 
 class TemplateInfo(BaseModel):
@@ -127,7 +160,7 @@ class TemplateInfo(BaseModel):
     name: str
     description: str
     category: str
-    example_request: dict
+    example_request: dict[str, Any]
 
 
 class UpdateMeRequest(BaseModel):

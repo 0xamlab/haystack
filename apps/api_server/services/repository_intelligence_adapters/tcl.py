@@ -1,0 +1,55 @@
+from __future__ import annotations
+
+from apps.api_server.services import (
+    repository_intelligence_contracts as repository_contracts,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    tcl_analysis_support as repository_tcl_analysis_support,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    tcl_primitives as repository_tcl_primitives,
+)
+
+_Dependency = repository_contracts._Dependency
+_Symbol = repository_contracts._Symbol
+_SymbolReferenceCandidate = repository_contracts._SymbolReferenceCandidate
+
+StableIdentifier = repository_tcl_primitives.StableIdentifier
+NormalizeRepositoryRelativePath = repository_tcl_primitives.NormalizeRepositoryRelativePath
+ResolveSuffixMatch = repository_tcl_primitives.ResolveSuffixMatch
+
+_KNOWN_SUFFIXES = repository_tcl_primitives._KNOWN_SUFFIXES
+_PACKAGE_NAME = repository_tcl_primitives._PACKAGE_NAME
+_PACKAGE_PROVIDE_RE = repository_tcl_primitives._PACKAGE_PROVIDE_RE
+_PACKAGE_REQUIRE_RE = repository_tcl_primitives._PACKAGE_REQUIRE_RE
+_PACKAGE_IFNEEDED_RE = repository_tcl_primitives._PACKAGE_IFNEEDED_RE
+_SOURCE_RE = repository_tcl_primitives._SOURCE_RE
+_NAMESPACE_EVAL_RE = repository_tcl_primitives._NAMESPACE_EVAL_RE
+_NAMESPACE_IMPORT_RE = repository_tcl_primitives._NAMESPACE_IMPORT_RE
+_PROC_DECL_RE = repository_tcl_primitives._PROC_DECL_RE
+_FILE_TARGET_RE = repository_tcl_primitives._FILE_TARGET_RE
+_QUALIFIED_COMMAND_RE = repository_tcl_primitives._QUALIFIED_COMMAND_RE
+_RESERVED_COMMANDS = repository_tcl_primitives._RESERVED_COMMANDS
+_CollectedSymbol = repository_tcl_primitives._CollectedSymbol
+
+_normalize_repository_relative_path = (
+    repository_tcl_primitives._normalize_repository_relative_path
+)
+_normalize_namespace = repository_tcl_primitives._normalize_namespace
+_ordered_names = repository_tcl_primitives._ordered_names
+_line_number = repository_tcl_primitives._line_number
+_strip_comment_lines = repository_tcl_primitives._strip_comment_lines
+_extract_file_targets = repository_tcl_primitives._extract_file_targets
+_namespace_symbol_name = repository_tcl_primitives._namespace_symbol_name
+_iter_package_provides = repository_tcl_primitives._iter_package_provides
+_iter_namespace_declarations = repository_tcl_primitives._iter_namespace_declarations
+is_probable_tcl_source = repository_tcl_primitives.is_probable_tcl_source
+
+module_aliases_for_path = repository_tcl_analysis_support.module_aliases_for_path
+_resolve_package_target = repository_tcl_analysis_support._resolve_package_target
+resolve_import = repository_tcl_analysis_support.resolve_import
+_dependency_key = repository_tcl_analysis_support._dependency_key
+parse_dependencies_only = repository_tcl_analysis_support.parse_dependencies_only
+_collect_symbols = repository_tcl_analysis_support._collect_symbols
+_source_symbol_id_for_line = repository_tcl_analysis_support._source_symbol_id_for_line
+parse_file = repository_tcl_analysis_support.parse_file

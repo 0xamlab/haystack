@@ -1,0 +1,60 @@
+from __future__ import annotations
+
+from apps.api_server.services import (
+    repository_intelligence_contracts as repository_contracts,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    hack_analysis_support as repository_hack_analysis_support,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    hack_primitives as repository_hack_primitives,
+)
+
+_Dependency = repository_contracts._Dependency
+_ImportedSymbolBinding = repository_contracts._ImportedSymbolBinding
+_Symbol = repository_contracts._Symbol
+_SymbolReferenceCandidate = repository_contracts._SymbolReferenceCandidate
+
+StableIdentifier = repository_hack_primitives.StableIdentifier
+NormalizeRepositoryRelativePath = repository_hack_primitives.NormalizeRepositoryRelativePath
+ResolveSuffixMatch = repository_hack_primitives.ResolveSuffixMatch
+
+HACK_FILE_SUFFIXES = repository_hack_primitives.HACK_FILE_SUFFIXES
+HACK_CONFIG_BASENAMES = repository_hack_primitives.HACK_CONFIG_BASENAMES
+HACK_OPEN_TAG_RE = repository_hack_primitives.HACK_OPEN_TAG_RE
+HACK_DECLARATION_RE = repository_hack_primitives.HACK_DECLARATION_RE
+HACK_FUNCTION_HINT_RE = repository_hack_primitives.HACK_FUNCTION_HINT_RE
+HACK_TYPE_HINT_RE = repository_hack_primitives.HACK_TYPE_HINT_RE
+INCLUDE_RE = repository_hack_primitives.INCLUDE_RE
+NAMESPACE_RE = repository_hack_primitives.NAMESPACE_RE
+USE_RE = repository_hack_primitives.USE_RE
+TYPE_DECL_RE = repository_hack_primitives.TYPE_DECL_RE
+FUNCTION_DECL_RE = repository_hack_primitives.FUNCTION_DECL_RE
+QUALIFIED_REFERENCE_RE = repository_hack_primitives.QUALIFIED_REFERENCE_RE
+TYPE_REFERENCE_RE = repository_hack_primitives.TYPE_REFERENCE_RE
+DOC_TAG_RE = repository_hack_primitives.DOC_TAG_RE
+DOC_TYPE_TOKEN_RE = repository_hack_primitives.DOC_TYPE_TOKEN_RE
+VARIABLE_TYPE_TOKEN_RE = repository_hack_primitives.VARIABLE_TYPE_TOKEN_RE
+RESERVED_SYMBOL_NAMES = repository_hack_primitives.RESERVED_SYMBOL_NAMES
+
+strip_comments = repository_hack_primitives.strip_comments
+has_hack_path_hints = repository_hack_primitives.has_hack_path_hints
+parse_hack_autoload_roots = repository_hack_primitives.parse_hack_autoload_roots
+current_namespace = repository_hack_primitives.current_namespace
+leading_docblock = repository_hack_primitives.leading_docblock
+symbol_declaration_header = repository_hack_primitives.symbol_declaration_header
+doc_type_tokens = repository_hack_primitives.doc_type_tokens
+type_tokens_from_header = repository_hack_primitives.type_tokens_from_header
+_symbol_entries = repository_hack_primitives._symbol_entries
+
+is_probable_hack_source = repository_hack_analysis_support.is_probable_hack_source
+module_aliases_for_path = repository_hack_analysis_support.module_aliases_for_path
+resolve_import = repository_hack_analysis_support.resolve_import
+resolve_same_namespace_reference = (
+    repository_hack_analysis_support.resolve_same_namespace_reference
+)
+resolve_reference_target = repository_hack_analysis_support.resolve_reference_target
+iter_reference_targets = repository_hack_analysis_support.iter_reference_targets
+extract_import_bindings = repository_hack_analysis_support.extract_import_bindings
+parse_dependencies_only = repository_hack_analysis_support.parse_dependencies_only
+parse_file = repository_hack_analysis_support.parse_file

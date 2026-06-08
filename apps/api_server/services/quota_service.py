@@ -15,20 +15,23 @@ Plan quotas — defined in plan_limits.py (single source of truth):
 Rate limiting (per-minute) is enforced via Redis INCR + EXPIRE.
 Monthly quota is enforced by counting usage_records rows.
 """
+
 import uuid
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Protocol, cast
 
 import structlog
 from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.api_server.config import get_settings
+from apps.api_server.config import SettingsProxy
 from apps.api_server.models.usage_record import UsageEndpoint, UsageRecord
+from apps.api_server.services.egress_guard import EgressAuditContext
 
 logger = structlog.get_logger(__name__)
-settings = get_settings()
+settings = SettingsProxy()
 
 # ─── Plan definitions (derived from plan_limits.py) ──────────────────────────
 # Keep PLAN_QUOTAS as a compatibility shim for code that imports it directly.
@@ -61,17 +64,39 @@ _QUOTA_COMPAT_OVERRIDES: dict[str, dict[str, int | bool]] = {
     },
 }
 
+QuotaCompatValue = int | bool
+QuotaConfig = dict[str, QuotaCompatValue]
 
-def _build_plan_quotas() -> dict[str, dict]:
+
+class _QuotaRedisClientProtocol(Protocol):
+    def incr(self, key: str) -> Awaitable[int]: ...
+
+    def expire(self, key: str, ttl_seconds: int) -> Awaitable[bool]: ...
+
+    def get(self, key: str) -> Awaitable[object | None]: ...
+
+    def set(
+        self,
+        key: str,
+        value: int | str,
+        *,
+        ex: int | None = None,
+    ) -> Awaitable[bool | None]: ...
+
+    def aclose(self) -> Awaitable[None]: ...
+
+
+def _build_plan_quotas() -> dict[str, QuotaConfig]:
     from apps.api_server.services.plan_limits import _PLANS
+
     quotas = {
         name: {
             "simulations_month": cfg.executions_month,
-            "rate_per_minute":   cfg.rate_per_minute,
-            "async_jobs":        cfg.async_jobs,
-            "webhooks":          cfg.webhooks,
-            "max_runs":          cfg.max_runs_per_call,
-            "max_batch":         cfg.max_batch,
+            "rate_per_minute": cfg.rate_per_minute,
+            "async_jobs": cfg.async_jobs,
+            "webhooks": cfg.webhooks,
+            "max_runs": cfg.max_runs_per_call,
+            "max_batch": cfg.max_batch,
         }
         for name, cfg in _PLANS.items()
     }
@@ -79,7 +104,8 @@ def _build_plan_quotas() -> dict[str, dict]:
         quotas.setdefault(plan_name, {}).update(overrides)
     return quotas
 
-PLAN_QUOTAS: dict[str, dict] = _build_plan_quotas()
+
+PLAN_QUOTAS: dict[str, QuotaConfig] = _build_plan_quotas()
 
 _BILLING_PERIOD_FMT = "%Y-%m"
 
@@ -88,8 +114,20 @@ def _current_billing_period() -> str:
     return datetime.now(UTC).strftime(_BILLING_PERIOD_FMT)
 
 
-def _quota_cfg(plan: str) -> dict:
+def _quota_cfg(plan: str) -> QuotaConfig:
     return PLAN_QUOTAS.get(plan, PLAN_QUOTAS["free"])
+
+
+def _coerce_counter_value(value: object | None) -> int | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str | bytes | bytearray):
+        return int(value)
+    raise TypeError(f"Unsupported Redis counter value type: {type(value).__name__}")
 
 
 def _set_rate_limit_state(request_state: Any | None, *, limit: int, remaining: int) -> None:
@@ -100,6 +138,7 @@ def _set_rate_limit_state(request_state: Any | None, *, limit: int, remaining: i
 
 
 # ─── Monthly quota check ──────────────────────────────────────────────────────
+
 
 async def check_monthly_quota(
     org_id: uuid.UUID,
@@ -156,6 +195,7 @@ async def check_monthly_quota(
 
 # ─── Rate limit check (Redis sliding window) ──────────────────────────────────
 
+
 async def check_rate_limit(
     org_id: uuid.UUID,
     plan: str,
@@ -170,48 +210,69 @@ async def check_rate_limit(
     Raises HTTP 429 if rate limit exceeded.
     """
     rpm_limit = int(_quota_cfg(plan)["rate_per_minute"])
-    allow_runtime_fallbacks = settings.allow_runtime_fallbacks
+    await check_named_rate_limit(
+        org_id=org_id,
+        redis_client=redis_client,
+        key_prefix="ratelimit",
+        limit_per_minute=rpm_limit,
+        request_state=request_state,
+        error_code="rate_limit_exceeded",
+        error_message=(f"Rate limit exceeded. Max {rpm_limit} requests/minute for {plan} plan."),
+        log_context={"plan": plan},
+    )
 
-    # Use minute-level granularity
+
+async def check_named_rate_limit(
+    org_id: uuid.UUID | str,
+    redis_client: object,
+    *,
+    key_prefix: str,
+    limit_per_minute: int,
+    request_state: Any | None = None,
+    error_code: str = "rate_limit_exceeded",
+    error_message: str | None = None,
+    log_context: dict[str, Any] | None = None,
+) -> None:
+    """Enforce a per-minute Redis-backed rate limit for a named request family."""
+    allow_runtime_fallbacks = settings.allow_runtime_fallbacks
     minute_key = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M")
-    redis_key = f"ratelimit:{org_id}:{minute_key}"
+    redis_key = f"{key_prefix}:{org_id}:{minute_key}"
 
     try:
-        r = redis_client  # type: ignore[attr-defined]
+        r = cast(_QuotaRedisClientProtocol, redis_client)
         current = await r.incr(redis_key)
         if current == 1:
-            await r.expire(redis_key, 70)  # 70s TTL to cover minute boundary
+            await r.expire(redis_key, 70)
 
         _set_rate_limit_state(
             request_state,
-            limit=rpm_limit,
-            remaining=max(rpm_limit - int(current), 0),
+            limit=limit_per_minute,
+            remaining=max(limit_per_minute - int(current), 0),
         )
 
-        if current > rpm_limit:
+        if current > limit_per_minute:
             logger.warning(
-                "rate_limit_exceeded",
+                error_code,
                 org_id=str(org_id),
-                plan=plan,
                 current=current,
-                limit=rpm_limit,
+                limit=limit_per_minute,
+                key_prefix=key_prefix,
+                **(log_context or {}),
             )
             raise HTTPException(
                 status_code=429,
                 detail={
                     "error": {
-                        "code": "rate_limit_exceeded",
-                        "message": (
-                            f"Rate limit exceeded. Max {rpm_limit} requests/minute "
-                            f"for {plan} plan."
-                        ),
-                        "limit": rpm_limit,
+                        "code": error_code,
+                        "message": error_message
+                        or f"Rate limit exceeded. Max {limit_per_minute} requests/minute.",
+                        "limit": limit_per_minute,
                         "retry_after_seconds": 60,
                     }
                 },
                 headers={
                     "Retry-After": "60",
-                    "X-RateLimit-Limit": str(rpm_limit),
+                    "X-RateLimit-Limit": str(limit_per_minute),
                     "X-RateLimit-Remaining": "0",
                 },
             )
@@ -222,6 +283,7 @@ async def check_rate_limit(
             "rate_limit_backend_unavailable",
             error=str(exc),
             org_id=str(org_id),
+            key_prefix=key_prefix,
             fallback_allowed=allow_runtime_fallbacks,
         )
         if allow_runtime_fallbacks:
@@ -244,6 +306,7 @@ async def check_rate_limit(
 
 # ─── Usage recording ──────────────────────────────────────────────────────────
 
+
 async def record_usage(
     org_id: uuid.UUID,
     plan: str,
@@ -256,6 +319,7 @@ async def record_usage(
     billing_units: int = 1,
     org_email: str | None = None,
     org_name: str | None = None,
+    workspace_id: uuid.UUID | None = None,
 ) -> UsageRecord:
     """
     Write one UsageRecord row for a completed billable API call.
@@ -267,6 +331,7 @@ async def record_usage(
     period = _current_billing_period()
     record = UsageRecord(
         org_id=org_id,
+        workspace_id=workspace_id,
         api_key_id=api_key_id,
         simulation_run_id=simulation_run_id,
         billing_period=period,
@@ -289,16 +354,18 @@ async def record_usage(
 
     # ── Push metered usage to Stripe (non-blocking) ────────────────────────
     import asyncio
-    asyncio.create_task(
-        _push_stripe_usage(org_id=org_id, billing_units=billing_units, db=db)
-    )
+
+    asyncio.create_task(_push_stripe_usage(org_id=org_id, billing_units=billing_units, db=db))
 
     # ── Quota alert emails at 80% / 100% ──────────────────────────────────
     if org_email:
         asyncio.create_task(
             _maybe_send_quota_alert(
-                org_id=org_id, plan=plan, org_email=org_email,
-                org_name=org_name or "Your Organization", db=db,
+                org_id=org_id,
+                plan=plan,
+                org_email=org_email,
+                org_name=org_name or "Your Organization",
+                db=db,
             )
         )
 
@@ -310,12 +377,16 @@ async def _push_stripe_usage(org_id: uuid.UUID, billing_units: int, db: AsyncSes
     try:
         from sqlalchemy import select
 
-        from apps.api_server.config import get_settings
         from apps.api_server.models.organization import Organization
+        from apps.api_server.services.stripe_service import (
+            stripe_api_request,
+            stripe_metering_enabled,
+        )
 
-        settings = get_settings()
         if not settings.stripe_secret_key or settings.stripe_secret_key.startswith("sk_test"):
             return  # Skip in dev / test mode unless real key
+        if not stripe_metering_enabled():
+            return
 
         org_result = await db.execute(select(Organization).where(Organization.id == org_id))
         org = org_result.scalar_one_or_none()
@@ -324,18 +395,20 @@ async def _push_stripe_usage(org_id: uuid.UUID, billing_units: int, db: AsyncSes
 
         import time
 
-        import httpx
-        async with httpx.AsyncClient(timeout=8) as client:
-            await client.post(
-                "https://api.stripe.com/v1/billing/meter_events",
-                headers={"Authorization": f"Bearer {settings.stripe_secret_key}"},
-                data={
-                    "event_name": "simulation_run",
-                    "payload[stripe_customer_id]": org.stripe_customer_id,
-                    "payload[value]": str(billing_units),
-                    "timestamp": str(int(time.time())),
-                },
-            )
+        await stripe_api_request(
+            method="POST",
+            path="/v1/billing/meter_events",
+            surface="quota_metering_flush",
+            audit_context=EgressAuditContext(org_id=org_id),
+            timeout=8,
+            headers={"Authorization": f"Bearer {settings.stripe_secret_key}"},
+            data={
+                "event_name": "simulation_run",
+                "payload[stripe_customer_id]": org.stripe_customer_id,
+                "payload[value]": str(billing_units),
+                "timestamp": str(int(time.time())),
+            },
+        )
     except Exception as exc:
         logger.warning("stripe_usage_push_failed", org_id=str(org_id), error=str(exc))
 
@@ -348,6 +421,7 @@ async def _maybe_send_quota_alert(
         import redis.asyncio as aioredis
 
         from apps.api_server.config import get_settings
+
         settings = get_settings()
 
         used = await get_monthly_usage_count(org_id, db)
@@ -370,7 +444,14 @@ async def _maybe_send_quota_alert(
 
         # Check if we already sent this alert this period (Redis dedup)
         try:
-            r = aioredis.from_url(settings.redis_url, decode_responses=True)
+            redis_factory = cast(
+                Callable[..., object],
+                aioredis.from_url,
+            )
+            r = cast(
+                _QuotaRedisClientProtocol,
+                redis_factory(settings.redis_url, decode_responses=True),
+            )
             alert_key = f"quota_alert:{org_id}:{period}:{threshold}"
             already_sent = await r.get(alert_key)
             if already_sent:
@@ -382,6 +463,7 @@ async def _maybe_send_quota_alert(
             logger.warning("quota_alert_dedup_unavailable", org_id=str(org_id), error=str(exc))
 
         from apps.api_server.services.email_service import send_quota_alert
+
         send_quota_alert(
             email=org_email,
             org_name=org_name,
@@ -390,6 +472,7 @@ async def _maybe_send_quota_alert(
             limit=limit,
             billing_period=period,
             pct=pct,
+            audit_context=EgressAuditContext(org_id=org_id),
         )
         logger.info("quota_alert_sent", org_id=str(org_id), threshold=threshold, pct=pct)
     except Exception as exc:
@@ -413,8 +496,10 @@ async def get_monthly_usage_count(
 
 # ─── Redis quota counter (sub-50ms hot path) ──────────────────────────────────
 
+
 def _quota_redis_key(org_id: uuid.UUID, period: str) -> str:
     return f"quota_count:{org_id}:{period}"
+
 
 # TTL: 35 days — covers full month + 5-day buffer for late-arriving events
 _QUOTA_COUNTER_TTL = 35 * 86_400
@@ -438,10 +523,10 @@ async def check_quota_redis(
         return  # Unlimited plan
 
     period = _current_billing_period()
-    key    = _quota_redis_key(org_id, period)
+    key = _quota_redis_key(org_id, period)
 
     try:
-        r = redis_client  # type: ignore[attr-defined]
+        r = cast(_QuotaRedisClientProtocol, redis_client)
 
         # Try to GET the counter
         raw = await r.get(key)
@@ -450,6 +535,7 @@ async def check_quota_redis(
             # Cold start — seed from DB (happens once per org per month)
             # Use a fresh DB session since we're in a hot-path dependency
             from apps.api_server.db.session import AsyncSessionLocal
+
             async with AsyncSessionLocal() as db:
                 result = await db.execute(
                     select(func.count(UsageRecord.id))
@@ -461,14 +547,14 @@ async def check_quota_redis(
             await r.set(key, db_count, ex=_QUOTA_COUNTER_TTL)
             raw = db_count
         else:
-            raw = int(raw)
+            raw = _coerce_counter_value(raw)
 
-        if int(raw) >= limit:
+        if raw is not None and raw >= limit:
             logger.warning(
                 "quota_exceeded_redis",
                 org_id=str(org_id),
                 plan=plan,
-                used=int(raw),
+                used=raw,
                 limit=limit,
                 period=period,
             )
@@ -478,10 +564,10 @@ async def check_quota_redis(
                     "error": {
                         "code": "quota_exceeded",
                         "message": (
-                            f"Monthly simulation quota exhausted ({int(raw)}/{limit}). "
+                            f"Monthly simulation quota exhausted ({raw}/{limit}). "
                             f"Upgrade your plan or wait until {period} resets."
                         ),
-                        "used": int(raw),
+                        "used": raw,
                         "limit": limit,
                         "billing_period": period,
                         "upgrade_url": "https://decisionengine.io/pricing",
@@ -501,6 +587,7 @@ async def check_quota_redis(
             fallback_backend="database",
         )
         from apps.api_server.db.session import AsyncSessionLocal
+
         async with AsyncSessionLocal() as db:
             await check_monthly_quota(org_id, plan, db)
 
@@ -516,7 +603,7 @@ async def incr_quota_counter(
     """
     key = _quota_redis_key(org_id, period)
     try:
-        r = redis_client  # type: ignore[attr-defined]
+        r = cast(_QuotaRedisClientProtocol, redis_client)
         current = await r.incr(key)
         # Refresh TTL on every increment so active orgs never expire mid-month
         if current == 1:

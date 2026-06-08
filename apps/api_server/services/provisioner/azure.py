@@ -1,4 +1,5 @@
 """Azure Container Instances provisioner."""
+
 from __future__ import annotations
 
 import uuid
@@ -37,14 +38,14 @@ class AzureProvisioner(BaseProvisioner):
             return ProvisionResult(
                 False,
                 error="azure-mgmt-containerinstance not installed. "
-                      "Run: pip install azure-identity azure-mgmt-containerinstance",
+                "Run: pip install azure-identity azure-mgmt-containerinstance",
             )
 
-        deploy_name  = f"algenta-{str(deployment_id)[:8]}"
+        deploy_name = f"algenta-{str(deployment_id)[:8]}"
         endpoint_url = f"https://{str(deployment_id)[:8]}.deploy.algenta.ai"
 
         resource_ids = {
-            "resource_group":     f"algenta-{str(deployment_id)[:8]}",
+            "resource_group": f"algenta-{str(deployment_id)[:8]}",
             "container_group_id": (
                 f"/subscriptions/00000000/resourceGroups/algenta-{str(deployment_id)[:8]}"
                 f"/providers/Microsoft.ContainerInstance/containerGroups/{deploy_name}"
@@ -57,7 +58,7 @@ class AzureProvisioner(BaseProvisioner):
                 f"/subscriptions/00000000/resourceGroups/algenta-{str(deployment_id)[:8]}"
                 f"/providers/Microsoft.Cache/Redis/{deploy_name}-redis"
             ),
-            "region":      region,
+            "region": region,
             "deploy_name": deploy_name,
         }
 

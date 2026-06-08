@@ -1,0 +1,53 @@
+from __future__ import annotations
+
+from apps.api_server.services.repository_intelligence_adapters.luau_analysis_support import (
+    REQUIRE_BINDING_RE,
+    REQUIRE_RE,
+    SCRIPT_REQUIRE_BINDING_RE,
+    SCRIPT_REQUIRE_RE,
+    TS_IMPORT_BINDING_RE,
+    TS_IMPORT_RE,
+    extract_import_bindings,
+    has_luau_path_hints,
+    is_probable_luau_source,
+    iter_reference_targets,
+    module_aliases_for_path,
+    parse_dependencies_only,
+    parse_file,
+    resolve_import,
+    strip_comments,
+)
+from apps.api_server.services.repository_intelligence_adapters.luau_primitives import (
+    FUNCTION_ASSIGN_RE,
+    FUNCTION_DECL_RE,
+    IMPORTED_CALL_RE,
+    QUALIFIED_REFERENCE_RE,
+    RESERVED_SYMBOL_NAMES,
+    TYPE_DECL_RE,
+    collect_symbol_entries,
+)
+
+__all__ = [
+    "REQUIRE_BINDING_RE",
+    "REQUIRE_RE",
+    "SCRIPT_REQUIRE_BINDING_RE",
+    "SCRIPT_REQUIRE_RE",
+    "TS_IMPORT_BINDING_RE",
+    "TS_IMPORT_RE",
+    "FUNCTION_ASSIGN_RE",
+    "FUNCTION_DECL_RE",
+    "IMPORTED_CALL_RE",
+    "QUALIFIED_REFERENCE_RE",
+    "RESERVED_SYMBOL_NAMES",
+    "TYPE_DECL_RE",
+    "collect_symbol_entries",
+    "extract_import_bindings",
+    "has_luau_path_hints",
+    "is_probable_luau_source",
+    "iter_reference_targets",
+    "module_aliases_for_path",
+    "parse_dependencies_only",
+    "parse_file",
+    "resolve_import",
+    "strip_comments",
+]

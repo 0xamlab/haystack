@@ -9,24 +9,30 @@ Usage (internal — called by daemon.py):
     await server.start()
     await server.wait_for_termination()
 """
+
 from __future__ import annotations
 
 import json
 import os
 import tempfile
 import time
+import uuid
 from pathlib import Path
+from typing import Any
 
 import grpc
 import grpc.aio
 import structlog
 
+from apps.api_server.services.auth_service import AuthContext
 from apps.runtime.entitlement import check_entitlement, is_module_permitted
 from apps.runtime.executor import Executor
 from apps.runtime.metering import UsageEvent, metering
 from apps.runtime.proto import runtime_pb2, runtime_pb2_grpc
 
 logger = structlog.get_logger(__name__)
+runtime_pb2_module: Any = runtime_pb2
+runtime_pb2_grpc_module: Any = runtime_pb2_grpc
 
 _DEFAULT_DAEMON_SOCK = str(Path(tempfile.gettempdir()) / "algenta-runtime" / "daemon.sock")
 _DAEMON_SOCK = os.environ.get(
@@ -37,7 +43,7 @@ _DAEMON_TCP = os.environ.get("ALGENTA_DAEMON_TCP", "127.0.0.1:50099")
 _RUNTIME_VERSION = "0.1.0"
 
 
-class _AlgentaRuntimeServicer(runtime_pb2_grpc.AlgentaRuntimeServicer):
+class _AlgentaRuntimeServicer(runtime_pb2_grpc_module.AlgentaRuntimeServicer):  # type: ignore[misc]
     """Concrete implementation of the AlgentaRuntime gRPC service."""
 
     def __init__(self, executor: Executor, start_time: float) -> None:
@@ -48,13 +54,17 @@ class _AlgentaRuntimeServicer(runtime_pb2_grpc.AlgentaRuntimeServicer):
 
     async def Health(  # noqa: N802
         self,
-        request: runtime_pb2.HealthRequest,
+        request: Any,
         context: grpc.aio.ServicerContext,
-    ) -> runtime_pb2.HealthResponse:
+    ) -> Any:
         uptime = time.monotonic() - self._start_time
-        engine = "mojo" if self._executor._mojo_available() else "python-fallback"
+        engine = (
+            "mojo"
+            if self._executor._library_runtime_available() and self._executor._mojo_available()
+            else "unavailable"
+        )
         metering.record(UsageEvent(event_type="health", engine_used=engine))
-        return runtime_pb2.HealthResponse(
+        return runtime_pb2_module.HealthResponse(
             ok=True,
             version=_RUNTIME_VERSION,
             uptime_seconds=uptime,
@@ -65,19 +75,19 @@ class _AlgentaRuntimeServicer(runtime_pb2_grpc.AlgentaRuntimeServicer):
 
     async def GetRuntimeInfo(  # noqa: N802
         self,
-        request: runtime_pb2.RuntimeInfoRequest,
+        request: Any,
         context: grpc.aio.ServicerContext,
-    ) -> runtime_pb2.RuntimeInfoResponse:
+    ) -> Any:
         uptime = time.monotonic() - self._start_time
         modules = self._executor.list_modules()
-        mojo_ok = self._executor._mojo_available()
+        mojo_ok = self._executor._library_runtime_available() and self._executor._mojo_available()
         mojo_bin = os.environ.get(
             "ALGENTA_MOJO_BINARY",
             str((os.path.dirname(__file__) + "/../../mojo_build/simulate").replace("//", "/")),
         )
-        return runtime_pb2.RuntimeInfoResponse(
+        return runtime_pb2_module.RuntimeInfoResponse(
             version=_RUNTIME_VERSION,
-            engine="mojo" if mojo_ok else "python-fallback",
+            engine="mojo" if mojo_ok else "unavailable",
             module_count=len(modules),
             uptime_seconds=uptime,
             socket_path=_DAEMON_SOCK,
@@ -89,13 +99,13 @@ class _AlgentaRuntimeServicer(runtime_pb2_grpc.AlgentaRuntimeServicer):
 
     async def ListModules(  # noqa: N802
         self,
-        request: runtime_pb2.ListModulesRequest,
+        request: Any,
         context: grpc.aio.ServicerContext,
-    ) -> runtime_pb2.ListModulesResponse:
+    ) -> Any:
         modules = self._executor.list_modules()
-        return runtime_pb2.ListModulesResponse(
+        return runtime_pb2_module.ListModulesResponse(
             modules=[
-                runtime_pb2.ModuleInfo(
+                runtime_pb2_module.ModuleInfo(
                     name=m["name"],
                     engine=m["engine"],
                     functions=m["functions"],
@@ -108,9 +118,9 @@ class _AlgentaRuntimeServicer(runtime_pb2_grpc.AlgentaRuntimeServicer):
 
     async def ExecuteModule(  # noqa: N802
         self,
-        request: runtime_pb2.ExecuteRequest,
+        request: Any,
         context: grpc.aio.ServicerContext,
-    ) -> runtime_pb2.ExecuteResponse:
+    ) -> Any:
         entitlement = check_entitlement()
         if not is_module_permitted(request.module, entitlement):
             await context.abort(
@@ -132,16 +142,18 @@ class _AlgentaRuntimeServicer(runtime_pb2_grpc.AlgentaRuntimeServicer):
             args=args,
             request_id=request.request_id,
         )
-        metering.record(UsageEvent(
-            event_type="execute_module",
-            module=request.module,
-            function=request.function,
-            engine_used=result["engine_used"],
-            latency_ms=result["latency_ms"],
-            success=result["success"],
-            request_id=request.request_id,
-        ))
-        return runtime_pb2.ExecuteResponse(
+        metering.record(
+            UsageEvent(
+                event_type="execute_module",
+                module=request.module,
+                function=request.function,
+                engine_used=result["engine_used"],
+                latency_ms=result["latency_ms"],
+                success=result["success"],
+                request_id=request.request_id,
+            )
+        )
+        return runtime_pb2_module.ExecuteResponse(
             result_json=result["result_json"],
             latency_ms=result["latency_ms"],
             engine_used=result["engine_used"],
@@ -154,9 +166,9 @@ class _AlgentaRuntimeServicer(runtime_pb2_grpc.AlgentaRuntimeServicer):
 
     async def VerifyAndExecute(  # noqa: N802
         self,
-        request: runtime_pb2.VerifyAndExecuteRequest,
+        request: Any,
         context: grpc.aio.ServicerContext,
-    ) -> runtime_pb2.VerifyAndExecuteResponse:
+    ) -> Any:
         """
         Hot-path RPC: verify plan → execute — all local, no cloud round-trip.
 
@@ -165,8 +177,21 @@ class _AlgentaRuntimeServicer(runtime_pb2_grpc.AlgentaRuntimeServicer):
         """
         t0 = time.monotonic()
 
+        local_auth_context: AuthContext = {
+            "org_id": uuid.UUID(int=0),
+            "key_id": uuid.UUID(int=0),
+            "key_prefix": "local-runtime",
+            "user_id": None,
+            "plan": "developer",
+            "device_limit": 0,
+            "device_limit_configured": False,
+            "role": "owner",
+            "email": "local-runtime@algenta.local",
+        }
+
         # Import here to avoid circular dependency at module load time
-        from apps.api_server.routers.query import QueryRequest
+        from apps.api_server.routers.query import query_sources
+        from apps.api_server.routers.query_contract import QueryRequest
 
         try:
             if request.join_source_name:
@@ -183,31 +208,23 @@ class _AlgentaRuntimeServicer(runtime_pb2_grpc.AlgentaRuntimeServicer):
                 order=request.order or "desc",
             )
 
-            # Import and call query_sources inline (no HTTP round-trip)
-
-            from apps.api_server.routers.query import router as query_router  # noqa: F401
-
-            # Find the query endpoint function
-            for route in query_router.routes:  # type: ignore[attr-defined]
-                if hasattr(route, "path") and route.path == "/v1/query":
-                    endpoint_fn = route.endpoint
-                    break
-            else:
-                raise RuntimeError("Could not find /v1/query endpoint")
-
-            # Call with stub org context
-            resp = await endpoint_fn(payload=query_payload, org_id="local-dev")
+            resp = await query_sources(
+                payload=query_payload,
+                auth=local_auth_context,
+            )
             latency_ms = round((time.monotonic() - t0) * 1000, 2)
 
             result_json = json.dumps(resp.result) if resp.result is not None else "null"
-            metering.record(UsageEvent(
-                event_type="verify_and_execute",
-                engine_used="query-engine",
-                latency_ms=latency_ms,
-                success=True,
-                request_id=request.request_id,
-            ))
-            return runtime_pb2.VerifyAndExecuteResponse(
+            metering.record(
+                UsageEvent(
+                    event_type="verify_and_execute",
+                    engine_used="query-engine",
+                    latency_ms=latency_ms,
+                    success=True,
+                    request_id=request.request_id,
+                )
+            )
+            return runtime_pb2_module.VerifyAndExecuteResponse(
                 valid=True,
                 errors=[],
                 result_json=result_json,
@@ -222,7 +239,7 @@ class _AlgentaRuntimeServicer(runtime_pb2_grpc.AlgentaRuntimeServicer):
         except Exception as exc:
             latency_ms = round((time.monotonic() - t0) * 1000, 2)
             logger.error("verify_and_execute_error", error=str(exc))
-            return runtime_pb2.VerifyAndExecuteResponse(
+            return runtime_pb2_module.VerifyAndExecuteResponse(
                 valid=False,
                 errors=[str(exc)],
                 result_json="null",
@@ -238,11 +255,11 @@ class _AlgentaRuntimeServicer(runtime_pb2_grpc.AlgentaRuntimeServicer):
 
     async def GetEntitlementStatus(  # noqa: N802
         self,
-        request: runtime_pb2.EntitlementRequest,
+        request: Any,
         context: grpc.aio.ServicerContext,
-    ) -> runtime_pb2.EntitlementResponse:
+    ) -> Any:
         ent = check_entitlement()
-        return runtime_pb2.EntitlementResponse(
+        return runtime_pb2_module.EntitlementResponse(
             valid=ent.valid,
             tier=ent.tier,
             permitted_modules=ent.permitted_modules,
@@ -250,11 +267,12 @@ class _AlgentaRuntimeServicer(runtime_pb2_grpc.AlgentaRuntimeServicer):
             message=ent.message,
             device_id=ent.device_id[:8] if ent.device_id else "",
             device_limit=ent.device_limit,
-            source="",   # v1: populated in v3 when cloud license is real
+            source="",  # v1: populated in v3 when cloud license is real
         )
 
 
 # ── Server lifecycle ──────────────────────────────────────────────────────────
+
 
 class RuntimeServer:
     """Wraps the gRPC aio server with start/stop lifecycle."""
@@ -266,7 +284,7 @@ class RuntimeServer:
 
     async def start(self) -> None:
         self._server = grpc.aio.server()
-        runtime_pb2_grpc.add_AlgentaRuntimeServicer_to_server(
+        runtime_pb2_grpc_module.add_AlgentaRuntimeServicer_to_server(
             _AlgentaRuntimeServicer(self._executor, self._start_time),
             self._server,
         )

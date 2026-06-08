@@ -4,6 +4,7 @@ Revision ID: 0011
 Revises: 0010
 Create Date: 2026-03-21
 """
+
 from alembic import op
 from sqlalchemy import text
 
@@ -15,14 +16,18 @@ depends_on = None
 
 def upgrade() -> None:
     bind = op.get_bind()
-    bind.execute(text("""
+    bind.execute(
+        text("""
         ALTER TABLE simulation_runs
         ADD COLUMN IF NOT EXISTS simulation_model VARCHAR(30) NOT NULL DEFAULT 'monte_carlo'
-    """))
-    bind.execute(text("""
+    """)
+    )
+    bind.execute(
+        text("""
         CREATE INDEX IF NOT EXISTS ix_simulation_runs_simulation_model
         ON simulation_runs (simulation_model)
-    """))
+    """)
+    )
 
 
 def downgrade() -> None:

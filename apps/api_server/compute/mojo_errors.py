@@ -49,9 +49,7 @@ class MojoEngineError(Exception):
         self.stderr = stderr
         self.exit_code = exit_code
         self.code = code
-        self.recoverable = (
-            code in _RECOVERABLE_CODES if recoverable is None else recoverable
-        )
+        self.recoverable = code in _RECOVERABLE_CODES if recoverable is None else recoverable
         self.engine_type = engine_type
         self.stage = stage
         self.details = dict(details or {})

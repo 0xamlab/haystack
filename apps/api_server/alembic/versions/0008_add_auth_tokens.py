@@ -4,6 +4,7 @@ Revision ID: 0008
 Revises: 0007
 Create Date: 2026-03-21
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy import text
@@ -16,18 +17,21 @@ depends_on = None
 
 def _column_exists(table: str, column: str) -> bool:
     bind = op.get_bind()
-    result = bind.execute(text(
-        "SELECT COUNT(*) FROM information_schema.columns "
-        "WHERE table_name = :t AND column_name = :c"
-    ), {"t": table, "c": column})
+    result = bind.execute(
+        text(
+            "SELECT COUNT(*) FROM information_schema.columns "
+            "WHERE table_name = :t AND column_name = :c"
+        ),
+        {"t": table, "c": column},
+    )
     return (result.scalar() or 0) > 0
 
 
 def _index_exists(index_name: str) -> bool:
     bind = op.get_bind()
-    result = bind.execute(text(
-        "SELECT COUNT(*) FROM pg_indexes WHERE indexname = :idx"
-    ), {"idx": index_name})
+    result = bind.execute(
+        text("SELECT COUNT(*) FROM pg_indexes WHERE indexname = :idx"), {"idx": index_name}
+    )
     return (result.scalar() or 0) > 0
 
 
@@ -37,13 +41,19 @@ def upgrade() -> None:
         op.add_column("users", sa.Column("email_verification_token", sa.String(128), nullable=True))
 
     if not _column_exists("users", "email_verification_expires_at"):
-        op.add_column("users", sa.Column("email_verification_expires_at", sa.DateTime(timezone=True), nullable=True))
+        op.add_column(
+            "users",
+            sa.Column("email_verification_expires_at", sa.DateTime(timezone=True), nullable=True),
+        )
 
     if not _column_exists("users", "password_reset_token"):
         op.add_column("users", sa.Column("password_reset_token", sa.String(128), nullable=True))
 
     if not _column_exists("users", "password_reset_expires_at"):
-        op.add_column("users", sa.Column("password_reset_expires_at", sa.DateTime(timezone=True), nullable=True))
+        op.add_column(
+            "users",
+            sa.Column("password_reset_expires_at", sa.DateTime(timezone=True), nullable=True),
+        )
 
     # Create indexes only if they don't already exist
     if not _index_exists("ix_users_email_verification_token"):

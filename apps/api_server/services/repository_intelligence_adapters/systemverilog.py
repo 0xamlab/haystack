@@ -1,0 +1,29 @@
+from __future__ import annotations
+
+from apps.api_server.services.repository_intelligence_adapters import (
+    systemverilog_support as repository_systemverilog_support,
+)
+
+StableIdentifier = repository_systemverilog_support.StableIdentifier
+NormalizeRepositoryRelativePath = (
+    repository_systemverilog_support.NormalizeRepositoryRelativePath
+)
+ResolveSuffixMatch = repository_systemverilog_support.ResolveSuffixMatch
+
+_KNOWN_SUFFIXES = repository_systemverilog_support._KNOWN_SUFFIXES
+_DIRECT_SYSTEMVERILOG_SUFFIXES = (
+    repository_systemverilog_support._DIRECT_SYSTEMVERILOG_SUFFIXES
+)
+_AMBIGUOUS_SYSTEMVERILOG_SUFFIXES = (
+    repository_systemverilog_support._AMBIGUOUS_SYSTEMVERILOG_SUFFIXES
+)
+_PATH_HINT_PARTS = repository_systemverilog_support._PATH_HINT_PARTS
+_PATH_HINT_BASENAMES = repository_systemverilog_support._PATH_HINT_BASENAMES
+_RESERVED_REFERENCE_NAMES = repository_systemverilog_support._RESERVED_REFERENCE_NAMES
+
+strip_comments = repository_systemverilog_support.strip_comments
+has_systemverilog_path_hints = repository_systemverilog_support.has_systemverilog_path_hints
+is_probable_systemverilog_source = repository_systemverilog_support.is_probable_systemverilog_source
+module_aliases_for_path = repository_systemverilog_support.module_aliases_for_path
+parse_dependencies_only = repository_systemverilog_support.parse_dependencies_only
+parse_file = repository_systemverilog_support.parse_file

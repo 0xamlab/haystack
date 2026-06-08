@@ -1,0 +1,25 @@
+from __future__ import annotations
+
+from apps.api_server.services.repository_intelligence_adapters import (
+    glsl_analysis_support as repository_glsl_analysis_support,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    glsl_primitives as repository_glsl_primitives,
+)
+
+StableIdentifier = repository_glsl_primitives.StableIdentifier
+NormalizeRepositoryRelativePath = repository_glsl_primitives.NormalizeRepositoryRelativePath
+ResolveSuffixMatch = repository_glsl_primitives.ResolveSuffixMatch
+
+GLSL_SOURCE_SUFFIXES = repository_glsl_primitives.GLSL_SOURCE_SUFFIXES
+has_glsl_path_hints = repository_glsl_primitives.has_glsl_path_hints
+iter_function_call_names = repository_glsl_primitives.iter_function_call_names
+iter_symbol_entries = repository_glsl_primitives.iter_symbol_entries
+parse_glslify_require_statements = repository_glsl_primitives.parse_glslify_require_statements
+parse_include_statements = repository_glsl_primitives.parse_include_statements
+strip_comments = repository_glsl_primitives.strip_comments
+
+is_probable_glsl_source = repository_glsl_analysis_support.is_probable_glsl_source
+module_aliases_for_path = repository_glsl_analysis_support.module_aliases_for_path
+parse_dependencies_only = repository_glsl_analysis_support.parse_dependencies_only
+parse_file = repository_glsl_analysis_support.parse_file

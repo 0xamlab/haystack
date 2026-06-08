@@ -21,11 +21,7 @@ logger = structlog.get_logger(__name__)
 def _artifact_cache_dir(configured_dir: str | None = None) -> Path | None:
     env_cache_dir = os.environ.get("ALGENTA_SOURCE_ARTIFACT_CACHE_DIR")
     is_default_path = configured_dir is None and env_cache_dir is None
-    cache_dir = Path(
-        configured_dir
-        or env_cache_dir
-        or Path.home() / ".algenta" / "artifact_cache"
-    )
+    cache_dir = Path(configured_dir or env_cache_dir or Path.home() / ".algenta" / "artifact_cache")
     try:
         cache_dir.mkdir(parents=True, exist_ok=True)
     except OSError as exc:

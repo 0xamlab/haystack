@@ -7,12 +7,13 @@ Create Date: 2026-04-13
 Adds the TEAM pricing tier to the org_plan Postgres enum.
 PostgreSQL requires ALTER TYPE ... ADD VALUE for enum extensions.
 """
+
 from alembic import op
 
-revision      = "0015"
+revision = "0015"
 down_revision = "0014"
 branch_labels = None
-depends_on    = None
+depends_on = None
 
 
 def upgrade() -> None:

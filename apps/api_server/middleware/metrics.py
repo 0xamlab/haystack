@@ -13,6 +13,7 @@ Usage in simulation_service.py:
   from apps.api_server.middleware.metrics import record_simulation_latency
   record_simulation_latency(total_ms=13, mojo_ms=8, pool_wait_ms=0.5)
 """
+
 from __future__ import annotations
 
 from prometheus_client import Counter, Histogram
@@ -43,7 +44,7 @@ MOJO_POOL_WAIT = Histogram(
 QUOTA_CHECK_LATENCY = Histogram(
     name="quota_check_duration_seconds",
     documentation="Quota check latency (Redis path vs DB fallback).",
-    labelnames=["source"],   # "redis" | "db"
+    labelnames=["source"],  # "redis" | "db"
     buckets=[0.0005, 0.001, 0.002, 0.005, 0.010, 0.050],
 )
 
@@ -52,7 +53,7 @@ QUOTA_CHECK_LATENCY = Histogram(
 SIMULATION_ERRORS = Counter(
     name="simulation_errors_total",
     documentation="Total simulation errors by type.",
-    labelnames=["error_type"],   # "engine_error" | "quota_exceeded" | "rate_limit"
+    labelnames=["error_type"],  # "engine_error" | "quota_exceeded" | "rate_limit"
 )
 
 SIMULATION_TOTAL = Counter(
@@ -69,6 +70,7 @@ MOJO_WORKER_RESTARTS = Counter(
 
 
 # ─── Helper — called by simulate.py after each request ───────────────────────
+
 
 def record_simulation_latency(
     *,

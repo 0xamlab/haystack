@@ -1,4 +1,5 @@
 """Base connector class and registry."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -29,7 +30,11 @@ class BaseConnector(ABC):
         """Test connectivity. Returns (success, message)."""
         ...
 
-    async def map_to_simulation(self, data: list[dict], domain: str = "") -> dict[str, Any]:
+    async def map_to_simulation(
+        self,
+        data: list[dict[str, Any]],
+        domain: str = "",
+    ) -> dict[str, Any]:
         """
         Map raw data to a simulation payload using field analysis.
 
@@ -57,12 +62,29 @@ class BaseConnector(ABC):
 
         # Keywords for polarity detection (mirrors field_mapper.mojo)
         pos_keywords = {
-            "revenue", "profit", "income", "sales", "growth",
-            "return", "gain", "value", "benefit", "savings", "yield",
+            "revenue",
+            "profit",
+            "income",
+            "sales",
+            "growth",
+            "return",
+            "gain",
+            "value",
+            "benefit",
+            "savings",
+            "yield",
         }
         neg_keywords = {
-            "cost", "expense", "loss", "risk", "churn",
-            "debt", "liability", "penalty", "fee", "overhead",
+            "cost",
+            "expense",
+            "loss",
+            "risk",
+            "churn",
+            "debt",
+            "liability",
+            "penalty",
+            "fee",
+            "overhead",
         }
 
         for field_name in field_names:
@@ -111,11 +133,13 @@ class BaseConnector(ABC):
                 dist = "triangular"
                 params = {"low": low, "mode": mid, "high": high}
 
-            variables.append({
-                "name": field_name,
-                "distribution": dist,
-                "params": params,
-            })
+            variables.append(
+                {
+                    "name": field_name,
+                    "distribution": dist,
+                    "params": params,
+                }
+            )
 
             # Polarity
             lower_name = field_name.lower()
@@ -176,7 +200,6 @@ class ConnectorRegistry:
         connector_class = cls._connectors.get(connector_type)
         if not connector_class:
             raise ValueError(
-                f"Unknown connector type: {connector_type}. "
-                f"Available: {cls.available_types()}"
+                f"Unknown connector type: {connector_type}. Available: {cls.available_types()}"
             )
         return connector_class(config)

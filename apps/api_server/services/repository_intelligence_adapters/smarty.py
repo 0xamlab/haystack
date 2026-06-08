@@ -1,0 +1,30 @@
+from __future__ import annotations
+
+from apps.api_server.services.repository_intelligence_adapters import (
+    smarty_analysis_support as repository_smarty_analysis_support,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    smarty_primitives as repository_smarty_primitives,
+)
+
+StableIdentifier = repository_smarty_primitives.StableIdentifier
+NormalizeRepositoryRelativePath = repository_smarty_primitives.NormalizeRepositoryRelativePath
+ResolveSuffixMatch = repository_smarty_primitives.ResolveSuffixMatch
+
+SMARTY_SUFFIXES = repository_smarty_primitives.SMARTY_SUFFIXES
+collect_symbols = repository_smarty_primitives.collect_symbols
+has_smarty_path_hints = repository_smarty_primitives.has_smarty_path_hints
+imported_symbol_bindings = repository_smarty_primitives.imported_symbol_bindings
+iter_dependency_entries = repository_smarty_primitives.iter_dependency_entries
+iter_reference_entries = repository_smarty_primitives.iter_reference_entries
+iter_symbol_entries = repository_smarty_primitives.iter_symbol_entries
+module_aliases_for_path = repository_smarty_analysis_support.module_aliases_for_path
+module_name_from_path = repository_smarty_primitives.module_name_from_path
+normalize_identifier = repository_smarty_primitives.normalize_identifier
+resolve_import = repository_smarty_primitives.resolve_import
+source_symbol_name_for_line = repository_smarty_primitives.source_symbol_name_for_line
+strip_comments = repository_smarty_primitives.strip_comments
+
+is_probable_smarty_source = repository_smarty_analysis_support.is_probable_smarty_source
+parse_dependencies_only = repository_smarty_analysis_support.parse_dependencies_only
+parse_file = repository_smarty_analysis_support.parse_file

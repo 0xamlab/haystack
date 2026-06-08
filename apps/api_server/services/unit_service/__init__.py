@@ -26,6 +26,7 @@ Registries (direct access for power users):
   SPEED_TO_MS, DURATION_TO_SECONDS, ENERGY_TO_KWH
   DOMAIN_VARIABLE_HINTS
 """
+
 from __future__ import annotations
 
 # ── Conversion ────────────────────────────────────────────────────────────────

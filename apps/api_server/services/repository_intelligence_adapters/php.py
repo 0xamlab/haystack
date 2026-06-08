@@ -1,0 +1,51 @@
+from __future__ import annotations
+
+from apps.api_server.services import (
+    repository_intelligence_contracts as repository_contracts,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    php_analysis_support as repository_php_analysis_support,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    php_primitives as repository_php_primitives,
+)
+
+_Dependency = repository_contracts._Dependency
+_ImportedSymbolBinding = repository_contracts._ImportedSymbolBinding
+_Symbol = repository_contracts._Symbol
+_SymbolReferenceCandidate = repository_contracts._SymbolReferenceCandidate
+
+StableIdentifier = repository_php_primitives.StableIdentifier
+NormalizeRepositoryRelativePath = repository_php_primitives.NormalizeRepositoryRelativePath
+ResolveSuffixMatch = repository_php_primitives.ResolveSuffixMatch
+
+INCLUDE_RE = repository_php_primitives.INCLUDE_RE
+NAMESPACE_RE = repository_php_primitives.NAMESPACE_RE
+USE_RE = repository_php_primitives.USE_RE
+TYPE_DECL_RE = repository_php_primitives.TYPE_DECL_RE
+FUNCTION_DECL_RE = repository_php_primitives.FUNCTION_DECL_RE
+QUALIFIED_REFERENCE_RE = repository_php_primitives.QUALIFIED_REFERENCE_RE
+TYPE_REFERENCE_RE = repository_php_primitives.TYPE_REFERENCE_RE
+TRAIT_USE_RE = repository_php_primitives.TRAIT_USE_RE
+DOC_TAG_RE = repository_php_primitives.DOC_TAG_RE
+DOC_TYPE_TOKEN_RE = repository_php_primitives.DOC_TYPE_TOKEN_RE
+VARIABLE_TYPE_TOKEN_RE = repository_php_primitives.VARIABLE_TYPE_TOKEN_RE
+RESERVED_SYMBOL_NAMES = repository_php_primitives.RESERVED_SYMBOL_NAMES
+
+current_namespace = repository_php_primitives.current_namespace
+leading_docblock = repository_php_primitives.leading_docblock
+symbol_declaration_header = repository_php_primitives.symbol_declaration_header
+doc_type_tokens = repository_php_primitives.doc_type_tokens
+type_tokens_from_header = repository_php_primitives.type_tokens_from_header
+_symbol_entries = repository_php_primitives._symbol_entries
+
+module_aliases_for_path = repository_php_analysis_support.module_aliases_for_path
+resolve_import = repository_php_analysis_support.resolve_import
+resolve_same_namespace_reference = (
+    repository_php_analysis_support.resolve_same_namespace_reference
+)
+resolve_reference_target = repository_php_analysis_support.resolve_reference_target
+iter_reference_targets = repository_php_analysis_support.iter_reference_targets
+extract_import_bindings = repository_php_analysis_support.extract_import_bindings
+parse_dependencies_only = repository_php_analysis_support.parse_dependencies_only
+parse_file = repository_php_analysis_support.parse_file

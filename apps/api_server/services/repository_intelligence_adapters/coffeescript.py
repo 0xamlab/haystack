@@ -1,0 +1,54 @@
+from __future__ import annotations
+
+from apps.api_server.services.repository_intelligence_adapters import (
+    coffeescript_analysis_support as repository_coffeescript_analysis_support,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    coffeescript_primitives as repository_coffeescript_primitives,
+)
+
+StableIdentifier = repository_coffeescript_primitives.StableIdentifier
+NormalizeRepositoryRelativePath = (
+    repository_coffeescript_primitives.NormalizeRepositoryRelativePath
+)
+ResolveSuffixMatch = repository_coffeescript_primitives.ResolveSuffixMatch
+
+_KNOWN_SUFFIXES = repository_coffeescript_primitives._KNOWN_SUFFIXES
+_COFFEESCRIPT_SHEBANG_RE = repository_coffeescript_primitives._COFFEESCRIPT_SHEBANG_RE
+_CLASS_DECL_RE = repository_coffeescript_primitives._CLASS_DECL_RE
+_FUNCTION_ASSIGN_RE = repository_coffeescript_primitives._FUNCTION_ASSIGN_RE
+_EXPORT_FUNCTION_ASSIGN_RE = repository_coffeescript_primitives._EXPORT_FUNCTION_ASSIGN_RE
+_REQUIRE_ASSIGN_RE = repository_coffeescript_primitives._REQUIRE_ASSIGN_RE
+_REQUIRE_SIDE_EFFECT_RE = repository_coffeescript_primitives._REQUIRE_SIDE_EFFECT_RE
+_IMPORT_FROM_RE = repository_coffeescript_primitives._IMPORT_FROM_RE
+_IMPORT_SIDE_EFFECT_RE = repository_coffeescript_primitives._IMPORT_SIDE_EFFECT_RE
+_QUALIFIED_CALL_RE = repository_coffeescript_primitives._QUALIFIED_CALL_RE
+_BARE_CALL_RE = repository_coffeescript_primitives._BARE_CALL_RE
+_NEW_RE = repository_coffeescript_primitives._NEW_RE
+_INSTANCE_ASSIGN_RE = repository_coffeescript_primitives._INSTANCE_ASSIGN_RE
+_RESERVED_SYMBOL_NAMES = repository_coffeescript_primitives._RESERVED_SYMBOL_NAMES
+_CollectedSymbol = repository_coffeescript_primitives._CollectedSymbol
+
+_line_number = repository_coffeescript_primitives._line_number
+_line_count = repository_coffeescript_primitives._line_count
+_normalize_source_text = repository_coffeescript_primitives._normalize_source_text
+strip_comments = repository_coffeescript_primitives.strip_comments
+has_coffeescript_path_hints = (
+    repository_coffeescript_primitives.has_coffeescript_path_hints
+)
+has_coffeescript_shebang = repository_coffeescript_primitives.has_coffeescript_shebang
+is_probable_coffeescript_source = (
+    repository_coffeescript_primitives.is_probable_coffeescript_source
+)
+normalize_identifier = repository_coffeescript_primitives.normalize_identifier
+module_symbol_name = repository_coffeescript_primitives.module_symbol_name
+import_targets_for_text = repository_coffeescript_primitives.import_targets_for_text
+collect_symbol_entries = repository_coffeescript_primitives.collect_symbol_entries
+
+module_aliases_for_path = repository_coffeescript_analysis_support.module_aliases_for_path
+resolve_import = repository_coffeescript_analysis_support.resolve_import
+_source_symbol_id_for_line = (
+    repository_coffeescript_analysis_support._source_symbol_id_for_line
+)
+parse_dependencies_only = repository_coffeescript_analysis_support.parse_dependencies_only
+parse_file = repository_coffeescript_analysis_support.parse_file

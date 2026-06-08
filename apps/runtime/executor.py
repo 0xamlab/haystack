@@ -1,6 +1,6 @@
 """
-Executor — bridges gRPC ExecuteModule / VerifyAndExecute calls to the Mojo
-binary (unix socket) or the Python fallback when the binary is unavailable.
+Executor — bridges gRPC ExecuteModule / VerifyAndExecute calls to the local
+Mojo runtime surfaces.
 
 Mojo binary protocol (from mojo/engine/main.mojo):
   Wire: [4-byte big-endian uint32 length][UTF-8 JSON payload]
@@ -8,10 +8,10 @@ Mojo binary protocol (from mojo/engine/main.mojo):
   Request:    JSON with "engine_type" field (+ payload)
   Response:   JSON result string
 
-The executor maintains a persistent connection to the Mojo server socket
-(managed by daemon.py). If the socket is not available it falls back to
-the Python adapter.
+The executor uses the compiled Mojo worker socket for both simulation engines
+and runtime-owned libraries. Python fallback is intentionally disabled.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -26,9 +26,19 @@ from typing import Any
 
 import structlog
 
+from apps.runtime.mojo_inventory import RuntimeLibraryModule
+from apps.runtime.mojo_library_runner import (
+    MojoLibraryError,
+    build_runtime_library_worker_request,
+    library_runtime_available,
+    parse_runtime_library_worker_response,
+    runtime_library_modules,
+)
+
 logger = structlog.get_logger(__name__)
 
 # Default socket path — must match daemon.py
+
 
 def _default_mojo_socket() -> str:
     base_dir = Path(tempfile.gettempdir()) / "algenta-mojo"
@@ -36,27 +46,22 @@ def _default_mojo_socket() -> str:
 
 
 _DEFAULT_MOJO_SOCK = os.environ.get("ALGENTA_MOJO_SOCK", _default_mojo_socket())
-
-# Module registry: maps library name → list of known public functions.
-# Populated lazily from the test suite file names and MOJO_TIMING output.
-# This is the v1 static registry; v2+ will read from the bundle manifest.
-_MODULE_REGISTRY: dict[str, list[str]] = {
-    "scheduling_algo": ["fcfs", "sjf", "priority_scheduling"],
-    "recommender": [
-        "cosine_sim_users", "predict_rating", "popularity_ranking",
-        "mean_rating_per_item", "mean_rating_per_user", "top_n_items",
-    ],
-    # Simulation engines always available via engine_type dispatch
-    "monte_carlo": ["run"],
-    "scenario": ["run"],
-    "bootstrap": ["run"],
-    "sensitivity": ["run"],
-    "decision_tree": ["run"],
-    "time_series": ["run"],
-}
+_SIMULATION_ENGINES = (
+    "bootstrap",
+    "decision_tree",
+    "importance_sampling",
+    "lhs",
+    "mcmc",
+    "monte_carlo",
+    "qmc_sobol",
+    "scenario",
+    "sensitivity",
+    "time_series",
+)
 
 
 # ── Low-level Mojo socket helpers ─────────────────────────────────────────────
+
 
 async def _mojo_send(writer: asyncio.StreamWriter, payload: str) -> None:
     data = payload.encode()
@@ -72,7 +77,10 @@ async def _mojo_recv(reader: asyncio.StreamReader) -> str:
     return data.decode()
 
 
-async def _mojo_call(payload: dict, sock_path: str = _DEFAULT_MOJO_SOCK) -> dict:
+async def _mojo_call(
+    payload: dict[str, Any],
+    sock_path: str = _DEFAULT_MOJO_SOCK,
+) -> dict[str, Any]:
     """
     Open a connection to the Mojo unix socket, send one request, return parsed JSON.
     Raises ConnectionRefusedError / FileNotFoundError if socket is not available.
@@ -84,7 +92,10 @@ async def _mojo_call(payload: dict, sock_path: str = _DEFAULT_MOJO_SOCK) -> dict
 
         await _mojo_send(writer, json.dumps(payload))
         raw = await _mojo_recv(reader)
-        return json.loads(raw)
+        decoded = json.loads(raw)
+        if not isinstance(decoded, dict):
+            raise ValueError("Mojo worker returned a non-object response payload.")
+        return decoded
     finally:
         writer.close()
         try:
@@ -95,44 +106,24 @@ async def _mojo_call(payload: dict, sock_path: str = _DEFAULT_MOJO_SOCK) -> dict
 
 # ── Python fallback ───────────────────────────────────────────────────────────
 
-def _python_fallback(module: str, function: str, args: Any) -> dict:
+
+def _python_fallback(module: str, function: str, args: Any) -> dict[str, str]:
     """
     Thin Python fallback for simulation engines.
     For A-Z domain libraries, returns a not-implemented stub until the Mojo
     binary is built and the library is wired into main.mojo's dispatch.
     """
-    # Simulation engine fallback — delegates to existing python_adapter
-    if module in (
-        "monte_carlo",
-        "scenario",
-        "bootstrap",
-        "sensitivity",
-        "decision_tree",
-        "time_series",
-    ):
-        from mojo.bindings.python_adapter import run_simulation  # type: ignore[import]
-        if isinstance(args, list) and len(args) > 0:
-            config = args[0]
-        elif isinstance(args, dict):
-            config = args
-        else:
-            config = {}
-        config.setdefault("engine_type", module)
-        result = run_simulation(config)
-        return {"result": result, "engine": "python-fallback"}
-
-    # Domain library fallback — not yet implemented
     return {
         "error": (
-            f"Module '{module}' not available in Python fallback. "
-            "Build the Mojo binary to enable domain library execution: "
-            "cd mojo_env && pixi run mojo build ../mojo/engine/main.mojo -o ../mojo_build/simulate"
+            f"python_fallback_disabled: Python fallback is disabled for {module}.{function}. "
+            "Start the local Mojo runtime or use governed Algenta API endpoints."
         ),
-        "engine": "python-fallback",
+        "engine": "unavailable",
     }
 
 
 # ── Public executor API ───────────────────────────────────────────────────────
+
 
 class Executor:
     """
@@ -146,13 +137,19 @@ class Executor:
     def _mojo_available(self) -> bool:
         return Path(self._mojo_sock).exists()
 
+    def _library_runtime_available(self) -> bool:
+        return library_runtime_available()
+
+    def _list_runtime_library_modules(self) -> tuple[RuntimeLibraryModule, ...]:
+        return runtime_library_modules()
+
     async def execute_module(
         self,
         module: str,
         function: str,
         args: Any,
         request_id: str = "",
-    ) -> dict:
+    ) -> dict[str, Any]:
         """
         Execute module::function(args).
         Returns {"result_json", "latency_ms", "engine_used", "success", "error"}.
@@ -164,6 +161,7 @@ class Executor:
 
         # ── Credit check (local quota enforcement) ────────────────────────
         from apps.runtime.credits import consume_credit
+
         if not await consume_credit():
             append_event(
                 task_id=task_id,
@@ -179,9 +177,9 @@ class Executor:
             )
             return {
                 "result_json": "null",
-                "latency_ms":  0.0,
+                "latency_ms": 0.0,
                 "engine_used": "blocked",
-                "success":     False,
+                "success": False,
                 "error": (
                     "execution_quota_exhausted: no execution credits remaining. "
                     "The daemon will refresh automatically when the server is reachable, "
@@ -200,46 +198,81 @@ class Executor:
         )
         t0 = time.monotonic()
 
-        # Build Mojo dispatch payload.
-        # Simulation engines use engine_type dispatch.
-        # Domain libraries use module::function dispatch (added in future main.mojo).
-        mojo_payload: dict = {}
-        is_sim_engine = module in (
-            "monte_carlo",
-            "scenario",
-            "bootstrap",
-            "sensitivity",
-            "decision_tree",
-            "time_series",
-            "mcmc",
-            "lhs",
-            "qmc_sobol",
-        )
-        if is_sim_engine:
-            if isinstance(args, dict):
-                mojo_payload = {**args, "engine_type": module}
-            else:
-                mojo_payload = {"engine_type": module}
-        else:
-            # Generic library dispatch — routes via "library" engine_type
-            mojo_payload = {
-                "engine_type": "library",
-                "module": module,
-                "function": function,
-                "args": args,
-            }
+        is_sim_engine = module in _SIMULATION_ENGINES
 
         try:
-            if self._mojo_available():
+            if not self._mojo_available():
+                return {
+                    "result_json": "null",
+                    "latency_ms": round((time.monotonic() - t0) * 1000, 2),
+                    "engine_used": "unavailable",
+                    "success": False,
+                    "error": (
+                        "compute_runtime_unavailable: local Mojo runtime is "
+                        "not available. Start the daemon with a compiled Mojo binary."
+                    ),
+                }
+            if is_sim_engine:
+                mojo_payload: dict[str, Any]
+                if isinstance(args, dict):
+                    mojo_payload = {**args, "engine_type": module}
+                else:
+                    mojo_payload = {"engine_type": module}
                 raw = await _mojo_call(mojo_payload, self._mojo_sock)
+                result_payload = raw.get("result", raw)
+                has_error = bool(raw.get("error"))
                 engine_used = "mojo"
+                error_message = str(raw.get("error", "") or "")
             else:
-                raw = _python_fallback(module, function, args)
-                engine_used = "python-fallback"
-        except (ConnectionRefusedError, FileNotFoundError, OSError):
-            logger.warning("mojo_socket_unavailable", sock=self._mojo_sock)
-            raw = _python_fallback(module, function, args)
-            engine_used = "python-fallback"
+                function_spec, mojo_payload = build_runtime_library_worker_request(
+                    module,
+                    function,
+                    args,
+                )
+                raw = await _mojo_call(mojo_payload, self._mojo_sock)
+                result_payload = parse_runtime_library_worker_response(
+                    module,
+                    function,
+                    raw,
+                    function_spec=function_spec,
+                )
+                has_error = False
+                engine_used = "mojo"
+                error_message = ""
+        except MojoLibraryError as exc:
+            latency_ms = round((time.monotonic() - t0) * 1000, 2)
+            append_event(
+                task_id=task_id,
+                surface="runtime",
+                action="execute_module",
+                status="failed",
+                target=target,
+                request_id=request_id,
+                engine_used="unavailable",
+                latency_ms=latency_ms,
+                success=False,
+                error=f"{exc.code}: {exc.message}",
+            )
+            return {
+                "result_json": "null",
+                "latency_ms": latency_ms,
+                "engine_used": "unavailable",
+                "success": False,
+                "error": f"{exc.code}: {exc.message}",
+            }
+        except (ConnectionRefusedError, FileNotFoundError, OSError) as exc:
+            logger.warning("mojo_socket_unavailable", sock=self._mojo_sock, error=str(exc))
+            latency_ms = round((time.monotonic() - t0) * 1000, 2)
+            return {
+                "result_json": "null",
+                "latency_ms": latency_ms,
+                "engine_used": "unavailable",
+                "success": False,
+                "error": (
+                    "compute_runtime_unavailable: local Mojo runtime connection failed. "
+                    "Start the daemon before executing runtime-owned modules."
+                ),
+            }
         except Exception as exc:
             latency_ms = round((time.monotonic() - t0) * 1000, 2)
             append_event(
@@ -263,7 +296,6 @@ class Executor:
             }
 
         latency_ms = round((time.monotonic() - t0) * 1000, 2)
-        has_error = "error" in raw and raw.get("error")
         append_event(
             task_id=task_id,
             surface="runtime",
@@ -274,26 +306,37 @@ class Executor:
             engine_used=engine_used,
             latency_ms=latency_ms,
             success=not has_error,
-            error=raw.get("error", "") if has_error else "",
+            error=error_message if has_error else "",
         )
         return {
-            "result_json": json.dumps(raw.get("result", raw)),
+            "result_json": json.dumps(result_payload),
             "latency_ms": latency_ms,
             "engine_used": engine_used,
             "success": not has_error,
-            "error": raw.get("error", "") if has_error else "",
+            "error": error_message if has_error else "",
         }
 
-    def list_modules(self) -> list[dict]:
-        """Return all known modules with their functions and engine availability."""
-        mojo_ok = self._mojo_available()
-        sim_engines = {"monte_carlo", "scenario", "bootstrap", "sensitivity",
-                       "decision_tree", "time_series", "mcmc", "lhs", "qmc_sobol"}
-        result = []
-        for name, fns in _MODULE_REGISTRY.items():
-            if name in sim_engines:
-                engine = "mojo" if mojo_ok else "python-fallback"
-            else:
-                engine = "mojo" if mojo_ok else "unavailable"
-            result.append({"name": name, "engine": engine, "functions": fns})
+    def list_modules(self) -> list[dict[str, object]]:
+        """Return runtime-executable modules with their functions and engine availability."""
+        result: list[dict[str, Any]] = []
+        sim_engine_state = "mojo" if self._mojo_available() else "unavailable"
+        library_engine_state = (
+            "mojo"
+            if self._mojo_available() and self._library_runtime_available()
+            else "unavailable"
+        )
+
+        for name in _SIMULATION_ENGINES:
+            result.append({"name": name, "engine": sim_engine_state, "functions": ["run"]})
+
+        for module in self._list_runtime_library_modules():
+            result.append(
+                {
+                    "name": module.import_path,
+                    "engine": library_engine_state,
+                    "functions": [function.name for function in module.functions],
+                }
+            )
+
+        result.sort(key=lambda entry: entry["name"])
         return result

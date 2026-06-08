@@ -1,0 +1,37 @@
+from __future__ import annotations
+
+from apps.api_server.services import (
+    repository_intelligence_contracts as repository_contracts,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    openscad_analysis_support as repository_openscad_analysis_support,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    openscad_primitives as repository_openscad_primitives,
+)
+
+_Dependency = repository_contracts._Dependency
+_Symbol = repository_contracts._Symbol
+_SymbolReferenceCandidate = repository_contracts._SymbolReferenceCandidate
+
+StableIdentifier = repository_openscad_primitives.StableIdentifier
+ResolveSuffixMatch = repository_openscad_primitives.ResolveSuffixMatch
+
+_KNOWN_SUFFIXES = repository_openscad_primitives._KNOWN_SUFFIXES
+_IMPORT_RE = repository_openscad_primitives._IMPORT_RE
+_MODULE_DECL_RE = repository_openscad_primitives._MODULE_DECL_RE
+_FUNCTION_DECL_RE = repository_openscad_primitives._FUNCTION_DECL_RE
+_CALL_RE = repository_openscad_primitives._CALL_RE
+_RESERVED_NAMES = repository_openscad_primitives._RESERVED_NAMES
+
+strip_comments = repository_openscad_primitives.strip_comments
+has_openscad_path_hints = repository_openscad_primitives.has_openscad_path_hints
+is_probable_openscad_source = repository_openscad_primitives.is_probable_openscad_source
+import_targets_for_text = repository_openscad_primitives.import_targets_for_text
+module_symbol_name = repository_openscad_primitives.module_symbol_name
+collect_symbol_entries = repository_openscad_primitives.collect_symbol_entries
+
+module_aliases_for_path = repository_openscad_analysis_support.module_aliases_for_path
+resolve_import = repository_openscad_analysis_support.resolve_import
+parse_dependencies_only = repository_openscad_analysis_support.parse_dependencies_only
+parse_file = repository_openscad_analysis_support.parse_file

@@ -1,0 +1,87 @@
+from __future__ import annotations
+
+from apps.api_server.services.repository_intelligence_adapters import (
+    classic_visual_basic_analysis_support as repository_classic_visual_basic_analysis_support,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    classic_visual_basic_primitives as repository_classic_visual_basic_primitives,
+)
+
+StableIdentifier = repository_classic_visual_basic_primitives.StableIdentifier
+ResolveSuffixMatch = repository_classic_visual_basic_primitives.ResolveSuffixMatch
+ResolveDirectoryPrefixMatch = (
+    repository_classic_visual_basic_primitives.ResolveDirectoryPrefixMatch
+)
+
+_KNOWN_CLASSIC_VISUAL_BASIC_SUFFIXES = (
+    repository_classic_visual_basic_primitives._KNOWN_CLASSIC_VISUAL_BASIC_SUFFIXES
+)
+RESERVED_SYMBOL_NAMES = (
+    repository_classic_visual_basic_primitives.RESERVED_SYMBOL_NAMES
+)
+BUILTIN_TYPE_NAMES = repository_classic_visual_basic_primitives.BUILTIN_TYPE_NAMES
+ATTRIBUTE_VB_NAME_RE = repository_classic_visual_basic_primitives.ATTRIBUTE_VB_NAME_RE
+BEGIN_COMPONENT_RE = repository_classic_visual_basic_primitives.BEGIN_COMPONENT_RE
+CLASS_VERSION_RE = repository_classic_visual_basic_primitives.CLASS_VERSION_RE
+OPTION_EXPLICIT_RE = repository_classic_visual_basic_primitives.OPTION_EXPLICIT_RE
+ROUTINE_DECL_RE = repository_classic_visual_basic_primitives.ROUTINE_DECL_RE
+TYPE_DECL_RE = repository_classic_visual_basic_primitives.TYPE_DECL_RE
+PROJECT_NAME_RE = repository_classic_visual_basic_primitives.PROJECT_NAME_RE
+PROJECT_STARTUP_RE = repository_classic_visual_basic_primitives.PROJECT_STARTUP_RE
+PROJECT_COMPONENT_RE = repository_classic_visual_basic_primitives.PROJECT_COMPONENT_RE
+VARIABLE_TYPE_BINDING_RE = (
+    repository_classic_visual_basic_primitives.VARIABLE_TYPE_BINDING_RE
+)
+SET_NEW_BINDING_RE = repository_classic_visual_basic_primitives.SET_NEW_BINDING_RE
+TYPE_REFERENCE_RE = repository_classic_visual_basic_primitives.TYPE_REFERENCE_RE
+QUALIFIED_REFERENCE_RE = (
+    repository_classic_visual_basic_primitives.QUALIFIED_REFERENCE_RE
+)
+UNQUALIFIED_CALL_RE = repository_classic_visual_basic_primitives.UNQUALIFIED_CALL_RE
+
+_normalize_repository_relative_path = (
+    repository_classic_visual_basic_primitives._normalize_repository_relative_path
+)
+_strip_inline_comment = (
+    repository_classic_visual_basic_primitives._strip_inline_comment
+)
+strip_comments = repository_classic_visual_basic_primitives.strip_comments
+normalize_target = repository_classic_visual_basic_primitives.normalize_target
+normalize_symbol_name = (
+    repository_classic_visual_basic_primitives.normalize_symbol_name
+)
+component_name = repository_classic_visual_basic_primitives.component_name
+project_name = repository_classic_visual_basic_primitives.project_name
+project_startup_name = (
+    repository_classic_visual_basic_primitives.project_startup_name
+)
+is_probable_classic_visual_basic_source = (
+    repository_classic_visual_basic_primitives.is_probable_classic_visual_basic_source
+)
+_component_symbol_kind = (
+    repository_classic_visual_basic_primitives._component_symbol_kind
+)
+_component_declaration_line = (
+    repository_classic_visual_basic_primitives._component_declaration_line
+)
+project_component_entries = (
+    repository_classic_visual_basic_primitives.project_component_entries
+)
+
+collect_symbol_entries = (
+    repository_classic_visual_basic_analysis_support.collect_symbol_entries
+)
+module_aliases_for_path = (
+    repository_classic_visual_basic_analysis_support.module_aliases_for_path
+)
+resolve_target = repository_classic_visual_basic_analysis_support.resolve_target
+_instance_bindings = (
+    repository_classic_visual_basic_analysis_support._instance_bindings
+)
+_append_dependency = (
+    repository_classic_visual_basic_analysis_support._append_dependency
+)
+parse_dependencies_only = (
+    repository_classic_visual_basic_analysis_support.parse_dependencies_only
+)
+parse_file = repository_classic_visual_basic_analysis_support.parse_file

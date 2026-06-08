@@ -1,0 +1,46 @@
+from __future__ import annotations
+
+from apps.api_server.services import (
+    repository_intelligence_contracts as repository_contracts,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    scratch_analysis_support as repository_scratch_analysis_support,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    scratch_primitives as repository_scratch_primitives,
+)
+
+_Dependency = repository_contracts._Dependency
+_Symbol = repository_contracts._Symbol
+_SymbolReferenceCandidate = repository_contracts._SymbolReferenceCandidate
+
+StableIdentifier = repository_scratch_primitives.StableIdentifier
+NormalizeRepositoryRelativePath = repository_scratch_primitives.NormalizeRepositoryRelativePath
+ResolveSuffixMatch = repository_scratch_primitives.ResolveSuffixMatch
+
+_KNOWN_SUFFIXES = repository_scratch_primitives._KNOWN_SUFFIXES
+_HANDLER_OPCODE_NAMES = repository_scratch_primitives._HANDLER_OPCODE_NAMES
+
+_ordered_names = repository_scratch_primitives._ordered_names
+block_field_name = repository_scratch_primitives.block_field_name
+broadcast_name_from_block = repository_scratch_primitives.broadcast_name_from_block
+broadcast_names = repository_scratch_primitives.broadcast_names
+custom_block_signatures = repository_scratch_primitives.custom_block_signatures
+handler_symbol_name = repository_scratch_primitives.handler_symbol_name
+has_scratch_path_hints = repository_scratch_primitives.has_scratch_path_hints
+input_block_ids = repository_scratch_primitives.input_block_ids
+is_probable_scratch_source = repository_scratch_primitives.is_probable_scratch_source
+load_project_payload = repository_scratch_primitives.load_project_payload
+procedure_signature_from_call = repository_scratch_primitives.procedure_signature_from_call
+procedure_signature_from_definition = (
+    repository_scratch_primitives.procedure_signature_from_definition
+)
+project_targets = repository_scratch_primitives.project_targets
+target_blocks = repository_scratch_primitives.target_blocks
+target_name = repository_scratch_primitives.target_name
+top_level_event_blocks = repository_scratch_primitives.top_level_event_blocks
+walk_script_block_ids = repository_scratch_primitives.walk_script_block_ids
+
+module_aliases_for_path = repository_scratch_analysis_support.module_aliases_for_path
+parse_dependencies_only = repository_scratch_analysis_support.parse_dependencies_only
+parse_file = repository_scratch_analysis_support.parse_file

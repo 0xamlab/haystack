@@ -14,11 +14,13 @@ POST /v1/metering
   Body:    { device_id, events: [...] }
   Response: { accepted, billing_period }
 """
+
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import Annotated
+from typing import Annotated, Any, cast
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
@@ -36,28 +38,30 @@ _METERING_TTL = 35 * 86_400
 
 # ── Request / response ────────────────────────────────────────────────────────
 
+
 class MeteringEvent(BaseModel):
-    event_type:  str   = ""
-    module:      str   = ""
-    function:    str   = ""
-    engine_used: str   = ""
-    latency_ms:  float = 0.0
-    success:     bool  = True
-    timestamp:   float = 0.0
-    request_id:  str   = ""
+    event_type: str = ""
+    module: str = ""
+    function: str = ""
+    engine_used: str = ""
+    latency_ms: float = 0.0
+    success: bool = True
+    timestamp: float = 0.0
+    request_id: str = ""
 
 
 class MeteringBatchRequest(BaseModel):
-    device_id: str                  = Field(..., min_length=1, max_length=64)
-    events:    list[MeteringEvent]  = Field(default_factory=list)
+    device_id: str = Field(..., min_length=1, max_length=64)
+    events: list[MeteringEvent] = Field(default_factory=list)
 
 
 class MeteringBatchResponse(BaseModel):
-    accepted:       int
+    accepted: int
     billing_period: str
 
 
 # ── Endpoint ──────────────────────────────────────────────────────────────────
+
 
 @router.post(
     "/v1/metering",
@@ -71,30 +75,28 @@ class MeteringBatchResponse(BaseModel):
 )
 async def ingest_metering_events(
     body: MeteringBatchRequest,
-    ctx:  Annotated[AuthContext, Depends(get_current_org)],
+    ctx: Annotated[AuthContext, Depends(get_current_org)],
 ) -> MeteringBatchResponse:
     if not body.events:
         raise HTTPException(
             status_code=400,
             detail={
                 "error": {
-                    "code":    "empty_events",
+                    "code": "empty_events",
                     "message": "events list cannot be empty",
                 }
             },
         )
 
     org_id = ctx["org_id"]
-    now    = datetime.now(UTC)
+    now = datetime.now(UTC)
 
     # Group events by billing period (derived from per-event timestamp).
     # Events collected around a midnight crossing may span two periods.
     period_counts: dict[str, int] = defaultdict(int)
     for event in body.events:
         if event.timestamp:
-            period = datetime.fromtimestamp(
-                event.timestamp, tz=UTC
-            ).strftime("%Y-%m")
+            period = datetime.fromtimestamp(event.timestamp, tz=UTC).strftime("%Y-%m")
         else:
             period = now.strftime("%Y-%m")
         period_counts[period] += 1
@@ -112,12 +114,8 @@ async def ingest_metering_events(
         accepted=len(body.events),
         billing_period=primary_period,
         modules_used=sorted({e.module for e in body.events if e.module}),
-        success_rate=round(
-            sum(1 for e in body.events if e.success) / len(body.events), 4
-        ),
-        avg_latency_ms=round(
-            sum(e.latency_ms for e in body.events) / len(body.events), 2
-        ),
+        success_rate=round(sum(1 for e in body.events if e.success) / len(body.events), 4),
+        avg_latency_ms=round(sum(e.latency_ms for e in body.events) / len(body.events), 2),
     )
 
     return MeteringBatchResponse(
@@ -127,6 +125,7 @@ async def ingest_metering_events(
 
 
 # ── Redis analytics counter ───────────────────────────────────────────────────
+
 
 async def _increment_metering_counter(
     org_id: object,
@@ -143,9 +142,10 @@ async def _increment_metering_counter(
 
         from apps.api_server.config import get_settings
 
-        r = aioredis.from_url(get_settings().redis_url, decode_responses=True)
+        redis_from_url = cast(Callable[..., Any], aioredis.from_url)
+        r = redis_from_url(get_settings().redis_url, decode_responses=True)
         for period, count in period_counts.items():
-            key     = f"metering_events:{org_id}:{period}"
+            key = f"metering_events:{org_id}:{period}"
             new_val = await r.incrby(key, count)
             if new_val == count:
                 await r.expire(key, _METERING_TTL)

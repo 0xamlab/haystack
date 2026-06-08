@@ -1,0 +1,30 @@
+from __future__ import annotations
+
+from apps.api_server.services.repository_intelligence_adapters import (
+    jinja_analysis_support as repository_jinja_analysis_support,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    jinja_primitives as repository_jinja_primitives,
+)
+
+StableIdentifier = repository_jinja_primitives.StableIdentifier
+NormalizeRepositoryRelativePath = repository_jinja_primitives.NormalizeRepositoryRelativePath
+ResolveSuffixMatch = repository_jinja_primitives.ResolveSuffixMatch
+
+JINJA_SUFFIXES = repository_jinja_primitives.JINJA_SUFFIXES
+collect_symbols = repository_jinja_primitives.collect_symbols
+has_jinja_path_hints = repository_jinja_primitives.has_jinja_path_hints
+imported_symbol_bindings = repository_jinja_primitives.imported_symbol_bindings
+iter_dependency_entries = repository_jinja_primitives.iter_dependency_entries
+iter_reference_entries = repository_jinja_primitives.iter_reference_entries
+iter_symbol_entries = repository_jinja_primitives.iter_symbol_entries
+module_aliases_for_path = repository_jinja_analysis_support.module_aliases_for_path
+module_name_from_path = repository_jinja_primitives.module_name_from_path
+normalize_identifier = repository_jinja_primitives.normalize_identifier
+resolve_import = repository_jinja_primitives.resolve_import
+source_symbol_name_for_line = repository_jinja_primitives.source_symbol_name_for_line
+strip_comments = repository_jinja_primitives.strip_comments
+
+is_probable_jinja_source = repository_jinja_analysis_support.is_probable_jinja_source
+parse_dependencies_only = repository_jinja_analysis_support.parse_dependencies_only
+parse_file = repository_jinja_analysis_support.parse_file

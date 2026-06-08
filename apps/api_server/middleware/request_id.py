@@ -1,4 +1,5 @@
 """Request ID middleware — injects X-Request-Id on every request and response."""
+
 import uuid
 
 from starlette.middleware.base import BaseHTTPMiddleware

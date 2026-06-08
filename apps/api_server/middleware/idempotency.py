@@ -1,4 +1,5 @@
 """Shared idempotency and write-conflict middleware for public v1 endpoints."""
+
 from __future__ import annotations
 
 import asyncio
@@ -7,10 +8,12 @@ import hashlib
 import json
 import time
 import uuid
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
-from typing import Any
+from typing import Protocol, cast
 
-from starlette.middleware.base import BaseHTTPMiddleware
+import structlog
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
@@ -34,6 +37,8 @@ _READ_LIKE_POST_PATHS = frozenset(
     }
 )
 
+logger = structlog.get_logger(__name__)
+
 
 @dataclass
 class _StoredResponse:
@@ -48,6 +53,25 @@ class _StoredEnvelope:
     payload_hash: str
     response: _StoredResponse
     updated_at: float
+
+
+class _RedisClientProtocol(Protocol):
+    async def get(self, key: str) -> object: ...
+
+    async def set(
+        self,
+        key: str,
+        value: str,
+        *,
+        ex: int | None = None,
+        nx: bool | None = None,
+    ) -> object: ...
+
+    async def delete(self, key: str) -> object: ...
+
+
+class _BodyIteratorResponseProtocol(Protocol):
+    body_iterator: AsyncIterator[bytes | str | memoryview]
 
 
 class _LocalCoordinationStore:
@@ -95,22 +119,22 @@ class _LocalCoordinationStore:
     def _prune_locked(self) -> None:
         now = time.time()
         stale_responses = [
-            key for key, envelope in self._responses.items()
+            key
+            for key, envelope in self._responses.items()
             if now - envelope.updated_at > _ENTRY_TTL_SECONDS
         ]
         for key in stale_responses:
             self._responses.pop(key, None)
 
         stale_locks = [
-            key for key, (_, expires_at) in self._write_locks.items()
-            if expires_at <= now
+            key for key, (_, expires_at) in self._write_locks.items() if expires_at <= now
         ]
         for key in stale_locks:
             self._write_locks.pop(key, None)
 
 
 class _RedisCoordinationStore:
-    def __init__(self, redis_client: object) -> None:
+    def __init__(self, redis_client: _RedisClientProtocol) -> None:
         self._redis = redis_client
 
     async def get_response(self, key: str) -> _StoredEnvelope | None:
@@ -133,14 +157,16 @@ class _RedisCoordinationStore:
         )
 
     async def store_response(self, key: str, payload_hash: str, response: _StoredResponse) -> None:
-        payload = json.dumps({
-            "payload_hash": payload_hash,
-            "status_code": response.status_code,
-            "body_b64": base64.b64encode(response.body).decode("utf-8"),
-            "headers": response.headers,
-            "media_type": response.media_type,
-            "updated_at": time.time(),
-        })
+        payload = json.dumps(
+            {
+                "payload_hash": payload_hash,
+                "status_code": response.status_code,
+                "body_b64": base64.b64encode(response.body).decode("utf-8"),
+                "headers": response.headers,
+                "media_type": response.media_type,
+                "updated_at": time.time(),
+            }
+        )
         await self._redis.set(_response_storage_key(key), payload, ex=_ENTRY_TTL_SECONDS)
 
     async def acquire_write_lock(self, key: str, ttl_seconds: int) -> str | None:
@@ -162,6 +188,47 @@ class _RedisCoordinationStore:
             await self._redis.delete(redis_key)
 
 
+class _ResilientCoordinationStore:
+    def __init__(
+        self,
+        primary: _RedisCoordinationStore,
+        fallback: _LocalCoordinationStore,
+    ) -> None:
+        self._active: _RedisCoordinationStore | _LocalCoordinationStore = primary
+        self._fallback = fallback
+
+    async def get_response(self, key: str) -> _StoredEnvelope | None:
+        return await self._call("get_response", key)
+
+    async def store_response(self, key: str, payload_hash: str, response: _StoredResponse) -> None:
+        await self._call("store_response", key, payload_hash, response)
+
+    async def acquire_write_lock(self, key: str, ttl_seconds: int) -> str | None:
+        return await self._call("acquire_write_lock", key, ttl_seconds)
+
+    async def release_write_lock(self, key: str, token: str) -> None:
+        await self._call("release_write_lock", key, token)
+
+    async def _call(self, method_name: str, *args: object) -> object:
+        store = self._active
+        try:
+            method = getattr(store, method_name)
+            return await method(*args)
+        except Exception as exc:
+            if store is self._fallback:
+                raise
+            logger.warning(
+                "idempotency_store_unavailable",
+                store="redis",
+                fallback="local",
+                operation=method_name,
+                error=str(exc),
+            )
+            self._active = self._fallback
+            fallback_method = getattr(self._fallback, method_name)
+            return await fallback_method(*args)
+
+
 _LOCAL_STORE = _LocalCoordinationStore()
 
 
@@ -181,10 +248,15 @@ def _decode_redis_value(value: object) -> str:
     return str(value)
 
 
-def _coordination_store(request: Request) -> _LocalCoordinationStore | _RedisCoordinationStore:
+def _coordination_store(
+    request: Request,
+) -> _LocalCoordinationStore | _ResilientCoordinationStore:
     redis_client = getattr(request.app.state, "redis", None)
     if redis_client is not None:
-        return _RedisCoordinationStore(redis_client)
+        return _ResilientCoordinationStore(
+            primary=_RedisCoordinationStore(cast(_RedisClientProtocol, redis_client)),
+            fallback=_LOCAL_STORE,
+        )
     return _LOCAL_STORE
 
 
@@ -206,9 +278,18 @@ async def _read_response_body(response: Response) -> bytes:
             return body
         if isinstance(body, str):
             return body.encode("utf-8")
-    chunks = []
-    async for chunk in response.body_iterator:
-        chunks.append(chunk)
+    body_iterator = getattr(response, "body_iterator", None)
+    if body_iterator is None:
+        return b""
+    chunks: list[bytes] = []
+    streaming_response = cast(_BodyIteratorResponseProtocol, response)
+    async for chunk in streaming_response.body_iterator:
+        if isinstance(chunk, bytes):
+            chunks.append(chunk)
+        elif isinstance(chunk, str):
+            chunks.append(chunk.encode("utf-8"))
+        else:
+            chunks.append(bytes(chunk))
     return b"".join(chunks)
 
 
@@ -277,7 +358,7 @@ def _idempotency_conflict_response(request: Request, issue: str) -> JSONResponse
 
 
 class IdempotencyMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next: Any) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         if _should_skip_write_protection(request):
             return await call_next(request)
 

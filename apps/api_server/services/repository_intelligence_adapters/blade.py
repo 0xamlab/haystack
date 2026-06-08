@@ -1,0 +1,29 @@
+from __future__ import annotations
+
+from apps.api_server.services.repository_intelligence_adapters import (
+    blade_analysis_support as repository_blade_analysis_support,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    blade_primitives as repository_blade_primitives,
+)
+
+StableIdentifier = repository_blade_primitives.StableIdentifier
+NormalizeRepositoryRelativePath = repository_blade_primitives.NormalizeRepositoryRelativePath
+ResolveSuffixMatch = repository_blade_primitives.ResolveSuffixMatch
+
+BLADE_SUFFIX = repository_blade_primitives.BLADE_SUFFIX
+collect_symbols = repository_blade_primitives.collect_symbols
+has_blade_path_hints = repository_blade_primitives.has_blade_path_hints
+iter_dependency_entries = repository_blade_primitives.iter_dependency_entries
+iter_reference_entries = repository_blade_primitives.iter_reference_entries
+iter_symbol_entries = repository_blade_primitives.iter_symbol_entries
+module_aliases_for_path = repository_blade_analysis_support.module_aliases_for_path
+module_name_from_path = repository_blade_primitives.module_name_from_path
+normalize_identifier = repository_blade_primitives.normalize_identifier
+resolve_import = repository_blade_primitives.resolve_import
+source_symbol_name_for_line = repository_blade_primitives.source_symbol_name_for_line
+strip_comments = repository_blade_primitives.strip_comments
+
+is_probable_blade_source = repository_blade_analysis_support.is_probable_blade_source
+parse_dependencies_only = repository_blade_analysis_support.parse_dependencies_only
+parse_file = repository_blade_analysis_support.parse_file

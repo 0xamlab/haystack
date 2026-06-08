@@ -12,7 +12,12 @@ Modes:
 Usage:
     from apps.runtime.sdk import Runtime
 
-    rt = Runtime(api_key="de_live_...")
+    rt = Runtime(api_key="<YOUR_ALGENTA_API_KEY>")  # Cloud Managed example
+
+    # `self_hosted` and `air_gapped` accept ALGENTA_API_KEY / DE_API_KEY too,
+    # but they must use an explicit self-hosted base_url or
+    # ALGENTA_BASE_URL / DE_BASE_URL / ALGENTA_API_URL and fail closed if that
+    # is missing.
 
     # Execute a domain library function
     result = rt.execute("scheduling_algo", "fcfs", {"jobs": [...]})
@@ -29,30 +34,43 @@ from any context — they manage their own event loop.
 Async methods (aexecute, asimulate, ahealth, alist_modules) must be awaited
 inside an existing event loop (e.g., FastAPI handlers, async scripts).
 """
+
 from __future__ import annotations
 
 import asyncio
 import builtins
 import os
 import time
+from collections.abc import Awaitable
 from contextlib import suppress
-from typing import Any
+from typing import Any, cast
+from urllib.parse import urlparse
 
 import structlog
 
+from apps.privacy_policy import is_algenta_owned_destination, policy_from_environment
 from apps.platform_contract_constants import API_BASE_URL
+from apps.runtime.privacy_guard import RuntimeEgressPolicyDeniedError, validated_runtime_egress_url
 
 logger = structlog.get_logger(__name__)
 
-_CLOUD_API_URL = os.environ.get("ALGENTA_API_URL", API_BASE_URL)
 _DEFAULT_TIMEOUT = 30.0
 
 # Simulation engines — these can go to cloud /v1/simulate
-_SIM_ENGINES = frozenset({
-    "monte_carlo", "scenario", "bootstrap", "sensitivity",
-    "decision_tree", "time_series", "mcmc", "lhs", "qmc_sobol",
-    "importance_sampling",
-})
+_SIM_ENGINES = frozenset(
+    {
+        "monte_carlo",
+        "scenario",
+        "bootstrap",
+        "sensitivity",
+        "decision_tree",
+        "time_series",
+        "mcmc",
+        "lhs",
+        "qmc_sobol",
+        "importance_sampling",
+    }
+)
 
 
 class SDKRuntimeError(Exception):
@@ -73,7 +91,7 @@ class Runtime:
     Parameters
     ----------
     api_key:
-        Algenta API key. Defaults to ALGENTA_API_KEY env var.
+        Algenta API key. Defaults to ALGENTA_API_KEY or DE_API_KEY env var.
     mode:
         Execution mode: "auto" | "local" | "cloud" | "direct"
     timeout:
@@ -82,87 +100,87 @@ class Runtime:
         If True (default) and mode is "local" or "auto", start the daemon
         automatically if it isn't running.
     base_url:
-        Cloud API base URL. Defaults to ALGENTA_API_URL or https://api.algenta.ai
+        Cloud API base URL. Reads explicit base_url, ALGENTA_BASE_URL,
+        DE_BASE_URL, or ALGENTA_API_URL. Cloud Managed falls back to the
+        canonical Algenta API URL only when private-profile policy allows it;
+        self-hosted private profiles must use an explicit self-hosted base URL.
     """
 
     def __init__(
         self,
-        api_key:           str   = "",
-        mode:              str   = "auto",
-        timeout:           float = _DEFAULT_TIMEOUT,
-        auto_start_daemon: bool  = True,
-        base_url:          str   = "",
+        api_key: str = "",
+        mode: str = "auto",
+        timeout: float = _DEFAULT_TIMEOUT,
+        auto_start_daemon: bool = True,
+        base_url: str = "",
     ) -> None:
         self._api_key = (
-            api_key
-            or os.environ.get("ALGENTA_API_KEY", "")
-            or os.environ.get("DE_API_KEY", "")
+            api_key or os.environ.get("ALGENTA_API_KEY", "") or os.environ.get("DE_API_KEY", "")
         )
+        explicit_base_url = (base_url or _configured_cloud_api_url()).rstrip("/")
+        self._base_url_explicit = bool(explicit_base_url)
+        privacy_policy = policy_from_environment()
         self._mode = mode
         self._timeout = timeout
         self._auto_start = auto_start_daemon
         self._base_url = (
-            base_url
-            or os.environ.get("ALGENTA_BASE_URL", "")
-            or os.environ.get("DE_BASE_URL", "")
-            or os.environ.get("ALGENTA_API_URL", "")
-            or _CLOUD_API_URL
+            explicit_base_url or ("" if privacy_policy.disable_cloud else _cloud_api_url())
         )
 
         if mode not in ("auto", "local", "cloud", "direct"):
-            raise ValueError(
-                f"Invalid mode '{mode}'. Use: auto | local | cloud | direct"
-            )
+            raise ValueError(f"Invalid mode '{mode}'. Use: auto | local | cloud | direct")
+        if self._base_url and (self._base_url_explicit or mode == "cloud"):
+            self._validated_cloud_base_url(surface="sdk_cloud_config", record=False)
 
     # ── Sync public API ───────────────────────────────────────────────────────
 
     def execute(
         self,
-        module:   str,
+        module: str,
         function: str,
-        args:     Any = None,
-    ) -> dict:
+        args: Any = None,
+    ) -> dict[str, Any]:
         """
         Execute module::function(args) and return the result.
 
         Returns a dict with keys: result, latency_ms, engine_used, success, error.
         Raises RuntimeError on hard failures (auth error, module not found, etc.)
         """
-        return _run(self.aexecute(module, function, args))
+        return cast(dict[str, Any], _run(self.aexecute(module, function, args)))
 
-    def simulate(self, engine: str, config: dict) -> dict:
+    def simulate(self, engine: str, config: dict[str, Any]) -> dict[str, Any]:
         """Shorthand for simulation engines: simulate("monte_carlo", config)."""
         return self.execute(engine, "run", config)
 
-    def health(self) -> dict:
+    def health(self) -> dict[str, Any]:
         """Check daemon / cloud API health."""
-        return _run(self.ahealth())
+        return cast(dict[str, Any], _run(self.ahealth()))
 
-    def list_modules(self) -> list[dict]:
+    def list_modules(self) -> list[dict[str, Any]]:
         """List all available modules and their functions."""
-        return _run(self.alist_modules())
+        return cast(list[dict[str, Any]], _run(self.alist_modules()))
 
     # ── Async public API ──────────────────────────────────────────────────────
 
     async def aexecute(
         self,
-        module:   str,
+        module: str,
         function: str,
-        args:     Any = None,
-    ) -> dict:
+        args: Any = None,
+    ) -> dict[str, Any]:
         mode = self._resolve_mode(module)
 
         if mode == "local":
             return await self._local_execute(module, function, args)
         elif mode == "cloud":
             return await self._cloud_execute(module, function, args)
-        else:   # "direct"
+        else:  # "direct"
             return await self._direct_execute(module, function, args)
 
-    async def asimulate(self, engine: str, config: dict) -> dict:
+    async def asimulate(self, engine: str, config: dict[str, Any]) -> dict[str, Any]:
         return await self.aexecute(engine, "run", config)
 
-    async def ahealth(self) -> dict:
+    async def ahealth(self) -> dict[str, Any]:
         mode = self._resolve_mode("")
         if mode in ("local", "auto"):
             from apps.runtime.client import DaemonClient
@@ -171,7 +189,7 @@ class Runtime:
             return await client.health()
         return await self._cloud_health()
 
-    async def alist_modules(self) -> list[dict]:
+    async def alist_modules(self) -> list[dict[str, Any]]:
         mode = self._resolve_mode("")
         if mode == "cloud":
             return _CLOUD_MODULE_LIST
@@ -179,7 +197,7 @@ class Runtime:
 
         client = DaemonClient(timeout=self._timeout)
         modules = await client.list_modules()
-        return modules if modules else _CLOUD_MODULE_LIST
+        return [dict(module) for module in modules] if modules else _CLOUD_MODULE_LIST
 
     # ── Mode resolution ───────────────────────────────────────────────────────
 
@@ -207,11 +225,22 @@ class Runtime:
                     "Run: python -m apps.runtime.daemon start"
                 ),
             )
+        if not self._base_url:
+            raise SDKRuntimeError(
+                "Algenta cloud fallback is disabled in this deployment profile. "
+                "Start the local daemon or set an explicit self-hosted base URL."
+            )
+        self._validated_cloud_base_url(surface="sdk_cloud_resolve", record=False)
         return "cloud"
 
     # ── Local execution ───────────────────────────────────────────────────────
 
-    async def _local_execute(self, module: str, function: str, args: Any) -> dict:
+    async def _local_execute(
+        self,
+        module: str,
+        function: str,
+        args: Any,
+    ) -> dict[str, Any]:
         from apps.runtime.client import DaemonClient
 
         # Auto-start daemon if not running
@@ -220,10 +249,10 @@ class Runtime:
                 await self._start_daemon()
             else:
                 return {
-                    "result":      None,
-                    "latency_ms":  0.0,
+                    "result": None,
+                    "latency_ms": 0.0,
                     "engine_used": "none",
-                    "success":     False,
+                    "success": False,
                     "error": (
                         "Local daemon is not running. "
                         "Start it with: python -m apps.runtime.daemon start"
@@ -237,14 +266,8 @@ class Runtime:
         """Start the daemon in the background and wait until it is reachable."""
         try:
             from apps.runtime.daemon import cmd_start
-            env_updates: dict[str, str] = {}
-            if self._api_key:
-                env_updates["ALGENTA_API_KEY"] = self._api_key
-                env_updates["DE_API_KEY"] = self._api_key
-            if self._base_url:
-                env_updates["ALGENTA_BASE_URL"] = self._base_url
-                env_updates["DE_BASE_URL"] = self._base_url
-                env_updates["ALGENTA_CONTROL_PLANE_URL"] = self._base_url
+
+            env_updates = _daemon_bootstrap_env(api_key=self._api_key, base_url=self._base_url)
 
             previous = {key: os.environ.get(key) for key in env_updates}
             try:
@@ -276,13 +299,30 @@ class Runtime:
 
     # ── Cloud execution ───────────────────────────────────────────────────────
 
-    async def _cloud_execute(self, module: str, function: str, args: Any) -> dict:
+    async def _cloud_execute(
+        self,
+        module: str,
+        function: str,
+        args: Any,
+    ) -> dict[str, Any]:
+        if not self._base_url:
+            return {
+                "result": None,
+                "latency_ms": 0.0,
+                "engine_used": "cloud-disabled",
+                "success": False,
+                "error": (
+                    "Cloud execution is disabled in this deployment profile. "
+                    "Set an explicit self-hosted base URL or run the local daemon."
+                ),
+            }
+        base_url = self._validated_cloud_base_url(surface="sdk_cloud_execute")
         if module not in _SIM_ENGINES:
             return {
-                "result":      None,
-                "latency_ms":  0.0,
+                "result": None,
+                "latency_ms": 0.0,
                 "engine_used": "cloud-unavailable",
-                "success":     False,
+                "success": False,
                 "error": (
                     f"Domain library '{module}' requires the local runtime. "
                     "Install and start the daemon: python -m apps.runtime.daemon start"
@@ -299,7 +339,7 @@ class Runtime:
         try:
             async with httpx.AsyncClient(timeout=self._timeout) as client:
                 resp = await client.post(
-                    f"{self._base_url}/v1/simulate",
+                    f"{base_url}/v1/simulate",
                     headers=self._auth_headers(),
                     json=config,
                 )
@@ -307,49 +347,64 @@ class Runtime:
             if resp.status_code == 200:
                 data = resp.json()
                 return {
-                    "result":      data,
-                    "latency_ms":  data.get("execution_ms", latency),
+                    "result": data,
+                    "latency_ms": data.get("execution_ms", latency),
                     "engine_used": "cloud",
-                    "success":     True,
-                    "error":       "",
+                    "success": True,
+                    "error": "",
                 }
             else:
                 detail = resp.json().get("error", {})
                 return {
-                    "result":      None,
-                    "latency_ms":  latency,
+                    "result": None,
+                    "latency_ms": latency,
                     "engine_used": "cloud",
-                    "success":     False,
-                    "error":       detail.get("message", f"HTTP {resp.status_code}"),
+                    "success": False,
+                    "error": detail.get("message", f"HTTP {resp.status_code}"),
                 }
         except Exception as exc:
             latency = round((time.monotonic() - t0) * 1000, 2)
             return {
-                "result":      None,
-                "latency_ms":  latency,
+                "result": None,
+                "latency_ms": latency,
                 "engine_used": "cloud-error",
-                "success":     False,
-                "error":       str(exc),
+                "success": False,
+                "error": str(exc),
             }
 
-    async def _cloud_health(self) -> dict:
+    async def _cloud_health(self) -> dict[str, Any]:
         import httpx
 
+        if not self._base_url:
+            return {
+                "status": "unreachable",
+                "error": (
+                    "Cloud health is disabled in this deployment profile. "
+                    "Set an explicit self-hosted base URL or run the local daemon."
+                ),
+            }
+        base_url = self._validated_cloud_base_url(surface="sdk_cloud_health")
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
                 resp = await client.get(
-                    f"{self._base_url}/health",
+                    f"{base_url}/health",
                     headers=self._auth_headers(),
                 )
             if resp.status_code == 200:
-                return resp.json()
+                payload = resp.json()
+                return payload if isinstance(payload, dict) else {"status": "error", "code": 500}
             return {"status": "error", "code": resp.status_code}
         except Exception as exc:
             return {"status": "unreachable", "error": str(exc)}
 
     # ── Direct (in-process) execution ─────────────────────────────────────────
 
-    async def _direct_execute(self, module: str, function: str, args: Any) -> dict:
+    async def _direct_execute(
+        self,
+        module: str,
+        function: str,
+        args: Any,
+    ) -> dict[str, Any]:
         """Execute directly in-process via Executor (no daemon needed)."""
         from apps.runtime.executor import Executor
 
@@ -358,10 +413,45 @@ class Runtime:
 
     # ── Helpers ───────────────────────────────────────────────────────────────
 
-    def _auth_headers(self) -> dict:
+    def _auth_headers(self) -> dict[str, str]:
         if self._api_key:
             return {"Authorization": f"Bearer {self._api_key}"}
         return {}
+
+    def _validated_cloud_base_url(
+        self,
+        *,
+        surface: str,
+        record: bool = True,
+    ) -> str:
+        normalized = self._base_url.rstrip("/")
+        if not normalized:
+            raise SDKRuntimeError(
+                "Algenta cloud fallback is disabled in this deployment profile. "
+                "Start the local daemon or set an explicit self-hosted base URL."
+            )
+        parsed = urlparse(normalized)
+        egress_class = (
+            "algenta_cloud"
+            if parsed.hostname and is_algenta_owned_destination(parsed.hostname)
+            else "operator_service"
+        )
+        try:
+            return validated_runtime_egress_url(
+                normalized,
+                surface=surface,
+                field_name="Runtime base_url",
+                explicit_configured=self._base_url_explicit,
+                egress_class=egress_class,
+                record=record,
+            )
+        except RuntimeEgressPolicyDeniedError as exc:
+            raise SDKRuntimeError(
+                "Runtime base_url is blocked by the active privacy policy. "
+                f"Reason: {exc.decision.reason}."
+            ) from exc
+        except ValueError as exc:
+            raise SDKRuntimeError(str(exc)) from exc
 
     def __repr__(self) -> str:
         return (
@@ -374,18 +464,44 @@ class Runtime:
 # ── Fallback module list for cloud mode ──────────────────────────────────────
 
 _CLOUD_MODULE_LIST = [
-    {"name": "monte_carlo",   "engine": "cloud", "functions": ["run"]},
-    {"name": "scenario",      "engine": "cloud", "functions": ["run"]},
-    {"name": "bootstrap",     "engine": "cloud", "functions": ["run"]},
-    {"name": "sensitivity",   "engine": "cloud", "functions": ["run"]},
+    {"name": "monte_carlo", "engine": "cloud", "functions": ["run"]},
+    {"name": "scenario", "engine": "cloud", "functions": ["run"]},
+    {"name": "bootstrap", "engine": "cloud", "functions": ["run"]},
+    {"name": "sensitivity", "engine": "cloud", "functions": ["run"]},
     {"name": "decision_tree", "engine": "cloud", "functions": ["run"]},
-    {"name": "time_series",   "engine": "cloud", "functions": ["run"]},
+    {"name": "time_series", "engine": "cloud", "functions": ["run"]},
 ]
+
+
+def _daemon_bootstrap_env(*, api_key: str, base_url: str) -> dict[str, str]:
+    env_updates: dict[str, str] = {}
+    if api_key:
+        env_updates["ALGENTA_API_KEY"] = api_key
+        env_updates["DE_API_KEY"] = api_key
+    if base_url:
+        env_updates["ALGENTA_BASE_URL"] = base_url
+        env_updates["DE_BASE_URL"] = base_url
+        env_updates["ALGENTA_API_URL"] = base_url
+        env_updates["ALGENTA_CONTROL_PLANE_URL"] = base_url
+    return env_updates
+
+
+def _configured_cloud_api_url() -> str:
+    for env_name in ("ALGENTA_BASE_URL", "DE_BASE_URL", "ALGENTA_API_URL"):
+        configured = os.environ.get(env_name, "").strip()
+        if configured:
+            return configured.rstrip("/")
+    return ""
+
+
+def _cloud_api_url() -> str:
+    return _configured_cloud_api_url() or API_BASE_URL.rstrip("/")
 
 
 # ── Event loop helper ─────────────────────────────────────────────────────────
 
-def _run(coro) -> Any:
+
+def _run(coro: Awaitable[Any]) -> Any:
     """
     Run a coroutine from sync code.
 
@@ -401,7 +517,7 @@ def _run(coro) -> Any:
         # Already inside a running loop — offload to a thread to avoid deadlock.
         import concurrent.futures
 
-        def _run_in_thread():
+        def _run_in_thread() -> Any:
             loop = asyncio.new_event_loop()
             try:
                 return loop.run_until_complete(coro)

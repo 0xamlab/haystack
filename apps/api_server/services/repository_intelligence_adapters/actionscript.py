@@ -1,0 +1,84 @@
+from __future__ import annotations
+
+from apps.api_server.services import (
+    repository_intelligence_contracts as repository_contracts,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    actionscript_analysis_support as repository_actionscript_analysis_support,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    actionscript_primitives as repository_actionscript_primitives,
+)
+
+_Dependency = repository_contracts._Dependency
+_Symbol = repository_contracts._Symbol
+_SymbolReferenceCandidate = repository_contracts._SymbolReferenceCandidate
+
+StableIdentifier = repository_actionscript_primitives.StableIdentifier
+NormalizeRepositoryRelativePath = (
+    repository_actionscript_primitives.NormalizeRepositoryRelativePath
+)
+ResolveSuffixMatch = repository_actionscript_primitives.ResolveSuffixMatch
+
+_KNOWN_SUFFIXES = repository_actionscript_primitives._KNOWN_SUFFIXES
+_PATH_HINT_PARTS = repository_actionscript_primitives._PATH_HINT_PARTS
+_PACKAGE_RE = repository_actionscript_primitives._PACKAGE_RE
+_IMPORT_RE = repository_actionscript_primitives._IMPORT_RE
+_INCLUDE_RE = repository_actionscript_primitives._INCLUDE_RE
+_TYPE_DECL_RE = repository_actionscript_primitives._TYPE_DECL_RE
+_FUNCTION_DECL_RE = repository_actionscript_primitives._FUNCTION_DECL_RE
+_TYPED_BINDING_RE = repository_actionscript_primitives._TYPED_BINDING_RE
+_NEW_REFERENCE_RE = repository_actionscript_primitives._NEW_REFERENCE_RE
+_QUALIFIED_CALL_RE = repository_actionscript_primitives._QUALIFIED_CALL_RE
+_ACTIONSCRIPT_FEATURE_RE = repository_actionscript_primitives._ACTIONSCRIPT_FEATURE_RE
+_RESERVED_REFERENCE_NAMES = (
+    repository_actionscript_primitives._RESERVED_REFERENCE_NAMES
+)
+_RESERVED_REFERENCE_OWNERS = (
+    repository_actionscript_primitives._RESERVED_REFERENCE_OWNERS
+)
+_CollectedSymbol = repository_actionscript_primitives._CollectedSymbol
+_ResolvedBinding = repository_actionscript_primitives._ResolvedBinding
+
+strip_comments = repository_actionscript_primitives.strip_comments
+_line_number = repository_actionscript_primitives._line_number
+_ordered_names = repository_actionscript_primitives._ordered_names
+_package_name = repository_actionscript_primitives._package_name
+_qualified_name = repository_actionscript_primitives._qualified_name
+has_actionscript_path_hints = (
+    repository_actionscript_primitives.has_actionscript_path_hints
+)
+is_probable_actionscript_source = (
+    repository_actionscript_primitives.is_probable_actionscript_source
+)
+_normalize_repository_relative_path = (
+    repository_actionscript_primitives._normalize_repository_relative_path
+)
+_matching_brace_end = repository_actionscript_primitives._matching_brace_end
+_split_relation_targets = repository_actionscript_primitives._split_relation_targets
+_collect_type_entries = repository_actionscript_primitives._collect_type_entries
+_innermost_type_entry = repository_actionscript_primitives._innermost_type_entry
+_collect_function_entries = (
+    repository_actionscript_primitives._collect_function_entries
+)
+_resolve_import_target = repository_actionscript_primitives._resolve_import_target
+_resolve_include_target = repository_actionscript_primitives._resolve_include_target
+_import_bindings_for_text = (
+    repository_actionscript_primitives._import_bindings_for_text
+)
+_resolve_named_type_target = (
+    repository_actionscript_primitives._resolve_named_type_target
+)
+_typed_variable_bindings = repository_actionscript_primitives._typed_variable_bindings
+
+module_aliases_for_path = (
+    repository_actionscript_analysis_support.module_aliases_for_path
+)
+_register_dependency = repository_actionscript_analysis_support._register_dependency
+parse_dependencies_only = (
+    repository_actionscript_analysis_support.parse_dependencies_only
+)
+_source_symbol_id_for_line = (
+    repository_actionscript_analysis_support._source_symbol_id_for_line
+)
+parse_file = repository_actionscript_analysis_support.parse_file

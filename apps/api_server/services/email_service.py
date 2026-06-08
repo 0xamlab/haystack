@@ -7,19 +7,38 @@ Provides:
 
 Uses SMTP (defaults to dev mailhog on port 1025, configure for SendGrid/SES in prod).
 """
+
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 import structlog
 
-from apps.api_server.config import get_settings
+from apps.api_server.config import SettingsProxy
+from apps.api_server.services.egress_guard import (
+    EgressAuditContext,
+    EgressPolicyDeniedError,
+    smtp_connection,
+)
+from apps.api_server.services.public_url_policy import (
+    resolve_billing_dashboard_url,
+    resolve_dashboard_url,
+    resolve_email_verification_url,
+    resolve_password_reset_url,
+    resolve_simulate_endpoint_url,
+)
 
 logger = structlog.get_logger(__name__)
-settings = get_settings()
+settings = SettingsProxy()
 
 
-def _send(to: str, subject: str, html: str) -> None:
+def _send(
+    to: str,
+    subject: str,
+    html: str,
+    *,
+    audit_context: EgressAuditContext | None = None,
+) -> None:
     """Send an email via SMTP. Logs errors but does not raise."""
     try:
         msg = MIMEMultipart("alternative")
@@ -28,12 +47,27 @@ def _send(to: str, subject: str, html: str) -> None:
         msg["To"] = to
         msg.attach(MIMEText(html, "html"))
 
-        with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as smtp:
+        with smtp_connection(
+            host=settings.smtp_host,
+            port=settings.smtp_port,
+            surface="smtp_email_delivery",
+            explicit_configured=True,
+            egress_class="operator_service",
+            audit_context=audit_context,
+            smtp_factory=smtplib.SMTP,
+        ) as smtp:
             if settings.smtp_username:
                 smtp.login(settings.smtp_username, settings.smtp_password)
             smtp.sendmail(settings.email_from, [to], msg.as_string())
 
         logger.info("email_sent", to=to, subject=subject)
+    except EgressPolicyDeniedError as exc:
+        logger.error(
+            "email_send_blocked",
+            to=to,
+            subject=subject,
+            reason=exc.decision.reason,
+        )
     except Exception as exc:
         logger.error("email_send_failed", to=to, subject=subject, error=str(exc))
 
@@ -46,15 +80,17 @@ def send_quota_alert(
     limit: int,
     billing_period: str,
     pct: float,
+    audit_context: EgressAuditContext | None = None,
 ) -> None:
     """
     Send a quota alert email at 80% or 100% usage.
     Called from simulate router after usage is recorded.
     """
     is_exhausted = pct >= 100
+    billing_url = resolve_billing_dashboard_url(settings_obj=settings)
 
     if is_exhausted:
-        subject = f"⚠️ Quota exhausted — Decision Engine ({billing_period})"
+        subject = f"⚠️ Quota exhausted — Algenta ({billing_period})"
         headline = "You've used 100% of your monthly quota"
         body = (
             f"Your organization <strong>{org_name}</strong> has exhausted its "
@@ -64,7 +100,7 @@ def send_quota_alert(
         cta = "Upgrade now"
         cta_color = "#ef4444"
     else:
-        subject = f"⚡ 80% quota used — Decision Engine ({billing_period})"
+        subject = f"⚡ 80% quota used — Algenta ({billing_period})"
         headline = f"You've used {pct:.0f}% of your monthly quota"
         body = (
             f"Your organization <strong>{org_name}</strong> has used "
@@ -111,7 +147,7 @@ def send_quota_alert(
         ></div>
       </div>
     </div>
-    <a href="https://app.algenta.ai/dashboard/billing" style="
+    <a href="{billing_url}" style="
       display: inline-block;
       background: {cta_color};
       color: #fff;
@@ -123,17 +159,26 @@ def send_quota_alert(
     ">{cta} →</a>
     <p style="color: #475569; font-size: 12px; margin-top: 24px;">
       You're on the <strong>{plan}</strong> plan.
-      <a href="https://app.algenta.ai/dashboard/billing" style="color: #818cf8;">Manage billing</a>
+      <a href="{billing_url}" style="color: #818cf8;">Manage billing</a>
     </p>
   </div>
 </body>
 </html>
 """
-    _send(email, subject, html)
+    _send(email, subject, html, audit_context=audit_context)
 
 
-def send_welcome_email(email: str, name: str, api_key_prefix: str) -> None:
+def send_welcome_email(
+    email: str,
+    name: str,
+    api_key_prefix: str,
+    *,
+    audit_context: EgressAuditContext | None = None,
+) -> None:
     """Send a welcome email after signup with quickstart instructions."""
+    simulate_url = resolve_simulate_endpoint_url(settings_obj=settings)
+    dashboard_url = resolve_dashboard_url(settings_obj=settings)
+    billing_url = resolve_billing_dashboard_url(settings_obj=settings)
     html = f"""
 <!DOCTYPE html>
 <html>
@@ -166,11 +211,11 @@ def send_welcome_email(email: str, name: str, api_key_prefix: str) -> None:
         overflow-x: auto;
       "
     >
-curl -X POST https://api.algenta.ai/v1/simulate \\
+curl -X POST {simulate_url} \\
   -H "Authorization: Bearer {api_key_prefix}..." \\
   -d '{{"mode":"auto","scenario":{{"variables":{{"revenue":{{"low":80000,"high":200000}}}}}}}}'
     </pre>
-    <a href="https://app.algenta.ai/dashboard" style="
+    <a href="{dashboard_url}" style="
       display: inline-block;
       background: #4f63ff;
       color: #fff;
@@ -183,7 +228,7 @@ curl -X POST https://api.algenta.ai/v1/simulate \\
     ">Open Dashboard →</a>
     <p style="color: #475569; font-size: 12px; margin-top: 24px;">
       You're on the free plan — 500 simulations/month.
-      <a href="https://app.algenta.ai/dashboard/billing" style="color: #818cf8;">
+      <a href="{billing_url}" style="color: #818cf8;">
         Upgrade anytime.
       </a>
     </p>
@@ -191,15 +236,17 @@ curl -X POST https://api.algenta.ai/v1/simulate \\
 </body>
 </html>
 """
-    _send(email, "Welcome to Algenta — your API key is ready", html)
+    _send(
+        email,
+        "Welcome to Algenta — your API key is ready",
+        html,
+        audit_context=audit_context,
+    )
 
 
 async def send_verification_email(email: str, token: str) -> None:
     """Send an email verification link after signup."""
-    from apps.api_server.config import get_settings as _gs
-    s = _gs()
-    base = getattr(s, "app_base_url", "http://localhost:8000")
-    verify_url = f"{base}/auth/verify?token={token}"
+    verify_url = resolve_email_verification_url(token, settings_obj=settings)
 
     html = f"""
 <!DOCTYPE html>
@@ -247,10 +294,7 @@ async def send_verification_email(email: str, token: str) -> None:
 
 async def send_password_reset_email(email: str, token: str) -> None:
     """Send a password reset link."""
-    from apps.api_server.config import get_settings as _gs
-    s = _gs()
-    base = getattr(s, "app_base_url", "http://localhost:3000")
-    reset_url = f"{base}/auth/reset-password?token={token}"
+    reset_url = resolve_password_reset_url(token, settings_obj=settings)
 
     html = f"""
 <!DOCTYPE html>

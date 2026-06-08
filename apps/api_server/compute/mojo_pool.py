@@ -19,6 +19,7 @@ Phase 1: MOJO_ALLOW_SUBPROCESS_FALLBACK env var controls fallback behavior.
          Pool startup fast-fails when MOJO_ALLOW_SUBPROCESS_FALLBACK=false
          and the binary does not support --server mode.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -40,13 +41,16 @@ from apps.api_server.compute.mojo_errors import MojoEngineError
 
 logger = structlog.get_logger(__name__)
 
-_REPO_ROOT   = Path(__file__).parents[3]
+__all__ = ["MojoEngineError", "MojoWorkerPool", "get_pool_sync", "invoke_via_pool", "set_pool"]
+
+_REPO_ROOT = Path(__file__).parents[3]
 _BINARY_PATH = _REPO_ROOT / "mojo_build" / "simulate"
-_SOCKET_DIR  = Path(tempfile.gettempdir()) / "algenta-mojo"
+_SOCKET_DIR = Path(tempfile.gettempdir()) / "algenta-mojo"
 
 
 def _env_flag(name: str, default: str = "true") -> bool:
     return os.environ.get(name, default).lower() == "true"
+
 
 # Number of long-lived Mojo worker processes
 MOJO_POOL_SIZE = int(os.environ.get("MOJO_POOL_SIZE", str(max(1, (os.cpu_count() or 4) - 1))))
@@ -65,17 +69,18 @@ WORKER_READY_TIMEOUT_S = float(os.environ.get("MOJO_WORKER_READY_TIMEOUT_S", "5.
 # "false" — hard fail if pool cannot start; no subprocess fallback (production)
 _ALLOW_SUBPROCESS_FALLBACK = _env_flag("MOJO_ALLOW_SUBPROCESS_FALLBACK")
 
+
 class _Worker:
     """One Mojo worker process + its persistent socket connection."""
 
     __slots__ = ("id", "socket_path", "proc", "reader", "writer", "healthy")
 
     def __init__(self, worker_id: int) -> None:
-        self.id          = worker_id
+        self.id = worker_id
         self.socket_path = _SOCKET_DIR / f"worker-{worker_id}-{uuid.uuid4().hex[:8]}.sock"
-        self.proc:    asyncio.subprocess.Process | None = None
-        self.reader:  asyncio.StreamReader | None = None
-        self.writer:  asyncio.StreamWriter | None = None
+        self.proc: asyncio.subprocess.Process | None = None
+        self.reader: asyncio.StreamReader | None = None
+        self.writer: asyncio.StreamWriter | None = None
         self.healthy: bool = False
 
     async def start(self) -> None:
@@ -87,7 +92,8 @@ class _Worker:
 
         self.proc = await asyncio.create_subprocess_exec(  # noqa: S603
             str(_BINARY_PATH),
-            "--server", str(self.socket_path),
+            "--server",
+            str(self.socket_path),
             stdin=asyncio.subprocess.DEVNULL,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -108,9 +114,7 @@ class _Worker:
         self.reader, self.writer = await asyncio.open_unix_connection(str(self.socket_path))
 
         try:
-            ready_data = await asyncio.wait_for(
-                self._recv_frame(), timeout=WORKER_READY_TIMEOUT_S
-            )
+            ready_data = await asyncio.wait_for(self._recv_frame(), timeout=WORKER_READY_TIMEOUT_S)
             ready = json.loads(ready_data)
             if ready.get("status") != "ready":
                 raise MojoEngineError(
@@ -181,8 +185,11 @@ class _Worker:
         # Phase 5: protocol version check — v1 is current JSON, v2+ = future binary
         proto = result.get("_proto", 1)
         if proto > 1:
-            logger.warning("mojo_pool_unknown_proto", proto=proto,
-                           hint="Update mojo_pool.py to handle this protocol version")
+            logger.warning(
+                "mojo_pool_unknown_proto",
+                proto=proto,
+                hint="Update mojo_pool.py to handle this protocol version",
+            )
 
         # Phase 1: NO subprocess fallback re-dispatch here.
         # All engines return proper results in server mode since Phase 1 fix.
@@ -208,9 +215,10 @@ class _Worker:
             )
             # In dev mode only: fall through to subprocess if explicitly allowed
             from apps.api_server.compute.mojo_adapter import _invoke_subprocess
+
             return await _invoke_subprocess(payload)
 
-        return result
+        return dict(result)
 
     async def _recv_frame(self) -> bytes:
         """Read one length-prefixed frame from the worker."""
@@ -258,13 +266,13 @@ class MojoWorkerPool:
     """
 
     def __init__(self, size: int = MOJO_POOL_SIZE) -> None:
-        self._size        = size
-        self._workers:    list[_Worker] = []
-        self._queue:      Queue[_Worker] = Queue()
-        self._monitor:    asyncio.Task[None] | None = None
-        self._loop:       asyncio.AbstractEventLoop | None = None
+        self._size = size
+        self._workers: list[_Worker] = []
+        self._queue: Queue[_Worker] = Queue()
+        self._monitor: asyncio.Task[None] | None = None
+        self._loop: asyncio.AbstractEventLoop | None = None
         self._loop_thread_id: int | None = None
-        self._running     = False
+        self._running = False
 
     async def _binary_supports_server_mode(self) -> bool:
         """
@@ -285,7 +293,9 @@ class MojoWorkerPool:
         writer = None
         try:
             probe = await asyncio.create_subprocess_exec(  # noqa: S603
-                str(_BINARY_PATH), "--server", str(test_sock),
+                str(_BINARY_PATH),
+                "--server",
+                str(test_sock),
                 stdin=asyncio.subprocess.DEVNULL,
                 stdout=asyncio.subprocess.DEVNULL,
                 stderr=asyncio.subprocess.DEVNULL,
@@ -342,7 +352,7 @@ class MojoWorkerPool:
                     "mojo_server_mode_compute_broken",
                     mean=mean,
                     hint="Binary creates socket but returns zero statistics. "
-                         "Falling back to subprocess mode. Rebuild with `make build-mojo`.",
+                    "Falling back to subprocess mode. Rebuild with `make build-mojo`.",
                 )
                 return False
 
@@ -385,9 +395,12 @@ class MojoWorkerPool:
                     stage="pool_start",
                 )
             logger.warning("mojo_pool_binary_missing", hint=msg)
-            logger.info("mojo_runtime_mode", mode="subprocess_fallback",
-                        reason="binary_not_found",
-                        allow_fallback=_ALLOW_SUBPROCESS_FALLBACK)
+            logger.info(
+                "mojo_runtime_mode",
+                mode="subprocess_fallback",
+                reason="binary_not_found",
+                allow_fallback=_ALLOW_SUBPROCESS_FALLBACK,
+            )
             self._running = False
             return
 
@@ -406,10 +419,11 @@ class MojoWorkerPool:
             logger.warning(
                 "mojo_pool_server_mode_not_supported",
                 hint="Binary does not support --server. Run `make build-mojo` to rebuild. "
-                     "Simulations will use subprocess fallback (slower but correct).",
+                "Simulations will use subprocess fallback (slower but correct).",
             )
-            logger.info("mojo_runtime_mode", mode="subprocess_fallback",
-                        reason=reason, allow_fallback=True)
+            logger.info(
+                "mojo_runtime_mode", mode="subprocess_fallback", reason=reason, allow_fallback=True
+            )
             self._running = False
             return
 
@@ -417,8 +431,7 @@ class MojoWorkerPool:
         self._loop_thread_id = threading.get_ident()
         self._running = True
         logger.info("mojo_pool_starting", size=self._size, binary=str(_BINARY_PATH))
-        logger.info("mojo_runtime_mode", mode="pool",
-                    workers=self._size, binary=str(_BINARY_PATH))
+        logger.info("mojo_runtime_mode", mode="pool", workers=self._size, binary=str(_BINARY_PATH))
 
         spawn_tasks = [self._spawn_worker(i) for i in range(self._size)]
         await asyncio.gather(*spawn_tasks)

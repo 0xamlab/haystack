@@ -1,4 +1,5 @@
 """Canonical connector envelope normalization for runtime and MCP surfaces."""
+
 from __future__ import annotations
 
 import base64
@@ -16,9 +17,13 @@ _CANONICAL_DATABASE_TYPES = {
     "mysql",
     "mssql",
     "redshift",
+    "clickhouse",
     "snowflake",
     "bigquery",
     "sqlite",
+    "elasticsearch",
+    "neo4j",
+    "redis",
 }
 _CANONICAL_OBJECT_STORAGE_TYPES = {"s3", "gcs", "azure", "azure_blob"}
 _CANONICAL_API_TYPES = {"rest", "rest_api", "api"}
@@ -68,10 +73,7 @@ def _merge_section(
         if key in target and target[key] != value:
             raise _http_error(
                 "connector_conflict",
-                (
-                    "Canonical connector fields must not define conflicting values "
-                    f"for '{key}'."
-                ),
+                (f"Canonical connector fields must not define conflicting values for '{key}'."),
                 details={"field": key, "section": section_name},
             )
         target[key] = value
@@ -221,17 +223,9 @@ def normalize_connect_payload(payload: dict[str, Any]) -> dict[str, Any]:
         for field_name in _INLINE_PAYLOAD_FIELDS:
             if flat.get(field_name) is not None:
                 normalized[field_name] = flat[field_name]
-        if (
-            file_type == "csv"
-            and flat.get("content") is not None
-            and "csv" not in normalized
-        ):
+        if file_type == "csv" and flat.get("content") is not None and "csv" not in normalized:
             normalized["csv"] = flat["content"]
-        if (
-            file_type == "json"
-            and flat.get("content") is not None
-            and "json_str" not in normalized
-        ):
+        if file_type == "json" and flat.get("content") is not None and "json_str" not in normalized:
             normalized["json_str"] = flat["content"]
         if (
             file_type == "excel"

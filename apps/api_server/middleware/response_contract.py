@@ -1,4 +1,5 @@
 """Shared response header enforcement for public v1 API routes."""
+
 from __future__ import annotations
 
 import time
@@ -8,10 +9,21 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 
+def _apply_request_state_headers(request: Request, response: Response) -> None:
+    extra_headers = getattr(request.state, "extra_response_headers", {})
+    if not isinstance(extra_headers, dict):
+        return
+    for key, value in extra_headers.items():
+        if not isinstance(key, str) or not isinstance(value, str) or not value:
+            continue
+        response.headers.setdefault(key, value)
+
+
 class ResponseContractMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: object) -> Response:
         started = time.perf_counter()
         response: Response = await call_next(request)  # type: ignore[operator]
+        _apply_request_state_headers(request, response)
 
         if not request.url.path.startswith("/v1/"):
             return response

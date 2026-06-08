@@ -5,7 +5,10 @@ Every connector normalizes its source to list[dict[str, Any]] — the same
 internal table format used by the mapping and query engines.
 
 Supported sources:
+  elasticsearch → explicit Query DSL fetches and index browsing
   file       → CSV, TSV, JSON (nested + flat), Excel, Parquet (base64 or path)
+  neo4j      → explicit Cypher queries and schema browsing against Neo4j / Aura
+  redis      → deterministic key snapshots via explicit keys and key browsing
   sql        → PostgreSQL, MySQL, SQLite, any SQLAlchemy-compatible async DSN
   rest_api   → REST APIs with dot-path navigation + JSON auto-flattening
   s3         → AWS S3 / S3-compatible (MinIO, Wasabi, R2) via aiobotocore or boto3 fallback
@@ -17,9 +20,13 @@ Each connector implements:
   validate_connection() → (bool, str) — connectivity test
   map_to_simulation()   → dict — simulation payload (inherited from BaseConnector)
 """
+
 from .base import BaseConnector, ConnectorRegistry
 from .cloud_connector import AzureBlobConnector, GCSConnector, S3Connector
+from .elasticsearch_connector import ElasticsearchConnector
 from .file_connector import FileConnector, _flatten_dict
+from .neo4j_connector import Neo4jConnector
+from .redis_connector import RedisConnector
 from .rest_connector import RESTConnector
 from .sql_connector import SQLConnector
 
@@ -27,6 +34,9 @@ __all__ = [
     "BaseConnector",
     "ConnectorRegistry",
     "FileConnector",
+    "ElasticsearchConnector",
+    "Neo4jConnector",
+    "RedisConnector",
     "SQLConnector",
     "RESTConnector",
     "S3Connector",

@@ -1,5 +1,7 @@
 """User and Organization creation service — handles self-serve signup."""
+
 import re
+
 import bcrypt
 import structlog
 from fastapi import HTTPException
@@ -16,8 +18,9 @@ from apps.api_server.schemas.auth import (
     SignUpResponse,
     UserInfo,
 )
-from apps.api_server.services.auth_tokens import issue_email_verification_token
 from apps.api_server.services.auth_service import generate_api_key
+from apps.api_server.services.auth_tokens import issue_email_verification_token
+from apps.api_server.services.plan_limits import effective_device_limit
 
 logger = structlog.get_logger(__name__)
 
@@ -48,9 +51,7 @@ async def create_user_and_org(
     """Create org + user + first API key in a single transaction."""
 
     # ── Check duplicate email ─────────────────────────────────────────────────
-    existing = await db.execute(
-        select(User).where(User.email == request.email.lower())
-    )
+    existing = await db.execute(select(User).where(User.email == request.email.lower()))
     if existing.scalar_one_or_none() is not None:
         raise HTTPException(
             status_code=409,
@@ -69,9 +70,7 @@ async def create_user_and_org(
     slug = base_slug
     suffix = 1
     while True:
-        result = await db.execute(
-            select(Organization).where(Organization.slug == slug)
-        )
+        result = await db.execute(select(Organization).where(Organization.slug == slug))
         if result.scalar_one_or_none() is None:
             break
         slug = f"{base_slug}-{suffix}"
@@ -128,6 +127,7 @@ async def create_user_and_org(
             send_verification_email,
             send_welcome_email,
         )
+
         await send_verification_email(str(request.email), verification_token)
         send_welcome_email(str(request.email), request.name, key_prefix)
     except Exception as exc:
@@ -154,6 +154,7 @@ async def create_user_and_org(
             id=api_key.id,
             label=api_key.label,
             key_prefix=api_key.key_prefix,
+            device_limit=effective_device_limit(org.plan.value, api_key.device_limit),
             raw_key=raw_key,
             created_at=api_key.created_at,
         ),
@@ -161,7 +162,5 @@ async def create_user_and_org(
 
 
 async def get_user_by_email(email: str, db: AsyncSession) -> User | None:
-    result = await db.execute(
-        select(User).where(User.email == email.lower())
-    )
+    result = await db.execute(select(User).where(User.email == email.lower()))
     return result.scalar_one_or_none()

@@ -14,11 +14,12 @@ Device lifecycle:
   inactive    → no heartbeat for 30+ days (still counts against limit until revoked)
   revoked     → owner explicitly removed the device
 """
+
 from __future__ import annotations
 
-import enum
 import uuid
 from datetime import datetime
+from enum import StrEnum
 
 from sqlalchemy import DateTime, Enum, ForeignKey, Index, Integer, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
@@ -26,11 +27,18 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from apps.api_server.db.base import Base, TimestampMixin, UUIDMixin
 
+DEVICE_ID_MAX_LENGTH = 64
+DEVICE_PLATFORM_MAX_LENGTH = 50
+DEVICE_PLATFORM_VERSION_MAX_LENGTH = 50
+DEVICE_HOSTNAME_HASH_MAX_LENGTH = 64
+DEVICE_SDK_VERSION_MAX_LENGTH = 128
+DEVICE_BINDING_TOKEN_HASH_MAX_LENGTH = 128
 
-class DeviceStatus(str, enum.Enum):
-    ACTIVE   = "active"
+
+class DeviceStatus(StrEnum):
+    ACTIVE = "active"
     INACTIVE = "inactive"
-    REVOKED  = "revoked"
+    REVOKED = "revoked"
 
 
 class DeviceRegistration(UUIDMixin, TimestampMixin, Base):
@@ -51,19 +59,47 @@ class DeviceRegistration(UUIDMixin, TimestampMixin, Base):
     )
 
     # Device identity — hashed fingerprint, never the raw machine ID
-    device_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    device_id: Mapped[str] = mapped_column(
+        String(DEVICE_ID_MAX_LENGTH),
+        nullable=False,
+        index=True,
+    )
 
     # Display metadata (non-PII)
-    platform: Mapped[str] = mapped_column(String(50), nullable=False, default="")
-    platform_version: Mapped[str] = mapped_column(String(50), nullable=False, default="")
-    hostname_hash: Mapped[str] = mapped_column(String(32), nullable=False, default="")
-    sdk_version: Mapped[str] = mapped_column(String(20), nullable=False, default="")
+    platform: Mapped[str] = mapped_column(
+        String(DEVICE_PLATFORM_MAX_LENGTH),
+        nullable=False,
+        default="",
+    )
+    platform_version: Mapped[str] = mapped_column(
+        String(DEVICE_PLATFORM_VERSION_MAX_LENGTH),
+        nullable=False,
+        default="",
+    )
+    hostname_hash: Mapped[str] = mapped_column(
+        String(DEVICE_HOSTNAME_HASH_MAX_LENGTH),
+        nullable=False,
+        default="",
+    )
+    sdk_version: Mapped[str] = mapped_column(
+        String(DEVICE_SDK_VERSION_MAX_LENGTH),
+        nullable=False,
+        default="",
+    )
+    binding_token_hash: Mapped[str] = mapped_column(
+        String(DEVICE_BINDING_TOKEN_HASH_MAX_LENGTH),
+        nullable=False,
+        default="",
+    )
 
     # Lifecycle
     status: Mapped[DeviceStatus] = mapped_column(
-        Enum(DeviceStatus, name="device_status",
-             values_callable=lambda obj: [e.value for e in obj],
-             native_enum=False),
+        Enum(
+            DeviceStatus,
+            name="device_status",
+            values_callable=lambda obj: [e.value for e in obj],
+            native_enum=False,
+        ),
         default=DeviceStatus.ACTIVE,
         nullable=False,
         index=True,

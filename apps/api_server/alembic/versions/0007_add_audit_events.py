@@ -4,6 +4,7 @@ Revision ID: 0007
 Revises: 0006
 Create Date: 2026-03-21
 """
+
 from alembic import op
 
 revision = "0007"
@@ -31,7 +32,9 @@ def upgrade() -> None:
     """)
     op.execute("CREATE INDEX IF NOT EXISTS ix_audit_events_org_id ON audit_events (org_id)")
     op.execute("CREATE INDEX IF NOT EXISTS ix_audit_events_action ON audit_events (action)")
-    op.execute("CREATE INDEX IF NOT EXISTS ix_audit_events_created_at ON audit_events (created_at DESC)")
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS ix_audit_events_created_at ON audit_events (created_at DESC)"
+    )
 
 
 def downgrade() -> None:

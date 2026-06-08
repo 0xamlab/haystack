@@ -67,12 +67,9 @@ class _PlannerMojoSocketClient:
         self._proc: subprocess.Popen[bytes] | None = None
         self._socket: socket.socket | None = None
         client_id = next(_CLIENT_INSTANCE_COUNTER)
-        self._socket_path = (
-            Path(tempfile.gettempdir())
-            / (
-                "algenta-planner-rank-"
-                f"{os.getpid()}-{client_id}-{abs(hash(str(binary_path.resolve()))) & 0xFFFF:x}.sock"
-            )
+        self._socket_path = Path(tempfile.gettempdir()) / (
+            "algenta-planner-rank-"
+            f"{os.getpid()}-{client_id}-{abs(hash(str(binary_path.resolve()))) & 0xFFFF:x}.sock"
         )
         self._lock = threading.RLock()
         self._initialized_session_key: str | None = None
@@ -523,9 +520,7 @@ class MojoColumnRankResolver:
             assert batch_index < len(slot_specs)
             spec = slot_specs[batch_index]
             ranked_payload = (
-                batch_results[batch_index]
-                if batch_index < len(batch_results)
-                else None
+                batch_results[batch_index] if batch_index < len(batch_results) else None
             )
             resolved_results.append(
                 self._build_vector_result(
@@ -595,8 +590,7 @@ class MojoColumnRankResolver:
             return None
 
         candidate_lookup_by_id = {
-            index: self._base_resolver._entries[index]
-            for index in candidate_indices
+            index: self._base_resolver._entries[index] for index in candidate_indices
         }
         best = ranked[0]
         best_entry = self._ranked_item_entry(best, candidate_lookup_by_id)
@@ -644,9 +638,7 @@ class MojoColumnRankResolver:
 
         confident = outcome == ResolverOutcome.COLUMN_MATCH
         ambiguous = outcome == ResolverOutcome.AMBIGUOUS
-        steps.append(
-            f"[mojo_column_rank] ranked={ranked_count} top={best_source}.{best_column}"
-        )
+        steps.append(f"[mojo_column_rank] ranked={ranked_count} top={best_source}.{best_column}")
         steps.append(
             f"[score] {best_source}.{best_column}  score={best_score:.3f}  "
             f"gap={gap:.3f}  outcome={outcome.value}  reason={reason.value}"

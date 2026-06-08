@@ -16,6 +16,7 @@ Engine capabilities:
   scenario             — discrete named scenarios (requires scenario_config)
   decision_tree        — branching decisions (requires decision_tree_config)
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -31,10 +32,30 @@ class EngineSelection:
 
 def _has_time_structure(variables: list[dict[str, Any]]) -> bool:
     """True when any variable name hints at a temporal sequence."""
-    time_keywords = {"period", "month", "year", "quarter", "week", "day",
-                     "horizon", "t0", "t1", "step", "lag", "series",
-                     "growth", "drift", "volatility", "gbm", "ou",
-                     "time", "trend", "forecast", "arima", "seasonal"}
+    time_keywords = {
+        "period",
+        "month",
+        "year",
+        "quarter",
+        "week",
+        "day",
+        "horizon",
+        "t0",
+        "t1",
+        "step",
+        "lag",
+        "series",
+        "growth",
+        "drift",
+        "volatility",
+        "gbm",
+        "ou",
+        "time",
+        "trend",
+        "forecast",
+        "arima",
+        "seasonal",
+    }
     for v in variables:
         name = v.get("name", "").lower()
         desc = v.get("description", "").lower()
@@ -49,9 +70,21 @@ def _has_time_structure(variables: list[dict[str, Any]]) -> bool:
 def _has_rare_event_focus(variables: list[dict[str, Any]], objective: str) -> bool:
     """True when the analysis is clearly about tail risk or rare events."""
     # Use longer, less ambiguous keywords to avoid false positives on common names like "var0"
-    tail_keywords = {"value_at_risk", "cvar", "tail_risk", "rare_event", "extreme_loss",
-                     "catastroph", "black_swan", "loss_given_default", "bankruptcy",
-                     "failure_rate", "crash_risk", "stress_test", "prob_default"}
+    tail_keywords = {
+        "value_at_risk",
+        "cvar",
+        "tail_risk",
+        "rare_event",
+        "extreme_loss",
+        "catastroph",
+        "black_swan",
+        "loss_given_default",
+        "bankruptcy",
+        "failure_rate",
+        "crash_risk",
+        "stress_test",
+        "prob_default",
+    }
     # Short keywords checked only in objective function (more controlled context)
     short_tail_obj = {"tail", "extreme", "worst_case", "downside_only", "credit_risk"}
     obj_lower = objective.lower()
@@ -87,8 +120,16 @@ def _has_empirical_data(variables: list[dict[str, Any]]) -> bool:
 
 def _sensitivity_requested(objective: str, variables: list[dict[str, Any]]) -> bool:
     """True when the user is clearly asking 'which variable matters most'."""
-    keywords = {"sensitivity", "elasticity", "tornado", "importance",
-                "which variable", "most impact", "driver", "contribution"}
+    keywords = {
+        "sensitivity",
+        "elasticity",
+        "tornado",
+        "importance",
+        "which variable",
+        "most impact",
+        "driver",
+        "contribution",
+    }
     return any(kw in objective.lower() for kw in keywords)
 
 
@@ -150,8 +191,7 @@ def select_engine(
         return EngineSelection(
             engine="sensitivity",
             reason=(
-                "Sensitivity analysis requested; identifying which variable "
-                "drives outcomes most"
+                "Sensitivity analysis requested; identifying which variable drives outcomes most"
             ),
             confidence=0.85,
         )

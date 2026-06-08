@@ -7,6 +7,7 @@ Called by the Algenta SDK (apps/runtime/license.py) during:
   - de license status   → GET  /v1/device/list
   - de runtime revoke   → DELETE /v1/device/{id}
 """
+
 from __future__ import annotations
 
 import uuid
@@ -16,13 +17,26 @@ from typing import Annotated
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api_server.db.session import get_db
 from apps.api_server.middleware.auth import get_current_org
+from apps.api_server.models.device import (
+    DEVICE_HOSTNAME_HASH_MAX_LENGTH,
+    DEVICE_ID_MAX_LENGTH,
+    DEVICE_PLATFORM_MAX_LENGTH,
+    DEVICE_PLATFORM_VERSION_MAX_LENGTH,
+    DEVICE_SDK_VERSION_MAX_LENGTH,
+    DeviceRegistration,
+    DeviceStatus,
+)
 from apps.api_server.pagination import paginate_sequence
 from apps.api_server.services.auth_service import AuthContext
 from apps.api_server.services.device_service import (
+    _api_key_effective_device_limit,
+    _device_identity_mismatch_error,
+    _device_identity_mismatched_fields,
     _plan_name,
     list_devices,
     revoke_device,
@@ -34,12 +48,13 @@ router = APIRouter(tags=["devices"])
 
 # ── Request / response models ─────────────────────────────────────────────────
 
+
 class DeviceInfo(BaseModel):
-    device_id:        str = Field(..., min_length=16, max_length=64)
-    platform:         str = Field(default="")
-    platform_version: str = Field(default="")
-    hostname_hash:    str = Field(default="")
-    sdk_version:      str = Field(default="")
+    device_id: str = Field(..., min_length=16, max_length=DEVICE_ID_MAX_LENGTH)
+    platform: str = Field(default="", max_length=DEVICE_PLATFORM_MAX_LENGTH)
+    platform_version: str = Field(default="", max_length=DEVICE_PLATFORM_VERSION_MAX_LENGTH)
+    hostname_hash: str = Field(default="", max_length=DEVICE_HOSTNAME_HASH_MAX_LENGTH)
+    sdk_version: str = Field(default="", max_length=DEVICE_SDK_VERSION_MAX_LENGTH)
 
 
 class RegisterRequest(BaseModel):
@@ -47,45 +62,48 @@ class RegisterRequest(BaseModel):
 
 
 class RegisterResponse(BaseModel):
-    license_token:  str
-    device_id:      str
-    plan:           str
-    device_limit:   int           # 0 = unlimited
-    device_count:   int
+    license_token: str
+    device_id: str
+    plan: str
+    device_limit: int  # 0 = unlimited
+    device_count: int
     api_key_prefix: str
-    message:        str
+    message: str
     # Credit bucket — initial grant at registration
-    credits_granted:        int   = 0
-    credits_expires_at:     float = 0.0
-    credits_billing_period: str   = ""
+    credits_granted: int = 0
+    credits_expires_at: float = 0.0
+    credits_billing_period: str = ""
+    server_time: float = 0.0
 
 
 class HeartbeatRequest(BaseModel):
     device_id: str = Field(..., min_length=16, max_length=64)
-    usage:     dict = Field(default_factory=dict)
+    usage: dict[str, object] = Field(default_factory=dict)
 
 
 class HeartbeatResponse(BaseModel):
-    device_id:    str
-    plan:         str
+    device_id: str
+    plan: str
     device_limit: int
     device_count: int
-    status:       str    # "ok" | "approaching_limit" | "over_limit"
-    message:      str
+    status: str  # "ok" | "approaching_limit" | "over_limit"
+    message: str
+    server_time: float = 0.0
 
 
 class DeviceListResponse(BaseModel):
-    devices:      list[dict]
+    devices: list[dict[str, object]]
     device_count: int
-    total:        int
-    page:         int
-    limit:        int
-    pages:        int
+    total: int
+    page: int
+    limit: int
+    pages: int
     device_limit: int
-    plan:         str
+    plan: str
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
+
 
 @router.post(
     "/v1/device/register",
@@ -102,54 +120,27 @@ async def device_register(
     body: RegisterRequest,
     request: Request,
     ctx: Annotated[AuthContext, Depends(get_current_org)],
-    db:  Annotated[AsyncSession, Depends(get_db)],
+    db: Annotated[AsyncSession, Depends(get_db)],
     # Pass raw API key through request state (set by auth middleware)
     # We need the raw key to look up the APIKey row by hash.
     # The auth middleware already validated it — we just re-use it here.
 ) -> RegisterResponse:
-    # Raw key is not stored in AuthContext for security — we re-read from header
-    # via a workaround: auth middleware stores the raw key in request.state
-    # TODO: thread raw_key through AuthContext in v2
-    # For now, use org_id + key_id to look up key_prefix from DB
-    from sqlalchemy import select
-
-    from apps.api_server.models.api_key import APIKey
-
-    api_key_result = await db.execute(
-        select(APIKey).where(APIKey.id == ctx["key_id"])
-    )
-    api_key_row = api_key_result.scalar_one_or_none()
-    if api_key_row is None:
-        raise HTTPException(status_code=401, detail="API key not found")
-
-    # We don't have the raw key here — device_service.register_device needs it
-    # to look up by hash. Since we already validated in middleware, use the row directly.
-    # Bypass _resolve_api_key and call the service with the resolved row.
     from datetime import datetime
 
-    from sqlalchemy.orm import selectinload
-
     from apps.api_server.services.device_service import (
-        DeviceRegistration,
-        DeviceStatus,
         _active_device_count,
         _issue_license_jwt,
+        _load_api_key_with_org,
         _plan_name,
     )
 
-    result = await db.execute(
-        select(APIKey)
-        .options(selectinload(APIKey.organization))
-        .where(APIKey.id == ctx["key_id"])
-    )
-    api_key_row = result.scalar_one()
+    api_key_row = await _load_api_key_with_org(ctx["key_id"], db, lock=True)
+    if api_key_row is None:
+        raise HTTPException(status_code=401, detail="API key not found")
     plan = _plan_name(api_key_row.organization.plan)
 
     from apps.api_server.services.plan_limits import (
         credit_batch_size as _get_credit_batch,
-    )
-    from apps.api_server.services.plan_limits import (
-        device_limit as _get_device_limit,
     )
     from apps.api_server.services.plan_limits import (
         local_runtime_allowed,
@@ -169,13 +160,42 @@ async def device_register(
             },
         )
 
-    device_limit = _get_device_limit(plan)
+    device_limit = _api_key_effective_device_limit(api_key_row, plan)
     device_id = body.device.device_id
+    device_info = body.device.model_dump()
+    if device_limit > 0 and not body.device.platform.strip():
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": {
+                    "code": "device_platform_required",
+                    "message": (
+                        "This API key is bound to a finite number of devices. "
+                        "Provide device.platform when registering a device."
+                    ),
+                    "required_field": "platform",
+                }
+            },
+        )
+    if device_limit > 0 and not body.device.hostname_hash.strip():
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": {
+                    "code": "device_fingerprint_required",
+                    "message": (
+                        "This API key is bound to a finite number of devices. "
+                        "Provide device.hostname_hash when registering a device."
+                    ),
+                    "required_field": "hostname_hash",
+                }
+            },
+        )
 
     existing = await db.execute(
         select(DeviceRegistration).where(
             DeviceRegistration.api_key_id == api_key_row.id,
-            DeviceRegistration.device_id  == device_id,
+            DeviceRegistration.device_id == device_id,
         )
     )
     existing_row = existing.scalar_one_or_none()
@@ -188,9 +208,9 @@ async def device_register(
                 detail={
                     "error": "device_limit_reached",
                     "message": (
-                        f"Plan '{plan}' allows {device_limit} device(s). "
+                        f"API key '{api_key_row.label}' allows {device_limit} device(s). "
                         f"You have {current_count} registered. "
-                        "Revoke an existing device or upgrade your plan."
+                        "Revoke an existing device or create a broader key."
                     ),
                     "device_count": current_count,
                     "device_limit": device_limit,
@@ -216,20 +236,48 @@ async def device_register(
         current_count += 1
     else:
         if existing_row.status == DeviceStatus.REVOKED:
-            current_count = await _active_device_count(api_key_row.id, db)
-            if device_limit > 0 and current_count >= device_limit:
-                raise HTTPException(status_code=402, detail={
-                    "error": "device_limit_reached",
-                    "message": f"Cannot re-activate: device limit of {device_limit} reached.",
-                    "upgrade_url": "https://algenta.io/pricing",
-                })
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": {
+                        "code": "device_revoked",
+                        "message": (
+                            f"Device '{device_id}' has been revoked for this API key. "
+                            "Use a different key or ask an owner to authorize "
+                            "a different device identity."
+                        ),
+                        "device_id": device_id,
+                        "plan": plan,
+                    }
+                },
+            )
+        mismatched_fields = _device_identity_mismatched_fields(existing_row, device_info)
+        if mismatched_fields:
+            mismatch_error = _device_identity_mismatch_error(
+                device_id=device_id,
+                plan=plan,
+                mismatched_fields=mismatched_fields,
+            )
+            raise HTTPException(
+                status_code=mismatch_error.status_code,
+                detail={
+                    "error": {
+                        "code": mismatch_error.code,
+                        "message": mismatch_error.message,
+                        **mismatch_error.details,
+                    }
+                },
+            )
         from sqlalchemy import update as sa_update
+
         await db.execute(
             sa_update(DeviceRegistration)
             .where(DeviceRegistration.id == existing_row.id)
             .values(
                 status=DeviceStatus.ACTIVE,
                 platform=body.device.platform or existing_row.platform,
+                platform_version=body.device.platform_version or existing_row.platform_version,
+                hostname_hash=body.device.hostname_hash or existing_row.hostname_hash,
                 sdk_version=body.device.sdk_version or existing_row.sdk_version,
                 last_heartbeat_at=datetime.now(UTC),
                 heartbeat_count=DeviceRegistration.heartbeat_count + 1,
@@ -238,8 +286,13 @@ async def device_register(
         current_count = await _active_device_count(api_key_row.id, db)
 
     await db.commit()
-    logger.info("device_registered", device_id=device_id[:8], plan=plan,
-                device_count=current_count, org_id=str(api_key_row.org_id))
+    logger.info(
+        "device_registered",
+        device_id=device_id[:8],
+        plan=plan,
+        device_count=current_count,
+        org_id=str(api_key_row.org_id),
+    )
 
     token = _issue_license_jwt(
         device_id=device_id,
@@ -247,13 +300,15 @@ async def device_register(
         plan=plan,
         device_limit=device_limit,
         org_id=str(api_key_row.org_id),
+        api_key_expires_at=api_key_row.expires_at,
     )
 
     # ── Issue initial credit batch ─────────────────────────────────────────
     import time as _time
     from datetime import datetime
-    credit_batch   = _get_credit_batch(plan)
-    credit_expires = _time.time() + 86_400   # 24h
+
+    credit_batch = _get_credit_batch(plan)
+    credit_expires = _time.time() + 86_400  # 24h
     billing_period = datetime.now(UTC).strftime("%Y-%m")
 
     # Record credit grant in Redis (best-effort)
@@ -271,6 +326,8 @@ async def device_register(
             error=str(exc),
         )
 
+    server_time = _time.time()
+
     return RegisterResponse(
         license_token=token,
         device_id=device_id,
@@ -282,6 +339,7 @@ async def device_register(
         credits_granted=credit_batch,
         credits_expires_at=credit_expires,
         credits_billing_period=billing_period,
+        server_time=server_time,
     )
 
 
@@ -293,7 +351,7 @@ async def device_register(
 async def device_heartbeat(
     body: HeartbeatRequest,
     ctx: Annotated[AuthContext, Depends(get_current_org)],
-    db:  Annotated[AsyncSession, Depends(get_db)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> HeartbeatResponse:
     from datetime import datetime
 
@@ -302,27 +360,20 @@ async def device_heartbeat(
     from sqlalchemy.orm import selectinload
 
     from apps.api_server.models.api_key import APIKey
-    from apps.api_server.services.device_service import (
-        _DEVICE_LIMITS,
-        DeviceRegistration,
-        DeviceStatus,
-        _active_device_count,
-    )
+    from apps.api_server.services.device_service import _active_device_count
 
     result = await db.execute(
-        select(APIKey)
-        .options(selectinload(APIKey.organization))
-        .where(APIKey.id == ctx["key_id"])
+        select(APIKey).options(selectinload(APIKey.organization)).where(APIKey.id == ctx["key_id"])
     )
     api_key_row = result.scalar_one()
     plan = _plan_name(api_key_row.organization.plan)
-    device_limit = _DEVICE_LIMITS.get(plan, 1)
+    device_limit = _api_key_effective_device_limit(api_key_row, plan)
 
     await db.execute(
         sa_update(DeviceRegistration)
         .where(
             DeviceRegistration.api_key_id == api_key_row.id,
-            DeviceRegistration.device_id  == body.device_id,
+            DeviceRegistration.device_id == body.device_id,
         )
         .values(
             last_heartbeat_at=datetime.now(UTC),
@@ -332,18 +383,27 @@ async def device_heartbeat(
     )
 
     # ── Reconcile local execution count into usage_records ─────────────────
-    executions_since = int(body.usage.get("executions_since_last_heartbeat", 0))
+    raw_executions_since = body.usage.get("executions_since_last_heartbeat", 0)
+    if isinstance(raw_executions_since, bool):
+        executions_since = 0
+    elif isinstance(raw_executions_since, int | str | bytes | bytearray):
+        executions_since = int(raw_executions_since)
+    else:
+        executions_since = 0
     if executions_since > 0:
         from apps.api_server.models.usage_record import UsageEndpoint, UsageRecord
+
         billing_period = datetime.now(UTC).strftime("%Y-%m")
-        db.add(UsageRecord(
-            org_id=api_key_row.org_id,
-            api_key_id=api_key_row.id,
-            billing_period=billing_period,
-            endpoint=UsageEndpoint.SIMULATE,
-            billing_units=executions_since,
-            scenarios_run=executions_since,
-        ))
+        db.add(
+            UsageRecord(
+                org_id=api_key_row.org_id,
+                api_key_id=api_key_row.id,
+                billing_period=billing_period,
+                endpoint=UsageEndpoint.SIMULATE,
+                billing_units=executions_since,
+                scenarios_run=executions_since,
+            )
+        )
 
     await db.commit()
 
@@ -368,6 +428,7 @@ async def device_heartbeat(
         device_count=device_count,
         status=status,
         message=message,
+        server_time=datetime.now(UTC).timestamp(),
     )
 
 
@@ -378,7 +439,7 @@ async def device_heartbeat(
 )
 async def device_list(
     ctx: Annotated[AuthContext, Depends(get_current_org)],
-    db:  Annotated[AsyncSession, Depends(get_db)],
+    db: Annotated[AsyncSession, Depends(get_db)],
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=25, ge=1, le=200),
 ) -> DeviceListResponse:
@@ -386,16 +447,13 @@ async def device_list(
     from sqlalchemy.orm import selectinload
 
     from apps.api_server.models.api_key import APIKey
-    from apps.api_server.services.device_service import _DEVICE_LIMITS
 
     result = await db.execute(
-        select(APIKey)
-        .options(selectinload(APIKey.organization))
-        .where(APIKey.id == ctx["key_id"])
+        select(APIKey).options(selectinload(APIKey.organization)).where(APIKey.id == ctx["key_id"])
     )
     api_key_row = result.scalar_one()
     plan = _plan_name(api_key_row.organization.plan)
-    device_limit = _DEVICE_LIMITS.get(plan, 1)
+    device_limit = _api_key_effective_device_limit(api_key_row, plan)
 
     devices = await list_devices(ctx["org_id"], db)
     envelope = paginate_sequence(devices, page=page, limit=limit)
@@ -419,8 +477,8 @@ async def device_list(
 async def device_revoke(
     registration_id: uuid.UUID,
     ctx: Annotated[AuthContext, Depends(get_current_org)],
-    db:  Annotated[AsyncSession, Depends(get_db)],
-) -> dict:
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict[str, object]:
     found = await revoke_device(ctx["org_id"], registration_id, db)
     if not found:
         raise HTTPException(status_code=404, detail="Device registration not found")

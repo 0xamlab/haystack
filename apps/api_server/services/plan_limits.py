@@ -20,6 +20,7 @@ This module is imported by:
   - devices.py router  (cloud-only guard on /v1/device/register)
   - license.py         (permitted_modules in JWT)
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -28,10 +29,10 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class PlanConfig:
     display_name: str
-    price_usd_month: int | None        # None = custom/sales
-    executions_month: int              # 0 = unlimited
-    devices: int                       # 0 = unlimited
-    local_runtime: bool                # can register devices / use local daemon
+    price_usd_month: int | None  # None = custom/sales
+    executions_month: int  # 0 = unlimited
+    devices: int  # 0 = unlimited
+    local_runtime: bool  # can register devices / use local daemon
     rate_per_minute: int
     async_jobs: bool
     webhooks: bool
@@ -39,90 +40,90 @@ class PlanConfig:
     max_batch: int
     audit_trail: bool
     rbac: bool
-    permitted_modules: list[str]       # ["*"] = all, list of names = restricted
-    credit_batch_size: int             # executions issued per /v1/credits/refresh call
+    permitted_modules: list[str]  # ["*"] = all, list of names = restricted
+    credit_batch_size: int  # executions issued per /v1/credits/refresh call
 
 
 _PLANS: dict[str, PlanConfig] = {
     "free": PlanConfig(
-        display_name        = "STARTER",
-        price_usd_month     = 0,
-        executions_month    = 10_000,
-        devices             = 0,          # cloud API only — no local runtime
-        local_runtime       = False,
-        rate_per_minute     = 60,
-        async_jobs          = False,
-        webhooks            = False,
-        max_runs_per_call   = 10_000,
-        max_batch           = 10,
-        audit_trail         = False,
-        rbac                = False,
-        permitted_modules   = ["*"],      # all modules via cloud API
-        credit_batch_size   = 1_000,
+        display_name="STARTER",
+        price_usd_month=0,
+        executions_month=10_000,
+        devices=0,  # cloud API only — no local runtime
+        local_runtime=False,
+        rate_per_minute=60,
+        async_jobs=False,
+        webhooks=False,
+        max_runs_per_call=10_000,
+        max_batch=10,
+        audit_trail=False,
+        rbac=False,
+        permitted_modules=["*"],  # all modules via cloud API
+        credit_batch_size=1_000,
     ),
     "developer": PlanConfig(
-        display_name        = "PRO",
-        price_usd_month     = 99,
-        executions_month    = 500_000,
-        devices             = 5,
-        local_runtime       = True,
-        rate_per_minute     = 300,
-        async_jobs          = True,
-        webhooks            = True,
-        max_runs_per_call   = 1_000_000,
-        max_batch           = 100,
-        audit_trail         = True,
-        rbac                = False,
-        permitted_modules   = ["*"],
-        credit_batch_size   = 10_000,
+        display_name="PRO",
+        price_usd_month=99,
+        executions_month=500_000,
+        devices=5,
+        local_runtime=True,
+        rate_per_minute=300,
+        async_jobs=True,
+        webhooks=True,
+        max_runs_per_call=1_000_000,
+        max_batch=100,
+        audit_trail=True,
+        rbac=False,
+        permitted_modules=["*"],
+        credit_batch_size=10_000,
     ),
     "pro": PlanConfig(
-        display_name        = "PRO",
-        price_usd_month     = 99,
-        executions_month    = 500_000,
-        devices             = 5,
-        local_runtime       = True,
-        rate_per_minute     = 1_000,
-        async_jobs          = True,
-        webhooks            = True,
-        max_runs_per_call   = 1_000_000,
-        max_batch           = 100,
-        audit_trail         = True,
-        rbac                = False,
-        permitted_modules   = ["*"],
-        credit_batch_size   = 10_000,
+        display_name="PRO",
+        price_usd_month=99,
+        executions_month=500_000,
+        devices=5,
+        local_runtime=True,
+        rate_per_minute=1_000,
+        async_jobs=True,
+        webhooks=True,
+        max_runs_per_call=1_000_000,
+        max_batch=100,
+        audit_trail=True,
+        rbac=False,
+        permitted_modules=["*"],
+        credit_batch_size=10_000,
     ),
     "team": PlanConfig(
-        display_name        = "TEAM",
-        price_usd_month     = 499,
-        executions_month    = 1_000_000,
-        devices             = 25,
-        local_runtime       = True,
-        rate_per_minute     = 5_000,
-        async_jobs          = True,
-        webhooks            = True,
-        max_runs_per_call   = 1_000_000,
-        max_batch           = 100,
-        audit_trail         = True,
-        rbac                = True,
-        permitted_modules   = ["*"],
-        credit_batch_size   = 25_000,
+        display_name="TEAM",
+        price_usd_month=499,
+        executions_month=1_000_000,
+        devices=25,
+        local_runtime=True,
+        rate_per_minute=5_000,
+        async_jobs=True,
+        webhooks=True,
+        max_runs_per_call=1_000_000,
+        max_batch=100,
+        audit_trail=True,
+        rbac=True,
+        permitted_modules=["*"],
+        credit_batch_size=25_000,
     ),
     "enterprise": PlanConfig(
-        display_name        = "ENTERPRISE",
-        price_usd_month     = None,
-        executions_month    = 0,          # unlimited
-        devices             = 0,          # unlimited
-        local_runtime       = True,
-        rate_per_minute     = 10_000,
-        async_jobs          = True,
-        webhooks            = True,
-        max_runs_per_call   = 1_000_000,
-        max_batch           = 100,
-        audit_trail         = True,
-        rbac                = True,
-        permitted_modules   = ["*"],
-        credit_batch_size   = 100_000,
+        display_name="ENTERPRISE",
+        price_usd_month=None,
+        executions_month=0,  # unlimited
+        devices=0,  # unlimited
+        local_runtime=True,
+        rate_per_minute=10_000,
+        async_jobs=True,
+        webhooks=True,
+        max_runs_per_call=1_000_000,
+        max_batch=100,
+        audit_trail=True,
+        rbac=True,
+        permitted_modules=["*"],
+        credit_batch_size=100_000,
     ),
 }
 
@@ -145,10 +146,11 @@ def device_limit(plan: str) -> int:
 
 
 def effective_device_limit(plan: str, api_key_device_limit: int | None) -> int:
-    """Resolve the enforced per-key device limit under the current plan.
+    """
+    Resolve the enforced per-key device limit under the current plan.
 
-    The plan is the outer ceiling; a key may narrow it further. `0` means
-    unlimited and is only honored on plans that allow unlimited devices.
+    The plan remains the outer ceiling. A key may narrow that ceiling further.
+    `0` always means unlimited, but only plans with unlimited devices may honor it.
     """
     if not local_runtime_allowed(plan):
         return 0
@@ -166,7 +168,8 @@ def effective_device_limit(plan: str, api_key_device_limit: int | None) -> int:
 
 
 def validate_api_key_device_limit(plan: str, requested_device_limit: int | None) -> int | None:
-    """Validate a configured per-key device cap against the current plan.
+    """
+    Validate a configured per-key device cap against the current plan.
 
     Returns the stored override value. `None` means inherit the plan default.
     """

@@ -10,98 +10,130 @@ Layout on disk:
 
 Sources are content-keyed: same data → same ID, instant re-registration.
 """
+
 from __future__ import annotations
 
-import hashlib
-import json
+import errno
 import os
 import re
-import time
-import uuid
-from datetime import UTC, datetime
+import tempfile
 from pathlib import Path
 from typing import Any
 
 import structlog
 
+from . import source_registry_ids as _ids
+from . import source_registry_nodes as _nodes
+from . import source_registry_persistence as _persistence
+from . import source_registry_storage as _storage
+
 logger = structlog.get_logger(__name__)
 
 _SOURCES_DIR = Path(os.environ.get("ALGENTA_SOURCES_DIR", Path.home() / ".algenta" / "sources"))
 
-_JOIN_KEY_NAME_TOKENS = frozenset({
-    "account",
-    "code",
-    "customer",
-    "guid",
-    "id",
-    "identifier",
-    "item",
-    "key",
-    "number",
-    "order",
-    "part",
-    "product",
-    "ref",
-    "serial",
-    "sku",
-    "uuid",
-    "vendor",
-    "warehouse",
-})
-_DIMENSION_JOIN_TOKENS = frozenset({
-    "branch",
-    "location",
-    "merchant",
-    "outlet",
-    "restaurant",
-    "site",
-    "store",
-})
-_DIMENSION_JOIN_MODIFIER_TOKENS = frozenset({
-    "as",
-    "eats",
-    "external",
-    "local",
-    "manager",
-    "name",
-    "per",
-    "uber",
-    "ubereats",
-})
-_GENERIC_JOIN_TOKENS = frozenset({
-    "a",
-    "an",
-    "and",
-    "by",
-    "class",
-    "date",
-    "desc",
-    "description",
-    "dim",
-    "field",
-    "group",
-    "label",
-    "line",
-    "name",
-    "no",
-    "number",
-    "record",
-    "row",
-    "source",
-    "status",
-    "text",
-    "time",
-    "timestamp",
-    "to",
-    "type",
-    "value",
-})
-_NON_JOINABLE_ROLES = frozenset({
-    "derived_measure",
-    "unit_measure",
-    "component",
-    "ratio",
-})
+_JOIN_KEY_NAME_TOKENS = frozenset(
+    {
+        "account",
+        "code",
+        "customer",
+        "guid",
+        "id",
+        "identifier",
+        "item",
+        "key",
+        "number",
+        "order",
+        "part",
+        "product",
+        "ref",
+        "serial",
+        "sku",
+        "uuid",
+        "vendor",
+        "warehouse",
+    }
+)
+_DIMENSION_JOIN_TOKENS = frozenset(
+    {
+        "branch",
+        "location",
+        "merchant",
+        "outlet",
+        "restaurant",
+        "site",
+        "store",
+    }
+)
+_DIMENSION_JOIN_MODIFIER_TOKENS = frozenset(
+    {
+        "as",
+        "eats",
+        "external",
+        "local",
+        "manager",
+        "name",
+        "per",
+        "uber",
+        "ubereats",
+    }
+)
+_GENERIC_JOIN_TOKENS = frozenset(
+    {
+        "a",
+        "an",
+        "and",
+        "by",
+        "class",
+        "date",
+        "desc",
+        "description",
+        "dim",
+        "field",
+        "group",
+        "label",
+        "line",
+        "name",
+        "no",
+        "number",
+        "record",
+        "row",
+        "source",
+        "status",
+        "synthetic",
+        "text",
+        "time",
+        "timestamp",
+        "to",
+        "type",
+        "value",
+    }
+)
+_NON_JOINABLE_ROLES = frozenset(
+    {
+        "derived_measure",
+        "unit_measure",
+        "component",
+        "ratio",
+    }
+)
+_INTERNAL_JOIN_METADATA_PREFIX = "__"
+_GENERIC_SURROGATE_JOIN_TOKENS = frozenset(
+    {
+        "inferred",
+        "record",
+        "row",
+        "source",
+        "synthetic",
+    }
+)
+_GENERIC_SOURCE_ALIGNED_KEY_TOKENS = frozenset(
+    {"code", "guid", "id", "identifier", "key", "number", "ref", "uuid"}
+)
+_SOURCE_ALIGNED_CANDIDATE_MIN_REFERENCED_UNIQUE_RATIO = 0.98
+_SOURCE_ALIGNED_CANDIDATE_MIN_FILL_RATE = 0.25
+_SOURCE_ALIGNED_CANDIDATE_BONUS = 5.0
+_IMPLICIT_FALLBACK_SOURCES_DIR = Path(tempfile.gettempdir()) / "algenta-sources"
+_WRITABLE_SOURCE_DIRS: set[Path] = set()
 
 _SCHEMA_REVISION_CACHE: dict[str, tuple[tuple[Any, ...], str]] = {}
 _SOURCE_SCHEMA_REVISION_CACHE: dict[tuple[str, str], tuple[tuple[Any, ...], str]] = {}
@@ -125,6 +157,29 @@ def _looks_like_entity_join_key(name: str) -> bool:
     if tokens & _JOIN_KEY_NAME_TOKENS:
         return True
     return any(token in lowered for token in ("_id", "_key", "_code", "_ref", "_uuid", "_guid"))
+
+
+def _is_generic_surrogate_join_key(name: str) -> bool:
+    tokens = set(re.findall(r"[a-z0-9]+", name.lower()))
+    if not tokens:
+        return False
+    if not tokens & _GENERIC_SURROGATE_JOIN_TOKENS:
+        return False
+    if not (
+        tokens & _JOIN_KEY_NAME_TOKENS
+        or any(
+            token in name.lower() for token in ("_id", "_key", "_code", "_ref", "_uuid", "_guid")
+        )
+    ):
+        return False
+    non_generic = {
+        token
+        for token in tokens
+        if token not in _JOIN_KEY_NAME_TOKENS
+        and token not in _GENERIC_JOIN_TOKENS
+        and token not in _GENERIC_SURROGATE_JOIN_TOKENS
+    }
+    return not non_generic
 
 
 def _looks_like_low_cardinality_dimension(name: str) -> bool:
@@ -155,13 +210,54 @@ def _join_tokens(name: str) -> list[str]:
     return [token for token in re.findall(r"[a-z0-9]+", name.lower()) if token]
 
 
+def _canonical_source_tokens(name: str) -> set[str]:
+    tokens = set(_join_tokens(name))
+    expanded = set(tokens)
+    for token in tokens:
+        if len(token) > 4 and token.endswith("ies"):
+            expanded.add(f"{token[:-3]}y")
+        elif len(token) > 3 and token.endswith("s") and not token.endswith("ss"):
+            expanded.add(token[:-1])
+    return expanded
+
+
+def _source_aligned_foreign_key_flags(
+    left_source: str,
+    right_source: str,
+    left_key: str,
+    right_key: str,
+) -> tuple[bool, bool, bool]:
+    left_tokens = set(_join_tokens(left_key))
+    right_tokens = set(_join_tokens(right_key))
+    left_source_tokens = _canonical_source_tokens(left_source)
+    right_source_tokens = _canonical_source_tokens(right_source)
+    bare_left_id = bool(left_tokens) and left_tokens <= _GENERIC_SOURCE_ALIGNED_KEY_TOKENS
+    bare_right_id = bool(right_tokens) and right_tokens <= _GENERIC_SOURCE_ALIGNED_KEY_TOKENS
+    left_to_right_overlap = len(left_tokens & right_source_tokens) / max(
+        len(right_source_tokens),
+        1,
+    )
+    right_to_left_overlap = len(right_tokens & left_source_tokens) / max(
+        len(left_source_tokens),
+        1,
+    )
+    foreign_key_to_right = bare_right_id and left_to_right_overlap >= 0.5
+    foreign_key_to_left = bare_left_id and right_to_left_overlap >= 0.5
+    generic_bare_id_pair = bare_left_id and bare_right_id
+    return foreign_key_to_right, foreign_key_to_left, generic_bare_id_pair
+
+
 def _normalized_sample(value: Any) -> str:
-    text = str(value or "").strip().lower()
+    if value is None:
+        return ""
+    text = str(value).strip()
+    if re.fullmatch(r"[-+]?\d+\.0+", text):
+        text = text.split(".", 1)[0]
     text = re.sub(r"\s+", " ", text)
     return text
 
 
-def _build_join_blocks(schema_meta: dict) -> list[dict[str, Any]]:
+def _build_join_blocks(schema_meta: dict[str, Any]) -> list[dict[str, Any]]:
     planner_profile = schema_meta.get("planner_profile") or {}
     columns_meta = {
         str(col.get("name", "")): col
@@ -171,17 +267,23 @@ def _build_join_blocks(schema_meta: dict) -> list[dict[str, Any]]:
 
     blocks: list[dict[str, Any]] = []
     for col_name, prof in planner_profile.items():
+        if str(col_name).startswith(_INTERNAL_JOIN_METADATA_PREFIX):
+            continue
+        if _is_generic_surrogate_join_key(str(col_name)):
+            continue
         col_meta = columns_meta.get(col_name, {})
+        key_like = _looks_like_entity_join_key(col_name)
         role = str(col_meta.get("role", ""))
         is_numeric = bool(prof.get("is_numeric", col_meta.get("is_numeric", False)))
         fill_rate = float(prof.get("fill_rate", col_meta.get("fill_rate", 0.0)) or 0.0)
         total_count = int(prof.get("total_count", 0) or 0)
         unique_count = int(prof.get("unique_count", col_meta.get("cardinality", 0)) or 0)
-        if fill_rate < 0.05 or total_count <= 0 or unique_count <= 1:
+        if fill_rate < 0.05 or total_count <= 0 or (unique_count <= 1 and not key_like):
             continue
-        key_like = _looks_like_entity_join_key(col_name)
         dimension_like = _looks_like_low_cardinality_dimension(col_name)
         if role in _NON_JOINABLE_ROLES and not key_like:
+            continue
+        if role == "time" and not key_like and not dimension_like:
             continue
         if is_numeric and not key_like and role not in {"identifier", "time", "text"}:
             continue
@@ -216,21 +318,23 @@ def _build_join_blocks(schema_meta: dict) -> list[dict[str, Any]]:
         if not key_like and not dimension_like and unique_ratio < 0.02:
             joinability -= 0.6
 
-        blocks.append({
-            "name": col_name,
-            "norm": "".join(tokens),
-            "tokens": tokens[:6],
-            "core_tokens": core_tokens[:4],
-            "tail": tail,
-            "key_like": key_like,
-            "role": role,
-            "is_numeric": is_numeric,
-            "unique_count": unique_count,
-            "unique_ratio": round(unique_ratio, 6),
-            "fill_rate": round(fill_rate, 4),
-            "samples": samples,
-            "joinability": round(max(joinability, 0.0), 6),
-        })
+        blocks.append(
+            {
+                "name": col_name,
+                "norm": "".join(tokens),
+                "tokens": tokens[:6],
+                "core_tokens": core_tokens[:4],
+                "tail": tail,
+                "key_like": key_like,
+                "role": role,
+                "is_numeric": is_numeric,
+                "unique_count": unique_count,
+                "unique_ratio": round(unique_ratio, 6),
+                "fill_rate": round(fill_rate, 4),
+                "samples": samples,
+                "joinability": round(max(joinability, 0.0), 6),
+            }
+        )
 
     blocks.sort(key=lambda block: (block["joinability"], block["unique_count"]), reverse=True)
     return blocks[:24]
@@ -241,8 +345,7 @@ def _score_join_block_pair(left: dict[str, Any], right: dict[str, Any]) -> float
     left_dimension_family = _dimension_join_family(str(left.get("name") or ""))
     right_dimension_family = _dimension_join_family(str(right.get("name") or ""))
     same_dimension_family = (
-        bool(left_dimension_family)
-        and left_dimension_family == right_dimension_family
+        bool(left_dimension_family) and left_dimension_family == right_dimension_family
     )
     if left.get("norm") and left.get("norm") == right.get("norm"):
         score += 6.0
@@ -291,11 +394,47 @@ def _score_join_block_pair(left: dict[str, Any], right: dict[str, Any]) -> float
 def _score_candidate_source(
     left_blocks: list[dict[str, Any]],
     right_blocks: list[dict[str, Any]],
+    *,
+    left_source_name: str | None = None,
+    right_source_name: str | None = None,
 ) -> float:
     pair_scores: list[float] = []
     for left in left_blocks:
         for right in right_blocks:
             score = _score_join_block_pair(left, right)
+            if left_source_name and right_source_name:
+                left_name = str(left.get("name") or "")
+                right_name = str(right.get("name") or "")
+                foreign_key_to_right, foreign_key_to_left, generic_bare_id_pair = (
+                    _source_aligned_foreign_key_flags(
+                        left_source_name,
+                        right_source_name,
+                        left_name,
+                        right_name,
+                    )
+                )
+                if not generic_bare_id_pair and foreign_key_to_right != foreign_key_to_left:
+                    if foreign_key_to_right:
+                        referenced = right
+                        foreign = left
+                    else:
+                        referenced = left
+                        foreign = right
+                    referenced_unique_ratio = float(referenced.get("unique_ratio") or 0.0)
+                    foreign_fill_rate = float(foreign.get("fill_rate") or 0.0)
+                    referenced_fill_rate = float(referenced.get("fill_rate") or 0.0)
+                    if (
+                        referenced_unique_ratio
+                        >= _SOURCE_ALIGNED_CANDIDATE_MIN_REFERENCED_UNIQUE_RATIO
+                        and foreign_fill_rate >= _SOURCE_ALIGNED_CANDIDATE_MIN_FILL_RATE
+                        and referenced_fill_rate >= _SOURCE_ALIGNED_CANDIDATE_MIN_FILL_RATE
+                        and (
+                            bool(foreign.get("key_like"))
+                            or str(foreign.get("role") or "") == "identifier"
+                            or _looks_like_entity_join_key(str(foreign.get("name") or ""))
+                        )
+                    ):
+                        score += _SOURCE_ALIGNED_CANDIDATE_BONUS
             if score >= 4.0:
                 pair_scores.append(score)
     if not pair_scores:
@@ -304,239 +443,267 @@ def _score_candidate_source(
     return round(sum(pair_scores[:3]), 6)
 
 
+def _is_sources_dir_write_error(exc: OSError) -> bool:
+    return getattr(exc, "errno", None) in {errno.EACCES, errno.EPERM, errno.EROFS}
+
+
+def _org_dir_for_base(sources_dir: Path, org_id: str) -> Path:
+    directory = _storage.org_dir(sources_dir, org_id)
+    if sources_dir not in _WRITABLE_SOURCE_DIRS:
+        with tempfile.TemporaryFile(dir=directory):
+            pass
+        _WRITABLE_SOURCE_DIRS.add(sources_dir)
+    return directory
+
+
 def _org_dir(org_id: str) -> Path:
-    d = _SOURCES_DIR / org_id
-    d.mkdir(parents=True, exist_ok=True)
-    return d
+    global _SOURCES_DIR
+    try:
+        return _org_dir_for_base(_SOURCES_DIR, org_id)
+    except OSError as exc:
+        if os.environ.get("ALGENTA_SOURCES_DIR") or not _is_sources_dir_write_error(exc):
+            raise
+        fallback_dir = _org_dir_for_base(_IMPLICIT_FALLBACK_SOURCES_DIR, org_id)
+        if _SOURCES_DIR != _IMPLICIT_FALLBACK_SOURCES_DIR:
+            logger.warning(
+                "source_registry_default_dir_unwritable",
+                configured=str(_SOURCES_DIR),
+                fallback=str(_IMPLICIT_FALLBACK_SOURCES_DIR),
+                error=str(exc),
+            )
+            _SOURCES_DIR = _IMPLICIT_FALLBACK_SOURCES_DIR
+        return fallback_dir
 
 
 def _read_json(path: Path) -> Any:
-    if not path.exists():
-        return None
-    try:
-        return json.loads(path.read_text())
-    except Exception:
-        return None
+    return _storage.read_json(path)
 
 
 def _write_json(path: Path, data: Any) -> None:
-    path.write_text(json.dumps(data, indent=2, default=str))
+    _storage.write_json(path, data)
 
 
 def _path_fingerprint(path: Path) -> tuple[int, int]:
-    try:
-        stat = path.stat()
-    except FileNotFoundError:
-        return (0, 0)
-    return (int(stat.st_mtime_ns), int(stat.st_size))
+    return _storage.path_fingerprint(path)
 
 
 def _schema_stamp_path(org_dir: Path) -> Path:
-    return org_dir / ".schema_revision.stamp"
+    return _storage.schema_stamp_path(org_dir)
 
 
 def _touch_schema_stamp(org_dir: Path) -> None:
-    _schema_stamp_path(org_dir).write_text(str(time.time_ns()))
+    _storage.touch_schema_stamp(org_dir)
+
+
+def _schema_stamp_value(org_dir: Path) -> str:
+    return _storage.schema_stamp_value(org_dir)
 
 
 def _source_meta_cache_key(org_id: str, source_id: str) -> tuple[str, str]:
-    return (org_id, source_id)
+    return _storage.source_meta_cache_key(org_id, source_id)
 
 
 def _source_entry_cache_key(org_id: str, source_id: str) -> tuple[str, str]:
-    return (org_id, source_id)
+    return _storage.source_entry_cache_key(org_id, source_id)
 
 
 def _set_source_meta_cache(org_id: str, source_id: str, meta: dict[str, Any] | None) -> None:
-    d = _org_dir(org_id)
-    path = d / f"{source_id}.meta.json"
-    _SOURCE_META_CACHE[_source_meta_cache_key(org_id, source_id)] = (
-        (_path_fingerprint(path),),
-        meta,
+    _storage.set_source_meta_cache(
+        org_id=org_id,
+        source_id=source_id,
+        meta=meta,
+        org_dir=_org_dir(org_id),
+        cache=_SOURCE_META_CACHE,
+        path_fingerprint_fn=_path_fingerprint,
+        cache_key_fn=_source_meta_cache_key,
     )
 
 
 def _set_source_entry_cache(org_id: str, source_id: str, entry: dict[str, Any] | None) -> None:
-    d = _org_dir(org_id)
-    index_path = d / "index.json"
-    _SOURCE_ENTRY_CACHE[_source_entry_cache_key(org_id, source_id)] = (
-        (_path_fingerprint(index_path),),
-        entry,
+    _storage.set_source_entry_cache(
+        org_id=org_id,
+        source_id=source_id,
+        entry=entry,
+        org_dir=_org_dir(org_id),
+        cache=_SOURCE_ENTRY_CACHE,
+        path_fingerprint_fn=_path_fingerprint,
+        cache_key_fn=_source_entry_cache_key,
     )
 
 
 def _clear_source_meta_cache(org_id: str, source_id: str) -> None:
-    _SOURCE_META_CACHE.pop(_source_meta_cache_key(org_id, source_id), None)
+    _storage.clear_source_meta_cache(
+        org_id=org_id,
+        source_id=source_id,
+        cache=_SOURCE_META_CACHE,
+        cache_key_fn=_source_meta_cache_key,
+    )
 
 
 def _clear_source_entry_cache(org_id: str, source_id: str) -> None:
-    _SOURCE_ENTRY_CACHE.pop(_source_entry_cache_key(org_id, source_id), None)
+    _storage.clear_source_entry_cache(
+        org_id=org_id,
+        source_id=source_id,
+        cache=_SOURCE_ENTRY_CACHE,
+        cache_key_fn=_source_entry_cache_key,
+    )
 
 
 # ── Public API ──────────────────────────────────────────────────────────────────
 
 
 def source_id_for(content_key: str | None, *, path_key: str | None = None) -> str:
-    """
-    Deterministic source ID.
-    content_key  — sha256 hex of the raw content bytes (inline sources)
-    path_key     — type:name string (file/url/connection sources, no content hash)
-    """
-    raw = content_key or path_key or str(uuid.uuid4())
-    return hashlib.sha256(raw.encode()).hexdigest()[:24]
+    return _ids.source_id_for(content_key, path_key=path_key)
 
 
-def list_sources(org_id: str) -> list[dict]:
+def list_sources(org_id: str) -> list[dict[str, Any]]:
     """Return all registered sources for an org (from index.json)."""
-    d = _org_dir(org_id)
-    idx = _read_json(d / "index.json") or {}
-    return list(idx.values())
-
-
-def get_source_entry(org_id: str, source_id: str) -> dict | None:
-    """Return one registry index entry for a source, or None if it does not exist."""
-    d = _org_dir(org_id)
-    index_path = d / "index.json"
-    fingerprint = (_path_fingerprint(index_path),)
-    cache_key = _source_entry_cache_key(org_id, source_id)
-    cached = _SOURCE_ENTRY_CACHE.get(cache_key)
-    if cached and cached[0] == fingerprint:
-        return cached[1]
-
-    idx = _read_json(index_path) or {}
-    entry = idx.get(source_id)
-    normalized = entry if isinstance(entry, dict) else None
-    _SOURCE_ENTRY_CACHE[cache_key] = (fingerprint, normalized)
-    return normalized
-
-
-def get_source_entry_by_name(org_id: str, source_name: str) -> dict | None:
-    """Return one registry index entry by source name, or None if it does not exist."""
-    d = _org_dir(org_id)
-    index_path = d / "index.json"
-    fingerprint = (_path_fingerprint(index_path),)
-    cache_key = (org_id, source_name)
-    cached = _SOURCE_ENTRY_BY_NAME_CACHE.get(cache_key)
-    if cached and cached[0] == fingerprint:
-        return cached[1]
-
-    idx = _read_json(index_path) or {}
-    match = next(
-        (
-            entry
-            for entry in idx.values()
-            if isinstance(entry, dict) and str(entry.get("name") or "") == source_name
-        ),
-        None,
+    return _persistence.list_sources(
+        org_id=org_id,
+        org_dir_fn=_org_dir,
+        read_json_fn=_read_json,
     )
-    _SOURCE_ENTRY_BY_NAME_CACHE[cache_key] = (fingerprint, match)
-    return match
 
 
-def update_source_entry(org_id: str, source_id: str, updates: dict[str, Any]) -> dict | None:
+def get_source_entry(org_id: str, source_id: str) -> dict[str, Any] | None:
+    """Return one registry index entry for a source, or None if it does not exist."""
+    return _persistence.get_source_entry(
+        org_id=org_id,
+        source_id=source_id,
+        org_dir_fn=_org_dir,
+        read_json_fn=_read_json,
+        path_fingerprint_fn=_path_fingerprint,
+        source_entry_cache=_SOURCE_ENTRY_CACHE,
+        source_entry_cache_key_fn=_source_entry_cache_key,
+    )
+
+
+def get_source_entry_by_name(org_id: str, source_name: str) -> dict[str, Any] | None:
+    """Return one registry index entry by source name, or None if it does not exist."""
+    return _persistence.get_source_entry_by_name(
+        org_id=org_id,
+        source_name=source_name,
+        org_dir_fn=_org_dir,
+        read_json_fn=_read_json,
+        path_fingerprint_fn=_path_fingerprint,
+        source_entry_by_name_cache=_SOURCE_ENTRY_BY_NAME_CACHE,
+    )
+
+
+def update_source_entry(
+    org_id: str,
+    source_id: str,
+    updates: dict[str, Any],
+    *,
+    touch_schema: bool = True,
+) -> dict[str, Any] | None:
     """Patch a registry index entry in place and return the updated value."""
-    d = _org_dir(org_id)
-    idx = _read_json(d / "index.json") or {}
-    entry = idx.get(source_id)
-    if not isinstance(entry, dict):
-        return None
-    entry.update(updates)
-    idx[source_id] = entry
-    _write_json(d / "index.json", idx)
-    _touch_schema_stamp(d)
-    return entry
+    return _persistence.update_source_entry(
+        org_id=org_id,
+        source_id=source_id,
+        updates=updates,
+        touch_schema=touch_schema,
+        org_dir_fn=_org_dir,
+        read_json_fn=_read_json,
+        write_json_fn=_write_json,
+        set_source_entry_cache_fn=_set_source_entry_cache,
+        touch_schema_stamp_fn=_touch_schema_stamp,
+        schema_revision_cache=_SCHEMA_REVISION_CACHE,
+    )
 
 
 def candidate_join_sources(
     org_id: str,
     source_id: str,
-    schema_meta: dict,
+    schema_meta: dict[str, Any],
     *,
+    source_name: str | None = None,
     limit: int = 24,
     exhaustive_threshold: int = 24,
     min_score: float = 4.5,
-) -> list[dict]:
+) -> list[dict[str, Any]]:
     """
     Return likely join candidates for a newly registered source.
 
     This is the enterprise-scale blocker stage: avoid O(N^2) deep pair scans by
     first matching compact per-source join signatures from registry metadata.
     """
-    existing = [entry for entry in list_sources(org_id) if entry.get("id") != source_id]
-    if len(existing) <= exhaustive_threshold:
-        return existing
-
-    left_blocks = _build_join_blocks(schema_meta)
-    if not left_blocks:
-        return []
-
-    scored: list[tuple[float, dict]] = []
-    for entry in existing:
-        right_blocks = entry.get("join_blocks") or []
-        if not right_blocks:
-            continue
-        score = _score_candidate_source(left_blocks, right_blocks)
-        if score >= min_score:
-            scored.append((score, entry))
-
-    scored.sort(key=lambda item: (item[0], item[1].get("row_count", 0)), reverse=True)
-    return [entry for _score, entry in scored[:limit]]
+    return _persistence.candidate_join_sources(
+        org_id=org_id,
+        source_id=source_id,
+        schema_meta=schema_meta,
+        source_name=source_name,
+        limit=limit,
+        exhaustive_threshold=exhaustive_threshold,
+        min_score=min_score,
+        list_sources_fn=list_sources,
+        build_join_blocks_fn=_build_join_blocks,
+        score_candidate_source_fn=_score_candidate_source,
+    )
 
 
-def get_source_meta(org_id: str, source_id: str) -> dict | None:
+def get_source_meta(org_id: str, source_id: str) -> dict[str, Any] | None:
     """Return full schema metadata for a source."""
-    d = _org_dir(org_id)
-    path = d / f"{source_id}.meta.json"
-    fingerprint = (_path_fingerprint(path),)
-    cache_key = _source_meta_cache_key(org_id, source_id)
-    cached = _SOURCE_META_CACHE.get(cache_key)
-    if cached and cached[0] == fingerprint:
-        return cached[1]
-
-    meta = _read_json(path)
-    normalized = meta if isinstance(meta, dict) else None
-    _SOURCE_META_CACHE[cache_key] = (fingerprint, normalized)
-    return normalized
+    return _persistence.get_source_meta(
+        org_id=org_id,
+        source_id=source_id,
+        org_dir_fn=_org_dir,
+        read_json_fn=_read_json,
+        path_fingerprint_fn=_path_fingerprint,
+        source_meta_cache=_SOURCE_META_CACHE,
+        source_meta_cache_key_fn=_source_meta_cache_key,
+    )
 
 
-def update_source_meta(org_id: str, source_id: str, updates: dict[str, Any]) -> dict | None:
+def update_source_meta(
+    org_id: str,
+    source_id: str,
+    updates: dict[str, Any],
+    *,
+    touch_schema: bool = True,
+) -> dict[str, Any] | None:
     """Patch a source metadata document in place and return the updated value."""
-    d = _org_dir(org_id)
-    path = d / f"{source_id}.meta.json"
-    meta = _read_json(path)
-    if not isinstance(meta, dict):
-        return None
-    meta.update(updates)
-    _write_json(path, meta)
-    _touch_schema_stamp(d)
-    _set_source_meta_cache(org_id, source_id, meta)
-    source_revision = source_schema_revision(org_id, source_id)
-    idx = _read_json(d / "index.json") or {}
-    entry = idx.get(source_id)
-    if isinstance(entry, dict):
-        entry["source_schema_revision"] = source_revision
-        idx[source_id] = entry
-        _write_json(d / "index.json", idx)
-        _set_source_entry_cache(org_id, source_id, entry)
-    return meta
+    return _persistence.update_source_meta(
+        org_id=org_id,
+        source_id=source_id,
+        updates=updates,
+        touch_schema=touch_schema,
+        org_dir_fn=_org_dir,
+        read_json_fn=_read_json,
+        write_json_fn=_write_json,
+        set_source_meta_cache_fn=_set_source_meta_cache,
+        set_source_entry_cache_fn=_set_source_entry_cache,
+        touch_schema_stamp_fn=_touch_schema_stamp,
+        source_schema_revision_fn=source_schema_revision,
+        schema_revision_cache=_SCHEMA_REVISION_CACHE,
+    )
 
 
 def get_source_parquet(org_id: str, source_id: str) -> bytes | None:
     """Return raw Parquet bytes for a source, or None if not registered."""
-    p = _org_dir(org_id) / f"{source_id}.parquet"
-    return p.read_bytes() if p.exists() else None
+    return _persistence.get_source_parquet(
+        org_id=org_id,
+        source_id=source_id,
+        org_dir_fn=_org_dir,
+    )
 
 
 def get_source_parquet_path(org_id: str, source_id: str) -> Path | None:
     """Return the on-disk Parquet path for a source, or None if not registered."""
-    p = _org_dir(org_id) / f"{source_id}.parquet"
-    return p if p.exists() else None
+    return _persistence.get_source_parquet_path(
+        org_id=org_id,
+        source_id=source_id,
+        org_dir_fn=_org_dir,
+    )
 
 
-def get_connections(org_id: str) -> list[dict]:
+def get_connections(org_id: str) -> list[dict[str, Any]]:
     """Return all detected join connections for an org."""
-    d = _org_dir(org_id)
-    return _read_json(d / "connections.json") or []
+    return _persistence.get_connections(
+        org_id=org_id,
+        org_dir_fn=_org_dir,
+        read_json_fn=_read_json,
+    )
 
 
 def schema_revision(org_id: str) -> str:
@@ -547,64 +714,15 @@ def schema_revision(org_id: str) -> str:
     connection graph changes. Query-time planner caches can key off this so
     they rebuild only when the customer's schema actually changes.
     """
-    d = _org_dir(org_id)
-    idx = _read_json(d / "index.json") or {}
-    stamp_path = _schema_stamp_path(d)
-    fingerprint = (
-        _path_fingerprint(d / "index.json"),
-        _path_fingerprint(d / "connections.json"),
-        _path_fingerprint(stamp_path),
+    return _persistence.schema_revision(
+        org_id=org_id,
+        org_dir_fn=_org_dir,
+        read_json_fn=_read_json,
+        path_fingerprint_fn=_path_fingerprint,
+        schema_stamp_path_fn=_schema_stamp_path,
+        schema_stamp_value_fn=_schema_stamp_value,
+        schema_revision_cache=_SCHEMA_REVISION_CACHE,
     )
-    cached = _SCHEMA_REVISION_CACHE.get(org_id)
-    if cached and cached[0] == fingerprint:
-        return cached[1]
-    conns = _read_json(d / "connections.json") or []
-
-    sources = []
-    for source_id, entry in sorted(idx.items(), key=lambda item: item[0]):
-        meta = _read_json(d / f"{source_id}.meta.json") or {}
-        semantic_aliases = meta.get("semantic_aliases") or {}
-        query_hints = meta.get("query_hints") or {}
-        sources.append(
-            {
-                "id": entry.get("id", ""),
-                "name": entry.get("name", ""),
-                "registered_at": entry.get("registered_at", ""),
-                "row_count": entry.get("row_count", 0),
-                "columns": entry.get("columns", 0),
-                "roles_summary": entry.get("roles_summary", {}),
-                "decision_mode": entry.get("decision_mode", ""),
-                "join_blocks": entry.get("join_blocks", []),
-                "semantic_aliases": semantic_aliases,
-                "query_hints": query_hints,
-            }
-        )
-    connections = sorted(
-        [
-            {
-                "source_a": conn.get("source_a", ""),
-                "source_b": conn.get("source_b", ""),
-                "col_a": conn.get("col_a", ""),
-                "col_b": conn.get("col_b", ""),
-                "confidence": round(float(conn.get("confidence", 0.0)), 6),
-                "cardinality": conn.get("cardinality", ""),
-            }
-            for conn in conns
-        ],
-        key=lambda conn: (
-            conn["source_a"],
-            conn["col_a"],
-            conn["source_b"],
-            conn["col_b"],
-            conn["cardinality"],
-        ),
-    )
-
-    payload = {"sources": sources, "connections": connections}
-    raw = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
-    revision = hashlib.sha256(raw).hexdigest()[:24]
-    _SCHEMA_REVISION_CACHE[org_id] = (fingerprint, revision)
-    return revision
 
 
 def source_schema_revision(org_id: str, source_id: str) -> str:
@@ -614,26 +732,13 @@ def source_schema_revision(org_id: str, source_id: str) -> str:
     This is cheaper than the org-wide schema revision and is safe for
     single-source exact queries that do not depend on cross-source joins.
     """
-    d = _org_dir(org_id)
-    fingerprint = (
-        _path_fingerprint(d / f"{source_id}.meta.json"),
-        _path_fingerprint(d / f"{source_id}.parquet"),
+    return _persistence.source_schema_revision(
+        org_id=org_id,
+        source_id=source_id,
+        org_dir_fn=_org_dir,
+        path_fingerprint_fn=_path_fingerprint,
+        source_schema_revision_cache=_SOURCE_SCHEMA_REVISION_CACHE,
     )
-    cache_key = (org_id, source_id)
-    cached = _SOURCE_SCHEMA_REVISION_CACHE.get(cache_key)
-    if cached and cached[0] == fingerprint:
-        return cached[1]
-    raw = json.dumps(
-        {
-            "meta": fingerprint[0],
-            "parquet": fingerprint[1],
-        },
-        sort_keys=True,
-        separators=(",", ":"),
-    ).encode()
-    revision = hashlib.sha256(raw).hexdigest()[:24]
-    _SOURCE_SCHEMA_REVISION_CACHE[cache_key] = (fingerprint, revision)
-    return revision
 
 
 def register_source(
@@ -641,127 +746,77 @@ def register_source(
     source_id: str,
     name: str,
     parquet_bytes: bytes,
-    schema_meta: dict,
-    graph_nodes: dict,   # col → ColumnNode (serialized to dict)
-    profile: dict,
+    schema_meta: dict[str, Any],
+    graph_nodes: dict[str, Any],  # col → ColumnNode (serialized to dict)
+    profile: dict[str, Any],
     **entry_meta: Any,
-) -> dict:
+) -> dict[str, Any]:
     """
     Persist a source to disk.
     Returns the index entry dict.
     """
-    d = _org_dir(org_id)
-
-    # Write Parquet
-    (d / f"{source_id}.parquet").write_bytes(parquet_bytes)
-
-    # Write full schema metadata
-    _write_json(d / f"{source_id}.meta.json", schema_meta)
-    _set_source_meta_cache(org_id, source_id, schema_meta)
-
-    # Update index
-    idx = _read_json(d / "index.json") or {}
-    join_blocks = _build_join_blocks(schema_meta)
-    source_revision = source_schema_revision(org_id, source_id)
-    entry = {
-        "id":            source_id,
-        "name":          name,
-        "registered_at": datetime.now(UTC).isoformat(),
-        "row_count":     schema_meta.get("row_count", 0),
-        "roles_summary": schema_meta.get("roles_summary", {}),
-        "columns":       len(schema_meta.get("columns", [])),
-        "source_schema_revision": source_revision,
-        "join_blocks":   join_blocks,
-    }
-    for key, value in entry_meta.items():
-        if value is not None:
-            entry[key] = value
-    idx[source_id] = entry
-    _write_json(d / "index.json", idx)
-    _set_source_entry_cache(org_id, source_id, entry)
-    _touch_schema_stamp(d)
-
-    logger.info("source_registered", org=org_id, source_id=source_id, name=name)
-    return entry
+    del graph_nodes, profile
+    return _persistence.register_source(
+        org_id=org_id,
+        source_id=source_id,
+        name=name,
+        parquet_bytes=parquet_bytes,
+        schema_meta=schema_meta,
+        entry_meta=entry_meta,
+        org_dir_fn=_org_dir,
+        write_json_fn=_write_json,
+        read_json_fn=_read_json,
+        set_source_meta_cache_fn=_set_source_meta_cache,
+        build_join_blocks_fn=_build_join_blocks,
+        source_schema_revision_fn=source_schema_revision,
+        set_source_entry_cache_fn=_set_source_entry_cache,
+        touch_schema_stamp_fn=_touch_schema_stamp,
+        logger=logger,
+    )
 
 
 def delete_source(org_id: str, source_id: str) -> bool:
     """Remove a source and all its connections. Returns True if existed."""
-    d = _org_dir(org_id)
-    existed = False
-    for suffix in (".parquet", ".meta.json"):
-        p = d / f"{source_id}{suffix}"
-        if p.exists():
-            p.unlink()
-            existed = True
-
-    idx = _read_json(d / "index.json") or {}
-    if source_id in idx:
-        del idx[source_id]
-        _write_json(d / "index.json", idx)
-        existed = True
-
-    # Remove all connections involving this source
-    conns = [c for c in get_connections(org_id)
-             if c.get("source_a") != source_id and c.get("source_b") != source_id]
-    _write_json(d / "connections.json", conns)
-    if existed:
-        _touch_schema_stamp(d)
-        _clear_source_meta_cache(org_id, source_id)
-        _set_source_entry_cache(org_id, source_id, None)
-
-    if existed:
-        logger.info("source_deleted", org=org_id, source_id=source_id)
-    return existed
+    return _persistence.delete_source(
+        org_id=org_id,
+        source_id=source_id,
+        org_dir_fn=_org_dir,
+        read_json_fn=_read_json,
+        write_json_fn=_write_json,
+        get_connections_fn=get_connections,
+        touch_schema_stamp_fn=_touch_schema_stamp,
+        clear_source_meta_cache_fn=_clear_source_meta_cache,
+        set_source_entry_cache_fn=_set_source_entry_cache,
+        logger=logger,
+    )
 
 
-def upsert_connections(org_id: str, new_conns: list[dict]) -> None:
+def upsert_connections(org_id: str, new_conns: list[dict[str, Any]]) -> None:
     """Merge new connections into connections.json, deduplicating by source pair + columns."""
-    d = _org_dir(org_id)
-    existing = _read_json(d / "connections.json") or []
-
-    # Key: frozenset of (source_a, col_a, source_b, col_b)
-    def _key(c: dict) -> tuple:
-        return (c["source_a"], c["col_a"], c["source_b"], c["col_b"])
-
-    seen = {_key(c) for c in existing}
-    merged = list(existing)
-    for c in new_conns:
-        k = _key(c)
-        if k not in seen:
-            merged.append(c)
-            seen.add(k)
-
-    if len(merged) != len(existing):
-        _write_json(d / "connections.json", merged)
-        _touch_schema_stamp(d)
+    _persistence.upsert_connections(
+        org_id=org_id,
+        new_conns=new_conns,
+        org_dir_fn=_org_dir,
+        read_json_fn=_read_json,
+        write_json_fn=_write_json,
+        touch_schema_stamp_fn=_touch_schema_stamp,
+    )
 
 
-def get_connection_graph(org_id: str) -> dict[str, list[dict]]:
+def get_connection_graph(org_id: str) -> dict[str, list[dict[str, Any]]]:
     """
     Return a graph keyed by source_id → list of connection dicts reachable from it.
     Used by the query engine to find join paths.
     """
-    conns = get_connections(org_id)
-    graph: dict[str, list[dict]] = {}
-    for c in conns:
-        for src, other_src, col, other_col in [
-            (c["source_a"], c["source_b"], c["col_a"], c["col_b"]),
-            (c["source_b"], c["source_a"], c["col_b"], c["col_a"]),
-        ]:
-            graph.setdefault(src, []).append({
-                "to_source": other_src,
-                "local_col": col,
-                "remote_col": other_col,
-                "confidence": c.get("confidence", 0.0),
-                "cardinality": c.get("cardinality", "?"),
-            })
-    return graph
+    return _persistence.get_connection_graph(
+        org_id=org_id,
+        get_connections_fn=get_connections,
+    )
 
 
 def load_all_into_cache(
     org_id: str,
-    cache: dict,
+    cache: dict[str, Any],
     cache_lock: Any,
     cached_source_cls: type,
 ) -> int:
@@ -770,109 +825,18 @@ def load_all_into_cache(
     _SOURCE_CACHE so the first query after restart is fast.
     Returns number of sources loaded.
     """
-    import json as _json
-
-
-    d = _org_dir(org_id)
-    idx = _read_json(d / "index.json") or {}
-    loaded = 0
-
-    for source_id, _entry in idx.items():
-        parquet_path = d / f"{source_id}.parquet"
-        meta_path    = d / f"{source_id}.meta.json"
-        if not parquet_path.exists():
-            continue
-        try:
-            parquet_bytes = parquet_path.read_bytes()
-            schema_meta   = _read_json(meta_path) or {}
-            _set_source_meta_cache(org_id, source_id, schema_meta)
-
-            # Rebuild graph_nodes from meta (lightweight ColumnNode-like dicts).
-            # _dict_to_node applies demotion rules (e.g. false-positive derived_measure
-            # columns that are actually identifiers).  Patch schema_meta columns to
-            # reflect the corrected roles so parquet_schema_meta stays in sync.
-            graph_nodes: dict = {}
-            corrected_cols = []
-            for col in schema_meta.get("columns", []):
-                node = _dict_to_node(col)
-                graph_nodes[col["name"]] = node
-                if col.get("role") != node.role:
-                    corrected_cols.append((col["name"], col.get("role"), node.role))
-
-            # Note: Step 3b (top-mean unit_measure → derived_measure promotion) is NOT
-            # applied here for preloaded sources.  That step requires CV (std/mean) to
-            # correctly distinguish aggregated totals from rates, but std is not stored
-            # in .meta.json.  Using mean alone risks promoting the wrong column (e.g.
-            # EXT_COST > EXT_PRICE in datasets where cost values are larger).
-            # Step 3b runs correctly in build_schema_graph() during live registration
-            # where raw numeric samples are available.  Re-register to apply it.
-
-            if corrected_cols:
-                # Rebuild schema_meta columns with corrected roles
-                corrected_map = {n: r for n, _, r in corrected_cols}
-                schema_meta = {
-                    **schema_meta,
-                    "columns": [
-                        {**c, "role": corrected_map[c["name"]]} if c["name"] in corrected_map else c
-                        for c in schema_meta.get("columns", [])
-                    ],
-                }
-
-            entry_obj = cached_source_cls(
-                parquet_bytes     = parquet_bytes,
-                parquet_schema_meta = _json.dumps(schema_meta).encode(),
-                profile           = {},   # not needed after initial profile
-                mojo_profile      = {},
-                relations         = schema_meta.get("formulas", []),
-                graph_nodes       = graph_nodes,
-                schema_meta       = schema_meta,
-                mojo_profiling_status = schema_meta.get("mojo_profiling_status") or {},
-                content_keyed     = True,  # disk sources are permanent
-            )
-            cache[source_id] = entry_obj
-            loaded += 1
-        except Exception as exc:
-            logger.warning("source_cache_load_failed", source_id=source_id, error=str(exc))
-
-    return loaded
-
-
-def _dict_to_node(col: dict) -> Any:
-    """Reconstruct a ColumnNode-like object from schema metadata dict."""
-    # Import here to avoid circular imports
-    from apps.api_server.routers.query import ColumnNode, _col_name_signals_id
-    role = col.get("role", "metric")
-    # Demote false-positive derived_measure from stale on-disk .meta.json files.
-    # Mirror the same three rules as build_schema_graph() Step 2b so live and
-    # preloaded sources are always consistent.
-    if role == "derived_measure":
-        if not col.get("formula"):                      # Rule 1: no formula proof
-            role = "metric"
-        elif _col_name_signals_id(col.get("name", "")):  # Rule 2: ID-like name
-            role = "identifier"
-
-    # Promote remaining metric numeric decimal columns to unit_measure.
-    # This mirrors build_schema_graph() Step 2's "elif has_decimals" branch.
-    # The top-mean promotion (metric→derived_measure, Step 3b) is done in
-    # load_all_into_cache() AFTER all nodes are built, where full source context
-    # is available to pick the highest-mean column correctly.
-    if role == "metric" and col.get("is_numeric"):
-        mean_val = col.get("mean", 0.0)
-        # Decimal mean check: fractional part present → continuous decimal column
-        mean_has_decimal = (mean_val > 0 and abs(mean_val - int(mean_val)) > 0.01)
-        if mean_has_decimal:
-            # rate/price/cost — may be further promoted to derived_measure below
-            role = "unit_measure"
-
-    node = ColumnNode(
-        name            = col.get("name", ""),
-        role            = role,
-        formula         = col.get("formula"),
-        mean            = col.get("mean", 0.0),
-        std             = 0.0,
-        is_numeric      = col.get("is_numeric", False),
-        magnitude_class = col.get("magnitude", "medium"),
-        semantic_type   = col.get("semantic_type") or "",
-        confidence      = 0.55 if role == "unit_measure" and not col.get("formula") else 0.6,
+    del cache_lock
+    return _persistence.load_all_into_cache(
+        org_id=org_id,
+        cache=cache,
+        cached_source_cls=cached_source_cls,
+        org_dir_fn=_org_dir,
+        read_json_fn=_read_json,
+        set_source_meta_cache_fn=_set_source_meta_cache,
+        dict_to_node_fn=_dict_to_node,
+        logger=logger,
     )
-    return node
+
+
+def _dict_to_node(col: dict[str, Any]) -> Any:
+    return _nodes.dict_to_node(col)

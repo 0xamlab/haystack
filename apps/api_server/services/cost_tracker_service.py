@@ -11,6 +11,7 @@ Flow:
   4. Push to Stripe as metered usage (with markup)
   5. Emit audit event
 """
+
 from __future__ import annotations
 
 import uuid
@@ -86,15 +87,17 @@ async def refresh_deployment_costs(
                 deployment.stripe_meter_event_id = stripe_event_id
                 await db.commit()
 
-            refreshed.append({
-                "deployment_id": str(deployment.id),
-                "org_id": str(deployment.org_id),
-                "provider": provider_str,
-                "region": deployment.region,
-                "cost_usd_month": cost_cents / 100,
-                "billable_usd_month": deployment.billable_cost_usd_month,
-                "stripe_event_id": stripe_event_id,
-            })
+            refreshed.append(
+                {
+                    "deployment_id": str(deployment.id),
+                    "org_id": str(deployment.org_id),
+                    "provider": provider_str,
+                    "region": deployment.region,
+                    "cost_usd_month": cost_cents / 100,
+                    "billable_usd_month": deployment.billable_cost_usd_month,
+                    "stripe_event_id": stripe_event_id,
+                }
+            )
 
             logger.info(
                 "cost_refreshed",
@@ -134,16 +137,20 @@ async def _push_to_stripe(
     to prevent double-billing on retry.
     """
     try:
-        import httpx
-
         from apps.api_server.config import get_settings
+        from apps.api_server.services.egress_guard import EgressAuditContext
+        from apps.api_server.services.stripe_service import (
+            stripe_api_request,
+            stripe_metering_enabled,
+        )
 
         settings = get_settings()
-        if (
-            not settings.stripe_secret_key
-            or settings.stripe_secret_key.startswith("sk_test_replace")
+        if not settings.stripe_secret_key or settings.stripe_secret_key.startswith(
+            "sk_test_replace"
         ):
             logger.debug("stripe_not_configured", deployment_id=str(deployment.id))
+            return None
+        if not stripe_metering_enabled():
             return None
 
         billable_cents = int(deployment.billable_cost_usd_month * 100)
@@ -154,31 +161,31 @@ async def _push_to_stripe(
         idempotency_key = f"algenta-cost-{deployment.id}-{year}-{month:02d}"
 
         # Stripe usage record for metered billing
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                "https://api.stripe.com/v1/meter_events",
-                auth=(settings.stripe_secret_key, ""),
-                data={
-                    "event_name": "algenta_cloud_cost",
-                    # Set this to the actual Stripe customer ID.
-                    "payload[stripe_customer_id]": deployment.org_id,
-                    "payload[value]": str(billable_cents),
-                    "identifier": idempotency_key,
-                },
-                headers={"Idempotency-Key": idempotency_key},
-                timeout=10,
-            )
+        resp = await stripe_api_request(
+            method="POST",
+            path="/v1/meter_events",
+            surface="deployment_cost_metering",
+            audit_context=EgressAuditContext(org_id=deployment.org_id),
+            timeout=10,
+            auth=(settings.stripe_secret_key, ""),
+            data={
+                "event_name": "algenta_cloud_cost",
+                "payload[stripe_customer_id]": deployment.org_id,
+                "payload[value]": str(billable_cents),
+                "identifier": idempotency_key,
+            },
+            headers={"Idempotency-Key": idempotency_key},
+        )
 
-            if resp.status_code in (200, 201):
-                data = resp.json()
-                return data.get("identifier") or idempotency_key
-            else:
-                logger.warning(
-                    "stripe_meter_event_failed",
-                    status=resp.status_code,
-                    body=resp.text[:200],
-                )
-                return None
+        if resp.status_code in (200, 201):
+            data = resp.json()
+            return data.get("identifier") or idempotency_key
+        logger.warning(
+            "stripe_meter_event_failed",
+            status=resp.status_code,
+            body=resp.text[:200],
+        )
+        return None
 
     except Exception as exc:
         logger.error("stripe_push_failed", error=str(exc))
@@ -203,19 +210,19 @@ async def estimate_monthly_cost(
     # Approximate monthly costs (USD) by provider + size
     cost_table: dict[str, dict[str, float]] = {
         "aws": {
-            "small":  150.0,   # ECS Fargate 2vCPU/4GB + RDS t4g.micro + ElastiCache t4g.micro
-            "medium": 350.0,   # ECS 4vCPU/8GB + RDS t4g.small + ElastiCache t4g.small
-            "large":  750.0,   # ECS 8vCPU/16GB + RDS t4g.medium + ElastiCache t4g.medium
+            "small": 150.0,  # ECS Fargate 2vCPU/4GB + RDS t4g.micro + ElastiCache t4g.micro
+            "medium": 350.0,  # ECS 4vCPU/8GB + RDS t4g.small + ElastiCache t4g.small
+            "large": 750.0,  # ECS 8vCPU/16GB + RDS t4g.medium + ElastiCache t4g.medium
         },
         "azure": {
-            "small":  160.0,   # ACI 2vCPU/4GB + PostgreSQL B1ms + Redis C0
-            "medium": 370.0,   # ACI 4vCPU/8GB + PostgreSQL B2s + Redis C1
-            "large":  790.0,   # ACI 8vCPU/16GB + PostgreSQL B4ms + Redis C2
+            "small": 160.0,  # ACI 2vCPU/4GB + PostgreSQL B1ms + Redis C0
+            "medium": 370.0,  # ACI 4vCPU/8GB + PostgreSQL B2s + Redis C1
+            "large": 790.0,  # ACI 8vCPU/16GB + PostgreSQL B4ms + Redis C2
         },
         "gcp": {
-            "small":  145.0,   # Cloud Run 2vCPU/4GB + Cloud SQL db-f1-micro + Memorystore M1
-            "medium": 340.0,   # Cloud Run 4vCPU/8GB + Cloud SQL db-g1-small + Memorystore M2
-            "large":  730.0,   # Cloud Run 8vCPU/16GB + Cloud SQL db-n1-standard-1 + Memorystore M3
+            "small": 145.0,  # Cloud Run 2vCPU/4GB + Cloud SQL db-f1-micro + Memorystore M1
+            "medium": 340.0,  # Cloud Run 4vCPU/8GB + Cloud SQL db-g1-small + Memorystore M2
+            "large": 730.0,  # Cloud Run 8vCPU/16GB + Cloud SQL db-n1-standard-1 + Memorystore M3
         },
         "algenta_shared": {
             "small": 0.0,

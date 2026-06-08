@@ -1,0 +1,49 @@
+from __future__ import annotations
+
+from apps.api_server.services.repository_intelligence_adapters import (
+    abap_support as repository_abap_support,
+)
+
+StableIdentifier = repository_abap_support.StableIdentifier
+ResolveInclude = repository_abap_support.ResolveInclude
+ResolveTarget = repository_abap_support.ResolveTarget
+ResolveSuffixMatch = repository_abap_support.ResolveSuffixMatch
+
+RESERVED_SYMBOL_NAMES = repository_abap_support.RESERVED_SYMBOL_NAMES
+IDENTIFIER_RE = repository_abap_support.IDENTIFIER_RE
+METHOD_NAME_RE = repository_abap_support.METHOD_NAME_RE
+CLASS_RE = repository_abap_support.CLASS_RE
+INTERFACE_RE = repository_abap_support.INTERFACE_RE
+PROGRAM_RE = repository_abap_support.PROGRAM_RE
+FORM_RE = repository_abap_support.FORM_RE
+FUNCTION_RE = repository_abap_support.FUNCTION_RE
+METHOD_IMPL_RE = repository_abap_support.METHOD_IMPL_RE
+METHOD_DECL_RE = repository_abap_support.METHOD_DECL_RE
+INCLUDE_RE = repository_abap_support.INCLUDE_RE
+STATIC_CALL_RE = repository_abap_support.STATIC_CALL_RE
+PERFORM_RE = repository_abap_support.PERFORM_RE
+CALL_FUNCTION_RE = repository_abap_support.CALL_FUNCTION_RE
+INTERFACES_RE = repository_abap_support.INTERFACES_RE
+INHERITING_RE = repository_abap_support.INHERITING_RE
+TYPE_REF_RE = repository_abap_support.TYPE_REF_RE
+NEW_RE = repository_abap_support.NEW_RE
+KNOWN_ABAP_SUFFIXES = repository_abap_support.KNOWN_ABAP_SUFFIXES
+
+normalize_identifier = repository_abap_support.normalize_identifier
+normalize_leaf_name = repository_abap_support.normalize_leaf_name
+normalize_target = repository_abap_support.normalize_target
+strip_comments = repository_abap_support.strip_comments
+statement_entries = repository_abap_support.statement_entries
+owning_object_name_for_path = repository_abap_support.owning_object_name_for_path
+include_member_name_for_path = repository_abap_support.include_member_name_for_path
+is_primary_object_file = repository_abap_support.is_primary_object_file
+iter_method_declaration_names = repository_abap_support.iter_method_declaration_names
+iter_interface_targets = repository_abap_support.iter_interface_targets
+collect_symbol_entries = repository_abap_support.collect_symbol_entries
+module_aliases_for_path = repository_abap_support.module_aliases_for_path
+iter_include_targets = repository_abap_support.iter_include_targets
+iter_reference_targets = repository_abap_support.iter_reference_targets
+resolve_include = repository_abap_support.resolve_include
+resolve_target = repository_abap_support.resolve_target
+parse_dependencies_only = repository_abap_support.parse_dependencies_only
+parse_file = repository_abap_support.parse_file

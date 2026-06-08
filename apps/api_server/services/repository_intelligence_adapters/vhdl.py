@@ -1,0 +1,53 @@
+from __future__ import annotations
+
+from apps.api_server.services import (
+    repository_intelligence_contracts as repository_contracts,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    vhdl_analysis_support as repository_vhdl_analysis_support,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    vhdl_primitives as repository_vhdl_primitives,
+)
+
+_Dependency = repository_contracts._Dependency
+_Symbol = repository_contracts._Symbol
+_SymbolReferenceCandidate = repository_contracts._SymbolReferenceCandidate
+
+StableIdentifier = repository_vhdl_primitives.StableIdentifier
+ResolveSuffixMatch = repository_vhdl_primitives.ResolveSuffixMatch
+
+_KNOWN_SUFFIXES = repository_vhdl_primitives._KNOWN_SUFFIXES
+_NAME_RE = repository_vhdl_primitives._NAME_RE
+_PATH_HINT_PARTS = repository_vhdl_primitives._PATH_HINT_PARTS
+_PACKAGE_DECL_RE = repository_vhdl_primitives._PACKAGE_DECL_RE
+_PACKAGE_BODY_RE = repository_vhdl_primitives._PACKAGE_BODY_RE
+_ENTITY_DECL_RE = repository_vhdl_primitives._ENTITY_DECL_RE
+_ARCHITECTURE_DECL_RE = repository_vhdl_primitives._ARCHITECTURE_DECL_RE
+_FUNCTION_DECL_RE = repository_vhdl_primitives._FUNCTION_DECL_RE
+_PROCEDURE_DECL_RE = repository_vhdl_primitives._PROCEDURE_DECL_RE
+_USE_RE = repository_vhdl_primitives._USE_RE
+_QUALIFIED_REFERENCE_RE = repository_vhdl_primitives._QUALIFIED_REFERENCE_RE
+_INSTANTIATION_RE = repository_vhdl_primitives._INSTANTIATION_RE
+_OPERATIONAL_ENTRYPOINT_RE = repository_vhdl_primitives._OPERATIONAL_ENTRYPOINT_RE
+_RESERVED_REFERENCE_NAMES = repository_vhdl_primitives._RESERVED_REFERENCE_NAMES
+_PRIMARY_SYMBOL_KINDS = repository_vhdl_primitives._PRIMARY_SYMBOL_KINDS
+_CollectedSymbol = repository_vhdl_primitives._CollectedSymbol
+
+_normalize_name = repository_vhdl_primitives._normalize_name
+_line_number = repository_vhdl_primitives._line_number
+strip_comments = repository_vhdl_primitives.strip_comments
+has_vhdl_path_hints = repository_vhdl_primitives.has_vhdl_path_hints
+is_probable_vhdl_source = repository_vhdl_primitives.is_probable_vhdl_source
+is_probable_operational_entrypoint = (
+    repository_vhdl_primitives.is_probable_operational_entrypoint
+)
+_ordered_names = repository_vhdl_primitives._ordered_names
+_collect_symbols = repository_vhdl_primitives._collect_symbols
+_source_symbol_id_for_line = repository_vhdl_primitives._source_symbol_id_for_line
+
+_resolve_target_file = repository_vhdl_analysis_support._resolve_target_file
+_resolve_use_target = repository_vhdl_analysis_support._resolve_use_target
+module_aliases_for_path = repository_vhdl_analysis_support.module_aliases_for_path
+parse_dependencies_only = repository_vhdl_analysis_support.parse_dependencies_only
+parse_file = repository_vhdl_analysis_support.parse_file

@@ -1,4 +1,5 @@
 """AWS ECS Fargate provisioner."""
+
 from __future__ import annotations
 
 import asyncio
@@ -6,6 +7,8 @@ import uuid
 from typing import Any
 
 import structlog
+
+from apps.api_server.services.egress_guard import aws_endpoint_url, enforce_egress_sync
 
 from .base import BaseProvisioner, ProvisionResult
 
@@ -29,6 +32,7 @@ class AWSProvisioner(BaseProvisioner):
     def __init__(self) -> None:
         try:
             import boto3
+
             self._boto3 = boto3
         except ImportError:
             logger.warning(
@@ -67,12 +71,9 @@ class AWSProvisioner(BaseProvisioner):
         endpoint_url = f"https://{str(deployment_id)[:8]}.deploy.algenta.ai"
 
         resource_ids = {
-            "ecs_cluster_arn": (
-                f"arn:aws:ecs:{region}:000000000000:cluster/{deploy_name}"
-            ),
+            "ecs_cluster_arn": (f"arn:aws:ecs:{region}:000000000000:cluster/{deploy_name}"),
             "ecs_service_arn": (
-                f"arn:aws:ecs:{region}:000000000000:service/"
-                f"{deploy_name}/{deploy_name}-api"
+                f"arn:aws:ecs:{region}:000000000000:service/{deploy_name}/{deploy_name}-api"
             ),
             "rds_instance_id": f"{deploy_name}-db",
             "elasticache_cluster_id": f"{deploy_name}-redis",
@@ -105,12 +106,22 @@ class AWSProvisioner(BaseProvisioner):
             return 0
         try:
             import boto3
-            ce    = boto3.client("ce", region_name="us-east-1")
+
+            enforce_egress_sync(
+                aws_endpoint_url(
+                    aws_service_name="ce",
+                    region_name="us-east-1",
+                ),
+                surface="aws_cost_query",
+                explicit_configured=True,
+                egress_class="operator_service",
+            )
+            ce = boto3.client("ce", region_name="us-east-1")
             start = f"{year:04d}-{month:02d}-01"
-            em    = month + 1 if month < 12 else 1
-            ey    = year if month < 12 else year + 1
-            end   = f"{ey:04d}-{em:02d}-01"
-            resp  = ce.get_cost_and_usage(
+            em = month + 1 if month < 12 else 1
+            ey = year if month < 12 else year + 1
+            end = f"{ey:04d}-{em:02d}-01"
+            resp = ce.get_cost_and_usage(
                 TimePeriod={"Start": start, "End": end},
                 Granularity="MONTHLY",
                 Filter={"Tags": {"Key": "algenta:deployment_id", "Values": [str(deployment_id)]}},

@@ -1,0 +1,26 @@
+from __future__ import annotations
+
+from apps.api_server.services.repository_intelligence_adapters import (
+    verilog_analysis_support as repository_verilog_analysis_support,
+)
+
+StableIdentifier = repository_verilog_analysis_support.StableIdentifier
+NormalizeRepositoryRelativePath = (
+    repository_verilog_analysis_support.NormalizeRepositoryRelativePath
+)
+ResolveSuffixMatch = repository_verilog_analysis_support.ResolveSuffixMatch
+
+_KNOWN_SUFFIXES = repository_verilog_analysis_support._KNOWN_SUFFIXES
+_INCLUDE_RE = repository_verilog_analysis_support._INCLUDE_RE
+_IMPORT_RE = repository_verilog_analysis_support._IMPORT_RE
+_IMPORT_ITEM_RE = repository_verilog_analysis_support._IMPORT_ITEM_RE
+_QUALIFIED_REFERENCE_RE = repository_verilog_analysis_support._QUALIFIED_REFERENCE_RE
+_INSTANTIATION_RE = repository_verilog_analysis_support._INSTANTIATION_RE
+_RESERVED_REFERENCE_NAMES = repository_verilog_analysis_support._RESERVED_REFERENCE_NAMES
+
+strip_comments = repository_verilog_analysis_support.strip_comments
+has_verilog_path_hints = repository_verilog_analysis_support.has_verilog_path_hints
+is_probable_verilog_source = repository_verilog_analysis_support.is_probable_verilog_source
+module_aliases_for_path = repository_verilog_analysis_support.module_aliases_for_path
+parse_dependencies_only = repository_verilog_analysis_support.parse_dependencies_only
+parse_file = repository_verilog_analysis_support.parse_file

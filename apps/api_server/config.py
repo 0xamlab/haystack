@@ -1,9 +1,11 @@
 """Application configuration loaded from environment variables."""
+
 from functools import lru_cache
 
-from pydantic import Field, computed_field
+from pydantic import AliasChoices, Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from apps.privacy_policy import PrivacyPolicy, build_privacy_policy
 from apps.platform_contract_constants import API_KEY_PREFIX_LIVE, API_KEY_PREFIX_TEST
 
 
@@ -32,6 +34,53 @@ class Settings(BaseSettings):
             "Mojo profiling policy: optional disables profiling explicitly on errors, "
             "disabled never invokes profiling, required fail-closes profiling errors."
         ),
+    )
+    runtime_library_http_api_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "ALGENTA_RUNTIME_LIBRARY_HTTP_API_ENABLED",
+            "RUNTIME_LIBRARY_HTTP_API_ENABLED",
+        ),
+        description=(
+            "Expose /v1/libraries, /v1/libraries/health, and /v1/libraries/execute "
+            "on the hosted/public HTTP API surface. Disabled by default."
+        ),
+    )
+    algenta_deployment_mode: str = Field(
+        default="saas",
+        validation_alias=AliasChoices("ALGENTA_DEPLOYMENT_MODE"),
+    )
+    algenta_disable_cloud: bool | None = Field(
+        default=None,
+        validation_alias=AliasChoices("ALGENTA_DISABLE_CLOUD"),
+    )
+    algenta_disable_telemetry: bool | None = Field(
+        default=None,
+        validation_alias=AliasChoices("ALGENTA_DISABLE_TELEMETRY"),
+    )
+    algenta_telemetry_mode: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("ALGENTA_TELEMETRY_MODE"),
+    )
+    algenta_metering_mode: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("ALGENTA_METERING_MODE"),
+    )
+    algenta_require_local_license: bool | None = Field(
+        default=None,
+        validation_alias=AliasChoices("ALGENTA_REQUIRE_LOCAL_LICENSE"),
+    )
+    algenta_control_plane_url: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("ALGENTA_CONTROL_PLANE_URL"),
+    )
+    algenta_allow_outbound_network: bool | None = Field(
+        default=None,
+        validation_alias=AliasChoices("ALGENTA_ALLOW_OUTBOUND_NETWORK"),
+    )
+    algenta_egress_allowlist: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("ALGENTA_EGRESS_ALLOWLIST"),
     )
 
     @computed_field  # type: ignore[misc]
@@ -71,6 +120,20 @@ class Settings(BaseSettings):
     @property
     def mojo_profiling_required(self) -> bool:
         return self.normalized_mojo_profiling_policy == "required"
+
+    @property
+    def privacy_policy(self) -> PrivacyPolicy:
+        return build_privacy_policy(
+            deployment_mode=self.algenta_deployment_mode,
+            disable_cloud=self.algenta_disable_cloud,
+            disable_telemetry=self.algenta_disable_telemetry,
+            telemetry_mode=self.algenta_telemetry_mode,
+            metering_mode=self.algenta_metering_mode,
+            require_local_license=self.algenta_require_local_license,
+            control_plane_url=self.algenta_control_plane_url,
+            allow_outbound_network=self.algenta_allow_outbound_network,
+            egress_allowlist=self.algenta_egress_allowlist,
+        )
 
     # ─── Database ─────────────────────────────────────────────────────────────
     database_url: str = Field(
@@ -161,7 +224,7 @@ class Settings(BaseSettings):
 
     # Provisioning
     algenta_engine_image: str = Field(
-        default="ghcr.io/algenta/decision-engine-api:latest",
+        default="ghcr.io/algenta/decision-engine/api:latest",
         description="Docker image to deploy on all cloud providers",
     )
     deployment_base_domain: str = Field(
@@ -197,6 +260,20 @@ class Settings(BaseSettings):
     quota_developer_simulations_month: int = Field(default=10_000)
     quota_pro_simulations_month: int = Field(default=100_000)
 
+    # ─── Public URL Resolution ───────────────────────────────────────────────
+    app_base_url: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("ALGENTA_APP_BASE_URL", "APP_BASE_URL", "DE_APP_BASE_URL"),
+    )
+    api_public_base_url: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("ALGENTA_API_PUBLIC_BASE_URL", "API_PUBLIC_BASE_URL"),
+    )
+    api_transport_base_url: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("ALGENTA_BASE_URL", "DE_BASE_URL", "ALGENTA_API_URL"),
+    )
+
 
 @lru_cache
 def get_settings() -> Settings:
@@ -205,7 +282,12 @@ def get_settings() -> Settings:
 
 
 class SettingsProxy:
-    """Live proxy that forwards access to the current cached settings object."""
+    """Live proxy that forwards access to the current cached settings object.
+
+    This keeps module-level `settings` handles compatible with existing imports
+    and tests while still honoring `get_settings.cache_clear()` and any updated
+    environment-derived configuration.
+    """
 
     __slots__ = ()
 

@@ -1,48 +1,91 @@
 """
-Universal Decision Engine — FastAPI Application Entry Point.
+Algenta API — FastAPI application entry point.
 """
+
 import logging
 import sys
+from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import Any, cast
 
 import structlog
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse, PlainTextResponse
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
-from apps.api_server.config import get_settings
+from apps.api_server.config import Settings, SettingsProxy, get_settings
 from apps.api_server.middleware.auth import get_current_org
 from apps.api_server.middleware.idempotency import IdempotencyMiddleware
 from apps.api_server.middleware.logging import StructuredLoggingMiddleware
 from apps.api_server.middleware.request_id import RequestIDMiddleware
 from apps.api_server.middleware.response_contract import ResponseContractMiddleware
+from apps.api_server.openapi_surface import apply_openapi_surface, validate_openapi_surface_configuration
 from apps.api_server.pagination import paginate_sequence
+from apps.api_server.services.public_url_policy import validate_public_url_configuration
 from apps.api_server.routers import (
     account,
+    agent_runs,
     auth,
     billing,
+    capabilities,
     connectors,
     deployments,
     infrastructure,
     jobs,
+    llm,
     logs,  # noqa: E402  (imported again below for explicitness)
     meta,
     recommend,
+    repositories,
     runs,
+    runtime_libraries,
     simulate,
     team,
 )
 from apps.api_server.routers import engines as engines_router
-from apps.platform_contract_constants import API_BASE_URL, MCP_ENDPOINT
+from apps.platform_contract_constants import (
+    CAPABILITY_PLANE_CONTRACT,
+    PRIMARY_DATA_QUERY_CONTRACT,
+)
 
-settings = get_settings()
+settings = SettingsProxy()
+
+_CORS_EXPOSE_HEADERS = [
+    "X-Request-Id",
+    "X-Decision-Hash",
+    "X-Execution-Ms",
+    "X-Mojo-Ms",
+    "X-RateLimit-Limit",
+    "X-RateLimit-Remaining",
+]
 
 
-def _configure_logging() -> None:
+def _cors_middleware_kwargs(config: Settings) -> dict[str, Any]:
+    return {
+        "allow_origins": config.cors_origins_list,
+        "allow_credentials": True,
+        "allow_methods": ["*"],
+        "allow_headers": ["*"],
+        "expose_headers": list(_CORS_EXPOSE_HEADERS),
+    }
+
+
+def _sync_cors_middleware(app: FastAPI, config: Settings) -> None:
+    desired_kwargs = _cors_middleware_kwargs(config)
+    for middleware in app.user_middleware:
+        if middleware.cls is not CORSMiddleware:
+            continue
+        if middleware.kwargs != desired_kwargs:
+            middleware.kwargs = desired_kwargs
+            app.middleware_stack = None
+        return
+    raise RuntimeError("CORSMiddleware not registered on FastAPI application.")
+
+
+def _configure_logging(config: Settings) -> None:
     shared_processors: list[Any] = [
         structlog.contextvars.merge_contextvars,
         structlog.stdlib.add_logger_name,
@@ -52,7 +95,7 @@ def _configure_logging() -> None:
     ]
     renderer = (
         structlog.dev.ConsoleRenderer()
-        if settings.is_development
+        if config.is_development
         else structlog.processors.JSONRenderer()
     )
     structlog.configure(
@@ -65,20 +108,34 @@ def _configure_logging() -> None:
     logging.basicConfig(
         format="%(message)s",
         stream=sys.stdout,
-        level=getattr(logging, settings.log_level.upper(), logging.INFO),
+        level=getattr(logging, config.log_level.upper(), logging.INFO),
     )
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):  # type: ignore[type-arg]
-    _configure_logging()
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    config = get_settings()
+    _sync_cors_middleware(app, config)
+    _configure_logging(config)
     logger = structlog.get_logger(__name__)
-    logger.info("starting_up", env=settings.api_env)
+    privacy_policy = config.privacy_policy
+    validate_openapi_surface_configuration()
+    validate_public_url_configuration(config)
+    logger.info(
+        "starting_up",
+        env=config.api_env,
+        deployment_mode=privacy_policy.deployment_mode,
+        algenta_cloud_enabled=privacy_policy.algenta_cloud_enabled,
+        telemetry_mode=privacy_policy.telemetry_mode,
+        metering_mode=privacy_policy.metering_mode,
+    )
 
     # ── Redis ────────────────────────────────────────────────────────────────
     import redis.asyncio as aioredis
-    redis_client = aioredis.from_url(
-        settings.redis_url,
+
+    aioredis_module: Any = aioredis
+    redis_client = aioredis_module.from_url(
+        config.redis_url,
         encoding="utf-8",
         decode_responses=False,
         socket_connect_timeout=5,
@@ -95,10 +152,11 @@ async def lifespan(app: FastAPI):  # type: ignore[type-arg]
     mojo_pool = None
     try:
         from apps.api_server.compute.mojo_pool import MojoWorkerPool, set_pool
+
         mojo_pool = MojoWorkerPool()
         await mojo_pool.start()
         if not mojo_pool.running:
-            if not settings.allow_runtime_fallbacks:
+            if not config.allow_runtime_fallbacks:
                 raise RuntimeError(
                     "Mojo worker pool did not enter running state and runtime fallbacks are denied."
                 )
@@ -112,7 +170,7 @@ async def lifespan(app: FastAPI):  # type: ignore[type-arg]
             set_pool(mojo_pool)
             logger.info("mojo_pool_started", size=mojo_pool.size)
     except Exception as exc:
-        if not settings.allow_runtime_fallbacks:
+        if not config.allow_runtime_fallbacks:
             logger.error(
                 "mojo_pool_required_unavailable",
                 error=str(exc),
@@ -133,6 +191,7 @@ async def lifespan(app: FastAPI):  # type: ignore[type-arg]
     try:
         from apps.api_server.routers.query import _CACHE_LOCK, _SOURCE_CACHE, _CachedSource
         from apps.api_server.services import source_registry as _reg
+
         sources_base = _reg._SOURCES_DIR
         if sources_base.exists():
             total_loaded = 0
@@ -166,11 +225,10 @@ async def lifespan(app: FastAPI):  # type: ignore[type-arg]
 
 
 app = FastAPI(
-    title="Universal Decision Engine",
+    title="Algenta API",
     description=(
-        "API infrastructure for probabilistic decision-making. "
-        "Run Monte Carlo simulations and get structured decision recommendations "
-        "with a single API call."
+        "Hosted and self-hosted Algenta API for governed data discovery, exact queries, "
+        "read-only SQL reports, and simulation workflows."
     ),
     version="1.0.0",
     docs_url="/docs",
@@ -181,27 +239,18 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins_list,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=[
-        "X-Request-Id",
-        "X-Decision-Hash",
-        "X-Execution-Ms",
-        "X-Mojo-Ms",
-        "X-RateLimit-Limit",
-        "X-RateLimit-Remaining",
-    ],
+    **_cors_middleware_kwargs(get_settings()),
 )
 app.add_middleware(IdempotencyMiddleware)
 app.add_middleware(RequestIDMiddleware)
 app.add_middleware(ResponseContractMiddleware)
 app.add_middleware(StructuredLoggingMiddleware)
 
-# Deployment routing middleware — proxies requests to per-org data planes
+# Deployment routing middleware — proxies requests to per-org data planes when
+# the active deployment profile is SaaS or managed VPC.
 try:
     from apps.api_server.middleware.deployment_router import DeploymentRoutingMiddleware
+
     app.add_middleware(DeploymentRoutingMiddleware)
 except Exception as exc:
     structlog.get_logger(__name__).warning(
@@ -212,6 +261,8 @@ except Exception as exc:
 app.include_router(meta.router)
 app.include_router(simulate.router)
 app.include_router(recommend.router)
+app.include_router(llm.router)
+app.include_router(agent_runs.router)
 
 # What-if parametric sweep
 from apps.api_server.routers import whatif as _whatif_router  # noqa: E402
@@ -224,7 +275,9 @@ app.include_router(billing.router)
 app.include_router(runs.router)
 app.include_router(infrastructure.router)
 app.include_router(team.router)
+app.include_router(capabilities.router)
 app.include_router(connectors.router)
+app.include_router(repositories.router)
 app.include_router(deployments.router)
 
 # Export API — /v1/runs/{run_id}/export.{csv,xlsx,pdf,json}
@@ -316,19 +369,26 @@ from apps.api_server.routers import execution_policy as _exec_policy_router  # n
 
 app.include_router(_exec_policy_router.router)
 
+if settings.runtime_library_http_api_enabled:
+    app.include_router(runtime_libraries.router)
+
 # ── MCP Server — Mount at /mcp/* for AI-agent connectivity ───────────────────
 try:
     from apps.mcp_server.server import create_fastapi_router as _mcp_router
-    _mcp = _mcp_router()
+
+    create_mcp_router = cast(Callable[[], APIRouter | None], _mcp_router)
+    _mcp = create_mcp_router()
     if _mcp is not None:
         app.include_router(_mcp)
         import structlog as _sl
+
         _sl.get_logger(__name__).info(
             "mcp_server_mounted",
             endpoints=["/mcp/sse", "/mcp/messages", "/mcp/tools"],
         )
 except Exception as _mcp_exc:  # pragma: no cover
     import structlog as _sl
+
     _sl.get_logger(__name__).warning(
         "mcp_server_not_loaded",
         reason=str(_mcp_exc),
@@ -345,8 +405,9 @@ def custom_openapi() -> dict[str, Any]:
         description=app.description,
         routes=app.routes,
     )
-    schema["servers"] = [{"url": API_BASE_URL}]
-    schema["x-canonical-mcp-endpoint"] = MCP_ENDPOINT
+    apply_openapi_surface(schema)
+    schema["x-primary-data-query-contract"] = PRIMARY_DATA_QUERY_CONTRACT
+    schema["x-capability-plane-contract"] = CAPABILITY_PLANE_CONTRACT
     components = schema.setdefault("components", {})
     components["securitySchemes"] = {
         "BearerAuth": {
@@ -362,17 +423,21 @@ def custom_openapi() -> dict[str, Any]:
             "description": "Legacy compatibility header for existing v1 clients.",
         },
     }
+    protected_operation_security = [
+        {"BearerAuth": []},
+        {"LegacyApiKey": []},
+    ]
     for path_item in schema.get("paths", {}).values():
         if not isinstance(path_item, dict):
             continue
         for operation in path_item.values():
             if isinstance(operation, dict) and operation.get("security"):
-                operation["security"] = [{"BearerAuth": []}]
+                operation["security"] = list(protected_operation_security)
     app.openapi_schema = schema
     return app.openapi_schema
 
 
-app.openapi = custom_openapi
+app.openapi = custom_openapi  # type: ignore[method-assign]
 
 
 @app.get(
@@ -393,12 +458,21 @@ async def list_simulation_templates(
     tag: str | None = None,
     page: int = 1,
     limit: int = 25,
-):
+) -> dict[str, Any]:
     from apps.api_server.simulation_templates import get_all_domains, get_all_tags, list_templates
 
     templates = list_templates(domain=domain, industry=industry)
     if tag:
-        templates = [t for t in templates if tag.lower() in [x.lower() for x in t.get("tags", [])]]
+        lowered_tag = tag.lower()
+        filtered_templates: list[dict[str, object]] = []
+        for template in templates:
+            raw_tags = template.get("tags")
+            if not isinstance(raw_tags, list):
+                continue
+            normalized_tags = [item.lower() for item in raw_tags if isinstance(item, str)]
+            if lowered_tag in normalized_tags:
+                filtered_templates.append(template)
+        templates = filtered_templates
     envelope = paginate_sequence(templates, page=page, limit=limit)
     return {
         "templates": envelope.items,
@@ -422,7 +496,7 @@ async def get_simulation_template(
     template_id: str,
     runs: int = 50000,
     seed: int | None = None,
-):
+) -> dict[str, Any]:
     from apps.api_server.simulation_templates import get_template
 
     template = get_template(template_id)
@@ -458,8 +532,8 @@ async def run_simulation_template(
     runs: int = 10000,
     seed: int | None = None,
     engine: str = "monte_carlo",
-    auth=Depends(get_current_org),
-):
+    auth: Any = Depends(get_current_org),
+) -> dict[str, Any]:
     """
     engine options: monte_carlo, lhs, qmc_sobol, bootstrap, scenario,
                     sensitivity, mcmc, decision_tree, time_series, importance_sampling
@@ -489,15 +563,15 @@ async def run_simulation_template(
             api_key_id=auth.get("key_id"),
         )
         result = {
-            "expected_value":      envelope.metrics.expected_value,
-            "std_deviation":       envelope.metrics.std_deviation,
+            "expected_value": envelope.metrics.expected_value,
+            "std_deviation": envelope.metrics.std_deviation,
             "probability_of_loss": envelope.metrics.probability_of_loss,
-            "recommended_action":  envelope.recommended_action,
-            "confidence":          envelope.confidence,
-            "execution_ms":        envelope.execution_ms,
-            "scenarios_run":       envelope.scenarios_run,
+            "recommended_action": envelope.recommended_action,
+            "confidence": envelope.confidence,
+            "execution_ms": envelope.execution_ms,
+            "scenarios_run": envelope.scenarios_run,
             "percentiles": {
-                "p5":  envelope.percentiles.p5,
+                "p5": envelope.percentiles.p5,
                 "p95": envelope.percentiles.p95,
             },
         }
@@ -512,10 +586,10 @@ async def run_simulation_template(
             detail={"error": {"code": "template_run_error", "message": str(exc)}},
         ) from exc
     return {
-        "template_id":   template_id,
+        "template_id": template_id,
         "template_name": template.name,
-        "domain":        template.domain,
-        "result":        result,
+        "domain": template.domain,
+        "result": result,
     }
 
 
@@ -547,6 +621,19 @@ async def metrics(request: Request) -> PlainTextResponse:
     )
 
 
+def _response_headers_with_request_state(
+    request: Request,
+    existing: dict[str, str] | None = None,
+) -> dict[str, str]:
+    headers = dict(existing or {})
+    extra_headers = getattr(request.state, "extra_response_headers", {})
+    if isinstance(extra_headers, dict):
+        for key, value in extra_headers.items():
+            if isinstance(key, str) and isinstance(value, str) and value:
+                headers.setdefault(key, value)
+    return headers
+
+
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
     """Normalize HTTPException to standard {"error": {...}} schema."""
@@ -558,7 +645,11 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
         if isinstance(error_body, dict):
             if request_id and not error_body.get("request_id"):
                 error_body["request_id"] = request_id
-            return JSONResponse(status_code=exc.status_code, content=detail)
+            return JSONResponse(
+                status_code=exc.status_code,
+                content=detail,
+                headers=_response_headers_with_request_state(request, exc.headers),
+            )
         return JSONResponse(
             status_code=exc.status_code,
             content={
@@ -570,6 +661,7 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
                     **{k: v for k, v in detail.items() if k not in {"error", "message"}},
                 }
             },
+            headers=_response_headers_with_request_state(request, exc.headers),
         )
 
     return JSONResponse(
@@ -582,6 +674,7 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
                 "docs_url": "https://docs.algenta.ai/errors/http_error",
             }
         },
+        headers=_response_headers_with_request_state(request, exc.headers),
     )
 
 
@@ -609,6 +702,7 @@ async def validation_exception_handler(
                 "docs_url": "https://docs.algenta.ai/errors/validation_error",
             }
         },
+        headers=_response_headers_with_request_state(request),
     )
 
 
@@ -627,4 +721,5 @@ async def generic_exception_handler(request: Request, exc: Exception) -> JSONRes
                 "docs_url": "https://docs.algenta.ai/errors/internal_error",
             }
         },
+        headers=_response_headers_with_request_state(request),
     )

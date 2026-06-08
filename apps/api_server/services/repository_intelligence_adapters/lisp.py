@@ -1,0 +1,47 @@
+from __future__ import annotations
+
+from apps.api_server.services.repository_intelligence_adapters import (
+    lisp_analysis_support as repository_lisp_analysis_support,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    lisp_support as repository_lisp_support,
+)
+
+StableIdentifier = repository_lisp_support.StableIdentifier
+NormalizeRepositoryRelativePath = repository_lisp_support.NormalizeRepositoryRelativePath
+ResolveSuffixMatch = repository_lisp_support.ResolveSuffixMatch
+
+_KNOWN_LISP_SUFFIXES = repository_lisp_support._KNOWN_LISP_SUFFIXES
+_LISP_MARKER_RE = repository_lisp_support._LISP_MARKER_RE
+_DEFINITION_HEAD_KINDS = repository_lisp_support._DEFINITION_HEAD_KINDS
+_PACKAGE_FORM_HEADS = repository_lisp_support._PACKAGE_FORM_HEADS
+_LOAD_FORM_HEADS = repository_lisp_support._LOAD_FORM_HEADS
+_PACKAGE_USE_OPTION_HEADS = repository_lisp_support._PACKAGE_USE_OPTION_HEADS
+_PACKAGE_IMPORT_OPTION_HEADS = repository_lisp_support._PACKAGE_IMPORT_OPTION_HEADS
+_PACKAGE_LOCAL_NICKNAME_HEADS = repository_lisp_support._PACKAGE_LOCAL_NICKNAME_HEADS
+_QUALIFIED_REFERENCE_RE = repository_lisp_support._QUALIFIED_REFERENCE_RE
+_UNQUALIFIED_REFERENCE_RE = repository_lisp_support._UNQUALIFIED_REFERENCE_RE
+RESERVED_SYMBOL_NAMES = repository_lisp_support.RESERVED_SYMBOL_NAMES
+
+_extract_top_level_forms = repository_lisp_support._extract_top_level_forms
+_form_head = repository_lisp_support._form_head
+_normalize_keyword = repository_lisp_support._normalize_keyword
+_normalize_repository_relative_path = (
+    repository_lisp_support._normalize_repository_relative_path
+)
+_package_symbol_name = repository_lisp_support._package_symbol_name
+_parse_form = repository_lisp_support._parse_form
+_path_aliases = repository_lisp_support._path_aliases
+normalize_identifier = repository_lisp_support.normalize_identifier
+normalize_package_name = repository_lisp_support.normalize_package_name
+normalize_symbol_name = repository_lisp_support.normalize_symbol_name
+project_component_entries = repository_lisp_support.project_component_entries
+project_system_names = repository_lisp_support.project_system_names
+strip_comments = repository_lisp_support.strip_comments
+
+resolve_import = repository_lisp_analysis_support.resolve_import
+collect_symbol_entries = repository_lisp_analysis_support.collect_symbol_entries
+is_probable_lisp_source = repository_lisp_analysis_support.is_probable_lisp_source
+module_aliases_for_path = repository_lisp_analysis_support.module_aliases_for_path
+parse_dependencies_only = repository_lisp_analysis_support.parse_dependencies_only
+parse_file = repository_lisp_analysis_support.parse_file

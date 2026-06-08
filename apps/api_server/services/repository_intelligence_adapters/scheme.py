@@ -1,0 +1,34 @@
+from __future__ import annotations
+
+from apps.api_server.services.repository_intelligence_adapters import (
+    scheme_analysis_support as repository_scheme_analysis_support,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    scheme_primitives as repository_scheme_primitives,
+)
+
+StableIdentifier = repository_scheme_primitives.StableIdentifier
+NormalizeRepositoryRelativePath = repository_scheme_primitives.NormalizeRepositoryRelativePath
+ResolveSuffixMatch = repository_scheme_primitives.ResolveSuffixMatch
+
+_KNOWN_SCHEME_SUFFIXES = repository_scheme_primitives._KNOWN_SCHEME_SUFFIXES
+_SCHEME_MANIFEST_BASENAMES = repository_scheme_primitives._SCHEME_MANIFEST_BASENAMES
+_SCHEME_MARKER_RE = repository_scheme_primitives._SCHEME_MARKER_RE
+_IMPORT_FORM_HEADS = repository_scheme_primitives._IMPORT_FORM_HEADS
+_LOAD_FORM_HEADS = repository_scheme_primitives._LOAD_FORM_HEADS
+_IMPORT_WRAPPER_HEADS = repository_scheme_primitives._IMPORT_WRAPPER_HEADS
+_QUALIFIED_REFERENCE_RE = repository_scheme_primitives._QUALIFIED_REFERENCE_RE
+_UNQUALIFIED_REFERENCE_RE = repository_scheme_primitives._UNQUALIFIED_REFERENCE_RE
+RESERVED_SYMBOL_NAMES = repository_scheme_primitives.RESERVED_SYMBOL_NAMES
+
+has_scheme_path_hints = repository_scheme_primitives.has_scheme_path_hints
+is_probable_scheme_source = repository_scheme_primitives.is_probable_scheme_source
+collect_symbol_entries = repository_scheme_primitives.collect_symbol_entries
+normalize_identifier = repository_scheme_primitives.normalize_identifier
+normalize_symbol_name = repository_scheme_primitives.normalize_symbol_name
+strip_comments = repository_scheme_primitives.strip_comments
+
+module_aliases_for_path = repository_scheme_analysis_support.module_aliases_for_path
+resolve_import = repository_scheme_analysis_support.resolve_import
+parse_dependencies_only = repository_scheme_analysis_support.parse_dependencies_only
+parse_file = repository_scheme_analysis_support.parse_file

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import io
+from collections.abc import Callable
 from typing import Any
 
 from apps.api_server.services.data_coercion import (
@@ -12,15 +13,17 @@ from apps.api_server.services.data_coercion import (
     looks_like_header_alias_row,
 )
 
-NULL_LIKE_STRINGS = frozenset({
-    "",
-    "?",
-    "none",
-    "null",
-    "nan",
-    "n/a",
-    "na",
-})
+NULL_LIKE_STRINGS = frozenset(
+    {
+        "",
+        "?",
+        "none",
+        "null",
+        "nan",
+        "n/a",
+        "na",
+    }
+)
 
 _ARROW_RETRY_MAX_BYTES = 32 * 1024 * 1024
 _PANDAS_FALLBACK_MIN_BYTES = 1 * 1024 * 1024
@@ -158,10 +161,12 @@ def _build_delimited_column_handler(
     *,
     preserve_identifier_field: bool,
     cache: dict[str, Any] | None = None,
-):
+) -> Callable[[Any], Any]:
     if preserve_identifier_field:
+
         def _handle_identifier(value: Any) -> Any:
             return _normalized_delimited_scalar(value)
+
         return _handle_identifier
 
     assert cache is not None
@@ -209,10 +214,9 @@ def records_to_arrow_table(
                 )
             )
 
-    table = pa.table({
-        field_name: _to_arrow_array(values)
-        for field_name, values in columns.items()
-    })
+    table = pa.table(
+        {field_name: _to_arrow_array(values) for field_name, values in columns.items()}
+    )
     return _strip_header_alias_row_from_table(table)
 
 
@@ -230,8 +234,7 @@ def _python_delimited_text_to_arrow_table(content: str, *, delimiter: str) -> An
 
     field_names = list(headers)
     identifier_fields = [
-        bool(field_name) and is_identifier_field(field_name)
-        for field_name in field_names
+        bool(field_name) and is_identifier_field(field_name) for field_name in field_names
     ]
     column_values: list[list[Any]] = [[] for _ in field_names]
     appenders = [values.append for values in column_values]
@@ -253,10 +256,12 @@ def _python_delimited_text_to_arrow_table(content: str, *, delimiter: str) -> An
         for idx in range(shared_count, header_count):
             appenders[idx](None)
 
-    table = pa.table({
-        field_name: _to_arrow_array(values)
-        for field_name, values in zip(field_names, column_values, strict=False)
-    })
+    table = pa.table(
+        {
+            field_name: _to_arrow_array(values)
+            for field_name, values in zip(field_names, column_values, strict=False)
+        }
+    )
     return _strip_header_alias_row_from_table(table)
 
 
@@ -269,11 +274,7 @@ def _pandas_delimited_text_to_arrow_table(
     import pandas as pd
     import pyarrow as pa
 
-    dtype_map = {
-        header: "string"
-        for header in headers
-        if header and is_identifier_field(header)
-    }
+    dtype_map = {header: "string" for header in headers if header and is_identifier_field(header)}
     dataframe = pd.read_csv(
         io.StringIO(content),
         sep=delimiter,
@@ -284,9 +285,7 @@ def _pandas_delimited_text_to_arrow_table(
         on_bad_lines="error",
         low_memory=False,
     )
-    return _strip_header_alias_row_from_table(
-        pa.Table.from_pandas(dataframe, preserve_index=False)
-    )
+    return _strip_header_alias_row_from_table(pa.Table.from_pandas(dataframe, preserve_index=False))
 
 
 def _choose_delimiter(text: str, delimiter: str | None = ",", sniff: bool = True) -> str:
@@ -348,6 +347,7 @@ def delimited_text_to_arrow_table(
 ) -> Any:
     if not content or not content.strip():
         import pyarrow as pa
+
         return pa.table({})
 
     import pyarrow as pa
@@ -360,9 +360,7 @@ def delimited_text_to_arrow_table(
     chosen_delimiter = _choose_delimiter(text, delimiter=delimiter, sniff=sniff)
     headers = _delimited_headers(text, chosen_delimiter)
     column_types = {
-        header: pa.string()
-        for header in headers
-        if header and is_identifier_field(header)
+        header: pa.string() for header in headers if header and is_identifier_field(header)
     }
 
     convert_options = pacsv.ConvertOptions(

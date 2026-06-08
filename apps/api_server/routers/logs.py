@@ -4,6 +4,7 @@ GET /v1/logs — Server-Sent Events (SSE) streaming of structured API logs.
 In production this would tail a real log aggregator (Loki, CloudWatch, Datadog).
 Here we tail the structlog output from the running process via a shared asyncio queue.
 """
+
 import asyncio
 import json
 from collections.abc import AsyncIterator
@@ -18,10 +19,10 @@ from apps.api_server.middleware.auth import AuthContext, get_current_org
 router = APIRouter(tags=["Logs"])
 
 # Module-level queue: structlog middleware pushes entries here
-_log_queue: asyncio.Queue[dict] = asyncio.Queue(maxsize=500)
+_log_queue: asyncio.Queue[dict[str, object]] = asyncio.Queue(maxsize=500)
 
 
-def push_log_event(event: dict) -> None:
+def push_log_event(event: dict[str, object]) -> None:
     """Called by middleware/services to push a log line into the SSE queue."""
     try:
         _log_queue.put_nowait({**event, "ts": datetime.now(tz=UTC).isoformat()})

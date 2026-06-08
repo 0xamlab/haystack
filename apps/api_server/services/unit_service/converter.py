@@ -2,6 +2,7 @@
 unit_convert — cross-unit conversion engine.
 validate_unit_compatibility — check if two units are in the same physical dimension.
 """
+
 from __future__ import annotations
 
 from .registries import (
@@ -20,18 +21,18 @@ from .registries import (
 )
 
 _CONVERSION_TABLES: dict[str, dict[str, float]] = {
-    "mass":      MASS_TO_KG,
-    "length":    LENGTH_TO_M,
-    "area":      AREA_TO_M2,
-    "volume":    VOLUME_TO_L,
-    "pressure":  PRESSURE_TO_PA,
-    "force":     FORCE_TO_N,
+    "mass": MASS_TO_KG,
+    "length": LENGTH_TO_M,
+    "area": AREA_TO_M2,
+    "volume": VOLUME_TO_L,
+    "pressure": PRESSURE_TO_PA,
+    "force": FORCE_TO_N,
     "data_size": DATA_SIZE_TO_BYTES,
     "data_rate": DATA_RATE_TO_BPS,
     "frequency": FREQUENCY_TO_HZ,
-    "speed":     SPEED_TO_MS,
-    "duration":  DURATION_TO_SECONDS,
-    "energy":    ENERGY_TO_KWH,
+    "speed": SPEED_TO_MS,
+    "duration": DURATION_TO_SECONDS,
+    "energy": ENERGY_TO_KWH,
 }
 
 _UNIT_CATEGORY_MAP: dict[str, str] = {}
@@ -40,10 +41,17 @@ for _cat, _tbl in _CONVERSION_TABLES.items():
         _UNIT_CATEGORY_MAP[_unit.lower()] = _cat
 
 _TEMP_ALIASES = {
-    "°c": "c", "celsius": "c", "c_temp": "c",
-    "°f": "f", "fahrenheit": "f", "f_temp": "f",
-    "k": "k", "kelvin": "k", "°k": "k",
-    "°r": "r", "rankine": "r",
+    "°c": "c",
+    "celsius": "c",
+    "c_temp": "c",
+    "°f": "f",
+    "fahrenheit": "f",
+    "f_temp": "f",
+    "k": "k",
+    "kelvin": "k",
+    "°k": "k",
+    "°r": "r",
+    "rankine": "r",
 }
 
 
@@ -91,7 +99,7 @@ def unit_convert(value: float, from_unit: str, to_unit: str) -> float:
 
     # ── Linear conversion via SI base ─────────────────────────────────────────
     from_cat = _UNIT_CATEGORY_MAP.get(fu, _UNIT_CATEGORY_MAP.get(from_unit))
-    to_cat   = _UNIT_CATEGORY_MAP.get(tu, _UNIT_CATEGORY_MAP.get(to_unit))
+    to_cat = _UNIT_CATEGORY_MAP.get(tu, _UNIT_CATEGORY_MAP.get(to_unit))
 
     if from_cat is None:
         raise ValueError(f"Cannot convert '{from_unit}': unit not recognized.")
@@ -103,7 +111,7 @@ def unit_convert(value: float, from_unit: str, to_unit: str) -> float:
             "incompatible physical dimensions."
         )
 
-    tbl   = _CONVERSION_TABLES[from_cat]
+    tbl = _CONVERSION_TABLES[from_cat]
     to_si = tbl.get(fu, tbl.get(from_unit, 1.0))
     fr_si = tbl.get(tu, tbl.get(to_unit, 1.0))
     return value * to_si / fr_si
@@ -126,7 +134,7 @@ def validate_unit_compatibility(from_unit: str, to_unit: str) -> tuple[bool, str
         return True, f"temperature: {from_unit} → {to_unit}"
 
     from_cat = _UNIT_CATEGORY_MAP.get(fu, _UNIT_CATEGORY_MAP.get(from_unit))
-    to_cat   = _UNIT_CATEGORY_MAP.get(tu, _UNIT_CATEGORY_MAP.get(to_unit))
+    to_cat = _UNIT_CATEGORY_MAP.get(tu, _UNIT_CATEGORY_MAP.get(to_unit))
 
     if from_cat is None:
         return False, f"'{from_unit}' is not a recognized unit"

@@ -13,6 +13,7 @@ Advanced math available in eval_with_constants (and objective_function via Mojo 
   Misc:       sign(x), hypot(a,b), logistic(x), logit(x)
   Constants:  c, G, g, kB, NA, R, pi, e, phi, c_sound, ...
 """
+
 from __future__ import annotations
 
 import math
@@ -25,6 +26,9 @@ from .validate import preprocess_variable, validate_variable
 
 # ── Helper functions for eval_with_constants ──────────────────────────────────
 
+UnitSpecRaw = dict[str, Any] | str | None
+
+
 def _fibonacci(n: float) -> float:
     ni = max(0, int(n))
     if ni <= 0:
@@ -32,7 +36,7 @@ def _fibonacci(n: float) -> float:
     if ni == 1:
         return 1.0
     phi = (1.0 + math.sqrt(5.0)) / 2.0
-    return float(int((phi**ni - (-1/phi)**ni) / math.sqrt(5.0) + 0.5))
+    return float(int((phi**ni - (-1 / phi) ** ni) / math.sqrt(5.0) + 0.5))
 
 
 def _norm_cdf(x: float) -> float:
@@ -60,7 +64,7 @@ def _t_cdf(x: float, df: float) -> float:
         return 0.5
     try:
         # Use scipy if available, else approximation
-        import scipy.special  # type: ignore[import]
+        import scipy.special
 
         return float(scipy.special.stdtr(df, x))
     except ImportError:
@@ -70,30 +74,29 @@ def _t_cdf(x: float, df: float) -> float:
         # Cornish-Fisher approximation
         d4 = 1.0 / (4.0 * df)
         d8 = 1.0 / (8.0 * df)
-        adj_x = x * (1.0 - d4 + x*x*d4/12.0 - d8)
+        adj_x = x * (1.0 - d4 + x * x * d4 / 12.0 - d8)
         return _norm_cdf(adj_x)
 
 
 def _chi2_cdf(x: float, df: float) -> float:
     """Chi-squared CDF."""
     try:
-        import scipy.special  # type: ignore[import]
+        import scipy.special
 
         return float(scipy.special.chdtr(df, x))
     except ImportError:
         if x <= 0:
             return 0.0
         # Approximation via normal: Wilson-Hilferty
-        z = ((x / df) ** (1.0 / 3.0) - (1.0 - 2.0 / (9.0 * df))) / math.sqrt(
-            2.0 / (9.0 * df)
-        )
+        z = ((x / df) ** (1.0 / 3.0) - (1.0 - 2.0 / (9.0 * df))) / math.sqrt(2.0 / (9.0 * df))
         return _norm_cdf(z)
 
 
 def _beta_cdf(x: float, a: float, b: float) -> float:
     """Beta CDF via regularized incomplete beta."""
     try:
-        import scipy.special  # type: ignore[import]
+        import scipy.special
+
         return float(scipy.special.betainc(a, b, x))
     except ImportError:
         # Crude approximation for symmetric beta
@@ -113,24 +116,24 @@ def _pmt(rate: float, n: float, pv: float, fv: float = 0.0) -> float:
     """Payment per period. pmt(rate, n, pv) — monthly mortgage formula."""
     if rate == 0.0:
         return -(pv + fv) / n if n > 0 else 0.0
-    r_n = (1.0 + rate) ** n
-    return -(pv * r_n + fv) * rate / (r_n - 1.0)
+    r_n = float((1.0 + rate) ** n)
+    return float(-(pv * r_n + fv) * rate / (r_n - 1.0))
 
 
 def _fv(rate: float, n: float, pmt: float, pv: float = 0.0) -> float:
     """Future Value: fv(rate, n, pmt, pv)"""
     if rate == 0.0:
         return -(pv + pmt * n)
-    r_n = (1.0 + rate) ** n
-    return -(pv * r_n + pmt * (r_n - 1.0) / rate)
+    r_n = float((1.0 + rate) ** n)
+    return float(-(pv * r_n + pmt * (r_n - 1.0) / rate))
 
 
 def _pv(rate: float, n: float, pmt: float, fv: float = 0.0) -> float:
     """Present Value: pv(rate, n, pmt, fv)"""
     if rate == 0.0:
         return -(pmt * n + fv)
-    r_n = (1.0 + rate) ** n
-    return -(pmt * (r_n - 1.0) / rate + fv) / r_n
+    r_n = float((1.0 + rate) ** n)
+    return float(-(pmt * (r_n - 1.0) / rate + fv) / r_n)
 
 
 def _rate_approx(n: float, pmt: float, pv: float, fv: float = 0.0) -> float:
@@ -139,38 +142,37 @@ def _rate_approx(n: float, pmt: float, pv: float, fv: float = 0.0) -> float:
         return 0.0
     r = 0.1  # initial guess
     for _ in range(100):
-        r_n = (1.0 + r) ** n
+        r_n = float((1.0 + r) ** n)
         f = pv * r_n + pmt * (r_n - 1.0) / r + fv
-        df = (
-            n * pv * (1.0 + r) ** (n - 1.0)
-            + pmt * (n * r * (1.0 + r) ** (n - 1.0) - (r_n - 1.0)) / (r * r)
-        )
+        df = n * pv * float((1.0 + r) ** (n - 1.0)) + pmt * (
+            n * r * float((1.0 + r) ** (n - 1.0)) - (r_n - 1.0)
+        ) / (r * r)
         if abs(df) < 1e-15:
             break
         r_new = r - f / df
         if abs(r_new - r) < 1e-8:
-            return r_new
+            return float(r_new)
         r = max(-0.999, r_new)
-    return r
+    return float(r)
 
 
 def _duration(rate: float, n: float) -> float:
     """Macaulay duration of an annuity: duration(rate, n)"""
     if rate == 0.0:
         return (n + 1.0) / 2.0
-    return (1.0 + rate) / rate - n / ((1.0 + rate) ** n - 1.0)
+    return float((1.0 + rate) / rate - n / (float((1.0 + rate) ** n) - 1.0))
 
 
 def _annuity(rate: float, n: float) -> float:
     """Present value annuity factor: annuity(rate, n) = (1-(1+r)^-n)/r"""
     if rate == 0.0:
         return n
-    return (1.0 - (1.0 + rate) ** (-n)) / rate
+    return float((1.0 - float((1.0 + rate) ** (-n))) / rate)
 
 
 def preprocess_payload(
     payload: dict[str, Any],
-    unit_specs_raw: list[dict | str | None],
+    unit_specs_raw: list[UnitSpecRaw],
 ) -> tuple[dict[str, Any], list[str]]:
     """Preprocess all variables in the Mojo payload per unit spec."""
     variables = payload.get("variables", [])
@@ -203,7 +205,7 @@ def postprocess_results(
     for key, val in raw_stats.items():
         if isinstance(val, int | float) and math.isfinite(val):
             result[f"{key}_formatted"] = format_value(val, spec)
-            result[f"{key}_display"]   = val * spec.scale
+            result[f"{key}_display"] = val * spec.scale
         else:
             result[f"{key}_formatted"] = str(val) if val is not None else None
     return result
@@ -211,8 +213,8 @@ def postprocess_results(
 
 def build_unit_context(
     variables: list[dict[str, Any]],
-    unit_specs_raw: list[dict | str | None],
-    output_unit_specs_raw: list[dict | str | None] | None,
+    unit_specs_raw: list[UnitSpecRaw],
+    output_unit_specs_raw: list[UnitSpecRaw] | None,
 ) -> dict[str, Any]:
     """Build the unit_context block for the DecisionEnvelope."""
     var_context: dict[str, Any] = {}
@@ -220,19 +222,26 @@ def build_unit_context(
         spec_raw = unit_specs_raw[i] if i < len(unit_specs_raw) else None
         spec = UnitSpec.from_raw(spec_raw)
         var_context[var.get("name", f"var_{i}")] = {
-            "unit": spec.code, "type": spec.type,
-            "precision": spec.precision, "scale": spec.scale,
-            "sim_scale": spec.sim_scale, "label": spec.label,
+            "unit": spec.code,
+            "type": spec.type,
+            "precision": spec.precision,
+            "scale": spec.scale,
+            "sim_scale": spec.sim_scale,
+            "label": spec.label,
         }
     out_context = []
     if output_unit_specs_raw:
         for raw in output_unit_specs_raw:
             spec = UnitSpec.from_raw(raw)
-            out_context.append({
-                "unit": spec.code, "type": spec.type,
-                "precision": spec.precision, "format": spec.format,
-                "label": spec.label,
-            })
+            out_context.append(
+                {
+                    "unit": spec.code,
+                    "type": spec.type,
+                    "precision": spec.precision,
+                    "format": spec.format,
+                    "label": spec.label,
+                }
+            )
     return {"variables": var_context, "outputs": out_context}
 
 
@@ -265,7 +274,7 @@ def get_physical_constants() -> dict[str, float]:
 def eval_with_constants(
     expr: str,
     variables: dict[str, float],
-    extra_builtins: dict | None = None,
+    extra_builtins: dict[str, Any] | None = None,
 ) -> float:
     """
     Evaluate an expression with physical constants + variable values.
@@ -276,51 +285,71 @@ def eval_with_constants(
       eval_with_constants('1 / sqrt(1 - (v/c)**2)', {'v': 0.9 * 299792458}) → 2.294
     """
     import math as _math
-    ctx: dict[str, Any] = dict(PHYSICAL_CONSTANTS)  # type: ignore[assignment]
-    ctx.update(variables)  # type: ignore[arg-type]
+
+    ctx: dict[str, Any] = dict(PHYSICAL_CONSTANTS)
+    ctx.update(variables)
     # ── Standard math ─────────────────────────────────────────────────────────
-    ctx.update({  # type: ignore[arg-type]
-        "sqrt": _math.sqrt, "exp": _math.exp, "log": _math.log,
-        "ln": _math.log, "log10": _math.log10, "log2": _math.log2,
-        "log1p": _math.log1p, "expm1": _math.expm1,
-        "abs": abs, "max": max, "min": min, "round": round,
-        "floor": _math.floor, "ceil": _math.ceil,
-        "sin": _math.sin, "cos": _math.cos, "tan": _math.tan,
-        "asin": _math.asin, "acos": _math.acos, "atan": _math.atan,
-        "atan2": _math.atan2, "sinh": _math.sinh, "cosh": _math.cosh,
-        "tanh": _math.tanh, "pow": pow, "inf": float("inf"),
-        "sign": lambda x: (1.0 if x > 0 else (-1.0 if x < 0 else 0.0)),
-        "hypot": _math.hypot,
-        # ── Special functions ──────────────────────────────────────────────────
-        "erf":      _math.erf,
-        "erfc":     _math.erfc,
-        "gamma":    _math.gamma,
-        "lgamma":   _math.lgamma,
-        "factorial": _math.factorial,
-        "comb":     _math.comb,
-        "perm":     _math.perm,
-        # ── Sequences ─────────────────────────────────────────────────────────
-        "fibonacci": _fibonacci,
-        "fib":       _fibonacci,
-        "fib_ratio": lambda n: _fibonacci(n) / max(1, _fibonacci(n-1)) if n > 1 else 1.0,
-        # ── Statistical functions ──────────────────────────────────────────────
-        "norm_cdf":  _norm_cdf,
-        "norm_pdf":  _norm_pdf,
-        "norm_ppf":  _norm_ppf,
-        "t_cdf":     _t_cdf,
-        "chi2_cdf":  _chi2_cdf,
-        "beta_cdf":  _beta_cdf,
-        "logistic":  lambda x: 1.0 / (1.0 + _math.exp(-x)),
-        "logit":     lambda x: _math.log(max(x, 1e-15) / max(1.0 - x, 1e-15)),
-        # ── Financial math ────────────────────────────────────────────────────
-        "npv":       _npv,
-        "pmt":       _pmt,
-        "fv":        _fv,
-        "pv":        _pv,
-        "rate":      _rate_approx,
-        "duration":  _duration,
-        "annuity":   _annuity,
-    })
+    ctx.update(
+        {
+            "sqrt": _math.sqrt,
+            "exp": _math.exp,
+            "log": _math.log,
+            "ln": _math.log,
+            "log10": _math.log10,
+            "log2": _math.log2,
+            "log1p": _math.log1p,
+            "expm1": _math.expm1,
+            "abs": abs,
+            "max": max,
+            "min": min,
+            "round": round,
+            "floor": _math.floor,
+            "ceil": _math.ceil,
+            "sin": _math.sin,
+            "cos": _math.cos,
+            "tan": _math.tan,
+            "asin": _math.asin,
+            "acos": _math.acos,
+            "atan": _math.atan,
+            "atan2": _math.atan2,
+            "sinh": _math.sinh,
+            "cosh": _math.cosh,
+            "tanh": _math.tanh,
+            "pow": pow,
+            "inf": float("inf"),
+            "sign": lambda x: 1.0 if x > 0 else (-1.0 if x < 0 else 0.0),
+            "hypot": _math.hypot,
+            # ── Special functions ──────────────────────────────────────────────────
+            "erf": _math.erf,
+            "erfc": _math.erfc,
+            "gamma": _math.gamma,
+            "lgamma": _math.lgamma,
+            "factorial": _math.factorial,
+            "comb": _math.comb,
+            "perm": _math.perm,
+            # ── Sequences ─────────────────────────────────────────────────────────
+            "fibonacci": _fibonacci,
+            "fib": _fibonacci,
+            "fib_ratio": lambda n: _fibonacci(n) / max(1, _fibonacci(n - 1)) if n > 1 else 1.0,
+            # ── Statistical functions ──────────────────────────────────────────────
+            "norm_cdf": _norm_cdf,
+            "norm_pdf": _norm_pdf,
+            "norm_ppf": _norm_ppf,
+            "t_cdf": _t_cdf,
+            "chi2_cdf": _chi2_cdf,
+            "beta_cdf": _beta_cdf,
+            "logistic": lambda x: 1.0 / (1.0 + _math.exp(-x)),
+            "logit": lambda x: _math.log(max(x, 1e-15) / max(1.0 - x, 1e-15)),
+            # ── Financial math ────────────────────────────────────────────────────
+            "npv": _npv,
+            "pmt": _pmt,
+            "fv": _fv,
+            "pv": _pv,
+            "rate": _rate_approx,
+            "duration": _duration,
+            "annuity": _annuity,
+        }
+    )
     if extra_builtins:
         ctx.update(extra_builtins)
     try:

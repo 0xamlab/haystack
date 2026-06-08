@@ -1,0 +1,61 @@
+from __future__ import annotations
+
+from apps.api_server.services.repository_intelligence_adapters import (
+    prolog_analysis_support as repository_prolog_analysis_support,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    prolog_primitives as repository_prolog_primitives,
+)
+
+StableIdentifier = repository_prolog_primitives.StableIdentifier
+ResolveSuffixMatch = repository_prolog_primitives.ResolveSuffixMatch
+ResolveImport = repository_prolog_primitives.ResolveImport
+ResolveTarget = repository_prolog_primitives.ResolveTarget
+
+_KNOWN_PROLOG_SUFFIXES = repository_prolog_primitives._KNOWN_PROLOG_SUFFIXES
+_PROLOG_SOURCE_ROOTS = repository_prolog_primitives._PROLOG_SOURCE_ROOTS
+RESERVED_SYMBOL_NAMES = repository_prolog_primitives.RESERVED_SYMBOL_NAMES
+_PROLOG_DIRECTIVE_PREFIXES = repository_prolog_primitives._PROLOG_DIRECTIVE_PREFIXES
+_PERL_MARKER_RE = repository_prolog_primitives._PERL_MARKER_RE
+_HEAD_RE = repository_prolog_primitives._HEAD_RE
+_MODULE_DIRECTIVE_RE = repository_prolog_primitives._MODULE_DIRECTIVE_RE
+_USE_MODULE_DIRECTIVE_RE = repository_prolog_primitives._USE_MODULE_DIRECTIVE_RE
+_LOAD_DIRECTIVE_RE = repository_prolog_primitives._LOAD_DIRECTIVE_RE
+_LIST_LOAD_DIRECTIVE_RE = repository_prolog_primitives._LIST_LOAD_DIRECTIVE_RE
+_IMPORT_NAME_RE = repository_prolog_primitives._IMPORT_NAME_RE
+_QUALIFIED_CALL_RE = repository_prolog_primitives._QUALIFIED_CALL_RE
+_CALL_RE = repository_prolog_primitives._CALL_RE
+
+_replace_with_spaces = repository_prolog_primitives._replace_with_spaces
+_normalize_repository_relative_path = (
+    repository_prolog_primitives._normalize_repository_relative_path
+)
+normalize_identifier = repository_prolog_primitives.normalize_identifier
+_normalize_target_name = repository_prolog_primitives._normalize_target_name
+_strip_inline_comment = repository_prolog_primitives._strip_inline_comment
+strip_comments = repository_prolog_primitives.strip_comments
+_split_clauses = repository_prolog_primitives._split_clauses
+_module_name_from_text = repository_prolog_primitives._module_name_from_text
+_parse_clause_head = repository_prolog_primitives._parse_clause_head
+has_prolog_markers = repository_prolog_primitives.has_prolog_markers
+is_probable_prolog_source = repository_prolog_primitives.is_probable_prolog_source
+_path_aliases = repository_prolog_primitives._path_aliases
+_candidate_import_keys = repository_prolog_primitives._candidate_import_keys
+_candidate_reference_names = repository_prolog_primitives._candidate_reference_names
+_predicate_names_from_import_list = (
+    repository_prolog_primitives._predicate_names_from_import_list
+)
+_split_use_module_target_and_imports = (
+    repository_prolog_primitives._split_use_module_target_and_imports
+)
+_import_aliases = repository_prolog_primitives._import_aliases
+
+collect_symbol_entries = repository_prolog_analysis_support.collect_symbol_entries
+module_aliases_for_path = repository_prolog_analysis_support.module_aliases_for_path
+resolve_import = repository_prolog_analysis_support.resolve_import
+resolve_target = repository_prolog_analysis_support.resolve_target
+extract_import_bindings = repository_prolog_analysis_support.extract_import_bindings
+_body_reference_names = repository_prolog_analysis_support._body_reference_names
+_reference_bindings = repository_prolog_analysis_support._reference_bindings
+parse_dependencies_only = repository_prolog_analysis_support.parse_dependencies_only
+parse_file = repository_prolog_analysis_support.parse_file

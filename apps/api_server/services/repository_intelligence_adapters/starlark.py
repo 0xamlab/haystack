@@ -1,0 +1,49 @@
+from __future__ import annotations
+
+from apps.api_server.services import (
+    repository_intelligence_contracts as repository_contracts,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    starlark_analysis_support as repository_starlark_analysis_support,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    starlark_primitives as repository_starlark_primitives,
+)
+
+_Dependency = repository_contracts._Dependency
+_Symbol = repository_contracts._Symbol
+_SymbolReferenceCandidate = repository_contracts._SymbolReferenceCandidate
+
+StableIdentifier = repository_starlark_primitives.StableIdentifier
+NormalizeRepositoryRelativePath = repository_starlark_primitives.NormalizeRepositoryRelativePath
+ResolveSuffixMatch = repository_starlark_primitives.ResolveSuffixMatch
+
+_KNOWN_SUFFIXES = repository_starlark_primitives._KNOWN_SUFFIXES
+_KNOWN_BASENAMES = repository_starlark_primitives._KNOWN_BASENAMES
+_LOAD_RE = repository_starlark_primitives._LOAD_RE
+_LOAD_ALIAS_RE = repository_starlark_primitives._LOAD_ALIAS_RE
+_LOAD_SYMBOL_RE = repository_starlark_primitives._LOAD_SYMBOL_RE
+_DEF_RE = repository_starlark_primitives._DEF_RE
+_ASSIGNMENT_RE = repository_starlark_primitives._ASSIGNMENT_RE
+_CALL_RE = repository_starlark_primitives._CALL_RE
+_TOP_LEVEL_CALL_RE = repository_starlark_primitives._TOP_LEVEL_CALL_RE
+_RESERVED_SYMBOL_NAMES = repository_starlark_primitives._RESERVED_SYMBOL_NAMES
+_BUILTIN_REFERENCE_NAMES = repository_starlark_primitives._BUILTIN_REFERENCE_NAMES
+_CollectedSymbol = repository_starlark_primitives._CollectedSymbol
+
+_line_number = repository_starlark_primitives._line_number
+_line_count = repository_starlark_primitives._line_count
+has_starlark_path_hints = repository_starlark_primitives.has_starlark_path_hints
+is_probable_starlark_source = repository_starlark_primitives.is_probable_starlark_source
+iter_load_statements = repository_starlark_primitives.iter_load_statements
+iter_symbol_entries = repository_starlark_primitives.iter_symbol_entries
+module_name_from_path = repository_starlark_primitives.module_name_from_path
+parse_loaded_symbols = repository_starlark_primitives.parse_loaded_symbols
+strip_comments = repository_starlark_primitives.strip_comments
+target_label_for_path = repository_starlark_primitives.target_label_for_path
+
+module_aliases_for_path = repository_starlark_analysis_support.module_aliases_for_path
+resolve_load_target = repository_starlark_analysis_support.resolve_load_target
+_collect_symbols = repository_starlark_analysis_support._collect_symbols
+parse_dependencies_only = repository_starlark_analysis_support.parse_dependencies_only
+parse_file = repository_starlark_analysis_support.parse_file

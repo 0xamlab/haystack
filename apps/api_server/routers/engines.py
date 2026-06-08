@@ -5,6 +5,7 @@ GET  /v1/engines              — list all engines (manifest)
 GET  /v1/engines/{slug}       — single engine detail
 GET  /v1/engines/tiers        — engines grouped by tier
 """
+
 from __future__ import annotations
 
 import sys
@@ -26,6 +27,7 @@ router = APIRouter(prefix="/v1/engines", tags=["Engines"])
 
 
 # ── Response models ─────────────────────────────────────────────────────────
+
 
 class EngineResponse(BaseModel):
     name: str
@@ -54,6 +56,7 @@ class EngineTierResponse(BaseModel):
 
 # ── Routes ──────────────────────────────────────────────────────────────────
 
+
 @router.get("", response_model=EngineListResponse, summary="List all engines")
 def list_engines(
     page: int = Query(default=1, ge=1),
@@ -75,6 +78,7 @@ def list_engines(
 @router.get("/tiers", response_model=EngineTierResponse, summary="Engines by tier")
 def engines_by_tier() -> EngineTierResponse:
     """Return engines grouped by tier: core / advanced / platform."""
+
     def _tier(slug: str) -> list[EngineResponse]:
         return [EngineResponse(**e.__dict__) for e in ENGINES_BY_TIER.get(slug, [])]
 
@@ -92,7 +96,6 @@ def get_engine(slug: str) -> EngineResponse:
     if engine is None:
         raise HTTPException(
             status_code=404,
-            detail=f"Engine '{slug}' not found. "
-                   f"Valid slugs: {sorted(ENGINES_BY_SLUG)}",
+            detail=f"Engine '{slug}' not found. Valid slugs: {sorted(ENGINES_BY_SLUG)}",
         )
     return EngineResponse(**engine.__dict__)

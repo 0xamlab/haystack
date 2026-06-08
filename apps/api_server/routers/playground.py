@@ -8,6 +8,7 @@ and immediately feels the value. No sign-up. No API key. Just works.
 
 Rate limited: 10 requests / minute per IP. No auth required.
 """
+
 from __future__ import annotations
 
 import time
@@ -18,16 +19,26 @@ import structlog
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from apps.api_server.services.public_url_policy import (
+    request_origin_base_url,
+    resolve_dashboard_url,
+)
+
 logger = structlog.get_logger(__name__)
 router = APIRouter(tags=["Playground"])
 
 # In-memory IP rate limiting (resets on restart — fine for demo tier)
 _ip_counts: dict[str, tuple[int, float]] = {}
-_RATE_LIMIT = 10   # requests
-_WINDOW_S   = 60   # per minute
+_RATE_LIMIT = 10  # requests
+_WINDOW_S = 60  # per minute
 
 
-def _check_ip_rate(ip: str) -> None:
+def _dashboard_upgrade_hint(request: Request) -> str:
+    dashboard_url = resolve_dashboard_url(request_origin=request_origin_base_url(request))
+    return f"{dashboard_url} — free tier: 500 simulations/month"
+
+
+def _check_ip_rate(ip: str, *, upgrade_hint: str) -> None:
     now = time.monotonic()
     count, window_start = _ip_counts.get(ip, (0, now))
     if now - window_start > _WINDOW_S:
@@ -42,19 +53,16 @@ def _check_ip_rate(ip: str) -> None:
                 "error": {
                     "code": "playground_rate_limit",
                     "message": (
-                        f"Playground limit: {_RATE_LIMIT} requests/minute. "
-                        f"Retry in {remaining}s."
+                        f"Playground limit: {_RATE_LIMIT} requests/minute. Retry in {remaining}s."
                     ),
-                    "upgrade": (
-                        "Get an API key at https://algenta.ai/dashboard — "
-                        "free tier: 500 simulations/month"
-                    ),
+                    "upgrade": f"Get an API key at {upgrade_hint}",
                 }
             },
         )
 
 
 # ── Request / Response ────────────────────────────────────────────────────────
+
 
 class PlaygroundRequest(BaseModel):
     """
@@ -73,6 +81,7 @@ class PlaygroundRequest(BaseModel):
         "runs": 1000
       }
     """
+
     mode: str = Field(
         "decision",
         description="What to run: decision, optimize, simulate, forecast",
@@ -84,8 +93,7 @@ class PlaygroundRequest(BaseModel):
     objective: str = Field(
         "maximize_value",
         description=(
-            "What to optimize (for optimize mode): "
-            "'maximize profit', 'minimize cost', etc."
+            "What to optimize (for optimize mode): 'maximize profit', 'minimize cost', etc."
         ),
     )
     runs: int = Field(
@@ -114,6 +122,7 @@ class PlaygroundResponse(BaseModel):
 
 # ── Endpoint ──────────────────────────────────────────────────────────────────
 
+
 @router.post(
     "/v1/playground",
     response_model=PlaygroundResponse,
@@ -122,7 +131,7 @@ class PlaygroundResponse(BaseModel):
         "**No sign-up. No API key. Just try it.**\n\n"
         "Run a decision analysis, optimization, simulation, or forecast "
         "in one API call. Rate limited at 10 requests/minute per IP.\n\n"
-        "Upgrade at [algenta.ai/dashboard](https://algenta.ai/dashboard) for:\n"
+        "Upgrade your configured dashboard for:\n"
         "- 500 simulations/month free\n"
         "- Up to 1,000,000 scenarios per request\n"
         "- All 12 engines\n"
@@ -133,7 +142,8 @@ async def playground(request: Request, payload: PlaygroundRequest) -> Playground
 
     # Rate limit by IP
     client_ip = request.client.host if request.client else "unknown"
-    _check_ip_rate(client_ip)
+    dashboard_hint = _dashboard_upgrade_hint(request)
+    _check_ip_rate(client_ip, upgrade_hint=dashboard_hint)
 
     mode = payload.mode.lower()
     pg_id = str(uuid.uuid4())
@@ -141,6 +151,7 @@ async def playground(request: Request, payload: PlaygroundRequest) -> Playground
     # Import local engine (no API key, no DB)
     import os
     import sys
+
     _core_path = os.path.join(
         os.path.dirname(__file__), "..", "..", "..", "packages", "algenta-core"
     )
@@ -176,14 +187,16 @@ async def playground(request: Request, payload: PlaygroundRequest) -> Playground
             if not variable_ranges:
                 variable_ranges = {"price": (10.0, 200.0), "quantity": (100.0, 5000.0)}
 
-            result = _optimize(payload.objective, iterations=min(payload.runs, 1000),
-                               **variable_ranges)
+            result = _optimize(
+                payload.objective, iterations=min(payload.runs, 1000), **variable_ranges
+            )
 
         elif mode == "forecast":
             history = payload.history
             if not history or len(history) < 3:
                 history = [80000.0, 85000.0, 90000.0, 95000.0, 100000.0]
             from algenta.forecast import predict as _forecast
+
             fr = _forecast(history, horizon=6, metric="value")
             final = fr.periods[-1]
             result_val = fr.forecast_mean
@@ -211,7 +224,7 @@ async def playground(request: Request, payload: PlaygroundRequest) -> Playground
                     "total_change_pct": change,
                 },
                 latency_ms=round((time.monotonic() - t0) * 1000, 1),
-                upgrade_hint="Get 1M+ scenario forecasts — algenta.ai/dashboard",
+                upgrade_hint=f"Get 1M+ scenario forecasts — {dashboard_hint}",
             )
 
         else:  # simulate (default)
@@ -245,6 +258,6 @@ async def playground(request: Request, payload: PlaygroundRequest) -> Playground
         latency_ms=round((time.monotonic() - t0) * 1000, 1),
         upgrade_hint=(
             f"Playground cap: {runs_used:,} scenarios. "
-            "Upgrade for 1,000,000+ — algenta.ai/dashboard"
+            f"Upgrade for 1,000,000+ — {dashboard_hint}"
         ),
     )

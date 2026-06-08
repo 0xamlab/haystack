@@ -1,5 +1,6 @@
 """Organization model — top-level multi-tenant entity."""
-import enum
+
+from enum import StrEnum
 
 from sqlalchemy import Enum, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -7,15 +8,15 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from apps.api_server.db.base import Base, TimestampMixin, UUIDMixin
 
 
-class OrgPlan(str, enum.Enum):
-    FREE       = "free"        # maps to STARTER tier on pricing page
-    DEVELOPER  = "developer"   # legacy / internal — treat as PRO for billing
-    PRO        = "pro"
-    TEAM       = "team"
+class OrgPlan(StrEnum):
+    FREE = "free"  # maps to STARTER tier on pricing page
+    DEVELOPER = "developer"  # legacy / internal — treat as PRO for billing
+    PRO = "pro"
+    TEAM = "team"
     ENTERPRISE = "enterprise"
 
 
-class OrgStatus(str, enum.Enum):
+class OrgStatus(StrEnum):
     ACTIVE = "active"
     SUSPENDED = "suspended"
     DELETED = "deleted"

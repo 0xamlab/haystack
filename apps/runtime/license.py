@@ -6,18 +6,20 @@ License lifecycle:
   2. Control plane validates API key, checks device count against plan limits
   3. Control plane issues signed JWT → stored in ~/.algenta/runtime/license.jwt
   4. Runtime validates JWT locally on every startup (no network)
-  5. Background sync every 24h: sends usage + re-validates device count
-  6. Grace period: 14 days after expiry before hard block
+  5. A persisted trusted clock keeps offline expiry checks non-decreasing
+  6. Background sync every 24h: sends usage + re-validates device count
+  7. Grace period: 14 days after expiry before hard block
 
 JWT payload:
   {
-    "api_key_prefix": "de_live_d36l",      # first 12 chars — for display only
+    "api_key_prefix": "<API_KEY_PREFIX>",  # first 12 chars — for display only
     "device_id": "abc123...",
     "plan": "pro",
     "device_limit": 5,
     "permitted_modules": ["*"],
     "issued_at": 1712345678,
-    "expires_at": 1743881678,              # 0 = no expiry
+    "expires_at": 1743881678,              # effective local entitlement expiry
+    "key_expires_at": 1743881678,          # backing API key expiry; 0 = no expiry
     "grace_days": 14,
     "iss": "algenta-control-plane",
     "sub": "device-license"
@@ -25,6 +27,7 @@ JWT payload:
 
 Dev-stub mode is allowed only when explicitly enabled for local development.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -33,32 +36,28 @@ import os
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
+from typing import cast
 from urllib.parse import urlparse
 
 import jwt
 import structlog
 
-from apps.platform_contract_constants import API_BASE_URL
+from apps.privacy_policy import is_algenta_owned_destination, policy_from_environment
+from apps.runtime.privacy_guard import (
+    RuntimeEgressPolicyDeniedError,
+    validated_runtime_egress_url,
+)
 
 logger = structlog.get_logger(__name__)
 
-_RUNTIME_DIR = Path(os.environ.get("ALGENTA_RUNTIME_DIR", Path.home() / ".algenta" / "runtime"))
-_LICENSE_FILE = _RUNTIME_DIR / "license.jwt"
 _LICENSE_VERSION = 1
 
 # Secret used for self-signed dev licenses (never used for cloud validation)
 _DEV_SECRET = "algenta-dev-local-v1-not-for-production"  # noqa: S105
 
-# Control plane base URL (override with ALGENTA_CONTROL_PLANE_URL)
-_CONTROL_PLANE_URL = os.environ.get(
-    "ALGENTA_CONTROL_PLANE_URL",
-    os.environ.get(
-        "ALGENTA_BASE_URL",
-        os.environ.get("DE_BASE_URL", API_BASE_URL),
-    ),
-)
 _CONTROL_PLANE_TIMEOUT_SECONDS = float(
     os.environ.get("ALGENTA_CONTROL_PLANE_TIMEOUT_SECONDS", "20")
 )
@@ -75,6 +74,15 @@ _RETRYABLE_CONTROL_PLANE_HTTP_CODES = frozenset({409, 429, 500, 502, 503, 504})
 _DEFAULT_GRACE_DAYS = 14
 
 
+def _runtime_dir() -> Path:
+    return Path(os.environ.get("ALGENTA_RUNTIME_DIR", Path.home() / ".algenta" / "runtime"))
+
+
+def _license_file(runtime_dir: Path | None = None) -> Path:
+    base_dir = _runtime_dir() if runtime_dir is None else runtime_dir
+    return base_dir / "license.jwt"
+
+
 def _env_api_key() -> str:
     return os.environ.get("ALGENTA_API_KEY", "") or os.environ.get("DE_API_KEY", "")
 
@@ -84,21 +92,72 @@ def _runtime_dev_mode_enabled() -> bool:
     return value in {"1", "true", "yes", "on"}
 
 
-def _validated_control_plane_url() -> str:
-    parsed = urlparse(_CONTROL_PLANE_URL)
-    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+def _local_license_required() -> bool:
+    return policy_from_environment().require_local_license
+
+
+def _offline_license_public_keys() -> list[tuple[str, str]]:
+    candidates: list[tuple[str, str]] = []
+
+    for env_name in ("ALGENTA_LOCAL_LICENSE_PUBLIC_KEY", "ALGENTA_LICENSE_PUBLIC_KEY"):
+        value = os.environ.get(env_name, "").strip()
+        if value:
+            candidates.append((value, "offline-local"))
+
+    for env_name in ("ALGENTA_LOCAL_LICENSE_PUBLIC_KEY_FILE", "ALGENTA_LICENSE_PUBLIC_KEY_FILE"):
+        path_value = os.environ.get(env_name, "").strip()
+        if not path_value:
+            continue
+        try:
+            key_text = Path(path_value).expanduser().read_text().strip()
+        except OSError as exc:
+            logger.warning("offline_license_public_key_unreadable", path=path_value, error=str(exc))
+            continue
+        if key_text:
+            candidates.append((key_text, "offline-local"))
+
+    deduped: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    for key_text, source in candidates:
+        if key_text in seen:
+            continue
+        seen.add(key_text)
+        deduped.append((key_text, source))
+    return deduped
+
+
+def _validated_control_plane_url(*, surface: str = "runtime_control_plane") -> str:
+    policy = policy_from_environment()
+    control_plane_url = policy.control_plane_url.rstrip("/")
+    if not control_plane_url:
         raise ValueError(
-            "ALGENTA_CONTROL_PLANE_URL must use an absolute http(s) URL."
+            "ALGENTA_CONTROL_PLANE_URL must be configured explicitly for control-plane sync in this deployment profile."
         )
-    return _CONTROL_PLANE_URL.rstrip("/")
+    parsed = urlparse(control_plane_url)
+    try:
+        return validated_runtime_egress_url(
+            control_plane_url,
+            surface=surface,
+            field_name="ALGENTA_CONTROL_PLANE_URL",
+            explicit_configured=True,
+            egress_class=(
+                "algenta_cloud"
+                if parsed.hostname and is_algenta_owned_destination(parsed.hostname)
+                else "operator_service"
+            ),
+        )
+    except RuntimeEgressPolicyDeniedError as exc:
+        raise ValueError(
+            "Control-plane egress is blocked by the active privacy policy. "
+            f"Reason: {exc.decision.reason}."
+        ) from exc
 
 
 def _control_plane_verification_secrets() -> list[tuple[str, str]]:
     candidates: list[tuple[str, str]] = []
 
-    explicit_secret = (
-        os.environ.get("ALGENTA_LICENSE_SIGNING_SECRET")
-        or os.environ.get("LICENSE_SIGNING_SECRET")
+    explicit_secret = os.environ.get("ALGENTA_LICENSE_SIGNING_SECRET") or os.environ.get(
+        "LICENSE_SIGNING_SECRET"
     )
     if explicit_secret:
         candidates.append((explicit_secret, "control-plane"))
@@ -127,7 +186,7 @@ def _device_registration_idempotency_key(device_id: str) -> str:
 def _device_register_request(
     control_plane_url: str,
     api_key: str,
-    device_info: dict,
+    device_info: Mapping[str, object],
     body: bytes,
 ) -> urllib.request.Request:
     return urllib.request.Request(  # noqa: S310
@@ -137,7 +196,7 @@ def _device_register_request(
             "Content-Type": "application/json",
             "Authorization": f"Bearer {api_key}",
             "Idempotency-Key": _device_registration_idempotency_key(
-                device_info.get("device_id", "")
+                _coerce_str(device_info.get("device_id"))
             ),
         },
         method="POST",
@@ -151,40 +210,92 @@ def _is_retryable_control_plane_error(exc: Exception) -> bool:
 
 
 def _license_retry_delay_seconds(attempt: int) -> float:
-    return max(0.0, _CONTROL_PLANE_RETRY_BASE_SECONDS) * (2 ** max(0, attempt - 1))
+    retry_multiplier = 2 ** max(0, attempt - 1)
+    return float(max(0.0, _CONTROL_PLANE_RETRY_BASE_SECONDS) * retry_multiplier)
+
+
+def _coerce_str(value: object, default: str = "") -> str:
+    return value if isinstance(value, str) else default
+
+
+def _coerce_int(value: object, default: int = 0) -> int:
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value)
+    if isinstance(value, str):
+        try:
+            return int(value)
+        except ValueError:
+            return default
+    return default
+
+
+def _coerce_float(value: object, default: float = 0.0) -> float:
+    if isinstance(value, bool):
+        return float(value)
+    if isinstance(value, int | float):
+        return float(value)
+    if isinstance(value, str):
+        try:
+            return float(value)
+        except ValueError:
+            return default
+    return default
+
+
+def _coerce_str_list(value: object, default: list[str] | None = None) -> list[str]:
+    if isinstance(value, list):
+        return [str(item) for item in value]
+    return list(default or [])
+
+
+def _decoded_payload(value: object) -> dict[str, object] | None:
+    if not isinstance(value, dict):
+        return None
+    return cast(dict[str, object], value)
 
 
 @dataclass
 class DeviceLicense:
     valid: bool
-    plan: str                             # "dev" | "pro" | "enterprise"
+    plan: str  # "dev" | "pro" | "enterprise"
     device_id: str
-    device_limit: int                     # 0 = unlimited
+    device_limit: int  # 0 = unlimited
     permitted_modules: list[str]
-    expires_at: int                       # unix timestamp; 0 = no expiry
+    expires_at: int  # unix timestamp; 0 = no expiry
+    key_expires_at: int
     grace_days: int
     api_key_prefix: str
     issued_at: int
     message: str = ""
-    source: str = "unknown"              # "cloud" | "dev-stub" | "expired-grace"
+    source: str = "unknown"  # "cloud" | "dev-stub" | "expired-grace"
 
     def is_expired(self) -> bool:
+        from apps.runtime.trusted_time import trusted_now_epoch
+
         if self.expires_at == 0:
             return False
-        return int(time.time()) > self.expires_at
+        return int(trusted_now_epoch()) > self.expires_at
 
     def is_in_grace(self) -> bool:
+        from apps.runtime.trusted_time import trusted_now_epoch
+
         if self.expires_at == 0:
             return False
         grace_end = self.expires_at + (self.grace_days * 86400)
-        return self.is_expired() and int(time.time()) <= grace_end
+        return self.is_expired() and int(trusted_now_epoch()) <= grace_end
 
     def is_hard_expired(self) -> bool:
         """True only after grace period ends — this is when we actually block."""
+        from apps.runtime.trusted_time import trusted_now_epoch
+
         if self.expires_at == 0:
             return False
         grace_end = self.expires_at + (self.grace_days * 86400)
-        return int(time.time()) > grace_end
+        return int(trusted_now_epoch()) > grace_end
 
     def is_module_permitted(self, module_name: str) -> bool:
         if not self.valid:
@@ -196,8 +307,10 @@ class DeviceLicense:
 
 # ── Dev stub license ──────────────────────────────────────────────────────────
 
+
 def _make_dev_license(api_key: str = "") -> DeviceLicense:
     from apps.runtime.device import get_device_id
+
     prefix = api_key[:12] if api_key else "dev-local"
     return DeviceLicense(
         valid=True,
@@ -206,6 +319,7 @@ def _make_dev_license(api_key: str = "") -> DeviceLicense:
         device_limit=0,
         permitted_modules=["*"],
         expires_at=0,
+        key_expires_at=0,
         grace_days=_DEFAULT_GRACE_DAYS,
         api_key_prefix=prefix,
         issued_at=int(time.time()),
@@ -225,6 +339,7 @@ def _make_invalid_license(message: str, *, api_key: str = "") -> DeviceLicense:
         device_limit=0,
         permitted_modules=[],
         expires_at=0,
+        key_expires_at=0,
         grace_days=_DEFAULT_GRACE_DAYS,
         api_key_prefix=prefix,
         issued_at=int(time.time()),
@@ -253,26 +368,30 @@ def _issue_dev_jwt(device_id: str, api_key: str = "") -> str:
 
 # ── Disk I/O ──────────────────────────────────────────────────────────────────
 
-def _save_license(token: str) -> None:
-    _RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
-    _LICENSE_FILE.write_text(token)
+
+def _save_license(token: str, runtime_dir: Path | None = None) -> None:
+    target_file = _license_file(runtime_dir)
+    target_file.parent.mkdir(parents=True, exist_ok=True)
+    target_file.write_text(token)
     # Restrict permissions: owner read/write only
     try:
-        _LICENSE_FILE.chmod(0o600)
+        target_file.chmod(0o600)
     except Exception as exc:
         logger.debug("license_permission_update_failed", error=str(exc))
 
 
-def _load_raw_token() -> str | None:
+def _load_raw_token(runtime_dir: Path | None = None) -> str | None:
+    target_file = _license_file(runtime_dir)
     try:
-        if _LICENSE_FILE.exists():
-            return _LICENSE_FILE.read_text().strip()
+        if target_file.exists():
+            return target_file.read_text().strip()
     except Exception as exc:
         logger.debug("license_read_failed", error=str(exc))
     return None
 
 
 # ── Token parsing ─────────────────────────────────────────────────────────────
+
 
 def _parse_token(token: str, api_key: str = "") -> DeviceLicense | None:
     """
@@ -281,25 +400,69 @@ def _parse_token(token: str, api_key: str = "") -> DeviceLicense | None:
     v1: dev tokens use HMAC-SHA256 with the dev secret.
     v2+: cloud tokens use RS256 with the Algenta public key.
     """
+    strict_local_license = _local_license_required()
+    try:
+        header = jwt.get_unverified_header(token)
+    except jwt.InvalidTokenError:
+        return None
+    algorithm = _coerce_str(header.get("alg"))
+
+    if algorithm == "RS256":
+        for key_text, source in _offline_license_public_keys():
+            try:
+                decoded = jwt.decode(
+                    token,
+                    key_text,
+                    algorithms=["RS256"],
+                    options={"verify_exp": False},
+                )
+                payload = _decoded_payload(decoded)
+                if payload is None:
+                    continue
+                return DeviceLicense(
+                    valid=True,
+                    plan=_coerce_str(payload.get("plan"), "enterprise"),
+                    device_id=_coerce_str(payload.get("device_id")),
+                    device_limit=_coerce_int(payload.get("device_limit"), 0),
+                    permitted_modules=_coerce_str_list(payload.get("permitted_modules"), ["*"]),
+                    expires_at=_coerce_int(payload.get("expires_at"), 0),
+                    key_expires_at=_coerce_int(payload.get("key_expires_at"), 0),
+                    grace_days=_coerce_int(payload.get("grace_days"), _DEFAULT_GRACE_DAYS),
+                    api_key_prefix=_coerce_str(payload.get("api_key_prefix"), api_key[:12]),
+                    issued_at=_coerce_int(payload.get("issued_at"), 0),
+                    message=_coerce_str(payload.get("message")),
+                    source=source,
+                )
+            except jwt.InvalidTokenError:
+                continue
+        return None
+
+    if strict_local_license:
+        return None
+
     for secret, source in [(_DEV_SECRET, "dev-stub"), *_control_plane_verification_secrets()]:
         try:
-            payload = jwt.decode(
+            decoded = jwt.decode(
                 token,
                 secret,
                 algorithms=["HS256"],
                 options={"verify_exp": False},  # we handle expiry ourselves
             )
+            payload = _decoded_payload(decoded)
+            if payload is None:
+                continue
             return DeviceLicense(
                 valid=True,
-                plan=payload.get("plan", "dev"),
-                device_id=payload.get("device_id", ""),
-                device_limit=payload.get("device_limit", 0),
-                permitted_modules=payload.get("permitted_modules", ["*"]),
-                expires_at=payload.get("expires_at", 0),
-                grace_days=payload.get("grace_days", _DEFAULT_GRACE_DAYS),
-                api_key_prefix=payload.get("api_key_prefix", ""),
-                issued_at=payload.get("issued_at", 0),
-                message=payload.get("message", ""),
+                plan=_coerce_str(payload.get("plan"), "dev"),
+                device_id=_coerce_str(payload.get("device_id")),
+                device_limit=_coerce_int(payload.get("device_limit"), 0),
+                permitted_modules=_coerce_str_list(payload.get("permitted_modules"), ["*"]),
+                expires_at=_coerce_int(payload.get("expires_at"), 0),
+                key_expires_at=_coerce_int(payload.get("key_expires_at"), 0),
+                grace_days=_coerce_int(payload.get("grace_days"), _DEFAULT_GRACE_DAYS),
+                api_key_prefix=_coerce_str(payload.get("api_key_prefix")),
+                issued_at=_coerce_int(payload.get("issued_at"), 0),
+                message=_coerce_str(payload.get("message")),
                 source=source,
             )
         except jwt.InvalidTokenError:
@@ -307,24 +470,62 @@ def _parse_token(token: str, api_key: str = "") -> DeviceLicense | None:
     return None
 
 
+def stored_offline_execution_entitlement(
+    api_key: str = "",
+    *,
+    runtime_dir: Path | None = None,
+) -> bool:
+    token = _load_raw_token(runtime_dir)
+    if not token:
+        return False
+    parsed = _parse_token(token, api_key)
+    if parsed is None or not parsed.valid or parsed.key_expires_at <= 0:
+        return False
+    return not parsed.is_hard_expired()
+
+
+def local_license_status(api_key: str = "") -> dict[str, object]:
+    token = _load_raw_token()
+    if not token:
+        return {"active": False, "source": "none"}
+    parsed = _parse_token(token, api_key)
+    if parsed is None:
+        return {"active": False, "source": "invalid"}
+    if parsed.is_hard_expired():
+        return {"active": False, "source": parsed.source, "message": "expired"}
+    return {
+        "active": parsed.valid,
+        "source": parsed.source,
+        "plan": parsed.plan,
+        "device_id": parsed.device_id,
+        "expires_at": parsed.expires_at,
+    }
+
+
 # ── Control plane exchange ────────────────────────────────────────────────────
 
-def _exchange_api_key_for_license(api_key: str, device_info: dict) -> str | None:
+
+def _exchange_api_key_for_license(
+    api_key: str,
+    device_info: Mapping[str, object],
+) -> str | None:
     """
     POST to control plane: exchange API key + device fingerprint → signed JWT.
 
     Returns raw JWT string or None on failure.
     """
     control_plane_url = _validated_control_plane_url()
-    body = json.dumps({
-        "device": {
-            "device_id":        device_info.get("device_id", ""),
-            "platform":         device_info.get("platform", ""),
-            "platform_version": device_info.get("platform_version", ""),
-            "hostname_hash":    device_info.get("hostname_hash", ""),
-            "sdk_version":      device_info.get("sdk_version", ""),
+    body = json.dumps(
+        {
+            "device": {
+                "device_id": device_info.get("device_id", ""),
+                "platform": device_info.get("platform", ""),
+                "platform_version": device_info.get("platform_version", ""),
+                "hostname_hash": device_info.get("hostname_hash", ""),
+                "sdk_version": device_info.get("sdk_version", ""),
+            }
         }
-    }).encode()
+    ).encode()
     for attempt in range(1, _CONTROL_PLANE_MAX_ATTEMPTS + 1):
         req = _device_register_request(control_plane_url, api_key, device_info, body)
         try:
@@ -332,31 +533,44 @@ def _exchange_api_key_for_license(api_key: str, device_info: dict) -> str | None
                 req,
                 timeout=_CONTROL_PLANE_TIMEOUT_SECONDS,
             ) as resp:
-                data = json.loads(resp.read())
-                token = data.get("license_token")
+                data = _decoded_payload(json.loads(resp.read()))
+                if data is None:
+                    logger.warning("license_exchange_invalid_response")
+                    return None
+                token = _coerce_str(data.get("license_token"))
                 if token:
+                    from apps.runtime.trusted_time import observe_time
+
                     logger.info(
                         "license_from_control_plane",
                         plan=data.get("plan"),
                         device_count=data.get("device_count"),
                         device_limit=data.get("device_limit"),
                     )
-                    credits_granted = data.get("credits_granted", 0)
+                    observe_time(
+                        _coerce_float(data.get("server_time"), time.time()),
+                        source="control-plane-register",
+                    )
+                    credits_granted = _coerce_int(data.get("credits_granted"), 0)
                     if credits_granted > 0:
                         try:
                             from apps.runtime.credits import get_store
+                            from apps.runtime.trusted_time import trusted_now_epoch
+
+                            now = trusted_now_epoch()
 
                             get_store().initialize_sync(
                                 credits_granted=credits_granted,
-                                billing_period=data.get("credits_billing_period", ""),
+                                billing_period=_coerce_str(data.get("credits_billing_period")),
                                 ttl_seconds=max(
                                     1,
-                                    int(
-                                        data.get(
-                                            "credits_expires_at",
-                                            time.time() + 86_400,
+                                    _coerce_int(
+                                        _coerce_float(
+                                            data.get("credits_expires_at"),
+                                            now + 86_400,
                                         )
-                                        - time.time()
+                                        - now,
+                                        1,
                                     ),
                                 ),
                             )
@@ -369,22 +583,20 @@ def _exchange_api_key_for_license(api_key: str, device_info: dict) -> str | None
         except urllib.error.HTTPError as exc:
             if exc.code == 402:
                 try:
-                    detail = json.loads(exc.read().decode())
+                    detail = _decoded_payload(json.loads(exc.read().decode()))
+                    if detail is None:
+                        raise PermissionError("Device limit reached. Upgrade your plan.") from exc
+                    detail_payload = _decoded_payload(detail.get("detail", {})) or {}
                     logger.error("device_limit_reached", detail=detail)
                     raise PermissionError(
-                        detail.get("detail", {}).get(
+                        detail_payload.get(
                             "message",
                             "Device limit reached.",
                         )
                     ) from exc
                 except (json.JSONDecodeError, KeyError):
-                    raise PermissionError(
-                        "Device limit reached. Upgrade your plan."
-                    ) from exc
-            if (
-                _is_retryable_control_plane_error(exc)
-                and attempt < _CONTROL_PLANE_MAX_ATTEMPTS
-            ):
+                    raise PermissionError("Device limit reached. Upgrade your plan.") from exc
+            if _is_retryable_control_plane_error(exc) and attempt < _CONTROL_PLANE_MAX_ATTEMPTS:
                 logger.warning(
                     "license_exchange_retryable_http_error",
                     attempt=attempt,
@@ -396,10 +608,7 @@ def _exchange_api_key_for_license(api_key: str, device_info: dict) -> str | None
                 continue
             logger.warning("license_exchange_http_error", status=exc.code, error=str(exc))
         except Exception as exc:
-            if (
-                _is_retryable_control_plane_error(exc)
-                and attempt < _CONTROL_PLANE_MAX_ATTEMPTS
-            ):
+            if _is_retryable_control_plane_error(exc) and attempt < _CONTROL_PLANE_MAX_ATTEMPTS:
                 logger.warning(
                     "license_exchange_retryable_failure",
                     attempt=attempt,
@@ -415,6 +624,7 @@ def _exchange_api_key_for_license(api_key: str, device_info: dict) -> str | None
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
+
 def load_license(api_key: str = "") -> DeviceLicense:
     """
     Load the local license. Precedence:
@@ -423,6 +633,9 @@ def load_license(api_key: str = "") -> DeviceLicense:
       3. Allow explicit dev stub only when ALGENTA_RUNTIME_DEV_MODE is enabled
     """
     from apps.runtime.device import get_device_info
+    from apps.runtime.trusted_time import trusted_now_epoch
+
+    trusted_now_epoch()
 
     # 1. Try stored license
     raw = _load_raw_token()
@@ -438,6 +651,13 @@ def load_license(api_key: str = "") -> DeviceLicense:
                 parsed.message = "License in grace period — run `algenta login` to renew."
                 logger.info("license_in_grace_period")
             return parsed
+
+    if _local_license_required():
+        return _make_invalid_license(
+            "A valid local signed license is required for this deployment profile. "
+            "Provision an offline license file before startup.",
+            api_key=api_key,
+        )
 
     # 2. Exchange API key for a new license
     if api_key:
@@ -477,8 +697,16 @@ def issue_and_store(api_key: str) -> DeviceLicense:
     Called by `algenta login`: exchange API key → store license → return it.
     This is the registration flow — called once per machine.
     """
+    if _local_license_required():
+        return _make_invalid_license(
+            "ALGENTA_REQUIRE_LOCAL_LICENSE=1 disables hosted registration. "
+            "Use scripts/issue_offline_license.py to provision a local signed license.",
+            api_key=api_key,
+        )
     from apps.runtime.device import get_device_info
+    from apps.runtime.trusted_time import trusted_now_epoch
 
+    trusted_now_epoch()
     device_info = get_device_info()
     token = _exchange_api_key_for_license(api_key, device_info)
     if token:
@@ -502,19 +730,21 @@ def issue_and_store(api_key: str) -> DeviceLicense:
 def revoke_local() -> None:
     """Remove the stored license (called by `algenta logout`)."""
     try:
-        _LICENSE_FILE.unlink(missing_ok=True)
+        _license_file().unlink(missing_ok=True)
     except Exception as exc:
         logger.debug("license_delete_failed", error=str(exc))
 
 
 def license_summary(lic: DeviceLicense) -> str:
     """Human-readable one-liner."""
-    expiry = "no expiry" if lic.expires_at == 0 else (
-        "in grace" if lic.is_in_grace() else
-        f"expires {time.strftime('%Y-%m-%d', time.gmtime(lic.expires_at))}"
+    expiry = (
+        "no expiry"
+        if lic.expires_at == 0
+        else (
+            "in grace"
+            if lic.is_in_grace()
+            else f"expires {time.strftime('%Y-%m-%d', time.gmtime(lic.expires_at))}"
+        )
     )
     limit = "unlimited" if lic.device_limit == 0 else f"max {lic.device_limit} devices"
-    return (
-        f"plan={lic.plan}  {limit}  {expiry}  "
-        f"source={lic.source}  device={lic.device_id[:8]}..."
-    )
+    return f"plan={lic.plan}  {limit}  {expiry}  source={lic.source}  device={lic.device_id[:8]}..."

@@ -1,4 +1,5 @@
 """Alembic environment configuration — synchronous connection for migrations."""
+
 import os
 from logging.config import fileConfig
 

@@ -1,0 +1,41 @@
+from __future__ import annotations
+
+from apps.api_server.services import repository_intelligence_contracts as repository_contracts
+from apps.api_server.services.repository_intelligence_adapters import (
+    vlang_analysis_support as repository_vlang_analysis_support,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    vlang_primitives as repository_vlang_primitives,
+)
+
+_Dependency = repository_contracts._Dependency
+_Symbol = repository_contracts._Symbol
+_SymbolReferenceCandidate = repository_contracts._SymbolReferenceCandidate
+
+StableIdentifier = repository_vlang_primitives.StableIdentifier
+NormalizeRepositoryRelativePath = repository_vlang_primitives.NormalizeRepositoryRelativePath
+ResolveSuffixMatch = repository_vlang_primitives.ResolveSuffixMatch
+
+_MODULE_RE = repository_vlang_primitives._MODULE_RE
+_IMPORT_RE = repository_vlang_primitives._IMPORT_RE
+_FUNCTION_RE = repository_vlang_primitives._FUNCTION_RE
+_TYPE_RE = repository_vlang_primitives._TYPE_RE
+_QUALIFIED_REFERENCE_RE = repository_vlang_primitives._QUALIFIED_REFERENCE_RE
+_CALL_RE = repository_vlang_primitives._CALL_RE
+_MANIFEST_NAME_RE = repository_vlang_primitives._MANIFEST_NAME_RE
+_RESERVED_SYMBOL_NAMES = repository_vlang_primitives._RESERVED_SYMBOL_NAMES
+
+strip_comments = repository_vlang_primitives.strip_comments
+has_v_path_hints = repository_vlang_primitives.has_v_path_hints
+is_probable_v_manifest = repository_vlang_primitives.is_probable_v_manifest
+is_probable_v_source = repository_vlang_primitives.is_probable_v_source
+module_name_from_text = repository_vlang_primitives.module_name_from_text
+split_import_targets = repository_vlang_primitives.split_import_targets
+import_targets_for_text = repository_vlang_primitives.import_targets_for_text
+declared_symbol_names = repository_vlang_primitives.declared_symbol_names
+collect_symbols = repository_vlang_primitives.collect_symbols
+
+module_aliases_for_path = repository_vlang_analysis_support.module_aliases_for_path
+resolve_import = repository_vlang_analysis_support.resolve_import
+parse_dependencies_only = repository_vlang_analysis_support.parse_dependencies_only
+parse_file = repository_vlang_analysis_support.parse_file

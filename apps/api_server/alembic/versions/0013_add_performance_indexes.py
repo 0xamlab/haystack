@@ -12,12 +12,13 @@ Indexes added:
   audit_events:    (org_id, created_at DESC)  — audit log pagination
   data_connectors: (org_id)                   — connector list
 """
+
 from alembic import op
 
-revision        = "0013"
-down_revision   = "0012"
-branch_labels   = None
-depends_on      = None
+revision = "0013"
+down_revision = "0012"
+branch_labels = None
+depends_on = None
 
 
 def upgrade() -> None:
@@ -70,9 +71,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index("ix_data_connectors_org",        table_name="data_connectors")
-    op.drop_index("ix_audit_events_org_created",   table_name="audit_events")
-    op.drop_index("ix_usage_records_org_period",   table_name="usage_records")
-    op.drop_index("ix_jobs_org_status",            table_name="jobs")
+    op.drop_index("ix_data_connectors_org", table_name="data_connectors")
+    op.drop_index("ix_audit_events_org_created", table_name="audit_events")
+    op.drop_index("ix_usage_records_org_period", table_name="usage_records")
+    op.drop_index("ix_jobs_org_status", table_name="jobs")
     op.drop_index("ix_simulation_runs_org_status", table_name="simulation_runs")
-    op.drop_index("ix_simulation_runs_org_created",table_name="simulation_runs")
+    op.drop_index("ix_simulation_runs_org_created", table_name="simulation_runs")

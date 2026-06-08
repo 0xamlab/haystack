@@ -6,6 +6,7 @@ Revision ID: 0004
 Revises: 0003
 Create Date: 2026-03-20 20:40:00.000000
 """
+
 from collections.abc import Sequence
 
 from alembic import op
@@ -51,10 +52,7 @@ def upgrade() -> None:
     )
 
     # Indexes for fast quota queries
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_usage_records_org_id "
-        "ON usage_records (org_id)"
-    )
+    op.execute("CREATE INDEX IF NOT EXISTS ix_usage_records_org_id ON usage_records (org_id)")
     op.execute(
         "CREATE INDEX IF NOT EXISTS ix_usage_records_billing_period "
         "ON usage_records (billing_period)"

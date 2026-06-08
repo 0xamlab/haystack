@@ -11,6 +11,8 @@ from apps.api_server.config import get_settings
 
 EMAIL_VERIFICATION_HOURS = 24
 PASSWORD_RESET_MINUTES = 15
+EMAIL_VERIFICATION_KIND = "email_verification"
+RESET_KIND = "password_reset"
 
 
 @dataclass(frozen=True)
@@ -32,26 +34,26 @@ def issue_email_verification_token(user_id: str, email: str) -> str:
     return _issue_token(
         subject=user_id,
         email=email,
-        token_type="email_verification",
+        token_type=EMAIL_VERIFICATION_KIND,
         expires_at=datetime.now(UTC) + timedelta(hours=EMAIL_VERIFICATION_HOURS),
     )
 
 
 def verify_email_verification_token(token: str) -> AuthTokenClaims:
-    return _decode_token(token, expected_type="email_verification")
+    return _decode_token(token, expected_type=EMAIL_VERIFICATION_KIND)
 
 
 def issue_password_reset_token(user_id: str, email: str) -> str:
     return _issue_token(
         subject=user_id,
         email=email,
-        token_type="password_reset",
+        token_type=RESET_KIND,
         expires_at=datetime.now(UTC) + timedelta(minutes=PASSWORD_RESET_MINUTES),
     )
 
 
 def verify_password_reset_token(token: str) -> AuthTokenClaims:
-    return _decode_token(token, expected_type="password_reset")
+    return _decode_token(token, expected_type=RESET_KIND)
 
 
 def _issue_token(
@@ -68,7 +70,7 @@ def _issue_token(
         "typ": token_type,
         "exp": expires_at,
     }
-    return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+    return str(jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm))
 
 
 def _decode_token(token: str, *, expected_type: str) -> AuthTokenClaims:

@@ -23,6 +23,7 @@ Quota enforcement path:
 
 Heartbeat (separate) is analytics-only — not enforcement.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -32,21 +33,23 @@ import time
 from dataclasses import asdict, dataclass
 from datetime import UTC
 from pathlib import Path
+from typing import cast
 
 import structlog
 
+from apps.privacy_policy import policy_from_environment
+
 logger = structlog.get_logger(__name__)
 
-_RUNTIME_DIR = Path(
-    os.environ.get("ALGENTA_RUNTIME_DIR", Path.home() / ".algenta" / "runtime")
-)
+_RUNTIME_DIR = Path(os.environ.get("ALGENTA_RUNTIME_DIR", Path.home() / ".algenta" / "runtime"))
 CREDITS_FILE = _RUNTIME_DIR / "credits.json"
-_REFRESH_THRESHOLD = 0.10          # trigger refresh when <10% remaining
-_CREDIT_TTL        = 86_400        # 24h window per batch
-_REFRESH_PATH      = "/v1/credits/refresh"
+_REFRESH_THRESHOLD = 0.10  # trigger refresh when <10% remaining
+_CREDIT_TTL = 86_400  # 24h window per batch
+_REFRESH_PATH = "/v1/credits/refresh"
 
 
 # ── Credit state ──────────────────────────────────────────────────────────────
+
 
 @dataclass
 class CreditState:
@@ -70,18 +73,28 @@ class CreditState:
 
     @property
     def is_expired(self) -> bool:
-        return time.time() > self.expires_at
+        from apps.runtime.trusted_time import trusted_now_epoch
 
-    def to_dict(self) -> dict:
+        return trusted_now_epoch() > self.expires_at
+
+    def to_dict(self) -> dict[str, object]:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, d: dict) -> CreditState:
-        known = set(cls.__dataclass_fields__)
-        return cls(**{k: v for k, v in d.items() if k in known})
+    def from_dict(cls, d: dict[str, object]) -> CreditState:
+        data = {k: v for k, v in d.items() if k in cls.__dataclass_fields__}
+        return cls(
+            credits_remaining=_coerce_credit_int(data.get("credits_remaining"), 0),
+            credits_total=_coerce_credit_int(data.get("credits_total"), 0),
+            issued_at=_coerce_credit_float(data.get("issued_at"), 0.0),
+            expires_at=_coerce_credit_float(data.get("expires_at"), 0.0),
+            billing_period=str(data.get("billing_period", "")),
+            refresh_after=_coerce_credit_float(data.get("refresh_after"), 0.0),
+        )
 
 
 # ── Persistent store ──────────────────────────────────────────────────────────
+
 
 class CreditStore:
     """
@@ -91,7 +104,6 @@ class CreditStore:
 
     def __init__(self, path: Path = CREDITS_FILE) -> None:
         self._path = path
-        self._path.parent.mkdir(parents=True, exist_ok=True)
         self._lock = asyncio.Lock()
         self._refreshing = False
 
@@ -101,11 +113,15 @@ class CreditStore:
         if not self._path.exists():
             return None
         try:
-            return CreditState.from_dict(json.loads(self._path.read_text()))
+            payload = json.loads(self._path.read_text())
+            if not isinstance(payload, dict):
+                return None
+            return CreditState.from_dict(cast(dict[str, object], payload))
         except Exception:
             return None
 
     def _write(self, state: CreditState) -> None:
+        self._path.parent.mkdir(parents=True, exist_ok=True)
         tmp = self._path.with_suffix(".tmp")
         tmp.write_text(json.dumps(state.to_dict(), indent=2))
         tmp.replace(self._path)
@@ -124,14 +140,16 @@ class CreditStore:
                 return dev_mode in {"1", "true", "yes", "on"}
             if state.is_exhausted:
                 return False
-            self._write(CreditState(
-                credits_remaining=state.credits_remaining - 1,
-                credits_total=state.credits_total,
-                issued_at=state.issued_at,
-                expires_at=state.expires_at,
-                billing_period=state.billing_period,
-                refresh_after=state.refresh_after,
-            ))
+            self._write(
+                CreditState(
+                    credits_remaining=state.credits_remaining - 1,
+                    credits_total=state.credits_total,
+                    issued_at=state.issued_at,
+                    expires_at=state.expires_at,
+                    billing_period=state.billing_period,
+                    refresh_after=state.refresh_after,
+                )
+            )
             return True
 
     async def apply_refresh(
@@ -144,16 +162,19 @@ class CreditStore:
         async with self._lock:
             existing = self._read()
             carry = existing.credits_remaining if existing else 0
-            self._write(CreditState(
-                credits_remaining=carry + credits_granted,
-                credits_total=credits_granted,
-                issued_at=time.time(),
-                expires_at=expires_at,
-                billing_period=billing_period,
-                refresh_after=time.time() + _CREDIT_TTL * 0.9,
-            ))
-        logger.info("credits_applied", granted=credits_granted, carry=carry,
-                    total=carry + credits_granted)
+            self._write(
+                CreditState(
+                    credits_remaining=carry + credits_granted,
+                    credits_total=credits_granted,
+                    issued_at=_trusted_now_epoch(),
+                    expires_at=expires_at,
+                    billing_period=billing_period,
+                    refresh_after=_trusted_now_epoch() + _CREDIT_TTL * 0.9,
+                )
+            )
+        logger.info(
+            "credits_applied", granted=credits_granted, carry=carry, total=carry + credits_granted
+        )
 
     def initialize_sync(
         self,
@@ -165,17 +186,18 @@ class CreditStore:
         Seed the credit file synchronously — called from license.py at registration.
         Does NOT require an event loop.
         """
-        now = time.time()
-        self._write(CreditState(
-            credits_remaining=credits_granted,
-            credits_total=credits_granted,
-            issued_at=now,
-            expires_at=now + ttl_seconds,
-            billing_period=billing_period,
-            refresh_after=now + ttl_seconds * 0.9,
-        ))
-        logger.info("credits_initialized", granted=credits_granted,
-                    billing_period=billing_period)
+        now = _trusted_now_epoch()
+        self._write(
+            CreditState(
+                credits_remaining=credits_granted,
+                credits_total=credits_granted,
+                issued_at=now,
+                expires_at=now + ttl_seconds,
+                billing_period=billing_period,
+                refresh_after=now + ttl_seconds * 0.9,
+            )
+        )
+        logger.info("credits_initialized", granted=credits_granted, billing_period=billing_period)
 
     async def get_state(self) -> CreditState | None:
         return self._read()
@@ -193,10 +215,64 @@ _store = CreditStore()
 
 def _current_billing_period() -> str:
     from datetime import datetime
+
     return datetime.now(UTC).strftime("%Y-%m")
 
 
+def _trusted_now_epoch() -> float:
+    from apps.runtime.trusted_time import trusted_now_epoch
+
+    return trusted_now_epoch()
+
+
+def _coerce_credit_int(value: object, default: int = 0) -> int:
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value)
+    if isinstance(value, str):
+        try:
+            return int(value)
+        except ValueError:
+            return default
+    return default
+
+
+def _coerce_credit_float(value: object, default: float = 0.0) -> float:
+    if isinstance(value, bool):
+        return float(value)
+    if isinstance(value, int | float):
+        return float(value)
+    if isinstance(value, str):
+        try:
+            return float(value)
+        except ValueError:
+            return default
+    return default
+
+
+def _offline_execution_entitled() -> bool:
+    policy = policy_from_environment()
+    if policy.deployment_mode == "self_hosted" and not policy.require_local_license:
+        return True
+    try:
+        from apps.runtime.license import load_license, stored_offline_execution_entitlement
+
+        api_key = os.environ.get("ALGENTA_API_KEY", "") or os.environ.get("DE_API_KEY", "")
+        if policy.require_local_license:
+            return bool(load_license(api_key).valid)
+        return stored_offline_execution_entitlement(
+            api_key,
+            runtime_dir=_store._path.parent,
+        )
+    except Exception:
+        return False
+
+
 # ── Hot-path helpers ──────────────────────────────────────────────────────────
+
 
 async def consume_credit(*, allow_background_refresh: bool = True) -> bool:
     """
@@ -204,13 +280,22 @@ async def consume_credit(*, allow_background_refresh: bool = True) -> bool:
     Optionally triggers a background refresh when the bucket runs low.
     Returns False when exhausted — caller must block execution.
     """
+    if _offline_execution_entitled():
+        return True
+
     permitted = await _store.decrement()
 
-    if allow_background_refresh and _store.should_refresh() and not _store._refreshing:
+    policy = policy_from_environment()
+    if (
+        allow_background_refresh
+        and policy.metering_mode == "control_plane_sync"
+        and _store.should_refresh()
+        and not _store._refreshing
+    ):
         try:
             asyncio.get_running_loop().create_task(_background_refresh())
         except RuntimeError:
-            pass   # no event loop — refresh will happen on next startup
+            pass  # no event loop — refresh will happen on next startup
 
     return permitted
 
@@ -223,6 +308,9 @@ async def _background_refresh() -> None:
     """
     if _store._refreshing:
         return
+    policy = policy_from_environment()
+    if policy.metering_mode != "control_plane_sync":
+        return
     _store._refreshing = True
     try:
         import urllib.error
@@ -233,18 +321,20 @@ async def _background_refresh() -> None:
 
         api_key = os.environ.get("ALGENTA_API_KEY", "") or os.environ.get("DE_API_KEY", "")
         if not api_key:
-            return   # offline / dev mode
-        control_plane_url = _validated_control_plane_url()
+            return  # offline / dev mode
+        control_plane_url = _validated_control_plane_url(surface="credits_refresh")
 
         state = await _store.get_state()
         billing_period = state.billing_period if state else _current_billing_period()
         credits_used = (state.credits_total - state.credits_remaining) if state else 0
 
-        body = json.dumps({
-            "device_id":      get_device_id(),
-            "billing_period": billing_period,
-            "credits_used":   credits_used,
-        }).encode()
+        body = json.dumps(
+            {
+                "device_id": get_device_id(),
+                "billing_period": billing_period,
+                "credits_used": credits_used,
+            }
+        ).encode()
 
         req = urllib.request.Request(  # noqa: S310
             f"{control_plane_url}{_REFRESH_PATH}",
@@ -258,6 +348,13 @@ async def _background_refresh() -> None:
         with urllib.request.urlopen(req, timeout=8) as resp:  # noqa: S310
             data = json.loads(resp.read())
 
+        from apps.runtime.trusted_time import observe_time
+
+        observe_time(
+            float(data.get("server_time", time.time())),
+            source="control-plane-credit-refresh",
+        )
+
         granted = data.get("credits_granted", 0)
         if granted > 0:
             await _store.apply_refresh(
@@ -266,8 +363,9 @@ async def _background_refresh() -> None:
                 billing_period=data["billing_period"],
             )
         else:
-            logger.warning("credit_refresh_zero",
-                           monthly_remaining=data.get("monthly_remaining", 0))
+            logger.warning(
+                "credit_refresh_zero", monthly_remaining=data.get("monthly_remaining", 0)
+            )
 
     except Exception as exc:
         # urllib.error.HTTPError is caught here too
@@ -276,9 +374,7 @@ async def _background_refresh() -> None:
             logger.warning(
                 "credit_refresh_quota_exhausted",
                 status=code,
-                hint=(
-                    "Monthly quota exhausted; executions will block when credits drain."
-                ),
+                hint=("Monthly quota exhausted; executions will block when credits drain."),
             )
         else:
             logger.debug("credit_refresh_failed", error=str(exc))
@@ -287,6 +383,7 @@ async def _background_refresh() -> None:
 
 
 # ── Convenience accessors ─────────────────────────────────────────────────────
+
 
 def get_store() -> CreditStore:
     return _store

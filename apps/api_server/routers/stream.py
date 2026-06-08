@@ -22,37 +22,45 @@ Usage:
     -H "Content-Type: application/json" \\
     -d '{"mode":"expert","runs":100000,"variables":[...],"objective_function":"..."}'
 """
+
 import asyncio
 import json
 import os
 import textwrap
 from collections.abc import AsyncGenerator
-from typing import Annotated
+from typing import Annotated, Any
 
 import structlog
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 
 from apps.api_server.middleware.auth import AuthContext, get_current_org, get_redis
-from apps.api_server.schemas.simulate import SimulateRequest
+from apps.api_server.schemas.simulate import SimulateRequest, SimulateRequestAuto
 from apps.api_server.services.quota_service import check_quota_redis, check_rate_limit
+from apps.api_server.services.simulation_payloads import (
+    _build_auto_mojo_payload,
+    _build_expert_mojo_payload,
+)
 
 logger = structlog.get_logger(__name__)
 router = APIRouter(tags=["Streaming"])
 
 # ── Locate binary ─────────────────────────────────────────────────────────────
-_HERE  = os.path.dirname(os.path.abspath(__file__))
-_ROOT  = os.path.abspath(os.path.join(_HERE, "..", "..", ".."))
-_BIN   = os.path.join(_ROOT, "mojo_build", "simulate")
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_ROOT = os.path.abspath(os.path.join(_HERE, "..", "..", ".."))
+_BIN = os.path.join(_ROOT, "mojo_build", "simulate")
 
 
 # ── SSE helpers ───────────────────────────────────────────────────────────────
 
+
 def _sse_line(data: str) -> str:
     return f"data: {data}\n\n"
 
+
 def _sse_comment(msg: str) -> str:
     return f": {msg}\n\n"
+
 
 def _sse_event(event: str, data: str) -> str:
     return f"event: {event}\ndata: {data}\n\n"
@@ -60,59 +68,25 @@ def _sse_event(event: str, data: str) -> str:
 
 # ── Payload builder ───────────────────────────────────────────────────────────
 
-def _build_stream_payload(request: SimulateRequest, checkpoint_every: int) -> dict:
+
+def _build_stream_payload(
+    request: SimulateRequest,
+    checkpoint_every: int,
+) -> dict[str, Any]:
     """Convert SimulateRequest to Mojo engine JSON payload with stream=True."""
-    if hasattr(request.simulation, "variables"):
-        sim = request.simulation
-        variables = [
-            {
-                "name": v.name,
-                "distribution": v.distribution.value,
-                "params": v.params.model_dump(exclude_none=True),
-            }
-            for v in (sim.variables or [])
-        ]
-        payload: dict = {
-            "engine_type":         getattr(sim, "engine_type", "monte_carlo") or "monte_carlo",
-            "runs":                 getattr(sim, "runs", 50000),
-            "variables":            variables,
-            "objective_function":   getattr(sim, "objective_function", "") or "",
-            "stream":               True,
-            "checkpoint_every":     checkpoint_every,
-        }
-        if getattr(sim, "seed", None) is not None:
-            payload["seed"] = sim.seed
-        scoring = getattr(sim, "scoring", None)
-        if scoring:
-            payload["scoring"] = {
-                "expected_value": getattr(scoring, "weight_ev", 0.6),
-                "downside_risk":  getattr(scoring, "weight_downside_risk", 0.4),
-            }
+    if isinstance(request, SimulateRequestAuto):
+        payload = _build_auto_mojo_payload(request)
     else:
-        # Auto mode — forward raw variables as normal distribution
-        sim = request.simulation
-        variables = [
-            {
-                "name": v.name,
-                "distribution": "triangular",
-                "params": {"low": v.low, "mode": v.mode, "high": v.high},
-            }
-            for v in (getattr(sim, "variables", None) or [])
-        ]
-        payload = {
-            "engine_type":       "monte_carlo",
-            "runs":               getattr(sim, "runs", 50000),
-            "variables":          variables,
-            "objective_function": "",
-            "stream":             True,
-            "checkpoint_every":   checkpoint_every,
-        }
+        payload = _build_expert_mojo_payload(request)
+    payload["stream"] = True
+    payload["checkpoint_every"] = checkpoint_every
     return payload
 
 
 # ── Core async generator ──────────────────────────────────────────────────────
 
-async def _stream_mojo(payload: dict) -> AsyncGenerator[str, None]:
+
+async def _stream_mojo(payload: dict[str, Any]) -> AsyncGenerator[str, None]:
     """
     Spawn mojo binary, relay NDJSON lines as SSE frames.
     Yields SSE-formatted strings.
@@ -120,9 +94,7 @@ async def _stream_mojo(payload: dict) -> AsyncGenerator[str, None]:
     if not os.path.isfile(_BIN):
         yield _sse_event(
             "error",
-            json.dumps(
-                {"error": "Mojo engine not built", "hint": "run make build-mojo"}
-            ),
+            json.dumps({"error": "Mojo engine not built", "hint": "run make build-mojo"}),
         )
         return
 
@@ -183,6 +155,7 @@ async def _stream_mojo(payload: dict) -> AsyncGenerator[str, None]:
 
 # ── Endpoint ──────────────────────────────────────────────────────────────────
 
+
 @router.post(
     "/v1/simulate/stream",
     summary="Streaming simulation via Server-Sent Events",
@@ -226,10 +199,10 @@ async def _stream_mojo(payload: dict) -> AsyncGenerator[str, None]:
     },
 )
 async def simulate_stream(
-    request:          Request,
-    payload:          SimulateRequest,
-    auth:             Annotated[AuthContext, Depends(get_current_org)],
-    redis:            Annotated[object, Depends(get_redis)],
+    request: Request,
+    payload: SimulateRequest,
+    auth: Annotated[AuthContext, Depends(get_current_org)],
+    redis: Annotated[object, Depends(get_redis)],
     checkpoint_every: int = 1000,
 ) -> StreamingResponse:
     """Stream simulation results via SSE as Mojo computes."""
@@ -254,6 +227,7 @@ async def simulate_stream(
                 "error",
                 json.dumps({"error": "quota_exceeded", "detail": detail}),
             )
+
         return StreamingResponse(
             _quota_err(),
             media_type="text/event-stream",
@@ -277,8 +251,8 @@ async def simulate_stream(
         _stream_mojo(mojo_payload),
         media_type="text/event-stream",
         headers={
-            "Cache-Control":    "no-cache",
-            "X-Accel-Buffering": "no",   # Nginx: disable response buffering
-            "Connection":        "keep-alive",
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",  # Nginx: disable response buffering
+            "Connection": "keep-alive",
         },
     )

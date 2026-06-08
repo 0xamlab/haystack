@@ -9,6 +9,7 @@ Public API (unchanged from provisioner_service.py):
 Usage:
   from apps.api_server.services.provisioner import provision_deployment, get_available_regions
 """
+
 from __future__ import annotations
 
 import uuid
@@ -23,17 +24,21 @@ logger = structlog.get_logger(__name__)
 
 # ─── Provider registry ────────────────────────────────────────────────────────
 
+
 def _build_registry() -> dict[str, BaseProvisioner]:
     from .aws import AWSProvisioner
     from .azure import AzureProvisioner
     from .gcp import GCPProvisioner
+
     return {
-        "aws":   AWSProvisioner(),
+        "aws": AWSProvisioner(),
         "azure": AzureProvisioner(),
-        "gcp":   GCPProvisioner(),
+        "gcp": GCPProvisioner(),
     }
 
+
 _provisioners: dict[str, BaseProvisioner] | None = None
+
 
 def get_provisioner(provider: str) -> BaseProvisioner | None:
     global _provisioners

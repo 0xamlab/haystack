@@ -8,16 +8,27 @@ Flow:
   3. This middleware checks if org has an active deployment with endpoint_url
   4. If yes: proxy the request to the data plane endpoint
   5. If no: fall through to local (shared pool) handler
+  6. If endpoint resolution or proxying fails: return a structured 503
+     instead of silently falling back across data planes
 
 Cache: Active deployment endpoint URLs are cached in Redis (5-minute TTL)
 to avoid a DB lookup on every request.
 """
+
 from __future__ import annotations
 
+from collections.abc import Awaitable
+from typing import Any, Protocol, cast
+
 import structlog
-from starlette.middleware.base import BaseHTTPMiddleware
+from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import Response
+
+from apps.api_server.config import get_settings
+from apps.api_server.services.privacy_service import record_service_egress_event
+from apps.privacy_policy import evaluate_egress
 
 logger = structlog.get_logger(__name__)
 
@@ -43,6 +54,32 @@ _CACHE_PREFIX = "deployment:endpoint:"
 _CACHE_TTL = 300  # 5 minutes
 
 
+class _AsyncRedisDeleteClient(Protocol):
+    def delete(self, *keys: str) -> Awaitable[Any]: ...
+
+
+class DeploymentEndpointLookupError(RuntimeError):
+    """Raised when the active deployment endpoint cannot be resolved safely."""
+
+
+def _service_unavailable_response(
+    *,
+    code: str,
+    message: str,
+    details: dict[str, Any] | None = None,
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=503,
+        content={
+            "error": {
+                "code": code,
+                "message": message,
+                "details": details or {},
+            }
+        },
+    )
+
+
 class DeploymentRoutingMiddleware(BaseHTTPMiddleware):
     """
     Proxy requests to per-org data plane when org has an active dedicated deployment.
@@ -51,24 +88,67 @@ class DeploymentRoutingMiddleware(BaseHTTPMiddleware):
     Control plane paths (billing, team, api-keys) are always handled locally.
     """
 
-    async def dispatch(self, request: Request, call_next: object) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        policy = get_settings().privacy_policy
+        if policy.deployment_mode not in {"saas", "vpc"} or policy.disable_cloud:
+            return await call_next(request)
+
         # Fast path: skip non-simulation paths entirely
         path = request.url.path
         if not self._should_proxy(path):
-            return await call_next(request)  # type: ignore[operator]
+            return await call_next(request)
 
         # Get org_id from request state (set by auth middleware)
         org_id = getattr(request.state, "org_id", None)
         if org_id is None:
-            return await call_next(request)  # type: ignore[operator]
+            return await call_next(request)
 
         # Look up active deployment endpoint
-        endpoint_url = await self._get_deployment_endpoint(request, str(org_id))
+        try:
+            endpoint_url = await self._get_deployment_endpoint(request, str(org_id))
+        except DeploymentEndpointLookupError as exc:
+            logger.error(
+                "deployment_endpoint_lookup_unavailable",
+                org_id=str(org_id),
+                error=str(exc),
+            )
+            return _service_unavailable_response(
+                code="deployment_endpoint_lookup_failed",
+                message=(
+                    "Dedicated deployment routing is temporarily unavailable. "
+                    "The request was not rerouted to the shared pool."
+                ),
+                details={"reason": "endpoint_lookup_failed"},
+            )
         if endpoint_url is None:
             # No dedicated deployment — use shared pool (local handler)
-            return await call_next(request)  # type: ignore[operator]
+            return await call_next(request)
 
         # Proxy request to data plane
+        decision = evaluate_egress(
+            policy,
+            endpoint_url,
+            surface="deployment_router",
+            service_name="api-server",
+            explicit_configured=True,
+            egress_class="operator_service",
+            request_id=getattr(request.state, "request_id", None),
+        )
+        try:
+            await record_service_egress_event(org_id=org_id, decision=decision)
+        except Exception:
+            logger.debug("privacy_egress_audit_failed", org_id=str(org_id))
+        if decision.decision == "deny":
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "error": {
+                        "code": "egress_policy_denied",
+                        "message": "Deployment proxy egress is blocked by the active privacy policy.",
+                        "details": {"reason": decision.reason},
+                    }
+                },
+            )
         try:
             return await self._proxy_request(request, endpoint_url)
         except Exception as exc:
@@ -78,8 +158,14 @@ class DeploymentRoutingMiddleware(BaseHTTPMiddleware):
                 endpoint=endpoint_url,
                 error=str(exc),
             )
-            # Fallback: route to shared pool on proxy failure
-            return await call_next(request)  # type: ignore[operator]
+            return _service_unavailable_response(
+                code="deployment_proxy_unavailable",
+                message=(
+                    "Dedicated deployment is temporarily unavailable. "
+                    "The request was not rerouted to the shared pool."
+                ),
+                details={"reason": "proxy_request_failed"},
+            )
 
     def _should_proxy(self, path: str) -> bool:
         """Return True if this path should be considered for data plane proxying."""
@@ -131,11 +217,13 @@ class DeploymentRoutingMiddleware(BaseHTTPMiddleware):
 
             async with AsyncSessionLocal() as db:
                 result = await db.execute(
-                    select(Deployment).where(
+                    select(Deployment)
+                    .where(
                         Deployment.org_id == uuid.UUID(org_id),
                         Deployment.status == DeploymentStatus.ACTIVE,
                         Deployment.endpoint_url.isnot(None),
-                    ).limit(1)
+                    )
+                    .limit(1)
                 )
                 deployment = result.scalar_one_or_none()
                 endpoint_url = deployment.endpoint_url if deployment else None
@@ -161,7 +249,9 @@ class DeploymentRoutingMiddleware(BaseHTTPMiddleware):
 
         except Exception as exc:
             logger.warning("deployment_endpoint_lookup_failed", org_id=org_id, error=str(exc))
-            return None
+            raise DeploymentEndpointLookupError(
+                "Could not resolve the active deployment endpoint."
+            ) from exc
 
     async def _proxy_request(self, request: Request, endpoint_url: str) -> Response:
         """
@@ -177,9 +267,7 @@ class DeploymentRoutingMiddleware(BaseHTTPMiddleware):
 
         # Forward original headers (preserve auth, content-type, etc.)
         headers = {
-            k: v
-            for k, v in request.headers.items()
-            if k.lower() not in ("host", "content-length")
+            k: v for k, v in request.headers.items() if k.lower() not in ("host", "content-length")
         }
         headers["X-Forwarded-For"] = request.client.host if request.client else "unknown"
         headers["X-Algenta-Control-Plane"] = "true"
@@ -213,11 +301,11 @@ class DeploymentRoutingMiddleware(BaseHTTPMiddleware):
 def invalidate_deployment_cache(org_id: str, redis_client: object) -> None:
     """Call this when a deployment status changes to clear the routing cache."""
     import asyncio
+
     try:
-        import redis.asyncio as aioredis
-        redis: aioredis.Redis = redis_client  # type: ignore
         cache_key = f"{_CACHE_PREFIX}{org_id}"
-        asyncio.create_task(redis.delete(cache_key))
+        redis = cast(_AsyncRedisDeleteClient, redis_client)
+        asyncio.ensure_future(redis.delete(cache_key))
     except Exception as exc:
         logger.debug(
             "deployment_cache_invalidation_failed",

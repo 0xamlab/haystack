@@ -5,7 +5,9 @@ Billing endpoints:
   GET  /v1/billing/info      — Get current plan + subscription info
   POST /v1/billing/webhook   — Stripe webhook handler (no auth)
 """
+
 from datetime import UTC
+from typing import Any
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -20,6 +22,11 @@ from apps.api_server.middleware.rbac import require_role
 from apps.api_server.models.organization import Organization, OrgPlan
 from apps.api_server.models.user import User
 from apps.api_server.services.auth_service import AuthContext
+from apps.api_server.services.egress_guard import audit_context_from_auth
+from apps.api_server.services.public_url_policy import (
+    request_origin_base_url,
+    resolve_billing_redirect_urls,
+)
 from apps.api_server.services.stripe_service import (
     create_billing_portal_session,
     create_checkout_session,
@@ -36,7 +43,7 @@ async def checkout(
     request: Request,
     auth: AuthContext = Depends(require_role("owner")),
     db: AsyncSession = Depends(get_db),
-) -> dict:
+) -> dict[str, Any]:
     body = await request.json()
     plan = body.get("plan", "developer")
     if plan not in ("developer", "pro"):
@@ -56,15 +63,28 @@ async def checkout(
     )
     user = user_result.scalar_one_or_none()
     email = user.email if user else "unknown@example.com"
+    request_origin = request_origin_base_url(request)
+    redirect_urls = resolve_billing_redirect_urls(request_origin=request_origin)
 
-    return await create_checkout_session(str(auth["org_id"]), email, plan)
+    return await create_checkout_session(
+        str(auth["org_id"]),
+        email,
+        plan,
+        success_url=redirect_urls.success_url,
+        cancel_url=redirect_urls.cancel_url,
+        audit_context=audit_context_from_auth(
+            auth,
+            request_id=getattr(request.state, "request_id", None),
+        ),
+    )
 
 
 @router.post("/v1/billing/portal", summary="Create Stripe Billing Portal session")
 async def portal(
+    request: Request,
     auth: AuthContext = Depends(require_role("owner")),
     db: AsyncSession = Depends(get_db),
-) -> dict:
+) -> dict[str, Any]:
     org_result = await db.execute(select(Organization).where(Organization.id == auth["org_id"]))
     org = org_result.scalar_one_or_none()
     if not org or not org.stripe_customer_id:
@@ -77,14 +97,23 @@ async def portal(
                 }
             },
         )
-    return await create_billing_portal_session(org.stripe_customer_id)
+    request_origin = request_origin_base_url(request)
+    redirect_urls = resolve_billing_redirect_urls(request_origin=request_origin)
+    return await create_billing_portal_session(
+        org.stripe_customer_id,
+        return_url=redirect_urls.return_url,
+        audit_context=audit_context_from_auth(
+            auth,
+            request_id=getattr(request.state, "request_id", None),
+        ),
+    )
 
 
 @router.get("/v1/billing/info", summary="Get current billing info")
 async def billing_info(
     auth: AuthContext = Depends(get_current_org),
     db: AsyncSession = Depends(get_db),
-) -> dict:
+) -> dict[str, Any]:
     org_result = await db.execute(select(Organization).where(Organization.id == auth["org_id"]))
     org = org_result.scalar_one_or_none()
     if not org:
@@ -130,9 +159,9 @@ async def stripe_webhook(
             org_result = await db.execute(select(Organization).where(Organization.id == org_id))
             org = org_result.scalar_one_or_none()
             if org:
-                org.plan = plan_enum  # type: ignore[assignment]
+                org.plan = plan_enum
                 if customer_id:
-                    org.stripe_customer_id = customer_id  # type: ignore[assignment]
+                    org.stripe_customer_id = customer_id
                 await db.flush()
                 logger.info("org_plan_upgraded", org_id=org_id, plan=plan)
 
@@ -165,7 +194,7 @@ async def stripe_webhook(
         org = org_result.scalar_one_or_none()
         if org:
             try:
-                org.plan = OrgPlan(plan_name)  # type: ignore[assignment]
+                org.plan = OrgPlan(plan_name)
             except ValueError:
                 pass
             await db.flush()
@@ -189,7 +218,7 @@ async def stripe_webhook(
         )
         org = org_result.scalar_one_or_none()
         if org:
-            org.plan = OrgPlan.FREE  # type: ignore[assignment]
+            org.plan = OrgPlan.FREE
             await db.flush()
             logger.info("subscription_cancelled", org_id=str(org.id))
 
@@ -204,11 +233,15 @@ async def stripe_webhook(
             # Delete usage records for previous period so quota resets
             from datetime import datetime
 
-            prev_period = (datetime.now(UTC).replace(day=1)).__class__(
-                datetime.now(UTC).year,
-                datetime.now(UTC).month,
-                1,
-            ).strftime("%Y-%m")
+            prev_period = (
+                (datetime.now(UTC).replace(day=1))
+                .__class__(
+                    datetime.now(UTC).year,
+                    datetime.now(UTC).month,
+                    1,
+                )
+                .strftime("%Y-%m")
+            )
             # Keep current month's records; the new period will start fresh
             logger.info("invoice_paid_usage_reset_noted", org_id=str(org.id), period=prev_period)
 
@@ -216,7 +249,7 @@ async def stripe_webhook(
     return JSONResponse(content={"received": True})
 
 
-def _plan_from_subscription(sub_obj: dict) -> str:
+def _plan_from_subscription(sub_obj: dict[str, Any]) -> str:
     """Extract plan name from Stripe subscription object."""
     try:
         items = sub_obj.get("items", {}).get("data", [])
@@ -250,6 +283,7 @@ async def _upsert_subscription(
         from datetime import datetime
 
         from sqlalchemy import text
+
         period_end_dt = datetime.fromtimestamp(period_end, tz=UTC) if period_end else None
         await db.execute(
             text("""

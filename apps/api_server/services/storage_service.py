@@ -1,17 +1,24 @@
 """Object storage service for persisted full simulation results."""
+
 from __future__ import annotations
 
 import json
 import uuid
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Protocol, cast
 
 import structlog
 
-from apps.api_server.config import get_settings
+from apps.api_server.config import SettingsProxy
+from apps.api_server.services.egress_guard import (
+    EgressAuditContext,
+    async_http_request,
+    aws_endpoint_url,
+    enforce_egress_sync,
+)
 
 logger = structlog.get_logger(__name__)
-settings = get_settings()
+settings = SettingsProxy()
 
 
 class ResultStorageUnavailableError(RuntimeError):
@@ -26,6 +33,28 @@ class StoredResultReference:
     size_bytes: int
 
 
+class _S3ClientProtocol(Protocol):
+    def head_bucket(self, **kwargs: Any) -> object: ...
+
+    def create_bucket(self, **kwargs: Any) -> object: ...
+
+    def put_bucket_lifecycle_configuration(
+        self,
+        **kwargs: Any,
+    ) -> object: ...
+
+    def put_object(
+        self,
+        **kwargs: Any,
+    ) -> object: ...
+
+    def generate_presigned_url(
+        self,
+        client_method: str,
+        **kwargs: Any,
+    ) -> str: ...
+
+
 def _bucket_name() -> str:
     return settings.s3_bucket_name or "simulation-results"
 
@@ -38,28 +67,40 @@ def _blob_ref(bucket: str, object_key: str) -> str:
     return f"s3://{bucket}/{object_key}"
 
 
-def _get_client():
+def _get_client(*, audit_context: EgressAuditContext | None = None) -> _S3ClientProtocol:
     """Build an S3-compatible client from shared storage settings."""
     try:
-        import boto3  # type: ignore[import]
+        import boto3
     except ImportError as exc:
         raise ResultStorageUnavailableError(
             "boto3 is required for object storage result persistence."
         ) from exc
 
     try:
-        return boto3.client(
-            "s3",
+        enforce_egress_sync(
+            aws_endpoint_url(
+                aws_service_name="s3",
+                region_name=settings.s3_region,
+                endpoint_url=settings.s3_endpoint_url,
+            ),
+            surface="result_storage_client",
+            explicit_configured=True,
+            egress_class="operator_service",
+            audit_context=audit_context,
+        )
+        client = boto3.client(
+            service_name="s3",
             endpoint_url=settings.s3_endpoint_url,
             aws_access_key_id=settings.s3_access_key_id,
             aws_secret_access_key=settings.s3_secret_access_key,
             region_name=settings.s3_region,
         )
+        return cast(_S3ClientProtocol, client)
     except Exception as exc:
         raise ResultStorageUnavailableError("Failed to initialize object storage client.") from exc
 
 
-def _ensure_bucket(client, bucket_name: str) -> None:
+def _ensure_bucket(client: _S3ClientProtocol, bucket_name: str) -> None:
     """Create the bucket when missing or raise a storage availability error."""
     try:
         client.head_bucket(Bucket=bucket_name)
@@ -103,7 +144,7 @@ async def store_result(
     size_bytes = len(result_json.encode("utf-8"))
     bucket_name = _bucket_name()
     object_key = _object_key(org_id, run_id)
-    client = _get_client()
+    client = _get_client(audit_context=EgressAuditContext(org_id=org_id))
     _ensure_bucket(client, bucket_name)
 
     try:
@@ -138,15 +179,24 @@ async def store_result(
     )
 
 
-async def get_result(result_url: str) -> dict[str, Any] | None:
+async def get_result(result_url: str, *, org_id: uuid.UUID | None = None) -> dict[str, Any] | None:
     """Download a persisted result from object storage using a pre-signed URL."""
     try:
-        import httpx
-
-        async with httpx.AsyncClient(timeout=30) as client:
-            response = await client.get(result_url)
-            response.raise_for_status()
-            return response.json()
+        response = await async_http_request(
+            method="GET",
+            url=result_url,
+            surface="result_storage_fetch",
+            explicit_configured=True,
+            egress_class="operator_service",
+            audit_context=EgressAuditContext(org_id=org_id) if org_id else None,
+            client_kwargs={"timeout": 30},
+        )
+        response.raise_for_status()
+        data = response.json()
+        if isinstance(data, dict):
+            return cast(dict[str, Any], data)
+        logger.warning("result_fetch_invalid_payload", url=result_url[:80])
+        return None
     except Exception as exc:
         logger.warning("result_fetch_failed", url=result_url[:80], error=str(exc))
         return None
@@ -159,11 +209,13 @@ def generate_presigned_download_url(
 ) -> str | None:
     """Generate a fresh pre-signed URL for a persisted run payload."""
     try:
-        client = _get_client()
-        return client.generate_presigned_url(
-            "get_object",
-            Params={"Bucket": _bucket_name(), "Key": _object_key(org_id, run_id)},
-            ExpiresIn=expires_in,
+        client = _get_client(audit_context=EgressAuditContext(org_id=org_id))
+        return str(
+            client.generate_presigned_url(
+                "get_object",
+                Params={"Bucket": _bucket_name(), "Key": _object_key(org_id, run_id)},
+                ExpiresIn=expires_in,
+            )
         )
     except ResultStorageUnavailableError as exc:
         logger.warning("presigned_url_unavailable", run_id=str(run_id), error=str(exc))

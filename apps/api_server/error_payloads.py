@@ -1,4 +1,5 @@
 """Shared error payload helpers for public API contract responses."""
+
 from __future__ import annotations
 
 from typing import Any

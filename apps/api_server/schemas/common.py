@@ -1,4 +1,5 @@
 """Shared Pydantic schemas used across all endpoints."""
+
 from pydantic import BaseModel, ConfigDict, Field
 
 

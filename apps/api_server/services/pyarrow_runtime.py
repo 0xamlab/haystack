@@ -4,6 +4,7 @@ import io
 import os
 import sys
 import threading
+from collections.abc import Iterator
 from contextlib import contextmanager
 
 _KNOWN_CPU_INFO_NEEDLE = "arrow/util/cpu_info.cc:"
@@ -34,7 +35,7 @@ def _filter_known_pyarrow_cpu_info_warnings(text: str) -> str:
 
 
 @contextmanager
-def suppress_known_pyarrow_cpu_info_warnings():
+def suppress_known_pyarrow_cpu_info_warnings() -> Iterator[None]:
     """
     Capture stderr temporarily and drop only the known Arrow CPU-info noise.
 

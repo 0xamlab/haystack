@@ -9,36 +9,63 @@ Provides:
 
 Plans map to Stripe Price IDs configured in environment variables.
 """
+
 import hashlib
 import hmac
 import json
+from collections.abc import Iterator, Mapping
 from typing import Any
 
 import httpx
 import structlog
 from fastapi import HTTPException
 
-from apps.api_server.config import get_settings
+from apps.api_server.config import SettingsProxy, get_settings
+from apps.api_server.services.egress_guard import (
+    EgressAuditContext,
+    EgressPolicyDeniedError,
+    async_http_request,
+)
+from apps.api_server.services.public_url_policy import resolve_billing_redirect_urls
 
 logger = structlog.get_logger(__name__)
-settings = get_settings()
+settings = SettingsProxy()
+_STRIPE_BASE_URL = "https://api.stripe.com"
 
 # ─── Plan → Stripe Price ID mapping ──────────────────────────────────────────
 
-PLAN_PRICE_IDS: dict[str, str | None] = {
-    "free": None,
-    "developer": (
-        settings.stripe_price_developer
-        if hasattr(settings, "stripe_price_developer")
-        else None
-    ),
-    "pro": (
-        settings.stripe_price_pro
-        if hasattr(settings, "stripe_price_pro")
-        else None
-    ),
-    "enterprise": None,  # sales-assisted only
-}
+class _PlanPriceIdMapping(Mapping[str, str | None]):
+    def _current_mapping(self) -> dict[str, str | None]:
+        current_settings = get_settings()
+        return {
+            "free": None,
+            "developer": (
+                current_settings.stripe_price_developer
+                if hasattr(current_settings, "stripe_price_developer")
+                else None
+            ),
+            "pro": (
+                current_settings.stripe_price_pro
+                if hasattr(current_settings, "stripe_price_pro")
+                else None
+            ),
+            "enterprise": None,  # sales-assisted only
+        }
+
+    def __getitem__(self, key: str) -> str | None:
+        return self._current_mapping()[key]
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._current_mapping())
+
+    def __len__(self) -> int:
+        return len(self._current_mapping())
+
+    def __repr__(self) -> str:
+        return repr(self._current_mapping())
+
+
+PLAN_PRICE_IDS: Mapping[str, str | None] = _PlanPriceIdMapping()
 
 
 def _stripe_headers() -> dict[str, str]:
@@ -48,12 +75,45 @@ def _stripe_headers() -> dict[str, str]:
     }
 
 
+def stripe_metering_enabled() -> bool:
+    return get_settings().privacy_policy.metering_mode == "control_plane_sync"
+
+
+def _stripe_url(path: str) -> str:
+    return f"{_STRIPE_BASE_URL}{path}"
+
+
+async def stripe_api_request(
+    *,
+    method: str,
+    path: str,
+    surface: str,
+    audit_context: EgressAuditContext | None = None,
+    timeout: float | httpx.Timeout | None = None,
+    **request_kwargs: Any,
+) -> httpx.Response:
+    client_kwargs: dict[str, Any] | None = None
+    if timeout is not None:
+        client_kwargs = {"timeout": timeout}
+    return await async_http_request(
+        method=method,
+        url=_stripe_url(path),
+        surface=surface,
+        explicit_configured=True,
+        egress_class="operator_service",
+        audit_context=audit_context,
+        client_kwargs=client_kwargs,
+        **request_kwargs,
+    )
+
+
 async def create_checkout_session(
     org_id: str,
     org_email: str,
     plan: str,
-    success_url: str = "http://localhost:3000/dashboard/billing?success=1",
-    cancel_url: str = "http://localhost:3000/dashboard/billing?cancelled=1",
+    success_url: str | None = None,
+    cancel_url: str | None = None,
+    audit_context: EgressAuditContext | None = None,
 ) -> dict[str, str]:
     """
     Create a Stripe Checkout Session for upgrading to the given plan.
@@ -71,21 +131,35 @@ async def create_checkout_session(
             },
         )
 
-    async with httpx.AsyncClient() as client:
-        resp = await client.post(
-            "https://api.stripe.com/v1/checkout/sessions",
+    redirect_urls = resolve_billing_redirect_urls(settings_obj=settings)
+    resolved_success_url = success_url or redirect_urls.success_url
+    resolved_cancel_url = cancel_url or redirect_urls.cancel_url
+
+    try:
+        resp = await stripe_api_request(
+            method="POST",
+            path="/v1/checkout/sessions",
+            surface="billing_checkout",
+            audit_context=audit_context,
             headers=_stripe_headers(),
             data={
                 "mode": "subscription",
                 "line_items[0][price]": price_id,
                 "line_items[0][quantity]": "1",
-                "success_url": success_url,
-                "cancel_url": cancel_url,
+                "success_url": resolved_success_url,
+                "cancel_url": resolved_cancel_url,
                 "customer_email": org_email,
                 "metadata[org_id]": org_id,
                 "metadata[plan]": plan,
             },
         )
+    except EgressPolicyDeniedError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=exc.error_payload(
+                message="Stripe checkout egress is blocked by the active privacy policy."
+            ),
+        ) from exc
 
     if resp.status_code != 200:
         logger.error("stripe_checkout_failed", status=resp.status_code, body=resp.text)
@@ -105,21 +179,35 @@ async def create_checkout_session(
 
 async def create_billing_portal_session(
     customer_id: str,
-    return_url: str = "http://localhost:3000/dashboard/billing",
+    return_url: str | None = None,
+    audit_context: EgressAuditContext | None = None,
 ) -> dict[str, str]:
     """
     Create a Stripe Customer Portal session for managing billing.
     Returns {"url": "https://billing.stripe.com/..."}
     """
-    async with httpx.AsyncClient() as client:
-        resp = await client.post(
-            "https://api.stripe.com/v1/billing_portal/sessions",
+    resolved_return_url = return_url or resolve_billing_redirect_urls(
+        settings_obj=settings
+    ).return_url
+    try:
+        resp = await stripe_api_request(
+            method="POST",
+            path="/v1/billing_portal/sessions",
+            surface="billing_portal",
+            audit_context=audit_context,
             headers=_stripe_headers(),
             data={
                 "customer": customer_id,
-                "return_url": return_url,
+                "return_url": resolved_return_url,
             },
         )
+    except EgressPolicyDeniedError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=exc.error_payload(
+                message="Stripe billing portal egress is blocked by the active privacy policy."
+            ),
+        ) from exc
 
     if resp.status_code != 200:
         raise HTTPException(
@@ -149,14 +237,15 @@ def verify_stripe_webhook(payload: bytes, sig_header: str) -> dict[str, Any]:
         signature = parts.get("v1", "")
 
         signed_payload = f"{timestamp}.{payload.decode()}"
-        expected = hmac.new(
-            secret.encode(), signed_payload.encode(), hashlib.sha256
-        ).hexdigest()
+        expected = hmac.new(secret.encode(), signed_payload.encode(), hashlib.sha256).hexdigest()
 
         if not hmac.compare_digest(expected, signature):
             raise ValueError("Invalid signature")
 
-        return json.loads(payload)
+        event = json.loads(payload)
+        if not isinstance(event, dict):
+            raise ValueError("Stripe webhook payload must decode to a JSON object")
+        return dict(event)
     except Exception as exc:
         raise HTTPException(
             status_code=400,

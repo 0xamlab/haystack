@@ -18,11 +18,13 @@ Or via CLI:
   algenta runtime stop
   algenta runtime status
 """
+
 from __future__ import annotations
 
 import asyncio
 import os
 import signal
+import socket
 import subprocess
 import sys
 import tempfile
@@ -35,24 +37,25 @@ logger = structlog.get_logger(__name__)
 
 # ── Path config ───────────────────────────────────────────────────────────────
 
-_RUNTIME_DIR  = Path(os.environ.get("ALGENTA_RUNTIME_DIR", Path.home() / ".algenta" / "runtime"))
-_PID_FILE     = _RUNTIME_DIR / "daemon.pid"
-_LOG_FILE     = _RUNTIME_DIR / "daemon.log"
-_TEMP_DIR     = Path(tempfile.gettempdir())
+_RUNTIME_DIR = Path(os.environ.get("ALGENTA_RUNTIME_DIR", Path.home() / ".algenta" / "runtime"))
+_PID_FILE = _RUNTIME_DIR / "daemon.pid"
+_LOG_FILE = _RUNTIME_DIR / "daemon.log"
+_TEMP_DIR = Path(tempfile.gettempdir())
 
 # Mojo binary
-_REPO_ROOT    = Path(__file__).parent.parent.parent
-_MOJO_BINARY  = Path(os.environ.get("ALGENTA_MOJO_BINARY", _REPO_ROOT / "mojo_build" / "simulate"))
-_MOJO_SOCK    = os.environ.get(
+_REPO_ROOT = Path(__file__).parent.parent.parent
+_MOJO_BINARY = Path(os.environ.get("ALGENTA_MOJO_BINARY", _REPO_ROOT / "mojo_build" / "simulate"))
+_MOJO_SOCK = os.environ.get(
     "ALGENTA_MOJO_SOCK",
     str(_TEMP_DIR / "algenta-mojo" / "worker-0.sock"),
 )
 
 # gRPC daemon socket (consumed by SDK clients)
-_DAEMON_SOCK  = os.environ.get(
+_DAEMON_SOCK = os.environ.get(
     "ALGENTA_DAEMON_SOCK",
     str(_TEMP_DIR / "algenta-runtime" / "daemon.sock"),
 )
+_DAEMON_TCP = os.environ.get("ALGENTA_DAEMON_TCP", "127.0.0.1:50099")
 
 _VERSION = "0.1.0"
 
@@ -62,7 +65,76 @@ def _emit(message: str) -> None:
     sys.stdout.write(f"{message}\n")
 
 
+def _tcp_target_ready() -> bool:
+    host, port = _DAEMON_TCP.rsplit(":", 1)
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.settimeout(0.5)
+        return sock.connect_ex((host, int(port))) == 0
+
+
+async def _daemon_health_ready() -> bool:
+    from apps.runtime.client import DaemonClient
+
+    client = DaemonClient(timeout=1.0)
+    health = await client.health()
+    return health.get("status") == "ok"
+
+
+def _in_running_event_loop() -> bool:
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return False
+    return True
+
+
+def _detached_daemon_health_ready() -> bool:
+    # Async callers such as the SDK perform a second awaited health check after
+    # cmd_start(). In that path, socket or TCP readiness is enough here and
+    # avoids calling asyncio.run() from an active event loop.
+    if _in_running_event_loop():
+        return True
+
+    health_probe = _daemon_health_ready()
+    try:
+        return asyncio.run(health_probe)
+    except Exception:
+        health_probe.close()
+        return False
+
+
+def _wait_for_detached_daemon_ready(timeout_seconds: float = 10.0) -> bool:
+    deadline = time.monotonic() + timeout_seconds
+    while time.monotonic() < deadline:
+        if not is_running():
+            time.sleep(0.05)
+            continue
+        if Path(_DAEMON_SOCK).exists() or _tcp_target_ready():
+            if _detached_daemon_health_ready():
+                return True
+        time.sleep(0.1)
+    return False
+
+
+def _validate_daemon_startup_prerequisites() -> None:
+    from apps.runtime.license import load_license
+    from apps.privacy_policy import policy_from_environment
+
+    privacy_policy = policy_from_environment()
+    if not privacy_policy.require_local_license:
+        return
+
+    api_key = os.environ.get("ALGENTA_API_KEY", "") or os.environ.get("DE_API_KEY", "")
+    license_record = load_license(api_key)
+    if not license_record.valid:
+        raise RuntimeError(
+            license_record.message
+            or "A valid local signed license is required before starting the runtime daemon."
+        )
+
+
 # ── Mojo process manager ──────────────────────────────────────────────────────
+
 
 class MojoProcess:
     """
@@ -128,6 +200,7 @@ class MojoProcess:
 
 # ── PID management ────────────────────────────────────────────────────────────
 
+
 def _write_pid() -> None:
     _RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
     _PID_FILE.write_text(str(os.getpid()))
@@ -152,7 +225,7 @@ def is_running() -> bool:
     if pid is None:
         return False
     try:
-        os.kill(pid, 0)   # signal 0 = existence check
+        os.kill(pid, 0)  # signal 0 = existence check
         return True
     except (ProcessLookupError, PermissionError):
         return False
@@ -160,12 +233,15 @@ def is_running() -> bool:
 
 # ── Main daemon loop ──────────────────────────────────────────────────────────
 
+
 async def _run_daemon() -> None:
     from apps.runtime.executor import Executor
     from apps.runtime.metering import metering
+    from apps.runtime.mojo_library_runner import library_runtime_available
     from apps.runtime.server import RuntimeServer
 
     start_time = time.monotonic()
+    _validate_daemon_startup_prerequisites()
     _write_pid()
 
     mojo = MojoProcess()
@@ -177,7 +253,7 @@ async def _run_daemon() -> None:
         else:
             logger.warning("mojo_socket_not_ready", timeout=8.0)
     else:
-        logger.info("running_python_fallback_only")
+        logger.info("mojo_binary_unavailable_runtime_continues")
 
     executor = Executor(mojo_sock=_MOJO_SOCK)
     server = RuntimeServer(executor=executor, start_time=start_time)
@@ -195,13 +271,14 @@ async def _run_daemon() -> None:
         shutdown_event.set()
 
     loop.add_signal_handler(signal.SIGTERM, _handle_signal, signal.SIGTERM)
-    loop.add_signal_handler(signal.SIGINT,  _handle_signal, signal.SIGINT)
+    loop.add_signal_handler(signal.SIGINT, _handle_signal, signal.SIGINT)
 
     elapsed = round((time.monotonic() - start_time) * 1000, 1)
+    runtime_mode = "mojo" if mojo_started and library_runtime_available() else "unavailable"
+
     _emit(
         f"Algenta Runtime {_VERSION} started in {elapsed}ms  "
-        f"[{'mojo' if mojo_started else 'python-fallback'}]  "
-        f"unix={_DAEMON_SOCK}  tcp=127.0.0.1:50099"
+        f"[{runtime_mode}]  unix={_DAEMON_SOCK}  tcp={_DAEMON_TCP}"
     )
 
     # Block until signal
@@ -217,6 +294,7 @@ async def _run_daemon() -> None:
 
 # ── CLI entry points ──────────────────────────────────────────────────────────
 
+
 def cmd_start(foreground: bool = True) -> None:
     """Start the daemon (blocking in foreground mode)."""
     if is_running():
@@ -224,6 +302,11 @@ def cmd_start(foreground: bool = True) -> None:
         return
 
     if not foreground:
+        try:
+            _validate_daemon_startup_prerequisites()
+        except Exception as exc:
+            _emit(f"Algenta Runtime failed to start: {exc}")
+            return
         # Spawn detached subprocess
         _RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
         args = [sys.executable, "-m", "apps.runtime.daemon", "start"]
@@ -235,8 +318,7 @@ def cmd_start(foreground: bool = True) -> None:
                 start_new_session=True,
                 cwd=str(_REPO_ROOT),
             )
-        time.sleep(0.5)   # brief wait for socket to appear
-        if is_running():
+        if _wait_for_detached_daemon_ready():
             _emit(f"Algenta Runtime started (pid={proc.pid})")
         else:
             _emit(f"Algenta Runtime failed to start; check logs: {_LOG_FILE}")
@@ -274,7 +356,7 @@ def cmd_status() -> None:
             f"Algenta Runtime running (pid={pid})\n"
             f"  gRPC unix socket: {_DAEMON_SOCK}  ({'ok' if sock_ok else 'missing'})\n"
             f"  Mojo unix socket: {_MOJO_SOCK}  ({'ok' if mojo_ok else 'not present'})\n"
-            f"  TCP:              127.0.0.1:50099"
+            f"  TCP:              {_DAEMON_TCP}"
         )
     else:
         _emit("Algenta Runtime is not running.")

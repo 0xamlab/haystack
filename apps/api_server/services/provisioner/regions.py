@@ -8,11 +8,18 @@ fetch_gcp_regions()   — google-cloud-compute regions list()
 All functions fall back to the static metadata tables when SDK credentials
 are not available (dev environment, CI).
 """
+
 from __future__ import annotations
 
 import asyncio
 
 import structlog
+
+from apps.api_server.services.egress_guard import (
+    aws_endpoint_url,
+    enforce_egress_sync,
+    google_endpoint_url,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -157,16 +164,27 @@ def _static_gcp_regions() -> list[dict[str, str]]:
 
 # ─── Live fetchers ────────────────────────────────────────────────────────────
 
+
 async def fetch_aws_regions() -> list[dict[str, str]]:
     """Fetch live AWS regions via boto3. Falls back to static list."""
     try:
         import boto3
+
         loop = asyncio.get_event_loop()
 
-        def _fetch():
+        def _fetch() -> list[dict[str, str]]:
+            enforce_egress_sync(
+                aws_endpoint_url(
+                    aws_service_name="ec2",
+                    region_name="us-east-1",
+                ),
+                surface="regions_fetch_aws",
+                explicit_configured=True,
+                egress_class="operator_service",
+            )
             ec2 = boto3.client("ec2", region_name="us-east-1")
             resp = ec2.describe_regions(AllRegions=False)
-            regions = []
+            regions: list[dict[str, str]] = []
             for r in resp.get("Regions", []):
                 rid = r["RegionName"]
                 meta = _AWS_REGION_META.get(rid, {"label": rid, "flag": "🌐"})
@@ -187,17 +205,29 @@ async def fetch_azure_regions() -> list[dict[str, str]]:
 
         loop = asyncio.get_event_loop()
 
-        def _fetch():
-            cred   = DefaultAzureCredential()
+        def _fetch() -> list[dict[str, str]]:
+            enforce_egress_sync(
+                "https://management.azure.com",
+                surface="regions_fetch_azure_management",
+                explicit_configured=True,
+                egress_class="operator_service",
+            )
+            enforce_egress_sync(
+                "https://login.microsoftonline.com",
+                surface="regions_fetch_azure_auth",
+                explicit_configured=True,
+                egress_class="operator_service",
+            )
+            cred = DefaultAzureCredential()
             client = SubscriptionClient(cred)
-            subs   = list(client.subscriptions.list())
+            subs = list(client.subscriptions.list())
             if not subs:
                 raise RuntimeError("No Azure subscriptions found")
             sub_id = subs[0].subscription_id
-            locs   = list(client.subscriptions.list_locations(sub_id))
-            regions = []
+            locs = list(client.subscriptions.list_locations(sub_id))
+            regions: list[dict[str, str]] = []
             for loc in locs:
-                rid  = loc.name
+                rid = loc.name
                 meta = _AZURE_REGION_META.get(rid, {"label": loc.display_name or rid, "flag": "🌐"})
                 regions.append({"id": rid, **meta})
             return regions
@@ -215,12 +245,18 @@ async def fetch_gcp_regions() -> list[dict[str, str]]:
 
         loop = asyncio.get_event_loop()
 
-        def _fetch():
-            client  = compute_v1.RegionsClient()
+        def _fetch() -> list[dict[str, str]]:
+            enforce_egress_sync(
+                google_endpoint_url("compute.googleapis.com"),
+                surface="regions_fetch_gcp",
+                explicit_configured=True,
+                egress_class="operator_service",
+            )
+            client = compute_v1.RegionsClient()
             project = "algenta-prod"
-            regions = []
+            regions: list[dict[str, str]] = []
             for r in client.list(project=project):
-                rid  = r.name
+                rid = r.name
                 meta = _GCP_REGION_META.get(rid, {"label": rid, "flag": "🌐"})
                 regions.append({"id": rid, **meta})
             return regions
@@ -239,9 +275,9 @@ async def get_available_regions() -> dict[str, list[dict[str, str]]]:
         fetch_gcp_regions(),
     )
     return {
-        "aws":   aws_regions,
+        "aws": aws_regions,
         "azure": azure_regions,
-        "gcp":   gcp_regions,
+        "gcp": gcp_regions,
     }
 
 
@@ -254,7 +290,7 @@ REGIONS: dict[str, list[dict[str, str]]] = {
             "flag": "🌐",
         }
     ],
-    "aws":   _static_aws_regions(),
+    "aws": _static_aws_regions(),
     "azure": _static_azure_regions(),
-    "gcp":   _static_gcp_regions(),
+    "gcp": _static_gcp_regions(),
 }

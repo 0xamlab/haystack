@@ -1,0 +1,25 @@
+from __future__ import annotations
+
+from apps.api_server.services.repository_intelligence_adapters import (
+    wgsl_analysis_support as repository_wgsl_analysis_support,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    wgsl_primitives as repository_wgsl_primitives,
+)
+
+StableIdentifier = repository_wgsl_primitives.StableIdentifier
+NormalizeRepositoryRelativePath = repository_wgsl_primitives.NormalizeRepositoryRelativePath
+ResolveSuffixMatch = repository_wgsl_primitives.ResolveSuffixMatch
+
+WGSL_SUFFIXES = repository_wgsl_primitives.WGSL_SUFFIXES
+has_wgsl_path_hints = repository_wgsl_primitives.has_wgsl_path_hints
+iter_function_call_names = repository_wgsl_primitives.iter_function_call_names
+iter_symbol_entries = repository_wgsl_primitives.iter_symbol_entries
+parse_import_statements = repository_wgsl_primitives.parse_import_statements
+parse_include_statements = repository_wgsl_primitives.parse_include_statements
+strip_comments = repository_wgsl_primitives.strip_comments
+
+is_probable_wgsl_source = repository_wgsl_analysis_support.is_probable_wgsl_source
+module_aliases_for_path = repository_wgsl_analysis_support.module_aliases_for_path
+parse_dependencies_only = repository_wgsl_analysis_support.parse_dependencies_only
+parse_file = repository_wgsl_analysis_support.parse_file
