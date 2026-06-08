@@ -241,8 +241,14 @@ def test_python_ts_contract_artifact_proofs_use_shared_export_text_equality_help
 
 
 def test_manifest_helper_test_files_pin_strict_vs_parity_semantics() -> None:
-    python_helper_tests = (ROOT / "tests" / "test_platform_contract.py").read_text(
-        encoding="utf-8"
+    python_helper_tests = "\n".join(
+        p.read_text(encoding="utf-8")
+        for p in sorted(
+            list((ROOT / "tests").glob("test_platform_contract_*.py"))
+            + [ROOT / "tests" / "_test_platform_contract_helpers.py"]
+        )
+        if p.name != "test_platform_contract_generation.py"
+        and p.name != "test_platform_contract_schema_surface.py"
     )
     typescript_helper_tests = (
         ROOT / "packages" / "ts-sdk" / "src" / "test_contract_helpers.test.ts"
@@ -437,8 +443,14 @@ def test_outward_facing_contract_proofs_use_shared_normalized_manifest_fixture()
         p.read_text(encoding="utf-8")
         for p in sorted((ROOT / "tests").glob("*algenta_runtime*.py"))
     )
-    platform_contract = (ROOT / "tests" / "test_platform_contract.py").read_text(
-        encoding="utf-8"
+    platform_contract = "\n".join(
+        p.read_text(encoding="utf-8")
+        for p in sorted(
+            list((ROOT / "tests").glob("test_platform_contract_*.py"))
+            + [ROOT / "tests" / "_test_platform_contract_helpers.py"]
+        )
+        if p.name != "test_platform_contract_generation.py"
+        and p.name != "test_platform_contract_schema_surface.py"
     )
     decision_engine_client_wrapper = (
         ROOT / "tests" / "test_decision_engine_client_wrapper.py"
@@ -517,8 +529,14 @@ def test_outward_facing_contract_proofs_use_shared_normalized_manifest_fixture()
 
 
 def test_platform_contract_proof_pins_canonical_manifest_fixture_and_fail_closed_guard() -> None:
-    platform_contract = (ROOT / "tests" / "test_platform_contract.py").read_text(
-        encoding="utf-8"
+    platform_contract = "\n".join(
+        p.read_text(encoding="utf-8")
+        for p in sorted(
+            list((ROOT / "tests").glob("test_platform_contract_*.py"))
+            + [ROOT / "tests" / "_test_platform_contract_helpers.py"]
+        )
+        if p.name != "test_platform_contract_generation.py"
+        and p.name != "test_platform_contract_schema_surface.py"
     )
 
     assert "MANIFEST_BACKED_INTEGRATIONS," in platform_contract
@@ -608,7 +626,18 @@ def test_root_test_graph_includes_formal_runtime_foundation_proof_bundle() -> No
         "./scripts/run_repo_python.sh scripts/validate_runtime_release.py --format table"
     )
     assert (ROOT / "scripts" / "run_repo_python.sh").exists()
-    assert "tests/test_platform_contract.py" in scripts["test:formal-runtime-foundation"]
+    for _platform_contract_sub_file in (
+        "test_platform_contract_assert_manifest.py",
+        "test_platform_contract_contract_integrations.py",
+        "test_platform_contract_load_platform.py",
+        "test_platform_contract_manifest_export.py",
+        "test_platform_contract_misc_a.py",
+        "test_platform_contract_misc_b.py",
+        "test_platform_contract_misc_c.py",
+    ):
+        assert (
+            f"tests/{_platform_contract_sub_file}" in scripts["test:formal-runtime-foundation"]
+        )
     assert "tests/test_platform_contract_schema_surface.py" in scripts["test:formal-runtime-foundation"]
     assert "tests/test_runtime_manifest.py" in scripts["test:formal-runtime-foundation"]
     assert "tests/test_runtime_admin_api.py" in scripts["test:formal-runtime-foundation"]
