@@ -2972,7 +2972,12 @@ def test_outward_facing_contract_proofs_use_shared_normalized_manifest_fixture()
     runtime_startup = (ROOT / "tests" / "test_runtime_startup_smoke.py").read_text(
         encoding="utf-8"
     )
-    cli_data = (ROOT / "tests" / "test_cli_data.py").read_text(encoding="utf-8")
+    # tests/test_cli_data.py was split into 9 per-command-family sub-files.
+    # Concat all of them so textual surface checks cover the same content.
+    cli_data = "\n".join(
+        p.read_text(encoding="utf-8")
+        for p in sorted((ROOT / "tests").glob("test_cli_data_*.py"))
+    )
     mcp_meta_tools = (ROOT / "tests" / "test_mcp_meta_tools.py").read_text(encoding="utf-8")
     query_surface = (ROOT / "tests" / "test_decision_engine_query_surface.py").read_text(
         encoding="utf-8"
@@ -3168,7 +3173,20 @@ def test_root_test_graph_includes_formal_runtime_foundation_proof_bundle() -> No
     assert "tests/test_algenta_client_plan_surface.py" in scripts[
         "test:formal-runtime-foundation"
     ]
-    assert "tests/test_cli_data.py" in scripts["test:formal-runtime-foundation"]
+    # test_cli_data.py was split into 9 per-command-family sub-files; the
+    # foundation script now lists each one explicitly. Assert all are present.
+    for suffix in (
+        "test_cli_data_account.py",
+        "test_cli_data_agent_runs.py",
+        "test_cli_data_capabilities.py",
+        "test_cli_data_connectors.py",
+        "test_cli_data_data.py",
+        "test_cli_data_decision.py",
+        "test_cli_data_jobs.py",
+        "test_cli_data_llm.py",
+        "test_cli_data_runtime.py",
+    ):
+        assert f"tests/{suffix}" in scripts["test:formal-runtime-foundation"]
     assert "tests/test_mcp_meta_tools.py" in scripts["test:formal-runtime-foundation"]
     assert "tests/test_mcp_llm_agent_tools.py" in scripts["test:formal-runtime-foundation"]
     assert "tests/test_mcp_router.py" in scripts["test:formal-runtime-foundation"]
