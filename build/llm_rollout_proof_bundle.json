@@ -1984,7 +1984,7 @@
     {
       "name": "python_sdk_package_contract",
       "command": [
-        "/Users/angel/Developer/decision-engine/.venv/bin/python",
+        "python3",
         "-m",
         "pytest",
         "-q",
@@ -2036,7 +2036,7 @@
     {
       "name": "public_http_library_routes_feature_flag",
       "command": [
-        "/Users/angel/Developer/decision-engine/.venv/bin/python",
+        "python3",
         "-m",
         "pytest",
         "-q",
