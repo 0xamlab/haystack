@@ -71,6 +71,9 @@ jobs:
       - name: Run linting (Ruff)
         run: ruff check apps/ --ignore E501 || true
 
+      - name: Verify GitBook v1 docs pack
+        run: make docs-gitbook-verify
+
       - name: Run tests
         run: pytest tests/ -v --tb=short -x
         env:
