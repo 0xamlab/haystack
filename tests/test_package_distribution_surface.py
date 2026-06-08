@@ -852,9 +852,15 @@ def test_typescript_package_surface_includes_package_readme_and_registry_metadat
     python_runtime_manifest_models = (
         ROOT / "packages" / "python-sdk" / "decision_engine" / "models_runtime_manifest.py"
     ).read_text()
-    algenta_runtime_manifest_models = (
-        ROOT / "packages" / "algenta-core" / "algenta" / "runtime_model_manifest.py"
-    ).read_text()
+    # runtime_model_manifest.py is a thin facade; the actual enum + model
+    # definitions live in _runtime_manifest_*.py submodules. Concatenate the
+    # facade with every submodule so the textual surface checks below still
+    # cover the whole public-API source.
+    algenta_dir = ROOT / "packages" / "algenta-core" / "algenta"
+    algenta_runtime_manifest_models = "\n".join(
+        [(algenta_dir / "runtime_model_manifest.py").read_text()]
+        + [p.read_text() for p in sorted(algenta_dir.glob("_runtime_manifest_*.py"))]
+    )
     assert 'checkpoint_replay_overhead = "B6"' in python_runtime_manifest_models
     assert 'checkpoint_replay_overhead = "B6"' in algenta_runtime_manifest_models
     assert 'provider_routing_overhead = "B8"' in python_runtime_manifest_models
