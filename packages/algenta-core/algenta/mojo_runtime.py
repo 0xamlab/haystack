@@ -142,18 +142,15 @@ def _build_attribute_index(
         descriptor = descriptors[name]
         alias = name.replace(".", "_")
         if alias != name and alias in descriptors:
-            raise _runtime_inventory_error(
-                "The local Mojo runtime inventory returned libraries with conflicting "
-                "public attribute aliases.",
-                {"alias": alias, "modules": [alias, name]},
-            )
+            # Flat alias collides with another module's canonical name.
+            # Keep the flat-name module accessible via attribute; the dotted
+            # module is still listed in the catalog under its full name.
+            continue
         existing_name = alias_sources.get(alias)
         if existing_name is not None and existing_name != name:
-            raise _runtime_inventory_error(
-                "The local Mojo runtime inventory returned libraries with conflicting "
-                "public attribute aliases.",
-                {"alias": alias, "modules": [existing_name, name]},
-            )
+            # Two different dotted paths collapse to the same alias.
+            # Prefer the first-seen mapping; subsequent ones remain catalog-only.
+            continue
         alias_sources[alias] = name
         attribute_index[alias] = descriptor
     return attribute_index
