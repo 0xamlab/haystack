@@ -18,3 +18,10 @@ export * from "./_client_runtime_admin.js";
 export * from "./_client_runtime_release.js";
 export * from "./_client_errors.js";
 export * from "./_client_class.js";
+// Side-effect imports register methods on DecisionEngineClient.prototype via
+// TypeScript declaration merging. They must be imported AFTER the class is
+// defined and BEFORE any consumer calls instance methods.
+import "./_client_class_methods_simulate_decision.js";
+import "./_client_class_methods_agent_capability.js";
+import "./_client_class_methods_llm_data.js";
+import "./_client_class_methods_admin.js";

@@ -1,5 +1,15 @@
 import { ALGENTA_OWNED_HOSTS, ALGENTA_OWNED_SUFFIXES, DEFAULT_BASE_URL } from "./contract.js";
 
+function trimTrailingSlashes(value: string): string {
+  let end = value.length;
+  while (end > 0 && value.charCodeAt(end - 1) === 47 /* '/' */) {
+    end--;
+  }
+  return end === value.length ? value : value.slice(0, end);
+}
+
+
+
 const PRIVATE_DEPLOYMENT_MODES = new Set(["self_hosted", "air_gapped"]);
 const ALGENTA_OWNED_HOST_SET = new Set<string>(ALGENTA_OWNED_HOSTS);
 const DEFAULT_CONSOLE_BASE_URL = "https://app.algenta.ai";
@@ -48,7 +58,7 @@ export function privateProfileEnabled(): boolean {
 }
 
 export function normalizeBaseUrl(baseUrl: string, component: string): string {
-  const normalized = baseUrl.trim().replace(/\/+$/, "");
+  const normalized = trimTrailingSlashes(baseUrl.trim());
   try {
     const parsed = new URL(normalized);
     if (!parsed.protocol || !parsed.hostname) {
@@ -62,7 +72,7 @@ export function normalizeBaseUrl(baseUrl: string, component: string): string {
 
 function joinUrlPath(baseUrl: string, path: string): string {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-  return `${baseUrl.replace(/\/+$/, "")}${normalizedPath}`;
+  return `${trimTrailingSlashes(baseUrl)}${normalizedPath}`;
 }
 
 function configuredConsoleBaseUrl(): string | undefined {

@@ -13,3 +13,14 @@ export * from "./_runtime_helpers_c.js";
 export * from "./_runtime_helpers_d.js";
 export * from "./_runtime_errors.js";
 export * from "./_runtime_class.js";
+// Side-effect imports register methods on Runtime.prototype via TypeScript
+// declaration merging. They must be imported AFTER the class is defined and
+// BEFORE any consumer calls instance methods.
+import "./_runtime_class_capability_helpers.js";
+import "./_runtime_class_methods_connect.js";
+import "./_runtime_class_methods_connectors.js";
+import "./_runtime_class_methods_llm_decision.js";
+import "./_runtime_class_methods_admin.js";
+import "./_runtime_class_methods_capability.js";
+import "./_runtime_class_methods_resolve_query.js";
+import "./_runtime_class_methods_local_query.js";

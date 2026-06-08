@@ -12,6 +12,16 @@ import {
   VENDOR_TELEMETRY_HOSTS,
 } from "./contract.js";
 
+function trimTrailingSlashes(value: string): string {
+  let end = value.length;
+  while (end > 0 && value.charCodeAt(end - 1) === 47 /* '/' */) {
+    end--;
+  }
+  return end === value.length ? value : value.slice(0, end);
+}
+
+
+
 export type RuntimeTelemetryMode = "disabled" | "local_audit" | "control_plane_sync";
 export type RuntimeMeteringMode = "disabled" | "local_audit" | "control_plane_sync";
 export type RuntimeEgressClass =
@@ -145,7 +155,7 @@ export function resolveControlPlaneBaseUrl(baseUrl?: string): string {
     env.DE_BASE_URL ??
     baseUrl;
   if (explicit && explicit.trim()) {
-    return explicit.replace(/\/+$/, "");
+    return trimTrailingSlashes(explicit);
   }
   return cloudDisabled() ? "" : DEFAULT_BASE_URL;
 }
@@ -494,7 +504,7 @@ export function validatedRuntimeEgressUrl(
     record?: boolean;
   },
 ): string {
-  const normalized = destination.trim().replace(/\/+$/, "");
+  const normalized = trimTrailingSlashes(destination.trim());
   let parsed: URL;
   try {
     parsed = new URL(normalized);
