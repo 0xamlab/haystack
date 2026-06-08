@@ -2092,6 +2092,17 @@ async def test_async_decision_engine_client_get_runtime_benchmarks_returns_typed
     monkeypatch,
 ) -> None:
     from apps.runtime_manifest import get_runtime_admin_benchmarks
+    from apps import runtime_manifest as _runtime_manifest_module
+
+    # The compiled_mojo_binary artifact entry is only emitted when
+    # mojo_build/simulate exists on disk. In CI the binary is not built,
+    # so materialize a stub at the expected path so the entry is emitted
+    # and the typed client can deserialize the kind. No-op locally where
+    # a real binary already exists.
+    binary_path = _runtime_manifest_module._MOJO_BINARY_PATH
+    if not binary_path.exists():
+        binary_path.parent.mkdir(parents=True, exist_ok=True)
+        binary_path.write_bytes(b"#!/bin/sh\nexit 0\n")
 
     client = AsyncDecisionEngineClient(api_key="de_test", base_url="http://localhost:8000")
     payload = get_runtime_admin_benchmarks().model_dump(mode="json")
