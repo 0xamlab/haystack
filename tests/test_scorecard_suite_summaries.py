@@ -54,11 +54,12 @@ def test_build_suite_summaries_uses_machine_readable_counts(monkeypatch) -> None
         "skipped": 0,
         "total": 1,
     }
+    expected_planner_suite_size = len(scorecard_suite_summaries.IMPORT_PLANNER_SUITE)
     assert payload["import_planner_regression_suite"] == {
-        "passed": 4,
+        "passed": expected_planner_suite_size,
         "failed": 0,
         "skipped": 0,
-        "total": 4,
+        "total": expected_planner_suite_size,
     }
     assert "generated_at" in payload
 

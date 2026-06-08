@@ -22,7 +22,7 @@ HOSPITALITY_SUITE = ("tests/test_vector_resolver_hospitality.py",)
 JOIN_PATH_SUITE = ("tests/test_query_join_path.py",)
 IMPORT_PLANNER_SUITE = (
     "tests/unit/test_connectors.py",
-    "tests/test_auto_planner.py",
+    *sorted(str(p.relative_to(PROJECT_ROOT)) for p in (PROJECT_ROOT / "tests").glob("test_auto_planner_*.py")),
     "tests/test_vector_resolver.py",
     "tests/test_query_join_path.py",
 )
