@@ -1,0 +1,73 @@
+{
+  "sequence_name": "mission_multihop_statistical_sql_report_via_mcp",
+  "purpose": "Mission-style multihop statistical analysis on the public MCP surface when there is no one-to-one query_sql_source tool.",
+  "steps": [
+    {
+      "tool": "list_data",
+      "arguments": {
+        "search": "nps_scores",
+        "compact": true
+      },
+      "notes": "Resolve the survey dataset first."
+    },
+    {
+      "tool": "get_data_summary",
+      "arguments": {
+        "dataset_id": "dataset_nps_scores"
+      },
+      "notes": "Verify the source name and key columns."
+    },
+    {
+      "tool": "list_data",
+      "arguments": {
+        "search": "delay_assignments",
+        "compact": true
+      },
+      "notes": "Resolve the bridge dataset used for delay metrics."
+    },
+    {
+      "tool": "get_data_summary",
+      "arguments": {
+        "dataset_id": "dataset_delay_assignments"
+      },
+      "notes": "Confirm the bridge keys before building the SQL rowset."
+    },
+    {
+      "tool": "list_data",
+      "arguments": {
+        "search": "flights",
+        "compact": true
+      },
+      "notes": "Resolve the third governed dataset used in the bridge path."
+    },
+    {
+      "tool": "get_data_summary",
+      "arguments": {
+        "dataset_id": "dataset_flights"
+      },
+      "notes": "Confirm the terminal dataset and join keys."
+    },
+    {
+      "tool": "query_sql_report",
+      "arguments": {
+        "sources": [
+          {
+            "dataset_id": "dataset_nps_scores",
+            "alias": "nps"
+          },
+          {
+            "dataset_id": "dataset_delay_assignments",
+            "alias": "delay"
+          },
+          {
+            "dataset_id": "dataset_flights",
+            "alias": "flights"
+          }
+        ],
+        "sql": "select corr(delay.dep_delay_minutes, nps.nps_score) as delay_nps_correlation, count(*) as joined_non_null_rows from nps join delay on delay.flight_id = nps.flight_id join flights on flights.id = delay.flight_id where delay.dep_delay_minutes is not null and nps.nps_score is not null",
+        "max_rows": 10
+      },
+      "notes": "Use query_sql_report for bridge-table statistical SQL on MCP. There is no one-to-one query_sql_source MCP tool."
+    }
+  ]
+}

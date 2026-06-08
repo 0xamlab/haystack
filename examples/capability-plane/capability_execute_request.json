@@ -1,0 +1,10 @@
+{
+  "capability_id": "cap.skill.incident_triage",
+  "binding_id": "00000000-0000-0000-0000-000000000123",
+  "input": {
+    "objective": "Investigate the latest checkout incident and route me to the right governed capability.",
+    "incident_id": "incident-2026-05-29-checkout",
+    "requested_output": "instruction_bundle"
+  },
+  "request_id": "req-capability-example-incident-triage"
+}

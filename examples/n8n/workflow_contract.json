@@ -1,0 +1,79 @@
+{
+  "name": "Algenta — Inspect Live Contract",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "start",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://your-algenta-base-url.example/openapi.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "get-contract",
+      "name": "Get Contract",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [480, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "algenta-api-key",
+          "name": "Algenta API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "contract_endpoint",
+              "value": "={{$json[\"x-primary-data-query-contract\"][\"api\"][\"contract_endpoint\"]}}"
+            },
+            {
+              "name": "discovery_endpoint",
+              "value": "={{$json[\"x-primary-data-query-contract\"][\"api\"][\"discovery_endpoint\"]}}"
+            },
+            {
+              "name": "query_batch_endpoint",
+              "value": "={{$json[\"x-primary-data-query-contract\"][\"api\"][\"query_batch_endpoint\"]}}"
+            },
+            {
+              "name": "query_sql_report_endpoint",
+              "value": "={{$json[\"x-primary-data-query-contract\"][\"api\"][\"query_sql_report_endpoint\"]}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "extract-contract",
+      "name": "Extract Contract",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [720, 300]
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [[{"node": "Get Contract", "type": "main", "index": 0}]]
+    },
+    "Get Contract": {
+      "main": [[{"node": "Extract Contract", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "instanceId": "algenta-contract-example"
+  },
+  "_comment": "Import this workflow into n8n. Replace https://your-algenta-base-url.example with Cloud Managed https://api.algenta.ai or your self-hosted base URL before enabling the workflow. Set credentials: HTTP Header Auth with name 'Authorization' and value 'Bearer <YOUR_ALGENTA_API_KEY>'. It fetches /openapi.json and extracts x-primary-data-query-contract so the workflow stays compatible with older self-hosted nodes that still return 404 for /v1/meta/contract. Private profiles do not silently fall back to Algenta cloud."
+}

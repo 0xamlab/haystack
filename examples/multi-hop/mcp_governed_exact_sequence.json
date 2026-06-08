@@ -1,0 +1,43 @@
+{
+  "sequence_name": "mission_governed_exact_query_via_mcp",
+  "purpose": "Mission-style governed discovery plus exact query on the public MCP surface.",
+  "steps": [
+    {
+      "tool": "get_contract",
+      "arguments": {},
+      "notes": "Inspect the machine-readable contract first if the agent needs the governed filter rules."
+    },
+    {
+      "tool": "list_data",
+      "arguments": {
+        "search": "nps_scores",
+        "compact": true
+      },
+      "notes": "Low-token dataset discovery for the metric-owning source."
+    },
+    {
+      "tool": "get_data_summary",
+      "arguments": {
+        "dataset_id": "dataset_nps_scores"
+      },
+      "notes": "Read the low-token summary before paying for the full schema."
+    },
+    {
+      "tool": "query_data",
+      "arguments": {
+        "dataset_id": "dataset_nps_scores",
+        "metric": {
+          "role": "ratio",
+          "hint": "nps_score"
+        },
+        "aggregation": "avg",
+        "group_by": [
+          "route"
+        ],
+        "limit": 10,
+        "order": "asc"
+      },
+      "notes": "Use the governed exact-query tool for single-dataset exact metrics."
+    }
+  ]
+}

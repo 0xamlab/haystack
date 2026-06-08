@@ -1,0 +1,14 @@
+{
+  "capability_id": "cap.skill.incident_triage",
+  "provider_id": "provider.skill_pack.algenta",
+  "binding_id": "00000000-0000-0000-0000-000000000123",
+  "success": true,
+  "result_status": "reported",
+  "confidence": 0.92,
+  "latency_ms": 138.5,
+  "details": {
+    "redirected_to": "repository_intelligence",
+    "decision_plan_id": "dp_example_001",
+    "notes": "Routed incident request to the repository specialist path after skill execution."
+  }
+}

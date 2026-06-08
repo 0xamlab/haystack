@@ -1,0 +1,42 @@
+{
+  "defaults": {
+    "dataset_id": "orders_facts",
+    "filter": {
+      "time_filter": "last_year",
+      "conditions": [
+        {
+          "dimension_hint": "status",
+          "op": "eq",
+          "value": "completed"
+        }
+      ]
+    }
+  },
+  "queries": [
+    {
+      "key": "completed_orders",
+      "request": {
+        "metric": {
+          "role": "metric",
+          "hint": "order_count"
+        },
+        "aggregation": "sum"
+      }
+    },
+    {
+      "key": "monthly_completed_orders",
+      "request": {
+        "metric": {
+          "role": "metric",
+          "hint": "order_count"
+        },
+        "aggregation": "sum",
+        "group_by": [
+          "order_month"
+        ],
+        "limit": 12,
+        "order": "desc"
+      }
+    }
+  ]
+}

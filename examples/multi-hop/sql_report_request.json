@@ -1,0 +1,22 @@
+{
+  "sources": [
+    {
+      "dataset_id": "dataset_orders_facts",
+      "alias": "orders"
+    },
+    {
+      "dataset_id": "dataset_order_items",
+      "alias": "items"
+    },
+    {
+      "dataset_id": "dataset_products",
+      "alias": "products"
+    },
+    {
+      "dataset_id": "dataset_product_categories",
+      "alias": "categories"
+    }
+  ],
+  "sql": "select categories.category_name, sum(orders.gross_revenue) as gross_revenue from orders join items on items.order_id = orders.order_id join products on products.id = items.product_id join categories on categories.id = products.category_id group by categories.category_name order by gross_revenue desc limit 10",
+  "max_rows": 100
+}

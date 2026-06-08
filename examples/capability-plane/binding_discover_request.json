@@ -1,0 +1,37 @@
+{
+  "provider_id": "provider.skill_pack.algenta",
+  "profile_id": "profile.skill_pack.user",
+  "scope": "user",
+  "scope_ref": "user-123",
+  "execution_owner": "algenta_managed",
+  "config": {
+    "manifest": {
+      "capabilities": [
+        {
+          "capability_id": "cap.skill.incident_triage",
+          "kind": "skill",
+          "name": "Incident Triage Skill",
+          "description": "Gather incident context, classify severity, and hand off to the correct specialist path.",
+          "implementation_kind": "instruction_only",
+          "execution_owner": "algenta_managed",
+          "required_policy": "policy.capability.execute",
+          "instruction": "Summarize the incident, classify severity, identify the likely owner, and return the minimum next-step evidence bundle.",
+          "artifact_affinities": [
+            "incident",
+            "triage"
+          ],
+          "tags": [
+            "incident",
+            "ops",
+            "routing"
+          ],
+          "trust_tier": "customer_managed"
+        }
+      ]
+    }
+  },
+  "customer_metadata": {
+    "customer_namespace": "reference_customer",
+    "reference_app": "mission"
+  }
+}

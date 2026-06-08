@@ -1,0 +1,85 @@
+{
+  "name": "algenta_query_dataset",
+  "description": "Use the companion algenta_get_contract tool first to inspect the live machine-readable contract, then discover datasets with lexical search, fetch a low-token dataset summary, and run one governed exact query or a governed exact-query batch against an authorized Algenta dataset. Use this tool for operational facts, KPIs, and time-series questions over connected data.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "dataset_search": {
+        "type": "string",
+        "description": "Lexical search hint for dataset discovery. Example: orders, revenue, support."
+      },
+      "dataset_id": {
+        "type": "string",
+        "description": "Optional explicit dataset_id. If present, skip search and use this dataset directly."
+      },
+      "metric_hint": {
+        "type": "string",
+        "description": "Exact metric hint for a single governed query. Example: completed_order_count."
+      },
+      "metric_role": {
+        "type": "string",
+        "enum": ["metric", "base_measure", "derived_measure", "dimension"],
+        "description": "Metric role for the single governed query.",
+        "default": "metric"
+      },
+      "aggregation": {
+        "type": "string",
+        "description": "Optional aggregation for the single query."
+      },
+      "group_by": {
+        "type": "array",
+        "description": "Optional grouping columns for the single query.",
+        "items": { "type": "string" }
+      },
+      "filter": {
+        "type": "object",
+        "description": "Optional governed filter object for the single query.",
+        "additionalProperties": true
+      },
+      "limit": {
+        "type": "integer",
+        "description": "Optional row limit for the single query.",
+        "default": 12,
+        "minimum": 1,
+        "maximum": 200
+      },
+      "order": {
+        "type": "string",
+        "enum": ["asc", "desc"],
+        "description": "Optional row order for the single query.",
+        "default": "desc"
+      },
+      "batch_queries": {
+        "type": "array",
+        "description": "Optional governed exact-query batch. If present, the tool uses /v1/query/batch instead of /v1/query.",
+        "items": {
+          "type": "object",
+          "properties": {
+            "key": { "type": "string" },
+            "metric_hint": { "type": "string" },
+            "metric_role": {
+              "type": "string",
+              "enum": ["metric", "base_measure", "derived_measure", "dimension"],
+              "default": "metric"
+            },
+            "aggregation": { "type": "string" },
+            "group_by": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "filter": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "limit": { "type": "integer" },
+            "order": {
+              "type": "string",
+              "enum": ["asc", "desc"]
+            }
+          }
+        }
+      }
+    },
+    "required": []
+  }
+}

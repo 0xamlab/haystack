@@ -1,0 +1,10 @@
+{
+  "sources": [
+    {
+      "dataset_id": "orders_facts",
+      "alias": "orders"
+    }
+  ],
+  "sql": "select order_month, gross_revenue from orders order by order_month desc limit 12",
+  "max_rows": 100
+}

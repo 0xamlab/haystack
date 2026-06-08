@@ -2,19 +2,413 @@
   "swagger": "2.0",
   "info": {
     "title": "Algenta",
-    "description": "Run Monte Carlo simulations and get structured decision recommendations with a single API call.",
-    "version": "1.0.0"
+    "description": "Discover datasets, fetch low-token summaries, run governed exact queries and query batches, execute constrained read-only SQL reports, and optionally run simulations. Replace your-algenta-base-url.example with Cloud Managed https://api.algenta.ai or your self-hosted base URL before import. Private profiles do not silently fall back to Algenta cloud.",
+    "version": "1.1.0"
   },
-  "host": "api.algenta.ai",
+  "host": "your-algenta-base-url.example",
   "basePath": "/",
   "schemes": ["https"],
   "consumes": ["application/json"],
   "produces": ["application/json"],
+  "x-canonical-mcp-endpoint": "https://your-algenta-base-url.example/mcp/sse",
+  "x-primary-data-query-contract": {
+    "api": {
+      "contract_endpoint": "/v1/meta/contract",
+      "discovery_endpoint": "/v1/data",
+      "summary_endpoint": "/v1/data/{dataset_id}/summary",
+      "resolve_endpoint": "/v1/resolve",
+      "verify_endpoint": "/v1/verify",
+      "query_endpoint": "/v1/query",
+      "query_batch_endpoint": "/v1/query/batch",
+      "query_sql_report_endpoint": "/v1/query/sql-report"
+    },
+    "governed_filter_contract": {
+      "kind": "record_predicates",
+      "time_filter_field": "time_filter",
+      "conditions_field": "conditions",
+      "selector_fields": ["column", "dimension_hint"],
+      "operators": {
+        "scalar": ["eq", "gt", "gte", "lt", "lte"],
+        "list": ["in"],
+        "nullary": ["is_null", "is_not_null"]
+      },
+      "type_behavior": {
+        "boolean": ["eq"],
+        "string": ["eq", "in"],
+        "numeric": ["eq", "in", "gt", "gte", "lt", "lte"],
+        "null_checks": ["is_null", "is_not_null"]
+      },
+      "validation": {
+        "requires_selector": true,
+        "scalar_ops_require_value": ["eq", "gt", "gte", "lt", "lte"],
+        "list_ops_require_non_empty_values": ["in"],
+        "nullary_ops_forbid_value_and_values": ["is_null", "is_not_null"]
+      },
+      "applies_before_aggregation": true,
+      "supports_non_sql_backends": true,
+      "notes": [
+        "Filters apply to normalized source rows before aggregation and grouping.",
+        "Boolean equality uses eq.",
+        "This contract is database-agnostic and valid for Redis and other non-SQL backends after record normalization.",
+        "Nested OR groups, regex, text search, and arbitrary expressions are not part of this contract."
+      ]
+    },
+    "direct_sdk": {
+      "python": {
+        "import_root": "decision_engine",
+        "preferred_client_class": "AlgentaClient",
+        "preferred_async_client_class": "AsyncAlgentaClient",
+        "compatibility_client_class": "DecisionEngineClient",
+        "compatibility_async_client_class": "AsyncDecisionEngineClient",
+        "contract_method": "get_contract",
+        "discovery_method": "list_datasets",
+        "summary_method": "get_dataset_summary",
+        "query_with_metadata_method": "query_with_metadata",
+        "query_batch_method": "query_batch",
+        "query_sql_report_method": "query_sql_report"
+      },
+      "typescript": {
+        "import_package": "algenta-sdk",
+        "preferred_client_class": "AlgentaClient",
+        "compatibility_client_class": "DecisionEngineClient",
+        "contract_method": "getContract",
+        "discovery_method": "listDatasets",
+        "summary_method": "getDatasetSummary",
+        "query_with_metadata_method": "queryWithMetadata",
+        "query_batch_method": "queryBatch",
+        "query_sql_report_method": "querySqlReport"
+      }
+    },
+    "runtime_sdk": {
+      "python": {
+        "import_root": "algenta",
+        "runtime_class": "Runtime",
+        "libraries_entrypoint": "libraries",
+        "contract_method": "get_contract",
+        "discovery_method": "list_datasets",
+        "summary_method": "get_dataset_summary",
+        "query_with_metadata_method": "query_with_metadata",
+        "query_batch_method": "query_batch",
+        "query_sql_report_method": "query_sql_report"
+      },
+      "typescript": {
+        "import_package": "algenta-sdk",
+        "runtime_class": "Runtime",
+        "libraries_entrypoint": "libraries",
+        "contract_method": "getContract",
+        "discovery_method": "listDatasets",
+        "summary_method": "getDatasetSummary",
+        "query_with_metadata_method": "queryWithMetadata",
+        "query_batch_method": "queryBatch",
+        "query_sql_report_method": "querySqlReport"
+      }
+    },
+    "cli": {
+      "contract_command": "de contract",
+      "discovery_command": "de data list --search <hint> --compact --limit <n>",
+      "summary_command": "de data summary <dataset_id>",
+      "query_batch_command": "de data query-batch <request.json>",
+      "query_sql_report_command": "de data sql-report <request.json>"
+    },
+    "mcp": {
+      "contract_tool": "get_contract",
+      "discovery_tool": "list_data",
+      "summary_tool": "get_data_summary",
+      "query_tool": "query_data",
+      "query_batch_tool": "query_batch",
+      "query_sql_report_tool": "query_sql_report"
+    },
+    "recommended_flows": {
+      "machine_readable_contract": [
+        "GET /v1/meta/contract"
+      ],
+      "governed_query": [
+        "GET /v1/data?search=...&compact=1",
+        "GET /v1/data/{dataset_id}/summary",
+        "POST /v1/resolve",
+        "POST /v1/verify",
+        "POST /v1/query"
+      ],
+      "multi_metric_query": [
+        "GET /v1/data?search=...&compact=1",
+        "GET /v1/data/{dataset_id}/summary",
+        "POST /v1/query/batch"
+      ],
+      "wide_sql_report": [
+        "GET /v1/data?search=...&compact=1",
+        "GET /v1/data/{dataset_id}/summary",
+        "POST /v1/query/sql-report"
+      ]
+    }
+  },
   "paths": {
+    "/v1/meta/contract": {
+      "get": {
+        "summary": "Get Contract",
+        "description": "Fetch the live machine-readable Algenta contract for API, SDK, CLI, and MCP discovery.",
+        "operationId": "GetContract",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Machine-readable Algenta contract",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "contract_version": { "type": "string", "x-ms-summary": "Contract Version" },
+                "brand": { "type": "string", "x-ms-summary": "Brand" },
+                "api_base_url": { "type": "string", "x-ms-summary": "API Base URL" },
+                "auth_scheme": { "type": "string", "x-ms-summary": "Auth Scheme" },
+                "primary_data_query_contract": { "type": "object", "x-ms-summary": "Primary Data Query Contract" },
+                "integrations": { "type": "array", "items": { "type": "object" }, "x-ms-summary": "Integrations" }
+              }
+            }
+          }
+        },
+        "security": [{ "apiKey": [] }]
+      }
+    },
+    "/v1/data": {
+      "get": {
+        "summary": "List Datasets",
+        "description": "Discover datasets with deterministic lexical search, filters, and compact mode.",
+        "operationId": "ListDatasets",
+        "parameters": [
+          { "name": "page", "in": "query", "type": "integer", "default": 1, "x-ms-summary": "Page" },
+          { "name": "limit", "in": "query", "type": "integer", "default": 20, "x-ms-summary": "Limit" },
+          { "name": "search", "in": "query", "type": "string", "x-ms-summary": "Search" },
+          { "name": "status", "in": "query", "type": "string", "x-ms-summary": "Status" },
+          { "name": "source_name", "in": "query", "type": "string", "x-ms-summary": "Source Name" },
+          { "name": "compact", "in": "query", "type": "boolean", "default": true, "x-ms-summary": "Compact" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dataset discovery page",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "datasets": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "dataset_id": { "type": "string", "x-ms-summary": "Dataset ID" },
+                      "name": { "type": "string", "x-ms-summary": "Name" },
+                      "status": { "type": "string", "x-ms-summary": "Status" },
+                      "source_names": { "type": "array", "items": { "type": "string" }, "x-ms-summary": "Source Names" },
+                      "column_count": { "type": "integer", "x-ms-summary": "Column Count" },
+                      "registered_at": { "type": "string", "x-ms-summary": "Registered At" }
+                    }
+                  }
+                },
+                "total": { "type": "integer", "x-ms-summary": "Total" },
+                "matched_total": { "type": "integer", "x-ms-summary": "Matched Total" },
+                "page": { "type": "integer", "x-ms-summary": "Page" },
+                "limit": { "type": "integer", "x-ms-summary": "Limit" }
+              }
+            }
+          }
+        },
+        "security": [{ "apiKey": [] }]
+      }
+    },
+    "/v1/data/{dataset_id}/summary": {
+      "get": {
+        "summary": "Get Dataset Summary",
+        "description": "Fetch the low-token selection summary for one dataset.",
+        "operationId": "GetDatasetSummary",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "x-ms-summary": "Dataset ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dataset summary",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "dataset_id": { "type": "string", "x-ms-summary": "Dataset ID" },
+                "name": { "type": "string", "x-ms-summary": "Name" },
+                "status": { "type": "string", "x-ms-summary": "Status" },
+                "source_names": { "type": "array", "items": { "type": "string" }, "x-ms-summary": "Source Names" },
+                "row_count": { "type": "integer", "x-ms-summary": "Row Count" },
+                "column_count": { "type": "integer", "x-ms-summary": "Column Count" },
+                "registered_at": { "type": "string", "x-ms-summary": "Registered At" },
+                "query_hints": { "type": "array", "items": { "type": "string" }, "x-ms-summary": "Query Hints" }
+              }
+            }
+          }
+        },
+        "security": [{ "apiKey": [] }]
+      }
+    },
+    "/v1/query": {
+      "post": {
+        "summary": "Query Dataset",
+        "description": "Run one governed exact query against an authorized dataset.",
+        "operationId": "QueryDataset",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["dataset_id", "metric"],
+              "properties": {
+                "dataset_id": { "type": "string", "x-ms-summary": "Dataset ID" },
+                "metric": {
+                  "type": "object",
+                  "x-ms-summary": "Metric",
+                  "properties": {
+                    "role": { "type": "string" },
+                    "hint": { "type": "string" }
+                  }
+                },
+                "aggregation": { "type": "string", "x-ms-summary": "Aggregation" },
+                "group_by": { "type": "array", "items": { "type": "string" }, "x-ms-summary": "Group By" },
+                "filter": { "type": "object", "x-ms-summary": "Filter" },
+                "limit": { "type": "integer", "x-ms-summary": "Limit" },
+                "order": { "type": "string", "x-ms-summary": "Order" }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Exact query result",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "request_id": { "type": "string", "x-ms-summary": "Request ID" },
+                "latency_ms": { "type": "number", "x-ms-summary": "Latency ms" },
+                "result": { "type": "object", "x-ms-summary": "Result" },
+                "result_type": { "type": "string", "x-ms-summary": "Result Type" },
+                "row_count": { "type": "integer", "x-ms-summary": "Row Count" },
+                "resolved_column": { "type": "string", "x-ms-summary": "Resolved Column" },
+                "resolved_source": { "type": "string", "x-ms-summary": "Resolved Source" }
+              }
+            }
+          }
+        },
+        "security": [{ "apiKey": [] }]
+      }
+    },
+    "/v1/query/batch": {
+      "post": {
+        "summary": "Query Batch",
+        "description": "Run several governed exact queries in one request with per-item metadata or errors.",
+        "operationId": "QueryBatch",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["queries"],
+              "properties": {
+                "defaults": { "type": "object", "x-ms-summary": "Defaults" },
+                "queries": {
+                  "type": "array",
+                  "x-ms-summary": "Queries",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "key": { "type": "string" },
+                      "request": { "type": "object" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ordered batch exact-query results",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "request_id": { "type": "string", "x-ms-summary": "Request ID" },
+                "results": {
+                  "type": "array",
+                  "x-ms-summary": "Results",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "key": { "type": "string" },
+                      "data": { "type": "object" },
+                      "metadata": { "type": "object" },
+                      "error": { "type": "object" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [{ "apiKey": [] }]
+      }
+    },
+    "/v1/query/sql-report": {
+      "post": {
+        "summary": "Query SQL Report",
+        "description": "Run one constrained read-only SQL report over already authorized datasets.",
+        "operationId": "QuerySqlReport",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["sources", "sql"],
+              "properties": {
+                "sources": {
+                  "type": "array",
+                  "x-ms-summary": "Sources",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "dataset_id": { "type": "string" },
+                      "alias": { "type": "string" }
+                    }
+                  }
+                },
+                "sql": { "type": "string", "x-ms-summary": "SQL" },
+                "max_rows": { "type": "integer", "default": 100, "x-ms-summary": "Max Rows" }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SQL rowset report",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "columns": { "type": "array", "items": { "type": "string" }, "x-ms-summary": "Columns" },
+                "rows": { "type": "array", "items": { "type": "object" }, "x-ms-summary": "Rows" },
+                "row_count": { "type": "integer", "x-ms-summary": "Row Count" },
+                "truncated": { "type": "boolean", "x-ms-summary": "Truncated" },
+                "request_id": { "type": "string", "x-ms-summary": "Request ID" },
+                "latency_ms": { "type": "number", "x-ms-summary": "Latency ms" }
+              }
+            }
+          }
+        },
+        "security": [{ "apiKey": [] }]
+      }
+    },
     "/v1/simulate": {
       "post": {
         "summary": "Run Simulation",
-        "description": "Execute a Monte Carlo simulation and get a decision recommendation. Use mode 'auto' with variable ranges for the simplest setup.",
+        "description": "Optional decision-analysis lane for Monte Carlo and related simulation models.",
         "operationId": "RunSimulation",
         "parameters": [
           {
@@ -35,21 +429,7 @@
                 "scenario": {
                   "type": "object",
                   "description": "Scenario definition (for auto mode)",
-                  "x-ms-summary": "Scenario",
-                  "properties": {
-                    "variables": {
-                      "type": "object",
-                      "description": "Named variables with low/high bounds",
-                      "x-ms-summary": "Variables"
-                    },
-                    "objective": {
-                      "type": "string",
-                      "description": "Optimization objective",
-                      "x-ms-summary": "Objective",
-                      "enum": ["maximize_net_value", "maximize_revenue", "minimize_cost", "minimize_risk"],
-                      "default": "maximize_net_value"
-                    }
-                  }
+                  "x-ms-summary": "Scenario"
                 },
                 "runs": {
                   "type": "integer",
@@ -67,92 +447,21 @@
             "schema": {
               "type": "object",
               "properties": {
-                "run_id": {
-                  "type": "string",
-                  "x-ms-summary": "Run ID"
-                },
-                "recommended_action": {
-                  "type": "string",
-                  "x-ms-summary": "Recommended Action",
-                  "description": "proceed, caution, or reject"
-                },
-                "confidence": {
-                  "type": "number",
-                  "x-ms-summary": "Confidence",
-                  "description": "0.0 to 1.0"
-                },
-                "rationale": {
-                  "type": "string",
-                  "x-ms-summary": "Rationale"
-                },
-                "expected_value": {
-                  "type": "number",
-                  "x-ms-summary": "Expected Value"
-                },
-                "probability_of_loss": {
-                  "type": "number",
-                  "x-ms-summary": "Probability of Loss"
-                },
-                "scenarios_run": {
-                  "type": "integer",
-                  "x-ms-summary": "Scenarios Run"
-                }
+                "run_id": { "type": "string", "x-ms-summary": "Run ID" },
+                "recommended_action": { "type": "string", "x-ms-summary": "Recommended Action" },
+                "confidence": { "type": "number", "x-ms-summary": "Confidence" },
+                "rationale": { "type": "string", "x-ms-summary": "Rationale" }
               }
             }
           }
         },
-        "security": [{"apiKey": []}]
-      }
-    },
-    "/v1/recommend": {
-      "post": {
-        "summary": "Get Recommendation",
-        "description": "Compare 2-10 named decision options and get a ranked recommendation.",
-        "operationId": "GetRecommendation",
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "type": "object",
-              "required": ["actions"],
-              "properties": {
-                "actions": {
-                  "type": "array",
-                  "x-ms-summary": "Actions",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "name": {"type": "string"},
-                      "request": {"type": "object"}
-                    }
-                  }
-                }
-              }
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Recommendation returned",
-            "schema": {
-              "type": "object",
-              "properties": {
-                "recommended_action": {"type": "string", "x-ms-summary": "Recommended Action"},
-                "confidence": {"type": "number", "x-ms-summary": "Confidence"},
-                "rationale": {"type": "string", "x-ms-summary": "Rationale"}
-              }
-            }
-          }
-        },
-        "security": [{"apiKey": []}]
+        "security": [{ "apiKey": [] }]
       }
     },
     "/v1/health": {
       "get": {
         "summary": "Health Check",
-        "description": "Check if the Decision Engine API is available.",
+        "description": "Check if the Algenta API is available.",
         "operationId": "HealthCheck",
         "parameters": [],
         "responses": {
@@ -161,12 +470,12 @@
             "schema": {
               "type": "object",
               "properties": {
-                "status": {"type": "string", "x-ms-summary": "Status"}
+                "status": { "type": "string", "x-ms-summary": "Status" }
               }
             }
           }
         },
-        "security": [{"apiKey": []}]
+        "security": [{ "apiKey": [] }]
       }
     }
   },
@@ -177,5 +486,5 @@
       "name": "X-API-Key"
     }
   },
-  "_comment": "Import this connector definition in Power Automate → Custom Connectors → Import from OpenAPI file. Set your API key in the connector's security settings."
+  "_comment": "Import this connector definition in Power Automate -> Custom Connectors -> Import from OpenAPI file. Configure the API key in the connector security settings."
 }

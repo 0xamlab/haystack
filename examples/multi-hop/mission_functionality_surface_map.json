@@ -1,0 +1,374 @@
+{
+  "functionality_count": 15,
+  "category_counts": {
+    "governed_data_and_query": 10,
+    "local_runtime_libraries": 5
+  },
+  "functionalities": [
+    {
+      "mission_functionality": "list_data",
+      "category": "governed_data_and_query",
+      "public_hosted_http": {
+        "supported": true,
+        "surface": "GET /v1/data?search=...&compact=1"
+      },
+      "python_sdk": {
+        "surface": "client.list_datasets(search=\"nps_scores\", compact=True)"
+      },
+      "typescript_sdk": {
+        "surface": "await client.listDatasets({ search: \"nps_scores\", compact: true })"
+      },
+      "cli": {
+        "surface": "de data list --search nps_scores --compact --limit 5"
+      },
+      "mcp": {
+        "supported": true,
+        "surface": "list_data(search=\"nps_scores\", compact=true)"
+      },
+      "notes": [
+        "Use deterministic search plus compact summaries for the first governed discovery pass."
+      ]
+    },
+    {
+      "mission_functionality": "get_data_schema",
+      "category": "governed_data_and_query",
+      "public_hosted_http": {
+        "supported": true,
+        "surface": "GET /v1/data/{dataset_id}/summary"
+      },
+      "python_sdk": {
+        "surface": "client.get_dataset_summary(dataset_id)"
+      },
+      "typescript_sdk": {
+        "surface": "await client.getDatasetSummary(datasetId)"
+      },
+      "cli": {
+        "surface": "de data summary <dataset_id>"
+      },
+      "mcp": {
+        "supported": true,
+        "surface": "get_data_summary(dataset_id=...) or get_data_schema(dataset_id=...)"
+      },
+      "notes": [
+        "Use the summary surface before requesting the full dataset metadata body."
+      ]
+    },
+    {
+      "mission_functionality": "ensure_governed_dataset",
+      "category": "governed_data_and_query",
+      "public_hosted_http": {
+        "supported": true,
+        "surface": "POST /v1/data/connect"
+      },
+      "python_sdk": {
+        "surface": "client.connect_data(connect_request)"
+      },
+      "typescript_sdk": {
+        "surface": "await client.connectData(connectRequest)"
+      },
+      "cli": {
+        "surface": "de data connect"
+      },
+      "mcp": {
+        "supported": true,
+        "surface": "connect_data(...)"
+      },
+      "notes": [
+        "Database onboarding may first return status = needs_selection with choices[]."
+      ]
+    },
+    {
+      "mission_functionality": "query_data",
+      "category": "governed_data_and_query",
+      "public_hosted_http": {
+        "supported": true,
+        "surface": "POST /v1/resolve -> optional POST /v1/verify -> POST /v1/query"
+      },
+      "python_sdk": {
+        "surface": "client.query_with_metadata(request)"
+      },
+      "typescript_sdk": {
+        "surface": "await client.queryWithMetadata(request)"
+      },
+      "cli": {
+        "surface": "de data query-batch <request.json>"
+      },
+      "mcp": {
+        "supported": true,
+        "surface": "query_data(...)"
+      },
+      "notes": [
+        "Use explicit join_path when the metric and grouping dimension live in different governed datasets."
+      ]
+    },
+    {
+      "mission_functionality": "query_data_batch",
+      "category": "governed_data_and_query",
+      "public_hosted_http": {
+        "supported": true,
+        "surface": "POST /v1/query/batch"
+      },
+      "python_sdk": {
+        "surface": "client.query_batch(batch_request)"
+      },
+      "typescript_sdk": {
+        "surface": "await client.queryBatch(batchRequest)"
+      },
+      "cli": {
+        "surface": "de data query-batch <request.json>"
+      },
+      "mcp": {
+        "supported": true,
+        "surface": "query_batch(...)"
+      },
+      "notes": [
+        "Use ordered batch keys when you need several exact governed requests in one response."
+      ]
+    },
+    {
+      "mission_functionality": "query_sql_report",
+      "category": "governed_data_and_query",
+      "public_hosted_http": {
+        "supported": true,
+        "surface": "POST /v1/query/sql-report"
+      },
+      "python_sdk": {
+        "surface": "client.query_sql_report(report_request)"
+      },
+      "typescript_sdk": {
+        "surface": "await client.querySqlReport(reportRequest)"
+      },
+      "cli": {
+        "surface": "de data sql-report <request.json>"
+      },
+      "mcp": {
+        "supported": true,
+        "surface": "query_sql_report(...)"
+      },
+      "notes": [
+        "Use only for wide joined rowsets or custom read-only SQL calculations."
+      ]
+    },
+    {
+      "mission_functionality": "query_sql_source",
+      "category": "governed_data_and_query",
+      "public_hosted_http": {
+        "supported": false,
+        "surface": "No one-to-one public hosted endpoint."
+      },
+      "python_sdk": {
+        "surface": "client.query_with_metadata(request) or client.query_sql_report(report_request)"
+      },
+      "typescript_sdk": {
+        "surface": "await client.queryWithMetadata(request) or await client.querySqlReport(reportRequest)"
+      },
+      "cli": {
+        "surface": "de data query-batch <request.json> or de data sql-report <request.json>"
+      },
+      "mcp": {
+        "supported": false,
+        "surface": "No one-to-one MCP tool."
+      },
+      "notes": [
+        "Use exact query when the ask fits the governed metric contract.",
+        "Use sql-report when you truly need custom statistical SQL."
+      ]
+    },
+    {
+      "mission_functionality": "get_sources_graph",
+      "category": "governed_data_and_query",
+      "public_hosted_http": {
+        "supported": false,
+        "surface": "No one-to-one public hosted endpoint."
+      },
+      "python_sdk": {
+        "surface": "client.list_datasets(...) plus client.get_dataset_summary(dataset_id)"
+      },
+      "typescript_sdk": {
+        "surface": "await client.listDatasets(...) plus await client.getDatasetSummary(datasetId)"
+      },
+      "cli": {
+        "surface": "de data list --search ... --compact --limit 5 plus de data summary <dataset_id>"
+      },
+      "mcp": {
+        "supported": false,
+        "surface": "No one-to-one MCP tool."
+      },
+      "notes": [
+        "Public callers provide the exact join_path directly instead of querying a separate graph surface."
+      ]
+    },
+    {
+      "mission_functionality": "map_data_sources",
+      "category": "governed_data_and_query",
+      "public_hosted_http": {
+        "supported": false,
+        "surface": "No one-to-one public hosted endpoint."
+      },
+      "python_sdk": {
+        "surface": "client.list_datasets(...) plus client.get_dataset_summary(dataset_id)"
+      },
+      "typescript_sdk": {
+        "surface": "await client.listDatasets(...) plus await client.getDatasetSummary(datasetId)"
+      },
+      "cli": {
+        "surface": "de data list --search ... --compact --limit 5 plus de data summary <dataset_id>"
+      },
+      "mcp": {
+        "supported": false,
+        "surface": "No one-to-one MCP tool."
+      },
+      "notes": [
+        "Resolve exact dataset ids and source names explicitly from governed discovery."
+      ]
+    },
+    {
+      "mission_functionality": "register_sql_source",
+      "category": "governed_data_and_query",
+      "public_hosted_http": {
+        "supported": false,
+        "surface": "No one-to-one public hosted endpoint."
+      },
+      "python_sdk": {
+        "surface": "client.query_sql_report(report_request) for one-off analysis or client.connect_data(connect_request) for a persistent governed dataset"
+      },
+      "typescript_sdk": {
+        "surface": "await client.querySqlReport(reportRequest) or await client.connectData(connectRequest)"
+      },
+      "cli": {
+        "surface": "de data sql-report <request.json> or de data connect"
+      },
+      "mcp": {
+        "supported": false,
+        "surface": "No one-to-one MCP tool."
+      },
+      "notes": [
+        "Materialize upstream and onboard with data/connect when you need a durable governed dataset."
+      ]
+    },
+    {
+      "mission_functionality": "get_algenta_library_health",
+      "category": "local_runtime_libraries",
+      "public_hosted_http": {
+        "supported": false,
+        "surface": "Local/runtime-backed only."
+      },
+      "python_sdk": {
+        "surface": "MojoRuntime(mode=\"local\").health()"
+      },
+      "typescript_sdk": {
+        "surface": "await new MojoRuntime({ mode: \"local\" }).health()"
+      },
+      "cli": {
+        "surface": "de runtime status"
+      },
+      "mcp": {
+        "supported": false,
+        "surface": "No one-to-one MCP tool."
+      },
+      "notes": [
+        "This surface stays local/runtime-backed and is separate from hosted governed data/query APIs."
+      ]
+    },
+    {
+      "mission_functionality": "list_algenta_libraries",
+      "category": "local_runtime_libraries",
+      "public_hosted_http": {
+        "supported": false,
+        "surface": "Local/runtime-backed only."
+      },
+      "python_sdk": {
+        "surface": "libraries(mode=\"local\").names() or MojoRuntime(mode=\"local\").list_modules()"
+      },
+      "typescript_sdk": {
+        "surface": "(await libraries({ mode: \"local\" })).names() or await runtime.listModules()"
+      },
+      "cli": {
+        "surface": "de runtime modules --format json"
+      },
+      "mcp": {
+        "supported": true,
+        "surface": "list_runtime_libraries(search=...)"
+      },
+      "notes": [
+        "Keep canonical module names such as text.tokenizer and vector_kernels.table."
+      ]
+    },
+    {
+      "mission_functionality": "inspect_algenta_library",
+      "category": "local_runtime_libraries",
+      "public_hosted_http": {
+        "supported": false,
+        "surface": "Local/runtime-backed only."
+      },
+      "python_sdk": {
+        "surface": "MojoRuntime(mode=\"local\").list_functions(\"text.tokenizer\")"
+      },
+      "typescript_sdk": {
+        "surface": "await runtime.listFunctions(\"text.tokenizer\")"
+      },
+      "cli": {
+        "surface": "de runtime functions text.tokenizer --format json"
+      },
+      "mcp": {
+        "supported": true,
+        "surface": "list_runtime_libraries(search=\"text.tokenizer\")"
+      },
+      "notes": [
+        "Use this for function inventory, not governed query planning."
+      ]
+    },
+    {
+      "mission_functionality": "get_algenta_library_module",
+      "category": "local_runtime_libraries",
+      "public_hosted_http": {
+        "supported": false,
+        "surface": "Local/runtime-backed only."
+      },
+      "python_sdk": {
+        "surface": "libraries(mode=\"local\").module(\"text.tokenizer\")"
+      },
+      "typescript_sdk": {
+        "surface": "(await libraries({ mode: \"local\" })).module(\"text.tokenizer\")"
+      },
+      "cli": {
+        "surface": "de runtime functions <module> --format json"
+      },
+      "mcp": {
+        "supported": true,
+        "surface": "list_runtime_libraries(search=\"text.tokenizer\")"
+      },
+      "notes": [
+        "Mission may use attribute aliases like text_tokenizer, but the runtime inventory stays canonical."
+      ]
+    },
+    {
+      "mission_functionality": "execute_algenta_library",
+      "category": "local_runtime_libraries",
+      "public_hosted_http": {
+        "supported": false,
+        "surface": "Local/runtime-backed only."
+      },
+      "python_sdk": {
+        "surface": "MojoRuntime(mode=\"local\").execute(\"rerank_eval\", \"precision_at_k\", {\"relevance\": [1, 0, 1, 1], \"k\": 3}) or libraries(mode=\"local\").module(\"text.tokenizer\").word_tokenize(\"alpha beta\")"
+      },
+      "typescript_sdk": {
+        "surface": "await runtime.execute(\"rerank_eval\", \"precision_at_k\", { relevance: [1, 0, 1, 1], k: 3 }) or await catalog.module(\"text.tokenizer\").word_tokenize(\"alpha beta\")"
+      },
+      "cli": {
+        "surface": "de runtime execute rerank_eval precision_at_k --args-json '{\"relevance\":[1,0,1,1],\"k\":3}' --format json"
+      },
+      "mcp": {
+        "supported": true,
+        "surface": "execute_runtime_library(module=\"rerank_eval\", function=\"precision_at_k\", args={\"relevance\": [1, 0, 1, 1], \"k\": 3})"
+      },
+      "notes": [
+        "Use the local runtime library lane for direct deterministic compute after governed retrieval, not as the default replacement for governed dataset joins."
+      ]
+    }
+  ],
+  "notes": [
+    "Mission wrappers such as query_sql_source and register_sql_source do not imply matching public hosted endpoints in this repository.",
+    "Hosted governed data/query and local runtime libraries are both real public surfaces here, but they are different surfaces with different operating boundaries."
+  ]
+}

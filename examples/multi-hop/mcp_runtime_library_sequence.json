@@ -1,0 +1,39 @@
+{
+  "sequence_name": "mission_local_runtime_library_via_mcp",
+  "purpose": "Mission-style direct local runtime-library execution on the public MCP surface.",
+  "steps": [
+    {
+      "tool": "list_runtime_libraries",
+      "arguments": {
+        "search": "text.tokenizer"
+      },
+      "notes": "Resolve the canonical dotted module name and function inventory first."
+    },
+    {
+      "tool": "execute_runtime_library",
+      "arguments": {
+        "module": "text.tokenizer",
+        "function": "word_tokenize",
+        "args": "delay correlation route"
+      },
+      "notes": "Direct deterministic local compute through the runtime-backed Mojo catalog."
+    },
+    {
+      "tool": "execute_runtime_library",
+      "arguments": {
+        "module": "rerank_eval",
+        "function": "precision_at_k",
+        "args": {
+          "relevance": [
+            1,
+            0,
+            1,
+            1
+          ],
+          "k": 3
+        }
+      },
+      "notes": "Second example using a keyword-argument object payload."
+    }
+  ]
+}

@@ -1,0 +1,156 @@
+{
+  "name": "Algenta — Discover Dataset and SQL Report",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "start",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://your-algenta-base-url.example/openapi.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "get-contract",
+      "name": "Get Contract",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [460, 140],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "algenta-api-key",
+          "name": "Algenta API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ \"https://your-algenta-base-url.example\" + $node[\"Get Contract\"].json[\"x-primary-data-query-contract\"][\"api\"][\"discovery_endpoint\"] + \"?search=orders&compact=1&limit=5\" }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "discover-datasets",
+      "name": "Discover Datasets",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [460, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "algenta-api-key",
+          "name": "Algenta API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ \"https://your-algenta-base-url.example\" + $node[\"Get Contract\"].json[\"x-primary-data-query-contract\"][\"api\"][\"summary_endpoint\"].replace(\"{dataset_id}\", $json[\"datasets\"][0][\"dataset_id\"]) }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "get-summary",
+      "name": "Get Dataset Summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [680, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "algenta-api-key",
+          "name": "Algenta API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ \"https://your-algenta-base-url.example\" + $node[\"Get Contract\"].json[\"x-primary-data-query-contract\"][\"api\"][\"query_sql_report_endpoint\"] }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={{ JSON.stringify({ sources: [{ dataset_id: $json[\"dataset_id\"], alias: \"orders\" }], sql: \"select order_month, gross_revenue from orders order by order_month desc limit 12\", max_rows: 100 }) }}",
+        "options": {}
+      },
+      "id": "query-sql-report",
+      "name": "Query SQL Report",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [940, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "algenta-api-key",
+          "name": "Algenta API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "contract_endpoint",
+              "value": "={{$node[\"Get Contract\"].json[\"x-primary-data-query-contract\"][\"api\"][\"contract_endpoint\"] || \"\"}}"
+            },
+            {
+              "name": "request_id",
+              "value": "={{$json[\"request_id\"]}}"
+            },
+            {
+              "name": "first_column",
+              "value": "={{$json[\"columns\"][0]}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "extract-response",
+      "name": "Extract Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [1180, 300]
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [[{"node": "Get Contract", "type": "main", "index": 0}]]
+    },
+    "Get Contract": {
+      "main": [[{"node": "Discover Datasets", "type": "main", "index": 0}]]
+    },
+    "Discover Datasets": {
+      "main": [[{"node": "Get Dataset Summary", "type": "main", "index": 0}]]
+    },
+    "Get Dataset Summary": {
+      "main": [[{"node": "Query SQL Report", "type": "main", "index": 0}]]
+    },
+    "Query SQL Report": {
+      "main": [[{"node": "Extract Response", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "instanceId": "algenta-sql-report-example"
+  },
+  "_comment": "Import this workflow into n8n. Replace https://your-algenta-base-url.example with Cloud Managed https://api.algenta.ai or your self-hosted base URL before enabling the workflow. Set credentials: HTTP Header Auth with name 'Authorization' and value 'Bearer <YOUR_ALGENTA_API_KEY>'. It inspects /openapi.json, extracts x-primary-data-query-contract, then discovers datasets, fetches one low-token summary, and runs /v1/query/sql-report. That keeps the workflow compatible with older self-hosted nodes that still return 404 for /v1/meta/contract. Private profiles do not silently fall back to Algenta cloud."
+}

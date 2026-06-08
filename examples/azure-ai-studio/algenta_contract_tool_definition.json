@@ -1,0 +1,9 @@
+{
+  "name": "algenta_get_contract",
+  "description": "Fetch the live machine-readable Algenta contract so an Azure assistant can discover the governed data, batch query, SQL report, governed filter rules, CLI, and MCP surfaces exposed by the running service before choosing tools.",
+  "parameters": {
+    "type": "object",
+    "properties": {},
+    "required": []
+  }
+}

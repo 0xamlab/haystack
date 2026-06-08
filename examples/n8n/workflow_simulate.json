@@ -12,7 +12,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://api.algenta.ai/v1/simulate",
+        "url": "=https://your-algenta-base-url.example/v1/simulate",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
@@ -115,5 +115,5 @@
   "meta": {
     "instanceId": "decision-engine-example"
   },
-  "_comment": "Import this workflow into n8n. Set credentials: HTTP Header Auth with name 'Authorization' and value 'Bearer de_live_...'. Keep the hosted URL at https://api.algenta.ai unless you are self-hosting."
+  "_comment": "Import this workflow into n8n. Replace https://your-algenta-base-url.example with Cloud Managed https://api.algenta.ai or your self-hosted base URL before enabling the workflow. Set credentials: HTTP Header Auth with name 'Authorization' and value 'Bearer <YOUR_ALGENTA_API_KEY>'. Private profiles do not silently fall back to Algenta cloud."
 }

@@ -2,16 +2,75 @@
 
 Use Algenta from Azure-hosted copilots, prompt flows, and assistant-style agents.
 
+- Cloud Managed: `https://api.algenta.ai`
+- `self_hosted` and `air_gapped`: replace the hosted base URL with your self-hosted base URL
+
+Private profiles do not silently fall back to Algenta cloud.
+
+All snippets below resolve `ALGENTA_URL` from `ALGENTA_BASE_URL`,
+`DE_BASE_URL`, or `ALGENTA_API_URL`. In Cloud Managed, set that to
+`https://api.algenta.ai`. In `self_hosted` and `air_gapped`, set it to your
+self-hosted base URL and use the API key provisioned by your self-hosted
+operator deployment.
+
 ## Recommended paths
 
-- OpenAPI import for action-style use
-- Function tool or Prompt Flow node for controlled orchestration
+- Function tool for live contract inspection before discovery
+- OpenAPI import for full hosted action coverage
+- Function tool for governed dataset discovery and exact query
+- Function tool for constrained read-only SQL reports
+- Function tool for simulation when the flow is doing decision analysis
+- Prompt Flow node for controlled orchestration
 
-## Option A: Azure OpenAI Assistants (Function Calling)
+## Option A0: Azure OpenAI Assistants (Function Calling) — Contract Tool
 
 ### 1. Register the Tool
 
-Upload `algenta_tool_definition.json` as a function tool in your Azure OpenAI Assistant configuration.
+Upload `algenta_contract_tool_definition.json` as a function tool in your Azure
+OpenAI Assistant configuration.
+
+### 2. Implement the Function Handler
+
+```python
+import json
+import os
+import requests
+
+ALGENTA_KEY = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
+if not ALGENTA_KEY:
+    raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
+ALGENTA_URL = (
+    os.environ.get("ALGENTA_BASE_URL")
+    or os.environ.get("DE_BASE_URL")
+    or os.environ.get("ALGENTA_API_URL")
+)
+if not ALGENTA_URL:
+    raise RuntimeError(
+        "Set ALGENTA_BASE_URL, DE_BASE_URL, or ALGENTA_API_URL before running this example. "
+        "Use https://api.algenta.ai only in Cloud Managed."
+    )
+
+
+def call_algenta_contract() -> str:
+    resp = requests.get(
+        f"{ALGENTA_URL}/v1/meta/contract",
+        headers={"Authorization": f"Bearer {ALGENTA_KEY}"},
+        timeout=30,
+    )
+    resp.raise_for_status()
+    return json.dumps(resp.json(), indent=2)
+```
+
+Use this tool first when the assistant needs the live discovery, summary, exact
+query, batch, SQL-report, CLI, or MCP contract exposed by the running service.
+If an older self-hosted node still returns `404` for `/v1/meta/contract`, fetch
+`/openapi.json` and read `x-primary-data-query-contract` instead.
+
+## Option A1: Azure OpenAI Assistants (Function Calling) — Exact Query Tool
+
+### 1. Register the Tool
+
+Upload `algenta_query_tool_definition.json` as a function tool in your Azure OpenAI Assistant configuration.
 
 ### 2. Implement the Function Handler
 
@@ -27,65 +86,145 @@ client = AzureOpenAI(
     api_version="2024-05-01-preview",
 )
 
-ALGENTA_KEY = os.environ["ALGENTA_API_KEY"]
-ALGENTA_URL = "https://api.algenta.ai"
-
-
-def call_algenta(arguments: dict) -> str:
-    """Execute Algenta simulation and return formatted result."""
-    mode = arguments.get("mode", "auto")
-    payload = {
-        "mode": mode,
-        "runs": arguments.get("runs", 50000),
-        "seed": arguments.get("seed", 42),
-    }
-
-    if mode == "auto":
-        payload["scenario"] = {
-            "name": arguments.get("name", "Decision Analysis"),
-            "variables": arguments.get("variables", {}),
-            "objective": arguments.get("objective", "maximize_net_value"),
-        }
-
-    if arguments.get("simulation_model"):
-        payload["simulation_model"] = arguments["simulation_model"]
-
-    resp = requests.post(
-        f"{ALGENTA_URL}/v1/simulate",
-        headers={"Authorization": f"Bearer {ALGENTA_KEY}", "Content-Type": "application/json"},
-        json=payload,
-        timeout=60,
+ALGENTA_KEY = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
+if not ALGENTA_KEY:
+    raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
+ALGENTA_URL = (
+    os.environ.get("ALGENTA_BASE_URL")
+    or os.environ.get("DE_BASE_URL")
+    or os.environ.get("ALGENTA_API_URL")
+)
+if not ALGENTA_URL:
+    raise RuntimeError(
+        "Set ALGENTA_BASE_URL, DE_BASE_URL, or ALGENTA_API_URL before running this example. "
+        "Use https://api.algenta.ai only in Cloud Managed."
     )
-    resp.raise_for_status()
-    result = resp.json()
 
-    return json.dumps({
-        "recommended_action": result["recommended_action"],
-        "confidence": result["confidence"],
-        "rationale": result["rationale"],
-        "expected_value": result["metrics"]["expected_value"],
-        "probability_of_loss": result["metrics"]["probability_of_loss"],
-        "var_95": result["metrics"].get("var_95"),
-        "scenarios_run": result["scenarios_run"],
-        "result_hash": result.get("result_hash"),
-    }, indent=2)
+
+def call_algenta_query(arguments: dict) -> str:
+    """Discover one dataset, fetch its summary, then run one exact query or query batch."""
+    contract_resp = requests.get(
+        f"{ALGENTA_URL}/v1/meta/contract",
+        headers={"Authorization": f"Bearer {ALGENTA_KEY}"},
+        timeout=30,
+    )
+    contract_resp.raise_for_status()
+    contract = contract_resp.json()
+
+    dataset_id = arguments.get("dataset_id")
+    if not dataset_id:
+        search = arguments.get("dataset_search", "otp")
+        search_resp = requests.get(
+            f"{ALGENTA_URL}/v1/data",
+            headers={"Authorization": f"Bearer {ALGENTA_KEY}"},
+            params={"search": search, "compact": True, "limit": 5},
+            timeout=30,
+        )
+        search_resp.raise_for_status()
+        datasets = search_resp.json().get("datasets", [])
+        if not datasets:
+            return json.dumps({"error": f"No dataset matched search '{search}'."}, indent=2)
+        dataset_id = datasets[0]["dataset_id"]
+
+    summary_resp = requests.get(
+        f"{ALGENTA_URL}/v1/data/{dataset_id}/summary",
+        headers={"Authorization": f"Bearer {ALGENTA_KEY}"},
+        timeout=30,
+    )
+    summary_resp.raise_for_status()
+    summary = summary_resp.json()
+
+    batch_queries = arguments.get("batch_queries") or []
+    if batch_queries:
+        payload = {
+            "defaults": {"dataset_id": dataset_id},
+            "queries": [
+                {
+                    "key": item["key"],
+                    "request": {
+                        "metric": {
+                            "role": item.get("metric_role", "metric"),
+                            "hint": item["metric_hint"],
+                        },
+                        **({"aggregation": item["aggregation"]} if item.get("aggregation") else {}),
+                        **({"group_by": item["group_by"]} if item.get("group_by") else {}),
+                        **({"filter": item["filter"]} if item.get("filter") else {}),
+                        **({"limit": item["limit"]} if item.get("limit") else {}),
+                        **({"order": item["order"]} if item.get("order") else {}),
+                    },
+                }
+                for item in batch_queries
+            ],
+        }
+        query_resp = requests.post(
+            f"{ALGENTA_URL}/v1/query/batch",
+            headers={"Authorization": f"Bearer {ALGENTA_KEY}", "Content-Type": "application/json"},
+            json=payload,
+            timeout=60,
+        )
+    else:
+        payload = {
+            "dataset_id": dataset_id,
+            "metric": {
+                "role": arguments.get("metric_role", "metric"),
+                "hint": arguments["metric_hint"],
+            },
+            "limit": arguments.get("limit", 12),
+            "order": arguments.get("order", "desc"),
+        }
+        if arguments.get("aggregation"):
+            payload["aggregation"] = arguments["aggregation"]
+        if arguments.get("group_by"):
+            payload["group_by"] = arguments["group_by"]
+        if arguments.get("filter"):
+            payload["filter"] = arguments["filter"]
+        query_resp = requests.post(
+            f"{ALGENTA_URL}/v1/query",
+            headers={"Authorization": f"Bearer {ALGENTA_KEY}", "Content-Type": "application/json"},
+            json=payload,
+            timeout=60,
+        )
+
+    query_resp.raise_for_status()
+    result = query_resp.json()
+
+    return json.dumps(
+        {
+            "contract": {
+                "contract_endpoint": contract["primary_data_query_contract"]["api"]["contract_endpoint"],
+                "discovery_endpoint": contract["primary_data_query_contract"]["api"]["discovery_endpoint"],
+                "query_batch_endpoint": contract["primary_data_query_contract"]["api"]["query_batch_endpoint"],
+            },
+            "dataset_id": dataset_id,
+            "dataset_name": summary["name"],
+            "summary": summary,
+            "result": result,
+        },
+        indent=2,
+    )
 
 
 # ── Run Assistant with tool ─────────────────────────────────────────────────
 import json
 
-with open("algenta_tool_definition.json") as f:
+with open("algenta_query_tool_definition.json") as f:
     tool_def = json.load(f)
+
+with open("algenta_contract_tool_definition.json") as f:
+    contract_tool_def = json.load(f)
 
 assistant = client.beta.assistants.create(
     model="gpt-4o",
     instructions=(
-        "You are a strategic decision advisor. When asked about business decisions, "
-        "market expansion, investment analysis, or risk assessment, use the "
-        "algenta_simulate tool to run probabilistic simulations and provide "
-        "data-driven recommendations."
+        "You are a data analyst. Inspect the live Algenta contract first, then use "
+        "the Algenta query tool for KPIs, metrics, or operational facts over connected "
+        "data. Start with dataset discovery, use low-token summaries, then run governed "
+        "exact queries."
     ),
-    tools=[{"type": "function", "function": tool_def}],
+    tools=[
+        {"type": "function", "function": contract_tool_def},
+        {"type": "function", "function": tool_def},
+    ],
 )
 
 thread = client.beta.threads.create()
@@ -93,9 +232,9 @@ client.beta.threads.messages.create(
     thread_id=thread.id,
     role="user",
     content=(
-        "Should we expand to the European market? "
-        "Revenue potential: $500K-$2M, expansion cost: $300K-$800K, "
-        "probability of regulatory issues: moderate."
+        "Inspect the live Algenta contract, then find the dataset that matches OTP, "
+        "summarize it, and return the overall OTP rate plus a monthly breakdown for "
+        "the last 12 months."
     ),
 )
 
@@ -110,7 +249,7 @@ if run.status == "requires_action":
     outputs = []
     for tc in tool_calls:
         args = json.loads(tc.function.arguments)
-        result = call_algenta(args)
+        result = call_algenta_query(args)
         outputs.append({"tool_call_id": tc.id, "output": result})
 
     run = client.beta.threads.runs.submit_tool_outputs_and_poll(
@@ -123,6 +262,111 @@ if run.status == "requires_action":
 messages = client.beta.threads.messages.list(thread_id=thread.id)
 print(messages.data[0].content[0].text.value)
 ```
+
+## Option A2: Azure OpenAI Assistants (Function Calling) — SQL Report Tool
+
+Use `algenta_sql_report_tool_definition.json` when the Azure assistant needs a
+wide read-only rowset over an already authorized dataset instead of one exact
+metric query or exact-query batch.
+
+### 1. Register the Tool
+
+Upload `algenta_sql_report_tool_definition.json` as a function tool in your
+Azure OpenAI Assistant configuration.
+
+### 2. Implement the Function Handler
+
+```python
+import json
+import os
+import requests
+
+ALGENTA_KEY = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
+if not ALGENTA_KEY:
+    raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
+ALGENTA_URL = (
+    os.environ.get("ALGENTA_BASE_URL")
+    or os.environ.get("DE_BASE_URL")
+    or os.environ.get("ALGENTA_API_URL")
+)
+if not ALGENTA_URL:
+    raise RuntimeError(
+        "Set ALGENTA_BASE_URL, DE_BASE_URL, or ALGENTA_API_URL before running this example. "
+        "Use https://api.algenta.ai only in Cloud Managed."
+    )
+
+
+def call_algenta_sql_report(arguments: dict) -> str:
+    """Discover one dataset, fetch its summary, then run one constrained SQL report."""
+    contract_resp = requests.get(
+        f"{ALGENTA_URL}/v1/meta/contract",
+        headers={"Authorization": f"Bearer {ALGENTA_KEY}"},
+        timeout=30,
+    )
+    contract_resp.raise_for_status()
+    contract = contract_resp.json()
+
+    dataset_id = arguments.get("dataset_id")
+    if not dataset_id:
+        search = arguments.get("dataset_search", "otp")
+        search_resp = requests.get(
+            f"{ALGENTA_URL}/v1/data",
+            headers={"Authorization": f"Bearer {ALGENTA_KEY}"},
+            params={"search": search, "compact": True, "limit": 5},
+            timeout=30,
+        )
+        search_resp.raise_for_status()
+        datasets = search_resp.json().get("datasets", [])
+        if not datasets:
+            return json.dumps({"error": f"No dataset matched search '{search}'."}, indent=2)
+        dataset_id = datasets[0]["dataset_id"]
+
+    summary_resp = requests.get(
+        f"{ALGENTA_URL}/v1/data/{dataset_id}/summary",
+        headers={"Authorization": f"Bearer {ALGENTA_KEY}"},
+        timeout=30,
+    )
+    summary_resp.raise_for_status()
+    summary = summary_resp.json()
+
+    alias = arguments.get("alias", "dataset")
+    sql_report_resp = requests.post(
+        f"{ALGENTA_URL}/v1/query/sql-report",
+        headers={"Authorization": f"Bearer {ALGENTA_KEY}", "Content-Type": "application/json"},
+        json={
+            "sources": [{"dataset_id": dataset_id, "alias": alias}],
+            "sql": arguments["sql"],
+            "max_rows": arguments.get("max_rows", 100),
+        },
+        timeout=60,
+    )
+    sql_report_resp.raise_for_status()
+    result = sql_report_resp.json()
+
+    return json.dumps(
+        {
+            "contract": {
+                "contract_endpoint": contract["primary_data_query_contract"]["api"]["contract_endpoint"],
+                "sql_report_endpoint": contract["primary_data_query_contract"]["api"]["query_sql_report_endpoint"],
+            },
+            "dataset_id": dataset_id,
+            "dataset_name": summary["name"],
+            "summary": summary,
+            "result": result,
+        },
+        indent=2,
+    )
+```
+
+Use this tool only when the Azure agent needs a wide rowset that does not fit
+one exact governed metric or exact-query batch. Keep it separate from
+`algenta_query_tool_definition.json`.
+
+## Option A3: Azure OpenAI Assistants — Simulation Tool
+
+Use `algenta_tool_definition.json` when the Azure assistant is doing decision
+analysis rather than governed dataset queries. That tool stays on the hosted
+`/v1/simulate` surface.
 
 ## Option B: Azure AI Prompt Flow — Python Node
 
@@ -140,7 +384,7 @@ def algenta_simulate(
     runs: int = 50000
 ) -> dict:
     """
-    Algenta Decision Engine simulation tool for Azure Prompt Flow.
+    Algenta simulation tool for Azure Prompt Flow.
 
     Args:
         variables: Dict of variable name → {low, high} ranges
@@ -150,10 +394,23 @@ def algenta_simulate(
     Returns:
         Decision envelope with recommendation, confidence, and metrics
     """
+    api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
+    if not api_key:
+        raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
+    base_url = (
+        os.environ.get("ALGENTA_BASE_URL")
+        or os.environ.get("DE_BASE_URL")
+        or os.environ.get("ALGENTA_API_URL")
+    )
+    if not base_url:
+        raise RuntimeError(
+            "Set ALGENTA_BASE_URL, DE_BASE_URL, or ALGENTA_API_URL before running this example. "
+            "Use https://api.algenta.ai only in Cloud Managed."
+        )
     resp = requests.post(
-        "https://api.algenta.ai/v1/simulate",
+        f"{base_url}/v1/simulate",
         headers={
-            "Authorization": f"Bearer {os.environ['ALGENTA_API_KEY']}",
+            "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
         },
         json={
@@ -184,11 +441,23 @@ def algenta_simulate(
 Set in your Azure AI Studio environment:
 
 ```bash
-ALGENTA_API_KEY=de_live_...  # From https://app.algenta.ai/dashboard/api-keys
+ALGENTA_API_KEY=<YOUR_ALGENTA_API_KEY>  # Cloud Managed only; use a self-hosted-issued key in private profiles
+ALGENTA_BASE_URL=https://api.algenta.ai  # Cloud Managed only; replace with your self-hosted base URL in private profiles
 AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
 AZURE_OPENAI_KEY=...
 ```
 
+Canonical key env var is `ALGENTA_API_KEY`. Legacy `DE_API_KEY` remains
+accepted for compatibility in the snippets above.
+Canonical base URL env var is `ALGENTA_BASE_URL`. Legacy `DE_BASE_URL` and
+`ALGENTA_API_URL` remain accepted for compatibility in the snippets above.
+
 ## First validation
 
-Use one simple simulation request first, confirm Bearer auth works, then add dataset or write-capable actions afterward.
+Validate the read-only data path first:
+
+1. `GET /v1/data?search=orders&compact=1`
+2. `GET /v1/data/{dataset_id}/summary`
+3. `POST /v1/query` or `POST /v1/query/batch`
+
+Then add `algenta_sql_report_tool_definition.json` or simulation only if the Azure flow really needs them.

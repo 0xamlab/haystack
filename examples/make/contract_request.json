@@ -1,0 +1,8 @@
+{
+  "method": "GET",
+  "url": "https://your-algenta-base-url.example/v1/meta/contract",
+  "headers": {
+    "Authorization": "Bearer <YOUR_ALGENTA_API_KEY>",
+    "Content-Type": "application/json"
+  }
+}

@@ -1,0 +1,167 @@
+{
+  "declared_module_count": 22,
+  "conversation_harness_module_count": 19,
+  "lower_level_only_module_count": 1,
+  "catalog_only_module_count": 2,
+  "modules": [
+    {
+      "module": "bpe_tokenizer",
+      "family": "tokenization",
+      "mission_status": "conversation_harness",
+      "mission_usage": "Direct library execution is covered in Mission's checked-in conversation harness.",
+      "default_for_governed_multihop_sql": false
+    },
+    {
+      "module": "text.tokenizer",
+      "family": "tokenization",
+      "mission_status": "conversation_harness",
+      "mission_usage": "Direct library execution is covered in Mission's checked-in conversation harness.",
+      "default_for_governed_multihop_sql": false
+    },
+    {
+      "module": "embeddings",
+      "family": "retrieval",
+      "mission_status": "conversation_harness",
+      "mission_usage": "Used directly in Mission conversation coverage and indirectly in source-ranking helpers.",
+      "default_for_governed_multihop_sql": false
+    },
+    {
+      "module": "flash_attention",
+      "family": "attention",
+      "mission_status": "conversation_harness",
+      "mission_usage": "Direct library execution is covered in Mission's checked-in conversation harness.",
+      "default_for_governed_multihop_sql": false
+    },
+    {
+      "module": "sparse_attention",
+      "family": "attention",
+      "mission_status": "conversation_harness",
+      "mission_usage": "Direct library execution is covered in Mission's checked-in conversation harness.",
+      "default_for_governed_multihop_sql": false
+    },
+    {
+      "module": "transformer_attention",
+      "family": "attention",
+      "mission_status": "conversation_harness",
+      "mission_usage": "Direct library execution is covered in Mission's checked-in conversation harness.",
+      "default_for_governed_multihop_sql": false
+    },
+    {
+      "module": "transformer_blocks",
+      "family": "attention",
+      "mission_status": "conversation_harness",
+      "mission_usage": "Direct library execution is covered in Mission's checked-in conversation harness.",
+      "default_for_governed_multihop_sql": false
+    },
+    {
+      "module": "llm_sampling",
+      "family": "generation",
+      "mission_status": "conversation_harness",
+      "mission_usage": "Direct library execution is covered in Mission's checked-in conversation harness.",
+      "default_for_governed_multihop_sql": false
+    },
+    {
+      "module": "vector_similarity",
+      "family": "retrieval",
+      "mission_status": "conversation_harness",
+      "mission_usage": "Direct library execution is covered in Mission's checked-in conversation harness.",
+      "default_for_governed_multihop_sql": false
+    },
+    {
+      "module": "vector_search",
+      "family": "retrieval",
+      "mission_status": "conversation_harness",
+      "mission_usage": "Used directly in Mission conversation coverage and indirectly in source-ranking helpers.",
+      "default_for_governed_multihop_sql": false
+    },
+    {
+      "module": "vector_kernels.ranker",
+      "family": "retrieval",
+      "mission_status": "lower_level_only",
+      "mission_usage": "Referenced in lower-level ranking-related tests, not in the main conversation harness.",
+      "default_for_governed_multihop_sql": false
+    },
+    {
+      "module": "vector_kernels.table",
+      "family": "retrieval",
+      "mission_status": "conversation_harness",
+      "mission_usage": "Direct library execution is covered in Mission's checked-in conversation harness.",
+      "default_for_governed_multihop_sql": false
+    },
+    {
+      "module": "sparse_vector",
+      "family": "retrieval",
+      "mission_status": "conversation_harness",
+      "mission_usage": "Used directly in Mission conversation coverage and indirectly in source-ranking helpers.",
+      "default_for_governed_multihop_sql": false
+    },
+    {
+      "module": "rlhf_dpo",
+      "family": "alignment",
+      "mission_status": "conversation_harness",
+      "mission_usage": "Direct library execution is covered in Mission's checked-in conversation harness.",
+      "default_for_governed_multihop_sql": false
+    },
+    {
+      "module": "rerank_eval",
+      "family": "retrieval",
+      "mission_status": "catalog_only",
+      "mission_usage": "Cataloged in Mission's local runtime inventory, but not exercised in the checked-in execution paths audited here.",
+      "default_for_governed_multihop_sql": false
+    },
+    {
+      "module": "inference_cost_latency",
+      "family": "serving",
+      "mission_status": "catalog_only",
+      "mission_usage": "Cataloged in Mission's local runtime inventory, but not exercised in the checked-in execution paths audited here.",
+      "default_for_governed_multihop_sql": false
+    },
+    {
+      "module": "kv_cache",
+      "family": "serving",
+      "mission_status": "conversation_harness",
+      "mission_usage": "Direct library execution is covered in Mission's checked-in conversation harness.",
+      "default_for_governed_multihop_sql": false
+    },
+    {
+      "module": "paged_kv_cache",
+      "family": "serving",
+      "mission_status": "conversation_harness",
+      "mission_usage": "Direct library execution is covered in Mission's checked-in conversation harness.",
+      "default_for_governed_multihop_sql": false
+    },
+    {
+      "module": "continuous_batching",
+      "family": "serving",
+      "mission_status": "conversation_harness",
+      "mission_usage": "Direct library execution is covered in Mission's checked-in conversation harness.",
+      "default_for_governed_multihop_sql": false
+    },
+    {
+      "module": "inference_engine",
+      "family": "serving",
+      "mission_status": "conversation_harness",
+      "mission_usage": "Direct library execution is covered in Mission's checked-in conversation harness.",
+      "default_for_governed_multihop_sql": false
+    },
+    {
+      "module": "speculative_decoding",
+      "family": "serving",
+      "mission_status": "conversation_harness",
+      "mission_usage": "Direct library execution is covered in Mission's checked-in conversation harness.",
+      "default_for_governed_multihop_sql": false
+    },
+    {
+      "module": "generation_loop",
+      "family": "serving",
+      "mission_status": "conversation_harness",
+      "mission_usage": "Direct library execution is covered in Mission's checked-in conversation harness.",
+      "default_for_governed_multihop_sql": false
+    }
+  ],
+  "notes": [
+    "Mission mounts the local Algenta runtime library tools on the main /api/agent path.",
+    "Mission keeps governed multihop SQL analytics on list_data/get_data_schema/query_data/query_sql_source/query_sql_report/register_sql_source, not on execute_algenta_library by default.",
+    "Use the local runtime library lane for direct deterministic compute after governed retrieval, not as the default replacement for governed dataset joins."
+  ]
+}

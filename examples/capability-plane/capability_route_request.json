@@ -1,0 +1,28 @@
+{
+  "objective": "Investigate the latest checkout incident and route me to the right governed capability.",
+  "provider_ids": [
+    "provider.data_connector.algenta",
+    "provider.mcp.generic",
+    "provider.skill_pack.algenta",
+    "provider.runtime_library_pack.algenta"
+  ],
+  "kinds": [
+    "dataset",
+    "skill",
+    "mcp_tool",
+    "runtime_library"
+  ],
+  "execution_owners": [
+    "algenta_managed"
+  ],
+  "artifact_affinities": [
+    "incident",
+    "checkout"
+  ],
+  "tags": [
+    "incident",
+    "ops",
+    "triage"
+  ],
+  "max_fallbacks": 3
+}

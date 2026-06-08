@@ -1,0 +1,42 @@
+{
+  "source_name": "orders_facts",
+  "metric_column": "gross_revenue",
+  "group_column": "category_name",
+  "aggregation": "sum",
+  "limit": 10,
+  "order": "desc",
+  "join_path": {
+    "base_source": "orders_facts",
+    "group_source": "product_categories",
+    "edges": [
+      {
+        "left_source": "orders_facts",
+        "right_source": "order_items",
+        "left_key": "order_id",
+        "right_key": "order_id",
+        "expected_cardinality": "one_to_many",
+        "allow_many_to_many": false
+      },
+      {
+        "left_source": "order_items",
+        "right_source": "products",
+        "left_key": "product_id",
+        "right_key": "id",
+        "expected_cardinality": "many_to_one",
+        "allow_many_to_many": false
+      },
+      {
+        "left_source": "products",
+        "right_source": "product_categories",
+        "left_key": "category_id",
+        "right_key": "id",
+        "expected_cardinality": "many_to_one",
+        "allow_many_to_many": false
+      }
+    ],
+    "max_hops": 4,
+    "min_path_confidence": 0.7,
+    "reject_on_ambiguity": true,
+    "reject_on_fanout": true
+  }
+}

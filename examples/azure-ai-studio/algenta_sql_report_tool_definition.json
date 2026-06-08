@@ -1,0 +1,34 @@
+{
+  "name": "algenta_query_sql_report",
+  "description": "Use the companion algenta_get_contract tool first to inspect the live machine-readable contract, then discover one authorized dataset with lexical search, fetch its low-token summary, and run a constrained read-only SQL report through /v1/query/sql-report. Use this tool only for wide rowset reports that do not fit one governed exact query or governed exact-query batch.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "dataset_search": {
+        "type": "string",
+        "description": "Lexical search hint for dataset discovery. Example: orders, revenue, support."
+      },
+      "dataset_id": {
+        "type": "string",
+        "description": "Optional explicit dataset_id. If present, skip lexical search and use this dataset directly."
+      },
+      "sql": {
+        "type": "string",
+        "description": "Read-only SQL statement over the authorized dataset alias. Example: select order_month, gross_revenue from orders order by order_month desc limit 12"
+      },
+      "alias": {
+        "type": "string",
+        "description": "Optional SQL alias for the authorized dataset source.",
+        "default": "dataset"
+      },
+      "max_rows": {
+        "type": "integer",
+        "description": "Maximum number of rows to return from the SQL report.",
+        "default": 100,
+        "minimum": 1,
+        "maximum": 1000
+      }
+    },
+    "required": ["sql"]
+  }
+}

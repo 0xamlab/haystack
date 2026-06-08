@@ -1,0 +1,7 @@
+{
+  "method": "GET",
+  "url": "https://your-algenta-base-url.example/openapi.json",
+  "headers": {
+    "Authorization": "Bearer <YOUR_ALGENTA_API_KEY>"
+  }
+}

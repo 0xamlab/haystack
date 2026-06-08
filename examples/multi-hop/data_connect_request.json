@@ -1,0 +1,17 @@
+{
+  "connection_type": "database",
+  "provider": "postgres",
+  "dataset_name": "NpsScoresDataset",
+  "connection_name": "Analytics Warehouse",
+  "connection_config": {
+    "host": "db.example.internal",
+    "port": 5432,
+    "database": "analytics",
+    "user": "analytics_reader",
+    "password": "replace_me"
+  },
+  "selection": {
+    "table": "public.nps_scores"
+  },
+  "visibility": "private"
+}

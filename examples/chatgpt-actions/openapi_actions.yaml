@@ -1,24 +1,731 @@
 openapi: "3.1.0"
 info:
-  title: "Algenta Decision Engine"
+  title: "Algenta"
   description: |
-    Probabilistic decision engine API. Run Monte Carlo simulations with any distributions,
-    get structured recommendations (PROCEED/DELAY/REJECT/HEDGE), expected value,
-    probability of loss, VaR, and SHA-256 chain-of-custody hashes.
-  version: "1.0.0"
+    Discover datasets, fetch low-token summaries, run governed exact queries,
+    run governed exact-query batches, execute constrained read-only SQL reports,
+    inspect persisted runtime and control-plane review artifacts, and optionally
+    run probabilistic simulations.
+  version: "1.1.0"
 servers:
-  - url: "https://api.algenta.ai"
-    description: "Production API"
+  - url: "https://your-algenta-base-url.example"
+    description: "Replace with Cloud Managed https://api.algenta.ai or your self-hosted base URL before import. Private profiles do not silently fall back to Algenta cloud."
+x-canonical-mcp-endpoint: "https://your-algenta-base-url.example/mcp/sse"
+x-primary-data-query-contract:
+  api:
+    contract_endpoint: "/v1/meta/contract"
+    discovery_endpoint: "/v1/data"
+    summary_endpoint: "/v1/data/{dataset_id}/summary"
+    resolve_endpoint: "/v1/resolve"
+    verify_endpoint: "/v1/verify"
+    query_endpoint: "/v1/query"
+    query_batch_endpoint: "/v1/query/batch"
+    query_sql_report_endpoint: "/v1/query/sql-report"
+  governed_filter_contract:
+    kind: "record_predicates"
+    time_filter_field: "time_filter"
+    conditions_field: "conditions"
+    selector_fields:
+      - "column"
+      - "dimension_hint"
+    operators:
+      scalar:
+        - "eq"
+        - "gt"
+        - "gte"
+        - "lt"
+        - "lte"
+      list:
+        - "in"
+      nullary:
+        - "is_null"
+        - "is_not_null"
+    type_behavior:
+      boolean:
+        - "eq"
+      string:
+        - "eq"
+        - "in"
+      numeric:
+        - "eq"
+        - "in"
+        - "gt"
+        - "gte"
+        - "lt"
+        - "lte"
+      null_checks:
+        - "is_null"
+        - "is_not_null"
+    validation:
+      requires_selector: true
+      scalar_ops_require_value:
+        - "eq"
+        - "gt"
+        - "gte"
+        - "lt"
+        - "lte"
+      list_ops_require_non_empty_values:
+        - "in"
+      nullary_ops_forbid_value_and_values:
+        - "is_null"
+        - "is_not_null"
+    applies_before_aggregation: true
+    supports_non_sql_backends: true
+    notes:
+      - "Filters apply to normalized source rows before aggregation and grouping."
+      - "Boolean equality uses eq."
+      - "This contract is database-agnostic and valid for Redis and other non-SQL backends after record normalization."
+      - "Nested OR groups, regex, text search, and arbitrary expressions are not part of this contract."
+  direct_sdk:
+    python:
+      import_root: "decision_engine"
+      preferred_client_class: "AlgentaClient"
+      preferred_async_client_class: "AsyncAlgentaClient"
+      compatibility_client_class: "DecisionEngineClient"
+      compatibility_async_client_class: "AsyncDecisionEngineClient"
+      contract_method: "get_contract"
+      discovery_method: "list_datasets"
+      summary_method: "get_dataset_summary"
+      query_with_metadata_method: "query_with_metadata"
+      query_batch_method: "query_batch"
+      query_sql_report_method: "query_sql_report"
+    typescript:
+      import_package: "algenta-sdk"
+      preferred_client_class: "AlgentaClient"
+      compatibility_client_class: "DecisionEngineClient"
+      contract_method: "getContract"
+      discovery_method: "listDatasets"
+      summary_method: "getDatasetSummary"
+      query_with_metadata_method: "queryWithMetadata"
+      query_batch_method: "queryBatch"
+      query_sql_report_method: "querySqlReport"
+  runtime_sdk:
+    python:
+      import_root: "algenta"
+      runtime_class: "Runtime"
+      libraries_entrypoint: "libraries"
+      contract_method: "get_contract"
+      discovery_method: "list_datasets"
+      summary_method: "get_dataset_summary"
+      query_with_metadata_method: "query_with_metadata"
+      query_batch_method: "query_batch"
+      query_sql_report_method: "query_sql_report"
+    typescript:
+      import_package: "algenta-sdk"
+      runtime_class: "Runtime"
+      libraries_entrypoint: "libraries"
+      contract_method: "getContract"
+      discovery_method: "listDatasets"
+      summary_method: "getDatasetSummary"
+      query_with_metadata_method: "queryWithMetadata"
+      query_batch_method: "queryBatch"
+      query_sql_report_method: "querySqlReport"
+  cli:
+    contract_command: "de contract"
+    discovery_command: "de data list --search <hint> --compact --limit <n>"
+    summary_command: "de data summary <dataset_id>"
+    query_batch_command: "de data query-batch <request.json>"
+    query_sql_report_command: "de data sql-report <request.json>"
+  mcp:
+    contract_tool: "get_contract"
+    discovery_tool: "list_data"
+    summary_tool: "get_data_summary"
+    query_tool: "query_data"
+    query_batch_tool: "query_batch"
+    query_sql_report_tool: "query_sql_report"
+  recommended_flows:
+    machine_readable_contract:
+      - "GET /v1/meta/contract"
+    governed_query:
+      - "GET /v1/data?search=...&compact=1"
+      - "GET /v1/data/{dataset_id}/summary"
+      - "POST /v1/resolve"
+      - "POST /v1/verify"
+      - "POST /v1/query"
+    multi_metric_query:
+      - "GET /v1/data?search=...&compact=1"
+      - "GET /v1/data/{dataset_id}/summary"
+      - "POST /v1/query/batch"
+    wide_sql_report:
+      - "GET /v1/data?search=...&compact=1"
+      - "GET /v1/data/{dataset_id}/summary"
+      - "POST /v1/query/sql-report"
 paths:
+  /v1/meta/contract:
+    get:
+      operationId: "getContract"
+      summary: "Get machine-readable Algenta contract"
+      description: "Fetch the live machine-readable contract for API, SDK, CLI, and MCP discovery."
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: "Machine-readable Algenta contract"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  contract_version: { type: string }
+                  brand: { type: string }
+                  api_base_url: { type: string, format: uri }
+                  auth_scheme: { type: string }
+                  primary_data_query_contract:
+                    type: object
+                    additionalProperties: true
+                  integrations:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+
+  /v1/data:
+    get:
+      operationId: "listDatasets"
+      summary: "List datasets"
+      description: "Discover datasets with deterministic lexical search, filters, and optional compact mode."
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1, minimum: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20, minimum: 1, maximum: 200 }
+        - name: search
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { type: string }
+        - name: source_name
+          in: query
+          schema: { type: string }
+        - name: compact
+          in: query
+          schema: { type: boolean, default: true }
+      responses:
+        "200":
+          description: "Dataset discovery page"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  datasets:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        dataset_id: { type: string }
+                        name: { type: string }
+                        status: { type: string }
+                        source_names:
+                          type: array
+                          items: { type: string }
+                        column_count: { type: integer }
+                        registered_at: { type: string, format: date-time }
+                  count: { type: integer }
+                  total: { type: integer }
+                  matched_total: { type: integer }
+                  page: { type: integer }
+                  limit: { type: integer }
+                  pages: { type: integer }
+
+  /v1/data/{dataset_id}/summary:
+    get:
+      operationId: "getDatasetSummary"
+      summary: "Get dataset summary"
+      description: "Fetch the low-token summary for one dataset before requesting the full schema."
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: dataset_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: "Low-token summary payload"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dataset_id: { type: string }
+                  name: { type: string }
+                  status: { type: string }
+                  source_names:
+                    type: array
+                    items: { type: string }
+                  row_count: { type: integer }
+                  column_count: { type: integer }
+                  registered_at: { type: string, format: date-time }
+                  query_hints:
+                    type: array
+                    items: { type: string }
+
+  /v1/query:
+    post:
+      operationId: "queryDataset"
+      summary: "Run one governed exact query"
+      description: "Execute one exact metric query against an authorized dataset."
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: ["dataset_id", "metric"]
+              properties:
+                dataset_id: { type: string }
+                metric:
+                  type: object
+                  required: ["role"]
+                  properties:
+                    role: { type: string }
+                    hint: { type: string }
+                aggregation: { type: string }
+                group_by:
+                  type: array
+                  items: { type: string }
+                filter:
+                  type: object
+                  additionalProperties: true
+                limit: { type: integer }
+                order: { type: string }
+      responses:
+        "200":
+          description: "Exact query result"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  query_id: { type: string }
+                  request_id: { type: string }
+                  latency_ms: { type: number }
+                  result:
+                    oneOf:
+                      - type: object
+                      - type: array
+                  result_type: { type: string }
+                  row_count: { type: integer }
+                  resolved_column: { type: string }
+                  resolved_source: { type: string }
+
+  /v1/query/batch:
+    post:
+      operationId: "queryBatch"
+      summary: "Run multiple governed exact queries"
+      description: "Execute several exact queries in one request while preserving input order and per-item errors."
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: ["queries"]
+              properties:
+                defaults:
+                  type: object
+                  properties:
+                    dataset_id: { type: string }
+                    filter:
+                      type: object
+                      additionalProperties: true
+                    limit: { type: integer }
+                    order: { type: string }
+                queries:
+                  type: array
+                  items:
+                    type: object
+                    required: ["key", "request"]
+                    properties:
+                      key: { type: string }
+                      request:
+                        type: object
+                        additionalProperties: true
+      responses:
+        "200":
+          description: "Ordered batch exact-query results"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  request_id: { type: string }
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        key: { type: string }
+                        data:
+                          oneOf:
+                            - type: object
+                            - type: array
+                            - type: "null"
+                        metadata:
+                          type: object
+                          properties:
+                            request_id: { type: string }
+                            latency_ms: { type: number }
+                            tokens_in: { type: integer, nullable: true }
+                            tokens_out: { type: integer, nullable: true }
+                            cost_usd: { type: number, nullable: true }
+                            cache_hit: { type: boolean, nullable: true }
+                        error:
+                          type: object
+                          nullable: true
+                          properties:
+                            code: { type: string }
+                            message: { type: string }
+
+  /v1/query/sql-report:
+    post:
+      operationId: "querySqlReport"
+      summary: "Run a constrained read-only SQL report"
+      description: "Execute one read-only SQL report over already authorized datasets."
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: ["sources", "sql"]
+              properties:
+                sources:
+                  type: array
+                  items:
+                    type: object
+                    required: ["dataset_id", "alias"]
+                    properties:
+                      dataset_id: { type: string }
+                      alias: { type: string }
+                sql: { type: string }
+                max_rows: { type: integer, default: 100 }
+      responses:
+        "200":
+          description: "SQL rowset report"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  columns:
+                    type: array
+                    items: { type: string }
+                  rows:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  row_count: { type: integer }
+                  truncated: { type: boolean }
+                  request_id: { type: string }
+                  latency_ms: { type: number }
+
+  /v1/agent/runs:
+    get:
+      operationId: "listAgentRuns"
+      summary: "List persisted agent runs"
+      description: "Review persisted agent runs with deterministic lineage filters."
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1, minimum: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20, minimum: 1, maximum: 200 }
+        - name: status
+          in: query
+          schema: { type: string }
+        - name: request_hash
+          in: query
+          schema: { type: string }
+        - name: policy_snapshot_id
+          in: query
+          schema: { type: string }
+        - name: schema_snapshot_id
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: "Persisted agent-run page"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  runs:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  count: { type: integer }
+                  total: { type: integer }
+                  page: { type: integer }
+                  limit: { type: integer }
+                  pages: { type: integer }
+
+  /v1/agent/runs/checkpoints:
+    get:
+      operationId: "queryAgentRunCheckpoints"
+      summary: "Query persisted checkpoints"
+      description: "Inspect persisted checkpoint records across agent runs."
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1, minimum: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20, minimum: 1, maximum: 200 }
+        - name: run_id
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { type: string }
+        - name: request_hash
+          in: query
+          schema: { type: string }
+        - name: policy_snapshot_id
+          in: query
+          schema: { type: string }
+        - name: schema_snapshot_id
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: "Persisted checkpoint page"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  checkpoints:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  count: { type: integer }
+                  total: { type: integer }
+                  page: { type: integer }
+                  limit: { type: integer }
+                  pages: { type: integer }
+
+  /v1/agent/runs/mission-events:
+    get:
+      operationId: "queryAgentRunMissionEvents"
+      summary: "Query persisted mission events"
+      description: "Inspect persisted mission-event history across agent runs."
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1, minimum: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20, minimum: 1, maximum: 200 }
+        - name: run_id
+          in: query
+          schema: { type: string }
+        - name: event_type
+          in: query
+          schema: { type: string }
+        - name: node_name
+          in: query
+          schema: { type: string }
+        - name: request_hash
+          in: query
+          schema: { type: string }
+        - name: policy_snapshot_id
+          in: query
+          schema: { type: string }
+        - name: schema_snapshot_id
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: "Persisted mission-event page"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mission_events:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  count: { type: integer }
+                  total: { type: integer }
+                  page: { type: integer }
+                  limit: { type: integer }
+                  pages: { type: integer }
+
+  /v1/agent/runs/telemetry:
+    get:
+      operationId: "queryAgentRunTelemetry"
+      summary: "Query persisted runtime telemetry"
+      description: "Inspect persisted agent-run telemetry batches across runs."
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1, minimum: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20, minimum: 1, maximum: 200 }
+        - name: run_id
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { type: string }
+        - name: request_hash
+          in: query
+          schema: { type: string }
+        - name: policy_snapshot_id
+          in: query
+          schema: { type: string }
+        - name: schema_snapshot_id
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: "Persisted telemetry page"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  telemetry:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  count: { type: integer }
+                  total: { type: integer }
+                  page: { type: integer }
+                  limit: { type: integer }
+                  pages: { type: integer }
+
+  /v1/audit-logs/artifacts:
+    get:
+      operationId: "getAuditLogArtifacts"
+      summary: "Query immutable audit artifacts"
+      description: "Review immutable audit-log artifacts with lineage-aware filters."
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1, minimum: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20, minimum: 1, maximum: 200 }
+        - name: actor_email
+          in: query
+          schema: { type: string }
+        - name: action
+          in: query
+          schema: { type: string }
+        - name: resource_type
+          in: query
+          schema: { type: string }
+        - name: result
+          in: query
+          schema: { type: string }
+        - name: policy_snapshot_id
+          in: query
+          schema: { type: string }
+        - name: schema_snapshot_id
+          in: query
+          schema: { type: string }
+        - name: manifest_version
+          in: query
+          schema: { type: string }
+        - name: request_hash
+          in: query
+          schema: { type: string }
+        - name: content_hash
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: "Immutable audit-artifact page"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  artifacts:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  count: { type: integer }
+                  total: { type: integer }
+                  page: { type: integer }
+                  limit: { type: integer }
+                  pages: { type: integer }
+
+  /v1/execution/policy/snapshots:
+    get:
+      operationId: "listExecutionPolicySnapshots"
+      summary: "List execution-policy snapshots"
+      description: "Review immutable execution-policy snapshots for the current organization."
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1, minimum: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20, minimum: 1, maximum: 200 }
+        - name: active_only
+          in: query
+          schema: { type: boolean, default: false }
+      responses:
+        "200":
+          description: "Execution-policy snapshot page"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  snapshots:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  count: { type: integer }
+                  total: { type: integer }
+                  page: { type: integer }
+                  limit: { type: integer }
+                  pages: { type: integer }
+
   /v1/simulate:
     post:
       operationId: "runSimulation"
       summary: "Run a probabilistic simulation"
-      description: |
-        Execute a simulation. Use mode 'auto' with variable low/high ranges for easy setup,
-        or 'expert' for full distribution control (27 distributions supported).
-        Returns recommended_action, confidence, expected_value, probability_of_loss,
-        percentiles, and SHA-256 result_hash for auditability.
+      description: "Optional decision-analysis lane for Monte Carlo and related simulation models."
       security:
         - BearerAuth: []
       requestBody:
@@ -32,209 +739,30 @@ paths:
                 mode:
                   type: string
                   enum: ["auto", "expert"]
-                  description: "Use 'auto' for simple scenarios or 'expert' for full distribution control"
                 runs:
                   type: integer
                   default: 10000
-                  minimum: 100
-                  maximum: 1000000
-                  description: "Number of Monte Carlo scenarios to simulate"
-                seed:
-                  type: integer
-                  description: "Random seed for reproducible results"
-                simulation_model:
-                  type: string
-                  enum:
-                    [
-                      "monte_carlo",
-                      "qmc_sobol",
-                      "lhs",
-                      "bootstrap",
-                      "scenario",
-                      "sensitivity",
-                      "mcmc",
-                    ]
-                  default: "monte_carlo"
-                  description: "Simulation engine model"
                 scenario:
                   type: object
-                  description: "Required for auto mode"
-                  properties:
-                    name:
-                      type: string
-                    variables:
-                      type: object
-                      description: "Named variables with low/high bounds. E.g.: {revenue: {low: 80000, high: 200000}}"
-                      additionalProperties:
-                        type: object
-                        properties:
-                          low: { type: number }
-                          high: { type: number }
-                    objective:
-                      type: string
-                      enum:
-                        - "maximize_net_value"
-                        - "maximize_revenue"
-                        - "minimize_cost"
-                        - "minimize_risk"
+                  additionalProperties: true
                 simulation:
                   type: object
-                  description: "Required for expert mode"
-                  properties:
-                    variables:
-                      type: array
-                      items:
-                        type: object
-                        required: ["name", "distribution", "params"]
-                        properties:
-                          name: { type: string }
-                          distribution:
-                            type: string
-                            description: "Distribution type: normal, lognormal, triangular, uniform, beta, gamma, poisson, etc."
-                          params:
-                            type: object
-                            additionalProperties: true
-                          unit: { type: string }
-                    objective_function:
-                      type: string
-                      description: "Mathematical expression using variable names. E.g.: revenue - cost"
-                    output_labels:
-                      type: array
-                      items: { type: string }
-                    scoring:
-                      type: object
-                      properties:
-                        expected_value: { type: number }
-                        downside_risk: { type: number }
+                  additionalProperties: true
       responses:
         "200":
-          description: "Simulation completed — DecisionEnvelope"
+          description: "Simulation completed"
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  run_id:
-                    type: string
-                    format: uuid
-                  status:
-                    type: string
-                    enum: ["completed", "failed"]
-                  recommended_action:
-                    type: string
-                    enum: ["proceed", "caution", "reject", "hedge"]
-                  confidence:
-                    type: number
-                    description: "0.0 to 1.0 confidence in the recommendation"
-                  rationale:
-                    type: string
-                    description: "Human-readable explanation of the recommendation"
+                  run_id: { type: string }
+                  recommended_action: { type: string }
+                  confidence: { type: number }
+                  rationale: { type: string }
                   metrics:
                     type: object
-                    properties:
-                      expected_value: { type: number }
-                      median: { type: number }
-                      std_deviation: { type: number }
-                      probability_of_loss: { type: number }
-                      var_95: { type: number }
-                      cvar_95: { type: number }
-                  percentiles:
-                    type: object
-                    properties:
-                      p5: { type: number }
-                      p25: { type: number }
-                      p50: { type: number }
-                      p75: { type: number }
-                      p95: { type: number }
-                  scenarios_run:
-                    type: integer
-                  execution_ms:
-                    type: integer
-                  simulation_model:
-                    type: string
-                  request_hash:
-                    type: string
-                    description: "SHA-256 hash of input payload for chain-of-custody"
-                  result_hash:
-                    type: string
-                    description: "SHA-256 hash of output (binds to request_hash)"
-        "401":
-          description: "Unauthorized — invalid or missing API key"
-        "422":
-          description: "Validation error — check request body"
-        "429":
-          description: "Rate limit exceeded"
-
-  /v1/runs:
-    get:
-      operationId: "listRuns"
-      summary: "List recent simulation runs"
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: page
-          in: query
-          schema: { type: integer, default: 1 }
-        - name: limit
-          in: query
-          schema: { type: integer, default: 20, maximum: 100 }
-        - name: status
-          in: query
-          schema:
-            { type: string, enum: ["completed", "failed", "running", "queued"] }
-      responses:
-        "200":
-          description: "List of runs"
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  runs:
-                    type: array
-                    items:
-                      type: object
-                  total:
-                    type: integer
-                  page:
-                    type: integer
-
-  /v1/simulate/templates:
-    get:
-      operationId: "listTemplates"
-      summary: "List domain simulation templates"
-      description: "Get all 18+ ready-to-run templates across 12 industries"
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: domain
-          in: query
-          schema: { type: string }
-        - name: tag
-          in: query
-          schema: { type: string }
-      responses:
-        "200":
-          description: "Templates list"
-
-  /v1/usage:
-    get:
-      operationId: "getUsage"
-      summary: "Get current billing period usage"
-      security:
-        - BearerAuth: []
-      responses:
-        "200":
-          description: "Usage summary"
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  simulations_run: { type: integer }
-                  quota_limit: { type: integer }
-                  quota_used_pct: { type: number }
-                  plan: { type: string }
+                    additionalProperties: true
 
   /health:
     get:
@@ -249,7 +777,7 @@ components:
     BearerAuth:
       type: http
       scheme: bearer
-      description: "Use your Algenta API key as Bearer token. Get yours at https://app.algenta.ai/dashboard/api-keys"
+      description: "Use your Algenta API key as Bearer token."
 
 security:
   - BearerAuth: []
