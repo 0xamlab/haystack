@@ -202,3 +202,24 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """Return cached Settings instance. Use as FastAPI dependency."""
     return Settings()
+
+
+class SettingsProxy:
+    """Live proxy that forwards access to the current cached settings object."""
+
+    __slots__ = ()
+
+    def __getattr__(self, name: str):  # type: ignore[no-untyped-def]
+        return getattr(get_settings(), name)
+
+    def __setattr__(self, name: str, value):  # type: ignore[no-untyped-def]
+        setattr(get_settings(), name, value)
+
+    def __delattr__(self, name: str) -> None:
+        delattr(get_settings(), name)
+
+    def __dir__(self) -> list[str]:
+        return sorted(set(super().__dir__()) | set(dir(get_settings())))
+
+    def __repr__(self) -> str:
+        return f"SettingsProxy({get_settings()!r})"
