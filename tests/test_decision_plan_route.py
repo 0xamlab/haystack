@@ -100,7 +100,12 @@ def test_decision_plan_route_returns_structured_plan(monkeypatch) -> None:
         assert getattr(request, "mode", None) == "auto"
         return envelope, {"execution_ms": 13}
 
-    def _fake_calibrate(confidence: float, org_id: str) -> tuple[float, SimpleNamespace]:
+    def _fake_calibrate(
+        confidence: float,
+        org_id: str,
+        *,
+        workspace_id: str | None = None,
+    ) -> tuple[float, SimpleNamespace]:
         assert confidence == envelope.confidence
         assert org_id == "org_decision_plan"
         return 0.77, SimpleNamespace(
