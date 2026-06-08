@@ -8,6 +8,7 @@ on:
 
 env:
   PYTHON_VERSION: "3.12"
+  NODE_VERSION: "22"
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
@@ -65,17 +66,34 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
 
-      - name: Install dependencies
-        run: pip install -r requirements-dev.txt
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install Pixi
+        run: |
+          curl -fsSL https://pixi.sh/install.sh | env PIXI_HOME="$GITHUB_WORKSPACE/.pixi" PIXI_BIN_DIR="$GITHUB_WORKSPACE/.pixi/bin" PIXI_NO_PATH_UPDATE=1 bash
+          echo "$GITHUB_WORKSPACE/.pixi/bin" >> "$GITHUB_PATH"
+
+      - name: Install Mojo/Pixi environment
+        run: PIXI_HOME="$GITHUB_WORKSPACE/.pixi" RATTLER_CACHE_DIR="$GITHUB_WORKSPACE/.cache/rattler/cache" pixi install --manifest-path mojo_env/pixi.toml
+
+      - name: Install JavaScript workspace dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Run linting (Ruff)
-        run: ruff check apps/ --ignore E501 || true
+        run: ./scripts/run_repo_python.sh -m ruff check apps/ --ignore E501 || true
 
       - name: Verify GitBook v1 docs pack
         run: make docs-gitbook-verify
 
-      - name: Run tests
-        run: pytest tests/ -v --tb=short -x
+      - name: Run repo check graph
+        run: pnpm check
         env:
           PYTEST_TIMEOUT: 30
 
@@ -117,7 +135,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/api
           tags: |
-            type=sha,prefix=
+            type=sha,prefix=git-,format=short
             type=raw,value=latest
 
       - name: Build and push API image
@@ -137,7 +155,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/worker
           tags: |
-            type=sha,prefix=
+            type=sha,prefix=git-,format=short
             type=raw,value=latest
 
       - name: Build and push Worker image
