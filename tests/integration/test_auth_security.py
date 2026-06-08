@@ -19,6 +19,9 @@ Prerequisites:
 Run:
   python3 tests/integration/test_auth_security.py
 """
+
+# ruff: noqa: E402, N818
+
 import json
 import os
 import socket
@@ -34,11 +37,30 @@ PROJECT_ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", ".
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
+from tests.integration.live_capacity_blockers import classify_simulation_capacity_blocker
+from tests.integration.live_integration_artifacts import write_live_integration_summary
+
 # Global socket timeout — prevents any test from hanging indefinitely
 socket.setdefaulttimeout(15)
 
-BASE_URL = os.environ.get("DE_BASE_URL", "http://localhost:8000")
-API_KEY = os.environ.get("DE_API_KEY", "de_live_LrL6UWSAfgXsTjgfyaboI9aolrsznjLU")
+try:
+    from tests.integration.live_local_defaults import (
+        has_configured_local_live_api_key,
+        resolve_local_live_api_key,
+        resolve_local_live_base_url,
+    )
+except ModuleNotFoundError:
+    from live_local_defaults import (
+        has_configured_local_live_api_key,
+        resolve_local_live_api_key,
+        resolve_local_live_base_url,
+    )
+
+BASE_URL = resolve_local_live_base_url()
+API_KEY = resolve_local_live_api_key()
+API_KEY_CONFIGURED = has_configured_local_live_api_key()
+SUITE_NAME = "auth_security_integration"
+STARTED = time.perf_counter()
 
 PASS = "✅"
 FAIL = "❌"
@@ -47,6 +69,41 @@ results: list[tuple] = []
 timings: list[tuple[str, float]] = []
 
 pytestmark = pytest.mark.usefixtures("legacy_live_api_server")
+
+
+class EnvironmentBlocked(RuntimeError):
+    """Raised when the live environment cannot execute simulation due to quota/capacity."""
+
+
+def _emit(message: str = "") -> None:
+    print(message, flush=True)
+
+
+def _format_elapsed_seconds(started_at: float) -> str:
+    return f"{time.monotonic() - started_at:.2f}s"
+
+
+def _missing_live_api_key_reason(exc: BaseException) -> str | None:
+    if API_KEY_CONFIGURED:
+        return None
+    text = str(exc)
+    if any(token in text for token in ("401", "403", "Authentication", "invalid_api_key")):
+        return "DE_API_KEY is not set; skipping authenticated auth/security checks that require a real live key."
+    return None
+
+
+def _require_configured_live_api_key(reason: str) -> None:
+    if API_KEY_CONFIGURED:
+        return
+    pytest.skip(
+        f"DE_API_KEY is not set; skipping {reason} that require a real live key."
+    )
+
+
+def ensure_simulation_capacity_available(status: int, body) -> None:
+    reason = classify_simulation_capacity_blocker(status=status, payload=body)
+    if reason:
+        raise EnvironmentBlocked(reason)
 
 
 # ─── HTTP helpers ─────────────────────────────────────────────────────────────
@@ -87,9 +144,7 @@ def req(method: str, path: str, body=None, headers=None, auth=True, timeout=10):
         if "timed out" in str(err):
             elapsed = time.perf_counter() - t0
             raise TimeoutError(f"Request to {url} timed out after {timeout}s") from err
-        raise RuntimeError(
-            f"Cannot connect to {BASE_URL} — is the API server running?"
-        ) from err
+        raise RuntimeError(f"Cannot connect to {BASE_URL} — is the API server running?") from err
 
 
 def raw_req(method: str, path: str, raw_data: bytes = None, headers: dict = None, timeout=10):
@@ -122,38 +177,55 @@ def raw_req(method: str, path: str, raw_data: bytes = None, headers: dict = None
         if "timed out" in str(err):
             elapsed = time.perf_counter() - t0
             raise TimeoutError(f"Request to {url} timed out after {timeout}s") from err
-        raise RuntimeError(
-            f"Cannot connect to {BASE_URL} — is the API server running?"
-        ) from err
+        raise RuntimeError(f"Cannot connect to {BASE_URL} — is the API server running?") from err
 
 
 def check(name: str, fn):
     """Run a test function, record pass/fail/skip."""
     t0 = time.perf_counter()
+    started_at = time.monotonic()
+    _emit(f"  ... {name}")
     try:
         fn()
         elapsed = time.perf_counter() - t0
         results.append((PASS, name))
         timings.append((name, elapsed))
-        print(f"  {PASS} {name} ({elapsed:.3f}s)")
+        _emit(f"  {PASS} {name} ({_format_elapsed_seconds(started_at)})")
+    except EnvironmentBlocked as e:
+        elapsed = time.perf_counter() - t0
+        results.append((SKIP, name, str(e)))
+        timings.append((name, elapsed))
+        _emit(f"  {SKIP} {name} ({_format_elapsed_seconds(started_at)}): {e}")
     except AssertionError as e:
+        missing_key_reason = _missing_live_api_key_reason(e)
+        if missing_key_reason:
+            elapsed = time.perf_counter() - t0
+            results.append((SKIP, name, missing_key_reason))
+            timings.append((name, elapsed))
+            _emit(f"  {SKIP} {name} ({_format_elapsed_seconds(started_at)}): {missing_key_reason}")
+            return
         elapsed = time.perf_counter() - t0
         results.append((FAIL, name, str(e)))
         timings.append((name, elapsed))
-        print(f"  {FAIL} {name}: {e}")
+        _emit(f"  {FAIL} {name} ({_format_elapsed_seconds(started_at)}): {e}")
     except Exception as e:
+        missing_key_reason = _missing_live_api_key_reason(e)
+        if missing_key_reason:
+            elapsed = time.perf_counter() - t0
+            results.append((SKIP, name, missing_key_reason))
+            timings.append((name, elapsed))
+            _emit(f"  {SKIP} {name} ({_format_elapsed_seconds(started_at)}): {missing_key_reason}")
+            return
         elapsed = time.perf_counter() - t0
         results.append((FAIL, name, str(e)))
         timings.append((name, elapsed))
-        print(f"  {FAIL} {name}: {e}")
+        _emit(f"  {FAIL} {name} ({_format_elapsed_seconds(started_at)}): {e}")
 
 
 # ─── Minimal simulate payload (used for auth-protected endpoint tests) ────────
 MINIMAL_SIMULATE_PAYLOAD = {
     "decision": "Security test decision",
-    "variables": [
-        {"name": "x", "distribution": "normal", "params": {"mean": 100, "std": 10}}
-    ],
+    "variables": [{"name": "x", "distribution": "normal", "params": {"mean": 100, "std": 10}}],
     "runs": 100,
 }
 
@@ -163,14 +235,17 @@ MINIMAL_SIMULATE_PAYLOAD = {
 # =============================================================================
 def test_auth_valid_api_key_header():
     """Valid API key via X-API-Key header returns 200."""
+    _require_configured_live_api_key("valid API-key authentication checks")
     status, body, hdrs, _ = req("GET", "/v1/health", auth=True)
     assert status == 200, f"Expected 200 with valid key, got {status}: {body}"
 
 
 def test_auth_valid_bearer_token():
     """Valid API key via Authorization: Bearer header returns 200."""
+    _require_configured_live_api_key("valid Bearer-token authentication checks")
     status, body, hdrs, _ = req(
-        "GET", "/v1/health",
+        "GET",
+        "/v1/health",
         headers={"Authorization": f"Bearer {API_KEY}"},
         auth=False,
     )
@@ -186,7 +261,8 @@ def test_auth_missing_api_key():
 def test_auth_empty_api_key():
     """Empty API key returns 401."""
     status, body, hdrs, _ = req(
-        "GET", "/v1/simulate/templates",
+        "GET",
+        "/v1/simulate/templates",
         headers={"X-API-Key": ""},
         auth=False,
     )
@@ -196,7 +272,8 @@ def test_auth_empty_api_key():
 def test_auth_invalid_api_key():
     """Completely bogus API key returns 401."""
     status, body, hdrs, _ = req(
-        "GET", "/v1/simulate/templates",
+        "GET",
+        "/v1/simulate/templates",
         headers={"X-API-Key": "de_live_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"},
         auth=False,
     )
@@ -206,7 +283,8 @@ def test_auth_invalid_api_key():
 def test_auth_malformed_prefix():
     """API key with wrong prefix returns 401."""
     status, body, hdrs, _ = req(
-        "GET", "/v1/simulate/templates",
+        "GET",
+        "/v1/simulate/templates",
         headers={"X-API-Key": "wrong_prefix_XXXXXXXXXXXXXXXXXXXXXXXX"},
         auth=False,
     )
@@ -216,7 +294,8 @@ def test_auth_malformed_prefix():
 def test_auth_wrong_length():
     """API key with wrong length (too short) returns 401."""
     status, body, hdrs, _ = req(
-        "GET", "/v1/simulate/templates",
+        "GET",
+        "/v1/simulate/templates",
         headers={"X-API-Key": "de_live_short"},
         auth=False,
     )
@@ -227,7 +306,8 @@ def test_auth_sql_injection():
     """SQL injection attempt in API key header is rejected safely."""
     sqli_key = "de_live_' OR '1'='1'; DROP TABLE api_keys;--"
     status, body, hdrs, _ = req(
-        "GET", "/v1/simulate/templates",
+        "GET",
+        "/v1/simulate/templates",
         headers={"X-API-Key": sqli_key},
         auth=False,
     )
@@ -243,7 +323,8 @@ def test_auth_very_long_key():
     """Very long API key (10,000 chars) is rejected safely without crash."""
     long_key = "de_live_" + "A" * 10000
     status, body, hdrs, _ = req(
-        "GET", "/v1/simulate/templates",
+        "GET",
+        "/v1/simulate/templates",
         headers={"X-API-Key": long_key},
         auth=False,
     )
@@ -254,7 +335,8 @@ def test_auth_null_bytes():
     """Null bytes in API key are handled safely."""
     null_key = "de_live_AAAA\x00BBBB\x00CCCCCCCCCCCCCCCC"
     status, body, hdrs, _ = req(
-        "GET", "/v1/simulate/templates",
+        "GET",
+        "/v1/simulate/templates",
         headers={"X-API-Key": null_key},
         auth=False,
     )
@@ -266,7 +348,8 @@ def test_auth_unicode_characters():
     unicode_key = "de_live_日本語テスト🔑✨AAAAAAAAAAAAAAAA"
     try:
         status, body, hdrs, _ = req(
-            "GET", "/v1/simulate/templates",
+            "GET",
+            "/v1/simulate/templates",
             headers={"X-API-Key": unicode_key},
             auth=False,
         )
@@ -280,7 +363,8 @@ def test_auth_unicode_characters():
 def test_auth_bearer_without_token():
     """Authorization: Bearer with no token returns 401."""
     status, body, hdrs, _ = raw_req(
-        "GET", "/v1/simulate/templates",
+        "GET",
+        "/v1/simulate/templates",
         headers={"Authorization": "Bearer "},
     )
     assert status in (401, 403, 422), f"Expected 401/403 for empty Bearer, got {status}"
@@ -289,9 +373,11 @@ def test_auth_bearer_without_token():
 def test_auth_wrong_scheme():
     """Authorization: Basic instead of Bearer returns 401."""
     import base64
+
     creds = base64.b64encode(b"user:pass").decode()
     status, body, hdrs, _ = raw_req(
-        "GET", "/v1/simulate/templates",
+        "GET",
+        "/v1/simulate/templates",
         headers={"Authorization": f"Basic {creds}"},
     )
     assert status in (401, 403), f"Expected 401/403 for Basic auth, got {status}"
@@ -303,6 +389,7 @@ def test_auth_wrong_scheme():
 def test_rbac_write_endpoint_with_valid_key():
     """POST /v1/simulate works with valid API key (member role)."""
     status, body, hdrs, _ = req("POST", "/v1/simulate", body=MINIMAL_SIMULATE_PAYLOAD)
+    ensure_simulation_capacity_available(status, body)
     # Should succeed (200) or at worst fail with validation (422) but NOT 401/403
     assert status not in (401, 403), f"Expected auth to pass for simulate, got {status}: {body}"
 
@@ -314,8 +401,9 @@ def test_rbac_org_isolation_invalid_run_id():
     assert status in (404, 403), f"Expected 404/403 for non-existent run, got {status}: {body}"
     # Ensure no data leakage
     body_str = json.dumps(body) if isinstance(body, dict) else str(body)
-    assert "org_id" not in body_str.lower() or "error" in body_str.lower(), \
+    assert "org_id" not in body_str.lower() or "error" in body_str.lower(), (
         "Response may leak org_id from another organization"
+    )
 
 
 def test_rbac_health_no_auth_required():
@@ -351,6 +439,7 @@ def test_request_oversized_body():
         "runs": 100,
     }
     status, body, hdrs, _ = req("POST", "/v1/simulate", body=huge_payload, timeout=15)
+    ensure_simulation_capacity_available(status, body)
     # Should reject with 413 (too large) or 422 (validation) or handle gracefully
     assert status in (413, 422, 400, 500), f"Expected rejection for oversized body, got {status}"
 
@@ -358,24 +447,29 @@ def test_request_oversized_body():
 def test_request_invalid_content_type():
     """Invalid Content-Type on POST should be rejected or handled."""
     status, body, hdrs, _ = raw_req(
-        "POST", "/v1/simulate",
+        "POST",
+        "/v1/simulate",
         raw_data=b"this is not json",
         headers={
             "X-API-Key": API_KEY,
             "Content-Type": "text/plain",
         },
     )
-    assert status in (400, 415, 422), f"Expected rejection for text/plain POST, got {status}: {body}"
+    assert status in (400, 415, 422), (
+        f"Expected rejection for text/plain POST, got {status}: {body}"
+    )
 
 
 def test_request_missing_content_type():
     """Missing Content-Type on POST still fails gracefully."""
     payload = json.dumps(MINIMAL_SIMULATE_PAYLOAD).encode()
     status, body, hdrs, _ = raw_req(
-        "POST", "/v1/simulate",
+        "POST",
+        "/v1/simulate",
         raw_data=payload,
         headers={"X-API-Key": API_KEY},
     )
+    ensure_simulation_capacity_available(status, body)
     # FastAPI may still parse it or reject — either way, no crash
     assert status in (200, 400, 415, 422), f"Expected graceful handling, got {status}: {body}"
 
@@ -391,15 +485,19 @@ def test_request_deeply_nested_json():
     nested["runs"] = 100
 
     status, body, hdrs, _ = req("POST", "/v1/simulate", body=nested, timeout=15)
+    ensure_simulation_capacity_available(status, body)
     # Should either process it or reject — no crash
-    assert status in (200, 400, 422, 500), f"Expected graceful handling of nested JSON, got {status}"
+    assert status in (200, 400, 422, 500), (
+        f"Expected graceful handling of nested JSON, got {status}"
+    )
 
 
 def test_request_duplicate_headers():
     """Duplicate headers are handled safely."""
     # urllib doesn't easily support duplicate headers, but we can test double API key
     status, body, hdrs, _ = req(
-        "GET", "/v1/health",
+        "GET",
+        "/v1/health",
         headers={"X-API-Key": API_KEY},
         auth=True,  # This also sets X-API-Key, so it's effectively double
     )
@@ -409,7 +507,8 @@ def test_request_duplicate_headers():
 def test_request_empty_body_on_post():
     """POST with empty body returns 422 (validation), not 500."""
     status, body, hdrs, _ = raw_req(
-        "POST", "/v1/simulate",
+        "POST",
+        "/v1/simulate",
         raw_data=b"",
         headers={"X-API-Key": API_KEY, "Content-Type": "application/json"},
     )
@@ -419,7 +518,8 @@ def test_request_empty_body_on_post():
 def test_request_malformed_json():
     """Malformed JSON body returns 422/400, not 500."""
     status, body, hdrs, _ = raw_req(
-        "POST", "/v1/simulate",
+        "POST",
+        "/v1/simulate",
         raw_data=b'{"decision": "test", "variables": [BROKEN',
         headers={"X-API-Key": API_KEY, "Content-Type": "application/json"},
     )
@@ -455,8 +555,9 @@ def test_headers_no_server_version_leak():
     server_hdr = hdrs.get("Server", hdrs.get("server", ""))
     # Should not reveal version numbers like "uvicorn/0.x" or "Python/3.x"
     if server_hdr:
-        assert "python" not in server_hdr.lower() or "cpython" not in server_hdr.lower(), \
+        assert "python" not in server_hdr.lower() or "cpython" not in server_hdr.lower(), (
             f"Server header reveals Python version: {server_hdr}"
+        )
 
 
 def test_headers_content_type_json():
@@ -469,15 +570,17 @@ def test_headers_content_type_json():
 def test_headers_no_sensitive_leak_on_error():
     """Error responses don't leak internal details in headers."""
     status, body, hdrs, _ = req(
-        "GET", "/v1/simulate/templates",
+        "GET",
+        "/v1/simulate/templates",
         headers={"X-API-Key": "de_live_INVALID_KEY_000000000000000"},
         auth=False,
     )
     # Check no sensitive headers
     for hdr_name, hdr_val in hdrs.items():
         hdr_lower = hdr_name.lower()
-        assert "x-powered-by" != hdr_lower or "express" not in hdr_val.lower(), \
+        assert "x-powered-by" != hdr_lower or "express" not in hdr_val.lower(), (
             "X-Powered-By leaks framework info"
+        )
         # Ensure no stack trace in any header
         assert "traceback" not in str(hdr_val).lower(), f"Header {hdr_name} contains traceback"
 
@@ -485,7 +588,8 @@ def test_headers_no_sensitive_leak_on_error():
 def test_headers_cors_present():
     """Verify CORS headers are set on responses (if origin matches)."""
     status, body, hdrs, _ = raw_req(
-        "OPTIONS", "/v1/health",
+        "OPTIONS",
+        "/v1/health",
         headers={
             "Origin": "http://localhost:3000",
             "Access-Control-Request-Method": "GET",
@@ -500,7 +604,8 @@ def test_headers_cors_present():
 def test_headers_request_id_on_error():
     """X-Request-Id is present even on error responses."""
     status, body, hdrs, _ = req(
-        "GET", "/v1/simulate/templates",
+        "GET",
+        "/v1/simulate/templates",
         headers={"X-API-Key": "de_live_INVALID_KEY_000000000000000"},
         auth=False,
     )
@@ -516,14 +621,14 @@ def test_rate_limit_headers_present():
     # Make a few requests — should all succeed under the developer plan limit (300/min)
     for i in range(3):
         status, body, hdrs, _ = req("GET", "/v1/health")
-        assert status == 200, f"Request {i+1} failed with {status}"
+        assert status == 200, f"Request {i + 1} failed with {status}"
 
 
 def test_rate_limit_not_triggered_under_normal_load():
     """Verify 10 sequential requests don't trigger rate limit."""
     for i in range(10):
         status, body, hdrs, _ = req("GET", "/v1/health")
-        assert status != 429, f"Rate limit hit on request {i+1} — unexpected under normal load"
+        assert status != 429, f"Rate limit hit on request {i + 1} — unexpected under normal load"
 
 
 def test_rate_limit_429_response_format():
@@ -548,12 +653,14 @@ def test_sanitization_xss_in_decision():
         "runs": 100,
     }
     status, body, hdrs, _ = req("POST", "/v1/simulate", body=xss_payload)
+    ensure_simulation_capacity_available(status, body)
     if status == 200:
         body_str = json.dumps(body)
         # The response should contain the decision text but NOT execute it
         # JSON-encoding naturally escapes angle brackets
-        assert "alert(" not in body_str or '"decision"' in body_str, \
+        assert "alert(" not in body_str or '"decision"' in body_str, (
             "XSS payload may not be safely escaped"
+        )
     else:
         # 422 or 400 is also acceptable (rejecting XSS input)
         assert status in (400, 422, 500), f"Unexpected status for XSS payload: {status}"
@@ -562,6 +669,7 @@ def test_sanitization_xss_in_decision():
 def test_sanitization_sql_injection_query_param():
     """SQL injection in query parameters is handled safely."""
     import urllib.parse
+
     sqli = "'; DROP TABLE organizations; --"
     encoded_sqli = urllib.parse.quote(sqli, safe="")
     status, body, hdrs, _ = req("GET", f"/v1/runs?limit=10&offset={encoded_sqli}")
@@ -593,6 +701,7 @@ def test_sanitization_special_chars_in_field_names():
         "runs": 100,
     }
     status, body, hdrs, _ = req("POST", "/v1/simulate", body=payload)
+    ensure_simulation_capacity_available(status, body)
     # Should either process or reject — no crash
     assert status in (200, 400, 422), f"Expected graceful handling of special chars, got {status}"
 
@@ -611,7 +720,10 @@ def test_sanitization_script_injection_in_variable_name():
         "runs": 100,
     }
     status, body, hdrs, _ = req("POST", "/v1/simulate", body=payload)
-    assert status in (200, 400, 422), f"Expected graceful handling of template injection, got {status}"
+    ensure_simulation_capacity_available(status, body)
+    assert status in (200, 400, 422), (
+        f"Expected graceful handling of template injection, got {status}"
+    )
     body_str = json.dumps(body) if isinstance(body, dict) else str(body)
     assert "traceback" not in body_str.lower(), "Stack trace leaked on template injection"
 
@@ -637,12 +749,11 @@ def test_sanitization_extremely_long_field_values():
     """Extremely long string values in fields are handled safely."""
     payload = {
         "decision": "A" * 100000,  # 100K character decision
-        "variables": [
-            {"name": "x", "distribution": "normal", "params": {"mean": 0, "std": 1}}
-        ],
+        "variables": [{"name": "x", "distribution": "normal", "params": {"mean": 0, "std": 1}}],
         "runs": 100,
     }
     status, body, hdrs, _ = req("POST", "/v1/simulate", body=payload, timeout=15)
+    ensure_simulation_capacity_available(status, body)
     # Should either process or reject with validation
     assert status in (200, 400, 413, 422), f"Expected graceful handling of long field, got {status}"
 
@@ -653,7 +764,8 @@ def test_sanitization_extremely_long_field_values():
 def test_error_401_no_internal_details():
     """401 responses don't leak internal details."""
     status, body, hdrs, _ = req(
-        "GET", "/v1/simulate/templates",
+        "GET",
+        "/v1/simulate/templates",
         headers={"X-API-Key": "de_live_TOTALLY_FAKE_KEY_0000000000"},
         auth=False,
     )
@@ -670,6 +782,7 @@ def test_error_422_validation_structure():
     """422 validation errors show field-level errors without stack traces."""
     # Send invalid simulate payload
     status, body, hdrs, _ = req("POST", "/v1/simulate", body={"invalid": True})
+    ensure_simulation_capacity_available(status, body)
     assert status == 422, f"Expected 422 for invalid payload, got {status}: {body}"
     assert isinstance(body, dict), "422 body should be JSON dict"
     assert "error" in body, f"422 response missing 'error' key: {body}"
@@ -678,7 +791,7 @@ def test_error_422_validation_structure():
     # Should not contain stack traces
     body_str = json.dumps(body)
     assert "Traceback" not in body_str, "Stack trace in 422 response"
-    assert "File \"/" not in body_str, "Internal file path in 422 response"
+    assert 'File "/' not in body_str, "Internal file path in 422 response"
 
 
 def test_error_404_consistent_json():
@@ -709,24 +822,33 @@ def test_error_response_consistent_structure():
         if method == "POST":
             headers["Content-Type"] = "application/json"
         status, body, hdrs, _ = req(method, path, body=body_data, auth=use_auth)
+        if method == "POST" and path == "/v1/simulate":
+            ensure_simulation_capacity_available(status, body)
         if status in expected:
             if isinstance(body, dict) and "error" in body:
                 error = body["error"]
-                assert "code" in error, f"Error response missing 'code' for {method} {path}: {error}"
-                assert "message" in error, f"Error response missing 'message' for {method} {path}: {error}"
+                assert "code" in error, (
+                    f"Error response missing 'code' for {method} {path}: {error}"
+                )
+                assert "message" in error, (
+                    f"Error response missing 'message' for {method} {path}: {error}"
+                )
 
 
 def test_error_500_no_stack_trace():
     """Verify that error responses never expose stack traces."""
     # Try to trigger an error with a weird payload
     status, body, hdrs, _ = req(
-        "POST", "/v1/simulate",
+        "POST",
+        "/v1/simulate",
         body={"decision": "test", "variables": "not_a_list", "runs": 100},
     )
+    ensure_simulation_capacity_available(status, body)
     if status >= 400:
         body_str = json.dumps(body) if isinstance(body, dict) else str(body)
-        assert "Traceback (most recent call last)" not in body_str, \
+        assert "Traceback (most recent call last)" not in body_str, (
             "Full Python traceback exposed in error response"
+        )
         assert "site-packages" not in body_str, "Library paths exposed in error"
 
 
@@ -737,7 +859,8 @@ def test_audit_request_id_propagation():
     """X-Request-Id from request is propagated to response."""
     custom_rid = "req_test_12345678abcdef"
     status, body, hdrs, _ = req(
-        "GET", "/v1/health",
+        "GET",
+        "/v1/health",
         headers={"X-Request-Id": custom_rid},
     )
     resp_rid = hdrs.get("X-Request-Id") or hdrs.get("x-request-id")
@@ -748,11 +871,14 @@ def test_audit_custom_request_id_respected():
     """Client-sent X-Request-Id is respected and returned."""
     custom_id = "my-custom-trace-id-abc123"
     status, body, hdrs, _ = req(
-        "GET", "/v1/health",
+        "GET",
+        "/v1/health",
         headers={"X-Request-Id": custom_id},
     )
     resp_id = hdrs.get("X-Request-Id") or hdrs.get("x-request-id")
-    assert resp_id == custom_id, f"Custom request ID not respected: expected {custom_id}, got {resp_id}"
+    assert resp_id == custom_id, (
+        f"Custom request ID not respected: expected {custom_id}, got {resp_id}"
+    )
 
 
 def test_audit_generated_request_id_format():
@@ -766,7 +892,8 @@ def test_audit_generated_request_id_format():
 def test_audit_request_id_in_error_body():
     """Request ID appears in error response body."""
     status, body, hdrs, _ = req(
-        "GET", "/v1/simulate/templates",
+        "GET",
+        "/v1/simulate/templates",
         headers={"X-API-Key": "de_live_FAKE_KEY_FOR_AUDIT_TEST0000"},
         auth=False,
     )
@@ -777,20 +904,23 @@ def test_audit_request_id_in_error_body():
             assert error["request_id"] is not None, "request_id in error body is None"
             resp_rid = hdrs.get("X-Request-Id") or hdrs.get("x-request-id")
             if resp_rid:
-                assert error["request_id"] == resp_rid, \
+                assert error["request_id"] == resp_rid, (
                     f"request_id mismatch: body={error['request_id']} vs header={resp_rid}"
+                )
 
 
 def test_audit_request_id_on_422():
     """Request ID appears in 422 validation error body."""
     status, body, hdrs, _ = req("POST", "/v1/simulate", body={"bad": True})
+    ensure_simulation_capacity_available(status, body)
     if status == 422 and isinstance(body, dict) and "error" in body:
         error = body["error"]
         if "request_id" in error:
             resp_rid = hdrs.get("X-Request-Id") or hdrs.get("x-request-id")
             if resp_rid:
-                assert error["request_id"] == resp_rid, \
+                assert error["request_id"] == resp_rid, (
                     f"request_id mismatch on 422: body={error['request_id']} vs header={resp_rid}"
+                )
 
 
 # =============================================================================
@@ -799,7 +929,8 @@ def test_audit_request_id_on_422():
 def test_edge_http_method_override():
     """X-HTTP-Method-Override header shouldn't bypass route security."""
     status, body, hdrs, _ = raw_req(
-        "GET", "/v1/health",
+        "GET",
+        "/v1/health",
         headers={"X-HTTP-Method-Override": "DELETE"},
     )
     # Should still be treated as GET
@@ -817,13 +948,15 @@ def test_edge_json_content_type_with_charset():
     """Content-Type: application/json; charset=utf-8 is accepted."""
     payload = json.dumps(MINIMAL_SIMULATE_PAYLOAD).encode()
     status, body, hdrs, _ = raw_req(
-        "POST", "/v1/simulate",
+        "POST",
+        "/v1/simulate",
         raw_data=payload,
         headers={
             "X-API-Key": API_KEY,
             "Content-Type": "application/json; charset=utf-8",
         },
     )
+    ensure_simulation_capacity_available(status, body)
     assert status not in (415,), f"Content-Type with charset should be accepted, got {status}"
 
 
@@ -836,7 +969,8 @@ def test_edge_trailing_slash():
 def test_edge_case_sensitive_headers():
     """Header name case sensitivity is handled correctly."""
     status, body, hdrs, _ = raw_req(
-        "GET", "/v1/simulate/templates",
+        "GET",
+        "/v1/simulate/templates",
         headers={"x-api-key": API_KEY},  # lowercase header
     )
     # HTTP headers are case-insensitive per RFC 7230, but implementation may vary
@@ -858,14 +992,16 @@ def test_edge_concurrent_request_ids():
 def test_edge_empty_json_object():
     """Empty JSON object {} as body returns 422, not 500."""
     status, body, hdrs, _ = req("POST", "/v1/simulate", body={})
+    ensure_simulation_capacity_available(status, body)
     assert status == 422, f"Expected 422 for empty JSON object, got {status}: {body}"
 
 
 def test_edge_array_instead_of_object():
     """JSON array instead of object as body returns 422, not 500."""
     status, body, hdrs, _ = raw_req(
-        "POST", "/v1/simulate",
-        raw_data=b'[1, 2, 3]',
+        "POST",
+        "/v1/simulate",
+        raw_data=b"[1, 2, 3]",
         headers={"X-API-Key": API_KEY, "Content-Type": "application/json"},
     )
     assert status in (400, 422), f"Expected 422 for array body, got {status}"
@@ -874,33 +1010,37 @@ def test_edge_array_instead_of_object():
 def test_edge_numeric_decision():
     """Numeric value for decision field returns 422 (expects string)."""
     status, body, hdrs, _ = req(
-        "POST", "/v1/simulate",
+        "POST",
+        "/v1/simulate",
         body={"decision": 12345, "variables": [], "runs": 100},
     )
+    ensure_simulation_capacity_available(status, body)
     # May succeed (coercion) or fail with 422 — either way not 500
-    assert status in (200, 400, 422), f"Expected graceful handling of numeric decision, got {status}"
+    assert status in (200, 400, 422), (
+        f"Expected graceful handling of numeric decision, got {status}"
+    )
 
 
 # =============================================================================
 # Main test runner
 # =============================================================================
 def main():
-    print("=" * 72)
-    print("  Phase 11: Auth & Security Edge Case Integration Tests")
-    print(f"  Target: {BASE_URL}")
-    print("=" * 72)
+    _emit("=" * 72)
+    _emit("  Phase 11: Auth & Security Edge Case Integration Tests")
+    _emit(f"  Target: {BASE_URL}")
+    _emit("=" * 72)
 
     # Pre-flight: verify API server is reachable
-    print("\n🔍 Pre-flight check...")
+    _emit("\n🔍 Pre-flight check...")
     try:
         status, body, hdrs, elapsed = req("GET", "/v1/health", auth=False)
-        print(f"  ✅ API server reachable ({elapsed:.3f}s, status={status})")
+        _emit(f"  ✅ API server reachable ({elapsed:.3f}s, status={status})")
     except Exception as e:
-        print(f"  ❌ Cannot reach API server: {e}")
+        _emit(f"  ❌ Cannot reach API server: {e}")
         sys.exit(1)
 
     # ── Authentication Tests ──────────────────────────────────────────────────
-    print("\n── Authentication Tests ─────────────────────────────────────────")
+    _emit("\n── Authentication Tests ─────────────────────────────────────────")
     check("auth_valid_api_key_header", test_auth_valid_api_key_header)
     check("auth_valid_bearer_token", test_auth_valid_bearer_token)
     check("auth_missing_api_key", test_auth_missing_api_key)
@@ -916,7 +1056,7 @@ def main():
     check("auth_wrong_scheme", test_auth_wrong_scheme)
 
     # ── Authorization & RBAC Tests ────────────────────────────────────────────
-    print("\n── Authorization & RBAC Tests ───────────────────────────────────")
+    _emit("\n── Authorization & RBAC Tests ───────────────────────────────────")
     check("rbac_write_endpoint_with_valid_key", test_rbac_write_endpoint_with_valid_key)
     check("rbac_org_isolation_invalid_run_id", test_rbac_org_isolation_invalid_run_id)
     check("rbac_health_no_auth_required", test_rbac_health_no_auth_required)
@@ -924,7 +1064,7 @@ def main():
     check("rbac_openapi_no_auth_required", test_rbac_openapi_no_auth_required)
 
     # ── Request Validation Tests ──────────────────────────────────────────────
-    print("\n── Request Validation Tests ─────────────────────────────────────")
+    _emit("\n── Request Validation Tests ─────────────────────────────────────")
     check("request_oversized_body", test_request_oversized_body)
     check("request_invalid_content_type", test_request_invalid_content_type)
     check("request_missing_content_type", test_request_missing_content_type)
@@ -934,7 +1074,7 @@ def main():
     check("request_malformed_json", test_request_malformed_json)
 
     # ── Security Headers Tests ────────────────────────────────────────────────
-    print("\n── Security Headers Tests ──────────────────────────────────────")
+    _emit("\n── Security Headers Tests ──────────────────────────────────────")
     check("headers_request_id_present", test_headers_request_id_present)
     check("headers_request_id_unique", test_headers_request_id_unique)
     check("headers_no_server_version_leak", test_headers_no_server_version_leak)
@@ -944,23 +1084,31 @@ def main():
     check("headers_request_id_on_error", test_headers_request_id_on_error)
 
     # ── Rate Limiting Tests ───────────────────────────────────────────────────
-    print("\n── Rate Limiting Tests ─────────────────────────────────────────")
+    _emit("\n── Rate Limiting Tests ─────────────────────────────────────────")
     check("rate_limit_headers_present", test_rate_limit_headers_present)
-    check("rate_limit_not_triggered_under_normal_load", test_rate_limit_not_triggered_under_normal_load)
+    check(
+        "rate_limit_not_triggered_under_normal_load",
+        test_rate_limit_not_triggered_under_normal_load,
+    )
     check("rate_limit_429_response_format", test_rate_limit_429_response_format)
 
     # ── Input Sanitization Tests ──────────────────────────────────────────────
-    print("\n── Input Sanitization Tests ─────────────────────────────────────")
+    _emit("\n── Input Sanitization Tests ─────────────────────────────────────")
     check("sanitization_xss_in_decision", test_sanitization_xss_in_decision)
     check("sanitization_sql_injection_query_param", test_sanitization_sql_injection_query_param)
     check("sanitization_path_traversal", test_sanitization_path_traversal)
-    check("sanitization_special_chars_in_field_names", test_sanitization_special_chars_in_field_names)
-    check("sanitization_script_injection_in_variable_name", test_sanitization_script_injection_in_variable_name)
+    check(
+        "sanitization_special_chars_in_field_names", test_sanitization_special_chars_in_field_names
+    )
+    check(
+        "sanitization_script_injection_in_variable_name",
+        test_sanitization_script_injection_in_variable_name,
+    )
     check("sanitization_null_bytes_in_payload", test_sanitization_null_bytes_in_payload)
     check("sanitization_extremely_long_field_values", test_sanitization_extremely_long_field_values)
 
     # ── Error Response Security Tests ─────────────────────────────────────────
-    print("\n── Error Response Security Tests ────────────────────────────────")
+    _emit("\n── Error Response Security Tests ────────────────────────────────")
     check("error_401_no_internal_details", test_error_401_no_internal_details)
     check("error_422_validation_structure", test_error_422_validation_structure)
     check("error_404_consistent_json", test_error_404_consistent_json)
@@ -969,7 +1117,7 @@ def main():
     check("error_500_no_stack_trace", test_error_500_no_stack_trace)
 
     # ── Audit & Tracking Tests ────────────────────────────────────────────────
-    print("\n── Audit & Tracking Tests ──────────────────────────────────────")
+    _emit("\n── Audit & Tracking Tests ──────────────────────────────────────")
     check("audit_request_id_propagation", test_audit_request_id_propagation)
     check("audit_custom_request_id_respected", test_audit_custom_request_id_respected)
     check("audit_generated_request_id_format", test_audit_generated_request_id_format)
@@ -977,7 +1125,7 @@ def main():
     check("audit_request_id_on_422", test_audit_request_id_on_422)
 
     # ── Additional Edge Case Tests ────────────────────────────────────────────
-    print("\n── Additional Edge Case Tests ──────────────────────────────────")
+    _emit("\n── Additional Edge Case Tests ──────────────────────────────────")
     check("edge_http_method_override", test_edge_http_method_override)
     check("edge_double_encoding_path", test_edge_double_encoding_path)
     check("edge_json_content_type_with_charset", test_edge_json_content_type_with_charset)
@@ -992,29 +1140,47 @@ def main():
 
 
 def _print_summary():
-    print("\n" + "=" * 72)
+    _emit("\n" + "=" * 72)
     passed = sum(1 for r in results if r[0] == PASS)
     failed = sum(1 for r in results if r[0] == FAIL)
     skipped = sum(1 for r in results if r[0] == SKIP)
     total = len(results)
 
-    print(f"  RESULTS: {passed}/{total} passed, {failed} failed, {skipped} skipped")
+    _emit(f"  RESULTS: {passed}/{total} passed, {failed} failed, {skipped} skipped")
 
     if timings:
         avg = sum(t for _, t in timings) / len(timings)
         slowest = sorted(timings, key=lambda x: x[1], reverse=True)[:5]
-        print(f"  Average time: {avg:.3f}s")
-        print("  Slowest tests:")
+        _emit(f"  Average time: {avg:.3f}s")
+        _emit("  Slowest tests:")
         for name, t in slowest:
-            print(f"    {t:.3f}s  {name}")
+            _emit(f"    {t:.3f}s  {name}")
 
     if failed > 0:
-        print("\n  FAILURES:")
+        _emit("\n  FAILURES:")
         for r in results:
             if r[0] == FAIL:
-                print(f"    {FAIL} {r[1]}: {r[2]}")
+                _emit(f"    {FAIL} {r[1]}: {r[2]}")
 
-    print("=" * 72)
+    _emit("=" * 72)
+
+    artifact_path = write_live_integration_summary(
+        SUITE_NAME,
+        script="tests/integration/test_auth_security.py",
+        passed=passed,
+        failed=failed,
+        skipped=skipped,
+        total=total,
+        elapsed_seconds=time.perf_counter() - STARTED,
+        details={
+            "api_key_configured": bool(API_KEY_CONFIGURED),
+            "base_url": BASE_URL,
+            "failed_checks": [name for icon, name, *_ in results if icon == FAIL],
+            "skipped_checks": [name for icon, name, *_ in results if icon == SKIP],
+            "skipped_count": skipped,
+        },
+    )
+    _emit(f"Summary artifact: {artifact_path}")
 
     if failed > 0:
         sys.exit(1)

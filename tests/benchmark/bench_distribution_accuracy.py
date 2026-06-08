@@ -17,6 +17,7 @@ Usage:
 
 Requires: mojo_build/simulate binary (build with: make build-mojo)
 """
+
 from __future__ import annotations
 
 import json
@@ -41,9 +42,9 @@ class DistTestCase:
     name: str
     dist_type: str
     params: dict
-    expected_mean: float | None     # None → skip mean test (e.g. Cauchy)
-    expected_std: float | None      # None → use loose mean tolerance
-    tolerance_sigmas: float = 4.0      # multiplier for σ/√N tolerance band
+    expected_mean: float | None  # None → skip mean test (e.g. Cauchy)
+    expected_std: float | None  # None → use loose mean tolerance
+    tolerance_sigmas: float = 4.0  # multiplier for σ/√N tolerance band
     skip_mean: bool = False
     is_fixed: bool = False
 
@@ -53,190 +54,192 @@ class DistTestCase:
 
 DISTRIBUTION_TESTS: list[DistTestCase] = [
     # ── Continuous distributions ────────────────────────────────────────────
-
     # Normal: E[X]=μ, Var[X]=σ²
     DistTestCase(
-        "normal(100,20)", "normal",
+        "normal(100,20)",
+        "normal",
         {"mean": 100, "std": 20},
-        expected_mean=100.0, expected_std=20.0,
+        expected_mean=100.0,
+        expected_std=20.0,
     ),
-
     # Uniform: E[X]=(a+b)/2, Var[X]=(b-a)²/12
     DistTestCase(
-        "uniform(0,100)", "uniform",
+        "uniform(0,100)",
+        "uniform",
         {"low": 0, "high": 100},
-        expected_mean=50.0, expected_std=100.0 / math.sqrt(12),
+        expected_mean=50.0,
+        expected_std=100.0 / math.sqrt(12),
     ),
-
     # Triangular: E[X]=(a+b+c)/3
     DistTestCase(
-        "triangular(10,50,90)", "triangular",
+        "triangular(10,50,90)",
+        "triangular",
         {"low": 10, "mode": 50, "high": 90},
         expected_mean=50.0,
-        expected_std=math.sqrt(
-            (10**2 + 50**2 + 90**2 - 10 * 50 - 10 * 90 - 50 * 90) / 18
-        ),
+        expected_std=math.sqrt((10**2 + 50**2 + 90**2 - 10 * 50 - 10 * 90 - 50 * 90) / 18),
     ),
-
     # Lognormal: params are (μ_log, σ_log) of underlying normal
     # E[X] = exp(μ + σ²/2)
     DistTestCase(
-        "lognormal(4,0.5)", "lognormal",
+        "lognormal(4,0.5)",
+        "lognormal",
         {"mean": 4, "std": 0.5},
         expected_mean=math.exp(4 + 0.5**2 / 2),
         expected_std=None,  # heavy-tailed → use loose tolerance
         tolerance_sigmas=5.0,
     ),
-
     # Exponential: E[X]=1/λ, Var[X]=1/λ²
     DistTestCase(
-        "exponential(0.1)", "exponential",
+        "exponential(0.1)",
+        "exponential",
         {"rate": 0.1},
-        expected_mean=10.0, expected_std=10.0,
+        expected_mean=10.0,
+        expected_std=10.0,
     ),
-
     # Beta: E[X]=α/(α+β)
     DistTestCase(
-        "beta(2,5)", "beta",
+        "beta(2,5)",
+        "beta",
         {"alpha": 2, "beta": 5},
         expected_mean=2.0 / 7.0,
         expected_std=math.sqrt(2 * 5 / (7**2 * 8)),
         tolerance_sigmas=5.0,
     ),
-
     # Bernoulli: E[X]=p
     DistTestCase(
-        "bernoulli(0.7)", "bernoulli",
+        "bernoulli(0.7)",
+        "bernoulli",
         {"p": 0.7},
         expected_mean=0.7,
         expected_std=math.sqrt(0.7 * 0.3),
     ),
-
     # Poisson: E[X]=λ, Var[X]=λ
     DistTestCase(
-        "poisson(5)", "poisson",
+        "poisson(5)",
+        "poisson",
         {"lambda": 5},
-        expected_mean=5.0, expected_std=math.sqrt(5.0),
+        expected_mean=5.0,
+        expected_std=math.sqrt(5.0),
     ),
-
     # Weibull: E[X]=scale·Γ(1+1/shape)
     DistTestCase(
-        "weibull(2,10)", "weibull",
+        "weibull(2,10)",
+        "weibull",
         {"shape": 2, "scale": 10},
         expected_mean=10.0 * math.gamma(1 + 1.0 / 2),
         expected_std=None,
         tolerance_sigmas=5.0,
     ),
-
     # Gamma: E[X]=shape·scale, Var[X]=shape·scale²
     DistTestCase(
-        "gamma(3,2)", "gamma",
+        "gamma(3,2)",
+        "gamma",
         {"shape": 3, "scale": 2},
         expected_mean=6.0,
         expected_std=math.sqrt(3) * 2,
     ),
-
     # PERT: E[X]=(low+γ·likely+high)/(γ+2)  (γ=4 default)
     DistTestCase(
-        "pert(10,50,90)", "pert",
+        "pert(10,50,90)",
+        "pert",
         {"low": 10, "likely": 50, "high": 90, "gamma": 4},
         expected_mean=(10 + 4 * 50 + 90) / 6,
         expected_std=None,
         tolerance_sigmas=5.0,
     ),
-
     # Student-t: E[X]=loc for df>1
     DistTestCase(
-        "student_t(10,0,1)", "student_t",
+        "student_t(10,0,1)",
+        "student_t",
         {"df": 10, "loc": 0, "scale": 1},
         expected_mean=0.0,
         expected_std=None,  # heavier tails
         tolerance_sigmas=5.0,
     ),
-
     # Cauchy: no defined mean or variance → skip mean, just check structure
     DistTestCase(
-        "cauchy(0,1)", "cauchy",
+        "cauchy(0,1)",
+        "cauchy",
         {"location": 0, "scale": 1},
-        expected_mean=None, expected_std=None,
+        expected_mean=None,
+        expected_std=None,
         skip_mean=True,
     ),
-
     # Laplace: E[X]=μ, Var[X]=2b²
     DistTestCase(
-        "laplace(10,2)", "laplace",
+        "laplace(10,2)",
+        "laplace",
         {"mu": 10, "b": 2},
         expected_mean=10.0,
         expected_std=2 * math.sqrt(2),
     ),
-
     # Pareto: E[X]=α·x_m/(α-1) for α>1
     DistTestCase(
-        "pareto(3,1)", "pareto",
+        "pareto(3,1)",
+        "pareto",
         {"alpha": 3, "x_min": 1},
         expected_mean=3.0 * 1.0 / (3.0 - 1.0),  # = 1.5
         expected_std=None,  # heavy-tailed
         tolerance_sigmas=5.0,
     ),
-
     # Gumbel: E[X]=μ+β·γ_EM
     DistTestCase(
-        "gumbel(0,1)", "gumbel",
+        "gumbel(0,1)",
+        "gumbel",
         {"mu": 0, "beta": 1},
         expected_mean=EULER_MASCHERONI,
         expected_std=None,
         tolerance_sigmas=5.0,
     ),
-
     # Rayleigh: E[X]=σ·√(π/2)
     DistTestCase(
-        "rayleigh(1)", "rayleigh",
+        "rayleigh(1)",
+        "rayleigh",
         {"sigma": 1},
         expected_mean=math.sqrt(math.pi / 2),
         expected_std=None,
         tolerance_sigmas=5.0,
     ),
-
     # Arcsine: E[X]=(low+high)/2
     DistTestCase(
-        "arcsine(0,1)", "arcsine",
+        "arcsine(0,1)",
+        "arcsine",
         {"low": 0, "high": 1},
         expected_mean=0.5,
         expected_std=None,
         tolerance_sigmas=5.0,
     ),
-
     # Logistic: E[X]=μ, Var[X]=(scale·π)²/3
     DistTestCase(
-        "logistic(5,2)", "logistic",
+        "logistic(5,2)",
+        "logistic",
         {"mu": 5, "scale": 2},
         expected_mean=5.0,
         expected_std=2 * math.pi / math.sqrt(3),
     ),
-
     # Half-normal: E[X]=σ·√(2/π)
     DistTestCase(
-        "halfnormal(3)", "halfnormal",
+        "halfnormal(3)",
+        "halfnormal",
         {"sigma": 3},
         expected_mean=3 * math.sqrt(2 / math.pi),
         expected_std=None,
         tolerance_sigmas=5.0,
     ),
-
     # ── Fixed (degenerate) ─────────────────────────────────────────────────
-
     DistTestCase(
-        "fixed(42)", "fixed",
+        "fixed(42)",
+        "fixed",
         {"value": 42},
-        expected_mean=42.0, expected_std=0.0,
+        expected_mean=42.0,
+        expected_std=0.0,
         is_fixed=True,
     ),
-
     # ── Discrete distributions ─────────────────────────────────────────────
-
     # Negative binomial: E[X]=r·(1-p)/p
     DistTestCase(
-        "neg_binomial(5,0.5)", "neg_binomial",
+        "neg_binomial(5,0.5)",
+        "neg_binomial",
         {"r": 5, "p": 0.5},
         expected_mean=5.0 * 0.5 / 0.5,  # = 5.0
         expected_std=None,
@@ -247,14 +250,13 @@ DISTRIBUTION_TESTS: list[DistTestCase] = [
 
 # ── Engine invocation ──────────────────────────────────────────────────────────
 
+
 def run_engine(tc: DistTestCase, n: int = N_RUNS) -> dict:
     """Pipe a single-variable monte_carlo payload to the binary and return parsed JSON."""
     payload = {
         "engine_type": "monte_carlo",
         "runs": n,
-        "variables": [
-            {"name": "x", "distribution": tc.dist_type, "params": tc.params}
-        ],
+        "variables": [{"name": "x", "distribution": tc.dist_type, "params": tc.params}],
         "objective_function": "x",
     }
     try:
@@ -284,9 +286,11 @@ def run_engine(tc: DistTestCase, n: int = N_RUNS) -> dict:
 
 # ── Statistical tests ──────────────────────────────────────────────────────────
 
+
 @dataclass
 class TestResult:
     """Result of one distribution test."""
+
     name: str
     passed: bool
     issues: list[str] = field(default_factory=list)
@@ -398,6 +402,7 @@ def test_distribution(tc: DistTestCase) -> TestResult:
 
 # ── Main ───────────────────────────────────────────────────────────────────────
 
+
 def main() -> None:
     if not BINARY.exists():
         print(f"❌ Binary not found at {BINARY}. Build with: make build-mojo")
@@ -417,7 +422,9 @@ def main() -> None:
         tr = test_distribution(tc)
         results.append(tr)
         if tr.passed:
-            print(f"  ✅ {tr.name:<30s}  mean={tr.mean:>12.4f}  std={tr.std:>10.4f}  score={tr.score:.3f}  ({tr.elapsed_ms:.0f}ms)")
+            print(
+                f"  ✅ {tr.name:<30s}  mean={tr.mean:>12.4f}  std={tr.std:>10.4f}  score={tr.score:.3f}  ({tr.elapsed_ms:.0f}ms)"
+            )
         else:
             print(f"  ❌ {tr.name:<30s}  FAILED")
             for issue in tr.issues:

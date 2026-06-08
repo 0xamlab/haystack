@@ -44,7 +44,20 @@ class _FakeRedis:
             return 1 if existed else 0
 
 
-def _build_app(redis_client: object | None = None, delay_seconds: float = 0.0) -> tuple[FastAPI, dict[str, int]]:
+class _BrokenRedis:
+    async def get(self, key: str):
+        raise ConnectionError(f"redis unavailable for get:{key}")
+
+    async def set(self, key: str, value: object, ex: int | None = None, nx: bool = False):
+        raise ConnectionError(f"redis unavailable for set:{key}")
+
+    async def delete(self, key: str) -> int:
+        raise ConnectionError(f"redis unavailable for delete:{key}")
+
+
+def _build_app(
+    redis_client: object | None = None, delay_seconds: float = 0.0
+) -> tuple[FastAPI, dict[str, int]]:
     app = FastAPI()
     counters = {"creates": 0, "queries": 0}
     app.add_middleware(IdempotencyMiddleware)
@@ -81,7 +94,9 @@ def test_duplicate_write_replays_original_response() -> None:
     with SyncASGIClient(app) as client:
         headers = {"Idempotency-Key": "idem-1", "X-Request-Id": "req-first"}
         first = client.post("/v1/widgets", json={"name": "alpha"}, headers=headers)
-        second = client.post("/v1/widgets", json={"name": "alpha"}, headers={"Idempotency-Key": "idem-1"})
+        second = client.post(
+            "/v1/widgets", json={"name": "alpha"}, headers={"Idempotency-Key": "idem-1"}
+        )
 
     assert first.status_code == 200
     assert second.status_code == 200
@@ -93,8 +108,12 @@ def test_duplicate_write_replays_original_response() -> None:
 def test_duplicate_key_with_different_payload_conflicts() -> None:
     app, counters = _build_app()
     with SyncASGIClient(app) as client:
-        first = client.post("/v1/widgets", json={"name": "alpha"}, headers={"Idempotency-Key": "idem-2"})
-        second = client.post("/v1/widgets", json={"name": "beta"}, headers={"Idempotency-Key": "idem-2"})
+        first = client.post(
+            "/v1/widgets", json={"name": "alpha"}, headers={"Idempotency-Key": "idem-2"}
+        )
+        second = client.post(
+            "/v1/widgets", json={"name": "beta"}, headers={"Idempotency-Key": "idem-2"}
+        )
 
     assert first.status_code == 200
     assert second.status_code == 409
@@ -131,10 +150,14 @@ def test_duplicate_write_replays_from_shared_redis_store() -> None:
     app_two, _ = _build_app(redis_client=redis_client)
 
     with SyncASGIClient(app_one) as first_client:
-        first = first_client.post("/v1/widgets", json={"name": "alpha"}, headers={"Idempotency-Key": "idem-redis"})
+        first = first_client.post(
+            "/v1/widgets", json={"name": "alpha"}, headers={"Idempotency-Key": "idem-redis"}
+        )
 
     with SyncASGIClient(app_two) as second_client:
-        second = second_client.post("/v1/widgets", json={"name": "alpha"}, headers={"Idempotency-Key": "idem-redis"})
+        second = second_client.post(
+            "/v1/widgets", json={"name": "alpha"}, headers={"Idempotency-Key": "idem-redis"}
+        )
 
     assert first.status_code == 200
     assert second.status_code == 200
@@ -187,3 +210,35 @@ def test_concurrent_query_posts_do_not_trigger_write_conflict() -> None:
 
     assert sorted(status for status, _ in results) == [200, 200]
     assert counters["queries"] == 2
+
+
+def test_write_without_idempotency_key_falls_back_when_redis_is_unavailable() -> None:
+    app, counters = _build_app(redis_client=_BrokenRedis())
+
+    with SyncASGIClient(app) as client:
+        response = client.post("/v1/widgets", json={"name": "alpha"})
+
+    assert response.status_code == 200
+    assert response.json()["create_count"] == 1
+    assert counters["creates"] == 1
+
+
+def test_idempotent_write_replays_when_redis_is_unavailable() -> None:
+    app, counters = _build_app(redis_client=_BrokenRedis())
+
+    with SyncASGIClient(app) as client:
+        first = client.post(
+            "/v1/widgets",
+            json={"name": "alpha"},
+            headers={"Idempotency-Key": "idem-broken-redis"},
+        )
+        second = client.post(
+            "/v1/widgets",
+            json={"name": "alpha"},
+            headers={"Idempotency-Key": "idem-broken-redis"},
+        )
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.json() == second.json()
+    assert counters["creates"] == 1

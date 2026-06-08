@@ -24,7 +24,12 @@ class _FakeProcess:
         return None
 
 
-@pytest.mark.asyncio
+class _BrokenCommunicateProcess(_FakeProcess):
+    async def communicate(self, input: bytes | None = None) -> tuple[bytes, bytes]:
+        raise RuntimeError("unable to perform operation on <WriteUnixTransport closed=True>")
+
+
+@pytest.mark.anyio
 async def test_invoke_subprocess_raises_on_engine_error_payload(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -42,7 +47,7 @@ async def test_invoke_subprocess_raises_on_engine_error_payload(
     assert "bootstrap_config required" in str(exc_info.value)
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_invoke_subprocess_returns_json_payload_on_success(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -60,7 +65,7 @@ async def test_invoke_subprocess_returns_json_payload_on_success(
     assert result["summary"]["mean"] == 42.0
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_invoke_subprocess_uses_python_fallback_when_binary_missing_and_allowed(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -89,7 +94,7 @@ async def test_invoke_subprocess_uses_python_fallback_when_binary_missing_and_al
     assert result["scenarios_run"] == 250
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_invoke_subprocess_suppresses_repeated_missing_binary_warnings(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -131,10 +136,12 @@ async def test_invoke_subprocess_suppresses_repeated_missing_binary_warnings(
     await mojo_adapter._invoke_subprocess({"engine_type": "lhs", "runs": 10})
 
     assert [event for event, _ in warnings] == ["mojo_binary_missing_using_python_fallback"]
-    assert [event for event, _ in debugs] == ["mojo_binary_missing_using_python_fallback_suppressed"]
+    assert [event for event, _ in debugs] == [
+        "mojo_binary_missing_using_python_fallback_suppressed"
+    ]
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_invoke_subprocess_uses_python_fallback_when_engine_crashes_and_allowed(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -144,6 +151,72 @@ async def test_invoke_subprocess_uses_python_fallback_when_engine_crashes_and_al
 
     async def _fake_create_subprocess_exec(*args, **kwargs):  # type: ignore[no-untyped-def]
         return _FakeProcess(stdout=b"", stderr=b"segfault", returncode=-5)
+
+    async def _fake_invoke_python_fallback(payload: dict[str, object]) -> dict[str, object]:
+        return {
+            "engine_version": "0.1.0-python-fallback",
+            "scenarios_run": payload["runs"],
+            "summary": {"mean": 123.0},
+            "percentiles": {"p5": 1.0, "p25": 2.0, "p50": 3.0, "p75": 4.0, "p95": 5.0},
+            "risk": {"probability_of_loss": 0.0, "var_95": 1.0},
+            "simulation_model": payload["engine_type"],
+            "engine_type": payload["engine_type"],
+        }
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", _fake_create_subprocess_exec)
+    monkeypatch.setattr(mojo_adapter, "_invoke_python_fallback", _fake_invoke_python_fallback)
+
+    result = await mojo_adapter._invoke_subprocess({"engine_type": "monte_carlo", "runs": 250})
+
+    assert result["engine_version"] == "0.1.0-python-fallback"
+    assert result["simulation_model"] == "monte_carlo"
+    assert result["engine_type"] == "monte_carlo"
+    assert result["scenarios_run"] == 250
+
+
+@pytest.mark.anyio
+async def test_invoke_subprocess_uses_python_fallback_when_binary_is_unexecutable_and_allowed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(mojo_adapter, "_BINARY_PATH", Path(__file__))
+    monkeypatch.setattr(mojo_adapter.os, "access", lambda path, mode: True)
+    monkeypatch.setattr(mojo_adapter.settings, "runtime_fallback_mode", "allow")
+
+    async def _fake_create_subprocess_exec(*args, **kwargs):  # type: ignore[no-untyped-def]
+        raise OSError(8, "Exec format error")
+
+    async def _fake_invoke_python_fallback(payload: dict[str, object]) -> dict[str, object]:
+        return {
+            "engine_version": "0.1.0-python-fallback",
+            "scenarios_run": payload["runs"],
+            "summary": {"mean": 123.0},
+            "percentiles": {"p5": 1.0, "p25": 2.0, "p50": 3.0, "p75": 4.0, "p95": 5.0},
+            "risk": {"probability_of_loss": 0.0, "var_95": 1.0},
+            "simulation_model": payload["engine_type"],
+            "engine_type": payload["engine_type"],
+        }
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", _fake_create_subprocess_exec)
+    monkeypatch.setattr(mojo_adapter, "_invoke_python_fallback", _fake_invoke_python_fallback)
+
+    result = await mojo_adapter._invoke_subprocess({"engine_type": "monte_carlo", "runs": 250})
+
+    assert result["engine_version"] == "0.1.0-python-fallback"
+    assert result["simulation_model"] == "monte_carlo"
+    assert result["engine_type"] == "monte_carlo"
+    assert result["scenarios_run"] == 250
+
+
+@pytest.mark.anyio
+async def test_invoke_subprocess_uses_python_fallback_when_subprocess_io_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(mojo_adapter, "_BINARY_PATH", Path(__file__))
+    monkeypatch.setattr(mojo_adapter.os, "access", lambda path, mode: True)
+    monkeypatch.setattr(mojo_adapter.settings, "runtime_fallback_mode", "allow")
+
+    async def _fake_create_subprocess_exec(*args, **kwargs):  # type: ignore[no-untyped-def]
+        return _BrokenCommunicateProcess(stdout=b"", stderr=b"", returncode=None)
 
     async def _fake_invoke_python_fallback(payload: dict[str, object]) -> dict[str, object]:
         return {
@@ -225,10 +298,12 @@ def test_invoke_subprocess_sync_rewarns_after_cooldown_when_engine_crashes(
         "mojo_engine_crashed_using_python_fallback",
         "mojo_engine_crashed_using_python_fallback",
     ]
-    assert [event for event, _ in debugs] == ["mojo_engine_crashed_using_python_fallback_suppressed"]
+    assert [event for event, _ in debugs] == [
+        "mojo_engine_crashed_using_python_fallback_suppressed"
+    ]
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_invoke_python_fallback_returns_supported_engine_identity() -> None:
     result = await mojo_adapter._invoke_python_fallback(
         {
@@ -252,7 +327,7 @@ async def test_invoke_python_fallback_returns_supported_engine_identity() -> Non
     assert result["summary"]["mean"] == 42.0
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_invoke_python_fallback_loads_adapter_by_file_path_when_mojo_is_shadowed(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -296,7 +371,7 @@ async def test_invoke_python_fallback_loads_adapter_by_file_path_when_mojo_is_sh
                 sys.modules[name] = module
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_invoke_subprocess_raises_when_binary_missing_and_runtime_fallbacks_denied(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -311,7 +386,7 @@ async def test_invoke_subprocess_raises_when_binary_missing_and_runtime_fallback
     assert exc_info.value.code == "binary_missing"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_invoke_engine_rejects_invalid_payload_before_touching_mojo(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -331,7 +406,7 @@ async def test_invoke_engine_rejects_invalid_payload_before_touching_mojo(
     assert exc_info.value.code == "invalid_payload"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_invoke_engine_routes_inactive_pool_to_fallback_path(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -372,7 +447,7 @@ async def test_invoke_engine_routes_inactive_pool_to_fallback_path(
     assert result["simulation_model"] == "monte_carlo"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_invoke_engine_routes_unhealthy_pool_worker_to_fallback_path(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -422,7 +497,9 @@ def test_invoke_engine_sync_prefers_pool_sync(monkeypatch: pytest.MonkeyPatch) -
     from apps.api_server.compute import mojo_pool
 
     class _FakePool:
-        def invoke_sync(self, payload: dict[str, object], timeout: float | None = None) -> dict[str, object]:
+        def invoke_sync(
+            self, payload: dict[str, object], timeout: float | None = None
+        ) -> dict[str, object]:
             assert timeout == 7.0
             assert payload["engine_type"] == "field_map"
             return {"engine_type": "field_map", "mapped": True}
@@ -440,12 +517,16 @@ def test_invoke_engine_sync_routes_inactive_pool_to_sync_fallback(
     from apps.api_server.compute import mojo_pool
 
     class _InactivePool:
-        def invoke_sync(self, payload: dict[str, object], timeout: float | None = None) -> dict[str, object]:
+        def invoke_sync(
+            self, payload: dict[str, object], timeout: float | None = None
+        ) -> dict[str, object]:
             raise mojo_pool.MojoEngineError("Mojo pool is not running")
 
     monkeypatch.setattr(mojo_pool, "get_pool_sync", lambda: _InactivePool())
 
-    def _fake_invoke_subprocess_sync(payload: dict[str, object], *, timeout: float = 60.0) -> dict[str, object]:
+    def _fake_invoke_subprocess_sync(
+        payload: dict[str, object], *, timeout: float = 60.0
+    ) -> dict[str, object]:
         assert payload["engine_type"] == "field_map"
         assert timeout == 5.0
         return {"engine_type": "field_map", "mapped": True}
@@ -498,7 +579,43 @@ def test_invoke_subprocess_sync_uses_python_fallback_when_engine_crashes_and_all
     assert result["scenarios_run"] == 250
 
 
-@pytest.mark.asyncio
+def test_invoke_subprocess_sync_uses_python_fallback_when_binary_is_unexecutable_and_allowed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(mojo_adapter, "_BINARY_PATH", Path(__file__))
+    monkeypatch.setattr(mojo_adapter.os, "access", lambda path, mode: True)
+    monkeypatch.setattr(mojo_adapter.settings, "runtime_fallback_mode", "allow")
+
+    def _fake_run(*args, **kwargs):  # type: ignore[no-untyped-def]
+        raise OSError(8, "Exec format error")
+
+    def _fake_invoke_python_fallback_sync(payload: dict[str, object]) -> dict[str, object]:
+        return {
+            "engine_version": "0.1.0-python-fallback",
+            "scenarios_run": payload["runs"],
+            "summary": {"mean": 123.0},
+            "percentiles": {"p5": 1.0, "p25": 2.0, "p50": 3.0, "p75": 4.0, "p95": 5.0},
+            "risk": {"probability_of_loss": 0.0, "var_95": 1.0},
+            "simulation_model": payload["engine_type"],
+            "engine_type": payload["engine_type"],
+        }
+
+    monkeypatch.setattr(mojo_adapter.subprocess, "run", _fake_run)
+    monkeypatch.setattr(
+        mojo_adapter,
+        "_invoke_python_fallback_sync",
+        _fake_invoke_python_fallback_sync,
+    )
+
+    result = mojo_adapter._invoke_subprocess_sync({"engine_type": "monte_carlo", "runs": 250})
+
+    assert result["engine_version"] == "0.1.0-python-fallback"
+    assert result["simulation_model"] == "monte_carlo"
+    assert result["engine_type"] == "monte_carlo"
+    assert result["scenarios_run"] == 250
+
+
+@pytest.mark.anyio
 async def test_pool_invoke_raises_structured_error_when_worker_becomes_unhealthy(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -4,6 +4,7 @@ Shared pytest fixtures for all test suites.
 Unit tests: no external dependencies required.
 Legacy live integration tests can auto-start a local API server under pytest.
 """
+
 import asyncio
 import contextlib
 import os
@@ -17,6 +18,10 @@ from pathlib import Path
 import httpx
 import pytest
 from httpx import ASGITransport, AsyncClient
+from tests.integration.live_local_defaults import (
+    DEFAULT_LOCAL_LIVE_API_KEY,
+    DEFAULT_LOCAL_LIVE_BASE_URL,
+)
 
 # Ensure project root is on PYTHONPATH
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -29,12 +34,11 @@ os.environ.setdefault("DATABASE_URL_SYNC", "postgresql://angel:@localhost:5432/d
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/1")  # DB 1 for tests
 os.environ.setdefault("S3_ENDPOINT_URL", "http://localhost:9000")
 os.environ.setdefault("JWT_SECRET", "test-secret-key-not-for-production")
-os.environ.setdefault("DE_BASE_URL", "http://localhost:8000")
-os.environ.setdefault("ALGENTA_BASE_URL", "http://localhost:8000")
+os.environ.setdefault("DE_BASE_URL", DEFAULT_LOCAL_LIVE_BASE_URL)
+os.environ.setdefault("ALGENTA_BASE_URL", DEFAULT_LOCAL_LIVE_BASE_URL)
 
 _ROOT = Path(__file__).resolve().parent.parent
-_LEGACY_LIVE_API_KEY = "de_live_LrL6UWSAfgXsTjgfyaboI9aolrsznjLU"
-_LIVE_SERVER_MARKER = "http://localhost:8000"
+_LIVE_SERVER_MARKER = DEFAULT_LOCAL_LIVE_BASE_URL
 _LIVE_SERVER_LOG_DIR: Path | None = None
 _LIVE_SERVER_LOG_PATH: Path | None = None
 _LIVE_SERVER_PROC: subprocess.Popen[str] | None = None
@@ -71,8 +75,8 @@ _BASE_TEST_ENV = {
     "NUMEXPR_NUM_THREADS": "1",
     "VECLIB_MAXIMUM_THREADS": "1",
     "KMP_INIT_AT_FORK": "FALSE",
-    "DE_BASE_URL": "http://localhost:8000",
-    "ALGENTA_BASE_URL": "http://localhost:8000",
+    "DE_BASE_URL": DEFAULT_LOCAL_LIVE_BASE_URL,
+    "ALGENTA_BASE_URL": DEFAULT_LOCAL_LIVE_BASE_URL,
     "ALGENTA_SOURCES_DIR": str(_PYTEST_SOURCES_DIR),
     "ALGENTA_SOURCE_ARTIFACT_CACHE_DIR": str(_PYTEST_ARTIFACT_CACHE_DIR),
 }
@@ -110,8 +114,7 @@ def _run_migrations() -> None:
     )
     if proc.returncode != 0:
         raise RuntimeError(
-            "Alembic upgrade failed:\n"
-            f"stdout:\n{proc.stdout}\n\nstderr:\n{proc.stderr}"
+            f"Alembic upgrade failed:\nstdout:\n{proc.stdout}\n\nstderr:\n{proc.stderr}"
         )
 
 
@@ -133,10 +136,12 @@ async def _seed_legacy_live_api_key() -> str:
 
     engine = create_async_engine(os.environ["DATABASE_URL"], echo=False)
     session_factory = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
-    hashed_key = hash_api_key(_LEGACY_LIVE_API_KEY)
+    hashed_key = hash_api_key(DEFAULT_LOCAL_LIVE_API_KEY)
 
     async with session_factory() as session:
-        org_result = await session.execute(select(Organization).where(Organization.slug == "pytest-live-localhost"))
+        org_result = await session.execute(
+            select(Organization).where(Organization.slug == "pytest-live-localhost")
+        )
         org = org_result.scalar_one_or_none()
         if org is None:
             org = Organization(
@@ -179,7 +184,7 @@ async def _seed_legacy_live_api_key() -> str:
                 org_id=org.id,
                 user_id=user.id,
                 label="Pytest Live Localhost",
-                key_prefix=_LEGACY_LIVE_API_KEY[:12],
+                key_prefix=DEFAULT_LOCAL_LIVE_API_KEY[:12],
                 hashed_key=hashed_key,
                 status=APIKeyStatus.ACTIVE,
             )
@@ -188,13 +193,13 @@ async def _seed_legacy_live_api_key() -> str:
             api_key.org_id = org.id
             api_key.user_id = user.id
             api_key.label = "Pytest Live Localhost"
-            api_key.key_prefix = _LEGACY_LIVE_API_KEY[:12]
+            api_key.key_prefix = DEFAULT_LOCAL_LIVE_API_KEY[:12]
             api_key.status = APIKeyStatus.ACTIVE
 
         await session.commit()
 
     await engine.dispose()
-    return _LEGACY_LIVE_API_KEY
+    return DEFAULT_LOCAL_LIVE_API_KEY
 
 
 def _read_live_server_log(log_path: Path | None) -> str:
@@ -280,8 +285,8 @@ def _start_live_server() -> tuple[subprocess.Popen[str], Path, Path]:
         ],
         cwd=str(_ROOT),
         env=_build_live_subprocess_env(
-            DE_API_KEY=_LEGACY_LIVE_API_KEY,
-            ALGENTA_API_KEY=_LEGACY_LIVE_API_KEY,
+            DE_API_KEY=DEFAULT_LOCAL_LIVE_API_KEY,
+            ALGENTA_API_KEY=DEFAULT_LOCAL_LIVE_API_KEY,
         ),
         stdout=log_handle,
         stderr=subprocess.STDOUT,
@@ -290,6 +295,7 @@ def _start_live_server() -> tuple[subprocess.Popen[str], Path, Path]:
     log_handle.close()
     _wait_for_live_server("http://127.0.0.1:8000", proc=proc, log_path=log_path)
     return proc, log_dir, log_path
+
 
 def pytest_ignore_collect(collection_path: Path, config: pytest.Config) -> bool:
     """
@@ -302,7 +308,9 @@ def pytest_ignore_collect(collection_path: Path, config: pytest.Config) -> bool:
     pytest collection.
     """
     try:
-        rel = collection_path.resolve().relative_to(Path(__file__).resolve().parent.parent).as_posix()
+        rel = (
+            collection_path.resolve().relative_to(Path(__file__).resolve().parent.parent).as_posix()
+        )
     except ValueError:
         return False
 
@@ -323,9 +331,7 @@ def pytest_ignore_collect(collection_path: Path, config: pytest.Config) -> bool:
     # from the repo runbooks. Importing them during pytest collection loads heavy
     # optional runtime dependencies and can destabilize unrelated suites.
     has_pytest_style_tests = (
-        "def test_" in source
-        or "async def test_" in source
-        or "class Test" in source
+        "def test_" in source or "async def test_" in source or "class Test" in source
     )
     if not has_pytest_style_tests and 'if __name__ == "__main__":' in source:
         return True
@@ -352,8 +358,8 @@ def legacy_live_api_server(request: pytest.FixtureRequest):
 
     _run_migrations()
     asyncio.run(_seed_legacy_live_api_key())
-    os.environ["DE_API_KEY"] = _LEGACY_LIVE_API_KEY
-    os.environ["ALGENTA_API_KEY"] = _LEGACY_LIVE_API_KEY
+    os.environ["DE_API_KEY"] = DEFAULT_LOCAL_LIVE_API_KEY
+    os.environ["ALGENTA_API_KEY"] = DEFAULT_LOCAL_LIVE_API_KEY
 
     started_here = False
     if not _port_open("127.0.0.1", 8000):
@@ -384,10 +390,16 @@ def api_available() -> bool:
         return False
 
 
+@pytest.fixture(scope="session", autouse=True)
+def ensure_test_database_schema() -> None:
+    _run_migrations()
+
+
 @pytest.fixture
 async def app():
     """FastAPI app instance for testing."""
     from apps.api_server.main import app as fastapi_app
+
     return fastapi_app
 
 

@@ -5,10 +5,11 @@ import io
 import sys
 from datetime import datetime
 from pathlib import Path
-from types import ModuleType, SimpleNamespace
+from types import ModuleType
 
 import pytest
 
+from apps.api_server.connectors import cloud_connector as cloud_connector_module
 from apps.api_server.connectors import file_connector as file_connector_module
 from apps.api_server.connectors.cloud_connector import AzureBlobConnector, GCSConnector, S3Connector
 from apps.api_server.connectors.file_connector import FileConnector
@@ -20,14 +21,6 @@ class _FakeBody:
         self._payload = payload
 
     def read(self) -> bytes:
-        return self._payload
-
-
-class _FakeDownload:
-    def __init__(self, payload: bytes) -> None:
-        self._payload = payload
-
-    def readall(self) -> bytes:
         return self._payload
 
 
@@ -81,7 +74,7 @@ def _multi_sheet_excel_b64() -> str:
     return base64.b64encode(buf.getvalue()).decode()
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_file_connector_fetch_table_supports_json_records() -> None:
     connector = FileConnector(
         {
@@ -97,7 +90,7 @@ async def test_file_connector_fetch_table_supports_json_records() -> None:
     assert table.column_names == ["amount", "region"]
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_file_connector_fetch_table_supports_excel_without_row_materialization(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -127,7 +120,7 @@ async def test_file_connector_fetch_table_supports_excel_without_row_materializa
     ]
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_file_connector_fetch_data_prefers_openpyxl_excel_path(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -151,7 +144,7 @@ async def test_file_connector_fetch_data_prefers_openpyxl_excel_path(
     ]
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_file_connector_fetch_table_uses_raw_excel_bytes_for_file_path(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -183,7 +176,7 @@ async def test_file_connector_fetch_table_uses_raw_excel_bytes_for_file_path(
     assert seen == {"content_type": bytes, "sheet": 0}
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_file_connector_fast_excel_path_preserves_typed_values() -> None:
     import openpyxl
 
@@ -273,7 +266,7 @@ def test_open_excel_sheet_skips_nonessential_metadata_loading(
         wb.close()
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_file_connector_fetch_data_falls_back_to_fast_excel_parser_on_openpyxl_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -303,7 +296,7 @@ async def test_file_connector_fetch_data_falls_back_to_fast_excel_parser_on_open
     ]
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_file_connector_fetch_table_falls_back_to_fast_excel_parser_on_openpyxl_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -332,7 +325,7 @@ async def test_file_connector_fetch_table_falls_back_to_fast_excel_parser_on_ope
     ]
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_file_connector_fetch_table_caches_repeated_excel_text_coercions(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -370,7 +363,7 @@ async def test_file_connector_fetch_table_caches_repeated_excel_text_coercions(
     ]
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_rest_connector_fetch_table_returns_arrow(monkeypatch: pytest.MonkeyPatch) -> None:
     async def _fake_fetch_data(self) -> list[dict[str, object]]:  # type: ignore[no-untyped-def]
         return [{"score": 1.5, "system": "a"}, {"score": 2.5, "system": "b"}]
@@ -385,7 +378,7 @@ async def test_rest_connector_fetch_table_returns_arrow(monkeypatch: pytest.Monk
     assert table.column_names == ["score", "system"]
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_s3_connector_fetch_table_uses_columnar_path(monkeypatch: pytest.MonkeyPatch) -> None:
     seen: dict[str, object] = {}
     unsigned_marker = "unsigned"
@@ -424,6 +417,7 @@ async def test_s3_connector_fetch_table_uses_columnar_path(monkeypatch: pytest.M
             "bucket": "public-bucket",
             "key": "sales.csv",
             "anonymous": True,
+            "endpoint_url": "https://minio.example.com",
         }
     )
 
@@ -437,8 +431,10 @@ async def test_s3_connector_fetch_table_uses_columnar_path(monkeypatch: pytest.M
     assert seen["kwargs"]["config"].signature_version == unsigned_marker
 
 
-@pytest.mark.asyncio
-async def test_gcs_connector_fetch_table_uses_columnar_path(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.anyio
+async def test_gcs_connector_fetch_table_uses_columnar_path(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     class _FakeBlob:
         def download_as_bytes(self) -> bytes:
             return b"transaction_amount\n10.5\n20.25\n"
@@ -470,6 +466,7 @@ async def test_gcs_connector_fetch_table_uses_columnar_path(monkeypatch: pytest.
             "bucket": "public-bucket",
             "blob": "transactions.csv",
             "anonymous": True,
+            "credentials": "{}",
         }
     )
 
@@ -480,47 +477,54 @@ async def test_gcs_connector_fetch_table_uses_columnar_path(monkeypatch: pytest.
     assert table.column_names == ["transaction_amount"]
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_azure_blob_connector_fetch_table_uses_columnar_path(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    seen: dict[str, object] = {}
+
+    async def _should_not_run(_url: str) -> bytes:
+        raise AssertionError("public HTTP path should not be used for connection-string access")
+
+    monkeypatch.setattr(cloud_connector_module, "_http_get_bytes", _should_not_run)
+
+    class _FakeStream:
+        async def readall(self) -> bytes:
+            return b"damage_property\n0\n15\n"
+
     class _FakeBlobClient:
-        def download_blob(self) -> _FakeDownload:
-            return _FakeDownload(b"damage_property\n0\n15\n")
+        async def download_blob(self) -> _FakeStream:
+            return _FakeStream()
 
-        def get_blob_properties(self) -> SimpleNamespace:
-            return SimpleNamespace(size=12)
+    class _FakeAsyncBlobServiceClient:
+        def __init__(self, connection_string: str) -> None:
+            seen["connection_string"] = connection_string
 
-    class _FakeBlobClientFactory:
-        @classmethod
-        def from_blob_url(cls, url: str) -> _FakeBlobClient:
-            assert url == "https://example.blob.core.windows.net/samplefiles/storm.csv"
-            return _FakeBlobClient()
-
-    class _UnusedBlobServiceClient:
-        def __init__(self, *args: object, **kwargs: object) -> None:
-            raise AssertionError("BlobServiceClient should not be used for blob_url access.")
-
-    class _UnusedAsyncBlobServiceClient:
         @classmethod
         def from_connection_string(
             cls,
-            *args: object,
-            **kwargs: object,
-        ) -> _UnusedAsyncBlobServiceClient:
-            raise AssertionError(
-                "AsyncBlobServiceClient should not be used for public blob access."
-            )
+            connection_string: str,
+        ) -> _FakeAsyncBlobServiceClient:
+            return cls(connection_string)
+
+        async def __aenter__(self) -> _FakeAsyncBlobServiceClient:
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb) -> None:  # type: ignore[no-untyped-def]
+            return None
+
+        def get_blob_client(self, *, container: str, blob: str) -> _FakeBlobClient:
+            seen["container"] = container
+            seen["blob"] = blob
+            return _FakeBlobClient()
 
     azure_blob_aio_module = _make_module(
         "azure.storage.blob.aio",
-        BlobServiceClient=_UnusedAsyncBlobServiceClient,
+        BlobServiceClient=_FakeAsyncBlobServiceClient,
     )
     azure_blob_module = _make_module(
         "azure.storage.blob",
         package=True,
-        BlobClient=_FakeBlobClientFactory,
-        BlobServiceClient=_UnusedBlobServiceClient,
         aio=azure_blob_aio_module,
     )
     azure_storage_module = _make_module("azure.storage", package=True, blob=azure_blob_module)
@@ -532,8 +536,9 @@ async def test_azure_blob_connector_fetch_table_uses_columnar_path(
 
     connector = AzureBlobConnector(
         {
-            "blob_url": "https://example.blob.core.windows.net/samplefiles/storm.csv",
-            "anonymous": True,
+            "connection_string": "UseDevelopmentStorage=true",
+            "container": "samplefiles",
+            "blob": "storm.csv",
         }
     )
 
@@ -542,3 +547,8 @@ async def test_azure_blob_connector_fetch_table_uses_columnar_path(
     assert table is not None
     assert table.num_rows == 2
     assert table.column_names == ["damage_property"]
+    assert seen == {
+        "connection_string": "UseDevelopmentStorage=true",
+        "container": "samplefiles",
+        "blob": "storm.csv",
+    }

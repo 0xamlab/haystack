@@ -33,6 +33,7 @@ Endpoints under test:
   GET  /v1/runs/{run_id}               — run detail
   GET  /v1/runs                        — run list
 """
+
 import csv
 import io
 import json
@@ -48,11 +49,18 @@ _PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
+from tests.integration.live_capacity_blockers import classify_simulation_capacity_blocker
+
 # Global socket timeout — prevents any test from hanging indefinitely
 socket.setdefaulttimeout(30)
 
-BASE_URL = os.environ.get("DE_BASE_URL", "http://localhost:8000")
-API_KEY = os.environ.get("DE_API_KEY", "de_live_LrL6UWSAfgXsTjgfyaboI9aolrsznjLU")
+BASE_URL = resolve_local_live_base_url()
+try:
+    from tests.integration.live_local_defaults import configured_local_live_base_url, resolve_local_live_api_key, resolve_local_live_base_url
+except ModuleNotFoundError:
+    from live_local_defaults import configured_local_live_base_url, resolve_local_live_api_key, resolve_local_live_base_url
+
+API_KEY = resolve_local_live_api_key()
 
 PASS = "✅"
 FAIL = "❌"
@@ -118,8 +126,7 @@ def req_raw_stream(method: str, path: str, body=None, auth=True, timeout=5, max_
 
     t0 = time.perf_counter()
     try:
-        conn = http.client.HTTPConnection(parsed.hostname, parsed.port or 80,
-                                          timeout=timeout)
+        conn = http.client.HTTPConnection(parsed.hostname, parsed.port or 80, timeout=timeout)
         target = parsed.path
         if parsed.query:
             target = f"{target}?{parsed.query}"
@@ -171,7 +178,7 @@ def record(name: str, passed: bool, detail: str = "", elapsed: float = 0.0):
     results.append((name, status, detail))
     timings.append((name, elapsed))
     flag = status
-    ms = f" ({elapsed*1000:.0f}ms)" if elapsed else ""
+    ms = f" ({elapsed * 1000:.0f}ms)" if elapsed else ""
     print(f"  {flag} {name}{ms}  {detail[:120] if detail else ''}")
 
 
@@ -179,6 +186,10 @@ def record_skip(name: str, reason: str = ""):
     results.append((name, SKIP, reason))
     timings.append((name, 0.0))
     print(f"  {SKIP} {name}  {reason}")
+
+
+def _capacity_blocked(status: int, body) -> str | None:
+    return classify_simulation_capacity_blocker(status=status, payload=body)
 
 
 # ─── Simulation payload helper ────────────────────────────────────────────────
@@ -234,6 +245,7 @@ def phase_setup():
 
     # Simulation 1
     status, body, hdrs, elapsed = req_json("POST", "/v1/simulate", EXPERT_PAYLOAD, timeout=30)
+    blocked_reason = _capacity_blocked(status, body)
     if status == 200 and isinstance(body, dict):
         run_id = body.get("run_id") or body.get("id") or ""
         if not run_id:
@@ -245,11 +257,14 @@ def phase_setup():
             record("setup_simulation_1", True, f"run_id={run_id[:16]}...", elapsed)
         else:
             record("setup_simulation_1", True, "200 but no run_id in response", elapsed)
+    elif blocked_reason:
+        record_skip("setup_simulation_1", blocked_reason)
     else:
         record("setup_simulation_1", status == 200, f"status={status}", elapsed)
 
     # Simulation 2
     status, body, hdrs, elapsed = req_json("POST", "/v1/simulate", EXPERT_PAYLOAD_2, timeout=30)
+    blocked_reason = _capacity_blocked(status, body)
     if status == 200 and isinstance(body, dict):
         run_id = body.get("run_id") or body.get("id") or ""
         if not run_id:
@@ -260,6 +275,8 @@ def phase_setup():
             record("setup_simulation_2", True, f"run_id={run_id[:16]}...", elapsed)
         else:
             record("setup_simulation_2", True, "200 but no run_id in response", elapsed)
+    elif blocked_reason:
+        record_skip("setup_simulation_2", blocked_reason)
     else:
         record("setup_simulation_2", status == 200, f"status={status}", elapsed)
 
@@ -287,8 +304,11 @@ def phase_setup():
             if s == 200:
                 accessible = True
                 break
-        record("setup_runs_accessible", accessible,
-               f"run accessible after {_attempt + 1} attempts (status={s})")
+        record(
+            "setup_runs_accessible",
+            accessible,
+            f"run accessible after {_attempt + 1} attempts (status={s})",
+        )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -316,7 +336,12 @@ def phase_json_export():
     except Exception:
         data = None
         is_json = False
-    record("json_export_valid_json", is_json, f"type={type(data).__name__}" if data else "parse failed", elapsed)
+    record(
+        "json_export_valid_json",
+        is_json,
+        f"type={type(data).__name__}" if data else "parse failed",
+        elapsed,
+    )
 
     # Test 3: Content-Type header
     ct = hdrs.get("Content-Type", hdrs.get("content-type", ""))
@@ -324,8 +349,12 @@ def phase_json_export():
 
     # Test 4: Content-Disposition header (attachment)
     cd = hdrs.get("Content-Disposition", hdrs.get("content-disposition", ""))
-    record("json_export_content_disposition", "attachment" in cd.lower() or "filename" in cd.lower(),
-           f"Content-Disposition={cd[:80]}", elapsed)
+    record(
+        "json_export_content_disposition",
+        "attachment" in cd.lower() or "filename" in cd.lower(),
+        f"Content-Disposition={cd[:80]}",
+        elapsed,
+    )
 
     # Test 5: JSON contains run metadata fields
     if isinstance(data, dict):
@@ -347,8 +376,12 @@ def phase_json_export():
             for k in ["scenarios_run", "duration_ms", "expected_value", "confidence"]
             if k in data
         )
-        record("json_export_has_numeric_fields", has_numeric or len(data) > 3,
-               f"field_count={len(data)}", elapsed)
+        record(
+            "json_export_has_numeric_fields",
+            has_numeric or len(data) > 3,
+            f"field_count={len(data)}",
+            elapsed,
+        )
     else:
         record("json_export_has_numeric_fields", False, "", elapsed)
 
@@ -395,8 +428,12 @@ def phase_csv_export():
 
     # Test 3: Content-Disposition
     cd = hdrs.get("Content-Disposition", hdrs.get("content-disposition", ""))
-    record("csv_export_content_disposition", "attachment" in cd.lower() or ".csv" in cd.lower(),
-           f"Content-Disposition={cd[:80]}", elapsed)
+    record(
+        "csv_export_content_disposition",
+        "attachment" in cd.lower() or ".csv" in cd.lower(),
+        f"Content-Disposition={cd[:80]}",
+        elapsed,
+    )
 
     # Test 4: Decode as UTF-8
     try:
@@ -422,20 +459,28 @@ def phase_csv_export():
         first_row = rows[0]
         # The CSV starts with "# Algenta Decision Engine..." comment
         is_header_or_comment = (
-            any("Algenta" in str(c) for c in first_row) or
-            any("Field" in str(c) for c in first_row) or
-            len(first_row) >= 1
+            any("Algenta" in str(c) for c in first_row)
+            or any("Field" in str(c) for c in first_row)
+            or len(first_row) >= 1
         )
-        record("csv_export_header_row", is_header_or_comment,
-               f"first_row={str(first_row)[:80]}", elapsed)
+        record(
+            "csv_export_header_row",
+            is_header_or_comment,
+            f"first_row={str(first_row)[:80]}",
+            elapsed,
+        )
     else:
         record("csv_export_header_row", False, "no rows", elapsed)
 
     # Test 7: CSV contains "Field" and "Value" column headers somewhere
     flat_text = text.lower()
     has_field_value = "field" in flat_text and "value" in flat_text
-    record("csv_export_has_field_value_columns", has_field_value,
-           "contains Field/Value headers", elapsed)
+    record(
+        "csv_export_has_field_value_columns",
+        has_field_value,
+        "contains Field/Value headers",
+        elapsed,
+    )
 
     # Test 8: CSV contains run_id data
     has_run_id = run_id[:8] in text or "run_id" in flat_text
@@ -457,8 +502,12 @@ def phase_csv_export():
     for row in rows:
         if len(row) >= 2 and row[0] and not row[0].startswith("#"):
             kv_pairs[row[0].strip()] = row[1].strip()
-    record("csv_export_kv_pairs_extracted", len(kv_pairs) >= 3,
-           f"kv_count={len(kv_pairs)} keys={list(kv_pairs.keys())[:5]}", elapsed)
+    record(
+        "csv_export_kv_pairs_extracted",
+        len(kv_pairs) >= 3,
+        f"kv_count={len(kv_pairs)} keys={list(kv_pairs.keys())[:5]}",
+        elapsed,
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -501,8 +550,12 @@ def phase_pdf_export():
 
     # Test 5: Content-Disposition
     cd = hdrs.get("Content-Disposition", hdrs.get("content-disposition", ""))
-    record("pdf_export_content_disposition", "attachment" in cd.lower() or ".pdf" in cd.lower(),
-           f"Content-Disposition={cd[:80]}", elapsed)
+    record(
+        "pdf_export_content_disposition",
+        "attachment" in cd.lower() or ".pdf" in cd.lower(),
+        f"Content-Disposition={cd[:80]}",
+        elapsed,
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -546,8 +599,12 @@ def phase_xlsx_export():
 
     # Test 5: Content-Disposition
     cd = hdrs.get("Content-Disposition", hdrs.get("content-disposition", ""))
-    record("xlsx_export_content_disposition", "attachment" in cd.lower() or ".xlsx" in cd.lower(),
-           f"Content-Disposition={cd[:80]}", elapsed)
+    record(
+        "xlsx_export_content_disposition",
+        "attachment" in cd.lower() or ".xlsx" in cd.lower(),
+        f"Content-Disposition={cd[:80]}",
+        elapsed,
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -570,7 +627,12 @@ def phase_run_detail():
 
     # Test 2: Contains run_id field
     if isinstance(body, dict):
-        record("run_detail_has_run_id", "run_id" in body, f"run_id={body.get('run_id', 'N/A')[:16]}", elapsed)
+        record(
+            "run_detail_has_run_id",
+            "run_id" in body,
+            f"run_id={body.get('run_id', 'N/A')[:16]}",
+            elapsed,
+        )
     else:
         record("run_detail_has_run_id", False, f"response type={type(body).__name__}", elapsed)
 
@@ -588,29 +650,44 @@ def phase_run_detail():
 
     # Test 5: Contains created_at
     if isinstance(body, dict):
-        record("run_detail_has_created_at", "created_at" in body,
-               f"created_at={str(body.get('created_at', ''))[:25]}", elapsed)
+        record(
+            "run_detail_has_created_at",
+            "created_at" in body,
+            f"created_at={str(body.get('created_at', ''))[:25]}",
+            elapsed,
+        )
     else:
         record("run_detail_has_created_at", False, "", elapsed)
 
     # Test 6: Contains duration_ms (numeric or null)
     if isinstance(body, dict):
         has_dur = "duration_ms" in body
-        record("run_detail_has_duration_ms", has_dur, f"duration_ms={body.get('duration_ms')}", elapsed)
+        record(
+            "run_detail_has_duration_ms", has_dur, f"duration_ms={body.get('duration_ms')}", elapsed
+        )
     else:
         record("run_detail_has_duration_ms", False, "", elapsed)
 
     # Test 7: Contains scenarios_run
     if isinstance(body, dict):
         has_sc = "scenarios_run" in body
-        record("run_detail_has_scenarios_run", has_sc, f"scenarios_run={body.get('scenarios_run')}", elapsed)
+        record(
+            "run_detail_has_scenarios_run",
+            has_sc,
+            f"scenarios_run={body.get('scenarios_run')}",
+            elapsed,
+        )
     else:
         record("run_detail_has_scenarios_run", False, "", elapsed)
 
     # Test 8: Contains execution_type
     if isinstance(body, dict):
-        record("run_detail_has_execution_type", "execution_type" in body,
-               f"execution_type={body.get('execution_type')}", elapsed)
+        record(
+            "run_detail_has_execution_type",
+            "execution_type" in body,
+            f"execution_type={body.get('execution_type')}",
+            elapsed,
+        )
     else:
         record("run_detail_has_execution_type", False, "", elapsed)
 
@@ -619,8 +696,12 @@ def phase_run_detail():
     if status == 200 and isinstance(body, dict):
         run_ids_in_list = [r.get("run_id", "") for r in body.get("runs", [])]
         found = run_id in run_ids_in_list
-        record("run_list_contains_our_run", found,
-               f"total={body.get('total', 0)} checked={len(run_ids_in_list)}", elapsed)
+        record(
+            "run_list_contains_our_run",
+            found,
+            f"total={body.get('total', 0)} checked={len(run_ids_in_list)}",
+            elapsed,
+        )
     else:
         record("run_list_contains_our_run", False, f"status={status}", elapsed)
 
@@ -649,14 +730,17 @@ def phase_sse_logs():
     else:
         # May timeout reading SSE which is OK — check if we got anything
         got_data = len(raw) > 0 and raw != b"timeout"
-        record("sse_logs_status_200", status == 200 or got_data,
-               f"status={status} got_bytes={len(raw)}", elapsed)
+        record(
+            "sse_logs_status_200",
+            status == 200 or got_data,
+            f"status={status} got_bytes={len(raw)}",
+            elapsed,
+        )
 
     # Test 2: Content-Type is text/event-stream
     ct = hdrs.get("Content-Type", hdrs.get("content-type", ""))
     is_sse_ct = "text/event-stream" in ct
-    record("sse_logs_content_type", is_sse_ct or status == 0,
-           f"Content-Type={ct}", elapsed)
+    record("sse_logs_content_type", is_sse_ct or status == 0, f"Content-Type={ct}", elapsed)
 
     # Test 3: SSE format — contains "data:" prefix
     if isinstance(raw, bytes):
@@ -665,18 +749,25 @@ def phase_sse_logs():
         text = str(raw)
     has_data_prefix = "data:" in text or "data: " in text or ": keepalive" in text
     # If Content-Type is text/event-stream, endpoint works even if we couldn't read body quickly
-    record("sse_logs_has_data_prefix", has_data_prefix or is_sse_ct,
-           f"preview={text[:100]!r} (sse_ct={is_sse_ct})", elapsed)
+    record(
+        "sse_logs_has_data_prefix",
+        has_data_prefix or is_sse_ct,
+        f"preview={text[:100]!r} (sse_ct={is_sse_ct})",
+        elapsed,
+    )
 
     # Test 4: SSE initial event contains 'connected' type
     has_connected = '"connected"' in text or '"type"' in text
-    record("sse_logs_initial_connected_event", has_connected or ": keepalive" in text or is_sse_ct,
-           f"has_connected={has_connected} sse_ct={is_sse_ct}", elapsed)
+    record(
+        "sse_logs_initial_connected_event",
+        has_connected or ": keepalive" in text or is_sse_ct,
+        f"has_connected={has_connected} sse_ct={is_sse_ct}",
+        elapsed,
+    )
 
     # Test 5: No auth → 401
     status_noauth, _, _, elapsed2 = req_raw_stream("GET", "/v1/logs", auth=False, timeout=5)
-    record("sse_logs_no_auth_401", status_noauth in (401, 403),
-           f"status={status_noauth}", elapsed2)
+    record("sse_logs_no_auth_401", status_noauth in (401, 403), f"status={status_noauth}", elapsed2)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -709,15 +800,22 @@ def phase_sse_simulate_stream():
 
     # Test 1: POST /v1/simulate/stream returns SSE response
     status, raw, hdrs, elapsed = req_raw_stream(
-        "POST", "/v1/simulate/stream?checkpoint_every=500",
-        body=stream_payload, timeout=15, max_bytes=2048,
+        "POST",
+        "/v1/simulate/stream?checkpoint_every=500",
+        body=stream_payload,
+        timeout=15,
+        max_bytes=2048,
     )
 
     # SSE endpoint may return 200 and stream, or we get partial data
     ct = hdrs.get("Content-Type", hdrs.get("content-type", ""))
     is_sse = "text/event-stream" in ct
-    record("sse_stream_returns_sse", is_sse or status == 200,
-           f"status={status} Content-Type={ct}", elapsed)
+    record(
+        "sse_stream_returns_sse",
+        is_sse or status == 200,
+        f"status={status} Content-Type={ct}",
+        elapsed,
+    )
 
     # Test 2: SSE data contains event format
     if isinstance(raw, bytes):
@@ -727,35 +825,44 @@ def phase_sse_simulate_stream():
 
     # SSE response: if we got SSE content-type, that's already a pass
     # The Mojo engine may not be built, yielding empty or error events
-    has_sse_format = ("data:" in text or "event:" in text or ": stream" in text
-                      or "error" in text.lower())
-    record("sse_stream_has_sse_format", has_sse_format or is_sse,
-           f"preview={text[:120]!r}", elapsed)
+    has_sse_format = (
+        "data:" in text or "event:" in text or ": stream" in text or "error" in text.lower()
+    )
+    record(
+        "sse_stream_has_sse_format", has_sse_format or is_sse, f"preview={text[:120]!r}", elapsed
+    )
 
     # Test 3: SSE contains stream-started comment or progress/final/error events
     # If server returned SSE content-type, we know endpoint works even if mojo binary missing
     has_events = (
-        ": stream-started" in text or
-        "event: progress" in text or
-        "event: final" in text or
-        "event: error" in text or
-        '"type"' in text
+        ": stream-started" in text
+        or "event: progress" in text
+        or "event: final" in text
+        or "event: error" in text
+        or '"type"' in text
     )
-    record("sse_stream_has_events", has_events or is_sse,
-           f"has events in first {len(text)} bytes (sse_ct={is_sse})", elapsed)
+    record(
+        "sse_stream_has_events",
+        has_events or is_sse,
+        f"has events in first {len(text)} bytes (sse_ct={is_sse})",
+        elapsed,
+    )
 
     # Test 4: No auth → should fail
     status_noauth, _, _, elapsed2 = req_raw_stream(
-        "POST", "/v1/simulate/stream",
-        body=stream_payload, auth=False, timeout=5,
+        "POST",
+        "/v1/simulate/stream",
+        body=stream_payload,
+        auth=False,
+        timeout=5,
     )
-    record("sse_stream_no_auth", status_noauth in (401, 403, 422),
-           f"status={status_noauth}", elapsed2)
+    record(
+        "sse_stream_no_auth", status_noauth in (401, 403, 422), f"status={status_noauth}", elapsed2
+    )
 
     # Test 5: Cache-Control header = no-cache
     cc = hdrs.get("Cache-Control", hdrs.get("cache-control", ""))
-    record("sse_stream_cache_control", "no-cache" in cc,
-           f"Cache-Control={cc}", elapsed)
+    record("sse_stream_cache_control", "no-cache" in cc, f"Cache-Control={cc}", elapsed)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -776,12 +883,16 @@ def phase_whatif_export():
     }
 
     # Test 1: What-if endpoint returns 200
-    status, body, hdrs, elapsed = req_json("POST", "/v1/simulate/what-if", whatif_payload, timeout=60)
+    status, body, hdrs, elapsed = req_json(
+        "POST", "/v1/simulate/what-if", whatif_payload, timeout=60
+    )
     record("whatif_status_200", status == 200, f"status={status}", elapsed)
 
     # Test 2: Response contains variable field
     if isinstance(body, dict):
-        record("whatif_has_variable", "variable" in body, f"variable={body.get('variable')}", elapsed)
+        record(
+            "whatif_has_variable", "variable" in body, f"variable={body.get('variable')}", elapsed
+        )
     else:
         record("whatif_has_variable", False, f"type={type(body).__name__}", elapsed)
 
@@ -804,31 +915,44 @@ def phase_whatif_export():
         step = steps[0]
         required = ["step", "value", "mean", "std", "p5", "p50", "p95", "probability_of_loss"]
         has_all = all(k in step for k in required)
-        record("whatif_step_has_fields", has_all,
-               f"step_keys={list(step.keys())[:8]}", elapsed)
+        record("whatif_step_has_fields", has_all, f"step_keys={list(step.keys())[:8]}", elapsed)
     else:
         record("whatif_step_has_fields", False, "no steps", elapsed)
 
     # Test 6: Response contains sensitivity info
     if isinstance(body, dict):
-        has_sensitivity = all(k in body for k in ["increasing_direction", "sensitivity_label", "elasticity"])
-        record("whatif_has_sensitivity_info", has_sensitivity,
-               f"direction={body.get('increasing_direction')} elasticity={body.get('elasticity')}", elapsed)
+        has_sensitivity = all(
+            k in body for k in ["increasing_direction", "sensitivity_label", "elasticity"]
+        )
+        record(
+            "whatif_has_sensitivity_info",
+            has_sensitivity,
+            f"direction={body.get('increasing_direction')} elasticity={body.get('elasticity')}",
+            elapsed,
+        )
     else:
         record("whatif_has_sensitivity_info", False, "", elapsed)
 
     # Test 7: Response contains range fields
     if isinstance(body, dict):
         has_range = "range_low" in body and "range_high" in body
-        record("whatif_has_range", has_range,
-               f"range=[{body.get('range_low')}, {body.get('range_high')}]", elapsed)
+        record(
+            "whatif_has_range",
+            has_range,
+            f"range=[{body.get('range_low')}, {body.get('range_high')}]",
+            elapsed,
+        )
     else:
         record("whatif_has_range", False, "", elapsed)
 
     # Test 8: param_changed is correct
     if isinstance(body, dict):
-        record("whatif_param_changed_correct", body.get("param_changed") == "mean",
-               f"param_changed={body.get('param_changed')}", elapsed)
+        record(
+            "whatif_param_changed_correct",
+            body.get("param_changed") == "mean",
+            f"param_changed={body.get('param_changed')}",
+            elapsed,
+        )
     else:
         record("whatif_param_changed_correct", False, "", elapsed)
 
@@ -843,13 +967,13 @@ def phase_whatif_export():
     # Test 10: What-if with invalid variable → 400
     bad_payload = {**whatif_payload, "variable": "nonexistent_var_xyz"}
     status2, body2, _, elapsed2 = req_json("POST", "/v1/simulate/what-if", bad_payload, timeout=30)
-    record("whatif_invalid_variable_400", status2 in (400, 422),
-           f"status={status2}", elapsed2)
+    record("whatif_invalid_variable_400", status2 in (400, 422), f"status={status2}", elapsed2)
 
     # Test 11: What-if no auth → 401
-    status3, _, _, elapsed3 = req_json("POST", "/v1/simulate/what-if", whatif_payload, auth=False, timeout=10)
-    record("whatif_no_auth_401", status3 in (401, 403),
-           f"status={status3}", elapsed3)
+    status3, _, _, elapsed3 = req_json(
+        "POST", "/v1/simulate/what-if", whatif_payload, auth=False, timeout=10
+    )
+    record("whatif_no_auth_401", status3 in (401, 403), f"status={status3}", elapsed3)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -873,8 +997,7 @@ def phase_error_handling():
     if _run_ids:
         run_id = _run_ids[0]
         status, raw, hdrs, elapsed = req("GET", f"/v1/runs/{run_id}/export.xml")
-        record("export_unsupported_format_400", status == 400,
-               f"status={status}", elapsed)
+        record("export_unsupported_format_400", status == 400, f"status={status}", elapsed)
     else:
         record_skip("export_unsupported_format_400", "no run_ids")
 
@@ -882,8 +1005,7 @@ def phase_error_handling():
     if _run_ids:
         run_id = _run_ids[0]
         status, raw, hdrs, elapsed = req("GET", f"/v1/runs/{run_id}/export.html")
-        record("export_unsupported_html_400", status == 400,
-               f"status={status}", elapsed)
+        record("export_unsupported_html_400", status == 400, f"status={status}", elapsed)
     else:
         record_skip("export_unsupported_html_400", "no run_ids")
 
@@ -891,8 +1013,7 @@ def phase_error_handling():
     if _run_ids:
         run_id = _run_ids[0]
         status, raw, hdrs, elapsed = req("GET", f"/v1/runs/{run_id}/export.json", auth=False)
-        record("export_no_auth_401", status in (401, 403),
-               f"status={status}", elapsed)
+        record("export_no_auth_401", status in (401, 403), f"status={status}", elapsed)
     else:
         record_skip("export_no_auth_401", "no run_ids")
 
@@ -900,30 +1021,35 @@ def phase_error_handling():
     if _run_ids:
         run_id = _run_ids[0]
         status, raw, hdrs, elapsed = req("GET", f"/v1/runs/{run_id}/export.csv", auth=False)
-        record("export_no_auth_csv_401", status in (401, 403),
-               f"status={status}", elapsed)
+        record("export_no_auth_csv_401", status in (401, 403), f"status={status}", elapsed)
     else:
         record_skip("export_no_auth_csv_401", "no run_ids")
 
     # Test 7: Invalid run_id format → 422
     status, raw, hdrs, elapsed = req("GET", "/v1/runs/not-a-uuid/export.json")
-    record("export_invalid_uuid_422", status == 422,
-           f"status={status}", elapsed)
+    record("export_invalid_uuid_422", status == 422, f"status={status}", elapsed)
 
     # Test 8: Run detail non-existent → 404
     status, body, hdrs, elapsed = req_json("GET", f"/v1/runs/{fake_id}")
-    record("run_detail_nonexistent_404", status == 404,
-           f"status={status}", elapsed)
+    record("run_detail_nonexistent_404", status == 404, f"status={status}", elapsed)
 
     # Test 9: 404 response has error structure
     if isinstance(body, dict) and "error" in body:
         err = body["error"]
         has_structure = "code" in err or "message" in err
-        record("export_404_has_error_structure", has_structure,
-               f"error_keys={list(err.keys())[:5]}", elapsed)
+        record(
+            "export_404_has_error_structure",
+            has_structure,
+            f"error_keys={list(err.keys())[:5]}",
+            elapsed,
+        )
     else:
-        record("export_404_has_error_structure", isinstance(body, dict),
-               f"body_type={type(body).__name__}", elapsed)
+        record(
+            "export_404_has_error_structure",
+            isinstance(body, dict),
+            f"body_type={type(body).__name__}",
+            elapsed,
+        )
 
     # Test 10: 400 response contains detail about unsupported format
     if _run_ids:
@@ -936,8 +1062,12 @@ def phase_error_handling():
         if isinstance(body, dict):
             detail = body.get("detail", body.get("error", {}).get("message", ""))
             has_format_hint = "format" in str(detail).lower() or "csv" in str(detail).lower()
-            record("export_400_has_format_hint", status == 400 and has_format_hint,
-                   f"detail={str(detail)[:80]}", elapsed)
+            record(
+                "export_400_has_format_hint",
+                status == 400 and has_format_hint,
+                f"detail={str(detail)[:80]}",
+                elapsed,
+            )
         else:
             record("export_400_has_format_hint", False, "", elapsed)
     else:
@@ -955,6 +1085,7 @@ def phase_direct_module_tests():
     # Test 1: Import export router module
     try:
         from apps.api_server.routers import export as export_mod
+
         record("import_export_router", True, "apps.api_server.routers.export imported")
     except Exception as e:
         export_mod = None
@@ -971,8 +1102,11 @@ def phase_direct_module_tests():
     if export_mod:
         has_mime = hasattr(export_mod, "_MIME")
         mime = getattr(export_mod, "_MIME", {})
-        record("export_module_has_mime_dict", has_mime,
-               f"formats={list(mime.keys())}" if has_mime else "")
+        record(
+            "export_module_has_mime_dict",
+            has_mime,
+            f"formats={list(mime.keys())}" if has_mime else "",
+        )
     else:
         record_skip("export_module_has_mime_dict", "module not imported")
 
@@ -981,8 +1115,11 @@ def phase_direct_module_tests():
         mime = export_mod._MIME
         expected_fmts = {"csv", "xlsx", "pdf", "json"}
         has_all = expected_fmts.issubset(set(mime.keys()))
-        record("export_mime_has_all_formats", has_all,
-               f"expected={expected_fmts} got={set(mime.keys())}")
+        record(
+            "export_mime_has_all_formats",
+            has_all,
+            f"expected={expected_fmts} got={set(mime.keys())}",
+        )
     else:
         record_skip("export_mime_has_all_formats", "module not imported")
 
@@ -995,8 +1132,11 @@ def phase_direct_module_tests():
             "pdf": "application/pdf",
         }
         all_correct = all(mime.get(k) == v for k, v in checks.items())
-        record("export_mime_values_correct", all_correct,
-               f"csv={mime.get('csv')} json={mime.get('json')} pdf={mime.get('pdf')}")
+        record(
+            "export_mime_values_correct",
+            all_correct,
+            f"csv={mime.get('csv')} json={mime.get('json')} pdf={mime.get('pdf')}",
+        )
     else:
         record_skip("export_mime_values_correct", "module not imported")
 
@@ -1022,8 +1162,11 @@ def phase_direct_module_tests():
             has_content = len(result) > 10
             text = result.decode("utf-8") if isinstance(result, bytes) else str(result)
             has_fields = "run_id" in text and "status" in text
-            record("render_csv_basic", is_bytes and has_content and has_fields,
-                   f"size={len(result)} bytes")
+            record(
+                "render_csv_basic",
+                is_bytes and has_content and has_fields,
+                f"size={len(result)} bytes",
+            )
         except Exception as e:
             record("render_csv_basic", False, str(e)[:100])
     else:
@@ -1035,7 +1178,13 @@ def phase_direct_module_tests():
             summary = {"run_id": "test-5678", "status": "completed", "mode": "expert"}
             full = {
                 "summary": {"mean": 30000.5, "std": 8000.2, "min": -5000, "max": 80000},
-                "percentiles": {"p5": 15000, "p25": 24000, "p50": 30000, "p75": 36000, "p95": 45000},
+                "percentiles": {
+                    "p5": 15000,
+                    "p25": 24000,
+                    "p50": 30000,
+                    "p75": 36000,
+                    "p95": 45000,
+                },
                 "risk": {"var_95": -2000, "cvar_95": -5000, "probability_of_loss": 0.12},
             }
             result = export_mod._render_csv(summary, full)
@@ -1043,8 +1192,11 @@ def phase_direct_module_tests():
             has_stats = "mean" in text.lower() or "Statistics" in text
             has_pct = "p5" in text or "Percentile" in text
             has_risk = "var_95" in text or "Risk" in text
-            record("render_csv_with_full_data", has_stats and has_pct,
-                   f"size={len(result)} has_stats={has_stats} has_pct={has_pct} has_risk={has_risk}")
+            record(
+                "render_csv_with_full_data",
+                has_stats and has_pct,
+                f"size={len(result)} has_stats={has_stats} has_pct={has_pct} has_risk={has_risk}",
+            )
         except Exception as e:
             record("render_csv_with_full_data", False, str(e)[:100])
     else:
@@ -1054,13 +1206,16 @@ def phase_direct_module_tests():
     if export_mod and hasattr(export_mod, "_run_to_summary"):
         record("export_module_has_run_to_summary", True, "")
     else:
-        record("export_module_has_run_to_summary",
-               export_mod is not None,
-               "function may be present" if export_mod else "module not imported")
+        record(
+            "export_module_has_run_to_summary",
+            export_mod is not None,
+            "function may be present" if export_mod else "module not imported",
+        )
 
     # Test 10: Import stream router module
     try:
         from apps.api_server.routers import stream as stream_mod
+
         record("import_stream_router", True, "apps.api_server.routers.stream imported")
     except Exception as e:
         stream_mod = None
@@ -1078,9 +1233,11 @@ def phase_direct_module_tests():
         has_sse_line = hasattr(stream_mod, "_sse_line")
         has_sse_event = hasattr(stream_mod, "_sse_event")
         has_sse_comment = hasattr(stream_mod, "_sse_comment")
-        record("stream_module_has_sse_helpers",
-               has_sse_line and has_sse_event and has_sse_comment,
-               f"line={has_sse_line} event={has_sse_event} comment={has_sse_comment}")
+        record(
+            "stream_module_has_sse_helpers",
+            has_sse_line and has_sse_event and has_sse_comment,
+            f"line={has_sse_line} event={has_sse_event} comment={has_sse_comment}",
+        )
     else:
         record_skip("stream_module_has_sse_helpers", "module not imported")
 
@@ -1089,8 +1246,7 @@ def phase_direct_module_tests():
         try:
             result = stream_mod._sse_line('{"test": true}')
             expected = 'data: {"test": true}\n\n'
-            record("sse_line_format", result == expected,
-                   f"got={result!r}")
+            record("sse_line_format", result == expected, f"got={result!r}")
         except Exception as e:
             record("sse_line_format", False, str(e)[:100])
     else:
@@ -1101,8 +1257,7 @@ def phase_direct_module_tests():
         try:
             result = stream_mod._sse_event("progress", '{"runs": 1000}')
             expected = 'event: progress\ndata: {"runs": 1000}\n\n'
-            record("sse_event_format", result == expected,
-                   f"got={result!r}")
+            record("sse_event_format", result == expected, f"got={result!r}")
         except Exception as e:
             record("sse_event_format", False, str(e)[:100])
     else:
@@ -1113,8 +1268,7 @@ def phase_direct_module_tests():
         try:
             result = stream_mod._sse_comment("keepalive")
             expected = ": keepalive\n\n"
-            record("sse_comment_format", result == expected,
-                   f"got={result!r}")
+            record("sse_comment_format", result == expected, f"got={result!r}")
         except Exception as e:
             record("sse_comment_format", False, str(e)[:100])
     else:
@@ -1123,6 +1277,7 @@ def phase_direct_module_tests():
     # Test 16: Import logs router module
     try:
         from apps.api_server.routers import logs as logs_mod
+
         record("import_logs_router", True, "apps.api_server.routers.logs imported")
     except Exception as e:
         logs_mod = None
@@ -1138,6 +1293,7 @@ def phase_direct_module_tests():
     # Test 18: Import whatif router module
     try:
         from apps.api_server.routers import whatif as whatif_mod
+
         record("import_whatif_router", True, "apps.api_server.routers.whatif imported")
     except Exception as e:
         whatif_mod = None
@@ -1161,10 +1317,18 @@ def phase_direct_module_tests():
     if whatif_mod and hasattr(whatif_mod, "WhatIfStep"):
         try:
             fields = whatif_mod.WhatIfStep.model_fields
-            expected_fields = {"step", "value", "mean", "std", "p5", "p50", "p95", "probability_of_loss"}
+            expected_fields = {
+                "step",
+                "value",
+                "mean",
+                "std",
+                "p5",
+                "p50",
+                "p95",
+                "probability_of_loss",
+            }
             has_all = expected_fields.issubset(set(fields.keys()))
-            record("whatif_step_model_fields", has_all,
-                   f"fields={list(fields.keys())[:8]}")
+            record("whatif_step_model_fields", has_all, f"fields={list(fields.keys())[:8]}")
         except Exception as e:
             record("whatif_step_model_fields", False, str(e)[:100])
     else:
@@ -1174,10 +1338,16 @@ def phase_direct_module_tests():
     if whatif_mod and hasattr(whatif_mod, "WhatIfRequest"):
         try:
             fields = whatif_mod.WhatIfRequest.model_fields
-            expected_fields = {"request", "variable", "param", "range_pct", "n_steps", "runs_per_step"}
+            expected_fields = {
+                "request",
+                "variable",
+                "param",
+                "range_pct",
+                "n_steps",
+                "runs_per_step",
+            }
             has_all = expected_fields.issubset(set(fields.keys()))
-            record("whatif_request_model_fields", has_all,
-                   f"fields={list(fields.keys())}")
+            record("whatif_request_model_fields", has_all, f"fields={list(fields.keys())}")
         except Exception as e:
             record("whatif_request_model_fields", False, str(e)[:100])
     else:
@@ -1204,9 +1374,12 @@ def phase_cross_format():
     status_csv, raw_csv, _, elapsed_csv = req("GET", f"/v1/runs/{run_id}/export.csv")
 
     # Test 1: Both JSON and CSV return 200
-    record("cross_format_both_200",
-           status_json == 200 and status_csv == 200,
-           f"json={status_json} csv={status_csv}", max(elapsed_json, elapsed_csv))
+    record(
+        "cross_format_both_200",
+        status_json == 200 and status_csv == 200,
+        f"json={status_json} csv={status_csv}",
+        max(elapsed_json, elapsed_csv),
+    )
 
     # Test 2: JSON and CSV contain same run_id
     try:
@@ -1219,17 +1392,23 @@ def phase_cross_format():
     csv_has_run_id = run_id[:8] in csv_text or json_run_id[:8] in csv_text
     json_has_run_id = run_id in json_run_id or run_id[:8] in str(json_data)
 
-    record("cross_format_same_run_id",
-           csv_has_run_id and json_has_run_id,
-           f"json_has={json_has_run_id} csv_has={csv_has_run_id}", 0)
+    record(
+        "cross_format_same_run_id",
+        csv_has_run_id and json_has_run_id,
+        f"json_has={json_has_run_id} csv_has={csv_has_run_id}",
+        0,
+    )
 
     # Test 3: JSON and CSV both contain status
     if isinstance(json_data, dict):
         json_status = json_data.get("status", "")
         csv_has_status = json_status in csv_text or "status" in csv_text.lower()
-        record("cross_format_same_status",
-               bool(json_status) and csv_has_status,
-               f"json_status={json_status}", 0)
+        record(
+            "cross_format_same_status",
+            bool(json_status) and csv_has_status,
+            f"json_status={json_status}",
+            0,
+        )
     else:
         record("cross_format_same_status", False, "json not a dict", 0)
 
@@ -1238,9 +1417,12 @@ def phase_cross_format():
         json_field_count = len(json_data)
         csv_reader = csv.reader(io.StringIO(csv_text))
         csv_kv_count = sum(1 for row in csv_reader if len(row) >= 2 and not row[0].startswith("#"))
-        record("cross_format_json_has_more_or_equal",
-               json_field_count >= min(csv_kv_count, 5),
-               f"json_fields={json_field_count} csv_kv={csv_kv_count}", 0)
+        record(
+            "cross_format_json_has_more_or_equal",
+            json_field_count >= min(csv_kv_count, 5),
+            f"json_fields={json_field_count} csv_kv={csv_kv_count}",
+            0,
+        )
     else:
         record("cross_format_json_has_more_or_equal", False, "", 0)
 
@@ -1250,9 +1432,7 @@ def phase_cross_format():
         s, _, _, _ = req("GET", f"/v1/runs/{run_id}/export.{fmt}")
         formats_tested[fmt] = s
     all_respond = all(s in (200, 503) for s in formats_tested.values())
-    record("cross_format_all_respond",
-           all_respond,
-           f"statuses={formats_tested}", 0)
+    record("cross_format_all_respond", all_respond, f"statuses={formats_tested}", 0)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1269,56 +1449,70 @@ def phase_analytics():
 
     # Test 2: Contains total_runs
     if isinstance(body, dict):
-        record("analytics_has_total_runs", "total_runs" in body,
-               f"total_runs={body.get('total_runs')}", elapsed)
+        record(
+            "analytics_has_total_runs",
+            "total_runs" in body,
+            f"total_runs={body.get('total_runs')}",
+            elapsed,
+        )
     else:
         record("analytics_has_total_runs", False, "", elapsed)
 
     # Test 3: Contains runs_by_day array
     if isinstance(body, dict):
         rbd = body.get("runs_by_day", [])
-        record("analytics_has_runs_by_day", isinstance(rbd, list),
-               f"count={len(rbd)}", elapsed)
+        record("analytics_has_runs_by_day", isinstance(rbd, list), f"count={len(rbd)}", elapsed)
     else:
         record("analytics_has_runs_by_day", False, "", elapsed)
 
     # Test 4: Contains runs_by_status
     if isinstance(body, dict):
         rbs = body.get("runs_by_status", {})
-        record("analytics_has_runs_by_status", isinstance(rbs, dict),
-               f"statuses={list(rbs.keys())[:5]}", elapsed)
+        record(
+            "analytics_has_runs_by_status",
+            isinstance(rbs, dict),
+            f"statuses={list(rbs.keys())[:5]}",
+            elapsed,
+        )
     else:
         record("analytics_has_runs_by_status", False, "", elapsed)
 
     # Test 5: Contains runs_by_mode
     if isinstance(body, dict):
         rbm = body.get("runs_by_mode", {})
-        record("analytics_has_runs_by_mode", isinstance(rbm, dict),
-               f"modes={list(rbm.keys())[:5]}", elapsed)
+        record(
+            "analytics_has_runs_by_mode",
+            isinstance(rbm, dict),
+            f"modes={list(rbm.keys())[:5]}",
+            elapsed,
+        )
     else:
         record("analytics_has_runs_by_mode", False, "", elapsed)
 
     # Test 6: Contains avg_duration_ms
     if isinstance(body, dict):
-        record("analytics_has_avg_duration", "avg_duration_ms" in body,
-               f"avg_duration_ms={body.get('avg_duration_ms')}", elapsed)
+        record(
+            "analytics_has_avg_duration",
+            "avg_duration_ms" in body,
+            f"avg_duration_ms={body.get('avg_duration_ms')}",
+            elapsed,
+        )
     else:
         record("analytics_has_avg_duration", False, "", elapsed)
 
     # Test 7: No auth → 401
     status2, _, _, elapsed2 = req_json("GET", "/v1/analytics", auth=False)
-    record("analytics_no_auth_401", status2 in (401, 403),
-           f"status={status2}", elapsed2)
+    record("analytics_no_auth_401", status2 in (401, 403), f"status={status2}", elapsed2)
 
     # Test 8: Analytics with custom days param
     status3, body3, _, elapsed3 = req_json("GET", "/v1/analytics?days=7")
-    record("analytics_custom_days", status3 == 200,
-           f"status={status3}", elapsed3)
+    record("analytics_custom_days", status3 == 200, f"status={status3}", elapsed3)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 #  MAIN — Run all phases
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def main():
     print("=" * 70)
@@ -1390,7 +1584,7 @@ def main():
         print("  Top 10 Slowest Tests:")
         for name, t in sorted_timings:
             if t > 0:
-                print(f"    {t*1000:7.0f}ms  {name}")
+                print(f"    {t * 1000:7.0f}ms  {name}")
         print()
 
     pct = (passed / total * 100) if total > 0 else 0

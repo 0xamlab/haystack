@@ -12,7 +12,7 @@ from apps.api_server.services.storage_service import (
 )
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_persist_result_reference_updates_run_when_storage_enabled(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -43,7 +43,7 @@ async def test_persist_result_reference_updates_run_when_storage_enabled(
     assert run.result_url == "https://storage.example/run.json"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_persist_result_reference_allows_degraded_storage_when_runtime_fallbacks_allowed(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -69,7 +69,7 @@ async def test_persist_result_reference_allows_degraded_storage_when_runtime_fal
     assert run.result_url is None
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_persist_result_reference_fails_closed_when_runtime_fallbacks_denied(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

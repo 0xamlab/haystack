@@ -9,18 +9,22 @@ Run:
   python3 tests/integration/test_worker_tasks.py          # Layer A only (auto-detects no broker)
   DE_CELERY=1 python3 tests/integration/test_worker_tasks # Layer B with real broker
 """
+
 from __future__ import annotations
 
 import os
 import sys
 import uuid
 from pathlib import Path
+from urllib.parse import urlparse
+
+import pytest
 
 _ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(_ROOT))
 
 SKIP_CELERY = os.environ.get("DE_CELERY", "0") != "1"
-REDIS_URL   = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 
 PASS = "✅"
 FAIL = "❌"
@@ -34,7 +38,13 @@ def check(name: str, cond: bool, detail: str = "") -> None:
     print(f"  {icon}  {name}" + (f"  ({detail})" if detail else ""))
 
 
+def _require_celery_broker() -> None:
+    if SKIP_CELERY:
+        pytest.skip("Layer B broker tests require DE_CELERY=1")
+
+
 # ── Layer A: Task structure ───────────────────────────────────────────────────
+
 
 def test_worker_tasks_importable():
     try:
@@ -50,42 +60,50 @@ def test_worker_tasks_importable():
 def test_simulation_task_module_importable():
     try:
         import apps.worker.tasks.simulation_task as mod
+
         check("simulation_task module importable", True)
-        check("module exports celery_app name",          hasattr(mod, "celery_app"))
-        check("module exports persist_simulation name",  hasattr(mod, "persist_simulation"))
-        check("module exports run_simulation_job name",  hasattr(mod, "run_simulation_job"))
+        check("module exports celery_app name", hasattr(mod, "celery_app"))
+        check("module exports persist_simulation name", hasattr(mod, "persist_simulation"))
+        check("module exports run_simulation_job name", hasattr(mod, "run_simulation_job"))
     except ImportError as e:
         check("simulation_task module importable", False, str(e))
 
 
 def test_task_names_are_correct():
     import apps.worker.tasks.simulation_task as mod
+
     check("task names follow expected pattern", True)
     # Source contains correct registration names
     import inspect as _inspect
+
     src = _inspect.getsource(mod)
-    check("persist_simulation name in source",
-          "apps.worker.tasks.simulation_task.persist_simulation" in src)
-    check("run_simulation_job name in source",
-          "apps.worker.tasks.simulation_task.run_simulation_job" in src)
+    check(
+        "persist_simulation name in source",
+        "apps.worker.tasks.simulation_task.persist_simulation" in src,
+    )
+    check(
+        "run_simulation_job name in source",
+        "apps.worker.tasks.simulation_task.run_simulation_job" in src,
+    )
 
 
 def test_celery_degradation_documented():
     """Tasks return None when Celery/Redis not available — verify graceful degradation."""
     import apps.worker.tasks.simulation_task as mod
+
     # celery_app may be None if Redis unavailable — that's expected + documented
     celery_app = mod.celery_app
-    persist    = mod.persist_simulation
-    run_job    = mod.run_simulation_job
+    persist = mod.persist_simulation
+    run_job = mod.run_simulation_job
     if celery_app is None:
         # Broker not available — graceful degradation path
         check("celery_app is None (no broker — graceful degradation)", True)
-        check("persist_simulation is None when no broker",  persist    is None)
-        check("run_simulation_job is None when no broker",  run_job    is None)
+        check("persist_simulation is None when no broker", persist is None)
+        check("run_simulation_job is None when no broker", run_job is None)
     else:
         # Broker available — tasks should be fully initialised
         check("celery_app has send_task", hasattr(celery_app, "send_task"))
-        check("celery_app has conf",      hasattr(celery_app, "conf"))
+        check("celery_app has conf", hasattr(celery_app, "conf"))
         check("persist_simulation has .delay", hasattr(persist, "delay"))
         check("run_simulation_job has .delay", hasattr(run_job, "delay"))
 
@@ -95,8 +113,9 @@ def test_task_routes_in_source():
     import inspect as _inspect
 
     import apps.worker.tasks.simulation_task as mod
+
     src = _inspect.getsource(mod)
-    check("persist queue defined in source",  '"queue": "persist"'  in src)
+    check("persist queue defined in source", '"queue": "persist"' in src)
     check("simulate queue defined in source", '"queue": "simulate"' in src)
 
 
@@ -105,17 +124,21 @@ def test_persist_simulation_inner_function():
     import inspect as _inspect
 
     import apps.worker.tasks.simulation_task as mod
+
     src = _inspect.getsource(mod)
     check("_persist_simulation function defined", "_persist_simulation" in src)
-    check("persist task uses bind=True",           "bind=True" in src)
-    check("run_simulation_job accepts job_id",     "job_id" in src)
+    check("persist task uses bind=True", "bind=True" in src)
+    check("run_simulation_job accepts job_id", "job_id" in src)
 
 
 # ── Layer B: Real broker execution ───────────────────────────────────────────
 
+
 def test_persist_simulation_delay():
     """Send persist_simulation to real Celery broker and check it's accepted."""
+    _require_celery_broker()
     from apps.worker.tasks.simulation_task import persist_simulation
+
     fake_payload = {
         "run_id": str(uuid.uuid4()),
         "org_id": "test-org",
@@ -134,7 +157,9 @@ def test_persist_simulation_delay():
 
 def test_run_simulation_job_delay():
     """Send run_simulation_job to real Celery broker."""
+    _require_celery_broker()
     from apps.worker.tasks.simulation_task import run_simulation_job
+
     fake_job_id = str(uuid.uuid4())
     try:
         result = run_simulation_job.delay(job_id=fake_job_id)
@@ -147,8 +172,9 @@ def _redis_reachable() -> bool:
     """Verify Redis (Celery broker) is reachable before running broker tests."""
     import socket
 
-    host = "localhost"
-    port = 6379
+    parsed = urlparse(REDIS_URL)
+    host = parsed.hostname or "localhost"
+    port = parsed.port or 6379
     try:
         s = socket.create_connection((host, port), timeout=3)
         s.close()
@@ -160,10 +186,12 @@ def _redis_reachable() -> bool:
 
 
 def test_redis_reachable() -> None:
+    _require_celery_broker()
     assert _redis_reachable()
 
 
 # ── Runner ────────────────────────────────────────────────────────────────────
+
 
 def main() -> None:
     print("\n" + "=" * 68)

@@ -14,6 +14,7 @@ Covers:
 Run:
     python3 -m pytest tests/test_query_planner.py -v
 """
+
 from __future__ import annotations
 
 import pytest
@@ -36,24 +37,24 @@ except ImportError:
 
 _POS_SCHEMA: dict[str, list[tuple[str, str]]] = {
     "POS": [
-        ("UNIT_PRICE",    "unit_measure"),
-        ("EXT_PRICE",     "derived_measure"),
-        ("QTY",           "base_measure"),
-        ("ORDER_DATE",    "other"),
+        ("UNIT_PRICE", "unit_measure"),
+        ("EXT_PRICE", "derived_measure"),
+        ("QTY", "base_measure"),
+        ("ORDER_DATE", "other"),
         ("CUSTOMER_NAME", "other"),
-        ("ORDER_STATUS",  "other"),
+        ("ORDER_STATUS", "other"),
     ],
 }
 
 _TOTALS_SCHEMA: dict[str, list[tuple[str, str]]] = {
     "Totals": [
-        ("Net_Sales",           "derived_measure"),
-        ("Tips",                "derived_measure"),
-        ("Sold",                "base_measure"),
-        ("Avg_Sold_Per_Guest",  "ratio"),
-        ("Avg_Order_Time",      "ratio"),
-        ("Guests",              "base_measure"),
-        ("PPA",                 "ratio"),
+        ("Net_Sales", "derived_measure"),
+        ("Tips", "derived_measure"),
+        ("Sold", "base_measure"),
+        ("Avg_Sold_Per_Guest", "ratio"),
+        ("Avg_Order_Time", "ratio"),
+        ("Guests", "base_measure"),
+        ("PPA", "ratio"),
     ],
 }
 
@@ -81,53 +82,86 @@ def combined_planner():
 
 # ── FieldResolution ───────────────────────────────────────────────────────────
 
+
 class TestFieldResolution:
     def test_resolved_is_true_for_column_match(self):
         fr = FieldResolution(
-            hint="extended price", source="POS", column="EXT_PRICE",
-            outcome=ResolverOutcome.COLUMN_MATCH, reason=ResolverReason.DIRECT_MATCH,
-            score=0.85, sql_expr="EXT_PRICE",
+            hint="extended price",
+            source="POS",
+            column="EXT_PRICE",
+            outcome=ResolverOutcome.COLUMN_MATCH,
+            reason=ResolverReason.DIRECT_MATCH,
+            score=0.85,
+            sql_expr="EXT_PRICE",
         )
         assert fr.resolved is True
 
     def test_resolved_is_true_for_weak_match(self):
         fr = FieldResolution(
-            hint="customer name", source="POS", column="CUSTOMER_NAME",
-            outcome=ResolverOutcome.WEAK_MATCH, reason=ResolverReason.WEAK_MATCH,
-            score=0.68, sql_expr="CUSTOMER_NAME",
+            hint="customer name",
+            source="POS",
+            column="CUSTOMER_NAME",
+            outcome=ResolverOutcome.WEAK_MATCH,
+            reason=ResolverReason.WEAK_MATCH,
+            score=0.68,
+            sql_expr="CUSTOMER_NAME",
         )
         assert fr.resolved is True
 
     def test_resolved_is_false_for_ambiguous(self):
         fr = FieldResolution(
-            hint="price", source="POS", column="EXT_PRICE",
-            outcome=ResolverOutcome.AMBIGUOUS, reason=ResolverReason.AMBIGUOUS_GAP,
-            score=0.65, sql_expr="?",
+            hint="price",
+            source="POS",
+            column="EXT_PRICE",
+            outcome=ResolverOutcome.AMBIGUOUS,
+            reason=ResolverReason.AMBIGUOUS_GAP,
+            score=0.65,
+            sql_expr="?",
         )
         assert fr.resolved is False
 
     def test_resolved_is_false_for_no_column_match(self):
         fr = FieldResolution(
-            hint="unknown field", source=None, column=None,
-            outcome=ResolverOutcome.NO_COLUMN_MATCH, reason=ResolverReason.NO_SIGNAL,
-            score=0.0, sql_expr="?",
+            hint="unknown field",
+            source=None,
+            column=None,
+            outcome=ResolverOutcome.NO_COLUMN_MATCH,
+            reason=ResolverReason.NO_SIGNAL,
+            score=0.0,
+            sql_expr="?",
         )
         assert fr.resolved is False
 
     def test_to_log_dict_has_required_keys(self):
         fr = FieldResolution(
-            hint="ext price", source="POS", column="EXT_PRICE",
-            outcome=ResolverOutcome.COLUMN_MATCH, reason=ResolverReason.DIRECT_MATCH,
-            score=0.88, sql_expr="EXT_PRICE",
+            hint="ext price",
+            source="POS",
+            column="EXT_PRICE",
+            outcome=ResolverOutcome.COLUMN_MATCH,
+            reason=ResolverReason.DIRECT_MATCH,
+            score=0.88,
+            sql_expr="EXT_PRICE",
         )
         d = fr.to_log_dict()
-        assert set(d.keys()) == {"hint", "source", "column", "outcome", "reason", "score", "sql_expr"}
+        assert set(d.keys()) == {
+            "hint",
+            "source",
+            "column",
+            "outcome",
+            "reason",
+            "score",
+            "sql_expr",
+        }
 
     def test_to_log_dict_values_are_serialisable(self):
         fr = FieldResolution(
-            hint="qty", source="POS", column="QTY",
-            outcome=ResolverOutcome.COLUMN_MATCH, reason=ResolverReason.DIRECT_MATCH,
-            score=0.80, sql_expr="QTY",
+            hint="qty",
+            source="POS",
+            column="QTY",
+            outcome=ResolverOutcome.COLUMN_MATCH,
+            reason=ResolverReason.DIRECT_MATCH,
+            score=0.80,
+            sql_expr="QTY",
         )
         d = fr.to_log_dict()
         # outcome and reason should be strings, not enums
@@ -137,6 +171,7 @@ class TestFieldResolution:
 
 
 # ── Metric resolution ─────────────────────────────────────────────────────────
+
 
 class TestMetricResolution:
     def test_column_match_metric_is_resolved(self, pos_planner):
@@ -204,28 +239,28 @@ class TestMetricResolution:
 
 # ── Group-by resolution ───────────────────────────────────────────────────────
 
+
 class TestGroupByResolution:
     def test_group_by_resolved_column(self, pos_planner):
         plan = pos_planner.plan(
-            metric  = ("extended price", "POS", "derived_measure"),
-            group_by= [("customer name", "POS", "other")],
+            metric=("extended price", "POS", "derived_measure"),
+            group_by=[("customer name", "POS", "other")],
         )
         assert len(plan.group_by) == 1
         assert plan.group_by[0].column is not None
 
     def test_group_by_column_appears_in_sql_sketch(self, pos_planner):
         plan = pos_planner.plan(
-            metric  = ("extended price", "POS", "derived_measure"),
-            group_by= [("customer name", "POS", "other")],
+            metric=("extended price", "POS", "derived_measure"),
+            group_by=[("customer name", "POS", "other")],
         )
         assert "GROUP BY" in plan.sql_sketch
         assert plan.group_by[0].column in plan.sql_sketch
 
     def test_multiple_group_by_fields(self, pos_planner):
         plan = pos_planner.plan(
-            metric  = ("extended price", "POS", "derived_measure"),
-            group_by= [("customer name", "POS", "other"),
-                        ("order date",    "POS", "other")],
+            metric=("extended price", "POS", "derived_measure"),
+            group_by=[("customer name", "POS", "other"), ("order date", "POS", "other")],
         )
         assert len(plan.group_by) == 2
 
@@ -236,8 +271,8 @@ class TestGroupByResolution:
     def test_group_by_accepts_weak_match(self, pos_planner):
         """Group-by always accepts WEAK_MATCH outcomes."""
         plan = pos_planner.plan(
-            metric  = ("unit price", "POS", "unit_measure"),
-            group_by= [("customer name", "POS", "other")],
+            metric=("unit price", "POS", "unit_measure"),
+            group_by=[("customer name", "POS", "other")],
         )
         gb = plan.group_by[0]
         # Either COLUMN_MATCH or WEAK_MATCH is fine for group_by
@@ -250,19 +285,20 @@ class TestGroupByResolution:
 
 # ── Date filter resolution ────────────────────────────────────────────────────
 
+
 class TestDateFilterResolution:
     def test_date_filter_resolved(self, pos_planner):
         plan = pos_planner.plan(
-            metric= ("extended price", "POS", "derived_measure"),
-            date  = ("order date",     "POS", "other"),
+            metric=("extended price", "POS", "derived_measure"),
+            date=("order date", "POS", "other"),
         )
         assert plan.date_filter is not None
         assert plan.date_filter.column is not None
 
     def test_date_filter_appears_in_where_clause(self, pos_planner):
         plan = pos_planner.plan(
-            metric= ("extended price", "POS", "derived_measure"),
-            date  = ("order date",     "POS", "other"),
+            metric=("extended price", "POS", "derived_measure"),
+            date=("order date", "POS", "other"),
         )
         assert "WHERE" in plan.sql_sketch
         assert "BETWEEN ? AND ?" in plan.sql_sketch
@@ -273,6 +309,7 @@ class TestDateFilterResolution:
 
 
 # ── SQL sketch ────────────────────────────────────────────────────────────────
+
 
 class TestQueryPlanSqlSketch:
     def test_column_match_metric_in_select(self, pos_planner):
@@ -296,15 +333,15 @@ class TestQueryPlanSqlSketch:
     def test_full_plan_sql_order(self, pos_planner):
         """SELECT … FROM … WHERE … GROUP BY — clause order must be correct."""
         plan = pos_planner.plan(
-            metric  = ("extended price", "POS", "derived_measure"),
-            group_by= [("customer name", "POS", "other")],
-            date    = ("order date",     "POS", "other"),
+            metric=("extended price", "POS", "derived_measure"),
+            group_by=[("customer name", "POS", "other")],
+            date=("order date", "POS", "other"),
         )
         sketch = plan.sql_sketch
-        select_pos  = sketch.index("SELECT")
-        from_pos    = sketch.index("FROM")
-        where_pos   = sketch.index("WHERE")
-        group_pos   = sketch.index("GROUP BY")
+        select_pos = sketch.index("SELECT")
+        from_pos = sketch.index("FROM")
+        where_pos = sketch.index("WHERE")
+        group_pos = sketch.index("GROUP BY")
         assert select_pos < from_pos < where_pos < group_pos
 
     def test_unresolved_metric_gives_question_mark_select(self, pos_planner):
@@ -319,12 +356,13 @@ class TestQueryPlanSqlSketch:
 
 # ── Fully resolved flag ───────────────────────────────────────────────────────
 
+
 class TestQueryPlanFullyResolved:
     def test_fully_resolved_when_all_fields_match(self, pos_planner):
         plan = pos_planner.plan(
-            metric  = ("extended price", "POS", "derived_measure"),
-            group_by= [("customer name", "POS", "other")],
-            date    = ("order date",     "POS", "other"),
+            metric=("extended price", "POS", "derived_measure"),
+            group_by=[("customer name", "POS", "other")],
+            date=("order date", "POS", "other"),
         )
         # metric must be COLUMN_MATCH for fully_resolved to be True
         if plan.metric and plan.metric.outcome == ResolverOutcome.COLUMN_MATCH:
@@ -337,8 +375,8 @@ class TestQueryPlanFullyResolved:
 
     def test_unresolved_field_makes_plan_not_fully_resolved(self, pos_planner):
         plan = pos_planner.plan(
-            metric  = ("extended price", "POS", "derived_measure"),
-            group_by= [("xyzzy unknown", "POS", "other")],
+            metric=("extended price", "POS", "derived_measure"),
+            group_by=[("xyzzy unknown", "POS", "other")],
         )
         if plan.group_by and not plan.group_by[0].resolved:
             assert not plan.fully_resolved
@@ -346,18 +384,27 @@ class TestQueryPlanFullyResolved:
 
 # ── to_log_dict ───────────────────────────────────────────────────────────────
 
+
 class TestQueryPlanLogDict:
     def test_log_dict_has_required_keys(self, pos_planner):
         plan = pos_planner.plan(metric=("extended price", "POS", "derived_measure"))
         d = plan.to_log_dict()
-        required = {"metric", "meta_op", "group_by", "date_filter",
-                    "filters", "sources", "fully_resolved", "sql_sketch"}
+        required = {
+            "metric",
+            "meta_op",
+            "group_by",
+            "date_filter",
+            "filters",
+            "sources",
+            "fully_resolved",
+            "sql_sketch",
+        }
         assert required.issubset(d.keys())
 
     def test_log_dict_sql_sketch_matches_property(self, pos_planner):
         plan = pos_planner.plan(
-            metric  = ("extended price", "POS", "derived_measure"),
-            group_by= [("customer name", "POS", "other")],
+            metric=("extended price", "POS", "derived_measure"),
+            group_by=[("customer name", "POS", "other")],
         )
         d = plan.to_log_dict()
         assert d["sql_sketch"] == plan.sql_sketch
@@ -381,8 +428,8 @@ class TestQueryPlanLogDict:
 
     def test_log_dict_group_by_is_list(self, pos_planner):
         plan = pos_planner.plan(
-            metric  = ("extended price", "POS", "derived_measure"),
-            group_by= [("customer name", "POS", "other")],
+            metric=("extended price", "POS", "derived_measure"),
+            group_by=[("customer name", "POS", "other")],
         )
         d = plan.to_log_dict()
         assert isinstance(d["group_by"], list)
@@ -391,13 +438,14 @@ class TestQueryPlanLogDict:
 
 # ── Composed plan end-to-end ──────────────────────────────────────────────────
 
+
 class TestComposedPlans:
     def test_metric_group_by_date_full_plan(self, pos_planner):
         """SELECT EXT_PRICE FROM POS WHERE ORDER_DATE BETWEEN ? AND ? GROUP BY CUSTOMER_NAME"""
         plan = pos_planner.plan(
-            metric  = ("extended price",  "POS", "derived_measure"),
-            group_by= [("customer name",  "POS", "other")],
-            date    = ("order date",      "POS", "other"),
+            metric=("extended price", "POS", "derived_measure"),
+            group_by=[("customer name", "POS", "other")],
+            date=("order date", "POS", "other"),
         )
         assert plan.metric is not None and plan.metric.column == "EXT_PRICE"
         assert plan.date_filter is not None
@@ -409,8 +457,8 @@ class TestComposedPlans:
     def test_meta_with_explicit_group_by(self, hosp_planner):
         """'how many guests' meta + explicit group-by field."""
         plan = hosp_planner.plan(
-            metric  = ("how many guests",     "Totals", "base_measure"),
-            group_by= [("food net sales",     "Food",   "derived_measure")],
+            metric=("how many guests", "Totals", "base_measure"),
+            group_by=[("food net sales", "Food", "derived_measure")],
         )
         assert plan.meta_op is not None
         assert plan.meta_op.op_type == MetaOpType.COUNT_NON_NULL
@@ -420,8 +468,8 @@ class TestComposedPlans:
     def test_ppa_with_date_filter(self, combined_planner):
         """PPA from Totals + ORDER_DATE from POS — cross-source composed plan."""
         plan = combined_planner.plan(
-            metric= ("per person average", "Totals", "ratio"),
-            date  = ("order date",         "POS",    "other"),
+            metric=("per person average", "Totals", "ratio"),
+            date=("order date", "POS", "other"),
         )
         assert plan.metric is not None and plan.metric.column == "PPA"
         assert "SELECT PPA" in plan.sql_sketch
@@ -429,17 +477,17 @@ class TestComposedPlans:
     def test_sources_deduplicated(self, pos_planner):
         """All fields from same source → sources list has exactly one entry."""
         plan = pos_planner.plan(
-            metric  = ("extended price", "POS", "derived_measure"),
-            group_by= [("customer name", "POS", "other")],
-            date    = ("order date",     "POS", "other"),
+            metric=("extended price", "POS", "derived_measure"),
+            group_by=[("customer name", "POS", "other")],
+            date=("order date", "POS", "other"),
         )
         assert len(plan.sources) == 1
         assert plan.sources[0] == "POS"
 
     def test_steps_audit_trail_populated(self, pos_planner):
         plan = pos_planner.plan(
-            metric  = ("extended price", "POS", "derived_measure"),
-            group_by= [("customer name", "POS", "other")],
+            metric=("extended price", "POS", "derived_measure"),
+            group_by=[("customer name", "POS", "other")],
         )
         # At minimum: metric step, group_by step, sql_sketch step
         assert len(plan.steps) >= 3
@@ -448,8 +496,8 @@ class TestComposedPlans:
 
     def test_filters_appear_in_where_clause(self, pos_planner):
         plan = pos_planner.plan(
-            metric = ("extended price", "POS", "derived_measure"),
-            filters= [("order status",  "POS", "other")],
+            metric=("extended price", "POS", "derived_measure"),
+            filters=[("order status", "POS", "other")],
         )
         if plan.filters and plan.filters[0].column:
             assert plan.filters[0].column in plan.sql_sketch

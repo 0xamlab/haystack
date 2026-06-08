@@ -59,9 +59,17 @@ def test_algenta_cli_import_missing_file_exits_non_zero() -> None:
 def test_algenta_cli_import_bundle_runs_cleanly_for_real_march_corpus() -> None:
     orders = TEST_FILES / "850a28da-a6f7-4ecc-9e7a-51a9cf7f501b-united_states.csv"
     financial = TEST_FILES / "aaeff3ab-19ac-494e-9e58-e507bd7e3893-united_states.csv"
-    inaccurate = TEST_FILES / "630a0f6c-a250-4bd7-af2e-bed6184619ac_top_inaccurate_items_v3_2026-03-01_2026-03-31.csv"
-    ratings = TEST_FILES / "3d9b2e55-c7ea-4e31-90ea-ca5797a69c2b_restaurant_rating_sku_local_2026-03-01_2026-03-31.csv"
-    empty_export = TEST_FILES / "549c63c8-3300-416c-8b45-55fec4c6529a_store_pause_2026-03-01_2026-03-31.csv"
+    inaccurate = (
+        TEST_FILES
+        / "630a0f6c-a250-4bd7-af2e-bed6184619ac_top_inaccurate_items_v3_2026-03-01_2026-03-31.csv"
+    )
+    ratings = (
+        TEST_FILES
+        / "3d9b2e55-c7ea-4e31-90ea-ca5797a69c2b_restaurant_rating_sku_local_2026-03-01_2026-03-31.csv"
+    )
+    empty_export = (
+        TEST_FILES / "549c63c8-3300-416c-8b45-55fec4c6529a_store_pause_2026-03-01_2026-03-31.csv"
+    )
 
     env = dict(os.environ)
     env["PYTHONPATH"] = _pythonpath()

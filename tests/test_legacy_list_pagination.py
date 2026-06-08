@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 from uuid import uuid4
@@ -13,9 +13,10 @@ from apps.api_server.routers import connectors as connectors_router
 from apps.api_server.routers import devices as devices_router
 from apps.api_server.routers import engines as engines_router
 from apps.api_server.routers import team as team_router
+from apps.api_server.services.runtime_internal_contracts import AuditEventRecord, parquet_bytes_from_records
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_list_connectors_keeps_raw_list_without_pagination(monkeypatch) -> None:
     connector_payloads = [
         connectors_router.ConnectorResponse(
@@ -63,7 +64,7 @@ async def test_list_connectors_keeps_raw_list_without_pagination(monkeypatch) ->
     assert [item.id for item in response] == ["c1", "c2"]
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_list_connectors_returns_envelope_when_paginated(monkeypatch) -> None:
     connector_payloads = [
         connectors_router.ConnectorResponse(
@@ -140,11 +141,15 @@ class _ScalarResult:
         return list(self._items)
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_list_team_supports_raw_and_paginated_shapes() -> None:
     fake_users = [
-        _FakeUser("u1", "Alice", "alice@example.com", _FakeEnumValue("owner"), _FakeEnumValue("active")),
-        _FakeUser("u2", "Bob", "bob@example.com", _FakeEnumValue("member"), _FakeEnumValue("active")),
+        _FakeUser(
+            "u1", "Alice", "alice@example.com", _FakeEnumValue("owner"), _FakeEnumValue("active")
+        ),
+        _FakeUser(
+            "u2", "Bob", "bob@example.com", _FakeEnumValue("member"), _FakeEnumValue("active")
+        ),
     ]
     db = SimpleNamespace(execute=AsyncMock(return_value=_ScalarResult(fake_users)))
 
@@ -179,13 +184,18 @@ class _FakeAPIKey:
     status: _FakeEnumValue
     created_at: datetime
     last_used_at: datetime | None = None
+    expires_at: datetime | None = None
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_list_api_keys_supports_raw_and_paginated_shapes() -> None:
     fake_keys = [
-        _FakeAPIKey(str(uuid4()), "Primary", "de_live_", _FakeEnumValue("active"), datetime.now(UTC)),
-        _FakeAPIKey(str(uuid4()), "Secondary", "de_test_", _FakeEnumValue("active"), datetime.now(UTC)),
+        _FakeAPIKey(
+            str(uuid4()), "Primary", "de_live_", _FakeEnumValue("active"), datetime.now(UTC)
+        ),
+        _FakeAPIKey(
+            str(uuid4()), "Secondary", "de_test_", _FakeEnumValue("active"), datetime.now(UTC)
+        ),
     ]
     db = SimpleNamespace(execute=AsyncMock(return_value=_ScalarResult(fake_keys)))
 
@@ -212,7 +222,42 @@ async def test_list_api_keys_supports_raw_and_paginated_shapes() -> None:
     assert [str(item.id) for item in paginated_response.api_keys] == [fake_keys[0].id]
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
+async def test_list_api_keys_filters_expired_entries() -> None:
+    now = datetime.now(UTC)
+    fake_keys = [
+        _FakeAPIKey(
+            str(uuid4()),
+            "Expired",
+            "de_live_",
+            _FakeEnumValue("active"),
+            now,
+            expires_at=now - timedelta(days=1),
+        ),
+        _FakeAPIKey(
+            str(uuid4()),
+            "Mission",
+            "de_live_",
+            _FakeEnumValue("active"),
+            now,
+            expires_at=now + timedelta(days=730),
+        ),
+    ]
+    db = SimpleNamespace(execute=AsyncMock(return_value=_ScalarResult(fake_keys)))
+
+    response = await account_router.list_api_keys(
+        auth={"org_id": "org_1"},
+        db=db,
+        page=None,
+        limit=None,
+    )
+
+    assert isinstance(response, list)
+    assert [item.label for item in response] == ["Mission"]
+    assert response[0].expires_at == fake_keys[1].expires_at
+
+
+@pytest.mark.anyio
 async def test_static_account_lists_support_paginated_envelopes() -> None:
     distributions = await account_router.distributions(
         auth={"org_id": "org_1"},
@@ -252,12 +297,11 @@ class _ScalarOneResult:
         return list(self._value)
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_audit_logs_return_pages_for_demo_fallback() -> None:
     db = SimpleNamespace(
         execute=AsyncMock(
             side_effect=[
-                _ScalarOneResult(0),
                 _ScalarOneResult([]),
             ]
         )
@@ -277,6 +321,165 @@ async def test_audit_logs_return_pages_for_demo_fallback() -> None:
     assert len(response.entries) == 2
 
 
+@pytest.mark.anyio
+async def test_audit_logs_parse_metadata_from_db_rows() -> None:
+    event = SimpleNamespace(
+        id=uuid4(),
+        created_at=datetime.now(UTC),
+        actor_email="owner@example.com",
+        action="decision.execute",
+        resource_type="decision_log",
+        resource_id="decision_123",
+        ip_address="203.0.113.10",
+        result="success",
+        metadata_json='{"policy_snapshot_id":"policy-v1","manifest_version":"runtime-manifest-v1"}',
+    )
+    db = SimpleNamespace(
+        execute=AsyncMock(
+            side_effect=[
+                _ScalarOneResult([event]),
+            ]
+        )
+    )
+
+    response = await team_router.get_audit_logs(
+        db=db,
+        auth={"org_id": uuid4()},
+        page=1,
+        limit=25,
+    )
+
+    assert response.total == 1
+    assert response.entries[0].metadata == {
+        "policy_snapshot_id": "policy-v1",
+        "manifest_version": "runtime-manifest-v1",
+    }
+
+
+@pytest.mark.anyio
+async def test_audit_logs_filter_by_lineage_metadata() -> None:
+    matching_event = SimpleNamespace(
+        id=uuid4(),
+        created_at=datetime.now(UTC),
+        actor_email="owner@example.com",
+        action="decision.execute",
+        resource_type="decision_log",
+        resource_id="decision_123",
+        ip_address="203.0.113.10",
+        result="success",
+        metadata_json=(
+            '{"policy_snapshot_id":"policy-v1","schema_snapshot_id":"schema-v1",'
+            '"manifest_version":"runtime-manifest-v1","request_hash":"hash_123"}'
+        ),
+    )
+    non_matching_event = SimpleNamespace(
+        id=uuid4(),
+        created_at=datetime.now(UTC),
+        actor_email="owner@example.com",
+        action="decision.execute",
+        resource_type="decision_log",
+        resource_id="decision_124",
+        ip_address="203.0.113.11",
+        result="success",
+        metadata_json='{"policy_snapshot_id":"policy-v2","schema_snapshot_id":"schema-v2"}',
+    )
+    db = SimpleNamespace(execute=AsyncMock(side_effect=[_ScalarOneResult([matching_event, non_matching_event])]))
+
+    response = await team_router.get_audit_logs(
+        db=db,
+        auth={"org_id": uuid4()},
+        page=1,
+        limit=25,
+        action="decision.execute",
+        policy_snapshot_id="policy-v1",
+        schema_snapshot_id="schema-v1",
+        manifest_version="runtime-manifest-v1",
+        request_hash="hash_123",
+    )
+
+    assert response.total == 1
+    assert response.entries[0].resource_id == "decision_123"
+    assert response.entries[0].metadata == {
+        "policy_snapshot_id": "policy-v1",
+        "schema_snapshot_id": "schema-v1",
+        "manifest_version": "runtime-manifest-v1",
+        "request_hash": "hash_123",
+    }
+
+
+@pytest.mark.anyio
+async def test_audit_log_artifacts_return_filtered_pages(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("ALGENTA_RUNTIME_DIR", str(tmp_path / "runtime"))
+    org_id = uuid4()
+    directory = tmp_path / "runtime" / "audit_events" / str(org_id)
+    directory.mkdir(parents=True, exist_ok=True)
+    first = AuditEventRecord(
+        event_id="evt_1",
+        org_id=str(org_id),
+        actor_user_id=None,
+        actor_email="owner@example.com",
+        action="decision.execute",
+        resource_type="decision_log",
+        resource_id="decision_123",
+        ip_address="203.0.113.10",
+        result="success",
+        metadata_json='{"policy_snapshot_id":"policy-v1","schema_snapshot_id":"schema-v1","manifest_version":"runtime-manifest-v1","request_hash":"hash_123"}',
+        policy_snapshot_id="policy-v1",
+        schema_snapshot_id="schema-v1",
+        manifest_version="runtime-manifest-v1",
+        request_hash="hash_123",
+        content_hash="content_hash_1",
+        created_at=datetime(2026, 5, 24, 12, 0, tzinfo=UTC),
+    )
+    second = AuditEventRecord(
+        event_id="evt_2",
+        org_id=str(org_id),
+        actor_user_id=None,
+        actor_email="admin@example.com",
+        action="invite_member",
+        resource_type="team_member",
+        resource_id="user_456",
+        ip_address="203.0.113.11",
+        result="success",
+        metadata_json='{"policy_snapshot_id":"policy-v2"}',
+        policy_snapshot_id="policy-v2",
+        schema_snapshot_id=None,
+        manifest_version=None,
+        request_hash=None,
+        content_hash="content_hash_2",
+        created_at=datetime(2026, 5, 24, 12, 1, tzinfo=UTC),
+    )
+    for record in (first, second):
+        (directory / f"{record.event_id}.parquet").write_bytes(
+            parquet_bytes_from_records([record], record_type=AuditEventRecord)
+        )
+
+    response = await team_router.get_audit_log_artifacts(
+        auth={"org_id": org_id},
+        page=1,
+        limit=10,
+        actor_email="owner@example.com",
+        action="decision.execute",
+        resource_type="decision_log",
+        result="success",
+        policy_snapshot_id="policy-v1",
+        schema_snapshot_id="schema-v1",
+        manifest_version="runtime-manifest-v1",
+        request_hash="hash_123",
+        content_hash="content_hash_1",
+    )
+
+    assert response.total == 1
+    assert response.entries[0].id == "evt_1"
+    assert response.entries[0].content_hash == "content_hash_1"
+    assert response.entries[0].metadata == {
+        "policy_snapshot_id": "policy-v1",
+        "schema_snapshot_id": "schema-v1",
+        "manifest_version": "runtime-manifest-v1",
+        "request_hash": "hash_123",
+    }
+
+
 def test_engine_catalog_supports_pagination() -> None:
     response = engines_router.list_engines(page=2, limit=5)
 
@@ -287,7 +490,7 @@ def test_engine_catalog_supports_pagination() -> None:
     assert len(response.engines) <= 5
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_device_list_returns_paginated_metadata(monkeypatch) -> None:
     fake_devices = [
         {"device_id": "device-1", "hostname_hash": "a"},
@@ -317,7 +520,7 @@ async def test_device_list_returns_paginated_metadata(monkeypatch) -> None:
     assert [item["device_id"] for item in response.devices] == ["device-3"]
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_simulation_templates_support_paginated_metadata(monkeypatch) -> None:
     from apps.api_server import main as api_main
 

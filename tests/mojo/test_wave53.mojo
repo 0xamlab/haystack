@@ -322,6 +322,10 @@ fn test_word_tokenize() raises:
     var tokens2 = word_tokenize("  foo  bar  baz  ")
     _assert(len(tokens2) == 3, "3 tokens with extra spaces")              # 71
 
+    var tokens3 = word_tokenize("test")
+    _assert(len(tokens3) == 1, "single plain token stays single")         # 71b
+    _assert(tokens3[0] == "test", "plain token remains unchanged")        # 71c
+
 
 fn test_sentence_tokenize() raises:
     print("  sentence_tokenize...")
@@ -355,6 +359,10 @@ fn test_word_ngrams() raises:
     _assert(len(wn) == 2, "2 bigrams")                                    # 80
     _assert(wn[0] == "a_b", "first word bigram")                          # 81
     _assert(wn[1] == "b_c", "second word bigram")                         # 82
+
+    var wn_exact = word_ngrams(toks, 3)
+    _assert(len(wn_exact) == 1, "exact-length ngram yields one gram")     # 82b
+    _assert(wn_exact[0] == "a_b_c", "exact-length gram joined once")      # 82c
 
 
 fn test_stopwords() raises:
@@ -406,6 +414,15 @@ fn test_token_frequency() raises:
     _assert(freq[0][0] == "a", "most frequent is 'a'")                    # 97
     _assert(freq[0][1] == "3", "a count is 3")                            # 98
 
+    var toks2 = List[String]()
+    toks2.append("b")
+    toks2.append("a")
+    toks2.append("c")
+    var freq2 = token_frequency(toks2)
+    _assert(freq2[0][0] == "b", "stable tie order keeps first token")     # 98b
+    _assert(freq2[1][0] == "a", "stable tie order keeps second token")    # 98c
+    _assert(freq2[2][0] == "c", "stable tie order keeps third token")     # 98d
+
 
 fn test_pad_sequence() raises:
     print("  pad_sequence...")
@@ -417,6 +434,20 @@ fn test_pad_sequence() raises:
     _assert(padded[0] == "a", "padded[0] == a")                           # 100
     _assert(padded[2] == "<pad>", "padded[2] == <pad>")                   # 101
     _assert(padded[3] == "<pad>", "padded[3] == <pad>")                   # 102
+
+    var long_toks = List[String]()
+    long_toks.append("a")
+    long_toks.append("b")
+    long_toks.append("c")
+    var truncated = pad_sequence(long_toks, 2, "<pad>")
+    _assert(len(truncated) == 2, "truncated to length 2")
+    _assert(truncated[0] == "a", "truncated[0] == a")
+    _assert(truncated[1] == "b", "truncated[1] == b")
+
+    var exact = pad_sequence(long_toks, 3, "<pad>")
+    _assert(len(exact) == 3, "exact length remains length 3")
+    _assert(exact[0] == "a", "exact[0] == a")
+    _assert(exact[2] == "c", "exact[2] == c")
 
     # Truncation
     var toks2 = List[String]()

@@ -386,6 +386,16 @@ fn test_embeddings() raises:
     _assert_close(mat[0][1], mat[1][0], 1e-9, "sim_matrix symmetric")
     passed += 1
 
+    # 50b. zero-vector diagonal stays 0.0 (avoid false 1.0 shortcut)
+    var zero = List[Float64]()
+    zero.append(0.0)
+    zero.append(0.0)
+    var zero_mat_vecs = List[List[Float64]]()
+    zero_mat_vecs.append(zero.copy())
+    var zero_mat = cosine_similarity_matrix(zero_mat_vecs)
+    _assert_close(zero_mat[0][0], 0.0, 1e-9, "zero-vector diagonal remains 0")
+    passed += 1
+
     # 51. vector_magnitude [3,4] = 5
     _assert_close(vector_magnitude(v34), 5.0, 1e-9, "vector_magnitude([3,4])==5")
     passed += 1

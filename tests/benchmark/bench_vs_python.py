@@ -20,6 +20,7 @@ Usage:
 Requirements:
     pip install numpy scipy
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -35,16 +36,20 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-N_WARMUP  = int(os.environ.get("BENCH_VS_PYTHON_WARMUP",  "5"))
+N_WARMUP = int(os.environ.get("BENCH_VS_PYTHON_WARMUP", "5"))
 N_MEASURE = int(os.environ.get("BENCH_VS_PYTHON_MEASURE", "20"))
 
 # ── Tier 1: Light (original — IPC-dominated) ──────────────────────────────────
 
 LIGHT_RUNS = 10_000
 LIGHT_VARIABLES = [
-    {"name": "rev",  "distribution": "normal",     "params": {"mean": 100_000, "std": 20_000}},
-    {"name": "cost", "distribution": "triangular",  "params": {"low": 40_000, "mode": 55_000, "high": 70_000}},
-    {"name": "vol",  "distribution": "lognormal",   "params": {"mean": 11.0, "std": 0.15}},
+    {"name": "rev", "distribution": "normal", "params": {"mean": 100_000, "std": 20_000}},
+    {
+        "name": "cost",
+        "distribution": "triangular",
+        "params": {"low": 40_000, "mode": 55_000, "high": 70_000},
+    },
+    {"name": "vol", "distribution": "lognormal", "params": {"mean": 11.0, "std": 0.15}},
 ]
 LIGHT_OBJ = "rev - cost"
 
@@ -52,16 +57,24 @@ LIGHT_OBJ = "rev - cost"
 
 PROD_RUNS = 50_000
 PROD_VARIABLES = [
-    {"name": "revenue",    "distribution": "normal",      "params": {"mean": 500000, "std": 100000}},
-    {"name": "cogs",       "distribution": "triangular",  "params": {"low": 200000, "mode": 280000, "high": 350000}},
-    {"name": "opex",       "distribution": "lognormal",   "params": {"mean": 11.5, "std": 0.3}},
-    {"name": "headcount",  "distribution": "uniform",     "params": {"low": 50, "high": 120}},
-    {"name": "churn",      "distribution": "beta",        "params": {"alpha": 2, "beta": 10}},
-    {"name": "conversion", "distribution": "beta",        "params": {"alpha": 5, "beta": 20}},
-    {"name": "price",      "distribution": "triangular",  "params": {"low": 45, "mode": 65, "high": 95}},
-    {"name": "volume",     "distribution": "normal",      "params": {"mean": 10000, "std": 2000}},
-    {"name": "discount",   "distribution": "uniform",     "params": {"low": 0.05, "high": 0.25}},
-    {"name": "tax_rate",   "distribution": "triangular",  "params": {"low": 0.15, "mode": 0.22, "high": 0.35}},
+    {"name": "revenue", "distribution": "normal", "params": {"mean": 500000, "std": 100000}},
+    {
+        "name": "cogs",
+        "distribution": "triangular",
+        "params": {"low": 200000, "mode": 280000, "high": 350000},
+    },
+    {"name": "opex", "distribution": "lognormal", "params": {"mean": 11.5, "std": 0.3}},
+    {"name": "headcount", "distribution": "uniform", "params": {"low": 50, "high": 120}},
+    {"name": "churn", "distribution": "beta", "params": {"alpha": 2, "beta": 10}},
+    {"name": "conversion", "distribution": "beta", "params": {"alpha": 5, "beta": 20}},
+    {"name": "price", "distribution": "triangular", "params": {"low": 45, "mode": 65, "high": 95}},
+    {"name": "volume", "distribution": "normal", "params": {"mean": 10000, "std": 2000}},
+    {"name": "discount", "distribution": "uniform", "params": {"low": 0.05, "high": 0.25}},
+    {
+        "name": "tax_rate",
+        "distribution": "triangular",
+        "params": {"low": 0.15, "mode": 0.22, "high": 0.35},
+    },
 ]
 PROD_OBJ = "revenue - cogs - opex + price * volume * (1 - discount) - tax_rate * revenue"
 
@@ -80,14 +93,16 @@ BOOTSTRAP_DATA_SIZE = 500
 
 # -- Light tier baselines --
 
+
 def _python_mc_light(n: int = LIGHT_RUNS) -> float:
     """Pure NumPy Monte Carlo — light tier (3 vars)."""
     import numpy as np
-    rng  = np.random.default_rng(42)
-    rev  = rng.normal(100_000, 20_000, n)
+
+    rng = np.random.default_rng(42)
+    rev = rng.normal(100_000, 20_000, n)
     cost = rng.triangular(40_000, 55_000, 70_000, n)
-    vol  = rng.lognormal(11.0, 0.15, n)
-    out  = rev - cost
+    vol = rng.lognormal(11.0, 0.15, n)
+    out = rev - cost
     _ = vol.mean(), out.mean(), np.percentile(out, [5, 25, 50, 75, 95])
     return float(out.mean())
 
@@ -96,18 +111,19 @@ def _python_lhs_light(n: int = LIGHT_RUNS) -> float:
     """Latin Hypercube Sampling — light tier (3 vars)."""
     import numpy as np
     from scipy.stats import lognorm, norm, triang  # type: ignore[import]
-    rng     = np.random.default_rng(42)
-    n_vars  = 3
+
+    rng = np.random.default_rng(42)
+    n_vars = 3
     samples = np.zeros((n, n_vars))
     for j in range(n_vars):
         perm = rng.permutation(n)
-        u    = (perm + rng.random(n)) / n
+        u = (perm + rng.random(n)) / n
         samples[:, j] = u
-    rev  = norm.ppf(samples[:, 0], loc=100_000, scale=20_000)
+    rev = norm.ppf(samples[:, 0], loc=100_000, scale=20_000)
     c_val = (55_000 - 40_000) / (70_000 - 40_000)
     cost = triang.ppf(samples[:, 1], c=c_val, loc=40_000, scale=30_000)
-    vol  = lognorm.ppf(samples[:, 2], s=0.15, scale=np.exp(11.0))
-    out  = rev - cost
+    vol = lognorm.ppf(samples[:, 2], s=0.15, scale=np.exp(11.0))
+    out = rev - cost
     _ = vol.mean(), out.mean(), np.percentile(out, [5, 50, 95])
     return float(out.mean())
 
@@ -115,9 +131,10 @@ def _python_lhs_light(n: int = LIGHT_RUNS) -> float:
 def _python_bootstrap_light(n: int = LIGHT_RUNS) -> float:
     """Bootstrap resampling — light tier."""
     import numpy as np
-    rng  = np.random.default_rng(42)
+
+    rng = np.random.default_rng(42)
     data = rng.normal(50_000, 10_000, BOOTSTRAP_DATA_SIZE)
-    idx  = rng.integers(0, BOOTSTRAP_DATA_SIZE, size=(n, BOOTSTRAP_DATA_SIZE))
+    idx = rng.integers(0, BOOTSTRAP_DATA_SIZE, size=(n, BOOTSTRAP_DATA_SIZE))
     stats = data[idx].mean(axis=1)
     _ = stats.mean(), np.percentile(stats, [2.5, 97.5])
     return float(stats.mean())
@@ -125,20 +142,22 @@ def _python_bootstrap_light(n: int = LIGHT_RUNS) -> float:
 
 # -- Production tier baselines (10 vars) --
 
+
 def _python_mc_production(n: int = PROD_RUNS) -> float:
     """Pure NumPy Monte Carlo — production tier (10 vars, complex expression)."""
     import numpy as np
-    rng        = np.random.default_rng(42)
-    revenue    = rng.normal(500000, 100000, n)
-    cogs       = rng.triangular(200000, 280000, 350000, n)
-    opex       = rng.lognormal(11.5, 0.3, n)
-    headcount  = rng.uniform(50, 120, n)
-    churn      = rng.beta(2, 10, n)
+
+    rng = np.random.default_rng(42)
+    revenue = rng.normal(500000, 100000, n)
+    cogs = rng.triangular(200000, 280000, 350000, n)
+    opex = rng.lognormal(11.5, 0.3, n)
+    headcount = rng.uniform(50, 120, n)
+    churn = rng.beta(2, 10, n)
     conversion = rng.beta(5, 20, n)
-    price      = rng.triangular(45, 65, 95, n)
-    volume     = rng.normal(10000, 2000, n)
-    discount   = rng.uniform(0.05, 0.25, n)
-    tax_rate   = rng.triangular(0.15, 0.22, 0.35, n)
+    price = rng.triangular(45, 65, 95, n)
+    volume = rng.normal(10000, 2000, n)
+    discount = rng.uniform(0.05, 0.25, n)
+    tax_rate = rng.triangular(0.15, 0.22, 0.35, n)
     out = revenue - cogs - opex + price * volume * (1 - discount) - tax_rate * revenue
     _ = (
         headcount.mean(),
@@ -154,26 +173,27 @@ def _python_lhs_production(n: int = PROD_RUNS) -> float:
     """Latin Hypercube Sampling — production tier (10 vars)."""
     import numpy as np
     from scipy.stats import beta, lognorm, norm, triang, uniform  # type: ignore[import]
-    rng     = np.random.default_rng(42)
-    n_vars  = 10
+
+    rng = np.random.default_rng(42)
+    n_vars = 10
     samples = np.zeros((n, n_vars))
     for j in range(n_vars):
         perm = rng.permutation(n)
-        u    = (perm + rng.random(n)) / n
+        u = (perm + rng.random(n)) / n
         samples[:, j] = u
-    revenue    = norm.ppf(samples[:, 0], loc=500000, scale=100000)
-    c_cogs     = (280000 - 200000) / (350000 - 200000)
-    cogs       = triang.ppf(samples[:, 1], c=c_cogs, loc=200000, scale=150000)
-    opex       = lognorm.ppf(samples[:, 2], s=0.3, scale=np.exp(11.5))
-    headcount  = uniform.ppf(samples[:, 3], loc=50, scale=70)
-    churn      = beta.ppf(samples[:, 4], 2, 10)
+    revenue = norm.ppf(samples[:, 0], loc=500000, scale=100000)
+    c_cogs = (280000 - 200000) / (350000 - 200000)
+    cogs = triang.ppf(samples[:, 1], c=c_cogs, loc=200000, scale=150000)
+    opex = lognorm.ppf(samples[:, 2], s=0.3, scale=np.exp(11.5))
+    headcount = uniform.ppf(samples[:, 3], loc=50, scale=70)
+    churn = beta.ppf(samples[:, 4], 2, 10)
     conversion = beta.ppf(samples[:, 5], 5, 20)
-    c_price    = (65 - 45) / (95 - 45)
-    price      = triang.ppf(samples[:, 6], c=c_price, loc=45, scale=50)
-    volume     = norm.ppf(samples[:, 7], loc=10000, scale=2000)
-    discount   = uniform.ppf(samples[:, 8], loc=0.05, scale=0.20)
-    c_tax      = (0.22 - 0.15) / (0.35 - 0.15)
-    tax_rate   = triang.ppf(samples[:, 9], c=c_tax, loc=0.15, scale=0.20)
+    c_price = (65 - 45) / (95 - 45)
+    price = triang.ppf(samples[:, 6], c=c_price, loc=45, scale=50)
+    volume = norm.ppf(samples[:, 7], loc=10000, scale=2000)
+    discount = uniform.ppf(samples[:, 8], loc=0.05, scale=0.20)
+    c_tax = (0.22 - 0.15) / (0.35 - 0.15)
+    tax_rate = triang.ppf(samples[:, 9], c=c_tax, loc=0.15, scale=0.20)
     out = revenue - cogs - opex + price * volume * (1 - discount) - tax_rate * revenue
     _ = (
         headcount.mean(),
@@ -188,15 +208,17 @@ def _python_lhs_production(n: int = PROD_RUNS) -> float:
 def _python_bootstrap_production(n: int = PROD_RUNS) -> float:
     """Bootstrap resampling — production tier."""
     import numpy as np
-    rng  = np.random.default_rng(42)
+
+    rng = np.random.default_rng(42)
     data = rng.normal(50_000, 10_000, BOOTSTRAP_DATA_SIZE)
-    idx  = rng.integers(0, BOOTSTRAP_DATA_SIZE, size=(n, BOOTSTRAP_DATA_SIZE))
+    idx = rng.integers(0, BOOTSTRAP_DATA_SIZE, size=(n, BOOTSTRAP_DATA_SIZE))
     stats = data[idx].mean(axis=1)
     _ = stats.mean(), np.percentile(stats, [2.5, 97.5])
     return float(stats.mean())
 
 
 # -- Heavy tier baselines (10 vars, 100k runs) --
+
 
 def _python_mc_heavy(n: int = HEAVY_RUNS) -> float:
     """Pure NumPy Monte Carlo — heavy tier (10 vars, 100k runs)."""
@@ -215,6 +237,7 @@ def _python_bootstrap_heavy(n: int = HEAVY_RUNS) -> float:
 
 # ── Shared timing helper ──────────────────────────────────────────────────────
 
+
 def _bench_python_fn(fn: Any, n_warmup: int, n_measure: int) -> dict[str, float]:
     """Time a Python baseline function."""
     for _ in range(n_warmup):
@@ -227,11 +250,11 @@ def _bench_python_fn(fn: Any, n_warmup: int, n_measure: int) -> dict[str, float]
     latencies.sort()
     n = len(latencies)
     return {
-        "p50_ms":  statistics.median(latencies),
-        "p95_ms":  latencies[int(n * 0.95)],
+        "p50_ms": statistics.median(latencies),
+        "p95_ms": latencies[int(n * 0.95)],
         "mean_ms": statistics.mean(latencies),
-        "min_ms":  latencies[0],
-        "max_ms":  latencies[-1],
+        "min_ms": latencies[0],
+        "max_ms": latencies[-1],
     }
 
 
@@ -251,11 +274,13 @@ async def _setup_engine() -> None:
 
     try:
         from apps.api_server.compute.mojo_pool import MojoWorkerPool, set_pool
+
         pool = MojoWorkerPool(size=max(1, (os.cpu_count() or 4) - 1))
         await pool.start()
         if pool._running:
             set_pool(pool)
             from apps.api_server.compute.mojo_adapter import invoke_engine
+
             _invoke_fn = invoke_engine
             _runtime_mode = "pool"
             print(f"  ✅ Mojo pool started ({pool.size} workers)")
@@ -268,6 +293,7 @@ async def _setup_engine() -> None:
     # Fall back to subprocess invocation
     try:
         from apps.api_server.compute.mojo_adapter import _BINARY_PATH, _invoke_subprocess
+
         if _BINARY_PATH.exists():
             _invoke_fn = _invoke_subprocess
             _runtime_mode = "subprocess"
@@ -287,6 +313,7 @@ async def _teardown_engine() -> None:
     """Shut down the Mojo pool if it was started."""
     try:
         from apps.api_server.compute.mojo_pool import get_pool_sync
+
         pool = get_pool_sync()
         if pool._running:
             await pool.stop()
@@ -295,6 +322,7 @@ async def _teardown_engine() -> None:
 
 
 # ── Mojo benchmarks via _invoke_fn ────────────────────────────────────────────
+
 
 async def _bench_mojo(payload: dict[str, Any], n_warmup: int, n_measure: int) -> dict[str, Any]:
     """Time the Mojo engine via the initialized _invoke_fn (pool or subprocess)."""
@@ -324,17 +352,18 @@ async def _bench_mojo(payload: dict[str, Any], n_warmup: int, n_measure: int) ->
     latencies.sort()
     n = len(latencies)
     return {
-        "p50_ms":  statistics.median(latencies),
-        "p95_ms":  latencies[int(n * 0.95)],
+        "p50_ms": statistics.median(latencies),
+        "p95_ms": latencies[int(n * 0.95)],
         "mean_ms": statistics.mean(latencies),
-        "min_ms":  latencies[0],
-        "max_ms":  latencies[-1],
-        "errors":  errors,
-        "mode":    _runtime_mode,
+        "min_ms": latencies[0],
+        "max_ms": latencies[-1],
+        "errors": errors,
+        "mode": _runtime_mode,
     }
 
 
 # ── Tier runner ────────────────────────────────────────────────────────────────
+
 
 async def _run_tier(
     tier_name: str,
@@ -360,17 +389,22 @@ async def _run_tier(
             "variables": variables,
             "objective_function": obj_fn,
         },
-        N_WARMUP, N_MEASURE,
+        N_WARMUP,
+        N_MEASURE,
     )
-    results.append({
-        "tier":      tier_name,
-        "engine":    "monte_carlo",
-        "runs":      n_runs,
-        "n_vars":    len(variables),
-        "python":    py_mc,
-        "mojo":      mojo_mc,
-        "speedup_p50": round(py_mc["p50_ms"] / mojo_mc["p50_ms"], 1) if "p50_ms" in mojo_mc else None,
-    })
+    results.append(
+        {
+            "tier": tier_name,
+            "engine": "monte_carlo",
+            "runs": n_runs,
+            "n_vars": len(variables),
+            "python": py_mc,
+            "mojo": mojo_mc,
+            "speedup_p50": round(py_mc["p50_ms"] / mojo_mc["p50_ms"], 1)
+            if "p50_ms" in mojo_mc
+            else None,
+        }
+    )
 
     # 2. LHS
     print(f"  {label} LHS — Python/NumPy+SciPy baseline...", flush=True)
@@ -386,24 +420,27 @@ async def _run_tier(
             "variables": variables,
             "objective_function": obj_fn,
         },
-        N_WARMUP, N_MEASURE,
+        N_WARMUP,
+        N_MEASURE,
     )
     speedup_lhs = None
     if "p50_ms" in py_lhs and "p50_ms" in mojo_lhs:
         speedup_lhs = round(py_lhs["p50_ms"] / mojo_lhs["p50_ms"], 1)
-    results.append({
-        "tier":      tier_name,
-        "engine":    "lhs",
-        "runs":      n_runs,
-        "n_vars":    len(variables),
-        "python":    py_lhs,
-        "mojo":      mojo_lhs,
-        "speedup_p50": speedup_lhs,
-    })
+    results.append(
+        {
+            "tier": tier_name,
+            "engine": "lhs",
+            "runs": n_runs,
+            "n_vars": len(variables),
+            "python": py_lhs,
+            "mojo": mojo_lhs,
+            "speedup_p50": speedup_lhs,
+        }
+    )
 
     # 3. Bootstrap
     print(f"  {label} Bootstrap — Python/NumPy baseline...", flush=True)
-    rng  = random.Random(42)
+    rng = random.Random(42)
     hist = [rng.gauss(50_000, 10_000) for _ in range(BOOTSTRAP_DATA_SIZE)]
     py_bs = _bench_python_fn(py_bs_fn, N_WARMUP, N_MEASURE)
     print(f"  {label} Bootstrap — Mojo...", flush=True)
@@ -413,22 +450,28 @@ async def _run_tier(
             "runs": n_runs,
             "bootstrap_config": {"historical_data": hist, "statistic": "mean"},
         },
-        N_WARMUP, N_MEASURE,
+        N_WARMUP,
+        N_MEASURE,
     )
-    results.append({
-        "tier":      tier_name,
-        "engine":    "bootstrap",
-        "runs":      n_runs,
-        "n_vars":    len(variables) if variables else 0,
-        "python":    py_bs,
-        "mojo":      mojo_bs,
-        "speedup_p50": round(py_bs["p50_ms"] / mojo_bs["p50_ms"], 1) if "p50_ms" in mojo_bs else None,
-    })
+    results.append(
+        {
+            "tier": tier_name,
+            "engine": "bootstrap",
+            "runs": n_runs,
+            "n_vars": len(variables) if variables else 0,
+            "python": py_bs,
+            "mojo": mojo_bs,
+            "speedup_p50": round(py_bs["p50_ms"] / mojo_bs["p50_ms"], 1)
+            if "p50_ms" in mojo_bs
+            else None,
+        }
+    )
 
     return results
 
 
 # ── Main comparison runner ─────────────────────────────────────────────────────
+
 
 async def run_comparison() -> list[dict[str, Any]]:
     """Run all three tiers: light, production, heavy."""
@@ -446,8 +489,13 @@ async def run_comparison() -> list[dict[str, Any]]:
     print("  TIER 1: Light — 10k runs × 3 variables (IPC-dominated)")
     print("━" * 60)
     tier1 = await _run_tier(
-        "light", LIGHT_RUNS, LIGHT_VARIABLES, LIGHT_OBJ,
-        _python_mc_light, _python_lhs_light, _python_bootstrap_light,
+        "light",
+        LIGHT_RUNS,
+        LIGHT_VARIABLES,
+        LIGHT_OBJ,
+        _python_mc_light,
+        _python_lhs_light,
+        _python_bootstrap_light,
     )
     all_results.extend(tier1)
 
@@ -457,8 +505,13 @@ async def run_comparison() -> list[dict[str, Any]]:
     print("  TIER 2: Production — 50k runs × 10 variables (realistic)")
     print("━" * 60)
     tier2 = await _run_tier(
-        "production", PROD_RUNS, PROD_VARIABLES, PROD_OBJ,
-        _python_mc_production, _python_lhs_production, _python_bootstrap_production,
+        "production",
+        PROD_RUNS,
+        PROD_VARIABLES,
+        PROD_OBJ,
+        _python_mc_production,
+        _python_lhs_production,
+        _python_bootstrap_production,
     )
     all_results.extend(tier2)
 
@@ -468,8 +521,13 @@ async def run_comparison() -> list[dict[str, Any]]:
     print("  TIER 3: Heavy — 100k runs × 10 variables (stress test)")
     print("━" * 60)
     tier3 = await _run_tier(
-        "heavy", HEAVY_RUNS, HEAVY_VARIABLES, HEAVY_OBJ,
-        _python_mc_heavy, _python_lhs_heavy, _python_bootstrap_heavy,
+        "heavy",
+        HEAVY_RUNS,
+        HEAVY_VARIABLES,
+        HEAVY_OBJ,
+        _python_mc_heavy,
+        _python_lhs_heavy,
+        _python_bootstrap_heavy,
     )
     all_results.extend(tier3)
 
@@ -496,13 +554,15 @@ def print_comparison_table(results: list[dict[str, Any]]) -> None:
         print("| Engine | Python p50 (ms) | Mojo p50 (ms) | Speedup | Mode |")
         print("|--------|----------------|--------------|---------|------|")
         for r in tier_results:
-            py   = r["python"]
+            py = r["python"]
             mojo = r["mojo"]
-            py_p50   = f"{py['p50_ms']:.2f}"   if "p50_ms"  in py   else "N/A"
-            mojo_p50 = f"{mojo['p50_ms']:.2f}" if "p50_ms"  in mojo else "FAILED"
-            speedup  = f"{r['speedup_p50']}x"  if r["speedup_p50"]  else "—"
+            py_p50 = f"{py['p50_ms']:.2f}" if "p50_ms" in py else "N/A"
+            mojo_p50 = f"{mojo['p50_ms']:.2f}" if "p50_ms" in mojo else "FAILED"
+            speedup = f"{r['speedup_p50']}x" if r["speedup_p50"] else "—"
             mode_icon = "🚀" if mojo.get("mode") == "pool" else "🐢"
-            print(f"| {r['engine']:<12} | {py_p50:>15} | {mojo_p50:>12} | {speedup:>7} | {mode_icon} {mojo.get('mode','?')} |")
+            print(
+                f"| {r['engine']:<12} | {py_p50:>15} | {mojo_p50:>12} | {speedup:>7} | {mode_icon} {mojo.get('mode', '?')} |"
+            )
         print()
 
     # Summary

@@ -11,7 +11,7 @@ class _UnexpectedDbSession:
         raise AssertionError("runs query should fail validation before touching the database")
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_runs_rejects_invalid_offset_query_before_database(app, client) -> None:
     async def _fake_auth():  # type: ignore[no-untyped-def]
         return {

@@ -21,7 +21,9 @@ Covers:
   - REST connector (direct module)
   - map_to_simulation auto-mapping logic
 """
+
 import asyncio
+import contextlib
 import json
 import os
 import socket
@@ -29,6 +31,9 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from threading import Thread
 from typing import Any
 
 import pytest
@@ -38,11 +43,31 @@ PROJECT_ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", ".
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
+from tests.integration.live_integration_artifacts import write_live_integration_summary
+
 # Global socket timeout — prevents any test from hanging indefinitely
 socket.setdefaulttimeout(15)
 
-BASE_URL = os.environ.get("DE_BASE_URL", "http://localhost:8000")
-API_KEY = os.environ.get("DE_API_KEY", "de_live_LrL6UWSAfgXsTjgfyaboI9aolrsznjLU")
+try:
+    from tests.integration.live_local_defaults import (
+        configured_local_live_base_url,
+        has_configured_local_live_api_key,
+        resolve_local_live_api_key,
+        resolve_local_live_base_url,
+    )
+except ModuleNotFoundError:
+    from live_local_defaults import (
+        configured_local_live_base_url,
+        has_configured_local_live_api_key,
+        resolve_local_live_api_key,
+        resolve_local_live_base_url,
+    )
+
+BASE_URL = resolve_local_live_base_url()
+API_KEY = resolve_local_live_api_key()
+API_KEY_CONFIGURED = has_configured_local_live_api_key()
+SUITE_NAME = "connectors_integration"
+STARTED = time.perf_counter()
 
 PASS = "✅"
 FAIL = "❌"
@@ -54,8 +79,57 @@ timings: list[tuple[str, float]] = []
 _created_connector_ids: list[str] = []
 
 
+def _emit(message: str = "") -> None:
+    print(message, flush=True)
+
+
+def _format_elapsed_seconds(started_at: float) -> str:
+    return f"{time.monotonic() - started_at:.2f}s"
+
+
+@contextlib.contextmanager
+def local_rest_server():
+    """Serve deterministic JSON for REST connector tests without public-network dependence."""
+
+    class _Handler(BaseHTTPRequestHandler):
+        def do_GET(self) -> None:  # noqa: N802
+            host = self.headers.get("Host", "")
+            payload = {
+                "url": f"http://{host}{self.path}",
+                "headers": {
+                    "Host": host,
+                    "User-Agent": self.headers.get("User-Agent", ""),
+                },
+                "items": [
+                    {"id": "completed-1", "status": "completed", "amount": 12.5},
+                    {"id": "completed-2", "status": "completed", "amount": 18.0},
+                ],
+            }
+            body = json.dumps(payload).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *_args) -> None:
+            return
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), _Handler)
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield f"http://127.0.0.1:{server.server_address[1]}"
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
 # ─── HTTP helpers ─────────────────────────────────────────────────────────────
-def req(method: str, path: str, body=None, headers=None, auth=True, timeout=10) -> tuple[int, Any, dict[str, str], float]:
+def req(
+    method: str, path: str, body=None, headers=None, auth=True, timeout=10
+) -> tuple[int, Any, dict[str, str], float]:
     """Make HTTP request, return (status_code, response_body, response_headers, elapsed)."""
     url = f"{BASE_URL}{path}"
     data = json.dumps(body).encode() if body else None
@@ -96,36 +170,39 @@ def req(method: str, path: str, body=None, headers=None, auth=True, timeout=10) 
             raise TimeoutError(
                 f"Request to {url} timed out after {timeout}s (elapsed: {elapsed:.1f}s)"
             ) from err
-        raise RuntimeError(
-            f"Cannot connect to {BASE_URL} — is the API server running?"
-        ) from err
+        raise RuntimeError(f"Cannot connect to {BASE_URL} — is the API server running?") from err
 
 
 def check(name: str, fn):
     """Run a test function, record pass/fail/skip."""
     t0 = time.perf_counter()
+    started_at = time.monotonic()
+    _emit(f"  ... {name}")
     try:
         fn()
         elapsed = time.perf_counter() - t0
         results.append((PASS, name))
         timings.append((name, elapsed))
-        print(f"  {PASS} {name} ({elapsed:.3f}s)")
+        _emit(f"  {PASS} {name} ({_format_elapsed_seconds(started_at)})")
     except AssertionError as e:
         elapsed = time.perf_counter() - t0
         results.append((FAIL, name, str(e)))
         timings.append((name, elapsed))
-        print(f"  {FAIL} {name}: {e}")
+        _emit(f"  {FAIL} {name} ({_format_elapsed_seconds(started_at)}): {e}")
     except Exception as e:
         elapsed = time.perf_counter() - t0
         results.append((FAIL, name, str(e)))
         timings.append((name, elapsed))
-        print(f"  {FAIL} {name}: {type(e).__name__}: {e}")
+        _emit(
+            f"  {FAIL} {name} ({_format_elapsed_seconds(started_at)}): "
+            f"{type(e).__name__}: {e}"
+        )
 
 
 def skip(name: str, reason: str):
     """Record a skipped test."""
     results.append((SKIP, name, reason))
-    print(f"  {SKIP} {name}: {reason}")
+    _emit(f"  {SKIP} {name}: {reason}")
 
 
 # ─── Small CSV / JSON for inline tests ───────────────────────────────────────
@@ -136,11 +213,13 @@ Widget C,1500.75,1100.50,150
 Widget D,300.00,250.00,30
 """
 
-SAMPLE_JSON = json.dumps([
-    {"name": "Alpha", "profit": 5000, "risk": 0.12},
-    {"name": "Beta", "profit": 8000, "risk": 0.25},
-    {"name": "Gamma", "profit": 3000, "risk": 0.08},
-])
+SAMPLE_JSON = json.dumps(
+    [
+        {"name": "Alpha", "profit": 5000, "risk": 0.12},
+        {"name": "Beta", "profit": 8000, "risk": 0.25},
+        {"name": "Gamma", "profit": 3000, "risk": 0.08},
+    ]
+)
 
 # ─── Database connection info for SQL connector tests ────────────────────────
 DB_CONNECTION = os.environ.get(
@@ -152,11 +231,15 @@ DB_CONNECTION = os.environ.get(
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 def _create_connector(name: str, connector_type: str, config: dict | None = None) -> dict:
     """Create a connector via API and track its ID for cleanup."""
-    status, body, _, _ = req("POST", "/v1/connectors", body={
-        "name": name,
-        "connector_type": connector_type,
-        "config": config,
-    })
+    status, body, _, _ = req(
+        "POST",
+        "/v1/connectors",
+        body={
+            "name": name,
+            "connector_type": connector_type,
+            "config": config,
+        },
+    )
     if status == 201 and isinstance(body, dict) and "id" in body:
         _created_connector_ids.append(body["id"])
     return {"status": status, "body": body}
@@ -184,13 +267,17 @@ def test_connector_crud_api():
         assert isinstance(body, list), f"Expected list, got {type(body)}: {body}"
 
     def create_postgres_connector():
-        r = _create_connector("Test Postgres", "postgres", {
-            "host": "localhost",
-            "port": 5432,
-            "database": "decision_engine",
-            "user": "angel",
-            "password": "",
-        })
+        r = _create_connector(
+            "Test Postgres",
+            "postgres",
+            {
+                "host": "localhost",
+                "port": 5432,
+                "database": "decision_engine",
+                "user": "angel",
+                "password": "",
+            },
+        )
         assert r["status"] == 201, f"Expected 201, got {r['status']}: {r['body']}"
         body = r["body"]
         assert body["name"] == "Test Postgres"
@@ -200,57 +287,83 @@ def test_connector_crud_api():
         assert "created_at" in body
 
     def create_rest_connector():
-        r = _create_connector("Test REST API", "rest", {
-            "base_url": "https://httpbin.org",
-            "auth_type": "none",
-        })
+        r = _create_connector(
+            "Test REST API",
+            "rest",
+            {
+                "base_url": "https://httpbin.org",
+                "auth_type": "none",
+            },
+        )
         assert r["status"] == 201, f"Expected 201, got {r['status']}: {r['body']}"
         body = r["body"]
         assert body["connector_type"] == "rest"
         assert body["status"] == "untested"
 
     def create_file_connector():
-        r = _create_connector("Test File", "file", {
-            "file_type": "csv",
-        })
+        r = _create_connector(
+            "Test File",
+            "file",
+            {
+                "file_type": "csv",
+            },
+        )
         assert r["status"] == 201, f"Expected 201, got {r['status']}: {r['body']}"
         body = r["body"]
         assert body["connector_type"] == "file"
 
     def create_s3_connector():
-        r = _create_connector("Test S3", "s3", {
-            "bucket": "test-bucket",
-            "region": "us-east-1",
-        })
+        r = _create_connector(
+            "Test S3",
+            "s3",
+            {
+                "bucket": "test-bucket",
+                "region": "us-east-1",
+            },
+        )
         assert r["status"] == 201, f"Expected 201, got {r['status']}: {r['body']}"
         assert r["body"]["connector_type"] == "s3"
 
     def create_rest_api_normalized():
         """rest_api normalizes to rest."""
-        r = _create_connector("Test REST Normalized", "rest_api", {
-            "base_url": "https://example.com",
-        })
+        r = _create_connector(
+            "Test REST Normalized",
+            "rest_api",
+            {
+                "base_url": "https://example.com",
+            },
+        )
         assert r["status"] == 201, f"Expected 201, got {r['status']}: {r['body']}"
-        assert r["body"]["connector_type"] == "rest", \
+        assert r["body"]["connector_type"] == "rest", (
             f"Expected 'rest' (normalized), got {r['body']['connector_type']}"
+        )
 
     def create_postgresql_normalized():
         """postgresql normalizes to postgres."""
-        r = _create_connector("Test PG Normalized", "postgresql", {
-            "host": "localhost",
-        })
+        r = _create_connector(
+            "Test PG Normalized",
+            "postgresql",
+            {
+                "host": "localhost",
+            },
+        )
         assert r["status"] == 201, f"Expected 201, got {r['status']}: {r['body']}"
-        assert r["body"]["connector_type"] == "postgres", \
+        assert r["body"]["connector_type"] == "postgres", (
             f"Expected 'postgres' (normalized), got {r['body']['connector_type']}"
+        )
 
     def create_invalid_type_returns_422():
         r = _create_connector("Bad Type", "nonexistent_type_xyz", {})
         assert r["status"] == 422, f"Expected 422, got {r['status']}: {r['body']}"
 
     def create_missing_name_returns_422():
-        status, body, _, _ = req("POST", "/v1/connectors", body={
-            "connector_type": "postgres",
-        })
+        status, body, _, _ = req(
+            "POST",
+            "/v1/connectors",
+            body={
+                "connector_type": "postgres",
+            },
+        )
         assert status == 422, f"Expected 422 for missing name, got {status}: {body}"
 
     def create_missing_body_returns_422():
@@ -261,9 +374,13 @@ def test_connector_crud_api():
         r = _create_connector("Update Me", "postgres", {"host": "localhost"})
         assert r["status"] == 201
         cid = r["body"]["id"]
-        status, body, _, _ = req("PATCH", f"/v1/connectors/{cid}", body={
-            "name": "Updated Name",
-        })
+        status, body, _, _ = req(
+            "PATCH",
+            f"/v1/connectors/{cid}",
+            body={
+                "name": "Updated Name",
+            },
+        )
         assert status == 200, f"Expected 200, got {status}: {body}"
         assert body["name"] == "Updated Name"
 
@@ -271,9 +388,13 @@ def test_connector_crud_api():
         r = _create_connector("Update Config", "postgres", {"host": "localhost"})
         assert r["status"] == 201
         cid = r["body"]["id"]
-        status, body, _, _ = req("PATCH", f"/v1/connectors/{cid}", body={
-            "config": {"host": "newhost", "port": 5433},
-        })
+        status, body, _, _ = req(
+            "PATCH",
+            f"/v1/connectors/{cid}",
+            body={
+                "config": {"host": "newhost", "port": 5433},
+            },
+        )
         assert status == 200, f"Expected 200, got {status}: {body}"
         # Status resets to untested after config update
         assert body["status"] == "untested"
@@ -330,58 +451,81 @@ def test_connector_test_api():
 
     def test_postgres_connection():
         """Test a postgres connector with valid local credentials."""
-        r = _create_connector("PG Test Conn", "postgres", {
-            "host": "localhost",
-            "port": 5432,
-            "database": "decision_engine",
-            "user": "angel",
-            "password": "",
-        })
+        r = _create_connector(
+            "PG Test Conn",
+            "postgres",
+            {
+                "host": "localhost",
+                "port": 5432,
+                "database": "decision_engine",
+                "user": "angel",
+                "password": "",
+            },
+        )
         assert r["status"] == 201
         cid = r["body"]["id"]
         status, body, _, _ = req("POST", f"/v1/connectors/{cid}/test", timeout=15)
         assert status == 200, f"Expected 200, got {status}: {body}"
         assert body["success"] is True, f"Expected success=True: {body}"
+        assert body["status"] == "live", body
+        assert body["error_type"] is None, body
         assert "latency_ms" in body
         assert body["latency_ms"] is None or body["latency_ms"] >= 0
 
     def test_postgres_bad_credentials():
         """Postgres with bad creds should return success=False."""
-        r = _create_connector("PG Bad Creds", "postgres", {
-            "host": "localhost",
-            "port": 5432,
-            "database": "nonexistent_db_xyz",
-            "user": "nobody",
-            "password": "badpass",
-        })
+        r = _create_connector(
+            "PG Bad Creds",
+            "postgres",
+            {
+                "host": "localhost",
+                "port": 5432,
+                "database": "nonexistent_db_xyz",
+                "user": "nobody",
+                "password": "badpass",
+            },
+        )
         assert r["status"] == 201
         cid = r["body"]["id"]
         status, body, _, _ = req("POST", f"/v1/connectors/{cid}/test", timeout=15)
         assert status == 200, f"Expected 200, got {status}: {body}"
         assert body["success"] is False, f"Expected success=False: {body}"
-        assert "failed" in body["message"].lower() or "error" in body["message"].lower(), \
+        assert body["status"] == "error", body
+        assert body["error_type"] in {"auth", "invalid_identifier", "timeout"}, body
+        assert "failed" in body["message"].lower() or "error" in body["message"].lower(), (
             f"Expected failure message: {body['message']}"
+        )
 
     def test_rest_connector_valid():
-        """REST connector with httpbin should succeed."""
-        r = _create_connector("REST Test Conn", "rest", {
-            "base_url": "https://httpbin.org",
-            "auth_type": "none",
-        })
-        assert r["status"] == 201
-        cid = r["body"]["id"]
-        status, body, _, _ = req("POST", f"/v1/connectors/{cid}/test", timeout=15)
-        assert status == 200, f"Expected 200, got {status}: {body}"
-        assert body["success"] is True, f"Expected success=True: {body}"
-        assert "reachable" in body["message"].lower() or "200" in body["message"], \
-            f"Expected reachable message: {body['message']}"
+        """REST connector with local deterministic server should succeed."""
+        with local_rest_server() as base_url:
+            r = _create_connector(
+                "REST Test Conn",
+                "rest",
+                {
+                    "base_url": base_url,
+                    "auth_type": "none",
+                },
+            )
+            assert r["status"] == 201
+            cid = r["body"]["id"]
+            status, body, _, _ = req("POST", f"/v1/connectors/{cid}/test", timeout=15)
+            assert status == 200, f"Expected 200, got {status}: {body}"
+            assert body["success"] is True, f"Expected success=True: {body}"
+            assert "reachable" in body["message"].lower() or "200" in body["message"], (
+                f"Expected reachable message: {body['message']}"
+            )
 
     def test_rest_connector_unreachable():
         """REST connector to unreachable URL should fail."""
-        r = _create_connector("REST Unreachable", "rest", {
-            "base_url": "http://192.0.2.1:9999",
-            "auth_type": "none",
-        })
+        r = _create_connector(
+            "REST Unreachable",
+            "rest",
+            {
+                "base_url": "http://192.0.2.1:9999",
+                "auth_type": "none",
+            },
+        )
         assert r["status"] == 201
         cid = r["body"]["id"]
         status, body, _, _ = req("POST", f"/v1/connectors/{cid}/test", timeout=15)
@@ -390,9 +534,13 @@ def test_connector_test_api():
 
     def test_rest_connector_no_base_url():
         """REST connector with empty base_url should fail."""
-        r = _create_connector("REST No URL", "rest", {
-            "base_url": "",
-        })
+        r = _create_connector(
+            "REST No URL",
+            "rest",
+            {
+                "base_url": "",
+            },
+        )
         assert r["status"] == 201
         cid = r["body"]["id"]
         status, body, _, _ = req("POST", f"/v1/connectors/{cid}/test", timeout=15)
@@ -402,13 +550,17 @@ def test_connector_test_api():
 
     def test_status_updates_to_live():
         """After successful test, connector status should be 'live'."""
-        r = _create_connector("PG Live Status", "postgres", {
-            "host": "localhost",
-            "port": 5432,
-            "database": "decision_engine",
-            "user": "angel",
-            "password": "",
-        })
+        r = _create_connector(
+            "PG Live Status",
+            "postgres",
+            {
+                "host": "localhost",
+                "port": 5432,
+                "database": "decision_engine",
+                "user": "angel",
+                "password": "",
+            },
+        )
         assert r["status"] == 201
         cid = r["body"]["id"]
         assert r["body"]["status"] == "untested"
@@ -421,18 +573,23 @@ def test_connector_test_api():
         assert status2 == 200
         connector = next((c for c in body2 if c["id"] == cid), None)
         assert connector is not None, f"Connector {cid} not found in list"
-        assert connector["status"] == "live", \
+        assert connector["status"] == "live", (
             f"Expected status='live' after test, got '{connector['status']}'"
+        )
 
     def test_status_updates_to_error():
         """After failed test, connector status should be 'error'."""
-        r = _create_connector("PG Error Status", "postgres", {
-            "host": "localhost",
-            "port": 5432,
-            "database": "nonexistent_db_xyz",
-            "user": "nobody",
-            "password": "badpass",
-        })
+        r = _create_connector(
+            "PG Error Status",
+            "postgres",
+            {
+                "host": "localhost",
+                "port": 5432,
+                "database": "nonexistent_db_xyz",
+                "user": "nobody",
+                "password": "badpass",
+            },
+        )
         assert r["status"] == 201
         cid = r["body"]["id"]
         # Run test
@@ -444,8 +601,9 @@ def test_connector_test_api():
         assert status2 == 200
         connector = next((c for c in body2 if c["id"] == cid), None)
         assert connector is not None
-        assert connector["status"] == "error", \
+        assert connector["status"] == "error", (
             f"Expected status='error' after failed test, got '{connector['status']}'"
+        )
         assert connector["error_message"] is not None
 
     def test_nonexistent_connector_returns_404():
@@ -454,7 +612,7 @@ def test_connector_test_api():
 
     check("Test postgres connection (valid)", test_postgres_connection)
     check("Test postgres bad credentials", test_postgres_bad_credentials)
-    check("Test REST connector (httpbin.org)", test_rest_connector_valid)
+    check("Test REST connector (local server)", test_rest_connector_valid)
     check("Test REST connector (unreachable)", test_rest_connector_unreachable)
     check("Test REST connector (no base_url)", test_rest_connector_no_base_url)
     check("Test status updates to 'live'", test_status_updates_to_live)
@@ -470,13 +628,17 @@ def test_connector_browse_api():
 
     def browse_postgres_tables():
         """Browse tables in local postgres after successful test."""
-        r = _create_connector("PG Browse", "postgres", {
-            "host": "localhost",
-            "port": 5432,
-            "database": "decision_engine",
-            "user": "angel",
-            "password": "",
-        })
+        r = _create_connector(
+            "PG Browse",
+            "postgres",
+            {
+                "host": "localhost",
+                "port": 5432,
+                "database": "decision_engine",
+                "user": "angel",
+                "password": "",
+            },
+        )
         assert r["status"] == 201
         cid = r["body"]["id"]
         # Must test first to get 'live' status
@@ -492,9 +654,13 @@ def test_connector_browse_api():
 
     def browse_untested_connector_returns_409():
         """Browse on untested connector should return 409."""
-        r = _create_connector("PG Untested Browse", "postgres", {
-            "host": "localhost",
-        })
+        r = _create_connector(
+            "PG Untested Browse",
+            "postgres",
+            {
+                "host": "localhost",
+            },
+        )
         assert r["status"] == 201
         cid = r["body"]["id"]
         status, body, _, _ = req("GET", f"/v1/connectors/{cid}/browse", timeout=15)
@@ -502,20 +668,25 @@ def test_connector_browse_api():
 
     def browse_rest_connector():
         """Browse a REST connector after successful test."""
-        r = _create_connector("REST Browse", "rest", {
-            "base_url": "https://httpbin.org",
-            "auth_type": "none",
-        })
-        assert r["status"] == 201
-        cid = r["body"]["id"]
-        # Test first
-        status, body, _, _ = req("POST", f"/v1/connectors/{cid}/test", timeout=15)
-        assert status == 200 and body["success"] is True
-        # Browse
-        status2, body2, _, _ = req("GET", f"/v1/connectors/{cid}/browse", timeout=15)
-        assert status2 == 200, f"Expected 200, got {status2}: {body2}"
-        assert body2["connector_type"] == "rest"
-        assert isinstance(body2["items"], list)
+        with local_rest_server() as base_url:
+            r = _create_connector(
+                "REST Browse",
+                "rest",
+                {
+                    "base_url": base_url,
+                    "auth_type": "none",
+                },
+            )
+            assert r["status"] == 201
+            cid = r["body"]["id"]
+            # Test first
+            status, body, _, _ = req("POST", f"/v1/connectors/{cid}/test", timeout=15)
+            assert status == 200 and body["success"] is True
+            # Browse
+            status2, body2, _, _ = req("GET", f"/v1/connectors/{cid}/browse", timeout=15)
+            assert status2 == 200, f"Expected 200, got {status2}: {body2}"
+            assert body2["connector_type"] == "rest"
+            assert isinstance(body2["items"], list)
 
     check("Browse postgres tables", browse_postgres_tables)
     check("Browse untested connector returns 409", browse_untested_connector_returns_409)
@@ -537,6 +708,7 @@ def test_python_module_direct():
             RESTConnector,
             SQLConnector,
         )
+
         assert BaseConnector is not None
         assert ConnectorRegistry is not None
         assert RESTConnector is not None
@@ -546,17 +718,17 @@ def test_python_module_direct():
     def base_connector_is_abstract():
         """BaseConnector cannot be instantiated directly."""
         from apps.api_server.connectors import BaseConnector
+
         try:
             BaseConnector(config={})  # type: ignore[abstract]
-            raise AssertionError(
-                "Should not be able to instantiate abstract BaseConnector"
-            )
+            raise AssertionError("Should not be able to instantiate abstract BaseConnector")
         except TypeError:
             pass  # Expected
 
     def registry_available_types():
         """ConnectorRegistry.available_types() returns all registered types."""
         from apps.api_server.connectors import ConnectorRegistry
+
         types = ConnectorRegistry.available_types()
         assert "rest_api" in types, f"rest_api not in {types}"
         assert "sql" in types, f"sql not in {types}"
@@ -570,6 +742,7 @@ def test_python_module_direct():
             RESTConnector,
             SQLConnector,
         )
+
         assert ConnectorRegistry.get("rest_api") is RESTConnector
         assert ConnectorRegistry.get("sql") is SQLConnector
         assert ConnectorRegistry.get("file") is FileConnector
@@ -578,6 +751,7 @@ def test_python_module_direct():
     def registry_create_instantiates():
         """ConnectorRegistry.create() makes a proper connector instance."""
         from apps.api_server.connectors import ConnectorRegistry, RESTConnector
+
         connector = ConnectorRegistry.create("rest_api", {"url": "http://example.com"})
         assert isinstance(connector, RESTConnector)
         assert connector.config["url"] == "http://example.com"
@@ -585,6 +759,7 @@ def test_python_module_direct():
     def registry_create_invalid_type():
         """ConnectorRegistry.create() raises ValueError for unknown type."""
         from apps.api_server.connectors import ConnectorRegistry
+
         try:
             ConnectorRegistry.create("nonexistent", {})
             raise AssertionError("Should raise ValueError")
@@ -594,6 +769,7 @@ def test_python_module_direct():
     def rest_connector_attributes():
         """RESTConnector has correct connector_type."""
         from apps.api_server.connectors import RESTConnector
+
         assert RESTConnector.connector_type == "rest_api"
         c = RESTConnector({"url": "http://test.com", "method": "POST", "timeout": 5})
         assert c.config["method"] == "POST"
@@ -602,6 +778,7 @@ def test_python_module_direct():
     def sql_connector_attributes():
         """SQLConnector has correct connector_type."""
         from apps.api_server.connectors import SQLConnector
+
         assert SQLConnector.connector_type == "sql"
         c = SQLConnector({"connection_string": "postgres://...", "query": "SELECT 1"})
         assert c.config["query"] == "SELECT 1"
@@ -609,6 +786,7 @@ def test_python_module_direct():
     def file_connector_attributes():
         """FileConnector has correct connector_type."""
         from apps.api_server.connectors import FileConnector
+
         assert FileConnector.connector_type == "file"
         c = FileConnector({"file_type": "json", "content": "{}"})
         assert c.config["file_type"] == "json"
@@ -641,6 +819,7 @@ def test_file_connector_direct():
     def file_parse_csv_directly():
         """FileConnector._parse_csv() parses CSV text to list of dicts."""
         from apps.api_server.connectors import FileConnector
+
         records = FileConnector._parse_csv(SAMPLE_CSV)
         assert len(records) == 4, f"Expected 4 records, got {len(records)}"
         assert records[0]["product"] == "Widget A"
@@ -651,6 +830,7 @@ def test_file_connector_direct():
     def file_parse_json_directly():
         """FileConnector._parse_json() parses JSON text."""
         from apps.api_server.connectors import FileConnector
+
         records = FileConnector._parse_json(SAMPLE_JSON)
         assert len(records) == 3
         assert records[0]["name"] == "Alpha"
@@ -659,6 +839,7 @@ def test_file_connector_direct():
     def file_parse_json_single_object():
         """FileConnector._parse_json() wraps single dict in list."""
         from apps.api_server.connectors import FileConnector
+
         records = FileConnector._parse_json('{"x": 1, "y": 2}')
         assert len(records) == 1
         assert records[0]["x"] == 1
@@ -666,6 +847,7 @@ def test_file_connector_direct():
     def file_fetch_data_async():
         """FileConnector.fetch_data() works with CSV content."""
         from apps.api_server.connectors import FileConnector
+
         c = FileConnector({"file_type": "csv", "content": SAMPLE_CSV})
         records = _run(c.fetch_data())
         assert len(records) == 4
@@ -674,6 +856,7 @@ def test_file_connector_direct():
     def file_fetch_data_json_async():
         """FileConnector.fetch_data() works with JSON content."""
         from apps.api_server.connectors import FileConnector
+
         c = FileConnector({"file_type": "json", "content": SAMPLE_JSON})
         records = _run(c.fetch_data())
         assert len(records) == 3
@@ -682,6 +865,7 @@ def test_file_connector_direct():
     def file_validate_async():
         """FileConnector.validate_connection() returns (True, message)."""
         from apps.api_server.connectors import FileConnector
+
         c = FileConnector({"file_type": "csv", "content": SAMPLE_CSV})
         success, msg = _run(c.validate_connection())
         assert success is True
@@ -690,6 +874,7 @@ def test_file_connector_direct():
     def file_empty_returns_empty():
         """FileConnector with no content returns empty list."""
         from apps.api_server.connectors import FileConnector
+
         c = FileConnector({"file_type": "csv", "content": ""})
         records = _run(c.fetch_data())
         assert records == [], f"Expected empty list, got {records}"
@@ -712,6 +897,7 @@ def test_file_connector_direct():
     def file_connector_with_filepath():
         """FileConnector with file_path reads from disk."""
         from apps.api_server.connectors import FileConnector
+
         csv_path = os.path.join(PROJECT_ROOT, "test_files", "bookings_new.csv")
         if not os.path.exists(csv_path):
             raise AssertionError(f"Test file not found: {csv_path}")
@@ -722,6 +908,7 @@ def test_file_connector_direct():
     def file_connector_missing_filepath():
         """FileConnector with nonexistent file_path raises error."""
         from apps.api_server.connectors import FileConnector
+
         c = FileConnector({"file_type": "csv", "file_path": "/nonexistent/path/data.csv"})
         try:
             _run(c.fetch_data())
@@ -734,6 +921,7 @@ def test_file_connector_direct():
     def file_parse_real_csv():
         """Parse a real CSV file directly with FileConnector."""
         from apps.api_server.connectors import FileConnector
+
         csv_path = os.path.join(PROJECT_ROOT, "test_files", "bookings_new.csv")
         if not os.path.exists(csv_path):
             raise AssertionError(f"Test file not found: {csv_path}")
@@ -776,6 +964,7 @@ def test_sql_connector_direct():
     def sql_validate_connection():
         """SQLConnector.validate_connection() against local Postgres."""
         from apps.api_server.connectors import SQLConnector
+
         c = SQLConnector({"connection_string": DB_CONNECTION, "query": "SELECT 1"})
         success, msg = _run(c.validate_connection())
         assert success is True, f"Expected success=True: {msg}"
@@ -784,10 +973,13 @@ def test_sql_connector_direct():
     def sql_fetch_data():
         """SQLConnector.fetch_data() returns records from a query."""
         from apps.api_server.connectors import SQLConnector
-        c = SQLConnector({
-            "connection_string": DB_CONNECTION,
-            "query": "SELECT 42 as answer, 3.14 as pi_val",
-        })
+
+        c = SQLConnector(
+            {
+                "connection_string": DB_CONNECTION,
+                "query": "SELECT 42 as answer, 3.14 as pi_val",
+            }
+        )
         records = _run(c.fetch_data())
         assert len(records) == 1, f"Expected 1 record, got {len(records)}"
         assert records[0]["answer"] == 42, f"Expected answer=42: {records[0]}"
@@ -795,6 +987,7 @@ def test_sql_connector_direct():
     def sql_missing_fields():
         """SQLConnector raises ValueError when config is incomplete."""
         from apps.api_server.connectors import SQLConnector
+
         c = SQLConnector({"connection_string": "", "query": ""})
         try:
             _run(c.fetch_data())
@@ -805,10 +998,13 @@ def test_sql_connector_direct():
     def sql_bad_connection():
         """SQLConnector.validate_connection() with bad DSN returns failure."""
         from apps.api_server.connectors import SQLConnector
-        c = SQLConnector({
-            "connection_string": "postgresql+asyncpg://nobody:badpass@localhost:5432/nonexistent_db_xyz",
-            "query": "SELECT 1",
-        })
+
+        c = SQLConnector(
+            {
+                "connection_string": "postgresql+asyncpg://nobody:badpass@localhost:5432/nonexistent_db_xyz",
+                "query": "SELECT 1",
+            }
+        )
         success, msg = _run(c.validate_connection())
         assert success is False, f"Expected success=False: {msg}"
         assert "failed" in msg.lower(), f"Expected 'failed' in message: {msg}"
@@ -816,10 +1012,13 @@ def test_sql_connector_direct():
     def sql_fetch_multiple_rows():
         """SQLConnector returns multiple rows correctly."""
         from apps.api_server.connectors import SQLConnector
-        c = SQLConnector({
-            "connection_string": DB_CONNECTION,
-            "query": "SELECT generate_series(1, 5) as n",
-        })
+
+        c = SQLConnector(
+            {
+                "connection_string": DB_CONNECTION,
+                "query": "SELECT generate_series(1, 5) as n",
+            }
+        )
         records = _run(c.fetch_data())
         assert len(records) == 5, f"Expected 5 records, got {len(records)}"
         values = sorted([r["n"] for r in records])
@@ -849,6 +1048,7 @@ def test_rest_connector_direct():
     def rest_validate_unreachable():
         """RESTConnector.validate_connection() with unreachable URL returns failure."""
         from apps.api_server.connectors import RESTConnector
+
         c = RESTConnector({"url": "http://192.0.2.1:9999/nothing", "timeout": 2})
         success, msg = _run(c.validate_connection())
         assert success is False, f"Expected success=False: {msg}"
@@ -857,41 +1057,52 @@ def test_rest_connector_direct():
     def rest_config_defaults():
         """RESTConnector config has sensible defaults."""
         from apps.api_server.connectors import RESTConnector
+
         c = RESTConnector({"url": "http://example.com"})
         assert c.config.get("url") == "http://example.com"
         assert c.config.get("method", "GET") == "GET"
         assert c.config.get("timeout", 30) == 30
 
     def rest_fetch_httpbin():
-        """RESTConnector.fetch_data() retrieves data from httpbin.org."""
+        """RESTConnector.fetch_data() retrieves deterministic local JSON."""
         from apps.api_server.connectors import RESTConnector
-        c = RESTConnector({
-            "url": "https://httpbin.org/get",
-            "method": "GET",
-            "timeout": 10,
-        })
-        records = _run(c.fetch_data())
-        assert len(records) >= 1, f"Expected ≥1 records, got {len(records)}"
-        assert "url" in records[0] or "headers" in records[0], \
-            f"Expected httpbin response fields: {list(records[0].keys())}"
+
+        with local_rest_server() as base_url:
+            c = RESTConnector(
+                {
+                    "url": f"{base_url}/get",
+                    "method": "GET",
+                    "timeout": 10,
+                }
+            )
+            records = _run(c.fetch_data())
+            assert len(records) >= 1, f"Expected ≥1 records, got {len(records)}"
+            assert "url" in records[0] or "headers" in records[0], (
+                f"Expected REST response fields: {list(records[0].keys())}"
+            )
 
     def rest_fetch_with_data_path():
         """RESTConnector extracts nested data via data_path."""
         from apps.api_server.connectors import RESTConnector
-        c = RESTConnector({
-            "url": "https://httpbin.org/get",
-            "data_path": "headers",
-            "timeout": 10,
-        })
-        records = _run(c.fetch_data())
-        assert len(records) >= 1
-        # headers dict should contain Host at minimum
-        assert "Host" in records[0] or len(records[0]) > 0, \
-            f"Expected data_path to extract headers dict: {records[0]}"
+
+        with local_rest_server() as base_url:
+            c = RESTConnector(
+                {
+                    "url": f"{base_url}/get",
+                    "data_path": "headers",
+                    "timeout": 10,
+                }
+            )
+            records = _run(c.fetch_data())
+            assert len(records) >= 1
+            # headers dict should contain Host at minimum
+            assert "Host" in records[0] or len(records[0]) > 0, (
+                f"Expected data_path to extract headers dict: {records[0]}"
+            )
 
     check("RESTConnector validate unreachable URL", rest_validate_unreachable)
     check("RESTConnector config defaults", rest_config_defaults)
-    check("RESTConnector fetch from httpbin.org", rest_fetch_httpbin)
+    check("RESTConnector fetch from local server", rest_fetch_httpbin)
     check("RESTConnector fetch with data_path", rest_fetch_with_data_path)
 
 
@@ -911,6 +1122,7 @@ def test_map_to_simulation():
     def map_empty_data():
         """map_to_simulation() with empty data returns empty payload."""
         from apps.api_server.connectors import FileConnector
+
         c = FileConnector({"file_type": "csv", "content": SAMPLE_CSV})
         payload = _run(c.map_to_simulation([]))
         assert payload["variables"] == []
@@ -919,6 +1131,7 @@ def test_map_to_simulation():
     def map_polarity_detection():
         """map_to_simulation() correctly classifies positive/negative fields."""
         from apps.api_server.connectors import FileConnector
+
         c = FileConnector({"file_type": "csv", "content": ""})
         data = [
             {"revenue": 1000, "expense": 500, "growth": 0.1, "risk": 0.05},
@@ -929,12 +1142,14 @@ def test_map_to_simulation():
         assert "revenue" in obj, f"Expected 'revenue' in objective: {obj}"
         assert "expense" in obj, f"Expected 'expense' in objective: {obj}"
         # Check polarity
-        assert "- expense" in obj or "- risk" in obj, \
+        assert "- expense" in obj or "- risk" in obj, (
             f"Expected negative polarity for expense/risk in: {obj}"
+        )
 
     def map_distribution_assignment():
         """map_to_simulation() assigns correct distribution types."""
         from apps.api_server.connectors import FileConnector
+
         c = FileConnector({"file_type": "csv", "content": ""})
         data = [
             {"price": 100, "probability": 0.5, "fixed_val": 42},
@@ -944,16 +1159,20 @@ def test_map_to_simulation():
         payload = _run(c.map_to_simulation(data))
         vars_by_name = {v["name"]: v for v in payload["variables"]}
 
-        assert vars_by_name["price"]["distribution"] == "triangular", \
+        assert vars_by_name["price"]["distribution"] == "triangular", (
             f"Expected triangular for price: {vars_by_name['price']}"
-        assert vars_by_name["probability"]["distribution"] == "beta", \
+        )
+        assert vars_by_name["probability"]["distribution"] == "beta", (
             f"Expected beta for probability: {vars_by_name['probability']}"
-        assert vars_by_name["fixed_val"]["distribution"] == "fixed", \
+        )
+        assert vars_by_name["fixed_val"]["distribution"] == "fixed", (
             f"Expected fixed for fixed_val: {vars_by_name['fixed_val']}"
+        )
 
     def map_metadata():
         """map_to_simulation() includes _connector_metadata."""
         from apps.api_server.connectors import RESTConnector
+
         c = RESTConnector({"url": "http://example.com"})
         data = [{"val": 10}, {"val": 20}]
         payload = _run(c.map_to_simulation(data, domain="test"))
@@ -966,6 +1185,7 @@ def test_map_to_simulation():
     def map_simulation_structure():
         """map_to_simulation() produces complete simulation payload."""
         from apps.api_server.connectors import FileConnector
+
         c = FileConnector({"file_type": "csv", "content": ""})
         data = [
             {"revenue": 1000, "cost": 500},
@@ -982,6 +1202,7 @@ def test_map_to_simulation():
     def map_variable_structure():
         """Each variable has name, distribution, and params."""
         from apps.api_server.connectors import FileConnector
+
         c = FileConnector({"file_type": "csv", "content": ""})
         data = [
             {"sales": 100, "margin": 0.3},
@@ -992,12 +1213,14 @@ def test_map_to_simulation():
             assert "name" in var, f"Variable missing 'name': {var}"
             assert "distribution" in var, f"Variable missing 'distribution': {var}"
             assert "params" in var, f"Variable missing 'params': {var}"
-            assert var["distribution"] in ("triangular", "beta", "fixed"), \
+            assert var["distribution"] in ("triangular", "beta", "fixed"), (
                 f"Unexpected distribution: {var['distribution']}"
+            )
 
     def map_csv_full_lifecycle():
         """Full lifecycle: parse CSV → map_to_simulation → payload."""
         from apps.api_server.connectors import FileConnector
+
         csv_data = """sales,marketing_cost,churn_rate,profit_margin
 10000,3000,0.05,0.35
 12000,3500,0.08,0.32
@@ -1015,8 +1238,9 @@ def test_map_to_simulation():
 
         # profit_margin 0.28-0.40 range (all <1) → beta
         pm_var = next(v for v in payload["variables"] if v["name"] == "profit_margin")
-        assert pm_var["distribution"] == "beta", \
+        assert pm_var["distribution"] == "beta", (
             f"Expected beta for profit_margin, got {pm_var['distribution']}"
+        )
 
         meta = payload["_connector_metadata"]
         assert meta["source_type"] == "file"
@@ -1048,17 +1272,20 @@ def test_connector_service_direct():
             ConnectorUpdate,
             normalize_type,
         )
+
         assert len(VALID_TYPES) >= 10, f"Expected ≥10 valid types, got {len(VALID_TYPES)}"
 
     def valid_types_include_major_connectors():
         """VALID_TYPES includes postgres, rest, s3, file."""
         from apps.api_server.services.connectors import VALID_TYPES
+
         for expected in ["postgres", "rest", "s3", "file"]:
             assert expected in VALID_TYPES, f"{expected} not in VALID_TYPES: {VALID_TYPES}"
 
     def normalize_type_mappings():
         """normalize_type maps aliases correctly."""
         from apps.api_server.services.connectors import normalize_type
+
         assert normalize_type("postgresql") == "postgres"
         assert normalize_type("rest_api") == "rest"
         assert normalize_type("file_upload") == "file"
@@ -1068,6 +1295,7 @@ def test_connector_service_direct():
     def connector_create_schema():
         """ConnectorCreate schema validates correctly."""
         from apps.api_server.services.connectors import ConnectorCreate
+
         c = ConnectorCreate(name="Test", connector_type="postgres", config={"host": "localhost"})
         assert c.name == "Test"
         assert c.connector_type == "postgres"
@@ -1076,15 +1304,25 @@ def test_connector_service_direct():
     def connector_create_optional_config():
         """ConnectorCreate allows None config."""
         from apps.api_server.services.connectors import ConnectorCreate
+
         c = ConnectorCreate(name="Test", connector_type="rest")
         assert c.config is None
 
     def connector_test_result_schema():
         """ConnectorTestResult schema works."""
         from apps.api_server.services.connectors import ConnectorTestResult
-        r = ConnectorTestResult(success=True, message="OK", latency_ms=42)
+
+        r = ConnectorTestResult(
+            success=True,
+            message="OK",
+            latency_ms=42,
+            status="live",
+            error_type=None,
+            recoverable=None,
+        )
         assert r.success is True
         assert r.latency_ms == 42
+        assert r.status == "live"
 
     check("Import service schemas", import_service_schemas)
     check("VALID_TYPES includes major connectors", valid_types_include_major_connectors)
@@ -1111,55 +1349,81 @@ def test_connector_tester_direct():
     def tester_postgres_valid():
         """test_connector_real for postgres with valid creds."""
         from apps.api_server.services.connectors.tester import test_connector_real
-        success, msg, ms = _run(test_connector_real("postgres", {
-            "host": "localhost",
-            "port": 5432,
-            "database": "decision_engine",
-            "user": "angel",
-            "password": "",
-        }))
+
+        success, msg, ms = _run(
+            test_connector_real(
+                "postgres",
+                {
+                    "host": "localhost",
+                    "port": 5432,
+                    "database": "decision_engine",
+                    "user": "angel",
+                    "password": "",
+                },
+            )
+        )
         assert success is True, f"Expected success=True: {msg}"
         assert ms > 0, f"Expected latency > 0, got {ms}"
 
     def tester_postgres_bad():
         """test_connector_real for postgres with bad creds."""
         from apps.api_server.services.connectors.tester import test_connector_real
-        success, msg, _ms = _run(test_connector_real("postgres", {
-            "host": "localhost",
-            "port": 5432,
-            "database": "nonexistent_db",
-            "user": "nobody",
-            "password": "badpass",
-        }))
+
+        success, msg, _ms = _run(
+            test_connector_real(
+                "postgres",
+                {
+                    "host": "localhost",
+                    "port": 5432,
+                    "database": "nonexistent_db",
+                    "user": "nobody",
+                    "password": "badpass",
+                },
+            )
+        )
         assert success is False, f"Expected success=False: {msg}"
 
     def tester_rest_valid():
-        """test_connector_real for rest with httpbin."""
+        """test_connector_real for rest with local deterministic server."""
         from apps.api_server.services.connectors.tester import test_connector_real
-        success, msg, ms = _run(test_connector_real("rest", {
-            "base_url": "https://httpbin.org",
-        }))
-        assert success is True, f"Expected success=True: {msg}"
-        assert ms > 0
+
+        with local_rest_server() as base_url:
+            success, msg, ms = _run(
+                test_connector_real(
+                    "rest",
+                    {
+                        "base_url": base_url,
+                    },
+                )
+            )
+            assert success is True, f"Expected success=True: {msg}"
+            assert ms > 0
 
     def tester_rest_unreachable():
         """test_connector_real for rest with unreachable URL."""
         from apps.api_server.services.connectors.tester import test_connector_real
-        success, msg, _ms = _run(test_connector_real("rest", {
-            "base_url": "http://192.0.2.1:9999",
-        }))
+
+        success, msg, _ms = _run(
+            test_connector_real(
+                "rest",
+                {
+                    "base_url": "http://192.0.2.1:9999",
+                },
+            )
+        )
         assert success is False, f"Expected success=False: {msg}"
 
     def tester_unsupported_type():
         """test_connector_real for unsupported type returns clean error."""
         from apps.api_server.services.connectors.tester import test_connector_real
+
         success, msg, _ms = _run(test_connector_real("unknown_type", {}))
         assert success is False
         assert "not yet implemented" in msg.lower()
 
     check("Tester: postgres valid connection", tester_postgres_valid)
     check("Tester: postgres bad credentials", tester_postgres_bad)
-    check("Tester: REST valid (httpbin)", tester_rest_valid)
+    check("Tester: REST valid (local server)", tester_rest_valid)
     check("Tester: REST unreachable", tester_rest_unreachable)
     check("Tester: unsupported type", tester_unsupported_type)
 
@@ -1168,29 +1432,48 @@ def test_connector_tester_direct():
 # Main
 # =============================================================================
 def main():
-    print("=" * 72)
-    print("  DATA CONNECTOR INTEGRATION TESTS")
-    print("=" * 72)
+    _emit("=" * 72)
+    _emit("  DATA CONNECTOR INTEGRATION TESTS")
+    _emit("=" * 72)
 
-    api_available = False
+    api_server_reachable = False
+    api_authenticated = False
     try:
         status, _, _, _ = req("GET", "/v1/connectors", auth=True, timeout=5)
-        api_available = (status == 200)
-        print(f"  API server reachable ({BASE_URL}) — status {status}")
+        api_server_reachable = True
+        api_authenticated = status == 200
+        if api_authenticated:
+            _emit(f"  API server reachable ({BASE_URL}) — authenticated status {status}")
+        elif status in (401, 403) and not API_KEY_CONFIGURED:
+            _emit(
+                f"  API server reachable ({BASE_URL}) — status {status}; "
+                "skipping authenticated API connector checks because DE_API_KEY is not set"
+            )
+        else:
+            _emit(f"  API server reachable ({BASE_URL}) — status {status}")
     except Exception as e:
-        print(f"  ⚠️  API server not reachable ({BASE_URL}): {e}")
-        print("  Skipping API tests; running Python module tests only.\n")
+        _emit(f"  ⚠️  API server not reachable ({BASE_URL}): {e}")
+        _emit("  Skipping API tests; running Python module tests only.\n")
 
     try:
         # API-based tests (require running server)
-        if api_available:
+        if api_authenticated:
             test_connector_crud_api()
             test_connector_test_api()
             test_connector_browse_api()
         else:
-            skip("Connector CRUD (API)", "API server not available")
-            skip("Connector Test Endpoint (API)", "API server not available")
-            skip("Connector Browse (API)", "API server not available")
+            if api_server_reachable and not API_KEY_CONFIGURED:
+                reason = (
+                    "DE_API_KEY is not set; skipping authenticated connector API checks "
+                    "that require a real live key."
+                )
+            elif api_server_reachable:
+                reason = "Authenticated connector API unavailable"
+            else:
+                reason = "API server not available"
+            skip("Connector CRUD (API)", reason)
+            skip("Connector Test Endpoint (API)", reason)
+            skip("Connector Browse (API)", reason)
 
         # Python module tests (always run)
         test_python_module_direct()
@@ -1202,37 +1485,55 @@ def main():
         test_connector_tester_direct()
     finally:
         # Cleanup any created connectors
-        if api_available:
-            print("\n  🧹 Cleaning up test connectors...")
+        if api_authenticated:
+            _emit("\n  🧹 Cleaning up test connectors...")
             _cleanup_connectors()
 
     _print_summary()
 
 
 def _print_summary():
-    print("\n" + "=" * 72)
+    _emit("\n" + "=" * 72)
     passed = sum(1 for r in results if r[0] == PASS)
     failed = sum(1 for r in results if r[0] == FAIL)
     skipped = sum(1 for r in results if r[0] == SKIP)
     total = len(results)
 
-    print(f"  RESULTS: {passed}/{total} passed, {failed} failed, {skipped} skipped")
+    _emit(f"  RESULTS: {passed}/{total} passed, {failed} failed, {skipped} skipped")
 
     if timings:
         avg = sum(t for _, t in timings) / len(timings)
         slowest = sorted(timings, key=lambda x: x[1], reverse=True)[:5]
-        print(f"  Average time: {avg:.3f}s")
-        print("  Slowest tests:")
+        _emit(f"  Average time: {avg:.3f}s")
+        _emit("  Slowest tests:")
         for name, t in slowest:
-            print(f"    {t:.3f}s  {name}")
+            _emit(f"    {t:.3f}s  {name}")
 
     if failed > 0:
-        print("\n  FAILURES:")
+        _emit("\n  FAILURES:")
         for r in results:
             if r[0] == FAIL:
-                print(f"    {FAIL} {r[1]}: {r[2]}")
+                _emit(f"    {FAIL} {r[1]}: {r[2]}")
 
-    print("=" * 72)
+    _emit("=" * 72)
+
+    artifact_path = write_live_integration_summary(
+        SUITE_NAME,
+        script="tests/integration/test_connectors.py",
+        passed=passed,
+        failed=failed,
+        skipped=skipped,
+        total=total,
+        elapsed_seconds=time.perf_counter() - STARTED,
+        details={
+            "api_key_configured": bool(API_KEY_CONFIGURED),
+            "base_url": BASE_URL,
+            "failed_checks": [name for icon, name, *_ in results if icon == FAIL],
+            "skipped_checks": [name for icon, name, *_ in results if icon == SKIP],
+            "skipped_count": skipped,
+        },
+    )
+    _emit(f"Summary artifact: {artifact_path}")
 
     if failed > 0:
         sys.exit(1)

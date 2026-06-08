@@ -14,6 +14,7 @@ Run:
   DE_SKIP_API=1 python3 tests/integration/test_auth_flows.py
   python3 tests/integration/test_auth_flows.py
 """
+
 from __future__ import annotations
 
 import json
@@ -29,7 +30,12 @@ import pytest
 _ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(_ROOT))
 
-BASE_URL = os.environ.get("DE_BASE_URL", "http://localhost:8000")
+try:
+    from tests.integration.live_local_defaults import resolve_local_live_base_url
+except ModuleNotFoundError:
+    from live_local_defaults import resolve_local_live_base_url
+
+BASE_URL = resolve_local_live_base_url()
 SKIP_API = os.environ.get("DE_SKIP_API", "0") == "1"
 
 PASS = "✅"
@@ -78,15 +84,17 @@ def get(path: str) -> tuple[int, dict]:
 
 # ── Layer A: Route schema checks ─────────────────────────────────────────────
 
+
 def test_auth_router_importable():
     from apps.api_server.routers import auth as auth_router
+
     check("auth router importable", True)
     routes = {r.path for r in auth_router.router.routes}
-    check("/auth/verify route registered",           "/auth/verify" in routes)
-    check("/auth/forgot-password route registered",  "/auth/forgot-password" in routes)
-    check("/auth/reset-password route registered",   "/auth/reset-password" in routes)
-    check("/auth/signup route registered",           "/auth/signup" in routes)
-    check("/auth/login route registered",            "/auth/login" in routes)
+    check("/auth/verify route registered", "/auth/verify" in routes)
+    check("/auth/forgot-password route registered", "/auth/forgot-password" in routes)
+    check("/auth/reset-password route registered", "/auth/reset-password" in routes)
+    check("/auth/signup route registered", "/auth/signup" in routes)
+    check("/auth/login route registered", "/auth/login" in routes)
 
 
 def test_auth_schemas_importable():
@@ -100,6 +108,7 @@ def test_auth_schemas_importable():
 
 
 # ── Layer B: Live HTTP ───────────────────────────────────────────────────────
+
 
 def test_verify_missing_token_400_or_422():
     status, body = get("/auth/verify")
@@ -148,10 +157,13 @@ def test_forgot_password_missing_body():
 
 
 def test_reset_password_invalid_token():
-    status, body = post("/auth/reset-password", {
-        "token": "invalid-reset-token-xyz",
-        "new_password": "NewSecurePass123!",
-    })
+    status, body = post(
+        "/auth/reset-password",
+        {
+            "token": "invalid-reset-token-xyz",
+            "new_password": "NewSecurePass123!",
+        },
+    )
     check(
         "POST /auth/reset-password (bad token) → 400 or 404",
         status in (400, 404, 422),
@@ -169,10 +181,13 @@ def test_reset_password_missing_fields():
 
 
 def test_reset_password_weak_password():
-    status, body = post("/auth/reset-password", {
-        "token": "some-token",
-        "new_password": "abc",  # too short
-    })
+    status, body = post(
+        "/auth/reset-password",
+        {
+            "token": "some-token",
+            "new_password": "abc",  # too short
+        },
+    )
     check(
         "POST /auth/reset-password (weak password) → 400 or 422",
         status in (400, 422),
@@ -191,6 +206,7 @@ def test_verify_response_structure():
 
 
 # ── Runner ────────────────────────────────────────────────────────────────────
+
 
 def main() -> None:
     print("\n" + "=" * 68)

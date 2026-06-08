@@ -45,7 +45,7 @@ def test_calibrate_confidence_returns_raw_value_until_calibration_is_reliable() 
     assert used_stats.n_samples == 4
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_refresh_calibration_from_db_recomputes_org_stats() -> None:
     org_id = str(uuid.uuid4())
     db = FakeDB(
@@ -66,3 +66,32 @@ async def test_refresh_calibration_from_db_recomputes_org_stats() -> None:
     assert stats.is_reliable is True
     assert used_stats.n_samples == 5
     assert 0.01 <= adjusted <= 0.99
+
+
+def test_calibration_cache_key_is_workspace_distinct() -> None:
+    k = calibration_service._calibration_cache_key
+    assert k("org", None) == "org"  # org-wide bucket == legacy key (backward compatible)
+    assert k("org", "ws-a") == "org:ws-a"
+    assert k("org", "ws-a") != k("org", "ws-b")
+    assert k("org", "ws-a") != k("org", None)
+
+
+def test_calibration_is_isolated_per_workspace() -> None:
+    org = str(uuid.uuid4())
+    # Workspace A: perfectly-calibrated outcomes (bias 0). Workspace B: over-optimistic.
+    a = calibration_service.update_calibration(
+        org, [100.0] * 6, [100.0] * 6, workspace_id="ws-a"
+    )
+    b = calibration_service.update_calibration(
+        org, [100.0] * 6, [60.0] * 6, workspace_id="ws-b"
+    )
+    # Each workspace reads back ONLY its own stats.
+    assert calibration_service.get_calibration(org, "ws-a").bias == a.bias
+    assert calibration_service.get_calibration(org, "ws-b").bias == b.bias
+    assert a.bias != b.bias  # A's outcomes never shifted B's calibration
+    # The org-wide (None) bucket is distinct and was never written → empty.
+    assert calibration_service.get_calibration(org).n_samples == 0
+    # And the confidence multiplier a scoped caller gets is its own workspace's.
+    _, used_a = calibration_service.calibrate_confidence(0.8, org, workspace_id="ws-a")
+    _, used_b = calibration_service.calibrate_confidence(0.8, org, workspace_id="ws-b")
+    assert used_a.bias == a.bias and used_b.bias == b.bias

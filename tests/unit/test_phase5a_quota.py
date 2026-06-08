@@ -1,4 +1,5 @@
 """Unit tests for Phase 5A quota enforcement and usage recording."""
+
 import uuid
 from types import SimpleNamespace
 from typing import Any, cast
@@ -13,12 +14,14 @@ from apps.api_server.services.quota_service import (
     PLAN_QUOTAS,
     _current_billing_period,
     check_monthly_quota,
+    check_named_rate_limit,
     check_rate_limit,
     get_monthly_usage_count,
     record_usage,
 )
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
+
 
 def _mock_db(count: int = 0) -> AsyncMock:
     """Return a mock AsyncSession that returns `count` for SELECT COUNT queries."""
@@ -40,6 +43,7 @@ def _mock_redis(current_count: int = 1) -> AsyncMock:
 
 
 # ─── PLAN_QUOTAS ──────────────────────────────────────────────────────────────
+
 
 class TestPlanQuotas:
     def test_free_plan_exists(self):
@@ -88,6 +92,7 @@ class TestPlanQuotas:
 
 # ─── _current_billing_period ──────────────────────────────────────────────────
 
+
 class TestCurrentBillingPeriod:
     def test_returns_yyyy_mm_format(self):
         period = _current_billing_period()
@@ -100,14 +105,15 @@ class TestCurrentBillingPeriod:
 
 # ─── check_monthly_quota ──────────────────────────────────────────────────────
 
+
 class TestCheckMonthlyQuota:
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_under_limit_does_not_raise(self):
         org_id = uuid.uuid4()
         db = _mock_db(count=100)  # 100 used out of 500 free limit
         await check_monthly_quota(org_id, "free", db)  # Should not raise
 
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_at_limit_raises_429(self):
         org_id = uuid.uuid4()
         db = _mock_db(count=500)  # exactly at free limit
@@ -117,7 +123,7 @@ class TestCheckMonthlyQuota:
         detail: dict[str, Any] = cast(dict, exc_info.value.detail)
         assert detail["error"]["code"] == "quota_exceeded"
 
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_over_limit_raises_429(self):
         org_id = uuid.uuid4()
         db = _mock_db(count=600)  # over free limit
@@ -125,20 +131,20 @@ class TestCheckMonthlyQuota:
             await check_monthly_quota(org_id, "free", db)
         assert exc_info.value.status_code == 429  # detail access not needed here
 
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_enterprise_never_raises(self):
         """Enterprise plan is unlimited — should never raise regardless of count."""
         org_id = uuid.uuid4()
         db = _mock_db(count=999_999)
         await check_monthly_quota(org_id, "enterprise", db)  # No raise
 
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_developer_under_limit_ok(self):
         org_id = uuid.uuid4()
         db = _mock_db(count=5_000)
         await check_monthly_quota(org_id, "developer", db)  # 5k < 10k limit
 
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_developer_at_limit_raises(self):
         org_id = uuid.uuid4()
         db = _mock_db(count=10_000)
@@ -147,7 +153,7 @@ class TestCheckMonthlyQuota:
         assert exc_info.value.status_code == 429
         assert "10000" in str(exc_info.value.detail)
 
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_unknown_plan_uses_free_limits(self):
         """Unknown plan should fall back to free tier limits."""
         org_id = uuid.uuid4()
@@ -155,7 +161,7 @@ class TestCheckMonthlyQuota:
         with pytest.raises(HTTPException):
             await check_monthly_quota(org_id, "unknown_plan", db)
 
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_quota_error_includes_upgrade_url(self):
         org_id = uuid.uuid4()
         db = _mock_db(count=500)
@@ -165,7 +171,7 @@ class TestCheckMonthlyQuota:
         error: dict[str, Any] = detail["error"]
         assert "upgrade_url" in error
 
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_quota_error_includes_used_and_limit(self):
         org_id = uuid.uuid4()
         db = _mock_db(count=500)
@@ -179,14 +185,15 @@ class TestCheckMonthlyQuota:
 
 # ─── check_rate_limit ─────────────────────────────────────────────────────────
 
+
 class TestCheckRateLimit:
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_under_rate_limit_does_not_raise(self):
         org_id = uuid.uuid4()
         redis = _mock_redis(current_count=30)  # 30/60 per minute
         await check_rate_limit(org_id, "free", redis)  # Should not raise
 
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_over_rate_limit_raises_429(self):
         org_id = uuid.uuid4()
         redis = _mock_redis(current_count=61)  # 61 > 60 limit for free
@@ -196,7 +203,7 @@ class TestCheckRateLimit:
         detail: dict[str, Any] = cast(dict, exc_info.value.detail)
         assert detail["error"]["code"] == "rate_limit_exceeded"
 
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_retry_after_header_included(self):
         org_id = uuid.uuid4()
         redis = _mock_redis(current_count=61)
@@ -207,13 +214,13 @@ class TestCheckRateLimit:
         assert exc_info.value.headers["X-RateLimit-Limit"] == "60"
         assert exc_info.value.headers["X-RateLimit-Remaining"] == "0"
 
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_pro_plan_higher_limit(self):
         org_id = uuid.uuid4()
         redis = _mock_redis(current_count=999)  # 999 < 1000 pro limit
         await check_rate_limit(org_id, "pro", redis)  # Should not raise
 
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_successful_check_sets_rate_limit_state(self):
         org_id = uuid.uuid4()
         redis = _mock_redis(current_count=12)
@@ -222,7 +229,7 @@ class TestCheckRateLimit:
         assert state.rate_limit_limit == 60
         assert state.rate_limit_remaining == 48
 
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_redis_error_fails_open(self):
         """Redis unavailable should NOT block requests — fail open."""
         org_id = uuid.uuid4()
@@ -231,7 +238,7 @@ class TestCheckRateLimit:
         # Should NOT raise — rate limit fails open
         await check_rate_limit(org_id, "free", redis)
 
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_redis_error_fails_closed_when_runtime_fallbacks_denied(self, monkeypatch):
         org_id = uuid.uuid4()
         redis = AsyncMock()
@@ -247,7 +254,7 @@ class TestCheckRateLimit:
         assert exc_info.value.headers is not None
         assert exc_info.value.headers["Retry-After"] == "30"
 
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_first_request_sets_ttl(self):
         """First request in a minute should set TTL on the key."""
         org_id = uuid.uuid4()
@@ -255,7 +262,7 @@ class TestCheckRateLimit:
         await check_rate_limit(org_id, "free", redis)
         redis.expire.assert_called_once()
 
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_subsequent_request_no_ttl_reset(self):
         """Non-first requests should NOT reset TTL."""
         org_id = uuid.uuid4()
@@ -263,11 +270,36 @@ class TestCheckRateLimit:
         await check_rate_limit(org_id, "free", redis)
         redis.expire.assert_not_called()
 
+    @pytest.mark.anyio
+    async def test_named_rate_limit_supports_inline_preview_error_code(self):
+        org_id = uuid.uuid4()
+        redis = _mock_redis(current_count=21)
+        state = SimpleNamespace()
+
+        with pytest.raises(HTTPException) as exc_info:
+            await check_named_rate_limit(
+                org_id,
+                redis,
+                key_prefix="inline-preview",
+                limit_per_minute=20,
+                request_state=state,
+                error_code="inline_preview_rate_limited",
+                error_message="Inline connector previews are rate limited.",
+            )
+
+        assert exc_info.value.status_code == 429
+        detail: dict[str, Any] = cast(dict, exc_info.value.detail)
+        assert detail["error"]["code"] == "inline_preview_rate_limited"
+        assert detail["error"]["message"] == "Inline connector previews are rate limited."
+        assert state.rate_limit_limit == 20
+        assert state.rate_limit_remaining == 0
+
 
 # ─── record_usage ─────────────────────────────────────────────────────────────
 
+
 class TestRecordUsage:
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_creates_usage_record(self):
         org_id = uuid.uuid4()
         db = _mock_db()
@@ -280,7 +312,7 @@ class TestRecordUsage:
         db.add.assert_called_once()
         db.flush.assert_called_once()
 
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_usage_record_has_correct_billing_period(self):
         org_id = uuid.uuid4()
         db = _mock_db()
@@ -295,7 +327,7 @@ class TestRecordUsage:
         added_record = db.add.call_args[0][0]
         assert added_record.billing_period == expected_period
 
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_usage_record_endpoint_set(self):
         org_id = uuid.uuid4()
         db = _mock_db()
@@ -308,7 +340,7 @@ class TestRecordUsage:
         added = db.add.call_args[0][0]
         assert added.endpoint == UsageEndpoint.SIMULATE
 
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_usage_record_scenarios_run(self):
         org_id = uuid.uuid4()
         db = _mock_db()
@@ -322,7 +354,7 @@ class TestRecordUsage:
         added = db.add.call_args[0][0]
         assert added.scenarios_run == 10000
 
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_usage_record_billing_units(self):
         org_id = uuid.uuid4()
         db = _mock_db()
@@ -339,22 +371,23 @@ class TestRecordUsage:
 
 # ─── get_monthly_usage_count ──────────────────────────────────────────────────
 
+
 class TestGetMonthlyUsageCount:
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_returns_count(self):
         org_id = uuid.uuid4()
         db = _mock_db(count=42)
         count = await get_monthly_usage_count(org_id, db)
         assert count == 42
 
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_zero_when_no_records(self):
         org_id = uuid.uuid4()
         db = _mock_db(count=0)
         count = await get_monthly_usage_count(org_id, db)
         assert count == 0
 
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_custom_billing_period(self):
         org_id = uuid.uuid4()
         db = _mock_db(count=100)
@@ -363,6 +396,7 @@ class TestGetMonthlyUsageCount:
 
 
 # ─── UsageEndpoint enum ────────────────────────────────────────────────────────
+
 
 class TestUsageEndpointEnum:
     def test_simulate_value(self):

@@ -1,4 +1,5 @@
 """Unit tests for SHA-256 decision integrity service."""
+
 import hashlib
 import json
 import uuid
@@ -13,6 +14,7 @@ from apps.api_server.services.decision_integrity import (
 )
 
 # ─── Fixtures ─────────────────────────────────────────────────────────────────
+
 
 def _make_envelope(overrides: dict | None = None) -> dict:
     """Return a minimal valid DecisionEnvelope dict for testing."""
@@ -57,6 +59,7 @@ def _make_envelope(overrides: dict | None = None) -> dict:
 
 # ─── canonical_envelope_bytes ──────────────────────────────────────────────────
 
+
 class TestCanonicalEnvelopeBytes:
     def test_returns_bytes(self):
         envelope = _make_envelope()
@@ -79,8 +82,15 @@ class TestCanonicalEnvelopeBytes:
         envelope = _make_envelope()
         parsed = json.loads(canonical_envelope_bytes(envelope).decode())
         expected_keys = {
-            "hash_version", "run_id", "recommended_action", "confidence",
-            "rationale", "metrics", "percentiles", "scenarios_run", "engine_version",
+            "hash_version",
+            "run_id",
+            "recommended_action",
+            "confidence",
+            "rationale",
+            "metrics",
+            "percentiles",
+            "scenarios_run",
+            "engine_version",
         }
         assert expected_keys == set(parsed.keys())
 
@@ -138,6 +148,7 @@ class TestCanonicalEnvelopeBytes:
 
 
 # ─── hash_decision_envelope ────────────────────────────────────────────────────
+
 
 class TestHashDecisionEnvelope:
     def test_returns_64_char_hex_string(self):
@@ -213,6 +224,7 @@ class TestHashDecisionEnvelope:
 
 # ─── verify_decision_hash ──────────────────────────────────────────────────────
 
+
 class TestVerifyDecisionHash:
     def test_verify_correct_hash_returns_true(self):
         envelope = _make_envelope()
@@ -279,6 +291,7 @@ class TestVerifyDecisionHash:
 
 # ─── format_result_hash_header ────────────────────────────────────────────────
 
+
 class TestFormatResultHashHeader:
     def test_format_contains_algorithm(self):
         h = "a" * 64
@@ -303,6 +316,7 @@ class TestFormatResultHashHeader:
 
 # ─── parse_result_hash_header ─────────────────────────────────────────────────
 
+
 class TestParseResultHashHeader:
     def test_parse_valid_header(self):
         h = "e" * 64
@@ -323,6 +337,7 @@ class TestParseResultHashHeader:
 
 
 # ─── Round-trip integration ───────────────────────────────────────────────────
+
 
 class TestRoundTrip:
     def test_hash_then_verify_round_trip(self):

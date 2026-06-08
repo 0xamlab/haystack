@@ -11,7 +11,7 @@ def _reset_optional_mojo_state() -> None:
     data_map._MOJO_OPTIONAL_ENGINE_FAILURE_STATE.clear()
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_call_mojo_field_map_routes_through_invoke_engine(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -38,7 +38,7 @@ async def test_call_mojo_field_map_routes_through_invoke_engine(
     assert seen["timeout"] == data_map._OPTIONAL_MOJO_TIMEOUT_S
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_map_via_mojo_routes_through_invoke_engine(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

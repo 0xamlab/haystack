@@ -13,6 +13,15 @@ Prerequisites:
 Run:
   python tests/integration/test_database.py
 """
+
+if __name__ != "__main__":
+    import pytest
+
+    pytest.skip(
+        "Standalone integration script; run via python tests/integration/test_database.py",
+        allow_module_level=True,
+    )
+
 import hashlib
 import json
 import os
@@ -24,13 +33,41 @@ import urllib.error
 import urllib.request
 import uuid
 from datetime import UTC
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from tests.integration.live_capacity_blockers import classify_simulation_capacity_blocker
+from tests.integration.live_integration_artifacts import write_live_integration_summary
 
 # Global socket timeout — prevents any test from hanging indefinitely
 socket.setdefaulttimeout(15)
 
-BASE_URL = os.environ.get("DE_BASE_URL", "http://localhost:8000")
-API_KEY = os.environ.get("DE_API_KEY", "de_live_LrL6UWSAfgXsTjgfyaboI9aolrsznjLU")
-DATABASE_URL = os.environ.get("DATABASE_URL_SYNC", "postgresql://angel:@localhost:5432/decision_engine")
+try:
+    from tests.integration.live_local_defaults import (
+        configured_local_live_base_url,
+        has_configured_local_live_api_key,
+        resolve_local_live_api_key,
+        resolve_local_live_base_url,
+    )
+except ModuleNotFoundError:
+    from live_local_defaults import (
+        configured_local_live_base_url,
+        has_configured_local_live_api_key,
+        resolve_local_live_api_key,
+        resolve_local_live_base_url,
+    )
+
+BASE_URL = resolve_local_live_base_url()
+API_KEY = resolve_local_live_api_key()
+API_KEY_CONFIGURED = has_configured_local_live_api_key()
+DATABASE_URL = os.environ.get(
+    "DATABASE_URL_SYNC", "postgresql://angel:@localhost:5432/decision_engine"
+)
+SUITE_NAME = "database_integration"
+STARTED = time.perf_counter()
 
 # ─── Import psycopg2 ─────────────────────────────────────────────────────────
 try:
@@ -45,19 +82,73 @@ PASS = "✅"
 FAIL = "❌"
 SKIP = "⏭️"
 results: list[tuple] = []
+created_run_blocked_reason = None
+
+
+class EnvironmentBlocked(RuntimeError):
+    """Raised when the live environment cannot execute simulation due to quota/capacity."""
+
+
+def _emit(message: str = "") -> None:
+    print(message, flush=True)
+
+
+def _format_elapsed_seconds(started_at: float) -> str:
+    return f"{time.monotonic() - started_at:.2f}s"
+
+
+def _missing_live_api_key_reason(exc: BaseException) -> str | None:
+    if API_KEY_CONFIGURED:
+        return None
+    text = str(exc)
+    if any(token in text for token in ("401", "403", "Authentication", "invalid_api_key")):
+        return "DE_API_KEY is not set; skipping authenticated database integration checks that require a real live key."
+    return None
+
+
+def _require_configured_live_api_key(reason: str) -> None:
+    if API_KEY_CONFIGURED:
+        return
+    raise EnvironmentBlocked(
+        f"DE_API_KEY is not set; skipping {reason} that require a real seeded API key."
+    )
 
 
 def check(name: str, fn):
+    started_at = time.monotonic()
+    _emit(f"  ... {name}")
     try:
         fn()
         results.append((PASS, name))
-        print(f"  {PASS} {name}")
+        _emit(f"  {PASS} {name} ({_format_elapsed_seconds(started_at)})")
+    except EnvironmentBlocked as e:
+        results.append((SKIP, name, str(e)))
+        _emit(f"  {SKIP} {name} ({_format_elapsed_seconds(started_at)}): {e}")
     except AssertionError as e:
+        missing_key_reason = _missing_live_api_key_reason(e)
+        if missing_key_reason:
+            results.append((SKIP, name, missing_key_reason))
+            _emit(
+                f"  {SKIP} {name} ({_format_elapsed_seconds(started_at)}): "
+                f"{missing_key_reason}"
+            )
+            return
         results.append((FAIL, name, str(e)))
-        print(f"  {FAIL} {name}: {e}")
+        _emit(f"  {FAIL} {name} ({_format_elapsed_seconds(started_at)}): {e}")
     except Exception as e:
+        missing_key_reason = _missing_live_api_key_reason(e)
+        if missing_key_reason:
+            results.append((SKIP, name, missing_key_reason))
+            _emit(
+                f"  {SKIP} {name} ({_format_elapsed_seconds(started_at)}): "
+                f"{missing_key_reason}"
+            )
+            return
         results.append((FAIL, name, str(e)))
-        print(f"  {FAIL} {name}: {type(e).__name__}: {e}")
+        _emit(
+            f"  {FAIL} {name} ({_format_elapsed_seconds(started_at)}): "
+            f"{type(e).__name__}: {e}"
+        )
 
 
 # ─── HTTP helpers (same pattern as test_api_live.py) ──────────────────────────
@@ -93,6 +184,23 @@ def req(method: str, path: str, body=None, headers=None, auth=True, timeout=10):
         raise RuntimeError(f"Cannot connect to {BASE_URL} — is the API server running?") from e
 
 
+def ensure_simulation_capacity_available(status: int, body) -> None:
+    blocked_reason = classify_simulation_capacity_blocker(status=status, payload=body)
+    if blocked_reason:
+        raise EnvironmentBlocked(blocked_reason)
+
+
+def require_created_run_id() -> str:
+    if created_run_blocked_reason:
+        raise EnvironmentBlocked(created_run_blocked_reason)
+    if not created_run_id and not API_KEY_CONFIGURED:
+        raise EnvironmentBlocked(
+            "DE_API_KEY is not set; skipping database checks that depend on a live API-created run."
+        )
+    assert created_run_id, "No run created in prior test"
+    return created_run_id
+
+
 # ─── DB connection ────────────────────────────────────────────────────────────
 def get_db_conn():
     """Return a psycopg2 connection to the decision_engine database."""
@@ -125,17 +233,17 @@ def db_scalar(sql, params=None):
 # ═════════════════════════════════════════════════════════════════════════════
 #  Verify DB connectivity first
 # ═════════════════════════════════════════════════════════════════════════════
-print("\n" + "=" * 70)
-print("  DATABASE INTEGRATION TESTS — Phase 6")
-print("=" * 70)
+_emit("\n" + "=" * 70)
+_emit("  DATABASE INTEGRATION TESTS — Phase 6")
+_emit("=" * 70)
 
 try:
     conn = get_db_conn()
     conn.close()
-    print(f"  ✓ Connected to PostgreSQL: {DATABASE_URL}")
+    _emit(f"  ✓ Connected to PostgreSQL: {DATABASE_URL}")
 except Exception as e:
-    print(f"  ✗ Cannot connect to PostgreSQL: {e}")
-    print("    Set DATABASE_URL_SYNC env var or check .env")
+    _emit(f"  ✗ Cannot connect to PostgreSQL: {e}")
+    _emit("    Set DATABASE_URL_SYNC env var or check .env")
     sys.exit(1)
 
 
@@ -168,7 +276,10 @@ def test_all_expected_tables_exist():
     )
     existing = {r["table_name"] for r in rows}
     for table in EXPECTED_TABLES:
-        assert table in existing, f"Table '{table}' missing from database. Found: {sorted(existing)}"
+        assert table in existing, (
+            f"Table '{table}' missing from database. Found: {sorted(existing)}"
+        )
+
 
 check("All expected tables exist", test_all_expected_tables_exist)
 
@@ -181,15 +292,23 @@ def test_alembic_version_table_exists():
     )
     assert len(rows) == 1, "alembic_version table missing"
 
+
 check("Alembic version table exists", test_alembic_version_table_exists)
 
 
 def test_migration_head_is_0013():
-    """Verify the current migration head is 0013 (latest)."""
+    """Verify the database is migrated to the latest Alembic revision."""
+    revisions = sorted(
+        int(path.stem.split("_", 1)[0])
+        for path in Path("apps/api_server/alembic/versions").glob("[0-9][0-9][0-9][0-9]_*.py")
+    )
+    assert revisions, "No Alembic revision files found"
+    expected_head = f"{revisions[-1]:04d}"
     version = db_scalar("SELECT version_num FROM alembic_version")
-    assert version == "0013", f"Expected migration head '0013', got '{version}'"
+    assert version == expected_head, f"Expected migration head '{expected_head}', got '{version}'"
 
-check("Migration head is 0013", test_migration_head_is_0013)
+
+check("Migration head matches latest Alembic revision", test_migration_head_is_0013)
 
 
 # ─── Column verification for each table ─────────────────────────────────────
@@ -367,6 +486,7 @@ def _make_column_test(table_name, expected_cols):
                 f"Column '{table_name}.{col_name}' type mismatch: "
                 f"expected '{expected_type}', got '{actual[col_name]}'"
             )
+
     return test_fn
 
 
@@ -405,15 +525,14 @@ EXPECTED_INDEXES = [
 
 def test_performance_indexes_exist():
     """Verify all expected indexes exist in the database."""
-    rows = db_query(
-        "SELECT indexname FROM pg_indexes WHERE schemaname = 'public'"
-    )
+    rows = db_query("SELECT indexname FROM pg_indexes WHERE schemaname = 'public'")
     existing = {r["indexname"] for r in rows}
     missing = []
     for idx in EXPECTED_INDEXES:
         if idx not in existing:
             missing.append(idx)
     assert not missing, f"Missing indexes: {missing}. Existing: {sorted(existing)}"
+
 
 check("All expected indexes exist (incl. perf indexes from 0013)", test_performance_indexes_exist)
 
@@ -458,12 +577,15 @@ def test_foreign_keys():
         WHERE tc.constraint_type = 'FOREIGN KEY'
             AND tc.table_schema = 'public'
     """)
-    actual_fks = {(r["source_table"], r["source_column"], r["target_table"], r["target_column"]) for r in rows}
+    actual_fks = {
+        (r["source_table"], r["source_column"], r["target_table"], r["target_column"]) for r in rows
+    }
     missing = []
     for fk in EXPECTED_FK:
         if fk not in actual_fks:
             missing.append(fk)
     assert not missing, f"Missing FKs: {missing}"
+
 
 check("All foreign key relationships exist", test_foreign_keys)
 
@@ -471,7 +593,7 @@ check("All foreign key relationships exist", test_foreign_keys)
 # ─── Enum type verification ─────────────────────────────────────────────────
 
 EXPECTED_ENUMS = {
-    "org_plan": ["free", "developer", "pro", "enterprise"],
+    "org_plan": ["free", "developer", "pro", "enterprise", "team"],
     "org_status": ["active", "suspended", "deleted"],
     "user_role": ["owner", "admin", "member", "viewer"],
     "user_status": ["active", "invited", "suspended"],
@@ -479,7 +601,15 @@ EXPECTED_ENUMS = {
     "run_status": ["queued", "running", "completed", "failed", "cancelled"],
     "execution_type": ["sync", "async"],
     "simulation_mode": ["auto", "expert"],
-    "job_status": ["queued", "validating", "running", "completed", "failed", "cancelled", "expired"],
+    "job_status": [
+        "queued",
+        "validating",
+        "running",
+        "completed",
+        "failed",
+        "cancelled",
+        "expired",
+    ],
     "webhook_status": ["pending", "delivered", "failed", "not_configured"],
 }
 
@@ -497,10 +627,13 @@ def test_enum_types():
         actual.setdefault(r["typname"], []).append(r["enumlabel"])
 
     for enum_name, expected_values in EXPECTED_ENUMS.items():
-        assert enum_name in actual, f"Enum type '{enum_name}' missing. Found: {sorted(actual.keys())}"
+        assert enum_name in actual, (
+            f"Enum type '{enum_name}' missing. Found: {sorted(actual.keys())}"
+        )
         assert set(actual[enum_name]) == set(expected_values), (
             f"Enum '{enum_name}' values mismatch: expected {expected_values}, got {actual[enum_name]}"
         )
+
 
 check("All enum types with correct values", test_enum_types)
 
@@ -515,20 +648,21 @@ print("=" * 70)
 
 def test_api_key_hash_matches_sha256():
     """Verify the dev API key's hash in DB matches SHA-256 of the raw key."""
+    _require_configured_live_api_key("database API-key hash verification")
     expected_hash = hashlib.sha256(API_KEY.encode()).hexdigest()
     row = db_query(
         "SELECT hashed_key, key_prefix FROM api_keys WHERE hashed_key = %s LIMIT 1",
         (expected_hash,),
     )
     assert len(row) > 0, (
-        f"No API key found with SHA-256 hash of '{API_KEY[:12]}...'. "
-        f"Expected hash: {expected_hash}"
+        f"No API key found with SHA-256 hash of '{API_KEY[:12]}...'. Expected hash: {expected_hash}"
     )
     assert row[0]["hashed_key"] == expected_hash
     # Verify prefix matches the key's first chars
     assert API_KEY.startswith(row[0]["key_prefix"]), (
         f"key_prefix '{row[0]['key_prefix']}' should be a prefix of the API key"
     )
+
 
 check("API key hash matches SHA-256 of raw key", test_api_key_hash_matches_sha256)
 
@@ -542,6 +676,7 @@ def test_simulation_runs_have_valid_org_id():
     """)
     assert orphans == 0, f"Found {orphans} simulation_runs with orphaned org_id"
 
+
 check("All simulation_runs have valid org_id", test_simulation_runs_have_valid_org_id)
 
 
@@ -554,19 +689,19 @@ def test_timestamps_are_populated():
         null_updated = db_scalar(f"SELECT COUNT(*) FROM {table} WHERE updated_at IS NULL")
         assert null_updated == 0, f"Table '{table}' has {null_updated} rows with NULL updated_at"
 
+
 check("created_at / updated_at non-null on core tables", test_timestamps_are_populated)
 
 
 def test_uuid_primary_keys_are_valid():
     """Verify all primary key UUIDs are valid UUID format."""
     tables = ["organizations", "users", "api_keys", "simulation_runs", "jobs"]
-    uuid_re = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
+    uuid_re = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
     for table in tables:
         rows = db_query(f"SELECT id::text FROM {table} LIMIT 10")
         for row in rows:
-            assert uuid_re.match(row["id"]), (
-                f"Invalid UUID in '{table}': '{row['id']}'"
-            )
+            assert uuid_re.match(row["id"]), f"Invalid UUID in '{table}': '{row['id']}'"
+
 
 check("UUID primary keys are valid format", test_uuid_primary_keys_are_valid)
 
@@ -577,14 +712,13 @@ def test_enum_fields_contain_valid_values():
     rows = db_query("SELECT DISTINCT status::text FROM simulation_runs")
     valid_statuses = {"queued", "running", "completed", "failed", "cancelled"}
     for row in rows:
-        assert row["status"] in valid_statuses, (
-            f"Invalid run status: '{row['status']}'"
-        )
+        assert row["status"] in valid_statuses, f"Invalid run status: '{row['status']}'"
     # Check org_plan values
     rows = db_query("SELECT DISTINCT plan::text FROM organizations")
-    valid_plans = {"free", "developer", "pro", "enterprise"}
+    valid_plans = {"free", "developer", "pro", "enterprise", "team"}
     for row in rows:
         assert row["plan"] in valid_plans, f"Invalid org plan: '{row['plan']}'"
+
 
 check("Enum fields contain only valid values", test_enum_fields_contain_valid_values)
 
@@ -594,9 +728,8 @@ def test_api_key_prefix_matches_key():
     rows = db_query("SELECT key_prefix FROM api_keys LIMIT 20")
     for row in rows:
         prefix = row["key_prefix"]
-        assert prefix.startswith("de_"), (
-            f"API key prefix '{prefix}' doesn't start with 'de_'"
-        )
+        assert prefix.startswith("de_"), f"API key prefix '{prefix}' doesn't start with 'de_'"
+
 
 check("API key prefixes follow naming convention", test_api_key_prefix_matches_key)
 
@@ -608,6 +741,7 @@ def test_hashed_key_length_is_64():
         assert len(row["hashed_key"]) == 64, (
             f"hashed_key length is {len(row['hashed_key'])}, expected 64"
         )
+
 
 check("API key hashed_key is 64 chars (SHA-256 hex)", test_hashed_key_length_is_64)
 
@@ -640,20 +774,24 @@ created_run_id = None
 
 def test_create_simulation_run():
     """Create a simulation run via API and capture the run_id."""
-    global created_run_id
+    global created_run_blocked_reason, created_run_id
     status, body, _, _ = req("POST", "/v1/simulate", body=SIM_PAYLOAD)
+    created_run_blocked_reason = classify_simulation_capacity_blocker(status=status, payload=body)
+    ensure_simulation_capacity_available(status, body)
     assert status == 200, f"Expected 200, got {status}: {body}"
     assert "run_id" in body, f"Missing run_id in response: {body}"
     created_run_id = body["run_id"]
+    created_run_blocked_reason = None
     # Verify it's a valid UUID
     uuid.UUID(created_run_id)
+
 
 check("Create simulation run via API", test_create_simulation_run)
 
 
 def test_created_run_appears_in_listing():
     """Verify the just-created run appears in GET /v1/runs or in direct DB query."""
-    assert created_run_id, "No run created in prior test"
+    run_id = require_created_run_id()
     # Retry with small delay to handle async DB commit timing
     found = False
     for attempt in range(3):
@@ -662,19 +800,20 @@ def test_created_run_appears_in_listing():
         status, body, _, _ = req("GET", "/v1/runs?page=1&limit=200")
         assert status == 200, f"Expected 200, got {status}"
         run_ids = [r["run_id"] for r in body["runs"]]
-        if created_run_id in run_ids:
+        if run_id in run_ids:
             found = True
             break
     if not found:
         # Fallback: verify via direct DB query (async commit may not be visible via API yet)
         db_row = db_query(
             "SELECT id::text FROM simulation_runs WHERE id = %s",
-            (created_run_id,),
+            (run_id,),
         )
         assert len(db_row) == 1, (
-            f"Created run {created_run_id} not in listing or DB. "
+            f"Created run {run_id} not in listing or DB. "
             f"API returned {len(run_ids)} runs, total={body.get('total', '?')}."
         )
+
 
 check("Created run appears in /v1/runs listing", test_created_run_appears_in_listing)
 
@@ -698,6 +837,7 @@ def test_pagination_works():
         ids_page2 = {r["run_id"] for r in body2["runs"]}
         assert ids_page1 != ids_page2, "Page 1 and 2 returned identical runs"
 
+
 check("Pagination works on /v1/runs", test_pagination_works)
 
 
@@ -706,67 +846,78 @@ def test_filter_by_status():
     status, body, _, _ = req("GET", "/v1/runs?status=completed&limit=50")
     assert status == 200, f"Expected 200, got {status}"
     for run in body["runs"]:
-        assert run["status"] == "completed", (
-            f"Expected all status=completed, got '{run['status']}'"
-        )
+        assert run["status"] == "completed", f"Expected all status=completed, got '{run['status']}'"
+
 
 check("Filter by status on /v1/runs", test_filter_by_status)
 
 
 def test_run_detail_returns_expected_fields():
     """Verify GET /v1/runs/{run_id} returns all expected fields."""
-    assert created_run_id, "No run created in prior test"
-    status, body, _, _ = req("GET", f"/v1/runs/{created_run_id}")
+    run_id = require_created_run_id()
+    status, body, _, _ = req("GET", f"/v1/runs/{run_id}")
     assert status == 200, f"Expected 200, got {status}: {body}"
     expected_fields = [
-        "run_id", "mode", "status", "execution_type", "created_at",
+        "run_id",
+        "mode",
+        "status",
+        "execution_type",
+        "created_at",
     ]
     for field in expected_fields:
         assert field in body, f"Missing field '{field}' in run detail: {list(body.keys())}"
+
 
 check("Run detail returns all expected fields", test_run_detail_returns_expected_fields)
 
 
 def test_data_consistency_create_vs_read():
     """Verify data written at creation matches what's read back."""
-    assert created_run_id, "No run created in prior test"
-    status, body, _, _ = req("GET", f"/v1/runs/{created_run_id}")
+    run_id = require_created_run_id()
+    status, body, _, _ = req("GET", f"/v1/runs/{run_id}")
     assert status == 200
-    assert body["run_id"] == created_run_id
+    assert body["run_id"] == run_id
     assert body["mode"] in ("auto", "expert"), f"Unexpected mode: {body['mode']}"
-    assert body["execution_type"] == "sync", f"Expected sync execution, got {body['execution_type']}"
-    assert body["status"] in ("completed", "running", "failed"), f"Unexpected status: {body['status']}"
+    assert body["execution_type"] == "sync", (
+        f"Expected sync execution, got {body['execution_type']}"
+    )
+    assert body["status"] in ("completed", "running", "failed"), (
+        f"Unexpected status: {body['status']}"
+    )
+
 
 check("Data consistency between create and read", test_data_consistency_create_vs_read)
 
 
 def test_run_exists_in_database():
     """Verify the API-created run also exists in the database directly."""
-    assert created_run_id, "No run created in prior test"
+    run_id = require_created_run_id()
     row = db_query(
         "SELECT id::text, status::text, mode::text, execution_type::text "
         "FROM simulation_runs WHERE id = %s",
-        (created_run_id,),
+        (run_id,),
     )
-    assert len(row) == 1, f"Expected 1 row for run {created_run_id}, got {len(row)}"
-    assert row[0]["id"] == created_run_id
+    assert len(row) == 1, f"Expected 1 row for run {run_id}, got {len(row)}"
+    assert row[0]["id"] == run_id
     assert row[0]["execution_type"] == "sync"
+
 
 check("API-created run exists in DB via direct query", test_run_exists_in_database)
 
 
 def test_run_has_valid_timestamps_in_db():
     """Verify the DB row has valid created_at/updated_at timestamps."""
-    assert created_run_id, "No run created in prior test"
+    run_id = require_created_run_id()
     row = db_query(
         "SELECT created_at, updated_at FROM simulation_runs WHERE id = %s",
-        (created_run_id,),
+        (run_id,),
     )
     assert len(row) == 1
     assert row[0]["created_at"] is not None, "created_at is NULL"
     assert row[0]["updated_at"] is not None, "updated_at is NULL"
     # created_at should be recent (within last 60 seconds)
     from datetime import datetime
+
     now = datetime.now(UTC)
     created = row[0]["created_at"]
     if created.tzinfo is None:
@@ -774,12 +925,13 @@ def test_run_has_valid_timestamps_in_db():
     delta = (now - created).total_seconds()
     assert delta < 60, f"created_at is {delta:.1f}s old — expected within 60s"
 
+
 check("Run has valid timestamps in DB", test_run_has_valid_timestamps_in_db)
 
 
 def test_run_org_id_matches_api_key():
     """Verify the run's org_id matches the org_id of the API key used."""
-    assert created_run_id, "No run created in prior test"
+    run_id = require_created_run_id()
     # Get the org_id from the API key
     key_hash = hashlib.sha256(API_KEY.encode()).hexdigest()
     key_row = db_query(
@@ -792,12 +944,13 @@ def test_run_org_id_matches_api_key():
     # Get the org_id from the run
     run_row = db_query(
         "SELECT org_id::text FROM simulation_runs WHERE id = %s",
-        (created_run_id,),
+        (run_id,),
     )
     assert len(run_row) == 1
     assert run_row[0]["org_id"] == api_key_org_id, (
         f"Run org_id '{run_row[0]['org_id']}' != API key org_id '{api_key_org_id}'"
     )
+
 
 check("Run org_id matches API key's org_id", test_run_org_id_matches_api_key)
 
@@ -826,6 +979,7 @@ def test_full_simulation_lifecycle():
         "runs": 500,
     }
     status, body, _, _ = req("POST", "/v1/simulate", body=payload)
+    ensure_simulation_capacity_available(status, body)
     assert status == 200, f"Create failed: {status} {body}"
     run_id = body["run_id"]
 
@@ -836,10 +990,18 @@ def test_full_simulation_lifecycle():
     status, detail, _, _ = req("GET", f"/v1/runs/{run_id}")
     if status == 404:
         # Verify it at least exists in DB
-        db_row = db_query("SELECT id::text, status::text FROM simulation_runs WHERE id = %s", (run_id,))
+        db_row = db_query(
+            "SELECT id::text, status::text FROM simulation_runs WHERE id = %s", (run_id,)
+        )
         assert len(db_row) == 1, f"Run {run_id} not found in DB either — truly missing"
         # If in DB but not in API, that's a known async issue; use DB data
-        detail = {"run_id": db_row[0]["id"], "status": db_row[0]["status"], "mode": "auto", "execution_type": "sync", "created_at": "set"}
+        detail = {
+            "run_id": db_row[0]["id"],
+            "status": db_row[0]["status"],
+            "mode": "auto",
+            "execution_type": "sync",
+            "created_at": "set",
+        }
     else:
         assert status == 200, f"Read failed: {status} {detail}"
     assert detail["run_id"] == run_id
@@ -859,6 +1021,7 @@ def test_full_simulation_lifecycle():
     # Step 5: Verify in DB
     row = db_query("SELECT id::text, status::text FROM simulation_runs WHERE id = %s", (run_id,))
     assert len(row) == 1, f"Run {run_id} not in DB"
+
 
 check("Full simulation lifecycle: create → read → list → DB verify", test_full_simulation_lifecycle)
 
@@ -882,36 +1045,38 @@ def test_deployment_lifecycle():
     deploy_id = body.get("id") or body.get("deployment_id")
     assert deploy_id, f"Missing deployment id in response: {body}"
 
-    # Step 2: List deployments
-    status, listing, _, _ = req("GET", "/v1/deployments")
-    assert status == 200, f"List failed: {status}"
+    # Step 2: Read current deployment
+    status, detail, _, _ = req("GET", "/v1/deployments")
+    assert status == 200, f"Read failed: {status}"
+    assert detail, "Current deployment endpoint returned no deployment after create"
+    assert (detail.get("deployment_id") or detail.get("id")) == deploy_id, (
+        f"Expected current deployment '{deploy_id}', got '{detail}'"
+    )
 
-    # Step 3: Read deployment
-    status, detail, _, _ = req("GET", f"/v1/deployments/{deploy_id}")
-    assert status == 200, f"Read failed: {status}: {detail}"
-
-    # Step 4: Delete deployment
+    # Step 3: Delete deployment
     status, _, _, _ = req("DELETE", f"/v1/deployments/{deploy_id}")
-    assert status in (200, 202, 204), f"Delete failed: {status}"
+    assert status == 202, f"Delete failed: {status}"
+
 
 check("Deployment lifecycle: create → list → read → delete", test_deployment_lifecycle)
 
 
 def test_usage_record_created_for_simulation():
     """Verify a usage_record was created when we ran a simulation."""
-    assert created_run_id, "No run created in prior test"
+    run_id = require_created_run_id()
     rows = db_query(
         "SELECT id::text, endpoint::text, billing_units "
         "FROM usage_records WHERE simulation_run_id = %s",
-        (created_run_id,),
+        (run_id,),
     )
     assert len(rows) >= 1, (
-        f"No usage_record found for run {created_run_id}. "
+        f"No usage_record found for run {run_id}. "
         "Expected at least 1 usage record per simulation."
     )
     assert rows[0]["endpoint"] == "simulate", (
         f"Expected endpoint 'simulate', got '{rows[0]['endpoint']}'"
     )
+
 
 check("Usage record created for simulation run", test_usage_record_created_for_simulation)
 
@@ -930,6 +1095,7 @@ def test_multiple_runs_maintain_order():
             "runs": 100,
         }
         status, body, _, _ = req("POST", "/v1/simulate", body=payload)
+        ensure_simulation_capacity_available(status, body)
         assert status == 200, f"Run {i} creation failed: {status}"
         run_ids.append(body["run_id"])
         time.sleep(0.1)  # Small delay to ensure different timestamps
@@ -950,6 +1116,7 @@ def test_multiple_runs_maintain_order():
         f"Expected newest run (idx={idx_last}) before oldest (idx={idx_first}) in DESC order"
     )
 
+
 check("Multiple runs maintain chronological order (DESC)", test_multiple_runs_maintain_order)
 
 
@@ -959,11 +1126,13 @@ def test_nonexistent_run_returns_404():
     status, body, _, _ = req("GET", f"/v1/runs/{fake_id}")
     assert status == 404, f"Expected 404, got {status}: {body}"
 
+
 check("Nonexistent run returns 404", test_nonexistent_run_returns_404)
 
 
 def test_db_row_count_consistency():
     """Verify DB row count matches API total for this org."""
+    _require_configured_live_api_key("database/API org row-count consistency checks")
     # Get total from API
     status, body, _, _ = req("GET", "/v1/runs?limit=1")
     assert status == 200
@@ -984,6 +1153,7 @@ def test_db_row_count_consistency():
     assert api_total == db_total, (
         f"API total ({api_total}) != DB count ({db_total}) for org {org_id}"
     )
+
 
 check("DB row count matches API total for org", test_db_row_count_consistency)
 
@@ -1014,9 +1184,8 @@ def test_unique_constraints():
         ("api_keys", "hashed_key"),
     ]
     for table, col in required_uniques:
-        assert (table, col) in uniques, (
-            f"Missing UNIQUE constraint on {table}.{col}"
-        )
+        assert (table, col) in uniques, f"Missing UNIQUE constraint on {table}.{col}"
+
 
 check("Unique constraints on slug, email, hashed_key", test_unique_constraints)
 
@@ -1040,9 +1209,8 @@ def test_not_null_constraints():
             (table, col),
         )
         assert len(rows) == 1, f"Column {table}.{col} not found"
-        assert rows[0]["is_nullable"] == "NO", (
-            f"{table}.{col} should be NOT NULL but is nullable"
-        )
+        assert rows[0]["is_nullable"] == "NO", f"{table}.{col} should be NOT NULL but is nullable"
+
 
 check("NOT NULL constraints on critical columns", test_not_null_constraints)
 
@@ -1050,14 +1218,18 @@ check("NOT NULL constraints on critical columns", test_not_null_constraints)
 def test_primary_key_constraints():
     """Verify every expected table has a primary key."""
     for table in EXPECTED_TABLES:
-        rows = db_query("""
+        rows = db_query(
+            """
             SELECT tc.constraint_name
             FROM information_schema.table_constraints tc
             WHERE tc.table_name = %s
                 AND tc.constraint_type = 'PRIMARY KEY'
                 AND tc.table_schema = 'public'
-        """, (table,))
+        """,
+            (table,),
+        )
         assert len(rows) >= 1, f"Table '{table}' has no primary key"
+
 
 check("All tables have primary keys", test_primary_key_constraints)
 
@@ -1085,6 +1257,7 @@ def test_cascading_delete_fk_actions():
             f"has delete_rule='{row['delete_rule']}', expected CASCADE"
         )
 
+
 check("CASCADE delete on org FK relationships", test_cascading_delete_fk_actions)
 
 
@@ -1101,7 +1274,10 @@ def test_deployments_partial_unique_index():
     assert "where" in indexdef, "Index is not partial (missing WHERE clause)"
     assert "active" in indexdef, "Index WHERE clause doesn't filter on 'active' status"
 
-check("Deployments partial unique index (one active per org)", test_deployments_partial_unique_index)
+
+check(
+    "Deployments partial unique index (one active per org)", test_deployments_partial_unique_index
+)
 
 
 def test_server_defaults_exist():
@@ -1113,7 +1289,9 @@ def test_server_defaults_exist():
     """)
     assert len(rows) == 1
     default_val = rows[0]["column_default"] or ""
-    assert "free" in default_val.lower(), f"organizations.plan default: '{default_val}', expected 'free'"
+    assert "free" in default_val.lower(), (
+        f"organizations.plan default: '{default_val}', expected 'free'"
+    )
 
     # Check simulation_runs.billing_units defaults to 1
     rows = db_query("""
@@ -1122,7 +1300,10 @@ def test_server_defaults_exist():
     """)
     assert len(rows) == 1
     default_val = rows[0]["column_default"] or ""
-    assert "1" in default_val, f"simulation_runs.billing_units default: '{default_val}', expected '1'"
+    assert "1" in default_val, (
+        f"simulation_runs.billing_units default: '{default_val}', expected '1'"
+    )
+
 
 check("Server defaults on critical columns", test_server_defaults_exist)
 
@@ -1130,32 +1311,51 @@ check("Server defaults on critical columns", test_server_defaults_exist)
 # ═════════════════════════════════════════════════════════════════════════════
 #  RESULTS SUMMARY
 # ═════════════════════════════════════════════════════════════════════════════
-print("\n" + "=" * 70)
-print("  RESULTS SUMMARY")
-print("=" * 70)
+_emit("\n" + "=" * 70)
+_emit("  RESULTS SUMMARY")
+_emit("=" * 70)
 
 passed = sum(1 for r in results if r[0] == PASS)
 failed = sum(1 for r in results if r[0] == FAIL)
 skipped = sum(1 for r in results if r[0] == SKIP)
 total = len(results)
 
-print(f"\n  Total:   {total} tests")
-print(f"  Passed:  {passed} {PASS}")
-print(f"  Failed:  {failed} {FAIL}")
+_emit(f"\n  Total:   {total} tests")
+_emit(f"  Passed:  {passed} {PASS}")
+_emit(f"  Failed:  {failed} {FAIL}")
 if skipped:
-    print(f"  Skipped: {skipped} {SKIP}")
+    _emit(f"  Skipped: {skipped} {SKIP}")
 
 if failed > 0:
-    print("\n  ── Failures ──")
+    _emit("\n  ── Failures ──")
     for r in results:
         if r[0] == FAIL:
-            print(f"    {FAIL} {r[1]}: {r[2] if len(r) > 2 else ''}")
+            _emit(f"    {FAIL} {r[1]}: {r[2] if len(r) > 2 else ''}")
 
-print(f"\n{'=' * 70}")
+_emit(f"\n{'=' * 70}")
 if failed == 0:
-    print(f"  🎉 ALL {passed} DATABASE INTEGRATION TESTS PASSED!")
+    _emit(f"  🎉 ALL {passed} DATABASE INTEGRATION TESTS PASSED!")
 else:
-    print(f"  ⚠️  {failed} FAILURES — fix before deploying")
-print(f"{'=' * 70}\n")
+    _emit(f"  ⚠️  {failed} FAILURES — fix before deploying")
+_emit(f"{'=' * 70}\n")
+
+artifact_path = write_live_integration_summary(
+    SUITE_NAME,
+    script="tests/integration/test_database.py",
+    passed=passed,
+    failed=failed,
+    skipped=skipped,
+    total=total,
+    elapsed_seconds=time.perf_counter() - STARTED,
+    details={
+        "api_key_configured": bool(API_KEY_CONFIGURED),
+        "base_url": BASE_URL,
+        "database_url": DATABASE_URL,
+        "failed_checks": [name for icon, name, *_ in results if icon == FAIL],
+        "skipped_checks": [name for icon, name, *_ in results if icon == SKIP],
+        "skipped_count": skipped,
+    },
+)
+_emit(f"Summary artifact: {artifact_path}")
 
 sys.exit(1 if failed > 0 else 0)

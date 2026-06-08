@@ -3,10 +3,14 @@ Phase 7 — Enterprise Portal API tests.
 Tests for /v1/runs, /v1/analytics, /v1/infrastructure, /v1/team, /v1/audit-logs.
 All tests use the mock-based pattern from existing test suite.
 """
+
 from datetime import UTC
 from uuid import uuid4
 
+import pytest
+
 # ── /v1/runs ─────────────────────────────────────────────────────────────────
+
 
 def test_runs_response_schema():
     """RunsResponse must have required fields with correct types."""
@@ -66,6 +70,7 @@ def test_analytics_response_schema():
 
 # ── /v1/infrastructure ────────────────────────────────────────────────────────
 
+
 def test_node_info_schema():
     """NodeInfo must serialize and validate correctly."""
     from datetime import datetime
@@ -94,7 +99,7 @@ def test_infrastructure_response_schema():
     from apps.api_server.routers.infrastructure import InfrastructureResponse
 
     resp = InfrastructureResponse(
-        deployment_mode="hosted",
+        deployment_mode="saas",
         engine_version="0.3.1",
         api_version="1.0.0",
         nodes=[],
@@ -104,9 +109,31 @@ def test_infrastructure_response_schema():
         throughput_rpm=29450.0,
         last_health_check=datetime.now(tz=UTC),
     )
-    assert resp.deployment_mode == "hosted"
+    assert resp.deployment_mode == "saas"
     assert resp.uptime_30d_pct == 99.97
     assert resp.nodes == []
+
+
+def test_infrastructure_response_rejects_non_contract_deployment_mode():
+    """InfrastructureResponse must reject deployment_mode values outside the public wire enum."""
+    from datetime import datetime
+
+    from pydantic import ValidationError
+
+    from apps.api_server.routers.infrastructure import InfrastructureResponse
+
+    with pytest.raises(ValidationError, match="deployment_mode"):
+        InfrastructureResponse(
+            deployment_mode="hosted",
+            engine_version="0.3.1",
+            api_version="1.0.0",
+            nodes=[],
+            uptime_30d_pct=99.97,
+            avg_latency_ms=8.4,
+            p95_latency_ms=24.1,
+            throughput_rpm=29450.0,
+            last_health_check=datetime.now(tz=UTC),
+        )
 
 
 def test_demo_nodes_are_valid():
@@ -121,6 +148,7 @@ def test_demo_nodes_are_valid():
 
 
 # ── /v1/team ─────────────────────────────────────────────────────────────────
+
 
 def test_member_info_schema():
     """MemberInfo must serialize correctly."""
@@ -206,9 +234,11 @@ def test_audit_log_response_schema():
 
 # ── Main.py router registration ───────────────────────────────────────────────
 
+
 def test_main_imports_new_routers():
     """main.py must be importable and all routers registered."""
     from apps.api_server import main
+
     # If import succeeds, the module structure is valid
     assert hasattr(main, "app")
 
@@ -241,7 +271,7 @@ def test_infrastructure_router_has_endpoints():
 
 
 def test_team_router_has_endpoints():
-    """Team router must expose /v1/team, /v1/team/invite, /v1/audit-logs."""
+    """Team router must expose team and audit surfaces, including immutable audit artifacts."""
     from apps.api_server.routers.team import router
 
     paths = {r.path for r in router.routes}
@@ -249,3 +279,4 @@ def test_team_router_has_endpoints():
     assert "/v1/team/invite" in paths
     assert "/v1/team/{user_id}/role" in paths
     assert "/v1/audit-logs" in paths
+    assert "/v1/audit-logs/artifacts" in paths

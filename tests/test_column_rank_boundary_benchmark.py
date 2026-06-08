@@ -37,10 +37,7 @@ def test_run_mode_benchmark_reports_scalar_batch_and_concurrency() -> None:
         def resolve_batch(self, requests, top_k=5):  # type: ignore[no-untyped-def]
             del top_k
             self.batch_calls += 1
-            return [
-                SimpleNamespace(source="POS", column="UNIT_PRICE")
-                for _ in requests
-            ]
+            return [SimpleNamespace(source="POS", column="UNIT_PRICE") for _ in requests]
 
     class _FakePlanner:
         def __init__(self) -> None:

@@ -17,6 +17,7 @@ Usage:
     python -m tests.benchmark.bench_column_rank_boundary --source-limit 65
     python -m tests.benchmark.bench_column_rank_boundary --include-force --json
 """
+
 from __future__ import annotations
 
 import argparse

@@ -1,20 +1,45 @@
 """Unit tests for API key generation and hashing in auth_service."""
+
 import os
 import sys
+import uuid
+from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
+
+import pytest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
-from apps.api_server.services.auth_service import generate_api_key, hash_api_key
+from apps.api_server.services.auth_service import (
+    consume_auth_session_dirty,
+    generate_api_key,
+    hash_api_key,
+    is_api_key_expired,
+    verify_api_key,
+)
+
+
+class _ScalarResult:
+    def __init__(self, value):
+        self._value = value
+
+    def scalar_one_or_none(self):
+        return self._value
 
 
 class TestGenerateApiKey:
     def test_key_format_live(self) -> None:
         raw_key, prefix, hashed = generate_api_key()
-        assert raw_key.startswith("de_live_"), f"Key should start with 'de_live_', got: {raw_key[:12]}"
+        assert raw_key.startswith("de_live_"), (
+            f"Key should start with 'de_live_', got: {raw_key[:12]}"
+        )
 
     def test_key_format_test(self) -> None:
         raw_key, prefix, hashed = generate_api_key(test=True)
-        assert raw_key.startswith("de_test_"), f"Key should start with 'de_test_', got: {raw_key[:12]}"
+        assert raw_key.startswith("de_test_"), (
+            f"Key should start with 'de_test_', got: {raw_key[:12]}"
+        )
 
     def test_key_prefix_matches_raw(self) -> None:
         raw_key, prefix, hashed = generate_api_key()
@@ -68,3 +93,140 @@ class TestHashApiKey:
         raw_key, _, hashed = generate_api_key()
         # The hash should not contain the raw key
         assert raw_key not in hashed
+
+
+class TestApiKeyExpiry:
+    def test_is_api_key_expired_handles_none_future_and_past(self) -> None:
+        now = datetime(2026, 5, 19, tzinfo=UTC)
+        assert is_api_key_expired(None, now=now) is False
+        assert is_api_key_expired(now + timedelta(days=1), now=now) is False
+        assert is_api_key_expired(now - timedelta(seconds=1), now=now) is True
+
+    @pytest.mark.anyio
+    async def test_verify_api_key_rejects_expired_cached_key(self) -> None:
+        expired_epoch = int((datetime.now(UTC) - timedelta(seconds=60)).timestamp())
+        redis = SimpleNamespace(
+            hgetall=AsyncMock(
+                return_value={
+                    b"org_id": str(uuid.uuid4()).encode(),
+                    b"key_id": str(uuid.uuid4()).encode(),
+                    b"plan": b"pro",
+                    b"status": b"active",
+                    b"role": b"member",
+                    b"email": b"cached@example.com",
+                    b"user_id": b"",
+                    b"expires_at": str(expired_epoch).encode(),
+                }
+            ),
+            delete=AsyncMock(return_value=1),
+        )
+        session = SimpleNamespace(execute=AsyncMock())
+
+        result = await verify_api_key("de_live_cached_key", session, redis)
+
+        assert result is None
+        session.execute.assert_not_called()
+        redis.delete.assert_awaited()
+
+    @pytest.mark.anyio
+    async def test_verify_api_key_reads_device_binding_metadata_from_cache(self) -> None:
+        org_id = uuid.uuid4()
+        key_id = uuid.uuid4()
+        redis = SimpleNamespace(
+            hgetall=AsyncMock(
+                return_value={
+                    b"org_id": str(org_id).encode(),
+                    b"key_id": str(key_id).encode(),
+                    b"key_prefix": b"de_live_cache",
+                    b"plan": b"enterprise",
+                    b"device_limit": b"2",
+                    b"device_limit_configured": b"1",
+                    b"status": b"active",
+                    b"role": b"member",
+                    b"email": b"cached@example.com",
+                    b"user_id": b"",
+                    b"expires_at": str(
+                        int((datetime.now(UTC) + timedelta(days=30)).timestamp())
+                    ).encode(),
+                }
+            ),
+            delete=AsyncMock(return_value=0),
+        )
+        session = SimpleNamespace(execute=AsyncMock())
+
+        result = await verify_api_key("de_live_cached_key", session, redis)
+
+        assert result is not None
+        assert result["org_id"] == org_id
+        assert result["key_id"] == key_id
+        assert result["key_prefix"] == "de_live_cache"
+        assert result["device_limit"] == 2
+        assert result["device_limit_configured"] is True
+        session.execute.assert_not_called()
+
+    @pytest.mark.anyio
+    async def test_verify_api_key_rejects_expired_database_key(self) -> None:
+        expired_key = SimpleNamespace(
+            id=uuid.uuid4(),
+            org_id=uuid.uuid4(),
+            user_id=None,
+            status=SimpleNamespace(value="active"),
+            expires_at=datetime.now(UTC) - timedelta(days=1),
+        )
+        session = SimpleNamespace(
+            execute=AsyncMock(return_value=_ScalarResult(expired_key)),
+        )
+        redis = SimpleNamespace(
+            hgetall=AsyncMock(return_value={}),
+            hset=AsyncMock(),
+            expire=AsyncMock(),
+        )
+
+        result = await verify_api_key("de_live_db_key", session, redis)
+
+        assert result is None
+        redis.hset.assert_not_called()
+        redis.expire.assert_not_called()
+
+    @pytest.mark.anyio
+    async def test_verify_api_key_returns_device_binding_metadata_from_database(self) -> None:
+        org_id = uuid.uuid4()
+        key_id = uuid.uuid4()
+        api_key = SimpleNamespace(
+            id=key_id,
+            org_id=org_id,
+            user_id=None,
+            key_prefix="de_live_db12",
+            device_limit=2,
+            status=SimpleNamespace(value="active"),
+            expires_at=datetime.now(UTC) + timedelta(days=30),
+        )
+        org = SimpleNamespace(plan=SimpleNamespace(value="enterprise"))
+        session = SimpleNamespace(
+            execute=AsyncMock(
+                side_effect=[
+                    _ScalarResult(api_key),
+                    _ScalarResult(org),
+                    _ScalarResult(None),
+                ]
+            ),
+        )
+        redis = SimpleNamespace(
+            hgetall=AsyncMock(return_value={}),
+            hset=AsyncMock(),
+            expire=AsyncMock(),
+        )
+        session.info = {}
+
+        result = await verify_api_key("de_live_db_key", session, redis)
+
+        assert result is not None
+        assert result["org_id"] == org_id
+        assert result["key_id"] == key_id
+        assert result["key_prefix"] == "de_live_db12"
+        assert result["device_limit"] == 2
+        assert result["device_limit_configured"] is True
+        redis.hset.assert_awaited()
+        redis.expire.assert_awaited()
+        assert consume_auth_session_dirty(session) is True
+        assert consume_auth_session_dirty(session) is False

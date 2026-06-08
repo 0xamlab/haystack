@@ -1,0 +1,266 @@
+[
+  {
+    "name": "ChatGPT",
+    "description": "Hosted app and actions surface for Algenta discovery, exact query, simulation, persisted runtime follow-up, and control-plane review.",
+    "icon": "chatgpt",
+    "capabilities": [
+      "read",
+      "write"
+    ],
+    "auth_scheme": "bearer_api_key",
+    "required_scopes": [
+      "read"
+    ],
+    "read_only_default": true,
+    "write_actions": [
+      "connect_data",
+      "refresh_data",
+      "disconnect_data"
+    ],
+    "admin_controls": [
+      "tool_allowlist",
+      "read_only_mode",
+      "dataset_scope"
+    ],
+    "docs_url": "https://docs.algenta.ai/integrations/chatgpt-actions",
+    "privacy_url": "https://algenta.ai/privacy",
+    "terms_url": "https://algenta.ai/terms",
+    "support_url": "https://algenta.ai/support",
+    "regions": [
+      "global"
+    ],
+    "status": "active"
+  },
+  {
+    "name": "Claude and Codex",
+    "description": "Remote MCP connection for Claude Desktop, Codex, and other MCP clients with governed data access, persisted runtime review, and control-plane tooling.",
+    "icon": "mcp",
+    "capabilities": [
+      "read",
+      "write"
+    ],
+    "auth_scheme": "bearer_api_key",
+    "required_scopes": [
+      "read"
+    ],
+    "read_only_default": true,
+    "write_actions": [
+      "connect_data",
+      "refresh_data",
+      "disconnect_data"
+    ],
+    "admin_controls": [
+      "tool_allowlist",
+      "read_only_mode",
+      "dataset_scope"
+    ],
+    "docs_url": "https://docs.algenta.ai/integrations/claude-codex",
+    "privacy_url": "https://algenta.ai/privacy",
+    "terms_url": "https://algenta.ai/terms",
+    "support_url": "https://algenta.ai/support",
+    "regions": [
+      "global"
+    ],
+    "status": "active"
+  },
+  {
+    "name": "n8n",
+    "description": "HTTP and MCP workflows for automation, governed discovery and query, simulation, and persisted runtime follow-up.",
+    "icon": "n8n",
+    "capabilities": [
+      "read",
+      "write"
+    ],
+    "auth_scheme": "bearer_api_key",
+    "required_scopes": [
+      "read"
+    ],
+    "read_only_default": true,
+    "write_actions": [
+      "connect_data",
+      "refresh_data"
+    ],
+    "admin_controls": [
+      "read_only_mode",
+      "dataset_scope"
+    ],
+    "docs_url": "https://docs.algenta.ai/integrations/n8n",
+    "privacy_url": "https://algenta.ai/privacy",
+    "terms_url": "https://algenta.ai/terms",
+    "support_url": "https://algenta.ai/support",
+    "regions": [
+      "global"
+    ],
+    "status": "active"
+  },
+  {
+    "name": "Azure AI Foundry",
+    "description": "OpenAPI and function-tool integration for Azure-hosted copilots and agents with governed discovery, exact query, SQL reports, and simulation.",
+    "icon": "azure",
+    "capabilities": [
+      "read",
+      "write"
+    ],
+    "auth_scheme": "bearer_api_key",
+    "required_scopes": [
+      "read"
+    ],
+    "read_only_default": true,
+    "write_actions": [
+      "connect_data",
+      "refresh_data"
+    ],
+    "admin_controls": [
+      "read_only_mode",
+      "tool_allowlist",
+      "dataset_scope"
+    ],
+    "docs_url": "https://docs.algenta.ai/integrations/azure-ai-studio",
+    "privacy_url": "https://algenta.ai/privacy",
+    "terms_url": "https://algenta.ai/terms",
+    "support_url": "https://algenta.ai/support",
+    "regions": [
+      "global"
+    ],
+    "status": "active"
+  },
+  {
+    "name": "LangGraph",
+    "description": "LangGraph tool-node integration for governed discovery, exact query, persisted runtime review, and simulation.",
+    "icon": "langgraph",
+    "capabilities": [
+      "read",
+      "write"
+    ],
+    "auth_scheme": "bearer_api_key",
+    "required_scopes": [
+      "read"
+    ],
+    "read_only_default": true,
+    "write_actions": [
+      "connect_data",
+      "refresh_data",
+      "disconnect_data"
+    ],
+    "admin_controls": [
+      "tool_allowlist",
+      "read_only_mode",
+      "dataset_scope"
+    ],
+    "docs_url": "https://docs.algenta.ai/integrations/langgraph",
+    "privacy_url": "https://algenta.ai/privacy",
+    "terms_url": "https://algenta.ai/terms",
+    "support_url": "https://algenta.ai/support",
+    "regions": [
+      "global"
+    ],
+    "status": "active"
+  },
+  {
+    "name": "Local Runtime",
+    "description": "Dual-mode local runtime for embedded execution, hosted local control-plane verification, and offline task history.",
+    "icon": "local-runtime",
+    "capabilities": [
+      "read",
+      "write"
+    ],
+    "auth_scheme": "bearer_api_key",
+    "required_scopes": [
+      "read"
+    ],
+    "read_only_default": true,
+    "write_actions": [
+      "connect_data",
+      "disconnect_data"
+    ],
+    "admin_controls": [
+      "read_only_mode"
+    ],
+    "docs_url": "https://docs.algenta.ai/integrations/local-runtime",
+    "privacy_url": "https://algenta.ai/privacy",
+    "terms_url": "https://algenta.ai/terms",
+    "support_url": "https://algenta.ai/support",
+    "regions": [
+      "global"
+    ],
+    "status": "active"
+  },
+  {
+    "name": "Power Automate",
+    "description": "Microsoft Power Automate custom connector for governed discovery, exact query, SQL reports, and simulation.",
+    "icon": "power-automate",
+    "capabilities": [
+      "read"
+    ],
+    "auth_scheme": "bearer_api_key",
+    "required_scopes": [
+      "read"
+    ],
+    "read_only_default": true,
+    "write_actions": [],
+    "admin_controls": [
+      "read_only_mode",
+      "dataset_scope"
+    ],
+    "docs_url": "https://docs.algenta.ai/integrations/power-automate",
+    "privacy_url": "https://algenta.ai/privacy",
+    "terms_url": "https://algenta.ai/terms",
+    "support_url": "https://algenta.ai/support",
+    "regions": [
+      "global"
+    ],
+    "status": "active"
+  },
+  {
+    "name": "Zapier",
+    "description": "Zapier webhook integration for governed discovery, exact query, simulation, and persisted runtime follow-up.",
+    "icon": "zapier",
+    "capabilities": [
+      "read"
+    ],
+    "auth_scheme": "bearer_api_key",
+    "required_scopes": [
+      "read"
+    ],
+    "read_only_default": true,
+    "write_actions": [],
+    "admin_controls": [
+      "read_only_mode",
+      "dataset_scope"
+    ],
+    "docs_url": "https://docs.algenta.ai/integrations/zapier",
+    "privacy_url": "https://algenta.ai/privacy",
+    "terms_url": "https://algenta.ai/terms",
+    "support_url": "https://algenta.ai/support",
+    "regions": [
+      "global"
+    ],
+    "status": "active"
+  },
+  {
+    "name": "Make",
+    "description": "Make HTTP-module integration for governed discovery, exact query, simulation, and persisted runtime follow-up.",
+    "icon": "make",
+    "capabilities": [
+      "read"
+    ],
+    "auth_scheme": "bearer_api_key",
+    "required_scopes": [
+      "read"
+    ],
+    "read_only_default": true,
+    "write_actions": [],
+    "admin_controls": [
+      "read_only_mode",
+      "dataset_scope"
+    ],
+    "docs_url": "https://docs.algenta.ai/integrations/make",
+    "privacy_url": "https://algenta.ai/privacy",
+    "terms_url": "https://algenta.ai/terms",
+    "support_url": "https://algenta.ai/support",
+    "regions": [
+      "global"
+    ],
+    "status": "active"
+  }
+]

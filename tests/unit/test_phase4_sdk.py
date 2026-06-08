@@ -256,12 +256,14 @@ class TestSDKClientInit:
         assert client._api_key == "de_test_abc123"
         client.close()
 
-    def test_client_default_base_url(self) -> None:
+    def test_client_default_base_url(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from decision_engine.client import (  # type: ignore[import]
             DEFAULT_BASE_URL,
             DecisionEngineClient,
         )
 
+        monkeypatch.delenv("ALGENTA_BASE_URL", raising=False)
+        monkeypatch.delenv("DE_BASE_URL", raising=False)
         client = DecisionEngineClient(api_key="de_test_abc123")
         assert client._base_url == DEFAULT_BASE_URL
         client.close()
@@ -391,6 +393,91 @@ class TestSDKDecisionApis:
         assert result.resolved_source == "Orders"
         client.close()
 
+    def test_client_query_applies_safe_join_path_default_and_allows_opt_in(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from decision_engine.client import DecisionEngineClient  # type: ignore[import]
+
+        client = DecisionEngineClient(api_key="de_test_abc123")
+        seen: list[dict[str, object]] = []
+
+        def _fake_request(method: str, path: str, **kwargs: object) -> dict[str, object]:
+            assert method == "POST"
+            assert path == "/v1/query"
+            seen.append(dict(kwargs["json"]))  # type: ignore[arg-type]
+            return {
+                "query_id": "q_123",
+                "result": 30,
+                "result_type": "scalar",
+                "confidence": 0.98,
+                "plan": [],
+                "resolved_column": "amount",
+                "resolved_role": "derived_measure",
+                "resolved_source": "Orders",
+                "row_count": 1,
+                "candidates": [],
+                "source_scores": {"Orders": 0.98},
+                "ambiguous": False,
+                "exact_spec": False,
+                "explanation": [],
+                "latency_ms": 9.5,
+                "decision_path": "planner_hint",
+                "plan_hash": "plan_123",
+                "schema_revision": "schema_rev_1",
+                "validated": True,
+                "deterministic_scope": "planned_execution",
+                "confidence_source": "planner_query_confidence",
+                "clarification_required": False,
+                "rejection_reason": None,
+                "request_id": "req_123",
+                "source_set": ["Orders"],
+                "join_path": [],
+                "planner_mode": "registry_planner",
+            }
+
+        monkeypatch.setattr(client, "_request", _fake_request)
+
+        client.query(
+            source_name="S0",
+            metric_column="value",
+            group_column="region",
+            join_path={
+                "base_source": "S0",
+                "group_source": "S1",
+                "edges": [
+                    {
+                        "left_source": "S0",
+                        "right_source": "S1",
+                        "left_key": "id",
+                        "right_key": "id",
+                    }
+                ],
+            },
+        )
+        assert seen[0]["join_path"]["max_hops"] == 4
+
+        client.query(
+            source_name="S0",
+            metric_column="value",
+            group_column="region",
+            join_path={
+                "base_source": "S0",
+                "group_source": "S6",
+                "max_hops": 6,
+                "edges": [
+                    {
+                        "left_source": f"S{index}",
+                        "right_source": f"S{index + 1}",
+                        "left_key": f"k{index}",
+                        "right_key": f"k{index}",
+                    }
+                    for index in range(6)
+                ],
+            },
+        )
+        assert seen[1]["join_path"]["max_hops"] == 6
+        client.close()
+
     def test_client_explain_derives_structured_view(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from decision_engine.client import DecisionEngineClient  # type: ignore[import]
 
@@ -488,7 +575,7 @@ class TestSDKDecisionApis:
         assert calls[1] == ("POST", "/v1/data/src_1/refresh", None)
         client.close()
 
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_async_client_register_source_returns_typed_result(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -512,7 +599,7 @@ class TestSDKDecisionApis:
         assert seen["json"] == {"source": {"name": "Orders", "csv": "amount\n10\n"}}
         await client.aclose()
 
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_async_client_resolve_returns_typed_result(
         self,
         monkeypatch: pytest.MonkeyPatch,

@@ -1,10 +1,12 @@
 """Unit tests for Phase 3 — job state machine and webhook service."""
+
 import os
 import sys
+import uuid
+
+import pytest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
-
-import uuid
 
 from apps.api_server.models.job import (
     JobStatus,
@@ -14,6 +16,7 @@ from apps.api_server.models.job import (
 from apps.api_server.services.webhook_service import (
     _sign_payload,
     build_webhook_payload,
+    deliver_webhook,
     verify_webhook_signature,
 )
 
@@ -107,8 +110,8 @@ class TestWebhookSignature:
         assert s1 != s2
 
     def test_different_payload_different_signature(self) -> None:
-        s1 = _sign_payload(b'payload-1', "secret")
-        s2 = _sign_payload(b'payload-2', "secret")
+        s1 = _sign_payload(b"payload-1", "secret")
+        s2 = _sign_payload(b"payload-2", "secret")
         assert s1 != s2
 
     def test_verify_signature_valid(self) -> None:
@@ -129,7 +132,7 @@ class TestWebhookSignature:
         assert not verify_webhook_signature(tampered, f"sha256={signature}", "my-secret")
 
     def test_verify_signature_missing_prefix(self) -> None:
-        payload = b'test'
+        payload = b"test"
         signature = _sign_payload(payload, "secret")
         # Without sha256= prefix → invalid
         assert not verify_webhook_signature(payload, signature, "secret")
@@ -151,7 +154,9 @@ class TestBuildWebhookPayload:
         result = {"expected_value": 50000, "probability_of_loss": 0.1}
         payload = build_webhook_payload(
             "job.completed",
-            uuid.uuid4(), uuid.uuid4(), uuid.uuid4(),
+            uuid.uuid4(),
+            uuid.uuid4(),
+            uuid.uuid4(),
             result=result,
         )
         assert payload["result"]["expected_value"] == 50000
@@ -159,7 +164,9 @@ class TestBuildWebhookPayload:
     def test_error_included_when_provided(self) -> None:
         payload = build_webhook_payload(
             "job.failed",
-            uuid.uuid4(), uuid.uuid4(), uuid.uuid4(),
+            uuid.uuid4(),
+            uuid.uuid4(),
+            uuid.uuid4(),
             error="Engine timeout",
         )
         assert payload["error"] == "Engine timeout"
@@ -167,7 +174,55 @@ class TestBuildWebhookPayload:
     def test_no_result_no_error_by_default(self) -> None:
         payload = build_webhook_payload(
             "webhook.test",
-            uuid.uuid4(), uuid.uuid4(), uuid.uuid4(),
+            uuid.uuid4(),
+            uuid.uuid4(),
+            uuid.uuid4(),
         )
         assert "result" not in payload
         assert "error" not in payload
+
+
+@pytest.mark.anyio
+async def test_deliver_webhook_uses_async_retry_sleep(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sleep_calls: list[int] = []
+
+    async def _fake_sleep(delay: int) -> None:
+        sleep_calls.append(delay)
+
+    class _FakeResponse:
+        status_code = 500
+
+    class _FakeAsyncClient:
+        def __init__(self, *args, **kwargs) -> None:
+            pass
+
+        async def __aenter__(self) -> "_FakeAsyncClient":
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb) -> None:
+            return None
+
+        async def post(
+            self, callback_url: str, content: bytes, headers: dict[str, str]
+        ) -> _FakeResponse:
+            assert callback_url == "https://example.com/webhook"
+            assert headers["Content-Type"] == "application/json"
+            assert content
+            return _FakeResponse()
+
+    monkeypatch.setattr("apps.api_server.services.webhook_service.asyncio.sleep", _fake_sleep)
+    monkeypatch.setattr(
+        "apps.api_server.services.webhook_service.httpx.AsyncClient", _FakeAsyncClient
+    )
+
+    delivered, status_code, message = await deliver_webhook(
+        callback_url="https://example.com/webhook",
+        payload={"event": "job.completed", "job_id": "job_123"},
+    )
+
+    assert delivered is False
+    assert status_code == 500
+    assert message == "HTTP 500"
+    assert sleep_calls == [5, 30, 120]

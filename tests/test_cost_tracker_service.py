@@ -5,7 +5,7 @@ import pytest
 from apps.api_server.services.cost_tracker_service import estimate_monthly_cost
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_estimate_monthly_cost_uses_markup_and_provider_defaults() -> None:
     result = await estimate_monthly_cost(
         provider="aws",
@@ -18,7 +18,7 @@ async def test_estimate_monthly_cost_uses_markup_and_provider_defaults() -> None
     assert result["estimated_billable_usd_month"] == 437.5
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_estimate_monthly_cost_defaults_unknown_provider_to_aws_small() -> None:
     result = await estimate_monthly_cost(
         provider="unknown-provider",

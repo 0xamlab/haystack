@@ -10,9 +10,18 @@ This validates the MCP data/query surface on the primary path using:
 
 Run:
   DE_API_KEY="..." DE_BASE_URL="http://127.0.0.1:8000" \
-    PYTHONPATH=. python3 tests/integration/test_mcp_runtime_live.py
+    python3 tests/integration/test_mcp_runtime_live.py
 """
+
 from __future__ import annotations
+
+if __name__ != "__main__":
+    import pytest
+
+    pytest.skip(
+        "Standalone integration script; run via python tests/integration/test_mcp_runtime_live.py",
+        allow_module_level=True,
+    )
 
 import asyncio
 import csv
@@ -22,6 +31,7 @@ import socket
 import sqlite3
 import sys
 import tempfile
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -29,33 +39,37 @@ from typing import Any
 
 socket.setdefaulttimeout(20)
 
-BASE_URL = os.environ.get("DE_BASE_URL", "http://localhost:8000").rstrip("/")
-API_KEY = os.environ.get("DE_API_KEY", "")
-os.environ["ALGENTA_BASE_URL"] = BASE_URL
-os.environ["ALGENTA_API_KEY"] = API_KEY
-
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+try:
+    from tests.integration.live_local_defaults import resolve_local_live_base_url
+except ModuleNotFoundError:
+    from live_local_defaults import resolve_local_live_base_url
+
+BASE_URL = resolve_local_live_base_url(strip_trailing_slash=True)
+API_KEY = os.environ.get("DE_API_KEY", "")
+os.environ["ALGENTA_BASE_URL"] = BASE_URL
+os.environ["ALGENTA_API_KEY"] = API_KEY
+
 # ruff: noqa: E402
 from apps.mcp_server.tools import data, query
+from tests.integration.live_integration_artifacts import write_live_integration_summary
 from tests.integration.runtime_live_db_helpers import (
     postgres_canonical_connector,
     postgres_connection_config,
     temporary_postgres_fixture,
 )
 
-REAL_MARCH_ORDERS = (
-    ROOT / "test_files" / "850a28da-a6f7-4ecc-9e7a-51a9cf7f501b-united_states.csv"
-)
+REAL_MARCH_ORDERS = ROOT / "test_files" / "850a28da-a6f7-4ecc-9e7a-51a9cf7f501b-united_states.csv"
 PUBLIC_S3_CONNECTION = {
-    "bucket": "noaa-global-hourly-pds",
+    "bucket": "1000genomes",
     "region": "us-east-1",
     "anonymous": True,
-    "file_type": "csv",
+    "file_type": "tsv",
 }
-PUBLIC_S3_SELECTION = {"object_path": "1901/02907099999.csv"}
+PUBLIC_S3_SELECTION = {"object_path": "20131219.populations.tsv"}
 PUBLIC_REST_CONNECTION = {
     "url": "https://api.weather.gov/stations",
     "headers": {
@@ -69,10 +83,33 @@ PUBLIC_REST_CONNECTION = {
 
 PASS = "✅"
 FAIL = "❌"
+SKIP = "⏭️"
+SUITE_NAME = "mcp_runtime_live"
 results: list[tuple[str, str, str]] = []
 
 
-def req(method: str, path: str, body: dict[str, Any] | None = None, *, auth: bool = True) -> tuple[int, Any]:
+class SkippedCheckError(RuntimeError):
+    """Raised when the authenticated live MCP slice is intentionally not configured."""
+
+
+def _emit(message: str = "") -> None:
+    print(message, flush=True)
+
+
+def _format_elapsed_seconds(started_at: float) -> str:
+    return f"{time.monotonic() - started_at:.2f}s"
+
+
+def _missing_live_api_key_reason() -> str:
+    return (
+        "DE_API_KEY is not set; skipping authenticated MCP runtime compatibility checks "
+        "that require a real live key."
+    )
+
+
+def req(
+    method: str, path: str, body: dict[str, Any] | None = None, *, auth: bool = True
+) -> tuple[int, Any]:
     url = f"{BASE_URL}{path}"
     data_bytes = json.dumps(body).encode() if body is not None else None
     headers = {"Content-Type": "application/json"}
@@ -101,19 +138,25 @@ def run_async(coro):
 
 
 def check(name: str, fn) -> Any:
+    started_at = time.monotonic()
+    _emit(f"  ... {name}")
     try:
         out = fn()
         results.append((PASS, name, ""))
-        print(f"  {PASS} {name}")
+        _emit(f"  {PASS} {name} ({_format_elapsed_seconds(started_at)})")
         return out
+    except SkippedCheckError as exc:
+        results.append((SKIP, name, str(exc)))
+        _emit(f"  {SKIP} {name} ({_format_elapsed_seconds(started_at)}): {exc}")
+        return None
     except AssertionError as exc:
         results.append((FAIL, name, str(exc)))
-        print(f"  {FAIL} {name}: {exc}")
+        _emit(f"  {FAIL} {name} ({_format_elapsed_seconds(started_at)}): {exc}")
         return None
     except Exception as exc:  # noqa: BLE001
         message = f"{type(exc).__name__}: {exc}"
         results.append((FAIL, name, message))
-        print(f"  {FAIL} {name}: {message}")
+        _emit(f"  {FAIL} {name} ({_format_elapsed_seconds(started_at)}): {message}")
         return None
 
 
@@ -188,9 +231,13 @@ def _count_metric_column(schema: dict[str, Any]) -> str:
 
 def _preflight() -> None:
     if not API_KEY:
-        raise RuntimeError("DE_API_KEY is required for live MCP runtime compatibility tests.")
+        raise SkippedCheckError(_missing_live_api_key_reason())
     status, _ = req("GET", "/v1/health", auth=False)
     assert status == 200, f"/v1/health returned {status}"
+
+
+def _missing_key_check() -> None:
+    raise SkippedCheckError(_missing_live_api_key_reason())
 
 
 def run_real_csv_upload_query_flow() -> None:
@@ -500,32 +547,63 @@ def run_public_s3_connect_and_count_query() -> None:
 
 
 def main() -> int:
-    print("\n" + "=" * 70)
-    print("  LIVE MCP RUNTIME COMPATIBILITY")
-    print("=" * 70)
+    started = time.perf_counter()
+    _emit("\n" + "=" * 70)
+    _emit("  LIVE MCP RUNTIME COMPATIBILITY")
+    _emit("=" * 70)
 
-    _preflight()
+    checks: list[tuple[str, Any]] = [
+        ("Real CSV upload/query flow", run_real_csv_upload_query_flow),
+        ("Real CSV canonical connector flow", run_real_csv_canonical_connector_flow),
+        ("SQLite selection/resume/query flow", run_database_selection_resume_and_query_sqlite),
+        ("Postgres selection/resume/query flow", run_database_selection_resume_and_query_postgres),
+        (
+            "Postgres canonical connector flow",
+            run_database_query_postgres_via_canonical_connector,
+        ),
+        ("Public REST connect/count flow", run_public_rest_connect_and_count_query),
+        ("Public S3 connect/count flow", run_public_s3_connect_and_count_query),
+    ]
+    try:
+        _preflight()
+        active_checks = checks
+    except SkippedCheckError:
+        active_checks = [(name, _missing_key_check) for name, _ in checks]
 
-    check("Real CSV upload/query flow", run_real_csv_upload_query_flow)
-    check("Real CSV canonical connector flow", run_real_csv_canonical_connector_flow)
-    check("SQLite selection/resume/query flow", run_database_selection_resume_and_query_sqlite)
-    check("Postgres selection/resume/query flow", run_database_selection_resume_and_query_postgres)
-    check(
-        "Postgres canonical connector flow",
-        run_database_query_postgres_via_canonical_connector,
-    )
-    check("Public REST connect/count flow", run_public_rest_connect_and_count_query)
-    check("Public S3 connect/count flow", run_public_s3_connect_and_count_query)
+    for name, fn in active_checks:
+        check(name, fn)
 
     failed = [result for result in results if result[0] == FAIL]
-    print("\n" + "=" * 70)
-    print(f"Passed: {len(results) - len(failed)}")
-    print(f"Failed: {len(failed)}")
+    skipped = [result for result in results if result[0] == SKIP]
+    _emit("\n" + "=" * 70)
+    _emit(f"Passed: {sum(1 for status, _, _ in results if status == PASS)}")
+    _emit(f"Skipped: {len(skipped)}")
+    _emit(f"Failed: {len(failed)}")
     if failed:
-        print("Failures:")
+        _emit("Failures:")
         for _, name, message in failed:
-            print(f"  - {name}: {message}")
-    print("=" * 70)
+            _emit(f"  - {name}: {message}")
+    if skipped:
+        _emit("Skipped:")
+        for _, name, message in skipped:
+            _emit(f"  - {name}: {message}")
+    _emit("=" * 70)
+    artifact_path = write_live_integration_summary(
+        SUITE_NAME,
+        script="tests/integration/test_mcp_runtime_live.py",
+        passed=sum(1 for status, _, _ in results if status == PASS),
+        failed=len(failed),
+        skipped=len(skipped),
+        total=len(results),
+        elapsed_seconds=time.perf_counter() - started,
+        details={
+            "api_key_configured": bool(API_KEY),
+            "base_url": BASE_URL,
+            "failed_checks": [name for _, name, _ in failed],
+            "skipped_checks": [name for _, name, _ in skipped],
+        },
+    )
+    _emit(f"Summary artifact: {artifact_path}")
     return 0 if not failed else 1
 
 

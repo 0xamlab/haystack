@@ -1,0 +1,786 @@
+{
+  "connectors": [
+    {
+      "append_only_event": false,
+      "bigquery": {
+        "connection_id": "__REPLACE_WITH_BIGQUERY_CONNECTION_ID__",
+        "expected_core_tables": [
+          "__REPLACE_WITH_BIGQUERY_TABLE__"
+        ],
+        "identity_columns": [],
+        "max_data_lag_minutes": 60,
+        "minimum_expected_ratio": 0.8,
+        "minimum_row_count": 1,
+        "table": "__REPLACE_WITH_BIGQUERY_TABLE__"
+      },
+      "classification_confidence": "high",
+      "connector_slug": "salesforce",
+      "display_name": "Salesforce connector",
+      "docs_path": "/docs/connectors/applications/salesforce",
+      "family": "application",
+      "high_churn_rest": false,
+      "join_complexity": "high",
+      "nested_json": true,
+      "plan_class": "standard",
+      "release_class": "ga",
+      "schema_complexity": "high",
+      "selection_bucket": "crm_marketing_support",
+      "snowflake": {
+        "connection_id": "__REPLACE_WITH_SNOWFLAKE_CONNECTION_ID__",
+        "expected_core_tables": [
+          "__REPLACE_WITH_SNOWFLAKE_TABLE__"
+        ],
+        "identity_columns": [],
+        "max_data_lag_minutes": 60,
+        "minimum_expected_ratio": 0.8,
+        "minimum_row_count": 1,
+        "table": "__REPLACE_WITH_SNOWFLAKE_TABLE__"
+      },
+      "source_type": "api",
+      "wide_table": true
+    },
+    {
+      "append_only_event": false,
+      "bigquery": {
+        "connection_id": "__REPLACE_WITH_BIGQUERY_CONNECTION_ID__",
+        "expected_core_tables": [
+          "__REPLACE_WITH_BIGQUERY_TABLE__"
+        ],
+        "identity_columns": [],
+        "max_data_lag_minutes": 60,
+        "minimum_expected_ratio": 0.8,
+        "minimum_row_count": 1,
+        "table": "__REPLACE_WITH_BIGQUERY_TABLE__"
+      },
+      "classification_confidence": "high",
+      "connector_slug": "hubspot",
+      "display_name": "HubSpot",
+      "docs_path": "/docs/connectors/applications/hubspot",
+      "family": "application",
+      "high_churn_rest": false,
+      "join_complexity": "high",
+      "nested_json": true,
+      "plan_class": "standard",
+      "release_class": "ga",
+      "schema_complexity": "high",
+      "selection_bucket": "crm_marketing_support",
+      "snowflake": {
+        "connection_id": "__REPLACE_WITH_SNOWFLAKE_CONNECTION_ID__",
+        "expected_core_tables": [
+          "__REPLACE_WITH_SNOWFLAKE_TABLE__"
+        ],
+        "identity_columns": [],
+        "max_data_lag_minutes": 60,
+        "minimum_expected_ratio": 0.8,
+        "minimum_row_count": 1,
+        "table": "__REPLACE_WITH_SNOWFLAKE_TABLE__"
+      },
+      "source_type": "api",
+      "wide_table": true
+    },
+    {
+      "append_only_event": false,
+      "bigquery": {
+        "connection_id": "__REPLACE_WITH_BIGQUERY_CONNECTION_ID__",
+        "expected_core_tables": [
+          "__REPLACE_WITH_BIGQUERY_TABLE__"
+        ],
+        "identity_columns": [],
+        "max_data_lag_minutes": 60,
+        "minimum_expected_ratio": 0.8,
+        "minimum_row_count": 1,
+        "table": "__REPLACE_WITH_BIGQUERY_TABLE__"
+      },
+      "classification_confidence": "high",
+      "connector_slug": "marketo",
+      "display_name": "Marketo",
+      "docs_path": "/docs/connectors/applications/marketo",
+      "family": "application",
+      "high_churn_rest": false,
+      "join_complexity": "medium",
+      "nested_json": false,
+      "plan_class": "standard",
+      "release_class": "ga",
+      "schema_complexity": "high",
+      "selection_bucket": "crm_marketing_support",
+      "snowflake": {
+        "connection_id": "__REPLACE_WITH_SNOWFLAKE_CONNECTION_ID__",
+        "expected_core_tables": [
+          "__REPLACE_WITH_SNOWFLAKE_TABLE__"
+        ],
+        "identity_columns": [],
+        "max_data_lag_minutes": 60,
+        "minimum_expected_ratio": 0.8,
+        "minimum_row_count": 1,
+        "table": "__REPLACE_WITH_SNOWFLAKE_TABLE__"
+      },
+      "source_type": "api",
+      "wide_table": true
+    },
+    {
+      "append_only_event": false,
+      "bigquery": {
+        "connection_id": "__REPLACE_WITH_BIGQUERY_CONNECTION_ID__",
+        "expected_core_tables": [
+          "__REPLACE_WITH_BIGQUERY_TABLE__"
+        ],
+        "identity_columns": [],
+        "max_data_lag_minutes": 60,
+        "minimum_expected_ratio": 0.8,
+        "minimum_row_count": 1,
+        "table": "__REPLACE_WITH_BIGQUERY_TABLE__"
+      },
+      "classification_confidence": "high",
+      "connector_slug": "google-ads",
+      "display_name": "Google Ads",
+      "docs_path": "/docs/connectors/applications/google-ads",
+      "family": "application",
+      "high_churn_rest": true,
+      "join_complexity": "medium",
+      "nested_json": false,
+      "plan_class": "standard",
+      "release_class": "ga",
+      "schema_complexity": "medium",
+      "selection_bucket": "crm_marketing_support",
+      "snowflake": {
+        "connection_id": "__REPLACE_WITH_SNOWFLAKE_CONNECTION_ID__",
+        "expected_core_tables": [
+          "__REPLACE_WITH_SNOWFLAKE_TABLE__"
+        ],
+        "identity_columns": [],
+        "max_data_lag_minutes": 60,
+        "minimum_expected_ratio": 0.8,
+        "minimum_row_count": 1,
+        "table": "__REPLACE_WITH_SNOWFLAKE_TABLE__"
+      },
+      "source_type": "api",
+      "wide_table": false
+    },
+    {
+      "append_only_event": false,
+      "bigquery": {
+        "connection_id": "__REPLACE_WITH_BIGQUERY_CONNECTION_ID__",
+        "expected_core_tables": [
+          "__REPLACE_WITH_BIGQUERY_TABLE__"
+        ],
+        "identity_columns": [],
+        "max_data_lag_minutes": 60,
+        "minimum_expected_ratio": 0.8,
+        "minimum_row_count": 1,
+        "table": "__REPLACE_WITH_BIGQUERY_TABLE__"
+      },
+      "classification_confidence": "high",
+      "connector_slug": "zendesk-chat",
+      "display_name": "Zendesk Chat",
+      "docs_path": "/docs/connectors/applications/zendesk-chat",
+      "family": "application",
+      "high_churn_rest": true,
+      "join_complexity": "medium",
+      "nested_json": false,
+      "plan_class": "standard",
+      "release_class": "ga",
+      "schema_complexity": "medium",
+      "selection_bucket": "crm_marketing_support",
+      "snowflake": {
+        "connection_id": "__REPLACE_WITH_SNOWFLAKE_CONNECTION_ID__",
+        "expected_core_tables": [
+          "__REPLACE_WITH_SNOWFLAKE_TABLE__"
+        ],
+        "identity_columns": [],
+        "max_data_lag_minutes": 60,
+        "minimum_expected_ratio": 0.8,
+        "minimum_row_count": 1,
+        "table": "__REPLACE_WITH_SNOWFLAKE_TABLE__"
+      },
+      "source_type": "api",
+      "wide_table": false
+    },
+    {
+      "append_only_event": false,
+      "bigquery": {
+        "connection_id": "__REPLACE_WITH_BIGQUERY_CONNECTION_ID__",
+        "expected_core_tables": [
+          "__REPLACE_WITH_BIGQUERY_TABLE__"
+        ],
+        "identity_columns": [],
+        "max_data_lag_minutes": 60,
+        "minimum_expected_ratio": 0.8,
+        "minimum_row_count": 1,
+        "table": "__REPLACE_WITH_BIGQUERY_TABLE__"
+      },
+      "classification_confidence": "high",
+      "connector_slug": "stripe",
+      "display_name": "Stripe",
+      "docs_path": "/docs/connectors/applications/stripe",
+      "family": "application",
+      "high_churn_rest": true,
+      "join_complexity": "high",
+      "nested_json": true,
+      "plan_class": "standard",
+      "release_class": "ga",
+      "schema_complexity": "high",
+      "selection_bucket": "finance_commerce_erp",
+      "snowflake": {
+        "connection_id": "__REPLACE_WITH_SNOWFLAKE_CONNECTION_ID__",
+        "expected_core_tables": [
+          "__REPLACE_WITH_SNOWFLAKE_TABLE__"
+        ],
+        "identity_columns": [],
+        "max_data_lag_minutes": 60,
+        "minimum_expected_ratio": 0.8,
+        "minimum_row_count": 1,
+        "table": "__REPLACE_WITH_SNOWFLAKE_TABLE__"
+      },
+      "source_type": "api",
+      "wide_table": false
+    },
+    {
+      "append_only_event": false,
+      "bigquery": {
+        "connection_id": "__REPLACE_WITH_BIGQUERY_CONNECTION_ID__",
+        "expected_core_tables": [
+          "__REPLACE_WITH_BIGQUERY_TABLE__"
+        ],
+        "identity_columns": [],
+        "max_data_lag_minutes": 60,
+        "minimum_expected_ratio": 0.8,
+        "minimum_row_count": 1,
+        "table": "__REPLACE_WITH_BIGQUERY_TABLE__"
+      },
+      "classification_confidence": "high",
+      "connector_slug": "netsuite-suiteanalytics",
+      "display_name": "NetSuite SuiteAnalytics",
+      "docs_path": "/docs/connectors/applications/netsuite-suiteanalytics",
+      "family": "application",
+      "high_churn_rest": false,
+      "join_complexity": "high",
+      "nested_json": false,
+      "plan_class": "standard",
+      "release_class": "ga",
+      "schema_complexity": "high",
+      "selection_bucket": "finance_commerce_erp",
+      "snowflake": {
+        "connection_id": "__REPLACE_WITH_SNOWFLAKE_CONNECTION_ID__",
+        "expected_core_tables": [
+          "__REPLACE_WITH_SNOWFLAKE_TABLE__"
+        ],
+        "identity_columns": [],
+        "max_data_lag_minutes": 60,
+        "minimum_expected_ratio": 0.8,
+        "minimum_row_count": 1,
+        "table": "__REPLACE_WITH_SNOWFLAKE_TABLE__"
+      },
+      "source_type": "api",
+      "wide_table": true
+    },
+    {
+      "append_only_event": false,
+      "bigquery": {
+        "connection_id": "__REPLACE_WITH_BIGQUERY_CONNECTION_ID__",
+        "expected_core_tables": [
+          "__REPLACE_WITH_BIGQUERY_TABLE__"
+        ],
+        "identity_columns": [],
+        "max_data_lag_minutes": 60,
+        "minimum_expected_ratio": 0.8,
+        "minimum_row_count": 1,
+        "table": "__REPLACE_WITH_BIGQUERY_TABLE__"
+      },
+      "classification_confidence": "high",
+      "connector_slug": "shopify",
+      "display_name": "Shopify",
+      "docs_path": "/docs/connectors/applications/shopify",
+      "family": "application",
+      "high_churn_rest": false,
+      "join_complexity": "high",
+      "nested_json": true,
+      "plan_class": "standard",
+      "release_class": "ga",
+      "schema_complexity": "high",
+      "selection_bucket": "finance_commerce_erp",
+      "snowflake": {
+        "connection_id": "__REPLACE_WITH_SNOWFLAKE_CONNECTION_ID__",
+        "expected_core_tables": [
+          "__REPLACE_WITH_SNOWFLAKE_TABLE__"
+        ],
+        "identity_columns": [],
+        "max_data_lag_minutes": 60,
+        "minimum_expected_ratio": 0.8,
+        "minimum_row_count": 1,
+        "table": "__REPLACE_WITH_SNOWFLAKE_TABLE__"
+      },
+      "source_type": "api",
+      "wide_table": true
+    },
+    {
+      "append_only_event": false,
+      "bigquery": {
+        "connection_id": "__REPLACE_WITH_BIGQUERY_CONNECTION_ID__",
+        "expected_core_tables": [
+          "__REPLACE_WITH_BIGQUERY_TABLE__"
+        ],
+        "identity_columns": [],
+        "max_data_lag_minutes": 60,
+        "minimum_expected_ratio": 0.8,
+        "minimum_row_count": 1,
+        "table": "__REPLACE_WITH_BIGQUERY_TABLE__"
+      },
+      "classification_confidence": "high",
+      "connector_slug": "chargebee",
+      "display_name": "Chargebee",
+      "docs_path": "/docs/connectors/applications/chargebee",
+      "family": "application",
+      "high_churn_rest": false,
+      "join_complexity": "high",
+      "nested_json": false,
+      "plan_class": "standard",
+      "release_class": "ga",
+      "schema_complexity": "medium",
+      "selection_bucket": "finance_commerce_erp",
+      "snowflake": {
+        "connection_id": "__REPLACE_WITH_SNOWFLAKE_CONNECTION_ID__",
+        "expected_core_tables": [
+          "__REPLACE_WITH_SNOWFLAKE_TABLE__"
+        ],
+        "identity_columns": [],
+        "max_data_lag_minutes": 60,
+        "minimum_expected_ratio": 0.8,
+        "minimum_row_count": 1,
+        "table": "__REPLACE_WITH_SNOWFLAKE_TABLE__"
+      },
+      "source_type": "api",
+      "wide_table": true
+    },
+    {
+      "append_only_event": false,
+      "bigquery": {
+        "connection_id": "__REPLACE_WITH_BIGQUERY_CONNECTION_ID__",
+        "expected_core_tables": [
+          "__REPLACE_WITH_BIGQUERY_TABLE__"
+        ],
+        "identity_columns": [],
+        "max_data_lag_minutes": 60,
+        "minimum_expected_ratio": 0.8,
+        "minimum_row_count": 1,
+        "table": "__REPLACE_WITH_BIGQUERY_TABLE__"
+      },
+      "classification_confidence": "high",
+      "connector_slug": "xero",
+      "display_name": "Xero",
+      "docs_path": "/docs/connectors/applications/xero",
+      "family": "application",
+      "high_churn_rest": false,
+      "join_complexity": "medium",
+      "nested_json": false,
+      "plan_class": "standard",
+      "release_class": "ga",
+      "schema_complexity": "medium",
+      "selection_bucket": "finance_commerce_erp",
+      "snowflake": {
+        "connection_id": "__REPLACE_WITH_SNOWFLAKE_CONNECTION_ID__",
+        "expected_core_tables": [
+          "__REPLACE_WITH_SNOWFLAKE_TABLE__"
+        ],
+        "identity_columns": [],
+        "max_data_lag_minutes": 60,
+        "minimum_expected_ratio": 0.8,
+        "minimum_row_count": 1,
+        "table": "__REPLACE_WITH_SNOWFLAKE_TABLE__"
+      },
+      "source_type": "api",
+      "wide_table": false
+    },
+    {
+      "append_only_event": true,
+      "bigquery": {
+        "connection_id": "__REPLACE_WITH_BIGQUERY_CONNECTION_ID__",
+        "expected_core_tables": [
+          "__REPLACE_WITH_BIGQUERY_TABLE__"
+        ],
+        "identity_columns": [],
+        "max_data_lag_minutes": 60,
+        "minimum_expected_ratio": 0.8,
+        "minimum_row_count": 1,
+        "table": "__REPLACE_WITH_BIGQUERY_TABLE__"
+      },
+      "classification_confidence": "high",
+      "connector_slug": "github",
+      "display_name": "GitHub",
+      "docs_path": "/docs/connectors/applications/github",
+      "family": "application",
+      "high_churn_rest": true,
+      "join_complexity": "high",
+      "nested_json": true,
+      "plan_class": "standard",
+      "release_class": "ga",
+      "schema_complexity": "high",
+      "selection_bucket": "engineering_product_ops",
+      "snowflake": {
+        "connection_id": "__REPLACE_WITH_SNOWFLAKE_CONNECTION_ID__",
+        "expected_core_tables": [
+          "__REPLACE_WITH_SNOWFLAKE_TABLE__"
+        ],
+        "identity_columns": [],
+        "max_data_lag_minutes": 60,
+        "minimum_expected_ratio": 0.8,
+        "minimum_row_count": 1,
+        "table": "__REPLACE_WITH_SNOWFLAKE_TABLE__"
+      },
+      "source_type": "api",
+      "wide_table": false
+    },
+    {
+      "append_only_event": false,
+      "bigquery": {
+        "connection_id": "__REPLACE_WITH_BIGQUERY_CONNECTION_ID__",
+        "expected_core_tables": [
+          "__REPLACE_WITH_BIGQUERY_TABLE__"
+        ],
+        "identity_columns": [],
+        "max_data_lag_minutes": 60,
+        "minimum_expected_ratio": 0.8,
+        "minimum_row_count": 1,
+        "table": "__REPLACE_WITH_BIGQUERY_TABLE__"
+      },
+      "classification_confidence": "high",
+      "connector_slug": "jira",
+      "display_name": "Jira",
+      "docs_path": "/docs/connectors/applications/jira",
+      "family": "application",
+      "high_churn_rest": true,
+      "join_complexity": "high",
+      "nested_json": true,
+      "plan_class": "standard",
+      "release_class": "ga",
+      "schema_complexity": "high",
+      "selection_bucket": "engineering_product_ops",
+      "snowflake": {
+        "connection_id": "__REPLACE_WITH_SNOWFLAKE_CONNECTION_ID__",
+        "expected_core_tables": [
+          "__REPLACE_WITH_SNOWFLAKE_TABLE__"
+        ],
+        "identity_columns": [],
+        "max_data_lag_minutes": 60,
+        "minimum_expected_ratio": 0.8,
+        "minimum_row_count": 1,
+        "table": "__REPLACE_WITH_SNOWFLAKE_TABLE__"
+      },
+      "source_type": "api",
+      "wide_table": false
+    },
+    {
+      "append_only_event": false,
+      "bigquery": {
+        "connection_id": "__REPLACE_WITH_BIGQUERY_CONNECTION_ID__",
+        "expected_core_tables": [
+          "__REPLACE_WITH_BIGQUERY_TABLE__"
+        ],
+        "identity_columns": [],
+        "max_data_lag_minutes": 60,
+        "minimum_expected_ratio": 0.8,
+        "minimum_row_count": 1,
+        "table": "__REPLACE_WITH_BIGQUERY_TABLE__"
+      },
+      "classification_confidence": "high",
+      "connector_slug": "azure-devops",
+      "display_name": "Azure DevOps",
+      "docs_path": "/docs/connectors/applications/azure-devops",
+      "family": "application",
+      "high_churn_rest": true,
+      "join_complexity": "medium",
+      "nested_json": true,
+      "plan_class": "standard",
+      "release_class": "ga",
+      "schema_complexity": "high",
+      "selection_bucket": "engineering_product_ops",
+      "snowflake": {
+        "connection_id": "__REPLACE_WITH_SNOWFLAKE_CONNECTION_ID__",
+        "expected_core_tables": [
+          "__REPLACE_WITH_SNOWFLAKE_TABLE__"
+        ],
+        "identity_columns": [],
+        "max_data_lag_minutes": 60,
+        "minimum_expected_ratio": 0.8,
+        "minimum_row_count": 1,
+        "table": "__REPLACE_WITH_SNOWFLAKE_TABLE__"
+      },
+      "source_type": "api",
+      "wide_table": false
+    },
+    {
+      "append_only_event": false,
+      "bigquery": {
+        "connection_id": "__REPLACE_WITH_BIGQUERY_CONNECTION_ID__",
+        "expected_core_tables": [
+          "__REPLACE_WITH_BIGQUERY_TABLE__"
+        ],
+        "identity_columns": [],
+        "max_data_lag_minutes": 60,
+        "minimum_expected_ratio": 0.8,
+        "minimum_row_count": 1,
+        "table": "__REPLACE_WITH_BIGQUERY_TABLE__"
+      },
+      "classification_confidence": "high",
+      "connector_slug": "asana",
+      "display_name": "Asana",
+      "docs_path": "/docs/connectors/applications/asana",
+      "family": "application",
+      "high_churn_rest": false,
+      "join_complexity": "medium",
+      "nested_json": false,
+      "plan_class": "standard",
+      "release_class": "ga",
+      "schema_complexity": "medium",
+      "selection_bucket": "engineering_product_ops",
+      "snowflake": {
+        "connection_id": "__REPLACE_WITH_SNOWFLAKE_CONNECTION_ID__",
+        "expected_core_tables": [
+          "__REPLACE_WITH_SNOWFLAKE_TABLE__"
+        ],
+        "identity_columns": [],
+        "max_data_lag_minutes": 60,
+        "minimum_expected_ratio": 0.8,
+        "minimum_row_count": 1,
+        "table": "__REPLACE_WITH_SNOWFLAKE_TABLE__"
+      },
+      "source_type": "api",
+      "wide_table": false
+    },
+    {
+      "append_only_event": true,
+      "bigquery": {
+        "connection_id": "__REPLACE_WITH_BIGQUERY_CONNECTION_ID__",
+        "expected_core_tables": [
+          "__REPLACE_WITH_BIGQUERY_TABLE__"
+        ],
+        "identity_columns": [],
+        "max_data_lag_minutes": 60,
+        "minimum_expected_ratio": 0.8,
+        "minimum_row_count": 1,
+        "table": "__REPLACE_WITH_BIGQUERY_TABLE__"
+      },
+      "classification_confidence": "high",
+      "connector_slug": "apache-kafka",
+      "display_name": "Apache Kafka",
+      "docs_path": "/docs/connectors/events/apache-kafka",
+      "family": "event",
+      "high_churn_rest": false,
+      "join_complexity": "medium",
+      "nested_json": false,
+      "plan_class": "standard",
+      "release_class": "ga",
+      "schema_complexity": "high",
+      "selection_bucket": "data_infrastructure",
+      "snowflake": {
+        "connection_id": "__REPLACE_WITH_SNOWFLAKE_CONNECTION_ID__",
+        "expected_core_tables": [
+          "__REPLACE_WITH_SNOWFLAKE_TABLE__"
+        ],
+        "identity_columns": [],
+        "max_data_lag_minutes": 60,
+        "minimum_expected_ratio": 0.8,
+        "minimum_row_count": 1,
+        "table": "__REPLACE_WITH_SNOWFLAKE_TABLE__"
+      },
+      "source_type": "stream",
+      "wide_table": false
+    },
+    {
+      "append_only_event": false,
+      "bigquery": {
+        "connection_id": "__REPLACE_WITH_BIGQUERY_CONNECTION_ID__",
+        "expected_core_tables": [
+          "__REPLACE_WITH_BIGQUERY_TABLE__"
+        ],
+        "identity_columns": [],
+        "max_data_lag_minutes": 60,
+        "minimum_expected_ratio": 0.8,
+        "minimum_row_count": 1,
+        "table": "__REPLACE_WITH_BIGQUERY_TABLE__"
+      },
+      "classification_confidence": "high",
+      "connector_slug": "mongodb",
+      "display_name": "MongoDB",
+      "docs_path": "/docs/connectors/databases/mongodb",
+      "family": "database",
+      "high_churn_rest": false,
+      "join_complexity": "medium",
+      "nested_json": true,
+      "plan_class": "standard",
+      "release_class": "ga",
+      "schema_complexity": "high",
+      "selection_bucket": "data_infrastructure",
+      "snowflake": {
+        "connection_id": "__REPLACE_WITH_SNOWFLAKE_CONNECTION_ID__",
+        "expected_core_tables": [
+          "__REPLACE_WITH_SNOWFLAKE_TABLE__"
+        ],
+        "identity_columns": [],
+        "max_data_lag_minutes": 60,
+        "minimum_expected_ratio": 0.8,
+        "minimum_row_count": 1,
+        "table": "__REPLACE_WITH_SNOWFLAKE_TABLE__"
+      },
+      "source_type": "database",
+      "wide_table": false
+    },
+    {
+      "append_only_event": false,
+      "bigquery": {
+        "connection_id": "__REPLACE_WITH_BIGQUERY_CONNECTION_ID__",
+        "expected_core_tables": [
+          "__REPLACE_WITH_BIGQUERY_TABLE__"
+        ],
+        "identity_columns": [],
+        "max_data_lag_minutes": 60,
+        "minimum_expected_ratio": 0.8,
+        "minimum_row_count": 1,
+        "table": "__REPLACE_WITH_BIGQUERY_TABLE__"
+      },
+      "classification_confidence": "high",
+      "connector_slug": "postgresql",
+      "display_name": "PostgreSQL",
+      "docs_path": "/docs/connectors/databases/postgresql",
+      "family": "database",
+      "high_churn_rest": false,
+      "join_complexity": "high",
+      "nested_json": false,
+      "plan_class": "standard",
+      "release_class": "ga",
+      "schema_complexity": "medium",
+      "selection_bucket": "data_infrastructure",
+      "snowflake": {
+        "connection_id": "__REPLACE_WITH_SNOWFLAKE_CONNECTION_ID__",
+        "expected_core_tables": [
+          "__REPLACE_WITH_SNOWFLAKE_TABLE__"
+        ],
+        "identity_columns": [],
+        "max_data_lag_minutes": 60,
+        "minimum_expected_ratio": 0.8,
+        "minimum_row_count": 1,
+        "table": "__REPLACE_WITH_SNOWFLAKE_TABLE__"
+      },
+      "source_type": "database",
+      "wide_table": false
+    },
+    {
+      "append_only_event": false,
+      "bigquery": {
+        "connection_id": "__REPLACE_WITH_BIGQUERY_CONNECTION_ID__",
+        "expected_core_tables": [
+          "__REPLACE_WITH_BIGQUERY_TABLE__"
+        ],
+        "identity_columns": [],
+        "max_data_lag_minutes": 60,
+        "minimum_expected_ratio": 0.8,
+        "minimum_row_count": 1,
+        "table": "__REPLACE_WITH_BIGQUERY_TABLE__"
+      },
+      "classification_confidence": "high",
+      "connector_slug": "amazon-s3",
+      "display_name": "Amazon S3",
+      "docs_path": "/docs/connectors/files/amazon-s3",
+      "family": "file",
+      "high_churn_rest": false,
+      "join_complexity": "medium",
+      "nested_json": false,
+      "plan_class": "standard",
+      "release_class": "ga",
+      "schema_complexity": "medium",
+      "selection_bucket": "data_infrastructure",
+      "snowflake": {
+        "connection_id": "__REPLACE_WITH_SNOWFLAKE_CONNECTION_ID__",
+        "expected_core_tables": [
+          "__REPLACE_WITH_SNOWFLAKE_TABLE__"
+        ],
+        "identity_columns": [],
+        "max_data_lag_minutes": 60,
+        "minimum_expected_ratio": 0.8,
+        "minimum_row_count": 1,
+        "table": "__REPLACE_WITH_SNOWFLAKE_TABLE__"
+      },
+      "source_type": "file",
+      "wide_table": false
+    },
+    {
+      "append_only_event": false,
+      "bigquery": {
+        "connection_id": "__REPLACE_WITH_BIGQUERY_CONNECTION_ID__",
+        "expected_core_tables": [
+          "__REPLACE_WITH_BIGQUERY_TABLE__"
+        ],
+        "identity_columns": [],
+        "max_data_lag_minutes": 60,
+        "minimum_expected_ratio": 0.8,
+        "minimum_row_count": 1,
+        "table": "__REPLACE_WITH_BIGQUERY_TABLE__"
+      },
+      "classification_confidence": "high",
+      "connector_slug": "bamboohr",
+      "display_name": "BambooHR",
+      "docs_path": "/docs/connectors/applications/bamboohr",
+      "family": "application",
+      "high_churn_rest": false,
+      "join_complexity": "medium",
+      "nested_json": false,
+      "plan_class": "standard",
+      "release_class": "ga",
+      "schema_complexity": "medium",
+      "selection_bucket": "hr_people",
+      "snowflake": {
+        "connection_id": "__REPLACE_WITH_SNOWFLAKE_CONNECTION_ID__",
+        "expected_core_tables": [
+          "__REPLACE_WITH_SNOWFLAKE_TABLE__"
+        ],
+        "identity_columns": [],
+        "max_data_lag_minutes": 60,
+        "minimum_expected_ratio": 0.8,
+        "minimum_row_count": 1,
+        "table": "__REPLACE_WITH_SNOWFLAKE_TABLE__"
+      },
+      "source_type": "api",
+      "wide_table": true
+    },
+    {
+      "append_only_event": false,
+      "bigquery": {
+        "connection_id": "__REPLACE_WITH_BIGQUERY_CONNECTION_ID__",
+        "expected_core_tables": [
+          "__REPLACE_WITH_BIGQUERY_TABLE__"
+        ],
+        "identity_columns": [],
+        "max_data_lag_minutes": 60,
+        "minimum_expected_ratio": 0.8,
+        "minimum_row_count": 1,
+        "table": "__REPLACE_WITH_BIGQUERY_TABLE__"
+      },
+      "classification_confidence": "high",
+      "connector_slug": "greenhouse",
+      "display_name": "Greenhouse",
+      "docs_path": "/docs/connectors/applications/greenhouse",
+      "family": "application",
+      "high_churn_rest": false,
+      "join_complexity": "medium",
+      "nested_json": false,
+      "plan_class": "standard",
+      "release_class": "ga",
+      "schema_complexity": "medium",
+      "selection_bucket": "hr_people",
+      "snowflake": {
+        "connection_id": "__REPLACE_WITH_SNOWFLAKE_CONNECTION_ID__",
+        "expected_core_tables": [
+          "__REPLACE_WITH_SNOWFLAKE_TABLE__"
+        ],
+        "identity_columns": [],
+        "max_data_lag_minutes": 60,
+        "minimum_expected_ratio": 0.8,
+        "minimum_row_count": 1,
+        "table": "__REPLACE_WITH_SNOWFLAKE_TABLE__"
+      },
+      "source_type": "api",
+      "wide_table": true
+    }
+  ],
+  "inventory_version": "c1855be6dab92dec09ad2c60960d2660f1b7070bae7c828d6a63685d826df767",
+  "selection_version": "9b94d3e106ce34287eafa2e0327450816a53b1ce172801840124c25e7b03596c"
+}

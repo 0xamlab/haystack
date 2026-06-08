@@ -124,6 +124,11 @@ fn test_sparse_vector() raises:
     _assert_close(dense[1], 5.0, 1e-15, "sv_to_dense[1]")
     _assert_close(dense[3], 7.0, 1e-15, "sv_to_dense[3]")
 
+    var dense_identity = sv_to_dense(_li3(0, 1, 2), _lf3(1.0, 2.0, 3.0), 3)
+    _assert_close(dense_identity[0], 1.0, 1e-15, "sv_to_dense identity[0]")
+    _assert_close(dense_identity[1], 2.0, 1e-15, "sv_to_dense identity[1]")
+    _assert_close(dense_identity[2], 3.0, 1e-15, "sv_to_dense identity[2]")
+
     # 5. sv_to_dense then dense_to_sparse roundtrip
     var sparse_rt = dense_to_sparse(dense)
     var rt_idx = sparse_rt[0].copy()
@@ -133,6 +138,13 @@ fn test_sparse_vector() raises:
     _assert_close(rt_val[0], 5.0, 1e-15, "roundtrip val[0]")
     _assert_close(rt_idx[1], 3.0, 1e-15, "roundtrip idx[1]")
     _assert_close(rt_val[1], 7.0, 1e-15, "roundtrip val[1]")
+
+    var dense_full = _lf3(1.0, 2.0, 3.0)
+    var sparse_full = dense_to_sparse(dense_full)
+    _assert_eq(len(sparse_full[0]), 3, "dense_to_sparse full nnz count")
+    _assert_close(sparse_full[0][0], 0.0, 1e-15, "dense_to_sparse full idx[0]")
+    _assert_close(sparse_full[0][2], 2.0, 1e-15, "dense_to_sparse full idx[2]")
+    _assert_close(sparse_full[1][1], 2.0, 1e-15, "dense_to_sparse full val[1]")
 
     # 6. sv_cosine of identical vectors ≈ 1.0
     var if_ = _li3(0, 2, 4)

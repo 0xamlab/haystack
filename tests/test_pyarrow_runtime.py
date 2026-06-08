@@ -11,9 +11,7 @@ def test_filter_known_pyarrow_cpu_info_warnings_removes_only_known_noise() -> No
     )
     other = "unexpected stderr that must remain visible\n"
 
-    filtered = pyarrow_runtime._filter_known_pyarrow_cpu_info_warnings(
-        warning + other + warning
-    )
+    filtered = pyarrow_runtime._filter_known_pyarrow_cpu_info_warnings(warning + other + warning)
 
     assert filtered == other
 

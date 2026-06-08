@@ -9,6 +9,7 @@ Run:
   python3 tests/integration/test_engines.py
   DE_SKIP_API=1 python3 tests/integration/test_engines.py   # manifest only
 """
+
 from __future__ import annotations
 
 import json
@@ -25,9 +26,20 @@ if str(_ROOT) not in sys.path:
 from apps.api_server.routers.engines import router  # noqa: E402
 from engines import ALL_ENGINE_LIBS, ENGINES, ENGINES_BY_SLUG, ENGINES_BY_TIER  # noqa: E402
 
-BASE_URL   = os.environ.get("DE_BASE_URL", "http://localhost:8000")
-API_KEY    = os.environ.get("DE_API_KEY",  "de_live_LrL6UWSAfgXsTjgfyaboI9aolrsznjLU")
-SKIP_API   = os.environ.get("DE_SKIP_API", "0") == "1"
+try:
+    from tests.integration.live_local_defaults import (
+        resolve_local_live_api_key,
+        resolve_local_live_base_url,
+    )
+except ModuleNotFoundError:
+    from live_local_defaults import (
+        resolve_local_live_api_key,
+        resolve_local_live_base_url,
+    )
+
+BASE_URL = resolve_local_live_base_url()
+API_KEY = resolve_local_live_api_key()
+SKIP_API = os.environ.get("DE_SKIP_API", "0") == "1"
 
 PASS = "✅"
 FAIL = "❌"
@@ -53,31 +65,42 @@ def api_get(path: str) -> dict:
 
 # ── Layer A: Manifest unit tests ─────────────────────────────────────────────
 
+
 def test_engine_count():
     check("12 engines registered", len(ENGINES) == 12, f"got {len(ENGINES)}")
 
 
 def test_required_fields():
     for e in ENGINES:
-        check(f"{e.slug}: has slug",        bool(e.slug))
-        check(f"{e.slug}: has name",        bool(e.name))
+        check(f"{e.slug}: has slug", bool(e.slug))
+        check(f"{e.slug}: has name", bool(e.name))
         check(f"{e.slug}: has description", len(e.description) > 20)
-        check(f"{e.slug}: has api_path",    e.api_path.startswith("/v1/"))
-        check(f"{e.slug}: has mojo_libs",   len(e.mojo_libs) >= 3)
-        check(f"{e.slug}: has use_cases",   len(e.use_cases) >= 2)
-        check(f"{e.slug}: valid tier",      e.tier in ("core", "advanced", "platform"))
+        check(f"{e.slug}: has api_path", e.api_path.startswith("/v1/"))
+        check(f"{e.slug}: has mojo_libs", len(e.mojo_libs) >= 3)
+        check(f"{e.slug}: has use_cases", len(e.use_cases) >= 2)
+        check(f"{e.slug}: valid tier", e.tier in ("core", "advanced", "platform"))
 
 
 def test_tier_counts():
-    check("core tier has 6 engines",     len(ENGINES_BY_TIER["core"])     == 6)
+    check("core tier has 6 engines", len(ENGINES_BY_TIER["core"]) == 6)
     check("advanced tier has 4 engines", len(ENGINES_BY_TIER["advanced"]) == 4)
     check("platform tier has 2 engines", len(ENGINES_BY_TIER["platform"]) == 2)
 
 
 def test_all_slugs_resolve():
     expected = {
-        "decision", "inference", "agent", "retrieval", "optimize", "serving",
-        "training", "data", "model", "cost", "security", "hybrid",
+        "decision",
+        "inference",
+        "agent",
+        "retrieval",
+        "optimize",
+        "serving",
+        "training",
+        "data",
+        "model",
+        "cost",
+        "security",
+        "hybrid",
     }
     for slug in expected:
         check(f"slug '{slug}' resolves", slug in ENGINES_BY_SLUG)
@@ -86,7 +109,7 @@ def test_all_slugs_resolve():
 def test_no_duplicates():
     slugs = [e.slug for e in ENGINES]
     paths = [e.api_path for e in ENGINES]
-    check("no duplicate slugs",     len(slugs) == len(set(slugs)))
+    check("no duplicate slugs", len(slugs) == len(set(slugs)))
     check("no duplicate api_paths", len(paths) == len(set(paths)))
 
 
@@ -99,26 +122,26 @@ def test_lib_coverage():
 
 def test_core_engines_have_key_libs():
     decision = ENGINES_BY_SLUG["decision"]
-    check("decision references monte_carlo",      "engines_monte_carlo"  in decision.mojo_libs)
-    check("decision references decision_ml_fusion","decision_ml_fusion"  in decision.mojo_libs)
+    check("decision references monte_carlo", "engines_monte_carlo" in decision.mojo_libs)
+    check("decision references decision_ml_fusion", "decision_ml_fusion" in decision.mojo_libs)
 
     inference = ENGINES_BY_SLUG["inference"]
-    check("inference references flash_attention",  "flash_attention"      in inference.mojo_libs)
-    check("inference references generation_loop",  "generation_loop"      in inference.mojo_libs)
-    check("inference references paged_kv_cache",   "paged_kv_cache"       in inference.mojo_libs)
+    check("inference references flash_attention", "flash_attention" in inference.mojo_libs)
+    check("inference references generation_loop", "generation_loop" in inference.mojo_libs)
+    check("inference references paged_kv_cache", "paged_kv_cache" in inference.mojo_libs)
 
     agent = ENGINES_BY_SLUG["agent"]
-    check("agent references workflow_engine",      "workflow_engine"      in agent.mojo_libs)
-    check("agent references structured_output",    "structured_output"    in agent.mojo_libs)
+    check("agent references workflow_engine", "workflow_engine" in agent.mojo_libs)
+    check("agent references structured_output", "structured_output" in agent.mojo_libs)
 
     hybrid = ENGINES_BY_SLUG["hybrid"]
-    check("hybrid references hybrid_reasoning",    "hybrid_reasoning"     in hybrid.mojo_libs)
+    check("hybrid references hybrid_reasoning", "hybrid_reasoning" in hybrid.mojo_libs)
 
 
 def test_router_routes():
     routes = {r.path for r in router.routes}
-    check("GET /v1/engines registered",        "/v1/engines"        in routes)
-    check("GET /v1/engines/tiers registered",  "/v1/engines/tiers"  in routes)
+    check("GET /v1/engines registered", "/v1/engines" in routes)
+    check("GET /v1/engines/tiers registered", "/v1/engines/tiers" in routes)
     check("GET /v1/engines/{slug} registered", "/v1/engines/{slug}" in routes)
 
 
@@ -133,6 +156,7 @@ def test_router_methods():
 
 # ── Layer B: HTTP integration tests ─────────────────────────────────────────
 
+
 def test_api_list_engines():
     data = api_get("/v1/engines")
     check("API /v1/engines returns count=12", data["count"] == 12, str(data.get("count")))
@@ -142,10 +166,10 @@ def test_api_list_engines():
 
 def test_api_engines_tiers():
     data = api_get("/v1/engines/tiers")
-    check("API /v1/engines/tiers has core",     "core"     in data)
+    check("API /v1/engines/tiers has core", "core" in data)
     check("API /v1/engines/tiers has advanced", "advanced" in data)
     check("API /v1/engines/tiers has platform", "platform" in data)
-    check("API core tier has 6",     len(data["core"])     == 6)
+    check("API core tier has 6", len(data["core"]) == 6)
     check("API advanced tier has 4", len(data["advanced"]) == 4)
     check("API platform tier has 2", len(data["platform"]) == 2)
 
@@ -153,8 +177,8 @@ def test_api_engines_tiers():
 def test_api_engine_by_slug():
     for slug in ["decision", "inference", "agent", "hybrid"]:
         data = api_get(f"/v1/engines/{slug}")
-        check(f"API /v1/engines/{slug} returns slug",     data["slug"] == slug)
-        check(f"API /v1/engines/{slug} returns name",     bool(data["name"]))
+        check(f"API /v1/engines/{slug} returns slug", data["slug"] == slug)
+        check(f"API /v1/engines/{slug} returns name", bool(data["name"]))
         check(f"API /v1/engines/{slug} returns mojo_libs", len(data["mojo_libs"]) >= 3)
 
 
@@ -173,6 +197,7 @@ def test_api_engine_fields_complete():
 
 
 # ── Runner ───────────────────────────────────────────────────────────────────
+
 
 def main() -> None:
     print("\n" + "=" * 68)

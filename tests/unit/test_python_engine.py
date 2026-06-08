@@ -2,6 +2,7 @@
 Unit tests for the Python reference simulation engine (mojo/bindings/python_adapter.py).
 These tests validate simulation math, determinism, and output schema correctness.
 """
+
 import os
 import sys
 
@@ -29,7 +30,11 @@ TRIANGULAR_PAYLOAD = {
     "runs": 10000,
     "seed": 42,
     "variables": [
-        {"name": "revenue", "distribution": "triangular", "params": {"low": 50000, "mode": 100000, "high": 200000}},
+        {
+            "name": "revenue",
+            "distribution": "triangular",
+            "params": {"low": 50000, "mode": 100000, "high": 200000},
+        },
         {"name": "cost", "distribution": "uniform", "params": {"low": 30000, "high": 80000}},
     ],
     "objective_function": "revenue - cost",
@@ -37,6 +42,7 @@ TRIANGULAR_PAYLOAD = {
 
 
 # ─── Determinism ───────────────────────────────────────────────────────────────
+
 
 class TestDeterminism:
     def test_same_seed_produces_identical_results(self) -> None:
@@ -65,6 +71,7 @@ class TestDeterminism:
 
 
 # ─── Output Schema ─────────────────────────────────────────────────────────────
+
 
 class TestOutputSchema:
     def test_required_fields_present(self) -> None:
@@ -115,6 +122,7 @@ class TestOutputSchema:
 
 # ─── Distribution Tests ────────────────────────────────────────────────────────
 
+
 class TestDistributions:
     def test_normal_distribution_mean_accuracy(self) -> None:
         """Normal distribution mean should be within 2% of specified mean."""
@@ -146,7 +154,11 @@ class TestDistributions:
             "runs": 50000,
             "seed": 42,
             "variables": [
-                {"name": "x", "distribution": "triangular", "params": {"low": 0, "mode": 50, "high": 100}}
+                {
+                    "name": "x",
+                    "distribution": "triangular",
+                    "params": {"low": 0, "mode": 50, "high": 100},
+                }
             ],
             "objective_function": "x",
         }
@@ -173,9 +185,7 @@ class TestDistributions:
         payload = {
             "runs": 1000,
             "seed": 42,
-            "variables": [
-                {"name": "x", "distribution": "fixed", "params": {"value": 42.0}}
-            ],
+            "variables": [{"name": "x", "distribution": "fixed", "params": {"value": 42.0}}],
             "objective_function": "x",
         }
         result = run_simulation(payload)
@@ -184,6 +194,7 @@ class TestDistributions:
 
 
 # ─── Objective Function Tests ──────────────────────────────────────────────────
+
 
 class TestObjectiveFunction:
     def test_net_value_objective(self) -> None:

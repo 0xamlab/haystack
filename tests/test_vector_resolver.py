@@ -17,6 +17,7 @@ Acceptance criteria per case:
 Run:
     python3 -m pytest tests/test_vector_resolver.py -v
 """
+
 from __future__ import annotations
 
 import json
@@ -37,6 +38,7 @@ except ImportError:
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 def _node(role, is_numeric=True, fill_rate=1.0):
     n = SimpleNamespace()
     n.role = role
@@ -50,22 +52,22 @@ def _node(role, is_numeric=True, fill_rate=1.0):
 # Standard procurement schema used across most tests
 _POS_SCHEMA = {
     "POS": [
-        ("UNIT_PRICE",   "unit_measure"),
-        ("EXT_PRICE",    "derived_measure"),
-        ("QTY",          "base_measure"),
-        ("LINE_TOTAL",   "derived_measure"),
-        ("ORDERED_ON",   "other"),
-        ("CUSTOMER_NAME","other"),
+        ("UNIT_PRICE", "unit_measure"),
+        ("EXT_PRICE", "derived_measure"),
+        ("QTY", "base_measure"),
+        ("LINE_TOTAL", "derived_measure"),
+        ("ORDERED_ON", "other"),
+        ("CUSTOMER_NAME", "other"),
     ]
 }
 
 _BACKLOG_SCHEMA = {
     "BACKLOG": [
-        ("OH_COST",      "derived_measure"),
-        ("EXT_COST",     "derived_measure"),
-        ("UNIT_COST",    "unit_measure"),
-        ("QTY_ORDERED",  "base_measure"),
-        ("PART_NUMBER",  "other"),
+        ("OH_COST", "derived_measure"),
+        ("EXT_COST", "derived_measure"),
+        ("UNIT_COST", "unit_measure"),
+        ("QTY_ORDERED", "base_measure"),
+        ("PART_NUMBER", "other"),
     ]
 }
 
@@ -73,6 +75,7 @@ _MULTI_SOURCE_SCHEMA = {**_POS_SCHEMA, **_BACKLOG_SCHEMA}
 
 
 # ── Unit tests: bigram encoder ────────────────────────────────────────────────
+
 
 class TestBuildVec64:
     def test_case_insensitive(self):
@@ -107,6 +110,7 @@ class TestBuildVec64:
 
 # ── Unit tests: resolver construction ────────────────────────────────────────
 
+
 class TestResolverConstruction:
     def test_empty_source_map_returns_none(self):
         r = ColumnVectorResolver({})
@@ -136,12 +140,14 @@ class TestResolverConstruction:
         monkeypatch.setattr(resolver_module, "tokenize_name", _count_tokenize)
         monkeypatch.setattr(resolver_module, "build_vec64", _count_build_vec)
 
-        resolver = ColumnVectorResolver({
-            "POS": [
-                ("UNIT_PRICE", "unit_measure"),
-                ("EXT_PRICE", "derived_measure"),
-            ]
-        })
+        resolver = ColumnVectorResolver(
+            {
+                "POS": [
+                    ("UNIT_PRICE", "unit_measure"),
+                    ("EXT_PRICE", "derived_measure"),
+                ]
+            }
+        )
 
         assert tokenize_calls["count"] == 2
         assert build_calls["count"] == 2
@@ -163,15 +169,16 @@ class TestResolverConstruction:
 # This was a documented failure class. "unit cost" must pick UNIT_COST over
 # EXT_COST; "extended cost" must pick EXT_COST over UNIT_COST.
 
+
 class TestUnitVsExtendedCost:
     @pytest.fixture
     def resolver(self):
         schema = {
             "POS": [
-                ("UNIT_COST",   "unit_measure"),
-                ("EXT_COST",    "derived_measure"),
-                ("OH_COST",     "derived_measure"),
-                ("LINE_TOTAL",  "derived_measure"),
+                ("UNIT_COST", "unit_measure"),
+                ("EXT_COST", "derived_measure"),
+                ("OH_COST", "derived_measure"),
+                ("LINE_TOTAL", "derived_measure"),
             ]
         }
         return ColumnVectorResolver(schema)
@@ -180,17 +187,14 @@ class TestUnitVsExtendedCost:
         r = resolver.resolve("unit cost", preferred_source="POS", role_hint="unit_measure")
         assert r is not None
         assert r.column == "UNIT_COST", (
-            f"Expected UNIT_COST, got {r.column}  (score={r.score:.3f})\n"
-            f"steps: {r.steps}"
+            f"Expected UNIT_COST, got {r.column}  (score={r.score:.3f})\nsteps: {r.steps}"
         )
         assert r.score >= 0.55, f"score={r.score:.3f} below minimum"
 
     def test_extended_cost_resolves_to_ext_cost(self, resolver):
         r = resolver.resolve("extended cost", preferred_source="POS", role_hint="derived_measure")
         assert r is not None
-        assert r.column == "EXT_COST", (
-            f"Expected EXT_COST, got {r.column}  (score={r.score:.3f})"
-        )
+        assert r.column == "EXT_COST", f"Expected EXT_COST, got {r.column}  (score={r.score:.3f})"
         assert r.score >= 0.40
 
     def test_unit_cost_is_confident_with_role_hint(self, resolver):
@@ -205,9 +209,7 @@ class TestUnitVsExtendedCost:
         """unit cost vs extended cost should have a clear winner."""
         r = resolver.resolve("unit cost", preferred_source="POS", role_hint="unit_measure")
         assert r is not None
-        assert r.confidence_gap >= 0.08, (
-            f"Gap too narrow: {r.confidence_gap:.3f} — ambiguity risk"
-        )
+        assert r.confidence_gap >= 0.08, f"Gap too narrow: {r.confidence_gap:.3f} — ambiguity risk"
 
     def test_top_k_includes_both_candidates(self, resolver):
         r = resolver.resolve("unit cost", preferred_source="POS")
@@ -222,14 +224,15 @@ class TestUnitVsExtendedCost:
 # this (OH → overhead). The resolver should fall through (not confident) but
 # must not return a wrong answer with high confidence.
 
+
 class TestOverheadAbbreviation:
     @pytest.fixture
     def resolver(self):
         schema = {
             "WH": [
-                ("OH_COST",     "derived_measure"),
-                ("UNIT_COST",   "unit_measure"),
-                ("EXT_COST",    "derived_measure"),
+                ("OH_COST", "derived_measure"),
+                ("UNIT_COST", "unit_measure"),
+                ("EXT_COST", "derived_measure"),
             ]
         }
         return ColumnVectorResolver(schema)
@@ -243,32 +246,29 @@ class TestOverheadAbbreviation:
         r = resolver.resolve("overhead cost", preferred_source="WH", role_hint="derived_measure")
         assert r is not None
         if r.confident:
-            assert r.column == "OH_COST", (
-                f"Confident but wrong: got {r.column} (expected OH_COST)"
-            )
+            assert r.column == "OH_COST", f"Confident but wrong: got {r.column} (expected OH_COST)"
 
     def test_overhead_cost_does_not_confidently_pick_wrong_column(self, resolver):
         """Never confidently resolve overhead cost to a non-overhead column."""
         r = resolver.resolve("overhead cost", preferred_source="WH", role_hint="derived_measure")
         assert r is not None
         if r.confident:
-            assert r.column in ("OH_COST",), (
-                f"Confidently picked wrong column: {r.column}"
-            )
+            assert r.column in ("OH_COST",), f"Confidently picked wrong column: {r.column}"
 
 
 # ── Regression: multi-source with source prior ───────────────────────────────
 
+
 class TestSourcePrior:
     def test_preferred_source_used_when_available(self):
         schema = {
-            "POS":     [("UNIT_PRICE", "unit_measure"), ("EXT_PRICE", "derived_measure")],
-            "BACKLOG": [("UNIT_COST",  "unit_measure"), ("EXT_COST",  "derived_measure")],
+            "POS": [("UNIT_PRICE", "unit_measure"), ("EXT_PRICE", "derived_measure")],
+            "BACKLOG": [("UNIT_COST", "unit_measure"), ("EXT_COST", "derived_measure")],
         }
         resolver = ColumnVectorResolver(schema)
 
         r_pos = resolver.resolve("unit price", preferred_source="POS")
-        r_blg = resolver.resolve("unit cost",  preferred_source="BACKLOG")
+        r_blg = resolver.resolve("unit cost", preferred_source="BACKLOG")
 
         assert r_pos is not None and r_pos.source == "POS"
         assert r_blg is not None and r_blg.source == "BACKLOG"
@@ -276,8 +276,8 @@ class TestSourcePrior:
     def test_cross_source_fallback_without_preferred(self):
         """Without preferred_source, resolver picks the globally best match."""
         schema = {
-            "POS":     [("UNIT_PRICE", "unit_measure")],
-            "BACKLOG": [("UNIT_COST",  "unit_measure")],
+            "POS": [("UNIT_PRICE", "unit_measure")],
+            "BACKLOG": [("UNIT_COST", "unit_measure")],
         }
         resolver = ColumnVectorResolver(schema)
         r = resolver.resolve("unit price", preferred_source=None)
@@ -288,13 +288,14 @@ class TestSourcePrior:
 
 # ── Batch resolution ──────────────────────────────────────────────────────────
 
+
 class TestBatchResolution:
     def test_batch_returns_correct_count(self):
         resolver = ColumnVectorResolver(_POS_SCHEMA)
         requests = [
-            ("unit price",    "POS", "unit_measure"),
-            ("extended price","POS", "derived_measure"),
-            ("quantity",      "POS", "base_measure"),
+            ("unit price", "POS", "unit_measure"),
+            ("extended price", "POS", "derived_measure"),
+            ("quantity", "POS", "base_measure"),
         ]
         results = resolver.resolve_batch(requests)
         assert len(results) == 3
@@ -302,7 +303,7 @@ class TestBatchResolution:
     def test_batch_order_preserved(self):
         resolver = ColumnVectorResolver(_POS_SCHEMA)
         requests = [
-            ("unit price",     "POS", "unit_measure"),
+            ("unit price", "POS", "unit_measure"),
             ("extended price", "POS", "derived_measure"),
         ]
         results = resolver.resolve_batch(requests)
@@ -318,21 +319,21 @@ class TestBatchResolution:
         """
         schema = {
             "POS": [
-                ("UNIT_PRICE",    "unit_measure"),
-                ("EXT_PRICE",     "derived_measure"),
-                ("QTY",           "base_measure"),
+                ("UNIT_PRICE", "unit_measure"),
+                ("EXT_PRICE", "derived_measure"),
+                ("QTY", "base_measure"),
                 ("CUSTOMER_NAME", "other"),
-                ("ORDER_DATE",    "other"),
-                ("ORDER_STATUS",  "other"),
+                ("ORDER_DATE", "other"),
+                ("ORDER_STATUS", "other"),
             ]
         }
         resolver = ColumnVectorResolver(schema)
 
         requests = [
-            ("extended price",  "POS", "derived_measure"),  # metric
-            ("customer name",   "POS", "other"),             # group-by
-            ("order date",      "POS", "other"),             # date filter
-            ("order status",    "POS", "other"),             # filter
+            ("extended price", "POS", "derived_measure"),  # metric
+            ("customer name", "POS", "other"),  # group-by
+            ("order date", "POS", "other"),  # date filter
+            ("order status", "POS", "other"),  # filter
         ]
         results = resolver.resolve_batch(requests)
         assert len(results) == 4
@@ -342,6 +343,7 @@ class TestBatchResolution:
 
 
 # ── Planner integration ───────────────────────────────────────────────────────
+
 
 class TestPlannerIntegration:
     """
@@ -357,25 +359,26 @@ class TestPlannerIntegration:
             }
         }
         resolver = ColumnVectorResolver.from_planner_graph(graph)
-        assert resolver._n_columns == 1   # SPARSE_COL excluded
+        assert resolver._n_columns == 1  # SPARSE_COL excluded
 
     def test_from_planner_graph_excludes_non_numeric(self):
         graph = {
             "POS": {
-                "UNIT_PRICE":    _node("unit_measure",    is_numeric=True),
-                "CUSTOMER_NAME": _node("other",           is_numeric=False),
+                "UNIT_PRICE": _node("unit_measure", is_numeric=True),
+                "CUSTOMER_NAME": _node("other", is_numeric=False),
             }
         }
         resolver = ColumnVectorResolver.from_planner_graph(graph)
-        assert resolver._n_columns == 1   # CUSTOMER_NAME excluded
+        assert resolver._n_columns == 1  # CUSTOMER_NAME excluded
 
     def test_planner_vector_resolver_built_on_graph_set(self):
         from apps.api_server.services.auto_planner import AutoPlanner
+
         planner = AutoPlanner(data_dir=Path("."))
         planner.graph = {
             "POS": {
                 "UNIT_PRICE": _node("unit_measure"),
-                "EXT_PRICE":  _node("derived_measure"),
+                "EXT_PRICE": _node("derived_measure"),
             }
         }
         planner._build_vector_resolver()
@@ -512,17 +515,23 @@ class TestPlannerIntegration:
             return {"ok": True}
 
         def _unexpected_resident(*_args, **_kwargs):
-            raise AssertionError("resident transport should not run when shared engine transport succeeds")
+            raise AssertionError(
+                "resident transport should not run when shared engine transport succeeds"
+            )
 
         def _unexpected_subprocess(*_args, **_kwargs):
-            raise AssertionError("subprocess transport should not run when shared engine transport succeeds")
+            raise AssertionError(
+                "subprocess transport should not run when shared engine transport succeeds"
+            )
 
         monkeypatch.setattr(auto_planner, "_PLANNER_MOJO_TRANSPORT", "auto")
         monkeypatch.setattr(auto_planner, "invoke_engine_sync", _fake_invoke_engine_sync)
         monkeypatch.setattr(auto_planner, "invoke_planner_mojo", _unexpected_resident)
         monkeypatch.setattr(auto_planner.subprocess, "run", _unexpected_subprocess)
 
-        result = planner._call_mojo({"engine_type": "field_map", "data": {"x": [1.0, 2.0]}}, timeout=7)
+        result = planner._call_mojo(
+            {"engine_type": "field_map", "data": {"x": [1.0, 2.0]}}, timeout=7
+        )
 
         assert result == {"ok": True}
         assert seen["payload"]["engine_type"] == "field_map"
@@ -552,14 +561,18 @@ class TestPlannerIntegration:
             raise AssertionError("shared engine transport should stay disabled in resident mode")
 
         def _unexpected_subprocess(*_args, **_kwargs):
-            raise AssertionError("subprocess transport should not run when resident transport succeeds")
+            raise AssertionError(
+                "subprocess transport should not run when resident transport succeeds"
+            )
 
         monkeypatch.setattr(auto_planner, "_PLANNER_MOJO_TRANSPORT", "resident")
         monkeypatch.setattr(auto_planner, "invoke_engine_sync", _unexpected_shared)
         monkeypatch.setattr(auto_planner, "invoke_planner_mojo", _fake_invoke)
         monkeypatch.setattr(auto_planner.subprocess, "run", _unexpected_subprocess)
 
-        result = planner._call_mojo({"engine_type": "field_map", "data": {"x": [1.0, 2.0]}}, timeout=7)
+        result = planner._call_mojo(
+            {"engine_type": "field_map", "data": {"x": [1.0, 2.0]}}, timeout=7
+        )
 
         assert result == {"ok": True}
         assert seen["payload"]["engine_type"] == "field_map"
@@ -613,10 +626,14 @@ class TestPlannerIntegration:
             return {"join_keys": []}
 
         def _unexpected_resident(*_args, **_kwargs):
-            raise AssertionError("resident transport should stay disabled when shared engine transport succeeds")
+            raise AssertionError(
+                "resident transport should stay disabled when shared engine transport succeeds"
+            )
 
         def _unexpected_subprocess(*_args, **_kwargs):
-            raise AssertionError("subprocess transport should stay disabled when shared engine transport succeeds")
+            raise AssertionError(
+                "subprocess transport should stay disabled when shared engine transport succeeds"
+            )
 
         monkeypatch.setattr(auto_planner, "_PLANNER_MOJO_TRANSPORT", "auto")
         monkeypatch.setattr(auto_planner, "invoke_engine_sync", _fake_invoke_engine_sync)
@@ -878,7 +895,9 @@ class TestPlannerIntegration:
             client_a.close()
             client_b.close()
 
-    def test_planner_mojo_client_cooldown_skips_repeated_start_failures(self, monkeypatch, tmp_path):
+    def test_planner_mojo_client_cooldown_skips_repeated_start_failures(
+        self, monkeypatch, tmp_path
+    ):
         import apps.api_server.services.mojo_column_rank_resolver as rank_resolver
 
         binary = tmp_path / "simulate"
@@ -908,7 +927,9 @@ class TestPlannerIntegration:
         binary.write_text("")
         binary.chmod(0o755)
 
-        planner = auto_planner.AutoPlanner(data_dir=tmp_path, llm_policy="never", mojo_binary=binary)
+        planner = auto_planner.AutoPlanner(
+            data_dir=tmp_path, llm_policy="never", mojo_binary=binary
+        )
         planner.mojo_engines = ["column_rank"]
         planner.graph = {
             "POS": {
@@ -1002,7 +1023,9 @@ class TestPlannerIntegration:
         binary.write_text("")
         binary.chmod(0o755)
 
-        planner = auto_planner.AutoPlanner(data_dir=tmp_path, llm_policy="never", mojo_binary=binary)
+        planner = auto_planner.AutoPlanner(
+            data_dir=tmp_path, llm_policy="never", mojo_binary=binary
+        )
         planner.mojo_engines = ["column_rank"]
         planner.graph = {
             "POS": {
@@ -1082,7 +1105,9 @@ class TestPlannerIntegration:
         binary.write_text("")
         binary.chmod(0o755)
 
-        planner = auto_planner.AutoPlanner(data_dir=tmp_path, llm_policy="never", mojo_binary=binary)
+        planner = auto_planner.AutoPlanner(
+            data_dir=tmp_path, llm_policy="never", mojo_binary=binary
+        )
         planner.mojo_engines = ["column_rank"]
         planner.graph = {
             "POS": {
@@ -1231,7 +1256,9 @@ class TestPlannerIntegration:
         binary.write_text("")
         binary.chmod(0o755)
 
-        planner = auto_planner.AutoPlanner(data_dir=tmp_path, llm_policy="never", mojo_binary=binary)
+        planner = auto_planner.AutoPlanner(
+            data_dir=tmp_path, llm_policy="never", mojo_binary=binary
+        )
         planner.mojo_engines = ["column_rank"]
         planner.graph = {
             "POS": {
@@ -1317,20 +1344,51 @@ class TestPlannerIntegration:
         without reaching the Python fallback (no 'resolve_metric_column' in steps).
         """
         from apps.api_server.services.auto_planner import AutoPlanner
+
         planner = AutoPlanner(data_dir=Path("."), llm_policy="never")
         planner.mojo_engines = []
         planner.graph = {
             "POS": {
                 "UNIT_PRICE": _node("unit_measure"),
-                "EXT_PRICE":  _node("derived_measure"),
-                "QTY":        _node("base_measure"),
+                "EXT_PRICE": _node("derived_measure"),
+                "QTY": _node("base_measure"),
             }
         }
         planner.profiles = {
             "POS": {
-                "UNIT_PRICE": {"is_numeric": True, "numeric": [10.0], "fill_rate": 1.0, "mean": 10.0, "std": 1.0, "sample_values": [10.0], "strings": [], "unique_count": 1, "total_count": 1},
-                "EXT_PRICE":  {"is_numeric": True, "numeric": [100.0], "fill_rate": 1.0, "mean": 100.0, "std": 5.0, "sample_values": [100.0], "strings": [], "unique_count": 1, "total_count": 1},
-                "QTY":        {"is_numeric": True, "numeric": [5.0], "fill_rate": 1.0, "mean": 5.0, "std": 1.0, "sample_values": [5.0], "strings": [], "unique_count": 1, "total_count": 1},
+                "UNIT_PRICE": {
+                    "is_numeric": True,
+                    "numeric": [10.0],
+                    "fill_rate": 1.0,
+                    "mean": 10.0,
+                    "std": 1.0,
+                    "sample_values": [10.0],
+                    "strings": [],
+                    "unique_count": 1,
+                    "total_count": 1,
+                },
+                "EXT_PRICE": {
+                    "is_numeric": True,
+                    "numeric": [100.0],
+                    "fill_rate": 1.0,
+                    "mean": 100.0,
+                    "std": 5.0,
+                    "sample_values": [100.0],
+                    "strings": [],
+                    "unique_count": 1,
+                    "total_count": 1,
+                },
+                "QTY": {
+                    "is_numeric": True,
+                    "numeric": [5.0],
+                    "fill_rate": 1.0,
+                    "mean": 5.0,
+                    "std": 1.0,
+                    "sample_values": [5.0],
+                    "strings": [],
+                    "unique_count": 1,
+                    "total_count": 1,
+                },
             }
         }
         planner._build_vector_resolver()
@@ -1355,20 +1413,69 @@ class TestPlannerIntegration:
         """
         from apps.api_server.routers.query import DERIVED_MEASURE, UNIT_MEASURE, ColumnNode
         from apps.api_server.services.auto_planner import AutoPlanner
+
         planner = AutoPlanner(data_dir=Path("."), llm_policy="never")
         planner.mojo_engines = []
         planner.graph = {
             "WH": {
-                "OH_COST":   ColumnNode(name="OH_COST",   role=DERIVED_MEASURE, is_numeric=True, magnitude_class="medium", fill_rate=1.0),
-                "EXT_COST":  ColumnNode(name="EXT_COST",  role=DERIVED_MEASURE, is_numeric=True, magnitude_class="large",  fill_rate=1.0),
-                "UNIT_COST": ColumnNode(name="UNIT_COST", role=UNIT_MEASURE,    is_numeric=True, magnitude_class="medium", fill_rate=1.0),
+                "OH_COST": ColumnNode(
+                    name="OH_COST",
+                    role=DERIVED_MEASURE,
+                    is_numeric=True,
+                    magnitude_class="medium",
+                    fill_rate=1.0,
+                ),
+                "EXT_COST": ColumnNode(
+                    name="EXT_COST",
+                    role=DERIVED_MEASURE,
+                    is_numeric=True,
+                    magnitude_class="large",
+                    fill_rate=1.0,
+                ),
+                "UNIT_COST": ColumnNode(
+                    name="UNIT_COST",
+                    role=UNIT_MEASURE,
+                    is_numeric=True,
+                    magnitude_class="medium",
+                    fill_rate=1.0,
+                ),
             }
         }
         planner.profiles = {
             "WH": {
-                "OH_COST":   {"is_numeric": True, "numeric": [20.0], "fill_rate": 1.0, "mean": 20.0, "std": 2.0, "sample_values": [20.0], "strings": [], "unique_count": 1, "total_count": 1},
-                "EXT_COST":  {"is_numeric": True, "numeric": [80.0], "fill_rate": 1.0, "mean": 80.0, "std": 5.0, "sample_values": [80.0], "strings": [], "unique_count": 1, "total_count": 1},
-                "UNIT_COST": {"is_numeric": True, "numeric": [5.0],  "fill_rate": 1.0, "mean": 5.0,  "std": 1.0, "sample_values": [5.0],  "strings": [], "unique_count": 1, "total_count": 1},
+                "OH_COST": {
+                    "is_numeric": True,
+                    "numeric": [20.0],
+                    "fill_rate": 1.0,
+                    "mean": 20.0,
+                    "std": 2.0,
+                    "sample_values": [20.0],
+                    "strings": [],
+                    "unique_count": 1,
+                    "total_count": 1,
+                },
+                "EXT_COST": {
+                    "is_numeric": True,
+                    "numeric": [80.0],
+                    "fill_rate": 1.0,
+                    "mean": 80.0,
+                    "std": 5.0,
+                    "sample_values": [80.0],
+                    "strings": [],
+                    "unique_count": 1,
+                    "total_count": 1,
+                },
+                "UNIT_COST": {
+                    "is_numeric": True,
+                    "numeric": [5.0],
+                    "fill_rate": 1.0,
+                    "mean": 5.0,
+                    "std": 1.0,
+                    "sample_values": [5.0],
+                    "strings": [],
+                    "unique_count": 1,
+                    "total_count": 1,
+                },
             }
         }
         planner._build_vector_resolver()

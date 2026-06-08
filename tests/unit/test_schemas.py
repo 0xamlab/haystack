@@ -1,4 +1,5 @@
 """Unit tests for Pydantic request/response schemas."""
+
 import os
 import sys
 
@@ -32,16 +33,18 @@ class TestAutoVariable:
 
 class TestSimulateRequestAuto:
     def test_valid_auto_request(self) -> None:
-        req = SimulateRequestAuto.model_validate({
-            "mode": "auto",
-            "scenario": {
-                "variables": {
-                    "revenue": {"low": 80000, "high": 200000},
-                    "cost": {"low": 40000, "high": 90000},
+        req = SimulateRequestAuto.model_validate(
+            {
+                "mode": "auto",
+                "scenario": {
+                    "variables": {
+                        "revenue": {"low": 80000, "high": 200000},
+                        "cost": {"low": 40000, "high": 90000},
+                    },
+                    "objective": "maximize_net_value",
                 },
-                "objective": "maximize_net_value",
-            },
-        })
+            }
+        )
         assert req.mode == "auto"
         assert req.runs == 10000  # default
         assert req.seed is None  # default
@@ -52,127 +55,145 @@ class TestSimulateRequestAuto:
 
     def test_runs_below_minimum(self) -> None:
         with pytest.raises(ValidationError):
-            SimulateRequestAuto.model_validate({
-                "mode": "auto",
-                "scenario": {
-                    "variables": {"x": {"low": 1, "high": 10}},
-                    "objective": "maximize_net_value",
-                },
-                "runs": 50,  # below minimum of 100
-            })
+            SimulateRequestAuto.model_validate(
+                {
+                    "mode": "auto",
+                    "scenario": {
+                        "variables": {"x": {"low": 1, "high": 10}},
+                        "objective": "maximize_net_value",
+                    },
+                    "runs": 50,  # below minimum of 100
+                }
+            )
 
     def test_runs_above_maximum(self) -> None:
         with pytest.raises(ValidationError):
-            SimulateRequestAuto.model_validate({
+            SimulateRequestAuto.model_validate(
+                {
+                    "mode": "auto",
+                    "scenario": {
+                        "variables": {"x": {"low": 1, "high": 10}},
+                        "objective": "maximize_net_value",
+                    },
+                    "runs": 200000,  # above maximum of 100000 for auto mode
+                }
+            )
+
+    def test_custom_seed_accepted(self) -> None:
+        req = SimulateRequestAuto.model_validate(
+            {
                 "mode": "auto",
                 "scenario": {
                     "variables": {"x": {"low": 1, "high": 10}},
                     "objective": "maximize_net_value",
                 },
-                "runs": 200000,  # above maximum of 100000 for auto mode
-            })
-
-    def test_custom_seed_accepted(self) -> None:
-        req = SimulateRequestAuto.model_validate({
-            "mode": "auto",
-            "scenario": {
-                "variables": {"x": {"low": 1, "high": 10}},
-                "objective": "maximize_net_value",
-            },
-            "seed": 42,
-        })
+                "seed": 42,
+            }
+        )
         assert req.seed == 42
 
 
 class TestSimulateRequestExpert:
     def test_valid_normal_distribution(self) -> None:
-        req = SimulateRequestExpert.model_validate({
-            "mode": "expert",
-            "simulation": {
-                "variables": [
-                    {
-                        "name": "revenue",
-                        "distribution": "normal",
-                        "params": {"mean": 100000, "std": 20000},
-                    }
-                ],
-            },
-        })
-        assert req.mode == "expert"
-        assert len(req.simulation.variables) == 1
-
-    def test_normal_missing_std(self) -> None:
-        with pytest.raises(ValidationError, match="requires.*std"):
-            SimulateRequestExpert.model_validate({
+        req = SimulateRequestExpert.model_validate(
+            {
                 "mode": "expert",
                 "simulation": {
                     "variables": [
                         {
                             "name": "revenue",
                             "distribution": "normal",
-                            "params": {"mean": 100000},
+                            "params": {"mean": 100000, "std": 20000},
                         }
                     ],
                 },
-            })
+            }
+        )
+        assert req.mode == "expert"
+        assert len(req.simulation.variables) == 1
+
+    def test_normal_missing_std(self) -> None:
+        with pytest.raises(ValidationError, match="requires.*std"):
+            SimulateRequestExpert.model_validate(
+                {
+                    "mode": "expert",
+                    "simulation": {
+                        "variables": [
+                            {
+                                "name": "revenue",
+                                "distribution": "normal",
+                                "params": {"mean": 100000},
+                            }
+                        ],
+                    },
+                }
+            )
 
     def test_triangular_invalid_mode(self) -> None:
         """Mode must satisfy low <= mode <= high."""
         with pytest.raises(ValidationError, match="low.*<=.*mode.*<=.*high"):
-            SimulateRequestExpert.model_validate({
-                "mode": "expert",
-                "simulation": {
-                    "variables": [
-                        {
-                            "name": "x",
-                            "distribution": "triangular",
-                            "params": {"low": 100, "mode": 50, "high": 200},  # mode < low
-                        }
-                    ],
-                },
-            })
+            SimulateRequestExpert.model_validate(
+                {
+                    "mode": "expert",
+                    "simulation": {
+                        "variables": [
+                            {
+                                "name": "x",
+                                "distribution": "triangular",
+                                "params": {"low": 100, "mode": 50, "high": 200},  # mode < low
+                            }
+                        ],
+                    },
+                }
+            )
 
     def test_uniform_invalid_bounds(self) -> None:
         with pytest.raises(ValidationError, match="high.*must exceed.*low"):
-            SimulateRequestExpert.model_validate({
+            SimulateRequestExpert.model_validate(
+                {
+                    "mode": "expert",
+                    "simulation": {
+                        "variables": [
+                            {
+                                "name": "x",
+                                "distribution": "uniform",
+                                "params": {"low": 100, "high": 50},
+                            }
+                        ],
+                    },
+                }
+            )
+
+    def test_fixed_distribution(self) -> None:
+        req = SimulateRequestExpert.model_validate(
+            {
                 "mode": "expert",
                 "simulation": {
                     "variables": [
                         {
-                            "name": "x",
-                            "distribution": "uniform",
-                            "params": {"low": 100, "high": 50},
+                            "name": "cost",
+                            "distribution": "fixed",
+                            "params": {"value": 50000},
                         }
                     ],
                 },
-            })
-
-    def test_fixed_distribution(self) -> None:
-        req = SimulateRequestExpert.model_validate({
-            "mode": "expert",
-            "simulation": {
-                "variables": [
-                    {
-                        "name": "cost",
-                        "distribution": "fixed",
-                        "params": {"value": 50000},
-                    }
-                ],
-            },
-        })
+            }
+        )
         assert req.simulation.variables[0].distribution.value == "fixed"
 
     def test_runs_above_expert_maximum(self) -> None:
         with pytest.raises(ValidationError):
-            SimulateRequestExpert.model_validate({
-                "mode": "expert",
-                "simulation": {
-                    "variables": [
-                        {"name": "x", "distribution": "fixed", "params": {"value": 1}},
-                    ],
-                },
-                "runs": 2_000_000,  # above 1,000,000
-            })
+            SimulateRequestExpert.model_validate(
+                {
+                    "mode": "expert",
+                    "simulation": {
+                        "variables": [
+                            {"name": "x", "distribution": "fixed", "params": {"value": 1}},
+                        ],
+                    },
+                    "runs": 2_000_000,  # above 1,000,000
+                }
+            )
 
 
 class TestScoringWeights:

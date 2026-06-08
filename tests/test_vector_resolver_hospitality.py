@@ -20,6 +20,7 @@ Test classes:
 Run:
     python3 -m pytest tests/test_vector_resolver_hospitality.py -v
 """
+
 from __future__ import annotations
 
 import pytest
@@ -36,40 +37,40 @@ except ImportError:
 
 _HOSP_SCHEMA: dict[str, list[tuple[str, str]]] = {
     "Totals": [
-        ("Net_Sales",           "derived_measure"),
-        ("Tips",                "derived_measure"),
-        ("Sold",                "base_measure"),
-        ("Avg_Sold_Per_Guest",  "ratio"),
-        ("Avg_Order_Time",      "ratio"),
-        ("Guests",              "base_measure"),
-        ("PPA",                 "ratio"),
+        ("Net_Sales", "derived_measure"),
+        ("Tips", "derived_measure"),
+        ("Sold", "base_measure"),
+        ("Avg_Sold_Per_Guest", "ratio"),
+        ("Avg_Order_Time", "ratio"),
+        ("Guests", "base_measure"),
+        ("PPA", "ratio"),
     ],
     "Food": [
-        ("Food_Net_Sales",           "derived_measure"),
-        ("Food_Tips",                "derived_measure"),
-        ("Food_Sold",                "base_measure"),
-        ("Food_Avg_Sold_Per_Guest",  "ratio"),
-        ("Food_Avg_Order_Time",      "ratio"),
-        ("Food_Guests",              "base_measure"),
-        ("Food_PPA",                 "ratio"),
+        ("Food_Net_Sales", "derived_measure"),
+        ("Food_Tips", "derived_measure"),
+        ("Food_Sold", "base_measure"),
+        ("Food_Avg_Sold_Per_Guest", "ratio"),
+        ("Food_Avg_Order_Time", "ratio"),
+        ("Food_Guests", "base_measure"),
+        ("Food_PPA", "ratio"),
     ],
     "Beverage": [
-        ("Beverage_Net_Sales",           "derived_measure"),
-        ("Beverage_Tips",                "derived_measure"),
-        ("Beverage_Sold",                "base_measure"),
-        ("Beverage_Avg_Sold_Per_Guest",  "ratio"),
-        ("Beverage_Avg_Order_Time",      "ratio"),
-        ("Beverage_Guests",              "base_measure"),
-        ("Beverage_PPA",                 "ratio"),
+        ("Beverage_Net_Sales", "derived_measure"),
+        ("Beverage_Tips", "derived_measure"),
+        ("Beverage_Sold", "base_measure"),
+        ("Beverage_Avg_Sold_Per_Guest", "ratio"),
+        ("Beverage_Avg_Order_Time", "ratio"),
+        ("Beverage_Guests", "base_measure"),
+        ("Beverage_PPA", "ratio"),
     ],
     "Alcohol": [
-        ("Alcohol_Net_Sales",           "derived_measure"),
-        ("Alcohol_Tips",                "derived_measure"),
-        ("Alcohol_Sold",                "base_measure"),
-        ("Alcohol_Avg_Sold_Per_Guest",  "ratio"),
-        ("Alcohol_Avg_Order_Time",      "ratio"),
-        ("Alcohol_Guests",              "base_measure"),
-        ("Alcohol_PPA",                 "ratio"),
+        ("Alcohol_Net_Sales", "derived_measure"),
+        ("Alcohol_Tips", "derived_measure"),
+        ("Alcohol_Sold", "base_measure"),
+        ("Alcohol_Avg_Sold_Per_Guest", "ratio"),
+        ("Alcohol_Avg_Order_Time", "ratio"),
+        ("Alcohol_Guests", "base_measure"),
+        ("Alcohol_PPA", "ratio"),
     ],
 }
 
@@ -80,6 +81,7 @@ def hosp():
 
 
 # ── PPA abbreviation ──────────────────────────────────────────────────────────
+
 
 class TestPPAAbbreviation:
     def test_per_person_average_resolves_to_ppa(self, hosp):
@@ -93,7 +95,9 @@ class TestPPAAbbreviation:
         assert r.column == "Food_PPA", f"Expected Food_PPA, got {r.column}"
 
     def test_beverage_ppa(self, hosp):
-        r = hosp.resolve("beverage per person average", preferred_source="Beverage", role_hint="ratio")
+        r = hosp.resolve(
+            "beverage per person average", preferred_source="Beverage", role_hint="ratio"
+        )
         assert r is not None
         assert r.column == "Beverage_PPA", f"Expected Beverage_PPA, got {r.column}"
 
@@ -109,6 +113,7 @@ class TestPPAAbbreviation:
 
 # ── Revenue / sales synonyms ──────────────────────────────────────────────────
 
+
 class TestRevenueSynonyms:
     def test_food_revenue_resolves_to_food_net_sales(self, hosp):
         r = hosp.resolve("food revenue", preferred_source="Food", role_hint="derived_measure")
@@ -121,7 +126,9 @@ class TestRevenueSynonyms:
         assert r.column == "Beverage_Net_Sales"
 
     def test_alcohol_net_sales(self, hosp):
-        r = hosp.resolve("alcohol net sales", preferred_source="Alcohol", role_hint="derived_measure")
+        r = hosp.resolve(
+            "alcohol net sales", preferred_source="Alcohol", role_hint="derived_measure"
+        )
         assert r is not None
         assert r.column == "Alcohol_Net_Sales"
 
@@ -136,6 +143,7 @@ class TestRevenueSynonyms:
 
 # ── Sold / quantity synonyms ──────────────────────────────────────────────────
 
+
 class TestSoldQuantitySynonyms:
     def test_items_sold_resolves_to_sold(self, hosp):
         r = hosp.resolve("items sold", preferred_source="Totals", role_hint="base_measure")
@@ -143,7 +151,9 @@ class TestSoldQuantitySynonyms:
         assert r.column == "Sold", f"Expected Sold, got {r.column}"
 
     def test_beverage_quantity_sold(self, hosp):
-        r = hosp.resolve("beverage quantity sold", preferred_source="Beverage", role_hint="base_measure")
+        r = hosp.resolve(
+            "beverage quantity sold", preferred_source="Beverage", role_hint="base_measure"
+        )
         assert r is not None
         assert r.column == "Beverage_Sold"
 
@@ -154,6 +164,7 @@ class TestSoldQuantitySynonyms:
 
 
 # ── Guest / covers / diners variants ─────────────────────────────────────────
+
 
 class TestGuestCoversVariants:
     def test_guest_count_resolves_to_guests(self, hosp):
@@ -171,19 +182,16 @@ class TestGuestCoversVariants:
         # variant is a correct answer — check column name only.
         r = hosp.resolve("covers", preferred_source="Totals", role_hint="base_measure")
         assert r is not None
-        assert "Guests" in r.column, (
-            f"Expected a Guests-family column for 'covers', got {r.column}"
-        )
+        assert "Guests" in r.column, f"Expected a Guests-family column for 'covers', got {r.column}"
 
     def test_diners_resolves_to_guests(self, hosp):
         r = hosp.resolve("diners", preferred_source="Totals", role_hint="base_measure")
         assert r is not None
-        assert "Guests" in r.column, (
-            f"Expected a Guests-family column for 'diners', got {r.column}"
-        )
+        assert "Guests" in r.column, f"Expected a Guests-family column for 'diners', got {r.column}"
 
 
 # ── Tips / gratuity ───────────────────────────────────────────────────────────
+
 
 class TestTipsGratuity:
     def test_tips_resolves(self, hosp):
@@ -200,17 +208,18 @@ class TestTipsGratuity:
         # Hospitality sources aren't in _SOURCE_MAP so any Tips variant is correct.
         r = hosp.resolve("gratuity", preferred_source="Totals", role_hint="derived_measure")
         assert r is not None
-        assert "Tips" in r.column, (
-            f"Expected a Tips-family column for 'gratuity', got {r.column}"
-        )
+        assert "Tips" in r.column, f"Expected a Tips-family column for 'gratuity', got {r.column}"
 
     def test_beverage_gratuity(self, hosp):
-        r = hosp.resolve("beverage gratuity", preferred_source="Beverage", role_hint="derived_measure")
+        r = hosp.resolve(
+            "beverage gratuity", preferred_source="Beverage", role_hint="derived_measure"
+        )
         assert r is not None
         assert r.column == "Beverage_Tips", f"Expected Beverage_Tips, got {r.column}"
 
 
 # ── avg / average for order time ──────────────────────────────────────────────
+
 
 class TestAverageAbbreviation:
     def test_average_order_time_resolves_to_totals(self, hosp):
@@ -231,6 +240,7 @@ class TestAverageAbbreviation:
 
 
 # ── Meta-query detection ──────────────────────────────────────────────────────
+
 
 class TestMetaQueryDetection:
     def test_server_count_is_meta_query(self, hosp):
@@ -266,9 +276,7 @@ class TestMetaQueryDetection:
         for hint in ["server count", "how many guests", "number of servers"]:
             r = hosp.resolve(hint, preferred_source="Totals")
             if r is not None and r.outcome == ResolverOutcome.META_QUERY:
-                assert not r.confident, (
-                    f"META_QUERY result has confident=True for hint={hint!r}"
-                )
+                assert not r.confident, f"META_QUERY result has confident=True for hint={hint!r}"
 
     def test_guest_count_is_not_meta_query(self, hosp):
         """
@@ -285,6 +293,7 @@ class TestMetaQueryDetection:
 
 # ── Full hospitality batch — accuracy gate ───────────────────────────────────
 
+
 class TestHospitalityBatch:
     """
     End-to-end accuracy gate: ≥ 90% of column-resolvable queries must be correct.
@@ -293,18 +302,18 @@ class TestHospitalityBatch:
 
     _QUERIES: list[tuple[str, str | None, str, str, str]] = [
         # (hint,                      source,     role,               exp_col,                 exp_src)
-        ("total net sales",           None,        "derived_measure",  "Net_Sales",             "Totals"),
-        ("food revenue",              "Food",      "derived_measure",  "Food_Net_Sales",         "Food"),
-        ("beverage sales",            "Beverage",  "derived_measure",  "Beverage_Net_Sales",     "Beverage"),
-        ("alcohol net sales",         "Alcohol",   "derived_measure",  "Alcohol_Net_Sales",      "Alcohol"),
-        ("tips",                      "Totals",    "derived_measure",  "Tips",                   "Totals"),
-        ("food tips",                 "Food",      "derived_measure",  "Food_Tips",              "Food"),
-        ("items sold",                "Totals",    "base_measure",     "Sold",                   "Totals"),
-        ("beverage quantity sold",    "Beverage",  "base_measure",     "Beverage_Sold",          "Beverage"),
-        ("per person average",        "Totals",    "ratio",            "PPA",                    "Totals"),
-        ("food per person average",   "Food",      "ratio",            "Food_PPA",               "Food"),
-        ("average order time",        "Totals",    "ratio",            "Avg_Order_Time",         "Totals"),
-        ("guest count",               "Totals",    "base_measure",     "Guests",                 "Totals"),
+        ("total net sales", None, "derived_measure", "Net_Sales", "Totals"),
+        ("food revenue", "Food", "derived_measure", "Food_Net_Sales", "Food"),
+        ("beverage sales", "Beverage", "derived_measure", "Beverage_Net_Sales", "Beverage"),
+        ("alcohol net sales", "Alcohol", "derived_measure", "Alcohol_Net_Sales", "Alcohol"),
+        ("tips", "Totals", "derived_measure", "Tips", "Totals"),
+        ("food tips", "Food", "derived_measure", "Food_Tips", "Food"),
+        ("items sold", "Totals", "base_measure", "Sold", "Totals"),
+        ("beverage quantity sold", "Beverage", "base_measure", "Beverage_Sold", "Beverage"),
+        ("per person average", "Totals", "ratio", "PPA", "Totals"),
+        ("food per person average", "Food", "ratio", "Food_PPA", "Food"),
+        ("average order time", "Totals", "ratio", "Avg_Order_Time", "Totals"),
+        ("guest count", "Totals", "base_measure", "Guests", "Totals"),
     ]
 
     # These are expected to return META_QUERY — excluded from accuracy count

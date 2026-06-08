@@ -39,6 +39,35 @@ def test_create_fastapi_router_keeps_tools_endpoint_without_mcp_package(
         payload = response.json()
         assert "tools" in payload
         assert payload["tools"]
+
         sse_response = client.get("/mcp/sse")
         assert sse_response.status_code == 503
         assert sse_response.json()["error"]["code"] == "mcp_transport_unavailable"
+
+        messages_response = client.post("/mcp/messages", json={})
+        assert messages_response.status_code == 503
+        assert messages_response.json()["error"]["code"] == "mcp_transport_unavailable"
+
+        openapi_response = client.get("/openapi.json")
+        assert openapi_response.status_code == 200
+        openapi = openapi_response.json()
+
+    assert "/mcp/tools" in openapi["paths"]
+    assert "/mcp/sse" in openapi["paths"]
+    assert "/mcp/messages" in openapi["paths"]
+    assert openapi["paths"]["/mcp/tools"]["get"].get("security") is None
+    assert openapi["paths"]["/mcp/sse"]["get"].get("security") is None
+    assert openapi["paths"]["/mcp/messages"]["post"].get("security") is None
+    assert "200" in openapi["paths"]["/mcp/tools"]["get"]["responses"]
+    assert "503" in openapi["paths"]["/mcp/sse"]["get"]["responses"]
+    assert "503" in openapi["paths"]["/mcp/messages"]["post"]["responses"]
+    assert "200" not in openapi["paths"]["/mcp/sse"]["get"]["responses"]
+    assert "200" not in openapi["paths"]["/mcp/messages"]["post"]["responses"]
+    assert (
+        openapi["paths"]["/mcp/sse"]["get"]["responses"]["503"]["description"]
+        == "MCP SSE transport unavailable in this environment."
+    )
+    assert (
+        openapi["paths"]["/mcp/messages"]["post"]["responses"]["503"]["description"]
+        == "MCP message transport unavailable in this environment."
+    )

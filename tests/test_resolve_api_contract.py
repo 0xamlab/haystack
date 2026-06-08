@@ -68,7 +68,9 @@ def auth_overrides(app):
     query_router._DF_CACHE.clear()
 
 
-def _ready_entry(source_id: str, name: str, schema_revision: str = "schema_rev_1") -> dict[str, str]:
+def _ready_entry(
+    source_id: str, name: str, schema_revision: str = "schema_rev_1"
+) -> dict[str, str]:
     return {
         "id": source_id,
         "name": name,
@@ -114,7 +116,7 @@ def test_intent_signature_is_stable_for_equivalent_raw_text() -> None:
     assert query_router._intent_signature(payload_a) == query_router._intent_signature(payload_b)
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_resolve_requires_explicit_scope_when_multiple_datasets(
     app,
     client,
@@ -139,7 +141,7 @@ async def test_resolve_requires_explicit_scope_when_multiple_datasets(
     assert body["error"]["code"] == "dataset_scope_required"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_resolve_returns_cached_resolved_plan(
     app,
     client,
@@ -234,7 +236,7 @@ async def test_resolve_returns_cached_resolved_plan(
     assert first_body["schema_revision"] == "source_rev_1"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_resolve_dataset_fast_path_prefers_hot_source_cache(
     app,
     client,
@@ -298,7 +300,9 @@ async def test_resolve_dataset_fast_path_prefers_hot_source_cache(
     monkeypatch.setattr(
         "apps.api_server.services.source_registry.get_source_meta",
         lambda org_id, source_id: (_ for _ in ()).throw(
-            AssertionError("dataset-scoped resolve should not read registry meta on a hot cache hit")
+            AssertionError(
+                "dataset-scoped resolve should not read registry meta on a hot cache hit"
+            )
         ),
     )
 
@@ -319,7 +323,7 @@ async def test_resolve_dataset_fast_path_prefers_hot_source_cache(
     assert body["resolved_plan"]["source_name"] == "Orders"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_resolve_dataset_fast_path_reuses_registry_graph_nodes_after_source_cache_eviction(
     monkeypatch: pytest.MonkeyPatch,
     auth_overrides,
@@ -418,7 +422,7 @@ def test_find_exact_dataset_column_cached_reuses_lookup() -> None:
     assert calls["count"] == 2
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_query_rejects_stale_resolved_plan_schema_revision(
     app,
     client,
@@ -433,13 +437,15 @@ async def test_query_rejects_stale_resolved_plan_schema_revision(
     )
     monkeypatch.setattr(
         "apps.api_server.services.source_registry.get_source_entry_by_name",
-        lambda org_id, source_name: _ready_entry(
-            "src_1",
-            "Orders",
-            schema_revision="source_rev_current",
-        )
-        if source_name == "Orders"
-        else None,
+        lambda org_id, source_name: (
+            _ready_entry(
+                "src_1",
+                "Orders",
+                schema_revision="source_rev_current",
+            )
+            if source_name == "Orders"
+            else None
+        ),
     )
     monkeypatch.setattr(
         "apps.api_server.services.source_registry.source_schema_revision",
@@ -463,7 +469,7 @@ async def test_query_rejects_stale_resolved_plan_schema_revision(
     assert body["error"]["code"] == "schema_revision_mismatch"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_query_executes_resolved_plan_exact_path(
     app,
     client,
@@ -501,19 +507,23 @@ async def test_query_executes_resolved_plan_exact_path(
 
     monkeypatch.setattr(
         "apps.api_server.services.source_registry.get_source_entry",
-        lambda org_id, source_id: _ready_entry("src_1", "Orders", schema_revision="schema_rev_1")
-        if source_id == "src_1"
-        else None,
+        lambda org_id, source_id: (
+            _ready_entry("src_1", "Orders", schema_revision="schema_rev_1")
+            if source_id == "src_1"
+            else None
+        ),
     )
     monkeypatch.setattr(
         "apps.api_server.services.source_registry.get_source_entry_by_name",
-        lambda org_id, source_name: _ready_entry(
-            "src_1",
-            "Orders",
-            schema_revision="source_rev_1",
-        )
-        if source_name == "Orders"
-        else None,
+        lambda org_id, source_name: (
+            _ready_entry(
+                "src_1",
+                "Orders",
+                schema_revision="source_rev_1",
+            )
+            if source_name == "Orders"
+            else None
+        ),
     )
     monkeypatch.setattr(
         "apps.api_server.services.source_registry.list_sources",
@@ -558,7 +568,133 @@ async def test_query_executes_resolved_plan_exact_path(
     ]
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
+async def test_query_executes_resolved_plan_exact_path_with_generic_filter_conditions(
+    app,
+    client,
+    monkeypatch: pytest.MonkeyPatch,
+    auth_overrides,
+) -> None:
+    data = pd.DataFrame(
+        {
+            "amount": [10, 20, 30],
+            "customer": ["A", "B", "C"],
+            "status": ["closed", "closed", "open"],
+            "delay_minutes": [5, 25, 40],
+        }
+    )
+    buf = io.BytesIO()
+    data.to_parquet(buf, index=False)
+    parquet_bytes = buf.getvalue()
+    schema_meta = {
+        "row_count": 3,
+        "columns": [
+            {
+                "name": "amount",
+                "role": "derived_measure",
+                "formula": "qty x price",
+                "is_numeric": True,
+                "magnitude": "medium",
+                "semantic_type": "number",
+                "fill_rate": 1.0,
+            },
+            {
+                "name": "customer",
+                "role": "category",
+                "formula": None,
+                "is_numeric": False,
+                "magnitude": "small",
+                "semantic_type": "text",
+                "fill_rate": 1.0,
+            },
+            {
+                "name": "status",
+                "role": "category",
+                "formula": None,
+                "is_numeric": False,
+                "magnitude": "small",
+                "semantic_type": "text",
+                "fill_rate": 1.0,
+            },
+            {
+                "name": "delay_minutes",
+                "role": "base_measure",
+                "formula": None,
+                "is_numeric": True,
+                "magnitude": "small",
+                "semantic_type": "number",
+                "fill_rate": 1.0,
+            },
+        ],
+        "roles_summary": {"derived_measure": 1, "category": 2, "base_measure": 1},
+    }
+
+    monkeypatch.setattr(
+        "apps.api_server.services.source_registry.get_source_entry",
+        lambda org_id, source_id: (
+            _ready_entry("src_1", "Orders", schema_revision="source_rev_1")
+            if source_id == "src_1"
+            else None
+        ),
+    )
+    monkeypatch.setattr(
+        "apps.api_server.services.source_registry.get_source_entry_by_name",
+        lambda org_id, source_name: (
+            _ready_entry(
+                "src_1",
+                "Orders",
+                schema_revision="source_rev_1",
+            )
+            if source_name == "Orders"
+            else None
+        ),
+    )
+    monkeypatch.setattr(
+        "apps.api_server.services.source_registry.list_sources",
+        lambda org_id: (_ for _ in ()).throw(
+            AssertionError("owner resolved-plan exact path should not list sources")
+        ),
+    )
+    monkeypatch.setattr(
+        "apps.api_server.services.source_registry.source_schema_revision",
+        lambda org_id, source_id: "source_rev_1",
+    )
+    monkeypatch.setattr(
+        "apps.api_server.services.source_registry.get_source_parquet",
+        lambda org_id, source_id: parquet_bytes,
+    )
+    monkeypatch.setattr(
+        "apps.api_server.services.source_registry.get_source_meta",
+        lambda org_id, source_id: schema_meta,
+    )
+
+    resp = await client.post(
+        "/v1/query",
+        json={
+            "resolved_plan": {
+                "source_name": "Orders",
+                "metric_column": "amount",
+                "group_column": "customer",
+                "aggregation": "sum",
+                "filter": {
+                    "conditions": [
+                        {"dimension_hint": "status", "op": "eq", "value": "closed"},
+                        {"dimension_hint": "delay", "op": "gte", "value": 15},
+                    ]
+                },
+                "schema_revision": "source_rev_1",
+            }
+        },
+    )
+
+    body = resp.json()
+    assert resp.status_code == 200
+    assert body["result"] == [{"group": "B", "value": 20.0}]
+    assert any("Filter `status eq 'closed'`" in step for step in body["plan"])
+    assert any("Filter `delay_minutes gte 15`" in step for step in body["plan"])
+
+
+@pytest.mark.anyio
 async def test_verify_accepts_resolved_plan_exact_path_with_source_schema_revision(
     app,
     client,
@@ -592,13 +728,15 @@ async def test_verify_accepts_resolved_plan_exact_path_with_source_schema_revisi
 
     monkeypatch.setattr(
         "apps.api_server.services.source_registry.get_source_entry_by_name",
-        lambda org_id, source_name: _ready_entry(
-            "src_1",
-            "Orders",
-            schema_revision="source_rev_1",
-        )
-        if source_name == "Orders"
-        else None,
+        lambda org_id, source_name: (
+            _ready_entry(
+                "src_1",
+                "Orders",
+                schema_revision="source_rev_1",
+            )
+            if source_name == "Orders"
+            else None
+        ),
     )
     monkeypatch.setattr(
         "apps.api_server.services.source_registry.source_schema_revision",
@@ -634,7 +772,85 @@ async def test_verify_accepts_resolved_plan_exact_path_with_source_schema_revisi
     assert body["resolved"]["source_name"] == "Orders"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
+async def test_verify_rejects_unresolvable_filter_dimension_hint_on_resolved_plan(
+    app,
+    client,
+    monkeypatch: pytest.MonkeyPatch,
+    auth_overrides,
+) -> None:
+    schema_meta = {
+        "row_count": 2,
+        "columns": [
+            {
+                "name": "amount",
+                "role": "derived_measure",
+                "formula": "qty x price",
+                "is_numeric": True,
+                "magnitude": "medium",
+                "semantic_type": "number",
+                "fill_rate": 1.0,
+            },
+            {
+                "name": "status",
+                "role": "category",
+                "formula": None,
+                "is_numeric": False,
+                "magnitude": "small",
+                "semantic_type": "text",
+                "fill_rate": 1.0,
+            },
+        ],
+        "roles_summary": {"derived_measure": 1, "category": 1},
+    }
+
+    monkeypatch.setattr(
+        "apps.api_server.services.source_registry.get_source_entry_by_name",
+        lambda org_id, source_name: (
+            _ready_entry(
+                "src_1",
+                "Orders",
+                schema_revision="source_rev_1",
+            )
+            if source_name == "Orders"
+            else None
+        ),
+    )
+    monkeypatch.setattr(
+        "apps.api_server.services.source_registry.source_schema_revision",
+        lambda org_id, source_id: "source_rev_1",
+    )
+    monkeypatch.setattr(
+        "apps.api_server.services.source_registry.get_source_meta",
+        lambda org_id, source_id: schema_meta,
+    )
+    monkeypatch.setattr(
+        "apps.api_server.services.source_registry.schema_revision",
+        lambda org_id: "org_schema_rev",
+    )
+
+    resp = await client.post(
+        "/v1/verify",
+        json={
+            "resolved_plan": {
+                "source_name": "Orders",
+                "metric_column": "amount",
+                "aggregation": "sum",
+                "filter": {
+                    "conditions": [{"dimension_hint": "priority", "op": "eq", "value": "high"}]
+                },
+                "schema_revision": "source_rev_1",
+            }
+        },
+    )
+
+    body = resp.json()
+    assert resp.status_code == 200
+    assert body["valid"] is False
+    assert any("did not resolve" in error for error in body["errors"])
+
+
+@pytest.mark.anyio
 async def test_verify_accepts_count_on_non_numeric_exact_column(
     app,
     client,
@@ -659,13 +875,15 @@ async def test_verify_accepts_count_on_non_numeric_exact_column(
 
     monkeypatch.setattr(
         "apps.api_server.services.source_registry.get_source_entry_by_name",
-        lambda org_id, source_name: _ready_entry(
-            "src_1",
-            "Orders",
-            schema_revision="source_rev_1",
-        )
-        if source_name == "Orders"
-        else None,
+        lambda org_id, source_name: (
+            _ready_entry(
+                "src_1",
+                "Orders",
+                schema_revision="source_rev_1",
+            )
+            if source_name == "Orders"
+            else None
+        ),
     )
     monkeypatch.setattr(
         "apps.api_server.services.source_registry.source_schema_revision",
@@ -695,7 +913,7 @@ async def test_verify_accepts_count_on_non_numeric_exact_column(
     assert body["resolved"]["metric_column"] == "order_id"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_resolve_org_scope_single_source_returns_source_schema_revision_for_query_handoff(
     app,
     client,
@@ -831,7 +1049,7 @@ async def test_resolve_org_scope_single_source_returns_source_schema_revision_fo
     ]
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_resolve_high_confidence_registry_metric_does_not_reclarify_on_generic_candidate_gap(
     app,
     client,
@@ -959,7 +1177,7 @@ async def test_resolve_high_confidence_registry_metric_does_not_reclarify_on_gen
     assert "planner-authoritative-selection" in body["candidates"][0]["notes"]
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_resolve_many_to_many_planner_join_path_is_marked_executable(
     app,
     client,
@@ -976,7 +1194,11 @@ async def test_resolve_many_to_many_planner_join_path_is_marked_executable(
     monkeypatch.setattr(
         "apps.api_server.services.source_registry.get_source_entry_by_name",
         lambda org_id, source_name: (
-            orders_entry if source_name == "Orders" else pos_entry if source_name == "POSNew" else None
+            orders_entry
+            if source_name == "Orders"
+            else pos_entry
+            if source_name == "POSNew"
+            else None
         ),
     )
     monkeypatch.setattr(
@@ -1087,7 +1309,7 @@ async def test_resolve_many_to_many_planner_join_path_is_marked_executable(
     assert body["resolved_plan"]["join_path"]["edges"][0]["expected_cardinality"] == "many_to_many"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_query_exact_join_path_owner_loads_named_join_sources_without_listing_registry(
     app,
     client,
@@ -1192,9 +1414,7 @@ async def test_query_exact_join_path_owner_loads_named_join_sources_without_list
     )
     monkeypatch.setattr(
         "apps.api_server.services.source_registry.get_source_meta",
-        lambda org_id, source_id: (
-            orders_meta if source_id == "src_orders" else customers_meta
-        ),
+        lambda org_id, source_id: orders_meta if source_id == "src_orders" else customers_meta,
     )
 
     response = await client.post(
@@ -1229,7 +1449,7 @@ async def test_query_exact_join_path_owner_loads_named_join_sources_without_list
     ]
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_query_resolved_plan_owner_cache_hit_skips_visibility_listing(
     app,
     client,
@@ -1265,6 +1485,12 @@ async def test_query_resolved_plan_owner_cache_hit_skips_visibility_listing(
         "roles_summary": {"derived_measure": 1, "category": 1},
     }
     lookup_calls = {"count": 0}
+    captured_log_response: list[bool] = []
+    original_build_query_response = query_router._build_query_response
+
+    def _capture_build_query_response(*args, **kwargs):  # type: ignore[no-untyped-def]
+        captured_log_response.append(bool(kwargs.get("log_response", True)))
+        return original_build_query_response(*args, **kwargs)
 
     def _get_source_entry_by_name(org_id: str, source_name: str) -> dict[str, str] | None:
         lookup_calls["count"] += 1
@@ -1294,6 +1520,7 @@ async def test_query_resolved_plan_owner_cache_hit_skips_visibility_listing(
         "apps.api_server.services.source_registry.get_source_meta",
         lambda org_id, source_id: schema_meta,
     )
+    monkeypatch.setattr(query_router, "_build_query_response", _capture_build_query_response)
 
     request_body = {
         "resolved_plan": {
@@ -1314,9 +1541,10 @@ async def test_query_resolved_plan_owner_cache_hit_skips_visibility_listing(
     assert second_body["result"] == 30.0
     assert any(step.startswith("Result cache HIT") for step in second_body["plan"])
     assert lookup_calls["count"] >= 1
+    assert captured_log_response[-1] is False
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_query_dataset_scoped_exact_path_uses_source_schema_revision(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -1416,7 +1644,7 @@ async def test_query_dataset_scoped_exact_path_uses_source_schema_revision(
     assert source_revision_calls["count"] == 2
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_query_dataset_scoped_exact_path_uses_cached_source_schema_revision(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -1450,6 +1678,12 @@ async def test_query_dataset_scoped_exact_path_uses_cached_source_schema_revisio
     }
     dataset_entry = _ready_entry("src_1", "Orders", schema_revision="schema_rev_1")
     dataset_entry["source_schema_revision"] = "source_rev_cached"
+    captured_log_response: list[bool] = []
+    original_build_query_response = query_router._build_query_response
+
+    def _capture_build_query_response(*args, **kwargs):  # type: ignore[no-untyped-def]
+        captured_log_response.append(bool(kwargs.get("log_response", True)))
+        return original_build_query_response(*args, **kwargs)
 
     monkeypatch.setattr(
         "apps.api_server.services.source_registry.list_sources",
@@ -1479,6 +1713,7 @@ async def test_query_dataset_scoped_exact_path_uses_cached_source_schema_revisio
         "apps.api_server.services.source_registry.get_source_meta",
         lambda org_id, source_id: schema_meta,
     )
+    monkeypatch.setattr(query_router, "_build_query_response", _capture_build_query_response)
     query_router._RESULT_CACHE.clear()
     query_router._SOURCE_CACHE.clear()
     query_router._DF_CACHE.clear()
@@ -1512,9 +1747,10 @@ async def test_query_dataset_scoped_exact_path_uses_cached_source_schema_revisio
     assert first.result == 2.0
     assert second.result == 2.0
     assert any(step.startswith("Result cache HIT") for step in second.plan)
+    assert captured_log_response[-1] is False
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_query_dataset_scoped_exact_count_uses_metadata_fast_path(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -1612,7 +1848,7 @@ async def test_query_dataset_scoped_exact_count_uses_metadata_fast_path(
     assert any(step.startswith("Result cache HIT") for step in second.plan)
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_resolve_count_uses_dataset_scoped_anchor_when_metric_lookup_fails(
     app,
     client,
@@ -1697,7 +1933,7 @@ async def test_resolve_count_uses_dataset_scoped_anchor_when_metric_lookup_fails
     assert body["schema_revision"] == "source_rev_1"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_resolve_dataset_scoped_exact_metric_and_group_skip_registry_planner(
     app,
     client,

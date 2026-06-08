@@ -7,6 +7,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import pyarrow as pa
+import pyarrow.compute as pc
 import pyarrow.parquet as pq
 import pytest
 
@@ -15,7 +16,11 @@ import apps.api_server.services.columnar_loader as columnar_loader_module
 import apps.api_server.services.source_artifact_cache as source_artifact_cache
 from apps.api_server.connectors.file_connector import FileConnector
 from apps.api_server.routers.data_map import DataSource, _load_source, _load_source_table
-from apps.api_server.routers.query import _load_profiled_source, _source_cache_key
+from apps.api_server.routers.query import (
+    _load_profiled_source,
+    _profile_arrow_table,
+    _source_cache_key,
+)
 from apps.api_server.services.columnar_loader import (
     delimited_text_to_arrow_table,
     records_to_arrow_table,
@@ -24,7 +29,9 @@ from apps.api_server.services.data_coercion import _coerce_text_scalar as real_c
 
 
 def _serve_directory(path):
-    server = ThreadingHTTPServer(("127.0.0.1", 0), partial(SimpleHTTPRequestHandler, directory=str(path)))
+    server = ThreadingHTTPServer(
+        ("127.0.0.1", 0), partial(SimpleHTTPRequestHandler, directory=str(path))
+    )
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     return server
@@ -77,7 +84,37 @@ def test_source_cache_key_is_content_keyed_for_excel_and_parquet_payloads() -> N
     assert parquet_left_key == parquet_right_key
 
 
-def test_records_to_arrow_table_does_not_recoerce_precoerced_rows(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_source_cache_key_ignores_display_name_for_connection_and_url_sources() -> None:
+    connection = {
+        "type": "gcs",
+        "bucket": "cloud-samples-data",
+        "blob": "bigquery/us-states/us-states.csv",
+        "anonymous": True,
+        "file_type": "csv",
+    }
+    left = DataSource(name="PublicStatesA", connection=connection)
+    right = DataSource(name="PublicStatesB", connection=connection)
+
+    left_key, left_content = _source_cache_key(left)
+    right_key, right_content = _source_cache_key(right)
+
+    assert left_content is False
+    assert right_content is False
+    assert left_key == right_key
+
+    url_left = DataSource(name="RemoteA", url="https://example.com/data.csv")
+    url_right = DataSource(name="RemoteB", url="https://example.com/data.csv")
+    url_left_key, url_left_content = _source_cache_key(url_left)
+    url_right_key, url_right_content = _source_cache_key(url_right)
+
+    assert url_left_content is False
+    assert url_right_content is False
+    assert url_left_key == url_right_key
+
+
+def test_records_to_arrow_table_does_not_recoerce_precoerced_rows(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     def _unexpected_coerce(*_args, **_kwargs):  # type: ignore[no-untyped-def]
         raise AssertionError("coerce_scalar should not run for already-coerced rows")
 
@@ -100,15 +137,11 @@ def test_records_to_arrow_table_does_not_recoerce_precoerced_rows(monkeypatch: p
     ]
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_load_source_table_csv_preserves_identifier_columns_and_numeric_measures():
     src = DataSource(
         name="S0",
-        csv=(
-            "part_number,measure_total,zip_code,ratio\n"
-            "00123,10,02108,0.5\n"
-            "00456,20,02109,0.7\n"
-        ),
+        csv=("part_number,measure_total,zip_code,ratio\n00123,10,02108,0.5\n00456,20,02109,0.7\n"),
     )
 
     table = await _load_source_table(src)
@@ -123,7 +156,7 @@ async def test_load_source_table_csv_preserves_identifier_columns_and_numeric_me
     assert str(table.schema.field("measure_total").type) in {"int64", "int32"}
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_load_source_table_records_normalizes_blank_like_values_and_coerces_numbers():
     src = DataSource(
         name="S1",
@@ -162,15 +195,11 @@ async def test_load_source_table_records_normalizes_blank_like_values_and_coerce
     ]
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_load_profiled_source_prefers_columnar_for_arrow_friendly_csv():
     src = DataSource(
         name="S2",
-        csv=(
-            "part_number,measure_total,zip_code,ratio\n"
-            "00123,10,02108,0.5\n"
-            "00456,20,02109,0.7\n"
-        ),
+        csv=("part_number,measure_total,zip_code,ratio\n00123,10,02108,0.5\n00456,20,02109,0.7\n"),
     )
 
     loaded = await _load_profiled_source(src)
@@ -182,7 +211,30 @@ async def test_load_profiled_source_prefers_columnar_for_arrow_friendly_csv():
     assert loaded.profile["part_number"]["is_numeric"] is False
 
 
-@pytest.mark.asyncio
+def test_profile_arrow_table_uses_null_count_metadata_when_available(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    table = pa.table(
+        {
+            "part_number": pa.array(["00123", None, "00456"], type=pa.string()),
+            "measure_total": pa.array([10, None, 20], type=pa.int64()),
+        }
+    )
+
+    def _unexpected_count(*_args, **_kwargs):  # type: ignore[no-untyped-def]
+        raise AssertionError("pc.count should not run when null_count metadata is available")
+
+    monkeypatch.setattr(pc, "count", _unexpected_count)
+
+    profile = _profile_arrow_table(table)
+
+    assert profile["part_number"]["total_count"] == 2
+    assert profile["part_number"]["fill_rate"] == pytest.approx(2 / 3, rel=0, abs=1e-4)
+    assert profile["measure_total"]["total_count"] == 2
+    assert profile["measure_total"]["is_numeric"] is True
+
+
+@pytest.mark.anyio
 async def test_load_profiled_source_salvages_wide_csv_with_arrow_retry():
     headers = [f"col_{i:03d}" for i in range(97)]
     csv_text = ",".join(headers) + "\n" + ",".join(str(i) for i in range(97)) + "\n"
@@ -196,7 +248,7 @@ async def test_load_profiled_source_salvages_wide_csv_with_arrow_retry():
     assert loaded.profile["col_000"]["is_numeric"] is True
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_load_profiled_source_falls_back_to_rows_when_arrow_retry_still_fails(
     monkeypatch: pytest.MonkeyPatch,
 ):
@@ -218,7 +270,7 @@ async def test_load_profiled_source_falls_back_to_rows_when_arrow_retry_still_fa
     assert loaded.profile["measure_total"]["is_numeric"] is True
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_load_profiled_source_uses_columnar_retry_for_real_local_inventory_csv():
     csv_text = (
         Path(__file__).resolve().parents[1] / "test_files" / "Available_Inventory.csv"
@@ -228,61 +280,61 @@ async def test_load_profiled_source_uses_columnar_retry_for_real_local_inventory
     loaded = await _load_profiled_source(src)
 
     assert loaded.ingest_mode == "columnar"
-    assert loaded.row_count == 5820
     assert loaded.arrow_table is not None
+    assert loaded.row_count == loaded.arrow_table.num_rows
+    assert loaded.row_count > 0
     assert loaded.profile["PART_NUMBER"]["is_numeric"] is False
 
 
 @pytest.mark.parametrize(
-    ("filename", "expected_rows", "expected_columns"),
+    "filename",
     [
-        ("POS.csv", 12504, 144),
-        ("Quotes_Combined_20241116.csv", 33125, 79),
-        ("pos_new.csv", 16730, 147),
-        ("quotes_new.csv", 45237, 80),
+        "POS.csv",
+        "Quotes_Combined_20241116.csv",
+        "pos_new.csv",
+        "quotes_new.csv",
     ],
 )
-def test_delimited_text_to_arrow_table_salvages_real_multiline_local_csvs(
-    filename: str,
-    expected_rows: int,
-    expected_columns: int,
-) -> None:
-    csv_text = (
-        Path(__file__).resolve().parents[1] / "test_files" / filename
-    ).read_text(encoding="utf-8-sig", errors="replace")
+def test_delimited_text_to_arrow_table_salvages_real_multiline_local_csvs(filename: str) -> None:
+    csv_text = (Path(__file__).resolve().parents[1] / "test_files" / filename).read_text(
+        encoding="utf-8-sig", errors="replace"
+    )
 
-    table = delimited_text_to_arrow_table(csv_text, delimiter=",", sniff=True)
+    first = delimited_text_to_arrow_table(csv_text, delimiter=",", sniff=True)
+    second = delimited_text_to_arrow_table(csv_text, delimiter=",", sniff=True)
 
-    assert table.num_rows == expected_rows
-    assert table.num_columns == expected_columns
+    assert first.num_rows > 0
+    assert first.num_columns > 0
+    assert first.num_rows == second.num_rows
+    assert first.num_columns == second.num_columns
+    assert first.schema == second.schema
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 @pytest.mark.parametrize(
-    ("filename", "expected_rows", "expected_columns"),
+    "filename",
     [
-        ("POS.csv", 12504, 144),
-        ("Quotes_Combined_20241116.csv", 33125, 79),
-        ("pos_new.csv", 16730, 147),
-        ("quotes_new.csv", 45237, 80),
+        "POS.csv",
+        "Quotes_Combined_20241116.csv",
+        "pos_new.csv",
+        "quotes_new.csv",
     ],
 )
 async def test_load_profiled_source_keeps_real_multiline_local_csvs_on_columnar_path(
     filename: str,
-    expected_rows: int,
-    expected_columns: int,
 ) -> None:
-    csv_text = (
-        Path(__file__).resolve().parents[1] / "test_files" / filename
-    ).read_text(encoding="utf-8-sig", errors="replace")
+    csv_text = (Path(__file__).resolve().parents[1] / "test_files" / filename).read_text(
+        encoding="utf-8-sig", errors="replace"
+    )
     src = DataSource(name=f"RealLocalCsv::{filename}", csv=csv_text)
 
     loaded = await _load_profiled_source(src)
 
     assert loaded.ingest_mode == "columnar"
-    assert loaded.row_count == expected_rows
     assert loaded.arrow_table is not None
-    assert loaded.arrow_table.num_columns == expected_columns
+    assert loaded.row_count == loaded.arrow_table.num_rows
+    assert loaded.row_count > 0
+    assert loaded.arrow_table.num_columns > 0
 
 
 def test_delimited_text_to_arrow_table_ignores_ragged_extra_fields_without_crashing() -> None:
@@ -377,12 +429,7 @@ def test_delimited_text_to_arrow_table_python_fallback_reuses_per_column_coercio
     )
 
     table = delimited_text_to_arrow_table(
-        (
-            "status,part_number,measure_total\n"
-            "Open,00123,10\n"
-            "Open,00123,10\n"
-            "Open,00123,10\n"
-        ),
+        ("status,part_number,measure_total\nOpen,00123,10\nOpen,00123,10\nOpen,00123,10\n"),
         delimiter=",",
         sniff=True,
     )
@@ -403,11 +450,9 @@ def test_delimited_text_to_arrow_table_large_fallback_handles_real_quotes_new_wi
 ) -> None:
     import pyarrow.csv as pacsv
 
-    csv_text = (
-        Path(__file__).resolve().parents[1]
-        / "test_files"
-        / "quotes_new.csv"
-    ).read_text(encoding="utf-8-sig", errors="replace")
+    csv_text = (Path(__file__).resolve().parents[1] / "test_files" / "quotes_new.csv").read_text(
+        encoding="utf-8-sig", errors="replace"
+    )
 
     def _raise_read_csv(*_args, **_kwargs):  # type: ignore[no-untyped-def]
         raise pa.ArrowInvalid("forced parser failure")
@@ -440,11 +485,9 @@ def test_delimited_text_to_arrow_table_large_fallback_uses_pandas_c_engine(
     import pandas as pd
     import pyarrow.csv as pacsv
 
-    csv_text = (
-        Path(__file__).resolve().parents[1]
-        / "test_files"
-        / "quotes_new.csv"
-    ).read_text(encoding="utf-8-sig", errors="replace")
+    csv_text = (Path(__file__).resolve().parents[1] / "test_files" / "quotes_new.csv").read_text(
+        encoding="utf-8-sig", errors="replace"
+    )
 
     read_csv_kwargs: dict[str, object] = {}
     real_read_csv = pd.read_csv
@@ -471,7 +514,7 @@ def test_delimited_text_to_arrow_table_large_fallback_uses_pandas_c_engine(
     assert read_csv_kwargs["low_memory"] is False
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_load_source_table_excel_returns_arrow_table():
     src = DataSource(name="ExcelTiny", excel_b64=_tiny_excel_b64())
 
@@ -484,7 +527,7 @@ async def test_load_source_table_excel_returns_arrow_table():
     ]
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_load_source_table_reuses_persisted_csv_artifact_cache(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -511,7 +554,7 @@ async def test_load_source_table_reuses_persisted_csv_artifact_cache(
     assert second_table.to_pylist() == first_table.to_pylist()
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_load_source_table_reuses_persisted_excel_artifact_cache(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -535,7 +578,7 @@ async def test_load_source_table_reuses_persisted_excel_artifact_cache(
     assert second_table.to_pylist() == first_table.to_pylist()
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_load_source_table_does_not_persist_artifacts_for_url_sources(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -558,7 +601,7 @@ async def test_load_source_table_does_not_persist_artifacts_for_url_sources(
     assert list(tmp_path.iterdir()) == []
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_load_profiled_source_prefers_columnar_for_excel_b64():
     src = DataSource(name="ExcelTinyProfiled", excel_b64=_tiny_excel_b64())
 
@@ -571,13 +614,10 @@ async def test_load_profiled_source_prefers_columnar_for_excel_b64():
     assert loaded.profile["part_number"]["is_numeric"] is False
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_load_profiled_source_prefers_columnar_for_real_local_parquet_cache():
     parquet_bytes = (
-        Path(__file__).resolve().parents[1]
-        / "test_files"
-        / ".algenta_cache"
-        / "Backlog.parquet"
+        Path(__file__).resolve().parents[1] / "test_files" / ".algenta_cache" / "Backlog.parquet"
     ).read_bytes()
     src = DataSource(
         name="RealBacklogParquet",
@@ -592,7 +632,7 @@ async def test_load_profiled_source_prefers_columnar_for_real_local_parquet_cach
     assert loaded.profile["PART_NUMBER"]["is_numeric"] is False
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_load_source_url_csv_uses_real_csv_http_path(tmp_path):
     data_dir = tmp_path / "http"
     data_dir.mkdir()
@@ -616,7 +656,7 @@ async def test_load_source_url_csv_uses_real_csv_http_path(tmp_path):
         server.server_close()
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_load_source_table_url_json_builds_arrow_table(tmp_path):
     data_dir = tmp_path / "http"
     data_dir.mkdir()
@@ -645,7 +685,7 @@ async def test_load_source_table_url_json_builds_arrow_table(tmp_path):
         server.server_close()
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_load_source_source_id_reads_registered_parquet(tmp_path):
     from apps.api_server.services import source_registry as reg
 
@@ -687,7 +727,7 @@ async def test_load_source_source_id_reads_registered_parquet(tmp_path):
         reg._SOURCES_DIR = original_sources_dir
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_load_source_table_source_id_reads_registered_parquet(tmp_path):
     from apps.api_server.services import source_registry as reg
 

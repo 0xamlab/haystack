@@ -15,11 +15,13 @@ Run:
   DE_SKIP_API=1 python3 tests/integration/test_billing_team.py
   python3 tests/integration/test_billing_team.py
 """
+
 from __future__ import annotations
 
 import json
 import os
 import sys
+import time
 import urllib.error
 import urllib.request
 import uuid
@@ -28,24 +30,73 @@ from pathlib import Path
 _ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(_ROOT))
 
-BASE_URL = os.environ.get("DE_BASE_URL", "http://localhost:8000")
-API_KEY  = os.environ.get("DE_API_KEY",  "de_live_LrL6UWSAfgXsTjgfyaboI9aolrsznjLU")
+from tests.integration.live_integration_artifacts import write_live_integration_summary
+
+try:
+    from tests.integration.live_local_defaults import (
+        configured_local_live_base_url,
+        has_configured_local_live_api_key,
+        resolve_local_live_api_key,
+        resolve_local_live_base_url,
+    )
+except ModuleNotFoundError:
+    from live_local_defaults import (
+        configured_local_live_base_url,
+        has_configured_local_live_api_key,
+        resolve_local_live_api_key,
+        resolve_local_live_base_url,
+    )
+
+BASE_URL = resolve_local_live_base_url()
+API_KEY = resolve_local_live_api_key()
+API_KEY_CONFIGURED = has_configured_local_live_api_key()
 SKIP_API = os.environ.get("DE_SKIP_API", "0") == "1"
+SUITE_NAME = "billing_team_integration"
+STARTED = time.perf_counter()
 
 PASS = "✅"
 FAIL = "❌"
-SKIP = "⏭️ "
+SKIP = "⏭️"
 _results: list[tuple[str, bool, str]] = []
+
+
+def _emit(message: str = "") -> None:
+    print(message, flush=True)
+
+
+def _format_elapsed_seconds(started_at: float) -> str:
+    return f"{time.monotonic() - started_at:.2f}s"
 
 
 def check(name: str, cond: bool, detail: str = "") -> None:
     icon = PASS if cond else FAIL
     _results.append((name, cond, detail))
-    print(f"  {icon}  {name}" + (f"  ({detail})" if detail else ""))
+    _emit(f"  {icon} {name}" + (f" ({detail})" if detail else ""))
 
 
-def req(method: str, path: str, body: dict | None = None, auth: bool = True,
-        extra_headers: dict | None = None) -> tuple[int, dict]:
+def run_check(name: str, fn) -> None:
+    started_at = time.monotonic()
+    _emit(f"  ... {name}")
+    try:
+        fn()
+        _emit(f"  {PASS} {name} ({_format_elapsed_seconds(started_at)})")
+    except urllib.error.URLError as e:
+        _results.append((name, True, f"skipped: server unreachable ({e.reason})"))
+        _emit(
+            f"  {SKIP} {name} ({_format_elapsed_seconds(started_at)}): "
+            f"server unreachable ({e.reason})"
+        )
+    except Exception as e:
+        check(name, False, f"{type(e).__name__}: {e}")
+
+
+def req(
+    method: str,
+    path: str,
+    body: dict | None = None,
+    auth: bool = True,
+    extra_headers: dict | None = None,
+) -> tuple[int, dict]:
     url = f"{BASE_URL}{path}"
     data = json.dumps(body).encode() if body is not None else None
     headers = {"Content-Type": "application/json"}
@@ -67,30 +118,34 @@ def req(method: str, path: str, body: dict | None = None, auth: bool = True,
 
 # ── Layer A: Router structure ─────────────────────────────────────────────────
 
+
 def test_billing_router_importable():
     from apps.api_server.routers import billing
+
     routes = {r.path for r in billing.router.routes}
     check("billing router importable", True)
-    check("/v1/billing/checkout registered",  "/v1/billing/checkout" in routes)
-    check("/v1/billing/portal registered",    "/v1/billing/portal"   in routes)
-    check("/v1/billing/info registered",      "/v1/billing/info"     in routes)
-    check("/v1/billing/webhook registered",   "/v1/billing/webhook"  in routes)
+    check("/v1/billing/checkout registered", "/v1/billing/checkout" in routes)
+    check("/v1/billing/portal registered", "/v1/billing/portal" in routes)
+    check("/v1/billing/info registered", "/v1/billing/info" in routes)
+    check("/v1/billing/webhook registered", "/v1/billing/webhook" in routes)
 
 
 def test_team_router_importable():
     from apps.api_server.routers import team
+
     routes = {r.path for r in team.router.routes}
     check("team router importable", True)
-    check("/v1/team registered",              "/v1/team"                      in routes)
-    check("/v1/team/invite registered",       "/v1/team/invite"               in routes)
-    check("/v1/team/{user_id}/role registered", "/v1/team/{user_id}/role"     in routes)
-    check("/v1/team/{user_id} DELETE registered", any(
-        r.path == "/v1/team/{user_id}" and "DELETE" in r.methods
-        for r in team.router.routes
-    ))
+    check("/v1/team registered", "/v1/team" in routes)
+    check("/v1/team/invite registered", "/v1/team/invite" in routes)
+    check("/v1/team/{user_id}/role registered", "/v1/team/{user_id}/role" in routes)
+    check(
+        "/v1/team/{user_id} DELETE registered",
+        any(r.path == "/v1/team/{user_id}" and "DELETE" in r.methods for r in team.router.routes),
+    )
 
 
 # ── Layer B: Billing portal ───────────────────────────────────────────────────
+
 
 def test_billing_portal_returns_url_or_error():
     """POST /v1/billing/portal — creates Stripe portal session or returns expected error."""
@@ -112,7 +167,8 @@ def test_billing_portal_no_auth_401():
 def test_billing_webhook_bad_signature_400():
     """POST /v1/billing/webhook — should reject invalid Stripe signatures."""
     status, body = req(
-        "POST", "/v1/billing/webhook",
+        "POST",
+        "/v1/billing/webhook",
         body={"type": "checkout.session.completed", "data": {}},
         auth=False,
         extra_headers={"Stripe-Signature": "invalid-signature"},
@@ -146,6 +202,7 @@ def test_billing_webhook_is_public():
 
 
 # ── Layer B: Team role + delete ───────────────────────────────────────────────
+
 
 def test_team_role_update_invalid_user():
     fake_id = str(uuid.uuid4())
@@ -209,48 +266,78 @@ def test_team_role_update_no_auth():
 
 # ── Runner ────────────────────────────────────────────────────────────────────
 
-def main() -> None:
-    print("\n" + "=" * 68)
-    print("  BILLING + TEAM ENDPOINT TESTS")
-    print("=" * 68)
 
-    print("\n── Layer A: Router structure (no server) ────────────────────────\n")
+def main() -> None:
+    _emit("\n" + "=" * 68)
+    _emit("  BILLING + TEAM ENDPOINT TESTS")
+    _emit("=" * 68)
+
+    _emit("\n── Layer A: Router structure (no server) ────────────────────────\n")
     for fn in [test_billing_router_importable, test_team_router_importable]:
         try:
             fn()
         except Exception as e:
             check(fn.__name__, False, str(e))
 
-    print("\n── Layer B: Live HTTP ────────────────────────────────────────────\n")
-    live = [
-        test_billing_portal_returns_url_or_error,
-        test_billing_portal_no_auth_401,
-        test_billing_webhook_bad_signature_400,
-        test_billing_webhook_no_signature_400,
-        test_billing_webhook_is_public,
-        test_team_role_update_invalid_user,
-        test_team_role_update_invalid_role,
-        test_team_role_update_missing_body,
-        test_team_delete_invalid_user,
-        test_team_delete_no_auth,
-        test_team_role_update_no_auth,
+    _emit("\n── Layer B: Live HTTP ────────────────────────────────────────────\n")
+    auth_required_live = [
+        ("POST /v1/billing/portal auth surface", test_billing_portal_returns_url_or_error),
+        ("PATCH /v1/team/{user_id}/role invalid user", test_team_role_update_invalid_user),
+        ("PATCH /v1/team/{user_id}/role invalid role", test_team_role_update_invalid_role),
+        ("PATCH /v1/team/{user_id}/role missing body", test_team_role_update_missing_body),
+        ("DELETE /v1/team/{user_id} invalid user", test_team_delete_invalid_user),
+    ]
+    public_or_noauth_live = [
+        ("POST /v1/billing/portal without auth", test_billing_portal_no_auth_401),
+        ("POST /v1/billing/webhook bad signature", test_billing_webhook_bad_signature_400),
+        ("POST /v1/billing/webhook no signature", test_billing_webhook_no_signature_400),
+        ("POST /v1/billing/webhook is public", test_billing_webhook_is_public),
+        ("DELETE /v1/team/{user_id} without auth", test_team_delete_no_auth),
+        ("PATCH /v1/team/{user_id}/role without auth", test_team_role_update_no_auth),
     ]
     if SKIP_API:
-        print(f"  {SKIP}  Skipped (DE_SKIP_API=1)")
+        _emit(f"  {SKIP} Skipped live HTTP layer (DE_SKIP_API=1)")
     else:
-        for fn in live:
-            try:
-                fn()
-            except urllib.error.URLError as e:
-                print(f"  {SKIP}  {fn.__name__} — server unreachable ({e.reason})")
-            except Exception as e:
-                check(fn.__name__, False, f"{type(e).__name__}: {e}")
+        for name, fn in public_or_noauth_live:
+            run_check(name, fn)
+        if API_KEY_CONFIGURED:
+            for name, fn in auth_required_live:
+                run_check(name, fn)
+        else:
+            reason = (
+                "DE_API_KEY is not set; skipping authenticated billing/team checks "
+                "that require a real live key."
+            )
+            for name, _ in auth_required_live:
+                _results.append((name, True, f"skipped: {reason}"))
+                _emit(f"  {SKIP} {name}: {reason}")
 
     passed = sum(1 for _, ok, _ in _results if ok)
     failed = sum(1 for _, ok, _ in _results if not ok)
-    print(f"\n{'=' * 68}")
-    print(f"  {passed} passed  |  {failed} failed  |  {len(_results)} total")
-    print(f"{'=' * 68}\n")
+    skipped = sum(1 for _, _, detail in _results if detail.startswith("skipped:"))
+    _emit(f"\n{'=' * 68}")
+    _emit(f"  {passed} passed  |  {failed} failed  |  {len(_results)} total")
+    if skipped:
+        _emit(f"  {skipped} skipped")
+    _emit(f"{'=' * 68}\n")
+
+    artifact_path = write_live_integration_summary(
+        SUITE_NAME,
+        script="tests/integration/test_billing_team.py",
+        passed=passed,
+        failed=failed,
+        skipped=skipped,
+        total=len(_results),
+        elapsed_seconds=time.perf_counter() - STARTED,
+        details={
+            "api_key_configured": bool(API_KEY_CONFIGURED),
+            "base_url": BASE_URL,
+            "skip_api": SKIP_API,
+            "failed_checks": [name for name, ok, _ in _results if not ok],
+            "skipped_checks": [name for name, _, detail in _results if detail.startswith("skipped:")],
+        },
+    )
+    _emit(f"Summary artifact: {artifact_path}")
     sys.exit(0 if failed == 0 else 1)
 
 

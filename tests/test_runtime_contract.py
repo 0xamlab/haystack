@@ -49,9 +49,13 @@ def test_executor_appends_runtime_ledger(monkeypatch, tmp_path) -> None:
     credits._store = store
     try:
         executor = executor_mod.Executor()
-        with patch.object(executor, "_mojo_available", return_value=False):
-            with patch("apps.runtime.executor._python_fallback", return_value={"result": {"value": 42}}):
-                result = _run_async(executor.execute_module("monte_carlo", "run", {"trials": 10}, request_id="req-ledger"))
+        with patch.object(executor, "_mojo_available", return_value=True):
+            with patch("apps.runtime.executor._mojo_call", return_value={"result": {"value": 42}}):
+                result = _run_async(
+                    executor.execute_module(
+                        "monte_carlo", "run", {"trials": 10}, request_id="req-ledger"
+                    )
+                )
     finally:
         credits._store = old_store
 
@@ -62,6 +66,75 @@ def test_executor_appends_runtime_ledger(monkeypatch, tmp_path) -> None:
     statuses = [event["status"] for event in events]
     assert statuses == ["started", "completed"]
     assert all(event["request_id"] == "req-ledger" for event in events)
+
+
+def test_executor_routes_runtime_library_calls_through_compiled_worker(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    monkeypatch.setenv("ALGENTA_RUNTIME_DIR", str(tmp_path))
+    _reload("apps.runtime.ledger")
+    credits = _reload("apps.runtime.credits")
+    executor_mod = _reload("apps.runtime.executor")
+
+    store = credits.CreditStore(tmp_path / "credits.json")
+    store.initialize_sync(credits_granted=5, billing_period="2026-04")
+    old_store = credits._store
+    credits._store = store
+    try:
+        executor = executor_mod.Executor()
+        with patch.object(executor, "_mojo_available", return_value=True):
+            with patch(
+                "apps.runtime.executor.build_runtime_library_worker_request",
+                return_value=(
+                    object(),
+                    {
+                        "type": "library_execute",
+                        "engine_type": "library_execute",
+                        "module": "elevator",
+                        "function": "annual_energy_consumption",
+                        "args": [0.5, 0.5, 0.5, 0.5],
+                    },
+                ),
+            ) as build_request:
+                with patch(
+                    "apps.runtime.executor._mojo_call",
+                    return_value={"result": 0.123},
+                ) as mojo_call:
+                    with patch(
+                        "apps.runtime.executor.parse_runtime_library_worker_response",
+                        return_value=0.123,
+                    ) as parse_response:
+                        result = _run_async(
+                            executor.execute_module(
+                                "elevator",
+                                "annual_energy_consumption",
+                                [0.5, 0.5, 0.5, 0.5],
+                                request_id="req-library",
+                            )
+                        )
+    finally:
+        credits._store = old_store
+
+    build_request.assert_called_once_with(
+        "elevator",
+        "annual_energy_consumption",
+        [0.5, 0.5, 0.5, 0.5],
+    )
+    mojo_call.assert_called_once_with(
+        {
+            "type": "library_execute",
+            "engine_type": "library_execute",
+            "module": "elevator",
+            "function": "annual_energy_consumption",
+            "args": [0.5, 0.5, 0.5, 0.5],
+        },
+        executor._mojo_sock,
+    )
+    parse_response.assert_called_once()
+    assert result["success"] is True
+    assert result["engine_used"] == "mojo"
+    assert result["result_json"] == "0.123"
 
 
 def _run_async(coro):

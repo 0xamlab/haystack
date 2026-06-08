@@ -1,8 +1,11 @@
 """
-test_cli_full.py — Full CLI coverage for all 9 commands.
+test_cli_full.py — Legacy supplemental CLI harness for narrower command coverage.
 
-Complements test_cli.py which covers: health, version, simulate, keys list.
-This covers the remaining 5: config set-key, recommend, job submit/status/wait.
+The canonical live CLI proof path is test_cli.py.
+This script remains as an additional focused harness for:
+  - config set-key
+  - recommend
+  - job submit/status/wait
 
 Two layers:
   Layer A — CLI import + command structure (no server)
@@ -12,6 +15,7 @@ Run:
   DE_SKIP_API=1 python3 tests/integration/test_cli_full.py
   python3 tests/integration/test_cli_full.py
 """
+
 from __future__ import annotations
 
 import json
@@ -25,8 +29,24 @@ from pathlib import Path
 _ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(_ROOT))
 
-BASE_URL = os.environ.get("DE_BASE_URL", "http://localhost:8000")
-API_KEY  = os.environ.get("DE_API_KEY",  "de_live_LrL6UWSAfgXsTjgfyaboI9aolrsznjLU")
+try:
+    from tests.integration.live_local_defaults import (
+        configured_local_live_base_url,
+        has_configured_local_live_api_key,
+        resolve_local_live_api_key,
+        resolve_local_live_base_url,
+    )
+except ModuleNotFoundError:
+    from live_local_defaults import (
+        configured_local_live_base_url,
+        has_configured_local_live_api_key,
+        resolve_local_live_api_key,
+        resolve_local_live_base_url,
+    )
+
+BASE_URL = resolve_local_live_base_url()
+API_KEY = resolve_local_live_api_key()
+API_KEY_CONFIGURED = has_configured_local_live_api_key()
 SKIP_API = os.environ.get("DE_SKIP_API", "0") == "1"
 
 CLI = [sys.executable, str(_ROOT / "apps" / "cli" / "main.py")]
@@ -46,8 +66,12 @@ def check(name: str, cond: bool, detail: str = "") -> None:
 
 def run(*args: str, input_str: str | None = None, timeout: int = 30) -> subprocess.CompletedProcess:
     return subprocess.run(
-        CLI + list(args), capture_output=True, text=True, env=ENV,
-        timeout=timeout, input=input_str,
+        CLI + list(args),
+        capture_output=True,
+        text=True,
+        env=ENV,
+        timeout=timeout,
+        input=input_str,
     )
 
 
@@ -73,19 +97,26 @@ _RECOMMEND_PAYLOAD = {
 
 # ── Layer A: CLI structure ────────────────────────────────────────────────────
 
+
 def test_cli_importable():
     from apps.cli import main as cli_main
+
     check("apps.cli.main importable", True)
-    check("cmd_config_set_key exists",    hasattr(cli_main, "cmd_config_set_key"))
-    check("cmd_data_connect exists",      hasattr(cli_main, "cmd_data_connect"))
-    check("cmd_data_list exists",         hasattr(cli_main, "cmd_data_list"))
-    check("cmd_data_inspect exists",      hasattr(cli_main, "cmd_data_inspect"))
-    check("cmd_data_refresh exists",      hasattr(cli_main, "cmd_data_refresh"))
-    check("cmd_data_disconnect exists",   hasattr(cli_main, "cmd_data_disconnect"))
-    check("cmd_recommend exists",         hasattr(cli_main, "cmd_recommend"))
-    check("cmd_job_submit exists",        hasattr(cli_main, "cmd_job_submit"))
-    check("cmd_job_status exists",        hasattr(cli_main, "cmd_job_status"))
-    check("cmd_job_wait exists",          hasattr(cli_main, "cmd_job_wait"))
+    check("cmd_config_set_key exists", hasattr(cli_main, "cmd_config_set_key"))
+    check("cmd_data_connect exists", hasattr(cli_main, "cmd_data_connect"))
+    check("cmd_data_list exists", hasattr(cli_main, "cmd_data_list"))
+    check("cmd_data_summary exists", hasattr(cli_main, "cmd_data_summary"))
+    check("cmd_data_inspect exists", hasattr(cli_main, "cmd_data_inspect"))
+    check("cmd_data_query_batch exists", hasattr(cli_main, "cmd_data_query_batch"))
+    check("cmd_data_sql_report exists", hasattr(cli_main, "cmd_data_sql_report"))
+    check("cmd_data_refresh exists", hasattr(cli_main, "cmd_data_refresh"))
+    check("cmd_data_disconnect exists", hasattr(cli_main, "cmd_data_disconnect"))
+    check("cmd_recommend exists", hasattr(cli_main, "cmd_recommend"))
+    check("cmd_job_submit exists", hasattr(cli_main, "cmd_job_submit"))
+    check("cmd_job_status exists", hasattr(cli_main, "cmd_job_status"))
+    check("cmd_job_wait exists", hasattr(cli_main, "cmd_job_wait"))
+    check("cmd_runtime_functions exists", hasattr(cli_main, "cmd_runtime_functions"))
+    check("cmd_runtime_execute exists", hasattr(cli_main, "cmd_runtime_execute"))
 
 
 def test_cli_help_shows_all_commands():
@@ -96,8 +127,9 @@ def test_cli_help_shows_all_commands():
         check(f"usage mentions '{cmd}'", cmd in out)
     # keys/health/version may be printed differently — check the source
     from apps.cli.main import cmd_health, cmd_keys_list
+
     check("cmd_keys_list defined", callable(cmd_keys_list))
-    check("cmd_health defined",    callable(cmd_health))
+    check("cmd_health defined", callable(cmd_health))
 
 
 def test_job_help():
@@ -116,18 +148,38 @@ def test_config_help():
 def test_data_help():
     r = run("data", "--help")
     out = r.stdout + r.stderr
-    for sub in ["connect", "list", "inspect", "refresh", "disconnect"]:
+    for sub in [
+        "connect",
+        "list",
+        "summary",
+        "inspect",
+        "query-batch",
+        "sql-report",
+        "refresh",
+        "disconnect",
+    ]:
         check(f"data --help mentions '{sub}'", sub in out)
 
 
+def test_runtime_help():
+    r = run("runtime", "--help")
+    out = r.stdout + r.stderr
+    for sub in ["start", "stop", "status", "modules", "functions", "execute", "history"]:
+        check(f"runtime --help mentions '{sub}'", sub in out)
+
+
 # ── Layer B: Live CLI calls ───────────────────────────────────────────────────
+
 
 def test_config_set_key():
     with tempfile.TemporaryDirectory() as tmpdir:
         cfg_env = {**ENV, "DE_CONFIG_DIR": tmpdir}
         r = subprocess.run(
             CLI + ["config", "set-key", API_KEY],
-            capture_output=True, text=True, env=cfg_env, timeout=10,
+            capture_output=True,
+            text=True,
+            env=cfg_env,
+            timeout=10,
         )
         check(
             "config set-key exits 0",
@@ -194,6 +246,7 @@ def test_job_status():
         except (json.JSONDecodeError, AttributeError):
             # Try to find UUID-like string
             import re
+
             match = re.search(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", out)
             if match:
                 job_id = match.group()
@@ -222,6 +275,7 @@ def test_job_wait():
             job_id = json.loads(out).get("job_id") or json.loads(out).get("id")
         except Exception:
             import re
+
             match = re.search(r"[0-9a-f-]{36}", out)
             if match:
                 job_id = match.group()
@@ -279,10 +333,17 @@ def test_data_connect_list_inspect_disconnect():
         r_inspect = run("data", "inspect", dataset_id, "--format", "json")
         check("data inspect exits 0", r_inspect.returncode == 0, r_inspect.stderr.strip()[:100])
         inspect_body = json.loads(r_inspect.stdout)
-        check("data inspect returns dataset", inspect_body.get("dataset", {}).get("dataset_id") == dataset_id)
+        check(
+            "data inspect returns dataset",
+            inspect_body.get("dataset", {}).get("dataset_id") == dataset_id,
+        )
 
         r_disconnect = run("data", "disconnect", dataset_id, "--yes", "--format", "json")
-        check("data disconnect exits 0", r_disconnect.returncode == 0, r_disconnect.stderr.strip()[:100])
+        check(
+            "data disconnect exits 0",
+            r_disconnect.returncode == 0,
+            r_disconnect.stderr.strip()[:100],
+        )
         disconnect_body = json.loads(r_disconnect.stdout)
         check("data disconnect deleted dataset", disconnect_body.get("status") == "deleted")
     finally:
@@ -304,13 +365,17 @@ def test_data_connect_refresh_database_dataset():
             conn.close()
 
         request_path = Path(tmpdir) / "db_request.json"
-        request_path.write_text(json.dumps({
-            "connection_type": "database",
-            "provider": "sqlite",
-            "dataset_name": "CliSqlite",
-            "connection_config": {"path": str(sqlite_path)},
-            "selection": {"table": "backlog"},
-        }))
+        request_path.write_text(
+            json.dumps(
+                {
+                    "connection_type": "database",
+                    "provider": "sqlite",
+                    "dataset_name": "CliSqlite",
+                    "connection_config": {"path": str(sqlite_path)},
+                    "selection": {"table": "backlog"},
+                }
+            )
+        )
 
         r = run("data", "connect", "--request", str(request_path), "--format", "json")
         check("data connect database exits 0", r.returncode == 0, r.stderr.strip()[:120])
@@ -326,10 +391,91 @@ def test_data_connect_refresh_database_dataset():
         check("data refresh returns ready", refresh_body.get("status") == "ready")
 
         r_disconnect = run("data", "disconnect", dataset_id, "--yes", "--format", "json")
-        check("data disconnect database exits 0", r_disconnect.returncode == 0, r_disconnect.stderr.strip()[:120])
+        check(
+            "data disconnect database exits 0",
+            r_disconnect.returncode == 0,
+            r_disconnect.stderr.strip()[:120],
+        )
+
+
+def test_data_summary_query_batch_and_sql_report():
+    request = {
+        "connection_type": "file_upload",
+        "dataset_name": "CliQueryProbe",
+        "csv": "flight_month,otp_rate_pct,amount\n2026-01-01,91.1,10\n2026-02-01,92.4,20\n",
+    }
+    path = tmpfile(request)
+    dataset_id = None
+    try:
+        r = run("data", "connect", "--request", path, "--format", "json")
+        check("data connect query probe exits 0", r.returncode == 0, r.stderr.strip()[:120])
+        body = json.loads(r.stdout)
+        dataset_id = body.get("dataset_id")
+        check("data connect query probe returns dataset_id", bool(dataset_id), r.stdout[:120])
+        if not dataset_id:
+            return
+
+        r_summary = run("data", "summary", dataset_id, "--format", "json")
+        check("data summary exits 0", r_summary.returncode == 0, r_summary.stderr.strip()[:120])
+        summary_body = json.loads(r_summary.stdout)
+        check("data summary returns dataset_id", summary_body.get("dataset_id") == dataset_id)
+
+        batch_request = tmpfile(
+            {
+                "defaults": {"dataset_id": dataset_id},
+                "queries": [
+                    {
+                        "key": "amount_avg",
+                        "request": {
+                            "metric": {"role": "base_measure", "hint": "amount"},
+                            "aggregation": "avg",
+                        },
+                    }
+                ],
+            }
+        )
+        try:
+            r_batch = run("data", "query-batch", batch_request, "--format", "json")
+            check("data query-batch exits 0", r_batch.returncode == 0, r_batch.stderr.strip()[:120])
+            batch_body = json.loads(r_batch.stdout)
+            batch_results = batch_body.get("results", [])
+            check("data query-batch returns result item", bool(batch_results))
+            if batch_results:
+                check(
+                    "data query-batch resolves amount column",
+                    batch_results[0].get("data", {}).get("resolved_column") == "amount",
+                )
+        finally:
+            Path(batch_request).unlink(missing_ok=True)
+
+        report_request = tmpfile(
+            {
+                "sources": [{"dataset_id": dataset_id, "alias": "probe"}],
+                "sql": "select flight_month, otp_rate_pct from probe order by flight_month",
+                "max_rows": 100,
+            }
+        )
+        try:
+            r_report = run("data", "sql-report", report_request, "--format", "json")
+            check(
+                "data sql-report exits 0", r_report.returncode == 0, r_report.stderr.strip()[:120]
+            )
+            report_body = json.loads(r_report.stdout)
+            check("data sql-report returns rows", report_body.get("row_count") == 2)
+            check(
+                "data sql-report returns expected columns",
+                report_body.get("columns") == ["flight_month", "otp_rate_pct"],
+            )
+        finally:
+            Path(report_request).unlink(missing_ok=True)
+    finally:
+        if dataset_id:
+            run("data", "disconnect", dataset_id, "--yes", "--format", "json")
+        Path(path).unlink(missing_ok=True)
 
 
 # ── Runner ────────────────────────────────────────────────────────────────────
+
 
 def main() -> None:
     print("\n" + "=" * 68)
@@ -337,8 +483,14 @@ def main() -> None:
     print("=" * 68)
 
     print("\n── Layer A: CLI structure (no server) ──────────────────────────\n")
-    for fn in [test_cli_importable, test_cli_help_shows_all_commands,
-               test_job_help, test_config_help, test_data_help]:
+    for fn in [
+        test_cli_importable,
+        test_cli_help_shows_all_commands,
+        test_job_help,
+        test_config_help,
+        test_data_help,
+        test_runtime_help,
+    ]:
         try:
             fn()
         except Exception as e:
@@ -346,12 +498,21 @@ def main() -> None:
 
     print("\n── Layer B: Live CLI calls ──────────────────────────────────────\n")
     live = [
-        test_config_set_key, test_recommend, test_recommend_json_format,
-        test_job_submit, test_job_status, test_job_wait, test_job_submit_with_callback,
-        test_data_connect_list_inspect_disconnect, test_data_connect_refresh_database_dataset,
+        test_config_set_key,
+        test_recommend,
+        test_recommend_json_format,
+        test_job_submit,
+        test_job_status,
+        test_job_wait,
+        test_job_submit_with_callback,
+        test_data_connect_list_inspect_disconnect,
+        test_data_connect_refresh_database_dataset,
+        test_data_summary_query_batch_and_sql_report,
     ]
     if SKIP_API:
         print(f"  {SKIP}  Skipped (DE_SKIP_API=1)")
+    elif not API_KEY_CONFIGURED:
+        print(f"  {SKIP}  Skipped (DE_API_KEY is not configured with a real live key)")
     else:
         for fn in live:
             try:

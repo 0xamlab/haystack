@@ -9,14 +9,32 @@ from apps.api_server.routers import sources as sources_router
 from apps.api_server.routers import triggers as triggers_router
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_list_datasets_adds_canonical_pagination_fields(monkeypatch) -> None:
     monkeypatch.setattr(
         "apps.api_server.routers.datasets.ds.list_datasets",
         lambda _org_id: [
-            {"dataset_id": "a", "name": "A", "schema_hash": "h1", "status": "ready", "model_tier": "schema"},
-            {"dataset_id": "b", "name": "B", "schema_hash": "h2", "status": "ready", "model_tier": "base"},
-            {"dataset_id": "c", "name": "C", "schema_hash": "h3", "status": "training", "model_tier": "none"},
+            {
+                "dataset_id": "a",
+                "name": "A",
+                "schema_hash": "h1",
+                "status": "ready",
+                "model_tier": "schema",
+            },
+            {
+                "dataset_id": "b",
+                "name": "B",
+                "schema_hash": "h2",
+                "status": "ready",
+                "model_tier": "base",
+            },
+            {
+                "dataset_id": "c",
+                "name": "C",
+                "schema_hash": "h3",
+                "status": "training",
+                "model_tier": "none",
+            },
         ],
     )
 
@@ -35,7 +53,7 @@ async def test_list_datasets_adds_canonical_pagination_fields(monkeypatch) -> No
     assert payload["datasets"][0]["decision_mode"] == "deterministic_only"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_list_sources_adds_canonical_pagination_fields(monkeypatch) -> None:
     monkeypatch.setattr(
         "apps.api_server.routers.sources.reg.list_sources",
@@ -59,7 +77,7 @@ async def test_list_sources_adds_canonical_pagination_fields(monkeypatch) -> Non
     assert response["pages"] == 2
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_list_triggers_adds_canonical_pagination_fields() -> None:
     triggers_router._TRIGGER_STORE.clear()
     now = datetime.now(UTC).isoformat()

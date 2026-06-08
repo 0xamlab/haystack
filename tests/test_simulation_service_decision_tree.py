@@ -130,7 +130,7 @@ def test_build_expert_mojo_payload_rejects_invalid_decision_tree_override() -> N
     assert exc_info.value.detail["error"]["code"] == "invalid_decision_tree_override"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_run_simulation_fast_supports_decision_tree_nodes_payload() -> None:
     if not (Path.cwd() / "mojo_build" / "simulate").exists():
         pytest.skip("mojo_build/simulate binary not available")

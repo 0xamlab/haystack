@@ -42,9 +42,12 @@ Python SDK test suite — 40 checks covering:
   39. result dict shape: has required keys
   40. result dict shape: latency_ms is numeric
 """
+
 from __future__ import annotations
 
+import importlib
 import json
+import os
 import sys
 import tempfile
 import time
@@ -57,12 +60,27 @@ ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
 
+def _load_isolated_credits_module(monkeypatch: pytest.MonkeyPatch):
+    runtime_dir = Path(tempfile.mkdtemp()) / "runtime"
+    monkeypatch.setenv("ALGENTA_RUNTIME_DIR", str(runtime_dir))
+    sys.modules.pop("apps.runtime.credits", None)
+    return importlib.import_module("apps.runtime.credits")
+
+
+def _runtime_ledger_events(runtime_dir: Path) -> list[dict[str, object]]:
+    ledger_path = runtime_dir / "history.jsonl"
+    assert ledger_path.exists()
+    return [json.loads(line) for line in ledger_path.read_text().splitlines()]
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # 1–4  Runtime.__init__
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def test_runtime_valid_modes():
     from apps.runtime.sdk import Runtime
+
     for mode in ("auto", "local", "cloud", "direct"):
         rt = Runtime(mode=mode)
         assert rt._mode == mode
@@ -70,6 +88,7 @@ def test_runtime_valid_modes():
 
 def test_runtime_invalid_mode_raises():
     from apps.runtime.sdk import Runtime
+
     with pytest.raises(ValueError, match="Invalid mode"):
         Runtime(mode="invalid")
 
@@ -77,6 +96,7 @@ def test_runtime_invalid_mode_raises():
 def test_runtime_api_key_from_env(monkeypatch):
     monkeypatch.setenv("ALGENTA_API_KEY", "de_test_envkey")
     from apps.runtime.sdk import Runtime
+
     rt = Runtime()
     assert rt._api_key == "de_test_envkey"
 
@@ -84,12 +104,44 @@ def test_runtime_api_key_from_env(monkeypatch):
 def test_runtime_api_key_arg_overrides_env(monkeypatch):
     monkeypatch.setenv("ALGENTA_API_KEY", "de_env")
     from apps.runtime.sdk import Runtime
+
     rt = Runtime(api_key="de_arg")
     assert rt._api_key == "de_arg"
 
 
+def test_runtime_reads_algenta_api_url_from_current_env(monkeypatch):
+    monkeypatch.setenv("ALGENTA_API_URL", "http://localhost:9100")
+    monkeypatch.delenv("ALGENTA_BASE_URL", raising=False)
+    monkeypatch.delenv("DE_BASE_URL", raising=False)
+    from apps.runtime.sdk import Runtime
+
+    rt = Runtime(mode="cloud")
+    assert rt._base_url == "http://localhost:9100"
+
+
+def test_runtime_prefers_algenta_base_url_over_algenta_api_url(monkeypatch):
+    monkeypatch.setenv("ALGENTA_BASE_URL", "http://localhost:9200")
+    monkeypatch.setenv("ALGENTA_API_URL", "http://localhost:9100")
+    monkeypatch.delenv("DE_BASE_URL", raising=False)
+    from apps.runtime.sdk import Runtime
+
+    rt = Runtime(mode="cloud")
+    assert rt._base_url == "http://localhost:9200"
+
+
+def test_runtime_prefers_de_base_url_over_algenta_api_url(monkeypatch):
+    monkeypatch.setenv("DE_BASE_URL", "http://localhost:9300")
+    monkeypatch.setenv("ALGENTA_API_URL", "http://localhost:9100")
+    monkeypatch.delenv("ALGENTA_BASE_URL", raising=False)
+    from apps.runtime.sdk import Runtime
+
+    rt = Runtime(mode="cloud")
+    assert rt._base_url == "http://localhost:9300"
+
+
 def test_runtime_repr_shows_mode():
     from apps.runtime.sdk import Runtime
+
     rt = Runtime(mode="direct", api_key="test")
     assert "direct" in repr(rt)
     assert "set" in repr(rt)
@@ -99,6 +151,7 @@ def test_runtime_repr_no_key(monkeypatch):
     monkeypatch.delenv("ALGENTA_API_KEY", raising=False)
     monkeypatch.delenv("DE_API_KEY", raising=False)
     from apps.runtime.sdk import Runtime
+
     rt = Runtime(mode="cloud")
     assert "not set" in repr(rt)
 
@@ -107,20 +160,24 @@ def test_runtime_repr_no_key(monkeypatch):
 # 5–10  _resolve_mode
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def test_resolve_mode_direct():
     from apps.runtime.sdk import Runtime
+
     rt = Runtime(mode="direct")
     assert rt._resolve_mode("any_module") == "direct"
 
 
 def test_resolve_mode_cloud():
     from apps.runtime.sdk import Runtime
+
     rt = Runtime(mode="cloud")
     assert rt._resolve_mode("monte_carlo") == "cloud"
 
 
 def test_resolve_mode_local():
     from apps.runtime.sdk import Runtime
+
     rt = Runtime(mode="local")
     with patch("apps.runtime.client.DaemonClient.is_daemon_running", return_value=False):
         assert rt._resolve_mode("monte_carlo") == "local"
@@ -128,6 +185,7 @@ def test_resolve_mode_local():
 
 def test_resolve_mode_auto_daemon_running():
     from apps.runtime.sdk import Runtime
+
     rt = Runtime(mode="auto")
     with patch("apps.runtime.client.DaemonClient.is_daemon_running", return_value=True):
         assert rt._resolve_mode("monte_carlo") == "local"
@@ -135,6 +193,7 @@ def test_resolve_mode_auto_daemon_running():
 
 def test_resolve_mode_auto_no_daemon():
     from apps.runtime.sdk import Runtime
+
     rt = Runtime(mode="auto")
     with patch("apps.runtime.client.DaemonClient.is_daemon_running", return_value=False):
         assert rt._resolve_mode("monte_carlo") == "cloud"
@@ -143,36 +202,73 @@ def test_resolve_mode_auto_no_daemon():
 def test_resolve_mode_auto_domain_library_no_daemon_warns(caplog):
 
     from apps.runtime.sdk import Runtime
+
     rt = Runtime(mode="auto")
     with patch("apps.runtime.client.DaemonClient.is_daemon_running", return_value=False):
         result = rt._resolve_mode("scheduling_algo")
-    assert result == "cloud"   # falls back to cloud even though domain lib
+    assert result == "cloud"  # falls back to cloud even though domain lib
+
+
+def test_resolve_mode_auto_private_profile_fails_closed_without_base_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from apps.runtime.sdk import Runtime, SDKRuntimeError
+
+    monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "self_hosted")
+    monkeypatch.setenv("ALGENTA_DISABLE_CLOUD", "1")
+    monkeypatch.delenv("ALGENTA_BASE_URL", raising=False)
+    monkeypatch.delenv("DE_BASE_URL", raising=False)
+    monkeypatch.delenv("ALGENTA_API_URL", raising=False)
+
+    rt = Runtime(mode="auto")
+    with patch("apps.runtime.client.DaemonClient.is_daemon_running", return_value=False):
+        with pytest.raises(SDKRuntimeError, match="cloud fallback is disabled"):
+            rt._resolve_mode("monte_carlo")
+
+
+def test_runtime_cloud_private_profile_rejects_algenta_owned_base_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from apps.runtime.sdk import Runtime, SDKRuntimeError
+
+    monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "self_hosted")
+    monkeypatch.setenv("ALGENTA_DISABLE_CLOUD", "1")
+
+    with pytest.raises(SDKRuntimeError, match="blocked by the active privacy policy"):
+        Runtime(mode="cloud", base_url="https://api.algenta.ai")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 11–12  DaemonClient.is_daemon_running
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def test_daemon_client_running_when_socket_exists(tmp_path):
     sock = tmp_path / "daemon.sock"
     sock.touch()
     from apps.runtime.client import DaemonClient
+
     assert DaemonClient.is_daemon_running(sock_path=str(sock)) is True
 
 
 def test_daemon_client_not_running_when_no_socket_no_tcp(tmp_path):
     sock = tmp_path / "no_such.sock"
     from apps.runtime.client import DaemonClient
+
     # Use a port that should be closed
-    assert DaemonClient.is_daemon_running(
-        sock_path=str(sock),
-        tcp_addr="127.0.0.1:19999",
-    ) is False
+    assert (
+        DaemonClient.is_daemon_running(
+            sock_path=str(sock),
+            tcp_addr="127.0.0.1:19999",
+        )
+        is False
+    )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 13–18  DaemonClient RPC methods (mocked gRPC)
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def _mock_grpc_stub(execute_result=None, health_result=None, modules_result=None):
     """Return a stub that mimics gRPC responses without a real server."""
@@ -186,15 +282,15 @@ def _mock_grpc_stub(execute_result=None, health_result=None, modules_result=None
     return stub
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_daemon_client_execute_success():
     from apps.runtime.client import DaemonClient
 
     mock_resp = MagicMock()
-    mock_resp.result_json   = json.dumps({"value": 42})
-    mock_resp.engine_used   = "mojo"
-    mock_resp.success       = True
-    mock_resp.error         = ""
+    mock_resp.result_json = json.dumps({"value": 42})
+    mock_resp.engine_used = "mojo"
+    mock_resp.success = True
+    mock_resp.error = ""
 
     client = DaemonClient()
     with patch.object(client, "_stub", return_value=_mock_grpc_stub(execute_result=mock_resp)):
@@ -206,15 +302,15 @@ async def test_daemon_client_execute_success():
     assert isinstance(result["latency_ms"], float)
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_daemon_client_execute_grpc_error():
     import grpc
 
     from apps.runtime.client import DaemonClient
 
     client = DaemonClient()
-    stub   = AsyncMock()
-    error  = grpc.aio.AioRpcError(
+    stub = AsyncMock()
+    error = grpc.aio.AioRpcError(
         grpc.StatusCode.UNAVAILABLE,
         MagicMock(details=lambda: "daemon not reachable"),
         MagicMock(details=lambda: "daemon not reachable"),
@@ -227,14 +323,14 @@ async def test_daemon_client_execute_grpc_error():
     assert "gRPC error" in result["error"]
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_daemon_client_health_success():
     from apps.runtime.client import DaemonClient
 
     mock_resp = MagicMock()
-    mock_resp.status         = "ok"
-    mock_resp.uptime_s       = 42.5
-    mock_resp.version        = "0.1.0"
+    mock_resp.status = "ok"
+    mock_resp.uptime_s = 42.5
+    mock_resp.version = "0.1.0"
     mock_resp.mojo_available = True
 
     client = DaemonClient()
@@ -245,15 +341,15 @@ async def test_daemon_client_health_success():
     assert result["mojo_available"] is True
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_daemon_client_health_grpc_error():
     import grpc
 
     from apps.runtime.client import DaemonClient
 
     client = DaemonClient()
-    stub   = AsyncMock()
-    error  = grpc.aio.AioRpcError(
+    stub = AsyncMock()
+    error = grpc.aio.AioRpcError(
         grpc.StatusCode.UNAVAILABLE,
         MagicMock(details=lambda: "no server"),
         MagicMock(details=lambda: "no server"),
@@ -265,13 +361,13 @@ async def test_daemon_client_health_grpc_error():
     assert result["status"] == "unreachable"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_daemon_client_list_modules_success():
     from apps.runtime.client import DaemonClient
 
     mock_module = MagicMock()
-    mock_module.name      = "monte_carlo"
-    mock_module.engine    = "mojo"
+    mock_module.name = "monte_carlo"
+    mock_module.engine = "mojo"
     mock_module.functions = ["run"]
 
     mock_resp = MagicMock()
@@ -285,15 +381,15 @@ async def test_daemon_client_list_modules_success():
     assert modules[0]["name"] == "monte_carlo"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_daemon_client_list_modules_grpc_error():
     import grpc
 
     from apps.runtime.client import DaemonClient
 
     client = DaemonClient()
-    stub   = AsyncMock()
-    error  = grpc.aio.AioRpcError(
+    stub = AsyncMock()
+    error = grpc.aio.AioRpcError(
         grpc.StatusCode.UNAVAILABLE,
         MagicMock(details=lambda: "no server"),
         MagicMock(details=lambda: "no server"),
@@ -309,46 +405,54 @@ async def test_daemon_client_list_modules_grpc_error():
 # 19–23  Runtime direct mode
 # ══════════════════════════════════════════════════════════════════════════════
 
-@pytest.mark.asyncio
+
+@pytest.mark.anyio
 async def test_runtime_direct_execute_calls_executor():
     from apps.runtime.sdk import Runtime
 
-    rt     = Runtime(mode="direct")
+    rt = Runtime(mode="direct")
     mock_result = {
         "result_json": json.dumps({"mean": 1.5}),
-        "latency_ms":  2.3,
+        "latency_ms": 2.3,
         "engine_used": "mojo",
-        "success":     True,
-        "error":       "",
+        "success": True,
+        "error": "",
     }
-    with patch("apps.runtime.executor.Executor.execute_module",
-               AsyncMock(return_value=mock_result)):
+    with patch(
+        "apps.runtime.executor.Executor.execute_module", AsyncMock(return_value=mock_result)
+    ):
         result = await rt.aexecute("monte_carlo", "run", {"trials": 100})
 
     assert result["success"] is True
 
 
-@pytest.mark.asyncio
-async def test_runtime_direct_returns_success_dict():
-    import tempfile
-
-    import apps.runtime.credits as cmod
+@pytest.mark.anyio
+async def test_runtime_direct_returns_success_dict(monkeypatch: pytest.MonkeyPatch):
+    cmod = _load_isolated_credits_module(monkeypatch)
     from apps.runtime.sdk import Runtime
+
     store_bak = cmod._store
 
     # Give plenty of credits so credit check passes
-    store = __import__('apps.runtime.credits', fromlist=['CreditStore']).CreditStore(
-        Path(tempfile.mkdtemp()) / "c.json"
-    )
+    store = cmod.CreditStore(Path(tempfile.mkdtemp()) / "c.json")
     store.initialize_sync(1000, "2026-04")
     cmod._store = store
 
     try:
         rt = Runtime(mode="direct")
-        with patch("apps.runtime.executor._python_fallback",
-                   return_value={"result": {"value": 99}}):
-            with patch("apps.runtime.executor.Executor._mojo_available", return_value=False):
-                result = rt.execute("monte_carlo", "run", {})
+        with patch(
+            "apps.runtime.executor.Executor.execute_module",
+            AsyncMock(
+                return_value={
+                    "result_json": json.dumps({"value": 99}),
+                    "latency_ms": 1.1,
+                    "engine_used": "mojo",
+                    "success": True,
+                    "error": "",
+                }
+            ),
+        ):
+            result = rt.execute("monte_carlo", "run", {})
         assert "success" in result
         assert "latency_ms" in result
         assert "engine_used" in result
@@ -356,7 +460,7 @@ async def test_runtime_direct_returns_success_dict():
         cmod._store = store_bak
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_runtime_direct_simulate_uses_run_function():
     from apps.runtime.sdk import Runtime
 
@@ -364,21 +468,28 @@ async def test_runtime_direct_simulate_uses_run_function():
 
     async def _mock_execute(module, function, args):
         called_with.update({"module": module, "function": function, "args": args})
-        return {"result": {}, "latency_ms": 1.0, "engine_used": "mock", "success": True, "error": ""}
+        return {
+            "result": {},
+            "latency_ms": 1.0,
+            "engine_used": "mock",
+            "success": True,
+            "error": "",
+        }
 
     rt = Runtime(mode="direct")
     with patch.object(rt, "_direct_execute", _mock_execute):
         await rt.asimulate("monte_carlo", {"trials": 100})
 
     assert called_with["function"] == "run"
-    assert called_with["module"]   == "monte_carlo"
+    assert called_with["module"] == "monte_carlo"
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 24–25  Runtime local mode
 # ══════════════════════════════════════════════════════════════════════════════
 
-@pytest.mark.asyncio
+
+@pytest.mark.anyio
 async def test_runtime_local_calls_daemon_client():
     from apps.runtime.sdk import Runtime
 
@@ -390,16 +501,17 @@ async def test_runtime_local_calls_daemon_client():
         "success": True,
         "error": "",
     }
-    with patch("apps.runtime.client.DaemonClient.is_daemon_running", return_value=True), \
-         patch("apps.runtime.client.DaemonClient.execute",
-               AsyncMock(return_value=mock_result)):
+    with (
+        patch("apps.runtime.client.DaemonClient.is_daemon_running", return_value=True),
+        patch("apps.runtime.client.DaemonClient.execute", AsyncMock(return_value=mock_result)),
+    ):
         result = await rt.aexecute("monte_carlo", "run", {})
 
     assert result["success"] is True
     assert result["engine_used"] == "mojo"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_runtime_local_returns_error_when_daemon_not_running():
     from apps.runtime.sdk import Runtime
 
@@ -411,7 +523,7 @@ async def test_runtime_local_returns_error_when_daemon_not_running():
     assert "daemon" in result["error"].lower()
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_runtime_start_daemon_waits_for_health_before_returning():
     import apps.runtime.client as client_mod
     from apps.runtime.sdk import Runtime
@@ -441,20 +553,85 @@ async def test_runtime_start_daemon_waits_for_health_before_returning():
     async def _fake_sleep(delay: float) -> None:
         sleep_calls.append(delay)
 
-    with patch("apps.runtime.daemon.cmd_start", side_effect=lambda foreground=False: started.append(foreground)), \
-         patch.object(client_mod, "DaemonClient", _FakeDaemonClient), \
-         patch("apps.runtime.sdk.asyncio.sleep", _fake_sleep):
+    with (
+        patch(
+            "apps.runtime.daemon.cmd_start",
+            side_effect=lambda foreground=False: started.append(foreground),
+        ),
+        patch.object(client_mod, "DaemonClient", _FakeDaemonClient),
+        patch("apps.runtime.sdk.asyncio.sleep", _fake_sleep),
+    ):
         await rt._start_daemon()
 
     assert started == [False]
     assert sleep_calls
 
 
+@pytest.mark.anyio
+async def test_runtime_start_daemon_propagates_all_base_url_env_aliases(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import apps.runtime.client as client_mod
+    from apps.runtime.sdk import Runtime
+
+    monkeypatch.delenv("ALGENTA_BASE_URL", raising=False)
+    monkeypatch.delenv("DE_BASE_URL", raising=False)
+    monkeypatch.delenv("ALGENTA_API_URL", raising=False)
+    monkeypatch.delenv("ALGENTA_CONTROL_PLANE_URL", raising=False)
+
+    rt = Runtime(
+        mode="local",
+        auto_start_daemon=True,
+        api_key="de_test",
+        base_url="http://localhost:8000",
+    )
+    captured_env: dict[str, str | None] = {}
+
+    class _ReadyDaemonClient:
+        def __init__(self, timeout=30.0, **_kwargs):
+            self.timeout = timeout
+
+        @classmethod
+        def is_daemon_running(cls):
+            return True
+
+        async def health(self):
+            return {"status": "ok", "version": "1.0.0"}
+
+    def _fake_cmd_start(*, foreground: bool = False) -> None:
+        assert foreground is False
+        for key in (
+            "ALGENTA_BASE_URL",
+            "DE_BASE_URL",
+            "ALGENTA_API_URL",
+            "ALGENTA_CONTROL_PLANE_URL",
+        ):
+            captured_env[key] = os.environ.get(key)
+
+    with (
+        patch("apps.runtime.daemon.cmd_start", side_effect=_fake_cmd_start),
+        patch.object(client_mod, "DaemonClient", _ReadyDaemonClient),
+    ):
+        await rt._start_daemon()
+
+    assert captured_env == {
+        "ALGENTA_BASE_URL": "http://localhost:8000",
+        "DE_BASE_URL": "http://localhost:8000",
+        "ALGENTA_API_URL": "http://localhost:8000",
+        "ALGENTA_CONTROL_PLANE_URL": "http://localhost:8000",
+    }
+    assert os.environ.get("ALGENTA_BASE_URL") is None
+    assert os.environ.get("DE_BASE_URL") is None
+    assert os.environ.get("ALGENTA_API_URL") is None
+    assert os.environ.get("ALGENTA_CONTROL_PLANE_URL") is None
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # 26–30  Runtime cloud mode
 # ══════════════════════════════════════════════════════════════════════════════
 
-@pytest.mark.asyncio
+
+@pytest.mark.anyio
 async def test_runtime_cloud_calls_simulate_endpoint():
 
     from apps.runtime.sdk import Runtime
@@ -472,7 +649,50 @@ async def test_runtime_cloud_calls_simulate_endpoint():
     assert result["engine_used"] == "cloud"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
+async def test_runtime_cloud_allowlisted_base_url_records_privacy_audit(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    from apps.runtime.sdk import Runtime
+
+    monkeypatch.setenv("ALGENTA_RUNTIME_DIR", str(tmp_path))
+    monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "self_hosted")
+    monkeypatch.setenv("ALGENTA_DISABLE_CLOUD", "1")
+    monkeypatch.setenv("ALGENTA_EGRESS_ALLOWLIST", "api.customer.internal")
+    monkeypatch.delenv("ALGENTA_ALLOW_OUTBOUND_NETWORK", raising=False)
+
+    rt = Runtime(mode="cloud", api_key="de_test", base_url="https://api.customer.internal")
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"expected_value": 1.5, "execution_ms": 45.0}
+
+    with patch("httpx.AsyncClient.post", AsyncMock(return_value=mock_resp)):
+        result = await rt.aexecute("monte_carlo", "run", {"trials": 100})
+
+    assert result["success"] is True
+    events = _runtime_ledger_events(tmp_path)
+    assert len(events) == 1
+    event = events[0]
+    assert event["action"] == "privacy_egress"
+    assert event["status"] == "allow"
+    assert event["target"] == "internal-host"
+    assert event["success"] is True
+    assert event["details"] == {
+        "surface": "sdk_cloud_execute",
+        "egress_class": "operator_service",
+        "decision": "allow",
+        "reason": "destination_allowlisted",
+        "deployment_mode": "self_hosted",
+        "service_name": "runtime",
+        "request_id": None,
+        "destination_host_redacted": "internal-host",
+        "destination_host_hash": event["details"]["destination_host_hash"],
+    }
+
+
+@pytest.mark.anyio
 async def test_runtime_cloud_rejects_domain_library():
     from apps.runtime.sdk import Runtime
 
@@ -483,7 +703,7 @@ async def test_runtime_cloud_rejects_domain_library():
     assert "local runtime" in result["error"]
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_runtime_cloud_handles_http_error():
     from apps.runtime.sdk import Runtime
 
@@ -500,15 +720,15 @@ async def test_runtime_cloud_handles_http_error():
     assert "quota_exceeded" in result["error"]
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_runtime_cloud_handles_network_error():
     from apps.runtime.sdk import Runtime
 
     rt = Runtime(mode="cloud", api_key="de_test", base_url="http://localhost:8000")
 
     import httpx
-    with patch("httpx.AsyncClient.post",
-               AsyncMock(side_effect=httpx.ConnectError("refused"))):
+
+    with patch("httpx.AsyncClient.post", AsyncMock(side_effect=httpx.ConnectError("refused"))):
         result = await rt.aexecute("monte_carlo", "run", {})
 
     assert result["success"] is False
@@ -519,7 +739,8 @@ async def test_runtime_cloud_handles_network_error():
 # 31–32  Auto mode routing
 # ══════════════════════════════════════════════════════════════════════════════
 
-@pytest.mark.asyncio
+
+@pytest.mark.anyio
 async def test_runtime_auto_routes_to_local_when_daemon_up():
     from apps.runtime.sdk import Runtime
 
@@ -528,17 +749,24 @@ async def test_runtime_auto_routes_to_local_when_daemon_up():
 
     async def _local_exec(m, f, a):
         called.append("local")
-        return {"result": {}, "latency_ms": 1.0, "engine_used": "mojo",
-                "success": True, "error": ""}
+        return {
+            "result": {},
+            "latency_ms": 1.0,
+            "engine_used": "mojo",
+            "success": True,
+            "error": "",
+        }
 
-    with patch("apps.runtime.client.DaemonClient.is_daemon_running", return_value=True), \
-         patch.object(rt, "_local_execute", _local_exec):
+    with (
+        patch("apps.runtime.client.DaemonClient.is_daemon_running", return_value=True),
+        patch.object(rt, "_local_execute", _local_exec),
+    ):
         await rt.aexecute("monte_carlo", "run", {})
 
     assert called == ["local"]
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_runtime_auto_routes_to_cloud_when_daemon_down():
     from apps.runtime.sdk import Runtime
 
@@ -547,11 +775,18 @@ async def test_runtime_auto_routes_to_cloud_when_daemon_down():
 
     async def _cloud_exec(m, f, a):
         called.append("cloud")
-        return {"result": {}, "latency_ms": 10.0, "engine_used": "cloud",
-                "success": True, "error": ""}
+        return {
+            "result": {},
+            "latency_ms": 10.0,
+            "engine_used": "cloud",
+            "success": True,
+            "error": "",
+        }
 
-    with patch("apps.runtime.client.DaemonClient.is_daemon_running", return_value=False), \
-         patch.object(rt, "_cloud_execute", _cloud_exec):
+    with (
+        patch("apps.runtime.client.DaemonClient.is_daemon_running", return_value=False),
+        patch.object(rt, "_cloud_execute", _cloud_exec),
+    ):
         await rt.aexecute("monte_carlo", "run", {})
 
     assert called == ["cloud"]
@@ -561,20 +796,20 @@ async def test_runtime_auto_routes_to_cloud_when_daemon_down():
 # 33–34  health and list_modules
 # ══════════════════════════════════════════════════════════════════════════════
 
-@pytest.mark.asyncio
+
+@pytest.mark.anyio
 async def test_runtime_health_returns_dict():
     from apps.runtime.sdk import Runtime
 
     rt = Runtime(mode="direct")
     with patch("apps.runtime.client.DaemonClient.is_daemon_running", return_value=False):
         # Cloud health fallback
-        with patch.object(rt, "_cloud_health",
-                          AsyncMock(return_value={"status": "ok"})):
+        with patch.object(rt, "_cloud_health", AsyncMock(return_value={"status": "ok"})):
             h = await rt.ahealth()
     assert isinstance(h, dict)
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_runtime_list_modules_cloud_fallback():
     from apps.runtime.sdk import Runtime
 
@@ -589,25 +824,25 @@ async def test_runtime_list_modules_cloud_fallback():
 # 35–36  Credit check integration
 # ══════════════════════════════════════════════════════════════════════════════
 
-@pytest.mark.asyncio
-async def test_runtime_direct_blocks_when_no_credits():
+
+@pytest.mark.anyio
+async def test_runtime_direct_blocks_when_no_credits(monkeypatch: pytest.MonkeyPatch):
     """Direct mode respects the credit bucket — no credits → quota error."""
-    import apps.runtime.credits as cmod
-    from apps.runtime.credits import CreditState
+    cmod = _load_isolated_credits_module(monkeypatch)
     from apps.runtime.sdk import Runtime
 
     store_bak = cmod._store
-    store = __import__('apps.runtime.credits', fromlist=['CreditStore']).CreditStore(
-        Path(tempfile.mkdtemp()) / "c.json"
+    store = cmod.CreditStore(Path(tempfile.mkdtemp()) / "c.json")
+    store._write(
+        cmod.CreditState(
+            credits_remaining=0,
+            credits_total=100,
+            issued_at=time.time(),
+            expires_at=time.time() + 3600,
+            billing_period="2026-04",
+            refresh_after=time.time() + 3200,
+        )
     )
-    store._write(CreditState(
-        credits_remaining=0,
-        credits_total=100,
-        issued_at=time.time(),
-        expires_at=time.time() + 3600,
-        billing_period="2026-04",
-        refresh_after=time.time() + 3200,
-    ))
     cmod._store = store
 
     try:
@@ -619,25 +854,32 @@ async def test_runtime_direct_blocks_when_no_credits():
         cmod._store = store_bak
 
 
-@pytest.mark.asyncio
-async def test_runtime_direct_executes_when_credits_available():
+@pytest.mark.anyio
+async def test_runtime_direct_executes_when_credits_available(monkeypatch: pytest.MonkeyPatch):
     """Direct mode proceeds when credits > 0."""
-    import apps.runtime.credits as cmod
+    cmod = _load_isolated_credits_module(monkeypatch)
     from apps.runtime.sdk import Runtime
 
     store_bak = cmod._store
-    store = __import__('apps.runtime.credits', fromlist=['CreditStore']).CreditStore(
-        Path(tempfile.mkdtemp()) / "c.json"
-    )
+    store = cmod.CreditStore(Path(tempfile.mkdtemp()) / "c.json")
     store.initialize_sync(100, "2026-04")
     cmod._store = store
 
     try:
         rt = Runtime(mode="direct")
-        with patch("apps.runtime.executor._python_fallback",
-                   return_value={"result": {"value": 1}}):
-            with patch("apps.runtime.executor.Executor._mojo_available", return_value=False):
-                result = await rt.aexecute("monte_carlo", "run", {})
+        with patch(
+            "apps.runtime.executor.Executor.execute_module",
+            AsyncMock(
+                return_value={
+                    "result_json": json.dumps({"value": 1}),
+                    "latency_ms": 1.1,
+                    "engine_used": "mojo",
+                    "success": True,
+                    "error": "",
+                }
+            ),
+        ):
+            result = await rt.aexecute("monte_carlo", "run", {})
         # Either succeeded or failed for non-quota reason
         assert "quota_exhausted" not in result.get("error", "")
     finally:
@@ -648,13 +890,15 @@ async def test_runtime_direct_executes_when_credits_available():
 # 37–40  _run helper and result dict shape
 # ══════════════════════════════════════════════════════════════════════════════
 
-@pytest.mark.asyncio
+
+@pytest.mark.anyio
 async def test_run_helper_sync_api_via_async():
     """
     Runtime.execute() sync API: call aexecute directly to verify the code path.
     The sync wrapper (_run) is tested indirectly via all tests that call rt.execute().
     """
     from apps.runtime.sdk import Runtime
+
     rt = Runtime(mode="cloud")
     # Cloud rejects domain libraries — fast, deterministic, no network needed
     result = await rt.aexecute("scheduling_algo", "fcfs", {})
@@ -663,7 +907,7 @@ async def test_run_helper_sync_api_via_async():
     assert isinstance(result["latency_ms"], float)
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_run_helper_inside_event_loop():
     """_run inside an event loop uses a thread pool."""
     from apps.runtime.sdk import _run
@@ -687,7 +931,7 @@ def test_runtime_execute_sync_outside_event_loop():
     assert isinstance(result["latency_ms"], float)
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_result_dict_has_required_keys():
     from apps.runtime.sdk import Runtime
 
@@ -697,7 +941,7 @@ async def test_result_dict_has_required_keys():
     assert required.issubset(set(result.keys()))
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_result_latency_is_numeric():
     from apps.runtime.sdk import Runtime
 

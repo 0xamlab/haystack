@@ -32,13 +32,16 @@ Credit bucket test suite — 50 checks covering:
   29. /v1/credits/refresh: device_id truncated in log (privacy)
   30. Full flow: register → execute 9999 credits → trigger refresh → execute
 """
+
 from __future__ import annotations
 
 import asyncio
+import importlib
 import sys
 import tempfile
 import time
 import uuid
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -50,11 +53,44 @@ sys.path.insert(0, str(ROOT))
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 def _tmp_store():
     """Return a CreditStore backed by a temp file (cleaned up automatically)."""
     from apps.runtime.credits import CreditStore
+
     d = tempfile.mkdtemp()
     return CreditStore(Path(d) / "credits.json")
+
+
+def _seed_key_bound_offline_license(
+    monkeypatch: pytest.MonkeyPatch,
+    runtime_dir: Path,
+    *,
+    expires_at: int | None = None,
+):
+    from apps.api_server.config import get_settings
+    from apps.api_server.services.device_service import _issue_license_jwt
+
+    monkeypatch.setenv("ALGENTA_RUNTIME_DIR", str(runtime_dir))
+    monkeypatch.delenv("ALGENTA_RUNTIME_DEV_MODE", raising=False)
+    monkeypatch.setenv("JWT_SECRET", "jwt-signing-seed")
+    get_settings.cache_clear()
+    sys.modules.pop("apps.runtime.license", None)
+    license_mod = importlib.import_module("apps.runtime.license")
+    token = _issue_license_jwt(
+        device_id="device-credit-offline-123",
+        api_key_prefix="de_live_test",
+        plan="developer",
+        device_limit=5,
+        org_id="org_credit_test",
+        api_key_expires_at=datetime.fromtimestamp(
+            float(expires_at or (int(time.time()) + 86_400)),
+            UTC,
+        ),
+    )
+    license_mod._save_license(token)
+    get_settings.cache_clear()
+    return license_mod
 
 
 def _make_state(remaining=5000, total=10_000, expires_offset=3600, billing="2026-04"):
@@ -62,11 +98,11 @@ def _make_state(remaining=5000, total=10_000, expires_offset=3600, billing="2026
     now = time.time()
     return {
         "credits_remaining": remaining,
-        "credits_total":     total,
-        "issued_at":         now,
-        "expires_at":        now + expires_offset,
-        "billing_period":    billing,
-        "refresh_after":     now + expires_offset * 0.9,
+        "credits_total": total,
+        "issued_at": now,
+        "expires_at": now + expires_offset,
+        "billing_period": billing,
+        "refresh_after": now + expires_offset * 0.9,
     }
 
 
@@ -83,9 +119,11 @@ def run(coro):
 # 1–4  CreditState dataclass
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def test_credit_state_needs_refresh_above_threshold():
     """Above 10% → no refresh needed."""
     from apps.runtime.credits import CreditState
+
     s = CreditState(**_make_state(remaining=2000, total=10_000))
     assert not s.needs_refresh
 
@@ -93,6 +131,7 @@ def test_credit_state_needs_refresh_above_threshold():
 def test_credit_state_needs_refresh_at_threshold():
     """Exactly 10% → refresh needed."""
     from apps.runtime.credits import CreditState
+
     s = CreditState(**_make_state(remaining=1000, total=10_000))
     assert s.needs_refresh
 
@@ -100,30 +139,35 @@ def test_credit_state_needs_refresh_at_threshold():
 def test_credit_state_needs_refresh_below_threshold():
     """Below 10% → refresh needed."""
     from apps.runtime.credits import CreditState
+
     s = CreditState(**_make_state(remaining=500, total=10_000))
     assert s.needs_refresh
 
 
 def test_credit_state_is_exhausted():
     from apps.runtime.credits import CreditState
+
     s = CreditState(**_make_state(remaining=0))
     assert s.is_exhausted
 
 
 def test_credit_state_not_exhausted():
     from apps.runtime.credits import CreditState
+
     s = CreditState(**_make_state(remaining=1))
     assert not s.is_exhausted
 
 
 def test_credit_state_is_expired():
     from apps.runtime.credits import CreditState
-    s = CreditState(**_make_state(expires_offset=-1))   # expired 1s ago
+
+    s = CreditState(**_make_state(expires_offset=-1))  # expired 1s ago
     assert s.is_expired
 
 
 def test_credit_state_not_expired():
     from apps.runtime.credits import CreditState
+
     s = CreditState(**_make_state(expires_offset=3600))
     assert not s.is_expired
 
@@ -131,16 +175,18 @@ def test_credit_state_not_expired():
 def test_credit_state_roundtrip():
     """to_dict / from_dict preserves all fields."""
     from apps.runtime.credits import CreditState
+
     s = CreditState(**_make_state())
     s2 = CreditState.from_dict(s.to_dict())
     assert s.credits_remaining == s2.credits_remaining
-    assert s.credits_total     == s2.credits_total
-    assert s.billing_period    == s2.billing_period
+    assert s.credits_total == s2.credits_total
+    assert s.billing_period == s2.billing_period
 
 
 def test_credit_state_from_dict_ignores_extra_keys():
     """Extra keys in JSON don't crash from_dict."""
     from apps.runtime.credits import CreditState
+
     d = {**_make_state(), "unknown_field": "ignored"}
     s = CreditState.from_dict(d)
     assert s.credits_remaining == 5000
@@ -150,9 +196,15 @@ def test_credit_state_from_dict_ignores_extra_keys():
 # 5–14  CreditStore operations
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def test_store_decrement_reduces_count():
     store = _tmp_store()
-    store._write(store._read() or __import__('apps.runtime.credits', fromlist=['CreditState']).CreditState(**_make_state(remaining=100)))
+    store._write(
+        store._read()
+        or __import__("apps.runtime.credits", fromlist=["CreditState"]).CreditState(
+            **_make_state(remaining=100)
+        )
+    )
     # Re-write via initialize_sync
     store.initialize_sync(credits_granted=100, billing_period="2026-04")
     permitted = run(store.decrement())
@@ -166,6 +218,7 @@ def test_store_decrement_returns_false_when_exhausted():
     store.initialize_sync(credits_granted=0, billing_period="2026-04")
     # Patch: write 0 remaining directly
     from apps.runtime.credits import CreditState
+
     store._write(CreditState(**_make_state(remaining=0)))
     result = run(store.decrement())
     assert result is False
@@ -184,7 +237,7 @@ def test_store_initialize_sync_creates_file():
     assert store._path.exists()
     state = run(store.get_state())
     assert state.credits_remaining == 5000
-    assert state.credits_total     == 5000
+    assert state.credits_total == 5000
 
 
 def test_store_apply_refresh_adds_carry():
@@ -193,15 +246,18 @@ def test_store_apply_refresh_adds_carry():
     store.initialize_sync(credits_granted=100, billing_period="2026-04")
     # Drain to 30
     from apps.runtime.credits import CreditState
+
     store._write(CreditState(**_make_state(remaining=30, total=100)))
-    run(store.apply_refresh(
-        credits_granted=10_000,
-        expires_at=time.time() + 3600,
-        billing_period="2026-04",
-    ))
+    run(
+        store.apply_refresh(
+            credits_granted=10_000,
+            expires_at=time.time() + 3600,
+            billing_period="2026-04",
+        )
+    )
     state = run(store.get_state())
-    assert state.credits_remaining == 10_030   # 30 carry + 10k granted
-    assert state.credits_total     == 10_000
+    assert state.credits_remaining == 10_030  # 30 carry + 10k granted
+    assert state.credits_total == 10_000
 
 
 def test_store_should_refresh_true_when_no_file():
@@ -212,6 +268,7 @@ def test_store_should_refresh_true_when_no_file():
 def test_store_should_refresh_true_when_low():
     store = _tmp_store()
     from apps.runtime.credits import CreditState
+
     store._write(CreditState(**_make_state(remaining=500, total=10_000)))
     assert store.should_refresh() is True
 
@@ -219,6 +276,7 @@ def test_store_should_refresh_true_when_low():
 def test_store_should_refresh_false_when_healthy():
     store = _tmp_store()
     from apps.runtime.credits import CreditState
+
     store._write(CreditState(**_make_state(remaining=5000, total=10_000)))
     assert store.should_refresh() is False
 
@@ -238,8 +296,10 @@ def test_store_atomic_write_no_partial_read():
 # 15–20  consume_credit hot path
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def test_consume_credit_permits_when_available():
     import apps.runtime.credits as cmod
+
     store = _tmp_store()
     store.initialize_sync(5000, "2026-04")
     old_store = cmod._store
@@ -254,6 +314,7 @@ def test_consume_credit_permits_when_available():
 def test_consume_credit_blocks_when_exhausted():
     import apps.runtime.credits as cmod
     from apps.runtime.credits import CreditState
+
     store = _tmp_store()
     store._write(CreditState(**_make_state(remaining=0)))
     old_store = cmod._store
@@ -268,7 +329,8 @@ def test_consume_credit_blocks_when_exhausted():
 def test_consume_credit_blocks_without_credit_file():
     """No credit file → execution is blocked by default."""
     import apps.runtime.credits as cmod
-    store = _tmp_store()   # empty temp dir, no file
+
+    store = _tmp_store()  # empty temp dir, no file
     old_store = cmod._store
     cmod._store = store
     try:
@@ -278,10 +340,64 @@ def test_consume_credit_blocks_without_credit_file():
         cmod._store = old_store
 
 
+def test_consume_credit_allows_key_bound_offline_license_without_credit_file(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+):
+    runtime_dir = tmp_path / "runtime"
+    _seed_key_bound_offline_license(monkeypatch, runtime_dir)
+    sys.modules.pop("apps.runtime.credits", None)
+    cmod = importlib.import_module("apps.runtime.credits")
+    store = cmod.CreditStore(runtime_dir / "credits.json")
+    old_store = cmod._store
+    cmod._store = store
+    try:
+        assert run(cmod.consume_credit()) is True
+    finally:
+        cmod._store = old_store
+
+
+def test_consume_credit_allows_key_bound_offline_license_with_exhausted_bucket(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+):
+    runtime_dir = tmp_path / "runtime"
+    _seed_key_bound_offline_license(monkeypatch, runtime_dir)
+    sys.modules.pop("apps.runtime.credits", None)
+    cmod = importlib.import_module("apps.runtime.credits")
+    store = cmod.CreditStore(runtime_dir / "credits.json")
+    old_store = cmod._store
+    cmod._store = store
+    try:
+        store.initialize_sync(credits_granted=0, billing_period="2026-04")
+        assert run(cmod.consume_credit()) is True
+    finally:
+        cmod._store = old_store
+
+
+def test_consume_credit_ignores_key_bound_license_outside_store_runtime_dir(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+):
+    licensed_runtime_dir = tmp_path / "licensed-runtime"
+    _seed_key_bound_offline_license(monkeypatch, licensed_runtime_dir)
+    sys.modules.pop("apps.runtime.credits", None)
+    cmod = importlib.import_module("apps.runtime.credits")
+    isolated_runtime_dir = tmp_path / "isolated-runtime"
+    store = cmod.CreditStore(isolated_runtime_dir / "credits.json")
+    old_store = cmod._store
+    cmod._store = store
+    try:
+        assert run(cmod.consume_credit()) is False
+    finally:
+        cmod._store = old_store
+
+
 def test_consume_credit_allows_explicit_dev_mode(monkeypatch):
     """Explicit local dev mode preserves the dev-stub escape hatch."""
     monkeypatch.setenv("ALGENTA_RUNTIME_DEV_MODE", "1")
     import apps.runtime.credits as cmod
+
     store = _tmp_store()
     old_store = cmod._store
     cmod._store = store
@@ -297,6 +413,7 @@ def test_consume_credit_triggers_refresh_when_low():
     """When credits <= 10%, background refresh is scheduled."""
     import apps.runtime.credits as cmod
     from apps.runtime.credits import CreditState
+
     store = _tmp_store()
     store._write(CreditState(**_make_state(remaining=500, total=10_000)))  # 5% <= threshold
     old_store = cmod._store
@@ -320,6 +437,7 @@ def test_consume_credit_no_double_refresh():
     """If _refreshing=True, don't schedule another refresh."""
     import apps.runtime.credits as cmod
     from apps.runtime.credits import CreditState
+
     store = _tmp_store()
     store._write(CreditState(**_make_state(remaining=100, total=10_000)))
     store._refreshing = True
@@ -396,6 +514,7 @@ def test_background_refresh_offline_failure_is_nonfatal(monkeypatch):
 # 21–26  Executor integration
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def test_executor_blocks_when_no_credits():
     """Executor returns error dict when credits exhausted."""
     import apps.runtime.credits as cmod
@@ -429,8 +548,9 @@ def test_executor_decrements_on_success():
         ex = Executor()
         # Mock _mojo_available so it uses python fallback
         with patch.object(ex, "_mojo_available", return_value=False):
-            with patch("apps.runtime.executor._python_fallback",
-                       return_value={"result": {"value": 42}}):
+            with patch(
+                "apps.runtime.executor._python_fallback", return_value={"result": {"value": 42}}
+            ):
                 run(ex.execute_module("monte_carlo", "run", {}))
         state = run(store.get_state())
         assert state.credits_remaining == 99
@@ -460,52 +580,59 @@ def test_executor_credit_error_has_zero_latency():
 # 27–30  plan_limits credit_batch_size
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def test_plan_limits_credit_batch_size_free():
     from apps.api_server.services.plan_limits import credit_batch_size
+
     assert credit_batch_size("free") == 1_000
 
 
 def test_plan_limits_credit_batch_size_pro():
     from apps.api_server.services.plan_limits import credit_batch_size
+
     assert credit_batch_size("pro") == 10_000
 
 
 def test_plan_limits_credit_batch_size_developer_legacy():
     from apps.api_server.services.plan_limits import credit_batch_size
-    assert credit_batch_size("developer") == 10_000   # same as pro
+
+    assert credit_batch_size("developer") == 10_000  # same as pro
 
 
 def test_plan_limits_credit_batch_size_team():
     from apps.api_server.services.plan_limits import credit_batch_size
+
     assert credit_batch_size("team") == 25_000
 
 
 def test_plan_limits_credit_batch_size_enterprise():
     from apps.api_server.services.plan_limits import credit_batch_size
+
     assert credit_batch_size("enterprise") == 100_000
 
 
 def test_plan_limits_batch_much_smaller_than_monthly():
     """Batch should always be << monthly limit to bound overage."""
     from apps.api_server.services.plan_limits import credit_batch_size, execution_quota
+
     for plan in ("free", "pro", "developer", "team"):
-        batch   = credit_batch_size(plan)
+        batch = credit_batch_size(plan)
         monthly = execution_quota(plan)
-        assert batch <= monthly * 0.10, (
-            f"Plan '{plan}': batch {batch} > 10% of monthly {monthly}"
-        )
+        assert batch <= monthly * 0.10, f"Plan '{plan}': batch {batch} > 10% of monthly {monthly}"
 
 
 def test_plan_limits_enterprise_batch_nonzero():
     """Enterprise has unlimited monthly but should still have a finite batch."""
     from apps.api_server.services.plan_limits import credit_batch_size, execution_quota
-    assert execution_quota("enterprise") == 0        # unlimited
-    assert credit_batch_size("enterprise") > 0       # finite batch
+
+    assert execution_quota("enterprise") == 0  # unlimited
+    assert credit_batch_size("enterprise") > 0  # finite batch
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 31–38  /v1/credits/refresh endpoint (unit tests, no live DB)
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def _make_mock_ctx(plan: str = "pro"):
     return {
@@ -524,13 +651,13 @@ def _mock_api_key_row(plan: str = "pro", org_id=None):
 def _mock_db_with_row(mock_row):
     """Return an AsyncMock db session that yields mock_row from execute().scalar_one()."""
     mock_db = AsyncMock()
-    mock_result = MagicMock()           # non-async result so .scalar_one() returns value
+    mock_result = MagicMock()  # non-async result so .scalar_one() returns value
     mock_result.scalar_one.return_value = mock_row
     mock_db.execute.return_value = mock_result
     return mock_db
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_credits_refresh_grants_batch_under_quota():
     """Grants full batch when well under monthly limit."""
     from apps.api_server.routers.credits import CreditRefreshRequest, refresh_credits
@@ -543,17 +670,19 @@ async def test_credits_refresh_grants_batch_under_quota():
     )
     mock_db = _mock_db_with_row(_mock_api_key_row("pro"))
 
-    with patch("apps.api_server.routers.credits._get_issued", return_value=0), \
-         patch("apps.api_server.routers.credits._increment_issued", AsyncMock()):
+    with (
+        patch("apps.api_server.routers.credits._get_issued", return_value=0),
+        patch("apps.api_server.routers.credits._increment_issued", AsyncMock()),
+    ):
         response = await refresh_credits(request, ctx, mock_db)
 
     assert response.credits_granted == 10_000
-    assert response.monthly_limit   == 500_000
+    assert response.monthly_limit == 500_000
     assert response.monthly_remaining == 490_000
     assert response.expires_at > time.time()
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_credits_refresh_denies_when_quota_exhausted():
     """Returns HTTP 429 when monthly quota is exhausted."""
     from fastapi import HTTPException
@@ -576,7 +705,7 @@ async def test_credits_refresh_denies_when_quota_exhausted():
     assert exc_info.value.detail["error"] == "quota_exhausted"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_credits_refresh_partial_grant_near_limit():
     """Grants only the remaining credits when close to the limit."""
     from apps.api_server.routers.credits import CreditRefreshRequest, refresh_credits
@@ -590,15 +719,17 @@ async def test_credits_refresh_partial_grant_near_limit():
     mock_db = _mock_db_with_row(_mock_api_key_row("pro"))
 
     # Only 3000 left in monthly budget
-    with patch("apps.api_server.routers.credits._get_issued", return_value=497_000), \
-         patch("apps.api_server.routers.credits._increment_issued", AsyncMock()):
+    with (
+        patch("apps.api_server.routers.credits._get_issued", return_value=497_000),
+        patch("apps.api_server.routers.credits._increment_issued", AsyncMock()),
+    ):
         response = await refresh_credits(request, ctx, mock_db)
 
-    assert response.credits_granted == 3_000   # min(10k batch, 3k remaining)
+    assert response.credits_granted == 3_000  # min(10k batch, 3k remaining)
     assert response.monthly_remaining == 0
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_credits_refresh_unlimited_plan():
     """Enterprise plan always gets full batch, no quota check."""
     from apps.api_server.routers.credits import CreditRefreshRequest, refresh_credits
@@ -614,11 +745,11 @@ async def test_credits_refresh_unlimited_plan():
     response = await refresh_credits(request, ctx, mock_db)
 
     assert response.credits_granted == 100_000
-    assert response.monthly_limit   == 0      # 0 = unlimited
-    assert response.monthly_remaining == 0    # meaningless for unlimited
+    assert response.monthly_limit == 0  # 0 = unlimited
+    assert response.monthly_remaining == 0  # meaningless for unlimited
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_credits_refresh_team_plan():
     """TEAM plan gets 25k batch."""
     from apps.api_server.routers.credits import CreditRefreshRequest, refresh_credits
@@ -631,23 +762,26 @@ async def test_credits_refresh_team_plan():
     )
     mock_db = _mock_db_with_row(_mock_api_key_row("team"))
 
-    with patch("apps.api_server.routers.credits._get_issued", return_value=0), \
-         patch("apps.api_server.routers.credits._increment_issued", AsyncMock()):
+    with (
+        patch("apps.api_server.routers.credits._get_issued", return_value=0),
+        patch("apps.api_server.routers.credits._increment_issued", AsyncMock()),
+    ):
         response = await refresh_credits(request, ctx, mock_db)
 
-    assert response.credits_granted   == 25_000
-    assert response.monthly_limit     == 1_000_000
+    assert response.credits_granted == 25_000
+    assert response.monthly_limit == 1_000_000
     assert response.monthly_remaining == 975_000
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_credits_refresh_increments_counter():
     """_increment_issued is called with the correct amount."""
     from apps.api_server.routers.credits import CreditRefreshRequest, refresh_credits
 
     ctx = _make_mock_ctx("pro")
-    request = CreditRefreshRequest(device_id="abc123def456789",
-                                   billing_period="2026-04", credits_used=0)
+    request = CreditRefreshRequest(
+        device_id="abc123def456789", billing_period="2026-04", credits_used=0
+    )
     mock_db = _mock_db_with_row(_mock_api_key_row("pro"))
 
     increment_calls = []
@@ -655,32 +789,37 @@ async def test_credits_refresh_increments_counter():
     async def _capture_increment(redis_key, amount, org_id, billing_period, db):
         increment_calls.append(amount)
 
-    with patch("apps.api_server.routers.credits._get_issued", return_value=0), \
-         patch("apps.api_server.routers.credits._increment_issued", _capture_increment):
+    with (
+        patch("apps.api_server.routers.credits._get_issued", return_value=0),
+        patch("apps.api_server.routers.credits._increment_issued", _capture_increment),
+    ):
         await refresh_credits(request, ctx, mock_db)
 
     assert increment_calls == [10_000]
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_credits_refresh_response_expiry_in_future():
     from apps.api_server.routers.credits import CreditRefreshRequest, refresh_credits
 
     ctx = _make_mock_ctx("pro")
-    request = CreditRefreshRequest(device_id="abc123def456789",
-                                   billing_period="2026-04", credits_used=0)
+    request = CreditRefreshRequest(
+        device_id="abc123def456789", billing_period="2026-04", credits_used=0
+    )
     mock_db = _mock_db_with_row(_mock_api_key_row("pro"))
 
-    with patch("apps.api_server.routers.credits._get_issued", return_value=0), \
-         patch("apps.api_server.routers.credits._increment_issued", AsyncMock()):
+    with (
+        patch("apps.api_server.routers.credits._get_issued", return_value=0),
+        patch("apps.api_server.routers.credits._increment_issued", AsyncMock()),
+    ):
         response = await refresh_credits(request, ctx, mock_db)
 
-    assert response.expires_at   > time.time()
+    assert response.expires_at > time.time()
     assert response.refresh_after > time.time()
     assert response.refresh_after < response.expires_at
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_get_issued_falls_back_to_db_sum_when_redis_is_unavailable(monkeypatch):
     import redis.asyncio as aioredis
 
@@ -711,19 +850,23 @@ async def test_get_issued_falls_back_to_db_sum_when_redis_is_unavailable(monkeyp
 # 39–44  Device register includes credit fields
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def test_register_response_model_has_credit_fields():
     """RegisterResponse schema includes credit fields."""
 
     from apps.api_server.routers.devices import RegisterResponse
+
     fields = RegisterResponse.model_fields
-    assert "credits_granted"        in fields
-    assert "credits_expires_at"     in fields
+    assert "credits_granted" in fields
+    assert "credits_expires_at" in fields
     assert "credits_billing_period" in fields
+    assert "server_time" in fields
 
 
 def test_register_response_credit_defaults_zero():
     """Credit fields default to 0 so old clients don't break."""
     from apps.api_server.routers.devices import RegisterResponse
+
     r = RegisterResponse(
         license_token="tok",
         device_id="dev",
@@ -733,17 +876,26 @@ def test_register_response_credit_defaults_zero():
         api_key_prefix="de_live_",
         message="ok",
     )
-    assert r.credits_granted        == 0
-    assert r.credits_expires_at     == 0.0
+    assert r.credits_granted == 0
+    assert r.credits_expires_at == 0.0
     assert r.credits_billing_period == ""
+    assert r.server_time == 0.0
+
+
+def test_credit_refresh_response_model_has_server_time():
+    from apps.api_server.routers.credits import CreditRefreshResponse
+
+    assert "server_time" in CreditRefreshResponse.model_fields
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 45–48  Heartbeat usage reconciliation
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def test_heartbeat_request_usage_dict_default():
     from apps.api_server.routers.devices import HeartbeatRequest
+
     req = HeartbeatRequest(device_id="a" * 20)
     assert isinstance(req.usage, dict)
     assert len(req.usage) == 0
@@ -752,6 +904,7 @@ def test_heartbeat_request_usage_dict_default():
 def test_heartbeat_usage_executions_key():
     """Usage dict can carry executions_since_last_heartbeat."""
     from apps.api_server.routers.devices import HeartbeatRequest
+
     req = HeartbeatRequest(
         device_id="a" * 20,
         usage={"executions_since_last_heartbeat": 1234, "modules_used": ["monte_carlo"]},
@@ -762,6 +915,7 @@ def test_heartbeat_usage_executions_key():
 def test_metering_executions_since_last_heartbeat():
     """Delta counter starts at 0 and increments with enqueued events."""
     from apps.runtime.metering import MeteringQueue, UsageEvent
+
     q = MeteringQueue()
     assert q.executions_since_last_heartbeat() == 0
     q.record(UsageEvent(event_type="execute_module", module="monte_carlo"))
@@ -772,10 +926,11 @@ def test_metering_executions_since_last_heartbeat():
 def test_metering_delta_advances_baseline():
     """After marking the baseline, delta resets."""
     from apps.runtime.metering import MeteringQueue, UsageEvent
+
     q = MeteringQueue()
     q.record(UsageEvent(event_type="execute_module"))
     q.record(UsageEvent(event_type="execute_module"))
-    q._executions_at_last_heartbeat = q._total_enqueued   # simulate confirmed heartbeat
+    q._executions_at_last_heartbeat = q._total_enqueued  # simulate confirmed heartbeat
     assert q.executions_since_last_heartbeat() == 0
     q.record(UsageEvent(event_type="execute_module"))
     assert q.executions_since_last_heartbeat() == 1
@@ -784,6 +939,7 @@ def test_metering_delta_advances_baseline():
 # ══════════════════════════════════════════════════════════════════════════════
 # 49–50  End-to-end flow
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def test_end_to_end_drain_then_block(monkeypatch: pytest.MonkeyPatch):
     """
@@ -804,10 +960,10 @@ def test_end_to_end_drain_then_block(monkeypatch: pytest.MonkeyPatch):
 
     try:
         with patch.object(cmod, "_background_refresh", _noop_refresh):
-            assert run(cmod.consume_credit()) is True    # 2 remaining
-            assert run(cmod.consume_credit()) is True    # 1 remaining
-            assert run(cmod.consume_credit()) is True    # 0 remaining
-            assert run(cmod.consume_credit()) is False   # blocked
+            assert run(cmod.consume_credit()) is True  # 2 remaining
+            assert run(cmod.consume_credit()) is True  # 1 remaining
+            assert run(cmod.consume_credit()) is True  # 0 remaining
+            assert run(cmod.consume_credit()) is False  # blocked
     finally:
         cmod._store = old_store
 
@@ -831,16 +987,18 @@ def test_end_to_end_refresh_restores_execution(monkeypatch: pytest.MonkeyPatch):
 
     try:
         with patch.object(cmod, "_background_refresh", _noop_refresh):
-            run(cmod.consume_credit())   # drain to 0
-            assert run(cmod.consume_credit()) is False   # blocked
+            run(cmod.consume_credit())  # drain to 0
+            assert run(cmod.consume_credit()) is False  # blocked
 
         # Simulate a successful refresh
-        run(store.apply_refresh(
-            credits_granted=10_000,
-            expires_at=time.time() + 3600,
-            billing_period="2026-04",
-        ))
+        run(
+            store.apply_refresh(
+                credits_granted=10_000,
+                expires_at=time.time() + 3600,
+                billing_period="2026-04",
+            )
+        )
 
-        assert run(cmod.consume_credit()) is True    # unblocked
+        assert run(cmod.consume_credit()) is True  # unblocked
     finally:
         cmod._store = old_store

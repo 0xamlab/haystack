@@ -3,6 +3,7 @@ from pydantic import ValidationError
 
 from apps.api_server.routers.query import (
     CandidateColumn,
+    ConstraintSpec,
     JoinEdgeSpec,
     JoinPathSpec,
     QueryRequest,
@@ -48,12 +49,81 @@ def test_query_request_accepts_explicit_multi_hop_join_path():
     assert len(req.join_path.edges) == 2
 
 
+def test_query_request_accepts_six_hop_join_path():
+    req = QueryRequest(
+        source_name="S0",
+        metric_column="metric_value",
+        group_column="group_attr",
+        aggregation="sum",
+        join_path=JoinPathSpec(
+            base_source="S0",
+            group_source="S6",
+            edges=[
+                JoinEdgeSpec(
+                    left_source="S0",
+                    right_source="S1",
+                    left_key="k01_left",
+                    right_key="k01_right",
+                    min_confidence=0.8,
+                ),
+                JoinEdgeSpec(
+                    left_source="S1",
+                    right_source="S2",
+                    left_key="k12_left",
+                    right_key="k12_right",
+                    min_confidence=0.8,
+                ),
+                JoinEdgeSpec(
+                    left_source="S2",
+                    right_source="S3",
+                    left_key="k23_left",
+                    right_key="k23_right",
+                    min_confidence=0.8,
+                ),
+                JoinEdgeSpec(
+                    left_source="S3",
+                    right_source="S4",
+                    left_key="k34_left",
+                    right_key="k34_right",
+                    min_confidence=0.8,
+                ),
+                JoinEdgeSpec(
+                    left_source="S4",
+                    right_source="S5",
+                    left_key="k45_left",
+                    right_key="k45_right",
+                    min_confidence=0.8,
+                ),
+                JoinEdgeSpec(
+                    left_source="S5",
+                    right_source="S6",
+                    left_key="k56_left",
+                    right_key="k56_right",
+                    min_confidence=0.8,
+                ),
+            ],
+            max_hops=6,
+            min_path_confidence=0.7,
+        ),
+    )
+
+    assert req.join_path is not None
+    assert req.join_path.base_source == "S0"
+    assert len(req.join_path.edges) == 6
+
+
 def test_join_path_spec_defaults_to_safe_constraints():
     path = JoinPathSpec(base_source="S0")
 
     assert path.max_hops == 4
     assert path.reject_on_ambiguity is True
     assert path.reject_on_fanout is True
+
+
+def test_constraint_spec_defaults_to_safe_join_budget():
+    constraints = ConstraintSpec()
+
+    assert constraints.max_join_hops == 4
 
 
 def test_query_request_rejects_legacy_single_hop_fields():
@@ -73,17 +143,21 @@ def test_query_request_rejects_unknown_extra_fields_inside_join_path():
             metric_column="metric_value",
             group_column="group_attr",
             aggregation="sum",
-            join_path=JoinPathSpec.model_validate({
-                "base_source": "S0",
-                "group_source": "S1",
-                "edges": [{
-                    "left_source": "S0",
-                    "right_source": "S1",
-                    "left_key": "k01_left",
-                    "right_key": "k01_right",
-                    "legacy": True,
-                }],
-            }),
+            join_path=JoinPathSpec.model_validate(
+                {
+                    "base_source": "S0",
+                    "group_source": "S1",
+                    "edges": [
+                        {
+                            "left_source": "S0",
+                            "right_source": "S1",
+                            "left_key": "k01_left",
+                            "right_key": "k01_right",
+                            "legacy": True,
+                        }
+                    ],
+                }
+            ),
         )
 
 
@@ -150,8 +224,22 @@ def test_decision_contract_flags_require_clarification_for_mid_confidence():
     validated, clarification_required, rejection_reason = _decision_contract_flags(
         0.81,
         [
-            {"source": "POS", "column": "UNIT_COST", "role": "unit_measure", "magnitude": "medium", "formula": None, "confidence": 0.81},
-            {"source": "POS", "column": "EXT_COST", "role": "unit_measure", "magnitude": "medium", "formula": None, "confidence": 0.76},
+            {
+                "source": "POS",
+                "column": "UNIT_COST",
+                "role": "unit_measure",
+                "magnitude": "medium",
+                "formula": None,
+                "confidence": 0.81,
+            },
+            {
+                "source": "POS",
+                "column": "EXT_COST",
+                "role": "unit_measure",
+                "magnitude": "medium",
+                "formula": None,
+                "confidence": 0.76,
+            },
         ],
     )
 
@@ -164,7 +252,14 @@ def test_decision_contract_flags_reject_low_confidence():
     validated, clarification_required, rejection_reason = _decision_contract_flags(
         0.69,
         [
-            {"source": "POS", "column": "UNIT_COST", "role": "unit_measure", "magnitude": "medium", "formula": None, "confidence": 0.69},
+            {
+                "source": "POS",
+                "column": "UNIT_COST",
+                "role": "unit_measure",
+                "magnitude": "medium",
+                "formula": None,
+                "confidence": 0.69,
+            },
         ],
     )
 

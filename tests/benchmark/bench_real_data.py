@@ -8,6 +8,7 @@ Usage:
     python -m tests.benchmark.bench_real_data
     make bench-real-data
 """
+
 import asyncio
 import json
 import subprocess
@@ -53,10 +54,12 @@ async def test_csv_pipeline(csv_path: str, description: str) -> bool | None:
     print(f"    File size: {file_size_kb:.0f} KB")
 
     # ── 2. Read CSV via FileConnector ────────────────────────────────────
-    connector = FileConnector({
-        "file_type": "csv",
-        "file_path": str(path),
-    })
+    connector = FileConnector(
+        {
+            "file_type": "csv",
+            "file_path": str(path),
+        }
+    )
 
     t0 = time.perf_counter()
     try:
@@ -83,8 +86,10 @@ async def test_csv_pipeline(csv_path: str, description: str) -> bool | None:
     numeric_fields = [k for k, v in sample.items() if isinstance(v, int | float)]
 
     print(f"    Total fields: {len(all_fields)}")
-    print(f"    Numeric fields ({len(numeric_fields)}): {', '.join(numeric_fields[:8])}"
-          f"{'...' if len(numeric_fields) > 8 else ''}")
+    print(
+        f"    Numeric fields ({len(numeric_fields)}): {', '.join(numeric_fields[:8])}"
+        f"{'...' if len(numeric_fields) > 8 else ''}"
+    )
 
     if len(numeric_fields) < 2:
         print("    ⚠️  Not enough numeric fields for meaningful simulation")
@@ -109,8 +114,9 @@ async def test_csv_pipeline(csv_path: str, description: str) -> bool | None:
     # Show variable details (first few)
     for v in variables[:5]:
         p = v.get("params", {})
-        p_str = ", ".join(f"{k}={val:.2f}" if isinstance(val, float) else f"{k}={val}"
-                          for k, val in p.items())
+        p_str = ", ".join(
+            f"{k}={val:.2f}" if isinstance(val, float) else f"{k}={val}" for k, val in p.items()
+        )
         print(f"      • {v['name']:30s}  {v['distribution']:12s}  ({p_str})")
     if len(variables) > 5:
         print(f"      ... and {len(variables) - 5} more")
@@ -259,6 +265,7 @@ async def main() -> None:
         except Exception as e:
             print(f"    ❌ Unexpected error: {e}")
             import traceback
+
             traceback.print_exc()
             failed += 1
 

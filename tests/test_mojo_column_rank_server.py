@@ -47,19 +47,37 @@ def test_mojo_rank_server_handles_control_messages() -> None:
     )
     try:
         deadline = time.monotonic() + 5.0
+
+        def _skip_if_server_exited() -> None:
+            if proc.poll() is None:
+                return
+            stderr_output = proc.stderr.read() if proc.stderr is not None else ""
+            pytest.skip(
+                "Mojo rank server mode unavailable for current binary: "
+                f"{stderr_output.strip() or 'server exited before opening socket'}"
+            )
+
         while not socket_path.exists():
-            if proc.poll() is not None:
-                stderr_output = proc.stderr.read() if proc.stderr is not None else ""
-                pytest.skip(
-                    "Mojo rank server mode unavailable for current binary: "
-                    f"{stderr_output.strip() or 'server exited before opening socket'}"
-                )
+            _skip_if_server_exited()
             if time.monotonic() >= deadline:
                 raise TimeoutError("timed out waiting for Mojo rank server socket")
             time.sleep(0.01)
 
-        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
-            sock.connect(str(socket_path))
+        while True:
+            _skip_if_server_exited()
+            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            try:
+                sock.connect(str(socket_path))
+                break
+            except ConnectionRefusedError:
+                sock.close()
+                if time.monotonic() >= deadline:
+                    raise TimeoutError(
+                        "timed out waiting for Mojo rank server to accept connections"
+                    ) from None
+                time.sleep(0.01)
+
+        with sock:
             assert _recv_frame(sock) == {"status": "ready"}
             assert _send_frame(sock, {"type": "ping"}) == {"status": "ok"}
 

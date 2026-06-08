@@ -16,6 +16,7 @@ Environment variables:
     BENCH_CONCURRENCY_RUNS    — requests per level, default "50"
     MOJO_ALLOW_SUBPROCESS_FALLBACK — set "false" to enforce pool-only
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -40,9 +41,13 @@ _PAYLOAD: dict[str, Any] = {
     "engine_type": "monte_carlo",
     "runs": 10000,
     "variables": [
-        {"name": "rev",  "distribution": "normal",     "params": {"mean": 100000, "std": 20000}},
-        {"name": "cost", "distribution": "triangular",  "params": {"low": 40000, "mode": 55000, "high": 70000}},
-        {"name": "vol",  "distribution": "lognormal",   "params": {"mean": 11.0, "std": 0.15}},
+        {"name": "rev", "distribution": "normal", "params": {"mean": 100000, "std": 20000}},
+        {
+            "name": "cost",
+            "distribution": "triangular",
+            "params": {"low": 40000, "mode": 55000, "high": 70000},
+        },
+        {"name": "vol", "distribution": "lognormal", "params": {"mean": 11.0, "std": 0.15}},
     ],
     "objective_function": "rev - cost",
 }
@@ -54,6 +59,7 @@ async def _invoke_one(semaphore: asyncio.Semaphore) -> tuple[float, bool, str]:
     Returns (elapsed_ms, success, runtime_mode).
     """
     from apps.api_server.compute.mojo_adapter import invoke_engine
+
     async with semaphore:
         t0 = time.perf_counter()
         try:
@@ -96,27 +102,27 @@ async def benchmark_at_concurrency(
 
     if not latencies:
         return {
-            "concurrency":   concurrency,
-            "n_requests":    n_requests,
-            "errors":        errors,
+            "concurrency": concurrency,
+            "n_requests": n_requests,
+            "errors": errors,
             "error": "all requests failed",
         }
 
     latencies.sort()
     n = len(latencies)
     return {
-        "concurrency":    concurrency,
-        "n_requests":     n_requests,
-        "n_succeeded":    n,
-        "errors":         errors,
+        "concurrency": concurrency,
+        "n_requests": n_requests,
+        "n_succeeded": n,
+        "errors": errors,
         "error_rate_pct": round(errors / n_requests * 100, 1),
-        "p50_ms":         round(latencies[n // 2], 2),
-        "p95_ms":         round(latencies[max(0, int(n * 0.95) - 1)], 2),
-        "p99_ms":         round(latencies[max(0, int(n * 0.99) - 1)], 2),
-        "mean_ms":        round(statistics.mean(latencies), 2),
-        "min_ms":         round(latencies[0], 2),
-        "max_ms":         round(latencies[-1], 2),
-        "mode":           mode,
+        "p50_ms": round(latencies[n // 2], 2),
+        "p95_ms": round(latencies[max(0, int(n * 0.95) - 1)], 2),
+        "p99_ms": round(latencies[max(0, int(n * 0.99) - 1)], 2),
+        "mean_ms": round(statistics.mean(latencies), 2),
+        "min_ms": round(latencies[0], 2),
+        "max_ms": round(latencies[-1], 2),
+        "mode": mode,
     }
 
 
@@ -160,7 +166,7 @@ def print_concurrency_table(results: list[dict[str, Any]]) -> None:
     # Summary
     print()
     any_errors = any(r.get("error_rate_pct", 0) > 0 for r in results if "p50_ms" in r)
-    all_pool   = all(r.get("mode") == "pool" for r in results if "p50_ms" in r)
+    all_pool = all(r.get("mode") == "pool" for r in results if "p50_ms" in r)
     if all_pool:
         print("✅ All concurrency levels used pool runtime (no subprocess fallback)")
     else:
@@ -172,12 +178,14 @@ def print_concurrency_table(results: list[dict[str, Any]]) -> None:
 
     # Latency degradation check (p99 at max concurrency vs p50 at concurrency=1)
     if len(results) >= 2 and "p50_ms" in results[0] and "p99_ms" in results[-1]:
-        base_p50   = results[0]["p50_ms"]
-        peak_p99   = results[-1]["p99_ms"]
+        base_p50 = results[0]["p50_ms"]
+        peak_p99 = results[-1]["p99_ms"]
         degradation = peak_p99 / base_p50 if base_p50 > 0 else 0
-        print(f"\nLatency degradation: p50@{CONCURRENCY_LEVELS[0]}={base_p50}ms → "
-              f"p99@{CONCURRENCY_LEVELS[-1]}={peak_p99}ms  "
-              f"(ratio: {degradation:.1f}x)")
+        print(
+            f"\nLatency degradation: p50@{CONCURRENCY_LEVELS[0]}={base_p50}ms → "
+            f"p99@{CONCURRENCY_LEVELS[-1]}={peak_p99}ms  "
+            f"(ratio: {degradation:.1f}x)"
+        )
         if degradation > 10:
             print("⚠️  High degradation — increase MOJO_POOL_SIZE or review worker saturation")
         else:
@@ -187,7 +195,9 @@ def print_concurrency_table(results: list[dict[str, Any]]) -> None:
 if __name__ == "__main__":
     print("Algenta Concurrency Benchmark")
     print(f"Levels: {CONCURRENCY_LEVELS}  |  Requests/level: {REQUESTS_PER_LEVEL}")
-    print(f"MOJO_ALLOW_SUBPROCESS_FALLBACK={os.environ.get('MOJO_ALLOW_SUBPROCESS_FALLBACK', 'true')}")
+    print(
+        f"MOJO_ALLOW_SUBPROCESS_FALLBACK={os.environ.get('MOJO_ALLOW_SUBPROCESS_FALLBACK', 'true')}"
+    )
     print()
     results = asyncio.run(run_concurrency_benchmarks())
     print_concurrency_table(results)

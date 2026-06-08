@@ -1,83 +1,74 @@
 ================================================================================
   ALGENTA DECISION ENGINE — BENCHMARK SUMMARY
-  Generated: 2026-04-21T19:17:19.854395+00:00
+  Generated: 2026-05-24T07:31:15.841233+00:00
 ================================================================================
 
 ═══ ENGINE SCALING (3 variables, median of 3 runs) ═══
 
   Engine                         100       500      1000      5000     10000     50000  (runs)
   --------------------------------------------------------------------------------------------
-  monte_carlo                   268ms      338ms      549ms       53ms       64ms      329ms
-  lhs                            32ms      238ms       70ms      210ms      391ms      322ms
-  qmc_sobol                    1292ms     3449ms       83ms       39ms       28ms      255ms
-  bootstrap                     216ms      362ms      108ms      339ms      175ms     2122ms
-  scenario                      555ms      174ms      207ms       39ms       78ms     1013ms
-  sensitivity                   892ms      142ms      167ms      626ms      835ms       60ms
-  decision_tree                 466ms      303ms      273ms       51ms      306ms      266ms
-  time_series                   211ms      289ms      299ms      827ms      437ms      465ms
-  mcmc                           90ms       62ms      982ms      461ms      943ms      332ms
-  importance_sampling            64ms       67ms       66ms       68ms      702ms     1724ms
+  monte_carlo                   SKIP      SKIP      SKIP      SKIP      SKIP      SKIP
+  lhs                           SKIP      SKIP      SKIP      SKIP      SKIP      SKIP
+  qmc_sobol                     SKIP      SKIP      SKIP      SKIP      SKIP      SKIP
+  bootstrap                     SKIP      SKIP      SKIP      SKIP      SKIP      SKIP
+  scenario                      SKIP      SKIP      SKIP      SKIP      SKIP      SKIP
+  sensitivity                   SKIP      SKIP      SKIP      SKIP      SKIP      SKIP
+  decision_tree                 SKIP      SKIP      SKIP      SKIP      SKIP      SKIP
+  time_series                   SKIP      SKIP      SKIP      SKIP      SKIP      SKIP
+  mcmc                          SKIP      SKIP      SKIP      SKIP      SKIP      SKIP
+  importance_sampling           SKIP      SKIP      SKIP      SKIP      SKIP      SKIP
 
 --- Fastest / Slowest Engines at 1,000 runs ---
-  Fastest: importance_sampling (66ms)
-  Slowest: mcmc (982ms)
-  Ratio:   14.9x
 
 ═══ VARIABLE SCALING (monte_carlo, 1000 runs) ═══
 
   Variables      Latency (ms)
   ----------------------------
-  1                      214ms
-  3                      106ms
-  5                     1745ms
-  10                     239ms
-  20                      99ms
+  1                      SKIP
+  3                      SKIP
+  5                      SKIP
+  10                     SKIP
+  20                     SKIP
 
 ═══ DISTRIBUTION TYPE BENCHMARKS (monte_carlo, 1000 runs, 3 vars) ═══
 
   Distribution       Latency (ms)
   --------------------------------
-  normal                      42ms
-  uniform                    500ms
-  triangular                 264ms
-  lognormal                  291ms
-  beta                       384ms
+  normal                     SKIP
+  uniform                    SKIP
+  triangular                 SKIP
+  lognormal                  SKIP
+  beta                       SKIP
 
 ═══ CONCURRENCY SCALING (monte_carlo, 1000 runs, 3 vars) ═══
 
   Concurrency      Total (ms)    Avg/Req        Min        Max
   ----------------------------------------------------------
-  1                     3517ms      3207ms      3207ms      3207ms
-  5                      602ms       462ms       393ms       574ms
-  10                    7392ms      6952ms      6914ms      6992ms
-  20                    6279ms      4933ms       329ms      6199ms
+  1                      SKIP       SKIP       SKIP       SKIP
+  5                      SKIP       SKIP       SKIP       SKIP
+  10                     SKIP       SKIP       SKIP       SKIP
+  20                     SKIP       SKIP       SKIP       SKIP
 
 ═══ END-TO-END LATENCY BREAKDOWN ═══
 
   Endpoint                               Latency (ms)
   ----------------------------------------------------
-  Health (HTTP overhead)                         179ms
-  Simple sim (auto, 100 runs)                    100ms
-  Complex sim (expert, 10v, 10k runs)             48ms
-  Recommend endpoint                              55ms
-  What-if comparison                             308ms
-  Run listing (GET /v1/runs)                     408ms
+  Health (HTTP overhead)                           4ms
+  Simple sim (auto, 100 runs)                    SKIP
+  Complex sim (expert, 10v, 10k runs)            SKIP
+  Recommend endpoint                               9ms
+  What-if comparison                             SKIP
+  Run listing (GET /v1/runs)                      36ms
 
 ═══ WARM vs COLD PERFORMANCE ═══
 
-  Cold start (1st request):         505ms
-  Warm (10th request):              355ms
-  Warm (median of 9):               208ms
-  Cold/Warm ratio:                14.90x
+  Cold start (1st request):        SKIP
+  Warm (10th request):             SKIP
+  Warm (median of 9):              SKIP
+  Cold/Warm ratio:                 SKIP
 
 ═══ OVERALL STATISTICS ═══
 
-  Total benchmarks:    70
-  Mean latency:        425ms
-  Median latency:      267ms
-  Min latency:         28ms
-  Max latency:         3449ms
-  Std deviation:       557ms
-  Timeouts:            0
+  No valid latency measurements collected.
 
 ================================================================================

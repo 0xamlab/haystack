@@ -4,6 +4,7 @@ RBAC middleware unit tests.
 Tests the require_role() dependency factory and role-rank logic
 without any database or HTTP stack.
 """
+
 from unittest.mock import MagicMock
 from uuid import uuid4
 
@@ -11,9 +12,11 @@ import pytest
 
 # ── Role rank helpers ─────────────────────────────────────────────────────────
 
+
 def test_role_rank_ordering():
     """viewer < member < admin < owner."""
     from apps.api_server.middleware.rbac import _rank
+
     assert _rank("viewer") < _rank("member")
     assert _rank("member") < _rank("admin")
     assert _rank("admin") < _rank("owner")
@@ -22,6 +25,7 @@ def test_role_rank_ordering():
 def test_role_rank_unknown_defaults_to_viewer():
     """Unknown roles get viewer rank (0); known roles are normalized to lowercase."""
     from apps.api_server.middleware.rbac import _rank
+
     assert _rank("superuser") == 0
     assert _rank("") == 0
     assert _rank("OWNER") == _rank("owner")
@@ -30,11 +34,13 @@ def test_role_rank_unknown_defaults_to_viewer():
 def test_require_role_invalid_minimum_raises():
     """Passing an unknown minimum_role should raise ValueError at import time."""
     from apps.api_server.middleware.rbac import require_role
+
     with pytest.raises(ValueError, match="Unknown role"):
         require_role("superadmin")
 
 
 # ── Dependency behaviour ──────────────────────────────────────────────────────
+
 
 def _make_auth(role: str) -> dict:
     return {
@@ -53,7 +59,7 @@ def _make_request():
     return req
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_require_role_passes_sufficient_role():
     """An owner calling require_role("admin") must succeed."""
     from apps.api_server.middleware.rbac import require_role
@@ -70,7 +76,7 @@ async def test_require_role_passes_sufficient_role():
         assert result["role"] == "owner"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_require_role_passes_exact_role():
     """An admin calling require_role("admin") must succeed."""
 
@@ -83,7 +89,7 @@ async def test_require_role_passes_exact_role():
     assert result["role"] == "admin"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_require_role_blocks_insufficient_role():
     """A viewer calling require_role("admin") must raise HTTP 403."""
     from fastapi import HTTPException
@@ -105,7 +111,7 @@ async def test_require_role_blocks_insufficient_role():
     assert error["details"] == [{"field": "role", "issue": "insufficient_role"}]
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_require_role_member_blocks_viewer():
     """A viewer calling require_role("member") must raise 403."""
     from fastapi import HTTPException
@@ -120,7 +126,7 @@ async def test_require_role_member_blocks_viewer():
     assert exc_info.value.status_code == 403
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_require_role_owner_only_blocks_admin():
     """An admin calling require_role("owner") must raise 403."""
     from fastapi import HTTPException
@@ -135,7 +141,7 @@ async def test_require_role_owner_only_blocks_admin():
     assert exc_info.value.status_code == 403
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_require_role_viewer_read_allowed():
     """A viewer calling require_role("viewer") (read-only) must succeed."""
     from apps.api_server.middleware.rbac import require_role
@@ -149,9 +155,11 @@ async def test_require_role_viewer_read_allowed():
 
 # ── AuthContext role/email fields ─────────────────────────────────────────────
 
+
 def test_auth_context_has_role_and_email():
     """AuthContext TypedDict must declare role and email fields."""
     from apps.api_server.services.auth_service import AuthContext
+
     ctx: AuthContext = {
         "org_id": uuid4(),
         "key_id": uuid4(),
@@ -165,9 +173,11 @@ def test_auth_context_has_role_and_email():
 
 # ── Dependency name for OpenAPI ───────────────────────────────────────────────
 
+
 def test_require_role_sets_function_name():
     """The returned dependency must have a stable __name__ for OpenAPI."""
     from apps.api_server.middleware.rbac import require_role
+
     dep = require_role("admin")
     assert dep.__name__ == "require_admin_role"
 

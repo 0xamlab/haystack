@@ -15,6 +15,7 @@ Usage:
     MOJO_ALLOW_SUBPROCESS_FALLBACK=false python -m tests.benchmark.bench_ci_gate
     make bench-gate
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -28,119 +29,218 @@ from typing import Any
 # Gate thresholds by engine class
 GATES: dict[str, dict[str, float]] = {
     # Standard MC-class engines
-    "monte_carlo":         {"p50": float(os.environ.get("GATE_P50_MS", "50")),   "p95": float(os.environ.get("GATE_P95_MS", "200"))},
-    "qmc_sobol":           {"p50": float(os.environ.get("GATE_P50_MS", "50")),   "p95": float(os.environ.get("GATE_P95_MS", "200"))},
-    "lhs":                 {"p50": float(os.environ.get("GATE_P50_MS", "50")),   "p95": float(os.environ.get("GATE_P95_MS", "200"))},
-    "sensitivity":         {"p50": float(os.environ.get("GATE_P50_MS", "50")),   "p95": float(os.environ.get("GATE_P95_MS", "200"))},
+    "monte_carlo": {
+        "p50": float(os.environ.get("GATE_P50_MS", "50")),
+        "p95": float(os.environ.get("GATE_P95_MS", "200")),
+    },
+    "qmc_sobol": {
+        "p50": float(os.environ.get("GATE_P50_MS", "50")),
+        "p95": float(os.environ.get("GATE_P95_MS", "200")),
+    },
+    "lhs": {
+        "p50": float(os.environ.get("GATE_P50_MS", "50")),
+        "p95": float(os.environ.get("GATE_P95_MS", "200")),
+    },
+    "sensitivity": {
+        "p50": float(os.environ.get("GATE_P50_MS", "50")),
+        "p95": float(os.environ.get("GATE_P95_MS", "200")),
+    },
     # Mid-latency engines
-    "scenario":            {"p50": 100.0, "p95": 400.0},
-    "bootstrap":           {"p50": 100.0, "p95": 400.0},
-    "compare":             {"p50": 100.0, "p95": 400.0},
+    "scenario": {"p50": 100.0, "p95": 400.0},
+    "bootstrap": {"p50": 100.0, "p95": 400.0},
+    "compare": {"p50": 100.0, "p95": 400.0},
     "importance_sampling": {"p50": 100.0, "p95": 400.0},
     # Slower-by-design engines
-    "mcmc":                {"p50": 500.0, "p95": 2000.0},
-    "decision_tree":       {"p50": 500.0, "p95": 2000.0},
-    "time_series":         {"p50": 500.0, "p95": 2000.0},
+    "mcmc": {"p50": 500.0, "p95": 2000.0},
+    "decision_tree": {"p50": 500.0, "p95": 2000.0},
+    "time_series": {"p50": 500.0, "p95": 2000.0},
 }
 
-N_WARMUP  = int(os.environ.get("GATE_WARMUP",  "10"))
+N_WARMUP = int(os.environ.get("GATE_WARMUP", "10"))
 N_MEASURE = int(os.environ.get("GATE_MEASURE", "30"))
 
 # Shared random data for data-driven engines
 _rng = random.Random(42)
-_HIST_DATA  = [_rng.gauss(50_000, 10_000) for _ in range(100)]
-_MCMC_DATA  = [_rng.gauss(50_000, 8_000)  for _ in range(50)]
+_HIST_DATA = [_rng.gauss(50_000, 10_000) for _ in range(100)]
+_MCMC_DATA = [_rng.gauss(50_000, 8_000) for _ in range(50)]
 
 
 # ── Minimal valid payloads for all 11 engines ─────────────────────────────────
 
 PAYLOADS: dict[str, dict[str, Any]] = {
     "monte_carlo": {
-        "engine_type": "monte_carlo", "runs": 10000,
+        "engine_type": "monte_carlo",
+        "runs": 10000,
         "variables": [
-            {"name": "rev",  "distribution": "normal",     "params": {"mean": 100000, "std": 20000}},
-            {"name": "cost", "distribution": "triangular",  "params": {"low": 40000, "mode": 55000, "high": 70000}},
-            {"name": "vol",  "distribution": "lognormal",   "params": {"mean": 11.0,  "std": 0.15}},
+            {"name": "rev", "distribution": "normal", "params": {"mean": 100000, "std": 20000}},
+            {
+                "name": "cost",
+                "distribution": "triangular",
+                "params": {"low": 40000, "mode": 55000, "high": 70000},
+            },
+            {"name": "vol", "distribution": "lognormal", "params": {"mean": 11.0, "std": 0.15}},
         ],
         "objective_function": "rev - cost",
     },
     "qmc_sobol": {
-        "engine_type": "qmc_sobol", "runs": 10000,
+        "engine_type": "qmc_sobol",
+        "runs": 10000,
         "variables": [
-            {"name": "rev",  "distribution": "normal",    "params": {"mean": 100000, "std": 20000}},
-            {"name": "cost", "distribution": "triangular", "params": {"low": 40000, "mode": 55000, "high": 70000}},
+            {"name": "rev", "distribution": "normal", "params": {"mean": 100000, "std": 20000}},
+            {
+                "name": "cost",
+                "distribution": "triangular",
+                "params": {"low": 40000, "mode": 55000, "high": 70000},
+            },
         ],
         "objective_function": "rev - cost",
     },
     "lhs": {
-        "engine_type": "lhs", "runs": 10000,
+        "engine_type": "lhs",
+        "runs": 10000,
         "variables": [
-            {"name": "rev",  "distribution": "normal",    "params": {"mean": 100000, "std": 20000}},
-            {"name": "cost", "distribution": "triangular", "params": {"low": 40000, "mode": 55000, "high": 70000}},
+            {"name": "rev", "distribution": "normal", "params": {"mean": 100000, "std": 20000}},
+            {
+                "name": "cost",
+                "distribution": "triangular",
+                "params": {"low": 40000, "mode": 55000, "high": 70000},
+            },
         ],
         "objective_function": "rev - cost",
     },
     "sensitivity": {
-        "engine_type": "sensitivity", "runs": 5000,
+        "engine_type": "sensitivity",
+        "runs": 5000,
         "variables": [
-            {"name": "rev",  "distribution": "normal",    "params": {"mean": 100000, "std": 20000}},
-            {"name": "cost", "distribution": "triangular", "params": {"low": 40000, "mode": 55000, "high": 70000}},
-            {"name": "vol",  "distribution": "lognormal",  "params": {"mean": 11.0,  "std": 0.15}},
+            {"name": "rev", "distribution": "normal", "params": {"mean": 100000, "std": 20000}},
+            {
+                "name": "cost",
+                "distribution": "triangular",
+                "params": {"low": 40000, "mode": 55000, "high": 70000},
+            },
+            {"name": "vol", "distribution": "lognormal", "params": {"mean": 11.0, "std": 0.15}},
         ],
         "objective_function": "rev - cost",
     },
     "scenario": {
-        "engine_type": "scenario", "runs": 2000,
+        "engine_type": "scenario",
+        "runs": 2000,
         "variables": [{"name": "rev", "distribution": "fixed", "params": {"value": 100000}}],
         "objective_function": "rev",
-        "scenario_config": {"scenarios": [
-            {"name": "Bull", "probability": 0.3, "variables": {"rev": 150000}},
-            {"name": "Base", "probability": 0.5, "variables": {"rev": 100000}},
-            {"name": "Bear", "probability": 0.2, "variables": {"rev": 60000}},
-        ]},
+        "scenario_config": {
+            "scenarios": [
+                {"name": "Bull", "probability": 0.3, "variables": {"rev": 150000}},
+                {"name": "Base", "probability": 0.5, "variables": {"rev": 100000}},
+                {"name": "Bear", "probability": 0.2, "variables": {"rev": 60000}},
+            ]
+        },
     },
     "bootstrap": {
-        "engine_type": "bootstrap", "runs": 3000,
+        "engine_type": "bootstrap",
+        "runs": 3000,
         "bootstrap_config": {"historical_data": _HIST_DATA, "statistic": "mean"},
     },
     "compare": {
-        "engine_type": "compare", "runs": 2000,
+        "engine_type": "compare",
+        "runs": 2000,
         "scenarios": [
-            {"name": "Opt",  "variables": [{"name": "rev", "distribution": "normal", "params": {"mean": 150000, "std": 20000}}], "objective_function": "rev"},
-            {"name": "Base", "variables": [{"name": "rev", "distribution": "normal", "params": {"mean": 100000, "std": 20000}}], "objective_function": "rev"},
-            {"name": "Pess", "variables": [{"name": "rev", "distribution": "normal", "params": {"mean": 60000,  "std": 15000}}], "objective_function": "rev"},
+            {
+                "name": "Opt",
+                "variables": [
+                    {
+                        "name": "rev",
+                        "distribution": "normal",
+                        "params": {"mean": 150000, "std": 20000},
+                    }
+                ],
+                "objective_function": "rev",
+            },
+            {
+                "name": "Base",
+                "variables": [
+                    {
+                        "name": "rev",
+                        "distribution": "normal",
+                        "params": {"mean": 100000, "std": 20000},
+                    }
+                ],
+                "objective_function": "rev",
+            },
+            {
+                "name": "Pess",
+                "variables": [
+                    {
+                        "name": "rev",
+                        "distribution": "normal",
+                        "params": {"mean": 60000, "std": 15000},
+                    }
+                ],
+                "objective_function": "rev",
+            },
         ],
     },
     "importance_sampling": {
-        "engine_type": "importance_sampling", "runs": 3000,
+        "engine_type": "importance_sampling",
+        "runs": 3000,
         "variables": [
-            {"name": "rev",  "distribution": "normal", "params": {"mean": 100000, "std": 20000}},
-            {"name": "cost", "distribution": "normal", "params": {"mean": 80000,  "std": 15000}},
+            {"name": "rev", "distribution": "normal", "params": {"mean": 100000, "std": 20000}},
+            {"name": "cost", "distribution": "normal", "params": {"mean": 80000, "std": 15000}},
         ],
         "objective_function": "rev - cost",
         "importance_sampling_config": {"target_threshold": -10000, "tail_direction": "lower"},
     },
     "mcmc": {
-        "engine_type": "mcmc", "runs": 500,
-        "mcmc_config": {"observed_data": _MCMC_DATA, "chains": 2, "burn_in": 200, "likelihood": "normal"},
+        "engine_type": "mcmc",
+        "runs": 500,
+        "mcmc_config": {
+            "observed_data": _MCMC_DATA,
+            "chains": 2,
+            "burn_in": 200,
+            "likelihood": "normal",
+        },
     },
     "decision_tree": {
-        "engine_type": "decision_tree", "runs": 2000,
-        "decision_tree_config": {"paths": [
-            {"label": "Success", "probability": 0.6,
-             "variables": [{"name": "rev", "distribution": "normal", "params": {"mean": 200000, "std": 30000}}],
-             "objective_function": "rev"},
-            {"label": "Failure", "probability": 0.4,
-             "variables": [{"name": "rev", "distribution": "normal", "params": {"mean": 50000,  "std": 10000}}],
-             "objective_function": "rev"},
-        ]},
+        "engine_type": "decision_tree",
+        "runs": 2000,
+        "decision_tree_config": {
+            "paths": [
+                {
+                    "label": "Success",
+                    "probability": 0.6,
+                    "variables": [
+                        {
+                            "name": "rev",
+                            "distribution": "normal",
+                            "params": {"mean": 200000, "std": 30000},
+                        }
+                    ],
+                    "objective_function": "rev",
+                },
+                {
+                    "label": "Failure",
+                    "probability": 0.4,
+                    "variables": [
+                        {
+                            "name": "rev",
+                            "distribution": "normal",
+                            "params": {"mean": 50000, "std": 10000},
+                        }
+                    ],
+                    "objective_function": "rev",
+                },
+            ]
+        },
     },
     "time_series": {
-        "engine_type": "time_series", "runs": 1000,
+        "engine_type": "time_series",
+        "runs": 1000,
         "time_series_config": {
-            "model": "gbm", "initial_value": 100.0,
-            "horizons": [3, 6, 12], "dt": 0.0833,
-            "drift": 0.07, "volatility": 0.20,
+            "model": "gbm",
+            "initial_value": 100.0,
+            "horizons": [3, 6, 12],
+            "dt": 0.0833,
+            "drift": 0.07,
+            "volatility": 0.20,
         },
     },
 }
@@ -164,11 +264,13 @@ async def _setup_engine() -> None:
 
     try:
         from apps.api_server.compute.mojo_pool import MojoWorkerPool, set_pool
+
         pool = MojoWorkerPool(size=max(1, (os.cpu_count() or 4) - 1))
         await pool.start()
         if pool._running:
             set_pool(pool)
             from apps.api_server.compute.mojo_adapter import invoke_engine
+
             _invoke_fn = invoke_engine
             _runtime_mode = "pool"
             print(f"  ✅ Mojo pool started ({pool.size} workers)")
@@ -181,6 +283,7 @@ async def _setup_engine() -> None:
     # Fall back to subprocess invocation (binary exists and works via stdin/stdout)
     try:
         from apps.api_server.compute.mojo_adapter import _BINARY_PATH, _invoke_subprocess
+
         if _BINARY_PATH.exists():
             _invoke_fn = _invoke_subprocess
             _runtime_mode = "subprocess"
@@ -200,6 +303,7 @@ async def _teardown_engine() -> None:
     """Shut down the Mojo pool if it was started."""
     try:
         from apps.api_server.compute.mojo_pool import get_pool_sync
+
         pool = get_pool_sync()
         if pool._running:
             await pool.stop()
@@ -215,7 +319,11 @@ async def _measure_engine(
 ) -> dict[str, Any]:
     """Measure p50/p95/p99 latency for one engine."""
     if _invoke_fn is None:
-        return {"engine_type": engine_type, "error": "engine unavailable (no binary)", "errors": n_measure}
+        return {
+            "engine_type": engine_type,
+            "error": "engine unavailable (no binary)",
+            "errors": n_measure,
+        }
 
     # Warmup
     for _ in range(n_warmup):
@@ -243,21 +351,25 @@ async def _measure_engine(
             last_error = str(e)
 
     if not latencies:
-        return {"engine_type": engine_type, "error": f"all {n_measure} requests failed ({last_error})", "errors": errors}
+        return {
+            "engine_type": engine_type,
+            "error": f"all {n_measure} requests failed ({last_error})",
+            "errors": errors,
+        }
 
     latencies.sort()
     n = len(latencies)
     return {
-        "engine_type":       engine_type,
-        "n_measured":        n,
-        "errors":            errors,
-        "p50_ms":            latencies[n // 2],
-        "p95_ms":            latencies[max(0, int(n * 0.95) - 1)],
-        "p99_ms":            latencies[max(0, int(n * 0.99) - 1)],
-        "mean_ms":           statistics.mean(latencies),
+        "engine_type": engine_type,
+        "n_measured": n,
+        "errors": errors,
+        "p50_ms": latencies[n // 2],
+        "p95_ms": latencies[max(0, int(n * 0.95) - 1)],
+        "p99_ms": latencies[max(0, int(n * 0.99) - 1)],
+        "mean_ms": statistics.mean(latencies),
         "fallback_detected": fallback_detected,
-        "gate_p50":          GATES[engine_type]["p50"],
-        "gate_p95":          GATES[engine_type]["p95"],
+        "gate_p50": GATES[engine_type]["p50"],
+        "gate_p95": GATES[engine_type]["p95"],
     }
 
 
@@ -283,7 +395,7 @@ async def run_gate() -> int:
     for engine_type in GATES:
         print(f"  [{engine_type}] measuring...", flush=True)
         payload = PAYLOADS[engine_type]
-        result  = await _measure_engine(engine_type, payload, N_WARMUP, N_MEASURE)
+        result = await _measure_engine(engine_type, payload, N_WARMUP, N_MEASURE)
         engine_results.append(result)
         if "error" in result:
             print(f"    ❌ FAILED: {result['error']}")

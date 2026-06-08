@@ -109,7 +109,7 @@ def test_mojo_column_profile_preflight_allows_richer_sources() -> None:
     assert data_map._mojo_column_profile_preflight_skip_reason(columns) is None
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_detect_relations_uses_bounded_sample_limit_for_wide_schemas(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -148,7 +148,7 @@ async def test_detect_relations_uses_bounded_sample_limit_for_wide_schemas(
     assert captured["timeout"] == data_map._OPTIONAL_MOJO_TIMEOUT_S
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_query_detect_relations_opens_engine_circuit_after_failure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -188,7 +188,7 @@ async def test_query_detect_relations_opens_engine_circuit_after_failure(
     ]
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_query_detect_relations_respects_shared_optional_engine_circuit(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -227,7 +227,7 @@ async def test_query_detect_relations_respects_shared_optional_engine_circuit(
     assert [event for event, _ in debugs] == ["query_relation_detect_circuit_open"]
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_call_mojo_column_profile_returns_disabled_status_when_policy_optional(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -249,7 +249,7 @@ async def test_call_mojo_column_profile_returns_disabled_status_when_policy_opti
     }
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_call_mojo_column_profile_skips_small_payloads_before_engine(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -282,7 +282,7 @@ async def test_call_mojo_column_profile_skips_small_payloads_before_engine(
     }
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_call_mojo_column_profile_skips_payloads_over_optional_limit(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -314,7 +314,7 @@ async def test_call_mojo_column_profile_skips_payloads_over_optional_limit(
     assert result["_profiling_status"]["engine_status"]["reason"] == "preflight_payload_too_large"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_call_mojo_join_detect_passes_optional_timeout_to_engine(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -344,7 +344,7 @@ async def test_call_mojo_join_detect_passes_optional_timeout_to_engine(
     assert captured["timeout"] == data_map._OPTIONAL_MOJO_TIMEOUT_S
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_call_mojo_column_profile_suppresses_repeated_engine_warnings(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -381,7 +381,7 @@ async def test_call_mojo_column_profile_suppresses_repeated_engine_warnings(
     assert [event for event, _ in debugs] == ["column_profile_mojo_error_suppressed"]
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_call_mojo_column_profile_opens_engine_circuit_after_failure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -412,7 +412,7 @@ async def test_call_mojo_column_profile_opens_engine_circuit_after_failure(
     assert [event for event, _ in debugs][-1] == "column_profile_mojo_circuit_open"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_call_mojo_column_profile_skips_mojo_when_policy_disabled(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -439,7 +439,7 @@ async def test_call_mojo_column_profile_skips_mojo_when_policy_disabled(
     }
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_call_mojo_join_detect_opens_engine_circuit_after_failure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -476,7 +476,7 @@ async def test_call_mojo_join_detect_opens_engine_circuit_after_failure(
     ]
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_optional_mojo_global_circuit_skips_other_engine_types_after_process_failure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -513,7 +513,7 @@ async def test_optional_mojo_global_circuit_skips_other_engine_types_after_proce
     assert [event for event, _ in debugs] == ["join_detect_mojo_circuit_open"]
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_optional_mojo_global_circuit_uses_structured_failure_codes(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -557,13 +557,30 @@ async def test_optional_mojo_global_circuit_uses_structured_failure_codes(
         "Worker 2 became unhealthy during engine execution."
     )
     assert join_result is None
-    assert data_map._MOJO_OPTIONAL_ENGINE_FAILURE_STATE[data_map._GLOBAL_OPTIONAL_MOJO_ENGINE_KEY][1].startswith(
-        "worker_unhealthy:"
-    )
+    assert data_map._MOJO_OPTIONAL_ENGINE_FAILURE_STATE[data_map._GLOBAL_OPTIONAL_MOJO_ENGINE_KEY][
+        1
+    ].startswith("worker_unhealthy:")
     assert [event for event, _ in debugs] == ["join_detect_mojo_circuit_open"]
 
 
-@pytest.mark.asyncio
+def test_optional_mojo_global_circuit_survives_engine_specific_clear() -> None:
+    data_map._record_optional_mojo_engine_failure(
+        "column_profile",
+        MojoEngineError(
+            "Worker 2 became unhealthy during engine execution.",
+            code="worker_unhealthy",
+            recoverable=True,
+            engine_type="column_profile",
+            stage="pool_dispatch",
+        ),
+    )
+
+    data_map._clear_optional_mojo_engine_failure("column_profile")
+
+    assert data_map._get_optional_mojo_engine_skip_reason("join_detect") is not None
+
+
+@pytest.mark.anyio
 async def test_optional_mojo_non_global_failure_does_not_disable_other_engine_types(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -602,7 +619,7 @@ async def test_optional_mojo_non_global_failure_does_not_disable_other_engine_ty
     assert join_result == {"join_keys": []}
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_call_mojo_column_profile_raises_when_policy_required(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -618,7 +635,7 @@ async def test_call_mojo_column_profile_raises_when_policy_required(
     assert excinfo.value.engine_type == "column_profile"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_register_source_persists_disabled_profiling_status(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -656,7 +673,7 @@ async def test_register_source_persists_disabled_profiling_status(
     assert meta["mojo_profiling_status"]["reason"] == "configured_disabled"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_infer_schema_returns_disabled_profiling_status_when_policy_disabled(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -692,7 +709,9 @@ async def test_infer_schema_returns_disabled_profiling_status_when_policy_disabl
 
     result = await query_router.infer_schema(
         query_router.SchemaRequest(
-            sources=[query_router.DataSource(name="profile_disabled", csv="measure_total\n10\n20\n")]
+            sources=[
+                query_router.DataSource(name="profile_disabled", csv="measure_total\n10\n20\n")
+            ]
         ),
         auth={"org_id": "org_profile_disabled"},
     )
@@ -703,7 +722,7 @@ async def test_infer_schema_returns_disabled_profiling_status_when_policy_disabl
     assert schema_result["schema"]["mojo_profiling_status"]["status"] == "disabled"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_real_available_inventory_column_profile_stays_json_safe(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

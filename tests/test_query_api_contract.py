@@ -42,7 +42,7 @@ class _RedisStub:
         return None
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_query_empty_source_returns_structured_400(app, client, monkeypatch) -> None:
     async def _fake_auth():  # type: ignore[no-untyped-def]
         return {
@@ -61,7 +61,9 @@ async def test_query_empty_source_returns_structured_400(app, client, monkeypatc
 
     app.dependency_overrides[get_current_org] = _fake_auth
     app.dependency_overrides[get_redis] = _fake_redis
-    monkeypatch.setattr("apps.api_server.routers.query._load_profiled_source", _fake_load_profiled_source)
+    monkeypatch.setattr(
+        "apps.api_server.routers.query._load_profiled_source", _fake_load_profiled_source
+    )
     query_router._SOURCE_CACHE.clear()
 
     try:
@@ -81,7 +83,7 @@ async def test_query_empty_source_returns_structured_400(app, client, monkeypatc
     assert resp.json()["error"]["code"] == "empty_source"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_infer_schema_returns_structured_503_when_mojo_profiling_fails_in_strict_mode(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -116,7 +118,9 @@ async def test_infer_schema_returns_structured_503_when_mojo_profiling_fails_in_
     with pytest.raises(HTTPException) as excinfo:
         await query_router.infer_schema(
             query_router.SchemaRequest(
-                sources=[query_router.DataSource(name="strict_profile", csv="measure_total\n10\n20\n")]
+                sources=[
+                    query_router.DataSource(name="strict_profile", csv="measure_total\n10\n20\n")
+                ]
             ),
             auth={"org_id": "org_a"},
         )
@@ -167,7 +171,7 @@ def _cached_source_for_eviction(last_hit: float) -> query_router._CachedSource:
     return entry
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_source_cache_put_uses_unique_entry_capacity(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -190,7 +194,7 @@ async def test_source_cache_put_uses_unique_entry_capacity(
             query_router._SOURCE_CACHE.clear()
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_source_cache_put_evicts_oldest_unique_entry_and_aliases(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

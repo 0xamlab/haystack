@@ -61,7 +61,7 @@ def _patch_connector_create(
     )
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_fetch_and_map_returns_payload_and_connector_metadata(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -83,7 +83,7 @@ async def test_fetch_and_map_returns_payload_and_connector_metadata(
     assert response.simulation_payload["domain"] == "finance"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_fetch_and_map_raises_502_with_chained_cause(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -104,7 +104,7 @@ async def test_fetch_and_map_raises_502_with_chained_cause(
     assert exc_info.value.__cause__ is upstream_error
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_test_connection_returns_connector_validation(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

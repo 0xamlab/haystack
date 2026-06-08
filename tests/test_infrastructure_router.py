@@ -8,7 +8,7 @@ from fastapi import HTTPException
 from apps.api_server.routers import infrastructure
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_register_and_heartbeat_node_for_same_org() -> None:
     infrastructure._registered_nodes.clear()
     auth = {"org_id": uuid.uuid4()}
@@ -36,7 +36,7 @@ async def test_register_and_heartbeat_node_for_same_org() -> None:
     assert stored["jobs_per_sec"] == 42.0
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_node_heartbeat_rejects_cross_org_access() -> None:
     infrastructure._registered_nodes.clear()
     owner_org = uuid.uuid4()

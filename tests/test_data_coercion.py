@@ -22,9 +22,19 @@ def test_coerce_scalar_preserves_identifier_text_with_leading_zeroes() -> None:
     assert coerce_scalar("ext_price", "00123", preserve_identifiers=True) == "00123"
 
 
+def test_coerce_scalar_preserves_plain_id_identifier_values() -> None:
+    assert coerce_scalar("id", "123", preserve_identifiers=True) == "123"
+
+
 def test_coerce_scalar_skips_numeric_regex_for_text_but_keeps_scientific_notation() -> None:
     assert coerce_scalar("customer_name", "ACME 123", preserve_identifiers=True) == "ACME 123"
     assert coerce_scalar("measure_total", "1e3", preserve_identifiers=True) == 1000.0
+
+
+def test_parse_delimited_records_strips_utf8_bom_from_first_header() -> None:
+    records = parse_delimited_records("\ufeffORDERED_ON,VALUE\n2026-01-01,10\n")
+
+    assert records == [{"ORDERED_ON": "2026-01-01", "VALUE": 10}]
 
 
 def test_parse_delimited_records_skips_header_alias_row() -> None:

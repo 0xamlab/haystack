@@ -21,10 +21,17 @@ def _planner_node(role: str, *, is_numeric: bool = True, fill_rate: float = 1.0)
 def test_plan_skips_llm_for_confident_same_source_resolution(tmp_path):
     planner = AutoPlanner(data_dir=Path(tmp_path), llm_policy="auto")
     planner.resolve_metric = lambda hint, preferred_source=None, agg="sum": (
-        "S0", "MEASURE_TOTAL", 1.15, "derived_measure", ["metric"]
+        "S0",
+        "MEASURE_TOTAL",
+        1.15,
+        "derived_measure",
+        ["metric"],
     )
     planner.resolve_dimension = lambda hint, preferred_source=None: (
-        "S0", "GROUP_DIM", 1.20, ["dimension"]
+        "S0",
+        "GROUP_DIM",
+        1.20,
+        ["dimension"],
     )
 
     def _unexpected_llm(**_kwargs):
@@ -43,10 +50,17 @@ def test_plan_skips_llm_for_confident_same_source_resolution(tmp_path):
 def test_plan_uses_llm_when_dimension_resolution_is_ambiguous(tmp_path):
     planner = AutoPlanner(data_dir=Path(tmp_path), llm_policy="auto")
     planner.resolve_metric = lambda hint, preferred_source=None, agg="sum": (
-        "S0", "RATE_VALUE", 1.10, "unit_measure", ["metric"]
+        "S0",
+        "RATE_VALUE",
+        1.10,
+        "unit_measure",
+        ["metric"],
     )
     planner.resolve_dimension = lambda hint, preferred_source=None: (
-        "S0", "DIM_CANDIDATE_A", 0.62, ["dimension"]
+        "S0",
+        "DIM_CANDIDATE_A",
+        0.62,
+        ["dimension"],
     )
 
     calls = {"count": 0}
@@ -73,19 +87,28 @@ def test_plan_uses_llm_when_dimension_resolution_is_ambiguous(tmp_path):
 def test_plan_cache_prevents_repeat_llm_calls_for_same_request(tmp_path):
     planner = AutoPlanner(data_dir=Path(tmp_path), llm_policy="auto")
     planner.resolve_metric = lambda hint, preferred_source=None, agg="sum": (
-        "S0", "MEASURE_TOTAL", 1.05, "derived_measure", ["metric"]
+        "S0",
+        "MEASURE_TOTAL",
+        1.05,
+        "derived_measure",
+        ["metric"],
     )
     planner.resolve_dimension = lambda hint, preferred_source=None: (
-        "S1", "DIM_EXTERNAL", 1.00, ["dimension"]
+        "S1",
+        "DIM_EXTERNAL",
+        1.00,
+        ["dimension"],
     )
-    planner.find_join_keys = lambda src_a, src_b: [{
-        "field_a": "KEY_LEFT",
-        "source_a": "S0",
-        "field_b": "KEY_RIGHT",
-        "source_b": "S1",
-        "confidence": 0.439,
-        "cardinality": "many_to_many",
-    }]
+    planner.find_join_keys = lambda src_a, src_b: [
+        {
+            "field_a": "KEY_LEFT",
+            "source_a": "S0",
+            "field_b": "KEY_RIGHT",
+            "source_b": "S1",
+            "confidence": 0.439,
+            "cardinality": "many_to_many",
+        }
+    ]
 
     calls = {"count": 0}
 
@@ -112,10 +135,17 @@ def test_plan_cache_prevents_repeat_llm_calls_for_same_request(tmp_path):
 def test_plan_never_policy_disables_llm_even_for_ambiguous_cases(tmp_path):
     planner = AutoPlanner(data_dir=Path(tmp_path), llm_policy="never")
     planner.resolve_metric = lambda hint, preferred_source=None, agg="sum": (
-        "S0", "RATE_VALUE", 1.10, "unit_measure", ["metric"]
+        "S0",
+        "RATE_VALUE",
+        1.10,
+        "unit_measure",
+        ["metric"],
     )
     planner.resolve_dimension = lambda hint, preferred_source=None: (
-        "S0", "DIM_CANDIDATE_A", 0.62, ["dimension"]
+        "S0",
+        "DIM_CANDIDATE_A",
+        0.62,
+        ["dimension"],
     )
 
     def _unexpected_llm(**_kwargs):
@@ -126,6 +156,57 @@ def test_plan_never_policy_disables_llm_even_for_ambiguous_cases(tmp_path):
     plan = planner.plan("rate", "dimension", "avg", "S0")
 
     assert plan.group_col == "DIM_CANDIDATE_A"
+    assert any(step == "[llm/skipped] policy=never" for step in plan.steps)
+
+
+def test_plan_prefers_same_source_metric_when_weak_join_only_adds_dimension(tmp_path):
+    planner = AutoPlanner(data_dir=Path(tmp_path), llm_policy="never")
+    planner.graph = {
+        "BookingsNew": {
+            "EXT_COST": _planner_node("derived_measure"),
+        },
+        "Inventory": {
+            "EXT_COST": _planner_node("component"),
+            "Warehouse": _planner_node("category", is_numeric=False),
+        },
+    }
+    planner.resolve_metric = lambda hint, preferred_source=None, agg="sum": (
+        "BookingsNew",
+        "EXT_COST",
+        1.015,
+        "derived_measure",
+        ["metric"],
+    )
+    planner.resolve_dimension = lambda hint, preferred_source=None: (
+        "Inventory",
+        "Warehouse",
+        1.85,
+        ["dimension"],
+    )
+    weak_hop = SimpleNamespace(
+        left_source="BookingsNew",
+        right_source="Inventory",
+        left_key="PART_NUMBER",
+        right_key="PART_NUMBER",
+        confidence=0.624,
+        cardinality="many_to_many",
+    )
+    planner._search_join_path = lambda *_args, **_kwargs: (
+        [weak_hop],
+        0.298,
+        [],
+        None,
+    )
+
+    plan = planner.plan("extended cost", "warehouse", "sum", "Inventory")
+
+    assert plan.metric_src == "Inventory"
+    assert plan.metric_col == "EXT_COST"
+    assert plan.group_src == "Inventory"
+    assert plan.group_col == "Warehouse"
+    assert plan.join_hops == []
+    assert plan.path_confidence == 1.0
+    assert any("metric/self_correct_same_source" in step for step in plan.steps)
     assert any(step == "[llm/skipped] policy=never" for step in plan.steps)
 
 
@@ -164,10 +245,12 @@ def test_metric_and_dimension_resolution_are_cached(tmp_path):
     planner.mojo_engines = []
     planner.graph = {"S0": {}, "S1": {}}
     planner._query_hints_by_src = {
-        "S0": [{
-            "metric_role": "derived_measure",
-            "columns": [{"name": "MEASURE_TOTAL", "fill_rate": 1.0}],
-        }]
+        "S0": [
+            {
+                "metric_role": "derived_measure",
+                "columns": [{"name": "MEASURE_TOTAL", "fill_rate": 1.0}],
+            }
+        ]
     }
     planner.resolve_dimension = AutoPlanner.resolve_dimension.__get__(planner, AutoPlanner)
     planner.profiles = {
@@ -285,6 +368,92 @@ def test_refresh_registry_source_reuses_incremental_vector_resolver_for_new_sour
     assert result.column == "EXT_COST"
 
 
+def test_refresh_registry_source_defers_vector_resolver_for_large_graph(
+    tmp_path,
+    monkeypatch,
+):
+    planner = AutoPlanner(data_dir=Path(tmp_path), llm_policy="never")
+    planner.mojo_engines = []
+    planner.graph = {
+        "POS": {
+            f"COL_{index:04d}": _planner_node(
+                "derived_measure" if index % 2 == 0 else "unit_measure"
+            )
+            for index in range(1_600)
+        }
+    }
+    planner.profiles = {"POS": {}}
+    planner._vector_resolver = object()
+    planner._vector_resolver_dirty = False
+
+    append_calls = {"count": 0}
+    rebuild_calls = {"count": 0}
+
+    def _unexpected_append(_source_name: str) -> bool:
+        append_calls["count"] += 1
+        return True
+
+    def _unexpected_rebuild() -> None:
+        rebuild_calls["count"] += 1
+
+    monkeypatch.setattr(planner, "_append_vector_resolver_source", _unexpected_append)
+    monkeypatch.setattr(planner, "_build_vector_resolver", _unexpected_rebuild)
+    monkeypatch.setattr(
+        auto_planner_module,
+        "_registry_source_artifacts_from_meta",
+        lambda **_kwargs: auto_planner_module._CachedRegistrySourceArtifacts(
+            nodes={
+                "UNIT_COST": _planner_node("unit_measure"),
+                "EXT_COST": _planner_node("derived_measure"),
+            },
+            profile={},
+            query_hints=[],
+        ),
+    )
+
+    planner.refresh_registry_source(
+        org_id="org-1",
+        source_id="src-backlog",
+        source_name="BACKLOG",
+        schema_meta={},
+        source_schema_revision="schema-rev-backlog",
+        parquet_path=None,
+        new_connections=[],
+    )
+
+    assert append_calls["count"] == 0
+    assert rebuild_calls["count"] == 0
+    assert planner._vector_resolver_dirty is True
+
+
+def test_resolve_fields_batch_rebuilds_deferred_vector_resolver(
+    tmp_path,
+    monkeypatch,
+):
+    planner = AutoPlanner(data_dir=Path(tmp_path), llm_policy="never")
+    planner._vector_resolver = None
+    planner._vector_resolver_dirty = True
+
+    calls = {"count": 0}
+
+    class _Resolver:
+        def resolve_plan_fields(self, **kwargs):  # type: ignore[no-untyped-def]
+            return {"metric": kwargs.get("metric"), "group_by": None, "date": None, "filter": None}
+
+    def _fake_rebuild() -> None:
+        calls["count"] += 1
+        planner._vector_resolver = _Resolver()
+        planner._vector_resolver_dirty = False
+
+    monkeypatch.setattr(planner, "_build_vector_resolver", _fake_rebuild)
+
+    results = planner.resolve_fields_batch(metric=("extended cost", "BACKLOG", "derived_measure"))
+
+    assert calls["count"] == 1
+    assert planner._vector_resolver_dirty is False
+    assert results["metric"] == ("extended cost", "BACKLOG", "derived_measure")
+
+
 def test_refresh_registry_source_invalidates_adaptive_context_until_lazy_rebuild(
     tmp_path,
     monkeypatch,
@@ -350,6 +519,144 @@ def test_refresh_registry_source_invalidates_adaptive_context_until_lazy_rebuild
     assert "BACKLOG" in planner._adaptive_source_context
 
 
+def test_refresh_registry_source_updates_only_affected_join_cache_keys(
+    tmp_path,
+    monkeypatch,
+):
+    planner = AutoPlanner(data_dir=Path(tmp_path), llm_policy="never")
+    planner.mojo_engines = []
+    planner.graph = {
+        "Orders": {"order_id": _planner_node("identifier")},
+        "POS": {"sku": _planner_node("identifier")},
+    }
+    planner.profiles = {"Orders": {}, "POS": {}}
+
+    old_source_connection = {
+        "source_a": "src-orders",
+        "source_a_name": "Orders",
+        "col_a": "customer_id",
+        "source_b": "src-customers",
+        "source_b_name": "Customers",
+        "col_b": "id",
+        "confidence": 0.91,
+        "overlap": 0.84,
+        "cardinality": "many_to_one",
+    }
+    unrelated_connection = {
+        "source_a": "src-pos",
+        "source_a_name": "POS",
+        "col_a": "sku",
+        "source_b": "src-products",
+        "source_b_name": "Products",
+        "col_b": "sku",
+        "confidence": 0.88,
+        "overlap": 0.77,
+        "cardinality": "many_to_one",
+    }
+    planner._connections = [old_source_connection, unrelated_connection]
+
+    preserved_registry_cache = [
+        {
+            "field_a": "sku",
+            "source_a": "POS",
+            "field_b": "sku",
+            "source_b": "Products",
+            "confidence": 0.88,
+            "overlap": 0.77,
+            "cardinality": "many_to_one",
+        }
+    ]
+    preserved_dynamic_cache = [
+        {
+            "field_a": "vendor_name",
+            "source_a": "BACKLOG",
+            "field_b": "vendor_name",
+            "source_b": "Vendors",
+            "confidence": 0.67,
+            "overlap": 0.55,
+            "cardinality": "many_to_many",
+        }
+    ]
+    planner._join_cache = {
+        ("Customers", "Orders"): [
+            {
+                "field_a": "customer_id",
+                "source_a": "Orders",
+                "field_b": "id",
+                "source_b": "Customers",
+                "confidence": 0.91,
+                "overlap": 0.84,
+                "cardinality": "many_to_one",
+            }
+        ],
+        ("POS", "Products"): preserved_registry_cache,
+        ("BACKLOG", "Vendors"): preserved_dynamic_cache,
+        ("Orders", "Returns"): [
+            {
+                "field_a": "order_id",
+                "source_a": "Orders",
+                "field_b": "order_id",
+                "source_b": "Returns",
+                "confidence": 0.51,
+                "overlap": 0.44,
+                "cardinality": "many_to_many",
+            }
+        ],
+    }
+
+    monkeypatch.setattr(
+        auto_planner_module,
+        "_registry_source_artifacts_from_meta",
+        lambda **_kwargs: auto_planner_module._CachedRegistrySourceArtifacts(
+            nodes={"account_id": _planner_node("identifier")},
+            profile={},
+            query_hints=[],
+        ),
+    )
+    monkeypatch.setattr(planner, "_build_vector_resolver", lambda: None)
+
+    new_connections = [
+        {
+            "source_a": "src-orders",
+            "source_a_name": "Orders",
+            "col_a": "account_id",
+            "source_b": "src-accounts",
+            "source_b_name": "Accounts",
+            "col_b": "id",
+            "confidence": 0.95,
+            "overlap": 0.89,
+            "cardinality": "many_to_one",
+        }
+    ]
+
+    planner.refresh_registry_source(
+        org_id="org-1",
+        source_id="src-orders",
+        source_name="Orders",
+        schema_meta={},
+        source_schema_revision="schema-rev-orders",
+        parquet_path=None,
+        new_connections=new_connections,
+    )
+
+    assert planner._connections == [unrelated_connection, new_connections[0]]
+    assert planner._join_cache[("POS", "Products")] is preserved_registry_cache
+    assert planner._join_cache[("BACKLOG", "Vendors")] is preserved_dynamic_cache
+    assert ("Customers", "Orders") not in planner._join_cache
+    assert ("Orders", "Returns") not in planner._join_cache
+    assert planner._join_cache[("Accounts", "Orders")] == [
+        {
+            "field_a": "account_id",
+            "source_a": "Orders",
+            "field_b": "id",
+            "source_b": "Accounts",
+            "confidence": 0.95,
+            "overlap": 0.89,
+            "cardinality": "many_to_one",
+        }
+    ]
+
+
 def test_profile_records_scans_full_loaded_rows_for_sparse_late_columns():
     records = [
         {"sparse_dim": "", "measure_x": 1.0},
@@ -369,10 +676,17 @@ def test_plan_builds_multi_hop_join_path_from_registry_connections(tmp_path):
     planner = AutoPlanner(data_dir=Path(tmp_path), llm_policy="never")
     planner.graph = {"S0": {}, "S1": {}, "S2": {}}
     planner.resolve_metric = lambda hint, preferred_source=None, agg="sum": (
-        "S0", "MEASURE_TOTAL", 1.12, "derived_measure", ["metric"]
+        "S0",
+        "MEASURE_TOTAL",
+        1.12,
+        "derived_measure",
+        ["metric"],
     )
     planner.resolve_dimension = lambda hint, preferred_source=None: (
-        "S2", "REGION_LABEL", 1.01, ["dimension"]
+        "S2",
+        "REGION_LABEL",
+        1.01,
+        ["dimension"],
     )
     planner._connections = [
         {
@@ -397,13 +711,246 @@ def test_plan_builds_multi_hop_join_path_from_registry_connections(tmp_path):
 
     assert plan.error is None
     assert len(plan.join_hops) == 2
-    assert [(hop.left_source, hop.right_source) for hop in plan.join_hops] == [("S0", "S1"), ("S1", "S2")]
+    assert [(hop.left_source, hop.right_source) for hop in plan.join_hops] == [
+        ("S0", "S1"),
+        ("S1", "S2"),
+    ]
     assert plan.intermediate_sources == ["S1"]
     assert plan.group_src == "S2"
     assert plan.path_confidence > 0.6
     assert plan.join_key_metric == "CUSTOMER_ID"
     assert plan.join_key_group == "GEO_KEY"
     assert any("multi-hop path" in note for note in plan.validation_notes)
+
+
+def test_plan_builds_four_hop_join_path_from_registry_connections(tmp_path):
+    planner = AutoPlanner(data_dir=Path(tmp_path), llm_policy="never")
+    planner.graph = {"S0": {}, "S1": {}, "S2": {}, "S3": {}, "S4": {}}
+    planner.resolve_metric = lambda hint, preferred_source=None, agg="sum": (
+        "S0",
+        "MEASURE_TOTAL",
+        1.12,
+        "derived_measure",
+        ["metric"],
+    )
+    planner.resolve_dimension = lambda hint, preferred_source=None: (
+        "S4",
+        "REGION_LABEL",
+        1.01,
+        ["dimension"],
+    )
+    planner._connections = [
+        {
+            "source_a_name": "S0",
+            "source_b_name": "S1",
+            "col_a": "CUSTOMER_ID",
+            "col_b": "CUSTOMER_ID",
+            "confidence": 0.97,
+            "cardinality": "many_to_one",
+        },
+        {
+            "source_a_name": "S1",
+            "source_b_name": "S2",
+            "col_a": "ACCOUNT_KEY",
+            "col_b": "ACCOUNT_KEY",
+            "confidence": 0.96,
+            "cardinality": "many_to_one",
+        },
+        {
+            "source_a_name": "S2",
+            "source_b_name": "S3",
+            "col_a": "GEO_KEY",
+            "col_b": "GEO_KEY",
+            "confidence": 0.95,
+            "cardinality": "many_to_one",
+        },
+        {
+            "source_a_name": "S3",
+            "source_b_name": "S4",
+            "col_a": "REGION_KEY",
+            "col_b": "REGION_KEY",
+            "confidence": 0.94,
+            "cardinality": "many_to_one",
+        },
+    ]
+
+    plan = planner.plan("total value", "region", "sum", "S0")
+
+    assert plan.error is None
+    assert len(plan.join_hops) == 4
+    assert [(hop.left_source, hop.right_source) for hop in plan.join_hops] == [
+        ("S0", "S1"),
+        ("S1", "S2"),
+        ("S2", "S3"),
+        ("S3", "S4"),
+    ]
+    assert plan.intermediate_sources == ["S1", "S2", "S3"]
+    assert plan.group_src == "S4"
+    assert plan.path_confidence > 0.7
+    assert plan.join_key_metric == "CUSTOMER_ID"
+    assert plan.join_key_group == "REGION_KEY"
+    assert any("multi-hop path" in note for note in plan.validation_notes)
+
+
+def test_plan_builds_six_hop_join_path_from_registry_connections(tmp_path):
+    planner = AutoPlanner(data_dir=Path(tmp_path), llm_policy="never")
+    planner.graph = {"S0": {}, "S1": {}, "S2": {}, "S3": {}, "S4": {}, "S5": {}, "S6": {}}
+    planner.resolve_metric = lambda hint, preferred_source=None, agg="sum": (
+        "S0",
+        "MEASURE_TOTAL",
+        1.12,
+        "derived_measure",
+        ["metric"],
+    )
+    planner.resolve_dimension = lambda hint, preferred_source=None: (
+        "S6",
+        "REGION_LABEL",
+        1.01,
+        ["dimension"],
+    )
+    planner._connections = [
+        {
+            "source_a_name": "S0",
+            "source_b_name": "S1",
+            "col_a": "CUSTOMER_ID",
+            "col_b": "CUSTOMER_ID",
+            "confidence": 0.97,
+            "cardinality": "many_to_one",
+        },
+        {
+            "source_a_name": "S1",
+            "source_b_name": "S2",
+            "col_a": "ACCOUNT_KEY",
+            "col_b": "ACCOUNT_KEY",
+            "confidence": 0.96,
+            "cardinality": "many_to_one",
+        },
+        {
+            "source_a_name": "S2",
+            "source_b_name": "S3",
+            "col_a": "GEO_KEY",
+            "col_b": "GEO_KEY",
+            "confidence": 0.95,
+            "cardinality": "many_to_one",
+        },
+        {
+            "source_a_name": "S3",
+            "source_b_name": "S4",
+            "col_a": "REGION_KEY",
+            "col_b": "REGION_KEY",
+            "confidence": 0.94,
+            "cardinality": "many_to_one",
+        },
+        {
+            "source_a_name": "S4",
+            "source_b_name": "S5",
+            "col_a": "SEGMENT_KEY",
+            "col_b": "SEGMENT_KEY",
+            "confidence": 0.93,
+            "cardinality": "many_to_one",
+        },
+        {
+            "source_a_name": "S5",
+            "source_b_name": "S6",
+            "col_a": "LABEL_KEY",
+            "col_b": "LABEL_KEY",
+            "confidence": 0.92,
+            "cardinality": "many_to_one",
+        },
+    ]
+
+    plan = planner.plan("total value", "region", "sum", "S0", max_join_hops=6)
+
+    assert plan.error is None
+    assert len(plan.join_hops) == 6
+    assert [(hop.left_source, hop.right_source) for hop in plan.join_hops] == [
+        ("S0", "S1"),
+        ("S1", "S2"),
+        ("S2", "S3"),
+        ("S3", "S4"),
+        ("S4", "S5"),
+        ("S5", "S6"),
+    ]
+    assert plan.intermediate_sources == ["S1", "S2", "S3", "S4", "S5"]
+    assert plan.group_src == "S6"
+    assert plan.path_confidence > 0.5
+    assert plan.join_key_metric == "CUSTOMER_ID"
+    assert plan.join_key_group == "LABEL_KEY"
+    assert any("multi-hop path" in note for note in plan.validation_notes)
+
+
+def test_plan_defaults_to_four_hop_budget_without_opt_in(tmp_path):
+    planner = AutoPlanner(data_dir=Path(tmp_path), llm_policy="never")
+    planner.graph = {"S0": {}, "S1": {}, "S2": {}, "S3": {}, "S4": {}, "S5": {}, "S6": {}}
+    planner.resolve_metric = lambda hint, preferred_source=None, agg="sum": (
+        "S0",
+        "MEASURE_TOTAL",
+        1.12,
+        "derived_measure",
+        ["metric"],
+    )
+    planner.resolve_dimension = lambda hint, preferred_source=None: (
+        "S6",
+        "REGION_LABEL",
+        1.01,
+        ["dimension"],
+    )
+    planner._connections = [
+        {
+            "source_a_name": "S0",
+            "source_b_name": "S1",
+            "col_a": "CUSTOMER_ID",
+            "col_b": "CUSTOMER_ID",
+            "confidence": 0.97,
+            "cardinality": "many_to_one",
+        },
+        {
+            "source_a_name": "S1",
+            "source_b_name": "S2",
+            "col_a": "ACCOUNT_KEY",
+            "col_b": "ACCOUNT_KEY",
+            "confidence": 0.96,
+            "cardinality": "many_to_one",
+        },
+        {
+            "source_a_name": "S2",
+            "source_b_name": "S3",
+            "col_a": "GEO_KEY",
+            "col_b": "GEO_KEY",
+            "confidence": 0.95,
+            "cardinality": "many_to_one",
+        },
+        {
+            "source_a_name": "S3",
+            "source_b_name": "S4",
+            "col_a": "REGION_KEY",
+            "col_b": "REGION_KEY",
+            "confidence": 0.94,
+            "cardinality": "many_to_one",
+        },
+        {
+            "source_a_name": "S4",
+            "source_b_name": "S5",
+            "col_a": "SEGMENT_KEY",
+            "col_b": "SEGMENT_KEY",
+            "confidence": 0.93,
+            "cardinality": "many_to_one",
+        },
+        {
+            "source_a_name": "S5",
+            "source_b_name": "S6",
+            "col_a": "LABEL_KEY",
+            "col_b": "LABEL_KEY",
+            "confidence": 0.92,
+            "cardinality": "many_to_one",
+        },
+    ]
+
+    plan = planner.plan("total value", "region", "sum", "S0")
+
+    assert plan.error is not None
+    assert len(plan.join_hops) == 0
+    assert "No join path" in plan.error
 
 
 def test_execute_plan_uses_join_hops_for_multi_hop_execution(tmp_path):
@@ -438,7 +985,9 @@ def test_execute_plan_uses_join_hops_for_multi_hop_execution(tmp_path):
         join_conf=0.931,
         join_cardinality="many_to_one",
         join_hops=[
-            JoinHop("S0", "S1", "CUSTOMER_ID", "CUSTOMER_ID", confidence=0.97, cardinality="many_to_one"),
+            JoinHop(
+                "S0", "S1", "CUSTOMER_ID", "CUSTOMER_ID", confidence=0.97, cardinality="many_to_one"
+            ),
             JoinHop("S1", "S2", "GEO_KEY", "GEO_KEY", confidence=0.96, cardinality="many_to_one"),
         ],
         path_confidence=0.931,
@@ -456,14 +1005,167 @@ def test_execute_plan_uses_join_hops_for_multi_hop_execution(tmp_path):
     assert any("Join-path execution" in step for step in trace)
 
 
+def test_execute_plan_uses_four_hop_join_execution(tmp_path):
+    planner = AutoPlanner(data_dir=Path(tmp_path), llm_policy="never")
+    planner.tables = {
+        "S0": [
+            {"CUSTOMER_ID": "C1", "MEASURE_TOTAL": 100.0},
+            {"CUSTOMER_ID": "C2", "MEASURE_TOTAL": 50.0},
+            {"CUSTOMER_ID": "C3", "MEASURE_TOTAL": 75.0},
+        ],
+        "S1": [
+            {"CUSTOMER_ID": "C1", "ACCOUNT_KEY": "A1"},
+            {"CUSTOMER_ID": "C2", "ACCOUNT_KEY": "A1"},
+            {"CUSTOMER_ID": "C3", "ACCOUNT_KEY": "A2"},
+        ],
+        "S2": [
+            {"ACCOUNT_KEY": "A1", "GEO_KEY": "G1"},
+            {"ACCOUNT_KEY": "A2", "GEO_KEY": "G2"},
+        ],
+        "S3": [
+            {"GEO_KEY": "G1", "REGION_KEY": "R1"},
+            {"GEO_KEY": "G2", "REGION_KEY": "R2"},
+        ],
+        "S4": [
+            {"REGION_KEY": "R1", "REGION_LABEL": "east"},
+            {"REGION_KEY": "R2", "REGION_LABEL": "west"},
+        ],
+    }
+    qplan = QueryPlan(
+        metric_src="S0",
+        metric_col="MEASURE_TOTAL",
+        metric_conf=1.0,
+        metric_role="derived_measure",
+        agg="sum",
+        group_col="REGION_LABEL",
+        group_src="S4",
+        group_conf=1.0,
+        join_key_metric="CUSTOMER_ID",
+        join_key_group="REGION_KEY",
+        join_conf=0.822,
+        join_cardinality="many_to_one",
+        join_hops=[
+            JoinHop(
+                "S0", "S1", "CUSTOMER_ID", "CUSTOMER_ID", confidence=0.97, cardinality="many_to_one"
+            ),
+            JoinHop(
+                "S1", "S2", "ACCOUNT_KEY", "ACCOUNT_KEY", confidence=0.96, cardinality="many_to_one"
+            ),
+            JoinHop("S2", "S3", "GEO_KEY", "GEO_KEY", confidence=0.95, cardinality="many_to_one"),
+            JoinHop(
+                "S3", "S4", "REGION_KEY", "REGION_KEY", confidence=0.94, cardinality="many_to_one"
+            ),
+        ],
+        path_confidence=0.822,
+        intermediate_sources=["S1", "S2", "S3"],
+        validation_notes=[],
+    )
+
+    result, row_count, trace = planner.execute_plan(qplan, limit=10)
+
+    assert row_count == 3
+    assert result == [
+        {"group": "east", "value": 150.0},
+        {"group": "west", "value": 75.0},
+    ]
+    assert any("Join-path execution" in step for step in trace)
+
+
+def test_execute_plan_uses_six_hop_join_execution(tmp_path):
+    planner = AutoPlanner(data_dir=Path(tmp_path), llm_policy="never")
+    planner.tables = {
+        "S0": [
+            {"CUSTOMER_ID": "C1", "MEASURE_TOTAL": 100.0},
+            {"CUSTOMER_ID": "C2", "MEASURE_TOTAL": 50.0},
+            {"CUSTOMER_ID": "C3", "MEASURE_TOTAL": 75.0},
+        ],
+        "S1": [
+            {"CUSTOMER_ID": "C1", "ACCOUNT_KEY": "A1"},
+            {"CUSTOMER_ID": "C2", "ACCOUNT_KEY": "A1"},
+            {"CUSTOMER_ID": "C3", "ACCOUNT_KEY": "A2"},
+        ],
+        "S2": [
+            {"ACCOUNT_KEY": "A1", "GEO_KEY": "G1"},
+            {"ACCOUNT_KEY": "A2", "GEO_KEY": "G2"},
+        ],
+        "S3": [
+            {"GEO_KEY": "G1", "REGION_KEY": "R1"},
+            {"GEO_KEY": "G2", "REGION_KEY": "R2"},
+        ],
+        "S4": [
+            {"REGION_KEY": "R1", "SEGMENT_KEY": "SG1"},
+            {"REGION_KEY": "R2", "SEGMENT_KEY": "SG2"},
+        ],
+        "S5": [
+            {"SEGMENT_KEY": "SG1", "LABEL_KEY": "L1"},
+            {"SEGMENT_KEY": "SG2", "LABEL_KEY": "L2"},
+        ],
+        "S6": [
+            {"LABEL_KEY": "L1", "REGION_LABEL": "east"},
+            {"LABEL_KEY": "L2", "REGION_LABEL": "west"},
+        ],
+    }
+    qplan = QueryPlan(
+        metric_src="S0",
+        metric_col="MEASURE_TOTAL",
+        metric_conf=1.0,
+        metric_role="derived_measure",
+        agg="sum",
+        group_col="REGION_LABEL",
+        group_src="S6",
+        group_conf=1.0,
+        join_key_metric="CUSTOMER_ID",
+        join_key_group="LABEL_KEY",
+        join_conf=0.698,
+        join_cardinality="many_to_one",
+        join_hops=[
+            JoinHop(
+                "S0", "S1", "CUSTOMER_ID", "CUSTOMER_ID", confidence=0.97, cardinality="many_to_one"
+            ),
+            JoinHop(
+                "S1", "S2", "ACCOUNT_KEY", "ACCOUNT_KEY", confidence=0.96, cardinality="many_to_one"
+            ),
+            JoinHop("S2", "S3", "GEO_KEY", "GEO_KEY", confidence=0.95, cardinality="many_to_one"),
+            JoinHop(
+                "S3", "S4", "REGION_KEY", "REGION_KEY", confidence=0.94, cardinality="many_to_one"
+            ),
+            JoinHop(
+                "S4", "S5", "SEGMENT_KEY", "SEGMENT_KEY", confidence=0.93, cardinality="many_to_one"
+            ),
+            JoinHop(
+                "S5", "S6", "LABEL_KEY", "LABEL_KEY", confidence=0.92, cardinality="many_to_one"
+            ),
+        ],
+        path_confidence=0.698,
+        intermediate_sources=["S1", "S2", "S3", "S4", "S5"],
+        validation_notes=[],
+    )
+
+    result, row_count, trace = planner.execute_plan(qplan, limit=10)
+
+    assert row_count == 3
+    assert result == [
+        {"group": "east", "value": 150.0},
+        {"group": "west", "value": 75.0},
+    ]
+    assert any("Join-path execution" in step for step in trace)
+
+
 def test_plan_returns_explicit_error_when_cross_source_dimension_has_no_join_path(tmp_path):
     planner = AutoPlanner(data_dir=Path(tmp_path), llm_policy="never")
     planner.graph = {"S0": {}, "S2": {}}
     planner.resolve_metric = lambda hint, preferred_source=None, agg="sum": (
-        "S0", "MEASURE_TOTAL", 1.05, "derived_measure", ["metric"]
+        "S0",
+        "MEASURE_TOTAL",
+        1.05,
+        "derived_measure",
+        ["metric"],
     )
     planner.resolve_dimension = lambda hint, preferred_source=None: (
-        "S2", "REGION_LABEL", 0.98, ["dimension"]
+        "S2",
+        "REGION_LABEL",
+        0.98,
+        ["dimension"],
     )
     planner.find_join_keys = lambda src_a, src_b: []
 
@@ -477,11 +1179,13 @@ def test_plan_returns_explicit_error_when_dimension_hint_cannot_be_resolved(tmp_
     planner = AutoPlanner(data_dir=Path(tmp_path), llm_policy="never")
     planner.graph = {"S0": {}}
     planner.resolve_metric = lambda hint, preferred_source=None, agg="sum": (
-        "S0", "MEASURE_TOTAL", 1.03, "derived_measure", ["metric"]
+        "S0",
+        "MEASURE_TOTAL",
+        1.03,
+        "derived_measure",
+        ["metric"],
     )
-    planner.resolve_dimension = lambda hint, preferred_source=None: (
-        "", None, 0.0, ["dimension"]
-    )
+    planner.resolve_dimension = lambda hint, preferred_source=None: ("", None, 0.0, ["dimension"])
 
     plan = planner.plan("total value", "unsupported dimension", "sum", "S0")
 
@@ -494,16 +1198,64 @@ def test_resolve_metric_prefers_unit_cost_over_extended_cost_for_unit_cost_hint(
     planner.mojo_engines = []
     planner.graph = {
         "POS": {
-            "UNIT_COST": ColumnNode(name="UNIT_COST", role=UNIT_MEASURE, is_numeric=True, magnitude_class="medium", fill_rate=1.0),
-            "EXT_COST": ColumnNode(name="EXT_COST", role=DERIVED_MEASURE, is_numeric=True, magnitude_class="large", fill_rate=1.0),
-            "OH_COST": ColumnNode(name="OH_COST", role=DERIVED_MEASURE, is_numeric=True, magnitude_class="medium", fill_rate=1.0),
+            "UNIT_COST": ColumnNode(
+                name="UNIT_COST",
+                role=UNIT_MEASURE,
+                is_numeric=True,
+                magnitude_class="medium",
+                fill_rate=1.0,
+            ),
+            "EXT_COST": ColumnNode(
+                name="EXT_COST",
+                role=DERIVED_MEASURE,
+                is_numeric=True,
+                magnitude_class="large",
+                fill_rate=1.0,
+            ),
+            "OH_COST": ColumnNode(
+                name="OH_COST",
+                role=DERIVED_MEASURE,
+                is_numeric=True,
+                magnitude_class="medium",
+                fill_rate=1.0,
+            ),
         }
     }
     planner.profiles = {
         "POS": {
-            "UNIT_COST": {"is_numeric": True, "numeric": [10.0, 12.0], "fill_rate": 1.0, "mean": 11.0, "std": 1.0, "sample_values": [10.0, 12.0], "strings": [], "unique_count": 2, "total_count": 2},
-            "EXT_COST": {"is_numeric": True, "numeric": [100.0, 120.0], "fill_rate": 1.0, "mean": 110.0, "std": 10.0, "sample_values": [100.0, 120.0], "strings": [], "unique_count": 2, "total_count": 2},
-            "OH_COST": {"is_numeric": True, "numeric": [80.0, 90.0], "fill_rate": 1.0, "mean": 85.0, "std": 5.0, "sample_values": [80.0, 90.0], "strings": [], "unique_count": 2, "total_count": 2},
+            "UNIT_COST": {
+                "is_numeric": True,
+                "numeric": [10.0, 12.0],
+                "fill_rate": 1.0,
+                "mean": 11.0,
+                "std": 1.0,
+                "sample_values": [10.0, 12.0],
+                "strings": [],
+                "unique_count": 2,
+                "total_count": 2,
+            },
+            "EXT_COST": {
+                "is_numeric": True,
+                "numeric": [100.0, 120.0],
+                "fill_rate": 1.0,
+                "mean": 110.0,
+                "std": 10.0,
+                "sample_values": [100.0, 120.0],
+                "strings": [],
+                "unique_count": 2,
+                "total_count": 2,
+            },
+            "OH_COST": {
+                "is_numeric": True,
+                "numeric": [80.0, 90.0],
+                "fill_rate": 1.0,
+                "mean": 85.0,
+                "std": 5.0,
+                "sample_values": [80.0, 90.0],
+                "strings": [],
+                "unique_count": 2,
+                "total_count": 2,
+            },
         }
     }
 
@@ -519,16 +1271,64 @@ def test_resolve_metric_prefers_extended_cost_for_total_cost_hint(tmp_path):
     planner.mojo_engines = []
     planner.graph = {
         "POS": {
-            "UNIT_COST": ColumnNode(name="UNIT_COST", role=UNIT_MEASURE, is_numeric=True, magnitude_class="medium", fill_rate=1.0),
-            "EXT_COST": ColumnNode(name="EXT_COST", role=DERIVED_MEASURE, is_numeric=True, magnitude_class="large", fill_rate=1.0),
-            "OH_COST": ColumnNode(name="OH_COST", role=DERIVED_MEASURE, is_numeric=True, magnitude_class="medium", fill_rate=1.0),
+            "UNIT_COST": ColumnNode(
+                name="UNIT_COST",
+                role=UNIT_MEASURE,
+                is_numeric=True,
+                magnitude_class="medium",
+                fill_rate=1.0,
+            ),
+            "EXT_COST": ColumnNode(
+                name="EXT_COST",
+                role=DERIVED_MEASURE,
+                is_numeric=True,
+                magnitude_class="large",
+                fill_rate=1.0,
+            ),
+            "OH_COST": ColumnNode(
+                name="OH_COST",
+                role=DERIVED_MEASURE,
+                is_numeric=True,
+                magnitude_class="medium",
+                fill_rate=1.0,
+            ),
         }
     }
     planner.profiles = {
         "POS": {
-            "UNIT_COST": {"is_numeric": True, "numeric": [10.0, 12.0], "fill_rate": 1.0, "mean": 11.0, "std": 1.0, "sample_values": [10.0, 12.0], "strings": [], "unique_count": 2, "total_count": 2},
-            "EXT_COST": {"is_numeric": True, "numeric": [100.0, 120.0], "fill_rate": 1.0, "mean": 110.0, "std": 10.0, "sample_values": [100.0, 120.0], "strings": [], "unique_count": 2, "total_count": 2},
-            "OH_COST": {"is_numeric": True, "numeric": [80.0, 90.0], "fill_rate": 1.0, "mean": 85.0, "std": 5.0, "sample_values": [80.0, 90.0], "strings": [], "unique_count": 2, "total_count": 2},
+            "UNIT_COST": {
+                "is_numeric": True,
+                "numeric": [10.0, 12.0],
+                "fill_rate": 1.0,
+                "mean": 11.0,
+                "std": 1.0,
+                "sample_values": [10.0, 12.0],
+                "strings": [],
+                "unique_count": 2,
+                "total_count": 2,
+            },
+            "EXT_COST": {
+                "is_numeric": True,
+                "numeric": [100.0, 120.0],
+                "fill_rate": 1.0,
+                "mean": 110.0,
+                "std": 10.0,
+                "sample_values": [100.0, 120.0],
+                "strings": [],
+                "unique_count": 2,
+                "total_count": 2,
+            },
+            "OH_COST": {
+                "is_numeric": True,
+                "numeric": [80.0, 90.0],
+                "fill_rate": 1.0,
+                "mean": 85.0,
+                "std": 5.0,
+                "sample_values": [80.0, 90.0],
+                "strings": [],
+                "unique_count": 2,
+                "total_count": 2,
+            },
         }
     }
 
@@ -544,16 +1344,64 @@ def test_resolve_metric_overhead_cost_selected_for_oh_hint(tmp_path):
     planner.mojo_engines = []
     planner.graph = {
         "WH": {
-            "UNIT_COST": ColumnNode(name="UNIT_COST", role=UNIT_MEASURE, is_numeric=True, magnitude_class="medium", fill_rate=1.0),
-            "OH_COST": ColumnNode(name="OH_COST", role=DERIVED_MEASURE, is_numeric=True, magnitude_class="medium", fill_rate=1.0),
-            "EXT_COST": ColumnNode(name="EXT_COST", role=DERIVED_MEASURE, is_numeric=True, magnitude_class="large", fill_rate=1.0),
+            "UNIT_COST": ColumnNode(
+                name="UNIT_COST",
+                role=UNIT_MEASURE,
+                is_numeric=True,
+                magnitude_class="medium",
+                fill_rate=1.0,
+            ),
+            "OH_COST": ColumnNode(
+                name="OH_COST",
+                role=DERIVED_MEASURE,
+                is_numeric=True,
+                magnitude_class="medium",
+                fill_rate=1.0,
+            ),
+            "EXT_COST": ColumnNode(
+                name="EXT_COST",
+                role=DERIVED_MEASURE,
+                is_numeric=True,
+                magnitude_class="large",
+                fill_rate=1.0,
+            ),
         }
     }
     planner.profiles = {
         "WH": {
-            "UNIT_COST": {"is_numeric": True, "numeric": [5.0], "fill_rate": 1.0, "mean": 5.0, "std": 1.0, "sample_values": [5.0], "strings": [], "unique_count": 1, "total_count": 1},
-            "OH_COST":   {"is_numeric": True, "numeric": [20.0], "fill_rate": 1.0, "mean": 20.0, "std": 2.0, "sample_values": [20.0], "strings": [], "unique_count": 1, "total_count": 1},
-            "EXT_COST":  {"is_numeric": True, "numeric": [80.0], "fill_rate": 1.0, "mean": 80.0, "std": 5.0, "sample_values": [80.0], "strings": [], "unique_count": 1, "total_count": 1},
+            "UNIT_COST": {
+                "is_numeric": True,
+                "numeric": [5.0],
+                "fill_rate": 1.0,
+                "mean": 5.0,
+                "std": 1.0,
+                "sample_values": [5.0],
+                "strings": [],
+                "unique_count": 1,
+                "total_count": 1,
+            },
+            "OH_COST": {
+                "is_numeric": True,
+                "numeric": [20.0],
+                "fill_rate": 1.0,
+                "mean": 20.0,
+                "std": 2.0,
+                "sample_values": [20.0],
+                "strings": [],
+                "unique_count": 1,
+                "total_count": 1,
+            },
+            "EXT_COST": {
+                "is_numeric": True,
+                "numeric": [80.0],
+                "fill_rate": 1.0,
+                "mean": 80.0,
+                "std": 5.0,
+                "sample_values": [80.0],
+                "strings": [],
+                "unique_count": 1,
+                "total_count": 1,
+            },
         }
     }
 
@@ -568,14 +1416,20 @@ def test_resolve_metric_overhead_cost_selected_for_oh_hint(tmp_path):
 def test_resolve_metric_query_hints_prefers_strong_match_in_preferred_source(tmp_path):
     planner = AutoPlanner(data_dir=Path(tmp_path), llm_policy="never")
     planner._query_hints_by_src = {
-        "S0": [{
-            "metric_role": "derived_measure",
-            "columns": [{"name": "measure_total", "fill_rate": 1.0, "formula": "quantity * unit_rate"}],
-        }],
-        "I0": [{
-            "metric_role": "derived_measure",
-            "columns": [{"name": "measure_total", "fill_rate": 1.0}],
-        }],
+        "S0": [
+            {
+                "metric_role": "derived_measure",
+                "columns": [
+                    {"name": "measure_total", "fill_rate": 1.0, "formula": "quantity * unit_rate"}
+                ],
+            }
+        ],
+        "I0": [
+            {
+                "metric_role": "derived_measure",
+                "columns": [{"name": "measure_total", "fill_rate": 1.0}],
+            }
+        ],
     }
 
     src, col, conf, role, steps = planner.resolve_metric("total value", "I0", "sum")
@@ -588,13 +1442,15 @@ def test_resolve_metric_query_hints_prefers_strong_match_in_preferred_source(tmp
 def test_resolve_metric_query_hints_uses_canonical_tokens_for_overhead_cost(tmp_path):
     planner = AutoPlanner(data_dir=Path(tmp_path), llm_policy="never")
     planner._query_hints_by_src = {
-        "C0": [{
-            "metric_role": "derived_measure",
-            "columns": [
-                {"name": "EXT_COST", "fill_rate": 1.0, "formula": "qty * unit_cost"},
-                {"name": "OH_COST", "fill_rate": 1.0},
-            ],
-        }],
+        "C0": [
+            {
+                "metric_role": "derived_measure",
+                "columns": [
+                    {"name": "EXT_COST", "fill_rate": 1.0, "formula": "qty * unit_cost"},
+                    {"name": "OH_COST", "fill_rate": 1.0},
+                ],
+            }
+        ],
     }
 
     src, col, conf, role, _steps = planner.resolve_metric("overhead cost", "C0", "sum")
@@ -609,22 +1465,86 @@ def test_resolve_metric_unit_cost_beats_ext_cost_on_source_prior(tmp_path):
     planner.mojo_engines = []
     planner.graph = {
         "POS": {
-            "UNIT_COST": ColumnNode(name="UNIT_COST", role=UNIT_MEASURE, is_numeric=True, magnitude_class="medium", fill_rate=1.0),
-            "EXT_COST":  ColumnNode(name="EXT_COST",  role=DERIVED_MEASURE, is_numeric=True, magnitude_class="large",  fill_rate=1.0),
+            "UNIT_COST": ColumnNode(
+                name="UNIT_COST",
+                role=UNIT_MEASURE,
+                is_numeric=True,
+                magnitude_class="medium",
+                fill_rate=1.0,
+            ),
+            "EXT_COST": ColumnNode(
+                name="EXT_COST",
+                role=DERIVED_MEASURE,
+                is_numeric=True,
+                magnitude_class="large",
+                fill_rate=1.0,
+            ),
         },
         "Backlog": {
-            "UNIT_COST": ColumnNode(name="UNIT_COST", role=UNIT_MEASURE, is_numeric=True, magnitude_class="medium", fill_rate=1.0),
-            "EXT_PRICE": ColumnNode(name="EXT_PRICE", role=DERIVED_MEASURE, is_numeric=True, magnitude_class="large",  fill_rate=1.0),
+            "UNIT_COST": ColumnNode(
+                name="UNIT_COST",
+                role=UNIT_MEASURE,
+                is_numeric=True,
+                magnitude_class="medium",
+                fill_rate=1.0,
+            ),
+            "EXT_PRICE": ColumnNode(
+                name="EXT_PRICE",
+                role=DERIVED_MEASURE,
+                is_numeric=True,
+                magnitude_class="large",
+                fill_rate=1.0,
+            ),
         },
     }
     planner.profiles = {
         "POS": {
-            "UNIT_COST": {"is_numeric": True, "numeric": [10.0], "fill_rate": 1.0, "mean": 10.0, "std": 1.0, "sample_values": [10.0], "strings": [], "unique_count": 1, "total_count": 1},
-            "EXT_COST":  {"is_numeric": True, "numeric": [100.0], "fill_rate": 1.0, "mean": 100.0, "std": 5.0, "sample_values": [100.0], "strings": [], "unique_count": 1, "total_count": 1},
+            "UNIT_COST": {
+                "is_numeric": True,
+                "numeric": [10.0],
+                "fill_rate": 1.0,
+                "mean": 10.0,
+                "std": 1.0,
+                "sample_values": [10.0],
+                "strings": [],
+                "unique_count": 1,
+                "total_count": 1,
+            },
+            "EXT_COST": {
+                "is_numeric": True,
+                "numeric": [100.0],
+                "fill_rate": 1.0,
+                "mean": 100.0,
+                "std": 5.0,
+                "sample_values": [100.0],
+                "strings": [],
+                "unique_count": 1,
+                "total_count": 1,
+            },
         },
         "Backlog": {
-            "UNIT_COST": {"is_numeric": True, "numeric": [12.0], "fill_rate": 1.0, "mean": 12.0, "std": 1.0, "sample_values": [12.0], "strings": [], "unique_count": 1, "total_count": 1},
-            "EXT_PRICE": {"is_numeric": True, "numeric": [120.0], "fill_rate": 1.0, "mean": 120.0, "std": 6.0, "sample_values": [120.0], "strings": [], "unique_count": 1, "total_count": 1},
+            "UNIT_COST": {
+                "is_numeric": True,
+                "numeric": [12.0],
+                "fill_rate": 1.0,
+                "mean": 12.0,
+                "std": 1.0,
+                "sample_values": [12.0],
+                "strings": [],
+                "unique_count": 1,
+                "total_count": 1,
+            },
+            "EXT_PRICE": {
+                "is_numeric": True,
+                "numeric": [120.0],
+                "fill_rate": 1.0,
+                "mean": 120.0,
+                "std": 6.0,
+                "sample_values": [120.0],
+                "strings": [],
+                "unique_count": 1,
+                "total_count": 1,
+            },
         },
     }
 
@@ -648,14 +1568,46 @@ def test_resolve_metric_gap_note_includes_second_candidate_name(tmp_path):
     planner.mojo_engines = []
     planner.graph = {
         "POS": {
-            "UNIT_COST": ColumnNode(name="UNIT_COST", role=UNIT_MEASURE, is_numeric=True, magnitude_class="medium", fill_rate=1.0),
-            "EXT_COST":  ColumnNode(name="EXT_COST",  role=DERIVED_MEASURE, is_numeric=True, magnitude_class="large",  fill_rate=1.0),
+            "UNIT_COST": ColumnNode(
+                name="UNIT_COST",
+                role=UNIT_MEASURE,
+                is_numeric=True,
+                magnitude_class="medium",
+                fill_rate=1.0,
+            ),
+            "EXT_COST": ColumnNode(
+                name="EXT_COST",
+                role=DERIVED_MEASURE,
+                is_numeric=True,
+                magnitude_class="large",
+                fill_rate=1.0,
+            ),
         }
     }
     planner.profiles = {
         "POS": {
-            "UNIT_COST": {"is_numeric": True, "numeric": [10.0], "fill_rate": 1.0, "mean": 10.0, "std": 1.0, "sample_values": [10.0], "strings": [], "unique_count": 1, "total_count": 1},
-            "EXT_COST":  {"is_numeric": True, "numeric": [100.0], "fill_rate": 1.0, "mean": 100.0, "std": 5.0, "sample_values": [100.0], "strings": [], "unique_count": 1, "total_count": 1},
+            "UNIT_COST": {
+                "is_numeric": True,
+                "numeric": [10.0],
+                "fill_rate": 1.0,
+                "mean": 10.0,
+                "std": 1.0,
+                "sample_values": [10.0],
+                "strings": [],
+                "unique_count": 1,
+                "total_count": 1,
+            },
+            "EXT_COST": {
+                "is_numeric": True,
+                "numeric": [100.0],
+                "fill_rate": 1.0,
+                "mean": 100.0,
+                "std": 5.0,
+                "sample_values": [100.0],
+                "strings": [],
+                "unique_count": 1,
+                "total_count": 1,
+            },
         }
     }
 
@@ -681,10 +1633,20 @@ def test_resolve_dimension_prefers_exact_preferred_source_anchor(tmp_path):
     }
     planner.profiles = {
         "S0": {
-            "local_group": {"fill_rate": 1.0, "unique_count": 4, "total_count": 240, "strings": ["g_a", "g_b"]},
+            "local_group": {
+                "fill_rate": 1.0,
+                "unique_count": 4,
+                "total_count": 240,
+                "strings": ["g_a", "g_b"],
+            },
         },
         "L0": {
-            "local_group": {"fill_rate": 1.0, "unique_count": 4, "total_count": 12, "strings": ["g_a", "g_b"]},
+            "local_group": {
+                "fill_rate": 1.0,
+                "unique_count": 4,
+                "total_count": 12,
+                "strings": ["g_a", "g_b"],
+            },
         },
     }
 
@@ -730,7 +1692,9 @@ def test_resolve_dimension_source_hint_anchors_named_source(tmp_path):
     planner = AutoPlanner(data_dir=Path(tmp_path), llm_policy="never")
     planner.graph = {
         "POSNew": {
-            "INVENTORY_TYPE": ColumnNode(name="INVENTORY_TYPE", role="metric", is_numeric=True, fill_rate=0.41),
+            "INVENTORY_TYPE": ColumnNode(
+                name="INVENTORY_TYPE", role="metric", is_numeric=True, fill_rate=0.41
+            ),
         },
         "Inventory": {
             "PART_TYPE": ColumnNode(name="PART_TYPE", role="category", fill_rate=1.0),
@@ -822,17 +1786,34 @@ def test_plan_self_corrects_same_named_dimension_back_to_metric_source(tmp_path)
     }
     planner.profiles = {
         "S0": {
-            "SHIP_TO_STATE": {"fill_rate": 0.43, "unique_count": 42, "total_count": 1000, "strings": ["CA", "NY"]},
+            "SHIP_TO_STATE": {
+                "fill_rate": 0.43,
+                "unique_count": 42,
+                "total_count": 1000,
+                "strings": ["CA", "NY"],
+            },
         },
         "S1": {
-            "SHIP_TO_STATE": {"fill_rate": 0.96, "unique_count": 50, "total_count": 1000, "strings": ["CA", "TX"]},
+            "SHIP_TO_STATE": {
+                "fill_rate": 0.96,
+                "unique_count": 50,
+                "total_count": 1000,
+                "strings": ["CA", "TX"],
+            },
         },
     }
     planner.resolve_metric = lambda hint, preferred_source=None, agg="sum": (
-        "S0", "EXT_PRICE", 1.0, "derived_measure", ["metric"]
+        "S0",
+        "EXT_PRICE",
+        1.0,
+        "derived_measure",
+        ["metric"],
     )
     planner.resolve_dimension = lambda hint, preferred_source=None: (
-        "S1", "SHIP_TO_STATE", 1.33, ["dimension"]
+        "S1",
+        "SHIP_TO_STATE",
+        1.33,
+        ["dimension"],
     )
 
     plan = planner.plan("revenue", "ship to state", "sum", "S0")
@@ -858,22 +1839,26 @@ def test_join_candidate_effective_conf_prefers_clean_sampled_join(tmp_path):
         ],
     }
 
-    clean = planner._join_candidate_effective_conf({
-        "source_a": "S0",
-        "field_a": "ORDER_NUMBER",
-        "source_b": "S1",
-        "field_b": "ORDER_NUMBER",
-        "confidence": 0.75,
-        "cardinality": "many_to_many",
-    })
-    noisy = planner._join_candidate_effective_conf({
-        "source_a": "S0",
-        "field_a": "PRODUCT_LINE",
-        "source_b": "S1",
-        "field_b": "PRODUCT_LINE",
-        "confidence": 0.80,
-        "cardinality": "many_to_many",
-    })
+    clean = planner._join_candidate_effective_conf(
+        {
+            "source_a": "S0",
+            "field_a": "ORDER_NUMBER",
+            "source_b": "S1",
+            "field_b": "ORDER_NUMBER",
+            "confidence": 0.75,
+            "cardinality": "many_to_many",
+        }
+    )
+    noisy = planner._join_candidate_effective_conf(
+        {
+            "source_a": "S0",
+            "field_a": "PRODUCT_LINE",
+            "source_b": "S1",
+            "field_b": "PRODUCT_LINE",
+            "confidence": 0.80,
+            "cardinality": "many_to_many",
+        }
+    )
 
     assert clean > noisy
 
@@ -895,22 +1880,28 @@ def test_join_candidate_effective_conf_uses_group_stability_to_tolerate_duplicat
         ],
     }
 
-    stable = planner._join_candidate_effective_conf({
-        "source_a": "S0",
-        "field_a": "ORDER_NUMBER",
-        "source_b": "S1",
-        "field_b": "ORDER_NUMBER",
-        "confidence": 0.74,
-        "cardinality": "many_to_many",
-    }, group_col="INVENTORY_TYPE")
-    conflicted = planner._join_candidate_effective_conf({
-        "source_a": "S0",
-        "field_a": "PRODUCT_LINE",
-        "source_b": "S1",
-        "field_b": "PRODUCT_LINE",
-        "confidence": 0.82,
-        "cardinality": "many_to_many",
-    }, group_col="INVENTORY_TYPE")
+    stable = planner._join_candidate_effective_conf(
+        {
+            "source_a": "S0",
+            "field_a": "ORDER_NUMBER",
+            "source_b": "S1",
+            "field_b": "ORDER_NUMBER",
+            "confidence": 0.74,
+            "cardinality": "many_to_many",
+        },
+        group_col="INVENTORY_TYPE",
+    )
+    conflicted = planner._join_candidate_effective_conf(
+        {
+            "source_a": "S0",
+            "field_a": "PRODUCT_LINE",
+            "source_b": "S1",
+            "field_b": "PRODUCT_LINE",
+            "confidence": 0.82,
+            "cardinality": "many_to_many",
+        },
+        group_col="INVENTORY_TYPE",
+    )
 
     assert stable > conflicted
 
@@ -923,31 +1914,55 @@ def test_join_candidate_effective_conf_penalizes_low_distinct_join_keys(tmp_path
     }
     planner.profiles = {
         "S0": {
-            "ORDER_NUMBER": {"fill_rate": 1.0, "unique_count": 3, "total_count": 3, "strings": ["O1", "O2", "O3"]},
-            "MESSAGE_CODE": {"fill_rate": 1.0, "unique_count": 3, "total_count": 300, "strings": ["A", "B", "C"]},
+            "ORDER_NUMBER": {
+                "fill_rate": 1.0,
+                "unique_count": 3,
+                "total_count": 3,
+                "strings": ["O1", "O2", "O3"],
+            },
+            "MESSAGE_CODE": {
+                "fill_rate": 1.0,
+                "unique_count": 3,
+                "total_count": 300,
+                "strings": ["A", "B", "C"],
+            },
         },
         "S1": {
-            "ORDER_NUMBER": {"fill_rate": 1.0, "unique_count": 3, "total_count": 3, "strings": ["O1", "O2", "O3"]},
-            "MESSAGE_CODE": {"fill_rate": 1.0, "unique_count": 3, "total_count": 500, "strings": ["A", "B", "C"]},
+            "ORDER_NUMBER": {
+                "fill_rate": 1.0,
+                "unique_count": 3,
+                "total_count": 3,
+                "strings": ["O1", "O2", "O3"],
+            },
+            "MESSAGE_CODE": {
+                "fill_rate": 1.0,
+                "unique_count": 3,
+                "total_count": 500,
+                "strings": ["A", "B", "C"],
+            },
         },
     }
 
-    strong = planner._join_candidate_effective_conf({
-        "source_a": "S0",
-        "field_a": "ORDER_NUMBER",
-        "source_b": "S1",
-        "field_b": "ORDER_NUMBER",
-        "confidence": 0.70,
-        "cardinality": "many_to_many",
-    })
-    weak = planner._join_candidate_effective_conf({
-        "source_a": "S0",
-        "field_a": "MESSAGE_CODE",
-        "source_b": "S1",
-        "field_b": "MESSAGE_CODE",
-        "confidence": 0.78,
-        "cardinality": "many_to_many",
-    })
+    strong = planner._join_candidate_effective_conf(
+        {
+            "source_a": "S0",
+            "field_a": "ORDER_NUMBER",
+            "source_b": "S1",
+            "field_b": "ORDER_NUMBER",
+            "confidence": 0.70,
+            "cardinality": "many_to_many",
+        }
+    )
+    weak = planner._join_candidate_effective_conf(
+        {
+            "source_a": "S0",
+            "field_a": "MESSAGE_CODE",
+            "source_b": "S1",
+            "field_b": "MESSAGE_CODE",
+            "confidence": 0.78,
+            "cardinality": "many_to_many",
+        }
+    )
 
     assert strong > weak
 
@@ -1001,7 +2016,9 @@ def test_join_candidate_effective_conf_registry_candidate_skips_record_sampling(
     assert confidence > 0.5
 
 
-def test_join_candidate_effective_conf_registry_inventory_dimension_prefers_part_number_key(tmp_path):
+def test_join_candidate_effective_conf_registry_inventory_dimension_prefers_part_number_key(
+    tmp_path,
+):
     planner = AutoPlanner(data_dir=Path(tmp_path), llm_policy="never")
     planner.profiles = {
         "Backlog": {
@@ -1147,10 +2164,14 @@ def test_plan_prefers_group_stable_join_for_cross_source_dimension(tmp_path):
     planner = AutoPlanner(data_dir=Path(tmp_path), llm_policy="never")
     planner.graph = {
         "S0": {
-            "EXT_PRICE": ColumnNode(name="EXT_PRICE", role="derived_measure", is_numeric=True, fill_rate=1.0),
+            "EXT_PRICE": ColumnNode(
+                name="EXT_PRICE", role="derived_measure", is_numeric=True, fill_rate=1.0
+            ),
         },
         "S1": {
-            "INVENTORY_TYPE": ColumnNode(name="INVENTORY_TYPE", role="metric", is_numeric=True, fill_rate=0.5),
+            "INVENTORY_TYPE": ColumnNode(
+                name="INVENTORY_TYPE", role="metric", is_numeric=True, fill_rate=0.5
+            ),
         },
     }
     planner.tables = {
@@ -1169,21 +2190,61 @@ def test_plan_prefers_group_stable_join_for_cross_source_dimension(tmp_path):
     }
     planner.profiles = {
         "S0": {
-            "ORDER_NUMBER": {"fill_rate": 1.0, "unique_count": 3, "total_count": 3, "strings": ["O1", "O2", "O3"]},
-            "PART_NUMBER": {"fill_rate": 1.0, "unique_count": 3, "total_count": 3, "strings": ["P1", "P2", "P3"]},
-            "EXT_PRICE": {"fill_rate": 1.0, "unique_count": 3, "total_count": 3, "is_numeric": True, "sample_values": [100.0, 80.0, 50.0], "strings": []},
+            "ORDER_NUMBER": {
+                "fill_rate": 1.0,
+                "unique_count": 3,
+                "total_count": 3,
+                "strings": ["O1", "O2", "O3"],
+            },
+            "PART_NUMBER": {
+                "fill_rate": 1.0,
+                "unique_count": 3,
+                "total_count": 3,
+                "strings": ["P1", "P2", "P3"],
+            },
+            "EXT_PRICE": {
+                "fill_rate": 1.0,
+                "unique_count": 3,
+                "total_count": 3,
+                "is_numeric": True,
+                "sample_values": [100.0, 80.0, 50.0],
+                "strings": [],
+            },
         },
         "S1": {
-            "ORDER_NUMBER": {"fill_rate": 1.0, "unique_count": 3, "total_count": 5, "strings": ["O1", "O2", "OX"]},
-            "PART_NUMBER": {"fill_rate": 1.0, "unique_count": 2, "total_count": 5, "strings": ["P1", "P2"]},
-            "INVENTORY_TYPE": {"fill_rate": 0.5, "unique_count": 3, "total_count": 5, "strings": [], "sample_values": [1, 2, 3]},
+            "ORDER_NUMBER": {
+                "fill_rate": 1.0,
+                "unique_count": 3,
+                "total_count": 5,
+                "strings": ["O1", "O2", "OX"],
+            },
+            "PART_NUMBER": {
+                "fill_rate": 1.0,
+                "unique_count": 2,
+                "total_count": 5,
+                "strings": ["P1", "P2"],
+            },
+            "INVENTORY_TYPE": {
+                "fill_rate": 0.5,
+                "unique_count": 3,
+                "total_count": 5,
+                "strings": [],
+                "sample_values": [1, 2, 3],
+            },
         },
     }
     planner.resolve_metric = lambda hint, preferred_source=None, agg="sum": (
-        "S0", "EXT_PRICE", 1.0, "derived_measure", ["metric"]
+        "S0",
+        "EXT_PRICE",
+        1.0,
+        "derived_measure",
+        ["metric"],
     )
     planner.resolve_dimension = lambda hint, preferred_source=None: (
-        "S1", "INVENTORY_TYPE", 0.9, ["dimension"]
+        "S1",
+        "INVENTORY_TYPE",
+        0.9,
+        ["dimension"],
     )
     planner.find_join_keys = lambda src_a, src_b: [
         {
@@ -1208,32 +2269,70 @@ def test_plan_prefers_group_stable_join_for_cross_source_dimension(tmp_path):
 
     assert plan.error is None
     assert len(plan.join_hops) == 1
-    assert (plan.join_hops[0].left_key, plan.join_hops[0].right_key) == ("ORDER_NUMBER", "ORDER_NUMBER")
+    assert (plan.join_hops[0].left_key, plan.join_hops[0].right_key) == (
+        "ORDER_NUMBER",
+        "ORDER_NUMBER",
+    )
 
 
 def test_search_join_path_short_circuits_safe_direct_path(tmp_path):
     planner = AutoPlanner(data_dir=Path(tmp_path), llm_policy="never")
     planner.graph = {
-        "S0": {"EXT_PRICE": ColumnNode(name="EXT_PRICE", role="derived_measure", is_numeric=True, fill_rate=1.0)},
-        "S1": {"INVENTORY_TYPE": ColumnNode(name="INVENTORY_TYPE", role="category", is_numeric=False, fill_rate=1.0)},
-        "S2": {"PRODUCT_LINE": ColumnNode(name="PRODUCT_LINE", role="category", is_numeric=False, fill_rate=1.0)},
+        "S0": {
+            "EXT_PRICE": ColumnNode(
+                name="EXT_PRICE", role="derived_measure", is_numeric=True, fill_rate=1.0
+            )
+        },
+        "S1": {
+            "INVENTORY_TYPE": ColumnNode(
+                name="INVENTORY_TYPE", role="category", is_numeric=False, fill_rate=1.0
+            )
+        },
+        "S2": {
+            "PRODUCT_LINE": ColumnNode(
+                name="PRODUCT_LINE", role="category", is_numeric=False, fill_rate=1.0
+            )
+        },
     }
     planner.profiles = {
         "S0": {
-            "ORDER_NUMBER": {"fill_rate": 1.0, "unique_count": 700, "total_count": 1000, "strings": ["O1", "O2"]},
+            "ORDER_NUMBER": {
+                "fill_rate": 1.0,
+                "unique_count": 700,
+                "total_count": 1000,
+                "strings": ["O1", "O2"],
+            },
         },
         "S1": {
-            "ORDER_NUMBER": {"fill_rate": 1.0, "unique_count": 900, "total_count": 1200, "strings": ["O1", "O2"]},
-            "INVENTORY_TYPE": {"fill_rate": 1.0, "unique_count": 12, "total_count": 1200, "strings": [], "sample_values": [1, 2, 3]},
+            "ORDER_NUMBER": {
+                "fill_rate": 1.0,
+                "unique_count": 900,
+                "total_count": 1200,
+                "strings": ["O1", "O2"],
+            },
+            "INVENTORY_TYPE": {
+                "fill_rate": 1.0,
+                "unique_count": 12,
+                "total_count": 1200,
+                "strings": [],
+                "sample_values": [1, 2, 3],
+            },
         },
         "S2": {
-            "PRODUCT_LINE": {"fill_rate": 1.0, "unique_count": 20, "total_count": 1200, "strings": ["A", "B"]},
+            "PRODUCT_LINE": {
+                "fill_rate": 1.0,
+                "unique_count": 20,
+                "total_count": 1200,
+                "strings": ["A", "B"],
+            },
         },
     }
 
     calls: list[tuple[str, str]] = []
 
-    def _fake_direct_join_candidates(left_source: str, right_source: str) -> list[dict[str, object]]:
+    def _fake_direct_join_candidates(
+        left_source: str, right_source: str
+    ) -> list[dict[str, object]]:
         calls.append((left_source, right_source))
         if (left_source, right_source) == ("S0", "S1"):
             return [
@@ -1262,16 +2361,149 @@ def test_search_join_path_short_circuits_safe_direct_path(tmp_path):
     assert calls == [("S0", "S1")]
 
 
+def test_search_join_path_prefers_registry_adjacency_before_broad_pair_probing(tmp_path):
+    planner = AutoPlanner(data_dir=Path(tmp_path), llm_policy="never")
+    planner.graph = {
+        "S0": {
+            "METRIC": ColumnNode(
+                name="METRIC", role="derived_measure", is_numeric=True, fill_rate=1.0
+            )
+        },
+        "S1": {
+            "MID_LABEL": ColumnNode(
+                name="MID_LABEL", role="category", is_numeric=False, fill_rate=1.0
+            )
+        },
+        "S2": {
+            "FINAL_LABEL": ColumnNode(
+                name="FINAL_LABEL", role="category", is_numeric=False, fill_rate=1.0
+            )
+        },
+        "S3": {
+            "UNUSED": ColumnNode(name="UNUSED", role="category", is_numeric=False, fill_rate=1.0)
+        },
+    }
+    planner.profiles = {
+        "S0": {
+            "S1_ID": {
+                "fill_rate": 1.0,
+                "unique_count": 10,
+                "total_count": 10,
+                "strings": ["1", "2"],
+            }
+        },
+        "S1": {
+            "ID": {"fill_rate": 1.0, "unique_count": 10, "total_count": 10, "strings": ["1", "2"]},
+            "S2_ID": {
+                "fill_rate": 1.0,
+                "unique_count": 5,
+                "total_count": 10,
+                "strings": ["10", "20"],
+            },
+            "MID_LABEL": {
+                "fill_rate": 1.0,
+                "unique_count": 10,
+                "total_count": 10,
+                "strings": ["A", "B"],
+            },
+        },
+        "S2": {
+            "ID": {"fill_rate": 1.0, "unique_count": 5, "total_count": 5, "strings": ["10", "20"]},
+            "FINAL_LABEL": {
+                "fill_rate": 1.0,
+                "unique_count": 5,
+                "total_count": 5,
+                "strings": ["X", "Y"],
+            },
+        },
+        "S3": {
+            "UNUSED": {"fill_rate": 1.0, "unique_count": 5, "total_count": 5, "strings": ["U", "V"]}
+        },
+    }
+    planner._connections = [
+        {
+            "source_a_name": "S0",
+            "source_b_name": "S1",
+            "col_a": "S1_ID",
+            "col_b": "ID",
+            "confidence": 0.92,
+            "cardinality": "many_to_one",
+            "overlap": 1.0,
+        },
+        {
+            "source_a_name": "S1",
+            "source_b_name": "S2",
+            "col_a": "S2_ID",
+            "col_b": "ID",
+            "confidence": 0.91,
+            "cardinality": "many_to_one",
+            "overlap": 1.0,
+        },
+    ]
+
+    calls: list[tuple[str, str]] = []
+
+    def _fake_direct_join_candidates(
+        left_source: str, right_source: str
+    ) -> list[dict[str, object]]:
+        calls.append((left_source, right_source))
+        mapping = {
+            ("S0", "S1"): [
+                {
+                    "field_a": "S1_ID",
+                    "source_a": "S0",
+                    "field_b": "ID",
+                    "source_b": "S1",
+                    "confidence": 0.92,
+                    "cardinality": "many_to_one",
+                    "overlap": 1.0,
+                    "evidence_source": "registry",
+                }
+            ],
+            ("S1", "S2"): [
+                {
+                    "field_a": "S2_ID",
+                    "source_a": "S1",
+                    "field_b": "ID",
+                    "source_b": "S2",
+                    "confidence": 0.91,
+                    "cardinality": "many_to_one",
+                    "overlap": 1.0,
+                    "evidence_source": "registry",
+                }
+            ],
+        }
+        if (left_source, right_source) not in mapping:
+            raise AssertionError(
+                f"registry-focused search should not probe unrelated pair {(left_source, right_source)}"
+            )
+        return mapping[(left_source, right_source)]
+
+    planner._direct_join_candidates = _fake_direct_join_candidates  # type: ignore[method-assign]
+
+    hops, conf, notes, err = planner._search_join_path("S0", "S2", "FINAL_LABEL")
+
+    assert err is None
+    assert len(hops) == 2
+    assert [(hop.left_source, hop.right_source) for hop in hops] == [("S0", "S1"), ("S1", "S2")]
+    assert conf >= 0.18
+    assert calls == [("S0", "S1"), ("S1", "S2")]
+    assert any(note.startswith("multi-hop path via") for note in notes)
+
+
 def test_resolve_metric_query_hints_sales_prefers_measure_over_sales_person_id(tmp_path):
     planner = AutoPlanner(data_dir=Path(tmp_path), llm_policy="never")
     planner._query_hints_by_src = {
-        "POS": [{
-            "metric_role": "derived_measure",
-            "columns": [{"name": "EXT_PRICE", "fill_rate": 1.0, "formula": "qty * unit_price"}],
-        }, {
-            "metric_role": "base_measure",
-            "columns": [{"name": "CUST_SALES_PERSON_NO", "fill_rate": 1.0}],
-        }],
+        "POS": [
+            {
+                "metric_role": "derived_measure",
+                "columns": [{"name": "EXT_PRICE", "fill_rate": 1.0, "formula": "qty * unit_price"}],
+            },
+            {
+                "metric_role": "base_measure",
+                "columns": [{"name": "CUST_SALES_PERSON_NO", "fill_rate": 1.0}],
+            },
+        ],
     }
 
     src, col, conf, role, _steps = planner.resolve_metric("sales", "POS", "sum")
@@ -1381,14 +2613,43 @@ def test_from_registry_uses_persisted_profiles_and_lazy_loads_records(tmp_path, 
             "source": "S0",
             "row_count": 2,
             "columns": [
-                {"name": "entity_id", "role": "identifier", "is_numeric": False, "fill_rate": 1.0, "samples": ["A1", "A2"]},
-                {"name": "local_group", "role": "category", "is_numeric": False, "fill_rate": 1.0, "samples": ["g_a", "g_b"], "cardinality": 2},
-                {"name": "measure_total", "role": "derived_measure", "is_numeric": True, "fill_rate": 1.0, "mean": 15.0, "magnitude": "large"},
+                {
+                    "name": "entity_id",
+                    "role": "identifier",
+                    "is_numeric": False,
+                    "fill_rate": 1.0,
+                    "samples": ["A1", "A2"],
+                },
+                {
+                    "name": "local_group",
+                    "role": "category",
+                    "is_numeric": False,
+                    "fill_rate": 1.0,
+                    "samples": ["g_a", "g_b"],
+                    "cardinality": 2,
+                },
+                {
+                    "name": "measure_total",
+                    "role": "derived_measure",
+                    "is_numeric": True,
+                    "fill_rate": 1.0,
+                    "mean": 15.0,
+                    "magnitude": "large",
+                },
             ],
-            "query_hints": [{
-                "metric_role": "derived_measure",
-                "columns": [{"name": "measure_total", "fill_rate": 1.0, "samples": ["10.0", "20.0"], "mean": 15.0}],
-            }],
+            "query_hints": [
+                {
+                    "metric_role": "derived_measure",
+                    "columns": [
+                        {
+                            "name": "measure_total",
+                            "fill_rate": 1.0,
+                            "samples": ["10.0", "20.0"],
+                            "mean": 15.0,
+                        }
+                    ],
+                }
+            ],
             "planner_profile": {
                 "entity_id": {
                     "is_numeric": False,

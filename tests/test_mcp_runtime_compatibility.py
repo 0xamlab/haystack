@@ -34,16 +34,14 @@ from tests.integration.runtime_live_db_helpers import (
     temporary_postgres_fixture,
 )
 
-REAL_MARCH_ORDERS = (
-    ROOT / "test_files" / "850a28da-a6f7-4ecc-9e7a-51a9cf7f501b-united_states.csv"
-)
+REAL_MARCH_ORDERS = ROOT / "test_files" / "850a28da-a6f7-4ecc-9e7a-51a9cf7f501b-united_states.csv"
 PUBLIC_S3_CONNECTION = {
-    "bucket": "noaa-global-hourly-pds",
+    "bucket": "1000genomes",
     "region": "us-east-1",
     "anonymous": True,
-    "file_type": "csv",
+    "file_type": "tsv",
 }
-PUBLIC_S3_SELECTION = {"object_path": "1901/02907099999.csv"}
+PUBLIC_S3_SELECTION = {"object_path": "20131219.populations.tsv"}
 PUBLIC_REST_CONNECTION = {
     "url": "https://api.weather.gov/stations",
     "headers": {
@@ -211,7 +209,7 @@ def _install_live_connector_test(
     monkeypatch.setattr(dcs, "_test_and_persist_connector", _fake_test_and_persist_connector)
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_mcp_runtime_real_csv_connect_schema_query_flow(
     patched_mcp_runtime,
 ) -> None:
@@ -254,7 +252,7 @@ async def test_mcp_runtime_real_csv_connect_schema_query_flow(
     assert _result_value(queried) == pytest.approx(expected_sum)
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_mcp_runtime_real_csv_connect_via_canonical_connector(
     patched_mcp_runtime,
 ) -> None:
@@ -290,7 +288,7 @@ async def test_mcp_runtime_real_csv_connect_via_canonical_connector(
     assert _result_value(queried) == pytest.approx(expected_sum)
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_mcp_runtime_database_selection_resume_and_query_sqlite(
     patched_mcp_runtime,
     monkeypatch,
@@ -311,7 +309,9 @@ async def test_mcp_runtime_database_selection_resume_and_query_sqlite(
     async def _fake_test_and_persist_connector(*_: Any, **__: Any) -> tuple[bool, str, int]:
         return True, "ok", 1
 
-    async def _fake_browse_connector_real(*_: Any, **__: Any) -> tuple[list[dict[str, Any]], str]:
+    async def _fake_browse_connector_real_detailed(
+        *_: Any, **__: Any
+    ) -> tuple[list[dict[str, Any]], str, dict[str, Any]]:
         return (
             [
                 {"id": "orders", "label": "orders", "selection": {"table": "orders"}},
@@ -322,6 +322,15 @@ async def test_mcp_runtime_database_selection_resume_and_query_sqlite(
                 },
             ],
             "choose a table",
+            {
+                "scope_noun": "catalog",
+                "returned_count": 2,
+                "count_kind": "exact",
+                "matching_total_count": 2,
+                "scope_total_count": 2,
+                "more_available": False,
+                "sampling_reason": None,
+            },
         )
 
     async def _fake_get_visible_connector(*_: Any, **__: Any) -> Any:
@@ -329,7 +338,7 @@ async def test_mcp_runtime_database_selection_resume_and_query_sqlite(
 
     monkeypatch.setattr(dcs, "create_or_reuse_connector", _fake_create_or_reuse_connector)
     monkeypatch.setattr(dcs, "_test_and_persist_connector", _fake_test_and_persist_connector)
-    monkeypatch.setattr(dcs, "browse_connector_real", _fake_browse_connector_real)
+    monkeypatch.setattr(dcs, "browse_connector_real_detailed", _fake_browse_connector_real_detailed)
     monkeypatch.setattr(dcs, "get_visible_connector", _fake_get_visible_connector)
 
     first = json.loads(
@@ -374,7 +383,7 @@ async def test_mcp_runtime_database_selection_resume_and_query_sqlite(
     assert _result_value(queried) == pytest.approx(416.0)
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_mcp_runtime_database_query_postgres_via_canonical_connector(
     patched_mcp_runtime,
     monkeypatch,
@@ -383,9 +392,7 @@ async def test_mcp_runtime_database_query_postgres_via_canonical_connector(
         _postgres_fixture_rows(),
         table="orders",
     ) as postgres_descriptor:
-        connection_config = postgres_connection_config(
-            postgres_descriptor["connection_string"]
-        )
+        connection_config = postgres_connection_config(postgres_descriptor["connection_string"])
         fake_connector = SimpleNamespace(
             id=uuid.uuid4(),
             connector_type=SimpleNamespace(value="postgres"),
@@ -435,7 +442,7 @@ async def test_mcp_runtime_database_query_postgres_via_canonical_connector(
         assert _result_value(queried) == pytest.approx(416.0)
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_mcp_runtime_database_selection_resume_and_query_postgres(
     patched_mcp_runtime,
     monkeypatch,
@@ -444,9 +451,7 @@ async def test_mcp_runtime_database_selection_resume_and_query_postgres(
         _postgres_fixture_rows(),
         table="orders",
     ) as postgres_descriptor:
-        connection_config = postgres_connection_config(
-            postgres_descriptor["connection_string"]
-        )
+        connection_config = postgres_connection_config(postgres_descriptor["connection_string"])
         fake_connector = SimpleNamespace(
             id=uuid.uuid4(),
             connector_type=SimpleNamespace(value="postgres"),
@@ -520,7 +525,7 @@ async def test_mcp_runtime_database_selection_resume_and_query_postgres(
         assert _result_value(queried) == pytest.approx(416.0)
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_mcp_runtime_public_rest_connect_and_count_query(
     patched_mcp_runtime,
     monkeypatch,
@@ -557,12 +562,10 @@ async def test_mcp_runtime_public_rest_connect_and_count_query(
     )
     assert queried["validated"] is True
     assert queried["result_type"] == "scalar"
-    assert _result_value(queried) == pytest.approx(
-        float(connected["schema_summary"]["row_count"])
-    )
+    assert _result_value(queried) == pytest.approx(float(connected["schema_summary"]["row_count"]))
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_mcp_runtime_public_s3_connect_and_count_query(
     patched_mcp_runtime,
     monkeypatch,
@@ -600,6 +603,4 @@ async def test_mcp_runtime_public_s3_connect_and_count_query(
     )
     assert queried["validated"] is True
     assert queried["result_type"] == "scalar"
-    assert _result_value(queried) == pytest.approx(
-        float(connected["schema_summary"]["row_count"])
-    )
+    assert _result_value(queried) == pytest.approx(float(connected["schema_summary"]["row_count"]))
