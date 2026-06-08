@@ -43,6 +43,7 @@ Usage:
 Self-test:
     python3 training/semantic/schema_registry.py --self-test
 """
+
 from __future__ import annotations
 
 import argparse
@@ -67,6 +68,7 @@ from training.semantic.pipeline import (
 )
 
 # ── Registry path ─────────────────────────────────────────────────────────────
+
 
 def _registry_path() -> Path:
     return Path.home() / ".decision-engine" / "registry.json"
@@ -93,6 +95,7 @@ _REGISTRY_LOCK = threading.Lock()
 
 # ── Status probing ────────────────────────────────────────────────────────────
 
+
 def _probe_status(entry: dict[str, Any]) -> str:
     """Re-check artifact existence to update a stale 'training' status."""
     if entry.get("status") == "training":
@@ -104,6 +107,7 @@ def _probe_status(entry: dict[str, Any]) -> str:
 
 
 # ── SchemaRegistry ────────────────────────────────────────────────────────────
+
 
 class SchemaRegistry:
     """
@@ -126,11 +130,11 @@ class SchemaRegistry:
 
     def register(
         self,
-        schema:         dict,
+        schema: dict,
         domain_aliases: dict | None = None,
-        epochs:         int = 80,
-        batch_size:     int = 32,
-        train:          bool = True,
+        epochs: int = 80,
+        batch_size: int = 32,
+        train: bool = True,
     ) -> dict[str, Any]:
         """
         Register a schema and (optionally) fire async training.
@@ -146,7 +150,7 @@ class SchemaRegistry:
         h = schema_hash(schema, domain_aliases)
 
         with _REGISTRY_LOCK:
-            data  = _load_registry()
+            data = _load_registry()
             entry = data.get(h, {})
 
             # Re-probe in case artifacts were written since last registration
@@ -165,19 +169,19 @@ class SchemaRegistry:
 
             # Build or update entry
             source_names = list(schema.keys())
-            col_count    = sum(len(v) for v in schema.values())
+            col_count = sum(len(v) for v in schema.values())
 
             entry = {
-                "schema_hash":   h,
-                "registered_at": entry.get("registered_at",
-                                           datetime.now(UTC).isoformat()),
-                "updated_at":    datetime.now(UTC).isoformat(),
-                "status":        current_status if current_status == "ready" else (
-                                     "training" if train else "untrained"),
-                "artifact_dir":  str(art_dir) if art_dir else None,
-                "source_names":  source_names,
-                "column_count":  col_count,
-                "has_aliases":   bool(domain_aliases),
+                "schema_hash": h,
+                "registered_at": entry.get("registered_at", datetime.now(UTC).isoformat()),
+                "updated_at": datetime.now(UTC).isoformat(),
+                "status": current_status
+                if current_status == "ready"
+                else ("training" if train else "untrained"),
+                "artifact_dir": str(art_dir) if art_dir else None,
+                "source_names": source_names,
+                "column_count": col_count,
+                "has_aliases": bool(domain_aliases),
             }
             data[h] = entry
             _save_registry(data)
@@ -203,17 +207,17 @@ class SchemaRegistry:
                     with _REGISTRY_LOCK:
                         d = _load_registry()
                         if h in d:
-                            d[h]["status"]       = "ready"
+                            d[h]["status"] = "ready"
                             d[h]["artifact_dir"] = str(done_dir)
-                            d[h]["updated_at"]   = datetime.now(UTC).isoformat()
+                            d[h]["updated_at"] = datetime.now(UTC).isoformat()
                             _save_registry(d)
                 except Exception as exc:
                     with _REGISTRY_LOCK:
                         d = _load_registry()
                         if h in d:
-                            d[h]["status"]       = "failed"
-                            d[h]["error"]        = str(exc)
-                            d[h]["updated_at"]   = datetime.now(UTC).isoformat()
+                            d[h]["status"] = "failed"
+                            d[h]["error"] = str(exc)
+                            d[h]["updated_at"] = datetime.now(UTC).isoformat()
                             _save_registry(d)
 
             future.add_done_callback(_on_done)
@@ -224,7 +228,7 @@ class SchemaRegistry:
 
     def status(self, schema: dict, domain_aliases: dict | None = None) -> str:
         """Return current training status for this schema."""
-        h    = schema_hash(schema, domain_aliases)
+        h = schema_hash(schema, domain_aliases)
         data = _load_registry()
         if h not in data:
             return "untrained"
@@ -232,7 +236,7 @@ class SchemaRegistry:
 
     def get_entry(self, schema: dict, domain_aliases: dict | None = None) -> dict | None:
         """Return the full registry entry for a schema, or None if unknown."""
-        h    = schema_hash(schema, domain_aliases)
+        h = schema_hash(schema, domain_aliases)
         data = _load_registry()
         entry = data.get(h)
         if entry is None:
@@ -244,7 +248,7 @@ class SchemaRegistry:
 
     def resolve(
         self,
-        schema:         dict,
+        schema: dict,
         domain_aliases: dict | None = None,
         base_model_dir: Path | None = None,
     ) -> tuple[Path | None, ModelTier]:
@@ -315,12 +319,13 @@ class SchemaRegistry:
 
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
+
 def main():
     parser = argparse.ArgumentParser(description="Schema registry management")
-    parser.add_argument("--list",        action="store_true", help="List all registered schemas")
-    parser.add_argument("--base-model",  action="store_true", help="Build/verify base model")
-    parser.add_argument("--epochs",      type=int, default=80)
-    parser.add_argument("--self-test",   action="store_true")
+    parser.add_argument("--list", action="store_true", help="List all registered schemas")
+    parser.add_argument("--base-model", action="store_true", help="Build/verify base model")
+    parser.add_argument("--epochs", type=int, default=80)
+    parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
 
     if args.self_test:
@@ -338,9 +343,11 @@ def main():
             print("-" * 80)
             for e in schemas:
                 sources = ", ".join(e.get("source_names", []))[:28]
-                reg_at  = e.get("registered_at", "")[:19]
-                print(f"{e['schema_hash']:12} {e['status']:12} {sources:30} "
-                      f"{e.get('column_count', 0):5} {reg_at}")
+                reg_at = e.get("registered_at", "")[:19]
+                print(
+                    f"{e['schema_hash']:12} {e['status']:12} {sources:30} "
+                    f"{e.get('column_count', 0):5} {reg_at}"
+                )
         return
 
     if args.base_model:
@@ -357,15 +364,15 @@ def _run_self_test():
 
     schema = {
         "POS": [
-            ["UNIT_PRICE",    "unit_measure"],
-            ["EXT_PRICE",     "derived_measure"],
-            ["QTY",           "base_measure"],
-            ["ORDER_DATE",    "other"],
+            ["UNIT_PRICE", "unit_measure"],
+            ["EXT_PRICE", "derived_measure"],
+            ["QTY", "base_measure"],
+            ["ORDER_DATE", "other"],
         ],
         "Totals": [
-            ["Net_Sales",  "derived_measure"],
-            ["Guests",     "base_measure"],
-            ["PPA",        "ratio"],
+            ["Net_Sales", "derived_measure"],
+            ["Guests", "base_measure"],
+            ["PPA", "ratio"],
         ],
     }
     domain_aliases = {"ppa": ["per", "person", "average"]}
@@ -374,7 +381,7 @@ def _run_self_test():
 
     with tempfile.TemporaryDirectory() as tmp:
         base = Path(tmp)
-        reg  = SchemaRegistry(base_dir=base)
+        reg = SchemaRegistry(base_dir=base)
 
         # ── Test 1: register → trains in background ───────────────────────────
         print("── Test 1: register + async training")
@@ -398,8 +405,7 @@ def _run_self_test():
 
         # ── Test 4: resolve before schema training completes ──────────────────
         print("── Test 4: resolve (base or schema)")
-        art_dir, tier = reg.resolve(schema, domain_aliases,
-                                    base_model_dir=base_dir)
+        art_dir, tier = reg.resolve(schema, domain_aliases, base_model_dir=base_dir)
         assert tier in ("schema", "base"), f"Expected schema or base, got {tier!r}"
         print(f"   tier={tier!r}")
 
@@ -408,7 +414,8 @@ def _run_self_test():
         # Re-register with train=True to get the future; or wait via polling
         # Since training is already in flight from Test 1, poll the registry
         import time
-        for _ in range(60):   # up to 60s
+
+        for _ in range(60):  # up to 60s
             s = reg.status(schema, domain_aliases)
             if s == "ready":
                 break

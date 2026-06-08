@@ -26,6 +26,7 @@ Domain aliases JSON (optional):
 Self-test:
     python3 training/semantic/build_vocab.py --self-test
 """
+
 from __future__ import annotations
 
 import argparse
@@ -46,31 +47,87 @@ from mojo.engine.vector_kernels.tokenizer import (
 
 _SEED_TOKENS: list[str] = [
     # Aggregation keywords
-    "count", "total", "sum", "average", "avg", "mean", "max", "min",
-    "maximum", "minimum", "highest", "lowest",
+    "count",
+    "total",
+    "sum",
+    "average",
+    "avg",
+    "mean",
+    "max",
+    "min",
+    "maximum",
+    "minimum",
+    "highest",
+    "lowest",
     # Meta-query keywords
-    "how", "many", "number", "of", "distinct", "unique", "different",
+    "how",
+    "many",
+    "number",
+    "of",
+    "distinct",
+    "unique",
+    "different",
     # Modifier keywords
-    "per", "by", "for", "each", "grouped", "group",
+    "per",
+    "by",
+    "for",
+    "each",
+    "grouped",
+    "group",
     # Common measure words
-    "revenue", "sales", "cost", "price", "amount", "value", "rate",
-    "quantity", "qty", "units", "volume",
+    "revenue",
+    "sales",
+    "cost",
+    "price",
+    "amount",
+    "value",
+    "rate",
+    "quantity",
+    "qty",
+    "units",
+    "volume",
     # Common dimension words
-    "customer", "date", "time", "period", "region", "category", "type",
-    "status", "name", "id", "code",
+    "customer",
+    "date",
+    "time",
+    "period",
+    "region",
+    "category",
+    "type",
+    "status",
+    "name",
+    "id",
+    "code",
     # Entity nouns (row-level)
-    "orders", "order", "customers", "servers", "server", "employees",
-    "employee", "transactions", "transaction", "items", "products",
+    "orders",
+    "order",
+    "customers",
+    "servers",
+    "server",
+    "employees",
+    "employee",
+    "transactions",
+    "transaction",
+    "items",
+    "products",
     # Hospitality domain
-    "guests", "guest", "covers", "diners", "tips", "gratuity",
-    "beverage", "food", "alcohol",
+    "guests",
+    "guest",
+    "covers",
+    "diners",
+    "tips",
+    "gratuity",
+    "beverage",
+    "food",
+    "alcohol",
     # Special tokens
-    "<PAD>", "<UNK>",
+    "<PAD>",
+    "<UNK>",
 ]
 
 
 def build_vocab_from_sources(
-    schema:       dict[str, list[list[str]]],
+    schema: dict[str, list[list[str]]],
     extra_tokens: list[str] | None = None,
     domain_aliases: dict[str, list[str]] | None = None,
 ) -> tuple[dict[str, int], list[str]]:
@@ -115,10 +172,10 @@ def build_vocab_from_sources(
 
 def main():
     parser = argparse.ArgumentParser(description="Build semantic model vocabulary")
-    parser.add_argument("--schema",   type=Path, help="Schema JSON file")
-    parser.add_argument("--seed",     type=Path, help="Extra seed query JSON list")
-    parser.add_argument("--aliases",  type=Path, help="Domain aliases JSON")
-    parser.add_argument("--out-dir",  type=Path, default=Path("training/semantic/artifacts"))
+    parser.add_argument("--schema", type=Path, help="Schema JSON file")
+    parser.add_argument("--seed", type=Path, help="Extra seed query JSON list")
+    parser.add_argument("--aliases", type=Path, help="Domain aliases JSON")
+    parser.add_argument("--out-dir", type=Path, default=Path("training/semantic/artifacts"))
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
 
@@ -153,8 +210,13 @@ def main():
 
 def _run_self_test():
     schema = {
-        "POS": [["UNIT_PRICE", "unit_measure"], ["EXT_PRICE", "derived_measure"],
-                ["QTY", "base_measure"], ["ORDER_DATE", "other"], ["CUSTOMER_NAME", "other"]],
+        "POS": [
+            ["UNIT_PRICE", "unit_measure"],
+            ["EXT_PRICE", "derived_measure"],
+            ["QTY", "base_measure"],
+            ["ORDER_DATE", "other"],
+            ["CUSTOMER_NAME", "other"],
+        ],
         "Totals": [["Net_Sales", "derived_measure"], ["Guests", "base_measure"], ["PPA", "ratio"]],
     }
     domain_aliases = {"ppa": ["per", "person", "average"]}
@@ -163,12 +225,12 @@ def _run_self_test():
 
     assert "<PAD>" in tok_to_id and tok_to_id["<PAD>"] == 0
     assert "<UNK>" in tok_to_id and tok_to_id["<UNK>"] == 1
-    assert "ppa"    in tok_to_id
-    assert "per"    in tok_to_id
+    assert "ppa" in tok_to_id
+    assert "per" in tok_to_id
     assert "person" in tok_to_id
     assert "average" in tok_to_id
     assert "guests" in tok_to_id
-    assert "count"  in tok_to_id
+    assert "count" in tok_to_id
     assert len(id_to_tok) == len(tok_to_id)
 
     # No schema → should still work (seed tokens only)

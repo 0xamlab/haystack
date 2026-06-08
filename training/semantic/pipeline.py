@@ -44,11 +44,13 @@ Usage:
 Self-test:
     python3 training/semantic/pipeline.py --self-test
 """
+
 from __future__ import annotations
 
 import argparse
 import concurrent.futures
 import hashlib
+import importlib
 import json
 import sys
 import threading
@@ -57,30 +59,66 @@ from typing import Literal
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-try:
-    import torch
-except ImportError:
-    print("torch and numpy required: pip install torch numpy")
-    sys.exit(1)
-
 from training.semantic.build_dataset import build_dataset
 from training.semantic.build_vocab import build_vocab_from_sources
-from training.semantic.export_artifacts import export, verify_export
-from training.semantic.precompute_neighbors import (
-    compute_neighbors,
-    load_embeddings,
-    write_neighbors,
-)
-from training.semantic.train_thin_semantic import (
-    SemanticDataset,
-    ThinSemanticModel,
-    train,
-)
+
+
+class SemanticTrainingDependencyError(RuntimeError):
+    """Raised when optional semantic-training dependencies are unavailable."""
+
+
+def semantic_training_dependency_error() -> str | None:
+    """Return a stable error message when semantic training extras are missing."""
+    missing: list[str] = []
+    for dependency in ("torch", "numpy"):
+        try:
+            importlib.import_module(dependency)
+        except ImportError:
+            missing.append(dependency)
+    if not missing:
+        return None
+    missing_list = ", ".join(missing)
+    return (
+        "Semantic training requires optional dependencies not installed: "
+        f"{missing_list}. Install them to enable background semantic model training."
+    )
+
+
+def ensure_semantic_training_available() -> None:
+    """Raise a structured error when semantic training dependencies are missing."""
+    error = semantic_training_dependency_error()
+    if error is not None:
+        raise SemanticTrainingDependencyError(error)
+
+
+def _import_training_module(module_name: str):
+    ensure_semantic_training_available()
+    try:
+        return importlib.import_module(module_name)
+    except (ImportError, ModuleNotFoundError, SystemExit) as exc:
+        dependency_error = semantic_training_dependency_error()
+        if dependency_error is not None:
+            raise SemanticTrainingDependencyError(dependency_error) from exc
+        raise
+
+
+def _load_train_module():
+    return _import_training_module("training.semantic.train_thin_semantic")
+
+
+def _load_export_module():
+    return _import_training_module("training.semantic.export_artifacts")
+
+
+def _load_neighbors_module():
+    return _import_training_module("training.semantic.precompute_neighbors")
+
 
 # ── User-local artifact root ──────────────────────────────────────────────────
 
 # Reserved directory name for the schema-agnostic base model.
 _BASE_HASH = "_base"
+
 
 def default_artifact_root() -> Path:
     """Return ~/.decision-engine/semantic/ (created on demand)."""
@@ -104,9 +142,9 @@ def schema_hash(schema: dict, domain_aliases: dict | None) -> str:
 
 
 def artifact_dir_for(
-    schema:         dict,
+    schema: dict,
     domain_aliases: dict | None = None,
-    base:           Path | None = None,
+    base: Path | None = None,
 ) -> Path:
     """
     Return (and create) the artifact directory for this schema.
@@ -117,7 +155,7 @@ def artifact_dir_for(
     if base is not None:
         base.mkdir(parents=True, exist_ok=True)
         return base
-    h   = schema_hash(schema, domain_aliases)
+    h = schema_hash(schema, domain_aliases)
     out = default_artifact_root() / h
     out.mkdir(parents=True, exist_ok=True)
     return out
@@ -125,10 +163,11 @@ def artifact_dir_for(
 
 # ── Pipeline stages ───────────────────────────────────────────────────────────
 
+
 def stage_vocab(
-    schema:         dict,
+    schema: dict,
     domain_aliases: dict | None,
-    out_dir:        Path,
+    out_dir: Path,
 ) -> tuple[dict[str, int], list[str]]:
     print("[1/5] Building vocabulary...")
     token_to_id, id_to_token = build_vocab_from_sources(schema, domain_aliases=domain_aliases)
@@ -139,10 +178,10 @@ def stage_vocab(
 
 
 def stage_dataset(
-    vocab:          dict[str, int],
-    schema:         dict,
+    vocab: dict[str, int],
+    schema: dict,
     domain_aliases: dict | None,
-    out_dir:        Path,
+    out_dir: Path,
 ) -> list[dict]:
     print("[2/5] Building dataset...")
     records = build_dataset(vocab, schema, domain_aliases, augment=True)
@@ -151,33 +190,42 @@ def stage_dataset(
         for r in records:
             f.write(json.dumps(r) + "\n")
     intent_counts = [sum(1 for r in records if r["intent"] == i) for i in range(4)]
-    print(f"      {len(records)} examples  "
-          f"column_like={intent_counts[0]}  meta={intent_counts[1]}  "
-          f"weak={intent_counts[2]}  unsupported={intent_counts[3]}")
+    print(
+        f"      {len(records)} examples  "
+        f"column_like={intent_counts[0]}  meta={intent_counts[1]}  "
+        f"weak={intent_counts[2]}  unsupported={intent_counts[3]}"
+    )
     return records
 
 
 def stage_train(
     vocab_size: int,
-    records:    list[dict],
-    out_dir:    Path,
-    epochs:     int = 80,
+    records: list[dict],
+    out_dir: Path,
+    epochs: int = 80,
     batch_size: int = 32,
-    val_split:  float = 0.15,
-) -> ThinSemanticModel:
+    val_split: float = 0.15,
+) -> object:
     print(f"[3/5] Training model ({epochs} epochs)...")
-    val_n      = max(1, int(len(records) * val_split))
-    val_recs   = records[-val_n:]
+    val_n = max(1, int(len(records) * val_split))
+    val_recs = records[-val_n:]
     train_recs = records[:-val_n]
 
-    model  = ThinSemanticModel(vocab_size=vocab_size)
-    ds_tr  = SemanticDataset(train_recs)
-    ds_val = SemanticDataset(val_recs) if val_recs else None
+    train_module = _load_train_module()
+    model = train_module.ThinSemanticModel(vocab_size=vocab_size)
+    ds_tr = train_module.SemanticDataset(train_recs)
+    ds_val = train_module.SemanticDataset(val_recs) if val_recs else None
 
-    metrics = train(model, ds_tr, ds_val, epochs=epochs, batch_size=batch_size)
+    metrics = train_module.train(
+        model,
+        ds_tr,
+        ds_val,
+        epochs=epochs,
+        batch_size=batch_size,
+    )
 
     ckpt_path = out_dir / "model.pt"
-    torch.save(
+    train_module.torch.save(
         {"state_dict": model.state_dict(), "vocab_size": vocab_size, "metrics": metrics},
         ckpt_path,
     )
@@ -187,13 +235,14 @@ def stage_train(
 
 
 def stage_export(
-    model:      ThinSemanticModel,
+    model: object,
     vocab_size: int,
-    out_dir:    Path,
+    out_dir: Path,
 ) -> None:
     print("[4/5] Exporting binary artifacts...")
-    meta = export(model, out_dir)
-    ok   = verify_export(out_dir, vocab_size)
+    export_module = _load_export_module()
+    meta = export_module.export(model, out_dir)
+    ok = export_module.verify_export(out_dir, vocab_size)
     if not ok:
         print("      WARNING: shape verification failed — check artifacts")
     else:
@@ -202,21 +251,23 @@ def stage_export(
 
 def stage_neighbors(
     vocab_size: int,
-    emb_dim:    int,
-    out_dir:    Path,
-    k:          int = 8,
-    min_score:  float = 0.70,
+    emb_dim: int,
+    out_dir: Path,
+    k: int = 8,
+    min_score: float = 0.70,
 ) -> None:
     print(f"[5/5] Precomputing top-{k} token neighbors (min_score={min_score})...")
+    neighbors_module = _load_neighbors_module()
     emb_path = out_dir / "embeddings.bin"
-    emb      = load_embeddings(emb_path, vocab_size, emb_dim)
-    nn_ids, nn_scores = compute_neighbors(emb, k=k, min_score=min_score)
-    write_neighbors(out_dir, nn_ids, nn_scores)
+    emb = neighbors_module.load_embeddings(emb_path, vocab_size, emb_dim)
+    nn_ids, nn_scores = neighbors_module.compute_neighbors(emb, k=k, min_score=min_score)
+    neighbors_module.write_neighbors(out_dir, nn_ids, nn_scores)
     has_nn = (nn_scores[:, 0] > 0).sum()
     print(f"      tokens with ≥1 neighbor above threshold: {has_nn}/{vocab_size}")
 
 
 # ── Main pipeline ─────────────────────────────────────────────────────────────
+
 
 def stage_column_embeddings(
     schema: dict,
@@ -234,6 +285,7 @@ def stage_column_embeddings(
     No gradient computation. Safe to call for schemas with millions of columns.
     """
     from training.semantic.fast_resolver import FastResolver
+
     try:
         resolver = FastResolver(artifacts_dir)
     except FileNotFoundError:
@@ -254,21 +306,23 @@ def stage_column_embeddings(
 def _merge_aliases_import():
     """Lazy import to avoid circular deps at module level."""
     from mojo.engine.vector_kernels.tokenizer import merge_aliases as _ma
+
     return _ma
+
 
 merge_aliases = _merge_aliases_import()
 
 
 def run_pipeline(
-    schema:         dict,
+    schema: dict,
     domain_aliases: dict | None = None,
-    out_dir:        Path | None = None,
-    epochs:         int = 80,
-    batch_size:     int = 32,
-    val_split:      float = 0.15,
-    nn_k:           int = 8,
-    nn_min_score:   float = 0.70,
-    embed_only:     bool = False,
+    out_dir: Path | None = None,
+    epochs: int = 80,
+    batch_size: int = 32,
+    val_split: float = 0.15,
+    nn_k: int = 8,
+    nn_min_score: float = 0.70,
+    embed_only: bool = False,
 ) -> Path:
     """
     Run the full pipeline and return the artifact directory path.
@@ -309,16 +363,22 @@ def run_pipeline(
     )
     stage_export(model, len(token_to_id), art_dir)
 
-    from training.semantic.train_thin_semantic import EMB_DIM
-    stage_neighbors(len(token_to_id), EMB_DIM, art_dir, k=nn_k, min_score=nn_min_score)
+    train_module = _load_train_module()
+    stage_neighbors(
+        len(token_to_id),
+        train_module.EMB_DIM,
+        art_dir,
+        k=nn_k,
+        min_score=nn_min_score,
+    )
 
     # Compute column embeddings (fast lookup, no extra training)
     stage_column_embeddings(schema, domain_aliases, art_dir)
 
     # Write a manifest so callers can find the artifacts
     manifest = {
-        "schema_hash":  schema_hash(schema, domain_aliases),
-        "vocab_size":   len(token_to_id),
+        "schema_hash": schema_hash(schema, domain_aliases),
+        "vocab_size": len(token_to_id),
         "artifact_dir": str(art_dir),
     }
     (art_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
@@ -328,9 +388,9 @@ def run_pipeline(
 
 
 def locate_artifacts(
-    schema:         dict,
+    schema: dict,
     domain_aliases: dict | None = None,
-    base:           Path | None = None,
+    base: Path | None = None,
 ) -> Path | None:
     """
     Return the artifact directory for this schema if it exists, else None.
@@ -340,12 +400,13 @@ def locate_artifacts(
     """
     if base is not None:
         return base if (base / "manifest.json").exists() else None
-    h   = schema_hash(schema, domain_aliases)
+    h = schema_hash(schema, domain_aliases)
     out = default_artifact_root() / h
     return out if (out / "manifest.json").exists() else None
 
 
 # ── Base model ────────────────────────────────────────────────────────────────
+
 
 def locate_base_model(base: Path | None = None) -> Path | None:
     """
@@ -361,8 +422,8 @@ def locate_base_model(base: Path | None = None) -> Path | None:
 
 
 def build_base_model(
-    out_dir:    Path | None = None,
-    epochs:     int = 80,
+    out_dir: Path | None = None,
+    epochs: int = 80,
     batch_size: int = 32,
 ) -> Path:
     """
@@ -382,17 +443,16 @@ def build_base_model(
 
     # Empty schema → only built-in seed tokens and seed queries
     token_to_id, _ = stage_vocab({}, None, art_dir)
-    records         = stage_dataset(token_to_id, {}, None, art_dir)
-    model           = stage_train(len(token_to_id), records, art_dir,
-                                  epochs=epochs, batch_size=batch_size)
+    records = stage_dataset(token_to_id, {}, None, art_dir)
+    model = stage_train(len(token_to_id), records, art_dir, epochs=epochs, batch_size=batch_size)
     stage_export(model, len(token_to_id), art_dir)
 
-    from training.semantic.train_thin_semantic import EMB_DIM
-    stage_neighbors(len(token_to_id), EMB_DIM, art_dir, k=8, min_score=0.70)
+    train_module = _load_train_module()
+    stage_neighbors(len(token_to_id), train_module.EMB_DIM, art_dir, k=8, min_score=0.70)
 
     manifest = {
-        "schema_hash":  _BASE_HASH,
-        "vocab_size":   len(token_to_id),
+        "schema_hash": _BASE_HASH,
+        "vocab_size": len(token_to_id),
         "artifact_dir": str(art_dir),
     }
     (art_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
@@ -407,9 +467,9 @@ ModelTier = Literal["schema", "base", "none"]
 
 
 def resolve_artifacts(
-    schema:         dict,
+    schema: dict,
     domain_aliases: dict | None = None,
-    schema_base:    Path | None = None,
+    schema_base: Path | None = None,
     base_model_dir: Path | None = None,
 ) -> tuple[Path | None, ModelTier]:
     """
@@ -454,14 +514,14 @@ def _schema_lock(h: str) -> threading.Lock:
 
 
 def train_async(
-    schema:         dict,
+    schema: dict,
     domain_aliases: dict | None = None,
-    out_dir:        Path | None = None,
-    epochs:         int = 80,
-    batch_size:     int = 32,
-    val_split:      float = 0.15,
-    nn_k:           int = 8,
-    nn_min_score:   float = 0.70,
+    out_dir: Path | None = None,
+    epochs: int = 80,
+    batch_size: int = 32,
+    val_split: float = 0.15,
+    nn_k: int = 8,
+    nn_min_score: float = 0.70,
 ) -> concurrent.futures.Future[Path]:
     """
     Start schema-model training in the background and return a Future.
@@ -483,7 +543,7 @@ def train_async(
         # Later, when future completes:
         art_dir = future.result()   # now Tier 1 is available
     """
-    h    = schema_hash(schema, domain_aliases)
+    h = schema_hash(schema, domain_aliases)
     lock = _schema_lock(h)
 
     def _task() -> Path:
@@ -514,6 +574,7 @@ def train_async(
 
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
+
 def main():
     parser = argparse.ArgumentParser(description="Run end-to-end semantic model pipeline")
     parser.add_argument("--schema", type=Path, default=None)
@@ -529,9 +590,12 @@ def main():
     parser.add_argument("--val-split", type=float, default=0.15)
     parser.add_argument("--nn-k", type=int, default=8)
     parser.add_argument("--nn-min-score", type=float, default=0.70)
-    parser.add_argument("--build-base",   action="store_true",
-                        help="Build the global base model (run once per machine)")
-    parser.add_argument("--self-test",    action="store_true")
+    parser.add_argument(
+        "--build-base",
+        action="store_true",
+        help="Build the global base model (run once per machine)",
+    )
+    parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
 
     if args.self_test:
@@ -567,16 +631,16 @@ def _run_self_test():
 
     schema = {
         "POS": [
-            ["UNIT_PRICE",     "unit_measure"],
-            ["EXT_PRICE",      "derived_measure"],
-            ["QTY",            "base_measure"],
-            ["ORDER_DATE",     "other"],
-            ["CUSTOMER_NAME",  "other"],
+            ["UNIT_PRICE", "unit_measure"],
+            ["EXT_PRICE", "derived_measure"],
+            ["QTY", "base_measure"],
+            ["ORDER_DATE", "other"],
+            ["CUSTOMER_NAME", "other"],
         ],
         "Totals": [
-            ["Net_Sales",  "derived_measure"],
-            ["Guests",     "base_measure"],
-            ["PPA",        "ratio"],
+            ["Net_Sales", "derived_measure"],
+            ["Guests", "base_measure"],
+            ["PPA", "ratio"],
         ],
     }
     domain_aliases = {"ppa": ["per", "person", "average"]}
@@ -591,15 +655,27 @@ def _run_self_test():
     }
 
     all_bins = [
-        "vocab.json", "id_to_token.json", "train.jsonl", "model.pt",
+        "vocab.json",
+        "id_to_token.json",
+        "train.jsonl",
+        "model.pt",
         "embeddings.bin",
-        "intent_fc1_weight.bin", "intent_fc1_bias.bin",
-        "intent_fc2_weight.bin", "intent_fc2_bias.bin",
-        "agg_fc1_weight.bin",    "agg_fc1_bias.bin",
-        "agg_fc2_weight.bin",    "agg_fc2_bias.bin",
-        "family_fc1_weight.bin", "family_fc1_bias.bin",
-        "family_fc2_weight.bin", "family_fc2_bias.bin",
-        "meta.json", "nn_ids.bin", "nn_scores.bin", "manifest.json",
+        "intent_fc1_weight.bin",
+        "intent_fc1_bias.bin",
+        "intent_fc2_weight.bin",
+        "intent_fc2_bias.bin",
+        "agg_fc1_weight.bin",
+        "agg_fc1_bias.bin",
+        "agg_fc2_weight.bin",
+        "agg_fc2_bias.bin",
+        "family_fc1_weight.bin",
+        "family_fc1_bias.bin",
+        "family_fc2_weight.bin",
+        "family_fc2_bias.bin",
+        "meta.json",
+        "nn_ids.bin",
+        "nn_scores.bin",
+        "manifest.json",
     ]
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -689,9 +765,7 @@ def _run_self_test():
             schema_base=async_out,
             base_model_dir=base_dir,
         )
-        assert tier_after == "schema", (
-            f"After async training, expected Tier1, got {tier_after!r}"
-        )
+        assert tier_after == "schema", f"After async training, expected Tier1, got {tier_after!r}"
         print(f"   PASSED  async training complete  tier_after={tier_after!r}")
 
     print("\nSelf-test PASSED  (4/4 subtests)")

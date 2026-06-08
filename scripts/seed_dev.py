@@ -4,6 +4,7 @@ Run with: make seed (inside the API container) or: python scripts/seed_dev.py
 
 Prints the raw API key to stdout — save it, it won't be shown again.
 """
+
 import asyncio
 import os
 import sys
@@ -11,6 +12,7 @@ import sys
 # Ensure project root is on path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+from scripts.local_operator_contract import DEFAULT_LOCAL_OPERATOR_BASE_URL
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from apps.api_server.config import get_settings
@@ -29,9 +31,8 @@ async def seed() -> None:
     async with session_local() as session:
         # Check if dev org already exists
         from sqlalchemy import select
-        result = await session.execute(
-            select(Organization).where(Organization.slug == "dev-org")
-        )
+
+        result = await session.execute(select(Organization).where(Organization.slug == "dev-org"))
         existing_org = result.scalar_one_or_none()
 
         if existing_org:
@@ -50,6 +51,7 @@ async def seed() -> None:
 
             # Create dev user
             import bcrypt
+
             password_hash = bcrypt.hashpw(b"devpassword123", bcrypt.gensalt()).decode()
             user = User(
                 org_id=org.id,
@@ -83,9 +85,10 @@ async def seed() -> None:
         print(f"   {raw_key}")
         print()
         print("Usage:")
-        print(f'   curl -H "X-API-Key: {raw_key}" http://localhost:8000/v1/health')
+        print(f'   curl -H "X-API-Key: {raw_key}" {DEFAULT_LOCAL_OPERATOR_BASE_URL}/v1/health')
         print()
-        print("Or set environment variable:")
+        print("Or set environment variables:")
+        print(f'   export ALGENTA_API_KEY="{raw_key}"')
         print(f'   export DE_API_KEY="{raw_key}"')
         print("=" * 60)
 

@@ -13,6 +13,7 @@ Distribution tiers:
   algenta-ops       — infrastructure + operations bundle
   algenta-sdk       — full hosted API SDK
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -23,13 +24,13 @@ class Bundle:
     slug: str
     name: str
     description: str
-    install: str                       # pip install command
-    engines: list[str]                 # engine slugs from manifest.py
-    mojo_libs: list[str]               # key Mojo libraries
-    replaces: list[str]                # libraries this bundle can replace
-    entry_points: list[str]            # primary API functions
+    install: str  # pip install command
+    engines: list[str]  # engine slugs from manifest.py
+    mojo_libs: list[str]  # key Mojo libraries
+    replaces: list[str]  # libraries this bundle can replace
+    entry_points: list[str]  # primary API functions
     use_cases: list[str]
-    tier: str                          # "local" | "developer" | "pro" | "enterprise"
+    tier: str  # "local" | "developer" | "pro" | "enterprise"
 
     def to_dict(self) -> dict:
         return {
@@ -47,7 +48,6 @@ class Bundle:
 
 
 BUNDLES: list[Bundle] = [
-
     Bundle(
         slug="algenta-core",
         name="Algenta Core",
@@ -59,8 +59,11 @@ BUNDLES: list[Bundle] = [
         install="pip install algenta-core",
         engines=["decision", "optimize"],
         mojo_libs=[
-            "monte_carlo", "probability_distributions", "risk_engine",
-            "optimization_core", "statistics",
+            "monte_carlo",
+            "probability_distributions",
+            "risk_engine",
+            "optimization_core",
+            "statistics",
         ],
         replaces=["scipy.stats", "random", "statistics"],
         entry_points=[
@@ -77,7 +80,6 @@ BUNDLES: list[Bundle] = [
         ],
         tier="local",
     ),
-
     Bundle(
         slug="algenta-finance",
         name="Algenta Finance",
@@ -89,9 +91,15 @@ BUNDLES: list[Bundle] = [
         install="pip install algenta-finance",
         engines=["decision", "optimize", "retrieval"],
         mojo_libs=[
-            "monte_carlo", "probability_distributions", "risk_engine",
-            "option_pricing", "portfolio_optimizer", "credit_risk",
-            "fixed_income", "value_at_risk", "scenario_generator",
+            "monte_carlo",
+            "probability_distributions",
+            "risk_engine",
+            "option_pricing",
+            "portfolio_optimizer",
+            "credit_risk",
+            "fixed_income",
+            "value_at_risk",
+            "scenario_generator",
             "financial_ratios",
         ],
         replaces=["QuantLib", "scipy.stats", "numpy (for finance)"],
@@ -110,7 +118,6 @@ BUNDLES: list[Bundle] = [
         ],
         tier="developer",
     ),
-
     Bundle(
         slug="algenta-ml",
         name="Algenta ML",
@@ -122,9 +129,15 @@ BUNDLES: list[Bundle] = [
         install="pip install algenta-ml",
         engines=["training", "data", "model", "optimize"],
         mojo_libs=[
-            "gradient_descent", "neural_net_forward", "attention_mechanism",
-            "feature_engineering", "cross_validation", "hyperparameter_search",
-            "regularization", "loss_functions", "activation_functions",
+            "gradient_descent",
+            "neural_net_forward",
+            "attention_mechanism",
+            "feature_engineering",
+            "cross_validation",
+            "hyperparameter_search",
+            "regularization",
+            "loss_functions",
+            "activation_functions",
             "batch_normalization",
         ],
         replaces=["scikit-learn (scoring + feature eng)", "pandas (feature pipelines)"],
@@ -143,7 +156,6 @@ BUNDLES: list[Bundle] = [
         ],
         tier="pro",
     ),
-
     Bundle(
         slug="algenta-ai",
         name="Algenta AI",
@@ -155,9 +167,15 @@ BUNDLES: list[Bundle] = [
         install="pip install algenta-ai",
         engines=["inference", "agent", "retrieval", "serving"],
         mojo_libs=[
-            "flash_attention", "kv_cache", "speculative_decoding",
-            "continuous_batching", "vector_search", "bm25_retrieval",
-            "reranking", "structured_output", "tool_calling",
+            "flash_attention",
+            "kv_cache",
+            "speculative_decoding",
+            "continuous_batching",
+            "vector_search",
+            "bm25_retrieval",
+            "reranking",
+            "structured_output",
+            "tool_calling",
             "session_memory",
         ],
         replaces=["vLLM", "LangChain", "LangGraph", "FAISS", "Weaviate (basic)"],
@@ -176,7 +194,6 @@ BUNDLES: list[Bundle] = [
         ],
         tier="pro",
     ),
-
     Bundle(
         slug="algenta-ops",
         name="Algenta Ops",
@@ -188,9 +205,15 @@ BUNDLES: list[Bundle] = [
         install="pip install algenta-ops",
         engines=["cost", "serving", "optimize", "decision"],
         mojo_libs=[
-            "execution_planner", "cost_router", "latency_optimizer",
-            "workflow_engine", "model_router", "stateful_runtime",
-            "scheduling_priority", "batch_strategy", "gpu_placement",
+            "execution_planner",
+            "cost_router",
+            "latency_optimizer",
+            "workflow_engine",
+            "model_router",
+            "stateful_runtime",
+            "scheduling_priority",
+            "batch_strategy",
+            "gpu_placement",
             "sla_modeling",
         ],
         replaces=["Airflow (routing logic)", "Ray (scheduling)", "manual cost logic"],
@@ -209,7 +232,6 @@ BUNDLES: list[Bundle] = [
         ],
         tier="pro",
     ),
-
 ]
 
 BUNDLES_BY_SLUG: dict[str, Bundle] = {b.slug: b for b in BUNDLES}

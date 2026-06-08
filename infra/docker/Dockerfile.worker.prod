@@ -24,7 +24,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
     && rm -rf /var/lib/apt/lists/*
 
-RUN groupadd --system app && useradd --system --gid app --no-create-home app
+RUN groupadd --system app && useradd --system --gid app --home-dir /home/app --create-home app
 
 COPY --from=builder /install /usr/local
 COPY --from=builder /build/context/apps/ /app/apps/
@@ -32,8 +32,9 @@ COPY --from=builder /build/context/mojo/ /app/mojo/
 COPY --from=builder /build/context/mojo_build/ /app/mojo_build/
 
 RUN chmod +x /app/mojo_build/simulate 2>/dev/null || true
-RUN chown -R app:app /app
+RUN mkdir -p /home/app/.algenta && chown -R app:app /app /home/app
+ENV HOME=/home/app
 USER app
 
-# Worker is a long-running dramatiq process
-CMD ["python", "-m", "dramatiq", "apps.worker.tasks.simulation_task", "--processes", "2", "--threads", "4"]
+# Worker is a long-running Celery process for async job execution and persistence.
+CMD ["python", "-m", "celery", "-A", "apps.worker.tasks.simulation_task:celery_app", "worker", "--loglevel=INFO", "--queues=persist,simulate", "--concurrency=2"]

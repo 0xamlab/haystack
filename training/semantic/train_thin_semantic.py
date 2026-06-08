@@ -33,6 +33,7 @@ Usage:
 Self-test (no GPU needed, tiny dataset):
     python3 training/semantic/train_thin_semantic.py --self-test
 """
+
 from __future__ import annotations
 
 import argparse
@@ -55,10 +56,10 @@ except ImportError:
 
 # ── Model dimensions (mirror semantic_types.mojo) ─────────────────────────────
 
-EMB_DIM        = 32
-HIDDEN_DIM     = 24
+EMB_DIM = 32
+HIDDEN_DIM = 24
 INTENT_CLASSES = 4
-AGG_CLASSES    = 6
+AGG_CLASSES = 6
 FAMILY_CLASSES = 4
 
 # Weight of contrastive alignment loss vs classification loss
@@ -66,6 +67,7 @@ CONTRASTIVE_ALPHA = 0.3
 
 
 # ── Dataset ───────────────────────────────────────────────────────────────────
+
 
 class SemanticDataset(Dataset):
     def __init__(self, records: list[dict], max_len: int = 16):
@@ -77,32 +79,33 @@ class SemanticDataset(Dataset):
 
     def __getitem__(self, idx: int):
         r = self.records[idx]
-        tids = r["tokens"][:self.max_len]
+        tids = r["tokens"][: self.max_len]
         pad_len = self.max_len - len(tids)
         tids = tids + [0] * pad_len
-        mask = [1.0] * len(r["tokens"][:self.max_len]) + [0.0] * pad_len
+        mask = [1.0] * len(r["tokens"][: self.max_len]) + [0.0] * pad_len
 
         # col_tokens: contrastive alignment target (present for schema-derived examples)
         col_tids_raw = r.get("col_tokens") or []
         has_col = 1 if col_tids_raw else 0
-        col_tids = col_tids_raw[:self.max_len]
+        col_tids = col_tids_raw[: self.max_len]
         col_pad = self.max_len - len(col_tids)
         col_tids = col_tids + [0] * col_pad
-        col_mask = [1.0] * len(col_tids_raw[:self.max_len]) + [0.0] * col_pad
+        col_mask = [1.0] * len(col_tids_raw[: self.max_len]) + [0.0] * col_pad
 
         return {
-            "token_ids": torch.tensor(tids,     dtype=torch.long),
-            "mask":      torch.tensor(mask,     dtype=torch.float),
-            "col_ids":   torch.tensor(col_tids, dtype=torch.long),
-            "col_mask":  torch.tensor(col_mask, dtype=torch.float),
-            "has_col":   torch.tensor(has_col,  dtype=torch.float),
-            "intent":    torch.tensor(r["intent"], dtype=torch.long),
-            "agg":       torch.tensor(r["agg"],    dtype=torch.long),
-            "family":    torch.tensor(r["family"], dtype=torch.long),
+            "token_ids": torch.tensor(tids, dtype=torch.long),
+            "mask": torch.tensor(mask, dtype=torch.float),
+            "col_ids": torch.tensor(col_tids, dtype=torch.long),
+            "col_mask": torch.tensor(col_mask, dtype=torch.float),
+            "has_col": torch.tensor(has_col, dtype=torch.float),
+            "intent": torch.tensor(r["intent"], dtype=torch.long),
+            "agg": torch.tensor(r["agg"], dtype=torch.long),
+            "family": torch.tensor(r["family"], dtype=torch.long),
         }
 
 
 # ── Model ─────────────────────────────────────────────────────────────────────
+
 
 class ThinSemanticModel(nn.Module):
     """
@@ -117,7 +120,7 @@ class ThinSemanticModel(nn.Module):
         super().__init__()
         self.emb = nn.Embedding(vocab_size, EMB_DIM, padding_idx=0)
         nn.init.normal_(self.emb.weight, std=0.02)
-        self.emb.weight.data[0].zero_()   # <PAD> = zero
+        self.emb.weight.data[0].zero_()  # <PAD> = zero
 
         def _head(n_out: int) -> nn.Sequential:
             return nn.Sequential(
@@ -127,27 +130,28 @@ class ThinSemanticModel(nn.Module):
             )
 
         self.intent = _head(INTENT_CLASSES)
-        self.agg    = _head(AGG_CLASSES)
+        self.agg = _head(AGG_CLASSES)
         self.family = _head(FAMILY_CLASSES)
 
     def encode(self, token_ids: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
         """Average-pool token embeddings, weighted by mask."""
-        x = self.emb(token_ids)              # [B, T, D]
-        w = mask.unsqueeze(-1)               # [B, T, 1]
+        x = self.emb(token_ids)  # [B, T, D]
+        w = mask.unsqueeze(-1)  # [B, T, 1]
         denom = w.sum(dim=1).clamp(min=1.0)
-        return (x * w).sum(dim=1) / denom   # [B, D]
+        return (x * w).sum(dim=1) / denom  # [B, D]
 
     def forward(self, token_ids: torch.Tensor, mask: torch.Tensor) -> dict:
         q = self.encode(token_ids, mask)
         return {
-            "emb":    q,               # [B, EMB_DIM] — query embedding for contrastive loss
+            "emb": q,  # [B, EMB_DIM] — query embedding for contrastive loss
             "intent": self.intent(q),
-            "agg":    self.agg(q),
+            "agg": self.agg(q),
             "family": self.family(q),
         }
 
 
 # ── Cosine warmup + decay schedule ───────────────────────────────────────────
+
 
 def cosine_schedule(step: int, total: int, warmup: int, min_lr: float = 1e-4) -> float:
     if step < warmup:
@@ -158,23 +162,24 @@ def cosine_schedule(step: int, total: int, warmup: int, min_lr: float = 1e-4) ->
 
 # ── Training loop ─────────────────────────────────────────────────────────────
 
+
 def train(
-    model:     ThinSemanticModel,
-    train_ds:  SemanticDataset,
-    val_ds:    SemanticDataset | None,
-    epochs:    int = 80,
+    model: ThinSemanticModel,
+    train_ds: SemanticDataset,
+    val_ds: SemanticDataset | None,
+    epochs: int = 80,
     batch_size: int = 32,
-    lr:        float = 3e-3,
-    patience:  int = 12,
-    device:    str = "cpu",
+    lr: float = 3e-3,
+    patience: int = 12,
+    device: str = "cpu",
 ) -> dict:
     """
     Train the model.  Returns metrics dict.
     """
     model = model.to(device)
-    opt   = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
+    opt = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
 
-    total_steps  = epochs * math.ceil(len(train_ds) / batch_size)
+    total_steps = epochs * math.ceil(len(train_ds) / batch_size)
     warmup_steps = max(1, total_steps // 10)
 
     scheduler = torch.optim.lr_scheduler.LambdaLR(
@@ -184,26 +189,26 @@ def train(
 
     loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
 
-    best_val_acc  = 0.0
-    best_state    = None
+    best_val_acc = 0.0
+    best_state = None
     patience_left = patience
     history: list[dict] = []
 
     for epoch in range(1, epochs + 1):
         model.train()
         total_loss = 0.0
-        total_n    = 0
-        correct    = 0
+        total_n = 0
+        correct = 0
 
         for batch in loader:
-            tids    = batch["token_ids"].to(device)
-            mask    = batch["mask"].to(device)
+            tids = batch["token_ids"].to(device)
+            mask = batch["mask"].to(device)
             col_ids = batch["col_ids"].to(device)
             col_msk = batch["col_mask"].to(device)
-            has_col = batch["has_col"].to(device)          # [B] float 0/1
-            labels  = {k: batch[k].to(device) for k in ("intent", "agg", "family")}
+            has_col = batch["has_col"].to(device)  # [B] float 0/1
+            labels = {k: batch[k].to(device) for k in ("intent", "agg", "family")}
 
-            out  = model(tids, mask)
+            out = model(tids, mask)
             loss = (
                 functional.cross_entropy(out["intent"], labels["intent"])
                 + functional.cross_entropy(out["agg"], labels["agg"])
@@ -213,7 +218,7 @@ def train(
             # Contrastive alignment: pull query embedding toward column embedding
             # Only applies to schema-derived examples (has_col == 1)
             if has_col.sum() > 0:
-                col_emb = model.encode(col_ids, col_msk)     # [B, D]
+                col_emb = model.encode(col_ids, col_msk)  # [B, D]
                 cos_sim = functional.cosine_similarity(out["emb"], col_emb, dim=-1)  # [B]
                 contrastive = ((1.0 - cos_sim) * has_col).sum() / has_col.sum().clamp(min=1)
                 loss = loss + CONTRASTIVE_ALPHA * contrastive
@@ -226,11 +231,11 @@ def train(
 
             bs = tids.size(0)
             total_loss += loss.item() * bs
-            total_n    += bs
-            correct    += (out["intent"].argmax(1) == labels["intent"]).sum().item()
+            total_n += bs
+            correct += (out["intent"].argmax(1) == labels["intent"]).sum().item()
 
-        train_acc  = correct / max(1, total_n)
-        avg_loss   = total_loss / max(1, total_n)
+        train_acc = correct / max(1, total_n)
+        avg_loss = total_loss / max(1, total_n)
         val_intent = _eval_intent_acc(model, val_ds, device) if val_ds else None
 
         row = {"epoch": epoch, "loss": avg_loss, "train_acc": train_acc, "val_acc": val_intent}
@@ -244,7 +249,7 @@ def train(
         if val_intent is not None:
             if val_intent > best_val_acc + 1e-4:
                 best_val_acc = val_intent
-                best_state   = {k: v.clone() for k, v in model.state_dict().items()}
+                best_state = {k: v.clone() for k, v in model.state_dict().items()}
                 patience_left = patience
             else:
                 patience_left -= 1
@@ -259,34 +264,35 @@ def train(
 
 
 def _eval_intent_acc(
-    model:  ThinSemanticModel,
-    ds:     SemanticDataset,
+    model: ThinSemanticModel,
+    ds: SemanticDataset,
     device: str,
 ) -> float:
     model.eval()
     correct = 0
-    total   = 0
-    loader  = DataLoader(ds, batch_size=64, shuffle=False)
+    total = 0
+    loader = DataLoader(ds, batch_size=64, shuffle=False)
     with torch.no_grad():
         for batch in loader:
-            tids   = batch["token_ids"].to(device)
-            mask   = batch["mask"].to(device)
+            tids = batch["token_ids"].to(device)
+            mask = batch["mask"].to(device)
             labels = batch["intent"].to(device)
-            out    = model(tids, mask)
+            out = model(tids, mask)
             correct += (out["intent"].argmax(1) == labels).sum().item()
-            total   += tids.size(0)
+            total += tids.size(0)
     return correct / max(1, total)
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
 
+
 def main():
     parser = argparse.ArgumentParser(description="Train thin semantic model")
-    parser.add_argument("--train",   type=Path, default=None)
-    parser.add_argument("--vocab",   type=Path, default=None)
+    parser.add_argument("--train", type=Path, default=None)
+    parser.add_argument("--vocab", type=Path, default=None)
     parser.add_argument("--out-dir", type=Path, default=Path("training/semantic/artifacts"))
-    parser.add_argument("--epochs",  type=int,  default=80)
-    parser.add_argument("--batch",   type=int,  default=32)
+    parser.add_argument("--epochs", type=int, default=80)
+    parser.add_argument("--batch", type=int, default=32)
     parser.add_argument("--val-split", type=float, default=0.15)
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
@@ -298,27 +304,24 @@ def main():
     if not args.train or not args.vocab:
         parser.error("--train and --vocab are required")
     vocab = json.loads(args.vocab.read_text())
-    records = [
-        json.loads(line)
-        for line in args.train.read_text().splitlines()
-        if line.strip()
-    ]
+    records = [json.loads(line) for line in args.train.read_text().splitlines() if line.strip()]
     val_n = max(1, int(len(records) * args.val_split))
     val_recs = records[-val_n:]
     train_recs = records[:-val_n]
 
     print(f"Training: {len(train_recs)}  Validation: {len(val_recs)}")
 
-    model  = ThinSemanticModel(vocab_size=len(vocab))
-    ds_tr  = SemanticDataset(train_recs)
+    model = ThinSemanticModel(vocab_size=len(vocab))
+    ds_tr = SemanticDataset(train_recs)
     ds_val = SemanticDataset(val_recs)
 
     metrics = train(model, ds_tr, ds_val, epochs=args.epochs, batch_size=args.batch)
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
     ckpt_path = args.out_dir / "model.pt"
-    torch.save({"state_dict": model.state_dict(), "vocab_size": len(vocab), "metrics": metrics},
-               ckpt_path)
+    torch.save(
+        {"state_dict": model.state_dict(), "vocab_size": len(vocab), "metrics": metrics}, ckpt_path
+    )
     print(f"Saved checkpoint: {ckpt_path}")
     print(f"Best val intent accuracy: {metrics['best_val_acc']:.3f}")
 
@@ -326,6 +329,7 @@ def main():
 def _run_self_test():
     """Tiny dataset, 5 epochs — verifies classification + contrastive loss runs."""
     import random
+
     random.seed(42)
     torch.manual_seed(42)
 
@@ -333,16 +337,18 @@ def _run_self_test():
     records = []
     for i in range(60):
         col_tids = [random.randint(2, vocab_size - 1) for _ in range(2)] if i % 3 == 0 else None
-        records.append({
-            "tokens":     [random.randint(2, vocab_size - 1) for _ in range(4)],
-            "col_tokens": col_tids,
-            "intent":     random.randint(0, INTENT_CLASSES - 1),
-            "agg":        random.randint(0, AGG_CLASSES - 1),
-            "family":     random.randint(0, FAMILY_CLASSES - 1),
-        })
+        records.append(
+            {
+                "tokens": [random.randint(2, vocab_size - 1) for _ in range(4)],
+                "col_tokens": col_tids,
+                "intent": random.randint(0, INTENT_CLASSES - 1),
+                "agg": random.randint(0, AGG_CLASSES - 1),
+                "family": random.randint(0, FAMILY_CLASSES - 1),
+            }
+        )
 
-    model  = ThinSemanticModel(vocab_size=vocab_size)
-    ds     = SemanticDataset(records)
+    model = ThinSemanticModel(vocab_size=vocab_size)
+    ds = SemanticDataset(records)
     metrics = train(model, ds, val_ds=None, epochs=5, batch_size=16)
 
     assert "history" in metrics

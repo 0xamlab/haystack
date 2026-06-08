@@ -24,6 +24,7 @@ Usage:
 Self-test:
     python3 training/semantic/build_dataset.py --self-test
 """
+
 from __future__ import annotations
 
 import argparse
@@ -37,22 +38,22 @@ from mojo.engine.vector_kernels.tokenizer import expand_tokens, merge_aliases, t
 
 # ── Intent / Agg / Family label constants (mirror semantic_types.mojo) ────────
 
-INTENT_COLUMN_LIKE   = 0
-INTENT_META_QUERY    = 1
+INTENT_COLUMN_LIKE = 0
+INTENT_META_QUERY = 1
 INTENT_WEAK_SEMANTIC = 2
-INTENT_UNSUPPORTED   = 3
+INTENT_UNSUPPORTED = 3
 
-AGG_NONE  = 0
+AGG_NONE = 0
 AGG_COUNT = 1
-AGG_SUM   = 2
-AGG_AVG   = 3
-AGG_MIN   = 4
-AGG_MAX   = 5
+AGG_SUM = 2
+AGG_AVG = 3
+AGG_MIN = 4
+AGG_MAX = 5
 
-FAMILY_MEASURE   = 0
+FAMILY_MEASURE = 0
 FAMILY_DIMENSION = 1
-FAMILY_DATE      = 2
-FAMILY_ENTITY    = 3
+FAMILY_DATE = 2
+FAMILY_ENTITY = 3
 
 
 # ── Hardcoded seed examples ───────────────────────────────────────────────────
@@ -60,78 +61,72 @@ FAMILY_ENTITY    = 3
 
 _SEED: list[tuple[str, int, int, int]] = [
     # ── Meta-query / count intent ──────────────────────────────────────────
-    ("how many orders",         INTENT_META_QUERY,  AGG_COUNT, FAMILY_ENTITY),
-    ("how many customers",      INTENT_META_QUERY,  AGG_COUNT, FAMILY_ENTITY),
-    ("how many servers",        INTENT_META_QUERY,  AGG_COUNT, FAMILY_ENTITY),
-    ("how many guests",         INTENT_META_QUERY,  AGG_COUNT, FAMILY_ENTITY),
-    ("number of orders",        INTENT_META_QUERY,  AGG_COUNT, FAMILY_ENTITY),
-    ("number of servers",       INTENT_META_QUERY,  AGG_COUNT, FAMILY_ENTITY),
-    ("number of customers",     INTENT_META_QUERY,  AGG_COUNT, FAMILY_ENTITY),
-    ("count of orders",         INTENT_META_QUERY,  AGG_COUNT, FAMILY_ENTITY),
-    ("row count",               INTENT_META_QUERY,  AGG_COUNT, FAMILY_ENTITY),
-    ("total count",             INTENT_META_QUERY,  AGG_COUNT, FAMILY_ENTITY),
-    ("server count",            INTENT_META_QUERY,  AGG_COUNT, FAMILY_ENTITY),
-    ("order count",             INTENT_META_QUERY,  AGG_COUNT, FAMILY_ENTITY),
-    ("customer count",          INTENT_META_QUERY,  AGG_COUNT, FAMILY_ENTITY),
-    ("unique customers",        INTENT_META_QUERY,  AGG_COUNT, FAMILY_ENTITY),
-    ("distinct orders",         INTENT_META_QUERY,  AGG_COUNT, FAMILY_ENTITY),
-
+    ("how many orders", INTENT_META_QUERY, AGG_COUNT, FAMILY_ENTITY),
+    ("how many customers", INTENT_META_QUERY, AGG_COUNT, FAMILY_ENTITY),
+    ("how many servers", INTENT_META_QUERY, AGG_COUNT, FAMILY_ENTITY),
+    ("how many guests", INTENT_META_QUERY, AGG_COUNT, FAMILY_ENTITY),
+    ("number of orders", INTENT_META_QUERY, AGG_COUNT, FAMILY_ENTITY),
+    ("number of servers", INTENT_META_QUERY, AGG_COUNT, FAMILY_ENTITY),
+    ("number of customers", INTENT_META_QUERY, AGG_COUNT, FAMILY_ENTITY),
+    ("count of orders", INTENT_META_QUERY, AGG_COUNT, FAMILY_ENTITY),
+    ("row count", INTENT_META_QUERY, AGG_COUNT, FAMILY_ENTITY),
+    ("total count", INTENT_META_QUERY, AGG_COUNT, FAMILY_ENTITY),
+    ("server count", INTENT_META_QUERY, AGG_COUNT, FAMILY_ENTITY),
+    ("order count", INTENT_META_QUERY, AGG_COUNT, FAMILY_ENTITY),
+    ("customer count", INTENT_META_QUERY, AGG_COUNT, FAMILY_ENTITY),
+    ("unique customers", INTENT_META_QUERY, AGG_COUNT, FAMILY_ENTITY),
+    ("distinct orders", INTENT_META_QUERY, AGG_COUNT, FAMILY_ENTITY),
     # ── Measure columns — SUM intent ──────────────────────────────────────
-    ("total revenue",           INTENT_COLUMN_LIKE, AGG_SUM,   FAMILY_MEASURE),
-    ("total net sales",         INTENT_COLUMN_LIKE, AGG_SUM,   FAMILY_MEASURE),
-    ("total sales",             INTENT_COLUMN_LIKE, AGG_SUM,   FAMILY_MEASURE),
-    ("total extended price",    INTENT_COLUMN_LIKE, AGG_SUM,   FAMILY_MEASURE),
-    ("total cost",              INTENT_COLUMN_LIKE, AGG_SUM,   FAMILY_MEASURE),
-    ("food revenue",            INTENT_COLUMN_LIKE, AGG_SUM,   FAMILY_MEASURE),
-    ("beverage sales",          INTENT_COLUMN_LIKE, AGG_NONE,  FAMILY_MEASURE),
-    ("alcohol net sales",       INTENT_COLUMN_LIKE, AGG_NONE,  FAMILY_MEASURE),
-    ("items sold",              INTENT_COLUMN_LIKE, AGG_NONE,  FAMILY_MEASURE),
-    ("quantity sold",           INTENT_COLUMN_LIKE, AGG_NONE,  FAMILY_MEASURE),
-    ("extended price",          INTENT_COLUMN_LIKE, AGG_NONE,  FAMILY_MEASURE),
-    ("unit price",              INTENT_COLUMN_LIKE, AGG_NONE,  FAMILY_MEASURE),
-    ("tips",                    INTENT_COLUMN_LIKE, AGG_NONE,  FAMILY_MEASURE),
-    ("gratuity",                INTENT_COLUMN_LIKE, AGG_NONE,  FAMILY_MEASURE),
-    ("food tips",               INTENT_COLUMN_LIKE, AGG_NONE,  FAMILY_MEASURE),
-
+    ("total revenue", INTENT_COLUMN_LIKE, AGG_SUM, FAMILY_MEASURE),
+    ("total net sales", INTENT_COLUMN_LIKE, AGG_SUM, FAMILY_MEASURE),
+    ("total sales", INTENT_COLUMN_LIKE, AGG_SUM, FAMILY_MEASURE),
+    ("total extended price", INTENT_COLUMN_LIKE, AGG_SUM, FAMILY_MEASURE),
+    ("total cost", INTENT_COLUMN_LIKE, AGG_SUM, FAMILY_MEASURE),
+    ("food revenue", INTENT_COLUMN_LIKE, AGG_SUM, FAMILY_MEASURE),
+    ("beverage sales", INTENT_COLUMN_LIKE, AGG_NONE, FAMILY_MEASURE),
+    ("alcohol net sales", INTENT_COLUMN_LIKE, AGG_NONE, FAMILY_MEASURE),
+    ("items sold", INTENT_COLUMN_LIKE, AGG_NONE, FAMILY_MEASURE),
+    ("quantity sold", INTENT_COLUMN_LIKE, AGG_NONE, FAMILY_MEASURE),
+    ("extended price", INTENT_COLUMN_LIKE, AGG_NONE, FAMILY_MEASURE),
+    ("unit price", INTENT_COLUMN_LIKE, AGG_NONE, FAMILY_MEASURE),
+    ("tips", INTENT_COLUMN_LIKE, AGG_NONE, FAMILY_MEASURE),
+    ("gratuity", INTENT_COLUMN_LIKE, AGG_NONE, FAMILY_MEASURE),
+    ("food tips", INTENT_COLUMN_LIKE, AGG_NONE, FAMILY_MEASURE),
     # ── Measure columns — AVG intent ──────────────────────────────────────
-    ("average order time",      INTENT_COLUMN_LIKE, AGG_AVG,   FAMILY_MEASURE),
-    ("avg order time",          INTENT_COLUMN_LIKE, AGG_AVG,   FAMILY_MEASURE),
-    ("average price",           INTENT_COLUMN_LIKE, AGG_AVG,   FAMILY_MEASURE),
-    ("per person average",      INTENT_COLUMN_LIKE, AGG_AVG,   FAMILY_MEASURE),
-    ("ppa",                     INTENT_COLUMN_LIKE, AGG_AVG,   FAMILY_MEASURE),
-    ("food per person average", INTENT_COLUMN_LIKE, AGG_AVG,   FAMILY_MEASURE),
-    ("average sold per guest",  INTENT_COLUMN_LIKE, AGG_AVG,   FAMILY_MEASURE),
-
+    ("average order time", INTENT_COLUMN_LIKE, AGG_AVG, FAMILY_MEASURE),
+    ("avg order time", INTENT_COLUMN_LIKE, AGG_AVG, FAMILY_MEASURE),
+    ("average price", INTENT_COLUMN_LIKE, AGG_AVG, FAMILY_MEASURE),
+    ("per person average", INTENT_COLUMN_LIKE, AGG_AVG, FAMILY_MEASURE),
+    ("ppa", INTENT_COLUMN_LIKE, AGG_AVG, FAMILY_MEASURE),
+    ("food per person average", INTENT_COLUMN_LIKE, AGG_AVG, FAMILY_MEASURE),
+    ("average sold per guest", INTENT_COLUMN_LIKE, AGG_AVG, FAMILY_MEASURE),
     # ── Measure columns — MIN/MAX ─────────────────────────────────────────
-    ("max order value",         INTENT_COLUMN_LIKE, AGG_MAX,   FAMILY_MEASURE),
-    ("maximum price",           INTENT_COLUMN_LIKE, AGG_MAX,   FAMILY_MEASURE),
-    ("min cost",                INTENT_COLUMN_LIKE, AGG_MIN,   FAMILY_MEASURE),
-    ("minimum order time",      INTENT_COLUMN_LIKE, AGG_MIN,   FAMILY_MEASURE),
-    ("highest revenue",         INTENT_COLUMN_LIKE, AGG_MAX,   FAMILY_MEASURE),
-    ("lowest price",            INTENT_COLUMN_LIKE, AGG_MIN,   FAMILY_MEASURE),
-
+    ("max order value", INTENT_COLUMN_LIKE, AGG_MAX, FAMILY_MEASURE),
+    ("maximum price", INTENT_COLUMN_LIKE, AGG_MAX, FAMILY_MEASURE),
+    ("min cost", INTENT_COLUMN_LIKE, AGG_MIN, FAMILY_MEASURE),
+    ("minimum order time", INTENT_COLUMN_LIKE, AGG_MIN, FAMILY_MEASURE),
+    ("highest revenue", INTENT_COLUMN_LIKE, AGG_MAX, FAMILY_MEASURE),
+    ("lowest price", INTENT_COLUMN_LIKE, AGG_MIN, FAMILY_MEASURE),
     # ── Dimension columns ─────────────────────────────────────────────────
-    ("customer name",           INTENT_COLUMN_LIKE, AGG_NONE,  FAMILY_DIMENSION),
-    ("order status",            INTENT_COLUMN_LIKE, AGG_NONE,  FAMILY_DIMENSION),
-    ("customer id",             INTENT_COLUMN_LIKE, AGG_NONE,  FAMILY_DIMENSION),
-    ("product name",            INTENT_COLUMN_LIKE, AGG_NONE,  FAMILY_DIMENSION),
-    ("category",                INTENT_COLUMN_LIKE, AGG_NONE,  FAMILY_DIMENSION),
-    ("region",                  INTENT_COLUMN_LIKE, AGG_NONE,  FAMILY_DIMENSION),
-
+    ("customer name", INTENT_COLUMN_LIKE, AGG_NONE, FAMILY_DIMENSION),
+    ("order status", INTENT_COLUMN_LIKE, AGG_NONE, FAMILY_DIMENSION),
+    ("customer id", INTENT_COLUMN_LIKE, AGG_NONE, FAMILY_DIMENSION),
+    ("product name", INTENT_COLUMN_LIKE, AGG_NONE, FAMILY_DIMENSION),
+    ("category", INTENT_COLUMN_LIKE, AGG_NONE, FAMILY_DIMENSION),
+    ("region", INTENT_COLUMN_LIKE, AGG_NONE, FAMILY_DIMENSION),
     # ── Date columns ──────────────────────────────────────────────────────
-    ("order date",              INTENT_COLUMN_LIKE, AGG_NONE,  FAMILY_DATE),
-    ("transaction date",        INTENT_COLUMN_LIKE, AGG_NONE,  FAMILY_DATE),
-    ("date",                    INTENT_COLUMN_LIKE, AGG_NONE,  FAMILY_DATE),
-    ("period",                  INTENT_COLUMN_LIKE, AGG_NONE,  FAMILY_DATE),
-    ("year",                    INTENT_COLUMN_LIKE, AGG_NONE,  FAMILY_DATE),
-    ("month",                   INTENT_COLUMN_LIKE, AGG_NONE,  FAMILY_DATE),
-
+    ("order date", INTENT_COLUMN_LIKE, AGG_NONE, FAMILY_DATE),
+    ("transaction date", INTENT_COLUMN_LIKE, AGG_NONE, FAMILY_DATE),
+    ("date", INTENT_COLUMN_LIKE, AGG_NONE, FAMILY_DATE),
+    ("period", INTENT_COLUMN_LIKE, AGG_NONE, FAMILY_DATE),
+    ("year", INTENT_COLUMN_LIKE, AGG_NONE, FAMILY_DATE),
+    ("month", INTENT_COLUMN_LIKE, AGG_NONE, FAMILY_DATE),
     # ── Weak / unsupported ────────────────────────────────────────────────
-    ("show me",                 INTENT_UNSUPPORTED, AGG_NONE,  FAMILY_MEASURE),
-    ("compare",                 INTENT_UNSUPPORTED, AGG_NONE,  FAMILY_MEASURE),
-    ("trend",                   INTENT_WEAK_SEMANTIC, AGG_NONE, FAMILY_MEASURE),
-    ("breakdown",               INTENT_WEAK_SEMANTIC, AGG_NONE, FAMILY_DIMENSION),
-    ("analysis",                INTENT_WEAK_SEMANTIC, AGG_NONE, FAMILY_MEASURE),
+    ("show me", INTENT_UNSUPPORTED, AGG_NONE, FAMILY_MEASURE),
+    ("compare", INTENT_UNSUPPORTED, AGG_NONE, FAMILY_MEASURE),
+    ("trend", INTENT_WEAK_SEMANTIC, AGG_NONE, FAMILY_MEASURE),
+    ("breakdown", INTENT_WEAK_SEMANTIC, AGG_NONE, FAMILY_DIMENSION),
+    ("analysis", INTENT_WEAK_SEMANTIC, AGG_NONE, FAMILY_MEASURE),
 ]
 
 
@@ -249,11 +244,11 @@ def _tokenize_col_tokens(
 
 
 def build_dataset(
-    vocab:           dict[str, int],
-    schema:          dict | None = None,
-    domain_aliases:  dict[str, list[str]] | None = None,
-    augment:         bool = True,
-    max_per_family:  int | None = 500,
+    vocab: dict[str, int],
+    schema: dict | None = None,
+    domain_aliases: dict[str, list[str]] | None = None,
+    augment: bool = True,
+    max_per_family: int | None = 500,
 ) -> list[dict]:
     """
     Build the full training dataset.
@@ -300,25 +295,27 @@ def build_dataset(
     for query, intent, agg, family, col_tokens in unique:
         tids = tokenize_example(query, vocab, domain_aliases)
         ctids = _tokenize_col_tokens(col_tokens, vocab) if col_tokens is not None else None
-        records.append({
-            "query":      query,
-            "tokens":     tids,
-            "intent":     intent,
-            "agg":        agg,
-            "family":     family,
-            "col_tokens": ctids,
-        })
+        records.append(
+            {
+                "query": query,
+                "tokens": tids,
+                "intent": intent,
+                "agg": agg,
+                "family": family,
+                "col_tokens": ctids,
+            }
+        )
     return records
 
 
 def main():
     parser = argparse.ArgumentParser(description="Build semantic training dataset")
-    parser.add_argument("--vocab",   type=Path, default=None, help="vocab.json from build_vocab.py")
-    parser.add_argument("--schema",  type=Path, help="Schema JSON file")
+    parser.add_argument("--vocab", type=Path, default=None, help="vocab.json from build_vocab.py")
+    parser.add_argument("--schema", type=Path, help="Schema JSON file")
     parser.add_argument("--aliases", type=Path, help="Domain aliases JSON")
-    parser.add_argument("--out",     type=Path, default=Path("training/semantic/train.jsonl"))
+    parser.add_argument("--out", type=Path, default=Path("training/semantic/train.jsonl"))
     parser.add_argument("--no-augment", action="store_true")
-    parser.add_argument("--self-test",  action="store_true")
+    parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
 
     if args.self_test:
@@ -346,16 +343,23 @@ def main():
     for r in records:
         intent_counts[r["intent"]] += 1
     print(f"Dataset: {len(records)} examples")
-    print(f"  column_like={intent_counts[0]}  meta_query={intent_counts[1]}"
-          f"  weak={intent_counts[2]}  unsupported={intent_counts[3]}")
+    print(
+        f"  column_like={intent_counts[0]}  meta_query={intent_counts[1]}"
+        f"  weak={intent_counts[2]}  unsupported={intent_counts[3]}"
+    )
     print(f"Written to: {args.out}")
 
 
 def _run_self_test():
     from training.semantic.build_vocab import build_vocab_from_sources
+
     schema = {
-        "POS": [["UNIT_PRICE", "unit_measure"], ["EXT_PRICE", "derived_measure"],
-                ["ORDER_DATE", "other"], ["CUSTOMER_NAME", "other"]],
+        "POS": [
+            ["UNIT_PRICE", "unit_measure"],
+            ["EXT_PRICE", "derived_measure"],
+            ["ORDER_DATE", "other"],
+            ["CUSTOMER_NAME", "other"],
+        ],
     }
     domain_aliases = {"ppa": ["per", "person", "average"]}
     tok_to_id, _ = build_vocab_from_sources(schema, domain_aliases=domain_aliases)
@@ -369,11 +373,13 @@ def _run_self_test():
 
     # Check tokens are valid ids (all non-negative ints)
     for r in records:
-        assert all(isinstance(t, int) and t >= 0 for t in r["tokens"]), \
+        assert all(isinstance(t, int) and t >= 0 for t in r["tokens"]), (
             f"Bad query token ids in: {r['query']}"
+        )
         if r["col_tokens"] is not None:
-            assert all(isinstance(t, int) and t >= 0 for t in r["col_tokens"]), \
+            assert all(isinstance(t, int) and t >= 0 for t in r["col_tokens"]), (
                 f"Bad col_tokens in: {r['query']}"
+            )
 
     # Schema-derived examples must carry col_tokens
     schema_examples = [r for r in records if r["col_tokens"] is not None]

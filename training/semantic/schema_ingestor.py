@@ -37,6 +37,7 @@ Usage:
 Self-test:
     python3 training/semantic/schema_ingestor.py --self-test
 """
+
 from __future__ import annotations
 
 import argparse
@@ -52,29 +53,137 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 # ── Role vocabulary ───────────────────────────────────────────────────────────
 
-_DATE_TOKENS    = {"date", "time", "period", "year", "month", "day", "week",
-                   "quarter", "at", "on", "created", "updated", "timestamp"}
-_MEASURE_TOKENS = {"revenue", "sales", "cost", "price", "amount", "value",
-                   "total", "sum", "net", "gross", "profit", "loss", "spend",
-                   "ext", "extended", "earned", "charged", "billed", "fee",
-                   "tax", "discount", "tips", "gratuity", "salary", "wage"}
-_UNIT_TOKENS    = {"unit", "rate", "avg", "average", "per", "each", "ppa",
-                   "apc", "aov", "rpm", "cpm", "cpc", "ctr"}
-_RATIO_TOKENS   = {"pct", "percent", "percentage", "ratio", "margin",
-                   "share", "fraction", "proportion", "utilization", "fill"}
-_COUNT_TOKENS   = {"qty", "quantity", "count", "num", "number", "n",
-                   "units", "items", "rows", "volume", "sold", "ordered"}
-_ENTITY_TOKENS  = {"id", "uuid", "key", "code", "ref", "number",
-                   "customer", "order", "employee", "server", "user",
-                   "product", "item", "sku", "invoice", "ticket", "seat",
-                   "guest", "diner", "cover"}
-_DIMENSION_TOKENS = {"name", "type", "status", "category", "region",
-                     "segment", "channel", "brand", "location", "store",
-                     "department", "division", "group", "class", "label",
-                     "flag", "mode", "source", "medium", "campaign"}
+_DATE_TOKENS = {
+    "date",
+    "time",
+    "period",
+    "year",
+    "month",
+    "day",
+    "week",
+    "quarter",
+    "at",
+    "on",
+    "created",
+    "updated",
+    "timestamp",
+}
+_MEASURE_TOKENS = {
+    "revenue",
+    "sales",
+    "cost",
+    "price",
+    "amount",
+    "value",
+    "total",
+    "sum",
+    "net",
+    "gross",
+    "profit",
+    "loss",
+    "spend",
+    "ext",
+    "extended",
+    "earned",
+    "charged",
+    "billed",
+    "fee",
+    "tax",
+    "discount",
+    "tips",
+    "gratuity",
+    "salary",
+    "wage",
+}
+_UNIT_TOKENS = {
+    "unit",
+    "rate",
+    "avg",
+    "average",
+    "per",
+    "each",
+    "ppa",
+    "apc",
+    "aov",
+    "rpm",
+    "cpm",
+    "cpc",
+    "ctr",
+}
+_RATIO_TOKENS = {
+    "pct",
+    "percent",
+    "percentage",
+    "ratio",
+    "margin",
+    "share",
+    "fraction",
+    "proportion",
+    "utilization",
+    "fill",
+}
+_COUNT_TOKENS = {
+    "qty",
+    "quantity",
+    "count",
+    "num",
+    "number",
+    "n",
+    "units",
+    "items",
+    "rows",
+    "volume",
+    "sold",
+    "ordered",
+}
+_ENTITY_TOKENS = {
+    "id",
+    "uuid",
+    "key",
+    "code",
+    "ref",
+    "number",
+    "customer",
+    "order",
+    "employee",
+    "server",
+    "user",
+    "product",
+    "item",
+    "sku",
+    "invoice",
+    "ticket",
+    "seat",
+    "guest",
+    "diner",
+    "cover",
+}
+_DIMENSION_TOKENS = {
+    "name",
+    "type",
+    "status",
+    "category",
+    "region",
+    "segment",
+    "channel",
+    "brand",
+    "location",
+    "store",
+    "department",
+    "division",
+    "group",
+    "class",
+    "label",
+    "flag",
+    "mode",
+    "source",
+    "medium",
+    "campaign",
+}
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _tokenize_col(col_name: str) -> list[str]:
     """Split column name into lowercase tokens on non-alphanumeric boundaries."""
@@ -86,8 +195,7 @@ def _sample_numeric_ratio(samples: list[str]) -> float:
     non_empty = [s for s in samples if isinstance(s, str) and s.strip()]
     if not non_empty:
         return 0.0
-    numeric = sum(1 for s in non_empty
-                  if re.fullmatch(r"-?\d+(\.\d+)?([eE][+-]?\d+)?", s.strip()))
+    numeric = sum(1 for s in non_empty if re.fullmatch(r"-?\d+(\.\d+)?([eE][+-]?\d+)?", s.strip()))
     return numeric / len(non_empty)
 
 
@@ -126,13 +234,14 @@ def _looks_like_ratio(samples: list[str]) -> bool:
 
 # ── Role classification ───────────────────────────────────────────────────────
 
+
 def _classify_role(col_name: str, samples: list[Any]) -> str:
     """
     Infer column role from name tokens + optional data samples.
 
     When no samples are provided, classification relies on name tokens alone.
     """
-    tokens   = set(_tokenize_col(col_name))
+    tokens = set(_tokenize_col(col_name))
     str_samp = _samples_to_str(samples)
     has_data = bool(str_samp)
     num_ratio = _sample_numeric_ratio(str_samp) if has_data else 1.0
@@ -165,9 +274,10 @@ def _classify_role(col_name: str, samples: list[Any]) -> str:
 
 # ── Core builder (all paths converge here) ────────────────────────────────────
 
+
 def _build_schema(
-    col_samples:  dict[str, list[Any]],
-    source_name:  str,
+    col_samples: dict[str, list[Any]],
+    source_name: str,
 ) -> dict[str, list[list[str]]]:
     """
     Given {col_name: [sample_values, ...]}, return a schema dict.
@@ -185,11 +295,12 @@ def _build_schema(
 
 # ── Format-specific readers ───────────────────────────────────────────────────
 
+
 def _read_csv(
-    path:        Path,
+    path: Path,
     sample_rows: int,
-    encoding:    str,
-    delimiter:   str = ",",
+    encoding: str,
+    delimiter: str = ",",
 ) -> dict[str, list[Any]]:
     col_samples: dict[str, list[Any]] = {}
     with open(path, newline="", encoding=encoding, errors="replace") as f:
@@ -256,22 +367,22 @@ def _read_excel(path: Path, sample_rows: int, sheet: str | int = 0) -> dict[str,
     """Read Excel via pandas (if available) or openpyxl."""
     try:
         import pandas as pd  # type: ignore[import]
+
         df = pd.read_excel(path, sheet_name=sheet, nrows=sample_rows)
-        return {str(c): df[c].dropna().astype(str).tolist()[:sample_rows]
-                for c in df.columns}
+        return {str(c): df[c].dropna().astype(str).tolist()[:sample_rows] for c in df.columns}
     except ImportError:
         pass
     try:
         import openpyxl  # type: ignore[import]
+
         wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
         ws = wb.worksheets[sheet] if isinstance(sheet, int) else wb[sheet]
         rows = list(ws.iter_rows(values_only=True))
         if not rows:
             return {}
-        headers = [str(h) if h is not None else f"col_{i}"
-                   for i, h in enumerate(rows[0])]
+        headers = [str(h) if h is not None else f"col_{i}" for i, h in enumerate(rows[0])]
         col_samples = {h: [] for h in headers}
-        for row in rows[1:sample_rows + 1]:
+        for row in rows[1 : sample_rows + 1]:
             for j, val in enumerate(row):
                 if j < len(headers) and val is not None:
                     col_samples[headers[j]].append(val)
@@ -287,6 +398,7 @@ def _read_parquet(path: Path, sample_rows: int) -> dict[str, list[Any]]:
     """Read Parquet via pyarrow or pandas."""
     try:
         import pyarrow.parquet as pq  # type: ignore[import]
+
         table = pq.read_table(path)
         df = table.slice(0, sample_rows).to_pandas()
         return {str(c): df[c].dropna().astype(str).tolist() for c in df.columns}
@@ -294,11 +406,9 @@ def _read_parquet(path: Path, sample_rows: int) -> dict[str, list[Any]]:
         pass
     try:
         import pandas as pd  # type: ignore[import]
+
         df = pd.read_parquet(path)
-        return {
-            str(c): df[c].dropna().astype(str).tolist()[:sample_rows]
-            for c in df.columns
-        }
+        return {str(c): df[c].dropna().astype(str).tolist()[:sample_rows] for c in df.columns}
     except ImportError:
         raise ImportError(
             "Reading Parquet requires pyarrow or pandas: "
@@ -308,12 +418,13 @@ def _read_parquet(path: Path, sample_rows: int) -> dict[str, list[Any]]:
 
 # ── Unified ingest() ──────────────────────────────────────────────────────────
 
+
 def ingest(
-    source:      Any,
+    source: Any,
     source_name: str | None = None,
     sample_rows: int = 200,
-    encoding:    str = "utf-8-sig",
-    sheet:       str | int = 0,
+    encoding: str = "utf-8-sig",
+    sheet: str | int = 0,
 ) -> dict[str, list[list[str]]]:
     """
     Universal schema ingestor.
@@ -336,6 +447,7 @@ def ingest(
     # ── pandas DataFrame ──────────────────────────────────────────────────────
     try:
         import pandas as pd  # type: ignore[import]
+
         if isinstance(source, pd.DataFrame):
             return ingest_dataframe(source, source_name or "data", sample_rows)
     except ImportError:
@@ -364,16 +476,10 @@ def ingest(
     # ── dict ──────────────────────────────────────────────────────────────────
     if isinstance(source, dict):
         # {col: [values]} or {col: role_str}
-        if all(
-            isinstance(v, list | tuple) or v is None
-            for v in source.values()
-        ):
+        if all(isinstance(v, list | tuple) or v is None for v in source.values()):
             return ingest_column_data(source, source_name or "data", sample_rows)
         # Treat as {col: role} (pre-classified)
-        entries = [
-            [k, v or _classify_role(k, [])]
-            for k, v in source.items()
-        ]
+        entries = [[k, v or _classify_role(k, [])] for k, v in source.items()]
         return {source_name or "data": entries}
 
     raise TypeError(
@@ -384,12 +490,13 @@ def ingest(
 
 # ── Named ingestors (callable directly) ───────────────────────────────────────
 
+
 def ingest_file(
-    path:        Path | str,
+    path: Path | str,
     source_name: str | None = None,
     sample_rows: int = 200,
-    encoding:    str = "utf-8-sig",
-    sheet:       str | int = 0,
+    encoding: str = "utf-8-sig",
+    sheet: str | int = 0,
 ) -> dict[str, list[list[str]]]:
     """
     Ingest a file.  Format is detected from the extension:
@@ -426,7 +533,7 @@ def ingest_file(
 
 
 def ingest_records(
-    records:     list[dict[str, Any]],
+    records: list[dict[str, Any]],
     source_name: str = "data",
     sample_rows: int = 200,
 ) -> dict[str, list[list[str]]]:
@@ -441,7 +548,7 @@ def ingest_records(
 
 
 def ingest_dataframe(
-    df:          Any,          # pandas.DataFrame
+    df: Any,  # pandas.DataFrame
     source_name: str = "data",
     sample_rows: int = 200,
 ) -> dict[str, list[list[str]]]:
@@ -461,7 +568,7 @@ def ingest_dataframe(
 
 
 def ingest_column_data(
-    columns:     dict[str, list[Any] | None],
+    columns: dict[str, list[Any] | None],
     source_name: str = "data",
     sample_rows: int = 200,
 ) -> dict[str, list[list[str]]]:
@@ -476,7 +583,7 @@ def ingest_column_data(
 
 
 def ingest_column_names(
-    names:       list[str],
+    names: list[str],
     source_name: str = "data",
 ) -> dict[str, list[list[str]]]:
     """
@@ -491,28 +598,24 @@ def ingest_column_names(
 
 # Backwards-compatible aliases
 def ingest_csv(
-    path:        Path | str,
+    path: Path | str,
     source_name: str | None = None,
     sample_rows: int = 200,
-    encoding:    str = "utf-8-sig",
+    encoding: str = "utf-8-sig",
 ) -> dict[str, list[list[str]]]:
     """Ingest a CSV file (backwards-compatible wrapper around ingest_file)."""
-    return ingest_file(path, source_name=source_name,
-                       sample_rows=sample_rows, encoding=encoding)
+    return ingest_file(path, source_name=source_name, sample_rows=sample_rows, encoding=encoding)
 
 
 def ingest_columns(
-    columns:     dict[str, str | None],
+    columns: dict[str, str | None],
     source_name: str = "data",
 ) -> dict[str, list[list[str]]]:
     """
     Ingest {col_name: role | None} — backwards-compatible.
     None roles are inferred from name tokens.
     """
-    entries: list[list[str]] = [
-        [k, v if v else _classify_role(k, [])]
-        for k, v in columns.items()
-    ]
+    entries: list[list[str]] = [[k, v if v else _classify_role(k, [])] for k, v in columns.items()]
     return {source_name: entries}
 
 
@@ -532,31 +635,45 @@ def merge_schemas(*schemas: dict[str, list]) -> dict[str, list]:
 # ── Alias suggestion ──────────────────────────────────────────────────────────
 
 _KNOWN_ABBREVS = {
-    "ppa", "apc", "aov", "qty", "ext", "net", "avg", "max", "min",
-    "num", "id", "sku", "cpm", "cpc", "ctr", "rpm",
+    "ppa",
+    "apc",
+    "aov",
+    "qty",
+    "ext",
+    "net",
+    "avg",
+    "max",
+    "min",
+    "num",
+    "id",
+    "sku",
+    "cpm",
+    "cpc",
+    "ctr",
+    "rpm",
 }
 
 _AUTO_EXPANSIONS: dict[str, list[str]] = {
-    "ppa":  ["per", "person", "average"],
-    "apc":  ["average", "per", "cover"],
-    "aov":  ["average", "order", "value"],
-    "ext":  ["extended"],
-    "qty":  ["quantity"],
-    "num":  ["number"],
-    "avg":  ["average"],
-    "rev":  ["revenue"],
-    "sal":  ["sales"],
-    "cst":  ["cost"],
-    "prc":  ["price"],
-    "amt":  ["amount"],
-    "cnt":  ["count"],
-    "val":  ["value"],
-    "arr":  ["annual", "recurring", "revenue"],
-    "mrr":  ["monthly", "recurring", "revenue"],
-    "ltv":  ["lifetime", "value"],
-    "cac":  ["customer", "acquisition", "cost"],
+    "ppa": ["per", "person", "average"],
+    "apc": ["average", "per", "cover"],
+    "aov": ["average", "order", "value"],
+    "ext": ["extended"],
+    "qty": ["quantity"],
+    "num": ["number"],
+    "avg": ["average"],
+    "rev": ["revenue"],
+    "sal": ["sales"],
+    "cst": ["cost"],
+    "prc": ["price"],
+    "amt": ["amount"],
+    "cnt": ["count"],
+    "val": ["value"],
+    "arr": ["annual", "recurring", "revenue"],
+    "mrr": ["monthly", "recurring", "revenue"],
+    "ltv": ["lifetime", "value"],
+    "cac": ["customer", "acquisition", "cost"],
     "arpu": ["average", "revenue", "per", "user"],
-    "nps":  ["net", "promoter", "score"],
+    "nps": ["net", "promoter", "score"],
 }
 
 
@@ -609,6 +726,7 @@ def suggest_unknown_abbrevs(schema: dict[str, list]) -> list[str]:
 
 # ── Describe ──────────────────────────────────────────────────────────────────
 
+
 def describe_schema(schema: dict[str, list]) -> str:
     """Return a human-readable summary of a schema."""
     lines = []
@@ -620,22 +738,24 @@ def describe_schema(schema: dict[str, list]) -> str:
             role = e[1] if isinstance(e, list | tuple) and len(e) > 1 else "other"
             by_role.setdefault(role, []).append(col)
         for role, cols in sorted(by_role.items()):
-            preview = ", ".join(cols[:8]) + (f" … +{len(cols)-8}" if len(cols) > 8 else "")
+            preview = ", ".join(cols[:8]) + (f" … +{len(cols) - 8}" if len(cols) > 8 else "")
             lines.append(f"  {role:<18} {preview}")
     return "\n".join(lines)
 
 
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
+
 def main():
     parser = argparse.ArgumentParser(description="Ingest any data source as schema")
-    parser.add_argument("source",      nargs="?", default=None,
-                        help="File to ingest (CSV/TSV/JSON/JSONL/Excel/Parquet)")
-    parser.add_argument("--source-name", type=str,  default=None)
-    parser.add_argument("--out",         type=Path, default=None, help="Write schema JSON")
+    parser.add_argument(
+        "source", nargs="?", default=None, help="File to ingest (CSV/TSV/JSON/JSONL/Excel/Parquet)"
+    )
+    parser.add_argument("--source-name", type=str, default=None)
+    parser.add_argument("--out", type=Path, default=None, help="Write schema JSON")
     parser.add_argument("--aliases-out", type=Path, default=None, help="Write aliases JSON")
-    parser.add_argument("--sample",      type=int,  default=200)
-    parser.add_argument("--self-test",   action="store_true")
+    parser.add_argument("--sample", type=int, default=200)
+    parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
 
     if args.self_test:
@@ -645,7 +765,7 @@ def main():
     if not args.source:
         parser.error("source file required (or --self-test)")
 
-    schema  = ingest(args.source, source_name=args.source_name, sample_rows=args.sample)
+    schema = ingest(args.source, source_name=args.source_name, sample_rows=args.sample)
     aliases = suggest_aliases(schema)
     unknown = suggest_unknown_abbrevs(schema)
 
@@ -671,27 +791,31 @@ def _run_self_test():
 
     # ── Test 1: ingest() from column names list ───────────────────────────────
     print("── Test 1: ingest(list[str])")
-    schema = ingest(["NET_SALES", "UNIT_PRICE", "QTY", "ORDER_DATE", "CUSTOMER_NAME"],
-                    source_name="POS")
+    schema = ingest(
+        ["NET_SALES", "UNIT_PRICE", "QTY", "ORDER_DATE", "CUSTOMER_NAME"], source_name="POS"
+    )
     entries = {e[0]: e[1] for e in schema["POS"]}
-    assert entries["NET_SALES"]     == "derived_measure", entries["NET_SALES"]
-    assert entries["UNIT_PRICE"]    == "unit_measure",    entries["UNIT_PRICE"]
-    assert entries["QTY"]           == "base_measure",    entries["QTY"]
-    assert entries["ORDER_DATE"]    == "other",           entries["ORDER_DATE"]
-    assert entries["CUSTOMER_NAME"] == "other",           entries["CUSTOMER_NAME"]
+    assert entries["NET_SALES"] == "derived_measure", entries["NET_SALES"]
+    assert entries["UNIT_PRICE"] == "unit_measure", entries["UNIT_PRICE"]
+    assert entries["QTY"] == "base_measure", entries["QTY"]
+    assert entries["ORDER_DATE"] == "other", entries["ORDER_DATE"]
+    assert entries["CUSTOMER_NAME"] == "other", entries["CUSTOMER_NAME"]
     print("   PASSED")
 
     # ── Test 2: ingest() from dict of column data ─────────────────────────────
     print("── Test 2: ingest(dict[str, list])")
-    schema2 = ingest({
-        "net_sales":  [100.0, 200.0, 150.0],
-        "order_date": ["2024-01-01", "2024-01-02", "2024-01-03"],
-        "customer":   ["Alice", "Bob", "Carol"],
-    }, source_name="Orders")
+    schema2 = ingest(
+        {
+            "net_sales": [100.0, 200.0, 150.0],
+            "order_date": ["2024-01-01", "2024-01-02", "2024-01-03"],
+            "customer": ["Alice", "Bob", "Carol"],
+        },
+        source_name="Orders",
+    )
     e2 = {e[0]: e[1] for e in schema2["Orders"]}
-    assert e2["net_sales"]  in ("derived_measure", "base_measure"), e2["net_sales"]
-    assert e2["order_date"] == "other",  e2["order_date"]
-    assert e2["customer"]   == "other",  e2["customer"]
+    assert e2["net_sales"] in ("derived_measure", "base_measure"), e2["net_sales"]
+    assert e2["order_date"] == "other", e2["order_date"]
+    assert e2["customer"] == "other", e2["customer"]
     print("   PASSED")
 
     # ── Test 3: ingest() from list[dict] records ──────────────────────────────
@@ -703,7 +827,7 @@ def _run_self_test():
     schema3 = ingest(records, source_name="Sales")
     e3 = {e[0]: e[1] for e in schema3["Sales"]}
     assert e3["unit_price"] == "unit_measure", e3["unit_price"]
-    assert e3["date"]       == "other",        e3["date"]
+    assert e3["date"] == "other", e3["date"]
     print("   PASSED")
 
     # ── Test 4: ingest() CSV file ─────────────────────────────────────────────
@@ -716,7 +840,7 @@ def _run_self_test():
     try:
         schema4 = ingest(tmp_csv, source_name="CSV")
         e4 = {e[0]: e[1] for e in schema4["CSV"]}
-        assert e4["order_date"] == "other",       e4["order_date"]
+        assert e4["order_date"] == "other", e4["order_date"]
         assert e4["unit_price"] == "unit_measure", e4["unit_price"]
         print("   PASSED")
     finally:
@@ -724,8 +848,7 @@ def _run_self_test():
 
     # ── Test 5: ingest() JSON file ────────────────────────────────────────────
     print("── Test 5: ingest(json path)")
-    json_records = [{"revenue": 100, "region": "West", "date": "2024-01"}
-                    for _ in range(5)]
+    json_records = [{"revenue": 100, "region": "West", "date": "2024-01"} for _ in range(5)]
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump(json_records, f)
         tmp_json = Path(f.name)
@@ -733,7 +856,7 @@ def _run_self_test():
         schema5 = ingest(tmp_json, source_name="JSON")
         e5 = {e[0]: e[1] for e in schema5["JSON"]}
         assert e5["revenue"] in ("derived_measure", "base_measure"), e5["revenue"]
-        assert e5["region"]  == "other", e5["region"]
+        assert e5["region"] == "other", e5["region"]
         print("   PASSED")
     finally:
         tmp_json.unlink()
@@ -747,7 +870,7 @@ def _run_self_test():
     try:
         schema6 = ingest(tmp_jsonl, source_name="JSONL")
         e6 = {e[0]: e[1] for e in schema6["JSONL"]}
-        assert e6["qty"]  in ("base_measure", "unit_measure"), e6["qty"]
+        assert e6["qty"] in ("base_measure", "unit_measure"), e6["qty"]
         assert e6["name"] == "other", e6["name"]
         print("   PASSED")
     finally:
@@ -756,10 +879,10 @@ def _run_self_test():
     # ── Test 7: suggest_aliases ───────────────────────────────────────────────
     print("── Test 7: suggest_aliases + suggest_unknown_abbrevs")
     schema7 = ingest(["PPA", "NET_SALES", "QTY", "EXT_PRICE"], source_name="T")
-    aliases  = suggest_aliases(schema7)
-    unknown  = suggest_unknown_abbrevs(schema7)
-    assert "ppa" in aliases,         f"ppa not in aliases: {aliases}"
-    assert "qty" in aliases,         f"qty not in aliases: {aliases}"
+    aliases = suggest_aliases(schema7)
+    unknown = suggest_unknown_abbrevs(schema7)
+    assert "ppa" in aliases, f"ppa not in aliases: {aliases}"
+    assert "qty" in aliases, f"qty not in aliases: {aliases}"
     assert aliases["ppa"] == ["per", "person", "average"]
     print(f"   PASSED  aliases={list(aliases.keys())}  unknown={unknown}")
 
@@ -767,14 +890,17 @@ def _run_self_test():
     print("── Test 8: ingest(DataFrame)")
     try:
         import pandas as pd
-        df = pd.DataFrame({
-            "revenue": [100.0, 200.0],
-            "order_date": ["2024-01-01", "2024-01-02"],
-            "status": ["open", "closed"],
-        })
+
+        df = pd.DataFrame(
+            {
+                "revenue": [100.0, 200.0],
+                "order_date": ["2024-01-01", "2024-01-02"],
+                "status": ["open", "closed"],
+            }
+        )
         schema8 = ingest(df, source_name="DF")
         e8 = {e[0]: e[1] for e in schema8["DF"]}
-        assert e8["revenue"]    in ("derived_measure", "base_measure"), e8["revenue"]
+        assert e8["revenue"] in ("derived_measure", "base_measure"), e8["revenue"]
         assert e8["order_date"] == "other", e8["order_date"]
         print("   PASSED")
     except ImportError:
@@ -783,7 +909,7 @@ def _run_self_test():
     # ── Test 9: merge_schemas ─────────────────────────────────────────────────
     print("── Test 9: merge_schemas")
     s1 = ingest(["NET_SALES", "ORDER_DATE"], source_name="POS")
-    s2 = ingest(["GUESTS", "PPA"],           source_name="Totals")
+    s2 = ingest(["GUESTS", "PPA"], source_name="Totals")
     merged = merge_schemas(s1, s2)
     assert "POS" in merged and "Totals" in merged
     print("   PASSED")

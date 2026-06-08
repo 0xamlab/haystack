@@ -29,14 +29,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user
-RUN groupadd --system app && useradd --system --gid app --no-create-home app
+# Create non-root user with a writable home for persistent service state.
+RUN groupadd --system app && useradd --system --gid app --home-dir /home/app --create-home app
 
 # Copy installed packages from builder
 COPY --from=builder /install /usr/local
 
 # Copy application code
 COPY --from=builder /build/context/apps/ /app/apps/
+COPY --from=builder /build/context/engines/ /app/engines/
+COPY --from=builder /build/context/training/ /app/training/
+COPY --from=builder /build/context/scripts/ /app/scripts/
 COPY --from=builder /build/context/mojo/ /app/mojo/
 COPY --from=builder /build/context/mojo_build/ /app/mojo_build/
 
@@ -44,7 +47,9 @@ COPY --from=builder /build/context/mojo_build/ /app/mojo_build/
 RUN chmod +x /app/mojo_build/simulate 2>/dev/null || true
 
 # Set ownership
-RUN chown -R app:app /app
+RUN mkdir -p /home/app/.algenta && chown -R app:app /app /home/app
+
+ENV HOME=/home/app
 
 USER app
 

@@ -24,6 +24,7 @@ Usage:
 Self-test:
     python3 training/semantic/precompute_neighbors.py --self-test
 """
+
 from __future__ import annotations
 
 import argparse
@@ -42,7 +43,7 @@ except ImportError:
 
 # Default: NN_K must match semantic_types.mojo  alias NN_K = 8
 DEFAULT_K = 8
-DEFAULT_MIN_SCORE = 0.70   # conservative; runtime uses 0.82 to expand
+DEFAULT_MIN_SCORE = 0.70  # conservative; runtime uses 0.82 to expand
 
 
 def load_embeddings(path: Path, vocab_size: int, emb_dim: int) -> np.ndarray:
@@ -52,8 +53,7 @@ def load_embeddings(path: Path, vocab_size: int, emb_dim: int) -> np.ndarray:
     expected = vocab_size * emb_dim
     if len(arr) != expected:
         raise ValueError(
-            f"Embedding file has {len(arr)} floats, expected {expected} "
-            f"({vocab_size} × {emb_dim})"
+            f"Embedding file has {len(arr)} floats, expected {expected} ({vocab_size} × {emb_dim})"
         )
     return arr.reshape(vocab_size, emb_dim).copy()
 
@@ -66,8 +66,8 @@ def l2_normalize(mat: np.ndarray) -> np.ndarray:
 
 def compute_neighbors(
     embeddings: np.ndarray,
-    k:          int = DEFAULT_K,
-    min_score:  float = DEFAULT_MIN_SCORE,
+    k: int = DEFAULT_K,
+    min_score: float = DEFAULT_MIN_SCORE,
     batch_size: int = 512,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
@@ -85,15 +85,15 @@ def compute_neighbors(
           nn_scores: float32 [vocab_size × k]
     """
     vocab_size = embeddings.shape[0]
-    normed     = l2_normalize(embeddings.astype(np.float32))
+    normed = l2_normalize(embeddings.astype(np.float32))
 
-    nn_ids    = np.zeros((vocab_size, k), dtype=np.uint32)
+    nn_ids = np.zeros((vocab_size, k), dtype=np.uint32)
     nn_scores = np.zeros((vocab_size, k), dtype=np.float32)
 
     for start in range(0, vocab_size, batch_size):
-        end   = min(start + batch_size, vocab_size)
-        chunk = normed[start:end]                    # [B, D]
-        sim   = chunk @ normed.T                     # [B, vocab_size]
+        end = min(start + batch_size, vocab_size)
+        chunk = normed[start:end]  # [B, D]
+        sim = chunk @ normed.T  # [B, vocab_size]
 
         # Exclude self-similarity: set diagonal to -1
         for i in range(end - start):
@@ -106,22 +106,22 @@ def compute_neighbors(
             top_k_idx = np.tile(np.arange(vocab_size), (end - start, 1))[:, :k]
 
         for i in range(end - start):
-            row_idx    = top_k_idx[i]
+            row_idx = top_k_idx[i]
             row_scores = sim[i, row_idx]
-            order      = np.argsort(-row_scores)          # descending
+            order = np.argsort(-row_scores)  # descending
             sorted_idx = row_idx[order]
-            sorted_sc  = row_scores[order]
+            sorted_sc = row_scores[order]
             # Apply min_score floor: replace sub-threshold with 0
-            sorted_sc  = np.where(sorted_sc >= min_score, sorted_sc, 0.0)
-            nn_ids[start + i]    = sorted_idx[:k].astype(np.uint32)
+            sorted_sc = np.where(sorted_sc >= min_score, sorted_sc, 0.0)
+            nn_ids[start + i] = sorted_idx[:k].astype(np.uint32)
             nn_scores[start + i] = sorted_sc[:k].astype(np.float32)
 
     return nn_ids, nn_scores
 
 
 def write_neighbors(
-    out_dir:   Path,
-    nn_ids:    np.ndarray,
+    out_dir: Path,
+    nn_ids: np.ndarray,
     nn_scores: np.ndarray,
 ):
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -132,12 +132,12 @@ def write_neighbors(
 def main():
     parser = argparse.ArgumentParser(description="Precompute token nearest neighbors")
     parser.add_argument("--embeddings", type=Path, default=None, help="embeddings.bin")
-    parser.add_argument("--vocab",      type=Path, default=None, help="vocab.json")
-    parser.add_argument("--out-dir",    type=Path, default=Path("training/semantic/artifacts"))
-    parser.add_argument("--k",          type=int,  default=DEFAULT_K)
-    parser.add_argument("--min-score",  type=float, default=DEFAULT_MIN_SCORE)
-    parser.add_argument("--emb-dim",    type=int,  default=32)
-    parser.add_argument("--self-test",  action="store_true")
+    parser.add_argument("--vocab", type=Path, default=None, help="vocab.json")
+    parser.add_argument("--out-dir", type=Path, default=Path("training/semantic/artifacts"))
+    parser.add_argument("--k", type=int, default=DEFAULT_K)
+    parser.add_argument("--min-score", type=float, default=DEFAULT_MIN_SCORE)
+    parser.add_argument("--emb-dim", type=int, default=32)
+    parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
 
     if args.self_test:
@@ -146,7 +146,7 @@ def main():
 
     if not args.embeddings or not args.vocab:
         parser.error("--embeddings and --vocab are required")
-    vocab      = json.loads(args.vocab.read_text())
+    vocab = json.loads(args.vocab.read_text())
     vocab_size = len(vocab)
 
     print(f"Loading embeddings: vocab_size={vocab_size}  emb_dim={args.emb_dim}")
@@ -167,24 +167,23 @@ def _run_self_test():
     import tempfile
 
     vocab_size = 40
-    emb_dim    = 32
-    k          = 8
+    emb_dim = 32
+    k = 8
 
     rng = np.random.default_rng(42)
     emb = rng.standard_normal((vocab_size, emb_dim)).astype(np.float32)
 
     nn_ids, nn_scores = compute_neighbors(emb, k=k, min_score=0.0)
 
-    assert nn_ids.shape    == (vocab_size, k), f"nn_ids shape {nn_ids.shape}"
+    assert nn_ids.shape == (vocab_size, k), f"nn_ids shape {nn_ids.shape}"
     assert nn_scores.shape == (vocab_size, k), f"nn_scores shape {nn_scores.shape}"
-    assert nn_ids.dtype    == np.uint32
+    assert nn_ids.dtype == np.uint32
     assert nn_scores.dtype == np.float32
 
     # Scores should be sorted descending within each row
     for i in range(vocab_size):
         row = nn_scores[i]
-        assert all(row[j] >= row[j + 1] for j in range(k - 1)), \
-            f"Row {i} not sorted: {row}"
+        assert all(row[j] >= row[j + 1] for j in range(k - 1)), f"Row {i} not sorted: {row}"
 
     # No self-neighbor
     for i in range(vocab_size):

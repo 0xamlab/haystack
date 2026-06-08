@@ -21,6 +21,7 @@ Usage (Python):
 Self-test:
     python3 training/semantic/fast_resolver.py --self-test
 """
+
 from __future__ import annotations
 
 import argparse
@@ -51,19 +52,19 @@ class FastResolver:
     def __init__(self, artifacts_dir: str | Path):
         d = Path(artifacts_dir)
         vocab_path = d / "vocab.json"
-        emb_path   = d / "embeddings.bin"
-        meta_path  = d / "meta.json"
+        emb_path = d / "embeddings.bin"
+        meta_path = d / "meta.json"
 
         if not vocab_path.exists() or not emb_path.exists():
             raise FileNotFoundError(f"Artifacts not found in {d}")
 
         self._vocab: dict[str, int] = json.loads(vocab_path.read_text())
         meta = json.loads(meta_path.read_text()) if meta_path.exists() else {}
-        emb_dim   = meta.get("emb_dim", 32)
+        emb_dim = meta.get("emb_dim", 32)
         vocab_size = len(self._vocab)
 
         raw = np.frombuffer(emb_path.read_bytes(), dtype="<f4")
-        self._emb = raw.reshape(vocab_size, emb_dim).copy()   # [V, D]
+        self._emb = raw.reshape(vocab_size, emb_dim).copy()  # [V, D]
         self._unk = self._vocab.get("<UNK>", 1)
 
     # ── Public API ────────────────────────────────────────────────────────────
@@ -78,12 +79,12 @@ class FastResolver:
         Returns a zero vector if no tokens are recognized.
         """
         combined = merge_aliases(domain_aliases)
-        tokens   = tokenize_name(token_str)
+        tokens = tokenize_name(token_str)
         expanded = [t for t, _ in expand_tokens(tokens, combined)]
-        ids      = [self._vocab.get(t, self._unk) for t in expanded] or [self._unk]
-        vecs     = self._emb[ids]                                # [T, D]
-        avg      = vecs.mean(axis=0)                             # [D]
-        norm     = np.linalg.norm(avg)
+        ids = [self._vocab.get(t, self._unk) for t in expanded] or [self._unk]
+        vecs = self._emb[ids]  # [T, D]
+        avg = vecs.mean(axis=0)  # [D]
+        norm = np.linalg.norm(avg)
         return avg / max(norm, 1e-8)
 
     def resolve(
@@ -108,9 +109,9 @@ class FastResolver:
 
         # Build [N, D] matrix of column embeddings
         col_vecs = np.stack([self.embed(c, domain_aliases) for c in column_names])
-        sims     = col_vecs @ q_vec                              # [N] cosine sims
+        sims = col_vecs @ q_vec  # [N] cosine sims
 
-        best_idx  = int(np.argmax(sims))
+        best_idx = int(np.argmax(sims))
         best_conf = float(sims[best_idx])
 
         if best_conf >= CONFIDENCE_THRESHOLD:
@@ -128,13 +129,13 @@ class FastResolver:
             return [(None, 0.0)] * len(hints)
 
         col_vecs = np.stack([self.embed(c, domain_aliases) for c in column_names])  # [N, D]
-        results  = []
+        results = []
         for hint in hints:
-            q_vec    = self.embed(hint, domain_aliases)
-            sims     = col_vecs @ q_vec
+            q_vec = self.embed(hint, domain_aliases)
+            sims = col_vecs @ q_vec
             best_idx = int(np.argmax(sims))
-            conf     = float(sims[best_idx])
-            col      = column_names[best_idx] if conf >= CONFIDENCE_THRESHOLD else None
+            conf = float(sims[best_idx])
+            col = column_names[best_idx] if conf >= CONFIDENCE_THRESHOLD else None
             results.append((col, conf))
         return results
 
@@ -167,23 +168,33 @@ def resolve(
 
 # ── Self-test ─────────────────────────────────────────────────────────────────
 
+
 def _run_self_test():
     import tempfile
 
     # Build a tiny vocab + embedding table
-    vocab = {"<PAD>": 0, "<UNK>": 1, "net": 2, "sales": 3, "revenue": 4,
-             "unit": 5, "price": 6, "order": 7, "date": 8}
+    vocab = {
+        "<PAD>": 0,
+        "<UNK>": 1,
+        "net": 2,
+        "sales": 3,
+        "revenue": 4,
+        "unit": 5,
+        "price": 6,
+        "order": 7,
+        "date": 8,
+    }
     emb_dim = 8
     rng = np.random.default_rng(42)
 
     # Build embedding table: same tokens → similar vectors
     emb = rng.standard_normal((len(vocab), emb_dim)).astype("<f4")
     # Make "net" and "sales" tokens cluster near "revenue" (manual hint)
-    emb[vocab["net"]]     = emb[vocab["revenue"]] + rng.standard_normal(emb_dim) * 0.05
-    emb[vocab["sales"]]   = emb[vocab["revenue"]] + rng.standard_normal(emb_dim) * 0.05
+    emb[vocab["net"]] = emb[vocab["revenue"]] + rng.standard_normal(emb_dim) * 0.05
+    emb[vocab["sales"]] = emb[vocab["revenue"]] + rng.standard_normal(emb_dim) * 0.05
     # Normalize each row
     norms = np.linalg.norm(emb, axis=1, keepdims=True)
-    emb   = emb / np.maximum(norms, 1e-8)
+    emb = emb / np.maximum(norms, 1e-8)
 
     meta = {"emb_dim": emb_dim}
 

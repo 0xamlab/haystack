@@ -25,6 +25,7 @@ Usage:
 Self-test:
     python3 training/semantic/export_artifacts.py --self-test
 """
+
 from __future__ import annotations
 
 import argparse
@@ -53,14 +54,14 @@ from training.semantic.train_thin_semantic import (
 # ── Class label metadata ──────────────────────────────────────────────────────
 
 _META = {
-    "emb_dim":         EMB_DIM,
-    "hidden_dim":      HIDDEN_DIM,
-    "intent_classes":  INTENT_CLASSES,
-    "agg_classes":     AGG_CLASSES,
-    "family_classes":  FAMILY_CLASSES,
-    "intent_labels":   ["column_like", "meta_query", "weak_semantic", "unsupported"],
-    "agg_labels":      ["none", "count", "sum", "avg", "min", "max"],
-    "family_labels":   ["measure", "dimension", "date", "entity"],
+    "emb_dim": EMB_DIM,
+    "hidden_dim": HIDDEN_DIM,
+    "intent_classes": INTENT_CLASSES,
+    "agg_classes": AGG_CLASSES,
+    "family_classes": FAMILY_CLASSES,
+    "intent_labels": ["column_like", "meta_query", "weak_semantic", "unsupported"],
+    "agg_labels": ["none", "count", "sum", "avg", "min", "max"],
+    "family_labels": ["measure", "dimension", "date", "entity"],
 }
 
 
@@ -73,12 +74,13 @@ def _write_f32(path: Path, tensor: torch.Tensor):
 def _read_f32(path: Path, shape: tuple) -> np.ndarray:
     """Read raw float32 bytes back into a numpy array."""
     import numpy as np
+
     raw = path.read_bytes()
     return np.frombuffer(raw, dtype="<f4").reshape(shape)
 
 
 def export(
-    model:   ThinSemanticModel,
+    model: ThinSemanticModel,
     out_dir: Path,
 ):
     """Export all weight tensors and metadata to out_dir."""
@@ -87,25 +89,25 @@ def export(
     sd = model.state_dict()
 
     # ── Embeddings ────────────────────────────────────────────────────────
-    _write_f32(out_dir / "embeddings.bin",       sd["emb.weight"])
+    _write_f32(out_dir / "embeddings.bin", sd["emb.weight"])
 
     # ── Intent head ───────────────────────────────────────────────────────
     _write_f32(out_dir / "intent_fc1_weight.bin", sd["intent.0.weight"])
-    _write_f32(out_dir / "intent_fc1_bias.bin",   sd["intent.0.bias"])
+    _write_f32(out_dir / "intent_fc1_bias.bin", sd["intent.0.bias"])
     _write_f32(out_dir / "intent_fc2_weight.bin", sd["intent.2.weight"])
-    _write_f32(out_dir / "intent_fc2_bias.bin",   sd["intent.2.bias"])
+    _write_f32(out_dir / "intent_fc2_bias.bin", sd["intent.2.bias"])
 
     # ── Aggregation head ──────────────────────────────────────────────────
-    _write_f32(out_dir / "agg_fc1_weight.bin",    sd["agg.0.weight"])
-    _write_f32(out_dir / "agg_fc1_bias.bin",      sd["agg.0.bias"])
-    _write_f32(out_dir / "agg_fc2_weight.bin",    sd["agg.2.weight"])
-    _write_f32(out_dir / "agg_fc2_bias.bin",      sd["agg.2.bias"])
+    _write_f32(out_dir / "agg_fc1_weight.bin", sd["agg.0.weight"])
+    _write_f32(out_dir / "agg_fc1_bias.bin", sd["agg.0.bias"])
+    _write_f32(out_dir / "agg_fc2_weight.bin", sd["agg.2.weight"])
+    _write_f32(out_dir / "agg_fc2_bias.bin", sd["agg.2.bias"])
 
     # ── Family head ───────────────────────────────────────────────────────
     _write_f32(out_dir / "family_fc1_weight.bin", sd["family.0.weight"])
-    _write_f32(out_dir / "family_fc1_bias.bin",   sd["family.0.bias"])
+    _write_f32(out_dir / "family_fc1_bias.bin", sd["family.0.bias"])
     _write_f32(out_dir / "family_fc2_weight.bin", sd["family.2.weight"])
-    _write_f32(out_dir / "family_fc2_bias.bin",   sd["family.2.bias"])
+    _write_f32(out_dir / "family_fc2_bias.bin", sd["family.2.bias"])
 
     # ── Metadata ──────────────────────────────────────────────────────────
     vocab_size = sd["emb.weight"].shape[0]
@@ -160,10 +162,10 @@ def verify_export(out_dir: Path, vocab_size: int):
 def main():
     parser = argparse.ArgumentParser(description="Export semantic model to Mojo-ready binaries")
     parser.add_argument("--checkpoint", type=Path, default=None)
-    parser.add_argument("--vocab",      type=Path, default=None)
-    parser.add_argument("--out-dir",    type=Path, default=Path("training/semantic/artifacts"))
-    parser.add_argument("--verify",     action="store_true", default=True)
-    parser.add_argument("--self-test",  action="store_true")
+    parser.add_argument("--vocab", type=Path, default=None)
+    parser.add_argument("--out-dir", type=Path, default=Path("training/semantic/artifacts"))
+    parser.add_argument("--verify", action="store_true", default=True)
+    parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
 
     if args.self_test:
@@ -172,8 +174,8 @@ def main():
 
     if not args.checkpoint or not args.vocab:
         parser.error("--checkpoint and --vocab are required")
-    ckpt      = torch.load(args.checkpoint, map_location="cpu", weights_only=True)
-    vocab     = json.loads(args.vocab.read_text())
+    ckpt = torch.load(args.checkpoint, map_location="cpu", weights_only=True)
+    vocab = json.loads(args.vocab.read_text())
     vocab_size = len(vocab)
 
     model = ThinSemanticModel(vocab_size=vocab_size)
@@ -198,7 +200,6 @@ def _run_self_test():
     """Create a random model, export it, and verify the artifacts."""
     import tempfile
 
-
     vocab_size = 50
     model = ThinSemanticModel(vocab_size=vocab_size)
     model.eval()
@@ -210,12 +211,18 @@ def _run_self_test():
         # Check all files present
         expected_bins = [
             "embeddings.bin",
-            "intent_fc1_weight.bin", "intent_fc1_bias.bin",
-            "intent_fc2_weight.bin", "intent_fc2_bias.bin",
-            "agg_fc1_weight.bin",    "agg_fc1_bias.bin",
-            "agg_fc2_weight.bin",    "agg_fc2_bias.bin",
-            "family_fc1_weight.bin", "family_fc1_bias.bin",
-            "family_fc2_weight.bin", "family_fc2_bias.bin",
+            "intent_fc1_weight.bin",
+            "intent_fc1_bias.bin",
+            "intent_fc2_weight.bin",
+            "intent_fc2_bias.bin",
+            "agg_fc1_weight.bin",
+            "agg_fc1_bias.bin",
+            "agg_fc2_weight.bin",
+            "agg_fc2_bias.bin",
+            "family_fc1_weight.bin",
+            "family_fc1_bias.bin",
+            "family_fc2_weight.bin",
+            "family_fc2_bias.bin",
         ]
         for f in expected_bins:
             assert (out_dir / f).exists(), f"Missing: {f}"
@@ -230,7 +237,7 @@ def _run_self_test():
         # Check meta.json
         m = json.loads((out_dir / "meta.json").read_text())
         assert m["vocab_size"] == vocab_size
-        assert m["emb_dim"]    == EMB_DIM
+        assert m["emb_dim"] == EMB_DIM
 
     print("Self-test PASSED")
 

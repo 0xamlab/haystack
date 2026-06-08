@@ -5,6 +5,7 @@ Maps each product-level engine to its constituent Mojo libraries,
 API surface, and use cases.  Single source of truth — imported by
 the API router, SDK, and CLI.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -13,12 +14,12 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class Engine:
     name: str
-    slug: str                   # URL / API key  e.g. "decision"
+    slug: str  # URL / API key  e.g. "decision"
     description: str
-    api_path: str               # top-level route prefix
-    mojo_libs: list[str]        # mojo/engine/*.mojo contributors
+    api_path: str  # top-level route prefix
+    mojo_libs: list[str]  # mojo/engine/*.mojo contributors
     use_cases: list[str]
-    tier: str                   # "core" | "advanced" | "platform"
+    tier: str  # "core" | "advanced" | "platform"
 
 
 ENGINES: list[Engine] = [
