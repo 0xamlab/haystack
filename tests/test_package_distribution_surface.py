@@ -849,9 +849,15 @@ def test_typescript_package_surface_includes_package_readme_and_registry_metadat
     assert '"B8"' in shared_types
     assert '"B10";' in shared_types
     assert "evidence_paths: string[];" in shared_types
-    python_runtime_manifest_models = (
-        ROOT / "packages" / "python-sdk" / "decision_engine" / "models_runtime_manifest.py"
-    ).read_text()
+    # decision_engine.models_runtime_manifest is now a package; concatenate
+    # the facade + every submodule so textual surface checks cover the same
+    # source area as before modularization.
+    python_manifest_dir = (
+        ROOT / "packages" / "python-sdk" / "decision_engine" / "models_runtime_manifest"
+    )
+    python_runtime_manifest_models = "\n".join(
+        p.read_text() for p in sorted(python_manifest_dir.glob("*.py"))
+    )
     # runtime_model_manifest.py is a thin facade; the actual enum + model
     # definitions live in _runtime_manifest_*.py submodules. Concatenate the
     # facade with every submodule so the textual surface checks below still
