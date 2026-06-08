@@ -531,7 +531,13 @@ def test_typescript_package_surface_includes_package_readme_and_registry_metadat
     tsconfig = json.loads((package_root / "tsconfig.json").read_text())
     source_contract_text = (package_root / "src" / "contract.ts").read_text()
     contract_text = (package_root / "dist" / "contract.js").read_text()
-    client_types = (package_root / "dist" / "client.d.ts").read_text()
+    # client.d.ts is now a barrel re-exporting per-domain sub-modules.
+    # Concat the barrel + all _client_*.d.ts files so textual surface checks
+    # cover the same definitions as the pre-split monolithic client.d.ts.
+    dist_dir = package_root / "dist"
+    client_types = (dist_dir / "client.d.ts").read_text() + "\n".join(
+        p.read_text() for p in sorted(dist_dir.glob("_client_*.d.ts"))
+    )
     runtime_types = (package_root / "dist" / "runtime.d.ts").read_text()
     # types.d.ts is now a barrel re-exporting sub-modules. Concat all
     # _types_*.d.ts so textual surface checks cover the same definitions.

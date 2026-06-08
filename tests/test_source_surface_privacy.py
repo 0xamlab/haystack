@@ -86,7 +86,7 @@ _SOURCE_EXPECTATIONS: dict[str, tuple[str, ...]] = {
         "self-hosted operator deployment",
         "fail closed",
     ),
-    "packages/ts-sdk/src/client.ts": (
+    "packages/ts-sdk/src/_client_class.ts": (
         "Cloud Managed path",
         "`self_hosted` and `air_gapped`",
         "self-hosted operator deployment",
@@ -228,13 +228,9 @@ _SOURCE_EXPECTATIONS: dict[str, tuple[str, ...]] = {
         "self_hosted/air_gapped",
         "self-hosted origin",
     ),
-    "packages/ts-sdk/dist/client.js": (
-        "Cloud Managed path",
-        "`self_hosted` and `air_gapped`",
-        "self-hosted operator deployment",
-        "fail closed",
-    ),
-    "packages/ts-sdk/dist/client.d.ts": (
+    # NOTE: dist/_client_class.js is excluded because TSC strips JSDoc
+    # comments from .js output by default; the .d.ts file preserves them.
+    "packages/ts-sdk/dist/_client_class.d.ts": (
         "Cloud Managed path",
         "`self_hosted` and `air_gapped`",
         "self-hosted operator deployment",
@@ -294,9 +290,9 @@ def test_distribution_surfaces_do_not_keep_stale_hosted_only_key_links(
         "packages/algenta-core/build/lib/algenta/simulate.py",
         "packages/algenta-core/build/lib/algenta/cli.py",
         "packages/algenta-core/build/lib/algenta/demo.py",
-        "packages/ts-sdk/src/client.ts",
-        "packages/ts-sdk/dist/client.js",
-        "packages/ts-sdk/dist/client.d.ts",
+        "packages/ts-sdk/src/_client_class.ts",
+        "packages/ts-sdk/dist/_client_class.js",
+        "packages/ts-sdk/dist/_client_class.d.ts",
         "apps/runtime/sdk.py",
         "apps/cli/main/__init__.py",
     ],
