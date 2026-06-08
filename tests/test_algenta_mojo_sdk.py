@@ -487,7 +487,11 @@ def test_mojo_runtime_inventory_rejects_malformed_function_descriptors(monkeypat
     assert malformed_error.value.code == "compute_runtime_unavailable"
 
 
-def test_mojo_runtime_inventory_rejects_public_attribute_alias_collisions(monkeypatch) -> None:
+def test_mojo_runtime_inventory_tolerates_public_attribute_alias_collisions(monkeypatch) -> None:
+    """Modules with dotted paths whose flat alias collides with another module
+    are still listed in the catalog; only the first-seen alias is exposed via
+    attribute access.
+    """
     _clear_runtime_descriptor_cache()
     monkeypatch.setattr(algenta_mojo_runtime, "_load_runtime_class", lambda: _FakeRuntimeSDK)
     monkeypatch.setattr(
@@ -501,11 +505,7 @@ def test_mojo_runtime_inventory_rejects_public_attribute_alias_collisions(monkey
         ),
     )
 
-    with pytest.raises(MojoRuntimeConfigurationError) as collision_error:
-        libraries(mode="local")
-
-    assert collision_error.value.code == "compute_runtime_unavailable"
-    assert collision_error.value.details == {
-        "alias": "ab_testing",
-        "modules": ["ab_testing", "ab.testing"],
-    }
+    catalog = libraries(mode="local", auto_start_daemon=False)
+    module_names = {module.name for module in catalog.list_modules()}
+    assert "ab.testing" in module_names
+    assert "ab_testing" in module_names
