@@ -37,7 +37,7 @@ _SOURCE_EXPECTATIONS: dict[str, tuple[str, ...]] = {
         "self-hosted operator deployment",
         "fail closed",
     ),
-    "packages/algenta-core/algenta/client.py": (
+    "packages/algenta-core/algenta/client/__init__.py": (
         "Cloud Managed path",
         "`self_hosted` and `air_gapped`",
         "self-hosted operator deployment",
@@ -279,7 +279,7 @@ def test_distribution_surfaces_do_not_keep_stale_hosted_only_key_links(
         "packages/python-sdk/decision_engine/__init__.py",
         "packages/python-sdk/decision_engine/client_facade/__init__.py",
         "packages/python-sdk/decision_engine/async_client_facade.py",
-        "packages/algenta-core/algenta/client.py",
+        "packages/algenta-core/algenta/client/__init__.py",
         "packages/algenta-core/algenta/decision.py",
         "packages/algenta-core/algenta/forecast.py",
         "packages/algenta-core/algenta/simulate.py",
