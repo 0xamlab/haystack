@@ -206,11 +206,11 @@ self-host-endpoint-matrix:
 
 ## Validate the GitBook v1 navigation contract and page split
 docs-gitbook-status:
-	python3 scripts/check_gitbook_v1_docs.py
+	$(REPO_PYTHON) scripts/check_gitbook_v1_docs.py
 
 ## Export the GitBook v1 publishing pack into build/gitbook-v1
 docs-gitbook-pack:
-	python3 scripts/export_gitbook_v1_pack.py
+	$(REPO_PYTHON) scripts/export_gitbook_v1_pack.py
 
 ## Validate and export the GitBook v1 publishing pack
 docs-gitbook-verify: docs-gitbook-status docs-gitbook-pack

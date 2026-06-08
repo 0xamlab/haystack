@@ -54,5 +54,12 @@ for candidate in "${candidates[@]}"; do
   fi
 done
 
-echo "No usable pixi binary found. Run bash scripts/install_mojo.sh or set PIXI_BIN." >&2
+# No pixi available — fall back to plain python3 if a system Python is on PATH.
+# This keeps lightweight targets (e.g. docs-gitbook-verify) working in CI
+# without forcing a full Mojo/Pixi environment install.
+if command -v python3 >/dev/null 2>&1; then
+  exec python3 "$@"
+fi
+
+echo "No usable pixi binary or python3 found. Run bash scripts/install_mojo.sh or set PIXI_BIN." >&2
 exit 127
