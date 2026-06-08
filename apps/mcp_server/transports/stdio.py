@@ -3,7 +3,10 @@ stdio transport — for Claude Desktop, Cursor, Zed, Windsurf, VS Code extension
 
 Reads MCP protocol messages from stdin, writes responses to stdout.
 """
+
 from __future__ import annotations
+
+from typing import Any
 
 import structlog
 
@@ -29,7 +32,7 @@ async def run_stdio_server() -> None:
 
     server = Server("algenta-decision-engine")
 
-    @server.list_tools()
+    @server.list_tools()  # type: ignore[misc]
     async def handle_list_tools() -> list[Tool]:
         return [
             Tool(
@@ -40,8 +43,8 @@ async def run_stdio_server() -> None:
             for spec in get_tool_specs()
         ]
 
-    @server.call_tool()
-    async def handle_call_tool(name: str, arguments: dict) -> list[TextContent]:
+    @server.call_tool()  # type: ignore[misc]
+    async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         try:
             result = await call_tool(name, arguments or {})
         except Exception as exc:

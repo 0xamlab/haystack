@@ -3,58 +3,30 @@ slug: /
 sidebar_position: 1
 ---
 
-# Start Here
+# Overview
 
-Algenta is a **deterministic execution layer for structured data**.
+Algenta is a self-hosted decision and governed data/query runtime you deploy on your infrastructure.
 
-This repository currently supports multiple real usage modes, but the primary path we now recommend is:
+Start the service with one command, verify the API, and then choose the first live lane that matches the job:
 
-```python
-from algenta import Runtime
+- inspect the live contract: `GET /v1/meta/contract`
+- first decision: `POST /v1/simulate`
+- first governed dataset query: `GET /v1/data?search=...&compact=1` -> `GET /v1/data/{dataset_id}/summary` -> `POST /v1/query`
+- first unified route selection: `POST /v1/capabilities/route`
 
-rt = Runtime()
-plan = rt.resolve({...})
-result = rt.query(plan)
+If an older self-hosted node still returns `404` for `GET /v1/meta/contract`,
+use `/openapi.json` and read `x-primary-data-query-contract` instead.
+
+Integrate via API, SDK, CLI, or MCP after the service is running.
+
+If the request needs customer-agnostic routing across data, MCP, skills,
+native tools, or runtime libraries, start with
+[Capability Plane](/api-reference/capability-plane).
+`algenta_managed` routes can execute through Algenta; `client_managed` routes
+must execute in the customer app or adapter path and fail closed otherwise.
+
+```bash
+curl -sSL https://algenta.ai/install.sh | bash
 ```
 
-## Current truth
-
-Algenta today is a hybrid backend/runtime system with:
-
-- deterministic data-runtime queries
-- simulation workflows
-- local helper APIs
-- MCP/agent integration
-- local runtime/device flows
-
-## Primary path
-
-The primary published path is:
-
-- `Runtime.connect(...)`
-- `Runtime.resolve(...)`
-- `Runtime.verify(...)` (optional trust/introspection step)
-- `Runtime.query(...)`
-
-This path is strongly tested and benchmarked today.
-
-## Target model
-
-Algenta is converging toward a **local-first deterministic runtime**:
-
-- local execution by default
-- optional cloud/API assist
-- deterministic `resolve -> query` as the core user model
-
-## Read this next
-
-- [Runtime Quickstart](/quickstart)
-- [Connect / Register Sources](/connect-register-sources)
-- [Resolve](/resolve)
-- [Query](/query)
-- [Verify](/verify)
-- [How Algenta Works Today](/how-algenta-works-today)
-- [Competitor Compatibility](/competitor-compatibility)
-- [Trust Model](/trust-model)
-- [Supported Secondary Modes](/supported-secondary-modes)
-- [Direct API Client](/direct-api-client)
+Open [Quickstart](/quickstart).

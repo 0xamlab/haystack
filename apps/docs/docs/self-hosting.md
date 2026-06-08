@@ -1,35 +1,39 @@
 ---
-sidebar_position: 10
+sidebar_position: 99
+slug: /self-hosting
 ---
 
-# Self-Hosting
+# Setup & Configuration
 
-Run the full Algenta Decision Engine on your own infrastructure — same engine, same API, your own data.
+Use this page after [Quickstart](/quickstart). It covers the supported self-hosted shape, the manual install path, and the production configuration contract.
 
-## Two deployment modes
+## Supported deployment shape
 
-| Mode | Description | When to use |
-|------|-------------|-------------|
-| **Hosted** | Use `https://api.algenta.ai` with your API key | Default — no setup required |
-| **Self-hosted** | Run the engine on your own servers | Data sovereignty, air-gap, enterprise compliance |
+Self-hosted v1 is the service product:
 
-When self-hosted, **all client code still works unchanged** — just set `ALGENTA_BASE_URL` to your own server.
+- API service
+- worker service
+- PostgreSQL
+- Redis
+- object storage
+- Docker Compose on your infrastructure
 
----
+Integrate with it over HTTP or the SDKs after the service is running.
 
 ## Requirements
 
-- **Python 3.12+**
-- **PostgreSQL 14+**
-- **Redis 7+**
-- **Node.js 20+** (optional, only if you need Node-based tooling alongside this repo)
-- **Docker + Docker Compose** (optional — or run natively)
+- Linux VM with Docker Engine
+- Docker Compose v2 plugin (`docker compose`) or standalone `docker-compose`
+- 4+ vCPU recommended
+- 8+ GB RAM recommended
+- persistent disk for PostgreSQL and object storage
+- outbound access to pull release images for the default install path
 
----
+## Manual install
 
-## Quick Start (without Docker)
+Use this path when you need to inspect or modify the Compose bundle directly.
 
-### 1. Clone and configure
+### 1. Download the bundle
 
 ```bash
 git clone https://github.com/algenta/decision-engine
@@ -37,211 +41,168 @@ cd decision-engine
 cp .env.example .env
 ```
 
-Edit `.env` — at minimum set your PostgreSQL URL:
+### 2. Set the required environment
 
 ```bash
-DATABASE_URL=postgresql+asyncpg://YOUR_USER:@localhost:5432/algenta
-DATABASE_URL_SYNC=postgresql://YOUR_USER:@localhost:5432/algenta
-REDIS_URL=redis://localhost:6379/0
+API_ENV=production
+DATABASE_URL=postgresql+asyncpg://algenta:algenta_secret@postgres:5432/algenta
+DATABASE_URL_SYNC=postgresql://algenta:algenta_secret@postgres:5432/algenta
+REDIS_URL=redis://redis:6379/0
 JWT_SECRET=change-me-use-256-bit-random-value
+RESULT_STORAGE_ENABLED=true
+ALGENTA_IMAGE_REGISTRY=ghcr.io/algenta/decision-engine
+ALGENTA_IMAGE_TAG=git-YOUR_RELEASE_TAG
+ALGENTA_DEPLOYMENT_MODE=self_hosted
+ALGENTA_DISABLE_CLOUD=1
+ALGENTA_DISABLE_TELEMETRY=1
+ALGENTA_TELEMETRY_MODE=local_audit
+ALGENTA_METERING_MODE=local_audit
+ALGENTA_ALLOW_OUTBOUND_NETWORK=0
+ALGENTA_EGRESS_ALLOWLIST=minio:9000
+ALGENTA_API_PUBLIC_BASE_URL=http://localhost:8000
+ALGENTA_APP_BASE_URL=
 ```
 
-### 2. Install Python dependencies
+### 3. Start the stack
 
 ```bash
-pip install -r requirements-dev.txt
+docker compose -f infra/docker/docker-compose.selfhosted.yml up -d
 ```
 
-### 3. Create database and run migrations
+### 4. Run migrations
 
 ```bash
-createdb algenta 2>/dev/null || true
-PYTHONPATH=. python -m alembic -c apps/api_server/alembic.ini upgrade head
-```
-
-### 4. Seed an admin org + API key
-
-```bash
-PYTHONPATH=. python scripts/seed_dev.py
-```
-
-This creates:
-- An organization: `Dev Org`
-- A user: `dev@example.com`
-- An API key printed to stdout: `de_test_...`
-
-**Save the printed API key** — it is shown only once.
-
-### 5. Start the API server
-
-```bash
-make dev-api
-# or:
-PYTHONPATH=. uvicorn apps.api_server.main:app --port 8000 --reload
-```
-
-### 6. Test your key
-
-```bash
-curl -X POST http://localhost:8000/v1/simulate \
-  -H "Authorization: Bearer de_test_YOUR_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "mode": "auto",
-    "runs": 10000,
-    "scenario": {
-      "variables": {"revenue": {"low": 80000, "high": 200000}},
-      "objective": "maximize_net_value"
-    }
-  }'
-```
-
-Expected: `{"recommended_action": "proceed", "confidence": 0.84, ...}`
-
-### 7. Connect an external web interface (optional)
-
-This repository does not include a bundled web interface. Point your external UI at `http://localhost:8000` after the API is running.
-
----
-
-## Quick Start (Docker Compose)
-
-```bash
-cp .env.example .env
-# Edit .env with your settings
-
-docker compose -f infra/docker/docker-compose.yml up --build -d
-
-# Run migrations inside the container
-docker compose -f infra/docker/docker-compose.yml exec api \
+docker compose -f infra/docker/docker-compose.selfhosted.yml exec -T api \
   python -m alembic -c apps/api_server/alembic.ini upgrade head
-
-# Seed dev data
-docker compose -f infra/docker/docker-compose.yml exec api \
-  python scripts/seed_dev.py
 ```
 
----
-
-## Connecting SDKs to your self-hosted instance
-
-All SDKs and integrations accept a `base_url` override:
-
-### Python SDK
-```python
-from decision_engine import DecisionEngineClient
-
-client = DecisionEngineClient(
-    api_key="de_test_YOUR_KEY",
-    base_url="http://localhost:8000",  # your server
-)
-result = client.simulate(mode="auto", runs=10000, scenario={...})
-```
-
-### TypeScript SDK
-```typescript
-import { DecisionEngineClient } from 'algenta-sdk';
-
-const client = new DecisionEngineClient({
-  apiKey: 'de_test_YOUR_KEY',
-  baseUrl: 'http://localhost:8000',
-});
-```
-
-### MCP Server (Claude Desktop)
-```json
-{
-  "mcpServers": {
-    "algenta-local": {
-      "command": "/path/to/mcp_venv/bin/python",
-      "args": ["-m", "apps.mcp_server.server"],
-      "env": {
-        "ALGENTA_API_KEY": "de_test_YOUR_KEY",
-        "ALGENTA_BASE_URL": "http://localhost:8000"
-      }
-    }
-  }
-}
-```
-
-### External web interface
-Set your UI's API base URL to `http://localhost:8000`.
-
----
-
-## API Key management
-
-After seeding, you can create additional keys via the API:
+### 5. Create the bootstrap key
 
 ```bash
-# Create a new key
+docker compose -f infra/docker/docker-compose.selfhosted.yml exec -T api \
+  python scripts/bootstrap_self_host.py
+```
+
+Save the printed `BOOTSTRAP_API_KEY` value temporarily. It is a one-time
+bootstrap credential. Rotate it to a bounded-lifetime replacement key before
+recurring workloads:
+
+```bash
 curl -X POST http://localhost:8000/v1/api-keys \
-  -H "Authorization: Bearer de_test_SEED_KEY" \
+  -H "Authorization: Bearer ${ALGENTA_API_KEY}" \
   -H "Content-Type: application/json" \
-  -d '{"label": "my-integration"}'
-
-# List keys
-curl http://localhost:8000/v1/api-keys \
-  -H "Authorization: Bearer de_test_SEED_KEY"
-
-# Revoke a key
-curl -X DELETE http://localhost:8000/v1/api-keys/KEY_ID \
-  -H "Authorization: Bearer de_test_SEED_KEY"
+  -d '{"label":"mission-runtime","expires_at":"2028-05-19T00:00:00Z","device_limit":3}'
 ```
 
-Or use your external account interface against the same local API server.
+The bootstrap output also includes `BOOTSTRAP_API_KEY_ID` and
+`BOOTSTRAP_API_KEY_PREFIX` for audit and revocation. The replacement key
+response returns `raw_key`, `id`, `key_prefix`, `device_limit`, and
+`expires_at`; store the non-secret identity fields for ongoing audit and
+revocation. Use the returned `raw_key` as `ALGENTA_API_KEY` for ongoing operator and service access, then revoke the bootstrap key by id:
 
----
-
-## Environment variables
-
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `DATABASE_URL` | PostgreSQL async URL (`postgresql+asyncpg://...`) | ✅ |
-| `DATABASE_URL_SYNC` | PostgreSQL sync URL for migrations | ✅ |
-| `REDIS_URL` | Redis URL | ✅ |
-| `JWT_SECRET` | 256-bit random secret for JWT signing | ✅ |
-| `API_ENV` | `development` or `production` | |
-| `MOJO_BINARY_PATH` | Path to compiled Mojo binary | `./mojo_build/simulate` |
-| `CORS_ORIGINS` | Comma-separated allowed origins | `http://localhost:3000` |
-| `STRIPE_SECRET_KEY` | Stripe key (skip for self-hosted, billing disabled) | |
-| `S3_BUCKET_NAME` | MinIO/S3 bucket for large result storage | |
-| `S3_ENDPOINT_URL` | MinIO endpoint (self-hosted object store) | |
-
----
-
-## Production checklist
-
-- [ ] Set a strong `JWT_SECRET` (256-bit random)
-- [ ] Set `API_ENV=production`
-- [ ] Configure TLS (nginx/Caddy in front of port 8000)
-- [ ] Set `CORS_ORIGINS=https://your-domain.com`
-- [ ] Configure PostgreSQL backups
-- [ ] Set up Redis persistence (`appendonly yes`)
-- [ ] Enable `/metrics` endpoint monitoring (Prometheus-compatible)
-- [ ] Rotate the seed API key and create org-specific keys
-- [ ] Review `QUOTA_*` env vars for your usage limits
-
----
-
-## Architecture overview
-
+```bash
+curl -X DELETE http://localhost:8000/v1/api-keys/${BOOTSTRAP_API_KEY_ID} \
+  -H "Authorization: Bearer ${ALGENTA_API_KEY}"
 ```
-┌── Portal UI (Next.js :3000) ──────────────────────────────┐
-│   └── Calls API with Bearer token                         │
-└────────────────────────────────────────────────────────────┘
-                           │
-┌── API Server (FastAPI :8000) ─────────────────────────────┐
-│   ├── Auth: Bearer token → org_id lookup (Redis → Postgres)│
-│   ├── Quota check (per org, per billing period)            │
-│   ├── Rate limit (Redis, per org)                          │
-│   ├── Simulation engine (Mojo binary or Python fallback)  │
-│   └── SHA-256 chain-of-custody on every result             │
-└────────────────────────────────────────────────────────────┘
-        │               │
-┌─ Postgres ─┐  ┌─ Redis ─┐  ┌─ MinIO/S3 ─┐
-│ All orgs   │  │ Cache   │  │ Results    │
-│ row-level  │  │ Rate    │  │ /org_id/   │
-│ isolation  │  │ limits  │  │ run_id     │
-└────────────┘  └─────────┘  └────────────┘
-```
+
+After rotation, `GET /v1/api-keys` returns only non-secret metadata such as
+`id`, `label`, `key_prefix`, `device_limit`, `created_at`, and `expires_at`; it
+does not return `raw_key` again.
+
+An explicit `device_limit` also binds ordinary hosted API traffic for that key,
+not just the local runtime/device-register path. The SDKs send the stable
+device headers automatically. Raw HTTP callers using capped keys must send
+`X-Algenta-Device-Id`, `X-Algenta-Platform`, and
+`X-Algenta-Hostname-Hash` on authenticated requests. The first successful
+hosted request for a new capped device also returns
+`X-Algenta-Device-Binding-Token`; store and replay that token on later
+requests from the same device. The SDKs do this automatically.
+
+## Enterprise privacy defaults
+
+The generated self-hosted `.env` now defaults to the private enterprise profile:
+
+- `ALGENTA_DEPLOYMENT_MODE=self_hosted`
+- `ALGENTA_DISABLE_CLOUD=1`
+- `ALGENTA_DISABLE_TELEMETRY=1`
+- `ALGENTA_TELEMETRY_MODE=local_audit`
+- `ALGENTA_METERING_MODE=local_audit`
+- `ALGENTA_ALLOW_OUTBOUND_NETWORK=0`
+- `ALGENTA_API_PUBLIC_BASE_URL=http://localhost:8000`
+
+`ALGENTA_DISABLE_TELEMETRY=1` means no outbound or vendor telemetry. It does
+not disable local audit events, local metering records, or local egress logs.
+
+`ALGENTA_API_PUBLIC_BASE_URL` is the public API origin used in quickstart links,
+billing redirects, and email content. Set `ALGENTA_APP_BASE_URL` only when you
+front a separate dashboard or account UI; when it is blank in a private
+profile, Algenta keeps user-facing links on the API origin instead of silently
+pointing at Algenta cloud.
+
+Use `ALGENTA_DEPLOYMENT_MODE=air_gapped` for the strict privacy profile. That
+profile inherits the self-hosted defaults, requires a local signed license, and
+forbids control-plane sync.
+
+The buyer-facing proof endpoints are:
+
+- `GET /v1/admin/egress-policy`
+- `GET /v1/admin/egress-log`
+- `GET /v1/admin/privacy-report`
+
+## Required environment variables
+
+| Variable | Description |
+| --- | --- |
+| `DATABASE_URL` | PostgreSQL async URL used by the API |
+| `DATABASE_URL_SYNC` | PostgreSQL sync URL used for migrations |
+| `REDIS_URL` | Redis connection URL |
+| `JWT_SECRET` | 256-bit random secret for auth tokens |
+
+## Common self-hosted settings
+
+| Variable | Description |
+| --- | --- |
+| `API_ENV` | Set to `production` for self-hosted deployments |
+| `CORS_ORIGINS` | Comma-separated allowed browser origins |
+| `POSTGRES_HOST_PORT` | Optional localhost port binding for PostgreSQL |
+| `REDIS_HOST_PORT` | Optional localhost port binding for Redis |
+| `MINIO_API_HOST_PORT` | Optional localhost port binding for the MinIO S3 API |
+| `MINIO_CONSOLE_HOST_PORT` | Optional localhost port binding for the MinIO console |
+| `RUNTIME_FALLBACK_MODE` | Set to `allow` for the default self-hosted install so the API can start when the bundled Mojo binary cannot serve pool mode |
+| `ALGENTA_SOURCES_DIR` | Local registry path for uploaded/queryable datasets |
+| `ALGENTA_DEPLOYMENT_MODE` | `self_hosted` for the private enterprise default, `air_gapped` for the strict privacy profile |
+| `ALGENTA_DISABLE_CLOUD` | Set to `1` to block Algenta-owned cloud egress |
+| `ALGENTA_DISABLE_TELEMETRY` | Set to `1` to disable outbound/vendor telemetry while keeping local audit enabled |
+| `ALGENTA_TELEMETRY_MODE` | `local_audit` for local-only audit, `control_plane_sync` only when an allowed control plane URL is configured |
+| `ALGENTA_METERING_MODE` | `local_audit` for local-only metering, `control_plane_sync` only when explicitly permitted |
+| `ALGENTA_REQUIRE_LOCAL_LICENSE` | Set to `1` for strict local signed license enforcement; required by the `air_gapped` profile |
+| `ALGENTA_CONTROL_PLANE_URL` | Optional explicit control-plane URL; leave blank in the default private self-hosted profile |
+| `ALGENTA_ALLOW_OUTBOUND_NETWORK` | Set to `0` to block Algenta-owned and undeclared public egress |
+| `ALGENTA_EGRESS_ALLOWLIST` | Comma-separated allowlist for explicit connector/operator egress such as `minio:9000,*.customer.internal,postgres.internal:5432` |
+| `ALGENTA_LOCAL_LICENSE_PUBLIC_KEY_FILE` | PEM public key file used to verify offline local licenses in strict private profiles |
+| `ALGENTA_API_PUBLIC_BASE_URL` | Public API origin used in generated quickstart URLs, billing redirects, and user-facing email content |
+| `ALGENTA_APP_BASE_URL` | Optional separate dashboard/account UI origin; leave blank to keep private-profile links on the API origin |
+| `RESULT_STORAGE_ENABLED` | Set to `true` to persist full simulation results in MinIO/S3 |
+| `S3_BUCKET_NAME` | Bucket for large result storage |
+| `S3_ENDPOINT_URL` | MinIO/S3 endpoint |
+| `S3_ACCESS_KEY_ID` | MinIO/S3 access key |
+| `S3_SECRET_ACCESS_KEY` | MinIO/S3 secret key |
+| `METRICS_SECRET` | Shared secret for remote `/metrics` scraping |
+| `WEBHOOK_SIGNING_SECRET` | Signing secret for outbound webhooks |
+| `SMTP_*` | Optional email delivery settings |
+| `STRIPE_*` | Optional billing settings |
+
+## Release artifact settings
+
+| Variable | Description |
+| --- | --- |
+| `ALGENTA_IMAGE_REGISTRY` | Registry prefix for API and worker images |
+| `ALGENTA_IMAGE_TAG` | Pinned API and worker image tag |
+
+## Related pages
+
+- [Operations](/operations)
+- [TLS & Reverse Proxy](/operations/tls-and-reverse-proxy)
+- [Logs & Metrics](/operations/logs-and-metrics)
+- [Upgrade & Rollback](/operations/upgrade-and-rollback)
+- [API Authentication](/api-reference/authentication)

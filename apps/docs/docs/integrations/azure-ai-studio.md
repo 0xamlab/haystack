@@ -4,7 +4,7 @@ sidebar_position: 5
 
 # Azure AI Foundry and Studio
 
-Use Algenta from Azure-hosted copilots, assistants, and prompt flows with the canonical hosted `v1` contract.
+Use Algenta from Azure-hosted copilots, assistants, and prompt flows with the canonical `v1` contract.
 
 ## Recommended path
 
@@ -14,43 +14,65 @@ Use Algenta from Azure-hosted copilots, assistants, and prompt flows with the ca
 
 Base URL:
 
-```text
-https://api.algenta.ai
-```
+- Cloud Managed: `https://api.algenta.ai`
+- `self_hosted` and `air_gapped`: replace the hosted base URL with your self-hosted base URL
+
+Private profiles do not silently fall back to Algenta cloud.
 
 ## Option A: OpenAPI import
 
-1. Import `https://api.algenta.ai/openapi.json`.
-2. Configure Bearer auth with your Algenta API key.
+1. Import `https://your-algenta-base-url.example/openapi.json` and replace the
+   placeholder with Cloud Managed `https://api.algenta.ai` or
+   `https://your-algenta-host.example/openapi.json` for `self_hosted` / `air_gapped`.
+2. Configure Bearer auth with your Algenta API key. Canonical env vars are
+   `ALGENTA_API_KEY` and `ALGENTA_BASE_URL`; legacy `DE_API_KEY`,
+   `DE_BASE_URL`, and `ALGENTA_API_URL` remain accepted for compatibility.
 3. Limit the imported actions to what the agent actually needs.
+
+If an older self-hosted node still returns `404` for `/v1/meta/contract`, use
+`/openapi.json` and read `x-primary-data-query-contract` instead. The OpenAPI
+import path already carries that machine-readable contract on current nodes.
+That contract also includes `governed_filter_contract`, so Azure-hosted agents
+can inspect selector fields and allowed operators before building exact
+filters.
 
 Good first actions:
 
-- `/v1/simulate`
-- `/v1/recommend`
+- `/v1/meta/contract`
 - `/v1/data`
+- `/v1/data/{dataset_id}/summary`
 - `/v1/query`
+- `/v1/query/batch`
+- `/v1/query/sql-report`
+- `/v1/simulate`
 
 ## Option B: Function tool or Prompt Flow node
 
 Use the reference files in [`examples/azure-ai-studio/`](https://github.com/decisionengine/decision-engine/tree/main/examples/azure-ai-studio/):
 
+- `algenta_contract_tool_definition.json`
 - `algenta_tool_definition.json`
+- `algenta_query_tool_definition.json`
+- `algenta_sql_report_tool_definition.json`
 - `README.md`
 
 ## First successful task
 
-Try one simple simulation first:
+Try one simple governed data task first:
 
 ```text
-Should we expand into Europe if revenue could be $500k-$2M and expansion cost could be $300k-$800k?
+Inspect the live Algenta contract, then find the dataset that matches orders, summarize it, and return the total completed orders plus a monthly breakdown for the last 12 months.
 ```
 
 That proves:
 
 - Azure can call Algenta
 - Bearer auth is correct
-- the agent can interpret the decision envelope
+- the agent can stay on the read-only data path
+
+For wide read-only rowsets that do not fit one exact query or exact-query
+batch, add `algenta_sql_report_tool_definition.json` instead of stretching the
+exact-query tool into a generic SQL console.
 
 ## Write actions
 

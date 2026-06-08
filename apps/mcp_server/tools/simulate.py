@@ -1,4 +1,5 @@
 """MCP tool: simulate — run a Monte Carlo simulation."""
+
 from __future__ import annotations
 
 import json
@@ -45,8 +46,7 @@ SPEC: dict[str, Any] = {
                     "required": ["name", "low", "high"],
                 },
                 "description": (
-                    "Input variables as triangular distributions "
-                    "(low, most-likely, high)"
+                    "Input variables as triangular distributions (low, most-likely, high)"
                 ),
             },
         },
@@ -56,10 +56,15 @@ SPEC: dict[str, Any] = {
 
 
 async def handler(arguments: dict[str, Any]) -> str:
-    variables: list[dict] = arguments.get("variables", [])
-    mode        = arguments.get("mode", "auto")
-    objective   = arguments.get("objective", "maximize")
-    n_sims      = int(arguments.get("n_simulations", 10000))
+    variables_raw = arguments.get("variables", [])
+    variables = (
+        [item for item in variables_raw if isinstance(item, dict)]
+        if isinstance(variables_raw, list)
+        else []
+    )
+    mode = arguments.get("mode", "auto")
+    objective = arguments.get("objective", "maximize")
+    n_sims = int(arguments.get("n_simulations", 10000))
 
     if not variables:
         return json.dumps({"error": "variables is required"})
@@ -70,7 +75,7 @@ async def handler(arguments: dict[str, Any]) -> str:
     }
 
     if mode == "auto":
-        var_dict: dict[str, dict] = {}
+        var_dict: dict[str, dict[str, Any]] = {}
         for v in variables:
             var_dict[v["name"]] = {"low": v["low"], "high": v["high"]}
         payload["scenario"] = {"variables": var_dict, "objective": objective}
@@ -81,14 +86,17 @@ async def handler(arguments: dict[str, Any]) -> str:
 
     result = await api("POST", "/v1/simulate", json=payload)
 
-    return json.dumps({
-        "recommended_action": result.get("recommended_action"),
-        "confidence":         result.get("confidence"),
-        "rationale":          result.get("rationale"),
-        "expected_value":     result.get("metrics", {}).get("expected_value"),
-        "probability_of_loss": result.get("metrics", {}).get("probability_of_loss"),
-        "p5_downside":        result.get("percentiles", {}).get("p5"),
-        "p95_upside":         result.get("percentiles", {}).get("p95"),
-        "scenarios_run":      result.get("scenarios_run"),
-        "run_id":             result.get("run_id"),
-    }, indent=2)
+    return json.dumps(
+        {
+            "recommended_action": result.get("recommended_action"),
+            "confidence": result.get("confidence"),
+            "rationale": result.get("rationale"),
+            "expected_value": result.get("metrics", {}).get("expected_value"),
+            "probability_of_loss": result.get("metrics", {}).get("probability_of_loss"),
+            "p5_downside": result.get("percentiles", {}).get("p5"),
+            "p95_upside": result.get("percentiles", {}).get("p95"),
+            "scenarios_run": result.get("scenarios_run"),
+            "run_id": result.get("run_id"),
+        },
+        indent=2,
+    )

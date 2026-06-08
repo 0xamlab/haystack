@@ -1,7 +1,9 @@
 """Shared httpx client for MCP tool handlers."""
+
 from __future__ import annotations
 
 import contextvars
+import json
 import os
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -10,8 +12,20 @@ from typing import Any
 import httpx
 import structlog
 
+from apps.privacy_policy import (
+    PrivacyConfigurationError,
+    is_algenta_owned_destination,
+    parse_egress_destination,
+    policy_from_environment,
+)
+
 from . import config
-from .errors import MCPUpstreamUnavailableError, UnsupportedMCPAuthConfigurationError
+from .errors import (
+    MCPAPIError,
+    MCPPrivacyConfigurationError,
+    MCPUpstreamUnavailableError,
+    UnsupportedMCPAuthConfigurationError,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -34,13 +48,40 @@ def _resolve_api_key() -> str:
     )
 
 
-def _resolve_base_url() -> str:
+def _configured_base_url() -> str:
     return (
         _BASE_URL_OVERRIDE.get()
         or os.environ.get("ALGENTA_BASE_URL", "").rstrip("/")
         or os.environ.get("DE_BASE_URL", "").rstrip("/")
+        or os.environ.get("ALGENTA_API_URL", "").rstrip("/")
         or config.BASE_URL
     ).rstrip("/")
+
+
+def _validated_base_url(base_url: str) -> str:
+    normalized = base_url.rstrip("/")
+    policy = policy_from_environment()
+    try:
+        destination = parse_egress_destination(normalized)
+    except PrivacyConfigurationError as exc:
+        raise MCPPrivacyConfigurationError(
+            "MCP downstream base URL must be a valid absolute URL."
+        ) from exc
+    if policy.disable_cloud and is_algenta_owned_destination(destination.host):
+        raise MCPPrivacyConfigurationError(
+            "MCP private profiles cannot target Algenta-owned cloud URLs. "
+            "Configure ALGENTA_BASE_URL / DE_BASE_URL / ALGENTA_API_URL "
+            "or a request base URL for your self-hosted deployment."
+        )
+    return normalized
+
+
+def _resolve_base_url() -> str:
+    return _validated_base_url(_configured_base_url())
+
+
+def resolve_base_url() -> str:
+    return _resolve_base_url()
 
 
 @contextmanager
@@ -61,8 +102,9 @@ def _headers() -> dict[str, str]:
     api_key = _resolve_api_key()
     if not api_key:
         raise UnsupportedMCPAuthConfigurationError(
-            "ALGENTA_API_KEY environment variable is not set and no request API key was provided. "
-            "Set ALGENTA_API_KEY or connect with Authorization: Bearer <key>."
+            "ALGENTA_API_KEY / DE_API_KEY environment variables are not set "
+            "and no request API key was provided. "
+            "Set ALGENTA_API_KEY / DE_API_KEY or connect with Authorization: Bearer <key>."
         )
     return {
         "Authorization": f"Bearer {api_key}",
@@ -71,14 +113,74 @@ def _headers() -> dict[str, str]:
     }
 
 
+def _serialize_payload(payload: Any) -> str:
+    if isinstance(payload, (dict, list)):
+        return json.dumps(payload, ensure_ascii=True, sort_keys=True)
+    return str(payload)
+
+
+def _extract_structured_error_payload(payload: Any) -> dict[str, Any] | None:
+    if not isinstance(payload, dict):
+        return None
+    top_level_error = payload.get("error")
+    if isinstance(top_level_error, dict):
+        return top_level_error
+    detail = payload.get("detail")
+    if isinstance(detail, dict):
+        nested_error = detail.get("error")
+        if isinstance(nested_error, dict):
+            return nested_error
+        if "code" in detail and "message" in detail:
+            return detail
+    return None
+
+
+def _api_error_from_status_payload(status_code: int, payload: Any) -> MCPAPIError:
+    error_payload = _extract_structured_error_payload(payload) or {}
+    error_code = str(error_payload.get("code") or "api_error").strip() or "api_error"
+    details_raw = error_payload.get("details")
+    details = (
+        [item for item in details_raw if isinstance(item, dict)]
+        if isinstance(details_raw, list)
+        else None
+    )
+    message = f"API error {status_code}: {_serialize_payload(payload)}"
+    return MCPAPIError(
+        error_code=error_code,
+        message=message,
+        status_code=status_code,
+        details=details,
+        payload=payload,
+    )
+
+
 async def api(
     method: str,
     path: str,
     *,
     timeout: float | None = None,
     **kwargs: Any,
-) -> dict[str, Any]:
+) -> Any:
     """Make an authenticated request to the Algenta API."""
+    status_code, payload = await api_with_status(
+        method,
+        path,
+        timeout=timeout,
+        **kwargs,
+    )
+    if status_code >= 400:
+        raise _api_error_from_status_payload(status_code, payload)
+    return payload
+
+
+async def api_with_status(
+    method: str,
+    path: str,
+    *,
+    timeout: float | None = None,
+    **kwargs: Any,
+) -> tuple[int, Any]:
+    """Make an authenticated request and return the HTTP status plus decoded payload."""
     base_url = _resolve_base_url()
     request_timeout = config.TIMEOUT if timeout is None else timeout
     try:
@@ -94,16 +196,11 @@ async def api(
         ) from exc
 
     try:
-        response.raise_for_status()
-    except httpx.HTTPStatusError as exc:
-        if exc.response.status_code >= 500:
-            raise MCPUpstreamUnavailableError(
-                "Algenta API returned a temporary upstream failure for this MCP request.",
-            ) from exc
-        try:
-            body = exc.response.text
-        except Exception:
-            body = exc.response.reason_phrase
-        raise RuntimeError(f"API error {exc.response.status_code}: {body}") from exc
-
-    return response.json()  # type: ignore[return-value]
+        payload = response.json()
+    except Exception:
+        payload = response.text
+    if response.status_code >= 500 and _extract_structured_error_payload(payload) is None:
+        raise MCPUpstreamUnavailableError(
+            "Algenta API returned a temporary upstream failure for this MCP request.",
+        )
+    return response.status_code, payload

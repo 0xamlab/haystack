@@ -1,5 +1,6 @@
 """
-MCP tools: log_decision, list_decisions, record_outcome
+MCP tools: plan_decision, log_decision, list_decisions, get_decision,
+record_outcome, execute_decision, delete_decision
 
 Decision Memory — persist decisions and close the feedback loop by recording
 actual outcomes. This turns Algenta into a self-improving system:
@@ -7,12 +8,26 @@ actual outcomes. This turns Algenta into a self-improving system:
   - What actually happened? → record_outcome
   - How accurate were our predictions? → list_decisions (with outcome_delta)
 """
+
 from __future__ import annotations
 
 import json
 from typing import Any
 
 from apps.mcp_server.client import api
+
+PLAN_DECISION_SPEC: dict[str, Any] = {
+    "name": "plan_decision",
+    "description": (
+        "Build a structured Algenta DecisionPlan from a validated simulation-style request. "
+        "Use this when the caller needs the plan summary without the full decision envelope."
+    ),
+    "inputSchema": {
+        "type": "object",
+        "description": "Simulation-style payload forwarded to POST /v1/decisions/plan.",
+        "additionalProperties": False,
+    },
+}
 
 LOG_DECISION_SPEC: dict[str, Any] = {
     "name": "log_decision",
@@ -25,6 +40,7 @@ LOG_DECISION_SPEC: dict[str, Any] = {
     "inputSchema": {
         "type": "object",
         "required": ["chosen_action"],
+        "additionalProperties": False,
         "properties": {
             "chosen_action": {
                 "type": "string",
@@ -33,15 +49,13 @@ LOG_DECISION_SPEC: dict[str, Any] = {
             "run_id": {
                 "type": "string",
                 "description": (
-                    "Simulation run_id that produced this decision "
-                    "(from simulate or recommend)."
+                    "Simulation run_id that produced this decision (from simulate or recommend)."
                 ),
             },
             "context": {
                 "type": "string",
                 "description": (
-                    "Business context — what was the situation "
-                    "when this decision was made?"
+                    "Business context — what was the situation when this decision was made?"
                 ),
             },
             "options_considered": {
@@ -94,8 +108,9 @@ LIST_DECISIONS_SPEC: dict[str, Any] = {
     ),
     "inputSchema": {
         "type": "object",
+        "additionalProperties": False,
         "properties": {
-            "page":             {"type": "integer", "description": "Page number (default 1)."},
+            "page": {"type": "integer", "description": "Page number (default 1)."},
             "limit": {
                 "type": "integer",
                 "description": "Canonical results per page (default 20, max 200).",
@@ -112,6 +127,22 @@ LIST_DECISIONS_SPEC: dict[str, Any] = {
     },
 }
 
+GET_DECISION_SPEC: dict[str, Any] = {
+    "name": "get_decision",
+    "description": "Fetch one decision-memory record by id.",
+    "inputSchema": {
+        "type": "object",
+        "required": ["decision_id"],
+        "additionalProperties": False,
+        "properties": {
+            "decision_id": {
+                "type": "string",
+                "description": "Decision ID from log_decision or list_decisions.",
+            }
+        },
+    },
+}
+
 RECORD_OUTCOME_SPEC: dict[str, Any] = {
     "name": "record_outcome",
     "description": (
@@ -122,6 +153,7 @@ RECORD_OUTCOME_SPEC: dict[str, Any] = {
     "inputSchema": {
         "type": "object",
         "required": ["decision_id", "actual_outcome"],
+        "additionalProperties": False,
         "properties": {
             "decision_id": {
                 "type": "string",
@@ -139,26 +171,98 @@ RECORD_OUTCOME_SPEC: dict[str, Any] = {
     },
 }
 
+EXECUTE_DECISION_SPEC: dict[str, Any] = {
+    "name": "execute_decision",
+    "description": (
+        "Dispatch a logged decision to an external webhook and persist the execution receipt."
+    ),
+    "inputSchema": {
+        "type": "object",
+        "required": ["decision_id", "webhook_url"],
+        "additionalProperties": False,
+        "properties": {
+            "decision_id": {
+                "type": "string",
+                "description": "Decision ID from log_decision or list_decisions.",
+            },
+            "webhook_url": {
+                "type": "string",
+                "description": "HTTPS webhook that should receive the decision payload.",
+            },
+            "timeout_seconds": {
+                "type": "number",
+                "description": "Webhook timeout in seconds.",
+            },
+            "force": {
+                "type": "boolean",
+                "description": "Override the idempotency gate for one re-execution.",
+            },
+            "override_safety": {
+                "type": "boolean",
+                "description": "Bypass confidence and risk-floor policy gates for this execution.",
+            },
+            "metadata": {
+                "type": "object",
+                "description": "Optional key-value pairs merged into the webhook payload.",
+            },
+        },
+    },
+}
+
+DELETE_DECISION_SPEC: dict[str, Any] = {
+    "name": "delete_decision",
+    "description": "Delete one decision-memory record by id.",
+    "inputSchema": {
+        "type": "object",
+        "required": ["decision_id"],
+        "additionalProperties": False,
+        "properties": {
+            "decision_id": {
+                "type": "string",
+                "description": "Decision ID to delete.",
+            }
+        },
+    },
+}
+
+
+async def plan_decision_handler(arguments: dict[str, Any]) -> str:
+    result = await api("POST", "/v1/decisions/plan", json=arguments)
+    return json.dumps(result, indent=2)
+
 
 async def log_decision_handler(arguments: dict[str, Any]) -> str:
     body: dict[str, Any] = {
         "chosen_action": arguments["chosen_action"],
     }
-    for field in ("run_id", "context", "options_considered", "expected_value",
-                  "confidence", "rationale", "risk_p5", "risk_p95", "risk_pol",
-                  "request_hash", "result_hash"):
+    for field in (
+        "run_id",
+        "context",
+        "options_considered",
+        "expected_value",
+        "confidence",
+        "rationale",
+        "risk_p5",
+        "risk_p95",
+        "risk_pol",
+        "request_hash",
+        "result_hash",
+    ):
         if field in arguments:
             body[field] = arguments[field]
 
     result = await api("POST", "/v1/decisions", json=body)
-    return json.dumps({
-        "decision_id":    result.get("id"),
-        "chosen_action":  result.get("chosen_action"),
-        "expected_value": result.get("expected_value"),
-        "confidence":     result.get("confidence"),
-        "created_at":     result.get("created_at"),
-        "note": "Decision logged. Call record_outcome later to close the feedback loop.",
-    }, indent=2)
+    return json.dumps(
+        {
+            "decision_id": result.get("id"),
+            "chosen_action": result.get("chosen_action"),
+            "expected_value": result.get("expected_value"),
+            "confidence": result.get("confidence"),
+            "created_at": result.get("created_at"),
+            "note": "Decision logged. Call record_outcome later to close the feedback loop.",
+        },
+        indent=2,
+    )
 
 
 async def list_decisions_handler(arguments: dict[str, Any]) -> str:
@@ -185,7 +289,9 @@ async def list_decisions_handler(arguments: dict[str, Any]) -> str:
             direction = (
                 "over-optimistic"
                 if avg_delta < 0
-                else "under-optimistic" if avg_delta > 0 else "accurate"
+                else "under-optimistic"
+                if avg_delta > 0
+                else "accurate"
             )
             accuracy_note = (
                 f"{len(with_outcomes)} decisions with recorded outcomes. "
@@ -193,27 +299,36 @@ async def list_decisions_handler(arguments: dict[str, Any]) -> str:
                 f"({direction})"
             )
 
-    return json.dumps({
-        "total":    result.get("total"),
-        "page":     result.get("page"),
-        "limit":    result.get("limit", result.get("page_size")),
-        "pages":    result.get("pages"),
-        "decisions": [
-            {
-                "id":              d.get("id"),
-                "chosen_action":   d.get("chosen_action"),
-                "expected_value":  d.get("expected_value"),
-                "actual_outcome":  d.get("actual_outcome"),
-                "outcome_delta":   d.get("outcome_delta"),
-                "confidence":      d.get("confidence"),
-                "context":         d.get("context"),
-                "created_at":      d.get("created_at"),
-                "outcome_recorded_at": d.get("outcome_recorded_at"),
-            }
-            for d in decisions
-        ],
-        "accuracy_summary": accuracy_note,
-    }, indent=2)
+    return json.dumps(
+        {
+            "total": result.get("total"),
+            "page": result.get("page"),
+            "limit": result.get("limit", result.get("page_size")),
+            "pages": result.get("pages"),
+            "decisions": [
+                {
+                    "id": d.get("id"),
+                    "chosen_action": d.get("chosen_action"),
+                    "expected_value": d.get("expected_value"),
+                    "actual_outcome": d.get("actual_outcome"),
+                    "outcome_delta": d.get("outcome_delta"),
+                    "confidence": d.get("confidence"),
+                    "context": d.get("context"),
+                    "created_at": d.get("created_at"),
+                    "outcome_recorded_at": d.get("outcome_recorded_at"),
+                }
+                for d in decisions
+            ],
+            "accuracy_summary": accuracy_note,
+        },
+        indent=2,
+    )
+
+
+async def get_decision_handler(arguments: dict[str, Any]) -> str:
+    decision_id = arguments["decision_id"]
+    result = await api("GET", f"/v1/decisions/{decision_id}")
+    return json.dumps(result, indent=2)
 
 
 async def record_outcome_handler(arguments: dict[str, Any]) -> str:
@@ -229,14 +344,35 @@ async def record_outcome_handler(arguments: dict[str, Any]) -> str:
         direction = (
             " (over-optimistic)"
             if delta < 0
-            else " (under-optimistic)" if delta > 0 else " (accurate)"
+            else " (under-optimistic)"
+            if delta > 0
+            else " (accurate)"
         )
 
-    return json.dumps({
-        "decision_id":     result.get("id"),
-        "chosen_action":   result.get("chosen_action"),
-        "expected_value":  result.get("expected_value"),
-        "actual_outcome":  result.get("actual_outcome"),
-        "outcome_delta":   delta,
-        "summary": f"Δ = {delta:+.2f}{direction}" if delta is not None else "Outcome recorded.",
-    }, indent=2)
+    return json.dumps(
+        {
+            "decision_id": result.get("id"),
+            "chosen_action": result.get("chosen_action"),
+            "expected_value": result.get("expected_value"),
+            "actual_outcome": result.get("actual_outcome"),
+            "outcome_delta": delta,
+            "summary": f"Δ = {delta:+.2f}{direction}" if delta is not None else "Outcome recorded.",
+        },
+        indent=2,
+    )
+
+
+async def execute_decision_handler(arguments: dict[str, Any]) -> str:
+    decision_id = arguments["decision_id"]
+    body: dict[str, Any] = {"webhook_url": arguments["webhook_url"]}
+    for field in ("timeout_seconds", "force", "override_safety", "metadata"):
+        if field in arguments:
+            body[field] = arguments[field]
+    result = await api("POST", f"/v1/decisions/{decision_id}/execute", json=body)
+    return json.dumps(result, indent=2)
+
+
+async def delete_decision_handler(arguments: dict[str, Any]) -> str:
+    decision_id = arguments["decision_id"]
+    await api("DELETE", f"/v1/decisions/{decision_id}")
+    return json.dumps({"decision_id": decision_id, "deleted": True}, indent=2)

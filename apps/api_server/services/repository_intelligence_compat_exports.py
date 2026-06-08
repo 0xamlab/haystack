@@ -13,6 +13,7 @@ from apps.api_server.services import (
     repository_intelligence_graphviz_parser_dispatch as repository_intelligence_graphviz_parser_dispatch,
     repository_intelligence_just_parser_dispatch as repository_just_parser_dispatch,
     repository_intelligence_mermaid_parser_dispatch as repository_intelligence_mermaid_parser_dispatch,
+    repository_intelligence_dm_parser_dispatch as repository_intelligence_dm_parser_dispatch,
     repository_intelligence_modelica_parser_dispatch as repository_intelligence_modelica_parser_dispatch,
     repository_intelligence_move_parser_dispatch as repository_intelligence_move_parser_dispatch,
     repository_intelligence_openqasm_parser_dispatch as repository_intelligence_openqasm_parser_dispatch,
@@ -201,7 +202,7 @@ from apps.api_server.services.repository_intelligence_adapters import (
 )
 from apps.api_server.services.repository_intelligence_adapters import just as just_adapter, dockerfile as dockerfile_adapter, cuda as cuda_adapter, robotframework as robotframework_adapter  # noqa: E501
 from apps.api_server.services.repository_intelligence_adapters import scss as scss_adapter, less as less_adapter, stylus as stylus_adapter  # noqa: E501
-from apps.api_server.services.repository_intelligence_adapters import antlr as antlr_adapter, astro as astro_adapter, svelte as svelte_adapter, pug as pug_adapter, ejs as ejs_adapter, blade as blade_adapter, fennel as fennel_adapter, gherkin as gherkin_adapter, graphviz as graphviz_adapter, hy as hy_adapter, mermaid as mermaid_adapter, modelica as modelica_adapter, moonbit as moonbit_adapter, move as move_adapter, nextflow as nextflow_adapter, openqasm as openqasm_adapter, plantuml as plantuml_adapter, rescript as rescript_adapter, roc as roc_adapter, smarty as smarty_adapter, wren as wren_adapter  # noqa: E501
+from apps.api_server.services.repository_intelligence_adapters import antlr as antlr_adapter, astro as astro_adapter, svelte as svelte_adapter, pug as pug_adapter, dm as dm_adapter, ejs as ejs_adapter, blade as blade_adapter, fennel as fennel_adapter, gherkin as gherkin_adapter, graphviz as graphviz_adapter, hy as hy_adapter, mermaid as mermaid_adapter, modelica as modelica_adapter, moonbit as moonbit_adapter, move as move_adapter, nextflow as nextflow_adapter, openqasm as openqasm_adapter, plantuml as plantuml_adapter, rescript as rescript_adapter, roc as roc_adapter, smarty as smarty_adapter, wren as wren_adapter  # noqa: E501
 from apps.api_server.services.repository_intelligence_adapters import jinja as jinja_adapter, liquid as liquid_adapter, handlebars as handlebars_adapter, mustache as mustache_adapter, nunjucks as nunjucks_adapter, twig as twig_adapter, haml as haml_adapter, slim as slim_adapter, erb as erb_adapter  # noqa: E501
 from apps.api_server.services.repository_intelligence_adapters import hlsl as hlsl_adapter, wgsl as wgsl_adapter, shaderlab as shaderlab_adapter, cython as cython_adapter, stan as stan_adapter, protobuf as protobuf_adapter  # noqa: E501
 from apps.api_server.services.repository_intelligence_adapters import asciidoc as asciidoc_adapter, org as org_adapter, rst as rst_adapter, tex as tex_adapter, typst as typst_adapter, cmake as cmake_adapter, meson as meson_adapter  # noqa: E501
@@ -354,7 +355,7 @@ _RENAMED_EXPORTS: dict[str, object] = {
     "mermaid_adapter": mermaid_adapter,
     "plantuml_adapter": plantuml_adapter,
     "openqasm_adapter": openqasm_adapter,
-    "move_adapter": move_adapter,
+    "move_adapter": move_adapter, "dm_adapter": dm_adapter,
     "hy_adapter": hy_adapter, "wren_adapter": wren_adapter, "fennel_adapter": fennel_adapter, "nextflow_adapter": nextflow_adapter, "moonbit_adapter": moonbit_adapter,
     "modelica_adapter": modelica_adapter,
     "rescript_adapter": rescript_adapter,
@@ -462,8 +463,8 @@ _RENAMED_EXPORTS: dict[str, object] = {
     "_parse_plantuml_file": repository_intelligence_plantuml_parser_dispatch._parse_plantuml_file,
     "_parse_openqasm_dependencies_only": repository_intelligence_openqasm_parser_dispatch._parse_openqasm_dependencies_only,
     "_parse_openqasm_file": repository_intelligence_openqasm_parser_dispatch._parse_openqasm_file,
-    "_parse_move_dependencies_only": repository_intelligence_move_parser_dispatch._parse_move_dependencies_only,
-    "_parse_move_file": repository_intelligence_move_parser_dispatch._parse_move_file,
+    "_parse_move_dependencies_only": repository_intelligence_move_parser_dispatch._parse_move_dependencies_only, "_parse_dm_dependencies_only": repository_intelligence_dm_parser_dispatch._parse_dm_dependencies_only,
+    "_parse_move_file": repository_intelligence_move_parser_dispatch._parse_move_file, "_parse_dm_file": repository_intelligence_dm_parser_dispatch._parse_dm_file,
     "_parse_hy_dependencies_only": repository_intelligence_hy_parser_dispatch._parse_hy_dependencies_only, "_parse_wren_dependencies_only": repository_intelligence_wren_parser_dispatch._parse_wren_dependencies_only, "_parse_fennel_dependencies_only": repository_intelligence_fennel_parser_dispatch._parse_fennel_dependencies_only, "_parse_nextflow_dependencies_only": repository_intelligence_nextflow_parser_dispatch._parse_nextflow_dependencies_only, "_parse_moonbit_dependencies_only": repository_intelligence_moonbit_parser_dispatch._parse_moonbit_dependencies_only,
     "_parse_hy_file": repository_intelligence_hy_parser_dispatch._parse_hy_file, "_parse_wren_file": repository_intelligence_wren_parser_dispatch._parse_wren_file, "_parse_fennel_file": repository_intelligence_fennel_parser_dispatch._parse_fennel_file, "_parse_nextflow_file": repository_intelligence_nextflow_parser_dispatch._parse_nextflow_file, "_parse_moonbit_file": repository_intelligence_moonbit_parser_dispatch._parse_moonbit_file,
     "_parse_modelica_dependencies_only": repository_intelligence_modelica_parser_dispatch._parse_modelica_dependencies_only,

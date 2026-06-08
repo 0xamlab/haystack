@@ -82,6 +82,8 @@ TEXT_FILE_SUFFIXES = {
     ".dfm",
     ".dbproj",
     ".dhall",
+    ".dm",
+    ".dme",
     ".dot",
     ".mmd",
     ".puml",

@@ -5,6 +5,7 @@ Lets an LLM onboard any data source and check training status.
 The LLM passes column names or inline records; Algenta profiles the schema,
 auto-suggests aliases, and fires background semantic training.
 """
+
 from __future__ import annotations
 
 import json
@@ -48,7 +49,7 @@ ONBOARD_SPEC: dict[str, Any] = {
                 "type": "object",
                 "description": (
                     "Optional map of abbreviation → expansions. "
-                    "Example: {\"ppa\": [\"per\", \"person\", \"average\"]}. "
+                    'Example: {"ppa": ["per", "person", "average"]}. '
                     "Auto-suggested if omitted."
                 ),
                 "additionalProperties": {
@@ -68,9 +69,9 @@ ONBOARD_SPEC: dict[str, Any] = {
 LIST_SPEC: dict[str, Any] = {
     "name": "list_datasets",
     "description": (
-        "List all registered datasets and their current model tier. "
-        "Use this to check if background training has completed "
-        "(model_tier changes from 'none' → 'base' → 'schema')."
+        "List registered datasets and their current model tier. "
+        "Use search plus compact mode for low-token discovery, then poll "
+        "status or use the primary data tools once you choose a dataset."
     ),
     "inputSchema": {
         "type": "object",
@@ -79,9 +80,26 @@ LIST_SPEC: dict[str, Any] = {
             "limit": {
                 "type": "integer",
                 "description": (
-                    "Results per page "
-                    "(default: all visible datasets, max 200 when set)."
+                    "Results per page (default: all visible datasets, max 200 when set)."
                 ),
+            },
+            "search": {
+                "type": "string",
+                "description": (
+                    "Deterministic lexical filter over dataset_id, name, and source_names."
+                ),
+            },
+            "status": {
+                "type": "string",
+                "description": "Optional dataset readiness filter such as ready or training.",
+            },
+            "source_name": {
+                "type": "string",
+                "description": "Optional source-name filter for narrowed dataset discovery.",
+            },
+            "compact": {
+                "type": "boolean",
+                "description": "When true, request the low-token compact dataset discovery shape.",
             },
         },
     },
@@ -91,8 +109,8 @@ LIST_SPEC: dict[str, Any] = {
 async def onboard_handler(arguments: dict[str, Any]) -> str:
     # Determine which input format to send
     body: dict[str, Any] = {
-        "name":          arguments.get("name", "dataset"),
-        "async_train":   arguments.get("async_train", True),
+        "name": arguments.get("name", "dataset"),
+        "async_train": arguments.get("async_train", True),
     }
     if "domain_aliases" in arguments:
         body["domain_aliases"] = arguments["domain_aliases"]
@@ -108,20 +126,23 @@ async def onboard_handler(arguments: dict[str, Any]) -> str:
 
     result = await api("POST", "/v1/datasets/onboard", json=body)
 
-    return json.dumps({
-        "dataset_id":       result.get("dataset_id"),
-        "schema_hash":      result.get("schema_hash"),
-        "status":           result.get("status"),
-        "model_tier":       result.get("model_tier"),
-        "column_count":     result.get("column_count"),
-        "suggested_aliases": result.get("suggested_aliases", {}),
-        "note": (
-            "Queries work immediately. "
-            "Call list_datasets to check when schema training completes."
-            if result.get("status") == "training" else
-            "Dataset ready."
-        ),
-    }, indent=2)
+    return json.dumps(
+        {
+            "dataset_id": result.get("dataset_id"),
+            "schema_hash": result.get("schema_hash"),
+            "status": result.get("status"),
+            "model_tier": result.get("model_tier"),
+            "column_count": result.get("column_count"),
+            "suggested_aliases": result.get("suggested_aliases", {}),
+            "note": (
+                "Queries work immediately. "
+                "Call list_datasets to check when schema training completes."
+                if result.get("status") == "training"
+                else "Dataset ready."
+            ),
+        },
+        indent=2,
+    )
 
 
 async def list_handler(arguments: dict[str, Any]) -> str:
@@ -130,25 +151,40 @@ async def list_handler(arguments: dict[str, Any]) -> str:
         params["page"] = arguments["page"]
     if "limit" in arguments:
         params["limit"] = arguments["limit"]
+    if "search" in arguments:
+        params["search"] = arguments["search"]
+    if "status" in arguments:
+        params["status"] = arguments["status"]
+    if "source_name" in arguments:
+        params["source_name"] = arguments["source_name"]
+    if "compact" in arguments:
+        params["compact"] = arguments["compact"]
     result = await api("GET", "/v1/datasets", params=params)
     datasets = result.get("datasets", [])
-    return json.dumps({
-        "count":    result.get("count", len(datasets)),
-        "total":    result.get("total", len(datasets)),
-        "page":     result.get("page", 1),
-        "limit":    result.get("limit", len(datasets)),
-        "pages":    result.get("pages", 1),
-        "datasets": [
-            {
-                "dataset_id":  d.get("dataset_id"),
-                "name":        d.get("name"),
-                "status":      d.get("status"),
-                "model_tier":  d.get("model_tier"),
-                "column_count": d.get("column_count"),
-            }
-            for d in datasets
-        ],
-    }, indent=2)
+    return json.dumps(
+        {
+            "count": result.get("count", len(datasets)),
+            "total": result.get("total", len(datasets)),
+            "matched_total": result.get("matched_total", result.get("count", len(datasets))),
+            "page": result.get("page", 1),
+            "limit": result.get("limit", len(datasets)),
+            "pages": result.get("pages", 1),
+            "datasets": [
+                {
+                    "dataset_id": d.get("dataset_id"),
+                    "dataset_name": d.get("dataset_name") or d.get("name"),
+                    "name": d.get("name") or d.get("dataset_name"),
+                    "status": d.get("status"),
+                    "model_tier": d.get("model_tier"),
+                    "source_names": d.get("source_names", []),
+                    "column_count": d.get("column_count"),
+                    "registered_at": d.get("registered_at"),
+                }
+                for d in datasets
+            ],
+        },
+        indent=2,
+    )
 
 
 STATUS_SPEC: dict[str, Any] = {
@@ -181,7 +217,7 @@ RETRAIN_SPEC: dict[str, Any] = {
         "required": ["dataset_id"],
         "properties": {
             "dataset_id": {"type": "string"},
-            "epochs":     {"type": "integer", "default": 80},
+            "epochs": {"type": "integer", "default": 80},
         },
     },
 }
@@ -190,14 +226,17 @@ RETRAIN_SPEC: dict[str, Any] = {
 async def status_handler(arguments: dict[str, Any]) -> str:
     dataset_id = arguments["dataset_id"]
     result = await api("GET", f"/v1/datasets/{dataset_id}/status")
-    return json.dumps({
-        "dataset_id":    result.get("dataset_id"),
-        "name":          result.get("name"),
-        "status":        result.get("status"),
-        "model_tier":    result.get("model_tier"),
-        "column_count":  result.get("column_count"),
-        "updated_at":    result.get("updated_at"),
-    }, indent=2)
+    return json.dumps(
+        {
+            "dataset_id": result.get("dataset_id"),
+            "name": result.get("name"),
+            "status": result.get("status"),
+            "model_tier": result.get("model_tier"),
+            "column_count": result.get("column_count"),
+            "updated_at": result.get("updated_at"),
+        },
+        indent=2,
+    )
 
 
 async def retrain_handler(arguments: dict[str, Any]) -> str:
@@ -206,8 +245,11 @@ async def retrain_handler(arguments: dict[str, Any]) -> str:
     if "epochs" in arguments:
         body["epochs"] = arguments["epochs"]
     result = await api("POST", f"/v1/datasets/{dataset_id}/retrain", json=body)
-    return json.dumps({
-        "dataset_id":  result.get("dataset_id"),
-        "status":      result.get("status"),
-        "message":     result.get("message"),
-    }, indent=2)
+    return json.dumps(
+        {
+            "dataset_id": result.get("dataset_id"),
+            "status": result.get("status"),
+            "message": result.get("message"),
+        },
+        indent=2,
+    )

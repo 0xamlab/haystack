@@ -102,10 +102,21 @@ print(bundle.preview)
 
 In API mode, registration delegates to the direct API client and expects a structured source descriptor:
 
+This API-mode example is the Cloud Managed path. In `self_hosted` and
+`air_gapped`, keep `mode="api"` only if you also pass an explicit self-hosted
+`base_url`; private profiles fail closed instead of silently falling back to
+Algenta cloud.
+
 ```python
+import os
+
 from algenta import Runtime
 
-rt = Runtime(mode="api", api_key="de_live_...")
+api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
+if not api_key:
+    raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
+
+rt = Runtime(mode="api", api_key=api_key)
 registration = rt.connect(
     {
         "type": "csv",
@@ -115,12 +126,22 @@ registration = rt.connect(
 )
 ```
 
+For private profiles, use the same descriptor path with
+`Runtime(mode="api", api_key=..., base_url="http://localhost:8000")` or your
+own self-hosted origin.
+
 The same path is what you use for broader hosted connectors such as databases:
 
 ```python
+import os
+
 from algenta import Runtime
 
-rt = Runtime(mode="api", api_key="de_live_...")
+api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
+if not api_key:
+    raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
+
+rt = Runtime(mode="api", api_key=api_key)
 registration = rt.connect(
     {
         "type": "postgres",
@@ -144,9 +165,18 @@ registration = rt.connect(
 
 This API-mode descriptor path is also where object-storage and REST-backed connectors fit. The runtime-first contract stays the same:
 
+- inspect the live machine-readable contract with `get_contract()` / `getContract()` or `GET /v1/meta/contract`
 - pass a structured descriptor to `Runtime.connect(...)`
 - let the hosted connector layer validate and register it
-- continue with `resolve -> verify -> query`
+- continue with `list_datasets(search=..., compact=True)` and `get_dataset_summary(dataset_id)` before the first governed query
+- continue with `resolve -> verify -> query` for exact governed questions
+- use `query_with_metadata(...)` when you need typed request/cost/latency metadata back with the result
+- use `query_batch(...)` for multi-metric governed questions that share a dataset and filter window
+- use `query_sql_report(...)` only for wide read-only rowset reports that cannot fit the exact metric surface
+
+SDK clients already fall back automatically when an older self-hosted node
+still returns `404` for `/v1/meta/contract`. Raw HTTP callers should use
+`/openapi.json` and read `x-primary-data-query-contract` in that case.
 
 ## What this proves
 

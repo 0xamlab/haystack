@@ -1,8 +1,9 @@
 /** Gateway configuration — all from environment variables. */
+import { resolveGatewayApiOrigin } from './privacy.js'
 
 export const config = {
   port:          parseInt(process.env.GATEWAY_PORT       ?? '8080'),
-  apiOrigin:     (process.env.API_ORIGIN                 ?? 'http://localhost:8000').replace(/\/$/, ''),
+  apiOrigin:     resolveGatewayApiOrigin(process.env),
   redisUrl:      process.env.REDIS_URL                   ?? 'redis://localhost:6379',
   jwtSecret:     process.env.JWT_SECRET                  ?? '',
   metricsSecret: process.env.METRICS_SECRET              ?? '',

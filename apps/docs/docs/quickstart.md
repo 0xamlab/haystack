@@ -1,196 +1,180 @@
 ---
 sidebar_position: 2
+slug: /quickstart
 ---
 
-# Runtime Quickstart
+# Quickstart
 
-This quickstart is intentionally runtime-first. It shows the primary Algenta path as it exists today.
+In this guide you will:
 
-## What this proves
+1. Start Algenta locally
+2. Verify the API is running
+3. Run your first decision or first governed dataset query
 
-By the end of this guide you will have:
-
-- installed the local-first package
-- run the zero-friction demo
-- connected local data
-- resolved a deterministic plan
-- queried that plan
-
-## Step 1: Install the package
+## Install
 
 ```bash
-pip install algenta-core
+curl -sSL https://algenta.ai/install.sh | bash
 ```
 
-## Step 2: Run the branded local demo
+The installer:
+
+- validates Docker and Compose
+- downloads the self-hosted Compose bundle
+- generates `.env`
+- pulls pinned API and worker images
+- starts the stack
+- runs migrations
+- creates a bootstrap owner and API key
+
+## Health check
+
+The installer prints:
+
+```text
+Algenta is running.
+
+API: http://localhost:8000
+Health: curl http://localhost:8000/v1/health
+API Key: <SELF_HOST_BOOTSTRAP_KEY>
+```
+
+Verify the API:
 
 ```bash
-python -m algenta.demo
-# or
-algenta demo
+curl http://localhost:8000/v1/health
 ```
 
-The demo:
+Expected response:
 
-- runs locally
-- requires no API key
-- uses a bundled deterministic dataset
-- prints the resolved plan and query result
-
-## Step 3: Use the runtime in code
-
-```python
-from algenta import Runtime
-
-rt = Runtime()
-rt.connect(
-    [
-        {"product_line": "Electronics", "revenue": 42193221},
-        {"product_line": "Apparel", "revenue": 28114992},
-        {"product_line": "Home", "revenue": 19852111},
-    ],
-    name="orders",
-)
-
-plan = rt.resolve(
-    {
-        "source_name": "orders",
-        "metric": "revenue",
-        "group_by": "product_line",
-    }
-)
-
-verified = rt.verify(plan)
-if not verified.valid:
-    raise RuntimeError(verified.errors)
-
-result = rt.query(plan)
-print(result.result)
+```json
+{
+  "status": "ok"
+}
 ```
 
-## Step 4: Connect a real CSV file
+## Bootstrap API key
 
-If you want a branded terminal preflight before moving into code, run:
+Temporarily export the bootstrap key printed by the installer so you can rotate it:
 
 ```bash
-algenta import orders.csv --name orders
+export ALGENTA_API_KEY='<SELF_HOST_BOOTSTRAP_KEY>'
 ```
 
-That validates local registration and schema discovery and prints a branded summary. It does not persist a session across separate CLI commands.
+> **Critical**
+> The installer prints the bootstrap API key only once. Store it before closing the terminal.
 
-For related local exports, you can preview a bundle in one step:
+## Rotate the bootstrap key
+
+Create a bounded-lifetime replacement key before using the service for recurring
+workloads:
 
 ```bash
-algenta import orders.csv financial.csv ratings.csv
+curl -X POST http://localhost:8000/v1/api-keys \
+  -H "Authorization: Bearer ${ALGENTA_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{"label":"mission-runtime","expires_at":"2028-05-19T00:00:00Z","device_limit":3}'
 ```
 
-That prints a branded bundle summary with imported sources, explicit per-file failures, and deterministic shared-field overlap hints.
-
-```python
-from algenta import Runtime
-
-rt = Runtime()
-imported = rt.import_preview("orders.csv", name="orders")
-print(imported.preview)
-
-registration = imported.registration
-
-plan = rt.resolve(
-    {
-        "source_name": registration.name,
-        "metric": "revenue",
-        "group_by": "product_line",
-    }
-)
-result = rt.query(plan)
-```
-
-The same local runtime surface also accepts Parquet and Excel files directly:
-
-```python
-from algenta import Runtime
-
-rt = Runtime()
-orders = rt.connect("orders.parquet", name="orders_parquet")
-price_book = rt.connect("price_book.xlsx", name="price_book")
-```
-
-You can also connect a local SQLite table on the same public runtime surface:
-
-```python
-from algenta import Runtime
-
-rt = Runtime()
-registration = rt.connect(
-    {
-        "provider": "sqlite",
-        "path": "/data/orders.db",
-        "table": "orders",
-    },
-    name="orders",
-)
-
-plan = rt.resolve(
-    {
-        "source_name": registration.name,
-        "metric": "revenue",
-        "group_by": "product_line",
-    }
-)
-result = rt.query(plan)
-```
-
-Local Python runtime mode currently supports CSV, JSON, Parquet, Excel, SQLite descriptors, and in-memory records on the primary `resolve -> query` path.
-
-## Step 5: Switch to API mode when needed
-
-API mode is optional and explicit.
+The returned `raw_key` value is shown only once. Record the returned `id`,
+`key_prefix`, `device_limit`, and `expires_at`, then replace `ALGENTA_API_KEY`
+with that replacement key before recurring service access:
 
 ```bash
-pip install "algenta-core[cloud]"
-# or
-pip install algenta-sdk
+export ALGENTA_API_KEY='<paste the replacement key returned above>'
 ```
 
-```python
-from algenta import Runtime
+An explicit `device_limit` also binds ordinary hosted API traffic for that key,
+not just the device-registration path. The SDKs send the stable device headers
+automatically. If you are calling the API directly with `curl` or a raw HTTP
+client, send `X-Algenta-Device-Id`, `X-Algenta-Platform`, and
+`X-Algenta-Hostname-Hash` on authenticated requests that use a capped key. The
+first successful hosted request for a new capped device returns
+`X-Algenta-Device-Binding-Token`; store that value and replay it on later
+requests from the same device. The SDKs do this automatically.
 
-rt = Runtime(mode="api", api_key="de_live_YOUR_KEY_HERE")
-
-plan = rt.resolve(
-    {
-        "source_name": "orders",
-        "metric": "revenue",
-        "group_by": "product_line",
-    }
-)
-result = rt.query(plan)
-```
-
-If you want to hit the hosted API directly, use the canonical Bearer contract:
+## First request
 
 ```bash
-curl https://api.algenta.ai/v1/resolve \
-  -H "Authorization: Bearer de_live_YOUR_KEY_HERE" \
+curl -X POST http://localhost:8000/v1/simulate \
+  -H "Authorization: Bearer ${ALGENTA_API_KEY}" \
   -H "Content-Type: application/json" \
   -d '{
-    "source_name": "orders",
-    "metric": "revenue",
-    "group_by": "product_line"
+    "mode": "auto",
+    "scenario": {
+      "variables": {
+        "revenue": { "low": 80000, "high": 200000 },
+        "cost": { "low": 30000, "high": 90000 }
+      },
+      "objective": "maximize_net_value"
+    },
+    "runs": 10000,
+    "seed": 42
   }'
 ```
 
-## Notes
+Expected response:
 
-- `verify()` is supported and recommended when you want explicit plan validation before execution.
-- `Runtime()` defaults to local mode.
-- `Runtime(api_key="de_live_...")` in Python, or `new Runtime({ apiKey: "de_live_..." })` in TypeScript, keeps execution local but can enforce a stored device license and local credits for offline hosted usage when the advanced runtime components are available.
-- Simulation, MCP, and local helper APIs remain supported, but they are not the first path shown in the docs anymore.
+```json
+{
+  "status": "completed",
+  "recommended_action": "proceed",
+  "confidence": 0.82,
+  "rationale": "Expected value is positive in 82% of scenarios.",
+  "metrics": {
+    "expected_value": 105000.0,
+    "probability_of_loss": 0.18
+  },
+  "scenarios_run": 10000
+}
+```
 
-## Next steps
+No SDK or Python install is required to use Algenta.
 
-- [Connect / Register Sources](/connect-register-sources)
-- [Resolve](/resolve)
-- [Query](/query)
-- [Verify](/verify)
-- [Trust Model](/trust-model)
+## First governed dataset query
+
+If you are using Algenta for governed data/query rather than simulation, start
+with the live machine-readable contract:
+
+```bash
+curl "http://localhost:8000/v1/meta/contract" \
+  -H "Authorization: Bearer ${ALGENTA_API_KEY}"
+```
+
+If an older self-hosted node still returns `404` for `/v1/meta/contract`,
+fetch `http://localhost:8000/openapi.json` and read
+`x-primary-data-query-contract` instead. The official SDKs, CLI, and MCP
+tooling already do that fallback automatically.
+
+Then continue with the low-token discovery path:
+
+```bash
+curl "http://localhost:8000/v1/data?search=orders&compact=1&limit=5" \
+  -H "Authorization: Bearer ${ALGENTA_API_KEY}"
+```
+
+Then fetch a low-token summary for the dataset you want:
+
+```bash
+curl "http://localhost:8000/v1/data/orders_summary/summary" \
+  -H "Authorization: Bearer ${ALGENTA_API_KEY}"
+```
+
+Run a governed exact query only after you have the right dataset:
+
+```bash
+curl -X POST http://localhost:8000/v1/query \
+  -H "Authorization: Bearer ${ALGENTA_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "dataset_id": "orders_summary",
+    "metric": { "role": "base_measure", "hint": "revenue" },
+    "aggregation": "sum"
+  }'
+```
+
+Widen to `POST /v1/query/batch` when one question needs several governed exact
+metrics, or to `POST /v1/query/sql-report` only when you need a wide read-only
+rowset over an already authorized dataset.
+
+Next: Configure production setup -> [Operations](/operations)

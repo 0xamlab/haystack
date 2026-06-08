@@ -1,4 +1,5 @@
 """Structured MCP transport and tool error helpers."""
+
 from __future__ import annotations
 
 import json
@@ -47,6 +48,34 @@ class MCPUpstreamUnavailableError(MCPToolError):
             error_code="mcp_upstream_unavailable",
             message=message,
             status_code=503,
+        )
+
+
+class MCPAPIError(MCPToolError):
+    def __init__(
+        self,
+        *,
+        error_code: str,
+        message: str,
+        status_code: int,
+        details: list[dict[str, Any]] | None = None,
+        payload: Any | None = None,
+    ) -> None:
+        super().__init__(
+            error_code=error_code,
+            message=message,
+            status_code=status_code,
+            details=details,
+        )
+        self.payload = payload
+
+
+class MCPPrivacyConfigurationError(MCPToolError):
+    def __init__(self, message: str) -> None:
+        super().__init__(
+            error_code="mcp_privacy_configuration_error",
+            message=message,
+            status_code=403,
         )
 
 

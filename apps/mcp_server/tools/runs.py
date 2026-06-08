@@ -1,4 +1,5 @@
 """MCP tools: list_runs, get_run."""
+
 from __future__ import annotations
 
 import json
@@ -48,20 +49,23 @@ async def list_runs_handler(arguments: dict[str, Any]) -> str:
         params["status"] = arguments["status"]
     result = await api("GET", "/v1/runs", params=params)
     runs = result.get("runs", [])
-    return json.dumps({
-        "total": result.get("total", len(runs)),
-        "runs": [
-            {
-                "run_id":             r.get("run_id"),
-                "recommended_action": r.get("recommended_action"),
-                "confidence":         r.get("confidence"),
-                "expected_value":     r.get("expected_value"),
-                "created_at":         r.get("created_at"),
-                "mode":               r.get("mode"),
-            }
-            for r in runs[:50]
-        ],
-    }, indent=2)
+    return json.dumps(
+        {
+            "total": result.get("total", len(runs)),
+            "runs": [
+                {
+                    "run_id": r.get("run_id"),
+                    "recommended_action": r.get("recommended_action"),
+                    "confidence": r.get("confidence"),
+                    "expected_value": r.get("expected_value"),
+                    "created_at": r.get("created_at"),
+                    "mode": r.get("mode"),
+                }
+                for r in runs[:50]
+            ],
+        },
+        indent=2,
+    )
 
 
 async def get_run_handler(arguments: dict[str, Any]) -> str:

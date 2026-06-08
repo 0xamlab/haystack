@@ -6,15 +6,65 @@ persist_simulation — called by the simulate endpoint after HTTP 200 is sent.
 
 run_simulation_job  — executes a full async simulation job (existing behavior).
 """
+
 from __future__ import annotations
 
 import asyncio
+import os
 import uuid
 from typing import Any
 
 import structlog
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
 logger = structlog.get_logger(__name__)
+
+_WORKER_SESSION_FACTORIES: dict[int, async_sessionmaker[AsyncSession]] = {}
+
+
+def _worker_engine_kwargs(database_url: str) -> dict[str, Any]:
+    kwargs: dict[str, Any] = {
+        "pool_pre_ping": True,
+        "poolclass": NullPool,
+    }
+    if database_url.startswith("postgresql"):
+        kwargs["connect_args"] = {
+            "prepared_statement_cache_size": 0,
+        }
+    return kwargs
+
+
+def _get_worker_session_factory() -> async_sessionmaker[AsyncSession]:
+    """
+    Build one async session factory per worker process.
+
+    Celery tasks run under distinct asyncio event loops via asyncio.run(). Using
+    a NullPool-backed engine prevents asyncpg connections created on one loop
+    from being reused on a later task bound to a different loop.
+    """
+    pid = os.getpid()
+    factory = _WORKER_SESSION_FACTORIES.get(pid)
+    if factory is not None:
+        return factory
+
+    from apps.api_server.config import get_settings
+
+    settings = get_settings()
+    engine = create_async_engine(
+        settings.database_url,
+        **_worker_engine_kwargs(settings.database_url),
+    )
+    factory = async_sessionmaker(
+        bind=engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+        autocommit=False,
+        autoflush=False,
+    )
+    _WORKER_SESSION_FACTORIES[pid] = factory
+    return factory
+
 
 # ─── Celery app ───────────────────────────────────────────────────────────────
 
@@ -22,6 +72,7 @@ try:
     from celery import Celery
 
     from apps.api_server.config import get_settings
+
     _settings = get_settings()
     celery_app = Celery(
         "algenta_worker",
@@ -32,11 +83,11 @@ try:
         task_serializer="json",
         result_serializer="json",
         accept_content=["json"],
-        task_acks_late=True,           # Acknowledge only after successful execution
+        task_acks_late=True,  # Acknowledge only after successful execution
         task_reject_on_worker_lost=True,
         task_routes={
             "apps.worker.tasks.simulation_task.persist_simulation": {"queue": "persist"},
-            "apps.worker.tasks.simulation_task.run_simulation_job":  {"queue": "simulate"},
+            "apps.worker.tasks.simulation_task.run_simulation_job": {"queue": "simulate"},
         },
         worker_prefetch_multiplier=1,  # One task at a time per worker (CPU-bound)
         task_max_retries=3,
@@ -44,16 +95,17 @@ try:
     )
 except Exception:
     # Celery not installed or Redis not available — graceful degradation
-    celery_app = None  # type: ignore[assignment]
+    celery_app = None
 
 
 # ─── persist_simulation ───────────────────────────────────────────────────────
 
-def _make_persist_task():  # type: ignore[return]
+
+def _make_persist_task() -> Any | None:
     if celery_app is None:
         return None
 
-    @celery_app.task(
+    @celery_app.task(  # type: ignore[misc]
         name="apps.worker.tasks.simulation_task.persist_simulation",
         bind=True,
         queue="persist",
@@ -81,13 +133,14 @@ def _make_persist_task():  # type: ignore[return]
         import redis.asyncio as aioredis
 
         from apps.api_server.config import get_settings
-        from apps.api_server.db.session import AsyncSessionLocal
         from apps.api_server.services._persist_helpers import persist_simulation_run
 
+        session_factory = _get_worker_session_factory()
         settings = get_settings()
+        aioredis_module: Any = aioredis
 
         async def _run() -> None:
-            redis_client = aioredis.from_url(
+            redis_client = aioredis_module.from_url(
                 settings.redis_url,
                 encoding="utf-8",
                 decode_responses=False,
@@ -95,7 +148,7 @@ def _make_persist_task():  # type: ignore[return]
                 socket_timeout=3,
             )
             try:
-                async with AsyncSessionLocal() as db:
+                async with session_factory() as db:
                     await persist_simulation_run(
                         db=db,
                         persist_meta=persist_meta,
@@ -127,6 +180,7 @@ persist_simulation = _make_persist_task()
 
 # ─── run_simulation_job ───────────────────────────────────────────────────────
 
+
 def enqueue_simulation_job(job_id: str, request_payload: dict[str, Any]) -> bool:
     """
     Best-effort enqueue for async jobs.
@@ -147,11 +201,11 @@ def enqueue_simulation_job(job_id: str, request_payload: dict[str, Any]) -> bool
         return False
 
 
-def _make_job_task():  # type: ignore[return]
+def _make_job_task() -> Any | None:
     if celery_app is None:
         return None
 
-    @celery_app.task(
+    @celery_app.task(  # type: ignore[misc]
         name="apps.worker.tasks.simulation_task.run_simulation_job",
         bind=True,
         queue="simulate",
@@ -164,11 +218,12 @@ def _make_job_task():  # type: ignore[return]
         request_payload: dict[str, Any],
     ) -> dict[str, Any]:
         """Execute an async simulation job end-to-end."""
-        from apps.api_server.db.session import AsyncSessionLocal
         from apps.api_server.services.job_service import execute_job
 
+        session_factory = _get_worker_session_factory()
+
         async def _run() -> dict[str, Any]:
-            async with AsyncSessionLocal() as db:
+            async with session_factory() as db:
                 return await execute_job(
                     job_id=uuid.UUID(job_id),
                     request_payload=request_payload,

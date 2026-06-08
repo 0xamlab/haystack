@@ -1,0 +1,124 @@
+{
+  "scope": "self_hosted_v1",
+  "sections": [
+    {
+      "label": "🧭 Overview",
+      "pages": [
+        {
+          "title": "Overview",
+          "path": "apps/docs/docs/index.md",
+          "slug": "/"
+        }
+      ]
+    },
+    {
+      "label": "⚡ Quickstart",
+      "pages": [
+        {
+          "title": "Quickstart",
+          "path": "apps/docs/docs/quickstart.md",
+          "slug": "/quickstart"
+        }
+      ]
+    },
+    {
+      "label": "⚙️ Operations",
+      "pages": [
+        {
+          "title": "Operations",
+          "path": "apps/docs/docs/operations/index.md",
+          "slug": "/operations"
+        },
+        {
+          "title": "Setup & Configuration",
+          "path": "apps/docs/docs/self-hosting.md",
+          "slug": "/self-hosting"
+        },
+        {
+          "title": "TLS & Reverse Proxy",
+          "path": "apps/docs/docs/operations/tls-and-reverse-proxy.md",
+          "slug": "/operations/tls-and-reverse-proxy"
+        },
+        {
+          "title": "Logs & Metrics",
+          "path": "apps/docs/docs/operations/logs-and-metrics.md",
+          "slug": "/operations/logs-and-metrics"
+        },
+        {
+          "title": "Upgrade & Rollback",
+          "path": "apps/docs/docs/operations/upgrade-and-rollback.md",
+          "slug": "/operations/upgrade-and-rollback"
+        }
+      ]
+    },
+    {
+      "label": "🛠️ Operations (Advanced)",
+      "pages": [
+        {
+          "title": "Operations (Advanced)",
+          "path": "apps/docs/docs/operations-advanced/index.md",
+          "slug": "/operations-advanced"
+        },
+        {
+          "title": "Backup & Recovery",
+          "path": "apps/docs/docs/operations-advanced/backup-and-recovery.md",
+          "slug": "/operations-advanced/backup-and-recovery"
+        },
+        {
+          "title": "Troubleshooting",
+          "path": "apps/docs/docs/operations-advanced/troubleshooting.md",
+          "slug": "/operations-advanced/troubleshooting"
+        },
+        {
+          "title": "Support Boundaries",
+          "path": "apps/docs/docs/operations-advanced/support-boundaries.md",
+          "slug": "/operations-advanced/support-boundaries"
+        }
+      ]
+    },
+    {
+      "label": "🔐 API Authentication",
+      "pages": [
+        {
+          "title": "API Authentication",
+          "path": "apps/docs/docs/api-reference/authentication.md",
+          "slug": "/api-reference/authentication"
+        }
+      ]
+    },
+    {
+      "label": "📦 SDKs",
+      "pages": [
+        {
+          "title": "Python SDK",
+          "path": "apps/docs/docs/sdks/python.md",
+          "slug": "/sdks/python"
+        },
+        {
+          "title": "TypeScript SDK",
+          "path": "apps/docs/docs/sdks/typescript.md",
+          "slug": "/sdks/typescript"
+        }
+      ]
+    }
+  ],
+  "exclude_from_primary_nav": [
+    "apps/docs/docs/integrations/local-runtime.md",
+    "apps/docs/docs/mcp.md",
+    "apps/docs/docs/integrations/overview.md",
+    "apps/docs/docs/integrations/chatgpt-actions.md",
+    "apps/docs/docs/integrations/claude-codex.md",
+    "apps/docs/docs/integrations/n8n.md",
+    "apps/docs/docs/integrations/zapier.md",
+    "apps/docs/docs/integrations/make.md",
+    "apps/docs/docs/integrations/langgraph.md",
+    "apps/docs/docs/integrations/power-automate.md",
+    "apps/docs/docs/integrations/azure-ai-studio.md",
+    "apps/docs/docs/changelog.md",
+    "apps/docs/docs/competitor-compatibility.md",
+    "apps/docs/docs/connect-register-sources.md",
+    "apps/docs/docs/api-reference/capability-plane.md",
+    "apps/docs/docs/direct-api-client.md",
+    "apps/docs/docs/supported-secondary-modes.md"
+  ]
+}

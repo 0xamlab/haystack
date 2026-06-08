@@ -1,4 +1,5 @@
 """MCP tool: get_usage."""
+
 from __future__ import annotations
 
 import json
@@ -14,15 +15,15 @@ SPEC: dict[str, Any] = {
 
 
 async def handler(arguments: dict[str, Any]) -> str:
-    result = await api("GET", "/v1/account/usage")
-    return json.dumps({
-        "simulations_used":  result.get("simulations_used"),
-        "simulations_limit": result.get("simulations_limit"),
-        "billing_period":    result.get("billing_period"),
-        "plan":              result.get("plan"),
-        "pct_used": (
-            round(result["simulations_used"] / result["simulations_limit"] * 100, 1)
-            if result.get("simulations_limit")
-            else None
-        ),
-    }, indent=2)
+    result = await api("GET", "/v1/usage")
+    return json.dumps(
+        {
+            "simulations_used": result.get("simulations_run"),
+            "simulations_limit": result.get("quota_limit"),
+            "billing_period": result.get("billing_period"),
+            "plan": result.get("plan"),
+            "api_calls": result.get("api_calls"),
+            "pct_used": result.get("quota_used_pct"),
+        },
+        indent=2,
+    )

@@ -1,4 +1,5 @@
 """MCP tool: get_analytics."""
+
 from __future__ import annotations
 
 import json
@@ -19,12 +20,15 @@ SPEC: dict[str, Any] = {
 
 
 async def handler(arguments: dict[str, Any]) -> str:
-    days   = int(arguments.get("days", 30))
+    days = int(arguments.get("days", 30))
     result = await api("GET", "/v1/runs/analytics", params={"days": days})
-    return json.dumps({
-        "total_simulations": result.get("total_simulations"),
-        "avg_confidence":    result.get("avg_confidence"),
-        "action_breakdown":  result.get("action_breakdown"),
-        "latency_p95_ms":    result.get("latency_p95_ms"),
-        "period_days":       days,
-    }, indent=2)
+    return json.dumps(
+        {
+            "total_simulations": result.get("total_simulations"),
+            "avg_confidence": result.get("avg_confidence"),
+            "action_breakdown": result.get("action_breakdown"),
+            "latency_p95_ms": result.get("latency_p95_ms"),
+            "period_days": days,
+        },
+        indent=2,
+    )

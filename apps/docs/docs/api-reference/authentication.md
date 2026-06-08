@@ -1,73 +1,106 @@
 ---
 sidebar_position: 3
+slug: /api-reference/authentication
 ---
 
-# Authentication
+# API Authentication
 
-All API endpoints require an API key. The canonical `v1` auth format is `Authorization: Bearer <api_key>`.
+All API requests use `Authorization: Bearer <api_key>`.
 
-## API key format
+## Bootstrap key behavior
 
+The self-hosted installer creates a bootstrap key with the `de_test_` prefix and prints it once:
+
+```text
+API Key: <SELF_HOST_BOOTSTRAP_KEY>
 ```
-de_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxx
-```
 
-- Prefix `de_live_` for production keys
-- Prefix `de_test_` for test keys (future — not rate limited)
-- 32+ random URL-safe characters after the prefix
-- Stored as SHA-256(raw_key) in the database — the raw key is shown only once on creation
+Use that key for the first authenticated requests against the running service.
 
-## Sending your key
+> **Critical**
+> The installer prints the bootstrap API key only once. Store it before closing the terminal.
 
-### Bearer header (recommended)
+## Bearer header
 
 ```bash
-curl -H "Authorization: Bearer de_live_..." https://api.algenta.ai/v1/simulate
+curl http://localhost:8000/v1/simulate \
+  -H "Authorization: Bearer <SELF_HOST_BOOTSTRAP_KEY>"
 ```
 
-### Legacy header compatibility
+## Legacy header compatibility
 
 ```bash
-curl -H "X-API-Key: de_live_..." https://api.algenta.ai/v1/simulate
+curl http://localhost:8000/v1/simulate \
+  -H "X-API-Key: <SELF_HOST_BOOTSTRAP_KEY>"
 ```
 
-## Getting an API key
+## Key rotation
 
-### Via signup
+Create a replacement key first:
 
 ```bash
-curl -X POST https://api.algenta.ai/auth/signup \
+curl -X POST http://localhost:8000/v1/api-keys \
+  -H "Authorization: Bearer <SELF_HOST_BOOTSTRAP_KEY>" \
   -H "Content-Type: application/json" \
-  -d '{"email":"you@example.com","password":"yourpassword","name":"Your Name"}'
+  -d '{"label":"replacement-key","expires_at":"2028-05-19T00:00:00Z","device_limit":3}'
 ```
 
-Returns `api_key.raw_key` — the only time the full key is shown.
+`expires_at` is optional, must be an ISO-8601 timestamp, and must be in the future.
+`device_limit` is optional, must be a non-negative integer, and sets the max
+registered machines for that key. `0` means unlimited only on plans that allow
+unlimited devices.
 
-### Via hosted account interface
+An explicit `device_limit` now binds both local runtime/device registration and
+ordinary hosted API traffic for that key. Once the cap is reached, a new
+machine gets `device_limit_reached` until you revoke an existing device or use
+a broader key.
 
-Sign in to your Algenta account interface and create a key from the API Keys screen.
+The Python and TypeScript SDKs send the required stable device headers
+automatically. Raw HTTP clients using capped keys must send both
+`X-Algenta-Device-Id`, `X-Algenta-Platform`, and
+`X-Algenta-Hostname-Hash` on authenticated requests. On the first successful
+hosted request for a new capped device, the API also returns
+`X-Algenta-Device-Binding-Token`. Store that token and replay it on later
+requests from the same device. If you omit it later, the request fails closed
+with `device_binding_token_required`; if you send the wrong value, it fails
+closed with `invalid_device_binding_token`.
+Reusing the same device ID with different non-empty machine fingerprint metadata
+fails closed with `device_identity_mismatch`; keep device identity stable per
+machine.
 
-### Via CLI
+List active keys:
 
 ```bash
-de-cli auth login --email you@example.com
-de-cli keys create --label production
+curl http://localhost:8000/v1/api-keys \
+  -H "Authorization: Bearer <SELF_HOST_BOOTSTRAP_KEY>"
 ```
+
+`GET /v1/api-keys` returns non-secret metadata such as `id`, `label`,
+`key_prefix`, `device_limit`, `created_at`, and `expires_at`. It never returns `raw_key` again.
+
+Revoke the old key:
+
+```bash
+curl -X DELETE http://localhost:8000/v1/api-keys/<key_id> \
+  -H "Authorization: Bearer <SELF_HOST_BOOTSTRAP_KEY>"
+```
+
+The replacement `raw_key` is shown only once. Store it, along with the returned
+`id`, `key_prefix`, `device_limit`, and `expires_at`, before revoking the
+previous key.
 
 ## Error responses
 
 | Status | Code | Meaning |
-|--------|------|---------|
+| --- | --- | --- |
 | `401` | `authentication_required` | No API key provided |
-| `401` | `invalid_api_key` | Key doesn't exist, revoked, or expired |
-| `403` | `access_scope_denied` | Your key is valid, but it is not allowed to perform this action |
-| `429` | `rate_limit_exceeded` | Too many requests/minute for your plan |
-| `429` | `quota_exceeded` | Monthly simulation quota exhausted |
+| `401` | `invalid_api_key` | Key does not exist, is revoked, or is expired |
+| `403` | `access_scope_denied` | The key is valid but not allowed to perform this action |
+| `429` | `rate_limit_exceeded` | Too many requests per minute |
+| `429` | `quota_exceeded` | Simulation quota exhausted |
 
-## Security model
+## Related pages
 
-- Keys are stored as SHA-256 hashes (bcrypt not needed — entropy is already 256 bits)
-- Redis cache with 5-minute TTL for auth hot path (< 1ms avg latency)
-- Keys can be revoked instantly — cache TTL is the max propagation delay
-- All API communication over TLS 1.2+
-- Rate limiting enforced per-org per-minute via Redis INCR
+- [Quickstart](/quickstart)
+- [Python SDK](/sdks/python)
+- [TypeScript SDK](/sdks/typescript)

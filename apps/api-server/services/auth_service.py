@@ -46,7 +46,7 @@ def generate_api_key(*, test: bool = False) -> tuple[str, str, str]:
     prefix = settings.api_key_test_prefix if test else settings.api_key_prefix
     random_part = secrets.token_urlsafe(32)[:32]  # 32 chars of URL-safe base64
     raw_key = f"{prefix}{random_part}"
-    key_prefix = raw_key[:12]  # e.g. "de_live_ab12"
+    key_prefix = raw_key[:12]  # first 12 chars of the full raw key
     hashed = hash_api_key(raw_key)
     return raw_key, key_prefix, hashed
 

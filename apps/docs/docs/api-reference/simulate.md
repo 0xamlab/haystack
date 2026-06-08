@@ -12,9 +12,21 @@ Run a Monte Carlo simulation and receive a structured decision envelope.
 
 Just describe your variable ranges and let the engine decide:
 
+This curl example is the Cloud Managed path. In `self_hosted` and
+`air_gapped`, replace `https://api.algenta.ai` with your self-hosted base URL
+and use the API key provisioned by your self-hosted operator deployment.
+
 ```bash
-curl -X POST https://api.algenta.ai/v1/simulate \
-  -H "Authorization: Bearer de_live_..." \
+ALGENTA_API_KEY="${ALGENTA_API_KEY:-${DE_API_KEY:-}}"
+if [ -z "$ALGENTA_API_KEY" ]; then
+  echo "Set ALGENTA_API_KEY or DE_API_KEY before running this example." >&2
+  exit 1
+fi
+
+ALGENTA_BASE_URL="${ALGENTA_BASE_URL:-${DE_BASE_URL:-${ALGENTA_API_URL:-https://api.algenta.ai}}}"
+
+curl -X POST "${ALGENTA_BASE_URL}/v1/simulate" \
+  -H "Authorization: Bearer ${ALGENTA_API_KEY}" \
   -H "Content-Type: application/json" \
   -d '{
     "mode": "auto",

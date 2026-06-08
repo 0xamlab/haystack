@@ -11,30 +11,45 @@ Usage:
   python -m apps.mcp_server.server --mode http --port 9000
 
 Environment variables:
-  ALGENTA_API_KEY        — required
-  ALGENTA_BASE_URL       — default: https://api.algenta.ai
+  ALGENTA_API_KEY /      — required; legacy DE_API_KEY remains accepted for
+  DE_API_KEY               compatibility. Use Cloud Managed API keys only in
+                           Cloud Managed. In self_hosted and air_gapped, use
+                           the key provisioned by your self-hosted operator deployment
+  ALGENTA_BASE_URL /     — default: https://api.algenta.ai in Cloud Managed.
+  DE_BASE_URL /            Legacy ALGENTA_API_URL remains accepted for
+  ALGENTA_API_URL          compatibility. Required for self_hosted and air_gapped
+                           profiles, which fail closed and do not silently fall back
+                           to Algenta cloud.
   ALGENTA_MCP_PORT       — default: 8001
 """
+
 from __future__ import annotations
 
 import argparse
 import asyncio
+from typing import TYPE_CHECKING
 
 import structlog
 
 logger = structlog.get_logger(__name__)
 
+if TYPE_CHECKING:
+    from fastapi import APIRouter
 
-def create_fastapi_router():
+
+def create_fastapi_router() -> APIRouter | None:
     """
     Return a FastAPI router that mounts the MCP server at /mcp/*.
     Called from apps/api_server/main.py to embed MCP into the main API process.
 
     Always exposes /mcp/tools when FastAPI dependencies are available.
-    The optional mcp package enables /mcp/sse and /mcp/messages.
+    The optional mcp package enables live /mcp/sse and /mcp/messages transports.
+    Without it, those endpoints still mount but fail closed with a structured
+    503 mcp_transport_unavailable contract.
     """
     try:
         from apps.mcp_server.transports.http_sse import _build_fastapi_router
+
         return _build_fastapi_router()
     except Exception as exc:
         logger.warning("mcp_fastapi_router_unavailable", error=str(exc))
@@ -44,7 +59,8 @@ def create_fastapi_router():
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Algenta MCP Server")
     parser.add_argument(
-        "--mode", "--transport",
+        "--mode",
+        "--transport",
         choices=["stdio", "http"],
         default="stdio",
         help="Transport mode (default: stdio)",
@@ -61,10 +77,12 @@ def _parse_args() -> argparse.Namespace:
 async def _run(mode: str, port: int | None) -> None:
     if mode == "stdio":
         from apps.mcp_server.transports.stdio import run_stdio_server
+
         await run_stdio_server()
     else:
         from apps.mcp_server import config
         from apps.mcp_server.transports.http_sse import run_http_server
+
         await run_http_server(port=port or config.PORT)
 
 

@@ -6,6 +6,7 @@ Full schema discovery — profile any source, detect column relationships
 
 After registration a source is available to query_data by name.
 """
+
 from __future__ import annotations
 
 import json
@@ -36,6 +37,7 @@ def _schema_cache_set(source_id: str, result: str) -> None:
 def _schema_cache_invalidate(source_id: str) -> None:
     _SCHEMA_CACHE.pop(source_id, None)
 
+
 REGISTER_SPEC: dict[str, Any] = {
     "name": "register_source",
     "description": (
@@ -54,8 +56,7 @@ REGISTER_SPEC: dict[str, Any] = {
             "source": {
                 "type": "object",
                 "description": (
-                    "Data source definition. Provide exactly one of: "
-                    "records, csv, json_str, url."
+                    "Data source definition. Provide exactly one of: records, csv, json_str, url."
                 ),
                 "required": ["name"],
                 "properties": {
@@ -63,12 +64,12 @@ REGISTER_SPEC: dict[str, Any] = {
                         "type": "string",
                         "description": "Human-readable label for this source.",
                     },
-                    "records":   {
+                    "records": {
                         "type": "array",
                         "items": {"type": "object"},
                         "description": "Inline JSON records (fastest).",
                     },
-                    "csv":       {"type": "string", "description": "Raw CSV text with header row."},
+                    "csv": {"type": "string", "description": "Raw CSV text with header row."},
                     "json_str": {
                         "type": "string",
                         "description": "Raw JSON array or object text.",
@@ -81,9 +82,9 @@ REGISTER_SPEC: dict[str, Any] = {
                         "type": "object",
                         "description": (
                             "Connector config for databases, S3, REST APIs. "
-                            "Example: {\"type\": \"sql\", "
-                            "\"connection_string\": \"postgresql://...\", "
-                            "\"query\": \"SELECT ...\"}"
+                            'Example: {"type": "sql", '
+                            '"connection_string": "postgresql://...", '
+                            '"query": "SELECT ..."}'
                         ),
                     },
                 },
@@ -110,8 +111,7 @@ LIST_SOURCES_SPEC: dict[str, Any] = {
             "limit": {
                 "type": "integer",
                 "description": (
-                    "Results per page (default: all visible sources, "
-                    "max 200 when set)."
+                    "Results per page (default: all visible sources, max 200 when set)."
                 ),
             },
         },
@@ -160,20 +160,23 @@ async def register_handler(arguments: dict[str, Any]) -> str:
     else:
         col_names = list(_cols.keys())
 
-    return json.dumps({
-        "source_id":          result.get("source_id"),
-        "name":               result.get("name"),
-        "status":             result.get("status"),
-        "row_count":          result.get("row_count"),
-        "columns":            col_names,
-        "formula_relations":  schema.get("formula_relations", []),
-        "connections_found":  result.get("connections_found", []),
-        "latency_ms":         result.get("latency_ms"),
-        "note": (
-            "Source registered and available for query_data. "
-            f"{len(result.get('connections_found', []))} join key(s) detected to other sources."
-        ),
-    }, indent=2)
+    return json.dumps(
+        {
+            "source_id": result.get("source_id"),
+            "name": result.get("name"),
+            "status": result.get("status"),
+            "row_count": result.get("row_count"),
+            "columns": col_names,
+            "formula_relations": schema.get("formula_relations", []),
+            "connections_found": result.get("connections_found", []),
+            "latency_ms": result.get("latency_ms"),
+            "note": (
+                "Source registered and available for query_data. "
+                f"{len(result.get('connections_found', []))} join key(s) detected to other sources."
+            ),
+        },
+        indent=2,
+    )
 
 
 async def list_sources_handler(arguments: dict[str, Any]) -> str:
@@ -184,22 +187,25 @@ async def list_sources_handler(arguments: dict[str, Any]) -> str:
         params["limit"] = arguments["limit"]
     result = await api("GET", "/v1/sources", params=params)
     sources = result.get("sources", [])
-    return json.dumps({
-        "count":   result.get("count", len(sources)),
-        "total":   result.get("total", len(sources)),
-        "page":    result.get("page", 1),
-        "limit":   result.get("limit", len(sources)),
-        "pages":   result.get("pages", 1),
-        "sources": [
-            {
-                "source_id": s.get("id"),
-                "name":      s.get("name"),
-                "row_count": s.get("row_count"),
-                "columns":   s.get("columns", []),
-            }
-            for s in sources
-        ],
-    }, indent=2)
+    return json.dumps(
+        {
+            "count": result.get("count", len(sources)),
+            "total": result.get("total", len(sources)),
+            "page": result.get("page", 1),
+            "limit": result.get("limit", len(sources)),
+            "pages": result.get("pages", 1),
+            "sources": [
+                {
+                    "source_id": s.get("id"),
+                    "name": s.get("name"),
+                    "row_count": s.get("row_count"),
+                    "columns": s.get("columns", []),
+                }
+                for s in sources
+            ],
+        },
+        indent=2,
+    )
 
 
 async def get_source_handler(arguments: dict[str, Any]) -> str:
@@ -211,12 +217,15 @@ async def get_source_handler(arguments: dict[str, Any]) -> str:
 
     result = await api("GET", f"/v1/sources/{source_id}")
     schema = result.get("schema", {})
-    response = json.dumps({
-        "source_id":         result.get("source_id"),
-        "columns":           schema.get("columns", {}),
-        "formula_relations": schema.get("formula_relations", []),
-        "row_count":         schema.get("row_count"),
-    }, indent=2)
+    response = json.dumps(
+        {
+            "source_id": result.get("source_id"),
+            "columns": schema.get("columns", {}),
+            "formula_relations": schema.get("formula_relations", []),
+            "row_count": schema.get("row_count"),
+        },
+        indent=2,
+    )
 
     _schema_cache_set(source_id, response)
     return response

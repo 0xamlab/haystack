@@ -1,5 +1,5 @@
 """
-Universal Decision Engine — FastAPI Application Entry Point.
+Algenta API — FastAPI application entry point.
 
 Startup sequence:
 1. Configure structured logging
@@ -19,7 +19,6 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import ValidationError
 
 from apps.api_server.config import get_settings
 from apps.api_server.middleware.logging import StructuredLoggingMiddleware
@@ -101,13 +100,10 @@ async def lifespan(app: FastAPI):  # type: ignore[type-arg]
 # ─── FastAPI App ──────────────────────────────────────────────────────────────
 
 app = FastAPI(
-    title="Universal Decision Engine",
+    title="Algenta API",
     description=(
-        "API infrastructure for probabilistic decision-making. "
-        "Run Monte Carlo simulations and get structured decision recommendations "
-        "with a single API call. "
-        "Use `mode: 'auto'` for zero-config simulations, or `mode: 'expert'` for "
-        "full control over distributions, correlations, and scoring."
+        "Hosted and self-hosted Algenta API for governed data discovery, exact queries, "
+        "read-only SQL reports, and simulation workflows."
     ),
     version="1.0.0",
     docs_url="/docs",

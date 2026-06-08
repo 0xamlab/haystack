@@ -20,10 +20,10 @@ Compatibility means:
 
 | Layer | Vanna | Cube | LlamaIndex | Algenta (today) | Algenta (target) |
 | --- | --- | --- | --- | --- | --- |
-| SDK | Python-first | JS/API + semantic APIs | Python + TypeScript | Python strong, TypeScript runtime-first plus direct client | clean runtime-first across SDKs |
+| SDK | Python-first | JS/API + semantic APIs | Python + TypeScript | Python and TypeScript both expose runtime and direct-client parity, including persisted lineage/replay helpers | clean runtime-first across SDKs |
 | MCP | limited | documented MCP server | strong tool/workflow posture | 30-tool MCP surface | first-class |
-| Runtime model | LLM/SQL generation | governed semantic layer runtime | agent/workflow framework | hybrid system with deterministic core | deterministic local-first runtime |
-| Local-first posture | weak | partial | partial | partial but real | core |
+| Runtime model | LLM/SQL generation | governed semantic layer runtime | agent/workflow framework | hybrid system with deterministic core plus persisted replay, audit-artifact, and policy-snapshot operator surfaces | service-first deterministic runtime with optional local execution |
+| Local-first posture | weak | partial | partial | partial but real | supported secondary mode |
 | Determinism | low | high | low | medium-high | high |
 
 ## Compatibility decisions
@@ -99,11 +99,13 @@ without inheriting:
 
 ## Current gaps
 
-The biggest remaining compatibility gap is SDK symmetry:
+The biggest remaining compatibility gap is higher-level example and operator-story symmetry:
 
-- Python already has the clean `Runtime` facade
-- TypeScript now has a matching `Runtime` surface
-- richer ecosystem parity and higher-level examples still need expansion
+- Python and TypeScript now both expose the persisted lineage-aware surfaces
+  (`listAgentRuns`, checkpoint and mission-event queries, replay/fork, audit-log
+  artifacts, and execution-policy snapshots)
+- richer ecosystem parity, higher-level examples, and more opinionated operator
+  playbooks still need expansion
 
 ## Direction
 
