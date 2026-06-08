@@ -1,6 +1,16 @@
 from __future__ import annotations
 
-from apps.api_server.connectors.neo4j_connector import Neo4jConnector
+import sys
+import types
+
+# Stub the optional `neo4j` driver so test collection works in CI where
+# the package isn't installed. Neo4jConnector imports neo4j lazily inside
+# _connect_sync; this stub is harmless when the real package is present.
+_neo4j_stub = types.ModuleType("neo4j")
+_neo4j_stub.GraphDatabase = object
+sys.modules.setdefault("neo4j", _neo4j_stub)
+
+from apps.api_server.connectors.neo4j_connector import Neo4jConnector  # noqa: E402
 
 
 def test_connection_settings_strip_auth_from_uri_and_use_embedded_credentials() -> None:
