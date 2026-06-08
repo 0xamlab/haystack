@@ -429,8 +429,9 @@ def test_outward_facing_contract_proofs_use_shared_normalized_manifest_fixture()
         for p in sorted((ROOT / "tests").glob("test_cli_data_*.py"))
     )
     mcp_meta_tools = (ROOT / "tests" / "test_mcp_meta_tools.py").read_text(encoding="utf-8")
-    query_surface = (ROOT / "tests" / "test_decision_engine_query_surface.py").read_text(
-        encoding="utf-8"
+    query_surface = "\n".join(
+        p.read_text(encoding="utf-8")
+        for p in sorted((ROOT / "tests").glob("*test_decision_engine_query_surface*.py"))
     )
     algenta_runtime = "\n".join(
         p.read_text(encoding="utf-8")
@@ -624,7 +625,13 @@ def test_root_test_graph_includes_formal_runtime_foundation_proof_bundle() -> No
         assert f"tests/{suffix}" in scripts["test:formal-runtime-foundation"]
     assert "tests/test_runtime_schema_surface.py" in scripts["test:formal-runtime-foundation"]
     assert "tests/test_runtime_startup_smoke.py" in scripts["test:formal-runtime-foundation"]
-    assert "tests/test_decision_engine_query_surface.py" in scripts["test:formal-runtime-foundation"]
+    for suffix in (
+        "test_decision_engine_query_surface_async_decision_a.py",
+        "test_decision_engine_query_surface_async_decision_b.py",
+        "test_decision_engine_query_surface_decision_engine_a.py",
+        "test_decision_engine_query_surface_decision_engine_b.py",
+    ):
+        assert f"tests/{suffix}" in scripts["test:formal-runtime-foundation"]
     assert "tests/test_decision_engine_lazy_exports.py" in scripts["test:formal-runtime-foundation"]
     assert "tests/test_algenta_lazy_exports.py" in scripts["test:formal-runtime-foundation"]
     for suffix in (
