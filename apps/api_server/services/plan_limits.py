@@ -144,6 +144,54 @@ def device_limit(plan: str) -> int:
     return get(plan).devices
 
 
+def effective_device_limit(plan: str, api_key_device_limit: int | None) -> int:
+    """Resolve the enforced per-key device limit under the current plan.
+
+    The plan is the outer ceiling; a key may narrow it further. `0` means
+    unlimited and is only honored on plans that allow unlimited devices.
+    """
+    if not local_runtime_allowed(plan):
+        return 0
+
+    plan_cap = device_limit(plan)
+    if api_key_device_limit is None:
+        return plan_cap
+    if api_key_device_limit < 0:
+        raise ValueError("api_key_device_limit must be greater than or equal to 0.")
+    if plan_cap == 0:
+        return api_key_device_limit
+    if api_key_device_limit == 0:
+        return plan_cap
+    return min(api_key_device_limit, plan_cap)
+
+
+def validate_api_key_device_limit(plan: str, requested_device_limit: int | None) -> int | None:
+    """Validate a configured per-key device cap against the current plan.
+
+    Returns the stored override value. `None` means inherit the plan default.
+    """
+    if requested_device_limit is None:
+        return None
+    if requested_device_limit < 0:
+        raise ValueError("device_limit must be greater than or equal to 0.")
+    if not local_runtime_allowed(plan):
+        raise ValueError(
+            f"Plan '{plan}' does not include local runtime access, "
+            "so it cannot set a per-key device limit."
+        )
+
+    plan_cap = device_limit(plan)
+    if plan_cap == 0:
+        return requested_device_limit
+    if requested_device_limit == 0:
+        raise ValueError(
+            f"Plan '{plan}' does not support unlimited devices per key. Maximum is {plan_cap}."
+        )
+    if requested_device_limit > plan_cap:
+        raise ValueError(f"Plan '{plan}' allows at most {plan_cap} device(s) per key.")
+    return requested_device_limit
+
+
 def local_runtime_allowed(plan: str) -> bool:
     """True if this plan permits device registration and local runtime use."""
     return get(plan).local_runtime
