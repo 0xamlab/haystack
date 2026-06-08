@@ -342,8 +342,18 @@ def run_monte_carlo(req: SimRequest) raises -> String:
             var c  = req.corrs[k].copy()
             var i1 = -1; var i2 = -1
             for ni in range(n_normal):
-                if req.vnames[normal_indices[ni]] == req.vnames[c.var1_idx]: i1 = ni
-                if req.vnames[normal_indices[ni]] == req.vnames[c.var2_idx]: i2 = ni
+                if (
+                    c.var1_idx >= 0
+                    and c.var1_idx < len(req.vnames)
+                    and req.vnames[normal_indices[ni]] == req.vnames[c.var1_idx]
+                ):
+                    i1 = ni
+                if (
+                    c.var2_idx >= 0
+                    and c.var2_idx < len(req.vnames)
+                    and req.vnames[normal_indices[ni]] == req.vnames[c.var2_idx]
+                ):
+                    i2 = ni
             if i1 >= 0 and i2 >= 0:
                 corr_mat[i1][i2] = c.coefficient; corr_mat[i2][i1] = c.coefficient
         chol_L = cholesky_lower(corr_mat, n_normal)

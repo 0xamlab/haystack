@@ -8,7 +8,7 @@ Public API:
   hmac_sha256(key, message)                    — compute HMAC-SHA256, returns 64-char hex
   hmac_sha256_verify(key, message, expected)   — constant-time verification
 """
-from sha256 import sha256_hex, SHA256, _compress, _u32_hex
+from sha256 import _compress
 
 
 # ── Constants ────────────────────────────────────────────────────────────────

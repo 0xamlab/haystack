@@ -36,19 +36,20 @@ from ctypes import c_float, c_uint8, c_uint16, c_uint32
 # ── Integer constants ─────────────────────────────────────────────────────────
 
 SOURCE_UNKNOWN = 0
-SOURCE_POS     = 1
+SOURCE_POS = 1
 SOURCE_BACKLOG = 2
 SOURCE_INVOICE = 3
 
-ROLE_OTHER   = 0
-ROLE_UNIT    = 1
+ROLE_OTHER = 0
+ROLE_UNIT = 1
 ROLE_DERIVED = 2
 
-VEC_DIM    = 64
+VEC_DIM = 64
 RANK_TOP_K = 8
 
 
 # ── TopKEntry: 16 bytes, C-compatible ─────────────────────────────────────────
+
 
 class TopKEntry(ctypes.Structure):
     """
@@ -65,11 +66,12 @@ class TopKEntry(ctypes.Structure):
         entry = result.entries[0]
         print(f"column {entry.column_id}: score={entry.score:.3f}")
     """
+
     _fields_ = [
-        ("column_id",  c_uint32),   # 4
-        ("score",      c_float),    # 4
-        ("name_sim",   c_float),    # 4
-        ("type_boost", c_float),    # 4  → 16 bytes
+        ("column_id", c_uint32),  # 4
+        ("score", c_float),  # 4
+        ("name_sim", c_float),  # 4
+        ("type_boost", c_float),  # 4  → 16 bytes
     ]
 
     def __repr__(self) -> str:
@@ -80,6 +82,7 @@ class TopKEntry(ctypes.Structure):
 
 
 # ── RankResult: 136 bytes ─────────────────────────────────────────────────────
+
 
 class RankResult(ctypes.Structure):
     """
@@ -102,12 +105,13 @@ class RankResult(ctypes.Structure):
         if result.ambiguous:
             print("ambiguous match — gap =", result.confidence_gap)
     """
+
     _fields_ = [
-        ("count",          c_uint8),           # 1
-        ("ambiguous",      c_uint8),           # 1
-        ("_pad",           c_uint8 * 2),       # 2
-        ("confidence_gap", c_float),           # 4
-        ("entries",        TopKEntry * 8),     # 128 → 136 bytes
+        ("count", c_uint8),  # 1
+        ("ambiguous", c_uint8),  # 1
+        ("_pad", c_uint8 * 2),  # 2
+        ("confidence_gap", c_float),  # 4
+        ("entries", TopKEntry * 8),  # 128 → 136 bytes
     ]
 
     def top(self) -> TopKEntry | None:
@@ -141,6 +145,7 @@ class RankResult(ctypes.Structure):
 #   query_vec_data Float32×64 256 bytes
 #   ─────────────────────────────── 264 bytes
 
+
 class RankRequest(ctypes.Structure):
     """
     Typed query for CandidateTable.rank().
@@ -158,22 +163,24 @@ class RankRequest(ctypes.Structure):
         req.top_k     = 5
         req.query_norm_inv = build_vec64("unit_price", req.query_vec_data)
     """
+
     _fields_ = [
-        ("source_id",      c_uint16),          # 2
-        ("role_id",        c_uint8),           # 1
-        ("top_k",          c_uint8),           # 1
-        ("query_norm_inv", c_float),           # 4
-        ("query_vec_data", c_float * VEC_DIM), # 256 → 264 bytes
+        ("source_id", c_uint16),  # 2
+        ("role_id", c_uint8),  # 1
+        ("top_k", c_uint8),  # 1
+        ("query_norm_inv", c_float),  # 4
+        ("query_vec_data", c_float * VEC_DIM),  # 256 → 264 bytes
     ]
 
 
 # ── build_vec64: Python-side bigram encoder ───────────────────────────────────
 
+
 def _norm_byte(c: int) -> int:
     """Normalise byte: separators → 32 (space), uppercase → lowercase."""
     if c in (95, 45, 46):  # _ - .
         return 32
-    if 65 <= c <= 90:       # A-Z
+    if 65 <= c <= 90:  # A-Z
         return c + 32
     return c
 
@@ -216,16 +223,17 @@ def build_vec64(name: str, out_vec: ctypes.Array) -> float:
     mag_sq = sum(out_vec[i] * out_vec[i] for i in range(VEC_DIM))
     if mag_sq <= 0.0:
         return 0.0
-    return 1.0 / (mag_sq ** 0.5)
+    return 1.0 / (mag_sq**0.5)
 
 
 # ── Convenience builder ───────────────────────────────────────────────────────
 
+
 def make_rank_request(
-    name:      str,
+    name: str,
     source_id: int = SOURCE_UNKNOWN,
-    role_id:   int = ROLE_OTHER,
-    top_k:     int = 5,
+    role_id: int = ROLE_OTHER,
+    top_k: int = 5,
 ) -> RankRequest:
     """
     Build a RankRequest from a raw column name.
@@ -235,9 +243,9 @@ def make_rank_request(
         result = lib.rank_resident(table_handle, ctypes.byref(req))
     """
     req = RankRequest()
-    req.source_id      = source_id
-    req.role_id        = role_id
-    req.top_k          = top_k
+    req.source_id = source_id
+    req.role_id = role_id
+    req.top_k = top_k
     req.query_norm_inv = build_vec64(name, req.query_vec_data)
     return req
 
@@ -277,9 +285,7 @@ if __name__ == "__main__":
         sys.stdout.write(f"{message}\n")
 
     # Verify struct sizes
-    assert ctypes.sizeof(TopKEntry) == 16, (
-        f"TopKEntry size={ctypes.sizeof(TopKEntry)}, expected 16"
-    )
+    assert ctypes.sizeof(TopKEntry) == 16, f"TopKEntry size={ctypes.sizeof(TopKEntry)}, expected 16"
     assert ctypes.sizeof(RankResult) == 136, (
         f"RankResult size={ctypes.sizeof(RankResult)}, expected 136"
     )
@@ -287,8 +293,8 @@ if __name__ == "__main__":
     # Test build_vec64 — exact match
     req = make_rank_request("unit_price", SOURCE_POS, ROLE_UNIT)
     assert req.source_id == SOURCE_POS
-    assert req.role_id   == ROLE_UNIT
-    assert req.top_k     == 5
+    assert req.role_id == ROLE_UNIT
+    assert req.top_k == 5
     assert req.query_norm_inv > 0.0, "norm_inv should be positive for non-empty name"
 
     # Verify bigram hash for "un" → (117 * 31 + 110) & 63 = (3627 + 110) & 63 = 3737 & 63 = 25

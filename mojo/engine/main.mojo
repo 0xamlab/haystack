@@ -50,6 +50,7 @@ from engines.column_matcher     import run_column_match
 from engines.join_detector      import run_join_detect
 from engines.relation_detector  import run_relation_detect
 from engines.string_similarity  import run_string_similarity
+from runtime_library_dispatch_generated import dispatch_runtime_library
 
 
 def _run_raw(raw: String) raises -> String:
@@ -154,6 +155,8 @@ def run_server_loop(socket_path: String) raises:
                 response = resident_column_rank.run_query(raw)
             elif msg_type == "column_rank_batch":
                 response = resident_column_rank.run_batch(raw)
+            elif msg_type == "library_execute":
+                response = dispatch_runtime_library(raw)
             else:
                 try:
                     response = _run_raw(raw)

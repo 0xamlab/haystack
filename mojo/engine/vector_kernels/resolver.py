@@ -27,6 +27,7 @@ Public API:
 Self-test:
     python3 mojo/engine/vector_kernels/resolver.py
 """
+
 from __future__ import annotations
 
 import math
@@ -46,10 +47,10 @@ from mojo.engine.vector_kernels.tokenizer import (
 
 # ── Constants (mirror batch_ranker.mojo) ──────────────────────────────────────
 
-VEC_DIM    = 64
-W_NAME     = 0.55
+VEC_DIM = 64
+W_NAME = 0.55
 MIN_ACCEPT = 0.72
-AMBIG_GAP  = 0.08
+AMBIG_GAP = 0.08
 MAX_PLANNER_SOURCE_COLUMNS = max(
     16,
     int(os.environ.get("ALGENTA_VECTOR_RESOLVER_MAX_COLUMNS_PER_SOURCE", "64")),
@@ -57,28 +58,28 @@ MAX_PLANNER_SOURCE_COLUMNS = max(
 
 # Source IDs
 SOURCE_UNKNOWN = 0
-SOURCE_POS     = 1
+SOURCE_POS = 1
 SOURCE_BACKLOG = 2
 SOURCE_INVOICE = 3
 
 _SOURCE_MAP: dict[str, int] = {
-    "pos":     SOURCE_POS,
+    "pos": SOURCE_POS,
     "backlog": SOURCE_BACKLOG,
     "invoice": SOURCE_INVOICE,
 }
 
 # Role IDs
-ROLE_OTHER   = 0
-ROLE_UNIT    = 1
+ROLE_OTHER = 0
+ROLE_UNIT = 1
 ROLE_DERIVED = 2
 
 _ROLE_MAP: dict[str, int] = {
     "unit_measure": ROLE_UNIT,
-    "ratio":        ROLE_UNIT,
+    "ratio": ROLE_UNIT,
     "derived_measure": ROLE_DERIVED,
-    "base_measure":    ROLE_DERIVED,
-    "metric":          ROLE_OTHER,
-    "other":           ROLE_OTHER,
+    "base_measure": ROLE_DERIVED,
+    "metric": ROLE_OTHER,
+    "other": ROLE_OTHER,
 }
 
 _PLANNER_ROLE_PRIORITY: dict[str, int] = {
@@ -91,6 +92,7 @@ _PLANNER_ROLE_PRIORITY: dict[str, int] = {
 }
 
 # ── Bigram vector encoder ─────────────────────────────────────────────────────
+
 
 def _norm_byte(c: int) -> int:
     """Normalize byte: A-Z → a-z (mirrors table.mojo _norm_byte)."""
@@ -114,7 +116,7 @@ def build_vec64(name: str) -> tuple[list[float], float]:
     """
     vec = [0.0] * VEC_DIM
     try:
-        sb = name.encode('latin-1', errors='replace')
+        sb = name.encode("latin-1", errors="replace")
     except Exception:
         return vec, 0.0
     n = len(sb)
@@ -146,6 +148,7 @@ def _cosine(qv: list[float], cv: list[float], q_ni: float, c_ni: float) -> float
 
 # ── Outcome classification ────────────────────────────────────────────────────
 
+
 class ResolverOutcome(Enum):
     """
     Mutually exclusive resolution outcomes, ordered by specificity.
@@ -159,11 +162,12 @@ class ResolverOutcome(Enum):
     META_QUERY          — hint looks like an entity/row-count request, not a column lookup
                           (e.g. "server count", "how many guests", "number of orders")
     """
-    COLUMN_MATCH     = "column_match"
-    WEAK_MATCH       = "weak_match"
-    AMBIGUOUS        = "ambiguous"
-    NO_COLUMN_MATCH  = "no_column_match"
-    META_QUERY       = "meta_query"
+
+    COLUMN_MATCH = "column_match"
+    WEAK_MATCH = "weak_match"
+    AMBIGUOUS = "ambiguous"
+    NO_COLUMN_MATCH = "no_column_match"
+    META_QUERY = "meta_query"
 
 
 class ResolverReason(Enum):
@@ -179,13 +183,14 @@ class ResolverReason(Enum):
     META_ENTITY_NOUN        — hint is all entity nouns with weak column match
     META_LOW_SCORE_COUNT    — 'count' token present and best score below threshold
     """
-    DIRECT_MATCH          = "direct_match"
-    WEAK_MATCH            = "weak_match"
-    AMBIGUOUS_GAP         = "ambiguous_gap"
-    NO_SIGNAL             = "no_signal"
-    META_PHRASE           = "meta_phrase"
-    META_ENTITY_NOUN      = "meta_entity_noun"
-    META_LOW_SCORE_COUNT  = "meta_low_score_count"
+
+    DIRECT_MATCH = "direct_match"
+    WEAK_MATCH = "weak_match"
+    AMBIGUOUS_GAP = "ambiguous_gap"
+    NO_SIGNAL = "no_signal"
+    META_PHRASE = "meta_phrase"
+    META_ENTITY_NOUN = "meta_entity_noun"
+    META_LOW_SCORE_COUNT = "meta_low_score_count"
 
 
 # ── Meta-query detection ──────────────────────────────────────────────────────
@@ -194,31 +199,54 @@ class ResolverReason(Enum):
 # Three signals; the first two fire unconditionally; the third is score-gated.
 
 # Tunable thresholds — adjust per deployment domain without touching logic
-META_COUNT_SCORE_THRESHOLD = 0.55   # "X count" fires META_QUERY below this score
-META_NOUN_SCORE_THRESHOLD  = 0.50   # entity-only hint fires META_QUERY below this score
-DEFINITE_META_THRESHOLD    = 0.50   # below this, gap is irrelevant — nothing matches any column
-WEAK_ACCEPT_THRESHOLD      = 0.65   # score in [0.65, 0.72) → WEAK_MATCH
-                                    # Planner accepts for group_by/date/filter;
-                                    # falls through to column_match engine for metric
+META_COUNT_SCORE_THRESHOLD = 0.55  # "X count" fires META_QUERY below this score
+META_NOUN_SCORE_THRESHOLD = 0.50  # entity-only hint fires META_QUERY below this score
+DEFINITE_META_THRESHOLD = 0.50  # below this, gap is irrelevant — nothing matches any column
+WEAK_ACCEPT_THRESHOLD = 0.65  # score in [0.65, 0.72) → WEAK_MATCH
+# Planner accepts for group_by/date/filter;
+# falls through to column_match engine for metric
 
 _META_QUERY_RE = re.compile(
-    r'\b(how many|number of|count of|total count|row count)\b',
+    r"\b(how many|number of|count of|total count|row count)\b",
     re.IGNORECASE,
 )
 
 # Generic entity nouns that typically refer to the row entity itself,
 # not to a measurable column.  Kept conservative — false positives here are costly.
-_ENTITY_NOUNS: frozenset[str] = frozenset({
-    # People / staff
-    "servers", "server", "employees", "employee", "staff", "workers", "worker",
-    "waiters", "waiter", "cashiers", "cashier",
-    # Customers
-    "customers", "customer", "clients", "client",
-    # Business objects
-    "orders", "order", "transactions", "transaction",
-    "products", "product", "items", "skus",
-    "tables", "records", "entries", "rows",
-})
+_ENTITY_NOUNS: frozenset[str] = frozenset(
+    {
+        # People / staff
+        "servers",
+        "server",
+        "employees",
+        "employee",
+        "staff",
+        "workers",
+        "worker",
+        "waiters",
+        "waiter",
+        "cashiers",
+        "cashier",
+        # Customers
+        "customers",
+        "customer",
+        "clients",
+        "client",
+        # Business objects
+        "orders",
+        "order",
+        "transactions",
+        "transaction",
+        "products",
+        "product",
+        "items",
+        "skus",
+        "tables",
+        "records",
+        "entries",
+        "rows",
+    }
+)
 
 
 def _meta_reason(hint: str, best_score: float) -> str | None:
@@ -242,43 +270,45 @@ def _meta_reason(hint: str, best_score: float) -> str | None:
 
 # ── Data types ────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class ColumnEntry:
     """One candidate column — all data needed for scoring."""
-    column_id:      int
-    source:         str
-    name:           str
-    source_id:      int         # SOURCE_* constant
-    role_id:        int         # ROLE_* constant
-    norm_inv:       float
-    vec:            list[float]
-    tokens:         list[str]   # from tokenize_name()
-    tokens_expanded: set[str]   # from expand_tokens(tokens) — for overlap scoring
+
+    column_id: int
+    source: str
+    name: str
+    source_id: int  # SOURCE_* constant
+    role_id: int  # ROLE_* constant
+    norm_inv: float
+    vec: list[float]
+    tokens: list[str]  # from tokenize_name()
+    tokens_expanded: set[str]  # from expand_tokens(tokens) — for overlap scoring
 
 
 @dataclass
 class TopKEntry:
-    source:    str
-    column:    str
-    score:     float
-    name_sim:  float
+    source: str
+    column: str
+    score: float
+    name_sim: float
     type_boost: float
 
 
 @dataclass
 class VectorResolverResult:
-    source:         str
-    column:         str
-    score:          float
+    source: str
+    column: str
+    score: float
     confidence_gap: float
-    outcome:        ResolverOutcome
-    reason:         ResolverReason   # fine-grained why code
-    confident:      bool             # shorthand: outcome == COLUMN_MATCH
-    ambiguous:      bool             # shorthand: outcome == AMBIGUOUS
-    fallback_used:  bool
-    token_overlap:  int
-    top_k:          list[TopKEntry]
-    steps:          list[str]
+    outcome: ResolverOutcome
+    reason: ResolverReason  # fine-grained why code
+    confident: bool  # shorthand: outcome == COLUMN_MATCH
+    ambiguous: bool  # shorthand: outcome == AMBIGUOUS
+    fallback_used: bool
+    token_overlap: int
+    top_k: list[TopKEntry]
+    steps: list[str]
 
 
 @dataclass(frozen=True)
@@ -291,6 +321,7 @@ class _ColumnEntryArtifacts:
 
 
 # ── Scoring helpers ───────────────────────────────────────────────────────────
+
 
 def _type_boost(query_role: int, cand_role: int) -> float:
     """Role compatibility boost (mirrors batch_ranker.mojo _type_boost)."""
@@ -329,6 +360,7 @@ def _token_overlap(query_tokens_ex: set[str], col_tokens_ex: set[str]) -> int:
 
 # ── Main resolver ─────────────────────────────────────────────────────────────
 
+
 class ColumnVectorResolver:
     """
     Resident column resolver. Build once at schema-load time; query many times.
@@ -344,14 +376,14 @@ class ColumnVectorResolver:
     """
 
     # Threshold policy (can be overridden per instance)
-    ACCEPT_THRESHOLD      = MIN_ACCEPT            # strong match: score ≥ this
-    WEAK_ACCEPT_THRESHOLD = WEAK_ACCEPT_THRESHOLD # weak match:  score in [this, ACCEPT_THRESHOLD)
-    GAP_THRESHOLD         = AMBIG_GAP             # gap must clear this for any match
-    MIN_SHORTLIST         = 2                     # fewer → fallback to all-column scan
+    ACCEPT_THRESHOLD = MIN_ACCEPT  # strong match: score ≥ this
+    WEAK_ACCEPT_THRESHOLD = WEAK_ACCEPT_THRESHOLD  # weak match:  score in [this, ACCEPT_THRESHOLD)
+    GAP_THRESHOLD = AMBIG_GAP  # gap must clear this for any match
+    MIN_SHORTLIST = 2  # fewer → fallback to all-column scan
 
     def __init__(
         self,
-        source_map:    dict[str, list[tuple[str, str]]],
+        source_map: dict[str, list[tuple[str, str]]],
         extra_aliases: dict[str, list[str]] | None = None,
         domain_aliases: dict[str, list[str]] | None = None,
     ):
@@ -373,11 +405,7 @@ class ColumnVectorResolver:
         self._aliases: dict[str, list[str]] = merge_aliases(_da)
 
         self._entries: list[ColumnEntry] = []
-        col_names = [
-            col_name
-            for cols in source_map.values()
-            for col_name, _role_str in cols
-        ]
+        col_names = [col_name for cols in source_map.values() for col_name, _role_str in cols]
         self._vocab: Vocab = build_vocab(col_names, _da)
         self._posting: dict[int, list[int]] = {}
         self._sources: set[str] = set()
@@ -611,7 +639,7 @@ class ColumnVectorResolver:
         steps: list[str] = []
 
         # Map source/role to integer IDs
-        query_src  = _SOURCE_MAP.get((preferred_source or "").lower(), SOURCE_UNKNOWN)
+        query_src = _SOURCE_MAP.get((preferred_source or "").lower(), SOURCE_UNKNOWN)
         query_role = _ROLE_MAP.get((role_hint or "").lower(), ROLE_OTHER)
 
         # Build query vector
@@ -621,24 +649,22 @@ class ColumnVectorResolver:
         # Use the same combined alias table the index was built with so domain
         # synonyms benefit overlap scoring without any extra config.
         query_token_ids = make_query_token_ids(self._vocab, hint)
-        query_tokens    = tokenize_name(hint)
+        query_tokens = tokenize_name(hint)
         query_tokens_ex = {token for token, _ in expand_tokens(query_tokens, self._aliases)}
 
         # Prefilter to shortlist
         cand_indices, fallback_used = self._prefilter(query_token_ids, query_src, query_role)
-        steps.append(
-            f"[prefilter] shortlist={len(cand_indices)} fallback={fallback_used}"
-        )
+        steps.append(f"[prefilter] shortlist={len(cand_indices)} fallback={fallback_used}")
 
         # Score shortlist
-        scored: list[tuple[float, int, float, float]] = []   # (score, col_idx, nsim, tb)
+        scored: list[tuple[float, int, float, float]] = []  # (score, col_idx, nsim, tb)
         for col_idx in cand_indices:
             e = self._entries[col_idx]
             nsim = _cosine(qv, e.vec, q_ni, e.norm_inv)
-            tb   = _type_boost(query_role, e.role_id)
-            pb   = _prior_boost(query_src, e.source_id, e.role_id)
+            tb = _type_boost(query_role, e.role_id)
+            pb = _prior_boost(query_src, e.source_id, e.role_id)
             hits = _token_overlap(query_tokens_ex, e.tokens_expanded)
-            th   = 0.05 * min(hits, 3)
+            th = 0.05 * min(hits, 3)
             score = W_NAME * nsim + tb + pb + th
             scored.append((score, col_idx, nsim, tb))
 
@@ -656,7 +682,7 @@ class ColumnVectorResolver:
         # A high score does NOT override a narrow gap — the gap guard fires
         # independently to prevent silent misclassification when two columns
         # score similarly high.
-        gap_ok   = gap >= self.GAP_THRESHOLD or len(scored) < 2
+        gap_ok = gap >= self.GAP_THRESHOLD or len(scored) < 2
         score_ok = best_score >= self.ACCEPT_THRESHOLD
         ambiguous = not gap_ok and len(scored) >= 2
         confident = score_ok and gap_ok
@@ -665,43 +691,40 @@ class ColumnVectorResolver:
         # Meta-query check runs AFTER scoring so best_score is available.
         meta_rsn = _meta_reason(hint, best_score)
         weak = (
-            not confident
-            and not ambiguous
-            and best_score >= self.WEAK_ACCEPT_THRESHOLD
-            and gap_ok
+            not confident and not ambiguous and best_score >= self.WEAK_ACCEPT_THRESHOLD and gap_ok
         )
         if meta_rsn is not None:
             # Meta-ambiguity guard: explicit phrases are unambiguous by definition;
             # score-based meta detections (count+low_score, entity_noun) can be
             # ambiguous if the gap is narrow — in that case, stay AMBIGUOUS so
             # the planner falls through rather than wrongly routing to the meta executor.
-            phrase_based   = (meta_rsn == "meta_phrase")
+            phrase_based = meta_rsn == "meta_phrase"
             # When best_score is below DEFINITE_META_THRESHOLD no column is a
             # plausible match — the gap is small only because all scores are
             # equally poor, not because there is a real competitor.
-            definite_meta  = best_score < DEFINITE_META_THRESHOLD
+            definite_meta = best_score < DEFINITE_META_THRESHOLD
             if phrase_based or gap_ok or definite_meta:
                 outcome = ResolverOutcome.META_QUERY
-                reason  = ResolverReason(meta_rsn)
+                reason = ResolverReason(meta_rsn)
             else:
                 outcome = ResolverOutcome.AMBIGUOUS
-                reason  = ResolverReason.AMBIGUOUS_GAP
+                reason = ResolverReason.AMBIGUOUS_GAP
         elif confident:
             outcome = ResolverOutcome.COLUMN_MATCH
-            reason  = ResolverReason.DIRECT_MATCH
+            reason = ResolverReason.DIRECT_MATCH
         elif ambiguous:
             outcome = ResolverOutcome.AMBIGUOUS
-            reason  = ResolverReason.AMBIGUOUS_GAP
+            reason = ResolverReason.AMBIGUOUS_GAP
         elif weak:
             outcome = ResolverOutcome.WEAK_MATCH
-            reason  = ResolverReason.WEAK_MATCH
+            reason = ResolverReason.WEAK_MATCH
         else:
             outcome = ResolverOutcome.NO_COLUMN_MATCH
-            reason  = ResolverReason.NO_SIGNAL
+            reason = ResolverReason.NO_SIGNAL
 
         # Keep convenience booleans consistent with outcome
-        confident = (outcome == ResolverOutcome.COLUMN_MATCH)
-        ambiguous = (outcome == ResolverOutcome.AMBIGUOUS)
+        confident = outcome == ResolverOutcome.COLUMN_MATCH
+        ambiguous = outcome == ResolverOutcome.AMBIGUOUS
 
         steps.append(
             f"[score] {best_entry.source}.{best_entry.name}  "
@@ -713,13 +736,15 @@ class ColumnVectorResolver:
         result_top_k = []
         for score, col_idx, nsim, tb in scored[:top_k]:
             e = self._entries[col_idx]
-            result_top_k.append(TopKEntry(
-                source=e.source,
-                column=e.name,
-                score=round(score, 4),
-                name_sim=round(nsim, 4),
-                type_boost=round(tb, 4),
-            ))
+            result_top_k.append(
+                TopKEntry(
+                    source=e.source,
+                    column=e.name,
+                    score=round(score, 4),
+                    name_sim=round(nsim, 4),
+                    type_boost=round(tb, 4),
+                )
+            )
 
         # Token overlap for top result (same bidirectional expansion as scoring loop)
         top_overlap = _token_overlap(query_tokens_ex, best_entry.tokens_expanded)
@@ -758,11 +783,11 @@ class ColumnVectorResolver:
     def resolve_plan_fields(
         self,
         *,
-        metric:    tuple[str, str | None, str | None] | None = None,
-        group_by:  tuple[str, str | None, str | None] | None = None,
-        date:      tuple[str, str | None, str | None] | None = None,
-        filter_:   tuple[str, str | None, str | None] | None = None,
-        top_k:     int = 5,
+        metric: tuple[str, str | None, str | None] | None = None,
+        group_by: tuple[str, str | None, str | None] | None = None,
+        date: tuple[str, str | None, str | None] | None = None,
+        filter_: tuple[str, str | None, str | None] | None = None,
+        top_k: int = 5,
     ) -> dict[str, VectorResolverResult | None]:
         """
         Batch-resolve all field types for a single planner query in one call.
@@ -785,10 +810,10 @@ class ColumnVectorResolver:
           - Easy to add source-level caching later
         """
         slot_map: dict[str, tuple[str, str | None, str | None] | None] = {
-            "metric":   metric,
+            "metric": metric,
             "group_by": group_by,
-            "date":     date,
-            "filter":   filter_,
+            "date": date,
+            "filter": filter_,
         }
         results: dict[str, VectorResolverResult | None] = {}
         for field, req in slot_map.items():
@@ -846,6 +871,7 @@ class ColumnVectorResolver:
 
 # ── Self-test ─────────────────────────────────────────────────────────────────
 
+
 def _test_build_vec64():
     """Bigram encoder matches table.mojo exactly for known test cases."""
     # "unit_price" and "UNIT_PRICE" should produce the same vec (case-insensitive)
@@ -856,21 +882,19 @@ def _test_build_vec64():
     assert n1 > 0.0
     sim = _cosine(v1, v1, n1, n1)
     assert abs(sim - 1.0) < 1e-5, f"Self-cosine should be 1.0, got {sim}"
-    _emit(
-        f"  PASS build_vec64: unit_price norm_inv={n1:.4f}  self_cosine={sim:.6f}"
-    )
+    _emit(f"  PASS build_vec64: unit_price norm_inv={n1:.4f}  self_cosine={sim:.6f}")
 
 
 def _test_resolver_unit_price():
     """unit_price query should find UNIT_PRICE above EXT_PRICE."""
     source_map = {
         "POS": [
-            ("UNIT_PRICE",  "unit_measure"),
-            ("EXT_PRICE",   "derived_measure"),
-            ("QTY",         "base_measure"),
-            ("OH_COST",     "derived_measure"),
+            ("UNIT_PRICE", "unit_measure"),
+            ("EXT_PRICE", "derived_measure"),
+            ("QTY", "base_measure"),
+            ("OH_COST", "derived_measure"),
             ("ORDERED_QTY", "base_measure"),
-            ("LINE_TOTAL",  "derived_measure"),
+            ("LINE_TOTAL", "derived_measure"),
         ]
     }
     resolver = ColumnVectorResolver(source_map)
@@ -885,10 +909,7 @@ def _test_resolver_unit_price():
         f"score={r.score:.4f}  gap={r.confidence_gap:.4f}"
     )
     for tk in r.top_k[:3]:
-        _emit(
-            f"       {tk.source}.{tk.column:20s} "
-            f"score={tk.score:.4f}  sim={tk.name_sim:.4f}"
-        )
+        _emit(f"       {tk.source}.{tk.column:20s} score={tk.score:.4f}  sim={tk.name_sim:.4f}")
     _emit()
 
 
@@ -896,11 +917,11 @@ def _test_resolver_ambiguity():
     """extended cost vs extended price — should be ambiguous or at least detected."""
     source_map = {
         "BACKLOG": [
-            ("EXT_PRICE",    "derived_measure"),
-            ("EXT_COST",     "derived_measure"),
-            ("UNIT_PRICE",   "unit_measure"),
-            ("UNIT_COST",    "unit_measure"),
-            ("QTY",          "base_measure"),
+            ("EXT_PRICE", "derived_measure"),
+            ("EXT_COST", "derived_measure"),
+            ("UNIT_PRICE", "unit_measure"),
+            ("UNIT_COST", "unit_measure"),
+            ("QTY", "base_measure"),
         ]
     }
     resolver = ColumnVectorResolver(source_map)
@@ -921,21 +942,21 @@ def _test_batch():
     """Batch resolution returns correct order and types."""
     source_map = {
         "POS": [
-            ("UNIT_PRICE",  "unit_measure"),
-            ("EXT_PRICE",   "derived_measure"),
-            ("QTY",         "base_measure"),
+            ("UNIT_PRICE", "unit_measure"),
+            ("EXT_PRICE", "derived_measure"),
+            ("QTY", "base_measure"),
         ],
         "BACKLOG": [
-            ("OH_COST",    "derived_measure"),
-            ("ORDERED_QTY","base_measure"),
+            ("OH_COST", "derived_measure"),
+            ("ORDERED_QTY", "base_measure"),
         ],
     }
     resolver = ColumnVectorResolver(source_map)
 
     requests = [
-        ("unit price",    "POS",     "unit_measure"),
-        ("extended price","POS",     "derived_measure"),
-        ("quantity",      None,      "base_measure"),
+        ("unit price", "POS", "unit_measure"),
+        ("extended price", "POS", "derived_measure"),
+        ("quantity", None, "base_measure"),
         ("overhead cost", "BACKLOG", "derived_measure"),
     ]
     results = resolver.resolve_batch(requests)
@@ -943,9 +964,7 @@ def _test_batch():
     for i, (hint, _, _) in enumerate(requests):
         r = results[i]
         assert r is not None, f"Expected result for '{hint}'"
-        _emit(
-            f"  PASS batch[{i}] '{hint}' → {r.source}.{r.column}  score={r.score:.4f}"
-        )
+        _emit(f"  PASS batch[{i}] '{hint}' → {r.source}.{r.column}  score={r.score:.4f}")
     _emit()
 
 

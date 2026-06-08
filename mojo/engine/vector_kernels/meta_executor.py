@@ -23,6 +23,7 @@ Public API:
 Self-test:
     python3 mojo/engine/vector_kernels/meta_executor.py
 """
+
 from __future__ import annotations
 
 import re
@@ -37,6 +38,7 @@ if TYPE_CHECKING:
 
 
 # ── Operation types ────────────────────────────────────────────────────────────
+
 
 class MetaOpType(Enum):
     """
@@ -54,17 +56,19 @@ class MetaOpType(Enum):
     AVG_COLUMN      — SELECT AVG(column) FROM source
     UNKNOWN         — Unable to determine operation; fall through to NLP
     """
-    COUNT_ROWS      = "count_rows"
-    SUM_COLUMN      = "sum_column"
-    COUNT_NON_NULL  = "count_non_null"
-    COUNT_DISTINCT  = "count_distinct"
-    MAX_COLUMN      = "max_column"
-    MIN_COLUMN      = "min_column"
-    AVG_COLUMN      = "avg_column"
-    UNKNOWN         = "unknown"
+
+    COUNT_ROWS = "count_rows"
+    SUM_COLUMN = "sum_column"
+    COUNT_NON_NULL = "count_non_null"
+    COUNT_DISTINCT = "count_distinct"
+    MAX_COLUMN = "max_column"
+    MIN_COLUMN = "min_column"
+    AVG_COLUMN = "avg_column"
+    UNKNOWN = "unknown"
 
 
 # ── Operation dataclass ────────────────────────────────────────────────────────
+
 
 @dataclass
 class MetaQueryOp:
@@ -82,51 +86,70 @@ class MetaQueryOp:
       resolver_score — best_score from the resolver result
       group_by_hint  — extracted grouping phrase if present ("per customer" → "customer")
     """
-    op_type:        MetaOpType
-    source:         str | None
-    column:         str | None
-    entity:         str
-    agg_word:       str
-    hint:           str
-    derivation:     str
-    resolver_score: float
-    group_by_hint:  str | None = None   # "per X" / "by X" extracted noun phrase
 
+    op_type: MetaOpType
+    source: str | None
+    column: str | None
+    entity: str
+    agg_word: str
+    hint: str
+    derivation: str
+    resolver_score: float
+    group_by_hint: str | None = None  # "per X" / "by X" extracted noun phrase
 
     def to_log_dict(self) -> dict:
         """Return a structured dict suitable for logging / audit trails."""
         col = self.column or "*"
         _sql_map = {
-            MetaOpType.COUNT_ROWS:     "COUNT(*)",
-            MetaOpType.SUM_COLUMN:     f"SUM({col})",
+            MetaOpType.COUNT_ROWS: "COUNT(*)",
+            MetaOpType.SUM_COLUMN: f"SUM({col})",
             MetaOpType.COUNT_NON_NULL: f"COUNT({col})",
             MetaOpType.COUNT_DISTINCT: f"COUNT(DISTINCT {col})",
-            MetaOpType.MAX_COLUMN:     f"MAX({col})",
-            MetaOpType.MIN_COLUMN:     f"MIN({col})",
-            MetaOpType.AVG_COLUMN:     f"AVG({col})",
+            MetaOpType.MAX_COLUMN: f"MAX({col})",
+            MetaOpType.MIN_COLUMN: f"MIN({col})",
+            MetaOpType.AVG_COLUMN: f"AVG({col})",
         }
         return {
-            "op_type":        self.op_type.value,
-            "source":         self.source,
-            "column":         self.column,
-            "entity":         self.entity,
-            "agg_word":       self.agg_word,
-            "derivation":     self.derivation,
+            "op_type": self.op_type.value,
+            "source": self.source,
+            "column": self.column,
+            "entity": self.entity,
+            "agg_word": self.agg_word,
+            "derivation": self.derivation,
             "resolver_score": round(self.resolver_score, 4),
-            "group_by_hint":  self.group_by_hint,
-            "sql_fragment":   _sql_map.get(self.op_type, "NULL"),
+            "group_by_hint": self.group_by_hint,
+            "sql_fragment": _sql_map.get(self.op_type, "NULL"),
         }
 
 
 # ── Aggregation intent classification ─────────────────────────────────────────
 
 # Words that carry aggregation intent — stripped before entity extraction
-_AGG_WORDS: frozenset[str] = frozenset({
-    "count", "total", "sum", "how", "many", "number", "of",
-    "max", "maximum", "min", "minimum", "avg", "average", "mean",
-    "highest", "lowest", "top", "bottom",
-    "unique", "distinct", "different",          # DISTINCT signals
-})
+_AGG_WORDS: frozenset[str] = frozenset(
+    {
+        "count",
+        "total",
+        "sum",
+        "how",
+        "many",
+        "number",
+        "of",
+        "max",
+        "maximum",
+        "min",
+        "minimum",
+        "avg",
+        "average",
+        "mean",
+        "highest",
+        "lowest",
+        "top",
+        "bottom",
+        "unique",
+        "distinct",
+        "different",  # DISTINCT signals
+    }
+)
 
 # Patterns → (MetaOpType, agg_word)  — checked in priority order
 _AGG_PATTERNS: list[tuple[re.Pattern, MetaOpType, str]] = [
@@ -150,7 +173,7 @@ _AGG_PATTERNS: list[tuple[re.Pattern, MetaOpType, str]] = [
 
 # Group-by signal: "per X", "by X", "for each X", "grouped by X"
 _GROUP_RE = re.compile(
-    r'\b(?:per|by|for each|grouped by|group by)\s+([\w][\w\s]{0,30}?)(?:\s*$|\s+and\b)',
+    r"\b(?:per|by|for each|grouped by|group by)\s+([\w][\w\s]{0,30}?)(?:\s*$|\s+and\b)",
     re.I,
 )
 
@@ -178,6 +201,7 @@ def _extract_entity(hint: str) -> str:
 
 
 # ── Main interpreter ───────────────────────────────────────────────────────────
+
 
 def interpret_meta_query(
     hint: str,
@@ -268,6 +292,7 @@ def interpret_meta_query(
 
 # ── SQL fragment generator ─────────────────────────────────────────────────────
 
+
 def meta_op_to_sql_fragment(op: MetaQueryOp) -> str:
     """
     Convert a MetaQueryOp to a partial SQL SELECT expression.
@@ -303,6 +328,7 @@ def meta_op_to_sql_fragment(op: MetaQueryOp) -> str:
 
 
 # ── Self-test ─────────────────────────────────────────────────────────────────
+
 
 def _run_self_test():
     import sys
@@ -384,4 +410,5 @@ def _run_self_test():
 
 if __name__ == "__main__":
     import sys
+
     sys.exit(0 if _run_self_test() else 1)

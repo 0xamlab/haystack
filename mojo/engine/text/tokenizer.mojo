@@ -56,33 +56,62 @@ fn _is_whitespace(c: Int) -> Bool:
 
 fn _substr(s: String, start: Int, end: Int) -> String:
     """Extract a substring from s using byte positions."""
-    var sb = s.as_bytes()
-    var result = String("")
-    for i in range(start, end):
-        result += chr(Int(sb[i]))
-    return result^
+    return String(s[byte=start:end])
+
+
+fn _all_unique(tokens: List[String]) -> Bool:
+    var n = len(tokens)
+    for i in range(n):
+        for j in range(i):
+            if tokens[j] == tokens[i]:
+                return False
+    return True
 
 
 fn is_stopword(word: String) -> Bool:
     """Check if word is a common English stopword (35 words)."""
-    if word == "the" or word == "a" or word == "an" or word == "is":
-        return True
-    if word == "are" or word == "was" or word == "were" or word == "be":
-        return True
-    if word == "been" or word == "being" or word == "have" or word == "has":
-        return True
-    if word == "had" or word == "do" or word == "does" or word == "did":
-        return True
-    if word == "in" or word == "on" or word == "at" or word == "to":
-        return True
-    if word == "for" or word == "of" or word == "and" or word == "or":
-        return True
-    if word == "but" or word == "not" or word == "with" or word == "this":
-        return True
-    if word == "that" or word == "it" or word == "from" or word == "by":
-        return True
-    if word == "as" or word == "if" or word == "so":
-        return True
+    var b = word.as_bytes()
+    var n = len(b)
+    if n == 1:
+        return Int(b[0]) == ord("a")
+
+    if n == 2:
+        var c0 = Int(b[0])
+        var c1 = Int(b[1])
+        if c0 == ord("a"):
+            return c1 == ord("n") or c1 == ord("t") or c1 == ord("s")
+        if c0 == ord("b"):
+            return c1 == ord("e") or c1 == ord("y")
+        if c0 == ord("d"):
+            return c1 == ord("o")
+        if c0 == ord("i"):
+            return c1 == ord("n") or c1 == ord("f") or c1 == ord("s") or c1 == ord("t")
+        if c0 == ord("o"):
+            return c1 == ord("f") or c1 == ord("n") or c1 == ord("r")
+        if c0 == ord("s"):
+            return c1 == ord("o")
+        if c0 == ord("t"):
+            return c1 == ord("o")
+        return False
+
+    if n == 3:
+        if word == "the" or word == "are" or word == "was" or word == "has":
+            return True
+        if word == "had" or word == "did" or word == "for" or word == "and":
+            return True
+        if word == "but" or word == "not":
+            return True
+        return False
+
+    if n == 4:
+        if word == "were" or word == "been" or word == "have" or word == "does":
+            return True
+        if word == "with" or word == "this" or word == "that" or word == "from":
+            return True
+        return False
+
+    if n == 5:
+        return word == "being"
     return False
 
 
@@ -96,7 +125,9 @@ fn word_tokenize(text: String) -> List[String]:
     """
     var b = text.as_bytes()
     var n = len(b)
-    var tokens = List[String]()
+    if n == 0:
+        return List[String]()
+    var tokens = List[String](capacity=n)
     var current = String("")
 
     for i in range(n):
@@ -128,7 +159,7 @@ fn sentence_tokenize(text: String) -> List[String]:
     """
     var b = text.as_bytes()
     var n = len(b)
-    var sentences = List[String]()
+    var sentences = List[String](capacity=n)
     var start = 0
 
     for i in range(n):
@@ -169,9 +200,9 @@ fn sentence_tokenize(text: String) -> List[String]:
 fn char_ngrams(text: String, n: Int) -> List[String]:
     """Generate character-level n-grams from text."""
     var length = len(text)
-    var result = List[String]()
     if n <= 0 or length < n:
-        return result^
+        return List[String]()
+    var result = List[String](capacity=length - n + 1)
     for i in range(length - n + 1):
         result.append(_substr(text, i, i + n))
     return result^
@@ -182,10 +213,42 @@ fn char_ngrams(text: String, n: Int) -> List[String]:
 
 fn word_ngrams(tokens: List[String], n: Int) -> List[String]:
     """Generate word-level n-grams joined with '_'."""
-    var result = List[String]()
     var length = len(tokens)
     if n <= 0 or length < n:
+        return List[String]()
+    if length == n:
+        var result = List[String](capacity=1)
+        if n == 1:
+            result.append(tokens[0])
+            return result^
+        if n == 2:
+            result.append(tokens[0] + "_" + tokens[1])
+            return result^
+        if n == 3:
+            result.append(tokens[0] + "_" + tokens[1] + "_" + tokens[2])
+            return result^
+        if n == 4:
+            result.append(tokens[0] + "_" + tokens[1] + "_" + tokens[2] + "_" + tokens[3])
+            return result^
+        if n == 5:
+            result.append(
+                tokens[0]
+                + "_"
+                + tokens[1]
+                + "_"
+                + tokens[2]
+                + "_"
+                + tokens[3]
+                + "_"
+                + tokens[4]
+            )
+            return result^
+        var gram = tokens[0]
+        for j in range(1, n):
+            gram += "_" + tokens[j]
+        result.append(gram)
         return result^
+    var result = List[String](capacity=length - n + 1)
     for i in range(length - n + 1):
         var gram = tokens[i]
         for j in range(1, n):
@@ -199,8 +262,9 @@ fn word_ngrams(tokens: List[String], n: Int) -> List[String]:
 
 fn remove_stopwords(tokens: List[String]) -> List[String]:
     """Remove common English stopwords from token list."""
-    var result = List[String]()
-    for i in range(len(tokens)):
+    var n = len(tokens)
+    var result = List[String](capacity=n)
+    for i in range(n):
         if not is_stopword(tokens[i]):
             result.append(tokens[i])
     return result^
@@ -254,16 +318,17 @@ fn stem_simple(word: String) -> String:
 
 fn vocabulary_size(tokens: List[String]) -> Int:
     """Count unique tokens in the list (O(n²) simple approach)."""
-    var unique = List[String]()
-    for i in range(len(tokens)):
-        var found = False
-        for j in range(len(unique)):
-            if unique[j] == tokens[i]:
-                found = True
+    var n = len(tokens)
+    var count = 0
+    for i in range(n):
+        var seen = False
+        for j in range(i):
+            if tokens[j] == tokens[i]:
+                seen = True
                 break
-        if not found:
-            unique.append(tokens[i])
-    return len(unique)
+        if not seen:
+            count += 1
+    return count
 
 
 # ── Token Frequency ───────────────────────────────────────────────────────────
@@ -274,9 +339,22 @@ fn token_frequency(tokens: List[String]) -> List[List[String]]:
 
     O(n²) approach suitable for moderate-sized token lists.
     """
-    var unique = List[String]()
-    var counts = List[Int]()
-    for i in range(len(tokens)):
+    var n_tokens = len(tokens)
+    if n_tokens == 0:
+        return List[List[String]]()
+
+    if _all_unique(tokens):
+        var unique_result = List[List[String]](capacity=n_tokens)
+        for i in range(n_tokens):
+            var pair = List[String](capacity=2)
+            pair.append(tokens[i])
+            pair.append("1")
+            unique_result.append(pair^)
+        return unique_result^
+
+    var unique = List[String](capacity=n_tokens)
+    var counts = List[Int](capacity=n_tokens)
+    for i in range(n_tokens):
         var found = False
         for j in range(len(unique)):
             if unique[j] == tokens[i]:
@@ -287,21 +365,22 @@ fn token_frequency(tokens: List[String]) -> List[List[String]]:
             unique.append(tokens[i])
             counts.append(1)
 
-    # Bubble sort by count descending
+    # Stable insertion sort by count descending.
     var nu = len(unique)
-    for i in range(nu):
-        for j in range(0, nu - i - 1):
-            if counts[j] < counts[j + 1]:
-                var tmp_c = counts[j]
-                counts[j] = counts[j + 1]
-                counts[j + 1] = tmp_c
-                var tmp_t = unique[j]
-                unique[j] = unique[j + 1]
-                unique[j + 1] = tmp_t
+    for i in range(1, nu):
+        var key_count = counts[i]
+        var key_token = unique[i]
+        var j = i - 1
+        while j >= 0 and counts[j] < key_count:
+            counts[j + 1] = counts[j]
+            unique[j + 1] = unique[j]
+            j -= 1
+        counts[j + 1] = key_count
+        unique[j + 1] = key_token
 
-    var result = List[List[String]]()
+    var result = List[List[String]](capacity=nu)
     for i in range(nu):
-        var pair = List[String]()
+        var pair = List[String](capacity=2)
         pair.append(unique[i])
         pair.append(String(counts[i]))
         result.append(pair^)
@@ -319,11 +398,16 @@ fn pad_sequence(
     If tokens shorter than max_len, pad on right.
     If tokens longer, truncate to max_len.
     """
-    var result = List[String]()
+    if max_len <= 0:
+        return List[String]()
+
     var n = len(tokens)
-    for i in range(max_len):
-        if i < n:
-            result.append(tokens[i])
-        else:
-            result.append(pad_token)
+    var result = List[String](capacity=max_len)
+    var copy_len = n
+    if copy_len > max_len:
+        copy_len = max_len
+    for i in range(copy_len):
+        result.append(tokens[i])
+    for _ in range(copy_len, max_len):
+        result.append(pad_token)
     return result^

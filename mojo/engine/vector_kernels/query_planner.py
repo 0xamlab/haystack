@@ -27,6 +27,7 @@ Public API:
 Self-test:
     python3 -m mojo.engine.vector_kernels.query_planner
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -50,18 +51,20 @@ if TYPE_CHECKING:
 
 # ── Field resolution record ───────────────────────────────────────────────────
 
+
 @dataclass
 class FieldResolution:
     """
     One resolved field — wraps VectorResolverResult with a pre-built SQL expression.
     """
-    hint:     str
-    source:   str | None
-    column:   str | None
-    outcome:  ResolverOutcome
-    reason:   ResolverReason
-    score:    float
-    sql_expr: str   # ready-to-embed SQL expression for this field
+
+    hint: str
+    source: str | None
+    column: str | None
+    outcome: ResolverOutcome
+    reason: ResolverReason
+    score: float
+    sql_expr: str  # ready-to-embed SQL expression for this field
 
     @property
     def resolved(self) -> bool:
@@ -70,17 +73,18 @@ class FieldResolution:
 
     def to_log_dict(self) -> dict:
         return {
-            "hint":     self.hint,
-            "source":   self.source,
-            "column":   self.column,
-            "outcome":  self.outcome.value,
-            "reason":   self.reason.value,
-            "score":    round(self.score, 4),
+            "hint": self.hint,
+            "source": self.source,
+            "column": self.column,
+            "outcome": self.outcome.value,
+            "reason": self.reason.value,
+            "score": round(self.score, 4),
             "sql_expr": self.sql_expr,
         }
 
 
 # ── Query plan ────────────────────────────────────────────────────────────────
+
 
 @dataclass
 class QueryPlan:
@@ -100,14 +104,15 @@ class QueryPlan:
     Use sql_sketch for a human-readable summary; use to_log_dict() for
     structured logging.
     """
-    metric:         FieldResolution | None
-    group_by:       list[FieldResolution] = field(default_factory=list)
-    date_filter:    FieldResolution | None = None
-    filters:        list[FieldResolution] = field(default_factory=list)
-    meta_op:        MetaQueryOp | None = None
-    sources:        list[str] = field(default_factory=list)
+
+    metric: FieldResolution | None
+    group_by: list[FieldResolution] = field(default_factory=list)
+    date_filter: FieldResolution | None = None
+    filters: list[FieldResolution] = field(default_factory=list)
+    meta_op: MetaQueryOp | None = None
+    sources: list[str] = field(default_factory=list)
     fully_resolved: bool = False
-    steps:          list[str] = field(default_factory=list)
+    steps: list[str] = field(default_factory=list)
 
     @property
     def sql_sketch(self) -> str:
@@ -160,18 +165,19 @@ class QueryPlan:
     def to_log_dict(self) -> dict:
         """Structured dict for logging / audit — includes all field details."""
         return {
-            "metric":         self.metric.to_log_dict() if self.metric else None,
-            "meta_op":        self.meta_op.to_log_dict() if self.meta_op else None,
-            "group_by":       [r.to_log_dict() for r in self.group_by],
-            "date_filter":    self.date_filter.to_log_dict() if self.date_filter else None,
-            "filters":        [r.to_log_dict() for r in self.filters],
-            "sources":        self.sources,
+            "metric": self.metric.to_log_dict() if self.metric else None,
+            "meta_op": self.meta_op.to_log_dict() if self.meta_op else None,
+            "group_by": [r.to_log_dict() for r in self.group_by],
+            "date_filter": self.date_filter.to_log_dict() if self.date_filter else None,
+            "filters": [r.to_log_dict() for r in self.filters],
+            "sources": self.sources,
             "fully_resolved": self.fully_resolved,
-            "sql_sketch":     self.sql_sketch,
+            "sql_sketch": self.sql_sketch,
         }
 
 
 # ── QueryPlanner ──────────────────────────────────────────────────────────────
+
 
 class QueryPlanner:
     """
@@ -200,7 +206,7 @@ class QueryPlanner:
     def _resolve_field(
         self,
         hint: str,
-        src:  str | None,
+        src: str | None,
         role: str | None,
         accept_weak: bool = True,
     ) -> FieldResolution:
@@ -208,10 +214,13 @@ class QueryPlanner:
         vr = self._resolver.resolve(hint, preferred_source=src, role_hint=role)
         if vr is None:
             return FieldResolution(
-                hint=hint, source=None, column=None,
+                hint=hint,
+                source=None,
+                column=None,
                 outcome=ResolverOutcome.NO_COLUMN_MATCH,
                 reason=ResolverReason.NO_SIGNAL,
-                score=0.0, sql_expr="?",
+                score=0.0,
+                sql_expr="?",
             )
         # Column expression for the field
         if vr.outcome in (ResolverOutcome.COLUMN_MATCH, ResolverOutcome.WEAK_MATCH):
@@ -219,15 +228,19 @@ class QueryPlanner:
         else:
             sql_expr = "?"
         return FieldResolution(
-            hint=hint, source=vr.source, column=vr.column,
-            outcome=vr.outcome, reason=vr.reason,
-            score=vr.score, sql_expr=sql_expr,
+            hint=hint,
+            source=vr.source,
+            column=vr.column,
+            outcome=vr.outcome,
+            reason=vr.reason,
+            score=vr.score,
+            sql_expr=sql_expr,
         )
 
     def _resolve_metric(
         self,
         hint: str,
-        src:  str | None,
+        src: str | None,
         role: str | None,
         metric_is_critical: bool,
     ) -> tuple[FieldResolution, MetaQueryOp | None]:
@@ -238,10 +251,13 @@ class QueryPlanner:
         vr = self._resolver.resolve(hint, preferred_source=src, role_hint=role)
         if vr is None:
             fr = FieldResolution(
-                hint=hint, source=None, column=None,
+                hint=hint,
+                source=None,
+                column=None,
                 outcome=ResolverOutcome.NO_COLUMN_MATCH,
                 reason=ResolverReason.NO_SIGNAL,
-                score=0.0, sql_expr="?",
+                score=0.0,
+                sql_expr="?",
             )
             return fr, None
 
@@ -258,9 +274,13 @@ class QueryPlanner:
             sql_expr = "?"
 
         fr = FieldResolution(
-            hint=hint, source=vr.source, column=vr.column,
-            outcome=vr.outcome, reason=vr.reason,
-            score=vr.score, sql_expr=sql_expr,
+            hint=hint,
+            source=vr.source,
+            column=vr.column,
+            outcome=vr.outcome,
+            reason=vr.reason,
+            score=vr.score,
+            sql_expr=sql_expr,
         )
         return fr, meta_op
 
@@ -269,10 +289,10 @@ class QueryPlanner:
     def plan(
         self,
         *,
-        metric:             tuple[str, str | None, str | None] | None = None,
-        group_by:           list[tuple[str, str | None, str | None]] | None = None,
-        date:               tuple[str, str | None, str | None] | None = None,
-        filters:            list[tuple[str, str | None, str | None]] | None = None,
+        metric: tuple[str, str | None, str | None] | None = None,
+        group_by: list[tuple[str, str | None, str | None]] | None = None,
+        date: tuple[str, str | None, str | None] | None = None,
+        filters: list[tuple[str, str | None, str | None]] | None = None,
         metric_is_critical: bool = True,
     ) -> QueryPlan:
         """
@@ -293,43 +313,40 @@ class QueryPlanner:
 
         # ── Metric ──────────────────────────────────────────────────────────
         metric_fr: FieldResolution | None = None
-        meta_op:   MetaQueryOp | None = None
+        meta_op: MetaQueryOp | None = None
         if metric is not None:
             hint, src, role = metric
             metric_fr, meta_op = self._resolve_metric(hint, src, role, metric_is_critical)
             steps.append(
                 f"[metric] {hint!r} → outcome={metric_fr.outcome.value}  "
                 f"reason={metric_fr.reason.value}  score={metric_fr.score:.3f}"
-                + (f"  sql={meta_op_to_sql_fragment(meta_op)}" if meta_op else
-                   f"  col={metric_fr.column}")
+                + (
+                    f"  sql={meta_op_to_sql_fragment(meta_op)}"
+                    if meta_op
+                    else f"  col={metric_fr.column}"
+                )
             )
 
         # ── Group-by fields ─────────────────────────────────────────────────
         group_by_resolutions: list[FieldResolution] = []
-        for hint, src, role in (group_by or []):
+        for hint, src, role in group_by or []:
             fr = self._resolve_field(hint, src, role, accept_weak=True)
             group_by_resolutions.append(fr)
-            steps.append(
-                f"[group_by] {hint!r} → outcome={fr.outcome.value}  col={fr.column}"
-            )
+            steps.append(f"[group_by] {hint!r} → outcome={fr.outcome.value}  col={fr.column}")
 
         # ── Date filter ─────────────────────────────────────────────────────
         date_fr: FieldResolution | None = None
         if date is not None:
             hint, src, role = date
             date_fr = self._resolve_field(hint, src, role, accept_weak=True)
-            steps.append(
-                f"[date] {hint!r} → outcome={date_fr.outcome.value}  col={date_fr.column}"
-            )
+            steps.append(f"[date] {hint!r} → outcome={date_fr.outcome.value}  col={date_fr.column}")
 
         # ── Where filters ───────────────────────────────────────────────────
         filter_resolutions: list[FieldResolution] = []
-        for hint, src, role in (filters or []):
+        for hint, src, role in filters or []:
             fr = self._resolve_field(hint, src, role, accept_weak=True)
             filter_resolutions.append(fr)
-            steps.append(
-                f"[filter] {hint!r} → outcome={fr.outcome.value}  col={fr.column}"
-            )
+            steps.append(f"[filter] {hint!r} → outcome={fr.outcome.value}  col={fr.column}")
 
         # ── Assemble sources ────────────────────────────────────────────────
         source_set: list[str] = []
@@ -347,8 +364,7 @@ class QueryPlanner:
             + filter_resolutions
         )
         fully_resolved = all(
-            f.resolved or f.outcome == ResolverOutcome.META_QUERY
-            for f in all_fields
+            f.resolved or f.outcome == ResolverOutcome.META_QUERY for f in all_fields
         )
 
         plan = QueryPlan(
@@ -367,6 +383,7 @@ class QueryPlanner:
 
 # ── Self-test ─────────────────────────────────────────────────────────────────
 
+
 def _run_self_test():
     import sys
 
@@ -375,19 +392,19 @@ def _run_self_test():
 
     schema = {
         "POS": [
-            ("UNIT_PRICE",    "unit_measure"),
-            ("EXT_PRICE",     "derived_measure"),
-            ("QTY",           "base_measure"),
-            ("ORDER_DATE",    "other"),
+            ("UNIT_PRICE", "unit_measure"),
+            ("EXT_PRICE", "derived_measure"),
+            ("QTY", "base_measure"),
+            ("ORDER_DATE", "other"),
             ("CUSTOMER_NAME", "other"),
-            ("ORDER_STATUS",  "other"),
+            ("ORDER_STATUS", "other"),
         ],
         "Totals": [
             ("Net_Sales", "derived_measure"),
-            ("Tips",      "derived_measure"),
-            ("Guests",    "base_measure"),
-            ("PPA",       "ratio"),
-            ("Sold",      "base_measure"),
+            ("Tips", "derived_measure"),
+            ("Guests", "base_measure"),
+            ("PPA", "ratio"),
+            ("Sold", "base_measure"),
         ],
     }
     r = ColumnVectorResolver(schema)
@@ -403,7 +420,8 @@ def _run_self_test():
         date=("order date", "POS", "other"),
     )
     ok1 = (
-        plan1.metric is not None and plan1.metric.column == "EXT_PRICE"
+        plan1.metric is not None
+        and plan1.metric.column == "EXT_PRICE"
         and len(plan1.group_by) == 1
         and plan1.date_filter is not None
     )
@@ -417,10 +435,7 @@ def _run_self_test():
         metric=("server count", "POS", "base_measure"),
         group_by=[],
     )
-    ok2 = (
-        plan2.meta_op is not None
-        and plan2.meta_op.op_type == MetaOpType.COUNT_ROWS
-    )
+    ok2 = plan2.meta_op is not None and plan2.meta_op.op_type == MetaOpType.COUNT_ROWS
     if not ok2:
         all_ok = False
     _emit(f"  {'PASS' if ok2 else 'FAIL'}  meta COUNT_ROWS")
@@ -438,9 +453,7 @@ def _run_self_test():
     )
     if not ok3:
         all_ok = False
-    _emit(
-        f"  {'PASS' if ok3 else 'FAIL'}  meta COUNT_NON_NULL(Guests) + group_by"
-    )
+    _emit(f"  {'PASS' if ok3 else 'FAIL'}  meta COUNT_NON_NULL(Guests) + group_by")
     _emit(f"  sql: {plan3.sql_sketch.replace(chr(10), ' | ')}\n")
 
     # ── Case 4: per person average (PPA) with date filter ────────────────────
@@ -468,4 +481,5 @@ def _run_self_test():
 
 if __name__ == "__main__":
     import sys
+
     sys.exit(0 if _run_self_test() else 1)

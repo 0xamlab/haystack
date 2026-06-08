@@ -1,6 +1,6 @@
 {
   "bundle": "llm_rollout_proof_bundle",
-  "generated_at": "2026-06-08T01:38:19Z",
+  "generated_at": "2026-06-08T01:45:12Z",
   "expected_modules": 22,
   "expected_functions": 209,
   "public_supported_channels": [
@@ -2000,7 +2000,7 @@
         "tests/test_algenta_mojo_sdk.py"
       ],
       "status": "passed",
-      "elapsed_seconds": 3.738,
+      "elapsed_seconds": 3.384,
       "passed": 1,
       "failed": 0,
       "skipped": 0
@@ -2026,7 +2026,7 @@
         "packages/ts-sdk/src/libraries.test.ts"
       ],
       "status": "passed",
-      "elapsed_seconds": 3.099,
+      "elapsed_seconds": 3.636,
       "passed": 1,
       "failed": 0,
       "skipped": 8
@@ -2049,7 +2049,7 @@
         "apps/api_server/config.py"
       ],
       "status": "passed",
-      "elapsed_seconds": 25.022,
+      "elapsed_seconds": 22.354,
       "passed": 2,
       "failed": 0,
       "skipped": 0

@@ -19,6 +19,31 @@ Public API:
 from std.math import sqrt, abs as fabs
 
 
+fn _same_indices(a: List[Int], b: List[Int]) -> Bool:
+    if len(a) != len(b):
+        return False
+    for i in range(len(a)):
+        if a[i] != b[i]:
+            return False
+    return True
+
+
+fn _is_identity_indices(indices: List[Int], size: Int) -> Bool:
+    if len(indices) != size:
+        return False
+    for i in range(size):
+        if indices[i] != i:
+            return False
+    return True
+
+
+fn _all_above_tol(values: List[Float64], tol: Float64) -> Bool:
+    for i in range(len(values)):
+        if fabs(values[i]) <= tol:
+            return False
+    return True
+
+
 # ── sv_dot ─────────────────────────────────────────────────────────────────────
 
 
@@ -52,12 +77,25 @@ fn sv_add(
     idx_b: List[Int], val_b: List[Float64],
 ) -> List[List[Float64]]:
     """Sparse addition. Returns [[merged_indices_as_float], [merged_values]]."""
-    var merged_idx = List[Float64]()
-    var merged_val = List[Float64]()
-    var i = 0
-    var j = 0
     var na = len(idx_a)
     var nb = len(idx_b)
+    if _same_indices(idx_a, idx_b):
+        var same_idx = List[Float64](capacity=na)
+        var same_val = List[Float64](capacity=na)
+        for i in range(na):
+            var s = val_a[i] + val_b[i]
+            if fabs(s) > 1e-15:
+                same_idx.append(Float64(idx_a[i]))
+                same_val.append(s)
+        var same_result = List[List[Float64]](capacity=2)
+        same_result.append(same_idx^)
+        same_result.append(same_val^)
+        return same_result^
+
+    var merged_idx = List[Float64](capacity=na + nb)
+    var merged_val = List[Float64](capacity=na + nb)
+    var i = 0
+    var j = 0
     while i < na and j < nb:
         if idx_a[i] == idx_b[j]:
             var s = val_a[i] + val_b[j]
@@ -82,7 +120,7 @@ fn sv_add(
         merged_idx.append(Float64(idx_b[j]))
         merged_val.append(val_b[j])
         j += 1
-    var result = List[List[Float64]]()
+    var result = List[List[Float64]](capacity=2)
     result.append(merged_idx^)
     result.append(merged_val^)
     return result^
@@ -93,9 +131,10 @@ fn sv_add(
 
 fn sv_scale(values: List[Float64], scalar: Float64) -> List[Float64]:
     """Scale all values by a scalar."""
-    var out = List[Float64]()
-    for i in range(len(values)):
-        out.append(values[i] * scalar)
+    var out = values.copy()
+    var n = len(out)
+    for i in range(n):
+        out[i] = out[i] * scalar
     return out^
 
 
@@ -131,7 +170,12 @@ fn sv_cosine(
 
 fn sv_to_dense(indices: List[Int], values: List[Float64], size: Int) -> List[Float64]:
     """Convert sparse representation to dense vector."""
-    var out = List[Float64]()
+    if size <= 0:
+        return List[Float64]()
+    if len(values) == size and _is_identity_indices(indices, size):
+        return values.copy()
+
+    var out = List[Float64](capacity=size)
     for i in range(size):
         out.append(0.0)
     for i in range(len(indices)):
@@ -145,13 +189,22 @@ fn sv_to_dense(indices: List[Int], values: List[Float64], size: Int) -> List[Flo
 
 fn dense_to_sparse(dense: List[Float64], tol: Float64 = 1e-15) -> List[List[Float64]]:
     """Convert dense vector to sparse. Returns [[indices_as_float], [values]]."""
-    var idx = List[Float64]()
-    var vals = List[Float64]()
-    for i in range(len(dense)):
+    var n = len(dense)
+    if _all_above_tol(dense, tol):
+        var dense_idx = List[Float64](capacity=n)
+        for i in range(n):
+            dense_idx.append(Float64(i))
+        var dense_result = List[List[Float64]](capacity=2)
+        dense_result.append(dense_idx^)
+        dense_result.append(dense.copy())
+        return dense_result^
+    var idx = List[Float64](capacity=n)
+    var vals = List[Float64](capacity=n)
+    for i in range(n):
         if fabs(dense[i]) > tol:
             idx.append(Float64(i))
             vals.append(dense[i])
-    var result = List[List[Float64]]()
+    var result = List[List[Float64]](capacity=2)
     result.append(idx^)
     result.append(vals^)
     return result^

@@ -16,6 +16,7 @@ Public API:
 Self-test:
     python3 mojo/engine/vector_kernels/tokenizer.py
 """
+
 from __future__ import annotations
 
 import re
@@ -24,8 +25,8 @@ from typing import NamedTuple
 
 # ── Tokenizer ─────────────────────────────────────────────────────────────────
 
-_SEPARATOR_RE = re.compile(r'[_\-/\s]+')
-_CAMEL_RE     = re.compile(r'(?<=[a-z0-9])(?=[A-Z])')   # split camelCase
+_SEPARATOR_RE = re.compile(r"[_\-/\s]+")
+_CAMEL_RE = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")  # split camelCase
 
 
 def tokenize_name(name: str) -> list[str]:
@@ -48,7 +49,7 @@ def tokenize_name(name: str) -> list[str]:
         "salesOrderQty"  → ["sales", "order", "qty"]
     """
     # Insert space before uppercase runs (camelCase split)
-    s = _CAMEL_RE.sub(' ', name)
+    s = _CAMEL_RE.sub(" ", name)
     # Split on separator characters
     parts = _SEPARATOR_RE.split(s)
     # Lowercase + filter
@@ -67,87 +68,74 @@ def tokenize_name(name: str) -> list[str]:
 
 ALIASES: dict[str, list[str]] = {
     # Quantity aliases
-    "qty":      ["quantity"],
+    "qty": ["quantity"],
     "quantity": ["qty"],
-    "qoh":      ["quantity", "on", "hand"],
-
+    "qoh": ["quantity", "on", "hand"],
     # Price / cost aliases
-    "price":    ["cost", "rate"],
-    "cost":     ["price", "rate"],
-    "rate":     ["price", "cost"],
-    "amt":      ["amount"],
-    "amount":   ["amt"],
-
+    "price": ["cost", "rate"],
+    "cost": ["price", "rate"],
+    "rate": ["price", "cost"],
+    "amt": ["amount"],
+    "amount": ["amt"],
     # Extended / total aliases
-    "ext":      ["extended", "total"],
+    "ext": ["extended", "total"],
     "extended": ["ext"],
-    "total":    ["ext", "extended", "sum"],
-    "sum":      ["total"],
-
+    "total": ["ext", "extended", "sum"],
+    "sum": ["total"],
     # Unit aliases
-    "unit":     ["each", "per"],
-    "each":     ["unit"],
-    "uom":      ["unit", "measure"],
-    "um":       ["unit", "measure"],
-    "uoi":      ["unit"],
-
+    "unit": ["each", "per"],
+    "each": ["unit"],
+    "uom": ["unit", "measure"],
+    "um": ["unit", "measure"],
+    "uoi": ["unit"],
     # Part / item aliases
-    "pn":       ["part", "number"],
-    "partno":   ["part", "number"],
-    "item":     ["part", "product"],
-    "part":     ["item", "pn"],
-    "sku":      ["item", "part"],
-
+    "pn": ["part", "number"],
+    "partno": ["part", "number"],
+    "item": ["part", "product"],
+    "part": ["item", "pn"],
+    "sku": ["item", "part"],
     # Overhead / cost type
-    "oh":       ["overhead"],
+    "oh": ["overhead"],
     "overhead": ["oh"],
-
     # Date aliases
-    "dt":       ["date"],
-    "date":     ["dt"],
-
+    "dt": ["date"],
+    "date": ["dt"],
     # Description
-    "desc":     ["description"],
+    "desc": ["description"],
     "description": ["desc"],
-
     # Source / origin
-    "src":      ["source"],
-    "source":   ["src"],
-
+    "src": ["source"],
+    "source": ["src"],
     # Number / id
-    "no":       ["number", "id"],
-    "num":      ["number"],
-    "id":       ["no", "number"],
-    "number":   ["no", "num", "id"],
-
+    "no": ["number", "id"],
+    "num": ["number"],
+    "id": ["no", "number"],
+    "number": ["no", "num", "id"],
     # Order
-    "ord":      ["order"],
-    "order":    ["ord"],
-
+    "ord": ["order"],
+    "order": ["ord"],
     # Line
-    "ln":       ["line"],
-    "line":     ["ln"],
-
+    "ln": ["line"],
+    "line": ["ln"],
     # Sales / revenue synonyms
-    "revenue":  ["sales", "income"],
-    "sales":    ["revenue"],
-    "income":   ["revenue", "sales"],
-
+    "revenue": ["sales", "income"],
+    "sales": ["revenue"],
+    "income": ["revenue", "sales"],
     # Hospitality / restaurant POS domain
-    "ppa":      ["per", "person", "average"],   # Per Person Average abbreviation
-    "avg":      ["average"],
-    "average":  ["avg"],
-    "guests":   ["guest", "covers", "diners"],
-    "guest":    ["guests", "covers"],
-    "covers":   ["guests", "guest"],            # industry term for table guests
-    "sold":     ["quantity", "qty"],
-    "tips":     ["gratuity"],
+    "ppa": ["per", "person", "average"],  # Per Person Average abbreviation
+    "avg": ["average"],
+    "average": ["avg"],
+    "guests": ["guest", "covers", "diners"],
+    "guest": ["guests", "covers"],
+    "covers": ["guests", "guest"],  # industry term for table guests
+    "sold": ["quantity", "qty"],
+    "tips": ["gratuity"],
     "gratuity": ["tips"],
 }
 
 
 def expand_tokens(
-    tokens:  list[str],
+    tokens: list[str],
     aliases: dict[str, list[str]] | None = None,
 ) -> list[tuple[str, float]]:
     """
@@ -175,6 +163,7 @@ def expand_tokens(
 
 # ── Vocabulary: string ↔ integer id ──────────────────────────────────────────
 
+
 @dataclass
 class Vocab:
     """
@@ -184,9 +173,10 @@ class Vocab:
     _aliases stores the combined (global + domain) alias table used at build
     time so query_ids() expands with the same rules as the index.
     """
-    token_to_id: dict[str, int]       = field(default_factory=dict)
-    id_to_token: list[str]            = field(default_factory=list)
-    _aliases:    dict[str, list[str]] = field(default_factory=dict)
+
+    token_to_id: dict[str, int] = field(default_factory=dict)
+    id_to_token: list[str] = field(default_factory=list)
+    _aliases: dict[str, list[str]] = field(default_factory=dict)
 
     @property
     def size(self) -> int:
@@ -221,6 +211,7 @@ class Vocab:
 
 # ── IndexData: ready-to-pass-to-Mojo integer arrays ──────────────────────────
 
+
 class IndexData(NamedTuple):
     """
     Flat integer data ready for TokenIndexBuilder.add_column().
@@ -228,7 +219,8 @@ class IndexData(NamedTuple):
     col_token_ids[i]  = list of (token_id, weight) for column i
     vocab_size        = total number of distinct tokens
     """
-    vocab_size:    int
+
+    vocab_size: int
     col_token_ids: list[list[tuple[int, float]]]  # [col_idx] → [(tok_id, weight)]
 
 
@@ -250,7 +242,7 @@ def merge_aliases(
 
 
 def build_vocab(
-    column_names:  list[str],
+    column_names: list[str],
     extra_aliases: dict[str, list[str]] | None = None,
 ) -> Vocab:
     """
@@ -306,10 +298,11 @@ def build_index_data(vocab: Vocab, column_names: list[str]) -> IndexData:
 
 # ── planner_resolve: Python entry point for full typed resolution ─────────────
 
+
 def make_query_token_ids(
-    vocab:    Vocab,
-    name:     str,
-    max_ids:  int = 8,
+    vocab: Vocab,
+    name: str,
+    max_ids: int = 8,
 ) -> list[int]:
     """
     Convert a query name to token IDs for Mojo QueryForRank.set_token_ids().
@@ -322,20 +315,21 @@ def make_query_token_ids(
 
 # ── Self-test ─────────────────────────────────────────────────────────────────
 
+
 def _test_tokenizer():
     cases = [
-        ("unit_price",      ["unit", "price"]),
-        ("ExtendedAmt",     ["extended", "amt"]),
-        ("OH_COST",         ["oh", "cost"]),
-        ("ORDERED_ON",      ["ordered", "on"]),
-        ("LineItemTotal",   ["line", "item", "total"]),
-        ("ext-price",       ["ext", "price"]),
-        ("salesOrderQty",   ["sales", "order", "qty"]),
-        ("UNIT_PRICE",      ["unit", "price"]),
-        ("total_amount",    ["total", "amount"]),
-        ("part_number",     ["part", "number"]),
-        ("customer_name",   ["customer", "name"]),
-        ("invoice_date",    ["invoice", "date"]),
+        ("unit_price", ["unit", "price"]),
+        ("ExtendedAmt", ["extended", "amt"]),
+        ("OH_COST", ["oh", "cost"]),
+        ("ORDERED_ON", ["ordered", "on"]),
+        ("LineItemTotal", ["line", "item", "total"]),
+        ("ext-price", ["ext", "price"]),
+        ("salesOrderQty", ["sales", "order", "qty"]),
+        ("UNIT_PRICE", ["unit", "price"]),
+        ("total_amount", ["total", "amount"]),
+        ("part_number", ["part", "number"]),
+        ("customer_name", ["customer", "name"]),
+        ("invoice_date", ["invoice", "date"]),
     ]
     for name, expected in cases:
         got = tokenize_name(name)
@@ -350,10 +344,10 @@ def _test_tokenizer():
 def _test_alias_expand():
     # "unit_price" → tokens: unit, price → aliases: each, per, cost, rate
     expanded = dict(expand_tokens(["unit", "price"]))
-    assert "unit"  in expanded and expanded["unit"]  == 1.0
+    assert "unit" in expanded and expanded["unit"] == 1.0
     assert "price" in expanded and expanded["price"] == 1.0
-    assert "cost"  in expanded and expanded["cost"]  == 0.8
-    assert "each"  in expanded and expanded["each"]  == 0.8
+    assert "cost" in expanded and expanded["cost"] == 0.8
+    assert "each" in expanded and expanded["each"] == 0.8
     _emit("  PASS alias expansion for ['unit', 'price']")
     _emit(f"       → tokens: {sorted(expanded.keys())}")
     _emit()
