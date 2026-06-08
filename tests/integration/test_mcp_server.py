@@ -31,6 +31,14 @@ if __name__ != "__main__":
         allow_module_level=True,
     )
 
+import os
+import sys
+
+if __name__ == "__main__" and os.environ.get("ALGENTA_SKIP_MOJO_RUNTIME", "0") == "1":
+    print("[skip] tests/integration/test_mcp_server.py — ALGENTA_SKIP_MOJO_RUNTIME=1")
+    sys.exit(0)
+
+
 import asyncio
 import atexit
 import contextlib
