@@ -1,0 +1,1448 @@
+{
+  "matrix_summary": {
+    "total_cases": 19,
+    "configured_cases": 8,
+    "behavior_ready_cases": 8,
+    "tiers": {
+      "public_no_auth": {
+        "total": 8,
+        "configured": 7,
+        "behavior_ready": 7
+      },
+      "credentialed_example": {
+        "total": 2,
+        "configured": 0,
+        "behavior_ready": 0
+      },
+      "customer_credentials_required": {
+        "total": 9,
+        "configured": 1,
+        "behavior_ready": 1
+      }
+    }
+  },
+  "requirement_failures": [],
+  "completed_steps": [
+    "connectivity"
+  ],
+  "failed_steps": [
+    "full_real"
+  ],
+  "planned_steps": [
+    {
+      "name": "connectivity",
+      "command": [
+        "/Users/angel/Developer/decision-engine/.venv/bin/python",
+        "-u",
+        "/Users/angel/Developer/decision-engine/tests/integration/test_go_live_connectivity_real.py",
+        "--parallel-tasks",
+        "4"
+      ]
+    },
+    {
+      "name": "full_real",
+      "command": [
+        "/Users/angel/Developer/decision-engine/.venv/bin/python",
+        "-u",
+        "/Users/angel/Developer/decision-engine/tests/integration/test_go_live_full_real.py",
+        "--parallel-tasks",
+        "4",
+        "--mojo-workers",
+        "4",
+        "--mojo-timeout",
+        "30"
+      ]
+    },
+    {
+      "name": "pytest",
+      "command": [
+        "/Users/angel/Developer/decision-engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "tests",
+        "-q"
+      ]
+    }
+  ],
+  "step_results": [
+    {
+      "name": "connectivity",
+      "returncode": 0,
+      "duration_s": 27.63
+    },
+    {
+      "name": "full_real",
+      "returncode": 1,
+      "duration_s": 797.101
+    }
+  ],
+  "generated_at": "2026-05-30T00:22:07Z",
+  "python_executable": "/Users/angel/Developer/decision-engine/.venv/bin/python",
+  "output_path": "/Users/angel/Developer/decision-engine/build/go_live_verify_summary.json",
+  "filters": {
+    "tiers": [],
+    "connectors": []
+  },
+  "options": {
+    "include_full_real": true,
+    "include_pytest": true,
+    "require_all_configured": false,
+    "require_all_behavior_ready": false,
+    "strict": false
+  },
+  "static_operational_gaps": [
+    {
+      "case_id": "dlt_github_issues_token",
+      "label": "dlt GitHub token example source registration",
+      "tier": "credentialed_example",
+      "connector_type": "rest_api",
+      "gap_type": "not_configured",
+      "reason": "required env not provided: DE_TEST_GITHUB_TOKEN"
+    },
+    {
+      "case_id": "fivetran_fred_gnpca",
+      "label": "Fivetran FRED example source registration",
+      "tier": "credentialed_example",
+      "connector_type": "rest_api",
+      "gap_type": "not_configured",
+      "reason": "required env not provided: DE_TEST_FRED_API_KEY"
+    },
+    {
+      "case_id": "bigquery_customer_connector_test",
+      "label": "BigQuery connector /test",
+      "tier": "customer_credentials_required",
+      "connector_type": "bigquery",
+      "gap_type": "not_configured",
+      "reason": "required env not provided: DE_TEST_BIGQUERY_PROJECT_ID, DE_TEST_BIGQUERY_SERVICE_ACCOUNT_JSON"
+    },
+    {
+      "case_id": "clickhouse_customer_connector_test",
+      "label": "ClickHouse connector /test",
+      "tier": "customer_credentials_required",
+      "connector_type": "clickhouse",
+      "gap_type": "not_configured",
+      "reason": "required env not provided: DE_TEST_CLICKHOUSE_URL, DE_TEST_CLICKHOUSE_USER, DE_TEST_CLICKHOUSE_PASSWORD"
+    },
+    {
+      "case_id": "customer_azure_blob_source_registration",
+      "label": "Custom Azure Blob source registration",
+      "tier": "customer_credentials_required",
+      "connector_type": "azure_blob",
+      "gap_type": "not_configured",
+      "reason": "required env not provided: DE_TEST_AZURE_BLOB_URL or (DE_TEST_AZURE_CONNECTION_STRING or DE_TEST_AZURE_ACCOUNT_URL) + DE_TEST_AZURE_CONTAINER + DE_TEST_AZURE_BLOB"
+    },
+    {
+      "case_id": "customer_gcs_source_registration",
+      "label": "Custom GCS source registration",
+      "tier": "customer_credentials_required",
+      "connector_type": "gcs",
+      "gap_type": "not_configured",
+      "reason": "required env not provided: DE_TEST_GCS_BUCKET, DE_TEST_GCS_BLOB"
+    },
+    {
+      "case_id": "customer_s3_source_registration",
+      "label": "Custom S3 source registration",
+      "tier": "customer_credentials_required",
+      "connector_type": "s3",
+      "gap_type": "not_configured",
+      "reason": "required env not provided: DE_TEST_S3_BUCKET, DE_TEST_S3_KEY"
+    },
+    {
+      "case_id": "elasticsearch_customer_connector_test",
+      "label": "Elasticsearch connector /test",
+      "tier": "customer_credentials_required",
+      "connector_type": "elasticsearch",
+      "gap_type": "not_configured",
+      "reason": "required env not provided: DE_TEST_ELASTICSEARCH_URL, DE_TEST_ELASTICSEARCH_API_KEY"
+    },
+    {
+      "case_id": "neo4j_customer_connector_test",
+      "label": "Neo4j connector /test",
+      "tier": "customer_credentials_required",
+      "connector_type": "neo4j",
+      "gap_type": "not_configured",
+      "reason": "required env not provided: DE_TEST_NEO4J_URI, DE_TEST_NEO4J_USERNAME, DE_TEST_NEO4J_PASSWORD"
+    },
+    {
+      "case_id": "redis_customer_connector_test",
+      "label": "Redis connector /test",
+      "tier": "customer_credentials_required",
+      "connector_type": "redis",
+      "gap_type": "not_configured",
+      "reason": "required env not provided: DE_TEST_REDIS_URL"
+    },
+    {
+      "case_id": "dlt_github_issues",
+      "label": "dlt GitHub issues example source registration",
+      "tier": "public_no_auth",
+      "connector_type": "rest_api",
+      "gap_type": "not_configured",
+      "reason": "unauthenticated dlt GitHub issues case disabled by default; set DE_ENABLE_SLOW_PUBLIC_REST_CASES=1"
+    }
+  ],
+  "live_connectivity_skips": [
+    {
+      "case_id": "dlt_github_issues_token",
+      "label": "dlt GitHub token example source registration",
+      "tier": "credentialed_example",
+      "connector_type": "rest_api",
+      "gap_type": "not_configured",
+      "reason": "required env not provided: DE_TEST_GITHUB_TOKEN"
+    },
+    {
+      "case_id": "fivetran_fred_gnpca",
+      "label": "Fivetran FRED example source registration",
+      "tier": "credentialed_example",
+      "connector_type": "rest_api",
+      "gap_type": "not_configured",
+      "reason": "required env not provided: DE_TEST_FRED_API_KEY"
+    },
+    {
+      "case_id": "bigquery_customer_connector_test",
+      "label": "BigQuery connector /test",
+      "tier": "customer_credentials_required",
+      "connector_type": "bigquery",
+      "gap_type": "not_configured",
+      "reason": "required env not provided: DE_TEST_BIGQUERY_PROJECT_ID, DE_TEST_BIGQUERY_SERVICE_ACCOUNT_JSON"
+    },
+    {
+      "case_id": "clickhouse_customer_connector_test",
+      "label": "ClickHouse connector /test",
+      "tier": "customer_credentials_required",
+      "connector_type": "clickhouse",
+      "gap_type": "not_configured",
+      "reason": "required env not provided: DE_TEST_CLICKHOUSE_URL, DE_TEST_CLICKHOUSE_USER, DE_TEST_CLICKHOUSE_PASSWORD"
+    },
+    {
+      "case_id": "customer_azure_blob_source_registration",
+      "label": "Custom Azure Blob source registration",
+      "tier": "customer_credentials_required",
+      "connector_type": "azure_blob",
+      "gap_type": "not_configured",
+      "reason": "required env not provided: DE_TEST_AZURE_BLOB_URL or (DE_TEST_AZURE_CONNECTION_STRING or DE_TEST_AZURE_ACCOUNT_URL) + DE_TEST_AZURE_CONTAINER + DE_TEST_AZURE_BLOB"
+    },
+    {
+      "case_id": "customer_gcs_source_registration",
+      "label": "Custom GCS source registration",
+      "tier": "customer_credentials_required",
+      "connector_type": "gcs",
+      "gap_type": "not_configured",
+      "reason": "required env not provided: DE_TEST_GCS_BUCKET, DE_TEST_GCS_BLOB"
+    },
+    {
+      "case_id": "customer_s3_source_registration",
+      "label": "Custom S3 source registration",
+      "tier": "customer_credentials_required",
+      "connector_type": "s3",
+      "gap_type": "not_configured",
+      "reason": "required env not provided: DE_TEST_S3_BUCKET, DE_TEST_S3_KEY"
+    },
+    {
+      "case_id": "elasticsearch_customer_connector_test",
+      "label": "Elasticsearch connector /test",
+      "tier": "customer_credentials_required",
+      "connector_type": "elasticsearch",
+      "gap_type": "not_configured",
+      "reason": "required env not provided: DE_TEST_ELASTICSEARCH_URL, DE_TEST_ELASTICSEARCH_API_KEY"
+    },
+    {
+      "case_id": "neo4j_customer_connector_test",
+      "label": "Neo4j connector /test",
+      "tier": "customer_credentials_required",
+      "connector_type": "neo4j",
+      "gap_type": "not_configured",
+      "reason": "required env not provided: DE_TEST_NEO4J_URI, DE_TEST_NEO4J_USERNAME, DE_TEST_NEO4J_PASSWORD"
+    },
+    {
+      "case_id": "redis_customer_connector_test",
+      "label": "Redis connector /test",
+      "tier": "customer_credentials_required",
+      "connector_type": "redis",
+      "gap_type": "not_configured",
+      "reason": "required env not provided: DE_TEST_REDIS_URL"
+    },
+    {
+      "case_id": "snowflake_customer_connector_test",
+      "label": "Snowflake connector /test",
+      "tier": "customer_credentials_required",
+      "connector_type": "snowflake",
+      "gap_type": "not_behavior_ready",
+      "reason": "Snowflake live validation blocked by account network policy; skipping external customer-credential case."
+    },
+    {
+      "case_id": "dlt_github_issues",
+      "label": "dlt GitHub issues example source registration",
+      "tier": "public_no_auth",
+      "connector_type": "rest_api",
+      "gap_type": "not_configured",
+      "reason": "unauthenticated dlt GitHub issues case disabled by default; set DE_ENABLE_SLOW_PUBLIC_REST_CASES=1"
+    }
+  ],
+  "operational_gaps": [
+    {
+      "case_id": "dlt_github_issues_token",
+      "label": "dlt GitHub token example source registration",
+      "tier": "credentialed_example",
+      "connector_type": "rest_api",
+      "gap_type": "not_configured",
+      "reason": "required env not provided: DE_TEST_GITHUB_TOKEN",
+      "source": "static_matrix+live_connectivity",
+      "sources": [
+        "static_matrix",
+        "live_connectivity"
+      ],
+      "static_reason": "required env not provided: DE_TEST_GITHUB_TOKEN",
+      "live_reason": "required env not provided: DE_TEST_GITHUB_TOKEN",
+      "action_codes": [
+        "set_credentialed_example_envs"
+      ]
+    },
+    {
+      "case_id": "fivetran_fred_gnpca",
+      "label": "Fivetran FRED example source registration",
+      "tier": "credentialed_example",
+      "connector_type": "rest_api",
+      "gap_type": "not_configured",
+      "reason": "required env not provided: DE_TEST_FRED_API_KEY",
+      "source": "static_matrix+live_connectivity",
+      "sources": [
+        "static_matrix",
+        "live_connectivity"
+      ],
+      "static_reason": "required env not provided: DE_TEST_FRED_API_KEY",
+      "live_reason": "required env not provided: DE_TEST_FRED_API_KEY",
+      "action_codes": [
+        "set_credentialed_example_envs"
+      ]
+    },
+    {
+      "case_id": "bigquery_customer_connector_test",
+      "label": "BigQuery connector /test",
+      "tier": "customer_credentials_required",
+      "connector_type": "bigquery",
+      "gap_type": "not_configured",
+      "reason": "required env not provided: DE_TEST_BIGQUERY_PROJECT_ID, DE_TEST_BIGQUERY_SERVICE_ACCOUNT_JSON",
+      "source": "static_matrix+live_connectivity",
+      "sources": [
+        "static_matrix",
+        "live_connectivity"
+      ],
+      "static_reason": "required env not provided: DE_TEST_BIGQUERY_PROJECT_ID, DE_TEST_BIGQUERY_SERVICE_ACCOUNT_JSON",
+      "live_reason": "required env not provided: DE_TEST_BIGQUERY_PROJECT_ID, DE_TEST_BIGQUERY_SERVICE_ACCOUNT_JSON",
+      "action_codes": [
+        "set_customer_connector_envs"
+      ]
+    },
+    {
+      "case_id": "clickhouse_customer_connector_test",
+      "label": "ClickHouse connector /test",
+      "tier": "customer_credentials_required",
+      "connector_type": "clickhouse",
+      "gap_type": "not_configured",
+      "reason": "required env not provided: DE_TEST_CLICKHOUSE_URL, DE_TEST_CLICKHOUSE_USER, DE_TEST_CLICKHOUSE_PASSWORD",
+      "source": "static_matrix+live_connectivity",
+      "sources": [
+        "static_matrix",
+        "live_connectivity"
+      ],
+      "static_reason": "required env not provided: DE_TEST_CLICKHOUSE_URL, DE_TEST_CLICKHOUSE_USER, DE_TEST_CLICKHOUSE_PASSWORD",
+      "live_reason": "required env not provided: DE_TEST_CLICKHOUSE_URL, DE_TEST_CLICKHOUSE_USER, DE_TEST_CLICKHOUSE_PASSWORD",
+      "action_codes": [
+        "set_customer_connector_envs"
+      ]
+    },
+    {
+      "case_id": "customer_azure_blob_source_registration",
+      "label": "Custom Azure Blob source registration",
+      "tier": "customer_credentials_required",
+      "connector_type": "azure_blob",
+      "gap_type": "not_configured",
+      "reason": "required env not provided: DE_TEST_AZURE_BLOB_URL or (DE_TEST_AZURE_CONNECTION_STRING or DE_TEST_AZURE_ACCOUNT_URL) + DE_TEST_AZURE_CONTAINER + DE_TEST_AZURE_BLOB",
+      "source": "static_matrix+live_connectivity",
+      "sources": [
+        "static_matrix",
+        "live_connectivity"
+      ],
+      "static_reason": "required env not provided: DE_TEST_AZURE_BLOB_URL or (DE_TEST_AZURE_CONNECTION_STRING or DE_TEST_AZURE_ACCOUNT_URL) + DE_TEST_AZURE_CONTAINER + DE_TEST_AZURE_BLOB",
+      "live_reason": "required env not provided: DE_TEST_AZURE_BLOB_URL or (DE_TEST_AZURE_CONNECTION_STRING or DE_TEST_AZURE_ACCOUNT_URL) + DE_TEST_AZURE_CONTAINER + DE_TEST_AZURE_BLOB",
+      "action_codes": [
+        "set_customer_connector_envs"
+      ]
+    },
+    {
+      "case_id": "customer_gcs_source_registration",
+      "label": "Custom GCS source registration",
+      "tier": "customer_credentials_required",
+      "connector_type": "gcs",
+      "gap_type": "not_configured",
+      "reason": "required env not provided: DE_TEST_GCS_BUCKET, DE_TEST_GCS_BLOB",
+      "source": "static_matrix+live_connectivity",
+      "sources": [
+        "static_matrix",
+        "live_connectivity"
+      ],
+      "static_reason": "required env not provided: DE_TEST_GCS_BUCKET, DE_TEST_GCS_BLOB",
+      "live_reason": "required env not provided: DE_TEST_GCS_BUCKET, DE_TEST_GCS_BLOB",
+      "action_codes": [
+        "set_customer_connector_envs"
+      ]
+    },
+    {
+      "case_id": "customer_s3_source_registration",
+      "label": "Custom S3 source registration",
+      "tier": "customer_credentials_required",
+      "connector_type": "s3",
+      "gap_type": "not_configured",
+      "reason": "required env not provided: DE_TEST_S3_BUCKET, DE_TEST_S3_KEY",
+      "source": "static_matrix+live_connectivity",
+      "sources": [
+        "static_matrix",
+        "live_connectivity"
+      ],
+      "static_reason": "required env not provided: DE_TEST_S3_BUCKET, DE_TEST_S3_KEY",
+      "live_reason": "required env not provided: DE_TEST_S3_BUCKET, DE_TEST_S3_KEY",
+      "action_codes": [
+        "set_customer_connector_envs"
+      ]
+    },
+    {
+      "case_id": "elasticsearch_customer_connector_test",
+      "label": "Elasticsearch connector /test",
+      "tier": "customer_credentials_required",
+      "connector_type": "elasticsearch",
+      "gap_type": "not_configured",
+      "reason": "required env not provided: DE_TEST_ELASTICSEARCH_URL, DE_TEST_ELASTICSEARCH_API_KEY",
+      "source": "static_matrix+live_connectivity",
+      "sources": [
+        "static_matrix",
+        "live_connectivity"
+      ],
+      "static_reason": "required env not provided: DE_TEST_ELASTICSEARCH_URL, DE_TEST_ELASTICSEARCH_API_KEY",
+      "live_reason": "required env not provided: DE_TEST_ELASTICSEARCH_URL, DE_TEST_ELASTICSEARCH_API_KEY",
+      "action_codes": [
+        "set_customer_connector_envs"
+      ]
+    },
+    {
+      "case_id": "neo4j_customer_connector_test",
+      "label": "Neo4j connector /test",
+      "tier": "customer_credentials_required",
+      "connector_type": "neo4j",
+      "gap_type": "not_configured",
+      "reason": "required env not provided: DE_TEST_NEO4J_URI, DE_TEST_NEO4J_USERNAME, DE_TEST_NEO4J_PASSWORD",
+      "source": "static_matrix+live_connectivity",
+      "sources": [
+        "static_matrix",
+        "live_connectivity"
+      ],
+      "static_reason": "required env not provided: DE_TEST_NEO4J_URI, DE_TEST_NEO4J_USERNAME, DE_TEST_NEO4J_PASSWORD",
+      "live_reason": "required env not provided: DE_TEST_NEO4J_URI, DE_TEST_NEO4J_USERNAME, DE_TEST_NEO4J_PASSWORD",
+      "action_codes": [
+        "set_customer_connector_envs"
+      ]
+    },
+    {
+      "case_id": "redis_customer_connector_test",
+      "label": "Redis connector /test",
+      "tier": "customer_credentials_required",
+      "connector_type": "redis",
+      "gap_type": "not_configured",
+      "reason": "required env not provided: DE_TEST_REDIS_URL",
+      "source": "static_matrix+live_connectivity",
+      "sources": [
+        "static_matrix",
+        "live_connectivity"
+      ],
+      "static_reason": "required env not provided: DE_TEST_REDIS_URL",
+      "live_reason": "required env not provided: DE_TEST_REDIS_URL",
+      "action_codes": [
+        "set_customer_connector_envs"
+      ]
+    },
+    {
+      "case_id": "snowflake_customer_connector_test",
+      "label": "Snowflake connector /test",
+      "tier": "customer_credentials_required",
+      "connector_type": "snowflake",
+      "gap_type": "not_behavior_ready",
+      "reason": "Snowflake live validation blocked by account network policy; skipping external customer-credential case.",
+      "source": "live_connectivity",
+      "sources": [
+        "live_connectivity"
+      ],
+      "static_reason": null,
+      "live_reason": "Snowflake live validation blocked by account network policy; skipping external customer-credential case.",
+      "action_codes": [
+        "resolve_network_policy_blockers"
+      ]
+    },
+    {
+      "case_id": "dlt_github_issues",
+      "label": "dlt GitHub issues example source registration",
+      "tier": "public_no_auth",
+      "connector_type": "rest_api",
+      "gap_type": "not_configured",
+      "reason": "unauthenticated dlt GitHub issues case disabled by default; set DE_ENABLE_SLOW_PUBLIC_REST_CASES=1",
+      "source": "static_matrix+live_connectivity",
+      "sources": [
+        "static_matrix",
+        "live_connectivity"
+      ],
+      "static_reason": "unauthenticated dlt GitHub issues case disabled by default; set DE_ENABLE_SLOW_PUBLIC_REST_CASES=1",
+      "live_reason": "unauthenticated dlt GitHub issues case disabled by default; set DE_ENABLE_SLOW_PUBLIC_REST_CASES=1",
+      "action_codes": [
+        "enable_opt_in_public_cases"
+      ]
+    }
+  ],
+  "gap_source_summary": {
+    "static_gap_count": 11,
+    "live_skip_count": 12,
+    "merged_gap_count": 12,
+    "live_only_case_ids": [
+      "snowflake_customer_connector_test"
+    ],
+    "static_only_case_ids": [],
+    "merged_case_ids": [
+      "bigquery_customer_connector_test",
+      "clickhouse_customer_connector_test",
+      "customer_azure_blob_source_registration",
+      "customer_gcs_source_registration",
+      "customer_s3_source_registration",
+      "dlt_github_issues",
+      "dlt_github_issues_token",
+      "elasticsearch_customer_connector_test",
+      "fivetran_fred_gnpca",
+      "neo4j_customer_connector_test",
+      "redis_customer_connector_test",
+      "snowflake_customer_connector_test"
+    ],
+    "static_gap_counts_by_tier": {
+      "credentialed_example": 2,
+      "customer_credentials_required": 8,
+      "public_no_auth": 1
+    },
+    "static_gap_counts_by_connector_type": {
+      "azure_blob": 1,
+      "bigquery": 1,
+      "clickhouse": 1,
+      "elasticsearch": 1,
+      "gcs": 1,
+      "neo4j": 1,
+      "redis": 1,
+      "rest_api": 3,
+      "s3": 1
+    },
+    "live_skip_counts_by_tier": {
+      "credentialed_example": 2,
+      "customer_credentials_required": 9,
+      "public_no_auth": 1
+    },
+    "live_skip_counts_by_connector_type": {
+      "azure_blob": 1,
+      "bigquery": 1,
+      "clickhouse": 1,
+      "elasticsearch": 1,
+      "gcs": 1,
+      "neo4j": 1,
+      "redis": 1,
+      "rest_api": 3,
+      "s3": 1,
+      "snowflake": 1
+    },
+    "merged_gap_counts_by_tier": {
+      "credentialed_example": 2,
+      "customer_credentials_required": 9,
+      "public_no_auth": 1
+    },
+    "merged_gap_counts_by_connector_type": {
+      "azure_blob": 1,
+      "bigquery": 1,
+      "clickhouse": 1,
+      "elasticsearch": 1,
+      "gcs": 1,
+      "neo4j": 1,
+      "redis": 1,
+      "rest_api": 3,
+      "s3": 1,
+      "snowflake": 1
+    },
+    "merged_gap_counts_by_source": {
+      "live_connectivity": 1,
+      "static_matrix+live_connectivity": 11
+    }
+  },
+  "next_actions": [
+    {
+      "code": "enable_opt_in_public_cases",
+      "message": "Enable the optional public REST cases before rerunning the public connectivity proof.",
+      "command": "DE_ENABLE_SLOW_PUBLIC_REST_CASES=1 make test-go-live-connectivity",
+      "details": {
+        "case_ids": [
+          "dlt_github_issues"
+        ],
+        "env_names": [
+          "DE_ENABLE_SLOW_PUBLIC_REST_CASES"
+        ]
+      }
+    },
+    {
+      "code": "set_credentialed_example_envs",
+      "message": "Set the missing Tier 2 credentialed-example environment variables and rerun the focused Tier 2 connectivity slice.",
+      "command": "make go-live-status-tier2 && make test-go-live-connectivity-tier2",
+      "details": {
+        "case_ids": [
+          "dlt_github_issues_token",
+          "fivetran_fred_gnpca"
+        ],
+        "env_names": [
+          "DE_TEST_FRED_API_KEY",
+          "DE_TEST_GITHUB_TOKEN"
+        ]
+      }
+    },
+    {
+      "code": "set_customer_connector_envs",
+      "message": "Set the missing Tier 3 customer-credential variables and rerun the focused customer-connector connectivity slice.",
+      "command": "make go-live-status-tier3 && make test-go-live-connectivity-tier3",
+      "details": {
+        "case_ids": [
+          "bigquery_customer_connector_test",
+          "clickhouse_customer_connector_test",
+          "customer_azure_blob_source_registration",
+          "customer_gcs_source_registration",
+          "customer_s3_source_registration",
+          "elasticsearch_customer_connector_test",
+          "neo4j_customer_connector_test",
+          "redis_customer_connector_test"
+        ],
+        "env_names": [
+          "DE_TEST_AZURE_ACCOUNT_URL",
+          "DE_TEST_AZURE_BLOB",
+          "DE_TEST_AZURE_BLOB_URL",
+          "DE_TEST_AZURE_CONNECTION_STRING",
+          "DE_TEST_AZURE_CONTAINER",
+          "DE_TEST_BIGQUERY_PROJECT_ID",
+          "DE_TEST_BIGQUERY_SERVICE_ACCOUNT_JSON",
+          "DE_TEST_CLICKHOUSE_PASSWORD",
+          "DE_TEST_CLICKHOUSE_URL",
+          "DE_TEST_CLICKHOUSE_USER",
+          "DE_TEST_ELASTICSEARCH_API_KEY",
+          "DE_TEST_ELASTICSEARCH_URL",
+          "DE_TEST_GCS_BLOB",
+          "DE_TEST_GCS_BUCKET",
+          "DE_TEST_NEO4J_PASSWORD",
+          "DE_TEST_NEO4J_URI",
+          "DE_TEST_NEO4J_USERNAME",
+          "DE_TEST_REDIS_URL",
+          "DE_TEST_S3_BUCKET",
+          "DE_TEST_S3_KEY"
+        ]
+      }
+    },
+    {
+      "code": "resolve_network_policy_blockers",
+      "message": "Resolve the remaining network-policy-gated customer connector probes before rerunning the Tier 3 slice.",
+      "command": "make go-live-probe-snowflake",
+      "details": {
+        "case_ids": [
+          "snowflake_customer_connector_test"
+        ]
+      }
+    },
+    {
+      "code": "rerun_strict_go_live_gate",
+      "message": "After the listed operational gaps are cleared, rerun the strict matrix and the full go-live verifier.",
+      "command": "make go-live-status-strict && make go-live-verify-all"
+    }
+  ],
+  "gap_action_summary": {
+    "mapped_case_count": 12,
+    "unmapped_case_ids": [],
+    "action_case_counts": {
+      "enable_opt_in_public_cases": 1,
+      "resolve_network_policy_blockers": 1,
+      "set_credentialed_example_envs": 2,
+      "set_customer_connector_envs": 8
+    },
+    "action_case_ids": {
+      "enable_opt_in_public_cases": [
+        "dlt_github_issues"
+      ],
+      "resolve_network_policy_blockers": [
+        "snowflake_customer_connector_test"
+      ],
+      "set_credentialed_example_envs": [
+        "dlt_github_issues_token",
+        "fivetran_fred_gnpca"
+      ],
+      "set_customer_connector_envs": [
+        "bigquery_customer_connector_test",
+        "clickhouse_customer_connector_test",
+        "customer_azure_blob_source_registration",
+        "customer_gcs_source_registration",
+        "customer_s3_source_registration",
+        "elasticsearch_customer_connector_test",
+        "neo4j_customer_connector_test",
+        "redis_customer_connector_test"
+      ]
+    },
+    "action_env_names": {
+      "enable_opt_in_public_cases": [
+        "DE_ENABLE_SLOW_PUBLIC_REST_CASES"
+      ],
+      "set_credentialed_example_envs": [
+        "DE_TEST_FRED_API_KEY",
+        "DE_TEST_GITHUB_TOKEN"
+      ],
+      "set_customer_connector_envs": [
+        "DE_TEST_AZURE_ACCOUNT_URL",
+        "DE_TEST_AZURE_BLOB",
+        "DE_TEST_AZURE_BLOB_URL",
+        "DE_TEST_AZURE_CONNECTION_STRING",
+        "DE_TEST_AZURE_CONTAINER",
+        "DE_TEST_BIGQUERY_PROJECT_ID",
+        "DE_TEST_BIGQUERY_SERVICE_ACCOUNT_JSON",
+        "DE_TEST_CLICKHOUSE_PASSWORD",
+        "DE_TEST_CLICKHOUSE_URL",
+        "DE_TEST_CLICKHOUSE_USER",
+        "DE_TEST_ELASTICSEARCH_API_KEY",
+        "DE_TEST_ELASTICSEARCH_URL",
+        "DE_TEST_GCS_BLOB",
+        "DE_TEST_GCS_BUCKET",
+        "DE_TEST_NEO4J_PASSWORD",
+        "DE_TEST_NEO4J_URI",
+        "DE_TEST_NEO4J_USERNAME",
+        "DE_TEST_REDIS_URL",
+        "DE_TEST_S3_BUCKET",
+        "DE_TEST_S3_KEY"
+      ]
+    },
+    "action_env_counts": {
+      "enable_opt_in_public_cases": 1,
+      "set_credentialed_example_envs": 2,
+      "set_customer_connector_envs": 20
+    },
+    "action_connector_types": {
+      "enable_opt_in_public_cases": [
+        "rest_api"
+      ],
+      "resolve_network_policy_blockers": [
+        "snowflake"
+      ],
+      "set_credentialed_example_envs": [
+        "rest_api"
+      ],
+      "set_customer_connector_envs": [
+        "azure_blob",
+        "bigquery",
+        "clickhouse",
+        "elasticsearch",
+        "gcs",
+        "neo4j",
+        "redis",
+        "s3"
+      ]
+    },
+    "action_connector_counts": {
+      "enable_opt_in_public_cases": 1,
+      "resolve_network_policy_blockers": 1,
+      "set_credentialed_example_envs": 1,
+      "set_customer_connector_envs": 8
+    },
+    "terminal_action_codes": [
+      "rerun_strict_go_live_gate"
+    ]
+  },
+  "gap_connector_summary": {
+    "connector_case_counts": {
+      "azure_blob": 1,
+      "bigquery": 1,
+      "clickhouse": 1,
+      "elasticsearch": 1,
+      "gcs": 1,
+      "neo4j": 1,
+      "redis": 1,
+      "rest_api": 3,
+      "s3": 1,
+      "snowflake": 1
+    },
+    "connector_case_ids": {
+      "azure_blob": [
+        "customer_azure_blob_source_registration"
+      ],
+      "bigquery": [
+        "bigquery_customer_connector_test"
+      ],
+      "clickhouse": [
+        "clickhouse_customer_connector_test"
+      ],
+      "elasticsearch": [
+        "elasticsearch_customer_connector_test"
+      ],
+      "gcs": [
+        "customer_gcs_source_registration"
+      ],
+      "neo4j": [
+        "neo4j_customer_connector_test"
+      ],
+      "redis": [
+        "redis_customer_connector_test"
+      ],
+      "rest_api": [
+        "dlt_github_issues",
+        "dlt_github_issues_token",
+        "fivetran_fred_gnpca"
+      ],
+      "s3": [
+        "customer_s3_source_registration"
+      ],
+      "snowflake": [
+        "snowflake_customer_connector_test"
+      ]
+    },
+    "connector_action_codes": {
+      "azure_blob": [
+        "set_customer_connector_envs"
+      ],
+      "bigquery": [
+        "set_customer_connector_envs"
+      ],
+      "clickhouse": [
+        "set_customer_connector_envs"
+      ],
+      "elasticsearch": [
+        "set_customer_connector_envs"
+      ],
+      "gcs": [
+        "set_customer_connector_envs"
+      ],
+      "neo4j": [
+        "set_customer_connector_envs"
+      ],
+      "redis": [
+        "set_customer_connector_envs"
+      ],
+      "rest_api": [
+        "enable_opt_in_public_cases",
+        "set_credentialed_example_envs"
+      ],
+      "s3": [
+        "set_customer_connector_envs"
+      ],
+      "snowflake": [
+        "resolve_network_policy_blockers"
+      ]
+    },
+    "connector_env_counts": {
+      "azure_blob": 5,
+      "bigquery": 2,
+      "clickhouse": 3,
+      "elasticsearch": 2,
+      "gcs": 2,
+      "neo4j": 3,
+      "redis": 1,
+      "rest_api": 3,
+      "s3": 2
+    },
+    "connector_env_names": {
+      "azure_blob": [
+        "DE_TEST_AZURE_ACCOUNT_URL",
+        "DE_TEST_AZURE_BLOB",
+        "DE_TEST_AZURE_BLOB_URL",
+        "DE_TEST_AZURE_CONNECTION_STRING",
+        "DE_TEST_AZURE_CONTAINER"
+      ],
+      "bigquery": [
+        "DE_TEST_BIGQUERY_PROJECT_ID",
+        "DE_TEST_BIGQUERY_SERVICE_ACCOUNT_JSON"
+      ],
+      "clickhouse": [
+        "DE_TEST_CLICKHOUSE_PASSWORD",
+        "DE_TEST_CLICKHOUSE_URL",
+        "DE_TEST_CLICKHOUSE_USER"
+      ],
+      "elasticsearch": [
+        "DE_TEST_ELASTICSEARCH_API_KEY",
+        "DE_TEST_ELASTICSEARCH_URL"
+      ],
+      "gcs": [
+        "DE_TEST_GCS_BLOB",
+        "DE_TEST_GCS_BUCKET"
+      ],
+      "neo4j": [
+        "DE_TEST_NEO4J_PASSWORD",
+        "DE_TEST_NEO4J_URI",
+        "DE_TEST_NEO4J_USERNAME"
+      ],
+      "redis": [
+        "DE_TEST_REDIS_URL"
+      ],
+      "rest_api": [
+        "DE_ENABLE_SLOW_PUBLIC_REST_CASES",
+        "DE_TEST_FRED_API_KEY",
+        "DE_TEST_GITHUB_TOKEN"
+      ],
+      "s3": [
+        "DE_TEST_S3_BUCKET",
+        "DE_TEST_S3_KEY"
+      ]
+    }
+  },
+  "gap_env_summary": {
+    "env_total_count": 23,
+    "shared_env_names": [],
+    "tier_env_counts": {
+      "credentialed_example": 2,
+      "customer_credentials_required": 20,
+      "public_no_auth": 1
+    },
+    "env_case_counts": {
+      "DE_ENABLE_SLOW_PUBLIC_REST_CASES": 1,
+      "DE_TEST_AZURE_ACCOUNT_URL": 1,
+      "DE_TEST_AZURE_BLOB": 1,
+      "DE_TEST_AZURE_BLOB_URL": 1,
+      "DE_TEST_AZURE_CONNECTION_STRING": 1,
+      "DE_TEST_AZURE_CONTAINER": 1,
+      "DE_TEST_BIGQUERY_PROJECT_ID": 1,
+      "DE_TEST_BIGQUERY_SERVICE_ACCOUNT_JSON": 1,
+      "DE_TEST_CLICKHOUSE_PASSWORD": 1,
+      "DE_TEST_CLICKHOUSE_URL": 1,
+      "DE_TEST_CLICKHOUSE_USER": 1,
+      "DE_TEST_ELASTICSEARCH_API_KEY": 1,
+      "DE_TEST_ELASTICSEARCH_URL": 1,
+      "DE_TEST_FRED_API_KEY": 1,
+      "DE_TEST_GCS_BLOB": 1,
+      "DE_TEST_GCS_BUCKET": 1,
+      "DE_TEST_GITHUB_TOKEN": 1,
+      "DE_TEST_NEO4J_PASSWORD": 1,
+      "DE_TEST_NEO4J_URI": 1,
+      "DE_TEST_NEO4J_USERNAME": 1,
+      "DE_TEST_REDIS_URL": 1,
+      "DE_TEST_S3_BUCKET": 1,
+      "DE_TEST_S3_KEY": 1
+    },
+    "env_case_ids": {
+      "DE_ENABLE_SLOW_PUBLIC_REST_CASES": [
+        "dlt_github_issues"
+      ],
+      "DE_TEST_AZURE_ACCOUNT_URL": [
+        "customer_azure_blob_source_registration"
+      ],
+      "DE_TEST_AZURE_BLOB": [
+        "customer_azure_blob_source_registration"
+      ],
+      "DE_TEST_AZURE_BLOB_URL": [
+        "customer_azure_blob_source_registration"
+      ],
+      "DE_TEST_AZURE_CONNECTION_STRING": [
+        "customer_azure_blob_source_registration"
+      ],
+      "DE_TEST_AZURE_CONTAINER": [
+        "customer_azure_blob_source_registration"
+      ],
+      "DE_TEST_BIGQUERY_PROJECT_ID": [
+        "bigquery_customer_connector_test"
+      ],
+      "DE_TEST_BIGQUERY_SERVICE_ACCOUNT_JSON": [
+        "bigquery_customer_connector_test"
+      ],
+      "DE_TEST_CLICKHOUSE_PASSWORD": [
+        "clickhouse_customer_connector_test"
+      ],
+      "DE_TEST_CLICKHOUSE_URL": [
+        "clickhouse_customer_connector_test"
+      ],
+      "DE_TEST_CLICKHOUSE_USER": [
+        "clickhouse_customer_connector_test"
+      ],
+      "DE_TEST_ELASTICSEARCH_API_KEY": [
+        "elasticsearch_customer_connector_test"
+      ],
+      "DE_TEST_ELASTICSEARCH_URL": [
+        "elasticsearch_customer_connector_test"
+      ],
+      "DE_TEST_FRED_API_KEY": [
+        "fivetran_fred_gnpca"
+      ],
+      "DE_TEST_GCS_BLOB": [
+        "customer_gcs_source_registration"
+      ],
+      "DE_TEST_GCS_BUCKET": [
+        "customer_gcs_source_registration"
+      ],
+      "DE_TEST_GITHUB_TOKEN": [
+        "dlt_github_issues_token"
+      ],
+      "DE_TEST_NEO4J_PASSWORD": [
+        "neo4j_customer_connector_test"
+      ],
+      "DE_TEST_NEO4J_URI": [
+        "neo4j_customer_connector_test"
+      ],
+      "DE_TEST_NEO4J_USERNAME": [
+        "neo4j_customer_connector_test"
+      ],
+      "DE_TEST_REDIS_URL": [
+        "redis_customer_connector_test"
+      ],
+      "DE_TEST_S3_BUCKET": [
+        "customer_s3_source_registration"
+      ],
+      "DE_TEST_S3_KEY": [
+        "customer_s3_source_registration"
+      ]
+    },
+    "env_connector_types": {
+      "DE_ENABLE_SLOW_PUBLIC_REST_CASES": [
+        "rest_api"
+      ],
+      "DE_TEST_AZURE_ACCOUNT_URL": [
+        "azure_blob"
+      ],
+      "DE_TEST_AZURE_BLOB": [
+        "azure_blob"
+      ],
+      "DE_TEST_AZURE_BLOB_URL": [
+        "azure_blob"
+      ],
+      "DE_TEST_AZURE_CONNECTION_STRING": [
+        "azure_blob"
+      ],
+      "DE_TEST_AZURE_CONTAINER": [
+        "azure_blob"
+      ],
+      "DE_TEST_BIGQUERY_PROJECT_ID": [
+        "bigquery"
+      ],
+      "DE_TEST_BIGQUERY_SERVICE_ACCOUNT_JSON": [
+        "bigquery"
+      ],
+      "DE_TEST_CLICKHOUSE_PASSWORD": [
+        "clickhouse"
+      ],
+      "DE_TEST_CLICKHOUSE_URL": [
+        "clickhouse"
+      ],
+      "DE_TEST_CLICKHOUSE_USER": [
+        "clickhouse"
+      ],
+      "DE_TEST_ELASTICSEARCH_API_KEY": [
+        "elasticsearch"
+      ],
+      "DE_TEST_ELASTICSEARCH_URL": [
+        "elasticsearch"
+      ],
+      "DE_TEST_FRED_API_KEY": [
+        "rest_api"
+      ],
+      "DE_TEST_GCS_BLOB": [
+        "gcs"
+      ],
+      "DE_TEST_GCS_BUCKET": [
+        "gcs"
+      ],
+      "DE_TEST_GITHUB_TOKEN": [
+        "rest_api"
+      ],
+      "DE_TEST_NEO4J_PASSWORD": [
+        "neo4j"
+      ],
+      "DE_TEST_NEO4J_URI": [
+        "neo4j"
+      ],
+      "DE_TEST_NEO4J_USERNAME": [
+        "neo4j"
+      ],
+      "DE_TEST_REDIS_URL": [
+        "redis"
+      ],
+      "DE_TEST_S3_BUCKET": [
+        "s3"
+      ],
+      "DE_TEST_S3_KEY": [
+        "s3"
+      ]
+    },
+    "env_connector_counts": {
+      "DE_ENABLE_SLOW_PUBLIC_REST_CASES": 1,
+      "DE_TEST_AZURE_ACCOUNT_URL": 1,
+      "DE_TEST_AZURE_BLOB": 1,
+      "DE_TEST_AZURE_BLOB_URL": 1,
+      "DE_TEST_AZURE_CONNECTION_STRING": 1,
+      "DE_TEST_AZURE_CONTAINER": 1,
+      "DE_TEST_BIGQUERY_PROJECT_ID": 1,
+      "DE_TEST_BIGQUERY_SERVICE_ACCOUNT_JSON": 1,
+      "DE_TEST_CLICKHOUSE_PASSWORD": 1,
+      "DE_TEST_CLICKHOUSE_URL": 1,
+      "DE_TEST_CLICKHOUSE_USER": 1,
+      "DE_TEST_ELASTICSEARCH_API_KEY": 1,
+      "DE_TEST_ELASTICSEARCH_URL": 1,
+      "DE_TEST_FRED_API_KEY": 1,
+      "DE_TEST_GCS_BLOB": 1,
+      "DE_TEST_GCS_BUCKET": 1,
+      "DE_TEST_GITHUB_TOKEN": 1,
+      "DE_TEST_NEO4J_PASSWORD": 1,
+      "DE_TEST_NEO4J_URI": 1,
+      "DE_TEST_NEO4J_USERNAME": 1,
+      "DE_TEST_REDIS_URL": 1,
+      "DE_TEST_S3_BUCKET": 1,
+      "DE_TEST_S3_KEY": 1
+    },
+    "env_action_codes": {
+      "DE_ENABLE_SLOW_PUBLIC_REST_CASES": [
+        "enable_opt_in_public_cases"
+      ],
+      "DE_TEST_AZURE_ACCOUNT_URL": [
+        "set_customer_connector_envs"
+      ],
+      "DE_TEST_AZURE_BLOB": [
+        "set_customer_connector_envs"
+      ],
+      "DE_TEST_AZURE_BLOB_URL": [
+        "set_customer_connector_envs"
+      ],
+      "DE_TEST_AZURE_CONNECTION_STRING": [
+        "set_customer_connector_envs"
+      ],
+      "DE_TEST_AZURE_CONTAINER": [
+        "set_customer_connector_envs"
+      ],
+      "DE_TEST_BIGQUERY_PROJECT_ID": [
+        "set_customer_connector_envs"
+      ],
+      "DE_TEST_BIGQUERY_SERVICE_ACCOUNT_JSON": [
+        "set_customer_connector_envs"
+      ],
+      "DE_TEST_CLICKHOUSE_PASSWORD": [
+        "set_customer_connector_envs"
+      ],
+      "DE_TEST_CLICKHOUSE_URL": [
+        "set_customer_connector_envs"
+      ],
+      "DE_TEST_CLICKHOUSE_USER": [
+        "set_customer_connector_envs"
+      ],
+      "DE_TEST_ELASTICSEARCH_API_KEY": [
+        "set_customer_connector_envs"
+      ],
+      "DE_TEST_ELASTICSEARCH_URL": [
+        "set_customer_connector_envs"
+      ],
+      "DE_TEST_FRED_API_KEY": [
+        "set_credentialed_example_envs"
+      ],
+      "DE_TEST_GCS_BLOB": [
+        "set_customer_connector_envs"
+      ],
+      "DE_TEST_GCS_BUCKET": [
+        "set_customer_connector_envs"
+      ],
+      "DE_TEST_GITHUB_TOKEN": [
+        "set_credentialed_example_envs"
+      ],
+      "DE_TEST_NEO4J_PASSWORD": [
+        "set_customer_connector_envs"
+      ],
+      "DE_TEST_NEO4J_URI": [
+        "set_customer_connector_envs"
+      ],
+      "DE_TEST_NEO4J_USERNAME": [
+        "set_customer_connector_envs"
+      ],
+      "DE_TEST_REDIS_URL": [
+        "set_customer_connector_envs"
+      ],
+      "DE_TEST_S3_BUCKET": [
+        "set_customer_connector_envs"
+      ],
+      "DE_TEST_S3_KEY": [
+        "set_customer_connector_envs"
+      ]
+    },
+    "env_action_counts": {
+      "DE_ENABLE_SLOW_PUBLIC_REST_CASES": 1,
+      "DE_TEST_AZURE_ACCOUNT_URL": 1,
+      "DE_TEST_AZURE_BLOB": 1,
+      "DE_TEST_AZURE_BLOB_URL": 1,
+      "DE_TEST_AZURE_CONNECTION_STRING": 1,
+      "DE_TEST_AZURE_CONTAINER": 1,
+      "DE_TEST_BIGQUERY_PROJECT_ID": 1,
+      "DE_TEST_BIGQUERY_SERVICE_ACCOUNT_JSON": 1,
+      "DE_TEST_CLICKHOUSE_PASSWORD": 1,
+      "DE_TEST_CLICKHOUSE_URL": 1,
+      "DE_TEST_CLICKHOUSE_USER": 1,
+      "DE_TEST_ELASTICSEARCH_API_KEY": 1,
+      "DE_TEST_ELASTICSEARCH_URL": 1,
+      "DE_TEST_FRED_API_KEY": 1,
+      "DE_TEST_GCS_BLOB": 1,
+      "DE_TEST_GCS_BUCKET": 1,
+      "DE_TEST_GITHUB_TOKEN": 1,
+      "DE_TEST_NEO4J_PASSWORD": 1,
+      "DE_TEST_NEO4J_URI": 1,
+      "DE_TEST_NEO4J_USERNAME": 1,
+      "DE_TEST_REDIS_URL": 1,
+      "DE_TEST_S3_BUCKET": 1,
+      "DE_TEST_S3_KEY": 1
+    },
+    "env_tiers": {
+      "DE_ENABLE_SLOW_PUBLIC_REST_CASES": [
+        "public_no_auth"
+      ],
+      "DE_TEST_AZURE_ACCOUNT_URL": [
+        "customer_credentials_required"
+      ],
+      "DE_TEST_AZURE_BLOB": [
+        "customer_credentials_required"
+      ],
+      "DE_TEST_AZURE_BLOB_URL": [
+        "customer_credentials_required"
+      ],
+      "DE_TEST_AZURE_CONNECTION_STRING": [
+        "customer_credentials_required"
+      ],
+      "DE_TEST_AZURE_CONTAINER": [
+        "customer_credentials_required"
+      ],
+      "DE_TEST_BIGQUERY_PROJECT_ID": [
+        "customer_credentials_required"
+      ],
+      "DE_TEST_BIGQUERY_SERVICE_ACCOUNT_JSON": [
+        "customer_credentials_required"
+      ],
+      "DE_TEST_CLICKHOUSE_PASSWORD": [
+        "customer_credentials_required"
+      ],
+      "DE_TEST_CLICKHOUSE_URL": [
+        "customer_credentials_required"
+      ],
+      "DE_TEST_CLICKHOUSE_USER": [
+        "customer_credentials_required"
+      ],
+      "DE_TEST_ELASTICSEARCH_API_KEY": [
+        "customer_credentials_required"
+      ],
+      "DE_TEST_ELASTICSEARCH_URL": [
+        "customer_credentials_required"
+      ],
+      "DE_TEST_FRED_API_KEY": [
+        "credentialed_example"
+      ],
+      "DE_TEST_GCS_BLOB": [
+        "customer_credentials_required"
+      ],
+      "DE_TEST_GCS_BUCKET": [
+        "customer_credentials_required"
+      ],
+      "DE_TEST_GITHUB_TOKEN": [
+        "credentialed_example"
+      ],
+      "DE_TEST_NEO4J_PASSWORD": [
+        "customer_credentials_required"
+      ],
+      "DE_TEST_NEO4J_URI": [
+        "customer_credentials_required"
+      ],
+      "DE_TEST_NEO4J_USERNAME": [
+        "customer_credentials_required"
+      ],
+      "DE_TEST_REDIS_URL": [
+        "customer_credentials_required"
+      ],
+      "DE_TEST_S3_BUCKET": [
+        "customer_credentials_required"
+      ],
+      "DE_TEST_S3_KEY": [
+        "customer_credentials_required"
+      ]
+    }
+  },
+  "gap_env_resolution_summary": {
+    "resolver_supported_count": 22,
+    "manual_only_count": 1,
+    "resolver_supported_env_names": [
+      "DE_TEST_AZURE_ACCOUNT_URL",
+      "DE_TEST_AZURE_BLOB",
+      "DE_TEST_AZURE_BLOB_URL",
+      "DE_TEST_AZURE_CONNECTION_STRING",
+      "DE_TEST_AZURE_CONTAINER",
+      "DE_TEST_BIGQUERY_PROJECT_ID",
+      "DE_TEST_BIGQUERY_SERVICE_ACCOUNT_JSON",
+      "DE_TEST_CLICKHOUSE_PASSWORD",
+      "DE_TEST_CLICKHOUSE_URL",
+      "DE_TEST_CLICKHOUSE_USER",
+      "DE_TEST_ELASTICSEARCH_API_KEY",
+      "DE_TEST_ELASTICSEARCH_URL",
+      "DE_TEST_FRED_API_KEY",
+      "DE_TEST_GCS_BLOB",
+      "DE_TEST_GCS_BUCKET",
+      "DE_TEST_GITHUB_TOKEN",
+      "DE_TEST_NEO4J_PASSWORD",
+      "DE_TEST_NEO4J_URI",
+      "DE_TEST_NEO4J_USERNAME",
+      "DE_TEST_REDIS_URL",
+      "DE_TEST_S3_BUCKET",
+      "DE_TEST_S3_KEY"
+    ],
+    "manual_only_env_names": [
+      "DE_ENABLE_SLOW_PUBLIC_REST_CASES"
+    ],
+    "env_candidate_names": {
+      "DE_ENABLE_SLOW_PUBLIC_REST_CASES": [
+        "DE_ENABLE_SLOW_PUBLIC_REST_CASES"
+      ],
+      "DE_TEST_AZURE_ACCOUNT_URL": [
+        "DE_TEST_AZURE_ACCOUNT_URL",
+        "AZURE_ACCOUNT_URL"
+      ],
+      "DE_TEST_AZURE_BLOB": [
+        "DE_TEST_AZURE_BLOB",
+        "AZURE_BLOB"
+      ],
+      "DE_TEST_AZURE_BLOB_URL": [
+        "DE_TEST_AZURE_BLOB_URL",
+        "AZURE_BLOB_URL"
+      ],
+      "DE_TEST_AZURE_CONNECTION_STRING": [
+        "DE_TEST_AZURE_CONNECTION_STRING",
+        "AZURE_CONNECTION_STRING"
+      ],
+      "DE_TEST_AZURE_CONTAINER": [
+        "DE_TEST_AZURE_CONTAINER",
+        "AZURE_CONTAINER"
+      ],
+      "DE_TEST_BIGQUERY_PROJECT_ID": [
+        "DE_TEST_BIGQUERY_PROJECT_ID",
+        "BIGQUERY_PROJECT_ID",
+        "GOOGLE_CLOUD_PROJECT",
+        "GCP_PROJECT_ID"
+      ],
+      "DE_TEST_BIGQUERY_SERVICE_ACCOUNT_JSON": [
+        "DE_TEST_BIGQUERY_SERVICE_ACCOUNT_JSON",
+        "BIGQUERY_SERVICE_ACCOUNT_JSON",
+        "GOOGLE_APPLICATION_CREDENTIALS_JSON",
+        "GCP_SERVICE_ACCOUNT_JSON",
+        "GOOGLE_APPLICATION_CREDENTIALS"
+      ],
+      "DE_TEST_CLICKHOUSE_PASSWORD": [
+        "DE_TEST_CLICKHOUSE_PASSWORD",
+        "CLICKHOUSE_PASSWORD"
+      ],
+      "DE_TEST_CLICKHOUSE_URL": [
+        "DE_TEST_CLICKHOUSE_URL",
+        "CLICKHOUSE_URL"
+      ],
+      "DE_TEST_CLICKHOUSE_USER": [
+        "DE_TEST_CLICKHOUSE_USER",
+        "CLICKHOUSE_USER"
+      ],
+      "DE_TEST_ELASTICSEARCH_API_KEY": [
+        "DE_TEST_ELASTICSEARCH_API_KEY",
+        "ELASTICSEARCH_API_KEY",
+        "ELASTIC_API_KEY"
+      ],
+      "DE_TEST_ELASTICSEARCH_URL": [
+        "DE_TEST_ELASTICSEARCH_URL",
+        "ELASTICSEARCH_URL",
+        "ELASTIC_URL"
+      ],
+      "DE_TEST_FRED_API_KEY": [
+        "DE_TEST_FRED_API_KEY",
+        "FRED_API_KEY"
+      ],
+      "DE_TEST_GCS_BLOB": [
+        "DE_TEST_GCS_BLOB",
+        "GCS_BLOB"
+      ],
+      "DE_TEST_GCS_BUCKET": [
+        "DE_TEST_GCS_BUCKET",
+        "GCS_BUCKET"
+      ],
+      "DE_TEST_GITHUB_TOKEN": [
+        "DE_TEST_GITHUB_TOKEN",
+        "GITHUB_TOKEN",
+        "GH_TOKEN"
+      ],
+      "DE_TEST_NEO4J_PASSWORD": [
+        "DE_TEST_NEO4J_PASSWORD",
+        "NEO4J_PASSWORD"
+      ],
+      "DE_TEST_NEO4J_URI": [
+        "DE_TEST_NEO4J_URI",
+        "NEO4J_URI",
+        "NEO4J_URL"
+      ],
+      "DE_TEST_NEO4J_USERNAME": [
+        "DE_TEST_NEO4J_USERNAME",
+        "NEO4J_USERNAME",
+        "NEO4J_USER"
+      ],
+      "DE_TEST_REDIS_URL": [
+        "DE_TEST_REDIS_URL",
+        "REDIS_URL"
+      ],
+      "DE_TEST_S3_BUCKET": [
+        "DE_TEST_S3_BUCKET",
+        "S3_BUCKET"
+      ],
+      "DE_TEST_S3_KEY": [
+        "DE_TEST_S3_KEY",
+        "S3_KEY"
+      ]
+    },
+    "env_group_names": {
+      "DE_TEST_AZURE_ACCOUNT_URL": "azure_blob",
+      "DE_TEST_AZURE_BLOB": "azure_blob",
+      "DE_TEST_AZURE_BLOB_URL": "azure_blob",
+      "DE_TEST_AZURE_CONNECTION_STRING": "azure_blob",
+      "DE_TEST_AZURE_CONTAINER": "azure_blob",
+      "DE_TEST_BIGQUERY_PROJECT_ID": "bigquery",
+      "DE_TEST_BIGQUERY_SERVICE_ACCOUNT_JSON": "bigquery",
+      "DE_TEST_CLICKHOUSE_PASSWORD": "clickhouse",
+      "DE_TEST_CLICKHOUSE_URL": "clickhouse",
+      "DE_TEST_CLICKHOUSE_USER": "clickhouse",
+      "DE_TEST_ELASTICSEARCH_API_KEY": "elasticsearch",
+      "DE_TEST_ELASTICSEARCH_URL": "elasticsearch",
+      "DE_TEST_GCS_BLOB": "gcs",
+      "DE_TEST_GCS_BUCKET": "gcs",
+      "DE_TEST_NEO4J_PASSWORD": "neo4j",
+      "DE_TEST_NEO4J_URI": "neo4j",
+      "DE_TEST_NEO4J_USERNAME": "neo4j",
+      "DE_TEST_REDIS_URL": "redis",
+      "DE_TEST_S3_BUCKET": "s3",
+      "DE_TEST_S3_KEY": "s3"
+    },
+    "group_env_counts": {
+      "azure_blob": 5,
+      "bigquery": 2,
+      "clickhouse": 3,
+      "elasticsearch": 2,
+      "gcs": 2,
+      "neo4j": 3,
+      "redis": 1,
+      "s3": 2
+    }
+  },
+  "gap_env_template_summary": {
+    "gap_env_total_count": 23,
+    "all_templates_cover_all_gap_envs": true,
+    "template_paths": {
+      "go_live_validation_env_example": "tests/integration/go_live_validation.env.example",
+      "root_env_example": ".env.example"
+    },
+    "template_documented_counts": {
+      "go_live_validation_env_example": 23,
+      "root_env_example": 23
+    },
+    "template_missing_counts": {
+      "go_live_validation_env_example": 0,
+      "root_env_example": 0
+    },
+    "template_missing_env_names": {
+      "go_live_validation_env_example": [],
+      "root_env_example": []
+    },
+    "templates_with_missing_envs": [],
+    "missing_in_any_template": []
+  }
+}
