@@ -21,7 +21,7 @@ if __name__ != "__main__":
 import os
 import sys
 
-if os.environ.get("ALGENTA_SKIP_RUNTIME_LIBRARIES_HTTP", "0") == "1":
+if __name__ == "__main__" and os.environ.get("ALGENTA_SKIP_RUNTIME_LIBRARIES_HTTP", "0") == "1":
     print("[skip] tests/integration/test_runtime_libraries_http_live.py — ALGENTA_SKIP_RUNTIME_LIBRARIES_HTTP=1")
     sys.exit(0)
 

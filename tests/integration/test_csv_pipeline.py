@@ -29,7 +29,7 @@ Covers:
 import os
 import sys
 
-if os.environ.get("ALGENTA_SKIP_CSV_PIPELINE", "0") == "1":
+if __name__ == "__main__" and os.environ.get("ALGENTA_SKIP_CSV_PIPELINE", "0") == "1":
     print("[skip] tests/integration/test_csv_pipeline.py — ALGENTA_SKIP_CSV_PIPELINE=1")
     sys.exit(0)
 

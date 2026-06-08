@@ -25,7 +25,7 @@ if __name__ != "__main__":
 import os
 import sys
 
-if os.environ.get("ALGENTA_SKIP_MOJO_RUNTIME", "0") == "1":
+if __name__ == "__main__" and os.environ.get("ALGENTA_SKIP_MOJO_RUNTIME", "0") == "1":
     print("[skip] tests/integration/test_algenta_runtime_live.py — ALGENTA_SKIP_MOJO_RUNTIME=1")
     sys.exit(0)
 
