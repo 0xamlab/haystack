@@ -376,6 +376,27 @@ from apps.api_server.routers.query._signatures import (  # noqa: E402, F401
     _merge_query_batch_defaults,
     _query_batch_error_from_exception,
 )
+from apps.api_server.routers.query._endpoints_helpers_early import *  # noqa: E402, F401, F403
+from apps.api_server.routers.query._endpoints_helpers_early import (  # noqa: E402, F401
+    _apply_dataset_scope,
+    _apply_legacy_planning_fallback,
+    _apply_resolved_plan,
+    _owner_resolved_plan_fast_path,
+)
+from apps.api_server.routers.query._endpoints_helpers_exact import *  # noqa: E402, F401, F403
+from apps.api_server.routers.query._endpoints_helpers_exact import (  # noqa: E402, F401
+    _run_exact_spec_path,
+)
+from apps.api_server.routers.query._endpoints_helpers_paths import *  # noqa: E402, F401, F403
+from apps.api_server.routers.query._endpoints_helpers_paths import (  # noqa: E402, F401
+    _ingest_and_profile_inline_sources,
+    _run_registry_planner_hint_path,
+)
+from apps.api_server.routers.query._endpoints_helpers_inline import *  # noqa: E402, F401, F403
+from apps.api_server.routers.query._endpoints_helpers_inline import (  # noqa: E402, F401
+    _execute_inline_and_build_response,
+    _resolve_inline_anchor_metric_group,
+)
 from apps.api_server.routers.query._endpoints_resolve_query import *  # noqa: E402, F401, F403
 from apps.api_server.routers.query._endpoints_schema import *  # noqa: E402, F401, F403
 from apps.api_server.routers.query._endpoints_verify import *  # noqa: E402, F401, F403
