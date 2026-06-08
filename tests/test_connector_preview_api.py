@@ -176,6 +176,7 @@ async def test_get_connector_route_returns_visible_connector(
     async def _fake_get_visible_connector(_db, _connector_id, _auth):
         return SimpleNamespace(
             id="conn_123",
+            org_id="org_a",
             name="Warehouse Postgres",
             description="analytics warehouse",
             connector_type=SimpleNamespace(value="postgres"),
@@ -962,6 +963,7 @@ async def test_saved_connector_test_route_coalesces_concurrent_identical_request
     fake_db = _FakeDbSession()
     connector = SimpleNamespace(
         id="conn_123",
+        org_id="org_a",
         connector_type=SimpleNamespace(value="redis"),
         config_json='{"url":"redis://localhost:6379"}',
         status=SimpleNamespace(value="untested"),
@@ -1028,6 +1030,7 @@ async def test_saved_connector_test_route_reuses_short_distributed_handoff(
     fake_db = _FakeDbSession()
     connector = SimpleNamespace(
         id="conn_123",
+        org_id="org_a",
         connector_type=SimpleNamespace(value="redis"),
         config_json='{"url":"redis://localhost:6379"}',
         status=SimpleNamespace(value="untested"),
@@ -1084,6 +1087,7 @@ async def test_saved_connector_test_route_does_not_cache_failures(
     fake_db = _FakeDbSession()
     connector = SimpleNamespace(
         id="conn_123",
+        org_id="org_a",
         connector_type=SimpleNamespace(value="redis"),
         config_json='{"url":"redis://localhost:6379"}',
         status=SimpleNamespace(value="untested"),
@@ -1139,6 +1143,7 @@ async def test_saved_connector_browse_route_coalesces_concurrent_identical_reque
 ) -> None:
     connector = SimpleNamespace(
         id="conn_123",
+        org_id="org_a",
         connector_type=SimpleNamespace(value="redis"),
         config_json='{"url":"redis://localhost:6379"}',
         status=SimpleNamespace(value="live"),
@@ -1205,6 +1210,7 @@ async def test_saved_connector_browse_route_reuses_short_distributed_handoff(
 ) -> None:
     connector = SimpleNamespace(
         id="conn_123",
+        org_id="org_a",
         connector_type=SimpleNamespace(value="redis"),
         config_json='{"url":"redis://localhost:6379"}',
         status=SimpleNamespace(value="live"),
@@ -1261,6 +1267,7 @@ async def test_saved_connector_browse_route_does_not_cache_failures(
 ) -> None:
     connector = SimpleNamespace(
         id="conn_123",
+        org_id="org_a",
         connector_type=SimpleNamespace(value="redis"),
         config_json='{"url":"redis://localhost:6379"}',
         status=SimpleNamespace(value="live"),
