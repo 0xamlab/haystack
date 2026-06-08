@@ -261,7 +261,14 @@ def _legacy_live_test_requested(session: pytest.Session) -> bool:
             source = path.read_text(encoding="utf-8")
         except OSError:
             continue
-        if _LIVE_SERVER_MARKER in source and "DE_SKIP_API" in source:
+        if "DE_SKIP_API" not in source:
+            continue
+        if (
+            _LIVE_SERVER_MARKER in source
+            or "resolve_local_live_base_url" in source
+            or 'legacy_live_api_server"' in source
+            or "legacy_live_api_server'" in source
+        ):
             return True
     return False
 
