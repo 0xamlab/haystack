@@ -6,7 +6,7 @@
   "artifact": "repository_intelligence_channel_parity_summary",
   "channels": [
     {
-      "elapsed_seconds": 17.841,
+      "elapsed_seconds": 28.588,
       "error": null,
       "log_artifact": "build/repository_intelligence_channel_parity_logs/python_sdk.log",
       "name": "python_sdk",
@@ -22,7 +22,7 @@
       }
     },
     {
-      "elapsed_seconds": 17.949,
+      "elapsed_seconds": 29.377,
       "error": null,
       "log_artifact": "build/repository_intelligence_channel_parity_logs/cli.log",
       "name": "cli",
@@ -38,7 +38,7 @@
       }
     },
     {
-      "elapsed_seconds": 13.702,
+      "elapsed_seconds": 17.806,
       "error": null,
       "log_artifact": "build/repository_intelligence_channel_parity_logs/mcp.log",
       "name": "mcp",
@@ -54,7 +54,7 @@
       }
     },
     {
-      "elapsed_seconds": 15.186,
+      "elapsed_seconds": 16.064,
       "error": null,
       "log_artifact": "build/repository_intelligence_channel_parity_logs/algenta_client.log",
       "name": "algenta_client",
@@ -70,7 +70,7 @@
       }
     },
     {
-      "elapsed_seconds": 21.86,
+      "elapsed_seconds": 19.028,
       "error": null,
       "log_artifact": "build/repository_intelligence_channel_parity_logs/algenta_runtime.log",
       "name": "algenta_runtime",
@@ -86,7 +86,7 @@
       }
     },
     {
-      "elapsed_seconds": 13.558,
+      "elapsed_seconds": 18.487,
       "error": null,
       "log_artifact": "build/repository_intelligence_channel_parity_logs/typescript_sdk.log",
       "name": "typescript_sdk",
@@ -102,7 +102,7 @@
       }
     },
     {
-      "elapsed_seconds": 18.201,
+      "elapsed_seconds": 20.257,
       "error": null,
       "log_artifact": "build/repository_intelligence_channel_parity_logs/typescript_runtime.log",
       "name": "typescript_runtime",
@@ -178,12 +178,12 @@
     },
     "status": "passed"
   },
-  "elapsed_seconds": 118.312,
+  "elapsed_seconds": 149.667,
   "failed_channels": 0,
   "filter": "repository",
-  "generated_at": "2026-06-08T02:09:29.284144Z",
-  "logs_dir": "/Users/angel/Developer/decision-engine/build/repository_intelligence_channel_parity_logs",
-  "output_path": "/Users/angel/Developer/decision-engine/build/repository_intelligence_channel_parity_summary.json",
+  "generated_at": "2026-06-08T03:28:43.866683Z",
+  "logs_dir": "build/repository_intelligence_channel_parity_logs",
+  "output_path": "build/repository_intelligence_channel_parity_summary.json",
   "passed_channels": 7,
   "status": "passed",
   "total_channels": 7

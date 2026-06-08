@@ -32,7 +32,7 @@
     {
       "name": "connectivity",
       "command": [
-        "/Users/angel/Developer/decision-engine/.venv/bin/python",
+        "python3",
         "-u",
         "/Users/angel/Developer/decision-engine/tests/integration/test_go_live_connectivity_real.py",
         "--parallel-tasks",
@@ -42,7 +42,7 @@
     {
       "name": "full_real",
       "command": [
-        "/Users/angel/Developer/decision-engine/.venv/bin/python",
+        "python3",
         "-u",
         "/Users/angel/Developer/decision-engine/tests/integration/test_go_live_full_real.py",
         "--parallel-tasks",
@@ -56,7 +56,7 @@
     {
       "name": "pytest",
       "command": [
-        "/Users/angel/Developer/decision-engine/.venv/bin/python",
+        "python3",
         "-m",
         "pytest",
         "tests",
@@ -77,8 +77,8 @@
     }
   ],
   "generated_at": "2026-05-30T00:22:07Z",
-  "python_executable": "/Users/angel/Developer/decision-engine/.venv/bin/python",
-  "output_path": "/Users/angel/Developer/decision-engine/build/go_live_verify_summary.json",
+  "python_executable": "python3",
+  "output_path": "build/go_live_verify_summary.json",
   "filters": {
     "tiers": [],
     "connectors": []
