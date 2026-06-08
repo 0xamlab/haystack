@@ -91,7 +91,7 @@ def validate_sql_report_sql(sql: str) -> str:
             message="SQL report statements must begin with SELECT or WITH.",
         )
     for token in _FORBIDDEN_SQL_TOKENS:
-        if re.search(rf"\\b{token}\\b", lowered):
+        if re.search(rf"\b{token}\b", lowered):
             raise SQLReportServiceError(
                 code="sql_report_read_only_required",
                 message=f"SQL report statements cannot include {token.upper()}.",

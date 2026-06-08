@@ -137,3 +137,122 @@ def test_read_url_text_blocks_unallowlisted_public_destination_in_self_hosted_pr
 
     assert exc_info.value.decision.reason == "destination_not_allowlisted"
     get_settings.cache_clear()
+
+
+@pytest.mark.parametrize(
+    "private_url",
+    [
+        "http://127.0.0.1/secret",
+        "http://10.0.0.5/admin",
+        "http://192.168.1.1/router",
+        "http://169.254.169.254/latest/meta-data/",
+        "http://[::1]/loopback6",
+    ],
+)
+def test_read_url_text_blocks_private_destination_under_permissive_outbound(
+    monkeypatch: pytest.MonkeyPatch,
+    private_url: str,
+) -> None:
+    monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "saas")
+    monkeypatch.setenv("ALGENTA_ALLOW_OUTBOUND_NETWORK", "true")
+    monkeypatch.setenv("ALGENTA_EGRESS_ALLOWLIST", "")
+    get_settings.cache_clear()
+
+    def _unexpected_urlopen(*args, **kwargs):
+        raise AssertionError("urlopen should not be called when SSRF guard denies")
+
+    monkeypatch.setattr(
+        "apps.api_server.services.data_map_sources.urllib.request.urlopen",
+        _unexpected_urlopen,
+    )
+
+    with pytest.raises(EgressPolicyDeniedError) as exc_info:
+        read_url_text(private_url)
+
+    assert exc_info.value.decision.reason == "ssrf_guard_private_destination"
+    get_settings.cache_clear()
+
+
+def test_read_url_text_blocks_private_destination_resolved_via_dns(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "saas")
+    monkeypatch.setenv("ALGENTA_ALLOW_OUTBOUND_NETWORK", "true")
+    monkeypatch.setenv("ALGENTA_EGRESS_ALLOWLIST", "")
+    get_settings.cache_clear()
+
+    def _resolver_to_private(host, *args, **kwargs):
+        return [(2, 1, 6, "", ("10.0.0.5", 0))]
+
+    monkeypatch.setattr(
+        "apps.api_server.services.egress_guard.socket.getaddrinfo",
+        _resolver_to_private,
+    )
+
+    def _unexpected_urlopen(*args, **kwargs):
+        raise AssertionError("urlopen should not be called when SSRF guard denies")
+
+    monkeypatch.setattr(
+        "apps.api_server.services.data_map_sources.urllib.request.urlopen",
+        _unexpected_urlopen,
+    )
+
+    with pytest.raises(EgressPolicyDeniedError) as exc_info:
+        read_url_text("https://attacker-controlled.example.com/")
+
+    assert exc_info.value.decision.reason == "ssrf_guard_private_destination"
+    get_settings.cache_clear()
+
+
+def test_ssrf_guard_skipped_for_explicit_allowlist(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "self_hosted")
+    monkeypatch.setenv("ALGENTA_ALLOW_OUTBOUND_NETWORK", "false")
+    monkeypatch.setenv("ALGENTA_EGRESS_ALLOWLIST", "internal-bus.svc.cluster.local")
+    get_settings.cache_clear()
+
+    def _resolver_to_private(host, *args, **kwargs):
+        return [(2, 1, 6, "", ("10.0.0.5", 0))]
+
+    monkeypatch.setattr(
+        "apps.api_server.services.egress_guard.socket.getaddrinfo",
+        _resolver_to_private,
+    )
+
+    captured: dict[str, object] = {}
+
+    class _FakeHeaders:
+        def get(self, _key, default=""):
+            return "text/plain"
+
+    class _FakeResponse:
+        headers = _FakeHeaders()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return False
+
+        def read(self):
+            return b"ok"
+
+    def _capturing_urlopen(request, *args, **kwargs):
+        captured["url"] = (
+            request.full_url
+            if hasattr(request, "full_url")
+            else str(request)
+        )
+        return _FakeResponse()
+
+    monkeypatch.setattr(
+        "apps.api_server.services.data_map_sources.urllib.request.urlopen",
+        _capturing_urlopen,
+    )
+
+    body, content_type = read_url_text("https://internal-bus.svc.cluster.local/queue")
+    assert captured["url"] == "https://internal-bus.svc.cluster.local/queue"
+    assert body == "ok"
+    assert content_type == "text/plain"
+    get_settings.cache_clear()

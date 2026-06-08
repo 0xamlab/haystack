@@ -31,6 +31,20 @@ def test_validate_sql_report_sql_rejects_comments_and_multiple_statements() -> N
         validate_sql_report_sql("delete from otp")
 
 
+@pytest.mark.parametrize(
+    "forbidden_keyword",
+    ["insert", "update", "delete", "drop", "create", "alter", "attach", "pragma"],
+)
+def test_validate_sql_report_sql_rejects_forbidden_tokens_embedded_in_select(
+    forbidden_keyword: str,
+) -> None:
+    sql = f"with t as (select 1) select * from t where x = '{forbidden_keyword} payload'"
+    with pytest.raises(SQLReportServiceError) as exc_info:
+        validate_sql_report_sql(sql)
+    assert exc_info.value.code == "sql_report_read_only_required"
+    assert exc_info.value.details == {"token": forbidden_keyword}
+
+
 def test_execute_sql_report_enforces_row_and_byte_limits(monkeypatch: pytest.MonkeyPatch) -> None:
     parquet_bytes = _parquet_bytes(
         pd.DataFrame(

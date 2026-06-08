@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 import smtplib
+import socket
 import uuid
 import urllib.request
 from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 import httpx
@@ -16,7 +18,12 @@ import structlog
 
 from apps.api_server.config import get_settings
 from apps.api_server.services.privacy_service import record_service_egress_event
-from apps.privacy_policy import EgressClass, EgressDecision, evaluate_egress
+from apps.privacy_policy import (
+    EgressClass,
+    EgressDecision,
+    evaluate_egress,
+    parse_egress_destination,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -156,6 +163,69 @@ def _record_decision_sync(
     task.add_done_callback(_consume_task_result)
 
 
+_SSRF_GUARDED_REASONS = frozenset(
+    {
+        "outbound_network_enabled",
+        "undeclared_public_egress_enabled",
+    }
+)
+
+
+def _is_private_or_local_ip(ip_str: str) -> bool:
+    try:
+        ip = ipaddress.ip_address(ip_str)
+    except ValueError:
+        return False
+    return (
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_multicast
+        or ip.is_reserved
+        or ip.is_unspecified
+    )
+
+
+def _resolve_destination_addresses(host: str) -> list[str]:
+    if not host:
+        return []
+    stripped = host.strip("[]")
+    try:
+        ipaddress.ip_address(stripped)
+        return [stripped]
+    except ValueError:
+        pass
+    try:
+        infos = socket.getaddrinfo(host, None, type=socket.SOCK_STREAM)
+    except (socket.gaierror, UnicodeError, OSError):
+        return []
+    return list({info[4][0] for info in infos if info and info[4]})
+
+
+def _enforce_no_private_destination(
+    destination: str,
+    *,
+    decision: EgressDecision,
+) -> None:
+    if decision.reason not in _SSRF_GUARDED_REASONS:
+        return
+    target = parse_egress_destination(destination)
+    host = target.host
+    if not host:
+        return
+    addrs = _resolve_destination_addresses(host)
+    if not addrs:
+        return
+    if not any(_is_private_or_local_ip(ip) for ip in addrs):
+        return
+    blocked = replace(
+        decision,
+        decision="deny",
+        reason="ssrf_guard_private_destination",
+    )
+    raise EgressPolicyDeniedError(blocked)
+
+
 def evaluate_egress_policy(
     destination: str,
     *,
@@ -197,6 +267,7 @@ async def enforce_egress(
     await _record_decision_async(decision, audit_context)
     if decision.decision == "deny":
         raise EgressPolicyDeniedError(decision)
+    _enforce_no_private_destination(destination, decision=decision)
     return decision
 
 
@@ -220,6 +291,7 @@ def enforce_egress_sync(
     _record_decision_sync(decision, audit_context)
     if decision.decision == "deny":
         raise EgressPolicyDeniedError(decision)
+    _enforce_no_private_destination(destination, decision=decision)
     return decision
 
 
