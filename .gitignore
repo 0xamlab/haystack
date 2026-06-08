@@ -52,9 +52,9 @@ mojo_build/*
 !mojo_build/.gitkeep
 *.mojopkg
 
-# Pixi/Mojo environment (local, not committed — created by make setup-mojo)
+# Pixi/Mojo environment (local install dir not committed)
+# pixi.lock IS committed so CI can do reproducible installs.
 mojo_env/.pixi/
-mojo_env/pixi.lock
 *.🔥
 
 # MCP virtualenv
