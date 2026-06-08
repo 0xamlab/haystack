@@ -1,0 +1,177 @@
+{
+  "apply_gate": {
+    "blocked_runs": 0,
+    "passed_runs": 1,
+    "recommended_actions": {
+      "apply_patch": 1
+    }
+  },
+  "benchmark": "repository_intelligence_benchmark",
+  "benchmark_class": "B10",
+  "generated_at": "2026-05-29T20:03:38Z",
+  "iterations": 1,
+  "patch_impact": {
+    "api_break_candidates": {
+      "max": 1.0,
+      "mean": 1.0,
+      "min": 1.0,
+      "p50": 1.0,
+      "p90": 1.0,
+      "p95": 1.0,
+      "p99": 1.0
+    },
+    "blast_radius_counts": {
+      "low": 1
+    },
+    "dependency_fanout": {
+      "max": 2.0,
+      "mean": 2.0,
+      "min": 2.0,
+      "p50": 2.0,
+      "p90": 2.0,
+      "p95": 2.0,
+      "p99": 2.0
+    },
+    "likely_failing_tests": {
+      "max": 1.0,
+      "mean": 1.0,
+      "min": 1.0,
+      "p50": 1.0,
+      "p90": 1.0,
+      "p95": 1.0,
+      "p99": 1.0
+    },
+    "patch_impact_risk_score": {
+      "max": 0.27,
+      "mean": 0.27,
+      "min": 0.27,
+      "p50": 0.27,
+      "p90": 0.27,
+      "p95": 0.27,
+      "p99": 0.27
+    },
+    "rollback_complexity_counts": {
+      "low": 1
+    }
+  },
+  "repository_fixture": {
+    "connector_type": "local_repo",
+    "control_plane_mode": "deterministic_stub",
+    "file_count": 7,
+    "primary_language": "python",
+    "workflow": "snapshot -> triage -> decision_plan -> patch_impact -> simulate -> apply_patch_only -> apply_local_branch"
+  },
+  "stages": {
+    "apply_local_branch": {
+      "max_ms": 621.206792,
+      "mean_ms": 621.206792,
+      "min_ms": 621.206792,
+      "p50_ms": 621.206792,
+      "p90_ms": 621.206792,
+      "p95_ms": 621.206792,
+      "p99_ms": 621.206792
+    },
+    "apply_patch_only": {
+      "max_ms": 0.901709,
+      "mean_ms": 0.901709,
+      "min_ms": 0.901709,
+      "p50_ms": 0.901709,
+      "p90_ms": 0.901709,
+      "p95_ms": 0.901709,
+      "p99_ms": 0.901709
+    },
+    "changed_snapshot_refresh": {
+      "max_ms": 105.8105,
+      "mean_ms": 105.8105,
+      "min_ms": 105.8105,
+      "p50_ms": 105.8105,
+      "p90_ms": 105.8105,
+      "p95_ms": 105.8105,
+      "p99_ms": 105.8105
+    },
+    "cold_snapshot": {
+      "max_ms": 869.243333,
+      "mean_ms": 869.243333,
+      "min_ms": 869.243333,
+      "p50_ms": 869.243333,
+      "p90_ms": 869.243333,
+      "p95_ms": 869.243333,
+      "p99_ms": 869.243333
+    },
+    "decision_plan": {
+      "max_ms": 174.329541,
+      "mean_ms": 174.329541,
+      "min_ms": 174.329541,
+      "p50_ms": 174.329541,
+      "p90_ms": 174.329541,
+      "p95_ms": 174.329541,
+      "p99_ms": 174.329541
+    },
+    "existing_snapshot_hit": {
+      "max_ms": 62.093792,
+      "mean_ms": 62.093792,
+      "min_ms": 62.093792,
+      "p50_ms": 62.093792,
+      "p90_ms": 62.093792,
+      "p95_ms": 62.093792,
+      "p99_ms": 62.093792
+    },
+    "simulation": {
+      "max_ms": 2.154708,
+      "mean_ms": 2.154708,
+      "min_ms": 2.154708,
+      "p50_ms": 2.154708,
+      "p90_ms": 2.154708,
+      "p95_ms": 2.154708,
+      "p99_ms": 2.154708
+    },
+    "triage": {
+      "max_ms": 23.329166,
+      "mean_ms": 23.329166,
+      "min_ms": 23.329166,
+      "p50_ms": 23.329166,
+      "p90_ms": 23.329166,
+      "p95_ms": 23.329166,
+      "p99_ms": 23.329166
+    }
+  },
+  "token_reduction": {
+    "evidence_bundle_token_count": {
+      "max": 45.0,
+      "mean": 45.0,
+      "min": 45.0,
+      "p50": 45.0,
+      "p90": 45.0,
+      "p95": 45.0,
+      "p99": 45.0
+    },
+    "raw_repo_token_estimate": {
+      "max": 492.0,
+      "mean": 492.0,
+      "min": 492.0,
+      "p50": 492.0,
+      "p90": 492.0,
+      "p95": 492.0,
+      "p99": 492.0
+    },
+    "reduction_ratio": {
+      "max": 10.933333333333334,
+      "mean": 10.933333333333334,
+      "min": 10.933333333333334,
+      "p50": 10.933333333333334,
+      "p90": 10.933333333333334,
+      "p95": 10.933333333333334,
+      "p99": 10.933333333333334
+    },
+    "saved_tokens": {
+      "max": 447.0,
+      "mean": 447.0,
+      "min": 447.0,
+      "p50": 447.0,
+      "p90": 447.0,
+      "p95": 447.0,
+      "p99": 447.0
+    }
+  },
+  "warmup_iterations": 0
+}

@@ -1,0 +1,42 @@
+{
+  "artifact": "live_integration_summary",
+  "details": {
+    "api_key_configured": true,
+    "base_url": "http://localhost:8000",
+    "failed_checks": [],
+    "skipped_checks": [
+      "API: X-Decision-Hash header validates",
+      "Auto mode: complete response fields",
+      "Expert mode: lognormal + triangular",
+      "Recommendation: proceed for clear positive",
+      "Recommendation: negative scenario returns valid action",
+      "Engine output mapping: full envelope structure",
+      "Deterministic seed: same results",
+      "API response: parses as DecisionEnvelope",
+      "API: 422 for missing variables",
+      "API: invalid type handling",
+      "Template \u2192 API simulation: generic_cost_benefit",
+      "Template \u2192 API: finance_portfolio",
+      "Template \u2192 API: clinical_trial_power",
+      "Template \u2192 API: manufacturing_yield",
+      "Template \u2192 API: cyber_risk_quantification",
+      "Template \u2192 API: saas_arr_forecast",
+      "Rate limit: request succeeds, headers checked",
+      "Rate limit: 3 sequential requests succeed",
+      "Full flow: template \u2192 API \u2192 integrity hash",
+      "Charts from live API response envelope",
+      "Unit postprocess: format live API results as USD",
+      "Schema: live expert response validates as DecisionEnvelope",
+      "Integrity: same seed \u2192 same request_hash"
+    ],
+    "skipped_count": 23
+  },
+  "elapsed_seconds": 0.741,
+  "failed": 0,
+  "generated_at": "2026-05-25T17:48:18.355373Z",
+  "name": "services_integration",
+  "passed": 98,
+  "script": "tests/integration/test_services.py",
+  "skipped": 23,
+  "total": 121
+}

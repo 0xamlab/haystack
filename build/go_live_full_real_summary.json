@@ -1,0 +1,74 @@
+{
+  "artifact": "live_integration_summary",
+  "details": {
+    "completed_suite_count": 24,
+    "expected_suite_count": 24,
+    "failed_suite_names": [
+      "Root JavaScript workspace check"
+    ],
+    "live_suite_count": 13,
+    "local_suite_count": 8,
+    "slowest_suites": [
+      {
+        "elapsed_seconds": 376.425,
+        "name": "Root JavaScript workspace check",
+        "ok": false
+      },
+      {
+        "elapsed_seconds": 72.903,
+        "name": "Mojo libraries A-Z",
+        "ok": true
+      },
+      {
+        "elapsed_seconds": 48.083,
+        "name": "Source matrix runtime benchmark",
+        "ok": true
+      },
+      {
+        "elapsed_seconds": 35.275,
+        "name": "Live CLI integration",
+        "ok": true
+      },
+      {
+        "elapsed_seconds": 26.276,
+        "name": "Uploaded CSV exact benchmark",
+        "ok": true
+      },
+      {
+        "elapsed_seconds": 25.425,
+        "name": "Live TypeScript Runtime integration",
+        "ok": true
+      },
+      {
+        "elapsed_seconds": 15.831,
+        "name": "Real local connectivity gate",
+        "ok": true
+      },
+      {
+        "elapsed_seconds": 14.592,
+        "name": "Live Python Runtime integration",
+        "ok": true
+      },
+      {
+        "elapsed_seconds": 14.246,
+        "name": "LLM rollout parity benchmark",
+        "ok": true
+      },
+      {
+        "elapsed_seconds": 11.855,
+        "name": "Uploaded CSV warm benchmark",
+        "ok": true
+      }
+    ],
+    "status": "complete",
+    "top_level_suite_count": 3
+  },
+  "elapsed_seconds": 732.693,
+  "failed": 1,
+  "generated_at": "2026-05-30T00:22:06.902531Z",
+  "name": "go_live_full_real",
+  "passed": 23,
+  "script": "tests/integration/test_go_live_full_real.py",
+  "skipped": 0,
+  "total": 24
+}

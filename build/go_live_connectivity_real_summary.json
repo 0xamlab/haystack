@@ -1,0 +1,70 @@
+{
+  "artifact": "live_integration_summary",
+  "details": {
+    "behavior_p1_failures": [],
+    "failed_checks": [],
+    "parallel_tasks": 4,
+    "selected_connectors": [],
+    "selected_tiers": [],
+    "skip_external_validation": false,
+    "skipped": 12,
+    "skipped_checks": [
+      {
+        "name": "dlt GitHub issues example source registration",
+        "reason": "unauthenticated dlt GitHub issues case disabled by default; set DE_ENABLE_SLOW_PUBLIC_REST_CASES=1"
+      },
+      {
+        "name": "Fivetran FRED example source registration",
+        "reason": "required env not provided: DE_TEST_FRED_API_KEY"
+      },
+      {
+        "name": "dlt GitHub token example source registration",
+        "reason": "required env not provided: DE_TEST_GITHUB_TOKEN"
+      },
+      {
+        "name": "Custom S3 source registration",
+        "reason": "required env not provided: DE_TEST_S3_BUCKET, DE_TEST_S3_KEY"
+      },
+      {
+        "name": "Custom GCS source registration",
+        "reason": "required env not provided: DE_TEST_GCS_BUCKET, DE_TEST_GCS_BLOB"
+      },
+      {
+        "name": "Custom Azure Blob source registration",
+        "reason": "required env not provided: DE_TEST_AZURE_BLOB_URL or (DE_TEST_AZURE_CONNECTION_STRING or DE_TEST_AZURE_ACCOUNT_URL) + DE_TEST_AZURE_CONTAINER + DE_TEST_AZURE_BLOB"
+      },
+      {
+        "name": "Redis connector /test",
+        "reason": "required env not provided: DE_TEST_REDIS_URL"
+      },
+      {
+        "name": "ClickHouse connector /test",
+        "reason": "required env not provided: DE_TEST_CLICKHOUSE_URL, DE_TEST_CLICKHOUSE_USER, DE_TEST_CLICKHOUSE_PASSWORD"
+      },
+      {
+        "name": "Elasticsearch connector /test",
+        "reason": "required env not provided: DE_TEST_ELASTICSEARCH_URL, DE_TEST_ELASTICSEARCH_API_KEY"
+      },
+      {
+        "name": "Neo4j connector /test",
+        "reason": "required env not provided: DE_TEST_NEO4J_URI, DE_TEST_NEO4J_USERNAME, DE_TEST_NEO4J_PASSWORD"
+      },
+      {
+        "name": "Snowflake connector /test",
+        "reason": "Snowflake live validation blocked by account network policy; skipping external customer-credential case."
+      },
+      {
+        "name": "BigQuery connector /test",
+        "reason": "required env not provided: DE_TEST_BIGQUERY_PROJECT_ID, DE_TEST_BIGQUERY_SERVICE_ACCOUNT_JSON"
+      }
+    ]
+  },
+  "elapsed_seconds": 25.9,
+  "failed": 0,
+  "generated_at": "2026-05-30T00:08:49.646807Z",
+  "name": "go_live_connectivity_real",
+  "passed": 65,
+  "script": "tests/integration/test_go_live_connectivity_real.py",
+  "skipped": 12,
+  "total": 77
+}

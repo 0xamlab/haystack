@@ -1,0 +1,44 @@
+{
+  "artifact": "live_integration_summary",
+  "details": {
+    "api_version": "1.0.0",
+    "openapi_version": "3.1.0",
+    "path_count": 164,
+    "schema_count": 404,
+    "security_schemes": [
+      "BearerAuth",
+      "LegacyApiKey"
+    ],
+    "slowest_tests": [
+      {
+        "elapsed_seconds": 0.821,
+        "name": "POST /v1/data/connect (compliance)"
+      },
+      {
+        "elapsed_seconds": 0.761,
+        "name": "GET /v1/admin/runtime/benchmarks (compliance)"
+      },
+      {
+        "elapsed_seconds": 0.707,
+        "name": "GET /openapi.json"
+      },
+      {
+        "elapsed_seconds": 0.672,
+        "name": "POST /v1/repositories/a15cc8fa-18e6-46b5-bcb8-80151c8350cd/apply"
+      },
+      {
+        "elapsed_seconds": 0.672,
+        "name": "POST /v1/repositories/a15cc8fa-18e6-46b5-bcb8-80151c8350cd/decision-plans"
+      }
+    ],
+    "title": "Algenta API"
+  },
+  "elapsed_seconds": 36.705,
+  "failed": 0,
+  "generated_at": "2026-05-30T00:10:55.819606Z",
+  "name": "openapi_integration",
+  "passed": 90,
+  "script": "tests/integration/test_openapi.py",
+  "skipped": 0,
+  "total": 90
+}

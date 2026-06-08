@@ -1,0 +1,15 @@
+{
+  "base_url": "http://localhost:8000",
+  "failed": 0,
+  "generated_at": "2026-05-30T00:13:14+00:00",
+  "overall_rows_per_sec": 13178.3,
+  "passed": 67,
+  "pipeline_file_count": 15,
+  "pipeline_rows_total": 158208,
+  "skipped": 0,
+  "total": 67,
+  "total_map_ms": 241.36,
+  "total_parse_ms": 12005.19,
+  "total_sim_ms": 81.25,
+  "total_test_time_s": 33.19
+}

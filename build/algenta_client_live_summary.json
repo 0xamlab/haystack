@@ -1,0 +1,35 @@
+{
+  "artifact": "live_integration_summary",
+  "details": {
+    "api_key_configured": true,
+    "base_url": "http://127.0.0.1:62359",
+    "failed_checks": [],
+    "skipped_checks": [
+      "AlgentaClient health() + usage()",
+      "AlgentaClient account + API-key surface",
+      "AlgentaClient saved connector lifecycle surface",
+      "AlgentaClient connectors + dataset lifecycle surface",
+      "AlgentaClient team/credits/metering/audit/execution-policy helpers",
+      "AlgentaClient async jobs surface",
+      "AlgentaClient contract + runtime proof routes",
+      "AlgentaClient LLM utility surface",
+      "AlgentaClient trigger lifecycle surface",
+      "AlgentaClient deployment control surface",
+      "AlgentaClient deployment create/delete lifecycle",
+      "AlgentaClient decision runtime helpers",
+      "AlgentaClient streaming LLM surface",
+      "AlgentaClient simplified product surface",
+      "AlgentaClient plan_decision + agent-runs lifecycle",
+      "AlgentaClient agent-run event stream",
+      "AlgentaClient bound simulate cloud path"
+    ]
+  },
+  "elapsed_seconds": 13.085,
+  "failed": 0,
+  "generated_at": "2026-06-08T02:08:34.171290Z",
+  "name": "algenta_client_live",
+  "passed": 1,
+  "script": "tests/integration/test_algenta_client_live.py",
+  "skipped": 17,
+  "total": 18
+}

@@ -1,0 +1,17 @@
+{
+  "api_key_configured": true,
+  "artifact": "llm_rollout_live_summary",
+  "base_url": "http://127.0.0.1:54771",
+  "channels": [
+    "python_sdk"
+  ],
+  "elapsed_seconds": 3.435,
+  "failed": 0,
+  "generated_at": "2026-05-30T00:09:56Z",
+  "minimum_passed": 7,
+  "name": "python_sdk_local_runtime",
+  "passed": 7,
+  "script": "tests/integration/test_algenta_mojo_library_live.py",
+  "skipped": 0,
+  "status": "passed"
+}

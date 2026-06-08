@@ -1,0 +1,21 @@
+{
+  "artifact": "live_integration_summary",
+  "details": {
+    "behavior_p1_failures": [],
+    "failed_checks": [],
+    "parallel_tasks": 4,
+    "selected_connectors": [],
+    "selected_tiers": [],
+    "skip_external_validation": true,
+    "skipped": 0,
+    "skipped_checks": []
+  },
+  "elapsed_seconds": 14.643,
+  "failed": 0,
+  "generated_at": "2026-05-30T00:09:06.444107Z",
+  "name": "go_live_connectivity_local_only",
+  "passed": 51,
+  "script": "tests/integration/test_go_live_connectivity_real.py",
+  "skipped": 0,
+  "total": 51
+}

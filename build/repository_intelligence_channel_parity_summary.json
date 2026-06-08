@@ -1,0 +1,190 @@
+{
+  "aggregate_failed_checks": 0,
+  "aggregate_passed_checks": 8,
+  "aggregate_skipped_checks": 210,
+  "aggregate_total_checks": 218,
+  "artifact": "repository_intelligence_channel_parity_summary",
+  "channels": [
+    {
+      "elapsed_seconds": 17.841,
+      "error": null,
+      "log_artifact": "build/repository_intelligence_channel_parity_logs/python_sdk.log",
+      "name": "python_sdk",
+      "return_code": 0,
+      "script": "tests/integration/test_python_sdk.py",
+      "status": "passed",
+      "summary_artifact": "build/python_sdk_integration_summary.json",
+      "summary_counts": {
+        "failed": 0,
+        "passed": 2,
+        "skipped": 43,
+        "total": 45
+      }
+    },
+    {
+      "elapsed_seconds": 17.949,
+      "error": null,
+      "log_artifact": "build/repository_intelligence_channel_parity_logs/cli.log",
+      "name": "cli",
+      "return_code": 0,
+      "script": "tests/integration/test_cli.py",
+      "status": "passed",
+      "summary_artifact": "build/cli_integration_summary.json",
+      "summary_counts": {
+        "failed": 0,
+        "passed": 1,
+        "skipped": 42,
+        "total": 43
+      }
+    },
+    {
+      "elapsed_seconds": 13.702,
+      "error": null,
+      "log_artifact": "build/repository_intelligence_channel_parity_logs/mcp.log",
+      "name": "mcp",
+      "return_code": 0,
+      "script": "tests/integration/test_mcp_server.py",
+      "status": "passed",
+      "summary_artifact": "build/mcp_server_integration_summary.json",
+      "summary_counts": {
+        "failed": 0,
+        "passed": 1,
+        "skipped": 64,
+        "total": 65
+      }
+    },
+    {
+      "elapsed_seconds": 15.186,
+      "error": null,
+      "log_artifact": "build/repository_intelligence_channel_parity_logs/algenta_client.log",
+      "name": "algenta_client",
+      "return_code": 0,
+      "script": "tests/integration/test_algenta_client_live.py",
+      "status": "passed",
+      "summary_artifact": "build/algenta_client_live_summary.json",
+      "summary_counts": {
+        "failed": 0,
+        "passed": 1,
+        "skipped": 17,
+        "total": 18
+      }
+    },
+    {
+      "elapsed_seconds": 21.86,
+      "error": null,
+      "log_artifact": "build/repository_intelligence_channel_parity_logs/algenta_runtime.log",
+      "name": "algenta_runtime",
+      "return_code": 0,
+      "script": "tests/integration/test_algenta_runtime_live.py",
+      "status": "passed",
+      "summary_artifact": "build/algenta_runtime_live_summary.json",
+      "summary_counts": {
+        "failed": 0,
+        "passed": 1,
+        "skipped": 16,
+        "total": 17
+      }
+    },
+    {
+      "elapsed_seconds": 13.558,
+      "error": null,
+      "log_artifact": "build/repository_intelligence_channel_parity_logs/typescript_sdk.log",
+      "name": "typescript_sdk",
+      "return_code": 0,
+      "script": "tests/integration/test_typescript_sdk_client_live.py",
+      "status": "passed",
+      "summary_artifact": "build/typescript_sdk_client_live_summary.json",
+      "summary_counts": {
+        "failed": 0,
+        "passed": 1,
+        "skipped": 14,
+        "total": 15
+      }
+    },
+    {
+      "elapsed_seconds": 18.201,
+      "error": null,
+      "log_artifact": "build/repository_intelligence_channel_parity_logs/typescript_runtime.log",
+      "name": "typescript_runtime",
+      "return_code": 0,
+      "script": "tests/integration/test_typescript_runtime_live.py",
+      "status": "passed",
+      "summary_artifact": "build/typescript_sdk_local_runtime_live_summary.json",
+      "summary_counts": {
+        "failed": 0,
+        "passed": 1,
+        "skipped": 14,
+        "total": 15
+      }
+    }
+  ],
+  "contract": {
+    "actual_aggregate_counts": {
+      "failed": 0,
+      "passed": 8,
+      "skipped": 210,
+      "total": 218
+    },
+    "expected_aggregate_counts": {
+      "failed": 0,
+      "passed": 8,
+      "skipped": 210,
+      "total": 218
+    },
+    "mode": "repository",
+    "per_channel_expected_counts": {
+      "algenta_client": {
+        "failed": 0,
+        "passed": 1,
+        "skipped": 17,
+        "total": 18
+      },
+      "algenta_runtime": {
+        "failed": 0,
+        "passed": 1,
+        "skipped": 16,
+        "total": 17
+      },
+      "cli": {
+        "failed": 0,
+        "passed": 1,
+        "skipped": 42,
+        "total": 43
+      },
+      "mcp": {
+        "failed": 0,
+        "passed": 1,
+        "skipped": 64,
+        "total": 65
+      },
+      "python_sdk": {
+        "failed": 0,
+        "passed": 2,
+        "skipped": 43,
+        "total": 45
+      },
+      "typescript_runtime": {
+        "failed": 0,
+        "passed": 1,
+        "skipped": 14,
+        "total": 15
+      },
+      "typescript_sdk": {
+        "failed": 0,
+        "passed": 1,
+        "skipped": 14,
+        "total": 15
+      }
+    },
+    "status": "passed"
+  },
+  "elapsed_seconds": 118.312,
+  "failed_channels": 0,
+  "filter": "repository",
+  "generated_at": "2026-06-08T02:09:29.284144Z",
+  "logs_dir": "/Users/angel/Developer/decision-engine/build/repository_intelligence_channel_parity_logs",
+  "output_path": "/Users/angel/Developer/decision-engine/build/repository_intelligence_channel_parity_summary.json",
+  "passed_channels": 7,
+  "status": "passed",
+  "total_channels": 7
+}

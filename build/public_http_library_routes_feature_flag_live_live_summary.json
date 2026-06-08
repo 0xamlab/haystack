@@ -1,0 +1,16 @@
+{
+  "artifact": "llm_rollout_live_summary",
+  "channels": [
+    "http_api_feature_flag"
+  ],
+  "elapsed_seconds": 5.142,
+  "failed": 0,
+  "feature_flag": "ALGENTA_RUNTIME_LIBRARY_HTTP_API_ENABLED",
+  "generated_at": "2026-05-30T00:14:42Z",
+  "minimum_passed": 4,
+  "name": "public_http_library_routes_feature_flag_live",
+  "passed": 4,
+  "script": "tests/integration/test_runtime_libraries_http_live.py",
+  "skipped": 0,
+  "status": "passed"
+}

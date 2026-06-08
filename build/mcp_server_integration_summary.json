@@ -1,0 +1,38 @@
+{
+  "artifact": "live_integration_summary",
+  "details": {
+    "expected_tool_count": 101,
+    "mcp_transport_unavailable_hint": "Install requirements-mcp.txt to enable /mcp/sse and /mcp/messages.",
+    "runtime_proof_tool_count": 5,
+    "slowest_tests": [
+      {
+        "elapsed_seconds": 2.386,
+        "name": "repository tools \u2192 snapshot/triage/decision-plan/simulate/apply gate"
+      },
+      {
+        "elapsed_seconds": 0.0,
+        "name": "get_contract \u2192 machine-readable contract visible"
+      },
+      {
+        "elapsed_seconds": 0.0,
+        "name": "list_runs tool \u2192 total + runs list"
+      },
+      {
+        "elapsed_seconds": 0.0,
+        "name": "TOOLS dict \u2192 each entry has spec + callable handler"
+      },
+      {
+        "elapsed_seconds": 0.0,
+        "name": "trigger tools \u2192 register/list/fire/pause/delete lifecycle"
+      }
+    ]
+  },
+  "elapsed_seconds": 11.701,
+  "failed": 0,
+  "generated_at": "2026-06-08T02:08:19.173557Z",
+  "name": "mcp_server_integration",
+  "passed": 1,
+  "script": "tests/integration/test_mcp_server.py",
+  "skipped": 64,
+  "total": 65
+}
