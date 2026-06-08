@@ -111,12 +111,14 @@ _SOURCE_EXPECTATIONS: dict[str, tuple[str, ...]] = {
         "fail closed",
         "<YOUR_ALGENTA_API_KEY>",
     ),
-    "apps/cli/main.py": (
+    "apps/cli/main/__init__.py": (
         "Cloud Managed example",
         "`self_hosted` and",
         "self-hosted operator",
         "fail closed",
         "<YOUR_ALGENTA_API_KEY>",
+    ),
+    "apps/cli/main/_cmd_auth_daemon_bench.py": (
         "<YOUR_LEGACY_DECISION_ENGINE_API_KEY>",
     ),
     "packages/algenta-core/algenta/cli.py": (
@@ -296,7 +298,7 @@ def test_distribution_surfaces_do_not_keep_stale_hosted_only_key_links(
         "packages/ts-sdk/dist/client.js",
         "packages/ts-sdk/dist/client.d.ts",
         "apps/runtime/sdk.py",
-        "apps/cli/main.py",
+        "apps/cli/main/__init__.py",
     ],
 )
 def test_user_visible_source_surfaces_avoid_live_looking_key_literals(
