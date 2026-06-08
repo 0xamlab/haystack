@@ -378,6 +378,11 @@ async def test_connector_real_detailed_reuses_clickhouse_validation_pool(
     client = _FakeClickHouseClient()
     connect_calls: list[str] = []
 
+    # See test_connector_real_detailed_supports_clickhouse for why this stub
+    # is needed in CI (clickhouse-connect is an optional dep, not installed).
+    import sys
+    monkeypatch.setitem(sys.modules, "clickhouse_connect", types.ModuleType("clickhouse_connect"))
+
     monkeypatch.setattr(
         SQLConnector,
         "_clickhouse_connect",
