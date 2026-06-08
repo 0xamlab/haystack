@@ -165,6 +165,85 @@ def test_search_join_path_prefers_source_aligned_foreign_key(tmp_path):
     assert hops[0].right_key == "id"
 
 
+def test_search_join_path_memoizes_per_planner(tmp_path):
+    # Fix #3: the join-path search is memoized on the planner instance, so a repeated
+    # (metric_src, group_src, group_col) lookup is served from cache (cold→warm ~9ms).
+    planner = AutoPlanner(data_dir=Path(tmp_path), llm_policy="never")
+    planner.graph = {
+        "aircraft_components": {
+            "id": _planner_node("identifier"),
+            "aircraft_id": _planner_node("identifier"),
+        },
+        "aircraft": {
+            "id": _planner_node("identifier"),
+            "registration": _planner_node("text"),
+        },
+    }
+    planner.profiles = {
+        "aircraft_components": {
+            "id": {"fill_rate": 1.0, "unique_count": 6500, "total_count": 6500, "strings": ["1"]},
+            "aircraft_id": {"fill_rate": 1.0, "unique_count": 252, "total_count": 6500, "strings": ["1"]},
+        },
+        "aircraft": {
+            "id": {"fill_rate": 1.0, "unique_count": 252, "total_count": 252, "strings": ["1"]},
+            "registration": {"fill_rate": 1.0, "unique_count": 252, "total_count": 252, "strings": ["N1"]},
+        },
+    }
+    planner._connections = [
+        {
+            "source_a_name": "aircraft_components",
+            "source_b_name": "aircraft",
+            "col_a": "aircraft_id",
+            "col_b": "id",
+            "confidence": 0.93,
+            "cardinality": "many_to_one",
+            "overlap": 1.0,
+        },
+    ]
+
+    first = planner._search_join_path("aircraft_components", "aircraft", group_col="registration")
+    assert ("aircraft_components", "aircraft", "registration") in planner._join_path_cache
+    second = planner._search_join_path("aircraft_components", "aircraft", group_col="registration")
+    assert second == first  # served from the per-planner cache
+
+
+def test_search_join_path_respects_expansion_budget(tmp_path, monkeypatch):
+    # Fix #1: a dense graph with no registry adjacency would fan out ~all-sources at every
+    # node to max_hops (thousands of edge evals). The budget caps that to a small, bounded
+    # number — proving the cold-query explosion is contained without dropping real joins.
+    import apps.api_server.services.auto_planner_join_paths as jp
+
+    monkeypatch.setattr(jp, "_JOIN_SEARCH_MAX_EXPANSIONS", 3)
+    planner = AutoPlanner(data_dir=Path(tmp_path), llm_policy="never")
+    graph: dict = {"metric_src": {"id": _planner_node("identifier"), "k": _planner_node("identifier")}}
+    for i in range(9):
+        graph[f"noise_{i}"] = {"id": _planner_node("identifier"), "k": _planner_node("identifier")}
+    graph["target_src"] = {"id": _planner_node("identifier"), "label": _planner_node("text")}
+    planner.graph = graph
+    planner.profiles = {
+        src: {
+            col: {"fill_rate": 1.0, "unique_count": 100, "total_count": 100, "strings": ["1"]}
+            for col in cols
+        }
+        for src, cols in graph.items()
+    }
+    planner._connections = []  # no registry adjacency → forces the broad fallback fan-out
+
+    calls = {"n": 0}
+    original = planner._direct_join_candidates
+
+    def _counting(a, b):  # type: ignore[no-untyped-def]
+        calls["n"] += 1
+        return original(a, b)
+
+    monkeypatch.setattr(planner, "_direct_join_candidates", _counting)
+
+    # Must terminate (not explode) and stay bounded — without the budget this would be
+    # ~10^4 candidate evaluations; with it, well under 30.
+    planner._search_join_path("metric_src", "target_src", group_col="label")
+    assert calls["n"] < 30
+
+
 def test_search_join_path_merges_runtime_candidates_when_registry_only_has_generic_ids(tmp_path):
     planner = AutoPlanner(data_dir=Path(tmp_path), llm_policy="never")
     planner.graph = {

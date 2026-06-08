@@ -371,7 +371,56 @@ def direct_join_candidates(
     return matches
 
 
+# Fix #1: hard ceiling on edge evaluations per search pass. The cross-source fallback
+# fan-out is ~all known sources at every node to depth max_hops, which on a dense registry
+# (hundreds of sources / edges) explodes into tens of thousands of _rank_candidates calls
+# (and the speculative parquet sampling behind them). A generous cap (real star/snowflake
+# joins resolve in well under this) bounds the cold-query cost without dropping legitimate
+# shallow paths; we still return the best path found within budget.
+_JOIN_SEARCH_MAX_EXPANSIONS = 2500
+
+
 def search_join_path(
+    planner: Any,
+    metric_src: str,
+    group_src: str,
+    *,
+    group_col: str | None = None,
+    max_hops: int = 4,
+    direct_join_candidates_fn: Callable[[str, str], list[dict[str, Any]]],
+    join_candidate_effective_conf_fn: Callable[[dict[str, Any], str | None], float],
+    join_hop_cls: type[Any],
+) -> tuple[list[Any], float, list[str], str | None]:
+    # Fix #3: memoize the (expensive) join-path search on the planner instance. The planner
+    # is rebuilt + re-cached whenever the workspace's visible-dataset set / schema changes
+    # (the query_registry_planner cache key includes the visibility hash), so the planner's
+    # lifetime IS the schema version — the in-instance cache needs no extra schema key.
+    cache = getattr(planner, "_join_path_cache", None)
+    if cache is None:
+        cache = {}
+        try:
+            planner._join_path_cache = cache
+        except Exception:
+            cache = None
+    key = (metric_src, group_src, group_col)
+    if cache is not None and key in cache:
+        return cache[key]
+    result = _search_join_path_impl(
+        planner,
+        metric_src,
+        group_src,
+        group_col=group_col,
+        max_hops=max_hops,
+        direct_join_candidates_fn=direct_join_candidates_fn,
+        join_candidate_effective_conf_fn=join_candidate_effective_conf_fn,
+        join_hop_cls=join_hop_cls,
+    )
+    if cache is not None:
+        cache[key] = result
+    return result
+
+
+def _search_join_path_impl(
     planner: Any,
     metric_src: str,
     group_src: str,
@@ -523,6 +572,7 @@ def search_join_path(
         registry_only: bool,
     ) -> tuple[list[Any], float, list[str], str | None] | None:
         candidate_paths: list[tuple[float, float, float, list[Any], list[str]]] = []
+        expansions = 0  # Fix #1: edge-evaluation budget for this pass (see _JOIN_SEARCH_MAX_EXPANSIONS)
 
         should_try_direct = (
             not registry_only
@@ -562,10 +612,14 @@ def search_join_path(
             effective_conf: float,
             notes: list[str],
         ) -> None:
+            nonlocal expansions
             if len(hops) >= max_hops:
                 return
 
             for next_src in _candidate_targets(current, visited, registry_only=registry_only):
+                if expansions >= _JOIN_SEARCH_MAX_EXPANSIONS:
+                    return
+                expansions += 1
                 ranked = _rank_candidates(current, next_src)
                 if ranked is None:
                     continue
