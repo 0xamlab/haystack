@@ -613,7 +613,15 @@ def test_root_test_graph_includes_formal_runtime_foundation_proof_bundle() -> No
     assert "tests/test_runtime_admin_api.py" in scripts["test:formal-runtime-foundation"]
     assert "tests/test_runtime_release_validation.py" in scripts["test:formal-runtime-foundation"]
     assert "tests/test_validate_runtime_release.py" in scripts["test:formal-runtime-foundation"]
-    assert "tests/test_runtime_manifest_model_validation.py" in scripts["test:formal-runtime-foundation"]
+    for suffix in (
+        "test_runtime_manifest_model_validation_algenta_runtime.py",
+        "test_runtime_manifest_model_validation_producer_runtime.py",
+        "test_runtime_manifest_model_validation_python_runtime.py",
+        "test_runtime_manifest_model_validation_runtime_admin.py",
+        "test_runtime_manifest_model_validation_runtime_manifest.py",
+        "test_runtime_manifest_model_validation_runtime_release.py",
+    ):
+        assert f"tests/{suffix}" in scripts["test:formal-runtime-foundation"]
     assert "tests/test_runtime_schema_surface.py" in scripts["test:formal-runtime-foundation"]
     assert "tests/test_runtime_startup_smoke.py" in scripts["test:formal-runtime-foundation"]
     assert "tests/test_decision_engine_query_surface.py" in scripts["test:formal-runtime-foundation"]
