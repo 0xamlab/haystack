@@ -538,7 +538,12 @@ def test_typescript_package_surface_includes_package_readme_and_registry_metadat
     client_types = (dist_dir / "client.d.ts").read_text() + "\n".join(
         p.read_text() for p in sorted(dist_dir.glob("_client_*.d.ts"))
     )
-    runtime_types = (package_root / "dist" / "runtime.d.ts").read_text()
+    # runtime.d.ts is now a barrel re-exporting per-domain sub-modules.
+    # Concat the barrel + all _runtime_*.d.ts files so textual surface checks
+    # cover the same definitions as the pre-split monolithic runtime.d.ts.
+    runtime_types = (dist_dir / "runtime.d.ts").read_text() + "\n".join(
+        p.read_text() for p in sorted(dist_dir.glob("_runtime_*.d.ts"))
+    )
     # types.d.ts is now a barrel re-exporting sub-modules. Concat all
     # _types_*.d.ts so textual surface checks cover the same definitions.
     dist_dir = package_root / "dist"
