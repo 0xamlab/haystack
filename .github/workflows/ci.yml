@@ -55,6 +55,10 @@ jobs:
       STRIPE_WEBHOOK_SECRET: whsec_placeholder
       SMTP_HOST: localhost
       SMTP_PORT: 1025
+      # Live connectivity integration tests assume a developer-local postgres
+      # (user: angel, db: decision_engine) and other real services that don't
+      # exist in CI. Honored by package.json's test:formal-runtime-foundation.
+      DE_SKIP_GO_LIVE_VERIFY: "1"
 
     steps:
       - name: Checkout
