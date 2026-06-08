@@ -285,6 +285,14 @@ async def test_query_and_local_runtime_match_on_redis_normalized_records(
             "apps.api_server.services.source_registry.source_schema_revision",
             lambda org_id, source_id: "source_rev_redis",
         )
+        # _resolved_plan_current_schema_revision falls through to org-wide
+        # schema_revision when no visible_entries / dataset_id is supplied
+        # (tenant-safe path). Stub that too so the resolved_plan's
+        # schema_revision matches what the validator computes.
+        monkeypatch.setattr(
+            "apps.api_server.services.source_registry.schema_revision",
+            lambda org_id: "source_rev_redis",
+        )
         monkeypatch.setattr(
             "apps.api_server.services.source_registry.get_source_parquet",
             lambda org_id, source_id: parquet_bytes,
