@@ -168,10 +168,11 @@ test-integration:
 	$(REPO_PYTHON) -m pytest tests/integration/ -v --tb=short
 
 ## Run contract tests
+# REPO_PYTHON routes through pixi when available; pure-stdlib host fallback
+# is equivalent to: "$$PY_BIN" $(CONTRACT_SCRIPT_FILES)
 test-contract:
-	@PY_BIN="$$(if [ -x ./.venv/bin/python ]; then echo ./.venv/bin/python; else echo python3; fi)"; \
-	"$$PY_BIN" -m pytest $(CONTRACT_PYTEST_FILES) -v --tb=short && \
-	"$$PY_BIN" $(CONTRACT_SCRIPT_FILES)
+	$(REPO_PYTHON) -m pytest $(CONTRACT_PYTEST_FILES) -v --tb=short && \
+	$(REPO_PYTHON) $(CONTRACT_SCRIPT_FILES)
 
 ## Run load tests (requires k6)
 test-load:
