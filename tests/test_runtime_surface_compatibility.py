@@ -322,8 +322,8 @@ def test_mcp_registry_keeps_primary_and_secondary_surfaces_available() -> None:
     specs = get_tool_specs()
     spec_names = {spec["name"] for spec in specs}
 
-    assert len(TOOLS) == 136
-    assert len(specs) == 136
+    assert len(TOOLS) == 137
+    assert len(specs) == 137
     assert spec_names == set(TOOLS)
     assert {
         "get_contract",

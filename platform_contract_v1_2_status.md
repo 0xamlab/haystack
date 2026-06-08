@@ -432,7 +432,8 @@ This file tracks implementation status for the formal `v1.2` platform contract.
   - `ruff check . --statistics`
   - `python3 scripts/run_diagnostics.py`
   - `DE_SKIP_API=1 python3 tests/integration/test_billing_team.py`
-  - `DE_SKIP_API=1 python3 tests/integration/test_cli_full.py`
+  - historical at that time: `DE_SKIP_API=1 python3 tests/integration/test_cli_full.py`
+  - current canonical live CLI proof: `python3 tests/integration/test_cli.py`
   - `DE_SKIP_API=1 python3 tests/integration/test_engines.py`
   - `python3 -m pytest tests/integration/test_adversarial.py tests/test_sdk.py -q`
   - `python3 -m pytest tests -q`
