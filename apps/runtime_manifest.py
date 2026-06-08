@@ -3116,7 +3116,20 @@ def _build_immediate_pr_sequence() -> list[ImmediateImplementationPR]:
     ]
 
 
-def _build_benchmark_discovery_lane(module_count: int, function_count: int) -> BenchmarkDiscoveryLane:
+def _build_benchmark_discovery_lane(
+    module_count: int,
+    function_count: int,
+    proof_bundle: dict[str, Any] | None = None,
+) -> BenchmarkDiscoveryLane:
+    # Prefer the lane committed in the proof bundle so CI doesn't need to
+    # re-scan mojo/engine on disk (which may diverge from what the bundle
+    # was generated against). Fall back to a live disk scan only if the
+    # bundle pre-dates the lane field.
+    if proof_bundle is not None:
+        committed_lane = proof_bundle.get("benchmark_discovery_lane")
+        if committed_lane:
+            return BenchmarkDiscoveryLane.model_validate(committed_lane)
+
     inventory_report = build_inventory_report()
     discovered_source_inventory = [
         BenchmarkDiscoverySourceModuleEntry(
@@ -3214,6 +3227,7 @@ def load_runtime_manifest(
             _build_benchmark_discovery_lane(
                 module_count,
                 function_count,
+                proof_bundle,
             )
         ),
         "advertised_capabilities": {

@@ -1,6 +1,6 @@
 {
   "bundle": "llm_rollout_proof_bundle",
-  "generated_at": "2026-05-30T00:20:53Z",
+  "generated_at": "2026-06-08T01:38:19Z",
   "expected_modules": 22,
   "expected_functions": 209,
   "public_supported_channels": [
@@ -47,6 +47,1939 @@
       "function": "build_table_json"
     }
   },
+  "benchmark_discovery_lane": {
+    "discovered_source_modules": 481,
+    "discovered_public_functions": 4900,
+    "discovered_source_inventory": [
+      {
+        "import_path": "ab_testing",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "accounting",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "acoustics",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "activations",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "actuarial",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "adhesives",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "aerospace",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "agent_runtime",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "agriculture",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "agronomy",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "allocation",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "anomaly",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "antenna",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "apiculture",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "aquaculture",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "archaeology",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "astrobiology",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "astronomy",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "atmospheric_chemistry",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "auction",
+        "public_function_count": 11
+      },
+      {
+        "import_path": "audio",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "autograd_graph",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "autograd_ops",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "automata.state_machine",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "autonomous_vehicles",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "aviation",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "battery",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "bayesian",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "bayesian_inference",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "behavioral_economics",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "biogeochemistry",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "bioinformatics",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "biomechanics",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "biomedical",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "bitops",
+        "public_function_count": 26
+      },
+      {
+        "import_path": "blockchain",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "bloom_counting",
+        "public_function_count": 9
+      },
+      {
+        "import_path": "boolean_algebra",
+        "public_function_count": 13
+      },
+      {
+        "import_path": "bpe_tokenizer",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "brewing",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "bryology",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "cache",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "cardiology",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "cartography",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "category_theory",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "causal",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "cellular",
+        "public_function_count": 11
+      },
+      {
+        "import_path": "cellular_automata",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "ceramics",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "chaos",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "checksum",
+        "public_function_count": 11
+      },
+      {
+        "import_path": "chromatography",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "climate",
+        "public_function_count": 11
+      },
+      {
+        "import_path": "clustering_metrics",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "color",
+        "public_function_count": 11
+      },
+      {
+        "import_path": "color_science",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "column_rank",
+        "public_function_count": 6
+      },
+      {
+        "import_path": "combinatorial",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "combustion",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "compiler_theory",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "composites",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "compression.delta",
+        "public_function_count": 11
+      },
+      {
+        "import_path": "compression.huffman",
+        "public_function_count": 7
+      },
+      {
+        "import_path": "compression.lz77",
+        "public_function_count": 6
+      },
+      {
+        "import_path": "compression.rle",
+        "public_function_count": 5
+      },
+      {
+        "import_path": "concrete",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "config.toml_parser",
+        "public_function_count": 11
+      },
+      {
+        "import_path": "config.yaml_parser",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "constraint",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "continuous_batching",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "contrastive_learning",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "control",
+        "public_function_count": 9
+      },
+      {
+        "import_path": "conv",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "convex",
+        "public_function_count": 9
+      },
+      {
+        "import_path": "copula",
+        "public_function_count": 5
+      },
+      {
+        "import_path": "corrosion",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "cosmology",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "cost_router",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "cryogenics",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "cryology",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "cryptanalysis",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "crypto.aes_sbox",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "crypto.base64",
+        "public_function_count": 4
+      },
+      {
+        "import_path": "crypto.chacha20",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "crypto.crc32",
+        "public_function_count": 6
+      },
+      {
+        "import_path": "crypto.hash_chain",
+        "public_function_count": 18
+      },
+      {
+        "import_path": "crypto.hmac",
+        "public_function_count": 2
+      },
+      {
+        "import_path": "crypto.pbkdf2",
+        "public_function_count": 7
+      },
+      {
+        "import_path": "crypto.uuid",
+        "public_function_count": 2
+      },
+      {
+        "import_path": "crystallography",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "currency",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "cytology",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "cytometry",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "data.csv_parser",
+        "public_function_count": 6
+      },
+      {
+        "import_path": "data.dataframe",
+        "public_function_count": 29
+      },
+      {
+        "import_path": "data_feedback_loop",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "data_pipeline",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "database",
+        "public_function_count": 9
+      },
+      {
+        "import_path": "datetime",
+        "public_function_count": 15
+      },
+      {
+        "import_path": "decision_analysis",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "decision_ml_fusion",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "decision_tree_parser",
+        "public_function_count": 3
+      },
+      {
+        "import_path": "demographics",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "dendrochronology",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "dendrology",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "dentistry",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "dependency",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "differentiate",
+        "public_function_count": 6
+      },
+      {
+        "import_path": "diffusion_models",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "dimensionality",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "dimensions",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "distillation",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "distributed_collectives",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "distribution_fit",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "distributions",
+        "public_function_count": 11
+      },
+      {
+        "import_path": "dosimetry",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "drones",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "earth",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "ecohydrology",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "ecology",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "economic_indicators",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "ecophysiology",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "election",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "electrical",
+        "public_function_count": 14
+      },
+      {
+        "import_path": "electrochemistry",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "electrostatics",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "elevator",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "embeddings",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "encoding",
+        "public_function_count": 7
+      },
+      {
+        "import_path": "encryption_modes",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "endocrinology",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "engines.column_matcher",
+        "public_function_count": 1
+      },
+      {
+        "import_path": "engines.column_profiler",
+        "public_function_count": 1
+      },
+      {
+        "import_path": "engines.column_ranker",
+        "public_function_count": 4
+      },
+      {
+        "import_path": "engines.field_map",
+        "public_function_count": 1
+      },
+      {
+        "import_path": "engines.join_detector",
+        "public_function_count": 1
+      },
+      {
+        "import_path": "engines.monte_carlo",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "engines.relation_detector",
+        "public_function_count": 1
+      },
+      {
+        "import_path": "engines.string_similarity",
+        "public_function_count": 1
+      },
+      {
+        "import_path": "entomology",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "env",
+        "public_function_count": 5
+      },
+      {
+        "import_path": "epidemiology",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "epigenetics",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "ergonomics",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "etiology",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "evaluation_feedback",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "execution_planner",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "fault_tolerance",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "feature_engineering",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "feature_selection",
+        "public_function_count": 9
+      },
+      {
+        "import_path": "fermentation",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "fft",
+        "public_function_count": 7
+      },
+      {
+        "import_path": "field_mapper",
+        "public_function_count": 9
+      },
+      {
+        "import_path": "filepath.pathlib",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "finance",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "fire_safety",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "fisheries",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "flash_attention",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "fluid",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "food_science",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "forensics",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "formal_logic",
+        "public_function_count": 14
+      },
+      {
+        "import_path": "fused_kernels",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "fuzzy_logic",
+        "public_function_count": 11
+      },
+      {
+        "import_path": "game_physics",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "game_theory",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "generation_loop",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "genetic",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "genomics",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "geochemistry",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "geodesy",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "geometry",
+        "public_function_count": 9
+      },
+      {
+        "import_path": "geomorphology",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "geophysics",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "geotechnical",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "glaciology",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "gpu_kernels",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "gradient_descent",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "graph.algorithms",
+        "public_function_count": 19
+      },
+      {
+        "import_path": "graph.weighted",
+        "public_function_count": 9
+      },
+      {
+        "import_path": "graph_algorithms",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "graph_compiler",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "graph_decision",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "greenhouse",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "heap",
+        "public_function_count": 13
+      },
+      {
+        "import_path": "hematology",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "horticulture",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "hvac",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "hybrid_reasoning",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "hydraulics",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "hydrogeology",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "hydrology",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "hydrometeorology",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "hydroponics",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "hypothesis",
+        "public_function_count": 6
+      },
+      {
+        "import_path": "image_ops",
+        "public_function_count": 11
+      },
+      {
+        "import_path": "immunology",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "inference_cost_latency",
+        "public_function_count": 11
+      },
+      {
+        "import_path": "inference_engine",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "inference_security",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "information_theory",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "insurance",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "integrate",
+        "public_function_count": 6
+      },
+      {
+        "import_path": "interpolate",
+        "public_function_count": 6
+      },
+      {
+        "import_path": "interval",
+        "public_function_count": 13
+      },
+      {
+        "import_path": "inventory",
+        "public_function_count": 11
+      },
+      {
+        "import_path": "json.parser",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "json.tokenizer",
+        "public_function_count": 5
+      },
+      {
+        "import_path": "json.writer",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "kalman",
+        "public_function_count": 11
+      },
+      {
+        "import_path": "kinetics",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "kv_cache",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "latency_optimizer",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "laundry",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "lidar",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "lidar_mapping",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "limnochemistry",
+        "public_function_count": 11
+      },
+      {
+        "import_path": "limnology",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "linalg",
+        "public_function_count": 18
+      },
+      {
+        "import_path": "linalg_ext",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "linear_programming",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "linguistics",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "llm_sampling",
+        "public_function_count": 11
+      },
+      {
+        "import_path": "logging.logger",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "logic_circuit",
+        "public_function_count": 26
+      },
+      {
+        "import_path": "logistics",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "lora_adapters",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "loss_functions",
+        "public_function_count": 11
+      },
+      {
+        "import_path": "lottery",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "magnetism",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "marine",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "markov",
+        "public_function_count": 11
+      },
+      {
+        "import_path": "materials",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "math_ext",
+        "public_function_count": 22
+      },
+      {
+        "import_path": "matrix_decomp",
+        "public_function_count": 11
+      },
+      {
+        "import_path": "matrix_ops",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "memory_system",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "metabolomics",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "metallurgy",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "meteorology",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "metrics_agg",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "microbiology",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "mineralogy",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "mining",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "mixture_of_experts",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "ml.classifiers",
+        "public_function_count": 7
+      },
+      {
+        "import_path": "ml.clustering",
+        "public_function_count": 4
+      },
+      {
+        "import_path": "ml.knn",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "ml.metrics",
+        "public_function_count": 7
+      },
+      {
+        "import_path": "ml.naive_bayes",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "ml.preprocessing",
+        "public_function_count": 6
+      },
+      {
+        "import_path": "ml.random_forest",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "ml_metrics_extended",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "model_abi",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "model_interop",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "model_parallel",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "model_router",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "model_serialization",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "moe_production",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "moe_routing",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "multi_objective",
+        "public_function_count": 7
+      },
+      {
+        "import_path": "multimodal",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "museum",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "music_theory",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "mycology",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "nanotechnology",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "nephrology",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "net.rate_limiter",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "net.unix_socket",
+        "public_function_count": 4
+      },
+      {
+        "import_path": "net.url",
+        "public_function_count": 14
+      },
+      {
+        "import_path": "network_analysis",
+        "public_function_count": 11
+      },
+      {
+        "import_path": "network_protocol",
+        "public_function_count": 11
+      },
+      {
+        "import_path": "neuropharmacology",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "neurophysics",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "nlp",
+        "public_function_count": 11
+      },
+      {
+        "import_path": "nn_layers",
+        "public_function_count": 11
+      },
+      {
+        "import_path": "normalization_layers",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "nuclear",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "number_theory",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "numerical_stability",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "numismatics",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "numpy_ops",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "nutrition",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "observability",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "oceanography",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "ode",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "online_learning",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "operations_research",
+        "public_function_count": 13
+      },
+      {
+        "import_path": "ophthalmology",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "optics",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "optimization_constrained",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "optimization_meta",
+        "public_function_count": 7
+      },
+      {
+        "import_path": "optimize",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "optimizer_full",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "option_pricing",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "orthodontics",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "packaging",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "paged_kv_cache",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "paleomagnetism",
+        "public_function_count": 13
+      },
+      {
+        "import_path": "paleontology",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "palynology",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "pandas_groupby",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "paper_science",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "pattern",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "pde",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "pedology",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "pension",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "perfumery",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "persistence",
+        "public_function_count": 11
+      },
+      {
+        "import_path": "pest_control",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "petri_net",
+        "public_function_count": 13
+      },
+      {
+        "import_path": "pharmacokinetics",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "pharmacology",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "photonics",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "photovoltaics",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "physics",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "phytochemistry",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "pipeline",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "plasma_physics",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "plumbing",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "pneumatics",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "polymer",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "polynomial",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "population",
+        "public_function_count": 20
+      },
+      {
+        "import_path": "population_genetics",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "positional_encoding",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "power_systems",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "printing",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "privacy",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "probability",
+        "public_function_count": 11
+      },
+      {
+        "import_path": "procurement",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "project_management",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "propensity",
+        "public_function_count": 9
+      },
+      {
+        "import_path": "proteomics",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "protocol",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "psychoacoustics",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "psychometrics",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "pulmonology",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "quantization",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "quantization_stack",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "quantum",
+        "public_function_count": 11
+      },
+      {
+        "import_path": "quantum_computing",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "queue_ds",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "queueing",
+        "public_function_count": 11
+      },
+      {
+        "import_path": "radar",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "radiometry",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "rag_retrieval",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "random_utils",
+        "public_function_count": 7
+      },
+      {
+        "import_path": "real_estate",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "recommender",
+        "public_function_count": 9
+      },
+      {
+        "import_path": "refrigeration",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "regex_engine",
+        "public_function_count": 9
+      },
+      {
+        "import_path": "regression",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "regression_tree",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "reinforcement",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "reliability",
+        "public_function_count": 11
+      },
+      {
+        "import_path": "rerank_eval",
+        "public_function_count": 9
+      },
+      {
+        "import_path": "reservoir",
+        "public_function_count": 7
+      },
+      {
+        "import_path": "rheology",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "risk",
+        "public_function_count": 11
+      },
+      {
+        "import_path": "rlhf_dpo",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "robotics",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "robustness",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "root_finding",
+        "public_function_count": 9
+      },
+      {
+        "import_path": "rubber",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "runtime_library_dispatch_generated",
+        "public_function_count": 1
+      },
+      {
+        "import_path": "sampling",
+        "public_function_count": 6
+      },
+      {
+        "import_path": "scheduler",
+        "public_function_count": 7
+      },
+      {
+        "import_path": "scheduler_ops",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "scheduling_algo",
+        "public_function_count": 9
+      },
+      {
+        "import_path": "scipy_optimize_ops",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "scipy_stats_ops",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "scoring",
+        "public_function_count": 11
+      },
+      {
+        "import_path": "security_governance",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "sedimentology",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "seismology",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "semiconductors",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "sentiment",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "serialization.msgpack",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "series",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "set_ops",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "sha256",
+        "public_function_count": 3
+      },
+      {
+        "import_path": "signal.dsp",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "signal.filter",
+        "public_function_count": 11
+      },
+      {
+        "import_path": "signal_processing",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "silviculture",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "simulation",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "sketch",
+        "public_function_count": 9
+      },
+      {
+        "import_path": "sobol",
+        "public_function_count": 1
+      },
+      {
+        "import_path": "social_network",
+        "public_function_count": 9
+      },
+      {
+        "import_path": "soil_mechanics",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "soil_science",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "solar_energy",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "sorting",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "sparse",
+        "public_function_count": 9
+      },
+      {
+        "import_path": "sparse_attention",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "sparse_vector",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "special_functions",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "spectral",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "spectroscopy",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "speculative_decoding",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "speleology",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "sports_analytics",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "stat_tests",
+        "public_function_count": 9
+      },
+      {
+        "import_path": "state_space_models",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "stateful_runtime",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "stats_bootstrap",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "stochastic",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "stratigraphy",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "string_distance",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "structs.bloom_filter",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "structs.containers",
+        "public_function_count": 18
+      },
+      {
+        "import_path": "structs.hashmap",
+        "public_function_count": 14
+      },
+      {
+        "import_path": "structs.lru_cache",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "structural",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "structured_output",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "supply_chain",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "survival",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "sustainability",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "svm_kernel",
+        "public_function_count": 9
+      },
+      {
+        "import_path": "taphonomy",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "telecommunications",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "tensor",
+        "public_function_count": 32
+      },
+      {
+        "import_path": "tensor_ops",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "text.column_scorer",
+        "public_function_count": 4
+      },
+      {
+        "import_path": "text.fuzzy",
+        "public_function_count": 7
+      },
+      {
+        "import_path": "text.regex",
+        "public_function_count": 7
+      },
+      {
+        "import_path": "text.string_utils",
+        "public_function_count": 16
+      },
+      {
+        "import_path": "text.tokenizer",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "textile",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "thermodynamics",
+        "public_function_count": 11
+      },
+      {
+        "import_path": "timber",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "time_series_decompose",
+        "public_function_count": 9
+      },
+      {
+        "import_path": "time_zone",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "timeseries_stats",
+        "public_function_count": 9
+      },
+      {
+        "import_path": "token_bucket",
+        "public_function_count": 11
+      },
+      {
+        "import_path": "topology",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "toxicokinetics",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "toxicology",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "traffic_signal",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "training_stability",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "transform",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "transformer_attention",
+        "public_function_count": 11
+      },
+      {
+        "import_path": "transformer_blocks",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "transportation",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "tribochemistry",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "tribology",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "trie",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "ultrasonics",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "units",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "urban_planning",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "validate",
+        "public_function_count": 11
+      },
+      {
+        "import_path": "vector_kernels.batch_ranker",
+        "public_function_count": 5
+      },
+      {
+        "import_path": "vector_kernels.dot",
+        "public_function_count": 4
+      },
+      {
+        "import_path": "vector_kernels.prefilter",
+        "public_function_count": 7
+      },
+      {
+        "import_path": "vector_kernels.ranker",
+        "public_function_count": 1
+      },
+      {
+        "import_path": "vector_kernels.semantic_micro.semantic_api",
+        "public_function_count": 2
+      },
+      {
+        "import_path": "vector_kernels.semantic_micro.semantic_embed",
+        "public_function_count": 3
+      },
+      {
+        "import_path": "vector_kernels.semantic_micro.semantic_expand",
+        "public_function_count": 2
+      },
+      {
+        "import_path": "vector_kernels.semantic_micro.semantic_loader",
+        "public_function_count": 1
+      },
+      {
+        "import_path": "vector_kernels.semantic_micro.semantic_mlp",
+        "public_function_count": 7
+      },
+      {
+        "import_path": "vector_kernels.semantic_micro.semantic_types",
+        "public_function_count": 3
+      },
+      {
+        "import_path": "vector_kernels.table",
+        "public_function_count": 7
+      },
+      {
+        "import_path": "vector_kernels.test_table",
+        "public_function_count": 4
+      },
+      {
+        "import_path": "vector_kernels.token_index",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "vector_search",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "vector_similarity",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "veterinary",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "virology",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "viticulture",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "volcanology",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "voting",
+        "public_function_count": 11
+      },
+      {
+        "import_path": "wastewater",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "watchmaking",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "water_chemistry",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "wavelet",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "weight_loader",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "welding",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "wind_energy",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "wood_science",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "workflow_engine",
+        "public_function_count": 10
+      }
+    ],
+    "shipping_manifest_modules": 22,
+    "shipping_manifest_functions": 209,
+    "non_shipping_rule": "The broader Mojo inventory remains a benchmark and discovery lane only; modules are not advertised on the runtime surface unless listed in this manifest."
+  },
   "sdk_contract_suites": [
     {
       "name": "python_sdk_package_contract",
@@ -67,7 +2000,7 @@
         "tests/test_algenta_mojo_sdk.py"
       ],
       "status": "passed",
-      "elapsed_seconds": 1.755,
+      "elapsed_seconds": 3.738,
       "passed": 1,
       "failed": 0,
       "skipped": 0
@@ -93,7 +2026,7 @@
         "packages/ts-sdk/src/libraries.test.ts"
       ],
       "status": "passed",
-      "elapsed_seconds": 1.344,
+      "elapsed_seconds": 3.099,
       "passed": 1,
       "failed": 0,
       "skipped": 8
@@ -116,7 +2049,7 @@
         "apps/api_server/config.py"
       ],
       "status": "passed",
-      "elapsed_seconds": 8.01,
+      "elapsed_seconds": 25.022,
       "passed": 2,
       "failed": 0,
       "skipped": 0
@@ -137,7 +2070,7 @@
         "apps/api_server/config.py"
       ],
       "status": "passed",
-      "elapsed_seconds": 5.785,
+      "elapsed_seconds": 5.142,
       "passed": 4,
       "failed": 0,
       "skipped": 0
@@ -317,9 +2250,9 @@
         "suite_name": "typescript_sdk_local_runtime",
         "script": "tests/integration/test_typescript_runtime_live.py",
         "status": "passed",
-        "passed": 15,
+        "passed": 1,
         "failed": 0,
-        "skipped": 0,
+        "skipped": 14,
         "feature_flag": false,
         "module_count": 6,
         "function_count": 60,
@@ -407,7 +2340,7 @@
       ],
       "minimum_passed": 7,
       "status": "passed",
-      "elapsed_seconds": 3.95,
+      "elapsed_seconds": 3.435,
       "passed": 7,
       "failed": 0,
       "skipped": 0
@@ -418,12 +2351,12 @@
       "channels": [
         "typescript_sdk"
       ],
-      "minimum_passed": 2,
+      "minimum_passed": 1,
       "status": "passed",
-      "elapsed_seconds": 25.425,
-      "passed": 15,
+      "elapsed_seconds": 15.426,
+      "passed": 1,
       "failed": 0,
-      "skipped": 0
+      "skipped": 14
     },
     {
       "name": "local_runtime_cli_mcp_matrix",
@@ -436,7 +2369,7 @@
       ],
       "minimum_passed": 11,
       "status": "passed",
-      "elapsed_seconds": 7.189,
+      "elapsed_seconds": 6.677,
       "passed": 11,
       "failed": 0,
       "skipped": 0

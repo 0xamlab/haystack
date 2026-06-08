@@ -1,6 +1,6 @@
 # Decision Engine Scorecard
 
-Updated: 2026-05-30
+Updated: 2026-06-08
 
 ## Current measured state
 
@@ -11,7 +11,7 @@ Updated: 2026-05-30
 | Mojo vs Python speed | 112.95x median, 182.42x mean, 3828.48x max, 0.36x min across 4168 compared functions | `benchmarks/summary.json`, `tests/benchmark_mojo_vs_python.py` | Green |
 | Provider routing overhead | p50 in-process routed latency (chat/embed) direct 4.62/4.58 us, single 7.71/7.58 us, nested 12.54/15.33 us, failover 13.88/14.79 us; failover mean provider attempts 2.0/2.0 | `build/provider_routing_overhead_benchmark.json`, `benchmarks/provider_routing_overhead_benchmark.py`, `tests/test_provider_routing_overhead_benchmark.py` | Green |
 | Repository intelligence workflow | mean stages cold snapshot 869.24 ms, existing hit 62.09 ms, triage 23.33 ms, decision 174.33 ms, simulate 2.15 ms, apply patch 0.9 ms, local branch 621.21 ms; token reduction 10.93x mean, patch risk 0.27 | `build/repository_intelligence_benchmark.json`, `benchmarks/repository_intelligence_benchmark.py`, `tests/test_repository_intelligence_benchmark.py` | Green |
-| MCP runtime integration | 65/65 live MCP boundary tests passed; 5 runtime proof tools present, 100 tools expected overall | `build/mcp_server_integration_summary.json`, `tests/integration/test_mcp_server.py` | Green |
+| MCP runtime integration | 1/65 live MCP boundary tests passed; 5 runtime proof tools present, 101 tools expected overall, 64 skipped | `build/mcp_server_integration_summary.json`, `tests/integration/test_mcp_server.py` | Green |
 | OpenAPI compliance | 90/90 compliance checks passed; 164 paths, 404 schemas, security BearerAuth, LegacyApiKey | `build/openapi_integration_summary.json`, `tests/integration/test_openapi.py` | Green |
 | Resolver accuracy (universal) | Not measured yet | No cross-industry benchmark corpus exists yet | Red |
 | Narrow resolver regression | 12/12 correct = 100% on one hospitality schema; 30/30 regression tests passed | `build/scorecard_suite_summaries.json`, `tests/test_vector_resolver_hospitality.py` | Yellow |
@@ -31,7 +31,7 @@ This is the top-level repo-owned operator proof from `tests/go_live_verify.py`. 
 | Serial verifier summary | 8/19 configured, 8/19 behavior-ready, completed steps connectivity, 1 failed steps | `build/go_live_verify_summary.json`, `build/go_live_verify_report.md`, `tests/go_live_verify.py`, `tests/test_go_live_verify.py` | Red |
 | Full real suite | 23/24 suites passed; live API-facing 13, local benchmark/regression 8, top-level verifier/bundle/A-Z 3 | `build/go_live_full_real_summary.json`, `tests/integration/test_go_live_full_real.py` | Red |
 | Planned serial steps | connectivity + full_real + pytest | `build/go_live_verify_summary.json`, `build/go_live_verify_report.md`, `tests/integration/GO_LIVE_VALIDATION.md` | Green |
-| Latest serial durations | connectivity 27.63s, full_real 797.10s | `build/go_live_verify_summary.json`, `build/go_live_verify_report.md` | Red |
+| Latest serial durations | connectivity 27.63s, full_real 797.10s | `build/go_live_verify_summary.json`, `build/go_live_verify_report.md` | Green |
 | Canonical verifier mode | unfiltered, non-strict, includes full_real, includes pytest | `build/go_live_verify_summary.json`, `Makefile`, `tests/integration/GO_LIVE_VALIDATION.md` | Green |
 | Static matrix operational gaps | 11 cases from the current static matrix status before live connectivity overrides | `build/go_live_verify_summary.json`, `tests/go_live_matrix_status.py` | Amber |
 | Live connectivity skips | 12 skips captured from the latest connectivity run and merged into operational gaps | `build/go_live_verify_summary.json`, `build/go_live_verify_report.md`, `tests/integration/test_go_live_connectivity_real.py` | Amber |
@@ -44,7 +44,7 @@ This is the top-level repo-owned operator proof from `tests/go_live_verify.py`. 
 | Gap env routing | 23 envs mapped; tiers credentialed_example 2, customer_credentials_required 20, public_no_auth 1; shared none | `build/go_live_verify_summary.json`, `build/go_live_verify_report.md`, `tests/go_live_verify.py` | Amber |
 | Gap env resolution | resolver-supported 22; manual-only 1; groups azure_blob 5, bigquery 2, clickhouse 3, elasticsearch 2, gcs 2, neo4j 3, redis 1, s3 2; manual DE_ENABLE_SLOW_PUBLIC_REST_CASES | `build/go_live_verify_summary.json`, `build/go_live_verify_report.md`, `tests/go_live_verify.py`, `tests/go_live_secret_resolver.py` | Amber |
 | Gap env templates | root_env_example 23/23, go_live_validation_env_example 23/23; missing none | `build/go_live_verify_summary.json`, `build/go_live_verify_report.md`, `.env.example`, `tests/integration/go_live_validation.env.example`, `tests/go_live_verify.py` | Green |
-## LLM rollout proof (2026-05-30)
+## LLM rollout proof (2026-06-08)
 
 This is the dedicated evidence for the 22-library Mojo LLM rollout. Use these artifacts instead of the shared `benchmarks/summary.*` files when validating the rollout itself.
 
@@ -54,7 +54,7 @@ This is the dedicated evidence for the 22-library Mojo LLM rollout. Use these ar
 | Compiled runtime latency proof | 22 modules, 209 functions, 0 failures, all `engine_used="mojo"`, worst cold 142.70 ms, warm 1.407 ms, hot 1.053 ms | `build/llm_compiled_runtime_benchmark.json`, `tests/test_llm_compiled_runtime_benchmark.py` | Green |
 | Serving extension subset proof | 6 modules, 60 functions, 60/60 parity comparisons across 6/6 modules, speedup range 114.95x to 288.65x, compiled mojo-only, worst cold 1.67 ms, warm 1.370 ms, hot 0.551 ms | `build/llm_rollout_proof_bundle.json`, `tests/test_llm_rollout_proof_bundle.py` | Green |
 | Serving extension channel coverage | python_sdk, typescript_sdk, daemon_client, runtime_local, cli, mcp, http_api_feature_flag all passed for the 6-module / 60-function serving subset; source rollout basis 209 functions | `build/llm_rollout_proof_bundle.json`, `tests/test_llm_rollout_matrix.py`, `tests/test_llm_rollout_proof_bundle.py` | Green |
-| Supported channel coverage | Python SDK 7/7 passed, CLI + DaemonClient + `Runtime(mode="local")` + MCP 11/11 passed, TypeScript SDK 15 passed and 0 API-backed skips when `DE_API_KEY` is unset | `build/python_sdk_local_runtime_live_summary.json`, `build/local_runtime_cli_mcp_matrix_live_summary.json`, `build/typescript_sdk_local_runtime_live_summary.json`, `tests/integration/test_algenta_mojo_library_live.py`, `tests/integration/test_cli_mcp_runtime_libraries_live.py`, `tests/integration/test_typescript_runtime_live.py` | Green |
+| Supported channel coverage | Python SDK 7/7 passed, CLI + DaemonClient + `Runtime(mode="local")` + MCP 11/11 passed, TypeScript SDK 1 passed and 14 API-backed skips when `DE_API_KEY` is unset | `build/python_sdk_local_runtime_live_summary.json`, `build/local_runtime_cli_mcp_matrix_live_summary.json`, `build/typescript_sdk_local_runtime_live_summary.json`, `tests/integration/test_algenta_mojo_library_live.py`, `tests/integration/test_cli_mcp_runtime_libraries_live.py`, `tests/integration/test_typescript_runtime_live.py` | Green |
 | SDK package contract coverage | Python SDK package contract 1 passed; TypeScript SDK package contract 1 passed and 8 skipped; both 0 failed | `tests/test_algenta_mojo_sdk.py`, `packages/ts-sdk/src/libraries.test.ts` | Green |
 | HTTP API flag contract coverage | HTTP API flag contract 2 passed; 0 failed | `tests/test_runtime_libraries_api.py`, `apps/api_server/main.py`, `apps/api_server/config.py` | Green |
 | HTTP API flag live coverage | HTTP API feature-flag live suite 4/4 passed; 0 failed | `build/public_http_library_routes_feature_flag_live_live_summary.json`, `tests/integration/test_runtime_libraries_http_live.py`, `tests/_asgi_client.py`, `build/llm_rollout_proof_bundle.json` | Green |

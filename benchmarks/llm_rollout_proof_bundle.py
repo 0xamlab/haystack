@@ -25,6 +25,8 @@ from tests.llm_rollout_matrix import (  # noqa: E402
     LLM_ROLLOUT_FUNCTION_CASES,
     LLM_ROLLOUT_MODULE_NAMES,
 )
+from apps.runtime.mojo_inventory import build_inventory_report  # noqa: E402
+from apps.runtime_manifest import RuntimeNonShippingRule  # noqa: E402
 
 PARITY_ARTIFACT = PROJECT_ROOT / "build" / "llm_rollout_parity_benchmark.json"
 COMPILED_ARTIFACT = PROJECT_ROOT / "build" / "llm_compiled_runtime_benchmark.json"
@@ -1064,6 +1066,27 @@ def build_proof_bundle(
         normalized_http_flag_live_suites,
     )
 
+    inventory_report = build_inventory_report()
+    discovered_source_inventory = sorted(
+        [
+            {
+                "import_path": module.import_path,
+                "public_function_count": len(module.public_functions),
+            }
+            for module in inventory_report.source_modules
+            if module.public_functions
+        ],
+        key=lambda entry: entry["import_path"],
+    )
+    benchmark_discovery_lane = {
+        "discovered_source_modules": inventory_report.source_modules_with_public_functions_count,
+        "discovered_public_functions": inventory_report.source_public_function_count,
+        "discovered_source_inventory": discovered_source_inventory,
+        "shipping_manifest_modules": len(LLM_ROLLOUT_MODULE_NAMES),
+        "shipping_manifest_functions": len(LLM_ROLLOUT_FUNCTION_CASES),
+        "non_shipping_rule": RuntimeNonShippingRule.broader_mojo_inventory_not_advertised.value,
+    }
+
     return {
         "bundle": "llm_rollout_proof_bundle",
         "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -1093,6 +1116,7 @@ def build_proof_bundle(
             "max_warm_ms": {"value": warm_ms, "module": warm_module, "function": warm_function},
             "max_hot_ms": {"value": hot_ms, "module": hot_module, "function": hot_function},
         },
+        "benchmark_discovery_lane": benchmark_discovery_lane,
         "sdk_contract_suites": sdk_contract_suites,
         "http_flag_contract_suites": http_flag_contract_suites,
         "http_flag_live_suites": normalized_http_flag_live_suites,
