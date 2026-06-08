@@ -11,8 +11,9 @@ def test_runtime_benchmark_surfaces_lock_provider_routing_overhead_class() -> No
     runtime_manifest_tests = (ROOT / "tests" / "test_runtime_manifest.py").read_text(
         encoding="utf-8"
     )
-    algenta_runtime_tests = (ROOT / "tests" / "test_algenta_runtime.py").read_text(
-        encoding="utf-8"
+    algenta_runtime_tests = "\n".join(
+        p.read_text(encoding="utf-8")
+        for p in sorted((ROOT / "tests").glob("*algenta_runtime*.py"))
     )
     decision_engine_query_tests = (
         ROOT / "tests" / "test_decision_engine_query_surface.py"

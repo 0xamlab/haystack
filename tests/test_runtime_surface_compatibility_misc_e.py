@@ -432,7 +432,10 @@ def test_outward_facing_contract_proofs_use_shared_normalized_manifest_fixture()
     query_surface = (ROOT / "tests" / "test_decision_engine_query_surface.py").read_text(
         encoding="utf-8"
     )
-    algenta_runtime = (ROOT / "tests" / "test_algenta_runtime.py").read_text(encoding="utf-8")
+    algenta_runtime = "\n".join(
+        p.read_text(encoding="utf-8")
+        for p in sorted((ROOT / "tests").glob("*algenta_runtime*.py"))
+    )
     platform_contract = (ROOT / "tests" / "test_platform_contract.py").read_text(
         encoding="utf-8"
     )
@@ -616,7 +619,14 @@ def test_root_test_graph_includes_formal_runtime_foundation_proof_bundle() -> No
     assert "tests/test_decision_engine_query_surface.py" in scripts["test:formal-runtime-foundation"]
     assert "tests/test_decision_engine_lazy_exports.py" in scripts["test:formal-runtime-foundation"]
     assert "tests/test_algenta_lazy_exports.py" in scripts["test:formal-runtime-foundation"]
-    assert "tests/test_algenta_runtime.py" in scripts["test:formal-runtime-foundation"]
+    for suffix in (
+        "test_algenta_runtime_misc.py",
+        "test_algenta_runtime_runtime_api_a.py",
+        "test_algenta_runtime_runtime_api_b.py",
+        "test_algenta_runtime_runtime_api_c.py",
+        "test_algenta_runtime_runtime_local.py",
+    ):
+        assert f"tests/{suffix}" in scripts["test:formal-runtime-foundation"]
     assert "tests/test_algenta_runtime_llm_and_agent_surface.py" in scripts[
         "test:formal-runtime-foundation"
     ]
