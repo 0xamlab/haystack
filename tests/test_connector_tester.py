@@ -291,6 +291,13 @@ async def test_connector_real_detailed_supports_clickhouse(
     client = _FakeClickHouseClient()
     connect_calls: list[str] = []
 
+    # The connector guards on `import clickhouse_connect` before reaching
+    # SQLConnector._clickhouse_connect. CI doesn't install the package
+    # (it's an optional connector dep), so stub it into sys.modules so the
+    # import succeeds and the monkeypatched _clickhouse_connect is reached.
+    import sys
+    monkeypatch.setitem(sys.modules, "clickhouse_connect", types.ModuleType("clickhouse_connect"))
+
     monkeypatch.setattr(
         SQLConnector,
         "_clickhouse_connect",
