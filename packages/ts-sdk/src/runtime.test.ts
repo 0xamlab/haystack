@@ -2113,9 +2113,9 @@ describe("Runtime", () => {
         supported_languages: ["python", "typescript", "coq"],
         support_progress: {
           supported_real_language_count: 3,
-          ranked_target_language_count: 250,
-          progress_fraction: 3 / 250,
-          progress_label: "3 / 250",
+          ranked_target_language_count: 180,
+          progress_fraction: 3 / 180,
+          progress_label: "3 / 180",
         },
       }),
       createRepositorySnapshot: async (repositoryId: string, request: Record<string, unknown>) => ({
@@ -2453,7 +2453,7 @@ describe("Runtime", () => {
     });
 
     expect(capabilities.supported_languages).toEqual(["python", "typescript", "coq"]);
-    expect(capabilities.support_progress.progress_label).toBe("3 / 250");
+    expect(capabilities.support_progress.progress_label).toBe("3 / 180");
     expect(snapshot.snapshot_id).toBe("snap_1");
     expect(snapshotDetail.status).toBe("existing");
     expect(triage.suspect_files).toEqual(["src/service.py"]);

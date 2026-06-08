@@ -37,7 +37,12 @@ def test_python_package_readmes_exist_and_match_declared_metadata() -> None:
 
 
 def test_typescript_sdk_types_lock_provider_catalog_and_trace_contract() -> None:
-    text = (ROOT / "packages" / "ts-sdk" / "src" / "types.ts").read_text()
+    # types.ts is now a barrel that re-exports sub-modules; concat the
+    # barrel + every _types_*.ts to cover the same textual surface.
+    src_dir = ROOT / "packages" / "ts-sdk" / "src"
+    text = (src_dir / "types.ts").read_text() + "\n".join(
+        p.read_text() for p in sorted(src_dir.glob("_types_*.ts"))
+    )
 
     assert "provider_backend: string | null;" in text
     assert "provider_model_id: string | null;" in text
@@ -528,7 +533,12 @@ def test_typescript_package_surface_includes_package_readme_and_registry_metadat
     contract_text = (package_root / "dist" / "contract.js").read_text()
     client_types = (package_root / "dist" / "client.d.ts").read_text()
     runtime_types = (package_root / "dist" / "runtime.d.ts").read_text()
-    shared_types = (package_root / "dist" / "types.d.ts").read_text()
+    # types.d.ts is now a barrel re-exporting sub-modules. Concat all
+    # _types_*.d.ts so textual surface checks cover the same definitions.
+    dist_dir = package_root / "dist"
+    shared_types = (dist_dir / "types.d.ts").read_text() + "\n".join(
+        p.read_text() for p in sorted(dist_dir.glob("_types_*.d.ts"))
+    )
 
     assert package_json["name"] == "algenta-sdk"
     assert package_json["files"] == ["dist", "proto", "README.md"]
