@@ -8,8 +8,10 @@
 
 export * from "./_client_constants.js";
 export * from "./_client_contract_validators.js";
-export * from "./_client_platform_validators_a.js";
-export * from "./_client_platform_validators_b.js";
+export * from "./_client_platform_validators_a1.js";
+export * from "./_client_platform_validators_a2.js";
+export * from "./_client_platform_validators_b1.js";
+export * from "./_client_platform_validators_b2.js";
 export * from "./_client_platform_validators_c.js";
 export * from "./_client_runtime_manifest.js";
 export * from "./_client_runtime_admin.js";

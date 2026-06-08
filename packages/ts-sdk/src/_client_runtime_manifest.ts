@@ -246,22 +246,7 @@ import {
   RUNTIME_MODULE_ID_VALUES,
   RUNTIME_SUPPORTED_CHANNEL_VALUES,
 } from "./_client_constants.js";
-import {
-  assertArray,
-  assertEnumArray,
-  assertEnumKeyedEnumRecord,
-  assertEnumValue,
-  assertJsonObject,
-  assertNonEmptyString,
-  assertRuntimeArtifactReference,
-  assertRuntimeBenchmarkDiscoveryLane,
-  assertRuntimeShippingContractSummary,
-  assertRuntimeSignature,
-  assertRuntimeSnapshotReference,
-  assertUniqueRuntimeObjectField,
-  assertUniqueRuntimeValues,
-  buildStructuredValidationError,
-} from "./_client_platform_validators_b.js";
+import { assertArray, assertEnumArray, assertEnumKeyedEnumRecord, assertEnumValue, assertJsonObject, assertNonEmptyString, assertRuntimeArtifactReference, assertRuntimeBenchmarkDiscoveryLane, assertRuntimeShippingContractSummary, assertRuntimeSignature, assertRuntimeSnapshotReference, assertUniqueRuntimeObjectField, assertUniqueRuntimeValues, buildStructuredValidationError } from "./_client_platform_validators_b2.js";
 import {
   assertRuntimeAdvertisedCapabilities,
   assertRuntimeArtifactLineageSchema,

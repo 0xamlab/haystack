@@ -238,15 +238,7 @@ import { apiKeyHelpText, resolveClientBaseUrl } from './privacy_profile.js';
 
 
 import { RUNTIME_DEPLOYMENT_MODE_VALUES } from "./_client_constants.js";
-import {
-  assertArray,
-  assertBoolean,
-  assertEnumValue,
-  assertJsonObject,
-  assertNonEmptyString,
-  assertRuntimeSignature,
-  assertUniqueRuntimeObjectField,
-} from "./_client_platform_validators_b.js";
+import { assertArray, assertBoolean, assertEnumValue, assertJsonObject, assertNonEmptyString, assertRuntimeSignature, assertUniqueRuntimeObjectField } from "./_client_platform_validators_b2.js";
 import { assertRuntimeReleaseConditionEvaluation, wrapRuntimeValidation } from "./_client_platform_validators_c.js";
 
 export function assertRuntimeReleaseValidationResponse(payload: unknown): RuntimeReleaseValidationResponse {

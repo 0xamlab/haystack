@@ -246,23 +246,7 @@ import {
   RUNTIME_RELEASE_BLOCKER_VALUES,
   RUNTIME_SLO_BUDGET_NAME_VALUES,
 } from "./_client_constants.js";
-import {
-  assertArray,
-  assertBoolean,
-  assertEnumArray,
-  assertEnumValue,
-  assertFiniteNumber,
-  assertInteger,
-  assertJsonObject,
-  assertNonEmptyString,
-  assertRuntimeArtifactReference,
-  assertRuntimeBenchmarkDiscoveryLane,
-  assertRuntimeShippingContractSummary,
-  assertRuntimeSignature,
-  assertUniqueRuntimeObjectField,
-  assertUniqueRuntimeValues,
-  buildStructuredValidationError,
-} from "./_client_platform_validators_b.js";
+import { assertArray, assertBoolean, assertEnumArray, assertEnumValue, assertFiniteNumber, assertInteger, assertJsonObject, assertNonEmptyString, assertRuntimeArtifactReference, assertRuntimeBenchmarkDiscoveryLane, assertRuntimeShippingContractSummary, assertRuntimeSignature, assertUniqueRuntimeObjectField, assertUniqueRuntimeValues, buildStructuredValidationError } from "./_client_platform_validators_b2.js";
 import {
   assertCountRecordMatches,
   assertRuntimeAdminEvaluationSummary,

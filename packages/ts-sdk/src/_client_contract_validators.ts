@@ -239,15 +239,8 @@ import { apiKeyHelpText, resolveClientBaseUrl } from './privacy_profile.js';
 
 import { cloneJsonValue, mergeContractSections, rebaseEndpoint } from "./_client_constants.js";
 import { DecisionEngineError } from "./_client_errors.js";
-import { assertStringArray } from "./_client_platform_validators_a.js";
-import {
-  assertArray,
-  assertBoolean,
-  assertFiniteNumber,
-  assertInteger,
-  assertJsonObject,
-  assertNonEmptyString,
-} from "./_client_platform_validators_b.js";
+import { assertStringArray } from "./_client_platform_validators_a1.js";
+import { assertArray, assertBoolean, assertFiniteNumber, assertInteger, assertJsonObject, assertNonEmptyString } from "./_client_platform_validators_b2.js";
 
 export function assertPrimaryDataQueryContractExtension(
   payload: unknown,

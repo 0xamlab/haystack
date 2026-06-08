@@ -286,21 +286,8 @@ import {
   RUNTIME_THREAT_RULE_VALUES,
 } from "./_client_constants.js";
 import { DecisionEngineError } from "./_client_errors.js";
-import { assertStringArray } from "./_client_platform_validators_a.js";
-import {
-  assertArray,
-  assertBoolean,
-  assertEnumArray,
-  assertEnumKeyedCountRecord,
-  assertEnumValue,
-  assertFiniteNumber,
-  assertInteger,
-  assertJsonObject,
-  assertNonEmptyString,
-  assertUniqueRuntimeObjectField,
-  assertUniqueRuntimeValues,
-  buildStructuredValidationError,
-} from "./_client_platform_validators_b.js";
+import { assertStringArray } from "./_client_platform_validators_a1.js";
+import { assertArray, assertBoolean, assertEnumArray, assertEnumKeyedCountRecord, assertEnumValue, assertFiniteNumber, assertInteger, assertJsonObject, assertNonEmptyString, assertUniqueRuntimeObjectField, assertUniqueRuntimeValues, buildStructuredValidationError } from "./_client_platform_validators_b2.js";
 
 export function assertRuntimeModuleManifestEntry(
   payload: unknown,

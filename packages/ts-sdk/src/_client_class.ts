@@ -259,47 +259,10 @@ import {
   normalizedErrorCode,
   normalizedErrorMessage,
 } from "./_client_errors.js";
-import {
-  assertApiKeyCreateResponse,
-  assertApiKeyListResponse,
-  assertBillingInfoResponse,
-  assertBillingSessionResponse,
-  assertCreditRefreshResponse,
-  assertDeviceListResponse,
-  assertDeviceRevokeResponse,
-  assertDistributionListResponse,
-  assertLimitsInfoResponse,
-  assertMeResponse,
-  assertMeteringBatchResponse,
-  assertPlatformContractResponse,
-  assertTeamInviteResponse,
-  assertTeamListResponse,
-  assertTeamRemoveResponse,
-  assertTeamRoleUpdateResponse,
-  assertTemplateListResponse,
-  assertUsageInfoResponse,
-  buildExplainResponse,
-  normalizeUpdateMeRequest,
-} from "./_client_platform_validators_a.js";
-import {
-  assertAuditLogResponse,
-  assertConnectorListResponse,
-  assertDatasetListResponse,
-  assertDatasetSummaryResponse,
-  assertDeploymentCostResponse,
-  assertDeploymentDeleteResponse,
-  assertDeploymentRegionsResponse,
-  assertDeploymentResponse,
-  assertExecutionPolicyResponse,
-  assertExecutionPolicySnapshotListResponse,
-  normalizeApiKeyCreateRequest,
-  normalizeCreateDeploymentRequest,
-  normalizeCreditRefreshRequest,
-  normalizeMeteringBatchRequest,
-  normalizeTeamInviteRequest,
-  normalizeTeamRole,
-  normalizeUpdateExecutionPolicyRequest,
-} from "./_client_platform_validators_b.js";
+import { assertApiKeyCreateResponse, assertApiKeyListResponse, assertBillingInfoResponse, assertDistributionListResponse, assertLimitsInfoResponse, assertMeResponse, assertPlatformContractResponse, assertTemplateListResponse, assertUsageInfoResponse, buildExplainResponse, normalizeUpdateMeRequest } from "./_client_platform_validators_a1.js";
+import { assertBillingSessionResponse, assertCreditRefreshResponse, assertDeviceListResponse, assertDeviceRevokeResponse, assertMeteringBatchResponse, assertTeamInviteResponse, assertTeamListResponse, assertTeamRemoveResponse, assertTeamRoleUpdateResponse } from "./_client_platform_validators_a2.js";
+import { assertAuditLogResponse, assertDeploymentDeleteResponse, assertDeploymentRegionsResponse, assertDeploymentResponse, assertExecutionPolicyResponse, assertExecutionPolicySnapshotListResponse, normalizeApiKeyCreateRequest, normalizeCreateDeploymentRequest, normalizeCreditRefreshRequest, normalizeMeteringBatchRequest, normalizeTeamInviteRequest, normalizeTeamRole, normalizeUpdateExecutionPolicyRequest } from "./_client_platform_validators_b1.js";
+import { assertConnectorListResponse, assertDatasetListResponse, assertDatasetSummaryResponse, assertDeploymentCostResponse } from "./_client_platform_validators_b2.js";
 import { assertRuntimeAdminBenchmarksResponse, assertRuntimeAdminModulesResponse } from "./_client_runtime_admin.js";
 import { assertRuntimeManifestResponse } from "./_client_runtime_manifest.js";
 import { assertRuntimeReleaseValidationResponse, buildQueryExecutionMetadata } from "./_client_runtime_release.js";
