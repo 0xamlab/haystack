@@ -18,9 +18,14 @@ if __name__ != "__main__":
         allow_module_level=True,
     )
 
-import importlib
 import os
 import sys
+
+if os.environ.get("ALGENTA_SKIP_RUNTIME_LIBRARIES_HTTP", "0") == "1":
+    print("[skip] tests/integration/test_runtime_libraries_http_live.py — ALGENTA_SKIP_RUNTIME_LIBRARIES_HTTP=1")
+    sys.exit(0)
+
+import importlib
 import time
 from pathlib import Path
 from typing import Any

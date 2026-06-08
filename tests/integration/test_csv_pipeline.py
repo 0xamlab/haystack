@@ -26,12 +26,18 @@ Covers:
   - Speed & throughput benchmarks with timing CSV output
 """
 
+import os
+import sys
+
+if os.environ.get("ALGENTA_SKIP_CSV_PIPELINE", "0") == "1":
+    print("[skip] tests/integration/test_csv_pipeline.py — ALGENTA_SKIP_CSV_PIPELINE=1")
+    sys.exit(0)
+
 import asyncio
 import csv as csv_stdlib
 from datetime import datetime, timezone
 import io
 import json
-import os
 import re as _re
 import socket
 import sys

@@ -24,17 +24,22 @@ Or start an isolated current-checkout API server with writable temp dirs:
 
 from __future__ import annotations
 
+import os
+import sys
+
+if os.environ.get("ALGENTA_SKIP_MOJO_RUNTIME", "0") == "1":
+    print("[skip] tests/integration/test_typescript_runtime_live.py — ALGENTA_SKIP_MOJO_RUNTIME=1")
+    sys.exit(0)
+
 import asyncio
 import contextlib
 import importlib
 import io
 import json
-import os
 import shutil
 import socket
 import sqlite3
 import subprocess
-import sys
 import tempfile
 import time
 import urllib.error

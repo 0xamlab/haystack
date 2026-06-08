@@ -59,6 +59,12 @@ jobs:
       # (user: angel, db: decision_engine) and other real services that don't
       # exist in CI. Honored by package.json's test:formal-runtime-foundation.
       DE_SKIP_GO_LIVE_VERIFY: "1"
+      # Integration scripts that need a compiled Mojo binary (mojo_build/simulate)
+      # or developer-local DBs. Each script checks its env var at the top and
+      # exits 0 if set, keeping package.json's check graph unchanged.
+      ALGENTA_SKIP_CSV_PIPELINE: "1"
+      ALGENTA_SKIP_RUNTIME_LIBRARIES_HTTP: "1"
+      ALGENTA_SKIP_MOJO_RUNTIME: "1"
 
     steps:
       - name: Checkout
