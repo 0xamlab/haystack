@@ -559,7 +559,7 @@ def _runtime_manifest_metadata() -> dict[str, str]:
             in {"1", "true", "yes", "on"},
             deployment_mode=os.environ.get("ALGENTA_DEPLOYMENT_MODE", "local_dev_daemon"),
         )
-    except FileNotFoundError:
+    except (FileNotFoundError, ValueError):
         return {"schema_snapshot_id": "unavailable", "manifest_version": "unavailable"}
     return {
         "schema_snapshot_id": manifest.schema_snapshot.snapshot_id,
