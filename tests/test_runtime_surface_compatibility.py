@@ -2307,7 +2307,7 @@ def test_repository_intelligence_live_scripts_cover_public_surfaces() -> None:
 
     assert "test_cli_repository_surface" in cli_live
     assert (
-        'check("CLI repository intelligence surface → snapshot/triage/plan/simulate/apply"'
+        '"CLI repository intelligence surface → snapshot/triage/graph/plan/simulate/apply"'
         in cli_live
     )
     assert '"decision-plan"' in cli_live
