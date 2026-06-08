@@ -292,8 +292,14 @@ def test_algenta_libraries_exposes_llm_rollout_canonical_module_names() -> None:
 
 
 def test_typescript_runtime_primary_surface_is_runtime_first() -> None:
-    ts_runtime = (ROOT / "packages" / "ts-sdk" / "src" / "runtime.ts").read_text(encoding="utf-8")
-    ts_index = (ROOT / "packages" / "ts-sdk" / "src" / "index.ts").read_text(encoding="utf-8")
+    # runtime.ts is now a barrel re-exporting per-domain sub-modules; concat
+    # the barrel + every _runtime_*.ts so textual surface checks cover the
+    # same source content as before the modularization.
+    src_dir = ROOT / "packages" / "ts-sdk" / "src"
+    ts_runtime = (src_dir / "runtime.ts").read_text(encoding="utf-8") + "\n".join(
+        p.read_text(encoding="utf-8") for p in sorted(src_dir.glob("_runtime_*.ts"))
+    )
+    ts_index = (src_dir / "index.ts").read_text(encoding="utf-8")
 
     assert "export class Runtime" in ts_runtime
     assert "connect(" in ts_runtime

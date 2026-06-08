@@ -9,8 +9,14 @@ def test_capability_plane_runtime_typed_failures_stay_aligned_across_python_and_
     python_runtime = (
         ROOT / "packages" / "algenta-core" / "algenta" / "runtime_capability_plane.py"
     ).read_text(encoding="utf-8")
-    typescript_runtime = (ROOT / "packages" / "ts-sdk" / "src" / "runtime.ts").read_text(
+    # runtime.ts is now a barrel re-exporting per-domain sub-modules; concat
+    # the barrel + every _runtime_*.ts so textual surface checks cover the
+    # same source content as before the modularization.
+    ts_src_dir = ROOT / "packages" / "ts-sdk" / "src"
+    typescript_runtime = (ts_src_dir / "runtime.ts").read_text(
         encoding="utf-8"
+    ) + "\n".join(
+        p.read_text(encoding="utf-8") for p in sorted(ts_src_dir.glob("_runtime_*.ts"))
     )
     python_tests = (ROOT / "tests" / "test_algenta_runtime_capability_plane.py").read_text(
         encoding="utf-8"
