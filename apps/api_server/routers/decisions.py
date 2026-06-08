@@ -53,15 +53,18 @@ router = APIRouter(tags=["Decision Memory"])
 
 @cache
 def _runtime_manifest_metadata() -> dict[str, str]:
-    manifest = load_runtime_manifest(
-        api_env=os.environ.get("API_ENV", "local"),
-        runtime_library_http_api_enabled=os.environ.get(
-            "RUNTIME_LIBRARY_HTTP_API_ENABLED",
-            "",
-        ).lower()
-        in {"1", "true", "yes", "on"},
-        deployment_mode=os.environ.get("ALGENTA_DEPLOYMENT_MODE", "local_dev_daemon"),
-    )
+    try:
+        manifest = load_runtime_manifest(
+            api_env=os.environ.get("API_ENV", "local"),
+            runtime_library_http_api_enabled=os.environ.get(
+                "RUNTIME_LIBRARY_HTTP_API_ENABLED",
+                "",
+            ).lower()
+            in {"1", "true", "yes", "on"},
+            deployment_mode=os.environ.get("ALGENTA_DEPLOYMENT_MODE", "local_dev_daemon"),
+        )
+    except FileNotFoundError:
+        return {"schema_snapshot_id": "unavailable", "manifest_version": "unavailable"}
     return {
         "schema_snapshot_id": manifest.schema_snapshot.snapshot_id,
         "manifest_version": manifest.module_manifest_version,
