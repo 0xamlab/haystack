@@ -1,0 +1,228 @@
+{
+  "timestamp": "2026-05-29T20:18:56",
+  "n_iterations": 10000,
+  "n_libraries": 22,
+  "suite_duration_s": 13.0,
+  "benchmark_inventory": {
+    "kind": "benchmark_discovery_inventory",
+    "total_libraries": 22,
+    "top_level_library_count": 19,
+    "nested_library_count": 3,
+    "group_counts": {
+      "text": 1,
+      "top_level": 19,
+      "vector_kernels": 2
+    }
+  },
+  "shipping_runtime_contract": {
+    "kind": "shipping_runtime_contract",
+    "module_count": 22,
+    "function_count": 209
+  },
+  "total_functions_declared": 209,
+  "total_functions_compared": 209,
+  "libraries": [
+    {
+      "lib": "bpe_tokenizer",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 149.72,
+      "py_total_ns": 2021.27,
+      "mojo_total_ns": 13.5
+    },
+    {
+      "lib": "continuous_batching",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 114.95,
+      "py_total_ns": 1965.58,
+      "mojo_total_ns": 17.1
+    },
+    {
+      "lib": "embeddings",
+      "status": "ok",
+      "n_functions": 12,
+      "n_compared": 12,
+      "speedup_x": 6.07,
+      "py_total_ns": 34062.63,
+      "mojo_total_ns": 5614.9
+    },
+    {
+      "lib": "flash_attention",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 1188.32,
+      "py_total_ns": 9506.52,
+      "mojo_total_ns": 8.0
+    },
+    {
+      "lib": "generation_loop",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 115.01,
+      "py_total_ns": 1127.08,
+      "mojo_total_ns": 9.8
+    },
+    {
+      "lib": "inference_cost_latency",
+      "status": "ok",
+      "n_functions": 11,
+      "n_compared": 11,
+      "speedup_x": 685.16,
+      "py_total_ns": 10482.98,
+      "mojo_total_ns": 15.3
+    },
+    {
+      "lib": "inference_engine",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 241.86,
+      "py_total_ns": 2660.44,
+      "mojo_total_ns": 11.0
+    },
+    {
+      "lib": "kv_cache",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 288.65,
+      "py_total_ns": 5946.2,
+      "mojo_total_ns": 20.6
+    },
+    {
+      "lib": "llm_sampling",
+      "status": "ok",
+      "n_functions": 11,
+      "n_compared": 11,
+      "speedup_x": 193.23,
+      "py_total_ns": 2917.79,
+      "mojo_total_ns": 15.1
+    },
+    {
+      "lib": "paged_kv_cache",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 235.32,
+      "py_total_ns": 1388.37,
+      "mojo_total_ns": 5.9
+    },
+    {
+      "lib": "rerank_eval",
+      "status": "ok",
+      "n_functions": 9,
+      "n_compared": 9,
+      "speedup_x": 92.52,
+      "py_total_ns": 12480.56,
+      "mojo_total_ns": 134.9
+    },
+    {
+      "lib": "rlhf_dpo",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 274.66,
+      "py_total_ns": 1895.14,
+      "mojo_total_ns": 6.9
+    },
+    {
+      "lib": "sparse_attention",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 102.74,
+      "py_total_ns": 1859.68,
+      "mojo_total_ns": 18.1
+    },
+    {
+      "lib": "sparse_vector",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 9.02,
+      "py_total_ns": 9782.25,
+      "mojo_total_ns": 1084.3
+    },
+    {
+      "lib": "speculative_decoding",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 161.25,
+      "py_total_ns": 2015.63,
+      "mojo_total_ns": 12.5
+    },
+    {
+      "lib": "text_tokenizer",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 7.6,
+      "py_total_ns": 24788.13,
+      "mojo_total_ns": 3260.1
+    },
+    {
+      "lib": "transformer_attention",
+      "status": "ok",
+      "n_functions": 11,
+      "n_compared": 11,
+      "speedup_x": 411.92,
+      "py_total_ns": 3130.62,
+      "mojo_total_ns": 7.6
+    },
+    {
+      "lib": "transformer_blocks",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 180.83,
+      "py_total_ns": 1591.26,
+      "mojo_total_ns": 8.8
+    },
+    {
+      "lib": "vector_kernels_ranker",
+      "status": "ok",
+      "n_functions": 1,
+      "n_compared": 1,
+      "speedup_x": 36.47,
+      "py_total_ns": 506885.92,
+      "mojo_total_ns": 13898.7
+    },
+    {
+      "lib": "vector_kernels_table",
+      "status": "ok",
+      "n_functions": 4,
+      "n_compared": 4,
+      "speedup_x": 98.56,
+      "py_total_ns": 431930.44,
+      "mojo_total_ns": 4382.4
+    },
+    {
+      "lib": "vector_search",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 171.24,
+      "py_total_ns": 1660.98,
+      "mojo_total_ns": 9.7
+    },
+    {
+      "lib": "vector_similarity",
+      "status": "ok",
+      "n_functions": 10,
+      "n_compared": 10,
+      "speedup_x": 178.69,
+      "py_total_ns": 1375.95,
+      "mojo_total_ns": 7.7
+    }
+  ],
+  "median_speedup_x": 171.24,
+  "mean_speedup_x": 224.72,
+  "max_speedup_x": 1188.32,
+  "min_speedup_x": 6.07
+}

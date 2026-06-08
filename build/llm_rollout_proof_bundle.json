@@ -1,0 +1,445 @@
+{
+  "bundle": "llm_rollout_proof_bundle",
+  "generated_at": "2026-05-30T00:20:53Z",
+  "expected_modules": 22,
+  "expected_functions": 209,
+  "public_supported_channels": [
+    "python_sdk",
+    "typescript_sdk",
+    "cli",
+    "mcp"
+  ],
+  "underlying_validated_lanes": [
+    "daemon_client",
+    "runtime_local"
+  ],
+  "public_http_library_routes_supported": false,
+  "public_http_library_routes_feature_flag_ready": true,
+  "public_http_library_routes_enable_env": "ALGENTA_RUNTIME_LIBRARY_HTTP_API_ENABLED",
+  "parity_artifact": {
+    "path": "build/llm_rollout_parity_benchmark.json",
+    "library_count": 22,
+    "function_count": 209,
+    "median_speedup_x": 171.24,
+    "mean_speedup_x": 224.72,
+    "max_speedup_x": 1188.32,
+    "timestamp": "2026-05-29T20:18:56"
+  },
+  "compiled_runtime_artifact": {
+    "path": "build/llm_compiled_runtime_benchmark.json",
+    "module_count": 22,
+    "function_count": 209,
+    "failed_function_count": 0,
+    "transport": "compiled_worker",
+    "max_cold_ms": {
+      "value": 142.70083303563297,
+      "module": "bpe_tokenizer",
+      "function": "bpe_merge_score"
+    },
+    "max_warm_ms": {
+      "value": 1.4065420255064964,
+      "module": "flash_attention",
+      "function": "paged_attention_block_score"
+    },
+    "max_hot_ms": {
+      "value": 1.0533545282669365,
+      "module": "vector_kernels.table",
+      "function": "build_table_json"
+    }
+  },
+  "sdk_contract_suites": [
+    {
+      "name": "python_sdk_package_contract",
+      "command": [
+        "/Users/angel/Developer/decision-engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_algenta_mojo_sdk.py",
+        "-k",
+        "keeps_rollout_modules_on_canonical_names_and_alias_dispatch"
+      ],
+      "channels": [
+        "python_sdk"
+      ],
+      "minimum_passed": 1,
+      "evidence_paths": [
+        "tests/test_algenta_mojo_sdk.py"
+      ],
+      "status": "passed",
+      "elapsed_seconds": 1.755,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "typescript_sdk_package_contract",
+      "command": [
+        "pnpm",
+        "--dir",
+        "packages/ts-sdk",
+        "exec",
+        "vitest",
+        "run",
+        "src/libraries.test.ts",
+        "-t",
+        "keeps the 22-library rollout inventory on canonical module names and alias dispatch"
+      ],
+      "channels": [
+        "typescript_sdk"
+      ],
+      "minimum_passed": 1,
+      "evidence_paths": [
+        "packages/ts-sdk/src/libraries.test.ts"
+      ],
+      "status": "passed",
+      "elapsed_seconds": 1.344,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 8
+    }
+  ],
+  "http_flag_contract_suites": [
+    {
+      "name": "public_http_library_routes_feature_flag",
+      "command": [
+        "/Users/angel/Developer/decision-engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_runtime_libraries_api.py"
+      ],
+      "minimum_passed": 2,
+      "evidence_paths": [
+        "tests/test_runtime_libraries_api.py",
+        "apps/api_server/main.py",
+        "apps/api_server/config.py"
+      ],
+      "status": "passed",
+      "elapsed_seconds": 8.01,
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    }
+  ],
+  "http_flag_live_suites": [
+    {
+      "name": "public_http_library_routes_feature_flag_live",
+      "script": "tests/integration/test_runtime_libraries_http_live.py",
+      "channels": [
+        "http_api_feature_flag"
+      ],
+      "minimum_passed": 4,
+      "evidence_paths": [
+        "tests/integration/test_runtime_libraries_http_live.py",
+        "tests/_asgi_client.py",
+        "apps/api_server/main.py",
+        "apps/api_server/config.py"
+      ],
+      "status": "passed",
+      "elapsed_seconds": 5.785,
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    }
+  ],
+  "serving_extension_subset": {
+    "module_count": 6,
+    "function_count": 60,
+    "functions_compared": 60,
+    "all_modules_fully_compared": true,
+    "all_compiled_engine_used_mojo": true,
+    "min_speedup_x": 114.95,
+    "max_speedup_x": 288.65,
+    "max_cold_ms": {
+      "value": 1.672249985858798,
+      "module": "continuous_batching",
+      "function": "streaming_first_token_latency"
+    },
+    "max_warm_ms": {
+      "value": 1.3700000708922744,
+      "module": "paged_kv_cache",
+      "function": "context_extension_factor"
+    },
+    "max_hot_ms": {
+      "value": 0.5508119356818497,
+      "module": "kv_cache",
+      "function": "kv_cache_memory_per_layer"
+    },
+    "modules": [
+      {
+        "name": "kv_cache",
+        "parity_function_count": 10,
+        "parity_compared_count": 10,
+        "parity_speedup_x": 288.65,
+        "compiled_function_count": 10,
+        "compiled_all_engine_used_mojo": true,
+        "max_cold_ms": {
+          "value": 0.8702499326318502,
+          "function": "radix_cache_shared_prefix_len"
+        },
+        "max_warm_ms": {
+          "value": 0.6918750004842877,
+          "function": "kv_cache_total_memory"
+        },
+        "max_hot_ms": {
+          "value": 0.5508119356818497,
+          "function": "kv_cache_memory_per_layer"
+        }
+      },
+      {
+        "name": "paged_kv_cache",
+        "parity_function_count": 10,
+        "parity_compared_count": 10,
+        "parity_speedup_x": 235.32,
+        "compiled_function_count": 10,
+        "compiled_all_engine_used_mojo": true,
+        "max_cold_ms": {
+          "value": 1.4131249627098441,
+          "function": "block_copy_cost"
+        },
+        "max_warm_ms": {
+          "value": 1.3700000708922744,
+          "function": "context_extension_factor"
+        },
+        "max_hot_ms": {
+          "value": 0.37077045999467373,
+          "function": "block_copy_cost"
+        }
+      },
+      {
+        "name": "continuous_batching",
+        "parity_function_count": 10,
+        "parity_compared_count": 10,
+        "parity_speedup_x": 114.95,
+        "compiled_function_count": 10,
+        "compiled_all_engine_used_mojo": true,
+        "max_cold_ms": {
+          "value": 1.672249985858798,
+          "function": "streaming_first_token_latency"
+        },
+        "max_warm_ms": {
+          "value": 0.6327920127660036,
+          "function": "streaming_first_token_latency"
+        },
+        "max_hot_ms": {
+          "value": 0.36341696977615356,
+          "function": "chunked_prefill_chunks"
+        }
+      },
+      {
+        "name": "inference_engine",
+        "parity_function_count": 10,
+        "parity_compared_count": 10,
+        "parity_speedup_x": 241.86,
+        "compiled_function_count": 10,
+        "compiled_all_engine_used_mojo": true,
+        "max_cold_ms": {
+          "value": 1.0074590099975467,
+          "function": "kv_cache_hit_ratio"
+        },
+        "max_warm_ms": {
+          "value": 0.3547080559656024,
+          "function": "continuous_batching_capacity"
+        },
+        "max_hot_ms": {
+          "value": 0.34254149068146944,
+          "function": "batch_padding_mask"
+        }
+      },
+      {
+        "name": "speculative_decoding",
+        "parity_function_count": 10,
+        "parity_compared_count": 10,
+        "parity_speedup_x": 161.25,
+        "compiled_function_count": 10,
+        "compiled_all_engine_used_mojo": true,
+        "max_cold_ms": {
+          "value": 1.221165992319584,
+          "function": "constrained_beam_score"
+        },
+        "max_warm_ms": {
+          "value": 0.4324170295149088,
+          "function": "draft_model_speedup"
+        },
+        "max_hot_ms": {
+          "value": 0.38420851342380047,
+          "function": "json_grammar_logit_mask"
+        }
+      },
+      {
+        "name": "generation_loop",
+        "parity_function_count": 10,
+        "parity_compared_count": 10,
+        "parity_speedup_x": 115.01,
+        "compiled_function_count": 10,
+        "compiled_all_engine_used_mojo": true,
+        "max_cold_ms": {
+          "value": 1.1817499762400985,
+          "function": "top_p_cumulative_accept"
+        },
+        "max_warm_ms": {
+          "value": 0.4890839336439967,
+          "function": "top_p_cumulative_accept"
+        },
+        "max_hot_ms": {
+          "value": 0.3202289226464927,
+          "function": "eta_sampling_accept"
+        }
+      }
+    ]
+  },
+  "serving_extension_channel_coverage": {
+    "module_count": 6,
+    "function_count": 60,
+    "source_rollout_function_count": 209,
+    "coverage_basis": "Each referenced live suite executes all LLM_ROLLOUT_FUNCTION_CASES, which includes the six serving extension modules.",
+    "public_supported_channels_complete": true,
+    "validated_auxiliary_channels_complete": true,
+    "http_feature_flag_channel_complete": true,
+    "channels": [
+      {
+        "channel": "python_sdk",
+        "suite_name": "python_sdk_local_runtime",
+        "script": "tests/integration/test_algenta_mojo_library_live.py",
+        "status": "passed",
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "feature_flag": false,
+        "module_count": 6,
+        "function_count": 60,
+        "covers_all_serving_extension_modules": true,
+        "covers_all_serving_extension_functions": true
+      },
+      {
+        "channel": "typescript_sdk",
+        "suite_name": "typescript_sdk_local_runtime",
+        "script": "tests/integration/test_typescript_runtime_live.py",
+        "status": "passed",
+        "passed": 15,
+        "failed": 0,
+        "skipped": 0,
+        "feature_flag": false,
+        "module_count": 6,
+        "function_count": 60,
+        "covers_all_serving_extension_modules": true,
+        "covers_all_serving_extension_functions": true
+      },
+      {
+        "channel": "daemon_client",
+        "suite_name": "local_runtime_cli_mcp_matrix",
+        "script": "tests/integration/test_cli_mcp_runtime_libraries_live.py",
+        "status": "passed",
+        "passed": 11,
+        "failed": 0,
+        "skipped": 0,
+        "feature_flag": false,
+        "module_count": 6,
+        "function_count": 60,
+        "covers_all_serving_extension_modules": true,
+        "covers_all_serving_extension_functions": true
+      },
+      {
+        "channel": "runtime_local",
+        "suite_name": "local_runtime_cli_mcp_matrix",
+        "script": "tests/integration/test_cli_mcp_runtime_libraries_live.py",
+        "status": "passed",
+        "passed": 11,
+        "failed": 0,
+        "skipped": 0,
+        "feature_flag": false,
+        "module_count": 6,
+        "function_count": 60,
+        "covers_all_serving_extension_modules": true,
+        "covers_all_serving_extension_functions": true
+      },
+      {
+        "channel": "cli",
+        "suite_name": "local_runtime_cli_mcp_matrix",
+        "script": "tests/integration/test_cli_mcp_runtime_libraries_live.py",
+        "status": "passed",
+        "passed": 11,
+        "failed": 0,
+        "skipped": 0,
+        "feature_flag": false,
+        "module_count": 6,
+        "function_count": 60,
+        "covers_all_serving_extension_modules": true,
+        "covers_all_serving_extension_functions": true
+      },
+      {
+        "channel": "mcp",
+        "suite_name": "local_runtime_cli_mcp_matrix",
+        "script": "tests/integration/test_cli_mcp_runtime_libraries_live.py",
+        "status": "passed",
+        "passed": 11,
+        "failed": 0,
+        "skipped": 0,
+        "feature_flag": false,
+        "module_count": 6,
+        "function_count": 60,
+        "covers_all_serving_extension_modules": true,
+        "covers_all_serving_extension_functions": true
+      },
+      {
+        "channel": "http_api_feature_flag",
+        "suite_name": "public_http_library_routes_feature_flag_live",
+        "script": "tests/integration/test_runtime_libraries_http_live.py",
+        "status": "passed",
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "feature_flag": true,
+        "module_count": 6,
+        "function_count": 60,
+        "covers_all_serving_extension_modules": true,
+        "covers_all_serving_extension_functions": true
+      }
+    ]
+  },
+  "live_suites": [
+    {
+      "name": "python_sdk_local_runtime",
+      "script": "tests/integration/test_algenta_mojo_library_live.py",
+      "channels": [
+        "python_sdk"
+      ],
+      "minimum_passed": 7,
+      "status": "passed",
+      "elapsed_seconds": 3.95,
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "typescript_sdk_local_runtime",
+      "script": "tests/integration/test_typescript_runtime_live.py",
+      "channels": [
+        "typescript_sdk"
+      ],
+      "minimum_passed": 2,
+      "status": "passed",
+      "elapsed_seconds": 25.425,
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "local_runtime_cli_mcp_matrix",
+      "script": "tests/integration/test_cli_mcp_runtime_libraries_live.py",
+      "channels": [
+        "daemon_client",
+        "runtime_local",
+        "cli",
+        "mcp"
+      ],
+      "minimum_passed": 11,
+      "status": "passed",
+      "elapsed_seconds": 7.189,
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0
+    }
+  ]
+}
