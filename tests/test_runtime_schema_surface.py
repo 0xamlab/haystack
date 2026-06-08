@@ -85,10 +85,13 @@ def _strict_list_field_offenders(path: Path) -> list[str]:
 
 def test_runtime_models_do_not_apply_strict_constraints_to_list_fields() -> None:
     offenders: list[str] = []
-    for path in (
-        ROOT / "apps" / "runtime_manifest.py",
+    # apps/runtime_manifest is now a package (the file was modularized);
+    # scan every submodule plus the SDK models file.
+    apps_runtime_files = sorted((ROOT / "apps" / "runtime_manifest").glob("*.py"))
+    paths_to_scan = list(apps_runtime_files) + [
         ROOT / "packages" / "python-sdk" / "decision_engine" / "models_runtime_manifest.py",
-    ):
+    ]
+    for path in paths_to_scan:
         offenders.extend(_strict_list_field_offenders(path))
 
     assert offenders == [], "invalid strict list field constraints found:\n" + "\n".join(

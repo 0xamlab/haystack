@@ -468,16 +468,22 @@ def test_runtime_manifest_signature_release_theorem_and_openapi_route_are_stable
 def test_load_runtime_manifest_fails_closed_for_invalid_internal_signature_payload(
     monkeypatch,
 ) -> None:
+    # _build_signature is defined in _builders. _public_api imported it
+    # explicitly so it holds a local reference — patch BOTH binding sites so
+    # the test's fault injection reaches the call site in load_runtime_manifest.
     import apps.runtime_manifest as runtime_manifest_module
+    import apps.runtime_manifest._builders as runtime_manifest_builders
+    import apps.runtime_manifest._public_api as runtime_manifest_public
 
-    original_build_signature = runtime_manifest_module._build_signature
+    original_build_signature = runtime_manifest_builders._build_signature
 
     def _invalid_build_signature(payload: dict[str, object]):
         digest_hex, signature = original_build_signature(payload)
         return digest_hex, signature.model_copy(update={"signature_hex": ""})
 
     load_runtime_manifest.cache_clear()
-    monkeypatch.setattr(runtime_manifest_module, "_build_signature", _invalid_build_signature)
+    monkeypatch.setattr(runtime_manifest_builders, "_build_signature", _invalid_build_signature)
+    monkeypatch.setattr(runtime_manifest_public, "_build_signature", _invalid_build_signature)
 
     with pytest.raises(RuntimeManifestBuildError) as exc_info:
         runtime_manifest_module.load_runtime_manifest(
@@ -551,9 +557,13 @@ def test_validate_runtime_manifest_payload_fails_closed_for_benchmark_shipping_f
 def test_load_runtime_manifest_fails_closed_for_invalid_internal_module_payload(
     monkeypatch,
 ) -> None:
+    # Same pattern as the signature-payload test: patch both binding sites
+    # (_builders defines it, _public_api imported it).
     import apps.runtime_manifest as runtime_manifest_module
+    import apps.runtime_manifest._builders as runtime_manifest_builders
+    import apps.runtime_manifest._public_api as runtime_manifest_public
 
-    original_build_module_entries = runtime_manifest_module._build_module_entries
+    original_build_module_entries = runtime_manifest_builders._build_module_entries
 
     def _invalid_build_module_entries(*args, **kwargs):
         modules = original_build_module_entries(*args, **kwargs)
@@ -562,7 +572,12 @@ def test_load_runtime_manifest_fails_closed_for_invalid_internal_module_payload(
 
     load_runtime_manifest.cache_clear()
     monkeypatch.setattr(
-        runtime_manifest_module,
+        runtime_manifest_builders,
+        "_build_module_entries",
+        _invalid_build_module_entries,
+    )
+    monkeypatch.setattr(
+        runtime_manifest_public,
         "_build_module_entries",
         _invalid_build_module_entries,
     )

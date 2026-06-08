@@ -395,7 +395,9 @@ def test_runtime_admin_validation_route_rejects_invalid_signed_model_instance(
 def test_get_runtime_admin_modules_fails_closed_for_invalid_internal_manifest_payload(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import apps.runtime_manifest as runtime_manifest_module
+    # Patch the actual definition location: get_runtime_manifest lives in
+    # apps.runtime_manifest._public_api after the modular split.
+    import apps.runtime_manifest._public_api as runtime_manifest_module
 
     manifest = get_runtime_manifest().model_copy(deep=True)
     manifest.modules[0].name = "wormhole_kernel"
@@ -415,7 +417,8 @@ def test_get_runtime_admin_modules_fails_closed_for_invalid_internal_manifest_pa
 def test_get_runtime_admin_benchmarks_fails_closed_for_invalid_internal_manifest_payload(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import apps.runtime_manifest as runtime_manifest_module
+    # Patch the actual definition location.
+    import apps.runtime_manifest._public_api as runtime_manifest_module
 
     manifest = get_runtime_manifest().model_copy(deep=True)
     manifest.modules[0].name = "wormhole_kernel"
