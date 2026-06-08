@@ -1,22 +1,10 @@
 from __future__ import annotations
 
-import sys
-import types
+import pytest
 
-# Stub optional `redis` and `neo4j` clients so test collection works in
-# CI where these packages aren't installed. The connectors import the
-# real libs lazily inside method bodies; these stubs are harmless when
-# the real packages are present.
-sys.modules.setdefault("redis", types.ModuleType("redis"))
-_neo4j_stub = types.ModuleType("neo4j")
-_neo4j_stub.GraphDatabase = object
-sys.modules.setdefault("neo4j", _neo4j_stub)
-
-import pytest  # noqa: E402
-
-from apps.api_server.config import get_settings  # noqa: E402
-from apps.api_server.connectors.neo4j_connector import Neo4jConnector  # noqa: E402
-from apps.api_server.connectors.redis_connector import RedisConnector  # noqa: E402
+from apps.api_server.config import get_settings
+from apps.api_server.connectors.neo4j_connector import Neo4jConnector
+from apps.api_server.connectors.redis_connector import RedisConnector
 from apps.api_server.connectors.sql_connector import SQLConnector
 from apps.api_server.services.connector_egress import (
     neo4j_settings_destination,

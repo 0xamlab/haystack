@@ -1,16 +1,8 @@
 from __future__ import annotations
 
-import sys
-import types
+import pytest
 
-# Stub the optional `redis` client so test collection works in CI where
-# the package isn't installed. RedisConnector imports redis lazily inside
-# _connect_sync; this stub is harmless when the real package is present.
-sys.modules.setdefault("redis", types.ModuleType("redis"))
-
-import pytest  # noqa: E402
-
-from apps.api_server.connectors.redis_connector import RedisConnector  # noqa: E402
+from apps.api_server.connectors.redis_connector import RedisConnector
 
 
 def test_connection_url_builds_from_host_fields() -> None:
