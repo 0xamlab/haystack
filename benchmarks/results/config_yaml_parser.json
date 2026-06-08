@@ -2,19 +2,24 @@
   "lib": "config_yaml_parser",
   "status": "ok",
   "n_functions": 1,
-  "n_compared": 1,
-  "overall_speedup_x": 20.78,
-  "total_py_ns": 8108.5,
-  "total_mojo_ns": 390.2,
-  "elapsed_s": 1.67,
+  "n_compared": 0,
+  "n_timed": 1,
+  "overall_speedup_x": 8.32,
+  "total_py_ns": 7845.04,
+  "total_mojo_ns": 943.3,
+  "elapsed_s": 2.72,
   "n_iterations": 10000,
+  "mojo_error": null,
   "functions": [
     {
       "function": "yaml_parse",
-      "py_ns": 8108.496,
-      "mojo_ns": 390.2,
-      "speedup_x": 20.78,
+      "py_ns": 7845.038,
+      "mojo_ns": 943.3,
+      "speedup_x": 8.32,
       "py_result": null,
+      "py_summary": "obj:YamlDoc:1025751478",
+      "mojo_summary": null,
+      "result_match": null,
       "py_error": null
     }
   ]

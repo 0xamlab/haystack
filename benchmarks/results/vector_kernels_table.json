@@ -1,0 +1,59 @@
+{
+  "lib": "vector_kernels_table",
+  "status": "ok",
+  "n_functions": 4,
+  "n_compared": 4,
+  "n_timed": 4,
+  "overall_speedup_x": 98.56,
+  "total_py_ns": 431930.44,
+  "total_mojo_ns": 4382.4,
+  "elapsed_s": 6.33,
+  "n_iterations": 10000,
+  "mojo_error": null,
+  "functions": [
+    {
+      "function": "build_query",
+      "py_ns": 109101.45,
+      "mojo_ns": 327.2,
+      "speedup_x": 333.44,
+      "py_result": null,
+      "py_summary": "rank_request:1:1:2:float:0.3333333432674408:1614386020",
+      "mojo_summary": "rank_request:1:1:2:float:0.3333333432674408:1614386020",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "source_id_of",
+      "py_ns": 933.875,
+      "mojo_ns": 2.3,
+      "speedup_x": 406.03,
+      "py_result": 1.0,
+      "py_summary": "int:1",
+      "mojo_summary": "int:1",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "role_id_of",
+      "py_ns": 219.3,
+      "mojo_ns": 2.3,
+      "speedup_x": 95.35,
+      "py_result": 1.0,
+      "py_summary": "int:1",
+      "mojo_summary": "int:1",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "build_table_json",
+      "py_ns": 321675.812,
+      "mojo_ns": 4050.6,
+      "speedup_x": 79.41,
+      "py_result": null,
+      "py_summary": "candidate_table:3:959518344",
+      "mojo_summary": "candidate_table:3:959518344",
+      "result_match": true,
+      "py_error": null
+    }
+  ]
+}

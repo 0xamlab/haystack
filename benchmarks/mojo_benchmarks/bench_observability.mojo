@@ -2,6 +2,116 @@
 from std.math import isnan, isinf
 from observability import p99_latency_estimate, memory_pressure_score, token_throughput_ema, cache_miss_rate, batch_queue_wait_percentile, gpu_utilization_rolling, request_success_rate, model_drift_alert_score, cost_per_token_rolling, health_check_score
 from std.time import perf_counter_ns
+fn _summary_hash_string(value: String) -> Int:
+    var h = 7
+    var bytes = value.as_bytes()
+    for i in range(len(bytes)):
+        h = (h * 131 + Int(bytes[i])) % 2147483647
+    return h
+
+fn _summary_float64(value: Float64) -> String:
+    if isnan(value): return "float:nan"
+    if isinf(value): return "float:inf" if value > 0.0 else "float:-inf"
+    return "float:" + String(value)
+
+fn _summary_float64_rounded6(value: Float64) -> String:
+    if isnan(value): return "float:nan"
+    if isinf(value): return "float:inf" if value > 0.0 else "float:-inf"
+    var scaled = value * 1000000.0
+    var rounded = Float64(Int(scaled + (0.5 if scaled >= 0.0 else -0.5))) / 1000000.0
+    return "float:" + String(rounded)
+
+fn _summary_float32(value: Float32) -> String:
+    return _summary_float64(Float64(value))
+
+fn _summary_int(value: Int) -> String:
+    return "int:" + String(value)
+
+fn _summary_uint8(value: UInt8) -> String:
+    return "int:" + String(value)
+
+fn _summary_uint16(value: UInt16) -> String:
+    return "int:" + String(value)
+
+fn _summary_uint32(value: UInt32) -> String:
+    return "int:" + String(value)
+
+fn _summary_uint64(value: UInt64) -> String:
+    return "int:" + String(value)
+
+fn _summary_bool(value: Bool) -> String:
+    return "bool:1" if value else "bool:0"
+
+fn _summary_string(value: String) -> String:
+    return "str:" + String(len(value.as_bytes())) + ":" + String(_summary_hash_string(value))
+
+fn _summary_list_float64(value: List[Float64]) -> String:
+    var joined = String("")
+    for i in range(len(value)):
+        if i > 0: joined += "|"
+        joined += _summary_float64(value[i])
+    return "list:" + String(len(value)) + ":" + String(_summary_hash_string(joined))
+
+fn _summary_list_float32(value: List[Float32]) -> String:
+    var joined = String("")
+    for i in range(len(value)):
+        if i > 0: joined += "|"
+        joined += _summary_float32(value[i])
+    return "list:" + String(len(value)) + ":" + String(_summary_hash_string(joined))
+
+fn _summary_list_int(value: List[Int]) -> String:
+    var joined = String("")
+    for i in range(len(value)):
+        if i > 0: joined += "|"
+        joined += _summary_int(value[i])
+    return "list:" + String(len(value)) + ":" + String(_summary_hash_string(joined))
+
+fn _summary_list_bool(value: List[Bool]) -> String:
+    var joined = String("")
+    for i in range(len(value)):
+        if i > 0: joined += "|"
+        joined += _summary_bool(value[i])
+    return "list:" + String(len(value)) + ":" + String(_summary_hash_string(joined))
+
+fn _summary_list_string(value: List[String]) -> String:
+    var joined = String("")
+    for i in range(len(value)):
+        if i > 0: joined += "|"
+        joined += _summary_string(value[i])
+    return "list:" + String(len(value)) + ":" + String(_summary_hash_string(joined))
+
+fn _summary_list_list_float64(value: List[List[Float64]]) -> String:
+    var joined = String("")
+    for i in range(len(value)):
+        if i > 0: joined += "|"
+        joined += _summary_list_float64(value[i])
+    return "list:" + String(len(value)) + ":" + String(_summary_hash_string(joined))
+
+fn _summary_list_list_float64_rounded6(value: List[List[Float64]]) -> String:
+    var joined = String("")
+    for i in range(len(value)):
+        if i > 0: joined += "|"
+        var row_joined = String("")
+        for j in range(len(value[i])):
+            if j > 0: row_joined += "|"
+            row_joined += _summary_float64_rounded6(value[i][j])
+        joined += "list:" + String(len(value[i])) + ":" + String(_summary_hash_string(row_joined))
+    return "list:" + String(len(value)) + ":" + String(_summary_hash_string(joined))
+
+fn _summary_list_list_int(value: List[List[Int]]) -> String:
+    var joined = String("")
+    for i in range(len(value)):
+        if i > 0: joined += "|"
+        joined += _summary_list_int(value[i])
+    return "list:" + String(len(value)) + ":" + String(_summary_hash_string(joined))
+
+fn _summary_list_list_string(value: List[List[String]]) -> String:
+    var joined = String("")
+    for i in range(len(value)):
+        if i > 0: joined += "|"
+        joined += _summary_list_string(value[i])
+    return "list:" + String(len(value)) + ":" + String(_summary_hash_string(joined))
+
 
 def main() raises:
     var _lf5 = List[Float64]()
@@ -30,6 +140,9 @@ def main() raises:
     var _t1_p99_latency_estimate = perf_counter_ns()
     var _ns_p99_latency_estimate = Float64(_t1_p99_latency_estimate - _t0_p99_latency_estimate) / Float64(N)
     print("MOJO_TIMING observability::p99_latency_estimate", _ns_p99_latency_estimate, _acc_p99_latency_estimate)
+    var _result_p99_latency_estimate = p99_latency_estimate(0.5, 0.5)
+    var _summary_p99_latency_estimate = _summary_float64(_result_p99_latency_estimate)
+    print("MOJO_RESULT observability::p99_latency_estimate", _summary_p99_latency_estimate)
     var _acc_memory_pressure_score: Float64 = 0.0
     var _t0_memory_pressure_score = perf_counter_ns()
     for _ in range(N):
@@ -37,6 +150,9 @@ def main() raises:
     var _t1_memory_pressure_score = perf_counter_ns()
     var _ns_memory_pressure_score = Float64(_t1_memory_pressure_score - _t0_memory_pressure_score) / Float64(N)
     print("MOJO_TIMING observability::memory_pressure_score", _ns_memory_pressure_score, _acc_memory_pressure_score)
+    var _result_memory_pressure_score = memory_pressure_score(0.5, 0.5, 0.5)
+    var _summary_memory_pressure_score = _summary_float64(_result_memory_pressure_score)
+    print("MOJO_RESULT observability::memory_pressure_score", _summary_memory_pressure_score)
     var _acc_token_throughput_ema: Float64 = 0.0
     var _t0_token_throughput_ema = perf_counter_ns()
     for _ in range(N):
@@ -44,6 +160,9 @@ def main() raises:
     var _t1_token_throughput_ema = perf_counter_ns()
     var _ns_token_throughput_ema = Float64(_t1_token_throughput_ema - _t0_token_throughput_ema) / Float64(N)
     print("MOJO_TIMING observability::token_throughput_ema", _ns_token_throughput_ema, _acc_token_throughput_ema)
+    var _result_token_throughput_ema = token_throughput_ema(0.5, 0.5, 0.5, 0.5)
+    var _summary_token_throughput_ema = _summary_float64(_result_token_throughput_ema)
+    print("MOJO_RESULT observability::token_throughput_ema", _summary_token_throughput_ema)
     var _acc_cache_miss_rate: Float64 = 0.0
     var _t0_cache_miss_rate = perf_counter_ns()
     for _ in range(N):
@@ -51,6 +170,9 @@ def main() raises:
     var _t1_cache_miss_rate = perf_counter_ns()
     var _ns_cache_miss_rate = Float64(_t1_cache_miss_rate - _t0_cache_miss_rate) / Float64(N)
     print("MOJO_TIMING observability::cache_miss_rate", _ns_cache_miss_rate, _acc_cache_miss_rate)
+    var _result_cache_miss_rate = cache_miss_rate(0.5, 0.5)
+    var _summary_cache_miss_rate = _summary_float64(_result_cache_miss_rate)
+    print("MOJO_RESULT observability::cache_miss_rate", _summary_cache_miss_rate)
     var _acc_batch_queue_wait_percentile: Float64 = 0.0
     var _t0_batch_queue_wait_percentile = perf_counter_ns()
     for _ in range(N):
@@ -58,6 +180,9 @@ def main() raises:
     var _t1_batch_queue_wait_percentile = perf_counter_ns()
     var _ns_batch_queue_wait_percentile = Float64(_t1_batch_queue_wait_percentile - _t0_batch_queue_wait_percentile) / Float64(N)
     print("MOJO_TIMING observability::batch_queue_wait_percentile", _ns_batch_queue_wait_percentile, _acc_batch_queue_wait_percentile)
+    var _result_batch_queue_wait_percentile = batch_queue_wait_percentile(0.5, 0.5, 0.5)
+    var _summary_batch_queue_wait_percentile = _summary_float64(_result_batch_queue_wait_percentile)
+    print("MOJO_RESULT observability::batch_queue_wait_percentile", _summary_batch_queue_wait_percentile)
     var _acc_gpu_utilization_rolling: Float64 = 0.0
     var _t0_gpu_utilization_rolling = perf_counter_ns()
     for _ in range(N):
@@ -65,6 +190,9 @@ def main() raises:
     var _t1_gpu_utilization_rolling = perf_counter_ns()
     var _ns_gpu_utilization_rolling = Float64(_t1_gpu_utilization_rolling - _t0_gpu_utilization_rolling) / Float64(N)
     print("MOJO_TIMING observability::gpu_utilization_rolling", _ns_gpu_utilization_rolling, _acc_gpu_utilization_rolling)
+    var _result_gpu_utilization_rolling = gpu_utilization_rolling(0.5, 0.5, 0.5)
+    var _summary_gpu_utilization_rolling = _summary_float64(_result_gpu_utilization_rolling)
+    print("MOJO_RESULT observability::gpu_utilization_rolling", _summary_gpu_utilization_rolling)
     var _acc_request_success_rate: Float64 = 0.0
     var _t0_request_success_rate = perf_counter_ns()
     for _ in range(N):
@@ -72,6 +200,9 @@ def main() raises:
     var _t1_request_success_rate = perf_counter_ns()
     var _ns_request_success_rate = Float64(_t1_request_success_rate - _t0_request_success_rate) / Float64(N)
     print("MOJO_TIMING observability::request_success_rate", _ns_request_success_rate, _acc_request_success_rate)
+    var _result_request_success_rate = request_success_rate(0.5, 0.5)
+    var _summary_request_success_rate = _summary_float64(_result_request_success_rate)
+    print("MOJO_RESULT observability::request_success_rate", _summary_request_success_rate)
     var _acc_model_drift_alert_score: Float64 = 0.0
     var _t0_model_drift_alert_score = perf_counter_ns()
     for _ in range(N):
@@ -79,6 +210,9 @@ def main() raises:
     var _t1_model_drift_alert_score = perf_counter_ns()
     var _ns_model_drift_alert_score = Float64(_t1_model_drift_alert_score - _t0_model_drift_alert_score) / Float64(N)
     print("MOJO_TIMING observability::model_drift_alert_score", _ns_model_drift_alert_score, _acc_model_drift_alert_score)
+    var _result_model_drift_alert_score = model_drift_alert_score(0.5, 0.5, 0.5)
+    var _summary_model_drift_alert_score = _summary_float64(_result_model_drift_alert_score)
+    print("MOJO_RESULT observability::model_drift_alert_score", _summary_model_drift_alert_score)
     var _acc_cost_per_token_rolling: Float64 = 0.0
     var _t0_cost_per_token_rolling = perf_counter_ns()
     for _ in range(N):
@@ -86,6 +220,9 @@ def main() raises:
     var _t1_cost_per_token_rolling = perf_counter_ns()
     var _ns_cost_per_token_rolling = Float64(_t1_cost_per_token_rolling - _t0_cost_per_token_rolling) / Float64(N)
     print("MOJO_TIMING observability::cost_per_token_rolling", _ns_cost_per_token_rolling, _acc_cost_per_token_rolling)
+    var _result_cost_per_token_rolling = cost_per_token_rolling(0.5, 0.5, 0.5, 0.5)
+    var _summary_cost_per_token_rolling = _summary_float64(_result_cost_per_token_rolling)
+    print("MOJO_RESULT observability::cost_per_token_rolling", _summary_cost_per_token_rolling)
     var _acc_health_check_score: Float64 = 0.0
     var _t0_health_check_score = perf_counter_ns()
     for _ in range(N):
@@ -93,3 +230,6 @@ def main() raises:
     var _t1_health_check_score = perf_counter_ns()
     var _ns_health_check_score = Float64(_t1_health_check_score - _t0_health_check_score) / Float64(N)
     print("MOJO_TIMING observability::health_check_score", _ns_health_check_score, _acc_health_check_score)
+    var _result_health_check_score = health_check_score(0.5, 0.5, 0.5, 0.5)
+    var _summary_health_check_score = _summary_float64(_result_health_check_score)
+    print("MOJO_RESULT observability::health_check_score", _summary_health_check_score)

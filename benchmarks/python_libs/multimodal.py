@@ -162,7 +162,7 @@ def image_token_count(image_size, patch_size, compression_factor):
     n_patches = image_patch_count(image_size, patch_size)
     if compression_factor <= 0.0:
         return n_patches
-    return float(Int64(n_patches / compression_factor + 0.5))
+    return float(int(n_patches / compression_factor + 0.5))
 
 
 

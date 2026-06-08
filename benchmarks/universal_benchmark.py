@@ -8,6 +8,7 @@ Goals:
 - score the same corpus across CSV, Parquet, and SQLite backends
 - report import integrity, resolver correctness, join correctness, query correctness, and latency
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -146,11 +147,7 @@ def _ingest_value_matches(actual: Any, expected_type: str, expected_value: Any) 
             and abs(float(actual) - float(expected_value)) <= 1e-9
         )
     if expected_type == "int":
-        return (
-            isinstance(actual, int)
-            and not isinstance(actual, bool)
-            and actual == expected_value
-        )
+        return isinstance(actual, int) and not isinstance(actual, bool) and actual == expected_value
     return type(actual).__name__ == expected_type and actual == expected_value
 
 
@@ -225,34 +222,42 @@ def _generate_sources() -> dict[str, list[dict[str, Any]]]:
         bridge_map.setdefault(bridge_key, (geo_key, f"label_{rng.randint(1, 4)}"))
         region_map[geo_key] = (region, country)
 
-        s0.append({
-            "entity_key": entity_key,
-            "local_group": local_group,
-            "quantity": quantity,
-            "unit_rate": unit_rate,
-            "measure_total": measure_total,
-        })
+        s0.append(
+            {
+                "entity_key": entity_key,
+                "local_group": local_group,
+                "quantity": quantity,
+                "unit_rate": unit_rate,
+                "measure_total": measure_total,
+            }
+        )
 
     for entity_key, (segment, bridge_key) in entity_map.items():
-        s1.append({
-            "entity_key": entity_key,
-            "segment_label": segment,
-            "bridge_key": bridge_key,
-        })
+        s1.append(
+            {
+                "entity_key": entity_key,
+                "segment_label": segment,
+                "bridge_key": bridge_key,
+            }
+        )
 
     for geo_key, (region, country) in region_map.items():
-        s2.append({
-            "geo_key": geo_key,
-            "region_label": region,
-            "country_code": country,
-        })
+        s2.append(
+            {
+                "geo_key": geo_key,
+                "region_label": region,
+                "country_code": country,
+            }
+        )
 
     for bridge_key, (geo_key, bridge_label) in bridge_map.items():
-        s3.append({
-            "bridge_key": bridge_key,
-            "geo_key": geo_key,
-            "bridge_label": bridge_label,
-        })
+        s3.append(
+            {
+                "bridge_key": bridge_key,
+                "geo_key": geo_key,
+                "bridge_label": bridge_label,
+            }
+        )
 
     c0: list[dict[str, Any]] = []
     cats = ["Alpha", "Beta", "Gamma", "Delta"]
@@ -262,14 +267,16 @@ def _generate_sources() -> dict[str, list[dict[str, Any]]]:
         oh_rate = round(0.12 + (i % 5) * 0.02, 4)
         oh_cost = round(unit_cost * oh_rate, 2)
         ext_cost = round(unit_cost * qty_i, 2)
-        c0.append({
-            "item_id": f"item_{i:04d}",
-            "category": cats[i % len(cats)],
-            "qty": qty_i,
-            "UNIT_COST": unit_cost,
-            "OH_COST": oh_cost,
-            "EXT_COST": ext_cost,
-        })
+        c0.append(
+            {
+                "item_id": f"item_{i:04d}",
+                "category": cats[i % len(cats)],
+                "qty": qty_i,
+                "UNIT_COST": unit_cost,
+                "OH_COST": oh_cost,
+                "EXT_COST": ext_cost,
+            }
+        )
 
     i0 = [
         {
@@ -297,12 +304,14 @@ def _generate_sources() -> dict[str, list[dict[str, Any]]]:
 
     l0: list[dict[str, Any]] = []
     for i in range(12):
-        l0.append({
-            "row_key": f"row_{i:02d}",
-            "local_group": groups[i % len(groups)],
-            "late_value": None if i < 4 else round(100 + i * 2.5, 2),
-            "baseline_value": float(i + 1),
-        })
+        l0.append(
+            {
+                "row_key": f"row_{i:02d}",
+                "local_group": groups[i % len(groups)],
+                "late_value": None if i < 4 else round(100 + i * 2.5, 2),
+                "baseline_value": float(i + 1),
+            }
+        )
 
     return {
         "S0": s0,
@@ -336,13 +345,15 @@ def _build_query_cases(sources: dict[str, list[dict[str, Any]]]) -> list[QueryCa
         for row in s0:
             bridge_key = entity_to_bridge[row["entity_key"]]
             geo_key = bridge_to_geo[bridge_key]
-            out.append({
-                **row,
-                "segment": entity_to_segment[row["entity_key"]],
-                "bridge_label": bridge_to_label[bridge_key],
-                "region": geo_to_region[geo_key],
-                "country": geo_to_country[geo_key],
-            })
+            out.append(
+                {
+                    **row,
+                    "segment": entity_to_segment[row["entity_key"]],
+                    "bridge_label": bridge_to_label[bridge_key],
+                    "region": geo_to_region[geo_key],
+                    "country": geo_to_country[geo_key],
+                }
+            )
         return [
             {
                 "group": item[group_name],
@@ -627,14 +638,16 @@ async def _run_backend(backend: str, workdir: Path) -> dict[str, Any]:
         ok = _ingest_value_matches(actual, check.expected_type, check.expected_value)
         if ok:
             ingest_passed += 1
-        ingest_details.append({
-            "label": check.label,
-            "ok": ok,
-            "actual_type": type(actual).__name__,
-            "actual_value": actual,
-            "expected_type": check.expected_type,
-            "expected_value": check.expected_value,
-        })
+        ingest_details.append(
+            {
+                "label": check.label,
+                "ok": ok,
+                "actual_type": type(actual).__name__,
+                "actual_value": actual,
+                "expected_type": check.expected_type,
+                "expected_value": check.expected_value,
+            }
+        )
 
     metric_passed = 0
     group_passed = 0
@@ -656,10 +669,7 @@ async def _run_backend(backend: str, workdir: Path) -> dict[str, Any]:
         query_latencies.append(elapsed_ms)
 
         metric_ok = (plan.metric_src, plan.metric_col) == case.expected_metric
-        group_ok = (
-            case.expected_group is None
-            and plan.group_col is None
-        ) or (
+        group_ok = (case.expected_group is None and plan.group_col is None) or (
             case.expected_group is not None
             and (plan.group_src, plan.group_col) == case.expected_group
         )
@@ -677,21 +687,23 @@ async def _run_backend(backend: str, workdir: Path) -> dict[str, Any]:
         join_passed += int(join_ok)
         query_passed += int(query_ok)
 
-        query_details.append({
-            "label": case.label,
-            "metric_ok": metric_ok,
-            "group_ok": group_ok,
-            "join_ok": join_ok,
-            "query_ok": query_ok,
-            "metric": [plan.metric_src, plan.metric_col],
-            "group": [plan.group_src, plan.group_col] if plan.group_col else None,
-            "expected_metric": list(case.expected_metric),
-            "expected_group": list(case.expected_group) if case.expected_group else None,
-            "actual_hops": [list(h) for h in actual_hops],
-            "expected_hops": [list(h) for h in case.expected_hops],
-            "row_count": row_count,
-            "latency_ms": round(elapsed_ms, 3),
-        })
+        query_details.append(
+            {
+                "label": case.label,
+                "metric_ok": metric_ok,
+                "group_ok": group_ok,
+                "join_ok": join_ok,
+                "query_ok": query_ok,
+                "metric": [plan.metric_src, plan.metric_col],
+                "group": [plan.group_src, plan.group_col] if plan.group_col else None,
+                "expected_metric": list(case.expected_metric),
+                "expected_group": list(case.expected_group) if case.expected_group else None,
+                "actual_hops": [list(h) for h in actual_hops],
+                "expected_hops": [list(h) for h in case.expected_hops],
+                "row_count": row_count,
+                "latency_ms": round(elapsed_ms, 3),
+            }
+        )
 
     return {
         "backend": backend,

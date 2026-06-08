@@ -3,18 +3,23 @@
   "status": "ok",
   "n_functions": 1,
   "n_compared": 1,
-  "overall_speedup_x": 310.79,
-  "total_py_ns": 4288.88,
-  "total_mojo_ns": 13.8,
-  "elapsed_s": 3.87,
+  "n_timed": 1,
+  "overall_speedup_x": 1524.22,
+  "total_py_ns": 21948.83,
+  "total_mojo_ns": 14.4,
+  "elapsed_s": 3.29,
   "n_iterations": 10000,
+  "mojo_error": null,
   "functions": [
     {
       "function": "run_field_map",
-      "py_ns": 4288.875,
-      "mojo_ns": 13.8,
-      "speedup_x": 310.79,
+      "py_ns": 21948.829,
+      "mojo_ns": 14.4,
+      "speedup_x": 1524.22,
       "py_result": null,
+      "py_summary": "str:91:616667142",
+      "mojo_summary": "str:126:373786390",
+      "result_match": false,
       "py_error": null
     }
   ]

@@ -144,7 +144,7 @@ def pq_quantization_error(x, pq_centroid, n_subspaces):
 def lsh_hash_bit(x_dot_random, bias, bucket_width):
     if bucket_width <= 0.0:
         return 0.0
-    return float(Int64((x_dot_random + bias) / bucket_width))
+    return float(int((x_dot_random + bias) / bucket_width))
 
 
 

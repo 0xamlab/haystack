@@ -2,6 +2,116 @@
 from std.math import isnan, isinf
 from linalg import mat_zeros, mat_identity, mat_from_list, mat_add, mat_sub, mat_scale, mat_transpose, mat_mul, mat_det, mat_inv, vec_dot, vec_norm, vec_cross, Matrix
 from std.time import perf_counter_ns
+fn _summary_hash_string(value: String) -> Int:
+    var h = 7
+    var bytes = value.as_bytes()
+    for i in range(len(bytes)):
+        h = (h * 131 + Int(bytes[i])) % 2147483647
+    return h
+
+fn _summary_float64(value: Float64) -> String:
+    if isnan(value): return "float:nan"
+    if isinf(value): return "float:inf" if value > 0.0 else "float:-inf"
+    return "float:" + String(value)
+
+fn _summary_float64_rounded6(value: Float64) -> String:
+    if isnan(value): return "float:nan"
+    if isinf(value): return "float:inf" if value > 0.0 else "float:-inf"
+    var scaled = value * 1000000.0
+    var rounded = Float64(Int(scaled + (0.5 if scaled >= 0.0 else -0.5))) / 1000000.0
+    return "float:" + String(rounded)
+
+fn _summary_float32(value: Float32) -> String:
+    return _summary_float64(Float64(value))
+
+fn _summary_int(value: Int) -> String:
+    return "int:" + String(value)
+
+fn _summary_uint8(value: UInt8) -> String:
+    return "int:" + String(value)
+
+fn _summary_uint16(value: UInt16) -> String:
+    return "int:" + String(value)
+
+fn _summary_uint32(value: UInt32) -> String:
+    return "int:" + String(value)
+
+fn _summary_uint64(value: UInt64) -> String:
+    return "int:" + String(value)
+
+fn _summary_bool(value: Bool) -> String:
+    return "bool:1" if value else "bool:0"
+
+fn _summary_string(value: String) -> String:
+    return "str:" + String(len(value.as_bytes())) + ":" + String(_summary_hash_string(value))
+
+fn _summary_list_float64(value: List[Float64]) -> String:
+    var joined = String("")
+    for i in range(len(value)):
+        if i > 0: joined += "|"
+        joined += _summary_float64(value[i])
+    return "list:" + String(len(value)) + ":" + String(_summary_hash_string(joined))
+
+fn _summary_list_float32(value: List[Float32]) -> String:
+    var joined = String("")
+    for i in range(len(value)):
+        if i > 0: joined += "|"
+        joined += _summary_float32(value[i])
+    return "list:" + String(len(value)) + ":" + String(_summary_hash_string(joined))
+
+fn _summary_list_int(value: List[Int]) -> String:
+    var joined = String("")
+    for i in range(len(value)):
+        if i > 0: joined += "|"
+        joined += _summary_int(value[i])
+    return "list:" + String(len(value)) + ":" + String(_summary_hash_string(joined))
+
+fn _summary_list_bool(value: List[Bool]) -> String:
+    var joined = String("")
+    for i in range(len(value)):
+        if i > 0: joined += "|"
+        joined += _summary_bool(value[i])
+    return "list:" + String(len(value)) + ":" + String(_summary_hash_string(joined))
+
+fn _summary_list_string(value: List[String]) -> String:
+    var joined = String("")
+    for i in range(len(value)):
+        if i > 0: joined += "|"
+        joined += _summary_string(value[i])
+    return "list:" + String(len(value)) + ":" + String(_summary_hash_string(joined))
+
+fn _summary_list_list_float64(value: List[List[Float64]]) -> String:
+    var joined = String("")
+    for i in range(len(value)):
+        if i > 0: joined += "|"
+        joined += _summary_list_float64(value[i])
+    return "list:" + String(len(value)) + ":" + String(_summary_hash_string(joined))
+
+fn _summary_list_list_float64_rounded6(value: List[List[Float64]]) -> String:
+    var joined = String("")
+    for i in range(len(value)):
+        if i > 0: joined += "|"
+        var row_joined = String("")
+        for j in range(len(value[i])):
+            if j > 0: row_joined += "|"
+            row_joined += _summary_float64_rounded6(value[i][j])
+        joined += "list:" + String(len(value[i])) + ":" + String(_summary_hash_string(row_joined))
+    return "list:" + String(len(value)) + ":" + String(_summary_hash_string(joined))
+
+fn _summary_list_list_int(value: List[List[Int]]) -> String:
+    var joined = String("")
+    for i in range(len(value)):
+        if i > 0: joined += "|"
+        joined += _summary_list_int(value[i])
+    return "list:" + String(len(value)) + ":" + String(_summary_hash_string(joined))
+
+fn _summary_list_list_string(value: List[List[String]]) -> String:
+    var joined = String("")
+    for i in range(len(value)):
+        if i > 0: joined += "|"
+        joined += _summary_list_string(value[i])
+    return "list:" + String(len(value)) + ":" + String(_summary_hash_string(joined))
+
 
 def main() raises:
     var _lf5 = List[Float64]()
@@ -115,6 +225,9 @@ def main() raises:
     var _t1_mat_det = perf_counter_ns()
     var _ns_mat_det = Float64(_t1_mat_det - _t0_mat_det) / Float64(N)
     print("MOJO_TIMING linalg::mat_det", _ns_mat_det, _acc_mat_det)
+    var _result_mat_det = mat_det(_mat3)
+    var _summary_mat_det = _summary_float64(_result_mat_det)
+    print("MOJO_RESULT linalg::mat_det", _summary_mat_det)
     var _keeper_mat_inv = List[Matrix]()
     _keeper_mat_inv.append(mat_inv(_mat3))
     var _acc_mat_inv: Float64 = 0.0
@@ -132,6 +245,9 @@ def main() raises:
     var _t1_vec_dot = perf_counter_ns()
     var _ns_vec_dot = Float64(_t1_vec_dot - _t0_vec_dot) / Float64(N)
     print("MOJO_TIMING linalg::vec_dot", _ns_vec_dot, _acc_vec_dot)
+    var _result_vec_dot = vec_dot(_lf5, _lf5)
+    var _summary_vec_dot = _summary_float64(_result_vec_dot)
+    print("MOJO_RESULT linalg::vec_dot", _summary_vec_dot)
     var _acc_vec_norm: Float64 = 0.0
     var _t0_vec_norm = perf_counter_ns()
     for _ in range(N):
@@ -139,6 +255,9 @@ def main() raises:
     var _t1_vec_norm = perf_counter_ns()
     var _ns_vec_norm = Float64(_t1_vec_norm - _t0_vec_norm) / Float64(N)
     print("MOJO_TIMING linalg::vec_norm", _ns_vec_norm, _acc_vec_norm)
+    var _result_vec_norm = vec_norm(_lf5)
+    var _summary_vec_norm = _summary_float64(_result_vec_norm)
+    print("MOJO_RESULT linalg::vec_norm", _summary_vec_norm)
     var _acc_vec_cross: Float64 = 0.0
     var _t0_vec_cross = perf_counter_ns()
     for _ in range(N):
@@ -147,3 +266,6 @@ def main() raises:
     var _t1_vec_cross = perf_counter_ns()
     var _ns_vec_cross = Float64(_t1_vec_cross - _t0_vec_cross) / Float64(N)
     print("MOJO_TIMING linalg::vec_cross", _ns_vec_cross, _acc_vec_cross)
+    var _result_vec_cross = vec_cross(_lf5, _lf5)
+    var _summary_vec_cross = _summary_list_float64(_result_vec_cross)
+    print("MOJO_RESULT linalg::vec_cross", _summary_vec_cross)

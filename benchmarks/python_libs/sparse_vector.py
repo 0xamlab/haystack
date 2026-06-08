@@ -109,6 +109,37 @@ class Python:
     def import_module(name):
         import importlib; return importlib.import_module(name)
 
+def _same_indices(a, b):
+    if len(a) != len(b):
+        return False
+    for i in range(len(a)):
+        if a[i] != b[i]:
+            return False
+    return True
+
+
+
+def _is_identity_indices(indices, size):
+    if len(indices) != size:
+        return False
+    for i in range(size):
+        if indices[i] != i:
+            return False
+    return True
+
+
+
+def _all_above_tol(values, tol):
+    for i in range(len(values)):
+        if math.fabs(values[i]) <= tol:
+            return False
+    return True
+
+
+
+
+
+
 def sv_dot(idx_a, val_a, idx_b, val_b):
     result = 0.0
     i = 0
@@ -132,12 +163,25 @@ def sv_dot(idx_a, val_a, idx_b, val_b):
 
 
 def sv_add(idx_a, val_a, idx_b, val_b):
+    na = len(idx_a)
+    nb = len(idx_b)
+    if _same_indices(idx_a, idx_b):
+        same_idx = []
+        same_val = []
+        for i in range(na):
+            s = val_a[i] + val_b[i]
+            if math.fabs(s) > 1e-15:
+                same_idx.append(float(idx_a[i]))
+                same_val.append(s)
+        same_result = []
+        same_result.append(same_idx)
+        same_result.append(same_val)
+        return same_result
+
     merged_idx = []
     merged_val = []
     i = 0
     j = 0
-    na = len(idx_a)
-    nb = len(idx_b)
     while i < na and j < nb:
         if idx_a[i] == idx_b[j]:
             s = val_a[i] + val_b[j]
@@ -173,9 +217,10 @@ def sv_add(idx_a, val_a, idx_b, val_b):
 
 
 def sv_scale(values, scalar):
-    out = []
-    for i in range(len(values)):
-        out.append(values[i] * scalar)
+    out = values.copy()
+    n = len(out)
+    for i in range(n):
+        out[i] = out[i] * scalar
     return out
 
 
@@ -208,6 +253,11 @@ def sv_cosine(idx_a, val_a, idx_b, val_b):
 
 
 def sv_to_dense(indices, values, size):
+    if size <= 0:
+        return []
+    if len(values) == size and _is_identity_indices(indices, size):
+        return values.copy()
+
     out = []
     for i in range(size):
         out.append(0.0)
@@ -222,9 +272,18 @@ def sv_to_dense(indices, values, size):
 
 
 def dense_to_sparse(dense, tol=1e-15):
+    n = len(dense)
+    if _all_above_tol(dense, tol):
+        dense_idx = []
+        for i in range(n):
+            dense_idx.append(float(i))
+        dense_result = []
+        dense_result.append(dense_idx)
+        dense_result.append(dense.copy())
+        return dense_result
     idx = []
     vals = []
-    for i in range(len(dense)):
+    for i in range(n):
         if math.fabs(dense[i]) > tol:
             idx.append(float(i))
             vals.append(dense[i])

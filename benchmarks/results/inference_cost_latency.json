@@ -1,0 +1,136 @@
+{
+  "lib": "inference_cost_latency",
+  "status": "ok",
+  "n_functions": 11,
+  "n_compared": 11,
+  "n_timed": 11,
+  "overall_speedup_x": 685.16,
+  "total_py_ns": 10482.98,
+  "total_mojo_ns": 15.3,
+  "elapsed_s": 2.43,
+  "n_iterations": 10000,
+  "mojo_error": null,
+  "functions": [
+    {
+      "function": "prompt_token_estimate",
+      "py_ns": 351.4,
+      "mojo_ns": 1.4,
+      "speedup_x": 251.0,
+      "py_result": 9.0,
+      "py_summary": "int:9",
+      "mojo_summary": "int:9",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "completion_token_estimate",
+      "py_ns": 2788.621,
+      "mojo_ns": 1.4,
+      "speedup_x": 1991.87,
+      "py_result": 9.0,
+      "py_summary": "int:9",
+      "mojo_summary": "int:9",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "kv_cache_bytes",
+      "py_ns": 449.496,
+      "mojo_ns": 1.4,
+      "speedup_x": 321.07,
+      "py_result": 6250.0,
+      "py_summary": "float:6250.0",
+      "mojo_summary": "float:6250.0",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "attention_flops",
+      "py_ns": 2075.025,
+      "mojo_ns": 1.4,
+      "speedup_x": 1482.16,
+      "py_result": 62500.0,
+      "py_summary": "float:62500.0",
+      "mojo_summary": "float:62500.0",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "prefill_latency_estimate",
+      "py_ns": 275.063,
+      "mojo_ns": 1.4,
+      "speedup_x": 196.47,
+      "py_result": 10000.5,
+      "py_summary": "float:10000.5",
+      "mojo_summary": "float:10000.5",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "decode_latency_estimate",
+      "py_ns": 695.554,
+      "mojo_ns": 1.4,
+      "speedup_x": 496.82,
+      "py_result": 10000.5,
+      "py_summary": "float:10000.5",
+      "mojo_summary": "float:10000.5",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "request_cost_estimate",
+      "py_ns": 382.617,
+      "mojo_ns": 1.3,
+      "speedup_x": 294.32,
+      "py_result": 0.005,
+      "py_summary": "float:0.005",
+      "mojo_summary": "float:0.005",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "cost_latency_frontier_score",
+      "py_ns": 1384.004,
+      "mojo_ns": 1.4,
+      "speedup_x": 988.57,
+      "py_result": 0.666667,
+      "py_summary": "float:0.6666666666666666",
+      "mojo_summary": "float:0.6666666666666666",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "batch_efficiency_estimate",
+      "py_ns": 343.887,
+      "mojo_ns": 1.4,
+      "speedup_x": 245.63,
+      "py_result": 1.0,
+      "py_summary": "float:1.0",
+      "mojo_summary": "float:1.0",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "queue_delay_estimate",
+      "py_ns": 1102.037,
+      "mojo_ns": 1.4,
+      "speedup_x": 787.17,
+      "py_result": 2000.0,
+      "py_summary": "float:2000.0",
+      "mojo_summary": "float:2000.0",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "speculative_decode_gain_estimate",
+      "py_ns": 635.275,
+      "mojo_ns": 1.4,
+      "speedup_x": 453.77,
+      "py_result": 0.333333,
+      "py_summary": "float:0.3333333333333333",
+      "mojo_summary": "float:0.3333333333333333",
+      "result_match": true,
+      "py_error": null
+    }
+  ]
+}

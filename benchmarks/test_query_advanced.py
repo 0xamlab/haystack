@@ -10,6 +10,7 @@ This benchmark is intentionally schema-agnostic:
 It is a benchmark fixture for universal matching behavior, not a proof tied to any
 industry dataset.
 """
+
 from __future__ import annotations
 
 import csv
@@ -135,20 +136,24 @@ def _generate_sources(tmp: Path) -> dict[str, str]:
         bridge_map.setdefault(bridge_key, (geo_key, f"label_{rng.randint(1, 4)}"))
         region_map[geo_key] = (region, country)
 
-        s0.append({
-            "entity_key": entity_key,
-            "local_group": local_group,
-            "quantity": qty,
-            "unit_rate": unit_rate,
-            "measure_total": measure_total,
-        })
+        s0.append(
+            {
+                "entity_key": entity_key,
+                "local_group": local_group,
+                "quantity": qty,
+                "unit_rate": unit_rate,
+                "measure_total": measure_total,
+            }
+        )
 
     for entity_key, (segment, bridge_key) in entity_map.items():
-        s1.append({
-            "entity_key": entity_key,
-            "segment_label": segment,
-            "bridge_key": bridge_key,
-        })
+        s1.append(
+            {
+                "entity_key": entity_key,
+                "segment_label": segment,
+                "bridge_key": bridge_key,
+            }
+        )
 
     for geo_key, (region, country) in region_map.items():
         s2.append({"geo_key": geo_key, "region_label": region, "country_code": country})
@@ -160,19 +165,21 @@ def _generate_sources(tmp: Path) -> dict[str, str]:
     c0: list[dict[str, object]] = []
     cats = ["Alpha", "Beta", "Gamma", "Delta"]
     for i in range(200):
-        qty_i      = float((i % 8) + 1)
-        unit_cost  = round(5.0 + (i % 20) * 0.75, 2)
-        oh_rate    = round(0.12 + (i % 5) * 0.02, 4)
-        oh_cost    = round(unit_cost * oh_rate, 2)
-        ext_cost   = round(unit_cost * qty_i, 2)
-        c0.append({
-            "item_id":    f"item_{i:04d}",
-            "category":   cats[i % len(cats)],
-            "qty":        qty_i,
-            "UNIT_COST":  unit_cost,
-            "OH_COST":    oh_cost,
-            "EXT_COST":   ext_cost,
-        })
+        qty_i = float((i % 8) + 1)
+        unit_cost = round(5.0 + (i % 20) * 0.75, 2)
+        oh_rate = round(0.12 + (i % 5) * 0.02, 4)
+        oh_cost = round(unit_cost * oh_rate, 2)
+        ext_cost = round(unit_cost * qty_i, 2)
+        c0.append(
+            {
+                "item_id": f"item_{i:04d}",
+                "category": cats[i % len(cats)],
+                "qty": qty_i,
+                "UNIT_COST": unit_cost,
+                "OH_COST": oh_cost,
+                "EXT_COST": ext_cost,
+            }
+        )
 
     _write_csv(tmp / "S0.csv", s0)
     _write_csv(tmp / "S1.csv", s1)
@@ -197,9 +204,9 @@ def _preview(result) -> str:
 def main() -> None:
     from apps.api_server.services.auto_planner import AutoPlanner
 
-    print(f"\n{BOLD}{'═'*W}{RESET}")
+    print(f"\n{BOLD}{'═' * W}{RESET}")
     print(f"{BOLD}{CYAN}  Generated-Schema Query Benchmark{RESET}")
-    print(f"{BOLD}{'═'*W}{RESET}")
+    print(f"{BOLD}{'═' * W}{RESET}")
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         tmp = Path(tmp_dir)
@@ -256,13 +263,12 @@ def main() -> None:
             else:
                 failed += 1
                 print(
-                    f"{RED}✗{RESET} cold={elapsed:.1f}ms "
-                    f"hot={hot_elapsed:.1f}ms error={plan.error}"
+                    f"{RED}✗{RESET} cold={elapsed:.1f}ms hot={hot_elapsed:.1f}ms error={plan.error}"
                 )
 
-        print(f"\n{BOLD}{'═'*W}{RESET}")
+        print(f"\n{BOLD}{'═' * W}{RESET}")
         print(f"{BOLD}  Generated benchmark summary{RESET}")
-        print(f"{BOLD}{'═'*W}{RESET}")
+        print(f"{BOLD}{'═' * W}{RESET}")
         print(f"passed={passed} failed={failed} total={len(QUERIES)}")
         print(f"cold_total_ms={cold_total:.1f} hot_total_ms={hot_total:.1f}")
 

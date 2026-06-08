@@ -13,6 +13,7 @@ real questions about the data:
 Run:
     python3 benchmarks/test_live.py
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -31,15 +32,16 @@ TEST_FILES = ROOT / "test_files"
 
 sys.path.insert(0, str(ROOT))
 
-CYAN   = "\033[96m"
-GREEN  = "\033[92m"
+CYAN = "\033[96m"
+GREEN = "\033[92m"
 YELLOW = "\033[93m"
-RED    = "\033[91m"
-BOLD   = "\033[1m"
-DIM    = "\033[2m"
-RESET  = "\033[0m"
+RED = "\033[91m"
+BOLD = "\033[1m"
+DIM = "\033[2m"
+RESET = "\033[0m"
 
 # ── Inline copies of the pipeline helpers (no FastAPI/auth needed) ────────────
+
 
 def _load_csv(path: Path, max_rows: int = 1000) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
@@ -89,9 +91,7 @@ def _profile(records: list[dict[str, Any]]) -> dict[str, dict]:
             nn = len(nums)
             mean = sum(nums) / nn
             profile[field]["mean"] = mean
-            profile[field]["std"] = math.sqrt(
-                sum((x - mean) ** 2 for x in nums) / max(nn - 1, 1)
-            )
+            profile[field]["std"] = math.sqrt(sum((x - mean) ** 2 for x in nums) / max(nn - 1, 1))
     return profile
 
 
@@ -115,6 +115,7 @@ def _call_mojo(payload: dict) -> tuple[dict | None, float]:
 
 # ── Parallel Mojo helpers (asyncio + run_in_executor) ────────────────────────
 
+
 async def _mojo_async(payload: dict) -> tuple[dict | None, float]:
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(None, _call_mojo, payload)
@@ -126,8 +127,9 @@ async def _mojo_gather(*payloads: dict) -> list[tuple[dict | None, float]]:
 
 # ── Formatting helpers ────────────────────────────────────────────────────────
 
+
 def ms(s: float) -> str:
-    return f"{s*1000:.0f}ms" if s < 1 else f"{s:.2f}s"
+    return f"{s * 1000:.0f}ms" if s < 1 else f"{s:.2f}s"
 
 
 def bar(v: float, w: int = 10) -> str:
@@ -136,9 +138,9 @@ def bar(v: float, w: int = 10) -> str:
 
 
 def section(title: str) -> None:
-    print(f"\n{BOLD}{CYAN}{'─'*72}{RESET}")
+    print(f"\n{BOLD}{CYAN}{'─' * 72}{RESET}")
     print(f"{BOLD}{CYAN}  {title}{RESET}")
-    print(f"{BOLD}{CYAN}{'─'*72}{RESET}")
+    print(f"{BOLD}{CYAN}{'─' * 72}{RESET}")
 
 
 def answer(q: str, a: str, t: float = 0.0) -> None:
@@ -154,14 +156,15 @@ def bullet(items: list[str], indent: int = 5) -> None:
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
+
 async def main() -> None:
     if not BINARY.exists():
         print(f"{RED}Mojo binary not found: {BINARY}{RESET}")
         sys.exit(1)
 
-    print(f"\n{BOLD}{'='*72}{RESET}")
+    print(f"\n{BOLD}{'=' * 72}{RESET}")
     print(f"{BOLD}  Decision Engine — Live Q&A Test (real aerospace data){RESET}")
-    print(f"{BOLD}{'='*72}{RESET}")
+    print(f"{BOLD}{'=' * 72}{RESET}")
 
     # ── Load tables ───────────────────────────────────────────────────────────
     section("Loading tables")
@@ -170,10 +173,10 @@ async def main() -> None:
     t_load = time.perf_counter()
 
     sources = [
-        ("POS",       "POS.csv"),
-        ("Bookings",  "Bookings.csv"),
-        ("Quotes",    "Quotes_Combined_20241116.csv"),
-        ("Backlog",   "Backlog.csv"),
+        ("POS", "POS.csv"),
+        ("Bookings", "Bookings.csv"),
+        ("Quotes", "Quotes_Combined_20241116.csv"),
+        ("Backlog", "Backlog.csv"),
         ("Inventory", "Available_Inventory.csv"),
     ]
 
@@ -188,7 +191,7 @@ async def main() -> None:
         tables[name] = records
         profiles[name] = prof
         ncols = len(records[0]) if records else 0
-        nnum  = sum(1 for v in prof.values() if v["is_numeric"])
+        nnum = sum(1 for v in prof.values() if v["is_numeric"])
         print(
             f"  {BOLD}{name:<12}{RESET} {len(records):>5,} rows  "
             f"{ncols:>4} cols  {nnum:>3} numeric   "
@@ -212,7 +215,7 @@ async def main() -> None:
                     "sample_size": info["total_count"],
                 }
                 for field, info in profiles[name].items()
-            }
+            },
         }
         for name in tables
     ]
@@ -240,7 +243,7 @@ async def main() -> None:
 
     def build_cols(name: str) -> list[dict]:
         prof = profiles[name]
-        mp   = mojo_profiles.get(name, {})
+        mp = mojo_profiles.get(name, {})
         return [
             {
                 "name": f,
@@ -257,16 +260,17 @@ async def main() -> None:
         ]
 
     match_pairs = [
-        ("POS",      "Bookings"),
+        ("POS", "Bookings"),
         ("Bookings", "Quotes"),
-        ("POS",      "Backlog"),
-        ("Quotes",   "Backlog"),
+        ("POS", "Backlog"),
+        ("Quotes", "Backlog"),
     ]
 
     match_payloads = [
         {
             "engine_type": "column_match",
-            "source_a": a, "source_b": b,
+            "source_a": a,
+            "source_b": b,
             "columns_a": build_cols(a),
             "columns_b": build_cols(b),
             "min_confidence": 0.50,
@@ -286,13 +290,12 @@ async def main() -> None:
             answer(question, f"{RED}Engine error{RESET}", elapsed)
             continue
 
-        matches  = result["matches"]
-        strong   = [m for m in matches if m["score"] >= 0.85]
-        suggest  = [m for m in matches if 0.60 <= m["score"] < 0.85]
-        total_p  = result.get("total_pairs", len(build_cols(src_a)) * len(build_cols(src_b)))
+        matches = result["matches"]
+        strong = [m for m in matches if m["score"] >= 0.85]
+        suggest = [m for m in matches if 0.60 <= m["score"] < 0.85]
+        total_p = result.get("total_pairs", len(build_cols(src_a)) * len(build_cols(src_b)))
 
-        summary = (f"{len(strong)} strong + {len(suggest)} suggested  "
-                   f"out of {total_p:,} pairs")
+        summary = f"{len(strong)} strong + {len(suggest)} suggested  out of {total_p:,} pairs"
         answer(question, summary, elapsed)
 
         if strong:
@@ -333,12 +336,15 @@ async def main() -> None:
                     "unique_ratio": ur,
                     "sample_size": info["total_count"],
                 }
-        join_payloads.append({
-            "engine_type": "join_detect",
-            "source_a": src_a, "source_b": src_b,
-            "min_confidence": 0.4,
-            "columns": join_cols,
-        })
+        join_payloads.append(
+            {
+                "engine_type": "join_detect",
+                "source_a": src_a,
+                "source_b": src_b,
+                "min_confidence": 0.4,
+                "columns": join_cols,
+            }
+        )
         join_pair_labels.append((src_a, src_b))
 
     t0 = time.perf_counter()
@@ -351,11 +357,13 @@ async def main() -> None:
             answer(question, "No keys detected", elapsed)
             continue
         keys = sorted(result["join_keys"], key=lambda x: x["confidence"], reverse=True)
-        top  = keys[:5]
+        top = keys[:5]
         answer(question, f"{len(keys)} join key candidates  (top shown)", elapsed)
         for jk in top:
-            print(f"    {DIM}{jk['field_a']:<30} ↔ {jk['field_b']:<30}"
-                  f"  conf={jk['confidence']:.3f}  cardinality={jk['cardinality']}{RESET}")
+            print(
+                f"    {DIM}{jk['field_a']:<30} ↔ {jk['field_b']:<30}"
+                f"  conf={jk['confidence']:.3f}  cardinality={jk['cardinality']}{RESET}"
+            )
 
     print(
         f"\n  {BOLD}All {len(join_pair_labels)} pairs wall-clock (parallel):{RESET} "
@@ -366,7 +374,7 @@ async def main() -> None:
     section("Q&A — Derived Formulas (A×B≈C, A+B≈C)")
 
     rel_payloads = []
-    rel_labels   = []
+    rel_labels = []
     for name, records in tables.items():
         prof = profiles[name]
         num_fields = [f for f, info in prof.items() if info["is_numeric"]]
@@ -383,12 +391,14 @@ async def main() -> None:
                 except (TypeError, ValueError):
                     vals.append(0.0)
             cols[f] = vals
-        rel_payloads.append({
-            "engine_type": "relation_detect",
-            "source": name,
-            "min_confidence": 0.70,
-            "columns": cols,
-        })
+        rel_payloads.append(
+            {
+                "engine_type": "relation_detect",
+                "source": name,
+                "min_confidence": 0.70,
+                "columns": cols,
+            }
+        )
         rel_labels.append(name)
 
     t0 = time.perf_counter()
@@ -400,10 +410,10 @@ async def main() -> None:
         if result is None:
             answer(question, f"{RED}Engine error{RESET}", elapsed)
             continue
-        rels    = result.get("relationships", [])
+        rels = result.get("relationships", [])
         triples = result.get("triples_tested", 0)
-        evaled  = result.get("triples_evaluated", triples)
-        pct     = f"{evaled/max(triples,1)*100:.0f}%"
+        evaled = result.get("triples_evaluated", triples)
+        pct = f"{evaled / max(triples, 1) * 100:.0f}%"
 
         if not rels:
             answer(
@@ -413,14 +423,14 @@ async def main() -> None:
             )
         else:
             top = sorted(rels, key=lambda r: r["confidence"], reverse=True)
-            answer(question,
-                   f"{len(rels)} formula(s)  ({triples:,} triples, {pct} evaluated)",
-                   elapsed)
+            answer(
+                question, f"{len(rels)} formula(s)  ({triples:,} triples, {pct} evaluated)", elapsed
+            )
             for r in top[:6]:
                 conf_bar = bar(r["confidence"])
                 print(f"    {DIM}{r['formula']:<55} [{conf_bar}] {r['confidence']:.3f}{RESET}")
             if len(rels) > 6:
-                print(f"    {DIM}  … and {len(rels)-6} more{RESET}")
+                print(f"    {DIM}  … and {len(rels) - 6} more{RESET}")
 
     print(
         f"\n  {BOLD}All {len(rel_labels)} sources wall-clock (parallel):{RESET} "
@@ -435,11 +445,11 @@ async def main() -> None:
         num_cols = [f for f, info in profiles["Inventory"].items() if info["is_numeric"]]
         answer(
             "What numeric columns are in Inventory?",
-            f"{len(num_cols)} numeric columns out of {len(profiles['Inventory'])} total"
+            f"{len(num_cols)} numeric columns out of {len(profiles['Inventory'])} total",
         )
         bullet(num_cols[:12])
         if len(num_cols) > 12:
-            print(f"     {DIM}… and {len(num_cols)-12} more{RESET}")
+            print(f"     {DIM}… and {len(num_cols) - 12} more{RESET}")
 
     # What semantic types did Mojo find in Bookings?
     if "Bookings" in mojo_profiles:
@@ -447,11 +457,15 @@ async def main() -> None:
         for field, fp in mojo_profiles["Bookings"].items():
             t = fp.get("semantic_type", "?")
             type_groups.setdefault(t, []).append(field)
-        answer("What semantic types did Mojo detect in Bookings?",
-               f"{len(type_groups)} distinct types across {len(mojo_profiles['Bookings'])} fields")
+        answer(
+            "What semantic types did Mojo detect in Bookings?",
+            f"{len(type_groups)} distinct types across {len(mojo_profiles['Bookings'])} fields",
+        )
         for t, fields in sorted(type_groups.items()):
-            print(f"    {DIM}{t:<15} {', '.join(fields[:5])}"
-                  f"{'  …+'+str(len(fields)-5) if len(fields)>5 else ''}{RESET}")
+            print(
+                f"    {DIM}{t:<15} {', '.join(fields[:5])}"
+                f"{'  …+' + str(len(fields) - 5) if len(fields) > 5 else ''}{RESET}"
+            )
 
     # What's the highest-confidence formula across all tables?
     if rel_results:
@@ -465,7 +479,7 @@ async def main() -> None:
             best_src, best_r = all_rels[0]
             answer(
                 "What is the highest-confidence derived formula?",
-                f'[{best_src}]  {best_r["formula"]}   conf={best_r["confidence"]:.3f}'
+                f"[{best_src}]  {best_r['formula']}   conf={best_r['confidence']:.3f}",
             )
 
     # ── Grand summary ─────────────────────────────────────────────────────────
@@ -473,12 +487,12 @@ async def main() -> None:
     stages = [
         ("Load + profile (5 tables)", total_load),
         ("Mojo semantic typing (parallel)", t_prof),
-        ("Column matching (parallel)",     t_match),
-        ("Join detection (parallel)",      t_join),
-        ("Relation detection (parallel)",  t_rel),
+        ("Column matching (parallel)", t_match),
+        ("Join detection (parallel)", t_join),
+        ("Relation detection (parallel)", t_rel),
     ]
     grand = sum(t for _, t in stages)
-    mx    = max(t for _, t in stages)
+    mx = max(t for _, t in stages)
     for label, t in stages:
         pct = t / grand * 100
         b_str = bar(t / mx, 16)

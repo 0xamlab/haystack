@@ -18,6 +18,10 @@ try:
     from std.python import PythonObject
 except Exception:
     pass
+try:
+    from python_bridge import py_str
+except Exception:
+    pass
 
 AF_UNIX = 1
 SOCK_STREAM = 1
@@ -302,11 +306,12 @@ def recv_frame(fd):
         return str("")
 
 
-    chars = []
+
+    builtins = Python.import_module("builtins")
+    ba = builtins.bytearray(payload_len)
     for i in range(payload_len):
-        chars.append(payload_bytes[i])
-    chars.append(0)  # null terminator
-    return str(chars)
+        ba[i] = int(payload_bytes[i])
+    return py_str(builtins.bytes(ba).decode("utf-8"))
 
 
 

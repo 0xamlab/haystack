@@ -3,19 +3,7 @@ import math
 import random as _rng
 
 try:
-    from sha256 import sha256_hex
-except Exception:
-    pass
-try:
-    from sha256 import SHA256
-except Exception:
-    pass
-try:
     from sha256 import _compress
-except Exception:
-    pass
-try:
-    from sha256 import _u32_hex
 except Exception:
     pass
 

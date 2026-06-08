@@ -131,7 +131,7 @@ def retry_should_attempt(attempt, max_attempts, last_error_type):
 
 def plan_step_dependency_ready(completed_steps_mask, required_steps_mask):
 
-    covered = float(Int64(completed_steps_mask) & Int64(required_steps_mask))
+    covered = float(int(completed_steps_mask) & int(required_steps_mask))
     if covered == required_steps_mask:
         return 1.0
     return 0.0

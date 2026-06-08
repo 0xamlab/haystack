@@ -3,18 +3,23 @@
   "status": "ok",
   "n_functions": 1,
   "n_compared": 1,
-  "overall_speedup_x": 118.82,
-  "total_py_ns": 4776.48,
-  "total_mojo_ns": 40.2,
-  "elapsed_s": 5.84,
+  "n_timed": 1,
+  "overall_speedup_x": 687.71,
+  "total_py_ns": 31566.08,
+  "total_mojo_ns": 45.9,
+  "elapsed_s": 3.41,
   "n_iterations": 10000,
+  "mojo_error": null,
   "functions": [
     {
       "function": "run_column_rank",
-      "py_ns": 4776.483,
-      "mojo_ns": 40.2,
-      "speedup_x": 118.82,
+      "py_ns": 31566.083,
+      "mojo_ns": 45.9,
+      "speedup_x": 687.71,
       "py_result": null,
+      "py_summary": "str:65:2129438865",
+      "mojo_summary": "str:65:2129438865",
+      "result_match": true,
       "py_error": null
     }
   ]

@@ -2,19 +2,24 @@
   "lib": "cache",
   "status": "ok",
   "n_functions": 1,
-  "n_compared": 1,
-  "overall_speedup_x": 832.77,
-  "total_py_ns": 749.5,
-  "total_mojo_ns": 0.9,
-  "elapsed_s": 2.56,
+  "n_compared": 0,
+  "n_timed": 1,
+  "overall_speedup_x": 391.19,
+  "total_py_ns": 1251.8,
+  "total_mojo_ns": 3.2,
+  "elapsed_s": 7.41,
   "n_iterations": 10000,
+  "mojo_error": null,
   "functions": [
     {
       "function": "create_ttl_cache",
-      "py_ns": 749.496,
-      "mojo_ns": 0.9,
-      "speedup_x": 832.77,
+      "py_ns": 1251.796,
+      "mojo_ns": 3.2,
+      "speedup_x": 391.19,
       "py_result": null,
+      "py_summary": "obj:TTLCache:1740168613",
+      "mojo_summary": null,
+      "result_match": null,
       "py_error": null
     }
   ]

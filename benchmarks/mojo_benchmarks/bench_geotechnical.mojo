@@ -2,6 +2,116 @@
 from std.math import isnan, isinf
 from geotechnical import bearing_capacity_terzaghi, effective_stress, overburden_pressure, coefficient_of_earth_pressure_at_rest, rankine_ka, rankine_kp, active_earth_pressure, settlement_elastic, factor_of_safety_slope, void_ratio, porosity_from_void_ratio, degree_of_saturation
 from std.time import perf_counter_ns
+fn _summary_hash_string(value: String) -> Int:
+    var h = 7
+    var bytes = value.as_bytes()
+    for i in range(len(bytes)):
+        h = (h * 131 + Int(bytes[i])) % 2147483647
+    return h
+
+fn _summary_float64(value: Float64) -> String:
+    if isnan(value): return "float:nan"
+    if isinf(value): return "float:inf" if value > 0.0 else "float:-inf"
+    return "float:" + String(value)
+
+fn _summary_float64_rounded6(value: Float64) -> String:
+    if isnan(value): return "float:nan"
+    if isinf(value): return "float:inf" if value > 0.0 else "float:-inf"
+    var scaled = value * 1000000.0
+    var rounded = Float64(Int(scaled + (0.5 if scaled >= 0.0 else -0.5))) / 1000000.0
+    return "float:" + String(rounded)
+
+fn _summary_float32(value: Float32) -> String:
+    return _summary_float64(Float64(value))
+
+fn _summary_int(value: Int) -> String:
+    return "int:" + String(value)
+
+fn _summary_uint8(value: UInt8) -> String:
+    return "int:" + String(value)
+
+fn _summary_uint16(value: UInt16) -> String:
+    return "int:" + String(value)
+
+fn _summary_uint32(value: UInt32) -> String:
+    return "int:" + String(value)
+
+fn _summary_uint64(value: UInt64) -> String:
+    return "int:" + String(value)
+
+fn _summary_bool(value: Bool) -> String:
+    return "bool:1" if value else "bool:0"
+
+fn _summary_string(value: String) -> String:
+    return "str:" + String(len(value.as_bytes())) + ":" + String(_summary_hash_string(value))
+
+fn _summary_list_float64(value: List[Float64]) -> String:
+    var joined = String("")
+    for i in range(len(value)):
+        if i > 0: joined += "|"
+        joined += _summary_float64(value[i])
+    return "list:" + String(len(value)) + ":" + String(_summary_hash_string(joined))
+
+fn _summary_list_float32(value: List[Float32]) -> String:
+    var joined = String("")
+    for i in range(len(value)):
+        if i > 0: joined += "|"
+        joined += _summary_float32(value[i])
+    return "list:" + String(len(value)) + ":" + String(_summary_hash_string(joined))
+
+fn _summary_list_int(value: List[Int]) -> String:
+    var joined = String("")
+    for i in range(len(value)):
+        if i > 0: joined += "|"
+        joined += _summary_int(value[i])
+    return "list:" + String(len(value)) + ":" + String(_summary_hash_string(joined))
+
+fn _summary_list_bool(value: List[Bool]) -> String:
+    var joined = String("")
+    for i in range(len(value)):
+        if i > 0: joined += "|"
+        joined += _summary_bool(value[i])
+    return "list:" + String(len(value)) + ":" + String(_summary_hash_string(joined))
+
+fn _summary_list_string(value: List[String]) -> String:
+    var joined = String("")
+    for i in range(len(value)):
+        if i > 0: joined += "|"
+        joined += _summary_string(value[i])
+    return "list:" + String(len(value)) + ":" + String(_summary_hash_string(joined))
+
+fn _summary_list_list_float64(value: List[List[Float64]]) -> String:
+    var joined = String("")
+    for i in range(len(value)):
+        if i > 0: joined += "|"
+        joined += _summary_list_float64(value[i])
+    return "list:" + String(len(value)) + ":" + String(_summary_hash_string(joined))
+
+fn _summary_list_list_float64_rounded6(value: List[List[Float64]]) -> String:
+    var joined = String("")
+    for i in range(len(value)):
+        if i > 0: joined += "|"
+        var row_joined = String("")
+        for j in range(len(value[i])):
+            if j > 0: row_joined += "|"
+            row_joined += _summary_float64_rounded6(value[i][j])
+        joined += "list:" + String(len(value[i])) + ":" + String(_summary_hash_string(row_joined))
+    return "list:" + String(len(value)) + ":" + String(_summary_hash_string(joined))
+
+fn _summary_list_list_int(value: List[List[Int]]) -> String:
+    var joined = String("")
+    for i in range(len(value)):
+        if i > 0: joined += "|"
+        joined += _summary_list_int(value[i])
+    return "list:" + String(len(value)) + ":" + String(_summary_hash_string(joined))
+
+fn _summary_list_list_string(value: List[List[String]]) -> String:
+    var joined = String("")
+    for i in range(len(value)):
+        if i > 0: joined += "|"
+        joined += _summary_list_string(value[i])
+    return "list:" + String(len(value)) + ":" + String(_summary_hash_string(joined))
+
 
 def main() raises:
     var _lf5 = List[Float64]()
@@ -30,6 +140,9 @@ def main() raises:
     var _t1_bearing_capacity_terzaghi = perf_counter_ns()
     var _ns_bearing_capacity_terzaghi = Float64(_t1_bearing_capacity_terzaghi - _t0_bearing_capacity_terzaghi) / Float64(N)
     print("MOJO_TIMING geotechnical::bearing_capacity_terzaghi", _ns_bearing_capacity_terzaghi, _acc_bearing_capacity_terzaghi)
+    var _result_bearing_capacity_terzaghi = bearing_capacity_terzaghi(0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5)
+    var _summary_bearing_capacity_terzaghi = _summary_float64(_result_bearing_capacity_terzaghi)
+    print("MOJO_RESULT geotechnical::bearing_capacity_terzaghi", _summary_bearing_capacity_terzaghi)
     var _acc_effective_stress: Float64 = 0.0
     var _t0_effective_stress = perf_counter_ns()
     for _ in range(N):
@@ -37,6 +150,9 @@ def main() raises:
     var _t1_effective_stress = perf_counter_ns()
     var _ns_effective_stress = Float64(_t1_effective_stress - _t0_effective_stress) / Float64(N)
     print("MOJO_TIMING geotechnical::effective_stress", _ns_effective_stress, _acc_effective_stress)
+    var _result_effective_stress = effective_stress(0.5, 0.5)
+    var _summary_effective_stress = _summary_float64(_result_effective_stress)
+    print("MOJO_RESULT geotechnical::effective_stress", _summary_effective_stress)
     var _acc_overburden_pressure: Float64 = 0.0
     var _t0_overburden_pressure = perf_counter_ns()
     for _ in range(N):
@@ -44,6 +160,9 @@ def main() raises:
     var _t1_overburden_pressure = perf_counter_ns()
     var _ns_overburden_pressure = Float64(_t1_overburden_pressure - _t0_overburden_pressure) / Float64(N)
     print("MOJO_TIMING geotechnical::overburden_pressure", _ns_overburden_pressure, _acc_overburden_pressure)
+    var _result_overburden_pressure = overburden_pressure(0.5, 0.5)
+    var _summary_overburden_pressure = _summary_float64(_result_overburden_pressure)
+    print("MOJO_RESULT geotechnical::overburden_pressure", _summary_overburden_pressure)
     var _acc_coefficient_of_earth_pressure_at_rest: Float64 = 0.0
     var _t0_coefficient_of_earth_pressure_at_rest = perf_counter_ns()
     for _ in range(N):
@@ -51,6 +170,9 @@ def main() raises:
     var _t1_coefficient_of_earth_pressure_at_rest = perf_counter_ns()
     var _ns_coefficient_of_earth_pressure_at_rest = Float64(_t1_coefficient_of_earth_pressure_at_rest - _t0_coefficient_of_earth_pressure_at_rest) / Float64(N)
     print("MOJO_TIMING geotechnical::coefficient_of_earth_pressure_at_rest", _ns_coefficient_of_earth_pressure_at_rest, _acc_coefficient_of_earth_pressure_at_rest)
+    var _result_coefficient_of_earth_pressure_at_rest = coefficient_of_earth_pressure_at_rest(0.5)
+    var _summary_coefficient_of_earth_pressure_at_rest = _summary_float64(_result_coefficient_of_earth_pressure_at_rest)
+    print("MOJO_RESULT geotechnical::coefficient_of_earth_pressure_at_rest", _summary_coefficient_of_earth_pressure_at_rest)
     var _acc_rankine_ka: Float64 = 0.0
     var _t0_rankine_ka = perf_counter_ns()
     for _ in range(N):
@@ -58,6 +180,9 @@ def main() raises:
     var _t1_rankine_ka = perf_counter_ns()
     var _ns_rankine_ka = Float64(_t1_rankine_ka - _t0_rankine_ka) / Float64(N)
     print("MOJO_TIMING geotechnical::rankine_ka", _ns_rankine_ka, _acc_rankine_ka)
+    var _result_rankine_ka = rankine_ka(0.5)
+    var _summary_rankine_ka = _summary_float64(_result_rankine_ka)
+    print("MOJO_RESULT geotechnical::rankine_ka", _summary_rankine_ka)
     var _acc_rankine_kp: Float64 = 0.0
     var _t0_rankine_kp = perf_counter_ns()
     for _ in range(N):
@@ -65,6 +190,9 @@ def main() raises:
     var _t1_rankine_kp = perf_counter_ns()
     var _ns_rankine_kp = Float64(_t1_rankine_kp - _t0_rankine_kp) / Float64(N)
     print("MOJO_TIMING geotechnical::rankine_kp", _ns_rankine_kp, _acc_rankine_kp)
+    var _result_rankine_kp = rankine_kp(0.5)
+    var _summary_rankine_kp = _summary_float64(_result_rankine_kp)
+    print("MOJO_RESULT geotechnical::rankine_kp", _summary_rankine_kp)
     var _acc_active_earth_pressure: Float64 = 0.0
     var _t0_active_earth_pressure = perf_counter_ns()
     for _ in range(N):
@@ -72,6 +200,9 @@ def main() raises:
     var _t1_active_earth_pressure = perf_counter_ns()
     var _ns_active_earth_pressure = Float64(_t1_active_earth_pressure - _t0_active_earth_pressure) / Float64(N)
     print("MOJO_TIMING geotechnical::active_earth_pressure", _ns_active_earth_pressure, _acc_active_earth_pressure)
+    var _result_active_earth_pressure = active_earth_pressure(0.5, 0.5, 0.5)
+    var _summary_active_earth_pressure = _summary_float64(_result_active_earth_pressure)
+    print("MOJO_RESULT geotechnical::active_earth_pressure", _summary_active_earth_pressure)
     var _acc_settlement_elastic: Float64 = 0.0
     var _t0_settlement_elastic = perf_counter_ns()
     for _ in range(N):
@@ -79,6 +210,9 @@ def main() raises:
     var _t1_settlement_elastic = perf_counter_ns()
     var _ns_settlement_elastic = Float64(_t1_settlement_elastic - _t0_settlement_elastic) / Float64(N)
     print("MOJO_TIMING geotechnical::settlement_elastic", _ns_settlement_elastic, _acc_settlement_elastic)
+    var _result_settlement_elastic = settlement_elastic(0.5, 0.5, 0.5, 0.5)
+    var _summary_settlement_elastic = _summary_float64(_result_settlement_elastic)
+    print("MOJO_RESULT geotechnical::settlement_elastic", _summary_settlement_elastic)
     var _acc_factor_of_safety_slope: Float64 = 0.0
     var _t0_factor_of_safety_slope = perf_counter_ns()
     for _ in range(N):
@@ -86,6 +220,9 @@ def main() raises:
     var _t1_factor_of_safety_slope = perf_counter_ns()
     var _ns_factor_of_safety_slope = Float64(_t1_factor_of_safety_slope - _t0_factor_of_safety_slope) / Float64(N)
     print("MOJO_TIMING geotechnical::factor_of_safety_slope", _ns_factor_of_safety_slope, _acc_factor_of_safety_slope)
+    var _result_factor_of_safety_slope = factor_of_safety_slope(0.5, 0.5)
+    var _summary_factor_of_safety_slope = _summary_float64(_result_factor_of_safety_slope)
+    print("MOJO_RESULT geotechnical::factor_of_safety_slope", _summary_factor_of_safety_slope)
     var _acc_void_ratio: Float64 = 0.0
     var _t0_void_ratio = perf_counter_ns()
     for _ in range(N):
@@ -93,6 +230,9 @@ def main() raises:
     var _t1_void_ratio = perf_counter_ns()
     var _ns_void_ratio = Float64(_t1_void_ratio - _t0_void_ratio) / Float64(N)
     print("MOJO_TIMING geotechnical::void_ratio", _ns_void_ratio, _acc_void_ratio)
+    var _result_void_ratio = void_ratio(0.5)
+    var _summary_void_ratio = _summary_float64(_result_void_ratio)
+    print("MOJO_RESULT geotechnical::void_ratio", _summary_void_ratio)
     var _acc_porosity_from_void_ratio: Float64 = 0.0
     var _t0_porosity_from_void_ratio = perf_counter_ns()
     for _ in range(N):
@@ -100,6 +240,9 @@ def main() raises:
     var _t1_porosity_from_void_ratio = perf_counter_ns()
     var _ns_porosity_from_void_ratio = Float64(_t1_porosity_from_void_ratio - _t0_porosity_from_void_ratio) / Float64(N)
     print("MOJO_TIMING geotechnical::porosity_from_void_ratio", _ns_porosity_from_void_ratio, _acc_porosity_from_void_ratio)
+    var _result_porosity_from_void_ratio = porosity_from_void_ratio(0.5)
+    var _summary_porosity_from_void_ratio = _summary_float64(_result_porosity_from_void_ratio)
+    print("MOJO_RESULT geotechnical::porosity_from_void_ratio", _summary_porosity_from_void_ratio)
     var _acc_degree_of_saturation: Float64 = 0.0
     var _t0_degree_of_saturation = perf_counter_ns()
     for _ in range(N):
@@ -107,3 +250,6 @@ def main() raises:
     var _t1_degree_of_saturation = perf_counter_ns()
     var _ns_degree_of_saturation = Float64(_t1_degree_of_saturation - _t0_degree_of_saturation) / Float64(N)
     print("MOJO_TIMING geotechnical::degree_of_saturation", _ns_degree_of_saturation, _acc_degree_of_saturation)
+    var _result_degree_of_saturation = degree_of_saturation(0.5, 0.5, 0.5)
+    var _summary_degree_of_saturation = _summary_float64(_result_degree_of_saturation)
+    print("MOJO_RESULT geotechnical::degree_of_saturation", _summary_degree_of_saturation)

@@ -20,6 +20,7 @@ It scores the planner on spec reconstruction, not just final answers:
   - failure taxonomy
   - confidence vs correctness
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -44,6 +45,8 @@ from uploaded_csv_exact_benchmark import (
     _expected_result,
     _normalize_result,
     _reset_runtime_state,
+    _setup_mojo_runtime,
+    _teardown_mojo_runtime,
 )
 
 from apps.api_server.routers.data_map import DataSource
@@ -93,8 +96,7 @@ def _build_hint_cases() -> list[HintQueryCase]:
 
 def _plan_edges(plan: QueryPlan) -> tuple[tuple[str, str, str, str], ...]:
     return tuple(
-        (hop.left_source, hop.left_key, hop.right_source, hop.right_key)
-        for hop in plan.join_hops
+        (hop.left_source, hop.left_key, hop.right_source, hop.right_key) for hop in plan.join_hops
     )
 
 
@@ -107,7 +109,9 @@ def _plan_confidence(plan: QueryPlan) -> float:
     return min(values) if values else 0.0
 
 
-def _join_failure_label(expected: tuple[tuple[str, str, str, str], ...], actual: tuple[tuple[str, str, str, str], ...]) -> str:
+def _join_failure_label(
+    expected: tuple[tuple[str, str, str, str], ...], actual: tuple[tuple[str, str, str, str], ...]
+) -> str:
     if expected == actual:
         return ""
     if not expected and actual:
@@ -152,153 +156,179 @@ async def _run() -> dict[str, Any]:
     with tempfile.TemporaryDirectory() as tmp_dir:
         registry_dir = Path(tmp_dir) / "registry"
         await _reset_runtime_state(registry_dir)
+        mojo_runtime_mode = await _setup_mojo_runtime()
 
-        org_id = f"uploaded_csv_spec_{int(time.time())}"
-        auth = {"org_id": org_id, "role": "owner", "key_id": str(uuid.uuid4())}
-        register_latencies: list[float] = []
+        try:
+            org_id = f"uploaded_csv_spec_{int(time.time())}"
+            auth = {"org_id": org_id, "role": "owner", "key_id": str(uuid.uuid4())}
+            register_latencies: list[float] = []
 
-        for source_name, path in SOURCE_FILES.items():
-            payload = RegisterRequest(
-                source=DataSource(
-                    name=source_name,
-                    csv=path.read_text(encoding="utf-8", errors="replace"),
+            for source_name, path in SOURCE_FILES.items():
+                payload = RegisterRequest(
+                    source=DataSource(
+                        name=source_name,
+                        csv=path.read_text(encoding="utf-8", errors="replace"),
+                    )
                 )
-            )
-            t0 = time.perf_counter()
-            resp = await register_source(payload, auth=auth)
-            register_latencies.append((time.perf_counter() - t0) * 1000)
-            if resp["status"] not in {"registered", "already_registered"}:
-                raise RuntimeError(f"registration failed for {source_name}: {resp}")
+                t0 = time.perf_counter()
+                resp = await register_source(payload, auth=auth)
+                register_latencies.append((time.perf_counter() - t0) * 1000)
+                if resp["status"] not in {"registered", "already_registered"}:
+                    raise RuntimeError(f"registration failed for {source_name}: {resp}")
 
-        planner = AutoPlanner.from_registry(org_id, llm_policy="never")
+            planner = AutoPlanner.from_registry(org_id, llm_policy="never")
 
-        source_hits = 0
-        metric_hits = 0
-        group_hits = 0
-        join_hits = 0
-        full_spec_hits = 0
-        query_hits = 0
+            source_hits = 0
+            metric_hits = 0
+            group_hits = 0
+            join_hits = 0
+            full_spec_hits = 0
+            query_hits = 0
 
-        plan_latencies: list[float] = []
-        exec_latencies: list[float] = []
-        correct_confidences: list[float] = []
-        wrong_confidences: list[float] = []
-        partial_hist = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0}
-        taxonomy: dict[str, int] = {}
-        details: list[dict[str, Any]] = []
+            plan_latencies: list[float] = []
+            exec_latencies: list[float] = []
+            correct_confidences: list[float] = []
+            wrong_confidences: list[float] = []
+            partial_hist = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0}
+            taxonomy: dict[str, int] = {}
+            details: list[dict[str, Any]] = []
 
-        for case in cases:
-            exact = case.exact_case
-            _ensure_case_tables(planner, exact)
-            expected_result, _ = _expected_result(exact, planner.tables)
-            expected_norm = _normalize_result(expected_result)
+            for case in cases:
+                exact = case.exact_case
+                _ensure_case_tables(planner, exact)
+                expected_result, _ = _expected_result(exact, planner.tables)
+                expected_norm = _normalize_result(expected_result)
 
-            t0 = time.perf_counter()
-            plan = planner.plan(
-                metric_hint=case.metric_hint,
-                dim_hint=case.dim_hint,
-                agg=exact.aggregation,
-                preferred_source=case.preferred_source,
-            )
-            plan_ms = (time.perf_counter() - t0) * 1000
-            plan_latencies.append(plan_ms)
+                t0 = time.perf_counter()
+                plan = await asyncio.to_thread(
+                    planner.plan,
+                    metric_hint=case.metric_hint,
+                    dim_hint=case.dim_hint,
+                    agg=exact.aggregation,
+                    preferred_source=case.preferred_source,
+                )
+                plan_ms = (time.perf_counter() - t0) * 1000
+                plan_latencies.append(plan_ms)
 
-            t0 = time.perf_counter()
-            actual_result, row_count, trace = planner.execute_plan(plan, limit=None)
-            exec_ms = (time.perf_counter() - t0) * 1000
-            exec_latencies.append(exec_ms)
-            actual_norm = _normalize_result(actual_result)
+                t0 = time.perf_counter()
+                actual_result, row_count, trace = await asyncio.to_thread(
+                    planner.execute_plan,
+                    plan,
+                    limit=None,
+                )
+                exec_ms = (time.perf_counter() - t0) * 1000
+                exec_latencies.append(exec_ms)
+                actual_norm = _normalize_result(actual_result)
 
-            source_ok = plan.metric_src == exact.source_name
-            metric_ok = plan.metric_col == exact.metric_column
-            expected_group = (exact.group_source, exact.group_column) if exact.group_column else None
-            actual_group = (plan.group_src, plan.group_col) if plan.group_col else None
-            group_ok = expected_group == actual_group
-            join_ok = exact.edges == _plan_edges(plan)
-            full_spec_ok = source_ok and metric_ok and group_ok and join_ok and not plan.error
-            query_ok = actual_norm == expected_norm and not plan.error
+                source_ok = plan.metric_src == exact.source_name
+                metric_ok = plan.metric_col == exact.metric_column
+                expected_group = (
+                    (exact.group_source, exact.group_column) if exact.group_column else None
+                )
+                actual_group = (plan.group_src, plan.group_col) if plan.group_col else None
+                group_ok = expected_group == actual_group
+                join_ok = exact.edges == _plan_edges(plan)
+                full_spec_ok = source_ok and metric_ok and group_ok and join_ok and not plan.error
+                query_ok = actual_norm == expected_norm and not plan.error
 
-            source_hits += int(source_ok)
-            metric_hits += int(metric_ok)
-            group_hits += int(group_ok)
-            join_hits += int(join_ok)
-            full_spec_hits += int(full_spec_ok)
-            query_hits += int(query_ok)
+                source_hits += int(source_ok)
+                metric_hits += int(metric_ok)
+                group_hits += int(group_ok)
+                join_hits += int(join_ok)
+                full_spec_hits += int(full_spec_ok)
+                query_hits += int(query_ok)
 
-            partial_score = int(source_ok) + int(metric_ok) + int(group_ok) + int(join_ok)
-            partial_hist[partial_score] += 1
+                partial_score = int(source_ok) + int(metric_ok) + int(group_ok) + int(join_ok)
+                partial_hist[partial_score] += 1
 
-            confidence = _plan_confidence(plan)
-            if full_spec_ok:
-                correct_confidences.append(confidence)
-            else:
-                wrong_confidences.append(confidence)
+                confidence = _plan_confidence(plan)
+                if full_spec_ok:
+                    correct_confidences.append(confidence)
+                else:
+                    wrong_confidences.append(confidence)
 
-            tags = _failure_tags(case, plan)
-            for tag in tags:
-                taxonomy[tag] = taxonomy.get(tag, 0) + 1
+                tags = _failure_tags(case, plan)
+                for tag in tags:
+                    taxonomy[tag] = taxonomy.get(tag, 0) + 1
 
-            details.append(
-                {
-                    "label": case.label,
-                    "description": case.description,
-                    "metric_hint": case.metric_hint,
-                    "dim_hint": case.dim_hint,
-                    "preferred_source": case.preferred_source,
-                    "plan_ms": round(plan_ms, 3),
-                    "exec_ms": round(exec_ms, 3),
-                    "plan_confidence": round(confidence, 4),
-                    "source_correct": source_ok,
-                    "metric_correct": metric_ok,
-                    "group_correct": group_ok,
-                    "join_path_correct": join_ok,
-                    "full_spec_correct": full_spec_ok,
-                    "query_correct": query_ok,
-                    "partial_score": partial_score,
-                    "failure_tags": tags,
-                    "expected_spec": {
-                        "metric_source": exact.source_name,
-                        "metric_column": exact.metric_column,
-                        "group": [exact.group_source, exact.group_column] if exact.group_column else None,
-                        "join_path": list(exact.edges),
-                    },
-                    "actual_spec": {
-                        "metric_source": plan.metric_src,
-                        "metric_column": plan.metric_col,
-                        "group": [plan.group_src, plan.group_col] if plan.group_col else None,
-                        "join_path": list(_plan_edges(plan)),
-                    },
-                    "expected_result": expected_norm,
-                    "actual_result": actual_norm,
-                    "row_count": row_count,
-                    "plan_error": plan.error,
-                    "plan_tail": plan.steps[-6:],
-                    "exec_tail": trace[-6:],
-                }
-            )
+                details.append(
+                    {
+                        "label": case.label,
+                        "description": case.description,
+                        "metric_hint": case.metric_hint,
+                        "dim_hint": case.dim_hint,
+                        "preferred_source": case.preferred_source,
+                        "plan_ms": round(plan_ms, 3),
+                        "exec_ms": round(exec_ms, 3),
+                        "plan_confidence": round(confidence, 4),
+                        "source_correct": source_ok,
+                        "metric_correct": metric_ok,
+                        "group_correct": group_ok,
+                        "join_path_correct": join_ok,
+                        "full_spec_correct": full_spec_ok,
+                        "query_correct": query_ok,
+                        "partial_score": partial_score,
+                        "failure_tags": tags,
+                        "expected_spec": {
+                            "metric_source": exact.source_name,
+                            "metric_column": exact.metric_column,
+                            "group": [exact.group_source, exact.group_column]
+                            if exact.group_column
+                            else None,
+                            "join_path": list(exact.edges),
+                        },
+                        "actual_spec": {
+                            "metric_source": plan.metric_src,
+                            "metric_column": plan.metric_col,
+                            "group": [plan.group_src, plan.group_col] if plan.group_col else None,
+                            "join_path": list(_plan_edges(plan)),
+                        },
+                        "expected_result": expected_norm,
+                        "actual_result": actual_norm,
+                        "row_count": row_count,
+                        "plan_error": plan.error,
+                        "plan_tail": plan.steps[-6:],
+                        "exec_tail": trace[-6:],
+                    }
+                )
 
-        queries = len(cases)
-        return {
-            "benchmark": "uploaded_csv_spec_reconstruction_benchmark",
-            "sources": list(SOURCE_FILES.keys()),
-            "queries": queries,
-            "source_accuracy": round(source_hits / queries, 4),
-            "metric_accuracy": round(metric_hits / queries, 4),
-            "group_accuracy": round(group_hits / queries, 4),
-            "join_accuracy": round(join_hits / queries, 4),
-            "full_spec_accuracy": round(full_spec_hits / queries, 4),
-            "query_accuracy": round(query_hits / queries, 4),
-            "avg_partial_score": round(sum(score * count for score, count in partial_hist.items()) / queries, 4),
-            "partial_score_histogram": partial_hist,
-            "avg_register_ms": round(sum(register_latencies) / len(register_latencies), 3),
-            "avg_plan_ms": round(sum(plan_latencies) / len(plan_latencies), 3),
-            "avg_exec_ms": round(sum(exec_latencies) / len(exec_latencies), 3),
-            "avg_end_to_end_ms": round((sum(plan_latencies) + sum(exec_latencies)) / len(exec_latencies), 3),
-            "avg_confidence_when_correct": round(sum(correct_confidences) / len(correct_confidences), 4) if correct_confidences else None,
-            "avg_confidence_when_wrong": round(sum(wrong_confidences) / len(wrong_confidences), 4) if wrong_confidences else None,
-            "failure_taxonomy": dict(sorted(taxonomy.items())),
-            "details": details,
-        }
+            queries = len(cases)
+            return {
+                "benchmark": "uploaded_csv_spec_reconstruction_benchmark",
+                "sources": list(SOURCE_FILES.keys()),
+                "queries": queries,
+                "source_accuracy": round(source_hits / queries, 4),
+                "metric_accuracy": round(metric_hits / queries, 4),
+                "group_accuracy": round(group_hits / queries, 4),
+                "join_accuracy": round(join_hits / queries, 4),
+                "full_spec_accuracy": round(full_spec_hits / queries, 4),
+                "query_accuracy": round(query_hits / queries, 4),
+                "avg_partial_score": round(
+                    sum(score * count for score, count in partial_hist.items()) / queries, 4
+                ),
+                "partial_score_histogram": partial_hist,
+                "avg_register_ms": round(sum(register_latencies) / len(register_latencies), 3),
+                "avg_plan_ms": round(sum(plan_latencies) / len(plan_latencies), 3),
+                "avg_exec_ms": round(sum(exec_latencies) / len(exec_latencies), 3),
+                "avg_end_to_end_ms": round(
+                    (sum(plan_latencies) + sum(exec_latencies)) / len(exec_latencies), 3
+                ),
+                "avg_confidence_when_correct": round(
+                    sum(correct_confidences) / len(correct_confidences), 4
+                )
+                if correct_confidences
+                else None,
+                "avg_confidence_when_wrong": round(
+                    sum(wrong_confidences) / len(wrong_confidences), 4
+                )
+                if wrong_confidences
+                else None,
+                "failure_taxonomy": dict(sorted(taxonomy.items())),
+                "mojo_runtime_mode": mojo_runtime_mode,
+                "details": details,
+            }
+        finally:
+            await _teardown_mojo_runtime()
 
 
 def main() -> None:
@@ -328,6 +358,7 @@ def main() -> None:
                 "avg_confidence_when_correct": summary["avg_confidence_when_correct"],
                 "avg_confidence_when_wrong": summary["avg_confidence_when_wrong"],
                 "failure_taxonomy": summary["failure_taxonomy"],
+                "mojo_runtime_mode": summary["mojo_runtime_mode"],
             },
             indent=2,
         )

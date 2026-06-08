@@ -1,0 +1,26 @@
+{
+  "lib": "column_rank",
+  "status": "ok",
+  "n_functions": 1,
+  "n_compared": 0,
+  "n_timed": 0,
+  "overall_speedup_x": null,
+  "total_py_ns": 0.0,
+  "total_mojo_ns": 0.0,
+  "elapsed_s": 9.22,
+  "n_iterations": 10000,
+  "mojo_error": "couraged, prefer .byte_length() or .count_codepoints()\n    var n = len(s)\n            ^~~\n/Users/angel/Developer/decision-engine/benchmarks/mojo_benchmarks/bench_column_rank.mojo:1:1: note: 'len' declared here\n\"\"\"bench_column_rank.mojo \u2014 auto-generated timing benchmark.\"\"\"\n/Users/angel/Developer/decision-engine/mojo_env/.pixi/envs/default/bin/mojo: error: execution exited with a non-zero result: 1",
+  "functions": [
+    {
+      "function": "run_column_rank",
+      "py_ns": null,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_summary": null,
+      "mojo_summary": null,
+      "result_match": null,
+      "py_error": "Expecting value: line 1 column 1 (char 0)"
+    }
+  ]
+}

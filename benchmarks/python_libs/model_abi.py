@@ -180,7 +180,7 @@ def ffn_dim_from_model_dim(model_dim, ffn_multiplier, round_to):
     raw = model_dim * ffn_multiplier
     if round_to <= 0.0:
         return raw
-    return float(Int64(raw / round_to) + 1) * round_to
+    return float(int(raw / round_to) + 1) * round_to
 
 
 

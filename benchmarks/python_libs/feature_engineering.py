@@ -168,7 +168,7 @@ def feature_cross(x, y, degree):
     product = x * y
     if degree == 2.0:
         return product
-    if product <= 0.0 and degree != float(Int64(degree)):
+    if product <= 0.0 and degree != float(int(degree)):
         return 0.0
     return math.exp(degree / 2.0 * math.log(product if product > 0.0 else 1e-300))
 
@@ -193,7 +193,7 @@ def binning_equal_width(x, x_min, x_max, n_bins):
     rng = x_max - x_min
     if rng <= 0.0 or n_bins <= 0.0:
         return 0.0
-    bin = float(Int64((x - x_min) / rng * n_bins))
+    bin = float(int((x - x_min) / rng * n_bins))
     if bin >= n_bins:
         return n_bins - 1.0
     if bin < 0.0:

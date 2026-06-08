@@ -186,4 +186,4 @@ def overlap_compute_comm_ratio(compute_ms, comm_ms):
 def allreduce_tree_step_count(world_size):
     if world_size <= 1.0:
         return 0.0
-    return float(Int64(math.log(world_size) / 0.6931471805599453 + 0.5)) * 2.0
+    return float(int(math.log(world_size) / 0.6931471805599453 + 0.5)) * 2.0

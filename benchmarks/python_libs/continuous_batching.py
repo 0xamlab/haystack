@@ -116,7 +116,7 @@ class Python:
 def iteration_level_batch_size(available_kv_tokens, avg_seq_remaining):
     if avg_seq_remaining <= 0.0:
         return 0.0
-    return float(Int64(available_kv_tokens / avg_seq_remaining))
+    return float(int(available_kv_tokens / avg_seq_remaining))
 
 
 
@@ -139,7 +139,7 @@ def admission_control_accept(request_kv_tokens, available_kv_tokens, safety_marg
 def chunked_prefill_chunks(prompt_len, chunk_size):
     if chunk_size <= 0.0:
         return 1.0
-    return float(Int64((prompt_len + chunk_size - 1.0) / chunk_size))
+    return float(int((prompt_len + chunk_size - 1.0) / chunk_size))
 
 
 

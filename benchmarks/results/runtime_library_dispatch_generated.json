@@ -1,0 +1,26 @@
+{
+  "lib": "runtime_library_dispatch_generated",
+  "status": "ok",
+  "n_functions": 1,
+  "n_compared": 0,
+  "n_timed": 0,
+  "overall_speedup_x": null,
+  "total_py_ns": 0.0,
+  "total_mojo_ns": 0.0,
+  "elapsed_s": 59.24,
+  "n_iterations": 10000,
+  "mojo_error": "timeout",
+  "functions": [
+    {
+      "function": "dispatch_runtime_library",
+      "py_ns": null,
+      "mojo_ns": null,
+      "speedup_x": null,
+      "py_result": null,
+      "py_summary": null,
+      "mojo_summary": null,
+      "result_match": null,
+      "py_error": "SyntaxError: invalid syntax (<runtime_library_dispatch_generated>, line 17196)"
+    }
+  ]
+}

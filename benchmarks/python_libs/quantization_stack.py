@@ -117,8 +117,8 @@ def bf16_to_fp32_round(x):
 
     if x == 0.0:
         return 0.0
-    scale = math.exp(float(Int64(math.log(x if x > 0.0 else -x) / 0.6931471805)) * 0.6931471805)
-    quantised = float(Int64(x / scale * 128.0 + 0.5)) / 128.0
+    scale = math.exp(float(int(math.log(x if x > 0.0 else -x) / 0.6931471805)) * 0.6931471805)
+    quantised = float(int(x / scale * 128.0 + 0.5)) / 128.0
     return quantised * scale
 
 

@@ -8,6 +8,7 @@ Run:
     python3 benchmarks/bench_engines.py
     python3 benchmarks/bench_engines.py --no-cache   # force cold run
 """
+
 from __future__ import annotations
 
 import argparse
@@ -28,33 +29,34 @@ BINARY = ROOT / "mojo_build" / "simulate"
 TEST_FILES = ROOT / "test_files"
 CACHE_DIR = ROOT / ".bench_cache"
 
-CYAN   = "\033[96m"
-GREEN  = "\033[92m"
+CYAN = "\033[96m"
+GREEN = "\033[92m"
 YELLOW = "\033[93m"
-RED    = "\033[91m"
-BOLD   = "\033[1m"
-DIM    = "\033[2m"
-RESET  = "\033[0m"
+RED = "\033[91m"
+BOLD = "\033[1m"
+DIM = "\033[2m"
+RESET = "\033[0m"
 
 SOURCES = [
-    ("POS",       "POS.csv"),
-    ("Bookings",  "Bookings.csv"),
-    ("Quotes",    "Quotes_Combined_20241116.csv"),
-    ("Backlog",   "Backlog.csv"),
+    ("POS", "POS.csv"),
+    ("Bookings", "Bookings.csv"),
+    ("Quotes", "Quotes_Combined_20241116.csv"),
+    ("Backlog", "Backlog.csv"),
     ("Inventory", "Available_Inventory.csv"),
 ]
 
 # Rows to load for profiling/matching (500-1000 is plenty for statistics)
 PROFILE_ROWS = 1000
 # Rows to pass as sample values to Mojo engines
-SAMPLE_ROWS  = 500
+SAMPLE_ROWS = 500
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
+
 def ms(seconds: float) -> str:
     if seconds < 1:
-        return f"{seconds*1000:.1f}ms"
+        return f"{seconds * 1000:.1f}ms"
     return f"{seconds:.2f}s"
 
 
@@ -170,19 +172,17 @@ def profile_columns(records: list[dict], max_rows: int = PROFILE_ROWS) -> dict[s
 
 
 def section(title: str) -> None:
-    print(f"\n{BOLD}{CYAN}{'─'*70}{RESET}")
+    print(f"\n{BOLD}{CYAN}{'─' * 70}{RESET}")
     print(f"{BOLD}{CYAN}  {title}{RESET}")
-    print(f"{BOLD}{CYAN}{'─'*70}{RESET}")
+    print(f"{BOLD}{CYAN}{'─' * 70}{RESET}")
 
 
 def row_result(label: str, value: str, timing: str, extra: str = "") -> None:
-    print(
-        f"  {BOLD}{label:<22}{RESET} {value:<30} "
-        f"{GREEN}{timing:>10}{RESET}  {DIM}{extra}{RESET}"
-    )
+    print(f"  {BOLD}{label:<22}{RESET} {value:<30} {GREEN}{timing:>10}{RESET}  {DIM}{extra}{RESET}")
 
 
 # ── parallel Mojo caller ──────────────────────────────────────────────────────
+
 
 def call_mojo_parallel(payloads: list[dict]) -> list[tuple[dict | None, float]]:
     """Run multiple Mojo calls concurrently via ThreadPoolExecutor."""
@@ -196,6 +196,7 @@ def call_mojo_parallel(payloads: list[dict]) -> list[tuple[dict | None, float]]:
 
 
 # ── main benchmark ────────────────────────────────────────────────────────────
+
 
 def main() -> None:
     parser = argparse.ArgumentParser()
@@ -215,25 +216,22 @@ def main() -> None:
         )
         sys.exit(1)
 
-    print(f"\n{BOLD}{'='*70}{RESET}")
+    print(f"\n{BOLD}{'=' * 70}{RESET}")
     print(f"{BOLD}  Algenta Decision Engine — Full Pipeline Benchmark{RESET}")
     if use_cache:
         print(
-            f"{DIM}  Cache: ON  (run with --no-cache to force cold)  "
-            f"Cache dir: {CACHE_DIR}{RESET}"
+            f"{DIM}  Cache: ON  (run with --no-cache to force cold)  Cache dir: {CACHE_DIR}{RESET}"
         )
     else:
         print(f"{YELLOW}  Cache: OFF (cold run){RESET}")
-    print(f"{BOLD}{'='*70}{RESET}")
+    print(f"{BOLD}{'=' * 70}{RESET}")
 
     # ── Stage 1: Load all CSVs (parallel) ────────────────────────────────────
     section("Stage 1 · CSV Loading  [parallel + cache]")
     loaded: dict[str, tuple[list[dict], int]] = {}
     load_times: dict[str, float] = {}
     file_list = [
-        (name, TEST_FILES / fname)
-        for name, fname in SOURCES
-        if (TEST_FILES / fname).exists()
+        (name, TEST_FILES / fname) for name, fname in SOURCES if (TEST_FILES / fname).exists()
     ]
 
     t_load_start = time.perf_counter()
@@ -260,8 +258,7 @@ def main() -> None:
             f"{size_mb:.1f} MB  {cache_tag}",
         )
     print(
-        f"\n  {BOLD}Wall-clock total:{RESET} {GREEN}{ms(total_load)}{RESET}  "
-        f"{DIM}(parallel){RESET}"
+        f"\n  {BOLD}Wall-clock total:{RESET} {GREEN}{ms(total_load)}{RESET}  {DIM}(parallel){RESET}"
     )
 
     # ── Stage 2: Column profiling (Python) ───────────────────────────────────
@@ -348,14 +345,16 @@ def main() -> None:
             continue
         cols_a = build_cols(profiles[src_a], mojo_profiles.get(src_a, {}))
         cols_b = build_cols(profiles[src_b], mojo_profiles.get(src_b, {}))
-        payloads_cm.append({
-            "engine_type": "column_match",
-            "source_a": src_a,
-            "source_b": src_b,
-            "columns_a": cols_a,
-            "columns_b": cols_b,
-            "min_confidence": 0.5,
-        })
+        payloads_cm.append(
+            {
+                "engine_type": "column_match",
+                "source_a": src_a,
+                "source_b": src_b,
+                "columns_a": cols_a,
+                "columns_b": cols_b,
+                "min_confidence": 0.5,
+            }
+        )
         order_cm.append((src_a, src_b, len(cols_a), len(cols_b)))
 
     t_cm_start = time.perf_counter()
@@ -376,9 +375,7 @@ def main() -> None:
             for m in sorted(matches, key=lambda x: x["score"], reverse=True)[:4]:
                 conf_bar = bar(m["score"])
                 tier = (
-                    "strong"
-                    if m["score"] >= 0.85
-                    else "suggest" if m["score"] >= 0.60 else "weak"
+                    "strong" if m["score"] >= 0.85 else "suggest" if m["score"] >= 0.60 else "weak"
                 )
                 print(
                     f"    {DIM}{m['field_a']:<25} -> {m['field_b']:<25} "
@@ -388,8 +385,7 @@ def main() -> None:
             row_result(f"{src_a} ↔ {src_b}", f"{RED}ERROR{RESET}", ms(elapsed))
 
     print(
-        f"\n  {BOLD}Wall-clock total:{RESET} {GREEN}{ms(total_cm)}{RESET}  "
-        f"{DIM}(parallel){RESET}"
+        f"\n  {BOLD}Wall-clock total:{RESET} {GREEN}{ms(total_cm)}{RESET}  {DIM}(parallel){RESET}"
     )
 
     # ── Stage 5: Mojo join_detect (parallel) ──────────────────────────────────
@@ -410,13 +406,15 @@ def main() -> None:
                     "unique_ratio": ur,
                     "sample_size": info["total_count"],
                 }
-        payloads_jd.append({
-            "engine_type": "join_detect",
-            "source_a": src_a,
-            "source_b": src_b,
-            "min_confidence": 0.4,
-            "columns": join_cols,
-        })
+        payloads_jd.append(
+            {
+                "engine_type": "join_detect",
+                "source_a": src_a,
+                "source_b": src_b,
+                "min_confidence": 0.4,
+                "columns": join_cols,
+            }
+        )
         order_jd.append((src_a, src_b))
 
     t_jd_start = time.perf_counter()
@@ -440,8 +438,7 @@ def main() -> None:
             row_result(f"{src_a} ↔ {src_b}", "0 keys", ms(elapsed))
 
     print(
-        f"\n  {BOLD}Wall-clock total:{RESET} {GREEN}{ms(total_jd)}{RESET}  "
-        f"{DIM}(parallel){RESET}"
+        f"\n  {BOLD}Wall-clock total:{RESET} {GREEN}{ms(total_jd)}{RESET}  {DIM}(parallel){RESET}"
     )
 
     # ── Stage 6: Mojo relation_detect (parallel) ──────────────────────────────
@@ -465,12 +462,14 @@ def main() -> None:
                 except (TypeError, ValueError):
                     vals.append(0.0)
             cols[f] = vals
-        payloads_rd.append({
-            "engine_type": "relation_detect",
-            "source": name,
-            "min_confidence": 0.70,
-            "columns": cols,
-        })
+        payloads_rd.append(
+            {
+                "engine_type": "relation_detect",
+                "source": name,
+                "min_confidence": 0.70,
+                "columns": cols,
+            }
+        )
         order_rd.append((name, len(numeric_fields)))
 
     t_rd_start = time.perf_counter()
@@ -497,8 +496,7 @@ def main() -> None:
             row_result(name, f"{RED}ERROR{RESET}", ms(elapsed))
 
     print(
-        f"\n  {BOLD}Wall-clock total:{RESET} {GREEN}{ms(total_rd)}{RESET}  "
-        f"{DIM}(parallel){RESET}"
+        f"\n  {BOLD}Wall-clock total:{RESET} {GREEN}{ms(total_rd)}{RESET}  {DIM}(parallel){RESET}"
     )
 
     # ── Summary ───────────────────────────────────────────────────────────────

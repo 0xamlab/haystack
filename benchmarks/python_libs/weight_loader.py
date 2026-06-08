@@ -133,7 +133,7 @@ def lazy_load_priority(layer_id, total_layers, current_inference_layer):
 
 
 def gguf_quantized_block_size(n_bits, block_size):
-    data_bytes = float(Int64(n_bits * block_size / 8.0 + 0.5))
+    data_bytes = float(int(n_bits * block_size / 8.0 + 0.5))
     scale_bytes = 2.0  # FP16 scale per block
     return data_bytes + scale_bytes
 
@@ -166,10 +166,10 @@ def hf_model_index_shards(total_params, max_shard_bytes, dtype_bytes):
     total_bytes = total_params * dtype_bytes
     if max_shard_bytes <= 0.0:
         return 1.0
-    return float(Int64((total_bytes + max_shard_bytes - 1.0) / max_shard_bytes))
+    return float(int((total_bytes + max_shard_bytes - 1.0) / max_shard_bytes))
 
 
 
 def weight_hash_verify(accumulated_hash, weight, prime):
-    quantized = float(Int64(weight * 10000.0 + 0.5))
+    quantized = float(int(weight * 10000.0 + 0.5))
     return accumulated_hash * prime + quantized

@@ -183,7 +183,7 @@ def streaming_buffer_fullness(buffered_tokens, buffer_capacity):
 def epoch_sample_index(sample_id, epoch, n_samples, seed):
     if n_samples <= 0.0:
         return 0.0
-    return float(Int64(sample_id + epoch * seed) % Int64(n_samples))
+    return float(int(sample_id + epoch * seed) % int(n_samples))
 
 
 

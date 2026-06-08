@@ -129,7 +129,7 @@ def switch_transformer_gate(logit, max_logit, sum_exp):
 def expert_parallel_shard_id(expert_id, n_devices):
     if n_devices <= 0.0:
         return 0.0
-    return float(Int64(expert_id) % Int64(n_devices))
+    return float(int(expert_id) % int(n_devices))
 
 
 
@@ -167,7 +167,7 @@ def aux_loss_coefficient(step, warmup_steps, target_coeff):
 def expert_choice_gate(token_score, capacity, n_tokens):
     if n_tokens <= 0.0:
         return 0.0
-    return float(Int64(capacity * n_tokens + 0.5))
+    return float(int(capacity * n_tokens + 0.5))
 
 
 

@@ -116,7 +116,7 @@ class Python:
 def safetensors_tensor_offset(prev_tensor_bytes, alignment):
     if alignment <= 0.0:
         return prev_tensor_bytes
-    remainder = prev_tensor_bytes - float(Int64(prev_tensor_bytes / alignment)) * alignment
+    remainder = prev_tensor_bytes - float(int(prev_tensor_bytes / alignment)) * alignment
     if remainder == 0.0:
         return prev_tensor_bytes
     return prev_tensor_bytes + (alignment - remainder)

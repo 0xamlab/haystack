@@ -122,8 +122,8 @@ def quantize_symmetric(x, scale):
     if q < -127.0:
         return -127.0
     if q >= 0.0:
-        return float(Int64(q + 0.5))
-    return float(Int64(q - 0.5))
+        return float(int(q + 0.5))
+    return float(int(q - 0.5))
 
 
 
@@ -140,7 +140,7 @@ def quantize_asymmetric(x, scale, zero_point):
         return 255.0
     if q < 0.0:
         return 0.0
-    return float(Int64(q + 0.5))
+    return float(int(q + 0.5))
 
 
 
@@ -177,7 +177,7 @@ def zero_point_from_range(x_min, x_max, scale):
         return 255.0
     if zp < 0.0:
         return 0.0
-    return float(Int64(zp + 0.5))
+    return float(int(zp + 0.5))
 
 
 
@@ -208,9 +208,9 @@ def int4_pack_error(x, scale):
         q = -8.0
     q_rounded = 0.0
     if q >= 0.0:
-        q_rounded = float(Int64(q + 0.5))
+        q_rounded = float(int(q + 0.5))
     else:
-        q_rounded = float(Int64(q - 0.5))
+        q_rounded = float(int(q - 0.5))
     x_hat = q_rounded * scale
     err = x - x_hat
     if err < 0.0:

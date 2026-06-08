@@ -12,6 +12,7 @@ Real user flow:
 Run:
     python3 benchmarks/bench_llm_e2e.py
 """
+
 from __future__ import annotations
 
 import logging
@@ -89,9 +90,9 @@ QUESTIONS = [
 def run():
     from apps.api_server.services.auto_planner import AutoPlanner
 
-    print(f"\n{B}{'═'*W}{X}")
+    print(f"\n{B}{'═' * W}{X}")
     print(f"{B}{C}  A-Z Test: Mojo + LLM Query Planner — 10 Questions{X}")
-    print(f"{B}{'═'*W}{X}")
+    print(f"{B}{'═' * W}{X}")
 
     # Verify API key
     api_key = os.environ.get("ANTHROPIC_API_KEY", "")
@@ -107,28 +108,30 @@ def run():
         data_dir=ROOT / "test_files",
         mojo_binary=ROOT / "mojo_build" / "simulate",
     )
-    planner.build_knowledge(source_map={
-        "Bookings":  "Bookings.csv",
-        "Quotes":    "Quotes_Combined_20241116.csv",
-        "Inventory": "Available_Inventory.csv",
-        "POS":       "POS.csv",
-    })
+    planner.build_knowledge(
+        source_map={
+            "Bookings": "Bookings.csv",
+            "Quotes": "Quotes_Combined_20241116.csv",
+            "Inventory": "Available_Inventory.csv",
+            "POS": "POS.csv",
+        }
+    )
     load_ms = (time.perf_counter() - t0) * 1000
-    cached  = load_ms < 3000
+    cached = load_ms < 3000
     cache_status = "(from Parquet cache)" if cached else "(cold - building cache)"
     print(f"  load: {load_ms:.0f}ms  {cache_status}")
     print(f"  engines: {C}{', '.join(planner.mojo_engines)}{X}")
-    print(f"  llm: {G+'enabled' if api_key else R+'disabled (no API key)'}{X}")
+    print(f"  llm: {G + 'enabled' if api_key else R + 'disabled (no API key)'}{X}")
 
     # ── Run questions ─────────────────────────────────────────────────────────
     results = []
-    total_plan_ms  = 0.0
-    total_exec_ms  = 0.0
-    total_llm_ms   = 0.0
+    total_plan_ms = 0.0
+    total_exec_ms = 0.0
+    total_llm_ms = 0.0
     llm_corrections = 0
 
     for label, metric, dim, agg, pref, desc, expected_error in QUESTIONS:
-        print(f"\n{B}{'─'*W}{X}")
+        print(f"\n{B}{'─' * W}{X}")
         print(f"{B}{C}  {label}{X}  {desc}")
         print(f"  {D}metric={metric!r}  dim={dim!r}  agg={agg}  src={pref}{X}")
 
@@ -158,16 +161,18 @@ def run():
                 f"{D}exec:{X} {0.0:5.1f}ms"
             )
             print(f"  {sym} {B}{label}{X}  {qualifier}: {plan_no_llm.error}")
-            results.append({
-                "label": label,
-                "ok": ok,
-                "mojo_ms": mojo_ms,
-                "llm_ms": 0.0,
-                "exec_ms": 0.0,
-                "rows": 0,
-                "corrected": False,
-                "llm_reasoning": "",
-            })
+            results.append(
+                {
+                    "label": label,
+                    "ok": ok,
+                    "mojo_ms": mojo_ms,
+                    "llm_ms": 0.0,
+                    "exec_ms": 0.0,
+                    "rows": 0,
+                    "corrected": False,
+                    "llm_reasoning": "",
+                }
+            )
             total_plan_ms += mojo_ms
             continue
         t_llm = time.perf_counter()
@@ -200,7 +205,7 @@ def run():
 
         total_plan_ms += mojo_ms
         total_exec_ms += exec_ms
-        total_llm_ms  += llm_ms
+        total_llm_ms += llm_ms
 
         # Display
         llm_tag = ""
@@ -238,55 +243,61 @@ def run():
         if isinstance(result, list) and result:
             top = result[:3]
             preview = " | ".join(f"{r['group']}={r['value']:,.2f}" for r in top)
-            tail = f" +{len(result)-3} more" if len(result) > 3 else ""
+            tail = f" +{len(result) - 3} more" if len(result) > 3 else ""
             print(f"  {D}→ {preview}{tail}{X}")
         elif isinstance(result, int | float):
             print(f"  {D}→ scalar={result:,.2f}{X}")
 
         ok = bool(result) or isinstance(result, int | float)
         sym = f"{G}✓{X}" if ok else f"{R}✗{X}"
-        print(f"  {sym} {B}{label}{X}  rows={row_count}  "
-              f"total={(mojo_ms+llm_ms+exec_ms):.0f}ms")
+        print(
+            f"  {sym} {B}{label}{X}  rows={row_count}  total={(mojo_ms + llm_ms + exec_ms):.0f}ms"
+        )
 
-        results.append({
-            "label": label, "ok": ok,
-            "mojo_ms": mojo_ms, "llm_ms": llm_ms, "exec_ms": exec_ms,
-            "rows": row_count,
-            "corrected": corrected,
-            "llm_reasoning": llm_reasoning,
-        })
+        results.append(
+            {
+                "label": label,
+                "ok": ok,
+                "mojo_ms": mojo_ms,
+                "llm_ms": llm_ms,
+                "exec_ms": exec_ms,
+                "rows": row_count,
+                "corrected": corrected,
+                "llm_reasoning": llm_reasoning,
+            }
+        )
 
     # ── Summary ───────────────────────────────────────────────────────────────
     passed = sum(1 for r in results if r["ok"])
     n = len(results)
 
-    print(f"\n{B}{'═'*W}{X}")
+    print(f"\n{B}{'═' * W}{X}")
     print(f"{B}{C}  SUMMARY — A-Z LLM Pipeline{X}")
-    print(f"{B}{'═'*W}{X}")
-    print(f"  Questions      : {n}   {G}pass={passed}{X}   {R}fail={n-passed}{X}")
+    print(f"{B}{'═' * W}{X}")
+    print(f"  Questions      : {n}   {G}pass={passed}{X}   {R}fail={n - passed}{X}")
     print(f"  LLM active     : {'yes' if api_key else 'no (set ANTHROPIC_API_KEY)'}")
     print(f"  LLM corrections: {llm_corrections}")
     print("\n  Phase timing (avg per question):")
-    print(f"    Mojo planning : {total_plan_ms/n:7.0f}ms")
-    print(f"    LLM confirm   : {total_llm_ms/n:7.0f}ms")
-    print(f"    Execution     : {total_exec_ms/n:7.1f}ms")
-    print(f"    Total         : {(total_plan_ms+total_llm_ms+total_exec_ms)/n:7.0f}ms")
+    print(f"    Mojo planning : {total_plan_ms / n:7.0f}ms")
+    print(f"    LLM confirm   : {total_llm_ms / n:7.0f}ms")
+    print(f"    Execution     : {total_exec_ms / n:7.1f}ms")
+    print(f"    Total         : {(total_plan_ms + total_llm_ms + total_exec_ms) / n:7.0f}ms")
     load_note = "(Parquet cache)" if cached else "(cold - next run will be fast)"
     print(f"\n  {D}Data load (one-time): {load_ms:.0f}ms {load_note}{X}")
 
     print("\n  Per-question breakdown:")
     print(f"  {'Q':>3}  {'Mojo':>7}  {'LLM':>7}  {'Exec':>6}  {'Rows':>6}  LLM note")
-    print(f"  {'─'*3}  {'─'*7}  {'─'*7}  {'─'*6}  {'─'*6}  {'─'*30}")
+    print(f"  {'─' * 3}  {'─' * 7}  {'─' * 7}  {'─' * 6}  {'─' * 6}  {'─' * 30}")
     for r in results:
         note = r["llm_reasoning"][:40] if r["llm_reasoning"] else "(no key / skipped)"
-        sym  = f"{G}✓{X}" if r["ok"] else f"{R}✗{X}"
+        sym = f"{G}✓{X}" if r["ok"] else f"{R}✗{X}"
         corr = f"  {Y}↑corrected{X}" if r["corrected"] else ""
         print(
             f"  {r['label']:>3}  {r['mojo_ms']:6.0f}ms  {r['llm_ms']:6.0f}ms  "
             f"{r['exec_ms']:5.1f}ms  {r['rows']:6d}  {D}{note}{X}{corr}  {sym}"
         )
 
-    print(f"\n{B}{'═'*W}{X}\n")
+    print(f"\n{B}{'═' * W}{X}\n")
 
 
 if __name__ == "__main__":

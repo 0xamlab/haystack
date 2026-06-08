@@ -3,18 +3,23 @@
   "status": "ok",
   "n_functions": 1,
   "n_compared": 1,
-  "overall_speedup_x": 586.4,
-  "total_py_ns": 7154.03,
-  "total_mojo_ns": 12.2,
-  "elapsed_s": 3.78,
+  "n_timed": 1,
+  "overall_speedup_x": 639.39,
+  "total_py_ns": 24616.53,
+  "total_mojo_ns": 38.5,
+  "elapsed_s": 3.7,
   "n_iterations": 10000,
+  "mojo_error": null,
   "functions": [
     {
       "function": "run_join_detect",
-      "py_ns": 7154.029,
-      "mojo_ns": 12.2,
-      "speedup_x": 586.4,
+      "py_ns": 24616.525,
+      "mojo_ns": 38.5,
+      "speedup_x": 639.39,
       "py_result": null,
+      "py_summary": "str:73:136040761",
+      "mojo_summary": "str:73:136040761",
+      "result_match": true,
       "py_error": null
     }
   ]

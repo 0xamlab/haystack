@@ -180,5 +180,5 @@ def weight_sharing_ratio(unique_weights, total_weights):
 
 
 def version_hash_component(param_value, index, prime):
-    quantised = float(Int64(param_value * 1000.0))
+    quantised = float(int(param_value * 1000.0))
     return (index * prime + quantised)

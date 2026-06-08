@@ -15,6 +15,7 @@ This benchmark is intentionally breadth-first and speed-aware:
 - execution uses count aggregates to keep the breadth run deterministic
 - resolve must stay bounded and never exceed the hard latency ceiling
 """
+
 from __future__ import annotations
 
 import argparse
@@ -82,8 +83,8 @@ from apps.api_server.routers.sources import RegisterRequest, register_source
 from apps.api_server.services import source_registry as reg
 from apps.api_server.services.columnar_loader import records_to_arrow_table
 from apps.api_server.services.data_coercion import parse_delimited_records
-from apps.api_server.services.pyarrow_runtime import initialize_pyarrow_parquet_runtime
-from tests.integration.connector_validation_catalog import THIRD_PARTY_PUBLIC_CASES
+from tests.go_live_behavior_contract import P0_METRIC_BUDGETS, P2_METRIC_BUDGETS
+from tests.integration.connector_validation_catalog import PUBLIC_VALIDATION_CASES
 
 DEFAULT_DB_URL_SYNC = os.environ.get(
     "DATABASE_URL_SYNC",
@@ -97,7 +98,50 @@ _AZURE_SAMPLE_BLOB_URL = (
 )
 
 RESOLVE_MISS_CEILING_MS = 500.0
-HOT_PATH_TARGET_MS = 50.0
+RESOLVED_QUERY_HIT_TARGET_MS = 50.0
+
+
+async def _setup_mojo_runtime() -> str:
+    """Initialize the shared Mojo runtime the same way FastAPI lifespan would."""
+    try:
+        from apps.api_server.compute.mojo_pool import MojoWorkerPool, set_pool
+
+        pool = MojoWorkerPool(size=max(1, (os.cpu_count() or 4) - 1))
+        await pool.start()
+        if pool.running:
+            set_pool(pool)
+            return "pool"
+    except Exception as exc:
+        print(f"⚠️  Mojo pool init failed: {exc}", file=sys.stderr)
+
+    try:
+        from apps.api_server.compute.mojo_adapter import _BINARY_PATH
+
+        if _BINARY_PATH.exists():
+            return "subprocess"
+    except Exception as exc:
+        print(f"⚠️  Mojo subprocess probe failed: {exc}", file=sys.stderr)
+
+    return "unavailable"
+
+
+async def _teardown_mojo_runtime() -> None:
+    """Stop any initialized Mojo pool and clear the global singleton."""
+    try:
+        from apps.api_server.compute.mojo_pool import get_pool_sync
+
+        pool = get_pool_sync()
+        if pool.running:
+            await pool.stop()
+    except Exception as exc:
+        print(f"⚠️  Mojo pool teardown check failed: {exc}", file=sys.stderr)
+    finally:
+        try:
+            from apps.api_server.compute.mojo_pool import set_pool
+
+            set_pool(None)
+        except Exception as exc:
+            print(f"⚠️  Mojo pool singleton reset failed: {exc}", file=sys.stderr)
 
 
 @dataclass(frozen=True)
@@ -200,37 +244,46 @@ def _parse_csv_records(
     return text, records
 
 
-def _fetch_public_s3_records() -> list[dict[str, Any]]:
-    import boto3
-    from botocore import UNSIGNED
-    from botocore.config import Config
+def _public_case_origin(case: Any, connection: dict[str, Any]) -> str:
+    if case.docs_url:
+        return case.docs_url
+    connector_type = str(case.connector_type or "")
+    if connector_type == "s3":
+        bucket = str(connection.get("bucket", "")).strip()
+        key = str(connection.get("key", "")).strip()
+        return f"s3://{bucket}/{key}".rstrip("/")
+    if connector_type == "gcs":
+        bucket = str(connection.get("bucket", "")).strip()
+        blob = str(connection.get("blob", "")).strip()
+        return f"gs://{bucket}/{blob}".rstrip("/")
+    if connector_type == "azure_blob":
+        return str(connection.get("blob_url", "") or _AZURE_SAMPLE_BLOB_URL).strip()
+    return str(connection.get("url", "") or "").strip()
 
-    s3 = boto3.client("s3", config=Config(signature_version=UNSIGNED), region_name="us-east-1")
-    body = s3.get_object(Bucket="noaa-global-hourly-pds", Key="1901/02907099999.csv")["Body"].read()
-    text = body.decode("utf-8", errors="replace")
-    return parse_delimited_records(text, delimiter=",", sniff=True)
+
+def _public_case_category(case: Any) -> str:
+    if str(case.connector_type or "") in {"s3", "gcs", "azure_blob"}:
+        return "public_object"
+    return "public_rest"
 
 
-def _fetch_public_gcs_records() -> list[dict[str, Any]]:
-    from google.cloud import storage
+def _public_case_source_name(index: int, case: Any) -> str:
+    prefix = "PublicObject" if _public_case_category(case) == "public_object" else "PublicRest"
+    return f"{prefix}{index:02d}"
 
-    client = storage.Client.create_anonymous_client()
-    body = (
-        client.bucket("cloud-samples-data")
-        .blob("bigquery/sample-transactions/transactions.csv")
-        .download_as_bytes()
+
+def _active_public_validation_cases() -> tuple[Any, ...]:
+    return tuple(
+        case
+        for case in PUBLIC_VALIDATION_CASES
+        if case.enabled_by_default and case.benchmark_enabled and case.is_configured()
     )
-    text = body.decode("utf-8", errors="replace")
-    return parse_delimited_records(text, delimiter=",", sniff=True)
 
 
-def _fetch_public_azure_records() -> list[dict[str, Any]]:
-    from azure.storage.blob import BlobClient
-
-    body = BlobClient.from_blob_url(_AZURE_SAMPLE_BLOB_URL).download_blob().readall()
-    initialize_pyarrow_parquet_runtime()
-    table = pq.read_table(io.BytesIO(body))
-    return table.to_pylist()
+def _warm_public_validation_case(case: Any, connection: dict[str, Any]) -> None:
+    records = case.load_runtime_records_for_connection(connection)
+    if not isinstance(records, list):
+        raise RuntimeError(f"{case.case_id} warmup did not return a record list")
 
 
 def _create_sqlite_fixture(records: list[dict[str, Any]], path: Path, *, table_name: str) -> None:
@@ -291,9 +344,7 @@ async def _register_case(
     dataset_id = str(response.get("dataset_id") or response.get("source_id") or "")
     canonical_entry = reg.get_source_entry(str(auth["org_id"]), dataset_id) if dataset_id else None
     canonical_source_name = (
-        str(canonical_entry.get("name") or source.name)
-        if canonical_entry
-        else source.name
+        str(canonical_entry.get("name") or source.name) if canonical_entry else source.name
     )
     count_anchor = _select_count_anchor_column(schema)
     if count_anchor is not None:
@@ -494,87 +545,18 @@ async def _prepare_db_cases(
 
 async def _prepare_public_cases(*, auth: dict[str, str]) -> list[PreparedSourceCase]:
     prepared: list[PreparedSourceCase] = []
-
-    public_object_cases = [
-        (
-            "Public S3 NOAA hourly sample",
-            "public_object",
-            "s3://noaa-global-hourly-pds/1901/02907099999.csv",
-            DataSource(
-                name="PublicS3Noaa",
-                connection={
-                    "type": "s3",
-                    "bucket": "noaa-global-hourly-pds",
-                    "key": "1901/02907099999.csv",
-                    "region": "us-east-1",
-                    "anonymous": True,
-                    "file_type": "csv",
-                },
-            ),
-            _fetch_public_s3_records,
-        ),
-        (
-            "Public GCS sample transactions",
-            "public_object",
-            "gs://cloud-samples-data/bigquery/sample-transactions/transactions.csv",
-            DataSource(
-                name="PublicGcsTransactions",
-                connection={
-                    "type": "gcs",
-                    "bucket": "cloud-samples-data",
-                    "blob": "bigquery/sample-transactions/transactions.csv",
-                    "anonymous": True,
-                    "file_type": "csv",
-                },
-            ),
-            _fetch_public_gcs_records,
-        ),
-        (
-            "Public Azure ML sample parquet",
-            "public_object",
-            _AZURE_SAMPLE_BLOB_URL,
-            DataSource(
-                name="PublicAzureMlSample",
-                connection={
-                    "type": "azure_blob",
-                    "account_url": "https://azureopendatastorage.blob.core.windows.net",
-                    "container": "mlsamples",
-                    "blob": (
-                        "diabetes/"
-                        "part-00000-tid-6082354649623433283-5a3d3599-0872-"
-                        "4a3e-a027-bddf5f6d57ca-1951182-c000.snappy.parquet"
-                    ),
-                    "blob_url": _AZURE_SAMPLE_BLOB_URL,
-                    "anonymous": True,
-                    "file_type": "parquet",
-                },
-            ),
-            _fetch_public_azure_records,
-        ),
-    ]
-
-    for label, category, origin, source, _loader in public_object_cases:
-        prepared.append(
-            await _register_case(
-                auth=auth,
-                label=label,
-                category=category,
-                origin=origin,
-                source=source,
-                expected_count=None,
-            )
-        )
-
-    for index, case in enumerate(THIRD_PARTY_PUBLIC_CASES, start=1):
+    for index, case in enumerate(_active_public_validation_cases(), start=1):
+        connection = case.build_connection()
+        await asyncio.to_thread(_warm_public_validation_case, case, connection)
         prepared.append(
             await _register_case(
                 auth=auth,
                 label=case.label,
-                category="public_rest",
-                origin=case.docs_url or case.connection.get("url", ""),
+                category=_public_case_category(case),
+                origin=_public_case_origin(case, connection),
                 source=DataSource(
-                    name=f"PublicRest{index:02d}",
-                    connection=case.build_connection(),
+                    name=_public_case_source_name(index, case),
+                    connection=connection,
                 ),
                 expected_count=None,
             )
@@ -717,6 +699,7 @@ async def _measure_cases(
                 "resolve_hit_ms": round(resolve_hit_ms, 3),
                 "resolved_query_first_ms": round(resolved_query_first_ms, 3),
                 "resolved_query_hit_ms": round(resolved_query_hit_ms, 3),
+                "source_total_ms": round(case.register_ms + case.prewarm_ms, 3),
                 "exact_result_cache_hit": exact_result_cache_hit,
                 "resolve_cache_hit": resolve_cache_hit,
                 "resolved_query_cache_hit": resolved_query_cache_hit,
@@ -737,12 +720,16 @@ def _summarize_category(measurements: list[dict[str, Any]]) -> dict[str, Any]:
         "avg_prewarm_ms": round(
             sum(item["prewarm_ms"] for item in measurements) / len(measurements), 3
         ),
+        "avg_source_total_ms": round(
+            sum(item["source_total_ms"] for item in measurements) / len(measurements), 3
+        ),
+        "p95_source_total_ms": round(
+            _percentile([item["source_total_ms"] for item in measurements], 95), 3
+        ),
         "p95_resolve_miss_ms": round(
             _percentile([item["resolve_miss_ms"] for item in measurements], 95), 3
         ),
-        "max_resolve_miss_ms": round(
-            max(item["resolve_miss_ms"] for item in measurements), 3
-        ),
+        "max_resolve_miss_ms": round(max(item["resolve_miss_ms"] for item in measurements), 3),
         "p95_resolve_hit_ms": round(
             _percentile([item["resolve_hit_ms"] for item in measurements], 95), 3
         ),
@@ -772,8 +759,7 @@ def _validate_measurements(measurements: list[dict[str, Any]]) -> None:
         failures.append(
             "resolve budget exceeded: "
             + ", ".join(
-                f"{item['source_name']}={item['resolve_miss_ms']}ms"
-                for item in slow_resolves[:10]
+                f"{item['source_name']}={item['resolve_miss_ms']}ms" for item in slow_resolves[:10]
             )
         )
 
@@ -784,19 +770,19 @@ def _validate_measurements(measurements: list[dict[str, Any]]) -> None:
     if any(not item["resolved_query_cache_hit"] for item in measurements):
         failures.append("missing result-cache hit on repeat resolved-plan query")
 
-    hot_metrics = {
-        "resolve hit": _percentile([item["resolve_hit_ms"] for item in measurements], 95),
-        "exact hit": _percentile([item["exact_hit_ms"] for item in measurements], 95),
-        "resolved query hit": _percentile(
-            [item["resolved_query_hit_ms"] for item in measurements],
-            95,
-        ),
-    }
-    slow_hot_paths = [
-        f"{label} p95={value:.3f}ms"
-        for label, value in hot_metrics.items()
-        if value > HOT_PATH_TARGET_MS
-    ]
+    resolve_hit_p95 = _percentile([item["resolve_hit_ms"] for item in measurements], 95)
+    exact_hit_p95 = _percentile([item["exact_hit_ms"] for item in measurements], 95)
+    resolved_query_hit_p95 = _percentile(
+        [item["resolved_query_hit_ms"] for item in measurements],
+        95,
+    )
+    slow_hot_paths = []
+    if resolve_hit_p95 > float(P0_METRIC_BUDGETS["resolve_hit_ms"].p95 or 0.0):
+        slow_hot_paths.append(f"resolve hit p95={resolve_hit_p95:.3f}ms")
+    if exact_hit_p95 > float(P0_METRIC_BUDGETS["exact_hit_ms"].p95 or 0.0):
+        slow_hot_paths.append(f"exact hit p95={exact_hit_p95:.3f}ms")
+    if resolved_query_hit_p95 > RESOLVED_QUERY_HIT_TARGET_MS:
+        slow_hot_paths.append(f"resolved query hit p95={resolved_query_hit_p95:.3f}ms")
     if slow_hot_paths:
         failures.append("hot-path latency target missed: " + ", ".join(slow_hot_paths))
 
@@ -809,52 +795,58 @@ async def _run(
     skip_public: bool,
     skip_db: bool,
     local_limit: int | None,
+    csv_only: bool,
 ) -> dict[str, Any]:
     started = time.perf_counter()
+    mojo_runtime_mode = await _setup_mojo_runtime()
+    try:
+        with tempfile.TemporaryDirectory(prefix="source-matrix-runtime-") as tmp_dir:
+            workdir = Path(tmp_dir)
+            registry_dir = workdir / "registry"
+            await _reset_runtime_state(registry_dir)
 
-    with tempfile.TemporaryDirectory(prefix="source-matrix-runtime-") as tmp_dir:
-        workdir = Path(tmp_dir)
-        registry_dir = workdir / "registry"
-        await _reset_runtime_state(registry_dir)
-
-        local_auth = {
-            "org_id": f"source_matrix_local_{uuid.uuid4().hex[:8]}",
-            "role": "owner",
-            "key_id": str(uuid.uuid4()),
-        }
-        local_cases, skipped_empty_local_csvs = await _prepare_local_csv_cases(
-            auth=local_auth,
-            include_processed_variants=include_processed_variants,
-            local_limit=local_limit,
-        )
-        local_non_csv_cases = await _prepare_local_non_csv_cases(auth=local_auth)
-        local_measurements = await _measure_cases(
-            auth=local_auth,
-            prepared_cases=local_cases + local_non_csv_cases,
-        )
-
-        db_measurements: list[dict[str, Any]] = []
-        if not skip_db:
-            db_auth = {
-                "org_id": f"source_matrix_db_{uuid.uuid4().hex[:8]}",
+            local_auth = {
+                "org_id": f"source_matrix_local_{uuid.uuid4().hex[:8]}",
                 "role": "owner",
                 "key_id": str(uuid.uuid4()),
             }
-            db_cases = await _prepare_db_cases(auth=db_auth, workdir=workdir)
-            db_measurements = await _measure_cases(auth=db_auth, prepared_cases=db_cases)
-
-        public_measurements: list[dict[str, Any]] = []
-        if not skip_public:
-            public_auth = {
-                "org_id": f"source_matrix_public_{uuid.uuid4().hex[:8]}",
-                "role": "owner",
-                "key_id": str(uuid.uuid4()),
-            }
-            public_cases = await _prepare_public_cases(auth=public_auth)
-            public_measurements = await _measure_cases(
-                auth=public_auth,
-                prepared_cases=public_cases,
+            local_cases, skipped_empty_local_csvs = await _prepare_local_csv_cases(
+                auth=local_auth,
+                include_processed_variants=include_processed_variants,
+                local_limit=local_limit,
             )
+            local_non_csv_cases = (
+                [] if csv_only else await _prepare_local_non_csv_cases(auth=local_auth)
+            )
+            local_measurements = await _measure_cases(
+                auth=local_auth,
+                prepared_cases=local_cases + local_non_csv_cases,
+            )
+
+            db_measurements: list[dict[str, Any]] = []
+            if not skip_db:
+                db_auth = {
+                    "org_id": f"source_matrix_db_{uuid.uuid4().hex[:8]}",
+                    "role": "owner",
+                    "key_id": str(uuid.uuid4()),
+                }
+                db_cases = await _prepare_db_cases(auth=db_auth, workdir=workdir)
+                db_measurements = await _measure_cases(auth=db_auth, prepared_cases=db_cases)
+
+            public_measurements: list[dict[str, Any]] = []
+            if not skip_public:
+                public_auth = {
+                    "org_id": f"source_matrix_public_{uuid.uuid4().hex[:8]}",
+                    "role": "owner",
+                    "key_id": str(uuid.uuid4()),
+                }
+                public_cases = await _prepare_public_cases(auth=public_auth)
+                public_measurements = await _measure_cases(
+                    auth=public_auth,
+                    prepared_cases=public_cases,
+                )
+    finally:
+        await _teardown_mojo_runtime()
 
     measurements = local_measurements + db_measurements + public_measurements
     if not measurements:
@@ -875,9 +867,20 @@ async def _run(
         "include_processed_variants": include_processed_variants,
         "skip_public": skip_public,
         "skip_db": skip_db,
+        "csv_only": csv_only,
+        "mojo_runtime_mode": mojo_runtime_mode,
         "totals": {
             "sources": len(measurements),
             "elapsed_ms": round((time.perf_counter() - started) * 1000, 3),
+            "mojo_runtime_mode": mojo_runtime_mode,
+            "avg_source_ms": round(
+                sum(item["source_total_ms"] for item in measurements) / len(measurements),
+                3,
+            ),
+            "p95_source_total_ms": round(
+                _percentile([item["source_total_ms"] for item in measurements], 95),
+                3,
+            ),
             "p95_resolve_miss_ms": round(
                 _percentile([item["resolve_miss_ms"] for item in measurements], 95),
                 3,
@@ -894,10 +897,15 @@ async def _run(
                 _percentile([item["resolved_query_hit_ms"] for item in measurements], 95),
                 3,
             ),
+            "p2_budgets": {
+                "avg_source_ms_budget": P2_METRIC_BUDGETS["source_matrix.avg_source_ms"].p95,
+                "p95_source_total_ms_budget": (
+                    P2_METRIC_BUDGETS["source_matrix.p95_source_total_ms"].p95
+                ),
+            },
         },
         "categories": {
-            name: _summarize_category(items)
-            for name, items in sorted(categories.items())
+            name: _summarize_category(items) for name, items in sorted(categories.items())
         },
         "slowest_resolve_miss": sorted(
             measurements,
@@ -941,6 +949,11 @@ def main() -> None:
         default=None,
         help="Optional cap for debugging the local CSV matrix.",
     )
+    parser.add_argument(
+        "--csv-only",
+        action="store_true",
+        help="Benchmark only the local CSV corpus and skip local non-CSV sources.",
+    )
     args = parser.parse_args()
 
     summary = asyncio.run(
@@ -949,6 +962,7 @@ def main() -> None:
             skip_public=args.skip_public,
             skip_db=args.skip_db,
             local_limit=args.local_limit,
+            csv_only=args.csv_only,
         )
     )
 
@@ -967,10 +981,7 @@ def main() -> None:
         )
     print("\nSlowest resolve misses:")
     for item in summary["slowest_resolve_miss"]:
-        print(
-            f"  - {item['source_name']}: {item['resolve_miss_ms']}ms "
-            f"({item['origin']})"
-        )
+        print(f"  - {item['source_name']}: {item['resolve_miss_ms']}ms ({item['origin']})")
     print("\nSlowest registrations:")
     for item in summary["slowest_register"]:
         print(

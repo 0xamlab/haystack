@@ -173,7 +173,7 @@ def token_healing_overlap(prefix_last_token, new_first_token, overlap_chars):
 
 def watermark_green_list_bias(token_id, green_list_hash, bias_strength):
 
-    in_green = float(Int64(token_id + green_list_hash) % 2)
+    in_green = float(int(token_id + green_list_hash) % 2)
     if in_green == 0.0:
         return bias_strength
     return 0.0

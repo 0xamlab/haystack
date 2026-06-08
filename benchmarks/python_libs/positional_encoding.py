@@ -124,9 +124,9 @@ class Python:
 def sinusoidal_pe(pos, dim, d_model):
     if d_model <= 0.0:
         return 0.0
-    i = float(Int64(dim / 2.0))
+    i = float(int(dim / 2.0))
     angle = pos / math.exp(2.0 * i * math.log(10000.0) / d_model)
-    mod2 = dim - 2.0 * float(Int64(dim / 2.0))
+    mod2 = dim - 2.0 * float(int(dim / 2.0))
     if mod2 < 0.5:
         return math.sin(angle)
     return math.cos(angle)
@@ -134,14 +134,14 @@ def sinusoidal_pe(pos, dim, d_model):
 
 
 def rope_cos_component(pos, dim, base):
-    i = float(Int64(dim / 2.0))
+    i = float(int(dim / 2.0))
     theta = pos / math.exp(2.0 * i * math.log(base))
     return math.cos(theta)
 
 
 
 def rope_sin_component(pos, dim, base):
-    i = float(Int64(dim / 2.0))
+    i = float(int(dim / 2.0))
     theta = pos / math.exp(2.0 * i * math.log(base))
     return math.sin(theta)
 
@@ -184,7 +184,7 @@ def learned_pe_init(d_model):
 def relative_pe_bucket(relative_pos, num_buckets, max_distance):
     ret = 0.0
     rp = relative_pos
-    half_buckets = float(Int64(num_buckets / 2.0))
+    half_buckets = float(int(num_buckets / 2.0))
     if rp < 0.0:
         rp = -rp
         ret = half_buckets

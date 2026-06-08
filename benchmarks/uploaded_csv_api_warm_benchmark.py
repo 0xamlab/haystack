@@ -8,6 +8,7 @@ This exercises the real registry-backed hint path in /v1/query and separates:
   - warm unique queries on the same org/schema
   - hot repeated queries (result cache)
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -33,6 +34,8 @@ from uploaded_csv_exact_benchmark import (
     _expected_result,
     _normalize_result,
     _reset_runtime_state,
+    _setup_mojo_runtime,
+    _teardown_mojo_runtime,
 )
 from uploaded_csv_spec_reconstruction_benchmark import HintQueryCase, _build_hint_cases
 
@@ -130,66 +133,75 @@ async def _run() -> dict[str, Any]:
     with tempfile.TemporaryDirectory() as tmp_dir:
         registry_dir = Path(tmp_dir) / "registry"
         await _reset_runtime_state(registry_dir)
+        mojo_runtime_mode = await _setup_mojo_runtime()
 
-        org_id = f"uploaded_csv_api_{int(time.time())}"
-        auth = {"org_id": org_id, "role": "owner", "key_id": str(uuid.uuid4())}
-        register_latencies: list[float] = []
-        register_prewarm_latencies: list[float] = []
+        try:
+            org_id = f"uploaded_csv_api_{int(time.time())}"
+            auth = {"org_id": org_id, "role": "owner", "key_id": str(uuid.uuid4())}
+            register_latencies: list[float] = []
+            register_prewarm_latencies: list[float] = []
 
-        for source_name, path in SOURCE_FILES.items():
-            payload = RegisterRequest(
-                source=DataSource(
-                    name=source_name,
-                    csv=path.read_text(encoding="utf-8", errors="replace"),
+            for source_name, path in SOURCE_FILES.items():
+                payload = RegisterRequest(
+                    source=DataSource(
+                        name=source_name,
+                        csv=path.read_text(encoding="utf-8", errors="replace"),
+                    )
                 )
+                t0 = time.perf_counter()
+                response = await register_source(payload, auth=auth)
+                register_latencies.append((time.perf_counter() - t0) * 1000)
+                if response["status"] not in {"registered", "already_registered"}:
+                    raise RuntimeError(f"registration failed for {source_name}: {response}")
+                register_prewarm_latencies.append(float(response.get("planner_prewarm_ms", 0.0)))
+
+            reference_planner = AutoPlanner.from_registry(org_id, llm_policy="never")
+
+            cold_first = await _run_case(
+                case=cases[0],
+                auth=auth,
+                reference_planner=reference_planner,
             )
-            t0 = time.perf_counter()
-            response = await register_source(payload, auth=auth)
-            register_latencies.append((time.perf_counter() - t0) * 1000)
-            if response["status"] not in {"registered", "already_registered"}:
-                raise RuntimeError(f"registration failed for {source_name}: {response}")
-            register_prewarm_latencies.append(float(response.get("planner_prewarm_ms", 0.0)))
+            warm_unique = [
+                await _run_case(case=case, auth=auth, reference_planner=reference_planner)
+                for case in cases[1:]
+            ]
+            hot_repeat = [
+                await _run_case(case=case, auth=auth, reference_planner=reference_planner)
+                for case in cases
+            ]
 
-        reference_planner = AutoPlanner.from_registry(org_id, llm_policy="never")
-
-        cold_first = await _run_case(case=cases[0], auth=auth, reference_planner=reference_planner)
-        warm_unique = [
-            await _run_case(case=case, auth=auth, reference_planner=reference_planner)
-            for case in cases[1:]
-        ]
-        hot_repeat = [
-            await _run_case(case=case, auth=auth, reference_planner=reference_planner)
-            for case in cases
-        ]
-
-        first_pass = [cold_first] + warm_unique
-        return {
-            "benchmark": "uploaded_csv_api_warm_benchmark",
-            "queries": len(cases),
-            "query_accuracy_first_pass": round(
-                sum(1 for item in first_pass if item["query_correct"]) / len(first_pass), 4
-            ),
-            "avg_register_ms": round(mean(register_latencies), 3),
-            "avg_register_prewarm_ms": round(mean(register_prewarm_latencies), 3),
-            "cold_first_query_ms": cold_first["latency_ms"],
-            "cold_first_planner_cache_hit": cold_first["planner_cache_hit"],
-            "warm_unique_avg_ms": round(mean(item["latency_ms"] for item in warm_unique), 3),
-            "warm_unique_planner_cache_hits": sum(
-                1 for item in warm_unique if item["planner_cache_hit"]
-            ),
-            "warm_unique_result_cache_hits": sum(
-                1 for item in warm_unique if item["result_cache_hit"]
-            ),
-            "hot_repeat_avg_ms": round(mean(item["latency_ms"] for item in hot_repeat), 3),
-            "hot_repeat_result_cache_hits": sum(
-                1 for item in hot_repeat if item["result_cache_hit"]
-            ),
-            "details": {
-                "cold_first": cold_first,
-                "warm_unique": warm_unique,
-                "hot_repeat": hot_repeat,
-            },
-        }
+            first_pass = [cold_first] + warm_unique
+            return {
+                "benchmark": "uploaded_csv_api_warm_benchmark",
+                "queries": len(cases),
+                "query_accuracy_first_pass": round(
+                    sum(1 for item in first_pass if item["query_correct"]) / len(first_pass), 4
+                ),
+                "avg_register_ms": round(mean(register_latencies), 3),
+                "avg_register_prewarm_ms": round(mean(register_prewarm_latencies), 3),
+                "cold_first_query_ms": cold_first["latency_ms"],
+                "cold_first_planner_cache_hit": cold_first["planner_cache_hit"],
+                "warm_unique_avg_ms": round(mean(item["latency_ms"] for item in warm_unique), 3),
+                "warm_unique_planner_cache_hits": sum(
+                    1 for item in warm_unique if item["planner_cache_hit"]
+                ),
+                "warm_unique_result_cache_hits": sum(
+                    1 for item in warm_unique if item["result_cache_hit"]
+                ),
+                "hot_repeat_avg_ms": round(mean(item["latency_ms"] for item in hot_repeat), 3),
+                "hot_repeat_result_cache_hits": sum(
+                    1 for item in hot_repeat if item["result_cache_hit"]
+                ),
+                "mojo_runtime_mode": mojo_runtime_mode,
+                "details": {
+                    "cold_first": cold_first,
+                    "warm_unique": warm_unique,
+                    "hot_repeat": hot_repeat,
+                },
+            }
+        finally:
+            await _teardown_mojo_runtime()
 
 
 def main() -> None:
@@ -214,6 +226,7 @@ def main() -> None:
                 "warm_unique_result_cache_hits": summary["warm_unique_result_cache_hits"],
                 "hot_repeat_avg_ms": summary["hot_repeat_avg_ms"],
                 "hot_repeat_result_cache_hits": summary["hot_repeat_result_cache_hits"],
+                "mojo_runtime_mode": summary["mojo_runtime_mode"],
                 "elapsed_ms": summary["elapsed_ms"],
             },
             indent=2,

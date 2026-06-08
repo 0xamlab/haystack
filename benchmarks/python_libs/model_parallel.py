@@ -152,7 +152,7 @@ def activation_checkpointing_ratio(n_checkpointed_layers, total_layers):
 def pipeline_stage_assignment(layer_id, total_layers, n_stages):
     if total_layers <= 0.0 or n_stages <= 0.0:
         return 0.0
-    stage = float(Int64(layer_id * n_stages / total_layers))
+    stage = float(int(layer_id * n_stages / total_layers))
     if stage >= n_stages:
         return n_stages - 1.0
     return stage

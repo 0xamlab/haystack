@@ -364,11 +364,7 @@ async def _generate_tool_args(question: str) -> dict:
     if client is None:
         raise RuntimeError("Anthropic client unavailable")
 
-    prompt = (
-        f"{ARG_PROMPT}\n\n"
-        f"Dataset summary:\n{DATASET_CONTEXT}\n\n"
-        f"Question: {question}"
-    )
+    prompt = f"{ARG_PROMPT}\n\nDataset summary:\n{DATASET_CONTEXT}\n\nQuestion: {question}"
     resp = client.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=700,
@@ -416,25 +412,25 @@ async def main() -> None:
                 for src in args.get("sources", []):
                     src_name = src.get("name")
                     if src_name in csv_by_name:
-                        resolved_sources.append(
-                            {"name": src_name, "csv": csv_by_name[src_name]}
-                        )
+                        resolved_sources.append({"name": src_name, "csv": csv_by_name[src_name]})
                 args["sources"] = resolved_sources
                 outcome = await _call_mcp_tool(session, "query_data", args)
                 payload = outcome["payload"]
-                results.append({
-                    "id": qid,
-                    "question": question,
-                    "tool_args": _sanitize_tool_args(args),
-                    "elapsed_ms": round(outcome["elapsed_ms"], 1),
-                    "confidence": payload.get("confidence"),
-                    "resolved_source": payload.get("resolved_source"),
-                    "resolved_column": payload.get("resolved_column"),
-                    "row_count": payload.get("row_count"),
-                    "result_type": payload.get("result_type"),
-                    "ok": payload.get("result") is not None,
-                    "note": payload.get("note", ""),
-                })
+                results.append(
+                    {
+                        "id": qid,
+                        "question": question,
+                        "tool_args": _sanitize_tool_args(args),
+                        "elapsed_ms": round(outcome["elapsed_ms"], 1),
+                        "confidence": payload.get("confidence"),
+                        "resolved_source": payload.get("resolved_source"),
+                        "resolved_column": payload.get("resolved_column"),
+                        "row_count": payload.get("row_count"),
+                        "result_type": payload.get("result_type"),
+                        "ok": payload.get("result") is not None,
+                        "note": payload.get("note", ""),
+                    }
+                )
 
     out = {
         "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),

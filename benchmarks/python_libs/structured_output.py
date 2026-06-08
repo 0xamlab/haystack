@@ -161,7 +161,7 @@ def regex_constraint_match(token_char_code, pattern_accept_min, pattern_accept_m
 
 def type_coercion_score(raw_value, target_type):
     if target_type == 0.0:
-        return 1.0 if raw_value == float(Int64(raw_value)) else 0.5
+        return 1.0 if raw_value == float(int(raw_value)) else 0.5
     if target_type == 1.0:
         return 1.0
     if target_type == 2.0:

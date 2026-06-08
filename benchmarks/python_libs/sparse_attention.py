@@ -129,7 +129,7 @@ def longformer_global_score(query, key, head_dim, is_global):
 
 
 def bigbird_random_block_select(block_id, n_blocks, random_seed, n_random):
-    hash = float(Int64(block_id * 31.0 + random_seed) % Int64(n_blocks))
+    hash = float(int(block_id * 31.0 + random_seed) % int(n_blocks))
     if hash < n_random:
         return 1.0
     return 0.0

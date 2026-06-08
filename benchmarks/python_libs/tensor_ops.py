@@ -138,7 +138,7 @@ def flatten_index(row, col, n_cols):
 def unflatten_index_dim(flat_idx, stride, dim_size):
     if stride <= 0.0 or dim_size <= 0.0:
         return 0.0
-    return float(Int64(flat_idx / stride) % Int64(dim_size))
+    return float(int(flat_idx / stride) % int(dim_size))
 
 
 

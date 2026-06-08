@@ -3,18 +3,23 @@
   "status": "ok",
   "n_functions": 1,
   "n_compared": 1,
-  "overall_speedup_x": 96.86,
-  "total_py_ns": 37544.58,
-  "total_mojo_ns": 387.6,
-  "elapsed_s": 3.81,
+  "n_timed": 1,
+  "overall_speedup_x": 68.54,
+  "total_py_ns": 41843.07,
+  "total_mojo_ns": 610.5,
+  "elapsed_s": 3.76,
   "n_iterations": 10000,
+  "mojo_error": null,
   "functions": [
     {
       "function": "run_relation_detect",
-      "py_ns": 37544.579,
-      "mojo_ns": 387.6,
-      "speedup_x": 96.86,
+      "py_ns": 41843.067,
+      "mojo_ns": 610.5,
+      "speedup_x": 68.54,
       "py_result": null,
+      "py_summary": "str:93:1398737016",
+      "mojo_summary": "str:93:1398737016",
+      "result_match": true,
       "py_error": null
     }
   ]

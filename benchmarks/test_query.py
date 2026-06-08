@@ -8,6 +8,7 @@ No natural language parsing — structured intent only.
 Run:
     python3 benchmarks/test_query.py
 """
+
 from __future__ import annotations
 
 import csv
@@ -46,16 +47,17 @@ from apps.api_server.routers.query import (  # noqa: E402
     time_range,
 )
 
-CYAN   = "\033[96m"
-GREEN  = "\033[92m"
+CYAN = "\033[96m"
+GREEN = "\033[92m"
 YELLOW = "\033[93m"
-RED    = "\033[91m"
-BOLD   = "\033[1m"
-DIM    = "\033[2m"
-RESET  = "\033[0m"
+RED = "\033[91m"
+BOLD = "\033[1m"
+DIM = "\033[2m"
+RESET = "\033[0m"
 
 
 # ── Data loading ───────────────────────────────────────────────────────────────
+
 
 def _load_csv(path: Path, max_rows: int = 2000) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
@@ -111,8 +113,10 @@ def _profile(records: list[dict]) -> dict[str, dict]:
 def _call_mojo(payload: dict) -> dict | None:
     try:
         r = subprocess.run(  # noqa: S603
-            [str(BINARY)], input=json.dumps(payload).encode(),
-            capture_output=True, timeout=30,
+            [str(BINARY)],
+            input=json.dumps(payload).encode(),
+            capture_output=True,
+            timeout=30,
         )
         if r.returncode == 0:
             return json.loads(r.stdout)
@@ -122,17 +126,19 @@ def _call_mojo(payload: dict) -> dict | None:
 
 
 def _mojo_profile(prof: dict) -> dict:
-    result = _call_mojo({
-        "engine_type": "column_profile",
-        "columns": {
-            col: {
-                "values": info["sample_values"][:30],
-                "strings": info["strings"][:20],
-                "sample_size": info["total_count"],
-            }
-            for col, info in prof.items()
-        },
-    })
+    result = _call_mojo(
+        {
+            "engine_type": "column_profile",
+            "columns": {
+                col: {
+                    "values": info["sample_values"][:30],
+                    "strings": info["strings"][:20],
+                    "sample_size": info["total_count"],
+                }
+                for col, info in prof.items()
+            },
+        }
+    )
     return (result or {}).get("profiles", {})
 
 
@@ -141,26 +147,29 @@ def _detect_relations(source: str, prof: dict) -> list[dict]:
     if len(numeric_cols) < 3:
         return []
     n = min(min(len(i["numeric"]) for i in numeric_cols.values()), 500)
-    result = _call_mojo({
-        "engine_type": "relation_detect",
-        "source": source,
-        "min_confidence": 0.70,
-        "columns": {c: i["numeric"][:n] for c, i in numeric_cols.items()},
-    })
+    result = _call_mojo(
+        {
+            "engine_type": "relation_detect",
+            "source": source,
+            "min_confidence": 0.70,
+            "columns": {c: i["numeric"][:n] for c, i in numeric_cols.items()},
+        }
+    )
     return (result or {}).get("relationships", [])
 
 
 def ms(s: float) -> str:
-    return f"{s*1000:.0f}ms" if s < 1 else f"{s:.2f}s"
+    return f"{s * 1000:.0f}ms" if s < 1 else f"{s:.2f}s"
 
 
 # ── Structured query runner ────────────────────────────────────────────────────
 # Simulates what an LLM sends to POST /v1/query
 
+
 class Engine:
     def __init__(self, tables: dict, graph: SchemaGraph, profiles: dict):
-        self.tables   = tables
-        self.graph    = graph
+        self.tables = tables
+        self.graph = graph
         self.profiles = profiles
 
     def query(
@@ -168,7 +177,7 @@ class Engine:
         *,
         # What an LLM would provide:
         metric_role: str = DERIVED_MEASURE,
-        metric_hint: str = "",              # weak signal from user question
+        metric_hint: str = "",  # weak signal from user question
         aggregation: str = "sum",
         group_by: list[str] | None = None,
         time_filter: str | None = None,
@@ -225,13 +234,11 @@ class Engine:
                 g = item.get("group", "?")
                 v = item.get("value", 0)
                 v_fmt = (
-                    f"${v:,.2f}"
-                    if node.role in (DERIVED_MEASURE, UNIT_MEASURE)
-                    else f"{v:,.2f}"
+                    f"${v:,.2f}" if node.role in (DERIVED_MEASURE, UNIT_MEASURE) else f"{v:,.2f}"
                 )
                 print(f"  {GREEN}  {g:<32} {v_fmt}{RESET}")
             if len(result) > 5:
-                print(f"  {DIM}  … and {len(result)-5} more{RESET}")
+                print(f"  {DIM}  … and {len(result) - 5} more{RESET}")
         elif result is None:
             print(f"  {YELLOW}A: No data{RESET}  {DIM}{ms(elapsed)}{RESET}")
         else:
@@ -242,28 +249,29 @@ class Engine:
                 else str(v)
             )
             if isinstance(v, float) and abs(v) >= 1_000_000:
-                v_fmt = f"${v/1_000_000:.2f}M"
+                v_fmt = f"${v / 1_000_000:.2f}M"
             print(f"  {GREEN}A:{RESET} {v_fmt}  {GREEN}{ms(elapsed)}{RESET}")
 
 
 # ── Main ───────────────────────────────────────────────────────────────────────
+
 
 def main() -> None:
     if not BINARY.exists():
         print(f"{RED}Binary not found: {BINARY}{RESET}")
         sys.exit(1)
 
-    print(f"\n{BOLD}{'='*72}{RESET}")
+    print(f"\n{BOLD}{'=' * 72}{RESET}")
     print(f"{BOLD}  Algenta Structured Query Engine — Direct API Simulation{RESET}")
     print(f"{BOLD}  (What an LLM sends to POST /v1/query){RESET}")
-    print(f"{BOLD}{'='*72}{RESET}")
+    print(f"{BOLD}{'=' * 72}{RESET}")
 
     # ── Load ──────────────────────────────────────────────────────────────────
     sources = [
-        ("Bookings",  "Bookings.csv"),
-        ("POS",       "POS.csv"),
-        ("Backlog",   "Backlog.csv"),
-        ("Quotes",    "Quotes_Combined_20241116.csv"),
+        ("Bookings", "Bookings.csv"),
+        ("POS", "POS.csv"),
+        ("Backlog", "Backlog.csv"),
+        ("Quotes", "Quotes_Combined_20241116.csv"),
         ("Inventory", "Available_Inventory.csv"),
     ]
     print(f"\n{DIM}Loading…{RESET}", end="", flush=True)
@@ -285,11 +293,11 @@ def main() -> None:
     print(f"{DIM}Mojo profile + relation detect…{RESET}", end="", flush=True)
     t1 = time.perf_counter()
     with ThreadPoolExecutor(max_workers=len(tables) * 2) as ex:
-        mp_futs  = list(ex.map(lambda a: (a[0], _mojo_profile(a[1])),  profiles.items()))
+        mp_futs = list(ex.map(lambda a: (a[0], _mojo_profile(a[1])), profiles.items()))
         rel_futs = list(ex.map(lambda a: (a[0], _detect_relations(*a)), profiles.items()))
-    mojo_profiles       = dict(mp_futs)
+    mojo_profiles = dict(mp_futs)
     relations_by_source = dict(rel_futs)
-    print(f" {GREEN}done{RESET}  ({ms(time.perf_counter()-t1)})")
+    print(f" {GREEN}done{RESET}  ({ms(time.perf_counter() - t1)})")
 
     # ── Schema graph ──────────────────────────────────────────────────────────
     graph = build_schema_graph(profiles, mojo_profiles, relations_by_source)
@@ -299,9 +307,13 @@ def main() -> None:
     for src, rels in relations_by_source.items():
         if rels:
             top = rels[:3]
-            print(f"  {DIM}{src}:{RESET} " + "  |  ".join(
-                f"{GREEN}{r['formula']}{RESET} conf={r['confidence']:.2f}" for r in top
-            ) + (f"  {DIM}+{len(rels)-3} more{RESET}" if len(rels) > 3 else ""))
+            print(
+                f"  {DIM}{src}:{RESET} "
+                + "  |  ".join(
+                    f"{GREEN}{r['formula']}{RESET} conf={r['confidence']:.2f}" for r in top
+                )
+                + (f"  {DIM}+{len(rels) - 3} more{RESET}" if len(rels) > 3 else "")
+            )
 
     # ── Schema summary ────────────────────────────────────────────────────────
     print(f"\n{BOLD}  Role assignments (Bookings):{RESET}")
@@ -310,25 +322,29 @@ def main() -> None:
     for col, node in bk.items():
         role_groups.setdefault(node.role, []).append(col)
     colors = {
-        DERIVED_MEASURE: GREEN, BASE_MEASURE: CYAN, UNIT_MEASURE: YELLOW,
-        COMPONENT: CYAN, RATIO: YELLOW, IDENTIFIER: DIM,
-        TIME: DIM, CATEGORY: DIM, TEXT: DIM, METRIC: RESET,
+        DERIVED_MEASURE: GREEN,
+        BASE_MEASURE: CYAN,
+        UNIT_MEASURE: YELLOW,
+        COMPONENT: CYAN,
+        RATIO: YELLOW,
+        IDENTIFIER: DIM,
+        TIME: DIM,
+        CATEGORY: DIM,
+        TEXT: DIM,
+        METRIC: RESET,
     }
     for role in [DERIVED_MEASURE, BASE_MEASURE, UNIT_MEASURE, RATIO, IDENTIFIER, TIME, CATEGORY]:
         cols = role_groups.get(role, [])
         if cols:
             c = colors.get(role, RESET)
-            print(
-                f"  {c}  {role:<18} {', '.join(cols[:6])}"
-                f"{'  …' if len(cols) > 6 else ''}{RESET}"
-            )
+            print(f"  {c}  {role:<18} {', '.join(cols[:6])}{'  …' if len(cols) > 6 else ''}{RESET}")
 
     # ── Role verification ─────────────────────────────────────────────────────
     print(f"\n{BOLD}  Verification — known ground truth:{RESET}")
     checks = [
-        ("Bookings", "EXT_PRICE",  DERIVED_MEASURE, "EXT_PRICE = QUANTITY × UNIT_PRICE"),
-        ("Bookings", "QUANTITY",   BASE_MEASURE,     "discrete count factor"),
-        ("Bookings", "UNIT_PRICE", UNIT_MEASURE,     "rate/price factor"),
+        ("Bookings", "EXT_PRICE", DERIVED_MEASURE, "EXT_PRICE = QUANTITY × UNIT_PRICE"),
+        ("Bookings", "QUANTITY", BASE_MEASURE, "discrete count factor"),
+        ("Bookings", "UNIT_PRICE", UNIT_MEASURE, "rate/price factor"),
     ]
     for src, col, expected, note in checks:
         node = graph.get(src, {}).get(col)
@@ -341,83 +357,137 @@ def main() -> None:
     # ── Queries ───────────────────────────────────────────────────────────────
     eng = Engine(tables, graph, profiles)
 
-    print(f"\n{BOLD}{CYAN}{'─'*72}{RESET}")
+    print(f"\n{BOLD}{CYAN}{'─' * 72}{RESET}")
     print(f"{BOLD}{CYAN}  Basic aggregations  (LLM → structured intent → engine){RESET}")
-    print(f"{BOLD}{CYAN}{'─'*72}{RESET}")
+    print(f"{BOLD}{CYAN}{'─' * 72}{RESET}")
 
     # User: "total revenue" → LLM sends: metric.role=derived_measure, agg=sum
-    eng.query(metric_role=DERIVED_MEASURE, aggregation="sum", source="Bookings",
-              label="total revenue  [LLM: metric.role=derived_measure, agg=sum]")
+    eng.query(
+        metric_role=DERIVED_MEASURE,
+        aggregation="sum",
+        source="Bookings",
+        label="total revenue  [LLM: metric.role=derived_measure, agg=sum]",
+    )
 
     # User: "average unit price" → LLM sends: metric.role=unit_measure, agg=avg
-    eng.query(metric_role=UNIT_MEASURE, aggregation="avg", source="Bookings",
-              label="average unit price  [LLM: metric.role=unit_measure, agg=avg]")
+    eng.query(
+        metric_role=UNIT_MEASURE,
+        aggregation="avg",
+        source="Bookings",
+        label="average unit price  [LLM: metric.role=unit_measure, agg=avg]",
+    )
 
     # User: "total quantity ordered" → LLM sends: metric.role=base_measure, agg=sum
-    eng.query(metric_role=BASE_MEASURE, aggregation="sum", source="Bookings",
-              label="total quantity  [LLM: metric.role=base_measure, agg=sum]")
+    eng.query(
+        metric_role=BASE_MEASURE,
+        aggregation="sum",
+        source="Bookings",
+        label="total quantity  [LLM: metric.role=base_measure, agg=sum]",
+    )
 
     # User: "highest price" → LLM sends: metric.role=unit_measure, agg=max
-    eng.query(metric_role=UNIT_MEASURE, aggregation="max", source="Bookings",
-              label="max price  [LLM: metric.role=unit_measure, agg=max]")
+    eng.query(
+        metric_role=UNIT_MEASURE,
+        aggregation="max",
+        source="Bookings",
+        label="max price  [LLM: metric.role=unit_measure, agg=max]",
+    )
 
     # User: "how many orders" → LLM sends: metric.role=derived_measure, agg=count
-    eng.query(metric_role=DERIVED_MEASURE, aggregation="count", source="Bookings",
-              label="count orders  [LLM: agg=count]")
+    eng.query(
+        metric_role=DERIVED_MEASURE,
+        aggregation="count",
+        source="Bookings",
+        label="count orders  [LLM: agg=count]",
+    )
 
-    print(f"\n{BOLD}{CYAN}{'─'*72}{RESET}")
+    print(f"\n{BOLD}{CYAN}{'─' * 72}{RESET}")
     print(f"{BOLD}{CYAN}  Group-by  (LLM adds group_by=['customer']){RESET}")
-    print(f"{BOLD}{CYAN}{'─'*72}{RESET}")
+    print(f"{BOLD}{CYAN}{'─' * 72}{RESET}")
 
-    eng.query(metric_role=DERIVED_MEASURE, aggregation="sum",
-              group_by=["customer"], source="Bookings",
-              label="total revenue by customer")
+    eng.query(
+        metric_role=DERIVED_MEASURE,
+        aggregation="sum",
+        group_by=["customer"],
+        source="Bookings",
+        label="total revenue by customer",
+    )
 
-    eng.query(metric_role=BASE_MEASURE, aggregation="sum",
-              group_by=["customer"], source="Bookings",
-              label="total quantity by customer")
+    eng.query(
+        metric_role=BASE_MEASURE,
+        aggregation="sum",
+        group_by=["customer"],
+        source="Bookings",
+        label="total quantity by customer",
+    )
 
-    eng.query(metric_role=UNIT_MEASURE, aggregation="avg",
-              group_by=["customer"], source="Bookings",
-              label="average price by customer")
+    eng.query(
+        metric_role=UNIT_MEASURE,
+        aggregation="avg",
+        group_by=["customer"],
+        source="Bookings",
+        label="average price by customer",
+    )
 
-    print(f"\n{BOLD}{CYAN}{'─'*72}{RESET}")
+    print(f"\n{BOLD}{CYAN}{'─' * 72}{RESET}")
     print(f"{BOLD}{CYAN}  Top-N  (LLM adds limit=5){RESET}")
-    print(f"{BOLD}{CYAN}{'─'*72}{RESET}")
+    print(f"{BOLD}{CYAN}{'─' * 72}{RESET}")
 
-    eng.query(metric_role=DERIVED_MEASURE, aggregation="sum",
-              group_by=["customer"], limit=5, source="Bookings",
-              label="top 5 customers by revenue")
+    eng.query(
+        metric_role=DERIVED_MEASURE,
+        aggregation="sum",
+        group_by=["customer"],
+        limit=5,
+        source="Bookings",
+        label="top 5 customers by revenue",
+    )
 
-    eng.query(metric_role=BASE_MEASURE, aggregation="sum",
-              group_by=["part"], limit=5, source="Bookings",
-              label="top 5 parts by quantity")
+    eng.query(
+        metric_role=BASE_MEASURE,
+        aggregation="sum",
+        group_by=["part"],
+        limit=5,
+        source="Bookings",
+        label="top 5 parts by quantity",
+    )
 
-    eng.query(metric_role=DERIVED_MEASURE, aggregation="sum",
-              group_by=["customer"], limit=10, source="POS",
-              label="top 10 customers by revenue  [POS]")
+    eng.query(
+        metric_role=DERIVED_MEASURE,
+        aggregation="sum",
+        group_by=["customer"],
+        limit=10,
+        source="POS",
+        label="top 10 customers by revenue  [POS]",
+    )
 
-    print(f"\n{BOLD}{CYAN}{'─'*72}{RESET}")
+    print(f"\n{BOLD}{CYAN}{'─' * 72}{RESET}")
     print(f"{BOLD}{CYAN}  Cross-source  (LLM omits source — engine picks best){RESET}")
-    print(f"{BOLD}{CYAN}{'─'*72}{RESET}")
+    print(f"{BOLD}{CYAN}{'─' * 72}{RESET}")
 
-    eng.query(metric_role=DERIVED_MEASURE, aggregation="sum",
-              label="total revenue  [auto-select source]")
+    eng.query(
+        metric_role=DERIVED_MEASURE, aggregation="sum", label="total revenue  [auto-select source]"
+    )
 
-    eng.query(metric_role=DERIVED_MEASURE, aggregation="sum",
-              group_by=["customer"], limit=5,
-              label="top 5 customers by revenue  [auto-select source]")
+    eng.query(
+        metric_role=DERIVED_MEASURE,
+        aggregation="sum",
+        group_by=["customer"],
+        limit=5,
+        label="top 5 customers by revenue  [auto-select source]",
+    )
 
-    print(f"\n{BOLD}{CYAN}{'─'*72}{RESET}")
+    print(f"\n{BOLD}{CYAN}{'─' * 72}{RESET}")
     print(f"{BOLD}{CYAN}  Candidates list  (what LLM sees for disambiguation){RESET}")
-    print(f"{BOLD}{CYAN}{'─'*72}{RESET}")
+    print(f"{BOLD}{CYAN}{'─' * 72}{RESET}")
 
     _, _, _, candidates = resolve_metric_column(DERIVED_MEASURE, set(), graph)
     print(f"\n  {BOLD}Candidates for role=derived_measure (all sources):{RESET}")
     for c in candidates[:8]:
         formula_note = f"  ← {c['formula']}" if c.get("formula") else ""
-        print(f"  {DIM}{c['confidence']:.2f}  {c['source']:<12} {c['column']:<20} "
-              f"[{c['magnitude']}]{formula_note}{RESET}")
+        print(
+            f"  {DIM}{c['confidence']:.2f}  {c['source']:<12} {c['column']:<20} "
+            f"[{c['magnitude']}]{formula_note}{RESET}"
+        )
 
     print()
 

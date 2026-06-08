@@ -19,6 +19,7 @@ from __future__ import annotations
 import asyncio
 import json
 import math
+import os
 import sys
 import tempfile
 import time
@@ -56,6 +57,47 @@ SOURCE_FILES: dict[str, Path] = {
 }
 
 _API_RESULT_PRECISION = 4
+
+
+async def _setup_mojo_runtime() -> str:
+    try:
+        from apps.api_server.compute.mojo_pool import MojoWorkerPool, set_pool
+
+        pool = MojoWorkerPool(size=max(1, (os.cpu_count() or 4) - 1))
+        await pool.start()
+        if pool.running:
+            set_pool(pool)
+            return "pool"
+    except Exception as exc:
+        print(f"⚠️  Mojo pool init failed: {exc}", file=sys.stderr)
+
+    try:
+        from apps.api_server.compute.mojo_adapter import _BINARY_PATH
+
+        if _BINARY_PATH.exists():
+            return "subprocess"
+    except Exception as exc:
+        print(f"⚠️  Mojo subprocess probe failed: {exc}", file=sys.stderr)
+
+    return "unavailable"
+
+
+async def _teardown_mojo_runtime() -> None:
+    try:
+        from apps.api_server.compute.mojo_pool import get_pool_sync
+
+        pool = get_pool_sync()
+        if pool.running:
+            await pool.stop()
+    except Exception as exc:
+        print(f"⚠️  Mojo pool teardown check failed: {exc}", file=sys.stderr)
+    finally:
+        try:
+            from apps.api_server.compute.mojo_pool import set_pool
+
+            set_pool(None)
+        except Exception as exc:
+            print(f"⚠️  Mojo pool singleton reset failed: {exc}", file=sys.stderr)
 
 
 @dataclass(frozen=True)
@@ -361,105 +403,112 @@ async def _run() -> dict[str, Any]:
         workdir = Path(tmp_dir)
         registry_dir = workdir / "registry"
         await _reset_runtime_state(registry_dir)
+        mojo_runtime_mode = await _setup_mojo_runtime()
 
-        org_id = f"uploaded_csv_exact_{int(time.time())}"
-        auth = {"org_id": org_id, "role": "owner", "key_id": str(uuid.uuid4())}
-        register_latencies: list[float] = []
+        try:
+            org_id = f"uploaded_csv_exact_{int(time.time())}"
+            auth = {"org_id": org_id, "role": "owner", "key_id": str(uuid.uuid4())}
+            register_latencies: list[float] = []
 
-        for source_name, path in SOURCE_FILES.items():
-            payload = RegisterRequest(
-                source=DataSource(
-                    name=source_name,
-                    csv=path.read_text(encoding="utf-8", errors="replace"),
+            for source_name, path in SOURCE_FILES.items():
+                payload = RegisterRequest(
+                    source=DataSource(
+                        name=source_name,
+                        csv=path.read_text(encoding="utf-8", errors="replace"),
+                    )
                 )
-            )
-            t0 = time.perf_counter()
-            resp = await register_source(payload, auth=auth)
-            register_latencies.append((time.perf_counter() - t0) * 1000)
-            if resp["status"] not in {"registered", "already_registered"}:
-                raise RuntimeError(f"registration failed for {source_name}: {resp}")
+                t0 = time.perf_counter()
+                resp = await register_source(payload, auth=auth)
+                register_latencies.append((time.perf_counter() - t0) * 1000)
+                if resp["status"] not in {"registered", "already_registered"}:
+                    raise RuntimeError(f"registration failed for {source_name}: {resp}")
 
-        planner = AutoPlanner.from_registry(org_id, llm_policy="never")
-        query_latencies: list[float] = []
-        cross_latencies: list[float] = []
-        passed = 0
-        cross_passed = 0
-        cross_total = 0
-        details: list[dict[str, Any]] = []
+            planner = AutoPlanner.from_registry(org_id, llm_policy="never")
+            query_latencies: list[float] = []
+            cross_latencies: list[float] = []
+            passed = 0
+            cross_passed = 0
+            cross_total = 0
+            details: list[dict[str, Any]] = []
 
-        for case in cases:
-            _ensure_case_tables(planner, case)
-            expected, expected_meta = _expected_result(case, planner.tables)
-            join_path = None
-            if case.edges:
-                join_path = JoinPathSpec(
-                    base_source=case.source_name,
-                    group_source=case.group_source,
-                    edges=[
-                        JoinEdgeSpec(
-                            left_source=left_source,
-                            left_key=left_key,
-                            right_source=right_source,
-                            right_key=right_key,
-                            allow_many_to_many=True,
-                        )
-                        for left_source, left_key, right_source, right_key in case.edges
-                    ],
-                    reject_on_fanout=False,
-                    reject_on_ambiguity=True,
+            for case in cases:
+                _ensure_case_tables(planner, case)
+                expected, expected_meta = _expected_result(case, planner.tables)
+                join_path = None
+                if case.edges:
+                    join_path = JoinPathSpec(
+                        base_source=case.source_name,
+                        group_source=case.group_source,
+                        edges=[
+                            JoinEdgeSpec(
+                                left_source=left_source,
+                                left_key=left_key,
+                                right_source=right_source,
+                                right_key=right_key,
+                                allow_many_to_many=True,
+                            )
+                            for left_source, left_key, right_source, right_key in case.edges
+                        ],
+                        reject_on_fanout=False,
+                        reject_on_ambiguity=True,
+                    )
+
+                request = QueryRequest(
+                    source_name=case.source_name,
+                    metric_column=case.metric_column,
+                    group_column=case.group_column,
+                    join_path=join_path,
+                    aggregation=case.aggregation,
+                    limit=None,
+                    order="desc",
                 )
 
-            request = QueryRequest(
-                source_name=case.source_name,
-                metric_column=case.metric_column,
-                group_column=case.group_column,
-                join_path=join_path,
-                aggregation=case.aggregation,
-                limit=None,
-                order="desc",
-            )
+                t0 = time.perf_counter()
+                response = await query_sources(request, auth=auth)
+                elapsed_ms = (time.perf_counter() - t0) * 1000
+                query_latencies.append(elapsed_ms)
+                if case.edges:
+                    cross_latencies.append(elapsed_ms)
+                    cross_total += 1
 
-            t0 = time.perf_counter()
-            response = await query_sources(request, auth=auth)
-            elapsed_ms = (time.perf_counter() - t0) * 1000
-            query_latencies.append(elapsed_ms)
-            if case.edges:
-                cross_latencies.append(elapsed_ms)
-                cross_total += 1
+                actual = _normalize_result(response.result)
+                expected_norm = _normalize_result(expected)
+                ok = actual == expected_norm
+                passed += int(ok)
+                cross_passed += int(ok and bool(case.edges))
 
-            actual = _normalize_result(response.result)
-            expected_norm = _normalize_result(expected)
-            ok = actual == expected_norm
-            passed += int(ok)
-            cross_passed += int(ok and bool(case.edges))
+                details.append(
+                    {
+                        "label": case.label,
+                        "description": case.description,
+                        "cross_source": bool(case.edges),
+                        "ok": ok,
+                        "latency_ms": round(elapsed_ms, 3),
+                        "row_count": response.row_count,
+                        "matched_rows_expected": expected_meta["matched_rows"],
+                        "conflicting_group_keys": expected_meta["conflicts"],
+                        "actual_result": actual,
+                        "expected_result": expected_norm,
+                        "plan_tail": response.plan[-5:],
+                    }
+                )
 
-            details.append({
-                "label": case.label,
-                "description": case.description,
-                "cross_source": bool(case.edges),
-                "ok": ok,
-                "latency_ms": round(elapsed_ms, 3),
-                "row_count": response.row_count,
-                "matched_rows_expected": expected_meta["matched_rows"],
-                "conflicting_group_keys": expected_meta["conflicts"],
-                "actual_result": actual,
-                "expected_result": expected_norm,
-                "plan_tail": response.plan[-5:],
-            })
-
-        return {
-            "benchmark": "uploaded_csv_exact_query_benchmark",
-            "sources": list(SOURCE_FILES.keys()),
-            "queries": len(cases),
-            "cross_source_queries": cross_total,
-            "query_accuracy": round(passed / len(cases), 4),
-            "cross_source_accuracy": round(cross_passed / max(cross_total, 1), 4),
-            "avg_register_ms": round(sum(register_latencies) / len(register_latencies), 3),
-            "avg_query_ms": round(sum(query_latencies) / len(query_latencies), 3),
-            "avg_cross_query_ms": round(sum(cross_latencies) / max(len(cross_latencies), 1), 3),
-            "max_query_ms": round(max(query_latencies), 3),
-            "details": details,
-        }
+            return {
+                "benchmark": "uploaded_csv_exact_query_benchmark",
+                "sources": list(SOURCE_FILES.keys()),
+                "queries": len(cases),
+                "cross_source_queries": cross_total,
+                "query_accuracy": round(passed / len(cases), 4),
+                "cross_source_accuracy": round(cross_passed / max(cross_total, 1), 4),
+                "avg_register_ms": round(sum(register_latencies) / len(register_latencies), 3),
+                "avg_query_ms": round(sum(query_latencies) / len(query_latencies), 3),
+                "avg_cross_query_ms": round(sum(cross_latencies) / max(len(cross_latencies), 1), 3),
+                "max_query_ms": round(max(query_latencies), 3),
+                "mojo_runtime_mode": mojo_runtime_mode,
+                "details": details,
+            }
+        finally:
+            await _teardown_mojo_runtime()
 
 
 def main() -> None:
@@ -470,16 +519,22 @@ def main() -> None:
 
     print("\nUploaded CSV Exact Query Benchmark")
     print("=" * 72)
-    print(json.dumps({
-        "queries": summary["queries"],
-        "cross_source_queries": summary["cross_source_queries"],
-        "query_accuracy": summary["query_accuracy"],
-        "cross_source_accuracy": summary["cross_source_accuracy"],
-        "avg_register_ms": summary["avg_register_ms"],
-        "avg_query_ms": summary["avg_query_ms"],
-        "avg_cross_query_ms": summary["avg_cross_query_ms"],
-        "max_query_ms": summary["max_query_ms"],
-    }, indent=2))
+    print(
+        json.dumps(
+            {
+                "queries": summary["queries"],
+                "cross_source_queries": summary["cross_source_queries"],
+                "query_accuracy": summary["query_accuracy"],
+                "cross_source_accuracy": summary["cross_source_accuracy"],
+                "avg_register_ms": summary["avg_register_ms"],
+                "avg_query_ms": summary["avg_query_ms"],
+                "avg_cross_query_ms": summary["avg_cross_query_ms"],
+                "max_query_ms": summary["max_query_ms"],
+                "mojo_runtime_mode": summary["mojo_runtime_mode"],
+            },
+            indent=2,
+        )
+    )
     print()
     for item in summary["details"]:
         status = "PASS" if item["ok"] else "FAIL"

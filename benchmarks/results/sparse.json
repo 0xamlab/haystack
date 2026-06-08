@@ -2,19 +2,24 @@
   "lib": "sparse",
   "status": "ok",
   "n_functions": 1,
-  "n_compared": 1,
-  "overall_speedup_x": 0.64,
-  "total_py_ns": 2162.29,
-  "total_mojo_ns": 3358.9,
-  "elapsed_s": 5.85,
+  "n_compared": 0,
+  "n_timed": 1,
+  "overall_speedup_x": 5.72,
+  "total_py_ns": 7725.62,
+  "total_mojo_ns": 1349.9,
+  "elapsed_s": 5.01,
   "n_iterations": 10000,
+  "mojo_error": null,
   "functions": [
     {
       "function": "sparse_from_dense",
-      "py_ns": 2162.292,
-      "mojo_ns": 3358.9,
-      "speedup_x": 0.64,
+      "py_ns": 7725.625,
+      "mojo_ns": 1349.9,
+      "speedup_x": 5.72,
       "py_result": null,
+      "py_summary": "obj:SparseMatrixCOO:888609212",
+      "mojo_summary": null,
+      "result_match": null,
       "py_error": null
     }
   ]

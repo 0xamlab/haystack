@@ -2,6 +2,116 @@
 from std.math import isnan, isinf
 from ultrasonics import acoustic_impedance, reflection_coefficient, attenuation_loss, doppler_frequency_shift, pulse_repetition_frequency, axial_resolution, lateral_resolution, acoustic_pressure_spl, ultrasound_power, thermal_index
 from std.time import perf_counter_ns
+fn _summary_hash_string(value: String) -> Int:
+    var h = 7
+    var bytes = value.as_bytes()
+    for i in range(len(bytes)):
+        h = (h * 131 + Int(bytes[i])) % 2147483647
+    return h
+
+fn _summary_float64(value: Float64) -> String:
+    if isnan(value): return "float:nan"
+    if isinf(value): return "float:inf" if value > 0.0 else "float:-inf"
+    return "float:" + String(value)
+
+fn _summary_float64_rounded6(value: Float64) -> String:
+    if isnan(value): return "float:nan"
+    if isinf(value): return "float:inf" if value > 0.0 else "float:-inf"
+    var scaled = value * 1000000.0
+    var rounded = Float64(Int(scaled + (0.5 if scaled >= 0.0 else -0.5))) / 1000000.0
+    return "float:" + String(rounded)
+
+fn _summary_float32(value: Float32) -> String:
+    return _summary_float64(Float64(value))
+
+fn _summary_int(value: Int) -> String:
+    return "int:" + String(value)
+
+fn _summary_uint8(value: UInt8) -> String:
+    return "int:" + String(value)
+
+fn _summary_uint16(value: UInt16) -> String:
+    return "int:" + String(value)
+
+fn _summary_uint32(value: UInt32) -> String:
+    return "int:" + String(value)
+
+fn _summary_uint64(value: UInt64) -> String:
+    return "int:" + String(value)
+
+fn _summary_bool(value: Bool) -> String:
+    return "bool:1" if value else "bool:0"
+
+fn _summary_string(value: String) -> String:
+    return "str:" + String(len(value.as_bytes())) + ":" + String(_summary_hash_string(value))
+
+fn _summary_list_float64(value: List[Float64]) -> String:
+    var joined = String("")
+    for i in range(len(value)):
+        if i > 0: joined += "|"
+        joined += _summary_float64(value[i])
+    return "list:" + String(len(value)) + ":" + String(_summary_hash_string(joined))
+
+fn _summary_list_float32(value: List[Float32]) -> String:
+    var joined = String("")
+    for i in range(len(value)):
+        if i > 0: joined += "|"
+        joined += _summary_float32(value[i])
+    return "list:" + String(len(value)) + ":" + String(_summary_hash_string(joined))
+
+fn _summary_list_int(value: List[Int]) -> String:
+    var joined = String("")
+    for i in range(len(value)):
+        if i > 0: joined += "|"
+        joined += _summary_int(value[i])
+    return "list:" + String(len(value)) + ":" + String(_summary_hash_string(joined))
+
+fn _summary_list_bool(value: List[Bool]) -> String:
+    var joined = String("")
+    for i in range(len(value)):
+        if i > 0: joined += "|"
+        joined += _summary_bool(value[i])
+    return "list:" + String(len(value)) + ":" + String(_summary_hash_string(joined))
+
+fn _summary_list_string(value: List[String]) -> String:
+    var joined = String("")
+    for i in range(len(value)):
+        if i > 0: joined += "|"
+        joined += _summary_string(value[i])
+    return "list:" + String(len(value)) + ":" + String(_summary_hash_string(joined))
+
+fn _summary_list_list_float64(value: List[List[Float64]]) -> String:
+    var joined = String("")
+    for i in range(len(value)):
+        if i > 0: joined += "|"
+        joined += _summary_list_float64(value[i])
+    return "list:" + String(len(value)) + ":" + String(_summary_hash_string(joined))
+
+fn _summary_list_list_float64_rounded6(value: List[List[Float64]]) -> String:
+    var joined = String("")
+    for i in range(len(value)):
+        if i > 0: joined += "|"
+        var row_joined = String("")
+        for j in range(len(value[i])):
+            if j > 0: row_joined += "|"
+            row_joined += _summary_float64_rounded6(value[i][j])
+        joined += "list:" + String(len(value[i])) + ":" + String(_summary_hash_string(row_joined))
+    return "list:" + String(len(value)) + ":" + String(_summary_hash_string(joined))
+
+fn _summary_list_list_int(value: List[List[Int]]) -> String:
+    var joined = String("")
+    for i in range(len(value)):
+        if i > 0: joined += "|"
+        joined += _summary_list_int(value[i])
+    return "list:" + String(len(value)) + ":" + String(_summary_hash_string(joined))
+
+fn _summary_list_list_string(value: List[List[String]]) -> String:
+    var joined = String("")
+    for i in range(len(value)):
+        if i > 0: joined += "|"
+        joined += _summary_list_string(value[i])
+    return "list:" + String(len(value)) + ":" + String(_summary_hash_string(joined))
+
 
 def main() raises:
     var _lf5 = List[Float64]()
@@ -30,6 +140,9 @@ def main() raises:
     var _t1_acoustic_impedance = perf_counter_ns()
     var _ns_acoustic_impedance = Float64(_t1_acoustic_impedance - _t0_acoustic_impedance) / Float64(N)
     print("MOJO_TIMING ultrasonics::acoustic_impedance", _ns_acoustic_impedance, _acc_acoustic_impedance)
+    var _result_acoustic_impedance = acoustic_impedance(0.5, 0.5)
+    var _summary_acoustic_impedance = _summary_float64(_result_acoustic_impedance)
+    print("MOJO_RESULT ultrasonics::acoustic_impedance", _summary_acoustic_impedance)
     var _acc_reflection_coefficient: Float64 = 0.0
     var _t0_reflection_coefficient = perf_counter_ns()
     for _ in range(N):
@@ -37,6 +150,9 @@ def main() raises:
     var _t1_reflection_coefficient = perf_counter_ns()
     var _ns_reflection_coefficient = Float64(_t1_reflection_coefficient - _t0_reflection_coefficient) / Float64(N)
     print("MOJO_TIMING ultrasonics::reflection_coefficient", _ns_reflection_coefficient, _acc_reflection_coefficient)
+    var _result_reflection_coefficient = reflection_coefficient(0.5, 0.5)
+    var _summary_reflection_coefficient = _summary_float64(_result_reflection_coefficient)
+    print("MOJO_RESULT ultrasonics::reflection_coefficient", _summary_reflection_coefficient)
     var _acc_attenuation_loss: Float64 = 0.0
     var _t0_attenuation_loss = perf_counter_ns()
     for _ in range(N):
@@ -44,6 +160,9 @@ def main() raises:
     var _t1_attenuation_loss = perf_counter_ns()
     var _ns_attenuation_loss = Float64(_t1_attenuation_loss - _t0_attenuation_loss) / Float64(N)
     print("MOJO_TIMING ultrasonics::attenuation_loss", _ns_attenuation_loss, _acc_attenuation_loss)
+    var _result_attenuation_loss = attenuation_loss(0.5, 0.5, 0.5)
+    var _summary_attenuation_loss = _summary_float64(_result_attenuation_loss)
+    print("MOJO_RESULT ultrasonics::attenuation_loss", _summary_attenuation_loss)
     var _acc_doppler_frequency_shift: Float64 = 0.0
     var _t0_doppler_frequency_shift = perf_counter_ns()
     for _ in range(N):
@@ -51,6 +170,9 @@ def main() raises:
     var _t1_doppler_frequency_shift = perf_counter_ns()
     var _ns_doppler_frequency_shift = Float64(_t1_doppler_frequency_shift - _t0_doppler_frequency_shift) / Float64(N)
     print("MOJO_TIMING ultrasonics::doppler_frequency_shift", _ns_doppler_frequency_shift, _acc_doppler_frequency_shift)
+    var _result_doppler_frequency_shift = doppler_frequency_shift(0.5, 0.5, 0.5, 0.5)
+    var _summary_doppler_frequency_shift = _summary_float64(_result_doppler_frequency_shift)
+    print("MOJO_RESULT ultrasonics::doppler_frequency_shift", _summary_doppler_frequency_shift)
     var _acc_pulse_repetition_frequency: Float64 = 0.0
     var _t0_pulse_repetition_frequency = perf_counter_ns()
     for _ in range(N):
@@ -58,6 +180,9 @@ def main() raises:
     var _t1_pulse_repetition_frequency = perf_counter_ns()
     var _ns_pulse_repetition_frequency = Float64(_t1_pulse_repetition_frequency - _t0_pulse_repetition_frequency) / Float64(N)
     print("MOJO_TIMING ultrasonics::pulse_repetition_frequency", _ns_pulse_repetition_frequency, _acc_pulse_repetition_frequency)
+    var _result_pulse_repetition_frequency = pulse_repetition_frequency(0.5, 0.5)
+    var _summary_pulse_repetition_frequency = _summary_float64(_result_pulse_repetition_frequency)
+    print("MOJO_RESULT ultrasonics::pulse_repetition_frequency", _summary_pulse_repetition_frequency)
     var _acc_axial_resolution: Float64 = 0.0
     var _t0_axial_resolution = perf_counter_ns()
     for _ in range(N):
@@ -65,6 +190,9 @@ def main() raises:
     var _t1_axial_resolution = perf_counter_ns()
     var _ns_axial_resolution = Float64(_t1_axial_resolution - _t0_axial_resolution) / Float64(N)
     print("MOJO_TIMING ultrasonics::axial_resolution", _ns_axial_resolution, _acc_axial_resolution)
+    var _result_axial_resolution = axial_resolution(0.5, 0.5)
+    var _summary_axial_resolution = _summary_float64(_result_axial_resolution)
+    print("MOJO_RESULT ultrasonics::axial_resolution", _summary_axial_resolution)
     var _acc_lateral_resolution: Float64 = 0.0
     var _t0_lateral_resolution = perf_counter_ns()
     for _ in range(N):
@@ -72,6 +200,9 @@ def main() raises:
     var _t1_lateral_resolution = perf_counter_ns()
     var _ns_lateral_resolution = Float64(_t1_lateral_resolution - _t0_lateral_resolution) / Float64(N)
     print("MOJO_TIMING ultrasonics::lateral_resolution", _ns_lateral_resolution, _acc_lateral_resolution)
+    var _result_lateral_resolution = lateral_resolution(0.5, 0.5, 0.5)
+    var _summary_lateral_resolution = _summary_float64(_result_lateral_resolution)
+    print("MOJO_RESULT ultrasonics::lateral_resolution", _summary_lateral_resolution)
     var _acc_acoustic_pressure_spl: Float64 = 0.0
     var _t0_acoustic_pressure_spl = perf_counter_ns()
     for _ in range(N):
@@ -79,6 +210,9 @@ def main() raises:
     var _t1_acoustic_pressure_spl = perf_counter_ns()
     var _ns_acoustic_pressure_spl = Float64(_t1_acoustic_pressure_spl - _t0_acoustic_pressure_spl) / Float64(N)
     print("MOJO_TIMING ultrasonics::acoustic_pressure_spl", _ns_acoustic_pressure_spl, _acc_acoustic_pressure_spl)
+    var _result_acoustic_pressure_spl = acoustic_pressure_spl(0.5)
+    var _summary_acoustic_pressure_spl = _summary_float64(_result_acoustic_pressure_spl)
+    print("MOJO_RESULT ultrasonics::acoustic_pressure_spl", _summary_acoustic_pressure_spl)
     var _acc_ultrasound_power: Float64 = 0.0
     var _t0_ultrasound_power = perf_counter_ns()
     for _ in range(N):
@@ -86,6 +220,9 @@ def main() raises:
     var _t1_ultrasound_power = perf_counter_ns()
     var _ns_ultrasound_power = Float64(_t1_ultrasound_power - _t0_ultrasound_power) / Float64(N)
     print("MOJO_TIMING ultrasonics::ultrasound_power", _ns_ultrasound_power, _acc_ultrasound_power)
+    var _result_ultrasound_power = ultrasound_power(0.5, 0.5)
+    var _summary_ultrasound_power = _summary_float64(_result_ultrasound_power)
+    print("MOJO_RESULT ultrasonics::ultrasound_power", _summary_ultrasound_power)
     var _acc_thermal_index: Float64 = 0.0
     var _t0_thermal_index = perf_counter_ns()
     for _ in range(N):
@@ -93,3 +230,6 @@ def main() raises:
     var _t1_thermal_index = perf_counter_ns()
     var _ns_thermal_index = Float64(_t1_thermal_index - _t0_thermal_index) / Float64(N)
     print("MOJO_TIMING ultrasonics::thermal_index", _ns_thermal_index, _acc_thermal_index)
+    var _result_thermal_index = thermal_index(0.5, 0.5, 0.5)
+    var _summary_thermal_index = _summary_float64(_result_thermal_index)
+    print("MOJO_RESULT ultrasonics::thermal_index", _summary_thermal_index)

@@ -118,7 +118,7 @@ def tile_size_for_smem(shared_mem_bytes, dtype_bytes, n_operands):
         return 16.0
     max_elements = shared_mem_bytes / (dtype_bytes * n_operands)
     tile = math.sqrt(max_elements)
-    t = float(Int64(tile))
+    t = float(int(tile))
 
     p = 1.0
     while p * 2.0 <= t:

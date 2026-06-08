@@ -6,10 +6,6 @@ try:
     from std.math import sqrt
 except Exception:
     pass
-try:
-    from std.math import abs as fabs
-except Exception:
-    pass
 
 def random_float64(lo=0.0, hi=1.0): return _rng.uniform(lo, hi)
 def random_si64(): return _rng.randint(-2**31, 2**31)
@@ -109,11 +105,74 @@ class Python:
     def import_module(name):
         import importlib; return importlib.import_module(name)
 
-def dot_product(a, b):
-    s = 0.0
+def _min_len(a, b):
     n = len(a)
     if len(b) < n:
         n = len(b)
+    return n
+
+
+
+def _cosine_similarity_with_query_mag(query, candidate, query_mag):
+    if query_mag <= 0.0:
+        return 0.0
+    dot = 0.0
+    cand_sq = 0.0
+    n = _min_len(query, candidate)
+    for i in range(n):
+        q = query[i]
+        c = candidate[i]
+        dot += q * c
+        cand_sq += c * c
+    if cand_sq <= 0.0:
+        return 0.0
+    return dot / (query_mag * math.sqrt(cand_sq))
+
+
+
+def _insert_topk(best_scores, best_indices, candidate_score, candidate_index, max_count):
+    if max_count <= 0:
+        return
+
+    if len(best_scores) < max_count:
+        best_scores.append(candidate_score)
+        best_indices.append(candidate_index)
+        pos = len(best_scores) - 1
+        while pos > 0 and best_scores[pos] > best_scores[pos - 1]:
+            tmp_score = best_scores[pos - 1]
+            best_scores[pos - 1] = best_scores[pos]
+            best_scores[pos] = tmp_score
+            tmp_idx = best_indices[pos - 1]
+            best_indices[pos - 1] = best_indices[pos]
+            best_indices[pos] = tmp_idx
+            pos -= 1
+        return
+
+    tail = len(best_scores) - 1
+    if candidate_score <= best_scores[tail]:
+        return
+
+    best_scores[tail] = candidate_score
+    best_indices[tail] = candidate_index
+
+    pos = tail
+    while pos > 0 and best_scores[pos] > best_scores[pos - 1]:
+        tmp_score = best_scores[pos - 1]
+        best_scores[pos - 1] = best_scores[pos]
+        best_scores[pos] = tmp_score
+        tmp_idx = best_indices[pos - 1]
+        best_indices[pos - 1] = best_indices[pos]
+        best_indices[pos] = tmp_idx
+        pos -= 1
+
+
+
+
+
+
+def dot_product(a, b):
+    s = 0.0
+    n = _min_len(a, b)
     for i in range(n):
         s += a[i] * b[i]
     return s
@@ -135,12 +194,19 @@ def vector_magnitude(v):
 
 
 def cosine_similarity(a, b):
-    d = dot_product(a, b)
-    ma = vector_magnitude(a)
-    mb = vector_magnitude(b)
-    if ma == 0.0 or mb == 0.0:
+    dot = 0.0
+    sq_a = 0.0
+    sq_b = 0.0
+    n = _min_len(a, b)
+    for i in range(n):
+        av = a[i]
+        bv = b[i]
+        dot += av * bv
+        sq_a += av * av
+        sq_b += bv * bv
+    if sq_a <= 0.0 or sq_b <= 0.0:
         return 0.0
-    return d / (ma * mb)
+    return dot / (math.sqrt(sq_a) * math.sqrt(sq_b))
 
 
 
@@ -149,9 +215,7 @@ def cosine_similarity(a, b):
 
 def euclidean_distance(a, b):
     s = 0.0
-    n = len(a)
-    if len(b) < n:
-        n = len(b)
+    n = _min_len(a, b)
     for i in range(n):
         d = a[i] - b[i]
         s += d * d
@@ -164,9 +228,7 @@ def euclidean_distance(a, b):
 
 def manhattan_distance(a, b):
     s = 0.0
-    n = len(a)
-    if len(b) < n:
-        n = len(b)
+    n = _min_len(a, b)
     for i in range(n):
         d = a[i] - b[i]
         if d < 0.0:
@@ -180,14 +242,16 @@ def manhattan_distance(a, b):
 
 
 def normalize_vector(v):
+    n = len(v)
     mag = vector_magnitude(v)
     result = []
     if mag == 0.0:
-        for i in range(len(v)):
+        for i in range(n):
             result.append(0.0)
         return result
-    for i in range(len(v)):
-        result.append(v[i] / mag)
+    inv_mag = 1.0 / mag
+    for i in range(n):
+        result.append(v[i] * inv_mag)
     return result
 
 
@@ -199,15 +263,14 @@ def centroid(vectors):
     n = len(vectors)
     if n == 0:
         return []
-    dim = len(vectors[0])
-    result = []
-    for d in range(dim):
-        result.append(0.0)
-    for i in range(n):
+    result = vectors[0].copy()
+    dim = len(result)
+    for i in range(1, n):
         for d in range(dim):
             result[d] += vectors[i][d]
+    inv_n = 1.0 / float(n)
     for d in range(dim):
-        result[d] /= float(n)
+        result[d] *= inv_n
     return result
 
 
@@ -216,10 +279,14 @@ def centroid(vectors):
 
 
 def nearest_neighbor(query, candidates):
+    n_candidates = len(candidates)
+    if n_candidates == 0:
+        return 0
+    query_mag = vector_magnitude(query)
     best_idx = 0
-    best_sim = -2.0
-    for i in range(len(candidates)):
-        sim = cosine_similarity(query, candidates[i])
+    best_sim = _cosine_similarity_with_query_mag(query, candidates[0], query_mag)
+    for i in range(1, n_candidates):
+        sim = _cosine_similarity_with_query_mag(query, candidates[i], query_mag)
         if sim > best_sim:
             best_sim = sim
             best_idx = i
@@ -231,29 +298,40 @@ def nearest_neighbor(query, candidates):
 
 
 def k_nearest_neighbors(query, candidates, k):
-
-    sims = []
-    for i in range(len(candidates)):
-        sims.append(cosine_similarity(query, candidates[i]))
-
-    selected = []
-    for i in range(len(candidates)):
-        selected.append(False)
-    result = []
     count = k
-    if count > len(candidates):
-        count = len(candidates)
-    for _ in range(count):
-        best_idx = -1
-        best_sim = -2.0
-        for j in range(len(candidates)):
-            if not selected[j] and sims[j] > best_sim:
-                best_sim = sims[j]
-                best_idx = j
-        if best_idx >= 0:
-            result.append(best_idx)
-            selected[best_idx] = True
-    return result
+    n_candidates = len(candidates)
+    if count <= 0 or n_candidates == 0:
+        return []
+    if count > n_candidates:
+        count = n_candidates
+    query_mag = vector_magnitude(query)
+
+    if count == n_candidates:
+        all_scores = []
+        all_indices = []
+        for i in range(n_candidates):
+            all_scores.append(
+                _cosine_similarity_with_query_mag(query, candidates[i], query_mag)
+            )
+            all_indices.append(i)
+        for i in range(1, count):
+            key_score = all_scores[i]
+            key_idx = all_indices[i]
+            j = i - 1
+            while j >= 0 and all_scores[j] < key_score:
+                all_scores[j + 1] = all_scores[j]
+                all_indices[j + 1] = all_indices[j]
+                j -= 1
+            all_scores[j + 1] = key_score
+            all_indices[j + 1] = key_idx
+        return all_indices
+
+    best_scores = []
+    best_indices = []
+    for i in range(n_candidates):
+        sim = _cosine_similarity_with_query_mag(query, candidates[i], query_mag)
+        _insert_topk(best_scores, best_indices, sim, i, count)
+    return best_indices
 
 
 
@@ -262,12 +340,34 @@ def k_nearest_neighbors(query, candidates, k):
 
 def cosine_similarity_matrix(vectors):
     n = len(vectors)
-    matrix = []
+    norms = []
     for i in range(n):
-        row = []
-        for j in range(n):
-            row.append(cosine_similarity(vectors[i], vectors[j]))
-        matrix.append(row)
+        norms.append(vector_magnitude(vectors[i]))
+
+    zero_row = []
+    for _ in range(n):
+        zero_row.append(0.0)
+
+    matrix = []
+    for _ in range(n):
+        matrix.append(zero_row.copy())
+
+    for i in range(n):
+        norm_i = norms[i]
+        if norm_i <= 0.0:
+            continue
+        matrix[i][i] = 1.0
+        for j in range(i + 1, n):
+            norm_j = norms[j]
+            if norm_j <= 0.0:
+                continue
+            dot = 0.0
+            limit = _min_len(vectors[i], vectors[j])
+            for k in range(limit):
+                dot += vectors[i][k] * vectors[j][k]
+            sim = dot / (norm_i * norm_j)
+            matrix[i][j] = sim
+            matrix[j][i] = sim
     return matrix
 
 
@@ -276,9 +376,7 @@ def cosine_similarity_matrix(vectors):
 
 
 def vector_add(a, b):
-    n = len(a)
-    if len(b) < n:
-        n = len(b)
+    n = _min_len(a, b)
     result = []
     for i in range(n):
         result.append(a[i] + b[i])
@@ -290,7 +388,8 @@ def vector_add(a, b):
 
 
 def vector_scale(v, s):
+    n = len(v)
     result = []
-    for i in range(len(v)):
+    for i in range(n):
         result.append(v[i] * s)
     return result

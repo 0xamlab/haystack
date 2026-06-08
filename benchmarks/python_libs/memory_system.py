@@ -126,7 +126,7 @@ def pool_fragmentation_ratio(allocated_bytes, used_bytes):
 def slab_alloc_waste(object_size, slab_size):
     if object_size <= 0.0:
         return 0.0
-    n_objects = float(Int64(slab_size / object_size))
+    n_objects = float(int(slab_size / object_size))
     return slab_size - n_objects * object_size
 
 
@@ -134,7 +134,7 @@ def slab_alloc_waste(object_size, slab_size):
 def cache_line_padding_bytes(struct_size, cache_line):
     if cache_line <= 0.0:
         return 0.0
-    remainder = struct_size - float(Int64(struct_size / cache_line)) * cache_line
+    remainder = struct_size - float(int(struct_size / cache_line)) * cache_line
     if remainder == 0.0:
         return 0.0
     return cache_line - remainder

@@ -46,10 +46,29 @@ try:
     from conv import parse_float64
 except Exception:
     pass
+try:
+    from conv import parse_int
+except Exception:
+    pass
+try:
+    from vector_kernels.table import CandidateTable
+except Exception:
+    pass
+try:
+    from vector_kernels.table import build_query
+except Exception:
+    pass
 
 VEC_BUCKETS = 64    # bigram hash buckets
-MAX_CANDS = 256   # hard cap on candidates per call
+MAX_CANDS = 1024  # hard cap on candidates per call
 AMBIG_GAP = 0.08  # gap below which top-2 are "ambiguous"
+SOURCE_UNKNOWN_ID = 0
+SOURCE_POS_ID = 1
+SOURCE_BACKLOG_ID = 2
+SOURCE_INVOICE_ID = 3
+ROLE_OTHER_ID = 0
+ROLE_UNIT_ID = 1
+ROLE_DERIVED_ID = 2
 
 class RankResult:
     def __init__(self, *args, **kwargs):
@@ -69,6 +88,179 @@ class RankResult:
         self.prior_boost = _v6 if _v6 is not None else 0.0
     def __repr__(self):
         return f'RankResult({vars(self)})'
+
+class ResidentRankSlot:
+    def __init__(self, *args, **kwargs):
+        _v0 = args[0] if 0 < len(args) else kwargs.get('column_id')
+        self.column_id = _v0 if _v0 is not None else 0
+        _v1 = args[1] if 1 < len(args) else kwargs.get('score')
+        self.score = _v1 if _v1 is not None else 0.0
+        _v2 = args[2] if 2 < len(args) else kwargs.get('name_sim')
+        self.name_sim = _v2 if _v2 is not None else 0.0
+        _v3 = args[3] if 3 < len(args) else kwargs.get('type_boost')
+        self.type_boost = _v3 if _v3 is not None else 0.0
+    def __repr__(self):
+        return f'ResidentRankSlot({vars(self)})'
+
+class ResidentColumnRankState:
+    def __init__(self, *args, **kwargs):
+        _v0 = args[0] if 0 < len(args) else kwargs.get('initialized')
+        self.initialized = _v0 if _v0 is not None else False
+        _v1 = args[1] if 1 < len(args) else kwargs.get('table')
+        self.table = _v1 if _v1 is not None else None
+        _v2 = args[2] if 2 < len(args) else kwargs.get('source_names')
+        self.source_names = _v2 if _v2 is not None else []
+        _v3 = args[3] if 3 < len(args) else kwargs.get('column_names')
+        self.column_names = _v3 if _v3 is not None else []
+    def __repr__(self):
+        return f'ResidentColumnRankState({vars(self)})'
+    def _reset(self):
+        self.initialized = False
+        self.table = CandidateTable()
+        self.source_names = []
+        self.column_names = []
+    
+    def init_from_json(self, raw):
+        self._reset()
+        entries_arr = json_get_array(raw, "entries")
+        n_entries = json_array_len(entries_arr)
+        if n_entries == 0:
+            return '{"status":"error","error":"no entries"}'
+    
+        for idx in range(n_entries):
+            entry_json = json_array_get(entries_arr, idx)
+            source_name = json_get_string(entry_json, "source")
+            column_name = json_get_string(entry_json, "column")
+            source_id = json_get_int(entry_json, "source_id", 0)
+            role_id = json_get_int(entry_json, "role_id", 0)
+            if len(column_name) == 0:
+                continue
+            self.table.add_column(
+                int(idx),
+                int(source_id),
+                int(role_id),
+                column_name,
+            )
+            self.source_names.append(source_name)
+            self.column_names.append(column_name)
+        if self.table.size() == 0:
+            return '{"status":"error","error":"no usable entries"}'
+        self.initialized = True
+        return '{"status":"ok","count":' + str(self.table.size()) + '}'
+    
+    def _rank_subset(self, hint, query_src, query_role, top_k, candidate_ids_arr):
+        if not self.initialized:
+            return '{"error":"resident column rank not initialized"}'
+    
+        req = build_query(
+            hint,
+            query_src,
+            query_role,
+            int(top_k if top_k > 0 and top_k < 255 else 5),
+        )
+        ids_len = json_array_len(candidate_ids_arr)
+        if ids_len == 0:
+            return '{"ranked":[],"ambiguous":false,"gap":0.0,"error":"no candidates"}'
+    
+        slots = []
+        for i in range(ids_len):
+            raw_id = json_array_get(candidate_ids_arr, i)
+            col_idx = parse_int(raw_id)
+            if col_idx < 0 or col_idx >= self.table.size():
+                continue
+    
+            c_id = self.table.entries[col_idx].column_id
+            c_src = self.table.entries[col_idx].source_id
+            c_rol = self.table.entries[col_idx].role_id
+            c_ni = self.table.entries[col_idx].norm_inv
+    
+            nsim = _cosine_resident(
+                req.query_vec.data,
+                self.table.entries[col_idx].vec.data,
+                req.query_norm_inv,
+                c_ni,
+            )
+            tb = _type_boost_ids(query_role, c_rol)
+            pb = _prior_boost_ids(query_src, c_src, c_rol)
+    
+            fs = 0.55 * nsim + tb + pb
+            if fs > 1.0:
+                fs = 1.0
+            elif fs < 0.0:
+                fs = 0.0
+    
+            slot = ResidentRankSlot()
+            slot.column_id = c_id
+            slot.score = fs
+            slot.name_sim = nsim
+            slot.type_boost = tb + pb
+            slots.append(slot)
+        if len(slots) == 0:
+            return '{"ranked":[],"ambiguous":false,"gap":0.0}'
+    
+        _sort_resident_slots(slots)
+        n = len(slots)
+        k = top_k if top_k > 0 and top_k < n else n
+        gap = 0.0
+        ambig = False
+        if n >= 2:
+            gap = slots[0].score - slots[1].score
+            ambig = gap < AMBIG_GAP
+    
+        out = str('{"ranked":[')
+        for i in range(k):
+            if i > 0:
+                out += ","
+            col_idx = int(slots[i].column_id)
+            out += '{"id":' + str(col_idx) + ','
+            out += '"score":' + _fmt_float(slots[i].score) + ','
+            out += '"name_sim":' + _fmt_float(slots[i].name_sim) + ','
+            out += '"type_boost":' + _fmt_float(slots[i].type_boost) + ','
+            out += '"confidence_gap":' + _fmt_float(gap if i == 0 else 0.0) + '}'
+        out += '],'
+        out += '"ambiguous":' + ("true" if ambig else "false") + ','
+        out += '"gap":' + _fmt_float(gap) + '}'
+        return out
+    
+    def run_query(self, raw):
+        hint = json_get_string(raw, "hint")
+        query_src = json_get_int(raw, "source_id", 0)
+        query_role = json_get_int(raw, "role_id", 0)
+        top_k = json_get_int(raw, "top_k", 5)
+        candidate_ids_arr = json_get_array(raw, "candidate_ids")
+        return self._rank_subset(
+            hint,
+            int(query_src),
+            int(query_role),
+            top_k,
+            candidate_ids_arr,
+        )
+    
+    def run_batch(self, raw):
+        requests_arr = json_get_array(raw, "requests")
+        n_requests = json_array_len(requests_arr)
+        out = str('{"results":[')
+        for i in range(n_requests):
+            if i > 0:
+                out += ","
+            request_json = json_array_get(requests_arr, i)
+            hint = json_get_string(request_json, "hint")
+            query_src = json_get_int(request_json, "source_id", 0)
+            query_role = json_get_int(request_json, "role_id", 0)
+            top_k = json_get_int(request_json, "top_k", 5)
+            candidate_ids_arr = json_get_array(request_json, "candidate_ids")
+            out += self._rank_subset(
+                hint,
+                int(query_src),
+                int(query_role),
+                top_k,
+                candidate_ids_arr,
+            )
+        out += ']}'
+        return out
+    
+    
+    
 
 def random_float64(lo=0.0, hi=1.0): return _rng.uniform(lo, hi)
 def random_si64(): return _rng.randint(-2**31, 2**31)
@@ -285,8 +477,34 @@ def _token_jaccard(a_toks, b_toks):
 
 
 
-def _role_boost(role, hint_toks):
+def _role_boost(role, hint_toks, query_role):
     n = len(hint_toks)
+    role_norm = to_lower(role)
+    query_role_norm = to_lower(query_role)
+    BOOST = 0.12
+
+    if len(query_role_norm) > 0:
+        query_wants_unit = (
+            query_role_norm == "unit_measure" or query_role_norm == "ratio"
+        )
+        query_wants_derived = (
+            query_role_norm == "derived_measure"
+            or query_role_norm == "base_measure"
+        )
+        role_is_unit = role_norm == "unit_measure" or role_norm == "ratio"
+        role_is_derived = (
+            role_norm == "derived_measure" or role_norm == "base_measure"
+        )
+
+        if query_wants_unit and role_is_unit:
+            return BOOST
+        if query_wants_derived and role_is_derived:
+            return BOOST
+        if query_wants_unit and role_is_derived:
+            return -0.08
+        if query_wants_derived and role_is_unit:
+            return -0.08
+        return 0.0
 
     want_unit = False
     want_derived = False
@@ -304,21 +522,19 @@ def _role_boost(role, hint_toks):
         if t == "ratio" or t == "rate" or t == "pct" or t == "margin" or t == "fill":
             want_ratio = True
 
-    BOOST = 0.12
-
-    if role == "unit_measure" and want_unit:
+    if role_norm == "unit_measure" and want_unit:
         return BOOST
-    if role == "derived_measure" and want_derived:
+    if role_norm == "derived_measure" and want_derived:
         return BOOST
-    if role == "base_measure" and want_base:
+    if role_norm == "base_measure" and want_base:
         return BOOST
-    if role == "ratio" and want_ratio:
+    if role_norm == "ratio" and want_ratio:
         return BOOST
 
 
-    if want_unit and (role == "derived_measure" or role == "base_measure"):
+    if want_unit and (role_norm == "derived_measure" or role_norm == "base_measure"):
         return -0.08
-    if want_derived and (role == "unit_measure"):
+    if want_derived and role_norm == "unit_measure":
         return -0.08
 
     return 0.0
@@ -426,6 +642,75 @@ def _build_output(sorted, top_k):
 
 
 
+def _type_boost_ids(query_role, cand_role):
+    if query_role == ROLE_OTHER_ID:
+        return 0.0
+    if cand_role == query_role:
+        return 0.15
+    if cand_role != ROLE_OTHER_ID:
+        return -0.08
+    return 0.0
+
+
+
+def _prior_boost_ids(query_src, cand_src, cand_role):
+    if query_src == SOURCE_UNKNOWN_ID:
+        return 0.0
+    if cand_src != SOURCE_UNKNOWN_ID and cand_src != query_src:
+        return 0.0
+    if query_src == SOURCE_POS_ID and cand_role == ROLE_UNIT_ID:
+        return 0.10
+    if query_src == SOURCE_BACKLOG_ID and cand_role == ROLE_DERIVED_ID:
+        return 0.10
+    if query_src == SOURCE_INVOICE_ID and cand_role == ROLE_DERIVED_ID:
+        return 0.10
+    return 0.0
+
+
+
+def _dot64_f32(a, b):
+    dot = float(0.0)
+    for i in range(len(a)):
+        dot += float(a[i]) * float(b[i])
+    return dot
+
+
+
+def _cosine_resident(qv, cv, q_ni, c_ni):
+    if q_ni == 0.0 or c_ni == 0.0:
+        return 0.0
+    raw = _dot64_f32(qv, cv) * float(q_ni) * float(c_ni)
+    if raw > 1.0:
+        return 1.0
+    if raw < 0.0:
+        return 0.0
+    return raw
+
+
+
+def _sort_resident_slots(slots):
+    n = len(slots)
+    for i in range(1, n):
+        ks = slots[i].score
+        kid = slots[i].column_id
+        kns = slots[i].name_sim
+        ktb = slots[i].type_boost
+        j = i - 1
+        while j >= 0 and slots[j].score < ks:
+            tmp = ResidentRankSlot()
+            tmp.column_id = slots[j].column_id
+            tmp.score = slots[j].score
+            tmp.name_sim = slots[j].name_sim
+            tmp.type_boost = slots[j].type_boost
+            slots[j + 1] = tmp
+            j -= 1
+        ins = ResidentRankSlot()
+        ins.column_id = kid
+        ins.score = ks
+        ins.name_sim = kns
+        ins.type_boost = ktb
+        slots[j + 1] = ins
+
 
 
 def run_column_rank(raw):
@@ -465,6 +750,7 @@ def run_column_rank(raw):
 
     ctx_json = json_get_object(raw, "context")
     source_type = json_get_string(ctx_json, "source_type")
+    query_role = json_get_string(ctx_json, "query_role")
 
 
     cands_arr = json_get_array(raw, "candidates")
@@ -498,7 +784,7 @@ def run_column_rank(raw):
         col_toks = _tokens(col_raw)
         token_sim = _token_jaccard(hint_toks, col_toks)
 
-        tb = _role_boost(role, hint_toks)
+        tb = _role_boost(role, hint_toks, query_role)
         pb = _prior_boost(source_type, _normalize(col_raw))
 
 

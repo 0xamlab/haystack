@@ -143,7 +143,7 @@ def expert_capacity(n_tokens, n_experts, capacity_factor):
     if n_experts <= 0.0:
         return n_tokens
     cap = capacity_factor * n_tokens / n_experts
-    return float(Int64(cap + 1.0))
+    return float(int(cap + 1.0))
 
 
 

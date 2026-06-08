@@ -136,7 +136,7 @@ def kv_cache_utilization(cached_tokens, max_tokens):
 def paged_attention_block_count(seq_len, block_size):
     if block_size <= 0.0:
         return seq_len
-    return float(Int64((seq_len + block_size - 1.0) / block_size))
+    return float(int((seq_len + block_size - 1.0) / block_size))
 
 
 
@@ -171,7 +171,7 @@ def radix_cache_shared_prefix_len(prefix_a_len, prefix_b_len, match_len):
 def kv_quantization_error(value, scale, zero_point):
     if scale <= 0.0:
         return 0.0
-    q = float(Int64((value / scale + zero_point) + 0.5))
+    q = float(int((value / scale + zero_point) + 0.5))
     if q > 127.0:
         q = 127.0
     if q < -128.0:

@@ -2,19 +2,24 @@
   "lib": "database",
   "status": "ok",
   "n_functions": 1,
-  "n_compared": 1,
-  "overall_speedup_x": 1.01,
-  "total_py_ns": 713.93,
-  "total_mojo_ns": 709.9,
-  "elapsed_s": 1.46,
+  "n_compared": 0,
+  "n_timed": 1,
+  "overall_speedup_x": 1.04,
+  "total_py_ns": 945.02,
+  "total_mojo_ns": 910.8,
+  "elapsed_s": 5.81,
   "n_iterations": 10000,
+  "mojo_error": null,
   "functions": [
     {
       "function": "table_create",
-      "py_ns": 713.929,
-      "mojo_ns": 709.9,
-      "speedup_x": 1.01,
+      "py_ns": 945.021,
+      "mojo_ns": 910.8,
+      "speedup_x": 1.04,
       "py_result": null,
+      "py_summary": "obj:Table:892089934",
+      "mojo_summary": null,
+      "result_match": null,
       "py_error": null
     }
   ]
