@@ -33,8 +33,19 @@ Usage:
   )
 
   # Scale to cloud when you need it
-  r = simulate.risk(..., mode="cloud", api_key="de_live_...")
+  import os
+
+  api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
+  if not api_key:
+      raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
+  r = simulate.risk(..., mode="cloud", api_key=api_key)
+
+  The cloud example above is the Cloud Managed path. In `self_hosted` and
+  `air_gapped`, pass an explicit self-hosted `base_url` and use the API key
+  provisioned by your self-hosted operator deployment instead. Private
+  profiles fail closed and do not silently fall back to Algenta cloud.
 """
+
 from __future__ import annotations
 
 import math
@@ -42,9 +53,10 @@ import random
 from dataclasses import dataclass
 from typing import Any
 
-from algenta._contract import DEFAULT_BASE_URL
+from algenta.privacy_profile import resolve_cloud_base_url
 
 # ── Result types ──────────────────────────────────────────────────────────────
+
 
 @dataclass
 class SimulationResult:
@@ -66,7 +78,7 @@ class SimulationResult:
             "std_deviation": self.std_deviation,
             "probability_of_loss": self.probability_of_loss,
             "percentiles": {
-                "p5":  self.percentile_5,
+                "p5": self.percentile_5,
                 "p25": self.percentile_25,
                 "p50": self.percentile_50,
                 "p75": self.percentile_75,
@@ -79,6 +91,7 @@ class SimulationResult:
 
 
 # ── Core sampling (pure Python, no deps) ─────────────────────────────────────
+
 
 def _box_muller(mu: float, sigma: float) -> float:
     """Box-Muller normal sample — no numpy required."""
@@ -162,6 +175,7 @@ def _summarize(
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
+
 def normal(mean: float, std: float, n: int = 10000) -> list[float]:
     """Sample from a normal distribution. Faster than scipy.stats.norm.rvs."""
     return [_box_muller(mean, std) for _ in range(n)]
@@ -180,8 +194,14 @@ def uniform(low: float, high: float, n: int = 10000) -> list[float]:
     ]
 
 
-def run(variables: list[dict[str, Any]], runs: int = 10000, mode: str = "local",
-        api_key: str | None = None, **kwargs: Any) -> SimulationResult:
+def run(
+    variables: list[dict[str, Any]],
+    runs: int = 10000,
+    mode: str = "local",
+    api_key: str | None = None,
+    base_url: str | None = None,
+    **kwargs: Any,
+) -> SimulationResult:
     """
     Run a Monte Carlo simulation with multiple variables.
 
@@ -189,9 +209,16 @@ def run(variables: list[dict[str, Any]], runs: int = 10000, mode: str = "local",
     mode="cloud"  → Algenta hosted API (requires api_key)
     """
     if mode == "cloud":
-        return _cloud_run(variables=variables, runs=runs, api_key=api_key, **kwargs)
+        return _cloud_run(
+            variables=variables,
+            runs=runs,
+            api_key=api_key,
+            base_url=base_url,
+            **kwargs,
+        )
 
     import time
+
     t0 = time.monotonic()
 
     values: list[float] = []
@@ -207,6 +234,7 @@ def risk(
     runs: int = 10000,
     mode: str = "local",
     api_key: str | None = None,
+    base_url: str | None = None,
     **named_inputs: float,
 ) -> SimulationResult:
     """
@@ -220,19 +248,23 @@ def risk(
     """
     if not named_inputs:
         raise ValueError(
-            "Pass at least one named input, e.g. "
-            "simulate.risk(revenue=100000, cost=70000)"
+            "Pass at least one named input, e.g. simulate.risk(revenue=100000, cost=70000)"
         )
 
     if mode == "cloud":
         variables = [
-            {"name": k, "distribution": "normal",
-             "params": {"mean": v, "std": abs(v) * 0.2}}
+            {"name": k, "distribution": "normal", "params": {"mean": v, "std": abs(v) * 0.2}}
             for k, v in named_inputs.items()
         ]
-        return _cloud_run(variables=variables, runs=runs, api_key=api_key)
+        return _cloud_run(
+            variables=variables,
+            runs=runs,
+            api_key=api_key,
+            base_url=base_url,
+        )
 
     import time
+
     t0 = time.monotonic()
 
     values: list[float] = []
@@ -247,27 +279,36 @@ def risk(
     return _summarize(values, latency_ms=(time.monotonic() - t0) * 1000)
 
 
-def _cloud_run(variables: list[dict[str, Any]], runs: int, api_key: str | None,
-               base_url: str = DEFAULT_BASE_URL, **kwargs: Any) -> SimulationResult:
+def _cloud_run(
+    variables: list[dict[str, Any]],
+    runs: int,
+    api_key: str | None,
+    base_url: str | None = None,
+    **kwargs: Any,
+) -> SimulationResult:
     """Delegate to Algenta hosted API."""
     try:
         import httpx
     except ImportError:
-        raise ImportError(
-            "Cloud mode requires httpx: pip install algenta-core[cloud]"
-        ) from None
+        raise ImportError("Cloud mode requires httpx: pip install algenta-core[cloud]") from None
 
     if not api_key:
         import os
+
         api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
     if not api_key:
         raise ValueError(
             "Cloud mode requires an API key. "
-            "Set ALGENTA_API_KEY env var or pass api_key='de_live_...'"
+            "Set ALGENTA_API_KEY / DE_API_KEY environment variables or pass api_key explicitly."
         )
+    resolved_base_url = resolve_cloud_base_url(
+        explicit_base_url=base_url,
+        component="algenta.simulate cloud mode",
+    )
 
     payload = {
-        "mode": "auto",
+        "mode": "expert",
+        "simulation_model": kwargs.get("simulation_model", "monte_carlo"),
         "runs": runs,
         "simulation": {
             "variables": variables,
@@ -275,23 +316,28 @@ def _cloud_run(variables: list[dict[str, Any]], runs: int, api_key: str | None,
         },
     }
     resp = httpx.post(
-        f"{base_url}/v1/simulate",
+        f"{resolved_base_url}/v1/simulate",
         json=payload,
         headers={"Authorization": f"Bearer {api_key}"},
         timeout=60,
     )
     resp.raise_for_status()
     data = resp.json()
+    metrics = data.get("metrics", {})
+    percentiles = data.get("percentiles", {})
     return SimulationResult(
-        expected_value=data.get("expected_value", 0),
-        std_deviation=data.get("std_deviation", 0),
-        probability_of_loss=data.get("probability_of_loss", 0),
-        percentile_5=data.get("percentiles", {}).get("p5", 0),
-        percentile_25=data.get("percentiles", {}).get("p25", 0),
-        percentile_50=data.get("percentiles", {}).get("p50", 0),
-        percentile_75=data.get("percentiles", {}).get("p75", 0),
-        percentile_95=data.get("percentiles", {}).get("p95", 0),
-        runs=data.get("runs", runs),
+        expected_value=metrics.get("expected_value", data.get("expected_value", 0)),
+        std_deviation=metrics.get("std_deviation", data.get("std_deviation", 0)),
+        probability_of_loss=metrics.get(
+            "probability_of_loss",
+            data.get("probability_of_loss", 0),
+        ),
+        percentile_5=percentiles.get("p5", data.get("percentiles", {}).get("p5", 0)),
+        percentile_25=percentiles.get("p25", data.get("percentiles", {}).get("p25", 0)),
+        percentile_50=percentiles.get("p50", data.get("percentiles", {}).get("p50", 0)),
+        percentile_75=percentiles.get("p75", data.get("percentiles", {}).get("p75", 0)),
+        percentile_95=percentiles.get("p95", data.get("percentiles", {}).get("p95", 0)),
+        runs=data.get("scenarios_run", data.get("runs", runs)),
         engine="cloud",
         latency_ms=data.get("execution_ms", 0),
     )

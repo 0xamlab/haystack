@@ -22,6 +22,7 @@ Usage:
       variables={"price": (10, 200), "quantity": (100, 5000)},
   )
 """
+
 from __future__ import annotations
 
 import random

@@ -2,7 +2,9 @@
 algenta CLI — runtime-first local demo, deterministic querying, and secondary local tools.
 
 Usage:
-  algenta demo                   # branded local runtime demo
+  algenta demo                   # interactive local runtime demo
+  algenta demo --list            # list selectable demo scenarios
+  algenta demo --scenario region # run one scenario non-interactively
   algenta import orders.csv      # branded local import preview
   algenta import a.csv b.csv     # branded local bundle preview
   algenta map file1.csv [file2]  # instant local schema mapping
@@ -11,7 +13,13 @@ Usage:
   algenta simulate               # run a quick local simulation
   algenta version                # show version and capabilities
   algenta upgrade                # show how to switch to cloud API
+
+Cloud Managed path: `algenta upgrade` shows the hosted console flow. In
+`self_hosted` and `air_gapped`, use the API key provisioned by your
+self-hosted operator deployment instead. Private profiles fail closed and do
+not silently fall back to Algenta cloud.
 """
+
 from __future__ import annotations
 
 import math
@@ -20,6 +28,22 @@ import sys
 import time
 
 from algenta.branding import runtime_banner
+from algenta.privacy_profile import (
+    api_key_help_text,
+    private_profile_enabled,
+    resolve_console_base_url,
+    resolve_dashboard_url,
+)
+
+
+def _print_scale_guidance() -> None:
+    dashboard_url = resolve_dashboard_url(component="algenta CLI")
+    print("  For 100–1000× speedup on large workloads:")
+    print("  → pip install algenta-sdk")
+    if private_profile_enabled():
+        print(f"  → {dashboard_url}")
+        return
+    print(f"  → {dashboard_url} (free tier: 500 simulations/month)")
 
 
 def _bench_normal(n: int = 100_000) -> float:
@@ -35,6 +59,7 @@ def _bench_normal(n: int = 100_000) -> float:
 def _bench_simulate(n: int = 100_000) -> float:
     """algenta.simulate local engine."""
     from algenta.simulate import _box_muller
+
     t0 = time.perf_counter()
     for _ in range(n):
         _box_muller(100000, 15000)
@@ -43,7 +68,7 @@ def _bench_simulate(n: int = 100_000) -> float:
 
 def _format_ms(ms: float) -> str:
     if ms < 1:
-        return f"{ms*1000:.0f}µs"
+        return f"{ms * 1000:.0f}µs"
     return f"{ms:.1f}ms"
 
 
@@ -70,14 +95,13 @@ def cmd_benchmark() -> None:
         print("  problem size and when the Mojo backend is available.")
 
     print()
-    print("  For 100–1000× speedup on large workloads:")
-    print("  → pip install algenta-sdk")
-    print("  → algenta.ai/dashboard (free tier: 500 simulations/month)")
+    _print_scale_guidance()
     print("─" * 58 + "\n")
 
 
 def cmd_simulate_quick() -> None:
     from algenta.simulate import risk
+
     print("\nRunning quick simulation: revenue=100,000 cost=70,000 runs=10,000\n")
     t0 = time.perf_counter()
     result = risk(revenue=100000, cost=70000, runs=10000)
@@ -91,14 +115,15 @@ def cmd_simulate_quick() -> None:
     print("  → client.simulate.risk(revenue=100000, cost=70000, runs=1_000_000)\n")
 
 
-def cmd_demo() -> None:
+def cmd_demo(args: list[str]) -> None:
     from algenta.demo import main as demo_main
 
-    raise SystemExit(demo_main())
+    raise SystemExit(demo_main(args))
 
 
 def cmd_version() -> None:
     from algenta import __version__
+
     print()
     print(
         runtime_banner(
@@ -191,8 +216,7 @@ def cmd_import(args: list[str]) -> None:
         print("    from algenta import Runtime")
         print("    rt = Runtime()")
         print(f"    rt.connect({str(path)!r}, name={connected_name!r})")
-        print("    plan = rt.resolve({\"source_name\": \""
-              f"{connected_name}\", \"metric\": \"revenue\"}})")
+        print(f'    plan = rt.resolve({{"source_name": "{connected_name}", "metric": "revenue"}})')
         print("    result = rt.query(plan)")
         print()
         return
@@ -290,10 +314,10 @@ def cmd_map(args: list[str]) -> None:
 def cmd_query(args: list[str]) -> None:
     """algenta query "query text" file.csv [file2.csv ...]"""
     if len(args) < 2:
-        print("\n  Usage: algenta query \"<query>\" <file.csv> [file2.csv ...]\n")
+        print('\n  Usage: algenta query "<query>" <file.csv> [file2.csv ...]\n')
         print("  Examples:")
-        print("    algenta query \"total revenue by customer\" sales.csv")
-        print("    algenta query \"top 10 orders by amount\" orders.csv\n")
+        print('    algenta query "total revenue by customer" sales.csv')
+        print('    algenta query "top 10 orders by amount" orders.csv\n')
         sys.exit(1)
 
     query_text = args[0]
@@ -308,7 +332,7 @@ def cmd_query(args: list[str]) -> None:
         print(f"\n  Error: file(s) not found: {', '.join(missing)}\n")
         sys.exit(1)
 
-    print(f"\n  Query: \"{query_text}\"")
+    print(f'\n  Query: "{query_text}"')
     print(f"  Source(s): {', '.join(Path(f).name for f in files)}\n")
 
     t0 = time.perf_counter()
@@ -337,15 +361,65 @@ def cmd_query(args: list[str]) -> None:
     print(f"\n  {len(result)} row(s) · {ms:.0f}ms\n")
 
     print("  Scale to millions of records: pip install algenta-sdk")
-    print("  → client.query(\"...\", sources=[...])\n")
+    print('  → client.query("...", sources=[...])\n')
 
 
 def cmd_upgrade() -> None:
-    print("""
+    if private_profile_enabled():
+        console_base_url = resolve_console_base_url(component="algenta upgrade")
+        key_help = api_key_help_text(
+            component="algenta upgrade",
+            fallback_base_url=console_base_url,
+        )
+        print(
+            f"""
+  Connect Algenta SDK to your deployment
+  ──────────────────────────────────────
+
+  1. Configure your self-hosted API origin:
+       export ALGENTA_BASE_URL="{console_base_url}"
+       # or
+       export DE_BASE_URL="{console_base_url}"
+       # or
+       export ALGENTA_API_URL="{console_base_url}"
+
+  2. {key_help}
+
+  3. Install the SDK:
+       pip install algenta-sdk
+       # or
+       pip install "algenta-core[cloud]"
+
+  4. Switch from local runtime to direct API mode:
+
+     Before:
+       from algenta import Runtime
+       rt = Runtime()
+       plan = rt.resolve({{"metric": "revenue", "group_by": "product_line"}})
+       result = rt.query(plan)
+
+     After:
+       from algenta import Runtime
+       api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
+       if not api_key:
+           raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
+       rt = Runtime(mode="api", api_key=api_key)
+       plan = rt.resolve({{"source_name": "orders", "metric": "revenue", "group_by": "product_line"}})
+       result = rt.query(plan)
+
+     That upgrade example is the Cloud Managed path. In `self_hosted` and
+     `air_gapped`, pass an explicit self-hosted base_url and use the API key
+     provisioned by your self-hosted operator deployment instead.
+"""
+        )
+        return
+
+    print(
+        f"""
   Upgrade to Algenta Cloud
   ─────────────────────────
 
-  1. Get a free API key at: https://algenta.ai/dashboard
+  1. {api_key_help_text(component="algenta upgrade")}
 
   2. Install the SDK:
        pip install algenta-sdk
@@ -357,15 +431,23 @@ def cmd_upgrade() -> None:
      Before:
        from algenta import Runtime
        rt = Runtime()
-       plan = rt.resolve({"metric": "revenue", "group_by": "product_line"})
+       plan = rt.resolve({{"metric": "revenue", "group_by": "product_line"}})
        result = rt.query(plan)
 
      After:
        from algenta import Runtime
-       rt = Runtime(mode="api", api_key="de_live_...")
-       plan = rt.resolve({"source_name": "orders", "metric": "revenue", "group_by": "product_line"})
+       api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
+       if not api_key:
+           raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
+       rt = Runtime(mode="api", api_key=api_key)
+       plan = rt.resolve({{"source_name": "orders", "metric": "revenue", "group_by": "product_line"}})
        result = rt.query(plan)
-""")
+
+     That upgrade example is the Cloud Managed path. In `self_hosted` and
+     `air_gapped`, pass an explicit self-hosted base_url and use the API key
+     provisioned by your self-hosted operator deployment instead.
+"""
+    )
 
 
 def main() -> None:
@@ -373,7 +455,7 @@ def main() -> None:
     cmd = args[0] if args else "help"
 
     if cmd == "demo":
-        cmd_demo()
+        cmd_demo(args[1:])
     elif cmd == "benchmark":
         cmd_benchmark()
     elif cmd == "import":

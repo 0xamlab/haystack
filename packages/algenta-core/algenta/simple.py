@@ -11,7 +11,14 @@ and immediately understands why Algenta exists.
   simulate(revenue=100000, cost=70000, runs=50000)
 
 No docs required. Output explains itself.
+
+`mode="cloud"` is the Cloud Managed path by default. In `self_hosted` and
+`air_gapped`, pass an explicit self-hosted `base_url` through the lower-level
+cloud surfaces and use the API key provisioned by your self-hosted operator
+deployment instead. Private profiles fail closed and do not silently fall back
+to Algenta cloud.
 """
+
 from __future__ import annotations
 
 import time
@@ -20,13 +27,15 @@ from typing import Any
 
 # ── Shared output ─────────────────────────────────────────────────────────────
 
+
 @dataclass
 class Result:
     """Universal result with self-explaining output."""
-    action: str          # "proceed" | "optimize" | "value"
+
+    action: str  # "proceed" | "optimize" | "value"
     value: float
-    confidence: float    # 0–1
-    why: list[str]       # 3 plain-English reasons
+    confidence: float  # 0–1
+    why: list[str]  # 3 plain-English reasons
     details: dict[str, Any] = field(default_factory=dict)
     latency_ms: float = 0.0
 
@@ -55,6 +64,7 @@ class Result:
 
 # ── Decision ──────────────────────────────────────────────────────────────────
 
+
 class _Decision:
     """
     Natural language + numeric decision analysis.
@@ -78,13 +88,27 @@ class _Decision:
     ) -> Result:
         if mode == "cloud":
             from algenta.decision import _cloud_analyze
-            d = _cloud_analyze(inputs=None, objective="maximize_value",
-                               risk_tolerance=risk_tolerance, runs=runs,
-                               api_key=api_key, **named_values)
+
+            d = _cloud_analyze(
+                inputs=None,
+                objective="maximize_value",
+                risk_tolerance=risk_tolerance,
+                runs=runs,
+                api_key=api_key,
+                **named_values,
+            )
             return Result(
-                action=d.action, value=d.expected_outcome,
-                confidence=d.confidence, why=self._make_why(d.action, d.confidence,
-                    d.probability_of_loss, d.expected_outcome, d.downside_risk, d.upside_potential),
+                action=d.action,
+                value=d.expected_outcome,
+                confidence=d.confidence,
+                why=self._make_why(
+                    d.action,
+                    d.confidence,
+                    d.probability_of_loss,
+                    d.expected_outcome,
+                    d.downside_risk,
+                    d.upside_potential,
+                ),
                 details={
                     "scenarios": d.scenarios_evaluated,
                     "downside_p5": d.downside_risk,
@@ -96,10 +120,17 @@ class _Decision:
 
         t0 = time.monotonic()
         from algenta.decision import analyze
+
         d = analyze(risk_tolerance=risk_tolerance, runs=runs, **named_values)
 
-        why = self._make_why(d.action, d.confidence, d.probability_of_loss,
-                             d.expected_outcome, d.downside_risk, d.upside_potential)
+        why = self._make_why(
+            d.action,
+            d.confidence,
+            d.probability_of_loss,
+            d.expected_outcome,
+            d.downside_risk,
+            d.upside_potential,
+        )
 
         return Result(
             action=d.action,
@@ -118,29 +149,42 @@ class _Decision:
 
     def analyze(self, inputs: dict | None = None, **kw: Any) -> Result:
         from algenta.decision import analyze
+
         d = analyze(inputs=inputs, **kw)
-        why = self._make_why(d.action, d.confidence, d.probability_of_loss,
-                             d.expected_outcome, d.downside_risk, d.upside_potential)
-        return Result(action=d.action, value=d.expected_outcome,
-                      confidence=d.confidence, why=why,
-                      details={"scenarios": d.scenarios_evaluated,
-                               "downside_p5": d.downside_risk,
-                               "upside_p95": d.upside_potential})
+        why = self._make_why(
+            d.action,
+            d.confidence,
+            d.probability_of_loss,
+            d.expected_outcome,
+            d.downside_risk,
+            d.upside_potential,
+        )
+        return Result(
+            action=d.action,
+            value=d.expected_outcome,
+            confidence=d.confidence,
+            why=why,
+            details={
+                "scenarios": d.scenarios_evaluated,
+                "downside_p5": d.downside_risk,
+                "upside_p95": d.upside_potential,
+            },
+        )
 
     @staticmethod
-    def _make_why(action: str, conf: float, pol: float, ev: float,
-                  p5: float, p95: float) -> list[str]:
+    def _make_why(
+        action: str, conf: float, pol: float, ev: float, p5: float, p95: float
+    ) -> list[str]:
         gain_loss_ratio = abs(p95 - ev) / (abs(ev - p5) + 1e-9)
         reasons = [
-            f"Positive outcome in {1-pol:.0%} of scenarios (expected: {ev:,.0f})",
+            f"Positive outcome in {1 - pol:.0%} of scenarios (expected: {ev:,.0f})",
             f"Upside {p95:,.0f} vs downside {p5:,.0f} — gain/loss ratio {gain_loss_ratio:.1f}×",
         ]
         if action == "proceed":
             reasons.append(f"Risk within tolerance — confidence {conf:.0%}")
         elif action == "pause":
             reasons.append(
-                f"Elevated risk ({pol:.0%} chance of loss) — "
-                "reduce exposure before committing"
+                f"Elevated risk ({pol:.0%} chance of loss) — reduce exposure before committing"
             )
         else:
             reasons.append(f"Negative outcome too likely ({pol:.0%}) — reject or redesign")
@@ -148,6 +192,7 @@ class _Decision:
 
 
 # ── Optimize ──────────────────────────────────────────────────────────────────
+
 
 class _Optimize:
     """
@@ -171,11 +216,11 @@ class _Optimize:
         t0 = time.monotonic()
 
         variables = {
-            k: v for k, v in variable_ranges.items()
-            if isinstance(v, tuple | list) and len(v) == 2
+            k: v for k, v in variable_ranges.items() if isinstance(v, tuple | list) and len(v) == 2
         }
 
         from algenta.optimize import find_best
+
         res = find_best(objective, variables, iterations=iterations)
 
         is_max = "maximiz" in objective.lower() or "revenue" in objective.lower()
@@ -194,13 +239,17 @@ class _Optimize:
             value=round(res.objective_value, 4),
             confidence=min(1.0, 0.6 + iterations / 5000),
             why=why,
-            details={**{k: round(v, 4) for k, v in res.optimal_values.items()},
-                     "improvement_pct": imp, "scenarios": iterations},
+            details={
+                **{k: round(v, 4) for k, v in res.optimal_values.items()},
+                "improvement_pct": imp,
+                "scenarios": iterations,
+            },
             latency_ms=round((time.monotonic() - t0) * 1000, 1),
         )
 
     def maximize(self, fn: Any, iterations: int = 1000, **ranges: tuple[float, float]) -> Result:
         from algenta.optimize import maximize as _max
+
         res = _max(fn, ranges, iterations=iterations)
         return Result(
             action="optimize",
@@ -216,6 +265,7 @@ class _Optimize:
 
     def minimize(self, fn: Any, iterations: int = 1000, **ranges: tuple[float, float]) -> Result:
         from algenta.optimize import minimize as _min
+
         res = _min(fn, ranges, iterations=iterations)
         return Result(
             action="optimize",
@@ -232,6 +282,7 @@ class _Optimize:
 
 # ── Simulate ──────────────────────────────────────────────────────────────────
 
+
 class _Simulate:
     """
     Monte Carlo simulation. Pass named values, get back a distribution.
@@ -246,14 +297,20 @@ class _Simulate:
       ])
     """
 
-    def __call__(self, runs: int = 10000, mode: str = "local",
-                 api_key: str | None = None, **named_values: float) -> Result:
+    def __call__(
+        self,
+        runs: int = 10000,
+        mode: str = "local",
+        api_key: str | None = None,
+        **named_values: float,
+    ) -> Result:
         t0 = time.monotonic()
         from algenta.simulate import risk
+
         r = risk(runs=runs, mode=mode, api_key=api_key, **named_values)
 
         pol = r.probability_of_loss
-        ev  = r.expected_value
+        ev = r.expected_value
         action = "proceed" if pol < 0.2 else ("caution" if pol < 0.4 else "risk")
 
         why = [
@@ -268,12 +325,17 @@ class _Simulate:
             ),
         ]
         return Result(
-            action=action, value=round(ev, 2), confidence=round(1.0 - pol, 4),
+            action=action,
+            value=round(ev, 2),
+            confidence=round(1.0 - pol, 4),
             why=why,
             details={
-                "p5": r.percentile_5, "p25": r.percentile_25,
-                "p50": r.percentile_50, "p75": r.percentile_75,
-                "p95": r.percentile_95, "std": r.std_deviation,
+                "p5": r.percentile_5,
+                "p25": r.percentile_25,
+                "p50": r.percentile_50,
+                "p75": r.percentile_75,
+                "p95": r.percentile_95,
+                "std": r.std_deviation,
                 "scenarios": runs,
             },
             latency_ms=round((time.monotonic() - t0) * 1000, 1),
@@ -284,18 +346,25 @@ class _Simulate:
 
     def from_distributions(self, variables: list[dict], runs: int = 10000) -> Result:
         from algenta.simulate import run as _run
+
         r = _run(variables, runs=runs)
         pol = r.probability_of_loss
         action = "proceed" if pol < 0.2 else ("caution" if pol < 0.4 else "risk")
         return Result(
-            action=action, value=r.expected_value, confidence=1.0 - pol,
+            action=action,
+            value=r.expected_value,
+            confidence=1.0 - pol,
             why=[
                 f"Expected outcome: {r.expected_value:,.0f} across {runs:,} scenarios",
                 f"Probability of loss: {pol:.1%}",
                 f"Range: {r.percentile_5:,.0f} (p5) → {r.percentile_95:,.0f} (p95)",
             ],
-            details={"scenarios": runs, "std": r.std_deviation,
-                     "p5": r.percentile_5, "p95": r.percentile_95},
+            details={
+                "scenarios": runs,
+                "std": r.std_deviation,
+                "p5": r.percentile_5,
+                "p95": r.percentile_95,
+            },
         )
 
 

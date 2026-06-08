@@ -1,7 +1,7 @@
 {
-  "name": "decision-engine-sdk",
+  "name": "algenta-sdk",
   "version": "0.1.0",
-  "description": "TypeScript/JavaScript SDK for the Universal Decision Engine API",
+  "description": "TypeScript/JavaScript SDK for Algenta public data, query, and simulation APIs",
   "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -12,13 +12,38 @@
       "types": "./dist/index.d.ts"
     }
   },
+  "files": [
+    "dist",
+    "proto",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc",
-    "test": "vitest run"
+    "test": "vitest run",
+    "lint": "tsc --noEmit"
   },
-  "keywords": ["decision", "simulation", "monte-carlo", "api"],
+  "keywords": [
+    "algenta",
+    "decision",
+    "query",
+    "simulation",
+    "monte-carlo",
+    "api"
+  ],
+  "homepage": "https://algenta.ai",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/algenta/decision-engine.git",
+    "directory": "packages/ts-sdk"
+  },
+  "bugs": {
+    "url": "https://github.com/algenta/decision-engine/issues"
+  },
   "license": "BSL-1.1",
-  "dependencies": {},
+  "dependencies": {
+    "@grpc/grpc-js": "^1.14.3",
+    "@grpc/proto-loader": "^0.8.1"
+  },
   "devDependencies": {
     "@types/node": "^24.0.0",
     "typescript": "^5.4.0",

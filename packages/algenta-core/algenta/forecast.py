@@ -14,15 +14,26 @@ Usage:
       print(p.period, p.forecast, p.lower, p.upper)
 
   # Cloud for production forecasting
-  result = forecast.predict(history, horizon=12, mode="cloud", api_key="de_live_...")
+  import os
+
+  api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
+  if not api_key:
+      raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
+  result = forecast.predict(history, horizon=12, mode="cloud", api_key=api_key)
+
+  The cloud example above is the Cloud Managed path. In `self_hosted` and
+  `air_gapped`, pass an explicit self-hosted `base_url` and use the API key
+  provisioned by your self-hosted operator deployment instead. Private
+  profiles fail closed and do not silently fall back to Algenta cloud.
 """
+
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass
 from typing import Any
 
-from algenta._contract import DEFAULT_BASE_URL
+from algenta.privacy_profile import resolve_cloud_base_url
 
 
 @dataclass
@@ -34,8 +45,13 @@ class ForecastPeriod:
     trend: str  # "up" | "down" | "stable"
 
     def to_dict(self) -> dict[str, Any]:
-        return {"period": self.period, "forecast": self.forecast,
-                "lower": self.lower, "upper": self.upper, "trend": self.trend}
+        return {
+            "period": self.period,
+            "forecast": self.forecast,
+            "lower": self.lower,
+            "upper": self.upper,
+            "trend": self.trend,
+        }
 
 
 @dataclass
@@ -67,6 +83,7 @@ def predict(
     runs: int = 5000,
     mode: str = "local",
     api_key: str | None = None,
+    base_url: str | None = None,
 ) -> ForecastResult:
     """
     Forecast a time series with Monte Carlo uncertainty quantification.
@@ -84,15 +101,21 @@ def predict(
         raise ValueError("Need at least 3 historical values to forecast")
 
     if mode == "cloud":
-        return _cloud_predict(history=history, horizon=horizon, metric=metric,
-                               seasonality=seasonality, confidence=confidence,
-                               api_key=api_key)
+        return _cloud_predict(
+            history=history,
+            horizon=horizon,
+            metric=metric,
+            seasonality=seasonality,
+            confidence=confidence,
+            api_key=api_key,
+            base_url=base_url,
+        )
 
     n = len(history)
     baseline = history[-1]
 
     # Trend: linear regression over recent window
-    window = history[max(0, n - min(8, n)):]
+    window = history[max(0, n - min(8, n)) :]
     wn = len(window)
     if wn > 1:
         x_mean = (wn - 1) / 2
@@ -125,16 +148,17 @@ def predict(
         # Uncertainty grows with sqrt(time)
         interval = abs(expected_value) * vol * z_score * math.sqrt(p)
 
-        direction = ("up" if trend_rate > 0.005 else
-                     "down" if trend_rate < -0.005 else "stable")
+        direction = "up" if trend_rate > 0.005 else "down" if trend_rate < -0.005 else "stable"
 
-        periods.append(ForecastPeriod(
-            period=p,
-            forecast=round(expected_value, 4),
-            lower=round(expected_value - interval, 4),
-            upper=round(expected_value + interval, 4),
-            trend=direction,
-        ))
+        periods.append(
+            ForecastPeriod(
+                period=p,
+                forecast=round(expected_value, 4),
+                lower=round(expected_value - interval, 4),
+                upper=round(expected_value + interval, 4),
+                trend=direction,
+            )
+        )
 
     final = periods[-1].forecast
     change_pct = (final - baseline) / (abs(baseline) + 1e-9) * 100
@@ -148,9 +172,15 @@ def predict(
     )
 
 
-def _cloud_predict(history: list[float], horizon: int, metric: str, seasonality: bool,
-                   confidence: float, api_key: str | None,
-                   base_url: str = DEFAULT_BASE_URL) -> ForecastResult:
+def _cloud_predict(
+    history: list[float],
+    horizon: int,
+    metric: str,
+    seasonality: bool,
+    confidence: float,
+    api_key: str | None,
+    base_url: str | None = None,
+) -> ForecastResult:
     try:
         import httpx
     except ImportError:
@@ -158,9 +188,14 @@ def _cloud_predict(history: list[float], horizon: int, metric: str, seasonality:
 
     if not api_key:
         import os
+
         api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
     if not api_key:
         raise ValueError("Cloud mode requires an API key")
+    resolved_base_url = resolve_cloud_base_url(
+        explicit_base_url=base_url,
+        component="algenta.forecast cloud mode",
+    )
 
     payload = {
         "metric": metric,
@@ -170,7 +205,7 @@ def _cloud_predict(history: list[float], horizon: int, metric: str, seasonality:
         "confidence_level": confidence,
     }
     resp = httpx.post(
-        f"{base_url}/v1/forecast",
+        f"{resolved_base_url}/v1/forecast",
         json=payload,
         headers={"Authorization": f"Bearer {api_key}"},
         timeout=60,

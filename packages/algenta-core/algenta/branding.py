@@ -62,9 +62,9 @@ def runtime_banner(title: str, lines: Iterable[str]) -> str:
     art = "\n".join(_TITLE_ART)
     width = 60
     border = f"+{'-' * width}+"
-    body = [f"| {title[:width - 2].ljust(width - 2)} |"]
+    body = [f"| {title[: width - 2].ljust(width - 2)} |"]
     for line in detail_lines:
-        body.append(f"| {line[:width - 2].ljust(width - 2)} |")
+        body.append(f"| {line[: width - 2].ljust(width - 2)} |")
     return "\n".join([art, border, *body, border])
 
 

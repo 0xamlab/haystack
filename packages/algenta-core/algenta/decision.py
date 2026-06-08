@@ -26,24 +26,35 @@ Usage:
   )
 
   # Cloud for high-stakes decisions
-  result = decision.analyze(..., mode="cloud", api_key="de_live_...")
+  import os
+
+  api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
+  if not api_key:
+      raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
+  result = decision.analyze(..., mode="cloud", api_key=api_key)
+
+  The cloud example above is the Cloud Managed path. In `self_hosted` and
+  `air_gapped`, pass an explicit self-hosted `base_url` and use the API key
+  provisioned by your self-hosted operator deployment instead. Private
+  profiles fail closed and do not silently fall back to Algenta cloud.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any
 
-from algenta._contract import DEFAULT_BASE_URL
+from algenta.privacy_profile import resolve_cloud_base_url
 from algenta.simulate import _box_muller, _summarize, _triangular_sample
 
 
 @dataclass
 class DecisionResult:
-    action: str            # "proceed" | "pause" | "reject"
-    confidence: float      # 0–1
+    action: str  # "proceed" | "pause" | "reject"
+    confidence: float  # 0–1
     reasoning: str
     expected_outcome: float
-    downside_risk: float   # p5
+    downside_risk: float  # p5
     upside_potential: float  # p95
     probability_of_loss: float
     scenarios_evaluated: int
@@ -73,6 +84,7 @@ def analyze(
     runs: int = 10000,
     mode: str = "local",
     api_key: str | None = None,
+    base_url: str | None = None,
     **named_values: float,
 ) -> DecisionResult:
     """
@@ -85,8 +97,15 @@ def analyze(
       decision.analyze(inputs={"revenue": {"value": 100000, "low": 80000, "high": 140000}})
     """
     if mode == "cloud":
-        return _cloud_analyze(inputs=inputs, objective=objective, risk_tolerance=risk_tolerance,
-                               runs=runs, api_key=api_key, **named_values)
+        return _cloud_analyze(
+            inputs=inputs,
+            objective=objective,
+            risk_tolerance=risk_tolerance,
+            runs=runs,
+            api_key=api_key,
+            base_url=base_url,
+            **named_values,
+        )
 
     # Build sample spec from inputs
     specs: list[tuple[str, float, float | None, float | None]] = []
@@ -94,8 +113,8 @@ def analyze(
         for name, spec in inputs.items():
             if isinstance(spec, dict):
                 val = spec.get("value", spec.get("mean", 0))
-                lo  = spec.get("low",  spec.get("min"))
-                hi  = spec.get("high", spec.get("max"))
+                lo = spec.get("low", spec.get("min"))
+                hi = spec.get("high", spec.get("max"))
             else:
                 val, lo, hi = float(spec), None, None
             specs.append((name, val, lo, hi))
@@ -139,7 +158,7 @@ def analyze(
     else:
         action = "proceed"
         reasoning = (
-            f"Positive outcome in {1-pol:.0%} of {runs:,} scenarios. "
+            f"Positive outcome in {1 - pol:.0%} of {runs:,} scenarios. "
             f"Expected: {ev:,.0f}. Risk within {risk_tolerance} tolerance."
         )
 
@@ -155,9 +174,15 @@ def analyze(
     )
 
 
-def _cloud_analyze(inputs: dict[str, Any] | None, objective: str, risk_tolerance: str,
-                   runs: int, api_key: str | None, base_url: str = DEFAULT_BASE_URL,
-                   **named_values: float) -> DecisionResult:
+def _cloud_analyze(
+    inputs: dict[str, Any] | None,
+    objective: str,
+    risk_tolerance: str,
+    runs: int,
+    api_key: str | None,
+    base_url: str | None = None,
+    **named_values: float,
+) -> DecisionResult:
     try:
         import httpx
     except ImportError:
@@ -165,21 +190,28 @@ def _cloud_analyze(inputs: dict[str, Any] | None, objective: str, risk_tolerance
 
     if not api_key:
         import os
+
         api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
     if not api_key:
         raise ValueError("Cloud mode requires an API key")
+    resolved_base_url = resolve_cloud_base_url(
+        explicit_base_url=base_url,
+        component="algenta.decision cloud mode",
+    )
 
     # Build API payload
     api_inputs = []
     if inputs:
         for name, spec in inputs.items():
             if isinstance(spec, dict):
-                api_inputs.append({
-                    "name": name,
-                    "value": spec.get("value", 0),
-                    "low": spec.get("low"),
-                    "high": spec.get("high"),
-                })
+                api_inputs.append(
+                    {
+                        "name": name,
+                        "value": spec.get("value", 0),
+                        "low": spec.get("low"),
+                        "high": spec.get("high"),
+                    }
+                )
             else:
                 api_inputs.append({"name": name, "value": float(spec)})
     for name, val in named_values.items():
@@ -192,7 +224,7 @@ def _cloud_analyze(inputs: dict[str, Any] | None, objective: str, risk_tolerance
         "scenarios": runs,
     }
     resp = httpx.post(
-        f"{base_url}/v1/decision",
+        f"{resolved_base_url}/v1/decision",
         json=payload,
         headers={"Authorization": f"Bearer {api_key}"},
         timeout=60,
