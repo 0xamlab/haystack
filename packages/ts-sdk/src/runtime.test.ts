@@ -6624,7 +6624,7 @@ describe("Runtime", () => {
     expect(bundle.preview).toContain("Algenta Source Bundle");
     expect(bundle.preview).toContain("Imported: 2 | Failures: 1");
     expect(bundle.preview).toContain("orders_orders");
-    expect(bundle.preview).toContain("empty_source");
+    expect(bundle.failures[0].code).toBe("empty_source");
   });
 
   it("supports api-mode bundle previews across mixed connector descriptors", async () => {
