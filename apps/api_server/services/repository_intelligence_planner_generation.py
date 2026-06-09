@@ -695,19 +695,31 @@ def _default_run_agent(
     injected_context: dict[str, Any],
     limits: dict[str, Any],
 ) -> dict[str, Any]:
-    """Placeholder agent runner — the Node agent-core sidecar is not wired yet.
+    """Default agent runner: routes to the forked-Cline agent-core sidecar.
 
-    Production replaces this with a callable that POSTs to the forked-Cline
-    agent-core over the loopback NDJSON contract and mutates files under
-    ``working_dir``. Kept monkeypatchable so the Python seam is testable in
-    isolation.
+    When ``ALGENTA_AGENT_CORE_URL`` is set, POSTs the run to the sidecar over the
+    loopback NDJSON contract (the sidecar mutates files under ``working_dir`` with
+    the vendored Cline SDK; Python recomputes the authoritative diff). Otherwise
+    raises 503. Kept monkeypatchable so the Python seam stays testable in isolation.
     """
-    del working_dir, task_spec, injected_context, limits
+    base_url = os.environ.get("ALGENTA_AGENT_CORE_URL")
+    if base_url:
+        from apps.api_server.services.repository_intelligence_agent_core_client import (
+            run_agent_via_sidecar,
+        )
+
+        return run_agent_via_sidecar(
+            working_dir=working_dir,
+            task_spec=task_spec,
+            injected_context=injected_context,
+            limits=limits,
+            base_url=base_url,
+        )
     raise RepositoryIntelligenceError(
         code="repository_agent_core_unavailable",
         message=(
-            "verified_agentic repository planning requires the agent-core sidecar, "
-            "which is not configured in this deployment."
+            "verified_agentic repository planning requires the agent-core sidecar "
+            "(set ALGENTA_AGENT_CORE_URL), which is not configured in this deployment."
         ),
         status_code=503,
     )

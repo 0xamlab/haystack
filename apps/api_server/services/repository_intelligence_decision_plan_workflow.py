@@ -79,7 +79,9 @@ def _decision_plan_generation_lock(lookup_dir: Path, lookup_key: str):
     """
     lookup_dir.mkdir(parents=True, exist_ok=True)
     lock_path = lookup_dir / f"{lookup_key}.lock"
-    fd = os.open(str(lock_path), os.O_CREAT | os.O_RDWR, 0o644)
+    # 0o600: the advisory flock anchor holds no data and is owner-only by design;
+    # world-readable (0o644) is unnecessary and trips py/overly-permissive-file.
+    fd = os.open(str(lock_path), os.O_CREAT | os.O_RDWR, 0o600)
     try:
         fcntl.flock(fd, fcntl.LOCK_EX)
         yield
