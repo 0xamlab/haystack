@@ -1,0 +1,12 @@
+{
+  "name": "@algenta/agent-core",
+  "private": true,
+  "type": "module",
+  "version": "0.0.0",
+  "description": "Algenta Repositories agent-core sidecar — the private forked-Cline execution head. Scaffold: the NDJSON /run loopback contract is real; runAgent() is a stub seam that will host the vendored Apache-2.0 @cline/core ClineCore.create()/start().",
+  "license": "Apache-2.0",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "node run-server.mjs"
+  }
+}

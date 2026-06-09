@@ -40,6 +40,7 @@ def _resolve_repository_model(
     explicit_model: str | None,
     *,
     deterministic_local_model_id: str,
+    verified_agentic_model_id: str | None = None,
 ) -> str:
     candidates: list[str] = []
     if explicit_model:
@@ -56,6 +57,8 @@ def _resolve_repository_model(
             continue
         seen.add(model_id)
         if model_id == deterministic_local_model_id:
+            return model_id
+        if verified_agentic_model_id is not None and model_id == verified_agentic_model_id:
             return model_id
         if get_configured_provider_model(model_id) is not None:
             return model_id
@@ -600,12 +603,19 @@ async def _generate_repository_patch_plan(
     snapshot_manifest: dict[str, Any],
     triage_manifest: dict[str, Any],
     deterministic_local_model_id: str,
+    verified_agentic_model_id: str | None = None,
 ) -> dict[str, Any]:
     if model_id == deterministic_local_model_id:
         return _generate_deterministic_repository_patch_plan(
             snapshot_manifest=snapshot_manifest,
             triage_manifest=triage_manifest,
             deterministic_local_model_id=deterministic_local_model_id,
+        )
+    if verified_agentic_model_id is not None and model_id == verified_agentic_model_id:
+        return await _generate_verified_agentic_repository_patch_plan(
+            model_id=model_id,
+            snapshot_manifest=snapshot_manifest,
+            triage_manifest=triage_manifest,
         )
     evidence_items = triage_manifest["evidence_items"]
     prompt_payload = {
@@ -663,3 +673,215 @@ async def _generate_repository_patch_plan(
             status_code=502,
         )
     return result
+
+
+# ─── verified_agentic planner tier (forked-Cline agent-core; engine "cline_fork") ──
+#
+# Instead of a single blind chat completion, this tier runs a headless agent loop
+# inside the materialized checkout, with our token-compressed triage evidence +
+# (optional) graph blast-radius injected so the agent skips repository exploration.
+# Python — not the agent — is the source of truth for the diff: it is recomputed
+# from before/after tree state. The Node sidecar is reached through the injected
+# ``run_agent`` callable (``_DEFAULT_RUN_AGENT`` until the sidecar is wired), which
+# keeps this seam testable without Node or a live model.
+
+_VERIFIED_AGENTIC_MAX_CAPTURE_FILE_BYTES = 1_000_000
+
+
+def _default_run_agent(
+    *,
+    working_dir: str,
+    task_spec: dict[str, Any],
+    injected_context: dict[str, Any],
+    limits: dict[str, Any],
+) -> dict[str, Any]:
+    """Placeholder agent runner — the Node agent-core sidecar is not wired yet.
+
+    Production replaces this with a callable that POSTs to the forked-Cline
+    agent-core over the loopback NDJSON contract and mutates files under
+    ``working_dir``. Kept monkeypatchable so the Python seam is testable in
+    isolation.
+    """
+    del working_dir, task_spec, injected_context, limits
+    raise RepositoryIntelligenceError(
+        code="repository_agent_core_unavailable",
+        message=(
+            "verified_agentic repository planning requires the agent-core sidecar, "
+            "which is not configured in this deployment."
+        ),
+        status_code=503,
+    )
+
+
+_DEFAULT_RUN_AGENT = _default_run_agent
+_DEFAULT_GRAPH_QUERY = None
+
+
+def _capture_repository_tree_state(root_path: Path) -> dict[str, str]:
+    """Snapshot the textual contents of every readable file under ``root_path``.
+
+    Binary, oversized, symlinked, and VCS-internal files are skipped. Used to
+    compute the authoritative diff in Python (the agent's own ``working_tree_diff``
+    is advisory/debug only).
+    """
+    state: dict[str, str] = {}
+    root_abs = root_path.resolve()
+    for path in sorted(root_abs.rglob("*")):
+        if path.is_symlink() or not path.is_file():
+            continue
+        relative = path.relative_to(root_abs).as_posix()
+        if relative == ".git" or relative.startswith(".git/"):
+            continue
+        try:
+            if path.stat().st_size > _VERIFIED_AGENTIC_MAX_CAPTURE_FILE_BYTES:
+                continue
+            state[relative] = path.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+    return state
+
+
+def _unified_diff_from_tree_states(
+    before: dict[str, str],
+    after: dict[str, str],
+) -> str:
+    """Build a ``git apply``-able unified diff from before/after tree snapshots."""
+    segments: list[str] = []
+    for relative in sorted(set(before) | set(after)):
+        old_text = before.get(relative)
+        new_text = after.get(relative)
+        if old_text == new_text:
+            continue
+        from_lines = old_text.splitlines(keepends=True) if old_text is not None else []
+        to_lines = new_text.splitlines(keepends=True) if new_text is not None else []
+        from_file = "/dev/null" if old_text is None else f"a/{relative}"
+        to_file = "/dev/null" if new_text is None else f"b/{relative}"
+        segments.append(
+            "".join(
+                difflib.unified_diff(
+                    from_lines,
+                    to_lines,
+                    fromfile=from_file,
+                    tofile=to_file,
+                )
+            )
+        )
+    return "".join(segments)
+
+
+async def _generate_verified_agentic_repository_patch_plan(
+    *,
+    model_id: str,
+    snapshot_manifest: dict[str, Any],
+    triage_manifest: dict[str, Any],
+    run_agent: Any = None,
+    graph_query: Any = None,
+) -> dict[str, Any]:
+    """Run the forked-Cline agent loop over the materialized checkout.
+
+    Returns the same dict shape as the other planner tiers so all downstream
+    decision-plan / simulate / apply code is unchanged. ``planner_engine`` and the
+    agent provenance are included for the *internal* audit record only — the
+    public ``RepositoryAnalysis`` mapping does not read them (red line #4).
+    """
+    run_agent = run_agent or _DEFAULT_RUN_AGENT
+    if graph_query is None:
+        graph_query = _DEFAULT_GRAPH_QUERY
+
+    suspect_files = list(triage_manifest.get("suspect_files", []))
+    suspect_symbols = list(triage_manifest.get("suspect_symbols", []))
+    signals = triage_manifest.get("signals", {})
+
+    injected_context: dict[str, Any] = {
+        "evidence_items": triage_manifest.get("evidence_items", []),
+        "suspect_files": suspect_files,
+        "suspect_symbols": suspect_symbols,
+        "signals": signals,
+    }
+    if graph_query is not None:
+        try:
+            injected_context["graph_blast_radius"] = graph_query(
+                snapshot_manifest=snapshot_manifest,
+                suspect_files=suspect_files,
+                suspect_symbols=suspect_symbols,
+            )
+        except Exception:  # noqa: BLE001 — graph injection is best-effort context
+            injected_context["graph_blast_radius"] = None
+
+    task_spec = {
+        "snapshot_id": snapshot_manifest["snapshot_id"],
+        "resolved_revision": snapshot_manifest.get("resolved_revision"),
+        "issue_text": signals.get("issue_text"),
+    }
+    limits = {"token_budget": 6_000, "max_turns": 8}
+
+    with repository_storage.materialized_snapshot(snapshot_manifest) as root_path:
+        root_path = Path(root_path)
+        before_state = _capture_repository_tree_state(root_path)
+        agent_result = run_agent(
+            working_dir=str(root_path),
+            task_spec=task_spec,
+            injected_context=injected_context,
+            limits=limits,
+        )
+        if not isinstance(agent_result, dict):
+            raise RepositoryIntelligenceError(
+                code="repository_agent_invalid_result",
+                message="verified_agentic agent runner returned a non-object result.",
+                status_code=502,
+            )
+        # Python is the source of truth for the diff; any working_tree_diff the
+        # agent returns is advisory/debug only and deliberately ignored here.
+        after_state = _capture_repository_tree_state(root_path)
+
+    status = str(agent_result.get("status") or "completed")
+    patch_diff = _unified_diff_from_tree_states(before_state, after_state)
+
+    if status in {"failed", "aborted"}:
+        raise RepositoryIntelligenceError(
+            code=f"repository_agent_{status}",
+            message=f"verified_agentic agent run did not complete (status={status}).",
+            status_code=502,
+            details={"agent_run_id": agent_result.get("agent_run_id")},
+        )
+    if not patch_diff.strip():
+        raise RepositoryIntelligenceError(
+            code="repository_agent_no_change",
+            message="verified_agentic agent run produced no file changes.",
+            status_code=422,
+            details={"agent_run_id": agent_result.get("agent_run_id")},
+        )
+
+    candidate_fixes = agent_result.get("candidate_fixes")
+    if isinstance(candidate_fixes, str):
+        candidate_fixes = [candidate_fixes]
+    elif not isinstance(candidate_fixes, list):
+        candidate_fixes = []
+
+    try:
+        confidence = float(agent_result.get("confidence"))
+    except (TypeError, ValueError):
+        confidence = 0.55
+    confidence = min(max(confidence, 0.0), 1.0)
+
+    return {
+        "root_cause": str(agent_result.get("root_cause") or "").strip()
+        or "Repository issue localized from the injected evidence bundle.",
+        "candidate_fixes": candidate_fixes,
+        "recommended_action": str(agent_result.get("recommended_action") or "").strip()
+        or "Apply the agent-generated repository patch.",
+        "rationale": str(agent_result.get("rationale") or "").strip()
+        or (
+            "Patch generated by the verified agentic planner over the injected "
+            "repository evidence bundle and blast-radius."
+        ),
+        "confidence": confidence,
+        "patch_diff": patch_diff,
+        "planner_model_id": model_id,
+        "planner_execution_mode": "verified_agentic",
+        "planner_provider_backend": None,
+        # Internal attribution / provenance only — NOT surfaced in the public DecisionPlan.
+        "planner_engine": "cline_fork",
+        "agent_run_id": agent_result.get("agent_run_id"),
+        "transcript_ref": agent_result.get("transcript_ref"),
+    }

@@ -111,6 +111,7 @@ os = _os
 REPOSITORY_CONNECTOR_TYPES = repository_repository_source.REPOSITORY_CONNECTOR_TYPES
 _REPOSITORY_INTELLIGENCE_ENGINE_REVISION = "repository-intelligence-v2026-06-07-r124"
 _DETERMINISTIC_LOCAL_REPOSITORY_MODEL_ID = "repository.deterministic_local_v1"
+_VERIFIED_AGENTIC_REPOSITORY_MODEL_ID = "repository.verified_agentic_v1"
 _ENTRYPOINT_DEMOTED_LANGUAGES = frozenset(
     {
         "css",
@@ -641,6 +642,7 @@ def _resolve_repository_model(explicit_model: str | None) -> str:
     return repository_planner_generation._resolve_repository_model(
         explicit_model,
         deterministic_local_model_id=_DETERMINISTIC_LOCAL_REPOSITORY_MODEL_ID,
+        verified_agentic_model_id=_VERIFIED_AGENTIC_REPOSITORY_MODEL_ID,
     )
 
 
@@ -699,6 +701,7 @@ async def _generate_repository_patch_plan(
         snapshot_manifest=snapshot_manifest,
         triage_manifest=triage_manifest,
         deterministic_local_model_id=_DETERMINISTIC_LOCAL_REPOSITORY_MODEL_ID,
+        verified_agentic_model_id=_VERIFIED_AGENTIC_REPOSITORY_MODEL_ID,
     )
 
 

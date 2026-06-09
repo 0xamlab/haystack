@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import fcntl
 import hashlib
+import os
 from collections.abc import Awaitable, Callable
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -62,6 +65,29 @@ def _decision_plan_lookup_key(
             "model_id": model_id,
         },
     )
+
+
+@contextmanager
+def _decision_plan_generation_lock(lookup_dir: Path, lookup_key: str):
+    """Serialize decision-plan generation for one lookup_key across workers.
+
+    Without this, two concurrent cache misses for the same key — critically the
+    nondeterministic ``verified_agentic`` tier — would each run a planner and
+    race to persist divergent plans. A host-local advisory ``flock`` is enough
+    for the file-based runtime store; the production multi-tenant deployment
+    swaps this for a Postgres advisory / Redis lock on the same key (plan §6).
+    """
+    lookup_dir.mkdir(parents=True, exist_ok=True)
+    lock_path = lookup_dir / f"{lookup_key}.lock"
+    fd = os.open(str(lock_path), os.O_CREAT | os.O_RDWR, 0o644)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        yield
+    finally:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_UN)
+        finally:
+            os.close(fd)
 
 
 def _patch_impact_summary(
@@ -189,6 +215,8 @@ def _decision_plan_integrity(
     evidence_bundle_ref: str,
     patch_diff: str,
     plan_payload: dict[str, Any],
+    *,
+    agent_run_id: str | None = None,
 ) -> dict[str, str]:
     request_hash = _hash_payload(
         {
@@ -197,7 +225,15 @@ def _decision_plan_integrity(
             "patch_hash": hashlib.sha256(patch_diff.encode("utf-8")).hexdigest(),
         }
     )
-    result_hash = _hash_payload(plan_payload)
+    # For a nondeterministic agentic run the result_hash fingerprints THIS
+    # recorded run (it binds in agent_run_id), not a reproducible answer to the
+    # inputs. Non-agentic tiers keep the original input-addressed semantics.
+    result_payload: dict[str, Any] = (
+        {"plan": plan_payload, "agent_run_id": agent_run_id}
+        if agent_run_id is not None
+        else plan_payload
+    )
+    result_hash = _hash_payload(result_payload)
     return {"request_hash": request_hash, "result_hash": result_hash}
 
 
@@ -272,236 +308,275 @@ async def create_repository_decision_plan(
     lookup_path = repository_runtime._decision_plan_lookup_dir(org_id, repository_id) / (
         f"{lookup_key}.json"
     )
-    if lookup_path.exists():
+    def _read_cached_decision_plan() -> RepositoryDecisionPlanResponse | None:
+        if not lookup_path.exists():
+            return None
         decision_plan_lookup = read_json(lookup_path)
         decision_plan_id = str(decision_plan_lookup.get("decision_plan_id") or "").strip()
-        if decision_plan_id:
-            plan_path = repository_runtime._decision_plans_dir(
-                org_id,
-                repository_id,
-            ) / f"{decision_plan_id}.json"
-            if plan_path.exists():
-                cached_response = repository_runtime._lookup_response_payload(
-                    decision_plan_lookup
-                )
-                if cached_response is not None:
-                    return RepositoryDecisionPlanResponse.model_validate(cached_response)
-                response = RepositoryDecisionPlanResponse.model_validate(read_json(plan_path))
-                repository_runtime._write_json(
-                    lookup_path,
-                    {
-                        "decision_plan_id": decision_plan_id,
-                        "snapshot_id": resolved_snapshot_id,
-                        "workspace_evidence_bundle_ref": request.workspace_evidence_bundle_ref,
-                        "model_id": model_id,
-                        "created_at": decision_plan_lookup.get("created_at")
-                        or _utc_now().isoformat(),
-                        "response": response.model_dump(mode="json"),
-                    },
-                )
-                return response
-    snapshot_manifest = repository_storage._load_snapshot_manifest(
-        org_id=org_id,
-        repository_id=repository_id,
-        snapshot_id=resolved_snapshot_id,
-    )
-    plan_result = await generate_repository_patch_plan(
-        model_id=model_id,
-        snapshot_manifest=snapshot_manifest,
-        triage_manifest=triage_manifest,
-    )
-    patch_diff = str(plan_result["patch_diff"])
-    validate_patch_against_snapshot(
-        snapshot_manifest=snapshot_manifest,
-        patch_diff=patch_diff,
-    )
-
-    created_at = _utc_now()
-    patch_artifact_id = _stable_identifier(
-        "patch",
-        {
-            "snapshot_id": resolved_snapshot_id,
-            "patch_hash": hashlib.sha256(patch_diff.encode("utf-8")).hexdigest(),
-        },
-    )
-    patch_path = repository_runtime._patches_dir(org_id, repository_id) / (
-        f"{patch_artifact_id}.diff"
-    )
-    patch_path.parent.mkdir(parents=True, exist_ok=True)
-    patch_path.write_text(patch_diff, encoding="utf-8")
-
-    impact_summary = patch_impact_summary(snapshot_manifest, patch_diff)
-    patch_impact_report_id = _stable_identifier(
-        "patch_impact",
-        {
-            "snapshot_id": resolved_snapshot_id,
-            "patch_hash": hashlib.sha256(patch_diff.encode("utf-8")).hexdigest(),
-            "impact": impact_summary,
-        },
-    )
-    patch_impact_path = repository_runtime._patch_impact_dir(org_id, repository_id) / (
-        f"{patch_impact_report_id}.json"
-    )
-    patch_impact_parquet = repository_runtime._patch_impact_dir(org_id, repository_id) / (
-        f"{patch_impact_report_id}.parquet"
-    )
-    if not patch_impact_path.exists():
-        patch_impact_path.parent.mkdir(parents=True, exist_ok=True)
-        records = [
-            PatchImpactReportRecord(
-                repository_id=repository_id,
-                snapshot_id=resolved_snapshot_id,
-                patch_impact_report_id=patch_impact_report_id,
-                impacted_file=row["impacted_file"],
-                impacted_symbol=row["impacted_symbol"],
-                risk_type=row["risk_type"],
-                severity=row["severity"],
-                likely_failing_test=row["likely_failing_test"],
-                dependency_target=row["dependency_target"],
-                created_at=created_at,
-            )
-            for row in impact_summary["records"]
-        ]
-        patch_impact_parquet.write_bytes(
-            parquet_bytes_from_records(records, record_type=PatchImpactReportRecord)
-            if records
-            else parquet_bytes_from_records([], record_type=PatchImpactReportRecord)
-        )
+        if not decision_plan_id:
+            return None
+        plan_path = repository_runtime._decision_plans_dir(
+            org_id,
+            repository_id,
+        ) / f"{decision_plan_id}.json"
+        if not plan_path.exists():
+            return None
+        cached_response = repository_runtime._lookup_response_payload(decision_plan_lookup)
+        if cached_response is not None:
+            return RepositoryDecisionPlanResponse.model_validate(cached_response)
+        response = RepositoryDecisionPlanResponse.model_validate(read_json(plan_path))
         repository_runtime._write_json(
-            patch_impact_path,
+            lookup_path,
             {
-                "patch_impact_report_id": patch_impact_report_id,
-                "snapshot_id": resolved_snapshot_id,
-                "created_at": created_at.isoformat(),
-                **impact_summary,
-                "patch_impact_artifact": repository_storage._artifact_ref(
-                    artifact_id=_stable_identifier(
-                        "artifact",
-                        {"kind": "patch_impact_report", "id": patch_impact_report_id},
-                    ),
-                    artifact_kind="PatchImpactReport",
-                    content_hash=repository_storage._hash_file(patch_impact_parquet),
-                    storage_path=patch_impact_parquet,
-                    schema_revision="runtime-internal-contracts-v1",
-                    created_at=created_at,
-                ).model_dump(mode="json"),
-            },
-        )
-
-    risk_profile = _option_risk(float(impact_summary["risk_score"]))
-    candidate_fixes = plan_result.get("candidate_fixes")
-    if isinstance(candidate_fixes, str):
-        candidate_fix_list = [candidate_fixes]
-    elif isinstance(candidate_fixes, list):
-        candidate_fix_list = [str(item) for item in candidate_fixes if str(item).strip()]
-    else:
-        candidate_fix_list = []
-    if not candidate_fix_list:
-        candidate_fix_list = [
-            str(plan_result.get("recommended_action") or "Apply repository patch").strip()
-        ]
-
-    confidence = float(plan_result.get("confidence") or 0.5)
-    confidence = min(max(confidence, 0.0), 1.0)
-    expected_value = round(
-        max(1.0, confidence * 100.0 - float(impact_summary["risk_score"]) * 55.0),
-        3,
-    )
-    token_metrics = TokenReductionMetrics(
-        raw_repo_token_estimate=int(triage_manifest["raw_repo_token_estimate"]),
-        evidence_bundle_token_count=int(triage_manifest["evidence_bundle_token_count"]),
-        reduction_ratio=float(triage_manifest["reduction_ratio"]),
-    )
-    repository_analysis = RepositoryAnalysis(
-        root_cause=str(plan_result.get("root_cause") or "").strip()
-        or "Repository issue localized from bounded evidence bundle.",
-        planner_model_id=str(plan_result.get("planner_model_id") or model_id).strip()
-        or model_id,
-        planner_execution_mode=str(
-            plan_result.get("planner_execution_mode") or "provider_backed_chat"
-        ).strip()
-        or "provider_backed_chat",
-        planner_provider_backend=(
-            str(plan_result.get("planner_provider_backend")).strip()
-            if plan_result.get("planner_provider_backend") is not None
-            else None
-        ),
-        candidate_fixes=candidate_fix_list,
-        impacted_services=list(impact_summary["impacted_services"]),
-        impacted_symbols=list(impact_summary["impacted_symbols"]),
-        likely_failing_tests=list(impact_summary["likely_failing_tests"]),
-        rollback_complexity=str(impact_summary["rollback_complexity"]),
-        blast_radius=str(impact_summary["blast_radius"]),
-        workspace_evidence_refs=[request.workspace_evidence_bundle_ref],
-        generated_patch_ref=patch_artifact_id,
-        patch_impact_report_ref=patch_impact_report_id,
-        token_reduction_metrics=token_metrics,
-    )
-    options = [
-        DecisionOption(
-            name=fix,
-            rank=index,
-            expected_value=max(expected_value - ((index - 1) * 7.5), 0.0),
-            risk=risk_profile,
-            score=max(confidence - ((index - 1) * 0.08), 0.0),
-        )
-        for index, fix in enumerate(candidate_fix_list[:5], start=1)
-    ]
-    plan_payload = {
-        "recommended_action": str(
-            plan_result.get("recommended_action") or candidate_fix_list[0]
-        ).strip(),
-        "confidence": confidence,
-        "expected_value": expected_value,
-        "risk": risk_profile.model_dump(mode="json"),
-        "options": [option.model_dump(mode="json") for option in options],
-        "rationale": str(plan_result.get("rationale") or "").strip()
-        or "Candidate patch generated from bounded repository evidence.",
-        "calibration": None,
-        "repository_analysis": repository_analysis.model_dump(mode="json"),
-    }
-    integrity = _decision_plan_integrity(
-        snapshot_id=resolved_snapshot_id,
-        evidence_bundle_ref=request.workspace_evidence_bundle_ref,
-        patch_diff=patch_diff,
-        plan_payload=plan_payload,
-    )
-    decision_plan = DecisionPlan.model_validate(plan_payload | {"integrity": integrity})
-    decision_plan_id = _stable_identifier(
-        "decision_plan",
-        {
-            "snapshot_id": resolved_snapshot_id,
-            "workspace_evidence_bundle_ref": request.workspace_evidence_bundle_ref,
-            "plan": decision_plan.model_dump(mode="json"),
-        },
-    )
-    plan_path = repository_runtime._decision_plans_dir(org_id, repository_id) / (
-        f"{decision_plan_id}.json"
-    )
-    if not plan_path.exists():
-        plan_path.parent.mkdir(parents=True, exist_ok=True)
-        repository_runtime._write_json(
-            plan_path,
-            {
-                "repository_id": repository_id,
-                "snapshot_id": resolved_snapshot_id,
                 "decision_plan_id": decision_plan_id,
+                "snapshot_id": resolved_snapshot_id,
                 "workspace_evidence_bundle_ref": request.workspace_evidence_bundle_ref,
-                "patch_path": str(patch_path),
-                "created_at": created_at.isoformat(),
-                "decision_plan": decision_plan.model_dump(mode="json"),
+                "model_id": model_id,
+                "created_at": decision_plan_lookup.get("created_at") or _utc_now().isoformat(),
+                "response": response.model_dump(mode="json"),
             },
         )
-    response = RepositoryDecisionPlanResponse.model_validate(read_json(plan_path))
-    repository_runtime._write_json(
-        lookup_path,
-        {
-            "decision_plan_id": decision_plan_id,
-            "snapshot_id": resolved_snapshot_id,
-            "workspace_evidence_bundle_ref": request.workspace_evidence_bundle_ref,
-            "model_id": model_id,
-            "created_at": created_at.isoformat(),
-            "response": response.model_dump(mode="json"),
-        },
-    )
-    return response
+        return response
+
+    cached = _read_cached_decision_plan()
+    if cached is not None:
+        return cached
+
+    # Cache miss. Serialize generation for this lookup_key so concurrent workers —
+    # critically the nondeterministic verified_agentic tier — do not each run a
+    # planner and persist divergent plans (the model_id sentinel already partitions
+    # the cache by planner tier). Decision plans are append-only: the first completed
+    # run populates the key and is served stably thereafter, never recomputed-and-
+    # compared. failed/aborted/no_change runs raise inside the planner before this
+    # point, so they are never cached.
+    with _decision_plan_generation_lock(lookup_path.parent, lookup_key):
+        cached = _read_cached_decision_plan()
+        if cached is not None:
+            return cached
+
+        snapshot_manifest = repository_storage._load_snapshot_manifest(
+            org_id=org_id,
+            repository_id=repository_id,
+            snapshot_id=resolved_snapshot_id,
+        )
+        plan_result = await generate_repository_patch_plan(
+            model_id=model_id,
+            snapshot_manifest=snapshot_manifest,
+            triage_manifest=triage_manifest,
+        )
+        patch_diff = str(plan_result["patch_diff"])
+        validate_patch_against_snapshot(
+            snapshot_manifest=snapshot_manifest,
+            patch_diff=patch_diff,
+        )
+
+        # Agentic provenance is recorded in the INTERNAL audit record only and binds
+        # into result_hash; it never reaches the public DecisionPlan (red lines #3/#4).
+        planner_execution_mode = str(plan_result.get("planner_execution_mode") or "").strip()
+        is_agentic_plan = planner_execution_mode == "verified_agentic"
+        agent_run_id = plan_result.get("agent_run_id") if is_agentic_plan else None
+
+        created_at = _utc_now()
+        patch_artifact_id = _stable_identifier(
+            "patch",
+            {
+                "snapshot_id": resolved_snapshot_id,
+                "patch_hash": hashlib.sha256(patch_diff.encode("utf-8")).hexdigest(),
+            },
+        )
+        patch_path = repository_runtime._patches_dir(org_id, repository_id) / (
+            f"{patch_artifact_id}.diff"
+        )
+        patch_path.parent.mkdir(parents=True, exist_ok=True)
+        patch_path.write_text(patch_diff, encoding="utf-8")
+
+        impact_summary = patch_impact_summary(snapshot_manifest, patch_diff)
+        patch_impact_report_id = _stable_identifier(
+            "patch_impact",
+            {
+                "snapshot_id": resolved_snapshot_id,
+                "patch_hash": hashlib.sha256(patch_diff.encode("utf-8")).hexdigest(),
+                "impact": impact_summary,
+            },
+        )
+        patch_impact_path = repository_runtime._patch_impact_dir(org_id, repository_id) / (
+            f"{patch_impact_report_id}.json"
+        )
+        patch_impact_parquet = repository_runtime._patch_impact_dir(org_id, repository_id) / (
+            f"{patch_impact_report_id}.parquet"
+        )
+        if not patch_impact_path.exists():
+            patch_impact_path.parent.mkdir(parents=True, exist_ok=True)
+            records = [
+                PatchImpactReportRecord(
+                    repository_id=repository_id,
+                    snapshot_id=resolved_snapshot_id,
+                    patch_impact_report_id=patch_impact_report_id,
+                    impacted_file=row["impacted_file"],
+                    impacted_symbol=row["impacted_symbol"],
+                    risk_type=row["risk_type"],
+                    severity=row["severity"],
+                    likely_failing_test=row["likely_failing_test"],
+                    dependency_target=row["dependency_target"],
+                    created_at=created_at,
+                )
+                for row in impact_summary["records"]
+            ]
+            patch_impact_parquet.write_bytes(
+                parquet_bytes_from_records(records, record_type=PatchImpactReportRecord)
+                if records
+                else parquet_bytes_from_records([], record_type=PatchImpactReportRecord)
+            )
+            repository_runtime._write_json(
+                patch_impact_path,
+                {
+                    "patch_impact_report_id": patch_impact_report_id,
+                    "snapshot_id": resolved_snapshot_id,
+                    "created_at": created_at.isoformat(),
+                    **impact_summary,
+                    "patch_impact_artifact": repository_storage._artifact_ref(
+                        artifact_id=_stable_identifier(
+                            "artifact",
+                            {"kind": "patch_impact_report", "id": patch_impact_report_id},
+                        ),
+                        artifact_kind="PatchImpactReport",
+                        content_hash=repository_storage._hash_file(patch_impact_parquet),
+                        storage_path=patch_impact_parquet,
+                        schema_revision="runtime-internal-contracts-v1",
+                        created_at=created_at,
+                    ).model_dump(mode="json"),
+                },
+            )
+
+        risk_profile = _option_risk(float(impact_summary["risk_score"]))
+        candidate_fixes = plan_result.get("candidate_fixes")
+        if isinstance(candidate_fixes, str):
+            candidate_fix_list = [candidate_fixes]
+        elif isinstance(candidate_fixes, list):
+            candidate_fix_list = [str(item) for item in candidate_fixes if str(item).strip()]
+        else:
+            candidate_fix_list = []
+        if not candidate_fix_list:
+            candidate_fix_list = [
+                str(plan_result.get("recommended_action") or "Apply repository patch").strip()
+            ]
+
+        confidence = float(plan_result.get("confidence") or 0.5)
+        confidence = min(max(confidence, 0.0), 1.0)
+        expected_value = round(
+            max(1.0, confidence * 100.0 - float(impact_summary["risk_score"]) * 55.0),
+            3,
+        )
+        token_metrics = TokenReductionMetrics(
+            raw_repo_token_estimate=int(triage_manifest["raw_repo_token_estimate"]),
+            evidence_bundle_token_count=int(triage_manifest["evidence_bundle_token_count"]),
+            reduction_ratio=float(triage_manifest["reduction_ratio"]),
+        )
+        repository_analysis = RepositoryAnalysis(
+            root_cause=str(plan_result.get("root_cause") or "").strip()
+            or "Repository issue localized from bounded evidence bundle.",
+            planner_model_id=str(plan_result.get("planner_model_id") or model_id).strip()
+            or model_id,
+            planner_execution_mode=str(
+                plan_result.get("planner_execution_mode") or "provider_backed_chat"
+            ).strip()
+            or "provider_backed_chat",
+            planner_provider_backend=(
+                str(plan_result.get("planner_provider_backend")).strip()
+                if plan_result.get("planner_provider_backend") is not None
+                else None
+            ),
+            candidate_fixes=candidate_fix_list,
+            impacted_services=list(impact_summary["impacted_services"]),
+            impacted_symbols=list(impact_summary["impacted_symbols"]),
+            likely_failing_tests=list(impact_summary["likely_failing_tests"]),
+            rollback_complexity=str(impact_summary["rollback_complexity"]),
+            blast_radius=str(impact_summary["blast_radius"]),
+            workspace_evidence_refs=[request.workspace_evidence_bundle_ref],
+            generated_patch_ref=patch_artifact_id,
+            patch_impact_report_ref=patch_impact_report_id,
+            token_reduction_metrics=token_metrics,
+        )
+        options = [
+            DecisionOption(
+                name=fix,
+                rank=index,
+                expected_value=max(expected_value - ((index - 1) * 7.5), 0.0),
+                risk=risk_profile,
+                score=max(confidence - ((index - 1) * 0.08), 0.0),
+            )
+            for index, fix in enumerate(candidate_fix_list[:5], start=1)
+        ]
+        plan_payload = {
+            "recommended_action": str(
+                plan_result.get("recommended_action") or candidate_fix_list[0]
+            ).strip(),
+            "confidence": confidence,
+            "expected_value": expected_value,
+            "risk": risk_profile.model_dump(mode="json"),
+            "options": [option.model_dump(mode="json") for option in options],
+            "rationale": str(plan_result.get("rationale") or "").strip()
+            or "Candidate patch generated from bounded repository evidence.",
+            "calibration": None,
+            "repository_analysis": repository_analysis.model_dump(mode="json"),
+        }
+        integrity = _decision_plan_integrity(
+            snapshot_id=resolved_snapshot_id,
+            evidence_bundle_ref=request.workspace_evidence_bundle_ref,
+            patch_diff=patch_diff,
+            plan_payload=plan_payload,
+            agent_run_id=agent_run_id,
+        )
+        decision_plan = DecisionPlan.model_validate(plan_payload | {"integrity": integrity})
+        decision_plan_id = _stable_identifier(
+            "decision_plan",
+            {
+                "snapshot_id": resolved_snapshot_id,
+                "workspace_evidence_bundle_ref": request.workspace_evidence_bundle_ref,
+                "plan": decision_plan.model_dump(mode="json"),
+            },
+        )
+        plan_path = repository_runtime._decision_plans_dir(org_id, repository_id) / (
+            f"{decision_plan_id}.json"
+        )
+        if not plan_path.exists():
+            plan_path.parent.mkdir(parents=True, exist_ok=True)
+            repository_runtime._write_json(
+                plan_path,
+                {
+                    "repository_id": repository_id,
+                    "snapshot_id": resolved_snapshot_id,
+                    "decision_plan_id": decision_plan_id,
+                    "workspace_evidence_bundle_ref": request.workspace_evidence_bundle_ref,
+                    "patch_path": str(patch_path),
+                    "created_at": created_at.isoformat(),
+                    "decision_plan": decision_plan.model_dump(mode="json"),
+                    # Internal audit provenance — ignored by RepositoryDecisionPlanResponse,
+                    # so planner_engine="cline_fork"/transcript never reach the public API.
+                    **(
+                        {
+                            "agent_provenance": {
+                                "planner_engine": plan_result.get("planner_engine"),
+                                "agent_run_id": plan_result.get("agent_run_id"),
+                                "transcript_ref": plan_result.get("transcript_ref"),
+                                "planner_execution_mode": planner_execution_mode,
+                            }
+                        }
+                        if is_agentic_plan
+                        else {}
+                    ),
+                },
+            )
+        response = RepositoryDecisionPlanResponse.model_validate(read_json(plan_path))
+        repository_runtime._write_json(
+            lookup_path,
+            {
+                "decision_plan_id": decision_plan_id,
+                "snapshot_id": resolved_snapshot_id,
+                "workspace_evidence_bundle_ref": request.workspace_evidence_bundle_ref,
+                "model_id": model_id,
+                "created_at": created_at.isoformat(),
+                "response": response.model_dump(mode="json"),
+            },
+        )
+        return response
