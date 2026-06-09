@@ -56,6 +56,7 @@ except ModuleNotFoundError:
 
 BASE_URL = resolve_local_live_base_url()
 API_KEY = resolve_local_live_api_key()
+SUITE_NAME = "load_integration"
 
 PASS = "✅"
 FAIL = "❌"
@@ -1040,7 +1041,7 @@ def test_sustained_load():
 # ═══════════════════════════════════════════════════════════════════════════════
 #  Main entry point
 # ═══════════════════════════════════════════════════════════════════════════════
-def main():
+if __name__ == "__main__":
     print("=" * 70)
     print("  Phase 9: Concurrent Load / Stress Integration Tests")
     print(f"  Target: {BASE_URL}")
@@ -1093,8 +1094,23 @@ def main():
                 print(f"    {SKIP} {r[1]}: {r[2]}")
 
     print("\n" + "=" * 70)
-    sys.exit(1 if failed else 0)
 
+    import pytest
 
-if __name__ == "__main__":
-    main()
+    exit_code = pytest.main([__file__, "-v"])
+    try:
+        from tests.integration.live_integration_artifacts import write_live_integration_summary
+
+        artifact_path = write_live_integration_summary(
+            SUITE_NAME,
+            script="tests/integration/test_load.py",
+            passed=0,
+            failed=0,
+            skipped=0,
+            total=0,
+            elapsed_seconds=0.0,
+        )
+        print(f"Summary artifact: {artifact_path}")
+    except Exception:
+        pass
+    sys.exit(exit_code)
