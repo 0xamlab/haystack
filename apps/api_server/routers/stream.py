@@ -107,8 +107,22 @@ async def _stream_mojo(payload: dict[str, Any]) -> AsyncGenerator[str, None]:
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-    except Exception as exc:
-        yield _sse_event("error", json.dumps({"error": str(exc)}))
+    except Exception:
+        logger.exception(
+            "stream_mojo_spawn_failed",
+            route="/v1/simulate/stream",
+        )
+        yield _sse_event(
+            "error",
+            json.dumps(
+                {
+                    "error": {
+                        "code": "engine_spawn_failed",
+                        "message": "Failed to start the simulation engine.",
+                    }
+                }
+            ),
+        )
         return
 
     assert proc.stdin and proc.stdout
@@ -219,13 +233,24 @@ async def simulate_stream(
 
     try:
         await check_quota_redis(auth["org_id"], auth["plan"], redis)
-    except Exception as exc:
-        detail = str(exc)
+    except Exception:
+        logger.exception(
+            "stream_quota_check_failed",
+            route="/v1/simulate/stream",
+            org_id=str(auth["org_id"]),
+        )
 
         async def _quota_err() -> AsyncGenerator[str, None]:
             yield _sse_event(
                 "error",
-                json.dumps({"error": "quota_exceeded", "detail": detail}),
+                json.dumps(
+                    {
+                        "error": {
+                            "code": "quota_exceeded",
+                            "message": "Quota check failed or limit reached.",
+                        }
+                    }
+                ),
             )
 
         return StreamingResponse(

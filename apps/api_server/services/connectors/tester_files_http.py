@@ -3,6 +3,8 @@ from __future__ import annotations
 import time
 from typing import Any
 
+import structlog
+
 from apps.api_server.services.egress_guard import (
     EgressPolicyDeniedError,
     async_http_request,
@@ -14,6 +16,8 @@ from .tester_common import (
     failure_outcome,
     success_outcome,
 )
+
+logger = structlog.get_logger(__name__)
 
 
 async def test_file_connector(config: dict[str, Any]) -> ConnectorTestOutcome:
@@ -30,8 +34,9 @@ async def test_file_connector(config: dict[str, Any]) -> ConnectorTestOutcome:
             elapsed_ms(started_at),
         )
     except Exception as exc:
+        logger.exception("connector_test_failed", connector="file")
         return failure_outcome(
-            message=f"File connector failed: {exc}",
+            message="File connector failed.",
             latency_ms=elapsed_ms(started_at),
             exception=exc,
         )
@@ -101,8 +106,9 @@ async def test_rest_api_connector(config: dict[str, Any]) -> ConnectorTestOutcom
             recoverable=False,
         )
     except Exception as exc:
+        logger.exception("connector_test_failed", connector="rest_api")
         return failure_outcome(
-            message=f"REST API unreachable: {exc}",
+            message="REST API unreachable.",
             latency_ms=elapsed_ms(started_at),
             exception=exc,
         )

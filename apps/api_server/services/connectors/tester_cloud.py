@@ -4,6 +4,8 @@ import json
 import time
 from typing import Any
 
+import structlog
+
 from apps.api_server.services.egress_guard import (
     EgressPolicyDeniedError,
     audit_context_from_config,
@@ -18,6 +20,8 @@ from .tester_common import (
     failure_outcome,
     success_outcome,
 )
+
+logger = structlog.get_logger(__name__)
 
 
 async def test_s3_connector(config: dict[str, Any]) -> ConnectorTestOutcome:
@@ -69,8 +73,9 @@ async def test_s3_connector(config: dict[str, Any]) -> ConnectorTestOutcome:
             recoverable=False,
         )
     except Exception as exc:
+        logger.exception("connector_test_failed", connector="s3")
         return failure_outcome(
-            message=f"AWS S3 error: {exc}",
+            message="AWS S3 connection failed.",
             latency_ms=elapsed_ms(started_at),
             exception=exc,
         )
@@ -87,8 +92,9 @@ async def test_azure_blob_connector(config: dict[str, Any]) -> ConnectorTestOutc
             return success_outcome(message, elapsed_ms(started_at))
         return failure_outcome(message=message, latency_ms=elapsed_ms(started_at))
     except Exception as exc:
+        logger.exception("connector_test_failed", connector="azure_blob")
         return failure_outcome(
-            message=f"Azure error: {exc}",
+            message="Azure connection failed.",
             latency_ms=elapsed_ms(started_at),
             exception=exc,
         )
@@ -105,8 +111,9 @@ async def test_gcs_connector(config: dict[str, Any]) -> ConnectorTestOutcome:
             return success_outcome(message, elapsed_ms(started_at))
         return failure_outcome(message=message, latency_ms=elapsed_ms(started_at))
     except Exception as exc:
+        logger.exception("connector_test_failed", connector="gcs")
         return failure_outcome(
-            message=f"GCS error: {exc}",
+            message="GCS connection failed.",
             latency_ms=elapsed_ms(started_at),
             exception=exc,
         )
@@ -161,8 +168,9 @@ async def test_bigquery_connector(config: dict[str, Any]) -> ConnectorTestOutcom
             recoverable=False,
         )
     except Exception as exc:
+        logger.exception("connector_test_failed", connector="bigquery")
         return failure_outcome(
-            message=f"BigQuery error: {exc}",
+            message="BigQuery connection failed.",
             latency_ms=elapsed_ms(started_at),
             exception=exc,
         )

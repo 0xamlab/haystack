@@ -4,12 +4,17 @@ import asyncio
 import time
 from typing import Any
 
+import structlog
+
 from apps.api_server.services.connector_egress import (
     connector_audit_context,
     connector_host_destination,
     enforce_connector_destination,
     snowflake_account_destination,
 )
+from apps.api_server.services.egress_guard import EgressPolicyDeniedError
+
+logger = structlog.get_logger(__name__)
 
 from .tester_common import (
     ConnectorTestOutcome,
@@ -60,9 +65,17 @@ async def test_postgres_connector(config: dict[str, Any]) -> ConnectorTestOutcom
             f"PostgreSQL connection successful ({host}:{port}/{database})",
             elapsed_ms(started_at),
         )
-    except Exception as exc:
+    except EgressPolicyDeniedError as exc:
         return failure_outcome(
-            message=f"PostgreSQL connection failed: {exc}",
+            message=f"PostgreSQL blocked by privacy policy: {exc.decision.reason}",
+            latency_ms=elapsed_ms(started_at),
+            error_type="permission",
+            recoverable=True,
+        )
+    except Exception as exc:
+        logger.exception("connector_test_failed", connector="postgres")
+        return failure_outcome(
+            message="PostgreSQL connection failed.",
             latency_ms=elapsed_ms(started_at),
             exception=exc,
         )
@@ -100,8 +113,9 @@ async def test_sqlite_connector(config: dict[str, Any]) -> ConnectorTestOutcome:
             elapsed_ms(started_at),
         )
     except Exception as exc:
+        logger.exception("connector_test_failed", connector="sqlite")
         return failure_outcome(
-            message=f"SQLite connection failed: {exc}",
+            message="SQLite connection failed.",
             latency_ms=elapsed_ms(started_at),
             exception=exc,
         )
@@ -141,8 +155,9 @@ async def test_clickhouse_connector(config: dict[str, Any]) -> ConnectorTestOutc
             elapsed_ms(started_at),
         )
     except Exception as exc:
+        logger.exception("connector_test_failed", connector="clickhouse")
         return failure_outcome(
-            message=f"ClickHouse error: {exc}",
+            message="ClickHouse connection failed.",
             latency_ms=elapsed_ms(started_at),
             exception=exc,
         )
@@ -164,8 +179,9 @@ async def test_elasticsearch_connector(config: dict[str, Any]) -> ConnectorTestO
             elapsed_ms(started_at),
         )
     except Exception as exc:
+        logger.exception("connector_test_failed", connector="elasticsearch")
         return failure_outcome(
-            message=f"Elasticsearch error: {exc}",
+            message="Elasticsearch connection failed.",
             latency_ms=elapsed_ms(started_at),
             exception=exc,
         )
@@ -198,8 +214,9 @@ async def test_redis_connector(config: dict[str, Any]) -> ConnectorTestOutcome:
             elapsed_ms(started_at),
         )
     except Exception as exc:
+        logger.exception("connector_test_failed", connector="redis")
         return failure_outcome(
-            message=f"Redis error: {exc}",
+            message="Redis connection failed.",
             latency_ms=elapsed_ms(started_at),
             exception=exc,
         )
@@ -235,8 +252,9 @@ async def test_neo4j_connector(config: dict[str, Any]) -> ConnectorTestOutcome:
             elapsed_ms(started_at),
         )
     except Exception as exc:
+        logger.exception("connector_test_failed", connector="neo4j")
         return failure_outcome(
-            message=f"Neo4j error: {exc}",
+            message="Neo4j connection failed.",
             latency_ms=elapsed_ms(started_at),
             exception=exc,
         )
@@ -286,9 +304,17 @@ async def test_snowflake_connector(config: dict[str, Any]) -> ConnectorTestOutco
             f"Snowflake connection successful ({config.get('account')})",
             elapsed_ms(started_at),
         )
-    except Exception as exc:
+    except EgressPolicyDeniedError as exc:
         return failure_outcome(
-            message=f"Snowflake error: {exc}",
+            message=f"Snowflake blocked by privacy policy: {exc.decision.reason}",
+            latency_ms=elapsed_ms(started_at),
+            error_type="permission",
+            recoverable=True,
+        )
+    except Exception as exc:
+        logger.exception("connector_test_failed", connector="snowflake")
+        return failure_outcome(
+            message="Snowflake connection failed.",
             latency_ms=elapsed_ms(started_at),
             exception=exc,
         )

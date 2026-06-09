@@ -7,6 +7,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
+import structlog
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -76,6 +77,9 @@ __all__ = [
     "refresh_dataset",
     "visibility_hash",
 ]
+
+
+logger = structlog.get_logger(__name__)
 
 
 def _json_config(config: dict[str, Any] | None) -> str:
@@ -328,10 +332,20 @@ async def connect_data(
                     provider_metadata=discovery_metadata,
                     items=choices,
                 )
-            except Exception as exc:
+            except Exception:
+                logger.exception(
+                    "connect_data_browse_failed",
+                    route="/v1/data/connect",
+                    connector_id=str(connector.id),
+                    connector_type=connector.connector_type.value,
+                )
                 return {
                     "status": "failed",
-                    "message": f"Browse failed: {exc}",
+                    "message": "Browse failed.",
+                    "error": {
+                        "code": "browse_failed",
+                        "message": "Browse failed.",
+                    },
                     "connection_id": str(connector.id),
                     "connection_type": broad_type,
                     "provider": provider,

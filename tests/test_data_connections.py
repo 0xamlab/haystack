@@ -561,7 +561,11 @@ async def test_connect_data_returns_failed_when_browse_fails(monkeypatch) -> Non
 
     assert result == {
         "status": "failed",
-        "message": "Browse failed: boom",
+        "message": "Browse failed.",
+        "error": {
+            "code": "browse_failed",
+            "message": "Browse failed.",
+        },
         "connection_id": str(connector.id),
         "connection_type": "database",
         "provider": "sqlite",
