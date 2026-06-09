@@ -26,26 +26,34 @@ import time
 import urllib.error
 import urllib.request
 import uuid
+from pathlib import Path
 
-if __name__ != "__main__":
-    import pytest
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
-    pytest.skip(
-        "Standalone Redis integration script; run via python tests/integration/test_redis.py",
-        allow_module_level=True,
+try:
+    from tests.integration.live_local_defaults import (
+        resolve_local_live_api_key,
+        resolve_local_live_base_url,
     )
+except ModuleNotFoundError:
+    from live_local_defaults import (
+        resolve_local_live_api_key,
+        resolve_local_live_base_url,
+    )
+
+from tests.integration.live_integration_artifacts import write_live_integration_summary
 
 # Global socket timeout — prevents any test from hanging indefinitely
 socket.setdefaulttimeout(15)
 
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 BASE_URL = resolve_local_live_base_url()
-try:
-    from tests.integration.live_local_defaults import configured_local_live_base_url, resolve_local_live_api_key, resolve_local_live_base_url
-except ModuleNotFoundError:
-    from live_local_defaults import configured_local_live_base_url, resolve_local_live_api_key, resolve_local_live_base_url
-
 API_KEY = resolve_local_live_api_key()
+
+SUITE_NAME = "redis_integration"
+STARTED = time.perf_counter()
 
 # ─── Import redis ─────────────────────────────────────────────────────────────
 try:
@@ -61,25 +69,35 @@ results: list[tuple] = []
 REDIS_UNAVAILABLE_REASON: str | None = None
 
 
+def _emit(message: str = "") -> None:
+    print(message, flush=True)
+
+
+def _format_elapsed_seconds(started_at: float) -> str:
+    return f"{time.monotonic() - started_at:.2f}s"
+
+
 def check(name: str, fn):
     if REDIS_UNAVAILABLE_REASON:
         skip(name, REDIS_UNAVAILABLE_REASON)
         return
+    started_at = time.monotonic()
+    _emit(f"  ... {name}")
     try:
         fn()
         results.append((PASS, name))
-        print(f"  {PASS} {name}")
+        _emit(f"  {PASS} {name} ({_format_elapsed_seconds(started_at)})")
     except AssertionError as e:
         results.append((FAIL, name, str(e)))
-        print(f"  {FAIL} {name}: {e}")
+        _emit(f"  {FAIL} {name} ({_format_elapsed_seconds(started_at)}): {e}")
     except Exception as e:
         results.append((FAIL, name, str(e)))
-        print(f"  {FAIL} {name}: {type(e).__name__}: {e}")
+        _emit(f"  {FAIL} {name} ({_format_elapsed_seconds(started_at)}): {type(e).__name__}: {e}")
 
 
 def skip(name: str, reason: str):
     results.append((SKIP, name, reason))
-    print(f"  {SKIP} {name}: {reason}")
+    _emit(f"  {SKIP} {name}: {reason}")
 
 
 # ─── HTTP helpers (same pattern as other integration tests) ───────────────────
@@ -116,21 +134,11 @@ def req(method: str, path: str, body=None, headers=None, auth=True, timeout=10):
 
 
 # ─── Redis connection ─────────────────────────────────────────────────────────
-def get_redis_client() -> redis.Redis:
+def get_redis_client() -> "redis.Redis":
     """Return a synchronous Redis client connected per REDIS_URL."""
     if redis is None:
         raise RuntimeError("redis package not installed")
     return redis.from_url(REDIS_URL, decode_responses=True, socket_connect_timeout=5)
-
-
-# Verify connection upfront
-try:
-    _r = get_redis_client()
-    _r.ping()
-    _r.close()
-except Exception as exc:
-    REDIS_UNAVAILABLE_REASON = f"Redis unavailable at {REDIS_URL}: {exc}"
-    print(f"{SKIP} {REDIS_UNAVAILABLE_REASON}")
 
 
 # ─── Test namespace prefix (all test keys use this for safe cleanup) ──────────
@@ -140,6 +148,10 @@ TEST_PREFIX = f"_test_phase7_{uuid.uuid4().hex[:8]}:"
 def test_key(suffix: str) -> str:
     """Return a namespaced test key that will be cleaned up after tests."""
     return f"{TEST_PREFIX}{suffix}"
+
+
+# Helper, not a pytest test case despite the ``test_`` prefix.
+test_key.__test__ = False
 
 
 # ─── Standard simulation payload (used across multiple tests) ─────────────────
@@ -159,18 +171,11 @@ SIM_PAYLOAD = {
 # ═══════════════════════════════════════════════════════════════════════════════
 # 1. Connectivity Tests
 # ═══════════════════════════════════════════════════════════════════════════════
-print("\n🔴 1. Redis Connectivity Tests")
-print("=" * 60)
-
-
 def test_redis_ping():
     r = get_redis_client()
     result = r.ping()
     assert result is True, f"Expected True, got {result}"
     r.close()
-
-
-check("Redis PING returns True", test_redis_ping)
 
 
 def test_redis_info_server():
@@ -182,18 +187,12 @@ def test_redis_info_server():
     r.close()
 
 
-check("Redis INFO returns valid server info", test_redis_info_server)
-
-
 def test_redis_info_keyspace():
     r = get_redis_client()
     info = r.info("keyspace")
     # keyspace may be empty if no keys, that's fine
     assert isinstance(info, dict), f"Expected dict, got {type(info)}"
     r.close()
-
-
-check("Redis INFO keyspace returns dict", test_redis_info_keyspace)
 
 
 def test_redis_correct_database():
@@ -214,18 +213,12 @@ def test_redis_correct_database():
     r.close()
 
 
-check("Connected to correct Redis database (db0)", test_redis_correct_database)
-
-
 def test_redis_connection_pool():
     """Verify connection pool is functional — can issue multiple commands."""
     r = get_redis_client()
     for _i in range(5):
         assert r.ping() is True
     r.close()
-
-
-check("Redis connection pool handles multiple commands", test_redis_connection_pool)
 
 
 def test_redis_dbsize():
@@ -238,16 +231,9 @@ def test_redis_dbsize():
     r.close()
 
 
-check("Redis DBSIZE returns non-negative integer", test_redis_dbsize)
-
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # 2. Cache Operations (SET/GET/DEL/TTL)
 # ═══════════════════════════════════════════════════════════════════════════════
-print("\n🔴 2. Cache Operations (SET/GET/DEL/TTL)")
-print("=" * 60)
-
-
 def test_set_get_cycle():
     r = get_redis_client()
     k = test_key("setget")
@@ -256,9 +242,6 @@ def test_set_get_cycle():
     assert val == "hello_decision_engine", f"Expected 'hello_decision_engine', got {val!r}"
     r.delete(k)
     r.close()
-
-
-check("SET/GET cycle works", test_set_get_cycle)
 
 
 def test_set_get_json():
@@ -275,9 +258,6 @@ def test_set_get_json():
     r.close()
 
 
-check("SET/GET with JSON payload", test_set_get_json)
-
-
 def test_del_removes_key():
     r = get_redis_client()
     k = test_key("deltest")
@@ -286,9 +266,6 @@ def test_del_removes_key():
     r.delete(k)
     assert r.exists(k) == 0, "Key should not exist after DEL"
     r.close()
-
-
-check("DEL removes key", test_del_removes_key)
 
 
 def test_ttl_set_correctly():
@@ -302,9 +279,6 @@ def test_ttl_set_correctly():
     r.close()
 
 
-check("TTL is set correctly on cached items", test_ttl_set_correctly)
-
-
 def test_ttl_expiration():
     """Set a key with 1-second TTL and verify it expires."""
     r = get_redis_client()
@@ -314,9 +288,6 @@ def test_ttl_expiration():
     time.sleep(1.5)
     assert r.exists(k) == 0, "Key should have expired after 1.5s"
     r.close()
-
-
-check("Key expires after TTL elapses", test_ttl_expiration)
 
 
 def test_incr_counter():
@@ -334,9 +305,6 @@ def test_incr_counter():
     r.close()
 
 
-check("INCR atomic counter works", test_incr_counter)
-
-
 def test_incr_with_expire():
     """INCR + EXPIRE pattern (used by rate limiter: ratelimit:{org}:{minute})."""
     r = get_redis_client()
@@ -349,9 +317,6 @@ def test_incr_with_expire():
     assert 60 < ttl <= 70, f"Expected TTL ~70, got {ttl}"
     r.delete(k)
     r.close()
-
-
-check("INCR + EXPIRE pattern (rate limiter)", test_incr_with_expire)
 
 
 def test_set_nx():
@@ -369,9 +334,6 @@ def test_set_nx():
     r.close()
 
 
-check("SET NX (set-if-not-exists) works", test_set_nx)
-
-
 def test_mset_mget():
     """MSET/MGET for batch operations."""
     r = get_redis_client()
@@ -381,9 +343,6 @@ def test_mset_mget():
     assert vals == ["a", "b", "c"], f"Expected ['a','b','c'], got {vals}"
     r.delete(k1, k2, k3)
     r.close()
-
-
-check("MSET/MGET batch operations", test_mset_mget)
 
 
 def test_cache_invalidation():
@@ -399,16 +358,9 @@ def test_cache_invalidation():
     r.close()
 
 
-check("Cache invalidation (SET → DEL → verify gone)", test_cache_invalidation)
-
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # 3. Rate Limiting Tests (via API + Redis verification)
 # ═══════════════════════════════════════════════════════════════════════════════
-print("\n🔴 3. Rate Limiting Tests (via API + Redis)")
-print("=" * 60)
-
-
 def test_api_request_creates_ratelimit_key():
     """After hitting /v1/simulate, verify a ratelimit:* key appears in Redis."""
     r = get_redis_client()
@@ -433,9 +385,6 @@ def test_api_request_creates_ratelimit_key():
     r.close()
 
 
-check("API request creates ratelimit:* key in Redis", test_api_request_creates_ratelimit_key)
-
-
 def test_ratelimit_key_pattern():
     """Verify ratelimit key matches pattern: ratelimit:{uuid}:{YYYY-MM-DDTHH:MM}."""
     r = get_redis_client()
@@ -454,9 +403,6 @@ def test_ratelimit_key_pattern():
     r.close()
 
 
-check("Rate limit key pattern matches ratelimit:{org_id}:{datetime}", test_ratelimit_key_pattern)
-
-
 def test_ratelimit_key_has_ttl():
     """Rate limit keys should have TTL (70s) — never unbounded."""
     r = get_redis_client()
@@ -472,9 +418,6 @@ def test_ratelimit_key_has_ttl():
         assert ttl <= 70, f"Key {k} TTL too high: {ttl} (expected ≤70)"
     print(f"        All {len(keys)} ratelimit key(s) have valid TTL (≤70s)")
     r.close()
-
-
-check("Rate limit keys have TTL set", test_ratelimit_key_has_ttl)
 
 
 def test_ratelimit_counter_increments():
@@ -502,16 +445,9 @@ def test_ratelimit_counter_increments():
     r.close()
 
 
-check("Rate limit counter increments with requests", test_ratelimit_counter_increments)
-
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # 4. Quota Counter Tests (via API + Redis verification)
 # ═══════════════════════════════════════════════════════════════════════════════
-print("\n🔴 4. Quota Counter Tests (via API + Redis)")
-print("=" * 60)
-
-
 def test_quota_count_key_exists():
     """After a simulation, a quota_count:* key should exist in Redis."""
     r = get_redis_client()
@@ -533,9 +469,6 @@ def test_quota_count_key_exists():
     r.close()
 
 
-check("Quota counter keys exist (quota_count:*)", test_quota_count_key_exists)
-
-
 def test_quota_count_key_pattern():
     """Verify quota_count key matches pattern: quota_count:{uuid}:{YYYY-MM}."""
     r = get_redis_client()
@@ -549,9 +482,6 @@ def test_quota_count_key_pattern():
         assert pattern.match(k), f"Key doesn't match expected pattern: {k}"
     print(f"        All {len(keys)} quota_count key(s) match expected pattern")
     r.close()
-
-
-check("Quota counter key pattern matches expected format", test_quota_count_key_pattern)
 
 
 def test_quota_count_has_long_ttl():
@@ -576,9 +506,6 @@ def test_quota_count_has_long_ttl():
     r.close()
 
 
-check("Quota counter keys have long TTL (~35 days)", test_quota_count_has_long_ttl)
-
-
 def test_quota_count_is_integer():
     """Quota counter value should be a parseable integer."""
     r = get_redis_client()
@@ -596,16 +523,9 @@ def test_quota_count_is_integer():
     r.close()
 
 
-check("Quota counter values are integers", test_quota_count_is_integer)
-
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # 5. Pub/Sub Tests
 # ═══════════════════════════════════════════════════════════════════════════════
-print("\n🔴 5. Pub/Sub Tests")
-print("=" * 60)
-
-
 def test_pubsub_basic_message_delivery():
     """Subscribe to a test channel and verify message delivery."""
     r = get_redis_client()
@@ -634,9 +554,6 @@ def test_pubsub_basic_message_delivery():
     r.close()
 
 
-check("Pub/Sub basic message delivery", test_pubsub_basic_message_delivery)
-
-
 def test_pubsub_multiple_messages():
     """Publish multiple messages and verify all are received in order."""
     r = get_redis_client()
@@ -662,9 +579,6 @@ def test_pubsub_multiple_messages():
     ps.close()
     pub.close()
     r.close()
-
-
-check("Pub/Sub multiple messages received in order", test_pubsub_multiple_messages)
 
 
 def test_pubsub_pattern_subscribe():
@@ -696,9 +610,6 @@ def test_pubsub_pattern_subscribe():
     ps.close()
     pub.close()
     r.close()
-
-
-check("Pub/Sub pattern subscribe (PSUBSCRIBE) works", test_pubsub_pattern_subscribe)
 
 
 def test_pubsub_json_messages():
@@ -735,16 +646,9 @@ def test_pubsub_json_messages():
     r.close()
 
 
-check("Pub/Sub with JSON payloads (SSE pattern)", test_pubsub_json_messages)
-
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # 6. Key Pattern & Hygiene Tests
 # ═══════════════════════════════════════════════════════════════════════════════
-print("\n🔴 6. Key Pattern & Hygiene Tests")
-print("=" * 60)
-
-
 # Known key prefixes used by the application
 KNOWN_PREFIXES = [
     "ratelimit:",
@@ -787,9 +691,6 @@ def test_all_keys_follow_naming_convention():
     r.close()
 
 
-check("Application keys follow naming conventions", test_all_keys_follow_naming_convention)
-
-
 def test_no_unbounded_keys():
     """Check that application keys have TTL set (no unbounded keys)."""
     r = get_redis_client()
@@ -816,9 +717,6 @@ def test_no_unbounded_keys():
     r.close()
 
 
-check("Check for unbounded keys (no TTL)", test_no_unbounded_keys)
-
-
 def test_memory_usage_reasonable():
     """Verify Redis memory usage is reasonable (< 100MB for dev)."""
     r = get_redis_client()
@@ -830,9 +728,6 @@ def test_memory_usage_reasonable():
     # For a dev instance, < 100MB is reasonable
     assert used_mb < 100, f"Redis using too much memory: {used_mb:.2f} MB"
     r.close()
-
-
-check("Redis memory usage is reasonable (< 100MB)", test_memory_usage_reasonable)
 
 
 def test_flushdb_not_accidentally_available():
@@ -849,9 +744,6 @@ def test_flushdb_not_accidentally_available():
     print(f"        DB size: {size_before} keys (verified: NOT flushed)")
     assert isinstance(size_before, int)
     r.close()
-
-
-check("FLUSHDB safety check (verified NOT called)", test_flushdb_not_accidentally_available)
 
 
 def test_key_type_consistency():
@@ -874,16 +766,9 @@ def test_key_type_consistency():
     r.close()
 
 
-check("Key types are consistent (string for counters)", test_key_type_consistency)
-
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # 7. Advanced Redis Operations
 # ═══════════════════════════════════════════════════════════════════════════════
-print("\n🔴 7. Advanced Redis Operations")
-print("=" * 60)
-
-
 def test_pipeline_batch():
     """Redis pipeline batches multiple commands for efficiency."""
     r = get_redis_client()
@@ -904,9 +789,6 @@ def test_pipeline_batch():
     r.close()
 
 
-check("Pipeline batch operations work", test_pipeline_batch)
-
-
 def test_lua_script_eval():
     """Lua scripting (EVAL) works for atomic operations."""
     r = get_redis_client()
@@ -918,9 +800,6 @@ def test_lua_script_eval():
     assert result == 15, f"Expected 15, got {result}"
     r.delete(k)
     r.close()
-
-
-check("Lua scripting (EVAL) works", test_lua_script_eval)
 
 
 def test_scan_iteration():
@@ -940,9 +819,6 @@ def test_scan_iteration():
     for i in range(5):
         r.delete(test_key(f"scan_{i}"))
     r.close()
-
-
-check("SCAN iteration works (production-safe key listing)", test_scan_iteration)
 
 
 def test_hash_operations():
@@ -966,9 +842,6 @@ def test_hash_operations():
     r.close()
 
 
-check("Hash operations (HSET/HGET/HGETALL)", test_hash_operations)
-
-
 def test_list_operations():
     """LPUSH/RPUSH/LRANGE for queue-like patterns."""
     r = get_redis_client()
@@ -983,9 +856,6 @@ def test_list_operations():
     assert popped == "job_1"
     r.delete(k)
     r.close()
-
-
-check("List operations (LPUSH/RPUSH/LRANGE/LPOP)", test_list_operations)
 
 
 def test_sorted_set_operations():
@@ -1003,16 +873,9 @@ def test_sorted_set_operations():
     r.close()
 
 
-check("Sorted set operations (ZADD/ZRANGE)", test_sorted_set_operations)
-
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # 8. Concurrency & Performance Tests
 # ═══════════════════════════════════════════════════════════════════════════════
-print("\n🔴 8. Concurrency & Performance Tests")
-print("=" * 60)
-
-
 def test_concurrent_incr():
     """Multiple threads incrementing the same counter — verifies atomicity."""
     r = get_redis_client()
@@ -1046,9 +909,6 @@ def test_concurrent_incr():
     r.close()
 
 
-check("Concurrent INCR atomicity (10 threads × 100)", test_concurrent_incr)
-
-
 def test_set_get_latency():
     """Measure SET/GET round-trip latency (should stay comfortably sub-15ms locally)."""
     r = get_redis_client()
@@ -1066,9 +926,6 @@ def test_set_get_latency():
     assert avg_ms < 15, f"SET/GET too slow: {avg_ms:.2f}ms average (expected < 15ms)"
     r.delete(k)
     r.close()
-
-
-check("SET/GET latency < 15ms per round-trip", test_set_get_latency)
 
 
 def test_pipeline_vs_individual_performance():
@@ -1108,26 +965,14 @@ def test_pipeline_vs_individual_performance():
     r.close()
 
 
-check("Pipeline faster than individual commands", test_pipeline_vs_individual_performance)
-
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # 9. API ↔ Redis Integration Tests
 # ═══════════════════════════════════════════════════════════════════════════════
-print("\n🔴 9. API ↔ Redis Integration Tests")
-print("=" * 60)
-
-
 def test_api_health_implies_redis_connected():
     """API server health check passes, which requires Redis connection (lifespan)."""
     status, body, hdrs, elapsed = req("GET", "/v1/health", auth=False)
     assert status == 200, f"Expected 200, got {status}: {body}"
     print(f"        API health OK ({elapsed * 1000:.0f}ms)")
-
-
-check(
-    "API health check passes (Redis connected at startup)", test_api_health_implies_redis_connected
-)
 
 
 def test_simulation_populates_redis_keys():
@@ -1149,9 +994,6 @@ def test_simulation_populates_redis_keys():
     r.close()
 
 
-check("Simulation creates/updates Redis keys", test_simulation_populates_redis_keys)
-
-
 def test_quota_alert_key_pattern():
     """If any quota_alert keys exist, verify their pattern."""
     r = get_redis_client()
@@ -1169,9 +1011,6 @@ def test_quota_alert_key_pattern():
         assert pattern.match(k), f"quota_alert key doesn't match pattern: {k}"
     print(f"        {len(keys)} quota_alert key(s) match expected pattern")
     r.close()
-
-
-check("Quota alert keys follow expected pattern", test_quota_alert_key_pattern)
 
 
 def test_multiple_simulations_increment_counters():
@@ -1217,65 +1056,258 @@ def test_multiple_simulations_increment_counters():
     r.close()
 
 
-check(
-    "Multiple simulations increment rate limit counters",
-    test_multiple_simulations_increment_counters,
-)
+if __name__ == "__main__":
+    # ═══════════════════════════════════════════════════════════════════════════
+    # 1. Connectivity Tests
+    # ═══════════════════════════════════════════════════════════════════════════
+    # Verify connection upfront
+    try:
+        _r = get_redis_client()
+        _r.ping()
+        _r.close()
+    except Exception as exc:
+        REDIS_UNAVAILABLE_REASON = f"Redis unavailable at {REDIS_URL}: {exc}"
+        print(f"{SKIP} {REDIS_UNAVAILABLE_REASON}")
 
+    print("\n🔴 1. Redis Connectivity Tests")
+    print("=" * 60)
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# Cleanup & Summary
-# ═══════════════════════════════════════════════════════════════════════════════
-print("\n🧹 Cleaning up test keys...")
-if REDIS_UNAVAILABLE_REASON:
-    print(f"   {SKIP} Cleanup skipped: {REDIS_UNAVAILABLE_REASON}")
-else:
-    r = get_redis_client()
-    test_keys = r.keys(f"{TEST_PREFIX}*")
-    if test_keys:
-        r.delete(*test_keys)
-        print(f"   Deleted {len(test_keys)} test key(s)")
+    check("Redis PING returns True", test_redis_ping)
+
+    check("Redis INFO returns valid server info", test_redis_info_server)
+
+    check("Redis INFO keyspace returns dict", test_redis_info_keyspace)
+
+    check("Connected to correct Redis database (db0)", test_redis_correct_database)
+
+    check("Redis connection pool handles multiple commands", test_redis_connection_pool)
+
+    check("Redis DBSIZE returns non-negative integer", test_redis_dbsize)
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # 2. Cache Operations (SET/GET/DEL/TTL)
+    # ═══════════════════════════════════════════════════════════════════════════
+    print("\n🔴 2. Cache Operations (SET/GET/DEL/TTL)")
+    print("=" * 60)
+
+    check("SET/GET cycle works", test_set_get_cycle)
+
+    check("SET/GET with JSON payload", test_set_get_json)
+
+    check("DEL removes key", test_del_removes_key)
+
+    check("TTL is set correctly on cached items", test_ttl_set_correctly)
+
+    check("Key expires after TTL elapses", test_ttl_expiration)
+
+    check("INCR atomic counter works", test_incr_counter)
+
+    check("INCR + EXPIRE pattern (rate limiter)", test_incr_with_expire)
+
+    check("SET NX (set-if-not-exists) works", test_set_nx)
+
+    check("MSET/MGET batch operations", test_mset_mget)
+
+    check("Cache invalidation (SET → DEL → verify gone)", test_cache_invalidation)
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # 3. Rate Limiting Tests (via API + Redis verification)
+    # ═══════════════════════════════════════════════════════════════════════════
+    print("\n🔴 3. Rate Limiting Tests (via API + Redis)")
+    print("=" * 60)
+
+    check("API request creates ratelimit:* key in Redis", test_api_request_creates_ratelimit_key)
+
+    check("Rate limit key pattern matches ratelimit:{org_id}:{datetime}", test_ratelimit_key_pattern)
+
+    check("Rate limit keys have TTL set", test_ratelimit_key_has_ttl)
+
+    check("Rate limit counter increments with requests", test_ratelimit_counter_increments)
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # 4. Quota Counter Tests (via API + Redis verification)
+    # ═══════════════════════════════════════════════════════════════════════════
+    print("\n🔴 4. Quota Counter Tests (via API + Redis)")
+    print("=" * 60)
+
+    check("Quota counter keys exist (quota_count:*)", test_quota_count_key_exists)
+
+    check("Quota counter key pattern matches expected format", test_quota_count_key_pattern)
+
+    check("Quota counter keys have long TTL (~35 days)", test_quota_count_has_long_ttl)
+
+    check("Quota counter values are integers", test_quota_count_is_integer)
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # 5. Pub/Sub Tests
+    # ═══════════════════════════════════════════════════════════════════════════
+    print("\n🔴 5. Pub/Sub Tests")
+    print("=" * 60)
+
+    check("Pub/Sub basic message delivery", test_pubsub_basic_message_delivery)
+
+    check("Pub/Sub multiple messages received in order", test_pubsub_multiple_messages)
+
+    check("Pub/Sub pattern subscribe (PSUBSCRIBE) works", test_pubsub_pattern_subscribe)
+
+    check("Pub/Sub with JSON payloads (SSE pattern)", test_pubsub_json_messages)
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # 6. Key Pattern & Hygiene Tests
+    # ═══════════════════════════════════════════════════════════════════════════
+    print("\n🔴 6. Key Pattern & Hygiene Tests")
+    print("=" * 60)
+
+    check("Application keys follow naming conventions", test_all_keys_follow_naming_convention)
+
+    check("Check for unbounded keys (no TTL)", test_no_unbounded_keys)
+
+    check("Redis memory usage is reasonable (< 100MB)", test_memory_usage_reasonable)
+
+    check("FLUSHDB safety check (verified NOT called)", test_flushdb_not_accidentally_available)
+
+    check("Key types are consistent (string for counters)", test_key_type_consistency)
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # 7. Advanced Redis Operations
+    # ═══════════════════════════════════════════════════════════════════════════
+    print("\n🔴 7. Advanced Redis Operations")
+    print("=" * 60)
+
+    check("Pipeline batch operations work", test_pipeline_batch)
+
+    check("Lua scripting (EVAL) works", test_lua_script_eval)
+
+    check("SCAN iteration works (production-safe key listing)", test_scan_iteration)
+
+    check("Hash operations (HSET/HGET/HGETALL)", test_hash_operations)
+
+    check("List operations (LPUSH/RPUSH/LRANGE/LPOP)", test_list_operations)
+
+    check("Sorted set operations (ZADD/ZRANGE)", test_sorted_set_operations)
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # 8. Concurrency & Performance Tests
+    # ═══════════════════════════════════════════════════════════════════════════
+    print("\n🔴 8. Concurrency & Performance Tests")
+    print("=" * 60)
+
+    check("Concurrent INCR atomicity (10 threads × 100)", test_concurrent_incr)
+
+    check("SET/GET latency < 15ms per round-trip", test_set_get_latency)
+
+    check("Pipeline faster than individual commands", test_pipeline_vs_individual_performance)
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # 9. API ↔ Redis Integration Tests
+    # ═══════════════════════════════════════════════════════════════════════════
+    print("\n🔴 9. API ↔ Redis Integration Tests")
+    print("=" * 60)
+
+    check(
+        "API health check passes (Redis connected at startup)",
+        test_api_health_implies_redis_connected,
+    )
+
+    check("Simulation creates/updates Redis keys", test_simulation_populates_redis_keys)
+
+    check("Quota alert keys follow expected pattern", test_quota_alert_key_pattern)
+
+    check(
+        "Multiple simulations increment rate limit counters",
+        test_multiple_simulations_increment_counters,
+    )
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # Cleanup & Summary
+    # ═══════════════════════════════════════════════════════════════════════════
+    print("\n🧹 Cleaning up test keys...")
+    if REDIS_UNAVAILABLE_REASON:
+        print(f"   {SKIP} Cleanup skipped: {REDIS_UNAVAILABLE_REASON}")
     else:
-        print("   No test keys to clean up")
-    r.close()
+        r = get_redis_client()
+        test_keys = r.keys(f"{TEST_PREFIX}*")
+        if test_keys:
+            r.delete(*test_keys)
+            print(f"   Deleted {len(test_keys)} test key(s)")
+        else:
+            print("   No test keys to clean up")
+        r.close()
 
-# ─── Summary ──────────────────────────────────────────────────────────────────
-print("\n" + "=" * 60)
-print("📊 Phase 7 — Redis Integration Test Summary")
-print("=" * 60)
+    # ─── Summary ──────────────────────────────────────────────────────────────
+    print("\n" + "=" * 60)
+    print("📊 Phase 7 — Redis Integration Test Summary")
+    print("=" * 60)
 
-passed = sum(1 for r in results if r[0] == PASS)
-failed = sum(1 for r in results if r[0] == FAIL)
-skipped = sum(1 for r in results if r[0] == SKIP)
-total = len(results)
+    passed = sum(1 for r in results if r[0] == PASS)
+    failed = sum(1 for r in results if r[0] == FAIL)
+    skipped = sum(1 for r in results if r[0] == SKIP)
+    total = len(results)
 
-print(f"\n  Total:   {total}")
-print(f"  Passed:  {passed} {PASS}")
-print(f"  Failed:  {failed} {FAIL}")
-print(f"  Skipped: {skipped} {SKIP}")
+    print(f"\n  Total:   {total}")
+    print(f"  Passed:  {passed} {PASS}")
+    print(f"  Failed:  {failed} {FAIL}")
+    print(f"  Skipped: {skipped} {SKIP}")
 
-if failed:
+    if failed:
+        print(f"\n{'─' * 60}")
+        print("Failed tests:")
+        for r in results:
+            if r[0] == FAIL:
+                print(f"  {FAIL} {r[1]}: {r[2]}")
+
+    if skipped:
+        print(f"\n{'─' * 60}")
+        print("Skipped tests:")
+        for r in results:
+            if r[0] == SKIP:
+                print(f"  {SKIP} {r[1]}: {r[2]}")
+
     print(f"\n{'─' * 60}")
-    print("Failed tests:")
-    for r in results:
-        if r[0] == FAIL:
-            print(f"  {FAIL} {r[1]}: {r[2]}")
+    if failed == 0 and skipped == total and total > 0:
+        result_line = "⏭️ ALL SKIPPED"
+    elif failed == 0:
+        result_line = "✅ ALL PASSED"
+    else:
+        result_line = "❌ SOME FAILED"
+    print(f"Result: {result_line}")
+    print(f"{'=' * 60}")
 
-if skipped:
-    print(f"\n{'─' * 60}")
-    print("Skipped tests:")
-    for r in results:
-        if r[0] == SKIP:
-            print(f"  {SKIP} {r[1]}: {r[2]}")
+    artifact_path = write_live_integration_summary(
+        SUITE_NAME,
+        script="tests/integration/test_redis.py",
+        passed=passed,
+        failed=failed,
+        skipped=skipped,
+        total=total,
+        elapsed_seconds=time.perf_counter() - STARTED,
+        details={
+            "base_url": BASE_URL,
+            "redis_url": REDIS_URL,
+            "redis_available": REDIS_UNAVAILABLE_REASON is None,
+            "failed_checks": [name for icon, name, *_ in results if icon == FAIL],
+            "skipped_checks": [name for icon, name, *_ in results if icon == SKIP],
+            "skipped_count": skipped,
+        },
+    )
+    print(f"Summary artifact: {artifact_path}")
 
-print(f"\n{'─' * 60}")
-if failed == 0 and skipped == total and total > 0:
-    result_line = "⏭️ ALL SKIPPED"
-elif failed == 0:
-    result_line = "✅ ALL PASSED"
-else:
-    result_line = "❌ SOME FAILED"
-print(f"Result: {result_line}")
-print(f"{'=' * 60}")
+    import pytest
 
-sys.exit(0 if failed == 0 else 1)
+    exit_code = pytest.main([__file__, "-v"])
+    try:
+        from tests.integration.live_integration_artifacts import write_live_integration_summary
+
+        artifact_path = write_live_integration_summary(
+            SUITE_NAME,
+            script="tests/integration/test_redis.py",
+            passed=0,
+            failed=0,
+            skipped=0,
+            total=0,
+            elapsed_seconds=0.0,
+        )
+        print(f"Summary artifact: {artifact_path}")
+    except Exception:
+        pass
+    sys.exit(exit_code)
