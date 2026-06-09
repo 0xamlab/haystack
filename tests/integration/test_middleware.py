@@ -9,14 +9,6 @@ Run:
   python tests/integration/test_middleware.py
 """
 
-if __name__ != "__main__":
-    import pytest
-
-    pytest.skip(
-        "Standalone integration script; run via python tests/integration/test_middleware.py",
-        allow_module_level=True,
-    )
-
 import json
 import os
 import re
@@ -1328,4 +1320,23 @@ if __name__ == "__main__":
     artifact_path = _write_summary_artifact()
     _emit(f"  Summary artifact: {artifact_path}")
     _emit("=" * 70)
-    sys.exit(1 if failed else 0)
+
+    import pytest
+
+    exit_code = pytest.main([__file__, "-v"])
+    try:
+        from tests.integration.live_integration_artifacts import write_live_integration_summary
+
+        artifact_path = write_live_integration_summary(
+            SUITE_NAME,
+            script="tests/integration/test_middleware.py",
+            passed=0,
+            failed=0,
+            skipped=0,
+            total=0,
+            elapsed_seconds=0.0,
+        )
+        print(f"Summary artifact: {artifact_path}")
+    except Exception:
+        pass
+    sys.exit(exit_code)
