@@ -32,14 +32,6 @@ Run:
 
 from __future__ import annotations
 
-if __name__ != "__main__":
-    import pytest
-
-    pytest.skip(
-        "Standalone integration script; run via python tests/integration/test_e2e_complete.py",
-        allow_module_level=True,
-    )
-
 import csv as csv_stdlib
 import json
 import math
@@ -232,40 +224,6 @@ def _auto(
     }
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-#  CONNECTIVITY CHECK
-# ══════════════════════════════════════════════════════════════════════════════
-_emit("\n" + "=" * 70)
-_emit("  PHASE 21: Complete End-to-End Integration Tests")
-_emit("=" * 70)
-
-status, _, _, _ = req("GET", "/v1/health", auth=False, timeout=5)
-if status != 200:
-    _emit(f"\n  {FAIL} Cannot reach API server at {BASE_URL}")
-    _emit("     Make sure the server is running (make dev-api)")
-    sys.exit(1)
-
-_emit(f"  {PASS} Server reachable")
-
-if not API_KEY_CONFIGURED:
-    reason = (
-        "DE_API_KEY is not set; skipping complete end-to-end live checks "
-        "that require a real live key."
-    )
-    skip("E2E complete suite preflight", reason)
-    _emit(f"\n  {SKIP} preflight: {reason}")
-    artifact_path = _write_summary_artifact()
-    _emit(f"  Summary artifact: {artifact_path}\n")
-    sys.exit(0)
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  SECTION 1 — All 27 distribution types
-# ══════════════════════════════════════════════════════════════════════════════
-print("\n" + "=" * 70)
-print("  SECTION 1: All 27 Distribution Types")
-print("=" * 70)
-
 _DISTRIBUTIONS: list[tuple[str, dict]] = [
     # name                params
     ("normal", {"mean": 50.0, "std": 10.0}),
@@ -300,40 +258,6 @@ _DISTRIBUTIONS: list[tuple[str, dict]] = [
 # Keep track so we test all 27
 _tested_dists: set[str] = set()
 
-for _dist_name, _dist_params in _DISTRIBUTIONS:
-
-    def _make_dist_test(dist_name: str, dist_params: dict):
-        def _test():
-            payload = _expert(
-                variables=[{"name": "x", "distribution": dist_name, "params": dist_params}],
-                objective="x",
-                runs=300,
-            )
-            status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
-            ensure_simulation_capacity_available(status, body)
-            assert status == 200, f"[{dist_name}] Expected 200, got {status}: {body}"
-            assert "confidence" in body, f"[{dist_name}] Missing confidence"
-            assert "metrics" in body, f"[{dist_name}] Missing metrics"
-            assert isinstance(body["confidence"], int | float), (
-                f"[{dist_name}] confidence is {type(body['confidence'])}"
-            )
-            timings.append((f"POST /v1/simulate ({dist_name})", elapsed))
-
-        return _test
-
-    check(f"Distribution: {_dist_name}", _make_dist_test(_dist_name, _dist_params))
-    _tested_dists.add(_dist_name)
-
-assert len(_tested_dists) == 27, f"Expected 27 distributions, tested {len(_tested_dists)}"
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  SECTION 2 — Decision APIs: /v1/score, /v1/batch, /v1/compare
-# ══════════════════════════════════════════════════════════════════════════════
-print("\n" + "=" * 70)
-print("  SECTION 2: Decision APIs (score / batch / compare)")
-print("=" * 70)
-
 _BASE_SIM = _auto({"revenue": {"low": 80_000, "high": 200_000}}, runs=200)
 
 
@@ -352,9 +276,6 @@ def test_score_endpoint():
     assert 0.0 <= body["score"] <= 1.0, f"Score out of range: {body['score']}"
     assert "score_breakdown" in body, "Missing score_breakdown"
     timings.append(("POST /v1/score", elapsed))
-
-
-check("POST /v1/score → 200 with score breakdown", test_score_endpoint)
 
 
 def test_batch_endpoint():
@@ -387,9 +308,6 @@ def test_batch_endpoint():
     timings.append(("POST /v1/batch (3 items)", elapsed))
 
 
-check("POST /v1/batch (3 items) → 200", test_batch_endpoint)
-
-
 def test_batch_partial_failure():
     """Batch allows partial failures — bad item should not kill whole request."""
     status, body, _, elapsed = req(
@@ -404,9 +322,6 @@ def test_batch_partial_failure():
     )
     # Either 200 with partial failure, or 422 — both acceptable
     assert status in (200, 422), f"Unexpected status {status}: {body}"
-
-
-check("POST /v1/batch partial failure handled gracefully", test_batch_partial_failure)
 
 
 def test_compare_endpoint():
@@ -440,9 +355,6 @@ def test_compare_endpoint():
     timings.append(("POST /v1/compare (3 scenarios)", elapsed))
 
 
-check("POST /v1/compare (3 scenarios) → 200 with winner", test_compare_endpoint)
-
-
 def test_compare_invalid_payload():
     """compare requires at least 2 scenarios."""
     status, body, _, elapsed = req(
@@ -455,17 +367,6 @@ def test_compare_invalid_payload():
         },
     )
     assert status in (400, 422), f"Expected 4xx for single scenario, got {status}"
-
-
-check("POST /v1/compare single scenario → 4xx", test_compare_invalid_payload)
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  SECTION 3 — What-if analysis
-# ══════════════════════════════════════════════════════════════════════════════
-print("\n" + "=" * 70)
-print("  SECTION 3: What-If Analysis")
-print("=" * 70)
 
 _WHATIF_BASE = _expert(
     variables=[
@@ -506,9 +407,6 @@ def test_whatif_basic():
     timings.append(("POST /v1/simulate/what-if (5 steps)", elapsed))
 
 
-check("POST /v1/simulate/what-if → 200 with sweep", test_whatif_basic)
-
-
 def test_whatif_std_param():
     """Vary the std parameter instead of mean."""
     status, body, _, elapsed = req(
@@ -529,9 +427,6 @@ def test_whatif_std_param():
     assert body["param_changed"] == "std", f"Expected 'std', got {body['param_changed']}"
 
 
-check("POST /v1/simulate/what-if (vary std) → 200", test_whatif_std_param)
-
-
 def test_whatif_auto_mode_rejected():
     """What-if only works with expert-mode base request."""
     status, body, _, elapsed = req(
@@ -545,17 +440,6 @@ def test_whatif_auto_mode_rejected():
         },
     )
     assert status in (400, 422), f"Expected 4xx for auto-mode what-if, got {status}"
-
-
-check("POST /v1/simulate/what-if with auto-mode → 400/422", test_whatif_auto_mode_rejected)
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  SECTION 4 — Account management
-# ══════════════════════════════════════════════════════════════════════════════
-print("\n" + "=" * 70)
-print("  SECTION 4: Account Management")
-print("=" * 70)
 
 
 def test_limits_endpoint():
@@ -578,17 +462,11 @@ def test_limits_endpoint():
     timings.append(("GET /v1/limits", elapsed))
 
 
-check("GET /v1/limits → 200 with quota fields", test_limits_endpoint)
-
-
 def test_patch_me_name():
     """PATCH /v1/me should accept org_name update."""
     status, body, _, elapsed = req("PATCH", "/v1/me", body={"org_name": "Test Org Updated"})
     assert status == 200, f"Expected 200, got {status}: {body}"
     timings.append(("PATCH /v1/me", elapsed))
-
-
-check("PATCH /v1/me → 200", test_patch_me_name)
 
 
 def test_api_key_create():
@@ -609,9 +487,6 @@ def test_api_key_create():
     timings.append(("POST /v1/api-keys", elapsed))
 
 
-check("POST /v1/api-keys → 201 with new key", test_api_key_create)
-
-
 def test_api_key_appears_in_list():
     """New key must appear in GET /v1/api-keys."""
     if not _created_api_key_id:
@@ -622,9 +497,6 @@ def test_api_key_appears_in_list():
     keys_data = body if isinstance(body, list) else body.get("keys", body.get("api_keys", []))
     ids = [str(k.get("id") or k.get("key_id", "")) for k in keys_data]
     assert str(_created_api_key_id) in ids, f"New key {_created_api_key_id} not in list: {ids}"
-
-
-check("New API key appears in GET /v1/api-keys list", test_api_key_appears_in_list)
 
 
 def test_api_key_authenticate():
@@ -642,9 +514,6 @@ def test_api_key_authenticate():
     assert status in (200, 401), f"Unexpected status with new key: {status}"
 
 
-check("New API key authenticates without error", test_api_key_authenticate)
-
-
 def test_api_key_delete():
     """DELETE /v1/api-keys/{id} should revoke the key."""
     if not _created_api_key_id:
@@ -653,9 +522,6 @@ def test_api_key_delete():
     status, body, _, elapsed = req("DELETE", f"/v1/api-keys/{_created_api_key_id}")
     assert status == 204, f"Expected 204, got {status}: {body}"
     timings.append(("DELETE /v1/api-keys/{id}", elapsed))
-
-
-check("DELETE /v1/api-keys/{id} → 204", test_api_key_delete)
 
 
 def test_deleted_key_not_in_list():
@@ -670,17 +536,6 @@ def test_deleted_key_not_in_list():
     assert str(_created_api_key_id) not in ids, f"Deleted key {_created_api_key_id} still in list"
 
 
-check("Deleted API key no longer in list", test_deleted_key_not_in_list)
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  SECTION 5 — Billing
-# ══════════════════════════════════════════════════════════════════════════════
-print("\n" + "=" * 70)
-print("  SECTION 5: Billing")
-print("=" * 70)
-
-
 def test_billing_info():
     status, body, _, elapsed = req("GET", "/v1/billing/info")
     assert status == 200, f"Expected 200, got {status}: {body}"
@@ -690,24 +545,10 @@ def test_billing_info():
     timings.append(("GET /v1/billing/info", elapsed))
 
 
-check("GET /v1/billing/info → 200 with plan", test_billing_info)
-
-
 def test_billing_checkout_invalid_plan():
     """Billing checkout with unknown plan → 400."""
     status, body, _, _ = req("POST", "/v1/billing/checkout", body={"plan": "ultra_mega_plan"})
     assert status in (400, 403, 422), f"Expected 4xx for invalid plan, got {status}"
-
-
-check("POST /v1/billing/checkout invalid plan → 4xx", test_billing_checkout_invalid_plan)
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  SECTION 6 — Infrastructure & node management
-# ══════════════════════════════════════════════════════════════════════════════
-print("\n" + "=" * 70)
-print("  SECTION 6: Infrastructure & Node Management")
-print("=" * 70)
 
 
 def test_infrastructure_endpoint():
@@ -719,9 +560,6 @@ def test_infrastructure_endpoint():
     assert isinstance(body["nodes"], list), "nodes should be a list"
     assert len(body["nodes"]) >= 1, "At least one node (primary) must be present"
     timings.append(("GET /v1/infrastructure", elapsed))
-
-
-check("GET /v1/infrastructure → 200 with nodes", test_infrastructure_endpoint)
 
 
 def test_node_register():
@@ -743,9 +581,6 @@ def test_node_register():
     timings.append(("POST /v1/nodes/register", elapsed))
 
 
-check("POST /v1/nodes/register → 201 with node_id", test_node_register)
-
-
 def test_node_appears_in_infrastructure():
     """Registered node should show up in /v1/infrastructure."""
     if not _created_node_id:
@@ -757,9 +592,6 @@ def test_node_appears_in_infrastructure():
     assert _created_node_id in node_ids, (
         f"Node {_created_node_id} not found in infrastructure: {node_ids}"
     )
-
-
-check("Registered node appears in /v1/infrastructure", test_node_appears_in_infrastructure)
 
 
 def test_node_heartbeat():
@@ -782,9 +614,6 @@ def test_node_heartbeat():
     timings.append(("POST /v1/nodes/heartbeat", elapsed))
 
 
-check("POST /v1/nodes/heartbeat → 200 accepted", test_node_heartbeat)
-
-
 def test_node_heartbeat_unknown():
     """Heartbeat for non-existent node → 404."""
     status, body, _, _ = req(
@@ -798,9 +627,6 @@ def test_node_heartbeat_unknown():
     assert status == 404, f"Expected 404 for unknown node, got {status}"
 
 
-check("POST /v1/nodes/heartbeat unknown node → 404", test_node_heartbeat_unknown)
-
-
 def test_node_deregister():
     if not _created_node_id:
         skip("Node deregister", "Node registration failed")
@@ -808,9 +634,6 @@ def test_node_deregister():
     status, body, _, elapsed = req("DELETE", f"/v1/nodes/{_created_node_id}")
     assert status == 204, f"Expected 204, got {status}: {body}"
     timings.append((f"DELETE /v1/nodes/{_created_node_id}", elapsed))
-
-
-check("DELETE /v1/nodes/{node_id} → 204", test_node_deregister)
 
 
 def test_deregistered_node_gone():
@@ -826,17 +649,6 @@ def test_deregistered_node_gone():
     )
 
 
-check("Deregistered node no longer in /v1/infrastructure", test_deregistered_node_gone)
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  SECTION 7 — Team management & audit logs
-# ══════════════════════════════════════════════════════════════════════════════
-print("\n" + "=" * 70)
-print("  SECTION 7: Team Management & Audit Logs")
-print("=" * 70)
-
-
 def test_team_list():
     status, body, _, elapsed = req("GET", "/v1/team")
     assert status == 200, f"Expected 200, got {status}: {body}"
@@ -847,9 +659,6 @@ def test_team_list():
         f"Member missing identity fields: {list(member.keys())}"
     )
     timings.append(("GET /v1/team", elapsed))
-
-
-check("GET /v1/team → 200 non-empty list", test_team_list)
 
 
 def test_team_invite_validation():
@@ -865,9 +674,6 @@ def test_team_invite_validation():
     assert status in (422, 403), f"Expected 422 (validation) or 403 (RBAC), got {status}"
 
 
-check("POST /v1/team/invite invalid email → 422/403", test_team_invite_validation)
-
-
 def test_audit_logs():
     status, body, _, elapsed = req("GET", "/v1/audit-logs")
     # 200 for admins, 403 for members — both are correct RBAC behaviour
@@ -878,15 +684,9 @@ def test_audit_logs():
     timings.append(("GET /v1/audit-logs", elapsed))
 
 
-check("GET /v1/audit-logs → 200 (admin) or 403 (member)", test_audit_logs)
-
-
 def test_audit_logs_pagination():
     status, body, _, _ = req("GET", "/v1/audit-logs?page=1&limit=5")
     assert status in (200, 403), f"Expected 200 or 403, got {status}"
-
-
-check("GET /v1/audit-logs pagination → 200 or 403", test_audit_logs_pagination)
 
 
 def test_audit_log_artifacts():
@@ -900,24 +700,10 @@ def test_audit_log_artifacts():
     timings.append(("GET /v1/audit-logs/artifacts", elapsed))
 
 
-check("GET /v1/audit-logs/artifacts → 200 (admin) or 403 (member)", test_audit_log_artifacts)
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  SECTION 8 — Deployments CRUD
-# ══════════════════════════════════════════════════════════════════════════════
-print("\n" + "=" * 70)
-print("  SECTION 8: Deployments")
-print("=" * 70)
-
-
 def test_deployments_list():
     status, body, _, elapsed = req("GET", "/v1/deployments")
     assert status == 200, f"Expected 200, got {status}: {body}"
     timings.append(("GET /v1/deployments", elapsed))
-
-
-check("GET /v1/deployments → 200", test_deployments_list)
 
 
 def test_deployment_create():
@@ -941,9 +727,6 @@ def test_deployment_create():
         timings.append(("POST /v1/deployments", elapsed))
 
 
-check("POST /v1/deployments → 202 or plan-denied 402/403", test_deployment_create)
-
-
 def test_deployment_get():
     if not _created_deployment_id:
         skip("GET /v1/deployments", "No deployment was created")
@@ -955,26 +738,12 @@ def test_deployment_get():
     )
 
 
-check("GET /v1/deployments → 200 with current deployment", test_deployment_get)
-
-
 def test_deployment_delete():
     if not _created_deployment_id:
         skip("DELETE /v1/deployments/{id}", "No deployment to delete")
         return
     status, body, _, elapsed = req("DELETE", f"/v1/deployments/{_created_deployment_id}")
     assert status == 202, f"Expected 202, got {status}: {body}"
-
-
-check("DELETE /v1/deployments/{id} → 202", test_deployment_delete)
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  SECTION 9 — Analytics
-# ══════════════════════════════════════════════════════════════════════════════
-print("\n" + "=" * 70)
-print("  SECTION 9: Analytics")
-print("=" * 70)
 
 
 def test_analytics_default():
@@ -989,33 +758,16 @@ def test_analytics_default():
     timings.append(("GET /v1/analytics", elapsed))
 
 
-check("GET /v1/analytics → 200 with aggregates", test_analytics_default)
-
-
 def test_analytics_custom_window():
     status, body, _, _ = req("GET", "/v1/analytics?days=7")
     assert status == 200, f"Expected 200, got {status}"
     assert "total_runs" in body
 
 
-check("GET /v1/analytics?days=7 → 200", test_analytics_custom_window)
-
-
 def test_analytics_invalid_window():
     """days=0 is below minimum (ge=1) → 422."""
     status, body, _, _ = req("GET", "/v1/analytics?days=0")
     assert status == 422, f"Expected 422 for days=0, got {status}"
-
-
-check("GET /v1/analytics?days=0 → 422", test_analytics_invalid_window)
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  SECTION 10 — Runs: pagination, filters, single-run fetch
-# ══════════════════════════════════════════════════════════════════════════════
-print("\n" + "=" * 70)
-print("  SECTION 10: Runs — Pagination & Filters")
-print("=" * 70)
 
 # First, produce a run so we have something to query
 _run_body_for_fetch = None
@@ -1031,9 +783,6 @@ def test_produce_a_run():
     _last_run_id = body.get("run_id")
 
 
-check("POST /v1/simulate to seed a run_id", test_produce_a_run)
-
-
 def test_runs_pagination():
     status, body, _, elapsed = req("GET", "/v1/runs?page=1&limit=5")
     assert status == 200, f"Expected 200, got {status}: {body}"
@@ -1042,9 +791,6 @@ def test_runs_pagination():
     assert "pages" in body, "Missing pages"
     assert len(body["runs"]) <= 5, "More runs than requested limit"
     timings.append(("GET /v1/runs?page=1&limit=5", elapsed))
-
-
-check("GET /v1/runs pagination → 200 with pages/total", test_runs_pagination)
 
 
 def test_runs_filter_by_status():
@@ -1057,24 +803,15 @@ def test_runs_filter_by_status():
         )
 
 
-check("GET /v1/runs?status=completed → only completed runs", test_runs_filter_by_status)
-
-
 def test_runs_filter_by_mode():
     status, body, _, _ = req("GET", "/v1/runs?mode=auto&limit=3")
     assert status == 200, f"Expected 200, got {status}"
     assert "runs" in body
 
 
-check("GET /v1/runs?mode=auto → 200", test_runs_filter_by_mode)
-
-
 def test_runs_page_2():
     status, body, _, _ = req("GET", "/v1/runs?page=2&limit=5")
     assert status == 200, f"Expected 200 for page 2, got {status}"
-
-
-check("GET /v1/runs page 2 → 200", test_runs_page_2)
 
 
 def test_single_run_fetch():
@@ -1088,23 +825,9 @@ def test_single_run_fetch():
     timings.append((f"GET /v1/runs/{_last_run_id}", elapsed))
 
 
-check("GET /v1/runs/{run_id} → 200 with detail", test_single_run_fetch)
-
-
 def test_run_not_found():
     status, body, _, _ = req("GET", "/v1/runs/00000000-0000-0000-0000-000000000000")
     assert status == 404, f"Expected 404 for missing run, got {status}"
-
-
-check("GET /v1/runs/{nonexistent_id} → 404", test_run_not_found)
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  SECTION 11 — Webhooks
-# ══════════════════════════════════════════════════════════════════════════════
-print("\n" + "=" * 70)
-print("  SECTION 11: Webhooks")
-print("=" * 70)
 
 
 def test_webhook_test_delivery():
@@ -1125,9 +848,6 @@ def test_webhook_test_delivery():
     timings.append(("POST /v1/webhooks/test", elapsed))
 
 
-check("POST /v1/webhooks/test → success or expected error", test_webhook_test_delivery)
-
-
 def test_webhook_invalid_url():
     status, body, _, _ = req(
         "POST",
@@ -1139,17 +859,6 @@ def test_webhook_invalid_url():
     # 422 if pydantic rejects the URL, 400 if custom validation, 200 if the
     # engine attempts delivery and returns a failure result — all acceptable
     assert status in (200, 400, 422), f"Unexpected status for invalid URL: {status}"
-
-
-check("POST /v1/webhooks/test invalid URL → 200/400/422", test_webhook_invalid_url)
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  SECTION 12 — Real CSV data pipelines
-# ══════════════════════════════════════════════════════════════════════════════
-print("\n" + "=" * 70)
-print("  SECTION 12: Real CSV Data Pipelines")
-print("=" * 70)
 
 # ── helper: parse a CSV file into list[dict] ───────────────────────────────
 
@@ -1218,9 +927,6 @@ def test_pos_csv_loaded():
     assert expected.issubset(cols), f"Missing columns: {expected - cols}"
 
 
-check("POS.csv loads with expected columns", test_pos_csv_loaded)
-
-
 def test_pos_unit_price_simulate():
     """Fit triangular distribution to real POS unit-price range and simulate."""
     rows = _load_csv("POS.csv", max_rows=5000)
@@ -1256,9 +962,6 @@ def test_pos_unit_price_simulate():
         f"max={stats['max']:.2f}, mean={stats['mean']:.2f}, "
         f"simulated_ev={body['metrics']['expected_value']:.2f}"
     )
-
-
-check("POS.csv unit_price → triangular simulation", test_pos_unit_price_simulate)
 
 
 def test_pos_margin_simulation():
@@ -1304,9 +1007,6 @@ def test_pos_margin_simulation():
     timings.append(("POST /v1/simulate (POS margin)", elapsed))
 
 
-check("POS.csv price-cost margin simulation", test_pos_margin_simulation)
-
-
 # ── Bookings.csv — Revenue forecast simulation ────────────────────────────
 
 
@@ -1317,9 +1017,6 @@ def test_bookings_csv_loaded():
     assert "UNIT_PRICE" in cols or "EXT_PRICE" in cols, (
         f"Missing price columns in Bookings.csv: {list(cols)[:10]}"
     )
-
-
-check("Bookings.csv loads with price columns", test_bookings_csv_loaded)
 
 
 def test_bookings_ext_price_simulate():
@@ -1354,9 +1051,6 @@ def test_bookings_ext_price_simulate():
     )
 
 
-check("Bookings.csv → lognormal booking-value simulation", test_bookings_ext_price_simulate)
-
-
 # ── OPO.csv — Open Purchase Orders ────────────────────────────────────────
 
 
@@ -1367,9 +1061,6 @@ def test_opo_csv_loaded():
     assert "Unit Cost" in cols or "Quantity Ordered" in cols, (
         f"Missing expected OPO columns: {list(cols)[:10]}"
     )
-
-
-check("OPO.csv loads with cost/quantity columns", test_opo_csv_loaded)
 
 
 def test_opo_purchase_cost_simulate():
@@ -1417,9 +1108,6 @@ def test_opo_purchase_cost_simulate():
     )
 
 
-check("OPO.csv unit_cost×quantity PERT simulation", test_opo_purchase_cost_simulate)
-
-
 # ── Backlog.csv — Open orders revenue simulation ──────────────────────────
 
 
@@ -1456,9 +1144,6 @@ def test_backlog_simulate():
     )
 
 
-check("Backlog.csv → triangular backlog-value simulation", test_backlog_simulate)
-
-
 # ── Quotes_Combined — Win-rate scenario comparison ────────────────────────
 
 
@@ -1469,9 +1154,6 @@ def test_quotes_csv_loaded():
     assert "UNIT_PRICE" in cols or "EXT_PRICE" in cols, (
         f"Missing price columns in Quotes CSV: {list(cols)[:10]}"
     )
-
-
-check("Quotes_Combined_20241116.csv loads with price columns", test_quotes_csv_loaded)
 
 
 def test_quotes_win_loss_scenario_compare():
@@ -1546,9 +1228,6 @@ def test_quotes_win_loss_scenario_compare():
     print(f"    → Quotes pricing winner: {body['winner']}")
 
 
-check("Quotes CSV → three-scenario pricing comparison", test_quotes_win_loss_scenario_compare)
-
-
 # ── Unique_POS_Recent_Stats — inventory/demand analysis ───────────────────
 
 
@@ -1590,9 +1269,6 @@ def test_pos_stats_csv_simulate():
     ensure_simulation_capacity_available(status, body)
     assert status == 200, f"Expected 200, got {status}: {body}"
     timings.append(("POST /v1/simulate (POS stats)", elapsed))
-
-
-check("Unique_POS_Recent_Stats.csv → demand simulation", test_pos_stats_csv_simulate)
 
 
 # ── Full pipeline: CSV → score → what-if ─────────────────────────────────
@@ -1666,9 +1342,6 @@ def test_csv_to_whatif_pipeline():
     )
 
 
-check("Full pipeline: POS.csv → what-if sweep", test_csv_to_whatif_pipeline)
-
-
 # ── Consolidated_Table — multi-var simulation ──────────────────────────────
 
 
@@ -1709,47 +1382,387 @@ def test_consolidated_table_multi_var():
     timings.append(("POST /v1/simulate (Consolidated_Table multi-var)", elapsed))
 
 
-check("Consolidated_Table.csv → multi-variable simulation", test_consolidated_table_multi_var)
+if __name__ == "__main__":
+    # ══════════════════════════════════════════════════════════════════════════════
+    #  CONNECTIVITY CHECK
+    # ══════════════════════════════════════════════════════════════════════════════
+    _emit("\n" + "=" * 70)
+    _emit("  PHASE 21: Complete End-to-End Integration Tests")
+    _emit("=" * 70)
+
+    status, _, _, _ = req("GET", "/v1/health", auth=False, timeout=5)
+    if status != 200:
+        _emit(f"\n  {FAIL} Cannot reach API server at {BASE_URL}")
+        _emit("     Make sure the server is running (make dev-api)")
+        sys.exit(1)
+
+    _emit(f"  {PASS} Server reachable")
+
+    if not API_KEY_CONFIGURED:
+        reason = (
+            "DE_API_KEY is not set; skipping complete end-to-end live checks "
+            "that require a real live key."
+        )
+        skip("E2E complete suite preflight", reason)
+        _emit(f"\n  {SKIP} preflight: {reason}")
+        artifact_path = _write_summary_artifact()
+        _emit(f"  Summary artifact: {artifact_path}\n")
+        sys.exit(0)
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-#  RESULTS SUMMARY
-# ══════════════════════════════════════════════════════════════════════════════
-print("\n" + "=" * 70)
-print("  RESULTS SUMMARY")
-print("=" * 70)
+    # ══════════════════════════════════════════════════════════════════════════════
+    #  SECTION 1 — All 27 distribution types
+    # ══════════════════════════════════════════════════════════════════════════════
+    print("\n" + "=" * 70)
+    print("  SECTION 1: All 27 Distribution Types")
+    print("=" * 70)
 
-passed = sum(1 for r in results if r[0] == PASS)
-failed = sum(1 for r in results if r[0] == FAIL)
-skipped = sum(1 for r in results if r[0] == SKIP)
-total = len(results)
+    for _dist_name, _dist_params in _DISTRIBUTIONS:
 
-print(f"\n  Total:   {total}")
-print(f"  {PASS} Passed:  {passed}")
-print(f"  {FAIL} Failed:  {failed}")
-print(f"  {SKIP} Skipped: {skipped}")
+        def _make_dist_test(dist_name: str, dist_params: dict):
+            def _test():
+                payload = _expert(
+                    variables=[{"name": "x", "distribution": dist_name, "params": dist_params}],
+                    objective="x",
+                    runs=300,
+                )
+                status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
+                ensure_simulation_capacity_available(status, body)
+                assert status == 200, f"[{dist_name}] Expected 200, got {status}: {body}"
+                assert "confidence" in body, f"[{dist_name}] Missing confidence"
+                assert "metrics" in body, f"[{dist_name}] Missing metrics"
+                assert isinstance(body["confidence"], int | float), (
+                    f"[{dist_name}] confidence is {type(body['confidence'])}"
+                )
+                timings.append((f"POST /v1/simulate ({dist_name})", elapsed))
 
-if timings:
-    print(f"\n  {'Test':<55} {'ms':>6}")
-    print("  " + "-" * 63)
-    for name, elapsed in sorted(timings, key=lambda x: x[1], reverse=True)[:20]:
-        print(f"  {name[:55]:<55} {elapsed * 1000:>6.0f}")
+            return _test
 
-if failed:
-    print("\n  FAILED TESTS:")
-    for r in results:
-        if r[0] == FAIL:
-            print(f"    {r[1]}")
-            if len(r) > 2:
-                print(f"      {r[2]}")
+        check(f"Distribution: {_dist_name}", _make_dist_test(_dist_name, _dist_params))
+        _tested_dists.add(_dist_name)
 
-print("\n" + "=" * 70)
-if failed:
-    print(f"  {FAIL} {failed}/{total} tests FAILED")
-    artifact_path = _write_summary_artifact()
-    print(f"  Summary artifact: {artifact_path}")
-    sys.exit(1)
-else:
-    print(f"  {PASS} All {passed} tests PASSED ({skipped} skipped)")
-    artifact_path = _write_summary_artifact()
-    print(f"  Summary artifact: {artifact_path}")
+    assert len(_tested_dists) == 27, f"Expected 27 distributions, tested {len(_tested_dists)}"
+
+
+    # ══════════════════════════════════════════════════════════════════════════════
+    #  SECTION 2 — Decision APIs: /v1/score, /v1/batch, /v1/compare
+    # ══════════════════════════════════════════════════════════════════════════════
+    print("\n" + "=" * 70)
+    print("  SECTION 2: Decision APIs (score / batch / compare)")
+    print("=" * 70)
+
+
+    check("POST /v1/score → 200 with score breakdown", test_score_endpoint)
+
+
+    check("POST /v1/batch (3 items) → 200", test_batch_endpoint)
+
+
+    check("POST /v1/batch partial failure handled gracefully", test_batch_partial_failure)
+
+
+    check("POST /v1/compare (3 scenarios) → 200 with winner", test_compare_endpoint)
+
+
+    check("POST /v1/compare single scenario → 4xx", test_compare_invalid_payload)
+
+
+    # ══════════════════════════════════════════════════════════════════════════════
+    #  SECTION 3 — What-if analysis
+    # ══════════════════════════════════════════════════════════════════════════════
+    print("\n" + "=" * 70)
+    print("  SECTION 3: What-If Analysis")
+    print("=" * 70)
+
+
+    check("POST /v1/simulate/what-if → 200 with sweep", test_whatif_basic)
+
+
+    check("POST /v1/simulate/what-if (vary std) → 200", test_whatif_std_param)
+
+
+    check("POST /v1/simulate/what-if with auto-mode → 400/422", test_whatif_auto_mode_rejected)
+
+
+    # ══════════════════════════════════════════════════════════════════════════════
+    #  SECTION 4 — Account management
+    # ══════════════════════════════════════════════════════════════════════════════
+    print("\n" + "=" * 70)
+    print("  SECTION 4: Account Management")
+    print("=" * 70)
+
+
+    check("GET /v1/limits → 200 with quota fields", test_limits_endpoint)
+
+
+    check("PATCH /v1/me → 200", test_patch_me_name)
+
+
+    check("POST /v1/api-keys → 201 with new key", test_api_key_create)
+
+
+    check("New API key appears in GET /v1/api-keys list", test_api_key_appears_in_list)
+
+
+    check("New API key authenticates without error", test_api_key_authenticate)
+
+
+    check("DELETE /v1/api-keys/{id} → 204", test_api_key_delete)
+
+
+    check("Deleted API key no longer in list", test_deleted_key_not_in_list)
+
+
+    # ══════════════════════════════════════════════════════════════════════════════
+    #  SECTION 5 — Billing
+    # ══════════════════════════════════════════════════════════════════════════════
+    print("\n" + "=" * 70)
+    print("  SECTION 5: Billing")
+    print("=" * 70)
+
+
+    check("GET /v1/billing/info → 200 with plan", test_billing_info)
+
+
+    check("POST /v1/billing/checkout invalid plan → 4xx", test_billing_checkout_invalid_plan)
+
+
+    # ══════════════════════════════════════════════════════════════════════════════
+    #  SECTION 6 — Infrastructure & node management
+    # ══════════════════════════════════════════════════════════════════════════════
+    print("\n" + "=" * 70)
+    print("  SECTION 6: Infrastructure & Node Management")
+    print("=" * 70)
+
+
+    check("GET /v1/infrastructure → 200 with nodes", test_infrastructure_endpoint)
+
+
+    check("POST /v1/nodes/register → 201 with node_id", test_node_register)
+
+
+    check("Registered node appears in /v1/infrastructure", test_node_appears_in_infrastructure)
+
+
+    check("POST /v1/nodes/heartbeat → 200 accepted", test_node_heartbeat)
+
+
+    check("POST /v1/nodes/heartbeat unknown node → 404", test_node_heartbeat_unknown)
+
+
+    check("DELETE /v1/nodes/{node_id} → 204", test_node_deregister)
+
+
+    check("Deregistered node no longer in /v1/infrastructure", test_deregistered_node_gone)
+
+
+    # ══════════════════════════════════════════════════════════════════════════════
+    #  SECTION 7 — Team management & audit logs
+    # ══════════════════════════════════════════════════════════════════════════════
+    print("\n" + "=" * 70)
+    print("  SECTION 7: Team Management & Audit Logs")
+    print("=" * 70)
+
+
+    check("GET /v1/team → 200 non-empty list", test_team_list)
+
+
+    check("POST /v1/team/invite invalid email → 422/403", test_team_invite_validation)
+
+
+    check("GET /v1/audit-logs → 200 (admin) or 403 (member)", test_audit_logs)
+
+
+    check("GET /v1/audit-logs pagination → 200 or 403", test_audit_logs_pagination)
+
+
+    check("GET /v1/audit-logs/artifacts → 200 (admin) or 403 (member)", test_audit_log_artifacts)
+
+
+    # ══════════════════════════════════════════════════════════════════════════════
+    #  SECTION 8 — Deployments CRUD
+    # ══════════════════════════════════════════════════════════════════════════════
+    print("\n" + "=" * 70)
+    print("  SECTION 8: Deployments")
+    print("=" * 70)
+
+
+    check("GET /v1/deployments → 200", test_deployments_list)
+
+
+    check("POST /v1/deployments → 202 or plan-denied 402/403", test_deployment_create)
+
+
+    check("GET /v1/deployments → 200 with current deployment", test_deployment_get)
+
+
+    check("DELETE /v1/deployments/{id} → 202", test_deployment_delete)
+
+
+    # ══════════════════════════════════════════════════════════════════════════════
+    #  SECTION 9 — Analytics
+    # ══════════════════════════════════════════════════════════════════════════════
+    print("\n" + "=" * 70)
+    print("  SECTION 9: Analytics")
+    print("=" * 70)
+
+
+    check("GET /v1/analytics → 200 with aggregates", test_analytics_default)
+
+
+    check("GET /v1/analytics?days=7 → 200", test_analytics_custom_window)
+
+
+    check("GET /v1/analytics?days=0 → 422", test_analytics_invalid_window)
+
+
+    # ══════════════════════════════════════════════════════════════════════════════
+    #  SECTION 10 — Runs: pagination, filters, single-run fetch
+    # ══════════════════════════════════════════════════════════════════════════════
+    print("\n" + "=" * 70)
+    print("  SECTION 10: Runs — Pagination & Filters")
+    print("=" * 70)
+
+
+    check("POST /v1/simulate to seed a run_id", test_produce_a_run)
+
+
+    check("GET /v1/runs pagination → 200 with pages/total", test_runs_pagination)
+
+
+    check("GET /v1/runs?status=completed → only completed runs", test_runs_filter_by_status)
+
+
+    check("GET /v1/runs?mode=auto → 200", test_runs_filter_by_mode)
+
+
+    check("GET /v1/runs page 2 → 200", test_runs_page_2)
+
+
+    check("GET /v1/runs/{run_id} → 200 with detail", test_single_run_fetch)
+
+
+    check("GET /v1/runs/{nonexistent_id} → 404", test_run_not_found)
+
+
+    # ══════════════════════════════════════════════════════════════════════════════
+    #  SECTION 11 — Webhooks
+    # ══════════════════════════════════════════════════════════════════════════════
+    print("\n" + "=" * 70)
+    print("  SECTION 11: Webhooks")
+    print("=" * 70)
+
+
+    check("POST /v1/webhooks/test → success or expected error", test_webhook_test_delivery)
+
+
+    check("POST /v1/webhooks/test invalid URL → 200/400/422", test_webhook_invalid_url)
+
+
+    # ══════════════════════════════════════════════════════════════════════════════
+    #  SECTION 12 — Real CSV data pipelines
+    # ══════════════════════════════════════════════════════════════════════════════
+    print("\n" + "=" * 70)
+    print("  SECTION 12: Real CSV Data Pipelines")
+    print("=" * 70)
+
+
+    check("POS.csv loads with expected columns", test_pos_csv_loaded)
+
+
+    check("POS.csv unit_price → triangular simulation", test_pos_unit_price_simulate)
+
+
+    check("POS.csv price-cost margin simulation", test_pos_margin_simulation)
+
+
+    check("Bookings.csv loads with price columns", test_bookings_csv_loaded)
+
+
+    check("Bookings.csv → lognormal booking-value simulation", test_bookings_ext_price_simulate)
+
+
+    check("OPO.csv loads with cost/quantity columns", test_opo_csv_loaded)
+
+
+    check("OPO.csv unit_cost×quantity PERT simulation", test_opo_purchase_cost_simulate)
+
+
+    check("Backlog.csv → triangular backlog-value simulation", test_backlog_simulate)
+
+
+    check("Quotes_Combined_20241116.csv loads with price columns", test_quotes_csv_loaded)
+
+
+    check("Quotes CSV → three-scenario pricing comparison", test_quotes_win_loss_scenario_compare)
+
+
+    check("Unique_POS_Recent_Stats.csv → demand simulation", test_pos_stats_csv_simulate)
+
+
+    check("Full pipeline: POS.csv → what-if sweep", test_csv_to_whatif_pipeline)
+
+
+    check("Consolidated_Table.csv → multi-variable simulation", test_consolidated_table_multi_var)
+
+
+    # ══════════════════════════════════════════════════════════════════════════════
+    #  RESULTS SUMMARY
+    # ══════════════════════════════════════════════════════════════════════════════
+    print("\n" + "=" * 70)
+    print("  RESULTS SUMMARY")
+    print("=" * 70)
+
+    passed = sum(1 for r in results if r[0] == PASS)
+    failed = sum(1 for r in results if r[0] == FAIL)
+    skipped = sum(1 for r in results if r[0] == SKIP)
+    total = len(results)
+
+    print(f"\n  Total:   {total}")
+    print(f"  {PASS} Passed:  {passed}")
+    print(f"  {FAIL} Failed:  {failed}")
+    print(f"  {SKIP} Skipped: {skipped}")
+
+    if timings:
+        print(f"\n  {'Test':<55} {'ms':>6}")
+        print("  " + "-" * 63)
+        for name, elapsed in sorted(timings, key=lambda x: x[1], reverse=True)[:20]:
+            print(f"  {name[:55]:<55} {elapsed * 1000:>6.0f}")
+
+    if failed:
+        print("\n  FAILED TESTS:")
+        for r in results:
+            if r[0] == FAIL:
+                print(f"    {r[1]}")
+                if len(r) > 2:
+                    print(f"      {r[2]}")
+
+    print("\n" + "=" * 70)
+    if failed:
+        print(f"  {FAIL} {failed}/{total} tests FAILED")
+        artifact_path = _write_summary_artifact()
+        print(f"  Summary artifact: {artifact_path}")
+    else:
+        print(f"  {PASS} All {passed} tests PASSED ({skipped} skipped)")
+        artifact_path = _write_summary_artifact()
+        print(f"  Summary artifact: {artifact_path}")
+
+    import pytest
+
+    exit_code = pytest.main([__file__, "-v"])
+    try:
+        from tests.integration.live_integration_artifacts import write_live_integration_summary
+
+        artifact_path = write_live_integration_summary(
+            SUITE_NAME,
+            script="tests/integration/test_e2e_complete.py",
+            passed=0,
+            failed=0,
+            skipped=0,
+            total=0,
+            elapsed_seconds=0.0,
+        )
+        print(f"Summary artifact: {artifact_path}")
+    except Exception:
+        pass
+    sys.exit(exit_code)
