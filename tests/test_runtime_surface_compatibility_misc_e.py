@@ -218,8 +218,11 @@ def test_python_ts_contract_artifact_proofs_use_shared_export_text_equality_help
     generation_test = (ROOT / "tests" / "test_platform_contract_generation.py").read_text(
         encoding="utf-8"
     )
-    distribution_test = (ROOT / "tests" / "test_package_distribution_surface.py").read_text(
-        encoding="utf-8"
+    distribution_test = "\n".join(
+        p.read_text(encoding="utf-8")
+        for p in sorted(
+            (ROOT / "tests").glob("*test_package_distribution_surface*.py")
+        )
     )
 
     assert "assert_manifest_backed_integration_texts_equal," in generation_test
@@ -701,7 +704,11 @@ def test_root_test_graph_includes_formal_runtime_foundation_proof_bundle() -> No
     assert "tests/test_mcp_llm_agent_tools.py" in scripts["test:formal-runtime-foundation"]
     assert "tests/test_mcp_router.py" in scripts["test:formal-runtime-foundation"]
     assert "tests/test_js_workspace_surface.py" in scripts["test:formal-runtime-foundation"]
-    assert "tests/test_package_distribution_surface.py" in scripts["test:formal-runtime-foundation"]
+    for suffix in (
+        "test_package_distribution_surface_misc_a.py",
+        "test_package_distribution_surface_misc_b.py",
+    ):
+        assert f"tests/{suffix}" in scripts["test:formal-runtime-foundation"]
     for suffix in (
         "test_runtime_surface_compatibility_all_standalone.py",
         "test_runtime_surface_compatibility_go_live.py",

@@ -19,9 +19,12 @@ def test_runtime_benchmark_surfaces_lock_provider_routing_overhead_class() -> No
         p.read_text(encoding="utf-8")
         for p in sorted((ROOT / "tests").glob("*test_decision_engine_query_surface*.py"))
     )
-    package_surface_tests = (
-        ROOT / "tests" / "test_package_distribution_surface.py"
-    ).read_text(encoding="utf-8")
+    package_surface_tests = "\n".join(
+        p.read_text(encoding="utf-8")
+        for p in sorted(
+            (ROOT / "tests").glob("*test_package_distribution_surface*.py")
+        )
+    )
     runtime_manifest_model_validation = "\n".join(
         p.read_text(encoding="utf-8")
         for p in sorted((ROOT / "tests").glob("test_runtime_manifest_model_validation_*.py"))
