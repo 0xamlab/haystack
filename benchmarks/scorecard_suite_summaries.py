@@ -23,7 +23,13 @@ JOIN_PATH_SUITE = ("tests/test_query_join_path.py",)
 IMPORT_PLANNER_SUITE = (
     "tests/unit/test_connectors.py",
     *sorted(str(p.relative_to(PROJECT_ROOT)) for p in (PROJECT_ROOT / "tests").glob("test_auto_planner_*.py")),
-    "tests/test_vector_resolver.py",
+    # test_vector_resolver.py was split into per-class sub-files; exclude the
+    # separate hospitality suite (it has its own HOSPITALITY_SUITE entry).
+    *sorted(
+        str(p.relative_to(PROJECT_ROOT))
+        for p in (PROJECT_ROOT / "tests").glob("test_vector_resolver_*.py")
+        if "hospitality" not in p.name
+    ),
     "tests/test_query_join_path.py",
 )
 
