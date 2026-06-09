@@ -38,9 +38,12 @@ def test_root_package_json_exposes_repo_root_js_commands() -> None:
     assert "tests/test_platform_contract_schema_surface.py" in scripts["test:formal-runtime-foundation"]
     assert "tests/test_runtime_schema_surface.py" in scripts["test:formal-runtime-foundation"]
     assert "tests/test_runtime_startup_smoke.py" in scripts["test:formal-runtime-foundation"]
-    assert "tests/test_algenta_runtime_llm_and_agent_surface.py" in scripts[
-        "test:formal-runtime-foundation"
-    ]
+    for suffix in (
+        "test_algenta_runtime_llm_and_agent_surface_algenta_runtime_a.py",
+        "test_algenta_runtime_llm_and_agent_surface_algenta_runtime_b.py",
+        "test_algenta_runtime_llm_and_agent_surface_misc.py",
+    ):
+        assert f"tests/{suffix}" in scripts["test:formal-runtime-foundation"]
     assert "tests/test_algenta_client_plan_surface.py" in scripts[
         "test:formal-runtime-foundation"
     ]

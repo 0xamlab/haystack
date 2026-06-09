@@ -671,9 +671,12 @@ def test_root_test_graph_includes_formal_runtime_foundation_proof_bundle() -> No
         "test_algenta_runtime_runtime_local.py",
     ):
         assert f"tests/{suffix}" in scripts["test:formal-runtime-foundation"]
-    assert "tests/test_algenta_runtime_llm_and_agent_surface.py" in scripts[
-        "test:formal-runtime-foundation"
-    ]
+    for suffix in (
+        "test_algenta_runtime_llm_and_agent_surface_algenta_runtime_a.py",
+        "test_algenta_runtime_llm_and_agent_surface_algenta_runtime_b.py",
+        "test_algenta_runtime_llm_and_agent_surface_misc.py",
+    ):
+        assert f"tests/{suffix}" in scripts["test:formal-runtime-foundation"]
     assert "tests/test_algenta_client_plan_surface.py" in scripts[
         "test:formal-runtime-foundation"
     ]
