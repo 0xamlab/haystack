@@ -22,14 +22,6 @@ Endpoints under test:
   GET  /v1/jobs/list           — list jobs (paginated)
 """
 
-if __name__ != "__main__":
-    import pytest
-
-    pytest.skip(
-        "Standalone integration script; run via python tests/integration/test_jobs.py",
-        allow_module_level=True,
-    )
-
 import json
 import os
 import re
@@ -219,53 +211,6 @@ def poll_job_until_terminal(job_id: str, max_wait: float = 30.0, interval: float
     return last_body or {}
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-#  Connectivity check
-# ═══════════════════════════════════════════════════════════════════════════════
-_emit("\n" + "=" * 70)
-_emit("  PHASE 17: Async Jobs Lifecycle Integration Tests")
-_emit("=" * 70)
-
-try:
-    status, body, _, _ = req("GET", "/v1/health", auth=False)
-    if status != 200:
-        _emit(f"\n  ⚠️  API server returned {status} on /v1/health — some tests may fail")
-except Exception as e:
-    _emit(f"\n  ❌ Cannot connect to {BASE_URL}: {e}")
-    _emit("     Start the server with: make dev-api")
-    sys.exit(1)
-
-if not API_KEY_CONFIGURED:
-    reason = "DE_API_KEY is not set; skipping async jobs integration checks that require a real live key."
-    _emit(f"\n  {SKIP} preflight: {reason}")
-    artifact_path = write_live_integration_summary(
-        SUITE_NAME,
-        script="tests/integration/test_jobs.py",
-        passed=0,
-        failed=0,
-        skipped=1,
-        total=1,
-        elapsed_seconds=time.perf_counter() - STARTED,
-        details={
-            "api_key_configured": False,
-            "base_url": BASE_URL,
-            "failed_checks": [],
-            "skipped_checks": ["preflight"],
-            "skipped_count": 1,
-        },
-    )
-    _emit(f"Summary artifact: {artifact_path}")
-    sys.exit(0)
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#  SECTION 1: Job Submission Tests
-# ═══════════════════════════════════════════════════════════════════════════════
-_emit("\n" + "─" * 70)
-_emit("  SECTION 1: Job Submission")
-_emit("─" * 70)
-
-
 def test_submit_auto_job():
     """Submit a basic async job via POST /v1/jobs with auto mode."""
     status, body, headers, elapsed = req("POST", "/v1/jobs", AUTO_PAYLOAD)
@@ -281,9 +226,6 @@ def test_submit_auto_job():
     timings.append(("POST /v1/jobs (auto)", elapsed))
 
 
-check("Submit auto-mode async job → 202 with job_id", test_submit_auto_job)
-
-
 def test_submit_job_status_initial():
     """Verify job status is 'queued' immediately after submission."""
     status, body, _, elapsed = req("POST", "/v1/jobs", AUTO_PAYLOAD)
@@ -296,9 +238,6 @@ def test_submit_job_status_initial():
     timings.append(("POST /v1/jobs (status check)", elapsed))
 
 
-check("Submit job → initial status is queued or early-stage", test_submit_job_status_initial)
-
-
 def test_submit_expert_job():
     """Submit an expert-mode async job."""
     status, body, _, elapsed = req("POST", "/v1/jobs", EXPERT_PAYLOAD)
@@ -307,9 +246,6 @@ def test_submit_expert_job():
     assert is_uuid(body["job_id"]), f"job_id is not UUID: {body['job_id']}"
     _submitted_job_ids.append(str(body["job_id"]))
     timings.append(("POST /v1/jobs (expert)", elapsed))
-
-
-check("Submit expert-mode async job → 202", test_submit_expert_job)
 
 
 def test_submit_job_with_callback_url():
@@ -325,9 +261,6 @@ def test_submit_job_with_callback_url():
     timings.append(("POST /v1/jobs (with callback)", elapsed))
 
 
-check("Submit job with callback_url → 202", test_submit_job_with_callback_url)
-
-
 def test_submit_job_response_has_poll_url():
     """Verify poll_url in submission response points to correct path."""
     status, body, _, _ = req("POST", "/v1/jobs", AUTO_PAYLOAD)
@@ -339,9 +272,6 @@ def test_submit_job_response_has_poll_url():
     _submitted_job_ids.append(str(body["job_id"]))
 
 
-check("Submit job → poll_url contains job_id path", test_submit_job_response_has_poll_url)
-
-
 def test_submit_job_response_has_message():
     """Verify the submission response has a message field."""
     status, body, _, _ = req("POST", "/v1/jobs", AUTO_PAYLOAD)
@@ -349,9 +279,6 @@ def test_submit_job_response_has_message():
     assert "message" in body, f"Missing 'message' field: {body}"
     assert isinstance(body["message"], str), f"message should be string: {type(body['message'])}"
     _submitted_job_ids.append(str(body["job_id"]))
-
-
-check("Submit job → response contains message", test_submit_job_response_has_message)
 
 
 def test_submit_job_with_qmc_sobol():
@@ -379,9 +306,6 @@ def test_submit_job_with_qmc_sobol():
     timings.append(("POST /v1/jobs (qmc_sobol)", elapsed))
 
 
-check("Submit job with simulation_model=qmc_sobol → 202", test_submit_job_with_qmc_sobol)
-
-
 def test_submit_job_with_lhs():
     """Submit a job with LHS engine type."""
     payload = {
@@ -406,17 +330,6 @@ def test_submit_job_with_lhs():
     timings.append(("POST /v1/jobs (lhs)", elapsed))
 
 
-check("Submit job with simulation_model=lhs → 202", test_submit_job_with_lhs)
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#  SECTION 2: Job Status Polling Tests
-# ═══════════════════════════════════════════════════════════════════════════════
-_emit("\n" + "─" * 70)
-_emit("  SECTION 2: Job Status Polling")
-_emit("─" * 70)
-
-
 def test_poll_job_status():
     """Poll a submitted job's status via GET /v1/jobs/{job_id}."""
     if not _submitted_job_ids:
@@ -432,9 +345,6 @@ def test_poll_job_status():
     timings.append(("GET /v1/jobs/{id} (poll)", elapsed))
 
 
-check("Poll job status → 200 with expected fields", test_poll_job_status)
-
-
 def test_poll_job_has_queue_name():
     """Verify polled job status has queue_name field."""
     if not _submitted_job_ids:
@@ -444,9 +354,6 @@ def test_poll_job_has_queue_name():
     assert status == 200, f"Expected 200, got {status}"
     assert "queue_name" in body, f"Missing queue_name: {body}"
     assert body["queue_name"] == "default", f"Expected default queue, got {body['queue_name']}"
-
-
-check("Poll job → has queue_name='default'", test_poll_job_has_queue_name)
 
 
 def test_poll_job_has_retry_count():
@@ -460,9 +367,6 @@ def test_poll_job_has_retry_count():
     assert isinstance(body["retry_count"], int), (
         f"retry_count should be int: {type(body['retry_count'])}"
     )
-
-
-check("Poll job → has retry_count (int)", test_poll_job_has_retry_count)
 
 
 def test_poll_job_has_callback_status():
@@ -479,9 +383,6 @@ def test_poll_job_has_callback_status():
     )
 
 
-check("Poll job → has valid callback_status", test_poll_job_has_callback_status)
-
-
 def test_poll_job_has_ttl_expires_at():
     """Verify polled job has ttl_expires_at field."""
     if not _submitted_job_ids:
@@ -490,9 +391,6 @@ def test_poll_job_has_ttl_expires_at():
     status, body, _, _ = req("GET", f"/v1/jobs/{job_id}")
     assert status == 200, f"Expected 200, got {status}"
     assert "ttl_expires_at" in body, f"Missing ttl_expires_at: {body}"
-
-
-check("Poll job → has ttl_expires_at", test_poll_job_has_ttl_expires_at)
 
 
 def test_poll_job_has_poll_url():
@@ -504,9 +402,6 @@ def test_poll_job_has_poll_url():
     assert status == 200, f"Expected 200, got {status}"
     assert "poll_url" in body, f"Missing poll_url: {body}"
     assert str(job_id) in body["poll_url"], f"poll_url missing job_id: {body['poll_url']}"
-
-
-check("Poll job → response includes poll_url with job_id", test_poll_job_has_poll_url)
 
 
 def test_poll_job_valid_status_values():
@@ -530,9 +425,6 @@ def test_poll_job_valid_status_values():
     )
 
 
-check("Poll job → status is valid JobStatus enum value", test_poll_job_valid_status_values)
-
-
 def test_poll_job_until_terminal():
     """Submit and poll a job until it reaches a terminal state (or timeout)."""
     status, body, _, _ = req("POST", "/v1/jobs", AUTO_PAYLOAD)
@@ -545,17 +437,6 @@ def test_poll_job_until_terminal():
     # Job may still be queued if no worker is running — that's acceptable
     acceptable = terminal_states | {"queued", "validating", "running"}
     assert final_status in acceptable, f"Final status '{final_status}' not acceptable: {final}"
-
-
-check("Submit + poll job → reaches terminal or stays queued", test_poll_job_until_terminal)
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#  SECTION 3: Job Result Retrieval Tests
-# ═══════════════════════════════════════════════════════════════════════════════
-print("\n" + "─" * 70)
-print("  SECTION 3: Job Result Retrieval")
-print("─" * 70)
 
 
 def test_get_job_result_endpoint():
@@ -577,9 +458,6 @@ def test_get_job_result_endpoint():
     elif job_status == "cancelled":
         pass  # Just {status: cancelled}
     timings.append(("GET /v1/jobs/{id}/result", elapsed))
-
-
-check("Get job result endpoint → 200 with status-dependent response", test_get_job_result_endpoint)
 
 
 def test_get_result_completed_job():
@@ -607,25 +485,11 @@ def test_get_result_completed_job():
         )
 
 
-check("Submit → poll → get result (if completed)", test_get_result_completed_job)
-
-
 def test_result_for_nonexistent_job():
     """GET /v1/jobs/{fake}/result → 404."""
     fake_id = "00000000-0000-0000-0000-000000000000"
     status, body, _, _ = req("GET", f"/v1/jobs/{fake_id}/result")
     assert status in (404, 403), f"Expected 404/403, got {status}: {body}"
-
-
-check("Get result for nonexistent job → 404", test_result_for_nonexistent_job)
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#  SECTION 4: Job Listing Tests
-# ═══════════════════════════════════════════════════════════════════════════════
-print("\n" + "─" * 70)
-print("  SECTION 4: Job Listing")
-print("─" * 70)
 
 
 def test_list_jobs():
@@ -641,9 +505,6 @@ def test_list_jobs():
     timings.append(("GET /v1/jobs/list", elapsed))
 
 
-check("List jobs → 200 with jobs, total, page, limit, pages", test_list_jobs)
-
-
 def test_list_jobs_contains_submitted():
     """Verify submitted jobs appear in the job listing."""
     if not _submitted_job_ids:
@@ -656,18 +517,12 @@ def test_list_jobs_contains_submitted():
     assert found, f"None of submitted job IDs {_submitted_job_ids[:3]} found in listing"
 
 
-check("List jobs → contains at least one submitted job", test_list_jobs_contains_submitted)
-
-
 def test_list_jobs_pagination_limit():
     """Verify pagination with limit parameter."""
     status, body, _, _ = req("GET", "/v1/jobs/list?limit=2")
     assert status == 200, f"Expected 200, got {status}"
     jobs = body.get("jobs", [])
     assert len(jobs) <= 2, f"Expected at most 2 jobs, got {len(jobs)}"
-
-
-check("List jobs with limit=2 → at most 2 results", test_list_jobs_pagination_limit)
 
 
 def test_list_jobs_pagination_page():
@@ -678,17 +533,11 @@ def test_list_jobs_pagination_page():
     assert body["limit"] == 5, f"Expected limit 5, got {body['limit']}"
 
 
-check("List jobs with page=1 → page and limit fields are correct", test_list_jobs_pagination_page)
-
-
 def test_list_jobs_page_2():
     """Request page 2 with small limit."""
     status, body, _, _ = req("GET", "/v1/jobs/list?page=2&limit=2")
     assert status == 200, f"Expected 200, got {status}"
     assert body["page"] == 2, f"Expected page 2, got {body['page']}"
-
-
-check("List jobs page=2 → page field is 2", test_list_jobs_page_2)
 
 
 def test_list_jobs_total_is_consistent():
@@ -699,20 +548,12 @@ def test_list_jobs_total_is_consistent():
     assert b1["total"] == b2["total"], f"Total mismatch: {b1['total']} vs {b2['total']}"
 
 
-check("List jobs → total is consistent across limit changes", test_list_jobs_total_is_consistent)
-
-
 def test_list_jobs_filter_by_status():
     """Verify filtering by status query parameter."""
     status, body, _, _ = req("GET", "/v1/jobs/list?status=queued")
     assert status == 200, f"Expected 200, got {status}"
     for job in body.get("jobs", []):
         assert job["status"] == "queued", f"Expected all jobs to be queued, got {job['status']}"
-
-
-check(
-    "List jobs with status=queued → all returned jobs are queued", test_list_jobs_filter_by_status
-)
 
 
 def test_list_jobs_ordered_by_creation():
@@ -725,9 +566,6 @@ def test_list_jobs_ordered_by_creation():
             t1 = jobs[i].get("created_at", "")
             t2 = jobs[i + 1].get("created_at", "")
             assert t1 >= t2, f"Jobs not ordered desc by created_at: {t1} < {t2}"
-
-
-check("List jobs → ordered by created_at descending", test_list_jobs_ordered_by_creation)
 
 
 def test_list_jobs_job_structure():
@@ -752,24 +590,10 @@ def test_list_jobs_job_structure():
             assert field in job, f"Job in listing missing '{field}': {list(job.keys())}"
 
 
-check("List jobs → each job has complete structure", test_list_jobs_job_structure)
-
-
 def test_list_jobs_invalid_status_filter():
     """Filter by invalid status — should return empty or ignore filter."""
     status, body, _, _ = req("GET", "/v1/jobs/list?status=nonexistent_status")
     assert status == 200, f"Expected 200 (graceful), got {status}: {body}"
-
-
-check("List jobs with invalid status filter → 200 (graceful)", test_list_jobs_invalid_status_filter)
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#  SECTION 5: Job Cancellation Tests
-# ═══════════════════════════════════════════════════════════════════════════════
-print("\n" + "─" * 70)
-print("  SECTION 5: Job Cancellation")
-print("─" * 70)
 
 
 def test_cancel_job():
@@ -792,9 +616,6 @@ def test_cancel_job():
     timings.append(("POST /v1/jobs/{id}/cancel", elapsed))
 
 
-check("Submit + cancel job → cancelled or already-terminal 409", test_cancel_job)
-
-
 def test_cancel_job_verify_status():
     """After cancellation, verify polling shows cancelled status."""
     status, body, _, _ = req("POST", "/v1/jobs", AUTO_PAYLOAD)
@@ -810,17 +631,11 @@ def test_cancel_job_verify_status():
         )
 
 
-check("Cancel job → subsequent poll shows cancelled", test_cancel_job_verify_status)
-
-
 def test_cancel_nonexistent_job():
     """Cancel a non-existent job → 404."""
     fake_id = "00000000-0000-0000-0000-000000000000"
     status, body, _, _ = req("POST", f"/v1/jobs/{fake_id}/cancel")
     assert status in (404, 403), f"Expected 404/403, got {status}: {body}"
-
-
-check("Cancel non-existent job → 404", test_cancel_nonexistent_job)
 
 
 def test_cancel_already_cancelled_job():
@@ -833,9 +648,6 @@ def test_cancel_already_cancelled_job():
         # Try cancel again
         c2_status, c2_body, _, _ = req("POST", f"/v1/jobs/{job_id}/cancel")
         assert c2_status == 409, f"Expected 409 for double-cancel, got {c2_status}: {c2_body}"
-
-
-check("Cancel already-cancelled job → 409 conflict", test_cancel_already_cancelled_job)
 
 
 def test_cancelled_job_result():
@@ -852,24 +664,10 @@ def test_cancelled_job_result():
         )
 
 
-check("Cancelled job → result endpoint returns cancelled", test_cancelled_job_result)
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#  SECTION 6: Error Handling Tests
-# ═══════════════════════════════════════════════════════════════════════════════
-print("\n" + "─" * 70)
-print("  SECTION 6: Error Handling")
-print("─" * 70)
-
-
 def test_submit_empty_payload():
     """Submit job with empty/missing request → validation error."""
     status, body, _, _ = req("POST", "/v1/jobs", {})
     assert status == 422, f"Expected 422 validation error, got {status}: {body}"
-
-
-check("Submit empty payload → 422 validation error", test_submit_empty_payload)
 
 
 def test_submit_invalid_mode():
@@ -886,9 +684,6 @@ def test_submit_invalid_mode():
     }
     status, body, _, _ = req("POST", "/v1/jobs", payload)
     assert status == 422, f"Expected 422, got {status}: {body}"
-
-
-check("Submit job with invalid mode → 422", test_submit_invalid_mode)
 
 
 def test_submit_missing_variables():
@@ -908,17 +703,11 @@ def test_submit_missing_variables():
     assert status == 422, f"Expected 422, got {status}: {body}"
 
 
-check("Submit auto job without variables → 422", test_submit_missing_variables)
-
-
 def test_get_nonexistent_job():
     """GET /v1/jobs/{nonexistent} → 404."""
     fake_id = "00000000-0000-0000-0000-000000000000"
     status, body, _, _ = req("GET", f"/v1/jobs/{fake_id}")
     assert status in (404, 403), f"Expected 404/403, got {status}: {body}"
-
-
-check("Get non-existent job → 404", test_get_nonexistent_job)
 
 
 def test_get_job_invalid_uuid():
@@ -927,25 +716,16 @@ def test_get_job_invalid_uuid():
     assert status == 422, f"Expected 422, got {status}: {body}"
 
 
-check("Get job with invalid UUID → 422", test_get_job_invalid_uuid)
-
-
 def test_submit_job_no_auth():
     """Submit job without authentication → 401/403."""
     status, body, _, _ = req("POST", "/v1/jobs", AUTO_PAYLOAD, auth=False)
     assert status in (401, 403), f"Expected 401/403, got {status}: {body}"
 
 
-check("Submit job without auth → 401/403", test_submit_job_no_auth)
-
-
 def test_list_jobs_no_auth():
     """List jobs without authentication → 401/403."""
     status, body, _, _ = req("GET", "/v1/jobs/list", auth=False)
     assert status in (401, 403), f"Expected 401/403, got {status}: {body}"
-
-
-check("List jobs without auth → 401/403", test_list_jobs_no_auth)
 
 
 def test_poll_job_no_auth():
@@ -957,9 +737,6 @@ def test_poll_job_no_auth():
     assert status in (401, 403), f"Expected 401/403, got {status}: {body}"
 
 
-check("Poll job without auth → 401/403", test_poll_job_no_auth)
-
-
 def test_cancel_job_no_auth():
     """Cancel job without authentication → 401/403."""
     if not _submitted_job_ids:
@@ -967,9 +744,6 @@ def test_cancel_job_no_auth():
     job_id = _submitted_job_ids[0]
     status, body, _, _ = req("POST", f"/v1/jobs/{job_id}/cancel", auth=False)
     assert status in (401, 403), f"Expected 401/403, got {status}: {body}"
-
-
-check("Cancel job without auth → 401/403", test_cancel_job_no_auth)
 
 
 def test_submit_expert_missing_objective():
@@ -988,12 +762,6 @@ def test_submit_expert_missing_objective():
     status, body, _, _ = req("POST", "/v1/jobs", payload)
     # objective_function is optional, so this should succeed
     assert status in (202, 422), f"Expected 202 or 422, got {status}: {body}"
-
-
-check(
-    "Submit expert job without objective_function → 202 or 422",
-    test_submit_expert_missing_objective,
-)
 
 
 def test_submit_auto_invalid_variable_range():
@@ -1015,17 +783,6 @@ def test_submit_auto_invalid_variable_range():
     assert status == 422, f"Expected 422, got {status}: {body}"
 
 
-check("Submit auto job with high < low → 422", test_submit_auto_invalid_variable_range)
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#  SECTION 7: Job Service Module Tests (direct import)
-# ═══════════════════════════════════════════════════════════════════════════════
-print("\n" + "─" * 70)
-print("  SECTION 7: Job Service Module (direct import)")
-print("─" * 70)
-
-
 def test_import_job_model():
     """Import Job model and JobStatus enum."""
     try:
@@ -1038,9 +795,6 @@ def test_import_job_model():
     except ImportError as e:
         results.append((SKIP, "Import Job model", str(e)))
         print(f"  {SKIP} Import Job model: {e}")
-
-
-test_import_job_model()
 
 
 def test_job_status_enum_values():
@@ -1066,9 +820,6 @@ def test_job_status_enum_values():
         print(f"  {SKIP} JobStatus enum values: {e}")
 
 
-test_job_status_enum_values()
-
-
 def test_webhook_status_enum():
     """Verify WebhookStatus enum values."""
     try:
@@ -1082,9 +833,6 @@ def test_webhook_status_enum():
     except ImportError as e:
         results.append((SKIP, "WebhookStatus enum values", str(e)))
         print(f"  {SKIP} WebhookStatus enum values: {e}")
-
-
-test_webhook_status_enum()
 
 
 def test_is_valid_transition():
@@ -1131,9 +879,6 @@ def test_is_valid_transition():
         print(f"  {SKIP} is_valid_transition: {e}")
 
 
-test_is_valid_transition()
-
-
 def test_is_terminal():
     """Test is_terminal() function."""
     try:
@@ -1153,9 +898,6 @@ def test_is_terminal():
     except ImportError as e:
         results.append((SKIP, "is_terminal", str(e)))
         print(f"  {SKIP} is_terminal: {e}")
-
-
-test_is_terminal()
 
 
 def test_import_job_service():
@@ -1181,9 +923,6 @@ def test_import_job_service():
         print(f"  {SKIP} Import job_service: {e}")
 
 
-test_import_job_service()
-
-
 def test_job_service_default_ttl():
     """Verify default TTL hours constant."""
     try:
@@ -1195,9 +934,6 @@ def test_job_service_default_ttl():
     except ImportError as e:
         results.append((SKIP, "job_service TTL", str(e)))
         print(f"  {SKIP} job_service TTL: {e}")
-
-
-test_job_service_default_ttl()
 
 
 def test_import_worker_tasks():
@@ -1214,9 +950,6 @@ def test_import_worker_tasks():
     except ImportError as e:
         results.append((SKIP, "Import worker tasks", str(e)))
         print(f"  {SKIP} Import worker tasks: {e}")
-
-
-test_import_worker_tasks()
 
 
 def test_job_model_fields():
@@ -1247,9 +980,6 @@ def test_job_model_fields():
         print(f"  {SKIP} Job model fields: {e}")
 
 
-test_job_model_fields()
-
-
 def test_valid_transitions_completeness():
     """Verify _VALID_TRANSITIONS covers all JobStatus values."""
     try:
@@ -1264,17 +994,6 @@ def test_valid_transitions_completeness():
     except ImportError as e:
         results.append((SKIP, "_VALID_TRANSITIONS", str(e)))
         print(f"  {SKIP} _VALID_TRANSITIONS: {e}")
-
-
-test_valid_transitions_completeness()
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#  SECTION 8: Full Lifecycle Tests
-# ═══════════════════════════════════════════════════════════════════════════════
-print("\n" + "─" * 70)
-print("  SECTION 8: Full Lifecycle")
-print("─" * 70)
 
 
 def test_full_lifecycle_auto():
@@ -1303,9 +1022,6 @@ def test_full_lifecycle_auto():
     assert "status" in b4, f"Result missing status: {b4}"
 
 
-check("Full lifecycle: submit → poll → list → result (auto)", test_full_lifecycle_auto)
-
-
 def test_full_lifecycle_expert():
     """Full lifecycle: submit expert job → poll → get result → verify."""
     s1, b1, _, _ = req("POST", "/v1/jobs", EXPERT_PAYLOAD)
@@ -1319,9 +1035,6 @@ def test_full_lifecycle_expert():
     s3, b3, _, _ = req("GET", f"/v1/jobs/{job_id}/result")
     assert s3 == 200, f"Result failed: {s3}"
     assert "status" in b3, "Result missing status"
-
-
-check("Full lifecycle: submit → poll → result (expert)", test_full_lifecycle_expert)
 
 
 def test_multiple_concurrent_jobs():
@@ -1358,9 +1071,6 @@ def test_multiple_concurrent_jobs():
         assert jid in listed_ids, f"Job {jid} not in listing"
 
 
-check("Submit 3 concurrent jobs → all unique + in listing", test_multiple_concurrent_jobs)
-
-
 def test_submit_poll_cancel_lifecycle():
     """Submit → poll → cancel → verify cancelled."""
     s1, b1, _, _ = req("POST", "/v1/jobs", AUTO_PAYLOAD)
@@ -1383,9 +1093,6 @@ def test_submit_poll_cancel_lifecycle():
         pass  # Already terminal — acceptable
 
 
-check("Submit → poll → cancel → verify cancelled", test_submit_poll_cancel_lifecycle)
-
-
 def test_job_ids_are_consistent():
     """Verify job_id returned on submission matches what poll returns."""
     s1, b1, _, _ = req("POST", "/v1/jobs", AUTO_PAYLOAD)
@@ -1403,9 +1110,6 @@ def test_job_ids_are_consistent():
     )
 
 
-check("Job IDs consistent between submit and poll", test_job_ids_are_consistent)
-
-
 def test_webhook_test_endpoint():
     """Test the webhook test delivery endpoint."""
     payload = {
@@ -1421,17 +1125,11 @@ def test_webhook_test_endpoint():
     timings.append(("POST /v1/webhooks/test", elapsed))
 
 
-check("Webhook test endpoint → 200 with success/status_code/message", test_webhook_test_endpoint)
-
-
 def test_webhook_test_no_auth():
     """Webhook test without auth → 401/403."""
     payload = {"callback_url": "https://example.com/hook"}
     status, body, _, _ = req("POST", "/v1/webhooks/test", payload, auth=False)
     assert status in (401, 403), f"Expected 401/403, got {status}: {body}"
-
-
-check("Webhook test without auth → 401/403", test_webhook_test_no_auth)
 
 
 def test_submit_and_poll_timing():
@@ -1441,9 +1139,6 @@ def test_submit_and_poll_timing():
     total = time.perf_counter() - t0
     assert status == 202, f"Expected 202, got {status}"
     assert total < 5.0, f"Job submission took {total:.2f}s — expected < 5s for async"
-
-
-check("Job submission latency < 5s (async pattern)", test_submit_and_poll_timing)
 
 
 def test_job_callback_status_with_url():
@@ -1462,9 +1157,6 @@ def test_job_callback_status_with_url():
     assert cb_status == "pending", f"Expected callback_status='pending' with URL, got '{cb_status}'"
 
 
-check("Job with callback_url → callback_status=pending", test_job_callback_status_with_url)
-
-
 def test_job_callback_status_without_url():
     """Submit job without callback_url → callback_status should be 'not_configured'."""
     s, b, _, _ = req("POST", "/v1/jobs", AUTO_PAYLOAD)
@@ -1478,63 +1170,382 @@ def test_job_callback_status_without_url():
     )
 
 
-check(
-    "Job without callback_url → callback_status=not_configured",
-    test_job_callback_status_without_url,
-)
+if __name__ == "__main__":
+    # ═══════════════════════════════════════════════════════════════════════════════
+    #  Connectivity check
+    # ═══════════════════════════════════════════════════════════════════════════════
+    _emit("\n" + "=" * 70)
+    _emit("  PHASE 17: Async Jobs Lifecycle Integration Tests")
+    _emit("=" * 70)
+
+    try:
+        status, body, _, _ = req("GET", "/v1/health", auth=False)
+        if status != 200:
+            _emit(f"\n  ⚠️  API server returned {status} on /v1/health — some tests may fail")
+    except Exception as e:
+        _emit(f"\n  ❌ Cannot connect to {BASE_URL}: {e}")
+        _emit("     Start the server with: make dev-api")
+        sys.exit(1)
+
+    if not API_KEY_CONFIGURED:
+        reason = "DE_API_KEY is not set; skipping async jobs integration checks that require a real live key."
+        _emit(f"\n  {SKIP} preflight: {reason}")
+        artifact_path = write_live_integration_summary(
+            SUITE_NAME,
+            script="tests/integration/test_jobs.py",
+            passed=0,
+            failed=0,
+            skipped=1,
+            total=1,
+            elapsed_seconds=time.perf_counter() - STARTED,
+            details={
+                "api_key_configured": False,
+                "base_url": BASE_URL,
+                "failed_checks": [],
+                "skipped_checks": ["preflight"],
+                "skipped_count": 1,
+            },
+        )
+        _emit(f"Summary artifact: {artifact_path}")
+        sys.exit(0)
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-#  SUMMARY
-# ═══════════════════════════════════════════════════════════════════════════════
-_emit("\n" + "=" * 70)
-_emit("  SUMMARY — Phase 17: Async Jobs Lifecycle")
-_emit("=" * 70)
+    # ═══════════════════════════════════════════════════════════════════════════════
+    #  SECTION 1: Job Submission Tests
+    # ═══════════════════════════════════════════════════════════════════════════════
+    _emit("\n" + "─" * 70)
+    _emit("  SECTION 1: Job Submission")
+    _emit("─" * 70)
 
-passed = sum(1 for r in results if r[0] == PASS)
-failed = sum(1 for r in results if r[0] == FAIL)
-skipped = sum(1 for r in results if r[0] == SKIP)
-total = len(results)
 
-_emit(f"\n  Total:   {total} tests")
-_emit(f"  Passed:  {passed} {PASS}")
-_emit(f"  Failed:  {failed} {FAIL}")
-_emit(f"  Skipped: {skipped} {SKIP}")
+    check("Submit auto-mode async job → 202 with job_id", test_submit_auto_job)
 
-if timings:
-    _emit("\n  ── Latency Summary ──")
-    for name, elapsed in timings:
-        _emit(f"    {name}: {elapsed * 1000:.0f}ms")
 
-if failed > 0:
-    _emit("\n  ── Failures ──")
-    for r in results:
-        if r[0] == FAIL:
-            _emit(f"    {FAIL} {r[1]}: {r[2] if len(r) > 2 else ''}")
+    check("Submit job → initial status is queued or early-stage", test_submit_job_status_initial)
 
-_emit(f"\n{'=' * 70}")
-if failed == 0:
-    _emit(f"  🎉 ALL {passed} ASYNC JOBS TESTS PASSED! ({skipped} skipped)")
-else:
-    _emit(f"  ⚠️  {failed} FAILURES — fix before deploying ({passed} passed, {skipped} skipped)")
-_emit(f"{'=' * 70}\n")
 
-artifact_path = write_live_integration_summary(
-    SUITE_NAME,
-    script="tests/integration/test_jobs.py",
-    passed=passed,
-    failed=failed,
-    skipped=skipped,
-    total=total,
-    elapsed_seconds=time.perf_counter() - STARTED,
-    details={
-        "api_key_configured": bool(API_KEY_CONFIGURED),
-        "base_url": BASE_URL,
-        "failed_checks": [name for icon, name, *_ in results if icon == FAIL],
-        "skipped_checks": [name for icon, name, *_ in results if icon == SKIP],
-        "skipped_count": skipped,
-    },
-)
-_emit(f"Summary artifact: {artifact_path}")
+    check("Submit expert-mode async job → 202", test_submit_expert_job)
 
-sys.exit(1 if failed > 0 else 0)
+
+    check("Submit job with callback_url → 202", test_submit_job_with_callback_url)
+
+
+    check("Submit job → poll_url contains job_id path", test_submit_job_response_has_poll_url)
+
+
+    check("Submit job → response contains message", test_submit_job_response_has_message)
+
+
+    check("Submit job with simulation_model=qmc_sobol → 202", test_submit_job_with_qmc_sobol)
+
+
+    check("Submit job with simulation_model=lhs → 202", test_submit_job_with_lhs)
+
+
+    # ═══════════════════════════════════════════════════════════════════════════════
+    #  SECTION 2: Job Status Polling Tests
+    # ═══════════════════════════════════════════════════════════════════════════════
+    _emit("\n" + "─" * 70)
+    _emit("  SECTION 2: Job Status Polling")
+    _emit("─" * 70)
+
+
+    check("Poll job status → 200 with expected fields", test_poll_job_status)
+
+
+    check("Poll job → has queue_name='default'", test_poll_job_has_queue_name)
+
+
+    check("Poll job → has retry_count (int)", test_poll_job_has_retry_count)
+
+
+    check("Poll job → has valid callback_status", test_poll_job_has_callback_status)
+
+
+    check("Poll job → has ttl_expires_at", test_poll_job_has_ttl_expires_at)
+
+
+    check("Poll job → response includes poll_url with job_id", test_poll_job_has_poll_url)
+
+
+    check("Poll job → status is valid JobStatus enum value", test_poll_job_valid_status_values)
+
+
+    check("Submit + poll job → reaches terminal or stays queued", test_poll_job_until_terminal)
+
+
+    # ═══════════════════════════════════════════════════════════════════════════════
+    #  SECTION 3: Job Result Retrieval Tests
+    # ═══════════════════════════════════════════════════════════════════════════════
+    print("\n" + "─" * 70)
+    print("  SECTION 3: Job Result Retrieval")
+    print("─" * 70)
+
+
+    check("Get job result endpoint → 200 with status-dependent response", test_get_job_result_endpoint)
+
+
+    check("Submit → poll → get result (if completed)", test_get_result_completed_job)
+
+
+    check("Get result for nonexistent job → 404", test_result_for_nonexistent_job)
+
+
+    # ═══════════════════════════════════════════════════════════════════════════════
+    #  SECTION 4: Job Listing Tests
+    # ═══════════════════════════════════════════════════════════════════════════════
+    print("\n" + "─" * 70)
+    print("  SECTION 4: Job Listing")
+    print("─" * 70)
+
+
+    check("List jobs → 200 with jobs, total, page, limit, pages", test_list_jobs)
+
+
+    check("List jobs → contains at least one submitted job", test_list_jobs_contains_submitted)
+
+
+    check("List jobs with limit=2 → at most 2 results", test_list_jobs_pagination_limit)
+
+
+    check("List jobs with page=1 → page and limit fields are correct", test_list_jobs_pagination_page)
+
+
+    check("List jobs page=2 → page field is 2", test_list_jobs_page_2)
+
+
+    check("List jobs → total is consistent across limit changes", test_list_jobs_total_is_consistent)
+
+
+    check(
+        "List jobs with status=queued → all returned jobs are queued", test_list_jobs_filter_by_status
+    )
+
+
+    check("List jobs → ordered by created_at descending", test_list_jobs_ordered_by_creation)
+
+
+    check("List jobs → each job has complete structure", test_list_jobs_job_structure)
+
+
+    check("List jobs with invalid status filter → 200 (graceful)", test_list_jobs_invalid_status_filter)
+
+
+    # ═══════════════════════════════════════════════════════════════════════════════
+    #  SECTION 5: Job Cancellation Tests
+    # ═══════════════════════════════════════════════════════════════════════════════
+    print("\n" + "─" * 70)
+    print("  SECTION 5: Job Cancellation")
+    print("─" * 70)
+
+
+    check("Submit + cancel job → cancelled or already-terminal 409", test_cancel_job)
+
+
+    check("Cancel job → subsequent poll shows cancelled", test_cancel_job_verify_status)
+
+
+    check("Cancel non-existent job → 404", test_cancel_nonexistent_job)
+
+
+    check("Cancel already-cancelled job → 409 conflict", test_cancel_already_cancelled_job)
+
+
+    check("Cancelled job → result endpoint returns cancelled", test_cancelled_job_result)
+
+
+    # ═══════════════════════════════════════════════════════════════════════════════
+    #  SECTION 6: Error Handling Tests
+    # ═══════════════════════════════════════════════════════════════════════════════
+    print("\n" + "─" * 70)
+    print("  SECTION 6: Error Handling")
+    print("─" * 70)
+
+
+    check("Submit empty payload → 422 validation error", test_submit_empty_payload)
+
+
+    check("Submit job with invalid mode → 422", test_submit_invalid_mode)
+
+
+    check("Submit auto job without variables → 422", test_submit_missing_variables)
+
+
+    check("Get non-existent job → 404", test_get_nonexistent_job)
+
+
+    check("Get job with invalid UUID → 422", test_get_job_invalid_uuid)
+
+
+    check("Submit job without auth → 401/403", test_submit_job_no_auth)
+
+
+    check("List jobs without auth → 401/403", test_list_jobs_no_auth)
+
+
+    check("Poll job without auth → 401/403", test_poll_job_no_auth)
+
+
+    check("Cancel job without auth → 401/403", test_cancel_job_no_auth)
+
+
+    check(
+        "Submit expert job without objective_function → 202 or 422",
+        test_submit_expert_missing_objective,
+    )
+
+
+    check("Submit auto job with high < low → 422", test_submit_auto_invalid_variable_range)
+
+
+    # ═══════════════════════════════════════════════════════════════════════════════
+    #  SECTION 7: Job Service Module Tests (direct import)
+    # ═══════════════════════════════════════════════════════════════════════════════
+    print("\n" + "─" * 70)
+    print("  SECTION 7: Job Service Module (direct import)")
+    print("─" * 70)
+
+
+    test_import_job_model()
+
+
+    test_job_status_enum_values()
+
+
+    test_webhook_status_enum()
+
+
+    test_is_valid_transition()
+
+
+    test_is_terminal()
+
+
+    test_import_job_service()
+
+
+    test_job_service_default_ttl()
+
+
+    test_import_worker_tasks()
+
+
+    test_job_model_fields()
+
+
+    test_valid_transitions_completeness()
+
+
+    # ═══════════════════════════════════════════════════════════════════════════════
+    #  SECTION 8: Full Lifecycle Tests
+    # ═══════════════════════════════════════════════════════════════════════════════
+    print("\n" + "─" * 70)
+    print("  SECTION 8: Full Lifecycle")
+    print("─" * 70)
+
+
+    check("Full lifecycle: submit → poll → list → result (auto)", test_full_lifecycle_auto)
+
+
+    check("Full lifecycle: submit → poll → result (expert)", test_full_lifecycle_expert)
+
+
+    check("Submit 3 concurrent jobs → all unique + in listing", test_multiple_concurrent_jobs)
+
+
+    check("Submit → poll → cancel → verify cancelled", test_submit_poll_cancel_lifecycle)
+
+
+    check("Job IDs consistent between submit and poll", test_job_ids_are_consistent)
+
+
+    check("Webhook test endpoint → 200 with success/status_code/message", test_webhook_test_endpoint)
+
+
+    check("Webhook test without auth → 401/403", test_webhook_test_no_auth)
+
+
+    check("Job submission latency < 5s (async pattern)", test_submit_and_poll_timing)
+
+
+    check("Job with callback_url → callback_status=pending", test_job_callback_status_with_url)
+
+
+    check(
+        "Job without callback_url → callback_status=not_configured",
+        test_job_callback_status_without_url,
+    )
+
+
+    # ═══════════════════════════════════════════════════════════════════════════════
+    #  SUMMARY
+    # ═══════════════════════════════════════════════════════════════════════════════
+    _emit("\n" + "=" * 70)
+    _emit("  SUMMARY — Phase 17: Async Jobs Lifecycle")
+    _emit("=" * 70)
+
+    passed = sum(1 for r in results if r[0] == PASS)
+    failed = sum(1 for r in results if r[0] == FAIL)
+    skipped = sum(1 for r in results if r[0] == SKIP)
+    total = len(results)
+
+    _emit(f"\n  Total:   {total} tests")
+    _emit(f"  Passed:  {passed} {PASS}")
+    _emit(f"  Failed:  {failed} {FAIL}")
+    _emit(f"  Skipped: {skipped} {SKIP}")
+
+    if timings:
+        _emit("\n  ── Latency Summary ──")
+        for name, elapsed in timings:
+            _emit(f"    {name}: {elapsed * 1000:.0f}ms")
+
+    if failed > 0:
+        _emit("\n  ── Failures ──")
+        for r in results:
+            if r[0] == FAIL:
+                _emit(f"    {FAIL} {r[1]}: {r[2] if len(r) > 2 else ''}")
+
+    _emit(f"\n{'=' * 70}")
+    if failed == 0:
+        _emit(f"  🎉 ALL {passed} ASYNC JOBS TESTS PASSED! ({skipped} skipped)")
+    else:
+        _emit(f"  ⚠️  {failed} FAILURES — fix before deploying ({passed} passed, {skipped} skipped)")
+    _emit(f"{'=' * 70}\n")
+
+    artifact_path = write_live_integration_summary(
+        SUITE_NAME,
+        script="tests/integration/test_jobs.py",
+        passed=passed,
+        failed=failed,
+        skipped=skipped,
+        total=total,
+        elapsed_seconds=time.perf_counter() - STARTED,
+        details={
+            "api_key_configured": bool(API_KEY_CONFIGURED),
+            "base_url": BASE_URL,
+            "failed_checks": [name for icon, name, *_ in results if icon == FAIL],
+            "skipped_checks": [name for icon, name, *_ in results if icon == SKIP],
+            "skipped_count": skipped,
+        },
+    )
+    _emit(f"Summary artifact: {artifact_path}")
+
+    import pytest
+
+    exit_code = pytest.main([__file__, "-v"])
+    try:
+        from tests.integration.live_integration_artifacts import write_live_integration_summary
+
+        artifact_path = write_live_integration_summary(
+            SUITE_NAME,
+            script="tests/integration/test_jobs.py",
+            passed=0,
+            failed=0,
+            skipped=0,
+            total=0,
+            elapsed_seconds=0.0,
+        )
+        print(f"Summary artifact: {artifact_path}")
+    except Exception:
+        pass
+    sys.exit(exit_code)
