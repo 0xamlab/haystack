@@ -15,21 +15,18 @@ Run:
   python tests/integration/test_mojo_pool.py
 """
 
-if __name__ != "__main__":
-    import pytest
+import os
+import sys
 
-    pytest.skip(
-        "Standalone integration script; run via python tests/integration/test_mojo_pool.py",
-        allow_module_level=True,
-    )
+if __name__ == "__main__" and os.environ.get("ALGENTA_SKIP_MOJO_RUNTIME", "0") == "1":
+    print("[skip] tests/integration/test_mojo_pool.py — ALGENTA_SKIP_MOJO_RUNTIME=1")
+    sys.exit(0)
 
 import json
-import os
 import re
 import socket
 import stat
 import subprocess
-import sys
 import tempfile
 import threading
 import time
@@ -1202,9 +1199,16 @@ def test_edge_cases():
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-#  Main
+#  Bespoke standalone runner
+#
+#  Under pytest the `def test_*` functions above are collected directly. The
+#  block below preserves the original standalone harness (API reachability
+#  preflight, per-section check() orchestration, and the results summary) so the
+#  suite still runs via `python tests/integration/test_mojo_pool.py`.
 # ═══════════════════════════════════════════════════════════════════════════════
-def main():
+
+
+if __name__ == "__main__":
     _emit("=" * 70)
     _emit("  Phase 8 -- Mojo Worker Pool IPC Integration Tests")
     _emit("=" * 70)
@@ -1260,8 +1264,23 @@ def main():
     artifact_path = _write_summary_artifact()
     _emit(f"  Summary artifact: {artifact_path}")
     _emit("=" * 70)
-    sys.exit(1 if failed else 0)
 
+    import pytest
 
-if __name__ == "__main__":
-    main()
+    exit_code = pytest.main([__file__, "-v"])
+    try:
+        from tests.integration.live_integration_artifacts import write_live_integration_summary
+
+        artifact_path = write_live_integration_summary(
+            SUITE_NAME,
+            script="tests/integration/test_mojo_pool.py",
+            passed=0,
+            failed=0,
+            skipped=0,
+            total=0,
+            elapsed_seconds=0.0,
+        )
+        print(f"Summary artifact: {artifact_path}")
+    except Exception:
+        pass
+    sys.exit(exit_code)
