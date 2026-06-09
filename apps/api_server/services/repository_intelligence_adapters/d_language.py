@@ -99,9 +99,13 @@ TYPE_DECL_RE = re.compile(
     r"(?:class|struct|interface|enum|union|template)\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\b",
     re.MULTILINE,
 )
+# NOTE: bounded the inner identifier-style return-type segment with an explicit
+# upper repetition limit to defang the polynomial backtracking flagged by
+# py/redos. Both groups can otherwise match overlapping qualifier-like tokens
+# (e.g. 'extern extern ...' could be split across the two quantified groups).
 FUNCTION_DECL_RE = re.compile(
     r"^\s*(?:(?:public|private|package|protected|export|abstract|final|static|extern|override|synchronized|pure|nothrow|scope|ref|auto|const|immutable|shared|__gshared|lazy|@[_A-Za-z][_A-Za-z0-9.]*)\s+)*"
-    r"(?:(?:[_A-Za-z][_A-Za-z0-9.!<>\[\]]*|~?this)\s+)+(?P<name>~?this|[A-Za-z_][A-Za-z0-9_]*)\s*\([^;]*\)",
+    r"(?:(?:[_A-Za-z][_A-Za-z0-9.!<>\[\]]{0,256}|~?this)\s+){1,8}(?P<name>~?this|[A-Za-z_][A-Za-z0-9_]*)\s*\([^;]*\)",
     re.MULTILINE,
 )
 QUALIFIED_CALL_RE = re.compile(

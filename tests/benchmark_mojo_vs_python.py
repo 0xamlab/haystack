@@ -618,12 +618,23 @@ def _mojo_expr_to_python(expr: str) -> str:
     # (to preserve XOR: a ^ b, and ^= compound assignment)
     expr = re.sub(r"(?<=\w)\^(?=[,)\]\s;]|$)", "", expr)
 
+    # NOTE: previously these patterns used unbounded '(?:[^\[\]]+|\[[^\[\]]*\])+'
+    # which is polynomial-backtracking on inputs missing the closing ']'. We
+    # bound them by length and limit nesting to a single level using a
+    # non-quantified outer group, which is what the benchmark actually needs.
+    # Real Mojo source never approaches the cap.
+    _LIST_INNER = r"(?:[^\[\]]{0,512}(?:\[[^\[\]]{0,512}\][^\[\]]{0,512})?)"
     # List constructor: List[T]() → []  (handles nested like List[List[Bool]]())
-    expr = re.sub(r"List\[(?:[^\[\]]+|\[[^\[\]]*\])+\]\(\)", "[]", expr)
-    # List with capacity hint: List[T](capacity=N) → []  (handles nested parens like len(...))
-    expr = re.sub(r"List\[(?:[^\[\]]+|\[[^\[\]]*\])+\]\((?:[^()]*|\([^()]*\))*\)", "[]", expr)
+    expr = re.sub(rf"\bList\[{_LIST_INNER}\]\(\)", "[]", expr)
+    # List with capacity hint: List[T](capacity=N) → []
+    # (handles a single level of nested parens like len(...))
+    expr = re.sub(
+        rf"\bList\[{_LIST_INNER}\]\((?:[^()]{{0,512}}(?:\([^()]{{0,512}}\)[^()]{{0,512}})?)\)",
+        "[]",
+        expr,
+    )
     # Bare List[] type reference (not constructor) → list
-    expr = re.sub(r"\bList\[(?:[^\[\]]+|\[[^\[\]]*\])+\](?!\()", "list", expr)
+    expr = re.sub(rf"\bList\[{_LIST_INNER}\](?!\()", "list", expr)
 
     # Mojo String methods
     expr = re.sub(r"\.as_bytes\(\)", ".encode('utf-8')", expr)

@@ -55,7 +55,11 @@ _MEASURE_TOKENS = {
     "weight",
 }
 _INT_RE = re.compile(r"^[+-]?\d+$")
-_FLOAT_RE = re.compile(r"^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$")
+# Optional fractional part is wrapped so the integer and fraction can't share
+# digits across the boundary (avoids the polynomial-redos shape from
+# '\d+\.?\d*' where '\.?' is optional and '\d*' could absorb digits that '\d+'
+# also matches).
+_FLOAT_RE = re.compile(r"^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$")
 _LEADING_ZERO_INT_RE = re.compile(r"^[+-]?0\d+$")
 _TOKEN_RE = re.compile(r"[a-z0-9]+")
 _CURRENCY_PREFIX = "$£€¥"

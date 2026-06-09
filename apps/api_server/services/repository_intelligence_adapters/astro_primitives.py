@@ -12,8 +12,10 @@ ResolveSuffixMatch = Callable[..., str | None]
 ASTRO_SUFFIXES = frozenset({".astro"})
 _COMMON_MODULE_ROOTS = frozenset({"src", "components", "layouts", "pages", "content"})
 _FRONTMATTER_RE = re.compile(r"\A---\s*\n(?P<body>.*?)\n---(?:\s*\n|$)", re.S)
-_SCRIPT_BLOCK_RE = re.compile(r"<script\b[^>]*>(?P<body>.*?)</script>", re.I | re.S)
-_STYLE_BLOCK_RE = re.compile(r"<style\b[^>]*>.*?</style>", re.I | re.S)
+# Closing tag uses \s* before > to tolerate browser-permissive malformed end tags
+# like </script > or </script\n>. Fixes py/bad-tag-filter (CodeQL).
+_SCRIPT_BLOCK_RE = re.compile(r"<script\b[^>]*>(?P<body>.*?)</script\s*>", re.I | re.S)
+_STYLE_BLOCK_RE = re.compile(r"<style\b[^>]*>.*?</style\s*>", re.I | re.S)
 _COMMENT_RE = re.compile(r"<!--.*?-->|/\*.*?\*/|//[^\n]*", re.S)
 _IMPORT_RE = re.compile(
     r"import\s+(?:type\s+)?(?P<bindings>.+?)\s+from\s+['\"](?P<target>[^'\"]+)['\"]",

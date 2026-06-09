@@ -36,9 +36,14 @@ _TAG_FUNCTION_BLOCK_RE = re.compile(
     r"<cffunction\b(?P<attrs>[^>]*)>(?P<body>.*?)</cffunction>",
     re.IGNORECASE | re.DOTALL,
 )
+# NOTE: keyword alternatives require trailing '\s+' so the modifier list cannot
+# share a prefix with a catch-all '\w+'-style branch (those overlapping parse
+# paths are what triggered py/redos). A single trailing token before 'function'
+# captures the optional return type without a quantified outer group.
 _SCRIPT_FUNCTION_RE = re.compile(
-    r"^\s*(?:public|private|remote|package|static|final|abstract|\w+\s+)*function\s+"
-    r"(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*\(",
+    r"^\s*(?:(?:public|private|remote|package|static|final|abstract)\s+)*"
+    r"(?:[A-Za-z_]\w{0,64}\s+)?function\s+"
+    r"(?P<name>[A-Za-z_]\w*)\s*\(",
     re.IGNORECASE | re.MULTILINE,
 )
 _TAG_INCLUDE_RE = re.compile(r"<cfinclude\b(?P<attrs>[^>]*)>", re.IGNORECASE)

@@ -15,8 +15,12 @@ VUE_SUFFIXES = frozenset({".vue"})
 _COMMON_MODULE_ROOTS = frozenset(
     {"app", "components", "composables", "layouts", "pages", "src", "views"}
 )
-_SCRIPT_BLOCK_RE = re.compile(r"<script\b[^>]*>(?P<body>.*?)</script>", re.I | re.S)
-_TEMPLATE_BLOCK_RE = re.compile(r"<template\b[^>]*>(?P<body>.*?)</template>", re.I | re.S)
+# Closing tag uses \s* before > to tolerate browser-permissive malformed end tags
+# like </script > or </script\n>. This addresses py/bad-tag-filter (CodeQL).
+_SCRIPT_BLOCK_RE = re.compile(r"<script\b[^>]*>(?P<body>.*?)</script\s*>", re.I | re.S)
+_TEMPLATE_BLOCK_RE = re.compile(
+    r"<template\b[^>]*>(?P<body>.*?)</template\s*>", re.I | re.S
+)
 _COMMENT_RE = re.compile(r"<!--.*?-->|/\*.*?\*/|//[^\n]*", re.S)
 _IMPORT_RE = re.compile(
     r"import\s+(?P<bindings>.+?)\s+from\s+['\"](?P<target>[^'\"]+)['\"]",

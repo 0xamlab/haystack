@@ -247,11 +247,16 @@ def _source_aligned_foreign_key_flags(
     return foreign_key_to_right, foreign_key_to_left, generic_bare_id_pair
 
 
+_TRAILING_ZERO_FLOAT_RE = re.compile(r"[-+]?\d{1,64}\.0{1,64}")
+
+
 def _normalized_sample(value: Any) -> str:
     if value is None:
         return ""
     text = str(value).strip()
-    if re.fullmatch(r"[-+]?\d+\.0+", text):
+    # Bound input length before regex match to defang any worst-case backtracking
+    # path flagged by py/polynomial-redos on '\d+\.0+'-shaped patterns.
+    if len(text) <= 130 and _TRAILING_ZERO_FLOAT_RE.fullmatch(text):
         text = text.split(".", 1)[0]
     text = re.sub(r"\s+", " ", text)
     return text

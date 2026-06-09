@@ -24,8 +24,11 @@ _MARKER_RE = re.compile(
 _INCLUDE_RE = re.compile(
     r'(?im)^\s*#include\s+(?P<target>"[^"\r\n]+"|<[^>\r\n]+>)'
 )
+# NOTE: inner char class deliberately omits \s so it cannot overlap with the
+# required '\s+' separator between qualifiers - prevents py/redos exponential
+# backtracking on inputs like '\tA\tA\tA...'.
 _FUNCTION_HEAD_RE = re.compile(
-    r"(?m)^\s*(?:[A-Za-z_][A-Za-z0-9_\[\],<>\s]*\s+)+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*\([^)]*\)\s*\{"
+    r"(?m)^\s*(?:[A-Za-z_][A-Za-z0-9_\[\],<>]*\s+)+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*\([^)]*\)\s*\{"
 )
 _QUALIFIED_CALL_RE = re.compile(
     r"(?<![:.])\b(?P<owner>[A-Za-z_][A-Za-z0-9_]*)\.(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*\("

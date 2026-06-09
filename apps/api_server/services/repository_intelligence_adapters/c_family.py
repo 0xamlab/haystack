@@ -29,12 +29,15 @@ TYPE_DECL_RE = re.compile(
     r"(?P<name>[A-Za-z_][A-Za-z0-9_]*)\b",
     re.MULTILINE,
 )
+# NOTE: the return-type inner segment is now upper-bounded with {1,256} so the
+# adjacent quantified groups cannot produce exponential split paths flagged by
+# py/redos. Real-world C/C++ return types are far below this cap.
 FUNCTION_DECL_RE = re.compile(
-    r"^\s*(?P<prefix>(?:(?:template\s*<[^>{;]+>\s*)?"
+    r"^\s*(?P<prefix>(?:(?:template\s*<[^>{;]{0,512}>\s*)?"
     r"(?:(?:inline|static|constexpr|consteval|constinit|virtual|explicit|friend|extern|typename|auto|signed|unsigned|short|long|mutable)\s+)*"
-    r"(?:[A-Za-z_~][A-Za-z0-9_:<>,*&\[\]\s]+?\s+)))"
+    r"(?:[A-Za-z_~][A-Za-z0-9_:<>,*&\[\]\s]{0,256}?\s+)))"
     r"(?P<name>[A-Za-z_~][A-Za-z0-9_:]*)\s*\([^;{}]*\)\s*"
-    r"(?:const\b|noexcept\b(?:\([^)]*\))?|override\b|final\b|->[^;{]+|requires\b[^{;]+|\s)*"
+    r"(?:const\b|noexcept\b(?:\([^)]*\))?|override\b|final\b|->[^;{]{1,256}|requires\b[^{;]{1,256}|\s)*"
     r"[;{]\s*$",
     re.MULTILINE,
 )

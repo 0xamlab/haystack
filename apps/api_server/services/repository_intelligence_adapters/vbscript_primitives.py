@@ -14,8 +14,10 @@ ResolveSuffixMatch = Callable[..., str | None]
 
 _KNOWN_SUFFIXES = frozenset({".vbs", ".vbe", ".wsf"})
 _VB_KEYWORD_RE = re.compile(r"\b(option\s+explicit|function|sub|class|set|createobject)\b", re.I)
+# Closing tag uses \s* before > to tolerate browser-permissive malformed end tags
+# like </script > or </script\n>. Fixes py/bad-tag-filter (CodeQL).
 _SCRIPT_TAG_RE = re.compile(
-    r"<script\b(?P<attrs>[^>]*)>(?P<body>.*?)</script>",
+    r"<script\b(?P<attrs>[^>]*)>(?P<body>.*?)</script\s*>",
     re.IGNORECASE | re.DOTALL,
 )
 _SCRIPT_ATTR_RE = re.compile(
