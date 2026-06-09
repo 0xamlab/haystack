@@ -10,6 +10,7 @@ import subprocess
 import time
 import uuid
 from collections import Counter, deque
+from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 from types import SimpleNamespace
 from typing import Any
@@ -15575,24 +15576,48 @@ def _expand_profile_entrypoints(
     return selected_entrypoints + filled_candidates
 
 
-def _derive_operational_seed_plan_without_diagnostics(
-    *,
-    repo_path: Path,
-    focus_paths: list[str],
-    max_files: int,
-) -> dict[str, Any]:
-    discovered_config_paths = _repo_profile_config_paths(
-        repo_path=repo_path,
-        focus_paths=focus_paths,
-    )
+@dataclass
+class _SeedPlanState:
+    """Mutable state container shared between the dispatch and finalize phases of
+    ``_derive_operational_seed_plan_without_diagnostics``. Holds the discovered
+    config paths and every accumulator the dispatch ladder, middle phase, and
+    terminal consolidation phase append to or read from."""
 
-    entrypoint_candidates: set[str] = set()
-    support_root_candidates: set[str] = set()
-    config_path_candidates: set[str] = set()
-    detected_ecosystems: set[str] = set()
-    detected_ecosystem_scores: Counter[str] = Counter()
-    entrypoint_candidate_ecosystems: dict[str, set[str]] = {}
-    support_root_candidate_ecosystems: dict[str, set[str]] = {}
+    repo_path: Path
+    focus_paths: list[str]
+    max_files: int
+    discovered_config_paths: list[str] = field(default_factory=list)
+    entrypoint_candidates: set[str] = field(default_factory=set)
+    support_root_candidates: set[str] = field(default_factory=set)
+    config_path_candidates: set[str] = field(default_factory=set)
+    detected_ecosystems: set[str] = field(default_factory=set)
+    detected_ecosystem_scores: Counter[str] = field(default_factory=Counter)
+    entrypoint_candidate_ecosystems: dict[str, set[str]] = field(default_factory=dict)
+    support_root_candidate_ecosystems: dict[str, set[str]] = field(default_factory=dict)
+    bitbake_candidate_file_paths: list[str] = field(default_factory=list)
+    candidate_file_paths: list[str] = field(default_factory=list)
+
+
+def _dispatch_basenames_to_ecosystem(state: _SeedPlanState) -> None:
+    """Walks discovered config paths and dispatches each basename to its
+    per-ecosystem hint helper. Mutates state.entrypoint_candidates /
+    support_root_candidates / config_path_candidates / detected_ecosystems /
+    detected_ecosystem_scores / entrypoint_candidate_ecosystems /
+    support_root_candidate_ecosystems in place. Extracted verbatim from
+    _derive_operational_seed_plan_without_diagnostics for readability;
+    behavior unchanged."""
+
+    repo_path = state.repo_path
+    focus_paths = state.focus_paths
+    max_files = state.max_files
+    discovered_config_paths = state.discovered_config_paths
+    entrypoint_candidates = state.entrypoint_candidates
+    support_root_candidates = state.support_root_candidates
+    config_path_candidates = state.config_path_candidates
+    detected_ecosystems = state.detected_ecosystems
+    detected_ecosystem_scores = state.detected_ecosystem_scores
+    entrypoint_candidate_ecosystems = state.entrypoint_candidate_ecosystems
+    support_root_candidate_ecosystems = state.support_root_candidate_ecosystems
 
     for candidate_path in sorted(discovered_config_paths):
         basename = PurePosixPath(candidate_path).name.lower()
@@ -16249,6 +16274,243 @@ def _derive_operational_seed_plan_without_diagnostics(
         support_root_candidates.update(roots)
         config_path_candidates.update(configs)
 
+
+def _finalize_seed_plan(state: _SeedPlanState) -> dict[str, Any]:
+    """Final consolidation: existence filtering, per-candidate ecosystem rescan,
+    CUDA boost, ranking, candidate-pool filter, entrypoint/fallback selection,
+    support_roots derivation, and result-dict assembly. Returns the same dict
+    shape the original function returned. Extracted verbatim from
+    _derive_operational_seed_plan_without_diagnostics for readability;
+    behavior unchanged."""
+
+    repo_path = state.repo_path
+    focus_paths = state.focus_paths
+    entrypoint_candidates = state.entrypoint_candidates
+    support_root_candidates = state.support_root_candidates
+    config_path_candidates = state.config_path_candidates
+    detected_ecosystems = state.detected_ecosystems
+    detected_ecosystem_scores = state.detected_ecosystem_scores
+    entrypoint_candidate_ecosystems = state.entrypoint_candidate_ecosystems
+    support_root_candidate_ecosystems = state.support_root_candidate_ecosystems
+    bitbake_candidate_file_paths = state.bitbake_candidate_file_paths
+    candidate_file_paths = state.candidate_file_paths
+
+    existing_entrypoints = _candidate_existing_paths(
+        repo_path,
+        paths=entrypoint_candidates,
+    )
+    existing_support_roots = _candidate_existing_leaf_roots(
+        repo_path,
+        roots=support_root_candidates,
+        entrypoint_paths=set(existing_entrypoints),
+    )
+    existing_config_paths = _candidate_existing_paths(
+        repo_path,
+        paths=config_path_candidates,
+    )
+    if "bitbake" in detected_ecosystems and bitbake_candidate_file_paths:
+        existing_support_roots = [
+            root
+            for root in existing_support_roots
+            if any(path == root or path.startswith(f"{root}/") for path in candidate_file_paths)
+        ]
+        existing_config_paths = [
+            path
+            for path in existing_config_paths
+            if PurePosixPath(path).name.lower()
+            in repository_service.bitbake_adapter.BITBAKE_CONFIG_BASENAMES
+        ]
+    for entrypoint_path in existing_entrypoints:
+        for ecosystem in entrypoint_candidate_ecosystems.get(entrypoint_path, set()):
+            detected_ecosystem_scores[ecosystem] += 18
+    for support_root in existing_support_roots:
+        for ecosystem in support_root_candidate_ecosystems.get(support_root, set()):
+            detected_ecosystem_scores[ecosystem] += 12
+    candidate_file_paths = list(
+        dict.fromkeys(existing_entrypoints + candidate_file_paths)
+    )
+    for candidate_path in candidate_file_paths:
+        if repository_service._is_test_path(candidate_path):
+            continue
+        if _is_non_operational_profile_path(candidate_path):
+            continue
+        if not _is_repo_profile_code_candidate(candidate_path, repo_path=repo_path):
+            continue
+        matched_ecosystems = _candidate_ecosystems_for_path(
+            candidate_path,
+            repo_path=repo_path,
+        )
+        if not matched_ecosystems:
+            continue
+        detected_ecosystems.update(
+            ecosystem
+            for ecosystem in matched_ecosystems
+            if ecosystem not in {"unknown", "txt"}
+        )
+        weight = 3 if candidate_path in existing_entrypoints else 1
+        for ecosystem in matched_ecosystems:
+            detected_ecosystem_scores[ecosystem] += weight
+    cuda_count = _candidate_ecosystem_counts(
+        candidate_file_paths,
+        repo_path=repo_path,
+        ecosystems={"cuda"},
+    )["cuda"]
+    if cuda_count >= 24:
+        cuda_entrypoints, _, cuda_configs = _cuda_profile_hints_from_candidates(
+            repo_path,
+            candidate_file_paths,
+        )
+        cuda_entrypoint_root_count = len(
+            {
+                normalized_root
+                for path in cuda_entrypoints
+                if (
+                    normalized_root := repository_service._normalize_repository_relative_path(
+                        str(PurePosixPath(path).parent)
+                    )
+                )
+            }
+        )
+        if len(cuda_configs) >= 8 and cuda_entrypoint_root_count >= 8:
+            non_cuda_max_score = max(
+                (
+                    score
+                    for ecosystem, score in detected_ecosystem_scores.items()
+                    if ecosystem != "cuda"
+                ),
+                default=0,
+            )
+            detected_ecosystem_scores["cuda"] = max(
+                detected_ecosystem_scores["cuda"],
+                non_cuda_max_score + 32,
+            )
+
+    ranked_candidates = sorted(
+        candidate_file_paths,
+        key=lambda path: _rank_repo_profile_seed_path(
+            path,
+            repo_path=repo_path,
+            support_roots=set(existing_support_roots),
+        ),
+    )
+    code_candidates = [
+        path
+        for path in ranked_candidates
+        if _is_repo_profile_code_candidate(path, repo_path=repo_path)
+    ]
+    ecosystem_matched_candidates = [
+        path
+        for path in code_candidates
+        if not detected_ecosystems
+        or _candidate_ecosystems_for_path(path, repo_path=repo_path) & detected_ecosystems
+    ]
+    candidate_pool = ecosystem_matched_candidates or code_candidates
+    filtered_existing_entrypoints = [
+        path
+        for path in existing_entrypoints
+        if (
+            (
+                not repository_service._is_test_path(path)
+                and not _is_non_operational_profile_path(path)
+            )
+            or (
+                "robotframework" in detected_ecosystems
+                and _probe_language_for_path(path, repo_path=repo_path) == "robotframework"
+            )
+        )
+        and _is_repo_profile_code_candidate(path, repo_path=repo_path)
+    ]
+    if filtered_existing_entrypoints or code_candidates:
+        existing_entrypoints = filtered_existing_entrypoints
+    support_root_filtered_candidates = [
+        path
+        for path in candidate_pool
+        if existing_support_roots
+        and _path_within_support_roots(path, support_roots=set(existing_support_roots))
+        and not repository_service._is_test_path(path)
+        and not _is_non_operational_profile_path(path)
+    ]
+    fallback_candidates = support_root_filtered_candidates or [
+        path
+        for path in candidate_pool
+        if not repository_service._is_test_path(path)
+        and not _is_non_operational_profile_path(path)
+    ]
+    if not fallback_candidates:
+        fallback_candidates = [
+            path for path in candidate_pool if not repository_service._is_test_path(path)
+        ] or candidate_pool or code_candidates or ranked_candidates
+    fallback_limit = 0
+    if not existing_entrypoints:
+        fallback_limit = min(12, max(4, len(ranked_candidates) // 8 or 1))
+    elif len(existing_entrypoints) < 3:
+        fallback_limit = 3 - len(existing_entrypoints)
+    entrypoint_files = list(
+        dict.fromkeys(existing_entrypoints + fallback_candidates[:fallback_limit])
+    )
+    entrypoint_files = _expand_profile_entrypoints(
+        ranked_candidates=ranked_candidates,
+        repo_path=repo_path,
+        support_roots=existing_support_roots,
+        existing_entrypoints=entrypoint_files,
+        detected_ecosystems=detected_ecosystems,
+        ecosystem_scores=detected_ecosystem_scores,
+    )
+    if not existing_support_roots:
+        existing_support_roots = [
+            repository_service._normalize_repository_relative_path(path)
+            for path in focus_paths
+            if str(path).strip()
+        ]
+    for entrypoint_file in entrypoint_files:
+        parent_dir = repository_service._normalize_repository_relative_path(
+            str(PurePosixPath(entrypoint_file).parent)
+        )
+        if parent_dir:
+            existing_support_roots.append(parent_dir)
+    return {
+        "candidate_file_paths": candidate_file_paths,
+        "entrypoint_files": [path for path in entrypoint_files if path],
+        "support_roots": list(dict.fromkeys(path for path in existing_support_roots if path)),
+        "config_paths": existing_config_paths,
+        "detected_ecosystems": _ordered_detected_ecosystems(
+            detected_ecosystems,
+        ),
+        "operational_ecosystems": _ordered_operational_ecosystems(
+            detected_ecosystems,
+            ecosystem_scores=detected_ecosystem_scores,
+        ),
+    }
+
+
+def _derive_operational_seed_plan_without_diagnostics(
+    *,
+    repo_path: Path,
+    focus_paths: list[str],
+    max_files: int,
+) -> dict[str, Any]:
+    discovered_config_paths = _repo_profile_config_paths(
+        repo_path=repo_path,
+        focus_paths=focus_paths,
+    )
+
+    state = _SeedPlanState(
+        repo_path=repo_path,
+        focus_paths=focus_paths,
+        max_files=max_files,
+        discovered_config_paths=discovered_config_paths,
+    )
+    _dispatch_basenames_to_ecosystem(state)
+
+    # Unpack mutable accumulators back into locals so the unchanged middle phase
+    # continues to read/write the same underlying containers via shared references.
+    entrypoint_candidates = state.entrypoint_candidates
+    support_root_candidates = state.support_root_candidates
+    config_path_candidates = state.config_path_candidates
+    detected_ecosystems = state.detected_ecosystems
+    detected_ecosystem_scores = state.detected_ecosystem_scores
+    entrypoint_candidate_ecosystems = state.entrypoint_candidate_ecosystems
+    support_root_candidate_ecosystems = state.support_root_candidate_ecosystems
     bitbake_candidate_file_paths = []
     if "bitbake" in detected_ecosystems:
         bitbake_candidate_file_paths = _bitbake_profile_candidate_paths(
@@ -19316,192 +19578,12 @@ def _derive_operational_seed_plan_without_diagnostics(
     if "scala" in detected_ecosystems:
         support_root_candidates.update(_scala_support_roots_from_candidates(candidate_file_paths))
 
-    existing_entrypoints = _candidate_existing_paths(
-        repo_path,
-        paths=entrypoint_candidates,
-    )
-    existing_support_roots = _candidate_existing_leaf_roots(
-        repo_path,
-        roots=support_root_candidates,
-        entrypoint_paths=set(existing_entrypoints),
-    )
-    existing_config_paths = _candidate_existing_paths(
-        repo_path,
-        paths=config_path_candidates,
-    )
-    if "bitbake" in detected_ecosystems and bitbake_candidate_file_paths:
-        existing_support_roots = [
-            root
-            for root in existing_support_roots
-            if any(path == root or path.startswith(f"{root}/") for path in candidate_file_paths)
-        ]
-        existing_config_paths = [
-            path
-            for path in existing_config_paths
-            if PurePosixPath(path).name.lower()
-            in repository_service.bitbake_adapter.BITBAKE_CONFIG_BASENAMES
-        ]
-    for entrypoint_path in existing_entrypoints:
-        for ecosystem in entrypoint_candidate_ecosystems.get(entrypoint_path, set()):
-            detected_ecosystem_scores[ecosystem] += 18
-    for support_root in existing_support_roots:
-        for ecosystem in support_root_candidate_ecosystems.get(support_root, set()):
-            detected_ecosystem_scores[ecosystem] += 12
-    candidate_file_paths = list(
-        dict.fromkeys(existing_entrypoints + candidate_file_paths)
-    )
-    for candidate_path in candidate_file_paths:
-        if repository_service._is_test_path(candidate_path):
-            continue
-        if _is_non_operational_profile_path(candidate_path):
-            continue
-        if not _is_repo_profile_code_candidate(candidate_path, repo_path=repo_path):
-            continue
-        matched_ecosystems = _candidate_ecosystems_for_path(
-            candidate_path,
-            repo_path=repo_path,
-        )
-        if not matched_ecosystems:
-            continue
-        detected_ecosystems.update(
-            ecosystem
-            for ecosystem in matched_ecosystems
-            if ecosystem not in {"unknown", "txt"}
-        )
-        weight = 3 if candidate_path in existing_entrypoints else 1
-        for ecosystem in matched_ecosystems:
-            detected_ecosystem_scores[ecosystem] += weight
-    cuda_count = _candidate_ecosystem_counts(
-        candidate_file_paths,
-        repo_path=repo_path,
-        ecosystems={"cuda"},
-    )["cuda"]
-    if cuda_count >= 24:
-        cuda_entrypoints, _, cuda_configs = _cuda_profile_hints_from_candidates(
-            repo_path,
-            candidate_file_paths,
-        )
-        cuda_entrypoint_root_count = len(
-            {
-                normalized_root
-                for path in cuda_entrypoints
-                if (
-                    normalized_root := repository_service._normalize_repository_relative_path(
-                        str(PurePosixPath(path).parent)
-                    )
-                )
-            }
-        )
-        if len(cuda_configs) >= 8 and cuda_entrypoint_root_count >= 8:
-            non_cuda_max_score = max(
-                (
-                    score
-                    for ecosystem, score in detected_ecosystem_scores.items()
-                    if ecosystem != "cuda"
-                ),
-                default=0,
-            )
-            detected_ecosystem_scores["cuda"] = max(
-                detected_ecosystem_scores["cuda"],
-                non_cuda_max_score + 32,
-            )
-
-    ranked_candidates = sorted(
-        candidate_file_paths,
-        key=lambda path: _rank_repo_profile_seed_path(
-            path,
-            repo_path=repo_path,
-            support_roots=set(existing_support_roots),
-        ),
-    )
-    code_candidates = [
-        path
-        for path in ranked_candidates
-        if _is_repo_profile_code_candidate(path, repo_path=repo_path)
-    ]
-    ecosystem_matched_candidates = [
-        path
-        for path in code_candidates
-        if not detected_ecosystems
-        or _candidate_ecosystems_for_path(path, repo_path=repo_path) & detected_ecosystems
-    ]
-    candidate_pool = ecosystem_matched_candidates or code_candidates
-    filtered_existing_entrypoints = [
-        path
-        for path in existing_entrypoints
-        if (
-            (
-                not repository_service._is_test_path(path)
-                and not _is_non_operational_profile_path(path)
-            )
-            or (
-                "robotframework" in detected_ecosystems
-                and _probe_language_for_path(path, repo_path=repo_path) == "robotframework"
-            )
-        )
-        and _is_repo_profile_code_candidate(path, repo_path=repo_path)
-    ]
-    if filtered_existing_entrypoints or code_candidates:
-        existing_entrypoints = filtered_existing_entrypoints
-    support_root_filtered_candidates = [
-        path
-        for path in candidate_pool
-        if existing_support_roots
-        and _path_within_support_roots(path, support_roots=set(existing_support_roots))
-        and not repository_service._is_test_path(path)
-        and not _is_non_operational_profile_path(path)
-    ]
-    fallback_candidates = support_root_filtered_candidates or [
-        path
-        for path in candidate_pool
-        if not repository_service._is_test_path(path)
-        and not _is_non_operational_profile_path(path)
-    ]
-    if not fallback_candidates:
-        fallback_candidates = [
-            path for path in candidate_pool if not repository_service._is_test_path(path)
-        ] or candidate_pool or code_candidates or ranked_candidates
-    fallback_limit = 0
-    if not existing_entrypoints:
-        fallback_limit = min(12, max(4, len(ranked_candidates) // 8 or 1))
-    elif len(existing_entrypoints) < 3:
-        fallback_limit = 3 - len(existing_entrypoints)
-    entrypoint_files = list(
-        dict.fromkeys(existing_entrypoints + fallback_candidates[:fallback_limit])
-    )
-    entrypoint_files = _expand_profile_entrypoints(
-        ranked_candidates=ranked_candidates,
-        repo_path=repo_path,
-        support_roots=existing_support_roots,
-        existing_entrypoints=entrypoint_files,
-        detected_ecosystems=detected_ecosystems,
-        ecosystem_scores=detected_ecosystem_scores,
-    )
-    if not existing_support_roots:
-        existing_support_roots = [
-            repository_service._normalize_repository_relative_path(path)
-            for path in focus_paths
-            if str(path).strip()
-        ]
-    for entrypoint_file in entrypoint_files:
-        parent_dir = repository_service._normalize_repository_relative_path(
-            str(PurePosixPath(entrypoint_file).parent)
-        )
-        if parent_dir:
-            existing_support_roots.append(parent_dir)
-    return {
-        "candidate_file_paths": candidate_file_paths,
-        "entrypoint_files": [path for path in entrypoint_files if path],
-        "support_roots": list(dict.fromkeys(path for path in existing_support_roots if path)),
-        "config_paths": existing_config_paths,
-        "detected_ecosystems": _ordered_detected_ecosystems(
-            detected_ecosystems,
-        ),
-        "operational_ecosystems": _ordered_operational_ecosystems(
-            detected_ecosystems,
-            ecosystem_scores=detected_ecosystem_scores,
-        ),
-    }
+    # Repack list accumulators that the middle phase rebound to fresh objects;
+    # set/Counter/dict accumulators were mutated in place via the shared references
+    # captured after _dispatch_basenames_to_ecosystem and remain in sync on state.
+    state.bitbake_candidate_file_paths = bitbake_candidate_file_paths
+    state.candidate_file_paths = candidate_file_paths
+    return _finalize_seed_plan(state)
 
 
 def _derive_operational_seed_paths_without_diagnostics(
