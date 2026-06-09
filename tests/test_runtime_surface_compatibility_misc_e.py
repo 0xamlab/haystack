@@ -196,11 +196,16 @@ def test_typescript_dist_artifact_parity_uses_shared_export_text_equality_helper
 
 
 def test_typescript_contract_tests_use_shared_manifest_equality_helper() -> None:
-    client_test = (ROOT / "packages" / "ts-sdk" / "src" / "client.test.ts").read_text(
-        encoding="utf-8"
+    _ts_sdk_src = ROOT / "packages" / "ts-sdk" / "src"
+    client_test = "\n".join(
+        p.read_text(encoding="utf-8")
+        for p in sorted(_ts_sdk_src.glob("client*.test.ts"))
+        + sorted(_ts_sdk_src.glob("_client_test_helpers*.ts"))
     )
-    runtime_test = (ROOT / "packages" / "ts-sdk" / "src" / "runtime.test.ts").read_text(
-        encoding="utf-8"
+    runtime_test = "\n".join(
+        p.read_text(encoding="utf-8")
+        for p in sorted(_ts_sdk_src.glob("runtime*.test.ts"))
+        + sorted(_ts_sdk_src.glob("_runtime_test_helpers*.ts"))
     )
     index_test = (ROOT / "packages" / "ts-sdk" / "src" / "index.test.ts").read_text(
         encoding="utf-8"

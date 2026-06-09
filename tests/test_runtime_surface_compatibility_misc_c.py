@@ -53,11 +53,16 @@ def test_runtime_benchmark_surfaces_lock_provider_routing_overhead_class() -> No
     ts_runtime_live = (
         ROOT / "tests" / "integration" / "test_typescript_runtime_live.py"
     ).read_text(encoding="utf-8")
-    ts_client_tests = (ROOT / "packages" / "ts-sdk" / "src" / "client.test.ts").read_text(
-        encoding="utf-8"
+    _ts_sdk_src = ROOT / "packages" / "ts-sdk" / "src"
+    ts_client_tests = "\n".join(
+        p.read_text(encoding="utf-8")
+        for p in sorted(_ts_sdk_src.glob("client*.test.ts"))
+        + sorted(_ts_sdk_src.glob("_client_test_helpers*.ts"))
     )
-    ts_runtime_tests = (ROOT / "packages" / "ts-sdk" / "src" / "runtime.test.ts").read_text(
-        encoding="utf-8"
+    ts_runtime_tests = "\n".join(
+        p.read_text(encoding="utf-8")
+        for p in sorted(_ts_sdk_src.glob("runtime*.test.ts"))
+        + sorted(_ts_sdk_src.glob("_runtime_test_helpers*.ts"))
     )
     cli_integration = (ROOT / "tests" / "integration" / "test_cli.py").read_text(
         encoding="utf-8"
