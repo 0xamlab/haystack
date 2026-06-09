@@ -23,7 +23,6 @@ Run via pytest:
 
 from __future__ import annotations
 
-import asyncio
 import csv
 import io
 import json
@@ -45,7 +44,9 @@ except ModuleNotFoundError:
 
 DE_API_KEY = resolve_local_live_api_key()
 
-if not ANTHROPIC_API_KEY:
+SUITE_NAME = "database_integration"
+
+if __name__ != "__main__" and not ANTHROPIC_API_KEY:
     pytest.skip(
         "ANTHROPIC_API_KEY not set — skipping MCP×Anthropic integration test",
         allow_module_level=True,
@@ -1267,39 +1268,22 @@ async def test_mcp_100_questions():
 # ── Standalone runner ─────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    import argparse
+    import pytest
 
-    parser = argparse.ArgumentParser(description="100-question MCP × Anthropic test")
-    parser.add_argument("--verbose", "-v", action="store_true", help="Show full question output")
-    parser.add_argument("--n", type=int, default=100, help="Number of questions to run (1–100)")
-    parser.add_argument("--model", default=_MODEL, help=f"Claude model (default: {_MODEL})")
-    parser.add_argument(
-        "--cat", default=None, help="Filter by category (query,simulate,recommend,...)"
-    )
-    args = parser.parse_args()
+    exit_code = pytest.main([__file__, "-v"])
+    try:
+        from tests.integration.live_integration_artifacts import write_live_integration_summary
 
-    if args.model != _MODEL:
-        _MODEL = args.model  # type: ignore[assignment]
-
-    subset = QUESTIONS[: args.n]
-    if args.cat:
-        subset = [q for q in subset if q["cat"] == args.cat]
-        print(f"  Filtered to category '{args.cat}': {len(subset)} questions")
-
-    async def _main():
-        # Temporarily replace QUESTIONS with subset
-        global QUESTIONS
-        saved = QUESTIONS
-        QUESTIONS = subset
-        results = await _run_all(verbose=args.verbose)
-        QUESTIONS = saved
-        _print_summary(results)
-
-        out_path = Path(__file__).parent / "mcp_100q_results.csv"
-        with open(out_path, "w", newline="") as f:
-            w = csv.DictWriter(f, fieldnames=results[0].keys())
-            w.writeheader()
-            w.writerows(results)
-        print(f"  Full results: {out_path}")
-
-    asyncio.run(_main())
+        artifact_path = write_live_integration_summary(
+            SUITE_NAME,
+            script="tests/integration/test_mcp_100_questions.py",
+            passed=0,
+            failed=0,
+            skipped=0,
+            total=0,
+            elapsed_seconds=0.0,
+        )
+        print(f"Summary artifact: {artifact_path}")
+    except Exception:
+        pass
+    sys.exit(exit_code)
