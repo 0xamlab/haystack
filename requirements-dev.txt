@@ -16,12 +16,10 @@ neo4j==5.28.4                          # Neo4j / Aura connector
 snowflake-connector-python>=3.9.0      # Snowflake connector
 
 # Core web framework (needed for import resolution even in unit tests)
-fastapi==0.110.0
+fastapi==0.115.6
 uvicorn[standard]==0.27.1
-# NOTE: starlette pinned at 0.36.3 to satisfy fastapi==0.110.0 (which requires starlette<0.37.0).
-# Dependabot recommends raising to >=0.40.0 to address CVEs, but that requires coordinated
-# upgrade of fastapi to >=0.116.0. Tracked separately — see PR notes.
-starlette==0.36.3
+# starlette raised to 0.41.3 (compatible with fastapi 0.115.6) to address dependabot-flagged CVEs.
+starlette==0.41.3
 
 # Validation
 pydantic[email]==2.6.4
