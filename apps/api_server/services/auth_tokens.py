@@ -5,7 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
-from jose import ExpiredSignatureError, JWTError, jwt
+import jwt  # PyJWT
+from jwt import ExpiredSignatureError, InvalidTokenError
 
 from apps.api_server.config import get_settings
 
@@ -82,7 +83,7 @@ def _decode_token(token: str, *, expected_type: str) -> AuthTokenClaims:
             "token_expired",
             "The token has expired. Request a new link.",
         ) from exc
-    except JWTError as exc:
+    except InvalidTokenError as exc:
         raise AuthTokenError(
             "invalid_token",
             "Invalid token.",

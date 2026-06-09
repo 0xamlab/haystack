@@ -13,7 +13,8 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from fastapi import HTTPException
 from fastapi.background import BackgroundTasks
-from jose import JWTError, jwt
+import jwt  # PyJWT
+from jwt import InvalidTokenError
 
 from apps.api_server.compute import mojo_adapter
 from apps.api_server.config import get_settings
@@ -514,7 +515,7 @@ async def test_auth_router_honors_environment_updates(
         claims = jwt.decode(response.access_token, "secret-two", algorithms=["HS256"])
         assert claims["sub"] == str(user.id)
         assert response.expires_in == 900
-        with pytest.raises(JWTError):
+        with pytest.raises(InvalidTokenError):
             jwt.decode(response.access_token, "secret-one", algorithms=["HS256"])
     finally:
         _refresh_api_server_settings()

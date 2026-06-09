@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from jose import jwt
+import jwt  # PyJWT
 
 from apps.api_server.config import get_settings
 from apps.api_server.services.auth_tokens import (

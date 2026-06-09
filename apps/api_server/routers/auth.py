@@ -12,7 +12,7 @@ from datetime import UTC, datetime, timedelta
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from jose import jwt
+import jwt  # PyJWT
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
