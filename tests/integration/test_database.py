@@ -14,14 +14,6 @@ Run:
   python tests/integration/test_database.py
 """
 
-if __name__ != "__main__":
-    import pytest
-
-    pytest.skip(
-        "Standalone integration script; run via python tests/integration/test_database.py",
-        allow_module_level=True,
-    )
-
 import hashlib
 import json
 import os
@@ -231,28 +223,8 @@ def db_scalar(sql, params=None):
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-#  Verify DB connectivity first
-# ═════════════════════════════════════════════════════════════════════════════
-_emit("\n" + "=" * 70)
-_emit("  DATABASE INTEGRATION TESTS — Phase 6")
-_emit("=" * 70)
-
-try:
-    conn = get_db_conn()
-    conn.close()
-    _emit(f"  ✓ Connected to PostgreSQL: {DATABASE_URL}")
-except Exception as e:
-    _emit(f"  ✗ Cannot connect to PostgreSQL: {e}")
-    _emit("    Set DATABASE_URL_SYNC env var or check .env")
-    sys.exit(1)
-
-
-# ═════════════════════════════════════════════════════════════════════════════
 #  SECTION 1: Schema & Migration Tests
 # ═════════════════════════════════════════════════════════════════════════════
-print("\n" + "=" * 70)
-print("  SECTION 1: Schema & Migration Tests")
-print("=" * 70)
 
 EXPECTED_TABLES = [
     "organizations",
@@ -281,9 +253,6 @@ def test_all_expected_tables_exist():
         )
 
 
-check("All expected tables exist", test_all_expected_tables_exist)
-
-
 def test_alembic_version_table_exists():
     """Verify alembic_version table exists (migration tracking)."""
     rows = db_query(
@@ -291,9 +260,6 @@ def test_alembic_version_table_exists():
         "WHERE table_schema = 'public' AND table_name = 'alembic_version'"
     )
     assert len(rows) == 1, "alembic_version table missing"
-
-
-check("Alembic version table exists", test_alembic_version_table_exists)
 
 
 def test_migration_head_is_0013():
@@ -306,9 +272,6 @@ def test_migration_head_is_0013():
     expected_head = f"{revisions[-1]:04d}"
     version = db_scalar("SELECT version_num FROM alembic_version")
     assert version == expected_head, f"Expected migration head '{expected_head}', got '{version}'"
-
-
-check("Migration head matches latest Alembic revision", test_migration_head_is_0013)
 
 
 # ─── Column verification for each table ─────────────────────────────────────
@@ -490,10 +453,6 @@ def _make_column_test(table_name, expected_cols):
     return test_fn
 
 
-for tbl, cols in EXPECTED_COLUMNS.items():
-    check(f"Columns on '{tbl}' match expected schema", _make_column_test(tbl, cols))
-
-
 # ─── Index verification ─────────────────────────────────────────────────────
 
 EXPECTED_INDEXES = [
@@ -532,9 +491,6 @@ def test_performance_indexes_exist():
         if idx not in existing:
             missing.append(idx)
     assert not missing, f"Missing indexes: {missing}. Existing: {sorted(existing)}"
-
-
-check("All expected indexes exist (incl. perf indexes from 0013)", test_performance_indexes_exist)
 
 
 # ─── Foreign key verification ────────────────────────────────────────────────
@@ -587,9 +543,6 @@ def test_foreign_keys():
     assert not missing, f"Missing FKs: {missing}"
 
 
-check("All foreign key relationships exist", test_foreign_keys)
-
-
 # ─── Enum type verification ─────────────────────────────────────────────────
 
 EXPECTED_ENUMS = {
@@ -635,15 +588,9 @@ def test_enum_types():
         )
 
 
-check("All enum types with correct values", test_enum_types)
-
-
 # ═════════════════════════════════════════════════════════════════════════════
 #  SECTION 2: Data Integrity Tests
 # ═════════════════════════════════════════════════════════════════════════════
-print("\n" + "=" * 70)
-print("  SECTION 2: Data Integrity Tests")
-print("=" * 70)
 
 
 def test_api_key_hash_matches_sha256():
@@ -664,9 +611,6 @@ def test_api_key_hash_matches_sha256():
     )
 
 
-check("API key hash matches SHA-256 of raw key", test_api_key_hash_matches_sha256)
-
-
 def test_simulation_runs_have_valid_org_id():
     """Verify simulation_runs.org_id references a real organization."""
     orphans = db_scalar("""
@@ -675,9 +619,6 @@ def test_simulation_runs_have_valid_org_id():
         WHERE o.id IS NULL
     """)
     assert orphans == 0, f"Found {orphans} simulation_runs with orphaned org_id"
-
-
-check("All simulation_runs have valid org_id", test_simulation_runs_have_valid_org_id)
 
 
 def test_timestamps_are_populated():
@@ -690,9 +631,6 @@ def test_timestamps_are_populated():
         assert null_updated == 0, f"Table '{table}' has {null_updated} rows with NULL updated_at"
 
 
-check("created_at / updated_at non-null on core tables", test_timestamps_are_populated)
-
-
 def test_uuid_primary_keys_are_valid():
     """Verify all primary key UUIDs are valid UUID format."""
     tables = ["organizations", "users", "api_keys", "simulation_runs", "jobs"]
@@ -701,9 +639,6 @@ def test_uuid_primary_keys_are_valid():
         rows = db_query(f"SELECT id::text FROM {table} LIMIT 10")
         for row in rows:
             assert uuid_re.match(row["id"]), f"Invalid UUID in '{table}': '{row['id']}'"
-
-
-check("UUID primary keys are valid format", test_uuid_primary_keys_are_valid)
 
 
 def test_enum_fields_contain_valid_values():
@@ -720,18 +655,12 @@ def test_enum_fields_contain_valid_values():
         assert row["plan"] in valid_plans, f"Invalid org plan: '{row['plan']}'"
 
 
-check("Enum fields contain only valid values", test_enum_fields_contain_valid_values)
-
-
 def test_api_key_prefix_matches_key():
     """Verify key_prefix column matches actual prefix convention."""
     rows = db_query("SELECT key_prefix FROM api_keys LIMIT 20")
     for row in rows:
         prefix = row["key_prefix"]
         assert prefix.startswith("de_"), f"API key prefix '{prefix}' doesn't start with 'de_'"
-
-
-check("API key prefixes follow naming convention", test_api_key_prefix_matches_key)
 
 
 def test_hashed_key_length_is_64():
@@ -743,15 +672,9 @@ def test_hashed_key_length_is_64():
         )
 
 
-check("API key hashed_key is 64 chars (SHA-256 hex)", test_hashed_key_length_is_64)
-
-
 # ═════════════════════════════════════════════════════════════════════════════
 #  SECTION 3: Query Pattern Tests (via API)
 # ═════════════════════════════════════════════════════════════════════════════
-print("\n" + "=" * 70)
-print("  SECTION 3: Query Pattern Tests (via API)")
-print("=" * 70)
 
 
 # Create a simulation run to use in subsequent tests
@@ -786,9 +709,6 @@ def test_create_simulation_run():
     uuid.UUID(created_run_id)
 
 
-check("Create simulation run via API", test_create_simulation_run)
-
-
 def test_created_run_appears_in_listing():
     """Verify the just-created run appears in GET /v1/runs or in direct DB query."""
     run_id = require_created_run_id()
@@ -815,9 +735,6 @@ def test_created_run_appears_in_listing():
         )
 
 
-check("Created run appears in /v1/runs listing", test_created_run_appears_in_listing)
-
-
 def test_pagination_works():
     """Verify pagination parameters work on /v1/runs."""
     # Page 1 with limit 2
@@ -838,18 +755,12 @@ def test_pagination_works():
         assert ids_page1 != ids_page2, "Page 1 and 2 returned identical runs"
 
 
-check("Pagination works on /v1/runs", test_pagination_works)
-
-
 def test_filter_by_status():
     """Verify filtering by status works on /v1/runs."""
     status, body, _, _ = req("GET", "/v1/runs?status=completed&limit=50")
     assert status == 200, f"Expected 200, got {status}"
     for run in body["runs"]:
         assert run["status"] == "completed", f"Expected all status=completed, got '{run['status']}'"
-
-
-check("Filter by status on /v1/runs", test_filter_by_status)
 
 
 def test_run_detail_returns_expected_fields():
@@ -868,9 +779,6 @@ def test_run_detail_returns_expected_fields():
         assert field in body, f"Missing field '{field}' in run detail: {list(body.keys())}"
 
 
-check("Run detail returns all expected fields", test_run_detail_returns_expected_fields)
-
-
 def test_data_consistency_create_vs_read():
     """Verify data written at creation matches what's read back."""
     run_id = require_created_run_id()
@@ -886,9 +794,6 @@ def test_data_consistency_create_vs_read():
     )
 
 
-check("Data consistency between create and read", test_data_consistency_create_vs_read)
-
-
 def test_run_exists_in_database():
     """Verify the API-created run also exists in the database directly."""
     run_id = require_created_run_id()
@@ -900,9 +805,6 @@ def test_run_exists_in_database():
     assert len(row) == 1, f"Expected 1 row for run {run_id}, got {len(row)}"
     assert row[0]["id"] == run_id
     assert row[0]["execution_type"] == "sync"
-
-
-check("API-created run exists in DB via direct query", test_run_exists_in_database)
 
 
 def test_run_has_valid_timestamps_in_db():
@@ -924,9 +826,6 @@ def test_run_has_valid_timestamps_in_db():
         created = created.replace(tzinfo=UTC)
     delta = (now - created).total_seconds()
     assert delta < 60, f"created_at is {delta:.1f}s old — expected within 60s"
-
-
-check("Run has valid timestamps in DB", test_run_has_valid_timestamps_in_db)
 
 
 def test_run_org_id_matches_api_key():
@@ -952,15 +851,9 @@ def test_run_org_id_matches_api_key():
     )
 
 
-check("Run org_id matches API key's org_id", test_run_org_id_matches_api_key)
-
-
 # ═════════════════════════════════════════════════════════════════════════════
 #  SECTION 4: Lifecycle Tests
 # ═════════════════════════════════════════════════════════════════════════════
-print("\n" + "=" * 70)
-print("  SECTION 4: Lifecycle Tests")
-print("=" * 70)
 
 
 def test_full_simulation_lifecycle():
@@ -1023,9 +916,6 @@ def test_full_simulation_lifecycle():
     assert len(row) == 1, f"Run {run_id} not in DB"
 
 
-check("Full simulation lifecycle: create → read → list → DB verify", test_full_simulation_lifecycle)
-
-
 def test_deployment_lifecycle():
     """Deployment CRUD cycle: create → list → read → delete."""
     # Step 1: Create deployment
@@ -1058,9 +948,6 @@ def test_deployment_lifecycle():
     assert status == 202, f"Delete failed: {status}"
 
 
-check("Deployment lifecycle: create → list → read → delete", test_deployment_lifecycle)
-
-
 def test_usage_record_created_for_simulation():
     """Verify a usage_record was created when we ran a simulation."""
     run_id = require_created_run_id()
@@ -1076,9 +963,6 @@ def test_usage_record_created_for_simulation():
     assert rows[0]["endpoint"] == "simulate", (
         f"Expected endpoint 'simulate', got '{rows[0]['endpoint']}'"
     )
-
-
-check("Usage record created for simulation run", test_usage_record_created_for_simulation)
 
 
 def test_multiple_runs_maintain_order():
@@ -1117,17 +1001,11 @@ def test_multiple_runs_maintain_order():
     )
 
 
-check("Multiple runs maintain chronological order (DESC)", test_multiple_runs_maintain_order)
-
-
 def test_nonexistent_run_returns_404():
     """Verify fetching a nonexistent run returns 404."""
     fake_id = str(uuid.uuid4())
     status, body, _, _ = req("GET", f"/v1/runs/{fake_id}")
     assert status == 404, f"Expected 404, got {status}: {body}"
-
-
-check("Nonexistent run returns 404", test_nonexistent_run_returns_404)
 
 
 def test_db_row_count_consistency():
@@ -1155,15 +1033,9 @@ def test_db_row_count_consistency():
     )
 
 
-check("DB row count matches API total for org", test_db_row_count_consistency)
-
-
 # ═════════════════════════════════════════════════════════════════════════════
 #  SECTION 5: Advanced Schema Checks
 # ═════════════════════════════════════════════════════════════════════════════
-print("\n" + "=" * 70)
-print("  SECTION 5: Advanced Schema Checks")
-print("=" * 70)
 
 
 def test_unique_constraints():
@@ -1185,9 +1057,6 @@ def test_unique_constraints():
     ]
     for table, col in required_uniques:
         assert (table, col) in uniques, f"Missing UNIQUE constraint on {table}.{col}"
-
-
-check("Unique constraints on slug, email, hashed_key", test_unique_constraints)
 
 
 def test_not_null_constraints():
@@ -1212,9 +1081,6 @@ def test_not_null_constraints():
         assert rows[0]["is_nullable"] == "NO", f"{table}.{col} should be NOT NULL but is nullable"
 
 
-check("NOT NULL constraints on critical columns", test_not_null_constraints)
-
-
 def test_primary_key_constraints():
     """Verify every expected table has a primary key."""
     for table in EXPECTED_TABLES:
@@ -1229,9 +1095,6 @@ def test_primary_key_constraints():
             (table,),
         )
         assert len(rows) >= 1, f"Table '{table}' has no primary key"
-
-
-check("All tables have primary keys", test_primary_key_constraints)
 
 
 def test_cascading_delete_fk_actions():
@@ -1258,9 +1121,6 @@ def test_cascading_delete_fk_actions():
         )
 
 
-check("CASCADE delete on org FK relationships", test_cascading_delete_fk_actions)
-
-
 def test_deployments_partial_unique_index():
     """Verify the partial unique index for one active deployment per org."""
     rows = db_query("""
@@ -1273,11 +1133,6 @@ def test_deployments_partial_unique_index():
     indexdef = rows[0]["indexdef"].lower()
     assert "where" in indexdef, "Index is not partial (missing WHERE clause)"
     assert "active" in indexdef, "Index WHERE clause doesn't filter on 'active' status"
-
-
-check(
-    "Deployments partial unique index (one active per org)", test_deployments_partial_unique_index
-)
 
 
 def test_server_defaults_exist():
@@ -1305,57 +1160,214 @@ def test_server_defaults_exist():
     )
 
 
-check("Server defaults on critical columns", test_server_defaults_exist)
-
-
 # ═════════════════════════════════════════════════════════════════════════════
-#  RESULTS SUMMARY
+#  Bespoke standalone runner
+#
+#  Under pytest the `def test_*` functions above are collected directly. The
+#  block below preserves the original standalone harness (DB connectivity
+#  preflight, per-section check() orchestration, and the results summary) so the
+#  suite still runs via `python tests/integration/test_database.py`.
 # ═════════════════════════════════════════════════════════════════════════════
-_emit("\n" + "=" * 70)
-_emit("  RESULTS SUMMARY")
-_emit("=" * 70)
 
-passed = sum(1 for r in results if r[0] == PASS)
-failed = sum(1 for r in results if r[0] == FAIL)
-skipped = sum(1 for r in results if r[0] == SKIP)
-total = len(results)
 
-_emit(f"\n  Total:   {total} tests")
-_emit(f"  Passed:  {passed} {PASS}")
-_emit(f"  Failed:  {failed} {FAIL}")
-if skipped:
-    _emit(f"  Skipped: {skipped} {SKIP}")
+if __name__ == "__main__":
+    # ═════════════════════════════════════════════════════════════════════════
+    #  Verify DB connectivity first
+    # ═════════════════════════════════════════════════════════════════════════
+    _emit("\n" + "=" * 70)
+    _emit("  DATABASE INTEGRATION TESTS — Phase 6")
+    _emit("=" * 70)
 
-if failed > 0:
-    _emit("\n  ── Failures ──")
-    for r in results:
-        if r[0] == FAIL:
-            _emit(f"    {FAIL} {r[1]}: {r[2] if len(r) > 2 else ''}")
+    try:
+        conn = get_db_conn()
+        conn.close()
+        _emit(f"  ✓ Connected to PostgreSQL: {DATABASE_URL}")
+    except Exception as e:
+        _emit(f"  ✗ Cannot connect to PostgreSQL: {e}")
+        _emit("    Set DATABASE_URL_SYNC env var or check .env")
+        sys.exit(1)
 
-_emit(f"\n{'=' * 70}")
-if failed == 0:
-    _emit(f"  🎉 ALL {passed} DATABASE INTEGRATION TESTS PASSED!")
-else:
-    _emit(f"  ⚠️  {failed} FAILURES — fix before deploying")
-_emit(f"{'=' * 70}\n")
+    # ═════════════════════════════════════════════════════════════════════════
+    #  SECTION 1: Schema & Migration Tests
+    # ═════════════════════════════════════════════════════════════════════════
+    print("\n" + "=" * 70)
+    print("  SECTION 1: Schema & Migration Tests")
+    print("=" * 70)
 
-artifact_path = write_live_integration_summary(
-    SUITE_NAME,
-    script="tests/integration/test_database.py",
-    passed=passed,
-    failed=failed,
-    skipped=skipped,
-    total=total,
-    elapsed_seconds=time.perf_counter() - STARTED,
-    details={
-        "api_key_configured": bool(API_KEY_CONFIGURED),
-        "base_url": BASE_URL,
-        "database_url": DATABASE_URL,
-        "failed_checks": [name for icon, name, *_ in results if icon == FAIL],
-        "skipped_checks": [name for icon, name, *_ in results if icon == SKIP],
-        "skipped_count": skipped,
-    },
-)
-_emit(f"Summary artifact: {artifact_path}")
+    check("All expected tables exist", test_all_expected_tables_exist)
 
-sys.exit(1 if failed > 0 else 0)
+    check("Alembic version table exists", test_alembic_version_table_exists)
+
+    check("Migration head matches latest Alembic revision", test_migration_head_is_0013)
+
+    for tbl, cols in EXPECTED_COLUMNS.items():
+        check(f"Columns on '{tbl}' match expected schema", _make_column_test(tbl, cols))
+
+    check(
+        "All expected indexes exist (incl. perf indexes from 0013)",
+        test_performance_indexes_exist,
+    )
+
+    check("All foreign key relationships exist", test_foreign_keys)
+
+    check("All enum types with correct values", test_enum_types)
+
+    # ═════════════════════════════════════════════════════════════════════════
+    #  SECTION 2: Data Integrity Tests
+    # ═════════════════════════════════════════════════════════════════════════
+    print("\n" + "=" * 70)
+    print("  SECTION 2: Data Integrity Tests")
+    print("=" * 70)
+
+    check("API key hash matches SHA-256 of raw key", test_api_key_hash_matches_sha256)
+
+    check("All simulation_runs have valid org_id", test_simulation_runs_have_valid_org_id)
+
+    check("created_at / updated_at non-null on core tables", test_timestamps_are_populated)
+
+    check("UUID primary keys are valid format", test_uuid_primary_keys_are_valid)
+
+    check("Enum fields contain only valid values", test_enum_fields_contain_valid_values)
+
+    check("API key prefixes follow naming convention", test_api_key_prefix_matches_key)
+
+    check("API key hashed_key is 64 chars (SHA-256 hex)", test_hashed_key_length_is_64)
+
+    # ═════════════════════════════════════════════════════════════════════════
+    #  SECTION 3: Query Pattern Tests (via API)
+    # ═════════════════════════════════════════════════════════════════════════
+    print("\n" + "=" * 70)
+    print("  SECTION 3: Query Pattern Tests (via API)")
+    print("=" * 70)
+
+    check("Create simulation run via API", test_create_simulation_run)
+
+    check("Created run appears in /v1/runs listing", test_created_run_appears_in_listing)
+
+    check("Pagination works on /v1/runs", test_pagination_works)
+
+    check("Filter by status on /v1/runs", test_filter_by_status)
+
+    check("Run detail returns all expected fields", test_run_detail_returns_expected_fields)
+
+    check("Data consistency between create and read", test_data_consistency_create_vs_read)
+
+    check("API-created run exists in DB via direct query", test_run_exists_in_database)
+
+    check("Run has valid timestamps in DB", test_run_has_valid_timestamps_in_db)
+
+    check("Run org_id matches API key's org_id", test_run_org_id_matches_api_key)
+
+    # ═════════════════════════════════════════════════════════════════════════
+    #  SECTION 4: Lifecycle Tests
+    # ═════════════════════════════════════════════════════════════════════════
+    print("\n" + "=" * 70)
+    print("  SECTION 4: Lifecycle Tests")
+    print("=" * 70)
+
+    check(
+        "Full simulation lifecycle: create → read → list → DB verify",
+        test_full_simulation_lifecycle,
+    )
+
+    check("Deployment lifecycle: create → list → read → delete", test_deployment_lifecycle)
+
+    check("Usage record created for simulation run", test_usage_record_created_for_simulation)
+
+    check("Multiple runs maintain chronological order (DESC)", test_multiple_runs_maintain_order)
+
+    check("Nonexistent run returns 404", test_nonexistent_run_returns_404)
+
+    check("DB row count matches API total for org", test_db_row_count_consistency)
+
+    # ═════════════════════════════════════════════════════════════════════════
+    #  SECTION 5: Advanced Schema Checks
+    # ═════════════════════════════════════════════════════════════════════════
+    print("\n" + "=" * 70)
+    print("  SECTION 5: Advanced Schema Checks")
+    print("=" * 70)
+
+    check("Unique constraints on slug, email, hashed_key", test_unique_constraints)
+
+    check("NOT NULL constraints on critical columns", test_not_null_constraints)
+
+    check("All tables have primary keys", test_primary_key_constraints)
+
+    check("CASCADE delete on org FK relationships", test_cascading_delete_fk_actions)
+
+    check(
+        "Deployments partial unique index (one active per org)",
+        test_deployments_partial_unique_index,
+    )
+
+    check("Server defaults on critical columns", test_server_defaults_exist)
+
+    # ═════════════════════════════════════════════════════════════════════════
+    #  RESULTS SUMMARY
+    # ═════════════════════════════════════════════════════════════════════════
+    _emit("\n" + "=" * 70)
+    _emit("  RESULTS SUMMARY")
+    _emit("=" * 70)
+
+    passed = sum(1 for r in results if r[0] == PASS)
+    failed = sum(1 for r in results if r[0] == FAIL)
+    skipped = sum(1 for r in results if r[0] == SKIP)
+    total = len(results)
+
+    _emit(f"\n  Total:   {total} tests")
+    _emit(f"  Passed:  {passed} {PASS}")
+    _emit(f"  Failed:  {failed} {FAIL}")
+    if skipped:
+        _emit(f"  Skipped: {skipped} {SKIP}")
+
+    if failed > 0:
+        _emit("\n  ── Failures ──")
+        for r in results:
+            if r[0] == FAIL:
+                _emit(f"    {FAIL} {r[1]}: {r[2] if len(r) > 2 else ''}")
+
+    _emit(f"\n{'=' * 70}")
+    if failed == 0:
+        _emit(f"  🎉 ALL {passed} DATABASE INTEGRATION TESTS PASSED!")
+    else:
+        _emit(f"  ⚠️  {failed} FAILURES — fix before deploying")
+    _emit(f"{'=' * 70}\n")
+
+    artifact_path = write_live_integration_summary(
+        SUITE_NAME,
+        script="tests/integration/test_database.py",
+        passed=passed,
+        failed=failed,
+        skipped=skipped,
+        total=total,
+        elapsed_seconds=time.perf_counter() - STARTED,
+        details={
+            "api_key_configured": bool(API_KEY_CONFIGURED),
+            "base_url": BASE_URL,
+            "database_url": DATABASE_URL,
+            "failed_checks": [name for icon, name, *_ in results if icon == FAIL],
+            "skipped_checks": [name for icon, name, *_ in results if icon == SKIP],
+            "skipped_count": skipped,
+        },
+    )
+    _emit(f"Summary artifact: {artifact_path}")
+
+    import pytest
+
+    exit_code = pytest.main([__file__, "-v"])
+    try:
+        from tests.integration.live_integration_artifacts import write_live_integration_summary
+
+        artifact_path = write_live_integration_summary(
+            SUITE_NAME,
+            script="tests/integration/test_database.py",
+            passed=0,
+            failed=0,
+            skipped=0,
+            total=0,
+            elapsed_seconds=0.0,
+        )
+        print(f"Summary artifact: {artifact_path}")
+    except Exception:
+        pass
+    sys.exit(exit_code)
