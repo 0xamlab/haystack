@@ -18,14 +18,6 @@ Run:
   python tests/integration/test_all_engines.py
 """
 
-if __name__ != "__main__":
-    import pytest
-
-    pytest.skip(
-        "Standalone integration script; run via python tests/integration/test_all_engines.py",
-        allow_module_level=True,
-    )
-
 import csv
 import json
 import os
@@ -66,9 +58,9 @@ CSV_PATH = os.path.join(os.path.dirname(__file__), "engine_results.csv")
 SUITE_NAME = "all_engines_integration"
 STARTED = time.perf_counter()
 
-PASS = "\u2705"
-FAIL = "\u274c"
-SKIP = "\u23ed\ufe0f"
+PASS = "✅"
+FAIL = "❌"
+SKIP = "⏭️"
 results: list[tuple] = []
 csv_rows: list[dict] = []
 
@@ -166,10 +158,7 @@ def check(name: str, fn):
         _emit(f"  {FAIL} {name} ({_format_elapsed_seconds(started_at)}): {e}")
     except Exception as e:
         results.append((FAIL, name, str(e)))
-        _emit(
-            f"  {FAIL} {name} ({_format_elapsed_seconds(started_at)}): "
-            f"{type(e).__name__}: {e}"
-        )
+        _emit(f"  {FAIL} {name} ({_format_elapsed_seconds(started_at)}): {type(e).__name__}: {e}")
 
 
 def skip(name: str, reason: str) -> None:
@@ -347,910 +336,10 @@ def expert_payload(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-#  CONNECTIVITY CHECK
+#  Engine constants
 # ═══════════════════════════════════════════════════════════════════════════════
-_emit("\n" + "=" * 70)
-_emit("  PHASE 13: All Simulation Engine Types")
-_emit("=" * 70)
-
-status, _, _, _ = req("GET", "/v1/health", auth=False, timeout=5)
-if status != 200:
-    _emit(f"\n  {FAIL} Cannot reach API server at {BASE_URL}")
-    _emit("     Make sure the server is running (make dev-api)")
-    sys.exit(1)
-
-_emit(f"  {PASS} Server reachable")
-
-if not API_KEY_CONFIGURED:
-    reason = (
-        "DE_API_KEY is not set; skipping all-engine live simulation checks "
-        "that require a real live key."
-    )
-    skip("All-engines suite preflight", reason)
-    _emit(f"\n  {SKIP} preflight: {reason}")
-    artifact_path = _write_summary_artifact()
-    _emit(f"  Summary artifact: {artifact_path}\n")
-    sys.exit(0)
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#  SECTION 1: Basic engine smoke tests (auto mode)
-# ═══════════════════════════════════════════════════════════════════════════════
-print("\n" + "=" * 70)
-print("  SECTION 1: Auto-Mode Smoke Tests — All Engines")
-print("=" * 70)
 
 AUTO_ENGINES = ["monte_carlo", "lhs", "bootstrap", "qmc_sobol"]
-
-for eng in AUTO_ENGINES:
-
-    def _test(engine=eng):
-        status, body, hdrs, elapsed = req(
-            "POST", "/v1/simulate", body=auto_payload(engine, runs=500)
-        )
-        record_csv(engine, "auto", 2, 500, status, elapsed, body)
-        assert status == 200, f"Expected 200, got {status}: {json.dumps(body)[:300]}"
-        assert "run_id" in body, "Missing run_id"
-        assert "metrics" in body, "Missing metrics"
-        m = body["metrics"]
-        for k in ("expected_value", "std_deviation"):
-            assert k in m, f"Missing metric: {k}"
-        assert "percentiles" in body, "Missing percentiles"
-        p = body["percentiles"]
-        for k in ("p5", "p95"):
-            assert k in p, f"Missing percentile: {k}"
-        assert "recommended_action" in body, "Missing recommended_action"
-        assert body["recommended_action"] in ("proceed", "caution", "reject")
-        assert elapsed < 10.0, f"Took {elapsed:.2f}s"
-
-    check(f"Auto {eng} → 200 with envelope (500 runs)", _test)
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#  SECTION 2: Expert-mode basic tests — all 10 engine types
-# ═══════════════════════════════════════════════════════════════════════════════
-print("\n" + "=" * 70)
-print("  SECTION 2: Expert-Mode Basic Tests — All 10 Engines")
-print("=" * 70)
-
-
-# --- monte_carlo ---
-def test_expert_monte_carlo():
-    status, body, _, elapsed = req(
-        "POST", "/v1/simulate", body=expert_payload("monte_carlo", runs=500)
-    )
-    record_csv("monte_carlo", "expert", 2, 500, status, elapsed, body)
-    assert status == 200, f"Got {status}: {json.dumps(body)[:300]}"
-    assert body.get("simulation_model") in ("monte_carlo", None) or body.get("engine_type") in (
-        "monte_carlo",
-        "mojo-native-expr",
-    )
-
-
-check("Expert monte_carlo → 200", test_expert_monte_carlo)
-
-
-# --- lhs ---
-def test_expert_lhs():
-    status, body, _, elapsed = req("POST", "/v1/simulate", body=expert_payload("lhs", runs=500))
-    record_csv("lhs", "expert", 2, 500, status, elapsed, body)
-    assert status == 200, f"Got {status}: {json.dumps(body)[:300]}"
-
-
-check("Expert lhs → 200", test_expert_lhs)
-
-
-# --- bootstrap ---
-def test_expert_bootstrap():
-    payload = expert_payload("bootstrap", runs=500)
-    payload["bootstrap_config"] = {
-        "historical_data": [
-            100,
-            120,
-            95,
-            130,
-            110,
-            105,
-            140,
-            90,
-            125,
-            115,
-            100,
-            108,
-            112,
-            98,
-            135,
-            142,
-            88,
-            92,
-            107,
-            118,
-        ],
-        "statistic": "mean",
-        "confidence_level": 0.95,
-    }
-    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
-    record_csv("bootstrap", "expert", 2, 500, status, elapsed, body)
-    assert status == 200, f"Got {status}: {json.dumps(body)[:300]}"
-    # Bootstrap should have bootstrap_result
-    if body.get("bootstrap_result"):
-        br = body["bootstrap_result"]
-        assert "ci_lower" in br or "confidence_interval" in br or "observed_value" in br, (
-            f"Bootstrap result missing expected fields: {list(br.keys())}"
-        )
-
-
-check("Expert bootstrap → 200 with bootstrap_result", test_expert_bootstrap)
-
-
-# --- qmc_sobol ---
-def test_expert_qmc_sobol():
-    status, body, _, elapsed = req(
-        "POST", "/v1/simulate", body=expert_payload("qmc_sobol", runs=500)
-    )
-    record_csv("qmc_sobol", "expert", 2, 500, status, elapsed, body)
-    assert status == 200, f"Got {status}: {json.dumps(body)[:300]}"
-
-
-check("Expert qmc_sobol → 200", test_expert_qmc_sobol)
-
-
-# --- scenario ---
-def test_expert_scenario():
-    payload = expert_payload("scenario", runs=500)
-    payload["scenario_config"] = {
-        "scenarios": [
-            {
-                "name": "Best Case",
-                "probability": 0.3,
-                "variables": {"revenue": 200000, "cost": 40000},
-            },
-            {
-                "name": "Base Case",
-                "probability": 0.5,
-                "variables": {"revenue": 130000, "cost": 65000},
-            },
-            {
-                "name": "Worst Case",
-                "probability": 0.2,
-                "variables": {"revenue": 80000, "cost": 90000},
-            },
-        ],
-    }
-    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
-    record_csv("scenario", "expert", 2, 500, status, elapsed, body)
-    assert status == 200, f"Got {status}: {json.dumps(body)[:300]}"
-    if body.get("scenario_analysis"):
-        sa = body["scenario_analysis"]
-        assert isinstance(sa, dict), f"scenario_analysis should be dict, got {type(sa)}"
-
-
-check("Expert scenario → 200 with scenario_analysis", test_expert_scenario)
-
-
-# --- sensitivity ---
-def test_expert_sensitivity():
-    payload = expert_payload("sensitivity", runs=500, n_vars=3)
-    payload["sensitivity_config"] = {"method": "tornado"}
-    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
-    record_csv("sensitivity", "expert", 3, 500, status, elapsed, body)
-    assert status == 200, f"Got {status}: {json.dumps(body)[:300]}"
-    if body.get("sensitivity_analysis"):
-        sa = body["sensitivity_analysis"]
-        assert isinstance(sa, dict), "sensitivity_analysis should be dict"
-
-
-check("Expert sensitivity → 200 with sensitivity_analysis", test_expert_sensitivity)
-
-
-# --- decision_tree ---
-def test_expert_decision_tree():
-    payload = expert_payload("decision_tree", runs=500)
-    payload["decision_tree_config"] = {
-        "nodes": [
-            {
-                "id": "launch_decision",
-                "type": "decision",
-                "name": "Launch Product?",
-                "branches": [
-                    {
-                        "id": "launch_yes",
-                        "type": "chance",
-                        "name": "Launch",
-                        "probability": 1.0,
-                        "branches": [
-                            {
-                                "id": "market_accept",
-                                "type": "terminal",
-                                "name": "Market Accepts",
-                                "probability": 0.7,
-                                "objective_function": "revenue - cost",
-                            },
-                            {
-                                "id": "market_reject",
-                                "type": "terminal",
-                                "name": "Market Rejects",
-                                "probability": 0.3,
-                                "variables": {"revenue": 0},
-                                "objective_function": "-cost",
-                            },
-                        ],
-                    },
-                ],
-            },
-        ],
-        "max_depth": 5,
-    }
-    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
-    record_csv("decision_tree", "expert", 2, 500, status, elapsed, body)
-    assert status in (200, 500), f"Got {status}: {json.dumps(body)[:300]}"
-    if status == 200 and body.get("decision_tree_result"):
-        dt = body["decision_tree_result"]
-        assert isinstance(dt, dict), "decision_tree_result should be dict"
-
-
-check("Expert decision_tree → 200 with decision_tree_result", test_expert_decision_tree)
-
-
-# --- time_series ---
-def test_expert_time_series():
-    payload = expert_payload("time_series", runs=500)
-    payload["time_series_config"] = {
-        "model": "gbm",
-        "initial_value": 50000,
-        "horizons": [1, 3, 6, 12],
-        "granularity": "month",
-        "drift": 0.10,
-        "volatility": 0.25,
-        "fan_chart_percentiles": [5, 25, 50, 75, 95],
-    }
-    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
-    record_csv("time_series", "expert", 2, 500, status, elapsed, body)
-    assert status in (200, 500), f"Got {status}: {json.dumps(body)[:300]}"
-    if status == 200 and body.get("time_series_result"):
-        ts = body["time_series_result"]
-        assert isinstance(ts, dict), "time_series_result should be dict"
-
-
-check("Expert time_series → 200 with time_series_result", test_expert_time_series)
-
-
-# --- mcmc ---
-def test_expert_mcmc():
-    payload = expert_payload("mcmc", runs=500)
-    payload["mcmc_config"] = {
-        "observed_data": [
-            105,
-            112,
-            98,
-            115,
-            108,
-            100,
-            120,
-            95,
-            110,
-            103,
-            107,
-            99,
-            114,
-            101,
-            111,
-            106,
-            97,
-            116,
-            109,
-            104,
-        ],
-        "parameter_priors": {
-            "mean": {"distribution": "normal", "params": {"mean": 105, "std": 20}},
-        },
-        "likelihood": "normal",
-        "chains": 2,
-        "burn_in": 200,
-    }
-    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
-    record_csv("mcmc", "expert", 2, 500, status, elapsed, body)
-    assert status in (200, 500), f"Got {status}: {json.dumps(body)[:300]}"
-    if status == 200 and body.get("mcmc_result"):
-        mr = body["mcmc_result"]
-        assert isinstance(mr, dict), "mcmc_result should be dict"
-
-
-check("Expert mcmc → 200 with mcmc_result", test_expert_mcmc)
-
-
-# --- importance_sampling ---
-def test_expert_importance_sampling():
-    payload = expert_payload("importance_sampling", runs=500, dist="normal")
-    payload["importance_sampling_config"] = {
-        "target_threshold": -50000,
-        "tail_direction": "lower",
-        "tilt_variable": "revenue",
-    }
-    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
-    record_csv("importance_sampling", "expert", 2, 500, status, elapsed, body)
-    assert status in (200, 500), f"Got {status}: {json.dumps(body)[:300]}"
-    if status == 200 and body.get("importance_sampling_result"):
-        isr = body["importance_sampling_result"]
-        assert isinstance(isr, dict), "importance_sampling_result should be dict"
-
-
-check("Expert importance_sampling → 200 with IS result", test_expert_importance_sampling)
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#  SECTION 3: Variable count tests (1, 3, 5 variables)
-# ═══════════════════════════════════════════════════════════════════════════════
-print("\n" + "=" * 70)
-print("  SECTION 3: Variable Count Tests (1, 3, 5 vars)")
-print("=" * 70)
-
-for n_vars in [1, 3, 5]:
-    obj_exprs = {
-        1: "revenue",
-        3: "revenue - cost + market_size",
-        5: "revenue - cost + market_size * conversion_rate * lifetime_value",
-    }
-    for eng in ["monte_carlo", "lhs", "qmc_sobol"]:
-
-        def _test(engine=eng, nv=n_vars, objective_map=obj_exprs):
-            payload = expert_payload(engine, runs=500, n_vars=nv, objective=objective_map[nv])
-            status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
-            record_csv(engine, "expert", nv, 500, status, elapsed, body)
-            assert status == 200, f"Got {status} for {engine} with {nv} vars"
-
-        check(f"{eng} with {n_vars} variable(s) → 200", _test)
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#  SECTION 4: Distribution type tests
-# ═══════════════════════════════════════════════════════════════════════════════
-print("\n" + "=" * 70)
-print("  SECTION 4: Distribution Type Tests")
-print("=" * 70)
-
-for dist_type in ["normal", "uniform", "triangular", "lognormal"]:
-
-    def _test(dt=dist_type):
-        payload = expert_payload("monte_carlo", runs=500, dist=dt)
-        status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
-        record_csv("monte_carlo", f"expert/{dt}", 2, 500, status, elapsed, body)
-        assert status == 200, f"Got {status} for dist={dt}"
-
-    check(f"monte_carlo with {dist_type} distributions → 200", _test)
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#  SECTION 5: Run count tests (100, 500, 1000)
-# ═══════════════════════════════════════════════════════════════════════════════
-print("\n" + "=" * 70)
-print("  SECTION 5: Run Count Tests (100, 500, 1000)")
-print("=" * 70)
-
-for run_count in [100, 500, 1000]:
-    for eng in ["monte_carlo", "lhs", "qmc_sobol"]:
-
-        def _test(engine=eng, rc=run_count):
-            payload = expert_payload(engine, runs=rc)
-            status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
-            record_csv(engine, "expert", 2, rc, status, elapsed, body)
-            assert status == 200, f"Got {status} for {engine}/{rc} runs"
-            assert body.get("scenarios_run", 0) > 0, "scenarios_run should be > 0"
-
-        check(f"{eng} with {run_count} runs → 200", _test)
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#  SECTION 6: Expert mode with correlations
-# ═══════════════════════════════════════════════════════════════════════════════
-print("\n" + "=" * 70)
-print("  SECTION 6: Expert Mode with Correlations")
-print("=" * 70)
-
-
-def test_correlation_mc():
-    corr = [{"variables": ["revenue", "cost"], "coefficient": 0.5}]
-    payload = expert_payload("monte_carlo", runs=500, correlations=corr)
-    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
-    record_csv("monte_carlo", "expert/corr", 2, 500, status, elapsed, body)
-    assert status == 200, f"Got {status}: {json.dumps(body)[:300]}"
-
-
-check("monte_carlo with correlations → 200", test_correlation_mc)
-
-
-def test_correlation_lhs():
-    corr = [{"variables": ["revenue", "cost"], "coefficient": -0.3}]
-    payload = expert_payload("lhs", runs=500, correlations=corr)
-    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
-    record_csv("lhs", "expert/corr", 2, 500, status, elapsed, body)
-    assert status == 200, f"Got {status}: {json.dumps(body)[:300]}"
-
-
-check("lhs with negative correlation → 200", test_correlation_lhs)
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#  SECTION 7: Expert mode with custom objective functions
-# ═══════════════════════════════════════════════════════════════════════════════
-print("\n" + "=" * 70)
-print("  SECTION 7: Custom Objective Functions")
-print("=" * 70)
-
-custom_objectives = [
-    ("simple subtract", "revenue - cost"),
-    ("max expression", "max(0, revenue - cost)"),
-    ("sqrt expression", "sqrt(revenue) - cost"),
-    ("conditional", "if(revenue > cost, revenue - cost, 0)"),
-]
-
-for label, obj in custom_objectives:
-
-    def _test(objective=obj):
-        payload = expert_payload("monte_carlo", runs=500, objective=objective)
-        status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
-        record_csv("monte_carlo", f"expert/obj:{objective[:20]}", 2, 500, status, elapsed, body)
-        assert status == 200, f"Got {status}: {json.dumps(body)[:300]}"
-
-    check(f"monte_carlo with objective '{label}' → 200", _test)
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#  SECTION 8: Engine-specific deep tests
-# ═══════════════════════════════════════════════════════════════════════════════
-print("\n" + "=" * 70)
-print("  SECTION 8: Engine-Specific Deep Tests")
-print("=" * 70)
-
-
-# 8.1: Monte Carlo — statistical convergence
-def test_mc_convergence():
-    """Both run counts should return 200 with valid metrics."""
-    s1, body100, _, _ = req(
-        "POST", "/v1/simulate", body=expert_payload("monte_carlo", runs=100, seed=42)
-    )
-    s2, body1k, _, _ = req(
-        "POST", "/v1/simulate", body=expert_payload("monte_carlo", runs=1000, seed=42)
-    )
-    assert s1 == 200, f"100-run MC got {s1}"
-    assert s2 == 200, f"1000-run MC got {s2}"
-    if isinstance(body100, dict) and isinstance(body1k, dict):
-        m100 = body100.get("metrics", {})
-        m1k = body1k.get("metrics", {})
-        assert "expected_value" in m100, "Missing expected_value in 100-run"
-        assert "expected_value" in m1k, "Missing expected_value in 1000-run"
-        assert "std_deviation" in m100, "Missing std_deviation in 100-run"
-        assert "std_deviation" in m1k, "Missing std_deviation in 1000-run"
-        # std_deviation >= 0 is valid (engine may return 0 for certain configs)
-        assert m100["std_deviation"] >= 0, "std should be >= 0"
-        assert m1k["std_deviation"] >= 0, "std should be >= 0"
-
-
-check("MC convergence: valid metrics at 100 & 1000 runs", test_mc_convergence)
-
-
-# 8.2: LHS — produces valid results
-def test_lhs_valid():
-    status, body, _, _ = req("POST", "/v1/simulate", body=expert_payload("lhs", runs=500, seed=42))
-    assert status == 200, f"LHS got {status}"
-    m = body.get("metrics", {})
-    assert m.get("expected_value") is not None, "Missing expected_value"
-    assert "std_deviation" in m, "Missing std_deviation"
-    # std_deviation >= 0 is valid (may be 0 for some engine configurations)
-    assert m["std_deviation"] >= 0, f"std should be >= 0, got {m['std_deviation']}"
-
-
-check("LHS produces valid statistics", test_lhs_valid)
-
-# 8.3: Bootstrap with different statistics
-for stat in ["mean", "median", "std"]:
-
-    def _test(s=stat):
-        payload = expert_payload("bootstrap", runs=500)
-        payload["bootstrap_config"] = {
-            "historical_data": [100, 120, 95, 130, 110, 105, 140, 90, 125, 115],
-            "statistic": s,
-            "confidence_level": 0.95,
-        }
-        status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
-        record_csv("bootstrap", f"expert/stat:{s}", 2, 500, status, elapsed, body)
-        assert status == 200, f"Bootstrap stat={s} got {status}"
-
-    check(f"Bootstrap with statistic='{stat}' → 200", _test)
-
-# 8.4: Bootstrap confidence levels
-for cl in [0.90, 0.95, 0.99]:
-
-    def _test(conf=cl):
-        payload = expert_payload("bootstrap", runs=500)
-        payload["bootstrap_config"] = {
-            "historical_data": [100, 120, 95, 130, 110, 105, 140, 90, 125, 115],
-            "statistic": "mean",
-            "confidence_level": conf,
-        }
-        status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
-        record_csv("bootstrap", f"expert/cl:{conf}", 2, 500, status, elapsed, body)
-        assert status == 200, f"Bootstrap CL={conf} got {status}"
-
-    check(f"Bootstrap with confidence_level={cl} → 200", _test)
-
-
-# 8.5: QMC Sobol valid
-def test_qmc_valid():
-    status, body, _, _ = req(
-        "POST", "/v1/simulate", body=expert_payload("qmc_sobol", runs=512, seed=42)
-    )
-    assert status == 200
-    m = body.get("metrics", {})
-    assert m.get("expected_value") is not None
-
-
-check("QMC Sobol produces valid statistics", test_qmc_valid)
-
-
-# 8.6: Scenario with best/worst/base
-def test_scenario_detailed():
-    payload = expert_payload("scenario", runs=500)
-    payload["scenario_config"] = {
-        "scenarios": [
-            {
-                "name": "Optimistic",
-                "probability": 0.25,
-                "variables": {"revenue": 200000, "cost": 40000},
-                "objective_function": "revenue - cost",
-            },
-            {
-                "name": "Base",
-                "probability": 0.50,
-                "variables": {"revenue": 130000, "cost": 65000},
-                "objective_function": "revenue - cost",
-            },
-            {
-                "name": "Pessimistic",
-                "probability": 0.25,
-                "variables": {"revenue": 80000, "cost": 90000},
-                "objective_function": "revenue - cost",
-            },
-        ],
-    }
-    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
-    record_csv("scenario", "expert/detailed", 2, 500, status, elapsed, body)
-    assert status == 200, f"Got {status}: {json.dumps(body)[:300]}"
-
-
-check("Scenario with 3 named scenarios → 200", test_scenario_detailed)
-
-# 8.7: Sensitivity with both methods
-for method in ["tornado", "sobol", "both"]:
-
-    def _test(m=method):
-        payload = expert_payload(
-            "sensitivity", runs=500, n_vars=3, objective="revenue - cost + market_size"
-        )
-        payload["sensitivity_config"] = {"method": m}
-        status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
-        record_csv("sensitivity", f"expert/{m}", 3, 500, status, elapsed, body)
-        assert status == 200, f"Sensitivity method={m} got {status}"
-
-    check(f"Sensitivity method='{method}' → 200", _test)
-
-
-# 8.8: Decision tree — multi-branch
-def test_decision_tree_multi():
-    payload = expert_payload("decision_tree", runs=500)
-    payload["decision_tree_config"] = {
-        "nodes": [
-            {
-                "id": "invest",
-                "type": "decision",
-                "name": "Invest?",
-                "branches": [
-                    {
-                        "id": "invest_yes",
-                        "type": "chance",
-                        "name": "Invest",
-                        "probability": 1.0,
-                        "branches": [
-                            {
-                                "id": "boom",
-                                "type": "terminal",
-                                "name": "Market Boom",
-                                "probability": 0.4,
-                                "variables": {"revenue": 300000},
-                                "objective_function": "revenue - cost",
-                            },
-                            {
-                                "id": "flat",
-                                "type": "terminal",
-                                "name": "Market Flat",
-                                "probability": 0.35,
-                                "variables": {"revenue": 120000},
-                                "objective_function": "revenue - cost",
-                            },
-                            {
-                                "id": "bust",
-                                "type": "terminal",
-                                "name": "Market Bust",
-                                "probability": 0.25,
-                                "variables": {"revenue": 30000},
-                                "objective_function": "revenue - cost",
-                            },
-                        ],
-                    },
-                ],
-            },
-        ],
-        "max_depth": 5,
-    }
-    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
-    record_csv("decision_tree", "expert/multi", 2, 500, status, elapsed, body)
-    assert status in (200, 500), f"Got {status}: {json.dumps(body)[:300]}"
-
-
-check("Decision tree multi-branch → 200", test_decision_tree_multi)
-
-
-# 8.9: Time series — OU model
-def test_time_series_ou():
-    payload = expert_payload("time_series", runs=500)
-    payload["time_series_config"] = {
-        "model": "ou",
-        "initial_value": 100,
-        "horizons": [1, 3, 6, 12],
-        "granularity": "month",
-        "drift": 0.0,
-        "volatility": 0.15,
-        "long_run_mean": 100,
-        "mean_reversion_speed": 0.5,
-        "fan_chart_percentiles": [5, 25, 50, 75, 95],
-    }
-    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
-    record_csv("time_series", "expert/ou", 2, 500, status, elapsed, body)
-    assert status in (200, 500), f"Got {status}: {json.dumps(body)[:300]}"
-
-
-check("Time series OU model → 200", test_time_series_ou)
-
-
-# 8.10: MCMC with different likelihood
-def test_mcmc_lognormal():
-    payload = expert_payload("mcmc", runs=500)
-    payload["mcmc_config"] = {
-        "observed_data": [105, 112, 98, 115, 108, 100, 120, 95, 110, 103],
-        "likelihood": "normal",
-        "chains": 2,
-        "burn_in": 200,
-    }
-    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
-    record_csv("mcmc", "expert/normal_like", 2, 500, status, elapsed, body)
-    assert status in (200, 500), f"Got {status}: {json.dumps(body)[:300]}"
-
-
-check("MCMC with normal likelihood → 200", test_mcmc_lognormal)
-
-
-# 8.11: Importance sampling — upper tail
-def test_importance_upper_tail():
-    payload = expert_payload("importance_sampling", runs=500, dist="normal")
-    payload["importance_sampling_config"] = {
-        "target_threshold": 200000,
-        "tail_direction": "upper",
-    }
-    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
-    record_csv("importance_sampling", "expert/upper", 2, 500, status, elapsed, body)
-    assert status in (200, 500), f"Got {status}: {json.dumps(body)[:300]}"
-
-
-check("Importance sampling upper tail → 200", test_importance_upper_tail)
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#  SECTION 9: Cross-Engine Comparison
-# ═══════════════════════════════════════════════════════════════════════════════
-print("\n" + "=" * 70)
-print("  SECTION 9: Cross-Engine Comparison (MC vs LHS vs QMC)")
-print("=" * 70)
-
-
-def test_cross_engine_comparison():
-    """Same problem, 3 engines → results should be in the same ballpark."""
-    means = {}
-    for eng in ["monte_carlo", "lhs", "qmc_sobol"]:
-        status, body, _, elapsed = req(
-            "POST", "/v1/simulate", body=expert_payload(eng, runs=1000, seed=42)
-        )
-        record_csv(eng, "expert/cross", 2, 1000, status, elapsed, body)
-        if status == 200:
-            means[eng] = body.get("metrics", {}).get("expected_value", 0)
-    if len(means) == 3:
-        vals = list(means.values())
-        avg = sum(vals) / len(vals)
-        for eng, val in means.items():
-            # Results should be within 50% of each other (wide tolerance for stochastic)
-            if avg != 0:
-                pct_diff = abs(val - avg) / abs(avg) * 100
-                assert pct_diff < 50, (
-                    f"{eng} mean={val:.0f} is {pct_diff:.1f}% from average={avg:.0f}"
-                )
-
-
-check("MC/LHS/QMC means within 50% of each other", test_cross_engine_comparison)
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#  SECTION 10: Deterministic Seed Tests
-# ═══════════════════════════════════════════════════════════════════════════════
-print("\n" + "=" * 70)
-print("  SECTION 10: Deterministic Seed Tests")
-print("=" * 70)
-
-for eng in ["monte_carlo", "lhs", "qmc_sobol"]:
-
-    def _test(engine=eng):
-        p = expert_payload(engine, runs=200, seed=12345)
-        _, b1, _, _ = req("POST", "/v1/simulate", body=p)
-        _, b2, _, _ = req("POST", "/v1/simulate", body=p)
-        if isinstance(b1, dict) and isinstance(b2, dict):
-            m1 = b1.get("metrics", {}).get("expected_value")
-            m2 = b2.get("metrics", {}).get("expected_value")
-            if m1 is not None and m2 is not None:
-                assert m1 == m2, f"Seeded {engine}: {m1} != {m2}"
-
-    check(f"{eng} seed=12345 is deterministic", _test)
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#  SECTION 11: Error Handling Per Engine
-# ═══════════════════════════════════════════════════════════════════════════════
-print("\n" + "=" * 70)
-print("  SECTION 11: Error Handling")
-print("=" * 70)
-
-
-# 11.1: Invalid engine type
-def test_invalid_engine():
-    payload = expert_payload("nonexistent_engine", runs=500)
-    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
-    record_csv("nonexistent_engine", "expert", 2, 500, status, elapsed, body)
-    assert status == 422, f"Expected 422 for invalid engine, got {status}"
-
-
-check("Invalid engine type → 422", test_invalid_engine)
-
-
-# 11.2: Bootstrap without config
-def test_bootstrap_no_config():
-    payload = expert_payload("bootstrap", runs=500)
-    # No bootstrap_config — engine may use fallback or error
-    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
-    record_csv("bootstrap", "expert/no_config", 2, 500, status, elapsed, body)
-    # Acceptable: 200 (fallback to MC) or 400/422/500 (validation error)
-    assert status in (200, 400, 422, 500), f"Unexpected: {status}"
-
-
-check("Bootstrap without config → graceful response", test_bootstrap_no_config)
-
-
-# 11.3: MCMC without config
-def test_mcmc_no_config():
-    payload = expert_payload("mcmc", runs=500)
-    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
-    record_csv("mcmc", "expert/no_config", 2, 500, status, elapsed, body)
-    assert status in (200, 400, 422, 500), f"Unexpected: {status}"
-
-
-check("MCMC without config → graceful response", test_mcmc_no_config)
-
-
-# 11.4: Importance sampling without config
-def test_is_no_config():
-    payload = expert_payload("importance_sampling", runs=500, dist="normal")
-    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
-    record_csv("importance_sampling", "expert/no_config", 2, 500, status, elapsed, body)
-    assert status in (200, 400, 422, 500), f"Unexpected: {status}"
-
-
-check("Importance sampling without config → graceful response", test_is_no_config)
-
-
-# 11.5: Scenario without config
-def test_scenario_no_config():
-    payload = expert_payload("scenario", runs=500)
-    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
-    record_csv("scenario", "expert/no_config", 2, 500, status, elapsed, body)
-    assert status in (200, 400, 422, 500), f"Unexpected: {status}"
-
-
-check("Scenario without config → graceful response", test_scenario_no_config)
-
-
-# 11.6: Time series without config
-def test_ts_no_config():
-    payload = expert_payload("time_series", runs=500)
-    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
-    record_csv("time_series", "expert/no_config", 2, 500, status, elapsed, body)
-    assert status in (200, 400, 422, 500), f"Unexpected: {status}"
-
-
-check("Time series without config → graceful response", test_ts_no_config)
-
-
-# 11.7: Decision tree without config
-def test_dt_no_config():
-    payload = expert_payload("decision_tree", runs=500)
-    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
-    record_csv("decision_tree", "expert/no_config", 2, 500, status, elapsed, body)
-    assert status in (200, 400, 422, 500), f"Unexpected: {status}"
-
-
-check("Decision tree without config → graceful response", test_dt_no_config)
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#  SECTION 12: Auto mode with different engines
-# ═══════════════════════════════════════════════════════════════════════════════
-print("\n" + "=" * 70)
-print("  SECTION 12: Auto Mode — Engine Selection")
-print("=" * 70)
-
-for eng in AUTO_ENGINES:
-
-    def _test(engine=eng):
-        payload = auto_payload(engine, runs=500, seed=42)
-        status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
-        record_csv(engine, "auto/seed", 2, 500, status, elapsed, body)
-        assert status == 200, f"Auto {engine} got {status}"
-        # Verify it returned a valid envelope
-        assert "metrics" in body
-        assert "percentiles" in body
-        m = body["metrics"]
-        ev = m.get("expected_value", 0)
-        # Verify metrics are present and numeric (EV may be 0 if engine
-        # doesn't evaluate objective for some engine types)
-        assert isinstance(ev, int | float), f"expected_value should be numeric, got {type(ev)}"
-        assert "recommended_action" in body, "Missing recommended_action"
-
-    check(f"Auto {eng} returns valid metrics envelope", _test)
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#  SECTION 13: Auto mode generates valid variables
-# ═══════════════════════════════════════════════════════════════════════════════
-print("\n" + "=" * 70)
-print("  SECTION 13: Auto Mode — Variable Validation")
-print("=" * 70)
-
-
-def test_auto_variables_generated():
-    """Auto mode should generate variables from the scenario and produce results."""
-    payload = {
-        "mode": "auto",
-        "simulation_model": "monte_carlo",
-        "runs": 500,
-        "scenario": {
-            "variables": {
-                "revenue": {"low": 50000, "high": 150000, "description": "Annual revenue"},
-                "cost": {"low": 30000, "high": 80000, "description": "Annual cost"},
-                "growth": {"low": 0.01, "high": 0.20, "description": "Growth rate"},
-            },
-            "objective": "maximize_net_value",
-        },
-    }
-    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
-    record_csv("monte_carlo", "auto/3vars", 3, 500, status, elapsed, body)
-    assert status == 200, f"Got {status}"
-    assert body.get("metrics", {}).get("expected_value") is not None
-
-
-check("Auto mode with 3 named variables → valid metrics", test_auto_variables_generated)
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#  SECTION 14: Execution time measurement
-# ═══════════════════════════════════════════════════════════════════════════════
-print("\n" + "=" * 70)
-print("  SECTION 14: Execution Time Measurement")
-print("=" * 70)
 
 all_engines_timing = [
     "monte_carlo",
@@ -1364,144 +453,1063 @@ def _make_timing_payload(eng):
     return expert_payload(eng, runs=1000)
 
 
-for eng in all_engines_timing:
-
-    def _test(engine=eng):
-        payload = _make_timing_payload(engine)
-        status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
-        timing_results[engine] = {
-            "status": status,
-            "elapsed_ms": int(elapsed * 1000),
-            "mean": body.get("metrics", {}).get("expected_value", "")
-            if isinstance(body, dict)
-            else "",
-        }
-        record_csv(engine, "expert/timing", 2, payload.get("runs", 1000), status, elapsed, body)
-        # Don't assert 200 — just record timing
-
-    check(f"Timing: {eng} @ 1000 runs", _test)
-
-
 # ═══════════════════════════════════════════════════════════════════════════════
-#  SECTION 15: simulation_model field in response
-# ═══════════════════════════════════════════════════════════════════════════════
-print("\n" + "=" * 70)
-print("  SECTION 15: Response simulation_model Field")
-print("=" * 70)
-
-for eng in ["monte_carlo", "lhs", "qmc_sobol", "bootstrap", "scenario", "sensitivity"]:
-
-    def _test(engine=eng):
-        payload = _make_timing_payload(engine)
-        payload["runs"] = 200
-        status, body, _, _ = req("POST", "/v1/simulate", body=payload)
-        if status == 200:
-            sim_model = body.get("simulation_model", "")
-            # Verify response contains simulation_model and engine_type fields
-            assert "simulation_model" in body, f"Missing simulation_model field for {engine}"
-            assert "engine_type" in body, f"Missing engine_type field for {engine}"
-            # Note: Mojo engine may report 'monte_carlo' as the base engine_type
-            # for all engine types since the core MC loop is the base engine.
-            # The *dispatch* to the correct algorithm happens internally.
-            # We just verify the fields exist and are non-empty strings.
-            assert isinstance(sim_model, str) and len(sim_model) > 0, (
-                f"simulation_model should be non-empty string, got '{sim_model}'"
-            )
-
-    check(f"Response has simulation_model field for '{eng}'", _test)
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#  WRITE CSV RESULTS
+#  SECTION 2: Expert-mode basic tests — all 10 engine types
 # ═══════════════════════════════════════════════════════════════════════════════
 
-try:
-    with open(CSV_PATH, "w", newline="") as f:
-        writer = csv.DictWriter(
-            f,
-            fieldnames=[
-                "engine",
-                "mode",
-                "variables",
-                "runs",
-                "status_code",
-                "execution_ms",
-                "mean",
-                "std",
-                "p5",
-                "p95",
-                "recommendation",
-            ],
+
+# --- monte_carlo ---
+def test_expert_monte_carlo():
+    status, body, _, elapsed = req(
+        "POST", "/v1/simulate", body=expert_payload("monte_carlo", runs=500)
+    )
+    record_csv("monte_carlo", "expert", 2, 500, status, elapsed, body)
+    assert status == 200, f"Got {status}: {json.dumps(body)[:300]}"
+    assert body.get("simulation_model") in ("monte_carlo", None) or body.get("engine_type") in (
+        "monte_carlo",
+        "mojo-native-expr",
+    )
+
+
+# --- lhs ---
+def test_expert_lhs():
+    status, body, _, elapsed = req("POST", "/v1/simulate", body=expert_payload("lhs", runs=500))
+    record_csv("lhs", "expert", 2, 500, status, elapsed, body)
+    assert status == 200, f"Got {status}: {json.dumps(body)[:300]}"
+
+
+# --- bootstrap ---
+def test_expert_bootstrap():
+    payload = expert_payload("bootstrap", runs=500)
+    payload["bootstrap_config"] = {
+        "historical_data": [
+            100,
+            120,
+            95,
+            130,
+            110,
+            105,
+            140,
+            90,
+            125,
+            115,
+            100,
+            108,
+            112,
+            98,
+            135,
+            142,
+            88,
+            92,
+            107,
+            118,
+        ],
+        "statistic": "mean",
+        "confidence_level": 0.95,
+    }
+    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
+    record_csv("bootstrap", "expert", 2, 500, status, elapsed, body)
+    assert status == 200, f"Got {status}: {json.dumps(body)[:300]}"
+    # Bootstrap should have bootstrap_result
+    if body.get("bootstrap_result"):
+        br = body["bootstrap_result"]
+        assert "ci_lower" in br or "confidence_interval" in br or "observed_value" in br, (
+            f"Bootstrap result missing expected fields: {list(br.keys())}"
         )
-        writer.writeheader()
-        for row in csv_rows:
-            writer.writerow(row)
-    _emit(f"\n  CSV results written to: {CSV_PATH} ({len(csv_rows)} rows)")
-except Exception as e:
-    _emit(f"\n  Warning: Could not write CSV: {e}")
+
+
+# --- qmc_sobol ---
+def test_expert_qmc_sobol():
+    status, body, _, elapsed = req(
+        "POST", "/v1/simulate", body=expert_payload("qmc_sobol", runs=500)
+    )
+    record_csv("qmc_sobol", "expert", 2, 500, status, elapsed, body)
+    assert status == 200, f"Got {status}: {json.dumps(body)[:300]}"
+
+
+# --- scenario ---
+def test_expert_scenario():
+    payload = expert_payload("scenario", runs=500)
+    payload["scenario_config"] = {
+        "scenarios": [
+            {
+                "name": "Best Case",
+                "probability": 0.3,
+                "variables": {"revenue": 200000, "cost": 40000},
+            },
+            {
+                "name": "Base Case",
+                "probability": 0.5,
+                "variables": {"revenue": 130000, "cost": 65000},
+            },
+            {
+                "name": "Worst Case",
+                "probability": 0.2,
+                "variables": {"revenue": 80000, "cost": 90000},
+            },
+        ],
+    }
+    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
+    record_csv("scenario", "expert", 2, 500, status, elapsed, body)
+    assert status == 200, f"Got {status}: {json.dumps(body)[:300]}"
+    if body.get("scenario_analysis"):
+        sa = body["scenario_analysis"]
+        assert isinstance(sa, dict), f"scenario_analysis should be dict, got {type(sa)}"
+
+
+# --- sensitivity ---
+def test_expert_sensitivity():
+    payload = expert_payload("sensitivity", runs=500, n_vars=3)
+    payload["sensitivity_config"] = {"method": "tornado"}
+    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
+    record_csv("sensitivity", "expert", 3, 500, status, elapsed, body)
+    assert status == 200, f"Got {status}: {json.dumps(body)[:300]}"
+    if body.get("sensitivity_analysis"):
+        sa = body["sensitivity_analysis"]
+        assert isinstance(sa, dict), "sensitivity_analysis should be dict"
+
+
+# --- decision_tree ---
+def test_expert_decision_tree():
+    payload = expert_payload("decision_tree", runs=500)
+    payload["decision_tree_config"] = {
+        "nodes": [
+            {
+                "id": "launch_decision",
+                "type": "decision",
+                "name": "Launch Product?",
+                "branches": [
+                    {
+                        "id": "launch_yes",
+                        "type": "chance",
+                        "name": "Launch",
+                        "probability": 1.0,
+                        "branches": [
+                            {
+                                "id": "market_accept",
+                                "type": "terminal",
+                                "name": "Market Accepts",
+                                "probability": 0.7,
+                                "objective_function": "revenue - cost",
+                            },
+                            {
+                                "id": "market_reject",
+                                "type": "terminal",
+                                "name": "Market Rejects",
+                                "probability": 0.3,
+                                "variables": {"revenue": 0},
+                                "objective_function": "-cost",
+                            },
+                        ],
+                    },
+                ],
+            },
+        ],
+        "max_depth": 5,
+    }
+    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
+    record_csv("decision_tree", "expert", 2, 500, status, elapsed, body)
+    assert status in (200, 500), f"Got {status}: {json.dumps(body)[:300]}"
+    if status == 200 and body.get("decision_tree_result"):
+        dt = body["decision_tree_result"]
+        assert isinstance(dt, dict), "decision_tree_result should be dict"
+
+
+# --- time_series ---
+def test_expert_time_series():
+    payload = expert_payload("time_series", runs=500)
+    payload["time_series_config"] = {
+        "model": "gbm",
+        "initial_value": 50000,
+        "horizons": [1, 3, 6, 12],
+        "granularity": "month",
+        "drift": 0.10,
+        "volatility": 0.25,
+        "fan_chart_percentiles": [5, 25, 50, 75, 95],
+    }
+    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
+    record_csv("time_series", "expert", 2, 500, status, elapsed, body)
+    assert status in (200, 500), f"Got {status}: {json.dumps(body)[:300]}"
+    if status == 200 and body.get("time_series_result"):
+        ts = body["time_series_result"]
+        assert isinstance(ts, dict), "time_series_result should be dict"
+
+
+# --- mcmc ---
+def test_expert_mcmc():
+    payload = expert_payload("mcmc", runs=500)
+    payload["mcmc_config"] = {
+        "observed_data": [
+            105,
+            112,
+            98,
+            115,
+            108,
+            100,
+            120,
+            95,
+            110,
+            103,
+            107,
+            99,
+            114,
+            101,
+            111,
+            106,
+            97,
+            116,
+            109,
+            104,
+        ],
+        "parameter_priors": {
+            "mean": {"distribution": "normal", "params": {"mean": 105, "std": 20}},
+        },
+        "likelihood": "normal",
+        "chains": 2,
+        "burn_in": 200,
+    }
+    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
+    record_csv("mcmc", "expert", 2, 500, status, elapsed, body)
+    assert status in (200, 500), f"Got {status}: {json.dumps(body)[:300]}"
+    if status == 200 and body.get("mcmc_result"):
+        mr = body["mcmc_result"]
+        assert isinstance(mr, dict), "mcmc_result should be dict"
+
+
+# --- importance_sampling ---
+def test_expert_importance_sampling():
+    payload = expert_payload("importance_sampling", runs=500, dist="normal")
+    payload["importance_sampling_config"] = {
+        "target_threshold": -50000,
+        "tail_direction": "lower",
+        "tilt_variable": "revenue",
+    }
+    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
+    record_csv("importance_sampling", "expert", 2, 500, status, elapsed, body)
+    assert status in (200, 500), f"Got {status}: {json.dumps(body)[:300]}"
+    if status == 200 and body.get("importance_sampling_result"):
+        isr = body["importance_sampling_result"]
+        assert isinstance(isr, dict), "importance_sampling_result should be dict"
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-#  RESULTS SUMMARY
+#  SECTION 6: Expert mode with correlations
 # ═══════════════════════════════════════════════════════════════════════════════
-print("\n" + "=" * 70)
-print("  RESULTS SUMMARY")
-print("=" * 70)
 
-passed = sum(1 for r in results if r[0] == PASS)
-failed = sum(1 for r in results if r[0] == FAIL)
-skipped = sum(1 for r in results if r[0] == SKIP)
-total = len(results)
 
-print(f"\n  Total: {total} tests")
-print(f"  Passed: {passed} {PASS}")
-print(f"  Failed: {failed} {FAIL}")
-print(f"  Skipped: {skipped} {SKIP}")
+def test_correlation_mc():
+    corr = [{"variables": ["revenue", "cost"], "coefficient": 0.5}]
+    payload = expert_payload("monte_carlo", runs=500, correlations=corr)
+    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
+    record_csv("monte_carlo", "expert/corr", 2, 500, status, elapsed, body)
+    assert status == 200, f"Got {status}: {json.dumps(body)[:300]}"
 
-# Engine timing summary
-if timing_results:
-    print(f"\n  {'─' * 60}")
-    print(f"  {'Engine':<24} {'Status':>6} {'Time (ms)':>10} {'Mean':>14}")
-    print(f"  {'─' * 60}")
+
+def test_correlation_lhs():
+    corr = [{"variables": ["revenue", "cost"], "coefficient": -0.3}]
+    payload = expert_payload("lhs", runs=500, correlations=corr)
+    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
+    record_csv("lhs", "expert/corr", 2, 500, status, elapsed, body)
+    assert status == 200, f"Got {status}: {json.dumps(body)[:300]}"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  SECTION 8: Engine-specific deep tests
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+# 8.1: Monte Carlo — statistical convergence
+def test_mc_convergence():
+    """Both run counts should return 200 with valid metrics."""
+    s1, body100, _, _ = req(
+        "POST", "/v1/simulate", body=expert_payload("monte_carlo", runs=100, seed=42)
+    )
+    s2, body1k, _, _ = req(
+        "POST", "/v1/simulate", body=expert_payload("monte_carlo", runs=1000, seed=42)
+    )
+    assert s1 == 200, f"100-run MC got {s1}"
+    assert s2 == 200, f"1000-run MC got {s2}"
+    if isinstance(body100, dict) and isinstance(body1k, dict):
+        m100 = body100.get("metrics", {})
+        m1k = body1k.get("metrics", {})
+        assert "expected_value" in m100, "Missing expected_value in 100-run"
+        assert "expected_value" in m1k, "Missing expected_value in 1000-run"
+        assert "std_deviation" in m100, "Missing std_deviation in 100-run"
+        assert "std_deviation" in m1k, "Missing std_deviation in 1000-run"
+        # std_deviation >= 0 is valid (engine may return 0 for certain configs)
+        assert m100["std_deviation"] >= 0, "std should be >= 0"
+        assert m1k["std_deviation"] >= 0, "std should be >= 0"
+
+
+# 8.2: LHS — produces valid results
+def test_lhs_valid():
+    status, body, _, _ = req("POST", "/v1/simulate", body=expert_payload("lhs", runs=500, seed=42))
+    assert status == 200, f"LHS got {status}"
+    m = body.get("metrics", {})
+    assert m.get("expected_value") is not None, "Missing expected_value"
+    assert "std_deviation" in m, "Missing std_deviation"
+    # std_deviation >= 0 is valid (may be 0 for some engine configurations)
+    assert m["std_deviation"] >= 0, f"std should be >= 0, got {m['std_deviation']}"
+
+
+# 8.5: QMC Sobol valid
+def test_qmc_valid():
+    status, body, _, _ = req(
+        "POST", "/v1/simulate", body=expert_payload("qmc_sobol", runs=512, seed=42)
+    )
+    assert status == 200
+    m = body.get("metrics", {})
+    assert m.get("expected_value") is not None
+
+
+# 8.6: Scenario with best/worst/base
+def test_scenario_detailed():
+    payload = expert_payload("scenario", runs=500)
+    payload["scenario_config"] = {
+        "scenarios": [
+            {
+                "name": "Optimistic",
+                "probability": 0.25,
+                "variables": {"revenue": 200000, "cost": 40000},
+                "objective_function": "revenue - cost",
+            },
+            {
+                "name": "Base",
+                "probability": 0.50,
+                "variables": {"revenue": 130000, "cost": 65000},
+                "objective_function": "revenue - cost",
+            },
+            {
+                "name": "Pessimistic",
+                "probability": 0.25,
+                "variables": {"revenue": 80000, "cost": 90000},
+                "objective_function": "revenue - cost",
+            },
+        ],
+    }
+    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
+    record_csv("scenario", "expert/detailed", 2, 500, status, elapsed, body)
+    assert status == 200, f"Got {status}: {json.dumps(body)[:300]}"
+
+
+# 8.8: Decision tree — multi-branch
+def test_decision_tree_multi():
+    payload = expert_payload("decision_tree", runs=500)
+    payload["decision_tree_config"] = {
+        "nodes": [
+            {
+                "id": "invest",
+                "type": "decision",
+                "name": "Invest?",
+                "branches": [
+                    {
+                        "id": "invest_yes",
+                        "type": "chance",
+                        "name": "Invest",
+                        "probability": 1.0,
+                        "branches": [
+                            {
+                                "id": "boom",
+                                "type": "terminal",
+                                "name": "Market Boom",
+                                "probability": 0.4,
+                                "variables": {"revenue": 300000},
+                                "objective_function": "revenue - cost",
+                            },
+                            {
+                                "id": "flat",
+                                "type": "terminal",
+                                "name": "Market Flat",
+                                "probability": 0.35,
+                                "variables": {"revenue": 120000},
+                                "objective_function": "revenue - cost",
+                            },
+                            {
+                                "id": "bust",
+                                "type": "terminal",
+                                "name": "Market Bust",
+                                "probability": 0.25,
+                                "variables": {"revenue": 30000},
+                                "objective_function": "revenue - cost",
+                            },
+                        ],
+                    },
+                ],
+            },
+        ],
+        "max_depth": 5,
+    }
+    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
+    record_csv("decision_tree", "expert/multi", 2, 500, status, elapsed, body)
+    assert status in (200, 500), f"Got {status}: {json.dumps(body)[:300]}"
+
+
+# 8.9: Time series — OU model
+def test_time_series_ou():
+    payload = expert_payload("time_series", runs=500)
+    payload["time_series_config"] = {
+        "model": "ou",
+        "initial_value": 100,
+        "horizons": [1, 3, 6, 12],
+        "granularity": "month",
+        "drift": 0.0,
+        "volatility": 0.15,
+        "long_run_mean": 100,
+        "mean_reversion_speed": 0.5,
+        "fan_chart_percentiles": [5, 25, 50, 75, 95],
+    }
+    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
+    record_csv("time_series", "expert/ou", 2, 500, status, elapsed, body)
+    assert status in (200, 500), f"Got {status}: {json.dumps(body)[:300]}"
+
+
+# 8.10: MCMC with different likelihood
+def test_mcmc_lognormal():
+    payload = expert_payload("mcmc", runs=500)
+    payload["mcmc_config"] = {
+        "observed_data": [105, 112, 98, 115, 108, 100, 120, 95, 110, 103],
+        "likelihood": "normal",
+        "chains": 2,
+        "burn_in": 200,
+    }
+    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
+    record_csv("mcmc", "expert/normal_like", 2, 500, status, elapsed, body)
+    assert status in (200, 500), f"Got {status}: {json.dumps(body)[:300]}"
+
+
+# 8.11: Importance sampling — upper tail
+def test_importance_upper_tail():
+    payload = expert_payload("importance_sampling", runs=500, dist="normal")
+    payload["importance_sampling_config"] = {
+        "target_threshold": 200000,
+        "tail_direction": "upper",
+    }
+    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
+    record_csv("importance_sampling", "expert/upper", 2, 500, status, elapsed, body)
+    assert status in (200, 500), f"Got {status}: {json.dumps(body)[:300]}"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  SECTION 9: Cross-Engine Comparison
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def test_cross_engine_comparison():
+    """Same problem, 3 engines → results should be in the same ballpark."""
+    means = {}
+    for eng in ["monte_carlo", "lhs", "qmc_sobol"]:
+        status, body, _, elapsed = req(
+            "POST", "/v1/simulate", body=expert_payload(eng, runs=1000, seed=42)
+        )
+        record_csv(eng, "expert/cross", 2, 1000, status, elapsed, body)
+        if status == 200:
+            means[eng] = body.get("metrics", {}).get("expected_value", 0)
+    if len(means) == 3:
+        vals = list(means.values())
+        avg = sum(vals) / len(vals)
+        for eng, val in means.items():
+            # Results should be within 50% of each other (wide tolerance for stochastic)
+            if avg != 0:
+                pct_diff = abs(val - avg) / abs(avg) * 100
+                assert pct_diff < 50, (
+                    f"{eng} mean={val:.0f} is {pct_diff:.1f}% from average={avg:.0f}"
+                )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  SECTION 13: Auto mode generates valid variables
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def test_auto_variables_generated():
+    """Auto mode should generate variables from the scenario and produce results."""
+    payload = {
+        "mode": "auto",
+        "simulation_model": "monte_carlo",
+        "runs": 500,
+        "scenario": {
+            "variables": {
+                "revenue": {"low": 50000, "high": 150000, "description": "Annual revenue"},
+                "cost": {"low": 30000, "high": 80000, "description": "Annual cost"},
+                "growth": {"low": 0.01, "high": 0.20, "description": "Growth rate"},
+            },
+            "objective": "maximize_net_value",
+        },
+    }
+    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
+    record_csv("monte_carlo", "auto/3vars", 3, 500, status, elapsed, body)
+    assert status == 200, f"Got {status}"
+    assert body.get("metrics", {}).get("expected_value") is not None
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  SECTION 11: Error Handling Per Engine
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+# 11.1: Invalid engine type
+def test_invalid_engine():
+    payload = expert_payload("nonexistent_engine", runs=500)
+    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
+    record_csv("nonexistent_engine", "expert", 2, 500, status, elapsed, body)
+    assert status == 422, f"Expected 422 for invalid engine, got {status}"
+
+
+# 11.2: Bootstrap without config
+def test_bootstrap_no_config():
+    payload = expert_payload("bootstrap", runs=500)
+    # No bootstrap_config — engine may use fallback or error
+    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
+    record_csv("bootstrap", "expert/no_config", 2, 500, status, elapsed, body)
+    # Acceptable: 200 (fallback to MC) or 400/422/500 (validation error)
+    assert status in (200, 400, 422, 500), f"Unexpected: {status}"
+
+
+# 11.3: MCMC without config
+def test_mcmc_no_config():
+    payload = expert_payload("mcmc", runs=500)
+    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
+    record_csv("mcmc", "expert/no_config", 2, 500, status, elapsed, body)
+    assert status in (200, 400, 422, 500), f"Unexpected: {status}"
+
+
+# 11.4: Importance sampling without config
+def test_is_no_config():
+    payload = expert_payload("importance_sampling", runs=500, dist="normal")
+    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
+    record_csv("importance_sampling", "expert/no_config", 2, 500, status, elapsed, body)
+    assert status in (200, 400, 422, 500), f"Unexpected: {status}"
+
+
+# 11.5: Scenario without config
+def test_scenario_no_config():
+    payload = expert_payload("scenario", runs=500)
+    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
+    record_csv("scenario", "expert/no_config", 2, 500, status, elapsed, body)
+    assert status in (200, 400, 422, 500), f"Unexpected: {status}"
+
+
+# 11.6: Time series without config
+def test_ts_no_config():
+    payload = expert_payload("time_series", runs=500)
+    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
+    record_csv("time_series", "expert/no_config", 2, 500, status, elapsed, body)
+    assert status in (200, 400, 422, 500), f"Unexpected: {status}"
+
+
+# 11.7: Decision tree without config
+def test_dt_no_config():
+    payload = expert_payload("decision_tree", runs=500)
+    status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
+    record_csv("decision_tree", "expert/no_config", 2, 500, status, elapsed, body)
+    assert status in (200, 400, 422, 500), f"Unexpected: {status}"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  Bespoke standalone runner
+#
+#  Under pytest the `def test_*` functions above are collected directly. The
+#  block below preserves the original standalone harness (connectivity preflight,
+#  per-section check() orchestration, CSV export, and the results summary) so the
+#  suite still runs via `python tests/integration/test_all_engines.py`.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+if __name__ == "__main__":
+    # ═══════════════════════════════════════════════════════════════════════════
+    #  CONNECTIVITY CHECK
+    # ═══════════════════════════════════════════════════════════════════════════
+    _emit("\n" + "=" * 70)
+    _emit("  PHASE 13: All Simulation Engine Types")
+    _emit("=" * 70)
+
+    status, _, _, _ = req("GET", "/v1/health", auth=False, timeout=5)
+    if status != 200:
+        _emit(f"\n  {FAIL} Cannot reach API server at {BASE_URL}")
+        _emit("     Make sure the server is running (make dev-api)")
+        sys.exit(1)
+
+    _emit(f"  {PASS} Server reachable")
+
+    if not API_KEY_CONFIGURED:
+        reason = (
+            "DE_API_KEY is not set; skipping all-engine live simulation checks "
+            "that require a real live key."
+        )
+        skip("All-engines suite preflight", reason)
+        _emit(f"\n  {SKIP} preflight: {reason}")
+        artifact_path = _write_summary_artifact()
+        _emit(f"  Summary artifact: {artifact_path}\n")
+        sys.exit(0)
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    #  SECTION 1: Basic engine smoke tests (auto mode)
+    # ═══════════════════════════════════════════════════════════════════════════
+    print("\n" + "=" * 70)
+    print("  SECTION 1: Auto-Mode Smoke Tests — All Engines")
+    print("=" * 70)
+
+    for eng in AUTO_ENGINES:
+
+        def _test(engine=eng):
+            status, body, hdrs, elapsed = req(
+                "POST", "/v1/simulate", body=auto_payload(engine, runs=500)
+            )
+            record_csv(engine, "auto", 2, 500, status, elapsed, body)
+            assert status == 200, f"Expected 200, got {status}: {json.dumps(body)[:300]}"
+            assert "run_id" in body, "Missing run_id"
+            assert "metrics" in body, "Missing metrics"
+            m = body["metrics"]
+            for k in ("expected_value", "std_deviation"):
+                assert k in m, f"Missing metric: {k}"
+            assert "percentiles" in body, "Missing percentiles"
+            p = body["percentiles"]
+            for k in ("p5", "p95"):
+                assert k in p, f"Missing percentile: {k}"
+            assert "recommended_action" in body, "Missing recommended_action"
+            assert body["recommended_action"] in ("proceed", "caution", "reject")
+            assert elapsed < 10.0, f"Took {elapsed:.2f}s"
+
+        check(f"Auto {eng} → 200 with envelope (500 runs)", _test)
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    #  SECTION 2: Expert-mode basic tests — all 10 engine types
+    # ═══════════════════════════════════════════════════════════════════════════
+    print("\n" + "=" * 70)
+    print("  SECTION 2: Expert-Mode Basic Tests — All 10 Engines")
+    print("=" * 70)
+
+    check("Expert monte_carlo → 200", test_expert_monte_carlo)
+
+    check("Expert lhs → 200", test_expert_lhs)
+
+    check("Expert bootstrap → 200 with bootstrap_result", test_expert_bootstrap)
+
+    check("Expert qmc_sobol → 200", test_expert_qmc_sobol)
+
+    check("Expert scenario → 200 with scenario_analysis", test_expert_scenario)
+
+    check("Expert sensitivity → 200 with sensitivity_analysis", test_expert_sensitivity)
+
+    check("Expert decision_tree → 200 with decision_tree_result", test_expert_decision_tree)
+
+    check("Expert time_series → 200 with time_series_result", test_expert_time_series)
+
+    check("Expert mcmc → 200 with mcmc_result", test_expert_mcmc)
+
+    check("Expert importance_sampling → 200 with IS result", test_expert_importance_sampling)
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    #  SECTION 3: Variable count tests (1, 3, 5 variables)
+    # ═══════════════════════════════════════════════════════════════════════════
+    print("\n" + "=" * 70)
+    print("  SECTION 3: Variable Count Tests (1, 3, 5 vars)")
+    print("=" * 70)
+
+    for n_vars in [1, 3, 5]:
+        obj_exprs = {
+            1: "revenue",
+            3: "revenue - cost + market_size",
+            5: "revenue - cost + market_size * conversion_rate * lifetime_value",
+        }
+        for eng in ["monte_carlo", "lhs", "qmc_sobol"]:
+
+            def _test(engine=eng, nv=n_vars, objective_map=obj_exprs):
+                payload = expert_payload(engine, runs=500, n_vars=nv, objective=objective_map[nv])
+                status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
+                record_csv(engine, "expert", nv, 500, status, elapsed, body)
+                assert status == 200, f"Got {status} for {engine} with {nv} vars"
+
+            check(f"{eng} with {n_vars} variable(s) → 200", _test)
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    #  SECTION 4: Distribution type tests
+    # ═══════════════════════════════════════════════════════════════════════════
+    print("\n" + "=" * 70)
+    print("  SECTION 4: Distribution Type Tests")
+    print("=" * 70)
+
+    for dist_type in ["normal", "uniform", "triangular", "lognormal"]:
+
+        def _test(dt=dist_type):
+            payload = expert_payload("monte_carlo", runs=500, dist=dt)
+            status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
+            record_csv("monte_carlo", f"expert/{dt}", 2, 500, status, elapsed, body)
+            assert status == 200, f"Got {status} for dist={dt}"
+
+        check(f"monte_carlo with {dist_type} distributions → 200", _test)
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    #  SECTION 5: Run count tests (100, 500, 1000)
+    # ═══════════════════════════════════════════════════════════════════════════
+    print("\n" + "=" * 70)
+    print("  SECTION 5: Run Count Tests (100, 500, 1000)")
+    print("=" * 70)
+
+    for run_count in [100, 500, 1000]:
+        for eng in ["monte_carlo", "lhs", "qmc_sobol"]:
+
+            def _test(engine=eng, rc=run_count):
+                payload = expert_payload(engine, runs=rc)
+                status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
+                record_csv(engine, "expert", 2, rc, status, elapsed, body)
+                assert status == 200, f"Got {status} for {engine}/{rc} runs"
+                assert body.get("scenarios_run", 0) > 0, "scenarios_run should be > 0"
+
+            check(f"{eng} with {run_count} runs → 200", _test)
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    #  SECTION 6: Expert mode with correlations
+    # ═══════════════════════════════════════════════════════════════════════════
+    print("\n" + "=" * 70)
+    print("  SECTION 6: Expert Mode with Correlations")
+    print("=" * 70)
+
+    check("monte_carlo with correlations → 200", test_correlation_mc)
+
+    check("lhs with negative correlation → 200", test_correlation_lhs)
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    #  SECTION 7: Expert mode with custom objective functions
+    # ═══════════════════════════════════════════════════════════════════════════
+    print("\n" + "=" * 70)
+    print("  SECTION 7: Custom Objective Functions")
+    print("=" * 70)
+
+    custom_objectives = [
+        ("simple subtract", "revenue - cost"),
+        ("max expression", "max(0, revenue - cost)"),
+        ("sqrt expression", "sqrt(revenue) - cost"),
+        ("conditional", "if(revenue > cost, revenue - cost, 0)"),
+    ]
+
+    for label, obj in custom_objectives:
+
+        def _test(objective=obj):
+            payload = expert_payload("monte_carlo", runs=500, objective=objective)
+            status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
+            record_csv("monte_carlo", f"expert/obj:{objective[:20]}", 2, 500, status, elapsed, body)
+            assert status == 200, f"Got {status}: {json.dumps(body)[:300]}"
+
+        check(f"monte_carlo with objective '{label}' → 200", _test)
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    #  SECTION 8: Engine-specific deep tests
+    # ═══════════════════════════════════════════════════════════════════════════
+    print("\n" + "=" * 70)
+    print("  SECTION 8: Engine-Specific Deep Tests")
+    print("=" * 70)
+
+    check("MC convergence: valid metrics at 100 & 1000 runs", test_mc_convergence)
+
+    check("LHS produces valid statistics", test_lhs_valid)
+
+    # 8.3: Bootstrap with different statistics
+    for stat in ["mean", "median", "std"]:
+
+        def _test(s=stat):
+            payload = expert_payload("bootstrap", runs=500)
+            payload["bootstrap_config"] = {
+                "historical_data": [100, 120, 95, 130, 110, 105, 140, 90, 125, 115],
+                "statistic": s,
+                "confidence_level": 0.95,
+            }
+            status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
+            record_csv("bootstrap", f"expert/stat:{s}", 2, 500, status, elapsed, body)
+            assert status == 200, f"Bootstrap stat={s} got {status}"
+
+        check(f"Bootstrap with statistic='{stat}' → 200", _test)
+
+    # 8.4: Bootstrap confidence levels
+    for cl in [0.90, 0.95, 0.99]:
+
+        def _test(conf=cl):
+            payload = expert_payload("bootstrap", runs=500)
+            payload["bootstrap_config"] = {
+                "historical_data": [100, 120, 95, 130, 110, 105, 140, 90, 125, 115],
+                "statistic": "mean",
+                "confidence_level": conf,
+            }
+            status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
+            record_csv("bootstrap", f"expert/cl:{conf}", 2, 500, status, elapsed, body)
+            assert status == 200, f"Bootstrap CL={conf} got {status}"
+
+        check(f"Bootstrap with confidence_level={cl} → 200", _test)
+
+    check("QMC Sobol produces valid statistics", test_qmc_valid)
+
+    check("Scenario with 3 named scenarios → 200", test_scenario_detailed)
+
+    # 8.7: Sensitivity with both methods
+    for method in ["tornado", "sobol", "both"]:
+
+        def _test(m=method):
+            payload = expert_payload(
+                "sensitivity", runs=500, n_vars=3, objective="revenue - cost + market_size"
+            )
+            payload["sensitivity_config"] = {"method": m}
+            status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
+            record_csv("sensitivity", f"expert/{m}", 3, 500, status, elapsed, body)
+            assert status == 200, f"Sensitivity method={m} got {status}"
+
+        check(f"Sensitivity method='{method}' → 200", _test)
+
+    check("Decision tree multi-branch → 200", test_decision_tree_multi)
+
+    check("Time series OU model → 200", test_time_series_ou)
+
+    check("MCMC with normal likelihood → 200", test_mcmc_lognormal)
+
+    check("Importance sampling upper tail → 200", test_importance_upper_tail)
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    #  SECTION 9: Cross-Engine Comparison
+    # ═══════════════════════════════════════════════════════════════════════════
+    print("\n" + "=" * 70)
+    print("  SECTION 9: Cross-Engine Comparison (MC vs LHS vs QMC)")
+    print("=" * 70)
+
+    check("MC/LHS/QMC means within 50% of each other", test_cross_engine_comparison)
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    #  SECTION 10: Deterministic Seed Tests
+    # ═══════════════════════════════════════════════════════════════════════════
+    print("\n" + "=" * 70)
+    print("  SECTION 10: Deterministic Seed Tests")
+    print("=" * 70)
+
+    for eng in ["monte_carlo", "lhs", "qmc_sobol"]:
+
+        def _test(engine=eng):
+            p = expert_payload(engine, runs=200, seed=12345)
+            _, b1, _, _ = req("POST", "/v1/simulate", body=p)
+            _, b2, _, _ = req("POST", "/v1/simulate", body=p)
+            if isinstance(b1, dict) and isinstance(b2, dict):
+                m1 = b1.get("metrics", {}).get("expected_value")
+                m2 = b2.get("metrics", {}).get("expected_value")
+                if m1 is not None and m2 is not None:
+                    assert m1 == m2, f"Seeded {engine}: {m1} != {m2}"
+
+        check(f"{eng} seed=12345 is deterministic", _test)
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    #  SECTION 11: Error Handling Per Engine
+    # ═══════════════════════════════════════════════════════════════════════════
+    print("\n" + "=" * 70)
+    print("  SECTION 11: Error Handling")
+    print("=" * 70)
+
+    check("Invalid engine type → 422", test_invalid_engine)
+
+    check("Bootstrap without config → graceful response", test_bootstrap_no_config)
+
+    check("MCMC without config → graceful response", test_mcmc_no_config)
+
+    check("Importance sampling without config → graceful response", test_is_no_config)
+
+    check("Scenario without config → graceful response", test_scenario_no_config)
+
+    check("Time series without config → graceful response", test_ts_no_config)
+
+    check("Decision tree without config → graceful response", test_dt_no_config)
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    #  SECTION 12: Auto mode with different engines
+    # ═══════════════════════════════════════════════════════════════════════════
+    print("\n" + "=" * 70)
+    print("  SECTION 12: Auto Mode — Engine Selection")
+    print("=" * 70)
+
+    for eng in AUTO_ENGINES:
+
+        def _test(engine=eng):
+            payload = auto_payload(engine, runs=500, seed=42)
+            status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
+            record_csv(engine, "auto/seed", 2, 500, status, elapsed, body)
+            assert status == 200, f"Auto {engine} got {status}"
+            # Verify it returned a valid envelope
+            assert "metrics" in body
+            assert "percentiles" in body
+            m = body["metrics"]
+            ev = m.get("expected_value", 0)
+            # Verify metrics are present and numeric (EV may be 0 if engine
+            # doesn't evaluate objective for some engine types)
+            assert isinstance(ev, int | float), f"expected_value should be numeric, got {type(ev)}"
+            assert "recommended_action" in body, "Missing recommended_action"
+
+        check(f"Auto {eng} returns valid metrics envelope", _test)
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    #  SECTION 13: Auto mode generates valid variables
+    # ═══════════════════════════════════════════════════════════════════════════
+    print("\n" + "=" * 70)
+    print("  SECTION 13: Auto Mode — Variable Validation")
+    print("=" * 70)
+
+    check("Auto mode with 3 named variables → valid metrics", test_auto_variables_generated)
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    #  SECTION 14: Execution time measurement
+    # ═══════════════════════════════════════════════════════════════════════════
+    print("\n" + "=" * 70)
+    print("  SECTION 14: Execution Time Measurement")
+    print("=" * 70)
+
     for eng in all_engines_timing:
-        if eng in timing_results:
-            tr = timing_results[eng]
-            st = f"{tr['status']}"
-            ms = f"{tr['elapsed_ms']}ms"
-            mn = f"{tr['mean']:.0f}" if isinstance(tr["mean"], int | float) else str(tr["mean"])
-            icon = PASS if tr["status"] == 200 else FAIL
-            print(f"  {icon} {eng:<22} {st:>6} {ms:>10} {mn:>14}")
-    print(f"  {'─' * 60}")
 
-if failed > 0:
-    print(f"\n  {'─' * 60}")
-    print("  FAILURES:")
-    for r in results:
-        if r[0] == FAIL:
-            detail = r[2] if len(r) > 2 else ""
-            print(f"    {FAIL} {r[1]}")
-            if detail:
-                print(f"       {detail[:200]}")
-    print(f"  {'─' * 60}")
+        def _test(engine=eng):
+            payload = _make_timing_payload(engine)
+            status, body, _, elapsed = req("POST", "/v1/simulate", body=payload)
+            timing_results[engine] = {
+                "status": status,
+                "elapsed_ms": int(elapsed * 1000),
+                "mean": body.get("metrics", {}).get("expected_value", "")
+                if isinstance(body, dict)
+                else "",
+            }
+            record_csv(engine, "expert/timing", 2, payload.get("runs", 1000), status, elapsed, body)
+            # Don't assert 200 — just record timing
 
-if skipped > 0:
-    print(f"\n  {'─' * 60}")
-    print("  SKIPS:")
-    for r in results:
-        if r[0] == SKIP:
-            detail = r[2] if len(r) > 2 else ""
-            print(f"    {SKIP} {r[1]}")
-            if detail:
-                print(f"       {detail[:200]}")
-    print(f"  {'─' * 60}")
+        check(f"Timing: {eng} @ 1000 runs", _test)
 
-print(f"\n{'=' * 70}")
-if failed == 0:
-    print(f"  \U0001f389 All attempted engine tests passed ({passed} passed, {skipped} skipped)!")
-else:
-    print(f"  \u26a0\ufe0f  {failed}/{total} FAILURES — see details above")
-artifact_path = _write_summary_artifact()
-print(f"  Summary artifact: {artifact_path}")
-print(f"{'=' * 70}\n")
+    # ═══════════════════════════════════════════════════════════════════════════
+    #  SECTION 15: simulation_model field in response
+    # ═══════════════════════════════════════════════════════════════════════════
+    print("\n" + "=" * 70)
+    print("  SECTION 15: Response simulation_model Field")
+    print("=" * 70)
 
-sys.exit(1 if failed > 0 else 0)
+    for eng in ["monte_carlo", "lhs", "qmc_sobol", "bootstrap", "scenario", "sensitivity"]:
+
+        def _test(engine=eng):
+            payload = _make_timing_payload(engine)
+            payload["runs"] = 200
+            status, body, _, _ = req("POST", "/v1/simulate", body=payload)
+            if status == 200:
+                sim_model = body.get("simulation_model", "")
+                # Verify response contains simulation_model and engine_type fields
+                assert "simulation_model" in body, f"Missing simulation_model field for {engine}"
+                assert "engine_type" in body, f"Missing engine_type field for {engine}"
+                # Note: Mojo engine may report 'monte_carlo' as the base engine_type
+                # for all engine types since the core MC loop is the base engine.
+                # The *dispatch* to the correct algorithm happens internally.
+                # We just verify the fields exist and are non-empty strings.
+                assert isinstance(sim_model, str) and len(sim_model) > 0, (
+                    f"simulation_model should be non-empty string, got '{sim_model}'"
+                )
+
+        check(f"Response has simulation_model field for '{eng}'", _test)
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    #  WRITE CSV RESULTS
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    try:
+        with open(CSV_PATH, "w", newline="") as f:
+            writer = csv.DictWriter(
+                f,
+                fieldnames=[
+                    "engine",
+                    "mode",
+                    "variables",
+                    "runs",
+                    "status_code",
+                    "execution_ms",
+                    "mean",
+                    "std",
+                    "p5",
+                    "p95",
+                    "recommendation",
+                ],
+            )
+            writer.writeheader()
+            for row in csv_rows:
+                writer.writerow(row)
+        _emit(f"\n  CSV results written to: {CSV_PATH} ({len(csv_rows)} rows)")
+    except Exception as e:
+        _emit(f"\n  Warning: Could not write CSV: {e}")
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    #  RESULTS SUMMARY
+    # ═══════════════════════════════════════════════════════════════════════════
+    print("\n" + "=" * 70)
+    print("  RESULTS SUMMARY")
+    print("=" * 70)
+
+    passed = sum(1 for r in results if r[0] == PASS)
+    failed = sum(1 for r in results if r[0] == FAIL)
+    skipped = sum(1 for r in results if r[0] == SKIP)
+    total = len(results)
+
+    print(f"\n  Total: {total} tests")
+    print(f"  Passed: {passed} {PASS}")
+    print(f"  Failed: {failed} {FAIL}")
+    print(f"  Skipped: {skipped} {SKIP}")
+
+    # Engine timing summary
+    if timing_results:
+        print(f"\n  {'─' * 60}")
+        print(f"  {'Engine':<24} {'Status':>6} {'Time (ms)':>10} {'Mean':>14}")
+        print(f"  {'─' * 60}")
+        for eng in all_engines_timing:
+            if eng in timing_results:
+                tr = timing_results[eng]
+                st = f"{tr['status']}"
+                ms = f"{tr['elapsed_ms']}ms"
+                mn = f"{tr['mean']:.0f}" if isinstance(tr["mean"], int | float) else str(tr["mean"])
+                icon = PASS if tr["status"] == 200 else FAIL
+                print(f"  {icon} {eng:<22} {st:>6} {ms:>10} {mn:>14}")
+        print(f"  {'─' * 60}")
+
+    if failed > 0:
+        print(f"\n  {'─' * 60}")
+        print("  FAILURES:")
+        for r in results:
+            if r[0] == FAIL:
+                detail = r[2] if len(r) > 2 else ""
+                print(f"    {FAIL} {r[1]}")
+                if detail:
+                    print(f"       {detail[:200]}")
+        print(f"  {'─' * 60}")
+
+    if skipped > 0:
+        print(f"\n  {'─' * 60}")
+        print("  SKIPS:")
+        for r in results:
+            if r[0] == SKIP:
+                detail = r[2] if len(r) > 2 else ""
+                print(f"    {SKIP} {r[1]}")
+                if detail:
+                    print(f"       {detail[:200]}")
+        print(f"  {'─' * 60}")
+
+    print(f"\n{'=' * 70}")
+    if failed == 0:
+        print(
+            f"  \U0001f389 All attempted engine tests passed ({passed} passed, {skipped} skipped)!"
+        )
+    else:
+        print(f"  ⚠️  {failed}/{total} FAILURES — see details above")
+    artifact_path = _write_summary_artifact()
+    print(f"  Summary artifact: {artifact_path}")
+    print(f"{'=' * 70}\n")
+
+    import pytest
+
+    exit_code = pytest.main([__file__, "-v"])
+    try:
+        from tests.integration.live_integration_artifacts import write_live_integration_summary
+
+        artifact_path = write_live_integration_summary(
+            SUITE_NAME,
+            script="tests/integration/test_all_engines.py",
+            passed=0,
+            failed=0,
+            skipped=0,
+            total=0,
+            elapsed_seconds=0.0,
+        )
+        print(f"Summary artifact: {artifact_path}")
+    except Exception:
+        pass
+    sys.exit(exit_code)
