@@ -461,9 +461,12 @@ def test_outward_facing_contract_proofs_use_shared_normalized_manifest_fixture()
     algenta_lazy_exports = (ROOT / "tests" / "test_algenta_lazy_exports.py").read_text(
         encoding="utf-8"
     )
-    distribution_artifact = (
-        ROOT / "tests" / "test_distribution_artifact_privacy_runtime.py"
-    ).read_text(encoding="utf-8")
+    distribution_artifact = "\n".join(
+        p.read_text(encoding="utf-8")
+        for p in sorted(
+            (ROOT / "tests").glob("*test_distribution_artifact_privacy_runtime*.py")
+        )
+    )
     platform_contract_generation = (
         ROOT / "tests" / "test_platform_contract_generation.py"
     ).read_text(encoding="utf-8")
