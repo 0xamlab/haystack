@@ -204,7 +204,7 @@ def test_ci_workflow_runs_root_formal_runtime_check_graph() -> None:
 
     assert 'NODE_VERSION: "22"' in text
     assert "Set up Node.js" in text
-    assert "actions/setup-node@v4" in text
+    assert "actions/setup-node@" in text  # SHA-pinned; tag preserved in trailing comment
     assert "cache: pnpm" in text
     assert "Enable Corepack" in text
     assert "corepack enable" in text
