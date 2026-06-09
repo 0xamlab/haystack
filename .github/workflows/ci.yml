@@ -81,6 +81,9 @@ jobs:
           # so there's no pip cache dir to save and the post-job cache step
           # would error otherwise.
 
+      - name: Cline-fork license/telemetry guard
+        run: python3 scripts/cline_fork_guard.py
+
       - name: Set up pnpm
         uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1  # v4
         with:
