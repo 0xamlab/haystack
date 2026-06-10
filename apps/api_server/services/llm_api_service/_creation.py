@@ -511,6 +511,7 @@ async def create_chat_completion(
     *,
     model_id: str,
     messages: list[dict[str, str]],
+    max_output_tokens: int | None = None,
 ) -> tuple[LLMModelDescriptor, ChatCompletionResult]:
     from apps.api_server.services import llm_api_service as _facade
     descriptor = _facade.get_llm_model_descriptor(model_id)
@@ -521,9 +522,15 @@ async def create_chat_completion(
     )
     provider_config = llm_provider_service.get_configured_provider_model(model_id)
     if provider_config is not None:
+        # Forward the output budget only when set, so callers/stubs that don't expect
+        # the kwarg are unaffected (None == provider default).
+        _output_budget = (
+            {} if max_output_tokens is None else {"max_output_tokens": max_output_tokens}
+        )
         return descriptor, await llm_provider_service.routed_provider_chat_completion(
             model_id=model_id,
             messages=messages,
+            **_output_budget,
         )
 
     serialized_messages: list[dict[str, str]] = []

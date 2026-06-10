@@ -91,9 +91,9 @@ def test_language_for_path_keeps_supported_suffixes_explicit() -> None:
     assert repository_service._language_for_path(Path("src/main.cbl")) == "cobol"
     assert repository_service._language_for_path(Path("db/order_api.pkb")) == "plsql"
     assert repository_service._language_for_path(Path("programs/report.sas")) == "sas"
-    assert repository_service._language_for_path(Path("src/main.sml")) == "ml"
-    assert repository_service._language_for_path(Path("src/core.sig")) == "ml"
-    assert repository_service._language_for_path(Path("src/make.fun")) == "ml"
+    assert repository_service._language_for_path(Path("src/main.sml")) == "sml"
+    assert repository_service._language_for_path(Path("src/core.sig")) == "sml"
+    assert repository_service._language_for_path(Path("src/make.fun")) == "sml"
     assert repository_service._language_for_path(Path("logic/Main.L5X")) == "ladder"
     assert repository_service._language_for_path(Path("App.lvproj")) == "labview"
     assert repository_service._language_for_path(Path("Source/Main.vi")) == "labview"
@@ -737,5 +737,4 @@ def test_language_for_path_uses_vbp_repo_context_before_vba(tmp_path: Path) -> N
         Path("src/cHelper.cls"),
         text=class_text,
     ) == "vba"
-
 

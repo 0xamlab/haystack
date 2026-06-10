@@ -442,11 +442,19 @@ async def test_provider_chat_completion_maps_anthropic_payload(monkeypatch) -> N
 
         async def post(self, url: str, json: dict[str, object], headers: dict[str, str]):
             assert url == "https://api.anthropic.com/v1/messages"
+            # AR-OPT-1: the system prompt is emitted as a cacheable content block so
+            # Anthropic prompt-caching can reuse a stable prefix across repeated calls.
             assert json == {
                 "model": "claude-3-5-sonnet-latest",
                 "messages": [{"role": "user", "content": "Summarize"}],
                 "max_tokens": 512,
-                "system": "Keep it terse.",
+                "system": [
+                    {
+                        "type": "text",
+                        "text": "Keep it terse.",
+                        "cache_control": {"type": "ephemeral"},
+                    }
+                ],
             }
             assert headers["x-api-key"] == "ak-test"
             assert headers["anthropic-version"] == "2023-06-01"
@@ -455,7 +463,12 @@ async def test_provider_chat_completion_maps_anthropic_payload(monkeypatch) -> N
                 json={
                     "id": "msg_123",
                     "content": [{"type": "text", "text": "Anthropic response."}],
-                    "usage": {"input_tokens": 7, "output_tokens": 4},
+                    "usage": {
+                        "input_tokens": 7,
+                        "output_tokens": 4,
+                        "cache_read_input_tokens": 11,
+                        "cache_creation_input_tokens": 5,
+                    },
                 },
             )
 
@@ -473,6 +486,9 @@ async def test_provider_chat_completion_maps_anthropic_payload(monkeypatch) -> N
     assert result.content == "Anthropic response."
     assert result.prompt_tokens == 7
     assert result.completion_tokens == 4
+    # AR-OPT-1: Anthropic prompt-cache usage is surfaced on the result.
+    assert result.cache_read_tokens == 11
+    assert result.cache_write_tokens == 5
     assert result.provider is not None
     assert result.provider.provider_backend == "anthropic"
     assert result.provider.provider_model_id == "provider.claude-sonnet"

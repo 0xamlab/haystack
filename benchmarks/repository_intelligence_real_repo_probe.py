@@ -181,6 +181,7 @@ _REPO_PROFILE_MANIFEST_BASENAMES = frozenset(
         "moon.pkg",
         "qmldir",
         "qmake.conf",
+        "qsharp.json",
         "containerfile",
         "alire.toml",
         "shard.yml",
@@ -985,11 +986,14 @@ def _probe_language_for_path(path: str, *, repo_path: Path | None = None) -> str
         in {
         "",
         ".as",
+        ".al",
         ".apex",
         ".applescript",
         ".auk",
         ".awk",
         ".bas",
+        ".cl",
+        ".clh",
         ".cls",
         ".ctl",
         ".dfm",
@@ -1024,6 +1028,7 @@ def _probe_language_for_path(path: str, *, repo_path: Path | None = None) -> str
         ".ace",
         ".frm",
         ".gawk",
+        ".gradle",
         ".h",
         ".inc",
         ".l5x",
@@ -1036,8 +1041,10 @@ def _probe_language_for_path(path: str, *, repo_path: Path | None = None) -> str
         ".pl",
         ".pch",
         ".purs",
+        ".qs",
         ".sql",
         ".sqlproj",
+        ".sass",
         ".st",
         ".rkt",
         ".rktl",
@@ -1071,6 +1078,7 @@ def _probe_language_for_path(path: str, *, repo_path: Path | None = None) -> str
         ".wsf",
         ".xml",
         }
+        or candidate_path.name.lower() in {"qsharp.json", "shadow-cljs.edn"}
         or repository_service.starlark_adapter.has_starlark_path_hints(candidate_path)
     ):
         try:
@@ -1148,7 +1156,7 @@ def _is_operational_profile_entrypoint_candidate(
         ".pch",
     }:
         return False
-    if language == "ml" and PurePosixPath(normalized_path).suffix.lower() == ".sig":
+    if language == "sml" and PurePosixPath(normalized_path).suffix.lower() == ".sig":
         return False
     if language == "rpg" and PurePosixPath(normalized_path).suffix.lower() in {
         ".rpginc",
@@ -3266,6 +3274,36 @@ def _gradle_profile_hints(
         included_entrypoints, included_support_roots = _gradle_project_root_hints(included_root)
         entrypoint_paths.update(included_entrypoints)
         support_roots.update(included_support_roots)
+    return entrypoint_paths, support_roots, config_paths
+
+
+def _qsharp_profile_hints(
+    qsharp_config_path: str,
+) -> tuple[set[str], set[str], set[str]]:
+    normalized_path = repository_service._normalize_repository_relative_path(qsharp_config_path)
+    if not normalized_path:
+        return set(), set(), set()
+    project_dir = PurePosixPath(normalized_path).parent
+    root_prefix = "" if str(project_dir) in {"", "."} else f"{project_dir}/"
+    support_roots = {
+        root_prefix.rstrip("/"),
+        f"{root_prefix}src",
+        f"{root_prefix}sample",
+        f"{root_prefix}samples",
+        f"{root_prefix}demo",
+        f"{root_prefix}demos",
+        f"{root_prefix}example",
+        f"{root_prefix}examples",
+    }
+    entrypoint_paths = {
+        f"{root_prefix}Main.qs",
+        f"{root_prefix}Program.qs",
+        f"{root_prefix}src/Main.qs",
+        f"{root_prefix}src/Program.qs",
+        f"{root_prefix}samples/Main.qs",
+        f"{root_prefix}examples/Main.qs",
+    }
+    config_paths = {normalized_path}
     return entrypoint_paths, support_roots, config_paths
 
 
@@ -6342,6 +6380,275 @@ def _dockerfile_profile_hints_from_candidates(
             entrypoint_paths.add(normalized_candidate)
     if not entrypoint_paths:
         entrypoint_paths.update(sorted(dockerfile_files)[:12])
+    return entrypoint_paths, {root for root in support_roots if root}, set()
+
+
+def _sass_profile_hints_from_candidates(
+    repo_path: Path,
+    candidate_file_paths: list[str],
+) -> tuple[set[str], set[str], set[str]]:
+    sass_files: list[str] = []
+    module_index: dict[str, str] = {}
+    entrypoint_paths: set[str] = set()
+    support_roots: set[str] = set()
+    imported_files: set[str] = set()
+    preferred_basenames = {
+        "app.sass",
+        "application.sass",
+        "bootstrap.sass",
+        "index.sass",
+        "main.sass",
+        "style.sass",
+        "styles.sass",
+        "theme.sass",
+    }
+    support_dirs = {"assets", "sass", "scss", "styles", "stylesheets"}
+    for candidate_path in sorted(candidate_file_paths):
+        normalized_candidate = repository_service._normalize_repository_relative_path(
+            candidate_path
+        )
+        if (
+            not normalized_candidate
+            or _probe_language_for_path(normalized_candidate, repo_path=repo_path) != "sass"
+        ):
+            continue
+        candidate_file = repo_path / normalized_candidate
+        if not candidate_file.is_file() or candidate_file.is_symlink():
+            continue
+        try:
+            text = candidate_file.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        if not repository_service.sass_adapter.is_probable_sass_source(
+            path=candidate_file,
+            text=text,
+        ):
+            continue
+        sass_files.append(normalized_candidate)
+        for alias in repository_service.sass_adapter.module_aliases_for_path(
+            root_path=repo_path,
+            file_path=normalized_candidate,
+            stable_identifier=repository_service._stable_identifier,
+        ):
+            module_index.setdefault(alias, normalized_candidate)
+        candidate_parts = PurePosixPath(normalized_candidate).parts
+        lowered_parts = [part.lower() for part in candidate_parts[:-1]]
+        for index, part in enumerate(lowered_parts):
+            if part in support_dirs:
+                support_roots.add("/".join(candidate_parts[: index + 1]))
+        parent_dir = repository_service._normalize_repository_relative_path(
+            str(PurePosixPath(normalized_candidate).parent)
+        )
+        if parent_dir:
+            support_roots.add(parent_dir)
+    for normalized_candidate in sass_files:
+        try:
+            text = (repo_path / normalized_candidate).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        for dependency in repository_service.sass_adapter.parse_dependencies_only(
+            normalized_candidate,
+            text,
+            module_index,
+            stable_identifier=repository_service._stable_identifier,
+            normalize_repository_relative_path=repository_service._normalize_repository_relative_path,
+            resolve_suffix_match=repository_service._resolve_suffix_match,
+        ):
+            if dependency.target_file and dependency.target_file != normalized_candidate:
+                imported_files.add(dependency.target_file)
+    for normalized_candidate in sass_files:
+        path = PurePosixPath(normalized_candidate)
+        if (
+            path.name.startswith("_")
+            or repository_service._is_test_path(normalized_candidate)
+            or _is_non_operational_profile_path(normalized_candidate)
+        ):
+            continue
+        if path.name.lower() in preferred_basenames or normalized_candidate not in imported_files:
+            entrypoint_paths.add(normalized_candidate)
+    if not entrypoint_paths:
+        entrypoint_paths.update(
+            normalized_candidate
+            for normalized_candidate in sass_files
+            if not PurePosixPath(normalized_candidate).name.startswith("_")
+        )
+    for imported_file in imported_files:
+        parent_dir = repository_service._normalize_repository_relative_path(
+            str(PurePosixPath(imported_file).parent)
+        )
+        if parent_dir:
+            support_roots.add(parent_dir)
+    return entrypoint_paths, {root for root in support_roots if root}, set()
+
+
+def _qsharp_profile_hints_from_candidates(
+    repo_path: Path,
+    candidate_file_paths: list[str],
+) -> tuple[set[str], set[str], set[str]]:
+    qsharp_files: list[str] = []
+    module_index: dict[str, str] = {}
+    entrypoint_paths: set[str] = set()
+    support_roots: set[str] = set()
+    imported_files: set[str] = set()
+    config_paths: set[str] = set()
+    preferred_basenames = {
+        "app.qs",
+        "demo.qs",
+        "index.qs",
+        "main.qs",
+        "program.qs",
+        "sample.qs",
+    }
+    support_dirs = {"demo", "demos", "examples", "qsharp", "quantum", "samples", "src"}
+    for candidate_path in sorted(candidate_file_paths):
+        normalized_candidate = repository_service._normalize_repository_relative_path(
+            candidate_path
+        )
+        if not normalized_candidate:
+            continue
+        candidate_parts = PurePosixPath(normalized_candidate).parts
+        candidate_file = repo_path / normalized_candidate
+        if not candidate_file.is_file() or candidate_file.is_symlink():
+            continue
+        try:
+            text = candidate_file.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        if (
+            PurePosixPath(normalized_candidate).name.lower()
+            in repository_service.qsharp_adapter.QSHARP_CONFIG_BASENAMES
+        ):
+            if repository_service.qsharp_adapter.is_probable_qsharp_config(
+                path=candidate_file,
+                text=text,
+            ):
+                config_paths.add(normalized_candidate)
+                parent_dir = repository_service._normalize_repository_relative_path(
+                    str(PurePosixPath(normalized_candidate).parent)
+                )
+                if parent_dir:
+                    support_roots.add(parent_dir)
+            continue
+        if (
+            _probe_language_for_path(normalized_candidate, repo_path=repo_path) != "qsharp"
+            or not repository_service.qsharp_adapter.is_probable_qsharp_source(
+                path=candidate_file,
+                text=text,
+            )
+        ):
+            continue
+        qsharp_files.append(normalized_candidate)
+        for alias in repository_service.qsharp_adapter.module_aliases_for_path(
+            root_path=repo_path,
+            file_path=normalized_candidate,
+            stable_identifier=repository_service._stable_identifier,
+        ):
+            module_index.setdefault(alias, normalized_candidate)
+        lowered_parts = [part.lower() for part in candidate_parts[:-1]]
+        for index, part in enumerate(lowered_parts):
+            if part in support_dirs:
+                support_roots.add("/".join(candidate_parts[: index + 1]))
+        parent_dir = repository_service._normalize_repository_relative_path(
+            str(PurePosixPath(normalized_candidate).parent)
+        )
+        if parent_dir:
+            support_roots.add(parent_dir)
+    for normalized_candidate in qsharp_files:
+        try:
+            text = (repo_path / normalized_candidate).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        for dependency in repository_service.qsharp_adapter.parse_dependencies_only(
+            normalized_candidate,
+            text,
+            module_index,
+            stable_identifier=repository_service._stable_identifier,
+            normalize_repository_relative_path=repository_service._normalize_repository_relative_path,
+            resolve_suffix_match=repository_service._resolve_suffix_match,
+        ):
+            if dependency.target_file and dependency.target_file != normalized_candidate:
+                imported_files.add(dependency.target_file)
+    for normalized_candidate in qsharp_files:
+        pure_path = PurePosixPath(normalized_candidate)
+        if (
+            repository_service._is_test_path(normalized_candidate)
+            or _is_non_operational_profile_path(normalized_candidate)
+        ):
+            continue
+        if pure_path.name.lower() in preferred_basenames or normalized_candidate not in imported_files:
+            entrypoint_paths.add(normalized_candidate)
+    if not entrypoint_paths:
+        entrypoint_paths.update(
+            normalized_candidate
+            for normalized_candidate in qsharp_files
+            if not repository_service._is_test_path(normalized_candidate)
+        )
+    return entrypoint_paths, {root for root in support_roots if root}, config_paths
+
+
+def _al_profile_hints_from_candidates(
+    repo_path: Path,
+    candidate_file_paths: list[str],
+) -> tuple[set[str], set[str], set[str]]:
+    al_files: list[str] = []
+    support_roots: set[str] = set()
+    support_dirs = {
+        "al",
+        "app",
+        "apps",
+        "codeunit",
+        "codeunits",
+        "enum",
+        "enums",
+        "extension",
+        "extensions",
+        "page",
+        "pages",
+        "profile",
+        "profiles",
+        "query",
+        "queries",
+        "report",
+        "reports",
+        "src",
+        "table",
+        "tables",
+    }
+    for candidate_path in sorted(candidate_file_paths):
+        normalized_candidate = repository_service._normalize_repository_relative_path(
+            candidate_path
+        )
+        if (
+            not normalized_candidate
+            or _probe_language_for_path(normalized_candidate, repo_path=repo_path) != "al"
+        ):
+            continue
+        candidate_file = repo_path / normalized_candidate
+        if not candidate_file.is_file() or candidate_file.is_symlink():
+            continue
+        try:
+            text = candidate_file.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        if not repository_service.al_adapter.is_probable_al_source(path=candidate_file, text=text):
+            continue
+        al_files.append(normalized_candidate)
+        candidate_parts = PurePosixPath(normalized_candidate).parts
+        lowered_parts = [part.lower() for part in candidate_parts[:-1]]
+        for index, part in enumerate(lowered_parts):
+            if part in support_dirs:
+                support_roots.add("/".join(candidate_parts[: index + 1]))
+        parent_dir = repository_service._normalize_repository_relative_path(
+            str(PurePosixPath(normalized_candidate).parent)
+        )
+        if parent_dir:
+            support_roots.add(parent_dir)
+    entrypoint_paths = {
+        normalized_candidate
+        for normalized_candidate in al_files
+        if not repository_service._is_test_path(normalized_candidate)
+        and not _is_non_operational_profile_path(normalized_candidate)
+    }
     return entrypoint_paths, {root for root in support_roots if root}, set()
 
 
@@ -10231,6 +10538,115 @@ def _glsl_profile_hints_from_candidates(
         ):
             entrypoint_paths.add(normalized_candidate)
 
+    if not entrypoint_paths:
+        entrypoint_paths.update(sorted(shader_files)[:8])
+    if not support_roots:
+        for entrypoint_path in entrypoint_paths:
+            parent_dir = repository_service._normalize_repository_relative_path(
+                str(PurePosixPath(entrypoint_path).parent)
+            )
+            if parent_dir:
+                support_roots.add(parent_dir)
+    return entrypoint_paths, {root for root in support_roots if root}, set()
+
+
+def _opencl_profile_hints_from_candidates(
+    repo_path: Path,
+    candidate_file_paths: list[str],
+) -> tuple[set[str], set[str], set[str]]:
+    shader_files: list[str] = []
+    module_index: dict[str, str] = {}
+    support_roots: set[str] = set()
+    imported_files: set[str] = set()
+    entrypoint_paths: set[str] = set()
+    preferred_basenames = {"main.cl", "main.clh", "index.cl", "kernel.cl"}
+    library_like_parts = {"common", "include", "includes", "inc", "lib", "libs", "shared"}
+    support_dirs = {"include", "includes", "kernel", "kernels", "src", "source", "sources"}
+    for candidate_path in sorted(candidate_file_paths):
+        normalized_candidate = repository_service._normalize_repository_relative_path(
+            candidate_path
+        )
+        if (
+            not normalized_candidate
+            or repository_service._is_test_path(normalized_candidate)
+            or _is_non_operational_profile_path(normalized_candidate)
+            or _probe_language_for_path(normalized_candidate, repo_path=repo_path) != "opencl"
+        ):
+            continue
+        candidate_file = repo_path / normalized_candidate
+        if not candidate_file.is_file() or candidate_file.is_symlink():
+            continue
+        try:
+            text = candidate_file.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        if not repository_service.opencl_adapter.is_probable_opencl_source(
+            path=candidate_file,
+            text=text,
+        ):
+            continue
+        shader_files.append(normalized_candidate)
+        for alias in repository_service.opencl_adapter.module_aliases_for_path(
+            root_path=repo_path,
+            file_path=normalized_candidate,
+            stable_identifier=repository_service._stable_identifier,
+        ):
+            module_index.setdefault(alias, normalized_candidate)
+        candidate_parts = PurePosixPath(normalized_candidate).parts
+        lowered_parts = [part.lower() for part in candidate_parts[:-1]]
+        for index, part in enumerate(lowered_parts):
+            if part in support_dirs:
+                support_roots.add("/".join(candidate_parts[: index + 1]))
+        parent_dir = repository_service._normalize_repository_relative_path(
+            str(PurePosixPath(normalized_candidate).parent)
+        )
+        if parent_dir:
+            support_roots.add(parent_dir)
+
+    for normalized_candidate in shader_files:
+        try:
+            text = (repo_path / normalized_candidate).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        for dependency in repository_service.opencl_adapter.parse_dependencies_only(
+            normalized_candidate,
+            text,
+            module_index,
+            stable_identifier=repository_service._stable_identifier,
+            resolve_include=lambda **kwargs: repository_service.opencl_adapter.resolve_include(
+                normalize_repository_relative_path=repository_service._normalize_repository_relative_path,
+                resolve_suffix_match=repository_service._resolve_suffix_match,
+                **kwargs,
+            ),
+        ):
+            if not dependency.target_file or dependency.target_file == normalized_candidate:
+                continue
+            imported_files.add(dependency.target_file)
+            parent_dir = repository_service._normalize_repository_relative_path(
+                str(PurePosixPath(dependency.target_file).parent)
+            )
+            if parent_dir:
+                support_roots.add(parent_dir)
+
+    for normalized_candidate in shader_files:
+        pure_path = PurePosixPath(normalized_candidate)
+        candidate_parts = {part.lower() for part in pure_path.parts[:-1]}
+        if pure_path.suffix.lower() != ".cl":
+            continue
+        if pure_path.name.lower() in preferred_basenames:
+            entrypoint_paths.add(normalized_candidate)
+            continue
+        if normalized_candidate not in imported_files or not candidate_parts.intersection(
+            library_like_parts
+        ):
+            entrypoint_paths.add(normalized_candidate)
+
+    if not entrypoint_paths:
+        entrypoint_paths.update(
+            normalized_candidate
+            for normalized_candidate in shader_files
+            if PurePosixPath(normalized_candidate).suffix.lower() == ".cl"
+        )
     if not entrypoint_paths:
         entrypoint_paths.update(sorted(shader_files)[:8])
     if not support_roots:
@@ -14479,6 +14895,10 @@ def _candidate_ecosystems_for_path(
         language = "smalltalk"
     elif basename == "gleam.toml":
         language = "gleam"
+    elif basename == "qsharp.json":
+        language = "qsharp"
+    elif basename == "shadow-cljs.edn":
+        language = "clojurescript"
     elif basename in {".hhconfig", "hhvm.autoload", "hh_autoload.json"}:
         language = "hack"
     elif basename == "project.janet":
@@ -14557,8 +14977,15 @@ def _candidate_ecosystems_for_path(
         "gams": {"gams"},
         "gleam": {"gleam"},
         "glsl": {"glsl"},
+        "groovy": {"groovy"},
         "wgsl": {"wgsl"},
         "less": {"less"},
+        "opencl": {"opencl"},
+        "qsharp": {"qsharp"},
+        "sass": {"sass"},
+        "clojurescript": {"clojurescript"},
+        "al": {"al"},
+        "sml": {"sml"},
         "stylus": {"stylus"},
         "jinja": {"jinja"},
         "liquid": {"liquid"},
@@ -15432,7 +15859,7 @@ def _profile_entrypoint_target_count(detected_ecosystems: set[str]) -> int:
         "fsharp",
         "groovy",
         "matlab",
-        "ml",
+        "sml",
         "objectivec",
         "perl",
         "powershell",
@@ -15649,7 +16076,10 @@ def _dispatch_basenames_to_ecosystem(state: _SeedPlanState) -> None:
         elif basename == "pyproject.toml":
             manifest_ecosystems = {"python"}
             entrypoints, roots, configs = _pyproject_profile_hints(repo_path, candidate_path)
-        elif basename in {"project.clj", "deps.edn", "bb.edn", "shadow-cljs.edn"}:
+        elif basename == "shadow-cljs.edn":
+            manifest_ecosystems = {"clojurescript"}
+            entrypoints, roots, configs = _clojure_profile_hints(repo_path, candidate_path)
+        elif basename in {"project.clj", "deps.edn", "bb.edn"}:
             manifest_ecosystems = {"clojure"}
             entrypoints, roots, configs = _clojure_profile_hints(repo_path, candidate_path)
         elif basename == "pubspec.yaml":
@@ -15709,6 +16139,9 @@ def _dispatch_basenames_to_ecosystem(state: _SeedPlanState) -> None:
         elif basename == "go.mod":
             manifest_ecosystems = {"go"}
             entrypoints, roots, configs = _go_module_profile_hints(candidate_path)
+        elif basename == "qsharp.json":
+            manifest_ecosystems = {"qsharp"}
+            entrypoints, roots, configs = _qsharp_profile_hints(candidate_path)
         elif basename.endswith(".cabal"):
             manifest_ecosystems = {"haskell"}
             entrypoints, roots, configs = _haskell_cabal_profile_hints(repo_path, candidate_path)
@@ -15740,7 +16173,7 @@ def _dispatch_basenames_to_ecosystem(state: _SeedPlanState) -> None:
             entrypoints, roots, configs = _ml_profile_hints(repo_path, candidate_path)
             if not configs:
                 continue
-            manifest_ecosystems = {"ml"}
+            manifest_ecosystems = {"sml"}
         elif basename == "cmakelists.txt":
             manifest_ecosystems = {
                 "cmake",
@@ -16938,6 +17371,71 @@ def _derive_operational_seed_plan_without_diagnostics(
             )
             if scss_count >= max(2, host_count):
                 detected_ecosystem_scores["scss"] += min(120, 30 + scss_count * 14)
+
+    sass_ecosystem_counts = _candidate_ecosystem_counts(
+        candidate_file_paths,
+        repo_path=repo_path,
+        ecosystems={"sass", "ruby", "javascript", "typescript", "css"},
+    )
+    if sass_ecosystem_counts["sass"] > 0:
+        entrypoints, roots, configs = _sass_profile_hints_from_candidates(
+            repo_path,
+            candidate_file_paths,
+        )
+        if entrypoints or roots or configs:
+            detected_ecosystems.add("sass")
+            sass_count = sass_ecosystem_counts["sass"]
+            host_count = sum(
+                sass_ecosystem_counts[ecosystem]
+                for ecosystem in ("ruby", "javascript", "typescript", "css")
+            )
+            should_operationalize_sass = (
+                sass_count >= 2
+                and (
+                    host_count == 0
+                    or sass_count >= host_count
+                    or sass_count * 3 >= host_count
+                )
+            )
+            if should_operationalize_sass:
+                _register_candidate_ecosystems(
+                    entrypoint_candidate_ecosystems,
+                    values=entrypoints,
+                    ecosystems={"sass"},
+                )
+                _register_candidate_ecosystems(
+                    support_root_candidate_ecosystems,
+                    values=roots,
+                    ecosystems={"sass"},
+                )
+                entrypoint_candidates.update(entrypoints)
+                support_root_candidates.update(roots)
+                config_path_candidates.update(configs)
+                _accumulate_detected_ecosystem_scores(
+                    detected_ecosystem_scores,
+                    ecosystems={"sass"},
+                    config_path=sorted(configs or entrypoints or roots or {""})[0],
+                    repo_path=repo_path,
+                    entrypoints=entrypoints,
+                    roots=roots,
+                    configs=configs,
+                )
+                if sass_count >= max(2, host_count):
+                    detected_ecosystem_scores["sass"] += min(140, 32 + sass_count * 14)
+            elif sass_count * 2 <= max(1, host_count):
+                dominant_host = max(
+                    ("ruby", "javascript", "typescript", "css"),
+                    key=lambda ecosystem: sass_ecosystem_counts[ecosystem],
+                )
+                if sass_ecosystem_counts[dominant_host] > 0:
+                    detected_ecosystem_scores[dominant_host] += min(
+                        140,
+                        24 + sass_ecosystem_counts[dominant_host] * 6,
+                    )
+                    detected_ecosystem_scores["sass"] = max(
+                        0,
+                        detected_ecosystem_scores["sass"] - 48,
+                    )
 
     less_ecosystem_counts = _candidate_ecosystem_counts(
         candidate_file_paths,
@@ -18198,6 +18696,168 @@ def _derive_operational_seed_plan_without_diagnostics(
                 )
                 detected_ecosystem_scores["openqasm"] += min(140, 32 + openqasm_count * 14)
 
+    qsharp_ecosystem_counts = _candidate_ecosystem_counts(
+        candidate_file_paths,
+        repo_path=repo_path,
+        ecosystems={"qsharp", "cs", "dotnet", "python"},
+    )
+    if qsharp_ecosystem_counts["qsharp"] > 0:
+        entrypoints, roots, configs = _qsharp_profile_hints_from_candidates(
+            repo_path,
+            candidate_file_paths,
+        )
+        if entrypoints or roots or configs:
+            detected_ecosystems.add("qsharp")
+            qsharp_count = qsharp_ecosystem_counts["qsharp"]
+            host_count = max(
+                qsharp_ecosystem_counts["cs"],
+                qsharp_ecosystem_counts["dotnet"],
+            ) + qsharp_ecosystem_counts["python"]
+            should_operationalize_qsharp = (
+                qsharp_count >= 2
+                and (
+                    host_count == 0
+                    or qsharp_count >= host_count
+                    or qsharp_count * 3 >= host_count
+                )
+            )
+            if should_operationalize_qsharp:
+                _register_candidate_ecosystems(
+                    entrypoint_candidate_ecosystems,
+                    values=entrypoints,
+                    ecosystems={"qsharp"},
+                )
+                _register_candidate_ecosystems(
+                    support_root_candidate_ecosystems,
+                    values=roots,
+                    ecosystems={"qsharp"},
+                )
+                entrypoint_candidates.update(entrypoints)
+                support_root_candidates.update(roots)
+                config_path_candidates.update(configs)
+                _accumulate_detected_ecosystem_scores(
+                    detected_ecosystem_scores,
+                    ecosystems={"qsharp"},
+                    config_path=sorted(configs or entrypoints or roots or {""})[0],
+                    repo_path=repo_path,
+                    entrypoints=entrypoints,
+                    roots=roots,
+                    configs=configs,
+                )
+                if qsharp_count >= max(2, host_count):
+                    detected_ecosystem_scores["qsharp"] += min(140, 32 + qsharp_count * 14)
+            elif qsharp_count * 2 <= max(1, host_count):
+                dominant_host = max(
+                    ("cs", "dotnet", "python"),
+                    key=lambda ecosystem: qsharp_ecosystem_counts[ecosystem],
+                )
+                if qsharp_ecosystem_counts[dominant_host] > 0:
+                    detected_ecosystem_scores[dominant_host] += min(
+                        140,
+                        24 + qsharp_ecosystem_counts[dominant_host] * 6,
+                    )
+                    detected_ecosystem_scores["qsharp"] = max(
+                        0,
+                        detected_ecosystem_scores["qsharp"] - 48,
+                    )
+
+    al_ecosystem_counts = _candidate_ecosystem_counts(
+        candidate_file_paths,
+        repo_path=repo_path,
+        ecosystems={"al", "powershell"},
+    )
+    if al_ecosystem_counts["al"] > 0:
+        entrypoints, roots, configs = _al_profile_hints_from_candidates(
+            repo_path,
+            candidate_file_paths,
+        )
+        if entrypoints or roots or configs:
+            detected_ecosystems.add("al")
+            al_count = al_ecosystem_counts["al"]
+            host_count = al_ecosystem_counts["powershell"]
+            should_operationalize_al = (
+                al_count >= 2
+                and (
+                    host_count == 0
+                    or al_count >= host_count
+                    or al_count * 3 >= host_count
+                )
+            )
+            if should_operationalize_al:
+                _register_candidate_ecosystems(
+                    entrypoint_candidate_ecosystems,
+                    values=entrypoints,
+                    ecosystems={"al"},
+                )
+                _register_candidate_ecosystems(
+                    support_root_candidate_ecosystems,
+                    values=roots,
+                    ecosystems={"al"},
+                )
+                entrypoint_candidates.update(entrypoints)
+                support_root_candidates.update(roots)
+                config_path_candidates.update(configs)
+                _accumulate_detected_ecosystem_scores(
+                    detected_ecosystem_scores,
+                    ecosystems={"al"},
+                    config_path=sorted(configs or entrypoints or roots or {""})[0],
+                    repo_path=repo_path,
+                    entrypoints=entrypoints,
+                    roots=roots,
+                    configs=configs,
+                )
+                if al_count >= max(2, host_count):
+                    detected_ecosystem_scores["al"] += min(140, 32 + al_count * 14)
+            elif al_count * 2 <= max(1, host_count):
+                if al_ecosystem_counts["powershell"] > 0:
+                    detected_ecosystem_scores["powershell"] += min(
+                        140,
+                        24 + al_ecosystem_counts["powershell"] * 6,
+                    )
+                    detected_ecosystem_scores["al"] = max(
+                        0,
+                        detected_ecosystem_scores["al"] - 48,
+                    )
+
+    sml_ecosystem_counts = _candidate_ecosystem_counts(
+        candidate_file_paths,
+        repo_path=repo_path,
+        ecosystems={
+            "sml",
+            "python",
+            "javascript",
+            "typescript",
+            "java",
+            "go",
+            "rust",
+            "cpp",
+            "c",
+            "shell",
+        },
+    )
+    if sml_ecosystem_counts["sml"] > 0:
+        sml_count = sml_ecosystem_counts["sml"]
+        host_count = sum(
+            sml_ecosystem_counts[ecosystem]
+            for ecosystem in ("python", "javascript", "typescript", "java", "go", "rust", "cpp", "c", "shell")
+        )
+        if sml_count >= max(2, host_count):
+            detected_ecosystem_scores["sml"] += min(140, 32 + sml_count * 14)
+        elif sml_count * 2 <= max(1, host_count):
+            dominant_host = max(
+                ("python", "javascript", "typescript", "java", "go", "rust", "cpp", "c", "shell"),
+                key=lambda ecosystem: sml_ecosystem_counts[ecosystem],
+            )
+            if sml_ecosystem_counts[dominant_host] > 0:
+                detected_ecosystem_scores[dominant_host] += min(
+                    140,
+                    24 + sml_ecosystem_counts[dominant_host] * 6,
+                )
+                detected_ecosystem_scores["sml"] = max(
+                    0,
+                    detected_ecosystem_scores["sml"] - 48,
+                )
+
     move_ecosystem_counts = _candidate_ecosystem_counts(
         candidate_file_paths,
         repo_path=repo_path,
@@ -18899,6 +19559,70 @@ def _derive_operational_seed_plan_without_diagnostics(
                 )
             elif cuda_count >= 24 and cuda_count * 2 >= max(1, host_count):
                 detected_ecosystem_scores["cuda"] += min(240, 80 + cuda_count // 2)
+
+    opencl_ecosystem_counts = _candidate_ecosystem_counts(
+        candidate_file_paths,
+        repo_path=repo_path,
+        ecosystems={"opencl", "c", "cpp", "python"},
+    )
+    if opencl_ecosystem_counts["opencl"] > 0:
+        entrypoints, roots, configs = _opencl_profile_hints_from_candidates(
+            repo_path,
+            candidate_file_paths,
+        )
+        if entrypoints or roots or configs:
+            detected_ecosystems.add("opencl")
+            opencl_count = opencl_ecosystem_counts["opencl"]
+            host_count = sum(
+                opencl_ecosystem_counts[ecosystem] for ecosystem in ("c", "cpp", "python")
+            )
+            should_operationalize_opencl = (
+                opencl_count >= 2
+                and (
+                    host_count == 0
+                    or opencl_count >= host_count
+                    or opencl_count * 3 >= host_count
+                )
+            )
+            if should_operationalize_opencl:
+                _register_candidate_ecosystems(
+                    entrypoint_candidate_ecosystems,
+                    values=entrypoints,
+                    ecosystems={"opencl"},
+                )
+                _register_candidate_ecosystems(
+                    support_root_candidate_ecosystems,
+                    values=roots,
+                    ecosystems={"opencl"},
+                )
+                entrypoint_candidates.update(entrypoints)
+                support_root_candidates.update(roots)
+                config_path_candidates.update(configs)
+                _accumulate_detected_ecosystem_scores(
+                    detected_ecosystem_scores,
+                    ecosystems={"opencl"},
+                    config_path=sorted(configs or entrypoints or roots or {""})[0],
+                    repo_path=repo_path,
+                    entrypoints=entrypoints,
+                    roots=roots,
+                    configs=configs,
+                )
+                if opencl_count >= max(2, host_count):
+                    detected_ecosystem_scores["opencl"] += min(140, 32 + opencl_count * 14)
+            elif opencl_count * 2 <= max(1, host_count):
+                dominant_host = max(
+                    ("c", "cpp", "python"),
+                    key=lambda ecosystem: opencl_ecosystem_counts[ecosystem],
+                )
+                if opencl_ecosystem_counts[dominant_host] > 0:
+                    detected_ecosystem_scores[dominant_host] += min(
+                        140,
+                        24 + opencl_ecosystem_counts[dominant_host] * 6,
+                    )
+                    detected_ecosystem_scores["opencl"] = max(
+                        0,
+                        detected_ecosystem_scores["opencl"] - 48,
+                    )
 
     stan_ecosystem_counts = _candidate_ecosystem_counts(
         candidate_file_paths,

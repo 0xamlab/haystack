@@ -6,6 +6,10 @@ from __future__ import annotations
 
 from tests._test_repository_intelligence_public_repo_matrix_helpers import *  # noqa: F401,F403
 
+from apps.api_server.services.repository_language_priority import (
+    supported_repository_languages,
+)
+
 
 def test_ordered_public_repository_cases_respects_global_rank() -> None:
     cases = (
@@ -81,10 +85,21 @@ def test_run_public_repository_matrix_reports_real_language_progress(tmp_path: P
         ranked_target_language_count=200,
     )
 
+    progress = result["support_progress"]
+    count = progress["supported_real_language_count"]
+
+    # Fully dynamic: the matrix must report exactly the registry-derived count of
+    # supported real languages, so wiring a new adapter updates this automatically —
+    # no hardcoded total to bump every time a language lands.
+    assert count == len(supported_repository_languages())
+    # Regression floor only: coverage must never drop below the known-good baseline.
+    # Additions always sail past it; bump it deliberately to lock in coverage gains.
+    assert count >= 172
+
     assert result["case_count"] == 0
-    assert result["support_progress"]["supported_real_language_count"] == 172
-    assert result["support_progress"]["ranked_target_language_count"] == 200
-    assert result["support_progress"]["progress_label"] == "172 / 200"
-    assert result["support_progress"]["progress_fraction"] == pytest.approx(172 / 200)
+    assert progress["ranked_target_language_count"] == 200
+    # Label / fraction derived from the live count, not a literal.
+    assert progress["progress_label"] == f"{count} / 200"
+    assert progress["progress_fraction"] == pytest.approx(count / 200)
 
 

@@ -21,6 +21,9 @@ from apps.api_server.services import (
 from apps.api_server.services import (
     repository_intelligence_planner_generation as planner_generation,
 )
+from apps.api_server.services import (
+    repository_intelligence_verified_agentic as verified_agentic,
+)
 from apps.api_server.services.repository_intelligence_contracts import (
     RepositoryIntelligenceError,
 )
@@ -98,6 +101,63 @@ def test_verified_agentic_returns_planner_dict(monkeypatch, tmp_path):
     assert "a/foo.py" in result["patch_diff"]
     assert '-    return "bye"' in result["patch_diff"]
     assert '+    return "hi"' in result["patch_diff"]
+
+
+def test_verified_agentic_sends_tool_profile_and_context_bundle(monkeypatch, tmp_path):
+    """AR-OPT-4: the seam carries the tool profile in task_spec and injects the
+    full line-context bundle (numbered source of suspect symbols) for the agent."""
+    _patch_materialized(monkeypatch, tmp_path)
+    monkeypatch.delenv("ALGENTA_REPOSITORY_AGENT_TOOL_PROFILE", raising=False)
+    captured: dict = {}
+
+    def fake_run_agent(*, working_dir, task_spec, injected_context, limits):
+        captured["task_spec"] = task_spec
+        captured["injected_context"] = injected_context
+        (Path(working_dir) / "foo.py").write_text(_FIXED, encoding="utf-8")
+        return {"status": "completed", "agent_run_id": "run_ctx"}
+
+    snapshot = {
+        "snapshot_id": "snap_test",
+        "resolved_revision": "deadbeef",
+        "files": [
+            {
+                "file_path": "foo.py",
+                "language": "python",
+                "symbols": [
+                    {"symbol_id": "g", "symbol_name": "greet", "symbol_kind": "function",
+                     "start_line": 1, "end_line": 2, "parent_symbol_id": None}
+                ],
+                "dependencies": [],
+            }
+        ],
+    }
+
+    asyncio.run(
+        planner_generation._generate_verified_agentic_repository_patch_plan(
+            model_id=_VERIFIED_AGENTIC_ID,
+            snapshot_manifest=snapshot,
+            triage_manifest=_TRIAGE_MANIFEST,
+            run_agent=fake_run_agent,
+        )
+    )
+
+    # Default controlled profile reaches the agent via task_spec.
+    assert captured["task_spec"]["tool_profile"] == "no_exploration_local_validation"
+    # The line-context bundle is injected with the suspect symbol's numbered source.
+    bundle = captured["injected_context"]["context_bundle"]
+    assert any(
+        entry["symbol_name"] == "greet" and "return" in entry["numbered_source"]
+        for entry in bundle
+    )
+
+
+def test_agent_tool_profile_env_override(monkeypatch):
+    monkeypatch.delenv("ALGENTA_REPOSITORY_AGENT_TOOL_PROFILE", raising=False)
+    assert planner_generation._agent_tool_profile() == "no_exploration_local_validation"
+    monkeypatch.setenv("ALGENTA_REPOSITORY_AGENT_TOOL_PROFILE", "no_exploration_no_shell")
+    assert planner_generation._agent_tool_profile() == "no_exploration_no_shell"
+    monkeypatch.setenv("ALGENTA_REPOSITORY_AGENT_TOOL_PROFILE", "bogus")
+    assert planner_generation._agent_tool_profile() == "no_exploration_local_validation"
 
 
 def test_verified_agentic_ignores_agent_supplied_diff(monkeypatch, tmp_path):
@@ -195,7 +255,8 @@ def test_generate_patch_plan_routes_to_verified_agentic(monkeypatch, tmp_path):
         (Path(working_dir) / "foo.py").write_text(_FIXED, encoding="utf-8")
         return {"status": "completed", "agent_run_id": "run_route"}
 
-    monkeypatch.setattr(planner_generation, "_DEFAULT_RUN_AGENT", fake_run_agent)
+    # _DEFAULT_RUN_AGENT now lives in the extracted verified_agentic module; patch it there.
+    monkeypatch.setattr(verified_agentic, "_DEFAULT_RUN_AGENT", fake_run_agent)
 
     result = asyncio.run(
         planner_generation._generate_repository_patch_plan(

@@ -7,7 +7,7 @@ from apps.api_server.services.repository_intelligence_adapters import actionscri
 from apps.api_server.services.repository_intelligence_adapters import assembly as assembly_adapter, autoit as autoit_adapter, awk as awk_adapter  # noqa: E501
 from apps.api_server.services.repository_intelligence_adapters import bicep as bicep_adapter
 from apps.api_server.services.repository_intelligence_adapters import cmake as cmake_adapter, cfml as cfml_adapter, classic_visual_basic as cvb, meson as meson_adapter, qmake as qmake_adapter, qml as qml_adapter  # noqa: E501
-from apps.api_server.services.repository_intelligence_adapters import antlr as antlr_adapter, asciidoc as asciidoc_adapter, astro as astro_adapter, blade as blade_adapter, coffeescript as coffee_adapter, coq as coq_adapter, cuda as cuda_adapter, cython as cython_adapter, dm as dm_adapter, ejs as ejs_adapter, erb as erb_adapter, fennel as fennel_adapter, gherkin as gherkin_adapter, graphviz as graphviz_adapter, haml as haml_adapter, handlebars as handlebars_adapter, hlsl as hlsl_adapter, hy as hy_adapter, jinja as jinja_adapter, lean as lean_adapter, liquid as liquid_adapter, mermaid as mermaid_adapter, modelica as modelica_adapter, moonbit as moonbit_adapter, move as move_adapter, mustache as mustache_adapter, nextflow as nextflow_adapter, nunjucks as nunjucks_adapter, openqasm as openqasm_adapter, org as org_adapter, plantuml as plantuml_adapter, pug as pug_adapter, rescript as rescript_adapter, roc as roc_adapter, slim as slim_adapter, smarty as smarty_adapter, svelte as svelte_adapter, twig as twig_adapter, vue as vue_adapter, wgsl as wgsl_adapter, wren as wren_adapter  # noqa: E501
+from apps.api_server.services.repository_intelligence_adapters import antlr as antlr_adapter, asciidoc as asciidoc_adapter, astro as astro_adapter, blade as blade_adapter, coffeescript as coffee_adapter, coq as coq_adapter, cuda as cuda_adapter, cython as cython_adapter, dm as dm_adapter, ejs as ejs_adapter, erb as erb_adapter, fennel as fennel_adapter, gherkin as gherkin_adapter, graphviz as graphviz_adapter, haml as haml_adapter, handlebars as handlebars_adapter, hlsl as hlsl_adapter, hy as hy_adapter, jinja as jinja_adapter, lean as lean_adapter, liquid as liquid_adapter, mermaid as mermaid_adapter, modelica as modelica_adapter, moonbit as moonbit_adapter, move as move_adapter, mustache as mustache_adapter, nextflow as nextflow_adapter, nunjucks as nunjucks_adapter, openqasm as openqasm_adapter, org as org_adapter, plantuml as plantuml_adapter, pug as pug_adapter, rescript as rescript_adapter, roc as roc_adapter, slim as slim_adapter, smarty as smarty_adapter, svelte as svelte_adapter, twig as twig_adapter, vue as vue_adapter, wgsl as wgsl_adapter, wren as wren_adapter, vyper as vyper_adapter  # noqa: E501
 from apps.api_server.services.repository_intelligence_adapters import delphi as delphi_adapter, emacslisp as emacslisp_adapter, eiffel as eiffel_adapter  # noqa: E501
 from apps.api_server.services.repository_intelligence_adapters import bitbake as bitbake_adapter, cue as cue_adapter, dockerfile as dockerfile_adapter, factor as factor_adapter, fish as fish_adapter, just as just_adapter, makefile as makefile_adapter  # noqa: E501
 from apps.api_server.services.repository_intelligence_adapters import foxpro as foxpro_adapter, gams as gams_adapter, gdscript as gdscript_adapter, gleam as gleam_adapter, gml as gml_adapter, hack as hack_adapter, haxe as haxe_adapter, idris as idris_adapter  # noqa: E501
@@ -19,13 +19,21 @@ from apps.api_server.services.repository_intelligence_adapters import purescript
 from apps.api_server.services.repository_intelligence_adapters import robotframework as robotframework_adapter, scss as scss_adapter, shaderlab as shaderlab_adapter, smalltalk as smalltalk_adapter, squirrel as squirrel_adapter, stan as stan_adapter, starlark as starlark_adapter, stylus as stylus_adapter, systemverilog as sv_adapter, tlaplus as tlaplus_adapter, tsql as tsql_adapter, typst as typst_adapter, vala as vala_adapter, less as less_adapter  # noqa: E501
 from apps.api_server.services.repository_intelligence_adapters import vba as vba_adapter, vbscript as vbscript_adapter, verilog as verilog_adapter, vhdl as vhdl_adapter  # noqa: E501
 from apps.api_server.services.repository_intelligence_adapters import vimscript as vimscript_adapter, vlang as v_adapter, wolfram as wolfram_adapter, xpp as xpp_adapter  # noqa: E501
+from apps.api_server.services.repository_intelligence_adapters import (
+    al as al_adapter,
+    clojurescript as clojurescript_adapter,
+    groovy as groovy_adapter,
+    opencl as opencl_adapter,
+    qsharp as qsharp_adapter,
+    sass as sass_adapter,
+)
 from apps.api_server.services.repository_intelligence_contracts import _ModuleIndexLookup
 _MODULE_INDEX_LOOKUP_CACHE_LIMIT, _CLASSIC_VISUAL_BASIC_PROJECT_MEMBER_CACHE_LIMIT = 64, 16
 _MODULE_INDEX_LOOKUP_CACHE: dict[tuple[str, ...], _ModuleIndexLookup] = {}; _CLASSIC_VISUAL_BASIC_PROJECT_MEMBER_CACHE: dict[str, frozenset[str]] = {}  # noqa: E702
 _SHELL_FILE_BASENAMES = frozenset({".bash_profile", ".bashrc", ".envrc", ".profile", ".zlogin", ".zlogout", ".zprofile", ".zshenv", ".zshrc", "bash_completion"})  # noqa: E501
 _JS_LIKE_SUFFIXES = (".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"); _AGDA_SUFFIXES, _RAKU_SUFFIXES = frozenset({".agda", ".lagda", ".agda-lib"}), frozenset({".raku", ".rakumod", ".rakutest", ".pm6", ".p6"})  # noqa: E501,E702
 _DIRECT_TEXT_SUFFIX_LANGUAGE_MAP = {
-    ".scad": "openscad", ".gleam": "gleam", ".hy": "hy", ".wren": "wren", ".janet": "janet", ".fnl": "fennel", ".fnlm": "fennel", ".nf": "nextflow", ".nu": "nushell",
+    ".scad": "openscad", ".gleam": "gleam", ".hy": "hy", ".wren": "wren", ".janet": "janet", ".fnl": "fennel", ".fnlm": "fennel", ".vy": "vyper", ".vyi": "vyper", ".nf": "nextflow", ".nu": "nushell",
     ".purs": "purescript", ".mbt": "moonbit", ".mbti": "moonbit", ".gd": "gdscript", ".el": "emacslisp", ".factor": "factor",
     ".fish": "fish", ".bat": "batchfile", ".cmd": "batchfile", ".mk": "makefile",
     ".cmake": "cmake", ".pro": "qmake", ".pri": "qmake", ".prf": "qmake", ".qml": "qml", ".dockerfile": "dockerfile",
@@ -150,8 +158,8 @@ def _language_for_path(path: Path, *, text: str | None = None, repo_root: Path |
         return "antlr" if antlr_adapter.is_probable_antlr_source(path=path, text=text) else "unknown"
     if text is not None and (path.suffix.lower() in graphviz_adapter.GRAPHVIZ_SUFFIXES or path.suffix.lower() in mermaid_adapter.MERMAID_SUFFIXES or path.suffix.lower() in plantuml_adapter.PLANTUML_SUFFIXES or path.suffix.lower() in openqasm_adapter.OPENQASM_SUFFIXES):
         return "graphviz" if path.suffix.lower() in graphviz_adapter.GRAPHVIZ_SUFFIXES and graphviz_adapter.is_probable_graphviz_source(path=path, text=text) else ("mermaid" if path.suffix.lower() in mermaid_adapter.MERMAID_SUFFIXES and mermaid_adapter.is_probable_mermaid_source(path=path, text=text) else ("plantuml" if path.suffix.lower() in plantuml_adapter.PLANTUML_SUFFIXES and plantuml_adapter.is_probable_plantuml_source(path=path, text=text) else ("openqasm" if path.suffix.lower() in openqasm_adapter.OPENQASM_SUFFIXES and openqasm_adapter.is_probable_openqasm_source(path=path, text=text) else "unknown")))  # noqa: E501
-    if text is not None and (path.suffix.lower() in (move_adapter.MOVE_SUFFIXES | modelica_adapter.MODELICA_SUFFIXES | moonbit_adapter.MOONBIT_SOURCE_SUFFIXES | roc_adapter.ROC_SUFFIXES | rescript_adapter.RESCRIPT_SUFFIXES | hy_adapter.HY_SUFFIXES | wren_adapter.WREN_SUFFIXES | fennel_adapter.FENNEL_SUFFIXES | dm_adapter.DM_SUFFIXES) or path.name.lower() in move_adapter.MOVE_CONFIG_BASENAMES or path.name.lower() in moonbit_adapter.MOONBIT_CONFIG_BASENAMES or path.name.lower() in rescript_adapter.RESCRIPT_CONFIG_BASENAMES):
-        return "move" if ((path.suffix.lower() in move_adapter.MOVE_SUFFIXES and move_adapter.is_probable_move_source(path=path, text=text)) or (path.name.lower() in move_adapter.MOVE_CONFIG_BASENAMES and move_adapter.is_probable_move_config(path=path, text=text))) else ("modelica" if path.suffix.lower() in modelica_adapter.MODELICA_SUFFIXES and modelica_adapter.is_probable_modelica_source(path=path, text=text) else ("moonbit" if ((path.suffix.lower() in moonbit_adapter.MOONBIT_SOURCE_SUFFIXES and moonbit_adapter.is_probable_moonbit_source(path=path, text=text)) or (path.name.lower() in moonbit_adapter.MOONBIT_CONFIG_BASENAMES and moonbit_adapter.is_probable_moonbit_config(path=path, text=text))) else ("roc" if path.suffix.lower() in roc_adapter.ROC_SUFFIXES and roc_adapter.is_probable_roc_source(path=path, text=text) else ("rescript" if ((path.suffix.lower() in rescript_adapter.RESCRIPT_SUFFIXES and rescript_adapter.is_probable_rescript_source(path=path, text=text)) or (path.name.lower() in rescript_adapter.RESCRIPT_CONFIG_BASENAMES and rescript_adapter.is_probable_rescript_config(path=path, text=text))) else ("hy" if path.suffix.lower() in hy_adapter.HY_SUFFIXES and hy_adapter.is_probable_hy_source(path=path, text=text) else ("wren" if path.suffix.lower() in wren_adapter.WREN_SUFFIXES and wren_adapter.is_probable_wren_source(path=path, text=text) else ("fennel" if path.suffix.lower() in fennel_adapter.FENNEL_SUFFIXES and fennel_adapter.is_probable_fennel_source(path=path, text=text) else ("dm" if path.suffix.lower() in dm_adapter.DM_SUFFIXES and dm_adapter.is_probable_dm_source(path=path, text=text) else "unknown"))))))))  # noqa: E501
+    if text is not None and (path.suffix.lower() in (move_adapter.MOVE_SUFFIXES | modelica_adapter.MODELICA_SUFFIXES | moonbit_adapter.MOONBIT_SOURCE_SUFFIXES | roc_adapter.ROC_SUFFIXES | rescript_adapter.RESCRIPT_SUFFIXES | hy_adapter.HY_SUFFIXES | wren_adapter.WREN_SUFFIXES | fennel_adapter.FENNEL_SUFFIXES | vyper_adapter.VYPER_SUFFIXES | dm_adapter.DM_SUFFIXES) or path.name.lower() in move_adapter.MOVE_CONFIG_BASENAMES or path.name.lower() in moonbit_adapter.MOONBIT_CONFIG_BASENAMES or path.name.lower() in rescript_adapter.RESCRIPT_CONFIG_BASENAMES):
+        return "move" if ((path.suffix.lower() in move_adapter.MOVE_SUFFIXES and move_adapter.is_probable_move_source(path=path, text=text)) or (path.name.lower() in move_adapter.MOVE_CONFIG_BASENAMES and move_adapter.is_probable_move_config(path=path, text=text))) else ("modelica" if path.suffix.lower() in modelica_adapter.MODELICA_SUFFIXES and modelica_adapter.is_probable_modelica_source(path=path, text=text) else ("moonbit" if ((path.suffix.lower() in moonbit_adapter.MOONBIT_SOURCE_SUFFIXES and moonbit_adapter.is_probable_moonbit_source(path=path, text=text)) or (path.name.lower() in moonbit_adapter.MOONBIT_CONFIG_BASENAMES and moonbit_adapter.is_probable_moonbit_config(path=path, text=text))) else ("roc" if path.suffix.lower() in roc_adapter.ROC_SUFFIXES and roc_adapter.is_probable_roc_source(path=path, text=text) else ("rescript" if ((path.suffix.lower() in rescript_adapter.RESCRIPT_SUFFIXES and rescript_adapter.is_probable_rescript_source(path=path, text=text)) or (path.name.lower() in rescript_adapter.RESCRIPT_CONFIG_BASENAMES and rescript_adapter.is_probable_rescript_config(path=path, text=text))) else ("hy" if path.suffix.lower() in hy_adapter.HY_SUFFIXES and hy_adapter.is_probable_hy_source(path=path, text=text) else ("wren" if path.suffix.lower() in wren_adapter.WREN_SUFFIXES and wren_adapter.is_probable_wren_source(path=path, text=text) else ("fennel" if path.suffix.lower() in fennel_adapter.FENNEL_SUFFIXES and fennel_adapter.is_probable_fennel_source(path=path, text=text) else ("vyper" if path.suffix.lower() in vyper_adapter.VYPER_SUFFIXES and vyper_adapter.is_probable_vyper_source(path=path, text=text) else ("dm" if path.suffix.lower() in dm_adapter.DM_SUFFIXES and dm_adapter.is_probable_dm_source(path=path, text=text) else "unknown")))))))))  # noqa: E501
     if path.name.lower() in cmake_adapter.CMAKE_CONFIG_BASENAMES and text is not None:
         return "cmake" if cmake_adapter.is_probable_cmake_source(path=path, text=text) else "unknown"  # noqa: E501
     if path.name.lower() in meson_adapter.MESON_CONFIG_BASENAMES and text is not None:
@@ -164,6 +172,36 @@ def _language_for_path(path: Path, *, text: str | None = None, repo_root: Path |
         return "gherkin" if gherkin_adapter.is_probable_gherkin_source(path=path, text=text) else "unknown"
     if text is not None and path.suffix.lower() in nextflow_adapter.NEXTFLOW_SOURCE_SUFFIXES:
         return "nextflow" if nextflow_adapter.is_probable_nextflow_source(path=path, text=text) else "unknown"  # noqa: E501
+    if text is not None and sass_adapter.has_sass_path_hints(path):
+        return "sass" if sass_adapter.is_probable_sass_source(path=path, text=text) else "unknown"
+    if text is not None and (
+        path.suffix.lower() in qsharp_adapter.QSHARP_SUFFIXES
+        or path.name.lower() in qsharp_adapter.QSHARP_CONFIG_BASENAMES
+    ):
+        return "qsharp" if (
+            (
+                path.suffix.lower() in qsharp_adapter.QSHARP_SUFFIXES
+                and qsharp_adapter.is_probable_qsharp_source(path=path, text=text)
+            )
+            or (
+                path.name.lower() in qsharp_adapter.QSHARP_CONFIG_BASENAMES
+                and qsharp_adapter.is_probable_qsharp_config(path=path, text=text)
+            )
+        ) else "unknown"
+    if text is not None and opencl_adapter.has_opencl_path_hints(path):
+        return "opencl" if opencl_adapter.is_probable_opencl_source(path=path, text=text) else "unknown"
+    if text is not None and (
+        path.suffix.lower() in clojurescript_adapter.CLOJURESCRIPT_SUFFIXES
+        or path.name.lower() in clojurescript_adapter.CLOJURESCRIPT_CONFIG_NAMES
+    ):
+        return "clojurescript" if clojurescript_adapter.is_probable_clojurescript_source(
+            path=path,
+            text=text,
+        ) else "unknown"
+    if text is not None and al_adapter.has_al_path_hints(path):
+        return "al" if al_adapter.is_probable_al_source(path=path, text=text) else "unknown"
+    if text is not None and groovy_adapter.has_groovy_path_hints(path=path):
+        return "groovy" if groovy_adapter.is_probable_groovy_source(path=path, text=text) else "unknown"
     if text is not None and (path.suffix.lower() in typst_adapter.TYPST_SUFFIXES or path.name.lower() in typst_adapter.TYPST_CONFIG_BASENAMES):
         return "typst" if ((path.suffix.lower() in typst_adapter.TYPST_SUFFIXES and typst_adapter.is_probable_typst_source(path=path, text=text)) or (path.name.lower() in typst_adapter.TYPST_CONFIG_BASENAMES and typst_adapter.is_probable_typst_config(path=path, text=text))) else "unknown"  # noqa: E501
     if text is not None and (path.suffix.lower() in (jinja_adapter.JINJA_SUFFIXES | liquid_adapter.LIQUID_SUFFIXES | handlebars_adapter.HANDLEBARS_SUFFIXES | mustache_adapter.MUSTACHE_SUFFIXES | nunjucks_adapter.NUNJUCKS_SUFFIXES | twig_adapter.TWIG_SUFFIXES | haml_adapter.HAML_SUFFIXES | slim_adapter.SLIM_SUFFIXES | erb_adapter.ERB_SUFFIXES) or path.suffix.lower() in smarty_adapter.SMARTY_SUFFIXES):
@@ -453,7 +491,7 @@ def _language_for_path(path: Path, *, text: str | None = None, repo_root: Path |
     if suffix in _DIRECT_TEXT_SUFFIX_LANGUAGE_MAP:
         return _DIRECT_TEXT_SUFFIX_LANGUAGE_MAP[suffix]
     if suffix in {".sml", ".sig", ".fun"}:
-        return "ml"
+        return "sml"
     if suffix == ".m":
         if text is not None and matlab_adapter.is_probable_matlab_source(path=path, text=text):
             return "matlab"
@@ -535,7 +573,7 @@ def _language_for_path(path: Path, *, text: str | None = None, repo_root: Path |
         ".cc": "cpp",
         ".clj": "clojure",
         ".cljc": "clojure",
-        ".cljs": "clojure",
+        ".cljs": "clojurescript",
         ".cob": "cobol",
         ".cobol": "cobol",
         ".coffee": "coffeescript",
@@ -588,7 +626,7 @@ def _language_for_path(path: Path, *, text: str | None = None, repo_root: Path |
         ".mj": "mojo",
         ".mq5": "mql5",
         ".mqh": "mql5",
-        ".mqproj": "mql5", ".gms": "gams", ".hy": "hy", ".wren": "wren", ".janet": "janet", ".fnl": "fennel", ".fnlm": "fennel", ".ipkg": "idris",
+        ".mqproj": "mql5", ".gms": "gams", ".hy": "hy", ".wren": "wren", ".janet": "janet", ".fnl": "fennel", ".fnlm": "fennel", ".vy": "vyper", ".vyi": "vyper", ".ipkg": "idris",
         ".odin": "odin", ".factor": "factor",
         ".lagda": "agda",
         ".lidr": "idris",

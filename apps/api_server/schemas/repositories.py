@@ -73,6 +73,9 @@ class RepositorySnapshotResponse(BaseModel):
     repository_graph_artifact: RepositoryArtifactRef
     symbol_graph_artifact: RepositoryArtifactRef
     dependency_graph_artifact: RepositoryArtifactRef
+    # AR-OPT-2: optional so v1 snapshots created before the slim-manifest work
+    # (which have no symbol-reference Parquet artifact) still validate.
+    symbol_reference_artifact: RepositoryArtifactRef | None = None
 
 
 class RepositoryLanguageSupportProgress(BaseModel):

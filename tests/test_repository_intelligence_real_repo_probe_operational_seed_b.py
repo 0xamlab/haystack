@@ -303,7 +303,7 @@ def test_operational_seed_plan_without_diagnostics_uses_mlb_profile(tmp_path: Pa
         max_files=128,
     )
 
-    assert seed_plan["detected_ecosystems"] == ["ml"]
+    assert seed_plan["detected_ecosystems"] == ["sml"]
     assert "project.mlb" in seed_plan["config_paths"]
     assert "src" in seed_plan["support_roots"]
     assert "src/Main.sml" in seed_plan["entrypoint_files"]
@@ -751,5 +751,4 @@ def test_operational_seed_plan_without_diagnostics_seeds_support_scan_from_entry
         assert "pkgs/http_parser/lib/http_parser.dart" in candidate_calls[0]["seed_paths"]
         assert "pkgs/http_parser/lib" in candidate_calls[0]["bridge_paths"]
     assert "pkgs/http_parser/lib/src/media_type.dart" in seed_plan["candidate_file_paths"]
-
 

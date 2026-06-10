@@ -115,7 +115,16 @@ from apps.api_server.services import (
 from apps.api_server.services import (
     repository_intelligence_idris_parser_dispatch as repository_idris_parser_dispatch,
 )
-from apps.api_server.services import repository_intelligence_hy_parser_dispatch as repository_intelligence_hy_parser_dispatch, repository_intelligence_fennel_parser_dispatch as repository_intelligence_fennel_parser_dispatch, repository_intelligence_wren_parser_dispatch as repository_intelligence_wren_parser_dispatch, repository_intelligence_janet_parser_dispatch as repository_janet_parser_dispatch, repository_intelligence_nextflow_parser_dispatch as repository_intelligence_nextflow_parser_dispatch, repository_intelligence_moonbit_parser_dispatch as repository_intelligence_moonbit_parser_dispatch  # noqa: E501
+from apps.api_server.services import repository_intelligence_hy_parser_dispatch as repository_intelligence_hy_parser_dispatch, repository_intelligence_fennel_parser_dispatch as repository_intelligence_fennel_parser_dispatch, repository_intelligence_wren_parser_dispatch as repository_intelligence_wren_parser_dispatch, repository_intelligence_janet_parser_dispatch as repository_janet_parser_dispatch, repository_intelligence_nextflow_parser_dispatch as repository_intelligence_nextflow_parser_dispatch, repository_intelligence_moonbit_parser_dispatch as repository_intelligence_moonbit_parser_dispatch, repository_intelligence_vyper_parser_dispatch as repository_intelligence_vyper_parser_dispatch  # noqa: E501
+from apps.api_server.services import (
+    repository_intelligence_al_parser_dispatch as repository_intelligence_al_parser_dispatch,
+    repository_intelligence_clojurescript_parser_dispatch as repository_intelligence_clojurescript_parser_dispatch,
+    repository_intelligence_groovy_parser_dispatch as repository_intelligence_groovy_parser_dispatch,
+    repository_intelligence_opencl_parser_dispatch as repository_intelligence_opencl_parser_dispatch,
+    repository_intelligence_qsharp_parser_dispatch as repository_intelligence_qsharp_parser_dispatch,
+    repository_intelligence_sass_parser_dispatch as repository_intelligence_sass_parser_dispatch,
+    repository_intelligence_sml_parser_dispatch as repository_intelligence_sml_parser_dispatch,
+)
 from apps.api_server.services import (
     repository_intelligence_logtalk_parser_dispatch as repository_logtalk_parser_dispatch,
 )
@@ -202,7 +211,16 @@ from apps.api_server.services.repository_intelligence_adapters import (
 )
 from apps.api_server.services.repository_intelligence_adapters import just as just_adapter, dockerfile as dockerfile_adapter, cuda as cuda_adapter, robotframework as robotframework_adapter  # noqa: E501
 from apps.api_server.services.repository_intelligence_adapters import scss as scss_adapter, less as less_adapter, stylus as stylus_adapter  # noqa: E501
-from apps.api_server.services.repository_intelligence_adapters import antlr as antlr_adapter, astro as astro_adapter, svelte as svelte_adapter, pug as pug_adapter, dm as dm_adapter, ejs as ejs_adapter, blade as blade_adapter, fennel as fennel_adapter, gherkin as gherkin_adapter, graphviz as graphviz_adapter, hy as hy_adapter, mermaid as mermaid_adapter, modelica as modelica_adapter, moonbit as moonbit_adapter, move as move_adapter, nextflow as nextflow_adapter, openqasm as openqasm_adapter, plantuml as plantuml_adapter, rescript as rescript_adapter, roc as roc_adapter, smarty as smarty_adapter, wren as wren_adapter  # noqa: E501
+from apps.api_server.services.repository_intelligence_adapters import antlr as antlr_adapter, astro as astro_adapter, svelte as svelte_adapter, pug as pug_adapter, dm as dm_adapter, ejs as ejs_adapter, blade as blade_adapter, fennel as fennel_adapter, gherkin as gherkin_adapter, graphviz as graphviz_adapter, hy as hy_adapter, mermaid as mermaid_adapter, modelica as modelica_adapter, moonbit as moonbit_adapter, move as move_adapter, nextflow as nextflow_adapter, openqasm as openqasm_adapter, plantuml as plantuml_adapter, rescript as rescript_adapter, roc as roc_adapter, smarty as smarty_adapter, wren as wren_adapter, vyper as vyper_adapter  # noqa: E501
+from apps.api_server.services.repository_intelligence_adapters import (
+    al as al_adapter,
+    clojurescript as clojurescript_adapter,
+    groovy as groovy_adapter,
+    opencl as opencl_adapter,
+    qsharp as qsharp_adapter,
+    sass as sass_adapter,
+    sml as sml_adapter,
+)
 from apps.api_server.services.repository_intelligence_adapters import jinja as jinja_adapter, liquid as liquid_adapter, handlebars as handlebars_adapter, mustache as mustache_adapter, nunjucks as nunjucks_adapter, twig as twig_adapter, haml as haml_adapter, slim as slim_adapter, erb as erb_adapter  # noqa: E501
 from apps.api_server.services.repository_intelligence_adapters import hlsl as hlsl_adapter, wgsl as wgsl_adapter, shaderlab as shaderlab_adapter, cython as cython_adapter, stan as stan_adapter, protobuf as protobuf_adapter  # noqa: E501
 from apps.api_server.services.repository_intelligence_adapters import asciidoc as asciidoc_adapter, org as org_adapter, rst as rst_adapter, tex as tex_adapter, typst as typst_adapter, cmake as cmake_adapter, meson as meson_adapter  # noqa: E501
@@ -356,7 +374,7 @@ _RENAMED_EXPORTS: dict[str, object] = {
     "plantuml_adapter": plantuml_adapter,
     "openqasm_adapter": openqasm_adapter,
     "move_adapter": move_adapter, "dm_adapter": dm_adapter,
-    "hy_adapter": hy_adapter, "wren_adapter": wren_adapter, "fennel_adapter": fennel_adapter, "nextflow_adapter": nextflow_adapter, "moonbit_adapter": moonbit_adapter,
+    "hy_adapter": hy_adapter, "wren_adapter": wren_adapter, "fennel_adapter": fennel_adapter, "vyper_adapter": vyper_adapter, "nextflow_adapter": nextflow_adapter, "moonbit_adapter": moonbit_adapter,
     "modelica_adapter": modelica_adapter,
     "rescript_adapter": rescript_adapter,
     "roc_adapter": roc_adapter,
@@ -465,8 +483,8 @@ _RENAMED_EXPORTS: dict[str, object] = {
     "_parse_openqasm_file": repository_intelligence_openqasm_parser_dispatch._parse_openqasm_file,
     "_parse_move_dependencies_only": repository_intelligence_move_parser_dispatch._parse_move_dependencies_only, "_parse_dm_dependencies_only": repository_intelligence_dm_parser_dispatch._parse_dm_dependencies_only,
     "_parse_move_file": repository_intelligence_move_parser_dispatch._parse_move_file, "_parse_dm_file": repository_intelligence_dm_parser_dispatch._parse_dm_file,
-    "_parse_hy_dependencies_only": repository_intelligence_hy_parser_dispatch._parse_hy_dependencies_only, "_parse_wren_dependencies_only": repository_intelligence_wren_parser_dispatch._parse_wren_dependencies_only, "_parse_fennel_dependencies_only": repository_intelligence_fennel_parser_dispatch._parse_fennel_dependencies_only, "_parse_nextflow_dependencies_only": repository_intelligence_nextflow_parser_dispatch._parse_nextflow_dependencies_only, "_parse_moonbit_dependencies_only": repository_intelligence_moonbit_parser_dispatch._parse_moonbit_dependencies_only,
-    "_parse_hy_file": repository_intelligence_hy_parser_dispatch._parse_hy_file, "_parse_wren_file": repository_intelligence_wren_parser_dispatch._parse_wren_file, "_parse_fennel_file": repository_intelligence_fennel_parser_dispatch._parse_fennel_file, "_parse_nextflow_file": repository_intelligence_nextflow_parser_dispatch._parse_nextflow_file, "_parse_moonbit_file": repository_intelligence_moonbit_parser_dispatch._parse_moonbit_file,
+    "_parse_hy_dependencies_only": repository_intelligence_hy_parser_dispatch._parse_hy_dependencies_only, "_parse_wren_dependencies_only": repository_intelligence_wren_parser_dispatch._parse_wren_dependencies_only, "_parse_fennel_dependencies_only": repository_intelligence_fennel_parser_dispatch._parse_fennel_dependencies_only, "_parse_vyper_dependencies_only": repository_intelligence_vyper_parser_dispatch._parse_vyper_dependencies_only, "_parse_nextflow_dependencies_only": repository_intelligence_nextflow_parser_dispatch._parse_nextflow_dependencies_only, "_parse_moonbit_dependencies_only": repository_intelligence_moonbit_parser_dispatch._parse_moonbit_dependencies_only,
+    "_parse_hy_file": repository_intelligence_hy_parser_dispatch._parse_hy_file, "_parse_wren_file": repository_intelligence_wren_parser_dispatch._parse_wren_file, "_parse_fennel_file": repository_intelligence_fennel_parser_dispatch._parse_fennel_file, "_parse_vyper_file": repository_intelligence_vyper_parser_dispatch._parse_vyper_file, "_parse_nextflow_file": repository_intelligence_nextflow_parser_dispatch._parse_nextflow_file, "_parse_moonbit_file": repository_intelligence_moonbit_parser_dispatch._parse_moonbit_file,
     "_parse_modelica_dependencies_only": repository_intelligence_modelica_parser_dispatch._parse_modelica_dependencies_only,
     "_parse_modelica_file": repository_intelligence_modelica_parser_dispatch._parse_modelica_file,
     "_parse_rescript_dependencies_only": repository_intelligence_rescript_parser_dispatch._parse_rescript_dependencies_only,
@@ -561,6 +579,31 @@ _RENAMED_EXPORTS: dict[str, object] = {
         re.MULTILINE,
     ),
 }
+_RENAMED_EXPORTS.update(
+    {
+        "sass_adapter": sass_adapter,
+        "qsharp_adapter": qsharp_adapter,
+        "opencl_adapter": opencl_adapter,
+        "clojurescript_adapter": clojurescript_adapter,
+        "al_adapter": al_adapter,
+        "sml_adapter": sml_adapter,
+        "groovy_adapter": groovy_adapter,
+        "_parse_sass_dependencies_only": repository_intelligence_sass_parser_dispatch._parse_sass_dependencies_only,
+        "_parse_sass_file": repository_intelligence_sass_parser_dispatch._parse_sass_file,
+        "_parse_qsharp_dependencies_only": repository_intelligence_qsharp_parser_dispatch._parse_qsharp_dependencies_only,
+        "_parse_qsharp_file": repository_intelligence_qsharp_parser_dispatch._parse_qsharp_file,
+        "_parse_opencl_dependencies_only": repository_intelligence_opencl_parser_dispatch._parse_opencl_dependencies_only,
+        "_parse_opencl_file": repository_intelligence_opencl_parser_dispatch._parse_opencl_file,
+        "_parse_clojurescript_dependencies_only": repository_intelligence_clojurescript_parser_dispatch._parse_clojurescript_dependencies_only,
+        "_parse_clojurescript_file": repository_intelligence_clojurescript_parser_dispatch._parse_clojurescript_file,
+        "_parse_al_dependencies_only": repository_intelligence_al_parser_dispatch._parse_al_dependencies_only,
+        "_parse_al_file": repository_intelligence_al_parser_dispatch._parse_al_file,
+        "_parse_sml_dependencies_only": repository_intelligence_sml_parser_dispatch._parse_sml_dependencies_only,
+        "_parse_sml_file": repository_intelligence_sml_parser_dispatch._parse_sml_file,
+        "_parse_groovy_dependencies_only": repository_intelligence_groovy_parser_dispatch._parse_groovy_dependencies_only,
+        "_parse_groovy_file": repository_intelligence_groovy_parser_dispatch._parse_groovy_file,
+    }
+)
 _RENAMED_EXPORTS.update(
     _prefixed_exports(
         "_JS_",
@@ -934,6 +977,14 @@ _SAME_NAME_EXPORT_MODULES = (
     repository_idris_parser_dispatch,
     repository_intelligence_hy_parser_dispatch, repository_intelligence_wren_parser_dispatch,
     repository_intelligence_fennel_parser_dispatch,
+    repository_intelligence_vyper_parser_dispatch,
+    repository_intelligence_sass_parser_dispatch,
+    repository_intelligence_qsharp_parser_dispatch,
+    repository_intelligence_opencl_parser_dispatch,
+    repository_intelligence_clojurescript_parser_dispatch,
+    repository_intelligence_al_parser_dispatch,
+    repository_intelligence_sml_parser_dispatch,
+    repository_intelligence_groovy_parser_dispatch,
     repository_intelligence_nextflow_parser_dispatch,
     repository_intelligence_moonbit_parser_dispatch,
     repository_janet_parser_dispatch,

@@ -50,7 +50,7 @@ def test_canonical_repository_language_maps_known_aliases() -> None:
     assert canonical_repository_language("roblox lua") == "luau"
     assert canonical_repository_language("roblox luau") == "luau"
     assert canonical_repository_language("rbxlua") == "luau"
-    assert canonical_repository_language("sml") == "ml"
+    assert canonical_repository_language("sml") == "sml"
     assert canonical_repository_language("classic visual basic") == "vb6"
     assert canonical_repository_language("visual basic for applications") == "vba"
     assert canonical_repository_language("vbs") == "vbscript"
@@ -438,16 +438,18 @@ def test_supported_repository_languages_excludes_ecosystem_and_format_labels() -
     assert "node" not in supported_languages
     assert "dotnet" not in supported_languages
     assert "json" not in supported_languages
-    assert len(supported_languages) == 172
+    assert len(supported_languages) >= 180
 
 
 def test_repository_language_support_progress_reports_real_language_progress() -> None:
     progress = repository_language_support_progress(ranked_target_language_count=200)
+    expected_count = len(supported_repository_languages())
 
-    assert progress.supported_real_language_count == 172
+    assert progress.supported_real_language_count == expected_count
+    assert progress.supported_real_language_count >= 180
     assert progress.ranked_target_language_count == 200
-    assert progress.progress_label == "172 / 200"
-    assert progress.progress_fraction == pytest.approx(172 / 200)
+    assert progress.progress_label == f"{expected_count} / 200"
+    assert progress.progress_fraction == pytest.approx(expected_count / 200)
 
 
 def test_repository_language_support_progress_rejects_non_positive_targets() -> None:

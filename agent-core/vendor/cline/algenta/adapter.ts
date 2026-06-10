@@ -12,7 +12,8 @@ export interface RunAgentArgs {
   injected_context?: string; // token-compressed evidence bundle (repo intelligence)
   provider?: string; // default "anthropic"
   model?: string; // default = provider's defaultModelId
-  suppress_exploration?: boolean; // token-reduction mode: block read/search/fetch tools
+  suppress_exploration?: boolean; // legacy token-reduction flag: block read/search/fetch tools
+  tool_profile?: string; // AR-OPT-4 tool profile (takes precedence over suppress_exploration)
   limits?: { maxIterations?: number; timeoutMs?: number };
 }
 
@@ -28,7 +29,25 @@ export interface RunAgentResult {
 }
 
 const EXPLORATION_TOOLS = ["read_files", "search_codebase", "fetch_web_content", "ask_question"];
+const SHELL_TOOLS = ["run_commands"];
 const WRITE_TOOLS = new Set(["editor", "apply_patch"]);
+
+// AR-OPT-4 tool profiles — trim the agent's tool surface to cut exploration tokens.
+//   no_exploration_no_shell         -> block exploration AND the shell (most token-frugal;
+//                                       the agent edits purely from the injected bundle).
+//   no_exploration_local_validation -> block exploration; keep the shell so the agent may
+//                                       validate its patch in-sandbox after editing.
+// Falls back to the legacy suppress_exploration flag when no profile is given.
+function suppressedTools(args: RunAgentArgs): string[] {
+  switch (args.tool_profile) {
+    case "no_exploration_no_shell":
+      return [...EXPLORATION_TOOLS, ...SHELL_TOOLS];
+    case "no_exploration_local_validation":
+      return [...EXPLORATION_TOOLS];
+    default:
+      return args.suppress_exploration ? [...EXPLORATION_TOOLS] : [];
+  }
+}
 
 export async function runAgent(args: RunAgentArgs): Promise<RunAgentResult> {
   // 1) Resolve provider/model/apiKey from .env via the SDK catalog — any provider.
@@ -49,9 +68,7 @@ export async function runAgent(args: RunAgentArgs): Promise<RunAgentResult> {
   const toolPolicies: Record<string, { enabled?: boolean; autoApprove?: boolean }> = {
     "*": { enabled: true, autoApprove: true },
   };
-  if (args.suppress_exploration) {
-    for (const t of EXPLORATION_TOOLS) toolPolicies[t] = { enabled: false };
-  }
+  for (const t of suppressedTools(args)) toolPolicies[t] = { enabled: false };
 
   const systemPrompt =
     "You are Algenta's automated repository-fixing agent. Apply the requested change using " +

@@ -136,6 +136,9 @@ class ChatCompletionResult:
     completion_tokens: int
     provider: ProviderExecutionMetadata | None = None
     provider_attempts: tuple[ProviderAttemptRecord, ...] = field(default_factory=tuple)
+    # AR-OPT-1: Anthropic prompt-cache token split (0 when caching is unused/unsupported).
+    cache_read_tokens: int = 0
+    cache_write_tokens: int = 0
 
 
 @dataclass(frozen=True)

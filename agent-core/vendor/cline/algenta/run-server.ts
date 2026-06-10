@@ -48,6 +48,13 @@ const server = http.createServer((req, res) => {
         return;
       }
       try {
+        const taskSpec = (payload.task_spec ?? {}) as Record<string, unknown>;
+        const toolProfile =
+          typeof payload.tool_profile === "string"
+            ? (payload.tool_profile as string)
+            : typeof taskSpec.tool_profile === "string"
+              ? (taskSpec.tool_profile as string)
+              : undefined;
         const result = await runAgent({
           working_dir: String(payload.working_dir ?? ""),
           prompt: buildPrompt(payload),
@@ -55,6 +62,7 @@ const server = http.createServer((req, res) => {
           provider: payload.provider ? String(payload.provider) : undefined,
           model: payload.model ? String(payload.model) : undefined,
           suppress_exploration: Boolean(payload.suppress_exploration),
+          tool_profile: toolProfile,
           limits: payload.limits as { maxIterations?: number; timeoutMs?: number } | undefined,
         });
         res.write(

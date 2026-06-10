@@ -19,8 +19,17 @@ from apps.api_server.services import repository_intelligence_hcl_parser_dispatch
 from apps.api_server.services import repository_intelligence_hlsl_parser_dispatch as hlpd
 from apps.api_server.services import repository_intelligence_wgsl_parser_dispatch as wpd
 from apps.api_server.services import repository_intelligence_idris_parser_dispatch as ipd
-from apps.api_server.services import repository_intelligence_antlr_parser_dispatch as anpd, repository_intelligence_asciidoc_parser_dispatch as adpd, repository_intelligence_blade_parser_dispatch as blpd, repository_intelligence_cuda_parser_dispatch as ctd, repository_intelligence_cython_parser_dispatch as cypd, repository_intelligence_dm_parser_dispatch as dmpd, repository_intelligence_dockerfile_parser_dispatch as dfd, repository_intelligence_ejs_parser_dispatch as ejpd, repository_intelligence_erb_parser_dispatch as erpd, repository_intelligence_fennel_parser_dispatch as fnpd, repository_intelligence_gherkin_parser_dispatch as ghpd, repository_intelligence_graphviz_parser_dispatch as gvpd, repository_intelligence_haml_parser_dispatch as hmpd, repository_intelligence_handlebars_parser_dispatch as hbpd, repository_intelligence_hy_parser_dispatch as hypd, repository_intelligence_janet_parser_dispatch as jpd, repository_intelligence_jinja_parser_dispatch as jnd, repository_intelligence_just_parser_dispatch as jstd, repository_intelligence_lean_parser_dispatch as lpd, repository_intelligence_liquid_parser_dispatch as lqd, repository_intelligence_logtalk_parser_dispatch as lgd, repository_intelligence_mermaid_parser_dispatch as mmpd, repository_intelligence_modelica_parser_dispatch as mdpd, repository_intelligence_moonbit_parser_dispatch as mbpd, repository_intelligence_move_parser_dispatch as mvpd, repository_intelligence_mustache_parser_dispatch as mpstpd, repository_intelligence_nextflow_parser_dispatch as nfpd, repository_intelligence_nunjucks_parser_dispatch as njpd, repository_intelligence_openqasm_parser_dispatch as oqpd, repository_intelligence_org_parser_dispatch as orgpd, repository_intelligence_plantuml_parser_dispatch as pupd, repository_intelligence_protobuf_parser_dispatch as ppbd, repository_intelligence_pug_parser_dispatch as pugpd, repository_intelligence_rescript_parser_dispatch as rscpd, repository_intelligence_robotframework_parser_dispatch as rfpd, repository_intelligence_roc_parser_dispatch as rocpd, repository_intelligence_rst_parser_dispatch as rspd, repository_intelligence_scss_parser_dispatch as scpd, repository_intelligence_shaderlab_parser_dispatch as shpd, repository_intelligence_slim_parser_dispatch as slpd, repository_intelligence_smarty_parser_dispatch as smpd, repository_intelligence_stan_parser_dispatch as spd, repository_intelligence_tex_parser_dispatch as txpd, repository_intelligence_twig_parser_dispatch as twpd, repository_intelligence_typst_parser_dispatch as tpd2, repository_intelligence_wren_parser_dispatch as wrpd  # noqa: E501
+from apps.api_server.services import repository_intelligence_antlr_parser_dispatch as anpd, repository_intelligence_asciidoc_parser_dispatch as adpd, repository_intelligence_blade_parser_dispatch as blpd, repository_intelligence_cuda_parser_dispatch as ctd, repository_intelligence_cython_parser_dispatch as cypd, repository_intelligence_dm_parser_dispatch as dmpd, repository_intelligence_dockerfile_parser_dispatch as dfd, repository_intelligence_ejs_parser_dispatch as ejpd, repository_intelligence_erb_parser_dispatch as erpd, repository_intelligence_fennel_parser_dispatch as fnpd, repository_intelligence_gherkin_parser_dispatch as ghpd, repository_intelligence_graphviz_parser_dispatch as gvpd, repository_intelligence_haml_parser_dispatch as hmpd, repository_intelligence_handlebars_parser_dispatch as hbpd, repository_intelligence_hy_parser_dispatch as hypd, repository_intelligence_janet_parser_dispatch as jpd, repository_intelligence_jinja_parser_dispatch as jnd, repository_intelligence_just_parser_dispatch as jstd, repository_intelligence_lean_parser_dispatch as lpd, repository_intelligence_liquid_parser_dispatch as lqd, repository_intelligence_logtalk_parser_dispatch as lgd, repository_intelligence_mermaid_parser_dispatch as mmpd, repository_intelligence_modelica_parser_dispatch as mdpd, repository_intelligence_moonbit_parser_dispatch as mbpd, repository_intelligence_move_parser_dispatch as mvpd, repository_intelligence_mustache_parser_dispatch as mpstpd, repository_intelligence_nextflow_parser_dispatch as nfpd, repository_intelligence_nunjucks_parser_dispatch as njpd, repository_intelligence_openqasm_parser_dispatch as oqpd, repository_intelligence_org_parser_dispatch as orgpd, repository_intelligence_plantuml_parser_dispatch as pupd, repository_intelligence_protobuf_parser_dispatch as ppbd, repository_intelligence_pug_parser_dispatch as pugpd, repository_intelligence_rescript_parser_dispatch as rscpd, repository_intelligence_robotframework_parser_dispatch as rfpd, repository_intelligence_roc_parser_dispatch as rocpd, repository_intelligence_rst_parser_dispatch as rspd, repository_intelligence_scss_parser_dispatch as scpd, repository_intelligence_shaderlab_parser_dispatch as shpd, repository_intelligence_slim_parser_dispatch as slpd, repository_intelligence_smarty_parser_dispatch as smpd, repository_intelligence_stan_parser_dispatch as spd, repository_intelligence_tex_parser_dispatch as txpd, repository_intelligence_twig_parser_dispatch as twpd, repository_intelligence_typst_parser_dispatch as tpd2, repository_intelligence_wren_parser_dispatch as wrpd, repository_intelligence_vyper_parser_dispatch as vypd  # noqa: E501
 from apps.api_server.services import repository_intelligence_astro_parser_dispatch as astpd, repository_intelligence_less_parser_dispatch as lepd, repository_intelligence_luau_parser_dispatch as lud, repository_intelligence_makefile_parser_dispatch as mpd, repository_intelligence_meson_parser_dispatch as msd, repository_intelligence_odin_parser_dispatch as opd, repository_intelligence_qmake_parser_dispatch as qpd, repository_intelligence_qml_parser_dispatch as qmd, repository_intelligence_stylus_parser_dispatch as sypd, repository_intelligence_svelte_parser_dispatch as svpd, repository_intelligence_vue_parser_dispatch as vpd  # noqa: E501
+from apps.api_server.services import (
+    repository_intelligence_al_parser_dispatch as alpd,
+    repository_intelligence_clojurescript_parser_dispatch as cljspd,
+    repository_intelligence_groovy_parser_dispatch as grpd,
+    repository_intelligence_opencl_parser_dispatch as oclpd,
+    repository_intelligence_qsharp_parser_dispatch as qspd,
+    repository_intelligence_sass_parser_dispatch as sspd,
+    repository_intelligence_sml_parser_dispatch as smlpd,
+)
 from apps.api_server.services import repository_intelligence_puppet_parser_dispatch as ppd, repository_intelligence_rego_parser_dispatch as rpd, repository_intelligence_tlaplus_parser_dispatch as tpd  # noqa: E501
 from apps.api_server.services import repository_intelligence_language_resolution as rlr
 from apps.api_server.services import repository_intelligence_native_dispatch as rnd
@@ -901,7 +910,14 @@ REGISTERED_ADAPTER_DEPENDENCY_PARSERS = {
     "agda": apd._parse_agda_dependencies_only,
     "idris": ipd._parse_idris_dependencies_only,
     "rego": rpd._parse_rego_dependencies_only, "yara": ypd._parse_yara_dependencies_only,
-    "hy": hypd._parse_hy_dependencies_only, "wren": wrpd._parse_wren_dependencies_only, "janet": jpd._parse_janet_dependencies_only, "fennel": fnpd._parse_fennel_dependencies_only, "nextflow": nfpd._parse_nextflow_dependencies_only, "bicep": bpd._parse_bicep_dependencies_only,
+    "hy": hypd._parse_hy_dependencies_only, "wren": wrpd._parse_wren_dependencies_only, "janet": jpd._parse_janet_dependencies_only, "fennel": fnpd._parse_fennel_dependencies_only, "vyper": vypd._parse_vyper_dependencies_only, "nextflow": nfpd._parse_nextflow_dependencies_only, "bicep": bpd._parse_bicep_dependencies_only,
+    "sass": sspd._parse_sass_dependencies_only,
+    "qsharp": qspd._parse_qsharp_dependencies_only,
+    "opencl": oclpd._parse_opencl_dependencies_only,
+    "clojurescript": cljspd._parse_clojurescript_dependencies_only,
+    "al": alpd._parse_al_dependencies_only,
+    "sml": smlpd._parse_sml_dependencies_only,
+    "groovy": grpd._parse_groovy_dependencies_only,
     "dhall": dpd._parse_dhall_dependencies_only,
     "puppet": ppd._parse_puppet_dependencies_only,
     "tlaplus": tpd._parse_tlaplus_dependencies_only,
@@ -965,7 +981,14 @@ REGISTERED_ADAPTER_FILE_PARSERS = {
     "haskell": repository_simple_parser_dispatch._parse_haskell_file,
     "agda": apd._parse_agda_file,
     "idris": ipd._parse_idris_file, "rego": rpd._parse_rego_file, "yara": ypd._parse_yara_file,
-    "hy": hypd._parse_hy_file, "wren": wrpd._parse_wren_file, "janet": jpd._parse_janet_file, "fennel": fnpd._parse_fennel_file, "nextflow": nfpd._parse_nextflow_file, "bicep": bpd._parse_bicep_file, "dhall": dpd._parse_dhall_file,
+    "hy": hypd._parse_hy_file, "wren": wrpd._parse_wren_file, "janet": jpd._parse_janet_file, "fennel": fnpd._parse_fennel_file, "vyper": vypd._parse_vyper_file, "nextflow": nfpd._parse_nextflow_file, "bicep": bpd._parse_bicep_file, "dhall": dpd._parse_dhall_file,
+    "sass": sspd._parse_sass_file,
+    "qsharp": qspd._parse_qsharp_file,
+    "opencl": oclpd._parse_opencl_file,
+    "clojurescript": cljspd._parse_clojurescript_file,
+    "al": alpd._parse_al_file,
+    "sml": smlpd._parse_sml_file,
+    "groovy": grpd._parse_groovy_file,
     "puppet": ppd._parse_puppet_file,
     "tlaplus": tpd._parse_tlaplus_file,
     "logtalk": lgd._parse_logtalk_file,

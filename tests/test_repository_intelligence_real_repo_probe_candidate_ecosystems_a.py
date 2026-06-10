@@ -1330,7 +1330,7 @@ def test_candidate_ecosystems_for_path_treats_custom_suffixes_and_ambiguous_m_fi
     assert probe_module._candidate_ecosystems_for_path("src/main.cbl") == {"cobol"}
     assert probe_module._candidate_ecosystems_for_path("db/order_api.pkb") == {"plsql"}
     assert probe_module._candidate_ecosystems_for_path("programs/report.sas") == {"sas"}
-    assert probe_module._candidate_ecosystems_for_path("src/main.sml") == {"ml"}
+    assert probe_module._candidate_ecosystems_for_path("src/main.sml") == {"sml"}
     assert probe_module._candidate_ecosystems_for_path("src/main.prolog") == {"prolog"}
     assert probe_module._candidate_ecosystems_for_path("logic/Main.L5X") == {"ladder"}
     assert probe_module._candidate_ecosystems_for_path("src/main.m") == {"unknown"}
@@ -1485,5 +1485,4 @@ def test_candidate_ecosystems_for_path_treats_custom_suffixes_and_ambiguous_m_fi
         "force-app/main/default/triggers/AccountTrigger.trigger",
         repo_path=repo_path,
     ) == {"apex"}
-
 

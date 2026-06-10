@@ -1,0 +1,41 @@
+from __future__ import annotations
+
+from apps.api_server.services.repository_intelligence_adapters import (
+    clojure as repository_clojure_support,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    clojurescript_analysis_support as repository_clojurescript_analysis_support,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    clojurescript_primitives as repository_clojurescript_primitives,
+)
+
+StableIdentifier = repository_clojurescript_primitives.StableIdentifier
+NormalizeRepositoryRelativePath = (
+    repository_clojurescript_primitives.NormalizeRepositoryRelativePath
+)
+ResolveSuffixMatch = repository_clojurescript_primitives.ResolveSuffixMatch
+
+NS_RE = repository_clojure_support.NS_RE
+REQUIRE_VECTOR_RE = repository_clojure_support.REQUIRE_VECTOR_RE
+ALIAS_RE = repository_clojure_support.ALIAS_RE
+REFER_RE = repository_clojure_support.REFER_RE
+DEF_DECL_RE = repository_clojure_support.DEF_DECL_RE
+QUALIFIED_REFERENCE_RE = repository_clojure_support.QUALIFIED_REFERENCE_RE
+UNQUALIFIED_REFERENCE_RE = repository_clojure_support.UNQUALIFIED_REFERENCE_RE
+RESERVED_SYMBOL_NAMES = repository_clojure_support.RESERVED_SYMBOL_NAMES
+
+CLOJURESCRIPT_SUFFIXES = repository_clojurescript_primitives.CLOJURESCRIPT_SUFFIXES
+CLOJURESCRIPT_CONFIG_NAMES = repository_clojurescript_primitives.CLOJURESCRIPT_CONFIG_NAMES
+
+extract_ns_form = repository_clojurescript_primitives.extract_ns_form
+namespace_path = repository_clojurescript_primitives.namespace_path
+resolve_import = repository_clojurescript_primitives.resolve_import
+has_clojurescript_path_hints = repository_clojurescript_primitives.has_clojurescript_path_hints
+
+is_probable_clojurescript_source = (
+    repository_clojurescript_analysis_support.is_probable_clojurescript_source
+)
+module_aliases_for_path = repository_clojurescript_analysis_support.module_aliases_for_path
+parse_dependencies_only = repository_clojurescript_analysis_support.parse_dependencies_only
+parse_file = repository_clojurescript_analysis_support.parse_file

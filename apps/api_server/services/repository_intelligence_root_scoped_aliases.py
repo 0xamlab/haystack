@@ -6,7 +6,16 @@ from typing import Any
 from apps.api_server.services import repository_intelligence_pascal_solidity_dispatch as repository_pascal_solidity_dispatch
 from apps.api_server.services.repository_intelligence_adapters import abap as abap_adapter, actionscript as actionscript_adapter, ada as ada_adapter, agda as agda_adapter, apex as apex_adapter, applescript as applescript_adapter, assembly as assembly_adapter, autohotkey as autohotkey_adapter, autoit as autoit_adapter  # noqa: E501
 from apps.api_server.services.repository_intelligence_adapters import awk as awk_adapter, batchfile as batchfile_adapter
-from apps.api_server.services.repository_intelligence_adapters import antlr as antlr_adapter, asciidoc as asciidoc_adapter, astro as astro_adapter, blade as blade_adapter, cuda as cuda_adapter, cython as cython_adapter, dm as dm_adapter, dockerfile as dockerfile_adapter, ejs as ejs_adapter, erb as erb_adapter, fennel as fennel_adapter, gherkin as gherkin_adapter, graphviz as graphviz_adapter, haml as haml_adapter, handlebars as handlebars_adapter, hlsl as hlsl_adapter, hy as hy_adapter, jinja as jinja_adapter, just as just_adapter, less as less_adapter, liquid as liquid_adapter, mermaid as mermaid_adapter, modelica as modelica_adapter, moonbit as moonbit_adapter, move as move_adapter, mustache as mustache_adapter, nextflow as nextflow_adapter, nunjucks as nunjucks_adapter, openqasm as openqasm_adapter, org as org_adapter, plantuml as plantuml_adapter, protobuf as protobuf_adapter, pug as pug_adapter, rescript as rescript_adapter, roc as roc_adapter, rst as rst_adapter, scss as scss_adapter, shaderlab as shaderlab_adapter, slim as slim_adapter, smarty as smarty_adapter, squirrel as squirrel_adapter, stan as stan_adapter, stylus as stylus_adapter, svelte as svelte_adapter, tex as tex_adapter, twig as twig_adapter, typst as typst_adapter, vue as vue_adapter, wgsl as wgsl_adapter, wren as wren_adapter  # noqa: E501
+from apps.api_server.services.repository_intelligence_adapters import antlr as antlr_adapter, asciidoc as asciidoc_adapter, astro as astro_adapter, blade as blade_adapter, cuda as cuda_adapter, cython as cython_adapter, dm as dm_adapter, dockerfile as dockerfile_adapter, ejs as ejs_adapter, erb as erb_adapter, fennel as fennel_adapter, gherkin as gherkin_adapter, graphviz as graphviz_adapter, haml as haml_adapter, handlebars as handlebars_adapter, hlsl as hlsl_adapter, hy as hy_adapter, jinja as jinja_adapter, just as just_adapter, less as less_adapter, liquid as liquid_adapter, mermaid as mermaid_adapter, modelica as modelica_adapter, moonbit as moonbit_adapter, move as move_adapter, mustache as mustache_adapter, nextflow as nextflow_adapter, nunjucks as nunjucks_adapter, openqasm as openqasm_adapter, org as org_adapter, plantuml as plantuml_adapter, protobuf as protobuf_adapter, pug as pug_adapter, rescript as rescript_adapter, roc as roc_adapter, rst as rst_adapter, scss as scss_adapter, shaderlab as shaderlab_adapter, slim as slim_adapter, smarty as smarty_adapter, squirrel as squirrel_adapter, stan as stan_adapter, stylus as stylus_adapter, svelte as svelte_adapter, tex as tex_adapter, twig as twig_adapter, typst as typst_adapter, vue as vue_adapter, wgsl as wgsl_adapter, wren as wren_adapter, vyper as vyper_adapter  # noqa: E501
+from apps.api_server.services.repository_intelligence_adapters import (
+    al as al_adapter,
+    clojurescript as clojurescript_adapter,
+    groovy as groovy_adapter,
+    opencl as opencl_adapter,
+    qsharp as qsharp_adapter,
+    sass as sass_adapter,
+    sml as sml_adapter,
+)
 from apps.api_server.services.repository_intelligence_adapters import cfml as cfml_adapter, classic_visual_basic as classic_visual_basic_adapter
 from apps.api_server.services.repository_intelligence_adapters import (
     clojure as clojure_adapter,
@@ -537,6 +546,18 @@ def _gleam_module_aliases_for_path(*, root_path: Path, file_path: str) -> set[st
 _hy_module_aliases_for_path = lambda *, root_path, file_path: hy_adapter.module_aliases_for_path(root_path=root_path, file_path=file_path, stable_identifier=_stable_identifier)  # noqa: E731,E501
 _wren_module_aliases_for_path = lambda *, root_path, file_path: wren_adapter.module_aliases_for_path(root_path=root_path, file_path=file_path, stable_identifier=_stable_identifier)  # noqa: E731,E501
 _fennel_module_aliases_for_path = lambda *, root_path, file_path: fennel_adapter.module_aliases_for_path(root_path=root_path, file_path=file_path, stable_identifier=_stable_identifier)  # noqa: E731,E501
+_vyper_module_aliases_for_path = lambda *, root_path, file_path: vyper_adapter.module_aliases_for_path(root_path=root_path, file_path=file_path, stable_identifier=_stable_identifier)  # noqa: E731,E501
+_sass_module_aliases_for_path = lambda *, root_path, file_path: sass_adapter.module_aliases_for_path(root_path=root_path, file_path=file_path, stable_identifier=_stable_identifier)  # noqa: E731,E501
+_qsharp_module_aliases_for_path = lambda *, root_path, file_path: qsharp_adapter.module_aliases_for_path(root_path=root_path, file_path=file_path, stable_identifier=_stable_identifier)  # noqa: E731,E501
+_opencl_module_aliases_for_path = lambda *, root_path, file_path: opencl_adapter.module_aliases_for_path(root_path=root_path, file_path=file_path, stable_identifier=_stable_identifier)  # noqa: E731,E501
+def _clojurescript_module_aliases_for_path(*, root_path: Path, file_path: str) -> set[str]:
+    return clojurescript_adapter.module_aliases_for_path(
+        root_path=root_path,
+        file_path=file_path,
+    )
+_al_module_aliases_for_path = lambda *, root_path, file_path: al_adapter.module_aliases_for_path(root_path=root_path, file_path=file_path, stable_identifier=_stable_identifier)  # noqa: E731,E501
+_sml_module_aliases_for_path = lambda *, root_path, file_path: sml_adapter.module_aliases_for_path(root_path=root_path, file_path=file_path, stable_identifier=_stable_identifier)  # noqa: E731,E501
+_groovy_module_aliases_for_path = lambda *, root_path, file_path: groovy_adapter.module_aliases_for_path(root_path=root_path, file_path=file_path, stable_identifier=_stable_identifier)  # noqa: E731,E501
 _nextflow_module_aliases_for_path = lambda *, root_path, file_path: nextflow_adapter.module_aliases_for_path(root_path=root_path, file_path=file_path, stable_identifier=_stable_identifier)  # noqa: E731,E501
 _moonbit_module_aliases_for_path = lambda *, root_path, file_path: moonbit_adapter.module_aliases_for_path(root_path=root_path, file_path=file_path, stable_identifier=_stable_identifier)  # noqa: E731,E501
 def _chapel_module_aliases_for_path(*, root_path: Path, file_path: str) -> set[str]:
@@ -935,7 +956,7 @@ _ROOT_SCOPED_MODULE_ALIAS_BUILDERS = (
     _idris_module_aliases_for_path,
     _raku_module_aliases_for_path,
     _gleam_module_aliases_for_path,
-    _hy_module_aliases_for_path, _wren_module_aliases_for_path, _fennel_module_aliases_for_path, _nextflow_module_aliases_for_path, _moonbit_module_aliases_for_path,
+    _hy_module_aliases_for_path, _wren_module_aliases_for_path, _fennel_module_aliases_for_path, _vyper_module_aliases_for_path, _sass_module_aliases_for_path, _qsharp_module_aliases_for_path, _opencl_module_aliases_for_path, _clojurescript_module_aliases_for_path, _al_module_aliases_for_path, _sml_module_aliases_for_path, _groovy_module_aliases_for_path, _nextflow_module_aliases_for_path, _moonbit_module_aliases_for_path,
     _chapel_module_aliases_for_path, _coq_module_aliases_for_path, _lean_module_aliases_for_path, _eiffel_module_aliases_for_path,  # noqa: E501
     _janet_module_aliases_for_path,
     _dhall_module_aliases_for_path,

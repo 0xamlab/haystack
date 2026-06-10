@@ -116,6 +116,8 @@ def _parse_provider_chat_completion(
     )
 
     try:
+        cache_read_tokens = 0
+        cache_write_tokens = 0
         if config.backend == "anthropic":
             completion_id = str(data["id"])
             raw_content = data["content"]
@@ -137,6 +139,8 @@ def _parse_provider_chat_completion(
             content = "".join(text_parts)
             prompt_tokens = int(usage["input_tokens"])
             completion_tokens = int(usage["output_tokens"])
+            cache_read_tokens = int(usage.get("cache_read_input_tokens", 0) or 0)
+            cache_write_tokens = int(usage.get("cache_creation_input_tokens", 0) or 0)
         elif config.backend == "ollama":
             completion_id = str(data["id"])
             message = data["message"]
@@ -190,6 +194,8 @@ def _parse_provider_chat_completion(
         content=content,
         prompt_tokens=prompt_tokens,
         completion_tokens=completion_tokens,
+        cache_read_tokens=cache_read_tokens,
+        cache_write_tokens=cache_write_tokens,
         provider=ProviderExecutionMetadata(
             provider_backend=config.backend,
             provider_model_id=config.model_id,

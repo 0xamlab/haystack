@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import tarfile
+import time
 from collections import Counter, defaultdict
 from collections.abc import Callable, Sequence
 from pathlib import Path
@@ -23,6 +24,9 @@ from apps.api_server.services import (
 from apps.api_server.services import (
     repository_intelligence_storage as repository_storage,
 )
+from apps.api_server.services import (
+    repository_intelligence_telemetry as telemetry,
+)
 from apps.api_server.services.repository_intelligence_shared import (
     _hash_payload,
     _stable_identifier,
@@ -33,6 +37,7 @@ from apps.api_server.services.runtime_internal_contracts import (
     RepositoryGraphRecord,
     RepositorySnapshotRecord,
     SymbolGraphRecord,
+    SymbolReferenceRecord,
     parquet_bytes_from_records,
 )
 
@@ -400,6 +405,26 @@ def create_repository_snapshot(
             for item in analyses
             for dependency in item.dependencies
         ]
+        # AR-OPT-2: persist per-file symbol references to Parquet so the slim (v2)
+        # manifest can hydrate them on load instead of inlining them in the JSON.
+        symbol_reference_records = [
+            SymbolReferenceRecord(
+                repository_id=repository_id,
+                snapshot_id=snapshot_id,
+                reference_edge_id=reference.reference_edge_id,
+                source_file=reference.source_file,
+                source_symbol_id=reference.source_symbol_id,
+                target_symbol_id=reference.target_symbol_id,
+                target_file=reference.target_file,
+                reference_type=reference.reference_type,
+                created_at=created_at,
+            )
+            for item in analyses
+            for reference in item.symbol_references
+        ]
+        # AR-OPT-0: time the dependency/reference graph construction (edge resolution
+        # + record assembly) into the telemetry span the CI presence gate requires.
+        _graph_build_start = time.perf_counter()
         symbols_by_file_and_name: dict[tuple[str, str], list[Any]] = defaultdict(list)
         for item in analyses:
             for symbol in item.symbols:
@@ -494,7 +519,13 @@ def create_repository_snapshot(
             )
             for dependency in dependency_records
         ]
+        telemetry.record_span_ms(
+            "graph_build_ms", (time.perf_counter() - _graph_build_start) * 1000.0
+        )
 
+        # AR-OPT-0/2: time artifact IO so the slim-manifest (v2) work can prove its
+        # reduction against these baselines.
+        _parquet_write_start = time.perf_counter()
         paths["dir"].mkdir(parents=True, exist_ok=True)
         snapshot_parquet_hash = write_bytes_with_hash(
             paths["snapshot_parquet"],
@@ -518,15 +549,33 @@ def create_repository_snapshot(
             if repository_graph_records
             else parquet_bytes_from_records([], record_type=RepositoryGraphRecord),
         )
+        symbol_reference_parquet_hash = write_bytes_with_hash(
+            paths["symbol_reference_parquet"],
+            parquet_bytes_from_records(symbol_reference_records, record_type=SymbolReferenceRecord)
+            if symbol_reference_records
+            else parquet_bytes_from_records([], record_type=SymbolReferenceRecord),
+        )
+        telemetry.record_span_ms(
+            "parquet_write_ms", (time.perf_counter() - _parquet_write_start) * 1000.0
+        )
+        _tar_write_start = time.perf_counter()
         source_archive_hash = _create_source_archive(
             root_path=source.root_path,
             files=files,
             destination=paths["source_archive"],
             hash_file=hash_file,
         )
+        telemetry.record_span_ms(
+            "tar_write_ms", (time.perf_counter() - _tar_write_start) * 1000.0
+        )
         language_counts = dict(sorted(Counter(item.language for item in analyses).items()))
         raw_repo_token_estimate = sum(item.token_estimate for item in analyses)
         manifest = {
+            # AR-OPT-2: slim manifest v2 — files[] carries only lightweight metadata;
+            # per-file symbols/dependencies/symbol_references are NOT inlined and are
+            # hydrated on load from the Parquet artifacts (see manifest_reader). Legacy
+            # v1 (inline) snapshots remain readable via their inline arrays.
+            "manifest_version": 2,
             "engine_revision": engine_revision,
             "repository_id": repository_id,
             "snapshot_id": snapshot_id,
@@ -583,8 +632,21 @@ def create_repository_snapshot(
                 schema_revision="runtime-internal-contracts-v1",
                 created_at=created_at,
             ).model_dump(mode="json"),
+            "symbol_reference_artifact": repository_storage._artifact_ref(
+                artifact_id=_stable_identifier(
+                    "artifact", {"kind": "symbol_reference", "snapshot_id": snapshot_id}
+                ),
+                artifact_kind="SymbolReference",
+                content_hash=symbol_reference_parquet_hash,
+                storage_path=paths["symbol_reference_parquet"],
+                schema_revision="runtime-internal-contracts-v1",
+                created_at=created_at,
+            ).model_dump(mode="json"),
             "source_archive_path": str(paths["source_archive"]),
             "source_archive_hash": source_archive_hash,
+            # AR-OPT-2 v2: lightweight per-file metadata only. The heavy
+            # symbols/dependencies/symbol_references arrays live in the Parquet
+            # artifacts above and are hydrated on load by manifest_reader.
             "files": [
                 {
                     "file_path": item.file_path,
@@ -593,22 +655,13 @@ def create_repository_snapshot(
                     "line_count": item.line_count,
                     "byte_size": item.byte_size,
                     "token_estimate": item.token_estimate,
-                    "symbols": [symbol.__dict__ for symbol in item.symbols],
-                    "dependencies": [dependency.__dict__ for dependency in item.dependencies],
-                    "symbol_references": [
-                        {
-                            "source_symbol_id": reference.source_symbol_id,
-                            "target_symbol_id": reference.target_symbol_id,
-                            "target_file": reference.target_file,
-                            "target_names": list(reference.target_names),
-                            "reference_type": reference.reference_type,
-                        }
-                        for reference in item.symbol_references
-                    ],
                 }
                 for item in analyses
             ],
         }
+        # AR-OPT-2: time the manifest JSON write — the v1 inline payload dominates
+        # this for large repos and is exactly what the v2 slim manifest will cut.
+        _manifest_write_start = time.perf_counter()
         repository_runtime._write_json(paths["manifest"], manifest)
         repository_runtime._write_json(
             lookup_path,
@@ -621,6 +674,9 @@ def create_repository_snapshot(
                     mode="json"
                 ),
             },
+        )
+        telemetry.record_span_ms(
+            "manifest_write_ms", (time.perf_counter() - _manifest_write_start) * 1000.0
         )
         return RepositorySnapshotResponse.model_validate(manifest)
 

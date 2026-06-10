@@ -84,6 +84,7 @@ _STRING_RETURN_RUNTIME_IMPORT_PATHS = {
     "runtime_library_dispatch_generated",
     "text.tokenizer",
     "vector_kernels.ranker",
+    "vector_kernels.repo_ranker",
 }
 _STRUCT_RETURN_RUNTIME_TYPES: dict[str, set[str]] = {
     "vector_kernels.table": {"CandidateTable", "RankRequest"},

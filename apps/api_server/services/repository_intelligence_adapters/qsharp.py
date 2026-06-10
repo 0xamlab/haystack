@@ -1,0 +1,41 @@
+from __future__ import annotations
+
+from apps.api_server.services.repository_intelligence_adapters.qsharp_analysis_support import (
+    QSHARP_CONFIG_BASENAMES,
+    QSHARP_SUFFIXES,
+    clean_import_target,
+    has_qsharp_path_hints,
+    is_probable_qsharp_config,
+    is_probable_qsharp_source,
+    iter_dependency_entries,
+    iter_namespace_entries,
+    iter_reference_entries,
+    iter_symbol_entries,
+    module_aliases_for_path,
+    module_name_from_path,
+    parse_dependencies_only,
+    parse_file,
+    primary_namespace_name,
+    resolve_import,
+    strip_comments,
+)
+
+__all__ = [
+    "QSHARP_CONFIG_BASENAMES",
+    "QSHARP_SUFFIXES",
+    "clean_import_target",
+    "has_qsharp_path_hints",
+    "is_probable_qsharp_config",
+    "is_probable_qsharp_source",
+    "iter_dependency_entries",
+    "iter_namespace_entries",
+    "iter_reference_entries",
+    "iter_symbol_entries",
+    "module_aliases_for_path",
+    "module_name_from_path",
+    "parse_dependencies_only",
+    "parse_file",
+    "primary_namespace_name",
+    "resolve_import",
+    "strip_comments",
+]

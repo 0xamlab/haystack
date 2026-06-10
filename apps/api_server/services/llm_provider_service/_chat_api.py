@@ -155,11 +155,14 @@ async def provider_chat_completion(
     config: ProviderModelConfig,
     messages: list[dict[str, str]],
     timeout_seconds: float | None = None,
+    max_output_tokens: int | None = None,
 ) -> Any:
     data = await _provider_post_json(
         config=config,
         path=_provider_chat_path(config),
-        payload=_provider_chat_payload(config=config, messages=messages),
+        payload=_provider_chat_payload(
+            config=config, messages=messages, max_output_tokens=max_output_tokens
+        ),
         timeout_seconds=(
             timeout_seconds
             if timeout_seconds is not None
@@ -176,6 +179,7 @@ async def routed_provider_chat_completion(
     *,
     model_id: str,
     messages: list[dict[str, str]],
+    max_output_tokens: int | None = None,
 ) -> Any:
     from apps.api_server.services import llm_provider_service as _facade_module
     from apps.api_server.services.llm_api_service import LLMAPIError, ProviderAttemptRecord
@@ -224,10 +228,16 @@ async def routed_provider_chat_completion(
     last_error: LLMAPIError | None = None
     for target in targets:
         try:
+            # Forward the output budget only when the caller set one, so existing
+            # callers/stubs that don't expect the kwarg are unaffected (None == 512).
+            _output_budget = (
+                {} if max_output_tokens is None else {"max_output_tokens": max_output_tokens}
+            )
             result = await _facade_module.provider_chat_completion(
                 config=target,
                 messages=messages,
                 timeout_seconds=route_timeout_seconds,
+                **_output_budget,
             )
             if attempt_records:
                 return _set_provider_attempts(

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import re
 from collections import defaultdict
 from collections.abc import Sequence
@@ -238,6 +239,52 @@ def _score_snapshot_files(
         for dependency in outbound_neighbors.get(seed_file, ()):
             scores[dependency] += 1.0 if seed_file in diagnostics_by_path else 0.5
     return dict(scores)
+
+
+def _ranked_paths_by_score(scores: dict[str, float]) -> list[str]:
+    """Deterministic ranking of paths by descending score (ties broken by path)."""
+    return [
+        path for path, score in sorted(scores.items(), key=lambda kv: (-kv[1], kv[0])) if score > 0
+    ]
+
+
+def _graph_blast_radius_scores(snapshot_manifest: dict[str, Any]) -> dict[str, float]:
+    """AR-OPT-7 RISK signal (distinct from localization): how many files depend on
+    each file = the blast radius of changing it. Drives apply-gating / risk, NOT
+    "is this the bug" — a utility hub has a huge blast radius but is rarely the cause."""
+    inbound_neighbors, _ = _snapshot_file_graph_neighbors(snapshot_manifest)
+    return {path: float(len(importers)) for path, importers in inbound_neighbors.items()}
+
+
+def _graph_proximity_scores(
+    snapshot_manifest: dict[str, Any], signals: RepositorySignals
+) -> dict[str, float]:
+    """AR-OPT-7 LOCALIZATION signal: personalized graph proximity from the issue's
+    seed files (distinct from keyword matching) — each seed plus its inbound/outbound
+    neighbors, diagnostic seeds weighted higher. High-dependent utility hubs are
+    DAMPED so raw centrality doesn't rank them as suspects (e.g. utils.py / index.ts)."""
+    inbound_neighbors, outbound_neighbors = _snapshot_file_graph_neighbors(snapshot_manifest)
+    diagnostics_by_path = _group_diagnostics_by_snapshot_path(
+        snapshot_manifest, signals.diagnostics
+    )
+    scores: defaultdict[str, float] = defaultdict(float)
+    seed_files = set(diagnostics_by_path)
+    seed_files.update(str(path) for path in signals.changed_files)
+    seed_files.update(str(path) for path in signals.failing_tests)
+    for seed_file in seed_files:
+        scores[seed_file] += 3.0
+        for importer in inbound_neighbors.get(seed_file, ()):
+            scores[importer] += 2.0 if seed_file in diagnostics_by_path else 1.0
+        for dependency in outbound_neighbors.get(seed_file, ()):
+            scores[dependency] += 1.0 if seed_file in diagnostics_by_path else 0.5
+    # Utility-hub damping: divide each file's localization score by 1 + ln(1 + dependents),
+    # so a file imported by many (a hub) is down-weighted as a SUSPECT while focused,
+    # low-fan-in files keep their proximity. Seeds keep a strong base score regardless.
+    damped: dict[str, float] = {}
+    for path, score in scores.items():
+        dependents = len(inbound_neighbors.get(path, ()))
+        damped[path] = score / (1.0 + math.log1p(float(dependents)))
+    return damped
 
 
 def _symbol_depth(symbol_entry: dict[str, Any], symbols_by_id: dict[str, dict[str, Any]]) -> int:

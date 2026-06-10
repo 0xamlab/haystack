@@ -168,6 +168,7 @@ def _provider_chat_payload(
     *,
     config: ProviderModelConfig,
     messages: list[dict[str, str]],
+    max_output_tokens: int | None = None,
 ) -> dict[str, Any]:
     from apps.api_server.services.llm_api_service import LLMAPIError
 
@@ -191,10 +192,21 @@ def _provider_chat_payload(
         payload: dict[str, Any] = {
             "model": config.upstream_model,
             "messages": anthropic_messages,
-            "max_tokens": 512,
+            # AR-OPT-5: dynamic output budget when the caller estimates one; the fixed
+            # 512 default truncated larger patch diffs.
+            "max_tokens": max_output_tokens or 512,
         }
         if system_messages:
-            payload["system"] = "\n".join(system_messages)
+            # AR-OPT-1: emit the system prompt as a cacheable content block so Anthropic
+            # prompt-caching reuses a large, stable prefix (e.g. the evidence bundle)
+            # across repeated calls. Harmless if the block is below the cache minimum.
+            payload["system"] = [
+                {
+                    "type": "text",
+                    "text": "\n".join(system_messages),
+                    "cache_control": {"type": "ephemeral"},
+                }
+            ]
         return payload
     if config.backend == "ollama":
         return {

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import functools
 import os
 from collections.abc import Callable, Mapping, Sequence
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from pathlib import Path
 
 from apps.api_server.services.repository_intelligence_contracts import (
@@ -11,6 +12,7 @@ from apps.api_server.services.repository_intelligence_contracts import (
     _Symbol,
     _SymbolReferenceCandidate,
 )
+from apps.api_server.services import repository_intelligence_telemetry as telemetry
 from apps.api_server.services.repository_intelligence_file_content import (
     read_repository_text,
     repository_analysis_byte_size,
@@ -554,6 +556,68 @@ def _snapshot_analysis_max_workers(file_count: int) -> int:
     return max(2, min(4, os.cpu_count() or 4))
 
 
+# AR-OPT-3: per-file parsing is CPU-bound; the thread pool is GIL-limited. The
+# ALGENTA_REPOSITORY_PARSE_EXECUTOR flag opts into a ProcessPool. Default stays
+# "thread" (a kill switch reproducing the prior behavior exactly) until the
+# process path proves byte-parity on the fixture corpus.
+_PARSE_EXECUTOR_ENV = "ALGENTA_REPOSITORY_PARSE_EXECUTOR"
+_PARSE_EXECUTOR_MODES = ("thread", "process", "sequential")
+_PROCESS_WORKER_CAP = 8
+
+
+def _parse_executor_mode() -> str:
+    mode = os.environ.get(_PARSE_EXECUTOR_ENV, "thread").strip().lower()
+    return mode if mode in _PARSE_EXECUTOR_MODES else "thread"
+
+
+def _process_batch_size(file_count: int) -> int:
+    # Aim for ~4 batches per worker (load balancing) while keeping each batch large
+    # enough that worker IPC/startup is amortized. Lower bound 1 keeps tiny corpora
+    # correct; the upper clamp avoids pathologically huge batches on large repos.
+    target_batches = max(1, (os.cpu_count() or 2) * 4)
+    size = -(-file_count // target_batches)  # ceil division
+    return max(1, min(256, size))
+
+
+def _process_worker_count(batch_count: int) -> int:
+    return max(1, min(_PROCESS_WORKER_CAP, os.cpu_count() or 2, batch_count))
+
+
+def _chunk_paths(paths: Sequence[Path], size: int) -> list[list[Path]]:
+    return [list(paths[index : index + size]) for index in range(0, len(paths), size)]
+
+
+def _analyze_file_batch(
+    paths: Sequence[Path],
+    *,
+    analyze_file_cached: Callable[..., _FileAnalysis],
+    root_path: Path,
+    module_index: dict[str, str],
+    workspace_package_index: dict[str, tuple[str, ...]],
+    workspace_go_module_index: dict[str, tuple[str, ...]] | None,
+    max_file_size_bytes: int,
+    analysis_context_hash: str,
+    git_content_hashes: dict[str, str] | None,
+) -> list[_FileAnalysis]:
+    """Parse one batch of files. Module-level (picklable) so it can run in a worker
+    process; ``analyze_file_cached`` must likewise be a top-level callable in process
+    mode (production binds ``repository_intelligence_core._analyze_file_cached``, which
+    is). Order within the batch is preserved."""
+    return [
+        analyze_file_cached(
+            root_path=root_path,
+            path=path,
+            module_index=module_index,
+            workspace_package_index=workspace_package_index,
+            workspace_go_module_index=workspace_go_module_index,
+            max_file_size_bytes=max_file_size_bytes,
+            analysis_context_hash=analysis_context_hash,
+            git_content_hashes=git_content_hashes,
+        )
+        for path in paths
+    ]
+
+
 def _analyze_snapshot_files(
     *,
     root_path: Path,
@@ -566,8 +630,10 @@ def _analyze_snapshot_files(
     analyze_file_cached: Callable[..., _FileAnalysis],
     git_content_hashes: dict[str, str] | None = None,
     max_workers: int | None = None,
+    executor: str | None = None,
 ) -> list[_FileAnalysis]:
-    worker_count = max_workers or _snapshot_analysis_max_workers(len(files))
+    file_list = list(files)
+    mode = executor or _parse_executor_mode()
 
     def _analyze_path(path: Path) -> _FileAnalysis:
         return analyze_file_cached(
@@ -581,7 +647,35 @@ def _analyze_snapshot_files(
             git_content_hashes=git_content_hashes,
         )
 
-    if worker_count <= 1:
-        return [_analyze_path(path) for path in files]
-    with ThreadPoolExecutor(max_workers=worker_count) as executor:
-        return list(executor.map(_analyze_path, files))
+    with telemetry.span("snapshot_parse_ms"):
+        if mode == "process" and len(file_list) > 1:
+            batches = _chunk_paths(file_list, _process_batch_size(len(file_list)))
+            batch_worker = functools.partial(
+                _analyze_file_batch,
+                analyze_file_cached=analyze_file_cached,
+                root_path=root_path,
+                module_index=module_index,
+                workspace_package_index=workspace_package_index,
+                workspace_go_module_index=workspace_go_module_index,
+                max_file_size_bytes=max_file_size_bytes,
+                analysis_context_hash=analysis_context_hash,
+                git_content_hashes=git_content_hashes,
+            )
+            with ProcessPoolExecutor(
+                max_workers=_process_worker_count(len(batches))
+            ) as pool:
+                # map preserves batch order; flatten preserves overall file order.
+                return [
+                    analysis
+                    for batch_result in pool.map(batch_worker, batches)
+                    for analysis in batch_result
+                ]
+        if mode == "sequential":
+            return [_analyze_path(path) for path in file_list]
+        # "thread" (default): preserve prior behavior exactly — sequential for small
+        # repos, bounded ThreadPool otherwise (the AR-OPT-3 kill switch).
+        worker_count = max_workers or _snapshot_analysis_max_workers(len(file_list))
+        if worker_count <= 1:
+            return [_analyze_path(path) for path in file_list]
+        with ThreadPoolExecutor(max_workers=worker_count) as thread_pool:
+            return list(thread_pool.map(_analyze_path, file_list))

@@ -17,6 +17,8 @@ from apps.api_server.schemas.repositories import (
 )
 from apps.api_server.services import repository_intelligence_graph as repository_graph
 from apps.api_server.services import repository_intelligence_storage as repository_storage
+from apps.api_server.services import repository_intelligence_telemetry as telemetry
+from apps.api_server.services import repository_intelligence_sdk_ranking as sdk_ranking
 from apps.api_server.services.repository_intelligence_contracts import (
     RepositoryIntelligenceError,
 )
@@ -390,17 +392,51 @@ def triage_repository(
         repository_id=repository_id,
         snapshot_id=request.snapshot_id,
     )
-    scores = repository_graph._score_snapshot_files(snapshot_manifest, request.signals)
-    ordered_entries = sorted(
-        snapshot_manifest["files"],
-        key=lambda item: (scores.get(item["file_path"], 0.0), item["token_estimate"]),
-        reverse=True,
-    )
-    ordered_files = [
-        file_entry["file_path"]
-        for file_entry in ordered_entries
-        if scores.get(file_entry["file_path"], 0.0) > 0
-    ]
+    # AR-OPT-0: time triage ranking into the span the CI presence gate requires.
+    with telemetry.span("triage_rank_ms"):
+        scores = repository_graph._score_snapshot_files(snapshot_manifest, request.signals)
+    if sdk_ranking.sdk_ranking_enabled():
+        # AR-OPT-6/7 + SDK "DNA": fuse the keyword/diagnostic heuristic, graph
+        # proximity, and (when the Algenta Mojo runtime is available) a batched
+        # Mojo ranking lane via Reciprocal Rank Fusion. Falls back to the pure
+        # heuristic ordering when the Mojo lane is unavailable.
+        heuristic_rank = repository_graph._ranked_paths_by_score(scores)
+        graph_rank = repository_graph._ranked_paths_by_score(
+            repository_graph._graph_proximity_scores(snapshot_manifest, request.signals)
+        )
+        rankings = [heuristic_rank, graph_rank]
+        # Mojo-rank the heuristic-ordered candidates (the lane bounds internally);
+        # if the heuristic found nothing, fall back to the first files.
+        ranked_candidates = heuristic_rank or [
+            str(file_entry["file_path"]) for file_entry in snapshot_manifest["files"]
+        ]
+        mojo_scores = sdk_ranking.mojo_repo_rank_scores(
+            query_terms=sorted(repository_graph._keywords_from_signals(request.signals)),
+            candidates=[{"path": path} for path in ranked_candidates],
+        )
+        if mojo_scores:
+            rankings.append(repository_graph._ranked_paths_by_score(mojo_scores))
+        fused = sdk_ranking.reciprocal_rank_fusion(rankings)
+        # Restrict to real snapshot files: the signal/graph lanes seed on
+        # changed_files / failing_tests, which can be test node-ids (file::test),
+        # not paths — matching the flag-off path which only ranks actual files.
+        known_paths = {str(file_entry["file_path"]) for file_entry in snapshot_manifest["files"]}
+        ordered_files = [
+            path
+            for path, _ in sorted(fused.items(), key=lambda kv: (-kv[1], kv[0]))
+            if path in known_paths
+        ]
+    else:
+        ordered_entries = sorted(
+            snapshot_manifest["files"],
+            key=lambda item: (scores.get(item["file_path"], 0.0), item["token_estimate"]),
+            reverse=True,
+        )
+        ordered_files = [
+            file_entry["file_path"]
+            for file_entry in ordered_entries
+            if scores.get(file_entry["file_path"], 0.0) > 0
+        ]
     suspect_files = ordered_files[: request.max_evidence_items]
     if not suspect_files and snapshot_manifest["files"]:
         suspect_files = [

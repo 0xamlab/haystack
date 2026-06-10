@@ -277,6 +277,26 @@ class DependencyGraphRecord(RuntimeInternalContractModel):
         return _ensure_utc(value, "created_at")
 
 
+class SymbolReferenceRecord(RuntimeInternalContractModel):
+    # AR-OPT-2: persists per-file symbol references so the slim (v2) manifest can hydrate
+    # them from Parquet instead of inlining them in the manifest JSON. v1 manifests have
+    # no such artifact and remain readable via their inline arrays.
+    repository_id: StrictStr
+    snapshot_id: StrictStr
+    reference_edge_id: StrictStr
+    source_file: StrictStr
+    source_symbol_id: StrictStr
+    target_symbol_id: StrictStr | None = None
+    target_file: StrictStr | None = None
+    reference_type: StrictStr
+    created_at: datetime
+
+    @field_validator("created_at")
+    @classmethod
+    def _validate_created_at(cls, value: datetime) -> datetime:
+        return _ensure_utc(value, "created_at")
+
+
 class WorkspaceEvidenceBundleRecord(RuntimeInternalContractModel):
     repository_id: StrictStr
     snapshot_id: StrictStr
@@ -591,6 +611,24 @@ def dependency_graph_record_schema() -> Any:
     )
 
 
+def symbol_reference_record_schema() -> Any:
+    pa, _ = _load_pyarrow()
+    return pa.schema(
+        [
+            pa.field("repository_id", pa.string()),
+            pa.field("snapshot_id", pa.string()),
+            pa.field("reference_edge_id", pa.string()),
+            pa.field("source_file", pa.string()),
+            pa.field("source_symbol_id", pa.string()),
+            pa.field("target_symbol_id", pa.string()),
+            pa.field("target_file", pa.string()),
+            pa.field("reference_type", pa.string()),
+            pa.field("created_at", pa.timestamp("us", tz="UTC")),
+        ],
+        metadata=_schema_metadata("symbol_reference"),
+    )
+
+
 def workspace_evidence_bundle_record_schema() -> Any:
     pa, _ = _load_pyarrow()
     return pa.schema(
@@ -643,6 +681,7 @@ _SCHEMA_BUILDERS: dict[type[RuntimeInternalContractModel], Any] = {
     RepositoryGraphRecord: repository_graph_record_schema,
     SymbolGraphRecord: symbol_graph_record_schema,
     DependencyGraphRecord: dependency_graph_record_schema,
+    SymbolReferenceRecord: symbol_reference_record_schema,
     WorkspaceEvidenceBundleRecord: workspace_evidence_bundle_record_schema,
     PatchImpactReportRecord: patch_impact_report_record_schema,
 }

@@ -145,6 +145,7 @@ def _snapshot_paths(org_id: str, repository_id: str, snapshot_id: str) -> dict[s
         "repository_graph_parquet": snapshot_dir / "repository_graph.parquet",
         "symbol_graph_parquet": snapshot_dir / "symbol_graph.parquet",
         "dependency_graph_parquet": snapshot_dir / "dependency_graph.parquet",
+        "symbol_reference_parquet": snapshot_dir / "symbol_reference.parquet",
     }
 
 
@@ -166,7 +167,11 @@ def _load_snapshot_manifest(*, org_id: str, repository_id: str, snapshot_id: str
             message=f"Repository snapshot '{snapshot_id}' was not found.",
             status_code=404,
         )
-    return _read_json(path)
+    # AR-OPT-2: hydrate slim (v2) manifests from Parquet so downstream graph/decision
+    # consumers always see the inline arrays; no-op for legacy v1 (inline) manifests.
+    from apps.api_server.services import repository_intelligence_manifest_reader
+
+    return repository_intelligence_manifest_reader.hydrate_snapshot_manifest(_read_json(path))
 
 
 def _load_triage_manifest(
