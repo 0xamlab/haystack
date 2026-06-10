@@ -1,0 +1,70 @@
+{
+  "lib": "vision_gate",
+  "status": "ok",
+  "n_functions": 5,
+  "n_compared": 5,
+  "n_timed": 5,
+  "overall_speedup_x": 226.24,
+  "total_py_ns": 452.47,
+  "total_mojo_ns": 2.0,
+  "elapsed_s": 4.9,
+  "n_iterations": 10000,
+  "mojo_error": null,
+  "functions": [
+    {
+      "function": "should_use_cache",
+      "py_ns": 283.825,
+      "mojo_ns": 1.0,
+      "speedup_x": 283.83,
+      "py_result": 1.0,
+      "py_summary": "bool:1",
+      "mojo_summary": "bool:1",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "needs_clearer_image",
+      "py_ns": 168.65,
+      "mojo_ns": 1.0,
+      "speedup_x": 168.65,
+      "py_result": 1.0,
+      "py_summary": "bool:1",
+      "mojo_summary": "bool:1",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "is_text_heavy",
+      "py_ns": 169.121,
+      "mojo_ns": 0.0,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_summary": "bool:0",
+      "mojo_summary": "bool:0",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "quality_gate_passed",
+      "py_ns": 191.346,
+      "mojo_ns": 0.0,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_summary": "bool:0",
+      "mojo_summary": "bool:0",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "route_image_request",
+      "py_ns": 171.354,
+      "mojo_ns": 0.0,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_summary": "int:0",
+      "mojo_summary": "int:0",
+      "result_match": true,
+      "py_error": null
+    }
+  ]
+}

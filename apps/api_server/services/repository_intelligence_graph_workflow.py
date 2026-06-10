@@ -57,6 +57,7 @@ def _triage_lookup_key(
     max_snippet_lines: int,
     token_budget: int,
     engine_revision: str,
+    ranking_mode: str,
 ) -> str:
     return _stable_identifier(
         "triage_lookup",
@@ -67,8 +68,18 @@ def _triage_lookup_key(
             "max_evidence_items": max_evidence_items,
             "max_snippet_lines": max_snippet_lines,
             "token_budget": token_budget,
+            # The ranking lane changes the output ordering, so it is part of the
+            # cache identity: heuristic and SDK-fused (Mojo RRF) results must not
+            # share a key, else toggling ALGENTA_REPOSITORIES_SDK_RANKING serves a
+            # stale ordering from the other mode.
+            "ranking_mode": ranking_mode,
         },
     )
+
+
+def _triage_ranking_mode() -> str:
+    """Identity of the active triage ranking lane (part of the cache key)."""
+    return "sdk_rrf" if sdk_ranking.sdk_ranking_enabled() else "heuristic"
 
 
 def _graph_query_lookup_key(
@@ -364,6 +375,7 @@ def triage_repository(
         max_snippet_lines=request.max_snippet_lines,
         token_budget=request.token_budget,
         engine_revision=engine_revision,
+        ranking_mode=_triage_ranking_mode(),
     )
     triage_lookup_path = _triage_lookup_dir(org_id, repository_id) / f"{triage_lookup_key}.json"
     if triage_lookup_path.exists():

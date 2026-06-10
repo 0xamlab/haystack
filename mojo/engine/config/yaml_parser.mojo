@@ -27,6 +27,7 @@ comptime _YAML_LIST = 2
 # ── YamlNode struct ──────────────────────────────────────────────────────────
 
 
+@fieldwise_init
 struct YamlNode(Copyable, Movable):
     """A YAML tree node. Can be a scalar, map, or list."""
     var kind: Int           # _YAML_SCALAR, _YAML_MAP, _YAML_LIST
@@ -64,6 +65,7 @@ struct YamlNode(Copyable, Movable):
 # ── Node pool (flat list for tree storage) ────────────────────────────────────
 
 
+@fieldwise_init
 struct _YamlPool(Copyable, Movable):
     """Flat storage for YAML nodes. Nodes reference children by index."""
     var nodes: List[YamlNode]

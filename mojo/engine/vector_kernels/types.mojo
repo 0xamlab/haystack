@@ -160,6 +160,7 @@ struct CandidateScore(Copyable, Movable):
 
 # ── Layer 2: TopKEntry — one ranked result (16 bytes, C-compatible) ───────────
 
+@fieldwise_init
 struct TopKEntry(Copyable, Movable):
     """
     Single ranked result from the typed pipeline.

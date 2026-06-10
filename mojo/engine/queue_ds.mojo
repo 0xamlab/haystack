@@ -39,6 +39,7 @@ struct PriorityQueueEntry(Copyable, Movable):
 # ── PriorityQueue ────────────────────────────────────────────────────────────
 
 
+@fieldwise_init
 struct PriorityQueue(Copyable, Movable):
     """Min-heap based priority queue using parallel lists."""
     var priorities: List[Float64]
@@ -155,6 +156,7 @@ fn pq_pop(mut pq: PriorityQueue) -> PriorityQueueEntry:
 # ── CircularBuffer ───────────────────────────────────────────────────────────
 
 
+@fieldwise_init
 struct CircularBuffer(Copyable, Movable):
     """Fixed-size circular buffer using List[Float64]."""
     var data: List[Float64]

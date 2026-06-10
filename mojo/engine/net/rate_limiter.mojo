@@ -20,6 +20,7 @@ Public API:
 # ── TokenBucket ──────────────────────────────────────────────────────────────
 
 
+@fieldwise_init
 struct TokenBucket(Copyable, Movable):
     """Token bucket rate limiter.
 

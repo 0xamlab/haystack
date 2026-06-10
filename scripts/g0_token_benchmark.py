@@ -79,16 +79,27 @@ def _evidence_bundle(fix: dict, work: Path) -> str:
 
 
 # ── Arms ─────────────────────────────────────────────────────────────────────
-def _sidecar_run(base_url: str, work: Path, prompt: str, injected: str, suppress: bool) -> dict:
-    payload = json.dumps(
-        {
-            "working_dir": str(work),
-            "prompt": prompt,
-            "injected_context": injected,
-            "suppress_exploration": suppress,
-            "provider": "anthropic",
-        }
-    ).encode("utf-8")
+def _sidecar_run(
+    base_url: str,
+    work: Path,
+    prompt: str,
+    injected: str,
+    suppress: bool,
+    tool_profile: str | None = None,
+    max_iterations: int | None = None,
+) -> dict:
+    body: dict = {
+        "working_dir": str(work),
+        "prompt": prompt,
+        "injected_context": injected,
+        "suppress_exploration": suppress,
+        "provider": "anthropic",
+    }
+    if tool_profile:
+        body["tool_profile"] = tool_profile
+    if max_iterations:
+        body["limits"] = {"maxIterations": max_iterations}
+    payload = json.dumps(body).encode("utf-8")
     req = urllib.request.Request(
         base_url.rstrip("/") + "/run",
         data=payload,
@@ -107,6 +118,8 @@ def _sidecar_run(base_url: str, work: Path, prompt: str, injected: str, suppress
         "turns": tel.get("turns", 0),
         "tokens_in": tel.get("tokens_in_uncached", 0),
         "tokens_out": tel.get("tokens_out", 0),
+        "cache_read": tel.get("cache_read_tokens", 0),
+        "cache_write": tel.get("cache_write_tokens", 0),
         "cost": tel.get("total_cost", 0.0),
     }
 
@@ -221,7 +234,18 @@ def _run_arm(arm: str, fix: dict, base_url: str | None) -> dict:
     elif arm == "C":
         if not base_url:
             return {"status": "skipped_no_sidecar"}
-        res = _sidecar_run(base_url, work, prompt, injected=_evidence_bundle(fix, work), suppress=True)
+        # Calibrated profile: suppress EXPLORATION but KEEP the shell so the agent can
+        # validate its patch and converge (blunt suppress_exploration caused the 11-turn
+        # non-converging loop). Hard turn cap as the safety net against runaway re-billing.
+        res = _sidecar_run(
+            base_url,
+            work,
+            prompt,
+            injected=_evidence_bundle(fix, work),
+            suppress=True,
+            tool_profile="no_exploration_local_validation",
+            max_iterations=10,
+        )
     elif arm == "B":
         res = _single_shot(work, fix)
     else:

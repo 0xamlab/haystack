@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -12,6 +13,7 @@ from apps.api_server.schemas.repositories import (
     RepositoryApplyMode,
     RepositoryApplyRequest,
     RepositoryApplyResponse,
+    RepositorySimulatePatchRequest,
     RepositorySimulationRequest,
 )
 from apps.api_server.schemas.response import DecisionEnvelope, DecisionPlan, RiskProfile
@@ -41,27 +43,78 @@ _RepoAccessToken = Callable[[dict[str, Any]], str | None]
 _PatchChangedFiles = Callable[[str], dict[str, list[tuple[int, int]]]]
 
 
-def _simulation_request_from_plan(plan: DecisionPlan) -> SimulateRequestExpert:
-    repository_analysis = plan.repository_analysis
-    if repository_analysis is None or repository_analysis.patch_impact_report_ref is None:
-        raise RepositoryIntelligenceError(
-            code="repository_analysis_required",
-            message="Decision plan is missing repository analysis or patch impact data.",
-            status_code=409,
-        )
-    blast_radius_penalty = {"low": 10.0, "medium": 25.0, "high": 50.0}[
-        repository_analysis.blast_radius
-    ]
-    rollback_penalty = {"low": 8.0, "medium": 18.0, "high": 35.0}[
-        repository_analysis.rollback_complexity
-    ]
-    api_break_penalty = float(len(repository_analysis.impacted_symbols) * 2.5)
-    likely_test_penalty = float(len(repository_analysis.likely_failing_tests) * 2.0)
-    success_mode = max(25.0, plan.confidence * 100.0)
+# Adaptive Monte Carlo scenario count. A trivial, high-confidence, low-blast patch (a
+# one-line tsconfig fix) does not need the same sample budget as a high-blast,
+# low-confidence, many-symbol change: MC standard error scales ~1/sqrt(runs), and a wider
+# cost distribution (higher blast/rollback/impact) needs more samples to estimate the
+# var_95 tail at equal precision. So scale `runs` with complexity + uncertainty, bounded
+# by a floor (always enough for a stable estimate) and a ceiling (latency cap). The count
+# is deterministic for fixed inputs, so cold/hot snapshots and the stored-plan vs
+# working-tree-patch paths stay reproducible. Pin a fixed count (kill-switch / golden
+# fixtures) with ALGENTA_REPOSITORY_SIMULATION_RUNS=<int>.
+_SIMULATION_RUNS_FLOOR = 1_000
+_SIMULATION_RUNS_CEILING = 20_000
+_SIMULATION_RUNS_BASE = 1_000
+_SIMULATION_RUNS_PER_UNIT = 2_000
+_BLAST_RUNS_UNITS = {"low": 0.0, "medium": 1.0, "high": 3.0}
+_ROLLBACK_RUNS_UNITS = {"low": 0.0, "medium": 1.0, "high": 2.0}
+
+
+def _adaptive_simulation_runs(
+    *,
+    blast_radius: str,
+    rollback_complexity: str,
+    impacted_symbol_count: int,
+    likely_failing_test_count: int,
+    confidence: float,
+) -> int:
+    """Monte Carlo scenario count scaled by patch complexity + decision uncertainty.
+
+    Deterministic for fixed inputs. Set ALGENTA_REPOSITORY_SIMULATION_RUNS=<int> to pin a
+    fixed count (e.g. =5000 to restore the previous static behavior)."""
+    override = os.environ.get("ALGENTA_REPOSITORY_SIMULATION_RUNS")
+    if override:
+        try:
+            return max(1, int(override))
+        except ValueError:
+            pass
+    clamped_confidence = max(0.0, min(1.0, confidence))
+    units = (
+        _BLAST_RUNS_UNITS.get(blast_radius, 1.0)
+        + _ROLLBACK_RUNS_UNITS.get(rollback_complexity, 1.0)
+        + min(impacted_symbol_count, 50) / 10.0  # up to +5 units
+        + min(likely_failing_test_count, 30) / 10.0  # up to +3 units
+        + (1.0 - clamped_confidence) * 4.0  # lower confidence -> more samples
+    )
+    runs = _SIMULATION_RUNS_BASE + int(round(units * _SIMULATION_RUNS_PER_UNIT))
+    return max(_SIMULATION_RUNS_FLOOR, min(_SIMULATION_RUNS_CEILING, runs))
+
+
+def _simulation_request_payload(
+    *,
+    blast_radius: str,
+    rollback_complexity: str,
+    impacted_symbol_count: int,
+    likely_failing_test_count: int,
+    confidence: float,
+) -> SimulateRequestExpert:
+    """Map decision risk signals -> the Monte Carlo expert request. Shared by the
+    stored-plan path and the in-flight working-tree-patch path so both stay identical."""
+    blast_radius_penalty = {"low": 10.0, "medium": 25.0, "high": 50.0}[blast_radius]
+    rollback_penalty = {"low": 8.0, "medium": 18.0, "high": 35.0}[rollback_complexity]
+    api_break_penalty = float(impacted_symbol_count * 2.5)
+    likely_test_penalty = float(likely_failing_test_count * 2.0)
+    success_mode = max(25.0, confidence * 100.0)
     payload = {
         "mode": "expert",
         "simulation_model": "monte_carlo",
-        "runs": 5_000,
+        "runs": _adaptive_simulation_runs(
+            blast_radius=blast_radius,
+            rollback_complexity=rollback_complexity,
+            impacted_symbol_count=impacted_symbol_count,
+            likely_failing_test_count=likely_failing_test_count,
+            confidence=confidence,
+        ),
         "seed": 42,
         "simulation": {
             "variables": [
@@ -119,6 +172,85 @@ def _simulation_request_from_plan(plan: DecisionPlan) -> SimulateRequestExpert:
         },
     }
     return SimulateRequestExpert.model_validate(payload)
+
+
+def _simulation_request_from_plan(plan: DecisionPlan) -> SimulateRequestExpert:
+    analysis = plan.repository_analysis
+    if analysis is None or analysis.patch_impact_report_ref is None:
+        raise RepositoryIntelligenceError(
+            code="repository_analysis_required",
+            message="Decision plan is missing repository analysis or patch impact data.",
+            status_code=409,
+        )
+    return _simulation_request_payload(
+        blast_radius=analysis.blast_radius,
+        rollback_complexity=analysis.rollback_complexity,
+        impacted_symbol_count=len(analysis.impacted_symbols),
+        likely_failing_test_count=len(analysis.likely_failing_tests),
+        confidence=plan.confidence,
+    )
+
+
+def _simulation_request_from_patch_impact(
+    impact: dict[str, Any], confidence: float
+) -> SimulateRequestExpert:
+    return _simulation_request_payload(
+        blast_radius=str(impact["blast_radius"]),
+        rollback_complexity=str(impact["rollback_complexity"]),
+        impacted_symbol_count=len(impact.get("impacted_symbols", [])),
+        likely_failing_test_count=len(impact.get("likely_failing_tests", [])),
+        confidence=confidence,
+    )
+
+
+async def simulate_repository_patch(
+    *,
+    connector: DataConnector,
+    request: RepositorySimulatePatchRequest,
+    require_repository_connector: _RequireRepositoryConnector,
+    get_policy: _GetPolicy,
+    load_snapshot_manifest: _LoadManifest,
+    validate_patch_against_snapshot: Callable[..., None],
+    patch_impact_summary: Callable[..., dict[str, Any]],
+    run_simulation_fast: _RunSimulationFast,
+) -> DecisionEnvelope:
+    """Simulate an IN-FLIGHT working-tree patch via the Mojo engine — no stored
+    decision plan required.
+
+    The verified_agentic agent edits files mid-run; this lets it verify the patch
+    BEFORE finishing (Python still recomputes the authoritative diff downstream).
+    The sim inputs come straight from the patch impact, and the same calibrated-risk
+    gate as the stored-plan path decides apply_patch vs hold_patch.
+    """
+    require_repository_connector(connector)
+    org_id = str(connector.org_id)
+    repository_id = str(connector.id)
+    policy = get_policy(org_id)
+    snapshot_manifest = load_snapshot_manifest(
+        org_id=org_id,
+        repository_id=repository_id,
+        snapshot_id=request.snapshot_id,
+    )
+    validate_patch_against_snapshot(
+        snapshot_manifest=snapshot_manifest, patch_diff=request.patch_diff
+    )
+    impact = patch_impact_summary(snapshot_manifest, request.patch_diff)
+    confidence = min(
+        max(float(request.confidence if request.confidence is not None else 0.6), 0.0), 1.0
+    )
+    simulation_request = _simulation_request_from_patch_impact(impact, confidence)
+    envelope, _persist_meta = await run_simulation_fast(
+        simulation_request,
+        org_id=_coerce_scope_uuid(connector.org_id),
+        api_key_id=_coerce_scope_uuid(connector.owner_key_id) if connector.owner_key_id else None,
+    )
+    var_95 = abs(float(envelope.metrics.var_95 or 0.0))
+    gate_passed = envelope.confidence >= policy.min_confidence and (
+        policy.risk_floor is None or var_95 <= policy.risk_floor
+    )
+    return envelope.model_copy(
+        update={"recommended_action": "apply_patch" if gate_passed else "hold_patch"}
+    )
 
 
 async def simulate_repository_decision(
@@ -228,8 +360,15 @@ async def simulate_repository_decision(
         repository_id=repository_id,
         patch_impact_report_id=decision_plan.repository_analysis.patch_impact_report_ref,
     )
+    # Omitted runs => keep the complexity-adaptive count from _simulation_request_from_plan;
+    # an explicit request.runs pins it. Same for seed (never override with None).
+    simulation_overrides: dict[str, Any] = {}
+    if request.runs is not None:
+        simulation_overrides["runs"] = request.runs
+    if request.seed is not None:
+        simulation_overrides["seed"] = request.seed
     simulation_request = _simulation_request_from_plan(decision_plan).model_copy(
-        update={"runs": request.runs, "seed": request.seed}
+        update=simulation_overrides
     )
     envelope, _persist_meta = await run_simulation_fast(
         simulation_request,

@@ -16,6 +16,7 @@ from apps.api_server.schemas.repositories import (
     RepositoryGraphQueryRequest,
     RepositoryGraphQueryResponse,
     RepositoryIntelligenceCapabilitiesResponse,
+    RepositorySimulatePatchRequest,
     RepositorySimulationRequest,
     RepositorySnapshotCreateRequest,
     RepositorySnapshotResponse,
@@ -768,6 +769,23 @@ async def simulate_repository_decision(
         run_simulation_fast=run_simulation_fast,
         utc_now=_utc_now,
         stable_identifier=_stable_identifier,
+    )
+
+
+async def simulate_repository_patch(
+    *,
+    connector: DataConnector,
+    request: RepositorySimulatePatchRequest,
+) -> DecisionEnvelope:
+    return await repository_execution_workflow.simulate_repository_patch(
+        connector=connector,
+        request=request,
+        require_repository_connector=_require_repository_connector,
+        get_policy=get_policy,
+        load_snapshot_manifest=_load_snapshot_manifest,
+        validate_patch_against_snapshot=_validate_patch_against_snapshot,
+        patch_impact_summary=_patch_impact_summary,
+        run_simulation_fast=run_simulation_fast,
     )
 
 

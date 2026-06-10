@@ -1,0 +1,10 @@
+[
+  {
+    "resource_type": "CONNECTOR",
+    "access_level": "READ"
+  },
+  {
+    "resource_type": "DESTINATION",
+    "access_level": "READ"
+  }
+]

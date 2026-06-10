@@ -1,0 +1,180 @@
+{
+  "lib": "image_quality",
+  "status": "ok",
+  "n_functions": 15,
+  "n_compared": 8,
+  "n_timed": 8,
+  "overall_speedup_x": 1.85,
+  "total_py_ns": 8661.28,
+  "total_mojo_ns": 4694.0,
+  "elapsed_s": 4.11,
+  "n_iterations": 10000,
+  "mojo_error": null,
+  "functions": [
+    {
+      "function": "blur_score",
+      "py_ns": 1196.4,
+      "mojo_ns": 1000.8,
+      "speedup_x": 1.2,
+      "py_result": 0.0,
+      "py_summary": "float:0.0",
+      "mojo_summary": "float:0.0",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "is_blurry",
+      "py_ns": 1260.9,
+      "mojo_ns": 993.1,
+      "speedup_x": 1.27,
+      "py_result": 1.0,
+      "py_summary": "bool:1",
+      "mojo_summary": "bool:1",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "brightness_mean",
+      "py_ns": 505.962,
+      "mojo_ns": 236.7,
+      "speedup_x": 2.14,
+      "py_result": 0.366667,
+      "py_summary": "float:0.3666666666666667",
+      "mojo_summary": "float:0.3666666666666667",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "contrast_std",
+      "py_ns": 953.875,
+      "mojo_ns": 249.1,
+      "speedup_x": 3.83,
+      "py_result": 0.188562,
+      "py_summary": "float:0.18856180831641267",
+      "mojo_summary": "float:0.18856180831641267",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "shannon_entropy",
+      "py_ns": null,
+      "mojo_ns": 1296.5,
+      "speedup_x": null,
+      "py_result": null,
+      "py_summary": null,
+      "mojo_summary": "float:0.0",
+      "result_match": null,
+      "py_error": "module 'math' has no attribute 'math'"
+    },
+    {
+      "function": "is_near_blank",
+      "py_ns": 1059.654,
+      "mojo_ns": 238.3,
+      "speedup_x": 4.45,
+      "py_result": 1.0,
+      "py_summary": "bool:1",
+      "mojo_summary": "bool:1",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "uniformity",
+      "py_ns": 1786.771,
+      "mojo_ns": 525.7,
+      "speedup_x": 3.4,
+      "py_result": 1.0,
+      "py_summary": "float:1.0",
+      "mojo_summary": "float:1.0",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "noise_estimate",
+      "py_ns": 1371.313,
+      "mojo_ns": 1209.0,
+      "speedup_x": 1.13,
+      "py_result": 0.0,
+      "py_summary": "float:0.0",
+      "mojo_summary": "float:0.0",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "is_over_or_under_exposed",
+      "py_ns": 526.408,
+      "mojo_ns": 241.3,
+      "speedup_x": 2.18,
+      "py_result": 1.0,
+      "py_summary": "bool:1",
+      "mojo_summary": "bool:1",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "quality_score",
+      "py_ns": null,
+      "mojo_ns": 2135.2,
+      "speedup_x": null,
+      "py_result": null,
+      "py_summary": null,
+      "mojo_summary": "float:0.0008593749999999844",
+      "result_match": null,
+      "py_error": "module 'math' has no attribute 'math'"
+    },
+    {
+      "function": "blur_score_flat",
+      "py_ns": null,
+      "mojo_ns": 2800.0,
+      "speedup_x": null,
+      "py_result": null,
+      "py_summary": null,
+      "mojo_summary": "float:0.07654320987654323",
+      "result_match": null,
+      "py_error": "name 'reshape_to_grid' is not defined"
+    },
+    {
+      "function": "brightness_flat",
+      "py_ns": null,
+      "mojo_ns": 1317.5,
+      "speedup_x": null,
+      "py_result": null,
+      "py_summary": null,
+      "mojo_summary": "float:0.1",
+      "result_match": null,
+      "py_error": "name 'reshape_to_grid' is not defined"
+    },
+    {
+      "function": "entropy_flat",
+      "py_ns": null,
+      "mojo_ns": 2408.6,
+      "speedup_x": null,
+      "py_result": null,
+      "py_summary": null,
+      "mojo_summary": "float:0.0",
+      "result_match": null,
+      "py_error": "name 'reshape_to_grid' is not defined"
+    },
+    {
+      "function": "contrast_flat",
+      "py_ns": null,
+      "mojo_ns": 1375.1,
+      "speedup_x": null,
+      "py_result": null,
+      "py_summary": null,
+      "mojo_summary": "float:0.20976176963403034",
+      "result_match": null,
+      "py_error": "name 'reshape_to_grid' is not defined"
+    },
+    {
+      "function": "quality_score_flat",
+      "py_ns": null,
+      "mojo_ns": 3604.8,
+      "speedup_x": null,
+      "py_result": null,
+      "py_summary": null,
+      "mojo_summary": "float:0.0005403136642323028",
+      "result_match": null,
+      "py_error": "name 'reshape_to_grid' is not defined"
+    }
+  ]
+}

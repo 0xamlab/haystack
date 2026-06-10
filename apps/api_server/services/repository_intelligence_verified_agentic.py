@@ -300,6 +300,26 @@ async def _generate_verified_agentic_repository_patch_plan(
         # exploration; shell only for controlled post-patch validation).
         "tool_profile": _agent_tool_profile(),
     }
+    # Engine-behind wiring: when the LOCAL Algenta engine is reachable, hand the
+    # agent-core its loopback URL + repo/snapshot ids + an engine api-key so the
+    # Cline agent's Algenta tools (localize / graph_query / simulate_patch) can call
+    # back into it. The LLM provider stays ANY (BYOM) — only the ENGINE is local.
+    # Additive: without ALGENTA_ENGINE_URL the agent-core loads no Algenta tools and
+    # behaves exactly as before.
+    _engine_url = os.environ.get("ALGENTA_ENGINE_URL")
+    if _engine_url:
+        task_spec["engine"] = {
+            "url": _engine_url,
+            "repository_id": str(snapshot_manifest.get("repository_id") or ""),
+            "snapshot_id": snapshot_manifest["snapshot_id"],
+            "api_key": os.environ.get("ALGENTA_ENGINE_API_KEY")
+            or os.environ.get("ALGENTA_API_KEY")
+            or "",
+            # LLM provider/model are deployment choice (any provider); None lets the
+            # agent-core pick its configured default.
+            "provider": os.environ.get("ALGENTA_AGENT_PROVIDER") or None,
+            "model": os.environ.get("ALGENTA_AGENT_MODEL") or None,
+        }
     limits = {"token_budget": 6_000, "max_turns": 8}
 
     with repository_storage.materialized_snapshot(snapshot_manifest) as root_path:

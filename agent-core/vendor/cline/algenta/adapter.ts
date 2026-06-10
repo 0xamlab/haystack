@@ -1,34 +1,50 @@
 // Algenta Repositories — real agent-core adapter over the vendored Cline SDK.
 //
-// runAgent() drives a headless, auto-approved, single-shot ClineCore run against ANY
-// provider Cline supports (key resolved from .env via the SDK provider catalog), edits
-// files under working_dir, and returns the run status + which files changed. Proven
-// live against Anthropic. See ../CLINE_SDK_INTERFACE.md for the full surface.
+// The helper exports below are shared by the sidecar session server and the
+// single-shot runAgent() wrapper. They resolve provider/model credentials,
+// build a deterministic local ClineCore config, and derive proof-friendly file
+// and tool metadata from the SDK result surface.
 import { ClineCore, Llms } from "@cline/core";
+import { mojoGateAfterTool } from "./mojo-gate";
 
 export interface RunAgentArgs {
-  working_dir: string;
-  prompt: string; // the task
-  injected_context?: string; // token-compressed evidence bundle (repo intelligence)
-  provider?: string; // default "anthropic"
-  model?: string; // default = provider's defaultModelId
-  suppress_exploration?: boolean; // legacy token-reduction flag: block read/search/fetch tools
-  tool_profile?: string; // AR-OPT-4 tool profile (takes precedence over suppress_exploration)
-  limits?: { maxIterations?: number; timeoutMs?: number };
+	working_dir: string;
+	prompt: string; // the task
+	injected_context?: string; // token-compressed evidence bundle (repo intelligence)
+	provider?: string; // default "anthropic"
+	model?: string; // default = provider's defaultModelId
+	base_url?: string;
+	headers?: Record<string, string>;
+	suppress_exploration?: boolean; // legacy token-reduction flag: block read/search/fetch tools
+	tool_profile?: string; // AR-OPT-4 tool profile (takes precedence over suppress_exploration)
+	limits?: { maxIterations?: number; timeoutMs?: number };
+	enable_spawn_agent?: boolean;
+	enable_agent_teams?: boolean;
 }
 
 export interface RunAgentResult {
-  status: string; // AgentFinishReason: completed | max_iterations | aborted | mistake_limit | error
-  agent_run_id: string;
-  text: string;
-  iterations: number;
-  files_changed: string[];
-  usage?: { inputTokens: number; outputTokens: number; totalCost?: number };
-  provider: string;
-  model: string;
+	status: string; // AgentFinishReason: completed | max_iterations | aborted | mistake_limit | error
+	agent_run_id: string;
+	text: string;
+	iterations: number;
+	files_changed: string[];
+	usage?: {
+		inputTokens: number;
+		outputTokens: number;
+		cacheReadTokens?: number;
+		cacheWriteTokens?: number;
+		totalCost?: number;
+	};
+	provider: string;
+	model: string;
 }
 
-const EXPLORATION_TOOLS = ["read_files", "search_codebase", "fetch_web_content", "ask_question"];
+const EXPLORATION_TOOLS = [
+	"read_files",
+	"search_codebase",
+	"fetch_web_content",
+	"ask_question",
+];
 const SHELL_TOOLS = ["run_commands"];
 const WRITE_TOOLS = new Set(["editor", "apply_patch"]);
 
@@ -39,119 +55,241 @@ const WRITE_TOOLS = new Set(["editor", "apply_patch"]);
 //                                       validate its patch in-sandbox after editing.
 // Falls back to the legacy suppress_exploration flag when no profile is given.
 function suppressedTools(args: RunAgentArgs): string[] {
-  switch (args.tool_profile) {
-    case "no_exploration_no_shell":
-      return [...EXPLORATION_TOOLS, ...SHELL_TOOLS];
-    case "no_exploration_local_validation":
-      return [...EXPLORATION_TOOLS];
-    default:
-      return args.suppress_exploration ? [...EXPLORATION_TOOLS] : [];
-  }
+	switch (args.tool_profile) {
+		case "no_exploration_no_shell":
+			return [...EXPLORATION_TOOLS, ...SHELL_TOOLS];
+		case "no_exploration_local_validation":
+			return [...EXPLORATION_TOOLS];
+		default:
+			return args.suppress_exploration ? [...EXPLORATION_TOOLS] : [];
+	}
+}
+
+export interface ResolvedProviderConfig {
+	providerId: string;
+	modelId: string;
+	apiKey: string;
+	baseUrl?: string;
+	headers?: Record<string, string>;
+}
+
+export async function resolveProviderConfig(
+	args: RunAgentArgs,
+): Promise<ResolvedProviderConfig> {
+	// Resolve provider/model/apiKey from .env via the SDK catalog — any provider.
+	const requested = args.provider || "anthropic";
+	const providerId =
+		(
+			Llms as { normalizeProviderId?: (p: string) => string }
+		).normalizeProviderId?.(requested) ?? requested;
+	const collection = await Llms.getProviderCollection(providerId);
+	const envNames: string[] = collection?.provider?.env ?? [];
+	const apiKey = envNames.map((k) => process.env[k]?.trim()).find(Boolean);
+	const modelId = args.model || collection?.provider?.defaultModelId;
+	if (!modelId) throw new Error(`no model id for provider '${providerId}'`);
+	if (!apiKey) {
+		throw new Error(
+			`no API key in env for '${providerId}' (tried: ${envNames.join(", ") || "none"})`,
+		);
+	}
+	return {
+		providerId,
+		modelId,
+		apiKey,
+		baseUrl: args.base_url?.trim() || undefined,
+		headers:
+			args.headers && Object.keys(args.headers).length > 0
+				? { ...args.headers }
+				: undefined,
+	};
+}
+
+export function buildToolPolicies(
+	args: RunAgentArgs,
+): Record<string, { enabled?: boolean; autoApprove?: boolean }> {
+	// Auto-approve everything (headless); optionally hard-suppress exploration tools.
+	const toolPolicies: Record<
+		string,
+		{ enabled?: boolean; autoApprove?: boolean }
+	> = {
+		"*": { enabled: true, autoApprove: true },
+	};
+	for (const t of suppressedTools(args)) toolPolicies[t] = { enabled: false };
+	return toolPolicies;
+}
+
+export function buildSystemPrompt(args: RunAgentArgs): string {
+	return (
+		"You are Algenta's automated repository-fixing agent. Apply the requested change using " +
+		"your file-editing tools, then stop. Do not ask questions." +
+		(args.injected_context
+			? `\n\n[REPOSITORY EVIDENCE BUNDLE — authoritative; prefer it over exploring the repo]\n${args.injected_context}`
+			: "")
+	);
+}
+
+export function buildStartConfig(
+	args: RunAgentArgs,
+	provider: ResolvedProviderConfig,
+): Parameters<typeof ClineCore.prototype.start>[0] {
+	return {
+		config: {
+			providerId: provider.providerId,
+			modelId: provider.modelId,
+			apiKey: provider.apiKey,
+			...(provider.baseUrl ? { baseUrl: provider.baseUrl } : {}),
+			...(provider.headers ? { headers: { ...provider.headers } } : {}),
+			cwd: args.working_dir,
+			workspaceRoot: args.working_dir,
+			systemPrompt: buildSystemPrompt(args),
+			enableTools: true,
+			enableSpawnAgent: Boolean(args.enable_spawn_agent),
+			enableAgentTeams: Boolean(args.enable_agent_teams),
+			// Engine-behind seam: load the Algenta tools plugin (localize/graph_query/
+			// simulate_patch) AND the govern hook ONLY when an engine URL is configured.
+			// Additive — without ALGENTA_ENGINE_URL the run is exactly as before.
+			// The govern hook is wired via `config.hooks` (not the plugin's top-level
+			// hooks): in backendMode "local" the runtime merges config.hooks into the
+			// loop, but a pluginPaths plugin only contributes its setup()/tools — its
+			// hooks are not wired. Tools come from the plugin; the hook comes from here.
+			...(process.env.ALGENTA_ENGINE_URL
+				? {
+						pluginPaths: [
+							new URL("./algenta-plugin.ts", import.meta.url).pathname,
+						],
+						hooks: { afterTool: mojoGateAfterTool },
+					}
+				: {}),
+			// Always bound iterations: a non-converging suppressed run otherwise loops
+			// and (uncached) re-bills the whole context per turn — the 466k-token blowup
+			// the G0 run caught. Default cap 12; callers may tighten via limits.maxIterations.
+			execution: { maxIterations: args.limits?.maxIterations ?? 12 },
+		},
+		source: "api",
+		interactive: false,
+	} as Parameters<typeof ClineCore.prototype.start>[0];
+}
+
+export function collectFilesChangedFromToolCalls(
+	toolCalls:
+		| {
+				name: string;
+				input?: unknown;
+				error?: string;
+		  }[]
+		| undefined,
+): string[] {
+	const filesChanged = new Set<string>();
+	for (const call of toolCalls ?? []) {
+		if (!WRITE_TOOLS.has(call.name) || call.error) continue;
+		const input = call.input as
+			| { path?: string; file?: string; files?: unknown }
+			| undefined;
+		const filesField = input?.files;
+		const candidates = [
+			input?.path,
+			input?.file,
+			...(Array.isArray(filesField) ? filesField : []),
+		];
+		for (const p of candidates)
+			if (typeof p === "string") filesChanged.add(p);
+	}
+	return [...filesChanged];
 }
 
 export async function runAgent(args: RunAgentArgs): Promise<RunAgentResult> {
-  // 1) Resolve provider/model/apiKey from .env via the SDK catalog — any provider.
-  const requested = args.provider || "anthropic";
-  const providerId =
-    (Llms as { normalizeProviderId?: (p: string) => string }).normalizeProviderId?.(requested) ??
-    requested;
-  const collection = await Llms.getProviderCollection(providerId);
-  const envNames: string[] = collection?.provider?.env ?? [];
-  const apiKey = envNames.map((k) => process.env[k]?.trim()).find(Boolean);
-  const modelId = args.model || collection?.provider?.defaultModelId;
-  if (!modelId) throw new Error(`no model id for provider '${providerId}'`);
-  if (!apiKey) {
-    throw new Error(`no API key in env for '${providerId}' (tried: ${envNames.join(", ") || "none"})`);
-  }
+	const provider = await resolveProviderConfig(args);
+	const toolPolicies = buildToolPolicies(args);
 
-  // 2) Auto-approve everything (headless); optionally hard-suppress exploration tools.
-  const toolPolicies: Record<string, { enabled?: boolean; autoApprove?: boolean }> = {
-    "*": { enabled: true, autoApprove: true },
-  };
-  for (const t of suppressedTools(args)) toolPolicies[t] = { enabled: false };
+	const cline = await ClineCore.create({
+		clientName: "algenta-agent-core",
+		backendMode: "local",
+		toolPolicies,
+	} as Parameters<typeof ClineCore.create>[0]);
 
-  const systemPrompt =
-    "You are Algenta's automated repository-fixing agent. Apply the requested change using " +
-    "your file-editing tools, then stop. Do not ask questions." +
-    (args.injected_context
-      ? `\n\n[REPOSITORY EVIDENCE BUNDLE — authoritative; prefer it over exploring the repo]\n${args.injected_context}`
-      : "");
+	let agentRunId = "";
+	try {
+		const started = await cline.start(buildStartConfig(args, provider));
+		agentRunId = started.sessionId;
 
-  const cline = await ClineCore.create({
-    clientName: "algenta-agent-core",
-    backendMode: "local",
-    toolPolicies,
-  } as Parameters<typeof ClineCore.create>[0]);
+		const result = await (
+			cline as unknown as {
+				send: (i: unknown) => Promise<
+					| {
+							finishReason?: string;
+							text?: string;
+							iterations?: number;
+							usage?: {
+								inputTokens?: number;
+								outputTokens?: number;
+								totalCost?: number;
+							};
+							toolCalls?: { name: string; input?: unknown; error?: string }[];
+					  }
+					| undefined
+				>;
+			}
+		).send({
+			sessionId: agentRunId,
+			prompt: args.prompt,
+			mode: "act",
+			timeoutMs: args.limits?.timeoutMs ?? 150000,
+		});
 
-  let agentRunId = "";
-  try {
-    const started = await cline.start({
-      config: {
-        providerId,
-        modelId,
-        apiKey,
-        cwd: args.working_dir,
-        workspaceRoot: args.working_dir,
-        systemPrompt,
-        enableTools: true,
-        enableSpawnAgent: false,
-        enableAgentTeams: false,
-        ...(args.limits?.maxIterations
-          ? { execution: { maxIterations: args.limits.maxIterations } }
-          : {}),
-      },
-      source: "terminal",
-      interactive: false,
-    } as Parameters<typeof cline.start>[0]);
-    agentRunId = started.sessionId;
-
-    const result = await (cline as unknown as {
-      send: (i: unknown) => Promise<
-        | {
-            finishReason?: string;
-            text?: string;
-            iterations?: number;
-            usage?: { inputTokens?: number; outputTokens?: number; totalCost?: number };
-            toolCalls?: { name: string; input?: unknown; error?: string }[];
-          }
-        | undefined
-      >;
-    }).send({
-      sessionId: agentRunId,
-      prompt: args.prompt,
-      mode: "act",
-      timeoutMs: args.limits?.timeoutMs ?? 150000,
-    });
-
-    const filesChanged = new Set<string>();
-    for (const call of result?.toolCalls ?? []) {
-      if (!WRITE_TOOLS.has(call.name) || call.error) continue;
-      const input = call.input as { path?: string; file?: string; files?: unknown } | undefined;
-      const candidates = [input?.path, input?.file, ...(Array.isArray(input?.files) ? input!.files : [])];
-      for (const p of candidates) if (typeof p === "string") filesChanged.add(p);
-    }
-
-    const usage = result?.usage;
-    return {
-      status: result?.finishReason ?? "unknown",
-      agent_run_id: agentRunId,
-      text: result?.text ?? "",
-      iterations: result?.iterations ?? 0,
-      files_changed: [...filesChanged],
-      usage: usage
-        ? {
-            inputTokens: usage.inputTokens ?? 0,
-            outputTokens: usage.outputTokens ?? 0,
-            totalCost: usage.totalCost,
-          }
-        : undefined,
-      provider: providerId,
-      model: modelId,
-    };
-  } finally {
-    const anyCline = cline as unknown as { dispose?: (r?: string) => Promise<void> };
-    if (typeof anyCline.dispose === "function") {
-      await anyCline.dispose("run_complete").catch(() => {});
-    }
-  }
+		// Authoritative usage incl. prompt-cache read/write. Research: getAccumulatedUsage's
+		// aggregateUsage is the real breakdown (and includes subagents); send().usage omits
+		// cache fields, which is why earlier G0 runs reported cache_w=0 even though the
+		// anthropic provider declares the prompt-cache capability. Prefer accumulated usage.
+		let usage = result?.usage as
+			| {
+					inputTokens?: number;
+					outputTokens?: number;
+					cacheReadTokens?: number;
+					cacheWriteTokens?: number;
+					totalCost?: number;
+			  }
+			| undefined;
+		try {
+			const acc = await (
+				cline as unknown as {
+					getAccumulatedUsage?: (id: string) => Promise<
+						| {
+								aggregateUsage?: Record<string, number>;
+								leadUsage?: Record<string, number>;
+						  }
+						| undefined
+					>;
+				}
+			).getAccumulatedUsage?.(agentRunId);
+			const agg = acc?.aggregateUsage ?? acc?.leadUsage;
+			if (agg) usage = { ...usage, ...agg };
+		} catch {
+			/* fall back to send().usage */
+		}
+		return {
+			status: result?.finishReason ?? "unknown",
+			agent_run_id: agentRunId,
+			text: result?.text ?? "",
+			iterations: result?.iterations ?? 0,
+			files_changed: collectFilesChangedFromToolCalls(result?.toolCalls),
+			usage: usage
+				? {
+						inputTokens: usage.inputTokens ?? 0,
+						outputTokens: usage.outputTokens ?? 0,
+						cacheReadTokens: usage.cacheReadTokens ?? 0,
+						cacheWriteTokens: usage.cacheWriteTokens ?? 0,
+						totalCost: usage.totalCost,
+					}
+				: undefined,
+			provider: provider.providerId,
+			model: provider.modelId,
+		};
+	} finally {
+		const anyCline = cline as unknown as {
+			dispose?: (r?: string) => Promise<void>;
+		};
+		if (typeof anyCline.dispose === "function") {
+			await anyCline.dispose("run_complete").catch(() => {});
+		}
+	}
 }

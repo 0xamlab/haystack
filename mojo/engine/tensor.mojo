@@ -15,6 +15,7 @@ from std.math import sqrt, exp, log, abs as fabs
 # ── Tensor1D struct ───────────────────────────────────────────────────────────
 
 
+@fieldwise_init
 struct Tensor1D(Copyable, Movable):
     """1D tensor of Float64 values with basic math operations."""
 

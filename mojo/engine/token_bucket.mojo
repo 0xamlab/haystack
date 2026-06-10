@@ -136,6 +136,7 @@ fn lb_level(bucket: LeakyBucket) -> Float64:
 # ── SlidingWindow ─────────────────────────────────────────────────────────────
 
 
+@fieldwise_init
 struct SlidingWindow:
     """Sliding window rate limiter.
 

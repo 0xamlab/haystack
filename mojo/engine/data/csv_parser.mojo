@@ -7,6 +7,7 @@ Handles: quoted fields, escaped quotes (""), commas inside quotes, newlines insi
 # ── CSVRow struct ─────────────────────────────────────────────────────────────
 
 
+@fieldwise_init
 struct CSVRow(Copyable, Movable):
     """A single parsed CSV row containing a list of field strings."""
     var fields: List[String]

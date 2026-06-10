@@ -199,6 +199,7 @@ struct CandidateEntry(Copyable, Movable):
 
 # ── TopKEntry / RankResult ────────────────────────────────────────────────────
 
+@fieldwise_init
 struct TopKEntry(Copyable, Movable):
     var column_id:  UInt32
     var score:      Float32
@@ -218,6 +219,7 @@ struct TopKEntry(Copyable, Movable):
         self.name_sim  = take.name_sim;  self.type_boost = take.type_boost
 
 
+@fieldwise_init
 struct RankResult(Copyable, Movable):
     """
     Top-k result with added planner flags (backwards-compatible with table.mojo).

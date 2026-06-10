@@ -121,6 +121,22 @@ junit.xml
 .bench_cache/
 .algenta_cache/
 .tmp_resolve_debug/
+.tmp_runtime_contract_load/
+.tmp_runtime_contract_issue/
+
+# Package-manager stores / vendored toolchain binaries (never commit)
+.pnpm-store/
+.pixi/
+.docker-selfhost/
+
+# Generated runtime state (execution policies, snapshots) — not source
+.algenta-runtime/
+
+# Agent worktrees
+.claude/worktrees/
+
+# Editor/tool backups
+*.bak
 
 # OS
 Thumbs.db

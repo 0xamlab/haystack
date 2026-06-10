@@ -21,6 +21,7 @@ from std.math import sqrt, abs as fabs
 # ── RegressionTree ────────────────────────────────────────────────────────────
 
 
+@fieldwise_init
 struct RegressionTree(Copyable, Movable):
     """Regression tree stored as flat arrays.
 

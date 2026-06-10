@@ -527,8 +527,12 @@ def _analyze_file_cached(
         and cached_analysis.file_path == relative_path
         and cached_analysis.content_hash == content_hash
     ):
+        # AR-OPT-8: content-hash parse cache hit — unchanged file reused, not re-parsed
+        # (the warm-snapshot speedup). Telemetry makes the hit rate measurable.
+        telemetry.record("parse_cache_hits", 1)
         return cached_analysis
 
+    telemetry.record("parse_cache_misses", 1)
     analysis = analyze_file(
         root_path=root_path,
         path=path,

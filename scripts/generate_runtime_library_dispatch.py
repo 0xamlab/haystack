@@ -48,6 +48,161 @@ def _function_alias(module_path: str, function_name: str) -> str:
     return f"_{_sanitize_identifier(module_path)}__{_sanitize_identifier(function_name)}"
 
 
+def _module_dispatch_name(import_path: str) -> str:
+    # Sanitize each dotted segment independently and join with "__" so a
+    # top-level module (e.g. "graph_algorithms") cannot collapse onto a
+    # sub-package module (e.g. "graph.algorithms"). Both previously sanitized
+    # to "graph_algorithms", producing duplicate `_dispatch_graph_algorithms`.
+    return "__".join(_sanitize_identifier(part) for part in import_path.split("."))
+
+
+_SCALAR_RUNTIME_TYPES = {
+    "Bool",
+    "Float32",
+    "Float64",
+    "Int",
+    "UInt8",
+    "UInt16",
+    "UInt32",
+    "UInt64",
+}
+
+
+def _clean_field_type(raw: str) -> str:
+    return raw.split("=", 1)[0].split("#", 1)[0].strip()
+
+
+def _clean_param_type(raw: str) -> str:
+    cleaned = raw.split("=", 1)[0].split("#", 1)[0].strip()
+    for prefix in ("owned ", "mut ", "inout ", "read ", "borrowed ", "var "):
+        if cleaned.startswith(prefix):
+            cleaned = cleaned[len(prefix) :].strip()
+    return cleaned
+
+
+def _init_param_types(signature: str) -> list[str]:
+    """Non-`self` positional param TYPES of an __init__ signature, in order."""
+    open_paren = signature.find("(")
+    if open_paren < 0:
+        return []
+    depth = 0
+    params_str = ""
+    for ch in signature[open_paren:]:
+        if ch in "([":
+            depth += 1
+            if depth == 1 and ch == "(":
+                continue
+        elif ch in ")]":
+            depth -= 1
+            if depth == 0:
+                break
+        params_str += ch
+    parts: list[str] = []
+    depth = 0
+    current = ""
+    for ch in params_str:
+        if ch in "([":
+            depth += 1
+        elif ch in ")]":
+            depth -= 1
+        if ch == "," and depth == 0:
+            parts.append(current.strip())
+            current = ""
+        else:
+            current += ch
+    if current.strip():
+        parts.append(current.strip())
+    types: list[str] = []
+    for part in parts:
+        if not part or ":" not in part:
+            continue  # skips `self` / `out self` / `*args` (no annotation)
+        name_part, type_part = part.split(":", 1)
+        if name_part.strip().split()[-1] == "self":
+            continue
+        types.append(_clean_param_type(type_part))
+    return types
+
+
+def _parse_struct_defs(path) -> dict[str, tuple[list[tuple[str, str]], bool]]:
+    """Generator-local struct parser: {name: (fields, memberwise)}.
+
+    `fields` are the `var name: type` declarations at the struct's own body
+    indent (NOT method-local vars, which mojo_inventory's parser misreads as
+    fields — e.g. DataFrame.sum_val). `memberwise` is True when the struct can
+    be built positionally as `Name(field_0, ..., field_{n-1})`: it has an
+    __init__ whose non-self arity equals the field count, or a @value /
+    @fieldwise_init decorator. Structs that aren't memberwise (e.g. DataFrame,
+    whose __init__ takes no args) cannot be round-tripped by the dispatch.
+    """
+    lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    result: dict[str, tuple[list[tuple[str, str]], bool]] = {}
+    n = len(lines)
+    i = 0
+    while i < n:
+        match = re.match(r"^(\s*)struct\s+([A-Za-z_][A-Za-z0-9_]*)", lines[i])
+        if match is None:
+            i += 1
+            continue
+        struct_indent = len(match.group(1))
+        name = match.group(2)
+        deco_memberwise = False
+        j = i - 1
+        while j >= 0:
+            decorator = lines[j].strip()
+            if not decorator:
+                j -= 1
+                continue
+            if decorator.startswith("@"):
+                if "value" in decorator or "fieldwise_init" in decorator:
+                    deco_memberwise = True
+                j -= 1
+                continue
+            break
+        i += 1
+        fields: list[tuple[str, str]] = []
+        init_signatures: list[list[str]] = []
+        has_init = False
+        body_indent: int | None = None
+        while i < n:
+            raw = lines[i]
+            stripped = raw.strip()
+            cur_indent = len(raw) - len(raw.lstrip(" "))
+            if stripped and cur_indent <= struct_indent:
+                break
+            if stripped and body_indent is None:
+                body_indent = cur_indent
+            if cur_indent == body_indent:
+                field_match = re.match(
+                    r"^\s*var\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.+)$", raw
+                )
+                if field_match is not None:
+                    fields.append(
+                        (field_match.group(1), _clean_field_type(field_match.group(2)))
+                    )
+                if re.match(r"^\s*fn\s+__init__\s*\(", raw):
+                    has_init = True
+                    sig = stripped
+                    k = i
+                    while ")" not in sig and k + 1 < n:
+                        k += 1
+                        sig += " " + lines[k].strip()
+                    init_signatures.append(_init_param_types(sig))
+            i += 1
+        field_types = [field_typ for _, field_typ in fields]
+        if deco_memberwise:
+            # @value / @fieldwise_init synthesize a field-ordered constructor.
+            memberwise = True
+        elif has_init:
+            # Round-trippable only if some __init__ takes exactly the fields,
+            # in order, BY TYPE (matching arity alone is not enough — e.g.
+            # Tensor1D(data, size) vs its __init__(size, fill)).
+            memberwise = any(field_types == sig for sig in init_signatures)
+        else:
+            memberwise = False
+        result[name] = (fields, memberwise)
+    return result
+
+
 def _register_type(type_name: str, collected: set[str]) -> None:
     collected.add(type_name)
     if _is_list_type(type_name):
@@ -155,7 +310,7 @@ def _emit_struct_parse_function(
         lines.append(
             f"{INDENT}var field_{index} = {_parse_fn_name(field.typ)}(json_array_get(values_json, {index}))"
         )
-    field_args = ", ".join(f"field_{index}" for index in range(len(spec.fields)))
+    field_args = ", ".join(f"field_{index}^" for index in range(len(spec.fields)))
     lines.append(f"{INDENT}return {type_name}({field_args})")
     lines.append("")
     return lines
@@ -235,12 +390,14 @@ def _emit_struct_to_json_function(
     type_name: str,
     *,
     struct_specs: dict[str, "RuntimeStructSpec"],
+    display_names: dict[str, str] | None = None,
 ) -> list[str]:
     spec = struct_specs[type_name]
     fn_name = _to_json_fn_name(type_name)
+    display = (display_names or {}).get(type_name, type_name)
     lines = [
         f"fn {fn_name}(value: {type_name}) -> String:",
-        f'{INDENT}var result = String("{{\\"{_STRUCT_ENVELOPE_TYPE_KEY}\\":\\"{type_name}\\",\\"{_STRUCT_ENVELOPE_VALUES_KEY}\\":[")',
+        f'{INDENT}var result = String("{{\\"{_STRUCT_ENVELOPE_TYPE_KEY}\\":\\"{display}\\",\\"{_STRUCT_ENVELOPE_VALUES_KEY}\\":[")',
     ]
     for index, field in enumerate(spec.fields):
         if index > 0:
@@ -260,6 +417,7 @@ def _emit_to_json_functions(
     type_names: set[str],
     *,
     struct_specs: dict[str, "RuntimeStructSpec"],
+    display_names: dict[str, str] | None = None,
 ) -> list[str]:
     lines: list[str] = []
     ordered = _ordered_types(type_names)
@@ -271,7 +429,11 @@ def _emit_to_json_functions(
         if _is_list_type(type_name):
             lines.extend(_emit_list_to_json_function(type_name))
         elif type_name in struct_specs:
-            lines.extend(_emit_struct_to_json_function(type_name, struct_specs=struct_specs))
+            lines.extend(
+                _emit_struct_to_json_function(
+                    type_name, struct_specs=struct_specs, display_names=display_names
+                )
+            )
         else:
             lines.extend(_emit_scalar_to_json_function(type_name))
     return lines
@@ -290,7 +452,7 @@ def _emit_imports(modules: tuple[RuntimeLibraryModule, ...]) -> list[str]:
 
 
 def _emit_module_dispatch(module: RuntimeLibraryModule) -> list[str]:
-    helper_name = f"_dispatch_{_sanitize_identifier(module.import_path)}"
+    helper_name = f"_dispatch_{_module_dispatch_name(module.import_path)}"
     lines = [
         f"fn {helper_name}(function_name: String, args_array: String) raises -> String:",
         f"{INDENT}var arg_count = json_array_len(args_array)",
@@ -381,12 +543,100 @@ def _emit_function_dispatch(module_name: str, function: RuntimeFunctionSpec) -> 
 def render_dispatch_source(modules: tuple[RuntimeLibraryModule, ...]) -> str:
     param_types: set[str] = set()
     result_types: set[str] = set()
-    struct_specs: dict[str, RuntimeStructSpec] = {}
-    from apps.runtime.mojo_inventory import parse_runtime_struct_specs
+    from apps.runtime.mojo_inventory import (
+        RuntimeFunctionSpec,
+        RuntimeLibraryModule,
+        RuntimeParamSpec,
+        RuntimeStructFieldSpec,
+        RuntimeStructSpec,
+    )
 
+    # Parse every struct definition with correct (body-indent) field detection,
+    # keeping the field layout PER (module, struct). Structs with the same name
+    # defined in different modules (e.g. the vector_kernels RankResult/RankRequest
+    # variants, which genuinely differ in fields) are distinct nominal types and
+    # are namespaced per defining module via `qualify()` below — so the generated
+    # ser/de never conflate them, and no function is filtered out.
+    module_struct_fields: dict[tuple[str, str], list[tuple[str, str]]] = {}
+    module_defines: dict[str, set[str]] = {}
+    struct_def_count: dict[str, int] = {}
     for module in modules:
-        for struct_name, struct_spec in parse_runtime_struct_specs(module.path).items():
-            struct_specs.setdefault(struct_name, struct_spec)
+        defined = module_defines.setdefault(module.import_path, set())
+        for struct_name, (fields, _memberwise) in _parse_struct_defs(module.path).items():
+            if struct_name not in defined:
+                module_struct_fields[(module.import_path, struct_name)] = fields
+                defined.add(struct_name)
+                struct_def_count[struct_name] = struct_def_count.get(struct_name, 0) + 1
+    ambiguous = {name for name, count in struct_def_count.items() if count > 1}
+
+    struct_specs: dict[str, RuntimeStructSpec] = {}
+    struct_origin: dict[str, str] = {}            # non-aliased struct name -> module
+    alias_imports: dict[str, tuple[str, str]] = {}  # alias -> (module, base name)
+
+    def qualify(type_name: str, module: str) -> str:
+        """Map an ambiguous struct (defined in `module`) to a per-module alias
+        (a real type imported `as` the alias); recurse into List[...]. Registers
+        struct_specs / origins lazily as types are first encountered."""
+        if _is_list_type(type_name):
+            return f"List[{qualify(_list_inner_type(type_name), module)}]"
+        if type_name in ambiguous and type_name in module_defines.get(module, set()):
+            alias = f"{type_name}__{_sanitize_identifier(module)}"
+            if alias not in struct_specs:
+                alias_imports[alias] = (module, type_name)
+                struct_specs[alias] = RuntimeStructSpec(
+                    name=alias,
+                    fields=tuple(
+                        RuntimeStructFieldSpec(name=fname, typ=qualify(ftyp, module))
+                        for fname, ftyp in module_struct_fields.get((module, type_name), [])
+                    ),
+                )
+            return alias
+        if type_name in struct_specs or type_name in alias_imports:
+            return type_name
+        for (mod, nm), fields in module_struct_fields.items():
+            if nm == type_name:
+                struct_specs[type_name] = RuntimeStructSpec(
+                    name=type_name,
+                    fields=tuple(
+                        RuntimeStructFieldSpec(name=fname, typ=qualify(ftyp, mod))
+                        for fname, ftyp in fields
+                    ),
+                )
+                struct_origin[type_name] = mod
+                break
+        return type_name
+
+    # No function is filtered out. Build per-module qualified function specs for
+    # type handling; the real imported function alias is unchanged.
+    filtered_modules = modules
+    qualified_list: list[RuntimeLibraryModule] = []
+    for module in filtered_modules:
+        qfns = tuple(
+            RuntimeFunctionSpec(
+                name=fn.name,
+                params=tuple(
+                    RuntimeParamSpec(
+                        name=p.name,
+                        typ=qualify(p.typ, module.import_path),
+                        has_default=p.has_default,
+                        is_mut=p.is_mut,
+                    )
+                    for p in fn.params
+                ),
+                return_type=qualify(fn.return_type, module.import_path),
+            )
+            for fn in module.functions
+        )
+        qualified_list.append(
+            RuntimeLibraryModule(
+                import_path=module.import_path,
+                lib_id=module.lib_id,
+                path=module.path,
+                functions=qfns,
+            )
+        )
+    qualified_modules = tuple(qualified_list)
+    struct_display = {alias: base for alias, (_mod, base) in alias_imports.items()}
 
     def register_value_type(type_name: str, collected: set[str]) -> None:
         _register_type(type_name, collected)
@@ -394,10 +644,12 @@ def render_dispatch_source(modules: tuple[RuntimeLibraryModule, ...]) -> str:
             for field in struct_specs[type_name].fields:
                 register_value_type(field.typ, collected)
 
-    for module in modules:
+    for module in qualified_modules:
         for function in module.functions:
             for param in function.params:
                 register_value_type(param.typ, param_types)
+                if param.is_mut:
+                    register_value_type(param.typ, result_types)
             register_value_type(function.return_type, result_types)
 
     lines = [
@@ -412,7 +664,23 @@ def render_dispatch_source(modules: tuple[RuntimeLibraryModule, ...]) -> str:
         "from json.parser import json_get_array, json_get_string, json_array_len, json_array_get",
         "",
     ]
-    lines.extend(_emit_imports(modules))
+    lines.extend(_emit_imports(filtered_modules))
+    all_types = param_types | result_types
+    struct_imports_by_module: dict[str, list[str]] = {}
+    # Non-ambiguous structs: imported by bare name from their defining module.
+    for struct_name in sorted(t for t in all_types if t in struct_origin):
+        struct_imports_by_module.setdefault(struct_origin[struct_name], []).append(struct_name)
+    # Ambiguous structs: imported `as <alias>` from each defining module, so the
+    # same name from different modules stays a distinct nominal type.
+    for alias in sorted(a for a in alias_imports if a in all_types):
+        module_ip, base = alias_imports[alias]
+        struct_imports_by_module.setdefault(module_ip, []).append(f"{base} as {alias}")
+    for module_import_path in sorted(struct_imports_by_module):
+        lines.append(f"from {module_import_path} import (")
+        for entry in sorted(struct_imports_by_module[module_import_path]):
+            lines.append(f"{INDENT}{entry},")
+        lines.append(")")
+        lines.append("")
     lines.extend(
         [
             "fn _unquote_json_string(token: String) -> String:",
@@ -482,8 +750,12 @@ def render_dispatch_source(modules: tuple[RuntimeLibraryModule, ...]) -> str:
         ]
     )
     lines.extend(_emit_parse_functions(param_types, struct_specs=struct_specs))
-    lines.extend(_emit_to_json_functions(result_types, struct_specs=struct_specs))
-    for module in modules:
+    lines.extend(
+        _emit_to_json_functions(
+            result_types, struct_specs=struct_specs, display_names=struct_display
+        )
+    )
+    for module in qualified_modules:
         lines.extend(_emit_module_dispatch(module))
     lines.extend(
         [
@@ -507,8 +779,8 @@ def render_dispatch_source(modules: tuple[RuntimeLibraryModule, ...]) -> str:
             f'{INDENT * 2}args_array = "[]"',
         ]
     )
-    for module in modules:
-        helper_name = f"_dispatch_{_sanitize_identifier(module.import_path)}"
+    for module in qualified_modules:
+        helper_name = f"_dispatch_{_module_dispatch_name(module.import_path)}"
         lines.append(f'{INDENT}if module_name == "{module.import_path}":')
         lines.append(f"{INDENT * 2}return {helper_name}(function_name, args_array)")
     lines.extend(

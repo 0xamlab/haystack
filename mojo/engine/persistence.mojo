@@ -28,6 +28,7 @@ comptime KV_MISS: Float64 = -999999.0
 # ── KVStore Struct ───────────────────────────────────────────────────────────
 
 
+@fieldwise_init
 struct KVStore(Copyable, Movable):
     """In-memory key-value store using parallel lists."""
 

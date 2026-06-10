@@ -2416,6 +2416,20 @@ from hypothesis import (
     sign_test as _hypothesis__sign_test,
 )
 
+from image_features import (
+    sobel_magnitude as _image_features__sobel_magnitude,
+    edge_density as _image_features__edge_density,
+    color_histogram as _image_features__color_histogram,
+    histogram_intersection as _image_features__histogram_intersection,
+    histogram_chi_square as _image_features__histogram_chi_square,
+    histogram_correlation as _image_features__histogram_correlation,
+    dominant_colors as _image_features__dominant_colors,
+    saliency_grid as _image_features__saliency_grid,
+    most_salient_cell as _image_features__most_salient_cell,
+    edge_density_flat as _image_features__edge_density_flat,
+    most_salient_cell_flat as _image_features__most_salient_cell_flat,
+)
+
 from image_ops import (
     convolve_2d as _image_ops__convolve_2d,
     sobel_x_kernel as _image_ops__sobel_x_kernel,
@@ -2428,6 +2442,36 @@ from image_ops import (
     brightness as _image_ops__brightness,
     contrast as _image_ops__contrast,
     mean_pixel as _image_ops__mean_pixel,
+)
+
+from image_quality import (
+    blur_score as _image_quality__blur_score,
+    is_blurry as _image_quality__is_blurry,
+    brightness_mean as _image_quality__brightness_mean,
+    contrast_std as _image_quality__contrast_std,
+    shannon_entropy as _image_quality__shannon_entropy,
+    is_near_blank as _image_quality__is_near_blank,
+    uniformity as _image_quality__uniformity,
+    noise_estimate as _image_quality__noise_estimate,
+    is_over_or_under_exposed as _image_quality__is_over_or_under_exposed,
+    quality_score as _image_quality__quality_score,
+    blur_score_flat as _image_quality__blur_score_flat,
+    brightness_flat as _image_quality__brightness_flat,
+    entropy_flat as _image_quality__entropy_flat,
+    contrast_flat as _image_quality__contrast_flat,
+    quality_score_flat as _image_quality__quality_score_flat,
+)
+
+from image_resize import (
+    reshape_to_grid as _image_resize__reshape_to_grid,
+    flatten_grid as _image_resize__flatten_grid,
+    box_downscale as _image_resize__box_downscale,
+    bilinear_downscale as _image_resize__bilinear_downscale,
+    resize_for_hash as _image_resize__resize_for_hash,
+    resize_for_dhash as _image_resize__resize_for_dhash,
+    integral_image as _image_resize__integral_image,
+    box_sum as _image_resize__box_sum,
+    downscale_flat as _image_resize__downscale_flat,
 )
 
 from immunology import (
@@ -3833,6 +3877,17 @@ from pension import (
     social_security_bend_points as _pension__social_security_bend_points,
     years_to_full_vesting as _pension__years_to_full_vesting,
     withdrawal_rate as _pension__withdrawal_rate,
+)
+
+from perceptual_hash import (
+    ahash as _perceptual_hash__ahash,
+    dhash as _perceptual_hash__dhash,
+    phash as _perceptual_hash__phash,
+    hamming_distance as _perceptual_hash__hamming_distance,
+    is_duplicate as _perceptual_hash__is_duplicate,
+    ahash_flat as _perceptual_hash__ahash_flat,
+    dhash_flat as _perceptual_hash__dhash_flat,
+    phash_flat as _perceptual_hash__phash_flat,
 )
 
 from perfumery import (
@@ -5704,6 +5759,10 @@ from vector_kernels.ranker import (
     run_column_rank_v2 as _vector_kernels_ranker__run_column_rank_v2,
 )
 
+from vector_kernels.repo_ranker import (
+    run_repo_rank as _vector_kernels_repo_ranker__run_repo_rank,
+)
+
 from vector_kernels.table import (
     build_query as _vector_kernels_table__build_query,
     source_id_of as _vector_kernels_table__source_id_of,
@@ -5767,6 +5826,14 @@ from virology import (
     virus_decay_rate as _virology__virus_decay_rate,
     infection_threshold as _virology__infection_threshold,
     herd_immunity_threshold_viro as _virology__herd_immunity_threshold_viro,
+)
+
+from vision_gate import (
+    should_use_cache as _vision_gate__should_use_cache,
+    needs_clearer_image as _vision_gate__needs_clearer_image,
+    is_text_heavy as _vision_gate__is_text_heavy,
+    quality_gate_passed as _vision_gate__quality_gate_passed,
+    route_image_request as _vision_gate__route_image_request,
 )
 
 from viticulture import (
@@ -5938,6 +6005,220 @@ from workflow_engine import (
     chain_output_compatibility as _workflow_engine__chain_output_compatibility,
 )
 
+from bloom_counting import (
+    CountingBloom,
+)
+
+from cache import (
+    TTLCache,
+    TTLCacheEntry,
+)
+
+from color import (
+    HSL,
+    HSV,
+    RGB,
+)
+
+from compression.huffman import (
+    HuffmanNode,
+)
+
+from compression.lz77 import (
+    LZ77Token,
+)
+
+from config.toml_parser import (
+    TomlDoc,
+    TomlNode,
+    _TomlPool,
+)
+
+from config.yaml_parser import (
+    YamlDoc,
+    YamlNode,
+    _YamlPool,
+)
+
+from constraint import (
+    CSPResult,
+)
+
+from control import (
+    PIDState,
+)
+
+from data.csv_parser import (
+    CSVRow,
+)
+
+from data.dataframe import (
+    Column,
+    DataFrame,
+)
+
+from database import (
+    Table,
+)
+
+from dimensionality import (
+    PCAResult,
+)
+
+from fft import (
+    Complex,
+)
+
+from genetic import (
+    GAConfig,
+    Individual,
+)
+
+from geometry import (
+    Point,
+)
+
+from graph.algorithms import (
+    Graph,
+)
+
+from graph.weighted import (
+    WeightedEdge,
+)
+
+from interval import (
+    Interval,
+)
+
+from kalman import (
+    KalmanState,
+)
+
+from linalg import (
+    EigResult2x2,
+    LUResult,
+    Matrix,
+)
+
+from linalg_ext import (
+    PowerIterResult,
+    QRResult,
+)
+
+from logging.logger import (
+    Logger,
+)
+
+from metrics_agg import (
+    Histogram,
+    MetricsCounter,
+)
+
+from ml.clustering import (
+    KMeansResult,
+)
+
+from ml.metrics import (
+    PRF1Result,
+)
+
+from ml.preprocessing import (
+    SplitResult,
+)
+
+from net.url import (
+    URL,
+)
+
+from ode import (
+    ODEResult,
+)
+
+from optimize import (
+    LinRegResult,
+    OptResult,
+)
+
+from persistence import (
+    KVStore,
+)
+
+from queue_ds import (
+    CircularBuffer,
+    PriorityQueue,
+    PriorityQueueEntry,
+)
+
+from regression import (
+    RegressionResult,
+)
+
+from regression_tree import (
+    RegressionTree,
+)
+
+from serialization.msgpack import (
+    MsgPackFloatResult,
+    MsgPackIntResult,
+    MsgPackStringResult,
+)
+
+from simulation import (
+    Event,
+    SimState,
+)
+
+from sketch import (
+    CountMinSketch,
+    HyperLogLog,
+)
+
+from sparse import (
+    COOEntry,
+    SparseMatrixCOO,
+)
+
+from stat_tests import (
+    CorrResult,
+    TestResult,
+)
+
+from survival import (
+    SurvivalPoint,
+)
+
+from tensor import (
+    Tensor1D,
+)
+
+from token_bucket import (
+    LeakyBucket,
+    SlidingWindow,
+    TokenBucket,
+)
+
+from trie import (
+    Trie,
+)
+
+from vector_kernels.batch_ranker import (
+    PlannerResolution,
+    RankResult as RankResult__vector_kernels_batch_ranker,
+    TopKEntry as TopKEntry__vector_kernels_batch_ranker,
+)
+
+from vector_kernels.table import (
+    CandidateEntry as CandidateEntry__vector_kernels_table,
+    CandidateTable as CandidateTable__vector_kernels_table,
+    RankRequest as RankRequest__vector_kernels_table,
+    _Vec64 as _Vec64__vector_kernels_table,
+)
+
+from vector_kernels.test_table import (
+    RankRequest as RankRequest__vector_kernels_test_table,
+    _Vec64 as _Vec64__vector_kernels_test_table,
+)
+
 fn _unquote_json_string(token: String) -> String:
     var n = len(token)
     if n < 2:
@@ -6012,7 +6293,7 @@ fn _parse_cooentry_token(token: String) raises -> COOEntry:
     var field_0 = _parse_int_token(json_array_get(values_json, 0))
     var field_1 = _parse_int_token(json_array_get(values_json, 1))
     var field_2 = _parse_float64_token(json_array_get(values_json, 2))
-    return COOEntry(field_0, field_1, field_2)
+    return COOEntry(field_0^, field_1^, field_2^)
 
 fn _parse_csvrow_token(token: String) raises -> CSVRow:
     var values_json = json_get_array(token, "v")
@@ -6020,7 +6301,7 @@ fn _parse_csvrow_token(token: String) raises -> CSVRow:
         raise Error("Expected 2 fields for CSVRow, received " + String(json_array_len(values_json)))
     var field_0 = _parse_list_string_token(json_array_get(values_json, 0))
     var field_1 = _parse_int_token(json_array_get(values_json, 1))
-    return CSVRow(field_0, field_1)
+    return CSVRow(field_0^, field_1^)
 
 fn _parse_circularbuffer_token(token: String) raises -> CircularBuffer:
     var values_json = json_get_array(token, "v")
@@ -6030,7 +6311,7 @@ fn _parse_circularbuffer_token(token: String) raises -> CircularBuffer:
     var field_1 = _parse_int_token(json_array_get(values_json, 1))
     var field_2 = _parse_int_token(json_array_get(values_json, 2))
     var field_3 = _parse_int_token(json_array_get(values_json, 3))
-    return CircularBuffer(field_0, field_1, field_2, field_3)
+    return CircularBuffer(field_0^, field_1^, field_2^, field_3^)
 
 fn _parse_complex_token(token: String) raises -> Complex:
     var values_json = json_get_array(token, "v")
@@ -6038,7 +6319,7 @@ fn _parse_complex_token(token: String) raises -> Complex:
         raise Error("Expected 2 fields for Complex, received " + String(json_array_len(values_json)))
     var field_0 = _parse_float64_token(json_array_get(values_json, 0))
     var field_1 = _parse_float64_token(json_array_get(values_json, 1))
-    return Complex(field_0, field_1)
+    return Complex(field_0^, field_1^)
 
 fn _parse_countminsketch_token(token: String) raises -> CountMinSketch:
     var values_json = json_get_array(token, "v")
@@ -6048,7 +6329,7 @@ fn _parse_countminsketch_token(token: String) raises -> CountMinSketch:
     var field_1 = _parse_int_token(json_array_get(values_json, 1))
     var field_2 = _parse_int_token(json_array_get(values_json, 2))
     var field_3 = _parse_list_int_token(json_array_get(values_json, 3))
-    return CountMinSketch(field_0, field_1, field_2, field_3)
+    return CountMinSketch(field_0^, field_1^, field_2^, field_3^)
 
 fn _parse_countingbloom_token(token: String) raises -> CountingBloom:
     var values_json = json_get_array(token, "v")
@@ -6058,7 +6339,7 @@ fn _parse_countingbloom_token(token: String) raises -> CountingBloom:
     var field_1 = _parse_int_token(json_array_get(values_json, 1))
     var field_2 = _parse_int_token(json_array_get(values_json, 2))
     var field_3 = _parse_list_int_token(json_array_get(values_json, 3))
-    return CountingBloom(field_0, field_1, field_2, field_3)
+    return CountingBloom(field_0^, field_1^, field_2^, field_3^)
 
 fn _parse_float32_token(token: String) raises -> Float32:
     return Float32(parse_float64(token))
@@ -6077,7 +6358,7 @@ fn _parse_gaconfig_token(token: String) raises -> GAConfig:
     var field_4 = _parse_int_token(json_array_get(values_json, 4))
     var field_5 = _parse_float64_token(json_array_get(values_json, 5))
     var field_6 = _parse_float64_token(json_array_get(values_json, 6))
-    return GAConfig(field_0, field_1, field_2, field_3, field_4, field_5, field_6)
+    return GAConfig(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^, field_6^)
 
 fn _parse_graph_token(token: String) raises -> Graph:
     var values_json = json_get_array(token, "v")
@@ -6086,7 +6367,7 @@ fn _parse_graph_token(token: String) raises -> Graph:
     var field_0 = _parse_int_token(json_array_get(values_json, 0))
     var field_1 = _parse_list_list_int_token(json_array_get(values_json, 1))
     var field_2 = _parse_list_list_float64_token(json_array_get(values_json, 2))
-    return Graph(field_0, field_1, field_2)
+    return Graph(field_0^, field_1^, field_2^)
 
 fn _parse_hsl_token(token: String) raises -> HSL:
     var values_json = json_get_array(token, "v")
@@ -6095,7 +6376,7 @@ fn _parse_hsl_token(token: String) raises -> HSL:
     var field_0 = _parse_float64_token(json_array_get(values_json, 0))
     var field_1 = _parse_float64_token(json_array_get(values_json, 1))
     var field_2 = _parse_float64_token(json_array_get(values_json, 2))
-    return HSL(field_0, field_1, field_2)
+    return HSL(field_0^, field_1^, field_2^)
 
 fn _parse_hsv_token(token: String) raises -> HSV:
     var values_json = json_get_array(token, "v")
@@ -6104,7 +6385,7 @@ fn _parse_hsv_token(token: String) raises -> HSV:
     var field_0 = _parse_float64_token(json_array_get(values_json, 0))
     var field_1 = _parse_float64_token(json_array_get(values_json, 1))
     var field_2 = _parse_float64_token(json_array_get(values_json, 2))
-    return HSV(field_0, field_1, field_2)
+    return HSV(field_0^, field_1^, field_2^)
 
 fn _parse_histogram_token(token: String) raises -> Histogram:
     var values_json = json_get_array(token, "v")
@@ -6113,7 +6394,7 @@ fn _parse_histogram_token(token: String) raises -> Histogram:
     var field_0 = _parse_string_token(json_array_get(values_json, 0))
     var field_1 = _parse_list_float64_token(json_array_get(values_json, 1))
     var field_2 = _parse_list_float64_token(json_array_get(values_json, 2))
-    return Histogram(field_0, field_1, field_2)
+    return Histogram(field_0^, field_1^, field_2^)
 
 fn _parse_huffmannode_token(token: String) raises -> HuffmanNode:
     var values_json = json_get_array(token, "v")
@@ -6123,7 +6404,7 @@ fn _parse_huffmannode_token(token: String) raises -> HuffmanNode:
     var field_1 = _parse_int_token(json_array_get(values_json, 1))
     var field_2 = _parse_int_token(json_array_get(values_json, 2))
     var field_3 = _parse_int_token(json_array_get(values_json, 3))
-    return HuffmanNode(field_0, field_1, field_2, field_3)
+    return HuffmanNode(field_0^, field_1^, field_2^, field_3^)
 
 fn _parse_hyperloglog_token(token: String) raises -> HyperLogLog:
     var values_json = json_get_array(token, "v")
@@ -6132,7 +6413,7 @@ fn _parse_hyperloglog_token(token: String) raises -> HyperLogLog:
     var field_0 = _parse_list_int_token(json_array_get(values_json, 0))
     var field_1 = _parse_int_token(json_array_get(values_json, 1))
     var field_2 = _parse_int_token(json_array_get(values_json, 2))
-    return HyperLogLog(field_0, field_1, field_2)
+    return HyperLogLog(field_0^, field_1^, field_2^)
 
 fn _parse_individual_token(token: String) raises -> Individual:
     var values_json = json_get_array(token, "v")
@@ -6140,7 +6421,7 @@ fn _parse_individual_token(token: String) raises -> Individual:
         raise Error("Expected 2 fields for Individual, received " + String(json_array_len(values_json)))
     var field_0 = _parse_list_float64_token(json_array_get(values_json, 0))
     var field_1 = _parse_float64_token(json_array_get(values_json, 1))
-    return Individual(field_0, field_1)
+    return Individual(field_0^, field_1^)
 
 fn _parse_int_token(token: String) raises -> Int:
     return parse_int(token)
@@ -6152,7 +6433,7 @@ fn _parse_interval_token(token: String) raises -> Interval:
     var field_0 = _parse_float64_token(json_array_get(values_json, 0))
     var field_1 = _parse_float64_token(json_array_get(values_json, 1))
     var field_2 = _parse_bool_token(json_array_get(values_json, 2))
-    return Interval(field_0, field_1, field_2)
+    return Interval(field_0^, field_1^, field_2^)
 
 fn _parse_kvstore_token(token: String) raises -> KVStore:
     var values_json = json_get_array(token, "v")
@@ -6161,7 +6442,7 @@ fn _parse_kvstore_token(token: String) raises -> KVStore:
     var field_0 = _parse_list_int_token(json_array_get(values_json, 0))
     var field_1 = _parse_list_float64_token(json_array_get(values_json, 1))
     var field_2 = _parse_int_token(json_array_get(values_json, 2))
-    return KVStore(field_0, field_1, field_2)
+    return KVStore(field_0^, field_1^, field_2^)
 
 fn _parse_kalmanstate_token(token: String) raises -> KalmanState:
     var values_json = json_get_array(token, "v")
@@ -6169,7 +6450,7 @@ fn _parse_kalmanstate_token(token: String) raises -> KalmanState:
         raise Error("Expected 2 fields for KalmanState, received " + String(json_array_len(values_json)))
     var field_0 = _parse_list_float64_token(json_array_get(values_json, 0))
     var field_1 = _parse_list_list_float64_token(json_array_get(values_json, 1))
-    return KalmanState(field_0, field_1)
+    return KalmanState(field_0^, field_1^)
 
 fn _parse_lz77token_token(token: String) raises -> LZ77Token:
     var values_json = json_get_array(token, "v")
@@ -6178,7 +6459,7 @@ fn _parse_lz77token_token(token: String) raises -> LZ77Token:
     var field_0 = _parse_int_token(json_array_get(values_json, 0))
     var field_1 = _parse_int_token(json_array_get(values_json, 1))
     var field_2 = _parse_int_token(json_array_get(values_json, 2))
-    return LZ77Token(field_0, field_1, field_2)
+    return LZ77Token(field_0^, field_1^, field_2^)
 
 fn _parse_leakybucket_token(token: String) raises -> LeakyBucket:
     var values_json = json_get_array(token, "v")
@@ -6188,7 +6469,7 @@ fn _parse_leakybucket_token(token: String) raises -> LeakyBucket:
     var field_1 = _parse_float64_token(json_array_get(values_json, 1))
     var field_2 = _parse_float64_token(json_array_get(values_json, 2))
     var field_3 = _parse_float64_token(json_array_get(values_json, 3))
-    return LeakyBucket(field_0, field_1, field_2, field_3)
+    return LeakyBucket(field_0^, field_1^, field_2^, field_3^)
 
 fn _parse_matrix_token(token: String) raises -> Matrix:
     var values_json = json_get_array(token, "v")
@@ -6197,7 +6478,7 @@ fn _parse_matrix_token(token: String) raises -> Matrix:
     var field_0 = _parse_list_float64_token(json_array_get(values_json, 0))
     var field_1 = _parse_int_token(json_array_get(values_json, 1))
     var field_2 = _parse_int_token(json_array_get(values_json, 2))
-    return Matrix(field_0, field_1, field_2)
+    return Matrix(field_0^, field_1^, field_2^)
 
 fn _parse_metricscounter_token(token: String) raises -> MetricsCounter:
     var values_json = json_get_array(token, "v")
@@ -6205,7 +6486,7 @@ fn _parse_metricscounter_token(token: String) raises -> MetricsCounter:
         raise Error("Expected 2 fields for MetricsCounter, received " + String(json_array_len(values_json)))
     var field_0 = _parse_string_token(json_array_get(values_json, 0))
     var field_1 = _parse_float64_token(json_array_get(values_json, 1))
-    return MetricsCounter(field_0, field_1)
+    return MetricsCounter(field_0^, field_1^)
 
 fn _parse_pcaresult_token(token: String) raises -> PCAResult:
     var values_json = json_get_array(token, "v")
@@ -6215,7 +6496,7 @@ fn _parse_pcaresult_token(token: String) raises -> PCAResult:
     var field_1 = _parse_list_float64_token(json_array_get(values_json, 1))
     var field_2 = _parse_list_float64_token(json_array_get(values_json, 2))
     var field_3 = _parse_list_float64_token(json_array_get(values_json, 3))
-    return PCAResult(field_0, field_1, field_2, field_3)
+    return PCAResult(field_0^, field_1^, field_2^, field_3^)
 
 fn _parse_pidstate_token(token: String) raises -> PIDState:
     var values_json = json_get_array(token, "v")
@@ -6228,7 +6509,7 @@ fn _parse_pidstate_token(token: String) raises -> PIDState:
     var field_4 = _parse_float64_token(json_array_get(values_json, 4))
     var field_5 = _parse_float64_token(json_array_get(values_json, 5))
     var field_6 = _parse_float64_token(json_array_get(values_json, 6))
-    return PIDState(field_0, field_1, field_2, field_3, field_4, field_5, field_6)
+    return PIDState(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^, field_6^)
 
 fn _parse_point_token(token: String) raises -> Point:
     var values_json = json_get_array(token, "v")
@@ -6236,7 +6517,7 @@ fn _parse_point_token(token: String) raises -> Point:
         raise Error("Expected 2 fields for Point, received " + String(json_array_len(values_json)))
     var field_0 = _parse_float64_token(json_array_get(values_json, 0))
     var field_1 = _parse_float64_token(json_array_get(values_json, 1))
-    return Point(field_0, field_1)
+    return Point(field_0^, field_1^)
 
 fn _parse_priorityqueue_token(token: String) raises -> PriorityQueue:
     var values_json = json_get_array(token, "v")
@@ -6244,7 +6525,7 @@ fn _parse_priorityqueue_token(token: String) raises -> PriorityQueue:
         raise Error("Expected 2 fields for PriorityQueue, received " + String(json_array_len(values_json)))
     var field_0 = _parse_list_float64_token(json_array_get(values_json, 0))
     var field_1 = _parse_list_int_token(json_array_get(values_json, 1))
-    return PriorityQueue(field_0, field_1)
+    return PriorityQueue(field_0^, field_1^)
 
 fn _parse_rgb_token(token: String) raises -> RGB:
     var values_json = json_get_array(token, "v")
@@ -6253,19 +6534,19 @@ fn _parse_rgb_token(token: String) raises -> RGB:
     var field_0 = _parse_float64_token(json_array_get(values_json, 0))
     var field_1 = _parse_float64_token(json_array_get(values_json, 1))
     var field_2 = _parse_float64_token(json_array_get(values_json, 2))
-    return RGB(field_0, field_1, field_2)
+    return RGB(field_0^, field_1^, field_2^)
 
-fn _parse_rankresult_token(token: String) raises -> RankResult:
+fn _parse_rankresult_vector_kernels_batch_ranker_token(token: String) raises -> RankResult__vector_kernels_batch_ranker:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 6:
-        raise Error("Expected 6 fields for RankResult, received " + String(json_array_len(values_json)))
+        raise Error("Expected 6 fields for RankResult__vector_kernels_batch_ranker, received " + String(json_array_len(values_json)))
     var field_0 = _parse_uint8_token(json_array_get(values_json, 0))
     var field_1 = _parse_bool_token(json_array_get(values_json, 1))
     var field_2 = _parse_float32_token(json_array_get(values_json, 2))
-    var field_3 = _parse_list_topkentry_token(json_array_get(values_json, 3))
+    var field_3 = _parse_list_topkentry_vector_kernels_batch_ranker_token(json_array_get(values_json, 3))
     var field_4 = _parse_uint8_token(json_array_get(values_json, 4))
     var field_5 = _parse_uint8_token(json_array_get(values_json, 5))
-    return RankResult(field_0, field_1, field_2, field_3, field_4, field_5)
+    return RankResult__vector_kernels_batch_ranker(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^)
 
 fn _parse_regressiontree_token(token: String) raises -> RegressionTree:
     var values_json = json_get_array(token, "v")
@@ -6277,7 +6558,7 @@ fn _parse_regressiontree_token(token: String) raises -> RegressionTree:
     var field_3 = _parse_list_int_token(json_array_get(values_json, 3))
     var field_4 = _parse_list_float64_token(json_array_get(values_json, 4))
     var field_5 = _parse_int_token(json_array_get(values_json, 5))
-    return RegressionTree(field_0, field_1, field_2, field_3, field_4, field_5)
+    return RegressionTree(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^)
 
 fn _parse_simstate_token(token: String) raises -> SimState:
     var values_json = json_get_array(token, "v")
@@ -6291,7 +6572,7 @@ fn _parse_simstate_token(token: String) raises -> SimState:
     var field_5 = _parse_list_int_token(json_array_get(values_json, 5))
     var field_6 = _parse_list_int_token(json_array_get(values_json, 6))
     var field_7 = _parse_int_token(json_array_get(values_json, 7))
-    return SimState(field_0, field_1, field_2, field_3, field_4, field_5, field_6, field_7)
+    return SimState(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^, field_6^, field_7^)
 
 fn _parse_slidingwindow_token(token: String) raises -> SlidingWindow:
     var values_json = json_get_array(token, "v")
@@ -6300,7 +6581,7 @@ fn _parse_slidingwindow_token(token: String) raises -> SlidingWindow:
     var field_0 = _parse_list_float64_token(json_array_get(values_json, 0))
     var field_1 = _parse_float64_token(json_array_get(values_json, 1))
     var field_2 = _parse_int_token(json_array_get(values_json, 2))
-    return SlidingWindow(field_0, field_1, field_2)
+    return SlidingWindow(field_0^, field_1^, field_2^)
 
 fn _parse_sparsematrixcoo_token(token: String) raises -> SparseMatrixCOO:
     var values_json = json_get_array(token, "v")
@@ -6309,7 +6590,7 @@ fn _parse_sparsematrixcoo_token(token: String) raises -> SparseMatrixCOO:
     var field_0 = _parse_list_cooentry_token(json_array_get(values_json, 0))
     var field_1 = _parse_int_token(json_array_get(values_json, 1))
     var field_2 = _parse_int_token(json_array_get(values_json, 2))
-    return SparseMatrixCOO(field_0, field_1, field_2)
+    return SparseMatrixCOO(field_0^, field_1^, field_2^)
 
 fn _parse_string_token(token: String) raises -> String:
     return _unquote_json_string(token)
@@ -6322,7 +6603,7 @@ fn _parse_survivalpoint_token(token: String) raises -> SurvivalPoint:
     var field_1 = _parse_float64_token(json_array_get(values_json, 1))
     var field_2 = _parse_int_token(json_array_get(values_json, 2))
     var field_3 = _parse_int_token(json_array_get(values_json, 3))
-    return SurvivalPoint(field_0, field_1, field_2, field_3)
+    return SurvivalPoint(field_0^, field_1^, field_2^, field_3^)
 
 fn _parse_ttlcache_token(token: String) raises -> TTLCache:
     var values_json = json_get_array(token, "v")
@@ -6333,7 +6614,7 @@ fn _parse_ttlcache_token(token: String) raises -> TTLCache:
     var field_2 = _parse_float64_token(json_array_get(values_json, 2))
     var field_3 = _parse_int_token(json_array_get(values_json, 3))
     var field_4 = _parse_int_token(json_array_get(values_json, 4))
-    return TTLCache(field_0, field_1, field_2, field_3, field_4)
+    return TTLCache(field_0^, field_1^, field_2^, field_3^, field_4^)
 
 fn _parse_ttlcacheentry_token(token: String) raises -> TTLCacheEntry:
     var values_json = json_get_array(token, "v")
@@ -6342,7 +6623,7 @@ fn _parse_ttlcacheentry_token(token: String) raises -> TTLCacheEntry:
     var field_0 = _parse_int_token(json_array_get(values_json, 0))
     var field_1 = _parse_float64_token(json_array_get(values_json, 1))
     var field_2 = _parse_float64_token(json_array_get(values_json, 2))
-    return TTLCacheEntry(field_0, field_1, field_2)
+    return TTLCacheEntry(field_0^, field_1^, field_2^)
 
 fn _parse_table_token(token: String) raises -> Table:
     var values_json = json_get_array(token, "v")
@@ -6351,7 +6632,7 @@ fn _parse_table_token(token: String) raises -> Table:
     var field_0 = _parse_list_string_token(json_array_get(values_json, 0))
     var field_1 = _parse_int_token(json_array_get(values_json, 1))
     var field_2 = _parse_list_list_float64_token(json_array_get(values_json, 2))
-    return Table(field_0, field_1, field_2)
+    return Table(field_0^, field_1^, field_2^)
 
 fn _parse_tensor1d_token(token: String) raises -> Tensor1D:
     var values_json = json_get_array(token, "v")
@@ -6359,7 +6640,7 @@ fn _parse_tensor1d_token(token: String) raises -> Tensor1D:
         raise Error("Expected 2 fields for Tensor1D, received " + String(json_array_len(values_json)))
     var field_0 = _parse_list_float64_token(json_array_get(values_json, 0))
     var field_1 = _parse_int_token(json_array_get(values_json, 1))
-    return Tensor1D(field_0, field_1)
+    return Tensor1D(field_0^, field_1^)
 
 fn _parse_tokenbucket_token(token: String) raises -> TokenBucket:
     var values_json = json_get_array(token, "v")
@@ -6369,7 +6650,7 @@ fn _parse_tokenbucket_token(token: String) raises -> TokenBucket:
     var field_1 = _parse_float64_token(json_array_get(values_json, 1))
     var field_2 = _parse_float64_token(json_array_get(values_json, 2))
     var field_3 = _parse_float64_token(json_array_get(values_json, 3))
-    return TokenBucket(field_0, field_1, field_2, field_3)
+    return TokenBucket(field_0^, field_1^, field_2^, field_3^)
 
 fn _parse_tomldoc_token(token: String) raises -> TomlDoc:
     var values_json = json_get_array(token, "v")
@@ -6377,7 +6658,7 @@ fn _parse_tomldoc_token(token: String) raises -> TomlDoc:
         raise Error("Expected 2 fields for TomlDoc, received " + String(json_array_len(values_json)))
     var field_0 = _parse_tomlpool_token(json_array_get(values_json, 0))
     var field_1 = _parse_int_token(json_array_get(values_json, 1))
-    return TomlDoc(field_0, field_1)
+    return TomlDoc(field_0^, field_1^)
 
 fn _parse_tomlnode_token(token: String) raises -> TomlNode:
     var values_json = json_get_array(token, "v")
@@ -6388,17 +6669,17 @@ fn _parse_tomlnode_token(token: String) raises -> TomlNode:
     var field_2 = _parse_list_string_token(json_array_get(values_json, 2))
     var field_3 = _parse_list_int_token(json_array_get(values_json, 3))
     var field_4 = _parse_list_int_token(json_array_get(values_json, 4))
-    return TomlNode(field_0, field_1, field_2, field_3, field_4)
+    return TomlNode(field_0^, field_1^, field_2^, field_3^, field_4^)
 
-fn _parse_topkentry_token(token: String) raises -> TopKEntry:
+fn _parse_topkentry_vector_kernels_batch_ranker_token(token: String) raises -> TopKEntry__vector_kernels_batch_ranker:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 4:
-        raise Error("Expected 4 fields for TopKEntry, received " + String(json_array_len(values_json)))
+        raise Error("Expected 4 fields for TopKEntry__vector_kernels_batch_ranker, received " + String(json_array_len(values_json)))
     var field_0 = _parse_uint32_token(json_array_get(values_json, 0))
     var field_1 = _parse_float32_token(json_array_get(values_json, 1))
     var field_2 = _parse_float32_token(json_array_get(values_json, 2))
     var field_3 = _parse_float32_token(json_array_get(values_json, 3))
-    return TopKEntry(field_0, field_1, field_2, field_3)
+    return TopKEntry__vector_kernels_batch_ranker(field_0^, field_1^, field_2^, field_3^)
 
 fn _parse_trie_token(token: String) raises -> Trie:
     var values_json = json_get_array(token, "v")
@@ -6409,7 +6690,7 @@ fn _parse_trie_token(token: String) raises -> Trie:
     var field_2 = _parse_list_int_token(json_array_get(values_json, 2))
     var field_3 = _parse_list_int_token(json_array_get(values_json, 3))
     var field_4 = _parse_list_int_token(json_array_get(values_json, 4))
-    return Trie(field_0, field_1, field_2, field_3, field_4)
+    return Trie(field_0^, field_1^, field_2^, field_3^, field_4^)
 
 fn _parse_uint16_token(token: String) raises -> UInt16:
     var parsed = parse_int(token)
@@ -6422,6 +6703,12 @@ fn _parse_uint32_token(token: String) raises -> UInt32:
     if parsed < 0:
         raise Error("Expected non-negative UInt32 token, received " + token)
     return UInt32(parsed)
+
+fn _parse_uint64_token(token: String) raises -> UInt64:
+    var parsed = parse_int(token)
+    if parsed < 0:
+        raise Error("Expected non-negative UInt64 token, received " + token)
+    return UInt64(parsed)
 
 fn _parse_uint8_token(token: String) raises -> UInt8:
     var parsed = parse_int(token)
@@ -6439,7 +6726,7 @@ fn _parse_url_token(token: String) raises -> URL:
     var field_3 = _parse_string_token(json_array_get(values_json, 3))
     var field_4 = _parse_string_token(json_array_get(values_json, 4))
     var field_5 = _parse_string_token(json_array_get(values_json, 5))
-    return URL(field_0, field_1, field_2, field_3, field_4, field_5)
+    return URL(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^)
 
 fn _parse_weightededge_token(token: String) raises -> WeightedEdge:
     var values_json = json_get_array(token, "v")
@@ -6448,7 +6735,7 @@ fn _parse_weightededge_token(token: String) raises -> WeightedEdge:
     var field_0 = _parse_int_token(json_array_get(values_json, 0))
     var field_1 = _parse_int_token(json_array_get(values_json, 1))
     var field_2 = _parse_float64_token(json_array_get(values_json, 2))
-    return WeightedEdge(field_0, field_1, field_2)
+    return WeightedEdge(field_0^, field_1^, field_2^)
 
 fn _parse_yamldoc_token(token: String) raises -> YamlDoc:
     var values_json = json_get_array(token, "v")
@@ -6456,7 +6743,7 @@ fn _parse_yamldoc_token(token: String) raises -> YamlDoc:
         raise Error("Expected 2 fields for YamlDoc, received " + String(json_array_len(values_json)))
     var field_0 = _parse_yamlpool_token(json_array_get(values_json, 0))
     var field_1 = _parse_int_token(json_array_get(values_json, 1))
-    return YamlDoc(field_0, field_1)
+    return YamlDoc(field_0^, field_1^)
 
 fn _parse_yamlnode_token(token: String) raises -> YamlNode:
     var values_json = json_get_array(token, "v")
@@ -6467,21 +6754,21 @@ fn _parse_yamlnode_token(token: String) raises -> YamlNode:
     var field_2 = _parse_list_string_token(json_array_get(values_json, 2))
     var field_3 = _parse_list_int_token(json_array_get(values_json, 3))
     var field_4 = _parse_list_int_token(json_array_get(values_json, 4))
-    return YamlNode(field_0, field_1, field_2, field_3, field_4)
+    return YamlNode(field_0^, field_1^, field_2^, field_3^, field_4^)
 
 fn _parse_tomlpool_token(token: String) raises -> _TomlPool:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 1:
         raise Error("Expected 1 fields for _TomlPool, received " + String(json_array_len(values_json)))
     var field_0 = _parse_list_tomlnode_token(json_array_get(values_json, 0))
-    return _TomlPool(field_0)
+    return _TomlPool(field_0^)
 
 fn _parse_yamlpool_token(token: String) raises -> _YamlPool:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 1:
         raise Error("Expected 1 fields for _YamlPool, received " + String(json_array_len(values_json)))
     var field_0 = _parse_list_yamlnode_token(json_array_get(values_json, 0))
-    return _YamlPool(field_0)
+    return _YamlPool(field_0^)
 
 fn _parse_list_bool_token(token: String) raises -> List[Bool]:
     var wrapped = "{\"v\":" + token + "}"
@@ -6618,13 +6905,13 @@ fn _parse_list_tomlnode_token(token: String) raises -> List[TomlNode]:
         result.append(_parse_tomlnode_token(json_array_get(array_json, i)))
     return result^
 
-fn _parse_list_topkentry_token(token: String) raises -> List[TopKEntry]:
+fn _parse_list_topkentry_vector_kernels_batch_ranker_token(token: String) raises -> List[TopKEntry__vector_kernels_batch_ranker]:
     var wrapped = "{\"v\":" + token + "}"
     var array_json = json_get_array(wrapped, "v")
     var count = json_array_len(array_json)
-    var result = List[TopKEntry]()
+    var result = List[TopKEntry__vector_kernels_batch_ranker]()
     for i in range(count):
-        result.append(_parse_topkentry_token(json_array_get(array_json, i)))
+        result.append(_parse_topkentry_vector_kernels_batch_ranker_token(json_array_get(array_json, i)))
     return result^
 
 fn _parse_list_uint8_token(token: String) raises -> List[UInt8]:
@@ -6705,7 +6992,7 @@ fn _to_json_cspresult(value: CSPResult) -> String:
     result += "]}"
     return result
 
-fn _to_json_candidateentry(value: CandidateEntry) -> String:
+fn _to_json_candidateentry_vector_kernels_table(value: CandidateEntry__vector_kernels_table) -> String:
     var result = String("{\"__algenta_struct\":\"CandidateEntry\",\"v\":[")
     result += _to_json_uint32(value.column_id)
     result += ","
@@ -6715,13 +7002,13 @@ fn _to_json_candidateentry(value: CandidateEntry) -> String:
     result += ","
     result += _to_json_float32(value.norm_inv)
     result += ","
-    result += _to_json_vec64(value.vec)
+    result += _to_json_vec64_vector_kernels_table(value.vec)
     result += "]}"
     return result
 
-fn _to_json_candidatetable(value: CandidateTable) -> String:
+fn _to_json_candidatetable_vector_kernels_table(value: CandidateTable__vector_kernels_table) -> String:
     var result = String("{\"__algenta_struct\":\"CandidateTable\",\"v\":[")
-    result += _to_json_list_candidateentry(value.entries)
+    result += _to_json_list_candidateentry_vector_kernels_table(value.entries)
     result += "]}"
     return result
 
@@ -6796,28 +7083,6 @@ fn _to_json_dataframe(value: DataFrame) -> String:
     result += _to_json_int(value.n_rows)
     result += ","
     result += _to_json_list_string(value.col_names)
-    result += ","
-    result += _to_json_float64(value.sum_val)
-    result += ","
-    result += _to_json_float64(value.var_val)
-    result += ","
-    result += _to_json_bool(value.should_swap)
-    result += ","
-    result += _to_json_float64(value.total)
-    result += ","
-    result += _to_json_float64(value.total)
-    result += ","
-    result += _to_json_float64(value.s)
-    result += ","
-    result += _to_json_float64(value.agg_result)
-    result += ","
-    result += _to_json_float64(value.t)
-    result += ","
-    result += _to_json_float64(value.m)
-    result += ","
-    result += _to_json_float64(value.sv)
-    result += ","
-    result += _to_json_float64(value.result)
     result += "]}"
     return result
 
@@ -7176,7 +7441,7 @@ fn _to_json_rgb(value: RGB) -> String:
     result += "]}"
     return result
 
-fn _to_json_rankrequest(value: RankRequest) -> String:
+fn _to_json_rankrequest_vector_kernels_table(value: RankRequest__vector_kernels_table) -> String:
     var result = String("{\"__algenta_struct\":\"RankRequest\",\"v\":[")
     result += _to_json_uint16(value.source_id)
     result += ","
@@ -7186,7 +7451,21 @@ fn _to_json_rankrequest(value: RankRequest) -> String:
     result += ","
     result += _to_json_float32(value.query_norm_inv)
     result += ","
-    result += _to_json_vec64(value.query_vec)
+    result += _to_json_vec64_vector_kernels_table(value.query_vec)
+    result += "]}"
+    return result
+
+fn _to_json_rankrequest_vector_kernels_test_table(value: RankRequest__vector_kernels_test_table) -> String:
+    var result = String("{\"__algenta_struct\":\"RankRequest\",\"v\":[")
+    result += _to_json_uint16(value.source_id)
+    result += ","
+    result += _to_json_uint8(value.role_id)
+    result += ","
+    result += _to_json_uint8(value.top_k)
+    result += ","
+    result += _to_json_float32(value.query_norm_inv)
+    result += ","
+    result += _to_json_vec64_vector_kernels_test_table(value.query_vec)
     result += "]}"
     return result
 
@@ -7371,10 +7650,27 @@ fn _to_json_tomlnode(value: TomlNode) -> String:
     result += "]}"
     return result
 
+fn _to_json_trie(value: Trie) -> String:
+    var result = String("{\"__algenta_struct\":\"Trie\",\"v\":[")
+    result += _to_json_list_int(value.nodes_char)
+    result += ","
+    result += _to_json_list_int(value.nodes_parent)
+    result += ","
+    result += _to_json_list_int(value.nodes_end)
+    result += ","
+    result += _to_json_list_int(value.nodes_first_child)
+    result += ","
+    result += _to_json_list_int(value.nodes_next_sibling)
+    result += "]}"
+    return result
+
 fn _to_json_uint16(value: UInt16) -> String:
     return String(value)
 
 fn _to_json_uint32(value: UInt32) -> String:
+    return String(value)
+
+fn _to_json_uint64(value: UInt64) -> String:
     return String(value)
 
 fn _to_json_uint8(value: UInt8) -> String:
@@ -7434,7 +7730,15 @@ fn _to_json_tomlpool(value: _TomlPool) -> String:
     result += "]}"
     return result
 
-fn _to_json_vec64(value: _Vec64) -> String:
+fn _to_json_vec64_vector_kernels_table(value: _Vec64__vector_kernels_table) -> String:
+    var result = String("{\"__algenta_struct\":\"_Vec64\",\"v\":[")
+    result += _to_json_list_float32(value.data)
+    result += ","
+    result += _to_json_float32(value.norm_inv)
+    result += "]}"
+    return result
+
+fn _to_json_vec64_vector_kernels_test_table(value: _Vec64__vector_kernels_test_table) -> String:
     var result = String("{\"__algenta_struct\":\"_Vec64\",\"v\":[")
     result += _to_json_list_float32(value.data)
     result += "]}"
@@ -7464,12 +7768,12 @@ fn _to_json_list_cooentry(value: List[COOEntry]) -> String:
     result += "]"
     return result
 
-fn _to_json_list_candidateentry(value: List[CandidateEntry]) -> String:
+fn _to_json_list_candidateentry_vector_kernels_table(value: List[CandidateEntry__vector_kernels_table]) -> String:
     var result = String("[")
     for i in range(len(value)):
         if i > 0:
             result += ","
-        result += _to_json_candidateentry(value[i])
+        result += _to_json_candidateentry_vector_kernels_table(value[i])
     result += "]"
     return result
 
@@ -19641,7 +19945,7 @@ fn _dispatch_composites(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module composites."
     )
 
-fn _dispatch_compression_delta(function_name: String, args_array: String) raises -> String:
+fn _dispatch_compression__delta(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "delta_encode":
         if arg_count == 1:
@@ -19849,7 +20153,7 @@ fn _dispatch_compression_delta(function_name: String, args_array: String) raises
         "Function '" + function_name + "' is not registered for module compression.delta."
     )
 
-fn _dispatch_compression_huffman(function_name: String, args_array: String) raises -> String:
+fn _dispatch_compression__huffman(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "frequency_count":
         if arg_count == 1:
@@ -19971,7 +20275,7 @@ fn _dispatch_compression_huffman(function_name: String, args_array: String) rais
         "Function '" + function_name + "' is not registered for module compression.huffman."
     )
 
-fn _dispatch_compression_lz77(function_name: String, args_array: String) raises -> String:
+fn _dispatch_compression__lz77(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "bytes_to_ints":
         if arg_count == 1:
@@ -20103,7 +20407,7 @@ fn _dispatch_compression_lz77(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module compression.lz77."
     )
 
-fn _dispatch_compression_rle(function_name: String, args_array: String) raises -> String:
+fn _dispatch_compression__rle(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "rle_encode":
         if arg_count == 1:
@@ -20406,7 +20710,7 @@ fn _dispatch_concrete(function_name: String, args_array: String) raises -> Strin
         "Function '" + function_name + "' is not registered for module concrete."
     )
 
-fn _dispatch_config_toml_parser(function_name: String, args_array: String) raises -> String:
+fn _dispatch_config__toml_parser(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "toml_parse":
         if arg_count == 1:
@@ -20500,7 +20804,7 @@ fn _dispatch_config_toml_parser(function_name: String, args_array: String) raise
         "Function '" + function_name + "' is not registered for module config.toml_parser."
     )
 
-fn _dispatch_config_yaml_parser(function_name: String, args_array: String) raises -> String:
+fn _dispatch_config__yaml_parser(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "yaml_parse":
         if arg_count == 1:
@@ -22950,7 +23254,7 @@ fn _dispatch_cryptanalysis(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module cryptanalysis."
     )
 
-fn _dispatch_crypto_aes_sbox(function_name: String, args_array: String) raises -> String:
+fn _dispatch_crypto__aes_sbox(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "aes_sbox":
         if arg_count == 1:
@@ -23087,7 +23391,7 @@ fn _dispatch_crypto_aes_sbox(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module crypto.aes_sbox."
     )
 
-fn _dispatch_crypto_base64(function_name: String, args_array: String) raises -> String:
+fn _dispatch_crypto__base64(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "b64_encode":
         if arg_count == 1:
@@ -23158,7 +23462,7 @@ fn _dispatch_crypto_base64(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module crypto.base64."
     )
 
-fn _dispatch_crypto_chacha20(function_name: String, args_array: String) raises -> String:
+fn _dispatch_crypto__chacha20(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "rotl32":
         if arg_count == 2:
@@ -23311,7 +23615,7 @@ fn _dispatch_crypto_chacha20(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module crypto.chacha20."
     )
 
-fn _dispatch_crypto_crc32(function_name: String, args_array: String) raises -> String:
+fn _dispatch_crypto__crc32(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "crc32":
         if arg_count == 1:
@@ -23368,7 +23672,7 @@ fn _dispatch_crypto_crc32(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module crypto.crc32."
     )
 
-fn _dispatch_crypto_hash_chain(function_name: String, args_array: String) raises -> String:
+fn _dispatch_crypto__hash_chain(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "simple_hash":
         if arg_count == 1:
@@ -23525,7 +23829,7 @@ fn _dispatch_crypto_hash_chain(function_name: String, args_array: String) raises
         "Function '" + function_name + "' is not registered for module crypto.hash_chain."
     )
 
-fn _dispatch_crypto_hmac(function_name: String, args_array: String) raises -> String:
+fn _dispatch_crypto__hmac(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "hmac_sha256":
         if arg_count == 2:
@@ -23567,7 +23871,7 @@ fn _dispatch_crypto_hmac(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module crypto.hmac."
     )
 
-fn _dispatch_crypto_pbkdf2(function_name: String, args_array: String) raises -> String:
+fn _dispatch_crypto__pbkdf2(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "sha256_bytes":
         if arg_count == 1:
@@ -23692,7 +23996,7 @@ fn _dispatch_crypto_pbkdf2(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module crypto.pbkdf2."
     )
 
-fn _dispatch_crypto_uuid(function_name: String, args_array: String) raises -> String:
+fn _dispatch_crypto__uuid(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "uuid4":
         if arg_count == 0:
@@ -24538,7 +24842,7 @@ fn _dispatch_cytometry(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module cytometry."
     )
 
-fn _dispatch_data_csv_parser(function_name: String, args_array: String) raises -> String:
+fn _dispatch_data__csv_parser(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "csv_get_field":
         if arg_count == 2:
@@ -24639,7 +24943,7 @@ fn _dispatch_data_csv_parser(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module data.csv_parser."
     )
 
-fn _dispatch_data_dataframe(function_name: String, args_array: String) raises -> String:
+fn _dispatch_data__dataframe(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "df_from_columns":
         if arg_count == 2:
@@ -33881,7 +34185,7 @@ fn _dispatch_fft(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module fft."
     )
 
-fn _dispatch_filepath_pathlib(function_name: String, args_array: String) raises -> String:
+fn _dispatch_filepath__pathlib(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "path_join":
         if arg_count == 1:
@@ -38852,7 +39156,7 @@ fn _dispatch_gradient_descent(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module gradient_descent."
     )
 
-fn _dispatch_graph_algorithms(function_name: String, args_array: String) raises -> String:
+fn _dispatch_graph__algorithms(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "graph_new":
         if arg_count == 1:
@@ -38998,7 +39302,7 @@ fn _dispatch_graph_algorithms(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module graph.algorithms."
     )
 
-fn _dispatch_graph_weighted(function_name: String, args_array: String) raises -> String:
+fn _dispatch_graph__weighted(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "union_find_create":
         if arg_count == 1:
@@ -42071,6 +42375,208 @@ fn _dispatch_hypothesis(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module hypothesis."
     )
 
+fn _dispatch_image_features(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "sobel_magnitude":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_list_list_float64_token(json_array_get(args_array, 0))
+                var result = _image_features__sobel_magnitude(arg_0)
+                var result_json = _to_json_list_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_features.sobel_magnitude."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_features.sobel_magnitude expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "edge_density":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _image_features__edge_density(arg_0, arg_1)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_features.edge_density."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_features.edge_density expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "color_histogram":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _image_features__color_histogram(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_features.color_histogram."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_features.color_histogram expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "histogram_intersection":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var result = _image_features__histogram_intersection(arg_0, arg_1)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_features.histogram_intersection."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_features.histogram_intersection expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "histogram_chi_square":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var result = _image_features__histogram_chi_square(arg_0, arg_1)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_features.histogram_chi_square."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_features.histogram_chi_square expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "histogram_correlation":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var result = _image_features__histogram_correlation(arg_0, arg_1)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_features.histogram_correlation."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_features.histogram_correlation expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dominant_colors":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _image_features__dominant_colors(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_features.dominant_colors."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_features.dominant_colors expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "saliency_grid":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _image_features__saliency_grid(arg_0, arg_1, arg_2)
+                var result_json = _to_json_list_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_features.saliency_grid."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_features.saliency_grid expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "most_salient_cell":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_list_list_float64_token(json_array_get(args_array, 0))
+                var result = _image_features__most_salient_cell(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_features.most_salient_cell."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_features.most_salient_cell expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "edge_density_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var result = _image_features__edge_density_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_features.edge_density_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_features.edge_density_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "most_salient_cell_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _image_features__most_salient_cell_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_features.most_salient_cell_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_features.most_salient_cell_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module image_features."
+    )
+
 fn _dispatch_image_ops(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "convolve_2d":
@@ -42253,6 +42759,435 @@ fn _dispatch_image_ops(function_name: String, args_array: String) raises -> Stri
     return _error_json(
         "function_not_registered",
         "Function '" + function_name + "' is not registered for module image_ops."
+    )
+
+fn _dispatch_image_quality(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "blur_score":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_list_list_float64_token(json_array_get(args_array, 0))
+                var result = _image_quality__blur_score(arg_0)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_quality.blur_score."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_quality.blur_score expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "is_blurry":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _image_quality__is_blurry(arg_0, arg_1)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_quality.is_blurry."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_quality.is_blurry expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "brightness_mean":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_list_list_float64_token(json_array_get(args_array, 0))
+                var result = _image_quality__brightness_mean(arg_0)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_quality.brightness_mean."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_quality.brightness_mean expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "contrast_std":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_list_list_float64_token(json_array_get(args_array, 0))
+                var result = _image_quality__contrast_std(arg_0)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_quality.contrast_std."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_quality.contrast_std expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "shannon_entropy":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_list_list_float64_token(json_array_get(args_array, 0))
+                var result = _image_quality__shannon_entropy(arg_0)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_quality.shannon_entropy."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_quality.shannon_entropy expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "is_near_blank":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _image_quality__is_near_blank(arg_0, arg_1)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_quality.is_near_blank."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_quality.is_near_blank expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "uniformity":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_list_list_float64_token(json_array_get(args_array, 0))
+                var result = _image_quality__uniformity(arg_0)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_quality.uniformity."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_quality.uniformity expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "noise_estimate":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_list_list_float64_token(json_array_get(args_array, 0))
+                var result = _image_quality__noise_estimate(arg_0)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_quality.noise_estimate."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_quality.noise_estimate expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "is_over_or_under_exposed":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _image_quality__is_over_or_under_exposed(arg_0, arg_1, arg_2)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_quality.is_over_or_under_exposed."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_quality.is_over_or_under_exposed expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "quality_score":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_list_list_float64_token(json_array_get(args_array, 0))
+                var result = _image_quality__quality_score(arg_0)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_quality.quality_score."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_quality.quality_score expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "blur_score_flat":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _image_quality__blur_score_flat(arg_0, arg_1, arg_2)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_quality.blur_score_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_quality.blur_score_flat expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "brightness_flat":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _image_quality__brightness_flat(arg_0, arg_1, arg_2)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_quality.brightness_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_quality.brightness_flat expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "entropy_flat":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _image_quality__entropy_flat(arg_0, arg_1, arg_2)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_quality.entropy_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_quality.entropy_flat expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "contrast_flat":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _image_quality__contrast_flat(arg_0, arg_1, arg_2)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_quality.contrast_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_quality.contrast_flat expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "quality_score_flat":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _image_quality__quality_score_flat(arg_0, arg_1, arg_2)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_quality.quality_score_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_quality.quality_score_flat expected 3 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module image_quality."
+    )
+
+fn _dispatch_image_resize(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "reshape_to_grid":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _image_resize__reshape_to_grid(arg_0, arg_1, arg_2)
+                var result_json = _to_json_list_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_resize.reshape_to_grid."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_resize.reshape_to_grid expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "flatten_grid":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_list_list_float64_token(json_array_get(args_array, 0))
+                var result = _image_resize__flatten_grid(arg_0)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_resize.flatten_grid."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_resize.flatten_grid expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "box_downscale":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _image_resize__box_downscale(arg_0, arg_1, arg_2)
+                var result_json = _to_json_list_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_resize.box_downscale."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_resize.box_downscale expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "bilinear_downscale":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _image_resize__bilinear_downscale(arg_0, arg_1, arg_2)
+                var result_json = _to_json_list_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_resize.bilinear_downscale."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_resize.bilinear_downscale expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "resize_for_hash":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _image_resize__resize_for_hash(arg_0, arg_1)
+                var result_json = _to_json_list_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_resize.resize_for_hash."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_resize.resize_for_hash expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "resize_for_dhash":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _image_resize__resize_for_dhash(arg_0, arg_1, arg_2)
+                var result_json = _to_json_list_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_resize.resize_for_dhash."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_resize.resize_for_dhash expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "integral_image":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_list_list_float64_token(json_array_get(args_array, 0))
+                var result = _image_resize__integral_image(arg_0)
+                var result_json = _to_json_list_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_resize.integral_image."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_resize.integral_image expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "box_sum":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _image_resize__box_sum(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_resize.box_sum."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_resize.box_sum expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "downscale_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _image_resize__downscale_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_resize.downscale_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_resize.downscale_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module image_resize."
     )
 
 fn _dispatch_immunology(function_name: String, args_array: String) raises -> String:
@@ -44064,7 +44999,7 @@ fn _dispatch_inventory(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module inventory."
     )
 
-fn _dispatch_json_parser(function_name: String, args_array: String) raises -> String:
+fn _dispatch_json__parser(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "skip_whitespace":
         if arg_count == 2:
@@ -44277,7 +45212,7 @@ fn _dispatch_json_parser(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module json.parser."
     )
 
-fn _dispatch_json_writer(function_name: String, args_array: String) raises -> String:
+fn _dispatch_json__writer(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "json_escape_string":
         if arg_count == 1:
@@ -47266,7 +48201,7 @@ fn _dispatch_llm_sampling(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module llm_sampling."
     )
 
-fn _dispatch_logging_logger(function_name: String, args_array: String) raises -> String:
+fn _dispatch_logging__logger(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "get_logger":
         if arg_count == 1:
@@ -51131,7 +52066,7 @@ fn _dispatch_mixture_of_experts(function_name: String, args_array: String) raise
         "Function '" + function_name + "' is not registered for module mixture_of_experts."
     )
 
-fn _dispatch_ml_classifiers(function_name: String, args_array: String) raises -> String:
+fn _dispatch_ml__classifiers(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "euclidean_distance":
         if arg_count == 2:
@@ -51270,7 +52205,7 @@ fn _dispatch_ml_classifiers(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module ml.classifiers."
     )
 
-fn _dispatch_ml_clustering(function_name: String, args_array: String) raises -> String:
+fn _dispatch_ml__clustering(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "euclidean_distance":
         if arg_count == 2:
@@ -51372,7 +52307,7 @@ fn _dispatch_ml_clustering(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module ml.clustering."
     )
 
-fn _dispatch_ml_knn(function_name: String, args_array: String) raises -> String:
+fn _dispatch_ml__knn(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "euclidean_distance_knn":
         if arg_count == 2:
@@ -51559,7 +52494,7 @@ fn _dispatch_ml_knn(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module ml.knn."
     )
 
-fn _dispatch_ml_metrics(function_name: String, args_array: String) raises -> String:
+fn _dispatch_ml__metrics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "accuracy":
         if arg_count == 2:
@@ -51686,7 +52621,7 @@ fn _dispatch_ml_metrics(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module ml.metrics."
     )
 
-fn _dispatch_ml_naive_bayes(function_name: String, args_array: String) raises -> String:
+fn _dispatch_ml__naive_bayes(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "compute_priors":
         if arg_count == 2:
@@ -51835,7 +52770,7 @@ fn _dispatch_ml_naive_bayes(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module ml.naive_bayes."
     )
 
-fn _dispatch_ml_preprocessing(function_name: String, args_array: String) raises -> String:
+fn _dispatch_ml__preprocessing(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "normalize_minmax":
         if arg_count == 1:
@@ -51942,7 +52877,7 @@ fn _dispatch_ml_preprocessing(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module ml.preprocessing."
     )
 
-fn _dispatch_ml_random_forest(function_name: String, args_array: String) raises -> String:
+fn _dispatch_ml__random_forest(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "bootstrap_indices":
         if arg_count == 2:
@@ -54882,7 +55817,7 @@ fn _dispatch_nephrology(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module nephrology."
     )
 
-fn _dispatch_net_url(function_name: String, args_array: String) raises -> String:
+fn _dispatch_net__url(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "url_parse":
         if arg_count == 1:
@@ -62426,6 +63361,150 @@ fn _dispatch_pension(function_name: String, args_array: String) raises -> String
     return _error_json(
         "function_not_registered",
         "Function '" + function_name + "' is not registered for module pension."
+    )
+
+fn _dispatch_perceptual_hash(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "ahash":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_list_list_float64_token(json_array_get(args_array, 0))
+                var result = _perceptual_hash__ahash(arg_0)
+                var result_json = _to_json_uint64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for perceptual_hash.ahash."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function perceptual_hash.ahash expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dhash":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_list_list_float64_token(json_array_get(args_array, 0))
+                var result = _perceptual_hash__dhash(arg_0)
+                var result_json = _to_json_uint64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for perceptual_hash.dhash."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function perceptual_hash.dhash expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "phash":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_list_list_float64_token(json_array_get(args_array, 0))
+                var result = _perceptual_hash__phash(arg_0)
+                var result_json = _to_json_uint64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for perceptual_hash.phash."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function perceptual_hash.phash expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "hamming_distance":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_uint64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_uint64_token(json_array_get(args_array, 1))
+                var result = _perceptual_hash__hamming_distance(arg_0, arg_1)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for perceptual_hash.hamming_distance."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function perceptual_hash.hamming_distance expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "is_duplicate":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_uint64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_uint64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _perceptual_hash__is_duplicate(arg_0, arg_1, arg_2)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for perceptual_hash.is_duplicate."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function perceptual_hash.is_duplicate expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "ahash_flat":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _perceptual_hash__ahash_flat(arg_0, arg_1, arg_2)
+                var result_json = _to_json_uint64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for perceptual_hash.ahash_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function perceptual_hash.ahash_flat expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dhash_flat":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _perceptual_hash__dhash_flat(arg_0, arg_1, arg_2)
+                var result_json = _to_json_uint64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for perceptual_hash.dhash_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function perceptual_hash.dhash_flat expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "phash_flat":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _perceptual_hash__phash_flat(arg_0, arg_1, arg_2)
+                var result_json = _to_json_uint64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for perceptual_hash.phash_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function perceptual_hash.phash_flat expected 3 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module perceptual_hash."
     )
 
 fn _dispatch_perfumery(function_name: String, args_array: String) raises -> String:
@@ -75870,7 +76949,7 @@ fn _dispatch_sentiment(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module sentiment."
     )
 
-fn _dispatch_serialization_msgpack(function_name: String, args_array: String) raises -> String:
+fn _dispatch_serialization__msgpack(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "msgpack_encode_int":
         if arg_count == 1:
@@ -76426,7 +77505,7 @@ fn _dispatch_set_ops(function_name: String, args_array: String) raises -> String
         "Function '" + function_name + "' is not registered for module set_ops."
     )
 
-fn _dispatch_signal_dsp(function_name: String, args_array: String) raises -> String:
+fn _dispatch_signal__dsp(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "moving_average":
         if arg_count == 2:
@@ -76598,7 +77677,7 @@ fn _dispatch_signal_dsp(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module signal.dsp."
     )
 
-fn _dispatch_signal_filter(function_name: String, args_array: String) raises -> String:
+fn _dispatch_signal__filter(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "lowpass_ema":
         if arg_count == 2:
@@ -81610,7 +82689,7 @@ fn _dispatch_string_distance(function_name: String, args_array: String) raises -
         "Function '" + function_name + "' is not registered for module string_distance."
     )
 
-fn _dispatch_structs_containers(function_name: String, args_array: String) raises -> String:
+fn _dispatch_structs__containers(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "counter":
         if arg_count == 2:
@@ -83961,7 +85040,7 @@ fn _dispatch_tensor_ops(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module tensor_ops."
     )
 
-fn _dispatch_text_column_scorer(function_name: String, args_array: String) raises -> String:
+fn _dispatch_text__column_scorer(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "score_token_overlap":
         if arg_count == 2:
@@ -84091,7 +85170,7 @@ fn _dispatch_text_column_scorer(function_name: String, args_array: String) raise
         "Function '" + function_name + "' is not registered for module text.column_scorer."
     )
 
-fn _dispatch_text_fuzzy(function_name: String, args_array: String) raises -> String:
+fn _dispatch_text__fuzzy(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "levenshtein_distance":
         if arg_count == 2:
@@ -84230,7 +85309,7 @@ fn _dispatch_text_fuzzy(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module text.fuzzy."
     )
 
-fn _dispatch_text_regex(function_name: String, args_array: String) raises -> String:
+fn _dispatch_text__regex(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "regex_match":
         if arg_count == 2:
@@ -84357,7 +85436,7 @@ fn _dispatch_text_regex(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module text.regex."
     )
 
-fn _dispatch_text_string_utils(function_name: String, args_array: String) raises -> String:
+fn _dispatch_text__string_utils(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "str_split":
         if arg_count == 2:
@@ -84637,7 +85716,7 @@ fn _dispatch_text_string_utils(function_name: String, args_array: String) raises
         "Function '" + function_name + "' is not registered for module text.string_utils."
     )
 
-fn _dispatch_text_tokenizer(function_name: String, args_array: String) raises -> String:
+fn _dispatch_text__tokenizer(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "is_stopword":
         if arg_count == 1:
@@ -89095,12 +90174,12 @@ fn _dispatch_urban_planning(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module urban_planning."
     )
 
-fn _dispatch_vector_kernels_batch_ranker(function_name: String, args_array: String) raises -> String:
+fn _dispatch_vector_kernels__batch_ranker(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "to_planner_resolution":
         if arg_count == 1:
             try:
-                var arg_0 = _parse_rankresult_token(json_array_get(args_array, 0))
+                var arg_0 = _parse_rankresult_vector_kernels_batch_ranker_token(json_array_get(args_array, 0))
                 var result = _vector_kernels_batch_ranker__to_planner_resolution(arg_0)
                 var result_json = _to_json_plannerresolution(result)
                 return _success_json(result_json)
@@ -89118,7 +90197,7 @@ fn _dispatch_vector_kernels_batch_ranker(function_name: String, args_array: Stri
         "Function '" + function_name + "' is not registered for module vector_kernels.batch_ranker."
     )
 
-fn _dispatch_vector_kernels_dot(function_name: String, args_array: String) raises -> String:
+fn _dispatch_vector_kernels__dot(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "dot64_f32":
         if arg_count == 2:
@@ -89197,7 +90276,7 @@ fn _dispatch_vector_kernels_dot(function_name: String, args_array: String) raise
         "Function '" + function_name + "' is not registered for module vector_kernels.dot."
     )
 
-fn _dispatch_vector_kernels_ranker(function_name: String, args_array: String) raises -> String:
+fn _dispatch_vector_kernels__ranker(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "run_column_rank_v2":
         if arg_count == 1:
@@ -89220,7 +90299,30 @@ fn _dispatch_vector_kernels_ranker(function_name: String, args_array: String) ra
         "Function '" + function_name + "' is not registered for module vector_kernels.ranker."
     )
 
-fn _dispatch_vector_kernels_table(function_name: String, args_array: String) raises -> String:
+fn _dispatch_vector_kernels__repo_ranker(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "run_repo_rank":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
+                var result = _vector_kernels_repo_ranker__run_repo_rank(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for vector_kernels.repo_ranker.run_repo_rank."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function vector_kernels.repo_ranker.run_repo_rank expected 1 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module vector_kernels.repo_ranker."
+    )
+
+fn _dispatch_vector_kernels__table(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "build_query":
         if arg_count == 4:
@@ -89230,7 +90332,7 @@ fn _dispatch_vector_kernels_table(function_name: String, args_array: String) rai
                 var arg_2 = _parse_uint8_token(json_array_get(args_array, 2))
                 var arg_3 = _parse_uint8_token(json_array_get(args_array, 3))
                 var result = _vector_kernels_table__build_query(arg_0, arg_1, arg_2, arg_3)
-                var result_json = _to_json_rankrequest(result)
+                var result_json = _to_json_rankrequest_vector_kernels_table(result)
                 return _success_json(result_json)
             except:
                 return _error_json(
@@ -89278,7 +90380,7 @@ fn _dispatch_vector_kernels_table(function_name: String, args_array: String) rai
             try:
                 var arg_0 = _parse_string_token(json_array_get(args_array, 0))
                 var result = _vector_kernels_table__build_table_json(arg_0)
-                var result_json = _to_json_candidatetable(result)
+                var result_json = _to_json_candidatetable_vector_kernels_table(result)
                 return _success_json(result_json)
             except:
                 return _error_json(
@@ -89294,7 +90396,7 @@ fn _dispatch_vector_kernels_table(function_name: String, args_array: String) rai
         "Function '" + function_name + "' is not registered for module vector_kernels.table."
     )
 
-fn _dispatch_vector_kernels_test_table(function_name: String, args_array: String) raises -> String:
+fn _dispatch_vector_kernels__test_table(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "build_query":
         if arg_count == 4:
@@ -89304,7 +90406,7 @@ fn _dispatch_vector_kernels_test_table(function_name: String, args_array: String
                 var arg_2 = _parse_uint8_token(json_array_get(args_array, 2))
                 var arg_3 = _parse_uint8_token(json_array_get(args_array, 3))
                 var result = _vector_kernels_test_table__build_query(arg_0, arg_1, arg_2, arg_3)
-                var result_json = _to_json_rankrequest(result)
+                var result_json = _to_json_rankrequest_vector_kernels_test_table(result)
                 return _success_json(result_json)
             except:
                 return _error_json(
@@ -90061,6 +91163,102 @@ fn _dispatch_virology(function_name: String, args_array: String) raises -> Strin
     return _error_json(
         "function_not_registered",
         "Function '" + function_name + "' is not registered for module virology."
+    )
+
+fn _dispatch_vision_gate(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "should_use_cache":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_bool_token(json_array_get(args_array, 0))
+                var result = _vision_gate__should_use_cache(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for vision_gate.should_use_cache."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function vision_gate.should_use_cache expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "needs_clearer_image":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _vision_gate__needs_clearer_image(arg_0, arg_1)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for vision_gate.needs_clearer_image."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function vision_gate.needs_clearer_image expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "is_text_heavy":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _vision_gate__is_text_heavy(arg_0, arg_1)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for vision_gate.is_text_heavy."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function vision_gate.is_text_heavy expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "quality_gate_passed":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _vision_gate__quality_gate_passed(arg_0, arg_1, arg_2)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for vision_gate.quality_gate_passed."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function vision_gate.quality_gate_passed expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "route_image_request":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_bool_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var result = _vision_gate__route_image_request(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for vision_gate.route_image_request."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function vision_gate.route_image_request expected 6 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module vision_gate."
     )
 
 fn _dispatch_viticulture(function_name: String, args_array: String) raises -> String:
@@ -92587,19 +93785,19 @@ fn dispatch_runtime_library(raw: String) raises -> String:
     if module_name == "composites":
         return _dispatch_composites(function_name, args_array)
     if module_name == "compression.delta":
-        return _dispatch_compression_delta(function_name, args_array)
+        return _dispatch_compression__delta(function_name, args_array)
     if module_name == "compression.huffman":
-        return _dispatch_compression_huffman(function_name, args_array)
+        return _dispatch_compression__huffman(function_name, args_array)
     if module_name == "compression.lz77":
-        return _dispatch_compression_lz77(function_name, args_array)
+        return _dispatch_compression__lz77(function_name, args_array)
     if module_name == "compression.rle":
-        return _dispatch_compression_rle(function_name, args_array)
+        return _dispatch_compression__rle(function_name, args_array)
     if module_name == "concrete":
         return _dispatch_concrete(function_name, args_array)
     if module_name == "config.toml_parser":
-        return _dispatch_config_toml_parser(function_name, args_array)
+        return _dispatch_config__toml_parser(function_name, args_array)
     if module_name == "config.yaml_parser":
-        return _dispatch_config_yaml_parser(function_name, args_array)
+        return _dispatch_config__yaml_parser(function_name, args_array)
     if module_name == "constraint":
         return _dispatch_constraint(function_name, args_array)
     if module_name == "continuous_batching":
@@ -92627,21 +93825,21 @@ fn dispatch_runtime_library(raw: String) raises -> String:
     if module_name == "cryptanalysis":
         return _dispatch_cryptanalysis(function_name, args_array)
     if module_name == "crypto.aes_sbox":
-        return _dispatch_crypto_aes_sbox(function_name, args_array)
+        return _dispatch_crypto__aes_sbox(function_name, args_array)
     if module_name == "crypto.base64":
-        return _dispatch_crypto_base64(function_name, args_array)
+        return _dispatch_crypto__base64(function_name, args_array)
     if module_name == "crypto.chacha20":
-        return _dispatch_crypto_chacha20(function_name, args_array)
+        return _dispatch_crypto__chacha20(function_name, args_array)
     if module_name == "crypto.crc32":
-        return _dispatch_crypto_crc32(function_name, args_array)
+        return _dispatch_crypto__crc32(function_name, args_array)
     if module_name == "crypto.hash_chain":
-        return _dispatch_crypto_hash_chain(function_name, args_array)
+        return _dispatch_crypto__hash_chain(function_name, args_array)
     if module_name == "crypto.hmac":
-        return _dispatch_crypto_hmac(function_name, args_array)
+        return _dispatch_crypto__hmac(function_name, args_array)
     if module_name == "crypto.pbkdf2":
-        return _dispatch_crypto_pbkdf2(function_name, args_array)
+        return _dispatch_crypto__pbkdf2(function_name, args_array)
     if module_name == "crypto.uuid":
-        return _dispatch_crypto_uuid(function_name, args_array)
+        return _dispatch_crypto__uuid(function_name, args_array)
     if module_name == "crystallography":
         return _dispatch_crystallography(function_name, args_array)
     if module_name == "currency":
@@ -92651,9 +93849,9 @@ fn dispatch_runtime_library(raw: String) raises -> String:
     if module_name == "cytometry":
         return _dispatch_cytometry(function_name, args_array)
     if module_name == "data.csv_parser":
-        return _dispatch_data_csv_parser(function_name, args_array)
+        return _dispatch_data__csv_parser(function_name, args_array)
     if module_name == "data.dataframe":
-        return _dispatch_data_dataframe(function_name, args_array)
+        return _dispatch_data__dataframe(function_name, args_array)
     if module_name == "data_feedback_loop":
         return _dispatch_data_feedback_loop(function_name, args_array)
     if module_name == "data_pipeline":
@@ -92751,7 +93949,7 @@ fn dispatch_runtime_library(raw: String) raises -> String:
     if module_name == "fft":
         return _dispatch_fft(function_name, args_array)
     if module_name == "filepath.pathlib":
-        return _dispatch_filepath_pathlib(function_name, args_array)
+        return _dispatch_filepath__pathlib(function_name, args_array)
     if module_name == "finance":
         return _dispatch_finance(function_name, args_array)
     if module_name == "fire_safety":
@@ -92801,9 +93999,9 @@ fn dispatch_runtime_library(raw: String) raises -> String:
     if module_name == "gradient_descent":
         return _dispatch_gradient_descent(function_name, args_array)
     if module_name == "graph.algorithms":
-        return _dispatch_graph_algorithms(function_name, args_array)
+        return _dispatch_graph__algorithms(function_name, args_array)
     if module_name == "graph.weighted":
-        return _dispatch_graph_weighted(function_name, args_array)
+        return _dispatch_graph__weighted(function_name, args_array)
     if module_name == "graph_algorithms":
         return _dispatch_graph_algorithms(function_name, args_array)
     if module_name == "graph_compiler":
@@ -92834,8 +94032,14 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_hydroponics(function_name, args_array)
     if module_name == "hypothesis":
         return _dispatch_hypothesis(function_name, args_array)
+    if module_name == "image_features":
+        return _dispatch_image_features(function_name, args_array)
     if module_name == "image_ops":
         return _dispatch_image_ops(function_name, args_array)
+    if module_name == "image_quality":
+        return _dispatch_image_quality(function_name, args_array)
+    if module_name == "image_resize":
+        return _dispatch_image_resize(function_name, args_array)
     if module_name == "immunology":
         return _dispatch_immunology(function_name, args_array)
     if module_name == "inference_cost_latency":
@@ -92857,9 +94061,9 @@ fn dispatch_runtime_library(raw: String) raises -> String:
     if module_name == "inventory":
         return _dispatch_inventory(function_name, args_array)
     if module_name == "json.parser":
-        return _dispatch_json_parser(function_name, args_array)
+        return _dispatch_json__parser(function_name, args_array)
     if module_name == "json.writer":
-        return _dispatch_json_writer(function_name, args_array)
+        return _dispatch_json__writer(function_name, args_array)
     if module_name == "kalman":
         return _dispatch_kalman(function_name, args_array)
     if module_name == "kinetics":
@@ -92889,7 +94093,7 @@ fn dispatch_runtime_library(raw: String) raises -> String:
     if module_name == "llm_sampling":
         return _dispatch_llm_sampling(function_name, args_array)
     if module_name == "logging.logger":
-        return _dispatch_logging_logger(function_name, args_array)
+        return _dispatch_logging__logger(function_name, args_array)
     if module_name == "logic_circuit":
         return _dispatch_logic_circuit(function_name, args_array)
     if module_name == "logistics":
@@ -92929,19 +94133,19 @@ fn dispatch_runtime_library(raw: String) raises -> String:
     if module_name == "mixture_of_experts":
         return _dispatch_mixture_of_experts(function_name, args_array)
     if module_name == "ml.classifiers":
-        return _dispatch_ml_classifiers(function_name, args_array)
+        return _dispatch_ml__classifiers(function_name, args_array)
     if module_name == "ml.clustering":
-        return _dispatch_ml_clustering(function_name, args_array)
+        return _dispatch_ml__clustering(function_name, args_array)
     if module_name == "ml.knn":
-        return _dispatch_ml_knn(function_name, args_array)
+        return _dispatch_ml__knn(function_name, args_array)
     if module_name == "ml.metrics":
-        return _dispatch_ml_metrics(function_name, args_array)
+        return _dispatch_ml__metrics(function_name, args_array)
     if module_name == "ml.naive_bayes":
-        return _dispatch_ml_naive_bayes(function_name, args_array)
+        return _dispatch_ml__naive_bayes(function_name, args_array)
     if module_name == "ml.preprocessing":
-        return _dispatch_ml_preprocessing(function_name, args_array)
+        return _dispatch_ml__preprocessing(function_name, args_array)
     if module_name == "ml.random_forest":
-        return _dispatch_ml_random_forest(function_name, args_array)
+        return _dispatch_ml__random_forest(function_name, args_array)
     if module_name == "ml_metrics_extended":
         return _dispatch_ml_metrics_extended(function_name, args_array)
     if module_name == "model_abi":
@@ -92973,7 +94177,7 @@ fn dispatch_runtime_library(raw: String) raises -> String:
     if module_name == "nephrology":
         return _dispatch_nephrology(function_name, args_array)
     if module_name == "net.url":
-        return _dispatch_net_url(function_name, args_array)
+        return _dispatch_net__url(function_name, args_array)
     if module_name == "network_analysis":
         return _dispatch_network_analysis(function_name, args_array)
     if module_name == "network_protocol":
@@ -93048,6 +94252,8 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_pedology(function_name, args_array)
     if module_name == "pension":
         return _dispatch_pension(function_name, args_array)
+    if module_name == "perceptual_hash":
+        return _dispatch_perceptual_hash(function_name, args_array)
     if module_name == "perfumery":
         return _dispatch_perfumery(function_name, args_array)
     if module_name == "persistence":
@@ -93189,15 +94395,15 @@ fn dispatch_runtime_library(raw: String) raises -> String:
     if module_name == "sentiment":
         return _dispatch_sentiment(function_name, args_array)
     if module_name == "serialization.msgpack":
-        return _dispatch_serialization_msgpack(function_name, args_array)
+        return _dispatch_serialization__msgpack(function_name, args_array)
     if module_name == "series":
         return _dispatch_series(function_name, args_array)
     if module_name == "set_ops":
         return _dispatch_set_ops(function_name, args_array)
     if module_name == "signal.dsp":
-        return _dispatch_signal_dsp(function_name, args_array)
+        return _dispatch_signal__dsp(function_name, args_array)
     if module_name == "signal.filter":
-        return _dispatch_signal_filter(function_name, args_array)
+        return _dispatch_signal__filter(function_name, args_array)
     if module_name == "signal_processing":
         return _dispatch_signal_processing(function_name, args_array)
     if module_name == "silviculture":
@@ -93251,7 +94457,7 @@ fn dispatch_runtime_library(raw: String) raises -> String:
     if module_name == "string_distance":
         return _dispatch_string_distance(function_name, args_array)
     if module_name == "structs.containers":
-        return _dispatch_structs_containers(function_name, args_array)
+        return _dispatch_structs__containers(function_name, args_array)
     if module_name == "structural":
         return _dispatch_structural(function_name, args_array)
     if module_name == "structured_output":
@@ -93273,15 +94479,15 @@ fn dispatch_runtime_library(raw: String) raises -> String:
     if module_name == "tensor_ops":
         return _dispatch_tensor_ops(function_name, args_array)
     if module_name == "text.column_scorer":
-        return _dispatch_text_column_scorer(function_name, args_array)
+        return _dispatch_text__column_scorer(function_name, args_array)
     if module_name == "text.fuzzy":
-        return _dispatch_text_fuzzy(function_name, args_array)
+        return _dispatch_text__fuzzy(function_name, args_array)
     if module_name == "text.regex":
-        return _dispatch_text_regex(function_name, args_array)
+        return _dispatch_text__regex(function_name, args_array)
     if module_name == "text.string_utils":
-        return _dispatch_text_string_utils(function_name, args_array)
+        return _dispatch_text__string_utils(function_name, args_array)
     if module_name == "text.tokenizer":
-        return _dispatch_text_tokenizer(function_name, args_array)
+        return _dispatch_text__tokenizer(function_name, args_array)
     if module_name == "textile":
         return _dispatch_textile(function_name, args_array)
     if module_name == "thermodynamics":
@@ -93327,15 +94533,17 @@ fn dispatch_runtime_library(raw: String) raises -> String:
     if module_name == "urban_planning":
         return _dispatch_urban_planning(function_name, args_array)
     if module_name == "vector_kernels.batch_ranker":
-        return _dispatch_vector_kernels_batch_ranker(function_name, args_array)
+        return _dispatch_vector_kernels__batch_ranker(function_name, args_array)
     if module_name == "vector_kernels.dot":
-        return _dispatch_vector_kernels_dot(function_name, args_array)
+        return _dispatch_vector_kernels__dot(function_name, args_array)
     if module_name == "vector_kernels.ranker":
-        return _dispatch_vector_kernels_ranker(function_name, args_array)
+        return _dispatch_vector_kernels__ranker(function_name, args_array)
+    if module_name == "vector_kernels.repo_ranker":
+        return _dispatch_vector_kernels__repo_ranker(function_name, args_array)
     if module_name == "vector_kernels.table":
-        return _dispatch_vector_kernels_table(function_name, args_array)
+        return _dispatch_vector_kernels__table(function_name, args_array)
     if module_name == "vector_kernels.test_table":
-        return _dispatch_vector_kernels_test_table(function_name, args_array)
+        return _dispatch_vector_kernels__test_table(function_name, args_array)
     if module_name == "vector_search":
         return _dispatch_vector_search(function_name, args_array)
     if module_name == "vector_similarity":
@@ -93344,6 +94552,8 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_veterinary(function_name, args_array)
     if module_name == "virology":
         return _dispatch_virology(function_name, args_array)
+    if module_name == "vision_gate":
+        return _dispatch_vision_gate(function_name, args_array)
     if module_name == "viticulture":
         return _dispatch_viticulture(function_name, args_array)
     if module_name == "volcanology":

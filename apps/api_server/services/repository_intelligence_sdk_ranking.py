@@ -21,6 +21,7 @@ import os
 from collections import defaultdict
 from collections.abc import Sequence
 from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 _SDK_RANKING_ENV = "ALGENTA_REPOSITORIES_SDK_RANKING"
@@ -43,17 +44,70 @@ def sdk_ranking_enabled() -> bool:
     return os.environ.get(_SDK_RANKING_ENV, "false").strip().lower() in {"1", "true", "yes", "on"}
 
 
+_runtime_env_loaded = False
+
+
+def _load_runtime_env() -> None:
+    """Load ``$ALGENTA_RUNTIME_DIR/.env`` (the runtime's own credential file:
+    ALGENTA_API_KEY, deployment profile, ...) into the process environment so the
+    local Algenta engine is authenticated rather than silently falling back to the
+    Python heuristic. Existing os.environ values win (explicit config overrides the
+    file); idempotent."""
+    global _runtime_env_loaded
+    if _runtime_env_loaded:
+        return
+    _runtime_env_loaded = True
+    runtime_dir = os.environ.get("ALGENTA_RUNTIME_DIR") or str(
+        Path.home() / ".algenta" / "runtime"
+    )
+    try:
+        text = (Path(runtime_dir) / ".env").read_text()
+    except OSError:
+        return
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        os.environ.setdefault(key.strip(), value.strip())
+
+
+def _default_runtime_mode() -> str:
+    """Local-only default for the repositories lane: a warm daemon if one is up,
+    else the in-process ``direct`` executor. Never cloud — repository intelligence
+    is a local boundary (see project_sdk_transport_boundary), so the lane must not
+    silently make network calls when no daemon is present."""
+    try:
+        from apps.runtime.client import DaemonClient
+
+        if DaemonClient.is_daemon_running():
+            return "local"
+    except Exception:  # noqa: BLE001
+        pass
+    return "direct"
+
+
 @lru_cache(maxsize=1)
 def _runtime() -> Any | None:
-    """Lazily construct the Algenta SDK Runtime; None if the SDK isn't importable."""
+    """Lazily construct the Algenta SDK Runtime; None if the SDK isn't importable.
+
+    Loads the runtime credential file first so the local engine is authenticated,
+    and pins a local execution mode (daemon/direct) so the lane never degrades to a
+    cloud call. If the preferred mode can't initialize, falls back to ``direct``."""
+    _load_runtime_env()
     try:
         from apps.runtime.sdk import Runtime
     except Exception:  # noqa: BLE001 — SDK optional in some deployments
         return None
-    mode = os.environ.get(_SDK_RUNTIME_MODE_ENV, "auto").strip() or "auto"
+    mode = os.environ.get(_SDK_RUNTIME_MODE_ENV, "").strip().lower() or _default_runtime_mode()
     try:
         return Runtime(mode=mode)
     except Exception:  # noqa: BLE001
+        if mode != "direct":
+            try:
+                return Runtime(mode="direct")
+            except Exception:  # noqa: BLE001
+                return None
         return None
 
 

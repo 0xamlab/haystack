@@ -15,6 +15,9 @@ from apps.api_server.schemas.repositories import (
     RepositoryGraphQueryRequest,
     RepositoryGraphQueryResponse,
     RepositoryIntelligenceCapabilitiesResponse,
+    RepositoryPipelineRequest,
+    RepositoryPipelineResponse,
+    RepositorySimulatePatchRequest,
     RepositorySimulationRequest,
     RepositorySnapshotCreateRequest,
     RepositorySnapshotResponse,
@@ -33,7 +36,11 @@ from apps.api_server.services.repository_intelligence import (
     get_repository_snapshot,
     query_repository_graph,
     simulate_repository_decision,
+    simulate_repository_patch as run_repository_patch_simulation,
     triage_repository,
+)
+from apps.api_server.services.repository_intelligence_pipeline import (
+    run_repository_pipeline,
 )
 
 router = APIRouter(tags=["Repository Intelligence"])
@@ -176,6 +183,44 @@ async def simulate_repository_patch(
     connector = await get_visible_connector(db, repository_id, auth)
     try:
         return await simulate_repository_decision(connector=connector, request=payload)
+    except RepositoryIntelligenceError as exc:
+        raise _repository_http_exception(exc, request) from exc
+
+
+@router.post(
+    "/v1/repositories/{repository_id}/simulate-patch",
+    response_model=DecisionEnvelope,
+    summary="Simulate an in-flight working-tree patch (no stored decision plan)",
+)
+async def simulate_repository_working_tree_patch(
+    repository_id: UUID,
+    payload: RepositorySimulatePatchRequest,
+    request: Request,
+    db: AsyncSessionDep,
+    auth: Annotated[AuthContext, Depends(get_current_org)],
+) -> DecisionEnvelope:
+    connector = await get_visible_connector(db, repository_id, auth)
+    try:
+        return await run_repository_patch_simulation(connector=connector, request=payload)
+    except RepositoryIntelligenceError as exc:
+        raise _repository_http_exception(exc, request) from exc
+
+
+@router.post(
+    "/v1/repositories/{repository_id}/pipeline",
+    response_model=RepositoryPipelineResponse,
+    summary="Run snapshot->triage->plan->simulate in one call (AR-OPT-9, flag-gated)",
+)
+async def run_repository_intelligence_pipeline(
+    repository_id: UUID,
+    payload: RepositoryPipelineRequest,
+    request: Request,
+    db: AsyncSessionDep,
+    auth: Annotated[AuthContext, Depends(get_current_org)],
+) -> RepositoryPipelineResponse:
+    connector = await get_visible_connector(db, repository_id, auth)
+    try:
+        return await run_repository_pipeline(connector=connector, request=payload)
     except RepositoryIntelligenceError as exc:
         raise _repository_http_exception(exc, request) from exc
 

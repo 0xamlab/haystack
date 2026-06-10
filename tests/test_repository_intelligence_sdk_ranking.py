@@ -113,6 +113,57 @@ def test_flag_default_off(monkeypatch) -> None:
     assert sdk_ranking.sdk_ranking_enabled() is True
 
 
+def test_load_runtime_env_reads_runtime_dir_dotenv(tmp_path, monkeypatch) -> None:
+    """The runtime credential file ($ALGENTA_RUNTIME_DIR/.env) is loaded into the
+    environment so the local engine is authenticated instead of falling back."""
+    (tmp_path / ".env").write_text("# comment\n_ALGENTA_TEST_PROBE=loaded\nALSO=two\n")
+    monkeypatch.setenv("ALGENTA_RUNTIME_DIR", str(tmp_path))
+    monkeypatch.setattr(sdk_ranking, "_runtime_env_loaded", False)
+    monkeypatch.delenv("_ALGENTA_TEST_PROBE", raising=False)
+    monkeypatch.delenv("ALSO", raising=False)
+    try:
+        sdk_ranking._load_runtime_env()
+        assert os.environ.get("_ALGENTA_TEST_PROBE") == "loaded"
+        assert os.environ.get("ALSO") == "two"
+    finally:  # _load_runtime_env mutates os.environ directly (not via monkeypatch)
+        os.environ.pop("_ALGENTA_TEST_PROBE", None)
+        os.environ.pop("ALSO", None)
+
+
+def test_load_runtime_env_does_not_override_explicit(tmp_path, monkeypatch) -> None:
+    (tmp_path / ".env").write_text("_ALGENTA_TEST_PROBE=fromfile\n")
+    monkeypatch.setenv("ALGENTA_RUNTIME_DIR", str(tmp_path))
+    monkeypatch.setenv("_ALGENTA_TEST_PROBE", "explicit")  # already set -> file must not win
+    monkeypatch.setattr(sdk_ranking, "_runtime_env_loaded", False)
+    sdk_ranking._load_runtime_env()
+    assert os.environ["_ALGENTA_TEST_PROBE"] == "explicit"
+
+
+def test_default_runtime_mode_is_local_only() -> None:
+    # Repository intelligence is a local boundary: never cloud/auto, only daemon or direct.
+    assert sdk_ranking._default_runtime_mode() in {"local", "direct"}
+
+
+def test_triage_cache_key_is_ranking_mode_aware() -> None:
+    """Heuristic and SDK-fused triage must not share a cache key, else toggling the
+    SDK ranking flag serves a stale ordering from the other mode."""
+    from apps.api_server.services import repository_intelligence_graph_workflow as gw
+
+    common = dict(
+        snapshot_id="snap-1",
+        signals={"issue_text": "x"},
+        max_evidence_items=10,
+        max_snippet_lines=40,
+        token_budget=6000,
+        engine_revision="rev",
+    )
+    heuristic = gw._triage_lookup_key(ranking_mode="heuristic", **common)
+    sdk = gw._triage_lookup_key(ranking_mode="sdk_rrf", **common)
+    assert heuristic != sdk
+    # Same mode + same inputs is stable (cache still works within a mode).
+    assert heuristic == gw._triage_lookup_key(ranking_mode="heuristic", **common)
+
+
 @pytest.mark.skipif(
     not _dev_runtime_available(),
     reason="Algenta local Mojo runtime not enabled (set ALGENTA_RUNTIME_DEV_MODE=1)",

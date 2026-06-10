@@ -228,8 +228,21 @@ class RepositorySimulationRequest(BaseModel):
 
     snapshot_id: str | None = None
     decision_plan_id: str
-    runs: int = Field(default=5_000, ge=100, le=250_000)
+    # None => the complexity-adaptive scenario count (_adaptive_simulation_runs);
+    # an explicit value pins runs for this request (back-compat for callers that set it).
+    runs: int | None = Field(default=None, ge=100, le=250_000)
     seed: int | None = Field(default=42, ge=0)
+
+
+class RepositorySimulatePatchRequest(BaseModel):
+    """Simulate an in-flight working-tree patch directly (no stored decision plan) —
+    used by the verified_agentic agent's simulate_patch tool to verify mid-run."""
+
+    model_config = ConfigDict(strict=False)
+
+    snapshot_id: str
+    patch_diff: str
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
 
 
 class RepositoryApplyMode(StrEnum):
@@ -279,3 +292,54 @@ class RepositorySimulationEnvelope(BaseModel):
 
     simulation_id: str
     envelope: DecisionEnvelope
+
+
+# AR-OPT-9: one-call orchestration of snapshot -> triage -> plan -> simulate.
+# The stages form a strict dependency chain (each consumes the prior stage's id),
+# so the win is one round-trip + cross-stage manifest reuse (the AR-OPT-2 triage
+# LRU), not step parallelism. `stop_after` lets a caller halt before the LLM
+# planner ("triage") or before the deterministic Mojo simulate ("plan").
+RepositoryPipelineStage = Literal["snapshot", "triage", "plan", "simulate"]
+
+
+class RepositoryPipelineRequest(BaseModel):
+    model_config = ConfigDict(strict=False)
+
+    # Reuse an existing snapshot by id, or create one from `snapshot` (defaults to
+    # a snapshot of the connector's default ref when neither is supplied).
+    snapshot_id: str | None = None
+    snapshot: RepositorySnapshotCreateRequest | None = None
+    signals: RepositorySignals = Field(default_factory=RepositorySignals)
+    # Triage knobs (mirror RepositoryTriageRequest defaults).
+    max_evidence_items: int = Field(default=16, ge=1, le=64)
+    max_snippet_lines: int = Field(default=40, ge=5, le=200)
+    token_budget: int = Field(default=6_000, ge=256, le=32_000)
+    # Plan knob (the only LLM-touching stage).
+    model: str | None = None
+    # Simulate knobs (deterministic Mojo engine; no LLM).
+    runs: int = Field(default=5_000, ge=100, le=250_000)
+    seed: int | None = Field(default=42, ge=0)
+    # How far down the chain to run.
+    stop_after: RepositoryPipelineStage = "simulate"
+
+
+class RepositoryPipelineStageTiming(BaseModel):
+    model_config = ConfigDict(strict=False)
+
+    stage: RepositoryPipelineStage
+    status: Literal["ok", "reused"]
+    duration_ms: float = Field(..., ge=0.0)
+
+
+class RepositoryPipelineResponse(BaseModel):
+    model_config = ConfigDict(strict=False)
+
+    repository_id: str
+    snapshot_id: str
+    stop_after: RepositoryPipelineStage
+    completed_stage: RepositoryPipelineStage
+    snapshot: RepositorySnapshotResponse
+    triage: RepositoryTriageResponse | None = None
+    decision_plan: RepositoryDecisionPlanResponse | None = None
+    simulation: DecisionEnvelope | None = None
+    stage_timings: list[RepositoryPipelineStageTiming] = Field(default_factory=list)

@@ -134,6 +134,7 @@ fn _find_char(s: String, ch: UInt8, start: Int) -> Int:
 # ── URL struct ───────────────────────────────────────────────────────────────
 
 
+@fieldwise_init
 struct URL(Copyable, Movable):
     """Parsed URL components."""
     var scheme: String      # "https"

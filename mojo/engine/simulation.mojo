@@ -38,6 +38,7 @@ struct Event(Copyable, Movable):
 # ── SimState struct (parallel arrays) ─────────────────────────────────────────
 
 
+@fieldwise_init
 struct SimState(Copyable, Movable):
     """Simulation state using parallel arrays for event storage."""
 

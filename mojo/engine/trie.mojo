@@ -20,6 +20,7 @@ Public API:
 # ── Trie struct ───────────────────────────────────────────────────────────────
 
 
+@fieldwise_init
 struct Trie:
     """Trie stored as flat parallel arrays.
 

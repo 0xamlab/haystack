@@ -18,6 +18,7 @@ from std.math import sqrt, abs as fabs
 # ── Matrix struct ─────────────────────────────────────────────────────────────
 
 
+@fieldwise_init
 struct Matrix(Copyable, Movable):
     """Dense matrix with row-major List[Float64] storage."""
     var data: List[Float64]  # row-major storage

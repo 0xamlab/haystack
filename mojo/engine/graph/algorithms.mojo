@@ -33,6 +33,7 @@ struct Edge(Copyable, Movable):
 # ── Graph ─────────────────────────────────────────────────────────────────────
 
 
+@fieldwise_init
 struct Graph(Copyable, Movable):
     """Directed weighted graph using adjacency lists.
 

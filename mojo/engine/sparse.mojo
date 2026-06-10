@@ -36,6 +36,7 @@ struct COOEntry(Copyable, Movable):
 # ── SparseMatrixCOO struct ───────────────────────────────────────────────────
 
 
+@fieldwise_init
 struct SparseMatrixCOO(Copyable, Movable):
     """Sparse matrix in COOrdinate (triplet) format."""
 

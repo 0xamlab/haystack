@@ -23,6 +23,7 @@ from std.math import exp, log, abs as fabs
 # ── CountingBloom struct ──────────────────────────────────────────────────────
 
 
+@fieldwise_init
 struct CountingBloom(Copyable, Movable):
     """Counting Bloom filter with per-bucket counters."""
 

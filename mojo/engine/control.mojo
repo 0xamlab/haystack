@@ -24,6 +24,7 @@ from std.math import exp, abs as fabs
 # ── PIDState ─────────────────────────────────────────────────────────────────
 
 
+@fieldwise_init
 struct PIDState:
     """State for a PID controller."""
     var kp: Float64

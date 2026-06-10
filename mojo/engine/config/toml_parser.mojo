@@ -31,6 +31,7 @@ comptime _TOML_LIST = 2
 # ── TomlNode struct ──────────────────────────────────────────────────────────
 
 
+@fieldwise_init
 struct TomlNode(Copyable, Movable):
     """A TOML tree node. Can be a scalar, map, or list."""
     var kind: Int           # _TOML_SCALAR, _TOML_MAP, _TOML_LIST
@@ -68,6 +69,7 @@ struct TomlNode(Copyable, Movable):
 # ── Node pool ────────────────────────────────────────────────────────────────
 
 
+@fieldwise_init
 struct _TomlPool(Copyable, Movable):
     """Flat storage for TOML nodes. Nodes reference children by index."""
     var nodes: List[TomlNode]

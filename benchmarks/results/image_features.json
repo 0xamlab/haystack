@@ -1,0 +1,136 @@
+{
+  "lib": "image_features",
+  "status": "ok",
+  "n_functions": 11,
+  "n_compared": 9,
+  "n_timed": 9,
+  "overall_speedup_x": 4.03,
+  "total_py_ns": 34296.57,
+  "total_mojo_ns": 8507.1,
+  "elapsed_s": 3.59,
+  "n_iterations": 10000,
+  "mojo_error": null,
+  "functions": [
+    {
+      "function": "sobel_magnitude",
+      "py_ns": 2003.404,
+      "mojo_ns": 1814.9,
+      "speedup_x": 1.1,
+      "py_result": null,
+      "py_summary": "list:1:411889909",
+      "mojo_summary": "list:1:411889909",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "edge_density",
+      "py_ns": 2926.333,
+      "mojo_ns": 1725.4,
+      "speedup_x": 1.7,
+      "py_result": 1.0,
+      "py_summary": "float:1.0",
+      "mojo_summary": "float:1.0",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "color_histogram",
+      "py_ns": 8504.083,
+      "mojo_ns": 603.1,
+      "speedup_x": 14.1,
+      "py_result": null,
+      "py_summary": "list:125:303543607",
+      "mojo_summary": "list:125:303543607",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "histogram_intersection",
+      "py_ns": 229.167,
+      "mojo_ns": 10.3,
+      "speedup_x": 22.25,
+      "py_result": 2.5,
+      "py_summary": "float:2.5",
+      "mojo_summary": "float:2.5",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "histogram_chi_square",
+      "py_ns": 440.35,
+      "mojo_ns": 10.6,
+      "speedup_x": 41.54,
+      "py_result": 0.0,
+      "py_summary": "float:0.0",
+      "mojo_summary": "float:0.0",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "histogram_correlation",
+      "py_ns": 727.429,
+      "mojo_ns": 17.6,
+      "speedup_x": 41.33,
+      "py_result": 1.0,
+      "py_summary": "float:1.0",
+      "mojo_summary": "float:1.0",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "dominant_colors",
+      "py_ns": 11097.971,
+      "mojo_ns": 1147.8,
+      "speedup_x": 9.67,
+      "py_result": null,
+      "py_summary": "list:12:1320400137",
+      "mojo_summary": "list:12:1320400137",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "saliency_grid",
+      "py_ns": 7825.071,
+      "mojo_ns": 2967.7,
+      "speedup_x": 2.64,
+      "py_result": null,
+      "py_summary": "list:5:1250845490",
+      "mojo_summary": "list:5:1250845490",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "most_salient_cell",
+      "py_ns": 542.762,
+      "mojo_ns": 209.7,
+      "speedup_x": 2.59,
+      "py_result": 2.0,
+      "py_summary": "int:2",
+      "mojo_summary": "int:2",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "edge_density_flat",
+      "py_ns": null,
+      "mojo_ns": 4735.4,
+      "speedup_x": null,
+      "py_result": null,
+      "py_summary": null,
+      "mojo_summary": "float:0.3333333333333333",
+      "result_match": null,
+      "py_error": "name 'reshape_to_grid' is not defined"
+    },
+    {
+      "function": "most_salient_cell_flat",
+      "py_ns": null,
+      "mojo_ns": 5833.4,
+      "speedup_x": null,
+      "py_result": null,
+      "py_summary": null,
+      "mojo_summary": "int:0",
+      "result_match": null,
+      "py_error": "name 'reshape_to_grid' is not defined"
+    }
+  ]
+}

@@ -83,6 +83,10 @@ def _repository_url(config: dict[str, Any], connector_type: str) -> str | None:
     return None
 
 
+_GIT_REF_RE = re.compile(r"[0-9A-Za-z][0-9A-Za-z._/-]*")
+_ALLOWED_CLONE_SCHEMES = frozenset({"https", "http"})
+
+
 def _authenticated_repository_url(
     connector_type: str, repository_url: str, config: dict[str, Any]
 ) -> str:
@@ -103,7 +107,13 @@ def _authenticated_repository_url(
 
 
 def _redact_credentials(value: str) -> str:
-    return re.sub(r"(https://[^:/]+:)[^@]+@", r"\1***@", value)
+    # Bound each run to a single URL authority: the password class excludes '/'
+    # and whitespace (our tokens are percent-encoded by quote(safe=''), so they
+    # never contain a raw '/'), and the quantifiers are possessive. That stops
+    # the match from sweeping across repeated "scheme://host:" segments of
+    # attacker-influenced git stderr — the sweep is the polynomial blowup
+    # (py/polynomial-redos). Real "user:token@" runs still redact identically.
+    return re.sub(r"(https://[^:/\s]++:)[^@\s/]++@", r"\1***@", value)
 
 
 def _git_command(
@@ -112,6 +122,7 @@ def _git_command(
     cwd: Path | None = None,
     timeout: float = 30.0,
     binary: bool = False,
+    stdin: str | None = None,
 ) -> bytes | str:
     completed = subprocess.run(  # noqa: S603
         list(args),
@@ -119,6 +130,7 @@ def _git_command(
         check=False,
         capture_output=True,
         timeout=timeout,
+        input=stdin.encode("utf-8") if stdin is not None else None,
     )
     if completed.returncode != 0:
         stderr = _redact_credentials(completed.stderr.decode("utf-8", errors="replace").strip())
@@ -135,14 +147,86 @@ def _git_command(
 
 def _is_git_repository(path: Path) -> bool:
     try:
-        _git_command(["git", "-C", str(path), "rev-parse", "--is-inside-work-tree"], timeout=10.0)
+        _git_command(["git", "rev-parse", "--is-inside-work-tree"], cwd=path, timeout=10.0)
     except RepositoryIntelligenceError:
         return False
     return True
 
 
-def _is_git_sha(ref: str) -> bool:
-    return bool(re.fullmatch(r"[0-9a-fA-F]{7,40}", ref))
+_RESOLVED_OID_RE = re.compile(r"[0-9a-f]{40}")
+
+
+def _validate_ref_shape(ref: str) -> None:
+    """Reject option-like / metacharacter-bearing refs (defense in depth).
+
+    This is hygiene, not the CodeQL control: py/command-line-injection honours
+    only constant-compare and models-as-data barriers, never a regex guard, so
+    the real protection is that ``ref`` never reaches a git argv at all (it is
+    resolved to an object id via stdin, or matched against ``ls-remote`` stdout).
+    """
+    if ref.startswith("-") or ".." in ref or _GIT_REF_RE.fullmatch(ref) is None:
+        raise RepositoryIntelligenceError(
+            code="invalid_repository_ref",
+            message="Repository ref contains unsupported characters.",
+            status_code=422,
+        )
+
+
+def _resolve_git_ref(root_path: Path, ref: str) -> str:
+    """Resolve an untrusted ref to a 40-hex object id without putting it in argv.
+
+    ``ref`` is fed to ``git cat-file --batch-check`` on STDIN, so it can never be
+    parsed as a git option and never reaches a command argument vector. The
+    returned object id is parsed from git's stdout (not a taint source for
+    py/command-line-injection) and is re-validated to a fixed 40-hex shape.
+    """
+    _validate_ref_shape(ref)
+    line = str(
+        _git_command(
+            ["git", "-C", str(root_path), "cat-file", "--batch-check=%(objectname)"],
+            stdin=f"{ref}\n",
+            timeout=30.0,
+        )
+    ).strip()
+    oid = line.split(" ", 1)[0] if line else ""
+    if _RESOLVED_OID_RE.fullmatch(oid) is None:
+        raise RepositoryIntelligenceError(
+            code="unknown_repository_ref",
+            message=f"Ref '{ref}' could not be resolved in the repository.",
+            status_code=422,
+        )
+    return oid
+
+
+def _match_remote_ref(listing: str, ref: str) -> tuple[str, str]:
+    """Match an untrusted ref against ``git ls-remote`` output.
+
+    Returns ``(kind, value)`` where kind is ``"branch"``, ``"tag"`` or ``"sha"``
+    and ``value`` is taken FROM the ls-remote stdout (a branch/tag short name or
+    a 40-hex oid). ``ref`` is only ever *compared* here; the returned value
+    originates from git stdout, so no tainted value flows on to a git argv.
+    """
+    _validate_ref_shape(ref)
+    sha_hit: str | None = None
+    for raw in listing.splitlines():
+        sha, _, refname = raw.partition("\t")
+        sha = sha.strip()
+        refname = refname.strip()
+        if _RESOLVED_OID_RE.fullmatch(sha) is None or not refname:
+            continue
+        if refname == f"refs/heads/{ref}":
+            return ("branch", refname[len("refs/heads/") :])
+        if refname == f"refs/tags/{ref}":
+            return ("tag", refname[len("refs/tags/") :])
+        if sha == ref:
+            sha_hit = sha
+    if sha_hit is not None:
+        return ("sha", sha_hit)
+    raise RepositoryIntelligenceError(
+        code="unknown_repository_ref",
+        message="Requested ref was not found on the remote.",
+        status_code=422,
+    )
 
 
 def _path_from_config(config: dict[str, Any], *, field: str) -> Path:
@@ -175,13 +259,13 @@ def _hash_directory_listing(root_path: Path) -> str:
 
 def _git_changed_paths(root_path: Path) -> list[str]:
     commands = [
-        ["git", "-C", str(root_path), "diff", "--name-only", "--relative", "--cached"],
-        ["git", "-C", str(root_path), "diff", "--name-only", "--relative"],
-        ["git", "-C", str(root_path), "ls-files", "--others", "--exclude-standard"],
+        ["git", "diff", "--name-only", "--relative", "--cached"],
+        ["git", "diff", "--name-only", "--relative"],
+        ["git", "ls-files", "--others", "--exclude-standard"],
     ]
     changed_paths: set[str] = set()
     for command in commands:
-        output = str(_git_command(command, timeout=60.0))
+        output = str(_git_command(command, cwd=root_path, timeout=60.0))
         for raw_line in output.splitlines():
             candidate = raw_line.strip()
             if candidate:
@@ -202,7 +286,7 @@ def _git_tracked_content_hashes(
         else None
     )
     changed_paths = set(_git_changed_paths(root_path))
-    output = str(_git_command(["git", "-C", str(root_path), "ls-files", "-s"], timeout=120.0))
+    output = str(_git_command(["git", "ls-files", "-s"], cwd=root_path, timeout=120.0))
     tracked_hashes: dict[str, str] = {}
     for line in output.splitlines():
         metadata, separator, raw_path = line.partition("\t")
@@ -224,12 +308,12 @@ def _git_repository_relative_files(root_path: Path) -> list[str] | None:
     if not _is_git_repository(root_path):
         return None
     commands = [
-        ["git", "-C", str(root_path), "ls-files"],
-        ["git", "-C", str(root_path), "ls-files", "--others", "--exclude-standard"],
+        ["git", "ls-files"],
+        ["git", "ls-files", "--others", "--exclude-standard"],
     ]
     relative_paths: set[str] = set()
     for command in commands:
-        output = str(_git_command(command, timeout=120.0))
+        output = str(_git_command(command, cwd=root_path, timeout=120.0))
         for line in output.splitlines():
             normalized = _normalize_repository_relative_path(line)
             if normalized:
@@ -240,7 +324,7 @@ def _git_repository_relative_files(root_path: Path) -> list[str] | None:
 def _local_repository_resolved_revision(root_path: Path, *, is_git: bool) -> str:
     if not is_git:
         return _hash_directory_listing(root_path)
-    head_revision = str(_git_command(["git", "-C", str(root_path), "rev-parse", "HEAD"]))
+    head_revision = str(_git_command(["git", "rev-parse", "HEAD"], cwd=root_path))
     changed_paths = _git_changed_paths(root_path)
     if not changed_paths:
         return head_revision
@@ -285,6 +369,9 @@ def resolved_repository_source(
     root_path: Path
     repository_url = _repository_url(config, connector_type)
     is_git = connector_type != "repo_archive"
+    # NOTE: `ref` is untrusted (HTTP payload) and must NEVER reach a git argv.
+    # It is resolved to an object id via stdin (_resolve_git_ref) or matched
+    # against ls-remote stdout (_match_remote_ref); both also validate its shape.
     try:
         if connector_type == "local_repo":
             root_path = _path_from_config(config, field="path")
@@ -296,20 +383,22 @@ def resolved_repository_source(
                         message="Local repository ref selection requires a git working tree.",
                         status_code=409,
                     )
-                resolved_revision = str(
-                    _git_command(["git", "-C", str(root_path), "rev-parse", ref])
-                )
+                # Resolve the untrusted ref to an object id via stdin; only the
+                # resolved oid (from git stdout) is ever placed in a git argv.
+                resolved_oid = _resolve_git_ref(root_path, ref)
+                resolved_revision = resolved_oid
                 if not allow_writes:
                     cleanup_path = Path(tempfile.mkdtemp(prefix="algenta-repo-ref-"))
                     archive_bytes = _git_command(
-                        ["git", "-C", str(root_path), "archive", "--format=tar", ref],
+                        ["git", "archive", "--format=tar", resolved_oid],
+                        cwd=root_path,
                         timeout=60.0,
                         binary=True,
                     )
                     with tarfile.open(fileobj=io.BytesIO(archive_bytes), mode="r:") as handle:
                         _extract_tar_handle(
                             handle=handle,
-                            archive_path=root_path / f"{ref}.tar",
+                            archive_path=root_path / f"{resolved_oid}.tar",
                             destination=cleanup_path,
                         )
                     root_path = cleanup_path
@@ -357,6 +446,20 @@ def resolved_repository_source(
                 message=f"{connector_type} connector requires repository_url.",
                 status_code=422,
             )
+        # CodeQL barrier (py/command-line-injection): only http(s) clone URLs
+        # with a host reach `git clone`; reject other schemes, a missing host,
+        # or a leading "-" so the value can't become a git option/transport.
+        parsed_clone = urlparse(repository_url)
+        if (
+            repository_url.startswith("-")
+            or parsed_clone.scheme not in _ALLOWED_CLONE_SCHEMES
+            or not parsed_clone.netloc
+        ):
+            raise RepositoryIntelligenceError(
+                code="invalid_repository_url",
+                message="Repository URL must be a http(s) clone URL.",
+                status_code=422,
+            )
         auth_url = _authenticated_repository_url(connector_type, repository_url, config)
         cleanup_path = (
             _worktrees_dir(str(connector.org_id), str(connector.id))
@@ -365,18 +468,32 @@ def resolved_repository_source(
             else Path(tempfile.mkdtemp(prefix="algenta-repo-clone-"))
         )
         cleanup_path.mkdir(parents=True, exist_ok=True)
+        # Resolve the untrusted ref against the remote's advertised refs WITHOUT
+        # putting `ref` in any git argv: `git ls-remote` takes no ref argument,
+        # and _match_remote_ref returns a branch/tag short name or oid taken from
+        # that stdout (not a taint source), so only trusted values reach git.
+        ref_target: tuple[str, str] | None = None
+        if ref:
+            listing = str(_git_command(["git", "ls-remote", auth_url], timeout=60.0))
+            ref_target = _match_remote_ref(listing, ref)
         clone_args = ["git", "clone", "--depth", "1"]
-        if ref and not _is_git_sha(ref):
-            clone_args.extend(["--branch", ref])
-        clone_args.extend([auth_url, str(cleanup_path)])
+        if ref_target is not None and ref_target[0] in {"branch", "tag"}:
+            clone_args.extend(["--branch", ref_target[1]])
+        clone_args.extend(["--", auth_url, str(cleanup_path)])
         _git_command(clone_args, timeout=180.0)
-        if ref and _is_git_sha(ref):
+        if ref_target is not None and ref_target[0] == "sha":
+            resolved_oid = ref_target[1]
             _git_command(
-                ["git", "-C", str(cleanup_path), "fetch", "--depth", "1", "origin", ref],
+                ["git", "fetch", "--depth", "1", "origin", resolved_oid],
+                cwd=cleanup_path,
                 timeout=120.0,
             )
-            _git_command(["git", "-C", str(cleanup_path), "checkout", ref], timeout=120.0)
-        resolved_revision = str(_git_command(["git", "-C", str(cleanup_path), "rev-parse", "HEAD"]))
+            _git_command(
+                ["git", "checkout", "--detach", resolved_oid],
+                cwd=cleanup_path,
+                timeout=120.0,
+            )
+        resolved_revision = str(_git_command(["git", "rev-parse", "HEAD"], cwd=cleanup_path))
         yield _ResolvedRepositorySource(
             root_path=cleanup_path,
             connector_type=connector_type,

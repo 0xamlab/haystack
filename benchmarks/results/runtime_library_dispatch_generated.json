@@ -7,7 +7,7 @@
   "overall_speedup_x": null,
   "total_py_ns": 0.0,
   "total_mojo_ns": 0.0,
-  "elapsed_s": 59.24,
+  "elapsed_s": 49.7,
   "n_iterations": 10000,
   "mojo_error": "timeout",
   "functions": [
@@ -20,7 +20,7 @@
       "py_summary": null,
       "mojo_summary": null,
       "result_match": null,
-      "py_error": "SyntaxError: invalid syntax (<runtime_library_dispatch_generated>, line 17196)"
+      "py_error": "SyntaxError: invalid syntax (<runtime_library_dispatch_generated>, line 19744)"
     }
   ]
 }

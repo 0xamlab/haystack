@@ -21,6 +21,7 @@ from std.math import sqrt, abs as fabs
 # ── PCAResult ─────────────────────────────────────────────────────────────────
 
 
+@fieldwise_init
 struct PCAResult(Copyable, Movable):
     """Result of principal component analysis.
 
