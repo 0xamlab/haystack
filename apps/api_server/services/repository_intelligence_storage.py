@@ -149,14 +149,60 @@ def _snapshot_paths(org_id: str, repository_id: str, snapshot_id: str) -> dict[s
     }
 
 
+def _fetch_source_archive_from_object_store(snapshot_manifest: dict[str, Any]) -> Path:
+    """B8 cross-replica fallback: download a snapshot's source archive from the durable object
+    store to a node-local scratch file. Used when the archive isn't present on this node — it was
+    created on another replica, or the local volume was lost. Raises 410 when the manifest records
+    no object-store key (a local-only snapshot whose volume is gone) or the object is missing."""
+    key = snapshot_manifest.get("source_archive_object_key")
+    if not key:
+        raise RepositoryIntelligenceError(
+            code="snapshot_source_unavailable",
+            message=(
+                "Repository snapshot source archive is not present on this node and the manifest "
+                "records no object-store key to recover it from."
+            ),
+            status_code=410,
+        )
+    from apps.api_server.services.repository_intelligence_object_store import get_object_store
+
+    data = get_object_store().get_bytes(str(key))
+    if data is None:
+        raise RepositoryIntelligenceError(
+            code="snapshot_source_unavailable",
+            message=(
+                f"Repository snapshot source archive object '{key}' was not found in the object "
+                "store."
+            ),
+            status_code=410,
+        )
+    handle = tempfile.NamedTemporaryFile(
+        prefix="algenta-repository-source-", suffix=".tar", delete=False
+    )
+    try:
+        handle.write(data)
+    finally:
+        handle.close()
+    return Path(handle.name)
+
+
 @contextmanager
 def materialized_snapshot(snapshot_manifest: dict[str, Any]) -> Iterator[Path]:
     temp_dir = Path(tempfile.mkdtemp(prefix="algenta-repository-snapshot-"))
+    fetched_archive: Path | None = None
     try:
-        _extract_tar(Path(snapshot_manifest["source_archive_path"]), temp_dir)
+        archive_path = Path(snapshot_manifest["source_archive_path"])
+        if not archive_path.exists():
+            # B8: the local archive isn't on this node — recover it from the durable object store
+            # using the key recorded at snapshot time (no-op gap in local-only deployments).
+            fetched_archive = _fetch_source_archive_from_object_store(snapshot_manifest)
+            archive_path = fetched_archive
+        _extract_tar(archive_path, temp_dir)
         yield temp_dir
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
+        if fetched_archive is not None:
+            fetched_archive.unlink(missing_ok=True)
 
 
 def _load_snapshot_manifest(*, org_id: str, repository_id: str, snapshot_id: str) -> dict[str, Any]:

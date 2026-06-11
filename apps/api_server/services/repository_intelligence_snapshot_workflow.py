@@ -27,6 +27,9 @@ from apps.api_server.services import (
 from apps.api_server.services import (
     repository_intelligence_telemetry as telemetry,
 )
+from apps.api_server.services.repository_intelligence_contracts import (
+    RepositoryIntelligenceError,
+)
 from apps.api_server.services.repository_intelligence_shared import (
     _hash_payload,
     _stable_identifier,
@@ -104,6 +107,50 @@ def _create_source_archive(
         for path in files:
             handle.add(path, arcname=str(path.relative_to(root_path)), recursive=False)
     return hash_file(destination)
+
+
+def _mirror_source_archive_to_object_store(
+    *,
+    org_id: str,
+    repository_id: str,
+    snapshot_id: str,
+    archive_path: Path,
+) -> str | None:
+    """B8 durability: when the object store is enabled (``ALGENTA_RI_OBJECT_STORE=s3``), mirror the
+    source archive to the durable, tenant-scoped object store so the snapshot survives the loss of
+    the node that created it and is materializable from any replica. The node-local copy stays the
+    fast path; the returned key is recorded in the manifest for ``materialized_snapshot``'s
+    cross-replica fallback.
+
+    Returns ``None`` in local mode (the current behavior — no mirror). Fails closed: when s3 is
+    required and the durable write fails, the snapshot must not silently report success."""
+    from apps.api_server.services.repository_intelligence_object_store import (
+        artifact_key,
+        get_object_store,
+        object_store_mode,
+    )
+
+    if object_store_mode() != "s3":
+        return None
+    key = artifact_key(
+        org_id=org_id,
+        repository_id=repository_id,
+        kind="archives",
+        artifact_id=snapshot_id,
+    )
+    try:
+        get_object_store().put_bytes(
+            key,
+            Path(archive_path).read_bytes(),
+            content_type="application/x-tar",
+        )
+    except Exception as exc:  # noqa: BLE001 — surface as a fail-closed snapshot error
+        raise RepositoryIntelligenceError(
+            code="snapshot_source_archive_persist_failed",
+            message=f"failed to persist the source archive to the object store: {exc}",
+            status_code=502,
+        ) from exc
+    return key
 
 
 def create_repository_snapshot(
@@ -568,6 +615,14 @@ def create_repository_snapshot(
         telemetry.record_span_ms(
             "tar_write_ms", (time.perf_counter() - _tar_write_start) * 1000.0
         )
+        # B8: mirror the source archive to the durable object store (opt-in; no-op in local mode)
+        # so the snapshot is recoverable from any replica even if this node's volume is lost.
+        source_archive_object_key = _mirror_source_archive_to_object_store(
+            org_id=org_id,
+            repository_id=repository_id,
+            snapshot_id=snapshot_id,
+            archive_path=paths["source_archive"],
+        )
         language_counts = dict(sorted(Counter(item.language for item in analyses).items()))
         raw_repo_token_estimate = sum(item.token_estimate for item in analyses)
         manifest = {
@@ -644,6 +699,9 @@ def create_repository_snapshot(
             ).model_dump(mode="json"),
             "source_archive_path": str(paths["source_archive"]),
             "source_archive_hash": source_archive_hash,
+            # B8: durable object-store key for the source archive (None in local mode). Read by
+            # materialized_snapshot to recover the archive when it isn't on the local node.
+            "source_archive_object_key": source_archive_object_key,
             # AR-OPT-2 v2: lightweight per-file metadata only. The heavy
             # symbols/dependencies/symbol_references arrays live in the Parquet
             # artifacts above and are hydrated on load by manifest_reader.
