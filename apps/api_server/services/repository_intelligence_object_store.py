@@ -144,15 +144,31 @@ class S3Backend:
         self._client().put_object(Bucket=self._bucket, Key=key, Body=data, ContentType=content_type)
 
     def get_bytes(self, key: str) -> bytes | None:
+        # Resolve the client OUTSIDE the try: _client() -> storage_service._get_client/_ensure_bucket
+        # raise ResultStorageUnavailableError on egress-deny / connectivity / bucket failure, and an
+        # availability fault must PROPAGATE so a caller can map it to a retryable 503 — it must never
+        # be masked as a "no object" miss (a fail-closed requirement: a missing-because-unreachable
+        # object is NOT the same as a definitively-absent one). Only a genuine not-found maps to None.
+        client = self._client()
         try:
-            response = self._client().get_object(Bucket=self._bucket, Key=key)
+            response = client.get_object(Bucket=self._bucket, Key=key)
             body = response["Body"]
             return body.read()
-        except Exception as exc:  # noqa: BLE001 — a missing key / not-found is "no object"
-            logger.debug("ri_object_store_get_miss", key=key, error=str(exc))
-            return None
+        except Exception as exc:  # noqa: BLE001 — distinguish not-found from a real fault below
+            code = ""
+            response_meta = getattr(exc, "response", None)
+            if isinstance(response_meta, dict):
+                code = str(response_meta.get("Error", {}).get("Code", ""))
+            if code in {"NoSuchKey", "404", "NotFound"}:
+                logger.debug("ri_object_store_get_miss", key=key, error=str(exc))
+                return None
+            # Auth / throttling / connectivity / 5xx / mid-read failure: do NOT swallow — re-raise so
+            # the fault surfaces (callers translate it to a retryable 503, never a 404/410).
+            raise
 
     def exists(self, key: str) -> bool:
+        # Inherits get_bytes' semantics: returns False only for a genuine not-found, and PROPAGATES
+        # availability faults (does not return False). Not used for fail-closed disambiguation.
         return self.get_bytes(key) is not None
 
 

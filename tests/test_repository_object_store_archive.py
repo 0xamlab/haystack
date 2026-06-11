@@ -135,3 +135,50 @@ def test_materialize_410_when_object_missing(monkeypatch, tmp_path):
             pass
     assert excinfo.value.code == "snapshot_source_unavailable"
     assert excinfo.value.status_code == 410
+
+
+# --- write side: mirror the snapshot MANIFEST on snapshot create --------------------------------
+
+_MANIFEST_KEY = obj.artifact_key(
+    org_id="o", repository_id="r", kind="snapshots", artifact_id="s1"
+)
+_SNAPSHOT_MANIFEST = {"manifest_version": 2, "snapshot_id": "s1", "files": []}
+
+
+def test_mirror_manifest_is_noop_in_local_mode(monkeypatch):
+    monkeypatch.delenv("ALGENTA_RI_OBJECT_STORE", raising=False)
+    key = snap._mirror_snapshot_manifest_to_object_store(
+        org_id="o", repository_id="r", snapshot_id="s1", manifest=_SNAPSHOT_MANIFEST
+    )
+    assert key is None
+
+
+def test_mirror_manifest_writes_to_store_in_s3_mode(monkeypatch, tmp_path):
+    store = obj.LocalFsBackend(tmp_path / "store")
+    monkeypatch.setattr(obj, "object_store_mode", lambda: "s3")
+    monkeypatch.setattr(obj, "get_object_store", lambda: store)
+
+    key = snap._mirror_snapshot_manifest_to_object_store(
+        org_id="o", repository_id="r", snapshot_id="s1", manifest=_SNAPSHOT_MANIFEST
+    )
+
+    # distinct 'snapshots' kind — never collides with the source archive's 'archives' key
+    assert key == _MANIFEST_KEY
+    assert key != _ARCHIVE_KEY
+    assert store.get_json(key) == _SNAPSHOT_MANIFEST
+
+
+def test_mirror_manifest_fails_closed_when_store_write_raises(monkeypatch):
+    class _Boom:
+        def put_json(self, *args, **kwargs):
+            raise RuntimeError("object store unreachable")
+
+    monkeypatch.setattr(obj, "object_store_mode", lambda: "s3")
+    monkeypatch.setattr(obj, "get_object_store", lambda: _Boom())
+
+    with pytest.raises(RepositoryIntelligenceError) as excinfo:
+        snap._mirror_snapshot_manifest_to_object_store(
+            org_id="o", repository_id="r", snapshot_id="s1", manifest=_SNAPSHOT_MANIFEST
+        )
+    assert excinfo.value.code == "snapshot_manifest_persist_failed"
+    assert excinfo.value.status_code == 502

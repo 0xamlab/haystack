@@ -64,3 +64,62 @@ def test_get_object_store_s3_opt_in(monkeypatch):
     assert isinstance(store, obj.S3Backend)
     assert store.name == "s3"
     assert store._bucket == "test-bucket"
+
+
+def test_artifact_key_kinds_are_disjoint_for_same_id():
+    """The snapshot MANIFEST ('snapshots') and its source archive ('archives') share a snapshot_id
+    but must land on distinct keys so the JSON never overwrites source.tar."""
+    snapshot_id = "snap-abc"
+    manifest_key = obj.artifact_key(org_id="o", repository_id="r", kind="snapshots", artifact_id=snapshot_id)
+    archive_key = obj.artifact_key(org_id="o", repository_id="r", kind="archives", artifact_id=snapshot_id)
+    assert manifest_key != archive_key
+
+
+class _FakeClientError(Exception):
+    """Mimics botocore.exceptions.ClientError: carries response['Error']['Code']."""
+
+    def __init__(self, code: str) -> None:
+        super().__init__(code)
+        self.response = {"Error": {"Code": code}}
+
+
+class _FakeS3Client:
+    def __init__(self, *, raises: Exception) -> None:
+        self._raises = raises
+
+    def get_object(self, **kwargs):
+        raise self._raises
+
+
+def _s3_backend_with_client(monkeypatch, client) -> "obj.S3Backend":
+    be = obj.S3Backend("bucket")
+    monkeypatch.setattr(be, "_client", lambda: client)
+    return be
+
+
+def test_s3_get_bytes_returns_none_only_on_genuine_not_found(monkeypatch):
+    for code in ("NoSuchKey", "404", "NotFound"):
+        be = _s3_backend_with_client(monkeypatch, _FakeS3Client(raises=_FakeClientError(code)))
+        assert be.get_bytes("k") is None
+
+
+def test_s3_get_bytes_reraises_non_not_found_client_error(monkeypatch):
+    # An auth/throttling/5xx fault must NOT be masked as a miss.
+    be = _s3_backend_with_client(monkeypatch, _FakeS3Client(raises=_FakeClientError("AccessDenied")))
+    with pytest.raises(_FakeClientError):
+        be.get_bytes("k")
+
+
+def test_s3_get_bytes_propagates_unavailability_from_client(monkeypatch):
+    # _client() (storage_service._get_client/_ensure_bucket) raising ResultStorageUnavailableError
+    # must PROPAGATE — never collapse to None (which a caller would misread as 404/410).
+    from apps.api_server.services.storage_service import ResultStorageUnavailableError
+
+    be = obj.S3Backend("bucket")
+
+    def _boom():
+        raise ResultStorageUnavailableError("object storage unreachable")
+
+    monkeypatch.setattr(be, "_client", _boom)
+    with pytest.raises(ResultStorageUnavailableError):
+        be.get_bytes("k")

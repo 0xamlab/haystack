@@ -153,6 +153,49 @@ def _mirror_source_archive_to_object_store(
     return key
 
 
+def _mirror_snapshot_manifest_to_object_store(
+    *,
+    org_id: str,
+    repository_id: str,
+    snapshot_id: str,
+    manifest: dict[str, Any],
+) -> str | None:
+    """B8 durability: mirror the snapshot MANIFEST (the slim v2 JSON) to the durable, tenant-scoped
+    object store when it's enabled (``ALGENTA_RI_OBJECT_STORE=s3``), so the manifest is recoverable
+    from any replica even if the node that created it is lost. The node-local copy stays the fast
+    path. Returns ``None`` in local mode (no-op, fully backward compatible). Fails closed (502) when
+    the durable write fails — the API must not report a snapshot created while its durable manifest
+    silently failed.
+
+    Uses the ``snapshots`` kind, distinct from the source archive's ``archives`` kind for the same
+    ``snapshot_id``, so the manifest object never collides with ``source.tar``. The key is NOT
+    self-recorded in the manifest: the read path re-derives it from identity, which keeps the
+    on-disk file and the durable object byte-identical (both ``json.dumps(indent=2, sort_keys=True)``)."""
+    from apps.api_server.services.repository_intelligence_object_store import (
+        artifact_key,
+        get_object_store,
+        object_store_mode,
+    )
+
+    if object_store_mode() != "s3":
+        return None
+    key = artifact_key(
+        org_id=org_id,
+        repository_id=repository_id,
+        kind="snapshots",
+        artifact_id=snapshot_id,
+    )
+    try:
+        get_object_store().put_json(key, manifest)
+    except Exception as exc:  # noqa: BLE001 — surface as a fail-closed snapshot error
+        raise RepositoryIntelligenceError(
+            code="snapshot_manifest_persist_failed",
+            message=f"failed to persist the snapshot manifest to the object store: {exc}",
+            status_code=502,
+        ) from exc
+    return key
+
+
 def create_repository_snapshot(
     *,
     connector: DataConnector,
@@ -721,6 +764,14 @@ def create_repository_snapshot(
         # this for large repos and is exactly what the v2 slim manifest will cut.
         _manifest_write_start = time.perf_counter()
         repository_runtime._write_json(paths["manifest"], manifest)
+        # B8: mirror the snapshot manifest to the durable object store (opt-in; no-op in local mode)
+        # so it's recoverable from any replica. The lookup index below stays node-local.
+        _mirror_snapshot_manifest_to_object_store(
+            org_id=org_id,
+            repository_id=repository_id,
+            snapshot_id=snapshot_id,
+            manifest=manifest,
+        )
         repository_runtime._write_json(
             lookup_path,
             {
