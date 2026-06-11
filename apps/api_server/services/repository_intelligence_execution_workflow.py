@@ -253,6 +253,53 @@ async def simulate_repository_patch(
     )
 
 
+def _mirror_simulation_manifest_to_object_store(
+    *,
+    org_id: str,
+    repository_id: str,
+    simulation_id: str,
+    manifest: dict[str, Any],
+) -> str | None:
+    """B8 durability: mirror the simulation MANIFEST to the durable, tenant-scoped object store when
+    it's enabled (``ALGENTA_RI_OBJECT_STORE=s3``), so it's recoverable from any replica. The
+    node-local copy stays the fast path. Returns ``None`` in local mode (no-op, backward
+    compatible). Fails closed (502) when the durable write fails.
+
+    This helper imports the object-store primitives DIRECTLY (it does NOT route through the injected
+    ``write_json`` callable the workflow uses for the local write) — it is identity + dict only, so
+    it behaves identically regardless of how the local write was performed.
+
+    MANIFEST-DURABILITY ONLY for ``seed=None`` runs: Monte-Carlo simulation with no seed is
+    non-deterministic and the simulation lookup index stays node-local in this slice, so two
+    replicas that both miss the local lookup can persist divergent envelopes (the per-id append-only
+    guard only dedups identical ids). Cross-replica dedup (lookup-index migration + a cross-node
+    lock) is a flagged Wave-C follow-up. The key is NOT self-recorded — the read path re-derives it
+    from identity."""
+    from apps.api_server.services.repository_intelligence_object_store import (
+        artifact_key,
+        get_object_store,
+        object_store_mode,
+    )
+
+    if object_store_mode() != "s3":
+        return None
+    key = artifact_key(
+        org_id=org_id,
+        repository_id=repository_id,
+        kind="simulations",
+        artifact_id=simulation_id,
+    )
+    try:
+        get_object_store().put_json(key, manifest)
+    except Exception as exc:  # noqa: BLE001 — surface as a fail-closed simulation error
+        raise RepositoryIntelligenceError(
+            code="simulation_manifest_persist_failed",
+            message=f"failed to persist the simulation manifest to the object store: {exc}",
+            status_code=502,
+        ) from exc
+    return key
+
+
 async def simulate_repository_decision(
     *,
     connector: DataConnector,
@@ -442,17 +489,24 @@ async def simulate_repository_decision(
     simulation_path = simulations_dir(org_id, repository_id) / f"{simulation_id}.json"
     if not simulation_path.exists():
         simulation_path.parent.mkdir(parents=True, exist_ok=True)
-        write_json(
-            simulation_path,
-            {
-                "repository_id": repository_id,
-                "snapshot_id": resolved_snapshot_id,
-                "decision_plan_id": request.decision_plan_id,
-                "simulation_id": simulation_id,
-                "apply_gate": score_breakdown["apply_gate"],
-                "created_at": utc_now().isoformat(),
-                "envelope": envelope.model_dump(mode="json"),
-            },
+        simulation_manifest = {
+            "repository_id": repository_id,
+            "snapshot_id": resolved_snapshot_id,
+            "decision_plan_id": request.decision_plan_id,
+            "simulation_id": simulation_id,
+            "apply_gate": score_breakdown["apply_gate"],
+            "created_at": utc_now().isoformat(),
+            "envelope": envelope.model_dump(mode="json"),
+        }
+        write_json(simulation_path, simulation_manifest)
+        # B8: mirror the simulation manifest to the durable object store. Manifest-durability only
+        # for seed=None Monte-Carlo (non-deterministic + node-local lookup => no cross-replica
+        # dedup). No-op in local mode; fails closed (502) in s3. The lookup index below stays local.
+        _mirror_simulation_manifest_to_object_store(
+            org_id=org_id,
+            repository_id=repository_id,
+            simulation_id=simulation_id,
+            manifest=simulation_manifest,
         )
     write_json(
         lookup_path,

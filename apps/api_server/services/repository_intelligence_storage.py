@@ -336,10 +336,15 @@ def _load_simulation_manifest(
     *, org_id: str, repository_id: str, simulation_id: str
 ) -> dict[str, Any]:
     path = _simulations_dir(org_id, repository_id) / f"{simulation_id}.json"
-    if not path.exists():
-        raise RepositoryIntelligenceError(
-            code="repository_simulation_not_found",
-            message=f"Repository simulation '{simulation_id}' was not found.",
-            status_code=404,
-        )
-    return _read_json(path)
+    if path.exists():
+        return _read_json(path)
+    # B8: local copy absent on this node — recover from the durable object store (s3 mode) or raise
+    # the existing 404 (local mode / genuine miss). Hydration-free body recovers as-is.
+    return _recover_manifest_from_object_store(
+        org_id=org_id,
+        repository_id=repository_id,
+        kind="simulations",
+        artifact_id=simulation_id,
+        not_found_code="repository_simulation_not_found",
+        not_found_message=f"Repository simulation '{simulation_id}' was not found.",
+    )
