@@ -333,6 +333,91 @@ def _option_risk(risk_score: float) -> RiskProfile:
     )
 
 
+def _mirror_decision_plan_manifest_to_object_store(
+    *,
+    org_id: str,
+    repository_id: str,
+    decision_plan_id: str,
+    manifest: dict[str, Any],
+) -> str | None:
+    """B8 durability: mirror the decision-plan MANIFEST to the durable, tenant-scoped object store
+    when it's enabled (``ALGENTA_RI_OBJECT_STORE=s3``), so it's recoverable from any replica. The
+    node-local copy stays the fast path. Returns ``None`` in local mode (no-op, backward
+    compatible). Fails closed (502) when the durable write fails.
+
+    MANIFEST-DURABILITY ONLY — this does NOT provide cross-replica dedup: the verified-agentic
+    planner is non-deterministic and the decision-plan lookup index stays node-local in this slice,
+    so two replicas that both miss the local lookup can each run the planner and durably persist
+    DIVERGENT plans (the per-id append-only guard only dedups identical ids). The fix (migrating
+    the lookup index + a cross-node advisory lock to replace the node-local flock) is a flagged
+    Wave-C follow-up. The embedded ``patch_path`` (.diff) stays node-local (a separate bytes
+    slice). The key is NOT self-recorded — the read path re-derives it from identity."""
+    from apps.api_server.services.repository_intelligence_object_store import (
+        artifact_key,
+        get_object_store,
+        object_store_mode,
+    )
+
+    if object_store_mode() != "s3":
+        return None
+    key = artifact_key(
+        org_id=org_id,
+        repository_id=repository_id,
+        kind="decision_plans",
+        artifact_id=decision_plan_id,
+    )
+    try:
+        get_object_store().put_json(key, manifest)
+    except Exception as exc:  # noqa: BLE001 — surface as a fail-closed decision-plan error
+        raise RepositoryIntelligenceError(
+            code="decision_plan_manifest_persist_failed",
+            message=f"failed to persist the decision-plan manifest to the object store: {exc}",
+            status_code=502,
+        ) from exc
+    return key
+
+
+def _mirror_patch_impact_manifest_to_object_store(
+    *,
+    org_id: str,
+    repository_id: str,
+    patch_impact_report_id: str,
+    manifest: dict[str, Any],
+) -> str | None:
+    """B8 durability: mirror the patch-impact-report MANIFEST to the durable, tenant-scoped object
+    store when it's enabled (``ALGENTA_RI_OBJECT_STORE=s3``), so it's recoverable from any replica.
+    The node-local copy stays the fast path. Returns ``None`` in local mode (no-op, backward
+    compatible). Fails closed (502) when the durable write fails.
+
+    The patch-impact summary is a deterministic function of the patch + snapshot, so a cross-replica
+    recompute reproduces the same report — no divergence caveat. The embedded report Parquet sidecar
+    stays node-local (a separate bytes slice). The key is NOT self-recorded — the read path
+    re-derives it from identity."""
+    from apps.api_server.services.repository_intelligence_object_store import (
+        artifact_key,
+        get_object_store,
+        object_store_mode,
+    )
+
+    if object_store_mode() != "s3":
+        return None
+    key = artifact_key(
+        org_id=org_id,
+        repository_id=repository_id,
+        kind="patch_impacts",
+        artifact_id=patch_impact_report_id,
+    )
+    try:
+        get_object_store().put_json(key, manifest)
+    except Exception as exc:  # noqa: BLE001 — surface as a fail-closed patch-impact error
+        raise RepositoryIntelligenceError(
+            code="patch_impact_manifest_persist_failed",
+            message=f"failed to persist the patch-impact manifest to the object store: {exc}",
+            status_code=502,
+        ) from exc
+    return key
+
+
 async def create_repository_decision_plan(
     *,
     connector: DataConnector,
@@ -518,25 +603,31 @@ async def create_repository_decision_plan(
                 if records
                 else parquet_bytes_from_records([], record_type=PatchImpactReportRecord)
             )
-            repository_runtime._write_json(
-                patch_impact_path,
-                {
-                    "patch_impact_report_id": patch_impact_report_id,
-                    "snapshot_id": resolved_snapshot_id,
-                    "created_at": created_at.isoformat(),
-                    **impact_summary,
-                    "patch_impact_artifact": repository_storage._artifact_ref(
-                        artifact_id=_stable_identifier(
-                            "artifact",
-                            {"kind": "patch_impact_report", "id": patch_impact_report_id},
-                        ),
-                        artifact_kind="PatchImpactReport",
-                        content_hash=repository_storage._hash_file(patch_impact_parquet),
-                        storage_path=patch_impact_parquet,
-                        schema_revision="runtime-internal-contracts-v1",
-                        created_at=created_at,
-                    ).model_dump(mode="json"),
-                },
+            patch_impact_manifest = {
+                "patch_impact_report_id": patch_impact_report_id,
+                "snapshot_id": resolved_snapshot_id,
+                "created_at": created_at.isoformat(),
+                **impact_summary,
+                "patch_impact_artifact": repository_storage._artifact_ref(
+                    artifact_id=_stable_identifier(
+                        "artifact",
+                        {"kind": "patch_impact_report", "id": patch_impact_report_id},
+                    ),
+                    artifact_kind="PatchImpactReport",
+                    content_hash=repository_storage._hash_file(patch_impact_parquet),
+                    storage_path=patch_impact_parquet,
+                    schema_revision="runtime-internal-contracts-v1",
+                    created_at=created_at,
+                ).model_dump(mode="json"),
+            }
+            repository_runtime._write_json(patch_impact_path, patch_impact_manifest)
+            # B8: mirror the patch-impact manifest (deterministic recompute -> no divergence). The
+            # report Parquet sidecar stays node-local. No-op in local mode; fails closed (502) in s3.
+            _mirror_patch_impact_manifest_to_object_store(
+                org_id=org_id,
+                repository_id=repository_id,
+                patch_impact_report_id=patch_impact_report_id,
+                manifest=patch_impact_manifest,
             )
 
         risk_profile = _option_risk(float(impact_summary["risk_score"]))
@@ -632,50 +723,57 @@ async def create_repository_decision_plan(
         )
         if not plan_path.exists():
             plan_path.parent.mkdir(parents=True, exist_ok=True)
-            repository_runtime._write_json(
-                plan_path,
-                {
-                    "repository_id": repository_id,
-                    "snapshot_id": resolved_snapshot_id,
-                    "decision_plan_id": decision_plan_id,
-                    "workspace_evidence_bundle_ref": request.workspace_evidence_bundle_ref,
-                    "patch_path": str(patch_path),
-                    "created_at": created_at.isoformat(),
-                    "decision_plan": decision_plan.model_dump(mode="json"),
-                    "planner_usage": planner_usage,
-                    "agent_run_id": str(plan_result.get("agent_run_id") or "").strip() or None,
-                    "session_id": str(plan_result.get("session_id") or "").strip() or None,
-                    "runtime_kind": str(plan_result.get("runtime_kind") or "").strip() or None,
-                    "is_stub": (
-                        plan_result.get("is_stub")
-                        if isinstance(plan_result.get("is_stub"), bool)
-                        else None
-                    ),
-                    "runtime_provider": (
-                        str(plan_result.get("runtime_provider")).strip()
-                        if plan_result.get("runtime_provider") is not None
-                        else None
-                    ),
-                    "runtime_model": (
-                        str(plan_result.get("runtime_model")).strip()
-                        if plan_result.get("runtime_model") is not None
-                        else None
-                    ),
-                    # Internal audit provenance — ignored by RepositoryDecisionPlanResponse,
-                    # so planner_engine="cline_fork"/transcript never reach the public API.
-                    **(
-                        {
-                            "agent_provenance": {
-                                "planner_engine": plan_result.get("planner_engine"),
-                                "agent_run_id": plan_result.get("agent_run_id"),
-                                "transcript_ref": plan_result.get("transcript_ref"),
-                                "planner_execution_mode": planner_execution_mode,
-                            }
+            plan_manifest = {
+                "repository_id": repository_id,
+                "snapshot_id": resolved_snapshot_id,
+                "decision_plan_id": decision_plan_id,
+                "workspace_evidence_bundle_ref": request.workspace_evidence_bundle_ref,
+                "patch_path": str(patch_path),
+                "created_at": created_at.isoformat(),
+                "decision_plan": decision_plan.model_dump(mode="json"),
+                "planner_usage": planner_usage,
+                "agent_run_id": str(plan_result.get("agent_run_id") or "").strip() or None,
+                "session_id": str(plan_result.get("session_id") or "").strip() or None,
+                "runtime_kind": str(plan_result.get("runtime_kind") or "").strip() or None,
+                "is_stub": (
+                    plan_result.get("is_stub")
+                    if isinstance(plan_result.get("is_stub"), bool)
+                    else None
+                ),
+                "runtime_provider": (
+                    str(plan_result.get("runtime_provider")).strip()
+                    if plan_result.get("runtime_provider") is not None
+                    else None
+                ),
+                "runtime_model": (
+                    str(plan_result.get("runtime_model")).strip()
+                    if plan_result.get("runtime_model") is not None
+                    else None
+                ),
+                # Internal audit provenance — ignored by RepositoryDecisionPlanResponse,
+                # so planner_engine="cline_fork"/transcript never reach the public API.
+                **(
+                    {
+                        "agent_provenance": {
+                            "planner_engine": plan_result.get("planner_engine"),
+                            "agent_run_id": plan_result.get("agent_run_id"),
+                            "transcript_ref": plan_result.get("transcript_ref"),
+                            "planner_execution_mode": planner_execution_mode,
                         }
-                        if is_agentic_plan
-                        else {}
-                    ),
-                },
+                    }
+                    if is_agentic_plan
+                    else {}
+                ),
+            }
+            repository_runtime._write_json(plan_path, plan_manifest)
+            # B8: mirror the decision-plan manifest (manifest-durability only — non-deterministic
+            # planner + node-local lookup means cross-replica dedup is NOT provided; the embedded
+            # patch_path .diff stays node-local). No-op in local mode; fails closed (502) in s3.
+            _mirror_decision_plan_manifest_to_object_store(
+                org_id=org_id,
+                repository_id=repository_id,
+                decision_plan_id=decision_plan_id,
+                manifest=plan_manifest,
             )
         response = RepositoryDecisionPlanResponse.model_validate(read_json(plan_path))
         repository_runtime._write_json(

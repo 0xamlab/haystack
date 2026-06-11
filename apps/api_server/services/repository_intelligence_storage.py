@@ -300,26 +300,36 @@ def _load_decision_plan_manifest(
     *, org_id: str, repository_id: str, decision_plan_id: str
 ) -> dict[str, Any]:
     path = _decision_plans_dir(org_id, repository_id) / f"{decision_plan_id}.json"
-    if not path.exists():
-        raise RepositoryIntelligenceError(
-            code="decision_plan_not_found",
-            message=f"Repository decision plan '{decision_plan_id}' was not found.",
-            status_code=404,
-        )
-    return _read_json(path)
+    if path.exists():
+        return _read_json(path)
+    # B8: local copy absent on this node — recover from the durable object store (s3 mode) or raise
+    # the existing 404 (local mode / genuine miss). Hydration-free body recovers as-is.
+    return _recover_manifest_from_object_store(
+        org_id=org_id,
+        repository_id=repository_id,
+        kind="decision_plans",
+        artifact_id=decision_plan_id,
+        not_found_code="decision_plan_not_found",
+        not_found_message=f"Repository decision plan '{decision_plan_id}' was not found.",
+    )
 
 
 def _load_patch_impact_manifest(
     *, org_id: str, repository_id: str, patch_impact_report_id: str
 ) -> dict[str, Any]:
     path = _patch_impact_dir(org_id, repository_id) / f"{patch_impact_report_id}.json"
-    if not path.exists():
-        raise RepositoryIntelligenceError(
-            code="patch_impact_report_not_found",
-            message=f"Patch impact report '{patch_impact_report_id}' was not found.",
-            status_code=404,
-        )
-    return _read_json(path)
+    if path.exists():
+        return _read_json(path)
+    # B8: local copy absent on this node — recover from the durable object store (s3 mode) or raise
+    # the existing 404 (local mode / genuine miss). Hydration-free body recovers as-is.
+    return _recover_manifest_from_object_store(
+        org_id=org_id,
+        repository_id=repository_id,
+        kind="patch_impacts",
+        artifact_id=patch_impact_report_id,
+        not_found_code="patch_impact_report_not_found",
+        not_found_message=f"Patch impact report '{patch_impact_report_id}' was not found.",
+    )
 
 
 def _load_simulation_manifest(
