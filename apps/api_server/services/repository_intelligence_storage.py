@@ -205,6 +205,63 @@ def materialized_snapshot(snapshot_manifest: dict[str, Any]) -> Iterator[Path]:
             fetched_archive.unlink(missing_ok=True)
 
 
+def _recover_manifest_from_object_store(
+    *,
+    org_id: str,
+    repository_id: str,
+    kind: str,
+    artifact_id: str,
+    not_found_code: str,
+    not_found_message: str,
+) -> dict[str, Any]:
+    """B8 cross-replica fallback for a DURABLE manifest whose node-local copy is absent.
+
+    Local mode: there is no durable object store to consult (``get_object_store()`` points at a
+    different local tree than the legacy manifest dirs), so raise the caller's EXISTING 404 — local
+    mode stays byte-for-byte backward compatible. s3 mode: re-derive the tenant-scoped key from
+    server-derived identity and read it. Three distinguished outcomes:
+      - genuine miss (object definitively absent) -> the SAME existing 404 (the re-derived key
+        cannot prove the artifact ever existed, so 410 Gone is the wrong contract; an unknown id
+        404s identically in local and s3, preserving cross-mode read parity);
+      - object store UNAVAILABLE/DENIED (egress deny, connectivity, creds, bucket failure) -> a
+        retryable 503, NEVER a 404/410 and NEVER a silent local fallback that masks data loss
+        (this relies on S3Backend.get_bytes propagating availability faults rather than masking
+        them as None);
+      - recovered -> return it.
+    The key is re-derived from identity (not read from the manifest) because the manifest is what
+    we are recovering. A malformed artifact_id fails closed via artifact_key's ValueError."""
+    from apps.api_server.services.repository_intelligence_object_store import (
+        artifact_key,
+        get_object_store,
+        object_store_mode,
+    )
+
+    if object_store_mode() != "s3":
+        raise RepositoryIntelligenceError(
+            code=not_found_code, message=not_found_message, status_code=404
+        )
+    key = artifact_key(
+        org_id=org_id, repository_id=repository_id, kind=kind, artifact_id=artifact_id
+    )
+    try:
+        recovered = get_object_store().get_json(key)
+    except RepositoryIntelligenceError:
+        raise
+    except Exception as exc:  # noqa: BLE001 — an availability fault is retryable, NOT 404/410
+        raise RepositoryIntelligenceError(
+            code=f"{kind}_manifest_store_unavailable",
+            message=(
+                f"the object store was unavailable while recovering '{artifact_id}': {exc}"
+            ),
+            status_code=503,
+        ) from exc
+    if recovered is None:
+        raise RepositoryIntelligenceError(
+            code=not_found_code, message=not_found_message, status_code=404
+        )
+    return recovered
+
+
 def _load_snapshot_manifest(*, org_id: str, repository_id: str, snapshot_id: str) -> dict[str, Any]:
     path = _snapshot_paths(org_id, repository_id, snapshot_id)["manifest"]
     if not path.exists():
@@ -224,13 +281,19 @@ def _load_triage_manifest(
     *, org_id: str, repository_id: str, evidence_bundle_ref: str
 ) -> dict[str, Any]:
     path = _triage_dir(org_id, repository_id) / f"{evidence_bundle_ref}.json"
-    if not path.exists():
-        raise RepositoryIntelligenceError(
-            code="workspace_evidence_bundle_not_found",
-            message=f"Workspace evidence bundle '{evidence_bundle_ref}' was not found.",
-            status_code=404,
-        )
-    return _read_json(path)
+    if path.exists():
+        return _read_json(path)
+    # B8: local copy absent on this node — recover from the durable object store (s3 mode) or raise
+    # the existing 404 (local mode / genuine miss). The triage body is hydration-free, so the
+    # recovered object is the complete manifest.
+    return _recover_manifest_from_object_store(
+        org_id=org_id,
+        repository_id=repository_id,
+        kind="triage",
+        artifact_id=evidence_bundle_ref,
+        not_found_code="workspace_evidence_bundle_not_found",
+        not_found_message=f"Workspace evidence bundle '{evidence_bundle_ref}' was not found.",
+    )
 
 
 def _load_decision_plan_manifest(

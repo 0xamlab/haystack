@@ -354,6 +354,47 @@ def query_repository_graph(
     return response
 
 
+def _mirror_triage_manifest_to_object_store(
+    *,
+    org_id: str,
+    repository_id: str,
+    evidence_bundle_ref: str,
+    manifest: dict[str, Any],
+) -> str | None:
+    """B8 durability: mirror the triage (workspace-evidence-bundle) MANIFEST to the durable,
+    tenant-scoped object store when it's enabled (``ALGENTA_RI_OBJECT_STORE=s3``), so it's
+    recoverable from any replica. The node-local copy stays the fast path. Returns ``None`` in
+    local mode (no-op, backward compatible). Fails closed (502) when the durable write fails.
+
+    The triage body is hydration-free (no Parquet round-trip on read), so the object copy fully
+    recovers the manifest on another replica. The embedded evidence-bundle Parquet sidecar stays
+    node-local (a separate bytes slice). The key is NOT self-recorded — the read path re-derives it
+    from identity, keeping the on-disk file and the durable object byte-identical."""
+    from apps.api_server.services.repository_intelligence_object_store import (
+        artifact_key,
+        get_object_store,
+        object_store_mode,
+    )
+
+    if object_store_mode() != "s3":
+        return None
+    key = artifact_key(
+        org_id=org_id,
+        repository_id=repository_id,
+        kind="triage",
+        artifact_id=evidence_bundle_ref,
+    )
+    try:
+        get_object_store().put_json(key, manifest)
+    except Exception as exc:  # noqa: BLE001 — surface as a fail-closed triage error
+        raise RepositoryIntelligenceError(
+            code="triage_manifest_persist_failed",
+            message=f"failed to persist the triage manifest to the object store: {exc}",
+            status_code=502,
+        ) from exc
+    return key
+
+
 def triage_repository(
     *,
     connector: DataConnector,
@@ -578,6 +619,14 @@ def triage_repository(
             ).model_dump(mode="json"),
         }
         _write_json(triage_path, manifest)
+        # B8: mirror the triage manifest to the durable object store (opt-in; no-op in local mode)
+        # so it's recoverable from any replica. The triage_lookup index below stays node-local.
+        _mirror_triage_manifest_to_object_store(
+            org_id=org_id,
+            repository_id=repository_id,
+            evidence_bundle_ref=evidence_bundle_ref,
+            manifest=manifest,
+        )
     response = RepositoryTriageResponse.model_validate(read_json(triage_path))
     _write_json(
         triage_lookup_path,
