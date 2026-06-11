@@ -196,6 +196,60 @@ def _mirror_snapshot_manifest_to_object_store(
     return key
 
 
+def _mirror_snapshot_parquet_to_object_store(
+    *,
+    org_id: str,
+    repository_id: str,
+    snapshot_id: str,
+    parquet_by_kind: dict[str, bytes],
+) -> None:
+    """B8 durability: mirror the snapshot's Parquet artifacts to the durable, tenant-scoped object
+    store when it's enabled (``ALGENTA_RI_OBJECT_STORE=s3``), so a v2 (slim) snapshot can be
+    hydrated from any replica — the manifest only carries lightweight per-file metadata; the
+    symbols/dependencies/symbol_references arrays live in these Parquet blobs. The node-local copies
+    stay the fast path. No-op (returns) in local mode (backward compatible). Fails closed (502) when
+    any durable write fails.
+
+    Each kind is stored under its own ``artifact_key`` (the five ``snapshot_paths`` Parquet keys, all
+    distinct from the ``snapshots`` manifest kind and the ``archives`` source-tar kind for the same
+    ``snapshot_id``), keyed by ``snapshot_id``. The caller passes the EXACT in-memory bytes that
+    were hashed into the manifest ``content_hash`` (never a disk re-read), so the recovery-side
+    sha256 integrity check matches by construction.
+
+    DURABILITY GUARANTEE: only snapshots created on the cold-create path with the object store
+    enabled get their Parquet mirrored. Snapshots whose manifest was already on this node (the
+    lookup-cache / manifest-exists early-return paths) and pre-existing v2 snapshots created before
+    this slice require a one-time operational backfill; until then a cross-replica read of such a
+    snapshot fails closed with ``snapshot_hydration_unavailable`` (503)."""
+    from apps.api_server.services.repository_intelligence_object_store import (
+        artifact_key,
+        get_object_store,
+        object_store_mode,
+    )
+
+    if object_store_mode() != "s3":
+        return
+    store = get_object_store()
+    try:
+        for kind, data in parquet_by_kind.items():
+            store.put_bytes(
+                artifact_key(
+                    org_id=org_id,
+                    repository_id=repository_id,
+                    kind=kind,
+                    artifact_id=snapshot_id,
+                ),
+                data,
+                content_type="application/vnd.apache.parquet",
+            )
+    except Exception as exc:  # noqa: BLE001 — surface as a fail-closed snapshot error
+        raise RepositoryIntelligenceError(
+            code="snapshot_parquet_persist_failed",
+            message=f"failed to persist a snapshot Parquet artifact to the object store: {exc}",
+            status_code=502,
+        ) from exc
+
+
 def create_repository_snapshot(
     *,
     connector: DataConnector,
@@ -270,6 +324,10 @@ def create_repository_snapshot(
                     repository_id,
                     snapshot_id,
                 )["manifest"]
+                # B8: this fast path is gated on the LOCAL manifest existing, so it serves a
+                # snapshot already materialized on this node; it does NOT re-mirror Parquet (a fresh
+                # replica has no local manifest and falls through to the cold-create path, which
+                # mirrors). Pre-existing v2 snapshots need a one-time operational backfill.
                 if manifest_path.exists():
                     cached_response = repository_runtime._lookup_response_payload(lookup_payload)
                     if (
@@ -431,6 +489,9 @@ def create_repository_snapshot(
             },
         )
         paths = repository_storage._snapshot_paths(org_id, repository_id, snapshot_id)
+        # B8: gated on the LOCAL manifest existing — serves an already-materialized snapshot and
+        # does NOT re-mirror Parquet (a fresh replica has no local manifest and reaches cold-create
+        # below, which mirrors). Pre-existing v2 snapshots need a one-time operational backfill.
         if paths["manifest"].exists():
             existing = repository_runtime._read_json(paths["manifest"])
             response = RepositorySnapshotResponse.model_validate(existing | {"status": "existing"})
@@ -617,33 +678,61 @@ def create_repository_snapshot(
         # reduction against these baselines.
         _parquet_write_start = time.perf_counter()
         paths["dir"].mkdir(parents=True, exist_ok=True)
-        snapshot_parquet_hash = write_bytes_with_hash(
-            paths["snapshot_parquet"],
-            parquet_bytes_from_records(snapshot_records, record_type=RepositorySnapshotRecord),
+        # B8: capture the exact in-memory Parquet payloads so the object-store mirror below stores
+        # the SAME bytes that write_bytes_with_hash hashes into the manifest content_hash — the
+        # recovery-side sha256 integrity check then matches by construction (no re-read / TOCTOU).
+        snapshot_parquet_bytes = parquet_bytes_from_records(
+            snapshot_records, record_type=RepositorySnapshotRecord
         )
-        symbol_graph_parquet_hash = write_bytes_with_hash(
-            paths["symbol_graph_parquet"],
+        symbol_graph_parquet_bytes = (
             parquet_bytes_from_records(symbol_records, record_type=SymbolGraphRecord)
             if symbol_records
-            else parquet_bytes_from_records([], record_type=SymbolGraphRecord),
+            else parquet_bytes_from_records([], record_type=SymbolGraphRecord)
         )
-        dependency_graph_parquet_hash = write_bytes_with_hash(
-            paths["dependency_graph_parquet"],
+        dependency_graph_parquet_bytes = (
             parquet_bytes_from_records(dependency_records, record_type=DependencyGraphRecord)
             if dependency_records
-            else parquet_bytes_from_records([], record_type=DependencyGraphRecord),
+            else parquet_bytes_from_records([], record_type=DependencyGraphRecord)
         )
-        repository_graph_parquet_hash = write_bytes_with_hash(
-            paths["repository_graph_parquet"],
+        repository_graph_parquet_bytes = (
             parquet_bytes_from_records(repository_graph_records, record_type=RepositoryGraphRecord)
             if repository_graph_records
-            else parquet_bytes_from_records([], record_type=RepositoryGraphRecord),
+            else parquet_bytes_from_records([], record_type=RepositoryGraphRecord)
         )
-        symbol_reference_parquet_hash = write_bytes_with_hash(
-            paths["symbol_reference_parquet"],
+        symbol_reference_parquet_bytes = (
             parquet_bytes_from_records(symbol_reference_records, record_type=SymbolReferenceRecord)
             if symbol_reference_records
-            else parquet_bytes_from_records([], record_type=SymbolReferenceRecord),
+            else parquet_bytes_from_records([], record_type=SymbolReferenceRecord)
+        )
+        snapshot_parquet_hash = write_bytes_with_hash(
+            paths["snapshot_parquet"], snapshot_parquet_bytes
+        )
+        symbol_graph_parquet_hash = write_bytes_with_hash(
+            paths["symbol_graph_parquet"], symbol_graph_parquet_bytes
+        )
+        dependency_graph_parquet_hash = write_bytes_with_hash(
+            paths["dependency_graph_parquet"], dependency_graph_parquet_bytes
+        )
+        repository_graph_parquet_hash = write_bytes_with_hash(
+            paths["repository_graph_parquet"], repository_graph_parquet_bytes
+        )
+        symbol_reference_parquet_hash = write_bytes_with_hash(
+            paths["symbol_reference_parquet"], symbol_reference_parquet_bytes
+        )
+        # B8: mirror the snapshot Parquet to the durable object store BEFORE the manifest (below),
+        # so a crash between the two never leaves a recoverable manifest pointing at absent Parquet.
+        # No-op in local mode; fails closed (502) in s3.
+        _mirror_snapshot_parquet_to_object_store(
+            org_id=org_id,
+            repository_id=repository_id,
+            snapshot_id=snapshot_id,
+            parquet_by_kind={
+                "snapshot_parquet": snapshot_parquet_bytes,
+                "symbol_graph_parquet": symbol_graph_parquet_bytes,
+                "dependency_graph_parquet": dependency_graph_parquet_bytes,
+                "repository_graph_parquet": repository_graph_parquet_bytes,
+                "symbol_reference_parquet": symbol_reference_parquet_bytes,
+            },
         )
         telemetry.record_span_ms(
             "parquet_write_ms", (time.perf_counter() - _parquet_write_start) * 1000.0

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import shutil
 import tarfile
 import tempfile
@@ -262,19 +263,131 @@ def _recover_manifest_from_object_store(
     return recovered
 
 
-def _load_snapshot_manifest(*, org_id: str, repository_id: str, snapshot_id: str) -> dict[str, Any]:
-    path = _snapshot_paths(org_id, repository_id, snapshot_id)["manifest"]
-    if not path.exists():
-        raise RepositoryIntelligenceError(
-            code="snapshot_not_found",
-            message=f"Repository snapshot '{snapshot_id}' was not found.",
-            status_code=404,
-        )
-    # AR-OPT-2: hydrate slim (v2) manifests from Parquet so downstream graph/decision
-    # consumers always see the inline arrays; no-op for legacy v1 (inline) manifests.
-    from apps.api_server.services import repository_intelligence_manifest_reader
+def _materialize_snapshot_hydration_parquet(
+    *,
+    org_id: str,
+    repository_id: str,
+    snapshot_id: str,
+    manifest: dict[str, Any],
+    paths: dict[str, Path],
+) -> None:
+    """B8 cross-replica hydration: ensure the 3 Parquet artifacts that
+    ``hydrate_snapshot_manifest`` reads (symbol_graph / dependency_graph / symbol_reference) are
+    present node-locally, recovering each from the durable object store when absent, then rewrite
+    the manifest's ``storage_path`` to the local path so hydrate reads the materialized file on THIS
+    replica. Idempotent: an already-present local Parquet is reused (warm-replica fast path).
 
-    return repository_intelligence_manifest_reader.hydrate_snapshot_manifest(_read_json(path))
+    Fails closed with a retryable 503: a missing object (``snapshot_hydration_unavailable``), an
+    object-store availability fault (``snapshot_hydration_unavailable``), or a content-hash mismatch
+    (``snapshot_hydration_corrupt``) — verified BEFORE the file is published so a bad download never
+    lands as a poison cache. The download is published via temp-then-atomic-rename so a concurrent
+    reader on this replica never sees a torn Parquet (which hydrate's unguarded read would 500 on)."""
+    from apps.api_server.services.repository_intelligence_object_store import (
+        artifact_key,
+        get_object_store,
+    )
+
+    store = get_object_store()
+    for artifact_field, paths_key in (
+        ("symbol_graph_artifact", "symbol_graph_parquet"),
+        ("dependency_graph_artifact", "dependency_graph_parquet"),
+        ("symbol_reference_artifact", "symbol_reference_parquet"),
+    ):
+        local = paths[paths_key]
+        if not local.exists():
+            key = artifact_key(
+                org_id=org_id,
+                repository_id=repository_id,
+                kind=paths_key,
+                artifact_id=snapshot_id,
+            )
+            try:
+                data = store.get_bytes(key)
+            except RepositoryIntelligenceError:
+                raise
+            except Exception as exc:  # noqa: BLE001 — availability fault is retryable, not a miss
+                raise RepositoryIntelligenceError(
+                    code="snapshot_hydration_unavailable",
+                    message=(
+                        f"the object store was unavailable while recovering snapshot Parquet "
+                        f"'{paths_key}' for '{snapshot_id}': {exc}"
+                    ),
+                    status_code=503,
+                ) from exc
+            if data is None:
+                raise RepositoryIntelligenceError(
+                    code="snapshot_hydration_unavailable",
+                    message=(
+                        f"snapshot Parquet '{paths_key}' for '{snapshot_id}' is not present on this "
+                        "node and was not found in the object store."
+                    ),
+                    status_code=503,
+                )
+            expected = str((manifest.get(artifact_field) or {}).get("content_hash") or "")
+            if hashlib.sha256(data).hexdigest() != expected:
+                raise RepositoryIntelligenceError(
+                    code="snapshot_hydration_corrupt",
+                    message=(
+                        f"snapshot Parquet '{paths_key}' for '{snapshot_id}' failed its content-hash "
+                        "integrity check."
+                    ),
+                    status_code=503,
+                )
+            local.parent.mkdir(parents=True, exist_ok=True)
+            tmp = local.with_name(local.name + ".tmp." + os.urandom(8).hex())
+            try:
+                tmp.write_bytes(data)
+                os.replace(tmp, local)
+            except OSError as exc:
+                tmp.unlink(missing_ok=True)
+                raise RepositoryIntelligenceError(
+                    code="snapshot_hydration_unavailable",
+                    message=(
+                        f"failed to materialize snapshot Parquet '{paths_key}' for "
+                        f"'{snapshot_id}': {exc}"
+                    ),
+                    status_code=503,
+                ) from exc
+        # Rewrite to the local materialized path: the recovered manifest carries the ORIGINAL node's
+        # storage_path, which does not exist on this replica. The hydration LRU is keyed on
+        # content_hash (not storage_path), so this rewrite is cache-safe.
+        artifact = manifest.get(artifact_field)
+        if isinstance(artifact, dict):
+            artifact["storage_path"] = str(local)
+
+
+def _load_snapshot_manifest(*, org_id: str, repository_id: str, snapshot_id: str) -> dict[str, Any]:
+    from apps.api_server.services import repository_intelligence_manifest_reader as manifest_reader
+
+    paths = _snapshot_paths(org_id, repository_id, snapshot_id)
+    path = paths["manifest"]
+    # AR-OPT-2: hydrate slim (v2) manifests from Parquet so downstream graph/decision consumers
+    # always see the inline arrays; no-op for legacy v1 (inline) manifests.
+    if path.exists():
+        return manifest_reader.hydrate_snapshot_manifest(_read_json(path))
+    # B8: local manifest absent on this node — recover from the durable object store (s3 mode) or
+    # raise the existing 404 (local mode / genuine miss).
+    manifest = _recover_manifest_from_object_store(
+        org_id=org_id,
+        repository_id=repository_id,
+        kind="snapshots",
+        artifact_id=snapshot_id,
+        not_found_code="snapshot_not_found",
+        not_found_message=f"Repository snapshot '{snapshot_id}' was not found.",
+    )
+    # A v2 (slim) manifest with files hydrates from 3 node-local Parquet (read unguarded by the
+    # hydrator), which a fresh replica does not have — materialize them from the object store first,
+    # or fail closed 503. v1 / empty-files manifests hydrate as a no-op and need no Parquet, so they
+    # short-circuit (matching the hydrator's own early returns) without any object-store read.
+    if manifest_reader.manifest_version(manifest) >= 2 and manifest.get("files"):
+        _materialize_snapshot_hydration_parquet(
+            org_id=org_id,
+            repository_id=repository_id,
+            snapshot_id=snapshot_id,
+            manifest=manifest,
+            paths=paths,
+        )
+    return manifest_reader.hydrate_snapshot_manifest(manifest)
 
 
 def _load_triage_manifest(
