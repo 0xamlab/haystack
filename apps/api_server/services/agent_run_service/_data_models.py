@@ -79,7 +79,7 @@ logger = logging.getLogger(__name__)
 
 
 
-@dataclass(frozen=True)
+@dataclass
 class AgentRunServiceError(Exception):
     code: str
     message: str
@@ -143,4 +143,3 @@ class _StoredAgentRunCheckpoint(BaseModel):
     checkpoint_parquet_path: str
     artifact_parquet_path: str
     created_at: datetime
-

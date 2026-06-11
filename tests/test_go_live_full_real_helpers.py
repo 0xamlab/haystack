@@ -6,6 +6,9 @@ import pytest
 
 import benchmarks.llm_rollout_proof_bundle as proof_bundle
 from tests.integration import test_go_live_full_real as go_live
+from tests.integration.live_local_surface_env import (
+    LOCAL_LIVE_SIMULATION_PERSIST_TRANSPORT,
+)
 
 
 def test_print_summary_lists_failed_suite_names(capsys) -> None:
@@ -85,6 +88,10 @@ def test_run_live_suite_with_fresh_server_retries_startup_once(
     assert wait_calls[0][1] == 120.0
     assert start_envs[0]["ALGENTA_RUNTIME_DIR"].endswith("runtime_1")
     assert start_envs[1]["ALGENTA_RUNTIME_DIR"].endswith("runtime_2")
+    assert (
+        start_envs[0]["ALGENTA_SIMULATION_PERSIST_TRANSPORT"]
+        == LOCAL_LIVE_SIMULATION_PERSIST_TRANSPORT
+    )
     assert len(stop_calls) >= 1
 
 

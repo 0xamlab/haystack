@@ -518,6 +518,7 @@ async def create_api_key(
     raw_key, key_prefix, hashed_key = generate_api_key()
     api_key = APIKey(
         org_id=auth["org_id"],
+        user_id=auth.get("user_id"),
         label=payload.label,
         key_prefix=key_prefix,
         hashed_key=hashed_key,

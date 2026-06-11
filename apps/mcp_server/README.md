@@ -109,6 +109,9 @@
 | `triage_repository` | Triage one repository snapshot into a bounded workspace evidence bundle. |
 | `create_repository_decision_plan` | Create one immutable repository DecisionPlan revision from a snapshot and workspace evidence bundle. |
 | `simulate_repository` | Simulate repository patch risk and return the gated DecisionEnvelope. |
+| `run_repository_pipeline` | Run snapshot, triage, plan, and simulate, then return the canonical repository envelope. |
+| `simulate_repository_patch` | Simulate one in-flight patch and return the canonical repository envelope. |
+| `run_repository_fix` | Run repository pipeline plus apply, then return the canonical repository envelope. |
 | `apply_repository` | Apply a simulated repository decision as patch_only, local_branch, or remote_pr. |
 
 For the primary data flow, use:
@@ -143,6 +146,12 @@ For the repository intelligence lane, use:
 4. `create_repository_decision_plan(...)` to create one immutable `decision_plan_id`
 5. `simulate_repository(...)` to run the repository apply gate with the stored plan
 6. `apply_repository(...)` only after the gate passes or when `patch_only` is the explicit requested mode
+
+For the canonical repository envelope lane, use:
+
+1. `run_repository_pipeline(...)` when you want one normalized repository envelope for snapshot, triage, plan, and simulate
+2. `simulate_repository_patch(...)` when you want the same envelope shape for in-flight patch gating
+3. `run_repository_fix(...)` when you want pipeline plus apply in one MCP call
 
 `create_repository_decision_plan(...)` returns repository analysis with
 `generated_patch_ref`, `patch_impact_report_ref`, and planner provenance through
@@ -295,6 +304,8 @@ Add to `~/.cursor/mcp.json`:
 ```
 
 Then in Cursor chat: *"@algenta simulate this business case..."*
+For repository fixing, prefer:
+> *"@algenta run_repository_fix repository_id='repo_123' pipeline={\"signals\":{\"issue_text\":\"Null dereference in src/service.py\"}} apply={\"mode\":\"patch_only\"}"*
 
 ---
 

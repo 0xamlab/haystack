@@ -80,9 +80,17 @@ def _explicit_public_api_base_url_raw_value(
             return mapping_value
 
     environment = os.environ if env is None else env
-    return _first_non_empty_value(
+    explicit_env_value = _first_non_empty_value(
         tuple(environment.get(key) for key in _EXPLICIT_API_PUBLIC_BASE_URL_ENV_KEYS)
     )
+    if explicit_env_value is not None:
+        return explicit_env_value
+
+    configured_value = _config_attr(config, "api_public_base_url")
+    if configured_value is not None:
+        if not isinstance(configured_value, str) or configured_value.strip():
+            return configured_value
+    return None
 
 
 def _transport_api_base_url_raw_value(
@@ -90,11 +98,6 @@ def _transport_api_base_url_raw_value(
     *,
     env: Mapping[str, str] | None = None,
 ) -> object | None:
-    configured_value = _config_attr(config, "api_transport_base_url")
-    if configured_value is not None:
-        if not isinstance(configured_value, str) or configured_value.strip():
-            return configured_value
-
     if isinstance(config, Mapping):
         mapping_value = _first_non_empty_value(
             tuple(config.get(key) for key in _TRANSPORT_API_BASE_URL_ENV_KEYS)
@@ -103,7 +106,17 @@ def _transport_api_base_url_raw_value(
             return mapping_value
 
     environment = os.environ if env is None else env
-    return _first_non_empty_value(tuple(environment.get(key) for key in _TRANSPORT_API_BASE_URL_ENV_KEYS))
+    explicit_env_value = _first_non_empty_value(
+        tuple(environment.get(key) for key in _TRANSPORT_API_BASE_URL_ENV_KEYS)
+    )
+    if explicit_env_value is not None:
+        return explicit_env_value
+
+    configured_value = _config_attr(config, "api_transport_base_url")
+    if configured_value is not None:
+        if not isinstance(configured_value, str) or configured_value.strip():
+            return configured_value
+    return None
 
 
 def _normalize_base_url(raw_value: object, *, field_name: str) -> str:

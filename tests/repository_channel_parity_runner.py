@@ -5,6 +5,7 @@ import json
 import math
 import os
 import subprocess
+import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass
@@ -12,9 +13,15 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from apps.api_server.services.cline_agent_run_references import (
+    collect_agent_run_references,
+)
 from tests.integration.live_check_filter import LIVE_CHECK_FILTER_ENV
 
-ROOT = Path(__file__).resolve().parents[1]
 RUN_REPO_PYTHON = ROOT / "scripts" / "run_repo_python.sh"
 DEFAULT_OUTPUT_PATH = ROOT / "build" / "repository_intelligence_channel_parity_summary.json"
 DEFAULT_LOGS_DIR = ROOT / "build" / "repository_intelligence_channel_parity_logs"
@@ -626,6 +633,12 @@ def build_parity_summary(
         skipped=aggregate_skipped_checks,
         total=aggregate_total_checks,
     )
+    agent_run_references = collect_agent_run_references(
+        root=ROOT,
+        summary_artifacts=(
+            result.summary_artifact for result in results if result.status == "passed"
+        ),
+    )
     return {
         "artifact": "repository_intelligence_channel_parity_summary",
         "generated_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
@@ -643,6 +656,7 @@ def build_parity_summary(
             channel_specs=channel_specs,
             actual_counts=actual_counts,
         ),
+        "agent_run_references": agent_run_references,
         "elapsed_seconds": round(elapsed_seconds, 3),
         "output_path": str(output_path),
         "logs_dir": str(logs_dir),
@@ -854,6 +868,14 @@ def build_fatal_summary(
     if isinstance(contract, dict):
         contract["status"] = "failed"
         contract["error"] = fatal_error
+    agent_run_references = collect_agent_run_references(
+        root=ROOT,
+        summary_artifacts=(
+            result.summary_artifact
+            for result in completed_results
+            if result.status == "passed"
+        ),
+    )
     return {
         "artifact": "repository_intelligence_channel_parity_summary",
         "generated_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
@@ -867,6 +889,7 @@ def build_fatal_summary(
         "aggregate_skipped_checks": aggregate_counts.skipped,
         "aggregate_total_checks": aggregate_counts.total or 0,
         "contract": contract,
+        "agent_run_references": agent_run_references,
         "elapsed_seconds": round(elapsed_seconds, 3),
         "output_path": str(output_path),
         "logs_dir": str(logs_dir),

@@ -62,7 +62,7 @@ from tests.llm_rollout_matrix import (
 )
 
 API_KEY = os.environ.get("DE_API_KEY", "")
-CLI = [sys.executable, str(ROOT / "apps" / "cli" / "main.py")]
+CLI = [sys.executable, "-m", "apps.cli.main"]
 ROLLOUT_PARITY_BENCHMARK = ROOT / "build" / "llm_rollout_parity_benchmark.json"
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8000
@@ -347,7 +347,10 @@ def local_runtime_daemon() -> dict[str, str]:
         "DE_BASE_URL": BASE_URL,
         "ALGENTA_API_KEY": API_KEY,
         "DE_API_KEY": API_KEY,
-        "JWT_SECRET": "change-me-in-production-use-256-bit-random-value",
+        "JWT_SECRET": os.environ.get(
+            "JWT_SECRET",
+            "change-me-in-production-use-256-bit-random-value",
+        ),
     }
     if not API_KEY:
         env_updates["ALGENTA_RUNTIME_DEV_MODE"] = "1"

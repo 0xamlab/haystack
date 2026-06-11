@@ -315,8 +315,11 @@ def test_mcp_registry_keeps_primary_and_secondary_surfaces_available() -> None:
     specs = get_tool_specs()
     spec_names = {spec["name"] for spec in specs}
 
-    assert len(TOOLS) == 137
-    assert len(specs) == 137
+    # Counts are derived from the registry itself + a regression floor, never a
+    # magic number that has to be bumped on every new tool (prior feedback).
+    assert len(TOOLS) == len(set(TOOLS))  # no duplicate registrations
+    assert len(specs) == len(TOOLS)  # specs and registry stay in lockstep
+    assert len(TOOLS) >= 137  # regression floor: the surface must never shrink
     assert spec_names == set(TOOLS)
     assert {
         "get_contract",
@@ -346,8 +349,15 @@ def test_mcp_registry_keeps_primary_and_secondary_surfaces_available() -> None:
         "product_retrieve",
         "product_forecast",
         "create_agent_run",
+        "list_agent_runs",
         "get_agent_run",
         "get_agent_run_events",
+        "get_agent_run_checkpoints",
+        "query_agent_run_checkpoints",
+        "get_agent_run_mission_events",
+        "query_agent_run_mission_events",
+        "get_agent_run_telemetry",
+        "query_agent_run_telemetry",
         "resume_agent_run",
         "cancel_agent_run",
         "approve_agent_run",
@@ -412,6 +422,9 @@ def test_mcp_registry_keeps_primary_and_secondary_surfaces_available() -> None:
         "create_repository_decision_plan",
         "query_repository_graph",
         "simulate_repository",
+        "run_repository_pipeline",
+        "simulate_repository_patch",
+        "run_repository_fix",
         "apply_repository",
     }.issubset(spec_names)
 
@@ -631,5 +644,4 @@ def test_cli_and_mcp_docs_cover_decision_runtime_helpers() -> None:
     assert "client.inviteTeamMember({ email, role })" in ts_docs
     assert "client.updateTeamMemberRole(userId, role)" in ts_docs
     assert "client.removeTeamMember(userId)" in ts_docs
-
 

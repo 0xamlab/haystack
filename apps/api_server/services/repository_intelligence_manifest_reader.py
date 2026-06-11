@@ -76,8 +76,15 @@ def _read_grouped(
 ) -> dict[str, list[dict[str, Any]]]:
     table = table_from_parquet_bytes_tolerant(Path(storage_path).read_bytes(), record_type)
     validate_table_schema(table, record_type)
+    # Project to only the columns we keep BEFORE materializing to Python — the
+    # records carry 8–12 columns but hydration keeps 4–8, so to_pylist() was
+    # converting unused columns (repository_id/snapshot_id/created_at datetime/…)
+    # to Python objects for every row, then discarding them. select() is a
+    # zero-copy column projection; dedupe in case the group key is also a project
+    # key (dependency source_file).
+    wanted = list(dict.fromkeys((group_key, *project_keys)))
     grouped: dict[str, list[dict[str, Any]]] = {}
-    for row in table.to_pylist():
+    for row in table.select(wanted).to_pylist():
         grouped.setdefault(str(row[group_key]), []).append(
             {key: row.get(key) for key in project_keys}
         )

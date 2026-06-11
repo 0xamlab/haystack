@@ -9,10 +9,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from apps.api_server.services import (
     repository_intelligence_analysis_workflow as analysis_workflow,
 )
 from apps.api_server.services import repository_intelligence_telemetry as telemetry
+from apps.api_server.services.llm_api_service._definitions import LLMAPIError
 
 
 def test_span_and_counters_accumulate():
@@ -47,6 +50,24 @@ def test_record_span_ms_is_additive():
         telemetry.record_span_ms("graph_build_ms", 2.0)
         telemetry.record_span_ms("graph_build_ms", 3.0)  # additive
     assert data["spans_ms"]["graph_build_ms"] == 5.0
+
+
+def test_collect_or_current_reuses_active_scope() -> None:
+    with telemetry.collect() as outer:
+        with telemetry.collect_or_current() as inner:
+            assert inner is outer
+            telemetry.record("shared_count", 4)
+    assert outer["counters"]["shared_count"] == 4
+
+
+def test_collect_or_current_propagates_llm_api_error_without_masking() -> None:
+    with pytest.raises(LLMAPIError) as excinfo:
+        with telemetry.collect_or_current():
+            raise LLMAPIError(
+                code="provider_backend_error",
+                message="backend rejected request",
+            )
+    assert excinfo.value.code == "provider_backend_error"
 
 
 def test_missing_fields_gate():

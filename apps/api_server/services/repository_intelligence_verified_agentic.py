@@ -86,6 +86,44 @@ _DEFAULT_RUN_AGENT = _default_run_agent
 _DEFAULT_GRAPH_QUERY = None
 
 
+def _planner_usage_from_agent_result(agent_result: dict[str, Any]) -> dict[str, Any]:
+    telemetry = agent_result.get("telemetry")
+    if not isinstance(telemetry, dict):
+        usage = agent_result.get("usage")
+        if not isinstance(usage, dict):
+            return {}
+        telemetry = usage
+    input_uncached = telemetry.get("tokens_in_uncached", telemetry.get("inputTokens", 0))
+    output_tokens = telemetry.get("tokens_out", telemetry.get("outputTokens", 0))
+    cache_read_tokens = telemetry.get("cache_read_tokens", telemetry.get("cacheReadTokens", 0))
+    cache_write_tokens = telemetry.get(
+        "cache_write_tokens",
+        telemetry.get("cacheWriteTokens", 0),
+    )
+    if not any(
+        isinstance(value, (int, float)) and not isinstance(value, bool)
+        for value in (
+            input_uncached,
+            output_tokens,
+            cache_read_tokens,
+            cache_write_tokens,
+        )
+    ):
+        return {}
+    return {
+        "input_tokens": float(input_uncached) + float(cache_read_tokens) + float(cache_write_tokens),
+        "output_tokens": float(output_tokens),
+        "cache_read_tokens": float(cache_read_tokens),
+        "cache_write_tokens": float(cache_write_tokens),
+        "cost_usd": (
+            float(telemetry["total_cost"])
+            if isinstance(telemetry.get("total_cost"), (int, float))
+            and not isinstance(telemetry.get("total_cost"), bool)
+            else None
+        ),
+    }
+
+
 def _capture_repository_tree_state(root_path: Path) -> dict[str, str]:
     """Snapshot the textual contents of every readable file under ``root_path``.
 
@@ -213,9 +251,24 @@ def _build_line_context_bundle(
             return (0 if touches else 1, start)
 
         for symbol in sorted(symbols, key=_symbol_priority)[:top_k_symbols_per_file]:
-            start = max(1, int(symbol.get("start_line") or 1))
-            end = int(symbol.get("end_line") or start)
-            end = min(max(end, start), start + max_lines_per_symbol - 1, len(source_lines))
+            sym_start = max(1, int(symbol.get("start_line") or 1))
+            sym_end = max(int(symbol.get("end_line") or sym_start), sym_start)
+            # Focus on the bug, language-agnostically: if a diagnostic touches this
+            # symbol, center the window on it so a large symbol never buries the
+            # failing line out of view; otherwise show the symbol head. Either way
+            # cap to max_lines_per_symbol so one big symbol can't dominate (or blow
+            # up) the bundle. Purely line-based — no per-language rules.
+            touching_lines = sorted(
+                line for line in diagnostic_lines if sym_start <= line <= sym_end
+            )
+            if touching_lines:
+                focus = touching_lines[len(touching_lines) // 2]
+                start = max(sym_start, focus - max_lines_per_symbol // 2)
+                end = min(sym_end, len(source_lines), start + max_lines_per_symbol - 1)
+                start = max(sym_start, end - max_lines_per_symbol + 1)
+            else:
+                start = sym_start
+                end = min(sym_end, len(source_lines), sym_start + max_lines_per_symbol - 1)
             numbered_source = "\n".join(
                 f"{line_no:>6}\t{source_lines[line_no - 1]}"
                 for line_no in range(start, end + 1)
@@ -251,6 +304,39 @@ def _build_line_context_bundle(
             bundle.append(entry)
             total_tokens += entry_tokens
     return bundle
+
+
+def _dedupe_bundled_evidence(
+    evidence_items: list[Any],
+    context_bundle: list[dict[str, Any]],
+) -> list[Any]:
+    """Strip the redundant snippet from evidence items already carried in full by
+    the context bundle.
+
+    The bundle attaches the full numbered source for the top suspect
+    (file, symbol) pairs. An evidence item for one of those same pairs would
+    duplicate that code in the JSON-serialized prompt, so we replace its snippet
+    with a pointer — keeping the item's ranking/diagnostic metadata while sending
+    the code only once. Evidence on symbols the bundle does not cover is left
+    intact (it is complementary, not redundant).
+    """
+    bundled = {
+        (str(entry.get("file_path")), str(entry.get("symbol_name")))
+        for entry in context_bundle
+        if isinstance(entry, dict)
+    }
+    if not bundled:
+        return evidence_items
+    deduped: list[Any] = []
+    for item in evidence_items:
+        if (
+            isinstance(item, dict)
+            and item.get("snippet")
+            and (str(item.get("file_path")), str(item.get("symbol_name"))) in bundled
+        ):
+            item = {**item, "snippet": "[full source in context_bundle]"}
+        deduped.append(item)
+    return deduped
 
 
 async def _generate_verified_agentic_repository_patch_plan(
@@ -332,6 +418,11 @@ async def _generate_verified_agentic_repository_patch_plan(
             triage_manifest=triage_manifest,
             root_path=root_path,
         )
+        # Don't send the same code twice: drop snippets the bundle already carries.
+        injected_context["evidence_items"] = _dedupe_bundled_evidence(
+            injected_context["evidence_items"],
+            injected_context["context_bundle"],
+        )
         agent_result = run_agent(
             working_dir=str(root_path),
             task_spec=task_spec,
@@ -394,6 +485,15 @@ async def _generate_verified_agentic_repository_patch_plan(
         "planner_model_id": model_id,
         "planner_execution_mode": "verified_agentic",
         "planner_provider_backend": None,
+        "planner_usage": _planner_usage_from_agent_result(agent_result),
+        "session_id": agent_result.get("session_id"),
+        "runtime_kind": "cline",
+        "runtime_provider": (
+            telemetry.get("provider")
+            if isinstance((telemetry := agent_result.get("telemetry")), dict)
+            else None
+        ),
+        "runtime_model": telemetry.get("model") if isinstance(telemetry, dict) else None,
         # Internal attribution / provenance only — NOT surfaced in the public DecisionPlan.
         "planner_engine": "cline_fork",
         "agent_run_id": agent_result.get("agent_run_id"),

@@ -29,7 +29,7 @@ _STRUCT_ENVELOPE_TYPE_KEY = "__algenta_struct"
 _STRUCT_ENVELOPE_VALUES_KEY = "v"
 
 
-@dataclass(frozen=True)
+@dataclass
 class MojoLibraryError(Exception):
     code: str
     message: str

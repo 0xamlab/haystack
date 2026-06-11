@@ -583,6 +583,19 @@ def start_api_server(port: int, sources_dir: Path, env: dict[str, str]) -> subpr
         "PYTHONPATH": str(ROOT),
         "ALGENTA_SOURCES_DIR": str(sources_dir),
     }
+    existing_allowlist = [
+        item.strip()
+        for item in str(proc_env.get("ALGENTA_EGRESS_ALLOWLIST", "")).split(",")
+        if item.strip()
+    ]
+    proc_env["ALGENTA_EGRESS_ALLOWLIST"] = ",".join(
+        dict.fromkeys([*existing_allowlist, "127.0.0.1", "localhost", "::1"])
+    )
+    artifact_cache_dir = Path(
+        proc_env.get("ALGENTA_SOURCE_ARTIFACT_CACHE_DIR", sources_dir.parent / "artifact_cache")
+    )
+    artifact_cache_dir.mkdir(parents=True, exist_ok=True)
+    proc_env["ALGENTA_SOURCE_ARTIFACT_CACHE_DIR"] = str(artifact_cache_dir)
     if "MOJO_POOL_SIZE" not in proc_env:
         requested_workers = proc_env.get("DE_MOJO_WORKERS", "").strip()
         if requested_workers:
@@ -1424,7 +1437,7 @@ def run_behavior_validation_case(
             "POST",
             "/v1/query",
             api_key=api_key,
-            json_body={"resolved_plan": resolved_plan},
+            json_body={"dataset_id": source_id, "resolved_plan": resolved_plan},
             expected_status=200,
         )
         query_first_ms = float(query_first_body.get("latency_ms") or query_first_http_ms)
@@ -1449,7 +1462,7 @@ def run_behavior_validation_case(
             "POST",
             "/v1/query",
             api_key=api_key,
-            json_body={"resolved_plan": resolved_plan},
+            json_body={"dataset_id": source_id, "resolved_plan": resolved_plan},
             expected_status=200,
         )
         exact_hit_ms = float(query_second_body.get("latency_ms") or exact_hit_http_ms)
@@ -2455,24 +2468,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    import pytest
-
-    exit_code = pytest.main([__file__, "-v"])
-    # Write summary artifact for CI consumers (preserves the
-    # tests/test_runtime_surface_compatibility surface contract).
-    try:
-        from tests.integration.live_integration_artifacts import write_live_integration_summary
-
-        artifact_path = write_live_integration_summary(
-            SUITE_NAME,
-            script="tests/integration/test_go_live_connectivity_real.py",
-            passed=0,  # TODO: parse from pytest result
-            failed=0,
-            skipped=0,
-            total=0,
-            elapsed_seconds=0.0,
-        )
-        print(f"Summary artifact: {artifact_path}")
-    except Exception:
-        pass
-    sys.exit(exit_code)
+    sys.exit(main())

@@ -33,7 +33,21 @@ import time
 import urllib.request
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from apps.api_server.services.cline_proof_common import (
+    build_proof_context,
+    create_artifact_provenance,
+    sha256_hex,
+    write_json,
+)
+
 ANTHROPIC_MODEL = os.environ.get("G0_ANTHROPIC_MODEL", "claude-sonnet-4-6")
+COMPETITIVE_USAGE_SOURCE = "runtime_accumulated_usage"
+RESOLUTION_THRESHOLD_ABSOLUTE_PP = 5.0
+RESOLUTION_THRESHOLD_MODE = "absolute_percentage_points"
 
 
 # ── Bug suite ────────────────────────────────────────────────────────────────
@@ -68,6 +82,41 @@ def _materialize(fix: dict) -> Path:
         p = d / rel
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(content, encoding="utf-8")
+    subprocess.run(
+        ["git", "init", "-b", "main"],
+        cwd=str(d),
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.email", "g0-benchmark@example.com"],
+        cwd=str(d),
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "G0 Benchmark"],
+        cwd=str(d),
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    subprocess.run(
+        ["git", "add", "."],
+        cwd=str(d),
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    subprocess.run(
+        ["git", "commit", "-m", "fixture"],
+        cwd=str(d),
+        check=True,
+        capture_output=True,
+        text=True,
+    )
     return d
 
 
@@ -112,6 +161,17 @@ def _sidecar_run(
             line = raw.decode("utf-8").strip()
             if line and (frame := json.loads(line)).get("type") == "final":
                 final = frame
+    if not final:
+        return {
+            "status": "failed",
+            "turns": 0,
+            "tokens_in": 0,
+            "tokens_out": 0,
+            "cache_read": 0,
+            "cache_write": 0,
+            "cost": 0.0,
+            "error": "missing_final_frame",
+        }
     tel = final.get("telemetry", {})
     return {
         "status": final.get("status", "unknown"),
@@ -121,6 +181,7 @@ def _sidecar_run(
         "cache_read": tel.get("cache_read_tokens", 0),
         "cache_write": tel.get("cache_write_tokens", 0),
         "cost": tel.get("total_cost", 0.0),
+        "error": final.get("error"),
     }
 
 
@@ -292,6 +353,11 @@ def main() -> int:
     ap.add_argument("--arms", default="A,B,C")
     ap.add_argument("--reps", type=int, default=1)
     ap.add_argument("--fixtures", default="")  # comma names; empty = all
+    ap.add_argument(
+        "--json-output",
+        default="",
+        help="Optional path to write a JSON benchmark artifact.",
+    )
     args = ap.parse_args()
     base_url = os.environ.get("ALGENTA_AGENT_CORE_URL")
     arms = [a.strip().upper() for a in args.arms.split(",") if a.strip()]
@@ -335,12 +401,78 @@ def main() -> int:
         ratio = c_tok / a_tok if a_tok else None
         res_ok = agg["C"]["resolution_rate"] >= agg["A"]["resolution_rate"] - 0.05
         tok_ok = ratio is not None and ratio <= 0.25
+        ratio_text = f"{ratio:.2f}" if ratio is not None else "None"
         print(
-            f"\nG0 verdict: C/A tokens = {ratio:.2f} (target ≤0.25 -> {'PASS' if tok_ok else 'FAIL'}); "
+            f"\nG0 verdict: C/A tokens = {ratio_text} (target ≤0.25 -> {'PASS' if tok_ok else 'FAIL'}); "
             f"C resolution {agg['C']['resolution_rate']*100:.0f}% vs A {agg['A']['resolution_rate']*100:.0f}% "
             f"(within 5pp -> {'PASS' if res_ok else 'FAIL'}) => "
             f"{'GO' if (tok_ok and res_ok) else 'NO-GO (small N — increase --reps/fixtures)'}"
         )
+    if args.json_output:
+        context = build_proof_context(ROOT)
+        fixture_inventory = [
+            {
+                "name": fixture["name"],
+                "issue": fixture["issue"],
+                "suspect_files": fixture["suspect_files"],
+                "files": fixture["files"],
+            }
+            for fixture in fixtures
+        ]
+        benchmark_fixture_hash = sha256_hex(
+            json.dumps(
+                {"fixtures": fixture_inventory},
+                sort_keys=True,
+            )
+        )
+        benchmark_suite_hash = sha256_hex(
+            json.dumps(
+                {
+                    "fixtures": fixture_inventory,
+                    "reps": args.reps,
+                    "arms": arms,
+                    "model": ANTHROPIC_MODEL,
+                },
+                sort_keys=True,
+            )
+        )
+        payload = {
+            **create_artifact_provenance(
+                context,
+                run_id="g0_token_benchmark",
+                schema_version="cline-g0-benchmark-results/v1",
+            ),
+            "benchmark_suite": "g0_token_benchmark",
+            "benchmark_suite_hash": benchmark_suite_hash,
+            "benchmark_fixture_hash": benchmark_fixture_hash,
+            "prompt_family": "g0_repository_fix_v1",
+            "provider": "anthropic",
+            "model": ANTHROPIC_MODEL,
+            "provider_model_class": f"anthropic:{ANTHROPIC_MODEL}",
+            "tool_policy_profile": "repository_fix_gated",
+            "max_iterations": 10,
+            "timeout_seconds": 400,
+            "task_count": len(fixtures) * args.reps,
+            "usage_source": COMPETITIVE_USAGE_SOURCE,
+            "resolution_threshold_absolute_pp": RESOLUTION_THRESHOLD_ABSOLUTE_PP,
+            "resolution_threshold_mode": RESOLUTION_THRESHOLD_MODE,
+            "eligibility_rules": {
+                "eligible_task": "task included in the frozen benchmark suite",
+                "excluded_task": "task omitted from the frozen benchmark suite",
+                "attempt": "single benchmark attempt per fixture/rep",
+                "rerun_policy": "no reruns unless benchmark fixture changes",
+                "timeout_policy": "400s fixed timeout",
+                "partial_success": "counts as unresolved",
+                "human_intervention": "forbidden",
+                "benchmark_fixture_hash": benchmark_fixture_hash,
+            },
+            "fixtures": [fixture["name"] for fixture in fixtures],
+            "reps": args.reps,
+            "arms": arms,
+            "results": results,
+            "aggregates": agg,
+        }
+        write_json(Path(args.json_output), payload)
     return 0
 
 

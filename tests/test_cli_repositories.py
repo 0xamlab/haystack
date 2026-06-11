@@ -7,6 +7,8 @@ from contextlib import redirect_stdout
 import pytest
 
 import apps.cli.main as cli
+import apps.cli.main.__main__ as cli_module_entry
+import apps.cli.support as cli_support
 
 
 def _capture_stdout(func, *args, **kwargs) -> str:  # type: ignore[no-untyped-def]
@@ -14,6 +16,15 @@ def _capture_stdout(func, *args, **kwargs) -> str:  # type: ignore[no-untyped-de
     with redirect_stdout(buffer):
         func(*args, **kwargs)
     return buffer.getvalue()
+
+
+def test_cli_facade_keeps_support_request_bindings() -> None:
+    assert cli.api_request is cli_support.api_request
+    assert cli.api_stream_request is cli_support.api_stream_request
+
+
+def test_cli_package_entrypoint_exports_facade_main() -> None:
+    assert cli_module_entry.main is cli.main
 
 
 def test_cmd_repositories_snapshot_posts_request_and_prints_summary(
@@ -273,6 +284,139 @@ def test_cmd_repositories_apply_posts_request_and_prints_summary(
     assert "  src/service.py" in output
 
 
+def test_cmd_repositories_pipeline_prints_canonical_envelope(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    monkeypatch.setattr(cli, "_RICH", False)
+    request_path = tmp_path / "pipeline.json"
+    request_path.write_text(
+        json.dumps({"signals": {"issue_text": "null dereference"}}),
+        encoding="utf-8",
+    )
+
+    def _fake_api_request(method: str, path: str, body=None):  # type: ignore[no-untyped-def]
+        assert method == "POST"
+        assert path == "/v1/repositories/repo_123/pipeline"
+        assert body == {"signals": {"issue_text": "null dereference"}}
+        return 200, {
+            "repository_id": "repo_123",
+            "snapshot_id": "snapshot_123",
+            "snapshot": {"snapshot_id": "snapshot_123", "ref": "main"},
+            "triage": {"workspace_evidence_bundle_ref": "bundle_123"},
+            "decision_plan": {
+                "decision_plan_id": "decision_plan_123",
+                "decision_plan": {
+                    "repository_analysis": {
+                        "planner_model_id": "repository.deterministic_local_v1",
+                        "planner_execution_mode": "deterministic_local",
+                        "planner_provider_backend": None,
+                    }
+                },
+            },
+            "simulation": {
+                "run_id": "simulation_123",
+                "recommended_action": "apply_patch",
+                "score_breakdown": {"apply_gate": {"passed": True}},
+            },
+        }
+
+    monkeypatch.setattr(cli, "api_request", _fake_api_request)
+    output = _capture_stdout(cli.cmd_repositories_pipeline, "repo_123", str(request_path), "table")
+
+    assert "Repository Channel Envelope" in output
+    assert "Snapshot:        snapshot_123" in output
+    assert "Plan:            decision_plan_123" in output
+    assert "Simulation:      simulation_123" in output
+    assert "Gate decision:   apply_allowed" in output
+
+
+def test_cmd_repositories_simulate_patch_prints_canonical_envelope(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    monkeypatch.setattr(cli, "_RICH", False)
+    request_path = tmp_path / "simulate-patch.json"
+    request_path.write_text(
+        json.dumps({"snapshot_id": "snapshot_123", "patch_diff": "diff --git a/x b/x"}),
+        encoding="utf-8",
+    )
+
+    def _fake_api_request(method: str, path: str, body=None):  # type: ignore[no-untyped-def]
+        assert method == "POST"
+        assert path == "/v1/repositories/repo_123/simulate-patch"
+        assert body == {"snapshot_id": "snapshot_123", "patch_diff": "diff --git a/x b/x"}
+        return 200, {"run_id": "simulation_patch_123", "recommended_action": "apply_patch"}
+
+    monkeypatch.setattr(cli, "api_request", _fake_api_request)
+    output = _capture_stdout(
+        cli.cmd_repositories_simulate_patch,
+        "repo_123",
+        str(request_path),
+        "table",
+    )
+
+    assert "Simulation:      simulation_patch_123" in output
+    assert "Gate decision:   apply_allowed" in output
+
+
+def test_cmd_repositories_fix_runs_pipeline_then_apply(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    monkeypatch.setattr(cli, "_RICH", False)
+    request_path = tmp_path / "fix.json"
+    request_path.write_text(
+        json.dumps({"pipeline": {"signals": {"issue_text": "null dereference"}}}),
+        encoding="utf-8",
+    )
+    calls: list[tuple[str, str, object]] = []
+
+    def _fake_api_request(method: str, path: str, body=None):  # type: ignore[no-untyped-def]
+        calls.append((method, path, body))
+        if (method, path) == ("POST", "/v1/repositories/repo_123/pipeline"):
+            return 200, {
+                "repository_id": "repo_123",
+                "snapshot_id": "snapshot_123",
+                "snapshot": {"snapshot_id": "snapshot_123"},
+                "triage": {"workspace_evidence_bundle_ref": "bundle_123"},
+                "decision_plan": {"decision_plan_id": "decision_plan_123", "decision_plan": {}},
+                "simulation": {
+                    "run_id": "simulation_123",
+                    "recommended_action": "apply_patch",
+                    "score_breakdown": {"apply_gate": {"passed": True}},
+                },
+            }
+        if (method, path) == ("POST", "/v1/repositories/repo_123/apply"):
+            return 200, {
+                "applied": True,
+                "simulation_id": "simulation_123",
+                "local_checkout_path": "/tmp/repo",
+                "patch": "diff --git a/src/service.py b/src/service.py",
+                "apply_gate": {"passed": True},
+            }
+        raise AssertionError(f"unexpected call {(method, path)}")
+
+    monkeypatch.setattr(cli, "api_request", _fake_api_request)
+    output = _capture_stdout(cli.cmd_repositories_fix, "repo_123", str(request_path), "table")
+
+    assert "Apply:           simulation_123" in output
+    assert "Gate decision:   apply_allowed" in output
+    assert calls == [
+        ("POST", "/v1/repositories/repo_123/pipeline", {"signals": {"issue_text": "null dereference"}}),
+        (
+            "POST",
+            "/v1/repositories/repo_123/apply",
+            {
+                "snapshot_id": "snapshot_123",
+                "decision_plan_id": "decision_plan_123",
+                "simulation_id": "simulation_123",
+                "mode": "patch_only",
+            },
+        ),
+    ]
+
+
 @pytest.mark.parametrize(
     ("argv", "handler_name", "expected"),
     [
@@ -300,6 +444,21 @@ def test_cmd_repositories_apply_posts_request_and_prints_summary(
             ["de", "repositories", "graph-query", "repo_123", "graph-query.json"],
             "cmd_repositories_graph_query",
             ("repo_123", "graph-query.json", "table"),
+        ),
+        (
+            ["de", "repositories", "pipeline", "repo_123", "pipeline.json"],
+            "cmd_repositories_pipeline",
+            ("repo_123", "pipeline.json", "table"),
+        ),
+        (
+            ["de", "repositories", "simulate-patch", "repo_123", "simulate-patch.json"],
+            "cmd_repositories_simulate_patch",
+            ("repo_123", "simulate-patch.json", "table"),
+        ),
+        (
+            ["de", "repositories", "fix", "repo_123", "fix.json"],
+            "cmd_repositories_fix",
+            ("repo_123", "fix.json", "table"),
         ),
         (
             ["de", "repositories", "apply", "repo_123", "apply.json"],

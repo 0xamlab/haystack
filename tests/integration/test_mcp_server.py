@@ -47,6 +47,7 @@ import urllib.request
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from typing import Any
 
 # Ensure repo-local imports work when the script is launched directly.
 ROOT = Path(__file__).resolve().parents[2]
@@ -74,8 +75,9 @@ from tests.integration.live_check_filter import (
 )
 from tests.integration.live_integration_artifacts import (
     LIVE_INTEGRATION_SUMMARY_ARTIFACTS,
-    write_live_integration_summary,
+    write_live_integration_summary_from_results,
 )
+from tests.integration.live_local_surface_env import configure_local_live_server_env
 from tests.integration.live_repository_fixture import (
     assert_repository_intelligence_capabilities_payload,
     live_repository_fixture,
@@ -153,8 +155,15 @@ EXPECTED_TOOLS = [
     "product_forecast",
     "plan_decision",
     "create_agent_run",
+    "list_agent_runs",
     "get_agent_run",
     "get_agent_run_events",
+    "get_agent_run_checkpoints",
+    "query_agent_run_checkpoints",
+    "get_agent_run_mission_events",
+    "query_agent_run_mission_events",
+    "get_agent_run_telemetry",
+    "query_agent_run_telemetry",
     "resume_agent_run",
     "cancel_agent_run",
     "approve_agent_run",
@@ -183,6 +192,7 @@ EXPECTED_TOOLS = [
     "list_devices",
     "revoke_device",
     "get_audit_logs",
+    "get_audit_log_artifacts",
     "refresh_credits",
     "ingest_metering_events",
     "get_execution_policy",
@@ -223,6 +233,9 @@ EXPECTED_TOOLS = [
     "triage_repository",
     "create_repository_decision_plan",
     "simulate_repository",
+    "run_repository_pipeline",
+    "simulate_repository_patch",
+    "run_repository_fix",
     "apply_repository",
     "recommend",
 ]
@@ -351,92 +364,7 @@ def _endpoint_serves_canonical_mcp_contract(base_url: str) -> bool:
         if status != 200 or not isinstance(tools, dict):
             return False
         advertised_tools = {tool.get("name") for tool in tools.get("tools", []) if isinstance(tool, dict)}
-        required_tools = {
-            "get_contract",
-            "get_runtime_manifest",
-            "get_runtime_modules",
-            "get_runtime_benchmarks",
-            "get_runtime_release_validation",
-            "recommend",
-            "score",
-            "batch",
-            "compare",
-            "get_me",
-            "update_me",
-            "get_limits",
-            "list_distributions",
-            "list_templates",
-            "list_api_keys",
-            "create_api_key",
-            "revoke_api_key",
-            "list_models",
-            "tokenize",
-            "count_tokens",
-            "product_decision",
-            "product_agent_run",
-            "product_optimize",
-            "product_retrieve",
-            "product_forecast",
-            "plan_decision",
-            "create_agent_run",
-            "list_agent_runs",
-            "get_agent_run",
-            "get_agent_run_checkpoints",
-            "query_agent_run_checkpoints",
-            "get_agent_run_mission_events",
-            "query_agent_run_mission_events",
-            "get_agent_run_telemetry",
-            "query_agent_run_telemetry",
-            "list_team_members",
-            "invite_team_member",
-            "update_team_member_role",
-            "remove_team_member",
-            "list_devices",
-            "revoke_device",
-            "get_audit_logs",
-            "get_audit_log_artifacts",
-            "refresh_credits",
-            "ingest_metering_events",
-            "get_execution_policy",
-            "list_execution_policy_snapshots",
-            "get_billing_info",
-            "create_billing_checkout",
-            "create_billing_portal",
-            "update_execution_policy",
-            "list_deployment_regions",
-            "get_deployment",
-            "create_deployment",
-            "get_deployment_cost",
-            "delete_deployment",
-            "submit_job",
-            "list_jobs",
-            "get_job_status",
-            "poll_job",
-            "get_job_result",
-            "cancel_job",
-            "test_webhook_delivery",
-            "register_trigger",
-            "list_triggers",
-            "fire_trigger",
-            "pause_trigger",
-            "delete_trigger",
-            "list_connectors",
-            "create_connector",
-            "get_connector",
-            "update_connector",
-            "test_connector",
-            "preview_test_connector",
-            "browse_connector",
-            "preview_browse_connector",
-            "delete_connector",
-            "get_repository_intelligence_capabilities",
-            "create_repository_snapshot",
-            "get_repository_snapshot",
-            "triage_repository",
-            "create_repository_decision_plan",
-            "simulate_repository",
-            "apply_repository",
-        }
+        required_tools = set(EXPECTED_TOOLS)
         if not required_tools.issubset(advertised_tools):
             return False
         status, spec = _probe_json(base_url, "/openapi.json", timeout=5.0)
@@ -474,6 +402,64 @@ def _endpoint_serves_canonical_mcp_contract(base_url: str) -> bool:
         return False
 
 
+def _endpoint_supports_utility_llm_runtime(base_url: str) -> bool:
+    if not API_KEY:
+        return False
+    try:
+        status, payload, _, _ = _request_json(
+            base_url,
+            "POST",
+            "/v1/chat/completions",
+            body={"messages": [{"role": "user", "content": "summarize alpha beta"}]},
+            headers={"X-API-Key": API_KEY},
+            timeout=10,
+        )
+    except Exception:
+        return False
+    return (
+        status == 200
+        and isinstance(payload, dict)
+        and payload.get("object") == "chat.completion"
+        and payload.get("provider_backend") is None
+        and payload.get("provider_model_id") is None
+    )
+
+
+def _endpoint_supports_loopback_connector_preview(base_url: str) -> bool:
+    if not API_KEY:
+        return False
+    try:
+        with tempfile.TemporaryDirectory(prefix="algenta-mcp-preview-") as temp_dir:
+            payload_path = Path(temp_dir) / "payload.json"
+            payload_path.write_text(json.dumps({"items": [{"id": "preview-check"}]}), encoding="utf-8")
+            handler = partial(SimpleHTTPRequestHandler, directory=temp_dir)
+            server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            try:
+                status, payload, _, _ = _request_json(
+                    base_url,
+                    "POST",
+                    "/v1/connectors/test",
+                    body={
+                        "connector_type": "rest",
+                        "config": {
+                            "url": f"http://127.0.0.1:{int(server.server_address[1])}/payload.json",
+                            "data_path": "items",
+                        },
+                    },
+                    headers={"X-API-Key": API_KEY},
+                    timeout=10,
+                )
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=5)
+    except Exception:
+        return False
+    return status == 200 and isinstance(payload, dict) and payload.get("success") is True
+
+
 def _cleanup_runtime() -> None:
     global _runtime_proc
     if not _runtime_started_here or _runtime_proc is None:
@@ -490,7 +476,13 @@ def _cleanup_runtime() -> None:
 def _resolve_base_url() -> str:
     global _runtime_proc, _runtime_started_here, _runtime_log_path
     if CONFIGURED_BASE_URL:
-        return CONFIGURED_BASE_URL.rstrip("/")
+        configured_base_url = CONFIGURED_BASE_URL.rstrip("/")
+        if _endpoint_serves_canonical_mcp_contract(
+            configured_base_url
+        ) and _endpoint_supports_loopback_connector_preview(
+            configured_base_url
+        ) and _endpoint_supports_utility_llm_runtime(configured_base_url):
+            return configured_base_url
 
     base_url = f"http://{DEFAULT_HOST}:{DEFAULT_PORT}"
     log_dir = Path(tempfile.mkdtemp(prefix="integration-mcp-server-"))
@@ -499,7 +491,11 @@ def _resolve_base_url() -> str:
     if API_KEY_CONFIGURED and _port_open(DEFAULT_HOST, DEFAULT_PORT):
         try:
             _wait_for_health(base_url, log_path, timeout_seconds=5.0)
-            if _endpoint_serves_canonical_mcp_contract(base_url):
+            if _endpoint_serves_canonical_mcp_contract(
+                base_url
+            ) and _endpoint_supports_loopback_connector_preview(
+                base_url
+            ) and _endpoint_supports_utility_llm_runtime(base_url):
                 return base_url
         except RuntimeError:
             pass
@@ -510,6 +506,7 @@ def _resolve_base_url() -> str:
     env.setdefault("ALGENTA_SOURCE_REGISTRY_ROOT", str(log_dir / "sources"))
     env.setdefault("ALGENTA_RUNTIME_DIR", str(log_dir / "runtime"))
     env.setdefault("ALGENTA_REPOSITORY_INTELLIGENCE_MODEL", "repository.deterministic_local_v1")
+    configure_local_live_server_env(env, root_dir=log_dir)
     with log_path.open("w", encoding="utf-8") as log_handle:
         _runtime_proc = subprocess.Popen(
             [
@@ -571,13 +568,18 @@ def static_json_server(payload: dict[str, object]) -> str:
 
 
 # ─── HTTP helpers ─────────────────────────────────────────────────────────────
-def req(method: str, path: str, body=None, headers=None, auth=True, timeout=10):
-    """Make HTTP request, return (status_code, response_body_dict, response_headers, elapsed)."""
-    url = f"{BASE_URL}{path}"
+def _request_json(
+    base_url: str,
+    method: str,
+    path: str,
+    body=None,
+    headers=None,
+    timeout=10,
+):
+    """Make HTTP request against an arbitrary base URL."""
+    url = f"{base_url}{path}"
     data = json.dumps(body).encode() if body else None
     h = {"Content-Type": "application/json"}
-    if auth:
-        h["X-API-Key"] = API_KEY
     if headers:
         h.update(headers)
     request = urllib.request.Request(url, data=data, headers=h, method=method)
@@ -610,7 +612,22 @@ def req(method: str, path: str, body=None, headers=None, auth=True, timeout=10):
             raise TimeoutError(
                 f"Request to {url} timed out after {timeout}s (elapsed: {elapsed:.1f}s)"
             ) from e
-        raise RuntimeError(f"Cannot connect to {BASE_URL} — is the API server running?") from e
+        raise RuntimeError(f"Cannot connect to {base_url} — is the API server running?") from e
+
+
+def req(method: str, path: str, body=None, headers=None, auth=True, timeout=10):
+    """Make HTTP request, return (status_code, response_body_dict, response_headers, elapsed)."""
+    request_headers = dict(headers or {})
+    if auth:
+        request_headers["X-API-Key"] = API_KEY
+    return _request_json(
+        BASE_URL,
+        method,
+        path,
+        body=body,
+        headers=request_headers,
+        timeout=timeout,
+    )
 
 
 def check(name: str, fn):
@@ -1665,20 +1682,73 @@ if _registry_available:
     check("list_runs tool (mode=auto filter) → filtered results", test_tool_list_runs_mode_filter)
 
 
+def _wait_for_run_envelope(run_id: str, timeout_seconds: float = 15.0) -> dict[str, Any]:
+    deadline = time.monotonic() + timeout_seconds
+    while True:
+        try:
+            return json.loads(run_async(call_tool("get_run", {"run_id": run_id})))
+        except Exception as exc:
+            if "API error 404" not in str(exc) or time.monotonic() >= deadline:
+                raise
+            time.sleep(0.1)
+
+
 def test_tool_get_run():
     """get_run with a valid run_id should return the full envelope."""
     assert _registry_available, "Registry not importable"
-    run_id = shared.get("run_id")
-    if not run_id:
-        # Try to get one from list_runs
-        list_str = run_async(call_tool("list_runs", {"limit": 1}))
-        list_data = json.loads(list_str)
-        if list_data.get("runs"):
-            run_id = list_data["runs"][0]["run_id"]
-    assert run_id, "No run_id available (run simulate first)"
-    result_str = run_async(call_tool("get_run", {"run_id": run_id}))
-    data = json.loads(result_str)
-    assert "error" not in data, f"Unexpected error: {data}"
+    list_str = run_async(call_tool("list_runs", {"limit": 10}))
+    list_data = json.loads(list_str)
+    assert "error" not in list_data, f"Unexpected list_runs error: {list_data}"
+    runs = list_data.get("runs") or []
+    listed_run_ids = [
+        str(run.get("run_id") or run.get("id") or "").strip()
+        for run in runs
+        if isinstance(run, dict)
+    ]
+    candidate_run_ids: list[str] = []
+    shared_run_id = str(shared.get("run_id") or "").strip()
+    if shared_run_id:
+        candidate_run_ids.append(shared_run_id)
+    candidate_run_ids.extend(
+        candidate for candidate in listed_run_ids if candidate and candidate != shared_run_id
+    )
+    assert candidate_run_ids, "No run_id available (run simulate first)"
+
+    data: dict[str, Any] | None = None
+    last_error: Exception | None = None
+    for candidate_run_id in candidate_run_ids:
+        try:
+            candidate_data = _wait_for_run_envelope(candidate_run_id, timeout_seconds=5.0)
+        except Exception as exc:
+            last_error = exc
+            continue
+        if "error" in candidate_data:
+            last_error = AssertionError(f"Unexpected get_run error for {candidate_run_id}: {candidate_data}")
+            continue
+        data = candidate_data
+        break
+
+    if data is None:
+        generated = call_simulate_tool(
+            {
+                "mode": "auto",
+                "objective": "maximize_net_value",
+                "n_simulations": 500,
+                "variables": [
+                    {"name": "revenue", "low": 10000, "high": 30000},
+                    {"name": "cost", "low": 4000, "high": 15000},
+                ],
+            }
+        )
+        fresh_run_id = str(generated.get("run_id") or "").strip()
+        assert fresh_run_id, (
+            "No valid run envelope available via get_run and simulate did not return a run_id. "
+            f"shared_run_id={shared_run_id!r} listed_run_ids={listed_run_ids!r} "
+            f"last_error={last_error!r} generated={generated!r}"
+        )
+        shared["run_id"] = fresh_run_id
+        data = _wait_for_run_envelope(fresh_run_id, timeout_seconds=10.0)
+        assert "error" not in data, f"Unexpected error for freshly simulated run: {data}"
     # Should have run details
     assert "run_id" in data or "id" in data, f"Missing run_id/id in get_run: {list(data.keys())}"
 
@@ -2966,24 +3036,19 @@ if _registry_available:
 
 
 if __name__ == "__main__":
-    import pytest
-
-    exit_code = pytest.main([__file__, "-v"])
-    # Write summary artifact for CI consumers (preserves the
-    # tests/test_runtime_surface_compatibility surface contract).
-    try:
-        from tests.integration.live_integration_artifacts import write_live_integration_summary
-
-        artifact_path = write_live_integration_summary(
-            SUITE_NAME,
-            script="tests/integration/test_mcp_server.py",
-            passed=0,  # TODO: parse from pytest result
-            failed=0,
-            skipped=0,
-            total=0,
-            elapsed_seconds=0.0,
-        )
-        print(f"Summary artifact: {artifact_path}")
-    except Exception:
-        pass
-    sys.exit(exit_code)
+    artifact_path = write_live_integration_summary_from_results(
+        SUITE_NAME,
+        script="tests/integration/test_mcp_server.py",
+        results=results,
+        started_at=STARTED_AT,
+        pass_status=PASS,
+        fail_status=FAIL,
+        skip_status=SKIP,
+        details={
+            "api_key_configured": API_KEY_CONFIGURED,
+            "base_url": BASE_URL,
+            "expected_tool_count": len(EXPECTED_TOOLS),
+        },
+    )
+    print(f"Summary artifact: {artifact_path}")
+    sys.exit(1 if any(status == FAIL for status, *_ in results) else 0)

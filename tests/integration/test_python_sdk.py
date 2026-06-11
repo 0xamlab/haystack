@@ -74,7 +74,7 @@ from tests.integration.live_data_source_server import (  # noqa: E402
     static_json_server,
 )
 from tests.integration.live_integration_artifacts import (
-    write_live_integration_summary,  # noqa: E402
+    write_live_integration_summary_from_results,  # noqa: E402
 )
 from tests.integration.live_repository_fixture import (  # noqa: E402
     assert_repository_intelligence_capabilities_payload,
@@ -2928,24 +2928,18 @@ check("AsyncClient 3 concurrent simulations → all completed", test_async_concu
 
 
 if __name__ == "__main__":
-    import pytest
-
-    exit_code = pytest.main([__file__, "-v"])
-    # Write summary artifact for CI consumers (preserves the
-    # tests/test_runtime_surface_compatibility surface contract).
-    try:
-        from tests.integration.live_integration_artifacts import write_live_integration_summary
-
-        artifact_path = write_live_integration_summary(
-            SUITE_NAME,
-            script="tests/integration/test_python_sdk.py",
-            passed=0,  # TODO: parse from pytest result
-            failed=0,
-            skipped=0,
-            total=0,
-            elapsed_seconds=0.0,
-        )
-        print(f"Summary artifact: {artifact_path}")
-    except Exception:
-        pass
-    sys.exit(exit_code)
+    artifact_path = write_live_integration_summary_from_results(
+        SUITE_NAME,
+        script="tests/integration/test_python_sdk.py",
+        results=results,
+        started_at=STARTED,
+        pass_status=PASS,
+        fail_status=FAIL,
+        skip_status=SKIP,
+        details={
+            "api_key_configured": API_KEY_CONFIGURED,
+            "base_url": BASE_URL,
+        },
+    )
+    print(f"Summary artifact: {artifact_path}")
+    sys.exit(1 if any(status == FAIL for status, *_ in results) else 0)

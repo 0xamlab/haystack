@@ -9,6 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 CI_WORKFLOW = ROOT / ".github" / "workflows" / "ci.yml"
 RUN_REPO_PYTHON = ROOT / "scripts" / "run_repo_python.sh"
+RUN_JS_TEST_SUITE = ROOT / "scripts" / "run_js_test_suite.sh"
 
 
 def _write_executable(path: Path, content: str) -> None:
@@ -28,12 +29,21 @@ def test_root_package_json_exposes_repo_root_js_commands() -> None:
         "pnpm --dir packages/ts-sdk install --lockfile=false && "
         "pnpm --dir apps/gateway install --lockfile=false"
     )
-    assert scripts["test:js"] == (
+    assert scripts["test:js"] == "./scripts/run_js_test_suite.sh"
+    test_js_script = RUN_JS_TEST_SUITE.read_text(encoding="utf-8")
+    assert "unset ALGENTA_API_KEY" in test_js_script
+    assert "unset DE_API_KEY" in test_js_script
+    assert "unset ALGENTA_BASE_URL" in test_js_script
+    assert "unset DE_BASE_URL" in test_js_script
+    assert "unset ALGENTA_API_URL" in test_js_script
+    assert (
         "pnpm --dir packages/ts-sdk test -- --run "
-        "src/libraries.test.ts src/runtime_daemon_client.test.ts src/index.test.ts "
-        "&& pnpm --dir apps/gateway test "
-        "&& pnpm --dir apps/gateway exec tsx --test ../../examples/shared/privacyProfile.test.ts"
-    )
+        "src/libraries.test.ts src/runtime_daemon_client.test.ts src/index.test.ts"
+    ) in test_js_script
+    assert "pnpm --dir apps/gateway test" in test_js_script
+    assert (
+        "pnpm --dir apps/gateway exec tsx --test ../../examples/shared/privacyProfile.test.ts"
+    ) in test_js_script
     assert "tests/test_js_workspace_surface.py" in scripts["test:formal-runtime-foundation"]
     assert "tests/test_platform_contract_schema_surface.py" in scripts["test:formal-runtime-foundation"]
     assert "tests/test_runtime_schema_surface.py" in scripts["test:formal-runtime-foundation"]

@@ -1,11 +1,11 @@
-"""End-to-end bridge test: Python verified_agentic planner <-> Node agent-core sidecar.
+"""Offline-contract bridge test: Python verified_agentic planner <-> stub agent-core.
 
-Boots the real Node NDJSON sidecar (stub agent), drives it through
+Boots the quarantined stub sidecar directly, drives it through
 ``_generate_verified_agentic_repository_patch_plan`` over a fake materialized
 checkout, and asserts the Python-authoritative diff reflects the sidecar's edit.
 
 This proves the loopback contract + shared-filesystem mutation + diff capture
-without a model or the vendored Cline SDK. Skipped if Node is unavailable.
+without a model. The real runtime boot path is covered separately.
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ from apps.api_server.services import (
 )
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
-_RUN_SERVER = _REPO_ROOT / "agent-core" / "run-server.mjs"
+_RUN_SERVER = _REPO_ROOT / "agent-core" / "run-server.stub.mjs"
 
 _SNAPSHOT_MANIFEST = {"snapshot_id": "snap_bridge", "resolved_revision": "cafe", "files": []}
 _TRIAGE_MANIFEST = {
@@ -44,7 +44,7 @@ _TRIAGE_MANIFEST = {
 
 pytestmark = pytest.mark.skipif(
     shutil.which("node") is None or not _RUN_SERVER.exists(),
-    reason="node and agent-core/run-server.mjs are required for the bridge test",
+    reason="node and agent-core/run-server.stub.mjs are required for the bridge test",
 )
 
 

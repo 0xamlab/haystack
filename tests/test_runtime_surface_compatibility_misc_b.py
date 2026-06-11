@@ -328,7 +328,8 @@ def test_typescript_runtime_live_script_covers_api_helper_surface() -> None:
     assert "classify_simulation_capacity_blocker" in typescript_runtime_live
     assert "_ISOLATED_API_SERVER_ACTIVE = False" in typescript_runtime_live
     assert "if _ISOLATED_API_SERVER_ACTIVE:" in typescript_runtime_live
-    assert "if _endpoint_serves_canonical_runtime_surface(BASE_URL):" in typescript_runtime_live
+    assert "_endpoint_serves_canonical_runtime_surface(" in typescript_runtime_live
+    assert "_endpoint_supports_loopback_dataset_preview(BASE_URL)" in typescript_runtime_live
     assert 'def _format_elapsed_seconds(started_at: float) -> str:' in typescript_runtime_live
     assert '_emit(f"  ... {name}")' in typescript_runtime_live
     assert '_emit(f"  {PASS} {name} ({_format_elapsed_seconds(started_at)})")' in (
@@ -461,7 +462,7 @@ def test_live_mcp_integration_script_tracks_runtime_proof_catalog() -> None:
     assert 'call_tool("get_runtime_benchmarks", {})' in mcp_integration
     assert 'call_tool("get_runtime_release_validation", {})' in mcp_integration
     assert 'SUITE_NAME = "mcp_server_integration"' in mcp_integration
-    assert "write_live_integration_summary(" in mcp_integration
+    assert "write_live_integration_summary_from_results(" in mcp_integration
     assert "Summary artifact:" in mcp_integration
     assert 'print(f"  ... {name}", flush=True)' in mcp_integration
     assert "PlatformContractResponse.model_validate(contract)" in mcp_integration
@@ -471,5 +472,4 @@ def test_live_mcp_integration_script_tracks_runtime_proof_catalog() -> None:
         mcp_integration
     )
     assert "resolve_local_live_base_url" not in mcp_integration
-
 

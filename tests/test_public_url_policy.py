@@ -94,6 +94,27 @@ def test_private_public_url_policy_accepts_algenta_api_url_transport_fallback(
         _refresh_settings()
 
 
+def test_private_public_url_policy_prefers_explicit_env_transport_alias_over_cached_config(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    try:
+        monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "self_hosted")
+        monkeypatch.setenv("ALGENTA_BASE_URL", "https://stale.customer.internal")
+        _refresh_settings()
+        stale_settings = get_settings()
+
+        monkeypatch.delenv("ALGENTA_BASE_URL", raising=False)
+        monkeypatch.delenv("DE_BASE_URL", raising=False)
+        monkeypatch.setenv("ALGENTA_API_URL", "https://decision.customer.internal")
+
+        assert (
+            resolve_api_public_base_url(settings_obj=stale_settings)
+            == "https://decision.customer.internal"
+        )
+    finally:
+        _refresh_settings()
+
+
 def test_private_public_url_policy_uses_local_safe_defaults_without_cloud_fallback(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -103,10 +124,17 @@ def test_private_public_url_policy_uses_local_safe_defaults_without_cloud_fallba
         monkeypatch.delenv("ALGENTA_API_PUBLIC_BASE_URL", raising=False)
         monkeypatch.delenv("ALGENTA_BASE_URL", raising=False)
         monkeypatch.delenv("DE_BASE_URL", raising=False)
+        monkeypatch.delenv("ALGENTA_API_URL", raising=False)
         _refresh_settings()
+        config = {
+            "privacy_policy": get_settings().privacy_policy,
+            "api_public_base_url": None,
+            "api_transport_base_url": None,
+            "app_base_url": None,
+        }
 
-        assert resolve_api_public_base_url() == "http://localhost:8000"
-        assert resolve_app_public_base_url() == "http://localhost:8000"
+        assert resolve_api_public_base_url(settings_obj=config) == "http://localhost:8000"
+        assert resolve_app_public_base_url(settings_obj=config) == "http://localhost:8000"
     finally:
         _refresh_settings()
 

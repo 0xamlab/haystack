@@ -150,7 +150,7 @@ Local runtime daemon:
 Install:
     pip install algenta-sdk
     # or from repo:
-    PYTHONPATH=. python3 apps/cli/main.py benchmark
+    PYTHONPATH=. python3 -m apps.cli.main benchmark
 
 Credential examples above are Cloud Managed examples. In `self_hosted` and
 `air_gapped`, use the API key provisioned by your self-hosted operator
@@ -220,6 +220,17 @@ _RUNTIME_READY_TIMEOUT_SECONDS = 3.0
 _RUNTIME_READY_POLL_SECONDS = 0.1
 _RUNTIME_NOT_RUNNING_MESSAGE = "Algenta Runtime is not running. Start with: de runtime start"
 
+_FACADE_API_REQUEST = api_request
+_FACADE_API_STREAM_REQUEST = api_stream_request
+_FACADE_LOAD_ENV_API_KEY = _load_env_api_key
+_FACADE_PRIVATE_PROFILE_ENABLED = _private_profile_enabled
+_FACADE_GET_BASE_URL = _get_base_url
+_FACADE_GET_DASHBOARD_URL = _get_dashboard_url
+_FACADE_ARG_VALUE = _arg_value
+_FACADE_STORE_API_KEY_SECURE = _store_api_key_secure
+_FACADE_STRIP_NONE = _strip_none
+_FACADE_RICH = _RICH
+
 from apps.cli.main._helpers import *  # noqa: F401, E402, F403
 from apps.cli.main._helpers import (  # noqa: F401, E402
     _normalize_expert_variable,
@@ -270,6 +281,20 @@ from apps.cli.main._cmd_auth_daemon_bench import (  # noqa: F401, E402
     _runtime_list_modules_sync,
     _load_runtime_execute_args,
 )
+
+# Keep the package facade as the source of truth. The extracted submodules
+# proxy back to `apps.cli.main`, so wildcard imports must not replace these
+# facade-bound functions with the proxy wrappers they export.
+api_request = _FACADE_API_REQUEST
+api_stream_request = _FACADE_API_STREAM_REQUEST
+_load_env_api_key = _FACADE_LOAD_ENV_API_KEY
+_private_profile_enabled = _FACADE_PRIVATE_PROFILE_ENABLED
+_get_base_url = _FACADE_GET_BASE_URL
+_get_dashboard_url = _FACADE_GET_DASHBOARD_URL
+_arg_value = _FACADE_ARG_VALUE
+_store_api_key_secure = _FACADE_STORE_API_KEY_SECURE
+_strip_none = _FACADE_STRIP_NONE
+_RICH = _FACADE_RICH
 
 # ─── Main entry point (without Typer) ────────────────────────────────────────
 
@@ -396,15 +421,21 @@ def main() -> None:
         cmd_repositories_decision_plan(args[2], args[3], _json_format_flag())
     elif cmd == "repositories" and sub == "graph-query" and len(args) >= 4:
         cmd_repositories_graph_query(args[2], args[3], _json_format_flag())
+    elif cmd == "repositories" and sub == "pipeline" and len(args) >= 4:
+        cmd_repositories_pipeline(args[2], args[3], _json_format_flag())
     elif cmd == "repositories" and sub == "simulate" and len(args) >= 4:
         cmd_repositories_simulate(args[2], args[3], _json_format_flag())
+    elif cmd == "repositories" and sub == "simulate-patch" and len(args) >= 4:
+        cmd_repositories_simulate_patch(args[2], args[3], _json_format_flag())
+    elif cmd == "repositories" and sub == "fix" and len(args) >= 4:
+        cmd_repositories_fix(args[2], args[3], _json_format_flag())
     elif cmd == "repositories" and sub == "apply" and len(args) >= 4:
         cmd_repositories_apply(args[2], args[3], _json_format_flag())
     elif cmd == "repositories":
         print(
             "Usage: de repositories capabilities [--format json]\n"
             "       de repositories "
-            "[snapshot|triage|decision-plan|graph-query|simulate|apply] "
+            "[snapshot|triage|decision-plan|graph-query|pipeline|simulate|simulate-patch|fix|apply] "
             "<repository_id> <request.json> [--format json]\n"
             "       de repositories get-snapshot <repository_id> <snapshot_id> [--format json]"
         )

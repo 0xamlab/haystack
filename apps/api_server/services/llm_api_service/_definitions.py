@@ -27,7 +27,7 @@ from apps.runtime.mojo_library_runner import MojoLibraryError
 
 
 
-@dataclass(frozen=True)
+@dataclass
 class LLMAPIError(Exception):
     code: str
     message: str
@@ -561,4 +561,3 @@ def get_llm_model_descriptor(model_id: str) -> LLMModelDescriptor:
         f"Model '{model_id}' is not available on the current Algenta LLM API surface.",
         {"model": model_id},
     )
-

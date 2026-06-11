@@ -3,6 +3,11 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from apps.api_server.services.repository_intelligence_channel_envelope import (
+    build_repository_fix_envelope,
+    build_repository_pipeline_envelope,
+    build_repository_simulate_patch_envelope,
+)
 from apps.mcp_server.client import api
 
 CREATE_REPOSITORY_SNAPSHOT_SPEC: dict[str, Any] = {
@@ -159,6 +164,60 @@ APPLY_REPOSITORY_SPEC: dict[str, Any] = {
     },
 }
 
+RUN_REPOSITORY_PIPELINE_SPEC: dict[str, Any] = {
+    "name": "run_repository_pipeline",
+    "description": "Run the repository snapshot->triage->plan->simulate chain and return the canonical repository envelope.",
+    "inputSchema": {
+        "type": "object",
+        "required": ["repository_id"],
+        "properties": {
+            "repository_id": {"type": "string", "minLength": 1},
+            "snapshot_id": {"type": "string", "minLength": 1},
+            "snapshot": {"type": "object"},
+            "signals": {"type": "object"},
+            "max_evidence_items": {"type": "integer", "minimum": 1},
+            "max_snippet_lines": {"type": "integer", "minimum": 5},
+            "token_budget": {"type": "integer", "minimum": 256},
+            "model": {"type": "string"},
+            "runs": {"type": "integer", "minimum": 100},
+            "seed": {"type": "integer", "minimum": 0},
+            "stop_after": {"type": "string", "enum": ["snapshot", "triage", "plan", "simulate"]},
+        },
+        "additionalProperties": False,
+    },
+}
+
+SIMULATE_REPOSITORY_PATCH_SPEC: dict[str, Any] = {
+    "name": "simulate_repository_patch",
+    "description": "Simulate an in-flight repository patch and return the canonical repository envelope.",
+    "inputSchema": {
+        "type": "object",
+        "required": ["repository_id", "snapshot_id", "patch_diff"],
+        "properties": {
+            "repository_id": {"type": "string", "minLength": 1},
+            "snapshot_id": {"type": "string", "minLength": 1},
+            "patch_diff": {"type": "string", "minLength": 1},
+            "confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+        },
+        "additionalProperties": False,
+    },
+}
+
+RUN_REPOSITORY_FIX_SPEC: dict[str, Any] = {
+    "name": "run_repository_fix",
+    "description": "Run repository pipeline then apply the result, returning the canonical repository envelope.",
+    "inputSchema": {
+        "type": "object",
+        "required": ["repository_id"],
+        "properties": {
+            "repository_id": {"type": "string", "minLength": 1},
+            "pipeline": {"type": "object"},
+            "apply": {"type": "object"},
+        },
+        "additionalProperties": False,
+    },
+}
+
 
 def _require_string(arguments: dict[str, Any], key: str) -> str:
     value = arguments.get(key)
@@ -298,3 +357,99 @@ async def apply_repository_handler(arguments: dict[str, Any]) -> str:
     return json.dumps(
         await api("POST", f"/v1/repositories/{repository_id}/apply", json=payload), indent=2
     )
+
+
+async def run_repository_pipeline_handler(arguments: dict[str, Any]) -> str:
+    repository_id = _require_string(arguments, "repository_id")
+    payload = {
+        key: value
+        for key, value in arguments.items()
+        if key
+        in {
+            "snapshot_id",
+            "snapshot",
+            "signals",
+            "max_evidence_items",
+            "max_snippet_lines",
+            "token_budget",
+            "model",
+            "runs",
+            "seed",
+            "stop_after",
+        }
+    }
+    response = await api("POST", f"/v1/repositories/{repository_id}/pipeline", json=payload)
+    envelope = build_repository_pipeline_envelope(repository_id=repository_id, response=response)
+    return json.dumps(envelope, indent=2)
+
+
+async def simulate_repository_patch_handler(arguments: dict[str, Any]) -> str:
+    repository_id = _require_string(arguments, "repository_id")
+    snapshot_id = _require_string(arguments, "snapshot_id")
+    patch_diff = _require_string(arguments, "patch_diff")
+    payload: dict[str, Any] = {"snapshot_id": snapshot_id, "patch_diff": patch_diff}
+    if "confidence" in arguments:
+        payload["confidence"] = arguments["confidence"]
+    response = await api("POST", f"/v1/repositories/{repository_id}/simulate-patch", json=payload)
+    envelope = build_repository_simulate_patch_envelope(
+        repository_id=repository_id,
+        snapshot_id=snapshot_id,
+        response=response,
+    )
+    return json.dumps(envelope, indent=2)
+
+
+async def run_repository_fix_handler(arguments: dict[str, Any]) -> str:
+    repository_id = _require_string(arguments, "repository_id")
+    pipeline_payload = arguments.get("pipeline")
+    if pipeline_payload is None:
+        pipeline_payload = {}
+    if not isinstance(pipeline_payload, dict):
+        raise ValueError("pipeline must be an object.")
+    apply_payload = arguments.get("apply")
+    if apply_payload is None:
+        apply_payload = {}
+    if not isinstance(apply_payload, dict):
+        raise ValueError("apply must be an object.")
+
+    pipeline_response = await api(
+        "POST", f"/v1/repositories/{repository_id}/pipeline", json=pipeline_payload
+    )
+    pipeline_envelope = build_repository_pipeline_envelope(
+        repository_id=repository_id,
+        response=pipeline_response,
+    )
+    snapshot_id = pipeline_envelope["pipeline"]["snapshot_id"]
+    decision_plan_id = pipeline_envelope["pipeline"]["plan_id"]
+    simulation_id = pipeline_envelope["pipeline"]["simulation_id"]
+    if not decision_plan_id or not simulation_id:
+        raise ValueError("pipeline must complete through simulate before fix can apply.")
+
+    resolved_apply_payload = {
+        "snapshot_id": snapshot_id,
+        "decision_plan_id": decision_plan_id,
+        "simulation_id": simulation_id,
+        "mode": apply_payload.get("mode", "patch_only"),
+        **{
+            key: value
+            for key, value in apply_payload.items()
+            if key
+            in {
+                "write_permission",
+                "branch_name",
+                "commit_message",
+                "base_branch",
+                "pull_request_title",
+                "pull_request_body",
+            }
+        },
+    }
+    apply_response = await api(
+        "POST", f"/v1/repositories/{repository_id}/apply", json=resolved_apply_payload
+    )
+    envelope = build_repository_fix_envelope(
+        repository_id=repository_id,
+        pipeline_response=pipeline_response,
+        apply_response=apply_response,
+    )
+    return json.dumps(envelope, indent=2)

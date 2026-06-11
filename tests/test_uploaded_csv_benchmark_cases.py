@@ -13,6 +13,7 @@ sys.path.insert(0, str(BENCHMARKS_DIR))
 import uploaded_csv_api_warm_benchmark as warm_benchmark
 import uploaded_csv_exact_benchmark as exact_benchmark
 import uploaded_csv_spec_reconstruction_benchmark as spec_benchmark
+from apps.api_server.routers.query import ConstraintSpec, ResolvedPlan
 from uploaded_csv_spec_reconstruction_benchmark import _build_hint_cases
 
 
@@ -192,7 +193,12 @@ def test_uploaded_csv_warm_benchmark_initializes_mojo_runtime(tmp_path, monkeypa
         return None
 
     async def _fake_register_source(*_args, **_kwargs):
-        return {"status": "registered", "row_count": 1, "planner_prewarm_ms": 1.0}
+        return {
+            "status": "registered",
+            "row_count": 1,
+            "planner_prewarm_ms": 1.0,
+            "dataset_id": "ds_dummy",
+        }
 
     async def _fake_run_case(*_args, **_kwargs):
         return {
@@ -254,3 +260,89 @@ def test_uploaded_csv_warm_benchmark_initializes_mojo_runtime(tmp_path, monkeypa
 
     assert summary["mojo_runtime_mode"] == "pool"
     assert events == ["setup", "teardown"]
+
+
+def test_uploaded_csv_warm_benchmark_run_case_uses_dataset_scope(monkeypatch) -> None:
+    seen: dict[str, object] = {}
+
+    dummy_exact = exact_benchmark.ExactQueryCase(
+        label="Q1",
+        description="dummy",
+        source_name="Dummy",
+        metric_column="metric",
+        group_source=None,
+        group_column=None,
+        edges=(),
+    )
+    dummy_hint = spec_benchmark.HintQueryCase(
+        label="Q1",
+        description="dummy",
+        metric_hint="metric",
+        dim_hint=None,
+        preferred_source="Dummy",
+        exact_case=dummy_exact,
+    )
+
+    monkeypatch.setattr(warm_benchmark, "_ensure_case_tables", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        warm_benchmark,
+        "_expected_result",
+        lambda *_args, **_kwargs: (1.0, {}),
+    )
+    monkeypatch.setattr(warm_benchmark, "_normalize_result", lambda result: result)
+
+    async def _fake_resolve_registered_intent(request, *, auth, request_id):
+        seen["resolve_dataset_id"] = request.dataset_id
+        seen["resolve_preferred_source"] = request.preferred_source
+        return SimpleNamespace(
+            resolved_plan=ResolvedPlan(
+                source_name="Dummy",
+                metric_column="metric",
+                aggregation="sum",
+                group_column=None,
+                join_path=None,
+                filter=None,
+                limit=None,
+                order="desc",
+                constraints=ConstraintSpec(),
+                schema_revision="rev_123",
+            ),
+            plan=["Resolved plan accepted [rev_123]"],
+            resolved_source="Dummy",
+            resolved_column="metric",
+            confidence=0.9,
+            rejection_reason=None,
+        )
+
+    async def _fake_query_sources(request, *, auth):
+        seen["query_dataset_id"] = request.dataset_id
+        seen["query_resolved_plan_source"] = request.resolved_plan.source_name
+        return SimpleNamespace(
+            result=1.0,
+            plan=["Result cache HIT [12345678]"],
+            resolved_source="Dummy",
+            resolved_column="metric",
+            confidence=0.9,
+        )
+
+    monkeypatch.setattr(
+        warm_benchmark,
+        "_resolve_registered_intent",
+        _fake_resolve_registered_intent,
+    )
+    monkeypatch.setattr(warm_benchmark, "query_sources", _fake_query_sources)
+
+    result = asyncio.run(
+        warm_benchmark._run_case(
+            case=dummy_hint,
+            dataset_id="ds_dummy",
+            auth={"org_id": "org_1", "role": "owner", "key_id": "key_1"},
+            reference_planner=SimpleNamespace(tables={}),
+        )
+    )
+
+    assert seen["resolve_dataset_id"] == "ds_dummy"
+    assert seen["resolve_preferred_source"] == "Dummy"
+    assert seen["query_dataset_id"] == "ds_dummy"
+    assert seen["query_resolved_plan_source"] == "Dummy"
+    assert result["query_correct"] is True

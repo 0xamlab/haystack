@@ -256,3 +256,46 @@ def test_ssrf_guard_skipped_for_explicit_allowlist(
     assert body == "ok"
     assert content_type == "text/plain"
     get_settings.cache_clear()
+
+
+def test_read_url_text_allows_allowlisted_loopback_destination_under_permissive_outbound(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "saas")
+    monkeypatch.setenv("ALGENTA_ALLOW_OUTBOUND_NETWORK", "true")
+    monkeypatch.setenv("ALGENTA_EGRESS_ALLOWLIST", "127.0.0.1")
+    get_settings.cache_clear()
+
+    captured: dict[str, object] = {}
+
+    class _FakeHeaders:
+        def get(self, _key, default=""):
+            return "text/csv"
+
+    class _FakeResponse:
+        headers = _FakeHeaders()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return False
+
+        def read(self):
+            return b"id,value\n1,ok\n"
+
+    def _capturing_urlopen(request, *args, **kwargs):
+        captured["url"] = request.full_url if hasattr(request, "full_url") else str(request)
+        return _FakeResponse()
+
+    monkeypatch.setattr(
+        "apps.api_server.services.data_map_sources.urllib.request.urlopen",
+        _capturing_urlopen,
+    )
+
+    body, content_type = read_url_text("http://127.0.0.1:8765/fixture.csv")
+
+    assert captured["url"] == "http://127.0.0.1:8765/fixture.csv"
+    assert body == "id,value\n1,ok\n"
+    assert content_type == "text/csv"
+    get_settings.cache_clear()

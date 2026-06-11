@@ -166,7 +166,10 @@ def main() -> int:
         "ALGENTA_DAEMON_SOCK": str(daemon_sock),
         "ALGENTA_DAEMON_TCP": "127.0.0.1:50109",
         "ALGENTA_MOJO_SOCK": str(mojo_sock),
-        "JWT_SECRET": "change-me-in-production-use-256-bit-random-value",
+        "JWT_SECRET": os.environ.get(
+            "JWT_SECRET",
+            "change-me-in-production-use-256-bit-random-value",
+        ),
     }
     env_updates.update(_license_verification_env())
 

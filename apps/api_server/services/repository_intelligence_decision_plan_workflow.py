@@ -4,7 +4,7 @@ import fcntl
 import hashlib
 import os
 from collections.abc import Awaitable, Callable
-from contextlib import contextmanager
+from contextlib import AbstractContextManager
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +25,9 @@ from apps.api_server.services import (
 )
 from apps.api_server.services import (
     repository_intelligence_storage as repository_storage,
+)
+from apps.api_server.services import (
+    repository_intelligence_telemetry as telemetry,
 )
 from apps.api_server.services.repository_intelligence_contracts import (
     RepositoryIntelligenceError,
@@ -49,6 +52,65 @@ _TopLevelService = Callable[[str], str]
 _IsTestPath = Callable[[str], bool]
 
 
+def _planner_usage_from_telemetry(data: dict[str, Any]) -> dict[str, Any]:
+    counters = data.get("counters", {})
+    if not isinstance(counters, dict):
+        return {}
+    uncached = counters.get("llm_input_tokens_uncached", 0)
+    cache_read = counters.get("llm_input_tokens_cached_read", 0)
+    cache_write = counters.get("llm_input_tokens_cached_write", 0)
+    output = counters.get("llm_output_tokens", 0)
+    numeric_values = (uncached, cache_read, cache_write, output)
+    if not any(isinstance(value, (int, float)) and not isinstance(value, bool) for value in numeric_values):
+        return {}
+    return {
+        "input_tokens": float(uncached) + float(cache_read) + float(cache_write),
+        "output_tokens": float(output),
+        "cache_read_tokens": float(cache_read),
+        "cache_write_tokens": float(cache_write),
+        "cost_usd": None,
+    }
+
+
+def _planner_usage_from_plan_result(plan_result: dict[str, Any]) -> dict[str, Any]:
+    usage = plan_result.get("planner_usage")
+    if not isinstance(usage, dict):
+        return {}
+    required_keys = (
+        "input_tokens",
+        "output_tokens",
+        "cache_read_tokens",
+        "cache_write_tokens",
+    )
+    if not all(isinstance(usage.get(key), (int, float)) for key in required_keys):
+        return {}
+    return {
+        "input_tokens": float(usage["input_tokens"]),
+        "output_tokens": float(usage["output_tokens"]),
+        "cache_read_tokens": float(usage["cache_read_tokens"]),
+        "cache_write_tokens": float(usage["cache_write_tokens"]),
+        "cost_usd": (
+            float(usage["cost_usd"])
+            if isinstance(usage.get("cost_usd"), (int, float))
+            and not isinstance(usage.get("cost_usd"), bool)
+            else None
+        ),
+    }
+
+
+def _planner_usage_has_non_zero_tokens(usage: dict[str, Any]) -> bool:
+    for key in (
+        "input_tokens",
+        "output_tokens",
+        "cache_read_tokens",
+        "cache_write_tokens",
+    ):
+        value = usage.get(key)
+        if isinstance(value, (int, float)) and not isinstance(value, bool) and value > 0:
+            return True
+    return False
+
+
 def _decision_plan_lookup_key(
     *,
     snapshot_id: str,
@@ -67,8 +129,7 @@ def _decision_plan_lookup_key(
     )
 
 
-@contextmanager
-def _decision_plan_generation_lock(lookup_dir: Path, lookup_key: str):
+class _DecisionPlanGenerationLock(AbstractContextManager[None]):
     """Serialize decision-plan generation for one lookup_key across workers.
 
     Without this, two concurrent cache misses for the same key — critically the
@@ -77,19 +138,42 @@ def _decision_plan_generation_lock(lookup_dir: Path, lookup_key: str):
     for the file-based runtime store; the production multi-tenant deployment
     swaps this for a Postgres advisory / Redis lock on the same key (plan §6).
     """
-    lookup_dir.mkdir(parents=True, exist_ok=True)
-    lock_path = lookup_dir / f"{lookup_key}.lock"
-    # 0o600: the advisory flock anchor holds no data and is owner-only by design;
-    # world-readable (0o644) is unnecessary and trips py/overly-permissive-file.
-    fd = os.open(str(lock_path), os.O_CREAT | os.O_RDWR, 0o600)
-    try:
-        fcntl.flock(fd, fcntl.LOCK_EX)
-        yield
-    finally:
+
+    def __init__(self, lookup_dir: Path, lookup_key: str) -> None:
+        self._lookup_dir = lookup_dir
+        self._lookup_key = lookup_key
+        self._fd: int | None = None
+
+    def __enter__(self) -> None:
+        self._lookup_dir.mkdir(parents=True, exist_ok=True)
+        lock_path = self._lookup_dir / f"{self._lookup_key}.lock"
+        # 0o600: the advisory flock anchor holds no data and is owner-only by design;
+        # world-readable (0o644) is unnecessary and trips py/overly-permissive-file.
+        self._fd = os.open(str(lock_path), os.O_CREAT | os.O_RDWR, 0o600)
+        fcntl.flock(self._fd, fcntl.LOCK_EX)
+        return None
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: object | None,
+    ) -> bool:
+        if self._fd is None:
+            return False
         try:
-            fcntl.flock(fd, fcntl.LOCK_UN)
+            fcntl.flock(self._fd, fcntl.LOCK_UN)
         finally:
-            os.close(fd)
+            os.close(self._fd)
+            self._fd = None
+        return False
+
+
+def _decision_plan_generation_lock(
+    lookup_dir: Path,
+    lookup_key: str,
+) -> AbstractContextManager[None]:
+    return _DecisionPlanGenerationLock(lookup_dir, lookup_key)
 
 
 def _patch_impact_summary(
@@ -361,11 +445,16 @@ async def create_repository_decision_plan(
             repository_id=repository_id,
             snapshot_id=resolved_snapshot_id,
         )
-        plan_result = await generate_repository_patch_plan(
-            model_id=model_id,
-            snapshot_manifest=snapshot_manifest,
-            triage_manifest=triage_manifest,
-        )
+        with telemetry.collect_or_current() as planner_telemetry:
+            plan_result = await generate_repository_patch_plan(
+                model_id=model_id,
+                snapshot_manifest=snapshot_manifest,
+                triage_manifest=triage_manifest,
+            )
+            planner_usage = _planner_usage_from_telemetry(planner_telemetry)
+            plan_result_usage = _planner_usage_from_plan_result(plan_result)
+            if plan_result_usage and not _planner_usage_has_non_zero_tokens(planner_usage):
+                planner_usage = plan_result_usage
         patch_diff = str(plan_result["patch_diff"])
         validate_patch_against_snapshot(
             snapshot_manifest=snapshot_manifest,
@@ -553,6 +642,25 @@ async def create_repository_decision_plan(
                     "patch_path": str(patch_path),
                     "created_at": created_at.isoformat(),
                     "decision_plan": decision_plan.model_dump(mode="json"),
+                    "planner_usage": planner_usage,
+                    "agent_run_id": str(plan_result.get("agent_run_id") or "").strip() or None,
+                    "session_id": str(plan_result.get("session_id") or "").strip() or None,
+                    "runtime_kind": str(plan_result.get("runtime_kind") or "").strip() or None,
+                    "is_stub": (
+                        plan_result.get("is_stub")
+                        if isinstance(plan_result.get("is_stub"), bool)
+                        else None
+                    ),
+                    "runtime_provider": (
+                        str(plan_result.get("runtime_provider")).strip()
+                        if plan_result.get("runtime_provider") is not None
+                        else None
+                    ),
+                    "runtime_model": (
+                        str(plan_result.get("runtime_model")).strip()
+                        if plan_result.get("runtime_model") is not None
+                        else None
+                    ),
                     # Internal audit provenance — ignored by RepositoryDecisionPlanResponse,
                     # so planner_engine="cline_fork"/transcript never reach the public API.
                     **(

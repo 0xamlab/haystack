@@ -4,6 +4,7 @@ Extracted from tests/test_repository_intelligence_service.py during modularizati
 """
 from __future__ import annotations
 
+from apps.api_server.services import repository_intelligence_telemetry as telemetry
 from tests._repository_intelligence_service_helpers import *  # noqa: F401,F403
 
 
@@ -452,6 +453,12 @@ async def test_repository_decision_plan_simulate_and_apply_local_branch(
     )
 
     async def _fake_generate_repository_patch_plan(**kwargs):  # type: ignore[no-untyped-def]
+        telemetry.record_tokens(
+            input_uncached=900,
+            input_cached_read=300,
+            input_cached_write=50,
+            output=120,
+        )
         return {
             "root_cause": "handle_request dereferences user.name without a null guard.",
             "planner_model_id": "repo-fix-model",
@@ -521,6 +528,13 @@ async def test_repository_decision_plan_simulate_and_apply_local_branch(
     assert repository_analysis.planner_model_id == "repo-fix-model"
     assert repository_analysis.planner_execution_mode == "provider_backed_chat"
     assert repository_analysis.planner_provider_backend == "openai"
+    assert decision_plan.planner_usage == {
+        "input_tokens": 1250.0,
+        "output_tokens": 120.0,
+        "cache_read_tokens": 300.0,
+        "cache_write_tokens": 50.0,
+        "cost_usd": None,
+    }
     assert envelope.recommended_action == "apply_patch"
     assert applied.applied is True
     assert applied.commit_sha
@@ -528,3 +542,106 @@ async def test_repository_decision_plan_simulate_and_apply_local_branch(
     assert "anonymous" in source_path.read_text(encoding="utf-8")
 
 
+@pytest.mark.anyio
+async def test_repository_decision_plan_surfaces_verified_agentic_usage_and_runtime_metadata(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ALGENTA_RUNTIME_DIR", str(tmp_path / "runtime"))
+    repo_path = _literal_mismatch_repo(tmp_path)
+    connector = _connector_for_repo(repo_path)
+
+    snapshot = repository_service.create_repository_snapshot(
+        connector=connector,
+        request=RepositorySnapshotCreateRequest(),
+    )
+    triage = repository_service.triage_repository(
+        connector=connector,
+        request=RepositoryTriageRequest(
+            snapshot_id=snapshot.snapshot_id,
+            signals={
+                "issue_text": "normalize_status returns closed for open inputs",
+                "diagnostics": [
+                    {
+                        "path": "src/service.py",
+                        "line": 4,
+                        "severity": "error",
+                        "message": "normalize_status('OPEN') returns 'closed' instead of 'open'.",
+                    }
+                ],
+                "changed_files": ["src/service.py"],
+            },
+        ),
+    )
+
+    source_path = repo_path / "src" / "service.py"
+    old_text = source_path.read_text(encoding="utf-8")
+    new_text = old_text.replace('return "closed"', 'return "open"')
+    patch_diff = "".join(
+        difflib.unified_diff(
+            old_text.splitlines(keepends=True),
+            new_text.splitlines(keepends=True),
+            fromfile="a/src/service.py",
+            tofile="b/src/service.py",
+        )
+    )
+
+    async def _fake_generate_repository_patch_plan(**kwargs):  # type: ignore[no-untyped-def]
+        return {
+            "root_cause": "verified agent fixed the normalize_status literal mismatch.",
+            "planner_model_id": repository_service._VERIFIED_AGENTIC_REPOSITORY_MODEL_ID,
+            "planner_execution_mode": "verified_agentic",
+            "planner_provider_backend": None,
+            "candidate_fixes": ["Fix normalize_status literal"],
+            "recommended_action": "Return open for OPEN inputs",
+            "rationale": "Injected context was sufficient for the verified agent to patch directly.",
+            "confidence": 0.91,
+            "patch_diff": patch_diff,
+            "planner_usage": {
+                "input_tokens": 4200.0,
+                "output_tokens": 210.0,
+                "cache_read_tokens": 1600.0,
+                "cache_write_tokens": 450.0,
+                "cost_usd": None,
+            },
+            "agent_run_id": "agent_run_123",
+            "session_id": "session_123",
+            "runtime_kind": "cline",
+            "runtime_provider": "anthropic",
+            "runtime_model": "claude-sonnet-4-6",
+            "planner_engine": "cline_fork",
+        }
+
+    monkeypatch.setattr(
+        repository_service,
+        "_resolve_repository_model",
+        lambda _model: repository_service._VERIFIED_AGENTIC_REPOSITORY_MODEL_ID,
+    )
+    monkeypatch.setattr(
+        repository_service,
+        "_generate_repository_patch_plan",
+        _fake_generate_repository_patch_plan,
+    )
+
+    decision_plan = await repository_service.create_repository_decision_plan(
+        connector=connector,
+        request=RepositoryDecisionPlanCreateRequest(
+            snapshot_id=snapshot.snapshot_id,
+            workspace_evidence_bundle_ref=triage.workspace_evidence_bundle_ref,
+            model=repository_service._VERIFIED_AGENTIC_REPOSITORY_MODEL_ID,
+        ),
+    )
+
+    assert decision_plan.planner_usage == {
+        "input_tokens": 4200.0,
+        "output_tokens": 210.0,
+        "cache_read_tokens": 1600.0,
+        "cache_write_tokens": 450.0,
+        "cost_usd": None,
+    }
+    assert decision_plan.agent_run_id == "agent_run_123"
+    assert decision_plan.session_id == "session_123"
+    assert decision_plan.runtime_kind == "cline"
+    assert decision_plan.is_stub is None
+    assert decision_plan.runtime_provider == "anthropic"
+    assert decision_plan.runtime_model == "claude-sonnet-4-6"

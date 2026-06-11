@@ -613,24 +613,24 @@ def evaluate_egress(
         )
 
     if classified in {"customer_connector", "operator_service"}:
-        if policy.allow_outbound_network:
-            return EgressDecision(
-                surface=surface,
-                egress_class=classified,
-                decision="allow",
-                reason="outbound_network_enabled",
-                destination_host_hash=host_hash,
-                destination_host_redacted=redacted,
-                deployment_mode=policy.deployment_mode,
-                service_name=service_name,
-                request_id=request_id,
-            )
         if explicit_configured and destination_matches_allowlist(target, policy.egress_allowlist):
             return EgressDecision(
                 surface=surface,
                 egress_class=classified,
                 decision="allow",
                 reason="destination_allowlisted",
+                destination_host_hash=host_hash,
+                destination_host_redacted=redacted,
+                deployment_mode=policy.deployment_mode,
+                service_name=service_name,
+                request_id=request_id,
+            )
+        if policy.allow_outbound_network:
+            return EgressDecision(
+                surface=surface,
+                egress_class=classified,
+                decision="allow",
+                reason="outbound_network_enabled",
                 destination_host_hash=host_hash,
                 destination_host_redacted=redacted,
                 deployment_mode=policy.deployment_mode,

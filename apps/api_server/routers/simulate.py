@@ -170,6 +170,23 @@ def _dispatch_persist(
     In development, Celery unavailability falls back to FastAPI BackgroundTasks.
     In strict runtime mode, persistence fail-closes instead of silently degrading.
     """
+    persist_transport = settings.normalized_simulation_persist_transport
+    if persist_transport == "in_process":
+        logger.info(
+            "simulation_persist_transport_override",
+            run_id=persist_meta.get("run_id"),
+            request_id=request_id,
+            transport="in_process",
+        )
+        background_tasks.add_task(
+            _persist_in_process,
+            persist_meta=persist_meta,
+            auth=auth,
+            client_ip=client_ip,
+            redis_client=redis_client,
+        )
+        return
+
     try:
         from apps.worker.tasks.simulation_task import persist_simulation
 
@@ -183,7 +200,10 @@ def _dispatch_persist(
             client_ip=client_ip,
         )
     except Exception as exc:
-        if not settings.allow_runtime_fallbacks:
+        fallback_allowed = (
+            settings.allow_runtime_fallbacks and persist_transport == "auto"
+        )
+        if persist_transport == "celery" or not fallback_allowed:
             logger.error(
                 "persistence_backend_unavailable",
                 error=str(exc),
@@ -191,6 +211,7 @@ def _dispatch_persist(
                 request_id=request_id,
                 backend="celery",
                 fallback_allowed=False,
+                persist_transport=persist_transport,
             )
             raise HTTPException(
                 status_code=503,
@@ -201,6 +222,7 @@ def _dispatch_persist(
                         "details": {
                             "backend": "celery",
                             "policy": "strict_runtime",
+                            "persist_transport": persist_transport,
                         },
                     }
                 },
@@ -213,6 +235,7 @@ def _dispatch_persist(
             request_id=request_id,
             backend="celery",
             fallback_allowed=True,
+            persist_transport=persist_transport,
         )
         background_tasks.add_task(
             _persist_in_process,

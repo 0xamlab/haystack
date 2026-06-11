@@ -97,6 +97,36 @@ def test_egress_policy_allows_explicit_allowlisted_customer_connector_targets() 
     assert deny_undeclared.reason == "undeclared_public_egress_disabled"
 
 
+def test_allowlisted_customer_connector_takes_precedence_over_global_outbound_reason() -> None:
+    policy = build_privacy_policy(
+        deployment_mode="saas",
+        allow_outbound_network=True,
+        egress_allowlist="127.0.0.1,*.customer.internal",
+    )
+
+    allow_loopback = evaluate_egress(
+        policy,
+        "http://127.0.0.1:8765/fixture.csv",
+        surface="connector_test",
+        service_name="api-server",
+        explicit_configured=True,
+        egress_class="customer_connector",
+    )
+    allow_suffix = evaluate_egress(
+        policy,
+        "https://warehouse.customer.internal/query",
+        surface="connector_test",
+        service_name="api-server",
+        explicit_configured=True,
+        egress_class="customer_connector",
+    )
+
+    assert allow_loopback.decision == "allow"
+    assert allow_loopback.reason == "destination_allowlisted"
+    assert allow_suffix.decision == "allow"
+    assert allow_suffix.reason == "destination_allowlisted"
+
+
 def test_control_plane_sync_requires_permitted_control_plane_url() -> None:
     with pytest.raises(PrivacyConfigurationError, match="control_plane_sync"):
         build_privacy_policy(

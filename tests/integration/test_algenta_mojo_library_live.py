@@ -176,7 +176,10 @@ def local_runtime_daemon() -> dict[str, str]:
         "DE_BASE_URL": BASE_URL,
         "ALGENTA_API_KEY": API_KEY,
         "DE_API_KEY": API_KEY,
-        "JWT_SECRET": "change-me-in-production-use-256-bit-random-value",
+        "JWT_SECRET": os.environ.get(
+            "JWT_SECRET",
+            "change-me-in-production-use-256-bit-random-value",
+        ),
     }
     if not API_KEY:
         env_updates["ALGENTA_RUNTIME_DEV_MODE"] = "1"

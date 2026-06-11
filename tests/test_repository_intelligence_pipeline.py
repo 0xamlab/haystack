@@ -118,6 +118,8 @@ async def test_full_chain_threads_ids_between_stages(stubbed):
         "simulate",
     ]
     assert response.stage_timings[0].status == "ok"  # freshly created
+    assert "spans_ms" in response.telemetry
+    assert "pipeline_plan_ms" in response.telemetry["spans_ms"]
 
 
 async def test_stop_after_triage_skips_plan_and_simulate(stubbed):
@@ -150,7 +152,7 @@ async def test_reuse_snapshot_by_id_skips_create(stubbed):
 
 async def test_pipeline_records_telemetry_spans(stubbed):
     with telemetry.collect() as data:
-        await pipeline.run_repository_pipeline(
+        response = await pipeline.run_repository_pipeline(
             connector=object(), request=RepositoryPipelineRequest()
         )
     for span in (
@@ -160,3 +162,10 @@ async def test_pipeline_records_telemetry_spans(stubbed):
         "pipeline_simulate_ms",
     ):
         assert span in data["spans_ms"], f"missing span {span}"
+        assert span in response.telemetry["spans_ms"], f"missing response span {span}"
+
+
+def test_pipeline_request_defaults_to_adaptive_simulation_runs() -> None:
+    request = RepositoryPipelineRequest()
+
+    assert request.runs is None

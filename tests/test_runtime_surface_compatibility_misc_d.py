@@ -292,7 +292,7 @@ def test_remaining_live_integration_scripts_write_summary_artifacts() -> None:
     assert "AsyncClient deployment create/delete lifecycle" in python_sdk_live
     assert "await client.chat_completions(" in python_sdk_live
     assert "await client.responses(" in python_sdk_live
-    assert "write_live_integration_summary(" in python_sdk_live
+    assert "write_live_integration_summary_from_results(" in python_sdk_live
     assert "Summary artifact:" in python_sdk_live
     assert 'def _format_elapsed_seconds(started_at: float) -> str:' in python_sdk_live
     assert '_emit(f"  ... {name}")' in python_sdk_live
@@ -519,7 +519,7 @@ def test_remaining_live_integration_scripts_write_summary_artifacts() -> None:
     assert "python3 tests/integration/test_cli.py" in cli_live
     assert "PYTHONPATH=. python3 tests/integration/test_cli.py" not in cli_live
     assert 'SUITE_NAME = "cli_integration"' in cli_live
-    assert "write_live_integration_summary(" in cli_live
+    assert "write_live_integration_summary_from_results(" in cli_live
     assert "Summary artifact:" in cli_live
     assert '_emit(f"  ... {name}")' in cli_live
     assert "PlatformContractResponse.model_validate(contract)" in cli_live
@@ -750,5 +750,3 @@ def test_live_integration_artifact_paths_follow_suite_name_summary_suffix() -> N
     assert {
         name: path.name for name, path in artifact_paths.items()
     } == {name: f"{name}_summary.json" for name in artifact_paths}
-
-

@@ -53,6 +53,7 @@ from apps.api_server.services.auto_planner import AutoPlanner
 async def _run_case(
     *,
     case: HintQueryCase,
+    dataset_id: str,
     auth: dict[str, str],
     reference_planner: AutoPlanner,
 ) -> dict[str, Any]:
@@ -71,11 +72,11 @@ async def _run_case(
     try:
         resolve_response = await _resolve_registered_intent(
             ResolveRequest(
+                dataset_id=dataset_id,
                 metric=payload.metric,
                 group_by=payload.group_by,
                 preferred_source=payload.preferred_source,
                 aggregation=payload.aggregation,
-                allow_org_scope=True,
             ),
             auth=auth,
             request_id=None,
@@ -108,7 +109,7 @@ async def _run_case(
         }
 
     response = await query_sources(
-        QueryRequest(resolved_plan=resolve_response.resolved_plan),
+        QueryRequest(dataset_id=dataset_id, resolved_plan=resolve_response.resolved_plan),
         auth=auth,
     )
     elapsed_ms = (time.perf_counter() - t0) * 1000
@@ -140,6 +141,7 @@ async def _run() -> dict[str, Any]:
             auth = {"org_id": org_id, "role": "owner", "key_id": str(uuid.uuid4())}
             register_latencies: list[float] = []
             register_prewarm_latencies: list[float] = []
+            dataset_ids_by_source: dict[str, str] = {}
 
             for source_name, path in SOURCE_FILES.items():
                 payload = RegisterRequest(
@@ -153,21 +155,38 @@ async def _run() -> dict[str, Any]:
                 register_latencies.append((time.perf_counter() - t0) * 1000)
                 if response["status"] not in {"registered", "already_registered"}:
                     raise RuntimeError(f"registration failed for {source_name}: {response}")
+                dataset_id = str(response.get("dataset_id") or response.get("source_id") or "")
+                if not dataset_id:
+                    raise RuntimeError(
+                        f"registration response missing dataset_id for {source_name}: {response}"
+                    )
+                dataset_ids_by_source[source_name] = dataset_id
                 register_prewarm_latencies.append(float(response.get("planner_prewarm_ms", 0.0)))
 
             reference_planner = AutoPlanner.from_registry(org_id, llm_policy="never")
 
             cold_first = await _run_case(
                 case=cases[0],
+                dataset_id=dataset_ids_by_source[cases[0].exact_case.source_name],
                 auth=auth,
                 reference_planner=reference_planner,
             )
             warm_unique = [
-                await _run_case(case=case, auth=auth, reference_planner=reference_planner)
+                await _run_case(
+                    case=case,
+                    dataset_id=dataset_ids_by_source[case.exact_case.source_name],
+                    auth=auth,
+                    reference_planner=reference_planner,
+                )
                 for case in cases[1:]
             ]
             hot_repeat = [
-                await _run_case(case=case, auth=auth, reference_planner=reference_planner)
+                await _run_case(
+                    case=case,
+                    dataset_id=dataset_ids_by_source[case.exact_case.source_name],
+                    auth=auth,
+                    reference_planner=reference_planner,
+                )
                 for case in cases
             ]
 

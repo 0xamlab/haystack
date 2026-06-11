@@ -23,6 +23,9 @@ def test_repository_tool_specs_cover_repository_flow() -> None:
     )
     assert repositories.QUERY_REPOSITORY_GRAPH_SPEC["name"] == "query_repository_graph"
     assert repositories.SIMULATE_REPOSITORY_SPEC["name"] == "simulate_repository"
+    assert repositories.RUN_REPOSITORY_PIPELINE_SPEC["name"] == "run_repository_pipeline"
+    assert repositories.SIMULATE_REPOSITORY_PATCH_SPEC["name"] == "simulate_repository_patch"
+    assert repositories.RUN_REPOSITORY_FIX_SPEC["name"] == "run_repository_fix"
     assert repositories.APPLY_REPOSITORY_SPEC["name"] == "apply_repository"
 
 
@@ -87,7 +90,7 @@ async def test_repository_tool_handlers_forward_canonical_routes(
             }
         if (method, path) == ("POST", "/v1/repositories/repo_123/simulate"):
             return {
-                "validated_inputs": {"simulation_id": "simulation_123"},
+                "run_id": "simulation_123",
                 "decision_plan": {
                     "repository_analysis": {
                         "planner_model_id": "repository.deterministic_local_v1",
@@ -98,6 +101,35 @@ async def test_repository_tool_handlers_forward_canonical_routes(
                     }
                 },
                 "score_breakdown": {"apply_gate": {"passed": True}},
+            }
+        if (method, path) == ("POST", "/v1/repositories/repo_123/simulate-patch"):
+            return {
+                "run_id": "simulation_patch_123",
+                "recommended_action": "apply_patch",
+                "confidence": 0.84,
+            }
+        if (method, path) == ("POST", "/v1/repositories/repo_123/pipeline"):
+            return {
+                "repository_id": "repo_123",
+                "snapshot_id": "snapshot_123",
+                "snapshot": {"snapshot_id": "snapshot_123", "ref": "main"},
+                "triage": {"workspace_evidence_bundle_ref": "bundle_123"},
+                "decision_plan": {
+                    "decision_plan_id": "decision_plan_123",
+                    "decision_plan": {
+                        "repository_analysis": {
+                            "planner_model_id": "repository.deterministic_local_v1",
+                            "planner_execution_mode": "deterministic_local",
+                            "planner_provider_backend": None,
+                            "patch_impact_report_ref": "impact_123",
+                        }
+                    },
+                },
+                "simulation": {
+                    "run_id": "simulation_123",
+                    "recommended_action": "apply_patch",
+                    "score_breakdown": {"apply_gate": {"passed": True}},
+                },
             }
         if (method, path) == ("POST", "/v1/repositories/repo_123/apply"):
             return {
@@ -168,6 +200,21 @@ async def test_repository_tool_handlers_forward_canonical_routes(
             }
         )
     )
+    pipeline = json.loads(
+        await repositories.run_repository_pipeline_handler({"repository_id": "repo_123"})
+    )
+    simulate_patch = json.loads(
+        await repositories.simulate_repository_patch_handler(
+            {
+                "repository_id": "repo_123",
+                "snapshot_id": "snapshot_123",
+                "patch_diff": "diff --git a/x b/x",
+            }
+        )
+    )
+    fix = json.loads(
+        await repositories.run_repository_fix_handler({"repository_id": "repo_123"})
+    )
 
     assert capabilities["supported_languages"] == ["python", "typescript", "coq"]
     assert capabilities["support_progress"]["progress_label"] == "3 / 200"
@@ -183,12 +230,17 @@ async def test_repository_tool_handlers_forward_canonical_routes(
     )
     assert graph["seed_file_paths"] == ["src/service.py"]
     assert graph["top_change_risk_files"][0]["risk_score"] == 72.5
-    assert simulation["validated_inputs"]["simulation_id"] == "simulation_123"
+    assert simulation["run_id"] == "simulation_123"
     assert simulation["decision_plan"]["repository_analysis"]["planner_execution_mode"] == (
         "deterministic_local"
     )
     assert apply_result["branch_name"] == "algenta/repo-fix"
     assert apply_result["apply_gate"]["policy_snapshot_id"] == "policy_123"
+    assert pipeline["pipeline"]["plan_id"] == "decision_plan_123"
+    assert pipeline["gate"]["decision"] == "apply_allowed"
+    assert simulate_patch["pipeline"]["simulation_id"] == "simulation_patch_123"
+    assert fix["pipeline"]["apply_id"] == "simulation_123"
+    assert fix["gate"]["decision"] == "apply_allowed"
     assert calls == [
         ("GET", "/v1/repositories/capabilities", None),
         ("POST", "/v1/repositories/repo_123/snapshots", {"ref": "main"}),
@@ -234,6 +286,26 @@ async def test_repository_tool_handlers_forward_canonical_routes(
                 "write_permission": True,
             },
         ),
+        ("POST", "/v1/repositories/repo_123/pipeline", {}),
+        (
+            "POST",
+            "/v1/repositories/repo_123/simulate-patch",
+            {
+                "snapshot_id": "snapshot_123",
+                "patch_diff": "diff --git a/x b/x",
+            },
+        ),
+        ("POST", "/v1/repositories/repo_123/pipeline", {}),
+        (
+            "POST",
+            "/v1/repositories/repo_123/apply",
+            {
+                "snapshot_id": "snapshot_123",
+                "decision_plan_id": "decision_plan_123",
+                "simulation_id": "simulation_123",
+                "mode": "patch_only",
+            },
+        ),
     ]
 
 
@@ -274,6 +346,21 @@ async def test_repository_tool_handlers_forward_canonical_routes(
             repositories.simulate_repository_handler,
             {"repository_id": "repo_123"},
             "decision_plan_id is required.",
+        ),
+        (
+            repositories.run_repository_pipeline_handler,
+            {},
+            "repository_id is required.",
+        ),
+        (
+            repositories.simulate_repository_patch_handler,
+            {"repository_id": "repo_123", "snapshot_id": "snapshot_123"},
+            "patch_diff is required.",
+        ),
+        (
+            repositories.run_repository_fix_handler,
+            {},
+            "repository_id is required.",
         ),
         (
             repositories.apply_repository_handler,

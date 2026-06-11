@@ -1,5 +1,5 @@
 """
-CLI integration tests — tests apps/cli/main.py against a live server at localhost:8000.
+CLI integration tests — tests `python -m apps.cli.main` against a live server.
 
 Prerequisites:
   1. API server running on localhost:8000
@@ -57,7 +57,10 @@ from tests.integration.live_data_source_server import (
     default_refreshable_dataset_payload,
     static_json_server,
 )
-from tests.integration.live_integration_artifacts import write_live_integration_summary
+from tests.integration.live_local_surface_env import configure_local_live_server_env
+from tests.integration.live_integration_artifacts import (
+    write_live_integration_summary_from_results,
+)
 from tests.integration.live_repository_fixture import (
     assert_repository_intelligence_capabilities_payload,
     live_repository_fixture,
@@ -89,7 +92,7 @@ CONFIGURED_BASE_URL = configured_local_live_base_url()
 API_KEY = resolve_local_live_api_key()
 API_KEY_CONFIGURED = has_configured_local_live_api_key()
 PROJECT_ROOT = str(ROOT)
-CLI_SCRIPT = str(ROOT / "apps" / "cli" / "main.py")
+CLI_MODULE = "apps.cli.main"
 SUITE_NAME = "cli_integration"
 STARTED = time.perf_counter()
 ACTIVE_LIVE_CHECK_FILTER = selected_live_check_filter()
@@ -413,10 +416,75 @@ def _cleanup_runtime() -> None:
     _runtime_proc = None
 
 
+def _post_json(
+    base_url: str,
+    path: str,
+    body: dict,
+    *,
+    headers: dict[str, str] | None = None,
+    timeout: float = 10.0,
+):
+    data = json.dumps(body).encode("utf-8")
+    request = urllib.request.Request(
+        f"{base_url}{path}",
+        data=data,
+        headers={"Content-Type": "application/json", **(headers or {})},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as resp:
+            raw = resp.read()
+    except urllib.error.HTTPError as err:
+        raw = err.read()
+        try:
+            return err.code, json.loads(raw)
+        except Exception:
+            return err.code, raw.decode("utf-8", errors="replace")
+    try:
+        return 200, json.loads(raw)
+    except Exception:
+        return 200, raw.decode("utf-8", errors="replace")
+
+
+def _endpoint_supports_loopback_connector_preview(base_url: str) -> bool:
+    """Whether ``base_url`` permits loopback (127.0.0.1) connector egress.
+
+    The configured .env server runs the production SSRF guard, which denies
+    private/loopback destinations, so the data/connector/webhook surfaces cannot
+    run against it. We fail closed here and let the caller boot an isolated,
+    loopback-allowlisted local server instead — the same posture the live MCP and
+    TypeScript runtime suites already use.
+    """
+    if not API_KEY:
+        return False
+    try:
+        with static_json_server({"items": [{"id": "preview-check"}]}) as source_url:
+            status, payload = _post_json(
+                base_url,
+                "/v1/connectors/test",
+                {
+                    "connector_type": "rest",
+                    "config": {"url": source_url, "data_path": "items"},
+                },
+                headers={"X-API-Key": API_KEY},
+                timeout=10.0,
+            )
+    except Exception:
+        return False
+    return status == 200 and isinstance(payload, dict) and payload.get("success") is True
+
+
 def _resolve_base_url() -> str:
     global _runtime_proc, _runtime_started_here, _runtime_log_path
     if CONFIGURED_BASE_URL:
-        return CONFIGURED_BASE_URL.rstrip("/")
+        configured_base_url = CONFIGURED_BASE_URL.rstrip("/")
+        # Use the configured server when it actually serves the CLI surface (it
+        # carries the warm utility-LLM/compute runtime). Loopback-only surfaces
+        # skip separately when this server's SSRF policy forbids loopback egress
+        # (see LOOPBACK_EGRESS_SUPPORTED). Fall back to an isolated, loopback-safe
+        # local server only when no configured server is reachable.
+        if _endpoint_serves_canonical_cli_surface(configured_base_url):
+            return configured_base_url
 
     base_url = f"http://{DEFAULT_HOST}:{DEFAULT_PORT}"
     log_dir = Path(tempfile.mkdtemp(prefix="integration-cli-"))
@@ -436,6 +504,7 @@ def _resolve_base_url() -> str:
     env.setdefault("ALGENTA_SOURCE_REGISTRY_ROOT", str(log_dir / "sources"))
     env.setdefault("ALGENTA_RUNTIME_DIR", str(log_dir / "runtime"))
     env.setdefault("ALGENTA_REPOSITORY_INTELLIGENCE_MODEL", "repository.deterministic_local_v1")
+    configure_local_live_server_env(env, root_dir=log_dir)
     with log_path.open("w", encoding="utf-8") as log_handle:
         _runtime_proc = subprocess.Popen(
             [
@@ -533,7 +602,7 @@ def run_cli(
     env["DE_BASE_URL"] = resolved_base_url
     env["ALGENTA_BASE_URL"] = resolved_base_url
     env["PYTHONPATH"] = PROJECT_ROOT
-    cmd = [sys.executable, CLI_SCRIPT] + list(args)
+    cmd = [sys.executable, "-m", CLI_MODULE] + list(args)
     return subprocess.run(
         cmd,
         capture_output=True,
@@ -2662,24 +2731,18 @@ check("CLI keys create/revoke → API-key lifecycle", test_cli_key_lifecycle)
 
 
 if __name__ == "__main__":
-    import pytest
-
-    exit_code = pytest.main([__file__, "-v"])
-    # Write summary artifact for CI consumers (preserves the
-    # tests/test_runtime_surface_compatibility surface contract).
-    try:
-        from tests.integration.live_integration_artifacts import write_live_integration_summary
-
-        artifact_path = write_live_integration_summary(
-            SUITE_NAME,
-            script="tests/integration/test_cli.py",
-            passed=0,  # TODO: parse from pytest result
-            failed=0,
-            skipped=0,
-            total=0,
-            elapsed_seconds=0.0,
-        )
-        print(f"Summary artifact: {artifact_path}")
-    except Exception:
-        pass
-    sys.exit(exit_code)
+    artifact_path = write_live_integration_summary_from_results(
+        SUITE_NAME,
+        script="tests/integration/test_cli.py",
+        results=results,
+        started_at=STARTED,
+        pass_status=PASS,
+        fail_status=FAIL,
+        skip_status=SKIP,
+        details={
+            "api_key_configured": API_KEY_CONFIGURED,
+            "base_url": BASE_URL,
+        },
+    )
+    print(f"Summary artifact: {artifact_path}")
+    sys.exit(1 if any(status == FAIL for status, *_ in results) else 0)

@@ -125,6 +125,76 @@ def test_build_parity_summary_reports_channel_statuses(tmp_path: Path) -> None:
     assert payload["channels"][1]["error"] == "channel proof failed"
 
 
+def test_build_parity_summary_includes_agent_run_references(
+    monkeypatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(runner, "ROOT", tmp_path)
+    live_run_proof_path = tmp_path / "build" / "proofs" / "cline" / "live_run_proof.json"
+    live_run_proof_path.parent.mkdir(parents=True, exist_ok=True)
+    live_run_proof_path.write_text(
+        json.dumps(
+            {
+                "status": "passed",
+                "run_id": "run_123",
+                "agent_run_id": "agent_123",
+                "session_id": "session_123",
+                "run_dir": "build/proofs/cline/runs/run_123",
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    logs_dir = tmp_path / "logs"
+    python_spec = runner.ChannelSpec(
+        name="python_sdk",
+        script="tests/integration/test_python_sdk.py",
+        summary_artifact="build/python_sdk_integration_summary.json",
+        expected_repository_counts=runner.ChannelSummaryCounts(
+            passed=2,
+            failed=0,
+            skipped=43,
+            total=45,
+        ),
+    )
+
+    payload = runner.build_parity_summary(
+        filter_value="repository",
+        channel_specs=(python_spec,),
+        results=[
+            runner.ChannelRunResult(
+                name=python_spec.name,
+                script=python_spec.script,
+                summary_artifact=python_spec.summary_artifact,
+                log_artifact=_expected_log_artifact(spec=python_spec, logs_dir=logs_dir),
+                return_code=0,
+                elapsed_seconds=1.2,
+                status="passed",
+                summary_counts=runner.ChannelSummaryCounts(
+                    passed=2,
+                    failed=0,
+                    skipped=43,
+                    total=45,
+                ),
+            )
+        ],
+        elapsed_seconds=3.4,
+        output_path=tmp_path / "parity.json",
+        logs_dir=logs_dir,
+    )
+
+    assert payload["agent_run_references"] == [
+        {
+            "source_artifact": str(live_run_proof_path.resolve()),
+            "run_id": "run_123",
+            "agent_run_id": "agent_123",
+            "session_id": "session_123",
+            "run_dir": "build/proofs/cline/runs/run_123",
+        }
+    ]
+
+
 def test_validate_parity_summary_contract_rejects_aggregate_drift(tmp_path: Path) -> None:
     logs_dir = tmp_path / "logs"
     python_spec = runner.ChannelSpec(
@@ -386,3 +456,23 @@ def test_main_preserves_partial_results_on_late_summary_failure(
     assert payload["channels"][0]["name"] == "python_sdk"
 
 
+def test_repository_channel_scripts_use_real_summary_paths() -> None:
+    expected_snippets = {
+        "tests/integration/test_python_sdk.py": "write_live_integration_summary_from_results(",
+        "tests/integration/test_cli.py": "write_live_integration_summary_from_results(",
+        "tests/integration/test_mcp_server.py": "write_live_integration_summary_from_results(",
+        "tests/integration/test_algenta_client_live.py": "sys.exit(main())",
+        "tests/integration/test_algenta_runtime_live.py": "sys.exit(main())",
+        "tests/integration/test_typescript_sdk_client_live.py": "sys.exit(main())",
+        "tests/integration/test_typescript_runtime_live.py": "sys.exit(main())",
+    }
+
+    for relative_path, expected_snippet in expected_snippets.items():
+        text = (runner.ROOT / relative_path).read_text(encoding="utf-8")
+        assert expected_snippet in text, f"{relative_path} missing {expected_snippet!r}"
+        assert "TODO: parse from pytest result" not in text, (
+            f"{relative_path} still contains placeholder summary logic"
+        )
+        assert 'pytest.main([__file__, "-v"])' not in text, (
+            f"{relative_path} still reruns pytest instead of the standalone proof path"
+        )

@@ -44,6 +44,20 @@ if [[ ! -d "${LIB_DIR}" ]]; then
     exit 1
 fi
 
+PYTHON_RUNTIME_STEM="$(
+    (
+        cd "${PIXI_ENV_DIR}"
+        "${PIXI_BIN}" run python - <<'PY'
+import sys
+print(f"python{sys.version_info.major}.{sys.version_info.minor}")
+PY
+    )
+)"
+if [[ -z "${PYTHON_RUNTIME_STEM}" ]]; then
+    echo "Failed to detect the Python runtime version from ${PIXI_ENV_DIR}" >&2
+    exit 1
+fi
+
 CLANG_BIN="${CLANG_BIN:-}"
 if [[ -z "${CLANG_BIN}" ]]; then
     CLANG_BIN="$(xcrun --find clang 2>/dev/null || command -v clang 2>/dev/null || true)"
@@ -72,8 +86,13 @@ RPATH_RELATIVE='@executable_path/../mojo_env/.pixi/envs/default/lib'
 
 case "$(uname -s)" in
     Darwin)
+        PYTHON_RUNTIME_LIB="${LIB_DIR}/lib${PYTHON_RUNTIME_STEM}.dylib"
         if [[ -z "${SDKROOT_PATH}" || ! -d "${SDKROOT_PATH}" ]]; then
             echo "macOS SDK not found; cannot link Mojo executable" >&2
+            exit 1
+        fi
+        if [[ ! -f "${PYTHON_RUNTIME_LIB}" ]]; then
+            echo "Python runtime library not found at ${PYTHON_RUNTIME_LIB}" >&2
             exit 1
         fi
         "${CLANG_BIN}" "${TEMP_OBJECT_PATH}" -o "${TEMP_BINARY_PATH}" \
@@ -86,10 +105,15 @@ case "$(uname -s)" in
             -lAsyncRTRuntimeGlobals \
             -lAsyncRTMojoBindings \
             -lMSupportGlobals \
-            -lpython3.14 \
+            -l"${PYTHON_RUNTIME_STEM}" \
             -lc++
         ;;
     Linux)
+        PYTHON_RUNTIME_LIB="$(find "${LIB_DIR}" -maxdepth 1 -name "lib${PYTHON_RUNTIME_STEM}.so*" | sort | head -n 1)"
+        if [[ -z "${PYTHON_RUNTIME_LIB}" ]]; then
+            echo "Python runtime library not found under ${LIB_DIR} for ${PYTHON_RUNTIME_STEM}" >&2
+            exit 1
+        fi
         "${CLANG_BIN}" "${TEMP_OBJECT_PATH}" -o "${TEMP_BINARY_PATH}" \
             -L "${LIB_DIR}" \
             -Wl,-rpath,'$ORIGIN/../mojo_env/.pixi/envs/default/lib' \
@@ -98,7 +122,7 @@ case "$(uname -s)" in
             -lAsyncRTRuntimeGlobals \
             -lAsyncRTMojoBindings \
             -lMSupportGlobals \
-            -lpython3.14 \
+            -l"${PYTHON_RUNTIME_STEM}" \
             -lc++ \
             -ldl \
             -lpthread \

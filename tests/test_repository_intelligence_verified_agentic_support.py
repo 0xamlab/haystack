@@ -81,6 +81,15 @@ def test_verified_agentic_returns_planner_dict(monkeypatch, tmp_path):
             "recommended_action": "Return 'hi' from greet",
             "candidate_fixes": ["Fix greet return literal"],
             "confidence": 0.8,
+            "session_id": "session_456",
+            "telemetry": {
+                "tokens_in_uncached": 900,
+                "tokens_out": 120,
+                "cache_read_tokens": 300,
+                "cache_write_tokens": 50,
+                "provider": "anthropic",
+                "model": "claude-sonnet-4-6",
+            },
         }
 
     result = asyncio.run(
@@ -95,6 +104,17 @@ def test_verified_agentic_returns_planner_dict(monkeypatch, tmp_path):
     assert result["planner_execution_mode"] == "verified_agentic"
     assert result["planner_engine"] == "cline_fork"  # internal attribution
     assert result["agent_run_id"] == "run_123"
+    assert result["session_id"] == "session_456"
+    assert result["runtime_kind"] == "cline"
+    assert result["runtime_provider"] == "anthropic"
+    assert result["runtime_model"] == "claude-sonnet-4-6"
+    assert result["planner_usage"] == {
+        "input_tokens": 1250.0,
+        "output_tokens": 120.0,
+        "cache_read_tokens": 300.0,
+        "cache_write_tokens": 50.0,
+        "cost_usd": None,
+    }
     assert result["transcript_ref"] == "minio://transcripts/run_123"
     assert result["confidence"] == 0.8
     # Python-authoritative diff, recomputed from before/after tree state.
@@ -307,3 +327,39 @@ def test_decision_plan_generation_lock_acquires_and_releases(tmp_path):
     # Re-acquire after release — no deadlock, lock is reusable.
     with dpw._decision_plan_generation_lock(lock_dir, "key123"):
         pass
+
+
+def test_dedupe_bundled_evidence_strips_only_bundle_covered_symbols():
+    """AR-OPT token de-dup: drop snippets the context bundle already carries in
+    full (matched by file+symbol), keep complementary evidence intact, and never
+    mutate the inputs."""
+    bundle = [
+        {"file_path": "src/a.py", "symbol_name": "do_thing", "numbered_source": "1\tx"},
+    ]
+    evidence = [
+        # same (file, symbol) as the bundle → snippet is redundant → stripped
+        {"file_path": "src/a.py", "symbol_name": "do_thing", "snippet": "def do_thing(): ...", "rank": 1},
+        # same file, DIFFERENT symbol → complementary → kept
+        {"file_path": "src/a.py", "symbol_name": "other", "snippet": "def other(): ...", "rank": 2},
+        # different file → kept
+        {"file_path": "src/b.py", "symbol_name": "do_thing", "snippet": "B code", "rank": 3},
+        # file-level (no symbol) → kept
+        {"file_path": "src/a.py", "symbol_name": None, "snippet": "module top", "rank": 4},
+    ]
+    original = [dict(item) for item in evidence]
+
+    result = verified_agentic._dedupe_bundled_evidence(evidence, bundle)
+
+    assert result[0]["snippet"] == "[full source in context_bundle]"
+    assert result[1]["snippet"] == "def other(): ..."
+    assert result[2]["snippet"] == "B code"
+    assert result[3]["snippet"] == "module top"
+    # ranking/metadata preserved on the stripped item
+    assert result[0]["rank"] == 1
+    # inputs were not mutated in place
+    assert evidence == original
+
+
+def test_dedupe_bundled_evidence_noop_without_bundle():
+    evidence = [{"file_path": "src/a.py", "symbol_name": "f", "snippet": "code"}]
+    assert verified_agentic._dedupe_bundled_evidence(evidence, []) is evidence

@@ -125,3 +125,41 @@ async def test_api_key_zero_device_limit_is_rejected_on_finite_plan(client, app)
     assert "does not support unlimited devices per key" in error["message"]
 
 
+@pytest.mark.anyio
+async def test_created_api_key_inherits_creator_privileges(client, app) -> None:
+    redis_stub = _RedisStub()
+
+    async def _fake_redis() -> _RedisStub:
+        return redis_stub
+
+    app.dependency_overrides[get_redis] = _fake_redis
+    owner_key, _key_id = await _seed_api_key(
+        label="Owner Route Key",
+        expires_at=datetime.now(UTC) + timedelta(days=30),
+    )
+
+    try:
+        create_response = await client.post(
+            "/v1/api-keys",
+            headers={"X-API-Key": owner_key},
+            json={"label": "Creator Bound Key"},
+        )
+        assert create_response.status_code == 201
+        created = create_response.json()
+
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(
+                select(APIKey).where(APIKey.id == UUID(created["id"]))
+            )
+            api_key = result.scalar_one()
+
+        audit_logs_response = await client.get(
+            "/v1/audit-logs?page=1&limit=5",
+            headers={"X-API-Key": created["raw_key"]},
+        )
+    finally:
+        app.dependency_overrides.pop(get_redis, None)
+
+    assert api_key.user_id is not None
+    assert audit_logs_response.status_code == 200
+

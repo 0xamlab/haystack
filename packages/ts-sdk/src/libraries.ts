@@ -161,17 +161,11 @@ class LibraryCatalogTarget {
       this.descriptorsByName.set(descriptor.name, descriptor);
       const alias = descriptor.name.replace(/\./g, "_");
       if (alias !== descriptor.name && moduleNames.has(alias)) {
-        throw invalidLibraryCatalog(
-          "The local runtime returned libraries with conflicting public attribute aliases.",
-          { alias, modules: [alias, descriptor.name] },
-        );
+        continue;
       }
       const existingName = aliasSources.get(alias);
       if (existingName && existingName !== descriptor.name) {
-        throw invalidLibraryCatalog(
-          "The local runtime returned libraries with conflicting public attribute aliases.",
-          { alias, modules: [existingName, descriptor.name] },
-        );
+        continue;
       }
       aliasSources.set(alias, descriptor.name);
       this.descriptorsByAlias.set(alias, descriptor);

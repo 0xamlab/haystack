@@ -221,6 +221,13 @@ class RepositoryDecisionPlanResponse(BaseModel):
     decision_plan_id: str
     created_at: datetime
     decision_plan: DecisionPlan
+    planner_usage: dict[str, Any] = Field(default_factory=dict)
+    agent_run_id: str | None = None
+    session_id: str | None = None
+    runtime_kind: str | None = None
+    is_stub: bool | None = None
+    runtime_provider: str | None = None
+    runtime_model: str | None = None
 
 
 class RepositorySimulationRequest(BaseModel):
@@ -316,8 +323,10 @@ class RepositoryPipelineRequest(BaseModel):
     token_budget: int = Field(default=6_000, ge=256, le=32_000)
     # Plan knob (the only LLM-touching stage).
     model: str | None = None
-    # Simulate knobs (deterministic Mojo engine; no LLM).
-    runs: int = Field(default=5_000, ge=100, le=250_000)
+    # Simulate knobs (deterministic Mojo engine; no LLM). None => resolve through
+    # the shared adaptive simulation-run policy, matching stored-plan simulate and
+    # working-tree simulate-patch.
+    runs: int | None = Field(default=None, ge=100, le=250_000)
     seed: int | None = Field(default=42, ge=0)
     # How far down the chain to run.
     stop_after: RepositoryPipelineStage = "simulate"
@@ -343,3 +352,4 @@ class RepositoryPipelineResponse(BaseModel):
     decision_plan: RepositoryDecisionPlanResponse | None = None
     simulation: DecisionEnvelope | None = None
     stage_timings: list[RepositoryPipelineStageTiming] = Field(default_factory=list)
+    telemetry: dict[str, Any] = Field(default_factory=dict)

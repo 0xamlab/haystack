@@ -30,6 +30,11 @@ from apps.cli.support import (
 from apps.cli.support import (
     strip_none as _strip_none,
 )
+from apps.api_server.services.repository_intelligence_channel_envelope import (
+    build_repository_fix_envelope,
+    build_repository_pipeline_envelope,
+    build_repository_simulate_patch_envelope,
+)
 from apps.platform_contract import PlatformContractResponse
 from apps.platform_contract_fallback import (
     PlatformContractFallbackError,
@@ -664,6 +669,30 @@ def _print_repository_capabilities_summary(data: dict[str, Any], *, format: str)
     print()
 
 
+def _print_repository_channel_envelope(data: dict[str, Any], *, format: str) -> None:
+    if format == "json":
+        print_result(data, format)
+        return
+    repository = data.get("repository", {})
+    pipeline = data.get("pipeline", {})
+    agent = data.get("agent", {})
+    gate = data.get("gate", {})
+    print("\nRepository Channel Envelope")
+    print(f"Repository:      {repository.get('id')}")
+    print(f"Snapshot:        {pipeline.get('snapshot_id')}")
+    print(f"Triage:          {pipeline.get('triage_id')}")
+    print(f"Plan:            {pipeline.get('plan_id')}")
+    print(f"Simulation:      {pipeline.get('simulation_id')}")
+    print(f"Apply:           {pipeline.get('apply_id')}")
+    print(f"Runtime:         {agent.get('runtime_kind')}")
+    print(f"Provider:        {agent.get('provider')}")
+    print(f"Model:           {agent.get('model')}")
+    print(f"Gate decision:   {gate.get('decision')}")
+    reasons = gate.get("reasons") or []
+    print(f"Gate reasons:    {', '.join(str(reason) for reason in reasons) or 'none'}")
+    print()
+
+
 def cmd_repositories_snapshot(repository_id: str, request_path: str, format: str = "table") -> None:
     payload = _load_json_object_file(request_path, context="Repository snapshot request")
     status, data = api_request("POST", f"/v1/repositories/{repository_id}/snapshots", payload)
@@ -728,6 +757,89 @@ def cmd_repositories_simulate(repository_id: str, request_path: str, format: str
     if status != 200:
         _print_api_error_and_exit(status, data)
     print_result(data, format)
+
+
+def cmd_repositories_pipeline(repository_id: str, request_path: str, format: str = "table") -> None:
+    payload = _load_json_object_file(request_path, context="Repository pipeline request")
+    status, data = api_request("POST", f"/v1/repositories/{repository_id}/pipeline", payload)
+    if status != 200:
+        _print_api_error_and_exit(status, data)
+    envelope = build_repository_pipeline_envelope(repository_id=repository_id, response=data)
+    _print_repository_channel_envelope(envelope, format=format)
+
+
+def cmd_repositories_simulate_patch(
+    repository_id: str,
+    request_path: str,
+    format: str = "table",
+) -> None:
+    payload = _load_json_object_file(request_path, context="Repository simulate-patch request")
+    status, data = api_request("POST", f"/v1/repositories/{repository_id}/simulate-patch", payload)
+    if status != 200:
+        _print_api_error_and_exit(status, data)
+    envelope = build_repository_simulate_patch_envelope(
+        repository_id=repository_id,
+        snapshot_id=payload.get("snapshot_id"),
+        response=data,
+    )
+    _print_repository_channel_envelope(envelope, format=format)
+
+
+def cmd_repositories_fix(repository_id: str, request_path: str, format: str = "table") -> None:
+    payload = _load_json_object_file(request_path, context="Repository fix request")
+    pipeline_payload = payload.get("pipeline") if isinstance(payload.get("pipeline"), dict) else payload
+    apply_payload = payload.get("apply") if isinstance(payload.get("apply"), dict) else {}
+
+    status, pipeline_data = api_request(
+        "POST", f"/v1/repositories/{repository_id}/pipeline", pipeline_payload
+    )
+    if status != 200:
+        _print_api_error_and_exit(status, pipeline_data)
+
+    pipeline_envelope = build_repository_pipeline_envelope(
+        repository_id=repository_id,
+        response=pipeline_data,
+    )
+    snapshot_id = pipeline_envelope["pipeline"]["snapshot_id"]
+    decision_plan_id = pipeline_envelope["pipeline"]["plan_id"]
+    simulation_id = pipeline_envelope["pipeline"]["simulation_id"]
+    if not decision_plan_id or not simulation_id:
+        print(
+            "❌ Repository pipeline must complete through simulate before fix can apply.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    resolved_apply_payload = {
+        "snapshot_id": snapshot_id,
+        "decision_plan_id": decision_plan_id,
+        "simulation_id": simulation_id,
+        "mode": apply_payload.get("mode", "patch_only"),
+        **{
+            key: value
+            for key, value in apply_payload.items()
+            if key
+            in {
+                "write_permission",
+                "branch_name",
+                "commit_message",
+                "base_branch",
+                "pull_request_title",
+                "pull_request_body",
+            }
+        },
+    }
+    status, apply_data = api_request(
+        "POST", f"/v1/repositories/{repository_id}/apply", resolved_apply_payload
+    )
+    if status != 200:
+        _print_api_error_and_exit(status, apply_data)
+    envelope = build_repository_fix_envelope(
+        repository_id=repository_id,
+        pipeline_response=pipeline_data,
+        apply_response=apply_data,
+    )
+    _print_repository_channel_envelope(envelope, format=format)
 
 
 def cmd_repositories_apply(repository_id: str, request_path: str, format: str = "table") -> None:

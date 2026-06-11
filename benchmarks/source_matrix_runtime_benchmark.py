@@ -37,7 +37,6 @@ from typing import Any
 import pandas as pd
 import pyarrow.parquet as pq
 from fastapi import HTTPException
-
 ROOT = Path(__file__).parent.parent
 TEST_FILES = ROOT / "test_files"
 _LOCAL_PARQUET_CACHE_DIR = TEST_FILES / ".algenta_cache"
@@ -62,8 +61,9 @@ _LOCAL_PARQUET_FILES = (
 )
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
-
+from apps.api_server.config import get_settings
 from apps.api_server.routers.data_map import DataSource
+from apps.privacy_policy import parse_egress_destination
 from apps.api_server.routers.query import (
     _CACHE_LOCK,
     _DF_CACHE,
@@ -85,17 +85,10 @@ from apps.api_server.services.columnar_loader import records_to_arrow_table
 from apps.api_server.services.data_coercion import parse_delimited_records
 from tests.go_live_behavior_contract import P0_METRIC_BUDGETS, P2_METRIC_BUDGETS
 from tests.integration.connector_validation_catalog import PUBLIC_VALIDATION_CASES
+from tests.integration.live_local_surface_env import configure_local_live_server_env
 
-DEFAULT_DB_URL_SYNC = os.environ.get(
-    "DATABASE_URL_SYNC",
-    "postgresql://angel:@localhost:5432/decision_engine",
-)
-_AZURE_SAMPLE_BLOB_URL = (
-    "https://azureopendatastorage.blob.core.windows.net/"
-    "mlsamples/diabetes/"
-    "part-00000-tid-6082354649623433283-5a3d3599-0872-4a3e-a027-"
-    "bddf5f6d57ca-1951182-c000.snappy.parquet"
-)
+DEFAULT_DB_URL_SYNC = os.environ.get("DATABASE_URL_SYNC", "postgresql://angel:@localhost:5432/decision_engine")
+_AZURE_SAMPLE_BLOB_URL = "https://azureopendatastorage.blob.core.windows.net/mlsamples/diabetes/part-00000-tid-6082354649623433283-5a3d3599-0872-4a3e-a027-bddf5f6d57ca-1951182-c000.snappy.parquet"
 
 RESOLVE_MISS_CEILING_MS = 500.0
 RESOLVED_QUERY_HIT_TARGET_MS = 50.0
@@ -633,7 +626,7 @@ async def _run_resolve_query(
 
     t0 = time.perf_counter()
     query_first = await query_sources(
-        QueryRequest(resolved_plan=resolved_first.resolved_plan),
+        QueryRequest(dataset_id=case.dataset_id, resolved_plan=resolved_first.resolved_plan),
         auth=auth,
     )
     query_first_ms = (time.perf_counter() - t0) * 1000
@@ -646,7 +639,7 @@ async def _run_resolve_query(
 
     t0 = time.perf_counter()
     query_second = await query_sources(
-        QueryRequest(resolved_plan=resolved_first.resolved_plan),
+        QueryRequest(dataset_id=case.dataset_id, resolved_plan=resolved_first.resolved_plan),
         auth=auth,
     )
     query_second_ms = (time.perf_counter() - t0) * 1000
@@ -798,11 +791,17 @@ async def _run(
     csv_only: bool,
 ) -> dict[str, Any]:
     started = time.perf_counter()
-    mojo_runtime_mode = await _setup_mojo_runtime()
-    try:
-        with tempfile.TemporaryDirectory(prefix="source-matrix-runtime-") as tmp_dir:
-            workdir = Path(tmp_dir)
-            registry_dir = workdir / "registry"
+    with tempfile.TemporaryDirectory(prefix="source-matrix-runtime-") as tmp_dir:
+        workdir = Path(tmp_dir)
+        configure_local_live_server_env(
+            os.environ,
+            root_dir=workdir,
+            extra_hosts=(parse_egress_destination(DEFAULT_DB_URL_SYNC).normalized,),
+        )
+        get_settings.cache_clear()
+        registry_dir = workdir / "registry"
+        mojo_runtime_mode = await _setup_mojo_runtime()
+        try:
             await _reset_runtime_state(registry_dir)
 
             local_auth = {
@@ -845,8 +844,8 @@ async def _run(
                     auth=public_auth,
                     prepared_cases=public_cases,
                 )
-    finally:
-        await _teardown_mojo_runtime()
+        finally:
+            await _teardown_mojo_runtime()
 
     measurements = local_measurements + db_measurements + public_measurements
     if not measurements:

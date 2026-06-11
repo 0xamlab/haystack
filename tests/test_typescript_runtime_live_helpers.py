@@ -81,16 +81,22 @@ def test_isolated_api_server_requested_respects_truthy_flag(monkeypatch) -> None
     assert live_ts._isolated_api_server_requested() is True
 
 
-def test_isolated_api_server_env_uses_writable_temp_dirs(tmp_path) -> None:
+def test_isolated_api_server_env_uses_writable_temp_dirs(monkeypatch, tmp_path) -> None:
+    monkeypatch.delenv("ALGENTA_SOURCE_ARTIFACT_CACHE_DIR", raising=False)
+    monkeypatch.delenv("ALGENTA_EGRESS_ALLOWLIST", raising=False)
+
     env = live_ts._isolated_api_server_env(tmp_path, 50124)
 
     assert env["PYTHONPATH"] == str(live_ts.ROOT)
     assert env["ALGENTA_SOURCES_DIR"] == str(tmp_path / "sources")
     assert env["ALGENTA_RUNTIME_DIR"] == str(tmp_path / "runtime")
+    assert env["ALGENTA_SOURCE_ARTIFACT_CACHE_DIR"] == str(tmp_path / "artifact_cache")
+    assert env["ALGENTA_EGRESS_ALLOWLIST"] == "127.0.0.1,localhost,::1"
     assert env["DE_BASE_URL"] == "http://127.0.0.1:50124"
     assert env["ALGENTA_BASE_URL"] == "http://127.0.0.1:50124"
     assert (tmp_path / "sources").is_dir()
     assert (tmp_path / "runtime").is_dir()
+    assert (tmp_path / "artifact_cache").is_dir()
 
 
 def test_license_verification_env_reads_api_settings_when_process_env_missing(monkeypatch) -> None:

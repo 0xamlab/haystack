@@ -45,6 +45,9 @@ from tests.integration.live_integration_artifacts import (
     LIVE_INTEGRATION_SUMMARY_ARTIFACTS,
     write_live_integration_summary,
 )
+from tests.integration.live_local_surface_env import (
+    LOCAL_LIVE_SIMULATION_PERSIST_TRANSPORT,
+)
 
 _CONNECTIVITY_PATH = Path(__file__).resolve().with_name("test_go_live_connectivity_real.py")
 _CONNECTIVITY_SPEC = importlib.util.spec_from_file_location(
@@ -253,6 +256,9 @@ def run_live_suite_with_fresh_server(
                 "ALGENTA_BASE_URL": f"http://127.0.0.1:{api_port}",
                 "ALGENTA_API_KEY": api_key,
                 "ALGENTA_RUNTIME_DIR": str(runtime_dir),
+                "ALGENTA_SIMULATION_PERSIST_TRANSPORT": (
+                    LOCAL_LIVE_SIMULATION_PERSIST_TRANSPORT
+                ),
             }
             try:
                 api_server = start_api_server(api_port, sources_dir, env_live)

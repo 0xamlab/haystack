@@ -6,6 +6,13 @@
 // and tool metadata from the SDK result surface.
 import { ClineCore, Llms } from "@cline/core";
 import { mojoGateAfterTool } from "./mojo-gate";
+import {
+	ALGENTA_PROOF_API_KEY_ENV,
+	ALGENTA_PROOF_MODEL_ID,
+	ALGENTA_PROOF_PROVIDER_ID,
+	ensureAlgentaProofProviderRegistered,
+} from "./proof-provider";
+import { algentaTools } from "./tools";
 
 export interface RunAgentArgs {
 	working_dir: string;
@@ -82,14 +89,24 @@ export async function resolveProviderConfig(
 		(
 			Llms as { normalizeProviderId?: (p: string) => string }
 		).normalizeProviderId?.(requested) ?? requested;
+	if (
+		providerId === ALGENTA_PROOF_PROVIDER_ID ||
+		args.model === ALGENTA_PROOF_MODEL_ID
+	) {
+		ensureAlgentaProofProviderRegistered();
+	}
 	const collection = await Llms.getProviderCollection(providerId);
 	const envNames: string[] = collection?.provider?.env ?? [];
 	const apiKey = envNames.map((k) => process.env[k]?.trim()).find(Boolean);
 	const modelId = args.model || collection?.provider?.defaultModelId;
 	if (!modelId) throw new Error(`no model id for provider '${providerId}'`);
 	if (!apiKey) {
+		const proofHint =
+			modelId === ALGENTA_PROOF_MODEL_ID
+				? ` (proof model requires ${ALGENTA_PROOF_API_KEY_ENV})`
+				: "";
 		throw new Error(
-			`no API key in env for '${providerId}' (tried: ${envNames.join(", ") || "none"})`,
+			`no API key in env for '${providerId}' (tried: ${envNames.join(", ") || "none"})${proofHint}`,
 		);
 	}
 	return {
@@ -106,22 +123,48 @@ export async function resolveProviderConfig(
 
 export function buildToolPolicies(
 	args: RunAgentArgs,
+	options?: { autoApproveAll?: boolean },
 ): Record<string, { enabled?: boolean; autoApprove?: boolean }> {
 	// Auto-approve everything (headless); optionally hard-suppress exploration tools.
+	const autoApproveAll = options?.autoApproveAll !== false;
 	const toolPolicies: Record<
 		string,
 		{ enabled?: boolean; autoApprove?: boolean }
 	> = {
-		"*": { enabled: true, autoApprove: true },
+		"*": { enabled: true, autoApprove: autoApproveAll },
 	};
 	for (const t of suppressedTools(args)) toolPolicies[t] = { enabled: false };
 	return toolPolicies;
 }
 
 export function buildSystemPrompt(args: RunAgentArgs): string {
+	const disabledTools = suppressedTools(args);
+	const guidance = [
+		"You are Algenta's automated repository-fixing agent.",
+		"Apply the requested change using your file-editing tools, then stop.",
+		"Do not ask questions.",
+		"The repository root is the current working directory.",
+	];
+	if (disabledTools.length > 0 || args.injected_context) {
+		guidance.push(
+			"When editing files, use repository-relative paths only (for example: src/app.ts). Never use absolute paths like /src/app.ts.",
+		);
+		guidance.push(
+			"Prefer apply_patch for minimal textual edits. Use editor only when apply_patch is impractical.",
+		);
+	}
+	if (disabledTools.length > 0) {
+		guidance.push(
+			`Do not call policy-disabled tools: ${disabledTools.join(", ")}.`,
+		);
+	}
+	if (args.injected_context) {
+		guidance.push(
+			"Treat the injected repository evidence bundle as authoritative. If it names the target file, edit that file directly instead of exploring the repository.",
+		);
+	}
 	return (
-		"You are Algenta's automated repository-fixing agent. Apply the requested change using " +
-		"your file-editing tools, then stop. Do not ask questions." +
+		guidance.join(" ") +
 		(args.injected_context
 			? `\n\n[REPOSITORY EVIDENCE BUNDLE — authoritative; prefer it over exploring the repo]\n${args.injected_context}`
 			: "")
@@ -132,6 +175,7 @@ export function buildStartConfig(
 	args: RunAgentArgs,
 	provider: ResolvedProviderConfig,
 ): Parameters<typeof ClineCore.prototype.start>[0] {
+	const engineEnabled = Boolean(process.env.ALGENTA_ENGINE_URL);
 	return {
 		config: {
 			providerId: provider.providerId,
@@ -152,11 +196,12 @@ export function buildStartConfig(
 			// hooks): in backendMode "local" the runtime merges config.hooks into the
 			// loop, but a pluginPaths plugin only contributes its setup()/tools — its
 			// hooks are not wired. Tools come from the plugin; the hook comes from here.
-			...(process.env.ALGENTA_ENGINE_URL
+			...(engineEnabled
 				? {
 						pluginPaths: [
 							new URL("./algenta-plugin.ts", import.meta.url).pathname,
 						],
+						extraTools: algentaTools,
 						hooks: { afterTool: mojoGateAfterTool },
 					}
 				: {}),
@@ -165,6 +210,13 @@ export function buildStartConfig(
 			// the G0 run caught. Default cap 12; callers may tighten via limits.maxIterations.
 			execution: { maxIterations: args.limits?.maxIterations ?? 12 },
 		},
+		...(engineEnabled
+			? {
+					localRuntime: {
+						configExtensions: ["plugins", "skills"] as const,
+					},
+				}
+			: {}),
 		source: "api",
 		interactive: false,
 	} as Parameters<typeof ClineCore.prototype.start>[0];
@@ -191,8 +243,7 @@ export function collectFilesChangedFromToolCalls(
 			input?.file,
 			...(Array.isArray(filesField) ? filesField : []),
 		];
-		for (const p of candidates)
-			if (typeof p === "string") filesChanged.add(p);
+		for (const p of candidates) if (typeof p === "string") filesChanged.add(p);
 	}
 	return [...filesChanged];
 }
@@ -255,13 +306,13 @@ export async function runAgent(args: RunAgentArgs): Promise<RunAgentResult> {
 					getAccumulatedUsage?: (id: string) => Promise<
 						| {
 								aggregateUsage?: Record<string, number>;
-								leadUsage?: Record<string, number>;
+								usage?: Record<string, number>;
 						  }
 						| undefined
 					>;
 				}
 			).getAccumulatedUsage?.(agentRunId);
-			const agg = acc?.aggregateUsage ?? acc?.leadUsage;
+			const agg = acc?.aggregateUsage ?? acc?.usage;
 			if (agg) usage = { ...usage, ...agg };
 		} catch {
 			/* fall back to send().usage */

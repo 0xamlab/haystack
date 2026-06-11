@@ -521,19 +521,18 @@ describe("MojoRuntime libraries surface", () => {
     expect(() => catalog.ab_testing.power).toThrowError(MojoFunctionNotRegisteredError);
   });
 
-  it("fails closed when runtime module names collide on public attribute aliases", async () => {
+  it("keeps both modules catalog-addressable when public attribute aliases collide", async () => {
     listRuntimeLibraryModulesMock.mockResolvedValue([
       { name: "ab.testing", engine: "mojo", functions: ["sample_size_proportion"] },
       { name: "ab_testing", engine: "mojo", functions: ["power"] },
     ]);
 
-    await expect(libraries({ mode: "local" })).rejects.toMatchObject({
-      code: "compute_runtime_unavailable",
-      message: "The local runtime returned libraries with conflicting public attribute aliases.",
-      details: {
-        alias: "ab_testing",
-        modules: ["ab_testing", "ab.testing"],
-      },
-    });
+    const catalog = await libraries({ mode: "local" });
+
+    expect(catalog.names()).toEqual(["ab_testing", "ab.testing"]);
+    expect(catalog.listFunctions("ab.testing")).toEqual(["sample_size_proportion"]);
+    expect(catalog.listFunctions("ab_testing")).toEqual(["power"]);
+    expect((catalog as Record<string, unknown>).ab_testing).toBeDefined();
+    expect((catalog as Record<string, unknown>)["ab.testing"]).toBeDefined();
   });
 });

@@ -27,7 +27,9 @@ def test_native_mojo_build_helper_uses_object_then_runtime_link() -> None:
     assert "libKGENCompilerRTShared" in helper_text or "-lKGENCompilerRTShared" in helper_text
     assert "libAsyncRTRuntimeGlobals" in helper_text or "-lAsyncRTRuntimeGlobals" in helper_text
     assert "libAsyncRTMojoBindings" in helper_text or "-lAsyncRTMojoBindings" in helper_text
-    assert "libpython3.14" in helper_text or "-lpython3.14" in helper_text
+    assert 'PIXI_BIN}" run python' in helper_text
+    assert 'PYTHON_RUNTIME_STEM' in helper_text
+    assert '-l"${PYTHON_RUNTIME_STEM}"' in helper_text
 
 
 def test_mojo_run_command_prefers_direct_binary_when_present(monkeypatch, tmp_path) -> None:

@@ -3,9 +3,12 @@ from __future__ import annotations
 import importlib.util
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from fastapi import HTTPException
+
+from apps.api_server.routers.query_contract import ResolvedPlan
 
 _BENCHMARK_PATH = (
     Path(__file__).resolve().parents[1] / "benchmarks" / "source_matrix_runtime_benchmark.py"
@@ -419,3 +422,46 @@ async def _record_async(
 ) -> str | None:
     events.append(name)
     return return_value
+
+
+@pytest.mark.anyio
+async def test_run_resolve_query_preserves_dataset_scope_for_resolved_plan_queries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    case = _BENCHMARK.PreparedSourceCase(
+        label="Scoped resolve fixture",
+        category="local_csv",
+        origin="fixture.csv",
+        source_name="ScopedSource",
+        dataset_id="scoped-dataset-id",
+        metric_column="record_id",
+        metric_role="identifier",
+        expected_count=7,
+        register_ms=1.0,
+        prewarm_ms=1.0,
+        schema_columns=2,
+    )
+    recorded_requests: list[object] = []
+    resolved_plan = ResolvedPlan(
+        source_name=case.source_name,
+        metric_column=case.metric_column,
+        aggregation="count",
+        schema_revision="rev-1",
+    )
+
+    async def _fake_resolve(*_args, **_kwargs):  # type: ignore[no-untyped-def]
+        return SimpleNamespace(resolved_plan=resolved_plan, rejection_reason=None, plan=[])
+
+    async def _fake_query(request, *, auth):  # type: ignore[no-untyped-def]
+        recorded_requests.append(request)
+        return SimpleNamespace(result=case.expected_count, plan=[])
+
+    monkeypatch.setattr(_BENCHMARK, "_resolve_registered_intent", _fake_resolve)
+    monkeypatch.setattr(_BENCHMARK, "query_sources", _fake_query)
+
+    await _BENCHMARK._run_resolve_query(auth={"org_id": "bench-org"}, case=case)
+
+    assert [request.dataset_id for request in recorded_requests] == [
+        case.dataset_id,
+        case.dataset_id,
+    ]

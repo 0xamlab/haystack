@@ -173,6 +173,18 @@ TOOLS: dict[str, ToolEntry] = {
         "spec": repositories.SIMULATE_REPOSITORY_SPEC,
         "handler": repositories.simulate_repository_handler,
     },
+    "run_repository_pipeline": {
+        "spec": repositories.RUN_REPOSITORY_PIPELINE_SPEC,
+        "handler": repositories.run_repository_pipeline_handler,
+    },
+    "simulate_repository_patch": {
+        "spec": repositories.SIMULATE_REPOSITORY_PATCH_SPEC,
+        "handler": repositories.simulate_repository_patch_handler,
+    },
+    "run_repository_fix": {
+        "spec": repositories.RUN_REPOSITORY_FIX_SPEC,
+        "handler": repositories.run_repository_fix_handler,
+    },
     "apply_repository": {
         "spec": repositories.APPLY_REPOSITORY_SPEC,
         "handler": repositories.apply_repository_handler,

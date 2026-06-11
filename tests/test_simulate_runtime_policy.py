@@ -83,3 +83,25 @@ def test_dispatch_persist_fails_closed_when_fallbacks_denied(
     assert exc_info.value.status_code == 503
     assert exc_info.value.detail["error"]["code"] == "persistence_backend_unavailable"
     assert background_tasks.tasks == []
+
+
+def test_dispatch_persist_uses_background_task_when_transport_forced_in_process(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    persist_stub = _PersistSimulationStub()
+    _install_worker_task_module(monkeypatch, persist_stub)
+    monkeypatch.setattr(simulate_router.settings, "simulation_persist_transport", "in_process")
+
+    background_tasks = BackgroundTasks()
+    simulate_router._dispatch_persist(
+        persist_meta={"run_id": "run_123"},
+        auth=_auth_context(),
+        client_ip="127.0.0.1",
+        background_tasks=background_tasks,
+        redis_client=object(),
+        request_id="req_123",
+    )
+
+    assert persist_stub.calls == []
+    assert len(background_tasks.tasks) == 1
+    assert background_tasks.tasks[0].func is simulate_router._persist_in_process

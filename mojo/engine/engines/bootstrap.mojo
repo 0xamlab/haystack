@@ -49,28 +49,60 @@ def run_bootstrap(req: SimRequest) raises -> String:
     elif stat_code == 7: obs = data_sorted[n_data - 1] - data_sorted[0]
     else: obs = obs_mean
 
+    # Per-replicate work is specialized by statistic so only what each one needs
+    # is computed (results are identical — same RNG draw sequence per replicate):
+    #   median        — needs the full sorted resample (buffer + sort);
+    #   std / sharpe   — need a buffer for the numerically-stable two-pass variance
+    #                    (the one-pass form cancels catastrophically on large-mean
+    #                    data like financial series);
+    #   mean/sum/min/max/range — computed in a single fused pass while drawing, with
+    #                    no per-replicate buffer, no sort, and no separate mean pass.
+    var nf = Float64(n_data)
     var outcomes = List[Float64](capacity=runs)
-    for _ in range(runs):
+
+    if stat_code == 1 or stat_code == 2 or stat_code == 6:
         var resamp = List[Float64](capacity=n_data)
         for _ in range(n_data):
-            var idx = Int(random_float64() * Float64(n_data))
-            if idx >= n_data: idx = n_data - 1
-            resamp.append(data[idx])
-        fast_sort(resamp, n_data)
-        var r_mean  = compute_mean(resamp, n_data)
-        var stat_val: Float64
-        if stat_code == 0:   stat_val = r_mean
-        elif stat_code == 1: stat_val = pctile(resamp, n_data, 50)
-        elif stat_code == 2: stat_val = sqrt(compute_variance(resamp, n_data, r_mean))
-        elif stat_code == 3: stat_val = r_mean * Float64(n_data)
-        elif stat_code == 4: stat_val = resamp[0]
-        elif stat_code == 5: stat_val = resamp[n_data - 1]
-        elif stat_code == 6:
-            var std_v = sqrt(compute_variance(resamp, n_data, r_mean))
-            stat_val = r_mean / std_v if std_v > 0.0 else 0.0
-        elif stat_code == 7: stat_val = resamp[n_data - 1] - resamp[0]
-        else: stat_val = r_mean
-        outcomes.append(stat_val)
+            resamp.append(0.0)
+        for _ in range(runs):
+            for j in range(n_data):
+                var idx = Int(random_float64() * nf)
+                if idx >= n_data: idx = n_data - 1
+                resamp[j] = data[idx]
+            if stat_code == 1:
+                fast_sort(resamp, n_data)
+                outcomes.append(pctile(resamp, n_data, 50))
+            else:
+                var r_mean = compute_mean(resamp, n_data)
+                var std_v = sqrt(compute_variance(resamp, n_data, r_mean))
+                if stat_code == 2: outcomes.append(std_v)
+                else: outcomes.append(r_mean / std_v if std_v > 0.0 else 0.0)
+    elif stat_code == 4 or stat_code == 5 or stat_code == 7:
+        for _ in range(runs):
+            var mn: Float64 = 0.0
+            var mx: Float64 = 0.0
+            for j in range(n_data):
+                var idx = Int(random_float64() * nf)
+                if idx >= n_data: idx = n_data - 1
+                var x = data[idx]
+                if j == 0:
+                    mn = x
+                    mx = x
+                else:
+                    if x < mn: mn = x
+                    if x > mx: mx = x
+            if stat_code == 4: outcomes.append(mn)
+            elif stat_code == 5: outcomes.append(mx)
+            else: outcomes.append(mx - mn)
+    else:
+        for _ in range(runs):
+            var s: Float64 = 0.0
+            for _ in range(n_data):
+                var idx = Int(random_float64() * nf)
+                if idx >= n_data: idx = n_data - 1
+                s += data[idx]
+            if stat_code == 3: outcomes.append(s)
+            else: outcomes.append(s / nf)
 
     var boot_mean  = compute_mean(outcomes, runs)
     var boot_se    = sqrt(compute_variance(outcomes, runs, boot_mean))

@@ -23,6 +23,7 @@ is truthy, so the surface is additive and default-off (zero regression).
 """
 from __future__ import annotations
 
+from copy import deepcopy
 import os
 import time
 
@@ -58,6 +59,14 @@ def _should_run(stage: str, stop_after: str) -> bool:
     return _STAGE_ORDER.index(stage) <= _STAGE_ORDER.index(stop_after)
 
 
+def _telemetry_snapshot(data: dict[str, object]) -> dict[str, object]:
+    return {
+        "spans_ms": deepcopy(data.get("spans_ms", {})),
+        "counters": deepcopy(data.get("counters", {})),
+        "events": deepcopy(data.get("events", [])),
+    }
+
+
 async def run_repository_pipeline(
     *,
     connector: DataConnector,
@@ -78,111 +87,113 @@ async def run_repository_pipeline(
             status_code=404,
         )
 
-    timings: list[RepositoryPipelineStageTiming] = []
-    stop_after = request.stop_after
+    with telemetry.collect_or_current() as telemetry_data:
+        timings: list[RepositoryPipelineStageTiming] = []
+        stop_after = request.stop_after
 
-    # --- Stage 1: snapshot (reuse by id, else create) -----------------------
-    start = time.perf_counter()
-    with telemetry.span("pipeline_snapshot_ms"):
-        if request.snapshot_id:
-            snapshot = _ri.get_repository_snapshot(
-                connector=connector, snapshot_id=request.snapshot_id
-            )
-            snapshot_status = "reused"
-        else:
-            snapshot = _ri.create_repository_snapshot(
-                connector=connector,
-                request=request.snapshot or RepositorySnapshotCreateRequest(),
-            )
-            # An identical prior snapshot resolves to status "existing".
-            snapshot_status = "reused" if snapshot.status == "existing" else "ok"
-    timings.append(
-        RepositoryPipelineStageTiming(
-            stage="snapshot",
-            status=snapshot_status,
-            duration_ms=(time.perf_counter() - start) * 1000.0,
-        )
-    )
-
-    triage = None
-    decision_plan = None
-    simulation = None
-    completed_stage = "snapshot"
-
-    # --- Stage 2: triage ----------------------------------------------------
-    if _should_run("triage", stop_after):
+        # --- Stage 1: snapshot (reuse by id, else create) -------------------
         start = time.perf_counter()
-        with telemetry.span("pipeline_triage_ms"):
-            triage = _ri.triage_repository(
-                connector=connector,
-                request=RepositoryTriageRequest(
-                    snapshot_id=snapshot.snapshot_id,
-                    signals=request.signals,
-                    max_evidence_items=request.max_evidence_items,
-                    max_snippet_lines=request.max_snippet_lines,
-                    token_budget=request.token_budget,
-                ),
-            )
+        with telemetry.span("pipeline_snapshot_ms"):
+            if request.snapshot_id:
+                snapshot = _ri.get_repository_snapshot(
+                    connector=connector, snapshot_id=request.snapshot_id
+                )
+                snapshot_status = "reused"
+            else:
+                snapshot = _ri.create_repository_snapshot(
+                    connector=connector,
+                    request=request.snapshot or RepositorySnapshotCreateRequest(),
+                )
+                # An identical prior snapshot resolves to status "existing".
+                snapshot_status = "reused" if snapshot.status == "existing" else "ok"
         timings.append(
             RepositoryPipelineStageTiming(
-                stage="triage",
-                status="ok",
+                stage="snapshot",
+                status=snapshot_status,
                 duration_ms=(time.perf_counter() - start) * 1000.0,
             )
         )
-        completed_stage = "triage"
 
-    # --- Stage 3: plan (LLM) ------------------------------------------------
-    if triage is not None and _should_run("plan", stop_after):
-        start = time.perf_counter()
-        with telemetry.span("pipeline_plan_ms"):
-            decision_plan = await _ri.create_repository_decision_plan(
-                connector=connector,
-                request=RepositoryDecisionPlanCreateRequest(
-                    snapshot_id=snapshot.snapshot_id,
-                    workspace_evidence_bundle_ref=triage.workspace_evidence_bundle_ref,
-                    model=request.model,
-                ),
+        triage = None
+        decision_plan = None
+        simulation = None
+        completed_stage = "snapshot"
+
+        # --- Stage 2: triage ------------------------------------------------
+        if _should_run("triage", stop_after):
+            start = time.perf_counter()
+            with telemetry.span("pipeline_triage_ms"):
+                triage = _ri.triage_repository(
+                    connector=connector,
+                    request=RepositoryTriageRequest(
+                        snapshot_id=snapshot.snapshot_id,
+                        signals=request.signals,
+                        max_evidence_items=request.max_evidence_items,
+                        max_snippet_lines=request.max_snippet_lines,
+                        token_budget=request.token_budget,
+                    ),
+                )
+            timings.append(
+                RepositoryPipelineStageTiming(
+                    stage="triage",
+                    status="ok",
+                    duration_ms=(time.perf_counter() - start) * 1000.0,
+                )
             )
-        timings.append(
-            RepositoryPipelineStageTiming(
-                stage="plan",
-                status="ok",
-                duration_ms=(time.perf_counter() - start) * 1000.0,
+            completed_stage = "triage"
+
+        # --- Stage 3: plan (LLM) --------------------------------------------
+        if triage is not None and _should_run("plan", stop_after):
+            start = time.perf_counter()
+            with telemetry.span("pipeline_plan_ms"):
+                decision_plan = await _ri.create_repository_decision_plan(
+                    connector=connector,
+                    request=RepositoryDecisionPlanCreateRequest(
+                        snapshot_id=snapshot.snapshot_id,
+                        workspace_evidence_bundle_ref=triage.workspace_evidence_bundle_ref,
+                        model=request.model,
+                    ),
+                )
+            timings.append(
+                RepositoryPipelineStageTiming(
+                    stage="plan",
+                    status="ok",
+                    duration_ms=(time.perf_counter() - start) * 1000.0,
+                )
             )
+            completed_stage = "plan"
+
+        # --- Stage 4: simulate (deterministic Mojo engine) ------------------
+        if decision_plan is not None and _should_run("simulate", stop_after):
+            start = time.perf_counter()
+            with telemetry.span("pipeline_simulate_ms"):
+                simulation = await _ri.simulate_repository_decision(
+                    connector=connector,
+                    request=RepositorySimulationRequest(
+                        snapshot_id=snapshot.snapshot_id,
+                        decision_plan_id=decision_plan.decision_plan_id,
+                        runs=request.runs,
+                        seed=request.seed,
+                    ),
+                )
+            timings.append(
+                RepositoryPipelineStageTiming(
+                    stage="simulate",
+                    status="ok",
+                    duration_ms=(time.perf_counter() - start) * 1000.0,
+                )
+            )
+            completed_stage = "simulate"
+
+        return RepositoryPipelineResponse(
+            repository_id=snapshot.repository_id,
+            snapshot_id=snapshot.snapshot_id,
+            stop_after=stop_after,
+            completed_stage=completed_stage,
+            snapshot=snapshot,
+            triage=triage,
+            decision_plan=decision_plan,
+            simulation=simulation,
+            stage_timings=timings,
+            telemetry=_telemetry_snapshot(telemetry_data),
         )
-        completed_stage = "plan"
-
-    # --- Stage 4: simulate (deterministic Mojo engine) ----------------------
-    if decision_plan is not None and _should_run("simulate", stop_after):
-        start = time.perf_counter()
-        with telemetry.span("pipeline_simulate_ms"):
-            simulation = await _ri.simulate_repository_decision(
-                connector=connector,
-                request=RepositorySimulationRequest(
-                    snapshot_id=snapshot.snapshot_id,
-                    decision_plan_id=decision_plan.decision_plan_id,
-                    runs=request.runs,
-                    seed=request.seed,
-                ),
-            )
-        timings.append(
-            RepositoryPipelineStageTiming(
-                stage="simulate",
-                status="ok",
-                duration_ms=(time.perf_counter() - start) * 1000.0,
-            )
-        )
-        completed_stage = "simulate"
-
-    return RepositoryPipelineResponse(
-        repository_id=snapshot.repository_id,
-        snapshot_id=snapshot.snapshot_id,
-        stop_after=stop_after,
-        completed_stage=completed_stage,
-        snapshot=snapshot,
-        triage=triage,
-        decision_plan=decision_plan,
-        simulation=simulation,
-        stage_timings=timings,
-    )

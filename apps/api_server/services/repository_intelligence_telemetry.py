@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import time
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import AbstractContextManager, contextmanager
 from contextvars import ContextVar
 from typing import Any
 
@@ -41,15 +41,57 @@ TOKEN_FIELDS = (
 )
 
 
-@contextmanager
-def collect() -> Iterator[dict[str, Any]]:
+class _TelemetryScope(AbstractContextManager[dict[str, Any]]):
+    def __init__(self) -> None:
+        self._data: dict[str, Any] = {"spans_ms": {}, "counters": {}, "events": []}
+        self._token: object | None = None
+
+    def __enter__(self) -> dict[str, Any]:
+        self._token = _collector.set(self._data)
+        return self._data
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: object | None,
+    ) -> bool:
+        if self._token is not None:
+            _collector.reset(self._token)
+            self._token = None
+        return False
+
+
+class _ActiveOrFreshTelemetryScope(AbstractContextManager[dict[str, Any]]):
+    def __init__(self, active: dict[str, Any] | None) -> None:
+        self._active = active
+        self._delegate: _TelemetryScope | None = None
+
+    def __enter__(self) -> dict[str, Any]:
+        if self._active is not None:
+            return self._active
+        self._delegate = _TelemetryScope()
+        return self._delegate.__enter__()
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: object | None,
+    ) -> bool:
+        if self._delegate is None:
+            return False
+        return self._delegate.__exit__(exc_type, exc, traceback)
+
+
+def collect() -> AbstractContextManager[dict[str, Any]]:
     """Open a fresh telemetry scope; yields the dict that accumulates spans/counters/events."""
-    data: dict[str, Any] = {"spans_ms": {}, "counters": {}, "events": []}
-    token = _collector.set(data)
-    try:
-        yield data
-    finally:
-        _collector.reset(token)
+    return _TelemetryScope()
+
+
+def collect_or_current() -> AbstractContextManager[dict[str, Any]]:
+    """Reuse the current telemetry scope when present, otherwise open a fresh one."""
+    return _ActiveOrFreshTelemetryScope(current())
 
 
 def current() -> dict[str, Any] | None:

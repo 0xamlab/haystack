@@ -177,6 +177,90 @@ def test_write_live_integration_summary_rejects_invalid_counts() -> None:
         )
 
 
+def test_summarize_live_integration_results_counts_and_names() -> None:
+    summary = artifacts.summarize_live_integration_results(
+        [
+            ("✅", "one"),
+            ("❌", "two", "broken"),
+            ("⏭️", "three", "skipped"),
+        ],
+        pass_status="✅",
+        fail_status="❌",
+        skip_status="⏭️",
+    )
+
+    assert summary == {
+        "passed": 1,
+        "failed": 1,
+        "skipped": 1,
+        "total": 3,
+        "failed_checks": ["two"],
+        "skipped_checks": ["three"],
+    }
+
+
+def test_summarize_live_integration_results_rejects_invalid_entries() -> None:
+    with pytest.raises(ValueError, match="results entries must include at least status and name"):
+        artifacts.summarize_live_integration_results(
+            [("✅",)],
+            pass_status="✅",
+            fail_status="❌",
+            skip_status="⏭️",
+        )
+
+    with pytest.raises(
+        ValueError,
+        match="results status must match one of the configured pass/fail/skip markers",
+    ):
+        artifacts.summarize_live_integration_results(
+            [("?", "unknown")],
+            pass_status="✅",
+            fail_status="❌",
+            skip_status="⏭️",
+        )
+
+
+def test_write_live_integration_summary_from_results_round_trip(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    output_path = tmp_path / "python_sdk_integration_summary.json"
+    monkeypatch.setattr(
+        artifacts,
+        "LIVE_INTEGRATION_SUMMARY_ARTIFACTS",
+        {"python_sdk_integration": output_path},
+    )
+
+    monkeypatch.setattr(artifacts.time, "perf_counter", lambda: 103.25)
+
+    written = artifacts.write_live_integration_summary_from_results(
+        "python_sdk_integration",
+        script="tests/integration/test_python_sdk.py",
+        results=[
+            ("✅", "client init"),
+            ("❌", "repository call", "failed"),
+            ("⏭️", "connector browse", "filtered"),
+        ],
+        started_at=100.0,
+        pass_status="✅",
+        fail_status="❌",
+        skip_status="⏭️",
+        details={"base_url": "http://127.0.0.1:8010"},
+    )
+
+    assert written == output_path
+    payload = json.loads(output_path.read_text(encoding="utf-8"))
+    assert payload["passed"] == 1
+    assert payload["failed"] == 1
+    assert payload["skipped"] == 1
+    assert payload["total"] == 3
+    assert payload["elapsed_seconds"] == 3.25
+    assert payload["details"] == {
+        "base_url": "http://127.0.0.1:8010",
+        "failed_checks": ["repository call"],
+        "skipped_checks": ["connector browse"],
+    }
+
+
 def test_write_live_integration_summary_rejects_invalid_script_path() -> None:
     with pytest.raises(ValueError, match="script must be a tests/integration/\\*\\.py path"):
         artifacts.write_live_integration_summary(

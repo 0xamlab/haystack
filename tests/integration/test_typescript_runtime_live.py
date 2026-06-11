@@ -114,6 +114,7 @@ from tests.integration.live_data_source_server import (
     default_refreshable_dataset_payload,
     static_json_server,
 )
+from tests.integration.live_local_surface_env import configure_local_live_server_env
 from tests.integration.live_repository_fixture import (
     assert_repository_intelligence_capabilities_payload,
     live_repository_fixture,
@@ -344,6 +345,36 @@ def _probe_json(
             return err.code, body.decode("utf-8", errors="replace")
 
 
+def _request_json(
+    base_url: str,
+    path: str,
+    *,
+    method: str,
+    body: dict[str, Any] | None = None,
+    headers: dict[str, str] | None = None,
+    timeout: float = 5.0,
+) -> tuple[int, Any]:
+    request = urllib.request.Request(
+        f"{base_url}{path}",
+        data=json.dumps(body).encode("utf-8") if body is not None else None,
+        headers={"Content-Type": "application/json", **(headers or {})},
+        method=method,
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            body_bytes = response.read()
+            try:
+                return response.status, json.loads(body_bytes)
+            except Exception:
+                return response.status, body_bytes.decode("utf-8", errors="replace")
+    except urllib.error.HTTPError as err:
+        body_bytes = err.read()
+        try:
+            return err.code, json.loads(body_bytes)
+        except Exception:
+            return err.code, body_bytes.decode("utf-8", errors="replace")
+
+
 def _endpoint_serves_canonical_runtime_surface(base_url: str) -> bool:
     try:
         status, health = _probe_json(base_url, "/v1/health", timeout=3.0)
@@ -509,6 +540,27 @@ def _endpoint_serves_canonical_runtime_surface(base_url: str) -> bool:
         return False
 
 
+def _endpoint_supports_loopback_dataset_preview(base_url: str) -> bool:
+    if not API_KEY:
+        return False
+    try:
+        with static_json_server(default_refreshable_dataset_payload()) as source_url:
+            status, payload = _request_json(
+                base_url,
+                "/v1/connectors/test",
+                method="POST",
+                body={
+                    "connector_type": "rest",
+                    "config": {"url": source_url, "data_path": "items"},
+                },
+                headers={"X-API-Key": API_KEY},
+                timeout=10.0,
+            )
+    except Exception:
+        return False
+    return status == 200 and isinstance(payload, dict) and payload.get("success") is True
+
+
 def _isolated_api_server_requested() -> bool:
     value = os.environ.get("ALGENTA_TEST_START_API_SERVER", "").strip().lower()
     if value in {"1", "true", "yes", "on"}:
@@ -535,7 +587,7 @@ def _isolated_api_server_env(tmp_root: Path, port: int) -> dict[str, str]:
         "JWT_SECRET",
         "change-me-in-production-use-256-bit-random-value",
     )
-    return env
+    return configure_local_live_server_env(env, root_dir=tmp_root)
 
 
 def _license_verification_env() -> dict[str, str]:
@@ -595,7 +647,10 @@ def _runtime_daemon_env(runtime_dir: Path, tcp_port: int, api_key: str) -> dict[
         "ALGENTA_DAEMON_SOCK": str(runtime_dir / "daemon.sock"),
         "ALGENTA_DAEMON_TCP": f"127.0.0.1:{tcp_port}",
         "ALGENTA_MOJO_SOCK": str(runtime_dir / "mojo.sock"),
-        "JWT_SECRET": "change-me-in-production-use-256-bit-random-value",
+        "JWT_SECRET": os.environ.get(
+            "JWT_SECRET",
+            "change-me-in-production-use-256-bit-random-value",
+        ),
     }
     if not api_key:
         env["ALGENTA_RUNTIME_DEV_MODE"] = "1"
@@ -833,8 +888,14 @@ def isolated_api_server() -> str:
 @contextlib.contextmanager
 def canonical_runtime_api_surface_server() -> str:
     if CONFIGURED_BASE_URL:
-        yield BASE_URL
-        return
+        if _endpoint_serves_canonical_runtime_surface(
+            BASE_URL
+        ) and _endpoint_supports_loopback_dataset_preview(BASE_URL):
+            yield BASE_URL
+            return
+        with _boot_isolated_api_server() as base_url:
+            yield base_url
+            return
     if _ISOLATED_API_SERVER_ACTIVE:
         yield BASE_URL
         return
@@ -842,7 +903,9 @@ def canonical_runtime_api_surface_server() -> str:
         with _boot_isolated_api_server() as base_url:
             yield base_url
             return
-    if _endpoint_serves_canonical_runtime_surface(BASE_URL):
+    if _endpoint_serves_canonical_runtime_surface(
+        BASE_URL
+    ) and _endpoint_supports_loopback_dataset_preview(BASE_URL):
         yield BASE_URL
         return
     with _boot_isolated_api_server() as base_url:
@@ -3450,24 +3513,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    import pytest
-
-    exit_code = pytest.main([__file__, "-v"])
-    # Write summary artifact for CI consumers (preserves the
-    # tests/test_runtime_surface_compatibility surface contract).
-    try:
-        from tests.integration.live_integration_artifacts import write_live_integration_summary
-
-        artifact_path = write_live_integration_summary(
-            SUITE_NAME,
-            script="tests/integration/test_typescript_runtime_live.py",
-            passed=0,  # TODO: parse from pytest result
-            failed=0,
-            skipped=0,
-            total=0,
-            elapsed_seconds=0.0,
-        )
-        print(f"Summary artifact: {artifact_path}")
-    except Exception:
-        pass
-    sys.exit(exit_code)
+    sys.exit(main())

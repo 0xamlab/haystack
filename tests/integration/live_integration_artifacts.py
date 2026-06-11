@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import json
 import math
+import time
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Sequence
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -191,6 +192,72 @@ def _coerce_registered_script_path(name: str, script: str) -> str:
     return normalized
 
 
+def _coerce_monotonic_started_at(value: float) -> float:
+    if isinstance(value, bool):
+        raise ValueError("started_at must be a finite monotonic timestamp")
+    if not isinstance(value, (int, float)):
+        raise ValueError("started_at must be a finite monotonic timestamp")
+    coerced = float(value)
+    if not math.isfinite(coerced):
+        raise ValueError("started_at must be a finite monotonic timestamp")
+    return coerced
+
+
+def summarize_live_integration_results(
+    results: Sequence[Sequence[Any]],
+    *,
+    pass_status: str,
+    fail_status: str,
+    skip_status: str,
+) -> dict[str, Any]:
+    if isinstance(results, (str, bytes)):
+        raise ValueError("results must be a sequence of result tuples")
+    if not isinstance(results, Sequence):
+        raise ValueError("results must be a sequence of result tuples")
+
+    known_statuses = {pass_status, fail_status, skip_status}
+    passed = 0
+    failed = 0
+    skipped = 0
+    failed_checks: list[str] = []
+    skipped_checks: list[str] = []
+
+    for entry in results:
+        if not isinstance(entry, Sequence) or isinstance(entry, (str, bytes)):
+            raise ValueError("results entries must be tuples or lists")
+        if len(entry) < 2:
+            raise ValueError("results entries must include at least status and name")
+
+        status = entry[0]
+        name = entry[1]
+        if not isinstance(status, str):
+            raise ValueError("results status must be a string")
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError("results name must be a non-empty string")
+        if status not in known_statuses:
+            raise ValueError(
+                "results status must match one of the configured pass/fail/skip markers"
+            )
+
+        if status == pass_status:
+            passed += 1
+        elif status == fail_status:
+            failed += 1
+            failed_checks.append(name)
+        else:
+            skipped += 1
+            skipped_checks.append(name)
+
+    return {
+        "passed": passed,
+        "failed": failed,
+        "skipped": skipped,
+        "total": len(results),
+        "failed_checks": failed_checks,
+        "skipped_checks": skipped_checks,
+    }
+
+
 def write_live_integration_summary(
     name: str,
     *,
@@ -229,6 +296,39 @@ def write_live_integration_summary(
         encoding="utf-8",
     )
     return output_path
+
+
+def write_live_integration_summary_from_results(
+    name: str,
+    *,
+    script: str,
+    results: Sequence[Sequence[Any]],
+    started_at: float,
+    pass_status: str,
+    fail_status: str,
+    skip_status: str,
+    details: dict[str, Any] | None = None,
+) -> Path:
+    started_at_value = _coerce_monotonic_started_at(started_at)
+    summary = summarize_live_integration_results(
+        results,
+        pass_status=pass_status,
+        fail_status=fail_status,
+        skip_status=skip_status,
+    )
+    merged_details = dict(details or {})
+    merged_details.setdefault("failed_checks", summary["failed_checks"])
+    merged_details.setdefault("skipped_checks", summary["skipped_checks"])
+    return write_live_integration_summary(
+        name,
+        script=script,
+        passed=summary["passed"],
+        failed=summary["failed"],
+        skipped=summary["skipped"],
+        total=summary["total"],
+        elapsed_seconds=time.perf_counter() - started_at_value,
+        details=merged_details,
+    )
 
 
 def read_live_integration_summary(path: Path) -> dict[str, Any]:

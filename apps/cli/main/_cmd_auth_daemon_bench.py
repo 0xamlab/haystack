@@ -107,9 +107,6 @@ _RICH = _RichProxy()
 from apps.cli.main._helpers import *  # noqa: F401, F403
 from apps.cli.main._helpers import (
     _normalize_expert_variable,
-    _load_benchmark_summary,
-    _display_benchmark_source,
-    _format_speedup_value,
     _normalize_simulation_request,
     _normalize_recommend_request,
     _normalize_score_request,
@@ -141,6 +138,21 @@ from apps.cli.main._cmd_data_repos import (
     _print_repository_apply_summary,
     _print_repository_capabilities_summary,
 )
+
+
+def _load_benchmark_summary(root: Path):
+    from apps.cli import main as _facade
+    return _facade._load_benchmark_summary(root)
+
+
+def _display_benchmark_source(root: Path, source_path: Path | None) -> str | None:
+    from apps.cli import main as _facade
+    return _facade._display_benchmark_source(root, source_path)
+
+
+def _format_speedup_value(value: float) -> str:
+    from apps.cli import main as _facade
+    return _facade._format_speedup_value(value)
 from apps.cli.main._cmd_decisions_llm import *  # noqa: F401, F403
 from apps.cli.main._cmd_runs_account import *  # noqa: F401, F403
 from apps.cli.main._cmd_runs_account import (
@@ -479,7 +491,7 @@ def cmd_runtime_history(limit: int = 20, format: str = "table") -> None:
 def cmd_benchmark() -> None:
     """Show Mojo vs Python speedup from the official benchmark suite."""
 
-    root = Path(__file__).parent.parent.parent
+    root = Path(__file__).resolve().parents[3]
     summary_path = root / "benchmarks" / "summary.txt"
     summary_payload, summary_source = _load_benchmark_summary(root)
 

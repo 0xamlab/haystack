@@ -1,145 +1,327 @@
-// Algenta Repositories agent-core — REAL NDJSON /run sidecar (vendored Cline SDK).
-//
-// Run headless from the vendored-SDK dir so @cline/* resolve:
-//   ANTHROPIC_API_KEY=... bun algenta/run-server.ts [port]
-//
-// Contract matches the Python loopback client (repository_intelligence_agent_core_client):
-//   POST /run { working_dir, task_spec, injected_context, provider?, model?,
-//               suppress_exploration?, limits? }
-//   -> NDJSON; final frame { type:"final", status, agent_run_id, files_changed,
-//      telemetry, working_tree_diff:null (advisory — Python recomputes), text }
-import http from "node:http";
-import { runAgent } from "./adapter";
+import crypto from "node:crypto";
+import http, { type IncomingMessage, type ServerResponse } from "node:http";
+import { collectFilesChangedFromToolCalls } from "./adapter";
+import { createServerManifest, legacyStatusForTerminalState, finalizeSessionArtifacts } from "./server/artifacts";
+import {
+	DEFAULT_CHANNEL,
+	HOST,
+	type RuntimeIdentity,
+	type SessionRecord,
+} from "./server/contracts";
+import { abortSession, deleteSession, runSessionTurn, startSession, stopSession, type ExecutionContext } from "./server/execution";
+import { jsonError, jsonResponse, ndjsonResponse, readJsonBody, requireSession, routeMatch, sseResponse } from "./server/http";
+import { normalizeSessionPayload, toPublicSession } from "./server/policy";
+import { createServerState } from "./server/state";
+import { appendSessionEvent, createIdempotencyKey, optionalString, sessionOwnerForRequest, requiredString } from "./server/utils";
+import { loadProofRuntimeContext, proofRunDir, repoRootFromImportMeta } from "./proofs";
 
-const HOST = "127.0.0.1";
 const PORT = Number(process.env.AGENT_CORE_PORT || process.argv[2] || 0);
+const ROOT_DIR = repoRootFromImportMeta(import.meta.url);
+const PROOF_CONTEXT = await loadProofRuntimeContext(ROOT_DIR);
+const RUNTIME_IDENTITY: RuntimeIdentity = {
+	bootId: crypto.randomUUID(),
+	entrypoint: "agent-core/vendor/cline/algenta/run-server.ts",
+};
+const SERVER_STATE = createServerState();
+const EXECUTION_CONTEXT: ExecutionContext = {
+	proofContext: PROOF_CONTEXT,
+	runtimeIdentity: RUNTIME_IDENTITY,
+	state: SERVER_STATE,
+};
 
-function asString(v: unknown): string {
-	if (v == null) return "";
-	return typeof v === "string" ? v : JSON.stringify(v);
-}
-
-function buildPrompt(payload: Record<string, unknown>): string {
-	if (typeof payload.prompt === "string" && payload.prompt.trim())
-		return payload.prompt;
-	const task = (payload.task_spec ?? {}) as Record<string, unknown>;
-	const ctx = (payload.injected_context ?? {}) as Record<string, unknown>;
-	const issue = asString(task.issue_text) || "(see the evidence bundle)";
-	const suspects = Array.isArray(ctx.suspect_files)
-		? (ctx.suspect_files as string[])
-		: [];
-	const suspectLine = suspects.length
-		? ` Likely files: ${suspects.join(", ")}.`
-		: "";
-	return `Fix this repository issue: ${issue}.${suspectLine} Make the minimal correct change with your file-editing tools, then stop.`;
-}
-
-const server = http.createServer((req, res) => {
-	if (req.method === "GET" && req.url === "/health") {
-		res.writeHead(200, { "content-type": "application/json" });
-		res.end(JSON.stringify({ status: "ok", engine: "cline_fork" }));
+async function handleCreateSession(
+	request: IncomingMessage,
+	response: ServerResponse,
+): Promise<void> {
+	let payload: Record<string, unknown>;
+	try {
+		payload = await readJsonBody(request);
+	} catch (error) {
+		jsonError(response, 400, "invalid_json", String(error));
 		return;
 	}
-	if (req.method === "POST" && req.url === "/run") {
-		let body = "";
-		req.on("data", (c) => (body += c));
-		req.on("end", async () => {
-			res.writeHead(200, { "content-type": "application/x-ndjson" });
-			let payload: Record<string, unknown>;
-			try {
-				payload = JSON.parse(body || "{}");
-			} catch {
-				res.end(
-					`${JSON.stringify({
-						type: "final",
-						status: "failed",
-						error: "invalid json body",
-					})}\n`,
-				);
+	try {
+		const owner = optionalString(payload.owner) || sessionOwnerForRequest(request);
+		const session = normalizeSessionPayload(payload, owner);
+		if (
+			session.channel === "github" &&
+			(!session.authorization.repository_allowed ||
+				!session.authorization.branch_allowed)
+		) {
+			session.manifestError =
+				"github authorization denied for repository or branch scope";
+		}
+		appendSessionEvent(session, "session.created", {
+			owner: session.owner,
+			channel: session.channel,
+			repository_scope: session.repositoryScope,
+			approval_profile: session.approvalProfile,
+		});
+		const existingKey = createIdempotencyKey(session);
+		if (existingKey && SERVER_STATE.idempotencyIndex.has(existingKey)) {
+			const existing = SERVER_STATE.sessions.get(
+				SERVER_STATE.idempotencyIndex.get(existingKey)!,
+			);
+			if (existing) {
+				jsonResponse(response, 200, toPublicSession(existing));
 				return;
 			}
-			try {
-				const taskSpec = (payload.task_spec ?? {}) as Record<string, unknown>;
-				const toolProfile =
-					typeof payload.tool_profile === "string"
-						? (payload.tool_profile as string)
-						: typeof taskSpec.tool_profile === "string"
-							? (taskSpec.tool_profile as string)
-							: undefined;
-				// Engine-behind: when task_spec.engine is present, export the loopback engine
-				// config so the Algenta-tools plugin can reach the LOCAL engine for THIS run.
-				// (Sequential single-run sidecar; per-run env is acceptable here.)
-				const engine = (taskSpec.engine ?? {}) as Record<string, unknown>;
-				if (typeof engine.url === "string" && engine.url) {
-					process.env.ALGENTA_ENGINE_URL = String(engine.url);
-					process.env.ALGENTA_REPOSITORY_ID = String(
-						engine.repository_id ?? "",
-					);
-					process.env.ALGENTA_SNAPSHOT_ID = String(engine.snapshot_id ?? "");
-					process.env.ALGENTA_WORKING_DIR = String(payload.working_dir ?? "");
-					if (engine.api_key)
-						process.env.ALGENTA_API_KEY = String(engine.api_key);
-				}
-				const result = await runAgent({
-					working_dir: String(payload.working_dir ?? ""),
-					prompt: buildPrompt(payload),
-					injected_context: asString(payload.injected_context),
-					// LLM provider/model = any (BYOM): payload, then task_spec.engine, else adapter default.
-					provider: payload.provider
-						? String(payload.provider)
-						: engine.provider
-							? String(engine.provider)
-							: undefined,
-					model: payload.model
-						? String(payload.model)
-						: engine.model
-							? String(engine.model)
-							: undefined,
-					suppress_exploration: Boolean(payload.suppress_exploration),
-					tool_profile: toolProfile,
-					limits: payload.limits as
-						| { maxIterations?: number; timeoutMs?: number }
-						| undefined,
-				});
-				res.write(
-					`${JSON.stringify({
-						type: "final",
-						status: result.status === "completed" ? "completed" : result.status,
-						agent_run_id: result.agent_run_id,
-						transcript_ref: null,
-						working_tree_diff: null, // advisory only — Python recomputes the authoritative diff
-						telemetry: {
-							turns: result.iterations,
-							tokens_in_uncached: result.usage?.inputTokens ?? 0,
-							tokens_out: result.usage?.outputTokens ?? 0,
-							cache_read_tokens: result.usage?.cacheReadTokens ?? 0,
-							cache_write_tokens: result.usage?.cacheWriteTokens ?? 0,
-							total_cost: result.usage?.totalCost ?? 0,
-							provider: result.provider,
-							model: result.model,
-						},
-						files_changed: result.files_changed,
-						text: result.text,
-					})}\n`,
-				);
-			} catch (err) {
-				res.write(
-					`${JSON.stringify({
-						type: "final",
-						status: "aborted",
-						error: String(err),
-					})}\n`,
-				);
-			}
-			res.end();
+		}
+		SERVER_STATE.sessions.set(session.sessionId, session);
+		if (existingKey) {
+			SERVER_STATE.idempotencyIndex.set(existingKey, session.sessionId);
+		}
+		jsonResponse(response, 201, toPublicSession(session));
+	} catch (error) {
+		jsonError(response, 400, "session_invalid", String(error));
+	}
+}
+
+async function handleRunCompatibility(
+	request: IncomingMessage,
+	response: ServerResponse,
+): Promise<void> {
+	let payload: Record<string, unknown>;
+	try {
+		payload = await readJsonBody(request);
+	} catch (error) {
+		ndjsonResponse(response, [
+			{ type: "final", status: "failed", error: String(error) },
+		]);
+		return;
+	}
+	try {
+		const owner = optionalString(payload.owner) || sessionOwnerForRequest(request);
+		const session = normalizeSessionPayload(payload, owner);
+		appendSessionEvent(session, "session.created", {
+			owner: session.owner,
+			channel: session.channel,
+			repository_scope: session.repositoryScope,
+			approval_profile: session.approvalProfile,
+		});
+		SERVER_STATE.sessions.set(session.sessionId, session);
+		const idempotencyKey = createIdempotencyKey(session);
+		if (idempotencyKey) {
+			SERVER_STATE.idempotencyIndex.set(idempotencyKey, session.sessionId);
+		}
+		await startSession(EXECUTION_CONTEXT, session, session.prompt);
+		const finalUsage = session.lastUsage ?? {};
+		const finalResult = session.lastResult ?? {};
+		const finalFrame = {
+			type: "final",
+			status: legacyStatusForTerminalState(session.terminalState ?? "failed"),
+			terminal_state: session.terminalState,
+			secondary_reasons: session.secondaryReasons,
+			agent_run_id: session.agentRunId,
+			session_id: session.sessionId,
+			transcript_ref: session.artifacts.messages || null,
+			working_tree_diff: null,
+			telemetry: {
+				turns:
+					typeof finalResult.iterations === "number"
+						? finalResult.iterations
+						: 0,
+				tokens_in_uncached: finalUsage.inputTokens ?? 0,
+				tokens_out: finalUsage.outputTokens ?? 0,
+				cache_read_tokens: finalUsage.cacheReadTokens ?? 0,
+				cache_write_tokens: finalUsage.cacheWriteTokens ?? 0,
+				total_cost: finalUsage.totalCost ?? 0,
+				provider: session.provider || null,
+				model: session.model || null,
+			},
+			files_changed: collectFilesChangedFromToolCalls(
+				finalResult.toolCalls as
+					| { name: string; input?: unknown; error?: string }[]
+					| undefined,
+			),
+			text: typeof finalResult.text === "string" ? finalResult.text : "",
+			artifacts: session.artifacts,
+		};
+		ndjsonResponse(response, [...session.events, finalFrame]);
+	} catch (error) {
+		ndjsonResponse(response, [
+			{
+				type: "final",
+				status: "failed",
+				terminal_state: "runtime_invalid",
+				error: String(error),
+			},
+		]);
+	}
+}
+
+async function handleStart(
+	request: IncomingMessage,
+	response: ServerResponse,
+	session: SessionRecord,
+): Promise<void> {
+	try {
+		const payload = await readJsonBody(request);
+		const promptOverride = optionalString(payload.prompt) || session.prompt;
+		await startSession(EXECUTION_CONTEXT, session, promptOverride);
+		jsonResponse(response, 200, toPublicSession(session));
+	} catch (error) {
+		session.manifestError = String(error);
+		await finalizeSessionArtifacts(
+			session,
+			PROOF_CONTEXT,
+			RUNTIME_IDENTITY,
+		).catch(() => undefined);
+		jsonError(response, 409, "session_start_failed", String(error), {
+			session_id: session.sessionId,
+		});
+	}
+}
+
+async function handleTurn(
+	request: IncomingMessage,
+	response: ServerResponse,
+	session: SessionRecord,
+): Promise<void> {
+	try {
+		const payload = await readJsonBody(request);
+		const prompt = requiredString(payload.prompt, "prompt");
+		if (!session.cline) {
+			await startSession(EXECUTION_CONTEXT, session);
+		}
+		await runSessionTurn(EXECUTION_CONTEXT, session, prompt);
+		jsonResponse(response, 200, toPublicSession(session));
+	} catch (error) {
+		session.manifestError = String(error);
+		await finalizeSessionArtifacts(
+			session,
+			PROOF_CONTEXT,
+			RUNTIME_IDENTITY,
+		).catch(() => undefined);
+		jsonError(response, 409, "session_turn_failed", String(error), {
+			session_id: session.sessionId,
+		});
+	}
+}
+
+const server = http.createServer(async (request, response) => {
+	const { path, parts } = routeMatch(request, HOST);
+
+	if (request.method === "GET" && path === "/health") {
+		jsonResponse(response, 200, {
+			status: "ok",
+			runtime: {
+				kind: "cline",
+				is_stub: false,
+				boot_id: RUNTIME_IDENTITY.bootId,
+			},
 		});
 		return;
 	}
-	res.writeHead(404);
-	res.end();
+
+	if (request.method === "GET" && path === "/manifest") {
+		jsonResponse(response, 200, createServerManifest(PROOF_CONTEXT, RUNTIME_IDENTITY));
+		return;
+	}
+
+	if (request.method === "POST" && path === "/run") {
+		await handleRunCompatibility(request, response);
+		return;
+	}
+
+	if (request.method === "POST" && path === "/sessions") {
+		await handleCreateSession(request, response);
+		return;
+	}
+
+	if (request.method === "GET" && path === "/sessions") {
+		const owner = sessionOwnerForRequest(request);
+		const rows = [...SERVER_STATE.sessions.values()]
+			.filter((session) => session.owner === owner)
+			.map((session) => toPublicSession(session));
+		jsonResponse(response, 200, { sessions: rows });
+		return;
+	}
+
+	if (parts[0] === "sessions" && parts[1]) {
+		const session = requireSession(request, response, SERVER_STATE, parts[1]);
+		if (!session) return;
+
+		if (request.method === "GET" && parts.length === 2) {
+			jsonResponse(response, 200, toPublicSession(session));
+			return;
+		}
+
+		if (request.method === "POST" && parts[2] === "start") {
+			await handleStart(request, response, session);
+			return;
+		}
+
+		if (request.method === "POST" && parts[2] === "turns") {
+			await handleTurn(request, response, session);
+			return;
+		}
+
+		if (request.method === "GET" && parts[2] === "messages") {
+			jsonResponse(response, 200, {
+				session_id: session.sessionId,
+				messages: session.lastMessages ?? [],
+				artifacts: session.artifacts,
+			});
+			return;
+		}
+
+		if (request.method === "GET" && parts[2] === "usage") {
+			jsonResponse(response, 200, {
+				session_id: session.sessionId,
+				usage: session.lastUsage ?? {},
+				artifacts: session.artifacts,
+			});
+			return;
+		}
+
+		if (request.method === "GET" && parts[2] === "events") {
+			if (parts[3] === "ndjson") {
+				ndjsonResponse(response, session.events);
+				return;
+			}
+			if (parts[3] === "sse") {
+				sseResponse(response, session.events);
+				return;
+			}
+			jsonResponse(response, 200, {
+				session_id: session.sessionId,
+				events: session.events,
+			});
+			return;
+		}
+
+		if (request.method === "POST" && parts[2] === "abort") {
+			await abortSession(EXECUTION_CONTEXT, session);
+			jsonResponse(response, 200, toPublicSession(session));
+			return;
+		}
+
+		if (request.method === "POST" && parts[2] === "stop") {
+			await stopSession(EXECUTION_CONTEXT, session);
+			jsonResponse(response, 200, toPublicSession(session));
+			return;
+		}
+
+		if (request.method === "DELETE" && parts.length === 2) {
+			await deleteSession(EXECUTION_CONTEXT, session);
+			jsonResponse(response, 200, {
+				deleted: true,
+				session_id: session.sessionId,
+			});
+			return;
+		}
+	}
+
+	jsonError(response, 404, "not_found", "Route not found.", {
+		method: request.method || "GET",
+		path,
+		default_channel: DEFAULT_CHANNEL,
+	});
 });
 
 server.listen(PORT, HOST, () => {
 	const addr = server.address() as { port: number };
 	console.log(`AGENT_CORE_LISTENING ${addr.port}`);
+	console.log(`AGENT_CORE_PROOFS ${proofRunDir(PROOF_CONTEXT, "example")}`);
 });

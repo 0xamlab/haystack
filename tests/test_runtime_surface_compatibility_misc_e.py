@@ -625,13 +625,24 @@ def test_python_manifest_helper_exports_normalized_fixture_constant() -> None:
 def test_root_test_graph_includes_formal_runtime_foundation_proof_bundle() -> None:
     package_json = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
     scripts = package_json["scripts"]
-
-    assert scripts["test:js"] == (
-        "pnpm --dir packages/ts-sdk test -- --run "
-        "src/libraries.test.ts src/runtime_daemon_client.test.ts src/index.test.ts "
-        "&& pnpm --dir apps/gateway test "
-        "&& pnpm --dir apps/gateway exec tsx --test ../../examples/shared/privacyProfile.test.ts"
+    test_js_script = (ROOT / "scripts" / "run_js_test_suite.sh").read_text(
+        encoding="utf-8"
     )
+
+    assert scripts["test:js"] == "./scripts/run_js_test_suite.sh"
+    assert "unset ALGENTA_API_KEY" in test_js_script
+    assert "unset DE_API_KEY" in test_js_script
+    assert "unset ALGENTA_BASE_URL" in test_js_script
+    assert "unset DE_BASE_URL" in test_js_script
+    assert "unset ALGENTA_API_URL" in test_js_script
+    assert (
+        "pnpm --dir packages/ts-sdk test -- --run "
+        "src/libraries.test.ts src/runtime_daemon_client.test.ts src/index.test.ts"
+    ) in test_js_script
+    assert "pnpm --dir apps/gateway test" in test_js_script
+    assert (
+        "pnpm --dir apps/gateway exec tsx --test ../../examples/shared/privacyProfile.test.ts"
+    ) in test_js_script
     assert scripts["test"] == "pnpm test:js && pnpm test:formal-runtime-foundation"
     assert scripts["validate:formal-runtime-foundation"] == (
         "./scripts/run_repo_python.sh scripts/validate_runtime_release.py --format table"
@@ -765,5 +776,4 @@ def test_root_test_graph_includes_formal_runtime_foundation_proof_bundle() -> No
         scripts["check"]
         == "pnpm lint && pnpm test && pnpm validate:formal-runtime-foundation && pnpm build"
     )
-
 

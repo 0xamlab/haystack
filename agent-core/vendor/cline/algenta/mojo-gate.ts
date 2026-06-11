@@ -125,7 +125,13 @@ export const mojoGateAfterTool: AfterToolHook = async (ctx) => {
 			`current working-tree patch. Reduce blast radius / likely-failing tests and revise ` +
 			`before finalizing.`;
 		if (mode === "block") {
-			return { stop: true, reason: fail };
+			// Surface the verdict in output too (not only the stop reason), so the
+			// run's evidence records that the gate fired even when it blocks.
+			return {
+				stop: true,
+				reason: fail,
+				result: { output: `${base}\n\n${fail}`, metadata },
+			};
 		}
 		return {
 			result: {

@@ -52,6 +52,7 @@ type LocalOnlyCoreSessionConfigKeys =
 	| "telemetry"
 	| "extensionContext"
 	| "extraTools"
+	| "pluginPaths"
 	| "extensions"
 	| "onTeamEvent"
 	| "onConsecutiveMistakeLimitReached";
@@ -86,6 +87,7 @@ export interface LocalRuntimeStartOptions {
 	telemetry?: LocalRuntimeBootstrapConfig["telemetry"];
 	extensionContext?: LocalRuntimeBootstrapConfig["extensionContext"];
 	extraTools?: LocalRuntimeBootstrapConfig["extraTools"];
+	pluginPaths?: LocalRuntimeBootstrapConfig["pluginPaths"];
 	extensions?: LocalRuntimeBootstrapConfig["extensions"];
 	onTeamEvent?: LocalRuntimeBootstrapConfig["onTeamEvent"];
 	onConsecutiveMistakeLimitReached?: LocalRuntimeBootstrapConfig["onConsecutiveMistakeLimitReached"];
@@ -126,6 +128,7 @@ export function splitCoreSessionConfig(config: CoreSessionConfig): {
 		telemetry,
 		extensionContext,
 		extraTools,
+		pluginPaths,
 		extensions,
 		onTeamEvent,
 		onConsecutiveMistakeLimitReached,
@@ -141,6 +144,7 @@ export function splitCoreSessionConfig(config: CoreSessionConfig): {
 	if (extensionContext)
 		localConfigOverrides.extensionContext = extensionContext;
 	if (extraTools) localConfigOverrides.extraTools = extraTools;
+	if (pluginPaths) localConfigOverrides.pluginPaths = pluginPaths;
 	if (extensions) localConfigOverrides.extensions = extensions;
 	if (onTeamEvent) localConfigOverrides.onTeamEvent = onTeamEvent;
 	if (onConsecutiveMistakeLimitReached) {

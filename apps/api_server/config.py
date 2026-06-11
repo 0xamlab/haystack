@@ -28,6 +28,17 @@ class Settings(BaseSettings):
             "allow always permits degraded runtime paths, deny fail-closes instead."
         ),
     )
+    simulation_persist_transport: str = Field(
+        default="auto",
+        validation_alias=AliasChoices(
+            "ALGENTA_SIMULATION_PERSIST_TRANSPORT",
+            "SIMULATION_PERSIST_TRANSPORT",
+        ),
+        description=(
+            "Simulation persistence transport: auto prefers Celery, "
+            "celery requires Celery, and in_process forces FastAPI BackgroundTasks."
+        ),
+    )
     mojo_profiling_policy: str = Field(
         default="optional",
         description=(
@@ -102,6 +113,16 @@ class Settings(BaseSettings):
         if mode == "deny":
             return False
         return self.is_development
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def normalized_simulation_persist_transport(self) -> str:
+        transport = self.simulation_persist_transport.strip().lower()
+        if transport in {"in_process", "background", "background_tasks"}:
+            return "in_process"
+        if transport == "celery":
+            return "celery"
+        return "auto"
 
     @computed_field  # type: ignore[misc]
     @property
