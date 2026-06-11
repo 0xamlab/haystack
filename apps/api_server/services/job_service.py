@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api_server.models.job import (
     Job,
+    JobKind,
     JobStatus,
     WebhookStatus,
     is_terminal,
@@ -50,14 +51,20 @@ async def _get_run_for_update(run_id: uuid.UUID, db: AsyncSession) -> Simulation
 
 
 async def create_job(
-    run_id: uuid.UUID,
+    run_id: uuid.UUID | None,
     org_id: uuid.UUID,
     db: AsyncSession,
     callback_url: str | None = None,
     queue_name: str = "default",
     workspace_id: uuid.UUID | None = None,
+    *,
+    job_kind: JobKind = JobKind.SIMULATION,
+    request_payload: dict[str, Any] | None = None,
 ) -> Job:
-    """Create a new Job record in QUEUED state."""
+    """Create a new Job record in QUEUED state.
+
+    ``run_id`` is required for simulation jobs and None for repository jobs (which
+    carry their input in ``request_payload`` instead of a SimulationRun)."""
     ttl = datetime.now(UTC) + timedelta(hours=_DEFAULT_TTL_HOURS)
     job = Job(
         run_id=run_id,
@@ -65,13 +72,21 @@ async def create_job(
         workspace_id=workspace_id,
         queue_name=queue_name,
         status=JobStatus.QUEUED,
+        job_kind=job_kind.value,
+        request_payload=request_payload,
         callback_url=callback_url,
         callback_status=WebhookStatus.PENDING if callback_url else WebhookStatus.NOT_CONFIGURED,
         ttl_expires_at=ttl,
     )
     db.add(job)
     await db.flush()
-    logger.info("job_created", job_id=str(job.id), run_id=str(run_id), org_id=str(org_id))
+    logger.info(
+        "job_created",
+        job_id=str(job.id),
+        run_id=str(run_id) if run_id else None,
+        org_id=str(org_id),
+        job_kind=job_kind.value,
+    )
     return job
 
 
@@ -215,6 +230,11 @@ async def get_job_result(
     job = await get_job(job_id, org_id, db, workspace_id=workspace_id)
     if job.status != JobStatus.COMPLETED:
         return None
+
+    # Repository jobs (Wave B1) store their result inline rather than via SimulationRun.
+    # A missing job_kind defaults to 'simulation' (matching the column server_default).
+    if getattr(job, "job_kind", JobKind.SIMULATION.value) != JobKind.SIMULATION.value:
+        return job.result_payload
 
     # Fetch associated SimulationRun
     run_result = await db.execute(select(SimulationRun).where(SimulationRun.id == job.run_id))

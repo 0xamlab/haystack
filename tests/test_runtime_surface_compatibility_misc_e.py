@@ -772,8 +772,16 @@ def test_root_test_graph_includes_formal_runtime_foundation_proof_bundle() -> No
     ]
     assert "&& ./scripts/run_repo_python.sh tests/integration/test_mcp_server.py" in scripts["test:formal-runtime-foundation"]
     assert "&& ./scripts/run_repo_python.sh tests/integration/test_openapi.py" in scripts["test:formal-runtime-foundation"]
-    assert (
-        scripts["check"]
-        == "pnpm lint && pnpm test && pnpm validate:formal-runtime-foundation && pnpm build"
-    )
+    # Required stages must all be present (regression floor); extra stages such as the
+    # reliability guard + hardening tests are additive and must not break this contract.
+    check_graph = scripts["check"]
+    for required_stage in (
+        "pnpm lint",
+        "pnpm test",
+        "pnpm validate:formal-runtime-foundation",
+        "pnpm build",
+        "pnpm guard:reliability",
+        "pnpm test:hardening",
+    ):
+        assert required_stage in check_graph, f"check graph is missing required stage: {required_stage}"
 

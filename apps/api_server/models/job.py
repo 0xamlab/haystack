@@ -3,9 +3,10 @@
 import uuid
 from datetime import datetime
 from enum import StrEnum
+from typing import Any
 
 from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from apps.api_server.db.base import Base, TimestampMixin, UUIDMixin
@@ -26,6 +27,15 @@ class WebhookStatus(StrEnum):
     DELIVERED = "delivered"
     FAILED = "failed"
     NOT_CONFIGURED = "not_configured"
+
+
+class JobKind(StrEnum):
+    """Discriminator for the generic async-job lifecycle (Wave B1). Simulation jobs
+    use run_id/SimulationRun; repository jobs carry request/result payloads inline."""
+
+    SIMULATION = "simulation"
+    REPOSITORY_DECISION_PLAN = "repository_decision_plan"
+    REPOSITORY_PIPELINE = "repository_pipeline"
 
 
 # Valid state transitions
@@ -53,10 +63,19 @@ def is_terminal(status: JobStatus) -> bool:
 class Job(UUIDMixin, TimestampMixin, Base):
     __tablename__ = "jobs"
 
-    run_id: Mapped[uuid.UUID] = mapped_column(
+    # Nullable: repository jobs (decision-plan / pipeline) have no SimulationRun and
+    # carry their input/output in request_payload/result_payload instead (Wave B1).
+    run_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("simulation_runs.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    job_kind: Mapped[str] = mapped_column(
+        String(64),
         nullable=False,
+        default=JobKind.SIMULATION.value,
+        server_default="simulation",
         index=True,
     )
     org_id: Mapped[uuid.UUID] = mapped_column(
@@ -91,6 +110,10 @@ class Job(UUIDMixin, TimestampMixin, Base):
         nullable=False,
     )
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Generic async-job payloads (Wave B1): the original request body and the computed
+    # result for non-simulation kinds (simulation still uses run_id/SimulationRun).
+    request_payload: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    result_payload: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     ttl_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

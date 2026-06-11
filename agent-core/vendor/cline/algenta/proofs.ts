@@ -10,6 +10,8 @@ export interface ProofRuntimeContext {
 	vendoredClineCommit: string;
 	algentaCommit: string;
 	docsSnapshotHash: string;
+	declaredDocsSnapshotHash: string;
+	docsRuntimeMismatch: boolean;
 	parityLedgerHash: string;
 	runtimeVersion: string;
 	sourceTreeDirty: boolean;
@@ -26,6 +28,9 @@ export interface ArtifactProvenance {
 	cline_docs_snapshot_hash: string;
 	vendored_cline_commit: string;
 	algenta_commit: string;
+	// B4: a docs/runtime hash mismatch makes parity provenance untrustworthy. Surfaced on
+	// every artifact so the proof layer can mark affected rows blocked_docs_runtime_mismatch.
+	docs_runtime_mismatch: boolean;
 }
 
 const REDACTED = "[REDACTED]";
@@ -103,9 +108,16 @@ export async function loadProofRuntimeContext(
 		computedDocsHash = "";
 		declaredHash = "";
 	}
-	if (declaredHash && computedDocsHash && declaredHash !== computedDocsHash) {
-		throw new Error(
-			`cline docs snapshot hash mismatch: declared=${declaredHash} computed=${computedDocsHash}`,
+	// A docs/runtime mismatch must NOT crash boot — the server must always bind a
+	// port (Wave A1). Record it as a tracked flag so the proof layer can mark the
+	// affected runs `blocked_docs_runtime_mismatch` (Wave B4) instead of silently
+	// degrading to "partial".
+	const docsRuntimeMismatch = Boolean(
+		declaredHash && computedDocsHash && declaredHash !== computedDocsHash,
+	);
+	if (docsRuntimeMismatch) {
+		console.error(
+			`AGENT_CORE_DOCS_RUNTIME_MISMATCH declared=${declaredHash} computed=${computedDocsHash}`,
 		);
 	}
 
@@ -129,9 +141,36 @@ export async function loadProofRuntimeContext(
 		vendoredClineCommit,
 		algentaCommit,
 		docsSnapshotHash: computedDocsHash,
+		declaredDocsSnapshotHash: declaredHash,
+		docsRuntimeMismatch,
 		parityLedgerHash,
 		runtimeVersion: vendoredClineCommit,
 		sourceTreeDirty,
+	};
+}
+
+/**
+ * A safe fallback context used if proof provenance cannot be loaded at boot.
+ * Provenance is optional for the server to RUN (Wave A1); a degraded context is
+ * marked untrusted (dirty + mismatch) so downstream proof gates never treat its
+ * runs as authoritative.
+ */
+export function degradedProofRuntimeContext(
+	rootDir: string,
+	reason: string,
+): ProofRuntimeContext {
+	console.error(`AGENT_CORE_PROOF_DEGRADED ${reason}`);
+	return {
+		rootDir,
+		gitCommit: "",
+		vendoredClineCommit: "",
+		algentaCommit: "",
+		docsSnapshotHash: "",
+		declaredDocsSnapshotHash: "",
+		docsRuntimeMismatch: true,
+		parityLedgerHash: "",
+		runtimeVersion: "",
+		sourceTreeDirty: true,
 	};
 }
 
@@ -151,6 +190,7 @@ export function createArtifactProvenance(
 		cline_docs_snapshot_hash: context.docsSnapshotHash,
 		vendored_cline_commit: context.vendoredClineCommit,
 		algenta_commit: context.algentaCommit,
+		docs_runtime_mismatch: context.docsRuntimeMismatch,
 	};
 }
 
@@ -176,7 +216,18 @@ export function proofRunDir(
 	context: ProofRuntimeContext,
 	runId: string,
 ): string {
-	return path.join(context.rootDir, "build", "proofs", "cline", "runs", runId);
+	// Defense in depth (B6): runId is server-generated, but never let any value escape the
+	// runs root via path separators / traversal — reject anything that isn't a single
+	// path-safe segment, and resolve-confine the result under <rootDir>/.../runs.
+	if (!/^[A-Za-z0-9_-]{1,128}$/.test(runId)) {
+		throw new Error(`unsafe proof run id: ${runId}`);
+	}
+	const runsRoot = path.join(context.rootDir, "build", "proofs", "cline", "runs");
+	const dir = path.resolve(runsRoot, runId);
+	if (dir !== path.join(runsRoot, runId) || !dir.startsWith(runsRoot + path.sep)) {
+		throw new Error(`proof run dir escaped the runs root: ${dir}`);
+	}
+	return dir;
 }
 
 export function relativeArtifactPath(

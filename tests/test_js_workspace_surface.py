@@ -101,9 +101,18 @@ def test_root_package_json_exposes_repo_root_js_commands() -> None:
     assert scripts["lint"] == "pnpm --dir packages/ts-sdk lint && pnpm --dir apps/gateway lint"
     assert scripts["test"] == "pnpm test:js && pnpm test:formal-runtime-foundation"
     assert scripts["build"] == "pnpm --dir packages/ts-sdk build && pnpm --dir apps/gateway build"
-    assert scripts["check"] == (
-        "pnpm lint && pnpm test && pnpm validate:formal-runtime-foundation && pnpm build"
-    )
+    # The check graph must include every required stage (regression floor), but may add
+    # more (e.g. the reliability guard + hardening tests) without churning this contract.
+    check_graph = scripts["check"]
+    for required_stage in (
+        "pnpm lint",
+        "pnpm test",
+        "pnpm validate:formal-runtime-foundation",
+        "pnpm build",
+        "pnpm guard:reliability",
+        "pnpm test:hardening",
+    ):
+        assert required_stage in check_graph, f"check graph is missing required stage: {required_stage}"
 
 
 def test_makefile_exposes_root_js_targets() -> None:

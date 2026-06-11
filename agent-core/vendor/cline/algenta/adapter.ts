@@ -6,13 +6,14 @@
 // and tool metadata from the SDK result surface.
 import { ClineCore, Llms } from "@cline/core";
 import { mojoGateAfterTool } from "./mojo-gate";
+import { writeScopeBeforeTool } from "./write-scope";
 import {
 	ALGENTA_PROOF_API_KEY_ENV,
 	ALGENTA_PROOF_MODEL_ID,
 	ALGENTA_PROOF_PROVIDER_ID,
 	ensureAlgentaProofProviderRegistered,
 } from "./proof-provider";
-import { algentaTools } from "./tools";
+import { type EngineContext, algentaTools, engineContext } from "./tools";
 
 export interface RunAgentArgs {
 	working_dir: string;
@@ -27,6 +28,9 @@ export interface RunAgentArgs {
 	limits?: { maxIterations?: number; timeoutMs?: number };
 	enable_spawn_agent?: boolean;
 	enable_agent_teams?: boolean;
+	// Per-run engine config (B3/PR8): threaded into AsyncLocalStorage for the run instead of
+	// process-global env, so concurrent runs are isolated and no API key bleeds across tenants.
+	engine?: { enabled: boolean } & EngineContext;
 }
 
 export interface RunAgentResult {
@@ -175,7 +179,7 @@ export function buildStartConfig(
 	args: RunAgentArgs,
 	provider: ResolvedProviderConfig,
 ): Parameters<typeof ClineCore.prototype.start>[0] {
-	const engineEnabled = Boolean(process.env.ALGENTA_ENGINE_URL);
+	const engineEnabled = Boolean(args.engine?.enabled && args.engine.url);
 	return {
 		config: {
 			providerId: provider.providerId,
@@ -196,13 +200,17 @@ export function buildStartConfig(
 			// hooks): in backendMode "local" the runtime merges config.hooks into the
 			// loop, but a pluginPaths plugin only contributes its setup()/tools — its
 			// hooks are not wired. Tools come from the plugin; the hook comes from here.
+			// B7: the write-scope guard is ALWAYS on (blocks out-of-scope writes pre-disk),
+			// independent of engine mode. The govern (risk) hook is engine-gated.
+			hooks: engineEnabled
+				? { beforeTool: writeScopeBeforeTool, afterTool: mojoGateAfterTool }
+				: { beforeTool: writeScopeBeforeTool },
 			...(engineEnabled
 				? {
 						pluginPaths: [
 							new URL("./algenta-plugin.ts", import.meta.url).pathname,
 						],
 						extraTools: algentaTools,
-						hooks: { afterTool: mojoGateAfterTool },
 					}
 				: {}),
 			// Always bound iterations: a non-converging suppressed run otherwise loops
@@ -249,6 +257,17 @@ export function collectFilesChangedFromToolCalls(
 }
 
 export async function runAgent(args: RunAgentArgs): Promise<RunAgentResult> {
+	// B3/PR8: thread the engine config for the whole run (start + tool-calling turn)
+	// through AsyncLocalStorage so the Algenta tools read this run's config, never a global.
+	const inner = () => runAgentImpl(args);
+	if (args.engine?.enabled && args.engine.url) {
+		const { url, repositoryId, snapshotId, apiKey, workingDir } = args.engine;
+		return engineContext.run({ url, repositoryId, snapshotId, apiKey, workingDir }, inner);
+	}
+	return inner();
+}
+
+async function runAgentImpl(args: RunAgentArgs): Promise<RunAgentResult> {
 	const provider = await resolveProviderConfig(args);
 	const toolPolicies = buildToolPolicies(args);
 

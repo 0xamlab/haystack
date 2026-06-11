@@ -17,6 +17,13 @@ logger = logging.getLogger(__name__)
 _RUNTIME_FALLBACK_CACHE: tuple[tuple[str | None, str, str], Path] | None = None
 
 
+def _fallback_mode() -> str:
+    """RUNTIME_FALLBACK_MODE governs whether the runtime dir may fall back to
+    ephemeral/guessed storage. ``deny`` (Wave A2, the self-hosted/privacy default)
+    forbids spilling tenant data to /tmp; ``allow`` keeps the dev/test fallback."""
+    return (os.environ.get("RUNTIME_FALLBACK_MODE") or "allow").strip().lower()
+
+
 def _runtime_dir_writable(path: Path) -> bool:
     probe_dir = path.resolve()
     probe_file = probe_dir / ".repository-intelligence-write-test"
@@ -67,6 +74,22 @@ def _runtime_dir() -> Path:
     if _runtime_dir_writable(default_runtime):
         _RUNTIME_FALLBACK_CACHE = (cache_key, default_runtime)
         return default_runtime
+
+    # Wave A2 (fail closed): never silently spill tenant artifacts to ephemeral
+    # storage (e.g. /tmp), which would be lost on restart and is not the durable,
+    # access-controlled home tenant data must live in. The operator must point
+    # ALGENTA_RUNTIME_DIR at a writable, durable, mounted path instead.
+    if _fallback_mode() == "deny":
+        raise RepositoryIntelligenceError(
+            code="repository_runtime_unwritable",
+            message=(
+                "Repository Intelligence runtime directory is not writable and "
+                "RUNTIME_FALLBACK_MODE=deny forbids falling back to ephemeral storage. "
+                "Set ALGENTA_RUNTIME_DIR to a writable, durable path."
+            ),
+            status_code=500,
+            details={"runtime_dir": str(default_runtime), "fallback_mode": "deny"},
+        )
 
     for fallback_path in _runtime_fallback_candidates():
         fallback_path = fallback_path.resolve()

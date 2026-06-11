@@ -93,16 +93,22 @@ services:
       JWT_SECRET: local-dev-jwt-secret-change-in-production
       WEBHOOK_SIGNING_SECRET: local-dev-webhook-secret
       CORS_ORIGINS: "http://localhost:3000,http://localhost:8000"
+      ALGENTA_RUNTIME_DIR: /home/app/.algenta/runtime
+      ALGENTA_AGENT_CORE_URL: http://sidecar:8787
+      ALGENTA_AGENT_CORE_TOKEN: ${AGENT_CORE_AUTH_TOKEN:-}
     ports:
       - "8000:8000"
     volumes:
       # Hot reload in development — mount source code
       - ../../apps:/app/apps:ro
       - ../../mojo_build:/app/mojo_build:ro
+      - runtime_data:/home/app/.algenta
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      sidecar:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -135,17 +141,49 @@ services:
       S3_ACCESS_KEY_ID: minioadmin
       S3_SECRET_ACCESS_KEY: minioadmin
       MOJO_BINARY_PATH: /app/mojo_build/simulate
+      ALGENTA_RUNTIME_DIR: /home/app/.algenta/runtime
+      ALGENTA_AGENT_CORE_URL: http://sidecar:8787
+      ALGENTA_AGENT_CORE_TOKEN: ${AGENT_CORE_AUTH_TOKEN:-}
     volumes:
       - ../../apps:/app/apps:ro
       - ../../mojo_build:/app/mojo_build:ro
+      - runtime_data:/home/app/.algenta
     depends_on:
       redis:
         condition: service_healthy
       postgres:
         condition: service_healthy
+      sidecar:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ─── Agent-core sidecar (forked-Cline execution head) ────────────────────────
+  sidecar:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.sidecar
+    container_name: decision-engine-sidecar
+    environment:
+      AGENT_CORE_HOST: 0.0.0.0
+      AGENT_CORE_PORT: "8787"
+      AGENT_CORE_AUTH_TOKEN: ${AGENT_CORE_AUTH_TOKEN:-}
+      AGENT_CORE_REQUIRE_AUTH: ${AGENT_CORE_REQUIRE_AUTH:-0}
+      ALGENTA_DEPLOYMENT_MODE: ${ALGENTA_DEPLOYMENT_MODE:-self_hosted}
+      ALGENTA_RUNTIME_DIR: /home/app/.algenta/runtime
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      LOG_LEVEL: info
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8787/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    volumes:
+      - runtime_data:/home/app/.algenta
     restart: unless-stopped
 
 volumes:
   postgres_data:
   redis_data:
   minio_data:
+  runtime_data:

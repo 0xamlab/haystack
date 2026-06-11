@@ -13,6 +13,7 @@
 //   ALGENTA_SNAPSHOT_ID    — the immutable snapshot to triage/simulate against
 //   ALGENTA_API_KEY        — bearer token for the engine
 
+import { AsyncLocalStorage } from "node:async_hooks";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import type { AgentTool } from "@cline/core";
@@ -20,14 +21,30 @@ import { createTool } from "@cline/sdk";
 
 const pexec = promisify(execFile);
 
+// B3 (PR8): per-run engine config is threaded through AsyncLocalStorage, NOT process-global
+// env. Each run executes inside engineContext.run(ctx, ...), so concurrent sessions can never
+// read each other's engine URL / API key — the cross-tenant secret bleed + serialization the
+// old global-env + activeEngineSessionId mutex caused. Outside a run the store is undefined and
+// the engine seam is inert (ENGINE() === "").
+export interface EngineContext {
+	url: string;
+	repositoryId: string;
+	snapshotId: string;
+	apiKey: string;
+	workingDir: string;
+}
+
+export const engineContext = new AsyncLocalStorage<EngineContext>();
+
+const _ctx = (): Partial<EngineContext> => engineContext.getStore() ?? {};
+
 // Exported so the govern hook (mojo-gate.ts) shares ONE engine seam — same loopback
 // config, same diff capture, same authenticated POST — instead of duplicating it.
-export const ENGINE = () =>
-	(process.env.ALGENTA_ENGINE_URL ?? "").replace(/\/$/, "");
-export const REPO = () => process.env.ALGENTA_REPOSITORY_ID ?? "";
-export const SNAPSHOT = () => process.env.ALGENTA_SNAPSHOT_ID ?? "";
-const KEY = () => process.env.ALGENTA_API_KEY ?? process.env.DE_API_KEY ?? "";
-export const WORKING_DIR = () => process.env.ALGENTA_WORKING_DIR ?? "";
+export const ENGINE = () => (_ctx().url ?? "").replace(/\/$/, "");
+export const REPO = () => _ctx().repositoryId ?? "";
+export const SNAPSHOT = () => _ctx().snapshotId ?? "";
+const KEY = () => _ctx().apiKey ?? "";
+export const WORKING_DIR = () => _ctx().workingDir ?? "";
 
 /** Capture the agent's in-flight edits (mods + new + deletes) as a unified diff. */
 export async function workingTreeDiff(dir: string): Promise<string> {

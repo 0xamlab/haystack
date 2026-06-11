@@ -13,49 +13,28 @@ import {
 } from "./artifacts";
 import type { RuntimeIdentity, SessionRecord } from "./contracts";
 import type { ServerState } from "./state";
-import { clearBoundEngineEnvironment } from "./state";
+import { type EngineContext, engineContext } from "../tools";
 import {
 	appendSessionEvent,
 	optionalString,
 	updateSessionTimestamp,
 } from "./utils";
 
-function bindEngineEnvironment(
-	state: ServerState,
-	session: SessionRecord,
-): void {
+// Per-run engine config (B3/PR8): build the engine context for THIS session. No
+// process-global env, no activeEngineSessionId mutex — each run threads its own context
+// via AsyncLocalStorage (engineContext.run), so concurrent engine-backed sessions are
+// fully isolated: no cross-tenant API-key bleed and no serialization.
+function engineContextFor(session: SessionRecord): EngineContext | null {
 	if (!session.engine.enabled || !session.engine.url) {
-		// A non-engine session must not run while another session holds the
-		// process-global engine env, or it would inherit that session's
-		// ALGENTA_ENGINE_URL / API key (cross-session contamination). Serialize
-		// against the active engine session, symmetric with the guard below.
-		if (
-			state.activeEngineSessionId &&
-			state.activeEngineSessionId !== session.sessionId
-		) {
-			throw new Error(
-				`cannot start session ${session.sessionId} while engine-backed session ${state.activeEngineSessionId} holds the global engine environment`,
-			);
-		}
-		clearBoundEngineEnvironment(state, session.sessionId);
-		return;
+		return null;
 	}
-	if (
-		state.activeEngineSessionId &&
-		state.activeEngineSessionId !== session.sessionId
-	) {
-		throw new Error(
-			`engine-backed session already active: ${state.activeEngineSessionId}`,
-		);
-	}
-	process.env.ALGENTA_ENGINE_URL = session.engine.url;
-	process.env.ALGENTA_REPOSITORY_ID = session.engine.repositoryId || "";
-	process.env.ALGENTA_SNAPSHOT_ID = session.engine.snapshotId || "";
-	process.env.ALGENTA_WORKING_DIR = session.workingDir;
-	if (session.engine.apiKey) {
-		process.env.ALGENTA_API_KEY = session.engine.apiKey;
-	}
-	state.activeEngineSessionId = session.sessionId;
+	return {
+		url: session.engine.url,
+		repositoryId: session.engine.repositoryId || "",
+		snapshotId: session.engine.snapshotId || "",
+		apiKey: session.engine.apiKey || "",
+		workingDir: session.workingDir,
+	};
 }
 
 export interface ExecutionContext {
@@ -72,7 +51,7 @@ export async function startSession(
 	if (session.cline) {
 		return session;
 	}
-	bindEngineEnvironment(context.state, session);
+	const engine = engineContextFor(session);
 	const runArgs: RunAgentArgs = {
 		working_dir: session.workingDir,
 		prompt: session.prompt,
@@ -86,6 +65,8 @@ export async function startSession(
 		limits: session.limits,
 		enable_spawn_agent: session.enableSpawnAgent,
 		enable_agent_teams: session.enableAgentTeams,
+		// gates the Algenta tools/govern-hook in buildStartConfig (engineEnabled)
+		engine: engine ? { enabled: true, ...engine } : undefined,
 	};
 	const provider = await resolveProviderConfig(runArgs);
 	const cline = await ClineCore.create({
@@ -145,19 +126,19 @@ export async function startSession(
 	return session;
 }
 
-export async function runSessionTurn(
-	context: ExecutionContext,
+/**
+ * Enforce the per-turn timeout budget at the server layer (Wave A1). The SDK
+ * runtime host does not currently honor `timeoutMs` (the 14-minute hang); race the
+ * send against the budget and best-effort abort the run so a stuck/looping turn
+ * surfaces a clean timeout instead of holding the single process. B-wave moves this
+ * onto a provider-level AbortController.
+ */
+async function sendTurnWithTimeout(
 	session: SessionRecord,
 	prompt: string,
-): Promise<SessionRecord> {
-	if (!session.cline) {
-		throw new Error("session has not been started");
-	}
-	bindEngineEnvironment(context.state, session);
-	session.state = "running";
-	updateSessionTimestamp(session);
-	appendSessionEvent(session, "session.turn_requested", { prompt });
-	const result = await (
+	timeoutMs: number,
+): Promise<Record<string, unknown> | undefined> {
+	const send = (
 		session.cline as unknown as {
 			send: (input: {
 				sessionId: string;
@@ -166,12 +147,39 @@ export async function runSessionTurn(
 				timeoutMs?: number;
 			}) => Promise<Record<string, unknown> | undefined>;
 		}
-	).send({
-		sessionId: session.sessionId,
-		prompt,
-		mode: "act",
-		timeoutMs: session.limits?.timeoutMs ?? 150000,
+	).send({ sessionId: session.sessionId, prompt, mode: "act", timeoutMs });
+
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const timeout = new Promise<never>((_, reject) => {
+		timer = setTimeout(() => {
+			// best-effort: stop the underlying run so it isn't left burning tokens
+			Promise.resolve(session.cline?.abort(session.sessionId)).catch(() => undefined);
+			reject(new Error(`turn exceeded timeout budget of ${timeoutMs}ms`));
+		}, timeoutMs);
 	});
+	try {
+		return await Promise.race([send, timeout]);
+	} finally {
+		if (timer) clearTimeout(timer);
+	}
+}
+
+export async function runSessionTurn(
+	context: ExecutionContext,
+	session: SessionRecord,
+	prompt: string,
+): Promise<SessionRecord> {
+	if (!session.cline) {
+		throw new Error("session has not been started");
+	}
+	session.state = "running";
+	updateSessionTimestamp(session);
+	appendSessionEvent(session, "session.turn_requested", { prompt });
+	// Run the turn (and the tool calls it triggers) inside this session's engine context
+	// so the Algenta tools read THIS run's engine URL/key — never a shared global.
+	const engine = engineContextFor(session);
+	const runTurn = () => sendTurnWithTimeout(session, prompt, session.limits?.timeoutMs ?? 150000);
+	const result = engine ? await engineContext.run(engine, runTurn) : await runTurn();
 	session.lastResult = result ?? {};
 	try {
 		const usage = await session.cline.getAccumulatedUsage(session.sessionId);
@@ -261,8 +269,5 @@ export async function deleteSession(
 				":",
 			),
 		);
-	}
-	if (context.state.activeEngineSessionId === session.sessionId) {
-		clearBoundEngineEnvironment(context.state, session.sessionId);
 	}
 }

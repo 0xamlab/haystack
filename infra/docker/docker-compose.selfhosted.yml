@@ -29,7 +29,7 @@ services:
       MOJO_BINARY_PATH: /app/mojo_build/simulate
       MOJO_TIMEOUT_SECONDS: ${MOJO_TIMEOUT_SECONDS:-30}
       MOJO_MAX_CONCURRENT: ${MOJO_MAX_CONCURRENT:-4}
-      RUNTIME_FALLBACK_MODE: ${RUNTIME_FALLBACK_MODE:-allow}
+      RUNTIME_FALLBACK_MODE: ${RUNTIME_FALLBACK_MODE:-deny}
       S3_BUCKET_NAME: ${S3_BUCKET_NAME:-algenta-results}
       S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-http://minio:9000}
       S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-algenta_minio}
@@ -45,6 +45,9 @@ services:
       EMAIL_FROM: ${EMAIL_FROM:-noreply@algenta.local}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       ALGENTA_SOURCES_DIR: ${ALGENTA_SOURCES_DIR:-/home/app/.algenta/sources}
+      ALGENTA_RUNTIME_DIR: ${ALGENTA_RUNTIME_DIR:-/home/app/.algenta/runtime}
+      ALGENTA_AGENT_CORE_URL: ${ALGENTA_AGENT_CORE_URL:-http://sidecar:8787}
+      ALGENTA_AGENT_CORE_TOKEN: ${AGENT_CORE_AUTH_TOKEN:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -52,6 +55,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_started
+      sidecar:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/v1/health"]
       interval: 30s
@@ -72,17 +77,54 @@ services:
       REDIS_URL: ${REDIS_URL}
       JWT_SECRET: ${JWT_SECRET}
       MOJO_BINARY_PATH: /app/mojo_build/simulate
-      RUNTIME_FALLBACK_MODE: ${RUNTIME_FALLBACK_MODE:-allow}
+      RUNTIME_FALLBACK_MODE: ${RUNTIME_FALLBACK_MODE:-deny}
       S3_BUCKET_NAME: ${S3_BUCKET_NAME:-algenta-results}
       S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-http://minio:9000}
       S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-algenta_minio}
       S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-algenta_minio_secret}
       RESULT_STORAGE_ENABLED: ${RESULT_STORAGE_ENABLED:-true}
+      ALGENTA_RUNTIME_DIR: ${ALGENTA_RUNTIME_DIR:-/home/app/.algenta/runtime}
+      ALGENTA_SOURCES_DIR: ${ALGENTA_SOURCES_DIR:-/home/app/.algenta/sources}
+      ALGENTA_AGENT_CORE_URL: ${ALGENTA_AGENT_CORE_URL:-http://sidecar:8787}
+      ALGENTA_AGENT_CORE_TOKEN: ${AGENT_CORE_AUTH_TOKEN:-}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      sidecar:
+        condition: service_healthy
+    volumes:
+      # Shared with the sidecar: the worker materializes the snapshot working_dir, the
+      # sidecar mutates files in it (until artifacts move to the object store, Wave B8).
+      - sources_data:/home/app/.algenta
+
+  # ── Agent-core sidecar (forked-Cline execution head) ──────────────────────
+  sidecar:
+    image: ${ALGENTA_IMAGE_REGISTRY:-ghcr.io/algenta/decision-engine}/sidecar:${ALGENTA_IMAGE_TAG:-latest}
+    restart: unless-stopped
+    # Scale horizontally with `docker compose up --scale sidecar=N`; api/worker reach it
+    # via the round-robin `sidecar` service DNS, and /ready sheds load from busy replicas.
+    environment:
+      AGENT_CORE_HOST: 0.0.0.0
+      AGENT_CORE_PORT: "8787"
+      AGENT_CORE_MAX_CONCURRENCY: ${AGENT_CORE_MAX_CONCURRENCY:-8}
+      AGENT_CORE_AUTH_TOKEN: ${AGENT_CORE_AUTH_TOKEN:-}
+      AGENT_CORE_REQUIRE_AUTH: ${AGENT_CORE_REQUIRE_AUTH:-0}
+      ALGENTA_DEPLOYMENT_MODE: ${ALGENTA_DEPLOYMENT_MODE:-self_hosted}
+      ALGENTA_RUNTIME_DIR: ${ALGENTA_RUNTIME_DIR:-/home/app/.algenta/runtime}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ALGENTA_AGENT_PROVIDER: ${ALGENTA_AGENT_PROVIDER:-}
+      ALGENTA_AGENT_MODEL: ${ALGENTA_AGENT_MODEL:-}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8787/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    volumes:
+      - sources_data:/home/app/.algenta
 
   # ── PostgreSQL ────────────────────────────────────────────────────────────
   postgres:

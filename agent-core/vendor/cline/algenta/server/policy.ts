@@ -85,17 +85,20 @@ export function resolveSessionPolicy(
 	payload: Record<string, unknown>,
 	args: RunAgentArgs,
 ): SessionPolicy {
-	const profile = ensureEnumValue(
-		payload.approval_profile,
-		[
-			"repository_review",
-			"repository_fix_gated",
-			"local_validation",
-			"ci_controlled_repo_automation",
-		] as const,
-		"approval_profile",
-		DEFAULT_APPROVAL_PROFILE,
-	);
+	// B7 fail-closed: a present-but-unrecognized approval_profile must NOT silently fall
+	// back to a write-capable default — an authorization typo can't be allowed to grant
+	// write tools. The documented default applies only when approval_profile is absent.
+	const APPROVAL_PROFILES = [
+		"repository_review",
+		"repository_fix_gated",
+		"local_validation",
+		"ci_controlled_repo_automation",
+	] as const;
+	const rawProfile = optionalString(payload.approval_profile);
+	if (rawProfile && !(APPROVAL_PROFILES as readonly string[]).includes(rawProfile)) {
+		throw new Error(`unknown approval_profile: ${rawProfile}`);
+	}
+	const profile = (rawProfile as (typeof APPROVAL_PROFILES)[number]) || DEFAULT_APPROVAL_PROFILE;
 	const defaults = DEFAULT_APPROVAL_PROFILES[profile];
 	const requestedWriteScope = stringArray(payload.allowed_write_scope);
 	const effectiveWriteScope =
@@ -195,7 +198,12 @@ export function resolveEngineConfig(
 	const taskEngine = asRecord(taskSpec.engine);
 	const engine = Object.keys(source).length > 0 ? source : taskEngine;
 	const url = optionalString(engine.url);
-	const requiredTools = stringArray(engine.required_tools);
+	const requiredToolsRaw = stringArray(engine.required_tools);
+	// B6: when engine mode is on but the caller didn't pin required tools, require the
+	// engine to actually be exercised — default to simulate_patch so a real engine-mode
+	// run that never calls the engine fails with engine_evidence_missing instead of
+	// silently "succeeding" (the production verified_agentic path sends no required_tools).
+	const requiredTools = url && requiredToolsRaw.length === 0 ? ["simulate_patch"] : requiredToolsRaw;
 	const expectedCalls = stringArray(engine.expected_calls);
 	return {
 		enabled: Boolean(url),
@@ -259,8 +267,18 @@ export function normalizeSessionPayload(
 		DEFAULT_CHANNEL,
 	) as SessionChannel;
 	const createdAt = new Date().toISOString();
-	const sessionId =
-		optionalString(payload.session_id) || `session_${crypto.randomUUID()}`;
+	// B6 proof-honesty / path safety: a caller-supplied session_id must be a strict,
+	// path-safe token (it can otherwise traverse/collide into another run's on-disk
+	// artifact dir via proofRunDir). Validate it, and — crucially — derive the artifact
+	// run id (agentRunId) from a SERVER-SIDE random value, never from the caller, so the
+	// artifact path is never caller-controlled.
+	const rawSessionId = optionalString(payload.session_id);
+	if (rawSessionId && !/^[A-Za-z0-9_-]{1,64}$/.test(rawSessionId)) {
+		throw new Error(
+			"invalid session_id: must match ^[A-Za-z0-9_-]{1,64}$ (no path separators)",
+		);
+	}
+	const sessionId = rawSessionId || `session_${crypto.randomUUID()}`;
 	const repositoryScope =
 		optionalString(payload.repository_scope) ||
 		engine.repositoryId ||
@@ -268,7 +286,7 @@ export function normalizeSessionPayload(
 
 	return {
 		sessionId,
-		agentRunId: sessionId,
+		agentRunId: `run_${crypto.randomUUID()}`,
 		owner,
 		channel,
 		repositoryScope,

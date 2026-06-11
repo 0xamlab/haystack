@@ -7,6 +7,7 @@ stability.
 """
 from __future__ import annotations
 
+import asyncio
 import difflib
 import os
 from pathlib import Path
@@ -45,7 +46,7 @@ def _agent_tool_profile() -> str:
     return value if value in _AGENT_TOOL_PROFILES else _DEFAULT_AGENT_TOOL_PROFILE
 
 
-def _default_run_agent(
+async def _default_run_agent(
     *,
     working_dir: str,
     task_spec: dict[str, Any],
@@ -55,9 +56,10 @@ def _default_run_agent(
     """Default agent runner: routes to the forked-Cline agent-core sidecar.
 
     When ``ALGENTA_AGENT_CORE_URL`` is set, POSTs the run to the sidecar over the
-    loopback NDJSON contract (the sidecar mutates files under ``working_dir`` with
-    the vendored Cline SDK; Python recomputes the authoritative diff). Otherwise
-    raises 503. Kept monkeypatchable so the Python seam stays testable in isolation.
+    loopback NDJSON contract via the async, egress-guarded client (the sidecar mutates
+    files under ``working_dir`` with the vendored Cline SDK; Python recomputes the
+    authoritative diff). Otherwise raises 503. Kept monkeypatchable so the Python seam
+    stays testable in isolation.
     """
     base_url = os.environ.get("ALGENTA_AGENT_CORE_URL")
     if base_url:
@@ -65,7 +67,7 @@ def _default_run_agent(
             run_agent_via_sidecar,
         )
 
-        return run_agent_via_sidecar(
+        return await run_agent_via_sidecar(
             working_dir=working_dir,
             task_spec=task_spec,
             injected_context=injected_context,
@@ -122,6 +124,38 @@ def _planner_usage_from_agent_result(agent_result: dict[str, Any]) -> dict[str, 
             else None
         ),
     }
+
+
+def _assert_live_runtime(agent_result: dict[str, Any]) -> None:
+    """A live decision plan must be backed by a REAL Cline run, never the offline stub
+    (Wave B4 runtime truth). The stub self-identifies (terminal_state /
+    artifacts.offline_contract_only); the real sidecar sends runtime.is_stub=false. Absent
+    markers are treated as live (unit-test mocks). An explicit stub/offline marker on the
+    live path is a hard failure — we never emit a stub-backed run as a live result. An
+    offline-contract test opts out via ALGENTA_RUN_CLASS=offline_contract_only.
+    """
+    if os.environ.get("ALGENTA_RUN_CLASS") == "offline_contract_only":
+        return
+    runtime = agent_result.get("runtime")
+    runtime = runtime if isinstance(runtime, dict) else {}
+    artifacts = agent_result.get("artifacts")
+    artifacts = artifacts if isinstance(artifacts, dict) else {}
+    is_stub = bool(runtime.get("is_stub"))
+    offline = (
+        bool(runtime.get("offline_contract_only"))
+        or bool(artifacts.get("offline_contract_only"))
+        or agent_result.get("terminal_state") == "offline_contract_only"
+    )
+    if is_stub or offline:
+        raise RepositoryIntelligenceError(
+            code="repository_agent_runtime_not_live",
+            message=(
+                "verified_agentic produced a result from a stub/offline-contract agent run, "
+                "not a live Cline runtime; refusing to emit it as a live decision plan."
+            ),
+            status_code=502,
+            details={"agent_run_id": agent_result.get("agent_run_id")},
+        )
 
 
 def _capture_repository_tree_state(root_path: Path) -> dict[str, str]:
@@ -423,12 +457,25 @@ async def _generate_verified_agentic_repository_patch_plan(
             injected_context["evidence_items"],
             injected_context["context_bundle"],
         )
-        agent_result = run_agent(
-            working_dir=str(root_path),
-            task_spec=task_spec,
-            injected_context=injected_context,
-            limits=limits,
-        )
+        # B2: the default runner is async + non-blocking (egress-guarded httpx, run in
+        # the worker off the request path). Await it directly. A legacy SYNCHRONOUS
+        # runner is kept off the event loop via to_thread (the A1 unconditional wrap is
+        # gone — the async path no longer needs it).
+        if asyncio.iscoroutinefunction(run_agent):
+            agent_result = await run_agent(
+                working_dir=str(root_path),
+                task_spec=task_spec,
+                injected_context=injected_context,
+                limits=limits,
+            )
+        else:
+            agent_result = await asyncio.to_thread(
+                run_agent,
+                working_dir=str(root_path),
+                task_spec=task_spec,
+                injected_context=injected_context,
+                limits=limits,
+            )
         if not isinstance(agent_result, dict):
             raise RepositoryIntelligenceError(
                 code="repository_agent_invalid_result",
@@ -440,6 +487,7 @@ async def _generate_verified_agentic_repository_patch_plan(
         after_state = _capture_repository_tree_state(root_path)
 
     status = str(agent_result.get("status") or "completed")
+    _assert_live_runtime(agent_result)
     patch_diff = _unified_diff_from_tree_states(before_state, after_state)
 
     if status in {"failed", "aborted"}:

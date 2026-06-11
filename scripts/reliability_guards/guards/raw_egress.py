@@ -1,0 +1,47 @@
+"""raw_egress — raw outbound HTTP/S3 calls outside the approved egress wrappers.
+
+Every outbound call must route through egress_guard / storage_service /
+connector_egress so the self-hosted/air-gapped fail-closed policy can enforce it.
+Fixed by Wave B2 (the sidecar client) + Wave B10 (everything else)."""
+
+from __future__ import annotations
+
+import re
+from pathlib import Path
+
+from .._base import Guard, Violation, iter_py
+
+_ALLOWED = {
+    "apps/api_server/services/egress_guard.py",
+    "apps/api_server/services/storage_service.py",
+    "apps/api_server/services/connector_egress.py",
+}
+_RE = re.compile(
+    r"\b("
+    r"httpx\.(?:get|post|put|delete|patch|stream|request|Client|AsyncClient)"
+    r"|urllib\.request\.(?:urlopen|Request)"
+    r"|requests\.(?:get|post|put|delete|patch|head|request|Session)"
+    r"|boto3\.(?:client|resource)"
+    r")\b"
+)
+_IMPORT_REQUESTS = re.compile(r"^\s*import\s+requests\b")
+
+
+def _scan(root: Path) -> list[Violation]:
+    out: list[Violation] = []
+    for p in iter_py(root, "apps"):
+        rel = p.relative_to(root).as_posix()
+        if rel in _ALLOWED:
+            continue
+        for line in p.read_text(encoding="utf-8", errors="ignore").splitlines():
+            if _RE.search(line) or _IMPORT_REQUESTS.search(line):
+                out.append(Violation("raw_egress", rel, line.strip()))
+    return out
+
+
+GUARD = Guard(
+    name="raw_egress",
+    description="raw httpx/urllib/requests/boto3 outside egress_guard/storage_service/connector_egress",
+    scan=_scan,
+    fix_wave="B2/B10",
+)

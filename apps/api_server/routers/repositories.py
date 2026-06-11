@@ -1,9 +1,12 @@
 from __future__ import annotations
 
-from typing import Annotated
+import asyncio
+from typing import Annotated, Any
 from uuid import UUID
 
+import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse
 
 from apps.api_server.db.session import AsyncSessionDep
 from apps.api_server.middleware.auth import get_current_org
@@ -42,6 +45,12 @@ from apps.api_server.services.repository_intelligence import (
 from apps.api_server.services.repository_intelligence_pipeline import (
     run_repository_pipeline,
 )
+from apps.api_server.db.session import AsyncSessionLocal
+from apps.api_server.models.job import JobKind
+from apps.api_server.services.job_service import create_job
+from apps.api_server.services.workspace_scope import workspace_id_for_write
+
+logger = structlog.get_logger(__name__)
 
 router = APIRouter(tags=["Repository Intelligence"])
 
@@ -56,6 +65,69 @@ def _repository_http_exception(exc: RepositoryIntelligenceError, request: Reques
                 "details": exc.details,
                 "request_id": getattr(request.state, "request_id", None),
             }
+        },
+    )
+
+
+async def _execute_repository_job_in_process(job_id: UUID) -> None:
+    """Fire-and-forget fallback for deployments without a worker. Runs on a FRESH
+    session/task so the request still returns 202 immediately (no event-loop block)."""
+    from apps.api_server.services.repository_job_service import execute_repository_job
+
+    async with AsyncSessionLocal() as db:
+        try:
+            await execute_repository_job(job_id=job_id, db=db)
+        except Exception as exc:  # noqa: BLE001 — fallback runner; status is persisted on the job
+            logger.error(
+                "repository_job_in_process_failed", job_id=str(job_id), error=str(exc), exc_info=True
+            )
+
+
+async def _submit_repository_job(
+    *,
+    job_kind: JobKind,
+    repository_id: UUID,
+    request_body: Any,
+    request: Request,
+    db: AsyncSessionDep,
+    auth: AuthContext,
+) -> JSONResponse:
+    """Wave B1: take a long repository run off the request path — create a Job, enqueue
+    it on the worker (or fire-and-forget in-process where no worker exists), and return
+    202 + a poll handle. The connector visibility was already enforced by the caller."""
+    job = await create_job(
+        None,
+        auth["org_id"],
+        db,
+        queue_name="repository",
+        workspace_id=workspace_id_for_write(auth),
+        job_kind=job_kind,
+        request_payload={
+            "repository_id": str(repository_id),
+            "request": request_body.model_dump(mode="json"),
+        },
+    )
+    await db.commit()
+
+    enqueued = False
+    try:
+        from apps.worker.tasks.repository_task import enqueue_repository_job
+
+        enqueued = enqueue_repository_job(str(job.id))
+    except Exception as exc:  # noqa: BLE001 — degrade to in-process on broker issues
+        logger.warning("repository_job_enqueue_failed", job_id=str(job.id), error=str(exc))
+    if not enqueued:
+        asyncio.create_task(_execute_repository_job_in_process(job.id))
+
+    base_url = str(request.base_url).rstrip("/")
+    return JSONResponse(
+        status_code=202,
+        content={
+            "job_id": str(job.id),
+            "status": job.status.value,
+            "job_kind": job_kind.value,
+            "poll_url": f"{base_url}/v1/jobs/{job.id}",
+            "message": "Repository job queued. Poll the poll_url for status and result.",
         },
     )
 
@@ -160,8 +232,19 @@ async def create_decision_plan(
     request: Request,
     db: AsyncSessionDep,
     auth: Annotated[AuthContext, Depends(get_current_org)],
-) -> RepositoryDecisionPlanResponse:
+    async_execution: bool = False,
+) -> RepositoryDecisionPlanResponse | JSONResponse:
+    # Visibility is enforced on the request (with the caller's auth) before queuing.
     connector = await get_visible_connector(db, repository_id, auth)
+    if async_execution:
+        return await _submit_repository_job(
+            job_kind=JobKind.REPOSITORY_DECISION_PLAN,
+            repository_id=repository_id,
+            request_body=payload,
+            request=request,
+            db=db,
+            auth=auth,
+        )
     try:
         return await create_repository_decision_plan(connector=connector, request=payload)
     except RepositoryIntelligenceError as exc:
@@ -217,8 +300,18 @@ async def run_repository_intelligence_pipeline(
     request: Request,
     db: AsyncSessionDep,
     auth: Annotated[AuthContext, Depends(get_current_org)],
-) -> RepositoryPipelineResponse:
+    async_execution: bool = False,
+) -> RepositoryPipelineResponse | JSONResponse:
     connector = await get_visible_connector(db, repository_id, auth)
+    if async_execution:
+        return await _submit_repository_job(
+            job_kind=JobKind.REPOSITORY_PIPELINE,
+            repository_id=repository_id,
+            request_body=payload,
+            request=request,
+            db=db,
+            auth=auth,
+        )
     try:
         return await run_repository_pipeline(connector=connector, request=payload)
     except RepositoryIntelligenceError as exc:
