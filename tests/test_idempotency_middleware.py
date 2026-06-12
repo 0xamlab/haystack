@@ -43,6 +43,26 @@ class _FakeRedis:
             self._values.pop(key, None)
             return 1 if existed else 0
 
+    async def eval(self, script: str, numkeys: int, *args: object) -> int:
+        # Implements only the compare-and-delete idiom release_write_lock uses:
+        # delete KEYS[1] iff its value still equals ARGV[1] (the holder's token).
+        key = str(args[0])
+        token = args[1]
+        with self._lock:
+            entry = self._values.get(key)
+            if entry is None:
+                return 0
+            value, expires_at = entry
+            if expires_at is not None and expires_at <= time.time():
+                self._values.pop(key, None)
+                return 0
+            stored = value.decode("utf-8") if isinstance(value, bytes) else str(value)
+            want = token.decode("utf-8") if isinstance(token, bytes) else str(token)
+            if stored == want:
+                self._values.pop(key, None)
+                return 1
+            return 0
+
 
 class _BrokenRedis:
     async def get(self, key: str):
@@ -53,6 +73,9 @@ class _BrokenRedis:
 
     async def delete(self, key: str) -> int:
         raise ConnectionError(f"redis unavailable for delete:{key}")
+
+    async def eval(self, script: str, numkeys: int, *args: object) -> int:
+        raise ConnectionError("redis unavailable for eval")
 
 
 def _build_app(

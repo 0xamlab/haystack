@@ -21,6 +21,11 @@ _WRITE_METHODS = frozenset({"POST", "PATCH", "DELETE"})
 _ENTRY_TTL_SECONDS = 24 * 60 * 60
 _WRITE_LOCK_TTL_SECONDS = 30
 _LOCAL_MAX_RESPONSES = 2048
+# atomic compare-and-delete: only the token holder deletes the lock (closes the GET-then-DELETE
+# TOCTOU where the lock could expire + be re-acquired by another request between read and delete).
+_COMPARE_AND_DELETE = (
+    "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) end return 0"
+)
 _READ_LIKE_POST_PATHS = frozenset(
     {
         "/v1/query",
@@ -68,6 +73,8 @@ class _RedisClientProtocol(Protocol):
     ) -> object: ...
 
     async def delete(self, key: str) -> object: ...
+
+    async def eval(self, script: str, numkeys: int, *args: object) -> object: ...
 
 
 class _BodyIteratorResponseProtocol(Protocol):
@@ -182,10 +189,11 @@ class _RedisCoordinationStore:
         return None
 
     async def release_write_lock(self, key: str, token: str) -> None:
-        redis_key = _write_lock_storage_key(key)
-        current = await self._redis.get(redis_key)
-        if _decode_redis_value(current) == token:
-            await self._redis.delete(redis_key)
+        # Single atomic compare-and-delete instead of GET-then-DELETE: between a separate read and
+        # delete the lock could expire and be re-acquired by another request (new token), and the
+        # stale holder would then delete THAT request's lock. The Lua eval makes the check+delete
+        # indivisible so only the live token holder ever removes the key.
+        await self._redis.eval(_COMPARE_AND_DELETE, 1, _write_lock_storage_key(key), token)
 
 
 class _ResilientCoordinationStore:
