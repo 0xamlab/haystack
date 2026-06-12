@@ -243,6 +243,14 @@ export function normalizeSessionPayload(
 		model:
 			optionalString(payload.model) ||
 			optionalString(asRecord(taskSpec.engine).model),
+		// B10 PR11b: the per-tenant provider key + fail-closed flag ride alongside provider/model
+		// (top-level or under task_spec.engine, matching how the Python engine sends them).
+		provider_api_key:
+			optionalString(payload.provider_api_key) ||
+			optionalString(asRecord(taskSpec.engine).provider_api_key),
+		require_provider_api_key:
+			booleanValue(payload.require_provider_api_key) ||
+			booleanValue(asRecord(taskSpec.engine).require_provider_api_key),
 		base_url:
 			optionalString(payload.base_url) ||
 			optionalString(asRecord(taskSpec.engine).base_url),
@@ -298,6 +306,8 @@ export function normalizeSessionPayload(
 		injectedContext: args.injected_context || "",
 		provider: args.provider,
 		model: args.model,
+		providerApiKey: args.provider_api_key,
+		requireProviderApiKey: Boolean(args.require_provider_api_key),
 		baseUrl: args.base_url,
 		headers:
 			Object.keys(asRecord(payload.headers)).length > 0

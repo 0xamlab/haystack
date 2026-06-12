@@ -58,6 +58,8 @@ export async function startSession(
 		injected_context: session.injectedContext,
 		provider: session.provider,
 		model: session.model,
+		provider_api_key: session.providerApiKey,
+		require_provider_api_key: session.requireProviderApiKey,
 		base_url: session.baseUrl,
 		headers: session.headers,
 		suppress_exploration: session.suppressExploration,

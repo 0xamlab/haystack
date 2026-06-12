@@ -19,7 +19,11 @@ from apps.api_server.services import (
 from apps.api_server.services.repository_intelligence_contracts import (
     RepositoryIntelligenceError,
 )
-from apps.api_server.services.tenant_keys import resolve_engine_api_key
+from apps.api_server.services.tenant_keys import (
+    require_per_tenant_keys,
+    resolve_engine_api_key,
+    resolve_provider_api_key,
+)
 
 
 # ─── verified_agentic planner tier (forked-Cline agent-core; engine "cline_fork") ──
@@ -33,6 +37,24 @@ from apps.api_server.services.tenant_keys import resolve_engine_api_key
 # keeps this seam testable without Node or a live model.
 
 _VERIFIED_AGENTIC_MAX_CAPTURE_FILE_BYTES = 1_000_000
+
+
+def _agent_provider_key_fields() -> dict[str, Any]:
+    """B10 PR11b: the per-tenant LLM-provider-key fields for task_spec.engine.
+
+    Sends the org override ONLY (resolve_provider_api_key(None, backend) never borrows the
+    decision-engine env key — the sidecar keeps its own env as the pooled fallback). In a
+    multi-tenant deployment we also set the require flag so the sidecar fails closed instead of
+    borrowing its shared env key. The backend default matches the agent-core default ("anthropic")
+    so the lookup agrees with the provider the sidecar will actually use."""
+    backend = os.environ.get("ALGENTA_AGENT_PROVIDER") or "anthropic"
+    fields: dict[str, Any] = {}
+    key = resolve_provider_api_key(None, backend)
+    if key:
+        fields["provider_api_key"] = key
+    if require_per_tenant_keys():
+        fields["require_provider_api_key"] = True
+    return fields
 
 # AR-OPT-4 verified_agentic tool profile (carried in task_spec to the agent-core
 # sidecar). Default is the controlled-risk profile: suppress repository exploration
@@ -441,6 +463,9 @@ async def _generate_verified_agentic_repository_patch_plan(
             # agent-core pick its configured default.
             "provider": os.environ.get("ALGENTA_AGENT_PROVIDER") or None,
             "model": os.environ.get("ALGENTA_AGENT_MODEL") or None,
+            # B10 PR11b: the agent's own LLM key — per-tenant override + multi-tenant fail-closed
+            # flag (override-only; the sidecar keeps its env as the pooled fallback).
+            **_agent_provider_key_fields(),
         }
     limits = {"token_budget": 6_000, "max_turns": 8}
 

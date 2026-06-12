@@ -21,6 +21,12 @@ export interface RunAgentArgs {
 	injected_context?: string; // token-compressed evidence bundle (repo intelligence)
 	provider?: string; // default "anthropic"
 	model?: string; // default = provider's defaultModelId
+	// B10 PR11b: the per-tenant LLM provider key, resolved server-side from the authenticated org
+	// and threaded in per-run (never process-global env). When set it OVERRIDES the env key for
+	// args.provider's backend; when require_provider_api_key is set, a missing per-tenant key FAILS
+	// CLOSED instead of borrowing the shared env key (multi-tenant BYOK).
+	provider_api_key?: string;
+	require_provider_api_key?: boolean;
 	base_url?: string;
 	headers?: Record<string, string>;
 	suppress_exploration?: boolean; // legacy token-reduction flag: block read/search/fetch tools
@@ -84,6 +90,20 @@ export interface ResolvedProviderConfig {
 	headers?: Record<string, string>;
 }
 
+// B10 PR11b: the per-tenant key (set server-side from the authenticated org) wins; otherwise the
+// pooled env key — UNLESS require_provider_api_key is set, in which case a missing per-tenant key
+// FAILS CLOSED (returns undefined -> resolveProviderConfig throws) rather than borrowing the
+// shared env key across tenants. Pure (no SDK) so it is unit-testable.
+export function selectProviderApiKey(
+	args: RunAgentArgs,
+	envNames: string[],
+): string | undefined {
+	const perTenant = args.provider_api_key?.trim();
+	if (perTenant) return perTenant;
+	if (args.require_provider_api_key) return undefined;
+	return envNames.map((k) => process.env[k]?.trim()).find(Boolean);
+}
+
 export async function resolveProviderConfig(
 	args: RunAgentArgs,
 ): Promise<ResolvedProviderConfig> {
@@ -101,10 +121,15 @@ export async function resolveProviderConfig(
 	}
 	const collection = await Llms.getProviderCollection(providerId);
 	const envNames: string[] = collection?.provider?.env ?? [];
-	const apiKey = envNames.map((k) => process.env[k]?.trim()).find(Boolean);
+	const apiKey = selectProviderApiKey(args, envNames);
 	const modelId = args.model || collection?.provider?.defaultModelId;
 	if (!modelId) throw new Error(`no model id for provider '${providerId}'`);
 	if (!apiKey) {
+		if (args.require_provider_api_key) {
+			throw new Error(
+				`no per-tenant API key for provider '${providerId}' and per-tenant keys are required (no shared env-key fallback)`,
+			);
+		}
 		const proofHint =
 			modelId === ALGENTA_PROOF_MODEL_ID
 				? ` (proof model requires ${ALGENTA_PROOF_API_KEY_ENV})`

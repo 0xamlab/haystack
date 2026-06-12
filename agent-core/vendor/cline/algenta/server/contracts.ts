@@ -113,6 +113,10 @@ export interface SessionRecord {
 	injectedContext: string;
 	provider?: string;
 	model?: string;
+	// B10 PR11b: per-tenant LLM provider key (server-derived from the authenticated org) + the
+	// fail-closed flag. Never returned by toPublicSession (key material stays server-side).
+	providerApiKey?: string;
+	requireProviderApiKey?: boolean;
 	baseUrl?: string;
 	headers?: Record<string, string>;
 	toolProfile?: string;
