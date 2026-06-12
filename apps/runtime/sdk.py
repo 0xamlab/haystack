@@ -50,7 +50,11 @@ import structlog
 
 from apps.privacy_policy import is_algenta_owned_destination, policy_from_environment
 from apps.platform_contract_constants import API_BASE_URL
-from apps.runtime.privacy_guard import RuntimeEgressPolicyDeniedError, validated_runtime_egress_url
+from apps.runtime.privacy_guard import (
+    RuntimeEgressPolicyDeniedError,
+    runtime_http_request,
+    validated_runtime_egress_url,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -316,7 +320,8 @@ class Runtime:
                     "Set an explicit self-hosted base URL or run the local daemon."
                 ),
             }
-        base_url = self._validated_cloud_base_url(surface="sdk_cloud_execute")
+        # shape-validate only; runtime_http_request below is the single enforce + audit point
+        base_url = self._validated_cloud_base_url(surface="sdk_cloud_execute", record=False)
         if module not in _SIM_ENGINES:
             return {
                 "result": None,
@@ -333,16 +338,18 @@ class Runtime:
         config = args if isinstance(args, dict) else {}
         config.setdefault("simulation_model", module)
 
-        import httpx
-
         t0 = time.monotonic()
         try:
-            async with httpx.AsyncClient(timeout=self._timeout) as client:
-                resp = await client.post(
-                    f"{base_url}/v1/simulate",
-                    headers=self._auth_headers(),
-                    json=config,
-                )
+            # B10: route the cloud simulate POST through the approved runtime egress wrapper
+            # (enforce-before-dispatch, fail-closed); base_url was validated above.
+            resp = await runtime_http_request(
+                method="POST",
+                url=f"{base_url}/v1/simulate",
+                surface="sdk_cloud_execute",
+                headers=self._auth_headers(),
+                json=config,
+                client_kwargs={"timeout": self._timeout},
+            )
             latency = round((time.monotonic() - t0) * 1000, 2)
             if resp.status_code == 200:
                 data = resp.json()
@@ -373,8 +380,6 @@ class Runtime:
             }
 
     async def _cloud_health(self) -> dict[str, Any]:
-        import httpx
-
         if not self._base_url:
             return {
                 "status": "unreachable",
@@ -383,13 +388,17 @@ class Runtime:
                     "Set an explicit self-hosted base URL or run the local daemon."
                 ),
             }
-        base_url = self._validated_cloud_base_url(surface="sdk_cloud_health")
+        # shape-validate only; runtime_http_request below is the single enforce + audit point
+        base_url = self._validated_cloud_base_url(surface="sdk_cloud_health", record=False)
         try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                resp = await client.get(
-                    f"{base_url}/health",
-                    headers=self._auth_headers(),
-                )
+            # B10: route the cloud health GET through the approved runtime egress wrapper.
+            resp = await runtime_http_request(
+                method="GET",
+                url=f"{base_url}/health",
+                surface="sdk_cloud_health",
+                headers=self._auth_headers(),
+                client_kwargs={"timeout": 5.0},
+            )
             if resp.status_code == 200:
                 payload = resp.json()
                 return payload if isinstance(payload, dict) else {"status": "error", "code": 500}

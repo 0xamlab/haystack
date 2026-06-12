@@ -36,15 +36,9 @@
     "apps/cli/support.py :: with urllib.request.urlopen(req, timeout=120) as resp:  # noqa: S310",
     "apps/mcp_server/client.py :: async with httpx.AsyncClient(timeout=request_timeout, headers=_headers()) as client:",
     "apps/runtime/credits.py :: req = urllib.request.Request(  # noqa: S310",
-    "apps/runtime/credits.py :: with urllib.request.urlopen(req, timeout=8) as resp:  # noqa: S310",
     "apps/runtime/license.py :: ) -> urllib.request.Request:",
     "apps/runtime/license.py :: return urllib.request.Request(  # noqa: S310",
-    "apps/runtime/license.py :: with urllib.request.urlopen(  # noqa: S310",
     "apps/runtime/metering.py :: hb_req = urllib.request.Request(  # noqa: S310",
-    "apps/runtime/metering.py :: req = urllib.request.Request(  # noqa: S310",
-    "apps/runtime/metering.py :: with urllib.request.urlopen(hb_req, timeout=10) as resp:  # noqa: S310",
-    "apps/runtime/metering.py :: with urllib.request.urlopen(req, timeout=10) as resp:  # noqa: S310",
-    "apps/runtime/sdk.py :: async with httpx.AsyncClient(timeout=5.0) as client:",
-    "apps/runtime/sdk.py :: async with httpx.AsyncClient(timeout=self._timeout) as client:"
+    "apps/runtime/metering.py :: req = urllib.request.Request(  # noqa: S310"
   ]
 }

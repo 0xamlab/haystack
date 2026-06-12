@@ -318,11 +318,12 @@ async def _background_refresh() -> None:
 
         from apps.runtime.device import get_device_id
         from apps.runtime.license import _validated_control_plane_url
+        from apps.runtime.privacy_guard import runtime_urlopen
 
         api_key = os.environ.get("ALGENTA_API_KEY", "") or os.environ.get("DE_API_KEY", "")
         if not api_key:
             return  # offline / dev mode
-        control_plane_url = _validated_control_plane_url(surface="credits_refresh")
+        control_plane_url = _validated_control_plane_url(surface="credits_refresh", record=False)
 
         state = await _store.get_state()
         billing_period = state.billing_period if state else _current_billing_period()
@@ -345,7 +346,9 @@ async def _background_refresh() -> None:
             },
             method="POST",
         )
-        with urllib.request.urlopen(req, timeout=8) as resp:  # noqa: S310
+        # B10: enforce the runtime egress policy at the transport (fail-closed) via the approved
+        # wrapper; the control-plane base URL was already validated above.
+        with runtime_urlopen(req, surface="credits_refresh", timeout=8) as resp:
             data = json.loads(resp.read())
 
         from apps.runtime.trusted_time import observe_time

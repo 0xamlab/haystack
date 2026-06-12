@@ -15,6 +15,9 @@ _ALLOWED = {
     "apps/api_server/services/egress_guard.py",
     "apps/api_server/services/storage_service.py",
     "apps/api_server/services/connector_egress.py",
+    # runtime plane's approved egress wrapper (enforce-before-dispatch); the SDK-transport-boundary
+    # analogue of egress_guard — must not import the api_server egress_guard.
+    "apps/runtime/privacy_guard.py",
 }
 _RE = re.compile(
     r"\b("

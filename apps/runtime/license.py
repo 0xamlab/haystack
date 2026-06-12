@@ -48,6 +48,7 @@ import structlog
 from apps.privacy_policy import is_algenta_owned_destination, policy_from_environment
 from apps.runtime.privacy_guard import (
     RuntimeEgressPolicyDeniedError,
+    runtime_urlopen,
     validated_runtime_egress_url,
 )
 
@@ -126,7 +127,9 @@ def _offline_license_public_keys() -> list[tuple[str, str]]:
     return deduped
 
 
-def _validated_control_plane_url(*, surface: str = "runtime_control_plane") -> str:
+def _validated_control_plane_url(
+    *, surface: str = "runtime_control_plane", record: bool = True
+) -> str:
     policy = policy_from_environment()
     control_plane_url = policy.control_plane_url.rstrip("/")
     if not control_plane_url:
@@ -145,6 +148,7 @@ def _validated_control_plane_url(*, surface: str = "runtime_control_plane") -> s
                 if parsed.hostname and is_algenta_owned_destination(parsed.hostname)
                 else "operator_service"
             ),
+            record=record,
         )
     except RuntimeEgressPolicyDeniedError as exc:
         raise ValueError(
@@ -514,7 +518,8 @@ def _exchange_api_key_for_license(
 
     Returns raw JWT string or None on failure.
     """
-    control_plane_url = _validated_control_plane_url()
+    # shape-validate only; runtime_urlopen below is the single enforce + audit point
+    control_plane_url = _validated_control_plane_url(surface="license_exchange", record=False)
     body = json.dumps(
         {
             "device": {
@@ -529,8 +534,10 @@ def _exchange_api_key_for_license(
     for attempt in range(1, _CONTROL_PLANE_MAX_ATTEMPTS + 1):
         req = _device_register_request(control_plane_url, api_key, device_info, body)
         try:
-            with urllib.request.urlopen(  # noqa: S310
+            # B10: transport-time fail-closed egress enforcement via the approved wrapper.
+            with runtime_urlopen(
                 req,
+                surface="license_exchange",
                 timeout=_CONTROL_PLANE_TIMEOUT_SECONDS,
             ) as resp:
                 data = _decoded_payload(json.loads(resp.read()))

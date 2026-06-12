@@ -23,6 +23,7 @@ from pathlib import Path
 import structlog
 
 from apps.privacy_policy import policy_from_environment
+from apps.runtime.privacy_guard import runtime_urlopen
 
 logger = structlog.get_logger(__name__)
 
@@ -117,7 +118,7 @@ class MeteringQueue:
 
             api_key = os.environ.get("ALGENTA_API_KEY", "") or os.environ.get("DE_API_KEY", "")
             lic = load_license(api_key)
-            control_plane_url = _validated_control_plane_url(surface="metering_flush")
+            control_plane_url = _validated_control_plane_url(surface="metering_flush", record=False)
 
             payload = {
                 "device_id": lic.device_id,
@@ -146,7 +147,8 @@ class MeteringQueue:
                 },
                 method="POST",
             )
-            with urllib.request.urlopen(req, timeout=10) as resp:  # noqa: S310
+            # B10: transport-time fail-closed egress enforcement via the approved wrapper.
+            with runtime_urlopen(req, surface="metering_flush", timeout=10) as resp:
                 data = json.loads(resp.read())
                 logger.info("metering_flush_sent", accepted=data.get("accepted", len(batch)))
         except Exception as exc:
@@ -239,7 +241,7 @@ class MeteringQueue:
             import json as _json
             import urllib.request
 
-            control_plane_url = _validated_control_plane_url(surface="device_heartbeat")
+            control_plane_url = _validated_control_plane_url(surface="device_heartbeat", record=False)
             hb_body = _json.dumps(
                 {
                     "device_id": heartbeat["device_id"],
@@ -262,7 +264,8 @@ class MeteringQueue:
                 method="POST",
             )
             try:
-                with urllib.request.urlopen(hb_req, timeout=10) as resp:  # noqa: S310
+                # B10: transport-time fail-closed egress enforcement via the approved wrapper.
+                with runtime_urlopen(hb_req, surface="device_heartbeat", timeout=10) as resp:
                     data = _json.loads(resp.read())
                     from apps.runtime.trusted_time import observe_time
 
