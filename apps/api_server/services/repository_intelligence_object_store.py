@@ -33,6 +33,8 @@ from typing import Any, Protocol, runtime_checkable
 
 import structlog
 
+from apps.api_server.services.secret_redaction import redact_secret_fields
+
 logger = structlog.get_logger(__name__)
 
 _KEY_SEGMENT = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
@@ -88,9 +90,10 @@ class LocalFsBackend:
         return p
 
     def put_json(self, key: str, payload: dict[str, Any]) -> None:
+        # B10: defense-in-depth — never persist a credential-shaped field (incl. the S3 mirror).
         self.put_bytes(
             key,
-            json.dumps(payload, indent=2, sort_keys=True).encode("utf-8"),
+            json.dumps(redact_secret_fields(payload), indent=2, sort_keys=True).encode("utf-8"),
             content_type="application/json",
         )
 
@@ -130,9 +133,10 @@ class S3Backend:
         return client
 
     def put_json(self, key: str, payload: dict[str, Any]) -> None:
+        # B10: defense-in-depth — never persist a credential-shaped field (incl. the S3 mirror).
         self.put_bytes(
             key,
-            json.dumps(payload, indent=2, sort_keys=True).encode("utf-8"),
+            json.dumps(redact_secret_fields(payload), indent=2, sort_keys=True).encode("utf-8"),
             content_type="application/json",
         )
 

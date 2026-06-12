@@ -85,6 +85,14 @@ def _sync_cors_middleware(app: FastAPI, config: Settings) -> None:
     raise RuntimeError("CORSMiddleware not registered on FastAPI application.")
 
 
+def _redact_log_secrets(_logger: Any, _method: str, event_dict: dict[str, Any]) -> dict[str, Any]:
+    """B10: scrub credential-shaped keys from every structured log event before it is rendered, so
+    an auth header / API key / token can never reach stdout or the log pipeline."""
+    from apps.api_server.services.secret_redaction import redact_secret_fields
+
+    return redact_secret_fields(event_dict)
+
+
 def _configure_logging(config: Settings) -> None:
     shared_processors: list[Any] = [
         structlog.contextvars.merge_contextvars,
@@ -92,6 +100,7 @@ def _configure_logging(config: Settings) -> None:
         structlog.stdlib.add_log_level,
         structlog.processors.TimeStamper(fmt="iso"),
         structlog.processors.StackInfoRenderer(),
+        _redact_log_secrets,
     ]
     renderer = (
         structlog.dev.ConsoleRenderer()
