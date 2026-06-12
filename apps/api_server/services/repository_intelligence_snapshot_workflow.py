@@ -469,7 +469,6 @@ def create_repository_snapshot(
             workspace_go_module_index=workspace_go_module_index,
             max_file_size_bytes=request.max_file_size_bytes,
             engine_revision=engine_revision,
-            repository_root=source.root_path,
         )
         analyses = analyze_snapshot_files(
             root_path=source.root_path,
