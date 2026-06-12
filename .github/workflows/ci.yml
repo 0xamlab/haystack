@@ -39,15 +39,16 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
-      redis:
-        image: redis:7-alpine
+      # Dragonfly — a Redis-wire-compatible backend (the operator's choice). The coordination +
+      # idempotency locks use only EVAL (compare-and-delete/expire) + SET NX EX + GET + DEL, all
+      # supported by Dragonfly, so REDIS_URL points here unchanged. No health-cmd (the image has no
+      # redis-cli); the "Wait for integration services" step polls it with a Redis PING.
+      dragonfly:
+        image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
         ports:
           - 6379:6379
         options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+          --ulimit memlock=-1
 
     env:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/test_db
@@ -115,10 +116,37 @@ jobs:
       - name: Verify GitBook v1 docs pack
         run: make docs-gitbook-verify
 
+      # Start MinIO (object store) and wait for it + Dragonfly so the s3 / coordination integration
+      # runs against ready backends. MinIO needs the `server /data` arg, which GitHub service
+      # containers can't pass, so it's launched here via docker run.
+      - name: Start MinIO + wait for integration services
+        run: |
+          docker run -d --name minio -p 9000:9000 \
+            -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin \
+            minio/minio:latest server /data
+          ./scripts/run_repo_python.sh scripts/ci_wait_for_services.py
+
       - name: Run repo check graph
         run: pnpm check
         env:
           PYTEST_TIMEOUT: 30
+
+      # Exercise the REAL S3Backend (boto3 → MinIO) + coordination against real Dragonfly. Every
+      # object-store unit test mocks the backend with LocalFsBackend, so this is the only check that
+      # the real boto3/endpoint/egress/bucket-create path actually works. ALGENTA_RI_OBJECT_STORE=s3
+      # selects the S3Backend; S3_ENDPOINT_URL points it at the local MinIO. The storage client is an
+      # explicitly-configured endpoint, so allowlisting the loopback host yields the
+      # `destination_allowlisted` egress decision (NOT `outbound_network_enabled`) — that is the one
+      # path the SSRF private-destination guard skips, so the loopback MinIO is permitted without
+      # arming the guard. Do NOT instead set ALGENTA_ALLOW_OUTBOUND_NETWORK: that arms the SSRF guard.
+      - name: Repository object-store + coordination s3 integration
+        env:
+          ALGENTA_RI_OBJECT_STORE: s3
+          ALGENTA_COORDINATION: redis
+          S3_ENDPOINT_URL: http://localhost:9000
+          ALGENTA_EGRESS_ALLOWLIST: localhost,127.0.0.1
+          PYTEST_TIMEOUT: 60
+        run: ./scripts/run_repo_python.sh -m pytest -q tests/test_object_store_minio_smoke.py tests/test_multi_replica_chaos.py
 
       - name: Upload coverage
         uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238  # v4
