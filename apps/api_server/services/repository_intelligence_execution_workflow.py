@@ -6,8 +6,6 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote, urlparse
 
-import httpx
-
 from apps.api_server.models.data_connector import DataConnector
 from apps.api_server.schemas.repositories import (
     RepositoryApplyMode,
@@ -674,8 +672,30 @@ async def _create_pull_request(
             "destination": {"branch": {"name": target_branch}},
             "description": body,
         }
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        response = await client.post(request_url, headers=headers, json=payload)
+    # B10: the token-bearing PR/MR write to the customer's git host goes through the egress guard so
+    # the self_hosted/air_gapped fail-closed policy + SSRF check apply to the (customer-configured)
+    # api_base_url. Deny raises before any socket; the existing >=400 mapping is preserved.
+    from apps.api_server.services import egress_guard
+    from apps.api_server.services.egress_guard import EgressPolicyDeniedError
+
+    try:
+        response = await egress_guard.async_http_request(
+            method="POST",
+            url=request_url,
+            surface="repository_remote_pull_request",
+            egress_class="customer_connector",
+            explicit_configured=True,
+            headers=headers,
+            json=payload,
+            client_kwargs={"timeout": 30.0},
+        )
+    except EgressPolicyDeniedError as exc:
+        raise RepositoryIntelligenceError(
+            code="remote_pull_request_egress_denied",
+            message="Remote pull request creation was denied by the egress privacy policy.",
+            status_code=502,
+            details={"surface": "repository_remote_pull_request"},
+        ) from exc
     if response.status_code >= 400:
         raise RepositoryIntelligenceError(
             code="remote_pull_request_failed",

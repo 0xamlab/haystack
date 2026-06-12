@@ -32,7 +32,6 @@
     "apps/api_server/services/data_map_sources.py :: urlopen_fn=urllib.request.urlopen,",
     "apps/api_server/services/provisioner/aws.py :: ce = boto3.client(\"ce\", region_name=\"us-east-1\")",
     "apps/api_server/services/provisioner/regions.py :: ec2 = boto3.client(\"ec2\", region_name=\"us-east-1\")",
-    "apps/api_server/services/repository_intelligence_execution_workflow.py :: async with httpx.AsyncClient(timeout=30.0) as client:",
     "apps/cli/support.py :: req = urllib.request.Request(  # noqa: S310",
     "apps/cli/support.py :: with urllib.request.urlopen(req, timeout=120) as resp:  # noqa: S310",
     "apps/mcp_server/client.py :: async with httpx.AsyncClient(timeout=request_timeout, headers=_headers()) as client:",
