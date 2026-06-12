@@ -19,6 +19,10 @@ from apps.api_server.schemas.simulate import SimulateRequestExpert
 from apps.api_server.services.repository_intelligence_contracts import (
     RepositoryIntelligenceError,
 )
+from apps.api_server.services.repository_intelligence_lookup_store import (
+    mirror_lookup,
+    read_lookup_shared,
+)
 from apps.api_server.services.repository_intelligence_shared import _coerce_scope_uuid
 
 _RequireRepositoryConnector = Callable[[DataConnector], None]
@@ -385,6 +389,24 @@ async def simulate_repository_decision(
                     },
                 )
                 return response
+
+    # Cross-replica perf-dedup (s3 mode only; no-op locally): a sibling may have already run this
+    # exact simulation, so we can skip the duplicate Mojo work. Gated on a FIXED seed — a seed=None
+    # Monte-Carlo run is non-deterministic, so it is never shared cross-replica (it falls through to
+    # a local recompute, preserving today's node-local behavior). Best-effort; only reached after the
+    # node-local miss. The embedded envelope is self-contained; the manifest stays B8-recoverable.
+    if request.seed is not None:
+        shared_simulation_lookup = read_lookup_shared(
+            org_id=org_id,
+            repository_id=repository_id,
+            kind="simulation_lookup",
+            lookup_key=lookup_key,
+        )
+        if shared_simulation_lookup is not None:
+            shared_envelope = lookup_response_payload(shared_simulation_lookup)
+            if shared_envelope is not None:
+                return DecisionEnvelope.model_validate(shared_envelope)
+
     snapshot_manifest = load_snapshot_manifest(
         org_id=org_id,
         repository_id=repository_id,
@@ -506,19 +528,28 @@ async def simulate_repository_decision(
             simulation_id=simulation_id,
             manifest=simulation_manifest,
         )
-    write_json(
-        lookup_path,
-        {
-            "simulation_id": simulation_id,
-            "snapshot_id": resolved_snapshot_id,
-            "decision_plan_id": request.decision_plan_id,
-            "policy_snapshot_id": policy.snapshot_id,
-            "runs": request.runs,
-            "seed": request.seed,
-            "created_at": utc_now().isoformat(),
-            "response": envelope.model_dump(mode="json"),
-        },
-    )
+    simulation_lookup_payload = {
+        "simulation_id": simulation_id,
+        "snapshot_id": resolved_snapshot_id,
+        "decision_plan_id": request.decision_plan_id,
+        "policy_snapshot_id": policy.snapshot_id,
+        "runs": request.runs,
+        "seed": request.seed,
+        "created_at": utc_now().isoformat(),
+        "response": envelope.model_dump(mode="json"),
+    }
+    write_json(lookup_path, simulation_lookup_payload)
+    # Publish a fixed-seed (deterministic) simulation to the durable shared index so sibling replicas
+    # dedup the Mojo work (s3 only; no-op locally). seed=None Monte-Carlo runs are NOT shared.
+    # Best-effort — a failed mirror just lets a sibling recompute the identical seeded result.
+    if request.seed is not None:
+        mirror_lookup(
+            org_id=org_id,
+            repository_id=repository_id,
+            kind="simulation_lookup",
+            lookup_key=lookup_key,
+            payload=simulation_lookup_payload,
+        )
     return envelope
 
 

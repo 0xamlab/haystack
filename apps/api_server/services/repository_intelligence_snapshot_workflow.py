@@ -30,6 +30,10 @@ from apps.api_server.services import (
 from apps.api_server.services.repository_intelligence_contracts import (
     RepositoryIntelligenceError,
 )
+from apps.api_server.services.repository_intelligence_lookup_store import (
+    mirror_lookup,
+    read_lookup_shared,
+)
 from apps.api_server.services.repository_intelligence_shared import (
     _hash_payload,
     _stable_identifier,
@@ -356,6 +360,29 @@ def create_repository_snapshot(
                         )
                         return response
 
+        # Cross-replica perf-dedup (s3 mode only; no-op locally): a sibling may have already created
+        # this exact snapshot, so we can skip the expensive re-clone + re-archive. Snapshots are
+        # content-addressed and deterministic — a miss/fault just falls through to the cold-create
+        # path (which itself mirrors). The embedded response is self-contained; downstream reads
+        # recover the manifest/Parquet via B8. The lookup_key already pins resolved_revision, but we
+        # re-check it on the embedded response for parity with the node-local fast path above.
+        shared_snapshot_lookup = read_lookup_shared(
+            org_id=org_id,
+            repository_id=repository_id,
+            kind="snapshot_lookup",
+            lookup_key=lookup_key,
+        )
+        if shared_snapshot_lookup is not None:
+            shared_response = repository_runtime._lookup_response_payload(shared_snapshot_lookup)
+            if (
+                shared_response is not None
+                and str(shared_response.get("resolved_revision") or "")
+                == source.resolved_revision
+            ):
+                return RepositorySnapshotResponse.model_validate(
+                    shared_response | {"status": "existing"}
+                )
+
         selection_cache_key = repository_cache._repository_file_selection_cache_key(
             resolved_revision=source.resolved_revision,
             focus_paths=effective_focus_paths,
@@ -442,6 +469,7 @@ def create_repository_snapshot(
             workspace_go_module_index=workspace_go_module_index,
             max_file_size_bytes=request.max_file_size_bytes,
             engine_revision=engine_revision,
+            repository_root=source.root_path,
         )
         analyses = analyze_snapshot_files(
             root_path=source.root_path,
@@ -495,15 +523,22 @@ def create_repository_snapshot(
         if paths["manifest"].exists():
             existing = repository_runtime._read_json(paths["manifest"])
             response = RepositorySnapshotResponse.model_validate(existing | {"status": "existing"})
-            repository_runtime._write_json(
-                lookup_path,
-                {
-                    "snapshot_id": snapshot_id,
-                    "engine_revision": engine_revision,
-                    "resolved_revision": source.resolved_revision,
-                    "created_at": existing.get("created_at") or _utc_now().isoformat(),
-                    "response": response.model_dump(mode="json"),
-                },
+            snapshot_lookup_payload = {
+                "snapshot_id": snapshot_id,
+                "engine_revision": engine_revision,
+                "resolved_revision": source.resolved_revision,
+                "created_at": existing.get("created_at") or _utc_now().isoformat(),
+                "response": response.model_dump(mode="json"),
+            }
+            repository_runtime._write_json(lookup_path, snapshot_lookup_payload)
+            # Lazily backfill the shared index from a locally-materialized snapshot (s3 only; no-op
+            # locally). Best-effort — lets sibling replicas dedup without a re-clone.
+            mirror_lookup(
+                org_id=org_id,
+                repository_id=repository_id,
+                kind="snapshot_lookup",
+                lookup_key=lookup_key,
+                payload=snapshot_lookup_payload,
             )
             return response
 
@@ -861,17 +896,22 @@ def create_repository_snapshot(
             snapshot_id=snapshot_id,
             manifest=manifest,
         )
-        repository_runtime._write_json(
-            lookup_path,
-            {
-                "snapshot_id": snapshot_id,
-                "engine_revision": engine_revision,
-                "resolved_revision": source.resolved_revision,
-                "created_at": created_at.isoformat(),
-                "response": RepositorySnapshotResponse.model_validate(manifest).model_dump(
-                    mode="json"
-                ),
-            },
+        cold_snapshot_lookup_payload = {
+            "snapshot_id": snapshot_id,
+            "engine_revision": engine_revision,
+            "resolved_revision": source.resolved_revision,
+            "created_at": created_at.isoformat(),
+            "response": RepositorySnapshotResponse.model_validate(manifest).model_dump(mode="json"),
+        }
+        repository_runtime._write_json(lookup_path, cold_snapshot_lookup_payload)
+        # Publish the freshly-created snapshot to the durable shared index so sibling replicas dedup
+        # the re-clone (s3 only; no-op locally). Best-effort — a failed mirror just lets one recompute.
+        mirror_lookup(
+            org_id=org_id,
+            repository_id=repository_id,
+            kind="snapshot_lookup",
+            lookup_key=lookup_key,
+            payload=cold_snapshot_lookup_payload,
         )
         telemetry.record_span_ms(
             "manifest_write_ms", (time.perf_counter() - _manifest_write_start) * 1000.0

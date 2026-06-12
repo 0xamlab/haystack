@@ -16,14 +16,18 @@ from apps.api_server.schemas.repositories import (
     RepositoryTriageResponse,
 )
 from apps.api_server.services import repository_intelligence_graph as repository_graph
+from apps.api_server.services import repository_intelligence_sdk_ranking as sdk_ranking
 from apps.api_server.services import repository_intelligence_storage as repository_storage
 from apps.api_server.services import repository_intelligence_telemetry as telemetry
-from apps.api_server.services import repository_intelligence_sdk_ranking as sdk_ranking
 from apps.api_server.services.repository_intelligence_contracts import (
     RepositoryIntelligenceError,
 )
 from apps.api_server.services.repository_intelligence_indexing import (
     _estimate_tokens,
+)
+from apps.api_server.services.repository_intelligence_lookup_store import (
+    mirror_lookup,
+    read_lookup_shared,
 )
 from apps.api_server.services.repository_intelligence_runtime import (
     _graph_query_lookup_dir,
@@ -186,6 +190,20 @@ def query_repository_graph(
         if cached_response is not None:
             return RepositoryGraphQueryResponse.model_validate(cached_response)
 
+    # Cross-replica perf-dedup (s3 mode only; no-op locally): a sibling may have already answered
+    # this exact deterministic graph query. Best-effort — a miss/fault just recomputes the identical
+    # result. Only reached after the node-local miss, so it never sits on the warm fast path.
+    shared_graph_query_lookup = read_lookup_shared(
+        org_id=org_id,
+        repository_id=repository_id,
+        kind="graph_query_lookup",
+        lookup_key=graph_query_lookup_key,
+    )
+    if shared_graph_query_lookup is not None:
+        shared_response = _lookup_response_payload(shared_graph_query_lookup)
+        if shared_response is not None:
+            return RepositoryGraphQueryResponse.model_validate(shared_response)
+
     snapshot_manifest = load_snapshot_manifest(
         org_id=org_id,
         repository_id=repository_id,
@@ -337,19 +355,26 @@ def query_repository_graph(
         graph_edges=graph_edges,
         top_change_risk_files=top_change_risk_files[: min(24, len(top_change_risk_files))],
     )
-    _write_json(
-        graph_query_lookup_path,
-        {
-            "snapshot_id": resolved_snapshot_id,
-            "file_path": request.file_path,
-            "symbol_name": request.symbol_name,
-            "workspace_evidence_bundle_ref": request.workspace_evidence_bundle_ref,
-            "direction": request.direction,
-            "max_depth": request.max_depth,
-            "max_nodes": request.max_nodes,
-            "created_at": response.created_at.isoformat(),
-            "response": response.model_dump(mode="json"),
-        },
+    graph_query_lookup_payload = {
+        "snapshot_id": resolved_snapshot_id,
+        "file_path": request.file_path,
+        "symbol_name": request.symbol_name,
+        "workspace_evidence_bundle_ref": request.workspace_evidence_bundle_ref,
+        "direction": request.direction,
+        "max_depth": request.max_depth,
+        "max_nodes": request.max_nodes,
+        "created_at": response.created_at.isoformat(),
+        "response": response.model_dump(mode="json"),
+    }
+    _write_json(graph_query_lookup_path, graph_query_lookup_payload)
+    # Publish to the durable shared index so sibling replicas dedup this deterministic query
+    # (s3 only; no-op locally). Best-effort — a failed mirror just lets a sibling recompute.
+    mirror_lookup(
+        org_id=org_id,
+        repository_id=repository_id,
+        kind="graph_query_lookup",
+        lookup_key=graph_query_lookup_key,
+        payload=graph_query_lookup_payload,
     )
     return response
 
@@ -439,6 +464,21 @@ def triage_repository(
                     },
                 )
                 return response
+
+    # Cross-replica perf-dedup (s3 mode only; no-op locally): a sibling may have already triaged this
+    # exact snapshot+signals. Triage is deterministic, so a miss/fault just recomputes the identical
+    # result. The embedded response is self-contained — the triage manifest stays B8-recoverable for
+    # any downstream read. Only reached after the node-local miss.
+    shared_triage_lookup = read_lookup_shared(
+        org_id=org_id,
+        repository_id=repository_id,
+        kind="triage_lookup",
+        lookup_key=triage_lookup_key,
+    )
+    if shared_triage_lookup is not None:
+        shared_triage_response = _lookup_response_payload(shared_triage_lookup)
+        if shared_triage_response is not None:
+            return RepositoryTriageResponse.model_validate(shared_triage_response)
 
     snapshot_manifest = load_snapshot_manifest(
         org_id=org_id,
@@ -628,13 +668,20 @@ def triage_repository(
             manifest=manifest,
         )
     response = RepositoryTriageResponse.model_validate(read_json(triage_path))
-    _write_json(
-        triage_lookup_path,
-        {
-            "workspace_evidence_bundle_ref": evidence_bundle_ref,
-            "snapshot_id": request.snapshot_id,
-            "created_at": created_at.isoformat(),
-            "response": response.model_dump(mode="json"),
-        },
+    triage_lookup_payload = {
+        "workspace_evidence_bundle_ref": evidence_bundle_ref,
+        "snapshot_id": request.snapshot_id,
+        "created_at": created_at.isoformat(),
+        "response": response.model_dump(mode="json"),
+    }
+    _write_json(triage_lookup_path, triage_lookup_payload)
+    # Publish to the durable shared index so sibling replicas dedup this deterministic triage
+    # (s3 only; no-op locally). Best-effort — a failed mirror just lets a sibling recompute.
+    mirror_lookup(
+        org_id=org_id,
+        repository_id=repository_id,
+        kind="triage_lookup",
+        lookup_key=triage_lookup_key,
+        payload=triage_lookup_payload,
     )
     return response
