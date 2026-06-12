@@ -159,7 +159,28 @@ def _provider_auth_headers(config: ProviderModelConfig) -> dict[str, str]:
     if config.api_key_env is None:
         headers = {"Content-Type": "application/json"}
     else:
-        api_key = _require_env_value(config.api_key_env)
+        # B10: resolve the LLM provider key through the per-tenant seam — a per-request org override
+        # wins; single-tenant (default) uses the env key (unchanged). When a per-tenant key is
+        # REQUIRED (multi-tenant) and none is configured for this request, FAIL CLOSED here — never
+        # fall back to the shared env key. Single-tenant + env-unset delegates to the existing
+        # env-required error (preserving its message/contract).
+        from apps.api_server.services.tenant_keys import (
+            require_per_tenant_keys,
+            resolve_provider_api_key,
+        )
+
+        api_key = resolve_provider_api_key(config.api_key_env)
+        if not api_key:
+            if require_per_tenant_keys():
+                raise LLMAPIError(
+                    "backend_unavailable",
+                    (
+                        f"Provider-backed model '{config.model_id}' requires a per-tenant API key, "
+                        "which is not configured for this request."
+                    ),
+                    {"model": config.model_id, "api_key_env": config.api_key_env},
+                )
+            api_key = _require_env_value(config.api_key_env)
         if config.backend == "anthropic":
             headers = {
                 "x-api-key": api_key,

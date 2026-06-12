@@ -1,0 +1,121 @@
+"""B10 PR10: per-tenant LLM/engine key resolution seam.
+
+Precedence: per-request org override > (single-tenant) env key. In an explicit multi-tenant
+deployment (ALGENTA_REQUIRE_PER_TENANT_KEYS=1) a missing override FAILS CLOSED — the shared global
+env key is never reused across tenants. Default (no override, flag off) is byte-for-byte the current
+env behavior."""
+
+from __future__ import annotations
+
+import pytest
+
+from apps.api_server.services import tenant_keys as tk
+from apps.api_server.services.llm_api_service import LLMAPIError
+from apps.api_server.services.llm_provider_service._config import ProviderModelConfig
+from apps.api_server.services.llm_provider_service._http_layer import _provider_auth_headers
+
+
+@pytest.fixture(autouse=True)
+def _clean_env(monkeypatch):
+    monkeypatch.delenv("ALGENTA_REQUIRE_PER_TENANT_KEYS", raising=False)
+    monkeypatch.delenv("MY_KEY", raising=False)
+    monkeypatch.delenv("ALGENTA_ENGINE_API_KEY", raising=False)
+    monkeypatch.delenv("ALGENTA_API_KEY", raising=False)
+
+
+def _cfg() -> ProviderModelConfig:
+    return ProviderModelConfig(
+        model_id="m",
+        backend="openai",
+        base_url="http://provider.example",
+        upstream_model="u",
+        api_key_env="MY_KEY",
+        description="",
+        capabilities=(),
+    )
+
+
+# --- resolve_provider_api_key ------------------------------------------------------------------
+
+
+def test_provider_single_tenant_uses_env(monkeypatch):
+    monkeypatch.setenv("MY_KEY", "env-key")
+    assert tk.resolve_provider_api_key("MY_KEY") == "env-key"
+
+
+def test_provider_env_unset_is_none():
+    assert tk.resolve_provider_api_key("MY_KEY") is None
+
+
+def test_provider_override_wins_then_resets(monkeypatch):
+    monkeypatch.setenv("MY_KEY", "env-key")
+    token = tk.set_provider_key_override("org-key")
+    try:
+        assert tk.resolve_provider_api_key("MY_KEY") == "org-key"
+    finally:
+        tk.reset_provider_key_override(token)
+    assert tk.resolve_provider_api_key("MY_KEY") == "env-key"  # back to env after reset
+
+
+def test_provider_multitenant_fails_closed_even_with_env_set(monkeypatch):
+    monkeypatch.setenv("ALGENTA_REQUIRE_PER_TENANT_KEYS", "1")
+    monkeypatch.setenv("MY_KEY", "env-key")
+    assert tk.resolve_provider_api_key("MY_KEY") is None  # no override -> no shared env borrow
+
+
+def test_provider_multitenant_with_override(monkeypatch):
+    monkeypatch.setenv("ALGENTA_REQUIRE_PER_TENANT_KEYS", "1")
+    token = tk.set_provider_key_override("org-key")
+    try:
+        assert tk.resolve_provider_api_key("MY_KEY") == "org-key"
+    finally:
+        tk.reset_provider_key_override(token)
+
+
+# --- resolve_engine_api_key --------------------------------------------------------------------
+
+
+def test_engine_single_tenant_uses_env(monkeypatch):
+    monkeypatch.setenv("ALGENTA_ENGINE_API_KEY", "engine-env")
+    assert tk.resolve_engine_api_key() == "engine-env"
+
+
+def test_engine_multitenant_fails_closed_even_with_env(monkeypatch):
+    monkeypatch.setenv("ALGENTA_REQUIRE_PER_TENANT_KEYS", "1")
+    monkeypatch.setenv("ALGENTA_ENGINE_API_KEY", "engine-env")
+    assert tk.resolve_engine_api_key() is None
+
+
+def test_engine_override_wins(monkeypatch):
+    monkeypatch.setenv("ALGENTA_ENGINE_API_KEY", "engine-env")
+    token = tk.set_engine_key_override("org-engine")
+    try:
+        assert tk.resolve_engine_api_key() == "org-engine"
+    finally:
+        tk.reset_engine_key_override(token)
+
+
+# --- integration: _provider_auth_headers -------------------------------------------------------
+
+
+def test_auth_headers_single_tenant_env_is_unchanged(monkeypatch):
+    monkeypatch.setenv("MY_KEY", "env-key")
+    headers = _provider_auth_headers(_cfg())
+    assert headers["Authorization"] == "Bearer env-key"
+
+
+def test_auth_headers_use_per_request_override(monkeypatch):
+    token = tk.set_provider_key_override("org-key")  # env unset (fixture)
+    try:
+        headers = _provider_auth_headers(_cfg())
+        assert headers["Authorization"] == "Bearer org-key"
+    finally:
+        tk.reset_provider_key_override(token)
+
+
+def test_auth_headers_fail_closed_in_multitenant_without_override(monkeypatch):
+    monkeypatch.setenv("ALGENTA_REQUIRE_PER_TENANT_KEYS", "1")
+    monkeypatch.setenv("MY_KEY", "env-key")  # env set, but multi-tenant + no override
+    with pytest.raises(LLMAPIError) as excinfo:
+        _provider_auth_headers(_cfg())
+    assert excinfo.value.code == "backend_unavailable"

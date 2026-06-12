@@ -19,6 +19,7 @@ from apps.api_server.services import (
 from apps.api_server.services.repository_intelligence_contracts import (
     RepositoryIntelligenceError,
 )
+from apps.api_server.services.tenant_keys import resolve_engine_api_key
 
 
 # ─── verified_agentic planner tier (forked-Cline agent-core; engine "cline_fork") ──
@@ -432,9 +433,10 @@ async def _generate_verified_agentic_repository_patch_plan(
             "url": _engine_url,
             "repository_id": str(snapshot_manifest.get("repository_id") or ""),
             "snapshot_id": snapshot_manifest["snapshot_id"],
-            "api_key": os.environ.get("ALGENTA_ENGINE_API_KEY")
-            or os.environ.get("ALGENTA_API_KEY")
-            or "",
+            # B10: resolve the engine key through the per-tenant seam (per-request org override >
+            # single-tenant env; multi-tenant with no override fails closed to "" rather than
+            # reusing the shared env key across tenants).
+            "api_key": resolve_engine_api_key() or "",
             # LLM provider/model are deployment choice (any provider); None lets the
             # agent-core pick its configured default.
             "provider": os.environ.get("ALGENTA_AGENT_PROVIDER") or None,
