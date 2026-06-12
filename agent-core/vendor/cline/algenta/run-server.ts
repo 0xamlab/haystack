@@ -13,7 +13,7 @@ import { isAuthorizedRequest, jsonError, jsonResponse, ndjsonResponse, readJsonB
 import { normalizeSessionPayload, toPublicSession } from "./server/policy";
 import { createServerState } from "./server/state";
 import { appendSessionEvent, createIdempotencyKey, optionalString, sessionOwnerForRequest, requiredString } from "./server/utils";
-import { degradedProofRuntimeContext, loadProofRuntimeContext, proofRunDir, repoRootFromImportMeta } from "./proofs";
+import { degradedProofRuntimeContext, loadProofRuntimeContext, proofRunDir, readProofArtifacts, repoRootFromImportMeta } from "./proofs";
 
 const PORT = Number(process.env.AGENT_CORE_PORT || process.argv[2] || 0);
 // Bind loopback by default (safe for local dev); containers set AGENT_CORE_HOST=0.0.0.0
@@ -35,6 +35,25 @@ const EXECUTION_CONTEXT: ExecutionContext = {
 	runtimeIdentity: RUNTIME_IDENTITY,
 	state: SERVER_STATE,
 };
+
+// B9: the canonical proof artifacts (already secret-redacted by finalizeSessionArtifacts) are
+// written to <rootDir>/build/proofs/cline/runs/<runId>/ on this node's disk. This read-only,
+// auth-gated endpoint serves them so the (Python) object-store abstraction can mirror them to
+// durable storage for cross-replica recovery — without coupling the sidecar to S3 credentials.
+async function handleGetProofArtifacts(response: ServerResponse, runId: string): Promise<void> {
+	let bundle: { run_id: string; artifacts: Record<string, unknown> } | null;
+	try {
+		bundle = await readProofArtifacts(PROOF_CONTEXT, runId);
+	} catch (error) {
+		jsonError(response, 400, "invalid_run_id", String(error));
+		return;
+	}
+	if (bundle === null) {
+		jsonError(response, 404, "proofs_not_found", `no proof artifacts for run '${runId}' on this node.`);
+		return;
+	}
+	jsonResponse(response, 200, bundle);
+}
 
 async function handleCreateSession(
 	request: IncomingMessage,
@@ -309,6 +328,12 @@ const server = http.createServer(async (request, response) => {
 
 	if (request.method === "GET" && path === "/manifest") {
 		jsonResponse(response, 200, createServerManifest(PROOF_CONTEXT, RUNTIME_IDENTITY));
+		return;
+	}
+
+	// B9: serve a run's proof bundle (auth-gated by the check above) for durable mirroring.
+	if (request.method === "GET" && parts[0] === "proofs" && parts.length === 2) {
+		await handleGetProofArtifacts(response, parts[1]!);
 		return;
 	}
 

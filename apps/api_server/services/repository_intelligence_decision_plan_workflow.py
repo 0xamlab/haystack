@@ -36,6 +36,7 @@ from apps.api_server.services.repository_intelligence_coordination import (
     coordinated_generation_lock,
     get_coordination_redis,
 )
+from apps.api_server.services.repository_intelligence_proof_store import mirror_proof_artifacts
 from apps.api_server.services.repository_intelligence_shared import (
     _hash_payload,
     _stable_identifier,
@@ -925,4 +926,10 @@ async def create_repository_decision_plan(
         # plan (with its embedded response) instead of regenerating. Fail-closed in s3 (the shared
         # lookup is the dedup mechanism); no-op in local mode.
         _mirror_decision_plan_lookup(org_id, repository_id, lookup_key, _lookup_payload)
+        # B9: mirror this run's proof bundle (runtime_manifest/messages/usage/gate/...) to the
+        # durable object store for cross-replica recovery. Best-effort — never fails the plan; a
+        # no-op for non-agentic plans (agent_run_id is None) and in local mode.
+        await mirror_proof_artifacts(
+            org_id=org_id, repository_id=repository_id, agent_run_id=agent_run_id
+        )
         return response

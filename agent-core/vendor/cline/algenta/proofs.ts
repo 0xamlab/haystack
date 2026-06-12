@@ -237,6 +237,50 @@ export function relativeArtifactPath(
 	return path.relative(context.rootDir, absolutePath) || ".";
 }
 
+// B9: the JSON proof artifacts finalizeSessionArtifacts writes (already secret-redacted at write
+// time). events.ndjson is read separately (newline-delimited records).
+export const PROOF_JSON_ARTIFACTS = [
+	"runtime_manifest.json",
+	"messages.json",
+	"usage.json",
+	"tool_calls.json",
+	"approvals.json",
+	"gate.json",
+] as const;
+
+/**
+ * Read back a run's finalized proof bundle from <rootDir>/build/proofs/cline/runs/<runId>/.
+ * Returns null when the run directory holds no artifacts (e.g. the run finalized on a different
+ * replica). Throws only for an unsafe runId (proofRunDir guards path traversal). Used by the
+ * read-only /proofs/:runId endpoint so the durable object store can mirror the canonical artifacts.
+ */
+export async function readProofArtifacts(
+	context: ProofRuntimeContext,
+	runId: string,
+): Promise<{ run_id: string; artifacts: Record<string, unknown> } | null> {
+	const runDir = proofRunDir(context, runId);
+	const isMissing = (error: unknown): boolean =>
+		(error as NodeJS.ErrnoException)?.code === "ENOENT";
+	const artifacts: Record<string, unknown> = {};
+	for (const name of PROOF_JSON_ARTIFACTS) {
+		try {
+			artifacts[name] = JSON.parse(await readFile(path.join(runDir, name), "utf8"));
+		} catch (error) {
+			if (!isMissing(error)) throw error;
+		}
+	}
+	try {
+		const ndjson = await readFile(path.join(runDir, "events.ndjson"), "utf8");
+		artifacts["events.ndjson"] = ndjson
+			.split("\n")
+			.filter((line) => line.length > 0)
+			.map((line) => JSON.parse(line));
+	} catch (error) {
+		if (!isMissing(error)) throw error;
+	}
+	return Object.keys(artifacts).length > 0 ? { run_id: runId, artifacts } : null;
+}
+
 export async function writeJsonArtifact(
 	context: ProofRuntimeContext,
 	runId: string,
