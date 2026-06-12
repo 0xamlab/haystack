@@ -2,6 +2,11 @@
   "boundary_imports": [
     "benchmarks/llm_compiled_runtime_benchmark.py :: _MOJO_LIBRARY_RUNNER = importlib.import_module(\"apps.runtime.mojo_library_runner\")",
     "benchmarks/repository_intelligence_real_repo_probe_runtime_support.py :: from apps.api_server.services import repository_intelligence_runtime as runtime_service",
+    "scripts/backfill_repository_artifacts_to_object_store.py :: from apps.api_server.services import repository_intelligence_runtime as runtime",
+    "scripts/backfill_repository_artifacts_to_object_store.py :: from apps.api_server.services import repository_intelligence_storage as storage",
+    "scripts/backfill_repository_artifacts_to_object_store.py :: from apps.api_server.services.repository_intelligence_execution_workflow import (",
+    "scripts/backfill_repository_artifacts_to_object_store.py :: from apps.api_server.services.repository_intelligence_graph_workflow import (",
+    "scripts/backfill_repository_artifacts_to_object_store.py :: from apps.api_server.services.repository_intelligence_runtime import _runtime_dir",
     "scripts/bakeoff_algenta_run.py :: from apps.api_server.services import repository_intelligence_core as ri",
     "scripts/bakeoff_algenta_run.py :: from apps.api_server.services import repository_intelligence_storage as storage",
     "scripts/bakeoff_algenta_run.py :: from apps.api_server.services.repository_intelligence_manifest_reader import (",
