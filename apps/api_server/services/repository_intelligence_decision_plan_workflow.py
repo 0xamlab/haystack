@@ -482,6 +482,45 @@ def _mirror_patch_impact_manifest_to_object_store(
     return key
 
 
+def _mirror_patch_diff_to_object_store(
+    *,
+    org_id: str,
+    repository_id: str,
+    patch_artifact_id: str,
+    patch_diff: str,
+) -> str | None:
+    """B8 durability: mirror the generated patch ``.diff`` to the durable, tenant-scoped object store
+    (``ALGENTA_RI_OBJECT_STORE=s3``) so APPLY works cross-replica — the .diff is otherwise node-local
+    and ``_patch_text_for_plan`` reads it from ``patch_path`` (a plan generated on one replica can't
+    be applied on another). Returns ``None`` in local mode (no-op, backward compatible); fails closed
+    (502) when the durable write fails. ``patch_artifact_id`` hashes the diff, so the content is
+    recover-by-identity; the key is NOT self-recorded (the apply path re-derives it from the
+    manifest's ``patch_path`` filename stem)."""
+    from apps.api_server.services.repository_intelligence_object_store import (
+        artifact_key,
+        get_object_store,
+        object_store_mode,
+    )
+
+    if object_store_mode() != "s3":
+        return None
+    key = artifact_key(
+        org_id=org_id,
+        repository_id=repository_id,
+        kind="patches",
+        artifact_id=patch_artifact_id,
+    )
+    try:
+        get_object_store().put_bytes(key, patch_diff.encode("utf-8"), content_type="text/x-diff")
+    except Exception as exc:  # noqa: BLE001 — surface as a fail-closed patch error
+        raise RepositoryIntelligenceError(
+            code="patch_diff_persist_failed",
+            message=f"failed to persist the generated patch diff to the object store: {exc}",
+            status_code=502,
+        ) from exc
+    return key
+
+
 async def create_repository_decision_plan(
     *,
     connector: DataConnector,
@@ -654,6 +693,14 @@ async def create_repository_decision_plan(
         )
         patch_path.parent.mkdir(parents=True, exist_ok=True)
         patch_path.write_text(patch_diff, encoding="utf-8")
+        # B8: mirror the .diff to the durable object store so apply works cross-replica (no-op local;
+        # fails closed in s3). Recovered by identity in execution_workflow._patch_text_for_plan.
+        _mirror_patch_diff_to_object_store(
+            org_id=org_id,
+            repository_id=repository_id,
+            patch_artifact_id=patch_artifact_id,
+            patch_diff=patch_diff,
+        )
 
         impact_summary = patch_impact_summary(snapshot_manifest, patch_diff)
         patch_impact_report_id = _stable_identifier(

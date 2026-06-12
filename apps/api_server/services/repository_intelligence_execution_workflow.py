@@ -562,17 +562,48 @@ async def simulate_repository_decision(
     return envelope
 
 
+def _recover_patch_diff_from_object_store(
+    *, org_id: str, repository_id: str, patch_artifact_id: str
+) -> str | None:
+    """B8 cross-replica recovery: read a generated patch ``.diff`` from the durable object store
+    (s3 mode only; ``None`` in local mode). A genuine miss returns ``None`` (→ the caller's 404); an
+    object-store availability fault PROPAGATES (``get_bytes`` re-raises non-404 faults) so apply fails
+    retryably rather than reporting the patch permanently gone."""
+    from apps.api_server.services.repository_intelligence_object_store import (
+        artifact_key,
+        get_object_store,
+        object_store_mode,
+    )
+
+    if object_store_mode() != "s3":
+        return None
+    data = get_object_store().get_bytes(
+        artifact_key(
+            org_id=org_id, repository_id=repository_id, kind="patches", artifact_id=patch_artifact_id
+        )
+    )
+    return data.decode("utf-8") if data is not None else None
+
+
 def _patch_text_for_plan(
     *, org_id: str, repository_id: str, decision_plan_manifest: dict[str, Any]
 ) -> str:
     patch_path = Path(decision_plan_manifest["patch_path"])
-    if not patch_path.exists():
-        raise RepositoryIntelligenceError(
-            code="generated_patch_not_found",
-            message=f"Generated patch artifact '{patch_path.name}' was not found.",
-            status_code=404,
-        )
-    return patch_path.read_text(encoding="utf-8")
+    if patch_path.exists():
+        return patch_path.read_text(encoding="utf-8")
+    # B8 cross-replica fallback: the .diff was generated on another replica (not on this node). Recover
+    # it from the durable object store by identity — the filename stem is the deterministic
+    # patch_artifact_id used as the object key (s3 mode; no-op local).
+    recovered = _recover_patch_diff_from_object_store(
+        org_id=org_id, repository_id=repository_id, patch_artifact_id=patch_path.stem
+    )
+    if recovered is not None:
+        return recovered
+    raise RepositoryIntelligenceError(
+        code="generated_patch_not_found",
+        message=f"Generated patch artifact '{patch_path.name}' was not found.",
+        status_code=404,
+    )
 
 
 def _ensure_clean_git_worktree(path: Path, *, git_command: _GitCommand) -> None:
