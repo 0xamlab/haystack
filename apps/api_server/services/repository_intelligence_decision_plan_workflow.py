@@ -32,6 +32,10 @@ from apps.api_server.services import (
 from apps.api_server.services.repository_intelligence_contracts import (
     RepositoryIntelligenceError,
 )
+from apps.api_server.services.repository_intelligence_coordination import (
+    coordinated_generation_lock,
+    get_coordination_redis,
+)
 from apps.api_server.services.repository_intelligence_shared import (
     _hash_payload,
     _stable_identifier,
@@ -174,6 +178,66 @@ def _decision_plan_generation_lock(
     lookup_key: str,
 ) -> AbstractContextManager[None]:
     return _DecisionPlanGenerationLock(lookup_dir, lookup_key)
+
+
+# Wave-C cross-node generation lock sizing. The lease auto-renews every TTL/3, so the TTL only bounds
+# how long a stale lease survives if renewal STOPS (Redis trouble); the wait deadline bounds how long
+# a losing replica waits for the winner before failing closed (retryable — the job path retries).
+# Generous defaults cover a long verified_agentic run; env-tunable for ops.
+_COORD_LOCK_TTL_S = int(os.environ.get("ALGENTA_COORDINATION_LOCK_TTL_S") or "900")
+_COORD_WAIT_S = float(os.environ.get("ALGENTA_COORDINATION_WAIT_S") or "900")
+
+
+def _decision_plan_lookup_artifact_key(org_id: str, repository_id: str, lookup_key: str) -> str:
+    from apps.api_server.services.repository_intelligence_object_store import artifact_key
+
+    return artifact_key(
+        org_id=org_id, repository_id=repository_id, kind="decision_plan_lookup", artifact_id=lookup_key
+    )
+
+
+def _read_decision_plan_lookup_shared(
+    org_id: str, repository_id: str, lookup_key: str
+) -> dict[str, Any] | None:
+    """Read the cross-replica decision-plan dedup lookup from the durable object store (s3 mode only;
+    None in local mode). A genuine miss returns None; an object-store availability fault PROPAGATES
+    (the dedup read must not fail-OPEN into a divergent regeneration — the caller fails closed and
+    retries)."""
+    from apps.api_server.services.repository_intelligence_object_store import (
+        get_object_store,
+        object_store_mode,
+    )
+
+    if object_store_mode() != "s3":
+        return None
+    return get_object_store().get_json(
+        _decision_plan_lookup_artifact_key(org_id, repository_id, lookup_key)
+    )
+
+
+def _mirror_decision_plan_lookup(
+    org_id: str, repository_id: str, lookup_key: str, payload: dict[str, Any]
+) -> None:
+    """Mirror the decision-plan dedup lookup to the durable object store (s3 only; no-op local). The
+    shared lookup IS the cross-replica dedup mechanism, so a failed mirror fails closed (502) — a
+    sibling replica must be able to see this plan rather than regenerate a divergent one."""
+    from apps.api_server.services.repository_intelligence_object_store import (
+        get_object_store,
+        object_store_mode,
+    )
+
+    if object_store_mode() != "s3":
+        return
+    try:
+        get_object_store().put_json(
+            _decision_plan_lookup_artifact_key(org_id, repository_id, lookup_key), payload
+        )
+    except Exception as exc:  # noqa: BLE001 — fail closed; the run retries
+        raise RepositoryIntelligenceError(
+            code="decision_plan_lookup_persist_failed",
+            message=f"failed to persist the decision-plan dedup lookup to the object store: {exc}",
+            status_code=502,
+        ) from exc
 
 
 def _patch_impact_summary(
@@ -480,33 +544,46 @@ async def create_repository_decision_plan(
         f"{lookup_key}.json"
     )
     def _read_cached_decision_plan() -> RepositoryDecisionPlanResponse | None:
-        if not lookup_path.exists():
-            return None
-        decision_plan_lookup = read_json(lookup_path)
+        # Wave-C: node-local L1 first (fast path); on a local miss consult the SHARED cross-replica
+        # lookup (the winner may have published on another replica). A genuine shared miss -> None;
+        # an object-store availability fault propagates (fail closed, never a divergent regen).
+        if lookup_path.exists():
+            decision_plan_lookup = read_json(lookup_path)
+        else:
+            decision_plan_lookup = _read_decision_plan_lookup_shared(
+                org_id, repository_id, lookup_key
+            )
+            if decision_plan_lookup is None:
+                return None
         decision_plan_id = str(decision_plan_lookup.get("decision_plan_id") or "").strip()
         if not decision_plan_id:
             return None
-        plan_path = repository_runtime._decision_plans_dir(
-            org_id,
-            repository_id,
-        ) / f"{decision_plan_id}.json"
-        if not plan_path.exists():
-            return None
+        # Wave-C: serve the embedded response WITHOUT requiring a node-local plan_path — the winner's
+        # plan manifest lives on another replica; the lookup carries the full response. (The old
+        # `if not plan_path.exists(): return None` gate made a cross-replica loser regenerate even
+        # though it could already see the winner's lookup — the #94 gap.)
         cached_response = repository_runtime._lookup_response_payload(decision_plan_lookup)
         if cached_response is not None:
             return RepositoryDecisionPlanResponse.model_validate(cached_response)
-        response = RepositoryDecisionPlanResponse.model_validate(read_json(plan_path))
-        repository_runtime._write_json(
-            lookup_path,
-            {
-                "decision_plan_id": decision_plan_id,
-                "snapshot_id": resolved_snapshot_id,
-                "workspace_evidence_bundle_ref": request.workspace_evidence_bundle_ref,
-                "model_id": model_id,
-                "created_at": decision_plan_lookup.get("created_at") or _utc_now().isoformat(),
-                "response": response.model_dump(mode="json"),
-            },
-        )
+        # Legacy lookup without an embedded response: recover the plan manifest via the shared-aware
+        # loader (B8 added the object-store fallback), then re-cache the response locally + shared.
+        try:
+            recovered = repository_storage._load_decision_plan_manifest(
+                org_id=org_id, repository_id=repository_id, decision_plan_id=decision_plan_id
+            )
+        except RepositoryIntelligenceError:
+            return None
+        response = RepositoryDecisionPlanResponse.model_validate(recovered)
+        _recache_payload = {
+            "decision_plan_id": decision_plan_id,
+            "snapshot_id": resolved_snapshot_id,
+            "workspace_evidence_bundle_ref": request.workspace_evidence_bundle_ref,
+            "model_id": model_id,
+            "created_at": decision_plan_lookup.get("created_at") or _utc_now().isoformat(),
+            "response": response.model_dump(mode="json"),
+        }
+        repository_runtime._write_json(lookup_path, _recache_payload)
+        _mirror_decision_plan_lookup(org_id, repository_id, lookup_key, _recache_payload)
         return response
 
     cached = _read_cached_decision_plan()
@@ -520,7 +597,19 @@ async def create_repository_decision_plan(
     # run populates the key and is served stably thereafter, never recomputed-and-
     # compared. failed/aborted/no_change runs raise inside the planner before this
     # point, so they are never cached.
-    with _decision_plan_generation_lock(lookup_path.parent, lookup_key):
+    # Wave-C: serialize generation ACROSS replicas. The cross-node lock makes a losing replica BLOCK
+    # until the winner releases, then the in-lock re-check below reads the winner's SHARED lookup and
+    # serves it — closing the #94 divergence. deterministic=False (the verified_agentic planner is
+    # non-deterministic): on a true wait-deadline it fails closed (retryable) rather than regenerating.
+    # Redis None (single process / coordination disabled) degrades to the host-local flock.
+    async with coordinated_generation_lock(
+        key=lookup_key,
+        ttl_seconds=_COORD_LOCK_TTL_S,
+        wait_timeout_seconds=_COORD_WAIT_S,
+        deterministic=False,
+        redis=get_coordination_redis(),
+        local_fallback=lambda: _decision_plan_generation_lock(lookup_path.parent, lookup_key),
+    ):
         cached = _read_cached_decision_plan()
         if cached is not None:
             return cached
@@ -776,15 +865,17 @@ async def create_repository_decision_plan(
                 manifest=plan_manifest,
             )
         response = RepositoryDecisionPlanResponse.model_validate(read_json(plan_path))
-        repository_runtime._write_json(
-            lookup_path,
-            {
-                "decision_plan_id": decision_plan_id,
-                "snapshot_id": resolved_snapshot_id,
-                "workspace_evidence_bundle_ref": request.workspace_evidence_bundle_ref,
-                "model_id": model_id,
-                "created_at": created_at.isoformat(),
-                "response": response.model_dump(mode="json"),
-            },
-        )
+        _lookup_payload = {
+            "decision_plan_id": decision_plan_id,
+            "snapshot_id": resolved_snapshot_id,
+            "workspace_evidence_bundle_ref": request.workspace_evidence_bundle_ref,
+            "model_id": model_id,
+            "created_at": created_at.isoformat(),
+            "response": response.model_dump(mode="json"),
+        }
+        repository_runtime._write_json(lookup_path, _lookup_payload)
+        # Wave-C: publish the lookup to the SHARED index so a waiting sibling replica serves THIS
+        # plan (with its embedded response) instead of regenerating. Fail-closed in s3 (the shared
+        # lookup is the dedup mechanism); no-op in local mode.
+        _mirror_decision_plan_lookup(org_id, repository_id, lookup_key, _lookup_payload)
         return response

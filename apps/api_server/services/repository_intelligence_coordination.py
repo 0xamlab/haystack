@@ -23,7 +23,8 @@ from __future__ import annotations
 import asyncio
 import os
 import uuid
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import asynccontextmanager
 from typing import Any, Protocol, TypeVar
 
 import structlog
@@ -236,3 +237,65 @@ async def run_once_distributed(
             raise CoordinationTimeout(
                 f"timed out waiting {wait_timeout_seconds}s for another replica to produce '{key}'"
             )
+
+
+@asynccontextmanager
+async def coordinated_generation_lock(
+    *,
+    key: str,
+    ttl_seconds: int,
+    wait_timeout_seconds: float,
+    deterministic: bool,
+    redis: _RedisClient | None = None,
+    local_fallback: Callable[[], Any] | None = None,
+) -> AsyncIterator[None]:
+    """Cross-node BLOCKING generation lock for the existing ``with lock: re-check; generate`` shape
+    (used by the decision-plan path so the body is not restructured). The loser BLOCKS until the
+    winner releases, then the caller's own in-lock re-check of the shared index serves the winner's
+    result instead of regenerating.
+
+    redis None -> the caller's host-local ``local_fallback`` (a sync flock CM factory), correct for a
+    single process. Else acquire-wait (retry SET NX EX until acquired or the deadline) with
+    lease renewal; on a true deadline: deterministic -> proceed unlocked (best-effort, identical
+    output); non-deterministic -> raise CoordinationTimeout (the caller fails closed, retryable).
+    acquire == renew == release are pinned to the same client; release is the atomic Lua
+    compare-and-delete. NOTE: a lease lost mid-body (renewal fails for a full TTL — Redis trouble) is
+    a documented residual mitigated by a TTL >= worst-case run + renewal + the caller's append-only
+    artifact guard + the shared in-lock re-check on the retry; use run_once_distributed when a
+    publish-time lost-lease check is required."""
+    if redis is None:
+        if local_fallback is None:
+            yield
+            return
+        with local_fallback():
+            yield
+        return
+
+    lock_key = _KEY_PREFIX + key
+    token = uuid.uuid4().hex
+    loop = asyncio.get_event_loop()
+    deadline = loop.time() + wait_timeout_seconds
+    acquired = False
+    while True:
+        if await _try_acquire(redis, lock_key, token, ttl_seconds):
+            acquired = True
+            break
+        if loop.time() >= deadline:
+            break
+        await asyncio.sleep(_POLL_INTERVAL_SECONDS)
+
+    if not acquired:
+        if deterministic:
+            yield  # best-effort: proceed without the lock (output is identical)
+            return
+        raise CoordinationTimeout(f"timed out acquiring the coordination lock for '{key}'")
+
+    lost = asyncio.Event()
+    stop = asyncio.Event()
+    renew = asyncio.create_task(_renew_loop(redis, lock_key, token, ttl_seconds, lost, stop))
+    try:
+        yield
+    finally:
+        stop.set()
+        await renew
+        await _compare_eval(redis, _COMPARE_AND_DELETE, lock_key, token)

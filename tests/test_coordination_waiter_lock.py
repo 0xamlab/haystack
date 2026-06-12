@@ -16,6 +16,7 @@ import pytest
 from apps.api_server.services import repository_intelligence_coordination as coord
 from apps.api_server.services.repository_intelligence_coordination import (
     CoordinationTimeout,
+    coordinated_generation_lock,
     run_once_distributed,
 )
 
@@ -223,3 +224,71 @@ def test_coordination_enabled_when_flag_set(monkeypatch):
     coord.reset_coordination_redis_for_test()
     assert coord.coordination_enabled() is True  # redis_url defaults non-empty
     coord.reset_coordination_redis_for_test()
+
+
+# --- coordinated_generation_lock (the blocking CM used by the decision-plan path) ---------------
+
+
+async def test_generation_lock_serializes_concurrent_holders():
+    redis = FakeRedis()
+    inside = {"n": 0, "max": 0}
+
+    async def worker():
+        async with coordinated_generation_lock(
+            redis=redis, key="k", ttl_seconds=10, wait_timeout_seconds=5.0, deterministic=False
+        ):
+            inside["n"] += 1
+            inside["max"] = max(inside["max"], inside["n"])
+            await asyncio.sleep(0.1)
+            inside["n"] -= 1
+
+    await asyncio.gather(worker(), worker())
+    assert inside["max"] == 1  # never both inside the critical section at once
+
+
+async def test_generation_lock_nondeterministic_timeout_fails_closed():
+    redis = FakeRedis()
+    redis.store[_LOCK] = "foreign-token"  # held by another replica, never released
+    with pytest.raises(CoordinationTimeout):
+        async with coordinated_generation_lock(
+            redis=redis, key="k", ttl_seconds=10, wait_timeout_seconds=0.2, deterministic=False
+        ):
+            raise AssertionError("body must not run when the lock fails closed")
+
+
+async def test_generation_lock_deterministic_timeout_proceeds_unlocked():
+    redis = FakeRedis()
+    redis.store[_LOCK] = "foreign-token"
+    ran = {"v": False}
+    async with coordinated_generation_lock(
+        redis=redis, key="k", ttl_seconds=10, wait_timeout_seconds=0.2, deterministic=True
+    ):
+        ran["v"] = True
+    assert ran["v"] is True  # deterministic tier proceeds best-effort on timeout
+
+
+async def test_generation_lock_redis_none_uses_local_fallback():
+    from contextlib import contextmanager
+
+    used = {"v": False}
+
+    @contextmanager
+    def _fallback():
+        used["v"] = True
+        yield
+
+    async with coordinated_generation_lock(
+        redis=None, key="k", ttl_seconds=10, wait_timeout_seconds=1.0,
+        deterministic=False, local_fallback=_fallback,
+    ):
+        pass
+    assert used["v"] is True  # degraded to the caller's host-local flock
+
+
+async def test_generation_lock_releases_after_block():
+    redis = FakeRedis()
+    async with coordinated_generation_lock(
+        redis=redis, key="k", ttl_seconds=10, wait_timeout_seconds=1.0, deterministic=False
+    ):
+        assert _LOCK in redis.store  # held inside the block
+    assert _LOCK not in redis.store  # released (atomic compare-and-delete) on exit
