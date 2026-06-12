@@ -70,6 +70,10 @@ class UsageRecord(UUIDMixin, TimestampMixin, Base):
     )
     billing_units: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     scenarios_run: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Wave-C exactly-once billing: a logical-run idempotency key (e.g. "sim:<run_id>"). A retried
+    # persist upserts exactly ONE UsageRecord per logical run. Nullable + PARTIAL-unique (see
+    # migration 0034): NULL-keyed rows (heartbeat / credits writers) are exempt from the constraint.
+    usage_key: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
     organization: Mapped["Organization"] = relationship(  # type: ignore[name-defined]  # noqa: F821
         "Organization", lazy="noload"

@@ -83,13 +83,21 @@ async def persist_simulation_run(
         std_deviation=persist_meta["std_deviation"],
         rationale=persist_meta["rationale"],
     )
-    try:
-        run.simulation_model = persist_meta["simulation_model"]
-    except Exception as exc:
-        logger.debug("simulation_model_persist_failed", run_id=str(run_id), error=str(exc))
-    db.add(run)
-    await db.flush()
-    await _persist_result_reference(run=run, persist_meta=persist_meta)
+    # Wave-C exactly-once billing: idempotent on the SimulationRun PK. On a Celery retry (acks_late)
+    # the run may already be committed — a bare re-insert would raise IntegrityError and abort the
+    # whole transaction BEFORE the UsageRecord, so the run would never be billed (UNDER-count). Get-
+    # or-create avoids that; on a retry we reuse the existing run and skip the result-reference write.
+    existing_run = await db.get(SimulationRun, run_id)
+    if existing_run is None:
+        try:
+            run.simulation_model = persist_meta["simulation_model"]
+        except Exception as exc:
+            logger.debug("simulation_model_persist_failed", run_id=str(run_id), error=str(exc))
+        db.add(run)
+        await db.flush()
+        await _persist_result_reference(run=run, persist_meta=persist_meta)
+    else:
+        run = existing_run
 
     # ── 2. Audit event ────────────────────────────────────────────────────
     await write_audit_event(
@@ -111,21 +119,37 @@ async def persist_simulation_run(
     from apps.api_server.services.quota_service import _current_billing_period
 
     period = _current_billing_period()
-    record = UsageRecord(
-        org_id=org_id,
-        workspace_id=workspace_id,
-        api_key_id=api_key_id,
-        simulation_run_id=run_id,
-        billing_period=period,
-        endpoint=UsageEndpoint.SIMULATE,
-        billing_units=1,
-        scenarios_run=persist_meta["scenarios_run"],
-    )
-    db.add(record)
-    await db.flush()
+    # Wave-C exactly-once billing: the UsageRecord is keyed by a logical-run usage_key and guarded by
+    # a PARTIAL-unique index (migration 0034). Insert inside a SAVEPOINT so a duplicate (a retry or a
+    # cross-replica race) raises IntegrityError that rolls back ONLY this insert — never the whole
+    # transaction — and leaves usage_inserted=False. The quota counter AND the (real-money) Stripe
+    # push then fire ONLY on a genuine first insert, so a retry neither under-bills nor double-bills.
+    from sqlalchemy.exc import IntegrityError
 
-    # ── 4. Increment Redis quota counter ──────────────────────────────────
-    if redis_client is not None:
+    usage_inserted = False
+    try:
+        async with db.begin_nested():
+            record = UsageRecord(
+                org_id=org_id,
+                workspace_id=workspace_id,
+                api_key_id=api_key_id,
+                simulation_run_id=run_id,
+                billing_period=period,
+                endpoint=UsageEndpoint.SIMULATE,
+                billing_units=1,
+                scenarios_run=persist_meta["scenarios_run"],
+                usage_key=f"sim:{run_id}",
+            )
+            db.add(record)
+            await db.flush()
+        usage_inserted = True
+    except IntegrityError:
+        # already billed for this logical run (Celery retry / cross-replica race) — not an error.
+        usage_inserted = False
+        logger.info("usage_record_already_billed", run_id=str(run_id), org_id=str(org_id))
+
+    # ── 4. Increment Redis quota counter (only on a genuine first insert) ──
+    if usage_inserted and redis_client is not None:
         try:
             from apps.api_server.services.quota_service import incr_quota_counter
 
@@ -133,10 +157,11 @@ async def persist_simulation_run(
         except Exception as exc:
             logger.warning("quota_counter_incr_failed", org_id=str(org_id), error=str(exc))
 
-    # ── 5. Push Stripe usage (fire-and-forget) ────────────────────────────
-    import asyncio
+    # ── 5. Push Stripe usage (fire-and-forget; only on a genuine first insert) ──
+    if usage_inserted:
+        import asyncio
 
-    asyncio.create_task(_push_stripe_usage(org_id=org_id, billing_units=1, db=db))
+        asyncio.create_task(_push_stripe_usage(org_id=org_id, billing_units=1, db=db))
 
     # ── 6. Object storage (enterprise — off hot path) ─────────────────────
     logger.info(
