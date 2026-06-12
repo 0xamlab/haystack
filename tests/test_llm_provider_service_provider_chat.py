@@ -535,6 +535,8 @@ async def test_provider_chat_completion_maps_ollama_payload_without_auth(monkeyp
             )
 
     monkeypatch.setattr(llm_provider_service.httpx, "AsyncClient", _FakeClient)
+    # loopback base_url: allow egress so this payload-mapping test isn't blocked by the SSRF guard
+    monkeypatch.setattr(egress_guard, "enforce_egress", allow_egress_for_test)
 
     result = await llm_provider_service.provider_chat_completion(
         config=config,

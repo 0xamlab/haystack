@@ -88,6 +88,8 @@ async def test_provider_embeddings_maps_ollama_payload(monkeypatch) -> None:
             )
 
     monkeypatch.setattr(llm_provider_service.httpx, "AsyncClient", _FakeClient)
+    # loopback base_url: allow egress so this payload-mapping test isn't blocked by the SSRF guard
+    monkeypatch.setattr(egress_guard, "enforce_egress", allow_egress_for_test)
 
     generated, total_tokens = await llm_provider_service.provider_embeddings(
         config=config,
@@ -142,6 +144,8 @@ async def test_provider_embeddings_uses_capability_specific_timeout(monkeypatch)
             )
 
     monkeypatch.setattr(llm_provider_service.httpx, "AsyncClient", _FakeClient)
+    # loopback base_url: allow egress so this payload-mapping test isn't blocked by the SSRF guard
+    monkeypatch.setattr(egress_guard, "enforce_egress", allow_egress_for_test)
 
     generated, total_tokens = await llm_provider_service.provider_embeddings(
         config=config,

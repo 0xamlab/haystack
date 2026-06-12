@@ -30,7 +30,6 @@
     "apps/api_server/services/data_connection_browse.py :: s3 = boto3.client(\"s3\", **_s3_client_kwargs(config))",
     "apps/api_server/services/data_map_sources.py :: request = urllib.request.Request(url, headers={\"User-Agent\": \"algenta/1.0\"})  # noqa: S310",
     "apps/api_server/services/data_map_sources.py :: urlopen_fn=urllib.request.urlopen,",
-    "apps/api_server/services/llm_provider_service/_http_layer.py :: async with httpx.AsyncClient(timeout=timeout_seconds) as client:",
     "apps/api_server/services/provisioner/aws.py :: ce = boto3.client(\"ce\", region_name=\"us-east-1\")",
     "apps/api_server/services/provisioner/regions.py :: ec2 = boto3.client(\"ec2\", region_name=\"us-east-1\")",
     "apps/api_server/services/repository_intelligence_execution_workflow.py :: async with httpx.AsyncClient(timeout=30.0) as client:",

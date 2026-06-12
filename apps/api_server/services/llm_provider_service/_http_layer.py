@@ -194,15 +194,33 @@ async def _provider_post_json(
     payload: dict[str, Any],
     timeout_seconds: float,
 ) -> dict[str, Any]:
+    from apps.api_server.services import egress_guard
+    from apps.api_server.services.egress_guard import EgressPolicyDeniedError
     from apps.api_server.services.llm_api_service import LLMAPIError
 
+    # B10: every LLM provider call is the SOLE outbound for chat + embeddings; route it through the
+    # egress guard so the self_hosted/air_gapped fail-closed policy + SSRF check apply to the
+    # (customer-configured) provider base_url. Deny raises before any socket opens. Transport only —
+    # the auth header still reads the global env key here; per-tenant key resolution is a follow-up.
     try:
-        async with httpx.AsyncClient(timeout=timeout_seconds) as client:
-            response = await client.post(
-                f"{config.base_url}{path}",
-                json=payload,
-                headers=_provider_auth_headers(config),
-            )
+        response = await egress_guard.async_http_request(
+            method="POST",
+            url=f"{config.base_url}{path}",
+            surface="llm_provider_post",
+            egress_class="customer_connector",
+            explicit_configured=True,
+            headers=_provider_auth_headers(config),
+            json=payload,
+            client_kwargs={"timeout": timeout_seconds},
+        )
+    except EgressPolicyDeniedError as exc:
+        # Caught before the broad httpx.HTTPError below (it is a RuntimeError, not an httpx error):
+        # a policy denial must surface as a typed failure, never a silent retry to an alternate host.
+        raise LLMAPIError(
+            "egress_denied",
+            f"Provider egress denied by privacy policy for model '{config.model_id}'.",
+            {"model": config.model_id, "backend": config.backend},
+        ) from exc
     except httpx.TimeoutException as exc:
         raise LLMAPIError(
             "provider_timeout",
