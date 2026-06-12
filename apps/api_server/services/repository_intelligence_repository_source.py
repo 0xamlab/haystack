@@ -16,6 +16,11 @@ from urllib.parse import quote, urlparse
 
 from apps.api_server.models.data_connector import DataConnector
 from apps.api_server.services.config_crypto import decrypt_config_json
+from apps.api_server.services.connector_egress import (
+    connector_host_destination,
+    enforce_connector_destination,
+)
+from apps.api_server.services.egress_guard import EgressAuditContext
 from apps.api_server.services.repository_intelligence_contracts import (
     RepositoryIntelligenceError,
     _ResolvedRepositorySource,
@@ -24,7 +29,10 @@ from apps.api_server.services.repository_intelligence_indexing import (
     _normalize_repository_relative_path,
 )
 from apps.api_server.services.repository_intelligence_runtime import _worktrees_dir
-from apps.api_server.services.repository_intelligence_shared import _hash_payload
+from apps.api_server.services.repository_intelligence_shared import (
+    _coerce_scope_uuid,
+    _hash_payload,
+)
 from apps.api_server.services.repository_intelligence_storage import (
     _extract_archive,
     _extract_tar_handle,
@@ -460,6 +468,17 @@ def resolved_repository_source(
                 message="Repository URL must be a http(s) clone URL.",
                 status_code=422,
             )
+        # B10: the git-transport pull below (ls-remote/clone/fetch) reaches the
+        # customer-configured git host. Route it through the egress guard FIRST so the
+        # self_hosted/air_gapped fail-closed policy + SSRF check apply before any socket
+        # opens (Deny raises here, before auth_url is even built). The destination is the
+        # cleartext repository_url host (NOT auth_url), so the embedded access token never
+        # enters the policy/audit path. One enforce covers all three ops (same remote host).
+        enforce_connector_destination(
+            connector_host_destination(parsed_clone.hostname, port=parsed_clone.port),
+            surface="repository_git_clone",
+            audit_context=EgressAuditContext(org_id=_coerce_scope_uuid(connector.org_id)),
+        )
         auth_url = _authenticated_repository_url(connector_type, repository_url, config)
         cleanup_path = (
             _worktrees_dir(str(connector.org_id), str(connector.id))

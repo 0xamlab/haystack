@@ -963,6 +963,21 @@ async def apply_repository_decision(
                 resolved_repository_url,
                 config,
             )
+            # B10: gate the git-transport push to the customer host on the same egress policy
+            # as the sibling PR/MR create, BEFORE the socket opens. Destination is the cleartext
+            # repository_url host (NOT push_url) so the embedded token never enters policy/audit.
+            from apps.api_server.services.connector_egress import (
+                connector_host_destination,
+                enforce_connector_destination,
+            )
+            from apps.api_server.services.egress_guard import EgressAuditContext
+
+            _push_remote = urlparse(resolved_repository_url)
+            enforce_connector_destination(
+                connector_host_destination(_push_remote.hostname, port=_push_remote.port),
+                surface="repository_git_push",
+                audit_context=EgressAuditContext(org_id=_coerce_scope_uuid(connector.org_id)),
+            )
             git_command(
                 ["git", "-C", str(checkout_path), "push", push_url, f"HEAD:{branch_name}"],
                 timeout=180.0,
