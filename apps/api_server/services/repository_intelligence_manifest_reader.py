@@ -17,10 +17,12 @@ is timed into the ``parquet_read_ms`` telemetry span.
 """
 from __future__ import annotations
 
+import hashlib
 from collections import OrderedDict
 from pathlib import Path
 from typing import Any
 
+from apps.api_server.services import repository_intelligence_hydration_l2 as hydration_l2
 from apps.api_server.services import repository_intelligence_telemetry as telemetry
 from apps.api_server.services.runtime_internal_contracts import (
     DependencyGraphRecord,
@@ -57,8 +59,16 @@ _REFERENCE_KEYS = (
 )
 
 _HYDRATION_CACHE_MAXSIZE = 6
+# Projection-schema fingerprint: the content hashes in the cache key pin the Parquet BYTES but NOT
+# the projection logic (which columns we keep). It is folded into the L2 key so that a build which
+# changes a projection key set cannot serve a sibling's old-shaped grouped index from L2 (a
+# cross-build divergence the L1 LRU never has, being per-process). Derived from the key sets, so it
+# rotates automatically on any change — nothing to remember to bump.
+_PROJECTION_FINGERPRINT = hashlib.sha256(
+    repr((_SYMBOL_KEYS, _DEPENDENCY_KEYS, _REFERENCE_KEYS)).encode("utf-8")
+).hexdigest()[:16]
 # snapshot content-hash key -> {"symbols"|"dependencies"|"symbol_references": {path: [dict]}}
-_hydration_cache: "OrderedDict[tuple[str, ...], dict[str, dict[str, list[dict[str, Any]]]]]" = (
+_hydration_cache: OrderedDict[tuple[str, ...], dict[str, dict[str, list[dict[str, Any]]]]] = (
     OrderedDict()
 )
 
@@ -104,12 +114,27 @@ def _cache_key(manifest: dict[str, Any]) -> tuple[str, ...]:
     )
 
 
+def _store_in_l1(key: tuple[str, ...], index: dict[str, dict[str, list[dict[str, Any]]]]) -> None:
+    _hydration_cache[key] = index
+    _hydration_cache.move_to_end(key)
+    while len(_hydration_cache) > _HYDRATION_CACHE_MAXSIZE:
+        _hydration_cache.popitem(last=False)
+
+
 def _hydration_index(manifest: dict[str, Any]) -> dict[str, dict[str, list[dict[str, Any]]]]:
     key = _cache_key(manifest)
     cached = _hydration_cache.get(key)
     if cached is not None:
         _hydration_cache.move_to_end(key)
         return cached
+    # L2 (opt-in, fail-open): a sibling/prior process may have already grouped this content-addressed
+    # index, letting a cold process skip the Parquet read+group. A miss/fault falls through to the
+    # local Parquet path below. No-op unless ALGENTA_HYDRATION_L2=redis.
+    l2_key = (_PROJECTION_FINGERPRINT, *key)
+    l2_index = hydration_l2.get_index(l2_key)
+    if l2_index is not None:
+        _store_in_l1(key, l2_index)
+        return l2_index
     with telemetry.span("parquet_read_ms"):
         index = {
             "symbols": _read_grouped(
@@ -131,10 +156,9 @@ def _hydration_index(manifest: dict[str, Any]) -> dict[str, dict[str, list[dict[
                 project_keys=_REFERENCE_KEYS,
             ),
         }
-    _hydration_cache[key] = index
-    _hydration_cache.move_to_end(key)
-    while len(_hydration_cache) > _HYDRATION_CACHE_MAXSIZE:
-        _hydration_cache.popitem(last=False)
+    _store_in_l1(key, index)
+    # Publish the freshly-grouped index to L2 for sibling/cold processes (best-effort; no-op locally).
+    hydration_l2.put_index(l2_key, index)
     return index
 
 
