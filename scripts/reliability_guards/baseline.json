@@ -7,6 +7,17 @@
     "scripts/bakeoff_algenta_run.py :: from apps.api_server.services.repository_intelligence_manifest_reader import (",
     "scripts/bakeoff_algenta_run.py :: from apps.api_server.services.repository_intelligence_verified_agentic import ("
   ],
+  "egress_sdk_clients": [
+    "apps/api_server/connectors/cloud_connector.py :: async with AsyncBlobServiceClient.from_connection_string(target[\"connection_string\"]) as svc:",
+    "apps/api_server/connectors/cloud_connector.py :: async with session.create_client(\"s3\", **kwargs) as client:",
+    "apps/api_server/connectors/cloud_connector.py :: return storage.Client(credentials=credentials, project=config.get(\"project_id\"))",
+    "apps/api_server/connectors/cloud_connector.py :: return storage.Client(project=config.get(\"project_id\"))",
+    "apps/api_server/connectors/cloud_connector.py :: service = BlobServiceClient(account_url=target[\"account_url\"], credential=None)",
+    "apps/api_server/connectors/neo4j_connector.py :: return GraphDatabase.driver(",
+    "apps/api_server/services/connectors/tester_databases.py :: conn = await asyncpg.connect(",
+    "apps/api_server/services/data_connection_browse.py :: service = BlobServiceClient(account_url=account_url, credential=None)",
+    "apps/api_server/services/data_connection_browse.py :: service = BlobServiceClient.from_connection_string(connection_string)"
+  ],
   "raw_egress": [
     "apps/api_server/connectors/cloud_connector.py :: _PUBLIC_SYNC_CLIENT = httpx.Client(",
     "apps/api_server/connectors/cloud_connector.py :: _PUBLIC_SYNC_CLIENT: httpx.Client | None = None",
