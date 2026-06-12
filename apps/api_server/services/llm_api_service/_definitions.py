@@ -210,6 +210,10 @@ _ARTIFACT_BRIDGE_SPECS = (
 )
 _HUGGINGFACE_CACHE_ENV = "HUGGINGFACE_HUB_CACHE"
 _HF_HOME_ENV = "HF_HOME"
+# huggingface_hub reads HF_ENDPOINT to redirect the hub host (e.g. an in-cluster mirror);
+# mirror that here so the egress guard sees the host the download will actually contact.
+_HF_ENDPOINT_ENV = "HF_ENDPOINT"
+_HUGGINGFACE_DEFAULT_ENDPOINT = "https://huggingface.co"
 _HUGGINGFACE_AUTH_ENV_VARS = (
     "HF_TOKEN",
     "HUGGING_FACE_HUB_TOKEN",
@@ -293,6 +297,21 @@ def _hf_hub_download(
     auth_token: str | None,
 ) -> str:
     huggingface_hub = importlib.import_module("huggingface_hub")
+    if not local_files_only:
+        # B10: a non-cache-only resolve may fetch from the Hugging Face hub — repo_id (often
+        # client-supplied) and the HF auth token egress to the hub host. Route it through the
+        # egress guard so the self_hosted/air_gapped fail-closed policy + SSRF check apply
+        # BEFORE any socket opens (Deny raises here). operator_service: the hub endpoint is an
+        # operator-configured external model registry (HF_ENDPOINT), not a per-customer source.
+        from apps.api_server.services.egress_guard import enforce_egress_sync
+
+        hf_endpoint = os.environ.get(_HF_ENDPOINT_ENV, "").strip() or _HUGGINGFACE_DEFAULT_ENDPOINT
+        enforce_egress_sync(
+            hf_endpoint,
+            surface="artifact_bridge_hf_download",
+            egress_class="operator_service",
+            explicit_configured=True,
+        )
     kwargs: dict[str, object] = {
         "repo_id": repo_id,
         "filename": filename,
