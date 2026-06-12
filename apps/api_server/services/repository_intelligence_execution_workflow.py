@@ -395,7 +395,10 @@ async def simulate_repository_decision(
     # Monte-Carlo run is non-deterministic, so it is never shared cross-replica (it falls through to
     # a local recompute, preserving today's node-local behavior). Best-effort; only reached after the
     # node-local miss. The embedded envelope is self-contained; the manifest stays B8-recoverable.
-    if request.seed is not None:
+    # ALSO require an EXPLICIT runs count: with runs=None the effective scenario count comes from the
+    # adaptive sizer / ALGENTA_REPOSITORY_SIMULATION_RUNS env, which can differ across replicas — the
+    # lookup_key keys on request.runs, so sharing a runs=None result could serve a divergent envelope.
+    if request.seed is not None and request.runs is not None:
         shared_simulation_lookup = read_lookup_shared(
             org_id=org_id,
             repository_id=repository_id,
@@ -507,6 +510,10 @@ async def simulate_repository_decision(
     envelope.validated_inputs = validated_inputs
     envelope.decision_plan = decision_plan
     simulation_path = simulations_dir(org_id, repository_id) / f"{simulation_id}.json"
+    # Only publish the shared lookup when we durably mirror the manifest in THIS call (the cold path).
+    # If simulation_path already exists, the manifest's object-store durability is unknown, so
+    # advertising it cross-replica would let a sibling serve+apply a simulation it can't recover.
+    simulation_manifest_mirrored = False
     if not simulation_path.exists():
         simulation_path.parent.mkdir(parents=True, exist_ok=True)
         simulation_manifest = {
@@ -528,6 +535,7 @@ async def simulate_repository_decision(
             simulation_id=simulation_id,
             manifest=simulation_manifest,
         )
+        simulation_manifest_mirrored = True
     simulation_lookup_payload = {
         "simulation_id": simulation_id,
         "snapshot_id": resolved_snapshot_id,
@@ -539,10 +547,11 @@ async def simulate_repository_decision(
         "response": envelope.model_dump(mode="json"),
     }
     write_json(lookup_path, simulation_lookup_payload)
-    # Publish a fixed-seed (deterministic) simulation to the durable shared index so sibling replicas
-    # dedup the Mojo work (s3 only; no-op locally). seed=None Monte-Carlo runs are NOT shared.
-    # Best-effort — a failed mirror just lets a sibling recompute the identical seeded result.
-    if request.seed is not None:
+    # Publish to the durable shared index only for a deterministic, durably-mirrored simulation:
+    # an explicit seed AND explicit runs (so the result is reproducible and the lookup_key pins the
+    # actual scenario count), AND the manifest was mirrored in this call (so a sibling that serves the
+    # envelope can recover the manifest on apply). s3 only; no-op locally; best-effort.
+    if request.seed is not None and request.runs is not None and simulation_manifest_mirrored:
         mirror_lookup(
             org_id=org_id,
             repository_id=repository_id,

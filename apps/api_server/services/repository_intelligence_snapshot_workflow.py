@@ -530,15 +530,12 @@ def create_repository_snapshot(
                 "response": response.model_dump(mode="json"),
             }
             repository_runtime._write_json(lookup_path, snapshot_lookup_payload)
-            # Lazily backfill the shared index from a locally-materialized snapshot (s3 only; no-op
-            # locally). Best-effort — lets sibling replicas dedup without a re-clone.
-            mirror_lookup(
-                org_id=org_id,
-                repository_id=repository_id,
-                kind="snapshot_lookup",
-                lookup_key=lookup_key,
-                payload=snapshot_lookup_payload,
-            )
+            # NOTE: deliberately NO shared mirror_lookup here. This branch serves a snapshot whose
+            # manifest exists LOCALLY but whose object-store durability is unknown (it may predate s3
+            # / a backfill, or its Parquet may never have been mirrored). Publishing the shared lookup
+            # would advertise the snapshot to sibling replicas that then 404/503 on the un-mirrored
+            # manifest/Parquet. The shared lookup is published ONLY on the cold-create path below,
+            # where the manifest + Parquet are durably mirrored (fail-closed) first.
             return response
 
         snapshot_records = [

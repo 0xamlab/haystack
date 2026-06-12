@@ -611,6 +611,10 @@ def triage_repository(
     )
     triage_path = _triage_dir(org_id, repository_id) / f"{evidence_bundle_ref}.json"
     parquet_path = _triage_dir(org_id, repository_id) / f"{evidence_bundle_ref}.parquet"
+    # Only publish the shared lookup when we durably mirror the manifest in THIS call (the cold path).
+    # If triage_path already exists, the manifest's object-store durability is unknown (it may predate
+    # s3/a backfill), so advertising it cross-replica would 404 a sibling's downstream plan stage.
+    triage_manifest_mirrored = False
     if not triage_path.exists():
         triage_path.parent.mkdir(parents=True, exist_ok=True)
         records = [
@@ -667,6 +671,7 @@ def triage_repository(
             evidence_bundle_ref=evidence_bundle_ref,
             manifest=manifest,
         )
+        triage_manifest_mirrored = True
     response = RepositoryTriageResponse.model_validate(read_json(triage_path))
     triage_lookup_payload = {
         "workspace_evidence_bundle_ref": evidence_bundle_ref,
@@ -675,13 +680,15 @@ def triage_repository(
         "response": response.model_dump(mode="json"),
     }
     _write_json(triage_lookup_path, triage_lookup_payload)
-    # Publish to the durable shared index so sibling replicas dedup this deterministic triage
-    # (s3 only; no-op locally). Best-effort — a failed mirror just lets a sibling recompute.
-    mirror_lookup(
-        org_id=org_id,
-        repository_id=repository_id,
-        kind="triage_lookup",
-        lookup_key=triage_lookup_key,
-        payload=triage_lookup_payload,
-    )
+    # Publish to the durable shared index ONLY when the manifest was durably mirrored in this call
+    # (s3 only; no-op locally). Best-effort — a failed mirror just lets a sibling recompute. Skipping
+    # when the manifest's durability is unknown keeps a sibling from serving a triage it can't recover.
+    if triage_manifest_mirrored:
+        mirror_lookup(
+            org_id=org_id,
+            repository_id=repository_id,
+            kind="triage_lookup",
+            lookup_key=triage_lookup_key,
+            payload=triage_lookup_payload,
+        )
     return response
