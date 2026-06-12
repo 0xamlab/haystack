@@ -143,14 +143,18 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     import redis.asyncio as aioredis
 
     aioredis_module: Any = aioredis
-    redis_client = aioredis_module.from_url(
-        config.redis_url,
-        encoding="utf-8",
-        decode_responses=False,
-        socket_connect_timeout=5,
-        socket_timeout=5,
-    )
+    # Wave-C: a bad/empty REDIS_URL must DEGRADE (app.state.redis=None), never crash startup —
+    # from_url("") raises, and the idempotency middleware / coordination accessor already treat a
+    # None client as "no Redis" (fall back to the local store / host-local flock).
+    redis_client = None
     try:
+        redis_client = aioredis_module.from_url(
+            config.redis_url,
+            encoding="utf-8",
+            decode_responses=False,
+            socket_connect_timeout=5,
+            socket_timeout=5,
+        )
         await redis_client.ping()
         logger.info("redis_connected")
     except Exception as exc:
