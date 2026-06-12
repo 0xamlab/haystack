@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from apps.api_server.middleware.auth import get_current_org, get_redis
+from apps.api_server.middleware.tenant_key_binding import bind_tenant_keys
 from apps.api_server.schemas.llm import (
     ArtifactBridgeResolveRequest,
     ArtifactBridgeResolveResponse,
@@ -53,7 +54,9 @@ from apps.api_server.services.llm_api_service import (
 from apps.api_server.services.quota_service import check_rate_limit
 from apps.runtime.mojo_library_runner import MojoLibraryError
 
-router = APIRouter(tags=["LLM API"])
+# B10 PR11: bind the authenticated org's per-tenant provider key for every handler in this router
+# (all routes are auth-gated), so resolve_provider_api_key sees the org override in-request.
+router = APIRouter(tags=["LLM API"], dependencies=[Depends(bind_tenant_keys)])
 
 _STREAM_CHUNK_SIZE = 24
 

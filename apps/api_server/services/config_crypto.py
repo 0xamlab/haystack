@@ -52,6 +52,41 @@ def _aad(org_id: uuid.UUID | str) -> bytes:
     return f"data_connector:{org_id}".encode()
 
 
+def _secret_aad(org_id: uuid.UUID | str, *, context: str) -> bytes:
+    """AAD for a context-scoped secret (e.g. per-tenant provider keys), bound to both the
+    owning org AND a context label so a ciphertext can't be replayed across contexts."""
+    return f"{context}:{org_id}".encode()
+
+
+def encrypt_secret(plaintext: str | None, *, org_id: uuid.UUID | str, context: str) -> str | None:
+    """Encrypt an arbitrary secret string (AES-256-GCM, AAD-bound to org + context). No-op
+    (returns plaintext) when ALGENTA_CONFIG_ENCRYPTION_KEY is unset — same opt-in rollout as
+    encrypt_config_json."""
+    if plaintext is None:
+        return None
+    kek = _kek()
+    if kek is None:
+        return plaintext
+    iv = os.urandom(_GCM_IV_BYTES)
+    ct = AESGCM(kek).encrypt(iv, plaintext.encode(), _secret_aad(org_id, context=context))
+    return _ENC_PREFIX + base64.b64encode(iv + ct).decode()
+
+
+def decrypt_secret(value: str | None, *, org_id: uuid.UUID | str, context: str) -> str | None:
+    """Decrypt a context-scoped secret. Legacy plaintext (no enc prefix) passes through; an
+    encrypted value with no key set raises."""
+    if value is None or not value.startswith(_ENC_PREFIX):
+        return value
+    kek = _kek()
+    if kek is None:
+        raise RuntimeError(
+            "secret is encrypted but ALGENTA_CONFIG_ENCRYPTION_KEY is not set"
+        )
+    blob = base64.b64decode(value[len(_ENC_PREFIX):])
+    iv, ct = blob[:_GCM_IV_BYTES], blob[_GCM_IV_BYTES:]
+    return AESGCM(kek).decrypt(iv, ct, _secret_aad(org_id, context=context)).decode()
+
+
 def config_fingerprint(config: dict[str, Any] | None) -> str:
     """Deterministic dedupe key for a connector config (HMAC-free SHA-256 of the
     canonical JSON). Stable regardless of whether encryption is enabled, so

@@ -143,6 +143,16 @@ async def execute_repository_job(job_id: uuid.UUID, db: AsyncSession) -> dict[st
     job.started_at = datetime.now(UTC)
     await db.commit()
 
+    # B10 PR11: this runs in the worker / fire-and-forget context, OUTSIDE any request — so the
+    # API auth hook's ContextVar isn't here. Re-resolve the tenant's keys from job.org_id (NEVER
+    # carried in the job payload) and bind them for the run; reset in finally.
+    from apps.api_server.services.tenant_key_store import resolve_org_keys
+    from apps.api_server.services.tenant_keys import (
+        reset_org_keys_override,
+        set_org_keys_override,
+    )
+
+    _tenant_keys_token = set_org_keys_override(await resolve_org_keys(job.org_id))
     try:
         result = await _run_repository_kind(job, connector)
     except Exception as exc:
@@ -153,6 +163,8 @@ async def execute_repository_job(job_id: uuid.UUID, db: AsyncSession) -> dict[st
             job.completed_at = datetime.now(UTC)
             await db.commit()
         raise
+    finally:
+        reset_org_keys_override(_tenant_keys_token)
 
     await db.refresh(job)
     if job.status == JobStatus.CANCELLED:

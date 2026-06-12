@@ -21,6 +21,7 @@ from .deployment import CloudProvider, Deployment, DeploymentStatus
 from .job import Job, JobStatus, WebhookStatus
 from .organization import Organization, OrgPlan, OrgStatus
 from .simulation_run import ExecutionType, RunStatus, SimulationMode, SimulationRun
+from .tenant_provider_key import ENGINE_BACKEND, TenantProviderKey
 from .usage_record import UsageEndpoint, UsageRecord
 from .user import User, UserRole, UserStatus
 
@@ -55,6 +56,8 @@ __all__ = [
     "DataConnector",
     "ConnectorType",
     "ConnectorStatus",
+    "TenantProviderKey",
+    "ENGINE_BACKEND",
     "Deployment",
     "DeploymentStatus",
     "CloudProvider",

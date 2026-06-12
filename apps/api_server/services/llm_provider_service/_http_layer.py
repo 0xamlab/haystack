@@ -169,7 +169,7 @@ def _provider_auth_headers(config: ProviderModelConfig) -> dict[str, str]:
             resolve_provider_api_key,
         )
 
-        api_key = resolve_provider_api_key(config.api_key_env)
+        api_key = resolve_provider_api_key(config.api_key_env, config.backend)
         if not api_key:
             if require_per_tenant_keys():
                 raise LLMAPIError(
