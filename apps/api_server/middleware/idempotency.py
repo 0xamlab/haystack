@@ -202,6 +202,7 @@ class _ResilientCoordinationStore:
         primary: _RedisCoordinationStore,
         fallback: _LocalCoordinationStore,
     ) -> None:
+        self._primary = primary
         self._active: _RedisCoordinationStore | _LocalCoordinationStore = primary
         self._fallback = fallback
 
@@ -215,7 +216,19 @@ class _ResilientCoordinationStore:
         return await self._call("acquire_write_lock", key, ttl_seconds)
 
     async def release_write_lock(self, key: str, token: str) -> None:
-        await self._call("release_write_lock", key, token)
+        # Release against BOTH backends best-effort. acquire_write_lock may have landed on Redis
+        # before a mid-request failover flipped _active to the local fallback (store_response/get
+        # failing over), so releasing only _active would strand the Redis-held lock until its TTL —
+        # a spurious resource_write_conflict (409) for a same-key retry within that window. The
+        # token-compare (Lua compare-and-delete on Redis, token check locally) makes a release on the
+        # backend that does NOT hold the lock a safe no-op, so releasing both is always correct.
+        for store in (self._primary, self._fallback):
+            try:
+                await store.release_write_lock(key, token)
+            except Exception as exc:  # noqa: BLE001 — best-effort; the lock TTL reclaims it
+                logger.debug(
+                    "idempotency_release_degraded", store=type(store).__name__, error=str(exc)
+                )
 
     async def _call(self, method_name: str, *args: object) -> object:
         store = self._active
