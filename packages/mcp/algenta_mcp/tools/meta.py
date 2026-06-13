@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from algenta_mcp.client import api_with_status
+from algenta_mcp.client import api
 
 GET_CONTRACT_SPEC: dict[str, Any] = {
     "name": "get_contract",
@@ -90,19 +90,14 @@ GET_RUNTIME_BENCHMARKS_SPEC: dict[str, Any] = {
 async def get_contract_handler(arguments: dict[str, Any]) -> str:
     if arguments:
         raise ValueError("get_contract does not accept arguments.")
-    status, result = await api_with_status("GET", "/v1/meta/contract")
-    if status >= 400:
-        raise RuntimeError(f"API error {status}: {result}")
-    return json.dumps(result, indent=2)
+    # api() raises a redacted MCPAPIError on >=400 (no raw-body leak), returns the payload on 200.
+    return json.dumps(await api("GET", "/v1/meta/contract"), indent=2)
 
 
 async def _proxy_get(endpoint: str, *, no_args_name: str, arguments: dict[str, Any]) -> str:
     if arguments:
         raise ValueError(f"{no_args_name} does not accept arguments.")
-    status, result = await api_with_status("GET", endpoint)
-    if status >= 400:
-        raise RuntimeError(f"API error {status}: {result}")
-    return json.dumps(result, indent=2)
+    return json.dumps(await api("GET", endpoint), indent=2)
 
 
 async def get_runtime_manifest_handler(arguments: dict[str, Any]) -> str:

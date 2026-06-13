@@ -33,7 +33,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "pytest-asyncio", "ruff"]
+dev = ["pytest", "respx", "ruff"]
 
 [project.scripts]
 algenta-mcp = "algenta_mcp.server:main"

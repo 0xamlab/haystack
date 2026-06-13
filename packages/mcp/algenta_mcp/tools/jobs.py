@@ -6,7 +6,7 @@ import asyncio
 import json
 from typing import Any
 
-from algenta_mcp.client import api, api_with_status
+from algenta_mcp.client import api
 
 SUBMIT_JOB_SPEC: dict[str, Any] = {
     "name": "submit_job",
@@ -186,18 +186,15 @@ async def poll_job_handler(arguments: dict[str, Any]) -> str:
     last_status: dict[str, Any] | None = None
 
     while True:
-        status_code, status_payload = await api_with_status("GET", status_path)
-        if status_code >= 400:
-            raise RuntimeError(f"API error {status_code}: {status_payload}")
+        # api() raises a redacted MCPAPIError on >=400 (no raw-body leak); returns payload on 200.
+        status_payload = await api("GET", status_path)
         if not isinstance(status_payload, dict):
-            raise RuntimeError(f"API error 500: unexpected job status payload: {status_payload}")
+            raise RuntimeError("Algenta API returned an unexpected job status payload type.")
 
         last_status = status_payload
         terminal_status = str(status_payload.get("status", "")).strip().lower()
         if terminal_status == "completed":
-            result_code, result_payload = await api_with_status("GET", result_path)
-            if result_code >= 400:
-                raise RuntimeError(f"API error {result_code}: {result_payload}")
+            result_payload = await api("GET", result_path)
             return json.dumps({"job": status_payload, "result": result_payload}, indent=2)
 
         if terminal_status in {"failed", "cancelled"}:

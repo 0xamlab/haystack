@@ -85,7 +85,10 @@ def _verify_mcp() -> None:
             cwd=tmp,
         )
         _run([str(bindir / "algenta-mcp"), "--help"])
-        print("[ok] algenta-mcp: built + installed (with algenta-sdk) + import + console-script OK")
+        # Protocol/security tests against the INSTALLED package (auth forwarding, no key leak, ...).
+        _run([str(py), "-m", "pip", "install", "--quiet", "pytest", "respx"])
+        _run([str(py), "-m", "pytest", "-q", str(_ROOT / "packages" / "mcp" / "tests")])
+        print("[ok] algenta-mcp: built + installed + import + console-script + protocol tests OK")
 
 
 def main() -> int:
