@@ -172,6 +172,26 @@ jobs:
           python -m pip install --upgrade build
           python scripts/verify_sdk_artifact_install.py
 
+  # Proves the public TypeScript SDK installs + imports from the PACKED npm tarball (the artifact
+  # `npm publish` uploads) in a fresh project — CJS require + ESM named import + @grpc/proto load +
+  # a strict TS type-check + metadata. The Node LTS matrix catches version-specific ESM/CJS-interop
+  # differences. Lean: npm-only, no DB/Redis/pixi.
+  ts-sdk-artifact-install:
+    name: TS SDK artifact install (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: ["18", "20", "22"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Pack + fresh-project install + CJS/ESM/gRPC/strict-types smoke
+        run: node scripts/verify_ts_sdk_artifact_install.mjs
+
   # ── Build Docker image ────────────────────────────────────────────────────
   build:
     name: Build & Push Docker

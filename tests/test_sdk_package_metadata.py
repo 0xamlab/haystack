@@ -65,8 +65,28 @@ def test_pyproject_declares_license_files() -> None:
         assert "LICENSE" in _py_meta(pkg).get("license-files", []), pkg
 
 
-def test_ts_package_includes_license_in_published_files() -> None:
-    assert "LICENSE" in _ts_meta().get("files", [])
+def test_ts_package_publishes_runtime_and_metadata_files() -> None:
+    # The npm "files" allowlist is the ONLY thing that lands in the published tarball (no
+    # .npmignore). dist/ holds the compiled JS+types; proto/ is loaded at runtime by the gRPC
+    # client; README+LICENSE are the published docs/legal. Missing any => a broken or bare package.
+    files = _ts_meta().get("files", [])
+    for required in ("dist", "proto", "README.md", "LICENSE"):
+        assert required in files, f"ts-sdk 'files' allowlist missing {required!r}: {files}"
+
+
+def test_ts_package_builds_dist_before_publish() -> None:
+    # dist/ is gitignored and NOT committed, so the publish MUST build it. A `prepack` hook makes
+    # `npm pack`/`npm publish`/`pnpm publish` always emit a fresh dist/ — without it the tarball
+    # ships empty (the failure the artifact-install gate proves against). Lock the hook in place.
+    scripts = _ts_meta().get("scripts", {})
+    build_hooks = {k: scripts[k] for k in ("prepack", "prepublishOnly", "prepare") if k in scripts}
+    assert build_hooks, (
+        "ts-sdk must build dist/ before publish via a prepack/prepublishOnly/prepare hook; "
+        f"found scripts: {sorted(scripts)}"
+    )
+    assert any("tsc" in v or "build" in v for v in build_hooks.values()), (
+        f"ts-sdk publish hook does not run the build: {build_hooks}"
+    )
 
 
 # Runtime __version__ must match the packaged version, or `import algenta; algenta.__version__`
