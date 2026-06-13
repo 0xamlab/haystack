@@ -18,9 +18,9 @@ import pytest
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 _PACKAGES = _REPO_ROOT / "packages"
 
-# The public client SDKs + CLI. The engine + server are NOT here and keep the proprietary ACL.
+# The public client SDKs + CLI + MCP server. The engine + server are NOT here and keep the ACL.
 _EXPECTED_LICENSE = "Apache-2.0"
-_PYPROJECT_PKGS = ("python-sdk", "algenta-core")
+_PYPROJECT_PKGS = ("python-sdk", "algenta-core", "mcp")
 _TS_PKG = "ts-sdk"
 
 

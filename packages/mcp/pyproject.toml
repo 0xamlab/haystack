@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "algenta-mcp"
+version = "1.0.0"
+description = "Algenta MCP server — a Model Context Protocol surface for the Algenta API (Cursor, Claude Desktop, …)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+keywords = ["mcp", "model-context-protocol", "cursor", "claude", "algenta", "agent", "tools"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries",
+]
+# Standalone client: depends on the published SDK (for the API client + egress guard) + the MCP
+# protocol lib + an ASGI stack for the HTTP/SSE transport. NO monorepo (apps.*) dependency.
+dependencies = [
+    "algenta-sdk>=1.0.0",
+    "mcp>=1.0.0",
+    "fastapi>=0.115.0",
+    "starlette>=0.40.0",
+    "httpx>=0.28.0",
+    "pydantic>=2.7.0",
+    "structlog>=24.0.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-asyncio", "ruff"]
+
+[project.scripts]
+algenta-mcp = "algenta_mcp.server:main"
+
+[project.urls]
+Homepage = "https://algenta.ai"
+Documentation = "https://docs.algenta.ai/mcp"
+Repository = "https://github.com/algenta/decision-engine"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["algenta_mcp*"]

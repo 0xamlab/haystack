@@ -61,10 +61,38 @@ def _verify(pkg: str, smoke: str) -> None:
         print(f"[ok] {pkg}: built {wheels[0].name} + {sdists[0].name}, fresh-venv install + import OK")
 
 
+def _verify_mcp() -> None:
+    """algenta-mcp depends on algenta-sdk (not yet on PyPI), so build + install the SDK wheel
+    first, then the mcp wheel (which pulls mcp/fastapi/starlette from PyPI), then import-smoke
+    (exercises every decoupled tool) + run the console-script."""
+    with tempfile.TemporaryDirectory(prefix="artifact-mcp-") as tmp:
+        dist = Path(tmp) / "dist"
+        for pkg in ("python-sdk", "mcp"):
+            _run([sys.executable, "-m", "build", "--outdir", str(dist), str(_ROOT / "packages" / pkg)])
+        env_dir = Path(tmp) / "venv"
+        venv.create(env_dir, with_pip=True)
+        bindir = env_dir / ("Scripts" if sys.platform == "win32" else "bin")
+        py = bindir / "python"
+        _run([str(py), "-m", "pip", "install", "--quiet", *(str(p) for p in dist.glob("algenta_sdk-*.whl"))])
+        _run([str(py), "-m", "pip", "install", "--quiet", *(str(p) for p in dist.glob("algenta_mcp-*.whl"))])
+        _run(
+            [
+                str(py),
+                "-c",
+                "import algenta_mcp.registry, algenta_mcp.server, algenta_mcp.client, algenta_mcp.config; "
+                "print('algenta-mcp import OK')",
+            ],
+            cwd=tmp,
+        )
+        _run([str(bindir / "algenta-mcp"), "--help"])
+        print("[ok] algenta-mcp: built + installed (with algenta-sdk) + import + console-script OK")
+
+
 def main() -> int:
     for pkg, smoke in _SMOKES.items():
         _verify(pkg, smoke)
-    print("\nAll Python SDK artifacts install + import from the wheel.")
+    _verify_mcp()
+    print("\nAll Python SDK + MCP artifacts install + import from the wheel.")
     return 0
 
 

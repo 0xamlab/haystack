@@ -1,0 +1,257 @@
+"""MCP tools: submit_job, list_jobs, get_job_status, poll_job, get_job_result, cancel_job, test_webhook_delivery."""
+
+from __future__ import annotations
+
+import asyncio
+import json
+from typing import Any
+
+from algenta_mcp.client import api, api_with_status
+
+SUBMIT_JOB_SPEC: dict[str, Any] = {
+    "name": "submit_job",
+    "description": (
+        "Submit a long-running async simulation job. "
+        "Use for n_simulations > 500,000 or when you need a callback. "
+        "Returns a job_id — poll with get_job_status."
+    ),
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "variables": {"type": "array", "items": {"type": "object"}},
+            "objective": {"type": "string", "default": "maximize"},
+            "n_simulations": {"type": "integer", "default": 1000000},
+            "callback_url": {
+                "type": "string",
+                "description": "Webhook URL for completion notification",
+            },
+        },
+        "required": ["variables"],
+    },
+}
+
+GET_JOB_STATUS_SPEC: dict[str, Any] = {
+    "name": "get_job_status",
+    "description": "Fetch the latest async simulation job status by id.",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "job_id": {"type": "string", "description": "UUID of the async job"},
+        },
+        "required": ["job_id"],
+    },
+}
+
+POLL_JOB_SPEC: dict[str, Any] = {
+    "name": "poll_job",
+    "description": (
+        "Wait for an async simulation job to reach a terminal state. "
+        "Returns the final result when the job completes, or the terminal status when it fails, is cancelled, or times out."
+    ),
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "job_id": {"type": "string", "description": "UUID of the async job"},
+            "timeout_seconds": {
+                "type": "number",
+                "minimum": 0.001,
+                "default": 30.0,
+                "description": "Maximum wall-clock time to wait before returning a timed_out response.",
+            },
+            "poll_interval_seconds": {
+                "type": "number",
+                "minimum": 0.001,
+                "default": 2.0,
+                "description": "Delay between status checks while the job is still queued or running.",
+            },
+        },
+        "required": ["job_id"],
+    },
+}
+
+GET_JOB_RESULT_SPEC: dict[str, Any] = {
+    "name": "get_job_result",
+    "description": "Fetch the completed result payload for an async simulation job by id.",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "job_id": {"type": "string", "description": "UUID of the async job"},
+        },
+        "required": ["job_id"],
+    },
+}
+
+LIST_JOBS_SPEC: dict[str, Any] = {
+    "name": "list_jobs",
+    "description": "List async simulation jobs with pagination and optional status filtering.",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "page": {"type": "integer", "minimum": 1, "default": 1},
+            "limit": {"type": "integer", "minimum": 1, "default": 25},
+            "status": {
+                "type": "string",
+                "description": "Optional job status filter such as queued or completed.",
+            },
+        },
+    },
+}
+
+CANCEL_JOB_SPEC: dict[str, Any] = {
+    "name": "cancel_job",
+    "description": "Cancel a queued or running async simulation job by id.",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "job_id": {"type": "string", "description": "UUID of the async job"},
+        },
+        "required": ["job_id"],
+    },
+}
+
+TEST_WEBHOOK_DELIVERY_SPEC: dict[str, Any] = {
+    "name": "test_webhook_delivery",
+    "description": "Send a test webhook payload to a callback URL and return the delivery result.",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "callback_url": {
+                "type": "string",
+                "description": "URL that should receive the test webhook payload.",
+            },
+        },
+        "required": ["callback_url"],
+    },
+}
+
+
+async def submit_job_handler(arguments: dict[str, Any]) -> str:
+    variables_raw = arguments.get("variables", [])
+    variables = (
+        [item for item in variables_raw if isinstance(item, dict)]
+        if isinstance(variables_raw, list)
+        else []
+    )
+    objective = arguments.get("objective", "maximize")
+    n_sims = int(arguments.get("n_simulations", 1_000_000))
+    callback_url = arguments.get("callback_url")
+
+    var_dict: dict[str, dict[str, Any]] = {}
+    for v in variables:
+        var_dict[v["name"]] = {"low": v["low"], "high": v["high"]}
+
+    payload: dict[str, Any] = {
+        "mode": "auto",
+        "n_simulations": n_sims,
+        "scenario": {"variables": var_dict, "objective": objective},
+    }
+    if callback_url:
+        payload["callback_url"] = callback_url
+
+    result = await api("POST", "/v1/jobs", json=payload)
+    return json.dumps(
+        {
+            "job_id": result.get("job_id"),
+            "status": result.get("status"),
+            "message": "Job submitted. Poll with get_job_status(job_id=...) to check progress.",
+        },
+        indent=2,
+    )
+
+
+async def get_job_status_handler(arguments: dict[str, Any]) -> str:
+    job_id = arguments.get("job_id")
+    if not job_id:
+        return json.dumps({"error": "job_id is required"})
+    result = await api("GET", f"/v1/jobs/{job_id}")
+    return json.dumps(result, indent=2)
+
+
+async def poll_job_handler(arguments: dict[str, Any]) -> str:
+    job_id = arguments.get("job_id")
+    if not job_id:
+        return json.dumps({"error": "job_id is required"})
+
+    timeout_seconds = float(arguments.get("timeout_seconds", 30.0))
+    poll_interval_seconds = float(arguments.get("poll_interval_seconds", 2.0))
+    if timeout_seconds <= 0:
+        raise ValueError("timeout_seconds must be greater than 0")
+    if poll_interval_seconds <= 0:
+        raise ValueError("poll_interval_seconds must be greater than 0")
+
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + timeout_seconds
+    status_path = f"/v1/jobs/{job_id}"
+    result_path = f"/v1/jobs/{job_id}/result"
+    last_status: dict[str, Any] | None = None
+
+    while True:
+        status_code, status_payload = await api_with_status("GET", status_path)
+        if status_code >= 400:
+            raise RuntimeError(f"API error {status_code}: {status_payload}")
+        if not isinstance(status_payload, dict):
+            raise RuntimeError(f"API error 500: unexpected job status payload: {status_payload}")
+
+        last_status = status_payload
+        terminal_status = str(status_payload.get("status", "")).strip().lower()
+        if terminal_status == "completed":
+            result_code, result_payload = await api_with_status("GET", result_path)
+            if result_code >= 400:
+                raise RuntimeError(f"API error {result_code}: {result_payload}")
+            return json.dumps({"job": status_payload, "result": result_payload}, indent=2)
+
+        if terminal_status in {"failed", "cancelled"}:
+            return json.dumps({"job": status_payload, "terminal": True}, indent=2)
+
+        now = loop.time()
+        if now >= deadline:
+            return json.dumps(
+                {
+                    "job": last_status,
+                    "terminal": False,
+                    "timed_out": True,
+                    "timeout_seconds": timeout_seconds,
+                },
+                indent=2,
+            )
+
+        await asyncio.sleep(min(poll_interval_seconds, max(0.0, deadline - now)))
+
+
+async def get_job_result_handler(arguments: dict[str, Any]) -> str:
+    job_id = arguments.get("job_id")
+    if not job_id:
+        return json.dumps({"error": "job_id is required"})
+    result = await api("GET", f"/v1/jobs/{job_id}/result")
+    return json.dumps(result, indent=2)
+
+
+async def list_jobs_handler(arguments: dict[str, Any]) -> str:
+    page = int(arguments.get("page", 1))
+    limit = int(arguments.get("limit", 25))
+    status = arguments.get("status")
+    if page < 1:
+        raise ValueError("page must be at least 1")
+    if limit < 1:
+        raise ValueError("limit must be at least 1")
+    query = f"/v1/jobs/list?page={page}&limit={limit}"
+    if isinstance(status, str) and status.strip():
+        query = f"{query}&status={status.strip()}"
+    result = await api("GET", query)
+    return json.dumps(result, indent=2)
+
+
+async def cancel_job_handler(arguments: dict[str, Any]) -> str:
+    job_id = arguments.get("job_id")
+    if not job_id:
+        return json.dumps({"error": "job_id is required"})
+    result = await api("POST", f"/v1/jobs/{job_id}/cancel")
+    return json.dumps(result, indent=2)
+
+
+async def test_webhook_delivery_handler(arguments: dict[str, Any]) -> str:
+    callback_url = arguments.get("callback_url")
+    if not isinstance(callback_url, str) or not callback_url:
+        return json.dumps({"error": "callback_url is required"})
+    result = await api("POST", "/v1/webhooks/test", json={"callback_url": callback_url})
+    return json.dumps(result, indent=2)
