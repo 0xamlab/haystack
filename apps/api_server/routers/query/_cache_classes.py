@@ -492,29 +492,38 @@ async def _load_profiled_source(
 def _source_cache_key(
     src: DataSource,
     records: list[dict[str, Any]] | None = None,
+    *,
+    org_id: str | None = None,
 ) -> tuple[str, bool]:
     """
     Returns (cache_key, content_keyed).
     content_keyed=True  → hash of actual bytes; permanent, no TTL.
     content_keyed=False → url/connection identity; short TTL since content can change.
+
+    Cross-tenant guard: the content/identity hashes are org-AGNOSTIC, so two different orgs with
+    byte-identical inline content (or the same url/connection) would collide on one process-global
+    cache entry. org_id prefixes every non-registry key so the cache is per-tenant. (A registry
+    source's key IS its source_id, which source_registration_scope already makes org-unique.)
     """
     registered_id = src.dataset_id or src.source_id
     if registered_id:
-        # Registry source — cache key IS the source_id.
+        # Registry source — cache key IS the (already org-unique) source_id.
         # Data is immutable once registered, so the id is content-keyed.
         return registered_id, True
+    org_prefix = f"org={org_id}:" if org_id else ""
     if src.csv:
-        return hashlib.sha256(src.csv.encode()).hexdigest()[:32], True
+        return f"{org_prefix}{hashlib.sha256(src.csv.encode()).hexdigest()[:32]}", True
     if src.json_str:
-        return hashlib.sha256(src.json_str.encode()).hexdigest()[:32], True
+        return f"{org_prefix}{hashlib.sha256(src.json_str.encode()).hexdigest()[:32]}", True
     if src.excel_b64:
-        return hashlib.sha256(src.excel_b64.encode()).hexdigest()[:32], True
+        return f"{org_prefix}{hashlib.sha256(src.excel_b64.encode()).hexdigest()[:32]}", True
     if src.parquet_b64:
-        return hashlib.sha256(src.parquet_b64.encode()).hexdigest()[:32], True
+        return f"{org_prefix}{hashlib.sha256(src.parquet_b64.encode()).hexdigest()[:32]}", True
     if records is not None:
-        return hashlib.sha256(
+        digest = hashlib.sha256(
             json.dumps(records, sort_keys=True, default=str).encode()
-        ).hexdigest()[:32], True
+        ).hexdigest()[:32]
+        return f"{org_prefix}{digest}", True
     # File / URL / connection — keyed by identity, not content
     src_type = "url" if src.url else ("connection" if src.connection else "named")
     connection_fingerprint = (
@@ -524,7 +533,7 @@ def _source_cache_key(
         raw = f"{src_type}:{src.name}"
     else:
         raw = f"{src_type}:{src.url or ''}:{connection_fingerprint}"
-    return hashlib.sha256(raw.encode()).hexdigest()[:32], False
+    return f"{org_prefix}{hashlib.sha256(raw.encode()).hexdigest()[:32]}", False
 
 def _raise_empty_source(source_name: str) -> None:
     raise HTTPException(

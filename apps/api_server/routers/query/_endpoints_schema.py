@@ -463,7 +463,7 @@ async def infer_schema(
 
     for src in payload.sources:
         # Check cache first
-        cache_key, content_keyed = _source_cache_key(src)
+        cache_key, content_keyed = _source_cache_key(src, org_id=org_id)
         async with _CACHE_LOCK:
             entry = _SOURCE_CACHE.get(cache_key)
             if entry and entry.is_fresh():

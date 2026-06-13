@@ -259,7 +259,7 @@ async def _register_source_impl(
     workspace_scope_id = str(_ws) if _ws is not None else None
 
     # ── Cache key ──────────────────────────────────────────────────────────────
-    cache_key, content_keyed = _source_cache_key(src)
+    cache_key, content_keyed = _source_cache_key(src, org_id=org_id)
     visibility_value, owner_scope, owner_key_scope, source_id = resolve_registration_scopes(
         cache_key=cache_key,
         visibility=visibility,
@@ -269,6 +269,7 @@ async def _register_source_impl(
         owner_key_id=owner_key_id,
         source_id_for_fn=reg.source_id_for,
         workspace_id=workspace_scope_id,
+        org_id=org_id,
     )
     dataset_name_value = dataset_name or src.name
     dataset_description = description if description is not None else payload.description

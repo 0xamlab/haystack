@@ -540,7 +540,7 @@ async def _ingest_and_profile_inline_sources(
     _reg_connections: list[dict[str, Any]] = []
 
     for src in payload.sources:
-        cache_key, content_keyed = _source_cache_key(src)
+        cache_key, content_keyed = _source_cache_key(src, org_id=org_id)
         async with _CACHE_LOCK:
             entry = _SOURCE_CACHE.get(cache_key)
             if entry and entry.is_fresh():
@@ -662,7 +662,7 @@ async def _ingest_and_profile_inline_sources(
             # Find original DataSource to get cache key + content_keyed flag
             for src in payload.sources:
                 if src.name == name:
-                    ck, ck_content = _source_cache_key(src)
+                    ck, ck_content = _source_cache_key(src, org_id=org_id)
                     entry = _CachedSource(
                         parquet_bytes=parquet_bytes,
                         parquet_schema_meta=schema_meta_bytes,
