@@ -38,6 +38,7 @@ def test_render_result_uses_machine_readable_lines() -> None:
         api_key_id="11111111-2222-3333-4444-555555555555",
         api_key_prefix="de_test_abcd",
         api_key="de_test_abcdefghijklmnopqrstuvwxyz123456",
+        engine_api_key="de_live_enginecallbackkey0000000000000000",
     )
 
     rendered = module._render_result(result)
@@ -49,4 +50,26 @@ def test_render_result_uses_machine_readable_lines() -> None:
     assert "BOOTSTRAP_API_KEY_ID=11111111-2222-3333-4444-555555555555" in rendered
     assert "BOOTSTRAP_API_KEY_PREFIX=de_test_abcd" in rendered
     assert "BOOTSTRAP_API_KEY=de_test_abcdefghijklmnopqrstuvwxyz123456" in rendered
+    assert "BOOTSTRAP_ENGINE_API_KEY=de_live_enginecallbackkey0000000000000000" in rendered
     assert "BOOTSTRAP_USER_PASSWORD=secret-password" in rendered
+
+
+def test_render_result_omits_engine_key_line_when_absent() -> None:
+    """On re-installs the engine key already exists, so its raw value is None and the
+    BOOTSTRAP_ENGINE_API_KEY line is omitted (the installer preserves the persisted .env value)."""
+    module = _load_module()
+    result = module.BootstrapResult(
+        org_slug="self-hosted-org",
+        user_email="owner@selfhost.algenta.ai",
+        user_password=None,
+        user_created=False,
+        api_key_id="11111111-2222-3333-4444-555555555555",
+        api_key_prefix="de_test_abcd",
+        api_key="de_test_abcdefghijklmnopqrstuvwxyz123456",
+        engine_api_key=None,
+    )
+
+    rendered = module._render_result(result)
+
+    assert "BOOTSTRAP_ENGINE_API_KEY=" not in rendered
+    assert "BOOTSTRAP_USER_PASSWORD=" not in rendered

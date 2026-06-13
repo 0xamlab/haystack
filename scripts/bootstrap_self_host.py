@@ -25,7 +25,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from apps.api_server.config import get_settings
-from apps.api_server.models.api_key import APIKey
+from apps.api_server.models.api_key import APIKey, APIKeyStatus
 from apps.api_server.models.organization import Organization, OrgPlan, OrgStatus
 from apps.api_server.models.user import User, UserRole, UserStatus
 from apps.api_server.services.auth_service import generate_api_key
@@ -37,6 +37,14 @@ DEFAULT_ORG_SLUG = "self-hosted-org"
 DEFAULT_USER_EMAIL = "owner@selfhost.algenta.ai"
 DEFAULT_USER_NAME = "Self-Hosted Owner"
 PASSWORD_LENGTH = 32
+
+# Dedicated, long-lived key the agent head (sidecar) presents to call back into /v1 during a
+# run. Kept SEPARATE from the (rotatable) bootstrap owner key so rotating/revoking the owner
+# key never breaks the agentic loop. Minted once per org (idempotent); the raw value is
+# unrecoverable after creation, so it is emitted only on the run that creates it.
+# NOTE: org-scoped and attributed to the owner user, so it carries owner-equivalent privileges —
+# the installer keeps .env at mode 600. A least-privilege service principal is a future refinement.
+ENGINE_KEY_LABEL = "Engine Callback Key"
 
 
 @dataclass(frozen=True)
@@ -58,6 +66,7 @@ class BootstrapResult:
     api_key_id: str
     api_key_prefix: str
     api_key: str
+    engine_api_key: str | None
 
 
 def _generate_password(length: int = PASSWORD_LENGTH) -> str:
@@ -137,6 +146,32 @@ async def _ensure_bootstrap(
         hashed_key=hashed_key,
     )
     session.add(api_key)
+
+    # Get-or-create the dedicated engine-callback key (always a live key, never a test key).
+    # Only the creating run can return the raw value; later runs leave it None and the
+    # installer preserves the already-persisted .env value.
+    engine_raw_key: str | None = None
+    existing_engine = await session.execute(
+        select(APIKey).where(
+            APIKey.org_id == org.id,
+            APIKey.label == ENGINE_KEY_LABEL,
+            APIKey.status == APIKeyStatus.ACTIVE,
+        )
+    )
+    # .first() (not scalar_one_or_none): treat "any active engine key exists" as the idempotency
+    # signal, so a pre-existing duplicate ACTIVE row can never abort the whole bootstrap.
+    if existing_engine.scalars().first() is None:
+        engine_raw_key, engine_prefix, engine_hashed = generate_api_key(test=False)
+        session.add(
+            APIKey(
+                org_id=org.id,
+                user_id=user.id,
+                label=ENGINE_KEY_LABEL,
+                key_prefix=engine_prefix,
+                hashed_key=engine_hashed,
+            )
+        )
+
     await session.flush()
     await session.commit()
 
@@ -148,6 +183,7 @@ async def _ensure_bootstrap(
         api_key_id=str(api_key.id),
         api_key_prefix=api_key.key_prefix,
         api_key=raw_key,
+        engine_api_key=engine_raw_key,
     )
 
 
@@ -161,6 +197,8 @@ def _render_result(result: BootstrapResult) -> str:
         f"BOOTSTRAP_API_KEY_PREFIX={result.api_key_prefix}",
         f"BOOTSTRAP_API_KEY={result.api_key}",
     ]
+    if result.engine_api_key is not None:
+        lines.append(f"BOOTSTRAP_ENGINE_API_KEY={result.engine_api_key}")
     if result.user_password is not None:
         lines.append(f"BOOTSTRAP_USER_PASSWORD={result.user_password}")
     return "\n".join(lines)

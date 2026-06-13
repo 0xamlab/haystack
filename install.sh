@@ -179,6 +179,18 @@ download_release() {
 generate_env() {
   echo -e "${BLUE}Generating configuration...${NC}"
 
+  # Auto-generated secrets that MUST stay stable across restarts. Compose reads ${INSTALL_DIR}/.env
+  # (not the operator's shell), so anything not persisted here is lost on the next `compose up`.
+  #  - ALGENTA_CONFIG_ENCRYPTION_KEY (64-hex) encrypts per-tenant provider keys at rest; rotating or
+  #    losing it makes every stored tenant key undecryptable (silent fail-closed) — generate once, keep it.
+  #  - AGENT_CORE_AUTH_TOKEN is the shared api/worker -> sidecar bearer; without it the sidecar's
+  #    inbound auth is open by default.
+  # openssl is primary (clean + present on essentially every docker host); the fallback reads a FINITE
+  # byte count from /dev/urandom so it can't SIGPIPE-trip `set -o pipefail` and abort the install.
+  local config_encryption_key agent_core_token
+  config_encryption_key=$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')
+  agent_core_token=$(openssl rand -hex 24 2>/dev/null || head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')
+
   if [ ! -f ".env" ]; then
     # Generate secrets
     JWT_SECRET=$(LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 64 2>/dev/null || openssl rand -hex 32)
@@ -209,6 +221,24 @@ JWT_ALGORITHM=HS256
 JWT_EXPIRE_MINUTES=10080
 API_KEY_PREFIX=de_live_
 API_KEY_TEST_PREFIX=de_test_
+
+# ── Agent runtime + per-tenant key encryption ────────────────────────────────
+# Generated once; keep STABLE across restarts. Rotating/losing ALGENTA_CONFIG_ENCRYPTION_KEY makes
+# every stored per-tenant provider key undecryptable. AGENT_CORE_AUTH_TOKEN gates api/worker → sidecar.
+ALGENTA_CONFIG_ENCRYPTION_KEY=${config_encryption_key}
+AGENT_CORE_AUTH_TOKEN=${agent_core_token}
+AGENT_CORE_REQUIRE_AUTH=1
+ALGENTA_AGENT_CORE_URL=http://sidecar:8787
+# Loopback URL the agent head dials to call back into /v1 (docker-network DNS, NOT localhost). Set
+# (non-empty) so the engine-callback block is actually attached to the agent task spec.
+ALGENTA_ENGINE_URL=http://api:8000
+# Engine-callback key the agent head presents (with ALGENTA_ENGINE_URL above) to call back into /v1
+# during a run. Org-scoped + owner-attributed — protect this file. The installer fills it from the
+# bootstrap step (the dedicated, long-lived "Engine Callback Key").
+ALGENTA_ENGINE_API_KEY=
+ALGENTA_API_KEY=
+# LLM provider key for the agent — required for the agentic repository / GitHub flow. Set yours.
+ANTHROPIC_API_KEY=
 
 # ── Ports ────────────────────────────────────────────────────────────────────
 API_PORT=${API_PORT}
@@ -266,9 +296,16 @@ EMAIL_FROM=noreply@algenta.local
 EOF
 
     echo -e "${GREEN}✓ Configuration generated: .env${NC}"
+    echo -e "${YELLOW}  A new ALGENTA_CONFIG_ENCRYPTION_KEY was generated. BACK IT UP. If you are reinstalling${NC}"
+    echo -e "${YELLOW}  over an existing database, restore your PREVIOUS key into .env before starting, or${NC}"
+    echo -e "${YELLOW}  stored per-tenant provider keys will be unreadable.${NC}"
   else
     echo -e "${YELLOW}⚠ .env already exists, preserving local configuration${NC}"
   fi
+
+  # Secrets live in .env — keep it owner-only (set_env_value's mktemp+mv already lands 600, but this
+  # covers the fresh-write and preserved-.env paths too).
+  chmod 600 .env 2>/dev/null || true
 
   ensure_env_default "DATABASE_URL_SYNC" "postgresql://algenta:algenta_secret@postgres:5432/algenta"
   ensure_env_default "ALGENTA_IMAGE_REGISTRY" "$IMAGE_REGISTRY"
@@ -284,6 +321,16 @@ EOF
   ensure_env_default "ALGENTA_ALLOW_OUTBOUND_NETWORK" "0"
   ensure_env_default "ALGENTA_EGRESS_ALLOWLIST" "minio:9000"
   ensure_env_default "ALGENTA_LOCAL_LICENSE_PUBLIC_KEY_FILE" ""
+  # Agent runtime + per-tenant key encryption — backfilled for installs upgrading from an older
+  # .env (so they too get a stable KEK + sidecar token + the engine-callback/provider slots).
+  ensure_env_default "ALGENTA_CONFIG_ENCRYPTION_KEY" "$config_encryption_key"
+  ensure_env_default "AGENT_CORE_AUTH_TOKEN" "$agent_core_token"
+  ensure_env_default "AGENT_CORE_REQUIRE_AUTH" "1"
+  ensure_env_default "ALGENTA_AGENT_CORE_URL" "http://sidecar:8787"
+  ensure_env_default "ALGENTA_ENGINE_URL" "http://api:8000"
+  ensure_env_default "ALGENTA_ENGINE_API_KEY" ""
+  ensure_env_default "ALGENTA_API_KEY" ""
+  ensure_env_default "ANTHROPIC_API_KEY" ""
 
   echo -e "${YELLOW}  Review .env before production use — especially CORS_ORIGINS, TLS, and SMTP settings${NC}"
 }
@@ -295,6 +342,22 @@ ensure_env_default() {
     return
   fi
   echo "${key}=${value}" >> .env
+}
+
+# Set (replace-or-append) a .env key to a value. Uses grep -v + append (no sed) so the value needs
+# no escaping; safe for the url-safe key alphabet. Only the matched key line is rewritten.
+set_env_value() {
+  local key="$1"
+  local value="$2"
+  if grep -q "^${key}=" .env 2>/dev/null; then
+    local tmp
+    tmp="$(mktemp)"
+    grep -v "^${key}=" .env > "$tmp"
+    echo "${key}=${value}" >> "$tmp"
+    mv "$tmp" .env
+  else
+    echo "${key}=${value}" >> .env
+  fi
 }
 
 start_services() {
@@ -354,16 +417,30 @@ seed_initial_user() {
   local api_key_prefix
   local user_email
   local user_password
+  local engine_api_key
   api_key=$(echo "$seed_output" | sed -n 's/^BOOTSTRAP_API_KEY=//p' | head -1 || true)
   api_key_id=$(echo "$seed_output" | sed -n 's/^BOOTSTRAP_API_KEY_ID=//p' | head -1 || true)
   api_key_prefix=$(echo "$seed_output" | sed -n 's/^BOOTSTRAP_API_KEY_PREFIX=//p' | head -1 || true)
   user_email=$(echo "$seed_output" | sed -n 's/^BOOTSTRAP_USER_EMAIL=//p' | head -1 || true)
   user_password=$(echo "$seed_output" | sed -n 's/^BOOTSTRAP_USER_PASSWORD=//p' | head -1 || true)
+  engine_api_key=$(echo "$seed_output" | sed -n 's/^BOOTSTRAP_ENGINE_API_KEY=//p' | head -1 || true)
 
   if [ "$seed_status" -ne 0 ]; then
     echo "$seed_output"
     echo -e "${RED}Bootstrap command failed.${NC}"
     return 1
+  fi
+
+  # Wire the dedicated engine-callback key into .env so the agentic repository/GitHub flow works out
+  # of the box AND survives restarts (the agent head presents it to call back into /v1). Bootstrap
+  # returns a value ONLY on the run that mints it (no prior ACTIVE key); when it does, that key is
+  # authoritative, so overwrite any stale/revoked .env value. On re-installs where the key already
+  # exists it returns empty and we preserve the persisted .env value. Re-up so the already-running
+  # api/worker pick it up (compose recreates only services whose env changed).
+  if [ -n "$engine_api_key" ]; then
+    set_env_value "ALGENTA_ENGINE_API_KEY" "$engine_api_key"
+    echo -e "${GREEN}✓ Engine-callback key wired into .env (agentic repository flow enabled)${NC}"
+    compose up -d >/dev/null 2>&1 || echo -e "${YELLOW}⚠ Could not auto-apply the engine key; run '${COMPOSE_DISPLAY} up -d' to apply${NC}"
   fi
 
   if [ -n "$api_key" ]; then
@@ -432,9 +509,11 @@ seed_initial_user() {
 print_next_steps() {
   echo -e "${BOLD}Next steps:${NC}"
   echo "  1. Rotate the bootstrap key with POST /v1/api-keys and a bounded expires_at"
-  echo "  2. Edit ${INSTALL_DIR}/.env for production configuration"
-  echo "  3. Set up TLS with nginx or Caddy in front of port ${API_PORT}"
-  echo "  4. Read the self-hosted docs: ${DOCS_URL}"
+  echo "     (the engine-callback key is a separate, long-lived key — rotating the bootstrap key won't break it)"
+  echo "  2. For the agentic repository/GitHub flow, set ANTHROPIC_API_KEY in ${INSTALL_DIR}/.env then '${COMPOSE_DISPLAY} up -d'"
+  echo "  3. Edit ${INSTALL_DIR}/.env for production configuration"
+  echo "  4. Set up TLS with nginx or Caddy in front of port ${API_PORT}"
+  echo "  5. Read the self-hosted docs: ${DOCS_URL}"
   echo ""
   echo -e "${BOLD}Useful commands:${NC}"
   echo "  cd ${INSTALL_DIR} && ${COMPOSE_DISPLAY} ps"

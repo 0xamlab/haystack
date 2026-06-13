@@ -48,6 +48,13 @@ services:
       ALGENTA_RUNTIME_DIR: ${ALGENTA_RUNTIME_DIR:-/home/app/.algenta/runtime}
       ALGENTA_AGENT_CORE_URL: ${ALGENTA_AGENT_CORE_URL:-http://sidecar:8787}
       ALGENTA_AGENT_CORE_TOKEN: ${AGENT_CORE_AUTH_TOKEN:-}
+      # Loopback URL + key the agent head uses to call back into /v1, and the KEK that encrypts
+      # per-tenant provider keys at rest. The engine block is only attached to the agent task spec
+      # when ALGENTA_ENGINE_URL is set. Sourced from .env so they survive restarts.
+      ALGENTA_ENGINE_URL: ${ALGENTA_ENGINE_URL:-http://api:8000}
+      ALGENTA_ENGINE_API_KEY: ${ALGENTA_ENGINE_API_KEY:-}
+      ALGENTA_API_KEY: ${ALGENTA_API_KEY:-}
+      ALGENTA_CONFIG_ENCRYPTION_KEY: ${ALGENTA_CONFIG_ENCRYPTION_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -87,6 +94,12 @@ services:
       ALGENTA_SOURCES_DIR: ${ALGENTA_SOURCES_DIR:-/home/app/.algenta/sources}
       ALGENTA_AGENT_CORE_URL: ${ALGENTA_AGENT_CORE_URL:-http://sidecar:8787}
       ALGENTA_AGENT_CORE_TOKEN: ${AGENT_CORE_AUTH_TOKEN:-}
+      # The worker re-resolves per-tenant keys from the DB (needs the KEK) and builds the same agent
+      # task_spec (needs ALGENTA_ENGINE_URL + the engine-callback key). Sourced from .env (durable).
+      ALGENTA_ENGINE_URL: ${ALGENTA_ENGINE_URL:-http://api:8000}
+      ALGENTA_ENGINE_API_KEY: ${ALGENTA_ENGINE_API_KEY:-}
+      ALGENTA_API_KEY: ${ALGENTA_API_KEY:-}
+      ALGENTA_CONFIG_ENCRYPTION_KEY: ${ALGENTA_CONFIG_ENCRYPTION_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy

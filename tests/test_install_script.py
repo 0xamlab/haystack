@@ -234,6 +234,7 @@ def _run_install_script(
 
 def test_install_script_runs_service_first_happy_path_and_prints_key_once(tmp_path: Path) -> None:
     api_key = "de_test_abcdefghijklmnopqrstuvwxyz123456"
+    engine_key = "de_live_enginecallbackkeyABCDEFGHIJKLMNOP"
     proc = _run_install_script(
         tmp_path,
         bootstrap_output="\n".join(
@@ -245,6 +246,7 @@ def test_install_script_runs_service_first_happy_path_and_prints_key_once(tmp_pa
                 "BOOTSTRAP_API_KEY_ID=11111111-2222-3333-4444-555555555555",
                 "BOOTSTRAP_API_KEY_PREFIX=de_test_abcd",
                 f"BOOTSTRAP_API_KEY={api_key}",
+                f"BOOTSTRAP_ENGINE_API_KEY={engine_key}",
                 "BOOTSTRAP_USER_PASSWORD=SecretPassword123",
             ]
         ),
@@ -289,6 +291,31 @@ def test_install_script_runs_service_first_happy_path_and_prints_key_once(tmp_pa
     assert "ALGENTA_APP_BASE_URL=" in env_text
     assert "RESULT_STORAGE_ENABLED=true" in env_text
     assert "ghcr.io/algenta/decision-engine/api:test" in compose_text
+
+    # ── Restart-durability fixes ────────────────────────────────────────────────
+    # The engine-callback key is wired into .env (persists across restart) but never printed.
+    assert f"ALGENTA_ENGINE_API_KEY={engine_key}" in env_text
+    assert engine_key not in proc.stdout
+    assert "Engine-callback key wired into .env" in proc.stdout
+    # A stable 64-hex config-encryption key (KEK) is generated + persisted, not left to the operator.
+    kek = next(
+        line.split("=", 1)[1]
+        for line in env_text.splitlines()
+        if line.startswith("ALGENTA_CONFIG_ENCRYPTION_KEY=")
+    )
+    assert len(kek) == 64 and all(c in "0123456789abcdef" for c in kek)
+    # A generated sidecar service token + enforced auth (no more open-by-default, shell-only token).
+    agent_token = next(
+        line.split("=", 1)[1]
+        for line in env_text.splitlines()
+        if line.startswith("AGENT_CORE_AUTH_TOKEN=")
+    )
+    assert len(agent_token) >= 24
+    assert "AGENT_CORE_REQUIRE_AUTH=1" in env_text
+    assert "ALGENTA_AGENT_CORE_URL=http://sidecar:8787" in env_text
+    # The engine-callback key is only consumed when ALGENTA_ENGINE_URL is set (docker-network DNS).
+    assert "ALGENTA_ENGINE_URL=http://api:8000" in env_text
+    assert "ANTHROPIC_API_KEY=" in env_text
 
 
 def test_install_script_fails_fast_when_docker_daemon_is_unreachable(tmp_path: Path) -> None:
