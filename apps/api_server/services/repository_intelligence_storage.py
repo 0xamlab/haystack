@@ -136,7 +136,30 @@ def _extract_archive(archive_path: Path, destination: Path) -> None:
     )
 
 
+def _require_safe_artifact_id(value: str, *, field: str) -> str:
+    """Reject a client-supplied artifact id that could escape its org/repository directory.
+
+    Cross-tenant guard: the local-FS manifest loaders join these ids straight into a path, so an
+    unvalidated ``..``/``/`` would traverse out of the org dir into another tenant's. The s3 branch
+    already validates via ``artifact_key``; this mirrors that guard (the same ``_KEY_SEGMENT``) for
+    the local branch — no path separators, no ``..``."""
+    from apps.api_server.services.repository_intelligence_object_store import _KEY_SEGMENT
+
+    # _KEY_SEGMENT blocks '/' and '\\' (the cross-org escape), but '.' is a valid segment char so it
+    # alone admits the dot-special segments '.'/'..'; for the local-FS join those are a parent-dir
+    # traversal the S3 key context doesn't have, so reject them explicitly too.
+    text = str(value or "")
+    if not _KEY_SEGMENT.match(text) or text in (".", ".."):
+        raise RepositoryIntelligenceError(
+            code="invalid_artifact_id",
+            message=f"{field} must match ^[A-Za-z0-9._:-]{{1,128}}$ and not be '.'/'..' (no path traversal).",
+            status_code=422,
+        )
+    return value
+
+
 def _snapshot_paths(org_id: str, repository_id: str, snapshot_id: str) -> dict[str, Path]:
+    _require_safe_artifact_id(snapshot_id, field="snapshot_id")
     snapshot_dir = _snapshots_dir(org_id, repository_id) / snapshot_id
     return {
         "dir": snapshot_dir,
@@ -393,6 +416,7 @@ def _load_snapshot_manifest(*, org_id: str, repository_id: str, snapshot_id: str
 def _load_triage_manifest(
     *, org_id: str, repository_id: str, evidence_bundle_ref: str
 ) -> dict[str, Any]:
+    _require_safe_artifact_id(evidence_bundle_ref, field="workspace_evidence_bundle_ref")
     path = _triage_dir(org_id, repository_id) / f"{evidence_bundle_ref}.json"
     if path.exists():
         return _read_json(path)
@@ -412,6 +436,7 @@ def _load_triage_manifest(
 def _load_decision_plan_manifest(
     *, org_id: str, repository_id: str, decision_plan_id: str
 ) -> dict[str, Any]:
+    _require_safe_artifact_id(decision_plan_id, field="decision_plan_id")
     path = _decision_plans_dir(org_id, repository_id) / f"{decision_plan_id}.json"
     if path.exists():
         return _read_json(path)
@@ -430,6 +455,7 @@ def _load_decision_plan_manifest(
 def _load_patch_impact_manifest(
     *, org_id: str, repository_id: str, patch_impact_report_id: str
 ) -> dict[str, Any]:
+    _require_safe_artifact_id(patch_impact_report_id, field="patch_impact_report_id")
     path = _patch_impact_dir(org_id, repository_id) / f"{patch_impact_report_id}.json"
     if path.exists():
         return _read_json(path)
@@ -448,6 +474,7 @@ def _load_patch_impact_manifest(
 def _load_simulation_manifest(
     *, org_id: str, repository_id: str, simulation_id: str
 ) -> dict[str, Any]:
+    _require_safe_artifact_id(simulation_id, field="simulation_id")
     path = _simulations_dir(org_id, repository_id) / f"{simulation_id}.json"
     if path.exists():
         return _read_json(path)
