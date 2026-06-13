@@ -17,6 +17,13 @@ DetectDerivedRelationshipsFn = Callable[..., list[dict[str, Any]]]
 NormalizeFn = Callable[[str], str]
 
 
+def deep_store_key(org_id: str, map_id: str) -> str:
+    """Cross-tenant guard: the deep-analysis store is a process-global dict shared across all orgs,
+    so its key MUST include the owning org — otherwise GET /v1/map/{map_id} would serve any org's
+    analysis by map_id (IDOR). Writer and reader must build the key the same way."""
+    return f"{org_id}:{map_id}"
+
+
 def _empty_deep_analysis(map_id: str) -> dict[str, Any]:
     return {
         "map_id": map_id,
@@ -217,6 +224,7 @@ async def run_deep_analysis(
 
 async def run_or_schedule_deep_analysis(
     *,
+    org_id: str,
     map_id: str,
     parsed_sources: dict[str, list[dict[str, Any]]],
     source_profiles: SourceProfiles,
@@ -253,14 +261,14 @@ async def run_or_schedule_deep_analysis(
             asyncio.shield(deep_task),
             timeout=deep_budget_s,
         )
-        deep_store[map_id] = deep_analysis
+        deep_store[deep_store_key(org_id, map_id)] = deep_analysis
         return deep_analysis, False
     except TimeoutError:
 
         async def _persist_deep() -> None:
             try:
                 result = await deep_task
-                deep_store[map_id] = result
+                deep_store[deep_store_key(org_id, map_id)] = result
             except Exception as exc:
                 logger.debug("deep_analysis_error", map_id=map_id, error=str(exc))
 

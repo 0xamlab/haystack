@@ -44,6 +44,7 @@ from apps.api_server.services import data_map_sources
 from apps.api_server.services.auth_service import AuthContext
 from apps.api_server.services.columnar_loader import delimited_text_to_arrow_table
 from apps.api_server.services.data_map_deep_analysis import (
+    deep_store_key,
     run_or_schedule_deep_analysis,
 )
 from apps.api_server.services.data_map_errors import (
@@ -227,9 +228,12 @@ async def get_deep_analysis(
     map_id: str,
     auth: AuthContext = Depends(get_current_org),
 ) -> dict[str, Any]:
-    if map_id not in _deep_store:
+    # Cross-tenant guard: look up under the org-scoped key so one org can never read another's
+    # analysis by map_id. 404 (not 403) so a non-owner can't even probe existence.
+    key = deep_store_key(str(auth["org_id"]), map_id)
+    if key not in _deep_store:
         raise HTTPException(status_code=404, detail="map_id not found or still processing")
-    return _deep_store[map_id]
+    return _deep_store[key]
 
 
 @router.post(
@@ -405,6 +409,7 @@ async def map_sources(
     # Kicked off concurrently. If it completes within _DEEP_BUDGET_S it is
     # embedded in the response; otherwise the client polls GET /v1/map/{map_id}.
     deep, deep_pending = await run_or_schedule_deep_analysis(
+        org_id=org_id,
         map_id=map_id,
         parsed_sources=parsed,
         source_profiles=source_profiles,

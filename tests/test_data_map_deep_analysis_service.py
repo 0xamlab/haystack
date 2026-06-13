@@ -7,6 +7,7 @@ import pytest
 
 from apps.api_server.schemas.data_map import FieldMapping, SchemaField
 from apps.api_server.services.data_map_deep_analysis import (
+    deep_store_key,
     run_or_schedule_deep_analysis,
 )
 from apps.api_server.services.data_map_matching import (
@@ -85,6 +86,7 @@ async def test_run_or_schedule_deep_analysis_embeds_completed_result() -> None:
         }
 
     deep, deep_pending = await run_or_schedule_deep_analysis(
+        org_id="org-test",
         map_id="map-inline",
         parsed_sources=parsed_sources,
         source_profiles=source_profiles,
@@ -102,7 +104,7 @@ async def test_run_or_schedule_deep_analysis_embeds_completed_result() -> None:
     )
 
     assert deep_pending is False
-    assert deep_store["map-inline"] == deep
+    assert deep_store[deep_store_key("org-test", "map-inline")] == deep
     assert deep["join_keys"] == [
         {
             "field": "order_id",
@@ -173,6 +175,7 @@ async def test_run_or_schedule_deep_analysis_persists_background_result_after_ti
         return None
 
     deep, deep_pending = await run_or_schedule_deep_analysis(
+        org_id="org-test",
         map_id="map-background",
         parsed_sources=parsed_sources,
         source_profiles=source_profiles,
@@ -200,4 +203,4 @@ async def test_run_or_schedule_deep_analysis_persists_background_result_after_ti
 
     await asyncio.sleep(0.02)
 
-    assert deep_store["map-background"] == deep
+    assert deep_store[deep_store_key("org-test", "map-background")] == deep
