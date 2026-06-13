@@ -42,8 +42,10 @@ PASSWORD_LENGTH = 32
 # run. Kept SEPARATE from the (rotatable) bootstrap owner key so rotating/revoking the owner
 # key never breaks the agentic loop. Minted once per org (idempotent); the raw value is
 # unrecoverable after creation, so it is emitted only on the run that creates it.
-# NOTE: org-scoped and attributed to the owner user, so it carries owner-equivalent privileges —
-# the installer keeps .env at mode 600. A least-privilege service principal is a future refinement.
+# Least-privilege: minted as a SERVICE key (is_service=True) with NO linked user, so auth forces it
+# to the `viewer` role (denied api-key/provider-key/member/billing management) and grants only a
+# narrow org-scoped repository-connector visibility allowance (see services/data_visibility.py). A
+# leaked engine key therefore cannot take over the org — it can only run the agent's repo callbacks.
 ENGINE_KEY_LABEL = "Engine Callback Key"
 
 
@@ -165,10 +167,11 @@ async def _ensure_bootstrap(
         session.add(
             APIKey(
                 org_id=org.id,
-                user_id=user.id,
+                user_id=None,  # no human owner: a least-privilege service principal
                 label=ENGINE_KEY_LABEL,
                 key_prefix=engine_prefix,
                 hashed_key=engine_hashed,
+                is_service=True,
             )
         )
 

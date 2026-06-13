@@ -33,6 +33,9 @@ class AuthContext(TypedDict):
     # Sub-tenancy: platform keys (Mission's company key) may act on behalf of a
     # workspace via the X-Workspace-Id header; tenant keys may not.
     is_platform: bool
+    # Service keys (the agent's engine-callback key) are forced to the `viewer` role above and
+    # get a narrow org-scoped repository-connector visibility allowance (data_visibility.py).
+    is_service: bool
     # The active workspace scope for this request (set by get_current_org from the
     # X-Workspace-Id header for platform keys only). None = org-wide.
     workspace_id: uuid.UUID | None
@@ -181,6 +184,7 @@ async def verify_api_key(
                                 role=cached.get(b"role", b"owner").decode(),
                                 email=cached.get(b"email", b"api_key").decode(),
                                 is_platform=cached.get(b"is_platform", b"").decode() == "1",
+                                is_service=cached.get(b"is_service", b"").decode() == "1",
                                 workspace_id=None,
                             )
                         return None
@@ -229,6 +233,14 @@ async def verify_api_key(
                 actor_role = user.role.value if hasattr(user.role, "value") else str(user.role)
                 actor_user_id = user.id
 
+        # Service keys are machine-to-machine credentials: pin them to the lowest role regardless
+        # of any linked user, so a leaked service key can never reach role-gated management
+        # (api-keys, provider-keys, members, billing). Its (narrow) data access comes solely from
+        # the org-scoped repository-connector allowance in data_visibility, keyed on is_service.
+        is_service = bool(getattr(api_key, "is_service", False))
+        if is_service:
+            actor_role = "viewer"
+
         # Update last_used_at
         try:
             await session.execute(
@@ -258,6 +270,7 @@ async def verify_api_key(
                     "email": actor_email,
                     "user_id": str(actor_user_id) if actor_user_id else "",
                     "is_platform": "1" if getattr(api_key, "is_platform", False) else "",
+                    "is_service": "1" if is_service else "",
                     "expires_at": (
                         str(api_key_expiry_epoch(api_key.expires_at))
                         if api_key.expires_at is not None
@@ -280,6 +293,7 @@ async def verify_api_key(
             role=actor_role,
             email=actor_email,
             is_platform=bool(getattr(api_key, "is_platform", False)),
+            is_service=is_service,
             workspace_id=None,
         )
     except Exception as exc:

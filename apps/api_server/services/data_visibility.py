@@ -12,12 +12,45 @@ from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api_server.error_payloads import access_scope_denied_error
-from apps.api_server.models.data_connector import ConnectorVisibility, DataConnector
+from apps.api_server.models.data_connector import ConnectorType, ConnectorVisibility, DataConnector
 from apps.api_server.services import source_registry as sreg
 from apps.api_server.services.auth_service import AuthContext
 from apps.api_server.services.workspace_scope import workspace_scope_clauses
 
 _ADMIN_ROLES = {"admin", "owner"}
+
+# A service key (the agent's engine-callback key, is_service) gets a narrow visibility allowance
+# over REPOSITORY connectors only — never data-source connectors (S3/postgres/… with credentials).
+# Strictly org-bounded (see _service_can_read_connector), so a leaked service key can read only its
+# own org's repos, the exact thing the agent operates on during a run.
+# All repository connector kinds (incl. local_repo / repo_archive — the self-hosted agent path).
+# Kept in lockstep with services.repository_intelligence_repository_source.REPOSITORY_CONNECTOR_TYPES
+# via a drift-guard test (test_service_key_visibility) rather than importing that heavier module here.
+_REPO_CONNECTOR_TYPES = frozenset(
+    {
+        ConnectorType.GITHUB_REPO.value,
+        ConnectorType.GITLAB_REPO.value,
+        ConnectorType.BITBUCKET_REPO.value,
+        ConnectorType.LOCAL_REPO.value,
+        ConnectorType.REPO_ARCHIVE.value,
+    }
+)
+
+
+def _service_can_read_connector(connector: DataConnector, auth: AuthContext) -> bool:
+    """An is_service key may READ (not manage) a REPOSITORY connector that belongs to its OWN org.
+
+    Defense-in-depth: even though every connector query already filters by org_id
+    (workspace_scope_clauses), we re-check org_id == auth.org_id here so the allowance can never
+    grant cross-org access regardless of how the caller obtained the connector object."""
+    if not auth.get("is_service"):
+        return False
+    connector_type = str(getattr(connector, "connector_type", "") or "")
+    if connector_type not in _REPO_CONNECTOR_TYPES:
+        return False
+    connector_org = getattr(connector, "org_id", None)
+    auth_org = auth.get("org_id")
+    return connector_org is not None and auth_org is not None and str(connector_org) == str(auth_org)
 
 
 def auth_user_id(auth: AuthContext) -> str | None:
@@ -77,6 +110,9 @@ def connector_visible(connector: DataConnector, auth: AuthContext) -> bool:
     )
     if visibility == ConnectorVisibility.SHARED.value:
         return True
+    # Org-internal service key: may READ its own org's repository connectors without owning them.
+    if _service_can_read_connector(connector, auth):
+        return True
     owner_user_id = (
         str(connector.owner_user_id) if getattr(connector, "owner_user_id", None) else None
     )
@@ -85,6 +121,11 @@ def connector_visible(connector: DataConnector, auth: AuthContext) -> bool:
 
 
 def connector_manageable(connector: DataConnector, auth: AuthContext) -> bool:
+    # Service keys are read/simulate-only: the repo-connector allowance grants visibility, never
+    # management. (The forced `viewer` role already fails role-gated mutations; this is belt-and-
+    # suspenders so a service key can never reach connector_manageable=True via the visibility path.)
+    if auth.get("is_service"):
+        return False
     visibility = str(
         getattr(connector, "visibility", ConnectorVisibility.PRIVATE.value)
         or ConnectorVisibility.PRIVATE.value

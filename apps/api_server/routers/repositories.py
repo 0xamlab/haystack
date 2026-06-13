@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 
 from apps.api_server.db.session import AsyncSessionDep
 from apps.api_server.middleware.auth import get_current_org
+from apps.api_server.middleware.rbac import forbid_service_key
 from apps.api_server.middleware.tenant_key_binding import bind_tenant_keys
 from apps.api_server.schemas.repositories import (
     RepositoryApplyRequest,
@@ -333,6 +334,10 @@ async def apply_repository_patch(
     db: AsyncSessionDep,
     auth: Annotated[AuthContext, Depends(get_current_org)],
 ) -> RepositoryApplyResponse:
+    # /apply performs an EXTERNAL write (patch / local branch / remote PR push). It authorizes only
+    # on connector visibility, so the service-key repo-read allowance must be explicitly excluded
+    # here — the agent's callback set (triage/graph-query/simulate-patch) never includes apply.
+    forbid_service_key(auth, "repository apply (writes a patch / pushes a branch / opens a PR)")
     connector = await get_visible_connector(db, repository_id, auth)
     try:
         return await apply_repository_decision(connector=connector, request=payload)

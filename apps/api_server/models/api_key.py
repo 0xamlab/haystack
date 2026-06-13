@@ -50,6 +50,14 @@ class APIKey(UUIDMixin, TimestampMixin, Base):
     is_platform: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default=text("false")
     )
+    # Service keys (e.g. the agent's engine-callback key) are machine-to-machine credentials with
+    # NO human owner: auth forces them to the `viewer` role (denied key/provider/member/billing
+    # management) and grants a narrow org-scoped visibility allowance over repository connectors
+    # only (services/data_visibility.py), so the agent can call back into /v1 during a run without
+    # the key carrying owner-equivalent privileges.
+    is_service: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

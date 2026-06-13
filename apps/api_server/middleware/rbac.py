@@ -104,3 +104,20 @@ def require_role(
     # Give FastAPI a stable name for OpenAPI docs / dependency caching
     _dependency.__name__ = f"require_{minimum_role}_role"
     return _dependency
+
+
+def forbid_service_key(auth: AuthContext, action: str = "this action") -> None:
+    """Deny machine-to-machine SERVICE keys (e.g. the agent's engine-callback key) a privileged
+    operation. Service keys are read/simulate-only; they must never perform external writes such as
+    `/apply` (git push / open PR). Call this inside a handler whose authorization would otherwise
+    rest only on connector visibility — the service-key read allowance must not become a write path.
+    """
+    if auth.get("is_service"):
+        logger.warning("service_key_denied", action=action, org_id=str(auth.get("org_id")))
+        raise HTTPException(
+            status_code=403,
+            detail=access_scope_denied_error(
+                f"Service keys cannot perform {action}.",
+                details=[{"field": "key", "issue": "service_key_not_permitted"}],
+            ),
+        )
