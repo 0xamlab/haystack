@@ -151,6 +151,27 @@ jobs:
         with:
           fail_ci_if_error: false
 
+  # ── SDK artifact install ──────────────────────────────────────────────────
+  # Proves the public Python SDKs install + import from the BUILT wheel in a fresh venv (not just
+  # from source) — the "a user can actually `pip install` it" gate. Lean: no DB/Redis/pixi needed.
+  sdk-artifact-install:
+    name: SDK artifact install (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.12"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Build + fresh-venv install + import smoke
+        run: |
+          python -m pip install --upgrade build
+          python scripts/verify_sdk_artifact_install.py
+
   # ── Build Docker image ────────────────────────────────────────────────────
   build:
     name: Build & Push Docker
