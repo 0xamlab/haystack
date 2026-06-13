@@ -42,6 +42,12 @@ from apps.api_server.schemas.auth import (
     UsageResponse,
     UserInfo,
 )
+from apps.api_server.schemas.tenant_keys import (
+    ProviderKeyInfo,
+    ProviderKeyListResponse,
+    SetProviderKeyRequest,
+)
+from apps.api_server.services import tenant_key_management as tk_mgmt
 from apps.api_server.services.auth_service import (
     AuthContext,
     generate_api_key,
@@ -623,3 +629,76 @@ async def revoke_api_key(
         ip_address=get_client_ip(request),
         metadata={"label": api_key.label},
     )
+
+
+# ── B10 PR11c: self-serve per-tenant provider/engine key management (BYOK) ──────────────────────
+# Admin-only. Key material is write-only (accepted on POST, never returned). Set/rotate requires the
+# config encryption key. The read/enforcement side is tenant_key_store + the PR11a/b hooks.
+
+
+@router.get(
+    "/v1/provider-keys",
+    response_model=ProviderKeyListResponse,
+    summary="List configured per-tenant provider/engine keys (no key material)",
+)
+async def list_provider_keys(
+    auth: AuthContext = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+) -> ProviderKeyListResponse:
+    rows = await tk_mgmt.list_org_key_backends(db, org_id=auth["org_id"])
+    return ProviderKeyListResponse(
+        keys=[ProviderKeyInfo(backend=backend, updated_at=updated_at) for backend, updated_at in rows]
+    )
+
+
+@router.post(
+    "/v1/provider-keys",
+    status_code=204,
+    summary="Set or rotate a per-tenant provider/engine key (BYOK; stored encrypted, never returned)",
+)
+async def set_provider_key(
+    payload: SetProviderKeyRequest,
+    auth: AuthContext = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    try:
+        await tk_mgmt.set_org_key(
+            db,
+            org_id=auth["org_id"],
+            api_backend=payload.backend,
+            api_key=payload.api_key,
+            actor_email=auth.get("email", "api_key"),
+        )
+    except tk_mgmt.TenantKeyError as exc:
+        status_code = 409 if exc.code == "encryption_key_required" else 400
+        raise HTTPException(
+            status_code=status_code,
+            detail={"error": {"code": exc.code, "message": str(exc)}},
+        ) from exc
+
+
+@router.delete(
+    "/v1/provider-keys/{backend}",
+    status_code=204,
+    summary="Delete a per-tenant provider/engine key",
+)
+async def delete_provider_key(
+    backend: str,
+    auth: AuthContext = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    try:
+        existed = await tk_mgmt.delete_org_key(
+            db, org_id=auth["org_id"], api_backend=backend, actor_email=auth.get("email", "api_key")
+        )
+    except tk_mgmt.TenantKeyError as exc:
+        raise HTTPException(
+            status_code=400, detail={"error": {"code": exc.code, "message": str(exc)}}
+        ) from exc
+    if not existed:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error": {"code": "provider_key_not_found", "message": f"no key for backend '{backend}'"}
+            },
+        )
