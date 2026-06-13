@@ -1,6 +1,6 @@
 {
   "name": "algenta-sdk",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "TypeScript/JavaScript SDK for Algenta public data, query, and simulation APIs",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -15,7 +15,8 @@
   "files": [
     "dist",
     "proto",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsc",
@@ -39,7 +40,7 @@
   "bugs": {
     "url": "https://github.com/algenta/decision-engine/issues"
   },
-  "license": "BSL-1.1",
+  "license": "Apache-2.0",
   "dependencies": {
     "@grpc/grpc-js": "^1.14.3",
     "@grpc/proto-loader": "^0.8.1"

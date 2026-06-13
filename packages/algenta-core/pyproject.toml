@@ -4,11 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "algenta-core"
-version = "0.1.0"
+version = "1.0.0"
 description = "Algenta core runtime — local-first deterministic resolve and query execution."
 readme = "README.md"
 requires-python = ">=3.10"
-license = "LicenseRef-ACL-1.0"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 keywords = [
     "runtime", "deterministic", "structured-data", "query", "resolve",
     "simulation", "optimization", "decision", "algenta", "mojo"

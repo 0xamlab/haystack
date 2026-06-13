@@ -35,7 +35,8 @@ def test_typescript_package_surface_includes_package_readme_and_registry_metadat
     )
 
     assert package_json["name"] == "algenta-sdk"
-    assert package_json["files"] == ["dist", "proto", "README.md"]
+    # LICENSE is published with the package (Apache-2.0, per GTM D2).
+    assert package_json["files"] == ["dist", "proto", "README.md", "LICENSE"]
     assert package_json["homepage"] == "https://algenta.ai"
     assert package_json["repository"]["directory"] == "packages/ts-sdk"
     assert package_json["bugs"]["url"] == "https://github.com/algenta/decision-engine/issues"
