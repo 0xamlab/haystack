@@ -22,10 +22,5 @@ pnpm --dir packages/ts-sdk test -- --run src/libraries.test.ts src/runtime_daemo
 pnpm --dir apps/gateway test
 pnpm --dir apps/gateway exec tsx --test ../../examples/shared/privacyProfile.test.ts
 
-# agent-core (sidecar) overlay tests — run where bun + the vendored @cline build exist
-# (local dev / a CI job that builds the sidecar); skip gracefully elsewhere.
-if command -v bun >/dev/null 2>&1 && [ -d agent-core/vendor/cline/node_modules/@cline ]; then
-	(cd agent-core && bun test vendor/cline/algenta/)
-else
-	echo "skipping agent-core bun tests (bun or the vendored @cline build is not present)"
-fi
+# agent-core (sidecar) overlay tests now live in escrypto-labs/codna (its CI builds + tests the
+# vendored Cline SDK). decision-engine consumes the published sidecar image over HTTP.

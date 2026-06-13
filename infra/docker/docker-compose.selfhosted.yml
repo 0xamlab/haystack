@@ -100,8 +100,11 @@ services:
       - sources_data:/home/app/.algenta
 
   # ── Agent-core sidecar (forked-Cline execution head) ──────────────────────
+  # Built + published by escrypto-labs/codna (the agent head's home), consumed over the unchanged
+  # HTTP seam. NOTE: this is a private GHCR image — the deploy host needs read:packages access to
+  # ghcr.io/escrypto-labs/codna. Override the image via ALGENTA_SIDECAR_IMAGE.
   sidecar:
-    image: ${ALGENTA_IMAGE_REGISTRY:-ghcr.io/algenta/decision-engine}/sidecar:${ALGENTA_IMAGE_TAG:-latest}
+    image: ${ALGENTA_SIDECAR_IMAGE:-ghcr.io/escrypto-labs/codna/sidecar:latest}
     restart: unless-stopped
     # Scale horizontally with `docker compose up --scale sidecar=N`; api/worker reach it
     # via the round-robin `sidecar` service DNS, and /ready sheds load from busy replicas.

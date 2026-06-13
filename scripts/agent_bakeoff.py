@@ -21,8 +21,8 @@ Example:
       --agents algenta,codex,gemini \
       --out build/bakeoff
 
-  # algenta adapter needs the agent-core sidecar running, e.g.:
-  #   (cd agent-core && bun vendor/cline/algenta/run-server.ts)  # serves :8787
+  # algenta adapter needs the agent-core sidecar running (built + published by escrypto-labs/codna):
+  #   docker run -p 8787:8787 ghcr.io/escrypto-labs/codna/sidecar:latest   # serves :8787
   # then: --algenta-url http://127.0.0.1:8787
 """
 

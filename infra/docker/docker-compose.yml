@@ -158,10 +158,10 @@ services:
     restart: unless-stopped
 
   # ─── Agent-core sidecar (forked-Cline execution head) ────────────────────────
+  # Built + published by escrypto-labs/codna (the agent head's home); consumed over the unchanged
+  # HTTP seam (ALGENTA_AGENT_CORE_URL -> /run). Override the image via ALGENTA_SIDECAR_IMAGE.
   sidecar:
-    build:
-      context: ../..
-      dockerfile: infra/docker/Dockerfile.sidecar
+    image: ${ALGENTA_SIDECAR_IMAGE:-ghcr.io/escrypto-labs/codna/sidecar:latest}
     container_name: decision-engine-sidecar
     environment:
       AGENT_CORE_HOST: 0.0.0.0

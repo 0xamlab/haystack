@@ -108,6 +108,9 @@ def build_proof_context(root: Path | None = None) -> ClineProofContext:
     resolved_root = repo_root() if root is None else Path(root).resolve()
     _, docs_snapshot_hash = load_docs_snapshot(resolved_root)
     git_commit = git_output(resolved_root, "rev-parse", "HEAD")
+    # The vendored Cline now lives in escrypto-labs/codna (the sidecar's home), not in this repo,
+    # so this pathspec resolves to "" here and falls back to the algenta commit; the authoritative
+    # vendored-Cline provenance is recorded by the sidecar's own proofs at runtime.
     vendored_cline_commit = (
         git_output(resolved_root, "rev-parse", "HEAD:agent-core/vendor/cline")
         or git_commit
