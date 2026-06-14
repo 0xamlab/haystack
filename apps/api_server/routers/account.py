@@ -286,6 +286,11 @@ async def usage(
     )
     cap_micros = llm_spend_service.resolve_llm_spend_cap_micros(plan, managed_quota)
 
+    # Repository-intelligence object-store footprint (live S3 sum, cached; 0 off-S3). Informational.
+    from apps.api_server.services import storage_accounting_service
+
+    storage_bytes_used = await storage_accounting_service.get_org_storage_bytes(auth["org_id"])
+
     return UsageResponse(
         org_id=auth["org_id"],
         billing_period=billing_period,
@@ -295,6 +300,8 @@ async def usage(
         quota_used_pct=used_pct,
         managed_llm_spend_usd_month=round(spent_micros / USD_MICROS, 4),
         managed_llm_cap_usd_month=cap_micros // USD_MICROS,
+        storage_bytes_used=storage_bytes_used,
+        storage_gb_limit=get_plan_config(plan).storage_gb,
     )
 
 

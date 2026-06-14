@@ -139,6 +139,10 @@ class UsageResponse(BaseModel):
     # provider key; 0 cap = unlimited / org not on managed (BYOK + self-host never accrue here).
     managed_llm_spend_usd_month: float = 0.0
     managed_llm_cap_usd_month: int = 0
+    # Repository-intelligence object-store footprint (live S3 sum; 0 off-S3). storage_gb_limit 0 =
+    # unlimited. Limit ENFORCEMENT is opt-in (ALGENTA_ENFORCE_STORAGE_CAP); this is informational.
+    storage_bytes_used: int = 0
+    storage_gb_limit: int = 0
 
 
 class LimitsResponse(BaseModel):

@@ -111,6 +111,14 @@ class Settings(BaseSettings):
         default=False,
         validation_alias=AliasChoices("ALGENTA_MANAGED_LLM"),
     )
+    # Enforce the per-org free-tier storage_gb cap on the repository-intelligence object store
+    # (hosted, opt-in). OFF (default) = footprint is surfaced in /v1/usage but never blocks a write.
+    # The gate reads ALGENTA_ENFORCE_STORAGE_CAP directly (storage_accounting_service); this surfaces
+    # it for visibility/validation.
+    algenta_enforce_storage_cap: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("ALGENTA_ENFORCE_STORAGE_CAP"),
+    )
 
     @computed_field  # type: ignore[misc]
     @property

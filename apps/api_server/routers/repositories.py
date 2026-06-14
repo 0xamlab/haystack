@@ -32,6 +32,7 @@ from apps.api_server.schemas.repositories import (
 from apps.api_server.schemas.response import DecisionEnvelope
 from apps.api_server.services.auth_service import AuthContext
 from apps.api_server.services.data_visibility import get_visible_connector
+from apps.api_server.services.storage_accounting_service import gate_storage_cap
 from apps.api_server.services.repository_intelligence import (
     RepositoryIntelligenceError,
     apply_repository_decision,
@@ -165,6 +166,7 @@ async def create_snapshot(
     auth: Annotated[AuthContext, Depends(get_current_org)],
 ) -> RepositorySnapshotResponse:
     connector = await get_visible_connector(db, repository_id, auth)
+    await gate_storage_cap(auth["org_id"], auth["plan"])  # free-tier storage cap (off by default)
     try:
         return create_repository_snapshot(connector=connector, request=payload)
     except RepositoryIntelligenceError as exc:
@@ -203,6 +205,7 @@ async def triage_repository_snapshot(
     auth: Annotated[AuthContext, Depends(get_current_org)],
 ) -> RepositoryTriageResponse:
     connector = await get_visible_connector(db, repository_id, auth)
+    await gate_storage_cap(auth["org_id"], auth["plan"])  # free-tier storage cap (off by default)
     try:
         return triage_repository(connector=connector, request=payload)
     except RepositoryIntelligenceError as exc:
@@ -222,6 +225,9 @@ async def query_repository_snapshot_graph(
     auth: Annotated[AuthContext, Depends(get_current_org)],
 ) -> RepositoryGraphQueryResponse:
     connector = await get_visible_connector(db, repository_id, auth)
+    # graph-query writes a durable lookup artifact (graph_query_lookup) under the tenant prefix, so
+    # it counts toward the storage sum — gate it too, keeping the agent-callback set uniformly gated.
+    await gate_storage_cap(auth["org_id"], auth["plan"])  # free-tier storage cap (off by default)
     try:
         return query_repository_graph(connector=connector, request=payload)
     except RepositoryIntelligenceError as exc:
@@ -243,6 +249,7 @@ async def create_decision_plan(
 ) -> RepositoryDecisionPlanResponse | JSONResponse:
     # Visibility is enforced on the request (with the caller's auth) before queuing.
     connector = await get_visible_connector(db, repository_id, auth)
+    await gate_storage_cap(auth["org_id"], auth["plan"])  # free-tier storage cap (off by default)
     if async_execution:
         return await _submit_repository_job(
             job_kind=JobKind.REPOSITORY_DECISION_PLAN,
@@ -271,6 +278,7 @@ async def simulate_repository_patch(
     auth: Annotated[AuthContext, Depends(get_current_org)],
 ) -> DecisionEnvelope:
     connector = await get_visible_connector(db, repository_id, auth)
+    await gate_storage_cap(auth["org_id"], auth["plan"])  # free-tier storage cap (off by default)
     try:
         return await simulate_repository_decision(connector=connector, request=payload)
     except RepositoryIntelligenceError as exc:
@@ -290,6 +298,7 @@ async def simulate_repository_working_tree_patch(
     auth: Annotated[AuthContext, Depends(get_current_org)],
 ) -> DecisionEnvelope:
     connector = await get_visible_connector(db, repository_id, auth)
+    await gate_storage_cap(auth["org_id"], auth["plan"])  # free-tier storage cap (off by default)
     try:
         return await run_repository_patch_simulation(connector=connector, request=payload)
     except RepositoryIntelligenceError as exc:
@@ -310,6 +319,7 @@ async def run_repository_intelligence_pipeline(
     async_execution: bool = False,
 ) -> RepositoryPipelineResponse | JSONResponse:
     connector = await get_visible_connector(db, repository_id, auth)
+    await gate_storage_cap(auth["org_id"], auth["plan"])  # free-tier storage cap (off by default)
     if async_execution:
         return await _submit_repository_job(
             job_kind=JobKind.REPOSITORY_PIPELINE,

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import uuid
 from dataclasses import dataclass
 from typing import Any, Protocol, cast
@@ -47,6 +48,11 @@ class _S3ClientProtocol(Protocol):
         self,
         **kwargs: Any,
     ) -> object: ...
+
+    def list_objects_v2(
+        self,
+        **kwargs: Any,
+    ) -> dict[str, Any]: ...
 
     def generate_presigned_url(
         self,
@@ -98,6 +104,53 @@ def _get_client(*, audit_context: EgressAuditContext | None = None) -> _S3Client
         return cast(_S3ClientProtocol, client)
     except Exception as exc:
         raise ResultStorageUnavailableError("Failed to initialize object storage client.") from exc
+
+
+# Per-org prefix under which the repository-intelligence object store keys every artifact
+# (mirrors repository_intelligence_object_store.artifact_key: <prefix>/tenants/<org>/...). Kept as a
+# literal here to avoid a circular import (that module imports this one for its S3 client).
+_RI_TENANT_PREFIX = "repository_intelligence/tenants"
+
+
+def repository_object_store_is_s3() -> bool:
+    """True when the repository-intelligence object store routes to S3/MinIO (opt-in). Storage-cap
+    accounting sums the durable S3 footprint; the node-local backend is not metered."""
+    return (os.environ.get("ALGENTA_RI_OBJECT_STORE") or "local").strip().lower() == "s3"
+
+
+def compute_org_storage_bytes(org_id: uuid.UUID | str) -> int:
+    """Sum the bytes an org currently stores in the repository-intelligence S3 bucket.
+
+    Source of truth for the storage cap: a live ``ListObjectsV2`` sum over the org's tenant prefix,
+    so it always reflects S3 lifecycle expiry (90-day TTL) with no counter to drift. Returns 0 when
+    the S3 backend isn't active (node-local self-host) or on ANY error — fail-OPEN, because a storage
+    cap must never turn a transient S3 blip into a hard request failure (it is best-effort, like the
+    managed-LLM spend meter). Synchronous (boto3); call via ``asyncio.to_thread`` from async code."""
+    if not repository_object_store_is_s3():
+        return 0
+    prefix = f"{_RI_TENANT_PREFIX}/{org_id}/"
+    try:
+        client = _get_client()
+        bucket = _bucket_name()
+        total = 0
+        token: str | None = None
+        while True:
+            kwargs: dict[str, Any] = {"Bucket": bucket, "Prefix": prefix}
+            if token:
+                kwargs["ContinuationToken"] = token
+            resp = client.list_objects_v2(**kwargs)
+            for obj in resp.get("Contents", []) or []:
+                total += int(obj.get("Size", 0) or 0)
+            if resp.get("IsTruncated"):
+                token = resp.get("NextContinuationToken")
+                if not token:
+                    break
+            else:
+                break
+        return total
+    except Exception as exc:
+        logger.debug("compute_org_storage_bytes_failed", org_id=str(org_id), error=str(exc))
+        return 0
 
 
 def _ensure_bucket(client: _S3ClientProtocol, bucket_name: str) -> None:
