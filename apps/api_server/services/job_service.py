@@ -7,7 +7,7 @@ from typing import Any
 import structlog
 from fastapi import HTTPException
 from pydantic import TypeAdapter
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api_server.models.job import (
@@ -48,6 +48,40 @@ async def _get_run_for_update(run_id: uuid.UUID, db: AsyncSession) -> Simulation
         .execution_options(populate_existing=True)
     )
     return result.scalar_one_or_none()
+
+
+async def enforce_concurrent_jobs(org_id: uuid.UUID, plan: str, db: AsyncSession) -> None:
+    """Reject async job submission when the org is at its plan's concurrent in-flight job cap
+    (queued/validating/running). 0 = unlimited. Free-tier cost cap (Wave 2)."""
+    from apps.api_server.services import plan_limits
+
+    cap = plan_limits.get(plan).concurrent_jobs
+    if cap <= 0:
+        return
+    inflight = (
+        await db.execute(
+            select(func.count())
+            .select_from(Job)
+            .where(
+                Job.org_id == org_id,
+                Job.status.in_([JobStatus.QUEUED, JobStatus.VALIDATING, JobStatus.RUNNING]),
+            )
+        )
+    ).scalar_one()
+    if inflight >= cap:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "error": {
+                    "code": "concurrent_jobs_exceeded",
+                    "message": (
+                        f"Your plan allows {cap} concurrent job(s); {inflight} are already in "
+                        "flight. Wait for one to finish or upgrade your plan."
+                    ),
+                    "limit": cap,
+                }
+            },
+        )
 
 
 async def create_job(

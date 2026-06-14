@@ -59,6 +59,7 @@ from apps.api_server.services.auth_service import (
 from apps.api_server.services.workspace_scope import workspace_scope_clauses
 from apps.api_server.services.plan_limits import (
     effective_device_limit,
+    get as get_plan_config,
     validate_api_key_device_limit,
 )
 
@@ -291,6 +292,7 @@ async def usage(
 async def limits(auth: AuthContext = Depends(get_current_org)) -> LimitsResponse:
     plan = auth["plan"]
     quota = _PLAN_QUOTAS.get(plan, _PLAN_QUOTAS["free"])
+    cfg = get_plan_config(plan)  # canonical caps (PlanConfig), incl. the Wave-2 cost caps
     return LimitsResponse(
         plan=plan,
         max_simulations_per_month=int(quota["simulations"]),
@@ -299,6 +301,9 @@ async def limits(auth: AuthContext = Depends(get_current_org)) -> LimitsResponse
         rate_limit_per_minute=int(quota["rate"]),
         async_jobs_enabled=bool(quota["async"]),
         webhooks_enabled=bool(quota["webhooks"]),
+        concurrent_jobs=cfg.concurrent_jobs,
+        storage_gb=cfg.storage_gb,
+        llm_spend_cap_usd_month=cfg.llm_spend_cap_usd_month,
     )
 
 

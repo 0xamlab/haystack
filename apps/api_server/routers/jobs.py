@@ -40,6 +40,7 @@ from apps.api_server.services.egress_guard import audit_context_from_auth
 from apps.api_server.services.job_service import (
     cancel_job,
     create_job,
+    enforce_concurrent_jobs,
     execute_job,
     get_job,
     get_job_result,
@@ -185,6 +186,9 @@ async def submit_job(
     db: AsyncSession = Depends(get_db),
 ) -> SubmitJobResponse:
     import hashlib
+
+    # Free-tier cost cap: bound concurrent in-flight jobs per the org's plan (Wave 2).
+    await enforce_concurrent_jobs(auth["org_id"], auth["plan"], db)
 
     sim_request = payload.request
 

@@ -42,6 +42,13 @@ class PlanConfig:
     rbac: bool
     permitted_modules: list[str]  # ["*"] = all, list of names = restricted
     credit_batch_size: int  # executions issued per /v1/credits/refresh call
+    # Free-tier cost caps (Wave 2). 0 = unlimited. concurrent_jobs is ENFORCED on async job submit
+    # (job_service.enforce_concurrent_jobs). storage_gb + llm_spend_cap_usd_month are DEFINED here and
+    # surfaced via /v1/limits, but their ENFORCEMENT lands with their accounting backends — storage
+    # needs per-org object-store accounting (not built); llm_spend is the managed-LLM meter (D3/PR-5).
+    concurrent_jobs: int = 0
+    storage_gb: int = 0
+    llm_spend_cap_usd_month: int = 0
 
 
 _PLANS: dict[str, PlanConfig] = {
@@ -60,6 +67,9 @@ _PLANS: dict[str, PlanConfig] = {
         rbac=False,
         permitted_modules=["*"],  # all modules via cloud API
         credit_batch_size=1_000,
+        concurrent_jobs=1,
+        storage_gb=1,
+        llm_spend_cap_usd_month=5,
     ),
     "developer": PlanConfig(
         display_name="PRO",
@@ -76,6 +86,9 @@ _PLANS: dict[str, PlanConfig] = {
         rbac=False,
         permitted_modules=["*"],
         credit_batch_size=10_000,
+        concurrent_jobs=5,
+        storage_gb=10,
+        llm_spend_cap_usd_month=50,
     ),
     "pro": PlanConfig(
         display_name="PRO",
@@ -92,6 +105,9 @@ _PLANS: dict[str, PlanConfig] = {
         rbac=False,
         permitted_modules=["*"],
         credit_batch_size=10_000,
+        concurrent_jobs=20,
+        storage_gb=100,
+        llm_spend_cap_usd_month=200,
     ),
     "team": PlanConfig(
         display_name="TEAM",
@@ -108,6 +124,9 @@ _PLANS: dict[str, PlanConfig] = {
         rbac=True,
         permitted_modules=["*"],
         credit_batch_size=25_000,
+        concurrent_jobs=50,
+        storage_gb=1_000,
+        llm_spend_cap_usd_month=1_000,
     ),
     "enterprise": PlanConfig(
         display_name="ENTERPRISE",
@@ -124,6 +143,9 @@ _PLANS: dict[str, PlanConfig] = {
         rbac=True,
         permitted_modules=["*"],
         credit_batch_size=100_000,
+        concurrent_jobs=0,
+        storage_gb=0,
+        llm_spend_cap_usd_month=0,
     ),
 }
 

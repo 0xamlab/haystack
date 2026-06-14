@@ -145,6 +145,11 @@ class LimitsResponse(BaseModel):
     rate_limit_per_minute: int
     async_jobs_enabled: bool
     webhooks_enabled: bool
+    # Free-tier cost caps (Wave 2; 0 = unlimited). concurrent_jobs is enforced on async job submit;
+    # storage_gb + llm_spend_cap_usd_month are advertised here, enforced once their backends land.
+    concurrent_jobs: int = 0
+    storage_gb: int = 0
+    llm_spend_cap_usd_month: int = 0
 
 
 class DistributionInfo(BaseModel):
