@@ -274,6 +274,18 @@ async def usage(
     limit = quota["simulations"]
     used_pct = round((sim_count / limit * 100), 1) if limit > 0 else 0.0
 
+    # Managed-LLM pass-through spend this period (D3). Org-scoped (managed billing is per-org); BYOK
+    # + self-host rows carry $0 cost, so this is the managed total. cap 0 = unlimited / not managed.
+    from apps.api_server.models.llm_usage_record import USD_MICROS
+    from apps.api_server.services import llm_spend_service
+
+    org = await db.get(Organization, auth["org_id"])
+    managed_quota = org.managed_llm_quota_usd_month if org is not None else 0
+    spent_micros = await llm_spend_service.get_monthly_llm_spend_micros(
+        auth["org_id"], db, period=billing_period
+    )
+    cap_micros = llm_spend_service.resolve_llm_spend_cap_micros(plan, managed_quota)
+
     return UsageResponse(
         org_id=auth["org_id"],
         billing_period=billing_period,
@@ -281,6 +293,8 @@ async def usage(
         api_calls=sim_count,
         quota_limit=limit,
         quota_used_pct=used_pct,
+        managed_llm_spend_usd_month=round(spent_micros / USD_MICROS, 4),
+        managed_llm_cap_usd_month=cap_micros // USD_MICROS,
     )
 
 

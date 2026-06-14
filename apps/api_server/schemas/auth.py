@@ -135,6 +135,10 @@ class UsageResponse(BaseModel):
     api_calls: int
     quota_limit: int
     quota_used_pct: float
+    # Managed-LLM pass-through spend this period (D3). Dollars spent on the platform's pooled
+    # provider key; 0 cap = unlimited / org not on managed (BYOK + self-host never accrue here).
+    managed_llm_spend_usd_month: float = 0.0
+    managed_llm_cap_usd_month: int = 0
 
 
 class LimitsResponse(BaseModel):

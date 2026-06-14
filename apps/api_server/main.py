@@ -134,6 +134,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     from apps.api_server.services.stripe_service import validate_billing_configuration
 
     validate_billing_configuration(config)
+    # Fail closed on dangerous cross-environment config (live Stripe key off-prod; managed-LLM mode
+    # contradicting strict per-tenant keys).
+    from apps.api_server.services.env_separation import validate_environment_separation
+
+    validate_environment_separation(config)
     logger.info(
         "starting_up",
         env=config.api_env,
