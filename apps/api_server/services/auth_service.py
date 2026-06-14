@@ -362,3 +362,26 @@ async def invalidate_user_api_key_caches(
     for hashed_key in hashed_keys:
         await invalidate_api_key_cache(hashed_key, redis_client)
     return len(hashed_keys)
+
+
+async def invalidate_org_api_key_caches(
+    session: object, org_id: object, redis_client: object
+) -> int:
+    """Bust the cached AuthContext for EVERY API key in an org (e.g. on org suspend/delete), so the
+    status change takes effect immediately rather than after the per-key TTL. Best-effort: never
+    raises (a Redis hiccup just falls back to TTL expiry). Returns the number of keys invalidated."""
+    from sqlalchemy import select as _select
+
+    from apps.api_server.models.api_key import APIKey
+
+    try:
+        result = await session.execute(  # type: ignore[attr-defined]
+            _select(APIKey.hashed_key).where(APIKey.org_id == org_id)
+        )
+        hashed_keys = [row[0] for row in result.all()]
+    except Exception as exc:
+        logger.warning("invalidate_org_api_key_caches_lookup_failed", error=str(exc))
+        return 0
+    for hashed_key in hashed_keys:
+        await invalidate_api_key_cache(hashed_key, redis_client)
+    return len(hashed_keys)
