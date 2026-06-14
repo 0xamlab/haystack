@@ -11,8 +11,6 @@
 #     gate) — publish jobs block until a reviewer approves.
 #   - For npm: either configure npm OIDC trusted publishing, or set the `NPM_TOKEN` secret (an
 #     automation token with publish rights on `algenta-sdk`).
-#   - TODO before first use: SHA-pin `pypa/gh-action-pypi-publish` (the other actions are pinned to
-#     the repo's existing SHAs).
 
 name: release-sdks
 
@@ -96,11 +94,11 @@ jobs:
           python -m pip install --upgrade build
           for pkg in python-sdk algenta-core; do python -m build "packages/$pkg"; done
       - name: Publish algenta-sdk
-        uses: pypa/gh-action-pypi-publish@release/v1 # TODO: SHA-pin before first use
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
         with:
           packages-dir: packages/python-sdk/dist
       - name: Publish algenta-core
-        uses: pypa/gh-action-pypi-publish@release/v1 # TODO: SHA-pin before first use
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
         with:
           packages-dir: packages/algenta-core/dist
 
