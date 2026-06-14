@@ -102,6 +102,15 @@ class Settings(BaseSettings):
         default=None,
         validation_alias=AliasChoices("ALGENTA_EGRESS_ALLOWLIST"),
     )
+    # ── Managed-LLM pass-through (D3) ─────────────────────────────────────────
+    # Hosted multi-tenant deployments set this so orgs may use the platform's pooled provider key
+    # (metered + capped) when managed_llm_enabled. OFF (default) preserves single-tenant/BYOK
+    # behavior exactly. The synchronous key resolver reads ALGENTA_MANAGED_LLM directly
+    # (llm_spend_service.managed_llm_mode_enabled); this field surfaces it for startup validation.
+    algenta_managed_llm: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("ALGENTA_MANAGED_LLM"),
+    )
 
     @computed_field  # type: ignore[misc]
     @property

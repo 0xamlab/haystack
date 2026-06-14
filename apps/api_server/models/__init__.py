@@ -19,6 +19,7 @@ from .capability_plane import (
 from .data_connector import ConnectorStatus, ConnectorType, DataConnector
 from .deployment import CloudProvider, Deployment, DeploymentStatus
 from .job import Job, JobStatus, WebhookStatus
+from .llm_usage_record import USD_MICROS, LLMKeyType, LLMUsageRecord
 from .organization import Organization, OrgPlan, OrgStatus
 from .simulation_run import ExecutionType, RunStatus, SimulationMode, SimulationRun
 from .tenant_provider_key import ENGINE_BACKEND, TenantProviderKey
@@ -53,6 +54,9 @@ __all__ = [
     "WebhookStatus",
     "UsageRecord",
     "UsageEndpoint",
+    "LLMUsageRecord",
+    "LLMKeyType",
+    "USD_MICROS",
     "DataConnector",
     "ConnectorType",
     "ConnectorStatus",
