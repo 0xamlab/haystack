@@ -1,16 +1,19 @@
 # Publish the public client SDKs (Apache-2.0, per D2): algenta-sdk (PyPI + npm), algenta-core (PyPI).
 #
-# Flow: guard (license/version drift) -> build + dry-run checks (always) -> publish (tag + MANUAL
-# approval only). Publishing uses PyPI Trusted Publishing (OIDC) and npm provenance — no long-lived
-# tokens for PyPI.
+# Flow: guard (license/version drift) -> build + dry-run checks (always) -> publish. A tag push
+# (sdk-v*) publishes to the REAL indexes; workflow_dispatch picks `target`: dry-run (checks only),
+# testpypi (rehearse the Python publish against test.pypi.org), or pypi (real publish, same as a tag).
+# Publishing uses PyPI Trusted Publishing (OIDC) and npm provenance — no long-lived tokens for PyPI.
 #
-# PREREQUISITES (one-time, before the first real tag):
+# PREREQUISITES:
 #   - Configure PyPI Trusted Publishing for `algenta-sdk` and `algenta-core` bound to this repo,
-#     workflow `release-sdks.yml`, environment `release`.
-#   - Create the GitHub `release` environment with REQUIRED REVIEWERS (this is the manual-approval
-#     gate) — publish jobs block until a reviewer approves.
+#     workflow `release-sdks.yml`, environment `release`. For the TestPyPI rehearsal, configure the
+#     SAME trusted publisher on test.pypi.org.
+#   - The GitHub `release` environment (the manual-approval gate) must exist with REQUIRED REVIEWERS —
+#     publish jobs (including the TestPyPI rehearsal) block until a reviewer approves.
 #   - For npm: either configure npm OIDC trusted publishing, or set the `NPM_TOKEN` secret (an
-#     automation token with publish rights on `algenta-sdk`).
+#     automation token with publish rights on `algenta-sdk`). npm has no test registry — its rehearsal
+#     is the build job's `npm pack --dry-run` plus the ts-sdk-artifact-install CI gate.
 
 name: release-sdks
 
@@ -19,10 +22,14 @@ on:
     tags: ["sdk-v*"]
   workflow_dispatch:
     inputs:
-      publish:
-        description: "Actually publish (otherwise build + dry-run checks only)"
-        type: boolean
-        default: false
+      target:
+        description: "Publish target"
+        type: choice
+        options:
+          - dry-run # guard + build/pack checks only — no upload
+          - testpypi # rehearse: publish the Python SDKs to test.pypi.org
+          - pypi # real publish to PyPI + npm (same as a tag push)
+        default: dry-run
 
 permissions:
   contents: read
@@ -76,10 +83,40 @@ jobs:
           npm run build
           npm pack --dry-run
 
+  publish-testpypi:
+    name: rehearse publish to TestPyPI (OIDC, manual approval)
+    needs: build
+    if: ${{ inputs.target == 'testpypi' }}
+    environment: release # same manual-approval gate as the real publish — a faithful rehearsal
+    permissions:
+      id-token: write # TestPyPI Trusted Publishing
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: |
+          python -m pip install --upgrade build
+          for pkg in python-sdk algenta-core; do python -m build "packages/$pkg"; done
+      - name: Publish algenta-sdk to TestPyPI
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
+        with:
+          packages-dir: packages/python-sdk/dist
+          repository-url: https://test.pypi.org/legacy/
+          skip-existing: true # re-runs of the same version no-op instead of erroring
+      - name: Publish algenta-core to TestPyPI
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
+        with:
+          packages-dir: packages/algenta-core/dist
+          repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
+
   publish-pypi:
     name: publish to PyPI (OIDC, manual approval)
     needs: build
-    if: ${{ github.event_name == 'push' || inputs.publish }}
+    if: ${{ github.event_name == 'push' || inputs.target == 'pypi' }}
     environment: release # required reviewers on this env = the manual-approval gate
     permissions:
       id-token: write # PyPI Trusted Publishing
@@ -105,7 +142,7 @@ jobs:
   publish-npm:
     name: publish to npm (provenance, manual approval)
     needs: build
-    if: ${{ github.event_name == 'push' || inputs.publish }}
+    if: ${{ github.event_name == 'push' || inputs.target == 'pypi' }}
     environment: release
     permissions:
       id-token: write # npm provenance
