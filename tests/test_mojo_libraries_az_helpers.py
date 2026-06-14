@@ -27,7 +27,19 @@ def test_native_mojo_build_helper_uses_object_then_runtime_link() -> None:
     assert "libKGENCompilerRTShared" in helper_text or "-lKGENCompilerRTShared" in helper_text
     assert "libAsyncRTRuntimeGlobals" in helper_text or "-lAsyncRTRuntimeGlobals" in helper_text
     assert "libAsyncRTMojoBindings" in helper_text or "-lAsyncRTMojoBindings" in helper_text
-    assert 'PIXI_BIN}" run python' in helper_text
+    assert 'ENV_BIN_DIR="${PIXI_ENV_DIR}/.pixi/envs/default/bin"' in helper_text
+    assert 'PYTHON_BIN="${ENV_BIN_DIR}/python"' in helper_text
+    assert 'DISPATCH_OUTPUT_PATH="${DISPATCH_OUTPUT_PATH:-' in helper_text
+    assert 'ENGINE_INCLUDE_DIR="${ENGINE_INCLUDE_DIR:-' in helper_text
+    assert 'MOJO_RUNTIME_MODULE_FILTER_RAW="${MOJO_RUNTIME_MODULE_FILTER:-}"' in helper_text
+    assert 'export PIXI_HOME="${PIXI_HOME_DIR}"' in helper_text
+    assert 'export RATTLER_CACHE_DIR="${RATTLER_CACHE_DIR_VALUE}"' in helper_text
+    assert 'export RATTLER_AUTH_FILE="${RATTLER_AUTH_FILE_VALUE}"' in helper_text
+    assert 'PIXI_BIN_RESOLVED' in helper_text
+    assert 'DISPATCH_GENERATOR_ARGS=(--output "${DISPATCH_OUTPUT_PATH}")' in helper_text
+    assert 'DISPATCH_GENERATOR_ARGS+=(--modules "${MODULE_FILTER[@]}")' in helper_text
+    assert '"${PIXI_BIN_RESOLVED}" run mojo build' in helper_text
+    assert '-I "${ENGINE_INCLUDE_DIR}"' in helper_text
     assert 'PYTHON_RUNTIME_STEM' in helper_text
     assert '-l"${PYTHON_RUNTIME_STEM}"' in helper_text
 

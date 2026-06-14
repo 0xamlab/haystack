@@ -2,27 +2,66 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BUILD_DIR="${REPO_ROOT}/mojo_build"
-MOJO_SRC="${REPO_ROOT}/mojo/engine/main.mojo"
+DEFAULT_BUILD_DIR="${REPO_ROOT}/mojo_build"
+MOJO_SRC="${MOJO_SRC:-${REPO_ROOT}/mojo/engine/main.mojo}"
 DISPATCH_GENERATOR="${REPO_ROOT}/scripts/generate_runtime_library_dispatch.py"
+DISPATCH_OUTPUT_PATH="${DISPATCH_OUTPUT_PATH:-${REPO_ROOT}/mojo/engine/runtime_library_dispatch_generated.mojo}"
 PIXI_ENV_DIR="${REPO_ROOT}/mojo_env"
+ENV_BIN_DIR="${PIXI_ENV_DIR}/.pixi/envs/default/bin"
 LIB_DIR="${PIXI_ENV_DIR}/.pixi/envs/default/lib"
-OBJECT_PATH="${BUILD_DIR}/simulate.o"
-BINARY_PATH="${BUILD_DIR}/simulate"
-TEMP_OBJECT_PATH="${BUILD_DIR}/simulate.o.tmp"
-TEMP_BINARY_PATH="${BUILD_DIR}/simulate.tmp"
+ENGINE_INCLUDE_DIR="${ENGINE_INCLUDE_DIR:-${REPO_ROOT}/mojo/engine}"
+PYTHON_BIN="${ENV_BIN_DIR}/python"
+BINARY_PATH="${BINARY_PATH:-${DEFAULT_BUILD_DIR}/simulate}"
+OBJECT_PATH="${OBJECT_PATH:-${DEFAULT_BUILD_DIR}/simulate.o}"
+TEMP_OBJECT_PATH="${TEMP_OBJECT_PATH:-${DEFAULT_BUILD_DIR}/simulate.o.tmp}"
+TEMP_BINARY_PATH="${TEMP_BINARY_PATH:-${DEFAULT_BUILD_DIR}/simulate.tmp}"
+BUILD_DIR="$(dirname "${BINARY_PATH}")"
+MOJO_RUNTIME_MODULE_FILTER_RAW="${MOJO_RUNTIME_MODULE_FILTER:-}"
 
-PIXI_BIN="${PIXI_BIN:-}"
-if [[ -z "${PIXI_BIN}" ]]; then
-    PIXI_BIN="$(command -v pixi 2>/dev/null || true)"
+PIXI_HOME_EXPLICIT=0
+if [[ -n "${PIXI_HOME:-}" ]]; then
+    PIXI_HOME_EXPLICIT=1
 fi
-if [[ -z "${PIXI_BIN}" && -x "${REPO_ROOT}/.pixi/bin/pixi" ]]; then
-    PIXI_BIN="${REPO_ROOT}/.pixi/bin/pixi"
-fi
-if [[ -z "${PIXI_BIN}" || ! -x "${PIXI_BIN}" ]]; then
-    echo "pixi not found. Run: make setup-mojo" >&2
-    exit 1
-fi
+
+PIXI_HOME_DIR="${PIXI_HOME:-${REPO_ROOT}/.pixi}"
+case "${PIXI_HOME_DIR}" in
+    '~' | '~'/*) PIXI_HOME_DIR="${HOME-}${PIXI_HOME_DIR#\~}" ;;
+esac
+
+RATTLER_CACHE_DIR_VALUE="${RATTLER_CACHE_DIR:-${REPO_ROOT}/.cache/rattler/cache}"
+RATTLER_AUTH_FILE_VALUE="${RATTLER_AUTH_FILE:-${REPO_ROOT}/.cache/rattler/credentials.json}"
+export PIXI_HOME="${PIXI_HOME_DIR}"
+export RATTLER_CACHE_DIR="${RATTLER_CACHE_DIR_VALUE}"
+export RATTLER_AUTH_FILE="${RATTLER_AUTH_FILE_VALUE}"
+
+mkdir -p "${PIXI_HOME}" "${RATTLER_CACHE_DIR}" "$(dirname "${RATTLER_AUTH_FILE}")"
+
+resolve_pixi_bin() {
+    local candidates=()
+    local candidate
+
+    if [[ -n "${PIXI_BIN:-}" ]]; then
+        candidates+=("${PIXI_BIN}")
+    fi
+    if [[ "${PIXI_HOME_EXPLICIT}" == "1" ]]; then
+        candidates+=("${PIXI_HOME}/bin/pixi")
+    fi
+    if command -v pixi >/dev/null 2>&1; then
+        candidates+=("$(command -v pixi)")
+    fi
+    if [[ "${PIXI_HOME_EXPLICIT}" == "0" ]]; then
+        candidates+=("${PIXI_HOME}/bin/pixi")
+    fi
+
+    for candidate in "${candidates[@]}"; do
+        if [[ -n "${candidate}" && -x "${candidate}" ]]; then
+            printf '%s\n' "${candidate}"
+            return 0
+        fi
+    done
+
+    return 1
+}
 
 if [[ ! -f "${MOJO_SRC}" ]]; then
     echo "Mojo entrypoint not found at ${MOJO_SRC}" >&2
@@ -31,6 +70,11 @@ fi
 
 if [[ ! -f "${DISPATCH_GENERATOR}" ]]; then
     echo "Runtime library dispatch generator not found at ${DISPATCH_GENERATOR}" >&2
+    exit 1
+fi
+
+if [[ ! -d "${ENGINE_INCLUDE_DIR}" ]]; then
+    echo "Mojo engine include directory not found at ${ENGINE_INCLUDE_DIR}" >&2
     exit 1
 fi
 
@@ -44,15 +88,29 @@ if [[ ! -d "${LIB_DIR}" ]]; then
     exit 1
 fi
 
-PYTHON_RUNTIME_STEM="$(
-    (
-        cd "${PIXI_ENV_DIR}"
-        "${PIXI_BIN}" run python - <<'PY'
+PIXI_BIN_RESOLVED="$(resolve_pixi_bin || true)"
+if [[ -z "${PIXI_BIN_RESOLVED}" || ! -x "${PIXI_BIN_RESOLVED}" ]]; then
+    echo "pixi not found. Run: make setup-mojo" >&2
+    exit 1
+fi
+
+if [[ -x "${PYTHON_BIN}" ]]; then
+    PYTHON_RUNTIME_STEM="$("${PYTHON_BIN}" - <<'PY'
 import sys
 print(f"python{sys.version_info.major}.{sys.version_info.minor}")
 PY
-    )
 )"
+else
+    PYTHON_RUNTIME_STEM="$(
+        (
+            cd "${PIXI_ENV_DIR}"
+            "${PIXI_BIN_RESOLVED}" run python - <<'PY'
+import sys
+print(f"python{sys.version_info.major}.{sys.version_info.minor}")
+PY
+        )
+    )"
+fi
 if [[ -z "${PYTHON_RUNTIME_STEM}" ]]; then
     echo "Failed to detect the Python runtime version from ${PIXI_ENV_DIR}" >&2
     exit 1
@@ -72,14 +130,40 @@ if [[ -z "${SDKROOT_PATH}" ]]; then
     SDKROOT_PATH="$(xcrun --show-sdk-path 2>/dev/null || true)"
 fi
 
-mkdir -p "${BUILD_DIR}"
+mkdir -p \
+    "${BUILD_DIR}" \
+    "$(dirname "${OBJECT_PATH}")" \
+    "$(dirname "${TEMP_OBJECT_PATH}")" \
+    "$(dirname "${TEMP_BINARY_PATH}")" \
+    "$(dirname "${DISPATCH_OUTPUT_PATH}")"
 rm -f "${TEMP_OBJECT_PATH}" "${TEMP_BINARY_PATH}"
 
-python3 "${DISPATCH_GENERATOR}" >/dev/null
+DISPATCH_GENERATOR_ARGS=(--output "${DISPATCH_OUTPUT_PATH}")
+if [[ -n "${MOJO_RUNTIME_MODULE_FILTER_RAW}" ]]; then
+    IFS=',' read -r -a RAW_MODULE_FILTER <<< "${MOJO_RUNTIME_MODULE_FILTER_RAW}"
+    MODULE_FILTER=()
+    for module_name in "${RAW_MODULE_FILTER[@]}"; do
+        module_name="${module_name//[[:space:]]/}"
+        if [[ -n "${module_name}" ]]; then
+            MODULE_FILTER+=("${module_name}")
+        fi
+    done
+    if [[ "${#MODULE_FILTER[@]}" -gt 0 ]]; then
+        DISPATCH_GENERATOR_ARGS+=(--modules "${MODULE_FILTER[@]}")
+    fi
+fi
 
+python3 "${DISPATCH_GENERATOR}" "${DISPATCH_GENERATOR_ARGS[@]}" >/dev/null
+
+# Mojo compile must run inside the pixi-managed environment so std/package
+# roots resolve exactly as they do for runtime-owned test and server invocations.
 (
     cd "${PIXI_ENV_DIR}"
-    "${PIXI_BIN}" run mojo build "${MOJO_SRC}" --emit object -o "${TEMP_OBJECT_PATH}"
+    "${PIXI_BIN_RESOLVED}" run mojo build \
+        -I "${ENGINE_INCLUDE_DIR}" \
+        "${MOJO_SRC}" \
+        --emit object \
+        -o "${TEMP_OBJECT_PATH}"
 )
 
 RPATH_RELATIVE='@executable_path/../mojo_env/.pixi/envs/default/lib'

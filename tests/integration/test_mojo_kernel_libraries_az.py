@@ -24,6 +24,7 @@ import json
 import math
 import os
 import re
+import shutil
 import socket
 import struct
 import subprocess
@@ -39,11 +40,16 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 mojo_inventory = importlib.import_module("apps.runtime.mojo_inventory")
+mojo_binary_freshness = importlib.import_module("apps.runtime.mojo_binary_freshness")
 mojo_runner = importlib.import_module("apps.runtime.mojo_library_runner")
 mojo_test_gen = importlib.import_module("tests.generate_mojo_tests")
 
 MOJO_BINARY = PROJECT_ROOT / "mojo_build" / "simulate"
+BUILD_SCRIPT = PROJECT_ROOT / "scripts" / "build_mojo_binary.sh"
+MAIN_SOURCE = PROJECT_ROOT / "mojo" / "engine" / "main.mojo"
+ENGINE_DIR = PROJECT_ROOT / "mojo" / "engine"
 TIMEOUT_SECONDS = float(os.environ.get("DE_KERNEL_MOJO_TIMEOUT", "10"))
+BUILD_TIMEOUT_SECONDS = float(os.environ.get("DE_KERNEL_MOJO_BUILD_TIMEOUT", "300"))
 MODULE_FILTER = tuple(
     item.strip() for item in os.environ.get("DE_KERNEL_MOJO_MODULES", "").split(",") if item.strip()
 )
@@ -642,23 +648,86 @@ class MojoKernelServer:
         self._tmpdir = Path(tempfile.mkdtemp(prefix="algenta-kernel-az-"))
         self._socket_path = self._tmpdir / "kernel.sock"
         self._log_path = self._tmpdir / "kernel.log"
+        self._build_log_path = self._tmpdir / "build.log"
         self._proc: subprocess.Popen[str] | None = None
+        self._binary_path = MOJO_BINARY
 
     @property
     def socket_path(self) -> Path:
         return self._socket_path
 
+    @property
+    def binary_path(self) -> Path:
+        return self._binary_path
+
+    def _build_filtered_binary(self) -> Path:
+        temp_main = self._tmpdir / "main.mojo"
+        temp_dispatch = self._tmpdir / "runtime_library_dispatch_generated.mojo"
+        temp_object = self._tmpdir / "simulate.o"
+        temp_binary = self._tmpdir / "simulate"
+        temp_object_tmp = self._tmpdir / "simulate.o.tmp"
+        temp_binary_tmp = self._tmpdir / "simulate.tmp"
+
+        temp_main.write_text(MAIN_SOURCE.read_text(encoding="utf-8"), encoding="utf-8")
+        build_env = {
+            **os.environ,
+            "MOJO_SRC": str(temp_main),
+            "DISPATCH_OUTPUT_PATH": str(temp_dispatch),
+            "ENGINE_INCLUDE_DIR": str(ENGINE_DIR),
+            "OBJECT_PATH": str(temp_object),
+            "BINARY_PATH": str(temp_binary),
+            "TEMP_OBJECT_PATH": str(temp_object_tmp),
+            "TEMP_BINARY_PATH": str(temp_binary_tmp),
+            "MOJO_RUNTIME_MODULE_FILTER": ",".join(MODULE_FILTER),
+        }
+        try:
+            result = subprocess.run(  # noqa: S603
+                ["bash", str(BUILD_SCRIPT)],
+                cwd=str(PROJECT_ROOT),
+                capture_output=True,
+                text=True,
+                timeout=BUILD_TIMEOUT_SECONDS,
+                env=build_env,
+                check=False,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise TimeoutError(
+                "Timed out building filtered Mojo kernel binary for modules "
+                f"{', '.join(MODULE_FILTER)} after {BUILD_TIMEOUT_SECONDS:.0f}s."
+            ) from exc
+
+        build_output = (result.stdout or "") + (result.stderr or "")
+        self._build_log_path.write_text(build_output, encoding="utf-8")
+        if result.returncode != 0:
+            raise RuntimeError(
+                "Filtered Mojo kernel build failed.\n"
+                + self._read_tail(self._build_log_path, label="build log")
+            )
+        if not temp_binary.exists():
+            raise RuntimeError(
+                "Filtered Mojo kernel build reported success but did not produce a binary.\n"
+                + self._read_tail(self._build_log_path, label="build log")
+            )
+        return temp_binary
+
     def start(self) -> None:
-        if not MOJO_BINARY.exists():
+        freshness = mojo_binary_freshness.inspect_mojo_binary_freshness(MOJO_BINARY)
+        if freshness.exists and freshness.is_fresh:
+            self._binary_path = MOJO_BINARY
+        elif MODULE_FILTER:
+            self._binary_path = self._build_filtered_binary()
+        elif not freshness.exists:
             raise RuntimeError(
                 f"Compiled Mojo kernel binary not found at {MOJO_BINARY}. "
                 "Build it before running the kernel A-Z suite."
             )
+        else:
+            raise RuntimeError(freshness.failure_message())
         if self._socket_path.exists():
             self._socket_path.unlink()
         log_handle = self._log_path.open("w", encoding="utf-8")
         self._proc = subprocess.Popen(  # noqa: S603
-            [str(MOJO_BINARY), "--server", str(self._socket_path)],
+            [str(self._binary_path), "--server", str(self._socket_path)],
             stdout=log_handle,
             stderr=subprocess.STDOUT,
             text=True,
@@ -694,14 +763,7 @@ class MojoKernelServer:
 
     def close(self) -> None:
         self.stop()
-        try:
-            self._log_path.unlink(missing_ok=True)
-        except OSError:
-            pass
-        try:
-            self._tmpdir.rmdir()
-        except OSError:
-            pass
+        shutil.rmtree(self._tmpdir, ignore_errors=True)
 
     def call(self, payload: dict[str, object]) -> dict[str, object]:
         if self._proc is None or self._proc.poll() is not None:
@@ -718,11 +780,14 @@ class MojoKernelServer:
         return self._proc is not None and self._proc.poll() is None
 
     def _read_log_tail(self) -> str:
-        if not self._log_path.exists():
-            return "(no kernel log output)"
-        lines = self._log_path.read_text(encoding="utf-8", errors="replace").splitlines()
+        return self._read_tail(self._log_path, label="kernel log")
+
+    def _read_tail(self, path: Path, *, label: str) -> str:
+        if not path.exists():
+            return f"(no {label} output)"
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
         tail = "\n".join(lines[-20:])
-        return tail or "(no kernel log output)"
+        return tail or f"(no {label} output)"
 
 
 def _execute_kernel_target(
@@ -808,6 +873,7 @@ def main() -> int:
     failures: list[KernelCallResult] = []
     server = MojoKernelServer()
     server.start()
+    print(f"  Runtime:    {server.binary_path}")
     try:
         for module_name in sorted(by_module):
             module_targets = by_module[module_name]

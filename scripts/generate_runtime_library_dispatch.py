@@ -11,7 +11,11 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 if TYPE_CHECKING:
-    from apps.runtime.mojo_inventory import RuntimeFunctionSpec, RuntimeLibraryModule, RuntimeStructSpec
+    from apps.runtime.mojo_inventory import (
+        RuntimeFunctionSpec,
+        RuntimeLibraryModule,
+        RuntimeStructSpec,
+    )
 
 TARGET = ROOT / "mojo" / "engine" / "runtime_library_dispatch_generated.mojo"
 INDENT = " " * 4
@@ -640,6 +644,9 @@ def render_dispatch_source(modules: tuple[RuntimeLibraryModule, ...]) -> str:
 
     def register_value_type(type_name: str, collected: set[str]) -> None:
         _register_type(type_name, collected)
+        if _is_list_type(type_name):
+            register_value_type(_list_inner_type(type_name), collected)
+            return
         if type_name in struct_specs:
             for field in struct_specs[type_name].fields:
                 register_value_type(field.typ, collected)
@@ -803,8 +810,27 @@ def main() -> None:
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, default=TARGET)
+    parser.add_argument(
+        "--modules",
+        nargs="*",
+        default=(),
+        help="Optional runtime-library import paths to include in the generated dispatch.",
+    )
     args = parser.parse_args()
     modules = discover_runtime_library_modules(executable_only=True)
+    if args.modules:
+        available_modules = {module.import_path: module for module in modules}
+        missing_modules = [
+            module_name
+            for module_name in args.modules
+            if module_name not in available_modules
+        ]
+        if missing_modules:
+            raise SystemExit(
+                "Unknown runtime-library modules requested for dispatch generation: "
+                + ", ".join(sorted(missing_modules))
+            )
+        modules = tuple(available_modules[module_name] for module_name in args.modules)
     rendered = render_dispatch_source(modules)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(rendered, encoding="utf-8")

@@ -33,6 +33,8 @@ from pathlib import Path
 
 import structlog
 
+from apps.runtime.mojo_binary_freshness import inspect_mojo_binary_freshness
+
 logger = structlog.get_logger(__name__)
 
 # ── Path config ───────────────────────────────────────────────────────────────
@@ -117,8 +119,8 @@ def _wait_for_detached_daemon_ready(timeout_seconds: float = 10.0) -> bool:
 
 
 def _validate_daemon_startup_prerequisites() -> None:
-    from apps.runtime.license import load_license
     from apps.privacy_policy import policy_from_environment
+    from apps.runtime.license import load_license
 
     privacy_policy = policy_from_environment()
     if not privacy_policy.require_local_license:
@@ -146,8 +148,9 @@ class MojoProcess:
         self._proc: subprocess.Popen | None = None  # type: ignore[type-arg]
 
     def start(self) -> bool:
-        """Start the Mojo binary. Returns True if started, False if binary not found."""
-        if not _MOJO_BINARY.exists():
+        """Start the Mojo binary. Returns False only when the binary is absent."""
+        freshness = inspect_mojo_binary_freshness(_MOJO_BINARY)
+        if not freshness.exists:
             logger.warning(
                 "mojo_binary_not_found",
                 path=str(_MOJO_BINARY),
@@ -157,6 +160,8 @@ class MojoProcess:
                 ),
             )
             return False
+        if not freshness.is_fresh:
+            raise RuntimeError(freshness.failure_message())
 
         # Ensure socket directory exists
         Path(_MOJO_SOCK).parent.mkdir(parents=True, exist_ok=True)
