@@ -44,7 +44,7 @@ jobs:
       # supported by Dragonfly, so REDIS_URL points here unchanged. No health-cmd (the image has no
       # redis-cli); the "Wait for integration services" step polls it with a Redis PING.
       dragonfly:
-        image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
+        image: docker.dragonflydb.io/dragonflydb/dragonfly:v1.39.0
         ports:
           - 6379:6379
         options: >-
@@ -120,7 +120,7 @@ jobs:
         run: |
           docker run -d --name minio -p 9000:9000 \
             -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin \
-            minio/minio:latest server /data
+            minio/minio:RELEASE.2025-04-22T22-12-26Z server /data
           ./scripts/run_repo_python.sh scripts/ci_wait_for_services.py
 
       - name: Run repo check graph

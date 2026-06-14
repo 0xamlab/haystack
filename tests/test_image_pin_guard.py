@@ -9,6 +9,12 @@ drifting deployments. This scans the user-facing self-host surface and fails on 
   * the self-host docs (``apps/docs/docs/self-hosting.md`` + ``operations*/``)
   * the operator-runnable self-host scripts (``scripts/self_host_*.sh``)
 
+Also gated (added Wave 2 cleanup): the CI workflow's service images (``.github/workflows/ci.yml`` —
+Postgres / Dragonfly / MinIO) must be pinned so CI is reproducible and can't silently drift on a
+``:latest`` push; and the hosted-provisioning engine-image DEFAULT (``config.py``
+``algenta_engine_image``) must not float (it would silently drift the deployed engine once
+provisioning is wired).
+
 Out of scope by design: ``infra/docker/docker-compose.yml`` is the LOCAL-DEV compose — it builds the
 api/worker images locally (no registry pull) and is a developer convenience, not a shipped self-host
 artifact; its remaining infra ``:latest`` pulls (minio/mc/sidecar) are intentionally not gated here.
@@ -34,6 +40,8 @@ _SELFHOSTED = _DOCKER_DIR / "docker-compose.selfhosted.yml"
 _REPLICAS = _DOCKER_DIR / "docker-compose.replicas.yml"
 _DOCS_DIR = _ROOT / "apps" / "docs" / "docs"
 _SCRIPTS_DIR = _ROOT / "scripts"
+_CI_WORKFLOW = _ROOT / ".github" / "workflows" / "ci.yml"
+_CONFIG = _ROOT / "apps" / "api_server" / "config.py"
 
 # The one tolerated floating tag — the blocked codna sidecar override default (see module docstring).
 _SIDECAR_OVERRIDE = "${ALGENTA_SIDECAR_IMAGE:-ghcr.io/escrypto-labs/codna/sidecar:latest}"
@@ -122,6 +130,32 @@ def test_install_script_pins_the_image_tag() -> None:
     assert "git-${" in install, "install.sh must resolve a pinned git-sha image tag"
     assert "ALGENTA_IMAGE_TAG=" in install, "install.sh must write the pinned tag into .env"
     assert not _violations(install), "install.sh must not reference a floating tag"
+
+
+def test_ci_service_images_are_pinned() -> None:
+    # CI service containers + `docker run` images must be pinned (reproducible CI; no surprise
+    # :latest drift). Scans non-comment lines for a floating :latest tag — `runs-on: ubuntu-latest`
+    # and `uses: actions/x@vN` carry no `:latest` so they don't trip _LATEST_TAG.
+    assert _CI_WORKFLOW.exists(), f"guard target missing: {_CI_WORKFLOW}"
+    hits = [
+        f"{lineno}: {line.strip()}"
+        for lineno, line in enumerate(_CI_WORKFLOW.read_text(encoding="utf-8").splitlines(), start=1)
+        if not line.lstrip().startswith("#") and _LATEST_TAG.search(line)
+    ]
+    assert not hits, "CI service images must be pinned (never :latest):\n  " + "\n  ".join(hits)
+
+
+def test_provisioning_engine_image_default_is_pinned() -> None:
+    # The hosted-provisioning engine-image default must not float: empty (must-configure) or a pinned
+    # tag/@sha256 — never :latest (which would silently drift the deployed engine once provisioning
+    # is wired). config.py is not a shipped self-host artifact, so it lives in its own check.
+    text = _CONFIG.read_text(encoding="utf-8")
+    m = re.search(r'algenta_engine_image\s*:\s*str\s*=\s*Field\(\s*default="([^"]*)"', text)
+    assert m, "could not locate the algenta_engine_image default in config.py"
+    default = m.group(1)
+    assert not _LATEST_TAG.search(default) and not _BARE_BASE.search(default), (
+        f"algenta_engine_image default must not be a floating tag: {default!r}"
+    )
 
 
 def test_sidecar_exception_is_present_and_unique() -> None:

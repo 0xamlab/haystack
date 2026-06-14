@@ -263,8 +263,12 @@ class Settings(BaseSettings):
 
     # Provisioning
     algenta_engine_image: str = Field(
-        default="ghcr.io/algenta/decision-engine/api:latest",
-        description="Docker image to deploy on all cloud providers",
+        default="",
+        description=(
+            "Docker image to deploy on all cloud providers. MUST be a pinned tag or @sha256 digest "
+            "(e.g. .../api:git-<sha>); never a floating :latest. Empty = unconfigured (provisioning "
+            "supplies a pinned ref). Default no longer floats — enforced by test_image_pin_guard."
+        ),
     )
     deployment_base_domain: str = Field(
         default="deploy.algenta.ai",
