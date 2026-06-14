@@ -13,6 +13,7 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api_server.config import get_settings as _get_settings
@@ -20,6 +21,7 @@ from apps.api_server.db.session import get_db
 from apps.api_server.middleware.auth import get_current_org
 from apps.api_server.middleware.rbac import require_role
 from apps.api_server.models.organization import Organization, OrgPlan
+from apps.api_server.models.stripe_webhook_event import StripeWebhookEvent
 from apps.api_server.models.user import User
 from apps.api_server.services.auth_service import AuthContext
 from apps.api_server.services.egress_guard import audit_context_from_auth
@@ -136,11 +138,51 @@ async def stripe_webhook(
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature", "")
 
-    event = verify_stripe_webhook(payload, sig_header)
+    event = verify_stripe_webhook(payload, sig_header)  # raises 400 on a bad signature
+    event_id = event.get("id")
+    event_type = event.get("type", "")
+    logger.info("stripe_webhook_received", event_type=event_type, event_id=event_id)
+
+    # Exactly-once: record the event id first. Stripe delivers at-least-once and retries, so a
+    # duplicate delivery conflicts on the PK and is acknowledged WITHOUT reprocessing the state
+    # transition (which would e.g. double-apply a plan change or usage reset).
+    if event_id:
+        db.add(StripeWebhookEvent(event_id=str(event_id), event_type=event_type))
+        try:
+            await db.flush()
+        except IntegrityError:
+            await db.rollback()
+            logger.info("stripe_webhook_duplicate_ignored", event_id=event_id)
+            return JSONResponse(content={"received": True, "duplicate": True})
+
+    # Process + commit atomically with the event-id record. On ANY failure, roll back and return 5xx
+    # so Stripe retries — and because the event-id record is rolled back too, the retry reprocesses.
+    try:
+        await _process_stripe_event(db, event)
+        await db.commit()
+    except Exception as exc:  # noqa: BLE001 — any processing/DB error must trigger a Stripe retry
+        await db.rollback()
+        logger.error("stripe_webhook_processing_failed", event_id=event_id, error=str(exc))
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": {
+                    "code": "webhook_processing_failed",
+                    "message": "Stripe webhook processing failed; Stripe will retry.",
+                }
+            },
+        )
+    return JSONResponse(content={"received": True})
+
+
+async def _process_stripe_event(db: AsyncSession, event: dict[str, Any]) -> None:
+    """Apply the billing state change for a verified Stripe event.
+
+    Raises on DB failure (the caller rolls back + returns 5xx so Stripe retries). Does NOT commit —
+    the caller commits atomically with the exactly-once event-id ledger row.
+    """
     event_type = event.get("type", "")
     obj = event.get("data", {}).get("object", {})
-
-    logger.info("stripe_webhook_received", event_type=event_type, event_id=event.get("id"))
 
     # ── Checkout completed ────────────────────────────────────────────────────
     if event_type == "checkout.session.completed":
@@ -244,9 +286,6 @@ async def stripe_webhook(
             )
             # Keep current month's records; the new period will start fresh
             logger.info("invoice_paid_usage_reset_noted", org_id=str(org.id), period=prev_period)
-
-    await db.commit()
-    return JSONResponse(content={"received": True})
 
 
 def _plan_from_subscription(sub_obj: dict[str, Any]) -> str:

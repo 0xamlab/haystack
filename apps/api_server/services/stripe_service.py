@@ -67,6 +67,49 @@ class _PlanPriceIdMapping(Mapping[str, str | None]):
 
 PLAN_PRICE_IDS: Mapping[str, str | None] = _PlanPriceIdMapping()
 
+def _is_placeholder(value: str | None) -> bool:
+    """A Stripe config value is a placeholder (= unconfigured) if it is empty or contains the words
+    used in the shipped config defaults and CI fixtures ('replace', 'placeholder') — e.g.
+    sk_test_replace_me, whsec_replace_me, sk_test_placeholder, whsec_placeholder. A real test- or
+    live-mode key/secret (sk_test_<id> / sk_live_<id> / whsec_<id>) contains neither."""
+    if not value:
+        return True
+    low = value.lower()
+    return "replace" in low or "placeholder" in low
+
+
+def billing_configured(current_settings: object | None = None) -> bool:
+    """True when a real Stripe secret key is set (the operator intends to run paid billing)."""
+    s = current_settings or get_settings()
+    return not _is_placeholder(getattr(s, "stripe_secret_key", ""))
+
+
+def validate_billing_configuration(current_settings: object | None = None) -> None:
+    """Fail-closed startup check: if billing is configured (a real STRIPE_SECRET_KEY), the webhook
+    secret and price IDs must ALSO be real, not placeholders. A half-configured billing setup (real
+    key, placeholder webhook/prices) silently mis-handles checkout + webhooks — refuse to start.
+
+    A placeholder secret key means billing is off (free-tier-only deploy) → no validation.
+    """
+    s = current_settings or get_settings()
+    if not billing_configured(s):
+        return
+    missing = [
+        env
+        for attr, env in (
+            ("stripe_webhook_secret", "STRIPE_WEBHOOK_SECRET"),
+            ("stripe_price_developer", "STRIPE_PRICE_DEVELOPER"),
+            ("stripe_price_pro", "STRIPE_PRICE_PRO"),
+        )
+        if _is_placeholder(getattr(s, attr, ""))
+    ]
+    if missing:
+        raise RuntimeError(
+            "Stripe billing is partially configured (STRIPE_SECRET_KEY is set) but these are still "
+            "placeholders: " + ", ".join(missing) + ". Set them, or unset STRIPE_SECRET_KEY to run "
+            "free-tier-only."
+        )
+
 
 def _stripe_headers() -> dict[str, str]:
     return {

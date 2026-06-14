@@ -130,6 +130,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     privacy_policy = config.privacy_policy
     validate_openapi_surface_configuration()
     validate_public_url_configuration(config)
+    # Fail closed if Stripe billing is half-configured (real secret, placeholder webhook/prices).
+    from apps.api_server.services.stripe_service import validate_billing_configuration
+
+    validate_billing_configuration(config)
     logger.info(
         "starting_up",
         env=config.api_env,
