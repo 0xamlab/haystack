@@ -84,6 +84,8 @@ def _llm_api_http_exception(exc: Exception, request: Request) -> HTTPException:
             status_code = 404
         elif exc.code == "artifact_not_found":
             status_code = 404
+        elif exc.code == "payment_required":  # managed-LLM monthly spend cap reached (D3)
+            status_code = 402
         elif exc.code in {
             "model_capability_unsupported",
             "invalid_embedding_dimensions",

@@ -157,6 +157,13 @@ async def provider_chat_completion(
     timeout_seconds: float | None = None,
     max_output_tokens: int | None = None,
 ) -> Any:
+    # D3 managed-LLM (no-op unless this call resolves to the platform's pooled key): fail closed
+    # before the call if the org is over its monthly managed spend cap, then meter the cost after.
+    from apps.api_server.services import llm_spend_service
+
+    await llm_spend_service.gate_managed_llm_call(
+        backend=config.backend, api_key_env=config.api_key_env
+    )
     data = await _provider_post_json(
         config=config,
         path=_provider_chat_path(config),
@@ -172,7 +179,17 @@ async def provider_chat_completion(
             )
         ),
     )
-    return _parse_provider_chat_completion(config=config, data=data)
+    result = _parse_provider_chat_completion(config=config, data=data)
+    await llm_spend_service.meter_managed_llm_call(
+        backend=config.backend,
+        api_key_env=config.api_key_env,
+        model=config.model_id,
+        prompt_tokens=result.prompt_tokens,
+        completion_tokens=result.completion_tokens,
+        cache_read_tokens=result.cache_read_tokens,
+        cache_write_tokens=result.cache_write_tokens,
+    )
+    return result
 
 
 async def routed_provider_chat_completion(

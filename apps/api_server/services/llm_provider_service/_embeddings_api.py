@@ -158,11 +158,18 @@ async def provider_embeddings(
     dimensions: int,
     timeout_seconds: float | None = None,
 ) -> tuple[list[Any], int]:
+    from apps.api_server.services import llm_spend_service
     from apps.api_server.services.llm_api_service import (
         GeneratedEmbedding,
         LLMAPIError,
         ProviderAttemptRecord,
         ProviderExecutionMetadata,
+    )
+
+    # D3 managed-LLM (no-op unless this call resolves to the platform's pooled key): fail closed
+    # before the call if the org is over its managed spend cap (metered after, by total_tokens).
+    await llm_spend_service.gate_managed_llm_call(
+        backend=config.backend, api_key_env=config.api_key_env
     )
 
     provider = ProviderExecutionMetadata(
@@ -434,6 +441,13 @@ async def provider_embeddings(
                 provider_attempts=selected_attempt,
             )
         )
+    # Embeddings consume input tokens only — meter the managed cost as prompt_tokens.
+    await llm_spend_service.meter_managed_llm_call(
+        backend=config.backend,
+        api_key_env=config.api_key_env,
+        model=config.model_id,
+        prompt_tokens=total_tokens,
+    )
     return generated, total_tokens
 
 

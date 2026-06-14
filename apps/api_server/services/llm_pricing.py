@@ -37,7 +37,10 @@ _MODEL_RATES: tuple[tuple[str, ModelRate], ...] = (
     ("claude-haiku", ModelRate(0.8, 4.0, 0.08, 1.0)),
     ("claude-3-opus", ModelRate(15.0, 75.0, 1.5, 18.75)),
     ("claude-3-5-sonnet", ModelRate(3.0, 15.0, 0.3, 3.75)),
+    ("claude-3-5-haiku", ModelRate(0.8, 4.0, 0.08, 1.0)),
     ("claude-3-haiku", ModelRate(0.25, 1.25, 0.03, 0.3)),
+    ("claude-instant", ModelRate(0.8, 2.4)),
+    ("haiku", ModelRate(0.8, 4.0, 0.08, 1.0)),  # catch-all haiku id (else → conservative fallback)
     # OpenAI
     ("gpt-4o-mini", ModelRate(0.15, 0.6)),
     ("gpt-4.1-mini", ModelRate(0.4, 1.6)),

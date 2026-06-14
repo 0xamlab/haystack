@@ -20,9 +20,10 @@ import structlog
 from sqlalchemy import select
 
 from apps.api_server.db.session import AsyncSessionLocal
+from apps.api_server.models.organization import Organization
 from apps.api_server.models.tenant_provider_key import ENGINE_BACKEND, TenantProviderKey
 from apps.api_server.services.config_crypto import decrypt_secret
-from apps.api_server.services.tenant_keys import OrgKeys
+from apps.api_server.services.tenant_keys import OrgKeys, managed_llm_mode_enabled
 
 logger = structlog.get_logger(__name__)
 
@@ -56,6 +57,7 @@ async def resolve_org_keys(org_id: uuid.UUID) -> OrgKeys:
 
     provider_keys: dict[str, str] = {}
     engine_key: str | None = None
+    org: Organization | None = None
     try:
         async with AsyncSessionLocal() as db:
             rows = (
@@ -63,6 +65,14 @@ async def resolve_org_keys(org_id: uuid.UUID) -> OrgKeys:
                     select(TenantProviderKey).where(TenantProviderKey.org_id == org_id)
                 )
             ).scalars().all()
+            # The org row carries the D3 managed-LLM posture (enabled flag, plan, quota) so the
+            # sync resolver + spend gate can decide without a second DB hit. Nested guard: a failed
+            # org read degrades to no-managed (managed_allowed stays False) WITHOUT dropping the
+            # resolved provider keys — managed is fail-safe-off, BYOK must still work.
+            try:
+                org = await db.get(Organization, org_id)
+            except Exception:
+                logger.debug("tenant_key_store_org_fetch_failed", org_id=str(org_id))
     except Exception:
         # DB error: degrade to empty (env fallback for single-tenant; multi-tenant still fails
         # closed). Isolated to this session, so the caller's request/job transaction is untouched.
@@ -82,6 +92,15 @@ async def resolve_org_keys(org_id: uuid.UUID) -> OrgKeys:
         else:
             provider_keys[row.backend] = secret
 
-    keys = OrgKeys(org_id=org_id, provider_keys=provider_keys, engine_key=engine_key)
+    # Managed pass-through is allowed only in managed mode AND for an org explicitly opted in.
+    managed_allowed = bool(org is not None and org.managed_llm_enabled and managed_llm_mode_enabled())
+    keys = OrgKeys(
+        org_id=org_id,
+        provider_keys=provider_keys,
+        engine_key=engine_key,
+        managed_allowed=managed_allowed,
+        plan=str(org.plan) if org is not None else None,
+        managed_quota_usd_month=int(org.managed_llm_quota_usd_month) if org is not None else 0,
+    )
     _cache[org_id] = (time.monotonic() + _CACHE_TTL_S, keys)
     return keys
