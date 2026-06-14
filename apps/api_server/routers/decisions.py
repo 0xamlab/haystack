@@ -31,7 +31,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api_server.db.session import get_db
-from apps.api_server.middleware.auth import get_current_org, get_redis
+from apps.api_server.middleware.auth import get_current_org, get_redis, require_verified_email
 from apps.api_server.models.decision_log import DecisionLog
 from apps.api_server.schemas.response import DecisionPlan, build_decision_plan
 from apps.api_server.schemas.simulate import SimulateRequest
@@ -48,7 +48,7 @@ from apps.api_server.services.simulation_service import run_simulation_fast
 from apps.runtime_manifest import load_runtime_manifest
 
 logger = structlog.get_logger(__name__)
-router = APIRouter(tags=["Decision Memory"])
+router = APIRouter(tags=["Decision Memory"], dependencies=[Depends(require_verified_email)])
 
 
 @cache

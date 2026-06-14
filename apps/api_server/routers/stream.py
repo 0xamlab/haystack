@@ -34,7 +34,12 @@ import structlog
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 
-from apps.api_server.middleware.auth import AuthContext, get_current_org, get_redis
+from apps.api_server.middleware.auth import (
+    AuthContext,
+    get_current_org,
+    get_redis,
+    require_verified_email,
+)
 from apps.api_server.schemas.simulate import SimulateRequest, SimulateRequestAuto
 from apps.api_server.services.quota_service import check_quota_redis, check_rate_limit
 from apps.api_server.services.simulation_payloads import (
@@ -43,7 +48,7 @@ from apps.api_server.services.simulation_payloads import (
 )
 
 logger = structlog.get_logger(__name__)
-router = APIRouter(tags=["Streaming"])
+router = APIRouter(tags=["Streaming"], dependencies=[Depends(require_verified_email)])
 
 # ── Locate binary ─────────────────────────────────────────────────────────────
 _HERE = os.path.dirname(os.path.abspath(__file__))

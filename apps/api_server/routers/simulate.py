@@ -18,7 +18,7 @@ from fastapi.background import BackgroundTasks
 from fastapi.responses import JSONResponse
 
 from apps.api_server.config import SettingsProxy
-from apps.api_server.middleware.auth import get_current_org, get_redis
+from apps.api_server.middleware.auth import get_current_org, get_redis, require_verified_email
 from apps.api_server.middleware.metrics import record_simulation_error, record_simulation_latency
 from apps.api_server.schemas.response import DecisionEnvelope, build_decision_plan
 from apps.api_server.schemas.simulate import SimulateRequest
@@ -28,7 +28,7 @@ from apps.api_server.services.quota_service import check_quota_redis, check_rate
 from apps.api_server.services.simulation_service import run_simulation_fast
 
 logger = structlog.get_logger(__name__)
-router = APIRouter(tags=["Simulation"])
+router = APIRouter(tags=["Simulation"], dependencies=[Depends(require_verified_email)])
 settings = SettingsProxy()
 
 

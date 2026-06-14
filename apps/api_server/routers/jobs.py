@@ -19,7 +19,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api_server.db.session import AsyncSessionLocal, get_db
-from apps.api_server.middleware.auth import get_current_org
+from apps.api_server.middleware.auth import get_current_org, require_verified_email
 from apps.api_server.models.job import Job, JobStatus
 from apps.api_server.models.simulation_run import (
     ExecutionType,
@@ -54,7 +54,7 @@ from apps.api_server.services.webhook_service import (
 )
 
 logger = structlog.get_logger(__name__)
-router = APIRouter(tags=["Async Jobs"])
+router = APIRouter(tags=["Async Jobs"], dependencies=[Depends(require_verified_email)])
 
 
 class SubmitJobRequest(BaseModel):

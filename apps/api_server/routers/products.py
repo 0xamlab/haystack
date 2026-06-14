@@ -24,7 +24,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api_server.db.session import get_db
-from apps.api_server.middleware.auth import get_current_org, get_redis
+from apps.api_server.middleware.auth import get_current_org, get_redis, require_verified_email
 from apps.api_server.schemas.agent_runs import AgentRunCreateRequest
 from apps.api_server.schemas.products import (
     AgentRunRequest,
@@ -52,7 +52,7 @@ from apps.api_server.services.quota_service import check_quota_redis, check_rate
 from apps.api_server.services.simulation_service import run_simulation_fast
 
 logger = structlog.get_logger(__name__)
-router = APIRouter(tags=["Products"])
+router = APIRouter(tags=["Products"], dependencies=[Depends(require_verified_email)])
 
 __all__ = [
     "AgentRunRequest",

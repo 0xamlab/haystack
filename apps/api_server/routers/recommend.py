@@ -12,7 +12,7 @@ from typing import Any
 import structlog
 from fastapi import APIRouter, Depends, Request
 
-from apps.api_server.middleware.auth import get_current_org
+from apps.api_server.middleware.auth import get_current_org, require_verified_email
 from apps.api_server.schemas.recommend import (
     ActionResult,
     BatchItemResult,
@@ -37,7 +37,7 @@ from apps.api_server.services.auth_service import AuthContext
 from apps.api_server.services.simulation_service import run_simulation_fast
 
 logger = structlog.get_logger(__name__)
-router = APIRouter(tags=["Decision"])
+router = APIRouter(tags=["Decision"], dependencies=[Depends(require_verified_email)])
 
 
 @router.post(

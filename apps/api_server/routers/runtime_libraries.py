@@ -5,7 +5,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
-from apps.api_server.middleware.auth import get_current_org, get_redis
+from apps.api_server.middleware.auth import get_current_org, get_redis, require_verified_email
 from apps.api_server.pagination import paginate_sequence
 from apps.api_server.services.auth_service import AuthContext
 from apps.api_server.services.quota_service import check_rate_limit
@@ -16,7 +16,7 @@ from apps.api_server.services.runtime_library_service import (
 )
 from apps.runtime.mojo_library_runner import MojoLibraryError
 
-router = APIRouter(tags=["Runtime Libraries"])
+router = APIRouter(tags=["Runtime Libraries"], dependencies=[Depends(require_verified_email)])
 
 
 class RuntimeLibraryModuleResponse(BaseModel):

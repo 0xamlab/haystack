@@ -18,6 +18,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api_server.config import SettingsProxy
 from apps.api_server.db.session import get_db
+from apps.api_server.middleware.auth import get_redis
+from apps.api_server.services.auth_service import invalidate_user_api_key_caches
 from apps.api_server.schemas.auth import (
     ForgotPasswordRequest,
     LoginRequest,
@@ -120,6 +122,7 @@ async def login(
 async def verify_email(
     token: str = Query(..., description="Verification token from email"),
     db: AsyncSession = Depends(get_db),
+    redis: object = Depends(get_redis),
 ) -> dict[str, str]:
     """Verify a user's email address. Token sent on signup."""
     from apps.api_server.models.user import User
@@ -168,6 +171,9 @@ async def verify_email(
 
     user.email_verified = True
     await db.commit()
+    # Bust cached AuthContexts so the agentic gate (require_verified_email) lets the user in
+    # immediately instead of after the auth cache TTL.
+    await invalidate_user_api_key_caches(db, user.id, redis)
 
     logger.info("email_verified", user_id=str(user.id))
     return {"message": "Email verified successfully. You can now use the API."}

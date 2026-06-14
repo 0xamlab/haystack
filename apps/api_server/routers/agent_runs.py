@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 
 from apps.api_server.db.session import get_db
-from apps.api_server.middleware.auth import get_current_org, get_redis
+from apps.api_server.middleware.auth import get_current_org, get_redis, require_verified_email
 from apps.api_server.schemas.agent_runs import (
     AgentRunCheckpointsResponse,
     AgentRunCheckpointListResponse,
@@ -48,7 +48,7 @@ from apps.api_server.services.auth_service import AuthContext
 from apps.api_server.services.audit_service import get_client_ip, write_audit_event
 from apps.api_server.services.quota_service import check_quota_redis, check_rate_limit
 
-router = APIRouter(tags=["Agent Runtime"])
+router = APIRouter(tags=["Agent Runtime"], dependencies=[Depends(require_verified_email)])
 
 
 def _sse_data(payload: object) -> str:

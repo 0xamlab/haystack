@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from apps.api_server.db.session import AsyncSessionDep
-from apps.api_server.middleware.auth import get_current_org
+from apps.api_server.middleware.auth import get_current_org, require_verified_email
 from apps.api_server.middleware.rbac import forbid_service_key
 from apps.api_server.middleware.tenant_key_binding import bind_tenant_keys
 from apps.api_server.schemas.repositories import (
@@ -56,7 +56,10 @@ logger = structlog.get_logger(__name__)
 
 # B10 PR11: bind the authenticated org's per-tenant keys for every (sync, in-request) handler in
 # this router; async runs set the override in the worker from job.org_id instead.
-router = APIRouter(tags=["Repository Intelligence"], dependencies=[Depends(bind_tenant_keys)])
+router = APIRouter(
+    tags=["Repository Intelligence"],
+    dependencies=[Depends(require_verified_email), Depends(bind_tenant_keys)],
+)
 
 
 def _repository_http_exception(exc: RepositoryIntelligenceError, request: Request) -> HTTPException:

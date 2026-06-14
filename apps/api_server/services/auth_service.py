@@ -39,6 +39,12 @@ class AuthContext(TypedDict):
     # The active workspace scope for this request (set by get_current_org from the
     # X-Workspace-Id header for platform keys only). None = org-wide.
     workspace_id: uuid.UUID | None
+    # Account-status + email-verification gates (Wave 2). Carried on the AuthContext so
+    # get_current_org can enforce suspension on EVERY request (both the DB and the Redis-cache
+    # path) and require_verified_email can gate agentic/expensive endpoints.
+    org_status: str  # OrgStatus value: active | suspended | deleted
+    user_status: str  # UserStatus value: active | suspended (… "active" when no linked user)
+    email_verified: bool  # linked user's email_verified; True when no user is linked (key-only/service)
 
 
 class _AsyncRedisHashClientProtocol(Protocol):
@@ -186,6 +192,12 @@ async def verify_api_key(
                                 is_platform=cached.get(b"is_platform", b"").decode() == "1",
                                 is_service=cached.get(b"is_service", b"").decode() == "1",
                                 workspace_id=None,
+                                # Default missing fields (entries cached before Wave 2) to the
+                                # permissive value so a stale cache never locks out a live session;
+                                # the DB path writes the real values on the next cache miss (≤TTL).
+                                org_status=cached.get(b"org_status", b"active").decode(),
+                                user_status=cached.get(b"user_status", b"active").decode(),
+                                email_verified=cached.get(b"email_verified", b"1").decode() != "0",
                             )
                         return None
         except Exception as exc:
@@ -215,6 +227,7 @@ async def verify_api_key(
         if org is None:
             return None
         plan = org.plan.value
+        org_status = org.status.value if hasattr(org.status, "value") else str(org.status)
         stored_device_limit = getattr(api_key, "device_limit", None)
         resolved_device_limit = effective_device_limit(plan, stored_device_limit)
 
@@ -225,6 +238,10 @@ async def verify_api_key(
         # API keys without a linked user keep least-privilege member access.
         actor_role = "member"
         actor_user_id: uuid.UUID | None = None
+        # Key-only / service contexts have no human user: treat as active + verified (the key's
+        # existence implies a prior authenticated, verified creation flow).
+        user_status = "active"
+        email_verified = True
         if api_key.user_id is not None:
             user_result = await session.execute(select(User).where(User.id == api_key.user_id))
             user = user_result.scalar_one_or_none()
@@ -232,6 +249,8 @@ async def verify_api_key(
                 actor_email = user.email
                 actor_role = user.role.value if hasattr(user.role, "value") else str(user.role)
                 actor_user_id = user.id
+                user_status = user.status.value if hasattr(user.status, "value") else str(user.status)
+                email_verified = bool(getattr(user, "email_verified", True))
 
         # Service keys are machine-to-machine credentials: pin them to the lowest role regardless
         # of any linked user, so a leaked service key can never reach role-gated management
@@ -271,6 +290,9 @@ async def verify_api_key(
                     "user_id": str(actor_user_id) if actor_user_id else "",
                     "is_platform": "1" if getattr(api_key, "is_platform", False) else "",
                     "is_service": "1" if is_service else "",
+                    "org_status": org_status,
+                    "user_status": user_status,
+                    "email_verified": "1" if email_verified else "0",
                     "expires_at": (
                         str(api_key_expiry_epoch(api_key.expires_at))
                         if api_key.expires_at is not None
@@ -295,6 +317,9 @@ async def verify_api_key(
             is_platform=bool(getattr(api_key, "is_platform", False)),
             is_service=is_service,
             workspace_id=None,
+            org_status=org_status,
+            user_status=user_status,
+            email_verified=email_verified,
         )
     except Exception as exc:
         logger.error("api_key_verification_failed", error=str(exc))
@@ -310,3 +335,30 @@ async def invalidate_api_key_cache(hashed_key: str, redis_client: object) -> Non
         await redis.delete(f"{_CACHE_KEY_PREFIX}{hashed_key}")
     except Exception as exc:
         logger.warning("redis_cache_invalidation_failed", error=str(exc))
+
+
+async def invalidate_user_api_key_caches(
+    session: object, user_id: object, redis_client: object
+) -> int:
+    """Bust the cached AuthContext for every API key linked to a user.
+
+    The auth cache is keyed per key-hash, so a status/verification change for the user (suspend,
+    email-verify) only takes effect after the per-key TTL (≤ _CACHE_TTL_SECONDS) unless we delete
+    each of the user's cache entries here. Returns the number of keys invalidated. Best-effort:
+    never raises (a Redis hiccup just falls back to TTL expiry).
+    """
+    from sqlalchemy import select as _select
+
+    from apps.api_server.models.api_key import APIKey
+
+    try:
+        result = await session.execute(  # type: ignore[attr-defined]
+            _select(APIKey.hashed_key).where(APIKey.user_id == user_id)
+        )
+        hashed_keys = [row[0] for row in result.all()]
+    except Exception as exc:
+        logger.warning("invalidate_user_api_key_caches_lookup_failed", error=str(exc))
+        return 0
+    for hashed_key in hashed_keys:
+        await invalidate_api_key_cache(hashed_key, redis_client)
+    return len(hashed_keys)

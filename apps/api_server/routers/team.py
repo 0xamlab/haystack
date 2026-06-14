@@ -11,11 +11,11 @@ from pydantic import BaseModel, EmailStr
 from sqlalchemy import select
 
 from apps.api_server.db.session import AsyncSessionDep
-from apps.api_server.middleware.auth import get_current_org
+from apps.api_server.middleware.auth import get_current_org, get_redis
 from apps.api_server.middleware.rbac import require_role
 from apps.api_server.models.user import User, UserRole, UserStatus
 from apps.api_server.pagination import paginate_sequence
-from apps.api_server.services.auth_service import AuthContext
+from apps.api_server.services.auth_service import AuthContext, invalidate_user_api_key_caches
 from apps.api_server.services.workspace_scope import workspace_scope_clauses
 
 router = APIRouter(tags=["Team"])
@@ -285,6 +285,7 @@ async def remove_member(
     user_id: UUID,
     db: AsyncSessionDep,
     auth: Annotated[AuthContext, Depends(require_role("admin"))],
+    redis: Annotated[object, Depends(get_redis)],
 ) -> None:
     """Remove a user from the org."""
     result = await db.execute(select(User).where(User.id == user_id, User.org_id == auth["org_id"]))
@@ -302,6 +303,9 @@ async def remove_member(
 
     user.status = UserStatus.SUSPENDED
     await db.commit()
+    # Bust cached AuthContexts so the suspension takes effect immediately (the auth gate reads
+    # status off the cached context) instead of after the auth cache TTL.
+    await invalidate_user_api_key_caches(db, user_id, redis)
 
 
 # ── Audit log (in-memory stub — production would use audit_events table) ──────

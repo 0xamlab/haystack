@@ -20,13 +20,13 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field
 
-from apps.api_server.middleware.auth import get_current_org
+from apps.api_server.middleware.auth import get_current_org, require_verified_email
 from apps.api_server.schemas.simulate import SimulateRequest, SimulateRequestExpert
 from apps.api_server.services.auth_service import AuthContext
 from apps.api_server.services.simulation_service import run_simulation_fast
 
 logger = structlog.get_logger(__name__)
-router = APIRouter(tags=["What-If Analysis"])
+router = APIRouter(tags=["What-If Analysis"], dependencies=[Depends(require_verified_email)])
 
 
 class WhatIfStep(BaseModel):
