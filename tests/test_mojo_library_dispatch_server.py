@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import socket
 import struct
 import subprocess
@@ -9,10 +10,40 @@ from pathlib import Path
 
 import pytest
 
+from apps.runtime.mojo_binary_freshness import inspect_mojo_binary_freshness
 from apps.runtime.mojo_library_runner import (
     build_runtime_library_worker_request,
     parse_runtime_library_worker_response,
 )
+
+
+def _resolve_test_binary() -> Path:
+    return Path(os.environ.get("DE_TEST_MOJO_BINARY", "mojo_build/simulate"))
+
+
+def _resolve_test_source_paths() -> tuple[Path, ...] | None:
+    raw = os.environ.get("DE_TEST_MOJO_SOURCES", "").strip()
+    if not raw:
+        return None
+    return tuple(Path(entry) for entry in raw.split(os.pathsep) if entry)
+
+
+def test_resolve_test_binary_uses_env_override(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DE_TEST_MOJO_BINARY", "/tmp/custom-simulate")
+    assert _resolve_test_binary() == Path("/tmp/custom-simulate")
+
+
+def test_resolve_test_source_paths_uses_env_override(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(
+        "DE_TEST_MOJO_SOURCES",
+        os.pathsep.join(("/tmp/main.mojo", "/tmp/runtime_library_dispatch_generated.mojo")),
+    )
+    assert _resolve_test_source_paths() == (
+        Path("/tmp/main.mojo"),
+        Path("/tmp/runtime_library_dispatch_generated.mojo"),
+    )
 
 
 def _recv_frame(sock: socket.socket) -> dict[str, object]:
@@ -36,9 +67,16 @@ def _send_frame(sock: socket.socket, payload: dict[str, object]) -> dict[str, ob
 
 
 def _start_test_server() -> tuple[subprocess.Popen[str], Path]:
-    binary = Path("mojo_build/simulate")
-    if not binary.exists():
-        pytest.skip("mojo_build/simulate not present")
+    binary = _resolve_test_binary()
+    source_paths = _resolve_test_source_paths()
+    if source_paths is None:
+        freshness = inspect_mojo_binary_freshness(binary)
+    else:
+        freshness = inspect_mojo_binary_freshness(binary, source_paths=source_paths)
+    if not freshness.exists:
+        pytest.skip(f"{binary} not present")
+    if not freshness.is_fresh:
+        pytest.fail(freshness.failure_message())
 
     socket_path = Path("/tmp/algenta-library-dispatch-test.sock")
     if socket_path.exists():
@@ -241,3 +279,29 @@ def test_mojo_server_dispatches_inference_cost_latency_kernel_functions(
         assert result == expected
     else:
         assert result == pytest.approx(expected)
+
+
+@pytest.mark.parametrize(
+    ("module_name", "function_name", "args", "expected"),
+    [
+        ("image_ops", "mean_pixel", [[[0.0, 255.0], [255.0, 0.0]]], 127.5),
+        ("image_features", "histogram_intersection", [[0.5, 0.5], [1.0, 0.0]], 0.5),
+        ("image_resize", "reshape_to_grid", [[1.0, 2.0, 3.0, 4.0], 2, 2], [[1.0, 2.0], [3.0, 4.0]]),
+        ("image_quality", "brightness_flat", [[0.0, 255.0, 255.0, 0.0], 2, 2], 127.5),
+        ("perceptual_hash", "hamming_distance", [0, 3], 2),
+        ("vision_gate", "route_image_request", [120.0, 128.0, 4.0, 0.2, False, 0], 5),
+    ],
+)
+def test_mojo_server_dispatches_image_runtime_library_requests(
+    llm_dispatch_server: tuple[subprocess.Popen[str], Path],
+    module_name: str,
+    function_name: str,
+    args: list[object],
+    expected: object,
+) -> None:
+    _, socket_path = llm_dispatch_server
+    result = _dispatch_runtime_call(socket_path, module_name, function_name, args)
+    if isinstance(expected, float):
+        assert result == pytest.approx(expected)
+    else:
+        assert result == expected

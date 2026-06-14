@@ -28,12 +28,33 @@ def test_runtime_library_dispatch_excludes_internal_vector_kernel_helpers() -> N
 def test_runtime_library_dispatch_contains_llm_rollout_handlers() -> None:
     committed = TARGET.read_text(encoding="utf-8")
 
-    assert "_dispatch_text_tokenizer" in committed
-    assert "_dispatch_vector_kernels_ranker" in committed
-    assert "_dispatch_vector_kernels_table" in committed
+    assert "_dispatch_text__tokenizer" in committed
+    assert "_dispatch_vector_kernels__ranker" in committed
+    assert "_dispatch_vector_kernels__table" in committed
     assert "_dispatch_rerank_eval" in committed
     assert "_dispatch_inference_cost_latency" in committed
+    assert 'if module_name == "text.tokenizer":' in committed
+    assert 'if module_name == "vector_kernels.ranker":' in committed
+    assert 'if module_name == "vector_kernels.table":' in committed
     assert 'if function_name == "build_query":' in committed
     assert 'if function_name == "build_table_json":' in committed
-    assert '\\"query_vec\\":{\\"data\\":' in committed
-    assert '\\"entries\\":[' in committed
+    assert "_to_json_rankrequest_vector_kernels_table" in committed
+    assert "_to_json_vec64_vector_kernels_table(value.query_vec)" in committed
+    assert "_to_json_list_candidateentry_vector_kernels_table(value.entries)" in committed
+
+
+def test_runtime_library_dispatch_can_render_filtered_module_subset() -> None:
+    modules = discover_runtime_library_modules(executable_only=True)
+    selected = tuple(
+        module
+        for module in modules
+        if module.import_path in {"image_ops", "vector_kernels.table", "vision_gate"}
+    )
+
+    rendered = render_dispatch_source(selected)
+
+    assert "_dispatch_image_ops" in rendered
+    assert "_dispatch_vector_kernels__table" in rendered
+    assert "_dispatch_vision_gate" in rendered
+    assert "_dispatch_elevator" not in rendered
+    assert "fn _to_json_uint32(value: UInt32) -> String:" in rendered
