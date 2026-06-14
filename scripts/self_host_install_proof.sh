@@ -89,7 +89,10 @@ prune_dangling_images() {
 
 reset_stack() {
   if [ "$RESET_STACK" = "1" ]; then
-    compose_cmd --project-name "$PROJECT_NAME" -f "$ROOT_DIR/infra/docker/docker-compose.selfhosted.yml" down -v --remove-orphans >/dev/null 2>&1 || true
+    # Compose images are fail-closed on ALGENTA_IMAGE_TAG (:?); a teardown does not pull, so a
+    # throwaway tag just lets compose interpolate. Subshell keeps the export local.
+    ( export ALGENTA_IMAGE_TAG="${ALGENTA_IMAGE_TAG:-reset}"; \
+      compose_cmd --project-name "$PROJECT_NAME" -f "$ROOT_DIR/infra/docker/docker-compose.selfhosted.yml" down -v --remove-orphans ) >/dev/null 2>&1 || true
   fi
 }
 

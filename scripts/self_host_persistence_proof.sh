@@ -454,7 +454,7 @@ PY
 run_minio_stat() {
   local org_id="$1"
   local run_id="$2"
-  docker run --rm --entrypoint /bin/sh --network "${PROJECT_NAME}_default" minio/mc:latest -c \
+  docker run --rm --entrypoint /bin/sh --network "${PROJECT_NAME}_default" minio/mc:RELEASE.2025-04-16T18-13-26Z -c \
     "mc alias set local http://minio:9000 algenta_minio algenta_minio_secret >/dev/null 2>&1 && mc stat local/algenta-results/${org_id}/${run_id}.json >/dev/null"
 }
 
@@ -470,7 +470,7 @@ backup_volume() {
   docker run --rm \
     -v "${volume_name}:/from" \
     -v "${BACKUP_DIR}:/to" \
-    alpine sh -c "tar czf /to/$(basename "$output_file") -C /from ."
+    alpine:3.20 sh -c "tar czf /to/$(basename "$output_file") -C /from ."
 }
 
 restore_volume() {
@@ -479,7 +479,7 @@ restore_volume() {
   docker run --rm \
     -v "${volume_name}:/to" \
     -v "${BACKUP_DIR}:/from" \
-    alpine sh -c "cd /to && tar xzf /from/$(basename "$input_file")"
+    alpine:3.20 sh -c "cd /to && tar xzf /from/$(basename "$input_file")"
 }
 
 ensure_composed_volume() {

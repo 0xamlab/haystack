@@ -324,12 +324,14 @@ def test_install_script_and_compose_lock_service_only_boundary() -> None:
     assert "ALGENTA_TELEMETRY_MODE=local_audit" in install
 
     assert "portal:" not in compose
-    assert "/api:${ALGENTA_IMAGE_TAG:-latest}" in compose
-    assert "/worker:${ALGENTA_IMAGE_TAG:-latest}" in compose
+    # api/worker images are fail-closed on a pinned ALGENTA_IMAGE_TAG (never a silent :latest);
+    # enforced by tests/test_image_pin_guard.py.
+    assert "/api:${ALGENTA_IMAGE_TAG:?" in compose
+    assert "/worker:${ALGENTA_IMAGE_TAG:?" in compose
     assert "command: python -m apps.worker.main" not in compose
     assert "DATABASE_URL_SYNC" in compose
     assert "ALGENTA_SOURCES_DIR" in compose
-    assert "RUNTIME_FALLBACK_MODE: ${RUNTIME_FALLBACK_MODE:-allow}" in compose
+    assert "RUNTIME_FALLBACK_MODE: ${RUNTIME_FALLBACK_MODE:-deny}" in compose
     assert "RESULT_STORAGE_ENABLED: ${RESULT_STORAGE_ENABLED:-true}" in compose
     assert "${POSTGRES_HOST_PORT:-5432}" in compose
     assert "${REDIS_HOST_PORT:-6379}" in compose

@@ -38,7 +38,7 @@ mkdir -p backups
 docker run --rm \
   -v algenta_minio_data:/from \
   -v "$PWD/backups:/to" \
-  alpine sh -c 'tar czf /to/minio-data-$(date +%Y%m%d-%H%M%S).tgz -C /from .'
+  alpine:3.20 sh -c 'tar czf /to/minio-data-$(date +%Y%m%d-%H%M%S).tgz -C /from .'
 ```
 
 ## Object storage restore
@@ -47,7 +47,7 @@ docker run --rm \
 docker run --rm \
   -v algenta_minio_data:/to \
   -v "$PWD/backups:/from" \
-  alpine sh -c 'cd /to && tar xzf /from/minio-data-latest.tgz'
+  alpine:3.20 sh -c 'cd /to && tar xzf /from/minio-data-latest.tgz'
 ```
 
 ## Local source registry backup
@@ -57,7 +57,7 @@ mkdir -p backups
 docker run --rm \
   -v algenta_sources_data:/from \
   -v "$PWD/backups:/to" \
-  alpine sh -c 'tar czf /to/sources-data-$(date +%Y%m%d-%H%M%S).tgz -C /from .'
+  alpine:3.20 sh -c 'tar czf /to/sources-data-$(date +%Y%m%d-%H%M%S).tgz -C /from .'
 ```
 
 ## Local source registry restore
@@ -66,7 +66,7 @@ docker run --rm \
 docker run --rm \
   -v algenta_sources_data:/to \
   -v "$PWD/backups:/from" \
-  alpine sh -c 'cd /to && tar xzf /from/sources-data-latest.tgz'
+  alpine:3.20 sh -c 'cd /to && tar xzf /from/sources-data-latest.tgz'
 ```
 
 ## Redis persistence

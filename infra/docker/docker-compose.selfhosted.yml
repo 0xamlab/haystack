@@ -13,7 +13,7 @@ name: algenta
 services:
   # ── API Server ────────────────────────────────────────────────────────────
   api:
-    image: ${ALGENTA_IMAGE_REGISTRY:-ghcr.io/algenta/decision-engine}/api:${ALGENTA_IMAGE_TAG:-latest}
+    image: ${ALGENTA_IMAGE_REGISTRY:-ghcr.io/algenta/decision-engine}/api:${ALGENTA_IMAGE_TAG:?set ALGENTA_IMAGE_TAG to a pinned image tag or digest - install.sh resolves it; never ship a floating tag}
     restart: unless-stopped
     ports:
       - "${API_PORT:-8000}:8000"
@@ -76,7 +76,7 @@ services:
 
   # ── Async Worker ──────────────────────────────────────────────────────────
   worker:
-    image: ${ALGENTA_IMAGE_REGISTRY:-ghcr.io/algenta/decision-engine}/worker:${ALGENTA_IMAGE_TAG:-latest}
+    image: ${ALGENTA_IMAGE_REGISTRY:-ghcr.io/algenta/decision-engine}/worker:${ALGENTA_IMAGE_TAG:?set ALGENTA_IMAGE_TAG to a pinned image tag or digest - install.sh resolves it; never ship a floating tag}
     restart: unless-stopped
     environment:
       DATABASE_URL: ${DATABASE_URL}
@@ -179,7 +179,7 @@ services:
 
   # ── MinIO (S3-compatible object storage) ──────────────────────────────────
   minio:
-    image: minio/minio:latest
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
@@ -199,7 +199,7 @@ services:
 
   # ── MinIO setup (create bucket on first run) ──────────────────────────────
   minio-setup:
-    image: minio/mc:latest
+    image: minio/mc:RELEASE.2025-04-16T18-13-26Z
     depends_on:
       minio:
         condition: service_healthy
