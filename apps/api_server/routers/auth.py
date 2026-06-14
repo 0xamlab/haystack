@@ -7,6 +7,7 @@ Auth endpoints:
   POST /auth/reset-password   — complete password reset with token
 """
 
+import hashlib
 import uuid
 from datetime import UTC, datetime, timedelta
 
@@ -16,10 +17,13 @@ import jwt  # PyJWT
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.api_server.config import SettingsProxy
+from apps.api_server.config import SettingsProxy, get_settings
 from apps.api_server.db.session import get_db
 from apps.api_server.middleware.auth import get_redis
+from apps.api_server.services.audit_service import get_client_ip
 from apps.api_server.services.auth_service import invalidate_user_api_key_caches
+from apps.api_server.services.captcha import verify_turnstile
+from apps.api_server.services.quota_service import check_named_rate_limit
 from apps.api_server.schemas.auth import (
     ForgotPasswordRequest,
     LoginRequest,
@@ -56,11 +60,73 @@ settings = SettingsProxy()
         "The raw API key is shown **once** in the response — store it securely."
     ),
 )
+async def _enforce_daily_email_signup_cap(email: str, redis: object, settings: object) -> None:
+    """Cap org-creations per email per day (multi-account abuse). Best-effort — a Redis hiccup
+    falls back to allowing (the per-IP limit + captcha remain the backstop)."""
+    limit = int(getattr(settings, "signup_max_per_day_per_email", 0))
+    if limit <= 0:
+        return
+    email_hash = hashlib.sha256(email.strip().lower().encode()).hexdigest()[:32]
+    day = datetime.now(UTC).strftime("%Y-%m-%d")
+    key = f"signup_email_day:{email_hash}:{day}"
+    try:
+        count = await redis.incr(key)  # type: ignore[attr-defined]
+        if count == 1:
+            await redis.expire(key, 86400)  # type: ignore[attr-defined]
+    except Exception as exc:
+        logger.warning("signup_daily_cap_unavailable", error=str(exc))
+        return
+    if count > limit:
+        logger.warning("signup_blocked_daily_email_cap", email=email, count=count, limit=limit)
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "error": {
+                    "code": "signup_limit_exceeded",
+                    "message": "This email has reached the daily signup limit. Try again tomorrow.",
+                    "retry_after_seconds": 86400,
+                }
+            },
+            headers={"Retry-After": "86400"},
+        )
+
+
 async def signup(
     request: Request,
     payload: SignUpRequest,
     db: AsyncSession = Depends(get_db),
+    redis: object = Depends(get_redis),
 ) -> SignUpResponse:
+    settings = get_settings()
+    client_ip = get_client_ip(request) or "unknown"
+
+    # 1) Burst protection: per-IP signups/minute (fails open if Redis is down).
+    await check_named_rate_limit(
+        client_ip,
+        redis,
+        key_prefix="signup_ip",
+        limit_per_minute=settings.signup_rate_limit_per_minute,
+        request_state=getattr(request, "state", None),
+        error_code="signup_rate_limited",
+        error_message="Too many signups from this network. Please try again in a minute.",
+        log_context={"ip": client_ip},
+    )
+    # 2) Multi-account protection: per-email org-creations/day.
+    await _enforce_daily_email_signup_cap(payload.email, redis, settings)
+    # 3) Bot protection: Cloudflare Turnstile (no-op unless TURNSTILE_SECRET_KEY is configured).
+    token = request.headers.get("CF-Turnstile-Response") or request.headers.get("X-Turnstile-Token")
+    if not await verify_turnstile(token, client_ip):
+        logger.warning("signup_blocked_captcha", ip=client_ip, email=payload.email)
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": {
+                    "code": "captcha_required",
+                    "message": "Captcha verification failed. Complete the challenge and retry.",
+                }
+            },
+        )
+
     response = await create_user_and_org(payload, db)
     logger.info(
         "signup_completed",

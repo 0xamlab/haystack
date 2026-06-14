@@ -21,9 +21,11 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from apps.api_server.config import get_settings
 from apps.api_server.db.session import get_db
 from apps.api_server.middleware.auth import get_current_org, get_redis
 from apps.api_server.middleware.rbac import require_role
+from apps.api_server.services.quota_service import check_named_rate_limit
 from apps.api_server.models.api_key import APIKey, APIKeyStatus
 from apps.api_server.models.organization import Organization
 from apps.api_server.models.usage_record import UsageRecord
@@ -505,9 +507,21 @@ async def list_api_keys(
 )
 async def create_api_key(
     payload: CreateAPIKeyRequest,
+    request: Request,
     auth: AuthContext = Depends(require_role("member")),
     db: AsyncSession = Depends(get_db),
+    redis_client: object = Depends(get_redis),
 ) -> APIKeyCreated:
+    # Rate-limit key minting per org so a leaked/abused session can't enumerate keys.
+    await check_named_rate_limit(
+        auth["org_id"],
+        redis_client,
+        key_prefix="apikey_create",
+        limit_per_minute=get_settings().api_key_create_rate_limit_per_minute,
+        request_state=getattr(request, "state", None),
+        error_code="api_key_create_rate_limited",
+        error_message="Too many API keys created. Please wait a minute and retry.",
+    )
     try:
         stored_device_limit = validate_api_key_device_limit(auth["plan"], payload.device_limit)
     except ValueError as exc:

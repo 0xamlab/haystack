@@ -73,6 +73,15 @@ class Settings(BaseSettings):
         default=None,
         validation_alias=AliasChoices("ALGENTA_TELEMETRY_MODE"),
     )
+    # ── Signup abuse protection (Wave 2) ──────────────────────────────────────
+    # Cloudflare Turnstile: captcha is enforced on signup IFF a secret is set (feature flag).
+    turnstile_secret_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("TURNSTILE_SECRET_KEY", "ALGENTA_TURNSTILE_SECRET_KEY"),
+    )
+    signup_rate_limit_per_minute: int = Field(default=3)  # per client IP (burst)
+    signup_max_per_day_per_email: int = Field(default=2)  # org-creation cap per email per day
+    api_key_create_rate_limit_per_minute: int = Field(default=10)  # per org
     algenta_metering_mode: str | None = Field(
         default=None,
         validation_alias=AliasChoices("ALGENTA_METERING_MODE"),
