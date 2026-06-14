@@ -17,14 +17,13 @@ provisioning is wired).
 
 Out of scope by design: ``infra/docker/docker-compose.yml`` is the LOCAL-DEV compose — it builds the
 api/worker images locally (no registry pull) and is a developer convenience, not a shipped self-host
-artifact; its remaining infra ``:latest`` pulls (minio/mc/sidecar) are intentionally not gated here.
+artifact; its remaining infra ``:latest`` pulls (minio/mc) are intentionally not gated here.
 
-KNOWN, TRACKED EXCEPTION (blocked): the codna agent-core sidecar is a PRIVATE ghcr image whose digest
-is owner-gated (needs ``read:packages``). Until it is published with a resolvable digest it is set via
-the ``ALGENTA_SIDECAR_IMAGE`` override variable (operators supply their own pinned ref); its
-``:-...:latest`` fallback is the single tolerated reference, scrubbed before scanning so it cannot
-mask any OTHER floating tag on the same line. Pinning its default to ``@sha256`` is the blocked
-follow-up for item 5.
+The codna agent-core sidecar default is now DIGEST-PINNED (``…/codna/sidecar@sha256:…``) in the
+self-hosted compose — the previously-tracked ``:latest`` exception is resolved
+(``test_sidecar_default_is_digest_pinned`` keeps it pinned). It remains a PRIVATE ghcr image, so the
+deploy host still needs ``read:packages`` to pull it (or override via ``ALGENTA_SIDECAR_IMAGE``);
+that is an access concern, separate from the floating-tag concern this guard enforces.
 """
 
 from __future__ import annotations
@@ -42,9 +41,6 @@ _DOCS_DIR = _ROOT / "apps" / "docs" / "docs"
 _SCRIPTS_DIR = _ROOT / "scripts"
 _CI_WORKFLOW = _ROOT / ".github" / "workflows" / "ci.yml"
 _CONFIG = _ROOT / "apps" / "api_server" / "config.py"
-
-# The one tolerated floating tag — the blocked codna sidecar override default (see module docstring).
-_SIDECAR_OVERRIDE = "${ALGENTA_SIDECAR_IMAGE:-ghcr.io/escrypto-labs/codna/sidecar:latest}"
 
 # An image tag of `latest`, whether hardcoded (`foo:latest`) or a silent compose default
 # (`${VAR:-latest}`), case-insensitive. The lookbehind requires an image-name char before the colon
@@ -72,16 +68,14 @@ def _scanned_files() -> list[Path]:
 
 
 def _violations(text: str) -> list[str]:
-    """'lineno: reason -> snippet' for every floating tag, skipping comments and tolerating exactly
-    the codna sidecar override (scrubbed, not whole-line-skipped, so a co-located tag is still seen)."""
+    """'lineno: reason -> snippet' for every floating tag, skipping comment lines."""
     out: list[str] = []
     for lineno, line in enumerate(text.splitlines(), start=1):
         if line.lstrip().startswith("#"):
             continue
-        scrubbed = line.replace(_SIDECAR_OVERRIDE, "")
-        if _LATEST_TAG.search(scrubbed):
+        if _LATEST_TAG.search(line):
             out.append(f"{lineno}: floating :latest tag -> {line.strip()}")
-        if _BARE_BASE.search(scrubbed):
+        if _BARE_BASE.search(line):
             out.append(f"{lineno}: untagged base image (implicit :latest) -> {line.strip()}")
     return out
 
@@ -158,12 +152,12 @@ def test_provisioning_engine_image_default_is_pinned() -> None:
     )
 
 
-def test_sidecar_exception_is_present_and_unique() -> None:
-    # The one tolerated floating tag is the blocked codna sidecar override default. Assert it exists
-    # (so the exception is real, not masking other latests) and appears via the override variable.
+def test_sidecar_default_is_digest_pinned() -> None:
+    # The codna sidecar default must stay pinned to an immutable @sha256 digest (never :latest) — it
+    # used to be the one tolerated floating tag; now it's resolved. The override var still lets an
+    # operator supply their own ref.
     compose = _SELFHOSTED.read_text(encoding="utf-8")
-    assert compose.count(_SIDECAR_OVERRIDE) == 1, (
-        "expected exactly one codna sidecar override reference; if the codna image is now "
-        "digest-pinnable (read:packages unblocked), pin it and delete this exception + the "
-        "_SIDECAR_OVERRIDE allowance in this guard"
+    assert "ghcr.io/escrypto-labs/codna/sidecar@sha256:" in compose, (
+        "the codna sidecar default must be digest-pinned (…/codna/sidecar@sha256:…)"
     )
+    assert "codna/sidecar:latest" not in compose, "codna sidecar must not use a floating :latest tag"
