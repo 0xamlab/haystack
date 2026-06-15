@@ -198,18 +198,19 @@ case "$(uname -s)" in
             echo "Python runtime library not found under ${LIB_DIR} for ${PYTHON_RUNTIME_STEM}" >&2
             exit 1
         fi
-        # The pixi env bundles libcxx (libc++.so.1) but conda runtime packages often omit the
-        # unversioned linker symlink that `-lc++` needs. Create libc++.so -> libc++.so.1 (and the
-        # abi equivalent) in LIB_DIR so the link resolves against the SAME libcxx the $ORIGIN rpath
-        # loads at runtime — no system libc++, no ABI skew.
-        for cxx_stem in c++ c++abi; do
-            if ! [[ -e "${LIB_DIR}/lib${cxx_stem}.so" ]]; then
-                cxx_versioned="$(find "${LIB_DIR}" -maxdepth 1 -name "lib${cxx_stem}.so.*" | sort -V | tail -n 1)"
-                if [[ -n "${cxx_versioned}" ]]; then
-                    ln -sf "$(basename "${cxx_versioned}")" "${LIB_DIR}/lib${cxx_stem}.so"
-                fi
+        # The linux pixi env ships GNU libstdc++ (libstdcxx in pixi.lock), NOT libc++ — so the
+        # Mojo runtime libs are built against libstdc++ and we link -lstdc++ (the macOS branch
+        # uses -lc++, its system C++ runtime). conda runtime packages ship only the versioned
+        # libstdc++.so.N, so create the unversioned linker symlink in LIB_DIR — the link then
+        # binds the SAME libstdc++ the $ORIGIN rpath loads at runtime (no system/ABI skew).
+        if ! [[ -e "${LIB_DIR}/libstdc++.so" ]]; then
+            stdcxx_versioned="$(find "${LIB_DIR}" -maxdepth 1 -name "libstdc++.so.*" | sort -V | tail -n 1)"
+            if [[ -n "${stdcxx_versioned}" ]]; then
+                ln -sf "$(basename "${stdcxx_versioned}")" "${LIB_DIR}/libstdc++.so"
             fi
-        done
+        fi
+        echo "[build_mojo_binary] C++ runtime libs in ${LIB_DIR}:" >&2
+        ls -la "${LIB_DIR}"/libstdc++* "${LIB_DIR}"/libc++* 2>/dev/null >&2 || true
         "${CLANG_BIN}" "${TEMP_OBJECT_PATH}" -o "${TEMP_BINARY_PATH}" \
             -L "${LIB_DIR}" \
             -Wl,-rpath,'$ORIGIN/../mojo_env/.pixi/envs/default/lib' \
@@ -219,7 +220,7 @@ case "$(uname -s)" in
             -lAsyncRTMojoBindings \
             -lMSupportGlobals \
             -l"${PYTHON_RUNTIME_STEM}" \
-            -lc++ \
+            -lstdc++ \
             -ldl \
             -lpthread \
             -lm
