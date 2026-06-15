@@ -19741,7 +19741,7 @@ def _parse_list_list_float64_token(token):
     count = json_array_len(array_json)
     result = []
     for i in range(count):
-        result.append(_parse_list_float64_token(json_array_get(array_json, i))^)
+        result.append(_parse_list_float64_token(json_array_get(array_json, i)))
     return result
 
 
@@ -19751,7 +19751,7 @@ def _parse_list_list_int_token(token):
     count = json_array_len(array_json)
     result = []
     for i in range(count):
-        result.append(_parse_list_int_token(json_array_get(array_json, i))^)
+        result.append(_parse_list_int_token(json_array_get(array_json, i)))
     return result
 
 
@@ -19761,7 +19761,7 @@ def _parse_list_list_string_token(token):
     count = json_array_len(array_json)
     result = []
     for i in range(count):
-        result.append(_parse_list_string_token(json_array_get(array_json, i))^)
+        result.append(_parse_list_string_token(json_array_get(array_json, i)))
     return result
 
 

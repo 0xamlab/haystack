@@ -140,9 +140,9 @@ class CandidateTable:
     
             fs = W_NAME * nsim + tb + pb
             if fs > 1.0:
-            fs = float(1.0)
+                fs = float(1.0)
             elif fs < 0.0:
-            fs = float(0.0)
+                fs = float(0.0)
     
             slot = _Slot()
             slot.column_id  = c_id
@@ -297,14 +297,14 @@ def _build_vec_inplace(s, buf):
         buf[h] += float(1.0)
         prev = cur
     p = buf.unsafe_ptr()
-    s0 = (p +  0).load[width=SIMD_W]()
-    s1 = (p +  8).load[width=SIMD_W]()
-    s2 = (p + 16).load[width=SIMD_W]()
-    s3 = (p + 24).load[width=SIMD_W]()
-    s4 = (p + 32).load[width=SIMD_W]()
-    s5 = (p + 40).load[width=SIMD_W]()
-    s6 = (p + 48).load[width=SIMD_W]()
-    s7 = (p + 56).load[width=SIMD_W]()
+    s0 = (p +  0).load(width=SIMD_W)
+    s1 = (p +  8).load(width=SIMD_W)
+    s2 = (p + 16).load(width=SIMD_W)
+    s3 = (p + 24).load(width=SIMD_W)
+    s4 = (p + 32).load(width=SIMD_W)
+    s5 = (p + 40).load(width=SIMD_W)
+    s6 = (p + 48).load(width=SIMD_W)
+    s7 = (p + 56).load(width=SIMD_W)
     mag = (
         (s0*s0 + s1*s1) + (s2*s2 + s3*s3) +
         (s4*s4 + s5*s5) + (s6*s6 + s7*s7)
@@ -318,14 +318,14 @@ def _build_vec_inplace(s, buf):
 def _dot64(a, b):
     pa = a.unsafe_ptr()
     pb = b.unsafe_ptr()
-    a0 = (pa +  0).load[width=SIMD_W]() * (pb +  0).load[width=SIMD_W]()
-    a1 = (pa +  8).load[width=SIMD_W]() * (pb +  8).load[width=SIMD_W]()
-    a2 = (pa + 16).load[width=SIMD_W]() * (pb + 16).load[width=SIMD_W]()
-    a3 = (pa + 24).load[width=SIMD_W]() * (pb + 24).load[width=SIMD_W]()
-    a4 = (pa + 32).load[width=SIMD_W]() * (pb + 32).load[width=SIMD_W]()
-    a5 = (pa + 40).load[width=SIMD_W]() * (pb + 40).load[width=SIMD_W]()
-    a6 = (pa + 48).load[width=SIMD_W]() * (pb + 48).load[width=SIMD_W]()
-    a7 = (pa + 56).load[width=SIMD_W]() * (pb + 56).load[width=SIMD_W]()
+    a0 = (pa +  0).load(width=SIMD_W) * (pb +  0).load(width=SIMD_W)
+    a1 = (pa +  8).load(width=SIMD_W) * (pb +  8).load(width=SIMD_W)
+    a2 = (pa + 16).load(width=SIMD_W) * (pb + 16).load(width=SIMD_W)
+    a3 = (pa + 24).load(width=SIMD_W) * (pb + 24).load(width=SIMD_W)
+    a4 = (pa + 32).load(width=SIMD_W) * (pb + 32).load(width=SIMD_W)
+    a5 = (pa + 40).load(width=SIMD_W) * (pb + 40).load(width=SIMD_W)
+    a6 = (pa + 48).load(width=SIMD_W) * (pb + 48).load(width=SIMD_W)
+    a7 = (pa + 56).load(width=SIMD_W) * (pb + 56).load(width=SIMD_W)
     return ((a0 + a1) + (a2 + a3) + (a4 + a5) + (a6 + a7)).reduce_add()
 
 

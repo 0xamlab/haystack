@@ -265,14 +265,14 @@ class Python:
 def _dot64(a, b):
     pa = a.unsafe_ptr()
     pb = b.unsafe_ptr()
-    a0 = (pa +  0).load[width=SIMD_W]() * (pb +  0).load[width=SIMD_W]()
-    a1 = (pa +  8).load[width=SIMD_W]() * (pb +  8).load[width=SIMD_W]()
-    a2 = (pa + 16).load[width=SIMD_W]() * (pb + 16).load[width=SIMD_W]()
-    a3 = (pa + 24).load[width=SIMD_W]() * (pb + 24).load[width=SIMD_W]()
-    a4 = (pa + 32).load[width=SIMD_W]() * (pb + 32).load[width=SIMD_W]()
-    a5 = (pa + 40).load[width=SIMD_W]() * (pb + 40).load[width=SIMD_W]()
-    a6 = (pa + 48).load[width=SIMD_W]() * (pb + 48).load[width=SIMD_W]()
-    a7 = (pa + 56).load[width=SIMD_W]() * (pb + 56).load[width=SIMD_W]()
+    a0 = (pa +  0).load(width=SIMD_W) * (pb +  0).load(width=SIMD_W)
+    a1 = (pa +  8).load(width=SIMD_W) * (pb +  8).load(width=SIMD_W)
+    a2 = (pa + 16).load(width=SIMD_W) * (pb + 16).load(width=SIMD_W)
+    a3 = (pa + 24).load(width=SIMD_W) * (pb + 24).load(width=SIMD_W)
+    a4 = (pa + 32).load(width=SIMD_W) * (pb + 32).load(width=SIMD_W)
+    a5 = (pa + 40).load(width=SIMD_W) * (pb + 40).load(width=SIMD_W)
+    a6 = (pa + 48).load(width=SIMD_W) * (pb + 48).load(width=SIMD_W)
+    a7 = (pa + 56).load(width=SIMD_W) * (pb + 56).load(width=SIMD_W)
     return ((a0 + a1) + (a2 + a3) + (a4 + a5) + (a6 + a7)).reduce_add()
 
 
