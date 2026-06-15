@@ -31,7 +31,7 @@ from apps.api_server.config import get_settings
 from apps.api_server.services.execution_policy_service import default_policy_payload
 from apps.platform_contract import load_platform_contract_manifest
 from apps.runtime.mojo_inventory import build_inventory_report
-from benchmarks.llm_compiled_runtime_benchmark import TARGET_MODULES as LLM_ROLLOUT_MODULE_ORDER
+from apps.runtime_manifest._module_order import LLM_ROLLOUT_MODULE_ORDER
 
 from apps.runtime_manifest._constants import *  # noqa: F401, F403
 from apps.runtime_manifest._constants import (

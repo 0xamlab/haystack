@@ -30,30 +30,9 @@ parse_runtime_library_worker_response = _MOJO_LIBRARY_RUNNER.parse_runtime_libra
 
 DEFAULT_OUTPUT = PROJECT_ROOT / "build" / "llm_compiled_runtime_benchmark.json"
 MOJO_BINARY = PROJECT_ROOT / "mojo_build" / "simulate"
-TARGET_MODULES = (
-    "bpe_tokenizer",
-    "text.tokenizer",
-    "embeddings",
-    "flash_attention",
-    "sparse_attention",
-    "transformer_attention",
-    "transformer_blocks",
-    "llm_sampling",
-    "vector_similarity",
-    "vector_search",
-    "vector_kernels.ranker",
-    "vector_kernels.table",
-    "sparse_vector",
-    "rlhf_dpo",
-    "rerank_eval",
-    "inference_cost_latency",
-    "kv_cache",
-    "paged_kv_cache",
-    "continuous_batching",
-    "inference_engine",
-    "speculative_decoding",
-    "generation_loop",
-)
+# Single source of truth lives in the prod-shipped core module so apps/ never imports
+# benchmarks/ (which isn't packaged into the api/worker/engine images).
+from apps.runtime_manifest._module_order import LLM_ROLLOUT_MODULE_ORDER as TARGET_MODULES
 _VECTOR_RANKER_FIXTURE = (
     '{"query":{"name":"unit_price","role_hint":"unit_measure","source":"POS"},'
     '"candidates":[{"source":"POS","name":"unit_price"},'
