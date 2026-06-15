@@ -258,6 +258,40 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # The combined worker+sidecar image for the co-located Fly `codna-engine` app. Its Dockerfile
+      # FROMs the codna-published sidecar (ghcr.io/escrypto-labs/codna/sidecar@sha256:…). That base is
+      # a PRIVATE cross-repo package, so pulling it needs read:packages on escrypto-labs/codna — the
+      # default GITHUB_TOKEN here does NOT have it. Provide a CODNA_GHCR_READ_TOKEN secret (a PAT with
+      # read:packages) OR make the codna sidecar package public (owner item D1). The step is skipped
+      # when neither is available so the api/worker build still succeeds.
+      - name: Log in to GHCR for the codna sidecar base image
+        if: ${{ secrets.CODNA_GHCR_READ_TOKEN != '' }}
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9  # v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.CODNA_GHCR_READ_TOKEN }}
+
+      - name: Extract metadata for Engine image
+        id: meta-engine
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051  # v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/engine
+          tags: |
+            type=sha,prefix=git-,format=short
+            type=raw,value=latest
+
+      - name: Build and push Engine image (worker + agent-core sidecar)
+        uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25  # v5
+        with:
+          context: .
+          file: infra/docker/Dockerfile.engine.prod
+          push: true
+          tags: ${{ steps.meta-engine.outputs.tags }}
+          labels: ${{ steps.meta-engine.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   # ── Deploy (Cloud Run / ECS) ──────────────────────────────────────────────
   # Uncomment and configure for your cloud provider
   # deploy:

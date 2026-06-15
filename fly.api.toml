@@ -1,0 +1,58 @@
+# codna-api — public FastAPI app (behind Cloudflare). Stateless: it enqueues the fix pipeline to
+# codna-engine (queue=repository) and serves the GitHub App webhook + REST API. Scales independently.
+#
+# Deploy:  flyctl deploy -c fly.api.toml -i ghcr.io/escrypto-labs/algenta/api:<tag>
+# Secrets: set via `flyctl secrets set -a codna-api ...` (see scripts/bootstrap.sh / DEPLOY.md).
+app = "codna-api"
+primary_region = "iad"
+
+[build]
+  # Overridden by scripts/deploy-fly.sh with the pinned git-<sha> tag/digest from CI.
+  image = "ghcr.io/escrypto-labs/algenta/api:latest"
+
+[deploy]
+  # Run DB migrations once per release on a throwaway Machine before the new version goes live.
+  release_command = "python -m alembic -c apps/api_server/alembic.ini upgrade head"
+  strategy = "rolling"
+
+[env]
+  API_ENV = "production"
+  LOG_LEVEL = "info"
+  RUNTIME_FALLBACK_MODE = "deny"
+  MOJO_BINARY_PATH = "/app/mojo_build/simulate"
+  RESULT_STORAGE_ENABLED = "true"
+  # Durable artifacts + cross-replica reads via Tigris (S3 API). Creds are secrets (S3_*).
+  ALGENTA_RI_OBJECT_STORE = "s3"
+  S3_REGION = "auto"
+  # Multi-replica coordination/idempotency via Upstash (REDIS_URL is a secret).
+  ALGENTA_COORDINATION = "redis"
+  ALGENTA_REPOSITORIES_PIPELINE_ENABLED = "true"
+  # The agent-core sidecar lives on codna-engine, reachable over Fly private networking.
+  ALGENTA_AGENT_CORE_URL = "http://codna-engine.internal:8787"
+  ALGENTA_SOURCES_DIR = "/home/app/.algenta/sources"
+  ALGENTA_RUNTIME_DIR = "/home/app/.algenta/runtime"
+  CORS_ORIGINS = "https://app.codna.ai,https://codna.ai"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  # Speed: stay warm — never scale to zero (cold start would break the <15ms hot-path story).
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 200
+    hard_limit = 250
+
+  [[http_service.checks]]
+    method = "GET"
+    path = "/v1/health"
+    interval = "15s"
+    timeout = "5s"
+    grace_period = "30s"
+
+[[vm]]
+  size = "shared-cpu-2x"
+  memory = "2gb"

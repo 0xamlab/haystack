@@ -1,0 +1,43 @@
+# codna-engine — the worker + agent-core sidecar, CO-LOCATED on one Machine (they share the
+# /home/app/.algenta Fly volume: the worker materializes the repo working_dir, the sidecar mutates
+# it). NOT public — no http_service; the sidecar binds 0.0.0.0:8787 and is reachable from codna-api
+# at http://codna-engine.internal:8787 over Fly private networking. Runs the combined image
+# (infra/docker/Dockerfile.engine.prod via engine-entrypoint.sh: Celery worker + Bun sidecar).
+#
+# Deploy: flyctl deploy -c fly.engine.toml -i ghcr.io/escrypto-labs/algenta/engine:<tag>
+# Warmth: a single-Machine stateful app — keep count at 1 (no scale-to-zero); the deploy script
+#         enforces `flyctl scale count 1`. Do NOT scale >1 (one volume, one Machine).
+app = "codna-engine"
+primary_region = "iad"
+
+[build]
+  image = "ghcr.io/escrypto-labs/algenta/engine:latest"  # overridden with the pinned tag at deploy
+
+[env]
+  API_ENV = "production"
+  LOG_LEVEL = "info"
+  RUNTIME_FALLBACK_MODE = "deny"
+  MOJO_BINARY_PATH = "/app/mojo_build/simulate"
+  RESULT_STORAGE_ENABLED = "true"
+  ALGENTA_RI_OBJECT_STORE = "s3"
+  S3_REGION = "auto"
+  ALGENTA_COORDINATION = "redis"
+  ALGENTA_REPOSITORIES_PIPELINE_ENABLED = "true"
+  ALGENTA_SOURCES_DIR = "/home/app/.algenta/sources"
+  ALGENTA_RUNTIME_DIR = "/home/app/.algenta/runtime"
+  ALGENTA_DEPLOYMENT_MODE = "saas"
+  # agent-core sidecar (co-located): bind on the private net + require the shared bearer token.
+  AGENT_CORE_HOST = "0.0.0.0"
+  AGENT_CORE_PORT = "8787"
+  AGENT_CORE_REQUIRE_AUTH = "1"
+  AGENT_CORE_MAX_CONCURRENCY = "8"
+  CELERY_CONCURRENCY = "2"
+
+# The shared working-dir volume (worker writes, sidecar mutates). One Machine only.
+[mounts]
+  source = "codna_engine_data"
+  destination = "/home/app/.algenta"
+
+[[vm]]
+  size = "shared-cpu-4x"
+  memory = "4gb"

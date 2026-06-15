@@ -37,4 +37,5 @@ ENV HOME=/home/app
 USER app
 
 # Worker is a long-running Celery process for async job execution and persistence.
-CMD ["python", "-m", "celery", "-A", "apps.worker.tasks.simulation_task:celery_app", "worker", "--loglevel=INFO", "--queues=persist,simulate", "--concurrency=2"]
+# Consumes `repository` too (decision-plan/pipeline + GitHub App fix jobs are enqueued there).
+CMD ["python", "-m", "celery", "-A", "apps.worker.tasks.simulation_task:celery_app", "worker", "--loglevel=INFO", "--queues=persist,simulate,repository", "--concurrency=2"]

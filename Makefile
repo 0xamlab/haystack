@@ -688,6 +688,36 @@ clean:
 	find . -type d -name ".ruff_cache" -exec rm -rf {} + 2>/dev/null || true
 	rm -rf mojo_build/ htmlcov/ .coverage
 
+# ─── Deploy (Fly.io + Cloudflare) ────────────────────────────────────────────────
+
+## Provision Fly apps + Managed Postgres + Upstash + Tigris + volume + cert (idempotent)
+bootstrap:
+	./scripts/bootstrap.sh
+
+## Deploy everything: Fly apps then the Cloudflare edge (TAG=git-<sha> optional)
+deploy:
+	./scripts/deploy.sh $(TAG)
+
+## Deploy the Fly apps (engine then api; api runs alembic upgrade head)
+deploy-fly:
+	./scripts/deploy-fly.sh $(TAG)
+
+## Apply the Cloudflare edge (DNS, TLS Full-Strict, cache, WAF) via OpenTofu
+deploy-cloudflare:
+	./scripts/deploy-cloudflare.sh
+
+## Deployment health: fly status + /v1/health + required-secrets check
+status:
+	./scripts/status.sh
+
+## Tail logs (APP=api|engine)
+logs:
+	./scripts/logs.sh $(APP)
+
+## Roll an app back to a tag (APP=api|engine TAG=git-<sha>)
+rollback:
+	./scripts/rollback.sh $(APP) $(TAG)
+
 # ─── Help ──────────────────────────────────────────────────────────────────────
 
 ## Show this help message
