@@ -18,7 +18,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PATH=/opt/pixi/bin:/usr/local/bin:/usr/bin:/bin \
     PYTHONPATH=/build
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      curl ca-certificates git clang lld build-essential python3 xz-utils \
+      curl ca-certificates git clang lld build-essential python3 xz-utils file \
     && rm -rf /var/lib/apt/lists/*
 
 # Modular's pixi package manager

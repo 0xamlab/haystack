@@ -210,7 +210,7 @@ case "$(uname -s)" in
             fi
         fi
         echo "[build_mojo_binary] C++ runtime libs in ${LIB_DIR}:" >&2
-        ls -la "${LIB_DIR}"/libstdc++* "${LIB_DIR}"/libc++* 2>/dev/null >&2 || true
+        ls -la "${LIB_DIR}"/libstdc++* "${LIB_DIR}"/libc++* >&2 2>&1 || true
         "${CLANG_BIN}" "${TEMP_OBJECT_PATH}" -o "${TEMP_BINARY_PATH}" \
             -L "${LIB_DIR}" \
             -Wl,-rpath,'$ORIGIN/../mojo_env/.pixi/envs/default/lib' \
