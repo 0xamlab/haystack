@@ -1,3 +1,8 @@
+# The real Mojo engine binary, built by build-mojo.yml on linux/amd64 (core-filtered dispatch,
+# linked against the bundled GNU libstdc++). Pinned by tag; bump when the kernel is rebuilt.
+ARG MOJO_IMAGE=ghcr.io/escrypto-labs/algenta/mojo:git-648cfde
+FROM ${MOJO_IMAGE} AS mojo
+
 # ── Stage 1: Builder ─────────────────────────────────────────────────────────
 FROM python:3.12-slim AS builder
 
@@ -41,15 +46,20 @@ COPY --from=builder /build/context/engines/ /app/engines/
 COPY --from=builder /build/context/training/ /app/training/
 COPY --from=builder /build/context/scripts/ /app/scripts/
 COPY --from=builder /build/context/mojo/ /app/mojo/
-COPY --from=builder /build/context/mojo_build/ /app/mojo_build/
 
-# Ensure the Mojo binary stays executable when present.
-RUN chmod +x /app/mojo_build/simulate 2>/dev/null || true
+# Real Mojo kernel: the native binary + the runtime libs its $ORIGIN/../mojo_env rpath resolves.
+# RUNTIME_FALLBACK_MODE=deny relies on this being a working binary (no Python fallback).
+COPY --from=mojo /app/mojo_build/simulate /app/mojo_build/simulate
+COPY --from=mojo /app/mojo_env/.pixi/envs/default/lib /app/mojo_env/.pixi/envs/default/lib
+
+# Ensure the Mojo binary stays executable.
+RUN chmod +x /app/mojo_build/simulate
 
 # Set ownership
 RUN mkdir -p /home/app/.algenta && chown -R app:app /app /home/app
 
-ENV HOME=/home/app
+ENV HOME=/home/app \
+    MOJO_BINARY_PATH=/app/mojo_build/simulate
 
 USER app
 
