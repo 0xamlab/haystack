@@ -18,6 +18,7 @@ from .capability_plane import (
 )
 from .data_connector import ConnectorStatus, ConnectorType, DataConnector
 from .deployment import CloudProvider, Deployment, DeploymentStatus
+from .github_app_installation import GithubAppInstallation, GithubWebhookDelivery
 from .job import Job, JobStatus, WebhookStatus
 from .llm_usage_record import USD_MICROS, LLMKeyType, LLMUsageRecord
 from .organization import Organization, OrgPlan, OrgStatus
@@ -71,4 +72,6 @@ __all__ = [
     "ProviderType",
     "AuditEvent",
     "AuditAction",
+    "GithubAppInstallation",
+    "GithubWebhookDelivery",
 ]

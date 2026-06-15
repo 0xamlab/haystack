@@ -391,6 +391,12 @@ from apps.api_server.routers import execution_policy as _exec_policy_router  # n
 
 app.include_router(_exec_policy_router.router)
 
+# GitHub App — POST /webhooks/github (unauthenticated, HMAC-verified) + install callback.
+# Inert until GITHUB_APP_* is configured.
+from apps.api_server.routers import github_webhooks as _github_webhooks_router  # noqa: E402
+
+app.include_router(_github_webhooks_router.router)
+
 if settings.runtime_library_http_api_enabled:
     app.include_router(runtime_libraries.router)
 

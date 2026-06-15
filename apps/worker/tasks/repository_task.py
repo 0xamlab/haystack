@@ -43,14 +43,14 @@ def _make_repository_job_task() -> Any | None:
         max_retries=1,
     )
     def _run_repository_job(self: Any, job_id: str) -> dict[str, Any]:
-        """Execute an async repository decision-plan/pipeline job end-to-end."""
-        from apps.api_server.services.repository_job_service import execute_repository_job
+        """Execute an async repository decision-plan/pipeline or GitHub-event job."""
+        from apps.api_server.services.repository_job_service import execute_job_by_kind
 
         session_factory = _get_worker_session_factory()
 
         async def _run() -> dict[str, Any]:
             async with session_factory() as db:
-                return await execute_repository_job(job_id=uuid.UUID(job_id), db=db)
+                return await execute_job_by_kind(job_id=uuid.UUID(job_id), db=db)
 
         try:
             return asyncio.run(_run())

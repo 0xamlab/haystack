@@ -26,6 +26,20 @@ from apps.api_server.services.egress_guard import EgressAuditContext
 
 logger = structlog.get_logger(__name__)
 
+# A job stuck RUNNING longer than this is treated as a crashed prior run and reclaimed on
+# redelivery. Must exceed the worst-case job wall-clock so an in-flight job is never double-run.
+_RUNNING_RECLAIM_AFTER_S = 3600
+
+
+def _running_is_stale(job: object) -> bool:
+    """True if a RUNNING job has exceeded the reclaim window (a crashed prior run)."""
+    started = getattr(job, "started_at", None)
+    if started is None:
+        return True
+    if started.tzinfo is None:
+        started = started.replace(tzinfo=UTC)
+    return (datetime.now(UTC) - started).total_seconds() > _RUNNING_RECLAIM_AFTER_S
+
 
 async def _load_connector(
     db: AsyncSession,
@@ -100,6 +114,22 @@ async def _deliver_completion_webhook(job: Job, result: dict[str, Any], db: Asyn
         logger.warning("repository_job_webhook_failed", job_id=str(job.id), error=str(exc))
 
 
+async def execute_job_by_kind(job_id: uuid.UUID, db: AsyncSession) -> dict[str, Any]:
+    """Route a queued job to its executor by kind.
+
+    Repository decision-plan/pipeline jobs → ``execute_repository_job``; GitHub App
+    events → ``github_event_service.execute_github_event_job``. Both the Celery worker
+    and the in-process fallback enter here so dispatch lives in one place."""
+    kind = (
+        await db.execute(select(Job.job_kind).where(Job.id == job_id))
+    ).scalar_one_or_none()
+    if kind is not None and str(kind).startswith("github_event"):
+        from apps.api_server.services.github_event_service import execute_github_event_job
+
+        return await execute_github_event_job(job_id=job_id, db=db)
+    return await execute_repository_job(job_id=job_id, db=db)
+
+
 async def execute_repository_job(job_id: uuid.UUID, db: AsyncSession) -> dict[str, Any]:
     """Execute a repository decision-plan/pipeline job end-to-end (worker or fallback).
 
@@ -115,8 +145,14 @@ async def execute_repository_job(job_id: uuid.UUID, db: AsyncSession) -> dict[st
     ).scalar_one_or_none()
     if job is None:
         raise ValueError(f"Job {job_id} not found")
+    # Idempotent on a terminal job; refuse re-entry on an in-flight RUNNING job (Celery
+    # redelivery / concurrent worker) so the billable agent run is never duplicated. A job stuck
+    # RUNNING past the reclaim window is a crashed prior run — fall through and re-execute so the
+    # work is not lost (acks_late + reject-on-worker-lost depend on this recovery).
     if is_terminal(job.status):
         return job.result_payload or {"status": job.status.value, "job_id": str(job.id)}
+    if job.status == JobStatus.RUNNING and not _running_is_stale(job):
+        return {"status": job.status.value, "job_id": str(job.id)}
 
     job.status = JobStatus.VALIDATING
     await db.flush()

@@ -232,6 +232,30 @@ class Settings(BaseSettings):
     stripe_price_developer: str = Field(default="price_developer_replace_me")
     stripe_price_pro: str = Field(default="price_pro_replace_me")
 
+    # ─── GitHub App (codna "watch CI / open fix PRs") ─────────────────────────
+    # Inert until configured: webhook route, token minter, and event handlers all
+    # no-op when these are unset, so existing deployments are unaffected.
+    github_app_id: str | None = Field(
+        default=None, validation_alias=AliasChoices("GITHUB_APP_ID")
+    )
+    github_app_private_key: str | None = Field(
+        default=None, validation_alias=AliasChoices("GITHUB_APP_PRIVATE_KEY")
+    )
+    github_app_webhook_secret: str | None = Field(
+        default=None, validation_alias=AliasChoices("GITHUB_APP_WEBHOOK_SECRET")
+    )
+    github_app_client_id: str | None = Field(
+        default=None, validation_alias=AliasChoices("GITHUB_APP_CLIENT_ID")
+    )
+    github_app_client_secret: str | None = Field(
+        default=None, validation_alias=AliasChoices("GITHUB_APP_CLIENT_SECRET")
+    )
+    # Public app slug (the `https://github.com/apps/<slug>` handle) — drives the
+    # one-click install redirect. Optional; the dashboard can build the URL itself.
+    github_app_slug: str | None = Field(
+        default=None, validation_alias=AliasChoices("GITHUB_APP_SLUG")
+    )
+
     # ─── Cloud Provider Credentials (for per-org deployment provisioning) ──────
     # AWS
     aws_access_key_id: str | None = Field(
