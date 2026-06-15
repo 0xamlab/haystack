@@ -12,12 +12,13 @@
 # Build (from repo root):
 #   docker build -f infra/docker/Dockerfile.engine.prod -t codna-engine .
 
+# Both ARGs must precede the first FROM to be global (usable in FROM lines); an ARG declared after
+# a FROM is stage-scoped and reads blank in a later FROM (`base name should not be blank`).
 ARG SIDECAR_IMAGE=ghcr.io/escrypto-labs/codna/sidecar@sha256:4a7e873277e3c805e2744cba0dc3e0f192dea5944c2389570361c2dc8a9bca0b
-FROM ${SIDECAR_IMAGE} AS sidecar
-
 # The real Mojo engine binary, built by build-mojo.yml on linux/amd64 (core-filtered dispatch,
 # linked against the bundled GNU libstdc++). Pinned by tag; bump when the kernel is rebuilt.
 ARG MOJO_IMAGE=ghcr.io/escrypto-labs/algenta/mojo:git-648cfde
+FROM ${SIDECAR_IMAGE} AS sidecar
 FROM ${MOJO_IMAGE} AS mojo
 
 # ── Stage 1: Python builder (mirrors Dockerfile.worker.prod) ─────────────────
