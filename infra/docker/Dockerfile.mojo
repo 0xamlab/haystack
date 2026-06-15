@@ -11,7 +11,8 @@ FROM debian:bookworm-slim AS mojo-builder
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PIXI_HOME=/opt/pixi \
-    PATH=/opt/pixi/bin:/usr/local/bin:/usr/bin:/bin
+    PATH=/opt/pixi/bin:/usr/local/bin:/usr/bin:/bin \
+    PYTHONPATH=/build
 RUN apt-get update && apt-get install -y --no-install-recommends \
       curl ca-certificates git clang lld build-essential python3 xz-utils \
     && rm -rf /var/lib/apt/lists/*
@@ -24,6 +25,10 @@ WORKDIR /build
 COPY mojo_env/ /build/mojo_env/
 COPY mojo/ /build/mojo/
 COPY scripts/build_mojo_binary.sh scripts/generate_runtime_library_dispatch.py /build/scripts/
+# The dispatch generator imports apps.runtime.mojo_inventory (stdlib-only) to enumerate the
+# runtime-library modules; PYTHONPATH=/build makes it importable.
+COPY apps/__init__.py /build/apps/__init__.py
+COPY apps/runtime/ /build/apps/runtime/
 
 # Resolve the Mojo toolchain from the lockfile first (separate, cacheable layer).
 RUN cd /build/mojo_env && pixi install --locked
