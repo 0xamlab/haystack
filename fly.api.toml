@@ -54,5 +54,7 @@ primary_region = "iad"
     grace_period = "30s"
 
 [[vm]]
-  size = "shared-cpu-2x"
-  memory = "2gb"
+  # Dedicated CPU for the hot-path API + Mojo pool; scales out behind Cloudflare.
+  # Resizable in place anytime with `fly scale vm <size> -a codna-api` (no destroy).
+  size = "performance-2x"
+  memory = "4gb"

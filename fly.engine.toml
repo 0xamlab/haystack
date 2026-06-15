@@ -39,5 +39,7 @@ primary_region = "iad"
   destination = "/home/app/.algenta"
 
 [[vm]]
-  size = "shared-cpu-4x"
-  memory = "4gb"
+  # Dedicated CPU for the hot compute: Mojo simulation + the Cline agent + git clones.
+  # Resizable in place anytime with `fly scale vm <size> -a codna-engine` (no destroy).
+  size = "performance-4x"
+  memory = "8gb"
