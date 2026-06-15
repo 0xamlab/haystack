@@ -1,0 +1,72 @@
+name: Deploy to Fly
+
+# Manual deploy of the prebuilt GHCR images to the Fly apps (codna-api / codna-engine).
+# Run AFTER `make bootstrap` (apps + secrets must already exist). Local Docker isn't required:
+# this mirrors each private image through Fly's own registry (registry.fly.io) so the Machines
+# can pull it. Requires repo secret FLY_API_TOKEN.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Image tag to deploy (e.g. git-abc1234). Default: latest"
+        required: false
+        default: "latest"
+      target:
+        description: "Which app(s) to deploy"
+        required: false
+        default: "both"
+        type: choice
+        options:
+          - both
+          - engine
+          - api
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  deploy:
+    name: Deploy to Fly
+    runs-on: ubuntu-latest
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      SRC: ghcr.io/${{ github.repository }}
+      TAG: ${{ inputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+
+      - name: Install flyctl
+        run: |
+          curl -fsSL https://fly.io/install.sh | sh
+          echo "$HOME/.fly/bin" >> "$GITHUB_PATH"
+
+      - name: Log in to GHCR (pull the private prebuilt images)
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9  # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Authenticate Docker to the Fly registry
+        run: flyctl auth docker
+
+      - name: Deploy engine (worker + sidecar)
+        if: ${{ inputs.target == 'both' || inputs.target == 'engine' }}
+        run: |
+          set -euo pipefail
+          docker pull  "$SRC/engine:$TAG"
+          docker tag   "$SRC/engine:$TAG" "registry.fly.io/codna-engine:$TAG"
+          docker push  "registry.fly.io/codna-engine:$TAG"
+          flyctl deploy -c fly.engine.toml -a codna-engine -i "registry.fly.io/codna-engine:$TAG"
+          flyctl scale count 1 -a codna-engine --yes
+
+      - name: Deploy api
+        if: ${{ inputs.target == 'both' || inputs.target == 'api' }}
+        run: |
+          set -euo pipefail
+          docker pull  "$SRC/api:$TAG"
+          docker tag   "$SRC/api:$TAG" "registry.fly.io/codna-api:$TAG"
+          docker push  "registry.fly.io/codna-api:$TAG"
+          flyctl deploy -c fly.api.toml -a codna-api -i "registry.fly.io/codna-api:$TAG"
