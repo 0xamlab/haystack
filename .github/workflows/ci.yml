@@ -201,6 +201,10 @@ jobs:
     permissions:
       contents: read
       packages: write
+    # `secrets` cannot be used in `if:` conditionals, but `env` (which may read secrets) can.
+    # Map the codna pull token here so the engine-image steps can gate on env.CODNA_TOKEN.
+    env:
+      CODNA_TOKEN: ${{ secrets.CODNA_GHCR_READ_TOKEN }}
 
     steps:
       - name: Checkout
@@ -262,18 +266,19 @@ jobs:
       # FROMs the codna-published sidecar (ghcr.io/escrypto-labs/codna/sidecar@sha256:…). That base is
       # a PRIVATE cross-repo package, so pulling it needs read:packages on escrypto-labs/codna — the
       # default GITHUB_TOKEN here does NOT have it. Provide a CODNA_GHCR_READ_TOKEN secret (a PAT with
-      # read:packages) OR make the codna sidecar package public (owner item D1). The step is skipped
-      # when neither is available so the api/worker build still succeeds.
+      # read:packages) OR make the codna sidecar package public (owner item D1). These steps are
+      # skipped when CODNA_TOKEN is empty so the api/worker build still succeeds.
       - name: Log in to GHCR for the codna sidecar base image
-        if: ${{ secrets.CODNA_GHCR_READ_TOKEN != '' }}
+        if: ${{ env.CODNA_TOKEN != '' }}
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9  # v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.CODNA_GHCR_READ_TOKEN }}
+          password: ${{ env.CODNA_TOKEN }}
 
       - name: Extract metadata for Engine image
         id: meta-engine
+        if: ${{ env.CODNA_TOKEN != '' }}
         uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051  # v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/engine
@@ -282,6 +287,7 @@ jobs:
             type=raw,value=latest
 
       - name: Build and push Engine image (worker + agent-core sidecar)
+        if: ${{ env.CODNA_TOKEN != '' }}
         uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25  # v5
         with:
           context: .
