@@ -1,17 +1,17 @@
 """
-Async Algenta API client for use with asyncio.
+Async Codna API client for use with asyncio.
 
 Usage:
     import asyncio
     import os
-    from decision_engine import AsyncAlgentaClient
+    from decision_engine import AsyncCodnaClient
 
     async def main():
         api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
         if not api_key:
             raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
 
-        async with AsyncAlgentaClient(api_key=api_key) as client:
+        async with AsyncCodnaClient(api_key=api_key) as client:
             result = await client.simulate(
                 mode="auto",
                 scenario={
@@ -26,7 +26,7 @@ Usage:
 This example is the Cloud Managed path. In `self_hosted` and `air_gapped`,
 pass an explicit self-hosted `base_url` and use the API key provisioned by
 your self-hosted operator deployment instead. Private profiles fail closed and
-do not silently fall back to Algenta cloud.
+do not silently fall back to Codna cloud.
 """
 
 from __future__ import annotations
@@ -294,9 +294,9 @@ from decision_engine.async_client_facade._mixin_account_control_plane import _As
 
 class AsyncDecisionEngineClient(_AsyncSimulationQueryMixin, _AsyncProductDecisionMixin, _AsyncTriggerSourceMixin, _AsyncLLMMixin, _AsyncContractCapabilityMixin, _AsyncAgentRunMixin, _AsyncConnectorRepositoryMixin, _AsyncJobDeploymentMixin, _AsyncAccountControlPlaneMixin):
     """
-    Async HTTP client for the Algenta API.
+    Async HTTP client for the Codna API.
 
-    `AsyncAlgentaClient` is the preferred public alias.
+    `AsyncCodnaClient` is the preferred public alias.
     `AsyncDecisionEngineClient` remains available for backward compatibility.
     """
 
@@ -398,5 +398,5 @@ class AsyncDecisionEngineClient(_AsyncSimulationQueryMixin, _AsyncProductDecisio
         await self.aclose()
 
 
-class AsyncAlgentaClient(AsyncDecisionEngineClient):
-    """Preferred public async client name for the Algenta API."""
+class AsyncCodnaClient(AsyncDecisionEngineClient):
+    """Preferred public async client name for the Codna API."""

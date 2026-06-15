@@ -2840,13 +2840,13 @@ if _registry_available:
 
 
 def test_tool_get_contract():
-    """get_contract should expose the machine-readable Algenta contract."""
+    """get_contract should expose the machine-readable Codna contract."""
     assert _registry_available, "Registry not importable"
 
     contract_str = run_async(call_tool("get_contract", {}))
     contract_body = json.loads(contract_str)
 
-    assert contract_body.get("brand") == "Algenta", contract_body
+    assert contract_body.get("brand") == "Codna", contract_body
     assert (
         contract_body.get("primary_data_query_contract", {}).get("api", {}).get("contract_endpoint")
         == "/v1/meta/contract"

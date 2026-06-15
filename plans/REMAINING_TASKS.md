@@ -277,7 +277,7 @@ data flow break somewhere.
 - [ ] Remove request/response field assumptions hardcoded around Monte Carlo (from PHASED_PLAN)
 
 ### Integration Example Updates
-- [ ] [`examples/power-automate/connector_definition.json`](../examples/power-automate/connector_definition.json) — update hostname from `api.decisionengine.io` to `api.algenta.ai`
+- [ ] [`examples/power-automate/connector_definition.json`](../examples/power-automate/connector_definition.json) — update hostname from `api.decisionengine.io` to `api.codna.ai`
 - [ ] Verify all integration examples use current API schema (v0.7.0 response fields)
 - [ ] Add Zapier example (`examples/zapier/README.md`) — currently missing
 - [ ] Add Make (Integromat) example (`examples/make/README.md`) — currently missing

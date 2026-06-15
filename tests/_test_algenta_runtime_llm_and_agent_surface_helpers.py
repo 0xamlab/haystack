@@ -486,13 +486,13 @@ def _make_deployment_regions_payload() -> dict[str, object]:
         "providers": [
             {
                 "id": "algenta_shared",
-                "name": "Algenta Managed",
+                "name": "Codna Managed",
                 "description": "Multi-tenant shared pool.",
                 "icon": "🌐",
                 "regions": [
                     {
                         "id": "algenta-shared",
-                        "label": "Algenta Shared",
+                        "label": "Codna Shared",
                         "location": "Global",
                     }
                 ],

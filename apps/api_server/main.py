@@ -1,5 +1,5 @@
 """
-Algenta API — FastAPI application entry point.
+Codna API — FastAPI application entry point.
 """
 
 import logging
@@ -247,9 +247,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(
-    title="Algenta API",
+    title="Codna API",
     description=(
-        "Hosted and self-hosted Algenta API for governed data discovery, exact queries, "
+        "Hosted and self-hosted Codna API for governed data discovery, exact queries, "
         "read-only SQL reports, and simulation workflows."
     ),
     version="1.0.0",
@@ -679,7 +679,7 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
                     "code": str(error_body),
                     "message": str(detail.get("message", error_body)),
                     "request_id": request_id,
-                    "docs_url": "https://docs.algenta.ai/errors/http_error",
+                    "docs_url": "https://docs.codna.ai/errors/http_error",
                     **{k: v for k, v in detail.items() if k not in {"error", "message"}},
                 }
             },
@@ -693,7 +693,7 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
                 "code": "http_error",
                 "message": str(detail),
                 "request_id": request_id,
-                "docs_url": "https://docs.algenta.ai/errors/http_error",
+                "docs_url": "https://docs.codna.ai/errors/http_error",
             }
         },
         headers=_response_headers_with_request_state(request, exc.headers),
@@ -721,7 +721,7 @@ async def validation_exception_handler(
                 "message": "Request validation failed.",
                 "details": details,
                 "request_id": request_id,
-                "docs_url": "https://docs.algenta.ai/errors/validation_error",
+                "docs_url": "https://docs.codna.ai/errors/validation_error",
             }
         },
         headers=_response_headers_with_request_state(request),
@@ -740,7 +740,7 @@ async def generic_exception_handler(request: Request, exc: Exception) -> JSONRes
                 "code": "internal_error",
                 "message": "An unexpected error occurred.",
                 "request_id": request_id,
-                "docs_url": "https://docs.algenta.ai/errors/internal_error",
+                "docs_url": "https://docs.codna.ai/errors/internal_error",
             }
         },
         headers=_response_headers_with_request_state(request),

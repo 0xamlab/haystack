@@ -1,4 +1,4 @@
-Mission Algenta SDK Parity Plan
+Mission Codna SDK Parity Plan
 
 Scope
 
@@ -15,7 +15,7 @@ What is already good
 Main drift
 
 - Mission's vendored SDK does not currently include the upstream `privacy_profile.ts` fail-closed layer.
-- Mission's vendored client still defaults to `https://api.algenta.ai` without private-profile rejection.
+- Mission's vendored client still defaults to `https://api.codna.ai` without private-profile rejection.
 - Mission's app-level config only reads `ALGENTA_BASE_URL` and `ALGENTA_API_KEY`, not the full alias set now supported upstream.
 
 Recommended patch set
@@ -33,7 +33,7 @@ Recommended patch set
 
 Why
 
-- The upstream privacy helper depends on those constants to reject Algenta-owned cloud URLs in `self_hosted` and `air_gapped`.
+- The upstream privacy helper depends on those constants to reject Codna-owned cloud URLs in `self_hosted` and `air_gapped`.
 
 2. `/Users/angel/Developer/mission/packages/algenta-sdk/src/privacy_profile.ts`
 
@@ -43,7 +43,7 @@ Why
   - `cloudDisabled()`
   - `privateProfileEnabled()`
   - `normalizeBaseUrl()`
-  - `isAlgentaOwnedBaseUrl()`
+  - `isCodnaOwnedBaseUrl()`
   - `resolveClientBaseUrl()`
   - `resolveConsoleBaseUrl()`
   - `resolveApiKeysUrl()`
@@ -62,11 +62,11 @@ Why
 - Keep the current env API key lookup if desired, but base URL resolution should become:
   - explicit `config.baseUrl`
   - env aliases `ALGENTA_BASE_URL`, `DE_BASE_URL`, `ALGENTA_API_URL`
-  - reject Algenta-owned cloud URLs when `ALGENTA_DEPLOYMENT_MODE` is `self_hosted` or `air_gapped`, or when `ALGENTA_DISABLE_CLOUD=1`
+  - reject Codna-owned cloud URLs when `ALGENTA_DEPLOYMENT_MODE` is `self_hosted` or `air_gapped`, or when `ALGENTA_DISABLE_CLOUD=1`
 - Update the top-of-file examples/comments to match the upstream wording:
   - Cloud Managed is explicit
   - `self_hosted` and `air_gapped` must use self-hosted `baseUrl`
-  - private profiles fail closed and do not silently fall back to Algenta cloud
+  - private profiles fail closed and do not silently fall back to Codna cloud
 
 Why
 
@@ -77,7 +77,7 @@ Why
 - Port the upstream privacy/base-url checks into the hosted/runtime path.
 - Keep the existing Mission-specific local daemon behavior, but align these seams:
   - `Runtime({ mode: "self_hosted" })` requires explicit `baseUrl`
-  - private profiles reject Algenta-owned control-plane URLs
+  - private profiles reject Codna-owned control-plane URLs
   - control-plane URL resolution should honor:
     - `ALGENTA_CONTROL_PLANE_URL`
     - `ALGENTA_BASE_URL`
@@ -92,12 +92,12 @@ Why
 5. `/Users/angel/Developer/mission/lib/algenta-config.ts`
 
 - Expand env alias support at the wrapper/config layer:
-  - `getAlgentaBaseUrl()` should check, in order:
+  - `getCodnaBaseUrl()` should check, in order:
     - `ALGENTA_BASE_URL`
     - `DE_BASE_URL`
     - `ALGENTA_API_URL`
     - then Mission's local default `http://localhost:8000`
-  - `getAlgentaApiKey()` should check:
+  - `getCodnaApiKey()` should check:
     - `ALGENTA_API_KEY`
     - `DE_API_KEY`
 - Preserve Mission's local-dev default behavior for non-private/local flows.
@@ -131,7 +131,7 @@ Recommended tests to add or update
 2. `/Users/angel/Developer/mission/packages/algenta-sdk/test/client.test.mjs`
 
 - Port upstream privacy tests for:
-  - `self_hosted` + `ALGENTA_DISABLE_CLOUD=1` rejects `https://api.algenta.ai`
+  - `self_hosted` + `ALGENTA_DISABLE_CLOUD=1` rejects `https://api.codna.ai`
   - private profile allows explicit self-hosted `baseUrl`
   - private profile help text points at self-hosted console/API origin
 
@@ -139,7 +139,7 @@ Recommended tests to add or update
 
 - Add or port tests for:
   - `Runtime({ mode: "self_hosted" })` requires explicit `baseUrl`
-  - private profiles reject Algenta-owned hosted URLs
+  - private profiles reject Codna-owned hosted URLs
   - hosted/runtime path honors explicit self-hosted base URL aliases
 
 4. `/Users/angel/Developer/mission/tests/decision-engine-sdk-client.test.ts`

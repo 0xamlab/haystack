@@ -1,4 +1,4 @@
-"""_QueryResolveMixin for the AlgentaClient class.
+"""_QueryResolveMixin for the CodnaClient class.
 
 Extracted from packages/algenta-core/algenta/client.py during modularization.
 """

@@ -1,7 +1,7 @@
 """
 engines/bundles.py — Use-case bundles manifest.
 
-A bundle groups Algenta engines and Mojo libraries into a focused,
+A bundle groups Codna engines and Mojo libraries into a focused,
 domain-specific experience. Users install the bundle for their use case,
 get drop-in API compatibility, and discover the platform naturally.
 
@@ -50,11 +50,11 @@ class Bundle:
 BUNDLES: list[Bundle] = [
     Bundle(
         slug="algenta-core",
-        name="Algenta Core",
+        name="Codna Core",
         description=(
             "Local simulation, optimization, and decision-making. "
             "Zero dependencies. No API key. Works offline. "
-            "The entry point to the Algenta ecosystem."
+            "The entry point to the Codna ecosystem."
         ),
         install="pip install algenta-core",
         engines=["decision", "optimize"],
@@ -82,7 +82,7 @@ BUNDLES: list[Bundle] = [
     ),
     Bundle(
         slug="algenta-finance",
-        name="Algenta Finance",
+        name="Codna Finance",
         description=(
             "Financial modeling, risk quantification, portfolio optimization, "
             "and credit scoring. Drop-in replacement for QuantLib patterns "
@@ -120,7 +120,7 @@ BUNDLES: list[Bundle] = [
     ),
     Bundle(
         slug="algenta-ml",
-        name="Algenta ML",
+        name="Codna ML",
         description=(
             "ML training, scoring, and feature engineering — faster than scikit-learn "
             "and PyTorch for tabular workloads. Includes model evaluation, "
@@ -158,11 +158,11 @@ BUNDLES: list[Bundle] = [
     ),
     Bundle(
         slug="algenta-ai",
-        name="Algenta AI",
+        name="Codna AI",
         description=(
             "LLM inference, agent workflows, RAG pipelines, and structured output. "
             "Drop-in replacement for LangChain, vLLM, and FAISS patterns. "
-            "Runs your models 100× faster with the Algenta Inference Engine."
+            "Runs your models 100× faster with the Codna Inference Engine."
         ),
         install="pip install algenta-ai",
         engines=["inference", "agent", "retrieval", "serving"],
@@ -180,10 +180,10 @@ BUNDLES: list[Bundle] = [
         ],
         replaces=["vLLM", "LangChain", "LangGraph", "FAISS", "Weaviate (basic)"],
         entry_points=[
-            "algenta.ai.infer(model, prompt)",
-            "algenta.ai.agent.run(task, tools)",
-            "algenta.ai.retrieve(query, docs)",
-            "algenta.ai.rag(query, collection)",
+            "codna.ai.infer(model, prompt)",
+            "codna.ai.agent.run(task, tools)",
+            "codna.ai.retrieve(query, docs)",
+            "codna.ai.rag(query, collection)",
         ],
         use_cases=[
             "LLM inference with KV caching",
@@ -196,7 +196,7 @@ BUNDLES: list[Bundle] = [
     ),
     Bundle(
         slug="algenta-ops",
-        name="Algenta Ops",
+        name="Codna Ops",
         description=(
             "Infrastructure optimization, capacity planning, SLA modeling, "
             "and cost routing. Used by MLOps and DevOps teams to reduce "

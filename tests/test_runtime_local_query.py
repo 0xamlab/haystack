@@ -15,7 +15,7 @@ for path in (str(ALGENTA_CORE), str(ROOT)):
 runtime_errors = importlib.import_module("algenta.runtime_errors")
 runtime_local_execution = importlib.import_module("algenta.runtime_local_execution")
 runtime_local_query = importlib.import_module("algenta.runtime_local_query")
-AlgentaRuntimeError = runtime_errors.AlgentaRuntimeError
+CodnaRuntimeError = runtime_errors.CodnaRuntimeError
 LocalSource = runtime_local_execution.LocalSource
 infer_numeric_fields = runtime_local_execution.infer_numeric_fields
 query_local_request = runtime_local_query.query_local_request
@@ -137,7 +137,7 @@ def test_verify_local_request_returns_structured_error_for_invalid_plan() -> Non
         request={"metric": "revenue"},
         kwargs={},
         coerce_plan=lambda request, kwargs: (_ for _ in ()).throw(
-            AlgentaRuntimeError("bad_plan", "plan is invalid")
+            CodnaRuntimeError("bad_plan", "plan is invalid")
         ),
         plan_hash=lambda plan: "unused",
     )

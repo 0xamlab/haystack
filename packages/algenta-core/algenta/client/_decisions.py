@@ -1,4 +1,4 @@
-"""_DecisionsMixin for the AlgentaClient class.
+"""_DecisionsMixin for the CodnaClient class.
 
 Extracted from packages/algenta-core/algenta/client.py during modularization.
 """

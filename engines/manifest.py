@@ -1,5 +1,5 @@
 """
-engines/manifest.py — Algenta OS engine registry.
+engines/manifest.py — Codna OS engine registry.
 
 Maps each product-level engine to its constituent Mojo libraries,
 API surface, and use cases.  Single source of truth — imported by
@@ -250,7 +250,7 @@ ENGINES: list[Engine] = [
         name="Hybrid Intelligence Engine",
         slug="hybrid",
         description=(
-            "Algenta's moat: ML prediction + physics simulation + "
+            "Codna's moat: ML prediction + physics simulation + "
             "optimization + symbolic rules unified into one reasoning system."
         ),
         api_path="/v1/hybrid",

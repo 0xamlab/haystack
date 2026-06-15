@@ -1,17 +1,17 @@
 /** Auto-split sub-module of client.ts — runtime manifest response validators. */
 
 /**
- * Algenta TypeScript SDK — fetch-based client.
+ * Codna TypeScript SDK — fetch-based client.
  * Works in Node.js 18+ and modern browsers.
  *
  * @example
- * import { AlgentaClient } from 'algenta-sdk';
+ * import { CodnaClient } from 'algenta-sdk';
  *
  * const apiKey = process.env.ALGENTA_API_KEY ?? process.env.DE_API_KEY;
  * if (!apiKey) {
  *   throw new Error('Set ALGENTA_API_KEY or DE_API_KEY before running this example.');
  * }
- * const client = new AlgentaClient({ apiKey });
+ * const client = new CodnaClient({ apiKey });
  * const result = await client.simulate({
  *   mode: 'auto',
  *   scenario: {
@@ -24,7 +24,7 @@
  * This example is the Cloud Managed path. In `self_hosted` and `air_gapped`,
  * pass an explicit self-hosted `baseUrl` and use the API key provisioned by
  * your self-hosted operator deployment instead. Private profiles fail closed
- * and do not silently fall back to Algenta cloud.
+ * and do not silently fall back to Codna cloud.
  */
 
 import type {
@@ -273,112 +273,112 @@ import {
 } from "./_client_platform_validators_c.js";
 
 export function assertRuntimeManifestResponse(payload: unknown): RuntimeManifestResponse {
-  return wrapRuntimeValidation("Algenta runtime manifest endpoint", payload, value => {
-    const obj = assertJsonObject(value, "Algenta runtime manifest response");
-    assertNonEmptyString(obj.runtime_version, "Algenta runtime manifest response.runtime_version");
-    assertNonEmptyString(obj.mojo_version, "Algenta runtime manifest response.mojo_version");
-    assertNonEmptyString(obj.llm_core_manifest, "Algenta runtime manifest response.llm_core_manifest");
+  return wrapRuntimeValidation("Codna runtime manifest endpoint", payload, value => {
+    const obj = assertJsonObject(value, "Codna runtime manifest response");
+    assertNonEmptyString(obj.runtime_version, "Codna runtime manifest response.runtime_version");
+    assertNonEmptyString(obj.mojo_version, "Codna runtime manifest response.mojo_version");
+    assertNonEmptyString(obj.llm_core_manifest, "Codna runtime manifest response.llm_core_manifest");
     assertNonEmptyString(
       obj.module_manifest_version,
-      "Algenta runtime manifest response.module_manifest_version",
+      "Codna runtime manifest response.module_manifest_version",
     );
-    assertNonEmptyString(obj.generated_at, "Algenta runtime manifest response.generated_at");
-    const modules = assertArray(obj.modules, "Algenta runtime manifest response.modules");
+    assertNonEmptyString(obj.generated_at, "Codna runtime manifest response.generated_at");
+    const modules = assertArray(obj.modules, "Codna runtime manifest response.modules");
     const validatedModules = modules.map((entry, index) =>
       assertRuntimeModuleManifestEntry(
         entry,
-        `Algenta runtime manifest response.modules[${index}]`,
+        `Codna runtime manifest response.modules[${index}]`,
       ),
     );
     assertUniqueRuntimeValues(
       validatedModules.map(entry => entry.name),
-      "Algenta runtime manifest response.modules",
+      "Codna runtime manifest response.modules",
     );
     const compiledArtifacts = assertArray(
       obj.compiled_artifacts,
-      "Algenta runtime manifest response.compiled_artifacts",
+      "Codna runtime manifest response.compiled_artifacts",
     );
     compiledArtifacts.forEach((entry, index) =>
       assertRuntimeArtifactReference(
         entry,
-        `Algenta runtime manifest response.compiled_artifacts[${index}]`,
+        `Codna runtime manifest response.compiled_artifacts[${index}]`,
       ),
     );
     assertUniqueRuntimeObjectField(
       compiledArtifacts,
       "path",
-      "Algenta runtime manifest response.compiled_artifacts",
+      "Codna runtime manifest response.compiled_artifacts",
     );
     const supportedChannels = assertEnumArray(
       obj.supported_channels,
       RUNTIME_SUPPORTED_CHANNEL_VALUES,
-      "Algenta runtime manifest response.supported_channels",
+      "Codna runtime manifest response.supported_channels",
     );
     assertUniqueRuntimeValues(
       supportedChannels,
-      "Algenta runtime manifest response.supported_channels",
+      "Codna runtime manifest response.supported_channels",
     );
     const validatedAuxiliaryChannels = assertEnumArray(
       obj.validated_auxiliary_channels,
       RUNTIME_AUXILIARY_CHANNEL_VALUES,
-      "Algenta runtime manifest response.validated_auxiliary_channels",
+      "Codna runtime manifest response.validated_auxiliary_channels",
     );
     assertUniqueRuntimeValues(
       validatedAuxiliaryChannels,
-      "Algenta runtime manifest response.validated_auxiliary_channels",
+      "Codna runtime manifest response.validated_auxiliary_channels",
     );
     const featureFlagChannels = assertEnumArray(
       obj.feature_flag_channels,
       RUNTIME_FEATURE_FLAG_CHANNEL_VALUES,
-      "Algenta runtime manifest response.feature_flag_channels",
+      "Codna runtime manifest response.feature_flag_channels",
     );
     assertUniqueRuntimeValues(
       featureFlagChannels,
-      "Algenta runtime manifest response.feature_flag_channels",
+      "Codna runtime manifest response.feature_flag_channels",
     );
     assertEnumKeyedEnumRecord(
       obj.maturity,
       RUNTIME_MODULE_ID_VALUES,
       RUNTIME_MATURITY_VALUES,
-      "Algenta runtime manifest response.maturity",
+      "Codna runtime manifest response.maturity",
     );
     assertRuntimeSnapshotReference(
       obj.policy_snapshot,
-      "Algenta runtime manifest response.policy_snapshot",
+      "Codna runtime manifest response.policy_snapshot",
     );
     assertRuntimeSnapshotReference(
       obj.schema_snapshot,
-      "Algenta runtime manifest response.schema_snapshot",
+      "Codna runtime manifest response.schema_snapshot",
     );
     assertEnumValue(
       obj.deployment_mode,
       RUNTIME_DEPLOYMENT_MODE_VALUES,
-      "Algenta runtime manifest response.deployment_mode",
+      "Codna runtime manifest response.deployment_mode",
     );
     assertRuntimeDeploymentModes(
       obj.deployment_modes,
-      "Algenta runtime manifest response.deployment_modes",
+      "Codna runtime manifest response.deployment_modes",
     );
     const shippingContract = assertRuntimeShippingContractSummary(
       obj.shipping_contract,
-      "Algenta runtime manifest response.shipping_contract",
+      "Codna runtime manifest response.shipping_contract",
     );
     const benchmarkDiscoveryLane = assertRuntimeBenchmarkDiscoveryLane(
       obj.benchmark_discovery_lane,
-      "Algenta runtime manifest response.benchmark_discovery_lane",
+      "Codna runtime manifest response.benchmark_discovery_lane",
     );
     assertRuntimeAdvertisedCapabilities(
       obj.advertised_capabilities,
-      "Algenta runtime manifest response.advertised_capabilities",
+      "Codna runtime manifest response.advertised_capabilities",
     );
     const systemInvariants = assertArray(
       obj.system_invariants,
-      "Algenta runtime manifest response.system_invariants",
+      "Codna runtime manifest response.system_invariants",
     );
     systemInvariants.forEach((entry, index) =>
         assertRuntimeNamedRule(
           entry,
-          `Algenta runtime manifest response.system_invariants[${index}]`,
+          `Codna runtime manifest response.system_invariants[${index}]`,
           RUNTIME_INVARIANT_NAME_VALUES,
           "name",
         ),
@@ -386,136 +386,136 @@ export function assertRuntimeManifestResponse(payload: unknown): RuntimeManifest
     assertUniqueRuntimeObjectField(
       systemInvariants,
       "name",
-      "Algenta runtime manifest response.system_invariants",
+      "Codna runtime manifest response.system_invariants",
     );
     assertRuntimeExecutionModel(
       obj.execution_model,
-      "Algenta runtime manifest response.execution_model",
+      "Codna runtime manifest response.execution_model",
     );
     assertRuntimeExternalNondeterminismPolicy(
       obj.external_nondeterminism,
-      "Algenta runtime manifest response.external_nondeterminism",
+      "Codna runtime manifest response.external_nondeterminism",
     );
     assertRuntimeArtifactLineageSchema(
       obj.artifact_lineage,
-      "Algenta runtime manifest response.artifact_lineage",
+      "Codna runtime manifest response.artifact_lineage",
     );
     assertRuntimeCapabilityAlgebra(
       obj.capability_algebra,
-      "Algenta runtime manifest response.capability_algebra",
+      "Codna runtime manifest response.capability_algebra",
     );
     const kernelPromotionCriteria = assertRuntimeKernelPromotionCriteria(
       obj.kernel_promotion_criteria,
-      "Algenta runtime manifest response.kernel_promotion_criteria",
+      "Codna runtime manifest response.kernel_promotion_criteria",
     );
     const proofMatrix = assertArray(
       obj.proof_matrix,
-      "Algenta runtime manifest response.proof_matrix",
+      "Codna runtime manifest response.proof_matrix",
     );
     proofMatrix.forEach((entry, index) =>
         assertRuntimeLayerProofMatrixEntry(
           entry,
-          `Algenta runtime manifest response.proof_matrix[${index}]`,
+          `Codna runtime manifest response.proof_matrix[${index}]`,
         ),
     );
     assertUniqueRuntimeObjectField(
       proofMatrix,
       "layer",
-      "Algenta runtime manifest response.proof_matrix",
+      "Codna runtime manifest response.proof_matrix",
     );
     assertRuntimeBenchmarkFramework(
       obj.benchmarking,
-      "Algenta runtime manifest response.benchmarking",
+      "Codna runtime manifest response.benchmarking",
     );
-    assertArray(obj.slo_budgets, "Algenta runtime manifest response.slo_budgets").forEach(
+    assertArray(obj.slo_budgets, "Codna runtime manifest response.slo_budgets").forEach(
       (entry, index) =>
-        assertRuntimeSLOBudget(entry, `Algenta runtime manifest response.slo_budgets[${index}]`),
+        assertRuntimeSLOBudget(entry, `Codna runtime manifest response.slo_budgets[${index}]`),
     );
     assertRuntimeSchedulerModel(
       obj.scheduler_model,
-      "Algenta runtime manifest response.scheduler_model",
+      "Codna runtime manifest response.scheduler_model",
     );
-    assertRuntimeMemoryModel(obj.memory_model, "Algenta runtime manifest response.memory_model");
+    assertRuntimeMemoryModel(obj.memory_model, "Codna runtime manifest response.memory_model");
     assertRuntimeEvaluationScience(
       obj.evaluation_science,
-      "Algenta runtime manifest response.evaluation_science",
+      "Codna runtime manifest response.evaluation_science",
     );
     const typedFailures = assertArray(
       obj.typed_failures,
-      "Algenta runtime manifest response.typed_failures",
+      "Codna runtime manifest response.typed_failures",
     );
     typedFailures.forEach((entry, index) =>
-        assertRuntimeTypedFailure(entry, `Algenta runtime manifest response.typed_failures[${index}]`),
+        assertRuntimeTypedFailure(entry, `Codna runtime manifest response.typed_failures[${index}]`),
     );
     assertUniqueRuntimeObjectField(
       typedFailures,
       "code",
-      "Algenta runtime manifest response.typed_failures",
+      "Codna runtime manifest response.typed_failures",
     );
-    assertRuntimeThreatModel(obj.threat_model, "Algenta runtime manifest response.threat_model");
+    assertRuntimeThreatModel(obj.threat_model, "Codna runtime manifest response.threat_model");
     assertRuntimeFormalReleaseTheorem(
       obj.formal_release_theorem,
-      "Algenta runtime manifest response.formal_release_theorem",
+      "Codna runtime manifest response.formal_release_theorem",
     );
     assertRuntimeReleaseArtifactBundle(
       obj.release_artifact_bundle,
-      "Algenta runtime manifest response.release_artifact_bundle",
+      "Codna runtime manifest response.release_artifact_bundle",
     );
     const releaseGates = assertArray(
       obj.release_gates,
-      "Algenta runtime manifest response.release_gates",
+      "Codna runtime manifest response.release_gates",
     );
     releaseGates.forEach((entry, index) =>
-        assertRuntimeReleaseGate(entry, `Algenta runtime manifest response.release_gates[${index}]`),
+        assertRuntimeReleaseGate(entry, `Codna runtime manifest response.release_gates[${index}]`),
     );
     assertUniqueRuntimeObjectField(
       releaseGates,
       "gate",
-      "Algenta runtime manifest response.release_gates",
+      "Codna runtime manifest response.release_gates",
     );
     const implementationSequence = assertArray(
       obj.immediate_implementation_sequence,
-      "Algenta runtime manifest response.immediate_implementation_sequence",
+      "Codna runtime manifest response.immediate_implementation_sequence",
     );
     implementationSequence.forEach((entry, index) =>
       assertRuntimeImplementationStep(
         entry,
-        `Algenta runtime manifest response.immediate_implementation_sequence[${index}]`,
+        `Codna runtime manifest response.immediate_implementation_sequence[${index}]`,
       ),
     );
     assertUniqueRuntimeObjectField(
       implementationSequence,
       "pr",
-      "Algenta runtime manifest response.immediate_implementation_sequence",
+      "Codna runtime manifest response.immediate_implementation_sequence",
     );
-    assertNonEmptyString(obj.manifest_digest, "Algenta runtime manifest response.manifest_digest");
-    assertRuntimeSignature(obj.signature, "Algenta runtime manifest response.signature");
+    assertNonEmptyString(obj.manifest_digest, "Codna runtime manifest response.manifest_digest");
+    assertRuntimeSignature(obj.signature, "Codna runtime manifest response.signature");
     const totalFunctions = validatedModules.reduce((sum, entry) => sum + entry.functionCount, 0);
     if (shippingContract.moduleCount !== validatedModules.length) {
       throw buildStructuredValidationError(
-        "Algenta runtime manifest response.shipping_contract.module_count",
-        "Algenta runtime manifest response.shipping_contract.module_count must equal the number of manifest modules.",
+        "Codna runtime manifest response.shipping_contract.module_count",
+        "Codna runtime manifest response.shipping_contract.module_count must equal the number of manifest modules.",
         "value_error",
       );
     }
     if (shippingContract.functionCount !== totalFunctions) {
       throw buildStructuredValidationError(
-        "Algenta runtime manifest response.shipping_contract.function_count",
-        "Algenta runtime manifest response.shipping_contract.function_count must equal the total module function_count.",
+        "Codna runtime manifest response.shipping_contract.function_count",
+        "Codna runtime manifest response.shipping_contract.function_count must equal the total module function_count.",
         "value_error",
       );
     }
     if (benchmarkDiscoveryLane.shippingManifestModules !== validatedModules.length) {
       throw buildStructuredValidationError(
-        "Algenta runtime manifest response.benchmark_discovery_lane.shipping_manifest_modules",
-        "Algenta runtime manifest response.benchmark_discovery_lane.shipping_manifest_modules must equal the number of manifest modules.",
+        "Codna runtime manifest response.benchmark_discovery_lane.shipping_manifest_modules",
+        "Codna runtime manifest response.benchmark_discovery_lane.shipping_manifest_modules must equal the number of manifest modules.",
         "value_error",
       );
     }
     if (benchmarkDiscoveryLane.shippingManifestFunctions !== totalFunctions) {
       throw buildStructuredValidationError(
-        "Algenta runtime manifest response.benchmark_discovery_lane.shipping_manifest_functions",
-        "Algenta runtime manifest response.benchmark_discovery_lane.shipping_manifest_functions must equal the total module function_count.",
+        "Codna runtime manifest response.benchmark_discovery_lane.shipping_manifest_functions",
+        "Codna runtime manifest response.benchmark_discovery_lane.shipping_manifest_functions must equal the total module function_count.",
         "value_error",
       );
     }
@@ -523,15 +523,15 @@ export function assertRuntimeManifestResponse(payload: unknown): RuntimeManifest
     validatedModules.forEach(entry => {
       if (!discoveredSourceImportPaths.has(entry.name)) {
         throw buildStructuredValidationError(
-          "Algenta runtime manifest response.benchmark_discovery_lane.discovered_source_inventory",
-          `Algenta runtime manifest response.benchmark_discovery_lane.discovered_source_inventory must include manifest module ${entry.name}.`,
+          "Codna runtime manifest response.benchmark_discovery_lane.discovered_source_inventory",
+          `Codna runtime manifest response.benchmark_discovery_lane.discovered_source_inventory must include manifest module ${entry.name}.`,
           "value_error",
         );
       }
       if (entry.promotionStatus !== "shipping") {
         throw buildStructuredValidationError(
-          "Algenta runtime manifest response.modules",
-          `Algenta runtime manifest response.modules must mark ${entry.name} as shipping to appear in the signed manifest.`,
+          "Codna runtime manifest response.modules",
+          `Codna runtime manifest response.modules must mark ${entry.name} as shipping to appear in the signed manifest.`,
           "value_error",
         );
       }
@@ -540,8 +540,8 @@ export function assertRuntimeManifestResponse(payload: unknown): RuntimeManifest
         1 + kernelPromotionCriteria.minimumPrimaryMetricImprovementPct / 100
       ) {
         throw buildStructuredValidationError(
-          "Algenta runtime manifest response.modules",
-          `Algenta runtime manifest response.modules must keep ${entry.name} above the kernel promotion minimum speedup threshold.`,
+          "Codna runtime manifest response.modules",
+          `Codna runtime manifest response.modules must keep ${entry.name} above the kernel promotion minimum speedup threshold.`,
           "value_error",
         );
       }

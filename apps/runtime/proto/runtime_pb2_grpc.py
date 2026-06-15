@@ -26,8 +26,8 @@ if _version_not_supported:
     )
 
 
-class AlgentaRuntimeStub:
-    """Algenta local runtime daemon — gRPC service contract.
+class CodnaRuntimeStub:
+    """Codna local runtime daemon — gRPC service contract.
 
     Wire transport: unix domain socket (macOS/Linux) or TCP loopback (Windows).
     Default socket path: /tmp/algenta-runtime/daemon.sock
@@ -44,39 +44,39 @@ class AlgentaRuntimeStub:
             channel: A grpc.Channel.
         """
         self.Health = channel.unary_unary(
-                '/algenta.runtime.v1.AlgentaRuntime/Health',
+                '/algenta.runtime.v1.CodnaRuntime/Health',
                 request_serializer=runtime__pb2.HealthRequest.SerializeToString,
                 response_deserializer=runtime__pb2.HealthResponse.FromString,
                 _registered_method=True)
         self.GetRuntimeInfo = channel.unary_unary(
-                '/algenta.runtime.v1.AlgentaRuntime/GetRuntimeInfo',
+                '/algenta.runtime.v1.CodnaRuntime/GetRuntimeInfo',
                 request_serializer=runtime__pb2.RuntimeInfoRequest.SerializeToString,
                 response_deserializer=runtime__pb2.RuntimeInfoResponse.FromString,
                 _registered_method=True)
         self.ListModules = channel.unary_unary(
-                '/algenta.runtime.v1.AlgentaRuntime/ListModules',
+                '/algenta.runtime.v1.CodnaRuntime/ListModules',
                 request_serializer=runtime__pb2.ListModulesRequest.SerializeToString,
                 response_deserializer=runtime__pb2.ListModulesResponse.FromString,
                 _registered_method=True)
         self.ExecuteModule = channel.unary_unary(
-                '/algenta.runtime.v1.AlgentaRuntime/ExecuteModule',
+                '/algenta.runtime.v1.CodnaRuntime/ExecuteModule',
                 request_serializer=runtime__pb2.ExecuteRequest.SerializeToString,
                 response_deserializer=runtime__pb2.ExecuteResponse.FromString,
                 _registered_method=True)
         self.VerifyAndExecute = channel.unary_unary(
-                '/algenta.runtime.v1.AlgentaRuntime/VerifyAndExecute',
+                '/algenta.runtime.v1.CodnaRuntime/VerifyAndExecute',
                 request_serializer=runtime__pb2.VerifyAndExecuteRequest.SerializeToString,
                 response_deserializer=runtime__pb2.VerifyAndExecuteResponse.FromString,
                 _registered_method=True)
         self.GetEntitlementStatus = channel.unary_unary(
-                '/algenta.runtime.v1.AlgentaRuntime/GetEntitlementStatus',
+                '/algenta.runtime.v1.CodnaRuntime/GetEntitlementStatus',
                 request_serializer=runtime__pb2.EntitlementRequest.SerializeToString,
                 response_deserializer=runtime__pb2.EntitlementResponse.FromString,
                 _registered_method=True)
 
 
-class AlgentaRuntimeServicer:
-    """Algenta local runtime daemon — gRPC service contract.
+class CodnaRuntimeServicer:
+    """Codna local runtime daemon — gRPC service contract.
 
     Wire transport: unix domain socket (macOS/Linux) or TCP loopback (Windows).
     Default socket path: /tmp/algenta-runtime/daemon.sock
@@ -129,7 +129,7 @@ class AlgentaRuntimeServicer:
         raise NotImplementedError('Method not implemented!')
 
 
-def add_AlgentaRuntimeServicer_to_server(servicer, server):
+def add_CodnaRuntimeServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'Health': grpc.unary_unary_rpc_method_handler(
                     servicer.Health,
@@ -163,14 +163,14 @@ def add_AlgentaRuntimeServicer_to_server(servicer, server):
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'algenta.runtime.v1.AlgentaRuntime', rpc_method_handlers)
+            'algenta.runtime.v1.CodnaRuntime', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
-    server.add_registered_method_handlers('algenta.runtime.v1.AlgentaRuntime', rpc_method_handlers)
+    server.add_registered_method_handlers('algenta.runtime.v1.CodnaRuntime', rpc_method_handlers)
 
 
  # This class is part of an EXPERIMENTAL API.
-class AlgentaRuntime:
-    """Algenta local runtime daemon — gRPC service contract.
+class CodnaRuntime:
+    """Codna local runtime daemon — gRPC service contract.
 
     Wire transport: unix domain socket (macOS/Linux) or TCP loopback (Windows).
     Default socket path: /tmp/algenta-runtime/daemon.sock
@@ -194,7 +194,7 @@ class AlgentaRuntime:
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/algenta.runtime.v1.AlgentaRuntime/Health',
+            '/algenta.runtime.v1.CodnaRuntime/Health',
             runtime__pb2.HealthRequest.SerializeToString,
             runtime__pb2.HealthResponse.FromString,
             options,
@@ -221,7 +221,7 @@ class AlgentaRuntime:
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/algenta.runtime.v1.AlgentaRuntime/GetRuntimeInfo',
+            '/algenta.runtime.v1.CodnaRuntime/GetRuntimeInfo',
             runtime__pb2.RuntimeInfoRequest.SerializeToString,
             runtime__pb2.RuntimeInfoResponse.FromString,
             options,
@@ -248,7 +248,7 @@ class AlgentaRuntime:
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/algenta.runtime.v1.AlgentaRuntime/ListModules',
+            '/algenta.runtime.v1.CodnaRuntime/ListModules',
             runtime__pb2.ListModulesRequest.SerializeToString,
             runtime__pb2.ListModulesResponse.FromString,
             options,
@@ -275,7 +275,7 @@ class AlgentaRuntime:
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/algenta.runtime.v1.AlgentaRuntime/ExecuteModule',
+            '/algenta.runtime.v1.CodnaRuntime/ExecuteModule',
             runtime__pb2.ExecuteRequest.SerializeToString,
             runtime__pb2.ExecuteResponse.FromString,
             options,
@@ -302,7 +302,7 @@ class AlgentaRuntime:
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/algenta.runtime.v1.AlgentaRuntime/VerifyAndExecute',
+            '/algenta.runtime.v1.CodnaRuntime/VerifyAndExecute',
             runtime__pb2.VerifyAndExecuteRequest.SerializeToString,
             runtime__pb2.VerifyAndExecuteResponse.FromString,
             options,
@@ -329,7 +329,7 @@ class AlgentaRuntime:
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/algenta.runtime.v1.AlgentaRuntime/GetEntitlementStatus',
+            '/algenta.runtime.v1.CodnaRuntime/GetEntitlementStatus',
             runtime__pb2.EntitlementRequest.SerializeToString,
             runtime__pb2.EntitlementResponse.FromString,
             options,

@@ -1,4 +1,4 @@
-# Algenta Portal — Go-Live Gap Analysis & Implementation Plan
+# Codna Portal — Go-Live Gap Analysis & Implementation Plan
 
 ## Executive Summary
 
@@ -85,7 +85,7 @@ cryptography   # For encrypting credentials at rest
 ## Infrastructure (`/dashboard/infrastructure`) — Conceptually Wrong
 
 ### Reality check:
-- **Algenta Cloud** = our own managed API server (what's already running)
+- **Codna Cloud** = our own managed API server (what's already running)
 - **Self-hosted** = Docker/K8s deployment the customer runs themselves
 - **Hybrid** = Customer's compute calling our API
 

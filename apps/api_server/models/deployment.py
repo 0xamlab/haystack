@@ -44,7 +44,7 @@ class Deployment(UUIDMixin, TimestampMixin, Base):
     Per-org cloud deployment.
 
     Each org can have at most one ACTIVE deployment.
-    When no deployment exists, traffic routes to the Algenta shared pool.
+    When no deployment exists, traffic routes to the Codna shared pool.
 
     Partial unique index (enforced by migration 0012, not here):
       CREATE UNIQUE INDEX uq_deployments_org_active ON deployments (org_id)

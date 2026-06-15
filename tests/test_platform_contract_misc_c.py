@@ -20,7 +20,7 @@ def test_service_first_docs_keep_runtime_and_sdk_surfaces_distinct() -> None:
     trust_model = (ROOT / "apps" / "docs" / "docs" / "trust-model.md").read_text()
     local_runtime_example = (ROOT / "examples" / "local-runtime" / "README.md").read_text()
 
-    assert 'import { AlgentaClient } from "algenta-sdk";' in ts_sdk
+    assert 'import { CodnaClient } from "algenta-sdk";' in ts_sdk
     assert 'import { DEFAULT_BASE_URL, PRIMARY_DATA_QUERY_CONTRACT } from "algenta-sdk";' in ts_sdk
     assert "await client.simulate({" in ts_sdk
     assert "await client.submitJob({" in ts_sdk
@@ -39,7 +39,7 @@ def test_service_first_docs_keep_runtime_and_sdk_surfaces_distinct() -> None:
     assert 'apiKey: "de_live_xxxxxxxxxxxxxxxxxxxxxxxx"' not in ts_sdk
     assert 'apiKey: "de_test_xxxxxxxxxxxxxxxxxxxxxxxx"' not in ts_sdk
 
-    assert "from decision_engine import AlgentaClient" in python_sdk
+    assert "from decision_engine import CodnaClient" in python_sdk
     assert "from decision_engine import DEFAULT_BASE_URL, PRIMARY_DATA_QUERY_CONTRACT" in python_sdk
     assert "client.simulate(" in python_sdk
     assert "client.submit_job(" in python_sdk
@@ -146,13 +146,13 @@ def test_service_first_docs_keep_runtime_and_sdk_surfaces_distinct() -> None:
     assert "`ALGENTA_BASE_URL`. Legacy `DE_API_KEY`, `DE_BASE_URL`, and `ALGENTA_API_URL`" in local_runtime
     assert "remain accepted for compatibility." in local_runtime
     assert "fail closed" in local_runtime
-    assert "silently falling back to Algenta cloud." in local_runtime
+    assert "silently falling back to Codna cloud." in local_runtime
     assert 'new Runtime({ apiKey: "<YOUR_ALGENTA_API_KEY>" })' in trust_model
     assert 'Runtime(api_key="<YOUR_ALGENTA_API_KEY>")' in trust_model
     assert "immutable audit-log artifacts" in trust_model
     assert "execution-policy snapshots" in trust_model
     assert 'de_live_...' not in trust_model
-    assert "Algenta — Local Runtime" in local_runtime_example
+    assert "Codna — Local Runtime" in local_runtime_example
     assert 'pip install "algenta-core[cloud]"' in local_runtime_example
     assert 'Runtime(mode="api")' in local_runtime_example
     assert "algenta-sdk" in local_runtime_example
@@ -213,7 +213,7 @@ def test_service_first_docs_keep_runtime_and_sdk_surfaces_distinct() -> None:
     assert 'Authorization: Bearer <YOUR_ALGENTA_API_KEY>' in multi_hop_readme
     assert "de_live_YOUR_KEY" not in multi_hop_readme
     assert "fail closed" in local_runtime_example
-    assert "silently falling back to Algenta cloud." in local_runtime_example
+    assert "silently falling back to Codna cloud." in local_runtime_example
     assert "GET /v1/meta/contract" in local_runtime_example
     assert "/openapi.json" in local_runtime_example
     assert "x-primary-data-query-contract" in local_runtime_example
@@ -238,39 +238,39 @@ def test_public_package_and_export_surfaces_use_algenta_branding() -> None:
     legacy_api_main = (ROOT / "apps" / "api-server" / "main.py").read_text()
     readme = (ROOT / "README.md").read_text()
 
-    assert "Python SDK for Algenta" in python_sdk_pyproject
-    assert "Algenta Decision Engine" not in python_sdk_pyproject
-    assert "SDK for Algenta public data, query, and simulation APIs" in ts_sdk_package
+    assert "Python SDK for Codna" in python_sdk_pyproject
+    assert "Codna Decision Engine" not in python_sdk_pyproject
+    assert "SDK for Codna public data, query, and simulation APIs" in ts_sdk_package
     assert '"algenta"' in ts_sdk_package
-    assert "Algenta SDK errors" in python_sdk_exceptions
+    assert "Codna SDK errors" in python_sdk_exceptions
     assert "Decision Engine SDK errors" not in python_sdk_exceptions
-    assert "Algenta Python SDK" in python_sdk_models
+    assert "Codna Python SDK" in python_sdk_models
     assert "Decision Engine SDK" not in python_sdk_models
-    assert "Algenta API and runtime" in mcp_init
+    assert "Codna API and runtime" in mcp_init
     assert "decision engine" not in mcp_init.lower()
-    assert "Quota exhausted — Algenta" in email_service
-    assert "80% quota used — Algenta" in email_service
+    assert "Quota exhausted — Codna" in email_service
+    assert "80% quota used — Codna" in email_service
     assert "Decision Engine (" not in email_service
-    assert "test webhook from the Algenta API" in jobs_router
+    assert "test webhook from the Codna API" in jobs_router
     assert "test webhook from the Decision Engine" not in jobs_router
-    assert "wraps Algenta decision analysis" in products_router
+    assert "wraps Codna decision analysis" in products_router
     assert "API — no statistics or simulation expertise required." in products_router
     assert "wraps Decision Engine" not in products_router
-    assert 'title="Algenta API"' in legacy_api_main
+    assert 'title="Codna API"' in legacy_api_main
     assert "Universal Decision Engine" not in legacy_api_main
-    assert "cold `AlgentaClient(api_key=...)` construction" in readme
-    assert "cold `AsyncAlgentaClient(api_key=...)` construction" in readme
+    assert "cold `CodnaClient(api_key=...)` construction" in readme
+    assert "cold `AsyncCodnaClient(api_key=...)` construction" in readme
     assert "cold `DecisionEngineClient(api_key=...)` construction" not in readme
     assert "That constructor is the local/runtime-first surface." in readme
     assert "For Cloud Managed API usage," in readme
     assert "private profiles fail closed and do not" in readme
 
-    assert "# Algenta — Simulation Run Export" in export_router
-    assert 'pdf.cell(0, 12, "Algenta"' in export_router
-    assert "Algenta Decision Engine" not in export_router
+    assert "# Codna — Simulation Run Export" in export_router
+    assert 'pdf.cell(0, 12, "Codna"' in export_router
+    assert "Codna Decision Engine" not in export_router
 
-    assert "Universal Domain Template Library for Algenta." in simulation_templates
-    assert "Algenta Decision Engine" not in simulation_templates
+    assert "Universal Domain Template Library for Codna." in simulation_templates
+    assert "Codna Decision Engine" not in simulation_templates
 
 
 def test_readme_documents_self_hosted_saved_connector_and_runtime_library_surfaces() -> None:

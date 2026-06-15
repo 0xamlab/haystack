@@ -1,15 +1,15 @@
-# Algenta — Azure AI Foundry and Studio
+# Codna — Azure AI Foundry and Studio
 
-Use Algenta from Azure-hosted copilots, prompt flows, and assistant-style agents.
+Use Codna from Azure-hosted copilots, prompt flows, and assistant-style agents.
 
-- Cloud Managed: `https://api.algenta.ai`
+- Cloud Managed: `https://api.codna.ai`
 - `self_hosted` and `air_gapped`: replace the hosted base URL with your self-hosted base URL
 
-Private profiles do not silently fall back to Algenta cloud.
+Private profiles do not silently fall back to Codna cloud.
 
 All snippets below resolve `ALGENTA_URL` from `ALGENTA_BASE_URL`,
 `DE_BASE_URL`, or `ALGENTA_API_URL`. In Cloud Managed, set that to
-`https://api.algenta.ai`. In `self_hosted` and `air_gapped`, set it to your
+`https://api.codna.ai`. In `self_hosted` and `air_gapped`, set it to your
 self-hosted base URL and use the API key provisioned by your self-hosted
 operator deployment.
 
@@ -47,7 +47,7 @@ ALGENTA_URL = (
 if not ALGENTA_URL:
     raise RuntimeError(
         "Set ALGENTA_BASE_URL, DE_BASE_URL, or ALGENTA_API_URL before running this example. "
-        "Use https://api.algenta.ai only in Cloud Managed."
+        "Use https://api.codna.ai only in Cloud Managed."
     )
 
 
@@ -97,7 +97,7 @@ ALGENTA_URL = (
 if not ALGENTA_URL:
     raise RuntimeError(
         "Set ALGENTA_BASE_URL, DE_BASE_URL, or ALGENTA_API_URL before running this example. "
-        "Use https://api.algenta.ai only in Cloud Managed."
+        "Use https://api.codna.ai only in Cloud Managed."
     )
 
 
@@ -216,8 +216,8 @@ with open("algenta_contract_tool_definition.json") as f:
 assistant = client.beta.assistants.create(
     model="gpt-4o",
     instructions=(
-        "You are a data analyst. Inspect the live Algenta contract first, then use "
-        "the Algenta query tool for KPIs, metrics, or operational facts over connected "
+        "You are a data analyst. Inspect the live Codna contract first, then use "
+        "the Codna query tool for KPIs, metrics, or operational facts over connected "
         "data. Start with dataset discovery, use low-token summaries, then run governed "
         "exact queries."
     ),
@@ -232,7 +232,7 @@ client.beta.threads.messages.create(
     thread_id=thread.id,
     role="user",
     content=(
-        "Inspect the live Algenta contract, then find the dataset that matches OTP, "
+        "Inspect the live Codna contract, then find the dataset that matches OTP, "
         "summarize it, and return the overall OTP rate plus a monthly breakdown for "
         "the last 12 months."
     ),
@@ -292,7 +292,7 @@ ALGENTA_URL = (
 if not ALGENTA_URL:
     raise RuntimeError(
         "Set ALGENTA_BASE_URL, DE_BASE_URL, or ALGENTA_API_URL before running this example. "
-        "Use https://api.algenta.ai only in Cloud Managed."
+        "Use https://api.codna.ai only in Cloud Managed."
     )
 
 
@@ -384,7 +384,7 @@ def algenta_simulate(
     runs: int = 50000
 ) -> dict:
     """
-    Algenta simulation tool for Azure Prompt Flow.
+    Codna simulation tool for Azure Prompt Flow.
 
     Args:
         variables: Dict of variable name → {low, high} ranges
@@ -405,7 +405,7 @@ def algenta_simulate(
     if not base_url:
         raise RuntimeError(
             "Set ALGENTA_BASE_URL, DE_BASE_URL, or ALGENTA_API_URL before running this example. "
-            "Use https://api.algenta.ai only in Cloud Managed."
+            "Use https://api.codna.ai only in Cloud Managed."
         )
     resp = requests.post(
         f"{base_url}/v1/simulate",
@@ -442,7 +442,7 @@ Set in your Azure AI Studio environment:
 
 ```bash
 ALGENTA_API_KEY=<YOUR_ALGENTA_API_KEY>  # Cloud Managed only; use a self-hosted-issued key in private profiles
-ALGENTA_BASE_URL=https://api.algenta.ai  # Cloud Managed only; replace with your self-hosted base URL in private profiles
+ALGENTA_BASE_URL=https://api.codna.ai  # Cloud Managed only; replace with your self-hosted base URL in private profiles
 AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
 AZURE_OPENAI_KEY=...
 ```

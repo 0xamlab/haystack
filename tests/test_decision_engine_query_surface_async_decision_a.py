@@ -578,7 +578,7 @@ async def test_async_decision_engine_client_get_runtime_benchmarks_returns_typed
     assert RuntimeArtifactKindResult.compiled_mojo_binary in {
         artifact.kind for artifact in benchmarks.compiled_artifacts
     }
-    assert benchmarks.benchmarking.baselines[-1] == "Algenta Mojo-native path"
+    assert benchmarks.benchmarking.baselines[-1] == "Codna Mojo-native path"
     assert benchmarks.slo_budgets[0].name is RuntimeSLOBudgetNameResult.runtime_manifest_load
     assert (
         benchmarks.slo_budgets[0].applies_to

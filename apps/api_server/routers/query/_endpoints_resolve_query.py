@@ -173,7 +173,7 @@ async def resolve_sources(
         "natural-language question. It does NOT accept raw text.\n\n"
         "**Separation of concerns:**\n"
         "- LLM: language → structured intent, ambiguity resolution, user interaction\n"
-        "- Algenta: schema understanding, math relationships, fast execution, correctness\n\n"
+        "- Codna: schema understanding, math relationships, fast execution, correctness\n\n"
         "**Role resolution:**\n"
         "1. Detect derived formulas across all numeric column triples (Mojo, ~100ms)\n"
         "2. Assign structural roles: derived_measure, base_measure, unit_measure…\n"

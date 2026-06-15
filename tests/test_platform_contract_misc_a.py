@@ -9,15 +9,15 @@ from tests._test_platform_contract_helpers import *  # noqa: F401,F403
 
 def test_manifest_declares_canonical_contract() -> None:
     manifest = json.loads(MANIFEST_PATH.read_text())
-    assert manifest["brand"] == "Algenta"
-    assert manifest["api_base_url"] == "https://api.algenta.ai"
-    assert manifest["mcp_endpoint"] == "https://api.algenta.ai/mcp/sse"
+    assert manifest["brand"] == "Codna"
+    assert manifest["api_base_url"] == "https://api.codna.ai"
+    assert manifest["mcp_endpoint"] == "https://api.codna.ai/mcp/sse"
     assert manifest["auth_scheme"] == "bearer_api_key"
     assert manifest["api_key_prefixes"] == {"live": "de_live_", "test": "de_test_"}
     assert manifest["compatibility"]["deprecation_window_days"] == 90
-    assert manifest["privacy_registry"]["algenta_owned_hosts"][0] == "algenta.ai"
+    assert manifest["privacy_registry"]["algenta_owned_hosts"][0] == "codna.ai"
     assert manifest["privacy_registry"]["algenta_owned_suffixes"] == [
-        ".algenta.ai",
+        ".codna.ai",
         ".algenta.io",
         ".decisionengine.io",
     ]
@@ -48,13 +48,13 @@ def test_manifest_declares_canonical_contract() -> None:
     assert data_query["governed_filter_contract"]["validation"]["requires_selector"] is True
     assert data_query["governed_filter_contract"]["supports_non_sql_backends"] is True
     assert data_query["direct_sdk"]["python"]["import_root"] == "decision_engine"
-    assert data_query["direct_sdk"]["python"]["preferred_client_class"] == "AlgentaClient"
+    assert data_query["direct_sdk"]["python"]["preferred_client_class"] == "CodnaClient"
     assert (
-        data_query["direct_sdk"]["python"]["preferred_async_client_class"] == "AsyncAlgentaClient"
+        data_query["direct_sdk"]["python"]["preferred_async_client_class"] == "AsyncCodnaClient"
     )
     assert data_query["direct_sdk"]["python"]["contract_method"] == "get_contract"
     assert data_query["direct_sdk"]["typescript"]["import_package"] == "algenta-sdk"
-    assert data_query["direct_sdk"]["typescript"]["preferred_client_class"] == "AlgentaClient"
+    assert data_query["direct_sdk"]["typescript"]["preferred_client_class"] == "CodnaClient"
     assert data_query["direct_sdk"]["typescript"]["contract_method"] == "getContract"
     assert data_query["direct_sdk"]["python"]["query_with_metadata_method"] == "query_with_metadata"
     assert data_query["direct_sdk"]["typescript"]["query_batch_method"] == "queryBatch"
@@ -184,7 +184,7 @@ def test_api_reference_documents_machine_readable_discovery_contract() -> None:
     assert "x-canonical-mcp-endpoint" in api_reference
     assert "x-primary-data-query-contract" in api_reference
     assert "governed_filter_contract" in api_reference
-    assert "decision_engine.AlgentaClient" in api_reference
+    assert "decision_engine.CodnaClient" in api_reference
     assert "algenta.Runtime" in api_reference
     assert "algenta.libraries" in api_reference
 
@@ -242,10 +242,10 @@ def test_direct_api_client_docs_cover_manifest_first_runtime_and_control_plane_h
 def test_openapi_uses_canonical_bearer_contract() -> None:
     schema = app.openapi()
     security = schema["components"]["securitySchemes"]
-    assert schema["info"]["title"] == "Algenta API"
+    assert schema["info"]["title"] == "Codna API"
     assert "governed data discovery" in schema["info"]["description"]
-    assert schema["servers"] == [{"url": "https://api.algenta.ai"}]
-    assert schema["x-canonical-mcp-endpoint"] == "https://api.algenta.ai/mcp/sse"
+    assert schema["servers"] == [{"url": "https://api.codna.ai"}]
+    assert schema["x-canonical-mcp-endpoint"] == "https://api.codna.ai/mcp/sse"
     assert (
         schema["x-primary-data-query-contract"]["api"]["contract_endpoint"] == "/v1/meta/contract"
     )
@@ -263,7 +263,7 @@ def test_openapi_uses_canonical_bearer_contract() -> None:
     )
     assert (
         schema["x-primary-data-query-contract"]["direct_sdk"]["python"]["preferred_client_class"]
-        == "AlgentaClient"
+        == "CodnaClient"
     )
     assert (
         schema["x-primary-data-query-contract"]["direct_sdk"]["typescript"]["contract_method"]
@@ -379,10 +379,10 @@ def test_api_key_openapi_contract_exposes_expiry_fields() -> None:
     assert '"expires_at":"2028-05-19T00:00:00Z"' in auth_text
     assert '"device_limit":3' in auth_text
     assert "ordinary hosted API traffic" in auth_text
-    assert "`X-Algenta-Device-Id`" in auth_text
-    assert "`X-Algenta-Platform`" in auth_text
-    assert "`X-Algenta-Hostname-Hash`" in auth_text
-    assert "`X-Algenta-Device-Binding-Token`" in auth_text
+    assert "`X-Codna-Device-Id`" in auth_text
+    assert "`X-Codna-Platform`" in auth_text
+    assert "`X-Codna-Hostname-Hash`" in auth_text
+    assert "`X-Codna-Device-Binding-Token`" in auth_text
     assert "device_binding_token_required" in auth_text
 
 
@@ -400,10 +400,10 @@ def test_sdk_and_quickstart_docs_cover_bounded_api_key_creation() -> None:
     assert "`key_prefix`" in quickstart
     assert "`device_limit`" in quickstart
     assert "ordinary hosted API traffic" in quickstart
-    assert "`X-Algenta-Device-Id`" in quickstart
-    assert "`X-Algenta-Platform`" in quickstart
-    assert "`X-Algenta-Hostname-Hash`" in quickstart
-    assert "`X-Algenta-Device-Binding-Token`" in quickstart
+    assert "`X-Codna-Device-Id`" in quickstart
+    assert "`X-Codna-Platform`" in quickstart
+    assert "`X-Codna-Hostname-Hash`" in quickstart
+    assert "`X-Codna-Device-Binding-Token`" in quickstart
     assert "first governed dataset query" in quickstart
     assert "http://localhost:8000/v1/meta/contract" in quickstart
     assert "http://localhost:8000/openapi.json" in quickstart
@@ -469,10 +469,10 @@ def test_sdk_and_quickstart_docs_cover_bounded_api_key_creation() -> None:
     assert "device_limit: 3" in direct_api
     assert "raw_key" in direct_api
     assert "ordinary hosted API traffic" in direct_api
-    assert "`X-Algenta-Device-Id`" in direct_api
-    assert "`X-Algenta-Platform`" in direct_api
-    assert "`X-Algenta-Hostname-Hash`" in direct_api
-    assert "`X-Algenta-Device-Binding-Token`" in direct_api
+    assert "`X-Codna-Device-Id`" in direct_api
+    assert "`X-Codna-Platform`" in direct_api
+    assert "`X-Codna-Hostname-Hash`" in direct_api
+    assert "`X-Codna-Device-Binding-Token`" in direct_api
     assert "record-filter contract" in direct_api
     assert "Redis and other non-SQL sources" in direct_api
     assert (
@@ -493,10 +493,10 @@ def test_sdk_and_quickstart_docs_cover_bounded_api_key_creation() -> None:
     assert "`key_prefix`" in readme
     assert "`device_limit`" in readme
     assert "ordinary hosted API traffic" in readme
-    assert "`X-Algenta-Device-Id`" in readme
-    assert "`X-Algenta-Platform`" in readme
-    assert "`X-Algenta-Hostname-Hash`" in readme
-    assert "`X-Algenta-Device-Binding-Token`" in readme
+    assert "`X-Codna-Device-Id`" in readme
+    assert "`X-Codna-Platform`" in readme
+    assert "`X-Codna-Hostname-Hash`" in readme
+    assert "`X-Codna-Device-Binding-Token`" in readme
     assert "record-filter contract" in readme
     assert "PRIMARY_DATA_QUERY_CONTRACT.governed_filter_contract" in readme
     assert "Redis snapshots" in readme
@@ -606,7 +606,7 @@ def test_integration_docs_cover_primary_surfaces() -> None:
     assert "/integrations/local-runtime" in overview
     assert "persisted runtime review" in overview
     assert "persisted runtime follow-up workflows" in overview
-    assert "Add Algenta as a tool node" in langgraph
+    assert "Add Codna as a tool node" in langgraph
     assert 'api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")' in langgraph
     assert 'raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")' in langgraph
     assert 'api_key="de_live_...' not in langgraph
@@ -658,7 +658,7 @@ def test_integration_docs_cover_primary_surfaces() -> None:
     assert "list_execution_policy_snapshots" in claude_desktop_readme
     assert 'list_data(search="orders", compact=true)' in claude_desktop_readme
     assert "completed orders by month" in claude_desktop_readme
-    assert "from decision_engine import AlgentaClient" in langgraph_example
+    assert "from decision_engine import CodnaClient" in langgraph_example
     assert "inspect_algenta_contract" in langgraph_example
     assert "inspect_runtime_lineage" in langgraph_example
     assert "client.get_contract()" in langgraph_example

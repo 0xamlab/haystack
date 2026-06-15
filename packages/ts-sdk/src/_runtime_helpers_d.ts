@@ -459,7 +459,7 @@ export function renderSourceImportPreview(
   const latency = typeof registration.latency_ms === "number" ? `${registration.latency_ms.toFixed(3)}ms` : "n/a";
   const rowCount = typeof registration.row_count === "number" ? String(registration.row_count) : "unknown";
   return runtimeBanner(
-    "Algenta Source Import",
+    "Codna Source Import",
     [
       `Mode: ${options.mode ?? "local"} | Status: ${status}`,
       `Source: ${sourceName}`,
@@ -499,7 +499,7 @@ export function renderSourceBundlePreview(
         : ["- None"]
     ),
   ];
-  return runtimeBanner("Algenta Source Bundle", lines, options.color);
+  return runtimeBanner("Codna Source Bundle", lines, options.color);
 }
 
 export function exactPlanHash(plan: ResolvedPlan): string {

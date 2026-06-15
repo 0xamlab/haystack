@@ -6,7 +6,7 @@ This file tracks implementation status for the formal `v1.2` platform contract.
 
 - [x] Canonical `v1` public contract is exposed in OpenAPI, docs, SDK defaults, CLI examples, and MCP docs.
 - [x] Canonical auth is `Authorization: Bearer <api_key>` with `X-API-Key` retained for legacy compatibility.
-- [x] Canonical hosted origins are `https://api.algenta.ai` and `https://api.algenta.ai/mcp/sse`.
+- [x] Canonical hosted origins are `https://api.codna.ai` and `https://api.codna.ai/mcp/sse`.
 - [x] Local runtime no longer silently falls back to a dev stub after hosted registration failure.
 - [x] Offline runtime ledger exists at `~/.algenta/runtime/history.jsonl`.
 - [x] `de runtime history` exposes the local append-only task ledger.
@@ -71,7 +71,7 @@ This file tracks implementation status for the formal `v1.2` platform contract.
 - [x] Core lint cleanup is complete for `apps/api_server/routers/deployments.py`.
   The deployment management router now passes Ruff cleanly, and the deployment-routing middleware coverage stayed green.
 - [x] Core lint cleanup is complete for `apps/api_server/services/email_service.py`.
-  The email notification service now passes Ruff cleanly, and stale Decision Engine / old hosted URL drift in user-facing emails was aligned to the canonical Algenta contract.
+  The email notification service now passes Ruff cleanly, and stale Decision Engine / old hosted URL drift in user-facing emails was aligned to the canonical Codna contract.
 - [x] Core lint cleanup is complete for `apps/api_server/services/unit_service/spec.py`.
   The unit-spec registry now passes Ruff cleanly, and the schema plus shared services suites stayed green.
 - [x] Core lint cleanup is complete for `apps/api_server/services/connectors/tester.py`.

@@ -13,7 +13,7 @@ _SOURCE_EXPECTATIONS: dict[str, tuple[str, ...]] = {
         "`self_hosted` and `air_gapped`",
         "self-hosted operator deployment",
         "Private profiles fail closed",
-        "silently fall back to Algenta cloud.",
+        "silently fall back to Codna cloud.",
     ),
     "examples/langgraph/capability_router.py": (
         "Cloud Managed example",
@@ -21,7 +21,7 @@ _SOURCE_EXPECTATIONS: dict[str, tuple[str, ...]] = {
         "`self_hosted` and `air_gapped`",
         "self-hosted operator deployment",
         "Private profiles fail closed",
-        "silently fall back to Algenta cloud.",
+        "silently fall back to Codna cloud.",
     ),
     "examples/multi-hop/python_public_client_flow.py": (
         "Cloud Managed public-client path",

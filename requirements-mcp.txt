@@ -1,4 +1,4 @@
-# ─── Algenta MCP Server — SEPARATE VIRTUAL ENVIRONMENT ─────────────────────────
+# ─── Codna MCP Server — SEPARATE VIRTUAL ENVIRONMENT ─────────────────────────
 #
 # The MCP server must be installed in its own virtualenv because it requires
 # mcp>=1.26 → starlette>=0.52 which CONFLICTS with FastAPI 0.110 (needs starlette<0.37).
@@ -24,7 +24,7 @@
 #         "args": ["-m", "apps.mcp_server.server"],
 #         "env": {
 #           "ALGENTA_API_KEY": "de_live_YOUR_KEY",
-#           "ALGENTA_BASE_URL": "https://api.algenta.ai"
+#           "ALGENTA_BASE_URL": "https://api.codna.ai"
 #         }
 #       }
 #     }

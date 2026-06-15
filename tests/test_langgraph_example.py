@@ -34,7 +34,7 @@ def test_query_dataset_metric_uses_public_sdk_discovery_and_metadata(monkeypatch
     module = _load_module()
 
     contract = SimpleNamespace(
-        api_base_url="https://api.algenta.ai",
+        api_base_url="https://api.codna.ai",
         primary_data_query_contract=SimpleNamespace(
             api=SimpleNamespace(
                 contract_endpoint="/v1/meta/contract",
@@ -153,7 +153,7 @@ def test_inspect_algenta_contract_uses_public_sdk_contract_surface(monkeypatch) 
         def get_contract(self):
             self.calls.append(("get_contract", None))
             return SimpleNamespace(
-                api_base_url="https://api.algenta.ai",
+                api_base_url="https://api.codna.ai",
                 primary_data_query_contract=SimpleNamespace(
                     api=SimpleNamespace(
                         contract_endpoint="/v1/meta/contract",
@@ -178,7 +178,7 @@ def test_inspect_algenta_contract_uses_public_sdk_contract_surface(monkeypatch) 
     raw = _invoke_tool(module.inspect_algenta_contract)
     body = json.loads(raw)
 
-    assert body["api_base_url"] == "https://api.algenta.ai"
+    assert body["api_base_url"] == "https://api.codna.ai"
     assert body["contract_endpoint"] == "/v1/meta/contract"
     assert body["discovery_endpoint"] == "/v1/data"
     assert body["query_batch_endpoint"] == "/v1/query/batch"

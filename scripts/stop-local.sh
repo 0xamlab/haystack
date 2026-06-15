@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Stops launcher-managed Algenta local API + MCP servers.
+# Stops launcher-managed Codna local API + MCP servers.
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -66,7 +66,7 @@ _stop_matching_services() {
   done
 }
 
-echo "🛑 Stopping launcher-managed Algenta local stack..."
+echo "🛑 Stopping launcher-managed Codna local stack..."
 
 if [ ! -d "$START_LOCAL_STATE_DIR" ]; then
   echo "  No launcher-managed state directory found."

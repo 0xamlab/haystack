@@ -15,7 +15,7 @@ def access_scope_denied_error(
     error: dict[str, Any] = {
         "code": "access_scope_denied",
         "message": message,
-        "docs_url": f"https://docs.algenta.ai/errors/{docs_code}",
+        "docs_url": f"https://docs.codna.ai/errors/{docs_code}",
     }
     if details:
         error["details"] = details

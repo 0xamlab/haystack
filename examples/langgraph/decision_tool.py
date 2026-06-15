@@ -1,7 +1,7 @@
 """
-LangGraph integration — Algenta tool wrapper.
+LangGraph integration — Codna tool wrapper.
 
-This module provides @tool decorated functions that wrap the public Algenta SDK
+This module provides @tool decorated functions that wrap the public Codna SDK
 for use in LangGraph agent workflows across both simulation and governed
 data/query tasks.
 
@@ -12,7 +12,7 @@ Setup:
 In `self_hosted` and `air_gapped`, keep `ALGENTA_API_KEY` pointed at the API
 key provisioned by your self-hosted operator deployment and configure the
 example to use your self-hosted base URL. Private profiles fail closed and do
-not silently fall back to Algenta cloud.
+not silently fall back to Codna cloud.
 
 Usage:
     from examples.langgraph.decision_tool import (
@@ -42,7 +42,7 @@ import json
 import os
 from typing import Any
 
-from decision_engine import AlgentaClient
+from decision_engine import CodnaClient
 from examples.shared.privacy_profile import resolve_example_api_base_url
 
 
@@ -50,20 +50,20 @@ def _resolve_api_key() -> str:
     api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY", "")
     if not api_key:
         raise ValueError(
-            "Algenta API key required. Set ALGENTA_API_KEY or DE_API_KEY before using this example."
+            "Codna API key required. Set ALGENTA_API_KEY or DE_API_KEY before using this example."
         )
     return api_key
 
 
 def _resolve_base_url() -> str:
     return resolve_example_api_base_url(
-        component="LangGraph Algenta example",
+        component="LangGraph Codna example",
         default_base_url="http://localhost:8000",
     )
 
 
-def _client() -> AlgentaClient:
-    return AlgentaClient(
+def _client() -> CodnaClient:
+    return CodnaClient(
         api_key=_resolve_api_key(),
         base_url=_resolve_base_url(),
     )
@@ -81,7 +81,7 @@ def _dataset_not_found_payload(dataset_search: str) -> str:
     )
 
 
-def _contract_payload(client: AlgentaClient) -> dict[str, Any]:
+def _contract_payload(client: CodnaClient) -> dict[str, Any]:
     contract = client.get_contract()
     primary = contract.primary_data_query_contract
     return {
@@ -138,7 +138,7 @@ except ImportError:
 @_tool
 def inspect_algenta_contract() -> str:
     """
-    Inspect the live machine-readable Algenta contract before discovery or querying.
+    Inspect the live machine-readable Codna contract before discovery or querying.
 
     Use this tool first when the agent needs the exact discovery, summary, batch,
     SQL-report, CLI, or MCP contract exposed by the running service.
@@ -211,7 +211,7 @@ def query_dataset_metric(
     Discover a dataset, inspect its summary, and run one governed exact query.
 
     Use this tool when you need:
-    - the live Algenta contract first, then low-token dataset discovery
+    - the live Codna contract first, then low-token dataset discovery
     - low-token dataset discovery before querying
     - exact governed metric queries with request metadata
     - a deterministic query path rather than open-ended SQL
@@ -441,7 +441,7 @@ def recommend_action(
 
 
 EXAMPLE_AGENT_CODE = '''
-"""Example LangGraph agent using Algenta tools."""
+"""Example LangGraph agent using Codna tools."""
 from langgraph.prebuilt import create_react_agent
 from langchain_openai import ChatOpenAI
 from examples.langgraph.decision_tool import (
@@ -487,7 +487,7 @@ if __name__ == "__main__":
     def _emit(message: str = "") -> None:
         sys.stdout.write(f"{message}\n")
 
-    _emit("Testing Algenta LangGraph tools directly...\n")
+    _emit("Testing Codna LangGraph tools directly...\n")
     contract_result = inspect_algenta_contract()  # type: ignore[call-arg]
     _emit("inspect_algenta_contract result:")
     _emit(contract_result)

@@ -31,7 +31,7 @@
         "name": "POST /v1/repositories/a15cc8fa-18e6-46b5-bcb8-80151c8350cd/decision-plans"
       }
     ],
-    "title": "Algenta API"
+    "title": "Codna API"
   },
   "elapsed_seconds": 36.705,
   "failed": 0,

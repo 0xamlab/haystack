@@ -147,7 +147,7 @@ describe("Runtime — renders", () => {
         { sourceRef: "orders.csv", mode: "local", color: false },
       );
 
-      expect(preview).toContain("Algenta Source Import");
+      expect(preview).toContain("Codna Source Import");
       expect(preview).toContain("Mode: local | Status: ready");
       expect(preview).toContain("Preview: product_line, revenue, region, +1 more");
       expect(preview).toContain("Schema: schema_revis | Latency: 4.200ms");
@@ -193,7 +193,7 @@ describe("Runtime — renders", () => {
         { color: false },
       );
 
-      expect(preview).toContain("Algenta Source Bundle");
+      expect(preview).toContain("Codna Source Bundle");
       expect(preview).toContain("Imported: 2 | Failures: 1");
       expect(preview).toContain("orders_detail");
       expect(preview).toContain("orders_financial");

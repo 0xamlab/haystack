@@ -1,16 +1,16 @@
 """
-Algenta Python SDK.
+Codna Python SDK.
 
 Usage:
     import os
 
-    from decision_engine import AlgentaClient
+    from decision_engine import CodnaClient
 
     api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
     if not api_key:
         raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
 
-    client = AlgentaClient(api_key=api_key)
+    client = CodnaClient(api_key=api_key)
     datasets = client.list_datasets(search="orders", compact=True)
     summary = client.get_dataset_summary(datasets.datasets[0].dataset_id)
     result = client.query_with_metadata(
@@ -25,7 +25,7 @@ Usage:
 This example is the Cloud Managed path. In `self_hosted` and `air_gapped`,
 pass an explicit self-hosted `base_url` and use the API key provisioned by
 your self-hosted operator deployment instead. Private profiles fail closed and
-do not silently fall back to Algenta cloud.
+do not silently fall back to Codna cloud.
 """
 
 from __future__ import annotations
@@ -35,10 +35,17 @@ from importlib import import_module
 __version__ = "1.0.0"
 
 _LAZY_EXPORTS = {
-    "AlgentaClient": ("decision_engine.client_facade", "AlgentaClient"),
+    "CodnaClient": ("decision_engine.client_facade", "CodnaClient"),
+    "AsyncCodnaClient": (
+        "decision_engine.async_client_facade",
+        "AsyncCodnaClient",
+    ),
+    # Back-compat: the client was historically exported as AlgentaClient. Keep the
+    # old names working so existing integrations don't break on the codna rename.
+    "AlgentaClient": ("decision_engine.client_facade", "CodnaClient"),
     "AsyncAlgentaClient": (
         "decision_engine.async_client_facade",
-        "AsyncAlgentaClient",
+        "AsyncCodnaClient",
     ),
     "DecisionEngineClient": ("decision_engine.client_facade", "DecisionEngineClient"),
     "AsyncDecisionEngineClient": (

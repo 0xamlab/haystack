@@ -39,7 +39,7 @@ from apps.validation_error_details import format_validation_error_message
 
 _RUNTIME_READY_TIMEOUT_SECONDS = 3.0
 _RUNTIME_READY_POLL_SECONDS = 0.1
-_RUNTIME_NOT_RUNNING_MESSAGE = "Algenta Runtime is not running. Start with: de runtime start"
+_RUNTIME_NOT_RUNNING_MESSAGE = "Codna Runtime is not running. Start with: de runtime start"
 
 
 # Facade-routed proxies. Tests monkey-patch these on `apps.cli.main` (the
@@ -246,7 +246,7 @@ def cmd_contract(format: str = "table") -> None:
         openapi_status, openapi_payload = api_request("GET", "/openapi.json")
         if openapi_status >= 400:
             raise RuntimeError(
-                "Failed to load Algenta contract from /v1/meta/contract or /openapi.json."
+                "Failed to load Codna contract from /v1/meta/contract or /openapi.json."
             )
         try:
             data = build_platform_contract_from_openapi(
@@ -255,16 +255,16 @@ def cmd_contract(format: str = "table") -> None:
             )
         except PlatformContractFallbackError as exc:
             raise RuntimeError(
-                f"Algenta contract fallback failed [{exc.code}]: {exc}"
+                f"Codna contract fallback failed [{exc.code}]: {exc}"
             ) from exc
     elif status >= 400:
-        raise RuntimeError(f"Failed to load Algenta contract: HTTP {status}")
+        raise RuntimeError(f"Failed to load Codna contract: HTTP {status}")
     try:
         payload = PlatformContractResponse.model_validate(data)
     except ValidationError as exc:
         raise RuntimeError(
             format_validation_error_message(
-                "Algenta contract endpoint returned an invalid payload.",
+                "Codna contract endpoint returned an invalid payload.",
                 exc,
             )
         ) from exc
@@ -293,7 +293,7 @@ def cmd_contract(format: str = "table") -> None:
         entry.name for entry in payload.integrations if not entry.write_actions
     )
 
-    print(f"\nAlgenta contract: {payload.contract_version}  [{payload.brand}]")
+    print(f"\nCodna contract: {payload.contract_version}  [{payload.brand}]")
     print(f"Base URL:        {payload.api_base_url}")
     print(f"Auth scheme:     {payload.auth_scheme}")
     print(f"API endpoint:    {api_contract.contract_endpoint}")
@@ -331,7 +331,7 @@ def cmd_runtime_manifest(format: str = "table") -> None:
 
     status, data = api_request("GET", "/v1/runtime/manifest")
     if status >= 400:
-        raise RuntimeError(f"Failed to load Algenta runtime manifest: HTTP {status}")
+        raise RuntimeError(f"Failed to load Codna runtime manifest: HTTP {status}")
     try:
         manifest = RuntimeManifestResponse.model_validate(
             normalize_runtime_validation_payload(data)
@@ -339,7 +339,7 @@ def cmd_runtime_manifest(format: str = "table") -> None:
     except ValidationError as exc:
         raise RuntimeError(
             format_validation_error_message(
-                "Algenta runtime manifest endpoint returned an invalid signed payload.",
+                "Codna runtime manifest endpoint returned an invalid signed payload.",
                 exc,
             )
         ) from exc
@@ -358,7 +358,7 @@ def cmd_runtime_manifest(format: str = "table") -> None:
     ) or "none"
 
     print(
-        f"\nAlgenta runtime manifest: {manifest.runtime_version}  "
+        f"\nCodna runtime manifest: {manifest.runtime_version}  "
         f"[{manifest.llm_core_manifest}]"
     )
     print(f"Mojo version:    {manifest.mojo_version}")
@@ -401,7 +401,7 @@ def cmd_runtime_validate(format: str = "table") -> None:
 
     status, data = api_request("GET", "/v1/admin/runtime/validation")
     if status >= 400:
-        raise RuntimeError(f"Failed to validate Algenta runtime release: HTTP {status}")
+        raise RuntimeError(f"Failed to validate Codna runtime release: HTTP {status}")
     try:
         validation = RuntimeReleaseValidationResponse.model_validate(
             normalize_runtime_validation_payload(data)
@@ -409,7 +409,7 @@ def cmd_runtime_validate(format: str = "table") -> None:
     except ValidationError as exc:
         raise RuntimeError(
             format_validation_error_message(
-                "Algenta runtime validation endpoint returned an invalid signed payload.",
+                "Codna runtime validation endpoint returned an invalid signed payload.",
                 exc,
             )
         ) from exc
@@ -425,7 +425,7 @@ def cmd_runtime_validate(format: str = "table") -> None:
     )
 
     print(
-        f"\nAlgenta runtime release validation: {validation.runtime_version}  "
+        f"\nCodna runtime release validation: {validation.runtime_version}  "
         f"[{validation.llm_core_manifest}]  -> {verdict}"
     )
     print(f"Deployment:      {deployment_mode}")
@@ -445,7 +445,7 @@ def cmd_runtime_admin_modules(format: str = "table") -> None:
 
     status, data = api_request("GET", "/v1/admin/runtime/modules")
     if status >= 400:
-        raise RuntimeError(f"Failed to load Algenta runtime module catalog: HTTP {status}")
+        raise RuntimeError(f"Failed to load Codna runtime module catalog: HTTP {status}")
     try:
         payload = RuntimeAdminModulesResponse.model_validate(
             normalize_runtime_validation_payload(data)
@@ -453,7 +453,7 @@ def cmd_runtime_admin_modules(format: str = "table") -> None:
     except ValidationError as exc:
         raise RuntimeError(
             format_validation_error_message(
-                "Algenta runtime modules endpoint returned an invalid signed payload.",
+                "Codna runtime modules endpoint returned an invalid signed payload.",
                 exc,
             )
         ) from exc
@@ -462,7 +462,7 @@ def cmd_runtime_admin_modules(format: str = "table") -> None:
         return
 
     print(
-        f"\nAlgenta runtime module catalog: {payload.runtime_version}  "
+        f"\nCodna runtime module catalog: {payload.runtime_version}  "
         f"[{payload.llm_core_manifest}]"
     )
     print(
@@ -495,7 +495,7 @@ def cmd_runtime_admin_benchmarks(format: str = "table") -> None:
 
     status, data = api_request("GET", "/v1/admin/runtime/benchmarks")
     if status >= 400:
-        raise RuntimeError(f"Failed to load Algenta runtime benchmark catalog: HTTP {status}")
+        raise RuntimeError(f"Failed to load Codna runtime benchmark catalog: HTTP {status}")
     try:
         payload = RuntimeAdminBenchmarksResponse.model_validate(
             normalize_runtime_validation_payload(data)
@@ -503,7 +503,7 @@ def cmd_runtime_admin_benchmarks(format: str = "table") -> None:
     except ValidationError as exc:
         raise RuntimeError(
             format_validation_error_message(
-                "Algenta runtime benchmarks endpoint returned an invalid signed payload.",
+                "Codna runtime benchmarks endpoint returned an invalid signed payload.",
                 exc,
             )
         ) from exc
@@ -512,7 +512,7 @@ def cmd_runtime_admin_benchmarks(format: str = "table") -> None:
         return
 
     print(
-        f"\nAlgenta runtime benchmark catalog: {payload.runtime_version}  "
+        f"\nCodna runtime benchmark catalog: {payload.runtime_version}  "
         f"[{payload.llm_core_manifest}]"
     )
     print(

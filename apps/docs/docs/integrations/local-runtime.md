@@ -87,7 +87,7 @@ result = rt.query(plan)
 
 This hosted local-execution example is the Cloud Managed path. In `self_hosted`
 and `air_gapped`, pass an explicit self-hosted `base_url` and fail closed
-instead of silently falling back to Algenta cloud.
+instead of silently falling back to Codna cloud.
 
 The same licensed local path also works for the Python Mojo package surface:
 
@@ -128,7 +128,7 @@ const result = await rt.query(plan);
 
 This TypeScript snippet is also the Cloud Managed path. In `self_hosted` and
 `air_gapped`, pass an explicit self-hosted `baseUrl` and fail closed instead
-of silently falling back to Algenta cloud.
+of silently falling back to Codna cloud.
 
 For local database-backed development, the public runtimes now diverge slightly:
 
@@ -145,7 +145,7 @@ flush. In that profile:
 
 - a valid local signed license file is required
 - `ALGENTA_DISABLE_TELEMETRY=1` still allows local audit and local metering
-- `ALGENTA_ALLOW_OUTBOUND_NETWORK=0` blocks Algenta-owned and undeclared public egress
+- `ALGENTA_ALLOW_OUTBOUND_NETWORK=0` blocks Codna-owned and undeclared public egress
 - `ALGENTA_EGRESS_ALLOWLIST` is the only way to permit explicit connector/operator egress
 
 ### Hosted data/query contract on the runtime surface
@@ -170,7 +170,7 @@ same public data/query contract as the direct API clients:
 - `query_sql_report()` / `querySqlReport()`
 
 That means the hosted local-runtime path can stay on the same contract-first
-flow as the rest of Algenta:
+flow as the rest of Codna:
 
 1. `GET /v1/meta/contract`
 2. `GET /v1/connectors`, `POST /v1/connectors`, `POST /v1/connectors/{connector_id}/test`, or `GET /v1/connectors/{connector_id}/browse`
@@ -235,7 +235,7 @@ de runtime execute rerank_eval hit_rate_at_k --args-json '[[1,0,1,1,0],5]' --for
 
 ## Mission local library tool mapping
 
-If you are porting a Mission flow that uses the local Algenta library tools,
+If you are porting a Mission flow that uses the local Codna library tools,
 map those calls onto the public local/runtime-backed surfaces below.
 
 | Mission functionality | Python local runtime | TypeScript local runtime | CLI | MCP |

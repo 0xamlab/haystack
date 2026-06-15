@@ -1,7 +1,7 @@
 """
 image_resize.mojo — Grayscale downscaling and summed-area tables. Zero Python imports.
 
-Foundation for the Algenta Vision Gate: cheaply shrink a (PIL-decoded) grayscale
+Foundation for the Codna Vision Gate: cheaply shrink a (PIL-decoded) grayscale
 thumbnail to the tiny fixed sizes the perceptual hashers and quality scorers
 need, and provide O(1) region sums via integral images.
 

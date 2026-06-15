@@ -76,7 +76,7 @@ def test_runtime_local_import_preview_and_query_real_csv_file() -> None:
 
     assert imported.registration.row_count == 6097
     assert imported.registration.name == "orders_detail"
-    assert "Algenta Source Import" in imported.preview
+    assert "Codna Source Import" in imported.preview
     assert "850a28da-a6f7-4ecc-9e7a-51a9cf7f501b-united_states" in imported.preview
     assert plan.resolved_plan is not None
     assert plan.resolved_plan.metric_column == "Sales (incl. tax)"
@@ -235,7 +235,7 @@ def test_runtime_local_import_bundle_preview_reports_successes_and_failures_for_
     assert len(bundle.failures) == 1
     assert bundle.failures[0].code == "empty_source"
     assert bundle.failures[0].source_ref == REAL_MARCH_EMPTY.name
-    assert "Algenta Source Bundle" in bundle.preview
+    assert "Codna Source Bundle" in bundle.preview
     assert "Imported: 4 | Failures: 1" in bundle.preview
     assert "orders_financial" in bundle.preview or REAL_MARCH_FINANCIAL.stem in bundle.preview
     assert "Shared fields:" in bundle.preview

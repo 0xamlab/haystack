@@ -1,5 +1,5 @@
 """
-Universal Domain Template Library for Algenta.
+Universal Domain Template Library for Codna.
 
 Templates cover any industry — no restrictions on domain, data type, or variable count.
 Each template provides a ready-to-run simulation with realistic variable specifications

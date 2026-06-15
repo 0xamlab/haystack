@@ -41,7 +41,7 @@ def test_n8n_workflows_use_placeholder_base_url_and_privacy_guidance() -> None:
         for node in http_nodes:
             assert EXAMPLE_BASE_URL in node["parameters"]["url"]
         assert "Replace https://your-algenta-base-url.example" in workflow["_comment"]
-        assert "Private profiles do not silently fall back to Algenta cloud." in workflow[
+        assert "Private profiles do not silently fall back to Codna cloud." in workflow[
             "_comment"
         ]
         assert "Bearer <YOUR_ALGENTA_API_KEY>" in workflow["_comment"]
@@ -52,10 +52,10 @@ def test_chatgpt_actions_template_uses_placeholder_server() -> None:
 
     assert payload["servers"][0]["url"] == EXAMPLE_BASE_URL
     assert payload["x-canonical-mcp-endpoint"] == EXAMPLE_MCP_ENDPOINT
-    assert "Replace with Cloud Managed https://api.algenta.ai" in payload["servers"][0][
+    assert "Replace with Cloud Managed https://api.codna.ai" in payload["servers"][0][
         "description"
     ]
-    assert "Private profiles do not silently fall back to Algenta cloud." in payload["servers"][0][
+    assert "Private profiles do not silently fall back to Codna cloud." in payload["servers"][0][
         "description"
     ]
 
@@ -65,10 +65,10 @@ def test_power_automate_connector_uses_placeholder_host() -> None:
 
     assert payload["host"] == "your-algenta-base-url.example"
     assert payload["x-canonical-mcp-endpoint"] == EXAMPLE_MCP_ENDPOINT
-    assert "Replace your-algenta-base-url.example with Cloud Managed https://api.algenta.ai" in payload[
+    assert "Replace your-algenta-base-url.example with Cloud Managed https://api.codna.ai" in payload[
         "info"
     ]["description"]
-    assert "Private profiles do not silently fall back to Algenta cloud." in payload["info"][
+    assert "Private profiles do not silently fall back to Codna cloud." in payload["info"][
         "description"
     ]
 
@@ -79,8 +79,8 @@ def test_google_colab_notebook_uses_placeholder_base_url() -> None:
 
     assert 'BASE_URL = "https://your-algenta-base-url.example"' in notebook_text
     assert 'API_KEY = "<YOUR_ALGENTA_API_KEY>"' in notebook_text
-    assert "Private profiles do not silently fall back to Algenta cloud." in notebook_text
-    assert "Use https://app.algenta.ai/dashboard/api-keys only in Cloud Managed." in notebook_text
+    assert "Private profiles do not silently fall back to Codna cloud." in notebook_text
+    assert "Use https://app.codna.ai/dashboard/api-keys only in Cloud Managed." in notebook_text
     assert "self-hosted operator deployment" in notebook_text
     assert "Cloud Managed only; use a self-hosted-issued key in private profiles" in notebook_text
     assert "de_live_YOUR_KEY_HERE" not in notebook_text

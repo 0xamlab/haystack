@@ -136,7 +136,7 @@ describe("DecisionEngineClient — supports_d", () => {
             JSON.stringify({
               org_id: "org_123",
               email: "owner@example.com",
-              organization: "Algenta Labs",
+              organization: "Codna Labs",
               plan: "enterprise",
             }),
             { status: 200, headers: { "Content-Type": "application/json" } },
@@ -242,7 +242,7 @@ describe("DecisionEngineClient — supports_d", () => {
       const distributions = await client.distributions();
       const templates = await client.templates();
 
-      expect(me.organization).toBe("Algenta Labs");
+      expect(me.organization).toBe("Codna Labs");
       expect(usage.billing_period).toBe("2026-05");
       expect(usage.simulations_run).toBe(120);
       expect(billingInfo.plan).toBe("enterprise");

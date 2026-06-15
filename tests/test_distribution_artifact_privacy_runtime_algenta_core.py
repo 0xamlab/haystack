@@ -10,7 +10,7 @@ from tests._test_distribution_artifact_privacy_runtime_helpers import *  # noqa:
 def test_algenta_core_build_artifact_resolve_cloud_base_url_blocks_algenta_cloud_in_private_profiles():
     artifact_root = ROOT / "packages/algenta-core/build/lib"
     with _artifact_module(artifact_root, "algenta", "privacy_profile") as module:
-        with pytest.raises(ValueError, match="private profiles cannot target Algenta-owned cloud URLs"):
+        with pytest.raises(ValueError, match="private profiles cannot target Codna-owned cloud URLs"):
             module.resolve_cloud_base_url(
                 explicit_base_url=None,
                 component="artifact runtime",
@@ -46,7 +46,7 @@ def test_algenta_core_build_artifact_runtime_api_mode_fails_closed_without_priva
     monkeypatch.delenv("ALGENTA_BASE_URL", raising=False)
     monkeypatch.delenv("DE_BASE_URL", raising=False)
     with _artifact_module(artifact_root, "algenta", "runtime_facade") as module:
-        with pytest.raises(ValueError, match="private profiles cannot target Algenta-owned cloud URLs"):
+        with pytest.raises(ValueError, match="private profiles cannot target Codna-owned cloud URLs"):
             module.Runtime(mode="api", api_key="de_live_test")
 
 
@@ -58,7 +58,7 @@ def test_algenta_core_build_artifact_runtime_wrapper_api_mode_fails_closed_witho
     monkeypatch.delenv("ALGENTA_BASE_URL", raising=False)
     monkeypatch.delenv("DE_BASE_URL", raising=False)
     with _artifact_module(artifact_root, "algenta", "runtime") as module:
-        with pytest.raises(ValueError, match="private profiles cannot target Algenta-owned cloud URLs"):
+        with pytest.raises(ValueError, match="private profiles cannot target Codna-owned cloud URLs"):
             module.Runtime(mode="api", api_key="de_live_test")
 
 
@@ -70,7 +70,7 @@ def test_algenta_core_build_artifact_package_root_runtime_export_fails_closed_wi
     monkeypatch.delenv("ALGENTA_BASE_URL", raising=False)
     monkeypatch.delenv("DE_BASE_URL", raising=False)
     with _artifact_module(artifact_root, "algenta", "__init__") as module:
-        with pytest.raises(ValueError, match="private profiles cannot target Algenta-owned cloud URLs"):
+        with pytest.raises(ValueError, match="private profiles cannot target Codna-owned cloud URLs"):
             module.Runtime(mode="api", api_key="de_live_test")
 
 
@@ -82,8 +82,8 @@ def test_algenta_core_build_artifact_client_fails_closed_without_private_base_ur
     monkeypatch.delenv("ALGENTA_BASE_URL", raising=False)
     monkeypatch.delenv("DE_BASE_URL", raising=False)
     with _artifact_module(artifact_root, "algenta", "client") as module:
-        with pytest.raises(ValueError, match="private profiles cannot target Algenta-owned cloud URLs"):
-            module.AlgentaClient(api_key="de_live_test")
+        with pytest.raises(ValueError, match="private profiles cannot target Codna-owned cloud URLs"):
+            module.CodnaClient(api_key="de_live_test")
 
 
 def test_algenta_core_build_artifact_package_root_client_export_fails_closed_without_private_base_url(
@@ -94,8 +94,8 @@ def test_algenta_core_build_artifact_package_root_client_export_fails_closed_wit
     monkeypatch.delenv("ALGENTA_BASE_URL", raising=False)
     monkeypatch.delenv("DE_BASE_URL", raising=False)
     with _artifact_module(artifact_root, "algenta", "__init__") as module:
-        with pytest.raises(ValueError, match="private profiles cannot target Algenta-owned cloud URLs"):
-            module.AlgentaClient(api_key="de_live_test")
+        with pytest.raises(ValueError, match="private profiles cannot target Codna-owned cloud URLs"):
+            module.CodnaClient(api_key="de_live_test")
 
 
 def test_algenta_core_build_artifact_decision_cloud_mode_fails_closed_without_private_base_url(
@@ -106,7 +106,7 @@ def test_algenta_core_build_artifact_decision_cloud_mode_fails_closed_without_pr
     monkeypatch.delenv("ALGENTA_BASE_URL", raising=False)
     monkeypatch.delenv("DE_BASE_URL", raising=False)
     with _artifact_module(artifact_root, "algenta", "decision") as module:
-        with pytest.raises(ValueError, match="private profiles cannot target Algenta-owned cloud URLs"):
+        with pytest.raises(ValueError, match="private profiles cannot target Codna-owned cloud URLs"):
             module.analyze(
                 revenue=100000,
                 mode="cloud",
@@ -122,7 +122,7 @@ def test_algenta_core_build_artifact_forecast_cloud_mode_fails_closed_without_pr
     monkeypatch.delenv("ALGENTA_BASE_URL", raising=False)
     monkeypatch.delenv("DE_BASE_URL", raising=False)
     with _artifact_module(artifact_root, "algenta", "forecast") as module:
-        with pytest.raises(ValueError, match="private profiles cannot target Algenta-owned cloud URLs"):
+        with pytest.raises(ValueError, match="private profiles cannot target Codna-owned cloud URLs"):
             module.predict(
                 [1.0, 2.0, 3.0],
                 mode="cloud",
@@ -138,7 +138,7 @@ def test_algenta_core_build_artifact_simulate_cloud_mode_fails_closed_without_pr
     monkeypatch.delenv("ALGENTA_BASE_URL", raising=False)
     monkeypatch.delenv("DE_BASE_URL", raising=False)
     with _artifact_module(artifact_root, "algenta", "simulate") as module:
-        with pytest.raises(ValueError, match="private profiles cannot target Algenta-owned cloud URLs"):
+        with pytest.raises(ValueError, match="private profiles cannot target Codna-owned cloud URLs"):
             module.risk(
                 revenue=100000,
                 mode="cloud",
@@ -159,7 +159,7 @@ def test_algenta_core_build_artifact_runtime_local_mode_stays_offline(
 def test_algenta_core_build_artifact_client_exposes_extended_public_surface():
     artifact_root = ROOT / "packages/algenta-core/build/lib"
     with _artifact_module(artifact_root, "algenta", "client") as module:
-        client = module.AlgentaClient(api_key="de_live_test", base_url="http://localhost:8000")
+        client = module.CodnaClient(api_key="de_live_test", base_url="http://localhost:8000")
         for name in (
             "me",
             "limits",
@@ -247,8 +247,8 @@ def test_algenta_core_build_artifact_runtime_exposes_account_and_proof_helpers()
         assert runtime.usage() == {"quota_used_pct": 12}
         assert runtime.limits() == {"plan": "enterprise"}
         contract = runtime.get_contract()
-        assert contract["api_base_url"] == "https://api.algenta.ai"
-        assert contract["mcp_endpoint"] == "https://api.algenta.ai/mcp/sse"
+        assert contract["api_base_url"] == "https://api.codna.ai"
+        assert contract["mcp_endpoint"] == "https://api.codna.ai/mcp/sse"
         assert contract["primary_data_query_contract"]["api"]["contract_endpoint"] == (
             "/v1/meta/contract"
         )
@@ -612,8 +612,8 @@ def test_algenta_core_build_artifact_package_root_matches_source_contract_invent
 def test_algenta_core_build_artifact_contract_module_matches_manifest_inventory():
     artifact_root = ROOT / "packages/algenta-core/build/lib"
     with _artifact_module(artifact_root, "algenta", "_contract") as module:
-        assert module.DEFAULT_BASE_URL == "https://api.algenta.ai"
-        assert module.MCP_ENDPOINT == "https://api.algenta.ai/mcp/sse"
+        assert module.DEFAULT_BASE_URL == "https://api.codna.ai"
+        assert module.MCP_ENDPOINT == "https://api.codna.ai/mcp/sse"
         assert module.PRIMARY_DATA_QUERY_CONTRACT["api"]["contract_endpoint"] == (
             "/v1/meta/contract"
         )
@@ -692,7 +692,7 @@ def test_algenta_core_build_artifact_privacy_profile_exposes_dashboard_resolutio
                 component="artifact runtime",
                 env={
                     "ALGENTA_DEPLOYMENT_MODE": "self_hosted",
-                    "ALGENTA_APP_BASE_URL": "https://app.algenta.ai",
+                    "ALGENTA_APP_BASE_URL": "https://app.codna.ai",
                 },
             )
 

@@ -1,8 +1,8 @@
 [project]
 name = "decision-engine-mojo"
 version = "0.2.0"
-description = "Algenta Decision Engine — Mojo simulation core (nightly)"
-authors = ["Algenta <eng@algenta.io>"]
+description = "Codna Decision Engine — Mojo simulation core (nightly)"
+authors = ["Codna <eng@algenta.io>"]
 channels = ["https://conda.modular.com/max-nightly/", "conda-forge"]
 platforms = ["osx-arm64", "osx-64", "linux-64", "linux-aarch64"]
 

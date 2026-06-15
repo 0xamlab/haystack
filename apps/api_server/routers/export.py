@@ -128,7 +128,7 @@ def _build_minimal_pdf(lines: list[str]) -> bytes:
 
 def _render_pdf_without_fpdf(summary: SummaryDict, full: ResultBlob | None, run_id: str) -> bytes:
     lines = [
-        "Algenta",
+        "Codna",
         f"Simulation Run Report - {run_id[:16]}...",
         "",
         "Run Metadata",
@@ -253,7 +253,7 @@ def _render_csv(summary: SummaryDict, full: ResultBlob | None) -> bytes:
     w = csv.writer(buf)
 
     # ── Section 1: run metadata ───────────────────────────────────────────────
-    w.writerow(["# Algenta — Simulation Run Export"])
+    w.writerow(["# Codna — Simulation Run Export"])
     w.writerow([])
     w.writerow(["Field", "Value"])
     for k, v in summary.items():
@@ -453,7 +453,7 @@ def _render_pdf(summary: SummaryDict, full: ResultBlob | None, run_id: str) -> b
     pdf.add_page()
     pdf.set_font("Helvetica", "B", 18)
     pdf.set_text_color(26, 26, 46)
-    pdf.cell(0, 12, "Algenta", align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.cell(0, 12, "Codna", align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_font("Helvetica", "", 12)
     pdf.set_text_color(80, 80, 120)
     pdf.cell(

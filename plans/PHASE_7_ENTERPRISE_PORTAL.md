@@ -243,13 +243,13 @@ CREATE TABLE data_connectors (
 │  ALGENTA CLOUD                                           ● Active       │
 │  Fully managed infrastructure. No DevOps required.                     │
 │  Region: us-east-1 | Engine: v0.3.1 | Uptime 30d: 99.97%              │
-│  Compute: Algenta shared cluster | Max runs/request: 1,000,000         │
+│  Compute: Codna shared cluster | Max runs/request: 1,000,000         │
 │  [View status page ↗]                                                  │
 └────────────────────────────────────────────────────────────────────────┘
 
 ┌────────────────────────────────────────────────────────────────────────┐
 │  SELF-HOSTED                                             ○ Configure   │
-│  Run the Algenta engine in your own VPC, cluster, or bare metal.       │
+│  Run the Codna engine in your own VPC, cluster, or bare metal.       │
 │  Docker Compose | Kubernetes (Helm chart) | VM / bare metal            │
 │  Your data never leaves your infrastructure.                           │
 │  Requires Enterprise license.                                          │
@@ -258,7 +258,7 @@ CREATE TABLE data_connectors (
 
 ┌────────────────────────────────────────────────────────────────────────┐
 │  HYBRID                                                  ○ Contact sales│
-│  API gateway + auth on Algenta Cloud.                                  │
+│  API gateway + auth on Codna Cloud.                                  │
 │  Simulation workers run inside your VPC.                               │
 │  Zero data egress. Full audit trail. Enterprise plan only.             │
 │  [Contact enterprise →]                                                │
@@ -335,7 +335,7 @@ Webhook delivery log:
 [+ Invite member]                                              [2 of 5 seats used]
 
 Avatar  Name           Email                  Role     Last active    Actions
-  AB    Angel Burgess  angel@algenta.ai        Owner    Just now       [—]
+  AB    Angel Burgess  angel@codna.ai        Owner    Just now       [—]
   JD    Jane Doe       jane@example.com        Admin    2h ago         [Change role ▼] [Remove]
   
 Invite dialog: [Email] [Role: Member ▼] [Send invite]
@@ -367,10 +367,10 @@ Single Sign-On                                    [Enterprise feature]
 Export: [CSV] [JSON]    Filter: [Actor ▼] [Action ▼] [From—To]
 
 Timestamp            Actor              Action              Resource    Result
-2026-03-20 18:42:01  angel@algenta.ai   simulate            run_abc     success
-2026-03-20 18:40:14  angel@algenta.ai   api_key.create      key_xyz     success
+2026-03-20 18:42:01  angel@codna.ai   simulate            run_abc     success
+2026-03-20 18:40:14  angel@codna.ai   api_key.create      key_xyz     success
 2026-03-20 17:15:33  jane@example.com   login               —           success
-2026-03-20 16:44:01  angel@algenta.ai   plan.upgrade        developer   success
+2026-03-20 16:44:01  angel@codna.ai   plan.upgrade        developer   success
 ```
 
 ---

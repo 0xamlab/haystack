@@ -4,19 +4,19 @@ sidebar_position: 10
 
 # Direct API Client
 
-Use the direct API client when you want lower-level access to a running Algenta
+Use the direct API client when you want lower-level access to a running Codna
 service.
 
-This is an advanced integration surface for a running Algenta service. It is **not** the product installation path.
+This is an advanced integration surface for a running Codna service. It is **not** the product installation path.
 
 Start with [Quickstart](/quickstart), then use [API Authentication](/api-reference/authentication). The direct client is what you use after the service is already running.
 
 Use this surface when you want raw API control instead of the higher-level SDK helpers or local runtime surfaces.
 
-- Cloud Managed: `https://api.algenta.ai`
+- Cloud Managed: `https://api.codna.ai`
 - `self_hosted` and `air_gapped`: pass an explicit self-hosted `base_url` / `baseUrl`
 
-Private profiles fail closed and do not silently fall back to Algenta cloud.
+Private profiles fail closed and do not silently fall back to Codna cloud.
 Use the API key provisioned by your self-hosted operator deployment in private
 profiles instead of Cloud Managed dashboard-issued keys.
 
@@ -29,13 +29,13 @@ pip install algenta-sdk
 ```python
 import os
 
-from decision_engine import AlgentaClient, QueryFilterCondition, QueryFilterSpec
+from decision_engine import CodnaClient, QueryFilterCondition, QueryFilterSpec
 
 api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
 if not api_key:
     raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
 
-client = AlgentaClient(api_key=api_key)
+client = CodnaClient(api_key=api_key)
 created = client.create_api_key(
     label="mission-runtime",
     expires_at="2028-05-19T00:00:00Z",
@@ -86,7 +86,7 @@ print(PRIMARY_DATA_QUERY_CONTRACT["governed_filter_contract"]["operators"]["scal
 ```
 
 The Python example above is the Cloud Managed path. In `self_hosted` and
-`air_gapped`, construct `AlgentaClient(api_key=..., base_url="http://localhost:8000")`
+`air_gapped`, construct `CodnaClient(api_key=..., base_url="http://localhost:8000")`
 or your own self-hosted origin instead.
 
 ## TypeScript
@@ -96,14 +96,14 @@ npm install algenta-sdk
 ```
 
 ```typescript
-import { AlgentaClient, type QueryFilterSpec } from 'algenta-sdk'
+import { CodnaClient, type QueryFilterSpec } from 'algenta-sdk'
 
 const apiKey = process.env.ALGENTA_API_KEY ?? process.env.DE_API_KEY
 if (!apiKey) {
   throw new Error('Set ALGENTA_API_KEY or DE_API_KEY before running this example.')
 }
 
-const client = new AlgentaClient({
+const client = new CodnaClient({
   apiKey,
 })
 
@@ -149,7 +149,7 @@ console.log(PRIMARY_DATA_QUERY_CONTRACT.governed_filter_contract.operators.scala
 ```
 
 The TypeScript example above is also the Cloud Managed path. In `self_hosted`
-and `air_gapped`, construct `new AlgentaClient({ apiKey: ..., baseUrl:
+and `air_gapped`, construct `new CodnaClient({ apiKey: ..., baseUrl:
 "http://localhost:8000" })` or your own self-hosted origin instead.
 
 ## Unified capability-plane helpers
@@ -189,10 +189,10 @@ once on creation. Store it, along with `id`, `key_prefix`, `device_limit`, and
 
 An explicit `device_limit` also binds ordinary hosted API traffic for that key.
 The SDK helpers send the stable device headers automatically. If you are making
-raw HTTP requests with a capped key, send `X-Algenta-Device-Id`,
-`X-Algenta-Platform`, and `X-Algenta-Hostname-Hash` on authenticated
+raw HTTP requests with a capped key, send `X-Codna-Device-Id`,
+`X-Codna-Platform`, and `X-Codna-Hostname-Hash` on authenticated
 requests. The first successful hosted request for a new capped device also returns
-`X-Algenta-Device-Binding-Token`; store and replay that token on later
+`X-Codna-Device-Binding-Token`; store and replay that token on later
 requests from the same device.
 
 ## Persisted runtime and control-plane helpers

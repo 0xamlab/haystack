@@ -85,7 +85,7 @@ LIVE_SUITES: tuple[tuple[str, list[str], int], ...] = (
         300,
     ),
     (
-        "Live AlgentaClient integration",
+        "Live CodnaClient integration",
         [sys.executable, "tests/integration/test_algenta_client_live.py"],
         300,
     ),

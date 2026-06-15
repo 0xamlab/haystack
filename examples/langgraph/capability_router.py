@@ -1,5 +1,5 @@
 """
-LangGraph capability-router example for the unified Algenta capability plane.
+LangGraph capability-router example for the unified Codna capability plane.
 
 Setup:
     pip install algenta-sdk langgraph langchain-openai
@@ -8,7 +8,7 @@ Setup:
 In `self_hosted` and `air_gapped`, keep `ALGENTA_API_KEY` pointed at the API
 key provisioned by your self-hosted operator deployment and configure the
 example to use your self-hosted base URL. Private profiles fail closed and do
-not silently fall back to Algenta cloud.
+not silently fall back to Codna cloud.
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ from __future__ import annotations
 import json
 import os
 
-from decision_engine import AlgentaClient
+from decision_engine import CodnaClient
 from examples.shared.privacy_profile import resolve_example_api_base_url
 
 
@@ -27,8 +27,8 @@ def _resolve_api_key() -> str:
     return api_key
 
 
-def _client() -> AlgentaClient:
-    return AlgentaClient(
+def _client() -> CodnaClient:
+    return CodnaClient(
         api_key=_resolve_api_key(),
         base_url=resolve_example_api_base_url(
             component="LangGraph capability router example",
@@ -40,7 +40,7 @@ def _client() -> AlgentaClient:
 def route_and_execute_capability(objective: str) -> dict[str, object]:
     """
     Route one objective through the capability plane, fetch the selected
-    capability record, and execute it when the selected path is Algenta-managed.
+    capability record, and execute it when the selected path is Codna-managed.
     """
     client = _client()
     route = client.route_capabilities(

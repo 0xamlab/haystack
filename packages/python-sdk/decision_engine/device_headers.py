@@ -8,11 +8,11 @@ import subprocess
 import uuid
 from pathlib import Path
 
-DEVICE_ID_HEADER = "X-Algenta-Device-Id"
-PLATFORM_HEADER = "X-Algenta-Platform"
-PLATFORM_VERSION_HEADER = "X-Algenta-Platform-Version"
-HOSTNAME_HASH_HEADER = "X-Algenta-Hostname-Hash"
-SDK_VERSION_HEADER = "X-Algenta-SDK-Version"
+DEVICE_ID_HEADER = "X-Codna-Device-Id"
+PLATFORM_HEADER = "X-Codna-Platform"
+PLATFORM_VERSION_HEADER = "X-Codna-Platform-Version"
+HOSTNAME_HASH_HEADER = "X-Codna-Hostname-Hash"
+SDK_VERSION_HEADER = "X-Codna-SDK-Version"
 _DEVICE_ID_MIN_LENGTH = 16
 _DEVICE_ID_MAX_LENGTH = 64
 _PLATFORM_MAX_LENGTH = 50

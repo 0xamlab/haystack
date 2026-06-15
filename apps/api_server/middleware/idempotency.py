@@ -353,7 +353,7 @@ def _write_conflict_response(request: Request) -> JSONResponse:
                     "scope. Retry after it completes."
                 ),
                 "request_id": request_id,
-                "docs_url": "https://docs.algenta.ai/errors/resource_write_conflict",
+                "docs_url": "https://docs.codna.ai/errors/resource_write_conflict",
             }
         },
     )
@@ -372,7 +372,7 @@ def _idempotency_conflict_response(request: Request, issue: str) -> JSONResponse
                 ),
                 "details": [{"field": "Idempotency-Key", "issue": issue}],
                 "request_id": request_id,
-                "docs_url": "https://docs.algenta.ai/errors/idempotency_key_conflict",
+                "docs_url": "https://docs.codna.ai/errors/idempotency_key_conflict",
             }
         },
     )

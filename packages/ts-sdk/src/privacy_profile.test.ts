@@ -44,10 +44,10 @@ describe("privacy profile console baseUrl contract", () => {
     );
   });
 
-  it("rejects Algenta-owned dashboard aliases in private profiles with explicit app-base guidance", () => {
+  it("rejects Codna-owned dashboard aliases in private profiles with explicit app-base guidance", () => {
     process.env.ALGENTA_DEPLOYMENT_MODE = "self_hosted";
     process.env.ALGENTA_DISABLE_CLOUD = "1";
-    process.env.ALGENTA_APP_BASE_URL = "https://app.algenta.ai";
+    process.env.ALGENTA_APP_BASE_URL = "https://app.codna.ai";
 
     expect(() => resolveConsoleBaseUrl("DecisionEngineClient")).toThrow(
       "ALGENTA_APP_BASE_URL / APP_BASE_URL / DE_APP_BASE_URL or a self-hosted baseUrl",

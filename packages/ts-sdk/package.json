@@ -1,7 +1,7 @@
 {
   "name": "algenta-sdk",
   "version": "1.0.0",
-  "description": "TypeScript/JavaScript SDK for Algenta public data, query, and simulation APIs",
+  "description": "TypeScript/JavaScript SDK for Codna public data, query, and simulation APIs",
   "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -32,7 +32,7 @@
     "monte-carlo",
     "api"
   ],
-  "homepage": "https://algenta.ai",
+  "homepage": "https://codna.ai",
   "repository": {
     "type": "git",
     "url": "https://github.com/algenta/decision-engine.git",

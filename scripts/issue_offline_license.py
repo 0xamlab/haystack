@@ -14,7 +14,7 @@ import jwt
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "Issue an offline Algenta local license. This script signs license claims only "
+            "Issue an offline Codna local license. This script signs license claims only "
             "and never reads customer data, schema data, or runtime payloads."
         )
     )

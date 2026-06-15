@@ -1,5 +1,5 @@
 """
-Live Python Mojo library integration through the published Algenta package surface.
+Live Python Mojo library integration through the published Codna package surface.
 
 This verifies the API-key-backed local package path:
   1. Start a temporary runtime daemon with the compiled Mojo binary.

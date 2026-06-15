@@ -286,7 +286,7 @@ REGIONS: dict[str, list[dict[str, str]]] = {
     "algenta_shared": [
         {
             "id": "algenta-shared",
-            "label": "Algenta Managed (Multi-tenant)",
+            "label": "Codna Managed (Multi-tenant)",
             "flag": "🌐",
         }
     ],

@@ -5,17 +5,17 @@ This module demonstrates the Cloud Managed public-client path by default. In
 `self_hosted` and `air_gapped`, keep `ALGENTA_API_KEY` / `DE_API_KEY`
 pointed at the API key provisioned by your self-hosted operator deployment and
 configure an explicit self-hosted `ALGENTA_BASE_URL` / `DE_BASE_URL` / `ALGENTA_API_URL`
-instead. Private profiles fail closed and do not silently fall back to Algenta cloud.
+instead. Private profiles fail closed and do not silently fall back to Codna cloud.
 """
 
 from __future__ import annotations
 
-from decision_engine import AlgentaClient
+from decision_engine import CodnaClient
 from examples.shared.privacy_profile import resolve_example_api_base_url, resolve_example_api_key
 
 
-def _client() -> AlgentaClient:
-    return AlgentaClient(
+def _client() -> CodnaClient:
+    return CodnaClient(
         api_key=resolve_example_api_key(
             component="Multi-hop Python public client example",
         ),

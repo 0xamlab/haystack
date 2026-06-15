@@ -1,4 +1,4 @@
-"""_DeploymentsModelsMixin for the AlgentaClient class.
+"""_DeploymentsModelsMixin for the CodnaClient class.
 
 Extracted from packages/algenta-core/algenta/client.py during modularization.
 """

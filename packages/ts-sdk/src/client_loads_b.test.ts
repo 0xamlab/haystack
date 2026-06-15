@@ -243,7 +243,7 @@ describe("DecisionEngineClient — loads_b", () => {
                   },
                 ],
                 required_metrics: ["p50"],
-                baselines: ["Algenta Mojo-native path"],
+                baselines: ["Codna Mojo-native path"],
               },
               slo_budgets: [
                 {
@@ -487,7 +487,7 @@ describe("DecisionEngineClient — loads_b", () => {
         "tests/test_provider_routing_overhead_benchmark.py",
       ]);
       expect(benchmarks.benchmarking.required_metrics[0]).toBe("p50");
-      expect(benchmarks.benchmarking.baselines.at(-1)).toBe("Algenta Mojo-native path");
+      expect(benchmarks.benchmarking.baselines.at(-1)).toBe("Codna Mojo-native path");
       expect(benchmarks.slo_budgets[0]?.applies_to).toBe(budgetAppliesTo);
       expect(benchmarks.slo_budgets[0]?.hard_ceiling_ms).toBe(100);
       expect(checkpointReplayOverhead?.description).toBe("checkpoint and replay overhead");

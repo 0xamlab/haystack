@@ -9,11 +9,11 @@ test("resolveExampleBaseUrl defaults to the cloud-managed base URL", () => {
       component: "TypeScript example test",
       env: {},
     }),
-    "https://api.algenta.ai",
+    "https://api.codna.ai",
   );
 });
 
-test("resolveExampleBaseUrl rejects Algenta cloud in private profiles", () => {
+test("resolveExampleBaseUrl rejects Codna cloud in private profiles", () => {
   try {
     resolveExampleBaseUrl({
       component: "TypeScript example test",
@@ -24,7 +24,7 @@ test("resolveExampleBaseUrl rejects Algenta cloud in private profiles", () => {
     });
     assert.fail("expected private-profile base URL resolution to fail closed");
   } catch (error) {
-    assert.match(String(error), /cannot target Algenta-owned cloud URLs/);
+    assert.match(String(error), /cannot target Codna-owned cloud URLs/);
     assert.match(String(error), /ALGENTA_BASE_URL \/ DE_BASE_URL \/ ALGENTA_API_URL/);
   }
 });

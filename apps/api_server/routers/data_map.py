@@ -14,7 +14,7 @@ Finds relationships between data sources:
 Powers the data funnel:
   Upload data → Auto-map → Query → Run decisions → Upgrade
 
-Uses the Algenta string-distance and vector-similarity Mojo libraries for
+Uses the Codna string-distance and vector-similarity Mojo libraries for
 fuzzy matching. Python fallback is available for all operations.
 """
 

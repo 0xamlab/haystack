@@ -137,7 +137,7 @@ def test_generated_sdk_contract_artifacts_match_manifest() -> None:
         py_sdk_contract.PRIMARY_DATA_QUERY_CONTRACT["direct_sdk"]["python"][
             "preferred_client_class"
         ]
-        == "AlgentaClient"
+        == "CodnaClient"
     )
     assert (
         py_sdk_contract.PRIMARY_DATA_QUERY_CONTRACT["direct_sdk"]["python"]["contract_method"]
@@ -204,7 +204,7 @@ def test_generated_sdk_contract_artifacts_match_manifest() -> None:
     assert '"governed_filter_contract": {' in ts_contract
     assert '"kind": "record_predicates"' in ts_contract
     assert '"discovery_endpoint": "/v1/data"' in ts_contract
-    assert '"preferred_client_class": "AlgentaClient"' in ts_contract
+    assert '"preferred_client_class": "CodnaClient"' in ts_contract
     assert '"contract_method": "getContract"' in ts_contract
     assert '"runtime_class": "Runtime"' in ts_contract
     assert '"libraries_entrypoint": "libraries"' in ts_contract

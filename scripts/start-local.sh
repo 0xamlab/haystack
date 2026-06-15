@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Starts the Algenta local API + MCP server for Mission Platform integration.
+# Starts the Codna local API + MCP server for Mission Platform integration.
 # Run once per dev session from the decision-engine directory.
 set -e
 
@@ -206,7 +206,7 @@ then
   exit 2
 fi
 
-echo "🚀 Starting Algenta local stack..."
+echo "🚀 Starting Codna local stack..."
 _prune_stale_state_files
 
 # Stop prior launcher-managed instances only.
@@ -345,7 +345,7 @@ printf '%s\n' "$MCP_PID" > "$MCP_PID_FILE"
 API_STATUS=$(curl -s "$API_HEALTH_URL" 2>/dev/null | python3 -c "import sys,json; print(json.load(sys.stdin).get('status','?'))" 2>/dev/null || echo "down")
 
 echo ""
-echo "✅ Algenta stack ready"
+echo "✅ Codna stack ready"
 echo "   API:  $API_BASE_URL  — status: $API_STATUS (Mojo 15-worker pool)"
 echo "   MCP:  $MCP_SSE_URL — $TOOL_COUNT tools"
 if [ "$PROVIDER_ROUTER_ENABLED" = "1" ]; then

@@ -57,7 +57,7 @@ def test_typescript_sdk_types_lock_provider_catalog_and_trace_contract() -> None
 
 def test_python_sdk_readme_covers_direct_client_contract() -> None:
     text = (ROOT / "packages" / "python-sdk" / "README.md").read_text()
-    assert "AlgentaClient" in text
+    assert "CodnaClient" in text
     assert "de_live_" not in text
     assert 'api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")' in text
     assert 'raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")' in text
@@ -410,7 +410,7 @@ def test_algenta_core_readme_covers_runtime_and_local_library_contracts() -> Non
     assert "execute_runtime_library" in text
     assert "get_runtime_modules" in text
     assert "get_runtime_benchmarks" in text
-    assert "AlgentaClient" in text
+    assert "CodnaClient" in text
     assert "get_contract()" in text
     assert "get_runtime_manifest()" in text
     assert "get_runtime_modules()" in text
@@ -511,11 +511,11 @@ def test_package_readmes_cover_unified_capability_plane_surface() -> None:
     assert "revoke_device()" in text
     assert 'mode="self_hosted"' in text
     assert 'base_url="http://localhost:8000"' in text
-    assert 'base_url="https://api.algenta.ai"' not in text[
+    assert 'base_url="https://api.codna.ai"' not in text[
         text.index('rt = Runtime(') : text.index("`rt.get_contract()`")
     ]
     assert "Runtime(mode=\"self_hosted\")" in text
     assert "must point `base_url` at your own self-hosted service" in text
-    assert "fail closed instead of silently falling back to Algenta cloud" in text
+    assert "fail closed instead of silently falling back to Codna cloud" in text
 
 

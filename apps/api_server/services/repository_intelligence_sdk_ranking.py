@@ -1,7 +1,7 @@
-"""Embed the Algenta SDK (local Mojo runtime) into repository triage ranking — the
+"""Embed the Codna SDK (local Mojo runtime) into repository triage ranking — the
 core "DNA" integration.
 
-This makes the heavy Algenta engine a first-class, flag-gated ranking lane for the
+This makes the heavy Codna engine a first-class, flag-gated ranking lane for the
 /repositories pipeline, connecting through the LOCAL SDK runtime (the daemon
 sidecar, or the in-process executor) rather than any cloud API. It degrades
 gracefully: RRF fusion + graph proximity are pure Python, and the Mojo lane returns
@@ -50,7 +50,7 @@ _runtime_env_loaded = False
 def _load_runtime_env() -> None:
     """Load ``$ALGENTA_RUNTIME_DIR/.env`` (the runtime's own credential file:
     ALGENTA_API_KEY, deployment profile, ...) into the process environment so the
-    local Algenta engine is authenticated rather than silently falling back to the
+    local Codna engine is authenticated rather than silently falling back to the
     Python heuristic. Existing os.environ values win (explicit config overrides the
     file); idempotent."""
     global _runtime_env_loaded
@@ -89,7 +89,7 @@ def _default_runtime_mode() -> str:
 
 @lru_cache(maxsize=1)
 def _runtime() -> Any | None:
-    """Lazily construct the Algenta SDK Runtime; None if the SDK isn't importable.
+    """Lazily construct the Codna SDK Runtime; None if the SDK isn't importable.
 
     Loads the runtime credential file first so the local engine is authenticated,
     and pins a local execution mode (daemon/direct) so the lane never degrades to a

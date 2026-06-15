@@ -1,4 +1,4 @@
-# Algenta Design System Foundation
+# Codna Design System Foundation
 
 ## 1. `design-tokens.ts`
 
@@ -741,7 +741,7 @@ export default {
 
 ## 5. Usage Notes
 
-- Use **dark mode only** for the entire Algenta enterprise console.
+- Use **dark mode only** for the entire Codna enterprise console.
 - Keep all KPI cards compact and dense; avoid oversized empty panels.
 - Prefer **Inter** for UI text and **JetBrains Mono** for IDs, hashes, JSON, logs, and code.
 - Use purple only as the primary action and system accent, not everywhere.

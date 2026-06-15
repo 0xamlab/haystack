@@ -3,7 +3,7 @@ hvac.mojo — HVAC (Heating, Ventilation, Air Conditioning) Library.
 
 Zero Python imports. Provides sensible/latent heat loads, cooling tonnage,
 air changes, duct velocity, COP/EER conversion, and degree-day calculations
-for the Algenta Decision Engine.
+for the Codna Decision Engine.
 
 Public API:
   sensible_heat_load     — Q = 1.08 * CFM * ΔT  (BTU/hr)

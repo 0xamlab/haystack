@@ -369,7 +369,7 @@ export function makeRuntimeManifestPayload(): Record<string, unknown> {
         },
       ],
       required_metrics: ["p50"],
-      baselines: ["Algenta Mojo-native path"],
+      baselines: ["Codna Mojo-native path"],
     },
     slo_budgets: [
       {
@@ -544,7 +544,7 @@ export function makeRuntimeAdminBenchmarksPayload(): Record<string, unknown> {
         },
       ],
       required_metrics: ["p50"],
-      baselines: ["Algenta Mojo-native path"],
+      baselines: ["Codna Mojo-native path"],
     },
     slo_budgets: [
       {

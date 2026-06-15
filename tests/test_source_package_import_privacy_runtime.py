@@ -43,7 +43,7 @@ def test_python_sdk_source_client_wrapper_fails_closed_without_private_base_url(
     monkeypatch.delenv("DE_BASE_URL", raising=False)
 
     with _source_module(PYTHON_SDK, "decision_engine", "client") as module:
-        with pytest.raises(ValueError, match="private profiles cannot target Algenta-owned cloud URLs"):
+        with pytest.raises(ValueError, match="private profiles cannot target Codna-owned cloud URLs"):
             module.DecisionEngineClient(api_key="de_live_test")
 
 
@@ -55,7 +55,7 @@ def test_python_sdk_source_async_client_wrapper_fails_closed_without_private_bas
     monkeypatch.delenv("DE_BASE_URL", raising=False)
 
     with _source_module(PYTHON_SDK, "decision_engine", "async_client") as module:
-        with pytest.raises(ValueError, match="private profiles cannot target Algenta-owned cloud URLs"):
+        with pytest.raises(ValueError, match="private profiles cannot target Codna-owned cloud URLs"):
             module.AsyncDecisionEngineClient(api_key="de_live_test")
 
 
@@ -67,9 +67,9 @@ def test_python_sdk_source_package_root_sync_exports_fail_closed_without_private
     monkeypatch.delenv("DE_BASE_URL", raising=False)
 
     with _source_module(PYTHON_SDK, "decision_engine", "__init__") as module:
-        with pytest.raises(ValueError, match="private profiles cannot target Algenta-owned cloud URLs"):
-            module.AlgentaClient(api_key="de_live_test")
-        with pytest.raises(ValueError, match="private profiles cannot target Algenta-owned cloud URLs"):
+        with pytest.raises(ValueError, match="private profiles cannot target Codna-owned cloud URLs"):
+            module.CodnaClient(api_key="de_live_test")
+        with pytest.raises(ValueError, match="private profiles cannot target Codna-owned cloud URLs"):
             module.DecisionEngineClient(api_key="de_live_test")
 
 
@@ -81,9 +81,9 @@ def test_python_sdk_source_package_root_async_exports_fail_closed_without_privat
     monkeypatch.delenv("DE_BASE_URL", raising=False)
 
     with _source_module(PYTHON_SDK, "decision_engine", "__init__") as module:
-        with pytest.raises(ValueError, match="private profiles cannot target Algenta-owned cloud URLs"):
-            module.AsyncAlgentaClient(api_key="de_live_test")
-        with pytest.raises(ValueError, match="private profiles cannot target Algenta-owned cloud URLs"):
+        with pytest.raises(ValueError, match="private profiles cannot target Codna-owned cloud URLs"):
+            module.AsyncCodnaClient(api_key="de_live_test")
+        with pytest.raises(ValueError, match="private profiles cannot target Codna-owned cloud URLs"):
             module.AsyncDecisionEngineClient(api_key="de_live_test")
 
 
@@ -95,7 +95,7 @@ def test_algenta_source_runtime_wrapper_api_mode_fails_closed_without_private_ba
     monkeypatch.delenv("DE_BASE_URL", raising=False)
 
     with _source_module(ALGENTA_CORE, "algenta", "runtime") as module:
-        with pytest.raises(ValueError, match="private profiles cannot target Algenta-owned cloud URLs"):
+        with pytest.raises(ValueError, match="private profiles cannot target Codna-owned cloud URLs"):
             module.Runtime(mode="api", api_key="de_live_test")
 
 
@@ -107,7 +107,7 @@ def test_algenta_source_package_root_runtime_export_fails_closed_without_private
     monkeypatch.delenv("DE_BASE_URL", raising=False)
 
     with _source_module(ALGENTA_CORE, "algenta", "__init__") as module:
-        with pytest.raises(ValueError, match="private profiles cannot target Algenta-owned cloud URLs"):
+        with pytest.raises(ValueError, match="private profiles cannot target Codna-owned cloud URLs"):
             module.Runtime(mode="api", api_key="de_live_test")
 
 
@@ -119,5 +119,5 @@ def test_algenta_source_package_root_client_export_fails_closed_without_private_
     monkeypatch.delenv("DE_BASE_URL", raising=False)
 
     with _source_module(ALGENTA_CORE, "algenta", "__init__") as module:
-        with pytest.raises(ValueError, match="private profiles cannot target Algenta-owned cloud URLs"):
-            module.AlgentaClient(api_key="de_live_test")
+        with pytest.raises(ValueError, match="private profiles cannot target Codna-owned cloud URLs"):
+            module.CodnaClient(api_key="de_live_test")

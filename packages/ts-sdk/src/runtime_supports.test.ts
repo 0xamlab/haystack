@@ -212,7 +212,7 @@ describe("Runtime — supports", () => {
 
       expect(bundle.registrations).toHaveLength(2);
       expect(bundle.failures).toHaveLength(1);
-      expect(bundle.preview).toContain("Algenta Source Bundle");
+      expect(bundle.preview).toContain("Codna Source Bundle");
       expect(bundle.preview).toContain("Imported: 2 | Failures: 1");
       expect(bundle.preview).toContain("orders_orders");
       expect(bundle.failures[0].code).toBe("empty_source");
@@ -297,7 +297,7 @@ describe("Runtime — supports", () => {
       expect(bundle.registrations).toHaveLength(2);
       expect(bundle.failures).toHaveLength(1);
       expect(bundle.failures[0]?.code).toBe("upstream_validation_failed");
-      expect(bundle.preview).toContain("Algenta Source Bundle");
+      expect(bundle.preview).toContain("Codna Source Bundle");
       expect(bundle.preview).toContain("Imported: 2 | Failures: 1");
       expect(bundle.preview).toContain("orders_pg");
       expect(bundle.preview).toContain("orders_s3");

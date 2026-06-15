@@ -1,5 +1,5 @@
 """
-Shared type definitions for the Algenta Decision Engine.
+Shared type definitions for the Codna Decision Engine.
 
 ExprNode — AST node for expression evaluator (op codes 0-21).
 VarSpec, CorrSpec, ScoringSpec, SimRequest — typed request structs (Phase 3).

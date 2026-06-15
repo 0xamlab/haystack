@@ -43,7 +43,7 @@ Usage:
   The cloud example above is the Cloud Managed path. In `self_hosted` and
   `air_gapped`, pass an explicit self-hosted `base_url` and use the API key
   provisioned by your self-hosted operator deployment instead. Private
-  profiles fail closed and do not silently fall back to Algenta cloud.
+  profiles fail closed and do not silently fall back to Codna cloud.
 """
 
 from __future__ import annotations
@@ -206,7 +206,7 @@ def run(
     Run a Monte Carlo simulation with multiple variables.
 
     mode="local"  → pure Python, instant, offline (default)
-    mode="cloud"  → Algenta hosted API (requires api_key)
+    mode="cloud"  → Codna hosted API (requires api_key)
     """
     if mode == "cloud":
         return _cloud_run(
@@ -286,7 +286,7 @@ def _cloud_run(
     base_url: str | None = None,
     **kwargs: Any,
 ) -> SimulationResult:
-    """Delegate to Algenta hosted API."""
+    """Delegate to Codna hosted API."""
     try:
         import httpx
     except ImportError:

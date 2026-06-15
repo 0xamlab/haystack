@@ -46,8 +46,8 @@ def test_capability_plane_examples_use_customer_agnostic_placeholders() -> None:
     execute = _load_json("examples/capability-plane/capability_execute_request.json")
     outcome = _load_json("examples/capability-plane/capability_outcome_request.json")
 
-    assert "https://api.algenta.ai" in readme
-    assert "Private profiles do not silently fall back to Algenta cloud." in readme
+    assert "https://api.codna.ai" in readme
+    assert "Private profiles do not silently fall back to Codna cloud." in readme
     assert "examples/capability-plane/capability_route_request.json" in readme
     assert "examples/capability-plane/capability_execute_request.json" in readme
     assert "Mission-specific" not in readme
@@ -77,4 +77,4 @@ def test_langgraph_capability_router_example_uses_unified_capability_plane() -> 
     assert "client.route_capabilities(" in text
     assert "client.get_capability(" in text
     assert "client.execute_capability(" in text
-    assert "Private profiles fail closed and do not silently fall back to Algenta cloud." in normalized
+    assert "Private profiles fail closed and do not silently fall back to Codna cloud." in normalized

@@ -81,12 +81,12 @@ _JWT_ALGORITHM = "HS256"
 _JWT_ISSUER = "algenta-control-plane"
 _GRACE_DAYS = 14
 _LICENSE_TTL_DAYS = 365  # fallback TTL for keys without an explicit expiry
-HOSTED_DEVICE_ID_HEADER = "X-Algenta-Device-Id"
-HOSTED_DEVICE_PLATFORM_HEADER = "X-Algenta-Platform"
-HOSTED_DEVICE_PLATFORM_VERSION_HEADER = "X-Algenta-Platform-Version"
-HOSTED_DEVICE_HOSTNAME_HASH_HEADER = "X-Algenta-Hostname-Hash"
-HOSTED_DEVICE_SDK_VERSION_HEADER = "X-Algenta-SDK-Version"
-HOSTED_DEVICE_BINDING_TOKEN_HEADER = "X-Algenta-Device-Binding-Token"  # noqa: S105
+HOSTED_DEVICE_ID_HEADER = "X-Codna-Device-Id"
+HOSTED_DEVICE_PLATFORM_HEADER = "X-Codna-Platform"
+HOSTED_DEVICE_PLATFORM_VERSION_HEADER = "X-Codna-Platform-Version"
+HOSTED_DEVICE_HOSTNAME_HASH_HEADER = "X-Codna-Hostname-Hash"
+HOSTED_DEVICE_SDK_VERSION_HEADER = "X-Codna-SDK-Version"
+HOSTED_DEVICE_BINDING_TOKEN_HEADER = "X-Codna-Device-Binding-Token"  # noqa: S105
 _HOSTED_DEVICE_MIN_LENGTH = 16
 _HOSTED_DEVICE_BINDING_TOKEN_MIN_LENGTH = 24
 _HOSTED_DEVICE_BINDING_EXEMPT_PATHS = frozenset(
@@ -281,7 +281,7 @@ def _device_binding_token_required_error(
         code="device_binding_token_required",
         message=(
             f"Device '{device_id}' is already bound for this API key. "
-            f"Send the {HOSTED_DEVICE_BINDING_TOKEN_HEADER} header or use the Algenta SDK."
+            f"Send the {HOSTED_DEVICE_BINDING_TOKEN_HEADER} header or use the Codna SDK."
         ),
         details={
             "device_id": device_id,
@@ -318,7 +318,7 @@ def _hosted_request_device_info(request: Request) -> dict[str, str]:
             code="device_binding_required",
             message=(
                 "This API key is bound to a finite number of devices. "
-                f"Send the {HOSTED_DEVICE_ID_HEADER} header or use the Algenta SDK."
+                f"Send the {HOSTED_DEVICE_ID_HEADER} header or use the Codna SDK."
             ),
             details={"required_header": HOSTED_DEVICE_ID_HEADER},
         )
@@ -363,7 +363,7 @@ def _hosted_request_device_info(request: Request) -> dict[str, str]:
             code="device_platform_required",
             message=(
                 "This API key is bound to a finite number of devices. "
-                f"Send the {HOSTED_DEVICE_PLATFORM_HEADER} header or use the Algenta SDK."
+                f"Send the {HOSTED_DEVICE_PLATFORM_HEADER} header or use the Codna SDK."
             ),
             details={"required_header": HOSTED_DEVICE_PLATFORM_HEADER},
         )
@@ -373,7 +373,7 @@ def _hosted_request_device_info(request: Request) -> dict[str, str]:
             code="device_fingerprint_required",
             message=(
                 "This API key is bound to a finite number of devices. "
-                f"Send the {HOSTED_DEVICE_HOSTNAME_HASH_HEADER} header or use the Algenta SDK."
+                f"Send the {HOSTED_DEVICE_HOSTNAME_HASH_HEADER} header or use the Codna SDK."
             ),
             details={"required_header": HOSTED_DEVICE_HOSTNAME_HASH_HEADER},
         )

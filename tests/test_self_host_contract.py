@@ -56,7 +56,7 @@ def test_overview_is_short_and_points_to_quickstart() -> None:
     text = DOCS_INDEX.read_text(encoding="utf-8")
 
     assert "# Overview" in text
-    assert "curl -sSL https://algenta.ai/install.sh | bash" in text
+    assert "curl -sSL https://codna.ai/install.sh | bash" in text
     assert "Open [Quickstart](/quickstart)." in text
     assert "from algenta import Runtime" not in text
     assert "Backup & Recovery" not in text
@@ -68,7 +68,7 @@ def test_quickstart_is_self_host_first_and_minimal() -> None:
 
     assert "# Quickstart" in text
     assert "In this guide you will:" in text
-    assert "curl -sSL https://algenta.ai/install.sh | bash" in text
+    assert "curl -sSL https://codna.ai/install.sh | bash" in text
     assert "curl http://localhost:8000/v1/health" in text
     assert "API Key: <SELF_HOST_BOOTSTRAP_KEY>" in text
     assert "export ALGENTA_API_KEY='<SELF_HOST_BOOTSTRAP_KEY>'" in text
@@ -81,7 +81,7 @@ def test_quickstart_is_self_host_first_and_minimal() -> None:
     assert "`expires_at`" in text
     assert "curl -X POST http://localhost:8000/v1/simulate \\" in text
     assert '"objective": "maximize_net_value"' in text
-    assert "No SDK or Python install is required to use Algenta." in text
+    assert "No SDK or Python install is required to use Codna." in text
     assert "Next: Configure production setup -> [Operations](/operations)" in text
     assert "Backup & Recovery" not in text
     assert "pip install algenta-sdk" not in text
@@ -114,10 +114,10 @@ def test_operations_docs_cover_setup_tls_logs_and_upgrade() -> None:
     assert "`raw_key` again" in setup
     assert "ongoing operator and service access" in setup
     assert "ordinary hosted API traffic" in setup
-    assert "`X-Algenta-Device-Id`" in setup
-    assert "`X-Algenta-Platform`" in setup
-    assert "`X-Algenta-Hostname-Hash`" in setup
-    assert "`X-Algenta-Device-Binding-Token`" in setup
+    assert "`X-Codna-Device-Id`" in setup
+    assert "`X-Codna-Platform`" in setup
+    assert "`X-Codna-Hostname-Hash`" in setup
+    assert "`X-Codna-Device-Binding-Token`" in setup
     assert "ALGENTA_IMAGE_TAG=git-YOUR_RELEASE_TAG" in setup
     assert "ALGENTA_DEPLOYMENT_MODE=self_hosted" in setup
     assert "ALGENTA_DISABLE_CLOUD=1" in setup
@@ -127,7 +127,7 @@ def test_operations_docs_cover_setup_tls_logs_and_upgrade() -> None:
     assert "ALGENTA_ALLOW_OUTBOUND_NETWORK=0" in setup
     assert "ALGENTA_API_PUBLIC_BASE_URL=http://localhost:8000" in setup
     assert "`ALGENTA_DISABLE_TELEMETRY=1` means no outbound or vendor telemetry" in setup
-    assert "Algenta keeps user-facing links on the API origin" in setup
+    assert "Codna keeps user-facing links on the API origin" in setup
     assert "GET /v1/admin/privacy-report" in setup
     assert "`METRICS_SECRET`" in setup
     assert "`RESULT_STORAGE_ENABLED`" in setup
@@ -229,7 +229,7 @@ def test_auth_and_sdk_docs_are_secondary_to_running_service() -> None:
     assert "# Python SDK" in python_sdk
     assert "Use the Python SDK after the service is already running." in python_sdk
     assert "pip install algenta-sdk" in python_sdk
-    assert "from decision_engine import AlgentaClient" in python_sdk
+    assert "from decision_engine import CodnaClient" in python_sdk
     assert "submit_job" in python_sdk
     assert "[Quickstart](/quickstart)" in python_sdk
     assert "[API Authentication](/api-reference/authentication)" in python_sdk
@@ -239,7 +239,7 @@ def test_auth_and_sdk_docs_are_secondary_to_running_service() -> None:
     assert "# TypeScript SDK" in ts_sdk
     assert "Use the TypeScript SDK after the service is already running." in ts_sdk
     assert "npm install algenta-sdk" in ts_sdk
-    assert 'import { AlgentaClient } from "algenta-sdk";' in ts_sdk
+    assert 'import { CodnaClient } from "algenta-sdk";' in ts_sdk
     assert "submitJob" in ts_sdk
     assert "[Quickstart](/quickstart)" in ts_sdk
     assert "[API Authentication](/api-reference/authentication)" in ts_sdk
@@ -284,7 +284,7 @@ def test_top_level_docs_position_service_first_and_runtime_as_development_surfac
     assert "primary local-runtime docs and SDK path" in local_runtime
 
     assert "Run your first decision" in quickstart
-    assert "No SDK or Python install is required to use Algenta." in quickstart
+    assert "No SDK or Python install is required to use Codna." in quickstart
     assert "local runtime" not in quickstart.lower()
 
 
@@ -295,7 +295,7 @@ def test_install_script_and_compose_lock_service_only_boundary() -> None:
     worker_dockerfile = WORKER_DOCKERFILE.read_text(encoding="utf-8")
     makefile = MAKEFILE.read_text(encoding="utf-8")
 
-    assert "https://algenta.ai/install.sh" in install
+    assert "https://codna.ai/install.sh" in install
     assert "/v1/health" in install
     assert "/v1/api-keys" in install
     assert "mission-runtime" in install
@@ -311,7 +311,7 @@ def test_install_script_and_compose_lock_service_only_boundary() -> None:
     assert "paste the bootstrap key above" in install
     assert "Replace it:" in install
     assert "paste the replacement key returned above" in install
-    assert "No SDK or Python install is required to use Algenta." in install
+    assert "No SDK or Python install is required to use Codna." in install
     assert "Portal UI" not in install
     assert "bootstrap_self_host.py" in install
     assert "seed_dev.py" not in install
@@ -399,7 +399,7 @@ def test_makefile_mcp_targets_do_not_force_cloud_base_url() -> None:
 
     assert "mcp-stdio:" in text
     assert "mcp-http:" in text
-    assert "ALGENTA_BASE_URL=$${ALGENTA_BASE_URL:-https://api.algenta.ai}" not in text
+    assert "ALGENTA_BASE_URL=$${ALGENTA_BASE_URL:-https://api.codna.ai}" not in text
     assert "\tALGENTA_API_KEY=$(ALGENTA_API_KEY) \\" in text
     assert "apps.mcp_server.server --transport stdio" in text
     assert "apps.mcp_server.server --transport http" in text

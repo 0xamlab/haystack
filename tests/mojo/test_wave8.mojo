@@ -28,7 +28,7 @@ def main() raises:
 
     # ── JSON Writer ──────────────────────────────────────────────────────
     var s = json_object_start()
-    s = json_add_string(s, "name", "Algenta")
+    s = json_add_string(s, "name", "Codna")
     s = json_add_int(s, "version", 1)
     s = json_add_float(s, "score", 0.95)
     s = json_add_bool(s, "active", True)
@@ -99,7 +99,7 @@ def main() raises:
     var pairs = List[List[String]]()
     var p1 = List[String]()
     p1.append("name")
-    p1.append('"Algenta"')
+    p1.append('"Codna"')
     pairs.append(p1^)
     var p2 = List[String]()
     p2.append("ver")

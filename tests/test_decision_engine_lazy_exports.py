@@ -234,9 +234,9 @@ def test_decision_engine_root_uses_lazy_exports_for_clients_and_models() -> None
         assert runtime_slo_budget_name_enum.__name__ == "RuntimeSLOBudgetNameResult"
         assert validation_error_cls.__name__ == "ValidationError"
         assert contract_version == "v1.3"
-        assert brand == "Algenta"
-        assert default_base_url == "https://api.algenta.ai"
-        assert mcp_endpoint == "https://api.algenta.ai/mcp/sse"
+        assert brand == "Codna"
+        assert default_base_url == "https://api.codna.ai"
+        assert mcp_endpoint == "https://api.codna.ai/mcp/sse"
         assert auth_scheme == "bearer_api_key"
         assert legacy_headers == ("X-API-Key",)
         assert deprecation_window_days == 90
@@ -313,10 +313,10 @@ def test_decision_engine_root_uses_lazy_exports_for_clients_and_models() -> None
             sys.modules.pop(module_name, None)
 
         async_client_cls = decision_engine.AsyncDecisionEngineClient
-        async_algenta_client_cls = decision_engine.AsyncAlgentaClient
+        async_algenta_client_cls = decision_engine.AsyncCodnaClient
 
         assert async_client_cls.__name__ == "AsyncDecisionEngineClient"
-        assert async_algenta_client_cls.__name__ == "AsyncAlgentaClient"
+        assert async_algenta_client_cls.__name__ == "AsyncCodnaClient"
         assert issubclass(async_algenta_client_cls, async_client_cls)
         assert "decision_engine.async_client" not in sys.modules
         assert "decision_engine.async_client_facade" in sys.modules
@@ -365,10 +365,10 @@ def test_decision_engine_root_uses_lazy_exports_for_clients_and_models() -> None
             sys.modules.pop(module_name, None)
 
         client_cls = decision_engine.DecisionEngineClient
-        algenta_client_cls = decision_engine.AlgentaClient
+        algenta_client_cls = decision_engine.CodnaClient
 
         assert client_cls.__name__ == "DecisionEngineClient"
-        assert algenta_client_cls.__name__ == "AlgentaClient"
+        assert algenta_client_cls.__name__ == "CodnaClient"
         assert issubclass(algenta_client_cls, client_cls)
         assert "decision_engine.client" not in sys.modules
         assert "decision_engine.client_facade" in sys.modules

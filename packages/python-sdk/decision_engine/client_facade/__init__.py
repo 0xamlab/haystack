@@ -1,16 +1,16 @@
 """
-Synchronous Algenta API client.
+Synchronous Codna API client.
 
 Usage:
     import os
 
-    from decision_engine import AlgentaClient
+    from decision_engine import CodnaClient
 
     api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
     if not api_key:
         raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
 
-    client = AlgentaClient(api_key=api_key)
+    client = CodnaClient(api_key=api_key)
     result = client.simulate(
         mode="auto",
         scenario={
@@ -23,7 +23,7 @@ Usage:
 This example is the Cloud Managed path. In `self_hosted` and `air_gapped`,
 pass an explicit self-hosted `base_url` and use the API key provisioned by
 your self-hosted operator deployment instead. Private profiles fail closed and
-do not silently fall back to Algenta cloud.
+do not silently fall back to Codna cloud.
 """
 
 from __future__ import annotations
@@ -289,9 +289,9 @@ from decision_engine.client_facade._mixin_account_control_plane import _AccountC
 
 class DecisionEngineClient(_SimulationQueryMixin, _ProductDecisionMixin, _TriggerSourceMixin, _LLMMixin, _ContractCapabilityMixin, _AgentRunMixin, _ConnectorRepositoryMixin, _JobDeploymentMixin, _AccountControlPlaneMixin):
     """
-    Synchronous HTTP client for the Algenta API.
+    Synchronous HTTP client for the Codna API.
 
-    `AlgentaClient` is the preferred public alias.
+    `CodnaClient` is the preferred public alias.
     `DecisionEngineClient` remains available for backward compatibility.
 
     Args:
@@ -400,5 +400,5 @@ class DecisionEngineClient(_SimulationQueryMixin, _ProductDecisionMixin, _Trigge
         self.close()
 
 
-class AlgentaClient(DecisionEngineClient):
-    """Preferred public sync client name for the Algenta API."""
+class CodnaClient(DecisionEngineClient):
+    """Preferred public sync client name for the Codna API."""

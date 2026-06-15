@@ -204,7 +204,7 @@ async def register_node(
     auth: Annotated[AuthContext, Depends(get_current_org)],
 ) -> NodeRegisterResponse:
     """
-    Called by self-hosted Algenta workers on startup to register with the API.
+    Called by self-hosted Codna workers on startup to register with the API.
     The node will appear in GET /v1/infrastructure for the org.
     """
     node_id = payload.node_id or f"node-{str(uuid4())[:8]}"

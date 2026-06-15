@@ -443,11 +443,11 @@ async def _generate_verified_agentic_repository_patch_plan(
         # exploration; shell only for controlled post-patch validation).
         "tool_profile": _agent_tool_profile(),
     }
-    # Engine-behind wiring: when the LOCAL Algenta engine is reachable, hand the
+    # Engine-behind wiring: when the LOCAL Codna engine is reachable, hand the
     # agent-core its loopback URL + repo/snapshot ids + an engine api-key so the
-    # Cline agent's Algenta tools (localize / graph_query / simulate_patch) can call
+    # Cline agent's Codna tools (localize / graph_query / simulate_patch) can call
     # back into it. The LLM provider stays ANY (BYOM) — only the ENGINE is local.
-    # Additive: without ALGENTA_ENGINE_URL the agent-core loads no Algenta tools and
+    # Additive: without ALGENTA_ENGINE_URL the agent-core loads no Codna tools and
     # behaves exactly as before.
     _engine_url = os.environ.get("ALGENTA_ENGINE_URL")
     if _engine_url:

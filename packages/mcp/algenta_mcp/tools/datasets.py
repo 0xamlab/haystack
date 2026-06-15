@@ -2,7 +2,7 @@
 MCP tool: onboard_dataset + list_datasets
 
 Lets an LLM onboard any data source and check training status.
-The LLM passes column names or inline records; Algenta profiles the schema,
+The LLM passes column names or inline records; Codna profiles the schema,
 auto-suggests aliases, and fires background semantic training.
 """
 

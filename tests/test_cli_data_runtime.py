@@ -31,7 +31,7 @@ def test_cmd_contract_prints_machine_readable_contract_summary(monkeypatch) -> N
 
     output = _capture_stdout(cli.cmd_contract, "table")
 
-    assert "Algenta contract: v1.3" in output
+    assert "Codna contract: v1.3" in output
     assert "/v1/meta/contract" in output
     assert "get_contract() / get_contract()" in output
     assert "getContract() / getContract()" in output
@@ -259,10 +259,10 @@ def test_cmd_contract_rejects_invalid_payload(monkeypatch) -> None:
             200,
             {
                 "contract_version": "v1.3",
-                "brand": "Algenta",
-                "api_base_url": "https://api.algenta.ai",
-                "mcp_endpoint": "https://api.algenta.ai/mcp/sse",
-                "mcp_tools_endpoint": "https://api.algenta.ai/mcp/tools",
+                "brand": "Codna",
+                "api_base_url": "https://api.codna.ai",
+                "mcp_endpoint": "https://api.codna.ai/mcp/sse",
+                "mcp_tools_endpoint": "https://api.codna.ai/mcp/tools",
                 "auth_scheme": "bearer_api_key",
                 "api_key_prefixes": {"live": "de_live_"},
                 "compatibility": {
@@ -310,7 +310,7 @@ def test_cmd_runtime_manifest_prints_runtime_foundation_summary(monkeypatch) -> 
 
     output = _capture_stdout(cli.cmd_runtime_manifest, "table")
 
-    assert "Algenta runtime manifest:" in output
+    assert "Codna runtime manifest:" in output
     assert "llm-core-v1" in output
     assert "22 shipping / 22 listed" in output
     assert "Functions:       209" in output
@@ -367,7 +367,7 @@ def test_cmd_runtime_validate_prints_release_verdict(monkeypatch) -> None:
 
     output = _capture_stdout(cli.cmd_runtime_validate, "table")
 
-    assert "Algenta runtime release validation:" in output
+    assert "Codna runtime release validation:" in output
     assert "-> valid" in output
     assert "manifest-listed: pass" in output
     assert "deployment-mode validated: pass" in output
@@ -442,7 +442,7 @@ def test_cmd_runtime_admin_modules_prints_signed_module_catalog(monkeypatch) -> 
 
     output = _capture_stdout(cli.cmd_runtime_admin_modules, "table")
 
-    assert "Algenta runtime module catalog:" in output
+    assert "Codna runtime module catalog:" in output
     assert "22 modules / 209 functions" in output
     assert "mojo_llm_runtime_core [channel_covered]" in output
     assert "bpe_tokenizer" in output
@@ -496,7 +496,7 @@ def test_cmd_runtime_admin_benchmarks_prints_signed_benchmark_catalog(monkeypatc
 
     output = _capture_stdout(cli.cmd_runtime_admin_benchmarks, "table")
 
-    assert "Algenta runtime benchmark catalog:" in output
+    assert "Codna runtime benchmark catalog:" in output
     discovery = payload["benchmark_discovery_lane"]
     assert (
         f"{discovery['discovered_source_modules']} source modules / "
@@ -602,9 +602,9 @@ def test_cmd_deployments_regions_prints_provider_inventory(monkeypatch) -> None:
         "providers": [
             {
                 "id": "algenta_shared",
-                "name": "Algenta Managed",
+                "name": "Codna Managed",
                 "regions": [
-                    {"id": "algenta-shared", "label": "Algenta Shared", "location": "Global"}
+                    {"id": "algenta-shared", "label": "Codna Shared", "location": "Global"}
                 ],
             }
         ]
@@ -614,8 +614,8 @@ def test_cmd_deployments_regions_prints_provider_inventory(monkeypatch) -> None:
     output = _capture_stdout(cli.cmd_deployments_regions, "table")
 
     assert "Deployment providers:" in output
-    assert "algenta_shared: Algenta Managed" in output
-    assert "Algenta Shared" in output
+    assert "algenta_shared: Codna Managed" in output
+    assert "Codna Shared" in output
 
 
 def test_cmd_deployments_get_prints_active_deployment(monkeypatch) -> None:

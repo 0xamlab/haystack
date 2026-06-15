@@ -27,12 +27,12 @@ def test_openapi_saas_ignores_transport_base_url_without_public_override(
     _clear_openapi_state()
 
     try:
-        assert openapi_server_url() == "https://api.algenta.ai"
-        assert openapi_mcp_endpoint("https://api.algenta.ai") == "https://api.algenta.ai/mcp/sse"
+        assert openapi_server_url() == "https://api.codna.ai"
+        assert openapi_mcp_endpoint("https://api.codna.ai") == "https://api.codna.ai/mcp/sse"
 
         schema = app.openapi()
-        assert schema["servers"] == [{"url": "https://api.algenta.ai"}]
-        assert schema["x-canonical-mcp-endpoint"] == "https://api.algenta.ai/mcp/sse"
+        assert schema["servers"] == [{"url": "https://api.codna.ai"}]
+        assert schema["x-canonical-mcp-endpoint"] == "https://api.codna.ai/mcp/sse"
     finally:
         _clear_openapi_state()
 
@@ -111,7 +111,7 @@ def test_openapi_private_profile_rejects_algenta_cloud_surface_override(
 ) -> None:
     monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "self_hosted")
     monkeypatch.setenv("ALGENTA_DISABLE_CLOUD", "1")
-    monkeypatch.setenv("ALGENTA_BASE_URL", "https://api.algenta.ai")
+    monkeypatch.setenv("ALGENTA_BASE_URL", "https://api.codna.ai")
     monkeypatch.delenv("DE_BASE_URL", raising=False)
     _clear_openapi_state()
 
@@ -120,7 +120,7 @@ def test_openapi_private_profile_rejects_algenta_cloud_surface_override(
             ValueError,
             match=(
                 "OpenAPI surface ALGENTA_BASE_URL / DE_BASE_URL / ALGENTA_API_URL "
-                "must not point to an Algenta-owned host"
+                "must not point to an Codna-owned host"
             ),
         ):
             validate_openapi_surface_configuration()
@@ -135,7 +135,7 @@ def test_openapi_private_profile_rejects_algenta_cloud_public_api_override(
     monkeypatch.setenv("ALGENTA_DISABLE_CLOUD", "1")
     monkeypatch.delenv("ALGENTA_BASE_URL", raising=False)
     monkeypatch.delenv("DE_BASE_URL", raising=False)
-    monkeypatch.setenv("API_PUBLIC_BASE_URL", "https://api.algenta.ai")
+    monkeypatch.setenv("API_PUBLIC_BASE_URL", "https://api.codna.ai")
     _clear_openapi_state()
 
     try:
@@ -143,7 +143,7 @@ def test_openapi_private_profile_rejects_algenta_cloud_public_api_override(
             ValueError,
             match=(
                 "OpenAPI surface ALGENTA_API_PUBLIC_BASE_URL / API_PUBLIC_BASE_URL "
-                "must not point to an Algenta-owned host"
+                "must not point to an Codna-owned host"
             ),
         ):
             validate_openapi_surface_configuration()

@@ -15,19 +15,19 @@ Start with [Quickstart](/quickstart), then authenticate with [API Authentication
 npm install algenta-sdk
 ```
 
-`AlgentaClient` is the preferred public name. `DecisionEngineClient` remains available as a compatibility alias.
+`CodnaClient` is the preferred public name. `DecisionEngineClient` remains available as a compatibility alias.
 
 ## API keys
 
 ```typescript
-import { AlgentaClient } from "algenta-sdk";
+import { CodnaClient } from "algenta-sdk";
 
 const apiKey = process.env.ALGENTA_API_KEY ?? process.env.DE_API_KEY;
 if (!apiKey) {
   throw new Error("Set ALGENTA_API_KEY or DE_API_KEY before running this example.");
 }
 
-const client = new AlgentaClient({
+const client = new CodnaClient({
   apiKey,
   baseUrl: "http://localhost:8000",
 });
@@ -212,14 +212,14 @@ service identity across restarts.
 ## Simulate
 
 ```typescript
-import { AlgentaClient } from "algenta-sdk";
+import { CodnaClient } from "algenta-sdk";
 
 const apiKey = process.env.ALGENTA_API_KEY ?? process.env.DE_API_KEY;
 if (!apiKey) {
   throw new Error("Set ALGENTA_API_KEY or DE_API_KEY before running this example.");
 }
 
-const client = new AlgentaClient({
+const client = new CodnaClient({
   apiKey,
   baseUrl: "http://localhost:8000",
 });
@@ -243,14 +243,14 @@ console.log(result.recommended_action);
 ## Async jobs
 
 ```typescript
-import { AlgentaClient } from "algenta-sdk";
+import { CodnaClient } from "algenta-sdk";
 
 const apiKey = process.env.ALGENTA_API_KEY ?? process.env.DE_API_KEY;
 if (!apiKey) {
   throw new Error("Set ALGENTA_API_KEY or DE_API_KEY before running this example.");
 }
 
-const client = new AlgentaClient({
+const client = new CodnaClient({
   apiKey,
   baseUrl: "http://localhost:8000",
 });
@@ -314,14 +314,14 @@ including:
 ## Decision runtime helpers
 
 ```typescript
-import { AlgentaClient } from "algenta-sdk";
+import { CodnaClient } from "algenta-sdk";
 
 const apiKey = process.env.ALGENTA_API_KEY ?? process.env.DE_API_KEY;
 if (!apiKey) {
   throw new Error("Set ALGENTA_API_KEY or DE_API_KEY before running this example.");
 }
 
-const client = new AlgentaClient({
+const client = new CodnaClient({
   apiKey,
   baseUrl: "http://localhost:8000",
 });
@@ -440,14 +440,14 @@ console.log(executionReceipt.execution_status);
 ## Discovery and governed query helpers
 
 ```typescript
-import { AlgentaClient, type QueryFilterSpec } from "algenta-sdk";
+import { CodnaClient, type QueryFilterSpec } from "algenta-sdk";
 
 const apiKey = process.env.ALGENTA_API_KEY ?? process.env.DE_API_KEY;
 if (!apiKey) {
   throw new Error("Set ALGENTA_API_KEY or DE_API_KEY before running this example.");
 }
 
-const client = new AlgentaClient({
+const client = new CodnaClient({
   apiKey,
   baseUrl: "http://localhost:8000",
 });
@@ -534,14 +534,14 @@ and routing surface across connectors, MCP providers, prompt-skills, native
 tools, and runtime libraries.
 
 ```typescript
-import { AlgentaClient } from "algenta-sdk";
+import { CodnaClient } from "algenta-sdk";
 
 const apiKey = process.env.ALGENTA_API_KEY ?? process.env.DE_API_KEY;
 if (!apiKey) {
   throw new Error("Set ALGENTA_API_KEY or DE_API_KEY before running this example.");
 }
 
-const client = new AlgentaClient({
+const client = new CodnaClient({
   apiKey,
   baseUrl: "http://localhost:8000",
 });
@@ -650,7 +650,7 @@ Every stored repository `DecisionPlan` also records planner provenance in
 
 Use these surfaces as follows:
 
-- `getContract()` when you need the live machine-readable Algenta contract from the running service
+- `getContract()` when you need the live machine-readable Codna contract from the running service
 - `getRuntimeManifest()`, `getRuntimeModules()`, `getRuntimeBenchmarks()`, and `getRuntimeReleaseValidation()` when you need the signed runtime proof surfaces from the running service
 - `getRuntimeBenchmarks()` also includes benchmark-class `evidence_paths`, so benchmark claims retain concrete artifact linkage rather than only code and description labels
 - `getRuntimeBenchmarks()` currently exposes the quality-gate benchmark classes `B6` checkpoint and replay overhead, `B7` MCP tool latency, `B9` RAG retrieval quality and latency, and `B10` decision workflow completion latency
@@ -753,11 +753,11 @@ const sample = await catalog.ab_testing.sample_size_proportion({
 console.log(modules.length, sample);
 ```
 
-Use `AlgentaClient` for the running service and `libraries()` only for the local daemon-backed Mojo catalog.
+Use `CodnaClient` for the running service and `libraries()` only for the local daemon-backed Mojo catalog.
 
 This surface is local/runtime-backed in this rollout. Customer apps and other
 external clients can execute runtime-owned Mojo libraries without importing
-source files, but they must run the local Algenta runtime daemon first.
+source files, but they must run the local Codna runtime daemon first.
 
 ## Optional local runtime
 
@@ -766,4 +766,4 @@ The local runtime and development CLI remain available through `algenta-core`, b
 For the unified capability plane, local runtime execution only supports
 `client_managed` capabilities. `algenta_managed` capabilities remain
 discoverable and routable in local mode, but execution fails closed until you
-switch back to the running Algenta service.
+switch back to the running Codna service.

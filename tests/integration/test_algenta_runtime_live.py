@@ -944,13 +944,13 @@ def run_local_runtime_real_csv_flow() -> None:
     assert imported.registration.row_count > 0
     assert summary["valid"] is True
     assert float(summary["scalar"]) == float(expected_count)
-    assert "Algenta Source Import" in imported.preview
+    assert "Codna Source Import" in imported.preview
     assert "Origin:" in imported.preview
     assert REAL_MARCH_ORDERS.stem in imported.preview
 
     assert len(bundle.registrations) == 3
     assert not bundle.failures
-    assert "Algenta Source Bundle" in bundle.preview
+    assert "Codna Source Bundle" in bundle.preview
     assert "orders_detail_bundle" in bundle.preview
     assert "orders_financial_bundle" in bundle.preview
     assert "top_inaccurate_items_bundle" in bundle.preview
@@ -996,7 +996,7 @@ def run_local_runtime_real_file_matrix() -> None:
     assert parquet_import.registration.row_count is not None
     assert parquet_import.registration.row_count > 0
     assert parquet_import.registration.name == "bookings_parquet"
-    assert "Algenta Source Import" in parquet_import.preview
+    assert "Codna Source Import" in parquet_import.preview
     assert REAL_LOCAL_PARQUET.name in parquet_import.preview
     assert parquet_summary["valid"] is True
     assert float(parquet_summary["scalar"]) == float(parquet_expected_count)
@@ -1004,7 +1004,7 @@ def run_local_runtime_real_file_matrix() -> None:
     assert workbook_import.registration.row_count is not None
     assert workbook_import.registration.row_count > 0
     assert workbook_import.registration.name == "qpl_workbook"
-    assert "Algenta Source Import" in workbook_import.preview
+    assert "Codna Source Import" in workbook_import.preview
     assert REAL_LOCAL_WORKBOOK.name in workbook_import.preview
     assert workbook_summary["valid"] is True
     assert float(workbook_summary["scalar"]) == float(workbook_expected_count)
@@ -1083,7 +1083,7 @@ def run_api_runtime_connector_matrix() -> None:
     assert s3["row_count"] is not None
     assert s3["row_count"] > 0
     assert float(s3["scalar"]) == float(s3["row_count"])
-    assert "Algenta Source Import" in imported.preview
+    assert "Codna Source Import" in imported.preview
     assert PUBLIC_S3_SOURCE_REF in imported.preview
 
     assert sqlite["valid"] is True
@@ -1096,7 +1096,7 @@ def run_api_runtime_connector_matrix() -> None:
 
     assert len(bundle.registrations) == 4
     assert not bundle.failures
-    assert "Algenta Source Bundle" in bundle.preview
+    assert "Codna Source Bundle" in bundle.preview
     assert sqlite_bundle_name in bundle.preview
     assert postgres_bundle_name in bundle.preview
     assert s3_bundle_name in bundle.preview
@@ -1121,7 +1121,7 @@ def run_api_runtime_dataset_surface() -> None:
             name=f"algenta-runtime-live-connector-{time.time_ns()}",
             connector_type="rest",
             config={"url": source_url, "data_path": "items"},
-            description="Live Algenta Runtime saved connector check.",
+            description="Live Codna Runtime saved connector check.",
         )
         preview_tested_connector = runtime.test_connector(
             connector={"type": "rest", "url": source_url, "data_path": "items"}
@@ -1151,10 +1151,10 @@ def run_api_runtime_dataset_surface() -> None:
 
             updated_connector = runtime.update_connector(
                 connector_id,
-                description="Live Algenta Runtime connector updated description.",
+                description="Live Codna Runtime connector updated description.",
             )
             assert updated_connector.id == connector_id
-            assert updated_connector.description == "Live Algenta Runtime connector updated description."
+            assert updated_connector.description == "Live Codna Runtime connector updated description."
 
             tested_connector = runtime.test_connector(connector_id)
             assert tested_connector.success is True

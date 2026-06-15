@@ -295,7 +295,7 @@ def test_scoring_weights_not_summing_to_one() raises:
 
 def main() raises:
     print("=" * 60)
-    print("Algenta Malformed Payload Tests — Phase 4 exit criteria")
+    print("Codna Malformed Payload Tests — Phase 4 exit criteria")
     print("=" * 60)
     print()
 

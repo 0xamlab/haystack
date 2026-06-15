@@ -162,7 +162,7 @@ export type RuntimeBenchmarkBaseline =
   | "llama.cpp GGUF backend"
   | "ONNX Runtime backend"
   | "CTranslate2 backend"
-  | "Algenta Mojo-native path";
+  | "Codna Mojo-native path";
 
 export type RuntimeEvaluationMethod =
   | "bootstrap confidence intervals"

@@ -1,5 +1,5 @@
 """
-Algenta MCP Server — entry point.
+Codna MCP Server — entry point.
 
 Transports:
   stdio  — for Claude Desktop, Cursor, Zed, Windsurf, VS Code (Cline/Continue)
@@ -15,11 +15,11 @@ Environment variables:
   DE_API_KEY               compatibility. Use Cloud Managed API keys only in
                            Cloud Managed. In self_hosted and air_gapped, use
                            the key provisioned by your self-hosted operator deployment
-  ALGENTA_BASE_URL /     — default: https://api.algenta.ai in Cloud Managed.
+  ALGENTA_BASE_URL /     — default: https://api.codna.ai in Cloud Managed.
   DE_BASE_URL /            Legacy ALGENTA_API_URL remains accepted for
   ALGENTA_API_URL          compatibility. Required for self_hosted and air_gapped
                            profiles, which fail closed and do not silently fall back
-                           to Algenta cloud.
+                           to Codna cloud.
   ALGENTA_MCP_PORT       — default: 8001
 """
 
@@ -57,7 +57,7 @@ def create_fastapi_router() -> APIRouter | None:
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Algenta MCP Server")
+    parser = argparse.ArgumentParser(description="Codna MCP Server")
     parser.add_argument(
         "--mode",
         "--transport",

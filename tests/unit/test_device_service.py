@@ -162,11 +162,11 @@ def test_hosted_request_device_info_requires_device_id_header() -> None:
 def test_hosted_request_device_info_accepts_header_metadata() -> None:
     request = SimpleNamespace(
         headers={
-            "X-Algenta-Device-Id": "hosted-device-000001",
-            "X-Algenta-Platform": "linux",
-            "X-Algenta-Platform-Version": "6.8.0",
-            "X-Algenta-Hostname-Hash": "deadbeef" * 8,
-            "X-Algenta-SDK-Version": "algenta-ts/1.0.0",
+            "X-Codna-Device-Id": "hosted-device-000001",
+            "X-Codna-Platform": "linux",
+            "X-Codna-Platform-Version": "6.8.0",
+            "X-Codna-Hostname-Hash": "deadbeef" * 8,
+            "X-Codna-SDK-Version": "algenta-ts/1.0.0",
             "User-Agent": "algenta-ts/1.0.0",
         }
     )
@@ -185,10 +185,10 @@ def test_hosted_request_device_info_accepts_header_metadata() -> None:
 def test_hosted_request_device_info_requires_hostname_hash_for_capped_keys() -> None:
     request = SimpleNamespace(
         headers={
-            "X-Algenta-Device-Id": "hosted-device-000001",
-            "X-Algenta-Platform": "linux",
-            "X-Algenta-Platform-Version": "6.8.0",
-            "X-Algenta-SDK-Version": "algenta-ts/1.0.0",
+            "X-Codna-Device-Id": "hosted-device-000001",
+            "X-Codna-Platform": "linux",
+            "X-Codna-Platform-Version": "6.8.0",
+            "X-Codna-SDK-Version": "algenta-ts/1.0.0",
             "User-Agent": "algenta-ts/1.0.0",
         }
     )

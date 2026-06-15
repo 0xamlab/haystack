@@ -6,12 +6,12 @@ sidebar_position: 1
 
 Start with [Quickstart](/quickstart) if you are bringing up a self-hosted service for the first time.
 
-**Base URL:** `https://api.algenta.ai`
+**Base URL:** `https://api.codna.ai`
 
-- Cloud Managed: `https://api.algenta.ai`
+- Cloud Managed: `https://api.codna.ai`
 - `self_hosted` and `air_gapped`: replace the hosted base URL with your self-hosted base URL
 
-Private profiles do not silently fall back to Algenta cloud.
+Private profiles do not silently fall back to Codna cloud.
 
 **Authentication:** API requests require an API key via:
 
@@ -44,7 +44,7 @@ These endpoints back the deterministic data/runtime surface after service instal
 | Method | Path | Purpose |
 |--------|------|---------|
 | `POST` | `/v1/sources/register` | Register a source in the Decision Intelligence Layer |
-| `GET` | `/v1/meta/contract` | Fetch the machine-readable Algenta contract |
+| `GET` | `/v1/meta/contract` | Fetch the machine-readable Codna contract |
 | `GET` | `/v1/data` | Discover authorized datasets with deterministic filters |
 | `GET` | `/v1/data/{dataset_id}/summary` | Fetch a low-token dataset selection summary |
 | `POST` | `/v1/resolve` | Resolve structured intent into an exact plan |
@@ -63,7 +63,7 @@ an objective should route first:
 | `GET` | [`/v1/capability-providers`](/api-reference/capability-plane) | List customer-agnostic provider families |
 | `GET` | [`/v1/capabilities`](/api-reference/capability-plane) | List discovered capabilities across providers |
 | `POST` | [`/v1/capabilities/route`](/api-reference/capability-plane) | Route one objective to the selected capability |
-| `POST` | [`/v1/capabilities/execute`](/api-reference/capability-plane) | Execute one Algenta-managed capability |
+| `POST` | [`/v1/capabilities/execute`](/api-reference/capability-plane) | Execute one Codna-managed capability |
 | `POST` | [`/v1/capabilities/outcomes`](/api-reference/capability-plane) | Record the observed execution outcome |
 
 ## Runtime contract notes
@@ -86,7 +86,7 @@ an objective should route first:
 - `primary_data_query_contract.governed_filter_contract` declares the selector fields, operator families, type behavior, and validation rules for that same database-agnostic filter model.
 - The canonical OpenAPI document also publishes `x-canonical-mcp-endpoint` and `x-primary-data-query-contract` for machine-readable integration discovery.
 - Official SDKs, the CLI, and MCP tooling automatically fall back to `x-primary-data-query-contract` from `/openapi.json` when an older self-hosted node still returns `404` for `/v1/meta/contract`. Raw HTTP integrations should do the same.
-- That contract now includes the preferred direct-client imports (`decision_engine.AlgentaClient`, `decision_engine.AsyncAlgentaClient`) and runtime entrypoints (`algenta.Runtime`, `algenta.libraries`, `algenta-sdk` `Runtime`).
+- That contract now includes the preferred direct-client imports (`decision_engine.CodnaClient`, `decision_engine.AsyncCodnaClient`) and runtime entrypoints (`algenta.Runtime`, `algenta.libraries`, `algenta-sdk` `Runtime`).
 
 For explicit bridge-table execution, see
 [Multi-hop Joins](/api-reference/multi-hop-joins). That guide covers exact

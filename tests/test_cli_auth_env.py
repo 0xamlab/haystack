@@ -86,7 +86,7 @@ def test_cmd_login_empty_key_uses_private_profile_self_hosted_guidance(monkeypat
     output = _capture_stdout(cli_main.cmd_login)
 
     assert "self-hosted admin surface or API base URL: http://localhost:8000" in output
-    assert "app.algenta.ai/dashboard/api-keys" not in output
+    assert "app.codna.ai/dashboard/api-keys" not in output
 
 
 def test_cmd_login_empty_key_private_profile_requires_explicit_origin(monkeypatch) -> None:
@@ -114,4 +114,4 @@ def test_cmd_login_empty_key_uses_cloud_managed_guidance_when_private_profile_is
 
     output = _capture_stdout(cli_main.cmd_login)
 
-    assert "https://app.algenta.ai/dashboard/api-keys" in output
+    assert "https://app.codna.ai/dashboard/api-keys" in output

@@ -42,7 +42,7 @@ class _FakeAPIClient(APIClient):
                 {},
             )
         if method == "POST" and path == "/auth/login":
-            if body != {"email": "owner@selfhost.algenta.ai", "password": "stub-password-123"}:
+            if body != {"email": "owner@selfhost.codna.ai", "password": "stub-password-123"}:
                 raise MatrixCheckError(f"unexpected login body: {body!r}")
             return (
                 200,
@@ -168,7 +168,7 @@ class _FakeAPIClient(APIClient):
             self.dataset_deleted = True
             return 200, {"status": "deleted"}, {}
         if method == "GET" and path == "/v1/team":
-            return 200, [{"email": "owner@selfhost.algenta.ai"}], {}
+            return 200, [{"email": "owner@selfhost.codna.ai"}], {}
         if method == "GET" and path == "/v1/connectors":
             return 200, {"connectors": []}, {}
         if method == "GET" and path == "/v1/connectors/types":
@@ -185,7 +185,7 @@ class _FakeAPIClient(APIClient):
     def _me_payload(self) -> dict[str, Any]:
         return {
             "user": {
-                "email": "owner@selfhost.algenta.ai",
+                "email": "owner@selfhost.codna.ai",
                 "name": "Owner",
                 "role": "owner",
             },
@@ -212,7 +212,7 @@ def test_self_host_endpoint_matrix_runner_happy_path() -> None:
     runner = EndpointMatrixRunner(
         _FakeAPIClient(),
         api_key="de_test_primary_key",
-        bootstrap_email="owner@selfhost.algenta.ai",
+        bootstrap_email="owner@selfhost.codna.ai",
         bootstrap_password="stub-password-123",
     )
 
@@ -235,5 +235,5 @@ def test_self_host_endpoint_matrix_runner_happy_path() -> None:
 
 
 def test_self_host_endpoint_matrix_rejects_algenta_cloud_base_url() -> None:
-    with pytest.raises(ValueError, match="cannot target Algenta-owned cloud URLs"):
-        APIClient("https://api.algenta.ai")
+    with pytest.raises(ValueError, match="cannot target Codna-owned cloud URLs"):
+        APIClient("https://api.codna.ai")

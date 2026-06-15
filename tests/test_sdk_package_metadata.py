@@ -41,7 +41,7 @@ def test_all_public_sdks_are_apache_2_0() -> None:
 def test_engine_root_license_stays_proprietary() -> None:
     # Guard against accidentally relicensing the engine: the root LICENSE is the proprietary ACL.
     root_license = (_REPO_ROOT / "LICENSE").read_text("utf-8")
-    assert "Algenta Community License" in root_license
+    assert "Codna Community License" in root_license
     assert "Apache License" not in root_license.split("\n", 1)[0]
 
 

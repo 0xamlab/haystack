@@ -1,5 +1,5 @@
 {
-  "name": "Algenta — Discover Dataset and Query Batch",
+  "name": "Codna — Discover Dataset and Query Batch",
   "nodes": [
     {
       "parameters": {},
@@ -25,7 +25,7 @@
       "credentials": {
         "httpHeaderAuth": {
           "id": "algenta-api-key",
-          "name": "Algenta API Key"
+          "name": "Codna API Key"
         }
       }
     },
@@ -45,7 +45,7 @@
       "credentials": {
         "httpHeaderAuth": {
           "id": "algenta-api-key",
-          "name": "Algenta API Key"
+          "name": "Codna API Key"
         }
       }
     },
@@ -65,7 +65,7 @@
       "credentials": {
         "httpHeaderAuth": {
           "id": "algenta-api-key",
-          "name": "Algenta API Key"
+          "name": "Codna API Key"
         }
       }
     },
@@ -97,7 +97,7 @@
       "credentials": {
         "httpHeaderAuth": {
           "id": "algenta-api-key",
-          "name": "Algenta API Key"
+          "name": "Codna API Key"
         }
       }
     },
@@ -152,5 +152,5 @@
   "meta": {
     "instanceId": "algenta-query-batch-example"
   },
-  "_comment": "Import this workflow into n8n. Replace https://your-algenta-base-url.example with Cloud Managed https://api.algenta.ai or your self-hosted base URL before enabling the workflow. Set credentials: HTTP Header Auth with name 'Authorization' and value 'Bearer <YOUR_ALGENTA_API_KEY>'. It inspects /openapi.json, extracts x-primary-data-query-contract, then discovers datasets, fetches one low-token summary, and runs /v1/query/batch. That keeps the workflow compatible with older self-hosted nodes that still return 404 for /v1/meta/contract. Private profiles do not silently fall back to Algenta cloud."
+  "_comment": "Import this workflow into n8n. Replace https://your-algenta-base-url.example with Cloud Managed https://api.codna.ai or your self-hosted base URL before enabling the workflow. Set credentials: HTTP Header Auth with name 'Authorization' and value 'Bearer <YOUR_ALGENTA_API_KEY>'. It inspects /openapi.json, extracts x-primary-data-query-contract, then discovers datasets, fetches one low-token summary, and runs /v1/query/batch. That keeps the workflow compatible with older self-hosted nodes that still return 404 for /v1/meta/contract. Private profiles do not silently fall back to Codna cloud."
 }

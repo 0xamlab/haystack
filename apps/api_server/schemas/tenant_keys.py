@@ -15,7 +15,7 @@ class SetProviderKeyRequest(BaseModel):
         min_length=1,
         description=(
             "Provider backend (e.g. 'anthropic', 'openai', 'google_genai') or 'engine' for the "
-            "Algenta engine key."
+            "Codna engine key."
         ),
     )
     api_key: str = Field(

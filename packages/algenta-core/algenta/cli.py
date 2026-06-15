@@ -17,7 +17,7 @@ Usage:
 Cloud Managed path: `algenta upgrade` shows the hosted console flow. In
 `self_hosted` and `air_gapped`, use the API key provisioned by your
 self-hosted operator deployment instead. Private profiles fail closed and do
-not silently fall back to Algenta cloud.
+not silently fall back to Codna cloud.
 """
 
 from __future__ import annotations
@@ -75,7 +75,7 @@ def _format_ms(ms: float) -> str:
 def cmd_benchmark() -> None:
     n_samples = 50_000
     print("\n" + "─" * 58)
-    print("  Algenta Core — Local Benchmark")
+    print("  Codna Core — Local Benchmark")
     print("─" * 58)
     print(f"  Sampling {n_samples:,} normal variates\n")
 
@@ -174,7 +174,7 @@ def _parse_import_args(args: list[str]) -> tuple[list[str], str | None]:
 def cmd_import(args: list[str]) -> None:
     from pathlib import Path
 
-    from algenta import AlgentaRuntimeError, Runtime
+    from algenta import CodnaRuntimeError, Runtime
 
     source_paths, source_name = _parse_import_args(args)
     paths = [Path(source_path).expanduser() for source_path in source_paths]
@@ -189,11 +189,11 @@ def cmd_import(args: list[str]) -> None:
         path = paths[0]
         try:
             imported = runtime.import_preview(path, name=source_name, source_ref=str(path))
-        except AlgentaRuntimeError as exc:
+        except CodnaRuntimeError as exc:
             print()
             print(
                 runtime_banner(
-                    "Algenta Import Failed",
+                    "Codna Import Failed",
                     [
                         f"Code: {exc.code}",
                         str(exc),
@@ -373,7 +373,7 @@ def cmd_upgrade() -> None:
         )
         print(
             f"""
-  Connect Algenta SDK to your deployment
+  Connect Codna SDK to your deployment
   ──────────────────────────────────────
 
   1. Configure your self-hosted API origin:
@@ -416,7 +416,7 @@ def cmd_upgrade() -> None:
 
     print(
         f"""
-  Upgrade to Algenta Cloud
+  Upgrade to Codna Cloud
   ─────────────────────────
 
   1. {api_key_help_text(component="algenta upgrade")}
@@ -473,7 +473,7 @@ def main() -> None:
     else:
         print(
             runtime_banner(
-                "Algenta CLI",
+                "Codna CLI",
                 [
                     "Primary path: algenta demo",
                     "Brandable import preview: algenta import <file.csv> --name orders",

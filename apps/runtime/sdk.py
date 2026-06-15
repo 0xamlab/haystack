@@ -1,5 +1,5 @@
 """
-Algenta Python SDK — Runtime class.
+Codna Python SDK — Runtime class.
 
 Public surface for executing domain libraries and simulation engines.
 
@@ -87,7 +87,7 @@ RuntimeError = SDKRuntimeError
 
 class Runtime:
     """
-    Algenta execution runtime.
+    Codna execution runtime.
 
     Single entry point for all local and cloud execution.
     Thread-safe. Sync methods create a new event loop per call.
@@ -95,7 +95,7 @@ class Runtime:
     Parameters
     ----------
     api_key:
-        Algenta API key. Defaults to ALGENTA_API_KEY or DE_API_KEY env var.
+        Codna API key. Defaults to ALGENTA_API_KEY or DE_API_KEY env var.
     mode:
         Execution mode: "auto" | "local" | "cloud" | "direct"
     timeout:
@@ -106,7 +106,7 @@ class Runtime:
     base_url:
         Cloud API base URL. Reads explicit base_url, ALGENTA_BASE_URL,
         DE_BASE_URL, or ALGENTA_API_URL. Cloud Managed falls back to the
-        canonical Algenta API URL only when private-profile policy allows it;
+        canonical Codna API URL only when private-profile policy allows it;
         self-hosted private profiles must use an explicit self-hosted base URL.
     """
 
@@ -231,7 +231,7 @@ class Runtime:
             )
         if not self._base_url:
             raise SDKRuntimeError(
-                "Algenta cloud fallback is disabled in this deployment profile. "
+                "Codna cloud fallback is disabled in this deployment profile. "
                 "Start the local daemon or set an explicit self-hosted base URL."
             )
         self._validated_cloud_base_url(surface="sdk_cloud_resolve", record=False)
@@ -436,7 +436,7 @@ class Runtime:
         normalized = self._base_url.rstrip("/")
         if not normalized:
             raise SDKRuntimeError(
-                "Algenta cloud fallback is disabled in this deployment profile. "
+                "Codna cloud fallback is disabled in this deployment profile. "
                 "Start the local daemon or set an explicit self-hosted base URL."
             )
         parsed = urlparse(normalized)

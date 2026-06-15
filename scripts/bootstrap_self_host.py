@@ -1,5 +1,5 @@
 """
-Bootstrap a self-hosted Algenta installation with a local owner and API key.
+Bootstrap a self-hosted Codna installation with a local owner and API key.
 
 This script is intended for customer-run service deployments, not local dev seeding.
 It creates a bootstrap organization/user if missing, then always creates a fresh
@@ -34,7 +34,7 @@ settings = get_settings()
 
 DEFAULT_ORG_NAME = "Self-Hosted Organization"
 DEFAULT_ORG_SLUG = "self-hosted-org"
-DEFAULT_USER_EMAIL = "owner@selfhost.algenta.ai"
+DEFAULT_USER_EMAIL = "owner@selfhost.codna.ai"
 DEFAULT_USER_NAME = "Self-Hosted Owner"
 PASSWORD_LENGTH = 32
 

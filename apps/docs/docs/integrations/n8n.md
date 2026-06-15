@@ -4,20 +4,20 @@ sidebar_position: 4
 
 # n8n
 
-Use Algenta in n8n to add governed dataset discovery, exact queries, batch exact queries, constrained SQL reports, and simulations to any workflow.
+Use Codna in n8n to add governed dataset discovery, exact queries, batch exact queries, constrained SQL reports, and simulations to any workflow.
 
 ## Prerequisites
 
-- An Algenta API key
+- An Codna API key
 - An n8n workflow with HTTP Request or AI-agent nodes
 - Read-only access unless the workflow must mutate datasets
 
 Use one base URL consistently across every n8n HTTP node:
 
-- Cloud Managed: `https://api.algenta.ai`
+- Cloud Managed: `https://api.codna.ai`
 - `self_hosted` and `air_gapped`: replace the hosted base URL with your self-hosted base URL
 
-Private profiles do not silently fall back to Algenta cloud.
+Private profiles do not silently fall back to Codna cloud.
 
 ## Setup
 
@@ -54,7 +54,7 @@ Private profiles do not silently fall back to Algenta cloud.
 For multi-metric prompts, call `POST /v1/query/batch` instead of chaining many single-query nodes. For wide rowsets, use `POST /v1/query/sql-report`.
 
 Replace `https://your-algenta-base-url.example` with Cloud Managed
-`https://api.algenta.ai` or your self-hosted base URL before enabling the
+`https://api.codna.ai` or your self-hosted base URL before enabling the
 workflow.
 
 Example artifacts:
@@ -123,10 +123,10 @@ Only add dataset mutations if the workflow needs them:
 ## Revoke or disconnect
 
 - Remove the credential or environment variable from n8n
-- Revoke the Algenta API key if the workflow should lose access entirely
+- Revoke the Codna API key if the workflow should lose access entirely
 
 ## Troubleshooting
 
 - `401 invalid_api_key`: wrong Bearer token or missing header
 - `429 rate_limit_exceeded`: back off and honor `Retry-After`
-- Empty downstream fields: inspect the HTTP node output and confirm you are mapping the Algenta response body, not the full transport envelope
+- Empty downstream fields: inspect the HTTP node output and confirm you are mapping the Codna response body, not the full transport envelope

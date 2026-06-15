@@ -17,7 +17,7 @@ Supported secondary modes remain available:
 Cloud/API examples under this package are the Cloud Managed path by default. In
 `self_hosted` and `air_gapped`, pass an explicit self-hosted `base_url` and use
 the API key provisioned by your self-hosted operator deployment instead.
-Private profiles fail closed and do not silently fall back to Algenta cloud.
+Private profiles fail closed and do not silently fall back to Codna cloud.
 """
 
 from __future__ import annotations
@@ -80,7 +80,7 @@ _LAZY_EXPORTS = {
     "ImportPreview": ("algenta.runtime_model_import_preview", "ImportPreview"),
     "ImportBundlePreview": ("algenta.runtime_model_import_preview", "ImportBundlePreview"),
     "ImportFailure": ("algenta.runtime_model_import_preview", "ImportFailure"),
-    "AlgentaRuntimeError": ("algenta.runtime_errors", "AlgentaRuntimeError"),
+    "CodnaRuntimeError": ("algenta.runtime_errors", "CodnaRuntimeError"),
     "RuntimeConfigurationError": ("algenta.runtime_errors", "RuntimeConfigurationError"),
     "RuntimeValidationError": ("algenta.runtime_errors", "RuntimeValidationError"),
     "ConnectorMetadata": ("algenta.runtime_connector_model_metadata", "ConnectorMetadata"),
@@ -523,7 +523,7 @@ _LAZY_EXPORTS = {
         "MojoFunctionNotRegisteredError",
     ),
     "MojoExecutionError": ("algenta.mojo_errors", "MojoExecutionError"),
-    "AlgentaClient": ("algenta.client", "AlgentaClient"),
+    "CodnaClient": ("algenta.client", "CodnaClient"),
     "Result": ("algenta.simple", "Result"),
     "decision": ("algenta.simple", "decision"),
     "optimize": ("algenta.simple", "optimize"),

@@ -180,11 +180,11 @@ async def test_deployment_handlers_forward_canonical_api_routes(monkeypatch) -> 
                 "providers": [
                     {
                         "id": "algenta_shared",
-                        "name": "Algenta Managed",
+                        "name": "Codna Managed",
                         "regions": [
                             {
                                 "id": "algenta-shared",
-                                "label": "Algenta Shared",
+                                "label": "Codna Shared",
                                 "location": "Global",
                             }
                         ],

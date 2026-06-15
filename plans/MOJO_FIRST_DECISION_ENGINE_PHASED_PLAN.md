@@ -11,7 +11,7 @@ Turn the current platform into a **Mojo-first universal decision runtime** that 
 
 ## Product Reframe
 
-For Algenta, this is not just a simulation engine upgrade. It is a:
+For Codna, this is not just a simulation engine upgrade. It is a:
 
 **universal decision computation runtime**
 
@@ -46,7 +46,7 @@ Python / Node remain orchestration and product surfaces.
 The current framing is already strong in two important ways:
 
 1. It keeps the claim boundary around the **engine runtime**, not the whole SaaS stack.
-2. It separates technical truth from marketing language, which is required if Algenta
+2. It separates technical truth from marketing language, which is required if Codna
    wants to make a serious enterprise-grade Mojo-first claim.
 
 ## What must remain outside Mojo
@@ -88,11 +88,11 @@ The claim should be about the **decision runtime**, not the entire SaaS stack.
 
 These are not the worst latency offenders, but they weaken a strong Mojo-first runtime claim.
 
-## Strategic Message for Algenta
+## Strategic Message for Codna
 
 The right product statement is:
 
-> Algenta Decision Engine is a typed, persistent, low-latency decision runtime,
+> Codna Decision Engine is a typed, persistent, low-latency decision runtime,
 > with Mojo as the compute core and Python / Node as orchestration and product surfaces.
 
 This is stronger than positioning the platform as simply “faster Monte Carlo.”
@@ -200,7 +200,7 @@ Mojo implementation spreads across the codebase.
 
 ### Why this phase must exist
 
-Without a canonical decision schema, Algenta risks becoming a collection of
+Without a canonical decision schema, Codna risks becoming a collection of
 accelerated analytical modules rather than a unified decision platform. The schema
 is the operating system of the decision engine.
 
@@ -267,7 +267,7 @@ Parse request once and hand typed structs to engines.
 
 ### Objective
 
-Remove unnecessary overhead at the request boundary. For Algenta, the priority is:
+Remove unnecessary overhead at the request boundary. For Codna, the priority is:
 
 - persistent runtime
 - typed boundary

@@ -1,1 +1,1 @@
-# Algenta MCP Server — Model Context Protocol bridge for the Algenta API and runtime
+# Codna MCP Server — Model Context Protocol bridge for the Codna API and runtime

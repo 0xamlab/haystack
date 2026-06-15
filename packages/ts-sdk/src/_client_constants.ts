@@ -1,17 +1,17 @@
 /** Auto-split sub-module of client.ts — constants + setup imports. */
 
 /**
- * Algenta TypeScript SDK — fetch-based client.
+ * Codna TypeScript SDK — fetch-based client.
  * Works in Node.js 18+ and modern browsers.
  *
  * @example
- * import { AlgentaClient } from 'algenta-sdk';
+ * import { CodnaClient } from 'algenta-sdk';
  *
  * const apiKey = process.env.ALGENTA_API_KEY ?? process.env.DE_API_KEY;
  * if (!apiKey) {
  *   throw new Error('Set ALGENTA_API_KEY or DE_API_KEY before running this example.');
  * }
- * const client = new AlgentaClient({ apiKey });
+ * const client = new CodnaClient({ apiKey });
  * const result = await client.simulate({
  *   mode: 'auto',
  *   scenario: {
@@ -24,7 +24,7 @@
  * This example is the Cloud Managed path. In `self_hosted` and `air_gapped`,
  * pass an explicit self-hosted `baseUrl` and use the API key provisioned by
  * your self-hosted operator deployment instead. Private profiles fail closed
- * and do not silently fall back to Algenta cloud.
+ * and do not silently fall back to Codna cloud.
  */
 
 import type {
@@ -240,17 +240,17 @@ import { apiKeyHelpText, resolveClientBaseUrl } from './privacy_profile.js';
 import { DecisionEngineError } from "./_client_errors.js";
 
 /**
- * Algenta TypeScript SDK — fetch-based client.
+ * Codna TypeScript SDK — fetch-based client.
  * Works in Node.js 18+ and modern browsers.
  *
  * @example
- * import { AlgentaClient } from 'algenta-sdk';
+ * import { CodnaClient } from 'algenta-sdk';
  *
  * const apiKey = process.env.ALGENTA_API_KEY ?? process.env.DE_API_KEY;
  * if (!apiKey) {
  *   throw new Error('Set ALGENTA_API_KEY or DE_API_KEY before running this example.');
  * }
- * const client = new AlgentaClient({ apiKey });
+ * const client = new CodnaClient({ apiKey });
  * const result = await client.simulate({
  *   mode: 'auto',
  *   scenario: {
@@ -263,7 +263,7 @@ import { DecisionEngineError } from "./_client_errors.js";
  * This example is the Cloud Managed path. In `self_hosted` and `air_gapped`,
  * pass an explicit self-hosted `baseUrl` and use the API key provisioned by
  * your self-hosted operator deployment instead. Private profiles fail closed
- * and do not silently fall back to Algenta cloud.
+ * and do not silently fall back to Codna cloud.
  */
 
 
@@ -612,7 +612,7 @@ export const RUNTIME_BENCHMARK_BASELINE_VALUES = [
   "llama.cpp GGUF backend",
   "ONNX Runtime backend",
   "CTranslate2 backend",
-  "Algenta Mojo-native path",
+  "Codna Mojo-native path",
 ] as const;
 export const RUNTIME_EVALUATION_METHOD_VALUES = [
   "bootstrap confidence intervals",

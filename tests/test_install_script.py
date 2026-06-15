@@ -241,7 +241,7 @@ def test_install_script_runs_service_first_happy_path_and_prints_key_once(tmp_pa
             [
                 "ALGENTA_BOOTSTRAP_READY=1",
                 "BOOTSTRAP_ORG_SLUG=self-hosted-org",
-                "BOOTSTRAP_USER_EMAIL=owner@selfhost.algenta.ai",
+                "BOOTSTRAP_USER_EMAIL=owner@selfhost.codna.ai",
                 "BOOTSTRAP_USER_CREATED=1",
                 "BOOTSTRAP_API_KEY_ID=11111111-2222-3333-4444-555555555555",
                 "BOOTSTRAP_API_KEY_PREFIX=de_test_abcd",
@@ -253,7 +253,7 @@ def test_install_script_runs_service_first_happy_path_and_prints_key_once(tmp_pa
     )
 
     assert proc.returncode == 0, proc.stderr or proc.stdout
-    assert "Algenta is running." in proc.stdout
+    assert "Codna is running." in proc.stdout
     assert "Authorization: Bearer ${ALGENTA_API_KEY}" in proc.stdout
     assert "Set temporarily:" in proc.stdout
     assert "export ALGENTA_API_KEY='<paste the bootstrap key above>'" in proc.stdout
@@ -268,7 +268,7 @@ def test_install_script_runs_service_first_happy_path_and_prints_key_once(tmp_pa
     assert "Bootstrap key prefix:" in proc.stdout
     assert "Replace it:" in proc.stdout
     assert "export ALGENTA_API_KEY='<paste the replacement key returned above>'" in proc.stdout
-    assert "No SDK or Python install is required to use Algenta." in proc.stdout
+    assert "No SDK or Python install is required to use Codna." in proc.stdout
     assert proc.stdout.count(api_key) == 1
     assert "BOOTSTRAP_API_KEY=" not in proc.stdout
     assert "Next steps:" in proc.stdout
@@ -351,7 +351,7 @@ def test_install_script_aborts_when_bootstrap_does_not_return_an_api_key(tmp_pat
             [
                 "ALGENTA_BOOTSTRAP_READY=1",
                 "BOOTSTRAP_ORG_SLUG=self-hosted-org",
-                "BOOTSTRAP_USER_EMAIL=owner@selfhost.algenta.ai",
+                "BOOTSTRAP_USER_EMAIL=owner@selfhost.codna.ai",
             ]
         ),
     )
@@ -376,7 +376,7 @@ def test_install_script_fails_if_no_pinned_release_can_be_resolved(tmp_path: Pat
         "Set ALGENTA_VERSION and, if needed, ALGENTA_IMAGE_TAG explicitly before retrying."
         in proc.stdout
     )
-    assert "Downloading Algenta Decision Engine..." not in proc.stdout
+    assert "Downloading Codna Decision Engine..." not in proc.stdout
 
 
 def test_install_script_normalizes_git_sha_release_refs_to_pinned_image_tags(
@@ -388,7 +388,7 @@ def test_install_script_normalizes_git_sha_release_refs_to_pinned_image_tags(
             [
                 "ALGENTA_BOOTSTRAP_READY=1",
                 "BOOTSTRAP_ORG_SLUG=self-hosted-org",
-                "BOOTSTRAP_USER_EMAIL=owner@selfhost.algenta.ai",
+                "BOOTSTRAP_USER_EMAIL=owner@selfhost.codna.ai",
                 "BOOTSTRAP_USER_CREATED=0",
                 "BOOTSTRAP_API_KEY_ID=11111111-2222-3333-4444-555555555555",
                 "BOOTSTRAP_API_KEY_PREFIX=de_test_abcd",
@@ -413,7 +413,7 @@ def test_install_script_falls_back_to_standalone_docker_compose_when_plugin_miss
             [
                 "ALGENTA_BOOTSTRAP_READY=1",
                 "BOOTSTRAP_ORG_SLUG=self-hosted-org",
-                "BOOTSTRAP_USER_EMAIL=owner@selfhost.algenta.ai",
+                "BOOTSTRAP_USER_EMAIL=owner@selfhost.codna.ai",
                 "BOOTSTRAP_USER_CREATED=0",
                 "BOOTSTRAP_API_KEY_ID=11111111-2222-3333-4444-555555555555",
                 "BOOTSTRAP_API_KEY_PREFIX=de_test_abcd",
@@ -442,7 +442,7 @@ def test_install_script_supports_local_compose_bundle_override_and_skip_pull(
             [
                 "ALGENTA_BOOTSTRAP_READY=1",
                 "BOOTSTRAP_ORG_SLUG=self-hosted-org",
-                "BOOTSTRAP_USER_EMAIL=owner@selfhost.algenta.ai",
+                "BOOTSTRAP_USER_EMAIL=owner@selfhost.codna.ai",
                 "BOOTSTRAP_USER_CREATED=0",
                 "BOOTSTRAP_API_KEY_ID=11111111-2222-3333-4444-555555555555",
                 "BOOTSTRAP_API_KEY_PREFIX=de_test_abcd",

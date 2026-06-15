@@ -396,7 +396,7 @@ def list_llm_model_descriptors() -> tuple[LLMModelDescriptor, ...]:
                 model_id=_TEXT_TOKENIZER_MODEL_ID,
                 runtime_module=_TEXT_TOKENIZER_MODEL_ID,
                 description=(
-                    "Deterministic word tokenizer backed by the signed Algenta runtime library "
+                    "Deterministic word tokenizer backed by the signed Codna runtime library "
                     "catalog."
                 ),
                 capabilities=_TEXT_TOKENIZER_CAPABILITIES,
@@ -577,6 +577,6 @@ def get_llm_model_descriptor(model_id: str) -> LLMModelDescriptor:
             return descriptor
     raise LLMAPIError(
         "model_not_supported",
-        f"Model '{model_id}' is not available on the current Algenta LLM API surface.",
+        f"Model '{model_id}' is not available on the current Codna LLM API surface.",
         {"model": model_id},
     )

@@ -91,7 +91,7 @@ function normalizeApiOrigin(rawOrigin: string): string {
   return parsed.toString().replace(/\/$/, "");
 }
 
-function isAlgentaOwnedHost(host: string): boolean {
+function isCodnaOwnedHost(host: string): boolean {
   const normalized = host.trim().toLowerCase();
   if (ALGENTA_OWNED_HOST_SET.has(normalized)) {
     return true;
@@ -167,9 +167,9 @@ export function resolveGatewayApiOrigin(env: EnvMap = process.env): string {
   const parsed = new URL(normalized);
   const host = parsed.hostname.toLowerCase();
 
-  if (cloudDisabled(env) && isAlgentaOwnedHost(host)) {
+  if (cloudDisabled(env) && isCodnaOwnedHost(host)) {
     throw new GatewayPrivacyConfigurationError(
-      "Gateway private profiles cannot target Algenta-owned cloud URLs. Configure API_ORIGIN for your self-hosted deployment.",
+      "Gateway private profiles cannot target Codna-owned cloud URLs. Configure API_ORIGIN for your self-hosted deployment.",
     );
   }
 

@@ -1,7 +1,7 @@
 """
 /v1/credits — credit bucket refresh for the local runtime daemon.
 
-Called by the Algenta daemon (apps/runtime/credits._background_refresh) when
+Called by the Codna daemon (apps/runtime/credits._background_refresh) when
 the local execution credit pool drops below 10%.
 
 Flow:

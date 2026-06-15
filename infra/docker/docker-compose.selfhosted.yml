@@ -1,5 +1,5 @@
-# Algenta Decision Engine — Self-Hosted Service Stack
-# One-line install: curl -fsSL https://algenta.ai/install.sh | bash
+# Codna Decision Engine — Self-Hosted Service Stack
+# One-line install: curl -fsSL https://codna.ai/install.sh | bash
 #
 # Services:
 #   api       — FastAPI backend (port 8000)

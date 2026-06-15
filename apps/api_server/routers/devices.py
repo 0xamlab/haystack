@@ -1,7 +1,7 @@
 """
 /v1/device — device registration and heartbeat endpoints.
 
-Called by the Algenta SDK (apps/runtime/license.py) during:
+Called by the Codna SDK (apps/runtime/license.py) during:
   - algenta login       → POST /v1/device/register
   - daemon heartbeat    → POST /v1/device/heartbeat
   - de license status   → GET  /v1/device/list

@@ -1,5 +1,5 @@
 """
-routers/engines.py — Algenta OS engine catalogue + dispatch endpoints.
+routers/engines.py — Codna OS engine catalogue + dispatch endpoints.
 
 GET  /v1/engines              — list all engines (manifest)
 GET  /v1/engines/{slug}       — single engine detail
@@ -62,7 +62,7 @@ def list_engines(
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=25, ge=1, le=200),
 ) -> EngineListResponse:
-    """Return the full Algenta OS engine catalogue."""
+    """Return the full Codna OS engine catalogue."""
     engine_rows = [EngineResponse(**e.__dict__) for e in ENGINES]
     envelope = paginate_sequence(engine_rows, page=page, limit=limit)
     return EngineListResponse(

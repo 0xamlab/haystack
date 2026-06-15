@@ -23,9 +23,9 @@ _EXPECTED_VERSION = "1.0.0"
 _SMOKES: dict[str, str] = {
     "python-sdk": (
         "import decision_engine as m; "
-        "from decision_engine import DecisionEngineClient, AlgentaClient; "
+        "from decision_engine import DecisionEngineClient, CodnaClient; "
         f"assert m.__version__ == {_EXPECTED_VERSION!r}, m.__version__; "
-        "assert DecisionEngineClient and AlgentaClient; "
+        "assert DecisionEngineClient and CodnaClient; "
         "print('python-sdk', m.__version__, 'OK')"
     ),
     "algenta-core": (

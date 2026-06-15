@@ -1,5 +1,5 @@
 /**
- * TypeScript type definitions for the Algenta API.
+ * TypeScript type definitions for the Codna API.
  *
  * Originally a single 3286-line file. Now split into per-domain sub-files
  * for maintainability; this barrel re-exports the complete public API so

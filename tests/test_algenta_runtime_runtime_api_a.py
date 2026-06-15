@@ -58,7 +58,7 @@ def test_runtime_api_mode_requires_sdk_and_key(monkeypatch: pytest.MonkeyPatch) 
 
 
 def test_runtime_api_mode_wraps_direct_client(monkeypatch: pytest.MonkeyPatch) -> None:
-    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.algenta.ai")
+    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.codna.ai")
     captured_verify: dict[str, object] | None = None
     captured_query: dict[str, object] | None = None
 
@@ -185,7 +185,7 @@ def test_runtime_api_mode_wraps_direct_client(monkeypatch: pytest.MonkeyPatch) -
 def test_runtime_api_mode_exact_resolve_reuses_cached_source_schema_revision(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.algenta.ai")
+    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.codna.ai")
     runtime._remember_api_registration(
         SourceRegistration(
             source_id="src_1",
@@ -237,7 +237,7 @@ def test_runtime_api_mode_exact_resolve_reuses_cached_source_schema_revision(
 
 
 def test_runtime_api_mode_re_registration_invalidates_cached_source_schema_revision() -> None:
-    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.algenta.ai")
+    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.codna.ai")
     runtime._api_source_schema_revision_cache["src_1"] = "stale_rev"
 
     runtime._remember_api_registration(
@@ -257,7 +257,7 @@ def test_runtime_api_mode_re_registration_invalidates_cached_source_schema_revis
 def test_runtime_api_mode_fuzzy_resolve_skips_source_schema_fetch(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.algenta.ai")
+    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.codna.ai")
     runtime._remember_api_registration(
         SourceRegistration(
             source_id="src_1",
@@ -370,7 +370,7 @@ def test_runtime_api_mode_real_public_rest_connect_resolve_verify_query(
 def test_runtime_api_mode_query_metadata_batch_and_sql_report_use_typed_outputs(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.algenta.ai")
+    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.codna.ai")
     seen: dict[str, object] = {}
 
     class _FakeClient:
@@ -531,7 +531,7 @@ def test_runtime_api_mode_query_metadata_batch_and_sql_report_use_typed_outputs(
 def test_runtime_api_mode_get_contract_uses_typed_output(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.algenta.ai")
+    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.codna.ai")
     expected_payload = _platform_contract_payload()
 
     class _FakeClient:
@@ -551,7 +551,7 @@ def test_runtime_api_mode_get_contract_uses_typed_output(
 def test_runtime_api_mode_get_contract_rejects_invalid_payload(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.algenta.ai")
+    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.codna.ai")
 
     class _FakeClient:
         def get_contract(self) -> object:
@@ -572,7 +572,7 @@ def test_runtime_api_mode_get_contract_rejects_invalid_payload(
 def test_runtime_api_mode_get_contract_rejects_invalid_nested_contract_payload(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.algenta.ai")
+    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.codna.ai")
 
     class _FakeClient:
         def get_contract(self) -> object:
@@ -607,7 +607,7 @@ def test_runtime_api_mode_get_contract_rejects_invalid_typed_contract_model_inst
             }
         }
     )
-    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.algenta.ai")
+    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.codna.ai")
 
     class _FakeClient:
         def get_contract(self) -> object:
@@ -627,7 +627,7 @@ def test_runtime_api_mode_get_contract_rejects_invalid_typed_contract_model_inst
 def test_runtime_api_mode_get_contract_rejects_tuple_backed_contract_lists(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.algenta.ai")
+    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.codna.ai")
 
     class _FakeClient:
         def get_contract(self) -> object:
@@ -648,7 +648,7 @@ def test_runtime_api_mode_get_contract_rejects_tuple_backed_contract_lists(
 def test_runtime_api_mode_get_contract_normalizes_client_validation_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.algenta.ai")
+    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.codna.ai")
 
     class _FakeContractError(Exception):
         def __init__(self) -> None:
@@ -670,7 +670,7 @@ def test_runtime_api_mode_get_contract_normalizes_client_validation_error(
 def test_runtime_api_mode_get_contract_preserves_upstream_contract_error_details(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.algenta.ai")
+    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.codna.ai")
 
     class _FakeContractError(Exception):
         def __init__(self) -> None:
@@ -736,7 +736,7 @@ def test_runtime_api_mode_runtime_proof_surfaces_normalize_client_validation_err
     method_name: str,
     client_method_name: str,
 ) -> None:
-    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.algenta.ai")
+    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.codna.ai")
 
     class _FakeRuntimeProofError(Exception):
         def __init__(self) -> None:

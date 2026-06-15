@@ -33,7 +33,7 @@ class RuntimeReleaseValidationScriptError(ValueError):
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "Validate the signed Algenta runtime manifest against the formal release theorem."
+            "Validate the signed Codna runtime manifest against the formal release theorem."
         )
     )
     parser.add_argument(
@@ -73,7 +73,7 @@ def _render_table(payload: object) -> str:
     )
     lines = [
         (
-            f"Algenta runtime release validation: {validation.runtime_version} "
+            f"Codna runtime release validation: {validation.runtime_version} "
             f"[{validation.llm_core_manifest}]"
         ),
         f"Deployment:      {deployment_mode}",

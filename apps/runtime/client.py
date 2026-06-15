@@ -1,7 +1,7 @@
 """
-gRPC client for the Algenta local runtime daemon.
+gRPC client for the Codna local runtime daemon.
 
-Provides async methods that map directly to the AlgentaRuntime gRPC RPCs.
+Provides async methods that map directly to the CodnaRuntime gRPC RPCs.
 Used exclusively by sdk.py — not part of the public API.
 
 Connection:
@@ -98,7 +98,7 @@ class DaemonClient:
 
     def _stub(self) -> Any:
         channel = self._channel if self._channel is not None else self._make_channel()
-        return runtime_pb2_grpc.AlgentaRuntimeStub(channel)  # type: ignore[no-untyped-call]
+        return runtime_pb2_grpc.CodnaRuntimeStub(channel)  # type: ignore[no-untyped-call]
 
     # ── RPCs ──────────────────────────────────────────────────────────────────
 

@@ -217,7 +217,7 @@ def main() -> None:
         sys.exit(1)
 
     print(f"\n{BOLD}{'=' * 70}{RESET}")
-    print(f"{BOLD}  Algenta Decision Engine — Full Pipeline Benchmark{RESET}")
+    print(f"{BOLD}  Codna Decision Engine — Full Pipeline Benchmark{RESET}")
     if use_cache:
         print(
             f"{DIM}  Cache: ON  (run with --no-cache to force cold)  Cache dir: {CACHE_DIR}{RESET}"

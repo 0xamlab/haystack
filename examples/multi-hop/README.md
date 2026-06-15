@@ -1,6 +1,6 @@
 # Multi-hop Query Examples
 
-These files show the canonical multihop query surfaces that Algenta already
+These files show the canonical multihop query surfaces that Codna already
 ships.
 
 ## Files
@@ -38,10 +38,10 @@ ships.
 
 ## How to use them
 
-- Cloud Managed: `https://api.algenta.ai`
+- Cloud Managed: `https://api.codna.ai`
 - `self_hosted` and `air_gapped`: replace the hosted base URL with your self-hosted base URL
 
-Private profiles do not silently fall back to Algenta cloud.
+Private profiles do not silently fall back to Codna cloud.
 
 1. Replace every placeholder source name, dataset id, join key, and column with
    exact values from:
@@ -57,7 +57,7 @@ if [ -z "$ALGENTA_API_KEY" ]; then
   exit 1
 fi
 
-ALGENTA_BASE_URL="${ALGENTA_BASE_URL:-${DE_BASE_URL:-${ALGENTA_API_URL:-https://api.algenta.ai}}}"
+ALGENTA_BASE_URL="${ALGENTA_BASE_URL:-${DE_BASE_URL:-${ALGENTA_API_URL:-https://api.codna.ai}}}"
 
 curl -X POST "${ALGENTA_BASE_URL}/v1/data/connect" \
   -H "Authorization: Bearer ${ALGENTA_API_KEY}" \
@@ -124,7 +124,7 @@ Both files show the public replacements for:
 - `query_sql_source` / `query_sql_report`
 
 8. Use the local-runtime examples when the Mission path you are porting uses
-the direct local Algenta library tools instead of governed hosted query
+the direct local Codna library tools instead of governed hosted query
 surfaces:
 
 ```bash
@@ -161,7 +161,7 @@ Those files show the public replacements for:
 
 ## Mission Mojo LLM module note
 
-Mission does mount the local Algenta runtime library tools, but that does not
+Mission does mount the local Codna runtime library tools, but that does not
 mean the Mojo LLM modules are the default path for governed multihop analytics.
 
 - Use governed discovery plus `query` / `query-batch` / `sql-report` for

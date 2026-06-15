@@ -1046,7 +1046,7 @@ def test_cli_runtime_admin_benchmarks():
         f"Expected exit 0, got {result.returncode}: stderr={result.stderr[:300]}"
     )
     output = result.stdout
-    assert "Algenta runtime benchmark catalog:" in output, output[:500]
+    assert "Codna runtime benchmark catalog:" in output, output[:500]
     assert "Benchmark classes:" in output, output
     assert "B1: microkernel latency" in output, output
     assert "benchmarks/summary.json" in output, output
@@ -1116,7 +1116,7 @@ def test_cli_runtime_manifest():
         f"Expected exit 0, got {result.returncode}: stderr={result.stderr[:300]}"
     )
     output = result.stdout
-    assert "Algenta runtime manifest:" in output, output[:500]
+    assert "Codna runtime manifest:" in output, output[:500]
     assert "22 shipping / 22 listed" in output, output
 
     json_result = run_cli("runtime", "manifest", "--format", "json")

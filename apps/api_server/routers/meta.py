@@ -197,7 +197,7 @@ async def version() -> VersionResponse:
 @router.get(
     "/v1/meta/contract",
     response_model=PlatformContractResponse,
-    summary="Machine-readable Algenta contract",
+    summary="Machine-readable Codna contract",
 )
 async def contract(request: Request) -> PlatformContractResponse:
     manifest = load_platform_contract_manifest_model()

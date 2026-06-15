@@ -61,14 +61,14 @@ def _configured_base_url() -> str:
 
 def _validated_base_url(base_url: str) -> str:
     try:
-        normalized = normalize_base_url(base_url, component="Algenta MCP")
+        normalized = normalize_base_url(base_url, component="Codna MCP")
     except ValueError as exc:
         raise MCPPrivacyConfigurationError(
             "MCP downstream base URL must be a valid absolute URL."
         ) from exc
     if cloud_disabled() and is_algenta_owned_base_url(normalized):
         raise MCPPrivacyConfigurationError(
-            "MCP private profiles cannot target Algenta-owned cloud URLs. "
+            "MCP private profiles cannot target Codna-owned cloud URLs. "
             "Configure ALGENTA_BASE_URL / DE_BASE_URL / ALGENTA_API_URL "
             "or a request base URL for your self-hosted deployment."
         )
@@ -170,7 +170,7 @@ async def api(
     timeout: float | None = None,
     **kwargs: Any,
 ) -> Any:
-    """Make an authenticated request to the Algenta API."""
+    """Make an authenticated request to the Codna API."""
     status_code, payload = await api_with_status(
         method,
         path,
@@ -197,11 +197,11 @@ async def api_with_status(
             response = await getattr(client, method.lower())(f"{base_url}{path}", **kwargs)
     except httpx.TimeoutException as exc:
         raise MCPUpstreamUnavailableError(
-            "Algenta API timed out while handling this MCP request.",
+            "Codna API timed out while handling this MCP request.",
         ) from exc
     except httpx.TransportError as exc:
         raise MCPUpstreamUnavailableError(
-            "Algenta API was unavailable while handling this MCP request.",
+            "Codna API was unavailable while handling this MCP request.",
         ) from exc
 
     try:
@@ -210,6 +210,6 @@ async def api_with_status(
         payload = response.text
     if response.status_code >= 500 and _extract_structured_error_payload(payload) is None:
         raise MCPUpstreamUnavailableError(
-            "Algenta API returned a temporary upstream failure for this MCP request.",
+            "Codna API returned a temporary upstream failure for this MCP request.",
         )
     return response.status_code, payload

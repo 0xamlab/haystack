@@ -144,7 +144,7 @@ describe("Runtime — fails", () => {
         new Runtime({ mode: "api", apiKey: "de_test_123" });
         throw new Error("expected Runtime to fail closed");
       } catch (error) {
-        expect(String(error)).toContain("private profiles cannot target Algenta-owned cloud URLs");
+        expect(String(error)).toContain("private profiles cannot target Codna-owned cloud URLs");
         expect(String(error)).toContain("ALGENTA_BASE_URL / DE_BASE_URL / ALGENTA_API_URL");
       }
     });
@@ -323,7 +323,7 @@ describe("Runtime — fails", () => {
                 },
               ],
               required_metrics: ["p50"],
-              baselines: ["Algenta Mojo-native path"],
+              baselines: ["Codna Mojo-native path"],
             },
             slo_budgets: [
               {
@@ -429,7 +429,7 @@ describe("Runtime — fails", () => {
                 },
               ],
               required_metrics: ["p50"],
-              baselines: ["Algenta Mojo-native path"],
+              baselines: ["Codna Mojo-native path"],
             },
             slo_budgets: [
               {

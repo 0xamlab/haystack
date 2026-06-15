@@ -4,7 +4,7 @@ Compatibility wrapper for the public algenta.runtime surface.
 `Runtime(mode="api")` is the Cloud Managed path by default. In `self_hosted` and `air_gapped`,
 pass an explicit self-hosted `base_url` and use the API key
 provisioned by your self-hosted operator deployment instead. Private profiles
-fail closed and do not silently fall back to Algenta cloud.
+fail closed and do not silently fall back to Codna cloud.
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ from __future__ import annotations
 from importlib import import_module
 
 from algenta.runtime_errors import (
-    AlgentaRuntimeError,
+    CodnaRuntimeError,
     RuntimeConfigurationError,
     RuntimeValidationError,
 )
@@ -470,7 +470,7 @@ _LAZY_EXPORTS = {
 }
 
 __all__ = [
-    "AlgentaRuntimeError",
+    "CodnaRuntimeError",
     "RuntimeConfigurationError",
     "RuntimeValidationError",
     *list(_LAZY_EXPORTS),

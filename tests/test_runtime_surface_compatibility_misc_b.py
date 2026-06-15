@@ -176,7 +176,7 @@ def test_competitor_compatibility_docs_lock_match_and_non_match_decisions() -> N
     assert "planner_provider_backend" in ts_sdk
     assert "immutable audit-log artifacts" in trust_model
     assert "execution-policy snapshots" in trust_model
-    assert "from decision_engine import AlgentaClient" in python_sdk
+    assert "from decision_engine import CodnaClient" in python_sdk
     assert "ALGENTA_LLM_PROVIDER_MODELS_JSON" in python_sdk
     assert "openai_compatible" in python_sdk
     assert "openai" in python_sdk
@@ -276,7 +276,7 @@ def test_competitor_compatibility_docs_lock_match_and_non_match_decisions() -> N
     assert "get_dataset(...)" in python_sdk
     assert "refresh_dataset(...)" in python_sdk
     assert "delete_dataset(...)" in python_sdk
-    assert 'import { AlgentaClient } from "algenta-sdk";' in ts_sdk
+    assert 'import { CodnaClient } from "algenta-sdk";' in ts_sdk
     assert "getRuntimeModules()" in ts_sdk
     assert "getRuntimeBenchmarks()" in ts_sdk
     assert "listAgentRuns({ ... })" in ts_sdk
@@ -403,7 +403,7 @@ def test_sdk_docs_call_out_local_runtime_capability_ownership_boundaries() -> No
 
     assert '`client_managed` capabilities' in typescript_sdk_doc
     assert '`algenta_managed` capabilities remain' in typescript_sdk_doc
-    assert "switch back to the running Algenta service" in typescript_sdk_doc
+    assert "switch back to the running Codna service" in typescript_sdk_doc
 
 
 def test_live_mcp_integration_script_tracks_runtime_proof_catalog() -> None:

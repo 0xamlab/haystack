@@ -126,7 +126,7 @@ async def list_regions(
         "providers": [
             {
                 "id": "algenta_shared",
-                "name": "Algenta Managed",
+                "name": "Codna Managed",
                 "description": "Multi-tenant shared pool — default tier, no setup required.",
                 "icon": "🌐",
                 "regions": _regions("algenta_shared"),

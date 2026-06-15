@@ -401,7 +401,7 @@ def validate_platform_contract_payload(payload: Any) -> PlatformContractResponse
         suffix = f": {cause}" if isinstance(cause, str) and cause else ""
         raise PlatformContractManifestError(
             "invalid_platform_contract_manifest",
-            "Integration manifest does not match the canonical Algenta contract schema."
+            "Integration manifest does not match the canonical Codna contract schema."
             f"{suffix}",
             details,
         ) from exc

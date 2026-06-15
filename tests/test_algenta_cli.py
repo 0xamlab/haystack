@@ -34,7 +34,7 @@ def test_algenta_cli_import_runs_cleanly(tmp_path: Path) -> None:
     )
 
     assert proc.returncode == 0, proc.stderr
-    assert "Algenta Source Import" in proc.stdout
+    assert "Codna Source Import" in proc.stdout
     assert "Source: orders" in proc.stdout
     assert "Import preview complete." in proc.stdout
     assert "Use Python Runtime() for a persistent local session:" in proc.stdout
@@ -93,7 +93,7 @@ def test_algenta_cli_import_bundle_runs_cleanly_for_real_march_corpus() -> None:
     )
 
     assert proc.returncode == 0, proc.stderr
-    assert "Algenta Source Bundle" in proc.stdout
+    assert "Codna Source Bundle" in proc.stdout
     assert "Imported: 4 | Failures: 1" in proc.stdout
     assert "store_pause" in proc.stdout
     assert "empty_source" in proc.stdout

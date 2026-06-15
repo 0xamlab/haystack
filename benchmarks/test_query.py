@@ -262,7 +262,7 @@ def main() -> None:
         sys.exit(1)
 
     print(f"\n{BOLD}{'=' * 72}{RESET}")
-    print(f"{BOLD}  Algenta Structured Query Engine — Direct API Simulation{RESET}")
+    print(f"{BOLD}  Codna Structured Query Engine — Direct API Simulation{RESET}")
     print(f"{BOLD}  (What an LLM sends to POST /v1/query){RESET}")
     print(f"{BOLD}{'=' * 72}{RESET}")
 

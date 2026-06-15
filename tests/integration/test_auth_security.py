@@ -1,7 +1,7 @@
 """
 Auth & Security Edge Case Integration Tests — Phase 11 (Final)
 
-Exercises the full security surface of the Algenta Decision Engine API:
+Exercises the full security surface of the Codna Decision Engine API:
   - API key authentication (X-API-Key + Bearer)
   - RBAC enforcement
   - Request ID middleware

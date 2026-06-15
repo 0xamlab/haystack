@@ -1203,14 +1203,14 @@ describe("Runtime — exposes_a", () => {
             providers: [
               {
                 id: "algenta_shared",
-                name: "Algenta Managed",
+                name: "Codna Managed",
                 description: "Multi-tenant shared pool.",
                 icon: "🌐",
                 regions: [
                   {
                     id: "algenta-shared",
-                    name: "Algenta Shared",
-                    label: "Algenta Shared",
+                    name: "Codna Shared",
+                    label: "Codna Shared",
                     location: "Global",
                   },
                 ],
@@ -1263,7 +1263,7 @@ describe("Runtime — exposes_a", () => {
           me: async () => ({
             org_id: "org_123",
             email: "owner@example.com",
-            organization: "Algenta Labs",
+            organization: "Codna Labs",
             plan: "enterprise",
           }),
           usage: async () => ({
@@ -1696,12 +1696,12 @@ describe("Runtime — exposes_a", () => {
       expect(batch.total).toBe(2);
       expect(compare.winner).toBe("stretch");
       expect(deploymentRegions.providers[0]?.regions[0]?.id).toBe("algenta-shared");
-      expect(deploymentRegions.providers[0]?.regions[0]?.name).toBe("Algenta Shared");
+      expect(deploymentRegions.providers[0]?.regions[0]?.name).toBe("Codna Shared");
       expect(deployment?.deployment_id).toBe("dep_123");
       expect(createdDeployment.status).toBe("requested");
       expect(deploymentCost.month).toBe(5);
       expect(deletedDeployment.status).toBe("deprovisioning");
-      expect(me.organization).toBe("Algenta Labs");
+      expect(me.organization).toBe("Codna Labs");
       expect(usage.billing_period).toBe("2026-05");
       expect(usage.simulations_run).toBe(120);
       expect(limits.plan).toBe("enterprise");

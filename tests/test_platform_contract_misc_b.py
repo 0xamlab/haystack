@@ -203,7 +203,7 @@ def test_ai_and_automation_examples_cover_governed_discovery_and_query_surfaces(
     assert 'list_data(search="orders", compact=true)' in claude_doc
     assert "completed orders by month" in claude_doc
     assert "get_contract" in claude_readme
-    assert "Machine-readable Algenta contract" in claude_readme
+    assert "Machine-readable Codna contract" in claude_readme
     assert "get_contract → list_data → get_data_summary → query_data" in claude_readme
 
     shared_query_paths = {
@@ -252,7 +252,7 @@ def test_ai_and_automation_examples_cover_governed_discovery_and_query_surfaces(
         chatgpt_example["x-primary-data-query-contract"]["direct_sdk"]["python"][
             "preferred_client_class"
         ]
-        == "AlgentaClient"
+        == "CodnaClient"
     )
     assert (
         chatgpt_example["x-primary-data-query-contract"]["runtime_sdk"]["python"]["runtime_class"]
@@ -385,7 +385,7 @@ def test_ai_and_automation_examples_cover_governed_discovery_and_query_surfaces(
     assert "algenta_query_tool_definition.json" in azure_readme
     assert "algenta_sql_report_tool_definition.json" in azure_readme
     assert "algenta_contract_tool_definition.json" in azure_readme
-    assert "Inspect the live Algenta contract" in azure_readme
+    assert "Inspect the live Codna contract" in azure_readme
     assert 'os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")' in azure_readme
     assert 'raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")' in azure_readme
     assert "Canonical key env var is `ALGENTA_API_KEY`. Legacy `DE_API_KEY` remains" in azure_readme
@@ -477,7 +477,7 @@ def test_ai_and_automation_examples_cover_governed_discovery_and_query_surfaces(
     assert "persisted run inventory" in zapier_readme
 
     contract_node_names = {node["name"] for node in n8n_contract_workflow["nodes"]}
-    assert n8n_contract_workflow["name"] == "Algenta — Inspect Live Contract"
+    assert n8n_contract_workflow["name"] == "Codna — Inspect Live Contract"
     assert {"Get Contract", "Extract Contract"}.issubset(contract_node_names)
     contract_nodes = {node["name"]: node for node in n8n_contract_workflow["nodes"]}
     assert (
@@ -493,7 +493,7 @@ def test_ai_and_automation_examples_cover_governed_discovery_and_query_surfaces(
     assert "query_sql_report_endpoint" in contract_values
 
     batch_node_names = {node["name"] for node in n8n_query_batch_workflow["nodes"]}
-    assert n8n_query_batch_workflow["name"] == "Algenta — Discover Dataset and Query Batch"
+    assert n8n_query_batch_workflow["name"] == "Codna — Discover Dataset and Query Batch"
     assert {"Get Contract", "Discover Datasets", "Get Dataset Summary", "Query Batch"}.issubset(
         batch_node_names
     )
@@ -508,12 +508,12 @@ def test_ai_and_automation_examples_cover_governed_discovery_and_query_surfaces(
     assert EXAMPLE_BASE_URL in batch_nodes["Query Batch"]["parameters"]["url"]
     assert "/openapi.json" in n8n_query_batch_workflow["_comment"]
     assert "x-primary-data-query-contract" in n8n_query_batch_workflow["_comment"]
-    assert "Private profiles do not silently fall back to Algenta cloud." in n8n_query_batch_workflow[
+    assert "Private profiles do not silently fall back to Codna cloud." in n8n_query_batch_workflow[
         "_comment"
     ]
 
     sql_report_node_names = {node["name"] for node in n8n_sql_report_workflow["nodes"]}
-    assert n8n_sql_report_workflow["name"] == "Algenta — Discover Dataset and SQL Report"
+    assert n8n_sql_report_workflow["name"] == "Codna — Discover Dataset and SQL Report"
     assert {
         "Get Contract",
         "Discover Datasets",
@@ -536,7 +536,7 @@ def test_ai_and_automation_examples_cover_governed_discovery_and_query_surfaces(
     assert "query_sql_report_endpoint" in sql_report_nodes["Query SQL Report"]["parameters"]["url"]
     assert "/openapi.json" in n8n_sql_report_workflow["_comment"]
     assert "x-primary-data-query-contract" in n8n_sql_report_workflow["_comment"]
-    assert "Private profiles do not silently fall back to Algenta cloud." in n8n_sql_report_workflow[
+    assert "Private profiles do not silently fall back to Codna cloud." in n8n_sql_report_workflow[
         "_comment"
     ]
 
@@ -585,8 +585,8 @@ def test_ai_and_automation_examples_cover_governed_discovery_and_query_surfaces(
     assert "select order_month" in zapier_sql_report["sql"]
 
     colab_text = "\n".join("".join(cell.get("source", [])) for cell in colab_notebook["cells"])
-    assert "# Algenta — Google Colab" in colab_text
-    assert "Algenta Decision Engine" not in colab_text
+    assert "# Codna — Google Colab" in colab_text
+    assert "Codna Decision Engine" not in colab_text
     assert "/v1/meta/contract" in colab_text
     assert "/openapi.json" in colab_text
     assert "x-primary-data-query-contract" in colab_text
@@ -597,6 +597,6 @@ def test_ai_and_automation_examples_cover_governed_discovery_and_query_surfaces(
     assert "/v1/query/sql-report" in colab_text
     assert "/v1/simulate" in colab_text
     assert 'BASE_URL = "https://your-algenta-base-url.example"' in colab_text
-    assert "Private profiles do not silently fall back to Algenta cloud." in colab_text
+    assert "Private profiles do not silently fall back to Codna cloud." in colab_text
 
 

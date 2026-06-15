@@ -2,17 +2,17 @@
 /** Auto-split sub-module of client.ts — platform contract validators (part B). */
 
 /**
- * Algenta TypeScript SDK — fetch-based client.
+ * Codna TypeScript SDK — fetch-based client.
  * Works in Node.js 18+ and modern browsers.
  *
  * @example
- * import { AlgentaClient } from 'algenta-sdk';
+ * import { CodnaClient } from 'algenta-sdk';
  *
  * const apiKey = process.env.ALGENTA_API_KEY ?? process.env.DE_API_KEY;
  * if (!apiKey) {
  *   throw new Error('Set ALGENTA_API_KEY or DE_API_KEY before running this example.');
  * }
- * const client = new AlgentaClient({ apiKey });
+ * const client = new CodnaClient({ apiKey });
  * const result = await client.simulate({
  *   mode: 'auto',
  *   scenario: {
@@ -25,7 +25,7 @@
  * This example is the Cloud Managed path. In `self_hosted` and `air_gapped`,
  * pass an explicit self-hosted `baseUrl` and use the API key provisioned by
  * your self-hosted operator deployment instead. Private profiles fail closed
- * and do not silently fall back to Algenta cloud.
+ * and do not silently fall back to Codna cloud.
  */
 
 import type {
@@ -364,11 +364,11 @@ export function assertDatasetSummaryResponse(payload: unknown): DatasetSummaryRe
 
 export function normalizeValidationPath(context: string): string {
   const prefixes = [
-    "Algenta contract response.",
-    "Algenta runtime manifest response.",
-    "Algenta runtime admin modules response.",
-    "Algenta runtime admin benchmarks response.",
-    "Algenta runtime release validation response.",
+    "Codna contract response.",
+    "Codna runtime manifest response.",
+    "Codna runtime admin modules response.",
+    "Codna runtime admin benchmarks response.",
+    "Codna runtime release validation response.",
   ];
   let normalized = context;
   for (const prefix of prefixes) {

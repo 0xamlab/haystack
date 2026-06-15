@@ -57,7 +57,7 @@ def test_private_profile_requires_self_hosted_mcp_base_url(monkeypatch) -> None:
     monkeypatch.delenv("DE_BASE_URL", raising=False)
     monkeypatch.setattr(mcp_client.config, "BASE_URL", API_BASE_URL)
 
-    with pytest.raises(MCPPrivacyConfigurationError, match="cannot target Algenta-owned"):
+    with pytest.raises(MCPPrivacyConfigurationError, match="cannot target Codna-owned"):
         mcp_client._resolve_base_url()
 
 
@@ -101,8 +101,8 @@ def test_private_profile_rejects_request_override_to_algenta_cloud(monkeypatch) 
     monkeypatch.setenv("ALGENTA_DISABLE_CLOUD", "1")
     monkeypatch.setenv("ALGENTA_BASE_URL", "http://localhost:8000")
 
-    with mcp_client.request_overrides(base_url="https://api.algenta.ai"):
-        with pytest.raises(MCPPrivacyConfigurationError, match="cannot target Algenta-owned"):
+    with mcp_client.request_overrides(base_url="https://api.codna.ai"):
+        with pytest.raises(MCPPrivacyConfigurationError, match="cannot target Codna-owned"):
             mcp_client._resolve_base_url()
 
 

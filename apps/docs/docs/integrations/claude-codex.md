@@ -4,14 +4,14 @@ sidebar_position: 3
 
 # Claude and Codex
 
-Connect Algenta to Claude, Codex, and other MCP clients with the canonical `v1` MCP contract.
+Connect Codna to Claude, Codex, and other MCP clients with the canonical `v1` MCP contract.
 
 ## Canonical connection
 
 - Cloud Managed endpoint:
 
 ```text
-https://api.algenta.ai/mcp/sse
+https://api.codna.ai/mcp/sse
 ```
 
 - `self_hosted` and `air_gapped`: replace the hosted base URL with your self-hosted base URL
@@ -20,7 +20,7 @@ https://api.algenta.ai/mcp/sse
 https://your-algenta-host.example/mcp/sse
 ```
 
-Private profiles do not silently fall back to Algenta cloud.
+Private profiles do not silently fall back to Codna cloud.
 
 Auth:
 
@@ -65,7 +65,7 @@ Use this when your MCP host expects a local process:
 }
 ```
 
-Use `https://api.algenta.ai` only in Cloud Managed. `self_hosted` and
+Use `https://api.codna.ai` only in Cloud Managed. `self_hosted` and
 `air_gapped` must point `ALGENTA_BASE_URL`, `DE_BASE_URL`, or
 `ALGENTA_API_URL` at the self-hosted base URL.
 Canonical env vars are `ALGENTA_API_KEY` and `ALGENTA_BASE_URL`; legacy `DE_API_KEY`, `DE_BASE_URL`, and `ALGENTA_API_URL` remain accepted for compatibility.
@@ -82,7 +82,7 @@ Connect this CSV as a dataset named "Q2 pipeline", then show me the schema.
 
 ## Recommended data flow
 
-Use the same low-token governed path as the rest of Algenta:
+Use the same low-token governed path as the rest of Codna:
 
 1. `get_contract()`
 2. `list_data(search=..., compact=true)`
@@ -95,7 +95,7 @@ Use the same low-token governed path as the rest of Algenta:
 ## Revoke or disconnect
 
 - Remove the MCP connection from the client
-- Revoke the Algenta API key if the machine or workspace should lose access entirely
+- Revoke the Codna API key if the machine or workspace should lose access entirely
 - Use `disconnect_data` only when you want to remove a registered dataset
 
 ## Troubleshooting

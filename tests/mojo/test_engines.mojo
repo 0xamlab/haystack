@@ -1,5 +1,5 @@
 """
-test_engines.mojo — Per-engine unit tests for all 11 Algenta decision engines.
+test_engines.mojo — Per-engine unit tests for all 11 Codna decision engines.
 
 Tests that each engine:
   1. Accepts a minimal valid payload and returns a non-empty JSON result
@@ -289,7 +289,7 @@ def test_histogram_and_cdf_in_envelope() raises:
 
 def main() raises:
     print("=" * 60)
-    print("Algenta Engine Unit Tests — all 11 engines")
+    print("Codna Engine Unit Tests — all 11 engines")
     print("=" * 60)
     print()
 

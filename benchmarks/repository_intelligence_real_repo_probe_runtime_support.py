@@ -850,7 +850,7 @@ def main(
 ) -> None:
     parser = argparse.ArgumentParser(
         description=(
-            "Run a read-only Algenta Repository Intelligence probe against a real local repository."
+            "Run a read-only Codna Repository Intelligence probe against a real local repository."
         )
     )
     parser.add_argument("--repo", type=Path, required=True, help="Path to the local repository.")

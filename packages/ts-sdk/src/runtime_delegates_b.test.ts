@@ -403,7 +403,7 @@ describe("Runtime — delegates_b", () => {
                 },
             ],
             required_metrics: ["p50"],
-            baselines: ["Algenta Mojo-native path"],
+            baselines: ["Codna Mojo-native path"],
           },
           slo_budgets: [
             {
@@ -581,7 +581,7 @@ describe("Runtime — delegates_b", () => {
                 },
             ],
             required_metrics: ["p50"],
-            baselines: ["Algenta Mojo-native path"],
+            baselines: ["Codna Mojo-native path"],
           },
           slo_budgets: [
             {
@@ -810,7 +810,7 @@ describe("Runtime — delegates_b", () => {
       const memoryFailure: RuntimeFailureCode = "kv_cache_exhausted";
       const proofObligation: RuntimeProofObligation = "numerical parity";
       const benchmarkMetric: RuntimeBenchmarkMetric = "p50";
-      const benchmarkBaseline: RuntimeBenchmarkBaseline = "Algenta Mojo-native path";
+      const benchmarkBaseline: RuntimeBenchmarkBaseline = "Codna Mojo-native path";
       const evaluationDimension: RuntimeEvaluationDimension = "answer correctness";
       const evaluationMethod: RuntimeEvaluationMethod = "bootstrap confidence intervals";
       const releaseBlocker: RuntimeReleaseBlocker = "replay success regression";
@@ -964,7 +964,7 @@ describe("Runtime — delegates_b", () => {
         "tests/test_provider_routing_overhead_benchmark.py",
       ]);
       expect(benchmarks.benchmarking.required_metrics[0]).toBe("p50");
-      expect(benchmarks.benchmarking.baselines.at(-1)).toBe("Algenta Mojo-native path");
+      expect(benchmarks.benchmarking.baselines.at(-1)).toBe("Codna Mojo-native path");
       expect(benchmarks.slo_budgets[0]?.applies_to).toBe(budgetAppliesTo);
       expect(benchmarks.slo_budgets[0]?.hard_ceiling_ms).toBe(100);
       expect(checkpointReplayOverhead?.description).toBe("checkpoint and replay overhead");

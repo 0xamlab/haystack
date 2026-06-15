@@ -108,7 +108,7 @@ def test_algenta_root_uses_lazy_exports_for_heavy_surfaces() -> None:
         runtime_release_validation_cls = algenta.RuntimeReleaseValidationOutput
         runtime_slo_budget_applies_to_enum = algenta.RuntimeSLOBudgetAppliesTo
         runtime_slo_budget_name_enum = algenta.RuntimeSLOBudgetName
-        runtime_error_cls = algenta.AlgentaRuntimeError
+        runtime_error_cls = algenta.CodnaRuntimeError
         map_data_fn = algenta.map_data
         contract_version = algenta.CONTRACT_VERSION
         brand = algenta.BRAND
@@ -194,12 +194,12 @@ def test_algenta_root_uses_lazy_exports_for_heavy_surfaces() -> None:
         assert runtime_release_validation_cls.__name__ == "RuntimeReleaseValidationOutput"
         assert runtime_slo_budget_applies_to_enum.__name__ == "RuntimeSLOBudgetAppliesTo"
         assert runtime_slo_budget_name_enum.__name__ == "RuntimeSLOBudgetName"
-        assert runtime_error_cls.__name__ == "AlgentaRuntimeError"
+        assert runtime_error_cls.__name__ == "CodnaRuntimeError"
         assert callable(map_data_fn)
         assert contract_version == "v1.3"
-        assert brand == "Algenta"
-        assert default_base_url == "https://api.algenta.ai"
-        assert mcp_endpoint == "https://api.algenta.ai/mcp/sse"
+        assert brand == "Codna"
+        assert default_base_url == "https://api.codna.ai"
+        assert mcp_endpoint == "https://api.codna.ai/mcp/sse"
         assert auth_scheme == "bearer_api_key"
         assert legacy_headers == ("X-API-Key",)
         assert deprecation_window_days == 90

@@ -139,7 +139,7 @@ describe("DecisionEngineClient — loads_a", () => {
             status: 200,
             headers: {
               "Content-Type": "application/json",
-              "X-Algenta-Device-Binding-Token": "binding-token-000000000000000001",
+              "X-Codna-Device-Binding-Token": "binding-token-000000000000000001",
             },
           }),
         )
@@ -179,7 +179,7 @@ describe("DecisionEngineClient — loads_a", () => {
         expect(fetchMock.mock.calls[1]?.[1]).toEqual(
           expect.objectContaining({
             headers: expect.objectContaining({
-              "X-Algenta-Device-Binding-Token": "binding-token-000000000000000001",
+              "X-Codna-Device-Binding-Token": "binding-token-000000000000000001",
             }),
           }),
         );
@@ -188,7 +188,7 @@ describe("DecisionEngineClient — loads_a", () => {
       }
     });
 
-    it("loads the machine-readable Algenta contract", async () => {
+    it("loads the machine-readable Codna contract", async () => {
       const fetchMock = vi.fn().mockResolvedValue(
         new Response(
           JSON.stringify(makeContractPayload()),
@@ -365,7 +365,7 @@ describe("DecisionEngineClient — loads_a", () => {
                 },
               ],
               required_metrics: ["p50"],
-              baselines: ["Algenta Mojo-native path"],
+              baselines: ["Codna Mojo-native path"],
             },
             slo_budgets: [
               {
@@ -454,7 +454,7 @@ describe("DecisionEngineClient — loads_a", () => {
       const memoryFailure: RuntimeFailureCode = "kv_cache_exhausted";
       const proofObligation: RuntimeProofObligation = "numerical parity";
       const benchmarkMetric: RuntimeBenchmarkMetric = "p50";
-      const benchmarkBaseline: RuntimeBenchmarkBaseline = "Algenta Mojo-native path";
+      const benchmarkBaseline: RuntimeBenchmarkBaseline = "Codna Mojo-native path";
       const evaluationDimension: RuntimeEvaluationDimension = "answer correctness";
       const evaluationMethod: RuntimeEvaluationMethod = "bootstrap confidence intervals";
       const releaseBlocker: RuntimeReleaseBlocker = "replay success regression";

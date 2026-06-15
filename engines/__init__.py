@@ -1,5 +1,5 @@
 """
-engines — Algenta OS engine registry.
+engines — Codna OS engine registry.
 
 Usage:
     from engines import ENGINES, ENGINES_BY_SLUG

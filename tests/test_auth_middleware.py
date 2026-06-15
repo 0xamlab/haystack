@@ -117,7 +117,7 @@ async def test_get_current_org_commits_when_device_binding_writes(monkeypatch) -
 
     db.commit.assert_awaited_once()
     assert request.state.device_id == "device-1"
-    assert response.headers["X-Algenta-Device-Binding-Token"] == "token-1"
+    assert response.headers["X-Codna-Device-Binding-Token"] == "token-1"
 
 
 @pytest.mark.anyio

@@ -61,7 +61,7 @@ async def test_get_contract_tool_handler_forwards_contract_payload(monkeypatch) 
     raw = await meta.get_contract_handler({})
     body = json.loads(raw)
 
-    assert body["brand"] == "Algenta"
+    assert body["brand"] == "Codna"
     assert body["primary_data_query_contract"]["api"]["contract_endpoint"] == "/v1/meta/contract"
     assert body["primary_data_query_contract"]["mcp"]["contract_tool"] == "get_contract"
     assert body["capability_plane"]["api"]["list_providers_endpoint"] == "/v1/capability-providers"
@@ -75,10 +75,10 @@ async def test_get_contract_tool_handler_rejects_invalid_payload(monkeypatch) ->
         assert kwargs == {}
         return 200, {
             "contract_version": "v1.3",
-            "brand": "Algenta",
-            "api_base_url": "https://api.algenta.ai",
-            "mcp_endpoint": "https://api.algenta.ai/mcp/sse",
-            "mcp_tools_endpoint": "https://api.algenta.ai/mcp/tools",
+            "brand": "Codna",
+            "api_base_url": "https://api.codna.ai",
+            "mcp_endpoint": "https://api.codna.ai/mcp/sse",
+            "mcp_tools_endpoint": "https://api.codna.ai/mcp/tools",
             "auth_scheme": "bearer_api_key",
             "api_key_prefixes": {"live": "de_live_"},
             "compatibility": {
@@ -102,7 +102,7 @@ async def test_get_contract_tool_handler_rejects_invalid_payload(monkeypatch) ->
                 "direct_sdk": {
                     "typescript": {
                         "import_package": "algenta-sdk",
-                        "preferred_client_class": "AlgentaClient",
+                        "preferred_client_class": "CodnaClient",
                         "compatibility_client_class": "DecisionEngineClient",
                         "list_providers_method": "listCapabilityProviders",
                         "get_provider_method": "getCapabilityProvider",

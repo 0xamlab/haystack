@@ -65,7 +65,7 @@ async def get_egress_policy_payload() -> dict[str, Any]:
     payload = policy.as_report_dict()
     payload["algenta_owned_host_patterns"] = list(policy.algenta_owned_hosts)
     payload["vpc_mode_note"] = (
-        "vpc remains a managed deployment mode and may use Algenta-operated control-plane services "
+        "vpc remains a managed deployment mode and may use Codna-operated control-plane services "
         "unless private-profile flags explicitly override that behavior."
     )
     return payload

@@ -1,7 +1,7 @@
 """
 vision_gate.mojo — Deterministic image-routing policy. Zero Python imports.
 
-The Algenta Vision Gate's decision layer: given the cheap scalar signals produced
+The Codna Vision Gate's decision layer: given the cheap scalar signals produced
 by perceptual_hash / image_quality / image_features, decide the cheapest valid
 path for an image so an expensive vision-model call happens only when nothing
 cheaper can deduplicate, answer, OCR, or reject it.

@@ -458,9 +458,9 @@ def phase_csv_export():
     # Test 6: First row is a header or comment
     if rows:
         first_row = rows[0]
-        # The CSV starts with "# Algenta Decision Engine..." comment
+        # The CSV starts with "# Codna Decision Engine..." comment
         is_header_or_comment = (
-            any("Algenta" in str(c) for c in first_row)
+            any("Codna" in str(c) for c in first_row)
             or any("Field" in str(c) for c in first_row)
             or len(first_row) >= 1
         )

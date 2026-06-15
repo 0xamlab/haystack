@@ -392,7 +392,7 @@ def _build_schema_metadata(
     physical_types: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     """
-    Build the Algenta schema metadata dict embedded into the Parquet file.
+    Build the Codna schema metadata dict embedded into the Parquet file.
     This is what the LLM reads to understand the data before querying.
 
     Structure:

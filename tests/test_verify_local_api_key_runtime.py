@@ -165,13 +165,13 @@ def test_verify_local_api_key_runtime_private_profile_rejects_algenta_owned_base
         ValueError,
         match="ALGENTA_BASE_URL / DE_BASE_URL / ALGENTA_API_URL or pass --base-url",
     ):
-        verify_mod._base_url(argparse.Namespace(base_url="https://api.algenta.ai"))
+        verify_mod._base_url(argparse.Namespace(base_url="https://api.codna.ai"))
 
     events = _runtime_ledger_events(tmp_path)
     assert len(events) == 1
     event = events[0]
     assert event["status"] == "deny"
-    assert event["target"] == "api.algenta.ai"
+    assert event["target"] == "api.codna.ai"
     assert event["error"] == "algenta_cloud_disabled"
 
 

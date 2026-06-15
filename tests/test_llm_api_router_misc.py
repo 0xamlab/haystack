@@ -120,7 +120,7 @@ def test_count_tokens_route_rejects_unknown_model(monkeypatch) -> None:
         del text
         raise LLMAPIError(
             "model_not_supported",
-            f"Model '{model_id}' is not available on the current Algenta LLM API surface.",
+            f"Model '{model_id}' is not available on the current Codna LLM API surface.",
             {"model": model_id},
         )
 
@@ -142,7 +142,7 @@ def test_count_tokens_route_rejects_unknown_model(monkeypatch) -> None:
     assert error["code"] == "model_not_supported"
     assert (
         error["message"]
-        == "Model 'does.not.exist' is not available on the current Algenta LLM API surface."
+        == "Model 'does.not.exist' is not available on the current Codna LLM API surface."
     )
     assert error["details"] == {"model": "does.not.exist"}
     assert isinstance(error["request_id"], str)

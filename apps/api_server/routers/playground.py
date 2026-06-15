@@ -126,7 +126,7 @@ class PlaygroundResponse(BaseModel):
 @router.post(
     "/v1/playground",
     response_model=PlaygroundResponse,
-    summary="Try Algenta — no API key required",
+    summary="Try Codna — no API key required",
     description=(
         "**No sign-up. No API key. Just try it.**\n\n"
         "Run a decision analysis, optimization, simulation, or forecast "

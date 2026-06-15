@@ -125,7 +125,7 @@ describe("capability plane SDK surface", () => {
 
     await runtime.enableSkill({
       skill_name: "Governed Skill",
-      instruction: "Run through Algenta-managed execution.",
+      instruction: "Run through Codna-managed execution.",
       execution_owner: "algenta_managed",
     });
 

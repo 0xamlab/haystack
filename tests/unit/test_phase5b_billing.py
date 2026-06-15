@@ -75,7 +75,7 @@ class TestSendQuotaAlert:
             args = mock_send.call_args[0]
             assert args[0] == "dev@example.com"
             assert "80%" in args[1]
-            assert "Algenta" in args[1]
+            assert "Codna" in args[1]
             assert "quota" in args[1].lower()
 
     def test_100pct_alert_sends_exhausted_email(self):
@@ -91,7 +91,7 @@ class TestSendQuotaAlert:
             )
             mock_send.assert_called_once()
             args = mock_send.call_args[0]
-            assert "Algenta" in args[1]
+            assert "Codna" in args[1]
             assert "exhausted" in args[1].lower() or "100%" in args[1]
 
     def test_alert_html_contains_usage_numbers(self):

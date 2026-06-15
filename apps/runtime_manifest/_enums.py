@@ -462,7 +462,7 @@ class RuntimeBenchmarkBaseline(str, Enum):
     llama_cpp_gguf_backend = "llama.cpp GGUF backend"
     onnx_runtime_backend = "ONNX Runtime backend"
     ctranslate2_backend = "CTranslate2 backend"
-    algenta_mojo_native_path = "Algenta Mojo-native path"
+    algenta_mojo_native_path = "Codna Mojo-native path"
 
 
 class RuntimeEvaluationMethod(str, Enum):

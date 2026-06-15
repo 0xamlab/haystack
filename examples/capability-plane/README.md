@@ -1,7 +1,7 @@
 # Capability Plane Examples
 
 These files show the canonical customer-agnostic capability-plane surfaces that
-Algenta now exposes for providers, bindings, discovery, routing, execution, and
+Codna now exposes for providers, bindings, discovery, routing, execution, and
 outcome recording.
 
 ## Files
@@ -14,10 +14,10 @@ outcome recording.
 
 ## How to use them
 
-- Cloud Managed: `https://api.algenta.ai`
+- Cloud Managed: `https://api.codna.ai`
 - `self_hosted` and `air_gapped`: replace the hosted base URL with your own self-hosted base URL
 
-Private profiles do not silently fall back to Algenta cloud.
+Private profiles do not silently fall back to Codna cloud.
 
 1. Create or reuse one binding before discovery:
 
@@ -28,7 +28,7 @@ if [ -z "$ALGENTA_API_KEY" ]; then
   exit 1
 fi
 
-ALGENTA_BASE_URL="${ALGENTA_BASE_URL:-${DE_BASE_URL:-${ALGENTA_API_URL:-https://api.algenta.ai}}}"
+ALGENTA_BASE_URL="${ALGENTA_BASE_URL:-${DE_BASE_URL:-${ALGENTA_API_URL:-https://api.codna.ai}}}"
 
 curl -X POST "${ALGENTA_BASE_URL}/v1/capability-bindings" \
   -H "Authorization: Bearer ${ALGENTA_API_KEY}" \
@@ -81,7 +81,7 @@ curl -X POST "${ALGENTA_BASE_URL}/v1/capabilities/outcomes" \
 - `binding_discover_request.json` uses a manifest-backed skill-pack preview so
   the request validates without assuming any app-owned registry.
 - `capability_execute_request.json` targets a skill capability because that path
-  is Algenta-managed and deterministic: execution returns the instruction
+  is Codna-managed and deterministic: execution returns the instruction
   artifact and instruction text for the selected capability.
 - Replace placeholder ids such as `00000000-0000-0000-0000-000000000123` with
   real binding ids returned by your own environment before executing or

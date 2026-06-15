@@ -232,7 +232,7 @@ def live_repository_fixture(prefix: str) -> Iterator[LiveRepositoryFixture]:
         )
         (root_path / "README.md").write_text(
             "# Customer Repository\n\n"
-            "This fixture exercises Algenta Repository Intelligence against a "
+            "This fixture exercises Codna Repository Intelligence against a "
             "deterministic local repository source.\n",
             encoding="utf-8",
         )

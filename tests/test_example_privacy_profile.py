@@ -32,12 +32,12 @@ def test_resolve_example_api_base_url_defaults_to_cloud_managed() -> None:
             component="Example contract test",
             env={},
         )
-        == "https://api.algenta.ai"
+        == "https://api.codna.ai"
     )
 
 
 def test_resolve_example_api_base_url_rejects_hosted_default_in_private_profile() -> None:
-    with pytest.raises(ValueError, match="cannot target Algenta-owned cloud URLs"):
+    with pytest.raises(ValueError, match="cannot target Codna-owned cloud URLs"):
         resolve_example_api_base_url(
             component="Example contract test",
             env={
@@ -106,7 +106,7 @@ def test_multihop_python_public_client_uses_privacy_aware_base_url(
             captured["api_key"] = api_key
             captured["base_url"] = base_url
 
-    monkeypatch.setattr(module, "AlgentaClient", _FakeClient)
+    monkeypatch.setattr(module, "CodnaClient", _FakeClient)
     monkeypatch.setenv("ALGENTA_API_KEY", "de_test_example")
     monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "self_hosted")
     monkeypatch.setenv("ALGENTA_DISABLE_CLOUD", "1")
@@ -135,7 +135,7 @@ def test_multihop_python_public_client_accepts_legacy_api_key_env(
             captured["api_key"] = api_key
             captured["base_url"] = base_url
 
-    monkeypatch.setattr(module, "AlgentaClient", _FakeClient)
+    monkeypatch.setattr(module, "CodnaClient", _FakeClient)
     monkeypatch.delenv("ALGENTA_API_KEY", raising=False)
     monkeypatch.setenv("DE_API_KEY", "de_legacy_example")
     monkeypatch.delenv("ALGENTA_DEPLOYMENT_MODE", raising=False)
@@ -147,7 +147,7 @@ def test_multihop_python_public_client_accepts_legacy_api_key_env(
 
     assert captured == {
         "api_key": "de_legacy_example",
-        "base_url": "https://api.algenta.ai",
+        "base_url": "https://api.codna.ai",
     }
 
 
@@ -218,7 +218,7 @@ def test_langgraph_example_rejects_algenta_cloud_in_private_profile(
     )
     monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "air_gapped")
     monkeypatch.setenv("ALGENTA_DISABLE_CLOUD", "1")
-    monkeypatch.setenv("ALGENTA_BASE_URL", "https://api.algenta.ai")
+    monkeypatch.setenv("ALGENTA_BASE_URL", "https://api.codna.ai")
 
-    with pytest.raises(ValueError, match="cannot target Algenta-owned cloud URLs"):
+    with pytest.raises(ValueError, match="cannot target Codna-owned cloud URLs"):
         module._resolve_base_url()

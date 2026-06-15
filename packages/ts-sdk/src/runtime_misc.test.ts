@@ -465,7 +465,7 @@ describe("Runtime — misc", () => {
 
       expect(imported.registration.name).toBe("orders");
       expect(imported.registration.row_count).toBe(1);
-      expect(imported.preview).toContain("Algenta Source Import");
+      expect(imported.preview).toContain("Codna Source Import");
       expect(imported.preview).toContain("Source: orders");
       expect(imported.preview).toContain("Origin: orders.csv");
       expect(imported.preview).toContain("Rows: 1 | Fields: 3");

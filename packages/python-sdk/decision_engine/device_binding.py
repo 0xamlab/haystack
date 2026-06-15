@@ -6,7 +6,7 @@ import os
 import threading
 from pathlib import Path
 
-DEVICE_BINDING_TOKEN_HEADER = "X-Algenta-Device-Binding-Token"  # noqa: S105
+DEVICE_BINDING_TOKEN_HEADER = "X-Codna-Device-Binding-Token"  # noqa: S105
 _BINDING_STORE_FILENAME = "hosted_device_binding_tokens.json"
 _STORE_LOCK = threading.Lock()
 _MEMORY_STORE: dict[str, str] = {}

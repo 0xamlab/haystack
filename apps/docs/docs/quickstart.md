@@ -7,14 +7,14 @@ slug: /quickstart
 
 In this guide you will:
 
-1. Start Algenta locally
+1. Start Codna locally
 2. Verify the API is running
 3. Run your first decision or first governed dataset query
 
 ## Install
 
 ```bash
-curl -sSL https://algenta.ai/install.sh | bash
+curl -sSL https://codna.ai/install.sh | bash
 ```
 
 The installer:
@@ -32,7 +32,7 @@ The installer:
 The installer prints:
 
 ```text
-Algenta is running.
+Codna is running.
 
 API: http://localhost:8000
 Health: curl http://localhost:8000/v1/health
@@ -87,10 +87,10 @@ export ALGENTA_API_KEY='<paste the replacement key returned above>'
 An explicit `device_limit` also binds ordinary hosted API traffic for that key,
 not just the device-registration path. The SDKs send the stable device headers
 automatically. If you are calling the API directly with `curl` or a raw HTTP
-client, send `X-Algenta-Device-Id`, `X-Algenta-Platform`, and
-`X-Algenta-Hostname-Hash` on authenticated requests that use a capped key. The
+client, send `X-Codna-Device-Id`, `X-Codna-Platform`, and
+`X-Codna-Hostname-Hash` on authenticated requests that use a capped key. The
 first successful hosted request for a new capped device returns
-`X-Algenta-Device-Binding-Token`; store that value and replay it on later
+`X-Codna-Device-Binding-Token`; store that value and replay it on later
 requests from the same device. The SDKs do this automatically.
 
 ## First request
@@ -129,11 +129,11 @@ Expected response:
 }
 ```
 
-No SDK or Python install is required to use Algenta.
+No SDK or Python install is required to use Codna.
 
 ## First governed dataset query
 
-If you are using Algenta for governed data/query rather than simulation, start
+If you are using Codna for governed data/query rather than simulation, start
 with the live machine-readable contract:
 
 ```bash

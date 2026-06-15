@@ -43,10 +43,10 @@ def test_algenta_client_private_profile_requires_self_hosted_base_url(
     monkeypatch.delenv("ALGENTA_API_URL", raising=False)
 
     with pytest.raises(ValueError) as excinfo:
-        algenta.AlgentaClient(api_key="de_test_abc123")
+        algenta.CodnaClient(api_key="de_test_abc123")
 
     message = str(excinfo.value)
-    assert "private profiles cannot target Algenta-owned cloud URLs" in message
+    assert "private profiles cannot target Codna-owned cloud URLs" in message
     assert "ALGENTA_BASE_URL / DE_BASE_URL / ALGENTA_API_URL" in message
 
 
@@ -59,7 +59,7 @@ def test_algenta_client_private_profile_uses_env_base_url(
     monkeypatch.delenv("DE_BASE_URL", raising=False)
     monkeypatch.delenv("ALGENTA_API_URL", raising=False)
 
-    client = algenta.AlgentaClient(api_key="de_test_abc123")
+    client = algenta.CodnaClient(api_key="de_test_abc123")
 
     assert client.base_url == "http://localhost:8000"
 
@@ -73,7 +73,7 @@ def test_algenta_client_private_profile_accepts_algenta_api_url(
     monkeypatch.delenv("DE_BASE_URL", raising=False)
     monkeypatch.setenv("ALGENTA_API_URL", "http://localhost:8000")
 
-    client = algenta.AlgentaClient(api_key="de_test_abc123")
+    client = algenta.CodnaClient(api_key="de_test_abc123")
 
     assert client.base_url == "http://localhost:8000"
 
@@ -87,7 +87,7 @@ def test_runtime_api_mode_private_profile_requires_self_hosted_base_url(
     monkeypatch.delenv("DE_BASE_URL", raising=False)
     monkeypatch.delenv("ALGENTA_API_URL", raising=False)
 
-    with pytest.raises(ValueError, match="private profiles cannot target Algenta-owned cloud URLs"):
+    with pytest.raises(ValueError, match="private profiles cannot target Codna-owned cloud URLs"):
         algenta.Runtime(mode="api", api_key="de_test_abc123")
 
 
@@ -183,7 +183,7 @@ def test_forecast_cloud_mode_requires_self_hosted_base_url_in_private_profile(
     monkeypatch.delenv("DE_BASE_URL", raising=False)
     monkeypatch.delenv("ALGENTA_API_URL", raising=False)
 
-    with pytest.raises(ValueError, match="private profiles cannot target Algenta-owned cloud URLs"):
+    with pytest.raises(ValueError, match="private profiles cannot target Codna-owned cloud URLs"):
         forecast.predict(
             [10.0, 12.0, 14.0],
             horizon=3,
@@ -201,7 +201,7 @@ def test_algenta_client_missing_api_key_uses_cloud_managed_dashboard_url(
     monkeypatch.delenv("DE_API_KEY", raising=False)
 
     with pytest.raises(ValueError, match=r"https://app\.algenta\.ai/dashboard/api-keys"):
-        algenta.AlgentaClient(api_key=None, base_url="https://api.algenta.ai")
+        algenta.CodnaClient(api_key=None, base_url="https://api.codna.ai")
 
 
 def test_algenta_client_missing_api_key_private_profile_uses_self_hosted_guidance(
@@ -217,12 +217,12 @@ def test_algenta_client_missing_api_key_private_profile_uses_self_hosted_guidanc
     monkeypatch.delenv("DE_API_KEY", raising=False)
 
     with pytest.raises(ValueError) as excinfo:
-        algenta.AlgentaClient(api_key=None, base_url="http://localhost:8000")
+        algenta.CodnaClient(api_key=None, base_url="http://localhost:8000")
 
     message = str(excinfo.value)
     assert "ALGENTA_API_KEY / DE_API_KEY environment variables" in message
     assert "self-hosted admin surface or API base URL: http://localhost:8000" in message
-    assert "algenta.ai/dashboard/api-keys" not in message
+    assert "codna.ai/dashboard/api-keys" not in message
 
 
 def test_algenta_privacy_profile_console_base_url_requires_explicit_origin_in_private_profiles() -> None:
@@ -230,7 +230,7 @@ def test_algenta_privacy_profile_console_base_url_requires_explicit_origin_in_pr
 
     with pytest.raises(ValueError, match="explicit self-hosted dashboard or API base_url"):
         privacy.resolve_console_base_url(
-            component="AlgentaClient",
+            component="CodnaClient",
             env={
                 "ALGENTA_DEPLOYMENT_MODE": "self_hosted",
                 "ALGENTA_DISABLE_CLOUD": "1",
@@ -243,7 +243,7 @@ def test_algenta_privacy_profile_console_base_url_accepts_legacy_dashboard_alias
 
     assert (
         privacy.resolve_console_base_url(
-            component="AlgentaClient",
+            component="CodnaClient",
             env={
                 "ALGENTA_DEPLOYMENT_MODE": "air_gapped",
                 "ALGENTA_DISABLE_CLOUD": "1",
@@ -262,10 +262,10 @@ def test_algenta_privacy_profile_console_base_url_rejects_algenta_owned_dashboar
         match="ALGENTA_APP_BASE_URL / APP_BASE_URL / DE_APP_BASE_URL or a self-hosted base_url",
     ):
         privacy.resolve_console_base_url(
-            component="AlgentaClient",
+            component="CodnaClient",
             env={
                 "ALGENTA_DEPLOYMENT_MODE": "self_hosted",
                 "ALGENTA_DISABLE_CLOUD": "1",
-                "ALGENTA_APP_BASE_URL": "https://app.algenta.ai",
+                "ALGENTA_APP_BASE_URL": "https://app.codna.ai",
             },
         )

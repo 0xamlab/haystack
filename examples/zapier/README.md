@@ -1,13 +1,13 @@
-# Zapier Integration — Algenta
+# Zapier Integration — Codna
 
-Use the **Webhooks by Zapier** action to call Algenta's hosted data, query, and simulation surfaces in any Zap.
+Use the **Webhooks by Zapier** action to call Codna's hosted data, query, and simulation surfaces in any Zap.
 
-- Cloud Managed: `https://api.algenta.ai`
+- Cloud Managed: `https://api.codna.ai`
 - `self_hosted` and `air_gapped`: replace the hosted base URL with your self-hosted base URL
 
-Private profiles do not silently fall back to Algenta cloud.
+Private profiles do not silently fall back to Codna cloud.
 
-The checked-in JSON templates intentionally use `https://your-algenta-base-url.example`; replace it with Cloud Managed `https://api.algenta.ai` or your self-hosted base URL before import.
+The checked-in JSON templates intentionally use `https://your-algenta-base-url.example`; replace it with Cloud Managed `https://api.codna.ai` or your self-hosted base URL before import.
 
 ## Files
 
@@ -36,11 +36,11 @@ The checked-in JSON templates intentionally use `https://your-algenta-base-url.e
 | Basic Auth | Leave empty |
 | Headers | `Authorization: Bearer <YOUR_ALGENTA_API_KEY>` |
 
-Use `https://app.algenta.ai/dashboard/api-keys` only in Cloud Managed. In
+Use `https://app.codna.ai/dashboard/api-keys` only in Cloud Managed. In
 `self_hosted` and `air_gapped`, replace `https://your-algenta-base-url.example`
 with your self-hosted base URL and use the API key provisioned by your
 self-hosted operator deployment. For Cloud Managed, replace it with
-`https://api.algenta.ai`.
+`https://api.codna.ai`.
 
 ### 3. Payload for `/v1/query`
 

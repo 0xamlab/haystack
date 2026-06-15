@@ -1,6 +1,6 @@
 #!/bin/bash
-# Algenta Decision Engine — one-line self-hosted installer
-# Usage: curl -fsSL https://algenta.ai/install.sh | bash
+# Codna Decision Engine — one-line self-hosted installer
+# Usage: curl -fsSL https://codna.ai/install.sh | bash
 # Or:    curl -fsSL https://raw.githubusercontent.com/algenta/decision-engine/main/install.sh | bash
 
 set -euo pipefail
@@ -8,7 +8,7 @@ set -euo pipefail
 REPO="algenta/decision-engine"
 INSTALL_DIR="${ALGENTA_DIR:-$HOME/.algenta}"
 API_PORT="${ALGENTA_API_PORT:-8000}"
-DOCS_URL="${ALGENTA_DOCS_URL:-https://docs.algenta.ai/self-hosting}"
+DOCS_URL="${ALGENTA_DOCS_URL:-https://docs.codna.ai/self-hosting}"
 IMAGE_REGISTRY="${ALGENTA_IMAGE_REGISTRY:-ghcr.io/algenta/decision-engine}"
 RELEASE_REF="${ALGENTA_VERSION:-}"
 IMAGE_TAG="${ALGENTA_IMAGE_TAG:-}"
@@ -33,7 +33,7 @@ print_logo() {
   echo '/_/ \_\|_| \__, |\___||_| \_,_|'
   echo '           |___/               '
   echo -e "${NC}"
-  echo -e "${BOLD}Algenta Decision Engine — Self-Hosted Service Installer${NC}"
+  echo -e "${BOLD}Codna Decision Engine — Self-Hosted Service Installer${NC}"
   echo ""
 }
 
@@ -161,7 +161,7 @@ resolve_release_ref() {
 }
 
 download_release() {
-  echo -e "${BLUE}Downloading Algenta Decision Engine...${NC}"
+  echo -e "${BLUE}Downloading Codna Decision Engine...${NC}"
 
   mkdir -p "$INSTALL_DIR"
   cd "$INSTALL_DIR"
@@ -197,7 +197,7 @@ generate_env() {
     WEBHOOK_SECRET=$(LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 32 2>/dev/null || openssl rand -hex 16)
 
     cat > .env << EOF
-# Algenta Decision Engine — Self-Hosted Configuration
+# Codna Decision Engine — Self-Hosted Configuration
 # Generated: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
 
 # ── Application ──────────────────────────────────────────────────────────────
@@ -361,7 +361,7 @@ set_env_value() {
 }
 
 start_services() {
-  echo -e "${BLUE}Starting Algenta Decision Engine...${NC}"
+  echo -e "${BLUE}Starting Codna Decision Engine...${NC}"
   if ! is_truthy "$SKIP_IMAGE_PULL"; then
     if ! compose pull --quiet; then
       echo -e "${RED}Failed to pull images for tag ${IMAGE_TAG}.${NC}"
@@ -446,7 +446,7 @@ seed_initial_user() {
   if [ -n "$api_key" ]; then
     echo ""
     echo -e "${GREEN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${GREEN}${BOLD} Algenta is running.${NC}"
+    echo -e "${GREEN}${BOLD} Codna is running.${NC}"
     echo -e "${GREEN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
     echo -e "  ${BOLD}API:${NC}          http://localhost:${API_PORT}"
@@ -493,10 +493,10 @@ seed_initial_user() {
     echo -e "  ${BLUE}  -d '{\"label\":\"mission-runtime\",\"expires_at\":\"2028-05-19T00:00:00Z\"}'${NC}"
     echo -e "  ${BOLD}Store it:${NC}     The returned raw_key is shown once; store it with id, key_prefix, and expires_at before revoking the bootstrap key."
     echo -e "  ${BOLD}Replace it:${NC}  export ALGENTA_API_KEY='<paste the replacement key returned above>'"
-    echo -e "  ${BOLD}Note:${NC}         No SDK or Python install is required to use Algenta."
+    echo -e "  ${BOLD}Note:${NC}         No SDK or Python install is required to use Codna."
     echo ""
     echo -e "  ${BOLD}Docs:${NC}         ${DOCS_URL}"
-    echo -e "  ${BOLD}Support:${NC}      https://algenta.ai/support"
+    echo -e "  ${BOLD}Support:${NC}      https://codna.ai/support"
     echo ""
     return 0
   fi

@@ -1,10 +1,10 @@
 """
-Compatibility wrapper for the async Algenta API client.
+Compatibility wrapper for the async Codna API client.
 
 This module exposes the Cloud Managed path by default. In `self_hosted` and `air_gapped`,
 pass an explicit self-hosted `base_url` and use the API key
 provisioned by your self-hosted operator deployment instead. Private profiles
-fail closed and do not silently fall back to Algenta cloud.
+fail closed and do not silently fall back to Codna cloud.
 """
 
 from __future__ import annotations
@@ -12,9 +12,9 @@ from __future__ import annotations
 from importlib import import_module
 
 _LAZY_EXPORTS = {
-    "AsyncAlgentaClient": (
+    "AsyncCodnaClient": (
         "decision_engine.async_client_facade",
-        "AsyncAlgentaClient",
+        "AsyncCodnaClient",
     ),
     "AsyncDecisionEngineClient": (
         "decision_engine.async_client_facade",

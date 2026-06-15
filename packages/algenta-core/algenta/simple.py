@@ -2,7 +2,7 @@
 algenta.simple — One-line magic entry points.
 
 This is the activation layer. Someone reads a tweet, copies one line,
-and immediately understands why Algenta exists.
+and immediately understands why Codna exists.
 
   from algenta import decision, optimize, simulate
 
@@ -16,7 +16,7 @@ No docs required. Output explains itself.
 `air_gapped`, pass an explicit self-hosted `base_url` through the lower-level
 cloud surfaces and use the API key provisioned by your self-hosted operator
 deployment instead. Private profiles fail closed and do not silently fall back
-to Algenta cloud.
+to Codna cloud.
 """
 
 from __future__ import annotations

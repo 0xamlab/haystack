@@ -4,12 +4,12 @@ sidebar_position: 3
 
 # LangGraph
 
-Add Algenta as a tool node in your LangGraph AI agent.
+Add Codna as a tool node in your LangGraph AI agent.
 
-- Cloud Managed: `https://api.algenta.ai`
+- Cloud Managed: `https://api.codna.ai`
 - `self_hosted` and `air_gapped`: pass an explicit self-hosted `base_url`
 
-Private profiles do not silently fall back to Algenta cloud.
+Private profiles do not silently fall back to Codna cloud.
 
 ## Installation
 
@@ -23,17 +23,17 @@ pip install algenta-sdk langgraph langchain-openai
 import os
 
 from langchain_core.tools import tool
-from decision_engine import AlgentaClient
+from decision_engine import CodnaClient
 
 api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
 if not api_key:
     raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
 
-client = AlgentaClient(api_key=api_key)
+client = CodnaClient(api_key=api_key)
 
 @tool
 def inspect_algenta_contract() -> dict:
-    """Fetch the live machine-readable Algenta contract before discovery."""
+    """Fetch the live machine-readable Codna contract before discovery."""
     contract = client.get_contract()
     return {
         "api_base_url": contract.api_base_url,
@@ -128,7 +128,7 @@ def route_capability_for_incident(objective: str) -> dict:
 ```
 
 The direct-client snippet above is the Cloud Managed path. In `self_hosted`
-and `air_gapped`, construct `AlgentaClient(api_key=..., base_url="http://localhost:8000")`
+and `air_gapped`, construct `CodnaClient(api_key=..., base_url="http://localhost:8000")`
 or your own self-hosted origin instead.
 
 For wide read-only reports that should return raw columns and rows, use
@@ -167,13 +167,13 @@ that fit naturally into LangGraph approval or follow-up nodes:
 import os
 
 from langchain_core.tools import tool
-from decision_engine import AlgentaClient
+from decision_engine import CodnaClient
 
 api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
 if not api_key:
     raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
 
-client = AlgentaClient(api_key=api_key)
+client = CodnaClient(api_key=api_key)
 
 @tool
 def run_decision_simulation(

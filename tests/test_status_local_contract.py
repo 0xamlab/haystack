@@ -31,7 +31,7 @@ def test_status_local_script_reports_launcher_managed_state_from_recorded_files(
     assert '"lease": lease == "1",' in text
     assert '_print_matching_services "API" "api" "$API_PORT_FILTER"' in text
     assert '_print_matching_services "MCP" "mcp" "$MCP_PORT_FILTER"' in text
-    assert "📋 Launcher-managed Algenta local stack status" in text
+    assert "📋 Launcher-managed Codna local stack status" in text
     assert 'No launcher-managed local stacks found.' in text
 
 

@@ -24,7 +24,7 @@ class AWSProvisioner(BaseProvisioner):
       - Application Load Balancer + HTTPS listener
       - RDS PostgreSQL 16 (db.t4g.micro default, configurable)
       - ElastiCache Redis 7 (cache.t4g.micro default)
-      - Route 53 subdomain: {org_id_prefix}.deploy.algenta.ai
+      - Route 53 subdomain: {org_id_prefix}.deploy.codna.ai
       - ACM certificate (auto-provisioned)
       - IAM roles + security groups
     """
@@ -68,7 +68,7 @@ class AWSProvisioner(BaseProvisioner):
     ) -> ProvisionResult:
         """Synchronous AWS provisioning — runs in executor thread."""
         deploy_name = f"algenta-{str(deployment_id)[:8]}"
-        endpoint_url = f"https://{str(deployment_id)[:8]}.deploy.algenta.ai"
+        endpoint_url = f"https://{str(deployment_id)[:8]}.deploy.codna.ai"
 
         resource_ids = {
             "ecs_cluster_arn": (f"arn:aws:ecs:{region}:000000000000:cluster/{deploy_name}"),

@@ -1,5 +1,5 @@
 """
-Algenta Decision Engine — Mojo Simulation Core v0.8.0
+Codna Decision Engine — Mojo Simulation Core v0.8.0
 Dispatch-only entry point (Phase 7). All engine logic lives in engines/ subdirectory.
 
 Server loop uses native Mojo Unix domain sockets (net/unix_socket.mojo) and

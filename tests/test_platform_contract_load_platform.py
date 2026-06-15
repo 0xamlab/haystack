@@ -49,7 +49,7 @@ def test_load_platform_contract_manifest_model_rejects_invalid_nested_contract_s
 
     with pytest.raises(
         platform_contract.PlatformContractManifestError,
-        match="canonical Algenta contract schema",
+        match="canonical Codna contract schema",
     ) as exc:
         platform_contract.load_platform_contract_manifest_model()
     assert exc.value.code == "invalid_platform_contract_manifest"

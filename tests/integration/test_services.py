@@ -1,7 +1,7 @@
 """
 Phase 14: Python Service Module Integration Tests
 
-Tests the internal Python service modules that power the Algenta Decision Engine API.
+Tests the internal Python service modules that power the Codna Decision Engine API.
 Covers: chart_service, decision_integrity, unit_service, simulation_service,
         schemas (Pydantic), simulation_templates, and API-level validation.
 

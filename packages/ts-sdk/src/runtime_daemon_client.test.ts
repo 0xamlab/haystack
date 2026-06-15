@@ -21,7 +21,7 @@ loadPackageDefinitionMock.mockReturnValue({
   algenta: {
     runtime: {
       v1: {
-        AlgentaRuntime: ClientConstructorMock,
+        CodnaRuntime: ClientConstructorMock,
       },
     },
   },
@@ -48,7 +48,7 @@ describe("runtime daemon client", () => {
       algenta: {
         runtime: {
           v1: {
-            AlgentaRuntime: ClientConstructorMock,
+            CodnaRuntime: ClientConstructorMock,
           },
         },
       },

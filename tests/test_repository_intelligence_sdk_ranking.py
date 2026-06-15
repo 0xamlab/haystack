@@ -1,4 +1,4 @@
-"""Embed-the-Algenta-SDK ranking lane: RRF fusion + the real local Mojo fuzzy
+"""Embed-the-Codna-SDK ranking lane: RRF fusion + the real local Mojo fuzzy
 kernel (text.fuzzy.jaro_winkler) with a pure-Python fallback when the runtime is
 unavailable. One test exercises the REAL Mojo engine when dev mode is enabled.
 """
@@ -166,7 +166,7 @@ def test_triage_cache_key_is_ranking_mode_aware() -> None:
 
 @pytest.mark.skipif(
     not _dev_runtime_available(),
-    reason="Algenta local Mojo runtime not enabled (set ALGENTA_RUNTIME_DEV_MODE=1)",
+    reason="Codna local Mojo runtime not enabled (set ALGENTA_RUNTIME_DEV_MODE=1)",
 )
 def test_real_mojo_fuzzy_similarity_camelcase_recall() -> None:
     """REAL dispatch into the local Mojo engine — the camelCase↔snake_case recall win."""

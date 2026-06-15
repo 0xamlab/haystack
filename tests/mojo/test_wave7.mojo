@@ -196,11 +196,11 @@ def main() raises:
     print("✅ String utils")
 
     # ── URL Parser ───────────────────────────────────────────────────────
-    var u = url_parse("https://api.algenta.ai:8443/v1/simulate?mode=auto&runs=10000#results")
+    var u = url_parse("https://api.codna.ai:8443/v1/simulate?mode=auto&runs=10000#results")
     if u.scheme != "https":
         raise Error("url scheme != 'https', got '" + u.scheme + "'")
-    if u.host != "api.algenta.ai":
-        raise Error("url host != 'api.algenta.ai', got '" + u.host + "'")
+    if u.host != "api.codna.ai":
+        raise Error("url host != 'api.codna.ai', got '" + u.host + "'")
     if u.port != 8443:
         raise Error("url port != 8443, got " + String(u.port))
     if u.path != "/v1/simulate":

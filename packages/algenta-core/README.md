@@ -1,6 +1,6 @@
 # algenta-core
 
-High-level Algenta runtime SDK for governed data/query flows, local runtime control, and local Mojo libraries.
+High-level Codna runtime SDK for governed data/query flows, local runtime control, and local Mojo libraries.
 
 ## Install
 
@@ -188,7 +188,7 @@ rt.delete_connector(connector.id)
 
 Use Cloud Managed URLs only with `Runtime(mode="api")`. `Runtime(mode="self_hosted")`
 and private profiles must point `base_url` at your own self-hosted service and
-fail closed instead of silently falling back to Algenta cloud.
+fail closed instead of silently falling back to Codna cloud.
 
 `rt.get_contract()` also handles older self-hosted nodes that still return
 `404` for `/v1/meta/contract` by falling back to `/openapi.json` and reading
@@ -272,7 +272,7 @@ For the current plan-aligned utility and agent surfaces, the runtime also expose
 
 ## Provider-Backed LLM Registry
 
-`Runtime(mode="api")` and `AlgentaClient` use the same provider-backed model
+`Runtime(mode="api")` and `CodnaClient` use the same provider-backed model
 registry configured through `ALGENTA_LLM_PROVIDER_MODELS_JSON`. Each entry must
 declare `id`, `backend`, `model_name`, `base_url`, and `api_key_env` unless the
 backend explicitly allows local no-auth access.
@@ -502,7 +502,7 @@ the hosted or self-hosted governed data/query API, but it can accept local
 `api_key` and `base_url` when you want the local daemon to enforce a hosted
 device license.
 
-For hosted direct cloud access without the runtime facade, `AlgentaClient`
+For hosted direct cloud access without the runtime facade, `CodnaClient`
 also exposes the governed contract and query helpers:
 `get_contract()`, `get_runtime_manifest()`, `get_runtime_modules()`,
 `get_runtime_benchmarks()`, `get_runtime_release_validation()`,
@@ -570,5 +570,5 @@ quality-gate SLO budgets `mcp_call_first_party`, `decision_plan_creation`, and
 
 ## Docs
 
-- [Algenta core docs](https://docs.algenta.ai/core)
-- [Local runtime guide](https://docs.algenta.ai/integrations/local-runtime)
+- [Codna core docs](https://docs.codna.ai/core)
+- [Local runtime guide](https://docs.codna.ai/integrations/local-runtime)

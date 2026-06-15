@@ -101,7 +101,7 @@ def test_cmd_llm_models_prints_available_models(monkeypatch) -> None:
 
     output = _capture_stdout(cli.cmd_llm_models, "table")
 
-    assert "Algenta models (3 available)" in output
+    assert "Codna models (3 available)" in output
     assert "text.tokenizer  [tokenizer]" in output
     assert "capabilities: tokenize, count_tokens" in output
     assert "/v1/embeddings/similarity, /v1/rerank" in output

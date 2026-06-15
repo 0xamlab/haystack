@@ -213,12 +213,12 @@ def main() raises:
     print("✅ MsgPack")
 
     # ── YAML ─────────────────────────────────────────────────────────────
-    var yaml_content = "name: Algenta\nversion: 1.0\nserver:\n  host: localhost\n  port: 8000\nenabled: true\nitems:\n  - alpha\n  - beta"
+    var yaml_content = "name: Codna\nversion: 1.0\nserver:\n  host: localhost\n  port: 8000\nenabled: true\nitems:\n  - alpha\n  - beta"
     var root = yaml_parse(yaml_content)
 
     var name_val = yaml_get_string(root, "name")
-    if name_val != "Algenta":
-        raise Error("yaml name != 'Algenta', got '" + name_val + "'")
+    if name_val != "Codna":
+        raise Error("yaml name != 'Codna', got '" + name_val + "'")
 
     var ver = yaml_get_float(root, "version", 0.0)
     if fabs(ver - 1.0) > 0.01:

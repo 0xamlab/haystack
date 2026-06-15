@@ -722,12 +722,12 @@ check("Components/schemas section exists with 20+ schemas", test_components_sche
 def test_info_title_and_version_values():
     spec = get_spec()
     info = spec["info"]
-    assert info["title"] == "Algenta API", f"Unexpected OpenAPI title: {info['title']}"
+    assert info["title"] == "Codna API", f"Unexpected OpenAPI title: {info['title']}"
     parts = info["version"].split(".")
     assert len(parts) >= 2, f"Version not semver: {info['version']}"
 
 
-check("Info title is Algenta API, version is semver", test_info_title_and_version_values)
+check("Info title is Codna API, version is semver", test_info_title_and_version_values)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -2408,8 +2408,8 @@ check("Security scheme declares HTTP Bearer auth", test_bearer_auth_scheme)
 
 def test_openapi_server_and_mcp_endpoint_are_canonical():
     spec = get_spec()
-    assert spec.get("servers") == [{"url": "https://api.algenta.ai"}], spec.get("servers")
-    assert spec.get("x-canonical-mcp-endpoint") == "https://api.algenta.ai/mcp/sse"
+    assert spec.get("servers") == [{"url": "https://api.codna.ai"}], spec.get("servers")
+    assert spec.get("x-canonical-mcp-endpoint") == "https://api.codna.ai/mcp/sse"
 
 
 check(

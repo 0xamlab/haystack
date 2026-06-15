@@ -48,7 +48,7 @@ async def test_test_webhook_uses_webhook_service(
     assert delivery["callback_url"] == "https://example.com/webhook"
     assert delivery["payload"] == {
         "event": "webhook.test",
-        "result": {"message": "This is a test webhook from the Algenta API."},
+        "result": {"message": "This is a test webhook from the Codna API."},
     }
     assert delivery["max_retries"] == 0
     audit_context = delivery["audit_context"]

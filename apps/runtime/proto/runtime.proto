@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package algenta.runtime.v1;
 
-// Algenta local runtime daemon — gRPC service contract.
+// Codna local runtime daemon — gRPC service contract.
 //
 // Wire transport: unix domain socket (macOS/Linux) or TCP loopback (Windows).
 // Default socket path: /tmp/algenta-runtime/daemon.sock
@@ -10,7 +10,7 @@ package algenta.runtime.v1;
 //
 // v1 surface — keep it small. Extend via new RPCs, never break existing ones.
 
-service AlgentaRuntime {
+service CodnaRuntime {
   // Liveness check — always responds, even during warm-up.
   rpc Health(HealthRequest) returns (HealthResponse);
 

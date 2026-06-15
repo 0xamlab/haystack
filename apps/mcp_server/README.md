@@ -1,12 +1,12 @@
-# Algenta MCP Server
+# Codna MCP Server
 
-**Model Context Protocol (MCP)** bridge for the Algenta runtime and public API surface. Connects AI agents to governed dataset discovery, exact queries, deterministic utility-model routes, simplified product helpers, persisted agent runs, simulations, jobs, and connector-backed datasets.
+**Model Context Protocol (MCP)** bridge for the Codna runtime and public API surface. Connects AI agents to governed dataset discovery, exact queries, deterministic utility-model routes, simplified product helpers, persisted agent runs, simulations, jobs, and connector-backed datasets.
 
 ## Tools Available
 
 | Tool | Description |
 |------|-------------|
-| `get_contract` | Machine-readable Algenta contract for tool/API/SDK discovery. |
+| `get_contract` | Machine-readable Codna contract for tool/API/SDK discovery. |
 | `connect_data` | High-level dataset onboarding. Connect once and get a reusable `dataset_id`. |
 | `list_data` | Canonical dataset discovery. Supports `search`, `status`, `source_name`, and `compact`. |
 | `get_data_summary` | Low-token summary for a selected dataset before loading full schema. |
@@ -236,7 +236,7 @@ if [ -z "$ALGENTA_API_KEY" ]; then
   exit 1
 fi
 
-export ALGENTA_BASE_URL="${ALGENTA_BASE_URL:-${DE_BASE_URL:-${ALGENTA_API_URL:-https://api.algenta.ai}}}"   # Cloud Managed default only; replace for self-hosted private profiles
+export ALGENTA_BASE_URL="${ALGENTA_BASE_URL:-${DE_BASE_URL:-${ALGENTA_API_URL:-https://api.codna.ai}}}"   # Cloud Managed default only; replace for self-hosted private profiles
 ```
 
 Canonical MCP env vars are `ALGENTA_API_KEY` and `ALGENTA_BASE_URL`. Legacy
@@ -244,12 +244,12 @@ Canonical MCP env vars are `ALGENTA_API_KEY` and `ALGENTA_BASE_URL`. Legacy
 
 Choose the base URL for your deployment mode:
 
-- Cloud Managed: `https://api.algenta.ai`
+- Cloud Managed: `https://api.codna.ai`
 - `self_hosted` and `air_gapped`: replace the hosted base URL with your self-hosted base URL via `ALGENTA_BASE_URL`, `DE_BASE_URL`, or `ALGENTA_API_URL`
 
-Private profiles fail closed and will not silently fall back to Algenta cloud.
+Private profiles fail closed and will not silently fall back to Codna cloud.
 
-Use `https://app.algenta.ai/dashboard/api-keys` only in Cloud Managed. In
+Use `https://app.codna.ai/dashboard/api-keys` only in Cloud Managed. In
 `self_hosted` and `air_gapped`, use the API key provisioned by your
 self-hosted operator deployment.
 
@@ -276,7 +276,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 }
 ```
 
-Use `https://api.algenta.ai` only in Cloud Managed. `self_hosted` and
+Use `https://api.codna.ai` only in Cloud Managed. `self_hosted` and
 `air_gapped` must point `ALGENTA_BASE_URL`, `DE_BASE_URL`, or `ALGENTA_API_URL`
 at the self-hosted base URL.
 
@@ -342,7 +342,7 @@ python -m apps.mcp_server.server --transport http --port 8001
 ALGENTA_MCP_PORT=8001 python -m apps.mcp_server.server --transport http
 ```
 
-Or if you have the Algenta API server running, the MCP is already mounted at:
+Or if you have the Codna API server running, the MCP is already mounted at:
 - **`GET  /mcp/tools`** — List tools (JSON, no auth needed, always available)
 - **`GET  /mcp/sse`** — SSE connection endpoint when the optional MCP transport dependencies are installed
 - **`POST /mcp/messages`** — Message handler when the optional MCP transport dependencies are installed
@@ -362,7 +362,7 @@ If the optional MCP transport dependencies are not installed, the API still moun
 3. Set **URL**: `<YOUR_ALGENTA_BASE_URL>/mcp/sse`
 4. Set **Header**: `Authorization: Bearer <YOUR_ALGENTA_API_KEY>`
 
-Example workflow: *Trigger → Algenta list_data/search → get_data_summary → query_data or query_batch → Send Slack notification*
+Example workflow: *Trigger → Codna list_data/search → get_data_summary → query_data or query_batch → Send Slack notification*
 
 ---
 
@@ -430,7 +430,7 @@ base_url = (
 if not base_url:
     raise RuntimeError(
         "Set ALGENTA_BASE_URL, DE_BASE_URL, or ALGENTA_API_URL before running this example. "
-        "Use https://api.algenta.ai only in Cloud Managed."
+        "Use https://api.codna.ai only in Cloud Managed."
     )
 
 # Get tools list
@@ -457,7 +457,7 @@ config = {
 }
 
 algenta_agent = MCPAgent(
-    name="AlgentaDecisionAgent",
+    name="CodnaDecisionAgent",
     system_message="You help make data-driven decisions using Monte Carlo simulations.",
     mcp_config=config,
 )
@@ -483,7 +483,7 @@ base_url = (
 if not base_url:
     raise RuntimeError(
         "Set ALGENTA_BASE_URL, DE_BASE_URL, or ALGENTA_API_URL before running this example. "
-        "Use https://api.algenta.ai only in Cloud Managed."
+        "Use https://api.codna.ai only in Cloud Managed."
     )
 
 # Run a simulation
@@ -550,7 +550,7 @@ mcp-server:
 ## Security Notes
 
 - The stdio transport runs locally — API key is only in your environment
-- The HTTP transport authenticates downstream to the Algenta API with your key
+- The HTTP transport authenticates downstream to the Codna API with your key
 - Add your own authentication layer (API gateway / Nginx) in front of the MCP HTTP port in production
 - The `/mcp/tools` list endpoint on the FastAPI server is public (no sensitive data)
 - All actual tool calls require `ALGENTA_API_KEY` or `DE_API_KEY` to be set
@@ -567,7 +567,7 @@ mcp-server:
 
 **`API error 401: Unauthorized`**
 → In Cloud Managed, check or rotate the key at
-  `https://app.algenta.ai/dashboard/api-keys`. In `self_hosted` and
+  `https://app.codna.ai/dashboard/api-keys`. In `self_hosted` and
   `air_gapped`, validate or rotate the key in your self-hosted operator
   deployment.
 

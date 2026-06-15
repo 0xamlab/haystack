@@ -82,7 +82,7 @@ def _validated_verification_base_url(
     except RuntimeEgressPolicyDeniedError as exc:
         if exc.decision.reason == "algenta_cloud_disabled":
             raise ValueError(
-                "Private profiles cannot verify against Algenta-owned cloud URLs. "
+                "Private profiles cannot verify against Codna-owned cloud URLs. "
                 "Configure ALGENTA_BASE_URL / DE_BASE_URL / ALGENTA_API_URL or pass --base-url."
             ) from exc
         raise

@@ -30,7 +30,7 @@ class ErrorResponse(BaseModel):
         details: list[ErrorDetail] | None = None,
         docs_url: str | None = None,
     ) -> "ErrorResponse":
-        base_url = "https://docs.algenta.ai/errors"
+        base_url = "https://docs.codna.ai/errors"
         return cls(
             error=cls.ErrorBody(
                 code=code,

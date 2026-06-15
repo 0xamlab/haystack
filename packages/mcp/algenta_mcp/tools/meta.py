@@ -1,4 +1,4 @@
-"""MCP tools for machine-readable Algenta platform contract + runtime-manifest discovery.
+"""MCP tools for machine-readable Codna platform contract + runtime-manifest discovery.
 
 Thin proxies: each fetches the authoritative contract / runtime manifest from the API and returns
 it verbatim. The standalone package deliberately does NOT re-validate against engine-internal
@@ -16,7 +16,7 @@ from algenta_mcp.client import api
 GET_CONTRACT_SPEC: dict[str, Any] = {
     "name": "get_contract",
     "description": (
-        "Get the machine-readable Algenta public contract. "
+        "Get the machine-readable Codna public contract. "
         "Use this when an agent needs the canonical discovery, summary, query, "
         "batch, SQL report, governed filter rules, CLI, or MCP entrypoints "
         "before planning tool use."
@@ -31,7 +31,7 @@ GET_CONTRACT_SPEC: dict[str, Any] = {
 GET_RUNTIME_MANIFEST_SPEC: dict[str, Any] = {
     "name": "get_runtime_manifest",
     "description": (
-        "Get the signed Algenta runtime manifest. "
+        "Get the signed Codna runtime manifest. "
         "Use this when an agent needs the canonical runtime-core inventory, "
         "maturity states, proof matrix, typed failure contract, or release theorem "
         "before using runtime-backed execution paths."
@@ -46,7 +46,7 @@ GET_RUNTIME_MANIFEST_SPEC: dict[str, Any] = {
 GET_RUNTIME_RELEASE_VALIDATION_SPEC: dict[str, Any] = {
     "name": "get_runtime_release_validation",
     "description": (
-        "Get the authenticated Algenta runtime release validation result. "
+        "Get the authenticated Codna runtime release validation result. "
         "Use this when an agent needs the current manifest-listed release verdict, "
         "formal theorem conditions, or fail-closed proof status before using runtime-backed paths."
     ),
@@ -60,7 +60,7 @@ GET_RUNTIME_RELEASE_VALIDATION_SPEC: dict[str, Any] = {
 GET_RUNTIME_MODULES_SPEC: dict[str, Any] = {
     "name": "get_runtime_modules",
     "description": (
-        "Get the authenticated Algenta runtime module proof catalog. "
+        "Get the authenticated Codna runtime module proof catalog. "
         "Use this when an agent needs the shipping module inventory, proof-matrix entries, "
         "maturity counts, or compiled module evidence before using runtime-backed paths."
     ),
@@ -74,7 +74,7 @@ GET_RUNTIME_MODULES_SPEC: dict[str, Any] = {
 GET_RUNTIME_BENCHMARKS_SPEC: dict[str, Any] = {
     "name": "get_runtime_benchmarks",
     "description": (
-        "Get the authenticated Algenta runtime benchmark catalog. "
+        "Get the authenticated Codna runtime benchmark catalog. "
         "Use this when an agent needs benchmark classes, benchmark evidence paths, "
         "evaluation quality gates, SLO budgets, compiled artifacts, or module benchmark "
         "linkage before reasoning about runtime performance claims."

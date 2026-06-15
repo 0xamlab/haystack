@@ -1,6 +1,6 @@
 # algenta-sdk
 
-TypeScript and JavaScript SDK for Algenta public data, query, and simulation APIs.
+TypeScript and JavaScript SDK for Codna public data, query, and simulation APIs.
 
 ## Install
 
@@ -49,7 +49,7 @@ const mcpProviders = await client.listMcpProviders();
 The direct client now exposes a single customer-agnostic capability plane over
 data connectors, MCP providers, skills, native tools, and runtime libraries.
 Execution ownership remains authoritative: `algenta_managed` capabilities must
-execute through the Algenta service, while local runtime adapters only execute
+execute through the Codna service, while local runtime adapters only execute
 `client_managed` capabilities and fail closed otherwise.
 Checked-in request artifacts and runnable examples live in
 `examples/capability-plane/` and `examples/langgraph/capability_router.py`.
@@ -57,16 +57,16 @@ Checked-in request artifacts and runnable examples live in
 ## Direct Client Flow
 
 ```ts
-import { AlgentaClient, type QueryFilterSpec } from "algenta-sdk";
+import { CodnaClient, type QueryFilterSpec } from "algenta-sdk";
 
 const apiKey = process.env.ALGENTA_API_KEY ?? process.env.DE_API_KEY;
 if (!apiKey) {
   throw new Error("Set ALGENTA_API_KEY or DE_API_KEY before running this example.");
 }
 
-const client = new AlgentaClient({
+const client = new CodnaClient({
   apiKey,
-  baseUrl: "https://api.algenta.ai",
+  baseUrl: "https://api.codna.ai",
 });
 
 const datasets = await client.listDatasets({ search: "orders", compact: true });
@@ -247,10 +247,10 @@ Every stored repository `DecisionPlan` records planner provenance in
 
 `query()` remains available and unchanged when you only need the governed query body.
 
-Use `https://api.algenta.ai` only in Cloud Managed. `ALGENTA_DEPLOYMENT_MODE=self_hosted`
+Use `https://api.codna.ai` only in Cloud Managed. `ALGENTA_DEPLOYMENT_MODE=self_hosted`
 and `ALGENTA_DEPLOYMENT_MODE=air_gapped` must point `baseUrl` at your own
 self-hosted service and fail closed instead of silently falling back to
-Algenta cloud.
+Codna cloud.
 
 `client.getContract()` also handles older self-hosted nodes that still return
 `404` for `/v1/meta/contract` by falling back to `/openapi.json` and reading
@@ -566,16 +566,16 @@ Direct client calls use the same names under `client.*`, including
 ## Decision Runtime Helpers
 
 ```ts
-import { AlgentaClient } from "algenta-sdk";
+import { CodnaClient } from "algenta-sdk";
 
 const apiKey = process.env.ALGENTA_API_KEY ?? process.env.DE_API_KEY;
 if (!apiKey) {
   throw new Error("Set ALGENTA_API_KEY or DE_API_KEY before running this example.");
 }
 
-const client = new AlgentaClient({
+const client = new CodnaClient({
   apiKey,
-  baseUrl: "https://api.algenta.ai",
+  baseUrl: "https://api.codna.ai",
 });
 
 const recommendation = await client.recommend(
@@ -796,7 +796,7 @@ console.log(usage.billing_period, usage.quota_used_pct);
 ```
 
 `Runtime` uses the governed hosted or self-hosted data/query surface. Use
-Cloud Managed URLs only with `mode: "api"`. `mode: "self_hosted"` and private profiles must point `baseUrl` at your own self-hosted service and fail closed instead of silently falling back to Algenta cloud. In `mode: "api"` or `mode: "self_hosted"`, it now forwards the plan-aligned helper routes too:
+Cloud Managed URLs only with `mode: "api"`. `mode: "self_hosted"` and private profiles must point `baseUrl` at your own self-hosted service and fail closed instead of silently falling back to Codna cloud. In `mode: "api"` or `mode: "self_hosted"`, it now forwards the plan-aligned helper routes too:
 
 - `rt.listModels()`
 - `rt.resolveArtifactBridge({ repo_id, filename, revision, local_files_only })`
@@ -885,5 +885,5 @@ Cloud Managed URLs only with `mode: "api"`. `mode: "self_hosted"` and private pr
 
 ## Docs
 
-- [Algenta TypeScript docs](https://docs.algenta.ai/sdks/typescript)
-- [Direct API client guide](https://docs.algenta.ai/direct-api-client)
+- [Codna TypeScript docs](https://docs.codna.ai/sdks/typescript)
+- [Direct API client guide](https://docs.codna.ai/direct-api-client)

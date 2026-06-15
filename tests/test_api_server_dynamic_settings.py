@@ -269,13 +269,13 @@ def test_lifespan_rejects_private_profile_algenta_public_urls(
 ) -> None:
     try:
         monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "self_hosted")
-        monkeypatch.setenv("ALGENTA_APP_BASE_URL", "https://app.algenta.ai")
+        monkeypatch.setenv("ALGENTA_APP_BASE_URL", "https://app.codna.ai")
         _refresh_api_server_settings()
         with (
             _patched_lifespan_dependencies(_RunningMojoPool),
             pytest.raises(
                 PublicUrlConfigurationError,
-                match="ALGENTA_APP_BASE_URL / APP_BASE_URL / DE_APP_BASE_URL must not point to an Algenta-owned host",
+                match="ALGENTA_APP_BASE_URL / APP_BASE_URL / DE_APP_BASE_URL must not point to an Codna-owned host",
             ),
         ):
             with SyncASGIClient(app, manage_lifespan=True):
@@ -289,13 +289,13 @@ def test_lifespan_rejects_private_profile_algenta_public_api_urls(
 ) -> None:
     try:
         monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "self_hosted")
-        monkeypatch.setenv("API_PUBLIC_BASE_URL", "https://api.algenta.ai")
+        monkeypatch.setenv("API_PUBLIC_BASE_URL", "https://api.codna.ai")
         _refresh_api_server_settings()
         with (
             _patched_lifespan_dependencies(_RunningMojoPool),
             pytest.raises(
                 ValueError,
-                match="ALGENTA_API_PUBLIC_BASE_URL / API_PUBLIC_BASE_URL must not point to an Algenta-owned host",
+                match="ALGENTA_API_PUBLIC_BASE_URL / API_PUBLIC_BASE_URL must not point to an Codna-owned host",
             ),
         ):
             with SyncASGIClient(app, manage_lifespan=True):
@@ -699,8 +699,8 @@ def test_email_service_honors_environment_updates(
         welcome_html = captured_messages[-1][2]
         assert "https://api-a.customer.internal/v1/simulate" in welcome_html
         assert "https://console-a.customer.internal/dashboard" in welcome_html
-        assert "https://app.algenta.ai" not in welcome_html
-        assert "https://api.algenta.ai" not in welcome_html
+        assert "https://app.codna.ai" not in welcome_html
+        assert "https://api.codna.ai" not in welcome_html
 
         monkeypatch.setenv("ALGENTA_APP_BASE_URL", "https://console-b.customer.internal")
         monkeypatch.setenv("ALGENTA_API_PUBLIC_BASE_URL", "https://api-b.customer.internal")
@@ -716,7 +716,7 @@ def test_email_service_honors_environment_updates(
         )
         quota_html = captured_messages[-1][2]
         assert "https://console-b.customer.internal/dashboard/billing" in quota_html
-        assert "https://app.algenta.ai" not in quota_html
+        assert "https://app.codna.ai" not in quota_html
 
         monkeypatch.delenv("ALGENTA_DEPLOYMENT_MODE", raising=False)
         monkeypatch.delenv("ALGENTA_APP_BASE_URL", raising=False)
@@ -725,8 +725,8 @@ def test_email_service_honors_environment_updates(
         _refresh_api_server_settings()
         email_service.send_welcome_email("user@example.com", "Alice", "de_live_alpha")
         cloud_managed_html = captured_messages[-1][2]
-        assert "https://api.algenta.ai/v1/simulate" in cloud_managed_html
-        assert "https://app.algenta.ai/dashboard" in cloud_managed_html
+        assert "https://api.codna.ai/v1/simulate" in cloud_managed_html
+        assert "https://app.codna.ai/dashboard" in cloud_managed_html
         assert "https://internal.customer.example" not in cloud_managed_html
     finally:
         _refresh_api_server_settings()
@@ -761,7 +761,7 @@ def test_email_service_accepts_legacy_dashboard_alias(
         )
         quota_html = captured_messages[-1][2]
         assert "https://console.customer.internal/dashboard/billing" in quota_html
-        assert "https://app.algenta.ai" not in quota_html
+        assert "https://app.codna.ai" not in quota_html
     finally:
         _refresh_api_server_settings()
 
@@ -830,7 +830,7 @@ def test_playground_upgrade_hint_uses_request_origin_in_private_profile(
         request = SimpleNamespace(base_url="https://decision.customer.internal/")
         hint = playground_router._dashboard_upgrade_hint(request)
         assert hint == "https://decision.customer.internal/dashboard — free tier: 500 simulations/month"
-        assert "algenta.ai" not in hint
+        assert "codna.ai" not in hint
     finally:
         _refresh_api_server_settings()
 

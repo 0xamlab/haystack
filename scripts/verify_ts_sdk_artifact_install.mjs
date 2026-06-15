@@ -53,7 +53,7 @@ const EXPECTED_LICENSE = "Apache-2.0";
 // Real runtime (non-type) exports a consumer would reach for — touched by both smokes so the
 // gate fails if a re-export silently drops out of the published bundle.
 const REQUIRED_VALUE_EXPORTS = [
-  "AlgentaClient",
+  "CodnaClient",
   "DecisionEngineClient",
   "Runtime",
   "MojoRuntime",
@@ -126,7 +126,7 @@ function main() {
       [
         "const sdk = require('algenta-sdk');",
         `for (const k of ${JSON.stringify(REQUIRED_VALUE_EXPORTS)}) if (sdk[k] === undefined) throw new Error('CJS missing export: ' + k);`,
-        "if (typeof sdk.AlgentaClient !== 'function') throw new Error('CJS AlgentaClient is not a class');",
+        "if (typeof sdk.CodnaClient !== 'function') throw new Error('CJS CodnaClient is not a class');",
         "console.log('  [cjs] require OK — CONTRACT_VERSION=' + sdk.CONTRACT_VERSION);",
         "",
       ].join("\n"),
@@ -138,8 +138,8 @@ function main() {
     writeFileSync(
       join(projDir, "smoke.mjs"),
       [
-        "import { AlgentaClient, DecisionEngineClient, Runtime, CONTRACT_VERSION, DEFAULT_BASE_URL } from 'algenta-sdk';",
-        "for (const [n, v] of Object.entries({ AlgentaClient, DecisionEngineClient, Runtime })) if (typeof v !== 'function') throw new Error('ESM ' + n + ' is not a class');",
+        "import { CodnaClient, DecisionEngineClient, Runtime, CONTRACT_VERSION, DEFAULT_BASE_URL } from 'algenta-sdk';",
+        "for (const [n, v] of Object.entries({ CodnaClient, DecisionEngineClient, Runtime })) if (typeof v !== 'function') throw new Error('ESM ' + n + ' is not a class');",
         "if (!CONTRACT_VERSION || !DEFAULT_BASE_URL) throw new Error('ESM constant export missing');",
         "console.log('  [esm] named imports OK — CONTRACT_VERSION=' + CONTRACT_VERSION);",
         "",
@@ -174,12 +174,12 @@ function main() {
     writeFileSync(
       join(projDir, "consumer.ts"),
       [
-        "import { AlgentaClient, DecisionEngineClient, Runtime, CONTRACT_VERSION } from 'algenta-sdk';",
-        "import type { AlgentaClientConfig, DecisionEngineClientConfig, RuntimeConfig } from 'algenta-sdk';",
-        "type _A = AlgentaClientConfig;",
+        "import { CodnaClient, DecisionEngineClient, Runtime, CONTRACT_VERSION } from 'algenta-sdk';",
+        "import type { CodnaClientConfig, DecisionEngineClientConfig, RuntimeConfig } from 'algenta-sdk';",
+        "type _A = CodnaClientConfig;",
         "type _D = DecisionEngineClientConfig;",
         "type _R = RuntimeConfig;",
-        "const ctors: Array<new (...args: never[]) => unknown> = [AlgentaClient, DecisionEngineClient, Runtime];",
+        "const ctors: Array<new (...args: never[]) => unknown> = [CodnaClient, DecisionEngineClient, Runtime];",
         "const version: string = CONTRACT_VERSION;",
         "void ctors; void version;",
         "void (0 as unknown as _A); void (0 as unknown as _D); void (0 as unknown as _R);",

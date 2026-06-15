@@ -1,6 +1,6 @@
-# Algenta — Local Runtime
+# Codna — Local Runtime
 
-Use Algenta locally in two distinct ways:
+Use Codna locally in two distinct ways:
 
 - pure local `algenta.Runtime` for local development and deterministic embedded execution
 - hosted control plane plus local execution when you need the public API key, stored device license, and offline runtime history path
@@ -22,7 +22,7 @@ print(result.result)
 
 ## 2. Hosted control plane with local execution
 
-Use this path when you want the public Algenta API key contract plus local
+Use this path when you want the public Codna API key contract plus local
 runtime execution and offline task history.
 
 Published package install:
@@ -170,7 +170,7 @@ const report = await rt.querySqlReport({
 
 These hosted local-execution examples are the Cloud Managed path. In
 `self_hosted` and `air_gapped`, pass an explicit self-hosted `base_url` /
-`baseUrl` and fail closed instead of silently falling back to Algenta cloud.
+`baseUrl` and fail closed instead of silently falling back to Codna cloud.
 
 That keeps the local runtime example aligned with the same public contract as
 the API, direct SDKs, CLI, and MCP:

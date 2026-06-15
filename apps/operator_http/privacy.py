@@ -15,7 +15,7 @@ from apps.privacy_policy import (
 
 _DEFAULT_OPERATOR_ENV_KEYS = ("ALGENTA_BASE_URL", "DE_BASE_URL", "ALGENTA_API_URL")
 _DEFAULT_OPERATOR_APP_ENV_KEYS = ("ALGENTA_APP_BASE_URL", "APP_BASE_URL", "DE_APP_BASE_URL")
-_DEFAULT_OPERATOR_CONSOLE_BASE_URL = "https://app.algenta.ai"
+_DEFAULT_OPERATOR_CONSOLE_BASE_URL = "https://app.codna.ai"
 
 
 def _env(mapping: Mapping[str, str], key: str) -> str | None:
@@ -84,12 +84,12 @@ def validate_operator_api_base_url(
     if is_algenta_owned_destination(destination.host):
         if require_self_hosted:
             raise ValueError(
-                f"{surface} requires a self-hosted base URL and cannot target Algenta-owned cloud URLs. "
+                f"{surface} requires a self-hosted base URL and cannot target Codna-owned cloud URLs. "
                 "Configure ALGENTA_BASE_URL / DE_BASE_URL / ALGENTA_API_URL."
             )
         if policy.disable_cloud:
             raise ValueError(
-                f"{surface} private profiles cannot target Algenta-owned cloud URLs. "
+                f"{surface} private profiles cannot target Codna-owned cloud URLs. "
                 "Configure ALGENTA_BASE_URL / DE_BASE_URL / ALGENTA_API_URL."
             )
 

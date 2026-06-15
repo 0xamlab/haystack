@@ -10,9 +10,9 @@ dimension or bridge keys live one or more joins away.
 Start with [Quickstart](/quickstart), then use [Query](/query) and
 [Verify](/verify) as the primary exact-query flow.
 
-## What Algenta supports
+## What Codna supports
 
-Algenta already supports explicit multi-hop joins on the exact-query surface.
+Codna already supports explicit multi-hop joins on the exact-query surface.
 
 - `POST /v1/query` accepts `join_path`
 - `POST /v1/verify` accepts the same exact request body before execution
@@ -45,7 +45,7 @@ calculation shape.
 ## Mission functionality mapping
 
 If you are porting a governed analysis flow from Mission, use the public
-Algenta surfaces below. Mission wrappers such as `query_sql_source` and
+Codna surfaces below. Mission wrappers such as `query_sql_source` and
 `register_sql_source` are **not** public hosted endpoints here.
 
 | Mission functionality | Public HTTP / SDK / CLI surface | MCP tool | Checked-in example | Notes |
@@ -83,7 +83,7 @@ Replace every source name, dataset id, key, and column in the examples below
 with the exact names from your own schema summary. Do not guess names.
 
 The HTTP and SDK examples below use Cloud Managed defaults. In `self_hosted`
-and `air_gapped`, replace `https://api.algenta.ai` with your self-hosted base
+and `air_gapped`, replace `https://api.codna.ai` with your self-hosted base
 URL, pass an explicit self-hosted `base_url` / `baseUrl` when constructing
 clients, and use the API key provisioned by your self-hosted operator
 deployment.
@@ -97,7 +97,7 @@ if [ -z "$ALGENTA_API_KEY" ]; then
   exit 1
 fi
 
-ALGENTA_BASE_URL="${ALGENTA_BASE_URL:-${DE_BASE_URL:-${ALGENTA_API_URL:-https://api.algenta.ai}}}"
+ALGENTA_BASE_URL="${ALGENTA_BASE_URL:-${DE_BASE_URL:-${ALGENTA_API_URL:-https://api.codna.ai}}}"
 ```
 
 ## HTTP example: discover the exact datasets first
@@ -164,13 +164,13 @@ The example request uses:
 ```python
 import os
 
-from decision_engine import AlgentaClient
+from decision_engine import CodnaClient
 
 api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
 if not api_key:
     raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
 
-client = AlgentaClient(api_key=api_key)
+client = CodnaClient(api_key=api_key)
 
 request = {
     "source_name": "orders_facts",
@@ -224,14 +224,14 @@ print(result.join_path)
 ## TypeScript SDK example
 
 ```typescript
-import { AlgentaClient } from "algenta-sdk";
+import { CodnaClient } from "algenta-sdk";
 
 const apiKey = process.env.ALGENTA_API_KEY ?? process.env.DE_API_KEY;
 if (!apiKey) {
   throw new Error("Set ALGENTA_API_KEY or DE_API_KEY before running this example.");
 }
 
-const client = new AlgentaClient({
+const client = new CodnaClient({
   apiKey,
 });
 
@@ -364,7 +364,7 @@ They show the public replacements for:
 
 ## Mission Mojo LLM modules: current status
 
-Mission also exposes the local Algenta runtime library lane through
+Mission also exposes the local Codna runtime library lane through
 `get_algenta_library_health`, `list_algenta_libraries`,
 `inspect_algenta_library`, and `execute_algenta_library`. That lane is real,
 but it is **not** the default replacement for governed multihop data analysis.

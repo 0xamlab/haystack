@@ -439,7 +439,7 @@ Recommended first proof once Tier 3 customer secrets are present:
 
 ## Fivetran validation-only wave
 
-This is additive to the existing three-tier matrix. It does not change Algenta's
+This is additive to the existing three-tier matrix. It does not change Codna's
 runtime connector layer.
 
 Wave 1 is a frozen top-20 Fivetran connector set mirrored into both Snowflake and

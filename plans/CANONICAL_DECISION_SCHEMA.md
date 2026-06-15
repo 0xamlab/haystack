@@ -1,6 +1,6 @@
 # Canonical Decision Schema v1.0
 
-> Phase 2 — Algenta Decision Engine
+> Phase 2 — Codna Decision Engine
 > Schema version: `"1.0"`
 > Last updated: 2026-04-01
 
@@ -212,7 +212,7 @@ Coefficient range: `[-1.0, 1.0]`.
 
 ## 6. Objective Function Syntax
 
-The `objective_function` field uses the Algenta expression language:
+The `objective_function` field uses the Codna expression language:
 
 ```
 revenue - cost

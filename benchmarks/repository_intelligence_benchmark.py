@@ -185,7 +185,7 @@ def _write_sample_repository(repo_path: Path) -> int:
     )
     (repo_path / "README.md").write_text(
         "# Customer Repository\n\n"
-        "This deterministic fixture exercises Algenta Repository Intelligence "
+        "This deterministic fixture exercises Codna Repository Intelligence "
         "for repository benchmark proof.\n",
         encoding="utf-8",
     )
@@ -587,7 +587,7 @@ def run_benchmark(
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=(
-            "Benchmark the deterministic local Algenta Repository Intelligence "
+            "Benchmark the deterministic local Codna Repository Intelligence "
             "workflow for repository snapshot, triage, plan, simulation, and apply gating."
         )
     )

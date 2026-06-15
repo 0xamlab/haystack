@@ -1,6 +1,6 @@
 # algenta-sdk
 
-Python SDK for Algenta public data, query, and simulation APIs.
+Python SDK for Codna public data, query, and simulation APIs.
 
 ## Install
 
@@ -51,7 +51,7 @@ mcp_providers = client.list_mcp_providers()
 The direct client now exposes a single customer-agnostic capability plane over
 data connectors, MCP providers, skills, native tools, and runtime libraries.
 Execution ownership remains authoritative: `algenta_managed` capabilities must
-execute through the Algenta service, while local runtime adapters only execute
+execute through the Codna service, while local runtime adapters only execute
 `client_managed` capabilities and fail closed otherwise.
 Checked-in request artifacts and runnable examples live in
 `examples/capability-plane/` and `examples/langgraph/capability_router.py`.
@@ -61,15 +61,15 @@ Checked-in request artifacts and runnable examples live in
 ```python
 import os
 
-from decision_engine import AlgentaClient, QueryFilterCondition, QueryFilterSpec
+from decision_engine import CodnaClient, QueryFilterCondition, QueryFilterSpec
 
 api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
 if not api_key:
     raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
 
-client = AlgentaClient(
+client = CodnaClient(
     api_key=api_key,
-    base_url="https://api.algenta.ai",
+    base_url="https://api.codna.ai",
 )
 
 datasets = client.list_datasets(search="orders", compact=True)
@@ -172,10 +172,10 @@ client.delete_connector(connector.id)
 
 `query()` remains available and unchanged when you only need the response body.
 
-Use `https://api.algenta.ai` only in Cloud Managed. `ALGENTA_DEPLOYMENT_MODE=self_hosted`
+Use `https://api.codna.ai` only in Cloud Managed. `ALGENTA_DEPLOYMENT_MODE=self_hosted`
 and `ALGENTA_DEPLOYMENT_MODE=air_gapped` must point `base_url` at your own
 self-hosted service and fail closed instead of silently falling back to
-Algenta cloud.
+Codna cloud.
 
 `client.get_contract()` also handles older self-hosted nodes that still return
 `404` for `/v1/meta/contract` by falling back to `/openapi.json` and reading
@@ -502,5 +502,5 @@ hand-rolling ad hoc dictionaries.
 
 ## Docs
 
-- [Algenta docs](https://docs.algenta.ai)
-- [Direct API client guide](https://docs.algenta.ai/direct-api-client)
+- [Codna docs](https://docs.codna.ai)
+- [Direct API client guide](https://docs.codna.ai/direct-api-client)

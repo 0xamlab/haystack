@@ -138,7 +138,7 @@ fn _find_char(s: String, ch: UInt8, start: Int) -> Int:
 struct URL(Copyable, Movable):
     """Parsed URL components."""
     var scheme: String      # "https"
-    var host: String        # "api.algenta.ai"
+    var host: String        # "api.codna.ai"
     var port: Int           # 443 (0 = default/unspecified)
     var path: String        # "/v1/simulate"
     var query: String       # "mode=auto&runs=10000"

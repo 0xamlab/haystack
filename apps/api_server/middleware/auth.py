@@ -64,7 +64,7 @@ async def get_current_org(
                         "header (X-API-Key also accepted for legacy clients)."
                     ),
                     "request_id": getattr(request.state, "request_id", None),
-                    "docs_url": "https://docs.algenta.ai/errors/authentication_required",
+                    "docs_url": "https://docs.codna.ai/errors/authentication_required",
                 }
             },
         )
@@ -78,7 +78,7 @@ async def get_current_org(
                     "code": "invalid_api_key",
                     "message": ("The API key provided is invalid, expired, or has been revoked."),
                     "request_id": getattr(request.state, "request_id", None),
-                    "docs_url": "https://docs.algenta.ai/errors/invalid_api_key",
+                    "docs_url": "https://docs.codna.ai/errors/invalid_api_key",
                 }
             },
         )
@@ -210,7 +210,7 @@ async def require_verified_email(
                         "Verify your email address before using this endpoint. "
                         "Check your inbox or request a new verification link via /auth/verify."
                     ),
-                    "docs_url": "https://docs.algenta.ai/errors/email_verification_required",
+                    "docs_url": "https://docs.codna.ai/errors/email_verification_required",
                 }
             },
         )

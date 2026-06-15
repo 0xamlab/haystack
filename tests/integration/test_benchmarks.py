@@ -1,7 +1,7 @@
 """
 Phase 15: Speed/Benchmark Tests Across All Engine Types with Timing CSV Output
 
-Comprehensive performance benchmarks for the Algenta Decision Engine.
+Comprehensive performance benchmarks for the Codna Decision Engine.
 Measures latency across all 10 engine types, variable counts, distributions,
 concurrency levels, and produces CSV + human-readable summary reports.
 

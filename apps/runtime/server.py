@@ -1,5 +1,5 @@
 """
-gRPC server — implements AlgentaRuntime service over unix socket / TCP loopback.
+gRPC server — implements CodnaRuntime service over unix socket / TCP loopback.
 
 Socket path:  /tmp/algenta-runtime/daemon.sock   (unix, macOS/Linux)
 TCP fallback: 127.0.0.1:50099                    (Windows / explicit override)
@@ -43,8 +43,8 @@ _DAEMON_TCP = os.environ.get("ALGENTA_DAEMON_TCP", "127.0.0.1:50099")
 _RUNTIME_VERSION = "0.1.0"
 
 
-class _AlgentaRuntimeServicer(runtime_pb2_grpc_module.AlgentaRuntimeServicer):  # type: ignore[misc]
-    """Concrete implementation of the AlgentaRuntime gRPC service."""
+class _CodnaRuntimeServicer(runtime_pb2_grpc_module.CodnaRuntimeServicer):  # type: ignore[misc]
+    """Concrete implementation of the CodnaRuntime gRPC service."""
 
     def __init__(self, executor: Executor, start_time: float) -> None:
         self._executor = executor
@@ -284,8 +284,8 @@ class RuntimeServer:
 
     async def start(self) -> None:
         self._server = grpc.aio.server()
-        runtime_pb2_grpc_module.add_AlgentaRuntimeServicer_to_server(
-            _AlgentaRuntimeServicer(self._executor, self._start_time),
+        runtime_pb2_grpc_module.add_CodnaRuntimeServicer_to_server(
+            _CodnaRuntimeServicer(self._executor, self._start_time),
             self._server,
         )
 

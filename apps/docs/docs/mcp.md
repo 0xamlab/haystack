@@ -4,7 +4,7 @@ sidebar_position: 7
 
 # MCP
 
-Algenta exposes a broad MCP surface, including the governed data/query flow from this rollout.
+Codna exposes a broad MCP surface, including the governed data/query flow from this rollout.
 
 ## Current truth
 
@@ -169,7 +169,7 @@ MCP is a first-class supported integration surface, but it is not the only produ
 
 Use MCP when:
 
-- you are integrating Algenta into an agent workflow
+- you are integrating Codna into an agent workflow
 - you want structured tool calling
 - you want the runtime surfaces available to agent systems without inventing ad hoc wrappers
 

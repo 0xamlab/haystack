@@ -65,7 +65,7 @@ def test_multihop_docs_are_linked_from_primary_surfaces() -> None:
     assert "`base_url` / `baseUrl`" in guide
     assert "self-hosted operator" in guide
     assert 'ALGENTA_API_KEY="${ALGENTA_API_KEY:-${DE_API_KEY:-}}"' in guide
-    assert 'ALGENTA_BASE_URL="${ALGENTA_BASE_URL:-${DE_BASE_URL:-${ALGENTA_API_URL:-https://api.algenta.ai}}}"' in guide
+    assert 'ALGENTA_BASE_URL="${ALGENTA_BASE_URL:-${DE_BASE_URL:-${ALGENTA_API_URL:-https://api.codna.ai}}}"' in guide
     assert 'api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")' in guide
     assert 'raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")' in guide
     assert "de_live_YOUR_KEY" not in guide
@@ -112,7 +112,7 @@ def test_multihop_docs_are_linked_from_primary_surfaces() -> None:
     assert "mission_mojo_llm_module_status.json" in examples_readme
     assert 'ALGENTA_API_KEY="${ALGENTA_API_KEY:-${DE_API_KEY:-}}"' in examples_readme
     assert 'echo "Set ALGENTA_API_KEY or DE_API_KEY before running this example."' in examples_readme
-    assert 'ALGENTA_BASE_URL="${ALGENTA_BASE_URL:-${DE_BASE_URL:-${ALGENTA_API_URL:-https://api.algenta.ai}}}"' in examples_readme
+    assert 'ALGENTA_BASE_URL="${ALGENTA_BASE_URL:-${DE_BASE_URL:-${ALGENTA_API_URL:-https://api.codna.ai}}}"' in examples_readme
     assert 'curl -X POST "${ALGENTA_BASE_URL}/v1/data/connect"' in examples_readme
     assert 'Authorization: Bearer ${ALGENTA_API_KEY}' in examples_readme
     assert "python_public_client_flow.py" in guide

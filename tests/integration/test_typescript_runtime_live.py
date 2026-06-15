@@ -2204,9 +2204,9 @@ def _node_api_key_probe() -> dict[str, Any]:
         candidates = ", ".join(str(path) for path in TS_DIST_ENTRY_CANDIDATES)
         raise RuntimeError(f"TypeScript SDK dist entry missing. Checked: {candidates}")
     script = """
-import { AlgentaClient } from %DIST_ENTRY%;
+import { CodnaClient } from %DIST_ENTRY%;
 
-const client = new AlgentaClient({
+const client = new CodnaClient({
   apiKey: process.env.DE_API_KEY,
   baseUrl: process.env.DE_BASE_URL,
   maxRetries: 0,
@@ -2225,16 +2225,16 @@ function deviceHeaders(deviceId, overrides = {}) {
       ? overrides.hostnameHash
       : "deadbeef".repeat(8);
   return {
-    "X-Algenta-Device-Id": deviceId,
-    "X-Algenta-Platform": "linux",
-    "X-Algenta-Platform-Version": "6.8",
-    "X-Algenta-Hostname-Hash": hostnameHash,
-    "X-Algenta-SDK-Version": "algenta-ts-live/1.0.0",
+    "X-Codna-Device-Id": deviceId,
+    "X-Codna-Platform": "linux",
+    "X-Codna-Platform-Version": "6.8",
+    "X-Codna-Hostname-Hash": hostnameHash,
+    "X-Codna-SDK-Version": "algenta-ts-live/1.0.0",
   };
 }
 
 async function callHostedMe(rawKey, deviceId, overrides = {}) {
-  const boundClient = new AlgentaClient({
+  const boundClient = new CodnaClient({
     apiKey: rawKey,
     baseUrl: process.env.DE_BASE_URL,
     maxRetries: 0,
@@ -2269,12 +2269,12 @@ async function callHostedMe(rawKey, deviceId, overrides = {}) {
 }
 
 async function callHostedMeWithEnvDeviceId(rawKey, deviceId) {
-  const previousAlgentaDeviceId = process.env.ALGENTA_DEVICE_ID;
+  const previousCodnaDeviceId = process.env.ALGENTA_DEVICE_ID;
   const previousDeDeviceId = process.env.DE_DEVICE_ID;
   process.env.ALGENTA_DEVICE_ID = deviceId;
   process.env.DE_DEVICE_ID = deviceId;
   try {
-    const boundClient = new AlgentaClient({
+    const boundClient = new CodnaClient({
       apiKey: rawKey,
       baseUrl: process.env.DE_BASE_URL,
       maxRetries: 0,
@@ -2304,10 +2304,10 @@ async function callHostedMeWithEnvDeviceId(rawKey, deviceId) {
       message,
     };
   } finally {
-    if (previousAlgentaDeviceId === undefined) {
+    if (previousCodnaDeviceId === undefined) {
       delete process.env.ALGENTA_DEVICE_ID;
     } else {
-      process.env.ALGENTA_DEVICE_ID = previousAlgentaDeviceId;
+      process.env.ALGENTA_DEVICE_ID = previousCodnaDeviceId;
     }
     if (previousDeDeviceId === undefined) {
       delete process.env.DE_DEVICE_ID;
@@ -2524,12 +2524,12 @@ def run_typescript_runtime_connector_matrix() -> None:
     assert local_registration["row_count"] > 0
     assert local_count["valid"] is True
     assert float(local_count["scalar"]) == float(local_registration["row_count"])
-    assert "Algenta Source Import" in str(local["preview"])
+    assert "Codna Source Import" in str(local["preview"])
     assert REAL_MARCH_ORDERS.stem in str(local["preview"])
 
     assert local_bundle["registrationCount"] == 3
     assert local_bundle["failureCount"] == 0
-    assert "Algenta Source Bundle" in str(local_bundle["preview"])
+    assert "Codna Source Bundle" in str(local_bundle["preview"])
     assert "orders_detail_bundle" in str(local_bundle["preview"])
     assert "orders_financial_bundle" in str(local_bundle["preview"])
     assert "top_inaccurate_items_bundle" in str(local_bundle["preview"])
@@ -2541,7 +2541,7 @@ def run_typescript_runtime_connector_matrix() -> None:
     assert s3["valid"] is True
     assert s3["rowCount"] > 0
     assert float(s3["scalar"]) == float(s3["rowCount"])
-    assert "Algenta Source Import" in str(s3["preview"])
+    assert "Codna Source Import" in str(s3["preview"])
     assert PUBLIC_S3_SOURCE_REF in str(s3["preview"])
 
     assert sqlite["valid"] is True
@@ -2554,7 +2554,7 @@ def run_typescript_runtime_connector_matrix() -> None:
 
     assert api_bundle["registrationCount"] == 4
     assert api_bundle["failureCount"] == 0
-    assert "Algenta Source Bundle" in str(api_bundle["preview"])
+    assert "Codna Source Bundle" in str(api_bundle["preview"])
     assert "orders_sqlite_bundle" in str(api_bundle["preview"])
     assert "orders_postgres_bundle" in str(api_bundle["preview"])
     assert "noaa_hourly_bundle" in str(api_bundle["preview"])

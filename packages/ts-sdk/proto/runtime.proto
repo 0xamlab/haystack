@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package algenta.runtime.v1;
 
-service AlgentaRuntime {
+service CodnaRuntime {
   rpc Health(HealthRequest) returns (HealthResponse);
   rpc GetRuntimeInfo(RuntimeInfoRequest) returns (RuntimeInfoResponse);
   rpc ListModules(ListModulesRequest) returns (ListModulesResponse);

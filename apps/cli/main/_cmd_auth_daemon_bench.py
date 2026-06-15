@@ -39,7 +39,7 @@ from apps.validation_error_details import format_validation_error_message
 
 _RUNTIME_READY_TIMEOUT_SECONDS = 3.0
 _RUNTIME_READY_POLL_SECONDS = 0.1
-_RUNTIME_NOT_RUNNING_MESSAGE = "Algenta Runtime is not running. Start with: de runtime start"
+_RUNTIME_NOT_RUNNING_MESSAGE = "Codna Runtime is not running. Start with: de runtime start"
 
 
 # Facade-routed proxies. Tests monkey-patch these on `apps.cli.main` (the
@@ -178,7 +178,7 @@ def _login_api_key_help_text() -> str:
             "No API key provided. Create one from your self-hosted admin surface or API base URL: "
             f"{base_url}"
         )
-    return "No API key provided. Get one from https://app.algenta.ai/dashboard/api-keys"
+    return "No API key provided. Get one from https://app.codna.ai/dashboard/api-keys"
 
 
 def cmd_login(api_key: str = "") -> None:
@@ -275,13 +275,13 @@ async def _wait_for_runtime_ready(
     if last_health.get("status") == "unreachable":
         raise RuntimeError(_RUNTIME_NOT_RUNNING_MESSAGE)
     raise RuntimeError(
-        "Algenta Runtime did not report healthy status. "
+        "Codna Runtime did not report healthy status. "
         f"Last health payload: {json.dumps(last_health, default=str)}"
     )
 
 
 def cmd_runtime_start() -> None:
-    """Start the Algenta local runtime daemon in the background."""
+    """Start the Codna local runtime daemon in the background."""
     from apps.runtime.daemon import cmd_start
 
     cmd_start(foreground=False)
@@ -496,7 +496,7 @@ def cmd_benchmark() -> None:
     summary_payload, summary_source = _load_benchmark_summary(root)
 
     print(f"\n{'─' * 62}")
-    print("  Algenta — Mojo vs Python Benchmark")
+    print("  Codna — Mojo vs Python Benchmark")
     print(f"{'─' * 62}\n")
 
     # Try to load real benchmark data

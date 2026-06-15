@@ -1060,7 +1060,7 @@ For ratio/count queries (e.g. "how many had a discount?"):
 
 def _system_prompt(dataset_id: str | None = None, source_id: str | None = None) -> str:
     base = (
-        "You are an AI assistant connected to the Algenta Decision Engine. "
+        "You are an AI assistant connected to the Codna Decision Engine. "
         "Use tools to answer every question. Do not make up numbers — always call a tool to get data.\n\n"
     )
     if dataset_id and source_id:

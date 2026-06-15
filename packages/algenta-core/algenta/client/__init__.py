@@ -1,5 +1,5 @@
 """
-algenta.client — Cloud API client for the Algenta platform.
+algenta.client — Cloud API client for the Codna platform.
 
 The upgrade path from local to cloud. When your workload grows beyond
 local processing, switch to the hosted API with one line change.
@@ -13,17 +13,17 @@ Usage:
   result = simulate.risk(revenue=100000, cost=70000)
 
   # Cloud — same API, infinite scale
-  from algenta import AlgentaClient
+  from algenta import CodnaClient
   api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
   if not api_key:
       raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
-  client = AlgentaClient(api_key=api_key)
+  client = CodnaClient(api_key=api_key)
   result = client.simulate.risk(revenue=100000, cost=70000, runs=1_000_000)
 
 The cloud example above is the Cloud Managed path. In `self_hosted` and
 `air_gapped`, pass an explicit self-hosted `base_url` and use the API key
 provisioned by your self-hosted operator deployment instead. Private profiles
-fail closed and do not silently fall back to Algenta cloud.
+fail closed and do not silently fall back to Codna cloud.
 """
 
 from __future__ import annotations
@@ -48,9 +48,9 @@ from algenta.client._llm import _LLMMixin  # noqa: E402
 from algenta.client._agent_runs import _AgentRunsMixin  # noqa: E402
 
 
-class AlgentaClient(_AccountBillingMixin, _DecisionsMixin, _ProductsJobsTriggersMixin, _CapabilitiesSkillsMixin, _QueryResolveMixin, _ConnectorsDatasetsRepositoryMixin, _DeploymentsModelsMixin, _LLMMixin, _AgentRunsMixin):
+class CodnaClient(_AccountBillingMixin, _DecisionsMixin, _ProductsJobsTriggersMixin, _CapabilitiesSkillsMixin, _QueryResolveMixin, _ConnectorsDatasetsRepositoryMixin, _DeploymentsModelsMixin, _LLMMixin, _AgentRunsMixin):
     """
-    Algenta cloud API client.
+    Codna cloud API client.
 
     Wraps all local algenta functions with cloud execution.
     All methods have the same signature as their local equivalents,
@@ -62,7 +62,7 @@ class AlgentaClient(_AccountBillingMixin, _DecisionsMixin, _ProductsJobsTriggers
         api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
         if not api_key:
             raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
-        client = AlgentaClient(api_key=api_key)
+        client = CodnaClient(api_key=api_key)
         result = client.simulate.risk(revenue=100000, cost=70000, runs=500000)
         print(result.expected_value, result.probability_of_loss)
 
@@ -79,14 +79,14 @@ class AlgentaClient(_AccountBillingMixin, _DecisionsMixin, _ProductsJobsTriggers
         self.api_key = api_key or os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
         self.base_url = resolve_cloud_base_url(
             explicit_base_url=base_url,
-            component="AlgentaClient",
+            component="CodnaClient",
         )
 
         if not self.api_key:
             raise ValueError(
                 "API key required. Pass api_key explicitly or set ALGENTA_API_KEY / DE_API_KEY environment variables.\n"
                 + api_key_help_text(
-                    component="AlgentaClient",
+                    component="CodnaClient",
                     fallback_base_url=self.base_url,
                 )
             )

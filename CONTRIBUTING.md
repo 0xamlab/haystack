@@ -1,4 +1,4 @@
-# Contributing to Algenta Decision Engine
+# Contributing to Codna Decision Engine
 
 Thank you for your interest in contributing! We follow the open-core model:
 - **Framework, API, portal, SDKs, integrations** — open to contributions
@@ -98,11 +98,11 @@ refactor(sdk): simplify retry logic
 ## Contributor License Agreement
 
 By submitting a PR, you agree that your contribution is licensed under the
-[Algenta Community License](./LICENSE) and you grant Algenta, Inc. a perpetual,
+[Codna Community License](./LICENSE) and you grant Codna, Inc. a perpetual,
 worldwide, irrevocable license to use your contribution in both open-source
 and commercial versions of this software.
 
-If your organization requires a CLA on file, contact: cla@algenta.ai
+If your organization requires a CLA on file, contact: cla@codna.ai
 
 ---
 
@@ -130,16 +130,16 @@ All CI checks must pass. Pre-commit hooks are configured in `.pre-commit-config.
 
 ## Reporting issues
 
-- **Security vulnerabilities** → security@algenta.ai (do NOT open public issues)
+- **Security vulnerabilities** → security@codna.ai (do NOT open public issues)
 - **Bugs** → [GitHub Issues](https://github.com/algenta/decision-engine/issues) with the `bug` label
 - **Feature requests** → [GitHub Discussions](https://github.com/algenta/decision-engine/discussions)
-- **Questions** → [Discord](https://algenta.ai/discord)
+- **Questions** → [Discord](https://codna.ai/discord)
 
 ---
 
 ## Community
 
-- Discord: https://algenta.ai/discord
+- Discord: https://codna.ai/discord
 - Twitter/X: @algenta_ai
-- Docs: https://docs.algenta.ai
-- Email: community@algenta.ai
+- Docs: https://docs.codna.ai
+- Email: community@codna.ai

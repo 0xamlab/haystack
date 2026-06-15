@@ -53,7 +53,7 @@ def _validate_runtime_config(
     if mode != "local":
         raise MojoRuntimeConfigurationError(
             "compute_runtime_unavailable",
-            "Python MojoRuntime only supports the local Algenta runtime in this rollout.",
+            "Python MojoRuntime only supports the local Codna runtime in this rollout.",
             {"mode": mode},
         )
 

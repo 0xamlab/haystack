@@ -1,5 +1,5 @@
 export {
-  AlgentaClient,
+  CodnaClient,
   DecisionEngineClient,
   DecisionEngineError,
   AuthenticationError,
@@ -24,7 +24,7 @@ export {
   MojoRuntimeConfigurationError,
   MojoRuntimeError,
 } from './mojo_errors.js';
-export type { AlgentaClientConfig, DecisionEngineClientConfig } from './client.js';
+export type { CodnaClientConfig, DecisionEngineClientConfig } from './client.js';
 export type {
   ImportBundlePreviewOptions,
   ImportBundlePreviewResult,

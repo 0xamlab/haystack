@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# Algenta Decision Engine — Mojo Engine Setup
+# Codna Decision Engine — Mojo Engine Setup
 #
 # Installs pixi (Modular's recommended package manager for Mojo 0.26+),
 # creates a pixi environment with Mojo, and builds the native binary.

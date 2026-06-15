@@ -138,14 +138,14 @@ def _hosted_device_headers(
 ) -> dict[str, str]:
     headers = {
         "X-API-Key": raw_key,
-        "X-Algenta-Device-Id": device_id,
-        "X-Algenta-Platform": platform,
-        "X-Algenta-Platform-Version": platform_version,
-        "X-Algenta-Hostname-Hash": hostname_hash,
-        "X-Algenta-SDK-Version": sdk_version,
+        "X-Codna-Device-Id": device_id,
+        "X-Codna-Platform": platform,
+        "X-Codna-Platform-Version": platform_version,
+        "X-Codna-Hostname-Hash": hostname_hash,
+        "X-Codna-SDK-Version": sdk_version,
     }
     if binding_token:
-        headers["X-Algenta-Device-Binding-Token"] = binding_token
+        headers["X-Codna-Device-Binding-Token"] = binding_token
     return headers
 
 @contextmanager

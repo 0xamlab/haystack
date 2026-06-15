@@ -397,7 +397,7 @@ def validate_privacy_policy(policy: PrivacyPolicy) -> None:
         if is_algenta_owned_destination(destination.host):
             raise PrivacyConfigurationError(
                 "algenta_cloud_disabled_with_algenta_control_plane",
-                "ALGENTA_DISABLE_CLOUD=1 cannot be combined with an Algenta-owned ALGENTA_CONTROL_PLANE_URL.",
+                "ALGENTA_DISABLE_CLOUD=1 cannot be combined with an Codna-owned ALGENTA_CONTROL_PLANE_URL.",
                 details={"control_plane_url": policy.control_plane_url},
             )
 

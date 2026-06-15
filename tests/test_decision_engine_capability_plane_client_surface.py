@@ -32,7 +32,7 @@ CapabilityProviderResult = decision_engine.CapabilityProviderResult
 CapabilityRoutePlanResult = decision_engine.CapabilityRoutePlanResult
 DecisionEngineClient = decision_engine.DecisionEngineClient
 
-AlgentaClient = algenta.AlgentaClient
+CodnaClient = algenta.CodnaClient
 
 
 def _provider_payload() -> dict[str, Any]:
@@ -375,7 +375,7 @@ def test_algenta_client_capability_plane_methods_proxy_to_sdk(monkeypatch: pytes
         def enable_skill(self, **kwargs: Any) -> dict[str, Any]:
             return self._record("enable_skill", **kwargs)
 
-    client = AlgentaClient(api_key="de_test_algenta_capability", base_url="https://example.test")
+    client = CodnaClient(api_key="de_test_algenta_capability", base_url="https://example.test")
     fake_sdk = FakeSdkClient()
     monkeypatch.setattr(client, "_sdk_client", lambda: fake_sdk)
 

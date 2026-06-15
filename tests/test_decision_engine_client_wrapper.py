@@ -50,23 +50,23 @@ def test_decision_engine_client_wrapper_loads_facade_once_on_class_access(
 
         load_calls: list[str] = []
         fake_client = type("FakeDecisionEngineClient", (), {})
-        fake_algenta_client = type("FakeAlgentaClient", (fake_client,), {})
+        fake_algenta_client = type("FakeCodnaClient", (fake_client,), {})
 
         def _fake_import(name: str):
             load_calls.append(name)
             if name == "decision_engine.client_facade":
                 return SimpleNamespace(
                     DecisionEngineClient=fake_client,
-                    AlgentaClient=fake_algenta_client,
+                    CodnaClient=fake_algenta_client,
                 )
             raise AssertionError(f"unexpected lazy import: {name}")
 
         monkeypatch.setattr(module, "import_module", _fake_import)
 
         assert module.DecisionEngineClient is fake_client
-        assert module.AlgentaClient is fake_algenta_client
+        assert module.CodnaClient is fake_algenta_client
         assert module.DecisionEngineClient is fake_client
-        assert module.AlgentaClient is fake_algenta_client
+        assert module.CodnaClient is fake_algenta_client
         assert load_calls == ["decision_engine.client_facade"]
     finally:
         for module_name in list(sys.modules):
@@ -117,23 +117,23 @@ def test_async_decision_engine_client_wrapper_loads_facade_once_on_class_access(
 
         load_calls: list[str] = []
         fake_client = type("FakeAsyncDecisionEngineClient", (), {})
-        fake_algenta_client = type("FakeAsyncAlgentaClient", (fake_client,), {})
+        fake_algenta_client = type("FakeAsyncCodnaClient", (fake_client,), {})
 
         def _fake_import(name: str):
             load_calls.append(name)
             if name == "decision_engine.async_client_facade":
                 return SimpleNamespace(
                     AsyncDecisionEngineClient=fake_client,
-                    AsyncAlgentaClient=fake_algenta_client,
+                    AsyncCodnaClient=fake_algenta_client,
                 )
             raise AssertionError(f"unexpected lazy import: {name}")
 
         monkeypatch.setattr(module, "import_module", _fake_import)
 
         assert module.AsyncDecisionEngineClient is fake_client
-        assert module.AsyncAlgentaClient is fake_algenta_client
+        assert module.AsyncCodnaClient is fake_algenta_client
         assert module.AsyncDecisionEngineClient is fake_client
-        assert module.AsyncAlgentaClient is fake_algenta_client
+        assert module.AsyncCodnaClient is fake_algenta_client
         assert load_calls == ["decision_engine.async_client_facade"]
     finally:
         for module_name in list(sys.modules):
@@ -176,7 +176,7 @@ def test_decision_engine_client_wrapper_loads_default_base_url_without_facade(mo
                 return SimpleNamespace(
                     DEFAULT_BASE_URL="http://localhost:8000",
                     CONTRACT_VERSION="v1.3",
-                    BRAND="Algenta",
+                    BRAND="Codna",
                     MCP_ENDPOINT="http://localhost:8000/mcp/sse",
                     MCP_TOOLS_ENDPOINT="http://localhost:8000/mcp/tools",
                     AUTH_SCHEME="bearer_api_key",
@@ -185,7 +185,7 @@ def test_decision_engine_client_wrapper_loads_default_base_url_without_facade(mo
                     LEGACY_HEADERS=("X-API-Key",),
                     LEGACY_ENV_VARS=("DE_API_KEY", "DE_BASE_URL", "ALGENTA_API_URL"),
                     LEGACY_DOMAINS=("api.algenta.io",),
-                    VENDOR_TELEMETRY_HOSTS=("telemetry.algenta.ai",),
+                    VENDOR_TELEMETRY_HOSTS=("telemetry.codna.ai",),
                     PRIVATE_HOST_SUFFIXES=(".internal", ".corp"),
                     DEPRECATION_WINDOW_DAYS=90,
                     READ_ONLY_DEFAULT=True,
@@ -245,7 +245,7 @@ def test_async_decision_engine_client_wrapper_loads_default_base_url_without_fac
                 return SimpleNamespace(
                     DEFAULT_BASE_URL="http://localhost:8000",
                     CONTRACT_VERSION="v1.3",
-                    BRAND="Algenta",
+                    BRAND="Codna",
                     MCP_ENDPOINT="http://localhost:8000/mcp/sse",
                     MCP_TOOLS_ENDPOINT="http://localhost:8000/mcp/tools",
                     AUTH_SCHEME="bearer_api_key",
@@ -254,7 +254,7 @@ def test_async_decision_engine_client_wrapper_loads_default_base_url_without_fac
                     LEGACY_HEADERS=("X-API-Key",),
                     LEGACY_ENV_VARS=("DE_API_KEY", "DE_BASE_URL", "ALGENTA_API_URL"),
                     LEGACY_DOMAINS=("api.algenta.io",),
-                    VENDOR_TELEMETRY_HOSTS=("telemetry.algenta.ai",),
+                    VENDOR_TELEMETRY_HOSTS=("telemetry.codna.ai",),
                     PRIVATE_HOST_SUFFIXES=(".internal", ".corp"),
                     DEPRECATION_WINDOW_DAYS=90,
                     READ_ONLY_DEFAULT=True,

@@ -1,11 +1,11 @@
-# Algenta Decision Engine — Approved Claim Language
+# Codna Decision Engine — Approved Claim Language
 
 > Phase 0 — Claim Hygiene  
 > Version: 1.0  
 > Last updated: 2026-04-02  
 > Owner: Engineering / Product  
 
-This document defines **the only approved language** for describing the Algenta
+This document defines **the only approved language** for describing the Codna
 Decision Engine in documentation, marketing copy, SDKs, API references, and sales
 materials. No claim stronger than the current claim ladder position may be used
 without passing the stated benchmark gate.
@@ -14,7 +14,7 @@ without passing the stated benchmark gate.
 
 ## Current Approved Position
 
-> **"Algenta is a typed, persistent, low-latency decision runtime — Mojo as the
+> **"Codna is a typed, persistent, low-latency decision runtime — Mojo as the
 > compute core, Python and Node as orchestration and product surfaces."**
 
 This is the Phase 3 position on the claim ladder. It is accurate, defensible,
@@ -119,7 +119,7 @@ published `bench_vs_python` results attached to the claim.
 ### Product Website / Marketing
 
 **Headline (current):**
-> Algenta Decision Engine — a typed, persistent decision runtime built on Mojo
+> Codna Decision Engine — a typed, persistent decision runtime built on Mojo
 
 **Sub-headline:**
 > All 11 decision engine types — Monte Carlo, QMC Sobol, LHS, MCMC, Decision Tree,
@@ -147,28 +147,28 @@ published `bench_vs_python` results attached to the claim.
 ### Python SDK (`packages/python-sdk/`)
 
 **Docstring:**
-> Algenta Decision Engine Python client. The computation engine runs natively
+> Codna Decision Engine Python client. The computation engine runs natively
 > in Mojo — this client handles HTTP orchestration only.
 
 **README:**
-> The Algenta engine uses Mojo as its compute core. All simulation math runs
+> The Codna engine uses Mojo as its compute core. All simulation math runs
 > in persistent Mojo workers. This SDK is the Python orchestration layer.
 
 ### TypeScript SDK (`packages/ts-sdk/`)
 
 **README:**
-> Algenta Decision Engine TypeScript client for the persistent Mojo runtime.
+> Codna Decision Engine TypeScript client for the persistent Mojo runtime.
 > All computation is handled by Mojo workers — this SDK provides type-safe
 > access to the full 11-engine decision API.
 
 ### Sales / Enterprise Copy
 
 **One-liner:**
-> "Algenta is a typed decision runtime — Mojo compute, Python orchestration,
+> "Codna is a typed decision runtime — Mojo compute, Python orchestration,
 > Node gateway — covering all decision modalities under one contract."
 
 **Technical differentiator:**
-> Unlike Python-first simulation tools, Algenta's compute core is implemented
+> Unlike Python-first simulation tools, Codna's compute core is implemented
 > in Mojo with a persistent worker pool, single typed request boundary, and
 > Mojo-native post-compute aggregates. The Python API layer handles auth,
 > storage, and HTTP — the simulation math does not.

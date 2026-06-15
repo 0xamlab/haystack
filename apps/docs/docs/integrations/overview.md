@@ -4,16 +4,16 @@ sidebar_position: 1
 
 # Integrations Overview
 
-Algenta connects to your existing tools with one canonical API contract.
+Codna connects to your existing tools with one canonical API contract.
 
 ## Supported integrations
 
 | Integration | Type | Use case |
 |-------------|------|----------|
-| [ChatGPT Actions](/integrations/chatgpt-actions) | AI | Import the Algenta OpenAPI contract into a GPT for discovery, exact query, batch query, SQL reports, persisted runtime follow-up, and control-plane review |
+| [ChatGPT Actions](/integrations/chatgpt-actions) | AI | Import the Codna OpenAPI contract into a GPT for discovery, exact query, batch query, SQL reports, persisted runtime follow-up, and control-plane review |
 | [Claude and Codex](/integrations/claude-codex) | AI / MCP | Connect via hosted MCP or local stdio bridge for governed data, persisted runtime review, and control-plane tooling |
 | [Azure AI Foundry and Studio](/integrations/azure-ai-studio) | AI | Use OpenAPI or function tools for governed discovery, exact query, batch query, SQL reports, and simulation |
-| [LangGraph](/integrations/langgraph) | AI | Add Algenta discovery, exact-query, persisted runtime review, and simulation tools to your agent graphs |
+| [LangGraph](/integrations/langgraph) | AI | Add Codna discovery, exact-query, persisted runtime review, and simulation tools to your agent graphs |
 | [n8n](/integrations/n8n) | Automation | No-code discovery, exact-query, batch-query, SQL-report, simulation, and persisted runtime follow-up workflows |
 | [Local Runtime](/integrations/local-runtime) | Local | Hosted license, local execution, offline task history |
 | [Power Automate](/integrations/power-automate) | Automation | Microsoft 365 / Teams flows for discovery, exact queries, batch queries, SQL reports, and simulation |
@@ -22,10 +22,10 @@ Algenta connects to your existing tools with one canonical API contract.
 
 ## Base URL
 
-- Cloud Managed: `https://api.algenta.ai`
+- Cloud Managed: `https://api.codna.ai`
 - `self_hosted` and `air_gapped`: replace the hosted base URL with your self-hosted base URL
 
-Private profiles do not silently fall back to Algenta cloud.
+Private profiles do not silently fall back to Codna cloud.
 
 ## Live contract discovery
 

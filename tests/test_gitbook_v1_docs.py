@@ -75,7 +75,7 @@ def test_readme_and_api_reference_point_first_time_users_to_quickstart() -> None
     )
     assert "POST /v1/capabilities/route" in readme
     assert "./examples/capability-plane/README.md" in readme
-    assert "`algenta_managed` routes can execute through Algenta" in readme
+    assert "`algenta_managed` routes can execute through Codna" in readme
     assert "`client_managed` routes" in readme
     assert "make capability-plane-verify" in readme
     assert (
@@ -91,7 +91,7 @@ def test_readme_and_api_reference_point_first_time_users_to_quickstart() -> None
     assert "The primary published development/runtime path is:" not in direct_api_client
     assert "POST /v1/capabilities/route" in docs_index
     assert "/api-reference/capability-plane" in docs_index
-    assert "`algenta_managed` routes can execute through Algenta" in docs_index
+    assert "`algenta_managed` routes can execute through Codna" in docs_index
     assert "`client_managed` routes" in docs_index
     assert "client.route_capabilities(...)" in direct_api_client
     assert "client.routeCapabilities({ ... })" in direct_api_client

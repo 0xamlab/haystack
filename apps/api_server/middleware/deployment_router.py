@@ -3,7 +3,7 @@ Deployment routing middleware — routes authenticated requests to the correct
 org data plane endpoint when a dedicated cloud deployment is active.
 
 Flow:
-  1. Request arrives at control plane (api.algenta.ai)
+  1. Request arrives at control plane (api.codna.ai)
   2. Auth middleware resolves org_id from API key
   3. This middleware checks if org has an active deployment with endpoint_url
   4. If yes: proxy the request to the data plane endpoint
@@ -270,7 +270,7 @@ class DeploymentRoutingMiddleware(BaseHTTPMiddleware):
             k: v for k, v in request.headers.items() if k.lower() not in ("host", "content-length")
         }
         headers["X-Forwarded-For"] = request.client.host if request.client else "unknown"
-        headers["X-Algenta-Control-Plane"] = "true"
+        headers["X-Codna-Control-Plane"] = "true"
 
         body = await request.body()
 

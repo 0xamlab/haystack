@@ -242,7 +242,7 @@ class Settings(BaseSettings):
     aws_default_region: str = Field(default="us-east-1")
     aws_ecr_image_uri: str | None = Field(
         default=None,
-        description="ECR image URI for Algenta engine",
+        description="ECR image URI for Codna engine",
     )
 
     # Azure
@@ -284,7 +284,7 @@ class Settings(BaseSettings):
         ),
     )
     deployment_base_domain: str = Field(
-        default="deploy.algenta.ai",
+        default="deploy.codna.ai",
         description="Base domain for per-org deployment endpoints",
     )
     deployment_billing_markup_pct: float = Field(
@@ -305,7 +305,7 @@ class Settings(BaseSettings):
     smtp_port: int = Field(default=1025)
     smtp_username: str = Field(default="")
     smtp_password: str = Field(default="")
-    email_from: str = Field(default="noreply@algenta.ai")
+    email_from: str = Field(default="noreply@codna.ai")
 
     # ─── Webhooks ─────────────────────────────────────────────────────────────
     webhook_signing_secret: str = Field(default="change-me-in-production")

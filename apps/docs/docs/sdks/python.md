@@ -20,13 +20,13 @@ pip install algenta-sdk
 ```python
 import os
 
-from decision_engine import AlgentaClient
+from decision_engine import CodnaClient
 
 api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
 if not api_key:
     raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
 
-client = AlgentaClient(
+client = CodnaClient(
     api_key=api_key,
     base_url="http://localhost:8000",
 )
@@ -189,13 +189,13 @@ service identity across restarts.
 ```python
 import os
 
-from decision_engine import AlgentaClient
+from decision_engine import CodnaClient
 
 api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
 if not api_key:
     raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
 
-client = AlgentaClient(
+client = CodnaClient(
     api_key=api_key,
     base_url="http://localhost:8000",
 )
@@ -221,13 +221,13 @@ print(result.recommended_action)
 ```python
 import os
 
-from decision_engine import AlgentaClient
+from decision_engine import CodnaClient
 
 api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
 if not api_key:
     raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
 
-client = AlgentaClient(
+client = CodnaClient(
     api_key=api_key,
     base_url="http://localhost:8000",
 )
@@ -284,13 +284,13 @@ print(paused.status)
 ```python
 import os
 
-from decision_engine import AlgentaClient, QueryFilterCondition, QueryFilterSpec
+from decision_engine import CodnaClient, QueryFilterCondition, QueryFilterSpec
 
 api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
 if not api_key:
     raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
 
-client = AlgentaClient(
+client = CodnaClient(
     api_key=api_key,
     base_url="http://localhost:8000",
 )
@@ -384,13 +384,13 @@ tools, and runtime libraries.
 ```python
 import os
 
-from decision_engine import AlgentaClient
+from decision_engine import CodnaClient
 
 api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
 if not api_key:
     raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
 
-client = AlgentaClient(
+client = CodnaClient(
     api_key=api_key,
     base_url="http://localhost:8000",
 )
@@ -519,7 +519,7 @@ Every stored repository `DecisionPlan` also records planner provenance in
 
 Use these surfaces as follows:
 
-- `get_contract()` when you need the live machine-readable Algenta contract from the running service
+- `get_contract()` when you need the live machine-readable Codna contract from the running service
 - `get_runtime_manifest()`, `get_runtime_modules()`, `get_runtime_benchmarks()`, and `get_runtime_release_validation()` when you need the signed runtime proof surfaces from the running service
 - `get_runtime_benchmarks()` also includes benchmark-class `evidence_paths`, so benchmark claims retain concrete artifact linkage rather than only code and description labels
 - `get_runtime_benchmarks()` currently exposes the quality-gate benchmark classes `B6` checkpoint and replay overhead, `B7` MCP tool latency, `B9` RAG retrieval quality and latency, and `B10` decision workflow completion latency

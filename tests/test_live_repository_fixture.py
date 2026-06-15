@@ -60,6 +60,6 @@ def test_live_repository_fixture_creates_expected_repository_contract() -> None:
 def test_local_repository_live_support_reason_requires_local_base_url() -> None:
     assert local_repository_live_support_reason("http://127.0.0.1:8000") is None
     assert local_repository_live_support_reason("http://localhost:8000") is None
-    reason = local_repository_live_support_reason("https://api.algenta.ai")
+    reason = local_repository_live_support_reason("https://api.codna.ai")
     assert reason is not None
     assert "local API base URL" in reason

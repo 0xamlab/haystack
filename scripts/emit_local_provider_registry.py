@@ -179,7 +179,7 @@ def derive_local_provider_registry(
             "backend": "router",
             "capabilities": ["chat_completions"],
             "targets": router_targets,
-            "description": "Deterministic local provider router alias for Mission-ready Algenta chat flows.",
+            "description": "Deterministic local provider router alias for Mission-ready Codna chat flows.",
         }
         if len(router_targets) > 1:
             router_entry["fallback_policy"] = "retryable_only"

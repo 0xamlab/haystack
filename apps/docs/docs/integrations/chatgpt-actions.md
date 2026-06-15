@@ -4,27 +4,27 @@ sidebar_position: 2
 
 # ChatGPT Actions
 
-Let ChatGPT call Algenta automatically during conversations.
+Let ChatGPT call Codna automatically during conversations.
 
 ## Prerequisites
 
-- An Algenta API key
+- An Codna API key
 - A GPT with Actions enabled
 - Read access for discovery and query routes
 
 Use one base URL consistently for the OpenAPI import and every subsequent
 request:
 
-- Cloud Managed: `https://api.algenta.ai`
+- Cloud Managed: `https://api.codna.ai`
 - `self_hosted` and `air_gapped`: replace the hosted base URL with your self-hosted base URL
 
-Private profiles do not silently fall back to Algenta cloud.
+Private profiles do not silently fall back to Codna cloud.
 
 ## Setup
 
 1. In ChatGPT, go to **Explore** → **Create** → **Configure** → **Actions**
 2. Click **Import from URL**: `https://your-algenta-base-url.example/openapi.json`
-   and replace the placeholder with Cloud Managed `https://api.algenta.ai` or
+   and replace the placeholder with Cloud Managed `https://api.codna.ai` or
    `https://your-algenta-host.example/openapi.json` for `self_hosted` / `air_gapped`
 3. Configure authentication as `Authorization: Bearer <api_key>`
 4. Start read-only unless the GPT must connect or refresh datasets
@@ -41,7 +41,7 @@ private predicate syntax.
 
 The complete spec is at [`examples/chatgpt-actions/openapi_actions.yaml`](https://github.com/decisionengine/decision-engine/tree/main/examples/chatgpt-actions/openapi_actions.yaml).
 
-That action surface now includes the primary read-only Algenta flow plus
+That action surface now includes the primary read-only Codna flow plus
 persisted runtime and control-plane review:
 
 - `GET /v1/meta/contract`
@@ -78,7 +78,7 @@ After enabling write actions:
 ## Tips
 
 - Keep the GPT read-only by default and let it start with `search + compact` discovery.
-- Use `GET /v1/meta/contract` when the GPT needs the live machine-readable Algenta capability map.
+- Use `GET /v1/meta/contract` when the GPT needs the live machine-readable Codna capability map.
 - For older self-hosted nodes that still return `404` there, use `/openapi.json`
   and read `x-primary-data-query-contract` instead.
 - Read `primary_data_query_contract.governed_filter_contract` when the GPT must
@@ -95,7 +95,7 @@ After enabling write actions:
 ## Revoke or disconnect
 
 - Remove the imported action from the GPT
-- Revoke the Algenta API key if the GPT should no longer have access
+- Revoke the Codna API key if the GPT should no longer have access
 - Use `disconnect_data` only when you want to remove a dataset, not just disconnect ChatGPT
 
 ## Troubleshooting

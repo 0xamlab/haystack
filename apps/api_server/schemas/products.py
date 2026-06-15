@@ -39,9 +39,9 @@ class DecisionInput(BaseModel):
 
 class DecisionRequest(BaseModel):
     """
-    Ask Algenta: given these inputs and constraints, what should I do?
+    Ask Codna: given these inputs and constraints, what should I do?
 
-    Algenta tests thousands of possible outcomes and returns the optimal action
+    Codna tests thousands of possible outcomes and returns the optimal action
     with confidence, risk, and reasoning — no statistics knowledge required.
     """
 
@@ -106,7 +106,7 @@ class AgentStep(BaseModel):
 
 class AgentRunRequest(BaseModel):
     """
-    Give Algenta a task. It plans, executes tools, and returns a structured result.
+    Give Codna a task. It plans, executes tools, and returns a structured result.
 
     Drop-in replacement for LangChain / LangGraph agent workflows.
     """

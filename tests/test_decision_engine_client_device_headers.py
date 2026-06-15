@@ -33,9 +33,9 @@ def test_sync_client_builds_hosted_device_headers(
     headers = built["headers"]
     assert headers["Authorization"] == "Bearer de_live_test_key"
     assert headers["User-Agent"] == "algenta-python/1.0.0"
-    assert headers["X-Algenta-Device-Id"] == "python-device-0001"
-    assert headers["X-Algenta-Hostname-Hash"]
-    assert headers["X-Algenta-SDK-Version"] == "algenta-python/1.0.0"
+    assert headers["X-Codna-Device-Id"] == "python-device-0001"
+    assert headers["X-Codna-Hostname-Hash"]
+    assert headers["X-Codna-SDK-Version"] == "algenta-python/1.0.0"
 
 
 @pytest.mark.anyio
@@ -59,9 +59,9 @@ async def test_async_client_builds_hosted_device_headers(
     headers = built["headers"]
     assert headers["Authorization"] == "Bearer de_live_test_key"
     assert headers["User-Agent"] == "algenta-python/1.0.0"
-    assert headers["X-Algenta-Device-Id"] == "python-async-device-0001"
-    assert headers["X-Algenta-Hostname-Hash"]
-    assert headers["X-Algenta-SDK-Version"] == "algenta-python/1.0.0"
+    assert headers["X-Codna-Device-Id"] == "python-async-device-0001"
+    assert headers["X-Codna-Hostname-Hash"]
+    assert headers["X-Codna-SDK-Version"] == "algenta-python/1.0.0"
 
 
 def test_sync_client_rejects_invalid_env_device_id(
@@ -99,8 +99,8 @@ def test_build_device_headers_uses_machine_seed_when_hostname_missing(
         user_agent="algenta-python/1.0.0",
     )
 
-    assert headers["X-Algenta-Device-Id"]
-    assert headers["X-Algenta-Hostname-Hash"]
+    assert headers["X-Codna-Device-Id"]
+    assert headers["X-Codna-Hostname-Hash"]
 
 
 def test_build_device_headers_keeps_hostname_hash_with_explicit_env_device_id(
@@ -117,5 +117,5 @@ def test_build_device_headers_keeps_hostname_hash_with_explicit_env_device_id(
         user_agent="algenta-python/1.0.0",
     )
 
-    assert headers["X-Algenta-Device-Id"] == "python-device-0001"
-    assert headers["X-Algenta-Hostname-Hash"]
+    assert headers["X-Codna-Device-Id"] == "python-device-0001"
+    assert headers["X-Codna-Hostname-Hash"]

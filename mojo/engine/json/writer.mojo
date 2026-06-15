@@ -200,10 +200,10 @@ fn json_build_object(pairs: List[List[String]]) -> String:
 
     Example:
         var pairs = List[List[String]]()
-        var p1 = List[String](); p1.append("name"); p1.append('"Algenta"')
+        var p1 = List[String](); p1.append("name"); p1.append('"Codna"')
         pairs.append(p1)
         var obj = json_build_object(pairs)
-        # -> '{"name":"Algenta"}'
+        # -> '{"name":"Codna"}'
     """
     var result = String("{")
     for i in range(len(pairs)):

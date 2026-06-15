@@ -4,14 +4,14 @@ sidebar_position: 6
 
 # Zapier
 
-Connect Algenta to 5,000+ apps via Zapier's no-code automation platform.
+Connect Codna to 5,000+ apps via Zapier's no-code automation platform.
 
 Use one base URL consistently across every Zapier webhook step:
 
-- Cloud Managed: `https://api.algenta.ai`
+- Cloud Managed: `https://api.codna.ai`
 - `self_hosted` and `air_gapped`: replace the hosted base URL with your self-hosted base URL
 
-Private profiles do not silently fall back to Algenta cloud.
+Private profiles do not silently fall back to Codna cloud.
 
 ## Setup
 
@@ -35,7 +35,7 @@ Private profiles do not silently fall back to Algenta cloud.
 4. Use the response fields in downstream actions
 
 Replace `https://your-algenta-base-url.example` with Cloud Managed
-`https://api.algenta.ai` or your self-hosted base URL before enabling the Zap.
+`https://api.codna.ai` or your self-hosted base URL before enabling the Zap.
 
 If an older self-hosted node still returns `404` for `/v1/meta/contract`, use
 `/openapi.json` and read `x-primary-data-query-contract` instead.
@@ -45,7 +45,7 @@ Zapier webhooks can inspect the exact filter model before building requests.
 ## Example Zap
 
 **Trigger**: New form submission (Typeform)  
-**Action 1**: List Algenta datasets with `search=orders&compact=1`  
+**Action 1**: List Codna datasets with `search=orders&compact=1`  
 **Action 2**: Query the selected dataset with `POST /v1/query/batch`  
 **Action 3**: Send Slack message with the returned metrics
 

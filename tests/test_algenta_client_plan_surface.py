@@ -15,7 +15,7 @@ for path in (str(ALGENTA_CORE), str(PYTHON_SDK), str(ROOT)):
 
 algenta = importlib.import_module("algenta")
 
-AlgentaClient = algenta.AlgentaClient
+CodnaClient = algenta.CodnaClient
 
 
 class _FakeDecisionEngineClient:
@@ -453,7 +453,7 @@ def test_algenta_client_cloud_methods_delegate_to_decision_engine_client(
     client_module = importlib.import_module("algenta.client")
     monkeypatch.setattr(client_module, "import_module", lambda name: fake_module)
 
-    client = AlgentaClient(api_key="de_test", base_url="http://localhost:8000")
+    client = CodnaClient(api_key="de_test", base_url="http://localhost:8000")
 
     assert client.plan_decision({"metric": "profit"})["name"] == "plan_decision"
     assert client.recommend([{"name": "expand", "score": 0.82}])["name"] == "recommend"
@@ -607,7 +607,7 @@ def test_algenta_client_reuses_lazy_decision_engine_bridge(
     client_module = importlib.import_module("algenta.client")
     monkeypatch.setattr(client_module, "import_module", lambda name: fake_module)
 
-    client = AlgentaClient(api_key="de_test", base_url="http://localhost:8000")
+    client = CodnaClient(api_key="de_test", base_url="http://localhost:8000")
 
     first = client._sdk_client()
     second = client._sdk_client()
@@ -627,7 +627,7 @@ def test_algenta_client_plan_surface_reports_missing_decision_engine_sdk(
 
     monkeypatch.setattr(client_module, "import_module", _raise_import)
 
-    client = AlgentaClient(api_key="de_test", base_url="http://localhost:8000")
+    client = CodnaClient(api_key="de_test", base_url="http://localhost:8000")
 
     with pytest.raises(ImportError, match="decision-engine SDK package"):
         client.list_models()
@@ -639,7 +639,7 @@ def test_algenta_client_bound_module_injects_only_supported_transport_kwargs(
     fake_module = _FakeBoundModule()
     monkeypatch.setitem(sys.modules, "algenta.simulate", fake_module)
 
-    client = AlgentaClient(api_key="de_test", base_url="http://localhost:8000")
+    client = CodnaClient(api_key="de_test", base_url="http://localhost:8000")
     result = client.simulate.risk(revenue=120000.0, cost=-70000.0, runs=250)
 
     assert result == {

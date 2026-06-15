@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Self-hosted endpoint matrix for a running Algenta service."""
+"""Self-hosted endpoint matrix for a running Codna service."""
 
 from __future__ import annotations
 

@@ -200,7 +200,7 @@ def _tranche_statuses() -> tuple[PlanTrancheStatus, ...]:
             status="implemented",
             rationale=(
                 "Simulation, recommendation, score, batch, compare, and decision plan "
-                "surfaces are real across the API, Python, Algenta, and TypeScript "
+                "surfaces are real across the API, Python, Codna, and TypeScript "
                 "client rings, plus the repo CLI and MCP operator surfaces."
             ),
             evidence=(
@@ -244,7 +244,7 @@ def _tranche_statuses() -> tuple[PlanTrancheStatus, ...]:
             status="implemented",
             rationale=(
                 "Account, team, deployments, devices, audit logs or artifacts, and execution "
-                "policy surfaces now span the API, Python, Algenta, TypeScript, repo CLI, and "
+                "policy surfaces now span the API, Python, Codna, TypeScript, repo CLI, and "
                 "MCP operator channels, with maintained live and lock coverage across those "
                 "control-plane bands."
             ),
@@ -273,7 +273,7 @@ def _tranche_statuses() -> tuple[PlanTrancheStatus, ...]:
             status="implemented",
             rationale=(
                 "Billing, usage, limits, metering, and credit-refresh surfaces now span the "
-                "API, Python, Algenta, TypeScript, repo CLI, and MCP channels, with maintained "
+                "API, Python, Codna, TypeScript, repo CLI, and MCP channels, with maintained "
                 "live and lock coverage across those quota-control bands."
             ),
             evidence=(
@@ -303,7 +303,7 @@ def _tranche_statuses() -> tuple[PlanTrancheStatus, ...]:
             status="implemented",
             rationale=(
                 "Deployment modes are formalized in the manifest, validated in release output, "
-                "and the deployment control surface now spans the API, Python, Algenta, "
+                "and the deployment control surface now spans the API, Python, Codna, "
                 "TypeScript, repo CLI, and MCP operator channels."
             ),
             evidence=(

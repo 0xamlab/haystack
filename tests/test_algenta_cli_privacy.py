@@ -37,7 +37,7 @@ def test_algenta_cmd_benchmark_private_profile_uses_self_hosted_guidance(monkeyp
 
     assert "http://localhost:8000/dashboard" in output
     assert "free tier: 500 simulations/month" not in output.lower()
-    assert "algenta.ai/dashboard" not in output
+    assert "codna.ai/dashboard" not in output
 
 
 def test_algenta_cmd_upgrade_private_profile_uses_self_hosted_guidance(monkeypatch) -> None:
@@ -57,9 +57,9 @@ def test_algenta_cmd_upgrade_private_profile_uses_self_hosted_guidance(monkeypat
 
     output = _capture_stdout(algenta_cli.cmd_upgrade)
 
-    assert "Connect Algenta SDK to your deployment" in output
+    assert "Connect Codna SDK to your deployment" in output
     assert 'export ALGENTA_BASE_URL="http://localhost:8000"' in output
     assert 'export DE_BASE_URL="http://localhost:8000"' in output
     assert 'export ALGENTA_API_URL="http://localhost:8000"' in output
     assert "self-hosted admin surface or API base URL: http://localhost:8000" in output
-    assert "https://algenta.ai/dashboard" not in output
+    assert "https://codna.ai/dashboard" not in output

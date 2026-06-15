@@ -1,6 +1,6 @@
 openapi: "3.1.0"
 info:
-  title: "Algenta"
+  title: "Codna"
   description: |
     Discover datasets, fetch low-token summaries, run governed exact queries,
     run governed exact-query batches, execute constrained read-only SQL reports,
@@ -9,7 +9,7 @@ info:
   version: "1.1.0"
 servers:
   - url: "https://your-algenta-base-url.example"
-    description: "Replace with Cloud Managed https://api.algenta.ai or your self-hosted base URL before import. Private profiles do not silently fall back to Algenta cloud."
+    description: "Replace with Cloud Managed https://api.codna.ai or your self-hosted base URL before import. Private profiles do not silently fall back to Codna cloud."
 x-canonical-mcp-endpoint: "https://your-algenta-base-url.example/mcp/sse"
 x-primary-data-query-contract:
   api:
@@ -79,8 +79,8 @@ x-primary-data-query-contract:
   direct_sdk:
     python:
       import_root: "decision_engine"
-      preferred_client_class: "AlgentaClient"
-      preferred_async_client_class: "AsyncAlgentaClient"
+      preferred_client_class: "CodnaClient"
+      preferred_async_client_class: "AsyncCodnaClient"
       compatibility_client_class: "DecisionEngineClient"
       compatibility_async_client_class: "AsyncDecisionEngineClient"
       contract_method: "get_contract"
@@ -91,7 +91,7 @@ x-primary-data-query-contract:
       query_sql_report_method: "query_sql_report"
     typescript:
       import_package: "algenta-sdk"
-      preferred_client_class: "AlgentaClient"
+      preferred_client_class: "CodnaClient"
       compatibility_client_class: "DecisionEngineClient"
       contract_method: "getContract"
       discovery_method: "listDatasets"
@@ -154,13 +154,13 @@ paths:
   /v1/meta/contract:
     get:
       operationId: "getContract"
-      summary: "Get machine-readable Algenta contract"
+      summary: "Get machine-readable Codna contract"
       description: "Fetch the live machine-readable contract for API, SDK, CLI, and MCP discovery."
       security:
         - BearerAuth: []
       responses:
         "200":
-          description: "Machine-readable Algenta contract"
+          description: "Machine-readable Codna contract"
           content:
             application/json:
               schema:
@@ -777,7 +777,7 @@ components:
     BearerAuth:
       type: http
       scheme: bearer
-      description: "Use your Algenta API key as Bearer token."
+      description: "Use your Codna API key as Bearer token."
 
 security:
   - BearerAuth: []

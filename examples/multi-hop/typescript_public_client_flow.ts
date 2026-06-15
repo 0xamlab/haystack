@@ -5,10 +5,10 @@
  * `self_hosted` and `air_gapped`, keep `ALGENTA_API_KEY` / `DE_API_KEY`
  * pointed at the API key provisioned by your self-hosted operator deployment
  * and configure an explicit self-hosted `ALGENTA_BASE_URL` / `DE_BASE_URL` / `ALGENTA_API_URL`
- * instead. Private profiles fail closed and do not silently fall back to Algenta cloud.
+ * instead. Private profiles fail closed and do not silently fall back to Codna cloud.
  */
 
-import { AlgentaClient } from "algenta-sdk";
+import { CodnaClient } from "algenta-sdk";
 import { resolveExampleApiKey, resolveExampleBaseUrl } from "../shared/privacyProfile.ts";
 
 async function main(): Promise<void> {
@@ -16,7 +16,7 @@ async function main(): Promise<void> {
     component: "Multi-hop TypeScript public client example",
   });
 
-  const client = new AlgentaClient({
+  const client = new CodnaClient({
     apiKey,
     baseUrl: resolveExampleBaseUrl({
       component: "Multi-hop TypeScript public client example",

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Shows launcher-managed Algenta local API + MCP server state.
+# Shows launcher-managed Codna local API + MCP server state.
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -105,7 +105,7 @@ _print_matching_services() {
 }
 
 _print_status_table() {
-  echo "📋 Launcher-managed Algenta local stack status"
+  echo "📋 Launcher-managed Codna local stack status"
   while IFS=$'\t' read -r label port state pid listener_pid lease; do
     printf '%s port=%s state=%s pid=%s listener_pid=%s lease=%s\n' \
       "$label" "$port" "$state" "$pid" "$listener_pid" "$lease"
@@ -152,7 +152,7 @@ if [ ! -d "$START_LOCAL_STATE_DIR" ]; then
   if [ "$FORMAT" = "json" ]; then
     printf '%s\n' '{"services":[],"summary":{"active":0,"missing_lease":0,"missing_listener":0,"orphaned":0,"stale_pid":0,"total":0}}'
   else
-    echo "📋 Launcher-managed Algenta local stack status"
+    echo "📋 Launcher-managed Codna local stack status"
     echo "  No launcher-managed state directory found."
   fi
   exit 0
@@ -165,7 +165,7 @@ if [ "$FOUND_ANY" = "0" ]; then
   if [ "$FORMAT" = "json" ]; then
     printf '%s\n' '{"services":[],"summary":{"active":0,"missing_lease":0,"missing_listener":0,"orphaned":0,"stale_pid":0,"total":0}}'
   else
-    echo "📋 Launcher-managed Algenta local stack status"
+    echo "📋 Launcher-managed Codna local stack status"
     echo "  No launcher-managed local stacks found."
   fi
   exit 0

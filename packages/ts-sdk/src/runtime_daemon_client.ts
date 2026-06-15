@@ -309,13 +309,13 @@ async function loadRuntimeGrpc(): Promise<LoadedRuntimeGrpc> {
         oneofs: true,
       });
       const loaded = grpc.loadPackageDefinition(packageDefinition) as {
-        algenta?: { runtime?: { v1?: { AlgentaRuntime?: LoadedRuntimeGrpc["Client"] } } };
+        algenta?: { runtime?: { v1?: { CodnaRuntime?: LoadedRuntimeGrpc["Client"] } } };
       };
-      const Client = loaded.algenta?.runtime?.v1?.AlgentaRuntime;
+      const Client = loaded.algenta?.runtime?.v1?.CodnaRuntime;
       if (!Client) {
         throw new MojoRuntimeConfigurationError(
           "compute_runtime_unavailable",
-          "The Algenta runtime gRPC contract is unavailable.",
+          "The Codna runtime gRPC contract is unavailable.",
           { proto_path: RUNTIME_PROTO_PATH },
         );
       }
@@ -351,7 +351,7 @@ async function withRuntimeClient<T>(
           : String(error);
     throw new MojoRuntimeConfigurationError(
       "compute_runtime_unavailable",
-      "The local Algenta runtime daemon is unavailable. Start it before accessing runtime-backed Mojo libraries.",
+      "The local Codna runtime daemon is unavailable. Start it before accessing runtime-backed Mojo libraries.",
       {
         daemon_target: resolveDaemonTarget(config),
         error: message,

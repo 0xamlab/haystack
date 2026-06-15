@@ -12,7 +12,7 @@ For the first turn against hosted or self-hosted data, select the dataset before
 
 This API-mode snippet is the Cloud Managed path. In `self_hosted` and
 `air_gapped`, use an explicit self-hosted `base_url` for API mode; private
-profiles fail closed instead of silently falling back to Algenta cloud.
+profiles fail closed instead of silently falling back to Codna cloud.
 
 ```python
 import os

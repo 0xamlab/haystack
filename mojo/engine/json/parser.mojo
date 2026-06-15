@@ -2,7 +2,7 @@
 json/parser.mojo — Schema-aware JSON field extraction. Zero Python imports.
 
 Extracts known fields directly from raw JSON byte streams without building
-intermediate DOM nodes. Designed for the Algenta request schema but usable
+intermediate DOM nodes. Designed for the Codna request schema but usable
 for any JSON object field extraction.
 
 Strategy:

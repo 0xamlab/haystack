@@ -1,4 +1,4 @@
-"""MCP tools for the deterministic Algenta agent-run lifecycle."""
+"""MCP tools for the deterministic Codna agent-run lifecycle."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from algenta_mcp.client import api
 
 CREATE_AGENT_RUN_SPEC: dict[str, Any] = {
     "name": "create_agent_run",
-    "description": "Create a persisted Algenta agent run lifecycle resource.",
+    "description": "Create a persisted Codna agent run lifecycle resource.",
     "inputSchema": {
         "type": "object",
         "required": ["task"],
@@ -28,7 +28,7 @@ CREATE_AGENT_RUN_SPEC: dict[str, Any] = {
 
 LIST_AGENT_RUNS_SPEC: dict[str, Any] = {
     "name": "list_agent_runs",
-    "description": "List persisted Algenta agent runs for the authenticated org.",
+    "description": "List persisted Codna agent runs for the authenticated org.",
     "inputSchema": {
         "type": "object",
         "required": [],
@@ -49,7 +49,7 @@ LIST_AGENT_RUNS_SPEC: dict[str, Any] = {
 
 GET_AGENT_RUN_SPEC: dict[str, Any] = {
     "name": "get_agent_run",
-    "description": "Fetch a persisted Algenta agent run by run_id.",
+    "description": "Fetch a persisted Codna agent run by run_id.",
     "inputSchema": {
         "type": "object",
         "required": ["run_id"],
@@ -60,7 +60,7 @@ GET_AGENT_RUN_SPEC: dict[str, Any] = {
 
 GET_AGENT_RUN_EVENTS_SPEC: dict[str, Any] = {
     "name": "get_agent_run_events",
-    "description": "Fetch the append-only event stream for an Algenta agent run.",
+    "description": "Fetch the append-only event stream for an Codna agent run.",
     "inputSchema": {
         "type": "object",
         "required": ["run_id"],
@@ -74,7 +74,7 @@ GET_AGENT_RUN_EVENTS_SPEC: dict[str, Any] = {
 
 GET_AGENT_RUN_CHECKPOINTS_SPEC: dict[str, Any] = {
     "name": "get_agent_run_checkpoints",
-    "description": "Fetch persisted checkpoints for an Algenta agent run.",
+    "description": "Fetch persisted checkpoints for an Codna agent run.",
     "inputSchema": {
         "type": "object",
         "required": ["run_id"],
@@ -85,7 +85,7 @@ GET_AGENT_RUN_CHECKPOINTS_SPEC: dict[str, Any] = {
 
 QUERY_AGENT_RUN_CHECKPOINTS_SPEC: dict[str, Any] = {
     "name": "query_agent_run_checkpoints",
-    "description": "Query persisted checkpoints across Algenta agent runs.",
+    "description": "Query persisted checkpoints across Codna agent runs.",
     "inputSchema": {
         "type": "object",
         "required": [],
@@ -108,7 +108,7 @@ QUERY_AGENT_RUN_CHECKPOINTS_SPEC: dict[str, Any] = {
 
 GET_AGENT_RUN_MISSION_EVENTS_SPEC: dict[str, Any] = {
     "name": "get_agent_run_mission_events",
-    "description": "Fetch canonical mission-event records for an Algenta agent run.",
+    "description": "Fetch canonical mission-event records for an Codna agent run.",
     "inputSchema": {
         "type": "object",
         "required": ["run_id"],
@@ -122,7 +122,7 @@ GET_AGENT_RUN_MISSION_EVENTS_SPEC: dict[str, Any] = {
 
 QUERY_AGENT_RUN_MISSION_EVENTS_SPEC: dict[str, Any] = {
     "name": "query_agent_run_mission_events",
-    "description": "Query canonical mission-event records across persisted Algenta agent runs.",
+    "description": "Query canonical mission-event records across persisted Codna agent runs.",
     "inputSchema": {
         "type": "object",
         "required": [],
@@ -145,7 +145,7 @@ QUERY_AGENT_RUN_MISSION_EVENTS_SPEC: dict[str, Any] = {
 
 GET_AGENT_RUN_TELEMETRY_SPEC: dict[str, Any] = {
     "name": "get_agent_run_telemetry",
-    "description": "Fetch runtime telemetry batches for an Algenta agent run.",
+    "description": "Fetch runtime telemetry batches for an Codna agent run.",
     "inputSchema": {
         "type": "object",
         "required": ["run_id"],
@@ -159,7 +159,7 @@ GET_AGENT_RUN_TELEMETRY_SPEC: dict[str, Any] = {
 
 QUERY_AGENT_RUN_TELEMETRY_SPEC: dict[str, Any] = {
     "name": "query_agent_run_telemetry",
-    "description": "Query runtime telemetry batches across persisted Algenta agent runs.",
+    "description": "Query runtime telemetry batches across persisted Codna agent runs.",
     "inputSchema": {
         "type": "object",
         "required": [],
@@ -183,7 +183,7 @@ QUERY_AGENT_RUN_TELEMETRY_SPEC: dict[str, Any] = {
 
 RESUME_AGENT_RUN_SPEC: dict[str, Any] = {
     "name": "resume_agent_run",
-    "description": "Resume a paused Algenta agent run.",
+    "description": "Resume a paused Codna agent run.",
     "inputSchema": {
         "type": "object",
         "required": ["run_id"],
@@ -194,7 +194,7 @@ RESUME_AGENT_RUN_SPEC: dict[str, Any] = {
 
 CANCEL_AGENT_RUN_SPEC: dict[str, Any] = {
     "name": "cancel_agent_run",
-    "description": "Cancel an Algenta agent run.",
+    "description": "Cancel an Codna agent run.",
     "inputSchema": {
         "type": "object",
         "required": ["run_id"],
@@ -205,7 +205,7 @@ CANCEL_AGENT_RUN_SPEC: dict[str, Any] = {
 
 APPROVE_AGENT_RUN_SPEC: dict[str, Any] = {
     "name": "approve_agent_run",
-    "description": "Approve an Algenta agent run waiting on manual approval.",
+    "description": "Approve an Codna agent run waiting on manual approval.",
     "inputSchema": {
         "type": "object",
         "required": ["run_id"],

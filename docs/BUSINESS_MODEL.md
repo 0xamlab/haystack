@@ -1,12 +1,12 @@
-# Algenta — Business Model
+# Codna — Business Model
 
 ## What We Are
 
-Algenta is a **modular AI + decision compute runtime** built on a Mojo-powered engine that runs 95–112× faster than Python.
+Codna is a **modular AI + decision compute runtime** built on a Mojo-powered engine that runs 95–112× faster than Python.
 
 We replace a stack that most companies stitch together manually:
 
-| What companies buy today | What Algenta replaces it with |
+| What companies buy today | What Codna replaces it with |
 |---|---|
 | PyTorch + Triton | ML Training Engine + fused kernels |
 | vLLM + TGI | Inference Engine + continuous batching |
@@ -105,7 +105,7 @@ Usage above monthly simulation quota billed per additional billing unit. Metered
 Annual contracts for unlimited usage, dedicated infrastructure, compliance add-ons, and professional services. Sales-assisted.
 
 ### 4. Managed deployments (future)
-Single-tenant cloud deployments on AWS, GCP, or Azure provisioned and managed by Algenta. Monthly infrastructure fee + platform fee.
+Single-tenant cloud deployments on AWS, GCP, or Azure provisioned and managed by Codna. Monthly infrastructure fee + platform fee.
 
 ### 5. Marketplace (future)
 Third-party engine plugins, simulation templates, and industry-specific models. Revenue share with contributors.
@@ -119,7 +119,7 @@ Third-party engine plugins, simulation templates, and industry-specific models. 
 - Python SDK (`pip install algenta-sdk`)
 - TypeScript / Node.js SDK (`npm install algenta-sdk`)
 - CLI (`de simulate`, `de recommend`, `de job`)
-- One-line self-host (`curl -fsSL https://algenta.ai/install | bash`)
+- One-line self-host (`curl -fsSL https://codna.ai/install | bash`)
 
 ### AI-native distribution
 - MCP server — Claude Desktop, Cursor, VS Code, Zed
@@ -152,7 +152,7 @@ Like Supabase, n8n, and Grafana — the framework is open, the engine is proprie
 | Security & Governance Engine | Proprietary | Enterprise only |
 | Hybrid Intelligence Engine | Proprietary | Enterprise only |
 
-**ACL 1.0 terms:** Free for personal use, research, and organizations with < $5M annual revenue and < 50 employees. Commercial use requires a license from [licensing@algenta.ai](mailto:licensing@algenta.ai).
+**ACL 1.0 terms:** Free for personal use, research, and organizations with < $5M annual revenue and < 50 employees. Commercial use requires a license from [licensing@codna.ai](mailto:licensing@codna.ai).
 
 ---
 

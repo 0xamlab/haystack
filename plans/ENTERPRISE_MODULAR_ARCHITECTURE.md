@@ -1,4 +1,4 @@
-# Algenta Decision Engine — Enterprise Modular Architecture Plan
+# Codna Decision Engine — Enterprise Modular Architecture Plan
 
 > Goal: Handle 100k customers with heavy daily usage. Fully modular. Each runtime used only where it excels: **Mojo** for compute, **Node.js** for I/O-bound gateway/streaming, **Python (FastAPI)** for orchestration + ML logic, **Next.js** for portal.
 

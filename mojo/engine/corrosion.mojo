@@ -3,7 +3,7 @@ corrosion.mojo — Corrosion Engineering Library. Zero Python imports.
 
 Provides corrosion rate calculations, pitting analysis, galvanic corrosion,
 electrochemistry (Nernst, Tafel), cathodic protection, and service life
-estimation for the Algenta Decision Engine.
+estimation for the Codna Decision Engine.
 
 Public API:
   corrosion_rate_mpy              — Weight-loss corrosion rate (mils/year)

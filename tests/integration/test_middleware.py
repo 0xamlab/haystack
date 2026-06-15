@@ -1,7 +1,7 @@
 """
 Phase 16: Middleware Integration Tests
 
-Comprehensive tests for all middleware layers of the Algenta Decision Engine.
+Comprehensive tests for all middleware layers of the Codna Decision Engine.
 Tests Request ID, Auth, RBAC, Logging, Metrics, and Deployment Router middleware
 both via live HTTP integration tests and direct module imports.
 
@@ -419,9 +419,9 @@ def test_auth_middleware():
         assert s == 401
         err = b.get("error", {})
         assert "docs_url" in err, f"Missing 'docs_url' in error: {err}"
-        assert "algenta.ai" in err["docs_url"], f"Unexpected docs_url: {err['docs_url']}"
+        assert "codna.ai" in err["docs_url"], f"Unexpected docs_url: {err['docs_url']}"
 
-    check("401 response includes docs_url with algenta.ai", t_401_docs_url)
+    check("401 response includes docs_url with codna.ai", t_401_docs_url)
 
     # 12. 401 response includes request_id
     def t_401_request_id_in_body():
