@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import re
+from bisect import bisect_right
 from collections import defaultdict
 from collections.abc import Callable, Sequence
+from functools import lru_cache
 from pathlib import PurePosixPath
 from typing import Any
 
@@ -107,6 +109,17 @@ def _replace_with_spaces(value: str) -> str:
     return "".join("\n" if character == "\n" else " " for character in value)
 
 
+@lru_cache(maxsize=1024)
+def _line_start_offsets(text: str) -> tuple[int, ...]:
+    offsets = [0]
+    offsets.extend(index + 1 for index, character in enumerate(text) if character == "\n")
+    return tuple(offsets)
+
+
+def _line_number(text: str, offset: int) -> int:
+    return bisect_right(_line_start_offsets(text), offset)
+
+
 def candidate_module_keys(
     base_path: str,
     *,
@@ -194,7 +207,10 @@ def resolve_include(
     return None
 
 
-def strip_comments(text: str) -> str:
+@lru_cache(maxsize=1024)
+def _strip_comments_cached(text: str) -> str:
+    if "//" not in text and "/*" not in text:
+        return text
     return re.sub(
         r"//[^\n]*|/\*.*?\*/",
         lambda match: _replace_with_spaces(match.group(0)),
@@ -203,8 +219,28 @@ def strip_comments(text: str) -> str:
     )
 
 
-def strip_attributes(text: str) -> str:
+def strip_comments(text: str) -> str:
+    return _strip_comments_cached(text)
+
+
+@lru_cache(maxsize=1024)
+def _strip_attributes_cached(text: str) -> str:
+    if "__attribute__" not in text and "[[" not in text:
+        return text
     return ATTRIBUTE_RE.sub(lambda match: _replace_with_spaces(match.group(0)), text)
+
+
+def strip_attributes(text: str) -> str:
+    return _strip_attributes_cached(text)
+
+
+@lru_cache(maxsize=1024)
+def _sanitize_text_cached(text: str) -> str:
+    return strip_attributes(strip_comments(text))
+
+
+def sanitize_text(text: str) -> str:
+    return _sanitize_text_cached(text)
 
 
 def normalize_symbol_name(symbol_name: str) -> str:
@@ -262,7 +298,7 @@ def parse_dependencies_only(
             _Dependency(
                 dependency_edge_id=stable_identifier(
                     "dep",
-                    {"file_path": file_path, "target": import_target, "line": match.start()},
+                    (file_path, import_target, match.start()),
                 ),
                 source_file=file_path,
                 target_file=target_file,
@@ -285,7 +321,7 @@ def parse_file(
     tuple[_Dependency, ...],
     tuple[_SymbolReferenceCandidate, ...],
 ]:
-    sanitized_text = strip_attributes(strip_comments(text))
+    sanitized_text = sanitize_text(text)
     lines = sanitized_text.splitlines()
     symbol_entries: list[dict[str, Any]] = []
     seen_symbol_keys: set[tuple[str, int, str]] = set()
@@ -298,7 +334,7 @@ def parse_file(
             normalized_name = normalize_symbol_name(str(match.group("name") or ""))
             if not normalized_name or is_macro_like_symbol_name(normalized_name):
                 continue
-            line_no = sanitized_text.count("\n", 0, match.start()) + 1
+            line_no = _line_number(sanitized_text, match.start())
             line_text = lines[line_no - 1].strip() if line_no - 1 < len(lines) else ""
             if symbol_kind == "function":
                 prefix = str(match.groupdict().get("prefix") or "")
@@ -333,12 +369,7 @@ def parse_file(
                 {
                     "symbol_id": stable_identifier(
                         "sym",
-                        {
-                            "file_path": file_path,
-                            "name": normalized_name,
-                            "line": line_no,
-                            "kind": symbol_kind,
-                        },
+                        (file_path, normalized_name, line_no, symbol_kind),
                     ),
                     "symbol_name": normalized_name,
                     "symbol_kind": symbol_kind,
@@ -378,46 +409,71 @@ def parse_file(
         stable_identifier=stable_identifier,
         resolve_include=resolve_include,
     )
+    dependency_target_files = tuple(
+        dict.fromkeys(
+            dependency.target_file for dependency in dependencies if dependency.target_file is not None
+        )
+    )
     symbols_by_name: defaultdict[str, list[_Symbol]] = defaultdict(list)
     for symbol in symbols:
         symbols_by_name[symbol.symbol_name].append(symbol)
-    reference_candidates: dict[str, _SymbolReferenceCandidate] = {}
+    reference_specs: dict[
+        tuple[str, str, str | None, str | tuple[str, ...]],
+        dict[str, Any],
+    ] = {}
 
-    def _add_reference_candidate(
+    def _record_local_reference(
+        *,
+        source_symbol: _Symbol,
+        target_symbol: _Symbol,
+    ) -> None:
+        if target_symbol.symbol_id == source_symbol.symbol_id:
+            return
+        spec_key = (
+            "local",
+            source_symbol.symbol_id,
+            target_symbol.symbol_id,
+            target_symbol.symbol_name,
+        )
+        reference_specs.setdefault(
+            spec_key,
+            {
+                "source_symbol_id": source_symbol.symbol_id,
+                "source_file": file_path,
+                "target_symbol_id": target_symbol.symbol_id,
+                "target_file": file_path,
+                "target_names": (target_symbol.symbol_name,),
+                "reference_type": "references_symbol",
+            },
+        )
+
+    def _record_dependency_reference(
         *,
         source_symbol: _Symbol,
         target_file: str | None,
-        target_names: tuple[str, ...],
+        target_name: str,
     ) -> None:
         if target_file is None:
             return
-        normalized_names = tuple(
-            normalized_name
-            for normalized_name in (normalize_symbol_name(name) for name in target_names)
-            if normalized_name and is_operational_reference_name(normalized_name)
-        )
-        if not normalized_names:
+        normalized_name = normalize_symbol_name(target_name)
+        if not normalized_name or not is_operational_reference_name(normalized_name):
             return
-        edge_id = stable_identifier(
-            "ref",
+        spec_key = (
+            "dependency",
+            source_symbol.symbol_id,
+            target_file,
+            normalized_name,
+        )
+        reference_specs.setdefault(
+            spec_key,
             {
                 "source_symbol_id": source_symbol.symbol_id,
+                "source_file": file_path,
+                "target_symbol_id": None,
                 "target_file": target_file,
-                "target_names": normalized_names,
-                "type": "references_symbol",
+                "target_names": (normalized_name,),
+                "reference_type": "references_symbol",
             },
-        )
-        reference_candidates.setdefault(
-            edge_id,
-            _SymbolReferenceCandidate(
-                reference_edge_id=edge_id,
-                source_symbol_id=source_symbol.symbol_id,
-                source_file=file_path,
-                target_symbol_id=None,
-                target_file=target_file,
-                target_names=normalized_names,
-                reference_type="references_symbol",
-            ),
         )
 
     for symbol in symbols:
@@ -427,33 +483,15 @@ def parse_file(
             if not is_operational_reference_name(target_name):
                 continue
             for target_symbol in symbols_by_name.get(target_name, ()):
-                if target_symbol.symbol_id == symbol.symbol_id:
-                    continue
-                edge_id = stable_identifier(
-                    "ref",
-                    {
-                        "source_symbol_id": symbol.symbol_id,
-                        "target_symbol_id": target_symbol.symbol_id,
-                        "type": "references_symbol",
-                    },
-                )
-                reference_candidates.setdefault(
-                    edge_id,
-                    _SymbolReferenceCandidate(
-                        reference_edge_id=edge_id,
-                        source_symbol_id=symbol.symbol_id,
-                        source_file=file_path,
-                        target_symbol_id=target_symbol.symbol_id,
-                        target_file=file_path,
-                        target_names=(target_symbol.symbol_name,),
-                        reference_type="references_symbol",
-                    ),
-                )
-            for dependency in dependencies:
-                _add_reference_candidate(
+                _record_local_reference(
                     source_symbol=symbol,
-                    target_file=dependency.target_file,
-                    target_names=(target_name,),
+                    target_symbol=target_symbol,
+                )
+            for target_file in dependency_target_files:
+                _record_dependency_reference(
+                    source_symbol=symbol,
+                    target_file=target_file,
+                    target_name=target_name,
                 )
         for match in CALL_RE.finditer(snippet):
             target_name = normalize_symbol_name(str(match.group("name") or ""))
@@ -462,34 +500,54 @@ def parse_file(
             if match.start() > 0 and snippet[match.start() - 1] in {".", ":", ">"}:
                 continue
             for target_symbol in symbols_by_name.get(target_name, ()):
-                if target_symbol.symbol_id == symbol.symbol_id:
-                    continue
-                edge_id = stable_identifier(
-                    "ref",
-                    {
-                        "source_symbol_id": symbol.symbol_id,
-                        "target_symbol_id": target_symbol.symbol_id,
-                        "type": "references_symbol",
-                    },
-                )
-                reference_candidates.setdefault(
-                    edge_id,
-                    _SymbolReferenceCandidate(
-                        reference_edge_id=edge_id,
-                        source_symbol_id=symbol.symbol_id,
-                        source_file=file_path,
-                        target_symbol_id=target_symbol.symbol_id,
-                        target_file=file_path,
-                        target_names=(target_symbol.symbol_name,),
-                        reference_type="references_symbol",
-                    ),
-                )
-            for dependency in dependencies:
-                _add_reference_candidate(
+                _record_local_reference(
                     source_symbol=symbol,
-                    target_file=dependency.target_file,
-                    target_names=(target_name,),
+                    target_symbol=target_symbol,
                 )
+            for target_file in dependency_target_files:
+                _record_dependency_reference(
+                    source_symbol=symbol,
+                    target_file=target_file,
+                    target_name=target_name,
+                )
+
+    reference_candidates: dict[str, _SymbolReferenceCandidate] = {}
+    for reference_spec in reference_specs.values():
+        edge_payload: tuple[Any, ...]
+        if reference_spec["target_symbol_id"] is None:
+            edge_payload = (
+                reference_spec["source_symbol_id"],
+                reference_spec["target_file"],
+                reference_spec["target_names"],
+                reference_spec["reference_type"],
+            )
+        else:
+            edge_payload = (
+                reference_spec["source_symbol_id"],
+                reference_spec["target_symbol_id"],
+                reference_spec["reference_type"],
+            )
+        edge_id = stable_identifier("ref", edge_payload)
+        reference_candidates.setdefault(
+            edge_id,
+            _SymbolReferenceCandidate(
+                reference_edge_id=edge_id,
+                source_symbol_id=str(reference_spec["source_symbol_id"]),
+                source_file=str(reference_spec["source_file"]),
+                target_symbol_id=(
+                    None
+                    if reference_spec["target_symbol_id"] is None
+                    else str(reference_spec["target_symbol_id"])
+                ),
+                target_file=(
+                    None
+                    if reference_spec["target_file"] is None
+                    else str(reference_spec["target_file"])
+                ),
+                target_names=tuple(str(name) for name in reference_spec["target_names"]),
+                reference_type=str(reference_spec["reference_type"]),
+            ),
+        )
 
     return (
         symbols,

@@ -154,6 +154,31 @@ def test_al_adapter_parse_file_extracts_extends_dependencies_and_references() ->
     assert any(reference.target_names == ("FormatName",) for reference in references)
 
 
+def test_al_adapter_symbol_and_reference_line_numbers_are_stable() -> None:
+    text = (
+        'pageextension 50101 CustomerCardExt extends "Customer Card"\n'
+        "{\n"
+        "    trigger OnOpenPage()\n"
+        "    begin\n"
+        "        FormatName();\n"
+        "    end;\n"
+        "\n"
+        "    local procedure FormatName()\n"
+        "    begin\n"
+        "    end;\n"
+        "}\n"
+    )
+
+    assert repository_al_primitives.iter_symbol_entries(text) == (
+        ("pageextension", "CustomerCardExt", 1),
+        ("trigger", "OnOpenPage", 3),
+        ("procedure", "FormatName", 8),
+    )
+    assert repository_al_primitives.iter_reference_entries(text) == (
+        (None, "FormatName", 5),
+    )
+
+
 def test_al_language_detection_supports_sources_without_overclaiming() -> None:
     assert ".al" in repository_service._TEXT_FILE_SUFFIXES
     assert (

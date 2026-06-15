@@ -43,6 +43,7 @@ is_probable_coffeescript_source = (
 module_symbol_name = repository_coffeescript_primitives.module_symbol_name
 normalize_identifier = repository_coffeescript_primitives.normalize_identifier
 strip_comments = repository_coffeescript_primitives.strip_comments
+_raw_symbol_entries = repository_coffeescript_primitives._raw_symbol_entries
 
 
 def _without_suffix_aliases(path: PurePosixPath) -> set[str]:
@@ -134,6 +135,8 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
+    stripped_text: str | None = None,
 ) -> set[str]:
     path = PurePosixPath(file_path)
     if path.suffix.lower() not in _KNOWN_SUFFIXES and path.name.lower() != "cakefile":
@@ -144,21 +147,27 @@ def module_aliases_for_path(
         *_without_suffix_aliases(path),
     }
     aliases.update(alias.lower() for alias in tuple(aliases))
-    try:
-        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        return {alias for alias in aliases if alias}
-    if not is_probable_coffeescript_source(path=Path(file_path), text=text):
+    loaded_text = text
+    if loaded_text is None:
+        try:
+            loaded_text = (root_path / path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return {alias for alias in aliases if alias}
+    candidate_stripped_text = (
+        stripped_text
+        if stripped_text is not None
+        else _source_text_for_analysis(file_path=file_path, text=loaded_text)
+    )
+    if not is_probable_coffeescript_source(path=Path(file_path), text=loaded_text):
         return {alias for alias in aliases if alias}
     module_name = module_symbol_name(file_path)
-    for collected_symbol in collect_symbol_entries(
+    for symbol_name, symbol_kind, _start_line, _end_line, _parent_name, _signature in _raw_symbol_entries(
         file_path=file_path,
-        text=text,
-        stable_identifier=stable_identifier,
+        text=loaded_text,
+        stripped_text=candidate_stripped_text,
     ):
-        if collected_symbol.symbol.symbol_kind == "module":
+        if symbol_kind == "module":
             continue
-        symbol_name = collected_symbol.symbol.symbol_name
         aliases.add(symbol_name)
         aliases.add(symbol_name.lower())
         if module_name:
@@ -332,20 +341,31 @@ def parse_dependencies_only(
     stable_identifier: StableIdentifier,
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
+    stripped_text: str | None = None,
+    imported_bindings: dict[str, tuple[str | None, tuple[str, ...]]] | None = None,
+    instance_bindings: dict[str, str] | None = None,
 ) -> tuple[_Dependency, ...]:
     if not is_probable_coffeescript_source(path=Path(file_path), text=text):
         return ()
-    stripped_text = _source_text_for_analysis(file_path=file_path, text=text)
+    candidate_stripped_text = (
+        stripped_text
+        if stripped_text is not None
+        else _source_text_for_analysis(file_path=file_path, text=text)
+    )
     dependencies: list[_Dependency] = []
     dependency_keys: set[tuple[str | None, str | None, str]] = set()
-    imported_bindings = _import_bindings_for_text(
-        file_path=file_path,
-        text=stripped_text,
-        module_index=module_index,
-        normalize_repository_relative_path=normalize_repository_relative_path,
-        resolve_suffix_match=resolve_suffix_match,
+    resolved_imported_bindings = (
+        imported_bindings
+        if imported_bindings is not None
+        else _import_bindings_for_text(
+            file_path=file_path,
+            text=candidate_stripped_text,
+            module_index=module_index,
+            normalize_repository_relative_path=normalize_repository_relative_path,
+            resolve_suffix_match=resolve_suffix_match,
+        )
     )
-    for import_target in import_targets_for_text(stripped_text):
+    for import_target in import_targets_for_text(candidate_stripped_text):
         _register_dependency(
             file_path=file_path,
             target_file=resolve_import(
@@ -363,9 +383,9 @@ def parse_dependencies_only(
             dependency_keys=dependency_keys,
             dependencies=dependencies,
         )
-    for line_number, relation_targets in sorted(_class_relation_targets(stripped_text).items()):
+    for line_number, relation_targets in sorted(_class_relation_targets(candidate_stripped_text).items()):
         for target_name in relation_targets:
-            target_binding = imported_bindings.get(target_name)
+            target_binding = resolved_imported_bindings.get(target_name)
             _register_dependency(
                 file_path=file_path,
                 target_file=target_binding[0] if target_binding else None,
@@ -377,31 +397,35 @@ def parse_dependencies_only(
                 dependency_keys=dependency_keys,
                 dependencies=dependencies,
             )
-    instance_bindings = _instance_type_bindings_for_text(stripped_text)
-    for match in _NEW_RE.finditer(stripped_text):
+    resolved_instance_bindings = (
+        instance_bindings
+        if instance_bindings is not None
+        else _instance_type_bindings_for_text(candidate_stripped_text)
+    )
+    for match in _NEW_RE.finditer(candidate_stripped_text):
         target_name = normalize_identifier(match.group("name") or "")
         if not target_name:
             continue
-        target_binding = imported_bindings.get(target_name)
+        target_binding = resolved_imported_bindings.get(target_name)
         _register_dependency(
             file_path=file_path,
             target_file=target_binding[0] if target_binding else None,
             target_symbol=target_name,
             dependency_type="references",
             target_hint=target_name,
-            line_number=_line_number(stripped_text, match.start()),
+            line_number=_line_number(candidate_stripped_text, match.start()),
             stable_identifier=stable_identifier,
             dependency_keys=dependency_keys,
             dependencies=dependencies,
         )
-    for match in _QUALIFIED_CALL_RE.finditer(stripped_text):
+    for match in _QUALIFIED_CALL_RE.finditer(candidate_stripped_text):
         owner_name = normalize_identifier(match.group("owner") or "")
         method_name = normalize_identifier(match.group("name") or "")
         if not owner_name or not method_name:
             continue
-        owner_binding = imported_bindings.get(owner_name)
-        if owner_binding is None and owner_name in instance_bindings:
-            owner_binding = imported_bindings.get(instance_bindings[owner_name])
+        owner_binding = resolved_imported_bindings.get(owner_name)
+        if owner_binding is None and owner_name in resolved_instance_bindings:
+            owner_binding = resolved_imported_bindings.get(resolved_instance_bindings[owner_name])
         if owner_binding is None:
             continue
         _register_dependency(
@@ -410,16 +434,16 @@ def parse_dependencies_only(
             target_symbol=method_name,
             dependency_type="references",
             target_hint=f"{owner_name}.{method_name}",
-            line_number=_line_number(stripped_text, match.start()),
+            line_number=_line_number(candidate_stripped_text, match.start()),
             stable_identifier=stable_identifier,
             dependency_keys=dependency_keys,
             dependencies=dependencies,
         )
-    for match in _BARE_CALL_RE.finditer(stripped_text):
+    for match in _BARE_CALL_RE.finditer(candidate_stripped_text):
         target_name = normalize_identifier(match.group("name") or "")
         if not target_name or target_name in _RESERVED_SYMBOL_NAMES:
             continue
-        target_binding = imported_bindings.get(target_name)
+        target_binding = resolved_imported_bindings.get(target_name)
         if target_binding is None or not target_binding[1]:
             continue
         _register_dependency(
@@ -428,7 +452,7 @@ def parse_dependencies_only(
             target_symbol=target_binding[1][0],
             dependency_type="references",
             target_hint=target_name,
-            line_number=_line_number(stripped_text, match.start()),
+            line_number=_line_number(candidate_stripped_text, match.start()),
             stable_identifier=stable_identifier,
             dependency_keys=dependency_keys,
             dependencies=dependencies,
@@ -492,16 +516,9 @@ def parse_file(
         file_path=file_path,
         text=text,
         stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
     )
     symbols = tuple(collected_symbol.symbol for collected_symbol in collected_symbols)
-    dependencies = parse_dependencies_only(
-        file_path=file_path,
-        text=text,
-        module_index=module_index,
-        stable_identifier=stable_identifier,
-        normalize_repository_relative_path=normalize_repository_relative_path,
-        resolve_suffix_match=resolve_suffix_match,
-    )
     imported_bindings = _import_bindings_for_text(
         file_path=file_path,
         text=stripped_text,
@@ -510,6 +527,17 @@ def parse_file(
         resolve_suffix_match=resolve_suffix_match,
     )
     instance_bindings = _instance_type_bindings_for_text(stripped_text)
+    dependencies = parse_dependencies_only(
+        file_path=file_path,
+        text=text,
+        module_index=module_index,
+        stable_identifier=stable_identifier,
+        normalize_repository_relative_path=normalize_repository_relative_path,
+        resolve_suffix_match=resolve_suffix_match,
+        stripped_text=stripped_text,
+        imported_bindings=imported_bindings,
+        instance_bindings=instance_bindings,
+    )
     local_callable_names = {
         collected_symbol.symbol.symbol_name
         for collected_symbol in collected_symbols

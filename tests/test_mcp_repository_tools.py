@@ -5,6 +5,9 @@ import json
 import pytest
 
 from apps.mcp_server.tools import repositories
+from apps.api_server.services.repository_language_priority import (
+    DEFAULT_REAL_LANGUAGE_RANK_TARGET,
+)
 
 pytestmark = pytest.mark.anyio
 
@@ -41,9 +44,9 @@ async def test_repository_tool_handlers_forward_canonical_routes(
                 "supported_languages": ["python", "typescript", "coq"],
                 "support_progress": {
                     "supported_real_language_count": 3,
-                    "ranked_target_language_count": 200,
-                    "progress_fraction": 3 / 200,
-                    "progress_label": "3 / 200",
+                    "ranked_target_language_count": DEFAULT_REAL_LANGUAGE_RANK_TARGET,
+                    "progress_fraction": 3 / DEFAULT_REAL_LANGUAGE_RANK_TARGET,
+                    "progress_label": f"3 / {DEFAULT_REAL_LANGUAGE_RANK_TARGET}",
                 },
             }
         if (method, path) == ("POST", "/v1/repositories/repo_123/snapshots"):
@@ -217,7 +220,9 @@ async def test_repository_tool_handlers_forward_canonical_routes(
     )
 
     assert capabilities["supported_languages"] == ["python", "typescript", "coq"]
-    assert capabilities["support_progress"]["progress_label"] == "3 / 200"
+    assert capabilities["support_progress"]["progress_label"] == (
+        f"3 / {DEFAULT_REAL_LANGUAGE_RANK_TARGET}"
+    )
     assert snapshot["snapshot_id"] == "snapshot_123"
     assert fetched["status"] == "existing"
     assert triage["workspace_evidence_bundle_ref"] == "evidence_bundle_123"

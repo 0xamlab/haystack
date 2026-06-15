@@ -110,6 +110,8 @@ _RESERVED_SYMBOL_NAMES = frozenset(
         "yield",
     }
 )
+_STRIPPED_COMMENT_CACHE_LIMIT = 128
+_STRIPPED_COMMENT_CACHE: dict[str, str] = {}
 
 
 def _line_number(text: str, offset: int) -> int:
@@ -129,7 +131,11 @@ def _looks_binaryish(text: str) -> bool:
     return control_count > max(2, len(sample) // 32)
 
 
-def strip_comments(text: str) -> str:
+def clear_strip_comments_cache() -> None:
+    _STRIPPED_COMMENT_CACHE.clear()
+
+
+def _strip_comments_uncached(text: str) -> str:
     characters: list[str] = []
     index = 0
     in_string = False
@@ -174,6 +180,18 @@ def strip_comments(text: str) -> str:
         characters.append(character)
         index += 1
     return "".join(characters)
+
+
+def strip_comments(text: str) -> str:
+    cached = _STRIPPED_COMMENT_CACHE.get(text)
+    if cached is not None:
+        return cached
+    stripped_text = _strip_comments_uncached(text)
+    if len(_STRIPPED_COMMENT_CACHE) >= _STRIPPED_COMMENT_CACHE_LIMIT:
+        oldest_key = next(iter(_STRIPPED_COMMENT_CACHE))
+        _STRIPPED_COMMENT_CACHE.pop(oldest_key, None)
+    _STRIPPED_COMMENT_CACHE[text] = stripped_text
+    return stripped_text
 
 
 def has_cython_path_hints(path: Path | PurePosixPath) -> bool:
@@ -243,13 +261,22 @@ def _parse_import_spec(raw_spec: str) -> tuple[str, str]:
 
 def include_statements(text: str) -> tuple[tuple[str, int], ...]:
     stripped_text = strip_comments(text)
+    return _include_statements_from_stripped_text(stripped_text)
+
+
+def _include_statements_from_stripped_text(
+    stripped_text: str,
+) -> tuple[tuple[str, int], ...]:
     statements: list[tuple[str, int]] = []
     seen: set[tuple[str, int]] = set()
-    for match in _INCLUDE_RE.finditer(stripped_text):
+    for line_number, line in enumerate(stripped_text.splitlines(), start=1):
+        match = _INCLUDE_RE.match(line)
+        if match is None:
+            continue
         target = _normalize_include_target(str(match.group("target") or ""))
         if not target:
             continue
-        item = (target, _line_number(stripped_text, match.start()))
+        item = (target, line_number)
         if item in seen:
             continue
         seen.add(item)
@@ -261,13 +288,22 @@ def import_statements(
     text: str,
 ) -> tuple[tuple[str, str, str, str, int], ...]:
     stripped_text = strip_comments(text)
+    return _import_statements_from_stripped_text(stripped_text)
+
+
+def _import_statements_from_stripped_text(
+    stripped_text: str,
+) -> tuple[tuple[str, str, str, str, int], ...]:
     statements: list[tuple[str, str, str, str, int]] = []
     seen: set[tuple[str, str, str, str, int]] = set()
-    for regex, import_kind in (
-        (_FROM_CIMPORT_RE, "from_cimport"),
-        (_FROM_IMPORT_RE, "from_import"),
-    ):
-        for match in regex.finditer(stripped_text):
+    for line_number, line in enumerate(stripped_text.splitlines(), start=1):
+        for regex, import_kind in (
+            (_FROM_CIMPORT_RE, "from_cimport"),
+            (_FROM_IMPORT_RE, "from_import"),
+        ):
+            match = regex.match(line)
+            if match is None:
+                continue
             module_name = normalize_identifier(str(match.group("module") or ""))
             for raw_spec in str(match.group("names") or "").split(","):
                 target_name, alias_name = _parse_import_spec(raw_spec)
@@ -278,13 +314,15 @@ def import_statements(
                     module_name,
                     target_name,
                     alias_name or target_name,
-                    _line_number(stripped_text, match.start()),
+                    line_number,
                 )
                 if item not in seen:
                     seen.add(item)
                     statements.append(item)
-    for regex, import_kind in ((_CIMPORT_RE, "cimport"), (_IMPORT_RE, "import")):
-        for match in regex.finditer(stripped_text):
+        for regex, import_kind in ((_CIMPORT_RE, "cimport"), (_IMPORT_RE, "import")):
+            match = regex.match(line)
+            if match is None:
+                continue
             for raw_spec in str(match.group("names") or "").split(","):
                 target_name, alias_name = _parse_import_spec(raw_spec)
                 if not target_name:
@@ -294,7 +332,7 @@ def import_statements(
                     "",
                     target_name,
                     alias_name or target_name,
-                    _line_number(stripped_text, match.start()),
+                    line_number,
                 )
                 if item not in seen:
                     seen.add(item)
@@ -304,6 +342,12 @@ def import_statements(
 
 def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
     stripped_text = strip_comments(text)
+    return _iter_symbol_entries_from_stripped_text(stripped_text)
+
+
+def _iter_symbol_entries_from_stripped_text(
+    stripped_text: str,
+) -> tuple[tuple[str, str, int], ...]:
     entries: list[tuple[str, str, int]] = []
     seen_names: set[tuple[str, str]] = set()
     for regex, symbol_kind in (
@@ -355,7 +399,9 @@ def collect_symbols(
             1,
         )
     ]
-    for symbol_name, symbol_kind, start_line in iter_symbol_entries(stripped_text):
+    for symbol_name, symbol_kind, start_line in _iter_symbol_entries_from_stripped_text(
+        stripped_text
+    ):
         symbols.append(
             (
                 _Symbol(
@@ -401,6 +447,8 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
+    include_symbol_aliases: bool = True,
 ) -> set[str]:
     path = PurePosixPath(file_path)
     if not has_cython_path_hints(path):
@@ -416,20 +464,22 @@ def module_aliases_for_path(
     if path.stem == "__init__":
         aliases.add(str(path.parent))
         aliases.add(str(path.parent).replace("/", "."))
-    try:
-        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        text = ""
-    for symbol in collect_symbols(
-        file_path=file_path,
-        text=text,
-        stable_identifier=stable_identifier,
-    ):
-        if symbol.symbol_kind == "module":
-            continue
-        aliases.add(symbol.symbol_name)
-        if module_name:
-            aliases.add(f"{module_name}.{symbol.symbol_name}")
+    if include_symbol_aliases:
+        if text is None:
+            try:
+                text = (root_path / path).read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                text = ""
+        for symbol in collect_symbols(
+            file_path=file_path,
+            text=text,
+            stable_identifier=stable_identifier,
+        ):
+            if symbol.symbol_kind == "module":
+                continue
+            aliases.add(symbol.symbol_name)
+            if module_name:
+                aliases.add(f"{module_name}.{symbol.symbol_name}")
     return {alias for alias in aliases if alias}
 
 

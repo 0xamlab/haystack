@@ -19,6 +19,9 @@ from apps.api_server.services import (
     repository_intelligence_indexing as repository_indexing,
 )
 from apps.api_server.services import (
+    repository_intelligence_inventory as repository_inventory,
+)
+from apps.api_server.services import (
     repository_intelligence_runtime as repository_runtime,
 )
 from apps.api_server.services import (
@@ -46,6 +49,7 @@ from apps.api_server.services.runtime_internal_contracts import (
     SymbolGraphRecord,
     SymbolReferenceRecord,
     parquet_bytes_from_records,
+    parquet_bytes_from_row_dicts,
 )
 
 _RequireRepositoryConnector = Callable[[DataConnector], None]
@@ -305,6 +309,7 @@ def create_repository_snapshot(
             max_files=request.max_files,
             max_total_bytes=request.max_total_bytes,
             prefer_concrete_focus_paths=bool(request.prefer_concrete_focus_paths),
+            assume_clean_git_clone=bool(getattr(source, "assume_clean_git_clone", False)),
         )
         lookup_key = _snapshot_lookup_key(
             repository_id=repository_id,
@@ -421,6 +426,9 @@ def create_repository_snapshot(
                         exclude_patterns=normalized_exclude_patterns,
                         max_files=request.max_files,
                         max_total_bytes=request.max_total_bytes,
+                        assume_clean_git_clone=bool(
+                            getattr(source, "assume_clean_git_clone", False)
+                        ),
                     )
             else:
                 files = iter_repository_files(
@@ -440,6 +448,7 @@ def create_repository_snapshot(
                 max_files=request.max_files,
                 max_total_bytes=request.max_total_bytes,
             )
+        file_paths = [str(path.relative_to(source.root_path)) for path in files]
         if not (
             isinstance(cached_selection, dict)
             and str(cached_selection.get("resolved_revision") or "") == source.resolved_revision
@@ -448,18 +457,31 @@ def create_repository_snapshot(
                 selection_cache_path,
                 {
                     "resolved_revision": source.resolved_revision,
-                    "file_paths": [str(path.relative_to(source.root_path)) for path in files],
+                    "file_paths": file_paths,
                 },
             )
-        file_paths = [str(path.relative_to(source.root_path)) for path in files]
         module_index = build_module_index(
             file_paths,
             root_path=source.root_path,
         )
-        workspace_package_index = build_workspace_package_index(source.root_path)
-        workspace_go_module_index = build_workspace_go_module_index(source.root_path)
+        workspace_package_index = (
+            build_workspace_package_index(source.root_path)
+            if repository_inventory._requires_workspace_package_index(file_paths)
+            else {}
+        )
+        workspace_go_module_index = (
+            build_workspace_go_module_index(source.root_path)
+            if repository_inventory._requires_workspace_go_module_index(file_paths)
+            else {}
+        )
         tracked_content_hashes = (
-            git_tracked_content_hashes(source.root_path, candidate_paths=file_paths)
+            git_tracked_content_hashes(
+                source.root_path,
+                candidate_paths=file_paths,
+                assume_clean_git_clone=bool(
+                    getattr(source, "assume_clean_git_clone", False)
+                ),
+            )
             if source.is_git
             else None
         )
@@ -538,69 +560,69 @@ def create_repository_snapshot(
             # where the manifest + Parquet are durably mirrored (fail-closed) first.
             return response
 
-        snapshot_records = [
-            RepositorySnapshotRecord(
-                repository_id=repository_id,
-                snapshot_id=snapshot_id,
-                connector_type=source.connector_type,
-                repository_url=source.repository_url,
-                resolved_revision=source.resolved_revision,
-                file_path=item.file_path,
-                language=item.language,
-                content_hash=item.content_hash,
-                line_count=item.line_count,
-                byte_size=item.byte_size,
-                token_estimate=item.token_estimate,
-                created_at=created_at,
-            )
+        snapshot_rows = [
+            {
+                "repository_id": repository_id,
+                "snapshot_id": snapshot_id,
+                "connector_type": source.connector_type,
+                "repository_url": source.repository_url,
+                "resolved_revision": source.resolved_revision,
+                "file_path": item.file_path,
+                "language": item.language,
+                "content_hash": item.content_hash,
+                "line_count": item.line_count,
+                "byte_size": item.byte_size,
+                "token_estimate": item.token_estimate,
+                "created_at": created_at,
+            }
             for item in analyses
         ]
-        symbol_records = [
-            SymbolGraphRecord(
-                repository_id=repository_id,
-                snapshot_id=snapshot_id,
-                symbol_id=symbol.symbol_id,
-                file_path=item.file_path,
-                symbol_name=symbol.symbol_name,
-                language=item.language,
-                symbol_kind=symbol.symbol_kind,
-                start_line=symbol.start_line,
-                end_line=symbol.end_line,
-                parent_symbol_id=symbol.parent_symbol_id,
-                signature=symbol.signature,
-                created_at=created_at,
-            )
+        symbol_graph_rows = [
+            {
+                "repository_id": repository_id,
+                "snapshot_id": snapshot_id,
+                "symbol_id": symbol.symbol_id,
+                "file_path": item.file_path,
+                "symbol_name": symbol.symbol_name,
+                "language": item.language,
+                "symbol_kind": symbol.symbol_kind,
+                "start_line": symbol.start_line,
+                "end_line": symbol.end_line,
+                "parent_symbol_id": symbol.parent_symbol_id,
+                "signature": symbol.signature,
+                "created_at": created_at,
+            }
             for item in analyses
             for symbol in item.symbols
         ]
-        dependency_records = [
-            DependencyGraphRecord(
-                repository_id=repository_id,
-                snapshot_id=snapshot_id,
-                dependency_edge_id=dependency.dependency_edge_id,
-                source_file=dependency.source_file,
-                target_file=dependency.target_file,
-                target_symbol=dependency.target_symbol,
-                dependency_type=dependency.dependency_type,
-                created_at=created_at,
-            )
+        dependency_graph_rows = [
+            {
+                "repository_id": repository_id,
+                "snapshot_id": snapshot_id,
+                "dependency_edge_id": dependency.dependency_edge_id,
+                "source_file": dependency.source_file,
+                "target_file": dependency.target_file,
+                "target_symbol": dependency.target_symbol,
+                "dependency_type": dependency.dependency_type,
+                "created_at": created_at,
+            }
             for item in analyses
             for dependency in item.dependencies
         ]
         # AR-OPT-2: persist per-file symbol references to Parquet so the slim (v2)
         # manifest can hydrate them on load instead of inlining them in the JSON.
-        symbol_reference_records = [
-            SymbolReferenceRecord(
-                repository_id=repository_id,
-                snapshot_id=snapshot_id,
-                reference_edge_id=reference.reference_edge_id,
-                source_file=reference.source_file,
-                source_symbol_id=reference.source_symbol_id,
-                target_symbol_id=reference.target_symbol_id,
-                target_file=reference.target_file,
-                reference_type=reference.reference_type,
-                created_at=created_at,
-            )
+        symbol_reference_rows = [
+            {
+                "repository_id": repository_id,
+                "snapshot_id": snapshot_id,
+                "reference_edge_id": reference.reference_edge_id,
+                "source_file": reference.source_file,
+                "source_symbol_id": reference.source_symbol_id,
+                "target_symbol_id": reference.target_symbol_id,
+                "target_file": reference.target_file,
+                "reference_type": reference.reference_type,
+                "created_at": created_at,
+            }
             for item in analyses
             for reference in item.symbol_references
         ]
@@ -611,7 +633,7 @@ def create_repository_snapshot(
         for item in analyses:
             for symbol in item.symbols:
                 symbols_by_file_and_name[(item.file_path, symbol.symbol_name)].append(symbol)
-        reference_graph_records_by_id: dict[str, RepositoryGraphRecord] = {}
+        reference_graph_rows_by_id: dict[str, dict[str, Any]] = {}
         for item in analyses:
             for candidate in item.symbol_references:
                 target_symbol_id = resolve_symbol_reference_target(
@@ -628,41 +650,41 @@ def create_repository_snapshot(
                         "type": candidate.reference_type,
                     },
                 )
-                reference_graph_records_by_id.setdefault(
+                reference_graph_rows_by_id.setdefault(
                     edge_id,
-                    RepositoryGraphRecord(
-                        repository_id=repository_id,
-                        snapshot_id=snapshot_id,
-                        edge_id=edge_id,
-                        source_node=f"symbol:{candidate.source_symbol_id}",
-                        target_node=f"symbol:{target_symbol_id}",
-                        edge_type=candidate.reference_type,
-                        weight=1.0,
-                        created_at=created_at,
-                    ),
+                    {
+                        "repository_id": repository_id,
+                        "snapshot_id": snapshot_id,
+                        "edge_id": edge_id,
+                        "source_node": f"symbol:{candidate.source_symbol_id}",
+                        "target_node": f"symbol:{target_symbol_id}",
+                        "edge_type": candidate.reference_type,
+                        "weight": 1.0,
+                        "created_at": created_at,
+                    },
                 )
-        reference_graph_records = list(reference_graph_records_by_id.values())
-        repository_graph_records = [
-            RepositoryGraphRecord(
-                repository_id=repository_id,
-                snapshot_id=snapshot_id,
-                edge_id=_stable_identifier(
+        reference_graph_rows = list(reference_graph_rows_by_id.values())
+        repository_graph_rows = [
+            {
+                "repository_id": repository_id,
+                "snapshot_id": snapshot_id,
+                "edge_id": _stable_identifier(
                     "edge",
                     {"source": item.file_path, "target": symbol.symbol_id, "type": "contains"},
                 ),
-                source_node=f"file:{item.file_path}",
-                target_node=f"symbol:{symbol.symbol_id}",
-                edge_type="contains",
-                weight=1.0,
-                created_at=created_at,
-            )
+                "source_node": f"file:{item.file_path}",
+                "target_node": f"symbol:{symbol.symbol_id}",
+                "edge_type": "contains",
+                "weight": 1.0,
+                "created_at": created_at,
+            }
             for item in analyses
             for symbol in item.symbols
         ] + [
-            RepositoryGraphRecord(
-                repository_id=repository_id,
-                snapshot_id=snapshot_id,
-                edge_id=_stable_identifier(
+            {
+                "repository_id": repository_id,
+                "snapshot_id": snapshot_id,
+                "edge_id": _stable_identifier(
                     "edge",
                     {
                         "source": symbol.parent_symbol_id,
@@ -670,20 +692,20 @@ def create_repository_snapshot(
                         "type": "contains_symbol",
                     },
                 ),
-                source_node=f"symbol:{symbol.parent_symbol_id}",
-                target_node=f"symbol:{symbol.symbol_id}",
-                edge_type="contains_symbol",
-                weight=1.0,
-                created_at=created_at,
-            )
+                "source_node": f"symbol:{symbol.parent_symbol_id}",
+                "target_node": f"symbol:{symbol.symbol_id}",
+                "edge_type": "contains_symbol",
+                "weight": 1.0,
+                "created_at": created_at,
+            }
             for item in analyses
             for symbol in item.symbols
             if symbol.parent_symbol_id
-        ] + reference_graph_records + [
-            RepositoryGraphRecord(
-                repository_id=repository_id,
-                snapshot_id=snapshot_id,
-                edge_id=_stable_identifier(
+        ] + reference_graph_rows + [
+            {
+                "repository_id": repository_id,
+                "snapshot_id": snapshot_id,
+                "edge_id": _stable_identifier(
                     "edge",
                     {
                         "source": dependency.source_file,
@@ -691,15 +713,18 @@ def create_repository_snapshot(
                         "type": dependency.dependency_type,
                     },
                 ),
-                source_node=f"file:{dependency.source_file}",
-                target_node=f"file:{dependency.target_file}"
-                if dependency.target_file
-                else f"module:{dependency.target_symbol}",
-                edge_type=dependency.dependency_type,
-                weight=1.0,
-                created_at=created_at,
-            )
-            for dependency in dependency_records
+                "source_node": f"file:{dependency.source_file}",
+                "target_node": (
+                    f"file:{dependency.target_file}"
+                    if dependency.target_file
+                    else f"module:{dependency.target_symbol}"
+                ),
+                "edge_type": dependency.dependency_type,
+                "weight": 1.0,
+                "created_at": created_at,
+            }
+            for item in analyses
+            for dependency in item.dependencies
         ]
         telemetry.record_span_ms(
             "graph_build_ms", (time.perf_counter() - _graph_build_start) * 1000.0
@@ -712,27 +737,33 @@ def create_repository_snapshot(
         # B8: capture the exact in-memory Parquet payloads so the object-store mirror below stores
         # the SAME bytes that write_bytes_with_hash hashes into the manifest content_hash — the
         # recovery-side sha256 integrity check then matches by construction (no re-read / TOCTOU).
-        snapshot_parquet_bytes = parquet_bytes_from_records(
-            snapshot_records, record_type=RepositorySnapshotRecord
+        snapshot_parquet_bytes = parquet_bytes_from_row_dicts(
+            snapshot_rows, record_type=RepositorySnapshotRecord
         )
         symbol_graph_parquet_bytes = (
-            parquet_bytes_from_records(symbol_records, record_type=SymbolGraphRecord)
-            if symbol_records
+            parquet_bytes_from_row_dicts(symbol_graph_rows, record_type=SymbolGraphRecord)
+            if symbol_graph_rows
             else parquet_bytes_from_records([], record_type=SymbolGraphRecord)
         )
         dependency_graph_parquet_bytes = (
-            parquet_bytes_from_records(dependency_records, record_type=DependencyGraphRecord)
-            if dependency_records
+            parquet_bytes_from_row_dicts(
+                dependency_graph_rows, record_type=DependencyGraphRecord
+            )
+            if dependency_graph_rows
             else parquet_bytes_from_records([], record_type=DependencyGraphRecord)
         )
         repository_graph_parquet_bytes = (
-            parquet_bytes_from_records(repository_graph_records, record_type=RepositoryGraphRecord)
-            if repository_graph_records
+            parquet_bytes_from_row_dicts(
+                repository_graph_rows, record_type=RepositoryGraphRecord
+            )
+            if repository_graph_rows
             else parquet_bytes_from_records([], record_type=RepositoryGraphRecord)
         )
         symbol_reference_parquet_bytes = (
-            parquet_bytes_from_records(symbol_reference_records, record_type=SymbolReferenceRecord)
-            if symbol_reference_records
+            parquet_bytes_from_row_dicts(
+                symbol_reference_rows, record_type=SymbolReferenceRecord
+            )
+            if symbol_reference_rows
             else parquet_bytes_from_records([], record_type=SymbolReferenceRecord)
         )
         snapshot_parquet_hash = write_bytes_with_hash(

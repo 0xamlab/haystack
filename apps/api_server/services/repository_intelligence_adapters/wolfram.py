@@ -14,6 +14,7 @@ from apps.api_server.services.repository_intelligence_adapters.wolfram_support i
     _current_package_context,
     _extract_begin_package_imports,
     _extract_context_import_targets,
+    _extract_declared_symbol_aliases,
     _extract_declared_symbols,
     _extract_relative_file_targets,
     _package_file_context,
@@ -45,18 +46,21 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
+    stripped_text: str | None = None,
 ) -> set[str]:
     del stable_identifier
     path = PurePosixPath(file_path)
     if path.suffix.lower() not in _KNOWN_WOLFRAM_SUFFIXES:
         return set()
-    try:
-        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
+    if text is None:
+        try:
+            text = (root_path / path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return set()
+    stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
+    if not is_probable_wolfram_source(path=path, text=text, stripped_text=stripped_text):
         return set()
-    if not is_probable_wolfram_source(path=path, text=text):
-        return set()
-    stripped_text = strip_comments(text)
     current_package = _current_package_context(stripped_text)
     aliases = _path_aliases(path)
     for package_alias in _package_file_context(current_package, path.stem):
@@ -64,12 +68,10 @@ def module_aliases_for_path(
     for qualified_symbol in _qualified_symbol_contexts(stripped_text):
         for package_alias in _package_file_context(qualified_symbol, path.stem):
             aliases.add(package_alias)
-    for symbol_entry in _extract_declared_symbols(
+    for symbol_name, qualified_name in _extract_declared_symbol_aliases(
         stripped_text,
         current_package=current_package,
     ):
-        symbol_name = str(symbol_entry["symbol_name"])
-        qualified_name = str(symbol_entry["qualified_name"])
         if symbol_name:
             aliases.add(symbol_name)
             aliases.add(f"{path.stem}.{symbol_name}")
@@ -83,11 +85,13 @@ def parse_dependencies_only(
     text: str,
     module_index: dict[str, str],
     *,
+    stripped_text: str | None = None,
     stable_identifier: StableIdentifier,
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
 ) -> tuple[_Dependency, ...]:
-    stripped_text = strip_comments(text)
+    if stripped_text is None:
+        stripped_text = strip_comments(text)
     dependencies: list[_Dependency] = []
     seen_dependencies: set[tuple[str | None, str, str]] = set()
     for context_name in _extract_begin_package_imports(stripped_text):
@@ -238,8 +242,9 @@ def parse_file(
     )
     dependencies = parse_dependencies_only(
         file_path,
-        stripped_text,
+        text,
         module_index,
+        stripped_text=stripped_text,
         stable_identifier=stable_identifier,
         normalize_repository_relative_path=normalize_repository_relative_path,
         resolve_suffix_match=resolve_suffix_match,

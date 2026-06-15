@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import re
+from bisect import bisect_right
 from collections import Counter
 from collections.abc import Callable, Sequence
+from functools import lru_cache
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -135,7 +137,8 @@ def _normalize_repository_relative_path(value: str) -> str:
     return "/".join(normalized_parts)
 
 
-def strip_comments(text: str) -> str:
+@lru_cache(maxsize=2048)
+def _strip_comments_cached(text: str) -> str:
     output: list[str] = []
     index = 0
     comment_depth = 0
@@ -181,6 +184,25 @@ def strip_comments(text: str) -> str:
         output.append(character)
         index += 1
     return "".join(output)
+
+
+def strip_comments(text: str) -> str:
+    if "(*" not in text:
+        return text
+    return _strip_comments_cached(text)
+
+
+@lru_cache(maxsize=4096)
+def _line_start_offsets(text: str) -> tuple[int, ...]:
+    offsets = [0]
+    for index, character in enumerate(text):
+        if character == "\n":
+            offsets.append(index + 1)
+    return tuple(offsets)
+
+
+def _line_number(text: str, offset: int) -> int:
+    return bisect_right(_line_start_offsets(text), max(offset, 0))
 
 
 def normalize_context_name(raw_name: str) -> str:
@@ -274,6 +296,7 @@ def _path_aliases(path: PurePosixPath) -> set[str]:
     return {alias for alias in aliases if alias and alias not in {".", "/"}}
 
 
+@lru_cache(maxsize=1024)
 def _begin_package_context(text: str) -> str:
     match = _BEGIN_PACKAGE_RE.search(text)
     if match is None:
@@ -281,6 +304,7 @@ def _begin_package_context(text: str) -> str:
     return normalize_context_name(str(match.group("context") or ""))
 
 
+@lru_cache(maxsize=1024)
 def _qualified_symbol_contexts(text: str) -> tuple[str, ...]:
     contexts: list[str] = []
     seen_contexts: set[str] = set()
@@ -318,6 +342,7 @@ def _current_package_context(text: str) -> str:
     return _dominant_context(text)
 
 
+@lru_cache(maxsize=1024)
 def _extract_begin_package_imports(text: str) -> tuple[str, ...]:
     imports: list[str] = []
     seen_imports: set[str] = set()
@@ -332,6 +357,7 @@ def _extract_begin_package_imports(text: str) -> tuple[str, ...]:
     return tuple(imports)
 
 
+@lru_cache(maxsize=1024)
 def _extract_context_import_targets(text: str) -> tuple[tuple[str, str, int], ...]:
     targets: list[tuple[str, str, int]] = []
     seen_targets: set[tuple[str, str, int]] = set()
@@ -340,7 +366,7 @@ def _extract_context_import_targets(text: str) -> tuple[tuple[str, str, int], ..
         target = str(match.group("target") or "").strip()
         if not target:
             continue
-        line_no = text.count("\n", 0, match.start()) + 1
+        line_no = _line_number(text, match.start())
         key = (head, target, line_no)
         if key in seen_targets:
             continue
@@ -349,6 +375,7 @@ def _extract_context_import_targets(text: str) -> tuple[tuple[str, str, int], ..
     return tuple(targets)
 
 
+@lru_cache(maxsize=1024)
 def _extract_relative_file_targets(text: str) -> tuple[tuple[str, int], ...]:
     targets: list[tuple[str, int]] = []
     seen_targets: set[tuple[str, int]] = set()
@@ -356,7 +383,7 @@ def _extract_relative_file_targets(text: str) -> tuple[tuple[str, int], ...]:
         target = str(match.group("target") or "").strip()
         if not target:
             continue
-        line_no = text.count("\n", 0, match.start()) + 1
+        line_no = _line_number(text, match.start())
         key = (target, line_no)
         if key in seen_targets:
             continue
@@ -365,12 +392,13 @@ def _extract_relative_file_targets(text: str) -> tuple[tuple[str, int], ...]:
     return tuple(targets)
 
 
+@lru_cache(maxsize=2048)
 def _extract_declared_symbols(
     text: str,
     *,
     current_package: str,
     include_message_definitions: bool = True,
-) -> list[dict[str, Any]]:
+) -> tuple[dict[str, Any], ...]:
     candidates: list[dict[str, Any]] = []
     seen_symbols: set[tuple[str, int]] = set()
     patterns: list[tuple[re.Pattern[str], str]] = []
@@ -391,7 +419,7 @@ def _extract_declared_symbols(
             canonical_name = symbol_name.lower()
             if not symbol_name or canonical_name in RESERVED_SYMBOL_NAMES:
                 continue
-            line_no = text.count("\n", 0, match.start()) + 1
+            line_no = _line_number(text, match.start())
             symbol_key = (qualified_name or symbol_name, line_no)
             if symbol_key in seen_symbols:
                 continue
@@ -423,7 +451,28 @@ def _extract_declared_symbols(
             )
         else:
             entry["end_line"] = final_line
-    return candidates
+    return tuple(candidates)
+
+
+@lru_cache(maxsize=2048)
+def _extract_declared_symbol_aliases(
+    text: str,
+    *,
+    current_package: str,
+    include_message_definitions: bool = True,
+) -> tuple[tuple[str, str], ...]:
+    # Derive aliases from the declared-symbol entries (single source of truth) so the
+    # alias list mirrors them exactly — same per-declaration-site entries (a symbol declared
+    # twice, e.g. a ::usage line and a definition, yields two entries) and the same order.
+    # Deduping by (symbol_name, qualified_name) here dropped those legitimate repeats.
+    return tuple(
+        (str(entry["symbol_name"]), str(entry["qualified_name"]))
+        for entry in _extract_declared_symbols(
+            text,
+            current_package=current_package,
+            include_message_definitions=include_message_definitions,
+        )
+    )
 
 
 def _resolve_import_target(
@@ -637,7 +686,12 @@ def has_wolfram_path_hints(path: PurePosixPath | Path | str) -> bool:
     return bool(set(lowered_parts) & _PATH_HINT_PARTS)
 
 
-def is_probable_wolfram_source(*, path: PurePosixPath | Path | str, text: str) -> bool:
+def is_probable_wolfram_source(
+    *,
+    path: PurePosixPath | Path | str,
+    text: str,
+    stripped_text: str | None = None,
+) -> bool:
     normalized_path = PurePosixPath(str(path).replace("\\", "/"))
     suffix = normalized_path.suffix.lower()
     if suffix not in _KNOWN_WOLFRAM_SUFFIXES:
@@ -646,7 +700,7 @@ def is_probable_wolfram_source(*, path: PurePosixPath | Path | str, text: str) -
         return True
     if has_wolfram_path_hints(normalized_path):
         return True
-    stripped_text = strip_comments(text)
+    stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
     score = 0
     if _WOLFRAM_MARKER_RE.search(stripped_text):
         score += 2

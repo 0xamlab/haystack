@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable
+from functools import lru_cache
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -93,7 +94,10 @@ def _looks_binaryish(text: str) -> bool:
     return control_count > max(2, len(sample) // 32)
 
 
-def strip_comments(text: str) -> str:
+@lru_cache(maxsize=1024)
+def _strip_comments_cached(text: str) -> str:
+    if "/*" not in text and ";" not in text:
+        return text
     characters: list[str] = []
     index = 0
     in_string = False
@@ -138,16 +142,25 @@ def strip_comments(text: str) -> str:
     return "".join(characters)
 
 
+def strip_comments(text: str) -> str:
+    return _strip_comments_cached(text)
+
+
 def has_autohotkey_path_hints(path: Path | PurePosixPath) -> bool:
     return PurePosixPath(path).suffix.lower() in _KNOWN_SUFFIXES
 
 
-def is_probable_autohotkey_source(*, path: Path | PurePosixPath, text: str) -> bool:
+def is_probable_autohotkey_source(
+    *,
+    path: Path | PurePosixPath,
+    text: str,
+    stripped_text: str | None = None,
+) -> bool:
     normalized_path = PurePosixPath(path)
     if not has_autohotkey_path_hints(normalized_path) or not text or _looks_binaryish(text):
         return False
-    stripped_text = strip_comments(text)
-    return bool(stripped_text.strip()) and bool(_MARKER_RE.search(stripped_text))
+    effective_stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
+    return bool(effective_stripped_text.strip()) and bool(_MARKER_RE.search(effective_stripped_text))
 
 
 def _normalize_repository_relative_path(value: str) -> str:
@@ -194,8 +207,10 @@ def _normalize_include_target(raw_target: str) -> str:
     return normalized_target
 
 
-def import_statements(text: str) -> tuple[tuple[str, int], ...]:
-    stripped_text = strip_comments(text)
+@lru_cache(maxsize=1024)
+def _import_statements_from_stripped_text(
+    stripped_text: str,
+) -> tuple[tuple[str, int], ...]:
     statements: list[tuple[str, int]] = []
     seen: set[tuple[str, int]] = set()
     for match in _INCLUDE_RE.finditer(stripped_text):
@@ -211,8 +226,20 @@ def import_statements(text: str) -> tuple[tuple[str, int], ...]:
     return tuple(statements)
 
 
-def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
-    stripped_text = strip_comments(text)
+def import_statements(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, int], ...]:
+    return _import_statements_from_stripped_text(
+        stripped_text if stripped_text is not None else strip_comments(text)
+    )
+
+
+@lru_cache(maxsize=1024)
+def _iter_symbol_entries_from_stripped_text(
+    stripped_text: str,
+) -> tuple[tuple[str, str, int], ...]:
     entries: list[tuple[str, str, int]] = []
     seen: set[tuple[str, str, int]] = set()
     symbol_patterns = (
@@ -235,17 +262,32 @@ def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
     return tuple(entries)
 
 
+def iter_symbol_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, str, int], ...]:
+    return _iter_symbol_entries_from_stripped_text(
+        stripped_text if stripped_text is not None else strip_comments(text)
+    )
+
+
 def collect_symbols(
     *,
     file_path: str,
     text: str,
     stable_identifier: StableIdentifier,
+    stripped_text: str | None = None,
 ) -> tuple[_Symbol, ...]:
-    if not is_probable_autohotkey_source(path=Path(file_path), text=text):
+    effective_stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
+    if not is_probable_autohotkey_source(
+        path=Path(file_path),
+        text=text,
+        stripped_text=effective_stripped_text,
+    ):
         return ()
-    stripped_text = strip_comments(text)
     module_name = module_name_from_path(file_path)
-    final_line = _line_count(stripped_text)
+    final_line = _line_count(effective_stripped_text)
     symbols: list[tuple[_Symbol, int]] = [
         (
             _Symbol(
@@ -268,7 +310,10 @@ def collect_symbols(
             1,
         )
     ]
-    for symbol_name, symbol_kind, start_line in iter_symbol_entries(stripped_text):
+    for symbol_name, symbol_kind, start_line in iter_symbol_entries(
+        text,
+        stripped_text=effective_stripped_text,
+    ):
         symbols.append(
             (
                 _Symbol(
@@ -314,6 +359,8 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
+    stripped_text: str | None = None,
 ) -> set[str]:
     path = PurePosixPath(file_path)
     if not has_autohotkey_path_hints(path):
@@ -325,19 +372,23 @@ def module_aliases_for_path(
         module_name_from_path(file_path),
         path.stem,
     }
-    try:
-        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        text = ""
-    for symbol in collect_symbols(
-        file_path=file_path,
+    if text is None:
+        try:
+            text = (root_path / path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            text = ""
+    effective_stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
+    if is_probable_autohotkey_source(
+        path=path,
         text=text,
-        stable_identifier=stable_identifier,
+        stripped_text=effective_stripped_text,
     ):
-        if symbol.symbol_kind == "module":
-            continue
-        aliases.add(symbol.symbol_name)
-        aliases.add(f"{path.stem}.{symbol.symbol_name}")
+        for symbol_name, _symbol_kind, _line_number in iter_symbol_entries(
+            text,
+            stripped_text=effective_stripped_text,
+        ):
+            aliases.add(symbol_name)
+            aliases.add(f"{path.stem}.{symbol_name}")
     return {alias for alias in aliases if alias}
 
 
@@ -374,9 +425,10 @@ def imported_symbol_bindings(
     module_index: dict[str, str],
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
+    stripped_text: str | None = None,
 ) -> dict[str, _ImportedSymbolBinding]:
     bindings: dict[str, _ImportedSymbolBinding] = {}
-    for import_target, _line_number in import_statements(text):
+    for import_target, _line_number in import_statements(text, stripped_text=stripped_text):
         target_file = resolve_include(
             current_file=current_file,
             import_target=import_target,

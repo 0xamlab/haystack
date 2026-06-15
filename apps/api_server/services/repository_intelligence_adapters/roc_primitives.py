@@ -79,9 +79,14 @@ def has_roc_path_hints(path: Path | PurePosixPath) -> bool:
     return PurePosixPath(path).suffix.lower() in ROC_SUFFIXES
 
 
-def is_probable_roc_source(*, path: Path | PurePosixPath, text: str) -> bool:
+def is_probable_roc_source(
+    *,
+    path: Path | PurePosixPath,
+    text: str,
+    stripped_text: str | None = None,
+) -> bool:
     if has_roc_path_hints(path):
-        stripped_text = strip_comments(text)
+        stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
         return bool(
             _IMPORT_RE.search(stripped_text)
             or _TYPE_RE.search(stripped_text)
@@ -172,8 +177,12 @@ def resolve_import(
     return resolve_suffix_match(module_index=module_index, suffixes=suffixes) if suffixes else None
 
 
-def iter_dependency_entries(text: str) -> tuple[tuple[str, str, tuple[str, ...], int], ...]:
-    stripped_text = strip_comments(text)
+def iter_dependency_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, str, tuple[str, ...], int], ...]:
+    stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
     entries: list[tuple[str, str, tuple[str, ...], int]] = []
     for match in _IMPORT_RE.finditer(stripped_text):
         import_target = clean_import_target(match.group("target") or "")
@@ -191,8 +200,12 @@ def iter_dependency_entries(text: str) -> tuple[tuple[str, str, tuple[str, ...],
     return tuple(entries)
 
 
-def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
-    stripped_text = strip_comments(text)
+def iter_symbol_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, str, int], ...]:
+    stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
     entries: list[tuple[str, str, int]] = []
     seen_names: set[str] = set()
     for regex, symbol_kind in ((_TYPE_RE, "type"), (_VALUE_RE, "function")):
@@ -209,8 +222,12 @@ def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
     return tuple(sorted(entries, key=lambda item: (item[2], item[0], item[1])))
 
 
-def iter_reference_entries(text: str) -> tuple[tuple[str | None, str, int], ...]:
-    stripped_text = strip_comments(text)
+def iter_reference_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str | None, str, int], ...]:
+    stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
     entries: list[tuple[str | None, str, int]] = []
     for match in _QUALIFIED_REFERENCE_RE.finditer(stripped_text):
         entries.append(
@@ -254,7 +271,9 @@ def collect_symbols(
     file_path: str,
     text: str,
     stable_identifier: StableIdentifier,
+    stripped_text: str | None = None,
 ) -> tuple[_Symbol, ...]:
+    stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
     module_name = module_name_from_path(file_path) or PurePosixPath(file_path).stem
     line_count = _line_count(text)
     symbols = [
@@ -272,7 +291,10 @@ def collect_symbols(
         )
     ]
     module_symbol_id = symbols[0].symbol_id
-    for symbol_name, symbol_kind, line_number in iter_symbol_entries(text):
+    for symbol_name, symbol_kind, line_number in iter_symbol_entries(
+        text,
+        stripped_text=stripped_text,
+    ):
         symbols.append(
             _Symbol(
                 symbol_id=stable_identifier(

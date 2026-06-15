@@ -79,14 +79,37 @@ def resolve_same_target_reference(
     return None
 
 
-def parse_dependencies_only(
+def _cached_same_target_reference_resolver(
+    *,
+    current_file: str,
+    module_index: dict[str, str],
+    resolve_same_target_reference: ResolveSameTargetReference,
+) -> Callable[[str], str | None]:
+    cache: dict[str, str | None] = {}
+
+    def _resolve(type_name: str) -> str | None:
+        normalized_type = str(type_name or "").strip()
+        if not normalized_type:
+            return None
+        if normalized_type not in cache:
+            cache[normalized_type] = resolve_same_target_reference(
+                current_file=current_file,
+                type_name=normalized_type,
+                module_index=module_index,
+            )
+        return cache[normalized_type]
+
+    return _resolve
+
+
+def _parse_dependencies_only_with_cached_resolver(
+    *,
     file_path: str,
     text: str,
     module_index: dict[str, str],
-    *,
     stable_identifier: StableIdentifier,
     resolve_import: Callable[[str, dict[str, str]], str | None],
-    resolve_same_target_reference: ResolveSameTargetReference,
+    resolve_same_target_reference_cached: Callable[[str], str | None],
 ) -> tuple[_Dependency, ...]:
     dependencies: list[_Dependency] = []
     dependency_keys: set[tuple[str | None, str, str]] = set()
@@ -114,11 +137,7 @@ def parse_dependencies_only(
         type_name = str(match.group("name") or "").strip()
         if type_name in declared_type_names:
             continue
-        target_file = resolve_same_target_reference(
-            current_file=file_path,
-            type_name=type_name,
-            module_index=module_index,
-        )
+        target_file = resolve_same_target_reference_cached(type_name)
         dependency_key = (target_file, type_name, "references")
         if target_file is None or dependency_key in dependency_keys:
             continue
@@ -136,6 +155,29 @@ def parse_dependencies_only(
             )
         )
     return tuple(dependencies)
+
+
+def parse_dependencies_only(
+    file_path: str,
+    text: str,
+    module_index: dict[str, str],
+    *,
+    stable_identifier: StableIdentifier,
+    resolve_import: Callable[[str, dict[str, str]], str | None],
+    resolve_same_target_reference: ResolveSameTargetReference,
+) -> tuple[_Dependency, ...]:
+    return _parse_dependencies_only_with_cached_resolver(
+        file_path=file_path,
+        text=text,
+        module_index=module_index,
+        stable_identifier=stable_identifier,
+        resolve_import=resolve_import,
+        resolve_same_target_reference_cached=_cached_same_target_reference_resolver(
+            current_file=file_path,
+            module_index=module_index,
+            resolve_same_target_reference=resolve_same_target_reference,
+        ),
+    )
 
 
 def parse_file(
@@ -172,17 +214,18 @@ def parse_file(
     declared_symbol_names = {symbol.symbol_name for symbol in symbols}
     reference_candidates: dict[str, _SymbolReferenceCandidate] = {}
     lines = text.splitlines()
+    resolve_same_target_reference_cached = _cached_same_target_reference_resolver(
+        current_file=file_path,
+        module_index=module_index,
+        resolve_same_target_reference=resolve_same_target_reference,
+    )
     for symbol in symbols:
         snippet = "\n".join(lines[symbol.start_line - 1 : symbol.end_line])
         for match in TYPE_REFERENCE_RE.finditer(snippet):
             type_name = str(match.group("name") or "").strip()
             if type_name in declared_symbol_names or type_name == symbol.symbol_name:
                 continue
-            target_file = resolve_same_target_reference(
-                current_file=file_path,
-                type_name=type_name,
-                module_index=module_index,
-            )
+            target_file = resolve_same_target_reference_cached(type_name)
             if target_file is None or target_file == file_path:
                 continue
             edge_id = stable_identifier(
@@ -208,13 +251,13 @@ def parse_file(
             )
     return (
         symbols,
-        parse_dependencies_only(
-            file_path,
-            text,
-            module_index,
+        _parse_dependencies_only_with_cached_resolver(
+            file_path=file_path,
+            text=text,
+            module_index=module_index,
             stable_identifier=stable_identifier,
             resolve_import=resolve_import,
-            resolve_same_target_reference=resolve_same_target_reference,
+            resolve_same_target_reference_cached=resolve_same_target_reference_cached,
         ),
         tuple(reference_candidates[key] for key in sorted(reference_candidates)),
     )

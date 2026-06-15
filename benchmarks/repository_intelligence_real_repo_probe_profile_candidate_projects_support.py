@@ -29,6 +29,7 @@ _is_operational_profile_entrypoint_candidate = _DeferredProbeAttr(
     "_is_operational_profile_entrypoint_candidate"
 )
 _probe_language_for_path = _DeferredProbeAttr("_probe_language_for_path")
+_DM_MANIFEST_INCLUDE_LIMIT = 64
 
 
 def _odin_profile_hints(
@@ -105,6 +106,121 @@ def _odin_profile_hints(
     return entrypoints, {root for root in support_roots if root}, config_paths
 
 
+def _dm_profile_hints(
+    repo_path: Path,
+    manifest_path: str,
+) -> tuple[set[str], set[str], set[str]]:
+    normalized_path = repository_service._normalize_repository_relative_path(manifest_path)
+    if not normalized_path:
+        return set(), set(), set()
+    config_paths = {normalized_path}
+    manifest_file = repo_path / normalized_path
+    try:
+        manifest_text = manifest_file.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return set(), set(), config_paths
+    stripped_manifest_text = repository_service.dm_adapter.strip_comments(manifest_text)
+    if not repository_service.dm_adapter.is_probable_dm_source(
+        path=Path(normalized_path),
+        text=manifest_text,
+        stripped_text=stripped_manifest_text,
+    ):
+        return set(), set(), set()
+
+    included_dm_files: list[str] = []
+    seen_dm_files: set[str] = set()
+    pending_manifests = [normalized_path]
+    seen_manifests = {normalized_path}
+    manifest_text_cache = {normalized_path: (manifest_text, stripped_manifest_text)}
+    include_budget = _DM_MANIFEST_INCLUDE_LIMIT
+    while pending_manifests:
+        if include_budget <= 0:
+            break
+        current_manifest = pending_manifests.pop(0)
+        current_text, current_stripped = manifest_text_cache[current_manifest]
+        for include_target, _line_number in repository_service.dm_adapter.parse_include_entries(
+            current_text,
+            stripped_text=current_stripped,
+        ):
+            include_budget -= 1
+            if include_budget < 0:
+                break
+            target_file = None
+            for candidate_path in repository_service.dm_adapter.candidate_include_paths(
+                current_file=current_manifest,
+                include_target=include_target,
+                normalize_repository_relative_path=repository_service._normalize_repository_relative_path,
+            ):
+                candidate_file = repo_path / candidate_path
+                if candidate_file.is_file() and not candidate_file.is_symlink():
+                    target_file = candidate_path
+                    break
+            if not target_file or target_file == current_manifest:
+                continue
+            target_suffix = PurePosixPath(target_file).suffix.lower()
+            if target_suffix == ".dme":
+                config_paths.add(target_file)
+                if target_file in seen_manifests:
+                    continue
+                nested_manifest = repo_path / target_file
+                try:
+                    nested_text = nested_manifest.read_text(encoding="utf-8", errors="replace")
+                except OSError:
+                    continue
+                nested_stripped = repository_service.dm_adapter.strip_comments(nested_text)
+                if not repository_service.dm_adapter.is_probable_dm_source(
+                    path=Path(target_file),
+                    text=nested_text,
+                    stripped_text=nested_stripped,
+                ):
+                    continue
+                seen_manifests.add(target_file)
+                manifest_text_cache[target_file] = (nested_text, nested_stripped)
+                pending_manifests.append(target_file)
+                continue
+            if (
+                target_suffix != ".dm"
+                or repository_service._is_test_path(target_file)
+                or _is_non_operational_profile_path(target_file)
+                or target_file in seen_dm_files
+            ):
+                continue
+            seen_dm_files.add(target_file)
+            included_dm_files.append(target_file)
+
+    support_roots: set[str] = set()
+    for target_file in included_dm_files:
+        parent_dir = repository_service._normalize_repository_relative_path(
+            str(PurePosixPath(target_file).parent)
+        )
+        if parent_dir:
+            support_roots.add(parent_dir)
+
+    preferred_basenames = {"main.dm", "world.dm", "setup.dm", "_setup.dm"}
+    entrypoint_paths: set[str] = set()
+    for target_file in included_dm_files:
+        if (
+            PurePosixPath(target_file).name.lower() in preferred_basenames
+            and _is_operational_profile_entrypoint_candidate(
+                target_file,
+                repo_path=repo_path,
+            )
+        ):
+            entrypoint_paths.add(target_file)
+    for target_file in included_dm_files:
+        if len(entrypoint_paths) >= 8:
+            break
+        if _is_operational_profile_entrypoint_candidate(target_file, repo_path=repo_path):
+            entrypoint_paths.add(target_file)
+    if not support_roots:
+        manifest_parent = repository_service._normalize_repository_relative_path(
+            str(PurePosixPath(normalized_path).parent)
+        )
+        if manifest_parent:
+            support_roots.add(manifest_parent)
+    return entrypoint_paths, {root for root in support_roots if root}, config_paths
+
+
 def _odin_profile_hints_from_candidates(
     repo_path: Path,
     candidate_file_paths: list[str],
@@ -137,9 +253,11 @@ def _odin_profile_hints_from_candidates(
             text = candidate_file.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
+        stripped_text = repository_service.odin_adapter.strip_comments(text)
         if not repository_service.odin_adapter.is_probable_odin_source(
             path=candidate_file,
             text=text,
+            stripped_text=stripped_text,
         ):
             continue
         odin_files.append(normalized_candidate)
@@ -147,6 +265,9 @@ def _odin_profile_hints_from_candidates(
             root_path=repo_path,
             file_path=normalized_candidate,
             stable_identifier=repository_service._stable_identifier,
+            text=text,
+            stripped_text=stripped_text,
+            include_symbol_aliases=False,
         ):
             module_index.setdefault(alias, normalized_candidate)
     for normalized_candidate in odin_files:
@@ -366,3 +487,117 @@ def _cue_profile_hints_from_candidates(
             if parent_dir:
                 support_roots.add(parent_dir)
     return entrypoint_paths, {root for root in support_roots if root}, config_paths
+
+
+def _four_d_profile_hints_from_candidates(
+    repo_path: Path,
+    candidate_file_paths: list[str],
+) -> tuple[set[str], set[str], set[str]]:
+    source_files: list[str] = []
+    class_files: list[str] = []
+    method_files: list[str] = []
+    database_method_files: list[str] = []
+    config_paths: set[str] = set()
+    imported_files: set[str] = set()
+    module_index: dict[str, str] = {}
+    support_roots: set[str] = set()
+    entrypoint_paths: set[str] = set()
+
+    for candidate_path in sorted(candidate_file_paths):
+        normalized_candidate = repository_service._normalize_repository_relative_path(
+            candidate_path
+        )
+        if not normalized_candidate:
+            continue
+        candidate_file = repo_path / normalized_candidate
+        if candidate_file.is_symlink():
+            continue
+        suffix = candidate_file.suffix.lower()
+        if suffix == ".4dm":
+            if (
+                repository_service._is_test_path(normalized_candidate)
+                or _is_non_operational_profile_path(normalized_candidate)
+                or _probe_language_for_path(normalized_candidate, repo_path=repo_path) != "4d"
+                or not candidate_file.is_file()
+            ):
+                continue
+            try:
+                text = candidate_file.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            if not repository_service.four_d_adapter.is_probable_4d_source(
+                path=candidate_file,
+                text=text,
+            ):
+                continue
+            source_files.append(normalized_candidate)
+            lowered_parts = {part.lower() for part in PurePosixPath(normalized_candidate).parts}
+            if "classes" in lowered_parts:
+                class_files.append(normalized_candidate)
+            if "methods" in lowered_parts:
+                method_files.append(normalized_candidate)
+            if "databasemethods" in lowered_parts:
+                database_method_files.append(normalized_candidate)
+            for alias in repository_service.four_d_adapter.module_aliases_for_path(
+                root_path=repo_path,
+                file_path=normalized_candidate,
+                stable_identifier=repository_service._stable_identifier,
+            ):
+                module_index.setdefault(alias, normalized_candidate)
+            continue
+        if suffix in {".4dproject", ".4dsettings", ".4dcatalog"} and candidate_file.is_file():
+            config_paths.add(normalized_candidate)
+
+    for normalized_candidate in source_files:
+        try:
+            text = (repo_path / normalized_candidate).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        for dependency_kind, target_name, _line_number in (
+            repository_service.four_d_adapter.iter_dependency_entries(text)
+        ):
+            if dependency_kind != "uses":
+                continue
+            target_file = repository_service.four_d_adapter.resolve_target(
+                normalized_candidate,
+                target_name,
+                module_index,
+                resolve_suffix_match=repository_service._resolve_suffix_match,
+            )
+            if not target_file or target_file == normalized_candidate:
+                continue
+            imported_files.add(target_file)
+
+    for prefix in (
+        "Project/Sources/Methods",
+        "Project/Sources/DatabaseMethods",
+        "Project/Sources/Classes",
+        "Project/Sources",
+        "Project",
+    ):
+        normalized_prefix = repository_service._normalize_repository_relative_path(prefix)
+        if normalized_prefix and (repo_path / normalized_prefix).is_dir():
+            support_roots.add(normalized_prefix)
+    for normalized_candidate in source_files:
+        parent_dir = repository_service._normalize_repository_relative_path(
+            str(PurePosixPath(normalized_candidate).parent)
+        )
+        if parent_dir:
+            support_roots.add(parent_dir)
+
+    for candidate_group in (database_method_files, method_files):
+        for normalized_candidate in candidate_group:
+            if normalized_candidate not in imported_files:
+                entrypoint_paths.add(normalized_candidate)
+    if not entrypoint_paths:
+        for normalized_candidate in class_files:
+            if normalized_candidate not in imported_files:
+                entrypoint_paths.add(normalized_candidate)
+    if not entrypoint_paths:
+        entrypoint_paths.update(sorted(source_files)[:12])
+
+    return (
+        entrypoint_paths,
+        {root for root in support_roots if root},
+        {path for path in config_paths if path},
+    )

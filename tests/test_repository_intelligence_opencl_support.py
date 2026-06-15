@@ -100,6 +100,35 @@ def test_opencl_adapter_module_aliases_include_symbols_and_paths(tmp_path: Path)
     assert "scale_value" in aliases
 
 
+def test_opencl_adapter_module_aliases_can_skip_symbol_aliases(tmp_path: Path) -> None:
+    repo_path = tmp_path / "opencl-module-only-alias-repo"
+    (repo_path / "kernels").mkdir(parents=True)
+    source_text = (
+        "__constant int SCALE = 2;\n"
+        "inline float scale_value(float value) {\n"
+        "    return value * SCALE;\n"
+        "}\n"
+    )
+    (repo_path / "kernels" / "common.clh").write_text(
+        source_text,
+        encoding="utf-8",
+    )
+
+    aliases = repository_service.opencl_adapter.module_aliases_for_path(
+        root_path=repo_path,
+        file_path="kernels/common.clh",
+        stable_identifier=repository_service._stable_identifier,
+        text=source_text,
+        include_symbol_aliases=False,
+    )
+
+    assert "kernels/common.clh" in aliases
+    assert "common.clh" in aliases
+    assert "common" in aliases
+    assert "kernels/common" in aliases
+    assert "scale_value" not in aliases
+
+
 def test_opencl_adapter_parse_file_extracts_dependencies_and_references() -> None:
     module_index = repository_service._build_module_index(
         ["kernels/common.clh", "kernels/main.cl"],
@@ -129,6 +158,77 @@ def test_opencl_adapter_parse_file_extracts_dependencies_and_references() -> Non
     assert any(symbol.symbol_name == "saxpy" for symbol in symbols)
     assert any(reference.target_file == "kernels/common.clh" for reference in references)
     assert any(reference.target_names == ("scale_value",) for reference in references)
+
+
+def test_opencl_adapter_module_aliases_reuses_supplied_text(monkeypatch, tmp_path: Path) -> None:
+    repo_path = tmp_path / "opencl-alias-cache"
+    (repo_path / "kernels").mkdir(parents=True)
+    file_path = "kernels/common.clh"
+    text = (
+        "__constant int SCALE = 2;\n"
+        "inline float scale_value(float value) {\n"
+        "    return value * SCALE;\n"
+        "}\n"
+    )
+    stripped_text = text
+    strip_calls: list[str] = []
+
+    def _counting_strip_comments(raw_text: str) -> str:
+        strip_calls.append(raw_text)
+        return raw_text
+
+    monkeypatch.setattr(repository_opencl_primitives, "strip_comments", _counting_strip_comments)
+    monkeypatch.setattr(repository_opencl_analysis_support, "strip_comments", _counting_strip_comments)
+
+    aliases = repository_service.opencl_adapter.module_aliases_for_path(
+        root_path=repo_path,
+        file_path=file_path,
+        stable_identifier=repository_service._stable_identifier,
+        text=text,
+        stripped_text=stripped_text,
+    )
+
+    assert "scale_value" in aliases
+    assert strip_calls == []
+
+
+def test_opencl_adapter_parse_dependencies_reuses_supplied_stripped_text(monkeypatch) -> None:
+    module_index = repository_service._build_module_index(
+        ["kernels/common.clh", "kernels/main.cl"],
+        root_path=Path("/tmp/opencl-index"),
+    )
+    text = (
+        '#include "common.clh"\n'
+        "__kernel void saxpy(__global const float* x, __global float* y) {\n"
+        "    int gid = get_global_id(0);\n"
+        "    y[gid] = scale_value(x[gid]);\n"
+        "}\n"
+    )
+    stripped_text = text
+    strip_calls: list[str] = []
+
+    def _counting_strip_comments(raw_text: str) -> str:
+        strip_calls.append(raw_text)
+        return raw_text
+
+    monkeypatch.setattr(repository_opencl_primitives, "strip_comments", _counting_strip_comments)
+    monkeypatch.setattr(repository_opencl_analysis_support, "strip_comments", _counting_strip_comments)
+
+    dependencies = repository_service.opencl_adapter.parse_dependencies_only(
+        "kernels/main.cl",
+        text,
+        module_index,
+        stable_identifier=repository_service._stable_identifier,
+        resolve_include=lambda **kwargs: repository_service.opencl_adapter.resolve_include(
+            normalize_repository_relative_path=repository_service._normalize_repository_relative_path,
+            resolve_suffix_match=repository_service._resolve_suffix_match,
+            **kwargs,
+        ),
+        stripped_text=stripped_text,
+    )
+
+    assert any(dependency.target_file == "kernels/common.clh" for dependency in dependencies)
+    assert strip_calls == []
 
 
 def test_opencl_language_detection_supports_sources_without_overclaiming() -> None:
@@ -221,6 +321,93 @@ def test_operational_seed_plan_without_diagnostics_does_not_force_opencl_first_i
     assert "opencl" in seed_plan["detected_ecosystems"]
     assert seed_plan["operational_ecosystems"][0] != "opencl"
     assert "cpp" in seed_plan["operational_ecosystems"] or "c" in seed_plan["operational_ecosystems"]
+
+
+def test_operational_seed_plan_without_diagnostics_prefers_opencl_in_distributed_cmake_repo(
+    tmp_path: Path,
+) -> None:
+    repo_path = tmp_path / "opencl-distributed-cmake-repo"
+    (repo_path / "src").mkdir(parents=True)
+    (repo_path / "CMakeLists.txt").write_text(
+        "cmake_minimum_required(VERSION 3.20)\nproject(OpenCLSamples)\n",
+        encoding="utf-8",
+    )
+    chapter_names = (
+        "Chapter_2/HelloWorld",
+        "Chapter_6/HelloBinaryWorld",
+        "Chapter_8/ImageFilter2D",
+        "Chapter_10/GLinterop",
+        "Chapter_14/histogram",
+        "Chapter_16/Dijkstra",
+        "Chapter_19/oclFlow",
+        "Chapter_22/spmv",
+    )
+    for chapter in chapter_names:
+        chapter_dir = repo_path / "src" / chapter
+        chapter_dir.mkdir(parents=True)
+        stem = chapter_dir.name
+        (chapter_dir / f"{stem}.cl").write_text(
+            "__kernel void run(__global float* values) { values[get_global_id(0)] = 1.0f; }\n",
+            encoding="utf-8",
+        )
+        (chapter_dir / f"{stem}.cpp").write_text(
+            "int main() { return 0; }\n",
+            encoding="utf-8",
+        )
+        (chapter_dir / "CMakeLists.txt").write_text(
+            f"add_executable({stem} {stem}.cpp)\n",
+            encoding="utf-8",
+        )
+
+    seed_plan = _derive_operational_seed_plan_without_diagnostics(
+        repo_path=repo_path,
+        focus_paths=["."],
+        max_files=256,
+    )
+
+    assert "opencl" in seed_plan["detected_ecosystems"]
+    assert seed_plan["operational_ecosystems"][0] == "opencl"
+
+
+def test_operational_seed_plan_without_diagnostics_prefers_opencl_in_sample_tree_repo(
+    tmp_path: Path,
+) -> None:
+    repo_path = tmp_path / "opencl-sample-tree-repo"
+    chapter_paths = (
+        "samples/core/binaries",
+        "samples/core/blur",
+        "samples/core/callback",
+        "samples/core/multi-device",
+        "samples/core/reduce",
+        "samples/core/saxpy",
+        "samples/extensions/khr/conway",
+        "samples/extensions/khr/externalmemory",
+    )
+    for chapter_path in chapter_paths:
+        chapter_dir = repo_path / chapter_path
+        chapter_dir.mkdir(parents=True)
+        stem = chapter_dir.name
+        (chapter_dir / f"{stem}.cl").write_text(
+            "__kernel void run(__global float* values) { values[get_global_id(0)] = 1.0f; }\n",
+            encoding="utf-8",
+        )
+        (chapter_dir / "main.cpp").write_text(
+            "int main() { return 0; }\n",
+            encoding="utf-8",
+        )
+        (chapter_dir / "CMakeLists.txt").write_text(
+            f"add_executable({stem} main.cpp)\n",
+            encoding="utf-8",
+        )
+
+    seed_plan = _derive_operational_seed_plan_without_diagnostics(
+        repo_path=repo_path,
+        focus_paths=["."],
+        max_files=256,
+    )
+
+    assert "opencl" in seed_plan["detected_ecosystems"]
+    assert seed_plan["operational_ecosystems"][0] == "opencl"
 
 
 def test_repository_snapshot_graph_contains_opencl_symbol_reference_edges(tmp_path: Path) -> None:

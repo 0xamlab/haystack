@@ -1,0 +1,23 @@
+from __future__ import annotations
+
+from apps.api_server.services.repository_intelligence_adapters import (
+    maven_primitives as repository_maven_primitives,
+)
+
+StableIdentifier = repository_maven_primitives.StableIdentifier
+NormalizeRepositoryRelativePath = repository_maven_primitives.NormalizeRepositoryRelativePath
+ResolveSuffixMatch = repository_maven_primitives.ResolveSuffixMatch
+
+MAVEN_CONFIG_BASENAMES = repository_maven_primitives.MAVEN_CONFIG_BASENAMES
+MAVEN_PROJECT_BASENAMES = repository_maven_primitives.MAVEN_PROJECT_BASENAMES
+MavenPomDocument = repository_maven_primitives.MavenPomDocument
+has_maven_path_hints = repository_maven_primitives.has_maven_path_hints
+is_probable_maven_source = repository_maven_primitives.is_probable_maven_source
+module_aliases_for_path = repository_maven_primitives.module_aliases_for_path
+module_name_from_path = repository_maven_primitives.module_name_from_path
+normalize_identifier = repository_maven_primitives.normalize_identifier
+parse_dependencies_only = repository_maven_primitives.parse_dependencies_only
+parse_file = repository_maven_primitives.parse_file
+parse_maven_pom = repository_maven_primitives.parse_maven_pom
+resolve_project_path = repository_maven_primitives.resolve_project_path
+strip_comments = repository_maven_primitives.strip_comments

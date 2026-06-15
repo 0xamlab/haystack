@@ -78,6 +78,7 @@ _REPO_PROFILE_MANIFEST_BASENAMES = frozenset(
         "lakefile.toml",
         "asconfig.json",
         "bb.edn",
+        "ballerina.toml",
         "bblayers.conf",
         "bicepconfig.json",
         "build",
@@ -212,6 +213,10 @@ _NON_OPERATIONAL_PROFILE_PATH_PARTS = frozenset(
         "examples",
         "features",
         "fixtures",
+        "fuzz",
+        "fuzzer",
+        "fuzzers",
+        "fuzzing",
         "samples",
         "specs",
         "tutorial",
@@ -233,10 +238,23 @@ _DOCUMENTATION_OPERATIONAL_PATH_PARTS = frozenset(
         "docs",
         "documentation",
         "docsrc",
+        "demos",
+        "examples",
+        "samples",
         "tutorial",
         "tutorials",
         "vignette",
         "vignettes",
+    }
+)
+_EXAMPLE_PRIMARY_ECOSYSTEMS = frozenset({"cue", "opencl", "answer set programming"})
+_EXAMPLE_OPERATIONAL_PATH_PARTS = frozenset(
+    {
+        "demos",
+        "examples",
+        "samples",
+        "tutorial",
+        "tutorials",
     }
 )
 _SCENARIO_PRIMARY_ECOSYSTEMS = frozenset({"gherkin"})

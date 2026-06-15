@@ -35,8 +35,13 @@ def parse_dependencies_only(
     *,
     stable_identifier: StableIdentifier,
     resolve_include: ResolveInclude,
+    stripped_text: str | None = None,
 ) -> tuple[_Dependency, ...]:
-    if not is_probable_opencl_source(path=Path(file_path), text=text):
+    if not is_probable_opencl_source(
+        path=Path(file_path),
+        text=text,
+        stripped_text=stripped_text,
+    ):
         return ()
     return c_family_adapter.parse_dependencies_only(
         file_path,
@@ -54,12 +59,17 @@ def parse_file(
     *,
     stable_identifier: StableIdentifier,
     resolve_include: ResolveInclude,
+    stripped_text: str | None = None,
 ) -> tuple[
     tuple[_Symbol, ...],
     tuple[_Dependency, ...],
     tuple[_SymbolReferenceCandidate, ...],
 ]:
-    if not is_probable_opencl_source(path=Path(file_path), text=text):
+    if not is_probable_opencl_source(
+        path=Path(file_path),
+        text=text,
+        stripped_text=stripped_text,
+    ):
         return (), (), ()
     return c_family_adapter.parse_file(
         file_path,

@@ -2,16 +2,8 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any, Literal
-
-from apps.api_server.services.repository_intelligence_adapter_parser_dispatch import (
-    REGISTERED_ADAPTER_DEPENDENCY_PARSERS,
-    REGISTERED_ADAPTER_FILE_PARSERS,
-)
-from apps.api_server.services.repository_language_priority import (
-    canonical_repository_language,
-    supported_repository_languages,
-)
 
 RouteKind = Literal["registered_adapter", "workflow_special_case"]
 
@@ -126,6 +118,7 @@ _SPECIAL_CASE_ROUTE_FAMILIES: dict[str, str] = {
     "java": "jvm",
     "javascript": "js_like",
     "kotlin": "jvm",
+    "processing": "jvm",
     "mojo": "mojo_language",
     "mql5": "mql5",
     "nix": "nix",
@@ -145,6 +138,38 @@ _SPECIAL_CASE_ROUTE_FAMILIES: dict[str, str] = {
     "vimscript": "vimscript",
     "zig": "zig",
 }
+
+
+@lru_cache(maxsize=1)
+def _adapter_parser_dispatch_module() -> Any:
+    from apps.api_server.services import (
+        repository_intelligence_adapter_parser_dispatch as repository_adapter_parser_dispatch,
+    )
+
+    return repository_adapter_parser_dispatch
+
+
+@lru_cache(maxsize=1)
+def _repository_language_priority_module() -> Any:
+    from apps.api_server.services import repository_language_priority
+
+    return repository_language_priority
+
+
+def _registered_adapter_file_parsers() -> Mapping[str, object]:
+    return _adapter_parser_dispatch_module().REGISTERED_ADAPTER_FILE_PARSERS
+
+
+def _registered_adapter_dependency_parsers() -> Mapping[str, object]:
+    return _adapter_parser_dispatch_module().REGISTERED_ADAPTER_DEPENDENCY_PARSERS
+
+
+def _canonical_repository_language(raw_language_key: str) -> str:
+    return _repository_language_priority_module().canonical_repository_language(raw_language_key)
+
+
+def _supported_repository_languages() -> tuple[str, ...]:
+    return _repository_language_priority_module().supported_repository_languages()
 
 
 def _normalize_route_family(module_name: str) -> str:
@@ -167,7 +192,7 @@ def _build_registered_route_plane_index(
     families_by_language: dict[str, str] = {}
     raw_keys_by_language: dict[str, set[str]] = {}
     for raw_language_key, parser in registered_parsers.items():
-        canonical_language = canonical_repository_language(raw_language_key)
+        canonical_language = _canonical_repository_language(raw_language_key)
         if canonical_language not in supported_language_set:
             continue
         route_family = _normalize_route_family(getattr(parser, "__module__", ""))
@@ -212,16 +237,16 @@ def _build_special_case_route_plane_index(
 def build_repository_runtime_language_support_report() -> (
     RepositoryRuntimeLanguageSupportReport
 ):
-    supported_languages = supported_repository_languages()
+    supported_languages = _supported_repository_languages()
     supported_language_set = set(supported_languages)
     supported_rank = {language: index for index, language in enumerate(supported_languages)}
 
     registered_file_planes = _build_registered_route_plane_index(
-        REGISTERED_ADAPTER_FILE_PARSERS,
+        _registered_adapter_file_parsers(),
         supported_language_set=supported_language_set,
     )
     registered_dependency_planes = _build_registered_route_plane_index(
-        REGISTERED_ADAPTER_DEPENDENCY_PARSERS,
+        _registered_adapter_dependency_parsers(),
         supported_language_set=supported_language_set,
     )
     if set(registered_file_planes) != set(registered_dependency_planes):

@@ -131,6 +131,10 @@ def _strip_inline_comment(raw_line: str) -> str:
     stripped_line = raw_line.lstrip()
     if stripped_line.startswith("*"):
         return ""
+    if "&&" not in raw_line:
+        return raw_line
+    if "'" not in raw_line and '"' not in raw_line:
+        return raw_line.split("&&", 1)[0]
     chars: list[str] = []
     index = 0
     in_single = False
@@ -204,11 +208,17 @@ def _path_aliases(path: PurePosixPath) -> set[str]:
     return {alias for alias in aliases if alias and alias not in {".", "/"}}
 
 
-def is_probable_foxpro_source(*, path: PurePosixPath | Path | str, text: str) -> bool:
+def is_probable_foxpro_source(
+    *,
+    path: PurePosixPath | Path | str,
+    text: str,
+    stripped_text: str | None = None,
+) -> bool:
     suffix = PurePosixPath(str(path).replace("\\", "/")).suffix.lower()
     if suffix not in _KNOWN_FOXPRO_SUFFIXES:
         return False
-    stripped_text = strip_comments(text)
+    if not isinstance(stripped_text, str):
+        stripped_text = strip_comments(text)
     score = 0
     if DEFINE_CLASS_RE.search(stripped_text):
         score += 3
@@ -236,10 +246,13 @@ def collect_symbol_entries(
     *,
     file_path: str,
     stable_identifier: StableIdentifier,
+    stripped_text: str | None = None,
 ) -> list[dict[str, Any]]:
     symbol_entries: list[dict[str, Any]] = []
     seen_symbol_keys: set[tuple[str, str, int]] = set()
-    stripped_lines = strip_comments(text).splitlines()
+    if not isinstance(stripped_text, str):
+        stripped_text = strip_comments(text)
+    stripped_lines = stripped_text.splitlines()
     final_line = len(stripped_lines) if stripped_lines else 1
     current_class: str = ""
     file_module = PurePosixPath(file_path).stem.lower()
@@ -324,12 +337,14 @@ def module_aliases_for_path(
         text = (root_path / path).read_text(encoding="utf-8", errors="replace")
     except OSError:
         return aliases
-    if not is_probable_foxpro_source(path=path, text=text):
+    stripped_text = strip_comments(text)
+    if not is_probable_foxpro_source(path=path, text=text, stripped_text=stripped_text):
         return aliases
     for symbol_entry in collect_symbol_entries(
         text,
         file_path=file_path,
         stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
     ):
         aliases.update(
             str(alias).lower()
@@ -393,9 +408,14 @@ def resolve_target(
     )
 
 
-def _iter_library_targets(text: str) -> tuple[tuple[int, str], ...]:
+def _iter_library_targets(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[int, str], ...]:
     targets: list[tuple[int, str]] = []
-    stripped_text = strip_comments(text)
+    if not isinstance(stripped_text, str):
+        stripped_text = strip_comments(text)
     for match in SET_LIBRARY_RE.finditer(stripped_text):
         body = str(match.group("body") or "")
         for raw_segment in body.split(","):
@@ -412,9 +432,11 @@ def _object_bindings(
     text: str,
     *,
     resolve_target_fn: Callable[[str], str | None],
+    stripped_text: str | None = None,
 ) -> dict[str, dict[str, str]]:
     bindings: dict[str, dict[str, str]] = {}
-    stripped_text = strip_comments(text)
+    if not isinstance(stripped_text, str):
+        stripped_text = strip_comments(text)
     for match in OBJECT_CREATION_RE.finditer(stripped_text):
         alias = _canonical_symbol_name(str(match.group("alias") or ""))
         target_name = normalize_symbol_name(str(match.group("type") or ""))
@@ -480,17 +502,28 @@ def parse_dependencies_only(
     *,
     stable_identifier: StableIdentifier,
     resolve_target_fn: Callable[[str], str | None],
+    stripped_text: str | None = None,
+    symbol_entries: list[dict[str, Any]] | None = None,
+    object_bindings: dict[str, dict[str, str]] | None = None,
 ) -> tuple[dict[str, Any], ...]:
     dependency_entries: list[dict[str, Any]] = []
     dependency_keys: set[tuple[str | None, str, str]] = set()
-    symbol_entries = collect_symbol_entries(
-        text,
-        file_path=file_path,
-        stable_identifier=stable_identifier,
-    )
+    if not isinstance(stripped_text, str):
+        stripped_text = strip_comments(text)
+    if symbol_entries is None:
+        symbol_entries = collect_symbol_entries(
+            text,
+            file_path=file_path,
+            stable_identifier=stable_identifier,
+            stripped_text=stripped_text,
+        )
     local_symbol_names = {str(entry["symbol_name"]).lower() for entry in symbol_entries}
-    stripped_text = strip_comments(text)
-    object_bindings = _object_bindings(text, resolve_target_fn=resolve_target_fn)
+    if object_bindings is None:
+        object_bindings = _object_bindings(
+            text,
+            resolve_target_fn=resolve_target_fn,
+            stripped_text=stripped_text,
+        )
 
     for match in INCLUDE_RE.finditer(stripped_text):
         import_target = normalize_target(str(match.group("target") or ""))
@@ -506,7 +539,7 @@ def parse_dependencies_only(
             stable_identifier=stable_identifier,
             position=match.start(),
         )
-    for position, import_target in _iter_library_targets(text):
+    for position, import_target in _iter_library_targets(text, stripped_text=stripped_text):
         leaf_name = PurePosixPath(import_target).stem or PurePosixPath(import_target).name
         _append_dependency(
             dependency_entries,
@@ -612,10 +645,17 @@ def parse_file(
     tuple[dict[str, Any], ...],
     tuple[dict[str, Any], ...],
 ]:
+    stripped_text = strip_comments(text)
     symbol_entries = collect_symbol_entries(
         text,
         file_path=file_path,
         stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
+    )
+    object_bindings = _object_bindings(
+        text,
+        resolve_target_fn=resolve_target_fn,
+        stripped_text=stripped_text,
     )
     dependency_entries = parse_dependencies_only(
         file_path,
@@ -623,10 +663,12 @@ def parse_file(
         module_index,
         stable_identifier=stable_identifier,
         resolve_target_fn=resolve_target_fn,
+        stripped_text=stripped_text,
+        symbol_entries=symbol_entries,
+        object_bindings=object_bindings,
     )
     local_symbol_names = {str(entry["symbol_name"]).lower() for entry in symbol_entries}
-    object_bindings = _object_bindings(text, resolve_target_fn=resolve_target_fn)
-    stripped_lines = strip_comments(text).splitlines()
+    stripped_lines = stripped_text.splitlines()
     reference_candidates: dict[str, dict[str, Any]] = {}
     for symbol_entry in symbol_entries:
         start_line = int(symbol_entry["start_line"])

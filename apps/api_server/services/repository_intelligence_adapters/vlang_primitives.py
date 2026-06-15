@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable, Iterable
+from functools import lru_cache
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -28,7 +29,7 @@ _QUALIFIED_REFERENCE_RE = re.compile(
     r"\b(?P<alias>[A-Za-z_][A-Za-z0-9_]*)\s*\.\s*(?P<name>[A-Za-z_][A-Za-z0-9_]*)\b"
 )
 _CALL_RE = re.compile(r"\b(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*\(")
-_MANIFEST_NAME_RE = re.compile(r"^\s*name\s*:\s*['\"][^'\"]+['\"]\s*$", re.MULTILINE)
+_MANIFEST_NAME_RE = re.compile(r"^\s*name\s*:\s*['\"][^'\"]+['\"]\s*,?\s*$", re.MULTILINE)
 _V_SIGNAL_RE = re.compile(
     r"(^\s*module\s+[A-Za-z_][A-Za-z0-9_.]*\s*$)|"
     r"(^\s*import\s+[A-Za-z_][A-Za-z0-9_.]*(?:\s+as\s+[A-Za-z_][A-Za-z0-9_]*)?.*$)|"
@@ -40,6 +41,15 @@ _VERILOG_SIGNAL_RE = re.compile(
     r"(^\s*endmodule\b)|(^\s*always(?:_ff|_comb|_latch)?\b)|(^\s*assign\b)|"
     r"(^\s*(?:input|output|inout|wire|logic|reg)\b)|(`include)|(^\s*module\s+\w+\s*\()",
     re.MULTILINE,
+)
+_RAW_V_SIGNAL_MARKERS = (
+    "module ",
+    "import ",
+    "fn ",
+    "struct ",
+    "interface ",
+    "enum ",
+    "type ",
 )
 _RESERVED_SYMBOL_NAMES = frozenset(
     {
@@ -87,7 +97,7 @@ _RESERVED_SYMBOL_NAMES = frozenset(
 )
 
 
-def strip_comments(text: str) -> str:
+def _strip_comments_uncached(text: str) -> str:
     result: list[str] = []
     index = 0
     length = len(text)
@@ -121,32 +131,51 @@ def strip_comments(text: str) -> str:
     return "".join(result)
 
 
+@lru_cache(maxsize=512)
+def strip_comments(text: str) -> str:
+    if "//" not in text and "/*" not in text:
+        return text
+    return _strip_comments_uncached(text)
+
+
+def clear_strip_comments_cache() -> None:
+    strip_comments.cache_clear()
+
+
+def _coalesced_stripped_text(text: str, stripped_text: str | None = None) -> str:
+    return strip_comments(text) if stripped_text is None else stripped_text
+
+
 def has_v_path_hints(path: Path) -> bool:
     return path.suffix.lower() == ".v" or path.name.lower() == "v.mod"
 
 
-def is_probable_v_manifest(path: Path, text: str) -> bool:
+def is_probable_v_manifest(path: Path, text: str, *, stripped_text: str | None = None) -> bool:
     if path.name.lower() != "v.mod":
         return False
-    stripped = strip_comments(text)
+    stripped = _coalesced_stripped_text(text, stripped_text)
     return "Module {" in stripped and _MANIFEST_NAME_RE.search(stripped) is not None
 
 
-def is_probable_v_source(path: Path, text: str) -> bool:
+def is_probable_v_source(path: Path, text: str, *, stripped_text: str | None = None) -> bool:
     if path.name.lower() == "v.mod":
-        return is_probable_v_manifest(path, text)
+        return is_probable_v_manifest(path, text, stripped_text=stripped_text)
     if path.suffix.lower() != ".v":
         return False
-    stripped = strip_comments(text)
+    if not any(marker in text for marker in _RAW_V_SIGNAL_MARKERS):
+        return False
+    stripped = _coalesced_stripped_text(text, stripped_text)
     if _V_SIGNAL_RE.search(stripped) is None:
         return False
-    verilog_hits = len(_VERILOG_SIGNAL_RE.findall(stripped))
-    v_hits = len(_V_SIGNAL_RE.findall(stripped))
+    if _VERILOG_SIGNAL_RE.search(stripped) is None:
+        return True
+    verilog_hits = sum(1 for _ in _VERILOG_SIGNAL_RE.finditer(stripped))
+    v_hits = sum(1 for _ in _V_SIGNAL_RE.finditer(stripped))
     return v_hits > 0 and v_hits >= verilog_hits
 
 
-def module_name_from_text(text: str) -> str | None:
-    match = _MODULE_RE.search(strip_comments(text))
+def module_name_from_text(text: str, *, stripped_text: str | None = None) -> str | None:
+    match = _MODULE_RE.search(_coalesced_stripped_text(text, stripped_text))
     if match is None:
         return None
     name = str(match.group("name") or "").strip()
@@ -182,17 +211,17 @@ def split_import_targets(raw_body: str) -> tuple[tuple[str, str | None, tuple[st
     return tuple(items)
 
 
-def import_targets_for_text(text: str) -> tuple[str, ...]:
+def import_targets_for_text(text: str, *, stripped_text: str | None = None) -> tuple[str, ...]:
     targets: list[str] = []
-    stripped = strip_comments(text)
+    stripped = _coalesced_stripped_text(text, stripped_text)
     for match in _IMPORT_RE.finditer(stripped):
         for target, _alias, _names in split_import_targets(str(match.group("body") or "")):
             targets.append(target)
     return tuple(dict.fromkeys(targets))
 
 
-def declared_symbol_names(text: str) -> tuple[str, ...]:
-    stripped = strip_comments(text)
+def declared_symbol_names(text: str, *, stripped_text: str | None = None) -> tuple[str, ...]:
+    stripped = _coalesced_stripped_text(text, stripped_text)
     names: list[str] = []
     for regex in (_FUNCTION_RE, _TYPE_RE):
         for match in regex.finditer(stripped):
@@ -211,8 +240,9 @@ def collect_symbols(
     file_path: str,
     text: str,
     stable_identifier: StableIdentifier,
+    stripped_text: str | None = None,
 ) -> tuple[_Symbol, ...]:
-    stripped = strip_comments(text)
+    stripped = _coalesced_stripped_text(text, stripped_text)
     entries: list[tuple[int, str, str]] = []
     for regex, kind in ((_FUNCTION_RE, "function"), (_TYPE_RE, "type")):
         for match in regex.finditer(stripped):
@@ -253,9 +283,13 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
+    stripped_text: str | None = None,
 ) -> set[str]:
     del stable_identifier
     path = PurePosixPath(file_path)
+    if path.suffix.lower() != ".v" and path.name.lower() != "v.mod":
+        return set()
     aliases: set[str] = {file_path}
     if path.suffix.lower() == ".v":
         aliases.add(str(path.with_suffix("")))
@@ -263,15 +297,17 @@ def module_aliases_for_path(
         aliases.add(path.stem)
     elif path.name.lower() == "v.mod":
         aliases.add("v.mod")
-    try:
-        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        text = ""
-    module_name = module_name_from_text(text)
+    if text is None:
+        try:
+            text = (root_path / path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            text = ""
+    stripped_text = _coalesced_stripped_text(text, stripped_text)
+    module_name = module_name_from_text(text, stripped_text=stripped_text)
     if module_name:
         aliases.add(module_name)
         aliases.add(module_name.split(".")[-1])
-    for symbol_name in declared_symbol_names(text):
+    for symbol_name in declared_symbol_names(text, stripped_text=stripped_text):
         aliases.add(symbol_name)
         if path.suffix.lower() == ".v":
             aliases.add(f"{path.stem}.{symbol_name}")
@@ -330,9 +366,10 @@ def imported_symbol_bindings(
     module_index: dict[str, str],
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
+    stripped_text: str | None = None,
 ) -> dict[str, _ImportedSymbolBinding]:
     bindings: dict[str, _ImportedSymbolBinding] = {}
-    stripped = strip_comments(text)
+    stripped = _coalesced_stripped_text(text, stripped_text)
     for match in _IMPORT_RE.finditer(stripped):
         for target, alias, explicit_names in split_import_targets(str(match.group("body") or "")):
             binding_alias = alias or PurePosixPath(target.replace(".", "/")).name
@@ -357,8 +394,9 @@ def candidate_local_reference_names(
     *,
     imported_bindings: dict[str, _ImportedSymbolBinding],
     local_symbol_names: Iterable[str],
+    stripped_text: str | None = None,
 ) -> tuple[str, ...]:
-    stripped = strip_comments(text)
+    stripped = _coalesced_stripped_text(text, stripped_text)
     local_names = set(local_symbol_names)
     candidates: list[str] = []
     for match in _CALL_RE.finditer(stripped):

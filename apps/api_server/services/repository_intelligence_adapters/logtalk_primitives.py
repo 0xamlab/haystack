@@ -45,6 +45,10 @@ _MESSAGE_SEND_RE = re.compile(
 _SUPER_SEND_RE = re.compile(r"\^\^\s*(?P<name>[a-z][A-Za-z0-9_]*)\s*(?=\()")
 
 
+def _coerce_stripped_text(text: str, stripped_text: str | None = None) -> str:
+    return strip_comments(text) if stripped_text is None else stripped_text
+
+
 def _split_top_level_segments(raw_value: str) -> tuple[str, ...]:
     segments: list[str] = []
     current: list[str] = []
@@ -115,16 +119,24 @@ def has_logtalk_path_hints(path: Path | PurePosixPath | str) -> bool:
     return PurePosixPath(str(path).replace("\\", "/")).suffix.lower() in _KNOWN_LOGTALK_SUFFIXES
 
 
-def has_logtalk_markers(text: str) -> bool:
-    stripped_text = strip_comments(text)
+def has_logtalk_markers(text: str, *, stripped_text: str | None = None) -> bool:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
     return any(
         matcher.search(stripped_text)
         for matcher in (_ENTITY_RE, _VISIBILITY_RE, _LOAD_RE, _USES_RE, _RELATION_RE)
     )
 
 
-def is_probable_logtalk_source(*, path: Path | PurePosixPath | str, text: str) -> bool:
-    return has_logtalk_path_hints(path) and has_logtalk_markers(text)
+def is_probable_logtalk_source(
+    *,
+    path: Path | PurePosixPath | str,
+    text: str,
+    stripped_text: str | None = None,
+) -> bool:
+    return has_logtalk_path_hints(path) and has_logtalk_markers(
+        text,
+        stripped_text=stripped_text,
+    )
 
 
 def module_name_from_path(file_path: str) -> str:
@@ -135,8 +147,8 @@ def module_name_from_path(file_path: str) -> str:
     return ".".join(part for part in parts if part)
 
 
-def module_name_from_text(text: str) -> str:
-    stripped_text = strip_comments(text)
+def module_name_from_text(text: str, *, stripped_text: str | None = None) -> str:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
     for _line_no, clause in _split_clauses(stripped_text):
         match = _ENTITY_RE.match(clause.strip())
         if match is not None:
@@ -148,8 +160,12 @@ def _line_number(text: str, offset: int) -> int:
     return text.count("\n", 0, max(0, offset)) + 1
 
 
-def parse_load_statements(text: str) -> tuple[tuple[str, int], ...]:
-    stripped_text = strip_comments(text)
+def parse_load_statements(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, int], ...]:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
     statements: list[tuple[str, int]] = []
     seen: set[tuple[str, int]] = set()
     for match in _LOAD_RE.finditer(stripped_text):
@@ -169,8 +185,12 @@ def parse_load_statements(text: str) -> tuple[tuple[str, int], ...]:
     return tuple(statements)
 
 
-def parse_uses_statements(text: str) -> tuple[tuple[str, tuple[str, ...], int], ...]:
-    stripped_text = strip_comments(text)
+def parse_uses_statements(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, tuple[str, ...], int], ...]:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
     statements: list[tuple[str, tuple[str, ...], int]] = []
     seen: set[tuple[str, tuple[str, ...], int]] = set()
     for match in _USES_RE.finditer(stripped_text):
@@ -193,8 +213,12 @@ def parse_uses_statements(text: str) -> tuple[tuple[str, tuple[str, ...], int], 
     return tuple(statements)
 
 
-def parse_relation_statements(text: str) -> tuple[tuple[str, int], ...]:
-    stripped_text = strip_comments(text)
+def parse_relation_statements(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, int], ...]:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
     statements: list[tuple[str, int]] = []
     seen: set[tuple[str, int]] = set()
     for match in _RELATION_RE.finditer(stripped_text):
@@ -209,13 +233,22 @@ def parse_relation_statements(text: str) -> tuple[tuple[str, int], ...]:
     return tuple(statements)
 
 
-def iter_symbol_entries(text: str, *, file_path: str) -> tuple[tuple[str, str, int], ...]:
-    stripped_text = strip_comments(text)
+def iter_symbol_entries(
+    text: str,
+    *,
+    file_path: str,
+    stripped_text: str | None = None,
+    module_name: str | None = None,
+) -> tuple[tuple[str, str, int], ...]:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
     entries: list[tuple[str, str, int]] = []
     seen: set[tuple[str, str, int]] = set()
-    module_name = module_name_from_text(stripped_text) or module_name_from_path(file_path)
-    if module_name:
-        item = (module_name, "module", 1)
+    resolved_module_name = module_name or module_name_from_text(
+        text,
+        stripped_text=stripped_text,
+    ) or module_name_from_path(file_path)
+    if resolved_module_name:
+        item = (resolved_module_name, "module", 1)
         seen.add(item)
         entries.append(item)
     for match in _ENTITY_RE.finditer(stripped_text):
@@ -242,8 +275,12 @@ def iter_symbol_entries(text: str, *, file_path: str) -> tuple[tuple[str, str, i
     return tuple(sorted(entries, key=lambda item: (item[2], item[0], item[1])))
 
 
-def parse_reference_targets(text: str) -> tuple[tuple[str, tuple[str, ...], int], ...]:
-    stripped_text = strip_comments(text)
+def parse_reference_targets(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, tuple[str, ...], int], ...]:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
     references: list[tuple[str, tuple[str, ...], int]] = []
     seen: set[tuple[str, tuple[str, ...], int]] = set()
     for match in _MESSAGE_SEND_RE.finditer(stripped_text):

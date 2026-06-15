@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -56,6 +57,8 @@ _SOURCE_MARKER_RE = re.compile(
 )
 _BLOCK_COMMENT_RE = re.compile(r"/\*.*?\*/", re.DOTALL)
 _LINE_COMMENT_RE = re.compile(r"(?m)//.*$")
+_RAW_CONFIG_MARKERS = ("name", "import", "options")
+_RAW_SOURCE_MARKERS = ("struct", "enum", "type", "trait", "fn", 'test "', "using @", "impl")
 _RESERVED_SYMBOL_NAMES = frozenset(
     {
         "else",
@@ -100,9 +103,24 @@ def _line_count(text: str) -> int:
     return max(1, text.count("\n") + 1)
 
 
-def strip_comments(text: str) -> str:
+def _coerce_stripped_text(text: str, stripped_text: str | None = None) -> str:
+    return strip_comments(text) if stripped_text is None else stripped_text
+
+
+@lru_cache(maxsize=2048)
+def _strip_comments_cached(text: str) -> str:
     without_block_comments = _BLOCK_COMMENT_RE.sub(_preserve_line_count_comment, text)
     return _LINE_COMMENT_RE.sub("", without_block_comments)
+
+
+def clear_strip_comments_cache() -> None:
+    _strip_comments_cached.cache_clear()
+
+
+def strip_comments(text: str) -> str:
+    if "//" not in text and "/*" not in text:
+        return text
+    return _strip_comments_cached(text)
 
 
 def normalize_identifier(raw_value: str) -> str:
@@ -129,17 +147,31 @@ def has_moonbit_path_hints(path: Path | PurePosixPath) -> bool:
     )
 
 
-def is_probable_moonbit_source(*, path: Path | PurePosixPath, text: str) -> bool:
+def is_probable_moonbit_source(
+    *,
+    path: Path | PurePosixPath,
+    text: str,
+    stripped_text: str | None = None,
+) -> bool:
     if PurePosixPath(path).suffix.lower() not in MOONBIT_SOURCE_SUFFIXES or not text:
         return False
-    stripped_text = strip_comments(text)
+    if not any(marker in text for marker in _RAW_SOURCE_MARKERS):
+        return False
+    stripped_text = _coerce_stripped_text(text, stripped_text)
     return bool(stripped_text.strip()) and bool(_SOURCE_MARKER_RE.search(stripped_text))
 
 
-def is_probable_moonbit_config(*, path: Path | PurePosixPath, text: str) -> bool:
+def is_probable_moonbit_config(
+    *,
+    path: Path | PurePosixPath,
+    text: str,
+    stripped_text: str | None = None,
+) -> bool:
     if PurePosixPath(path).name.lower() not in MOONBIT_CONFIG_BASENAMES or not text:
         return False
-    return bool(_CONFIG_MARKER_RE.search(strip_comments(text)))
+    if not any(marker in text for marker in _RAW_CONFIG_MARKERS):
+        return False
+    return bool(_CONFIG_MARKER_RE.search(_coerce_stripped_text(text, stripped_text)))
 
 
 def module_name_from_path(file_path: str) -> str:
@@ -159,8 +191,12 @@ def normalize_import_target(raw_target: str) -> str:
     return normalized_target.rstrip("/")
 
 
-def parse_import_entries(text: str) -> tuple[tuple[str, str | None, int], ...]:
-    stripped_text = strip_comments(text)
+def parse_import_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, str | None, int], ...]:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
     entries: list[tuple[str, str | None, int]] = []
     seen: set[tuple[str, str | None, int]] = set()
     for block_match in _IMPORT_BLOCK_RE.finditer(stripped_text):
@@ -181,8 +217,12 @@ def parse_import_entries(text: str) -> tuple[tuple[str, str | None, int], ...]:
     return tuple(entries)
 
 
-def parse_using_entries(text: str) -> tuple[tuple[str, tuple[str, ...], int], ...]:
-    stripped_text = strip_comments(text)
+def parse_using_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, tuple[str, ...], int], ...]:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
     entries: list[tuple[str, tuple[str, ...], int]] = []
     seen: set[tuple[str, tuple[str, ...], int]] = set()
     for block_match in _USING_BLOCK_RE.finditer(stripped_text):
@@ -207,8 +247,12 @@ def parse_using_entries(text: str) -> tuple[tuple[str, tuple[str, ...], int], ..
     return tuple(entries)
 
 
-def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
-    stripped_text = strip_comments(text)
+def iter_symbol_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, str, int], ...]:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
     entries: list[tuple[str, str, int]] = []
     seen: set[tuple[str, str]] = set()
     for regex, symbol_kind in (
@@ -267,6 +311,8 @@ __all__ = [
     "_line_count",
     "_line_number",
     "_ordered_names",
+    "_strip_comments_cached",
+    "clear_strip_comments_cache",
     "has_moonbit_path_hints",
     "is_probable_moonbit_config",
     "is_probable_moonbit_source",

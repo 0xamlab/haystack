@@ -42,6 +42,12 @@ from apps.api_server.services.repository_intelligence_storage import (
 REPOSITORY_CONNECTOR_TYPES = frozenset(
     {"github_repo", "gitlab_repo", "bitbucket_repo", "local_repo", "repo_archive"}
 )
+_GIT_COMMAND_CACHE_SCOPE_DEPTH = 0
+_GIT_COMMAND_CACHE: dict[
+    tuple[tuple[str, ...], str | None, float, bool, str | None],
+    bytes | str,
+] = {}
+_GIT_CHANGED_PATHS_CACHE: dict[str, tuple[str, ...]] = {}
 
 
 def _parse_connector_config(connector: DataConnector) -> dict[str, Any]:
@@ -124,6 +130,31 @@ def _redact_credentials(value: str) -> str:
     return re.sub(r"(https://[^:/\s]++:)[^@\s/]++@", r"\1***@", value)
 
 
+def _normalize_git_cache_path(value: str) -> str:
+    return str(Path(value).expanduser().resolve())
+
+
+def _normalized_git_cache_invocation(
+    args: Sequence[str],
+    *,
+    cwd: Path | None,
+) -> tuple[tuple[str, ...], str | None]:
+    normalized_args: list[str] = []
+    effective_cwd = None if cwd is None else _normalize_git_cache_path(str(cwd))
+    index = 0
+    while index < len(args):
+        current = str(args[index])
+        if current == "-C" and index + 1 < len(args):
+            raw_path = str(args[index + 1])
+            base_path = Path(effective_cwd) if effective_cwd is not None else Path.cwd()
+            effective_cwd = _normalize_git_cache_path(str(base_path / raw_path))
+            index += 2
+            continue
+        normalized_args.append(current)
+        index += 1
+    return tuple(normalized_args), effective_cwd
+
+
 def _git_command(
     args: Sequence[str],
     *,
@@ -132,6 +163,22 @@ def _git_command(
     binary: bool = False,
     stdin: str | None = None,
 ) -> bytes | str:
+    cache_key: tuple[tuple[str, ...], str | None, float, bool, str | None] | None = None
+    if _GIT_COMMAND_CACHE_SCOPE_DEPTH > 0 and _is_cacheable_git_command(args):
+        normalized_args, normalized_cwd = _normalized_git_cache_invocation(
+            args,
+            cwd=cwd,
+        )
+        cache_key = (
+            normalized_args,
+            normalized_cwd,
+            float(timeout),
+            bool(binary),
+            stdin,
+        )
+        cached_result = _GIT_COMMAND_CACHE.get(cache_key)
+        if cached_result is not None:
+            return cached_result
     completed = subprocess.run(  # noqa: S603
         list(args),
         cwd=str(cwd) if cwd is not None else None,
@@ -149,8 +196,61 @@ def _git_command(
             details={"command": [_redact_credentials(str(arg)) for arg in args]},
         )
     if binary:
-        return completed.stdout
-    return completed.stdout.decode("utf-8", errors="replace").strip()
+        result: bytes | str = completed.stdout
+    else:
+        result = completed.stdout.decode("utf-8", errors="replace").strip()
+    if cache_key is not None:
+        _GIT_COMMAND_CACHE[cache_key] = result
+    return result
+
+
+def clear_git_command_cache() -> None:
+    _GIT_COMMAND_CACHE.clear()
+    _GIT_CHANGED_PATHS_CACHE.clear()
+
+
+def git_command_cache_size() -> int:
+    return len(_GIT_COMMAND_CACHE)
+
+
+def begin_git_command_cache_scope() -> None:
+    global _GIT_COMMAND_CACHE_SCOPE_DEPTH
+
+    if _GIT_COMMAND_CACHE_SCOPE_DEPTH == 0:
+        clear_git_command_cache()
+    _GIT_COMMAND_CACHE_SCOPE_DEPTH += 1
+
+
+def end_git_command_cache_scope() -> None:
+    global _GIT_COMMAND_CACHE_SCOPE_DEPTH
+
+    if _GIT_COMMAND_CACHE_SCOPE_DEPTH <= 0:
+        clear_git_command_cache()
+        _GIT_COMMAND_CACHE_SCOPE_DEPTH = 0
+        return
+    _GIT_COMMAND_CACHE_SCOPE_DEPTH -= 1
+    if _GIT_COMMAND_CACHE_SCOPE_DEPTH == 0:
+        clear_git_command_cache()
+
+
+def _git_command_subcommand(args: Sequence[str]) -> str | None:
+    if not args:
+        return None
+    index = 1 if str(args[0]) == "git" else 0
+    while index < len(args):
+        current = str(args[index])
+        if current == "-C":
+            index += 2
+            continue
+        if current.startswith("-"):
+            index += 1
+            continue
+        return current
+    return None
+
+
+def _is_cacheable_git_command(args: Sequence[str]) -> bool:
+    return _git_command_subcommand(args) in {"cat-file", "ls-files", "rev-parse", "status"}
 
 
 def _is_git_repository(path: Path) -> bool:
@@ -265,36 +365,120 @@ def _hash_directory_listing(root_path: Path) -> str:
     return _hash_payload(entries)
 
 
-def _git_changed_paths(root_path: Path) -> list[str]:
-    commands = [
-        ["git", "diff", "--name-only", "--relative", "--cached"],
-        ["git", "diff", "--name-only", "--relative"],
-        ["git", "ls-files", "--others", "--exclude-standard"],
+def _git_status_entries(output: bytes | str) -> list[tuple[str, str]]:
+    raw_output = output if isinstance(output, bytes) else output.encode("utf-8")
+    status_entries: list[tuple[str, str]] = []
+    entries = raw_output.split(b"\0")
+    index = 0
+    while index < len(entries):
+        raw_entry = entries[index]
+        index += 1
+        if len(raw_entry) < 4:
+            continue
+        status_code = raw_entry[:2].decode("utf-8", errors="replace")
+        raw_path = raw_entry[3:].decode("utf-8", errors="replace").strip()
+        normalized_path = _normalize_repository_relative_path(raw_path)
+        if normalized_path:
+            status_entries.append((status_code, normalized_path))
+        if status_code[:1] in {"R", "C"} or status_code[1:2] in {"R", "C"}:
+            index += 1
+    return status_entries
+
+
+def _normalized_candidate_path_set(
+    candidate_paths: Sequence[str] | None,
+) -> set[str] | None:
+    if candidate_paths is None:
+        return None
+    return {
+        _normalize_repository_relative_path(value)
+        for value in candidate_paths
+        if str(value).strip()
+    }
+
+
+def _assume_clean_git_clone(config: dict[str, Any]) -> bool:
+    return bool(config.get("assume_clean_git_clone"))
+
+
+def _assume_clean_git_clone_resolved_revision(config: dict[str, Any]) -> str | None:
+    raw_revision = str(config.get("resolved_revision") or "").strip().lower()
+    if not raw_revision:
+        return None
+    if _RESOLVED_OID_RE.fullmatch(raw_revision) is None:
+        raise RepositoryIntelligenceError(
+            code="invalid_repository_config",
+            message="Clean-clone resolved_revision must be a 40-character lowercase git object id.",
+            status_code=422,
+        )
+    return raw_revision
+
+
+def _git_changed_paths(
+    root_path: Path, *, candidate_paths: Sequence[str] | None = None
+) -> list[str]:
+    candidate_path_set = _normalized_candidate_path_set(candidate_paths)
+    scope_cache_key = _normalize_git_cache_path(str(root_path))
+    if _GIT_COMMAND_CACHE_SCOPE_DEPTH > 0:
+        cached_changed_paths = _GIT_CHANGED_PATHS_CACHE.get(scope_cache_key)
+        if cached_changed_paths is not None:
+            if candidate_path_set is None:
+                return list(cached_changed_paths)
+            return [
+                changed_path
+                for changed_path in cached_changed_paths
+                if changed_path in candidate_path_set
+            ]
+    status_command = [
+        "git",
+        "status",
+        "--porcelain=v1",
+        "-z",
+        "--untracked-files=all",
     ]
-    changed_paths: set[str] = set()
-    for command in commands:
-        output = str(_git_command(command, cwd=root_path, timeout=60.0))
-        for raw_line in output.splitlines():
-            candidate = raw_line.strip()
-            if candidate:
-                changed_paths.add(candidate.replace("\\", "/"))
-    return sorted(changed_paths)
+    if candidate_path_set:
+        status_command.extend(["--", *sorted(candidate_path_set)])
+    output = _git_command(
+        status_command,
+        cwd=root_path,
+        timeout=60.0,
+        binary=True,
+    )
+    changed_paths = {path for _status_code, path in _git_status_entries(output)}
+    ordered_changed_paths = sorted(changed_paths)
+    if _GIT_COMMAND_CACHE_SCOPE_DEPTH > 0 and candidate_path_set is None:
+        _GIT_CHANGED_PATHS_CACHE[scope_cache_key] = tuple(ordered_changed_paths)
+    return ordered_changed_paths
 
 
 def _git_tracked_content_hashes(
-    root_path: Path, *, candidate_paths: Sequence[str] | None = None
+    root_path: Path,
+    *,
+    candidate_paths: Sequence[str] | None = None,
+    assume_clean_git_clone: bool = False,
 ) -> dict[str, str]:
-    candidate_path_set = (
-        {
-            _normalize_repository_relative_path(value)
-            for value in candidate_paths
-            if str(value).strip()
-        }
-        if candidate_paths is not None
-        else None
+    candidate_path_set = _normalized_candidate_path_set(candidate_paths)
+    if candidate_path_set == set():
+        return {}
+    if assume_clean_git_clone and candidate_path_set is not None:
+        # For clean clones with an explicit selected file set, direct file hashing
+        # is cheaper than spawning `git ls-files -s` and still produces deterministic
+        # cache keys from the exact bytes the analyzer will read next.
+        return {}
+    changed_paths = (
+        set()
+        if assume_clean_git_clone
+        else set(
+            _git_changed_paths(
+                root_path,
+                candidate_paths=sorted(candidate_path_set) if candidate_path_set else None,
+            )
+        )
     )
-    changed_paths = set(_git_changed_paths(root_path))
-    output = str(_git_command(["git", "ls-files", "-s"], cwd=root_path, timeout=120.0))
+    ls_files_command = ["git", "ls-files", "-s"]
+    if candidate_path_set:
+        ls_files_command.extend(["--", *sorted(candidate_path_set)])
+    output = str(_git_command(ls_files_command, cwd=root_path, timeout=120.0))
     tracked_hashes: dict[str, str] = {}
     for line in output.splitlines():
         metadata, separator, raw_path = line.partition("\t")
@@ -312,20 +496,35 @@ def _git_tracked_content_hashes(
     return tracked_hashes
 
 
-def _git_repository_relative_files(root_path: Path) -> list[str] | None:
-    if not _is_git_repository(root_path):
+def _git_repository_relative_files(
+    root_path: Path,
+    *,
+    candidate_paths: Sequence[str] | None = None,
+    assume_clean_git_clone: bool = False,
+) -> list[str] | None:
+    candidate_path_set = _normalized_candidate_path_set(candidate_paths)
+    if candidate_path_set == set():
+        return []
+    try:
+        git_command = ["git", "ls-files", "--cached"]
+        if not assume_clean_git_clone:
+            git_command.extend(["--others", "--exclude-standard"])
+        if candidate_path_set:
+            git_command.extend(["--", *sorted(candidate_path_set)])
+        output = str(
+            _git_command(
+                git_command,
+                cwd=root_path,
+                timeout=120.0,
+            )
+        )
+    except RepositoryIntelligenceError:
         return None
-    commands = [
-        ["git", "ls-files"],
-        ["git", "ls-files", "--others", "--exclude-standard"],
-    ]
     relative_paths: set[str] = set()
-    for command in commands:
-        output = str(_git_command(command, cwd=root_path, timeout=120.0))
-        for line in output.splitlines():
-            normalized = _normalize_repository_relative_path(line)
-            if normalized:
-                relative_paths.add(normalized)
+    for line in output.splitlines():
+        normalized = _normalize_repository_relative_path(line)
+        if normalized:
+            relative_paths.add(normalized)
     return sorted(relative_paths)
 
 
@@ -377,13 +576,55 @@ def resolved_repository_source(
     root_path: Path
     repository_url = _repository_url(config, connector_type)
     is_git = connector_type != "repo_archive"
+    assume_clean_git_clone = False
     # NOTE: `ref` is untrusted (HTTP payload) and must NEVER reach a git argv.
     # It is resolved to an object id via stdin (_resolve_git_ref) or matched
     # against ls-remote stdout (_match_remote_ref); both also validate its shape.
     try:
         if connector_type == "local_repo":
             root_path = _path_from_config(config, field="path")
-            is_git = _is_git_repository(root_path)
+            assume_clean_git_clone = _assume_clean_git_clone(config)
+            if assume_clean_git_clone and not ref:
+                configured_resolved_revision = _assume_clean_git_clone_resolved_revision(config)
+                if configured_resolved_revision is not None:
+                    resolved_revision = configured_resolved_revision
+                else:
+                    try:
+                        resolved_revision = str(
+                            _git_command(["git", "rev-parse", "HEAD"], cwd=root_path)
+                        )
+                    except RepositoryIntelligenceError:
+                        is_git = _is_git_repository(root_path)
+                        assume_clean_git_clone = False
+                    else:
+                        yield _ResolvedRepositorySource(
+                            root_path=root_path,
+                            connector_type=connector_type,
+                            repository_url=repository_url,
+                            ref=ref,
+                            resolved_revision=resolved_revision,
+                            is_git=True,
+                            assume_clean_git_clone=True,
+                            cleanup_path=cleanup_path,
+                        )
+                        return
+                if assume_clean_git_clone:
+                    yield _ResolvedRepositorySource(
+                        root_path=root_path,
+                        connector_type=connector_type,
+                        repository_url=repository_url,
+                        ref=ref,
+                        resolved_revision=resolved_revision,
+                        is_git=True,
+                        assume_clean_git_clone=True,
+                        cleanup_path=cleanup_path,
+                    )
+                    return
+            else:
+                is_git = _is_git_repository(root_path)
+                assume_clean_git_clone = is_git and assume_clean_git_clone
+            if "is_git" not in locals():
+                is_git = _is_git_repository(root_path)
             if ref:
                 if not is_git:
                     raise RepositoryIntelligenceError(
@@ -412,9 +653,13 @@ def resolved_repository_source(
                     root_path = cleanup_path
                     is_git = False
             else:
-                resolved_revision = _local_repository_resolved_revision(
-                    root_path,
-                    is_git=is_git,
+                resolved_revision = (
+                    str(_git_command(["git", "rev-parse", "HEAD"], cwd=root_path))
+                    if assume_clean_git_clone
+                    else _local_repository_resolved_revision(
+                        root_path,
+                        is_git=is_git,
+                    )
                 )
             yield _ResolvedRepositorySource(
                 root_path=root_path,
@@ -423,6 +668,7 @@ def resolved_repository_source(
                 ref=ref,
                 resolved_revision=resolved_revision,
                 is_git=is_git,
+                assume_clean_git_clone=assume_clean_git_clone,
                 cleanup_path=cleanup_path,
             )
             return
@@ -444,6 +690,7 @@ def resolved_repository_source(
                 ref=ref,
                 resolved_revision=_hash_file(archive_path),
                 is_git=False,
+                assume_clean_git_clone=False,
                 cleanup_path=None if allow_writes else cleanup_path,
             )
             return
@@ -520,6 +767,7 @@ def resolved_repository_source(
             ref=ref,
             resolved_revision=resolved_revision,
             is_git=True,
+            assume_clean_git_clone=False,
             cleanup_path=None if allow_writes else cleanup_path,
         )
     finally:

@@ -172,6 +172,49 @@ def test_lean_adapter_parse_file_resolves_import_dependencies_and_call_reference
     )
 
 
+def test_lean_adapter_reuses_single_stripped_text_per_parse(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    original_strip_comments = repository_service.lean_adapter.strip_comments
+    strip_call_count = {"value": 0}
+
+    def counting_strip_comments(text: str) -> str:
+        strip_call_count["value"] += 1
+        return original_strip_comments(text)
+
+    monkeypatch.setattr(
+        repository_service.lean_adapter,
+        "strip_comments",
+        counting_strip_comments,
+    )
+
+    source_text = (
+        "import Batteries.Helper\n\n"
+        "def helper : Nat := 0\n"
+        "def run : Nat := Batteries.Helper.helper\n"
+    )
+    module_index = {"Batteries.Helper": "Batteries/Helper.lean"}
+
+    repository_service.lean_adapter.parse_dependencies_only(
+        "Batteries/Main.lean",
+        source_text,
+        module_index,
+        stable_identifier=repository_service._stable_identifier,
+        normalize_repository_relative_path=repository_service._normalize_repository_relative_path,
+        resolve_suffix_match=repository_service._resolve_suffix_match,
+    )
+    repository_service.lean_adapter.parse_file(
+        "Batteries/Main.lean",
+        source_text,
+        module_index,
+        stable_identifier=repository_service._stable_identifier,
+        normalize_repository_relative_path=repository_service._normalize_repository_relative_path,
+        resolve_suffix_match=repository_service._resolve_suffix_match,
+    )
+
+    assert strip_call_count["value"] == 2
+
+
 def test_glsl_adapter_parse_file_resolves_include_dependencies_and_call_references(
     tmp_path: Path,
 ) -> None:
@@ -269,6 +312,23 @@ def test_hlsl_adapter_parse_file_resolves_include_dependencies_and_call_referenc
     )
     assert any(symbol.symbol_name == "RenderMain" for symbol in symbols)
     assert any(reference.target_names == ("NoiseValue",) for reference in references)
+
+
+def test_hlsl_adapter_iter_symbol_entries_preserve_line_numbers_after_block_comments() -> None:
+    entries = repository_service.hlsl_adapter.iter_symbol_entries(
+        "/* shader prelude\n"
+        "   keep line offsets stable */\n"
+        "struct LightingParams {\n"
+        "  float intensity;\n"
+        "};\n"
+        "\n"
+        "float4 ShadeMain(float3 normal) : SV_Target {\n"
+        "  return float4(normal, 1.0);\n"
+        "}\n"
+    )
+
+    assert ("LightingParams", "struct", 3) in entries
+    assert ("ShadeMain", "function", 7) in entries
 
 
 def test_batchfile_adapter_parse_file_resolves_call_dependencies_and_label_references(
@@ -669,6 +729,45 @@ def test_qmake_adapter_parse_file_resolves_include_subdir_dependencies_and_refer
     )
 
 
+def test_qmake_parse_file_does_not_reinvoke_parse_dependencies_only(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    repo_path = tmp_path / "qmake-parse-file-repo"
+    repo_path.mkdir(parents=True)
+    (repo_path / "project.pro").write_text(
+        "TEMPLATE = subdirs\n"
+        "TARGET = workspace\n"
+        "SUBDIRS += app\n",
+        encoding="utf-8",
+    )
+
+    def _fail_parse_dependencies_only(*args: Any, **kwargs: Any) -> tuple[dict[str, Any], ...]:
+        raise AssertionError("qmake parse_file should build dependencies without a second dependency pass")
+
+    monkeypatch.setattr(
+        repository_qmake_analysis_support,
+        "parse_dependencies_only",
+        _fail_parse_dependencies_only,
+    )
+
+    symbols, dependencies, reference_candidates = repository_service.qmake_adapter.parse_file(
+        "project.pro",
+        (repo_path / "project.pro").read_text(encoding="utf-8"),
+        {
+            "project.pro": "project.pro",
+            "app/app.pro": "app/app.pro",
+        },
+        stable_identifier=repository_service._stable_identifier,
+        normalize_repository_relative_path=repository_service._normalize_repository_relative_path,
+        resolve_suffix_match=repository_service._resolve_suffix_match,
+    )
+
+    assert symbols
+    assert isinstance(dependencies, tuple)
+    assert isinstance(reference_candidates, tuple)
+
+
 def test_qml_adapter_parse_file_resolves_imports_qmldir_exports_and_references(
     tmp_path: Path,
 ) -> None:
@@ -745,3 +844,27 @@ def test_qml_adapter_parse_file_resolves_imports_qmldir_exports_and_references(
     )
 
 
+def test_qml_strip_comments_preserves_strings_and_removes_hash_comment_lines() -> None:
+    source_text = (
+        "import QtQuick 2.0\n"
+        "# directive comment\n"
+        "Item {\n"
+        "    property string url: \"http://example.com//keep\"\n"
+        "    // inline comment\n"
+        "    Text { text: '// keep' }\n"
+        "    /* block comment */\n"
+        "}\n"
+    )
+
+    stripped_text = repository_qml_primitives.strip_comments(source_text)
+
+    assert stripped_text == (
+        "import QtQuick 2.0\n"
+        "\n"
+        "Item {\n"
+        "    property string url: \"http://example.com//keep\"\n"
+        "    \n"
+        "    Text { text: '// keep' }\n"
+        "    \n"
+        "}"
+    )

@@ -23,7 +23,10 @@ from apps.api_server.schemas.repositories import (
     RepositoryTriageRequest,
 )
 from apps.api_server.services import repository_intelligence as repository_service
+from apps.api_server.services import repository_intelligence_repository_source as repository_source
 from apps.api_server.services import repository_intelligence_runtime as runtime_service
+
+_SHARED_RUNTIME_DIR_ENV = "ALGENTA_REPOSITORY_INTELLIGENCE_SHARED_RUNTIME_DIR"
 
 
 @dataclass(frozen=True)
@@ -53,6 +56,33 @@ class ProbeRunDependencies:
     repository_connector: Callable[[Path], Any]
 
 
+def _should_prefer_concrete_snapshot_focus_paths(
+    *,
+    repo_path: Path,
+    focus_paths: list[str],
+) -> bool:
+    from benchmarks import repository_intelligence_real_repo_probe as probe_module
+
+    has_concrete_focus_path = False
+    has_non_concrete_focus_path = False
+    for path in focus_paths:
+        normalized_path = probe_module.repository_service._normalize_repository_relative_path(path)
+        if not normalized_path:
+            continue
+        candidate_path = repo_path / normalized_path
+        if candidate_path.is_file():
+            has_concrete_focus_path = True
+        elif candidate_path.is_dir():
+            has_non_concrete_focus_path = True
+        elif probe_module._looks_like_concrete_file_seed(normalized_path):
+            has_concrete_focus_path = True
+        else:
+            has_non_concrete_focus_path = True
+        if has_concrete_focus_path and has_non_concrete_focus_path:
+            return True
+    return False
+
+
 def probe_repo_state(repo_path: Path) -> dict[str, Any]:
     if not repository_service._is_git_repository(repo_path):  # type: ignore[attr-defined]
         return {
@@ -65,26 +95,24 @@ def probe_repo_state(repo_path: Path) -> dict[str, Any]:
             "status_entry_count": None,
             "status_hash": None,
         }
+
     try:
         resolved_revision = str(
             repository_service._git_command(  # type: ignore[attr-defined]
                 ["git", "-C", str(repo_path), "rev-parse", "HEAD"]
             )
         ).strip()
-        status_text = str(
+        status_entries = [
+            f"{status_code} {normalized_path}"
+            for status_code, normalized_path in repository_source._git_status_entries(
             repository_service._git_command(  # type: ignore[attr-defined]
-                [
-                    "git",
-                    "-C",
-                    str(repo_path),
-                    "status",
-                    "--porcelain=v1",
-                    "--untracked-files=all",
-                    "--ignored=no",
-                ],
+                ["git", "status", "--porcelain=v1", "-z", "--untracked-files=all"],
+                cwd=repo_path,
                 timeout=60.0,
+                binary=True,
             )
-        )
+            )
+        ]
     except Exception:  # noqa: BLE001
         return {
             "cache_enabled": False,
@@ -96,18 +124,17 @@ def probe_repo_state(repo_path: Path) -> dict[str, Any]:
             "status_entry_count": None,
             "status_hash": None,
         }
-    status_lines = [line.rstrip("\n") for line in status_text.splitlines() if line.strip()]
     return {
         "cache_enabled": True,
         "cache_mode": "git",
         "reason": None,
         "resolved_revision": resolved_revision,
         "state_id": repository_service._hash_payload(  # type: ignore[attr-defined]
-            {"resolved_revision": resolved_revision, "status_lines": status_lines}
+            {"resolved_revision": resolved_revision, "status_lines": status_entries}
         ),
-        "dirty": bool(status_lines),
-        "status_entry_count": len(status_lines),
-        "status_hash": repository_service._hash_payload(status_lines),  # type: ignore[attr-defined]
+        "dirty": bool(status_entries),
+        "status_entry_count": len(status_entries),
+        "status_hash": repository_service._hash_payload(status_entries),  # type: ignore[attr-defined]
     }
 
 
@@ -148,7 +175,15 @@ def probe_prepass_cache_key(
 def probe_prepass_cache_path(repository_runtime_root: Path, cache_key: str | None) -> Path | None:
     if not cache_key:
         return None
-    return repository_runtime_root / "probe_prepass" / f"{cache_key}.json"
+    org_id = repository_runtime_root.parent.name
+    repository_id = repository_runtime_root.name
+    return (
+        runtime_service._shared_repository_intelligence_dir()
+        / "probe_prepass"
+        / org_id
+        / repository_id
+        / f"{cache_key}.json"
+    )
 
 
 def load_probe_prepass_cache(
@@ -186,6 +221,8 @@ def compute_probe_prepass(
     *,
     repo_path: Path,
     focus_paths: list[str],
+    operational_seed_plan: dict[str, Any] | None = None,
+    use_seed_files_as_connected_map: bool = False,
     diagnostic_command: str | None,
     diagnostic_base_path: str | None,
     repository_runtime_root: Path,
@@ -213,25 +250,40 @@ def compute_probe_prepass(
     _run_command = deps.run_command
 
     started = time.perf_counter_ns()
-    repo_state = probe_repo_state(repo_path)
-    cache_key = probe_prepass_cache_key(
-        repo_state=repo_state,
-        focus_paths=focus_paths,
-        diagnostic_command=diagnostic_command,
-        diagnostic_base_path=diagnostic_base_path,
-        include_patterns=default_include_patterns,
-        exclude_patterns=default_exclude_patterns,
-        max_files=max_files,
-        max_file_size_bytes=max_file_size_bytes,
-        max_dependency_depth=max_dependency_depth,
-        max_connected_files=max_connected_files,
-        prepass_cache_schema_version=prepass_cache_schema_version,
-    )
-    cache_path = probe_prepass_cache_path(repository_runtime_root, cache_key)
-    cached_payload = load_probe_prepass_cache(
-        cache_path,
-        prepass_cache_schema_version=prepass_cache_schema_version,
-    )
+    if operational_seed_plan is None:
+        repo_state = probe_repo_state(repo_path)
+        cache_key = probe_prepass_cache_key(
+            repo_state=repo_state,
+            focus_paths=focus_paths,
+            diagnostic_command=diagnostic_command,
+            diagnostic_base_path=diagnostic_base_path,
+            include_patterns=default_include_patterns,
+            exclude_patterns=default_exclude_patterns,
+            max_files=max_files,
+            max_file_size_bytes=max_file_size_bytes,
+            max_dependency_depth=max_dependency_depth,
+            max_connected_files=max_connected_files,
+            prepass_cache_schema_version=prepass_cache_schema_version,
+        )
+        cache_path = probe_prepass_cache_path(repository_runtime_root, cache_key)
+        cached_payload = load_probe_prepass_cache(
+            cache_path,
+            prepass_cache_schema_version=prepass_cache_schema_version,
+        )
+    else:
+        repo_state = {
+            "cache_enabled": False,
+            "cache_mode": "disabled",
+            "reason": "precomputed_operational_seed_plan",
+            "resolved_revision": None,
+            "state_id": None,
+            "dirty": None,
+            "status_entry_count": None,
+            "status_hash": None,
+        }
+        cache_key = None
+        cache_path = None
+        cached_payload = None
     if cached_payload is not None:
         diagnostics = [
             RepositoryDiagnostic.model_validate(item)
@@ -284,37 +336,49 @@ def compute_probe_prepass(
         else []
     )
     graph_seed_paths = sorted({item.path for item in diagnostics if item.path})
-    operational_seed_plan: dict[str, Any] | None = None
     connected_map_bridge_paths = list(focus_paths)
     if not graph_seed_paths:
-        operational_seed_plan = _derive_operational_seed_plan_without_diagnostics(
-            repo_path=repo_path,
-            focus_paths=focus_paths,
-            max_files=max_files,
-        )
+        if operational_seed_plan is None:
+            operational_seed_plan = _derive_operational_seed_plan_without_diagnostics(
+                repo_path=repo_path,
+                focus_paths=focus_paths,
+                max_files=max_files,
+            )
         graph_seed_paths = list(operational_seed_plan["entrypoint_files"])
         connected_map_bridge_paths = []
-    connected_map = _build_connected_dependency_map(
-        repo_path=repo_path,
-        seed_paths=graph_seed_paths,
-        bridge_paths=connected_map_bridge_paths,
-        candidate_file_paths=(
-            None
-            if operational_seed_plan is None
-            else list(operational_seed_plan["candidate_file_paths"])
-        ),
-        candidate_scope_paths=(
-            None
-            if operational_seed_plan is None
-            else list(operational_seed_plan["support_roots"])
-        ),
-        enable_reverse_bridging=operational_seed_plan is None,
-        include_patterns=default_include_patterns,
-        max_files=max_files,
-        max_file_size_bytes=max_file_size_bytes,
-        max_dependency_depth=max_dependency_depth,
-        max_connected_files=max_connected_files,
-    )
+    if operational_seed_plan is not None and use_seed_files_as_connected_map:
+        connected_files = list(dict.fromkeys(graph_seed_paths))
+        connected_map = {
+            "seed_files": connected_files,
+            "connected_files": connected_files,
+            "connected_file_count": len(connected_files),
+            "resolved_dependency_edges": 0,
+            "unresolved_dependency_count": 0,
+            "bridged_importer_count": 0,
+            "bridged_importers": [],
+        }
+    else:
+        connected_map = _build_connected_dependency_map(
+            repo_path=repo_path,
+            seed_paths=graph_seed_paths,
+            bridge_paths=connected_map_bridge_paths,
+            candidate_file_paths=(
+                None
+                if operational_seed_plan is None
+                else list(operational_seed_plan["candidate_file_paths"])
+            ),
+            candidate_scope_paths=(
+                None
+                if operational_seed_plan is None
+                else list(operational_seed_plan["support_roots"])
+            ),
+            enable_reverse_bridging=operational_seed_plan is None,
+            include_patterns=default_include_patterns,
+            max_files=max_files,
+            max_file_size_bytes=max_file_size_bytes,
+            max_dependency_depth=max_dependency_depth,
+            max_connected_files=max_connected_files,
+        )
     fallback_focus_paths = _focus_paths_from_diagnostics(
         repo_path=repo_path,
         diagnostics=diagnostics,
@@ -340,7 +404,11 @@ def compute_probe_prepass(
         max_file_size_bytes=max_file_size_bytes,
     )
     candidate_solutions = _candidate_solutions(diagnostics)
-    cache_status = "miss_stored" if cache_path is not None else "miss_not_cacheable"
+    cache_status = (
+        "disabled_precomputed_seed_plan"
+        if operational_seed_plan is not None and cache_path is None
+        else ("miss_stored" if cache_path is not None else "miss_not_cacheable")
+    )
     store_probe_prepass_cache(
         cache_path,
         {
@@ -366,7 +434,11 @@ def compute_probe_prepass(
         "elapsed_ms": round((time.perf_counter_ns() - started) / 1_000_000.0, 2),
         "cache_status": cache_status,
         "cache_enabled": bool(repo_state.get("cache_enabled")),
-        "cache_reason": repo_state.get("reason"),
+        "cache_reason": (
+            "precomputed_operational_seed_plan"
+            if operational_seed_plan is not None and cache_path is None
+            else repo_state.get("reason")
+        ),
         "cache_key": cache_key,
         "cache_path": str(cache_path) if cache_path else None,
         "repo_state": repo_state,
@@ -413,6 +485,8 @@ def run_probe(
     *,
     repo_path: Path,
     focus_paths: list[str],
+    operational_seed_plan: dict[str, Any] | None = None,
+    use_seed_files_as_connected_map: bool,
     diagnostic_command: str | None,
     diagnostic_base_path: str | None,
     planner_model: str | None,
@@ -423,15 +497,25 @@ def run_probe(
     max_total_bytes: int | None,
     max_dependency_depth: int,
     max_connected_files: int,
+    assume_clean_git_clone: bool,
+    resolved_revision: str | None,
+    perform_warm_snapshot: bool,
+    load_graph_summary: bool,
     deps: ProbeRunDependencies,
 ) -> dict[str, Any]:
+    from benchmarks import repository_intelligence_real_repo_probe_collection_support as collection_support
+
     default_include_patterns = deps.default_include_patterns
     default_exclude_patterns = deps.default_exclude_patterns
     _compute_probe_prepass = deps.compute_probe_prepass
     _load_snapshot_graph_summary = deps.load_snapshot_graph_summary
     _repository_connector = deps.repository_connector
 
-    connector = _repository_connector(repo_path)
+    connector = _repository_connector(
+        repo_path,
+        assume_clean_git_clone=assume_clean_git_clone,
+        resolved_revision=resolved_revision,
+    )
     snapshot_request = RepositorySnapshotCreateRequest(
         focus_paths=[],
         include_patterns=default_include_patterns,
@@ -443,7 +527,10 @@ def run_probe(
     runtime_dir = runtime_dir.resolve()
     runtime_dir.mkdir(parents=True, exist_ok=True)
     original_runtime_dir = os.environ.get("ALGENTA_RUNTIME_DIR")
+    original_shared_runtime_dir = os.environ.get(_SHARED_RUNTIME_DIR_ENV)
     os.environ["ALGENTA_RUNTIME_DIR"] = str(runtime_dir)
+    if original_shared_runtime_dir is None:
+        os.environ[_SHARED_RUNTIME_DIR_ENV] = str((runtime_dir.parent / "_shared").resolve())
     repository_runtime_root = runtime_service._repo_root_dir(
         str(connector.org_id),
         str(connector.id),
@@ -455,10 +542,13 @@ def run_probe(
         os.environ["ALGENTA_REPOSITORY_INTELLIGENCE_MODEL"] = planner_model
     else:
         original_planner_model = None
+    collection_support.begin_git_repo_relative_files_cache_scope()
     try:
         prepass = _compute_probe_prepass(
             repo_path=repo_path,
             focus_paths=focus_paths,
+            operational_seed_plan=operational_seed_plan,
+            use_seed_files_as_connected_map=use_seed_files_as_connected_map,
             diagnostic_command=diagnostic_command,
             diagnostic_base_path=diagnostic_base_path,
             repository_runtime_root=repository_runtime_root,
@@ -475,7 +565,13 @@ def run_probe(
         resolved_diagnostic_base_path = prepass["resolved_diagnostic_base_path"]
         diagnostic_project_path = prepass["diagnostic_project_path"]
         snapshot_request = snapshot_request.model_copy(
-            update={"focus_paths": effective_focus_paths}
+            update={
+                "focus_paths": effective_focus_paths,
+                "prefer_concrete_focus_paths": _should_prefer_concrete_snapshot_focus_paths(
+                    repo_path=repo_path,
+                    focus_paths=effective_focus_paths,
+                ),
+            }
         )
 
         started = time.perf_counter_ns()
@@ -485,18 +581,27 @@ def run_probe(
         )
         cold_snapshot_elapsed_ms = (time.perf_counter_ns() - started) / 1_000_000.0
 
-        warm_started = time.perf_counter_ns()
-        warm_snapshot = repository_service.create_repository_snapshot(
-            connector=connector,
-            request=snapshot_request,
-        )
-        warm_snapshot_elapsed_ms = (time.perf_counter_ns() - warm_started) / 1_000_000.0
+        if perform_warm_snapshot:
+            warm_started = time.perf_counter_ns()
+            warm_snapshot = repository_service.create_repository_snapshot(
+                connector=connector,
+                request=snapshot_request,
+            )
+            warm_snapshot_elapsed_ms = (time.perf_counter_ns() - warm_started) / 1_000_000.0
+            warm_snapshot_status = warm_snapshot.status
+        else:
+            warm_snapshot_elapsed_ms = 0.0
+            warm_snapshot_status = "skipped"
 
-        graph_summary = _load_snapshot_graph_summary(
-            repository_graph_path=cold_snapshot.repository_graph_artifact.storage_path,
-            dependency_graph_path=cold_snapshot.dependency_graph_artifact.storage_path,
-            symbol_graph_path=cold_snapshot.symbol_graph_artifact.storage_path,
-            seed_files=list(connected_map["seed_files"]),
+        graph_summary = (
+            _load_snapshot_graph_summary(
+                repository_graph_path=cold_snapshot.repository_graph_artifact.storage_path,
+                dependency_graph_path=cold_snapshot.dependency_graph_artifact.storage_path,
+                symbol_graph_path=cold_snapshot.symbol_graph_artifact.storage_path,
+                seed_files=list(connected_map["seed_files"]),
+            )
+            if load_graph_summary
+            else {"status": "skipped"}
         )
 
         triage_result: dict[str, Any] | None = None
@@ -639,10 +744,15 @@ def run_probe(
                     }
                 }
     finally:
+        collection_support.end_git_repo_relative_files_cache_scope()
         if original_runtime_dir is None:
             os.environ.pop("ALGENTA_RUNTIME_DIR", None)
         else:
             os.environ["ALGENTA_RUNTIME_DIR"] = original_runtime_dir
+        if original_shared_runtime_dir is None:
+            os.environ.pop(_SHARED_RUNTIME_DIR_ENV, None)
+        else:
+            os.environ[_SHARED_RUNTIME_DIR_ENV] = original_shared_runtime_dir
         if planner_model:
             if original_planner_model is None:
                 os.environ.pop("ALGENTA_REPOSITORY_INTELLIGENCE_MODEL", None)
@@ -693,7 +803,7 @@ def run_probe(
             "language_counts": cold_snapshot.language_counts,
             "resolved_revision": cold_snapshot.resolved_revision,
             "warm_elapsed_ms": round(warm_snapshot_elapsed_ms, 2),
-            "warm_status": warm_snapshot.status,
+            "warm_status": warm_snapshot_status,
             "graph_summary": graph_summary,
         },
         "triage": None
@@ -726,7 +836,7 @@ def run_probe(
             "elapsed_ms": round(float(apply_patch_only_elapsed_ms or 0.0), 2),
             **apply_patch_only_result,
         },
-        "candidate_solutions": prepass["candidate_solutions"],
+        "candidate_solutions": prepass.get("candidate_solutions", []),
         "planner_status": planner_status,
     }
 

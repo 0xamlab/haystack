@@ -4,6 +4,9 @@ import json
 from pathlib import Path, PurePosixPath
 from typing import Any
 
+_SYSTEMVERILOG_MANIFEST_SOURCE_SUFFIXES = frozenset({".sv", ".svh", ".v", ".vh"})
+_SYSTEMVERILOG_MANIFEST_HEADER_SUFFIXES = frozenset({".svh", ".vh"})
+
 
 def _probe_module():
     from benchmarks import repository_intelligence_real_repo_probe as probe_module
@@ -155,10 +158,6 @@ def _systemverilog_profile_hints(
     repository_service = probe_module.repository_service
     systemverilog_manifest_path_re = probe_module._SYSTEMVERILOG_MANIFEST_PATH_RE
     _is_non_operational_profile_path = probe_module._is_non_operational_profile_path
-    _is_operational_profile_entrypoint_candidate = (
-        probe_module._is_operational_profile_entrypoint_candidate
-    )
-    _probe_language_for_path = probe_module._probe_language_for_path
 
     normalized_path = repository_service._normalize_repository_relative_path(manifest_path)
     if not normalized_path:
@@ -177,7 +176,7 @@ def _systemverilog_profile_hints(
     except OSError:
         manifest_text = ""
 
-    discovered_paths: list[str] = []
+    seen_paths: set[str] = set()
     for match in systemverilog_manifest_path_re.finditer(manifest_text):
         raw_path = str(match.group("path") or "").strip()
         if not raw_path or raw_path.startswith(("$", "/", "+")):
@@ -187,13 +186,14 @@ def _systemverilog_profile_hints(
         )
         if not resolved_path or resolved_path.startswith("/"):
             continue
+        if resolved_path in seen_paths:
+            continue
+        seen_paths.add(resolved_path)
+        suffix = PurePosixPath(resolved_path).suffix.lower()
+        if suffix not in _SYSTEMVERILOG_MANIFEST_SOURCE_SUFFIXES:
+            continue
         if not (repo_path / resolved_path).is_file():
             continue
-        if _probe_language_for_path(resolved_path, repo_path=repo_path) != "systemverilog":
-            continue
-        discovered_paths.append(resolved_path)
-
-    for resolved_path in discovered_paths:
         if _is_non_operational_profile_path(resolved_path):
             continue
         parent_dir = repository_service._normalize_repository_relative_path(
@@ -201,9 +201,9 @@ def _systemverilog_profile_hints(
         )
         if parent_dir:
             support_roots.add(parent_dir)
-        if _is_operational_profile_entrypoint_candidate(
-            resolved_path,
-            repo_path=repo_path,
+        if (
+            suffix not in _SYSTEMVERILOG_MANIFEST_HEADER_SUFFIXES
+            and not repository_service._is_test_path(resolved_path)
         ):
             entrypoint_paths.add(resolved_path)
 

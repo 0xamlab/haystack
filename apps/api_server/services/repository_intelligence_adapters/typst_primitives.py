@@ -2,12 +2,17 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable, Iterable
+from functools import lru_cache
 from pathlib import Path, PurePosixPath
 from typing import Any
 
 from apps.api_server.services.repository_intelligence_contracts import (
     _ImportedSymbolBinding,
     _Symbol,
+)
+from apps.api_server.services.repository_intelligence_adapters.line_numbers import (
+    line_number_for_offset,
+    line_start_offsets,
 )
 
 StableIdentifier = Callable[[str, Any], str]
@@ -41,9 +46,13 @@ def _line_count(text: str) -> int:
     return max(1, text.count("\n") + 1)
 
 
-def _line_number(text: str, offset: int) -> int:
-    bounded_offset = max(0, min(offset, len(text)))
-    return text.count("\n", 0, bounded_offset) + 1
+def _line_number(
+    text: str,
+    offset: int,
+    *,
+    starts: tuple[int, ...] | None = None,
+) -> int:
+    return line_number_for_offset(text, offset, starts=starts)
 
 
 def _ordered_names(*values: str) -> tuple[str, ...]:
@@ -66,7 +75,18 @@ def _looks_binaryish(text: str) -> bool:
     return control_count > max(2, len(sample) // 32)
 
 
+def _coerce_stripped_text(text: str, stripped_text: str | None = None) -> str:
+    return strip_comments(text) if stripped_text is None else stripped_text
+
+
+@lru_cache(maxsize=512)
 def strip_comments(text: str) -> str:
+    return _strip_comments_uncached(text)
+
+
+def _strip_comments_uncached(text: str) -> str:
+    if "//" not in text and "/*" not in text:
+        return text
     characters: list[str] = []
     index = 0
     in_string = False
@@ -123,18 +143,28 @@ def has_typst_path_hints(path: Path | PurePosixPath) -> bool:
     )
 
 
-def is_probable_typst_source(*, path: Path | PurePosixPath, text: str) -> bool:
+def is_probable_typst_source(
+    *,
+    path: Path | PurePosixPath,
+    text: str,
+    stripped_text: str | None = None,
+) -> bool:
     normalized_path = PurePosixPath(path)
     if normalized_path.suffix.lower() not in TYPST_SUFFIXES or not text or _looks_binaryish(text):
         return False
-    return bool(strip_comments(text).strip())
+    return bool(_coerce_stripped_text(text, stripped_text).strip())
 
 
-def is_probable_typst_config(*, path: Path | PurePosixPath, text: str) -> bool:
+def is_probable_typst_config(
+    *,
+    path: Path | PurePosixPath,
+    text: str,
+    stripped_text: str | None = None,
+) -> bool:
     normalized_path = PurePosixPath(path)
     if normalized_path.name.lower() not in TYPST_CONFIG_BASENAMES or not text:
         return False
-    stripped_text = strip_comments(text)
+    stripped_text = _coerce_stripped_text(text, stripped_text)
     return bool(stripped_text.strip()) and bool(_CONFIG_MARKER_RE.search(stripped_text))
 
 
@@ -202,8 +232,11 @@ def _selector_aliases(raw_selectors: str) -> tuple[tuple[str, tuple[str, ...]], 
 
 def iter_import_entries(
     text: str,
+    *,
+    stripped_text: str | None = None,
 ) -> tuple[tuple[str, tuple[tuple[str, tuple[str, ...]], ...], str | None, int], ...]:
-    stripped_text = strip_comments(text)
+    stripped_text = _coerce_stripped_text(text, stripped_text)
+    starts = line_start_offsets(stripped_text)
     entries: list[tuple[str, tuple[tuple[str, tuple[str, ...]], ...], str | None, int]] = []
     seen: set[tuple[str, tuple[tuple[str, tuple[str, ...]], ...], str | None, int]] = set()
     for match in _IMPORT_RE.finditer(stripped_text):
@@ -212,7 +245,7 @@ def iter_import_entries(
             continue
         selectors = _selector_aliases(str(match.group("selectors") or ""))
         alias = normalize_identifier(str(match.group("alias") or "")) or None
-        item = (target, selectors, alias, _line_number(stripped_text, match.start()))
+        item = (target, selectors, alias, _line_number(stripped_text, match.start(), starts=starts))
         if item in seen:
             continue
         seen.add(item)
@@ -220,15 +253,20 @@ def iter_import_entries(
     return tuple(entries)
 
 
-def include_statements(text: str) -> tuple[tuple[str, int], ...]:
-    stripped_text = strip_comments(text)
+def include_statements(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, int], ...]:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
+    starts = line_start_offsets(stripped_text)
     statements: list[tuple[str, int]] = []
     seen: set[tuple[str, int]] = set()
     for match in _INCLUDE_RE.finditer(stripped_text):
         target = _normalize_import_target(str(match.group("target") or ""))
         if not target:
             continue
-        item = (target, _line_number(stripped_text, match.start()))
+        item = (target, _line_number(stripped_text, match.start(), starts=starts))
         if item in seen:
             continue
         seen.add(item)
@@ -236,15 +274,20 @@ def include_statements(text: str) -> tuple[tuple[str, int], ...]:
     return tuple(statements)
 
 
-def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
-    stripped_text = strip_comments(text)
+def iter_symbol_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, str, int], ...]:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
+    starts = line_start_offsets(stripped_text)
     entries: list[tuple[str, str, int]] = []
     seen: set[tuple[str, str, int]] = set()
     for match in _LET_RE.finditer(stripped_text):
         symbol_name = normalize_identifier(str(match.group("name") or ""))
         if not symbol_name:
             continue
-        item = (symbol_name, "binding", _line_number(stripped_text, match.start()))
+        item = (symbol_name, "binding", _line_number(stripped_text, match.start(), starts=starts))
         if item in seen:
             continue
         seen.add(item)
@@ -252,13 +295,18 @@ def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
     return tuple(entries)
 
 
-def iter_reference_entries(text: str) -> tuple[tuple[str, str | None, str, int], ...]:
-    stripped_text = strip_comments(text)
+def iter_reference_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, str | None, str, int], ...]:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
+    starts = line_start_offsets(stripped_text)
     entries: list[tuple[str, str | None, str, int]] = []
     seen: set[tuple[str, str | None, str, int]] = set()
     for pattern, owner_key in ((_QUALIFIED_CALL_RE, "owner"), (_CALL_RE, None)):
         for match in pattern.finditer(stripped_text):
-            line_number = _line_number(stripped_text, match.start())
+            line_number = _line_number(stripped_text, match.start(), starts=starts)
             line_start = stripped_text.rfind("\n", 0, match.start()) + 1
             line_end = stripped_text.find("\n", match.start())
             if line_end < 0:
@@ -285,28 +333,48 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
+    stripped_text: str | None = None,
+    symbol_entries: tuple[tuple[str, str, int], ...] | None = None,
+    include_symbol_aliases: bool = True,
+    validated_source: bool = False,
 ) -> set[str]:
     del stable_identifier
     path = PurePosixPath(file_path)
     if path.suffix.lower() not in TYPST_SUFFIXES:
         return set()
+    module_name = module_name_from_path(file_path)
     aliases = {
         file_path,
         path.name,
         path.stem,
         str(path.with_suffix("")),
         str(path.with_suffix("")).replace("/", "."),
+        module_name,
+        module_name.replace("/", "."),
     }
-    try:
-        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        text = ""
-    if text and not is_probable_typst_source(path=path, text=text):
+    if not include_symbol_aliases:
         return {alias for alias in aliases if alias}
-    module_name = module_name_from_path(file_path)
-    aliases.add(module_name)
-    aliases.add(module_name.replace("/", "."))
-    for symbol_name, _symbol_kind, _line_number in iter_symbol_entries(text):
+    loaded_text = text
+    if loaded_text is None:
+        try:
+            loaded_text = (root_path / path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            loaded_text = ""
+    candidate_stripped_text = _coerce_stripped_text(loaded_text, stripped_text)
+    if loaded_text and not validated_source and not is_probable_typst_source(
+        path=path,
+        text=loaded_text,
+        stripped_text=candidate_stripped_text,
+    ):
+        return {alias for alias in aliases if alias}
+    resolved_symbol_entries = symbol_entries
+    if resolved_symbol_entries is None:
+        resolved_symbol_entries = iter_symbol_entries(
+            loaded_text,
+            stripped_text=candidate_stripped_text,
+        )
+    for symbol_name, _symbol_kind, _line_number in resolved_symbol_entries:
         aliases.add(symbol_name)
         if module_name:
             aliases.add(f"{module_name}.{symbol_name}")
@@ -350,9 +418,13 @@ def imported_symbol_bindings(
     module_index: dict[str, str],
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
+    stripped_text: str | None = None,
 ) -> dict[str, _ImportedSymbolBinding]:
     bindings: dict[str, _ImportedSymbolBinding] = {}
-    for import_target, selectors, alias, _line_number in iter_import_entries(text):
+    for import_target, selectors, alias, _line_number in iter_import_entries(
+        text,
+        stripped_text=stripped_text,
+    ):
         target_file = resolve_import(
             current_file=current_file,
             import_target=import_target,
@@ -398,8 +470,10 @@ def collect_symbols(
     file_path: str,
     text: str,
     stable_identifier: StableIdentifier,
+    stripped_text: str | None = None,
+    symbol_entries: tuple[tuple[str, str, int], ...] | None = None,
 ) -> tuple[_Symbol, ...]:
-    stripped_text = strip_comments(text)
+    stripped_text = _coerce_stripped_text(text, stripped_text)
     module_name = module_name_from_path(file_path) or PurePosixPath(file_path).stem
     module_symbol = _Symbol(
         symbol_id=stable_identifier(
@@ -414,7 +488,13 @@ def collect_symbols(
         signature=f"typst {module_name}",
     )
     symbols: list[_Symbol] = [module_symbol]
-    for symbol_name, symbol_kind, line_number in iter_symbol_entries(text):
+    resolved_symbol_entries = symbol_entries
+    if resolved_symbol_entries is None:
+        resolved_symbol_entries = iter_symbol_entries(
+            text,
+            stripped_text=stripped_text,
+        )
+    for symbol_name, symbol_kind, line_number in resolved_symbol_entries:
         symbols.append(
             _Symbol(
                 symbol_id=stable_identifier(

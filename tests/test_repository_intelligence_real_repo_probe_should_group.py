@@ -65,3 +65,27 @@ def test_should_group_focus_path_scan_prefers_medium_source_root_sets() -> None:
     assert _should_group_focus_path_scan(roots[:-1]) is True
 
 
+def test_should_group_focus_path_scan_prefers_medium_single_top_level_sets() -> None:
+    roots = [
+        "source/layouts",
+        "source/ar/1.0.0",
+        "source/cs/1.1.0",
+        "source/da/1.1.0",
+        "source/de/1.1.0",
+        "source/en/1.1.0",
+        "source/es-ES/1.1.0",
+        "source/fa/1.1.0",
+    ]
+
+    assert _should_group_focus_path_scan(roots) is True
+
+
+def test_should_group_focus_path_scan_prefers_small_two_group_operational_sets() -> None:
+    roots = [
+        "source/core",
+        "source/errors",
+        "source",
+        "test",
+    ]
+
+    assert _should_group_focus_path_scan(roots) is True

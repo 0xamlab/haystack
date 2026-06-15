@@ -87,6 +87,10 @@ def strip_comments(text: str) -> str:
     return _COMMENT_RE.sub("", text)
 
 
+def _coerce_stripped_text(text: str, stripped_text: str | None = None) -> str:
+    return strip_comments(text) if stripped_text is None else stripped_text
+
+
 def normalize_identifier(value: str) -> str:
     return str(value or "").strip().strip('"').strip("'").strip()
 
@@ -95,10 +99,15 @@ def has_plantuml_path_hints(path: Path | PurePosixPath) -> bool:
     return PurePosixPath(path).suffix.lower() in PLANTUML_SUFFIXES
 
 
-def is_probable_plantuml_source(*, path: Path | PurePosixPath, text: str) -> bool:
+def is_probable_plantuml_source(
+    *,
+    path: Path | PurePosixPath,
+    text: str,
+    stripped_text: str | None = None,
+) -> bool:
     if PurePosixPath(path).suffix.lower() not in PLANTUML_SUFFIXES or not text or _looks_binaryish(text):
         return False
-    stripped_text = strip_comments(text)
+    stripped_text = _coerce_stripped_text(text, stripped_text)
     if not stripped_text.strip():
         return False
     return _DIRECTIVE_RE.search(stripped_text) is not None
@@ -155,19 +164,28 @@ def resolve_import(
     return resolve_suffix_match(module_index=module_index, suffixes=suffixes)
 
 
-def iter_dependency_entries(text: str) -> tuple[tuple[str, str, int], ...]:
+def iter_dependency_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, str, int], ...]:
     entries: list[tuple[str, str, int]] = []
-    for match in _INCLUDE_RE.finditer(strip_comments(text)):
+    stripped_text = _coerce_stripped_text(text, stripped_text)
+    for match in _INCLUDE_RE.finditer(stripped_text):
         target = clean_import_target(match.group("target") or "")
         if not target:
             continue
-        line_number = text.count("\n", 0, match.start()) + 1
+        line_number = stripped_text.count("\n", 0, match.start()) + 1
         entries.append(("includes", target, line_number))
     return tuple(entries)
 
 
-def iter_symbol_entries(text: str) -> tuple[tuple[str, int], ...]:
-    stripped_text = strip_comments(text)
+def iter_symbol_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, int], ...]:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
     entries: list[tuple[str, int]] = []
     seen_names: set[str] = set()
     for match in _SYMBOL_RE.finditer(stripped_text):
@@ -187,10 +205,15 @@ def iter_symbol_entries(text: str) -> tuple[tuple[str, int], ...]:
     return tuple(entries)
 
 
-def iter_arrow_entries(text: str) -> tuple[tuple[str, str, int], ...]:
+def iter_arrow_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, str, int], ...]:
     entries: list[tuple[str, str, int]] = []
     seen_edges: set[tuple[str, str, int]] = set()
-    for line_number, raw_line in enumerate(strip_comments(text).splitlines(), start=1):
+    stripped_text = _coerce_stripped_text(text, stripped_text)
+    for line_number, raw_line in enumerate(stripped_text.splitlines(), start=1):
         for match in _ARROW_RE.finditer(raw_line):
             source_name = normalize_identifier(match.group("source") or "")
             target_name = normalize_identifier(match.group("target") or "")
@@ -209,8 +232,12 @@ def iter_arrow_entries(text: str) -> tuple[tuple[str, str, int], ...]:
     return tuple(entries)
 
 
-def iter_macro_reference_entries(text: str) -> tuple[tuple[str, int], ...]:
-    stripped_text = strip_comments(text)
+def iter_macro_reference_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, int], ...]:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
     entries: list[tuple[str, int]] = []
     seen_entries: set[tuple[str, int]] = set()
     for line_number, raw_line in enumerate(stripped_text.splitlines(), start=1):
@@ -260,6 +287,8 @@ def collect_symbols(
     file_path: str,
     text: str,
     stable_identifier: StableIdentifier,
+    stripped_text: str | None = None,
+    symbol_entries: tuple[tuple[str, int], ...] | None = None,
 ) -> tuple[_Symbol, ...]:
     module_name = module_name_from_path(file_path)
     line_count = _line_count(text)
@@ -278,10 +307,15 @@ def collect_symbols(
         )
     ]
     module_symbol_id = symbols[0].symbol_id
+    resolved_symbol_entries = (
+        iter_symbol_entries(text, stripped_text=stripped_text)
+        if symbol_entries is None
+        else symbol_entries
+    )
     symbol_kinds = {
-        name: "macro" for name, _line_number in iter_symbol_entries(text) if name.isupper()
+        name: "macro" for name, _line_number in resolved_symbol_entries if name.isupper()
     }
-    for symbol_name, line_number in iter_symbol_entries(text):
+    for symbol_name, line_number in resolved_symbol_entries:
         symbol_kind = symbol_kinds.get(symbol_name, "symbol")
         symbols.append(
             _Symbol(

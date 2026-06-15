@@ -90,6 +90,7 @@ from benchmarks.repository_intelligence_real_repo_probe_profile_server_templates
     _handlebars_profile_hints_from_candidates as _handlebars_profile_hints_from_candidates_support,
     _jinja_profile_hints_from_candidates as _jinja_profile_hints_from_candidates_support,
     _liquid_profile_hints_from_candidates as _liquid_profile_hints_from_candidates_support,
+    _mako_profile_hints_from_candidates as _mako_profile_hints_from_candidates_support,
     _mustache_profile_hints_from_candidates as _mustache_profile_hints_from_candidates_support,
     _nunjucks_profile_hints_from_candidates as _nunjucks_profile_hints_from_candidates_support,
     _smarty_profile_hints_from_candidates as _smarty_profile_hints_from_candidates_support,
@@ -114,10 +115,12 @@ from benchmarks.repository_intelligence_real_repo_probe_profile_build_tooling_su
 )
 from benchmarks.repository_intelligence_real_repo_probe_profile_ecosystem_support import (
     _apex_profile_hints as _apex_profile_hints_support,
+    _ballerina_profile_hints as _ballerina_profile_hints_support,
     _dhall_profile_hints_from_candidates as _dhall_profile_hints_from_candidates_support,
     _gleam_profile_hints as _gleam_profile_hints_support,
     _janet_profile_hints as _janet_profile_hints_support,
     _luau_profile_hints as _luau_profile_hints_support,
+    _moonbit_profile_candidate_paths as _moonbit_profile_candidate_paths_support,
     _moonbit_profile_hints_from_candidates as _moonbit_profile_hints_from_candidates_support,
     _nextflow_profile_hints_from_candidates as _nextflow_profile_hints_from_candidates_support,
     _solidity_profile_hints as _solidity_profile_hints_support,
@@ -162,23 +165,38 @@ from benchmarks.repository_intelligence_real_repo_probe_profile_candidate_ecosys
     _org_profile_hints_from_candidates,
     _robotframework_profile_hints_from_candidates,
     _rst_profile_hints_from_candidates,
+    _supplement_candidate_file_paths_for_surface_dir_parts,
     _supplement_candidate_file_paths_for_suffix_roots,
     _tex_profile_hints_from_candidates,
     _typst_profile_hints_from_candidates,
 )
 from benchmarks.repository_intelligence_real_repo_probe_profile_candidate_languages_support import (  # noqa: F401
+    _bqn_profile_hints_from_candidates,
+    _circom_profile_hints_from_candidates,
     _cython_profile_hints_from_candidates,
+    _dafny_profile_hints_from_candidates,
+    _j_profile_hints_from_candidates,
+    _lex_profile_hints_from_candidates,
     _modelica_profile_hints_from_candidates,
     _protobuf_profile_hints_from_candidates,
+    _rebol_profile_hints_from_candidates,
     _rescript_profile_hints_from_candidates,
     _roc_profile_hints_from_candidates,
     _stan_profile_hints_from_candidates,
 )
 from benchmarks.repository_intelligence_real_repo_probe_profile_candidate_projects_support import (
     _cue_profile_hints_from_candidates as _cue_profile_hints_from_candidates_support,
+    _dm_profile_hints as _dm_profile_hints_support,
     _factor_profile_hints_from_candidates as _factor_profile_hints_from_candidates_support,
+    _four_d_profile_hints_from_candidates as _four_d_profile_hints_from_candidates_support,
     _odin_profile_hints as _odin_profile_hints_support,
     _odin_profile_hints_from_candidates as _odin_profile_hints_from_candidates_support,
+)
+from benchmarks.repository_intelligence_real_repo_probe_profile_brightscript_support import (
+    _brightscript_profile_hints_from_candidates as _brightscript_profile_hints_from_candidates_support,
+)
+from benchmarks.repository_intelligence_real_repo_probe_profile_query_support import (
+    _codeql_profile_hints_from_candidates as _codeql_profile_hints_from_candidates_support,
 )
 from benchmarks.repository_intelligence_real_repo_probe_profile_project_family_support import (
     _coffeescript_profile_hints as _coffeescript_profile_hints_support,
@@ -213,6 +231,8 @@ from benchmarks.repository_intelligence_real_repo_probe_constants_support import
     _C_FAMILY_SOURCE_TOKEN_RE,
     _DOCUMENTATION_OPERATIONAL_PATH_PARTS,
     _DOCUMENTATION_PRIMARY_ECOSYSTEMS,
+    _EXAMPLE_OPERATIONAL_PATH_PARTS,
+    _EXAMPLE_PRIMARY_ECOSYSTEMS,
     _FOUNDRY_LIST_FIELD_RE,
     _FOUNDRY_STRING_FIELD_RE,
     _GDSCRIPT_RESOURCE_RE,
@@ -248,6 +268,7 @@ from benchmarks.repository_intelligence_real_repo_probe_constants_support import
 from benchmarks.repository_intelligence_real_repo_probe_profile_policy_shader_candidates_support import (
     _glsl_profile_hints_from_candidates as _glsl_profile_hints_from_candidates_support,
     _hlsl_profile_hints_from_candidates as _hlsl_profile_hints_from_candidates_support,
+    _metal_profile_hints_from_candidates as _metal_profile_hints_from_candidates_support,
     _opencl_profile_hints_from_candidates as _opencl_profile_hints_from_candidates_support,
     _rego_profile_hints_from_candidates as _rego_profile_hints_from_candidates_support,
     _shaderlab_profile_hints_from_candidates as _shaderlab_profile_hints_from_candidates_support,
@@ -258,6 +279,7 @@ from benchmarks.repository_intelligence_real_repo_probe_profile_path_classificat
     _is_cfml_box_config_path as _is_cfml_box_config_path_support,
     _is_cue_module_config_path as _is_cue_module_config_path_support,
     _is_delphi_project_config_path as _is_delphi_project_config_path_support,
+    _is_dm_project_config_path as _is_dm_project_config_path_support,
     _is_eiffel_project_config_path as _is_eiffel_project_config_path_support,
     _is_moonbit_config_path as _is_moonbit_config_path_support,
     _is_namespace_style_source_path as _is_namespace_style_source_path_support,
@@ -280,6 +302,7 @@ from benchmarks.repository_intelligence_real_repo_probe_collection_support impor
     _candidate_existing_leaf_roots as _candidate_existing_leaf_roots_support,
     _candidate_existing_paths as _candidate_existing_paths_support,
     _candidate_existing_roots as _candidate_existing_roots_support,
+    _git_repo_relative_files_for_focus_paths as _git_repo_relative_files_for_focus_paths_support,
     _git_repo_relative_files as _git_repo_relative_files_support,
     _matches_focus_paths as _matches_focus_paths_support,
     _normalized_scannable_support_roots as _normalized_scannable_support_roots_support,
@@ -469,6 +492,10 @@ def _is_delphi_project_config_path(repo_path: Path, relative_path: str) -> bool:
     return _is_delphi_project_config_path_support(repo_path, relative_path)
 
 
+def _is_dm_project_config_path(repo_path: Path, relative_path: str) -> bool:
+    return _is_dm_project_config_path_support(repo_path, relative_path)
+
+
 def _is_eiffel_project_config_path(repo_path: Path, relative_path: str) -> bool:
     return _is_eiffel_project_config_path_support(repo_path, relative_path)
 
@@ -534,13 +561,23 @@ _is_operational_profile_entrypoint_candidate = (
 )
 
 
-def _repository_connector(repo_path: Path) -> SimpleNamespace:
+def _repository_connector(
+    repo_path: Path,
+    *,
+    assume_clean_git_clone: bool = False,
+    resolved_revision: str | None = None,
+) -> SimpleNamespace:
+    config = {"path": str(repo_path)}
+    if assume_clean_git_clone:
+        config["assume_clean_git_clone"] = True
+    if resolved_revision:
+        config["resolved_revision"] = str(resolved_revision)
     return SimpleNamespace(
         id=uuid.uuid5(uuid.NAMESPACE_URL, f"repository-probe:{repo_path}"),
         org_id=uuid.uuid5(uuid.NAMESPACE_URL, "repository-probe-org"),
         owner_key_id=None,
         connector_type=SimpleNamespace(value="local_repo"),
-        config_json=json.dumps({"path": str(repo_path)}),
+        config_json=json.dumps(config),
     )
 
 
@@ -553,6 +590,7 @@ _effective_focus_paths_for_snapshot = _effective_focus_paths_for_snapshot_suppor
 _candidate_config_focus_paths = _candidate_config_focus_paths_support
 _inventory_repo_surface = _inventory_repo_surface_support
 _git_repo_relative_files = _git_repo_relative_files_support
+_git_repo_relative_files_for_focus_paths = _git_repo_relative_files_for_focus_paths_support
 _matches_focus_paths = _matches_focus_paths_support
 _probe_collection_rank = _probe_collection_rank_support
 _probe_repository_file_paths = _probe_repository_file_paths_support
@@ -597,6 +635,9 @@ _gml_profile_hints = _gml_profile_hints_support
 _gdscript_project_profile_hints = _gdscript_project_profile_hints_support
 _vhdl_profile_hints = _vhdl_profile_hints_support
 _jinja_profile_hints_from_candidates = _jinja_profile_hints_from_candidates_support
+_mako_profile_hints_from_candidates = _mako_profile_hints_from_candidates_support
+_brightscript_profile_hints_from_candidates = _brightscript_profile_hints_from_candidates_support
+_codeql_profile_hints_from_candidates = _codeql_profile_hints_from_candidates_support
 _liquid_profile_hints_from_candidates = _liquid_profile_hints_from_candidates_support
 _handlebars_profile_hints_from_candidates = (
     _handlebars_profile_hints_from_candidates_support
@@ -624,6 +665,7 @@ _yara_profile_hints_from_candidates = _yara_profile_hints_from_candidates_suppor
 _glsl_profile_hints_from_candidates = _glsl_profile_hints_from_candidates_support
 _opencl_profile_hints_from_candidates = _opencl_profile_hints_from_candidates_support
 _hlsl_profile_hints_from_candidates = _hlsl_profile_hints_from_candidates_support
+_metal_profile_hints_from_candidates = _metal_profile_hints_from_candidates_support
 _wgsl_profile_hints_from_candidates = _wgsl_profile_hints_from_candidates_support
 _shaderlab_profile_hints_from_candidates = _shaderlab_profile_hints_from_candidates_support
 _bitbake_profile_hints_from_candidates = _bitbake_profile_hints_from_candidates_support
@@ -636,10 +678,12 @@ _resolve_eiffel_config_target = _resolve_eiffel_config_target_support
 _eiffel_profile_hints = _eiffel_profile_hints_support
 _eiffel_profile_hints_from_candidates = _eiffel_profile_hints_from_candidates_support
 _chapel_profile_hints_from_candidates = _chapel_profile_hints_from_candidates_support
+_dm_profile_hints = _dm_profile_hints_support
 _odin_profile_hints = _odin_profile_hints_support
 _odin_profile_hints_from_candidates = _odin_profile_hints_from_candidates_support
 _factor_profile_hints_from_candidates = _factor_profile_hints_from_candidates_support
 _cue_profile_hints_from_candidates = _cue_profile_hints_from_candidates_support
+_four_d_profile_hints_from_candidates = _four_d_profile_hints_from_candidates_support
 _logtalk_profile_hints_from_candidates = _logtalk_profile_hints_from_candidates_support
 _smalltalk_profile_hints = _smalltalk_profile_hints_support
 _coffeescript_profile_hints = _coffeescript_profile_hints_support
@@ -651,8 +695,12 @@ _nix_profile_hints = _nix_profile_hints_support
 _starlark_profile_hints = _starlark_profile_hints_support
 _purescript_profile_hints = _purescript_profile_hints_support
 _rescript_profile_hints = _rescript_profile_hints_support
+_moonbit_profile_candidate_paths = _moonbit_profile_candidate_paths_support
 _moonbit_profile_hints_from_candidates = _moonbit_profile_hints_from_candidates_support
+_j_profile_hints_from_candidates = _j_profile_hints_from_candidates
+_lex_profile_hints_from_candidates = _lex_profile_hints_from_candidates
 _gleam_profile_hints = _gleam_profile_hints_support
+_ballerina_profile_hints = _ballerina_profile_hints_support
 _janet_profile_hints = _janet_profile_hints_support
 _nextflow_profile_hints_from_candidates = _nextflow_profile_hints_from_candidates_support
 _dhall_profile_hints_from_candidates = _dhall_profile_hints_from_candidates_support
@@ -839,6 +887,8 @@ def _compute_probe_prepass(
     *,
     repo_path: Path,
     focus_paths: list[str],
+    operational_seed_plan: dict[str, Any] | None = None,
+    use_seed_files_as_connected_map: bool = False,
     diagnostic_command: str | None,
     diagnostic_base_path: str | None,
     repository_runtime_root: Path,
@@ -850,6 +900,8 @@ def _compute_probe_prepass(
     return _compute_probe_prepass_support(
         repo_path=repo_path,
         focus_paths=focus_paths,
+        operational_seed_plan=operational_seed_plan,
+        use_seed_files_as_connected_map=use_seed_files_as_connected_map,
         diagnostic_command=diagnostic_command,
         diagnostic_base_path=diagnostic_base_path,
         repository_runtime_root=repository_runtime_root,
@@ -869,6 +921,8 @@ def run_probe(
     *,
     repo_path: Path,
     focus_paths: list[str],
+    operational_seed_plan: dict[str, Any] | None = None,
+    use_seed_files_as_connected_map: bool = False,
     diagnostic_command: str | None,
     diagnostic_base_path: str | None,
     planner_model: str | None,
@@ -879,10 +933,16 @@ def run_probe(
     max_total_bytes: int | None,
     max_dependency_depth: int,
     max_connected_files: int,
+    assume_clean_git_clone: bool = False,
+    resolved_revision: str | None = None,
+    perform_warm_snapshot: bool = True,
+    load_graph_summary: bool = True,
 ) -> dict[str, Any]:
     return _run_probe_support(
         repo_path=repo_path,
         focus_paths=focus_paths,
+        operational_seed_plan=operational_seed_plan,
+        use_seed_files_as_connected_map=use_seed_files_as_connected_map,
         diagnostic_command=diagnostic_command,
         diagnostic_base_path=diagnostic_base_path,
         planner_model=planner_model,
@@ -893,6 +953,10 @@ def run_probe(
         max_total_bytes=max_total_bytes,
         max_dependency_depth=max_dependency_depth,
         max_connected_files=max_connected_files,
+        assume_clean_git_clone=assume_clean_git_clone,
+        resolved_revision=resolved_revision,
+        perform_warm_snapshot=perform_warm_snapshot,
+        load_graph_summary=load_graph_summary,
         deps=_probe_run_support_deps(),
     )
 

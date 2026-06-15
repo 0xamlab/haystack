@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -83,7 +84,14 @@ def _ordered_names(*raw_names: str) -> tuple[str, ...]:
     return tuple(ordered)
 
 
-def strip_comments(text: str) -> str:
+def _coerce_stripped_text(text: str, stripped_text: str | None = None) -> str:
+    return strip_comments(text) if stripped_text is None else stripped_text
+
+
+@lru_cache(maxsize=1024)
+def _strip_comments_cached(text: str) -> str:
+    if "/*" not in text and "//" not in text:
+        return text
     characters: list[str] = []
     in_single = False
     in_double = False
@@ -138,16 +146,25 @@ def strip_comments(text: str) -> str:
     return "".join(characters)
 
 
+def strip_comments(text: str) -> str:
+    return _strip_comments_cached(text)
+
+
 def has_dm_path_hints(path: Path | PurePosixPath) -> bool:
     normalized_path = PurePosixPath(path)
     return normalized_path.suffix.lower() in DM_SUFFIXES
 
 
-def is_probable_dm_source(*, path: Path | PurePosixPath, text: str) -> bool:
+def is_probable_dm_source(
+    *,
+    path: Path | PurePosixPath,
+    text: str,
+    stripped_text: str | None = None,
+) -> bool:
     normalized_path = PurePosixPath(path)
     if not has_dm_path_hints(normalized_path):
         return False
-    stripped_text = strip_comments(text)
+    stripped_text = _coerce_stripped_text(text, stripped_text)
     if not stripped_text.strip():
         return False
     if normalized_path.suffix.lower() in DM_CONFIG_SUFFIXES:
@@ -171,8 +188,12 @@ def module_name_from_path(file_path: str) -> str:
     return "/".join(part for part in parts if part)
 
 
-def parse_include_entries(text: str) -> tuple[tuple[str, int], ...]:
-    stripped_text = strip_comments(text)
+def parse_include_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, int], ...]:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
     entries: list[tuple[str, int]] = []
     seen: set[tuple[str, int]] = set()
     for match in _INCLUDE_RE.finditer(stripped_text):
@@ -186,25 +207,31 @@ def parse_include_entries(text: str) -> tuple[tuple[str, int], ...]:
     return tuple(entries)
 
 
-def resolve_include(
+def candidate_include_paths(
     *,
     current_file: str,
     include_target: str,
-    module_index: dict[str, str],
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
-    resolve_suffix_match: ResolveSuffixMatch,
-) -> str | None:
-    normalized_target = str(include_target or "").strip().strip('"').strip("'").lstrip("/")
+) -> tuple[str, ...]:
+    normalized_target = (
+        str(include_target or "")
+        .strip()
+        .strip('"')
+        .strip("'")
+        .replace("\\", "/")
+        .lstrip("/")
+    )
     if not normalized_target:
-        return None
+        return ()
     target_path = PurePosixPath(normalized_target)
     current_directory = PurePosixPath(current_file).parent
     candidate_keys: list[str] = []
     if normalized_target.startswith(("./", "../")):
-        candidate_base = current_directory.joinpath(target_path).as_posix()
-        candidate_keys.append(candidate_base)
+        candidate_keys.append(current_directory.joinpath(target_path).as_posix())
     else:
-        candidate_keys.extend((normalized_target, current_directory.joinpath(target_path).as_posix()))
+        candidate_keys.extend(
+            (normalized_target, current_directory.joinpath(target_path).as_posix())
+        )
     if target_path.suffix.lower() not in DM_SUFFIXES:
         candidate_keys.extend(f"{candidate}.dm" for candidate in tuple(candidate_keys))
         candidate_keys.extend(f"{candidate}.dme" for candidate in tuple(candidate_keys))
@@ -215,6 +242,22 @@ def resolve_include(
         if normalized_candidate and normalized_candidate not in seen:
             seen.add(normalized_candidate)
             normalized_candidates.append(normalized_candidate)
+    return tuple(normalized_candidates)
+
+
+def resolve_include(
+    *,
+    current_file: str,
+    include_target: str,
+    module_index: dict[str, str],
+    normalize_repository_relative_path: NormalizeRepositoryRelativePath,
+    resolve_suffix_match: ResolveSuffixMatch,
+) -> str | None:
+    normalized_candidates = candidate_include_paths(
+        current_file=current_file,
+        include_target=include_target,
+        normalize_repository_relative_path=normalize_repository_relative_path,
+    )
     for candidate_key in normalized_candidates:
         resolved = module_index.get(candidate_key)
         if resolved is not None:
@@ -222,8 +265,12 @@ def resolve_include(
     return resolve_suffix_match(module_index=module_index, suffixes=tuple(normalized_candidates))
 
 
-def iter_symbol_entries(text: str) -> tuple[_SymbolEntry, ...]:
-    stripped_text = strip_comments(text)
+def iter_symbol_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[_SymbolEntry, ...]:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
     entries: list[_SymbolEntry] = []
     seen: set[tuple[str, str, int]] = set()
     for match in _TYPE_RE.finditer(stripped_text):
@@ -286,8 +333,12 @@ def iter_symbol_entries(text: str) -> tuple[_SymbolEntry, ...]:
     return tuple(sorted(entries, key=lambda entry: (entry.start_line, entry.kind, entry.name)))
 
 
-def iter_call_reference_entries(text: str) -> tuple[tuple[str, int], ...]:
-    stripped_text = strip_comments(text)
+def iter_call_reference_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, int], ...]:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
     entries: list[tuple[str, int]] = []
     seen: set[tuple[str, int]] = set()
     for match in _CALL_RE.finditer(stripped_text):
@@ -301,8 +352,12 @@ def iter_call_reference_entries(text: str) -> tuple[tuple[str, int], ...]:
     return tuple(entries)
 
 
-def iter_type_reference_entries(text: str) -> tuple[tuple[str, int], ...]:
-    stripped_text = strip_comments(text)
+def iter_type_reference_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, int], ...]:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
     entries: list[tuple[str, int]] = []
     seen: set[tuple[str, int]] = set()
     for match in _TYPE_REFERENCE_RE.finditer(stripped_text):

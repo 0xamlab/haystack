@@ -22,7 +22,9 @@ from apps.api_server.services.repository_intelligence_adapters import (
 )
 from benchmarks.repository_intelligence_real_repo_probe import (
     _build_connected_dependency_map,
+    _candidate_ecosystems_for_path,
     _derive_operational_seed_plan_without_diagnostics,
+    _probe_language_for_path,
 )
 
 
@@ -170,6 +172,39 @@ def test_rescript_language_detection_supports_suffixes_and_manifest() -> None:
             text='{"name":"demo","sources":[{"dir":"src"}],"suffix":".mjs"}\n',
         )
         == "rescript"
+    )
+
+
+def test_rescript_language_detection_rejects_non_rescript_resource_files() -> None:
+    assert (
+        repository_service._language_for_path(
+            Path("Expert/DUnitX_IDE_Expert_2010.res"),
+            text="TPF0\x00\x06TBitmap\x00",
+        )
+        == "unknown"
+    )
+
+
+def test_rescript_source_detection_rejects_binary_resource_payloads() -> None:
+    assert not repository_rescript_primitives.is_probable_rescript_source(
+        path=Path("Expert/DUnitX_IDE_Expert_2010.res"),
+        text="TPF0\x00\x06TBitmap\x00",
+    )
+
+
+def test_probe_language_for_path_rejects_non_rescript_resource_files(tmp_path: Path) -> None:
+    repo_path = tmp_path / "delphi-resource-repo"
+    (repo_path / "Expert").mkdir(parents=True)
+    resource_path = repo_path / "Expert" / "DUnitX_IDE_Expert_2010.res"
+    resource_path.write_bytes(b"\x00\x00\x00\x00 \x00\x00\x00PNG\x00")
+
+    assert _probe_language_for_path(
+        "Expert/DUnitX_IDE_Expert_2010.res",
+        repo_path=repo_path,
+    ) == "unknown"
+    assert "rescript" not in _candidate_ecosystems_for_path(
+        "Expert/DUnitX_IDE_Expert_2010.res",
+        repo_path=repo_path,
     )
 
 

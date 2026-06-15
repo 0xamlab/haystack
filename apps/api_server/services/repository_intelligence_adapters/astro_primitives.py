@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable
+from functools import lru_cache
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -23,6 +24,27 @@ _IMPORT_RE = re.compile(
 )
 _TAG_RE = re.compile(r"<(?P<tag>[A-Za-z][A-Za-z0-9_:.-]*)\b")
 _RESERVED_TAGS = frozenset({"Fragment", "html", "head", "body", "meta", "link", "script", "style", "slot"})
+_ASTRO_IMPORT_ROOT_PREFIXES = (
+    ("@/", "src/"),
+    ("~/", "src/"),
+    ("@components/", "src/components/"),
+    ("@layouts/", "src/layouts/"),
+    ("@pages/", "src/pages/"),
+    ("@content/", "src/content/"),
+)
+_ASTRO_IMPORTABLE_SUFFIXES = (
+    ".astro",
+    ".ts",
+    ".js",
+    ".tsx",
+    ".jsx",
+    ".mjs",
+    ".cjs",
+    ".md",
+    ".mdx",
+    ".svelte",
+    ".vue",
+)
 
 
 def strip_comments(text: str) -> str:
@@ -94,6 +116,13 @@ def _normalize_repository_relative_path(value: str) -> str:
     return "/".join(normalized_parts)
 
 
+def _append_unique(ordered: list[str], seen: set[str], value: str) -> None:
+    normalized = str(value or "").strip()
+    if normalized and normalized not in seen:
+        seen.add(normalized)
+        ordered.append(normalized)
+
+
 def module_name_from_path(file_path: str) -> str:
     normalized_path = PurePosixPath(file_path)
     without_suffix = normalized_path.with_suffix("")
@@ -101,6 +130,118 @@ def module_name_from_path(file_path: str) -> str:
     if parts and parts[0].lower() in _COMMON_MODULE_ROOTS:
         parts = parts[1:]
     return ".".join(parts) if parts else without_suffix.name
+
+
+@lru_cache(maxsize=32_768)
+def _resolve_import_candidates(
+    current_file: str,
+    import_target: str,
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    normalized_current_file = _normalize_repository_relative_path(current_file)
+    normalized_target = str(import_target or "").strip()
+    if (
+        not normalized_target
+        or normalized_target.startswith(("http://", "https://", "//"))
+        or normalized_target.startswith("astro:")
+    ):
+        return (), ()
+
+    current_parent = (
+        normalized_current_file.rsplit("/", 1)[0]
+        if "/" in normalized_current_file
+        else ""
+    )
+    base_targets: list[str] = []
+    seen_base_targets: set[str] = set()
+    for prefix, replacement in _ASTRO_IMPORT_ROOT_PREFIXES:
+        if normalized_target.startswith(prefix):
+            _append_unique(
+                base_targets,
+                seen_base_targets,
+                _normalize_repository_relative_path(
+                    f"{replacement}{normalized_target[len(prefix):]}"
+                ),
+            )
+            break
+    else:
+        if normalized_target.startswith("."):
+            relative_target = (
+                f"{current_parent}/{normalized_target}"
+                if current_parent
+                else normalized_target
+            )
+            _append_unique(
+                base_targets,
+                seen_base_targets,
+                _normalize_repository_relative_path(relative_target),
+            )
+        else:
+            _append_unique(base_targets, seen_base_targets, normalized_target)
+            if current_parent:
+                _append_unique(
+                    base_targets,
+                    seen_base_targets,
+                    _normalize_repository_relative_path(
+                        f"{current_parent}/{normalized_target}"
+                    ),
+                )
+
+    normalized_target_name = normalized_target.rsplit("/", 1)[-1]
+    normalized_target_dotted = normalized_target.replace("/", ".")
+    direct_candidates: list[str] = []
+    seen_direct_candidates: set[str] = set()
+    for base_target in base_targets:
+        normalized_base = _normalize_repository_relative_path(base_target)
+        if not normalized_base:
+            continue
+        base_name = normalized_base.rsplit("/", 1)[-1]
+        _append_unique(direct_candidates, seen_direct_candidates, normalized_base)
+        _append_unique(
+            direct_candidates,
+            seen_direct_candidates,
+            normalized_base.replace("/", "."),
+        )
+        _append_unique(direct_candidates, seen_direct_candidates, base_name)
+        _append_unique(
+            direct_candidates,
+            seen_direct_candidates,
+            normalized_target_dotted,
+        )
+        _append_unique(
+            direct_candidates,
+            seen_direct_candidates,
+            normalized_target_name,
+        )
+        if "." in base_name:
+            suffix = base_name[base_name.rfind(".") :]
+            base_directory = normalized_base.rsplit("/", 1)[0] if "/" in normalized_base else ""
+            _append_unique(
+                direct_candidates,
+                seen_direct_candidates,
+                f"{base_directory}/index{suffix}" if base_directory else f"index{suffix}",
+            )
+            continue
+        for suffix in _ASTRO_IMPORTABLE_SUFFIXES:
+            _append_unique(
+                direct_candidates,
+                seen_direct_candidates,
+                f"{normalized_base}{suffix}",
+            )
+            _append_unique(
+                direct_candidates,
+                seen_direct_candidates,
+                f"{normalized_base}/index{suffix}",
+            )
+
+    suffix_candidates: list[str] = []
+    seen_suffix_candidates: set[str] = set()
+    for candidate in direct_candidates:
+        _append_unique(
+            suffix_candidates,
+            seen_suffix_candidates,
+            f"/{candidate.rsplit('/', 1)[-1]}",
+        )
+    return tuple(direct_candidates), tuple(suffix_candidates)
 
 
 def _import_binding_names(bindings_text: str) -> tuple[str, ...]:
@@ -235,58 +376,15 @@ def resolve_import(
     resolve_suffix_match: ResolveSuffixMatch,
 ) -> str | None:
     normalized_target = str(import_target or "").strip()
-    if not normalized_target or normalized_target.startswith(("http://", "https://", "//")) or normalized_target.startswith("astro:"):
+    normalized_current_file = normalize_repository_relative_path(current_file)
+    candidate_keys, suffixes = _resolve_import_candidates(
+        normalized_current_file,
+        normalized_target,
+    )
+    if not candidate_keys:
         return None
-    candidate_keys: list[str] = []
-    base_targets: list[str] = []
-    if normalized_target.startswith("@/"):
-        base_targets.append(normalize_repository_relative_path(f"src/{normalized_target[2:]}"))
-    elif normalized_target.startswith("~/"):
-        base_targets.append(normalize_repository_relative_path(f"src/{normalized_target[2:]}"))
-    elif normalized_target.startswith("@components/"):
-        base_targets.append(normalize_repository_relative_path(f"src/components/{normalized_target[12:]}"))
-    elif normalized_target.startswith("@layouts/"):
-        base_targets.append(normalize_repository_relative_path(f"src/layouts/{normalized_target[9:]}"))
-    elif normalized_target.startswith("@pages/"):
-        base_targets.append(normalize_repository_relative_path(f"src/pages/{normalized_target[7:]}"))
-    elif normalized_target.startswith("@content/"):
-        base_targets.append(normalize_repository_relative_path(f"src/content/{normalized_target[9:]}"))
-    elif normalized_target.startswith("."):
-        current_parent = PurePosixPath(current_file).parent
-        base_targets.append(normalize_repository_relative_path(str(current_parent / normalized_target)))
-    else:
-        base_targets.append(normalized_target)
-        current_parent = PurePosixPath(current_file).parent
-        base_targets.append(normalize_repository_relative_path(str(current_parent / normalized_target)))
-    for base_target in base_targets:
-        normalized_base = normalize_repository_relative_path(base_target)
-        if not normalized_base:
-            continue
-        candidate_keys.extend(
-            key
-            for key in {
-                normalized_base,
-                normalized_base.replace("/", "."),
-                PurePosixPath(normalized_base).name,
-                normalized_target.replace("/", "."),
-                normalized_target.rsplit("/", 1)[-1],
-            }
-            if key
-        )
-        base_path = PurePosixPath(normalized_base)
-        if base_path.suffix:
-            candidate_keys.append(normalized_base)
-            candidate_keys.append(str(base_path.with_name("index" + base_path.suffix)))
-        else:
-            for suffix in (".astro", ".ts", ".js", ".tsx", ".jsx", ".mjs", ".cjs", ".md", ".mdx", ".svelte", ".vue"):
-                candidate_keys.append(str(base_path.with_suffix(suffix)))
-                candidate_keys.append(str(base_path / f"index{suffix}"))
     for candidate_key in candidate_keys:
-        normalized_candidate = normalize_repository_relative_path(candidate_key)
-        if not normalized_candidate:
-            continue
-        target_file = module_index.get(normalized_candidate)
-        if target_file is not None and target_file != current_file:
+        target_file = module_index.get(candidate_key)
+        if target_file is not None and target_file != normalized_current_file:
             return target_file
-    suffixes = tuple(f"/{PurePosixPath(candidate).name}" for candidate in candidate_keys)
     return resolve_suffix_match(module_index=module_index, suffixes=suffixes)

@@ -40,16 +40,18 @@ def collect_symbol_entries(
     *,
     file_path: str,
     stable_identifier: StableIdentifier,
+    stripped_text: str | None = None,
 ) -> list[dict[str, Any]]:
-    stripped_text = strip_comments(text)
+    stripped_text = strip_comments(text) if stripped_text is None else stripped_text
     path = PurePosixPath(file_path)
     file_alias = normalize_identifier(path.stem)
-    final_line = len(stripped_text.splitlines()) if stripped_text else 1
+    stripped_lines = stripped_text.splitlines()
+    final_line = len(stripped_lines) if stripped_text else 1
     current_section = ""
     symbol_entries: list[dict[str, Any]] = []
     seen_symbol_keys: set[tuple[str, str, int]] = set()
 
-    for line_no, raw_line in enumerate(stripped_text.splitlines(), start=1):
+    for line_no, raw_line in enumerate(stripped_lines, start=1):
         stripped_line = raw_line.strip()
         if not stripped_line:
             continue
@@ -150,17 +152,22 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
+    include_symbol_aliases: bool = True,
 ) -> set[str]:
     path = PurePosixPath(file_path)
     if path.suffix.lower() not in _KNOWN_ASSEMBLY_SUFFIXES:
         return set()
-    try:
-        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        text = ""
+    if text is None:
+        try:
+            text = (root_path / path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            text = ""
     if path.suffix.lower() == ".inc" and text and not has_assembly_markers(text):
         return set()
     aliases = set(_path_aliases(path))
+    if not include_symbol_aliases:
+        return {alias for alias in aliases if alias}
     for symbol_entry in collect_symbol_entries(
         text,
         file_path=file_path,
@@ -283,10 +290,15 @@ def _include_aliases(import_target: str) -> tuple[str, ...]:
     return tuple(sorted(_path_aliases(path)))
 
 
-def _extern_targets(text: str) -> tuple[str, ...]:
+def _extern_targets(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[str, ...]:
+    stripped_text = strip_comments(text) if stripped_text is None else stripped_text
     targets: list[str] = []
     seen_targets: set[str] = set()
-    for raw_line in strip_comments(text).splitlines():
+    for raw_line in stripped_text.splitlines():
         stripped_line = raw_line.strip()
         if not stripped_line:
             continue
@@ -311,12 +323,14 @@ def extract_import_bindings(
     stable_identifier: StableIdentifier,
     resolve_import: ResolveImport,
     resolve_target: ResolveTarget,
+    stripped_text: str | None = None,
 ) -> tuple[tuple[dict[str, Any], ...], dict[str, dict[str, Any]]]:
+    stripped_text = strip_comments(text) if stripped_text is None else stripped_text
     dependencies: list[dict[str, Any]] = []
     dependency_keys: set[tuple[str | None, str, str]] = set()
     import_bindings: dict[str, dict[str, Any]] = {}
 
-    for import_index, match in enumerate(_INCLUDE_RE.finditer(strip_comments(text))):
+    for import_index, match in enumerate(_INCLUDE_RE.finditer(stripped_text)):
         raw_target = (
             match.group("double") or match.group("single") or match.group("angle") or ""
         ).strip()
@@ -358,7 +372,7 @@ def extract_import_bindings(
                 },
             )
 
-    for extern_target in _extern_targets(text):
+    for extern_target in _extern_targets(text, stripped_text=stripped_text):
         target_file = resolve_target(file_path, extern_target, module_index)
         import_bindings.setdefault(
             extern_target,
@@ -378,10 +392,12 @@ def _reference_bindings(
     *,
     import_bindings: dict[str, dict[str, Any]],
     resolve_target: ResolveTarget,
+    stripped_text: str | None = None,
 ) -> tuple[dict[str, Any], ...]:
+    stripped_text = strip_comments(text) if stripped_text is None else stripped_text
     bindings: list[dict[str, Any]] = []
     seen_bindings: set[tuple[int, str, tuple[str, ...]]] = set()
-    for line_no, raw_line in enumerate(strip_comments(text).splitlines(), start=1):
+    for line_no, raw_line in enumerate(stripped_text.splitlines(), start=1):
         stripped_line = raw_line.strip()
         if not stripped_line:
             continue
@@ -431,7 +447,7 @@ def _reference_bindings(
     return tuple(bindings)
 
 
-def parse_dependencies_only(
+def _dependency_entries_from_text(
     file_path: str,
     text: str,
     module_index: dict[str, str],
@@ -439,7 +455,9 @@ def parse_dependencies_only(
     stable_identifier: StableIdentifier,
     resolve_import: ResolveImport,
     resolve_target: ResolveTarget,
-) -> tuple[dict[str, Any], ...]:
+    stripped_text: str | None = None,
+) -> tuple[tuple[dict[str, Any], ...], dict[str, dict[str, Any]]]:
+    stripped_text = strip_comments(text) if stripped_text is None else stripped_text
     dependencies, import_bindings = extract_import_bindings(
         file_path,
         text,
@@ -447,6 +465,7 @@ def parse_dependencies_only(
         stable_identifier=stable_identifier,
         resolve_import=resolve_import,
         resolve_target=resolve_target,
+        stripped_text=stripped_text,
     )
     dependency_entries = list(dependencies)
     dependency_keys = {
@@ -459,6 +478,7 @@ def parse_dependencies_only(
         module_index,
         import_bindings=import_bindings,
         resolve_target=resolve_target,
+        stripped_text=stripped_text,
     ):
         dependency_key = (
             binding["target_file"],
@@ -485,7 +505,29 @@ def parse_dependencies_only(
                 "dependency_type": "references",
             }
         )
-    return tuple(dependency_entries)
+    return tuple(dependency_entries), import_bindings
+
+
+def parse_dependencies_only(
+    file_path: str,
+    text: str,
+    module_index: dict[str, str],
+    *,
+    stable_identifier: StableIdentifier,
+    resolve_import: ResolveImport,
+    resolve_target: ResolveTarget,
+) -> tuple[dict[str, Any], ...]:
+    stripped_text = strip_comments(text)
+    dependency_entries, _import_bindings = _dependency_entries_from_text(
+        file_path,
+        text,
+        module_index,
+        stable_identifier=stable_identifier,
+        resolve_import=resolve_import,
+        resolve_target=resolve_target,
+        stripped_text=stripped_text,
+    )
+    return dependency_entries
 
 
 def parse_file(
@@ -497,10 +539,12 @@ def parse_file(
     resolve_import: ResolveImport,
     resolve_target: ResolveTarget,
 ) -> tuple[tuple[dict[str, Any], ...], tuple[dict[str, Any], ...], tuple[dict[str, Any], ...]]:
+    stripped_text = strip_comments(text)
     symbol_entries = collect_symbol_entries(
         text,
         file_path=file_path,
         stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
     )
     symbols = tuple(
         {
@@ -513,26 +557,15 @@ def parse_file(
         }
         for entry in symbol_entries
     )
-    dependencies, import_bindings = extract_import_bindings(
+    dependency_entries, import_bindings = _dependency_entries_from_text(
         file_path,
         text,
         module_index,
         stable_identifier=stable_identifier,
         resolve_import=resolve_import,
         resolve_target=resolve_target,
+        stripped_text=stripped_text,
     )
-    dependency_entries = list(
-        parse_dependencies_only(
-            file_path,
-            text,
-            module_index,
-            stable_identifier=stable_identifier,
-            resolve_import=resolve_import,
-            resolve_target=resolve_target,
-        )
-    )
-    if not dependencies:
-        dependency_entries = list(dependency_entries)
 
     def _symbol_for_line(line_no: int) -> dict[str, Any] | None:
         for symbol_entry in reversed(symbol_entries):
@@ -547,6 +580,7 @@ def parse_file(
         module_index,
         import_bindings=import_bindings,
         resolve_target=resolve_target,
+        stripped_text=stripped_text,
     ):
         source_symbol = _symbol_for_line(int(binding["line_no"]))
         if source_symbol is None:
@@ -574,6 +608,6 @@ def parse_file(
         )
     return (
         symbols,
-        tuple(dependency_entries),
+        dependency_entries,
         tuple(reference_candidates[key] for key in sorted(reference_candidates)),
     )

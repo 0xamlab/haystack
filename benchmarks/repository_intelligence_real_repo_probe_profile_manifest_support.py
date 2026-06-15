@@ -404,7 +404,10 @@ def _dbt_project_profile_hints(
     model_roots = _yaml_path_field_values(text, "model-paths") or ("models",)
     analysis_roots = _yaml_path_field_values(text, "analysis-paths") or ("analyses",)
     snapshot_roots = _yaml_path_field_values(text, "snapshot-paths") or ("snapshots",)
-    support_roots = {root_prefix.rstrip("/")}
+    # Only the declared model/analysis/snapshot dirs are operational support roots. Do NOT seed
+    # the project root itself: a bare repo-root support root makes every path "within" a support
+    # root (so non-operational dirs like ``macro-paths`` leak into support_roots/entrypoints).
+    support_roots: set[str] = set()
     entrypoint_paths: set[str] = set()
 
     for raw_root in (*model_roots, *analysis_roots, *snapshot_roots):
@@ -777,10 +780,13 @@ def _clojure_profile_hints(
     return entrypoint_paths, support_roots, config_paths
 
 
-def _pom_profile_hints(pom_xml_path: str) -> tuple[set[str], set[str], set[str]]:
+def _pom_profile_hints(
+    repo_path: Path,
+    pom_xml_path: str,
+) -> tuple[set[str], set[str], set[str], set[str]]:
     normalized_path = repository_service._normalize_repository_relative_path(pom_xml_path)
     if not normalized_path:
-        return set(), set(), set()
+        return set(), set(), set(), set()
     pom_dir = PurePosixPath(normalized_path).parent
     root_prefix = "" if str(pom_dir) in {"", "."} else f"{pom_dir}/"
     support_roots = {
@@ -796,7 +802,73 @@ def _pom_profile_hints(pom_xml_path: str) -> tuple[set[str], set[str], set[str]]
         f"{root_prefix}src/main/kotlin/Main.kt",
     }
     config_paths = {normalized_path}
-    return entrypoint_paths, support_roots, config_paths
+    preferred_ecosystems: set[str] = set()
+
+    clojure_source_dirs: list[str] = []
+    for source_dir in ("src/main/clojure", "src/clj", "src/cljc"):
+        normalized_source_dir = repository_service._normalize_repository_relative_path(
+            str(pom_dir / source_dir)
+        )
+        if normalized_source_dir and (repo_path / normalized_source_dir).is_dir():
+            support_roots.add(normalized_source_dir)
+            clojure_source_dirs.append(source_dir)
+    if not clojure_source_dirs:
+        return entrypoint_paths, support_roots, config_paths, preferred_ecosystems
+
+    clojure_file_count = 0
+    for source_dir in clojure_source_dirs:
+        normalized_source_dir = repository_service._normalize_repository_relative_path(
+            str(pom_dir / source_dir)
+        )
+        if not normalized_source_dir:
+            continue
+        source_path = repo_path / normalized_source_dir
+        for candidate in source_path.rglob("*"):
+            if (
+                not candidate.is_file()
+                or candidate.is_symlink()
+                or candidate.suffix.lower() not in {".clj", ".cljc", ".cljs"}
+            ):
+                continue
+            clojure_file_count += 1
+            relative_candidate = repository_service._normalize_repository_relative_path(
+                str(candidate.relative_to(repo_path))
+            )
+            if relative_candidate and relative_candidate.endswith(
+                (
+                    "/core.clj",
+                    "/core.cljc",
+                    "/core.cljs",
+                    "/main.clj",
+                    "/main.cljc",
+                    "/main.cljs",
+                )
+            ):
+                entrypoint_paths.add(relative_candidate)
+            if clojure_file_count >= 128:
+                break
+        if clojure_file_count >= 128:
+            break
+
+    if clojure_file_count >= 8:
+        preferred_ecosystems.add("clojure")
+        for source_dir in clojure_source_dirs:
+            entrypoint_paths.update(
+                _candidate_clojure_module_paths(
+                    project_dir=pom_dir,
+                    source_dir=source_dir,
+                    module_name="clojure.core",
+                )
+            )
+            entrypoint_paths.update(
+                _candidate_clojure_module_paths(
+                    project_dir=pom_dir,
+                    source_dir=source_dir,
+                    module_name="clojure.main",
+                )
+            )
+
+    return entrypoint_paths, support_roots, config_paths, preferred_ecosystems
 
 
 _normalize_gradle_project_root = _normalize_gradle_project_root_support

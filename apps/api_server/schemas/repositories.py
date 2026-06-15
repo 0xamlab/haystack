@@ -83,6 +83,9 @@ class RepositoryLanguageSupportProgress(BaseModel):
 
     supported_real_language_count: int = Field(..., ge=0)
     ranked_target_language_count: int = Field(..., ge=1)
+    requested_ranked_target_language_count: int | None = Field(default=None, ge=1)
+    available_ranked_real_language_count: int | None = Field(default=None, ge=0)
+    target_clamped_to_available_ranked_real_languages: bool = False
     progress_fraction: float = Field(..., ge=0.0, le=1.0)
     progress_label: str
 

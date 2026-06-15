@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from functools import lru_cache
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -40,14 +41,25 @@ def collect_symbol_entries(
     *,
     file_path: str,
     stable_identifier: StableIdentifier,
+    stripped_text: str | None = None,
+    clause_entries: tuple[tuple[int, str], ...] | None = None,
 ) -> list[dict[str, Any]]:
-    module_name = _module_name_from_text(text)
+    stripped_text = (
+        stripped_text
+        if stripped_text is not None
+        else repository_prolog_primitives.strip_comments(text)
+    )
+    clause_entries = (
+        clause_entries
+        if clause_entries is not None
+        else _split_clauses(text, stripped_text=stripped_text)
+    )
+    module_name = _module_name_from_text(text, stripped_text=stripped_text)
     file_alias = normalize_identifier(PurePosixPath(file_path).stem)
-    stripped_text = repository_prolog_primitives.strip_comments(text)
     final_line = len(stripped_text.splitlines()) if stripped_text else 1
     symbol_entries: list[dict[str, Any]] = []
     seen_symbol_keys: set[tuple[str, int]] = set()
-    for line_no, clause in _split_clauses(stripped_text):
+    for line_no, clause in clause_entries:
         _declared_module, symbol_name, signature = _parse_clause_head(clause)
         if not symbol_name:
             continue
@@ -96,24 +108,28 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
 ) -> set[str]:
     path = PurePosixPath(file_path)
     if path.suffix.lower() not in _KNOWN_PROLOG_SUFFIXES:
         return set()
-    try:
-        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        text = ""
+    if text is None:
+        try:
+            text = (root_path / path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            text = ""
     if path.suffix.lower() == ".pl" and text and not has_prolog_markers(text):
         return set()
+    stripped_text = repository_prolog_primitives.strip_comments(text)
     aliases = set(_path_aliases(path))
-    module_name = _module_name_from_text(text)
+    module_name = _module_name_from_text(text, stripped_text=stripped_text)
     if module_name:
         aliases.add(module_name)
     for symbol_entry in collect_symbol_entries(
         text,
         file_path=file_path,
         stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
     ):
         aliases.update(str(alias).lower() for alias in symbol_entry["qualified_names"] if alias)
     return {alias for alias in aliases if alias}
@@ -174,12 +190,24 @@ def extract_import_bindings(
     stable_identifier: StableIdentifier,
     resolve_import: ResolveImport,
     resolve_target: ResolveTarget,
+    stripped_text: str | None = None,
+    clause_entries: tuple[tuple[int, str], ...] | None = None,
 ) -> tuple[tuple[dict[str, Any], ...], dict[str, dict[str, Any]]]:
     del resolve_target
+    stripped_text = (
+        stripped_text
+        if stripped_text is not None
+        else repository_prolog_primitives.strip_comments(text)
+    )
+    clause_entries = (
+        clause_entries
+        if clause_entries is not None
+        else _split_clauses(text, stripped_text=stripped_text)
+    )
     dependencies: list[dict[str, Any]] = []
     dependency_keys: set[tuple[str | None, str, str]] = set()
     import_bindings: dict[str, dict[str, Any]] = {}
-    for line_no, clause in _split_clauses(text):
+    for line_no, clause in clause_entries:
         normalized_clause = clause.strip()
         if not normalized_clause.startswith(":-"):
             continue
@@ -246,6 +274,7 @@ def extract_import_bindings(
     return tuple(dependencies), import_bindings
 
 
+@lru_cache(maxsize=1024)
 def _body_reference_names(body: str) -> tuple[str, ...]:
     reference_names: list[str] = []
     seen_names: set[str] = set()
@@ -282,10 +311,22 @@ def _reference_bindings(
     *,
     import_bindings: dict[str, dict[str, Any]],
     resolve_target: ResolveTarget,
+    stripped_text: str | None = None,
+    clause_entries: tuple[tuple[int, str], ...] | None = None,
 ) -> tuple[dict[str, Any], ...]:
+    stripped_text = (
+        stripped_text
+        if stripped_text is not None
+        else repository_prolog_primitives.strip_comments(text)
+    )
+    clause_entries = (
+        clause_entries
+        if clause_entries is not None
+        else _split_clauses(text, stripped_text=stripped_text)
+    )
     bindings: list[dict[str, Any]] = []
     seen_bindings: set[tuple[int, str, tuple[str, ...]]] = set()
-    for line_no, clause in _split_clauses(text):
+    for line_no, clause in clause_entries:
         normalized_clause = clause.strip()
         if not normalized_clause or normalized_clause.startswith(":-"):
             continue
@@ -334,6 +375,8 @@ def parse_dependencies_only(
     resolve_import: ResolveImport,
     resolve_target: ResolveTarget,
 ) -> tuple[dict[str, Any], ...]:
+    stripped_text = repository_prolog_primitives.strip_comments(text)
+    clause_entries = _split_clauses(text, stripped_text=stripped_text)
     dependencies, import_bindings = extract_import_bindings(
         file_path,
         text,
@@ -341,6 +384,8 @@ def parse_dependencies_only(
         stable_identifier=stable_identifier,
         resolve_import=resolve_import,
         resolve_target=resolve_target,
+        stripped_text=stripped_text,
+        clause_entries=clause_entries,
     )
     dependency_entries = list(dependencies)
     dependency_keys = {
@@ -353,6 +398,8 @@ def parse_dependencies_only(
         module_index,
         import_bindings=import_bindings,
         resolve_target=resolve_target,
+        stripped_text=stripped_text,
+        clause_entries=clause_entries,
     ):
         dependency_key = (binding["target_file"], binding["target_symbol"], "references")
         if dependency_key in dependency_keys:
@@ -387,10 +434,14 @@ def parse_file(
     resolve_import: ResolveImport,
     resolve_target: ResolveTarget,
 ) -> tuple[tuple[dict[str, Any], ...], tuple[dict[str, Any], ...], tuple[dict[str, Any], ...]]:
+    stripped_text = repository_prolog_primitives.strip_comments(text)
+    clause_entries = _split_clauses(text, stripped_text=stripped_text)
     symbol_entries = collect_symbol_entries(
         text,
         file_path=file_path,
         stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
+        clause_entries=clause_entries,
     )
     symbols = tuple(
         {
@@ -410,17 +461,45 @@ def parse_file(
         stable_identifier=stable_identifier,
         resolve_import=resolve_import,
         resolve_target=resolve_target,
+        stripped_text=stripped_text,
+        clause_entries=clause_entries,
     )
-    dependency_entries = list(
-        parse_dependencies_only(
-            file_path,
-            text,
-            module_index,
-            stable_identifier=stable_identifier,
-            resolve_import=resolve_import,
-            resolve_target=resolve_target,
+    reference_bindings = _reference_bindings(
+        file_path,
+        text,
+        module_index,
+        import_bindings=import_bindings,
+        resolve_target=resolve_target,
+        stripped_text=stripped_text,
+        clause_entries=clause_entries,
+    )
+    dependency_entries = list(_dependencies)
+    dependency_keys = {
+        (entry["target_file"], entry["target_symbol"], entry["dependency_type"])
+        for entry in dependency_entries
+    }
+    for binding in reference_bindings:
+        dependency_key = (binding["target_file"], binding["target_symbol"], "references")
+        if dependency_key in dependency_keys:
+            continue
+        dependency_keys.add(dependency_key)
+        dependency_entries.append(
+            {
+                "dependency_edge_id": stable_identifier(
+                    "dep",
+                    {
+                        "file_path": file_path,
+                        "target": binding["target_names"],
+                        "line": binding["line_no"],
+                        "kind": "predicate_call",
+                    },
+                ),
+                "source_file": file_path,
+                "target_file": binding["target_file"],
+                "target_symbol": binding["target_symbol"],
+                "dependency_type": "references",
+            }
         )
-    )
 
     def _symbol_for_line(line_no: int) -> dict[str, Any] | None:
         for symbol_entry in reversed(symbol_entries):
@@ -429,13 +508,7 @@ def parse_file(
         return None
 
     reference_candidates: dict[str, dict[str, Any]] = {}
-    for binding in _reference_bindings(
-        file_path,
-        text,
-        module_index,
-        import_bindings=import_bindings,
-        resolve_target=resolve_target,
-    ):
+    for binding in reference_bindings:
         source_symbol = _symbol_for_line(int(binding["line_no"]))
         if source_symbol is None:
             continue

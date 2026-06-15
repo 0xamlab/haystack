@@ -33,27 +33,37 @@ provided_module_name = repository_tex_primitives.provided_module_name
 resolve_import = repository_tex_primitives.resolve_import
 source_symbol_name_for_line = repository_tex_primitives.source_symbol_name_for_line
 strip_comments = repository_tex_primitives.strip_comments
+_prepared_tex_source_text = repository_tex_primitives._prepared_tex_source_text
+_iter_import_entries_from_stripped_text = repository_tex_primitives._iter_import_entries_from_stripped_text
+_imported_symbol_bindings_from_import_entries = (
+    repository_tex_primitives._imported_symbol_bindings_from_import_entries
+)
+_iter_reference_entries_from_stripped_text = (
+    repository_tex_primitives._iter_reference_entries_from_stripped_text
+)
+_iter_symbol_entries_from_stripped_text = repository_tex_primitives._iter_symbol_entries_from_stripped_text
 
 
 def _extract_import_bindings(
     *,
     file_path: str,
-    text: str,
+    stripped_text: str,
     module_index: dict[str, str],
     stable_identifier: StableIdentifier,
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
 ) -> tuple[tuple[_Dependency, ...], dict[str, _ImportedSymbolBinding]]:
-    bindings = imported_symbol_bindings(
+    import_entries = _iter_import_entries_from_stripped_text(stripped_text)
+    bindings = _imported_symbol_bindings_from_import_entries(
         current_file=file_path,
-        text=text,
+        import_entries=import_entries,
         module_index=module_index,
         normalize_repository_relative_path=normalize_repository_relative_path,
         resolve_suffix_match=resolve_suffix_match,
     )
     dependencies: list[_Dependency] = []
     seen_dependencies: set[tuple[str | None, str, str]] = set()
-    for dependency_type, import_target, line_number in iter_import_entries(text):
+    for dependency_type, import_target, line_number in import_entries:
         target_file = resolve_import(
             current_file=file_path,
             import_target=import_target,
@@ -94,11 +104,12 @@ def parse_dependencies_only(
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
 ) -> tuple[_Dependency, ...]:
-    if not is_probable_tex_source(path=Path(file_path), text=text):
+    stripped_text = _prepared_tex_source_text(path=Path(file_path), text=text)
+    if stripped_text is None:
         return ()
     dependencies, _bindings = _extract_import_bindings(
         file_path=file_path,
-        text=text,
+        stripped_text=stripped_text,
         module_index=module_index,
         stable_identifier=stable_identifier,
         normalize_repository_relative_path=normalize_repository_relative_path,
@@ -120,22 +131,24 @@ def parse_file(
     tuple[_Dependency, ...],
     tuple[_SymbolReferenceCandidate, ...],
 ]:
-    if not is_probable_tex_source(path=Path(file_path), text=text):
+    stripped_text = _prepared_tex_source_text(path=Path(file_path), text=text)
+    if stripped_text is None:
         return (), (), ()
     symbols = collect_symbols(
         file_path=file_path,
         text=text,
         stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
     )
     dependencies, import_bindings = _extract_import_bindings(
         file_path=file_path,
-        text=text,
+        stripped_text=stripped_text,
         module_index=module_index,
         stable_identifier=stable_identifier,
         normalize_repository_relative_path=normalize_repository_relative_path,
         resolve_suffix_match=resolve_suffix_match,
     )
-    symbol_entries = iter_symbol_entries(text)
+    symbol_entries = _iter_symbol_entries_from_stripped_text(stripped_text)
     symbol_ids_by_name = {
         symbol.symbol_name: symbol.symbol_id
         for symbol in symbols
@@ -146,7 +159,9 @@ def parse_file(
     seen_reference_keys: set[tuple[str | None, str, str]] = set()
     fallback_source_symbol_id = symbols[0].symbol_id
 
-    for _reference_kind, target_name, line_number in iter_reference_entries(text):
+    for _reference_kind, target_name, line_number in _iter_reference_entries_from_stripped_text(
+        stripped_text
+    ):
         source_symbol_name = source_symbol_name_for_line(symbol_entries, line_number=line_number)
         source_symbol_id = symbol_ids_by_name.get(source_symbol_name or "", fallback_source_symbol_id)
         target_file = file_path if target_name in local_symbol_names else None

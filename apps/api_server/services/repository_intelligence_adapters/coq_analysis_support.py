@@ -39,8 +39,9 @@ def _collect_symbols(
     file_path: str,
     text: str,
     stable_identifier: StableIdentifier,
+    stripped_text: str | None = None,
 ) -> tuple[_CollectedSymbol, ...]:
-    stripped_text = strip_comments(text)
+    stripped_text = strip_comments(text) if stripped_text is None else stripped_text
     module_name = module_name_from_path(file_path)
     module_symbol = _Symbol(
         symbol_id=stable_identifier(
@@ -133,6 +134,9 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
+    stripped_text: str | None = None,
+    include_symbol_aliases: bool = True,
 ) -> set[str]:
     path = PurePosixPath(file_path)
     if not has_coq_path_hints(path):
@@ -140,18 +144,25 @@ def module_aliases_for_path(
     aliases = {
         file_path,
         str(path.with_suffix("")),
+        str(path.with_suffix("")).replace("/", "."),
         path.stem,
+        module_name_from_path(file_path),
     }
-    try:
-        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        text = ""
-    if not is_probable_coq_source(path=Path(file_path), text=text):
+    if not include_symbol_aliases:
+        return {alias for alias in aliases if alias}
+    if text is None:
+        try:
+            text = (root_path / path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            text = ""
+    stripped_text = strip_comments(text) if stripped_text is None else stripped_text
+    if not is_probable_coq_source(path=Path(file_path), text=text, stripped_text=stripped_text):
         return {alias for alias in aliases if alias}
     for collected_symbol in _collect_symbols(
         file_path=file_path,
         text=text,
         stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
     ):
         aliases.add(collected_symbol.symbol.symbol_name)
         aliases.update(collected_symbol.qualified_names)
@@ -195,11 +206,12 @@ def extract_import_bindings(
     *,
     stable_identifier: StableIdentifier,
     resolve_suffix_match: ResolveSuffixMatch,
+    stripped_text: str | None = None,
 ) -> tuple[tuple[_Dependency, ...], dict[str, _ImportedSymbolBinding]]:
     dependencies: list[_Dependency] = []
     dependency_keys: set[tuple[str | None, str]] = set()
     import_bindings: dict[str, _ImportedSymbolBinding] = {}
-    for import_target, line_number in parse_require_modules(text):
+    for import_target, line_number in parse_require_modules(text, stripped_text=stripped_text):
         target_file = resolve_require_target(
             import_target,
             module_index,
@@ -255,12 +267,14 @@ def parse_dependencies_only(
     resolve_suffix_match: ResolveSuffixMatch,
 ) -> tuple[_Dependency, ...]:
     del normalize_repository_relative_path
+    stripped_text = strip_comments(text)
     dependencies, _bindings = extract_import_bindings(
         file_path,
         text,
         module_index,
         stable_identifier=stable_identifier,
         resolve_suffix_match=resolve_suffix_match,
+        stripped_text=stripped_text,
     )
     return dependencies
 
@@ -275,12 +289,14 @@ def parse_file(
     resolve_suffix_match: ResolveSuffixMatch,
 ) -> tuple[tuple[_Symbol, ...], tuple[_Dependency, ...], tuple[_SymbolReferenceCandidate, ...]]:
     del normalize_repository_relative_path
-    if not is_probable_coq_source(path=Path(file_path), text=text):
+    stripped_text = strip_comments(text)
+    if not is_probable_coq_source(path=Path(file_path), text=text, stripped_text=stripped_text):
         return (), (), ()
     collected_symbols = _collect_symbols(
         file_path=file_path,
         text=text,
         stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
     )
     dependencies, import_bindings = extract_import_bindings(
         file_path,
@@ -288,6 +304,7 @@ def parse_file(
         module_index,
         stable_identifier=stable_identifier,
         resolve_suffix_match=resolve_suffix_match,
+        stripped_text=stripped_text,
     )
     lines = text.splitlines()
     local_symbol_lookup = {

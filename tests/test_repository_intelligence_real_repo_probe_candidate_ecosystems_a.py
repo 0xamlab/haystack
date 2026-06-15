@@ -70,8 +70,17 @@ def test_candidate_ecosystems_for_path_treats_custom_suffixes_and_ambiguous_m_fi
     (repo_path / "godot" / "scripts").mkdir(parents=True)
     (repo_path / "labview" / "Source").mkdir(parents=True)
     (repo_path / "labview" / "Controls").mkdir(parents=True)
+    (repo_path / "templates").mkdir(parents=True)
     (repo_path / "force-app" / "main" / "default" / "classes").mkdir(parents=True)
     (repo_path / "force-app" / "main" / "default" / "triggers").mkdir(parents=True)
+    (repo_path / "pom.xml").write_text(
+        "<project><modelVersion>4.0.0</modelVersion><artifactId>demo</artifactId></project>\n",
+        encoding="utf-8",
+    )
+    (repo_path / "templates" / "page.mako").write_text(
+        '<%inherit file="base.mako"/>\n${next.body()}\n',
+        encoding="utf-8",
+    )
     (repo_path / "src" / "boot.asm").write_text(
         "global start\nstart:\n    ret\n",
         encoding="utf-8",
@@ -1465,6 +1474,10 @@ def test_candidate_ecosystems_for_path_treats_custom_suffixes_and_ambiguous_m_fi
     ) == {"ladder"}
     assert probe_module._candidate_ecosystems_for_path("labview/App.lvproj") == {"labview"}
     assert probe_module._candidate_ecosystems_for_path("labview/Source/Main.vi") == {"labview"}
+    assert probe_module._candidate_ecosystems_for_path("templates/page.mako") == {"mako"}
+    assert probe_module._candidate_ecosystems_for_path("pom.xml", repo_path=repo_path) == {
+        "maven"
+    }
     assert probe_module._candidate_ecosystems_for_path(
         "PackagesLocalDirectory/Acme/Acme/AxClass/AcmeMain.xml",
         repo_path=repo_path,
@@ -1485,4 +1498,3 @@ def test_candidate_ecosystems_for_path_treats_custom_suffixes_and_ambiguous_m_fi
         "force-app/main/default/triggers/AccountTrigger.trigger",
         repo_path=repo_path,
     ) == {"apex"}
-

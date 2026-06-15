@@ -47,8 +47,9 @@ def _collect_symbols(
     file_path: str,
     text: str,
     stable_identifier: StableIdentifier,
+    stripped_text: str | None = None,
 ) -> tuple[_CollectedSymbol, ...]:
-    stripped_text = strip_comments(text)
+    stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
     module_match = _MODULE_RE.search(stripped_text)
     module_name = (
         str(module_match.group("name") or "").strip()
@@ -80,7 +81,10 @@ def _collect_symbols(
             qualified_names=(module_name,) if module_name else (),
         )
     ]
-    for symbol_name, symbol_kind, start_line in iter_symbol_entries(stripped_text):
+    for symbol_name, symbol_kind, start_line in iter_symbol_entries(
+        "",
+        stripped_text=stripped_text,
+    ):
         qualified_names = (
             repository_purescript_primitives._ordered_names(
                 symbol_name,
@@ -146,6 +150,9 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    include_symbol_aliases: bool = True,
+    text: str | None = None,
+    stripped_text: str | None = None,
 ) -> set[str]:
     path = PurePosixPath(file_path)
     if path.suffix.lower() not in _KNOWN_SUFFIXES:
@@ -154,21 +161,36 @@ def module_aliases_for_path(
         file_path,
         _without_suffix_path(path),
         _without_suffix_path(path).replace("/", "."),
-        path.stem,
     }
-    try:
-        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        text = ""
+    if text is None:
+        try:
+            text = (root_path / path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            text = ""
+    stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
     if not is_probable_purescript_source(path=Path(file_path), text=text):
         return {alias for alias in aliases if alias}
-    for collected_symbol in _collect_symbols(
-        file_path=file_path,
-        text=text,
-        stable_identifier=stable_identifier,
-    ):
-        aliases.add(collected_symbol.symbol.symbol_name)
-        aliases.update(collected_symbol.qualified_names)
+    module_match = _MODULE_RE.search(stripped_text)
+    module_name = (
+        str(module_match.group("name") or "").strip()
+        if module_match is not None
+        else module_name_from_path(file_path)
+    )
+    if module_name:
+        aliases.add(module_name)
+    if include_symbol_aliases:
+        # The bare file stem (e.g. ``Helper``) is a symbol-level alias: it is the
+        # unqualified module/name handle, kept only when symbol aliases are requested so a
+        # module-only index (include_symbol_aliases=False) does not over-claim it.
+        aliases.add(path.stem)
+        for collected_symbol in _collect_symbols(
+            file_path=file_path,
+            text=text,
+            stable_identifier=stable_identifier,
+            stripped_text=stripped_text,
+        ):
+            aliases.add(collected_symbol.symbol.symbol_name)
+            aliases.update(collected_symbol.qualified_names)
     return {alias for alias in aliases if alias}
 
 
@@ -216,12 +238,13 @@ def extract_import_bindings(
     stable_identifier: StableIdentifier,
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
+    stripped_text: str | None = None,
 ) -> tuple[
     tuple[_Dependency, ...],
     dict[str, _ImportedSymbolBinding],
     tuple[str, ...],
 ]:
-    stripped_text = strip_comments(text)
+    stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
     dependencies: list[_Dependency] = []
     dependency_keys: set[tuple[str | None, str]] = set()
     import_bindings: dict[str, _ImportedSymbolBinding] = {}
@@ -323,10 +346,12 @@ def parse_file(
 ]:
     if not is_probable_purescript_source(path=Path(file_path), text=text):
         return (), (), ()
+    stripped_text = strip_comments(text)
     collected_symbols = _collect_symbols(
         file_path=file_path,
         text=text,
         stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
     )
     symbols = tuple(collected_symbol.symbol for collected_symbol in collected_symbols)
     symbols_by_name: dict[str, list[_Symbol]] = defaultdict(list)
@@ -339,9 +364,12 @@ def parse_file(
         stable_identifier=stable_identifier,
         normalize_repository_relative_path=normalize_repository_relative_path,
         resolve_suffix_match=resolve_suffix_match,
+        stripped_text=stripped_text,
     )
-    reference_candidates: dict[str, _SymbolReferenceCandidate] = {}
-    stripped_text = strip_comments(text)
+    reference_candidate_keys: dict[
+        tuple[str, str | None, str | None, tuple[str, ...]],
+        None,
+    ] = {}
     lines = stripped_text.splitlines()
 
     def _record_reference_candidate(
@@ -351,27 +379,14 @@ def parse_file(
         target_file: str | None,
         target_names: tuple[str, ...],
     ) -> None:
-        edge_id = stable_identifier(
-            "ref",
-            {
-                "source_symbol_id": source_symbol_id,
-                "target_symbol_id": target_symbol_id,
-                "target_file": target_file,
-                "target_names": target_names,
-                "type": "references_symbol",
-            },
-        )
-        reference_candidates.setdefault(
-            edge_id,
-            _SymbolReferenceCandidate(
-                reference_edge_id=edge_id,
-                source_symbol_id=source_symbol_id,
-                source_file=file_path,
-                target_symbol_id=target_symbol_id,
-                target_file=target_file,
-                target_names=target_names,
-                reference_type="references_symbol",
+        reference_candidate_keys.setdefault(
+            (
+                source_symbol_id,
+                target_symbol_id,
+                target_file,
+                target_names,
             ),
+            None,
         )
 
     for collected_symbol in collected_symbols:
@@ -424,8 +439,29 @@ def parse_file(
                         target_file=target_file,
                         target_names=(target_name,),
                     )
+    reference_candidates = tuple(
+        _SymbolReferenceCandidate(
+            reference_edge_id=stable_identifier(
+                "ref",
+                {
+                    "source_symbol_id": source_symbol_id,
+                    "target_symbol_id": target_symbol_id,
+                    "target_file": target_file,
+                    "target_names": target_names,
+                    "type": "references_symbol",
+                },
+            ),
+            source_symbol_id=source_symbol_id,
+            source_file=file_path,
+            target_symbol_id=target_symbol_id,
+            target_file=target_file,
+            target_names=target_names,
+            reference_type="references_symbol",
+        )
+        for source_symbol_id, target_symbol_id, target_file, target_names in reference_candidate_keys
+    )
     return (
         symbols,
         dependencies,
-        tuple(reference_candidates[key] for key in sorted(reference_candidates)),
+        reference_candidates,
     )

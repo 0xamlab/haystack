@@ -171,6 +171,7 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
 ) -> set[str]:
     del stable_identifier
     path = PurePosixPath(file_path)
@@ -186,10 +187,11 @@ def module_aliases_for_path(
         str(path.with_suffix("")),
         str(path.with_suffix("")).replace("/", "."),
     }
-    try:
-        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        text = ""
+    if text is None:
+        try:
+            text = (root_path / path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            text = ""
     if text and not is_probable_mustache_source(path=path, text=text):
         return {alias for alias in aliases if alias}
     module_name = module_name_from_path(normalized_path)

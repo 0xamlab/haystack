@@ -112,6 +112,37 @@ def test_jinja_adapter_module_aliases_include_module_and_macro_names(tmp_path: P
     assert "render_button" in aliases
 
 
+def test_jinja_adapter_module_aliases_use_provided_text_without_rereading_file(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo_path = tmp_path / "jinja-alias-inline-text-repo"
+    (repo_path / "templates" / "partials").mkdir(parents=True)
+    source_text = (
+        "{% macro render_button(label) %}\n"
+        "  <button>{{ label }}</button>\n"
+        "{% endmacro %}\n"
+    )
+    file_path = repo_path / "templates" / "partials" / "macros.j2"
+    file_path.write_text(source_text, encoding="utf-8")
+
+    def _unexpected_read_text(self: Path, *args, **kwargs) -> str:
+        raise AssertionError(f"module_aliases_for_path should not reread {self}")
+
+    monkeypatch.setattr(Path, "read_text", _unexpected_read_text)
+
+    aliases = repository_service.jinja_adapter.module_aliases_for_path(
+        root_path=repo_path,
+        file_path="templates/partials/macros.j2",
+        stable_identifier=repository_service._stable_identifier,
+        text=source_text,
+        stripped_text=repository_jinja_primitives.strip_comments(source_text),
+    )
+
+    assert "templates.partials.macros" in aliases
+    assert "render_button" in aliases
+
+
 def test_jinja_adapter_parse_file_resolves_imports_includes_and_references(tmp_path: Path) -> None:
     repo_path = tmp_path / "jinja-parse-repo"
     (repo_path / "templates" / "partials").mkdir(parents=True)

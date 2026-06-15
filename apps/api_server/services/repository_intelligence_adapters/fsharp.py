@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable, Sequence
+from functools import lru_cache
 from pathlib import Path, PurePosixPath
 from typing import Any
 
 from apps.api_server.services.repository_intelligence_contracts import (
     _Dependency,
     _ImportedSymbolBinding,
+    _ModuleIndexLookup,
     _Symbol,
     _SymbolReferenceCandidate,
 )
@@ -15,6 +17,8 @@ from apps.api_server.services.repository_intelligence_contracts import (
 StableIdentifier = Callable[[str, Any], str]
 ResolveSuffixMatch = Callable[[dict[str, str], Sequence[str]], str | None]
 ResolveDirectoryPrefixMatch = Callable[[dict[str, str], Sequence[str]], str | None]
+ResolveImportTarget = Callable[[str], str | None]
+ResolveContextTarget = Callable[[Sequence[str], Sequence[str], str], str | None]
 
 RESERVED_SYMBOL_NAMES = frozenset(
     {
@@ -145,6 +149,121 @@ def path_aliases(file_path: str) -> set[str]:
     return {alias for alias in aliases if alias}
 
 
+@lru_cache(maxsize=32_768)
+def _normalize_lookup_path(raw_path: str) -> str:
+    return str(raw_path or "").strip().replace("\\", "/").strip("/")
+
+
+def _dedupe_lowered_lookup_candidates(*candidates: str) -> tuple[str, ...]:
+    normalized_candidates: list[str] = []
+    seen: set[str] = set()
+    for candidate in candidates:
+        normalized_candidate = _normalize_lookup_path(candidate)
+        if not normalized_candidate:
+            continue
+        lowered_candidate = normalized_candidate.lower()
+        if lowered_candidate in seen:
+            continue
+        seen.add(lowered_candidate)
+        normalized_candidates.append(lowered_candidate)
+    return tuple(normalized_candidates)
+
+
+@lru_cache(maxsize=32_768)
+def _import_lookup_suffixes(normalized_target: str) -> tuple[str, ...]:
+    namespace_path = normalized_target.replace(".", "/")
+    leaf_name = normalized_target.rsplit(".", 1)[-1]
+    return _dedupe_lowered_lookup_candidates(
+        normalized_target,
+        namespace_path,
+        f"{namespace_path}.fs",
+        f"{namespace_path}.fsi",
+        f"{namespace_path}.fsx",
+        f"{leaf_name}.fs",
+        f"{leaf_name}.fsi",
+        f"{leaf_name}.fsx",
+    )
+
+
+@lru_cache(maxsize=32_768)
+def _import_lookup_prefixes(normalized_target: str) -> tuple[str, ...]:
+    namespace_path = normalized_target.replace(".", "/")
+    return _dedupe_lowered_lookup_candidates(
+        namespace_path,
+        f"src/{namespace_path}",
+        f"app/{namespace_path}",
+        f"lib/{namespace_path}",
+    )
+
+
+@lru_cache(maxsize=32_768)
+def _context_lookup_suffixes(normalized_target: str) -> tuple[str, ...]:
+    return _dedupe_lowered_lookup_candidates(
+        f"{normalized_target}.fs",
+        f"{normalized_target}.fsi",
+        f"{normalized_target}.fsx",
+    )
+
+
+def _build_module_index_lookup(module_index: dict[str, str]) -> _ModuleIndexLookup:
+    values = tuple(sorted(set(module_index.values())))
+    exact_paths: dict[str, str] = {}
+    suffix_paths: dict[str, str] = {}
+    directory_suffix_paths: dict[str, str] = {}
+    for file_path in values:
+        normalized_file_path = _normalize_lookup_path(file_path)
+        if not normalized_file_path:
+            continue
+        lowered_file_path = normalized_file_path.lower()
+        exact_paths.setdefault(lowered_file_path, normalized_file_path)
+        path_parts = PurePosixPath(lowered_file_path).parts
+        for start in range(len(path_parts)):
+            suffix_paths.setdefault("/".join(path_parts[start:]), normalized_file_path)
+        directory_parts = path_parts[:-1]
+        for start in range(len(directory_parts)):
+            directory_suffix_paths.setdefault(
+                "/".join(directory_parts[start:]),
+                normalized_file_path,
+            )
+    return _ModuleIndexLookup(
+        values=values,
+        exact_paths=exact_paths,
+        suffix_paths=suffix_paths,
+        directory_suffix_paths=directory_suffix_paths,
+    )
+
+
+def _resolve_suffix_from_lookup(
+    *,
+    module_index_lookup: _ModuleIndexLookup,
+    suffixes: Sequence[str],
+) -> str | None:
+    for suffix in suffixes:
+        if not suffix:
+            continue
+        direct_match = module_index_lookup.exact_paths.get(suffix)
+        if direct_match is not None:
+            return direct_match
+        suffix_match = module_index_lookup.suffix_paths.get(suffix)
+        if suffix_match is not None:
+            return suffix_match
+    return None
+
+
+def _resolve_directory_prefix_from_lookup(
+    *,
+    module_index_lookup: _ModuleIndexLookup,
+    prefixes: Sequence[str],
+) -> str | None:
+    for prefix in prefixes:
+        if not prefix:
+            continue
+        prefix_match = module_index_lookup.directory_suffix_paths.get(prefix)
+        if prefix_match is not None:
+            return prefix_match
+    return None
+
+
 def collect_symbol_entries(
     text: str,
     *,
@@ -273,25 +392,30 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
+    include_symbol_aliases: bool = True,
 ) -> set[str]:
     path = PurePosixPath(file_path)
     if path.suffix not in {".fs", ".fsi", ".fsx"}:
         return set()
     aliases = path_aliases(file_path)
-    try:
-        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        text = ""
-    namespaces = namespaces_from_text(text)
+    effective_text = text
+    if effective_text is None:
+        try:
+            effective_text = (root_path / path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            effective_text = ""
+    namespaces = namespaces_from_text(effective_text)
     aliases.update(namespaces)
     for namespace in namespaces:
         aliases.add(f"{namespace}.{path.stem}")
-    for symbol_entry in collect_symbol_entries(
-        text,
-        file_path=file_path,
-        stable_identifier=stable_identifier,
-    ):
-        aliases.update(symbol_entry["qualified_names"])
+    if include_symbol_aliases:
+        for symbol_entry in collect_symbol_entries(
+            effective_text,
+            file_path=file_path,
+            stable_identifier=stable_identifier,
+        ):
+            aliases.update(symbol_entry["qualified_names"])
     return {alias for alias in aliases if alias}
 
 
@@ -299,6 +423,7 @@ def resolve_import(
     import_target: str,
     *,
     module_index: dict[str, str],
+    module_index_lookup: _ModuleIndexLookup | None,
     resolve_suffix_match: ResolveSuffixMatch,
     resolve_directory_prefix_match: ResolveDirectoryPrefixMatch,
 ) -> str | None:
@@ -308,30 +433,32 @@ def resolve_import(
     direct_match = module_index.get(normalized_target)
     if direct_match is not None:
         return direct_match
-    namespace_path = normalized_target.replace(".", "/")
-    resolved = resolve_suffix_match(
-        module_index=module_index,
-        suffixes=[
-            normalized_target,
-            namespace_path,
-            f"{namespace_path}.fs",
-            f"{namespace_path}.fsi",
-            f"{namespace_path}.fsx",
-            f"{normalized_target.split('.')[-1]}.fs",
-            f"{normalized_target.split('.')[-1]}.fsi",
-            f"{normalized_target.split('.')[-1]}.fsx",
-        ],
-    )
+    resolved = None
+    suffixes = _import_lookup_suffixes(normalized_target)
+    if module_index_lookup is not None:
+        resolved = _resolve_suffix_from_lookup(
+            module_index_lookup=module_index_lookup,
+            suffixes=suffixes,
+        )
+    if resolved is None and module_index_lookup is None:
+        resolved = resolve_suffix_match(
+            module_index=module_index,
+            suffixes=suffixes,
+        )
     if resolved is not None:
         return resolved
+    prefixes = _import_lookup_prefixes(normalized_target)
+    if module_index_lookup is not None:
+        resolved = _resolve_directory_prefix_from_lookup(
+            module_index_lookup=module_index_lookup,
+            prefixes=prefixes,
+        )
+        if resolved is not None:
+            return resolved
+        return None
     return resolve_directory_prefix_match(
         module_index=module_index,
-        prefixes=[
-            namespace_path,
-            f"src/{namespace_path}",
-            f"app/{namespace_path}",
-            f"lib/{namespace_path}",
-        ],
+        prefixes=prefixes,
     )
 
 
@@ -341,6 +468,7 @@ def resolve_context_reference(
     opened_namespaces: Sequence[str],
     target_name: str,
     module_index: dict[str, str],
+    module_index_lookup: _ModuleIndexLookup | None,
     resolve_suffix_match: ResolveSuffixMatch,
     resolve_directory_prefix_match: ResolveDirectoryPrefixMatch,
 ) -> str | None:
@@ -350,38 +478,120 @@ def resolve_context_reference(
     resolved = resolve_import(
         normalized_target,
         module_index=module_index,
+        module_index_lookup=module_index_lookup,
         resolve_suffix_match=resolve_suffix_match,
         resolve_directory_prefix_match=resolve_directory_prefix_match,
     )
     if resolved is not None:
         return resolved
-    for namespace in tuple(current_namespaces) + tuple(opened_namespaces):
+    current_namespace_tuple = (
+        current_namespaces if isinstance(current_namespaces, tuple) else tuple(current_namespaces)
+    )
+    opened_namespace_tuple = (
+        opened_namespaces if isinstance(opened_namespaces, tuple) else tuple(opened_namespaces)
+    )
+    for namespace in current_namespace_tuple + opened_namespace_tuple:
         resolved = resolve_import(
             f"{namespace}.{normalized_target}",
             module_index=module_index,
+            module_index_lookup=module_index_lookup,
             resolve_suffix_match=resolve_suffix_match,
             resolve_directory_prefix_match=resolve_directory_prefix_match,
         )
         if resolved is not None:
             return resolved
-    return resolve_suffix_match(
-        module_index=module_index,
-        suffixes=[
-            f"{normalized_target}.fs",
-            f"{normalized_target}.fsi",
-            f"{normalized_target}.fsx",
-        ],
-    )
+    suffixes = _context_lookup_suffixes(normalized_target)
+    if module_index_lookup is not None:
+        resolved = _resolve_suffix_from_lookup(
+            module_index_lookup=module_index_lookup,
+            suffixes=suffixes,
+        )
+        if resolved is not None:
+            return resolved
+        return None
+    return resolve_suffix_match(module_index=module_index, suffixes=suffixes)
+
+
+def _build_cached_resolvers(
+    *,
+    module_index: dict[str, str],
+    resolve_suffix_match: ResolveSuffixMatch,
+    resolve_directory_prefix_match: ResolveDirectoryPrefixMatch,
+) -> tuple[ResolveImportTarget, ResolveContextTarget]:
+    module_index_lookup = _build_module_index_lookup(module_index)
+    import_cache: dict[str, str | None] = {}
+    context_cache: dict[tuple[tuple[str, ...], tuple[str, ...], str], str | None] = {}
+    context_suffix_cache: dict[str, str | None] = {}
+
+    def resolve_import_target(import_target: str) -> str | None:
+        normalized_target = normalize_target(import_target)
+        if not normalized_target:
+            return None
+        if normalized_target in import_cache:
+            return import_cache[normalized_target]
+        resolved = resolve_import(
+            normalized_target,
+            module_index=module_index,
+            module_index_lookup=module_index_lookup,
+            resolve_suffix_match=resolve_suffix_match,
+            resolve_directory_prefix_match=resolve_directory_prefix_match,
+        )
+        import_cache[normalized_target] = resolved
+        return resolved
+
+    def resolve_context_target(
+        current_namespaces: Sequence[str],
+        opened_namespaces: Sequence[str],
+        target_name: str,
+    ) -> str | None:
+        normalized_target = normalize_target(target_name)
+        if not normalized_target:
+            return None
+        cache_key = (
+            current_namespaces
+            if isinstance(current_namespaces, tuple)
+            else tuple(current_namespaces),
+            opened_namespaces
+            if isinstance(opened_namespaces, tuple)
+            else tuple(opened_namespaces),
+            normalized_target,
+        )
+        if cache_key in context_cache:
+            return context_cache[cache_key]
+        current_namespace_tuple, opened_namespace_tuple, _ = cache_key
+        resolved = resolve_import_target(normalized_target)
+        if resolved is None:
+            for namespace in current_namespace_tuple + opened_namespace_tuple:
+                resolved = resolve_import_target(f"{namespace}.{normalized_target}")
+                if resolved is not None:
+                    break
+        if resolved is None:
+            resolved = context_suffix_cache.get(normalized_target)
+            if normalized_target not in context_suffix_cache:
+                suffixes = _context_lookup_suffixes(normalized_target)
+                if module_index_lookup is not None:
+                    resolved = _resolve_suffix_from_lookup(
+                        module_index_lookup=module_index_lookup,
+                        suffixes=suffixes,
+                    )
+                else:
+                    resolved = resolve_suffix_match(
+                        module_index=module_index,
+                        suffixes=suffixes,
+                    )
+                context_suffix_cache[normalized_target] = resolved
+        context_cache[cache_key] = resolved
+        return resolved
+
+    return resolve_import_target, resolve_context_target
 
 
 def extract_import_bindings(
     file_path: str,
     text: str,
-    module_index: dict[str, str],
     *,
     stable_identifier: StableIdentifier,
-    resolve_suffix_match: ResolveSuffixMatch,
-    resolve_directory_prefix_match: ResolveDirectoryPrefixMatch,
+    resolve_import_target: ResolveImportTarget,
 ) -> tuple[tuple[_Dependency, ...], dict[str, _ImportedSymbolBinding], tuple[str, ...]]:
     dependencies: list[_Dependency] = []
     dependency_keys: set[tuple[str | None, str, str]] = set()
@@ -391,12 +601,7 @@ def extract_import_bindings(
         import_target = normalize_target(match.group("target"))
         if not import_target:
             continue
-        target_file = resolve_import(
-            import_target,
-            module_index=module_index,
-            resolve_suffix_match=resolve_suffix_match,
-            resolve_directory_prefix_match=resolve_directory_prefix_match,
-        )
+        target_file = resolve_import_target(import_target)
         dependency_key = (target_file, import_target, "imports")
         if dependency_key not in dependency_keys:
             dependency_keys.add(dependency_key)
@@ -431,37 +636,24 @@ def extract_import_bindings(
     return tuple(dependencies), import_bindings, opened_namespaces
 
 
-def parse_dependencies_only(
+def _append_type_reference_dependencies(
+    *,
+    dependencies: tuple[_Dependency, ...],
+    import_bindings: dict[str, _ImportedSymbolBinding],
+    opened_namespaces: Sequence[str],
+    current_namespaces: Sequence[str],
+    declared_symbol_names: set[str],
     file_path: str,
     text: str,
-    module_index: dict[str, str],
-    *,
     stable_identifier: StableIdentifier,
-    resolve_suffix_match: ResolveSuffixMatch,
-    resolve_directory_prefix_match: ResolveDirectoryPrefixMatch,
+    resolve_context_target: ResolveContextTarget,
 ) -> tuple[_Dependency, ...]:
-    dependencies, import_bindings, opened_namespaces = extract_import_bindings(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=stable_identifier,
-        resolve_suffix_match=resolve_suffix_match,
-        resolve_directory_prefix_match=resolve_directory_prefix_match,
-    )
     dependency_entries = list(dependencies)
     dependency_keys = {
         (dependency.target_file, dependency.target_symbol, dependency.dependency_type)
         for dependency in dependency_entries
     }
-    declared_symbol_names = {
-        str(entry["symbol_name"])
-        for entry in collect_symbol_entries(
-            text,
-            file_path=file_path,
-            stable_identifier=stable_identifier,
-        )
-    }
-    current_namespaces = namespaces_from_text(text)
+    resolved_type_targets: dict[str, str | None] = {}
     imported_short_names = {
         alias
         for alias in import_bindings
@@ -476,14 +668,14 @@ def parse_dependencies_only(
             or type_name in imported_short_names
         ):
             continue
-        target_file = resolve_context_reference(
-            current_namespaces=current_namespaces,
-            opened_namespaces=opened_namespaces,
-            target_name=type_name,
-            module_index=module_index,
-            resolve_suffix_match=resolve_suffix_match,
-            resolve_directory_prefix_match=resolve_directory_prefix_match,
-        )
+        target_file = resolved_type_targets.get(type_name)
+        if type_name not in resolved_type_targets:
+            target_file = resolve_context_target(
+                current_namespaces,
+                opened_namespaces,
+                type_name,
+            )
+            resolved_type_targets[type_name] = target_file
         dependency_key = (target_file, type_name, "references")
         if target_file is None or target_file == file_path or dependency_key in dependency_keys:
             continue
@@ -503,6 +695,48 @@ def parse_dependencies_only(
     return tuple(dependency_entries)
 
 
+def parse_dependencies_only(
+    file_path: str,
+    text: str,
+    module_index: dict[str, str],
+    *,
+    stable_identifier: StableIdentifier,
+    resolve_suffix_match: ResolveSuffixMatch,
+    resolve_directory_prefix_match: ResolveDirectoryPrefixMatch,
+) -> tuple[_Dependency, ...]:
+    resolve_import_target, resolve_context_target = _build_cached_resolvers(
+        module_index=module_index,
+        resolve_suffix_match=resolve_suffix_match,
+        resolve_directory_prefix_match=resolve_directory_prefix_match,
+    )
+    dependencies, import_bindings, opened_namespaces = extract_import_bindings(
+        file_path,
+        text,
+        stable_identifier=stable_identifier,
+        resolve_import_target=resolve_import_target,
+    )
+    declared_symbol_names = {
+        str(entry["symbol_name"])
+        for entry in collect_symbol_entries(
+            text,
+            file_path=file_path,
+            stable_identifier=stable_identifier,
+        )
+    }
+    current_namespaces = namespaces_from_text(text)
+    return _append_type_reference_dependencies(
+        dependencies=dependencies,
+        import_bindings=import_bindings,
+        opened_namespaces=opened_namespaces,
+        current_namespaces=current_namespaces,
+        declared_symbol_names=declared_symbol_names,
+        file_path=file_path,
+        text=text,
+        stable_identifier=stable_identifier,
+        resolve_context_target=resolve_context_target,
+    )
+
+
 def parse_file(
     file_path: str,
     text: str,
@@ -516,6 +750,11 @@ def parse_file(
     tuple[_Dependency, ...],
     tuple[_SymbolReferenceCandidate, ...],
 ]:
+    resolve_import_target, resolve_context_target = _build_cached_resolvers(
+        module_index=module_index,
+        resolve_suffix_match=resolve_suffix_match,
+        resolve_directory_prefix_match=resolve_directory_prefix_match,
+    )
     symbol_entries = collect_symbol_entries(
         text,
         file_path=file_path,
@@ -536,13 +775,12 @@ def parse_file(
     dependencies, import_bindings, opened_namespaces = extract_import_bindings(
         file_path,
         text,
-        module_index,
         stable_identifier=stable_identifier,
-        resolve_suffix_match=resolve_suffix_match,
-        resolve_directory_prefix_match=resolve_directory_prefix_match,
+        resolve_import_target=resolve_import_target,
     )
     reference_candidates: dict[str, _SymbolReferenceCandidate] = {}
-    current_namespaces = namespaces_from_text(text)
+    current_namespaces = tuple(namespaces_from_text(text))
+    resolved_alias_targets: dict[str, str | None] = {}
     lines = text.splitlines()
     for symbol in symbols:
         snippet = "\n".join(lines[symbol.start_line - 1 : symbol.end_line])
@@ -554,14 +792,14 @@ def parse_file(
             binding = import_bindings.get(alias)
             target_file = binding.target_file if binding is not None else None
             if target_file is None:
-                target_file = resolve_context_reference(
-                    current_namespaces=current_namespaces,
-                    opened_namespaces=opened_namespaces,
-                    target_name=alias,
-                    module_index=module_index,
-                    resolve_suffix_match=resolve_suffix_match,
-                    resolve_directory_prefix_match=resolve_directory_prefix_match,
-                )
+                target_file = resolved_alias_targets.get(alias)
+                if alias not in resolved_alias_targets:
+                    target_file = resolve_context_target(
+                        current_namespaces,
+                        opened_namespaces,
+                        alias,
+                    )
+                    resolved_alias_targets[alias] = target_file
             if target_file is None:
                 continue
             edge_id = stable_identifier(
@@ -585,15 +823,19 @@ def parse_file(
                     reference_type="references_symbol",
                 ),
             )
+    dependency_entries = _append_type_reference_dependencies(
+        dependencies=dependencies,
+        import_bindings=import_bindings,
+        opened_namespaces=opened_namespaces,
+        current_namespaces=current_namespaces,
+        declared_symbol_names={str(entry["symbol_name"]) for entry in symbol_entries},
+        file_path=file_path,
+        text=text,
+        stable_identifier=stable_identifier,
+        resolve_context_target=resolve_context_target,
+    )
     return (
         symbols,
-        parse_dependencies_only(
-            file_path,
-            text,
-            module_index,
-            stable_identifier=stable_identifier,
-            resolve_suffix_match=resolve_suffix_match,
-            resolve_directory_prefix_match=resolve_directory_prefix_match,
-        ),
+        dependency_entries,
         tuple(reference_candidates[key] for key in sorted(reference_candidates)),
     )

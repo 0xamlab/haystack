@@ -82,6 +82,20 @@ def test_repository_intelligence_moonbit_helpers_are_modularized() -> None:
     )
 
 
+def test_moonbit_strip_comments_reuses_cached_results() -> None:
+    source_text = "pub fn main() -> Int {\n  1 // comment\n}\n"
+    repository_moonbit_primitives.clear_strip_comments_cache()
+
+    first_result = repository_moonbit_primitives.strip_comments(source_text)
+    first_cache_info = repository_moonbit_primitives._strip_comments_cached.cache_info()
+    second_result = repository_moonbit_primitives.strip_comments(source_text)
+    second_cache_info = repository_moonbit_primitives._strip_comments_cached.cache_info()
+
+    assert first_result == second_result
+    assert first_cache_info.hits == 0
+    assert second_cache_info.hits == 1
+
+
 def test_moonbit_adapter_module_aliases_include_package_import_paths(tmp_path: Path) -> None:
     repo_path = tmp_path / "moonbit-alias-repo"
     (repo_path / "math").mkdir(parents=True)
@@ -104,6 +118,62 @@ def test_moonbit_adapter_module_aliases_include_package_import_paths(tmp_path: P
     assert "moonbit/core/math" in aliases
     assert "add" in aliases
     assert "math.add" in aliases
+
+
+def test_moonbit_adapter_module_aliases_can_skip_symbol_aliases(tmp_path: Path) -> None:
+    repo_path = tmp_path / "moonbit-alias-module-only-repo"
+    (repo_path / "math").mkdir(parents=True)
+    (repo_path / "moon.mod").write_text('name = "moonbit/core"\n', encoding="utf-8")
+    (repo_path / "math" / "moon.pkg").write_text("", encoding="utf-8")
+    (repo_path / "math" / "math.mbt").write_text(
+        "pub fn add(x : Int, y : Int) -> Int {\n  x + y\n}\n",
+        encoding="utf-8",
+    )
+
+    aliases = repository_service.moonbit_adapter.module_aliases_for_path(
+        root_path=repo_path,
+        file_path="math/math.mbt",
+        stable_identifier=repository_service._stable_identifier,
+        include_symbol_aliases=False,
+    )
+
+    assert "moonbit/core/math" in aliases
+    assert "math" in aliases
+    assert "add" not in aliases
+    assert "math.add" not in aliases
+
+
+def test_moonbit_adapter_module_aliases_reuse_supplied_stripped_text(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    repo_path = tmp_path / "moonbit-alias-reuse"
+    (repo_path / "app").mkdir(parents=True)
+    file_path = "app/main.mbt"
+    text = "pub fn main() -> Int {\n  1\n}\n"
+    strip_calls: list[str] = []
+
+    def counting_strip_comments(source_text: str) -> str:
+        strip_calls.append(source_text)
+        return source_text
+
+    monkeypatch.setattr(repository_moonbit_primitives, "strip_comments", counting_strip_comments)
+    monkeypatch.setattr(
+        repository_moonbit_analysis_support,
+        "strip_comments",
+        counting_strip_comments,
+    )
+
+    aliases = repository_service.moonbit_adapter.module_aliases_for_path(
+        root_path=repo_path,
+        file_path=file_path,
+        stable_identifier=repository_service._stable_identifier,
+        text=text,
+        stripped_text=text,
+    )
+
+    assert "main" in aliases
+    assert strip_calls == []
 
 
 def test_moonbit_adapter_parse_file_extracts_config_dependencies_and_references(
@@ -161,6 +231,50 @@ def test_moonbit_adapter_parse_file_extracts_config_dependencies_and_references(
     assert any(reference.target_file == "app/app.mbt" for reference in references)
 
 
+def test_moonbit_adapter_reuses_single_stripped_text_per_parse(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    original_strip_comments = repository_moonbit_primitives.strip_comments
+    strip_call_count = {"value": 0}
+
+    def counting_strip_comments(text: str) -> str:
+        strip_call_count["value"] += 1
+        return original_strip_comments(text)
+
+    monkeypatch.setattr(
+        repository_moonbit_primitives,
+        "strip_comments",
+        counting_strip_comments,
+    )
+    monkeypatch.setattr(
+        repository_moonbit_analysis_support,
+        "strip_comments",
+        counting_strip_comments,
+    )
+
+    repository_service.moonbit_adapter.parse_dependencies_only(
+        "app/moon.pkg",
+        'import { "moonbit/core/util" @util }\n',
+        {"moonbit/core/util": "util/util.mbt"},
+        stable_identifier=repository_service._stable_identifier,
+        normalize_repository_relative_path=repository_service._normalize_repository_relative_path,
+        resolve_suffix_match=repository_service._resolve_suffix_match,
+    )
+    assert strip_call_count["value"] == 1
+
+    strip_call_count["value"] = 0
+    repository_service.moonbit_adapter.parse_file(
+        "app/app.mbt",
+        "pub fn helper() -> Int {\n  1\n}\n\npub fn main() -> Int {\n  helper()\n}\n",
+        {"app/app.mbt": "app/app.mbt"},
+        stable_identifier=repository_service._stable_identifier,
+        normalize_repository_relative_path=repository_service._normalize_repository_relative_path,
+        resolve_suffix_match=repository_service._resolve_suffix_match,
+    )
+
+    assert strip_call_count["value"] == 1
+
+
 def test_moonbit_language_detection_supports_sources_and_configs_without_overclaiming() -> None:
     assert ".mbt" in repository_service._TEXT_FILE_SUFFIXES
     assert ".mbti" in repository_service._TEXT_FILE_SUFFIXES
@@ -194,6 +308,38 @@ def test_moonbit_language_detection_supports_sources_and_configs_without_overcla
         )
         == "unknown"
     )
+
+
+def test_build_module_index_reuses_preloaded_text_for_moonbit_root_scoped_aliases(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo_path = tmp_path / "moonbit-module-alias-reuse-repo"
+    source_path = repo_path / "app" / "main.mbt"
+    source_path.parent.mkdir(parents=True)
+    source_path.write_text("pub fn main() -> Int {\n  1\n}\n", encoding="utf-8")
+
+    original_read_text = Path.read_text
+    source_reads: list[str] = []
+
+    def tracking_read_text(self: Path, *args, **kwargs):
+        if self == source_path:
+            source_reads.append(str(self))
+            if len(source_reads) > 1:
+                raise AssertionError(
+                    "expected moonbit root-scoped alias builder to reuse preloaded text"
+                )
+        return original_read_text(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", tracking_read_text)
+
+    index = repository_service._build_module_index(
+        ["app/main.mbt"],
+        root_path=repo_path,
+    )
+
+    assert source_reads == [str(source_path)]
+    assert index["main"] == "app/main.mbt"
 
 
 def test_operational_seed_plan_without_diagnostics_promotes_moonbit_when_surface_dominates(

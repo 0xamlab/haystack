@@ -9,6 +9,9 @@ import pytest
 import apps.cli.main as cli
 import apps.cli.main.__main__ as cli_module_entry
 import apps.cli.support as cli_support
+from apps.api_server.services.repository_language_priority import (
+    DEFAULT_REAL_LANGUAGE_RANK_TARGET,
+)
 
 
 def _capture_stdout(func, *args, **kwargs) -> str:  # type: ignore[no-untyped-def]
@@ -71,9 +74,9 @@ def test_cmd_repositories_capabilities_gets_global_surface_and_prints_summary(
             "supported_languages": ["python", "typescript", "coq"],
             "support_progress": {
                 "supported_real_language_count": 3,
-                "ranked_target_language_count": 200,
-                "progress_fraction": 3 / 200,
-                "progress_label": "3 / 200",
+                "ranked_target_language_count": DEFAULT_REAL_LANGUAGE_RANK_TARGET,
+                "progress_fraction": 3 / DEFAULT_REAL_LANGUAGE_RANK_TARGET,
+                "progress_label": f"3 / {DEFAULT_REAL_LANGUAGE_RANK_TARGET}",
             },
         }
 
@@ -81,8 +84,37 @@ def test_cmd_repositories_capabilities_gets_global_surface_and_prints_summary(
     output = _capture_stdout(cli.cmd_repositories_capabilities, "table")
 
     assert "Supported:       3" in output
-    assert "Progress:        3 / 200" in output
+    assert f"Progress:        3 / {DEFAULT_REAL_LANGUAGE_RANK_TARGET}" in output
     assert "Languages:       python, typescript, coq" in output
+
+
+def test_cmd_repositories_capabilities_prints_requested_rank_when_target_is_clamped(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(cli, "_RICH", False)
+
+    def _fake_api_request(method: str, path: str, body=None):  # type: ignore[no-untyped-def]
+        assert method == "GET"
+        assert path == "/v1/repositories/capabilities"
+        assert body is None
+        return 200, {
+            "supported_languages": ["python", "typescript", "coq"],
+            "support_progress": {
+                "supported_real_language_count": 3,
+                "ranked_target_language_count": 3,
+                "requested_ranked_target_language_count": 250,
+                "available_ranked_real_language_count": 3,
+                "target_clamped_to_available_ranked_real_languages": True,
+                "progress_fraction": 1.0,
+                "progress_label": "3 / 3",
+            },
+        }
+
+    monkeypatch.setattr(cli, "api_request", _fake_api_request)
+    output = _capture_stdout(cli.cmd_repositories_capabilities, "table")
+
+    assert "Progress:        3 / 3" in output
+    assert "Requested rank: 250 (effective 3, available ranked real languages 3)" in output
 
 
 def test_cmd_repositories_decision_plan_posts_request_and_prints_summary(

@@ -2,9 +2,14 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable, Iterable
+from functools import lru_cache
 from pathlib import Path, PurePosixPath
 from typing import Any
 
+from apps.api_server.services.repository_intelligence_adapters.line_numbers import (
+    line_number_for_offset,
+    line_start_offsets,
+)
 from apps.api_server.services.repository_intelligence_contracts import _Symbol
 
 StableIdentifier = Callable[[str, Any], str]
@@ -96,9 +101,14 @@ def _preserve_line_count_comment(match: re.Match[str]) -> str:
     return "\n" * match.group(0).count("\n")
 
 
-def strip_comments(text: str) -> str:
+def _strip_comments_uncached(text: str) -> str:
     without_block_comments = _BLOCK_COMMENT_RE.sub(_preserve_line_count_comment, text)
     return _LINE_COMMENT_RE.sub("", without_block_comments)
+
+
+@lru_cache(maxsize=512)
+def strip_comments(text: str) -> str:
+    return _strip_comments_uncached(text)
 
 
 def normalize_identifier(value: str) -> str:
@@ -133,8 +143,17 @@ def _line_count(text: str) -> int:
     return max(1, text.count("\n") + 1)
 
 
-def _line_number_from_index(text: str, offset: int) -> int:
-    return text.count("\n", 0, max(0, offset)) + 1
+def _line_number_from_index(
+    text: str,
+    offset: int,
+    *,
+    starts: tuple[int, ...] | None = None,
+) -> int:
+    return line_number_for_offset(text, offset, starts=starts)
+
+
+def _coerce_stripped_text(text: str, stripped_text: str | None = None) -> str:
+    return strip_comments(text) if stripped_text is None else stripped_text
 
 
 def _ordered_names(*values: str) -> tuple[str, ...]:
@@ -149,8 +168,13 @@ def _ordered_names(*values: str) -> tuple[str, ...]:
     return tuple(ordered)
 
 
-def declared_object_entries(text: str) -> tuple[tuple[str, str, str | None, int], ...]:
-    stripped_text = strip_comments(text)
+def declared_object_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, str, str | None, int], ...]:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
+    starts = line_start_offsets(stripped_text)
     entries: list[tuple[str, str, str | None, int]] = []
     for match in _OBJECT_DECL_RE.finditer(stripped_text):
         kind = normalize_identifier(match.group("kind")).lower()
@@ -158,7 +182,14 @@ def declared_object_entries(text: str) -> tuple[tuple[str, str, str | None, int]
         extends_name = clean_object_name(match.group("extends") or "") or None
         if kind not in AL_OBJECT_KINDS or not name:
             continue
-        entries.append((kind, name, extends_name, _line_number_from_index(stripped_text, match.start())))
+        entries.append(
+            (
+                kind,
+                name,
+                extends_name,
+                _line_number_from_index(stripped_text, match.start("kind"), starts=starts),
+            )
+        )
     return tuple(entries)
 
 
@@ -167,11 +198,19 @@ def declared_object_name_from_text(text: str) -> str | None:
     return entries[0][1] if entries else None
 
 
-def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
-    stripped_text = strip_comments(text)
+def iter_symbol_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, str, int], ...]:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
+    starts = line_start_offsets(stripped_text)
     entries: list[tuple[str, str, int]] = []
     seen: set[tuple[str, str, int]] = set()
-    for kind, name, _extends_name, line_number in declared_object_entries(stripped_text):
+    for kind, name, _extends_name, line_number in declared_object_entries(
+        text,
+        stripped_text=stripped_text,
+    ):
         item = (kind, name, line_number)
         if item not in seen:
             seen.add(item)
@@ -181,17 +220,29 @@ def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
             name = normalize_identifier(match.group("name"))
             if not name:
                 continue
-            item = (kind, name, _line_number_from_index(stripped_text, match.start()))
+            item = (
+                kind,
+                name,
+                _line_number_from_index(stripped_text, match.start("name"), starts=starts),
+            )
             if item not in seen:
                 seen.add(item)
                 entries.append(item)
     return tuple(sorted(entries, key=lambda item: (item[2], item[0], item[1])))
 
 
-def iter_dependency_entries(text: str) -> tuple[tuple[str, str, int], ...]:
+def iter_dependency_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, str, int], ...]:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
     entries: list[tuple[str, str, int]] = []
     seen: set[tuple[str, str, int]] = set()
-    for kind, _name, extends_name, line_number in declared_object_entries(text):
+    for kind, _name, extends_name, line_number in declared_object_entries(
+        text,
+        stripped_text=stripped_text,
+    ):
         if kind.endswith("extension") and extends_name:
             item = ("extends", extends_name, line_number)
             if item not in seen:
@@ -200,8 +251,13 @@ def iter_dependency_entries(text: str) -> tuple[tuple[str, str, int], ...]:
     return tuple(entries)
 
 
-def iter_reference_entries(text: str) -> tuple[tuple[str | None, str, int], ...]:
-    stripped_text = strip_comments(text)
+def iter_reference_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str | None, str, int], ...]:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
+    starts = line_start_offsets(stripped_text)
     entries: list[tuple[str | None, str, int]] = []
     seen: set[tuple[str | None, str, int]] = set()
     for match in _QUALIFIED_CALL_RE.finditer(stripped_text):
@@ -209,12 +265,20 @@ def iter_reference_entries(text: str) -> tuple[tuple[str | None, str, int], ...]
         name = normalize_identifier(match.group("name"))
         if not owner or not name:
             continue
-        item = (owner, name, _line_number_from_index(stripped_text, match.start()))
+        item = (
+            owner,
+            name,
+            _line_number_from_index(stripped_text, match.start("name"), starts=starts),
+        )
         if item not in seen:
             seen.add(item)
             entries.append(item)
     for match in _CALL_RE.finditer(stripped_text):
-        line_number = _line_number_from_index(stripped_text, match.start())
+        line_number = _line_number_from_index(
+            stripped_text,
+            match.start("name"),
+            starts=starts,
+        )
         line_start = stripped_text.rfind("\n", 0, match.start()) + 1
         line_end = stripped_text.find("\n", match.start())
         if line_end < 0:
@@ -291,13 +355,23 @@ def module_aliases_for_path(
         text = ""
     if text and not is_probable_al_source(path=normalized_path, text=text):
         return {alias for alias in aliases if alias}
-    for kind, name, _extends_name, _line_number in declared_object_entries(text):
+    stripped_text = strip_comments(text)
+    for kind, name, _extends_name, _line_number in declared_object_entries(
+        text,
+        stripped_text=stripped_text,
+    ):
         aliases.add(name)
         aliases.add(f"{kind}:{name}")
-    for _kind, _name, extends_name, _line_number in declared_object_entries(text):
+    for _kind, _name, extends_name, _line_number in declared_object_entries(
+        text,
+        stripped_text=stripped_text,
+    ):
         if extends_name:
             aliases.add(extends_name)
-    for _kind, symbol_name, _line_number in iter_symbol_entries(text):
+    for _kind, symbol_name, _line_number in iter_symbol_entries(
+        text,
+        stripped_text=stripped_text,
+    ):
         aliases.add(symbol_name)
     return {alias for alias in aliases if alias}
 
@@ -308,7 +382,9 @@ def collect_symbols(
     text: str,
     stable_identifier: StableIdentifier,
 ) -> tuple[_Symbol, ...]:
-    object_name = declared_object_name_from_text(text) or module_name_from_path(file_path)
+    stripped_text = strip_comments(text)
+    object_entries = declared_object_entries(text, stripped_text=stripped_text)
+    object_name = object_entries[0][1] if object_entries else module_name_from_path(file_path)
     line_count = _line_count(text)
     module_symbol = _Symbol(
         symbol_id=stable_identifier(
@@ -322,7 +398,7 @@ def collect_symbols(
         parent_symbol_id=None,
         signature=f"al {object_name}",
     )
-    symbol_entries = iter_symbol_entries(text)
+    symbol_entries = iter_symbol_entries(text, stripped_text=stripped_text)
     symbols: list[_Symbol] = [module_symbol]
     for index, (symbol_kind, symbol_name, start_line) in enumerate(symbol_entries):
         end_line = symbol_entries[index + 1][2] - 1 if index + 1 < len(symbol_entries) else line_count

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from bisect import bisect_right
+from functools import lru_cache
 import re
 from collections.abc import Callable, Sequence
 from pathlib import Path, PurePosixPath
@@ -94,6 +96,7 @@ UNQUALIFIED_CALL_RE = re.compile(
 )
 
 
+@lru_cache(maxsize=1024)
 def strip_comments(text: str) -> str:
     chars: list[str] = []
     index = 0
@@ -124,6 +127,24 @@ def strip_comments(text: str) -> str:
     return "".join(chars)
 
 
+@lru_cache(maxsize=1024)
+def _line_start_offsets(text: str) -> tuple[int, ...]:
+    offsets = [0]
+    start = 0
+    while True:
+        newline_index = text.find("\n", start)
+        if newline_index < 0:
+            break
+        offsets.append(newline_index + 1)
+        start = newline_index + 1
+    return tuple(offsets)
+
+
+def _line_number(text: str, index: int) -> int:
+    bounded_index = max(0, min(index, len(text)))
+    return bisect_right(_line_start_offsets(text), bounded_index)
+
+
 def normalize_target(raw_target: str) -> str:
     return str(raw_target or "").strip().strip("();,")
 
@@ -132,10 +153,14 @@ def normalize_symbol_name(raw_name: str) -> str:
     return str(raw_name or "").strip().strip("();,")
 
 
-def declared_module_names(text: str) -> tuple[str, ...]:
+def declared_module_names(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[str, ...]:
     names: list[str] = []
     seen: set[str] = set()
-    stripped_text = strip_comments(text)
+    stripped_text = strip_comments(text) if stripped_text is None else stripped_text
     for match in MODULE_DECL_RE.finditer(stripped_text):
         name = normalize_symbol_name(str(match.group("name") or ""))
         canonical_name = name.lower()
@@ -173,10 +198,14 @@ def _path_aliases(path: PurePosixPath) -> set[str]:
     return {alias for alias in aliases if alias and alias not in {".", "/"}}
 
 
-def _open_targets(text: str) -> tuple[str, ...]:
+def _open_targets(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[str, ...]:
     targets: list[str] = []
     seen: set[str] = set()
-    stripped_text = strip_comments(text)
+    stripped_text = strip_comments(text) if stripped_text is None else stripped_text
     for match in OPEN_RE.finditer(stripped_text):
         body = str(match.group("body") or "")
         for target_match in re.finditer(_MODULE_NAME_RE, body):
@@ -194,13 +223,19 @@ def collect_symbol_entries(
     *,
     file_path: str,
     stable_identifier: StableIdentifier,
+    stripped_text: str | None = None,
+    module_names: Sequence[str] | None = None,
 ) -> list[dict[str, Any]]:
     symbol_entries: list[dict[str, Any]] = []
     seen_symbol_keys: set[tuple[str, str, int]] = set()
-    stripped_text = strip_comments(text)
-    module_names = declared_module_names(text)
+    stripped_text = strip_comments(text) if stripped_text is None else stripped_text
+    module_names = (
+        tuple(module_names)
+        if module_names is not None
+        else declared_module_names(text, stripped_text=stripped_text)
+    )
     file_alias = PurePosixPath(file_path).stem.lower()
-    final_line = len(stripped_text.splitlines()) if stripped_text else 1
+    final_line = max(1, stripped_text.count("\n") + 1) if stripped_text else 1
     for regex, symbol_kind in (
         (MODULE_DECL_RE, "module"),
         (FUN_DECL_RE, "function"),
@@ -212,7 +247,7 @@ def collect_symbol_entries(
             canonical_symbol_name = symbol_name.lower()
             if not symbol_name or canonical_symbol_name in RESERVED_SYMBOL_NAMES:
                 continue
-            line_no = stripped_text.count("\n", 0, match.start()) + 1
+            line_no = _line_number(stripped_text, match.start())
             symbol_key = (symbol_kind, canonical_symbol_name, line_no)
             if symbol_key in seen_symbol_keys:
                 continue
@@ -259,21 +294,32 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
+    include_symbol_aliases: bool = True,
 ) -> set[str]:
     path = PurePosixPath(file_path)
     if path.suffix.lower() not in _KNOWN_ML_SUFFIXES:
         return set()
     aliases = set(_path_aliases(path))
-    try:
-        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        return aliases
-    for module_name in declared_module_names(text):
+    source_text = text
+    if source_text is None:
+        try:
+            source_text = (root_path / path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return aliases
+    assert source_text is not None
+    stripped_text = strip_comments(source_text)
+    module_names = declared_module_names(source_text, stripped_text=stripped_text)
+    for module_name in module_names:
         aliases.add(module_name.lower())
+    if not include_symbol_aliases:
+        return {alias for alias in aliases if alias}
     for symbol_entry in collect_symbol_entries(
-        text,
+        source_text,
         file_path=file_path,
         stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
+        module_names=module_names,
     ):
         aliases.update(str(alias).lower() for alias in symbol_entry["qualified_names"] if alias)
     return {alias for alias in aliases if alias}
@@ -343,13 +389,20 @@ def _extract_import_bindings(
     *,
     stable_identifier: StableIdentifier,
     resolve_import: Callable[[str, dict[str, str]], str | None],
+    stripped_text: str | None = None,
+    opened_targets: Sequence[str] | None = None,
 ) -> tuple[tuple[dict[str, Any], ...], dict[str, dict[str, Any]]]:
     dependency_specs: list[dict[str, Any]] = []
     dependency_keys: set[tuple[str | None, str, str]] = set()
     import_bindings: dict[str, dict[str, Any]] = {}
-    stripped_text = strip_comments(text)
+    stripped_text = strip_comments(text) if stripped_text is None else stripped_text
+    opened_targets = (
+        tuple(opened_targets)
+        if opened_targets is not None
+        else _open_targets(text, stripped_text=stripped_text)
+    )
 
-    for target in _open_targets(text):
+    for target in opened_targets:
         canonical_target = target.lower()
         target_tail = canonical_target.rsplit(".", 1)[-1]
         target_file = resolve_import(target, module_index)
@@ -456,12 +509,15 @@ def parse_dependencies_only(
     stable_identifier: StableIdentifier,
     resolve_import: Callable[[str, dict[str, str]], str | None],
 ) -> tuple[dict[str, Any], ...]:
+    stripped_text = strip_comments(text)
     dependency_specs, _import_bindings = _extract_import_bindings(
         file_path,
         text,
         module_index,
         stable_identifier=stable_identifier,
         resolve_import=resolve_import,
+        stripped_text=stripped_text,
+        opened_targets=_open_targets(text, stripped_text=stripped_text),
     )
     return dependency_specs
 
@@ -474,10 +530,15 @@ def parse_file(
     stable_identifier: StableIdentifier,
     resolve_import: Callable[[str, dict[str, str]], str | None],
 ) -> tuple[tuple[dict[str, Any], ...], tuple[dict[str, Any], ...], tuple[dict[str, Any], ...]]:
+    stripped_text = strip_comments(text)
+    module_names = declared_module_names(text, stripped_text=stripped_text)
+    opened_targets = _open_targets(text, stripped_text=stripped_text)
     symbol_entries = collect_symbol_entries(
         text,
         file_path=file_path,
         stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
+        module_names=module_names,
     )
     dependency_specs, import_bindings = _extract_import_bindings(
         file_path,
@@ -485,9 +546,11 @@ def parse_file(
         module_index,
         stable_identifier=stable_identifier,
         resolve_import=resolve_import,
+        stripped_text=stripped_text,
+        opened_targets=opened_targets,
     )
     reference_specs: dict[str, dict[str, Any]] = {}
-    lines = strip_comments(text).splitlines()
+    lines = stripped_text.splitlines()
     single_import_binding = (
         next(iter(import_bindings.values())) if len(import_bindings) == 1 else None
     )

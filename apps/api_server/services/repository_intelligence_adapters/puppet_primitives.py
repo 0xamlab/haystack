@@ -37,14 +37,31 @@ _PUPPET_METADATA_MARKER_RE = re.compile(
 )
 _PUPPETFILE_MARKER_RE = re.compile(r"(?mi)^\s*(?:forge\b|mod\s+['\"])")
 _MODULEFILE_MARKER_RE = re.compile(r"(?mi)^\s*(?:name|dependency)\s+['\"]")
-_PASCAL_MARKER_RE = re.compile(
-    r"(?mi)^\s*(?:program|unit|interface|implementation|uses|begin|procedure|function|"
-    r"const|type|var)\b"
+_PUPPET_STATEMENT_KEYWORDS = (
+    "class",
+    "define",
+    "plan",
+    "application",
+    "type",
+    "node",
+    "include",
+    "contain",
+    "require",
+    "import",
 )
-_PUPPET_SIGNAL_RE = re.compile(
-    r"(?mi)^\s*(?:class|define|plan|application|type|node|include|contain|require|import)\b"
+_PASCAL_STATEMENT_KEYWORDS = (
+    "program",
+    "unit",
+    "interface",
+    "implementation",
+    "uses",
+    "begin",
+    "procedure",
+    "function",
+    "const",
+    "type",
+    "var",
 )
-_PUPPET_OPERATOR_RE = re.compile(r"\$\w|\=\>|\:\:")
 _RESERVED_SYMBOL_NAMES = frozenset(
     {
         "application",
@@ -135,6 +152,64 @@ def _normalize_target_name(raw_name: str) -> str:
     return normalized.strip().lower()
 
 
+def _starts_with_statement_keyword(line: str, keywords: tuple[str, ...]) -> bool:
+    lowered_line = line.lower()
+    for keyword in keywords:
+        if not lowered_line.startswith(keyword):
+            continue
+        suffix = lowered_line[len(keyword) : len(keyword) + 1]
+        if not suffix or suffix.isspace() or suffix in "{('\"":
+            return True
+    return False
+
+
+def _has_puppet_variable_reference(line: str) -> bool:
+    for index, character in enumerate(line[:-1]):
+        if character != "$":
+            continue
+        next_character = line[index + 1]
+        if next_character.isalnum() or next_character in "_{":
+            return True
+    return False
+
+
+def _is_probable_puppet_class_resource_line(line: str) -> bool:
+    lowered_line = line.lower()
+    class_index = lowered_line.find("class")
+    if class_index < 0:
+        return False
+    suffix = lowered_line[class_index + len("class") : class_index + len("class") + 1]
+    if suffix and not suffix.isspace():
+        return False
+    brace_index = line.find("{", class_index)
+    if brace_index < 0:
+        return False
+    resource_slice = line[brace_index + 1 :]
+    return "'" in resource_slice or '"' in resource_slice
+
+
+def _has_puppet_constructs(stripped_text: str) -> bool:
+    for raw_line in stripped_text.splitlines():
+        line = raw_line.lstrip()
+        if not line:
+            continue
+        if _starts_with_statement_keyword(line, _PUPPET_STATEMENT_KEYWORDS):
+            return True
+        if _is_probable_puppet_class_resource_line(line):
+            return True
+        if "::" in line or "=>" in line or _has_puppet_variable_reference(line):
+            return True
+    return False
+
+
+def _has_pascal_constructs(stripped_text: str) -> bool:
+    for raw_line in stripped_text.splitlines():
+        line = raw_line.lstrip()
+        if line and _starts_with_statement_keyword(line, _PASCAL_STATEMENT_KEYWORDS):
+            return True
+    return False
+
+
 def has_puppet_path_hints(path: Path | PurePosixPath) -> bool:
     normalized_path = PurePosixPath(path)
     suffix = normalized_path.suffix.lower()
@@ -172,16 +247,12 @@ def is_probable_puppet_source(*, path: Path | PurePosixPath, text: str) -> bool:
         return _is_probable_puppet_metadata(stripped_text)
     if normalized_path.suffix.lower() != ".pp":
         return False
-    has_puppet_constructs = (
-        _PUPPET_SIGNAL_RE.search(stripped_text) is not None
-        or _PUPPET_CLASS_RESOURCE_RE.search(stripped_text) is not None
-        or _PUPPET_OPERATOR_RE.search(stripped_text) is not None
-    )
+    has_puppet_constructs = _has_puppet_constructs(stripped_text)
     if not has_puppet_constructs:
         return False
     path_tokens = {part.lower() for part in normalized_path.parts}
     has_puppet_path_context = bool(path_tokens & _PUPPET_SOURCE_ROOTS)
-    has_pascal_constructs = _PASCAL_MARKER_RE.search(stripped_text) is not None
+    has_pascal_constructs = _has_pascal_constructs(stripped_text)
     if has_pascal_constructs and not has_puppet_path_context:
         if _PUPPET_CLASS_RESOURCE_RE.search(stripped_text) is None and "::" not in stripped_text:
             return False

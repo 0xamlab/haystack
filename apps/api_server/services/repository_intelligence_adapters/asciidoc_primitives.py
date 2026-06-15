@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from bisect import bisect_right
+from functools import lru_cache
 import re
 from collections.abc import Callable, Iterable
 from pathlib import Path, PurePosixPath
@@ -54,9 +56,18 @@ def _line_count(text: str) -> int:
     return max(1, text.count("\n") + 1)
 
 
+@lru_cache(maxsize=256)
+def _line_start_offsets(text: str) -> tuple[int, ...]:
+    offsets = [0]
+    for index, character in enumerate(text):
+        if character == "\n":
+            offsets.append(index + 1)
+    return tuple(offsets)
+
+
 def _line_number(text: str, offset: int) -> int:
     bounded_offset = max(0, min(offset, len(text)))
-    return text.count("\n", 0, bounded_offset) + 1
+    return bisect_right(_line_start_offsets(text), bounded_offset)
 
 
 def _ordered_names(*values: str) -> tuple[str, ...]:
@@ -71,6 +82,7 @@ def _ordered_names(*values: str) -> tuple[str, ...]:
     return tuple(ordered)
 
 
+@lru_cache(maxsize=256)
 def _looks_binaryish(text: str) -> bool:
     sample = text[:2048]
     control_count = sum(
@@ -141,6 +153,7 @@ def split_reference_target(value: str) -> tuple[str | None, str | None]:
     return None, normalized
 
 
+@lru_cache(maxsize=256)
 def _section_entries(text: str) -> tuple[tuple[str, str, int], ...]:
     entries: list[tuple[str, str, int]] = []
     seen: set[tuple[str, str, int]] = set()
@@ -156,7 +169,8 @@ def _section_entries(text: str) -> tuple[tuple[str, str, int], ...]:
     return tuple(entries)
 
 
-def iter_import_entries(text: str) -> tuple[tuple[str, str, int], ...]:
+@lru_cache(maxsize=256)
+def _iter_import_entries_cached(text: str) -> tuple[tuple[str, str, int], ...]:
     entries: list[tuple[str, str, int]] = []
     seen: set[tuple[str, str, int]] = set()
     for match in _INCLUDE_RE.finditer(text):
@@ -182,7 +196,12 @@ def iter_import_entries(text: str) -> tuple[tuple[str, str, int], ...]:
     return tuple(entries)
 
 
-def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
+def iter_import_entries(text: str) -> tuple[tuple[str, str, int], ...]:
+    return _iter_import_entries_cached(text)
+
+
+@lru_cache(maxsize=256)
+def _iter_symbol_entries_cached(text: str) -> tuple[tuple[str, str, int], ...]:
     entries: list[tuple[str, str, int]] = list(_section_entries(text))
     seen = {(name, kind, line) for name, kind, line in entries}
     for pattern in (_BLOCK_ANCHOR_RE, _INLINE_ANCHOR_RE):
@@ -198,7 +217,12 @@ def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
     return tuple(entries)
 
 
-def iter_reference_entries(text: str) -> tuple[tuple[str, str, int], ...]:
+def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
+    return _iter_symbol_entries_cached(text)
+
+
+@lru_cache(maxsize=256)
+def _iter_reference_entries_cached(text: str) -> tuple[tuple[str, str, int], ...]:
     entries: list[tuple[str, str, int]] = []
     seen: set[tuple[str, str, int]] = set()
     for pattern in (_XREF_RE, _DOUBLE_ANGLE_XREF_RE):
@@ -212,6 +236,10 @@ def iter_reference_entries(text: str) -> tuple[tuple[str, str, int], ...]:
             seen.add(entry)
             entries.append(entry)
     return tuple(entries)
+
+
+def iter_reference_entries(text: str) -> tuple[tuple[str, str, int], ...]:
+    return _iter_reference_entries_cached(text)
 
 
 def source_symbol_name_for_line(
@@ -286,6 +314,7 @@ def collect_symbols(
     file_path: str,
     text: str,
     stable_identifier: StableIdentifier,
+    symbol_entries: tuple[tuple[str, str, int], ...] | None = None,
 ) -> tuple[_Symbol, ...]:
     if not is_probable_asciidoc_source(path=Path(file_path), text=text):
         return ()
@@ -300,7 +329,9 @@ def collect_symbols(
     )
     symbols: list[_Symbol] = [root_symbol]
     seen_symbol_names = {root_symbol.symbol_name}
-    for symbol_name, symbol_kind, start_line in iter_symbol_entries(text):
+    for symbol_name, symbol_kind, start_line in (
+        symbol_entries if symbol_entries is not None else iter_symbol_entries(text)
+    ):
         if symbol_name in seen_symbol_names:
             continue
         seen_symbol_names.add(symbol_name)
@@ -331,12 +362,14 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
 ) -> set[str]:
-    candidate_path = root_path / file_path
-    try:
-        text = candidate_path.read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        text = ""
+    if text is None:
+        candidate_path = root_path / file_path
+        try:
+            text = candidate_path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            text = ""
     aliases = {
         normalize_identifier(file_path),
         normalize_identifier(PurePosixPath(file_path).name),
@@ -358,9 +391,12 @@ def imported_symbol_bindings(
     module_index: dict[str, str],
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
+    import_entries: tuple[tuple[str, str, int], ...] | None = None,
 ) -> dict[str, _ImportedSymbolBinding]:
     bindings: dict[str, _ImportedSymbolBinding] = {}
-    for _dependency_type, import_target, _line_number_value in iter_import_entries(text):
+    for _dependency_type, import_target, _line_number_value in (
+        import_entries if import_entries is not None else iter_import_entries(text)
+    ):
         target_file = resolve_import(
             current_file=current_file,
             import_target=import_target,

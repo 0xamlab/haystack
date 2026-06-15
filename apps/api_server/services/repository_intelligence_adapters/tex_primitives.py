@@ -172,16 +172,22 @@ def has_tex_path_hints(path: Path | PurePosixPath) -> bool:
     )
 
 
-def is_probable_tex_source(*, path: Path | PurePosixPath, text: str) -> bool:
+def _prepared_tex_source_text(*, path: Path | PurePosixPath, text: str) -> str | None:
     normalized_path = PurePosixPath(path)
     if normalized_path.suffix.lower() not in TEX_SUFFIXES or not text or _looks_binaryish(text):
-        return False
+        return None
+    if normalized_path.suffix.lower() == ".cls" and "\\" not in text:
+        return None
     stripped_text = strip_comments(text)
     if not stripped_text.strip():
-        return False
+        return None
     if normalized_path.suffix.lower() != ".cls":
-        return True
-    return bool(_TEX_COMMAND_SIGNAL_RE.search(stripped_text))
+        return stripped_text
+    return stripped_text if _TEX_COMMAND_SIGNAL_RE.search(stripped_text) else None
+
+
+def is_probable_tex_source(*, path: Path | PurePosixPath, text: str) -> bool:
+    return _prepared_tex_source_text(path=path, text=text) is not None
 
 
 def is_probable_tex_config(*, path: Path | PurePosixPath, text: str) -> bool:
@@ -221,6 +227,10 @@ def module_name_from_path(file_path: str) -> str:
 
 def provided_module_name(text: str) -> str | None:
     stripped_text = strip_comments(text)
+    return _provided_module_name_from_stripped_text(stripped_text)
+
+
+def _provided_module_name_from_stripped_text(stripped_text: str) -> str | None:
     match = _PROVIDES_RE.search(stripped_text)
     if match is None:
         return None
@@ -249,7 +259,12 @@ def _split_import_targets(raw_targets: str) -> tuple[str, ...]:
 
 
 def iter_import_entries(text: str) -> tuple[tuple[str, str, int], ...]:
-    stripped_text = strip_comments(text)
+    return _iter_import_entries_from_stripped_text(strip_comments(text))
+
+
+def _iter_import_entries_from_stripped_text(
+    stripped_text: str,
+) -> tuple[tuple[str, str, int], ...]:
     entries: list[tuple[str, str, int]] = []
     seen: set[tuple[str, str, int]] = set()
     for match in _INPUT_RE.finditer(stripped_text):
@@ -282,7 +297,12 @@ def iter_import_entries(text: str) -> tuple[tuple[str, str, int], ...]:
 
 
 def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
-    stripped_text = strip_comments(text)
+    return _iter_symbol_entries_from_stripped_text(strip_comments(text))
+
+
+def _iter_symbol_entries_from_stripped_text(
+    stripped_text: str,
+) -> tuple[tuple[str, str, int], ...]:
     entries: list[tuple[str, str, int]] = []
     seen: set[tuple[str, str, int]] = set()
     for match in _COMMAND_DECLARATION_RE.finditer(stripped_text):
@@ -318,7 +338,12 @@ def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
 
 
 def iter_reference_entries(text: str) -> tuple[tuple[str, str, int], ...]:
-    stripped_text = strip_comments(text)
+    return _iter_reference_entries_from_stripped_text(strip_comments(text))
+
+
+def _iter_reference_entries_from_stripped_text(
+    stripped_text: str,
+) -> tuple[tuple[str, str, int], ...]:
     entries: list[tuple[str, str, int]] = []
     seen: set[tuple[str, str, int]] = set()
     for match in _LABEL_REF_RE.finditer(stripped_text):
@@ -371,13 +396,19 @@ def module_aliases_for_path(
         text = (root_path / path).read_text(encoding="utf-8", errors="replace")
     except OSError:
         text = ""
-    if text and not is_probable_tex_source(path=path, text=text):
+    stripped_text = _prepared_tex_source_text(path=path, text=text) if text else ""
+    if text and stripped_text is None:
         return {alias for alias in aliases if alias}
-    module_name = provided_module_name(text) or module_name_from_path(file_path)
+    normalized_text = stripped_text or ""
+    module_name = _provided_module_name_from_stripped_text(normalized_text) or module_name_from_path(
+        file_path
+    )
     if module_name:
         aliases.add(module_name)
         aliases.add(module_name.replace("/", "."))
-    for symbol_name, _symbol_kind, _line_number in iter_symbol_entries(text):
+    for symbol_name, _symbol_kind, _line_number in _iter_symbol_entries_from_stripped_text(
+        normalized_text
+    ):
         aliases.add(symbol_name)
         if module_name:
             aliases.add(f"{module_name}.{symbol_name}")
@@ -450,8 +481,25 @@ def imported_symbol_bindings(
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
 ) -> dict[str, _ImportedSymbolBinding]:
+    return _imported_symbol_bindings_from_import_entries(
+        current_file=current_file,
+        import_entries=_iter_import_entries_from_stripped_text(strip_comments(text)),
+        module_index=module_index,
+        normalize_repository_relative_path=normalize_repository_relative_path,
+        resolve_suffix_match=resolve_suffix_match,
+    )
+
+
+def _imported_symbol_bindings_from_import_entries(
+    *,
+    current_file: str,
+    import_entries: Iterable[tuple[str, str, int]],
+    module_index: dict[str, str],
+    normalize_repository_relative_path: NormalizeRepositoryRelativePath,
+    resolve_suffix_match: ResolveSuffixMatch,
+) -> dict[str, _ImportedSymbolBinding]:
     bindings: dict[str, _ImportedSymbolBinding] = {}
-    for _dependency_type, import_target, _line_number in iter_import_entries(text):
+    for _dependency_type, import_target, _line_number in import_entries:
         target_file = resolve_import(
             current_file=current_file,
             import_target=import_target,
@@ -478,11 +526,12 @@ def collect_symbols(
     file_path: str,
     text: str,
     stable_identifier: StableIdentifier,
+    stripped_text: str | None = None,
 ) -> tuple[_Symbol, ...]:
-    stripped_text = strip_comments(text)
-    module_name = provided_module_name(text) or module_name_from_path(file_path) or PurePosixPath(
-        file_path
-    ).stem
+    normalized_text = strip_comments(text) if stripped_text is None else stripped_text
+    module_name = _provided_module_name_from_stripped_text(
+        normalized_text
+    ) or module_name_from_path(file_path) or PurePosixPath(file_path).stem
     module_symbol = _Symbol(
         symbol_id=stable_identifier(
             "sym",
@@ -491,12 +540,14 @@ def collect_symbols(
         symbol_name=module_name,
         symbol_kind="tex",
         start_line=1,
-        end_line=_line_count(stripped_text),
+        end_line=_line_count(normalized_text),
         parent_symbol_id=None,
         signature=f"tex {module_name}",
     )
     symbols: list[_Symbol] = [module_symbol]
-    for symbol_name, symbol_kind, line_number in iter_symbol_entries(text):
+    for symbol_name, symbol_kind, line_number in _iter_symbol_entries_from_stripped_text(
+        normalized_text
+    ):
         symbols.append(
             _Symbol(
                 symbol_id=stable_identifier(

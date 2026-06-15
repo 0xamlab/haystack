@@ -22,6 +22,9 @@ from apps.api_server.services.repository_intelligence import (
     RepositoryIntelligenceError,
     get_repository_intelligence_capabilities,
 )
+from apps.api_server.services.repository_language_priority import (
+    DEFAULT_REAL_LANGUAGE_RANK_TARGET,
+)
 from tests._asgi_client import SyncASGIClient
 
 PROTECTED_OPENAPI_SECURITY = [{"BearerAuth": []}, {"LegacyApiKey": []}]
@@ -98,9 +101,9 @@ def _capabilities_response_payload() -> dict[str, object]:
         "supported_languages": ["python", "typescript", "coq"],
         "support_progress": {
             "supported_real_language_count": 3,
-            "ranked_target_language_count": 200,
-            "progress_fraction": 3 / 200,
-            "progress_label": "3 / 200",
+            "ranked_target_language_count": DEFAULT_REAL_LANGUAGE_RANK_TARGET,
+            "progress_fraction": 3 / DEFAULT_REAL_LANGUAGE_RANK_TARGET,
+            "progress_label": f"3 / {DEFAULT_REAL_LANGUAGE_RANK_TARGET}",
         },
     }
 
@@ -344,7 +347,10 @@ def test_repository_capabilities_route_returns_structured_response(
 
     assert response.status_code == 200
     assert response.json()["supported_languages"] == ["python", "typescript", "coq"]
-    assert response.json()["support_progress"]["progress_label"] == "3 / 200"
+    assert (
+        response.json()["support_progress"]["progress_label"]
+        == f"3 / {DEFAULT_REAL_LANGUAGE_RANK_TARGET}"
+    )
 
 
 def test_repository_capabilities_service_uses_live_priority_surface() -> None:

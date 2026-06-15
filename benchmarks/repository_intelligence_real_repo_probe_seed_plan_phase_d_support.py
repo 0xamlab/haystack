@@ -7,6 +7,19 @@ from typing import Any
 
 def apply_seed_plan_phase_d(state: Any) -> None:
     from benchmarks import repository_intelligence_real_repo_probe as probe_module
+    from benchmarks import (
+        repository_intelligence_real_repo_probe_profile_project_family_support
+        as project_family_support,
+    )
+
+    def _has_ecosystem_seed_candidates(ecosystem: str) -> bool:
+        return any(
+            ecosystem in ecosystems
+            for ecosystems in entrypoint_candidate_ecosystems.values()
+        ) or any(
+            ecosystem in ecosystems
+            for ecosystems in support_root_candidate_ecosystems.values()
+        )
 
     repository_service = probe_module.repository_service
     _accumulate_detected_ecosystem_scores = probe_module._accumulate_detected_ecosystem_scores
@@ -20,12 +33,14 @@ def apply_seed_plan_phase_d(state: Any) -> None:
     _cue_profile_hints_from_candidates = probe_module._cue_profile_hints_from_candidates
     _eiffel_profile_hints_from_candidates = probe_module._eiffel_profile_hints_from_candidates
     _factor_profile_hints_from_candidates = probe_module._factor_profile_hints_from_candidates
+    _four_d_profile_hints_from_candidates = probe_module._four_d_profile_hints_from_candidates
     _glsl_profile_hints_from_candidates = probe_module._glsl_profile_hints_from_candidates
     _hcl_profile_hints_from_candidates = probe_module._hcl_profile_hints_from_candidates
     _hlsl_profile_hints_from_candidates = probe_module._hlsl_profile_hints_from_candidates
     _is_non_operational_profile_path = probe_module._is_non_operational_profile_path
     _is_repo_profile_code_candidate = probe_module._is_repo_profile_code_candidate
     _logtalk_profile_hints_from_candidates = probe_module._logtalk_profile_hints_from_candidates
+    _metal_profile_hints_from_candidates = probe_module._metal_profile_hints_from_candidates
     _odin_profile_hints_from_candidates = probe_module._odin_profile_hints_from_candidates
     _profile_entrypoint_target_count = probe_module._profile_entrypoint_target_count
     _protobuf_profile_hints_from_candidates = probe_module._protobuf_profile_hints_from_candidates
@@ -34,6 +49,9 @@ def apply_seed_plan_phase_d(state: Any) -> None:
     _rego_profile_hints_from_candidates = probe_module._rego_profile_hints_from_candidates
     _scala_support_roots_from_candidates = probe_module._scala_support_roots_from_candidates
     _shaderlab_profile_hints_from_candidates = probe_module._shaderlab_profile_hints_from_candidates
+    _supplement_candidate_file_paths_for_surface_dir_parts = (
+        probe_module._supplement_candidate_file_paths_for_surface_dir_parts
+    )
     _support_roots_requiring_expansion = probe_module._support_roots_requiring_expansion
     _tlaplus_profile_hints_from_candidates = probe_module._tlaplus_profile_hints_from_candidates
     _wgsl_profile_hints_from_candidates = probe_module._wgsl_profile_hints_from_candidates
@@ -169,6 +187,26 @@ def apply_seed_plan_phase_d(state: Any) -> None:
         repo_path=repo_path,
         ecosystems={"shaderlab", "hlsl", "glsl", "cs", "javascript"},
     )
+    shaderlab_host_count = sum(
+        shaderlab_ecosystem_counts[ecosystem]
+        for ecosystem in ("hlsl", "glsl", "cs", "javascript")
+    )
+    if (
+        shaderlab_ecosystem_counts["shaderlab"] < max(8, shaderlab_host_count // 2)
+        and shaderlab_host_count >= 16
+    ):
+        candidate_file_paths = _supplement_candidate_file_paths_for_surface_dir_parts(
+            repo_path=repo_path,
+            candidate_file_paths=candidate_file_paths,
+            suffixes={".shader"},
+            directory_parts={"shader", "shaders"},
+            max_extra_files=min(max_files, 48),
+        )
+        shaderlab_ecosystem_counts = _candidate_ecosystem_counts(
+            candidate_file_paths,
+            repo_path=repo_path,
+            ecosystems={"shaderlab", "hlsl", "glsl", "cs", "javascript"},
+        )
     if shaderlab_ecosystem_counts["shaderlab"] > 0:
         entrypoints, roots, configs = _shaderlab_profile_hints_from_candidates(
             repo_path,
@@ -202,8 +240,103 @@ def apply_seed_plan_phase_d(state: Any) -> None:
                 shaderlab_ecosystem_counts[ecosystem]
                 for ecosystem in ("hlsl", "glsl", "cs", "javascript")
             )
+            shader_surface_entrypoint_count = sum(
+                1
+                for path in entrypoints
+                if {"shader", "shaders"} & {part.lower() for part in PurePosixPath(path).parts[:-1]}
+            )
+            if shaderlab_count >= 24 and shader_surface_entrypoint_count >= 12:
+                non_shaderlab_max_score = max(
+                    (
+                        score
+                        for ecosystem, score in detected_ecosystem_scores.items()
+                        if ecosystem != "shaderlab"
+                    ),
+                    default=0,
+                )
+                detected_ecosystem_scores["shaderlab"] = max(
+                    detected_ecosystem_scores["shaderlab"],
+                    non_shaderlab_max_score + 16,
+                )
             if shaderlab_count >= max(2, host_count):
                 detected_ecosystem_scores["shaderlab"] += min(120, 30 + shaderlab_count * 14)
+
+    metal_ecosystem_counts = _candidate_ecosystem_counts(
+        candidate_file_paths,
+        repo_path=repo_path,
+        ecosystems={"metal", "swift", "objectivec", "cpp", "glsl", "hlsl"},
+    )
+    if metal_ecosystem_counts["metal"] > 0:
+        entrypoints, roots, configs = _metal_profile_hints_from_candidates(
+            repo_path,
+            candidate_file_paths,
+        )
+        if entrypoints or roots or configs:
+            _register_candidate_ecosystems(
+                entrypoint_candidate_ecosystems,
+                values=entrypoints,
+                ecosystems={"metal"},
+            )
+            _register_candidate_ecosystems(
+                support_root_candidate_ecosystems,
+                values=roots,
+                ecosystems={"metal"},
+            )
+            entrypoint_candidates.update(entrypoints)
+            support_root_candidates.update(roots)
+            config_path_candidates.update(configs)
+            _accumulate_detected_ecosystem_scores(
+                detected_ecosystem_scores,
+                ecosystems={"metal"},
+                config_path=sorted(configs or entrypoints or roots or {""})[0],
+                repo_path=repo_path,
+                entrypoints=entrypoints,
+                roots=roots,
+                configs=configs,
+            )
+            metal_count = metal_ecosystem_counts["metal"]
+            host_count = sum(
+                metal_ecosystem_counts[ecosystem]
+                for ecosystem in ("swift", "objectivec", "cpp", "glsl", "hlsl")
+            )
+            metal_entrypoint_root_count = len(
+                {
+                    repository_service._normalize_repository_relative_path(
+                        str(PurePosixPath(path).parent)
+                    )
+                    for path in entrypoints
+                }
+                - {""}
+            )
+            if metal_count >= 8 and metal_entrypoint_root_count >= 4 and metal_count * 2 >= max(1, host_count):
+                non_metal_max_score = max(
+                    (
+                        score
+                        for ecosystem, score in detected_ecosystem_scores.items()
+                        if ecosystem != "metal"
+                    ),
+                    default=0,
+                )
+                detected_ecosystem_scores["metal"] = max(
+                    detected_ecosystem_scores["metal"],
+                    non_metal_max_score + 24,
+                )
+            if metal_count >= max(2, host_count):
+                detected_ecosystem_scores["metal"] += min(140, 32 + metal_count * 14)
+            elif metal_count * 2 <= max(1, host_count):
+                dominant_host = max(
+                    ("swift", "objectivec", "cpp", "glsl", "hlsl"),
+                    key=lambda ecosystem: metal_ecosystem_counts[ecosystem],
+                )
+                if metal_ecosystem_counts[dominant_host] > 0:
+                    detected_ecosystem_scores[dominant_host] = max(
+                        detected_ecosystem_scores.get(dominant_host, 0),
+                        24 + metal_ecosystem_counts[dominant_host] * 6,
+                    )
+                detected_ecosystem_scores["metal"] = max(
+                    0,
+                    detected_ecosystem_scores["metal"] - 48,
+                )
 
     wgsl_ecosystem_counts = _candidate_ecosystem_counts(
         candidate_file_paths,
@@ -396,35 +529,52 @@ def apply_seed_plan_phase_d(state: Any) -> None:
             configs=configs,
         )
 
-    if "logtalk" in detected_ecosystems and not (
-        entrypoint_candidates or support_root_candidates or config_path_candidates
+    if project_family_support._candidate_paths_include_logtalk_surface_signal(
+        candidate_file_paths
     ):
         entrypoints, roots, configs = _logtalk_profile_hints_from_candidates(
             repo_path,
             candidate_file_paths,
         )
-        _register_candidate_ecosystems(
-            entrypoint_candidate_ecosystems,
-            values=entrypoints,
-            ecosystems={"logtalk"},
-        )
-        _register_candidate_ecosystems(
-            support_root_candidate_ecosystems,
-            values=roots,
-            ecosystems={"logtalk"},
-        )
-        entrypoint_candidates.update(entrypoints)
-        support_root_candidates.update(roots)
-        config_path_candidates.update(configs)
-        _accumulate_detected_ecosystem_scores(
-            detected_ecosystem_scores,
-            ecosystems={"logtalk"},
-            config_path=sorted(configs or entrypoints or roots or {""})[0],
-            repo_path=repo_path,
-            entrypoints=entrypoints,
-            roots=roots,
-            configs=configs,
-        )
+        if entrypoints or roots or configs:
+            detected_ecosystems.add("logtalk")
+            _register_candidate_ecosystems(
+                entrypoint_candidate_ecosystems,
+                values=entrypoints,
+                ecosystems={"logtalk"},
+            )
+            _register_candidate_ecosystems(
+                support_root_candidate_ecosystems,
+                values=roots,
+                ecosystems={"logtalk"},
+            )
+            entrypoint_candidates.update(entrypoints)
+            support_root_candidates.update(roots)
+            config_path_candidates.update(configs)
+            _accumulate_detected_ecosystem_scores(
+                detected_ecosystem_scores,
+                ecosystems={"logtalk"},
+                config_path=sorted(configs or entrypoints or roots or {""})[0],
+                repo_path=repo_path,
+                entrypoints=entrypoints,
+                roots=roots,
+                configs=configs,
+            )
+            competitive_logtalk_surface = len(entrypoints) >= 2 and len(roots) >= 1
+            if competitive_logtalk_surface:
+                non_logtalk_max_score = max(
+                    (
+                        score
+                        for ecosystem, score in detected_ecosystem_scores.items()
+                        if ecosystem != "logtalk"
+                    ),
+                    default=0,
+                )
+                logtalk_promotion_margin = min(64, 24 + len(entrypoints) * 8 + len(roots) * 4)
+                detected_ecosystem_scores["logtalk"] = max(
+                    detected_ecosystem_scores["logtalk"],
+                    non_logtalk_max_score + logtalk_promotion_margin,
+                )
 
     if "chapel" in detected_ecosystems and not (
         entrypoint_candidates or support_root_candidates or config_path_candidates
@@ -515,9 +665,15 @@ def apply_seed_plan_phase_d(state: Any) -> None:
             roots=roots,
             configs=configs,
         )
-    if "cue" in detected_ecosystems and not (
+    cue_ecosystem_counts = _candidate_ecosystem_counts(
+        candidate_file_paths,
+        repo_path=repo_path,
+        ecosystems={"cue"},
+    )
+    if cue_ecosystem_counts["cue"] > 0 and not (
         entrypoint_candidates or support_root_candidates or config_path_candidates
     ):
+        detected_ecosystems.add("cue")
         entrypoints, roots, configs = _cue_profile_hints_from_candidates(
             repo_path,
             candidate_file_paths,
@@ -545,9 +701,43 @@ def apply_seed_plan_phase_d(state: Any) -> None:
             configs=configs,
         )
 
-    if "eiffel" in detected_ecosystems and not (
+    four_d_ecosystem_counts = _candidate_ecosystem_counts(
+        candidate_file_paths,
+        repo_path=repo_path,
+        ecosystems={"4d"},
+    )
+    if four_d_ecosystem_counts["4d"] > 0 and not (
         entrypoint_candidates or support_root_candidates or config_path_candidates
     ):
+        detected_ecosystems.add("4d")
+        entrypoints, roots, configs = _four_d_profile_hints_from_candidates(
+            repo_path,
+            candidate_file_paths,
+        )
+        _register_candidate_ecosystems(
+            entrypoint_candidate_ecosystems,
+            values=entrypoints,
+            ecosystems={"4d"},
+        )
+        _register_candidate_ecosystems(
+            support_root_candidate_ecosystems,
+            values=roots,
+            ecosystems={"4d"},
+        )
+        entrypoint_candidates.update(entrypoints)
+        support_root_candidates.update(roots)
+        config_path_candidates.update(configs)
+        _accumulate_detected_ecosystem_scores(
+            detected_ecosystem_scores,
+            ecosystems={"4d"},
+            config_path=sorted(configs or entrypoints or roots or {""})[0],
+            repo_path=repo_path,
+            entrypoints=entrypoints,
+            roots=roots,
+            configs=configs,
+        )
+
+    if "eiffel" in detected_ecosystems and not _has_ecosystem_seed_candidates("eiffel"):
         entrypoints, roots, configs = _eiffel_profile_hints_from_candidates(
             repo_path,
             candidate_file_paths,

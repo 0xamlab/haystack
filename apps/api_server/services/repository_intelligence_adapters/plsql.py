@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from bisect import bisect_right
+from functools import lru_cache
 import re
 from collections.abc import Callable, Sequence
 from pathlib import Path, PurePosixPath
@@ -56,6 +58,10 @@ CALL_RE = re.compile(
     r"\b(?:call|exec|execute)\s+(?P<name>" + COMPOUND_IDENTIFIER_PATTERN + r")\s*\(",
     re.IGNORECASE,
 )
+UNQUALIFIED_CALL_RE = re.compile(
+    r"(?<![.$A-Za-z0-9_])(?P<name>" + IDENTIFIER_SEGMENT_PATTERN + r")\s*\(",
+    re.IGNORECASE,
+)
 QUALIFIED_CALL_RE = re.compile(
     r"\b(?P<name>"
     + IDENTIFIER_SEGMENT_PATTERN
@@ -71,6 +77,24 @@ _KNOWN_PLSQL_IMPORT_SUFFIXES = (".pks", ".pkb", ".pls", ".prc", ".fnc", ".trg")
 
 def strip_comments(text: str) -> str:
     return sql_adapter.strip_comments(text)
+
+
+@lru_cache(maxsize=1024)
+def _line_start_offsets(text: str) -> tuple[int, ...]:
+    offsets = [0]
+    start = 0
+    while True:
+        newline_index = text.find("\n", start)
+        if newline_index < 0:
+            break
+        offsets.append(newline_index + 1)
+        start = newline_index + 1
+    return tuple(offsets)
+
+
+def _line_number(text: str, offset: int) -> int:
+    bounded_offset = max(0, min(offset, len(text)))
+    return bisect_right(_line_start_offsets(text), bounded_offset)
 
 
 def normalize_identifier(raw_name: str) -> str:
@@ -94,6 +118,36 @@ def _preferred_resolution_suffixes(
             if base:
                 suffixes.append(f"{base}{suffix}")
     return suffixes
+
+
+def _cached_import_resolver(
+    resolve_import: Callable[[str, dict[str, str]], str | None],
+) -> Callable[[str, dict[str, str]], str | None]:
+    cache: dict[str, str | None] = {}
+
+    def _resolve(import_target: str, module_index: dict[str, str]) -> str | None:
+        if import_target in cache:
+            return cache[import_target]
+        resolved = resolve_import(import_target, module_index)
+        cache[import_target] = resolved
+        return resolved
+
+    return _resolve
+
+
+def _cached_target_resolver(
+    resolve_target: Callable[[str, dict[str, str]], str | None],
+) -> Callable[[str, dict[str, str]], str | None]:
+    cache: dict[str, str | None] = {}
+
+    def _resolve(reference_target: str, module_index: dict[str, str]) -> str | None:
+        if reference_target in cache:
+            return cache[reference_target]
+        resolved = resolve_target(reference_target, module_index)
+        cache[reference_target] = resolved
+        return resolved
+
+    return _resolve
 
 
 def resolve_import(
@@ -154,13 +208,14 @@ def collect_symbol_entries(
     *,
     file_path: str,
     stable_identifier: StableIdentifier,
+    stripped_text: str | None = None,
 ) -> list[dict[str, Any]]:
-    stripped_text = strip_comments(text)
+    stripped_text = strip_comments(text) if stripped_text is None else stripped_text
     symbol_entries: list[dict[str, Any]] = []
     seen_symbol_keys: set[tuple[str, str, int]] = set()
     create_declarations: dict[int, list[tuple[str, str, str, str]]] = {}
     current_package = ""
-    final_line = len(stripped_text.splitlines()) if stripped_text else 1
+    final_line = max(1, stripped_text.count("\n") + 1) if stripped_text else 1
 
     for match in CREATE_DECL_RE.finditer(stripped_text):
         normalized_name, leaf_name = symbol_name_parts(str(match.group("name") or ""))
@@ -178,7 +233,7 @@ def collect_symbol_entries(
             if raw_kind in {"function", "procedure", "trigger"}
             else "type"
         )
-        line_no = stripped_text.count("\n", 0, match.start()) + 1
+        line_no = _line_number(stripped_text, match.start())
         signature = str(match.group(0) or "").strip()
         create_declarations.setdefault(line_no, []).append(
             (raw_kind, normalized_name, leaf_name, signature)
@@ -357,6 +412,12 @@ def module_aliases_for_path(
 
 def iter_package_body_imports(text: str) -> tuple[tuple[int, str], ...]:
     stripped_text = strip_comments(text)
+    return _iter_package_body_imports_from_stripped_text(stripped_text)
+
+
+def _iter_package_body_imports_from_stripped_text(
+    stripped_text: str,
+) -> tuple[tuple[int, str], ...]:
     imports: list[tuple[int, str]] = []
     for match in CREATE_DECL_RE.finditer(stripped_text):
         raw_kind = re.sub(r"\s+", " ", str(match.group("kind") or "").strip().lower())
@@ -365,31 +426,38 @@ def iter_package_body_imports(text: str) -> tuple[tuple[int, str], ...]:
         normalized_name, _leaf_name = symbol_name_parts(str(match.group("name") or ""))
         if not normalized_name:
             continue
-        line_no = stripped_text.count("\n", 0, match.start()) + 1
+        line_no = _line_number(stripped_text, match.start())
         imports.append((line_no, normalized_name))
     return tuple(imports)
 
 
 def iter_reference_targets(text: str) -> tuple[tuple[int, str, str], ...]:
     stripped_text = strip_comments(text)
+    return _iter_reference_targets_from_stripped_text(stripped_text)
+
+
+def _iter_reference_targets_from_stripped_text(
+    stripped_text: str,
+) -> tuple[tuple[int, str, str], ...]:
     targets: list[tuple[int, str, str]] = []
     for regex, kind in (
         (RELATION_REFERENCE_RE, "relation"),
         (CALL_RE, "call"),
+        (UNQUALIFIED_CALL_RE, "call"),
         (QUALIFIED_CALL_RE, "qualified_call"),
     ):
         for match in regex.finditer(stripped_text):
             target_name = str(match.group("name") or "").strip()
             if not target_name:
                 continue
-            line_no = stripped_text.count("\n", 0, match.start()) + 1
+            line_no = _line_number(stripped_text, match.start())
             targets.append((line_no, kind, target_name))
     return tuple(dict.fromkeys(targets))
 
 
-def parse_dependencies_only(
+def _parse_dependencies_only_from_stripped_text(
     file_path: str,
-    text: str,
+    stripped_text: str,
     module_index: dict[str, str],
     *,
     stable_identifier: StableIdentifier,
@@ -398,7 +466,7 @@ def parse_dependencies_only(
 ) -> tuple[dict[str, Any], ...]:
     dependency_entries: list[dict[str, Any]] = []
     dependency_keys: set[tuple[str | None, str, str]] = set()
-    for line_no, import_target in iter_package_body_imports(text):
+    for line_no, import_target in _iter_package_body_imports_from_stripped_text(stripped_text):
         normalized_target, leaf_name = symbol_name_parts(import_target)
         if not normalized_target or not leaf_name:
             continue
@@ -428,7 +496,9 @@ def parse_dependencies_only(
                 "dependency_type": "imports",
             }
         )
-    for line_no, reference_kind, raw_target in iter_reference_targets(text):
+    for line_no, reference_kind, raw_target in _iter_reference_targets_from_stripped_text(
+        stripped_text
+    ):
         normalized_target, leaf_name = symbol_name_parts(raw_target)
         if (
             not normalized_target
@@ -465,6 +535,26 @@ def parse_dependencies_only(
     return tuple(dependency_entries)
 
 
+def parse_dependencies_only(
+    file_path: str,
+    text: str,
+    module_index: dict[str, str],
+    *,
+    stable_identifier: StableIdentifier,
+    resolve_import: Callable[[str, dict[str, str]], str | None],
+    resolve_target: Callable[[str, dict[str, str]], str | None],
+) -> tuple[dict[str, Any], ...]:
+    stripped_text = strip_comments(text)
+    return _parse_dependencies_only_from_stripped_text(
+        file_path,
+        stripped_text,
+        module_index,
+        stable_identifier=stable_identifier,
+        resolve_import=_cached_import_resolver(resolve_import),
+        resolve_target=_cached_target_resolver(resolve_target),
+    )
+
+
 def parse_file(
     file_path: str,
     text: str,
@@ -478,20 +568,30 @@ def parse_file(
     tuple[dict[str, Any], ...],
     tuple[dict[str, Any], ...],
 ]:
+    stripped_text = strip_comments(text)
+    resolve_import_cached = _cached_import_resolver(resolve_import)
+    resolve_target_cached = _cached_target_resolver(resolve_target)
     symbol_entries = collect_symbol_entries(
         text,
         file_path=file_path,
         stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
     )
     reference_candidates: dict[str, dict[str, Any]] = {}
-    stripped_lines = strip_comments(text).splitlines()
+    # Collect references from the full stripped text ONCE (reusing the cached line-offset
+    # table) and bucket each by line into the symbol whose [start_line, end_line] span
+    # contains it — instead of re-deriving line offsets on a per-symbol snippet substring,
+    # which created a second _line_start_offsets cache key per symbol. The line number is
+    # only used to attribute the reference to its enclosing symbol.
+    references_by_line = _iter_reference_targets_from_stripped_text(stripped_text)
     for symbol_entry in symbol_entries:
         start_line = int(symbol_entry["start_line"])
         end_line = int(symbol_entry["end_line"])
         symbol_name = str(symbol_entry["symbol_name"]).lower()
         symbol_id = str(symbol_entry["symbol_id"])
-        snippet = "\n".join(stripped_lines[start_line - 1 : end_line])
-        for _line_no, reference_kind, raw_target in iter_reference_targets(snippet):
+        for reference_line, reference_kind, raw_target in references_by_line:
+            if reference_line < start_line or reference_line > end_line:
+                continue
             normalized_target, leaf_name = symbol_name_parts(raw_target)
             if (
                 not normalized_target
@@ -500,7 +600,7 @@ def parse_file(
                 or leaf_name == symbol_name
             ):
                 continue
-            target_file = resolve_target(raw_target, module_index)
+            target_file = resolve_target_cached(raw_target, module_index)
             if target_file is None or target_file == file_path:
                 continue
             edge_id = stable_identifier(
@@ -527,13 +627,13 @@ def parse_file(
             )
     return (
         symbol_entries,
-        parse_dependencies_only(
+        _parse_dependencies_only_from_stripped_text(
             file_path,
-            text,
+            stripped_text,
             module_index,
             stable_identifier=stable_identifier,
-            resolve_import=resolve_import,
-            resolve_target=resolve_target,
+            resolve_import=resolve_import_cached,
+            resolve_target=resolve_target_cached,
         ),
         tuple(reference_candidates[key] for key in sorted(reference_candidates)),
     )

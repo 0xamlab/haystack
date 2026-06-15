@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from bisect import bisect_right
+from functools import lru_cache
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -76,16 +78,24 @@ class _CollectedSymbol:
 
 
 def _line_number(text: str, offset: int) -> int:
-    if offset <= 0:
-        return 1
-    return text.count("\n", 0, offset) + 1
+    bounded_offset = max(0, min(offset, len(text)))
+    return bisect_right(_line_start_offsets(text), bounded_offset)
 
 
 def _line_count(text: str) -> int:
     return max(1, text.count("\n") + 1)
 
 
-def strip_comments(text: str) -> str:
+@lru_cache(maxsize=256)
+def _line_start_offsets(text: str) -> tuple[int, ...]:
+    offsets = [0]
+    for index, character in enumerate(text):
+        if character == "\n":
+            offsets.append(index + 1)
+    return tuple(offsets)
+
+
+def _strip_comments_uncached(text: str) -> str:
     stripped_lines: list[str] = []
     for raw_line in text.splitlines():
         line = raw_line
@@ -94,6 +104,11 @@ def strip_comments(text: str) -> str:
             line = line[:comment_index]
         stripped_lines.append(line.rstrip())
     return "\n".join(stripped_lines)
+
+
+@lru_cache(maxsize=256)
+def strip_comments(text: str) -> str:
+    return _strip_comments_uncached(text)
 
 
 def is_probable_elm_source(*, path: Path | PurePosixPath, text: str) -> bool:
@@ -146,8 +161,8 @@ def exposing_all(raw_value: str) -> bool:
     return ".." in str(raw_value or "")
 
 
-def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
-    stripped_text = strip_comments(text)
+@lru_cache(maxsize=256)
+def _iter_symbol_entries_cached(stripped_text: str) -> tuple[tuple[str, str, int], ...]:
     entries: list[tuple[str, str, int]] = []
     seen_names: set[str] = set()
     for regex, symbol_kind in (
@@ -167,3 +182,13 @@ def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
             seen_names.add(symbol_name)
             entries.append((symbol_name, symbol_kind, _line_number(stripped_text, match.start())))
     return tuple(sorted(entries, key=lambda item: (item[2], item[0], item[1])))
+
+
+def iter_symbol_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, str, int], ...]:
+    return _iter_symbol_entries_cached(
+        stripped_text if stripped_text is not None else strip_comments(text)
+    )

@@ -22,3 +22,23 @@ def test_candidate_config_focus_paths_includes_nearby_tsconfig_files(tmp_path: P
     assert "packages/common/package.json" not in config_paths
 
 
+def test_candidate_config_focus_paths_excludes_resolved_files_outside_repo(
+    tmp_path: Path,
+) -> None:
+    repo_path = tmp_path / "repo"
+    app_path = repo_path / "services" / "app"
+    app_path.mkdir(parents=True)
+    external_path = tmp_path / "external"
+    external_path.mkdir()
+    (external_path / "package.json").write_text('{"name":"external"}', encoding="utf-8")
+    (app_path / "package.json").symlink_to(external_path / "package.json")
+
+    config_paths = _candidate_config_focus_paths(
+        repo_path=repo_path,
+        focus_paths=["services/app"],
+        diagnostic_base_path=app_path,
+        diagnostic_project_path=None,
+    )
+
+    assert config_paths == []
+

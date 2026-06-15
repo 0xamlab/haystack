@@ -55,7 +55,11 @@ def module_aliases_for_path(
     if text and not is_probable_vimscript_source(path=path, text=text):
         return {alias for alias in aliases if alias}
     module_name = module_name_from_path(file_path)
-    for symbol_name, _symbol_kind, _line_number in iter_symbol_entries(text):
+    stripped_text = strip_comments(text)
+    for symbol_name, _symbol_kind, _line_number in iter_symbol_entries(
+        text,
+        stripped_text=stripped_text,
+    ):
         aliases.add(symbol_name)
         bare_name = symbol_name.split(":", 1)[-1]
         aliases.add(bare_name)
@@ -104,6 +108,7 @@ def _import_bindings_for_text(
     *,
     file_path: str,
     text: str,
+    stripped_text: str,
     module_index: dict[str, str],
     stable_identifier,
     normalize_repository_relative_path,
@@ -112,7 +117,10 @@ def _import_bindings_for_text(
     dependencies: list[_Dependency] = []
     seen_dependencies: set[tuple[str | None, str]] = set()
     bindings: dict[str, _ImportedSymbolBinding] = {}
-    for import_target, line_number in iter_source_statements(text):
+    for import_target, line_number in iter_source_statements(
+        text,
+        stripped_text=stripped_text,
+    ):
         target_file = resolve_import(
             current_file=file_path,
             import_target=import_target,
@@ -156,9 +164,11 @@ def parse_dependencies_only(
     path = PurePosixPath(file_path)
     if not is_probable_vimscript_source(path=path, text=text):
         return ()
+    stripped_text = strip_comments(text)
     dependencies, _bindings = _import_bindings_for_text(
         file_path=file_path,
         text=text,
+        stripped_text=stripped_text,
         module_index=module_index,
         stable_identifier=stable_identifier,
         normalize_repository_relative_path=normalize_repository_relative_path,
@@ -199,7 +209,10 @@ def parse_file(
         signature=f"module {module_name}" if module_name else None,
     )
     collected_symbols: list[tuple[_Symbol, int]] = [(module_symbol, 1)]
-    for symbol_name, symbol_kind, start_line in iter_symbol_entries(stripped_text):
+    for symbol_name, symbol_kind, start_line in iter_symbol_entries(
+        text,
+        stripped_text=stripped_text,
+    ):
         collected_symbols.append(
             (
                 _Symbol(
@@ -241,6 +254,7 @@ def parse_file(
     dependencies, bindings = _import_bindings_for_text(
         file_path=file_path,
         text=text,
+        stripped_text=stripped_text,
         module_index=module_index,
         stable_identifier=stable_identifier,
         normalize_repository_relative_path=normalize_repository_relative_path,
@@ -253,7 +267,10 @@ def parse_file(
     }
     reference_candidates: list[_SymbolReferenceCandidate] = []
     seen_reference_keys: set[tuple[str, int]] = set()
-    for reference_name, line_number in iter_reference_names(stripped_text):
+    for reference_name, line_number in iter_reference_names(
+        text,
+        stripped_text=stripped_text,
+    ):
         binding = bindings.get(reference_name)
         target_symbol_id: str | None = None
         target_file = None

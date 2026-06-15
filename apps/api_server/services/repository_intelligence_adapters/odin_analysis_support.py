@@ -193,6 +193,9 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
+    stripped_text: str | None = None,
+    include_symbol_aliases: bool = True,
 ) -> set[str]:
     path = PurePosixPath(file_path)
     aliases = {file_path, str(path.with_suffix("")), path.stem}
@@ -201,14 +204,22 @@ def module_aliases_for_path(
         return {alias for alias in aliases if alias}
     if path.suffix.lower() not in ODIN_FILE_SUFFIXES:
         return set()
-    try:
-        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        text = ""
-    if not is_probable_odin_source(path=Path(file_path), text=text):
+    if text is None:
+        try:
+            text = (root_path / path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            text = ""
+    stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
+    if not is_probable_odin_source(path=Path(file_path), text=text, stripped_text=stripped_text):
         return {alias for alias in aliases if alias}
-    package_name = package_name_from_text(text, file_path=file_path)
+    package_name = package_name_from_text(
+        text,
+        file_path=file_path,
+        stripped_text=stripped_text,
+    )
     aliases.add(package_name)
+    if not include_symbol_aliases:
+        return {alias for alias in aliases if alias}
     for collected_symbol in _collect_symbols(
         file_path=file_path,
         text=text,

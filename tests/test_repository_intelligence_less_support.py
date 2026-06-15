@@ -21,6 +21,9 @@ from apps.api_server.services.repository_intelligence_adapters import (
 from benchmarks.repository_intelligence_real_repo_probe import (
     _derive_operational_seed_plan_without_diagnostics,
 )
+from benchmarks.repository_intelligence_real_repo_probe_profile_style_candidates_support import (
+    _less_profile_hints_from_candidates,
+)
 
 
 def _connector_for_repo(repo_path: Path) -> SimpleNamespace:
@@ -100,6 +103,160 @@ def test_less_adapter_module_aliases_include_path_module_and_symbol_names(tmp_pa
     assert "rounded" in aliases
 
 
+def test_less_adapter_module_aliases_use_provided_text_without_rereading_file(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo_path = tmp_path / "less-inline-text-repo"
+    (repo_path / "styles").mkdir(parents=True)
+    source_text = "@brand-color: #123456;\n.rounded(@radius) { border-radius: @radius; }\n"
+    file_path = repo_path / "styles" / "theme.less"
+    file_path.write_text(source_text, encoding="utf-8")
+
+    def _unexpected_read_text(self: Path, *args, **kwargs) -> str:
+        raise AssertionError(f"module_aliases_for_path should not reread {self}")
+
+    monkeypatch.setattr(Path, "read_text", _unexpected_read_text)
+
+    aliases = repository_service.less_adapter.module_aliases_for_path(
+        root_path=repo_path,
+        file_path="styles/theme.less",
+        stable_identifier=repository_service._stable_identifier,
+        text=source_text,
+        stripped_text=repository_less_primitives.strip_comments(source_text),
+    )
+
+    assert "styles/theme.less" in aliases
+    assert "styles.theme" in aliases
+    assert "brand-color" in aliases
+    assert "rounded" in aliases
+
+
+def test_less_adapter_module_aliases_can_skip_symbol_aliases(tmp_path: Path) -> None:
+    repo_path = tmp_path / "less-module-only-alias-repo"
+    (repo_path / "styles").mkdir(parents=True)
+    source_text = "@brand-color: #123456;\n.rounded(@radius) { border-radius: @radius; }\n"
+    (repo_path / "styles" / "theme.less").write_text(source_text, encoding="utf-8")
+
+    aliases = repository_service.less_adapter.module_aliases_for_path(
+        root_path=repo_path,
+        file_path="styles/theme.less",
+        stable_identifier=repository_service._stable_identifier,
+        text=source_text,
+        stripped_text=repository_less_primitives.strip_comments(source_text),
+        include_symbol_aliases=False,
+    )
+
+    assert "styles/theme.less" in aliases
+    assert "styles.theme" in aliases
+    assert "brand-color" not in aliases
+    assert "rounded" not in aliases
+
+
+def test_less_module_aliases_path_only_mode_skips_text_loading_and_symbol_scan(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo_path = tmp_path / "less-path-only-fast-path-repo"
+    (repo_path / "styles").mkdir(parents=True)
+    file_path = repo_path / "styles" / "theme.less"
+    file_path.write_text(
+        "@brand-color: #123456;\n.rounded(@radius) { border-radius: @radius; }\n",
+        encoding="utf-8",
+    )
+
+    def _unexpected_read_text(self: Path, *args: object, **kwargs: object) -> str:
+        raise AssertionError(f"path-only less aliases should not reread {self}")
+
+    def _unexpected_iter_symbol_entries(*args: object, **kwargs: object) -> object:
+        raise AssertionError("path-only less aliases should skip symbol scans")
+
+    monkeypatch.setattr(Path, "read_text", _unexpected_read_text)
+    monkeypatch.setattr(
+        repository_less_analysis_support,
+        "iter_symbol_entries",
+        _unexpected_iter_symbol_entries,
+    )
+
+    aliases = repository_service.less_adapter.module_aliases_for_path(
+        root_path=repo_path,
+        file_path="styles/theme.less",
+        stable_identifier=repository_service._stable_identifier,
+        include_symbol_aliases=False,
+    )
+
+    assert "styles/theme.less" in aliases
+    assert "styles.theme" in aliases
+    assert "theme" in aliases
+    assert "brand-color" not in aliases
+    assert "rounded" not in aliases
+
+
+def test_less_adapter_reuses_single_stripped_text_per_parse(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    original_strip_comments = repository_less_primitives.strip_comments
+    strip_call_count = {"value": 0}
+
+    def counting_strip_comments(text: str) -> str:
+        strip_call_count["value"] += 1
+        return original_strip_comments(text)
+
+    monkeypatch.setattr(repository_less_primitives, "strip_comments", counting_strip_comments)
+    monkeypatch.setattr(repository_less_analysis_support, "strip_comments", counting_strip_comments)
+
+    source_text = (
+        '@import "variables.less";\n'
+        ".card {\n"
+        "  color: @brand-color;\n"
+        "  .rounded(4px);\n"
+        "}\n"
+    )
+    module_index = {
+        "variables.less": "styles/variables.less",
+        "styles/variables.less": "styles/variables.less",
+        "styles/main.less": "styles/main.less",
+        "styles/main": "styles/main.less",
+    }
+
+    repository_service.less_adapter.parse_dependencies_only(
+        "styles/main.less",
+        source_text,
+        module_index,
+        stable_identifier=repository_service._stable_identifier,
+        normalize_repository_relative_path=repository_service._normalize_repository_relative_path,
+        resolve_suffix_match=repository_service._resolve_suffix_match,
+    )
+    repository_service.less_adapter.parse_file(
+        "styles/main.less",
+        source_text,
+        module_index,
+        stable_identifier=repository_service._stable_identifier,
+        normalize_repository_relative_path=repository_service._normalize_repository_relative_path,
+        resolve_suffix_match=repository_service._resolve_suffix_match,
+    )
+
+    assert strip_call_count["value"] == 2
+
+
+def test_less_strip_comments_reuse_cached_results() -> None:
+    repository_less_primitives._strip_comments_cached.cache_clear()
+    source_text = (
+        "@brand-color: #123456;\n"
+        "// comment\n"
+        ".rounded(@radius) { border-radius: @radius; }\n"
+    )
+
+    first_result = repository_less_primitives.strip_comments(source_text)
+    first_cache_info = repository_less_primitives._strip_comments_cached.cache_info()
+    second_result = repository_less_primitives.strip_comments(source_text)
+    second_cache_info = repository_less_primitives._strip_comments_cached.cache_info()
+
+    assert first_result == second_result
+    assert first_cache_info.hits == 0
+    assert second_cache_info.hits == 1
+
+
 def test_less_adapter_parse_file_resolves_imports_and_references(tmp_path: Path) -> None:
     repo_path = tmp_path / "less-parse-repo"
     (repo_path / "styles").mkdir(parents=True)
@@ -161,6 +318,42 @@ def test_less_language_detection_supports_less_suffix() -> None:
         Path("styles/main.less"),
         text='@import "theme.less";\n.card { color: @brand-color; }\n',
     ) == "less"
+
+
+def test_less_profile_hints_reuse_loaded_text_per_candidate_file(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo_path = tmp_path / "less-profile-hints-cache-repo"
+    (repo_path / "styles").mkdir(parents=True)
+    variables_path = repo_path / "styles" / "variables.less"
+    main_path = repo_path / "styles" / "main.less"
+    variables_path.write_text("@brand-color: #123456;\n", encoding="utf-8")
+    main_path.write_text(
+        '@import "variables.less";\n.card { color: @brand-color; }\n',
+        encoding="utf-8",
+    )
+
+    original_read_text = Path.read_text
+    read_counts: dict[Path, int] = {}
+
+    def _counting_read_text(self: Path, *args, **kwargs) -> str:
+        if self in {variables_path, main_path}:
+            read_counts[self] = read_counts.get(self, 0) + 1
+        return original_read_text(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", _counting_read_text)
+
+    entrypoints, roots, configs = _less_profile_hints_from_candidates(
+        repo_path,
+        ["styles/variables.less", "styles/main.less"],
+    )
+
+    assert "styles/main.less" in entrypoints
+    assert "styles" in roots
+    assert configs == set()
+    assert read_counts[variables_path] <= 1
+    assert read_counts[main_path] <= 1
 
 
 def test_operational_seed_plan_without_diagnostics_promotes_less_when_less_surface_dominates(

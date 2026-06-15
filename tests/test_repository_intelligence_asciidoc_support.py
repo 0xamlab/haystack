@@ -104,6 +104,28 @@ def test_asciidoc_adapter_module_aliases_include_anchors_and_sections(tmp_path: 
     assert "guide.Guide" in aliases
 
 
+def test_asciidoc_adapter_module_aliases_accept_preloaded_text_without_file_read(tmp_path: Path) -> None:
+    repo_path = tmp_path / "asciidoc-preloaded-text-repo"
+    (repo_path / "docs").mkdir(parents=True)
+    target_path = repo_path / "docs" / "guide.adoc"
+    target_path.write_text(
+        "[[guide-anchor]]\n= Guide\n",
+        encoding="utf-8",
+    )
+    text = target_path.read_text(encoding="utf-8")
+    target_path.unlink()
+
+    aliases = repository_service.asciidoc_adapter.module_aliases_for_path(
+        root_path=repo_path,
+        file_path="docs/guide.adoc",
+        stable_identifier=repository_service._stable_identifier,
+        text=text,
+    )
+
+    assert "guide-anchor" in aliases
+    assert "guide.Guide" in aliases
+
+
 def test_asciidoc_adapter_parse_file_resolves_include_and_xref(tmp_path: Path) -> None:
     repo_path = tmp_path / "asciidoc-parse-repo"
     (repo_path / "docs").mkdir(parents=True)

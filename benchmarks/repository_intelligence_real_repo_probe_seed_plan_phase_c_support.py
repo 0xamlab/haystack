@@ -4,6 +4,11 @@ from pathlib import PurePosixPath
 
 from typing import Any
 
+from benchmarks.repository_intelligence_real_repo_probe_documentation_score_support import (
+    apply_documentation_host_ecosystem_scores,
+    documentation_host_ecosystem_counts,
+)
+
 
 def apply_seed_plan_phase_c(state: Any) -> None:
     from benchmarks import repository_intelligence_real_repo_probe as probe_module
@@ -11,12 +16,17 @@ def apply_seed_plan_phase_c(state: Any) -> None:
     repository_service = probe_module.repository_service
     _accumulate_detected_ecosystem_scores = probe_module._accumulate_detected_ecosystem_scores
     _asciidoc_profile_hints_from_candidates = probe_module._asciidoc_profile_hints_from_candidates
+    _bqn_profile_hints_from_candidates = probe_module._bqn_profile_hints_from_candidates
     _candidate_ecosystem_counts = probe_module._candidate_ecosystem_counts
     _cuda_profile_hints_from_candidates = probe_module._cuda_profile_hints_from_candidates
     _cython_profile_hints_from_candidates = probe_module._cython_profile_hints_from_candidates
+    _j_profile_hints_from_candidates = probe_module._j_profile_hints_from_candidates
+    _just_profile_hints_from_candidates = probe_module._just_profile_hints_from_candidates
+    _lex_profile_hints_from_candidates = probe_module._lex_profile_hints_from_candidates
     _moonbit_profile_hints_from_candidates = probe_module._moonbit_profile_hints_from_candidates
     _opencl_profile_hints_from_candidates = probe_module._opencl_profile_hints_from_candidates
     _org_profile_hints_from_candidates = probe_module._org_profile_hints_from_candidates
+    _rebol_profile_hints_from_candidates = probe_module._rebol_profile_hints_from_candidates
     _register_candidate_ecosystems = probe_module._register_candidate_ecosystems
     _rescript_profile_hints_from_candidates = probe_module._rescript_profile_hints_from_candidates
     _roc_profile_hints_from_candidates = probe_module._roc_profile_hints_from_candidates
@@ -24,6 +34,9 @@ def apply_seed_plan_phase_c(state: Any) -> None:
     _stan_profile_hints_from_candidates = probe_module._stan_profile_hints_from_candidates
     _tex_profile_hints_from_candidates = probe_module._tex_profile_hints_from_candidates
     _typst_profile_hints_from_candidates = probe_module._typst_profile_hints_from_candidates
+    _supplement_candidate_file_paths_for_surface_dir_parts = (
+        probe_module._supplement_candidate_file_paths_for_surface_dir_parts
+    )
 
     repo_path = state.repo_path
     focus_paths = state.focus_paths
@@ -38,6 +51,256 @@ def apply_seed_plan_phase_c(state: Any) -> None:
     support_root_candidate_ecosystems = state.support_root_candidate_ecosystems
     bitbake_candidate_file_paths = state.bitbake_candidate_file_paths
     candidate_file_paths = state.candidate_file_paths
+
+    bqn_ecosystem_counts = _candidate_ecosystem_counts(
+        candidate_file_paths,
+        repo_path=repo_path,
+        ecosystems={"bqn", "apl", "c", "cpp", "javascript", "node", "makefile"},
+    )
+    if bqn_ecosystem_counts["bqn"] > 0:
+        entrypoints, roots, configs = _bqn_profile_hints_from_candidates(
+            repo_path,
+            candidate_file_paths,
+        )
+        if entrypoints or roots or configs:
+            detected_ecosystems.add("bqn")
+            bqn_count = bqn_ecosystem_counts["bqn"]
+            host_count = sum(
+                bqn_ecosystem_counts[ecosystem]
+                for ecosystem in ("apl", "c", "cpp", "javascript", "node", "makefile")
+            )
+            should_operationalize_bqn = (
+                bqn_count >= 2
+                and (
+                    host_count == 0
+                    or bqn_count >= host_count
+                    or bqn_count * 3 >= host_count
+                )
+            )
+            if should_operationalize_bqn:
+                _register_candidate_ecosystems(
+                    entrypoint_candidate_ecosystems,
+                    values=entrypoints,
+                    ecosystems={"bqn"},
+                )
+                _register_candidate_ecosystems(
+                    support_root_candidate_ecosystems,
+                    values=roots,
+                    ecosystems={"bqn"},
+                )
+                entrypoint_candidates.update(entrypoints)
+                support_root_candidates.update(roots)
+                config_path_candidates.update(configs)
+                _accumulate_detected_ecosystem_scores(
+                    detected_ecosystem_scores,
+                    ecosystems={"bqn"},
+                    config_path=sorted(configs or entrypoints or roots or {""})[0],
+                    repo_path=repo_path,
+                    entrypoints=entrypoints,
+                    roots=roots,
+                    configs=configs,
+                )
+                if bqn_count >= max(2, host_count):
+                    detected_ecosystem_scores["bqn"] += min(140, 32 + bqn_count * 14)
+            elif bqn_count * 2 <= max(1, host_count):
+                dominant_host = max(
+                    ("apl", "c", "cpp", "javascript", "node", "makefile"),
+                    key=lambda ecosystem: bqn_ecosystem_counts[ecosystem],
+                )
+                if bqn_ecosystem_counts[dominant_host] > 0:
+                    detected_ecosystem_scores[dominant_host] += min(
+                        140,
+                        24 + bqn_ecosystem_counts[dominant_host] * 6,
+                    )
+                    detected_ecosystem_scores["bqn"] = max(
+                        0,
+                        detected_ecosystem_scores["bqn"] - 48,
+                    )
+
+    j_ecosystem_counts = _candidate_ecosystem_counts(
+        candidate_file_paths,
+        repo_path=repo_path,
+        ecosystems={"j", "c", "cpp", "makefile", "starlark"},
+    )
+    if j_ecosystem_counts["j"] > 0:
+        entrypoints, roots, configs = _j_profile_hints_from_candidates(
+            repo_path,
+            candidate_file_paths,
+        )
+        if entrypoints or roots or configs:
+            detected_ecosystems.add("j")
+            j_count = j_ecosystem_counts["j"]
+            host_count = sum(
+                j_ecosystem_counts[ecosystem]
+                for ecosystem in ("c", "cpp", "makefile", "starlark")
+            )
+            should_operationalize_j = (
+                j_count >= 2
+                and (
+                    host_count == 0
+                    or j_count >= host_count
+                    or j_count * 3 >= host_count
+                )
+            )
+            if should_operationalize_j:
+                _register_candidate_ecosystems(
+                    entrypoint_candidate_ecosystems,
+                    values=entrypoints,
+                    ecosystems={"j"},
+                )
+                _register_candidate_ecosystems(
+                    support_root_candidate_ecosystems,
+                    values=roots,
+                    ecosystems={"j"},
+                )
+                entrypoint_candidates.update(entrypoints)
+                support_root_candidates.update(roots)
+                config_path_candidates.update(configs)
+                _accumulate_detected_ecosystem_scores(
+                    detected_ecosystem_scores,
+                    ecosystems={"j"},
+                    config_path=sorted(configs or entrypoints or roots or {""})[0],
+                    repo_path=repo_path,
+                    entrypoints=entrypoints,
+                    roots=roots,
+                    configs=configs,
+                )
+                if j_count >= max(2, host_count):
+                    detected_ecosystem_scores["j"] += min(180, 40 + j_count * 12)
+            elif j_count * 2 <= max(1, host_count):
+                dominant_host = max(
+                    ("c", "cpp", "makefile", "starlark"),
+                    key=lambda ecosystem: j_ecosystem_counts[ecosystem],
+                )
+                if j_ecosystem_counts[dominant_host] > 0:
+                    detected_ecosystem_scores[dominant_host] += min(
+                        140,
+                        24 + j_ecosystem_counts[dominant_host] * 6,
+                    )
+                    detected_ecosystem_scores["j"] = max(
+                        0,
+                        detected_ecosystem_scores["j"] - 48,
+                    )
+
+    lex_ecosystem_counts = _candidate_ecosystem_counts(
+        candidate_file_paths,
+        repo_path=repo_path,
+        ecosystems={"lex", "c", "cpp", "cmake", "makefile", "m4", "python", "qmake"},
+    )
+    if lex_ecosystem_counts["lex"] > 0:
+        entrypoints, roots, configs = _lex_profile_hints_from_candidates(
+            repo_path,
+            candidate_file_paths,
+        )
+        if entrypoints or roots or configs:
+            detected_ecosystems.add("lex")
+            lex_count = lex_ecosystem_counts["lex"]
+            host_count = sum(
+                lex_ecosystem_counts[ecosystem]
+                for ecosystem in ("c", "cpp", "cmake", "makefile", "m4", "python", "qmake")
+            )
+            should_operationalize_lex = (
+                lex_count >= 1
+                and (
+                    host_count == 0
+                    or lex_count >= host_count
+                    or lex_count * 2 >= host_count
+                )
+            )
+            if should_operationalize_lex:
+                _register_candidate_ecosystems(
+                    entrypoint_candidate_ecosystems,
+                    values=entrypoints,
+                    ecosystems={"lex"},
+                )
+                _register_candidate_ecosystems(
+                    support_root_candidate_ecosystems,
+                    values=roots,
+                    ecosystems={"lex"},
+                )
+                entrypoint_candidates.update(entrypoints)
+                support_root_candidates.update(roots)
+                config_path_candidates.update(configs)
+                _accumulate_detected_ecosystem_scores(
+                    detected_ecosystem_scores,
+                    ecosystems={"lex"},
+                    config_path=sorted(configs or entrypoints or roots or {""})[0],
+                    repo_path=repo_path,
+                    entrypoints=entrypoints,
+                    roots=roots,
+                    configs=configs,
+                )
+                detected_ecosystem_scores["lex"] += min(140, 36 + lex_count * 18)
+            elif lex_count * 2 <= max(1, host_count):
+                detected_ecosystem_scores["lex"] = max(
+                    0,
+                    detected_ecosystem_scores["lex"] - 24,
+                )
+
+    rebol_ecosystem_counts = _candidate_ecosystem_counts(
+        candidate_file_paths,
+        repo_path=repo_path,
+        ecosystems={"rebol", "r", "python", "shell", "javascript", "node", "makefile"},
+    )
+    if rebol_ecosystem_counts["rebol"] > 0:
+        entrypoints, roots, configs = _rebol_profile_hints_from_candidates(
+            repo_path,
+            candidate_file_paths,
+        )
+        if entrypoints or roots or configs:
+            detected_ecosystems.add("rebol")
+            rebol_count = rebol_ecosystem_counts["rebol"]
+            host_count = sum(
+                rebol_ecosystem_counts[ecosystem]
+                for ecosystem in ("r", "python", "shell", "javascript", "node", "makefile")
+            )
+            should_operationalize_rebol = (
+                rebol_count >= 2
+                and (
+                    host_count == 0
+                    or rebol_count >= host_count
+                    or rebol_count * 3 >= host_count
+                )
+            )
+            if should_operationalize_rebol:
+                _register_candidate_ecosystems(
+                    entrypoint_candidate_ecosystems,
+                    values=entrypoints,
+                    ecosystems={"rebol"},
+                )
+                _register_candidate_ecosystems(
+                    support_root_candidate_ecosystems,
+                    values=roots,
+                    ecosystems={"rebol"},
+                )
+                entrypoint_candidates.update(entrypoints)
+                support_root_candidates.update(roots)
+                config_path_candidates.update(configs)
+                _accumulate_detected_ecosystem_scores(
+                    detected_ecosystem_scores,
+                    ecosystems={"rebol"},
+                    config_path=sorted(configs or entrypoints or roots or {""})[0],
+                    repo_path=repo_path,
+                    entrypoints=entrypoints,
+                    roots=roots,
+                    configs=configs,
+                )
+                if rebol_count >= max(2, host_count):
+                    detected_ecosystem_scores["rebol"] += min(140, 32 + rebol_count * 14)
+            elif rebol_count * 2 <= max(1, host_count):
+                dominant_host = max(
+                    ("r", "python", "shell", "javascript", "node", "makefile"),
+                    key=lambda ecosystem: rebol_ecosystem_counts[ecosystem],
+                )
+                if rebol_ecosystem_counts[dominant_host] > 0:
+                    detected_ecosystem_scores[dominant_host] += min(
+                        140,
+                        24 + rebol_ecosystem_counts[dominant_host] * 6,
+                    )
+                    detected_ecosystem_scores["rebol"] = max(
+                        0,
+                        detected_ecosystem_scores["rebol"] - 48,
+                    )
 
     rescript_ecosystem_counts = _candidate_ecosystem_counts(
         candidate_file_paths,
@@ -103,6 +366,131 @@ def apply_seed_plan_phase_c(state: Any) -> None:
                         0,
                         detected_ecosystem_scores["rescript"] - 48,
                     )
+
+    just_ecosystem_counts = _candidate_ecosystem_counts(
+        candidate_file_paths,
+        repo_path=repo_path,
+        ecosystems={"just", "dockerfile", "shell", "python", "node"},
+    )
+    if just_ecosystem_counts["just"] > 0:
+        entrypoints, roots, configs = _just_profile_hints_from_candidates(
+            repo_path,
+            candidate_file_paths,
+        )
+        if entrypoints or roots or configs:
+            detected_ecosystems.add("just")
+            just_count = just_ecosystem_counts["just"]
+            host_count = sum(
+                just_ecosystem_counts[ecosystem]
+                for ecosystem in ("dockerfile", "shell", "python", "node")
+            )
+            should_operationalize_just = (
+                just_count >= 1
+                and (
+                    host_count == 0
+                    or just_count >= host_count
+                    or just_count * 3 >= host_count
+                )
+            )
+            if should_operationalize_just:
+                _register_candidate_ecosystems(
+                    entrypoint_candidate_ecosystems,
+                    values=entrypoints,
+                    ecosystems={"just"},
+                )
+                _register_candidate_ecosystems(
+                    support_root_candidate_ecosystems,
+                    values=roots,
+                    ecosystems={"just"},
+                )
+                entrypoint_candidates.update(entrypoints)
+                support_root_candidates.update(roots)
+                config_path_candidates.update(configs)
+                _accumulate_detected_ecosystem_scores(
+                    detected_ecosystem_scores,
+                    ecosystems={"just"},
+                    config_path=sorted(configs or entrypoints or roots or {""})[0],
+                    repo_path=repo_path,
+                    entrypoints=entrypoints,
+                    roots=roots,
+                    configs=configs,
+                )
+                detected_ecosystem_scores["just"] += min(140, 32 + just_count * 14)
+                non_just_max_score = max(
+                    (
+                        score
+                        for ecosystem, score in detected_ecosystem_scores.items()
+                        if ecosystem != "just"
+                    ),
+                    default=0,
+                )
+                detected_ecosystem_scores["just"] = max(
+                    detected_ecosystem_scores["just"],
+                    non_just_max_score + 16,
+                )
+            elif just_count * 2 <= max(1, host_count):
+                dominant_host = max(
+                    ("dockerfile", "shell", "python", "node"),
+                    key=lambda ecosystem: just_ecosystem_counts[ecosystem],
+                )
+                if just_ecosystem_counts[dominant_host] > 0:
+                    detected_ecosystem_scores[dominant_host] += min(
+                        140,
+                        24 + just_ecosystem_counts[dominant_host] * 6,
+                    )
+                    detected_ecosystem_scores["just"] = max(
+                        0,
+                        detected_ecosystem_scores["just"] - 48,
+                    )
+
+    foxpro_ecosystem_counts = _candidate_ecosystem_counts(
+        candidate_file_paths,
+        repo_path=repo_path,
+        ecosystems={"foxpro", "node", "javascript", "shell"},
+    )
+    if foxpro_ecosystem_counts["foxpro"] > 0:
+        detected_ecosystems.add("foxpro")
+        foxpro_count = foxpro_ecosystem_counts["foxpro"]
+        host_count = sum(
+            foxpro_ecosystem_counts[ecosystem]
+            for ecosystem in ("node", "javascript", "shell")
+        )
+        should_operationalize_foxpro = (
+            foxpro_count >= 2
+            and (
+                host_count == 0
+                or foxpro_count >= host_count
+                or foxpro_count * 3 >= host_count
+            )
+        )
+        if should_operationalize_foxpro:
+            detected_ecosystem_scores["foxpro"] += min(140, 32 + foxpro_count * 14)
+            non_foxpro_max_score = max(
+                (
+                    score
+                    for ecosystem, score in detected_ecosystem_scores.items()
+                    if ecosystem != "foxpro"
+                ),
+                default=0,
+            )
+            detected_ecosystem_scores["foxpro"] = max(
+                detected_ecosystem_scores["foxpro"],
+                non_foxpro_max_score + 16,
+            )
+        elif foxpro_count * 2 <= max(1, host_count):
+            dominant_host = max(
+                ("node", "javascript", "shell"),
+                key=lambda ecosystem: foxpro_ecosystem_counts[ecosystem],
+            )
+            if foxpro_ecosystem_counts[dominant_host] > 0:
+                detected_ecosystem_scores[dominant_host] += min(
+                    140,
+                    24 + foxpro_ecosystem_counts[dominant_host] * 6,
+                )
+                detected_ecosystem_scores["foxpro"] = max(
+                    0,
+                    detected_ecosystem_scores["foxpro"] - 48,
+                )
 
     moonbit_ecosystem_counts = _candidate_ecosystem_counts(
         candidate_file_paths,
@@ -243,18 +631,47 @@ def apply_seed_plan_phase_c(state: Any) -> None:
                         detected_ecosystem_scores["roc"] - 48,
                     )
 
-    typst_ecosystem_counts = _candidate_ecosystem_counts(
+    typst_ecosystem_counts = documentation_host_ecosystem_counts(
         candidate_file_paths,
         repo_path=repo_path,
-        ecosystems={"typst", "rust", "python", "javascript", "typescript", "go", "ruby"},
+        documentation_ecosystem="typst",
     )
     if typst_ecosystem_counts["typst"] > 0:
+        # A typst package registry spreads ``.typ`` across many ``packages/preview/*/*`` dirs;
+        # the bridged candidate scan can sample only part of that surface. Pull in the rest of
+        # the ``.typ`` files under typst package dirs so the package-surface dominance gate sees
+        # the full registry (mirrors the shaderlab surface supplement in phase_d).
+        candidate_file_paths = _supplement_candidate_file_paths_for_surface_dir_parts(
+            repo_path=repo_path,
+            candidate_file_paths=candidate_file_paths,
+            suffixes={".typ"},
+            directory_parts={"packages", "preview", "template"},
+            max_extra_files=min(max_files, 64),
+        )
+        state.candidate_file_paths = candidate_file_paths
+        typst_ecosystem_counts = documentation_host_ecosystem_counts(
+            candidate_file_paths,
+            repo_path=repo_path,
+            documentation_ecosystem="typst",
+        )
         entrypoints, roots, configs = _typst_profile_hints_from_candidates(
             repo_path,
             candidate_file_paths,
         )
         if entrypoints or roots or configs:
             detected_ecosystems.add("typst")
+            typst_count = typst_ecosystem_counts["typst"]
+            typst_entrypoint_count = len(entrypoints)
+            typst_package_root_count = sum(
+                1
+                for root in roots
+                if PurePosixPath(root).parts
+                and PurePosixPath(root).parts[0].lower() in {"package", "packages"}
+            )
+            typst_host_count = sum(
+                typst_ecosystem_counts[ecosystem]
+                for ecosystem in ("rust", "node", "shell", "jinja", "toml")
+            )
             _register_candidate_ecosystems(
                 entrypoint_candidate_ecosystems,
                 values=entrypoints,
@@ -277,32 +694,39 @@ def apply_seed_plan_phase_c(state: Any) -> None:
                 roots=roots,
                 configs=configs,
             )
-            typst_count = typst_ecosystem_counts["typst"]
-            host_count = sum(
-                typst_ecosystem_counts[ecosystem]
-                for ecosystem in ("rust", "python", "javascript", "typescript", "go", "ruby")
+            apply_documentation_host_ecosystem_scores(
+                detected_ecosystem_scores,
+                documentation_ecosystem="typst",
+                ecosystem_counts=typst_ecosystem_counts,
+                dominant_threshold=3,
+                documentation_bonus_cap=140,
+                documentation_bonus_base=28,
+                host_bonus_cap=120,
             )
-            if typst_count >= max(3, host_count):
-                detected_ecosystem_scores["typst"] += min(140, 28 + typst_count * 12)
-            elif typst_count * 2 <= max(1, host_count):
-                dominant_host = max(
-                    ("rust", "python", "javascript", "typescript", "go", "ruby"),
-                    key=lambda ecosystem: typst_ecosystem_counts[ecosystem],
+            competitive_typst_package_surface = (
+                typst_count >= 24
+                and typst_entrypoint_count >= 16
+                and typst_package_root_count >= 8
+                and typst_count >= max(24, typst_host_count * 4)
+            )
+            if competitive_typst_package_surface:
+                non_typst_max_score = max(
+                    (
+                        score
+                        for ecosystem, score in detected_ecosystem_scores.items()
+                        if ecosystem != "typst"
+                    ),
+                    default=0,
                 )
-                if typst_ecosystem_counts[dominant_host] > 0:
-                    detected_ecosystem_scores[dominant_host] += min(
-                        120,
-                        24 + typst_ecosystem_counts[dominant_host] * 8,
-                    )
-                    detected_ecosystem_scores["typst"] = max(
-                        0,
-                        detected_ecosystem_scores["typst"] - 24,
-                    )
+                detected_ecosystem_scores["typst"] = max(
+                    detected_ecosystem_scores["typst"],
+                    non_typst_max_score + 16,
+                )
 
-    tex_ecosystem_counts = _candidate_ecosystem_counts(
+    tex_ecosystem_counts = documentation_host_ecosystem_counts(
         candidate_file_paths,
         repo_path=repo_path,
-        ecosystems={"tex", "c", "cpp", "go", "haskell", "javascript", "python", "ruby", "rust", "shell", "typescript"},
+        documentation_ecosystem="tex",
     )
     if tex_ecosystem_counts["tex"] > 0:
         entrypoints, roots, configs = _tex_profile_hints_from_candidates(
@@ -333,32 +757,16 @@ def apply_seed_plan_phase_c(state: Any) -> None:
                 roots=roots,
                 configs=configs,
             )
-            tex_count = tex_ecosystem_counts["tex"]
-            host_count = sum(
-                tex_ecosystem_counts[ecosystem]
-                for ecosystem in ("c", "cpp", "go", "haskell", "javascript", "python", "ruby", "rust", "shell", "typescript")
+            apply_documentation_host_ecosystem_scores(
+                detected_ecosystem_scores,
+                documentation_ecosystem="tex",
+                ecosystem_counts=tex_ecosystem_counts,
             )
-            if tex_count >= max(4, host_count):
-                detected_ecosystem_scores["tex"] += min(160, 36 + tex_count * 12)
-            elif tex_count * 2 <= max(1, host_count):
-                dominant_host = max(
-                    ("c", "cpp", "go", "haskell", "javascript", "python", "ruby", "rust", "shell", "typescript"),
-                    key=lambda ecosystem: tex_ecosystem_counts[ecosystem],
-                )
-                if tex_ecosystem_counts[dominant_host] > 0:
-                    detected_ecosystem_scores[dominant_host] += min(
-                        140,
-                        24 + tex_ecosystem_counts[dominant_host] * 8,
-                    )
-                    detected_ecosystem_scores["tex"] = max(
-                        0,
-                        detected_ecosystem_scores["tex"] - 24,
-                    )
 
-    rst_ecosystem_counts = _candidate_ecosystem_counts(
+    rst_ecosystem_counts = documentation_host_ecosystem_counts(
         candidate_file_paths,
         repo_path=repo_path,
-        ecosystems={"rst", "python", "javascript", "typescript", "go", "ruby", "rust", "shell"},
+        documentation_ecosystem="rst",
     )
     if rst_ecosystem_counts["rst"] > 0:
         entrypoints, roots, configs = _rst_profile_hints_from_candidates(
@@ -389,32 +797,16 @@ def apply_seed_plan_phase_c(state: Any) -> None:
                 roots=roots,
                 configs=configs,
             )
-            rst_count = rst_ecosystem_counts["rst"]
-            host_count = sum(
-                rst_ecosystem_counts[ecosystem]
-                for ecosystem in ("python", "javascript", "typescript", "go", "ruby", "rust", "shell")
+            apply_documentation_host_ecosystem_scores(
+                detected_ecosystem_scores,
+                documentation_ecosystem="rst",
+                ecosystem_counts=rst_ecosystem_counts,
             )
-            if rst_count >= max(4, host_count):
-                detected_ecosystem_scores["rst"] += min(160, 36 + rst_count * 12)
-            elif rst_count * 2 <= max(1, host_count):
-                dominant_host = max(
-                    ("python", "javascript", "typescript", "go", "ruby", "rust", "shell"),
-                    key=lambda ecosystem: rst_ecosystem_counts[ecosystem],
-                )
-                if rst_ecosystem_counts[dominant_host] > 0:
-                    detected_ecosystem_scores[dominant_host] += min(
-                        140,
-                        24 + rst_ecosystem_counts[dominant_host] * 8,
-                    )
-                    detected_ecosystem_scores["rst"] = max(
-                        0,
-                        detected_ecosystem_scores["rst"] - 24,
-                    )
 
-    asciidoc_ecosystem_counts = _candidate_ecosystem_counts(
+    asciidoc_ecosystem_counts = documentation_host_ecosystem_counts(
         candidate_file_paths,
         repo_path=repo_path,
-        ecosystems={"asciidoc", "python", "javascript", "typescript", "go", "ruby", "rust", "shell"},
+        documentation_ecosystem="asciidoc",
     )
     if asciidoc_ecosystem_counts["asciidoc"] > 0:
         entrypoints, roots, configs = _asciidoc_profile_hints_from_candidates(
@@ -445,32 +837,16 @@ def apply_seed_plan_phase_c(state: Any) -> None:
                 roots=roots,
                 configs=configs,
             )
-            asciidoc_count = asciidoc_ecosystem_counts["asciidoc"]
-            host_count = sum(
-                asciidoc_ecosystem_counts[ecosystem]
-                for ecosystem in ("python", "javascript", "typescript", "go", "ruby", "rust", "shell")
+            apply_documentation_host_ecosystem_scores(
+                detected_ecosystem_scores,
+                documentation_ecosystem="asciidoc",
+                ecosystem_counts=asciidoc_ecosystem_counts,
             )
-            if asciidoc_count >= max(4, host_count):
-                detected_ecosystem_scores["asciidoc"] += min(160, 36 + asciidoc_count * 12)
-            elif asciidoc_count * 2 <= max(1, host_count):
-                dominant_host = max(
-                    ("python", "javascript", "typescript", "go", "ruby", "rust", "shell"),
-                    key=lambda ecosystem: asciidoc_ecosystem_counts[ecosystem],
-                )
-                if asciidoc_ecosystem_counts[dominant_host] > 0:
-                    detected_ecosystem_scores[dominant_host] += min(
-                        140,
-                        24 + asciidoc_ecosystem_counts[dominant_host] * 8,
-                    )
-                    detected_ecosystem_scores["asciidoc"] = max(
-                        0,
-                        detected_ecosystem_scores["asciidoc"] - 24,
-                    )
 
-    org_ecosystem_counts = _candidate_ecosystem_counts(
+    org_ecosystem_counts = documentation_host_ecosystem_counts(
         candidate_file_paths,
         repo_path=repo_path,
-        ecosystems={"org", "emacslisp", "python", "javascript", "typescript", "go", "ruby", "rust", "shell"},
+        documentation_ecosystem="org",
     )
     if org_ecosystem_counts["org"] > 0:
         entrypoints, roots, configs = _org_profile_hints_from_candidates(
@@ -501,27 +877,11 @@ def apply_seed_plan_phase_c(state: Any) -> None:
                 roots=roots,
                 configs=configs,
             )
-            org_count = org_ecosystem_counts["org"]
-            host_count = sum(
-                org_ecosystem_counts[ecosystem]
-                for ecosystem in ("emacslisp", "python", "javascript", "typescript", "go", "ruby", "rust", "shell")
+            apply_documentation_host_ecosystem_scores(
+                detected_ecosystem_scores,
+                documentation_ecosystem="org",
+                ecosystem_counts=org_ecosystem_counts,
             )
-            if org_count >= max(4, host_count):
-                detected_ecosystem_scores["org"] += min(160, 36 + org_count * 12)
-            elif org_count * 2 <= max(1, host_count):
-                dominant_host = max(
-                    ("emacslisp", "python", "javascript", "typescript", "go", "ruby", "rust", "shell"),
-                    key=lambda ecosystem: org_ecosystem_counts[ecosystem],
-                )
-                if org_ecosystem_counts[dominant_host] > 0:
-                    detected_ecosystem_scores[dominant_host] += min(
-                        140,
-                        24 + org_ecosystem_counts[dominant_host] * 8,
-                    )
-                    detected_ecosystem_scores["org"] = max(
-                        0,
-                        detected_ecosystem_scores["org"] - 24,
-                    )
 
     cython_ecosystem_counts = _candidate_ecosystem_counts(
         candidate_file_paths,
@@ -680,7 +1040,35 @@ def apply_seed_plan_phase_c(state: Any) -> None:
                     roots=roots,
                     configs=configs,
                 )
-                if opencl_count >= max(2, host_count):
+                opencl_entrypoint_root_count = len(
+                    {
+                        normalized_root
+                        for path in entrypoints
+                        if (
+                            normalized_root := repository_service._normalize_repository_relative_path(
+                                str(PurePosixPath(path).parent)
+                            )
+                        )
+                    }
+                )
+                if (
+                    opencl_count >= 8
+                    and opencl_entrypoint_root_count >= 6
+                    and opencl_count * 2 >= max(1, host_count)
+                ):
+                    non_opencl_max_score = max(
+                        (
+                            score
+                            for ecosystem, score in detected_ecosystem_scores.items()
+                            if ecosystem != "opencl"
+                        ),
+                        default=0,
+                    )
+                    detected_ecosystem_scores["opencl"] = max(
+                        detected_ecosystem_scores["opencl"],
+                        non_opencl_max_score + 24,
+                    )
+                elif opencl_count >= max(2, host_count):
                     detected_ecosystem_scores["opencl"] += min(140, 32 + opencl_count * 14)
             elif opencl_count * 2 <= max(1, host_count):
                 dominant_host = max(

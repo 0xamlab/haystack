@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable, Iterable
+from functools import lru_cache
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -210,8 +211,19 @@ def _strip_block_comments(text: str) -> str:
     return "".join(chars)
 
 
-def strip_comments(text: str) -> str:
+@lru_cache(maxsize=1024)
+def _strip_comments_cached(text: str) -> str:
+    if "/*" not in text and "//" not in text:
+        return text
     return _COMMENT_LINE_RE.sub("", _strip_block_comments(text))
+
+
+def strip_comments(text: str) -> str:
+    return _strip_comments_cached(text)
+
+
+def _coerce_stripped_text(text: str, stripped_text: str | None = None) -> str:
+    return strip_comments(text) if stripped_text is None else stripped_text
 
 
 def _type_names(fragment: str) -> tuple[str, ...]:
@@ -286,11 +298,21 @@ def _declared_symbol_names(text: str) -> set[str]:
     return declared_names
 
 
-def is_probable_apex_source(*, path: Path, text: str) -> bool:
+def is_probable_apex_source(
+    *,
+    path: Path,
+    text: str,
+    stripped_text: str | None = None,
+) -> bool:
     suffix = path.suffix.lower()
     if suffix not in _KNOWN_APEX_SUFFIXES:
         return False
-    stripped_text = strip_comments(text)
+    lowered_text = text.lower()
+    if "{" not in text or not any(
+        marker in lowered_text for marker in ("class", "trigger", "interface", "enum", "@")
+    ):
+        return False
+    stripped_text = _coerce_stripped_text(text, stripped_text)
     if suffix == ".trigger":
         return bool(_TRIGGER_DECL_RE.search(stripped_text))
     if _TYPE_DECL_RE.search(stripped_text):
@@ -298,14 +320,19 @@ def is_probable_apex_source(*, path: Path, text: str) -> bool:
     return bool(_ANNOTATION_RE.search(stripped_text) and "{" in stripped_text)
 
 
-def is_probable_test_source(*, path: Path, text: str) -> bool:
+def is_probable_test_source(
+    *,
+    path: Path,
+    text: str,
+    stripped_text: str | None = None,
+) -> bool:
     parts = {part.lower() for part in path.parts}
     if parts & _TEST_PATH_TOKENS:
         return True
     lowered_name = path.name.lower()
     if lowered_name.endswith("test.cls") or lowered_name.endswith("tests.cls"):
         return True
-    return "@istest" in strip_comments(text).lower()
+    return "@istest" in _coerce_stripped_text(text, stripped_text).lower()
 
 
 def module_aliases_for_path(
@@ -313,24 +340,34 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
+    stripped_text: str | None = None,
+    include_symbol_aliases: bool = True,
 ) -> set[str]:
     del stable_identifier
     path = PurePosixPath(file_path)
     if path.suffix.lower() not in _KNOWN_APEX_SUFFIXES:
         return set()
-    try:
-        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
+    if text is None:
+        try:
+            text = (root_path / path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return set()
+    stripped_text = _coerce_stripped_text(text, stripped_text)
+    if not is_probable_apex_source(
+        path=Path(file_path),
+        text=text,
+        stripped_text=stripped_text,
+    ):
         return set()
-    if not is_probable_apex_source(path=Path(file_path), text=text):
-        return set()
-    stripped_text = strip_comments(text)
     aliases: set[str] = {
         file_path,
         str(path.with_suffix("")),
         str(path.with_suffix("")).replace("/", "."),
         path.stem,
     }
+    if not include_symbol_aliases:
+        return aliases
     for _kind, symbol_name, _offset, _targets in _declared_types_and_headers(stripped_text):
         aliases.add(symbol_name)
         aliases.add(f"{path.stem}.{symbol_name}")

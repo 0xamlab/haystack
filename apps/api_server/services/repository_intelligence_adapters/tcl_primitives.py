@@ -26,6 +26,7 @@ _PACKAGE_IFNEEDED_RE = re.compile(
     rf"^\s*package\s+ifneeded\s+(?P<name>{_PACKAGE_NAME})\b(?P<body>.*)$",
     re.IGNORECASE | re.MULTILINE,
 )
+_SHEBANG_RE = re.compile(r"(?im)^#!.*\b(?:tclsh|wish)\b")
 _SOURCE_RE = re.compile(r"^\s*source\s+(?P<target>.+)$", re.IGNORECASE | re.MULTILINE)
 _NAMESPACE_EVAL_RE = re.compile(
     r"^\s*namespace\s+eval\s+(?P<name>::?[A-Za-z_][A-Za-z0-9_:]*)\b",
@@ -178,5 +179,14 @@ def _iter_namespace_declarations(text: str) -> tuple[tuple[str, int], ...]:
 
 
 def is_probable_tcl_source(*, path: Path | PurePosixPath, text: str) -> bool:
-    del text
-    return PurePosixPath(path).suffix.lower() in _KNOWN_SUFFIXES
+    if PurePosixPath(path).suffix.lower() in _KNOWN_SUFFIXES:
+        return True
+    if _SHEBANG_RE.match(text):
+        return True
+    return bool(
+        _PACKAGE_PROVIDE_RE.search(text)
+        or _PACKAGE_REQUIRE_RE.search(text)
+        or _PACKAGE_IFNEEDED_RE.search(text)
+        or _NAMESPACE_EVAL_RE.search(text)
+        or _PROC_DECL_RE.search(text)
+    )

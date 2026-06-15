@@ -49,11 +49,9 @@ def strip_comments(text: str) -> str:
     return "\n".join(lines)
 
 
-def normalize_continuations(text: str) -> str:
-    normalized = strip_comments(text)
-    while "\\\n" in normalized:
-        normalized = normalized.replace("\\\n", " ")
-    return normalized
+def normalize_continuations(text: str, *, stripped_text: str | None = None) -> str:
+    normalized = stripped_text if stripped_text is not None else strip_comments(text)
+    return normalized.replace("\\\n", " ")
 
 
 def has_qmake_path_hints(path: Path | PurePosixPath) -> bool:
@@ -113,16 +111,20 @@ def _subdir_label_for_token(token: str) -> str | None:
     return label if _is_symbol_name(label) else None
 
 
-def iter_assignment_entries(text: str) -> tuple[tuple[str, str, str, int], ...]:
-    normalized_text = normalize_continuations(text)
+def iter_assignment_entries(
+    text: str,
+    *,
+    normalized_text: str | None = None,
+) -> tuple[tuple[str, str, str, int], ...]:
+    prepared_text = normalized_text if normalized_text is not None else normalize_continuations(text)
     entries: list[tuple[str, str, str, int]] = []
     seen: set[tuple[str, str, str, int]] = set()
-    for match in _ASSIGNMENT_RE.finditer(normalized_text):
+    for match in _ASSIGNMENT_RE.finditer(prepared_text):
         item = (
             str(match.group("name") or "").strip(),
             str(match.group("op") or "").strip(),
             str(match.group("value") or "").strip(),
-            _line_number(normalized_text, match.start()),
+            _line_number(prepared_text, match.start()),
         )
         if item[0] and item[2] and item not in seen:
             seen.add(item)
@@ -130,50 +132,72 @@ def iter_assignment_entries(text: str) -> tuple[tuple[str, str, str, int], ...]:
     return tuple(entries)
 
 
-def is_probable_qmake_source(*, path: Path | PurePosixPath, text: str) -> bool:
+def is_probable_qmake_source(
+    *,
+    path: Path | PurePosixPath,
+    text: str,
+    normalized_text: str | None = None,
+) -> bool:
     if not has_qmake_path_hints(path):
         return False
-    normalized_text = normalize_continuations(text)
+    prepared_text = normalized_text if normalized_text is not None else normalize_continuations(text)
     return any(
         assignment_name.split(".", 1)[0].upper() in _SIGNAL_VARIABLES
         or assignment_name.lower().endswith((".depends", ".file", ".subdir"))
-        for assignment_name, _op, _value, _line in iter_assignment_entries(normalized_text)
-    ) or bool(_INCLUDE_RE.search(normalized_text) or _LOAD_RE.search(normalized_text))
+        for assignment_name, _op, _value, _line in iter_assignment_entries(
+            text,
+            normalized_text=prepared_text,
+        )
+    ) or bool(_INCLUDE_RE.search(prepared_text) or _LOAD_RE.search(prepared_text))
 
 
-def iter_include_targets(text: str) -> tuple[tuple[str, int], ...]:
-    normalized_text = normalize_continuations(text)
+def iter_include_targets(
+    text: str,
+    *,
+    normalized_text: str | None = None,
+) -> tuple[tuple[str, int], ...]:
+    prepared_text = normalized_text if normalized_text is not None else normalize_continuations(text)
     includes: list[tuple[str, int]] = []
     seen: set[tuple[str, int]] = set()
-    for match in _INCLUDE_RE.finditer(normalized_text):
+    for match in _INCLUDE_RE.finditer(prepared_text):
         target = _normalize_token(str(match.group("target") or ""))
         if not target or "$" in target:
             continue
-        item = (target, _line_number(normalized_text, match.start()))
+        item = (target, _line_number(prepared_text, match.start()))
         if item not in seen:
             seen.add(item)
             includes.append(item)
     return tuple(includes)
 
 
-def iter_load_targets(text: str) -> tuple[tuple[str, int], ...]:
-    normalized_text = normalize_continuations(text)
+def iter_load_targets(
+    text: str,
+    *,
+    normalized_text: str | None = None,
+) -> tuple[tuple[str, int], ...]:
+    prepared_text = normalized_text if normalized_text is not None else normalize_continuations(text)
     loads: list[tuple[str, int]] = []
     seen: set[tuple[str, int]] = set()
-    for match in _LOAD_RE.finditer(normalized_text):
+    for match in _LOAD_RE.finditer(prepared_text):
         target = _normalize_token(str(match.group("target") or ""))
         if not _is_symbol_name(target):
             continue
-        item = (target, _line_number(normalized_text, match.start()))
+        item = (target, _line_number(prepared_text, match.start()))
         if item not in seen:
             seen.add(item)
             loads.append(item)
     return tuple(loads)
 
 
-def iter_subdir_entries(text: str) -> tuple[tuple[str, str | None, tuple[str, ...], int], ...]:
+def iter_subdir_entries(
+    text: str,
+    *,
+    assignment_entries: tuple[tuple[str, str, str, int], ...] | None = None,
+) -> tuple[tuple[str, str | None, tuple[str, ...], int], ...]:
     specs: dict[str, dict[str, Any]] = {}
-    for name, _op, raw_value, line_number in iter_assignment_entries(text):
+    for name, _op, raw_value, line_number in (
+        assignment_entries if assignment_entries is not None else iter_assignment_entries(text)
+    ):
         upper_name = name.upper()
         if upper_name == "SUBDIRS":
             for token in _iter_tokens(raw_value):
@@ -217,10 +241,17 @@ def iter_subdir_entries(text: str) -> tuple[tuple[str, str | None, tuple[str, ..
     )
 
 
-def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
+def iter_symbol_entries(
+    text: str,
+    *,
+    assignment_entries: tuple[tuple[str, str, str, int], ...] | None = None,
+    subdir_entries: tuple[tuple[str, str | None, tuple[str, ...], int], ...] | None = None,
+) -> tuple[tuple[str, str, int], ...]:
     entries: list[tuple[str, str, int]] = []
     seen: set[tuple[str, str, int]] = set()
-    for name, _op, raw_value, line_number in iter_assignment_entries(text):
+    for name, _op, raw_value, line_number in (
+        assignment_entries if assignment_entries is not None else iter_assignment_entries(text)
+    ):
         if name.upper() != "TARGET":
             continue
         target_name = _normalize_token(raw_value)
@@ -230,7 +261,9 @@ def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
         if item not in seen:
             seen.add(item)
             entries.append(item)
-    for label, _path, _depends, line_number in iter_subdir_entries(text):
+    for label, _path, _depends, line_number in (
+        subdir_entries if subdir_entries is not None else iter_subdir_entries(text)
+    ):
         item = (label, "subdir", line_number)
         if item not in seen:
             seen.add(item)
@@ -238,10 +271,16 @@ def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
     return tuple(entries)
 
 
-def iter_reference_names(text: str) -> tuple[tuple[str, str, int], ...]:
+def iter_reference_names(
+    text: str,
+    *,
+    subdir_entries: tuple[tuple[str, str | None, tuple[str, ...], int], ...] | None = None,
+) -> tuple[tuple[str, str, int], ...]:
     references: list[tuple[str, str, int]] = []
     seen: set[tuple[str, str, int]] = set()
-    for source_name, _path, dependency_names, line_number in iter_subdir_entries(text):
+    for source_name, _path, dependency_names, line_number in (
+        subdir_entries if subdir_entries is not None else iter_subdir_entries(text)
+    ):
         for dependency_name in dependency_names:
             item = (source_name, dependency_name, line_number)
             if item not in seen:

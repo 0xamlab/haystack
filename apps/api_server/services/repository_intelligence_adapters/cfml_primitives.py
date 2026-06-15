@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from bisect import bisect_right
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -179,7 +181,7 @@ def _strip_inline_script_comment(raw_line: str) -> str:
     return "".join(chars)
 
 
-def strip_comments(text: str) -> str:
+def _strip_comments_uncached(text: str) -> str:
     without_tag_comments = _TAG_COMMENT_RE.sub(_preserve_multiline_replacement, text)
     without_block_comments = _BLOCK_COMMENT_RE.sub(
         _preserve_multiline_replacement,
@@ -191,10 +193,27 @@ def strip_comments(text: str) -> str:
     )
 
 
+@lru_cache(maxsize=256)
+def _strip_comments_cached(text: str) -> str:
+    return _strip_comments_uncached(text)
+
+
+def strip_comments(text: str) -> str:
+    return _strip_comments_cached(text)
+
+
+@lru_cache(maxsize=256)
+def _line_start_offsets(text: str) -> tuple[int, ...]:
+    offsets = [0]
+    for index, character in enumerate(text):
+        if character == "\n":
+            offsets.append(index + 1)
+    return tuple(offsets)
+
+
 def _line_number(text: str, offset: int) -> int:
-    if offset <= 0:
-        return 1
-    return text.count("\n", 0, offset) + 1
+    bounded_offset = max(0, min(offset, len(text)))
+    return bisect_right(_line_start_offsets(text), bounded_offset)
 
 
 def _line_count(text: str) -> int:
@@ -237,8 +256,13 @@ def component_name_from_path(file_path: str) -> str:
     return dotted_path or path.stem
 
 
-def declared_component_name(*, text: str, file_path: str) -> str:
-    stripped_text = strip_comments(text)
+def declared_component_name(
+    *,
+    text: str,
+    file_path: str,
+    stripped_text: str | None = None,
+) -> str:
+    stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
     for match in (
         _TAG_COMPONENT_RE.search(stripped_text),
         _SCRIPT_COMPONENT_RE.search(stripped_text),
@@ -252,8 +276,12 @@ def declared_component_name(*, text: str, file_path: str) -> str:
     return component_name_from_path(file_path)
 
 
-def component_extends_targets(text: str) -> tuple[str, ...]:
-    stripped_text = strip_comments(text)
+def component_extends_targets(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[str, ...]:
+    stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
     targets: list[str] = []
     for match in (
         _TAG_COMPONENT_RE.search(stripped_text),
@@ -268,8 +296,12 @@ def component_extends_targets(text: str) -> tuple[str, ...]:
     return tuple(dict.fromkeys(targets))
 
 
-def import_targets_for_text(text: str) -> tuple[str, ...]:
-    stripped_text = strip_comments(text)
+def import_targets_for_text(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[str, ...]:
+    stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
     targets: list[str] = []
     for match in _TAG_INCLUDE_RE.finditer(stripped_text):
         attrs = _parse_attrs(str(match.group("attrs") or ""))
@@ -283,8 +315,12 @@ def import_targets_for_text(text: str) -> tuple[str, ...]:
     return tuple(dict.fromkeys(targets))
 
 
-def iter_function_entries(text: str) -> tuple[tuple[str, int, int], ...]:
-    stripped_text = strip_comments(text)
+def iter_function_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, int, int], ...]:
+    stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
     entries: list[tuple[str, int, int]] = []
     for match in _TAG_FUNCTION_BLOCK_RE.finditer(stripped_text):
         attrs = _parse_attrs(str(match.group("attrs") or ""))
@@ -308,8 +344,12 @@ def iter_function_entries(text: str) -> tuple[tuple[str, int, int], ...]:
     )
 
 
-def iter_create_object_targets(text: str) -> tuple[tuple[str, str | None, int], ...]:
-    stripped_text = strip_comments(text)
+def iter_create_object_targets(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, str | None, int], ...]:
+    stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
     targets: list[tuple[str, str | None, int]] = []
     for match in _CREATE_OBJECT_LITERAL_RE.finditer(stripped_text):
         target = _normalize_target(match.group("target") or "")
@@ -321,8 +361,12 @@ def iter_create_object_targets(text: str) -> tuple[tuple[str, str | None, int], 
     return tuple(targets)
 
 
-def iter_new_expression_targets(text: str) -> tuple[tuple[str, str | None, int], ...]:
-    stripped_text = strip_comments(text)
+def iter_new_expression_targets(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, str | None, int], ...]:
+    stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
     targets: list[tuple[str, str | None, int]] = []
     for match in _NEW_EXPRESSION_RE.finditer(stripped_text):
         target = _normalize_target(match.group("target") or "")

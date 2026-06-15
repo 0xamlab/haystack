@@ -3,10 +3,15 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path, PurePosixPath
 from typing import Any
 
 from apps.api_server.services.repository_intelligence_contracts import _Symbol
+from apps.api_server.services.repository_intelligence_adapters.line_numbers import (
+    line_number_for_offset,
+    line_start_offsets,
+)
 
 StableIdentifier = Callable[[str, Any], str]
 NormalizeRepositoryRelativePath = Callable[[str], str]
@@ -77,9 +82,7 @@ class _CollectedSymbol:
 
 
 def _line_number(text: str, offset: int) -> int:
-    if offset <= 0:
-        return 1
-    return text.count("\n", 0, offset) + 1
+    return line_number_for_offset(text, offset)
 
 
 def _line_count(text: str) -> int:
@@ -98,7 +101,11 @@ def _ordered_names(*values: str) -> tuple[str, ...]:
     return tuple(ordered)
 
 
-def strip_comments(text: str) -> str:
+def clear_strip_comments_cache() -> None:
+    strip_comments.cache_clear()
+
+
+def _strip_comments_uncached(text: str) -> str:
     characters = list(text)
     index = 0
     while index < len(characters):
@@ -127,6 +134,11 @@ def strip_comments(text: str) -> str:
     return "".join(characters)
 
 
+@lru_cache(maxsize=512)
+def strip_comments(text: str) -> str:
+    return _strip_comments_uncached(text)
+
+
 def has_tlaplus_path_hints(path: Path | PurePosixPath) -> bool:
     return PurePosixPath(path).suffix.lower() in _KNOWN_SUFFIXES
 
@@ -135,8 +147,8 @@ def module_name_from_path(file_path: str) -> str:
     return PurePosixPath(file_path).stem
 
 
-def module_name_from_text(text: str, *, file_path: str) -> str:
-    stripped_text = strip_comments(text)
+@lru_cache(maxsize=1024)
+def _module_name_from_stripped_text(file_path: str, stripped_text: str) -> str:
     match = _MODULE_HEADER_RE.search(stripped_text)
     if match:
         module_name = str(match.group("name") or "").strip()
@@ -145,10 +157,21 @@ def module_name_from_text(text: str, *, file_path: str) -> str:
     return module_name_from_path(file_path)
 
 
-def is_probable_tlaplus_source(*, path: Path | PurePosixPath, text: str) -> bool:
-    if not has_tlaplus_path_hints(path):
-        return False
-    stripped_text = strip_comments(text)
+def module_name_from_text(
+    text: str,
+    *,
+    file_path: str,
+    stripped_text: str | None = None,
+) -> str:
+    normalized_text = stripped_text if stripped_text is not None else strip_comments(text)
+    return _module_name_from_stripped_text(file_path, normalized_text)
+
+
+@lru_cache(maxsize=1024)
+def _is_probable_tlaplus_source_from_stripped_text(
+    path_value: str,
+    stripped_text: str,
+) -> bool:
     if not stripped_text.strip():
         return False
     return bool(
@@ -156,6 +179,18 @@ def is_probable_tlaplus_source(*, path: Path | PurePosixPath, text: str) -> bool
         or _EXTENDS_RE.search(stripped_text)
         or _DEFINITION_RE.search(stripped_text)
     )
+
+
+def is_probable_tlaplus_source(
+    *,
+    path: Path | PurePosixPath,
+    text: str,
+    stripped_text: str | None = None,
+) -> bool:
+    if not has_tlaplus_path_hints(path):
+        return False
+    normalized_text = stripped_text if stripped_text is not None else strip_comments(text)
+    return _is_probable_tlaplus_source_from_stripped_text(str(PurePosixPath(path)), normalized_text)
 
 
 def _split_symbol_list(raw_value: str) -> tuple[str, ...]:
@@ -174,20 +209,21 @@ def _split_symbol_list(raw_value: str) -> tuple[str, ...]:
     return tuple(symbols)
 
 
-def iter_symbol_entries(text: str, *, file_path: str) -> tuple[tuple[str, str, int], ...]:
-    stripped_text = strip_comments(text)
+@lru_cache(maxsize=1024)
+def _iter_symbol_entries_from_stripped_text(
+    file_path: str,
+    stripped_text: str,
+) -> tuple[tuple[str, str, int], ...]:
     entries: list[tuple[str, str, int]] = []
     seen_names: set[str] = set()
-    module_name = module_name_from_text(stripped_text, file_path=file_path)
+    module_name = _module_name_from_stripped_text(file_path, stripped_text)
     for regex, symbol_kind in ((_VARIABLES_RE, "variable"), (_CONSTANTS_RE, "constant")):
         for match in regex.finditer(stripped_text):
             for symbol_name in _split_symbol_list(str(match.group("names") or "").strip()):
                 if symbol_name in seen_names:
                     continue
                 seen_names.add(symbol_name)
-                entries.append(
-                    (symbol_name, symbol_kind, _line_number(stripped_text, match.start()))
-                )
+                entries.append((symbol_name, symbol_kind, _line_number(stripped_text, match.start())))
     for match in _DEFINITION_RE.finditer(stripped_text):
         symbol_name = str(match.group("name") or "").strip()
         if (
@@ -202,8 +238,20 @@ def iter_symbol_entries(text: str, *, file_path: str) -> tuple[tuple[str, str, i
     return tuple(sorted(entries, key=lambda item: (item[2], item[0], item[1])))
 
 
-def parse_extended_modules(text: str) -> tuple[tuple[str, int], ...]:
-    stripped_text = strip_comments(text)
+def iter_symbol_entries(
+    text: str,
+    *,
+    file_path: str,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, str, int], ...]:
+    normalized_text = stripped_text if stripped_text is not None else strip_comments(text)
+    return _iter_symbol_entries_from_stripped_text(file_path, normalized_text)
+
+
+@lru_cache(maxsize=1024)
+def _parse_extended_modules_from_stripped_text(
+    stripped_text: str,
+) -> tuple[tuple[str, int], ...]:
     modules: list[tuple[str, int]] = []
     seen: set[tuple[str, int]] = set()
     for match in _EXTENDS_RE.finditer(stripped_text):
@@ -217,8 +265,19 @@ def parse_extended_modules(text: str) -> tuple[tuple[str, int], ...]:
     return tuple(modules)
 
 
-def parse_instance_statements(text: str) -> tuple[tuple[str | None, str, int], ...]:
-    stripped_text = strip_comments(text)
+def parse_extended_modules(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, int], ...]:
+    normalized_text = stripped_text if stripped_text is not None else strip_comments(text)
+    return _parse_extended_modules_from_stripped_text(normalized_text)
+
+
+@lru_cache(maxsize=1024)
+def _parse_instance_statements_from_stripped_text(
+    stripped_text: str,
+) -> tuple[tuple[str | None, str, int], ...]:
     statements: list[tuple[str | None, str, int]] = []
     seen: set[tuple[str | None, str, int]] = set()
     for match in _INSTANCE_RE.finditer(stripped_text):
@@ -232,3 +291,12 @@ def parse_instance_statements(text: str) -> tuple[tuple[str | None, str, int], .
         seen.add(item)
         statements.append(item)
     return tuple(statements)
+
+
+def parse_instance_statements(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str | None, str, int], ...]:
+    normalized_text = stripped_text if stripped_text is not None else strip_comments(text)
+    return _parse_instance_statements_from_stripped_text(normalized_text)

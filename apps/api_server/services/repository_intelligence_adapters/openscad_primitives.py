@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import bisect
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -83,9 +85,36 @@ def _normalize_import_target(value: str) -> str:
     return PurePosixPath(normalized.replace("\\", "/")).as_posix()
 
 
-def _line_number(text: str, offset: int) -> int:
+def _coerce_stripped_text(text: str, stripped_text: str | None = None) -> str:
+    return strip_comments(text) if stripped_text is None else stripped_text
+
+
+def _build_line_starts(text: str) -> tuple[int, ...]:
+    starts = [0]
+    search_start = 0
+    while True:
+        newline_index = text.find("\n", search_start)
+        if newline_index < 0:
+            break
+        starts.append(newline_index + 1)
+        search_start = newline_index + 1
+    return tuple(starts)
+
+
+@lru_cache(maxsize=256)
+def _line_starts(text: str) -> tuple[int, ...]:
+    return _build_line_starts(text)
+
+
+def _line_number(
+    text: str,
+    offset: int,
+    *,
+    line_starts: tuple[int, ...] | None = None,
+) -> int:
     bounded_offset = max(0, min(offset, len(text)))
-    return text.count("\n", 0, bounded_offset) + 1
+    starts = _line_starts(text) if line_starts is None else line_starts
+    return max(1, bisect.bisect_right(starts, bounded_offset))
 
 
 def _line_count(text: str) -> int:
@@ -139,18 +168,60 @@ def _strip_comments_preserving_lines(text: str) -> str:
     return "".join(output)
 
 
+@lru_cache(maxsize=512)
 def strip_comments(text: str) -> str:
+    if "//" not in text and "/*" not in text:
+        return text
     return _strip_comments_preserving_lines(text)
+
+
+def _is_keyword_boundary(character: str) -> bool:
+    return not (character.isalnum() or character == "_")
+
+
+def _line_starts_with_keyword(line: str, keyword: str) -> bool:
+    stripped_line = line.lstrip()
+    prefix = stripped_line[: len(keyword)]
+    if prefix.lower() != keyword:
+        return False
+    if len(stripped_line) == len(keyword):
+        return True
+    return _is_keyword_boundary(stripped_line[len(keyword)])
+
+
+@lru_cache(maxsize=512)
+def _has_import_directive_prefix(stripped_text: str) -> bool:
+    line_start = 0
+    text_length = len(stripped_text)
+    while line_start < text_length:
+        line_end = stripped_text.find("\n", line_start)
+        if line_end < 0:
+            line_end = text_length
+        line = stripped_text[line_start:line_end]
+        if _line_starts_with_keyword(line, "use") or _line_starts_with_keyword(
+            line,
+            "include",
+        ):
+            return True
+        if line_end >= text_length:
+            break
+        line_start = line_end + 1
+    return False
 
 
 def has_openscad_path_hints(path: Path | PurePosixPath) -> bool:
     return PurePosixPath(path).suffix.lower() in _KNOWN_SUFFIXES
 
 
-def is_probable_openscad_source(*, path: Path | PurePosixPath, text: str) -> bool:
+def is_probable_openscad_source(
+    *,
+    path: Path | PurePosixPath,
+    text: str,
+    stripped_text: str | None = None,
+) -> bool:
     if has_openscad_path_hints(path):
         return True
-    stripped_text = strip_comments(text)
+    stripped_text = _coerce_stripped_text(text, stripped_text)
     return bool(
         _IMPORT_RE.search(stripped_text)
         or _MODULE_DECL_RE.search(stripped_text)
@@ -158,10 +229,26 @@ def is_probable_openscad_source(*, path: Path | PurePosixPath, text: str) -> boo
     )
 
 
-def import_targets_for_text(text: str) -> tuple[str, ...]:
+def has_import_directives(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> bool:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
+    return _has_import_directive_prefix(stripped_text)
+
+
+def import_targets_for_text(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[str, ...]:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
+    if not _has_import_directive_prefix(stripped_text):
+        return ()
     targets: list[str] = []
     seen_targets: set[str] = set()
-    for match in _IMPORT_RE.finditer(text):
+    for match in _IMPORT_RE.finditer(stripped_text):
         raw_target = (
             match.group("angled") or match.group("quoted") or match.group("single") or ""
         )
@@ -178,14 +265,25 @@ def module_symbol_name(file_path: str) -> str:
     return _normalize_identifier(path.stem or path.name)
 
 
-def _find_statement_end(text: str, start_offset: int) -> tuple[int, int]:
+def _find_statement_end(
+    text: str,
+    start_offset: int,
+    *,
+    line_starts: tuple[int, ...] | None = None,
+) -> tuple[int, int]:
     line_start = text.rfind("\n", 0, start_offset) + 1
     brace_start = text.find("{", start_offset)
     semicolon_start = text.find(";", start_offset)
     if brace_start == -1 or (semicolon_start != -1 and semicolon_start < brace_start):
         if semicolon_start == -1:
-            return _line_number(text, start_offset), _line_count(text)
-        return _line_number(text, start_offset), _line_number(text, semicolon_start)
+            return (
+                _line_number(text, start_offset, line_starts=line_starts),
+                _line_count(text),
+            )
+        return (
+            _line_number(text, start_offset, line_starts=line_starts),
+            _line_number(text, semicolon_start, line_starts=line_starts),
+        )
     brace_depth = 0
     in_string: str | None = None
     escaped = False
@@ -208,8 +306,11 @@ def _find_statement_end(text: str, start_offset: int) -> tuple[int, int]:
         if character == "}":
             brace_depth -= 1
             if brace_depth == 0:
-                return _line_number(text, line_start), _line_number(text, index)
-    return _line_number(text, line_start), _line_count(text)
+                return (
+                    _line_number(text, line_start, line_starts=line_starts),
+                    _line_number(text, index, line_starts=line_starts),
+                )
+    return _line_number(text, line_start, line_starts=line_starts), _line_count(text)
 
 
 def _ordered_names(*values: str) -> tuple[str, ...]:
@@ -229,8 +330,11 @@ def collect_symbol_entries(
     file_path: str,
     text: str,
     stable_identifier: StableIdentifier,
+    stripped_text: str | None = None,
+    line_starts: tuple[int, ...] | None = None,
 ) -> tuple[_CollectedSymbol, ...]:
-    stripped_text = strip_comments(text)
+    stripped_text = _coerce_stripped_text(text, stripped_text)
+    line_starts = _line_starts(stripped_text) if line_starts is None else line_starts
     file_symbol_name = module_symbol_name(file_path)
     entries: list[_CollectedSymbol] = []
 
@@ -238,7 +342,11 @@ def collect_symbol_entries(
         symbol_name = _normalize_identifier(match.group("name") or "")
         if not symbol_name:
             continue
-        start_line = _line_number(stripped_text, match.start())
+        start_line = _line_number(
+            stripped_text,
+            match.start(),
+            line_starts=line_starts,
+        )
         symbol = _Symbol(
             symbol_id=stable_identifier(
                 "symbol",
@@ -269,7 +377,11 @@ def collect_symbol_entries(
         symbol_name = _normalize_identifier(match.group("name") or "")
         if not symbol_name:
             continue
-        start_line, end_line = _find_statement_end(stripped_text, match.start())
+        start_line, end_line = _find_statement_end(
+            stripped_text,
+            match.start(),
+            line_starts=line_starts,
+        )
         symbol = _Symbol(
             symbol_id=stable_identifier(
                 "symbol",

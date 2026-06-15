@@ -42,7 +42,39 @@ def test_non_operational_profile_path_matches_docs_segments() -> None:
     assert probe_module._is_non_operational_profile_path("docs/make.jl") is True
 
 
+def test_non_operational_profile_path_matches_fuzzing_segments() -> None:
+    assert probe_module._is_non_operational_profile_path("fuzzers/http/main.c") is True
+
+
 def test_non_operational_project_path_matches_docs_project_segments() -> None:
     assert probe_module._is_non_operational_project_path("src/FSharpPlus.Docs") is True
 
 
+def test_non_operational_profile_path_allows_cue_tutorial_sources() -> None:
+    assert (
+        probe_module._is_non_operational_profile_path_for_ecosystems(
+            "003_kubernetes_tutorial/manual/services/cloud.cue",
+            ecosystems={"cue"},
+        )
+        is False
+    )
+
+
+def test_non_operational_profile_path_allows_tex_example_sources() -> None:
+    assert (
+        probe_module._is_non_operational_profile_path_for_ecosystems(
+            "examples/cv.tex",
+            ecosystems={"tex"},
+        )
+        is False
+    )
+
+
+def test_non_operational_profile_path_allows_opencl_sample_sources() -> None:
+    assert (
+        probe_module._is_non_operational_profile_path_for_ecosystems(
+            "samples/core/blur/blur.cl",
+            ecosystems={"opencl"},
+        )
+        is False
+    )

@@ -121,6 +121,51 @@ def test_plantuml_adapter_parse_file_extracts_dependencies_and_references() -> N
     assert any(reference.target_names == ("DB",) for reference in references)
 
 
+def test_plantuml_parse_file_reuses_stripped_text(monkeypatch: pytest.MonkeyPatch) -> None:
+    module_index = {
+        "common.puml": "diagrams/common.puml",
+        "diagrams/common.puml": "diagrams/common.puml",
+    }
+    text = (
+        "' comment\\n"
+        "!include common.puml\\n"
+        "@startuml\\n"
+        "actor api as API\\n"
+        "database db as DB\\n"
+        "API --> DB\\n"
+        "@enduml\\n"
+    )
+    original_strip_comments = repository_plantuml_primitives.strip_comments
+    strip_comment_calls = 0
+
+    def counting_strip_comments(value: str) -> str:
+        nonlocal strip_comment_calls
+        strip_comment_calls += 1
+        return original_strip_comments(value)
+
+    monkeypatch.setattr(
+        repository_plantuml_analysis_support,
+        "strip_comments",
+        counting_strip_comments,
+    )
+    monkeypatch.setattr(
+        repository_plantuml_primitives,
+        "strip_comments",
+        counting_strip_comments,
+    )
+
+    repository_service.plantuml_adapter.parse_file(
+        "diagrams/flow.puml",
+        text,
+        module_index,
+        stable_identifier=repository_service._stable_identifier,
+        normalize_repository_relative_path=repository_service._normalize_repository_relative_path,
+        resolve_suffix_match=repository_service._resolve_suffix_match,
+    )
+
+    assert strip_comment_calls == 1
+
+
 def test_plantuml_language_detection_supports_puml_without_overclaiming() -> None:
     assert ".puml" in repository_service._TEXT_FILE_SUFFIXES
     assert ".plantuml" in repository_service._TEXT_FILE_SUFFIXES

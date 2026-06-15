@@ -139,6 +139,31 @@ def test_astro_adapter_parse_file_resolves_imports_and_component_references(tmp_
     )
 
 
+def test_astro_resolve_import_supports_aliases_and_directory_indexes() -> None:
+    module_index = {
+        "src/components/Button.astro": "src/components/Button.astro",
+        "src/components/Card/index.astro": "src/components/Card/index.astro",
+    }
+
+    alias_target = repository_astro_primitives.resolve_import(
+        current_file="src/pages/index.astro",
+        import_target="@components/Button.astro",
+        module_index=module_index,
+        normalize_repository_relative_path=repository_service._normalize_repository_relative_path,
+        resolve_suffix_match=repository_service._resolve_suffix_match,
+    )
+    directory_index_target = repository_astro_primitives.resolve_import(
+        current_file="src/pages/index.astro",
+        import_target="../components/Card",
+        module_index=module_index,
+        normalize_repository_relative_path=repository_service._normalize_repository_relative_path,
+        resolve_suffix_match=repository_service._resolve_suffix_match,
+    )
+
+    assert alias_target == "src/components/Button.astro"
+    assert directory_index_target == "src/components/Card/index.astro"
+
+
 def test_astro_language_detection_supports_astro_suffix() -> None:
     assert repository_service._language_for_path(
         Path("src/pages/index.astro"),

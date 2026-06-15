@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from bisect import bisect_right
+from functools import lru_cache
 import re
 from collections.abc import Callable, Sequence
 from pathlib import Path, PurePosixPath
@@ -153,7 +155,7 @@ def _strip_inline_comment(raw_line: str) -> str:
     return raw_line
 
 
-def strip_comments(text: str) -> str:
+def _strip_comments_uncached(text: str) -> str:
     without_block_comments = re.sub(
         r"/\*.*?\*/",
         lambda match: _replace_with_spaces(match.group(0)),
@@ -165,9 +167,28 @@ def strip_comments(text: str) -> str:
     )
 
 
-def _split_clauses(text: str) -> tuple[tuple[int, str], ...]:
+@lru_cache(maxsize=256)
+def strip_comments(text: str) -> str:
+    return _strip_comments_uncached(text)
+
+
+@lru_cache(maxsize=256)
+def _line_start_offsets(text: str) -> tuple[int, ...]:
+    offsets = [0]
+    for index, character in enumerate(text):
+        if character == "\n":
+            offsets.append(index + 1)
+    return tuple(offsets)
+
+
+def _line_number(text: str, offset: int) -> int:
+    bounded_offset = max(0, min(offset, len(text)))
+    return bisect_right(_line_start_offsets(text), bounded_offset)
+
+
+@lru_cache(maxsize=256)
+def _split_clauses_from_stripped_text(stripped_text: str) -> tuple[tuple[int, str], ...]:
     clauses: list[tuple[int, str]] = []
-    stripped_text = strip_comments(text)
     buffer: list[str] = []
     line_no = 1
     clause_start_line = 1
@@ -233,8 +254,19 @@ def _split_clauses(text: str) -> tuple[tuple[int, str], ...]:
     return tuple(clauses)
 
 
-def _module_name_from_text(text: str) -> str:
-    for _line_no, clause in _split_clauses(text):
+def _split_clauses(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[int, str], ...]:
+    return _split_clauses_from_stripped_text(
+        stripped_text if stripped_text is not None else strip_comments(text)
+    )
+
+
+def _module_name_from_text(text: str, *, stripped_text: str | None = None) -> str:
+    stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
+    for _line_no, clause in _split_clauses(text, stripped_text=stripped_text):
         module_match = _MODULE_DIRECTIVE_RE.match(clause)
         if module_match is None:
             continue
@@ -266,7 +298,7 @@ def has_prolog_markers(text: str) -> bool:
     stripped_text = strip_comments(text)
     if re.search(r"^\s*\?-\s*[a-z]", stripped_text, flags=re.MULTILINE):
         return True
-    for _line_no, clause in _split_clauses(stripped_text):
+    for _line_no, clause in _split_clauses(text, stripped_text=stripped_text):
         normalized_clause = clause.strip()
         if not normalized_clause:
             continue

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import bisect
 import re
 from collections.abc import Callable, Iterable
+from functools import lru_cache
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -53,7 +55,14 @@ _RESERVED_CALL_NAMES = frozenset(
 )
 
 
-def strip_comments(text: str) -> str:
+def _coerce_stripped_text(text: str, stripped_text: str | None = None) -> str:
+    return strip_comments(text) if stripped_text is None else stripped_text
+
+
+@lru_cache(maxsize=1024)
+def _strip_comments_cached(text: str) -> str:
+    if "//" not in text and "/*" not in text:
+        return text
     characters = list(text)
     index = 0
     in_string: str | None = None
@@ -95,15 +104,24 @@ def strip_comments(text: str) -> str:
     return "".join(characters)
 
 
+def strip_comments(text: str) -> str:
+    return _strip_comments_cached(text)
+
+
 def has_scss_path_hints(path: Path | PurePosixPath) -> bool:
     return PurePosixPath(path).suffix.lower() in _KNOWN_SUFFIXES
 
 
-def is_probable_scss_source(*, path: Path | PurePosixPath, text: str) -> bool:
+def is_probable_scss_source(
+    *,
+    path: Path | PurePosixPath,
+    text: str,
+    stripped_text: str | None = None,
+) -> bool:
     normalized_path = PurePosixPath(path)
     if not has_scss_path_hints(normalized_path):
         return False
-    stripped_text = strip_comments(text)
+    stripped_text = _coerce_stripped_text(text, stripped_text)
     if not stripped_text.strip():
         return False
     return bool(
@@ -128,10 +146,33 @@ def _line_count(text: str) -> int:
     return max(1, text.count("\n") + 1)
 
 
-def _line_number_from_index(text: str, offset: int) -> int:
+def _build_line_starts(text: str) -> tuple[int, ...]:
+    starts = [0]
+    search_start = 0
+    while True:
+        newline_index = text.find("\n", search_start)
+        if newline_index < 0:
+            break
+        starts.append(newline_index + 1)
+        search_start = newline_index + 1
+    return tuple(starts)
+
+
+@lru_cache(maxsize=256)
+def _line_starts(text: str) -> tuple[int, ...]:
+    return _build_line_starts(text)
+
+
+def _line_number_from_index(
+    text: str,
+    offset: int,
+    *,
+    line_starts: tuple[int, ...] | None = None,
+) -> int:
     if offset <= 0:
         return 1
-    return text.count("\n", 0, offset) + 1
+    starts = _line_starts(text) if line_starts is None else line_starts
+    return max(1, bisect.bisect_right(starts, offset))
 
 
 def _ordered_names(*values: str) -> tuple[str, ...]:
@@ -146,14 +187,24 @@ def _ordered_names(*values: str) -> tuple[str, ...]:
     return tuple(ordered)
 
 
-def iter_import_entries(text: str) -> tuple[tuple[str, str, str | None, int], ...]:
-    stripped_text = strip_comments(text)
+def iter_import_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+    line_starts: tuple[int, ...] | None = None,
+) -> tuple[tuple[str, str, str | None, int], ...]:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
+    line_starts = _line_starts(stripped_text) if line_starts is None else line_starts
     entries: list[tuple[str, str, str | None, int]] = []
     seen: set[tuple[str, str, str | None, int]] = set()
     for match in _IMPORT_RE.finditer(stripped_text):
         kind = str(match.group("kind") or "").strip().lower()
         body = str(match.group("body") or "")
-        line_number = _line_number_from_index(stripped_text, match.start())
+        line_number = _line_number_from_index(
+            stripped_text,
+            match.start(),
+            line_starts=line_starts,
+        )
         alias_match = _ALIAS_RE.search(body) if kind in {"use", "forward"} else None
         alias = (
             str(alias_match.group("alias") or "").strip() or None
@@ -173,8 +224,14 @@ def iter_import_entries(text: str) -> tuple[tuple[str, str, str | None, int], ..
     return tuple(entries)
 
 
-def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
-    stripped_text = strip_comments(text)
+def iter_symbol_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+    line_starts: tuple[int, ...] | None = None,
+) -> tuple[tuple[str, str, int], ...]:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
+    line_starts = _line_starts(stripped_text) if line_starts is None else line_starts
     patterns = (
         (_VARIABLE_RE, "variable"),
         (_MIXIN_RE, "mixin"),
@@ -188,15 +245,29 @@ def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
             symbol_name = str(match.group("name") or "").strip()
             if not symbol_name:
                 continue
-            item = (symbol_name, symbol_kind, _line_number_from_index(stripped_text, match.start()))
+            item = (
+                symbol_name,
+                symbol_kind,
+                _line_number_from_index(
+                    stripped_text,
+                    match.start(),
+                    line_starts=line_starts,
+                ),
+            )
             if item not in seen:
                 seen.add(item)
                 entries.append(item)
     return tuple(sorted(entries, key=lambda item: (item[2], item[0], item[1])))
 
 
-def iter_reference_entries(text: str) -> tuple[tuple[str, str | None, str, int], ...]:
-    stripped_text = strip_comments(text)
+def iter_reference_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+    line_starts: tuple[int, ...] | None = None,
+) -> tuple[tuple[str, str | None, str, int], ...]:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
+    line_starts = _line_starts(stripped_text) if line_starts is None else line_starts
     entries: list[tuple[str, str | None, str, int]] = []
     seen: set[tuple[str, str | None, str, int]] = set()
     patterns: tuple[tuple[re.Pattern[str], str], ...] = (
@@ -207,7 +278,11 @@ def iter_reference_entries(text: str) -> tuple[tuple[str, str | None, str, int],
     )
     for pattern, reference_kind in patterns:
         for match in pattern.finditer(stripped_text):
-            line_number = _line_number_from_index(stripped_text, match.start())
+            line_number = _line_number_from_index(
+                stripped_text,
+                match.start(),
+                line_starts=line_starts,
+            )
             line_start = stripped_text.rfind("\n", 0, match.start()) + 1
             line_end = stripped_text.find("\n", match.start())
             if line_end < 0:
@@ -224,7 +299,11 @@ def iter_reference_entries(text: str) -> tuple[tuple[str, str | None, str, int],
                 seen.add(item)
                 entries.append(item)
     for match in _FUNCTION_CALL_RE.finditer(stripped_text):
-        line_number = _line_number_from_index(stripped_text, match.start())
+        line_number = _line_number_from_index(
+            stripped_text,
+            match.start(),
+            line_starts=line_starts,
+        )
         line_start = stripped_text.rfind("\n", 0, match.start()) + 1
         line_end = stripped_text.find("\n", match.start())
         if line_end < 0:

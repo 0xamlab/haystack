@@ -26,6 +26,7 @@ module_aliases_for_path = repository_liquid_primitives.module_aliases_for_path
 module_name_from_path = repository_liquid_primitives.module_name_from_path
 resolve_import = repository_liquid_primitives.resolve_import
 source_symbol_name_for_line = repository_liquid_primitives.source_symbol_name_for_line
+strip_comments = repository_liquid_primitives.strip_comments
 
 
 def parse_dependencies_only(
@@ -36,12 +37,23 @@ def parse_dependencies_only(
     stable_identifier: StableIdentifier,
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
+    stripped_text: str | None = None,
 ) -> tuple[_Dependency, ...]:
-    if not is_probable_liquid_source(path=Path(file_path), text=text):
+    candidate_stripped_text = (
+        stripped_text if stripped_text is not None else strip_comments(text)
+    )
+    if not is_probable_liquid_source(
+        path=Path(file_path),
+        text=text,
+        stripped_text=candidate_stripped_text,
+    ):
         return ()
     dependencies: list[_Dependency] = []
     seen_dependencies: set[tuple[str | None, str, str]] = set()
-    for dependency_kind, import_target, line_number in iter_dependency_entries(text):
+    for dependency_kind, import_target, line_number in iter_dependency_entries(
+        text,
+        stripped_text=candidate_stripped_text,
+    ):
         target_file = resolve_import(
             current_file=file_path,
             import_target=import_target,
@@ -82,14 +94,32 @@ def parse_file(
     stable_identifier: StableIdentifier,
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
+    stripped_text: str | None = None,
 ) -> tuple[
     tuple[_Symbol, ...],
     tuple[_Dependency, ...],
     tuple[_SymbolReferenceCandidate, ...],
 ]:
-    if not is_probable_liquid_source(path=Path(file_path), text=text):
+    candidate_stripped_text = (
+        stripped_text if stripped_text is not None else strip_comments(text)
+    )
+    if not is_probable_liquid_source(
+        path=Path(file_path),
+        text=text,
+        stripped_text=candidate_stripped_text,
+    ):
         return (), (), ()
-    symbols = collect_symbols(file_path=file_path, text=text, stable_identifier=stable_identifier)
+    symbol_entries = iter_symbol_entries(
+        text,
+        stripped_text=candidate_stripped_text,
+    )
+    symbols = collect_symbols(
+        file_path=file_path,
+        text=text,
+        stable_identifier=stable_identifier,
+        stripped_text=candidate_stripped_text,
+        symbol_entries=symbol_entries,
+    )
     dependencies = parse_dependencies_only(
         file_path,
         text,
@@ -97,10 +127,10 @@ def parse_file(
         stable_identifier=stable_identifier,
         normalize_repository_relative_path=normalize_repository_relative_path,
         resolve_suffix_match=resolve_suffix_match,
+        stripped_text=candidate_stripped_text,
     )
     symbol_ids_by_name = {symbol.symbol_name: symbol.symbol_id for symbol in symbols}
     module_symbol_id = symbols[0].symbol_id if symbols else None
-    symbol_entries = iter_symbol_entries(text)
     references: list[_SymbolReferenceCandidate] = []
     seen_reference_keys: set[tuple[str | None, str, str | None]] = set()
     for dependency in dependencies:
@@ -130,7 +160,10 @@ def parse_file(
                 reference_type="references_symbol",
             )
         )
-    for target_name, line_number in iter_reference_entries(text):
+    for target_name, line_number in iter_reference_entries(
+        text,
+        stripped_text=candidate_stripped_text,
+    ):
         source_symbol_name = source_symbol_name_for_line(symbol_entries, line_number=line_number)
         source_symbol_id = symbol_ids_by_name.get(source_symbol_name or "", module_symbol_id)
         if not source_symbol_id:

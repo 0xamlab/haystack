@@ -39,21 +39,24 @@ def _extract_import_bindings(
     *,
     file_path: str,
     text: str,
+    stripped_text: str,
     module_index: dict[str, str],
     stable_identifier: StableIdentifier,
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
 ) -> tuple[tuple[_Dependency, ...], dict[str, _ImportedSymbolBinding]]:
+    import_entries = iter_import_entries(text, stripped_text=stripped_text)
     bindings = imported_symbol_bindings(
         current_file=file_path,
         text=text,
         module_index=module_index,
         normalize_repository_relative_path=normalize_repository_relative_path,
         resolve_suffix_match=resolve_suffix_match,
+        import_entries=import_entries,
     )
     dependencies: list[_Dependency] = []
     seen_dependencies: set[tuple[str | None, str]] = set()
-    for import_target, line_number in iter_import_entries(text):
+    for import_target, line_number in import_entries:
         target_file = resolve_import(
             current_file=file_path,
             import_target=import_target,
@@ -94,11 +97,17 @@ def parse_dependencies_only(
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
 ) -> tuple[_Dependency, ...]:
-    if not is_probable_protobuf_source(path=Path(file_path), text=text):
+    stripped_text = strip_comments(text)
+    if not is_probable_protobuf_source(
+        path=Path(file_path),
+        text=text,
+        stripped_text=stripped_text,
+    ):
         return ()
     dependencies, _bindings = _extract_import_bindings(
         file_path=file_path,
         text=text,
+        stripped_text=stripped_text,
         module_index=module_index,
         stable_identifier=stable_identifier,
         normalize_repository_relative_path=normalize_repository_relative_path,
@@ -120,23 +129,32 @@ def parse_file(
     tuple[_Dependency, ...],
     tuple[_SymbolReferenceCandidate, ...],
 ]:
-    if not is_probable_protobuf_source(path=Path(file_path), text=text):
+    stripped_text = strip_comments(text)
+    if not is_probable_protobuf_source(
+        path=Path(file_path),
+        text=text,
+        stripped_text=stripped_text,
+    ):
         return (), (), ()
-    package_name = package_name_from_text(text)
+    package_name = package_name_from_text(text, stripped_text=stripped_text)
+    symbol_entries = iter_symbol_entries(text, stripped_text=stripped_text)
     symbols = collect_symbols(
         file_path=file_path,
         text=text,
         stable_identifier=stable_identifier,
+        package_name=package_name,
+        stripped_text=stripped_text,
+        symbol_entries=symbol_entries,
     )
     dependencies, import_bindings = _extract_import_bindings(
         file_path=file_path,
         text=text,
+        stripped_text=stripped_text,
         module_index=module_index,
         stable_identifier=stable_identifier,
         normalize_repository_relative_path=normalize_repository_relative_path,
         resolve_suffix_match=resolve_suffix_match,
     )
-    symbol_entries = iter_symbol_entries(text)
     symbol_ids_by_name = {
         symbol.symbol_name: symbol.symbol_id
         for symbol in symbols
@@ -146,7 +164,10 @@ def parse_file(
     symbol_references: list[_SymbolReferenceCandidate] = []
     seen_reference_keys: set[tuple[str | None, tuple[str, ...], str]] = set()
 
-    for owner, target_name, qualified_name, line_number in iter_reference_entries(text):
+    for owner, target_name, qualified_name, line_number in iter_reference_entries(
+        text,
+        stripped_text=stripped_text,
+    ):
         source_symbol_name = source_symbol_name_for_line(symbol_entries, line_number=line_number)
         source_symbol_id = symbol_ids_by_name.get(source_symbol_name or "", symbols[0].symbol_id)
         target_names = tuple(

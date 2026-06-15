@@ -187,8 +187,11 @@ def _normalize_repository_relative_path(value: str) -> str:
 
 
 def _strip_inline_comment(raw_line: str) -> str:
-    if raw_line.lstrip().lower().startswith("rem "):
+    stripped_leading = raw_line.lstrip()
+    if stripped_leading.lower().startswith("rem "):
         return ""
+    if "'" not in raw_line and '"' not in raw_line:
+        return raw_line
     chars: list[str] = []
     index = 0
     in_string = False
@@ -211,6 +214,8 @@ def _strip_inline_comment(raw_line: str) -> str:
 
 
 def strip_comments(text: str) -> str:
+    if "'" not in text and "rem" not in text.lower():
+        return text
     return "\n".join(_strip_inline_comment(line) for line in text.splitlines())
 
 
@@ -248,7 +253,12 @@ def project_startup_name(text: str) -> str:
     return normalize_symbol_name(str(match.group("name") or ""))
 
 
-def is_probable_classic_visual_basic_source(*, path: Path, text: str) -> bool:
+def is_probable_classic_visual_basic_source_with_optional_stripped_text(
+    *,
+    path: Path,
+    text: str,
+    stripped_text: str | None = None,
+) -> bool:
     suffix = path.suffix.lower()
     if suffix not in _KNOWN_CLASSIC_VISUAL_BASIC_SUFFIXES:
         return False
@@ -257,25 +267,32 @@ def is_probable_classic_visual_basic_source(*, path: Path, text: str) -> bool:
             PROJECT_COMPONENT_RE.search(text)
             and (PROJECT_STARTUP_RE.search(text) or PROJECT_NAME_RE.search(text))
         )
-    stripped_text = strip_comments(text)
-    if ATTRIBUTE_VB_NAME_RE.search(stripped_text) is not None:
+    if ATTRIBUTE_VB_NAME_RE.search(text) is not None:
         return True
-    if BEGIN_COMPONENT_RE.search(stripped_text) is not None:
+    if BEGIN_COMPONENT_RE.search(text) is not None:
         return True
     if suffix == ".cls" and CLASS_VERSION_RE.search(text) is not None:
         return True
+    normalized_text = stripped_text if stripped_text is not None else strip_comments(text)
     marker_count = sum(
         1
         for condition in (
-            OPTION_EXPLICIT_RE.search(stripped_text) is not None,
-            ROUTINE_DECL_RE.search(stripped_text) is not None,
-            TYPE_DECL_RE.search(stripped_text) is not None,
-            TYPE_REFERENCE_RE.search(stripped_text) is not None,
-            "End Sub" in stripped_text or "End Function" in stripped_text,
+            OPTION_EXPLICIT_RE.search(normalized_text) is not None,
+            ROUTINE_DECL_RE.search(normalized_text) is not None,
+            TYPE_DECL_RE.search(normalized_text) is not None,
+            TYPE_REFERENCE_RE.search(normalized_text) is not None,
+            "End Sub" in normalized_text or "End Function" in normalized_text,
         )
         if condition
     )
     return marker_count >= 2
+
+
+def is_probable_classic_visual_basic_source(*, path: Path, text: str) -> bool:
+    return is_probable_classic_visual_basic_source_with_optional_stripped_text(
+        path=path,
+        text=text,
+    )
 
 
 def _component_symbol_kind(path: PurePosixPath) -> str:

@@ -155,7 +155,12 @@ def has_protobuf_path_hints(path: Path | PurePosixPath) -> bool:
     )
 
 
-def is_probable_protobuf_source(*, path: Path | PurePosixPath, text: str) -> bool:
+def is_probable_protobuf_source(
+    *,
+    path: Path | PurePosixPath,
+    text: str,
+    stripped_text: str | None = None,
+) -> bool:
     normalized_path = PurePosixPath(path)
     if (
         normalized_path.suffix.lower() not in PROTOBUF_SUFFIXES
@@ -163,7 +168,8 @@ def is_probable_protobuf_source(*, path: Path | PurePosixPath, text: str) -> boo
         or _looks_binaryish(text)
     ):
         return False
-    return bool(_PROTO_SOURCE_MARKER_RE.search(strip_comments(text)))
+    candidate_text = stripped_text if stripped_text is not None else strip_comments(text)
+    return bool(_PROTO_SOURCE_MARKER_RE.search(candidate_text))
 
 
 def is_probable_protobuf_config(*, path: Path | PurePosixPath, text: str) -> bool:
@@ -192,8 +198,9 @@ def _normalize_repository_relative_path(value: str) -> str:
     return "/".join(normalized_parts)
 
 
-def package_name_from_text(text: str) -> str | None:
-    match = _PACKAGE_RE.search(strip_comments(text))
+def package_name_from_text(text: str, *, stripped_text: str | None = None) -> str | None:
+    candidate_text = stripped_text if stripped_text is not None else strip_comments(text)
+    match = _PACKAGE_RE.search(candidate_text)
     if match is None:
         return None
     package_name = normalize_identifier(str(match.group("name") or ""))
@@ -223,15 +230,19 @@ def _normalize_import_target(raw_target: str) -> str:
     return normalized_target
 
 
-def iter_import_entries(text: str) -> tuple[tuple[str, int], ...]:
-    stripped_text = strip_comments(text)
+def iter_import_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, int], ...]:
+    candidate_text = stripped_text if stripped_text is not None else strip_comments(text)
     entries: list[tuple[str, int]] = []
     seen: set[tuple[str, int]] = set()
-    for match in _IMPORT_RE.finditer(stripped_text):
+    for match in _IMPORT_RE.finditer(candidate_text):
         target = _normalize_import_target(str(match.group("target") or ""))
         if not target:
             continue
-        item = (target, _line_number(stripped_text, match.start()))
+        item = (target, _line_number(candidate_text, match.start()))
         if item in seen:
             continue
         seen.add(item)
@@ -239,25 +250,29 @@ def iter_import_entries(text: str) -> tuple[tuple[str, int], ...]:
     return tuple(entries)
 
 
-def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
-    stripped_text = strip_comments(text)
+def iter_symbol_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, str, int], ...]:
+    candidate_text = stripped_text if stripped_text is not None else strip_comments(text)
     entries: list[tuple[str, str, int]] = []
     seen: set[tuple[str, str, int]] = set()
-    for match in _TYPE_DECL_RE.finditer(stripped_text):
+    for match in _TYPE_DECL_RE.finditer(candidate_text):
         symbol_name = normalize_identifier(str(match.group("name") or ""))
         symbol_kind = normalize_identifier(str(match.group("kind") or ""))
         if not symbol_name or not symbol_kind:
             continue
-        item = (symbol_name, symbol_kind, _line_number(stripped_text, match.start()))
+        item = (symbol_name, symbol_kind, _line_number(candidate_text, match.start()))
         if item in seen:
             continue
         seen.add(item)
         entries.append(item)
-    for match in _RPC_RE.finditer(stripped_text):
+    for match in _RPC_RE.finditer(candidate_text):
         symbol_name = normalize_identifier(str(match.group("name") or ""))
         if not symbol_name:
             continue
-        item = (symbol_name, "rpc", _line_number(stripped_text, match.start()))
+        item = (symbol_name, "rpc", _line_number(candidate_text, match.start()))
         if item in seen:
             continue
         seen.add(item)
@@ -277,8 +292,12 @@ def _split_qualified_type_name(type_name: str) -> tuple[str | None, str, str | N
     return owner or None, leaf, normalized_type
 
 
-def iter_reference_entries(text: str) -> tuple[tuple[str | None, str, str | None, int], ...]:
-    stripped_text = strip_comments(text)
+def iter_reference_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str | None, str, str | None, int], ...]:
+    candidate_text = stripped_text if stripped_text is not None else strip_comments(text)
     entries: list[tuple[str | None, str, str | None, int]] = []
     seen: set[tuple[str | None, str, str | None, int]] = set()
 
@@ -292,15 +311,15 @@ def iter_reference_entries(text: str) -> tuple[tuple[str | None, str, str | None
         seen.add(item)
         entries.append(item)
 
-    for match in _RPC_RE.finditer(stripped_text):
-        line_number = _line_number(stripped_text, match.start())
+    for match in _RPC_RE.finditer(candidate_text):
+        line_number = _line_number(candidate_text, match.start())
         _append_reference(str(match.group("request") or ""), line_number)
         _append_reference(str(match.group("response") or ""), line_number)
     for pattern, key in ((_FIELD_RE, "type"), (_BARE_FIELD_RE, "type"), (_MAP_FIELD_RE, "value")):
-        for match in pattern.finditer(stripped_text):
+        for match in pattern.finditer(candidate_text):
             _append_reference(
                 str(match.group(key) or ""),
-                _line_number(stripped_text, match.start()),
+                _line_number(candidate_text, match.start()),
             )
     return tuple(entries)
 
@@ -323,14 +342,19 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
 ) -> set[str]:
     del stable_identifier
-    repository_file = root_path / file_path
-    try:
-        text = repository_file.read_text(encoding="utf-8", errors="replace")
-    except OSError:
+    if not has_protobuf_path_hints(PurePosixPath(file_path)):
         return set()
-    package_name = package_name_from_text(text)
+    if text is None:
+        repository_file = root_path / file_path
+        try:
+            text = repository_file.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return set()
+    stripped_text = strip_comments(text)
+    package_name = package_name_from_text(text, stripped_text=stripped_text)
     module_name = module_name_from_path(file_path, package_name=package_name)
     normalized_path = _normalize_repository_relative_path(file_path)
     normalized_path_without_suffix = str(PurePosixPath(normalized_path).with_suffix(""))
@@ -345,7 +369,10 @@ def module_aliases_for_path(
             PurePosixPath(normalized_path).stem,
         )
     )
-    for symbol_name, _symbol_kind, _line_number in iter_symbol_entries(text):
+    for symbol_name, _symbol_kind, _line_number in iter_symbol_entries(
+        text,
+        stripped_text=stripped_text,
+    ):
         aliases.update(
             _ordered_names(
                 symbol_name,
@@ -409,9 +436,12 @@ def imported_symbol_bindings(
     module_index: dict[str, str],
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
+    import_entries: tuple[tuple[str, int], ...] | None = None,
 ) -> dict[str, _ImportedSymbolBinding]:
     bindings: dict[str, _ImportedSymbolBinding] = {}
-    for import_target, _line_number in iter_import_entries(text):
+    for import_target, _line_number in (
+        import_entries if import_entries is not None else iter_import_entries(text)
+    ):
         target_file = resolve_import(
             current_file=current_file,
             import_target=import_target,
@@ -441,9 +471,16 @@ def collect_symbols(
     file_path: str,
     text: str,
     stable_identifier: StableIdentifier,
+    package_name: str | None = None,
+    stripped_text: str | None = None,
+    symbol_entries: tuple[tuple[str, str, int], ...] | None = None,
 ) -> tuple[_Symbol, ...]:
-    stripped_text = strip_comments(text)
-    package_name = package_name_from_text(text)
+    candidate_text = stripped_text if stripped_text is not None else strip_comments(text)
+    resolved_package_name = (
+        package_name
+        if package_name is not None
+        else package_name_from_text(text, stripped_text=candidate_text)
+    )
     module_name = module_name_from_path(file_path, package_name=package_name)
     file_symbol = _Symbol(
         symbol_id=stable_identifier(
@@ -457,12 +494,17 @@ def collect_symbols(
         symbol_name=module_name,
         symbol_kind="protobuf",
         start_line=1,
-        end_line=_line_count(stripped_text),
+        end_line=_line_count(candidate_text),
         parent_symbol_id=None,
         signature=f"protobuf {module_name}",
     )
     symbols: list[_Symbol] = [file_symbol]
-    for symbol_name, symbol_kind, line_number in iter_symbol_entries(text):
+    resolved_symbol_entries = (
+        symbol_entries
+        if symbol_entries is not None
+        else iter_symbol_entries(text, stripped_text=candidate_text)
+    )
+    for symbol_name, symbol_kind, line_number in resolved_symbol_entries:
         symbols.append(
             _Symbol(
                 symbol_id=stable_identifier(

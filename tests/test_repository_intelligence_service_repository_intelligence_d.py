@@ -307,6 +307,96 @@ def test_repository_intelligence_cfml_helpers_are_modularized() -> None:
     )
 
 
+def test_cfml_adapter_module_aliases_accept_preloaded_text_without_file_read(
+    tmp_path: Path,
+) -> None:
+    repo_path = tmp_path / "cfml-preloaded-text-repo"
+    (repo_path / "models").mkdir(parents=True)
+    target_path = repo_path / "models" / "UserService.cfc"
+    target_path.write_text(
+        "component {\n"
+        "    function listUsers() {\n"
+        "        return [];\n"
+        "    }\n"
+        "}\n",
+        encoding="utf-8",
+    )
+    text = target_path.read_text(encoding="utf-8")
+    target_path.unlink()
+
+    aliases = repository_service.cfml_adapter.module_aliases_for_path(
+        root_path=repo_path,
+        file_path="models/UserService.cfc",
+        stable_identifier=repository_service._stable_identifier,
+        text=text,
+    )
+
+    assert "models.UserService" in aliases
+    assert "listUsers" in aliases
+
+
+def test_cfml_adapter_parse_file_assigns_component_reference_to_calling_function(
+    tmp_path: Path,
+) -> None:
+    repo_path = tmp_path / "cfml-parse-repo"
+    (repo_path / "models").mkdir(parents=True)
+    (repo_path / "models" / "UserService.cfc").write_text(
+        "component {\n"
+        "    function run() {\n"
+        "    }\n"
+        "}\n",
+        encoding="utf-8",
+    )
+    source_path = repo_path / "Application.cfc"
+    source_path.write_text(
+        "component {\n"
+        "    function onApplicationStart() {\n"
+        "        local.userService = new models.UserService();\n"
+        "        local.userService.run();\n"
+        "    }\n"
+        "    function other() {\n"
+        "        return true;\n"
+        "    }\n"
+        "}\n",
+        encoding="utf-8",
+    )
+    module_index = repository_service._build_module_index(
+        ["Application.cfc", "models/UserService.cfc"],
+        root_path=repo_path,
+    )
+    text = source_path.read_text(encoding="utf-8")
+
+    symbols, dependencies, references = repository_service.cfml_adapter.parse_file(
+        "Application.cfc",
+        text,
+        module_index,
+        stable_identifier=repository_service._stable_identifier,
+        normalize_repository_relative_path=repository_service._normalize_repository_relative_path,
+        resolve_suffix_match=repository_service._resolve_suffix_match,
+    )
+
+    start_symbol = next(symbol for symbol in symbols if symbol.symbol_name == "onApplicationStart")
+    other_symbol = next(symbol for symbol in symbols if symbol.symbol_name == "other")
+
+    assert any(
+        dependency.target_file == "models/UserService.cfc"
+        and dependency.target_symbol == "run"
+        for dependency in dependencies
+    )
+    assert any(
+        reference.source_symbol_id == start_symbol.symbol_id
+        and reference.target_file == "models/UserService.cfc"
+        and reference.target_names == ("run",)
+        for reference in references
+    )
+    assert not any(
+        reference.source_symbol_id == other_symbol.symbol_id
+        and reference.target_file == "models/UserService.cfc"
+        and reference.target_names == ("run",)
+        for reference in references
+    )
+
+
 def test_repository_intelligence_elm_helpers_are_modularized() -> None:
     assert repository_service.elm_adapter.strip_comments is (
         repository_elm_primitives.strip_comments
@@ -803,5 +893,3 @@ def test_repository_intelligence_typed_parser_dispatch_helpers_are_modularized()
     assert repository_adapter_parser_dispatch._parse_jvm_file is (
         repository_typed_parser_dispatch._parse_jvm_file
     )
-
-

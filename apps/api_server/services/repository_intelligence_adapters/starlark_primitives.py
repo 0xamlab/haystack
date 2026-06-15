@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -131,12 +132,19 @@ def strip_comments(text: str) -> str:
     return "\n".join(stripped_lines)
 
 
+@lru_cache(maxsize=32_768)
+def _has_starlark_path_hints_str(path_value: str) -> bool:
+    normalized_path = str(path_value).replace("\\", "/")
+    basename = normalized_path.rsplit("/", 1)[-1]
+    if basename in _KNOWN_BASENAMES:
+        return True
+    suffix_index = basename.rfind(".")
+    suffix = basename[suffix_index:].lower() if suffix_index > 0 else ""
+    return suffix in _KNOWN_SUFFIXES
+
+
 def has_starlark_path_hints(path: Path | PurePosixPath) -> bool:
-    posix_path = PurePosixPath(path)
-    return (
-        posix_path.suffix.lower() in _KNOWN_SUFFIXES
-        or posix_path.name in _KNOWN_BASENAMES
-    )
+    return _has_starlark_path_hints_str(str(path))
 
 
 def is_probable_starlark_source(*, path: Path | PurePosixPath, text: str) -> bool:

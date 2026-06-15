@@ -53,8 +53,10 @@ def _collect_symbols(
     file_path: str,
     text: str,
     stable_identifier: StableIdentifier,
+    stripped_text: str | None = None,
+    symbol_entries: tuple[tuple[str, str, int], ...] | None = None,
 ) -> tuple[_CollectedSymbol, ...]:
-    stripped_text = strip_comments(text)
+    candidate_stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
     module_name = module_name_from_path(file_path)
     module_symbol = _Symbol(
         symbol_id=stable_identifier(
@@ -69,7 +71,7 @@ def _collect_symbols(
         symbol_name=module_name,
         symbol_kind="module",
         start_line=1,
-        end_line=_line_count(stripped_text),
+        end_line=_line_count(candidate_stripped_text),
         parent_symbol_id=None,
         signature=f"module {module_name}" if module_name else None,
     )
@@ -77,11 +79,17 @@ def _collect_symbols(
         _CollectedSymbol(
             symbol=module_symbol,
             local_start_line=1,
-            local_end_line=_line_count(stripped_text),
+            local_end_line=_line_count(candidate_stripped_text),
             qualified_names=(module_name, module_name.replace(".", "/")) if module_name else (),
         )
     ]
-    for symbol_name, symbol_kind, start_line in iter_symbol_entries(stripped_text):
+    resolved_symbol_entries = symbol_entries
+    if resolved_symbol_entries is None:
+        resolved_symbol_entries = iter_symbol_entries(
+            text,
+            stripped_text=candidate_stripped_text,
+        )
+    for symbol_name, symbol_kind, start_line in resolved_symbol_entries:
         qualified_names = _ordered_names(
             symbol_name,
             f"{module_name}.{symbol_name}" if module_name else "",
@@ -111,7 +119,7 @@ def _collect_symbols(
                 qualified_names=qualified_names,
             )
         )
-    final_line = _line_count(stripped_text)
+    final_line = _line_count(candidate_stripped_text)
     finalized_symbols: list[_CollectedSymbol] = []
     for index, collected_symbol in enumerate(collected_symbols):
         end_line = (
@@ -147,6 +155,9 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
+    stripped_text: str | None = None,
+    collected_symbols: tuple[_CollectedSymbol, ...] | None = None,
 ) -> set[str]:
     path = PurePosixPath(file_path)
     if not has_agda_path_hints(path):
@@ -160,17 +171,30 @@ def module_aliases_for_path(
         module_name,
         module_name.replace(".", "/"),
     }
+    loaded_text = text
     try:
-        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
+        if loaded_text is None:
+            loaded_text = (root_path / path).read_text(encoding="utf-8", errors="replace")
     except OSError:
-        text = ""
-    if not is_probable_agda_source(path=Path(file_path), text=text):
-        return {alias for alias in aliases if alias}
-    for collected_symbol in _collect_symbols(
-        file_path=file_path,
-        text=text,
-        stable_identifier=stable_identifier,
+        loaded_text = ""
+    candidate_stripped_text = (
+        stripped_text if stripped_text is not None else strip_comments(loaded_text)
+    )
+    if not is_probable_agda_source(
+        path=Path(file_path),
+        text=loaded_text,
+        stripped_text=candidate_stripped_text,
     ):
+        return {alias for alias in aliases if alias}
+    resolved_collected_symbols = collected_symbols
+    if resolved_collected_symbols is None:
+        resolved_collected_symbols = _collect_symbols(
+            file_path=file_path,
+            text=loaded_text,
+            stable_identifier=stable_identifier,
+            stripped_text=candidate_stripped_text,
+        )
+    for collected_symbol in resolved_collected_symbols:
         aliases.add(collected_symbol.symbol.symbol_name)
         aliases.update(collected_symbol.qualified_names)
     return {alias for alias in aliases if alias}
@@ -230,12 +254,13 @@ def extract_import_bindings(
     stable_identifier: StableIdentifier,
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
+    stripped_text: str | None = None,
 ) -> tuple[tuple[_Dependency, ...], dict[str, _ImportedSymbolBinding]]:
-    stripped_text = strip_comments(text)
+    candidate_stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
     dependencies: list[_Dependency] = []
     dependency_keys: set[tuple[str | None, str]] = set()
     import_bindings: dict[str, _ImportedSymbolBinding] = {}
-    for match in _IMPORT_RE.finditer(stripped_text):
+    for match in _IMPORT_RE.finditer(candidate_stripped_text):
         import_target = str(match.group("target") or "").strip()
         if not import_target:
             continue
@@ -255,7 +280,7 @@ def extract_import_bindings(
                         {
                             "file_path": file_path,
                             "target": import_target,
-                            "line": _line_number(stripped_text, match.start()),
+                            "line": _line_number(candidate_stripped_text, match.start()),
                         },
                     ),
                     source_file=file_path,
@@ -294,6 +319,7 @@ def parse_dependencies_only(
     stable_identifier: StableIdentifier,
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
+    stripped_text: str | None = None,
 ) -> tuple[_Dependency, ...]:
     dependencies, _bindings = extract_import_bindings(
         file_path,
@@ -302,6 +328,7 @@ def parse_dependencies_only(
         stable_identifier=stable_identifier,
         normalize_repository_relative_path=normalize_repository_relative_path,
         resolve_suffix_match=resolve_suffix_match,
+        stripped_text=stripped_text,
     )
     return dependencies
 
@@ -314,13 +341,20 @@ def parse_file(
     stable_identifier: StableIdentifier,
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
+    stripped_text: str | None = None,
 ) -> tuple[tuple[_Symbol, ...], tuple[_Dependency, ...], tuple[_SymbolReferenceCandidate, ...]]:
-    if not is_probable_agda_source(path=Path(file_path), text=text):
+    candidate_stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
+    if not is_probable_agda_source(
+        path=Path(file_path),
+        text=text,
+        stripped_text=candidate_stripped_text,
+    ):
         return (), (), ()
     collected_symbols = _collect_symbols(
         file_path=file_path,
         text=text,
         stable_identifier=stable_identifier,
+        stripped_text=candidate_stripped_text,
     )
     symbols = tuple(collected_symbol.symbol for collected_symbol in collected_symbols)
     symbols_by_name: dict[str, list[_Symbol]] = defaultdict(list)
@@ -333,10 +367,10 @@ def parse_file(
         stable_identifier=stable_identifier,
         normalize_repository_relative_path=normalize_repository_relative_path,
         resolve_suffix_match=resolve_suffix_match,
+        stripped_text=candidate_stripped_text,
     )
     reference_candidates: dict[str, _SymbolReferenceCandidate] = {}
-    stripped_text = strip_comments(text)
-    lines = stripped_text.splitlines()
+    lines = candidate_stripped_text.splitlines()
 
     def _record_reference_candidate(
         *,

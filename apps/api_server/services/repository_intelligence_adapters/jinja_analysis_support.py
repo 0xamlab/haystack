@@ -37,6 +37,7 @@ def _extract_import_bindings(
     stable_identifier: StableIdentifier,
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
+    stripped_text: str | None = None,
 ) -> tuple[tuple[_Dependency, ...], dict[str, _ImportedSymbolBinding]]:
     bindings = imported_symbol_bindings(
         current_file=file_path,
@@ -44,10 +45,14 @@ def _extract_import_bindings(
         module_index=module_index,
         normalize_repository_relative_path=normalize_repository_relative_path,
         resolve_suffix_match=resolve_suffix_match,
+        stripped_text=stripped_text,
     )
     dependencies: list[_Dependency] = []
     seen_dependencies: set[tuple[str | None, str, str]] = set()
-    for dependency_kind, import_target, selectors, alias, line_number in iter_dependency_entries(text):
+    for dependency_kind, import_target, selectors, alias, line_number in iter_dependency_entries(
+        text,
+        stripped_text=stripped_text,
+    ):
         target_file = resolve_import(
             current_file=file_path,
             import_target=import_target,
@@ -95,7 +100,8 @@ def parse_dependencies_only(
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
 ) -> tuple[_Dependency, ...]:
-    if not is_probable_jinja_source(path=Path(file_path), text=text):
+    stripped_text = repository_jinja_primitives.strip_comments(text)
+    if not is_probable_jinja_source(path=Path(file_path), text=text, stripped_text=stripped_text):
         return ()
     dependencies, _bindings = _extract_import_bindings(
         file_path=file_path,
@@ -104,6 +110,7 @@ def parse_dependencies_only(
         stable_identifier=stable_identifier,
         normalize_repository_relative_path=normalize_repository_relative_path,
         resolve_suffix_match=resolve_suffix_match,
+        stripped_text=stripped_text,
     )
     return dependencies
 
@@ -121,9 +128,17 @@ def parse_file(
     tuple[_Dependency, ...],
     tuple[_SymbolReferenceCandidate, ...],
 ]:
-    if not is_probable_jinja_source(path=Path(file_path), text=text):
+    stripped_text = repository_jinja_primitives.strip_comments(text)
+    if not is_probable_jinja_source(path=Path(file_path), text=text, stripped_text=stripped_text):
         return (), (), ()
-    symbols = collect_symbols(file_path=file_path, text=text, stable_identifier=stable_identifier)
+    symbol_entries = iter_symbol_entries(text, stripped_text=stripped_text)
+    symbols = collect_symbols(
+        file_path=file_path,
+        text=text,
+        stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
+        symbol_entries=symbol_entries,
+    )
     dependencies, import_bindings = _extract_import_bindings(
         file_path=file_path,
         text=text,
@@ -131,8 +146,8 @@ def parse_file(
         stable_identifier=stable_identifier,
         normalize_repository_relative_path=normalize_repository_relative_path,
         resolve_suffix_match=resolve_suffix_match,
+        stripped_text=stripped_text,
     )
-    symbol_entries = iter_symbol_entries(text)
     symbol_ids_by_name = {
         symbol.symbol_name: symbol.symbol_id
         for symbol in symbols
@@ -141,7 +156,10 @@ def parse_file(
     local_symbol_names = set(symbol_ids_by_name)
     symbol_references: list[_SymbolReferenceCandidate] = []
     seen_reference_keys: set[tuple[str | None, str, str]] = set()
-    for _reference_kind, owner, target_name, line_number in iter_reference_entries(text):
+    for _reference_kind, owner, target_name, line_number in iter_reference_entries(
+        text,
+        stripped_text=stripped_text,
+    ):
         source_symbol_name = source_symbol_name_for_line(symbol_entries, line_number=line_number)
         source_symbol_id = symbol_ids_by_name.get(source_symbol_name or "", symbols[0].symbol_id)
         target_file = file_path if target_name in local_symbol_names else None

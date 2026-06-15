@@ -24,17 +24,40 @@ MOJO_BENCH_SRC = ROOT / "benchmarks" / "mojo_benchmarks" / "bench_image_real_dir
 ARTIFACT_PATH = ROOT / "build" / "image_real_direct_benchmark_repo_env.json"
 PY_LIBS = ROOT / "benchmarks" / "python_libs"
 
-if str(PY_LIBS) not in sys.path:
-    sys.path.insert(0, str(PY_LIBS))
+# The python_libs equivalents are imported by bare name and a few of them shadow
+# stdlib modules (e.g. datetime). Inserting PY_LIBS onto sys.path at import time
+# leaks that shadowing into any process that merely imports this benchmark module
+# (and into spawned ProcessPool workers, which re-import on a polluted path).
+# Defer the path mutation + bare-name imports until the benchmark actually runs.
+py_image_features = None
+py_image_quality = None
+py_image_resize = None
+py_perceptual_hash = None
+py_vision_gate = None
 
-import image_features as py_image_features
-import image_quality as py_image_quality
-import image_resize as py_image_resize
-import perceptual_hash as py_perceptual_hash
-import vision_gate as py_vision_gate
 
-# image_quality.py currently references math.math.log
-math.math = math
+def _load_python_libs() -> None:
+    """Bind the python_libs equivalents lazily (no import-time sys.path pollution)."""
+    global py_image_features, py_image_quality, py_image_resize
+    global py_perceptual_hash, py_vision_gate
+    if py_image_features is not None:
+        return
+    if str(PY_LIBS) not in sys.path:
+        sys.path.insert(0, str(PY_LIBS))
+    import image_features
+    import image_quality
+    import image_resize
+    import perceptual_hash
+    import vision_gate
+
+    # image_quality.py currently references math.math.log
+    math.math = math
+
+    py_image_features = image_features
+    py_image_quality = image_quality
+    py_image_resize = image_resize
+    py_perceptual_hash = perceptual_hash
+    py_vision_gate = vision_gate
 
 
 DEFAULT_IMAGES: dict[str, Path] = {
@@ -95,6 +118,7 @@ def load_png_image(name: str, path: Path) -> LoadedImage:
 
 
 def build_python_cases(image: LoadedImage) -> list[PythonCase]:
+    _load_python_libs()
     blur = py_image_quality.blur_score_flat(image.flat_gray, image.width, image.height)
     brightness = py_image_quality.brightness_flat(image.flat_gray, image.width, image.height)
     entropy = py_image_quality.entropy_flat(image.flat_gray, image.width, image.height)

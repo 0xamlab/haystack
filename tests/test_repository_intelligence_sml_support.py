@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import time
 import uuid
 from pathlib import Path
 from types import SimpleNamespace
@@ -15,6 +16,9 @@ from apps.api_server.services import (
 )
 from apps.api_server.services.pyarrow_runtime import initialize_pyarrow_parquet_runtime
 from apps.api_server.services.repository_intelligence_adapters import (
+    ml as repository_ml_adapter,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
     sml_analysis_support as repository_sml_analysis_support,
 )
 from apps.api_server.services.repository_intelligence_adapters import (
@@ -22,6 +26,9 @@ from apps.api_server.services.repository_intelligence_adapters import (
 )
 from benchmarks.repository_intelligence_real_repo_probe import (
     _derive_operational_seed_plan_without_diagnostics,
+)
+from benchmarks import (
+    repository_intelligence_real_repo_probe_profile_project_languages_a_support as project_languages_a_support,
 )
 
 
@@ -101,6 +108,76 @@ def test_sml_adapter_module_aliases_include_declared_symbols(tmp_path: Path) -> 
     assert "util.helper" in aliases
 
 
+def test_sml_adapter_module_aliases_accept_preloaded_text_without_file_read(
+    tmp_path: Path,
+) -> None:
+    repo_path = tmp_path / "sml-preloaded-text-repo"
+    (repo_path / "src" / "acme").mkdir(parents=True)
+    source_path = repo_path / "src" / "acme" / "util.sml"
+    source_text = (
+        "structure Util = struct\n"
+        "fun helper () = 1\n"
+        "end\n"
+    )
+    source_path.write_text(source_text, encoding="utf-8")
+
+    aliases = repository_service.sml_adapter.module_aliases_for_path(
+        root_path=repo_path,
+        file_path="src/acme/util.sml",
+        stable_identifier=repository_service._stable_identifier,
+        text=source_text,
+    )
+
+    assert "util.helper" in aliases
+    source_path.unlink()
+    aliases_without_disk_read = repository_service.sml_adapter.module_aliases_for_path(
+        root_path=repo_path,
+        file_path="src/acme/util.sml",
+        stable_identifier=repository_service._stable_identifier,
+        text=source_text,
+    )
+    assert aliases_without_disk_read == aliases
+
+
+def test_sml_adapter_module_aliases_can_skip_symbol_names(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo_path = tmp_path / "sml-module-only-repo"
+    (repo_path / "src" / "acme").mkdir(parents=True)
+    source_text = (
+        "structure Util = struct\n"
+        "fun helper () = 1\n"
+        "end\n"
+    )
+    (repo_path / "src" / "acme" / "util.sml").write_text(source_text, encoding="utf-8")
+
+    def _unexpected_collect_symbol_entries(*args: object, **kwargs: object) -> object:
+        raise AssertionError("module-only sml aliases should skip symbol collection")
+
+    monkeypatch.setattr(
+        repository_ml_adapter,
+        "collect_symbol_entries",
+        _unexpected_collect_symbol_entries,
+    )
+
+    aliases = repository_service.sml_adapter.module_aliases_for_path(
+        root_path=repo_path,
+        file_path="src/acme/util.sml",
+        stable_identifier=repository_service._stable_identifier,
+        text=source_text,
+        include_symbol_aliases=False,
+    )
+
+    assert "src/acme/util.sml" in aliases
+    assert "src/acme/util" in aliases
+    assert "src.acme.util" in aliases
+    assert "acme.util" in aliases
+    assert "util" in aliases
+    assert "helper" not in aliases
+    assert "util.helper" not in aliases
+
+
 def test_sml_adapter_parse_file_extracts_dependencies_and_references() -> None:
     module_index = repository_service._build_module_index(
         ["src/Util.sml", "src/Main.sml"],
@@ -129,6 +206,148 @@ def test_sml_adapter_parse_file_extracts_dependencies_and_references() -> None:
     assert any(symbol["symbol_name"] == "run" for symbol in symbols)
     assert any(reference["target_file"] == "src/Util.sml" for reference in references)
     assert any(reference["target_names"] == ("helper",) for reference in references)
+
+
+def test_ml_parse_file_reuses_single_comment_stripping_pass(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    original_strip_comments = repository_ml_adapter.strip_comments
+    strip_comment_calls = {"value": 0}
+
+    def _counting_strip_comments(text: str) -> str:
+        strip_comment_calls["value"] += 1
+        return original_strip_comments(text)
+
+    monkeypatch.setattr(repository_ml_adapter, "strip_comments", _counting_strip_comments)
+
+    module_index = repository_service._build_module_index(
+        ["src/Util.sml", "src/Main.sml"],
+        root_path=Path("/tmp/sml-index"),
+    )
+    repository_ml_adapter.parse_file(
+        "src/Main.sml",
+        "structure Main = struct\n"
+        "open Util\n"
+        "val run = helper ()\n"
+        "end\n",
+        module_index,
+        stable_identifier=repository_service._stable_identifier,
+        resolve_import=lambda import_target, index: repository_service.sml_adapter.resolve_import(
+            import_target,
+            module_index=index,
+            resolve_suffix_match=repository_service._resolve_suffix_match,
+        ),
+    )
+
+    assert strip_comment_calls["value"] == 1
+
+
+def test_ml_strip_comments_reuses_cached_results() -> None:
+    text = "(* comment *)\nstructure Main = struct\nval run = 1\nend\n"
+
+    repository_ml_adapter.strip_comments.cache_clear()
+    first = repository_ml_adapter.strip_comments(text)
+    second = repository_ml_adapter.strip_comments(text)
+    cache_info = repository_ml_adapter.strip_comments.cache_info()
+
+    assert second == first
+    assert cache_info.hits >= 1
+    assert cache_info.misses == 1
+
+
+def test_ml_collect_symbol_entries_reuses_cached_line_offsets() -> None:
+    text = (
+        "structure Main = struct\n"
+        "val run = 1\n"
+        "fun helper () = run\n"
+        "end\n"
+    )
+
+    repository_ml_adapter._line_start_offsets.cache_clear()
+    entries = repository_ml_adapter.collect_symbol_entries(
+        text,
+        file_path="src/Main.sml",
+        stable_identifier=repository_service._stable_identifier,
+    )
+    cache_info = repository_ml_adapter._line_start_offsets.cache_info()
+
+    assert [entry["start_line"] for entry in entries] == [1, 2, 3]
+    assert cache_info.hits >= 1
+    assert cache_info.misses == 1
+
+
+def test_ml_profile_hints_reuse_cached_manifest_parse(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    repo_path = tmp_path / "ml-profile-cache-repo"
+    (repo_path / "src").mkdir(parents=True)
+    manifest_path = repo_path / "project.mlb"
+    manifest_path.write_text(
+        "src/Main.sml\n",
+        encoding="utf-8",
+    )
+    (repo_path / "src" / "Main.sml").write_text(
+        "structure Main = struct\nval run = 1\nend\n",
+        encoding="utf-8",
+    )
+
+    project_languages_a_support.clear_ml_profile_hint_cache()
+    first = project_languages_a_support._ml_profile_hints(repo_path, "project.mlb")
+
+    original_read_text = Path.read_text
+
+    def _fail_on_manifest_read(self: Path, *args: object, **kwargs: object) -> str:
+        if self == manifest_path:
+            raise AssertionError("expected ml profile hints cache hit")
+        return original_read_text(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", _fail_on_manifest_read)
+
+    second = project_languages_a_support._ml_profile_hints(repo_path, "project.mlb")
+
+    assert second == first
+
+
+def test_ml_profile_hints_cache_invalidates_when_manifest_changes(tmp_path: Path) -> None:
+    repo_path = tmp_path / "ml-profile-cache-invalidation-repo"
+    (repo_path / "src").mkdir(parents=True)
+    manifest_path = repo_path / "project.mlb"
+    manifest_path.write_text(
+        "src/Main.sml\n",
+        encoding="utf-8",
+    )
+    (repo_path / "src" / "Main.sml").write_text(
+        "structure Main = struct\nval run = 1\nend\n",
+        encoding="utf-8",
+    )
+    (repo_path / "src" / "Util.sml").write_text(
+        "structure Util = struct\nval helper = 1\nend\n",
+        encoding="utf-8",
+    )
+
+    project_languages_a_support.clear_ml_profile_hint_cache()
+    first_entrypoints, _first_roots, first_configs = project_languages_a_support._ml_profile_hints(
+        repo_path,
+        "project.mlb",
+    )
+
+    time.sleep(0.01)
+    manifest_path.write_text(
+        "src/Main.sml\n"
+        "src/Util.sml\n",
+        encoding="utf-8",
+    )
+
+    second_entrypoints, _second_roots, second_configs = project_languages_a_support._ml_profile_hints(
+        repo_path,
+        "project.mlb",
+    )
+
+    assert first_configs == second_configs == {"project.mlb"}
+    assert "src/Main.sml" in first_entrypoints
+    assert "src/Util.sml" not in first_entrypoints
+    assert "src/Util.sml" in second_entrypoints
 
 
 def test_sml_language_detection_prefers_explicit_sml_bucket() -> None:

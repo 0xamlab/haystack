@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 from collections.abc import Sequence
-from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +24,81 @@ from apps.api_server.services.repository_intelligence_shared import (
 
 _FILE_ANALYSIS_CACHE_SCHEMA_VERSION = "repository-file-analysis-v1"
 _DEPENDENCY_ANALYSIS_CACHE_SCHEMA_VERSION = "repository-dependency-analysis-v1"
+_ANALYSIS_IMPLEMENTATION_FINGERPRINT_CACHE: str | None = None
+
+
+def _serialize_symbol(symbol: _Symbol) -> dict[str, Any]:
+    return {
+        "symbol_id": symbol.symbol_id,
+        "symbol_name": symbol.symbol_name,
+        "symbol_kind": symbol.symbol_kind,
+        "start_line": symbol.start_line,
+        "end_line": symbol.end_line,
+        "parent_symbol_id": symbol.parent_symbol_id,
+        "signature": symbol.signature,
+    }
+
+
+def _serialize_dependency(dependency: _Dependency) -> dict[str, Any]:
+    return {
+        "dependency_edge_id": dependency.dependency_edge_id,
+        "source_file": dependency.source_file,
+        "target_file": dependency.target_file,
+        "target_symbol": dependency.target_symbol,
+        "dependency_type": dependency.dependency_type,
+    }
+
+
+def _serialize_symbol_reference(
+    reference: _SymbolReferenceCandidate,
+) -> dict[str, Any]:
+    return {
+        "reference_edge_id": reference.reference_edge_id,
+        "source_symbol_id": reference.source_symbol_id,
+        "source_file": reference.source_file,
+        "target_symbol_id": reference.target_symbol_id,
+        "target_file": reference.target_file,
+        "target_names": reference.target_names,
+        "reference_type": reference.reference_type,
+    }
+
+
+def _compute_analysis_implementation_fingerprint() -> str:
+    services_root = Path(__file__).resolve().parent
+    fingerprint_inputs: list[dict[str, int | str]] = []
+    candidate_paths = sorted(
+        {
+            *services_root.glob("repository_intelligence*.py"),
+            *services_root.joinpath("repository_intelligence_adapters").glob("*.py"),
+            services_root / "runtime_internal_contracts.py",
+        }
+    )
+    for path in candidate_paths:
+        if not path.is_file():
+            continue
+        stat = path.stat()
+        fingerprint_inputs.append(
+            {
+                "path": str(path.relative_to(services_root)),
+                "size": stat.st_size,
+                "mtime_ns": stat.st_mtime_ns,
+            }
+        )
+    return _hash_payload(fingerprint_inputs)
+
+
+def clear_analysis_implementation_fingerprint_cache() -> None:
+    global _ANALYSIS_IMPLEMENTATION_FINGERPRINT_CACHE
+    _ANALYSIS_IMPLEMENTATION_FINGERPRINT_CACHE = None
+
+
+def _analysis_implementation_fingerprint() -> str:
+    global _ANALYSIS_IMPLEMENTATION_FINGERPRINT_CACHE
+    if _ANALYSIS_IMPLEMENTATION_FINGERPRINT_CACHE is None:
+        _ANALYSIS_IMPLEMENTATION_FINGERPRINT_CACHE = (
+            _compute_analysis_implementation_fingerprint()
+        )
+    return _ANALYSIS_IMPLEMENTATION_FINGERPRINT_CACHE
 
 
 def _file_analysis_context_hash(
@@ -34,6 +108,7 @@ def _file_analysis_context_hash(
     workspace_go_module_index: dict[str, tuple[str, ...]] | None,
     max_file_size_bytes: int,
     engine_revision: str,
+    repository_root: Path | None = None,
 ) -> str:
     return _hash_payload(
         {
@@ -42,6 +117,10 @@ def _file_analysis_context_hash(
             "workspace_package_index": workspace_package_index,
             "workspace_go_module_index": workspace_go_module_index or {},
             "max_file_size_bytes": max_file_size_bytes,
+            "repository_root": (
+                None if repository_root is None else str(repository_root.resolve())
+            ),
+            "implementation_fingerprint": _analysis_implementation_fingerprint(),
         }
     )
 
@@ -83,10 +162,13 @@ def _serialize_file_analysis(
             "line_count": analysis.line_count,
             "byte_size": analysis.byte_size,
             "token_estimate": analysis.token_estimate,
-            "symbols": [asdict(symbol) for symbol in analysis.symbols],
-            "dependencies": [asdict(dependency) for dependency in analysis.dependencies],
+            "symbols": [_serialize_symbol(symbol) for symbol in analysis.symbols],
+            "dependencies": [
+                _serialize_dependency(dependency) for dependency in analysis.dependencies
+            ],
             "symbol_references": [
-                asdict(reference) for reference in analysis.symbol_references
+                _serialize_symbol_reference(reference)
+                for reference in analysis.symbol_references
             ],
         },
     }
@@ -212,7 +294,9 @@ def _serialize_dependency_analysis(
     return {
         "schema_version": _DEPENDENCY_ANALYSIS_CACHE_SCHEMA_VERSION,
         "engine_revision": engine_revision,
-        "dependencies": [asdict(dependency) for dependency in dependencies],
+        "dependencies": [
+            _serialize_dependency(dependency) for dependency in dependencies
+        ],
     }
 
 

@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import html
 import re
+from bisect import bisect_right
 from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -55,6 +57,7 @@ _INSTRUCTION_CALL_RE = re.compile(
 _OPERATIONAL_TARGET_TYPES = frozenset(
     {"addoninstructiondefinition", "controller", "program", "routine"}
 )
+_ROOT_TAG_SCAN_CHARS = 4096
 
 
 @dataclass(frozen=True)
@@ -65,11 +68,27 @@ class _CollectedSymbol:
 
 
 def _strip_xml_comments(text: str) -> str:
+    if "<!--" not in text:
+        return text
+    return _strip_xml_comments_cached(text)
+
+
+@lru_cache(maxsize=2048)
+def _strip_xml_comments_cached(text: str) -> str:
     return _XML_COMMENT_RE.sub("", text)
 
 
 def _normalize_name(raw_value: str) -> str:
     return str(raw_value or "").strip().strip('"').strip("'")
+
+
+def _root_tag_scan_text(text: str, *, stripped_text: str | None = None) -> str:
+    if stripped_text is not None:
+        return stripped_text
+    head_text = text[:_ROOT_TAG_SCAN_CHARS]
+    if "<!--" in head_text:
+        return _strip_xml_comments(head_text)
+    return head_text
 
 
 def _parse_attrs(attrs_text: str) -> dict[str, str]:
@@ -81,10 +100,19 @@ def _parse_attrs(attrs_text: str) -> dict[str, str]:
     return attrs
 
 
+@lru_cache(maxsize=4096)
+def _line_start_offsets(text: str) -> tuple[int, ...]:
+    offsets = [0]
+    for index, character in enumerate(text):
+        if character == "\n":
+            offsets.append(index + 1)
+    return tuple(offsets)
+
+
 def _line_number(text: str, offset: int) -> int:
     if offset <= 0:
         return 1
-    return text.count("\n", 0, offset) + 1
+    return bisect_right(_line_start_offsets(text), offset)
 
 
 def _ordered_names(*values: str) -> tuple[str, ...]:
@@ -118,30 +146,42 @@ def _rung_texts(section_body: str) -> tuple[str, ...]:
     return tuple(texts)
 
 
-def is_probable_ladder_source(*, path: Path, text: str) -> bool:
+def is_probable_ladder_source(
+    *,
+    path: Path,
+    text: str,
+    stripped_text: str | None = None,
+) -> bool:
     if path.suffix.lower() != ".l5x":
         return False
-    stripped_text = _strip_xml_comments(text)
-    return bool(_RSLOGIX_ROOT_RE.search(stripped_text))
+    normalized_text = _root_tag_scan_text(text, stripped_text=stripped_text)
+    return bool(_RSLOGIX_ROOT_RE.search(normalized_text))
 
 
-def target_type_for_text(text: str) -> str:
-    stripped_text = _strip_xml_comments(text)
-    root_match = _RSLOGIX_ROOT_TAG_RE.search(stripped_text)
+def target_type_for_text(text: str, *, stripped_text: str | None = None) -> str:
+    normalized_text = _root_tag_scan_text(text, stripped_text=stripped_text)
+    root_match = _RSLOGIX_ROOT_TAG_RE.search(normalized_text)
     if root_match is None:
         return ""
     attrs = _parse_attrs(str(root_match.group("attrs") or ""))
     return _normalize_name(attrs.get("targettype", "")).lower()
 
 
-def is_probable_operational_entrypoint(*, path: Path, text: str) -> bool:
-    if not is_probable_ladder_source(path=path, text=text):
-        return False
-    target_type = target_type_for_text(text)
+def is_probable_operational_entrypoint(
+    *,
+    path: Path,
+    text: str,
+    stripped_text: str | None = None,
+) -> bool:
+    target_type = target_type_for_text(text, stripped_text=stripped_text)
     if target_type in _OPERATIONAL_TARGET_TYPES:
         return True
-    stripped_text = _strip_xml_comments(text)
-    return bool(_RLL_HINT_RE.search(stripped_text) or _RLL_CONTENT_RE.search(stripped_text))
+    if target_type:
+        return False
+    normalized_text = stripped_text if stripped_text is not None else _strip_xml_comments(text)
+    if not is_probable_ladder_source(path=path, text=text, stripped_text=normalized_text):
+        return False
+    return bool(_RLL_HINT_RE.search(normalized_text) or _RLL_CONTENT_RE.search(normalized_text))
 
 
 def _collect_routine_symbols(
@@ -202,6 +242,98 @@ def _collect_routine_symbols(
             )
         )
     return collected
+
+
+def _is_aliasable_routine(*, routine_type: str, routine_body: str) -> bool:
+    return bool(
+        routine_type == "RLL"
+        or _RLL_CONTENT_RE.search(routine_body)
+        or _RUNG_RE.search(routine_body)
+    )
+
+
+def _collect_routine_aliases(
+    *,
+    container_name: str | None,
+    controller_name: str | None,
+    container_body: str,
+) -> tuple[tuple[str, ...], ...]:
+    qualified_names: list[tuple[str, ...]] = []
+    for routine_match in _ROUTINE_RE.finditer(container_body):
+        attrs = _parse_attrs(str(routine_match.group("attrs") or ""))
+        routine_name = _normalize_name(attrs.get("name", ""))
+        if not routine_name:
+            continue
+        routine_body = str(routine_match.group("body") or "")
+        routine_type = _normalize_name(attrs.get("type", "")).upper()
+        if not _is_aliasable_routine(routine_type=routine_type, routine_body=routine_body):
+            continue
+        qualified_names.append(
+            _ordered_names(
+                routine_name,
+                f"{container_name}.{routine_name}" if container_name else "",
+                (
+                    f"{controller_name}.{container_name}.{routine_name}"
+                    if controller_name and container_name
+                    else ""
+                ),
+            )
+        )
+    return tuple(qualified_names)
+
+
+def _symbol_aliases(stripped_text: str) -> tuple[str, ...]:
+    aliases: list[str] = []
+    seen_aliases: set[str] = set()
+
+    def _add_names(*names: str) -> None:
+        for name in _ordered_names(*names):
+            if name in seen_aliases:
+                continue
+            seen_aliases.add(name)
+            aliases.append(name)
+
+    controller_name: str | None = None
+    controller_match = _CONTROLLER_RE.search(stripped_text)
+    if controller_match is not None:
+        controller_attrs = _parse_attrs(str(controller_match.group("attrs") or ""))
+        controller_name = _normalize_name(controller_attrs.get("name", ""))
+        if controller_name:
+            _add_names(controller_name)
+
+    for program_match in _PROGRAM_RE.finditer(stripped_text):
+        attrs = _parse_attrs(str(program_match.group("attrs") or ""))
+        program_name = _normalize_name(attrs.get("name", ""))
+        if not program_name:
+            continue
+        _add_names(
+            program_name,
+            f"{controller_name}.{program_name}" if controller_name else "",
+        )
+        for qualified_names in _collect_routine_aliases(
+            container_name=program_name,
+            controller_name=controller_name,
+            container_body=str(program_match.group("body") or ""),
+        ):
+            _add_names(*qualified_names)
+
+    for instruction_match in _ADD_ON_INSTRUCTION_RE.finditer(stripped_text):
+        attrs = _parse_attrs(str(instruction_match.group("attrs") or ""))
+        instruction_name = _normalize_name(attrs.get("name", ""))
+        if not instruction_name:
+            continue
+        _add_names(
+            instruction_name,
+            f"{controller_name}.{instruction_name}" if controller_name else "",
+        )
+        for qualified_names in _collect_routine_aliases(
+            container_name=instruction_name,
+            controller_name=controller_name,
+            container_body=str(instruction_match.group("body") or ""),
+        ):
+            _add_names(*qualified_names)
+
+    return tuple(aliases)
 
 
 def collect_symbol_entries(
@@ -354,6 +486,7 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
 ) -> set[str]:
     path = PurePosixPath(file_path)
     if path.suffix.lower() not in _KNOWN_SUFFIXES:
@@ -364,18 +497,19 @@ def module_aliases_for_path(
         str(path.with_suffix("")),
         str(path.with_suffix("")).replace("/", "."),
     }
-    try:
-        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        text = ""
-    if not is_probable_ladder_source(path=Path(file_path), text=text):
-        return {alias for alias in aliases if alias}
-    for symbol_entry in collect_symbol_entries(
-        text,
-        file_path=file_path,
-        stable_identifier=stable_identifier,
+    if text is None:
+        try:
+            text = (root_path / path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            text = ""
+    stripped_text = _strip_xml_comments(text) if text else ""
+    if not is_probable_ladder_source(
+        path=Path(file_path),
+        text=text,
+        stripped_text=stripped_text,
     ):
-        aliases.update(symbol_entry.qualified_names)
+        return {alias for alias in aliases if alias}
+    aliases.update(_symbol_aliases(stripped_text))
     return {alias for alias in aliases if alias}
 
 

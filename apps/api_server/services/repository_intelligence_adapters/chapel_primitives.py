@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -25,6 +26,9 @@ _SYMBOL_RE = re.compile(
 _VARIABLE_RE = re.compile(
     r"(?m)^\s*(?:(?:public|private)\s+)?(?:(?:config|param|const|var|type)\s+)+"
     r"(?P<name>[A-Za-z_][A-Za-z0-9_]*)\b"
+)
+_STRING_OR_COMMENT_RE = re.compile(
+    r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|//[^\n]*|/\*[\s\S]*?(?:\*/|$)'
 )
 _QUALIFIED_REFERENCE_RE = re.compile(
     r"\b(?P<alias>[A-Za-z_][A-Za-z0-9_]*)\.(?P<name>[A-Za-z_][A-Za-z0-9_]*)\b"
@@ -143,52 +147,19 @@ def _ordered_names(*values: str) -> tuple[str, ...]:
     return tuple(ordered)
 
 
+def _mask_comment_match(match: re.Match[str]) -> str:
+    token = match.group(0)
+    if token.startswith("//"):
+        return " " * len(token)
+    if token.startswith("/*"):
+        return "".join("\n" if character == "\n" else " " for character in token)
+    return token
+
+
 def strip_comments(text: str) -> str:
-    characters = list(text)
-    index = 0
-    in_string = False
-    string_delimiter = ""
-    while index < len(characters):
-        current = characters[index]
-        next_char = characters[index + 1] if index + 1 < len(characters) else ""
-        if in_string:
-            if current == "\\":
-                index += 2
-                continue
-            if current == string_delimiter:
-                in_string = False
-                string_delimiter = ""
-            index += 1
-            continue
-        if current in {'"', "'"}:
-            in_string = True
-            string_delimiter = current
-            index += 1
-            continue
-        if current == "/" and next_char == "/":
-            characters[index] = " "
-            characters[index + 1] = " "
-            index += 2
-            while index < len(characters) and characters[index] != "\n":
-                characters[index] = " "
-                index += 1
-            continue
-        if current == "/" and next_char == "*":
-            characters[index] = " "
-            characters[index + 1] = " "
-            index += 2
-            while index + 1 < len(characters):
-                if characters[index] == "*" and characters[index + 1] == "/":
-                    characters[index] = " "
-                    characters[index + 1] = " "
-                    index += 2
-                    break
-                if characters[index] != "\n":
-                    characters[index] = " "
-                index += 1
-            continue
-        index += 1
-    return "".join(characters)
+    if "//" not in text and "/*" not in text:
+        return text
+    return _STRING_OR_COMMENT_RE.sub(_mask_comment_match, text)
 
 
 def has_chapel_path_hints(path: Path | PurePosixPath) -> bool:
@@ -199,9 +170,16 @@ def module_name_from_path(file_path: str) -> str:
     return PurePosixPath(file_path).stem
 
 
-def module_name_from_text(text: str, *, file_path: str) -> str:
-    stripped_text = strip_comments(text)
-    match = _MODULE_RE.search(stripped_text)
+def module_name_from_text(
+    text: str,
+    *,
+    file_path: str,
+    stripped_text: str | None = None,
+) -> str:
+    candidate_stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
+    if "module" not in candidate_stripped_text:
+        return module_name_from_path(file_path)
+    match = _MODULE_RE.search(candidate_stripped_text)
     if match is not None:
         module_name = str(match.group("name") or "").strip()
         if module_name:
@@ -209,11 +187,16 @@ def module_name_from_text(text: str, *, file_path: str) -> str:
     return module_name_from_path(file_path)
 
 
-def is_probable_chapel_source(*, path: Path | PurePosixPath, text: str) -> bool:
+def is_probable_chapel_source(
+    *,
+    path: Path | PurePosixPath,
+    text: str,
+    stripped_text: str | None = None,
+) -> bool:
     if not has_chapel_path_hints(path):
         return False
-    stripped_text = strip_comments(text)
-    return bool(stripped_text.strip()) and bool(_MARKER_RE.search(stripped_text))
+    candidate_stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
+    return bool(candidate_stripped_text.strip()) and bool(_MARKER_RE.search(candidate_stripped_text))
 
 
 def _split_target_segments(raw_targets: str) -> tuple[str, ...]:
@@ -257,14 +240,39 @@ def _normalize_import_target(raw_target: str) -> tuple[str, str | None]:
     return normalized_target, alias
 
 
-def parse_use_import_statements(text: str) -> tuple[tuple[str, str, str | None, int], ...]:
-    stripped_text = strip_comments(text)
+def parse_use_import_statements(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, str, str | None, int], ...]:
+    candidate_stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
+    if "use" not in candidate_stripped_text and "import" not in candidate_stripped_text:
+        return ()
     statements: list[tuple[str, str, str | None, int]] = []
     seen: set[tuple[str, str, str | None, int]] = set()
-    for match in _USE_IMPORT_RE.finditer(stripped_text):
-        statement_kind = str(match.group("kind") or "").strip()
-        line_number = _line_number(stripped_text, match.start())
-        for segment in _split_target_segments(str(match.group("targets") or "")):
+    for line_number, raw_line in enumerate(candidate_stripped_text.splitlines(), start=1):
+        candidate_line = raw_line.strip()
+        if not candidate_line:
+            continue
+        if candidate_line.startswith("public "):
+            candidate_line = candidate_line[len("public ") :].lstrip()
+        elif candidate_line.startswith("private "):
+            candidate_line = candidate_line[len("private ") :].lstrip()
+        if candidate_line.startswith("use "):
+            statement_kind = "use"
+            targets = candidate_line[len("use ") :]
+        elif candidate_line.startswith("import "):
+            statement_kind = "import"
+            targets = candidate_line[len("import ") :]
+        else:
+            continue
+        statement_terminator = targets.find(";")
+        if statement_terminator < 0:
+            continue
+        statement_targets = targets[:statement_terminator].strip()
+        if not statement_targets:
+            continue
+        for segment in _split_target_segments(statement_targets):
             import_target, alias = _normalize_import_target(segment)
             if not import_target:
                 continue
@@ -276,9 +284,11 @@ def parse_use_import_statements(text: str) -> tuple[tuple[str, str, str | None, 
     return tuple(statements)
 
 
-def iter_symbol_entries(text: str, *, file_path: str) -> tuple[tuple[str, str, int], ...]:
-    stripped_text = strip_comments(text)
-    module_name = module_name_from_text(stripped_text, file_path=file_path)
+@lru_cache(maxsize=1024)
+def _iter_symbol_entries_from_stripped_text(
+    stripped_text: str,
+    resolved_module_name: str,
+) -> tuple[tuple[str, str, int], ...]:
     entries: list[tuple[str, str, int]] = []
     seen_names: set[str] = set()
     for regex, kind_group, name_group, default_kind in (
@@ -294,21 +304,50 @@ def iter_symbol_entries(text: str, *, file_path: str) -> tuple[tuple[str, str, i
             )
             if (
                 not symbol_name
-                or symbol_name == module_name
+                or symbol_name == resolved_module_name
                 or symbol_name in seen_names
                 or symbol_name in _RESERVED_SYMBOL_NAMES
             ):
                 continue
             seen_names.add(symbol_name)
-            entries.append((symbol_name, symbol_kind, _line_number(stripped_text, match.start())))
+            entries.append(
+                (symbol_name, symbol_kind, _line_number(stripped_text, match.start()))
+            )
     return tuple(sorted(entries, key=lambda item: (item[2], item[0], item[1])))
 
 
-def parse_reference_targets(text: str) -> tuple[tuple[str | None, str, int], ...]:
-    stripped_text = strip_comments(text)
+def iter_symbol_entries(
+    text: str,
+    *,
+    file_path: str,
+    stripped_text: str | None = None,
+    module_name: str | None = None,
+) -> tuple[tuple[str, str, int], ...]:
+    candidate_stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
+    resolved_module_name = (
+        module_name
+        if module_name is not None
+        else module_name_from_text(
+            text,
+            file_path=file_path,
+            stripped_text=candidate_stripped_text,
+        )
+    )
+    return _iter_symbol_entries_from_stripped_text(
+        candidate_stripped_text,
+        resolved_module_name,
+    )
+
+
+def parse_reference_targets(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str | None, str, int], ...]:
+    candidate_stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
     references: list[tuple[str | None, str, int]] = []
     seen: set[tuple[str | None, str, int]] = set()
-    for match in _QUALIFIED_REFERENCE_RE.finditer(stripped_text):
+    for match in _QUALIFIED_REFERENCE_RE.finditer(candidate_stripped_text):
         alias = str(match.group("alias") or "").strip()
         symbol_name = str(match.group("name") or "").strip()
         if (
@@ -318,16 +357,16 @@ def parse_reference_targets(text: str) -> tuple[tuple[str | None, str, int], ...
             or symbol_name in _RESERVED_SYMBOL_NAMES
         ):
             continue
-        item = (alias, symbol_name, _line_number(stripped_text, match.start()))
+        item = (alias, symbol_name, _line_number(candidate_stripped_text, match.start()))
         if item in seen:
             continue
         seen.add(item)
         references.append(item)
-    for match in _UNQUALIFIED_CALL_RE.finditer(stripped_text):
+    for match in _UNQUALIFIED_CALL_RE.finditer(candidate_stripped_text):
         symbol_name = str(match.group("name") or "").strip()
         if not symbol_name or symbol_name in _RESERVED_SYMBOL_NAMES:
             continue
-        item = (None, symbol_name, _line_number(stripped_text, match.start()))
+        item = (None, symbol_name, _line_number(candidate_stripped_text, match.start()))
         if item in seen:
             continue
         seen.add(item)

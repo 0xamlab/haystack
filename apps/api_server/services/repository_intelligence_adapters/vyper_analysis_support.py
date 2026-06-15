@@ -33,6 +33,18 @@ source_symbol_name_for_line = repository_vyper_primitives.source_symbol_name_for
 strip_comments = repository_vyper_primitives.strip_comments
 
 
+def _prepared_analysis_context(
+    text: str,
+) -> tuple[str, tuple[int, ...], tuple[tuple[str, str, int], ...]]:
+    stripped_text, line_starts = repository_vyper_primitives._prepare_source_text(text)
+    symbol_entries = iter_symbol_entries(
+        text,
+        stripped_text=stripped_text,
+        line_starts=line_starts,
+    )
+    return stripped_text, line_starts, symbol_entries
+
+
 def _extract_import_bindings(
     *,
     file_path: str,
@@ -41,13 +53,19 @@ def _extract_import_bindings(
     stable_identifier: StableIdentifier,
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
+    stripped_text: str | None = None,
+    line_starts: tuple[int, ...] | None = None,
 ) -> tuple[tuple[_Dependency, ...], dict[str, _ImportedSymbolBinding], tuple[str, ...]]:
     dependencies: list[_Dependency] = []
     import_bindings: dict[str, _ImportedSymbolBinding] = {}
     imported_target_files: list[str] = []
     seen_dependencies: set[tuple[str | None, str, str, int]] = set()
     for dependency_kind, dependency_target, binding_alias, imported_symbol, line_number in (
-        iter_dependency_entries(text)
+        iter_dependency_entries(
+            text,
+            stripped_text=stripped_text,
+            line_starts=line_starts,
+        )
     ):
         target_file: str | None = None
         target_names: tuple[str, ...] = ()
@@ -132,7 +150,12 @@ def parse_dependencies_only(
     resolve_suffix_match: ResolveSuffixMatch,
 ) -> tuple[_Dependency, ...]:
     path = Path(file_path)
-    if path.suffix.lower() not in VYPER_SUFFIXES or not is_probable_vyper_source(path=path, text=text):
+    stripped_text, line_starts, _symbol_entries = _prepared_analysis_context(text)
+    if path.suffix.lower() not in VYPER_SUFFIXES or not is_probable_vyper_source(
+        path=path,
+        text=text,
+        stripped_text=stripped_text,
+    ):
         return ()
     dependencies, _bindings, _imported_target_files = _extract_import_bindings(
         file_path=file_path,
@@ -141,6 +164,8 @@ def parse_dependencies_only(
         stable_identifier=stable_identifier,
         normalize_repository_relative_path=normalize_repository_relative_path,
         resolve_suffix_match=resolve_suffix_match,
+        stripped_text=stripped_text,
+        line_starts=line_starts,
     )
     return dependencies
 
@@ -159,9 +184,19 @@ def parse_file(
     tuple[_SymbolReferenceCandidate, ...],
 ]:
     path = Path(file_path)
-    if path.suffix.lower() not in VYPER_SUFFIXES or not is_probable_vyper_source(path=path, text=text):
+    stripped_text, line_starts, symbol_entries = _prepared_analysis_context(text)
+    if path.suffix.lower() not in VYPER_SUFFIXES or not is_probable_vyper_source(
+        path=path,
+        text=text,
+        stripped_text=stripped_text,
+    ):
         return (), (), ()
-    symbols = collect_symbols(file_path=file_path, text=text, stable_identifier=stable_identifier)
+    symbols = collect_symbols(
+        file_path=file_path,
+        text=text,
+        stable_identifier=stable_identifier,
+        symbol_entries=symbol_entries,
+    )
     dependencies, import_bindings, imported_target_files = _extract_import_bindings(
         file_path=file_path,
         text=text,
@@ -169,8 +204,9 @@ def parse_file(
         stable_identifier=stable_identifier,
         normalize_repository_relative_path=normalize_repository_relative_path,
         resolve_suffix_match=resolve_suffix_match,
+        stripped_text=stripped_text,
+        line_starts=line_starts,
     )
-    symbol_entries = iter_symbol_entries(text)
     symbol_ids_by_name = {
         symbol.symbol_name: symbol.symbol_id for symbol in symbols if symbol.symbol_kind != "vyper"
     }
@@ -206,7 +242,11 @@ def parse_file(
             )
         )
 
-    for qualifier, target_name, line_number in iter_reference_entries(text):
+    for qualifier, target_name, line_number in iter_reference_entries(
+        text,
+        stripped_text=stripped_text,
+        symbol_entries=symbol_entries,
+    ):
         source_symbol_name = source_symbol_name_for_line(symbol_entries, line_number=line_number)
         source_symbol_id = symbol_ids_by_name.get(source_symbol_name or "", default_source_symbol_id)
         target_file: str | None = None
@@ -259,3 +299,20 @@ def parse_file(
             )
         )
     return symbols, dependencies, tuple(symbol_references)
+
+
+def module_aliases_for_path(
+    *,
+    root_path: Path,
+    file_path: str,
+    stable_identifier: StableIdentifier,
+    text: str | None = None,
+    include_symbol_aliases: bool = True,
+) -> set[str]:
+    return repository_vyper_primitives.module_aliases_for_path(
+        root_path=root_path,
+        file_path=file_path,
+        stable_identifier=stable_identifier,
+        text=text,
+        include_symbol_aliases=include_symbol_aliases,
+    )

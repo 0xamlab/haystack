@@ -6,6 +6,8 @@ import uuid
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 from apps.api_server.schemas.repositories import RepositorySnapshotCreateRequest
 from apps.api_server.services import repository_intelligence as repository_service
 from apps.api_server.services import (
@@ -106,6 +108,34 @@ def test_liquid_adapter_module_aliases_include_module_and_binding_names(tmp_path
     assert "button_label" in aliases
 
 
+def test_liquid_adapter_module_aliases_use_provided_text_without_rereading_file(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo_path = tmp_path / "liquid-alias-inline-text-repo"
+    (repo_path / "snippets").mkdir(parents=True)
+    source_text = "{% assign button_label = product.title %}\n<div>{{ button_label }}</div>\n"
+    file_path = repo_path / "snippets" / "card.liquid"
+    file_path.write_text(source_text, encoding="utf-8")
+
+    def _unexpected_read_text(self: Path, *args, **kwargs) -> str:
+        raise AssertionError(f"module_aliases_for_path should not reread {self}")
+
+    monkeypatch.setattr(Path, "read_text", _unexpected_read_text)
+
+    aliases = repository_service.liquid_adapter.module_aliases_for_path(
+        root_path=repo_path,
+        file_path="snippets/card.liquid",
+        stable_identifier=repository_service._stable_identifier,
+        text=source_text,
+        stripped_text=repository_liquid_primitives.strip_comments(source_text),
+    )
+
+    assert "snippets/card.liquid" in aliases
+    assert "snippets.card" in aliases
+    assert "button_label" in aliases
+
+
 def test_liquid_adapter_parse_file_resolves_render_and_layout_dependencies(tmp_path: Path) -> None:
     repo_path = tmp_path / "liquid-parse-repo"
     (repo_path / "layout").mkdir(parents=True)
@@ -160,6 +190,61 @@ def test_liquid_language_detection_supports_template_suffix() -> None:
         Path("templates/product.liquid"),
         text="{% render 'card' %}\n{{ product.title }}\n",
     ) == "liquid"
+
+
+def test_liquid_strip_comments_preserves_newlines_and_removes_comment_blocks() -> None:
+    source_text = (
+        "{% comment %}\n"
+        "{{ hidden }}\n"
+        "{% endcomment %}\n"
+        "{% render 'card' %}\n"
+    )
+
+    stripped_text = repository_liquid_primitives.strip_comments(source_text)
+
+    assert "{{ hidden }}" not in stripped_text
+    assert stripped_text.count("\n") == source_text.count("\n")
+    assert "{% render 'card' %}" in stripped_text
+
+
+def test_liquid_adapter_reuses_single_stripped_text_per_parse(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    original_strip_comments = repository_liquid_primitives.strip_comments
+    strip_call_count = {"value": 0}
+
+    def counting_strip_comments(text: str) -> str:
+        strip_call_count["value"] += 1
+        return original_strip_comments(text)
+
+    monkeypatch.setattr(repository_liquid_primitives, "strip_comments", counting_strip_comments)
+    monkeypatch.setattr(repository_liquid_analysis_support, "strip_comments", counting_strip_comments)
+
+    source_text = "{% layout 'theme' %}\n{% render 'card' %}\n{{ button_label }}\n"
+    module_index = {
+        "layout/theme.liquid": "layout/theme.liquid",
+        "snippets/card.liquid": "snippets/card.liquid",
+        "templates/product.liquid": "templates/product.liquid",
+    }
+
+    repository_service.liquid_adapter.parse_dependencies_only(
+        "templates/product.liquid",
+        source_text,
+        module_index,
+        stable_identifier=repository_service._stable_identifier,
+        normalize_repository_relative_path=repository_service._normalize_repository_relative_path,
+        resolve_suffix_match=repository_service._resolve_suffix_match,
+    )
+    repository_service.liquid_adapter.parse_file(
+        "templates/product.liquid",
+        source_text,
+        module_index,
+        stable_identifier=repository_service._stable_identifier,
+        normalize_repository_relative_path=repository_service._normalize_repository_relative_path,
+        resolve_suffix_match=repository_service._resolve_suffix_match,
+    )
+
+    assert strip_call_count["value"] == 2
 
 
 def test_operational_seed_plan_without_diagnostics_promotes_liquid_when_surface_dominates(

@@ -29,6 +29,8 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
+    include_symbol_aliases: bool = True,
 ) -> set[str]:
     if PurePosixPath(file_path).suffix.lower() not in SML_SUFFIXES:
         return set()
@@ -36,6 +38,8 @@ def module_aliases_for_path(
         root_path=root_path,
         file_path=file_path,
         stable_identifier=stable_identifier,
+        text=text,
+        include_symbol_aliases=include_symbol_aliases,
     )
 
 

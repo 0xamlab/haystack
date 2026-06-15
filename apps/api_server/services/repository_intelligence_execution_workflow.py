@@ -31,6 +31,27 @@ from apps.api_server.services.repository_intelligence_shared import _coerce_scop
 
 _RequireRepositoryConnector = Callable[[DataConnector], None]
 _GetPolicy = Callable[[str], Any]
+
+
+def _resolve_get_policy(get_policy: "_GetPolicy | None") -> "_GetPolicy":
+    # The core re-export slot (``repository_intelligence.get_policy``) is ``None`` until a
+    # caller injects a policy provider; fall back to the execution-policy service so the
+    # simulation path works without explicit wiring while still honouring an injected slot.
+    if get_policy is not None:
+        return get_policy
+    from apps.api_server.services.execution_policy_service import get_policy as _service_get_policy
+
+    return _service_get_policy
+
+
+def _resolve_run_simulation_fast(run_simulation_fast: "Any | None") -> "Any":
+    if run_simulation_fast is not None:
+        return run_simulation_fast
+    from apps.api_server.services.simulation_service import (
+        run_simulation_fast as _service_run_simulation_fast,
+    )
+
+    return _service_run_simulation_fast
 _LoadManifest = Callable[..., dict[str, Any]]
 _SimulationLookupKey = Callable[..., str]
 _DirBuilder = Callable[[str, str], Path]
@@ -231,7 +252,7 @@ async def simulate_repository_patch(
     require_repository_connector(connector)
     org_id = str(connector.org_id)
     repository_id = str(connector.id)
-    policy = get_policy(org_id)
+    policy = _resolve_get_policy(get_policy)(org_id)
     snapshot_manifest = load_snapshot_manifest(
         org_id=org_id,
         repository_id=repository_id,
@@ -245,7 +266,7 @@ async def simulate_repository_patch(
         max(float(request.confidence if request.confidence is not None else 0.6), 0.0), 1.0
     )
     simulation_request = _simulation_request_from_patch_impact(impact, confidence)
-    envelope, _persist_meta = await run_simulation_fast(
+    envelope, _persist_meta = await _resolve_run_simulation_fast(run_simulation_fast)(
         simulation_request,
         org_id=_coerce_scope_uuid(connector.org_id),
         api_key_id=_coerce_scope_uuid(connector.owner_key_id) if connector.owner_key_id else None,
@@ -328,7 +349,7 @@ async def simulate_repository_decision(
     require_repository_connector(connector)
     org_id = str(connector.org_id)
     repository_id = str(connector.id)
-    policy = get_policy(org_id)
+    policy = _resolve_get_policy(get_policy)(org_id)
     plan_manifest = load_decision_plan_manifest(
         org_id=org_id,
         repository_id=repository_id,
@@ -444,7 +465,7 @@ async def simulate_repository_decision(
     simulation_request = _simulation_request_from_plan(decision_plan).model_copy(
         update=simulation_overrides
     )
-    envelope, _persist_meta = await run_simulation_fast(
+    envelope, _persist_meta = await _resolve_run_simulation_fast(run_simulation_fast)(
         simulation_request,
         org_id=_coerce_scope_uuid(connector.org_id),
         api_key_id=_coerce_scope_uuid(connector.owner_key_id) if connector.owner_key_id else None,

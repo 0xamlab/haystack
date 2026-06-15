@@ -2,54 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from apps.api_server.services.repository_intelligence_adapters import (
-    abap as abap_adapter,
-)
-from apps.api_server.services.repository_intelligence_adapters import (
-    ada as ada_adapter,
-)
-from apps.api_server.services.repository_intelligence_adapters import (
-    assembly as assembly_adapter,
-)
-from apps.api_server.services.repository_intelligence_adapters import (
-    classic_visual_basic as classic_visual_basic_adapter,
-)
-from apps.api_server.services.repository_intelligence_adapters import (
-    cobol as cobol_adapter,
-)
-from apps.api_server.services.repository_intelligence_adapters import (
-    d_language as d_language_adapter,
-)
-from apps.api_server.services.repository_intelligence_adapters import (
-    fortran as fortran_adapter,
-)
-from apps.api_server.services.repository_intelligence_adapters import (
-    foxpro as foxpro_adapter,
-)
-from apps.api_server.services.repository_intelligence_adapters import (
-    matlab as matlab_adapter,
-)
-from apps.api_server.services.repository_intelligence_adapters import (
-    ml as ml_adapter,
-)
-from apps.api_server.services.repository_intelligence_adapters import (
-    objective_c as objective_c_adapter,
-)
-from apps.api_server.services.repository_intelligence_adapters import (
-    plsql as plsql_adapter,
-)
-from apps.api_server.services.repository_intelligence_adapters import (
-    prolog as prolog_adapter,
-)
-from apps.api_server.services.repository_intelligence_adapters import (
-    sas as sas_adapter,
-)
-from apps.api_server.services.repository_intelligence_adapters import (
-    sql as sql_adapter,
-)
-from apps.api_server.services.repository_intelligence_adapters import (
-    visual_basic as visual_basic_adapter,
-)
+from apps.api_server.services import repository_intelligence_adapters as repository_adapters
 from apps.api_server.services.repository_intelligence_contracts import (
     _Dependency,
     _Symbol,
@@ -59,6 +12,70 @@ from apps.api_server.services.repository_intelligence_indexing import (
     _resolve_directory_prefix_match,
     _resolve_suffix_match,
 )
+
+
+class _LazyAdapterModule:
+    __slots__ = ("_adapter_name", "_attribute_cache", "_loaded_module")
+
+    def __init__(self, adapter_name: str) -> None:
+        object.__setattr__(self, "_adapter_name", adapter_name)
+        object.__setattr__(self, "_attribute_cache", {})
+        object.__setattr__(self, "_loaded_module", None)
+
+    def _load(self):
+        loaded_module = object.__getattribute__(self, "_loaded_module")
+        if loaded_module is None:
+            loaded_module = getattr(repository_adapters, self._adapter_name)
+            object.__setattr__(self, "_loaded_module", loaded_module)
+        return loaded_module
+
+    def __getattr__(self, name: str) -> object:
+        cache = object.__getattribute__(self, "_attribute_cache")
+        try:
+            return cache[name]
+        except KeyError:
+            value = getattr(self._load(), name)
+            cache[name] = value
+            return value
+
+    def __setattr__(self, name: str, value: object) -> None:
+        # Slot-backed bookkeeping fields use the normal path; any other attribute is an
+        # override (notably pytest's ``monkeypatch.setattr``) routed through the attribute
+        # cache so callers can patch the wrapper without mutating the shared adapter
+        # module. ``__getattr__`` reads the cache first, so the override takes effect.
+        if name in _LazyAdapterModule.__slots__:
+            object.__setattr__(self, name, value)
+            return
+        object.__getattribute__(self, "_attribute_cache")[name] = value
+
+    def __delattr__(self, name: str) -> None:
+        cache = object.__getattribute__(self, "_attribute_cache")
+        if name in cache:
+            del cache[name]
+            return
+        raise AttributeError(name)
+
+
+def _lazy_adapter_module(adapter_name: str) -> _LazyAdapterModule:
+    return _LazyAdapterModule(adapter_name)
+
+
+abap_adapter = _lazy_adapter_module("abap")
+ada_adapter = _lazy_adapter_module("ada")
+assembly_adapter = _lazy_adapter_module("assembly")
+classic_visual_basic_adapter = _lazy_adapter_module("classic_visual_basic")
+cobol_adapter = _lazy_adapter_module("cobol")
+d_language_adapter = _lazy_adapter_module("d_language")
+fortran_adapter = _lazy_adapter_module("fortran")
+foxpro_adapter = _lazy_adapter_module("foxpro")
+matlab_adapter = _lazy_adapter_module("matlab")
+ml_adapter = _lazy_adapter_module("ml")
+objective_c_adapter = _lazy_adapter_module("objective_c")
+plsql_adapter = _lazy_adapter_module("plsql")
+prolog_adapter = _lazy_adapter_module("prolog")
+sas_adapter = _lazy_adapter_module("sas")
+sql_adapter = _lazy_adapter_module("sql")
+visual_basic_adapter = _lazy_adapter_module("visual_basic")
 
 
 def _symbols_from_entries(symbol_entries: list[dict[str, Any]]) -> tuple[_Symbol, ...]:

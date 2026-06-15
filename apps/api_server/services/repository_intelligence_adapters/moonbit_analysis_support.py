@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from collections import defaultdict
 from pathlib import Path, PurePosixPath
 
@@ -101,16 +102,23 @@ def _full_package_import_path(
     *,
     root_path: Path,
     file_path: str,
+    cached_text_by_path: Mapping[str, str] | None = None,
 ) -> str:
     normalized_path = PurePosixPath(file_path)
     current = normalized_path.parent
     while True:
+        candidate_path = str(current / "moon.mod").replace("\\", "/").strip("./")
         candidate = root_path / current / "moon.mod"
         if candidate.is_file() and not candidate.is_symlink():
             try:
-                module_name = _parse_module_name_from_config_text(
-                    candidate.read_text(encoding="utf-8", errors="replace")
+                config_text = (
+                    cached_text_by_path.get(candidate_path)
+                    if cached_text_by_path is not None
+                    else None
                 )
+                if config_text is None:
+                    config_text = candidate.read_text(encoding="utf-8", errors="replace")
+                module_name = _parse_module_name_from_config_text(config_text)
             except OSError:
                 module_name = ""
             if not module_name:
@@ -194,8 +202,9 @@ def _collect_symbols(
     text: str,
     module_index: dict[str, str],
     stable_identifier: StableIdentifier,
+    stripped_text: str | None = None,
 ) -> tuple[_CollectedSymbol, ...]:
-    stripped_text = strip_comments(text)
+    stripped_text = strip_comments(text) if stripped_text is None else stripped_text
     final_line = _line_count(stripped_text)
     package_alias = _package_alias_for_path(file_path, module_index)
     default_module_name = package_alias or module_name_from_path(file_path)
@@ -228,7 +237,10 @@ def _collect_symbols(
             ),
         )
     ]
-    for symbol_name, symbol_kind, start_line in iter_symbol_entries(stripped_text):
+    for symbol_name, symbol_kind, start_line in iter_symbol_entries(
+        text,
+        stripped_text=stripped_text,
+    ):
         collected_symbols.append(
             _CollectedSymbol(
                 symbol=_Symbol(
@@ -291,6 +303,10 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
+    stripped_text: str | None = None,
+    include_symbol_aliases: bool = True,
+    cached_text_by_path: Mapping[str, str] | None = None,
 ) -> set[str]:
     path = PurePosixPath(file_path)
     aliases = {
@@ -302,29 +318,38 @@ def module_aliases_for_path(
         return {alias for alias in aliases if alias}
     if path.suffix.lower() not in MOONBIT_SOURCE_SUFFIXES:
         return set()
-    try:
-        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        text = ""
-    if not is_probable_moonbit_source(path=Path(file_path), text=text):
+    if text is None:
+        try:
+            text = (root_path / path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            text = ""
+    stripped_text = strip_comments(text) if stripped_text is None else stripped_text
+    if not is_probable_moonbit_source(path=Path(file_path), text=text, stripped_text=stripped_text):
         return {alias for alias in aliases if alias}
     package_alias = path.parent.name or path.stem
     aliases.add(path.stem)
     if _is_package_entry_file(file_path=file_path, package_alias=package_alias):
         aliases.add(package_alias)
-        full_import_path = _full_package_import_path(root_path=root_path, file_path=file_path)
+        full_import_path = _full_package_import_path(
+            root_path=root_path,
+            file_path=file_path,
+            cached_text_by_path=cached_text_by_path,
+        )
         if full_import_path:
             aliases.add(full_import_path)
             if "/" in full_import_path:
                 relative_import_path = "/".join(full_import_path.split("/")[2:])
                 if relative_import_path:
                     aliases.add(relative_import_path)
+    if not include_symbol_aliases:
+        return {alias for alias in aliases if alias}
     module_index = {file_path: file_path}
     for collected_symbol in _collect_symbols(
         file_path=file_path,
         text=text,
         module_index=module_index,
         stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
     ):
         aliases.add(collected_symbol.symbol.symbol_name)
         aliases.update(collected_symbol.qualified_names)
@@ -372,10 +397,14 @@ def _config_import_dependencies(
     stable_identifier: StableIdentifier,
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
+    stripped_text: str | None = None,
 ) -> tuple[_Dependency, ...]:
     dependencies: list[_Dependency] = []
     seen: set[tuple[str | None, str, str]] = set()
-    for import_target, import_alias, line_number in parse_import_entries(text):
+    for import_target, import_alias, line_number in parse_import_entries(
+        text,
+        stripped_text=stripped_text,
+    ):
         target_file = resolve_import_target(
             import_target,
             module_index,
@@ -412,9 +441,13 @@ def _using_import_bindings(
     module_index: dict[str, str],
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
+    stripped_text: str | None = None,
 ) -> dict[str, _ImportedSymbolBinding]:
     bindings: dict[str, _ImportedSymbolBinding] = {}
-    for alias, exported_names, _line_number in parse_using_entries(text):
+    for alias, exported_names, _line_number in parse_using_entries(
+        text,
+        stripped_text=stripped_text,
+    ):
         target_file = resolve_import_target(
             alias,
             module_index,
@@ -447,8 +480,9 @@ def parse_dependencies_only(
     resolve_suffix_match: ResolveSuffixMatch,
 ) -> tuple[_Dependency, ...]:
     path = Path(file_path)
+    stripped_text = strip_comments(text)
     if path.name.lower() in MOONBIT_CONFIG_BASENAMES:
-        if not is_probable_moonbit_config(path=path, text=text):
+        if not is_probable_moonbit_config(path=path, text=text, stripped_text=stripped_text):
             return ()
         return _config_import_dependencies(
             file_path=file_path,
@@ -457,8 +491,9 @@ def parse_dependencies_only(
             stable_identifier=stable_identifier,
             normalize_repository_relative_path=normalize_repository_relative_path,
             resolve_suffix_match=resolve_suffix_match,
+            stripped_text=stripped_text,
         )
-    if not is_probable_moonbit_source(path=path, text=text):
+    if not is_probable_moonbit_source(path=path, text=text, stripped_text=stripped_text):
         return ()
     return _config_dependencies_for_source(
         file_path=file_path,
@@ -481,8 +516,9 @@ def parse_file(
     tuple[_SymbolReferenceCandidate, ...],
 ]:
     path = Path(file_path)
+    stripped_text = strip_comments(text)
     if path.name.lower() in MOONBIT_CONFIG_BASENAMES:
-        if not is_probable_moonbit_config(path=path, text=text):
+        if not is_probable_moonbit_config(path=path, text=text, stripped_text=stripped_text):
             return (), (), ()
         dependencies = _config_import_dependencies(
             file_path=file_path,
@@ -491,9 +527,10 @@ def parse_file(
             stable_identifier=stable_identifier,
             normalize_repository_relative_path=normalize_repository_relative_path,
             resolve_suffix_match=resolve_suffix_match,
+            stripped_text=stripped_text,
         )
         return (), dependencies, ()
-    if not is_probable_moonbit_source(path=path, text=text):
+    if not is_probable_moonbit_source(path=path, text=text, stripped_text=stripped_text):
         return (), (), ()
 
     collected_symbols = _collect_symbols(
@@ -501,6 +538,7 @@ def parse_file(
         text=text,
         module_index=module_index,
         stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
     )
     symbols = tuple(collected_symbol.symbol for collected_symbol in collected_symbols)
     dependencies = _config_dependencies_for_source(
@@ -516,8 +554,9 @@ def parse_file(
         module_index=module_index,
         normalize_repository_relative_path=normalize_repository_relative_path,
         resolve_suffix_match=resolve_suffix_match,
+        stripped_text=stripped_text,
     )
-    lines = strip_comments(text).splitlines()
+    lines = stripped_text.splitlines()
     symbol_references: list[_SymbolReferenceCandidate] = []
     seen_reference_keys: set[tuple[str | None, str, str]] = set()
 

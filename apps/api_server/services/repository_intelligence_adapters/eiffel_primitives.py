@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable
+from functools import lru_cache
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -46,6 +47,7 @@ EIFFEL_TYPE_REFERENCE_RE = re.compile(
     r"(?im)(?::\s*(?:attached|detachable|separate|expanded)\s+|create\s*\{\s*)"
     r"(?P<name>[A-Z][A-Z0-9_]*)\b"
 )
+_EIFFEL_LINE_COMMENT_RE = re.compile(r"--[^\n]*")
 _EIFFEL_FEATURE_SECTION_RE = re.compile(r"(?im)^\s*feature\b")
 _EIFFEL_SECTION_HEADER_RE = re.compile(
     r"(?im)^\s*(?:note|indexing|class|inherit|insert|create|convert|feature|"
@@ -105,16 +107,28 @@ _EIFFEL_RESERVED_FEATURE_WORDS = frozenset(
 )
 
 
-def strip_comments(text: str) -> str:
+def _coerce_stripped_text(text: str, stripped_text: str | None = None) -> str:
+    return strip_comments(text) if stripped_text is None else stripped_text
+
+
+def _space_preserving_comment_replacement(match: re.Match[str]) -> str:
+    return " " * (match.end() - match.start())
+
+
+@lru_cache(maxsize=512)
+def _cached_stripped_text(text: str) -> str:
+    if '"' not in text and "'" not in text:
+        return _EIFFEL_LINE_COMMENT_RE.sub(_space_preserving_comment_replacement, text)
     characters = list(text)
+    character_count = len(characters)
     index = 0
     in_string = False
     string_delimiter = ""
-    while index < len(characters):
+    while index < character_count:
         current = characters[index]
-        next_char = characters[index + 1] if index + 1 < len(characters) else ""
+        next_char = characters[index + 1] if index + 1 < character_count else ""
         if in_string:
-            if current == "%" and index + 1 < len(characters):
+            if current == "%" and index + 1 < character_count:
                 index += 2
                 continue
             if current == string_delimiter:
@@ -139,14 +153,25 @@ def strip_comments(text: str) -> str:
     return "".join(characters)
 
 
+def strip_comments(text: str) -> str:
+    if "--" not in text:
+        return text
+    return _cached_stripped_text(text)
+
+
 def has_eiffel_path_hints(path: Path | PurePosixPath) -> bool:
     return PurePosixPath(path).suffix.lower() in (
         EIFFEL_SOURCE_SUFFIXES | EIFFEL_CONFIG_SUFFIXES
     )
 
 
-def class_name_from_text(text: str, *, file_path: str) -> str:
-    stripped_text = strip_comments(text)
+def class_name_from_text(
+    text: str,
+    *,
+    file_path: str,
+    stripped_text: str | None = None,
+) -> str:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
     match = EIFFEL_CLASS_RE.search(stripped_text)
     if match is not None:
         class_name = str(match.group("name") or "").strip()
@@ -155,8 +180,13 @@ def class_name_from_text(text: str, *, file_path: str) -> str:
     return PurePosixPath(file_path).stem.upper()
 
 
-def system_name_from_text(text: str, *, file_path: str) -> str:
-    stripped_text = strip_comments(text)
+def system_name_from_text(
+    text: str,
+    *,
+    file_path: str,
+    stripped_text: str | None = None,
+) -> str:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
     if PurePosixPath(file_path).suffix.lower() == ".ecf":
         match = EIFFEL_SYSTEM_NAME_RE.search(stripped_text)
         if match is not None:
@@ -166,8 +196,12 @@ def system_name_from_text(text: str, *, file_path: str) -> str:
     return PurePosixPath(file_path).stem
 
 
-def parse_root_class_names(text: str) -> tuple[str, ...]:
-    stripped_text = strip_comments(text)
+def parse_root_class_names(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[str, ...]:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
     names: list[str] = []
     seen: set[str] = set()
     for pattern in (EIFFEL_ROOT_CLASS_RE, EIFFEL_ACE_ROOT_RE):
@@ -180,8 +214,12 @@ def parse_root_class_names(text: str) -> tuple[str, ...]:
     return tuple(names)
 
 
-def parse_config_variables(text: str) -> dict[str, str]:
-    stripped_text = strip_comments(text)
+def parse_config_variables(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> dict[str, str]:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
     variables: dict[str, str] = {}
     for match in EIFFEL_CONFIG_VARIABLE_RE.finditer(stripped_text):
         variable_name = str(match.group("name") or "").strip()
@@ -191,8 +229,12 @@ def parse_config_variables(text: str) -> dict[str, str]:
     return variables
 
 
-def parse_config_location_targets(text: str) -> tuple[str, ...]:
-    stripped_text = strip_comments(text)
+def parse_config_location_targets(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[str, ...]:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
     locations: list[str] = []
     seen: set[str] = set()
     for pattern in (
@@ -209,8 +251,12 @@ def parse_config_location_targets(text: str) -> tuple[str, ...]:
     return tuple(locations)
 
 
-def parse_inherited_classes(text: str) -> tuple[str, ...]:
-    stripped_text = strip_comments(text)
+def parse_inherited_classes(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[str, ...]:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
     names: list[str] = []
     seen: set[str] = set()
     in_inherit_clause = False
@@ -236,27 +282,45 @@ def parse_inherited_classes(text: str) -> tuple[str, ...]:
     return tuple(names)
 
 
-def parse_dependency_targets(text: str, *, file_path: str) -> tuple[str, ...]:
-    current_class = class_name_from_text(text, file_path=file_path)
+def parse_dependency_targets(
+    text: str,
+    *,
+    file_path: str,
+    stripped_text: str | None = None,
+    current_class: str | None = None,
+) -> tuple[str, ...]:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
+    normalized_current_class = (
+        str(current_class or "").strip()
+        or class_name_from_text(
+            text,
+            file_path=file_path,
+            stripped_text=stripped_text,
+        )
+    )
     names: list[str] = []
     seen: set[str] = set()
-    for name in parse_inherited_classes(text):
-        if name == current_class or name in seen:
-            continue
-        seen.add(name)
-        names.append(name)
-    stripped_text = strip_comments(text)
+    if "inherit" in stripped_text.lower():
+        for name in parse_inherited_classes(text, stripped_text=stripped_text):
+            if name == normalized_current_class or name in seen:
+                continue
+            seen.add(name)
+            names.append(name)
     for match in EIFFEL_TYPE_REFERENCE_RE.finditer(stripped_text):
         name = str(match.group("name") or "").strip()
-        if not name or name == current_class or name in seen:
+        if not name or name == normalized_current_class or name in seen:
             continue
         seen.add(name)
         names.append(name)
     return tuple(names)
 
 
-def iter_feature_entries(text: str) -> tuple[tuple[str, int], ...]:
-    stripped_text = strip_comments(text)
+def iter_feature_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, int], ...]:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
     entries: list[tuple[str, int]] = []
     seen: set[tuple[str, int]] = set()
     in_feature_clause = False

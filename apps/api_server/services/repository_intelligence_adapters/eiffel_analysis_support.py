@@ -73,11 +73,16 @@ def _is_source_path(path: Path | PurePosixPath) -> bool:
     return PurePosixPath(path).suffix.lower() in EIFFEL_SOURCE_SUFFIXES
 
 
-def is_probable_eiffel_source(*, path: Path | PurePosixPath, text: str) -> bool:
+def is_probable_eiffel_source(
+    *,
+    path: Path | PurePosixPath,
+    text: str,
+    stripped_text: str | None = None,
+) -> bool:
     candidate_path = PurePosixPath(path)
     if not has_eiffel_path_hints(candidate_path):
         return False
-    stripped_text = strip_comments(text)
+    stripped_text = strip_comments(text) if stripped_text is None else stripped_text
     if not stripped_text.strip():
         return False
     if _is_config_path(candidate_path):
@@ -141,11 +146,17 @@ def _collect_symbols(
     file_path: str,
     text: str,
     stable_identifier: StableIdentifier,
+    stripped_text: str | None = None,
+    include_feature_symbols: bool = True,
 ) -> tuple[_CollectedSymbol, ...]:
-    stripped_text = strip_comments(text)
+    stripped_text = strip_comments(text) if stripped_text is None else stripped_text
     line_count = _line_count(stripped_text)
     if _is_config_path(PurePosixPath(file_path)):
-        system_name = system_name_from_text(stripped_text, file_path=file_path)
+        system_name = system_name_from_text(
+            text,
+            file_path=file_path,
+            stripped_text=stripped_text,
+        )
         config_symbol = _Symbol(
             symbol_id=stable_identifier(
                 "sym",
@@ -170,7 +181,11 @@ def _collect_symbols(
                 ),
             ),
         )
-    class_name = class_name_from_text(stripped_text, file_path=file_path)
+    class_name = class_name_from_text(
+        stripped_text,
+        file_path=file_path,
+        stripped_text=stripped_text,
+    )
     class_match = repository_eiffel_primitives.EIFFEL_CLASS_RE.search(stripped_text)
     class_line = _line_number(stripped_text, class_match.start()) if class_match else 1
     class_symbol = _Symbol(
@@ -198,31 +213,35 @@ def _collect_symbols(
             ),
         )
     ]
-    for feature_name, start_line in iter_feature_entries(stripped_text):
-        collected_symbols.append(
-            _CollectedSymbol(
-                symbol=_Symbol(
-                    symbol_id=stable_identifier(
-                        "sym",
-                        {
-                            "file_path": file_path,
-                            "symbol_name": feature_name,
-                            "symbol_kind": "feature",
-                            "start_line": start_line,
-                        },
+    if include_feature_symbols:
+        for feature_name, start_line in iter_feature_entries(
+            stripped_text,
+            stripped_text=stripped_text,
+        ):
+            collected_symbols.append(
+                _CollectedSymbol(
+                    symbol=_Symbol(
+                        symbol_id=stable_identifier(
+                            "sym",
+                            {
+                                "file_path": file_path,
+                                "symbol_name": feature_name,
+                                "symbol_kind": "feature",
+                                "start_line": start_line,
+                            },
+                        ),
+                        symbol_name=feature_name,
+                        symbol_kind="feature",
+                        start_line=start_line,
+                        end_line=start_line,
+                        parent_symbol_id=class_symbol.symbol_id,
+                        signature=feature_name,
                     ),
-                    symbol_name=feature_name,
-                    symbol_kind="feature",
-                    start_line=start_line,
-                    end_line=start_line,
-                    parent_symbol_id=class_symbol.symbol_id,
-                    signature=feature_name,
-                ),
-                local_start_line=start_line,
-                local_end_line=start_line,
-                qualified_names=_ordered_names(feature_name, f"{class_name}.{feature_name}"),
+                    local_start_line=start_line,
+                    local_end_line=start_line,
+                    qualified_names=_ordered_names(feature_name, f"{class_name}.{feature_name}"),
+                )
             )
-        )
     finalized_symbols: list[_CollectedSymbol] = []
     for index, collected_symbol in enumerate(collected_symbols):
         end_line = (
@@ -258,25 +277,50 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
+    stripped_text: str | None = None,
+    include_symbol_aliases: bool = True,
 ) -> set[str]:
     path = PurePosixPath(file_path)
     if not has_eiffel_path_hints(path):
         return set()
     aliases = {file_path, str(path.with_suffix("")), path.stem}
-    try:
-        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        text = ""
-    if not is_probable_eiffel_source(path=path, text=text):
+    if text is None:
+        try:
+            text = (root_path / path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            text = ""
+    stripped_text = strip_comments(text) if stripped_text is None else stripped_text
+    if not is_probable_eiffel_source(path=path, text=text, stripped_text=stripped_text):
+        return {alias for alias in aliases if alias}
+    if not include_symbol_aliases:
+        if _is_config_path(path):
+            aliases.add(
+                system_name_from_text(
+                    text,
+                    file_path=file_path,
+                    stripped_text=stripped_text,
+                )
+            )
+        else:
+            aliases.add(
+                class_name_from_text(
+                    text,
+                    file_path=file_path,
+                    stripped_text=stripped_text,
+                )
+            )
         return {alias for alias in aliases if alias}
     for collected_symbol in _collect_symbols(
         file_path=file_path,
         text=text,
         stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
+        include_feature_symbols=include_symbol_aliases,
     ):
         aliases.add(collected_symbol.symbol.symbol_name)
         aliases.update(collected_symbol.qualified_names)
-    for root_class_name in parse_root_class_names(text):
+    for root_class_name in parse_root_class_names(text, stripped_text=stripped_text):
         aliases.add(root_class_name)
     return {alias for alias in aliases if alias}
 
@@ -289,13 +333,14 @@ def parse_dependencies_only(
     stable_identifier: StableIdentifier,
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
+    stripped_text: str | None = None,
 ) -> tuple[_Dependency, ...]:
-    stripped_text = strip_comments(text)
+    stripped_text = strip_comments(text) if stripped_text is None else stripped_text
     if _is_config_path(PurePosixPath(file_path)):
-        variables = parse_config_variables(stripped_text)
+        variables = parse_config_variables(text, stripped_text=stripped_text)
         dependencies: list[_Dependency] = []
         for line_number, raw_target in enumerate(
-            parse_config_location_targets(stripped_text),
+            parse_config_location_targets(text, stripped_text=stripped_text),
             start=1,
         ):
             target_file = _normalize_relative_target(
@@ -321,7 +366,7 @@ def parse_dependencies_only(
                     dependency_type="config_imports",
                 )
             )
-        for root_class_name in parse_root_class_names(stripped_text):
+        for root_class_name in parse_root_class_names(text, stripped_text=stripped_text):
             target_file = _resolve_class_target(
                 root_class_name,
                 module_index,
@@ -345,7 +390,11 @@ def parse_dependencies_only(
             )
         return tuple(dependencies)
     dependencies: list[_Dependency] = []
-    for target_name in parse_dependency_targets(stripped_text, file_path=file_path):
+    for target_name in parse_dependency_targets(
+        text,
+        file_path=file_path,
+        stripped_text=stripped_text,
+    ):
         target_file = _resolve_class_target(
             target_name,
             module_index,
@@ -379,10 +428,12 @@ def parse_file(
     tuple[_Dependency, ...],
     tuple[_SymbolReferenceCandidate, ...],
 ]:
+    stripped_text = strip_comments(text)
     collected_symbols = _collect_symbols(
         file_path=file_path,
         text=text,
         stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
     )
     dependencies = parse_dependencies_only(
         file_path,
@@ -391,6 +442,7 @@ def parse_file(
         stable_identifier=stable_identifier,
         normalize_repository_relative_path=normalize_repository_relative_path,
         resolve_suffix_match=resolve_suffix_match,
+        stripped_text=stripped_text,
     )
     symbol_references: list[_SymbolReferenceCandidate] = []
     source_symbol = collected_symbols[0].symbol if collected_symbols else None

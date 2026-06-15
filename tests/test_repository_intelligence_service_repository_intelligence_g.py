@@ -335,6 +335,66 @@ def test_repository_intelligence_swift_parse_wrapper_delegates(
     )
 
 
+def test_repository_intelligence_swift_parse_file_caches_same_target_resolution() -> None:
+    calls: list[str] = []
+
+    def _fake_collect_type_symbol_entries(
+        _text: str,
+        *,
+        file_path: str,
+        regex: Any,
+    ) -> list[dict[str, Any]]:
+        del regex
+        return [
+            {
+                "symbol_id": "sym:ParsableCommand",
+                "symbol_name": "ParsableCommand",
+                "symbol_kind": "protocol",
+                "start_line": 1,
+                "end_line": 4,
+                "signature": f"protocol@{file_path}",
+            }
+        ]
+
+    def _fake_resolve_same_target_reference(
+        *,
+        current_file: str,
+        type_name: str,
+        module_index: dict[str, str],
+    ) -> str | None:
+        del current_file, module_index
+        calls.append(type_name)
+        return "Sources/Acme/CommandConfiguration.swift"
+
+    module_index = {
+        "Sources/Acme/CommandConfiguration.swift": "Sources/Acme/CommandConfiguration.swift"
+    }
+    text = (
+        "protocol ParsableCommand {\n"
+        "  static var configuration: CommandConfiguration { get }\n"
+        "  static var fallback: CommandConfiguration { get }\n"
+        "}\n"
+    )
+
+    _symbols, dependencies, references = repository_service.swift_adapter.parse_file(
+        "Sources/Acme/ParsableCommand.swift",
+        text,
+        module_index,
+        collect_type_symbol_entries=_fake_collect_type_symbol_entries,
+        stable_identifier=repository_service._stable_identifier,
+        resolve_import=repository_service._resolve_swift_import,
+        resolve_same_target_reference=_fake_resolve_same_target_reference,
+    )
+
+    assert calls == ["CommandConfiguration"]
+    assert {dependency.target_file for dependency in dependencies} == {
+        "Sources/Acme/CommandConfiguration.swift"
+    }
+    assert {reference.target_file for reference in references} == {
+        "Sources/Acme/CommandConfiguration.swift"
+    }
+
+
 def test_repository_intelligence_csharp_helpers_are_modularized() -> None:
     assert repository_service._CSHARP_USING_RE is repository_service.csharp_adapter.USING_RE
     assert repository_service._CSHARP_NAMESPACE_RE is repository_service.csharp_adapter.NAMESPACE_RE
@@ -771,5 +831,3 @@ def test_repository_intelligence_rust_resolve_module_wrapper_delegates(
     assert observed["current_file"] == "src/main.rs"
     assert observed["module_path"] == "crate::util"
     assert observed["module_index"] is module_index
-
-

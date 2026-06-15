@@ -142,6 +142,61 @@ normalize_symbol_name = repository_lisp_support.normalize_symbol_name
 strip_comments = repository_lisp_support.strip_comments
 
 
+def _extract_top_level_forms_from_stripped_text(
+    stripped_text: str,
+) -> tuple[tuple[int, str], ...]:
+    forms: list[tuple[int, str]] = []
+    depth = 0
+    start_index: int | None = None
+    start_line = 1
+    line_no = 1
+    in_string = False
+    escaped = False
+    for index, character in enumerate(stripped_text):
+        if character == "\n":
+            line_no += 1
+        if in_string:
+            if escaped:
+                escaped = False
+                continue
+            if character == "\\":
+                escaped = True
+                continue
+            if character == '"':
+                in_string = False
+            continue
+        if character == '"':
+            in_string = True
+            continue
+        if character == "(":
+            if depth == 0:
+                start_index = index
+                start_line = line_no
+            depth += 1
+            continue
+        if character != ")":
+            continue
+        if depth <= 0:
+            continue
+        depth -= 1
+        if depth == 0 and start_index is not None:
+            forms.append((start_line, stripped_text[start_index : index + 1].strip()))
+            start_index = None
+    return tuple(forms)
+
+
+def _prepared_top_level_forms(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[int, str, Any], ...]:
+    normalized_text = stripped_text if stripped_text is not None else strip_comments(text)
+    return tuple(
+        (line_no, form_text, _parse_form(form_text))
+        for line_no, form_text in _extract_top_level_forms_from_stripped_text(normalized_text)
+    )
+
+
 def _string_literal_value(value: Any) -> str:
     text = str(value or "").strip()
     if text.startswith('"') and text.endswith('"') and len(text) >= 2:
@@ -167,10 +222,18 @@ def _library_spec_name(value: Any) -> str:
     return _normalize_library_token(_string_literal_value(value))
 
 
-def _declared_library_aliases(text: str) -> tuple[str, ...]:
+def _declared_library_aliases(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+    prepared_forms: tuple[tuple[int, str, Any], ...] | None = None,
+) -> tuple[str, ...]:
     aliases: set[str] = set()
-    for _line_no, form_text in _extract_top_level_forms(text):
-        parsed_form = _parse_form(form_text)
+    for _line_no, _form_text, parsed_form in (
+        prepared_forms
+        if prepared_forms is not None
+        else _prepared_top_level_forms(text, stripped_text=stripped_text)
+    ):
         if not isinstance(parsed_form, list) or len(parsed_form) < 2:
             continue
         head = _form_head(parsed_form)
@@ -188,14 +251,19 @@ def has_scheme_path_hints(path: Path) -> bool:
     return path.name.lower() in _SCHEME_MANIFEST_BASENAMES
 
 
-def is_probable_scheme_source(*, path: Path, text: str) -> bool:
+def is_probable_scheme_source(
+    *,
+    path: Path,
+    text: str,
+    stripped_text: str | None = None,
+) -> bool:
     suffix = path.suffix.lower()
     if (
         suffix not in _KNOWN_SCHEME_SUFFIXES
         and path.name.lower() not in _SCHEME_MANIFEST_BASENAMES
     ):
         return False
-    return bool(_SCHEME_MARKER_RE.search(strip_comments(text)))
+    return bool(_SCHEME_MARKER_RE.search(stripped_text if stripped_text is not None else strip_comments(text)))
 
 
 def _module_symbol_aliases(
@@ -234,16 +302,23 @@ def collect_symbol_entries(
     *,
     file_path: str,
     stable_identifier: StableIdentifier,
+    stripped_text: str | None = None,
+    library_aliases: tuple[str, ...] | None = None,
 ) -> list[dict[str, Any]]:
     path = PurePosixPath(file_path)
     if path.suffix.lower() not in _KNOWN_SCHEME_SUFFIXES:
         return []
-    stripped_text = strip_comments(text)
-    library_aliases = _declared_library_aliases(text)
-    final_line = len(stripped_text.splitlines()) if stripped_text else 1
+    normalized_text = stripped_text if stripped_text is not None else strip_comments(text)
+    resolved_library_aliases = (
+        library_aliases
+        if library_aliases is not None
+        else _declared_library_aliases(text, stripped_text=normalized_text)
+    )
+    stripped_lines = normalized_text.splitlines()
+    final_line = len(stripped_lines) if stripped_lines else 1
     symbol_entries: list[dict[str, Any]] = []
     seen_symbol_keys: set[tuple[str, int]] = set()
-    for line_no, line in enumerate(stripped_text.splitlines(), start=1):
+    for line_no, line in enumerate(stripped_lines, start=1):
         symbol_name, symbol_kind = _definition_name_and_kind(line)
         if not symbol_name or not symbol_kind:
             continue
@@ -270,7 +345,7 @@ def collect_symbol_entries(
                 "qualified_names": _module_symbol_aliases(
                     path,
                     symbol_name,
-                    library_aliases=library_aliases,
+                    library_aliases=resolved_library_aliases,
                 ),
             }
         )

@@ -438,6 +438,48 @@ def test_operational_seed_plan_without_diagnostics_uses_clojure_project_profile(
     assert "src/acme/core.clj" in seed_plan["entrypoint_files"]
 
 
+def test_operational_seed_plan_without_diagnostics_prefers_clojure_in_pom_repo_with_clj_surface(
+    tmp_path: Path,
+) -> None:
+    repo_path = tmp_path / "clojure-pom-profile-repo"
+    (repo_path / "src" / "clj" / "clojure").mkdir(parents=True)
+    (repo_path / "src" / "jvm" / "clojure" / "lang").mkdir(parents=True)
+    (repo_path / "pom.xml").write_text(
+        "<project><modelVersion>4.0.0</modelVersion></project>\n",
+        encoding="utf-8",
+    )
+    (repo_path / "src" / "clj" / "clojure" / "core.clj").write_text(
+        "(ns clojure.core)\n(defn plus [] nil)\n",
+        encoding="utf-8",
+    )
+    (repo_path / "src" / "clj" / "clojure" / "main.clj").write_text(
+        "(ns clojure.main)\n(defn main [] nil)\n",
+        encoding="utf-8",
+    )
+    for index in range(8):
+        (repo_path / "src" / "clj" / "clojure" / f"helper_{index}.clj").write_text(
+            f"(ns clojure.helper-{index})\n(def value {index})\n",
+            encoding="utf-8",
+        )
+    for index in range(16):
+        (repo_path / "src" / "jvm" / "clojure" / "lang" / f"Helper{index}.java").write_text(
+            f"package clojure.lang; class Helper{index} {{}}\n",
+            encoding="utf-8",
+        )
+
+    seed_plan = _derive_operational_seed_plan_without_diagnostics(
+        repo_path=repo_path,
+        focus_paths=[],
+        max_files=256,
+    )
+
+    assert "clojure" in seed_plan["detected_ecosystems"]
+    assert seed_plan["operational_ecosystems"][0] == "clojure"
+    assert "pom.xml" in seed_plan["config_paths"]
+    assert "src/clj" in seed_plan["support_roots"]
+    assert "src/clj/clojure/core.clj" in seed_plan["entrypoint_files"]
+
+
 def test_operational_seed_plan_without_diagnostics_uses_lua_rockspec_profile(
     tmp_path: Path,
 ) -> None:
@@ -767,5 +809,4 @@ def test_operational_seed_plan_without_diagnostics_uses_nimble_profile(
     assert "src/acme.nim" in seed_plan["entrypoint_files"]
     assert "src/acme/util.nim" in seed_plan["candidate_file_paths"]
     assert "tests/acme_test.nim" not in seed_plan["entrypoint_files"]
-
 

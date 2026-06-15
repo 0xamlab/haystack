@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable, Sequence
+from functools import lru_cache
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -92,18 +93,48 @@ def _replace_with_spaces(value: str) -> str:
     return "".join("\n" if character == "\n" else " " for character in value)
 
 
+def _line_startswith_after_whitespace(raw_line: str, marker: str) -> bool:
+    return raw_line.lstrip().startswith(marker)
+
+
+def _comment_tail_as_spaces(raw_line: str, start_index: int) -> str:
+    comment_tail = raw_line[start_index:]
+    if comment_tail.endswith("\n"):
+        return (" " * (len(comment_tail) - 1)) + "\n"
+    return " " * len(comment_tail)
+
+
 def strip_comments(text: str) -> str:
+    if "%" not in text:
+        return text
+    return _strip_comments_cached(text)
+
+
+@lru_cache(maxsize=2048)
+def _strip_comments_cached(text: str) -> str:
     processed_lines: list[str] = []
     in_block_comment = False
     for raw_line in text.splitlines(keepends=True):
         if in_block_comment:
             processed_lines.append(_replace_with_spaces(raw_line))
-            if re.match(r"^\s*%}", raw_line):
+            if _line_startswith_after_whitespace(raw_line, "%}"):
                 in_block_comment = False
             continue
-        if re.match(r"^\s*%{", raw_line):
+        if _line_startswith_after_whitespace(raw_line, "%{"):
             in_block_comment = True
             processed_lines.append(_replace_with_spaces(raw_line))
+            continue
+        if "%" not in raw_line:
+            processed_lines.append(raw_line)
+            continue
+        if "'" not in raw_line:
+            comment_index = raw_line.find("%")
+            if comment_index < 0:
+                processed_lines.append(raw_line)
+                continue
+            processed_lines.append(
+                raw_line[:comment_index] + _comment_tail_as_spaces(raw_line, comment_index)
+            )
             continue
         line_parts: list[str] = []
         in_string = False
@@ -124,9 +155,7 @@ def strip_comments(text: str) -> str:
                 index += 1
                 continue
             if character == "%" and not in_string:
-                line_parts.extend(
-                    " " if value != "\n" else "\n" for value in raw_line[index:]
-                )
+                line_parts.append(_comment_tail_as_spaces(raw_line, index))
                 break
             line_parts.append(character)
             index += 1
@@ -234,8 +263,9 @@ def collect_symbol_entries(
     *,
     file_path: str,
     stable_identifier: StableIdentifier,
+    stripped_text: str | None = None,
 ) -> list[dict[str, Any]]:
-    stripped_text = strip_comments(text)
+    stripped_text = strip_comments(text) if stripped_text is None else stripped_text
     symbol_entries: list[dict[str, Any]] = []
     seen_symbol_keys: set[tuple[str, str, int]] = set()
     current_class_name: str | None = None
@@ -313,14 +343,17 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
 ) -> set[str]:
     path = PurePosixPath(file_path)
     if path.suffix.lower() != ".m":
         return set()
-    try:
-        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        return set()
+    if text is None:
+        try:
+            text = (root_path / path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return set()
+    stripped_text = strip_comments(text)
     if not is_probable_matlab_source(path=path, text=text):
         return set()
     aliases = _derived_path_aliases(file_path)
@@ -328,6 +361,7 @@ def module_aliases_for_path(
         text,
         file_path=file_path,
         stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
     ):
         for alias in symbol_entry["qualified_names"]:
             if isinstance(alias, str) and alias:
@@ -403,8 +437,9 @@ def _extract_import_bindings(
     *,
     stable_identifier: StableIdentifier,
     resolve_import: ResolveImport,
+    stripped_text: str | None = None,
 ) -> tuple[tuple[dict[str, Any], ...], dict[str, dict[str, Any]], tuple[str, ...]]:
-    stripped_text = strip_comments(text)
+    stripped_text = strip_comments(text) if stripped_text is None else stripped_text
     dependencies: list[dict[str, Any]] = []
     import_bindings: dict[str, dict[str, Any]] = {}
     wildcard_prefixes: list[str] = []
@@ -482,48 +517,32 @@ def _resolved_unqualified_call_target(
     return None, target_names
 
 
-def parse_dependencies_only(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
+def _collect_reference_dependencies(
     *,
+    current_file: str,
+    stripped_lines: Sequence[str],
     stable_identifier: StableIdentifier,
-    resolve_import: ResolveImport,
+    declared_symbol_names: set[str],
+    import_bindings: dict[str, dict[str, Any]],
+    wildcard_prefixes: Sequence[str],
+    module_index: dict[str, str],
     resolve_target: ResolveTarget,
 ) -> tuple[dict[str, Any], ...]:
-    dependencies, import_bindings, wildcard_prefixes = _extract_import_bindings(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=stable_identifier,
-        resolve_import=resolve_import,
-    )
-    dependency_entries = list(dependencies)
-    dependency_keys = {
-        (entry["target_file"], entry["target_symbol"], entry["dependency_type"])
-        for entry in dependency_entries
-    }
-    declared_symbol_names = {
-        str(entry["symbol_name"])
-        for entry in collect_symbol_entries(
-            text,
-            file_path=file_path,
-            stable_identifier=stable_identifier,
-        )
-    }
-    stripped_text = strip_comments(text)
-    for line_no, raw_line in enumerate(stripped_text.splitlines(), start=1):
+    dependency_entries: list[dict[str, Any]] = []
+    dependency_keys: set[tuple[str | None, str, str]] = set()
+    unqualified_target_cache: dict[str, tuple[str | None, tuple[str, ...]]] = {}
+    for line_no, raw_line in enumerate(stripped_lines, start=1):
         normalized_line = raw_line.strip()
         if not normalized_line:
             continue
         for match in QUALIFIED_CALL_RE.finditer(normalized_line):
             qualified_target = normalize_identifier(match.group("target"))
-            target_file = resolve_target(file_path, qualified_target, module_index)
+            target_file = resolve_target(current_file, qualified_target, module_index)
             target_symbol = qualified_target.rsplit(".", 1)[-1]
             dependency_key = (target_file, target_symbol, "references")
             if (
                 target_file is None
-                or target_file == file_path
+                or target_file == current_file
                 or target_symbol in RESERVED_SYMBOL_NAMES
                 or dependency_key in dependency_keys
             ):
@@ -534,13 +553,13 @@ def parse_dependencies_only(
                     "dependency_edge_id": stable_identifier(
                         "dep",
                         {
-                            "file_path": file_path,
+                            "file_path": current_file,
                             "target": qualified_target,
                             "line": line_no,
                             "kind": "qualified_call",
                         },
                     ),
-                    "source_file": file_path,
+                    "source_file": current_file,
                     "target_file": target_file,
                     "target_symbol": target_symbol,
                     "dependency_type": "references",
@@ -548,23 +567,23 @@ def parse_dependencies_only(
             )
         for match in UNQUALIFIED_CALL_RE.finditer(normalized_line):
             name = normalize_identifier(match.group("name"))
-            if (
-                not name
-                or name in RESERVED_SYMBOL_NAMES
-                or name in declared_symbol_names
-            ):
+            if not name or name in RESERVED_SYMBOL_NAMES or name in declared_symbol_names:
                 continue
-            target_file, target_names = _resolved_unqualified_call_target(
-                current_file=file_path,
-                name=name,
-                import_bindings=import_bindings,
-                wildcard_prefixes=wildcard_prefixes,
-                module_index=module_index,
-                resolve_target=resolve_target,
-            )
+            cached_target = unqualified_target_cache.get(name)
+            if cached_target is None:
+                cached_target = _resolved_unqualified_call_target(
+                    current_file=current_file,
+                    name=name,
+                    import_bindings=import_bindings,
+                    wildcard_prefixes=wildcard_prefixes,
+                    module_index=module_index,
+                    resolve_target=resolve_target,
+                )
+                unqualified_target_cache[name] = cached_target
+            target_file, target_names = cached_target
             target_symbol = target_names[0] if target_names else name
             dependency_key = (target_file, target_symbol, "references")
-            if target_file is None or target_file == file_path or dependency_key in dependency_keys:
+            if target_file is None or target_file == current_file or dependency_key in dependency_keys:
                 continue
             dependency_keys.add(dependency_key)
             dependency_entries.append(
@@ -572,19 +591,59 @@ def parse_dependencies_only(
                     "dependency_edge_id": stable_identifier(
                         "dep",
                         {
-                            "file_path": file_path,
+                            "file_path": current_file,
                             "target": target_symbol,
                             "line": line_no,
                             "kind": "call",
                         },
                     ),
-                    "source_file": file_path,
+                    "source_file": current_file,
                     "target_file": target_file,
                     "target_symbol": target_symbol,
                     "dependency_type": "references",
                 }
             )
     return tuple(dependency_entries)
+
+
+def parse_dependencies_only(
+    file_path: str,
+    text: str,
+    module_index: dict[str, str],
+    *,
+    stable_identifier: StableIdentifier,
+    resolve_import: ResolveImport,
+    resolve_target: ResolveTarget,
+) -> tuple[dict[str, Any], ...]:
+    stripped_text = strip_comments(text)
+    dependencies, import_bindings, wildcard_prefixes = _extract_import_bindings(
+        file_path,
+        text,
+        module_index,
+        stable_identifier=stable_identifier,
+        resolve_import=resolve_import,
+        stripped_text=stripped_text,
+    )
+    symbol_entries = collect_symbol_entries(
+        text,
+        file_path=file_path,
+        stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
+    )
+    declared_symbol_names = {
+        str(entry["symbol_name"])
+        for entry in symbol_entries
+    }
+    return tuple(dependencies) + _collect_reference_dependencies(
+        current_file=file_path,
+        stripped_lines=stripped_text.splitlines(),
+        stable_identifier=stable_identifier,
+        declared_symbol_names=declared_symbol_names,
+        import_bindings=import_bindings,
+        wildcard_prefixes=wildcard_prefixes,
+        module_index=module_index,
+        resolve_target=resolve_target,
+    )
 
 
 def parse_file(
@@ -600,27 +659,42 @@ def parse_file(
     tuple[dict[str, Any], ...],
     tuple[dict[str, Any], ...],
 ]:
+    stripped_text = strip_comments(text)
     symbol_entries = collect_symbol_entries(
         text,
         file_path=file_path,
         stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
     )
-    _, import_bindings, wildcard_prefixes = _extract_import_bindings(
+    dependencies, import_bindings, wildcard_prefixes = _extract_import_bindings(
         file_path,
         text,
         module_index,
         stable_identifier=stable_identifier,
         resolve_import=resolve_import,
+        stripped_text=stripped_text,
     )
-    stripped_text = strip_comments(text)
+    stripped_lines = stripped_text.splitlines()
+    declared_symbol_names = {str(entry["symbol_name"]) for entry in symbol_entries}
+    dependency_entries = tuple(dependencies) + _collect_reference_dependencies(
+        current_file=file_path,
+        stripped_lines=stripped_lines,
+        stable_identifier=stable_identifier,
+        declared_symbol_names=declared_symbol_names,
+        import_bindings=import_bindings,
+        wildcard_prefixes=wildcard_prefixes,
+        module_index=module_index,
+        resolve_target=resolve_target,
+    )
     reference_candidates: dict[str, dict[str, Any]] = {}
+    unqualified_target_cache: dict[str, tuple[str | None, tuple[str, ...]]] = {}
     for symbol_entry in symbol_entries:
         start_line = int(symbol_entry["start_line"])
         end_line = int(symbol_entry["end_line"])
         symbol_id = str(symbol_entry["symbol_id"])
-        for line_no, raw_line in enumerate(stripped_text.splitlines(), start=1):
-            if line_no < start_line or line_no > end_line:
-                continue
+        upper_bound = min(end_line, len(stripped_lines))
+        for line_no in range(start_line, upper_bound + 1):
+            raw_line = stripped_lines[line_no - 1]
             normalized_line = raw_line.strip()
             if not normalized_line:
                 continue
@@ -659,14 +733,18 @@ def parse_file(
                 name = normalize_identifier(match.group("name"))
                 if not name or name in RESERVED_SYMBOL_NAMES:
                     continue
-                target_file, target_names = _resolved_unqualified_call_target(
-                    current_file=file_path,
-                    name=name,
-                    import_bindings=import_bindings,
-                    wildcard_prefixes=wildcard_prefixes,
-                    module_index=module_index,
-                    resolve_target=resolve_target,
-                )
+                cached_target = unqualified_target_cache.get(name)
+                if cached_target is None:
+                    cached_target = _resolved_unqualified_call_target(
+                        current_file=file_path,
+                        name=name,
+                        import_bindings=import_bindings,
+                        wildcard_prefixes=wildcard_prefixes,
+                        module_index=module_index,
+                        resolve_target=resolve_target,
+                    )
+                    unqualified_target_cache[name] = cached_target
+                target_file, target_names = cached_target
                 if target_file is None or target_file == file_path:
                     continue
                 edge_id = stable_identifier(
@@ -692,13 +770,6 @@ def parse_file(
                 )
     return (
         symbol_entries,
-        parse_dependencies_only(
-            file_path,
-            text,
-            module_index,
-            stable_identifier=stable_identifier,
-            resolve_import=resolve_import,
-            resolve_target=resolve_target,
-        ),
+        dependency_entries,
         tuple(reference_candidates[key] for key in sorted(reference_candidates)),
     )

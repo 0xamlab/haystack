@@ -2,6 +2,13 @@ from __future__ import annotations
 
 from pathlib import Path, PurePosixPath
 
+_STYLE_PROFILE_BUCKET_CACHE_LIMIT = 256
+_STYLE_PROFILE_BUCKET_CACHE: dict[
+    tuple[str, tuple[str, ...]],
+    dict[str, tuple[str, ...]],
+] = {}
+_STYLE_PROFILE_LANGUAGES = frozenset({"less", "scss", "stylus"})
+
 
 def _probe_module():
     from benchmarks import repository_intelligence_real_repo_probe as probe_module
@@ -26,6 +33,54 @@ class _DeferredProbeAttr:
 repository_service = _DeferredProbeAttr("repository_service")
 _is_non_operational_profile_path = _DeferredProbeAttr("_is_non_operational_profile_path")
 _probe_language_for_path = _DeferredProbeAttr("_probe_language_for_path")
+
+
+def _style_profile_candidate_buckets(
+    repo_path: Path,
+    candidate_file_paths: list[str],
+) -> dict[str, tuple[str, ...]]:
+    repo_key = str(repo_path)
+    normalized_candidates = tuple(
+        sorted(
+            {
+                normalized_candidate
+                for candidate_path in candidate_file_paths
+                if (
+                    normalized_candidate := repository_service._normalize_repository_relative_path(
+                        candidate_path
+                    )
+                )
+            }
+        )
+    )
+    cache_key = (repo_key, normalized_candidates)
+    cached_buckets = _STYLE_PROFILE_BUCKET_CACHE.get(cache_key)
+    if cached_buckets is not None:
+        return {
+            language: tuple(paths)
+            for language, paths in cached_buckets.items()
+        }
+    buckets: dict[str, list[str]] = {language: [] for language in _STYLE_PROFILE_LANGUAGES}
+    for normalized_candidate in normalized_candidates:
+        language = _probe_language_for_path(normalized_candidate, repo_path=repo_path)
+        if language not in _STYLE_PROFILE_LANGUAGES:
+            continue
+        candidate_file = repo_path / normalized_candidate
+        if not candidate_file.is_file() or candidate_file.is_symlink():
+            continue
+        buckets[language].append(normalized_candidate)
+    frozen_buckets = {
+        language: tuple(paths)
+        for language, paths in buckets.items()
+    }
+    if len(_STYLE_PROFILE_BUCKET_CACHE) >= _STYLE_PROFILE_BUCKET_CACHE_LIMIT:
+        oldest_key = next(iter(_STYLE_PROFILE_BUCKET_CACHE))
+        _STYLE_PROFILE_BUCKET_CACHE.pop(oldest_key, None)
+    _STYLE_PROFILE_BUCKET_CACHE[cache_key] = frozen_buckets
+    return {
+        language: tuple(paths)
+        for language, paths in frozen_buckets.items()
+    }
 
 
 def _sass_profile_hints_from_candidates(
@@ -301,7 +356,10 @@ def _scss_profile_hints_from_candidates(
     repo_path: Path,
     candidate_file_paths: list[str],
 ) -> tuple[set[str], set[str], set[str]]:
+    style_candidate_buckets = _style_profile_candidate_buckets(repo_path, candidate_file_paths)
     scss_files: list[str] = []
+    scss_file_text: dict[str, str] = {}
+    scss_file_stripped_text: dict[str, str] = {}
     module_index: dict[str, str] = {}
     entrypoint_paths: set[str] = set()
     support_roots: set[str] = set()
@@ -317,32 +375,29 @@ def _scss_profile_hints_from_candidates(
         "theme.scss",
     }
     support_dirs = {"assets", "sass", "scss", "styles", "stylesheets"}
-    for candidate_path in sorted(candidate_file_paths):
-        normalized_candidate = repository_service._normalize_repository_relative_path(
-            candidate_path
-        )
-        if (
-            not normalized_candidate
-            or _probe_language_for_path(normalized_candidate, repo_path=repo_path) != "scss"
-        ):
-            continue
+    for normalized_candidate in style_candidate_buckets["scss"]:
         candidate_file = repo_path / normalized_candidate
-        if not candidate_file.is_file() or candidate_file.is_symlink():
-            continue
         try:
             text = candidate_file.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
+        stripped_text = repository_service.scss_adapter.strip_comments(text)
         if not repository_service.scss_adapter.is_probable_scss_source(
             path=candidate_file,
             text=text,
+            stripped_text=stripped_text,
         ):
             continue
         scss_files.append(normalized_candidate)
+        scss_file_text[normalized_candidate] = text
+        scss_file_stripped_text[normalized_candidate] = stripped_text
         for alias in repository_service.scss_adapter.module_aliases_for_path(
             root_path=repo_path,
             file_path=normalized_candidate,
             stable_identifier=repository_service._stable_identifier,
+            text=text,
+            stripped_text=stripped_text,
+            include_symbol_aliases=False,
         ):
             module_index.setdefault(alias, normalized_candidate)
         candidate_parts = PurePosixPath(normalized_candidate).parts
@@ -356,9 +411,9 @@ def _scss_profile_hints_from_candidates(
         if parent_dir:
             support_roots.add(parent_dir)
     for normalized_candidate in scss_files:
-        try:
-            text = (repo_path / normalized_candidate).read_text(encoding="utf-8", errors="replace")
-        except OSError:
+        text = scss_file_text.get(normalized_candidate)
+        stripped_text = scss_file_stripped_text.get(normalized_candidate)
+        if text is None or stripped_text is None:
             continue
         for dependency in repository_service.scss_adapter.parse_dependencies_only(
             normalized_candidate,
@@ -367,6 +422,7 @@ def _scss_profile_hints_from_candidates(
             stable_identifier=repository_service._stable_identifier,
             normalize_repository_relative_path=repository_service._normalize_repository_relative_path,
             resolve_suffix_match=repository_service._resolve_suffix_match,
+            stripped_text=stripped_text,
         ):
             if dependency.target_file and dependency.target_file != normalized_candidate:
                 imported_files.add(dependency.target_file)
@@ -399,7 +455,10 @@ def _less_profile_hints_from_candidates(
     repo_path: Path,
     candidate_file_paths: list[str],
 ) -> tuple[set[str], set[str], set[str]]:
+    style_candidate_buckets = _style_profile_candidate_buckets(repo_path, candidate_file_paths)
     less_files: list[str] = []
+    less_file_text: dict[str, str] = {}
+    less_file_stripped_text: dict[str, str] = {}
     module_index: dict[str, str] = {}
     entrypoint_paths: set[str] = set()
     support_roots: set[str] = set()
@@ -415,32 +474,28 @@ def _less_profile_hints_from_candidates(
         "variables.less",
     }
     support_dirs = {"assets", "less", "src", "styles", "stylesheets", "themes"}
-    for candidate_path in sorted(candidate_file_paths):
-        normalized_candidate = repository_service._normalize_repository_relative_path(
-            candidate_path
-        )
-        if (
-            not normalized_candidate
-            or _probe_language_for_path(normalized_candidate, repo_path=repo_path) != "less"
-        ):
-            continue
+    for normalized_candidate in style_candidate_buckets["less"]:
         candidate_file = repo_path / normalized_candidate
-        if not candidate_file.is_file() or candidate_file.is_symlink():
-            continue
         try:
             text = candidate_file.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
+        stripped_text = repository_service.less_adapter.strip_comments(text)
         if not repository_service.less_adapter.is_probable_less_source(
             path=candidate_file,
             text=text,
+            stripped_text=stripped_text,
         ):
             continue
         less_files.append(normalized_candidate)
+        less_file_text[normalized_candidate] = text
+        less_file_stripped_text[normalized_candidate] = stripped_text
         for alias in repository_service.less_adapter.module_aliases_for_path(
             root_path=repo_path,
             file_path=normalized_candidate,
             stable_identifier=repository_service._stable_identifier,
+            text=text,
+            stripped_text=stripped_text,
         ):
             module_index.setdefault(alias, normalized_candidate)
         candidate_parts = PurePosixPath(normalized_candidate).parts
@@ -454,9 +509,9 @@ def _less_profile_hints_from_candidates(
         if parent_dir:
             support_roots.add(parent_dir)
     for normalized_candidate in less_files:
-        try:
-            text = (repo_path / normalized_candidate).read_text(encoding="utf-8", errors="replace")
-        except OSError:
+        text = less_file_text.get(normalized_candidate)
+        stripped_text = less_file_stripped_text.get(normalized_candidate)
+        if text is None or stripped_text is None:
             continue
         for dependency in repository_service.less_adapter.parse_dependencies_only(
             normalized_candidate,
@@ -465,6 +520,7 @@ def _less_profile_hints_from_candidates(
             stable_identifier=repository_service._stable_identifier,
             normalize_repository_relative_path=repository_service._normalize_repository_relative_path,
             resolve_suffix_match=repository_service._resolve_suffix_match,
+            stripped_text=stripped_text,
         ):
             if dependency.target_file and dependency.target_file != normalized_candidate:
                 imported_files.add(dependency.target_file)
@@ -492,7 +548,10 @@ def _stylus_profile_hints_from_candidates(
     repo_path: Path,
     candidate_file_paths: list[str],
 ) -> tuple[set[str], set[str], set[str]]:
+    style_candidate_buckets = _style_profile_candidate_buckets(repo_path, candidate_file_paths)
     stylus_files: list[str] = []
+    stylus_file_text: dict[str, str] = {}
+    stylus_file_stripped_text: dict[str, str] = {}
     module_index: dict[str, str] = {}
     entrypoint_paths: set[str] = set()
     support_roots: set[str] = set()
@@ -508,32 +567,29 @@ def _stylus_profile_hints_from_candidates(
         "variables.styl",
     }
     support_dirs = {"assets", "src", "styl", "stylus", "styles", "stylesheets", "themes"}
-    for candidate_path in sorted(candidate_file_paths):
-        normalized_candidate = repository_service._normalize_repository_relative_path(
-            candidate_path
-        )
-        if (
-            not normalized_candidate
-            or _probe_language_for_path(normalized_candidate, repo_path=repo_path) != "stylus"
-        ):
-            continue
+    for normalized_candidate in style_candidate_buckets["stylus"]:
         candidate_file = repo_path / normalized_candidate
-        if not candidate_file.is_file() or candidate_file.is_symlink():
-            continue
         try:
             text = candidate_file.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
+        stripped_text = repository_service.stylus_adapter.strip_comments(text)
         if not repository_service.stylus_adapter.is_probable_stylus_source(
             path=candidate_file,
             text=text,
+            stripped_text=stripped_text,
         ):
             continue
         stylus_files.append(normalized_candidate)
+        stylus_file_text[normalized_candidate] = text
+        stylus_file_stripped_text[normalized_candidate] = stripped_text
         for alias in repository_service.stylus_adapter.module_aliases_for_path(
             root_path=repo_path,
             file_path=normalized_candidate,
             stable_identifier=repository_service._stable_identifier,
+            text=text,
+            stripped_text=stripped_text,
+            include_symbol_aliases=False,
         ):
             module_index.setdefault(alias, normalized_candidate)
         candidate_parts = PurePosixPath(normalized_candidate).parts
@@ -547,9 +603,9 @@ def _stylus_profile_hints_from_candidates(
         if parent_dir:
             support_roots.add(parent_dir)
     for normalized_candidate in stylus_files:
-        try:
-            text = (repo_path / normalized_candidate).read_text(encoding="utf-8", errors="replace")
-        except OSError:
+        text = stylus_file_text.get(normalized_candidate)
+        stripped_text = stylus_file_stripped_text.get(normalized_candidate)
+        if text is None or stripped_text is None:
             continue
         for dependency in repository_service.stylus_adapter.parse_dependencies_only(
             normalized_candidate,
@@ -558,6 +614,7 @@ def _stylus_profile_hints_from_candidates(
             stable_identifier=repository_service._stable_identifier,
             normalize_repository_relative_path=repository_service._normalize_repository_relative_path,
             resolve_suffix_match=repository_service._resolve_suffix_match,
+            stripped_text=stripped_text,
         ):
             if dependency.target_file and dependency.target_file != normalized_candidate:
                 imported_files.add(dependency.target_file)

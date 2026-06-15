@@ -196,6 +196,73 @@ def test_operational_seed_plan_without_diagnostics_does_not_force_clojurescript_
     assert "clojure" in seed_plan["operational_ecosystems"]
 
 
+def test_operational_seed_plan_without_diagnostics_prefers_clojurescript_in_shadow_cljs_public_style_repo(
+    tmp_path: Path,
+) -> None:
+    repo_path = tmp_path / "clojurescript-shadow-cljs-public-repo"
+    (repo_path / "src" / "reagent").mkdir(parents=True)
+    (repo_path / "demo" / "reagentdemo").mkdir(parents=True)
+    (repo_path / "prerender" / "sitetools").mkdir(parents=True)
+    (repo_path / "examples" / "sample").mkdir(parents=True)
+    (repo_path / "lib").mkdir(parents=True)
+    (repo_path / "shadow-cljs.edn").write_text(
+        '{:source-paths ["src" "demo" "prerender" "examples"]}\n',
+        encoding="utf-8",
+    )
+    (repo_path / "deps.edn").write_text(
+        '{:paths ["src"]}\n',
+        encoding="utf-8",
+    )
+    (repo_path / "bb.edn").write_text(
+        '{:tasks {}}\n',
+        encoding="utf-8",
+    )
+    (repo_path / "package.json").write_text(
+        '{"name": "reagent-like"}\n',
+        encoding="utf-8",
+    )
+    (repo_path / "lib" / "modules.js").write_text(
+        "module.exports = {}\n",
+        encoding="utf-8",
+    )
+    for path in (
+        "src/reagent/core.cljs",
+        "src/reagent/debug.cljs",
+        "src/reagent/impl.cljs",
+        "src/reagent/dom.cljs",
+        "demo/reagentdemo/common.cljs",
+        "demo/reagentdemo/app.cljs",
+        "prerender/sitetools/prerender.cljs",
+        "examples/sample/example.cljs",
+    ):
+        file_path = repo_path / path
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        file_path.write_text(
+            "(ns demo.core)\n(defn run [] :ok)\n",
+            encoding="utf-8",
+        )
+    for path in (
+        "src/reagent/core.clj",
+        "src/reagent/debug.clj",
+        "demo/reagentdemo/syntax.clj",
+    ):
+        file_path = repo_path / path
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        file_path.write_text(
+            "(ns demo.server)\n(defn run [] :ok)\n",
+            encoding="utf-8",
+        )
+
+    seed_plan = _derive_operational_seed_plan_without_diagnostics(
+        repo_path=repo_path,
+        focus_paths=["."],
+        max_files=256,
+    )
+
+    assert "clojurescript" in seed_plan["detected_ecosystems"]
+    assert seed_plan["operational_ecosystems"][0] == "clojurescript"
+
+
 def test_repository_snapshot_graph_contains_clojurescript_symbol_reference_edges(
     tmp_path: Path,
 ) -> None:

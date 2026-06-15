@@ -192,6 +192,56 @@ def test_tex_adapter_parse_file_resolves_imports_and_references(
     )
 
 
+def test_tex_adapter_parse_file_ignores_commented_imports_and_references(
+    tmp_path: Path,
+) -> None:
+    repo_path = tmp_path / "tex-commented-parse-repo"
+    (repo_path / "styles").mkdir(parents=True)
+    (repo_path / "styles" / "real.sty").write_text(
+        "\\ProvidesPackage{real}\n"
+        "\\newcommand{\\RealMacro}{Acme}\n",
+        encoding="utf-8",
+    )
+    (repo_path / "styles" / "ghost.sty").write_text(
+        "\\ProvidesPackage{ghost}\n"
+        "\\newcommand{\\GhostMacro}{Nope}\n",
+        encoding="utf-8",
+    )
+    (repo_path / "main.tex").write_text(
+        "% \\usepackage{styles/ghost}\n"
+        "\\usepackage{styles/real}\n"
+        "% \\GhostMacro\n"
+        "\\RealMacro\n",
+        encoding="utf-8",
+    )
+    module_index = repository_service._build_module_index(
+        ["main.tex", "styles/real.sty", "styles/ghost.sty"],
+        root_path=repo_path,
+    )
+    text = (repo_path / "main.tex").read_text(encoding="utf-8")
+
+    dependencies = repository_service.tex_adapter.parse_dependencies_only(
+        "main.tex",
+        text,
+        module_index,
+        stable_identifier=repository_service._stable_identifier,
+        normalize_repository_relative_path=repository_service._normalize_repository_relative_path,
+        resolve_suffix_match=repository_service._resolve_suffix_match,
+    )
+    _symbols, _parsed_dependencies, references = repository_service.tex_adapter.parse_file(
+        "main.tex",
+        text,
+        module_index,
+        stable_identifier=repository_service._stable_identifier,
+        normalize_repository_relative_path=repository_service._normalize_repository_relative_path,
+        resolve_suffix_match=repository_service._resolve_suffix_match,
+    )
+
+    assert {dependency.target_file for dependency in dependencies} == {"styles/real.sty"}
+    assert {reference.target_file for reference in references} == {"styles/real.sty"}
+    assert all("GhostMacro" not in reference.target_names for reference in references)
+
+
 def test_tex_language_detection_supports_tex_files_and_latexmkrc() -> None:
     assert repository_service._language_for_path(Path("main.tex")) == "tex"
     assert repository_service._language_for_path(

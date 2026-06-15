@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import Counter
+from pathlib import PurePosixPath
 
 from typing import Any
 
@@ -304,9 +305,7 @@ def apply_seed_plan_phase_a_1(state: Any) -> None:
             configs=configs,
         )
 
-    if "just" in detected_ecosystems and not (
-        entrypoint_candidates or support_root_candidates or config_path_candidates
-    ):
+    if "just" in detected_ecosystems:
         entrypoints, roots, configs = _just_profile_hints_from_candidates(
             repo_path,
             candidate_file_paths,
@@ -449,12 +448,36 @@ def apply_seed_plan_phase_a_1(state: Any) -> None:
                 sass_ecosystem_counts[ecosystem]
                 for ecosystem in ("ruby", "javascript", "typescript", "css")
             )
+            style_root_count = sum(
+                1
+                for root in roots
+                if PurePosixPath(root).name.lower() in {"sass", "styles", "stylesheets"}
+            )
+            sass_entrypoint_count = sum(
+                1
+                for entrypoint in entrypoints
+                if "sass"
+                in {
+                    ecosystem.lower()
+                    for ecosystem in _candidate_ecosystems_for_path(
+                        entrypoint,
+                        repo_path=repo_path,
+                    )
+                }
+            )
+            competitive_style_surface = (
+                sass_entrypoint_count >= 2
+                and style_root_count >= 1
+                and sass_count >= 6
+                and sass_count * 2 >= max(1, host_count)
+            )
             should_operationalize_sass = (
                 sass_count >= 2
                 and (
                     host_count == 0
                     or sass_count >= host_count
                     or sass_count * 3 >= host_count
+                    or competitive_style_surface
                 )
             )
             if should_operationalize_sass:
@@ -482,6 +505,19 @@ def apply_seed_plan_phase_a_1(state: Any) -> None:
                 )
                 if sass_count >= max(2, host_count):
                     detected_ecosystem_scores["sass"] += min(140, 32 + sass_count * 14)
+                elif competitive_style_surface:
+                    non_sass_max_score = max(
+                        (
+                            score
+                            for ecosystem, score in detected_ecosystem_scores.items()
+                            if ecosystem != "sass"
+                        ),
+                        default=0,
+                    )
+                    detected_ecosystem_scores["sass"] = max(
+                        detected_ecosystem_scores["sass"],
+                        non_sass_max_score + 16,
+                    )
             elif sass_count * 2 <= max(1, host_count):
                 dominant_host = max(
                     ("ruby", "javascript", "typescript", "css"),

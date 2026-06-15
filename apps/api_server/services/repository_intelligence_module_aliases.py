@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import inspect
 import re
 from collections.abc import Sequence
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -54,6 +56,7 @@ from apps.api_server.services.repository_intelligence_indexing import (
     _build_module_index as _build_module_index_base,
 )
 from apps.api_server.services.repository_intelligence_indexing import (
+    _language_for_path,
     _normalize_repository_relative_path,
     _resolve_suffix_match,
 )
@@ -383,5 +386,72 @@ def _build_module_index(
         file_paths,
         root_path=root_path,
         root_scoped_module_alias_builders=_ROOT_SCOPED_MODULE_ALIAS_BUILDERS,
+        root_scoped_module_alias_builder_selector=_root_scoped_module_alias_builders_for_file,
         module_index_extenders=_MODULE_INDEX_EXTENDERS,
+    )
+
+
+def _bind_preloaded_text_to_root_scoped_module_alias_builder(
+    builder: Any,
+    *,
+    text: str | None,
+) -> Any:
+    if text is None or not _root_scoped_module_alias_builder_accepts_text(builder):
+        return builder
+
+    def _builder(*, root_path: Path, file_path: str) -> set[str]:
+        return builder(root_path=root_path, file_path=file_path, text=text)
+
+    return _builder
+
+
+@lru_cache(maxsize=512)
+def _root_scoped_module_alias_builder_accepts_text(builder: Any) -> bool:
+    try:
+        return "text" in inspect.signature(builder).parameters
+    except (TypeError, ValueError):
+        return False
+
+
+def _bound_root_scoped_module_alias_builders_for_language(
+    language: str | None,
+    *,
+    text: str | None,
+) -> tuple[Any, ...]:
+    normalized_language = (language or "").strip().lower()
+    if not normalized_language or normalized_language == "unknown":
+        return ()
+    builders = repository_root_scoped_aliases.root_scoped_module_alias_builders_for_language(
+        normalized_language,
+    )
+    return tuple(
+        _bind_preloaded_text_to_root_scoped_module_alias_builder(builder, text=text)
+        for builder in builders
+    )
+
+
+def _root_scoped_module_alias_builders_for_file(
+    *,
+    root_path: Path,
+    file_path: str,
+    text: str | None,
+) -> Sequence[Any]:
+    path = Path(file_path)
+    detected_language = _language_for_path(
+        path,
+        text=text,
+        repo_root=root_path,
+    )
+    builders = _bound_root_scoped_module_alias_builders_for_language(
+        detected_language,
+        text=text,
+    )
+    if builders or text is None:
+        return builders
+    fallback_language = _language_for_path(path, repo_root=root_path)
+    if fallback_language == detected_language:
+        return ()
+    return _bound_root_scoped_module_alias_builders_for_language(
+        fallback_language,
+        text=text,
     )

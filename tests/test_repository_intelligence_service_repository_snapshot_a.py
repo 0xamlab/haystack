@@ -120,6 +120,47 @@ def test_repository_snapshot_engine_revision_invalidation_rebuilds_snapshot(
     assert rebuilt.snapshot_id != baseline.snapshot_id
 
 
+def test_repository_snapshot_skips_workspace_package_and_go_indexes_when_not_needed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ALGENTA_RUNTIME_DIR", str(tmp_path / "runtime"))
+    repo_path = tmp_path / "agda-snapshot-repo"
+    (repo_path / "src" / "Data").mkdir(parents=True)
+    (repo_path / "src" / "Data" / "Helper.agda").write_text(
+        "module Data.Helper where\n\n"
+        "helper : Set\n"
+        "helper = Set\n",
+        encoding="utf-8",
+    )
+    _init_git_repo(repo_path)
+    connector = _connector_for_repo(repo_path)
+
+    def _unexpected_build_workspace_package_index(_root_path: Path) -> dict[str, tuple[str, ...]]:
+        raise AssertionError("workspace package index should not be built for non-JS snapshots")
+
+    def _unexpected_build_workspace_go_module_index(_root_path: Path) -> dict[str, tuple[str, ...]]:
+        raise AssertionError("workspace Go module index should not be built for non-Go snapshots")
+
+    monkeypatch.setattr(
+        repository_service,
+        "_build_workspace_package_index",
+        _unexpected_build_workspace_package_index,
+    )
+    monkeypatch.setattr(
+        repository_service,
+        "_build_workspace_go_module_index",
+        _unexpected_build_workspace_go_module_index,
+    )
+
+    snapshot = repository_service.create_repository_snapshot(
+        connector=connector,
+        request=RepositorySnapshotCreateRequest(),
+    )
+
+    assert snapshot.status == "created"
+    assert snapshot.file_count == 1
+
+
 def test_repository_snapshot_tracks_dirty_git_worktree_content(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -788,5 +829,4 @@ def test_repository_snapshot_graph_contains_python_symbol_reference_edges(
         and str(row["target_node"]) == f"symbol:{helper_symbol_id}"
         for row in graph_rows
     )
-
 

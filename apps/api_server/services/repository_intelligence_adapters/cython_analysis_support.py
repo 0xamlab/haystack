@@ -32,6 +32,8 @@ normalize_identifier = repository_cython_primitives.normalize_identifier
 resolve_import = repository_cython_primitives.resolve_import
 resolve_include = repository_cython_primitives.resolve_include
 strip_comments = repository_cython_primitives.strip_comments
+_import_statements_from_stripped_text = repository_cython_primitives._import_statements_from_stripped_text
+_include_statements_from_stripped_text = repository_cython_primitives._include_statements_from_stripped_text
 
 
 def _extract_import_bindings(
@@ -43,16 +45,58 @@ def _extract_import_bindings(
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
 ) -> tuple[tuple[_Dependency, ...], dict[str, _ImportedSymbolBinding]]:
-    bindings = imported_symbol_bindings(
-        current_file=file_path,
+    return _extract_dependencies_and_optional_bindings(
+        file_path=file_path,
         text=text,
         module_index=module_index,
+        stable_identifier=stable_identifier,
         normalize_repository_relative_path=normalize_repository_relative_path,
         resolve_suffix_match=resolve_suffix_match,
+        include_bindings=True,
     )
+
+
+def _extract_dependencies_and_optional_bindings(
+    *,
+    file_path: str,
+    text: str,
+    module_index: dict[str, str],
+    stable_identifier: StableIdentifier,
+    normalize_repository_relative_path: NormalizeRepositoryRelativePath,
+    resolve_suffix_match: ResolveSuffixMatch,
+    include_bindings: bool,
+) -> tuple[tuple[_Dependency, ...], dict[str, _ImportedSymbolBinding]]:
+    stripped_text = strip_comments(text)
+    include_entries = _include_statements_from_stripped_text(stripped_text)
+    import_entries = _import_statements_from_stripped_text(stripped_text)
+    bindings: dict[str, _ImportedSymbolBinding] = {}
+    if include_bindings:
+        for import_kind, module_name, target_name, alias_name, _line_number in import_entries:
+            target_file = resolve_import(
+                current_file=file_path,
+                import_target=module_name or target_name,
+                module_index=module_index,
+                normalize_repository_relative_path=normalize_repository_relative_path,
+                resolve_suffix_match=resolve_suffix_match,
+            )
+            if target_file is None:
+                continue
+            normalized_alias = normalize_identifier(alias_name)
+            if not normalized_alias:
+                continue
+            if import_kind in {"from_cimport", "from_import"}:
+                target_names = (normalize_identifier(target_name),)
+            else:
+                module_alias = module_name_from_path(target_file).split(".")[-1] or normalized_alias
+                target_names = (module_alias,)
+            bindings[normalized_alias] = _ImportedSymbolBinding(
+                alias=normalized_alias,
+                target_file=target_file,
+                target_names=tuple(name for name in target_names if name),
+            )
     dependencies: list[_Dependency] = []
     seen_dependencies: set[tuple[str | None, str | None, str]] = set()
-    for include_target, line_number in include_statements(text):
+    for include_target, line_number in include_entries:
         target_file = resolve_include(
             current_file=file_path,
             include_target=include_target,
@@ -81,7 +125,7 @@ def _extract_import_bindings(
                 dependency_type="includes",
             )
         )
-    for import_kind, module_name, target_name, _alias_name, line_number in import_statements(text):
+    for import_kind, module_name, target_name, _alias_name, line_number in import_entries:
         target_file = resolve_import(
             current_file=file_path,
             import_target=module_name or target_name,
@@ -126,13 +170,14 @@ def parse_dependencies_only(
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
 ) -> tuple[_Dependency, ...]:
-    dependencies, _bindings = _extract_import_bindings(
+    dependencies, _bindings = _extract_dependencies_and_optional_bindings(
         file_path=file_path,
         text=text,
         module_index=module_index,
         stable_identifier=stable_identifier,
         normalize_repository_relative_path=normalize_repository_relative_path,
         resolve_suffix_match=resolve_suffix_match,
+        include_bindings=False,
     )
     return dependencies
 

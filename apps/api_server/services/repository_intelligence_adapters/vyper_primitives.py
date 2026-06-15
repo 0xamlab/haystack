@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from bisect import bisect_right
 import re
 from collections.abc import Callable, Iterable
 from pathlib import Path, PurePosixPath
@@ -119,16 +120,16 @@ def _mask_strings(text: str) -> str:
 
 def strip_comments(text: str) -> str:
     masked = _mask_strings(text)
+    if "#" not in masked:
+        return text
     output: list[str] = []
-    index = 0
-    while index < len(text):
-        if masked[index] == "#":
-            while index < len(text) and text[index] != "\n":
-                output.append(" ")
-                index += 1
-            continue
-        output.append(text[index])
-        index += 1
+    last_index = 0
+    for match in re.finditer(r"#[^\n]*", masked):
+        start, end = match.span()
+        output.append(text[last_index:start])
+        output.append(" " * (end - start))
+        last_index = end
+    output.append(text[last_index:])
     return "".join(output)
 
 
@@ -147,14 +148,19 @@ def has_vyper_path_hints(path: Path | PurePosixPath) -> bool:
     return PurePosixPath(path).suffix.lower() in VYPER_SUFFIXES
 
 
-def is_probable_vyper_source(*, path: Path | PurePosixPath, text: str) -> bool:
+def is_probable_vyper_source(
+    *,
+    path: Path | PurePosixPath,
+    text: str,
+    stripped_text: str | None = None,
+) -> bool:
     normalized_path = PurePosixPath(path)
     if normalized_path.suffix.lower() not in VYPER_SUFFIXES or not text or _looks_binaryish(text):
         return False
-    stripped_text = strip_comments(text)
-    if not stripped_text.strip():
+    prepared_text = stripped_text if stripped_text is not None else strip_comments(text)
+    if not prepared_text.strip():
         return False
-    return _SOURCE_MARKER_RE.search(stripped_text) is not None
+    return _SOURCE_MARKER_RE.search(prepared_text) is not None
 
 
 def module_name_from_path(file_path: str) -> str:
@@ -163,8 +169,21 @@ def module_name_from_path(file_path: str) -> str:
     return ".".join(without_suffix.parts) if without_suffix.parts else without_suffix.stem
 
 
-def _line_number(text: str, offset: int) -> int:
-    return text.count("\n", 0, max(0, offset)) + 1
+def _line_starts(text: str) -> tuple[int, ...]:
+    starts = [0]
+    for index, character in enumerate(text):
+        if character == "\n":
+            starts.append(index + 1)
+    return tuple(starts)
+
+
+def _line_number(line_starts: tuple[int, ...], offset: int) -> int:
+    return bisect_right(line_starts, max(0, offset))
+
+
+def _prepare_source_text(text: str) -> tuple[str, tuple[int, ...]]:
+    stripped_text = strip_comments(text)
+    return stripped_text, _line_starts(stripped_text)
 
 
 def _resolve_module_candidate(
@@ -336,16 +355,22 @@ def resolve_dependency_target(
 
 def iter_dependency_entries(
     text: str,
+    *,
+    stripped_text: str | None = None,
+    line_starts: tuple[int, ...] | None = None,
 ) -> tuple[tuple[str, str, str | None, str | None, int], ...]:
-    stripped_text = strip_comments(text)
+    prepared_text = stripped_text if stripped_text is not None else strip_comments(text)
+    prepared_line_starts = line_starts if line_starts is not None else _line_starts(prepared_text)
     entries: list[tuple[str, str, str | None, str | None, int]] = []
-    for match in _IMPORT_RE.finditer(stripped_text):
+    for match in _IMPORT_RE.finditer(prepared_text):
         target = clean_import_target(match.group("target") or "")
         alias = normalize_identifier(match.group("alias") or "") or None
         if not target:
             continue
-        entries.append(("import", target, alias, None, _line_number(stripped_text, match.start())))
-    for match in _FROM_IMPORT_RE.finditer(stripped_text):
+        entries.append(
+            ("import", target, alias, None, _line_number(prepared_line_starts, match.start()))
+        )
+    for match in _FROM_IMPORT_RE.finditer(prepared_text):
         module_target = clean_import_target(match.group("module") or "")
         if not module_target:
             continue
@@ -373,10 +398,10 @@ def iter_dependency_entries(
                     module_target,
                     normalized_alias,
                     normalized_source,
-                    _line_number(stripped_text, match.start()),
+                    _line_number(prepared_line_starts, match.start()),
                 )
             )
-    for match in _DIRECTIVE_RE.finditer(stripped_text):
+    for match in _DIRECTIVE_RE.finditer(prepared_text):
         directive_kind = normalize_identifier(match.group("kind") or "").lower()
         raw_body = str(match.group("body") or "")
         for raw_entry in raw_body.split(","):
@@ -388,44 +413,60 @@ def iter_dependency_entries(
                         cleaned,
                         None,
                         None,
-                        _line_number(stripped_text, match.start()),
+                        _line_number(prepared_line_starts, match.start()),
                     )
                 )
     return tuple(entries)
 
 
-def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
-    stripped_text = strip_comments(text)
+def iter_symbol_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+    line_starts: tuple[int, ...] | None = None,
+) -> tuple[tuple[str, str, int], ...]:
+    prepared_text = stripped_text if stripped_text is not None else strip_comments(text)
+    prepared_line_starts = line_starts if line_starts is not None else _line_starts(prepared_text)
     entries: list[tuple[str, str, int]] = []
     seen_entries: set[tuple[str, str, int]] = set()
-    for match in _TYPE_RE.finditer(stripped_text):
+    for match in _TYPE_RE.finditer(prepared_text):
         name = normalize_identifier(match.group("name") or "")
         kind = normalize_identifier(match.group("kind") or "").lower()
         if not name or not kind:
             continue
-        entry = (name, kind, _line_number(stripped_text, match.start()))
+        entry = (name, kind, _line_number(prepared_line_starts, match.start()))
         if entry not in seen_entries:
             seen_entries.add(entry)
             entries.append(entry)
-    for match in _FUNCTION_RE.finditer(stripped_text):
+    for match in _FUNCTION_RE.finditer(prepared_text):
         name = normalize_identifier(match.group("name") or "")
         if not name:
             continue
-        entry = (name, "function", _line_number(stripped_text, match.start()))
+        entry = (name, "function", _line_number(prepared_line_starts, match.start()))
         if entry not in seen_entries:
             seen_entries.add(entry)
             entries.append(entry)
     return tuple(sorted(entries, key=lambda item: (item[2], item[1], item[0])))
 
 
-def iter_reference_entries(text: str) -> tuple[tuple[str | None, str, int], ...]:
-    stripped_text = strip_comments(text)
+def iter_reference_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+    symbol_entries: tuple[tuple[str, str, int], ...] | None = None,
+) -> tuple[tuple[str | None, str, int], ...]:
+    prepared_text = stripped_text if stripped_text is not None else strip_comments(text)
     entries: list[tuple[str | None, str, int]] = []
     seen_entries: set[tuple[str | None, str, int]] = set()
     declaration_lines = {
-        line_number for _symbol_name, _symbol_kind, line_number in iter_symbol_entries(text)
+        line_number
+        for _symbol_name, _symbol_kind, line_number in (
+            symbol_entries
+            if symbol_entries is not None
+            else iter_symbol_entries(text, stripped_text=prepared_text)
+        )
     }
-    for line_number, raw_line in enumerate(stripped_text.splitlines(), start=1):
+    for line_number, raw_line in enumerate(prepared_text.splitlines(), start=1):
         stripped_line = raw_line.strip()
         if (
             not stripped_line
@@ -479,6 +520,8 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
+    include_symbol_aliases: bool = True,
 ) -> set[str]:
     del stable_identifier
     normalized_path = PurePosixPath(file_path)
@@ -492,12 +535,23 @@ def module_aliases_for_path(
         str(normalized_path.with_suffix("")).replace("/", "."),
         module_name_from_path(file_path),
     }
-    try:
-        text = (root_path / normalized_path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        text = ""
-    if text and is_probable_vyper_source(path=normalized_path, text=text):
-        for symbol_name, _symbol_kind, _line_number in iter_symbol_entries(text):
+    if not include_symbol_aliases:
+        return {alias for alias in aliases if alias}
+    if text is None:
+        try:
+            text = (root_path / normalized_path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            text = ""
+    if text:
+        stripped_text, line_starts = _prepare_source_text(text)
+    else:
+        stripped_text, line_starts = "", (0,)
+    if text and is_probable_vyper_source(path=normalized_path, text=text, stripped_text=stripped_text):
+        for symbol_name, _symbol_kind, _line_number in iter_symbol_entries(
+            text,
+            stripped_text=stripped_text,
+            line_starts=line_starts,
+        ):
             aliases.add(symbol_name)
     return {alias for alias in aliases if alias}
 
@@ -507,6 +561,7 @@ def collect_symbols(
     file_path: str,
     text: str,
     stable_identifier: StableIdentifier,
+    symbol_entries: tuple[tuple[str, str, int], ...] | None = None,
 ) -> tuple[_Symbol, ...]:
     module_name = module_name_from_path(file_path)
     line_count = max(1, text.count("\n") + 1)
@@ -524,7 +579,9 @@ def collect_symbols(
     )
     module_symbol_id = module_symbol.symbol_id
     symbols = [module_symbol]
-    for symbol_name, symbol_kind, line_number in iter_symbol_entries(text):
+    for symbol_name, symbol_kind, line_number in (
+        symbol_entries if symbol_entries is not None else iter_symbol_entries(text)
+    ):
         signature = (
             f"def {symbol_name}"
             if symbol_kind == "function"

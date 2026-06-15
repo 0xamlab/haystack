@@ -4,6 +4,8 @@ Extracted from tests/test_repository_intelligence_real_repo_probe.py during modu
 """
 from __future__ import annotations
 
+import benchmarks.repository_intelligence_real_repo_probe_profile_project_family_support as project_family_support
+
 from tests._repository_intelligence_real_repo_probe_helpers import *  # noqa: F401,F403
 
 
@@ -135,6 +137,222 @@ def test_operational_seed_plan_without_diagnostics_uses_manifestless_logtalk_pro
     assert "lib/support.lgt" in seed_plan["candidate_file_paths"]
 
 
+def test_logtalk_profile_hints_expand_from_git_listing_when_seed_candidates_miss_language_surface(
+    tmp_path: Path,
+) -> None:
+    repo_path = tmp_path / "logtalk-git-listing-profile-repo"
+    (repo_path / "coding" / "codemirror6").mkdir(parents=True)
+    (repo_path / "scripts" / "docker" / "portable").mkdir(parents=True)
+    (repo_path / "library").mkdir(parents=True)
+    (repo_path / "coding" / "codemirror6" / "package.json").write_text(
+        '{"name":"codemirror6-logtalk"}\n',
+        encoding="utf-8",
+    )
+    (repo_path / "coding" / "codemirror6" / "logtalk.js").write_text(
+        "export const mode = 'logtalk';\n",
+        encoding="utf-8",
+    )
+    (repo_path / "scripts" / "docker" / "portable" / "Dockerfile").write_text(
+        "FROM alpine:3.20\n",
+        encoding="utf-8",
+    )
+    (repo_path / "loader.lgt").write_text(
+        ":- initialization(logtalk_load(library/main)).\n",
+        encoding="utf-8",
+    )
+    (repo_path / "library" / "main.lgt").write_text(
+        ":- object(main).\n"
+        ":- end_object.\n",
+        encoding="utf-8",
+    )
+    (repo_path / "library" / "support.lgt").write_text(
+        ":- object(support).\n"
+        ":- end_object.\n",
+        encoding="utf-8",
+    )
+    _init_git_repo(repo_path)
+
+    entrypoints, roots, configs = probe_module._logtalk_profile_hints_from_candidates(
+        repo_path,
+        [
+            "coding/codemirror6/logtalk.js",
+            "scripts/docker/portable/Dockerfile",
+        ],
+    )
+
+    assert "loader.lgt" in entrypoints
+    assert "library/main.lgt" in entrypoints
+    assert "library" in roots
+    assert configs == set()
+
+
+def test_logtalk_profile_hints_skip_git_listing_expansion_without_logtalk_sources(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo_path = tmp_path / "non-logtalk-git-listing-profile-repo"
+    (repo_path / "coding" / "codemirror6").mkdir(parents=True)
+    (repo_path / "scripts" / "docker" / "portable").mkdir(parents=True)
+    (repo_path / "coding" / "codemirror6" / "package.json").write_text(
+        '{"name":"codemirror6-logtalk"}\n',
+        encoding="utf-8",
+    )
+    (repo_path / "coding" / "codemirror6" / "logtalk.js").write_text(
+        "export const mode = 'logtalk';\n",
+        encoding="utf-8",
+    )
+    (repo_path / "scripts" / "docker" / "portable" / "Dockerfile").write_text(
+        "FROM alpine:3.20\n",
+        encoding="utf-8",
+    )
+    _init_git_repo(repo_path)
+    project_family_support.clear_starlark_profile_hint_cache()
+
+    def fail_cached_logtalk_module_paths(_repo_path: Path) -> list[str] | None:
+        raise AssertionError(
+            "non-Logtalk repos should not expand the Logtalk git listing"
+        )
+
+    monkeypatch.setattr(
+        project_family_support,
+        "_cached_logtalk_module_paths",
+        fail_cached_logtalk_module_paths,
+    )
+
+    entrypoints, roots, configs = probe_module._logtalk_profile_hints_from_candidates(
+        repo_path,
+        [
+            "coding/codemirror6/logtalk.js",
+            "scripts/docker/portable/Dockerfile",
+        ],
+    )
+
+    assert entrypoints == set()
+    assert roots == set()
+    assert configs == set()
+
+
+def test_logtalk_surface_signal_only_triggers_on_logtalk_like_candidate_paths() -> None:
+    assert project_family_support._candidate_paths_include_logtalk_surface_signal(
+        ["coding/codemirror6/logtalk.js"]
+    ) is True
+    assert project_family_support._candidate_paths_include_logtalk_surface_signal(
+        ["library/main.lgt"]
+    ) is True
+    assert project_family_support._candidate_paths_include_logtalk_surface_signal(
+        ["scripts/docker/portable/Dockerfile", "src/main.ts"]
+    ) is False
+
+
+def test_operational_seed_plan_skips_logtalk_profile_without_surface_signal(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo_path = tmp_path / "non-logtalk-seed-plan-repo"
+    (repo_path / "app").mkdir(parents=True)
+    (repo_path / "moon.mod").write_text('name = "moonbit/core"\n', encoding="utf-8")
+    (repo_path / "app" / "main.mbt").write_text(
+        "pub fn main() -> Int {\n  1\n}\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        probe_module,
+        "_logtalk_profile_hints_from_candidates",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("non-Logtalk seed plans should skip the Logtalk profile lane")
+        ),
+    )
+
+    seed_plan = _derive_operational_seed_plan_without_diagnostics(
+        repo_path=repo_path,
+        focus_paths=["."],
+        max_files=32,
+    )
+
+    assert "logtalk" not in seed_plan["detected_ecosystems"]
+    assert seed_plan["operational_ecosystems"][0] == "moonbit"
+
+
+def test_operational_seed_plan_prefers_logtalk_when_seed_scan_is_polyglot_biased(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo_path = tmp_path / "logtalk-polyglot-seed-plan-repo"
+    (repo_path / "coding" / "codemirror6").mkdir(parents=True)
+    (repo_path / "coding" / "latex" / "listings").mkdir(parents=True)
+    (repo_path / "scripts" / "docker" / "portable").mkdir(parents=True)
+    (repo_path / "library").mkdir(parents=True)
+    (repo_path / "package.json").write_text(
+        '{"name":"logtalk-polyglot-seed-plan-repo","private":true}\n',
+        encoding="utf-8",
+    )
+    (repo_path / "coding" / "codemirror6" / "package.json").write_text(
+        '{"name":"codemirror6-logtalk"}\n',
+        encoding="utf-8",
+    )
+    (repo_path / "coding" / "codemirror6" / "logtalk.js").write_text(
+        "export const mode = 'logtalk';\n",
+        encoding="utf-8",
+    )
+    (repo_path / "coding" / "latex" / "listings" / "lstlang0.sty").write_text(
+        "\\ProvidesPackage{lstlang0}\n",
+        encoding="utf-8",
+    )
+    (repo_path / "scripts" / "docker" / "portable" / "Dockerfile").write_text(
+        "FROM alpine:3.20\n",
+        encoding="utf-8",
+    )
+    (repo_path / "scripts" / "docker" / "portable" / "publish.sh").write_text(
+        "#!/bin/sh\nexit 0\n",
+        encoding="utf-8",
+    )
+    (repo_path / "loader.lgt").write_text(
+        ":- initialization(logtalk_load(library/main)).\n",
+        encoding="utf-8",
+    )
+    (repo_path / "library" / "main.lgt").write_text(
+        ":- object(main).\n"
+        ":- end_object.\n",
+        encoding="utf-8",
+    )
+    (repo_path / "library" / "support.lgt").write_text(
+        ":- object(support).\n"
+        ":- end_object.\n",
+        encoding="utf-8",
+    )
+    _init_git_repo(repo_path)
+
+    biased_candidate_paths = [
+        "coding/codemirror6/logtalk.js",
+        "coding/codemirror6/package.json",
+        "coding/latex/listings/lstlang0.sty",
+        "scripts/docker/portable/Dockerfile",
+        "scripts/docker/portable/publish.sh",
+        "package.json",
+    ]
+    monkeypatch.setattr(
+        probe_module,
+        "_seeded_repo_profile_candidate_paths",
+        lambda **kwargs: list(biased_candidate_paths),
+    )
+    monkeypatch.setattr(
+        probe_module,
+        "_repo_profile_candidate_paths",
+        lambda **kwargs: list(biased_candidate_paths),
+    )
+
+    seed_plan = _derive_operational_seed_plan_without_diagnostics(
+        repo_path=repo_path,
+        focus_paths=["."],
+        max_files=32,
+    )
+
+    assert seed_plan["operational_ecosystems"][0] == "logtalk"
+    assert "loader.lgt" in seed_plan["entrypoint_files"]
+    assert "library" in seed_plan["support_roots"]
+
+
 def test_operational_seed_plan_without_diagnostics_uses_chapel_mason_profile(
     tmp_path: Path,
 ) -> None:
@@ -201,6 +419,60 @@ def test_operational_seed_plan_without_diagnostics_detects_manifestless_chapel_r
     assert "main.chpl" in seed_plan["entrypoint_files"]
     assert "src" in seed_plan["support_roots"]
     assert "src/Utils.chpl" in seed_plan["candidate_file_paths"]
+
+
+def test_operational_seed_plan_without_diagnostics_uses_concrete_focus_files_without_repo_profile_scans(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo_path = tmp_path / "chapel-concrete-focus-repo"
+    (repo_path / "src").mkdir(parents=True)
+    (repo_path / "Mason.toml").write_text(
+        "[brick]\nname = \"Crypto\"\ntype = \"library\"\n",
+        encoding="utf-8",
+    )
+    (repo_path / "src" / "Crypto.chpl").write_text(
+        "module Crypto {\n"
+        "use Utils;\n"
+        "proc run() {\n"
+        "  return helper();\n"
+        "}\n"
+        "}\n",
+        encoding="utf-8",
+    )
+    (repo_path / "src" / "Utils.chpl").write_text(
+        "module Utils {\nproc helper() { return 1; }\n}\n",
+        encoding="utf-8",
+    )
+
+    def _unexpected_seeded_repo_profile_candidate_paths(*args, **kwargs):  # type: ignore[no-untyped-def]
+        raise AssertionError("concrete file focus should bypass seeded repo-profile candidate scans")
+
+    def _unexpected_repo_profile_candidate_paths(*args, **kwargs):  # type: ignore[no-untyped-def]
+        raise AssertionError("concrete file focus should bypass fallback repo-profile candidate scans")
+
+    monkeypatch.setattr(
+        probe_module,
+        "_seeded_repo_profile_candidate_paths",
+        _unexpected_seeded_repo_profile_candidate_paths,
+    )
+    monkeypatch.setattr(
+        probe_module,
+        "_repo_profile_candidate_paths",
+        _unexpected_repo_profile_candidate_paths,
+    )
+
+    seed_plan = _derive_operational_seed_plan_without_diagnostics(
+        repo_path=repo_path,
+        focus_paths=["src/Crypto.chpl"],
+        max_files=128,
+    )
+
+    assert seed_plan["detected_ecosystems"] == ["chapel"]
+    assert seed_plan["operational_ecosystems"] == ["chapel"]
+    assert seed_plan["entrypoint_files"] == ["src/Crypto.chpl"]
+    assert "src" in seed_plan["support_roots"]
+    assert "src/Crypto.chpl" in seed_plan["candidate_file_paths"]
 
 
 def test_operational_seed_plan_without_diagnostics_uses_odin_ols_profile(
@@ -327,6 +599,42 @@ def test_operational_seed_plan_without_diagnostics_detects_cue_module_repo(
     assert "main.cue" in seed_plan["entrypoint_files"]
     assert "pkg/schema" in seed_plan["support_roots"]
     assert "pkg/schema/schema.cue" in seed_plan["candidate_file_paths"]
+
+
+def test_operational_seed_plan_without_diagnostics_detects_cue_tutorial_repo(
+    tmp_path: Path,
+) -> None:
+    repo_path = tmp_path / "cue-by-example-profile-repo"
+    services_root = repo_path / "003_kubernetes_tutorial" / "manual" / "services"
+    (services_root / "frontend" / "bartender").mkdir(parents=True)
+    (services_root / "infra" / "tasks").mkdir(parents=True)
+    (services_root / "cloud.cue").write_text(
+        'package services\n\ncloud: "aws"\n',
+        encoding="utf-8",
+    )
+    (services_root / "frontend" / "bartender" / "kube.cue").write_text(
+        "package bartender\n\nservice: {\n  name: \"bartender\"\n}\n",
+        encoding="utf-8",
+    )
+    (services_root / "infra" / "tasks" / "service.cue").write_text(
+        "package tasks\n\ntask: {\n  image: \"busybox\"\n}\n",
+        encoding="utf-8",
+    )
+
+    seed_plan = _derive_operational_seed_plan_without_diagnostics(
+        repo_path=repo_path,
+        focus_paths=["003_kubernetes_tutorial/manual/services"],
+        max_files=128,
+    )
+
+    assert seed_plan["detected_ecosystems"] == ["cue"]
+    assert seed_plan["operational_ecosystems"] == ["cue"]
+    assert "003_kubernetes_tutorial/manual/services/cloud.cue" in seed_plan["entrypoint_files"]
+    assert (
+        "003_kubernetes_tutorial/manual/services/frontend/bartender/kube.cue"
+        in seed_plan["candidate_file_paths"]
+    )
+    assert "003_kubernetes_tutorial/manual/services" in seed_plan["support_roots"]
 
 
 def test_operational_seed_plan_without_diagnostics_uses_haxe_hxml_profile(
@@ -770,5 +1078,3 @@ def test_operational_seed_plan_without_diagnostics_uses_starlark_bazel_profile(
     assert "rules/demo.bzl" in seed_plan["candidate_file_paths"]
     assert "rules/helper.bzl" in seed_plan["candidate_file_paths"]
     assert "tests/demo_test.bzl" not in seed_plan["entrypoint_files"]
-
-

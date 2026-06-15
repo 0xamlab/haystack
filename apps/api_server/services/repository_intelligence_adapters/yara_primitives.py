@@ -88,6 +88,8 @@ def _ordered_names(*values: str) -> tuple[str, ...]:
 
 
 def strip_comments(text: str) -> str:
+    if "//" not in text and "/*" not in text:
+        return text
     characters = list(text)
     index = 0
     in_string: str | None = None
@@ -133,10 +135,7 @@ def has_yara_path_hints(path: Path | PurePosixPath) -> bool:
     return PurePosixPath(path).suffix.lower() in _KNOWN_SUFFIXES
 
 
-def is_probable_yara_source(*, path: Path | PurePosixPath, text: str) -> bool:
-    if not has_yara_path_hints(path):
-        return False
-    stripped_text = strip_comments(text)
+def _is_probable_yara_source_from_stripped_text(stripped_text: str) -> bool:
     if not stripped_text.strip():
         return False
     return bool(
@@ -146,13 +145,18 @@ def is_probable_yara_source(*, path: Path | PurePosixPath, text: str) -> bool:
     )
 
 
+def is_probable_yara_source(*, path: Path | PurePosixPath, text: str) -> bool:
+    if not has_yara_path_hints(path):
+        return False
+    return _is_probable_yara_source_from_stripped_text(strip_comments(text))
+
+
 def module_name_from_path(file_path: str) -> str:
     path = PurePosixPath(file_path)
     return str(path.with_suffix("")) if path.suffix else path.name
 
 
-def parse_import_modules(text: str) -> tuple[tuple[str, int], ...]:
-    stripped_text = strip_comments(text)
+def _parse_import_modules_from_stripped_text(stripped_text: str) -> tuple[tuple[str, int], ...]:
     return tuple(
         (
             str(match.group("module") or "").strip(),
@@ -163,8 +167,11 @@ def parse_import_modules(text: str) -> tuple[tuple[str, int], ...]:
     )
 
 
-def parse_include_statements(text: str) -> tuple[tuple[str, int], ...]:
-    stripped_text = strip_comments(text)
+def parse_import_modules(text: str) -> tuple[tuple[str, int], ...]:
+    return _parse_import_modules_from_stripped_text(strip_comments(text))
+
+
+def _parse_include_statements_from_stripped_text(stripped_text: str) -> tuple[tuple[str, int], ...]:
     return tuple(
         (
             str(match.group("path") or "").strip(),
@@ -175,8 +182,11 @@ def parse_include_statements(text: str) -> tuple[tuple[str, int], ...]:
     )
 
 
-def iter_rule_entries(text: str) -> tuple[tuple[str, int], ...]:
-    stripped_text = strip_comments(text)
+def parse_include_statements(text: str) -> tuple[tuple[str, int], ...]:
+    return _parse_include_statements_from_stripped_text(strip_comments(text))
+
+
+def _iter_rule_entries_from_stripped_text(stripped_text: str) -> tuple[tuple[str, int], ...]:
     seen_names: set[str] = set()
     entries: list[tuple[str, int]] = []
     for match in _RULE_DECL_RE.finditer(stripped_text):
@@ -188,9 +198,16 @@ def iter_rule_entries(text: str) -> tuple[tuple[str, int], ...]:
     return tuple(entries)
 
 
-def condition_text(rule_text: str) -> str:
-    stripped_text = strip_comments(rule_text)
+def iter_rule_entries(text: str) -> tuple[tuple[str, int], ...]:
+    return _iter_rule_entries_from_stripped_text(strip_comments(text))
+
+
+def _condition_text_from_stripped_text(stripped_text: str) -> str:
     match = _CONDITION_RE.search(stripped_text)
     if match is None:
         return ""
     return stripped_text[match.end() :]
+
+
+def condition_text(rule_text: str) -> str:
+    return _condition_text_from_stripped_text(strip_comments(rule_text))

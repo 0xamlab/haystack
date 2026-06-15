@@ -49,13 +49,22 @@ def has_cuda_path_hints(path: Path | PurePosixPath) -> bool:
 
 
 def is_probable_cuda_source(*, path: Path | PurePosixPath, text: str) -> bool:
+    return is_probable_cuda_source_with_optional_stripped_text(path=path, text=text)
+
+
+def is_probable_cuda_source_with_optional_stripped_text(
+    *,
+    path: Path | PurePosixPath,
+    text: str,
+    stripped_text: str | None = None,
+) -> bool:
     normalized_path = PurePosixPath(path)
     if not has_cuda_path_hints(normalized_path) or not text or _looks_binaryish(text):
         return False
-    stripped_text = strip_comments(text)
-    if not stripped_text.strip():
+    sanitized_text = stripped_text if stripped_text is not None else strip_comments(text)
+    if not sanitized_text.strip():
         return False
-    return normalized_path.suffix.lower() == ".cu" or bool(_CUDA_MARKER_RE.search(stripped_text))
+    return normalized_path.suffix.lower() == ".cu" or bool(_CUDA_MARKER_RE.search(sanitized_text))
 
 
 def module_name_from_path(file_path: str) -> str:
@@ -67,6 +76,7 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
 ) -> set[str]:
     del stable_identifier
     normalized_path = _normalize_repository_relative_path(file_path)
@@ -86,12 +96,18 @@ def module_aliases_for_path(
             normalize_repository_relative_path=_normalize_repository_relative_path,
         )
     )
-    try:
-        text = (root_path / normalized_path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        text = ""
-    if text and is_probable_cuda_source(path=Path(normalized_path), text=text):
-        sanitized_text = c_family_adapter.strip_attributes(strip_comments(text))
+    if text is None:
+        try:
+            text = (root_path / normalized_path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            text = ""
+    stripped_text = strip_comments(text) if text else ""
+    if text and is_probable_cuda_source_with_optional_stripped_text(
+        path=Path(normalized_path),
+        text=text,
+        stripped_text=stripped_text,
+    ):
+        sanitized_text = c_family_adapter.strip_attributes(stripped_text)
         for regex in (c_family_adapter.TYPE_DECL_RE, c_family_adapter.FUNCTION_DECL_RE):
             for match in regex.finditer(sanitized_text):
                 symbol_name = normalize_symbol_name(str(match.group("name") or ""))

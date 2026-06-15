@@ -144,11 +144,16 @@ def has_lean_path_hints(path: Path | PurePosixPath) -> bool:
     )
 
 
-def is_probable_lean_source(*, path: Path | PurePosixPath, text: str) -> bool:
+def is_probable_lean_source(
+    *,
+    path: Path | PurePosixPath,
+    text: str,
+    stripped_text: str | None = None,
+) -> bool:
     normalized_path = PurePosixPath(path)
     if not has_lean_path_hints(normalized_path):
         return False
-    stripped_text = strip_comments(text)
+    stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
     if not stripped_text.strip():
         return False
     if normalized_path.name.lower() in LEAN_CONFIG_BASENAMES:
@@ -185,8 +190,12 @@ def module_name_from_path(file_path: str) -> str:
     return ".".join(_normalize_name(part) for part in stem_parts if part)
 
 
-def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
-    stripped_text = strip_comments(text)
+def iter_symbol_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, str, int], ...]:
+    stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
     entries: list[tuple[str, str, int]] = []
     seen_names: set[str] = set()
     for match in _DECL_RE.finditer(stripped_text):
@@ -204,8 +213,12 @@ def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
     return tuple(entries)
 
 
-def parse_import_modules(text: str) -> tuple[tuple[str, int], ...]:
-    stripped_text = strip_comments(text)
+def parse_import_modules(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, int], ...]:
+    stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
     imports: list[tuple[str, int]] = []
     seen: set[tuple[str, int]] = set()
     for match in _IMPORT_RE.finditer(stripped_text):
@@ -223,8 +236,12 @@ def parse_import_modules(text: str) -> tuple[tuple[str, int], ...]:
     return tuple(imports)
 
 
-def parse_package_names(text: str) -> tuple[str, ...]:
-    stripped_text = strip_comments(text)
+def parse_package_names(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[str, ...]:
+    stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
     names: list[str] = []
     seen: set[str] = set()
     for regex in (_PACKAGE_RE, _LEAN_LIB_RE, _TOML_NAME_RE):

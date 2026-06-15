@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from bisect import bisect_right
+from functools import lru_cache
 import re
 from collections.abc import Callable, Sequence
 from pathlib import Path, PurePosixPath
@@ -26,6 +28,10 @@ _OBJECTIVE_C_MARKER_RE = re.compile(
 )
 _METHOD_SIGNATURE_START_RE = re.compile(r"^\s*[+-]\s*\([^)]*\)")
 _METHOD_SIGNATURE_CAPTURE_RE = re.compile(r"^[+-]\s*\([^)]*\)\s*(?P<body>.+)$")
+_MESSAGE_SEND_LEXICAL_HINT_RE = re.compile(
+    r"\[\s*[A-Za-z_][A-Za-z0-9_]*\s+[A-Za-z_]",
+    re.DOTALL,
+)
 _TYPE_DECL_RE = re.compile(
     r"^\s*@(?P<kind>interface|implementation|protocol)\s+"
     r"(?P<name>[A-Za-z_][A-Za-z0-9_]*)"
@@ -42,6 +48,8 @@ _STRING_LITERAL_RE = re.compile(
     re.MULTILINE,
 )
 _RESERVED_REFERENCE_NAMES = frozenset({"self", "super", "nil", "yes", "no", "null"})
+_SANITIZED_TEXT_CACHE_LIMIT = 128
+_SANITIZED_TEXT_CACHE: dict[str, str] = {}
 
 
 def _replace_with_spaces(value: str) -> str:
@@ -106,6 +114,7 @@ def _normalize_selector_from_body(raw_body: str) -> str:
     return normalize_identifier(token_match.group(1))
 
 
+@lru_cache(maxsize=1024)
 def strip_comments(text: str) -> str:
     return re.sub(
         r"//[^\n]*|/\*.*?\*/",
@@ -115,6 +124,7 @@ def strip_comments(text: str) -> str:
     )
 
 
+@lru_cache(maxsize=1024)
 def strip_string_literals(text: str) -> str:
     return _STRING_LITERAL_RE.sub(
         lambda match: _replace_with_spaces(match.group(0)),
@@ -122,11 +132,61 @@ def strip_string_literals(text: str) -> str:
     )
 
 
+def clear_sanitize_text_cache() -> None:
+    _SANITIZED_TEXT_CACHE.clear()
+
+
+@lru_cache(maxsize=1024)
+def _line_start_offsets(text: str) -> tuple[int, ...]:
+    offsets = [0]
+    start = 0
+    while True:
+        newline_index = text.find("\n", start)
+        if newline_index < 0:
+            break
+        offsets.append(newline_index + 1)
+        start = newline_index + 1
+    return tuple(offsets)
+
+
+def _line_number(text: str, offset: int) -> int:
+    bounded_offset = max(0, min(offset, len(text)))
+    return bisect_right(_line_start_offsets(text), bounded_offset)
+
+
 def sanitize_text(text: str) -> str:
-    return strip_string_literals(strip_comments(text))
+    cached = _SANITIZED_TEXT_CACHE.get(text)
+    if cached is not None:
+        return cached
+    sanitized_text = strip_string_literals(strip_comments(text))
+    if len(_SANITIZED_TEXT_CACHE) >= _SANITIZED_TEXT_CACHE_LIMIT:
+        oldest_key = next(iter(_SANITIZED_TEXT_CACHE))
+        _SANITIZED_TEXT_CACHE.pop(oldest_key, None)
+    _SANITIZED_TEXT_CACHE[text] = sanitized_text
+    return sanitized_text
+
+
+def _has_objective_c_lexical_hints(text: str) -> bool:
+    if not text:
+        return False
+    if "@" in text:
+        return True
+    if "#" in text and "import" in text.lower():
+        return True
+    if "FOUNDATION_EXPORT" in text or "UIKIT_EXTERN" in text:
+        return True
+    if "NS_ASSUME_NONNULL_" in text:
+        return True
+    if "+ (" in text or "- (" in text or "+(" in text or "-(" in text:
+        return True
+    if "[" in text and "]" in text:
+        return bool(_MESSAGE_SEND_LEXICAL_HINT_RE.search(text))
+    return False
 
 
 def has_objective_c_markers(text: str) -> bool:
+    if not _has_objective_c_lexical_hints(text):
+        return False
     return bool(_OBJECTIVE_C_MARKER_RE.search(sanitize_text(text)))
 
 
@@ -137,6 +197,8 @@ def is_probable_objective_c_source(*, path: PurePosixPath | Path | str, text: st
         return False
     if suffix == ".mm":
         return True
+    if not _has_objective_c_lexical_hints(text):
+        return False
     sanitized_text = sanitize_text(text)
     if _OBJECTIVE_C_MARKER_RE.search(sanitized_text):
         return True
@@ -300,7 +362,7 @@ def iter_import_targets(text: str) -> tuple[tuple[int, str], ...]:
         normalized_target = _normalize_import_target(str(match.group("target") or ""))
         if not normalized_target:
             continue
-        line_no = sanitized_text.count("\n", 0, match.start()) + 1
+        line_no = _line_number(text, match.start())
         target_key = (line_no, normalized_target)
         if target_key in seen_targets:
             continue
@@ -323,7 +385,7 @@ def iter_message_sends(text: str) -> tuple[tuple[int, str, str], ...]:
         ):
             continue
         target_name = selector_name or receiver
-        line_no = sanitized_text.count("\n", 0, match.start()) + 1
+        line_no = _line_number(text, match.start())
         reference_key = (line_no, receiver, target_name)
         if reference_key in seen_references:
             continue
@@ -345,7 +407,7 @@ def iter_type_reference_tokens(text: str) -> tuple[tuple[int, str], ...]:
             or _is_macro_like_name(raw_token)
         ):
             continue
-        line_no = sanitized_text.count("\n", 0, match.start()) + 1
+        line_no = _line_number(text, match.start())
         token_key = (line_no, normalized_token)
         if token_key in seen_tokens:
             continue

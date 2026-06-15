@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+from collections.abc import Iterator
 from pathlib import Path, PurePosixPath
 
 from benchmarks.repository_intelligence_real_repo_probe_docs_support import (
@@ -37,6 +39,41 @@ _is_non_operational_profile_path_for_ecosystems = _DeferredProbeAttr(
     "_is_non_operational_profile_path_for_ecosystems"
 )
 _probe_language_for_path = _DeferredProbeAttr("_probe_language_for_path")
+
+
+def _iter_repository_relative_files(
+    *,
+    repo_path: Path,
+    root_path: Path | None = None,
+    relative_prefix: str = "",
+) -> Iterator[str]:
+    walk_root = repo_path if root_path is None else root_path
+    if not walk_root.is_dir():
+        return
+    normalized_prefix = repository_service._normalize_repository_relative_path(relative_prefix)
+    prefix_parts = () if not normalized_prefix else PurePosixPath(normalized_prefix).parts
+    for current_root, dir_names, file_names in os.walk(walk_root, topdown=True, followlinks=False):
+        current_root_path = Path(current_root)
+        dir_names[:] = sorted(
+            dir_name
+            for dir_name in dir_names
+            if not (current_root_path / dir_name).is_symlink()
+        )
+        file_names.sort()
+        try:
+            relative_dir = current_root_path.relative_to(walk_root)
+        except ValueError:
+            continue
+        relative_dir_parts = tuple(PurePosixPath(*relative_dir.parts).parts)
+        for file_name in file_names:
+            candidate_file = current_root_path / file_name
+            if candidate_file.is_symlink() or not candidate_file.is_file():
+                continue
+            relative_path = repository_service._normalize_repository_relative_path(
+                str(PurePosixPath(*prefix_parts, *relative_dir_parts, file_name))
+            )
+            if relative_path:
+                yield relative_path
 
 
 def _robotframework_profile_hints_from_candidates(
@@ -317,16 +354,13 @@ def _supplement_candidate_file_paths_for_suffix_roots(
         if not normalized_root:
             continue
         root_path = repo_path / normalized_root
-        if not root_path.is_dir():
-            continue
-        for candidate_file in sorted(root_path.rglob("*")):
+        for relative_path in _iter_repository_relative_files(
+            repo_path=repo_path,
+            root_path=root_path,
+            relative_prefix=normalized_root,
+        ):
             if extra_files >= max_extra_files:
                 return merged_paths
-            if not candidate_file.is_file() or candidate_file.is_symlink():
-                continue
-            relative_path = repository_service._normalize_repository_relative_path(
-                str(candidate_file.relative_to(repo_path))
-            )
             if (
                 not relative_path
                 or relative_path in seen_paths
@@ -338,6 +372,41 @@ def _supplement_candidate_file_paths_for_suffix_roots(
             merged_paths.append(relative_path)
             seen_paths.add(relative_path)
             extra_files += 1
+    return merged_paths
+
+
+def _supplement_candidate_file_paths_for_surface_dir_parts(
+    *,
+    repo_path: Path,
+    candidate_file_paths: list[str],
+    suffixes: set[str],
+    directory_parts: set[str],
+    max_extra_files: int,
+) -> list[str]:
+    normalized_suffixes = {suffix.lower() for suffix in suffixes if suffix}
+    normalized_directory_parts = {part.lower() for part in directory_parts if part}
+    if not normalized_suffixes or not normalized_directory_parts or max_extra_files <= 0:
+        return list(dict.fromkeys(candidate_file_paths))
+    merged_paths = list(dict.fromkeys(candidate_file_paths))
+    seen_paths = set(merged_paths)
+    extra_files = 0
+    for relative_path in _iter_repository_relative_files(repo_path=repo_path):
+        if extra_files >= max_extra_files:
+            break
+        if not relative_path or relative_path in seen_paths:
+            continue
+        pure_path = PurePosixPath(relative_path)
+        if pure_path.suffix.lower() not in normalized_suffixes:
+            continue
+        if repository_service._is_test_path(relative_path) or _is_non_operational_profile_path(
+            relative_path
+        ):
+            continue
+        if not ({part.lower() for part in pure_path.parts[:-1]} & normalized_directory_parts):
+            continue
+        merged_paths.append(relative_path)
+        seen_paths.add(relative_path)
+        extra_files += 1
     return merged_paths
 
 

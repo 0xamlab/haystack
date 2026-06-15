@@ -4,6 +4,37 @@ import json
 import re
 from pathlib import Path, PurePosixPath
 
+
+def _tracked_profile_paths_under_support_roots(
+    *,
+    repo_path: Path,
+    support_roots: set[str],
+    suffixes: tuple[str, ...],
+) -> list[str] | None:
+    from benchmarks import repository_intelligence_real_repo_probe_collection_support as collection_support
+
+    tracked_relative_paths = collection_support._git_repo_relative_files(repo_path)
+    if tracked_relative_paths is None:
+        tracked_relative_paths = collection_support._materialized_repository_relative_files(repo_path)
+    if tracked_relative_paths is None:
+        return None
+    normalized_suffixes = tuple(str(suffix).lower() for suffix in suffixes if suffix)
+    support_root_prefixes = tuple(
+        f"{support_root}/"
+        for support_root in sorted(support_roots)
+        if support_root and support_root != "."
+    )
+    return [
+        relative_path
+        for relative_path in tracked_relative_paths
+        if PurePosixPath(relative_path).suffix.lower() in normalized_suffixes
+        and (
+            PurePosixPath(relative_path).parent.as_posix() in support_roots
+            or any(relative_path.startswith(prefix) for prefix in support_root_prefixes)
+        )
+    ]
+
+
 def _agda_profile_hints(
     repo_path: Path,
     manifest_path: str,
@@ -11,8 +42,10 @@ def _agda_profile_hints(
     from benchmarks import repository_intelligence_real_repo_probe as probe_module
 
     repository_service = probe_module.repository_service
-    _is_operational_profile_entrypoint_candidate = probe_module._is_operational_profile_entrypoint_candidate
-    _probe_language_for_path = probe_module._probe_language_for_path
+    agda_adapter = repository_service.agda_adapter
+    _is_operational_profile_entrypoint_candidate = (
+        probe_module._is_operational_profile_entrypoint_candidate
+    )
 
     normalized_path = repository_service._normalize_repository_relative_path(manifest_path)
     if not normalized_path:
@@ -48,7 +81,7 @@ def _agda_profile_hints(
         )
         if parent_dir:
             support_roots.add(parent_dir)
-        if _probe_language_for_path(normalized_candidate, repo_path=repo_path) == "agda":
+        if agda_adapter.has_agda_path_hints(PurePosixPath(normalized_candidate)):
             fallback_paths.add(normalized_candidate)
 
     for match in re.finditer(r"^\s*include\s*:\s*(?P<body>.+)$", manifest_text, re.MULTILINE):
@@ -79,7 +112,7 @@ def _agda_profile_hints(
                 relative_path = repository_service._normalize_repository_relative_path(
                     str(candidate.relative_to(repo_path))
                 )
-                if _probe_language_for_path(relative_path, repo_path=repo_path) != "agda":
+                if not agda_adapter.has_agda_path_hints(PurePosixPath(relative_path)):
                     continue
                 fallback_paths.add(relative_path)
                 if PurePosixPath(relative_path).name in preferred_basenames and (
@@ -96,11 +129,16 @@ def _coq_profile_hints(
     manifest_path: str,
 ) -> tuple[set[str], set[str], set[str]]:
     from benchmarks import repository_intelligence_real_repo_probe as probe_module
+    from benchmarks import (
+        repository_intelligence_real_repo_probe_collection_support as collection_support,
+    )
+    from benchmarks import (
+        repository_intelligence_real_repo_probe_profile_path_classification_support as classification_support,
+    )
 
     repository_service = probe_module.repository_service
     _is_non_operational_profile_path = probe_module._is_non_operational_profile_path
     _is_operational_profile_entrypoint_candidate = probe_module._is_operational_profile_entrypoint_candidate
-    _probe_language_for_path = probe_module._probe_language_for_path
 
     normalized_path = repository_service._normalize_repository_relative_path(manifest_path)
     if not normalized_path:
@@ -114,13 +152,17 @@ def _coq_profile_hints(
     support_roots: set[str] = set()
     entrypoint_paths: set[str] = set()
     fallback_paths: set[str] = set()
+    declared_source_files: set[str] = set()
     imported_files: set[str] = set()
+    coq_text_by_path: dict[str, str] = {}
+    coq_stripped_text_by_path: dict[str, str] = {}
     try:
         manifest_text = manifest_file.read_text(encoding="utf-8", errors="replace")
     except OSError:
         manifest_text = ""
+    stripped_manifest_text = repository_service.coq_adapter.strip_comments(manifest_text)
 
-    def _record_existing_path(raw_value: str) -> None:
+    def _record_existing_path(raw_value: str, *, treat_manifest_source: bool = False) -> None:
         normalized_candidate = repository_service._normalize_repository_relative_path(
             f"{root_prefix}{raw_value}"
         )
@@ -137,63 +179,110 @@ def _coq_profile_hints(
         )
         if parent_dir:
             support_roots.add(parent_dir)
-        if _probe_language_for_path(normalized_candidate, repo_path=repo_path) == "coq":
-            fallback_paths.add(normalized_candidate)
-            if _is_operational_profile_entrypoint_candidate(
+        if treat_manifest_source and PurePosixPath(normalized_candidate).suffix.lower() == ".v":
+            if classification_support._repo_path_is_regular_file(
+                repo_path,
                 normalized_candidate,
-                repo_path=repo_path,
-            ):
-                entrypoint_paths.add(normalized_candidate)
+            ) and not classification_support._repo_path_is_symlink(repo_path, normalized_candidate):
+                fallback_paths.add(normalized_candidate)
+                declared_source_files.add(normalized_candidate)
+            return
+        if classification_support._is_coq_source_path(repo_path, normalized_candidate):
+            fallback_paths.add(normalized_candidate)
 
-    for relative_root in repository_service.coq_adapter.parse_project_roots(manifest_text):
+    for relative_root in repository_service.coq_adapter.parse_project_roots(
+        manifest_text,
+        stripped_text=stripped_manifest_text,
+    ):
         _record_existing_path(relative_root)
-    for relative_source in repository_service.coq_adapter.parse_project_sources(manifest_text):
-        _record_existing_path(relative_source)
+    for relative_source in repository_service.coq_adapter.parse_project_sources(
+        manifest_text,
+        stripped_text=stripped_manifest_text,
+    ):
+        _record_existing_path(relative_source, treat_manifest_source=True)
     for relative_root in ("theories", "src", "lib", "plugins", "examples", "test", "tests"):
         _record_existing_path(relative_root)
 
+    tracked_relative_paths = collection_support._git_repo_relative_files(repo_path)
+    if tracked_relative_paths is None:
+        tracked_relative_paths = collection_support._materialized_repository_relative_files(repo_path)
+
+    def _iter_support_root_coq_paths() -> list[str]:
+        if tracked_relative_paths is not None:
+            support_root_prefixes = tuple(
+                f"{support_root}/"
+                for support_root in sorted(support_roots)
+                if support_root and support_root != "."
+            )
+            return [
+                relative_path
+                for relative_path in tracked_relative_paths
+                if PurePosixPath(relative_path).suffix.lower() == ".v"
+                and (
+                    PurePosixPath(relative_path).parent.as_posix() in support_roots
+                    or any(relative_path.startswith(prefix) for prefix in support_root_prefixes)
+                )
+            ]
+        candidate_paths: list[str] = []
+        for support_root in sorted(support_roots):
+            search_root = repo_path / support_root
+            if not search_root.is_dir():
+                continue
+            for candidate in sorted(search_root.rglob("*.v")):
+                if candidate.is_symlink() or not candidate.is_file():
+                    continue
+                relative_path = repository_service._normalize_repository_relative_path(
+                    str(candidate.relative_to(repo_path))
+                )
+                if relative_path:
+                    candidate_paths.append(relative_path)
+        return candidate_paths
+
     coq_files: list[str] = []
     module_index: dict[str, str] = {}
-    for support_root in sorted(support_roots):
-        search_root = repo_path / support_root
-        if not search_root.is_dir():
+    for relative_path in _iter_support_root_coq_paths():
+        if not classification_support._repo_path_is_regular_file(
+            repo_path,
+            relative_path,
+        ) or classification_support._repo_path_is_symlink(repo_path, relative_path):
             continue
-        for candidate in sorted(search_root.rglob("*.v")):
-            if candidate.is_symlink() or not candidate.is_file():
-                continue
-            relative_path = repository_service._normalize_repository_relative_path(
-                str(candidate.relative_to(repo_path))
-            )
-            if (
-                not relative_path
-                or repository_service._is_test_path(relative_path)
-                or _is_non_operational_profile_path(relative_path)
-            ):
-                continue
-            try:
-                text = candidate.read_text(encoding="utf-8", errors="replace")
-            except OSError:
-                continue
-            if not repository_service.coq_adapter.is_probable_coq_source(
-                path=Path(relative_path),
-                text=text,
-            ):
-                continue
-            coq_files.append(relative_path)
-            fallback_paths.add(relative_path)
-            for alias in repository_service.coq_adapter.module_aliases_for_path(
-                root_path=repo_path,
-                file_path=relative_path,
-                stable_identifier=repository_service._stable_identifier,
-            ):
-                module_index.setdefault(alias, relative_path)
-    for relative_path in coq_files:
+        if (
+            repository_service._is_test_path(relative_path)
+            or _is_non_operational_profile_path(relative_path)
+        ):
+            continue
         try:
             text = (repo_path / relative_path).read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
+        stripped_text = repository_service.coq_adapter.strip_comments(text)
+        if not repository_service.coq_adapter.is_probable_coq_source(
+            path=Path(relative_path),
+            text=text,
+            stripped_text=stripped_text,
+        ):
+            continue
+        coq_files.append(relative_path)
+        fallback_paths.add(relative_path)
+        coq_text_by_path[relative_path] = text
+        coq_stripped_text_by_path[relative_path] = stripped_text
+        for alias in repository_service.coq_adapter.module_aliases_for_path(
+            root_path=repo_path,
+            file_path=relative_path,
+            stable_identifier=repository_service._stable_identifier,
+            text=text,
+            stripped_text=stripped_text,
+            include_symbol_aliases=False,
+        ):
+            module_index.setdefault(alias, relative_path)
+    for relative_path in coq_files:
+        text = coq_text_by_path.get(relative_path)
+        stripped_text = coq_stripped_text_by_path.get(relative_path)
+        if text is None or stripped_text is None:
+            continue
         for import_target, _line_number in repository_service.coq_adapter.parse_require_modules(
-            text
+            text,
+            stripped_text=stripped_text,
         ):
             target_file = repository_service.coq_adapter.resolve_require_target(
                 import_target,
@@ -209,15 +298,17 @@ def _coq_profile_hints(
             if imported_parent:
                 support_roots.add(imported_parent)
     if not entrypoint_paths:
+        explicit_entrypoints = sorted(path for path in declared_source_files if path not in imported_files)
+        if not explicit_entrypoints:
+            explicit_entrypoints = sorted(declared_source_files)
+        if explicit_entrypoints:
+            entrypoint_paths.update(explicit_entrypoints[:8])
+    if not entrypoint_paths:
         preferred_basenames = {"Main.v", "Prelude.v", "Basics.v"}
         for candidate_path in sorted(fallback_paths):
             basename = PurePosixPath(candidate_path).name
             if basename in preferred_basenames or candidate_path not in imported_files:
-                if _is_operational_profile_entrypoint_candidate(
-                    candidate_path,
-                    repo_path=repo_path,
-                ):
-                    entrypoint_paths.add(candidate_path)
+                entrypoint_paths.add(candidate_path)
         if not entrypoint_paths and fallback_paths:
             entrypoint_paths.update(sorted(fallback_paths)[:8])
     return entrypoint_paths, support_roots, config_paths
@@ -315,44 +406,59 @@ def _lean_profile_hints(
         _record_existing_path(relative_root)
 
     lean_files: list[str] = []
+    lean_text_by_path: dict[str, str] = {}
     module_index: dict[str, str] = {}
-    for support_root in sorted(support_roots):
-        search_root = repo_path / support_root
-        if not search_root.is_dir():
+    candidate_lean_paths = _tracked_profile_paths_under_support_roots(
+        repo_path=repo_path,
+        support_roots=support_roots,
+        suffixes=(".lean",),
+    )
+    if candidate_lean_paths is None:
+        candidate_lean_paths = []
+        for support_root in sorted(support_roots):
+            search_root = repo_path / support_root
+            if not search_root.is_dir():
+                continue
+            for candidate in sorted(search_root.rglob("*.lean")):
+                if candidate.is_symlink() or not candidate.is_file():
+                    continue
+                relative_path = repository_service._normalize_repository_relative_path(
+                    str(candidate.relative_to(repo_path))
+                )
+                if relative_path:
+                    candidate_lean_paths.append(relative_path)
+    for relative_path in candidate_lean_paths:
+        if (
+            not relative_path
+            or repository_service._is_test_path(relative_path)
+            or _is_non_operational_profile_path(relative_path)
+        ):
             continue
-        for candidate in sorted(search_root.rglob("*.lean")):
-            if candidate.is_symlink() or not candidate.is_file():
-                continue
-            relative_path = repository_service._normalize_repository_relative_path(
-                str(candidate.relative_to(repo_path))
-            )
-            if (
-                not relative_path
-                or repository_service._is_test_path(relative_path)
-                or _is_non_operational_profile_path(relative_path)
-            ):
-                continue
-            try:
-                text = candidate.read_text(encoding="utf-8", errors="replace")
-            except OSError:
-                continue
-            if not repository_service.lean_adapter.is_probable_lean_source(
-                path=Path(relative_path),
-                text=text,
-            ):
-                continue
-            lean_files.append(relative_path)
-            fallback_paths.add(relative_path)
-            for alias in repository_service.lean_adapter.module_aliases_for_path(
-                root_path=repo_path,
-                file_path=relative_path,
-                stable_identifier=repository_service._stable_identifier,
-            ):
-                module_index.setdefault(alias, relative_path)
-    for relative_path in lean_files:
+        candidate_file = repo_path / relative_path
+        if candidate_file.is_symlink() or not candidate_file.is_file():
+            continue
         try:
-            text = (repo_path / relative_path).read_text(encoding="utf-8", errors="replace")
+            text = candidate_file.read_text(encoding="utf-8", errors="replace")
         except OSError:
+            continue
+        if not repository_service.lean_adapter.is_probable_lean_source(
+            path=Path(relative_path),
+            text=text,
+        ):
+            continue
+        lean_files.append(relative_path)
+        lean_text_by_path[relative_path] = text
+        fallback_paths.add(relative_path)
+        for alias in repository_service.lean_adapter.module_aliases_for_path(
+            root_path=repo_path,
+            file_path=relative_path,
+            stable_identifier=repository_service._stable_identifier,
+            text=text,
+        ):
+            module_index.setdefault(alias, relative_path)
+    for relative_path in lean_files:
+        text = lean_text_by_path.get(relative_path)
+        if text is None:
             continue
         for import_target, _line_number in repository_service.lean_adapter.parse_import_modules(
             text
@@ -601,6 +707,14 @@ def _v_profile_hints(
     config_paths = {normalized_path}
     support_roots: set[str] = set()
     discovered_paths: set[str] = set()
+    # When the manifest sits at the repository root, its parent normalizes to "" and would
+    # be dropped — but root-level entrypoints (e.g. ``main.v`` beside ``v.mod``) must still
+    # be scanned. Seed the scan roots with "." for that case so the tracked-path lookup
+    # includes the root directory; the reported support_roots are still derived from the
+    # parents of the discovered ``.v`` files below.
+    scan_roots: set[str] = set()
+    if manifest_parent.as_posix() in {"", "."}:
+        scan_roots.add(".")
     for candidate_root in (
         manifest_parent,
         manifest_parent / "src",
@@ -614,26 +728,45 @@ def _v_profile_hints(
         )
         if normalized_root and (repo_path / normalized_root).exists():
             support_roots.add(normalized_root)
-        search_root = repo_path / candidate_root
-        if not search_root.is_dir():
+            scan_roots.add(normalized_root)
+    candidate_v_paths = _tracked_profile_paths_under_support_roots(
+        repo_path=repo_path,
+        support_roots=scan_roots,
+        suffixes=(".v",),
+    )
+    if candidate_v_paths is None:
+        candidate_v_paths = []
+        for candidate_root in (
+            manifest_parent,
+            manifest_parent / "src",
+            manifest_parent / "cmd",
+            manifest_parent / "examples",
+            manifest_parent / "modules",
+            manifest_parent / "vlib",
+        ):
+            search_root = repo_path / candidate_root
+            if not search_root.is_dir():
+                continue
+            for candidate in sorted(search_root.rglob("*.v")):
+                if not candidate.is_file() or candidate.is_symlink():
+                    continue
+                relative_path = repository_service._normalize_repository_relative_path(
+                    str(candidate.relative_to(repo_path))
+                )
+                if relative_path:
+                    candidate_v_paths.append(relative_path)
+    for relative_path in candidate_v_paths:
+        if (
+            not relative_path
+            or _probe_language_for_path(relative_path, repo_path=repo_path) != "v"
+        ):
             continue
-        for candidate in sorted(search_root.rglob("*.v")):
-            if not candidate.is_file() or candidate.is_symlink():
-                continue
-            relative_path = repository_service._normalize_repository_relative_path(
-                str(candidate.relative_to(repo_path))
-            )
-            if (
-                not relative_path
-                or _probe_language_for_path(relative_path, repo_path=repo_path) != "v"
-            ):
-                continue
-            discovered_paths.add(relative_path)
-            support_root = repository_service._normalize_repository_relative_path(
-                str(PurePosixPath(relative_path).parent)
-            )
-            if support_root:
-                support_roots.add(support_root)
+        discovered_paths.add(relative_path)
+        support_root = repository_service._normalize_repository_relative_path(
+            str(PurePosixPath(relative_path).parent)
+        )
+        if support_root:
+            support_roots.add(support_root)
     entrypoint_paths = {
         candidate_path
         for candidate_path in discovered_paths
@@ -656,8 +789,8 @@ def _scheme_profile_hints(
     from benchmarks import repository_intelligence_real_repo_probe as probe_module
 
     repository_service = probe_module.repository_service
+    scheme_adapter = repository_service.scheme_adapter
     _is_non_operational_profile_path = probe_module._is_non_operational_profile_path
-    _probe_language_for_path = probe_module._probe_language_for_path
 
     normalized_path = repository_service._normalize_repository_relative_path(manifest_path)
     if not normalized_path:
@@ -693,7 +826,7 @@ def _scheme_profile_hints(
                 not relative_path
                 or repository_service._is_test_path(relative_path)
                 or _is_non_operational_profile_path(relative_path)
-                or _probe_language_for_path(relative_path, repo_path=repo_path) != "scheme"
+                or not scheme_adapter.has_scheme_path_hints(Path(relative_path))
             ):
                 continue
             entrypoint_paths.add(relative_path)
@@ -712,8 +845,8 @@ def _racket_profile_hints(
     from benchmarks import repository_intelligence_real_repo_probe as probe_module
 
     repository_service = probe_module.repository_service
+    racket_adapter = repository_service.racket_adapter
     _is_non_operational_profile_path = probe_module._is_non_operational_profile_path
-    _probe_language_for_path = probe_module._probe_language_for_path
 
     normalized_path = repository_service._normalize_repository_relative_path(manifest_path)
     if not normalized_path:
@@ -749,7 +882,7 @@ def _racket_profile_hints(
                 or repository_service._is_test_path(relative_path)
                 or _is_non_operational_profile_path(relative_path)
                 or PurePosixPath(relative_path).name.lower() == "info.rkt"
-                or _probe_language_for_path(relative_path, repo_path=repo_path) != "racket"
+                or not racket_adapter.has_racket_path_hints(Path(relative_path))
             ):
                 continue
             entrypoint_paths.add(relative_path)

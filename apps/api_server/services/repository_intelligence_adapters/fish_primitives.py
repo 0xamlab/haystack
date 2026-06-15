@@ -133,14 +133,15 @@ def has_fish_path_hints(path: Path | PurePosixPath) -> bool:
 
 
 def is_probable_fish_source(*, path: Path | PurePosixPath, text: str) -> bool:
-    stripped_text = strip_comments(text)
     if has_fish_path_hints(path):
+        stripped_text = strip_comments(text)
         return bool(stripped_text.strip()) or bool(_SHEBANG_RE.match(text))
     if _SHEBANG_RE.match(text):
         return True
     lowered_parts = {part.lower() for part in PurePosixPath(path).parts[:-1]}
     if not lowered_parts.intersection(_FISH_RUNTIME_DIRECTORIES):
         return False
+    stripped_text = strip_comments(text)
     return bool(_MARKER_RE.search(stripped_text))
 
 

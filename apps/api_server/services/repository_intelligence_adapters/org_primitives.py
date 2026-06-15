@@ -346,12 +346,14 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
 ) -> set[str]:
-    candidate_path = root_path / file_path
-    try:
-        text = candidate_path.read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        text = ""
+    if text is None:
+        candidate_path = root_path / file_path
+        try:
+            text = candidate_path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            text = ""
     aliases = {
         normalize_identifier(file_path),
         normalize_identifier(PurePosixPath(file_path).name),

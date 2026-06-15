@@ -144,6 +144,22 @@ def test_vue_adapter_parse_file_resolves_component_dependencies(tmp_path: Path) 
     )
 
 
+def test_vue_resolve_import_supports_directory_index_components() -> None:
+    module_index = {
+        "src/components/Card/index.vue": "src/components/Card/index.vue",
+    }
+
+    resolved_target = repository_vue_primitives.resolve_import(
+        current_file="src/App.vue",
+        import_target="./components/Card",
+        module_index=module_index,
+        normalize_repository_relative_path=repository_service._normalize_repository_relative_path,
+        resolve_suffix_match=repository_service._resolve_suffix_match,
+    )
+
+    assert resolved_target == "src/components/Card/index.vue"
+
+
 def test_vue_language_detection_supports_single_file_component_suffix() -> None:
     assert repository_service._language_for_path(
         Path("src/App.vue"),

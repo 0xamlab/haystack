@@ -8,12 +8,31 @@ from tests._test_repository_intelligence_public_repo_matrix_helpers import *  # 
 
 
 def test_default_public_repository_cases_include_chapel() -> None:
-    chapel_case = next(
-        case for case in public_repo_matrix.DEFAULT_PUBLIC_REPOSITORY_CASES if case.language == "chapel"
-    )
+    chapel_cases = [
+        case
+        for case in public_repo_matrix.DEFAULT_PUBLIC_REPOSITORY_CASES
+        if case.language == "chapel"
+    ]
 
-    assert chapel_case.repository_url == "https://github.com/chapel-lang/Crypto.git"
-    assert chapel_case.expected_primary_ecosystem == "chapel"
+    assert [case.repository_url for case in chapel_cases] == [
+        "https://github.com/chapel-lang/Crypto.git",
+        "https://github.com/chapel-lang/chapel.git",
+    ]
+    assert all(case.expected_primary_ecosystem == "chapel" for case in chapel_cases)
+
+
+def test_default_public_repository_cases_include_swift() -> None:
+    swift_cases = [
+        case
+        for case in public_repo_matrix.DEFAULT_PUBLIC_REPOSITORY_CASES
+        if case.language == "swift"
+    ]
+
+    assert [case.repository_url for case in swift_cases] == [
+        "https://github.com/pointfreeco/swift-parsing.git",
+        "https://github.com/apple/swift-argument-parser.git",
+    ]
+    assert all(case.expected_primary_ecosystem == "swift" for case in swift_cases)
 
 
 def test_default_public_repository_cases_include_bicep() -> None:
@@ -149,6 +168,75 @@ def test_default_public_repository_cases_include_rescript() -> None:
     assert rescript_case.expected_primary_ecosystem == "rescript"
 
 
+def test_default_public_repository_cases_include_reasonml() -> None:
+    reasonml_case = next(
+        case
+        for case in public_repo_matrix.DEFAULT_PUBLIC_REPOSITORY_CASES
+        if case.language == "reasonml"
+    )
+
+    assert (
+        reasonml_case.repository_url
+        == "https://github.com/reasonml-community/bs-json.git"
+    )
+    assert reasonml_case.expected_primary_ecosystem == "reasonml"
+
+
+def test_default_public_repository_cases_include_cairo() -> None:
+    cairo_case = next(
+        case
+        for case in public_repo_matrix.DEFAULT_PUBLIC_REPOSITORY_CASES
+        if case.language == "cairo"
+    )
+
+    assert (
+        cairo_case.repository_url
+        == "https://github.com/OpenZeppelin/cairo-contracts.git"
+    )
+    assert cairo_case.expected_primary_ecosystem == "cairo"
+
+
+def test_default_public_repository_cases_include_sway() -> None:
+    sway_case = next(
+        case
+        for case in public_repo_matrix.DEFAULT_PUBLIC_REPOSITORY_CASES
+        if case.language == "sway"
+    )
+
+    assert sway_case.repository_url == "https://github.com/FuelLabs/sway-libs.git"
+    assert sway_case.expected_primary_ecosystem == "sway"
+
+
+def test_default_public_repository_cases_include_yacc() -> None:
+    yacc_case = next(
+        case for case in public_repo_matrix.DEFAULT_PUBLIC_REPOSITORY_CASES if case.language == "yacc"
+    )
+
+    assert yacc_case.repository_url == "https://github.com/jengelsma/yacc-tutorial.git"
+    assert yacc_case.expected_primary_ecosystem == "yacc"
+
+
+def test_default_public_repository_cases_include_lex() -> None:
+    lex_case = next(
+        case for case in public_repo_matrix.DEFAULT_PUBLIC_REPOSITORY_CASES if case.language == "lex"
+    )
+
+    assert lex_case.repository_url == "https://github.com/andanciu/LexicalScanner.git"
+    assert lex_case.expected_primary_ecosystem == "lex"
+    assert lex_case.focus_paths == ()
+
+
+def test_default_public_repository_cases_include_xquery() -> None:
+    xquery_case = next(
+        case
+        for case in public_repo_matrix.DEFAULT_PUBLIC_REPOSITORY_CASES
+        if case.language == "xquery"
+    )
+
+    assert xquery_case.repository_url == "https://github.com/robwhitby/xray.git"
+    assert xquery_case.expected_primary_ecosystem == "xquery"
+
+
 def test_default_public_repository_cases_include_gleam() -> None:
     gleam_case = next(
         case
@@ -158,6 +246,20 @@ def test_default_public_repository_cases_include_gleam() -> None:
 
     assert gleam_case.repository_url == "https://github.com/gleam-lang/stdlib.git"
     assert gleam_case.expected_primary_ecosystem == "gleam"
+
+
+def test_default_public_repository_cases_include_ballerina() -> None:
+    ballerina_case = next(
+        case
+        for case in public_repo_matrix.DEFAULT_PUBLIC_REPOSITORY_CASES
+        if case.language == "ballerina"
+    )
+
+    assert (
+        ballerina_case.repository_url
+        == "https://github.com/ballerina-platform/module-ballerina-http.git"
+    )
+    assert ballerina_case.expected_primary_ecosystem == "ballerina"
 
 
 def test_default_public_repository_cases_include_janet() -> None:
@@ -236,14 +338,17 @@ def test_default_public_repository_cases_include_vimscript() -> None:
 
 
 def test_default_public_repository_cases_include_vba() -> None:
-    vba_case = next(
+    vba_cases = [
         case
         for case in public_repo_matrix.DEFAULT_PUBLIC_REPOSITORY_CASES
         if case.language == "vba"
-    )
+    ]
 
-    assert vba_case.repository_url == "https://github.com/VBA-tools/VBA-JSON.git"
-    assert vba_case.expected_primary_ecosystem == "vba"
+    assert [case.repository_url for case in vba_cases] == [
+        "https://github.com/VBA-tools/VBA-JSON.git",
+        "https://github.com/ivankokan/Excel2LaTeX.git",
+    ]
+    assert all(case.expected_primary_ecosystem == "vba" for case in vba_cases)
 
 
 def test_default_public_repository_cases_include_racket() -> None:
@@ -290,18 +395,46 @@ def test_default_public_repository_cases_include_delphi() -> None:
     assert delphi_case.expected_primary_ecosystem == "delphi"
 
 
+def test_default_public_repository_cases_include_sql() -> None:
+    sql_cases = [
+        case
+        for case in public_repo_matrix.DEFAULT_PUBLIC_REPOSITORY_CASES
+        if case.language == "sql"
+    ]
+
+    assert [case.repository_url for case in sql_cases] == [
+        "https://github.com/dbt-labs/jaffle-shop-classic.git",
+        "https://github.com/ben-nour/SQL-tips-and-tricks.git",
+    ]
+    assert all(case.expected_primary_ecosystem == "sql" for case in sql_cases)
+
+
 def test_default_public_repository_cases_include_tsql() -> None:
-    tsql_case = next(
+    tsql_cases = [
         case
         for case in public_repo_matrix.DEFAULT_PUBLIC_REPOSITORY_CASES
         if case.language == "tsql"
-    )
+    ]
 
-    assert (
-        tsql_case.repository_url
-        == "https://github.com/BrentOzarULTD/SQL-Server-First-Responder-Kit.git"
-    )
-    assert tsql_case.expected_primary_ecosystem == "tsql"
+    assert [case.repository_url for case in tsql_cases] == [
+        "https://github.com/BrentOzarULTD/SQL-Server-First-Responder-Kit.git",
+        "https://github.com/olahallengren/sql-server-maintenance-solution.git",
+    ]
+    assert all(case.expected_primary_ecosystem == "tsql" for case in tsql_cases)
+
+
+def test_default_public_repository_cases_include_plsql() -> None:
+    plsql_cases = [
+        case
+        for case in public_repo_matrix.DEFAULT_PUBLIC_REPOSITORY_CASES
+        if case.language == "plsql"
+    ]
+
+    assert [case.repository_url for case in plsql_cases] == [
+        "https://github.com/mortenbra/alexandria-plsql-utils.git",
+        "https://github.com/utPLSQL/utPLSQL.git",
+    ]
+    assert all(case.expected_primary_ecosystem == "plsql" for case in plsql_cases)
 
 
 def test_default_public_repository_cases_include_xpp() -> None:
@@ -341,5 +474,3 @@ def test_default_public_repository_cases_include_mojo() -> None:
         == "https://github.com/gabrieldemarmiesse/mojo-stdlib-extensions.git"
     )
     assert mojo_case.expected_primary_ecosystem == "mojo"
-
-

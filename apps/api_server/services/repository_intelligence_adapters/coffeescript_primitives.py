@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -175,8 +176,15 @@ def _strip_comments_preserving_lines(text: str) -> str:
     return "\n".join(result_lines)
 
 
-def strip_comments(text: str) -> str:
+@lru_cache(maxsize=1024)
+def _strip_comments_cached(text: str) -> str:
     return _strip_comments_preserving_lines(text)
+
+
+def strip_comments(text: str) -> str:
+    if "#" not in text:
+        return text
+    return _strip_comments_cached(text)
 
 
 def has_coffeescript_path_hints(path: Path) -> bool:
@@ -271,40 +279,21 @@ def _find_block_end_line(lines: tuple[str, ...], *, start_index: int, start_inde
     return last_content_index + 1
 
 
-def collect_symbol_entries(
+def _raw_symbol_entries(
     *,
     file_path: str,
     text: str,
-    stable_identifier: StableIdentifier,
-) -> tuple[_CollectedSymbol, ...]:
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, str, int, int, str | None, str | None], ...]:
     path = Path(file_path)
     normalized_text = _normalize_source_text(path=path, text=text)
-    stripped_text = strip_comments(normalized_text)
-    lines = tuple(line.expandtabs(4) for line in stripped_text.splitlines())
-    module_name = module_symbol_name(file_path)
-    module_symbol = _Symbol(
-        symbol_id=stable_identifier(
-            "sym",
-            {
-                "file_path": file_path,
-                "symbol_name": module_name,
-                "symbol_kind": "module",
-                "start_line": 1,
-            },
-        ),
-        symbol_name=module_name,
-        symbol_kind="module",
-        start_line=1,
-        end_line=_line_count(stripped_text),
-        parent_symbol_id=None,
-        signature=None,
+    candidate_stripped_text = stripped_text if stripped_text is not None else strip_comments(
+        normalized_text
     )
-    collected_symbols: list[_CollectedSymbol] = [
-        _CollectedSymbol(
-            symbol=module_symbol,
-            local_start_line=1,
-            local_end_line=_line_count(stripped_text),
-        )
+    lines = tuple(line.expandtabs(4) for line in candidate_stripped_text.splitlines())
+    module_name = module_symbol_name(file_path)
+    raw_entries: list[tuple[str, str, int, int, str | None, str | None]] = [
+        (module_name, "module", 1, _line_count(candidate_stripped_text), None, None)
     ]
     class_entries: list[dict[str, Any]] = []
     for index, raw_line in enumerate(lines):
@@ -317,33 +306,11 @@ def collect_symbol_entries(
         start_line = index + 1
         indent = len(match.group("indent") or "")
         end_line = _find_block_end_line(lines, start_index=index, start_indent=indent)
-        symbol = _Symbol(
-            symbol_id=stable_identifier(
-                "sym",
-                {
-                    "file_path": file_path,
-                    "symbol_name": class_name,
-                    "symbol_kind": "class",
-                    "start_line": start_line,
-                },
-            ),
-            symbol_name=class_name,
-            symbol_kind="class",
-            start_line=start_line,
-            end_line=end_line,
-            parent_symbol_id=module_symbol.symbol_id,
-            signature=f"class {class_name}",
-        )
-        collected_symbols.append(
-            _CollectedSymbol(
-                symbol=symbol,
-                local_start_line=start_line,
-                local_end_line=end_line,
-            )
-        )
+        signature = f"class {class_name}"
+        raw_entries.append((class_name, "class", start_line, end_line, module_name, signature))
         class_entries.append(
             {
-                "symbol": symbol,
+                "name": class_name,
                 "indent": indent,
                 "start_index": index,
                 "end_index": max(index, end_line - 1),
@@ -359,7 +326,7 @@ def collect_symbol_entries(
         start_line = index + 1
         indent = len(match.group("indent") or "")
         separator = str(match.groupdict().get("separator") or "=")
-        parent_symbol_id = module_symbol.symbol_id
+        parent_name = module_name
         symbol_kind = "function"
         if separator == ":":
             parent_class = next(
@@ -373,25 +340,74 @@ def collect_symbol_entries(
             )
             if parent_class is None:
                 continue
-            parent_symbol_id = str(parent_class["symbol"].symbol_id)
+            parent_name = str(parent_class["name"])
             symbol_kind = "method"
         elif indent != 0:
             continue
         end_line = _find_block_end_line(lines, start_index=index, start_indent=indent)
         signature = f"{function_name} = {match.group('arrow') or '->'}"
+        raw_entries.append(
+            (function_name, symbol_kind, start_line, end_line, parent_name, signature)
+        )
+    return tuple(
+        sorted(
+            raw_entries,
+            key=lambda item: (
+                item[2],
+                item[3],
+                0 if item[1] == "module" else 1,
+                item[0],
+            ),
+        )
+    )
+
+
+def collect_symbol_entries(
+    *,
+    file_path: str,
+    text: str,
+    stable_identifier: StableIdentifier,
+    stripped_text: str | None = None,
+) -> tuple[_CollectedSymbol, ...]:
+    raw_entries = _raw_symbol_entries(
+        file_path=file_path,
+        text=text,
+        stripped_text=stripped_text,
+    )
+    symbol_ids_by_name_and_kind: dict[tuple[str, str, int], str] = {}
+    for symbol_name, symbol_kind, start_line, _end_line, _parent_name, _signature in raw_entries:
+        symbol_ids_by_name_and_kind[(symbol_name, symbol_kind, start_line)] = stable_identifier(
+            "sym",
+            {
+                "file_path": file_path,
+                "symbol_name": symbol_name,
+                "symbol_kind": symbol_kind,
+                "start_line": start_line,
+            },
+        )
+    collected_symbols: list[_CollectedSymbol] = []
+    for symbol_name, symbol_kind, start_line, end_line, parent_name, signature in raw_entries:
+        parent_symbol_id = None
+        if parent_name is not None:
+            if symbol_kind == "class":
+                parent_symbol_id = symbol_ids_by_name_and_kind.get((parent_name, "module", 1))
+            elif symbol_kind in {"function", "method"}:
+                parent_kind = "class" if symbol_kind == "method" else "module"
+                parent_symbol_id = symbol_ids_by_name_and_kind.get((parent_name, parent_kind, 1))
+                if parent_symbol_id is None and parent_kind == "class":
+                    parent_symbol_id = next(
+                        (
+                            stable_id
+                            for (name, kind, _line), stable_id in symbol_ids_by_name_and_kind.items()
+                            if name == parent_name and kind == "class"
+                        ),
+                        None,
+                    )
         collected_symbols.append(
             _CollectedSymbol(
                 symbol=_Symbol(
-                    symbol_id=stable_identifier(
-                        "sym",
-                        {
-                            "file_path": file_path,
-                            "symbol_name": function_name,
-                            "symbol_kind": symbol_kind,
-                            "start_line": start_line,
-                        },
-                    ),
-                    symbol_name=function_name,
+                    symbol_id=symbol_ids_by_name_and_kind[(symbol_name, symbol_kind, start_line)],
+                    symbol_name=symbol_name,
                     symbol_kind=symbol_kind,
                     start_line=start_line,
                     end_line=end_line,
@@ -402,14 +418,4 @@ def collect_symbol_entries(
                 local_end_line=end_line,
             )
         )
-    return tuple(
-        sorted(
-            collected_symbols,
-            key=lambda item: (
-                item.local_start_line,
-                item.local_end_line,
-                0 if item.symbol.symbol_kind == "module" else 1,
-                item.symbol.symbol_name,
-            ),
-        )
-    )
+    return tuple(collected_symbols)

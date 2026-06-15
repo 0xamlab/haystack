@@ -150,7 +150,7 @@ def _analyze_file_dependencies(
                 module_index,
                 workspace_go_module_index or {},
             )
-        if language in {"java", "kotlin", "kt", "kts", "scala", "groovy"}:
+        if language in {"java", "kotlin", "kt", "kts", "scala", "groovy", "processing"}:
             return parse_jvm_dependencies_only(
                 relative_path,
                 text,
@@ -455,7 +455,7 @@ def _analyze_file(
                 module_index,
                 workspace_go_module_index or {},
             )
-        elif language in {"java", "kotlin", "kt", "kts", "scala", "groovy"}:
+        elif language in {"java", "kotlin", "kt", "kts", "scala", "groovy", "processing"}:
             symbols, dependencies, symbol_references = parse_jvm_file(
                 relative_path,
                 text,

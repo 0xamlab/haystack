@@ -16,3 +16,14 @@ def test_matches_repository_pattern_treats_recursive_glob_as_optional_for_direct
     )
 
 
+def test_normalize_repository_relative_path_collapses_relative_segments_without_pathlib() -> None:
+    assert (
+        repository_service._normalize_repository_relative_path("./src/acme/../main.py")
+        == "src/main.py"
+    )
+    assert (
+        repository_service._normalize_repository_relative_path(r"src\\feature\\..\\main.py")
+        == "src/main.py"
+    )
+    assert repository_service._normalize_repository_relative_path("../src/./main.py") == "src/main.py"
+

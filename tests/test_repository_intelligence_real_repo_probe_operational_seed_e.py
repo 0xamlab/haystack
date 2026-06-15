@@ -4,6 +4,9 @@ Extracted from tests/test_repository_intelligence_real_repo_probe.py during modu
 """
 from __future__ import annotations
 
+import benchmarks.repository_intelligence_real_repo_probe_profile_ecosystem_support as ecosystem_support
+import benchmarks.repository_intelligence_real_repo_probe_profile_project_family_support as project_family_support
+
 from tests._repository_intelligence_real_repo_probe_helpers import *  # noqa: F401,F403
 
 
@@ -484,6 +487,60 @@ def test_operational_seed_plan_without_diagnostics_detects_manifestless_openscad
     assert "examples/demo.scad" not in seed_plan["entrypoint_files"]
 
 
+def test_operational_seed_plan_without_diagnostics_uses_git_listing_for_manifestless_openscad_repo(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo_path = tmp_path / "openscad-git-profile-repo"
+    (repo_path / "lib").mkdir(parents=True)
+    (repo_path / "examples").mkdir(parents=True)
+    (repo_path / "main.scad").write_text(
+        "include <lib/helper.scad>;\n"
+        "module build() {\n"
+        "  gusset(10);\n"
+        "}\n",
+        encoding="utf-8",
+    )
+    (repo_path / "lib" / "helper.scad").write_text(
+        "module gusset(width) {\n"
+        "  cube([width, width, width]);\n"
+        "}\n",
+        encoding="utf-8",
+    )
+    (repo_path / "examples" / "demo.scad").write_text(
+        "use <../lib/helper.scad>;\n"
+        "gusset(5);\n",
+        encoding="utf-8",
+    )
+    _init_git_repo(repo_path)
+    project_family_support.clear_starlark_profile_hint_cache()
+
+    original_rglob = Path.rglob
+
+    def _guarded_rglob(self: Path, pattern: str):
+        if self == repo_path and pattern == "*.scad":
+            raise AssertionError(
+                "git-backed OpenSCAD seed planning should avoid repo-wide scad rglob"
+            )
+        return original_rglob(self, pattern)
+
+    monkeypatch.setattr(Path, "rglob", _guarded_rglob)
+
+    seed_plan = _derive_operational_seed_plan_without_diagnostics(
+        repo_path=repo_path,
+        focus_paths=["."],
+        max_files=128,
+    )
+
+    assert seed_plan["detected_ecosystems"] == ["openscad"]
+    assert seed_plan["operational_ecosystems"] == ["openscad"]
+    assert "main.scad" in seed_plan["config_paths"]
+    assert "main.scad" in seed_plan["entrypoint_files"]
+    assert "lib" in seed_plan["support_roots"]
+    assert "lib/helper.scad" in seed_plan["candidate_file_paths"]
+    assert "examples/demo.scad" not in seed_plan["entrypoint_files"]
+
+
 def test_operational_seed_plan_without_diagnostics_uses_nix_flake_profile(
     tmp_path: Path,
 ) -> None:
@@ -599,6 +656,52 @@ def test_operational_seed_plan_without_diagnostics_uses_gleam_profile(
     assert "src/main.gleam" in seed_plan["entrypoint_files"]
     assert "test/main.gleam" not in seed_plan["entrypoint_files"]
     assert "src/demo/helper.gleam" in seed_plan["candidate_file_paths"]
+
+
+def test_gleam_profile_hints_skip_project_root_rescan_when_conventional_roots_exist(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo_path = tmp_path / "gleam-profile-hints-repo"
+    (repo_path / "src" / "demo").mkdir(parents=True)
+    (repo_path / "test").mkdir(parents=True)
+    (repo_path / "gleam.toml").write_text(
+        'name = "demo"\nversion = "1.0.0"\n',
+        encoding="utf-8",
+    )
+    (repo_path / "src" / "main.gleam").write_text(
+        "pub fn main() {\n  Nil\n}\n",
+        encoding="utf-8",
+    )
+    (repo_path / "src" / "demo" / "helper.gleam").write_text(
+        "pub fn helper() {\n  Nil\n}\n",
+        encoding="utf-8",
+    )
+    (repo_path / "test" / "main.gleam").write_text(
+        "pub fn test_main() {\n  Nil\n}\n",
+        encoding="utf-8",
+    )
+
+    original_rglob = Path.rglob
+    project_root_scan_count = {"value": 0}
+
+    def counting_rglob(self: Path, pattern: str):
+        if self == repo_path and pattern == "*.gleam":
+            project_root_scan_count["value"] += 1
+        return original_rglob(self, pattern)
+
+    monkeypatch.setattr(Path, "rglob", counting_rglob)
+
+    entrypoints, roots, configs = ecosystem_support._gleam_profile_hints(
+        repo_path,
+        "gleam.toml",
+    )
+
+    assert "src/main.gleam" in entrypoints
+    assert "src" in roots
+    assert "test" in roots
+    assert configs == {"gleam.toml"}
+    assert project_root_scan_count["value"] == 0
 
 
 def test_operational_seed_plan_without_diagnostics_uses_janet_project_profile(
@@ -748,5 +851,3 @@ def test_operational_seed_plan_without_diagnostics_uses_manifestless_makefile_pr
     assert "Makefile" in seed_plan["entrypoint_files"]
     assert "mk" in seed_plan["support_roots"]
     assert "tests/ignored.mk" not in seed_plan["entrypoint_files"]
-
-

@@ -22,10 +22,12 @@ _CollectedSymbol = repository_openscad_primitives._CollectedSymbol
 _normalize_identifier = repository_openscad_primitives._normalize_identifier
 _normalize_import_target = repository_openscad_primitives._normalize_import_target
 _line_number = repository_openscad_primitives._line_number
+_line_starts = repository_openscad_primitives._line_starts
 collect_symbol_entries = repository_openscad_primitives.collect_symbol_entries
 has_openscad_path_hints = repository_openscad_primitives.has_openscad_path_hints
 import_targets_for_text = repository_openscad_primitives.import_targets_for_text
 is_probable_openscad_source = repository_openscad_primitives.is_probable_openscad_source
+has_import_directives = repository_openscad_primitives.has_import_directives
 module_symbol_name = repository_openscad_primitives.module_symbol_name
 strip_comments = repository_openscad_primitives.strip_comments
 
@@ -46,6 +48,9 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
+    stripped_text: str | None = None,
+    include_symbol_aliases: bool = True,
 ) -> set[str]:
     path = PurePosixPath(file_path)
     if path.suffix.lower() not in repository_openscad_primitives._KNOWN_SUFFIXES:
@@ -60,16 +65,25 @@ def module_aliases_for_path(
         str(path.with_suffix("")).replace("/", "."),
         str(path.with_suffix("")).replace("/", ".").lower(),
     }
-    try:
-        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
+    if not include_symbol_aliases:
         return {alias for alias in aliases if alias}
-    if not is_probable_openscad_source(path=Path(file_path), text=text):
+    if text is None:
+        try:
+            text = (root_path / path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return {alias for alias in aliases if alias}
+    stripped_text = strip_comments(text) if stripped_text is None else stripped_text
+    if not is_probable_openscad_source(
+        path=Path(file_path),
+        text=text,
+        stripped_text=stripped_text,
+    ):
         return {alias for alias in aliases if alias}
     for entry in collect_symbol_entries(
         file_path=file_path,
         text=text,
         stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
     ):
         aliases.add(entry.symbol.symbol_name)
         aliases.add(entry.symbol.symbol_name.lower())
@@ -108,10 +122,18 @@ def parse_dependencies_only(
     *,
     stable_identifier: StableIdentifier,
     resolve_suffix_match: ResolveSuffixMatch,
+    stripped_text: str | None = None,
 ) -> tuple[_Dependency, ...]:
-    if not is_probable_openscad_source(path=Path(file_path), text=text):
+    stripped_text = strip_comments(text) if stripped_text is None else stripped_text
+    if not is_probable_openscad_source(
+        path=Path(file_path),
+        text=text,
+        stripped_text=stripped_text,
+    ):
         return ()
-    stripped_text = strip_comments(text)
+    if not has_import_directives(text, stripped_text=stripped_text):
+        return ()
+    line_starts = _line_starts(stripped_text)
     dependencies: list[_Dependency] = []
     seen_targets: set[tuple[str | None, str]] = set()
     for match in _IMPORT_RE.finditer(stripped_text):
@@ -137,7 +159,11 @@ def parse_dependencies_only(
                     "dep",
                     {
                         "file_path": file_path,
-                        "line": _line_number(stripped_text, match.start()),
+                        "line": _line_number(
+                            stripped_text,
+                            match.start(),
+                            line_starts=line_starts,
+                        ),
                         "target_file": target_file,
                         "type": "imports",
                     },
@@ -163,12 +189,20 @@ def parse_file(
     tuple[_Dependency, ...],
     tuple[_SymbolReferenceCandidate, ...],
 ]:
-    if not is_probable_openscad_source(path=Path(file_path), text=text):
+    stripped_text = strip_comments(text)
+    if not is_probable_openscad_source(
+        path=Path(file_path),
+        text=text,
+        stripped_text=stripped_text,
+    ):
         return (), (), ()
+    line_starts = _line_starts(stripped_text)
     collected_symbols = collect_symbol_entries(
         file_path=file_path,
         text=text,
         stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
+        line_starts=line_starts,
     )
     dependencies = parse_dependencies_only(
         file_path=file_path,
@@ -176,17 +210,18 @@ def parse_file(
         module_index=module_index,
         stable_identifier=stable_identifier,
         resolve_suffix_match=resolve_suffix_match,
+        stripped_text=stripped_text,
     )
-    stripped_text = strip_comments(text)
     symbols = tuple(collected_symbol.symbol for collected_symbol in collected_symbols)
     reference_candidates: dict[
         tuple[str, str | None, tuple[str, ...]],
         _SymbolReferenceCandidate,
     ] = {}
+    stripped_lines = stripped_text.splitlines()
     for collected_symbol in collected_symbols:
         symbol_name = collected_symbol.symbol.symbol_name.lower()
         snippet = "\n".join(
-            stripped_text.splitlines()[
+            stripped_lines[
                 collected_symbol.local_start_line - 1 : collected_symbol.local_end_line
             ]
         )

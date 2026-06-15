@@ -83,6 +83,7 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
 ) -> set[str]:
     del stable_identifier
     path = PurePosixPath(file_path)
@@ -97,10 +98,11 @@ def module_aliases_for_path(
         aliases.add(path.parent.as_posix().replace("/", "."))
         if path.suffix:
             aliases.add(f"{path.parent.as_posix().replace('/', '.')}.{path.stem}")
-    try:
-        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        text = ""
+    if text is None:
+        try:
+            text = (root_path / path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            text = ""
     if text and not is_probable_qml_source(path=path, text=text):
         return {alias for alias in aliases if alias}
     if path.suffix.lower() == ".qml":

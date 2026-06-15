@@ -127,16 +127,22 @@ def strip_comments(text: str) -> str:
     return "".join(characters)
 
 
+def _prepared_stan_source_text(*, path: Path | PurePosixPath, text: str) -> str | None:
+    normalized_path = PurePosixPath(path)
+    if not has_stan_path_hints(normalized_path) or not text or _looks_binaryish(text):
+        return None
+    stripped_text = strip_comments(text)
+    if not stripped_text.strip() or not _MARKER_RE.search(stripped_text):
+        return None
+    return stripped_text
+
+
 def has_stan_path_hints(path: Path | PurePosixPath) -> bool:
     return PurePosixPath(path).suffix.lower() in STAN_SUFFIXES
 
 
 def is_probable_stan_source(*, path: Path | PurePosixPath, text: str) -> bool:
-    normalized_path = PurePosixPath(path)
-    if not has_stan_path_hints(normalized_path) or not text or _looks_binaryish(text):
-        return False
-    stripped_text = strip_comments(text)
-    return bool(stripped_text.strip()) and bool(_MARKER_RE.search(stripped_text))
+    return _prepared_stan_source_text(path=path, text=text) is not None
 
 
 def normalize_identifier(value: str) -> str:
@@ -180,8 +186,7 @@ def _normalize_include_target(raw_target: str) -> str:
     return normalized_target
 
 
-def include_statements(text: str) -> tuple[tuple[str, int], ...]:
-    stripped_text = strip_comments(text)
+def _include_statements_from_stripped_text(stripped_text: str) -> tuple[tuple[str, int], ...]:
     statements: list[tuple[str, int]] = []
     seen: set[tuple[str, int]] = set()
     for match in _INCLUDE_RE.finditer(stripped_text):
@@ -194,6 +199,10 @@ def include_statements(text: str) -> tuple[tuple[str, int], ...]:
         seen.add(item)
         statements.append(item)
     return tuple(statements)
+
+
+def include_statements(text: str) -> tuple[tuple[str, int], ...]:
+    return _include_statements_from_stripped_text(strip_comments(text))
 
 
 def _iter_block_ranges(text: str, block_name: str) -> tuple[tuple[int, int], ...]:
@@ -240,8 +249,9 @@ def _iter_block_ranges(text: str, block_name: str) -> tuple[tuple[int, int], ...
     return tuple(ranges)
 
 
-def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
-    stripped_text = strip_comments(text)
+def _iter_symbol_entries_from_stripped_text(
+    stripped_text: str,
+) -> tuple[tuple[str, str, int], ...]:
     entries: list[tuple[str, str, int]] = []
     seen_names: set[str] = set()
     for block_start, block_end in _iter_block_ranges(stripped_text, "functions"):
@@ -265,15 +275,16 @@ def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
     return tuple(sorted(entries, key=lambda item: (item[2], item[0], item[1])))
 
 
-def collect_symbols(
+def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
+    return _iter_symbol_entries_from_stripped_text(strip_comments(text))
+
+
+def _collect_symbols_from_stripped_text(
     *,
     file_path: str,
-    text: str,
+    stripped_text: str,
     stable_identifier: StableIdentifier,
 ) -> tuple[_Symbol, ...]:
-    if not is_probable_stan_source(path=Path(file_path), text=text):
-        return ()
-    stripped_text = strip_comments(text)
     module_name = module_name_from_path(file_path)
     final_line = _line_count(stripped_text)
     symbols: list[tuple[_Symbol, int]] = [
@@ -298,7 +309,9 @@ def collect_symbols(
             1,
         )
     ]
-    for symbol_name, symbol_kind, start_line in iter_symbol_entries(stripped_text):
+    for symbol_name, symbol_kind, start_line in _iter_symbol_entries_from_stripped_text(
+        stripped_text
+    ):
         symbols.append(
             (
                 _Symbol(
@@ -339,6 +352,22 @@ def collect_symbols(
     return tuple(finalized)
 
 
+def collect_symbols(
+    *,
+    file_path: str,
+    text: str,
+    stable_identifier: StableIdentifier,
+) -> tuple[_Symbol, ...]:
+    stripped_text = _prepared_stan_source_text(path=Path(file_path), text=text)
+    if stripped_text is None:
+        return ()
+    return _collect_symbols_from_stripped_text(
+        file_path=file_path,
+        stripped_text=stripped_text,
+        stable_identifier=stable_identifier,
+    )
+
+
 def module_aliases_for_path(
     *,
     root_path: Path,
@@ -360,11 +389,17 @@ def module_aliases_for_path(
         text = (root_path / path).read_text(encoding="utf-8", errors="replace")
     except OSError:
         text = ""
-    for symbol in collect_symbols(
-        file_path=file_path,
-        text=text,
-        stable_identifier=stable_identifier,
-    ):
+    stripped_text = _prepared_stan_source_text(path=path, text=text)
+    symbols = (
+        _collect_symbols_from_stripped_text(
+            file_path=file_path,
+            stripped_text=stripped_text,
+            stable_identifier=stable_identifier,
+        )
+        if stripped_text is not None
+        else ()
+    )
+    for symbol in symbols:
         if symbol.symbol_kind == "module":
             continue
         aliases.add(symbol.symbol_name)
@@ -424,8 +459,26 @@ def imported_symbol_bindings(
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
 ) -> dict[str, _ImportedSymbolBinding]:
+    include_entries = _include_statements_from_stripped_text(strip_comments(text))
+    return _imported_symbol_bindings_from_include_statements(
+        current_file=current_file,
+        include_entries=include_entries,
+        module_index=module_index,
+        normalize_repository_relative_path=normalize_repository_relative_path,
+        resolve_suffix_match=resolve_suffix_match,
+    )
+
+
+def _imported_symbol_bindings_from_include_statements(
+    *,
+    current_file: str,
+    include_entries: tuple[tuple[str, int], ...],
+    module_index: dict[str, str],
+    normalize_repository_relative_path: NormalizeRepositoryRelativePath,
+    resolve_suffix_match: ResolveSuffixMatch,
+) -> dict[str, _ImportedSymbolBinding]:
     bindings: dict[str, _ImportedSymbolBinding] = {}
-    for include_target, _line_number_value in include_statements(text):
+    for include_target, _line_number_value in include_entries:
         target_file = resolve_include(
             current_file=current_file,
             include_target=include_target,

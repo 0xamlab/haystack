@@ -207,6 +207,70 @@ def test_operational_seed_plan_without_diagnostics_does_not_force_pug_first_in_j
     assert "javascript" in seed_plan["operational_ecosystems"]
 
 
+def test_operational_seed_plan_without_diagnostics_promotes_pug_over_scss_in_template_repo(
+    tmp_path: Path,
+) -> None:
+    repo_path = tmp_path / "pug-template-build-repo"
+    repo_path.mkdir(parents=True)
+    (repo_path / "package.json").write_text(
+        '{"name":"pug-template-build","scripts":{"build":"node scripts/build-pug.js"}}\n',
+        encoding="utf-8",
+    )
+    (repo_path / "scripts").mkdir(parents=True)
+    for script_name in (
+        "build-pug.js",
+        "build-assets.js",
+        "build-scripts.js",
+        "serve.js",
+        "watch.js",
+        "clean.js",
+    ):
+        (repo_path / "scripts" / script_name).write_text(
+            "export function run() { return true; }\n",
+            encoding="utf-8",
+        )
+    (repo_path / "src" / "pug" / "layouts").mkdir(parents=True)
+    (repo_path / "src" / "pug" / "partials").mkdir(parents=True)
+    (repo_path / "src" / "pug" / "pages").mkdir(parents=True)
+    (repo_path / "src" / "pug" / "layouts" / "base.pug").write_text(
+        "html\n  body\n    block content\n",
+        encoding="utf-8",
+    )
+    (repo_path / "src" / "pug" / "partials" / "card.pug").write_text(
+        "mixin card(title)\n  article= title\n",
+        encoding="utf-8",
+    )
+    for index in range(8):
+        (repo_path / "src" / "pug" / "pages" / f"page-{index}.pug").write_text(
+            "extends ../layouts/base.pug\n"
+            "include ../partials/card.pug\n"
+            "block content\n"
+            f"  +card('page-{index}')\n",
+            encoding="utf-8",
+        )
+    (repo_path / "src" / "scss" / "layout").mkdir(parents=True)
+    (repo_path / "src" / "scss" / "styles.scss").write_text(
+        "@use 'layout/authentication';\nbody { color: #111; }\n",
+        encoding="utf-8",
+    )
+    for index in range(4):
+        (repo_path / "src" / "scss" / "layout" / f"_panel_{index}.scss").write_text(
+            ".panel { display: grid; }\n",
+            encoding="utf-8",
+        )
+
+    seed_plan = _derive_operational_seed_plan_without_diagnostics(
+        repo_path=repo_path,
+        focus_paths=["."],
+        max_files=256,
+    )
+
+    assert "pug" in seed_plan["detected_ecosystems"]
+    assert seed_plan["operational_ecosystems"][0] == "pug"
+    assert any(path.endswith(".pug") for path in seed_plan["entrypoint_files"])
+    assert "src/pug/layouts" in seed_plan["support_roots"]
+
+
 def test_repository_snapshot_graph_contains_pug_dependency_and_symbol_reference_edges(
     tmp_path: Path,
 ) -> None:

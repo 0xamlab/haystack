@@ -34,41 +34,57 @@ def _collect_symbols(
     file_path: str,
     text: str,
     stable_identifier: StableIdentifier,
+    stripped_text: str | None = None,
+    module_name: str | None = None,
+    symbol_entries: tuple[tuple[str, str, int], ...] | None = None,
 ) -> tuple[_CollectedSymbol, ...]:
-    stripped_text = strip_comments(text)
-    module_name = module_name_from_text(stripped_text, file_path=file_path)
+    candidate_stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
+    resolved_module_name = (
+        module_name
+        if module_name is not None
+        else module_name_from_text(
+            text,
+            file_path=file_path,
+            stripped_text=candidate_stripped_text,
+        )
+    )
     module_symbol = _Symbol(
         symbol_id=stable_identifier(
             "sym",
-            {"file_path": file_path, "symbol_name": module_name, "symbol_kind": "module"},
+            {"file_path": file_path, "symbol_name": resolved_module_name, "symbol_kind": "module"},
         ),
-        symbol_name=module_name,
+        symbol_name=resolved_module_name,
         symbol_kind="module",
         start_line=1,
-        end_line=_line_count(stripped_text),
+        end_line=_line_count(candidate_stripped_text),
         parent_symbol_id=None,
-        signature=module_name,
+        signature=resolved_module_name,
     )
     collected_symbols: list[_CollectedSymbol] = [
         _CollectedSymbol(
             symbol=module_symbol,
             local_start_line=1,
-            local_end_line=_line_count(stripped_text),
+            local_end_line=_line_count(candidate_stripped_text),
             qualified_names=_ordered_names(
-                module_name,
+                resolved_module_name,
                 file_path,
                 str(PurePosixPath(file_path).with_suffix("")),
                 PurePosixPath(file_path).stem,
             ),
         )
     ]
-    for symbol_name, symbol_kind, start_line in iter_symbol_entries(
-        stripped_text,
-        file_path=file_path,
-    ):
+    resolved_symbol_entries = symbol_entries
+    if resolved_symbol_entries is None:
+        resolved_symbol_entries = iter_symbol_entries(
+            text,
+            file_path=file_path,
+            stripped_text=candidate_stripped_text,
+            module_name=resolved_module_name,
+        )
+    for symbol_name, symbol_kind, start_line in resolved_symbol_entries:
         qualified_names = _ordered_names(
             symbol_name,
-            f"{module_name}.{symbol_name}" if module_name else "",
+            f"{resolved_module_name}.{symbol_name}" if resolved_module_name else "",
         )
         collected_symbols.append(
             _CollectedSymbol(
@@ -94,7 +110,7 @@ def _collect_symbols(
                 qualified_names=qualified_names,
             )
         )
-    final_line = _line_count(stripped_text)
+    final_line = _line_count(candidate_stripped_text)
     finalized_symbols: list[_CollectedSymbol] = []
     for index, collected_symbol in enumerate(collected_symbols):
         end_line = (
@@ -130,26 +146,54 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
+    stripped_text: str | None = None,
+    collected_symbols: tuple[_CollectedSymbol, ...] | None = None,
+    include_symbol_aliases: bool = True,
 ) -> set[str]:
     path = PurePosixPath(file_path)
     if not has_chapel_path_hints(path):
         return set()
     aliases = {file_path, str(path.with_suffix("")), path.stem}
-    try:
-        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        text = ""
-    if not is_probable_chapel_source(path=Path(file_path), text=text):
-        return {alias for alias in aliases if alias}
-    module_name = module_name_from_text(text, file_path=file_path)
-    aliases.add(module_name)
-    for collected_symbol in _collect_symbols(
-        file_path=file_path,
-        text=text,
-        stable_identifier=stable_identifier,
+    loaded_text = text
+    if loaded_text is None:
+        try:
+            loaded_text = (root_path / path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            loaded_text = ""
+    candidate_stripped_text = (
+        stripped_text if stripped_text is not None else strip_comments(loaded_text)
+    )
+    if not is_probable_chapel_source(
+        path=Path(file_path),
+        text=loaded_text,
+        stripped_text=candidate_stripped_text,
     ):
-        aliases.add(collected_symbol.symbol.symbol_name)
-        aliases.update(collected_symbol.qualified_names)
+        return {alias for alias in aliases if alias}
+    module_name = module_name_from_text(
+        loaded_text,
+        file_path=file_path,
+        stripped_text=candidate_stripped_text,
+    )
+    aliases.add(module_name)
+    if not include_symbol_aliases:
+        return {alias for alias in aliases if alias}
+    resolved_collected_symbols = collected_symbols
+    if resolved_collected_symbols is not None:
+        for collected_symbol in resolved_collected_symbols:
+            aliases.add(collected_symbol.symbol.symbol_name)
+            aliases.update(collected_symbol.qualified_names)
+        return {alias for alias in aliases if alias}
+
+    for symbol_name, _symbol_kind, _start_line in iter_symbol_entries(
+        loaded_text,
+        file_path=file_path,
+        stripped_text=candidate_stripped_text,
+        module_name=module_name,
+    ):
+        aliases.add(symbol_name)
+        if module_name:
+            aliases.add(f"{module_name}.{symbol_name}")
     return {alias for alias in aliases if alias}
 
 
@@ -183,11 +227,19 @@ def extract_import_bindings(
     *,
     stable_identifier: StableIdentifier,
     resolve_suffix_match: ResolveSuffixMatch,
+    stripped_text: str | None = None,
+    use_import_statements: tuple[tuple[str, str, str | None, int], ...] | None = None,
 ) -> tuple[tuple[_Dependency, ...], dict[str, _ImportedSymbolBinding]]:
     dependencies: list[_Dependency] = []
     import_bindings: dict[str, _ImportedSymbolBinding] = {}
     dependency_keys: set[tuple[str, str, str | None]] = set()
-    for statement_kind, import_target, alias, line_number in parse_use_import_statements(text):
+    resolved_use_import_statements = use_import_statements
+    if resolved_use_import_statements is None:
+        resolved_use_import_statements = parse_use_import_statements(
+            text,
+            stripped_text=stripped_text,
+        )
+    for statement_kind, import_target, alias, line_number in resolved_use_import_statements:
         target_file = resolve_import(
             import_target,
             module_index,
@@ -229,13 +281,22 @@ def parse_dependencies_only(
     *,
     stable_identifier: StableIdentifier,
     resolve_suffix_match: ResolveSuffixMatch,
+    stripped_text: str | None = None,
 ) -> tuple[_Dependency, ...]:
+    candidate_stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
+    if not is_probable_chapel_source(
+        path=Path(file_path),
+        text=text,
+        stripped_text=candidate_stripped_text,
+    ):
+        return ()
     dependencies, _bindings = extract_import_bindings(
         file_path,
         text,
         module_index,
         stable_identifier=stable_identifier,
         resolve_suffix_match=resolve_suffix_match,
+        stripped_text=candidate_stripped_text,
     )
     return dependencies
 
@@ -260,30 +321,61 @@ def parse_file(
     *,
     stable_identifier: StableIdentifier,
     resolve_suffix_match: ResolveSuffixMatch,
+    stripped_text: str | None = None,
 ) -> tuple[
     tuple[_Symbol, ...],
     tuple[_Dependency, ...],
     tuple[_SymbolReferenceCandidate, ...],
 ]:
+    candidate_stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
+    if not is_probable_chapel_source(
+        path=Path(file_path),
+        text=text,
+        stripped_text=candidate_stripped_text,
+    ):
+        return (), (), ()
+    module_name = module_name_from_text(
+        text,
+        file_path=file_path,
+        stripped_text=candidate_stripped_text,
+    )
+    symbol_entries = iter_symbol_entries(
+        text,
+        file_path=file_path,
+        stripped_text=candidate_stripped_text,
+        module_name=module_name,
+    )
     collected_symbols = _collect_symbols(
         file_path=file_path,
         text=text,
         stable_identifier=stable_identifier,
+        stripped_text=candidate_stripped_text,
+        module_name=module_name,
+        symbol_entries=symbol_entries,
     )
     symbol_name_to_id = {
         collected_symbol.symbol.symbol_name: collected_symbol.symbol.symbol_id
         for collected_symbol in collected_symbols
     }
+    use_import_statements = parse_use_import_statements(
+        text,
+        stripped_text=candidate_stripped_text,
+    )
     dependencies, import_bindings = extract_import_bindings(
         file_path,
         text,
         module_index,
         stable_identifier=stable_identifier,
         resolve_suffix_match=resolve_suffix_match,
+        stripped_text=candidate_stripped_text,
+        use_import_statements=use_import_statements,
     )
     references: list[_SymbolReferenceCandidate] = []
     seen_reference_keys: set[tuple[str, str | None, str, str]] = set()
-    for qualifier, symbol_name, line_number in parse_reference_targets(text):
+    for qualifier, symbol_name, line_number in parse_reference_targets(
+        text,
+        stripped_text=candidate_stripped_text,
+    ):
         if symbol_name in _RESERVED_SYMBOL_NAMES:
             continue
         source_symbol = next(

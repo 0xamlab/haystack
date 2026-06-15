@@ -51,9 +51,14 @@ def _collect_symbols(
     file_path: str,
     text: str,
     stable_identifier: StableIdentifier,
+    stripped_text: str | None = None,
 ) -> tuple[_CollectedSymbol, ...]:
-    stripped_text = strip_comments(text)
-    component_name = declared_component_name(text=text, file_path=file_path)
+    stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
+    component_name = declared_component_name(
+        text=text,
+        file_path=file_path,
+        stripped_text=stripped_text,
+    )
     component_kind = (
         "component"
         if PurePosixPath(file_path).suffix.lower() == ".cfc"
@@ -83,7 +88,10 @@ def _collect_symbols(
             local_end_line=_line_count(stripped_text),
         )
     ]
-    for function_name, start_line, end_line in iter_function_entries(text):
+    for function_name, start_line, end_line in iter_function_entries(
+        text,
+        stripped_text=stripped_text,
+    ):
         collected_symbols.append(
             _CollectedSymbol(
                 symbol=_Symbol(
@@ -164,6 +172,8 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
+    include_symbol_aliases: bool = True,
 ) -> set[str]:
     path = PurePosixPath(file_path)
     if path.suffix.lower() not in _KNOWN_SUFFIXES:
@@ -174,18 +184,27 @@ def module_aliases_for_path(
         _without_suffix_path(path),
         _without_suffix_path(path).replace("/", "."),
     }
-    try:
-        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        text = ""
-    component_name = declared_component_name(text=text, file_path=file_path)
+    if text is None:
+        try:
+            text = (root_path / path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            text = ""
+    stripped_text = strip_comments(text)
+    component_name = declared_component_name(
+        text=text,
+        file_path=file_path,
+        stripped_text=stripped_text,
+    )
     if component_name:
         aliases.add(component_name)
         aliases.add(component_name.rsplit(".", 1)[-1])
+    if not include_symbol_aliases:
+        return {alias for alias in aliases if alias}
     for collected_symbol in _collect_symbols(
         file_path=file_path,
         text=text,
         stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
     ):
         if collected_symbol.symbol.symbol_kind != "function":
             continue
@@ -299,8 +318,10 @@ def _resolve_component_target(
     )
 
 
-def _variable_bindings_for_text(text: str) -> dict[str, str]:
-    stripped_text = strip_comments(text)
+@repository_cfml_primitives.lru_cache(maxsize=256)
+def _variable_binding_entries_for_stripped_text(
+    stripped_text: str,
+) -> tuple[tuple[str, str], ...]:
     bindings: dict[str, str] = {}
     for pattern in (_CREATE_OBJECT_BINDING_RE, _NEW_BINDING_RE):
         for match in pattern.finditer(stripped_text):
@@ -308,7 +329,16 @@ def _variable_bindings_for_text(text: str) -> dict[str, str]:
             target = _normalize_target(match.group("target") or "").replace("/", ".")
             if alias and target:
                 bindings[alias] = target
-    return bindings
+    return tuple(sorted(bindings.items()))
+
+
+def _variable_bindings_for_text(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> dict[str, str]:
+    stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
+    return dict(_variable_binding_entries_for_stripped_text(stripped_text))
 
 
 def _iter_component_reference_matches(
@@ -318,19 +348,26 @@ def _iter_component_reference_matches(
     module_index: dict[str, str],
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
+    stripped_text: str | None = None,
 ):
-    stripped_text = strip_comments(text)
-    bindings = _variable_bindings_for_text(text)
+    stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
+    bindings = _variable_bindings_for_text(text, stripped_text=stripped_text)
     seen: set[tuple[str | None, tuple[str, ...], int]] = set()
+    resolved_component_targets: dict[str, str | None] = {}
+
+    def _resolve_component_target_cached(component_target: str) -> str | None:
+        if component_target not in resolved_component_targets:
+            resolved_component_targets[component_target] = _resolve_component_target(
+                current_file=file_path,
+                component_target=component_target,
+                module_index=module_index,
+                normalize_repository_relative_path=normalize_repository_relative_path,
+                resolve_suffix_match=resolve_suffix_match,
+            )
+        return resolved_component_targets[component_target]
 
     def _emit(component_target: str, target_name: str | None, line_number: int):
-        target_file = _resolve_component_target(
-            current_file=file_path,
-            component_target=component_target,
-            module_index=module_index,
-            normalize_repository_relative_path=normalize_repository_relative_path,
-            resolve_suffix_match=resolve_suffix_match,
-        )
+        target_file = _resolve_component_target_cached(component_target)
         if target_file is None:
             return ()
         final_target_name = (
@@ -344,11 +381,17 @@ def _iter_component_reference_matches(
         seen.add(key)
         return ((target_file, target_names, line_number),)
 
-    for extends_target in component_extends_targets(text):
+    for extends_target in component_extends_targets(text, stripped_text=stripped_text):
         yield from _emit(extends_target, extends_target.rsplit(".", 1)[-1], 1)
-    for component_target, method_name, line_number in iter_create_object_targets(text):
+    for component_target, method_name, line_number in iter_create_object_targets(
+        text,
+        stripped_text=stripped_text,
+    ):
         yield from _emit(component_target, method_name, line_number)
-    for component_target, method_name, line_number in iter_new_expression_targets(text):
+    for component_target, method_name, line_number in iter_new_expression_targets(
+        text,
+        stripped_text=stripped_text,
+    ):
         yield from _emit(component_target, method_name, line_number)
     for match in _QUALIFIED_REFERENCE_RE.finditer(stripped_text):
         alias = _normalize_target(match.group("alias") or "")
@@ -366,13 +409,7 @@ def _iter_component_reference_matches(
         alias_root = alias.split(".", 1)[0].lower()
         if alias_root in _BUILTIN_QUALIFIED_ROOTS:
             continue
-        if _resolve_component_target(
-            current_file=file_path,
-            component_target=alias,
-            module_index=module_index,
-            normalize_repository_relative_path=normalize_repository_relative_path,
-            resolve_suffix_match=resolve_suffix_match,
-        ):
+        if _resolve_component_target_cached(alias):
             yield from _emit(
                 alias,
                 target_name,
@@ -424,11 +461,18 @@ def parse_dependencies_only(
     stable_identifier: StableIdentifier,
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
+    stripped_text: str | None = None,
+    import_targets: tuple[str, ...] | None = None,
+    component_reference_matches: tuple[tuple[str | None, tuple[str, ...], int], ...] | None = None,
 ) -> tuple[_Dependency, ...]:
     dependencies: list[_Dependency] = []
     dependency_keys: set[tuple[str | None, str | None, str]] = set()
-    stripped_text = strip_comments(text)
-    for import_target in import_targets_for_text(text):
+    stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
+    for import_target in (
+        import_targets
+        if import_targets is not None
+        else import_targets_for_text(text, stripped_text=stripped_text)
+    ):
         _register_dependency(
             file_path=file_path,
             target_file=resolve_import(
@@ -446,12 +490,17 @@ def parse_dependencies_only(
             dependency_keys=dependency_keys,
             dependencies=dependencies,
         )
-    for target_file, target_names, line_number in _iter_component_reference_matches(
-        text=text,
-        file_path=file_path,
-        module_index=module_index,
-        normalize_repository_relative_path=normalize_repository_relative_path,
-        resolve_suffix_match=resolve_suffix_match,
+    for target_file, target_names, line_number in (
+        component_reference_matches
+        if component_reference_matches is not None
+        else _iter_component_reference_matches(
+            text=text,
+            file_path=file_path,
+            module_index=module_index,
+            normalize_repository_relative_path=normalize_repository_relative_path,
+            resolve_suffix_match=resolve_suffix_match,
+            stripped_text=stripped_text,
+        )
     ):
         _register_dependency(
             file_path=file_path,
@@ -480,10 +529,23 @@ def parse_file(
     tuple[_Dependency, ...],
     tuple[_SymbolReferenceCandidate, ...],
 ]:
+    stripped_text = strip_comments(text)
+    import_targets = import_targets_for_text(text, stripped_text=stripped_text)
+    component_reference_matches = tuple(
+        _iter_component_reference_matches(
+            text=text,
+            file_path=file_path,
+            module_index=module_index,
+            normalize_repository_relative_path=normalize_repository_relative_path,
+            resolve_suffix_match=resolve_suffix_match,
+            stripped_text=stripped_text,
+        )
+    )
     collected_symbols = _collect_symbols(
         file_path=file_path,
         text=text,
         stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
     )
     symbols = tuple(collected_symbol.symbol for collected_symbol in collected_symbols)
     dependencies = parse_dependencies_only(
@@ -493,6 +555,9 @@ def parse_file(
         stable_identifier=stable_identifier,
         normalize_repository_relative_path=normalize_repository_relative_path,
         resolve_suffix_match=resolve_suffix_match,
+        stripped_text=stripped_text,
+        import_targets=import_targets,
+        component_reference_matches=component_reference_matches,
     )
     symbols_by_name: dict[str, list[_Symbol]] = defaultdict(list)
     for symbol in symbols:
@@ -504,7 +569,6 @@ def parse_file(
         for symbol in symbols
         if symbol.symbol_kind == "function"
     }
-    stripped_text = strip_comments(text)
     lines = stripped_text.splitlines()
     reference_candidates: dict[str, _SymbolReferenceCandidate] = {}
 
@@ -557,13 +621,9 @@ def parse_file(
                     target_file=file_path,
                     target_names=(target_symbol.symbol_name,),
                 )
-        for target_file, target_names, _line_number_value in _iter_component_reference_matches(
-            text=snippet,
-            file_path=file_path,
-            module_index=module_index,
-            normalize_repository_relative_path=normalize_repository_relative_path,
-            resolve_suffix_match=resolve_suffix_match,
-        ):
+        for target_file, target_names, line_number in component_reference_matches:
+            if line_number < symbol.start_line or line_number > symbol.end_line:
+                continue
             _record_reference(
                 source_symbol_id=symbol.symbol_id,
                 target_symbol_id=None,

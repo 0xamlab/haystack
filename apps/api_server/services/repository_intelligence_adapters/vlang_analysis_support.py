@@ -39,11 +39,15 @@ def module_aliases_for_path(
     root_path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
+    stripped_text: str | None = None,
 ) -> set[str]:
     return repository_vlang_primitives.module_aliases_for_path(
         root_path=root_path,
         file_path=file_path,
         stable_identifier=stable_identifier,
+        text=text,
+        stripped_text=stripped_text,
     )
 
 
@@ -55,6 +59,7 @@ def _extract_import_bindings(
     stable_identifier: StableIdentifier,
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
+    stripped_text: str | None = None,
 ) -> tuple[tuple[_Dependency, ...], dict[str, _ImportedSymbolBinding]]:
     bindings = repository_vlang_primitives.imported_symbol_bindings(
         text=text,
@@ -62,10 +67,14 @@ def _extract_import_bindings(
         module_index=module_index,
         normalize_repository_relative_path=normalize_repository_relative_path,
         resolve_suffix_match=resolve_suffix_match,
+        stripped_text=stripped_text,
     )
     dependencies: list[_Dependency] = []
     dependency_keys: set[tuple[str | None, str]] = set()
-    for import_target in repository_vlang_primitives.import_targets_for_text(text):
+    for import_target in repository_vlang_primitives.import_targets_for_text(
+        text,
+        stripped_text=stripped_text,
+    ):
         target_file = resolve_import(
             current_file=file_path,
             import_target=import_target,
@@ -101,7 +110,13 @@ def parse_dependencies_only(
     stable_identifier: StableIdentifier,
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
+    stripped_text: str | None = None,
 ) -> tuple[_Dependency, ...]:
+    stripped_text = (
+        repository_vlang_primitives.strip_comments(text)
+        if stripped_text is None
+        else stripped_text
+    )
     dependencies, _bindings = _extract_import_bindings(
         file_path=file_path,
         text=text,
@@ -109,6 +124,7 @@ def parse_dependencies_only(
         stable_identifier=stable_identifier,
         normalize_repository_relative_path=normalize_repository_relative_path,
         resolve_suffix_match=resolve_suffix_match,
+        stripped_text=stripped_text,
     )
     return dependencies
 
@@ -121,15 +137,22 @@ def parse_file(
     stable_identifier: StableIdentifier,
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
+    stripped_text: str | None = None,
 ) -> tuple[
     tuple[_Symbol, ...],
     tuple[_Dependency, ...],
     tuple[_SymbolReferenceCandidate, ...],
 ]:
+    stripped_text = (
+        repository_vlang_primitives.strip_comments(text)
+        if stripped_text is None
+        else stripped_text
+    )
     symbols = repository_vlang_primitives.collect_symbols(
         file_path=file_path,
         text=text,
         stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
     )
     dependencies, import_bindings = _extract_import_bindings(
         file_path=file_path,
@@ -138,14 +161,14 @@ def parse_file(
         stable_identifier=stable_identifier,
         normalize_repository_relative_path=normalize_repository_relative_path,
         resolve_suffix_match=resolve_suffix_match,
+        stripped_text=stripped_text,
     )
 
     local_symbol_names = {symbol.symbol_name for symbol in symbols}
     local_symbol_lookup = {symbol.symbol_name: symbol.symbol_id for symbol in symbols}
     symbol_references: list[_SymbolReferenceCandidate] = []
     seen_reference_keys: set[tuple[str | None, str, str | None, str | None]] = set()
-    stripped = repository_vlang_primitives.strip_comments(text)
-    lines = stripped.splitlines()
+    lines = stripped_text.splitlines()
 
     for symbol in symbols:
         snippet = "\n".join(

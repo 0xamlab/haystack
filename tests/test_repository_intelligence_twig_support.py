@@ -17,6 +17,9 @@ from apps.api_server.services import (
 )
 from apps.api_server.services.pyarrow_runtime import initialize_pyarrow_parquet_runtime
 from apps.api_server.services.repository_intelligence_adapters import (
+    jinja_primitives as repository_jinja_primitives,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
     twig_analysis_support as repository_twig_analysis_support,
 )
 from apps.api_server.services.repository_intelligence_adapters import (
@@ -162,6 +165,101 @@ def test_twig_adapter_parse_file_resolves_imports_includes_and_references(tmp_pa
         and "render_button" in reference.target_names
         for reference in references
     )
+
+
+def test_twig_adapter_parse_file_ignores_commented_imports_and_macros(tmp_path: Path) -> None:
+    repo_path = tmp_path / "twig-commented-parse-repo"
+    (repo_path / "templates" / "partials").mkdir(parents=True)
+    (repo_path / "templates" / "partials" / "macros.html.twig").write_text(
+        "{% macro render_button(label) %}\n"
+        "  <button>{{ label }}</button>\n"
+        "{% endmacro %}\n",
+        encoding="utf-8",
+    )
+    (repo_path / "templates" / "index.html.twig").write_text(
+        '{# {% import "templates/partials/ghost.html.twig" as ghost %} #}\n'
+        '{# {% macro hidden_button(label) %}<button>{{ label }}</button>{% endmacro %} #}\n'
+        '{% import "templates/partials/macros.html.twig" as macros %}\n'
+        '{{ macros.render_button("Ship it") }}\n',
+        encoding="utf-8",
+    )
+    module_index = repository_service._build_module_index(
+        [
+            "templates/index.html.twig",
+            "templates/partials/macros.html.twig",
+        ],
+        root_path=repo_path,
+    )
+    text = (repo_path / "templates" / "index.html.twig").read_text(encoding="utf-8")
+
+    dependencies = repository_service.twig_adapter.parse_dependencies_only(
+        "templates/index.html.twig",
+        text,
+        module_index,
+        stable_identifier=repository_service._stable_identifier,
+        normalize_repository_relative_path=repository_service._normalize_repository_relative_path,
+        resolve_suffix_match=repository_service._resolve_suffix_match,
+    )
+    symbols, _, references = repository_service.twig_adapter.parse_file(
+        "templates/index.html.twig",
+        text,
+        module_index,
+        stable_identifier=repository_service._stable_identifier,
+        normalize_repository_relative_path=repository_service._normalize_repository_relative_path,
+        resolve_suffix_match=repository_service._resolve_suffix_match,
+    )
+
+    assert all(dependency.target_file != "templates/partials/ghost.html.twig" for dependency in dependencies)
+    assert any(
+        dependency.target_file == "templates/partials/macros.html.twig"
+        for dependency in dependencies
+    )
+    assert all(symbol.symbol_name != "hidden_button" for symbol in symbols)
+    assert any(
+        reference.target_file == "templates/partials/macros.html.twig"
+        and "render_button" in reference.target_names
+        for reference in references
+    )
+
+
+def test_twig_strip_comments_uses_cache_for_repeat_inputs() -> None:
+    repository_jinja_primitives._strip_comments_cached.cache_clear()
+    source_text = "{# hidden #}\n{{ helper() }}\n"
+
+    first_result = repository_service.twig_adapter.strip_comments(source_text)
+    first_cache_info = repository_jinja_primitives._strip_comments_cached.cache_info()
+    second_result = repository_service.twig_adapter.strip_comments(source_text)
+    second_cache_info = repository_jinja_primitives._strip_comments_cached.cache_info()
+
+    assert first_result == second_result
+    assert first_cache_info.hits == 0
+    assert second_cache_info.hits == 1
+
+
+def test_twig_iter_symbol_entries_reuse_cached_stripped_text_entries() -> None:
+    repository_twig_primitives._iter_symbol_entries_from_stripped_text.cache_clear()
+    stripped_text = repository_twig_primitives._prepared_twig_source_text(
+        path=Path("templates/index.html.twig"),
+        text="{% macro render_button(label) %}{% endmacro %}\n",
+    )
+    assert stripped_text is not None
+
+    first_result = repository_twig_primitives._iter_symbol_entries_from_stripped_text(
+        stripped_text
+    )
+    first_cache_info = (
+        repository_twig_primitives._iter_symbol_entries_from_stripped_text.cache_info()
+    )
+    second_result = repository_twig_primitives._iter_symbol_entries_from_stripped_text(
+        stripped_text
+    )
+    second_cache_info = (
+        repository_twig_primitives._iter_symbol_entries_from_stripped_text.cache_info()
+    )
+
+    assert first_result == second_result
+    assert first_cache_info.hits == 0
+    assert second_cache_info.hits == 1
 
 
 def test_twig_language_detection_supports_template_suffixes() -> None:

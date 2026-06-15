@@ -403,6 +403,32 @@ def _resolve_base_url() -> str:
     return base_url
 
 
+def _live_server_reachable() -> bool:
+    """True if a live API server is already reachable (configured URL or the default host:port)."""
+    if CONFIGURED_BASE_URL:
+        from urllib.parse import urlparse
+
+        parsed = urlparse(CONFIGURED_BASE_URL)
+        host = parsed.hostname or DEFAULT_HOST
+        port = parsed.port or (443 if parsed.scheme == "https" else 80)
+        return _port_open(host, port)
+    return _port_open(DEFAULT_HOST, DEFAULT_PORT)
+
+
+# This is a SCRIPT-style live-integration test: run via
+# `./scripts/run_repo_python.sh tests/integration/test_openapi.py` (it self-starts a server). It is
+# NOT a pytest unit test and is in no curated pytest gate. When a broad `pytest` sweep COLLECTS it
+# without a live server, skip the whole module cleanly rather than self-starting uvicorn mid-collection
+# (which would error collection). Script mode (__main__) is unaffected and still self-starts a server.
+if __name__ != "__main__" and not _live_server_reachable():
+    import pytest as _pytest
+
+    _pytest.skip(
+        "OpenAPI live-integration runs as a script with a server up; no live server reachable "
+        "under pytest collection.",
+        allow_module_level=True,
+    )
+
 BASE_URL = _resolve_base_url()
 API_KEY, API_KEY_CONFIGURED, LOCAL_LIVE_AUTH_BOOTSTRAP_ERROR = (
     ensure_bootstrapped_local_live_api_key(

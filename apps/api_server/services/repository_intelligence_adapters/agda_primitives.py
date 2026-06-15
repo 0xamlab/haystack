@@ -121,6 +121,29 @@ def _ordered_names(*values: str) -> tuple[str, ...]:
 
 
 def strip_comments(text: str) -> str:
+    if "--" not in text and "{-" not in text:
+        return text
+    if "{-" not in text and '"' not in text:
+        stripped_lines: list[str] = []
+        for line in text.splitlines(keepends=True):
+            line_ending = ""
+            content = line
+            if line.endswith("\r\n"):
+                line_ending = "\r\n"
+                content = line[:-2]
+            elif line.endswith("\n") or line.endswith("\r"):
+                line_ending = line[-1]
+                content = line[:-1]
+            comment_index = content.find("--")
+            if comment_index < 0:
+                stripped_lines.append(line)
+                continue
+            stripped_lines.append(
+                content[:comment_index]
+                + (" " * (len(content) - comment_index))
+                + line_ending
+            )
+        return "".join(stripped_lines)
     result: list[str] = []
     in_block_comment = 0
     in_string = False
@@ -181,15 +204,21 @@ def has_agda_path_hints(path: Path | PurePosixPath) -> bool:
     )
 
 
-def is_probable_agda_source(*, path: Path | PurePosixPath, text: str) -> bool:
+def is_probable_agda_source(
+    *,
+    path: Path | PurePosixPath,
+    text: str,
+    stripped_text: str | None = None,
+) -> bool:
     if not has_agda_path_hints(path):
         return False
-    stripped_text = strip_comments(text)
-    if not stripped_text.strip():
+    candidate_stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
+    if not candidate_stripped_text.strip():
         return False
     if str(PurePosixPath(path)).lower().endswith(".agda-lib"):
-        return "include:" in stripped_text.lower() or "name:" in stripped_text.lower()
-    return bool(_MODULE_RE.search(stripped_text) or _IMPORT_RE.search(stripped_text))
+        lowered_text = candidate_stripped_text.lower()
+        return "include:" in lowered_text or "name:" in lowered_text
+    return bool(_MODULE_RE.search(candidate_stripped_text) or _IMPORT_RE.search(candidate_stripped_text))
 
 
 def module_name_from_path(file_path: str) -> str:
@@ -230,8 +259,12 @@ def parse_import_names(raw_value: str) -> tuple[str, ...]:
     return tuple(dict.fromkeys(names))
 
 
-def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
-    stripped_text = strip_comments(text)
+def iter_symbol_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, str, int], ...]:
+    candidate_stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
     entries: list[tuple[str, str, int]] = []
     seen_names: set[str] = set()
     for regex, symbol_kind in (
@@ -240,7 +273,7 @@ def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
         (_MODULE_DECL_RE, "module"),
         (_FUNCTION_SIG_RE, "function"),
     ):
-        for match in regex.finditer(stripped_text):
+        for match in regex.finditer(candidate_stripped_text):
             symbol_name = str(match.group("name") or "").strip()
             if (
                 not symbol_name
@@ -249,8 +282,10 @@ def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
             ):
                 continue
             seen_names.add(symbol_name)
-            entries.append((symbol_name, symbol_kind, _line_number(stripped_text, match.start())))
-    for match in _POSTULATE_LINE_RE.finditer(stripped_text):
+            entries.append(
+                (symbol_name, symbol_kind, _line_number(candidate_stripped_text, match.start()))
+            )
+    for match in _POSTULATE_LINE_RE.finditer(candidate_stripped_text):
         body = str(match.group("body") or "")
         for candidate_match in re.finditer(r"\b(?P<name>[A-Za-z_][A-Za-z0-9_']*)\b", body):
             symbol_name = str(candidate_match.group("name") or "").strip()
@@ -265,7 +300,7 @@ def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
                 (
                     symbol_name,
                     "postulate",
-                    _line_number(stripped_text, match.start()),
+                    _line_number(candidate_stripped_text, match.start()),
                 )
             )
     return tuple(sorted(entries, key=lambda item: (item[2], item[0], item[1])))

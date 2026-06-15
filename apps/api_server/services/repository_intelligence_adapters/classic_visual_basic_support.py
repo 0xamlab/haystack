@@ -58,6 +58,9 @@ project_startup_name = (
 is_probable_classic_visual_basic_source = (
     repository_classic_visual_basic_primitives.is_probable_classic_visual_basic_source
 )
+is_probable_classic_visual_basic_source_with_optional_stripped_text = (
+    repository_classic_visual_basic_primitives.is_probable_classic_visual_basic_source_with_optional_stripped_text
+)
 _component_symbol_kind = (
     repository_classic_visual_basic_primitives._component_symbol_kind
 )

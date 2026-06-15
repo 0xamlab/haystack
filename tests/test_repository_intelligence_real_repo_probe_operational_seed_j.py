@@ -4,6 +4,11 @@ Extracted from tests/test_repository_intelligence_real_repo_probe.py during modu
 """
 from __future__ import annotations
 
+from benchmarks.repository_intelligence_real_repo_probe_profile_manifest_build_support import (
+    _cmake_profile_hints,
+    clear_c_family_manifest_ecosystem_cache,
+)
+
 from tests._repository_intelligence_real_repo_probe_helpers import *  # noqa: F401,F403
 
 
@@ -438,12 +443,54 @@ def test_operational_seed_plan_without_diagnostics_uses_cmake_profile(
     assert "cpp" in seed_plan["detected_ecosystems"]
     assert "cmake" in seed_plan["detected_ecosystems"]
     assert "CMakeLists.txt" in seed_plan["config_paths"]
+    assert "CMakeLists.txt" in seed_plan["entrypoint_files"]
     assert "include/acme" in seed_plan["support_roots"]
     assert "include" not in seed_plan["support_roots"]
     assert "src" in seed_plan["support_roots"]
     assert "src/main.cpp" in seed_plan["entrypoint_files"]
     assert "src/core.cpp" in seed_plan["entrypoint_files"]
     assert "tests/core_test.cpp" not in seed_plan["entrypoint_files"]
+
+
+def test_cmake_profile_hints_cache_reuses_manifest_parse(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo_path = tmp_path / "cmake-profile-cache-repo"
+    repo_path.mkdir(parents=True)
+    manifest_path = repo_path / "CMakeLists.txt"
+    manifest_path.write_text(
+        "add_library(acme src/core.cpp include/acme/core.hpp)\n"
+        "add_executable(acme_cli src/main.cpp)\n",
+        encoding="utf-8",
+    )
+
+    clear_c_family_manifest_ecosystem_cache()
+    original_read_text = Path.read_text
+    read_counts: dict[Path, int] = {}
+
+    def _counting_read_text(self: Path, *args, **kwargs) -> str:
+        if self == manifest_path:
+            read_counts[self] = read_counts.get(self, 0) + 1
+        return original_read_text(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", _counting_read_text)
+
+    first_entrypoints, first_roots, first_configs = _cmake_profile_hints(
+        repo_path,
+        "CMakeLists.txt",
+    )
+    second_entrypoints, second_roots, second_configs = _cmake_profile_hints(
+        repo_path,
+        "CMakeLists.txt",
+    )
+
+    assert first_entrypoints == second_entrypoints
+    assert first_roots == second_roots
+    assert first_configs == second_configs
+    assert "src/main.cpp" in first_entrypoints
+    assert "include/acme" in first_roots
+    assert read_counts.get(manifest_path, 0) == 1
 
 
 def test_operational_seed_plan_without_diagnostics_uses_meson_profile(
@@ -663,6 +710,40 @@ def test_operational_seed_plan_without_diagnostics_uses_just_profile(
     assert "tasks" in seed_plan["support_roots"]
 
 
+def test_operational_seed_plan_without_diagnostics_prefers_just_over_shell_and_containerfile(
+    tmp_path: Path,
+) -> None:
+    repo_path = tmp_path / "just-container-repo"
+    (repo_path / "build_files").mkdir(parents=True)
+    (repo_path / "Justfile").write_text(
+        "build:\n"
+        "  ./build_files/build.sh\n",
+        encoding="utf-8",
+    )
+    (repo_path / "Containerfile").write_text(
+        "FROM alpine:3.20\n"
+        "COPY . /workspace\n",
+        encoding="utf-8",
+    )
+    (repo_path / "build_files" / "build.sh").write_text(
+        "#!/usr/bin/env bash\n"
+        "echo build\n",
+        encoding="utf-8",
+    )
+
+    seed_plan = _derive_operational_seed_plan_without_diagnostics(
+        repo_path=repo_path,
+        focus_paths=["."],
+        max_files=128,
+    )
+
+    assert "just" in seed_plan["detected_ecosystems"]
+    assert "dockerfile" in seed_plan["detected_ecosystems"]
+    assert "shell" in seed_plan["detected_ecosystems"]
+    assert seed_plan["operational_ecosystems"][0] == "just"
+    assert "Justfile" in seed_plan["entrypoint_files"]
+
+
 def test_operational_seed_plan_without_diagnostics_cmake_profile_ignores_absolute_like_tokens(
     tmp_path: Path,
 ) -> None:
@@ -775,5 +856,3 @@ def test_operational_seed_plan_without_diagnostics_uses_gemspec_name_hints(
     assert "actionmailer/actionmailer.gemspec" in seed_plan["config_paths"]
     assert "actionmailer/lib" in seed_plan["support_roots"]
     assert "actionmailer/lib/action_mailer.rb" in seed_plan["entrypoint_files"]
-
-

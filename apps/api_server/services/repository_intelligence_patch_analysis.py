@@ -3,11 +3,231 @@ from __future__ import annotations
 import re
 from collections import defaultdict
 from collections.abc import Callable
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
 _PATCH_FILE_RE = re.compile(r"^\+\+\+ b/(.+)$", re.MULTILINE)
 _PATCH_HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@", re.MULTILINE)
+_TEST_PATH_SEGMENTS = ("/tests/", "/test/", "/t/", "/src/test/")
+_TEST_PATH_PREFIXES = ("tests/", "test/", "t/")
+_TEST_PATH_SUFFIXES = (
+    "_test.py",
+    "_test.go",
+    "_test.rb",
+    "_test.scala",
+    "_test.fs",
+    "_test.fsi",
+    "_test.fsx",
+    "_spec.rb",
+    "_spec.cr",
+    ".spec.cr",
+    "_test.rs",
+    "_test.mj",
+    "_test.mojo",
+    "_test.kt",
+    "_test.kts",
+    "_test.dart",
+    "_test.d",
+    "_test.vb",
+    "_test.pas",
+    "_test.pp",
+    "_test.lpr",
+    "_test.dpr",
+    "_test.groovy",
+    ".test.scala",
+    ".spec.scala",
+    ".test.groovy",
+    ".spec.groovy",
+    ".test.fs",
+    ".spec.fs",
+    ".test.fsi",
+    ".spec.fsi",
+    ".test.fsx",
+    ".spec.fsx",
+    ".test.dart",
+    ".test.d",
+    ".test.vb",
+    ".test.pas",
+    ".test.pp",
+    ".test.lpr",
+    ".test.dpr",
+    "_test.c",
+    "_test.cc",
+    "_test.cpp",
+    "_test.cxx",
+    "_test.zig",
+    "_test.hs",
+    "_test.hsc",
+    "_test.lhs",
+    "_test.f",
+    "_test.f03",
+    "_test.f08",
+    "_test.f90",
+    "_test.f95",
+    "_test.for",
+    "_test.ml",
+    "_test.mli",
+    "_test.nim",
+    "_test.pl",
+    "_test.pm",
+    "_test.r",
+    ".test.c",
+    ".test.cc",
+    ".test.cpp",
+    ".test.cxx",
+    ".test.zig",
+    ".test.hs",
+    ".test.hsc",
+    ".test.lhs",
+    ".test.f",
+    ".test.f03",
+    ".test.f08",
+    ".test.f90",
+    ".test.f95",
+    ".test.for",
+    ".test.ml",
+    ".test.mli",
+    ".test.nim",
+    ".test.pl",
+    ".test.pm",
+    ".test.r",
+    "test.c",
+    "tests.c",
+    "test.cc",
+    "tests.cc",
+    "test.cpp",
+    "tests.cpp",
+    "test.cxx",
+    "tests.cxx",
+    "test.zig",
+    "tests.zig",
+    "test.hs",
+    "tests.hs",
+    "spec.hs",
+    "suite.hs",
+    "test.f",
+    "tests.f",
+    "spec.f",
+    "suite.f",
+    "test.f03",
+    "tests.f03",
+    "spec.f03",
+    "suite.f03",
+    "test.f08",
+    "tests.f08",
+    "spec.f08",
+    "suite.f08",
+    "test.f90",
+    "tests.f90",
+    "spec.f90",
+    "suite.f90",
+    "test.f95",
+    "tests.f95",
+    "spec.f95",
+    "suite.f95",
+    "test.for",
+    "tests.for",
+    "spec.for",
+    "suite.for",
+    "test.d",
+    "tests.d",
+    "spec.d",
+    "suite.d",
+    "test.vb",
+    "tests.vb",
+    "spec.vb",
+    "suite.vb",
+    "test.pas",
+    "tests.pas",
+    "spec.pas",
+    "suite.pas",
+    "test.pp",
+    "tests.pp",
+    "spec.pp",
+    "suite.pp",
+    "test.lpr",
+    "tests.lpr",
+    "spec.lpr",
+    "suite.lpr",
+    "test.dpr",
+    "tests.dpr",
+    "spec.dpr",
+    "suite.dpr",
+    "test.ml",
+    "tests.ml",
+    "spec.ml",
+    "suite.ml",
+    "test.mli",
+    "tests.mli",
+    "spec.mli",
+    "suite.mli",
+    "test.nim",
+    "tests.nim",
+    "spec.nim",
+    "suite.nim",
+    ".t",
+    "test.pl",
+    "tests.pl",
+    "spec.pl",
+    "suite.pl",
+    "test.pm",
+    "tests.pm",
+    "spec.pm",
+    "suite.pm",
+    "test.r",
+    "tests.r",
+    "spec.r",
+    "suite.r",
+    "test.hsc",
+    "tests.hsc",
+    "spec.hsc",
+    "suite.hsc",
+    "test.lhs",
+    "tests.lhs",
+    "spec.lhs",
+    "suite.lhs",
+    "test.java",
+    "tests.java",
+    "test.scala",
+    "tests.scala",
+    "spec.scala",
+    "suite.scala",
+    "test.groovy",
+    "tests.groovy",
+    "spec.groovy",
+    "suite.groovy",
+    "test.fs",
+    "tests.fs",
+    "spec.fs",
+    "suite.fs",
+    "test.fsi",
+    "tests.fsi",
+    "spec.fsi",
+    "suite.fsi",
+    "test.fsx",
+    "tests.fsx",
+    "spec.fsx",
+    "suite.fsx",
+    "test.dart",
+    "tests.dart",
+    "spec.dart",
+    "suite.dart",
+    ".spec.ts",
+    ".test.ts",
+    ".spec.js",
+    ".test.js",
+    ".tests.ps1",
+    ".test.ps1",
+    ".spec.ps1",
+    ".tests.psm1",
+    ".test.psm1",
+    ".spec.psm1",
+    "_suite.erl",
+    "_tests.erl",
+    "suite.erl",
+    "tests.erl",
+)
 
 _MaterializedSnapshot = Callable[[dict[str, Any]], Any]
 _GitCommand = Callable[..., str]
@@ -57,227 +277,12 @@ def _top_level_service(file_path: str) -> str:
     return parts[0]
 
 
+@lru_cache(maxsize=16_384)
 def _is_test_path(file_path: str) -> bool:
     lower = file_path.lower()
+    wrapped = f"/{lower}"
     return (
-        "/tests/" in f"/{lower}"
-        or "/test/" in f"/{lower}"
-        or "/t/" in f"/{lower}"
-        or "/src/test/" in f"/{lower}"
-        or lower.startswith("tests/")
-        or lower.startswith("test/")
-        or lower.startswith("t/")
-        or lower.endswith("_test.py")
-        or lower.endswith("_test.go")
-        or lower.endswith("_test.rb")
-        or lower.endswith("_test.scala")
-        or lower.endswith("_test.fs")
-        or lower.endswith("_test.fsi")
-        or lower.endswith("_test.fsx")
-        or lower.endswith("_spec.rb")
-        or lower.endswith("_test.rs")
-        or lower.endswith("_test.mj")
-        or lower.endswith("_test.mojo")
-        or lower.endswith("_test.kt")
-        or lower.endswith("_test.kts")
-        or lower.endswith("_test.dart")
-        or lower.endswith("_test.d")
-        or lower.endswith("_test.vb")
-        or lower.endswith("_test.pas")
-        or lower.endswith("_test.pp")
-        or lower.endswith("_test.lpr")
-        or lower.endswith("_test.dpr")
-        or lower.endswith("_test.groovy")
-        or lower.endswith(".test.scala")
-        or lower.endswith(".spec.scala")
-        or lower.endswith(".test.groovy")
-        or lower.endswith(".spec.groovy")
-        or lower.endswith(".test.fs")
-        or lower.endswith(".spec.fs")
-        or lower.endswith(".test.fsi")
-        or lower.endswith(".spec.fsi")
-        or lower.endswith(".test.fsx")
-        or lower.endswith(".spec.fsx")
-        or lower.endswith(".test.dart")
-        or lower.endswith(".test.d")
-        or lower.endswith(".test.vb")
-        or lower.endswith(".test.pas")
-        or lower.endswith(".test.pp")
-        or lower.endswith(".test.lpr")
-        or lower.endswith(".test.dpr")
-        or lower.endswith("_test.c")
-        or lower.endswith("_test.cc")
-        or lower.endswith("_test.cpp")
-        or lower.endswith("_test.cxx")
-        or lower.endswith("_test.zig")
-        or lower.endswith("_test.hs")
-        or lower.endswith("_test.hsc")
-        or lower.endswith("_test.lhs")
-        or lower.endswith("_test.f")
-        or lower.endswith("_test.f03")
-        or lower.endswith("_test.f08")
-        or lower.endswith("_test.f90")
-        or lower.endswith("_test.f95")
-        or lower.endswith("_test.for")
-        or lower.endswith("_test.ml")
-        or lower.endswith("_test.mli")
-        or lower.endswith("_test.nim")
-        or lower.endswith("_test.pl")
-        or lower.endswith("_test.pm")
-        or lower.endswith("_test.r")
-        or lower.endswith(".test.c")
-        or lower.endswith(".test.cc")
-        or lower.endswith(".test.cpp")
-        or lower.endswith(".test.cxx")
-        or lower.endswith(".test.zig")
-        or lower.endswith(".test.hs")
-        or lower.endswith(".test.hsc")
-        or lower.endswith(".test.lhs")
-        or lower.endswith(".test.f")
-        or lower.endswith(".test.f03")
-        or lower.endswith(".test.f08")
-        or lower.endswith(".test.f90")
-        or lower.endswith(".test.f95")
-        or lower.endswith(".test.for")
-        or lower.endswith(".test.ml")
-        or lower.endswith(".test.mli")
-        or lower.endswith(".test.nim")
-        or lower.endswith(".test.pl")
-        or lower.endswith(".test.pm")
-        or lower.endswith(".test.r")
-        or lower.endswith("test.c")
-        or lower.endswith("tests.c")
-        or lower.endswith("test.cc")
-        or lower.endswith("tests.cc")
-        or lower.endswith("test.cpp")
-        or lower.endswith("tests.cpp")
-        or lower.endswith("test.cxx")
-        or lower.endswith("tests.cxx")
-        or lower.endswith("test.zig")
-        or lower.endswith("tests.zig")
-        or lower.endswith("test.hs")
-        or lower.endswith("tests.hs")
-        or lower.endswith("spec.hs")
-        or lower.endswith("suite.hs")
-        or lower.endswith("test.f")
-        or lower.endswith("tests.f")
-        or lower.endswith("spec.f")
-        or lower.endswith("suite.f")
-        or lower.endswith("test.f03")
-        or lower.endswith("tests.f03")
-        or lower.endswith("spec.f03")
-        or lower.endswith("suite.f03")
-        or lower.endswith("test.f08")
-        or lower.endswith("tests.f08")
-        or lower.endswith("spec.f08")
-        or lower.endswith("suite.f08")
-        or lower.endswith("test.f90")
-        or lower.endswith("tests.f90")
-        or lower.endswith("spec.f90")
-        or lower.endswith("suite.f90")
-        or lower.endswith("test.f95")
-        or lower.endswith("tests.f95")
-        or lower.endswith("spec.f95")
-        or lower.endswith("suite.f95")
-        or lower.endswith("test.for")
-        or lower.endswith("tests.for")
-        or lower.endswith("spec.for")
-        or lower.endswith("suite.for")
-        or lower.endswith("test.d")
-        or lower.endswith("tests.d")
-        or lower.endswith("spec.d")
-        or lower.endswith("suite.d")
-        or lower.endswith("test.vb")
-        or lower.endswith("tests.vb")
-        or lower.endswith("spec.vb")
-        or lower.endswith("suite.vb")
-        or lower.endswith("test.pas")
-        or lower.endswith("tests.pas")
-        or lower.endswith("spec.pas")
-        or lower.endswith("suite.pas")
-        or lower.endswith("test.pp")
-        or lower.endswith("tests.pp")
-        or lower.endswith("spec.pp")
-        or lower.endswith("suite.pp")
-        or lower.endswith("test.lpr")
-        or lower.endswith("tests.lpr")
-        or lower.endswith("spec.lpr")
-        or lower.endswith("suite.lpr")
-        or lower.endswith("test.dpr")
-        or lower.endswith("tests.dpr")
-        or lower.endswith("spec.dpr")
-        or lower.endswith("suite.dpr")
-        or lower.endswith("test.ml")
-        or lower.endswith("tests.ml")
-        or lower.endswith("spec.ml")
-        or lower.endswith("suite.ml")
-        or lower.endswith("test.mli")
-        or lower.endswith("tests.mli")
-        or lower.endswith("spec.mli")
-        or lower.endswith("suite.mli")
-        or lower.endswith("test.nim")
-        or lower.endswith("tests.nim")
-        or lower.endswith("spec.nim")
-        or lower.endswith("suite.nim")
-        or lower.endswith(".t")
-        or lower.endswith("test.pl")
-        or lower.endswith("tests.pl")
-        or lower.endswith("spec.pl")
-        or lower.endswith("suite.pl")
-        or lower.endswith("test.pm")
-        or lower.endswith("tests.pm")
-        or lower.endswith("spec.pm")
-        or lower.endswith("suite.pm")
-        or lower.endswith("test.r")
-        or lower.endswith("tests.r")
-        or lower.endswith("spec.r")
-        or lower.endswith("suite.r")
-        or lower.endswith("test.hsc")
-        or lower.endswith("tests.hsc")
-        or lower.endswith("spec.hsc")
-        or lower.endswith("suite.hsc")
-        or lower.endswith("test.lhs")
-        or lower.endswith("tests.lhs")
-        or lower.endswith("spec.lhs")
-        or lower.endswith("suite.lhs")
-        or lower.endswith("test.java")
-        or lower.endswith("tests.java")
-        or lower.endswith("test.scala")
-        or lower.endswith("tests.scala")
-        or lower.endswith("spec.scala")
-        or lower.endswith("suite.scala")
-        or lower.endswith("test.groovy")
-        or lower.endswith("tests.groovy")
-        or lower.endswith("spec.groovy")
-        or lower.endswith("suite.groovy")
-        or lower.endswith("test.fs")
-        or lower.endswith("tests.fs")
-        or lower.endswith("spec.fs")
-        or lower.endswith("suite.fs")
-        or lower.endswith("test.fsi")
-        or lower.endswith("tests.fsi")
-        or lower.endswith("spec.fsi")
-        or lower.endswith("suite.fsi")
-        or lower.endswith("test.fsx")
-        or lower.endswith("tests.fsx")
-        or lower.endswith("spec.fsx")
-        or lower.endswith("suite.fsx")
-        or lower.endswith("test.dart")
-        or lower.endswith("tests.dart")
-        or lower.endswith("spec.dart")
-        or lower.endswith("suite.dart")
-        or lower.endswith(".spec.ts")
-        or lower.endswith(".test.ts")
-        or lower.endswith(".spec.js")
-        or lower.endswith(".test.js")
-        or lower.endswith(".tests.ps1")
-        or lower.endswith(".test.ps1")
-        or lower.endswith(".spec.ps1")
-        or lower.endswith(".tests.psm1")
-        or lower.endswith(".test.psm1")
-        or lower.endswith(".spec.psm1")
-        or lower.endswith("_suite.erl")
-        or lower.endswith("_tests.erl")
-        or lower.endswith("suite.erl")
-        or lower.endswith("tests.erl")
+        any(segment in wrapped for segment in _TEST_PATH_SEGMENTS)
+        or lower.startswith(_TEST_PATH_PREFIXES)
+        or lower.endswith(_TEST_PATH_SUFFIXES)
     )

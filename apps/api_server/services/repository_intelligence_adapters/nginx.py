@@ -1,0 +1,31 @@
+from .nginx_analysis_support import (
+    NGINX_INDEX_BASENAMES,
+    NGINX_SUFFIXES,
+    has_nginx_path_hints,
+    is_probable_nginx_source,
+    iter_dependency_entries,
+    iter_reference_entries,
+    iter_symbol_entries,
+    module_aliases_for_path,
+    module_name_from_path,
+    parse_dependencies_only,
+    parse_file,
+    resolve_include_targets,
+    strip_comments,
+)
+
+__all__ = [
+    "NGINX_INDEX_BASENAMES",
+    "NGINX_SUFFIXES",
+    "has_nginx_path_hints",
+    "is_probable_nginx_source",
+    "iter_dependency_entries",
+    "iter_reference_entries",
+    "iter_symbol_entries",
+    "module_aliases_for_path",
+    "module_name_from_path",
+    "parse_dependencies_only",
+    "parse_file",
+    "resolve_include_targets",
+    "strip_comments",
+]

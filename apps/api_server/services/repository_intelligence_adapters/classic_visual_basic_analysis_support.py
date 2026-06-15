@@ -44,6 +44,9 @@ component_name = repository_classic_visual_basic_primitives.component_name
 is_probable_classic_visual_basic_source = (
     repository_classic_visual_basic_primitives.is_probable_classic_visual_basic_source
 )
+is_probable_classic_visual_basic_source_with_optional_stripped_text = (
+    repository_classic_visual_basic_primitives.is_probable_classic_visual_basic_source_with_optional_stripped_text
+)
 normalize_symbol_name = (
     repository_classic_visual_basic_primitives.normalize_symbol_name
 )
@@ -60,12 +63,13 @@ def collect_symbol_entries(
     *,
     file_path: str,
     stable_identifier: StableIdentifier,
+    stripped_text: str | None = None,
 ) -> list[dict[str, Any]]:
     path = PurePosixPath(file_path)
-    stripped_text = strip_comments(text)
+    normalized_text = stripped_text if stripped_text is not None else strip_comments(text)
     symbol_entries: list[dict[str, Any]] = []
     seen_symbol_keys: set[tuple[str, str, int]] = set()
-    final_line = len(stripped_text.splitlines()) if stripped_text else 1
+    final_line = len(normalized_text.splitlines()) if normalized_text else 1
     if path.suffix.lower() != ".vbp":
         current_component = component_name(text, file_path=file_path)
         if current_component:
@@ -92,12 +96,12 @@ def collect_symbol_entries(
             )
             seen_symbol_keys.add((component_kind, current_component.lower(), line_no))
         for regex, symbol_kind in ((TYPE_DECL_RE, "type"), (ROUTINE_DECL_RE, "function")):
-            for match in regex.finditer(stripped_text):
+            for match in regex.finditer(normalized_text):
                 symbol_name = normalize_symbol_name(str(match.group("name") or ""))
                 canonical_symbol_name = symbol_name.lower()
                 if not symbol_name or canonical_symbol_name in RESERVED_SYMBOL_NAMES:
                     continue
-                line_no = stripped_text.count("\n", 0, match.start()) + 1
+                line_no = normalized_text.count("\n", 0, match.start()) + 1
                 symbol_key = (symbol_kind, canonical_symbol_name, line_no)
                 if symbol_key in seen_symbol_keys:
                     continue
@@ -166,6 +170,7 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
 ) -> set[str]:
     path = PurePosixPath(file_path)
     suffix = path.suffix.lower()
@@ -177,20 +182,28 @@ def module_aliases_for_path(
         str(path.with_suffix("")).lower(),
         str(path.with_suffix("")).replace("/", ".").lower(),
     }
-    try:
-        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        return {alias for alias in aliases if alias and alias not in {".", "/"}}
-    if not is_probable_classic_visual_basic_source(path=Path(file_path), text=text):
+    loaded_text = text
+    if loaded_text is None:
+        try:
+            loaded_text = (root_path / path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return {alias for alias in aliases if alias and alias not in {".", "/"}}
+    stripped_text = None if suffix == ".vbp" else strip_comments(loaded_text)
+    if not is_probable_classic_visual_basic_source_with_optional_stripped_text(
+        path=Path(file_path),
+        text=loaded_text,
+        stripped_text=stripped_text,
+    ):
         return {alias for alias in aliases if alias and alias not in {".", "/"}}
     if suffix != ".vbp":
-        current_component = component_name(text, file_path=file_path)
+        current_component = component_name(loaded_text, file_path=file_path)
         if current_component:
             aliases.add(current_component.lower())
     for symbol_entry in collect_symbol_entries(
-        text,
+        loaded_text,
         file_path=file_path,
         stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
     ):
         aliases.update(
             str(alias).lower()
@@ -254,11 +267,12 @@ def _instance_bindings(
     text: str,
     *,
     resolve_target_fn: Callable[[str], str | None],
+    stripped_text: str | None = None,
 ) -> dict[str, dict[str, str]]:
     bindings: dict[str, dict[str, str]] = {}
-    stripped_text = strip_comments(text)
+    normalized_text = stripped_text if stripped_text is not None else strip_comments(text)
     for regex in (VARIABLE_TYPE_BINDING_RE, SET_NEW_BINDING_RE):
-        for match in regex.finditer(stripped_text):
+        for match in regex.finditer(normalized_text):
             alias = normalize_symbol_name(str(match.group("name") or "")).lower()
             target_name = normalize_target(str(match.group("type") or ""))
             if not alias or not target_name or alias in RESERVED_SYMBOL_NAMES:
@@ -316,6 +330,9 @@ def parse_dependencies_only(
     *,
     stable_identifier: StableIdentifier,
     resolve_target_fn: Callable[[str], str | None],
+    stripped_text: str | None = None,
+    symbol_entries: list[dict[str, Any]] | None = None,
+    instance_bindings: dict[str, dict[str, str]] | None = None,
 ) -> tuple[dict[str, Any], ...]:
     path = PurePosixPath(file_path)
     dependency_entries: list[dict[str, Any]] = []
@@ -333,17 +350,29 @@ def parse_dependencies_only(
                 position=index,
             )
         return tuple(dependency_entries)
-    local_symbol_names = {
-        str(entry["symbol_name"]).lower()
-        for entry in collect_symbol_entries(
+    normalized_text = stripped_text if stripped_text is not None else strip_comments(text)
+    if symbol_entries is None:
+        resolved_symbol_entries = collect_symbol_entries(
             text,
             file_path=file_path,
             stable_identifier=stable_identifier,
+            stripped_text=normalized_text,
         )
+    else:
+        resolved_symbol_entries = symbol_entries
+    local_symbol_names = {
+        str(entry["symbol_name"]).lower()
+        for entry in resolved_symbol_entries
     }
-    instance_bindings = _instance_bindings(text, resolve_target_fn=resolve_target_fn)
-    stripped_text = strip_comments(text)
-    for match in TYPE_REFERENCE_RE.finditer(stripped_text):
+    if instance_bindings is None:
+        resolved_instance_bindings = _instance_bindings(
+            text,
+            resolve_target_fn=resolve_target_fn,
+            stripped_text=normalized_text,
+        )
+    else:
+        resolved_instance_bindings = instance_bindings
+    for match in TYPE_REFERENCE_RE.finditer(normalized_text):
         target_name = normalize_target(str(match.group("name") or ""))
         leaf_name = target_name.rsplit(".", 1)[-1]
         canonical_leaf_name = leaf_name.lower()
@@ -367,13 +396,13 @@ def parse_dependencies_only(
             stable_identifier=stable_identifier,
             position=match.start(),
         )
-    for match in QUALIFIED_REFERENCE_RE.finditer(stripped_text):
+    for match in QUALIFIED_REFERENCE_RE.finditer(normalized_text):
         alias = normalize_symbol_name(str(match.group("alias") or "")).lower()
         target_name = normalize_symbol_name(str(match.group("name") or ""))
         if not alias or not target_name or alias in RESERVED_SYMBOL_NAMES:
             continue
-        if alias in instance_bindings:
-            target_file = str(instance_bindings[alias]["target_file"])
+        if alias in resolved_instance_bindings:
+            target_file = str(resolved_instance_bindings[alias]["target_file"])
         else:
             target_file = resolve_target_fn(alias)
         if target_file is None or target_file == file_path:
@@ -388,7 +417,7 @@ def parse_dependencies_only(
             stable_identifier=stable_identifier,
             position=match.start(),
         )
-    for match in UNQUALIFIED_CALL_RE.finditer(stripped_text):
+    for match in UNQUALIFIED_CALL_RE.finditer(normalized_text):
         target_name = normalize_symbol_name(str(match.group("name") or ""))
         canonical_target_name = target_name.lower()
         if (
@@ -425,10 +454,17 @@ def parse_file(
     tuple[dict[str, Any], ...],
     tuple[dict[str, Any], ...],
 ]:
+    normalized_text = strip_comments(text)
     symbol_entries = collect_symbol_entries(
         text,
         file_path=file_path,
         stable_identifier=stable_identifier,
+        stripped_text=normalized_text,
+    )
+    instance_bindings = _instance_bindings(
+        text,
+        resolve_target_fn=resolve_target_fn,
+        stripped_text=normalized_text,
     )
     dependency_entries = parse_dependencies_only(
         file_path,
@@ -436,13 +472,15 @@ def parse_file(
         module_index,
         stable_identifier=stable_identifier,
         resolve_target_fn=resolve_target_fn,
+        stripped_text=normalized_text,
+        symbol_entries=symbol_entries,
+        instance_bindings=instance_bindings,
     )
     path = PurePosixPath(file_path)
     if path.suffix.lower() == ".vbp":
         return symbol_entries, dependency_entries, ()
-    instance_bindings = _instance_bindings(text, resolve_target_fn=resolve_target_fn)
     local_symbol_names = {str(entry["symbol_name"]).lower() for entry in symbol_entries}
-    stripped_lines = strip_comments(text).splitlines()
+    stripped_lines = normalized_text.splitlines()
     reference_candidates: dict[str, dict[str, Any]] = {}
     for symbol_entry in symbol_entries:
         start_line = int(symbol_entry["start_line"])

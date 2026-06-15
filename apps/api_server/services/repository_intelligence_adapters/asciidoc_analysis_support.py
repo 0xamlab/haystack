@@ -42,16 +42,18 @@ def _extract_import_bindings(
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
 ) -> tuple[tuple[_Dependency, ...], dict[str, _ImportedSymbolBinding]]:
+    import_entries = iter_import_entries(text)
     bindings = imported_symbol_bindings(
         current_file=file_path,
         text=text,
         module_index=module_index,
         normalize_repository_relative_path=normalize_repository_relative_path,
         resolve_suffix_match=resolve_suffix_match,
+        import_entries=import_entries,
     )
     dependencies: list[_Dependency] = []
     seen_dependencies: set[tuple[str | None, str, str]] = set()
-    for dependency_type, import_target, line_number in iter_import_entries(text):
+    for dependency_type, import_target, line_number in import_entries:
         target_file = resolve_import(
             current_file=file_path,
             import_target=import_target,
@@ -121,7 +123,13 @@ def parse_file(
 ]:
     if not is_probable_asciidoc_source(path=Path(file_path), text=text):
         return (), (), ()
-    symbols = collect_symbols(file_path=file_path, text=text, stable_identifier=stable_identifier)
+    symbol_entries = iter_symbol_entries(text)
+    symbols = collect_symbols(
+        file_path=file_path,
+        text=text,
+        stable_identifier=stable_identifier,
+        symbol_entries=symbol_entries,
+    )
     dependencies, import_bindings = _extract_import_bindings(
         file_path=file_path,
         text=text,
@@ -130,7 +138,6 @@ def parse_file(
         normalize_repository_relative_path=normalize_repository_relative_path,
         resolve_suffix_match=resolve_suffix_match,
     )
-    symbol_entries = iter_symbol_entries(text)
     symbol_ids_by_name = {
         symbol.symbol_name: symbol.symbol_id for symbol in symbols if symbol.symbol_kind != "asciidoc"
     }

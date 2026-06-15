@@ -6,6 +6,8 @@ import uuid
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 from apps.api_server.schemas.repositories import RepositorySnapshotCreateRequest
 from apps.api_server.services import repository_intelligence as repository_service
 from apps.api_server.services import (
@@ -20,6 +22,9 @@ from apps.api_server.services.repository_intelligence_adapters import (
 )
 from benchmarks.repository_intelligence_real_repo_probe import (
     _derive_operational_seed_plan_without_diagnostics,
+)
+from benchmarks.repository_intelligence_real_repo_probe_profile_style_candidates_support import (
+    _stylus_profile_hints_from_candidates,
 )
 
 
@@ -100,6 +105,56 @@ def test_stylus_adapter_module_aliases_include_path_module_and_symbol_names(tmp_
     assert "rounded" in aliases
 
 
+def test_stylus_adapter_module_aliases_use_provided_text_without_rereading_file(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo_path = tmp_path / "stylus-inline-text-repo"
+    (repo_path / "styles").mkdir(parents=True)
+    source_text = "brandColor = #123456\nrounded(radius)\n  border-radius radius\n"
+    file_path = repo_path / "styles" / "theme.styl"
+    file_path.write_text(source_text, encoding="utf-8")
+
+    def _unexpected_read_text(self: Path, *args, **kwargs) -> str:
+        raise AssertionError(f"module_aliases_for_path should not reread {self}")
+
+    monkeypatch.setattr(Path, "read_text", _unexpected_read_text)
+
+    aliases = repository_service.stylus_adapter.module_aliases_for_path(
+        root_path=repo_path,
+        file_path="styles/theme.styl",
+        stable_identifier=repository_service._stable_identifier,
+        text=source_text,
+        stripped_text=repository_stylus_primitives.strip_comments(source_text),
+    )
+
+    assert "styles/theme.styl" in aliases
+    assert "styles.theme" in aliases
+    assert "brandColor" in aliases
+    assert "rounded" in aliases
+
+
+def test_stylus_adapter_module_aliases_can_skip_symbol_aliases(tmp_path: Path) -> None:
+    repo_path = tmp_path / "stylus-module-only-alias-repo"
+    (repo_path / "styles").mkdir(parents=True)
+    source_text = "brandColor = #123456\nrounded(radius)\n  border-radius radius\n"
+    (repo_path / "styles" / "theme.styl").write_text(source_text, encoding="utf-8")
+
+    aliases = repository_service.stylus_adapter.module_aliases_for_path(
+        root_path=repo_path,
+        file_path="styles/theme.styl",
+        stable_identifier=repository_service._stable_identifier,
+        text=source_text,
+        stripped_text=repository_stylus_primitives.strip_comments(source_text),
+        include_symbol_aliases=False,
+    )
+
+    assert "styles/theme.styl" in aliases
+    assert "styles.theme" in aliases
+    assert "brandColor" not in aliases
+    assert "rounded" not in aliases
+
+
 def test_stylus_adapter_parse_file_resolves_imports_and_references(tmp_path: Path) -> None:
     repo_path = tmp_path / "stylus-parse-repo"
     (repo_path / "styles").mkdir(parents=True)
@@ -158,6 +213,58 @@ def test_stylus_language_detection_supports_styl_suffix() -> None:
     ) == "stylus"
 
 
+def test_stylus_probable_source_short_circuits_on_direct_markers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _unexpected_iter_symbol_entries(*args, **kwargs) -> tuple[tuple[str, str, int], ...]:
+        raise AssertionError("direct stylus markers should bypass symbol-entry scanning")
+
+    def _unexpected_iter_reference_entries(
+        *args,
+        **kwargs,
+    ) -> tuple[tuple[str, str | None, str, int], ...]:
+        raise AssertionError("direct stylus markers should bypass reference scanning")
+
+    monkeypatch.setattr(
+        repository_stylus_primitives,
+        "iter_symbol_entries",
+        _unexpected_iter_symbol_entries,
+    )
+    monkeypatch.setattr(
+        repository_stylus_primitives,
+        "iter_reference_entries",
+        _unexpected_iter_reference_entries,
+    )
+
+    assert repository_stylus_primitives.is_probable_stylus_source(
+        path=Path("styles/main.styl"),
+        text='@import "theme"\n.card\n  color red\n',
+    )
+    assert repository_stylus_primitives.is_probable_stylus_source(
+        path=Path("styles/theme.styl"),
+        text="brandColor = #123456\n",
+    )
+
+
+def test_stylus_strip_comments_reuse_cached_results() -> None:
+    repository_stylus_primitives._strip_comments_cached.cache_clear()
+    source_text = (
+        "brandColor = #123456\n"
+        "// comment\n"
+        "rounded(radius)\n"
+        "  border-radius radius\n"
+    )
+
+    first_result = repository_stylus_primitives.strip_comments(source_text)
+    first_cache_info = repository_stylus_primitives._strip_comments_cached.cache_info()
+    second_result = repository_stylus_primitives.strip_comments(source_text)
+    second_cache_info = repository_stylus_primitives._strip_comments_cached.cache_info()
+
+    assert first_result == second_result
+    assert first_cache_info.hits == 0
+    assert second_cache_info.hits == 1
+
+
 def test_operational_seed_plan_without_diagnostics_promotes_stylus_when_surface_dominates(
     tmp_path: Path,
 ) -> None:
@@ -192,6 +299,39 @@ def test_operational_seed_plan_without_diagnostics_promotes_stylus_when_surface_
     assert seed_plan["operational_ecosystems"][0] == "stylus"
     assert "styles/main.styl" in seed_plan["entrypoint_files"]
     assert "styles" in seed_plan["support_roots"]
+
+
+def test_stylus_profile_hints_reuse_loaded_text_per_candidate_file(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo_path = tmp_path / "stylus-profile-hints-cache-repo"
+    (repo_path / "styles").mkdir(parents=True)
+    mixins_path = repo_path / "styles" / "mixins.styl"
+    main_path = repo_path / "styles" / "main.styl"
+    mixins_path.write_text("rounded(radius)\n  border-radius radius\n", encoding="utf-8")
+    main_path.write_text('@require "mixins"\n.card\n  rounded(4px)\n', encoding="utf-8")
+
+    original_read_text = Path.read_text
+    read_counts: dict[Path, int] = {}
+
+    def _counting_read_text(self: Path, *args, **kwargs) -> str:
+        if self in {mixins_path, main_path}:
+            read_counts[self] = read_counts.get(self, 0) + 1
+        return original_read_text(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", _counting_read_text)
+
+    entrypoints, roots, configs = _stylus_profile_hints_from_candidates(
+        repo_path,
+        ["styles/mixins.styl", "styles/main.styl"],
+    )
+
+    assert "styles/main.styl" in entrypoints
+    assert "styles" in roots
+    assert configs == set()
+    assert read_counts.get(mixins_path, 0) <= 1
+    assert read_counts.get(main_path, 0) <= 1
 
 
 def test_operational_seed_plan_without_diagnostics_does_not_force_stylus_first_in_ts_repo(

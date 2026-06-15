@@ -96,6 +96,7 @@ class _ResolvedRepositorySource:
     ref: str | None
     resolved_revision: str
     is_git: bool
+    assume_clean_git_clone: bool = False
     cleanup_path: Path | None = None
 
 

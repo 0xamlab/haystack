@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import Counter
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from apps.api_server.schemas.repositories import (
@@ -223,9 +223,37 @@ def _effective_focus_paths_for_snapshot(
 ) -> list[str]:
     probe_module = _probe_module()
 
+    def _compact_snapshot_focus_paths(paths: list[str]) -> list[str]:
+        ordered_paths = list(
+            dict.fromkeys(path for path in paths if str(path).strip())
+        )
+        if len(ordered_paths) <= 1:
+            return ordered_paths
+        concrete_seed_paths = {
+            path for path in ordered_paths if probe_module._looks_like_concrete_file_seed(path)
+        }
+        compacted_paths: list[str] = []
+        for path in ordered_paths:
+            if path in concrete_seed_paths:
+                compacted_paths.append(path)
+                continue
+            if any(
+                path != other_path and path.startswith(f"{other_path}/")
+                for other_path in ordered_paths
+            ):
+                continue
+            if any(
+                other_path.startswith(f"{path}/")
+                for other_path in concrete_seed_paths
+            ):
+                continue
+            compacted_paths.append(path)
+        return compacted_paths
+
     if connected_files and diagnostics:
-        return list(
-            dict.fromkeys(
+        return _compact_snapshot_focus_paths(
+            list(
+                dict.fromkeys(
                 connected_files
                 + [
                     path
@@ -233,11 +261,13 @@ def _effective_focus_paths_for_snapshot(
                     if probe_module._looks_like_concrete_file_seed(path)
                 ]
                 + config_focus_paths
+                )
             )
         )
     if connected_files:
-        return list(
-            dict.fromkeys(
+        return _compact_snapshot_focus_paths(
+            list(
+                dict.fromkeys(
                 connected_files
                 + [
                     path
@@ -245,13 +275,16 @@ def _effective_focus_paths_for_snapshot(
                     if probe_module._looks_like_concrete_file_seed(path)
                 ]
                 + config_focus_paths
+                )
             )
         )
-    return list(
-        dict.fromkeys(
+    return _compact_snapshot_focus_paths(
+        list(
+            dict.fromkeys(
             (connected_files if connected_files else fallback_focus_paths)
             + fallback_focus_paths
             + config_focus_paths
+            )
         )
     )
 
@@ -263,57 +296,75 @@ def _candidate_config_focus_paths(
     diagnostic_base_path: Path,
     diagnostic_project_path: str | None,
 ) -> list[str]:
+    config_filenames = (
+        "tsconfig.test.json",
+        "tsconfig.json",
+        "tsconfig.base.json",
+        "tsconfig.eslint.json",
+        "package.json",
+    )
     candidates: list[str] = []
     seen: set[str] = set()
+    repo_root = repo_path.resolve()
+    relative_file_cache: dict[Path, str | None] = {}
 
     def _add(path: Path) -> None:
-        try:
-            resolved = path.resolve()
-        except OSError:
+        cached_relative = relative_file_cache.get(path)
+        if cached_relative is None and path not in relative_file_cache:
+            if not path.is_file():
+                relative_file_cache[path] = None
+                return
+            if path.is_symlink():
+                try:
+                    resolved = path.resolve()
+                except OSError:
+                    relative_file_cache[path] = None
+                    return
+                if not resolved.is_file() or not (resolved == repo_root or repo_root in resolved.parents):
+                    relative_file_cache[path] = None
+                    return
+                cached_relative = str(resolved.relative_to(repo_root)).replace("\\", "/")
+            else:
+                try:
+                    cached_relative = str(path.relative_to(repo_root)).replace("\\", "/")
+                except ValueError:
+                    relative_file_cache[path] = None
+                    return
+            relative_file_cache[path] = cached_relative
+        if not cached_relative:
             return
-        if not resolved.exists() or not resolved.is_file():
+        if cached_relative in seen:
             return
-        if not (resolved == repo_path or repo_path in resolved.parents):
-            return
-        relative = str(resolved.relative_to(repo_path)).replace("\\", "/")
-        if relative in seen:
-            return
-        seen.add(relative)
-        candidates.append(relative)
+        seen.add(cached_relative)
+        candidates.append(cached_relative)
 
     for focus_path in focus_paths:
-        focus_candidate = (repo_path / focus_path).resolve()
+        normalized_focus_path = str(focus_path or "").strip().replace("\\", "/").strip("/")
+        if not normalized_focus_path:
+            continue
+        focus_path_parts = PurePosixPath(normalized_focus_path)
+        if focus_path_parts.is_absolute() or ".." in focus_path_parts.parts:
+            continue
+        focus_candidate = repo_root / normalized_focus_path
         if focus_candidate.exists():
             current = focus_candidate if focus_candidate.is_dir() else focus_candidate.parent
-            while current == repo_path or repo_path in current.parents:
-                for name in (
-                    "tsconfig.test.json",
-                    "tsconfig.json",
-                    "tsconfig.base.json",
-                    "tsconfig.eslint.json",
-                    "package.json",
-                ):
+            while current == repo_root or repo_root in current.parents:
+                for name in config_filenames:
                     _add(current / name)
-                if current == repo_path:
+                if current == repo_root:
                     break
                 current = current.parent
 
     current = diagnostic_base_path
-    while current == repo_path or repo_path in current.parents:
-        for name in (
-            "tsconfig.test.json",
-            "tsconfig.json",
-            "tsconfig.base.json",
-            "tsconfig.eslint.json",
-            "package.json",
-        ):
+    while current == repo_root or repo_root in current.parents:
+        for name in config_filenames:
             _add(current / name)
-        if current == repo_path:
+        if current == repo_root:
             break
         current = current.parent
 
     if diagnostic_project_path:
-        _add(repo_path / diagnostic_project_path)
+        _add(repo_root / diagnostic_project_path)
 
     return candidates
 

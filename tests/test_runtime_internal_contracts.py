@@ -6,6 +6,7 @@ import pytest
 
 pytest.importorskip("pyarrow")
 
+from apps.api_server.services import runtime_internal_contracts as runtime_contracts
 from apps.api_server.services.runtime_internal_contracts import (
     ArtifactRecord,
     AuditEventRecord,
@@ -17,6 +18,7 @@ from apps.api_server.services.runtime_internal_contracts import (
     PolicySnapshotRecord,
     RepositoryGraphRecord,
     RepositorySnapshotRecord,
+    SymbolReferenceRecord,
     SymbolGraphRecord,
     TelemetryBatch,
     WorkspaceEvidenceBundleRecord,
@@ -30,10 +32,13 @@ from apps.api_server.services.runtime_internal_contracts import (
     patch_impact_report_record_schema,
     policy_snapshot_record_schema,
     record_batches_from_records,
+    parquet_bytes_from_row_dicts,
     repository_graph_record_schema,
     repository_snapshot_record_schema,
+    schema_for_record_type,
     symbol_graph_record_schema,
     table_from_parquet_bytes,
+    table_from_row_dicts,
     table_from_records,
     telemetry_batch_schema,
     validate_table_schema,
@@ -317,6 +322,99 @@ def test_runtime_internal_contracts_round_trip_record_batches_and_parquet(
     assert restored.column_names == table.column_names
 
 
+def test_runtime_internal_contract_schemas_are_cached_per_record_type() -> None:
+    runtime_contracts._SCHEMA_CACHE.clear()
+
+    first = schema_for_record_type(SymbolGraphRecord)
+    second = schema_for_record_type(SymbolGraphRecord)
+
+    assert first is second
+
+
+def test_empty_parquet_bytes_are_cached_per_record_type(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runtime_contracts._EMPTY_PARQUET_BYTES_CACHE.clear()
+    call_count = {"value": 0}
+    original = runtime_contracts.parquet_bytes_from_table
+
+    def _counting_parquet_bytes_from_table(table):  # type: ignore[no-untyped-def]
+        call_count["value"] += 1
+        return original(table)
+
+    monkeypatch.setattr(
+        runtime_contracts,
+        "parquet_bytes_from_table",
+        _counting_parquet_bytes_from_table,
+    )
+
+    first = parquet_bytes_from_records([], record_type=SymbolGraphRecord)
+    second = parquet_bytes_from_records([], record_type=SymbolGraphRecord)
+
+    assert first == second
+    assert call_count["value"] == 1
+
+
+def test_runtime_internal_contract_row_dict_helpers_match_record_helpers() -> None:
+    record = RepositorySnapshotRecord(
+        repository_id="repo-1",
+        snapshot_id="snapshot-1",
+        connector_type="local_repo",
+        repository_url="https://github.com/example/repo.git",
+        resolved_revision="abc123",
+        file_path="src/service.py",
+        language="python",
+        content_hash="sha256:file-1",
+        line_count=10,
+        byte_size=120,
+        token_estimate=42,
+        created_at=_utc(),
+    )
+    row = record.model_dump(mode="python")
+
+    record_table = table_from_records([record], record_type=RepositorySnapshotRecord)
+    row_table = table_from_row_dicts([row], record_type=RepositorySnapshotRecord)
+    validate_table_schema(row_table, RepositorySnapshotRecord)
+    assert row_table.to_pylist() == record_table.to_pylist()
+
+    record_parquet = parquet_bytes_from_records([record], record_type=RepositorySnapshotRecord)
+    row_parquet = parquet_bytes_from_row_dicts([row], record_type=RepositorySnapshotRecord)
+    assert (
+        table_from_parquet_bytes(row_parquet).to_pylist()
+        == table_from_parquet_bytes(record_parquet).to_pylist()
+    )
+
+
+def test_warm_repository_snapshot_parquet_contracts_primes_empty_and_non_empty_paths(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    empty_calls: list[type[object]] = []
+    row_calls: list[type[object]] = []
+
+    monkeypatch.setattr(
+        runtime_contracts,
+        "parquet_bytes_from_records",
+        lambda records, *, record_type=None: empty_calls.append(record_type) or b"empty",
+    )
+    monkeypatch.setattr(
+        runtime_contracts,
+        "parquet_bytes_from_row_dicts",
+        lambda rows, *, record_type: row_calls.append(record_type) or b"rows",
+    )
+
+    runtime_contracts.warm_repository_snapshot_parquet_contracts()
+
+    expected_record_types = [
+        RepositorySnapshotRecord,
+        SymbolGraphRecord,
+        DependencyGraphRecord,
+        RepositoryGraphRecord,
+        SymbolReferenceRecord,
+    ]
+    assert empty_calls == expected_record_types
+    assert row_calls == expected_record_types
+
+
 def test_runtime_internal_contracts_reject_mixed_record_types() -> None:
     records = [
         CapabilityRecord(
@@ -347,6 +445,31 @@ def test_runtime_internal_contracts_reject_mixed_record_types() -> None:
 
     with pytest.raises(ValueError, match="same type"):
         table_from_records(records)
+
+
+def test_runtime_internal_contracts_cache_loaded_pyarrow_modules(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runtime_contracts._PYARROW_MODULES = None
+    initialize_calls = 0
+    original_initialize = runtime_contracts.initialize_pyarrow_parquet_runtime
+
+    def _counting_initialize_pyarrow_parquet_runtime() -> None:
+        nonlocal initialize_calls
+        initialize_calls += 1
+        original_initialize()
+
+    monkeypatch.setattr(
+        runtime_contracts,
+        "initialize_pyarrow_parquet_runtime",
+        _counting_initialize_pyarrow_parquet_runtime,
+    )
+
+    first_modules = runtime_contracts._load_pyarrow()
+    second_modules = runtime_contracts._load_pyarrow()
+
+    assert first_modules is second_modules
+    assert initialize_calls == 1
 
 
 def test_runtime_internal_contracts_require_timezone_aware_timestamps() -> None:

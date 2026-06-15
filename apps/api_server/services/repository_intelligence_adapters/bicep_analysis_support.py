@@ -42,8 +42,10 @@ def _collect_symbols(
     file_path: str,
     text: str,
     stable_identifier: StableIdentifier,
+    stripped_text: str | None = None,
 ) -> tuple[_CollectedSymbol, ...]:
-    stripped_text = strip_comments(text)
+    normalized_text = stripped_text if stripped_text is not None else strip_comments(text)
+    stripped_text = normalized_text
     module_name = module_name_from_path(file_path)
     module_symbol = _Symbol(
         symbol_id=stable_identifier(
@@ -70,7 +72,10 @@ def _collect_symbols(
             ),
         )
     ]
-    for symbol_name, symbol_kind, start_line in iter_symbol_entries(stripped_text):
+    for symbol_name, symbol_kind, start_line in iter_symbol_entries(
+        text,
+        stripped_text=stripped_text,
+    ):
         qualified_names = _ordered_names(
             symbol_name,
             f"{module_name}.{symbol_name}" if module_name else "",
@@ -135,6 +140,9 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
+    stripped_text: str | None = None,
+    include_symbol_aliases: bool = True,
 ) -> set[str]:
     path = PurePosixPath(file_path)
     if not has_bicep_path_hints(path):
@@ -152,21 +160,32 @@ def module_aliases_for_path(
         aliases.add(str(path.parent))
         aliases.add(str(path.parent).replace("/", "."))
         aliases.add(path.parent.name)
-    try:
-        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        text = ""
-    if not is_probable_bicep_source(path=Path(file_path), text=text):
+    normalized_text = text
+    if normalized_text is None:
+        try:
+            normalized_text = (root_path / path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            normalized_text = ""
+    normalized_stripped_text = (
+        stripped_text if stripped_text is not None else strip_comments(normalized_text)
+    )
+    if not is_probable_bicep_source(
+        path=Path(file_path),
+        text=normalized_text,
+        stripped_text=normalized_stripped_text,
+    ):
         return {alias for alias in aliases if alias}
     aliases.add(module_name_from_path(file_path))
     aliases.add(module_name_from_path(file_path).replace(".", "/"))
-    for collected_symbol in _collect_symbols(
-        file_path=file_path,
-        text=text,
-        stable_identifier=stable_identifier,
-    ):
-        aliases.add(collected_symbol.symbol.symbol_name)
-        aliases.update(collected_symbol.qualified_names)
+    if include_symbol_aliases:
+        for collected_symbol in _collect_symbols(
+            file_path=file_path,
+            text=normalized_text,
+            stable_identifier=stable_identifier,
+            stripped_text=normalized_stripped_text,
+        ):
+            aliases.add(collected_symbol.symbol.symbol_name)
+            aliases.update(collected_symbol.qualified_names)
     return {alias for alias in aliases if alias}
 
 
@@ -274,12 +293,18 @@ def parse_file(
     tuple[_Dependency, ...],
     tuple[_SymbolReferenceCandidate, ...],
 ]:
-    if not is_probable_bicep_source(path=Path(file_path), text=text):
+    stripped_text = strip_comments(text)
+    if not is_probable_bicep_source(
+        path=Path(file_path),
+        text=text,
+        stripped_text=stripped_text,
+    ):
         return (), (), ()
     collected_symbols = _collect_symbols(
         file_path=file_path,
         text=text,
         stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
     )
     dependencies, import_bindings = extract_import_bindings(
         file_path,
@@ -298,7 +323,7 @@ def parse_file(
             collected_symbol.symbol.symbol_name,
             collected_symbol.symbol,
         )
-    stripped_lines = strip_comments(text).splitlines()
+    stripped_lines = stripped_text.splitlines()
     reference_candidates: dict[str, _SymbolReferenceCandidate] = {}
 
     def _record_reference(

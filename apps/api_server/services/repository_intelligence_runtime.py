@@ -15,6 +15,8 @@ from apps.api_server.services.repository_intelligence_contracts import (
 logger = logging.getLogger(__name__)
 
 _RUNTIME_FALLBACK_CACHE: tuple[tuple[str | None, str, str], Path] | None = None
+_SHARED_RUNTIME_CACHE: tuple[str | None, Path] | None = None
+_SHARED_RUNTIME_DIR_ENV = "ALGENTA_REPOSITORY_INTELLIGENCE_SHARED_RUNTIME_DIR"
 
 
 def _fallback_mode() -> str:
@@ -115,6 +117,33 @@ def _runtime_dir() -> Path:
     )
 
 
+def _shared_runtime_dir() -> Path:
+    global _SHARED_RUNTIME_CACHE
+    configured_shared_runtime = str(os.environ.get(_SHARED_RUNTIME_DIR_ENV) or "").strip()
+    if not configured_shared_runtime:
+        # No dedicated shared-runtime override: delegate live to ``_runtime_dir()``
+        # (which honours ``ALGENTA_RUNTIME_DIR`` and keeps its own correctly-keyed
+        # fallback cache). Memoizing the fallback here under the constant empty key
+        # would freeze the first-seen runtime dir and ignore later ``ALGENTA_RUNTIME_DIR``
+        # changes — leaking the file-analysis cache across runtime dirs.
+        return _runtime_dir()
+    if _SHARED_RUNTIME_CACHE is not None and _SHARED_RUNTIME_CACHE[0] == configured_shared_runtime:
+        return _SHARED_RUNTIME_CACHE[1]
+    shared_runtime_path = Path(configured_shared_runtime).expanduser().resolve()
+    if not _runtime_dir_writable(shared_runtime_path):
+        raise RepositoryIntelligenceError(
+            code="repository_shared_runtime_unwritable",
+            message=(
+                "Configured shared Repository Intelligence runtime directory "
+                f"'{shared_runtime_path}' is not writable."
+            ),
+            status_code=500,
+            details={"shared_runtime_dir": str(shared_runtime_path)},
+        )
+    _SHARED_RUNTIME_CACHE = (configured_shared_runtime, shared_runtime_path)
+    return shared_runtime_path
+
+
 def _repo_root_dir(org_id: str, repository_id: str) -> Path:
     return _runtime_dir() / "repository_intelligence" / org_id / repository_id
 
@@ -172,7 +201,7 @@ def _graph_query_lookup_dir(org_id: str, repository_id: str) -> Path:
 
 
 def _shared_repository_intelligence_dir() -> Path:
-    return _runtime_dir() / "repository_intelligence_shared"
+    return _shared_runtime_dir() / "repository_intelligence_shared"
 
 
 def _file_analysis_cache_dir() -> Path:
@@ -202,6 +231,25 @@ def _read_json(path: Path) -> dict[str, Any]:
 
 def _write_json_atomic(path: Path, payload: dict[str, Any]) -> None:
     serialized_payload = json.dumps(payload, indent=2, sort_keys=True)
+    temp_path = path.with_suffix(f"{path.suffix}.tmp")
+    for _attempt in range(2):
+        _ensure_parent(path)
+        temp_path.write_text(serialized_payload, encoding="utf-8")
+        try:
+            temp_path.replace(path)
+            return
+        except FileNotFoundError:
+            continue
+    raise RepositoryIntelligenceError(
+        code="repository_cache_write_failed",
+        message=f"Repository Intelligence could not persist cache file '{path}'.",
+        status_code=500,
+        details={"path": str(path)},
+    )
+
+
+def _write_cache_json_atomic(path: Path, payload: dict[str, Any]) -> None:
+    serialized_payload = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     temp_path = path.with_suffix(f"{path.suffix}.tmp")
     for _attempt in range(2):
         _ensure_parent(path)

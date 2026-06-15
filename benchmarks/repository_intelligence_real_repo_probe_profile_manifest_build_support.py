@@ -49,6 +49,88 @@ _POWERSHELL_MANIFEST_FIELD_RE = _DeferredProbeAttr("_POWERSHELL_MANIFEST_FIELD_R
 _POWERSHELL_MANIFEST_LIST_RE = _DeferredProbeAttr("_POWERSHELL_MANIFEST_LIST_RE")
 _ZIG_SOURCE_TOKEN_RE = _DeferredProbeAttr("_ZIG_SOURCE_TOKEN_RE")
 
+_C_FAMILY_MANIFEST_ECOSYSTEM_CACHE_LIMIT = 1024
+_C_FAMILY_MANIFEST_ECOSYSTEM_CACHE: dict[
+    tuple[str, str, int | None, int | None],
+    frozenset[str],
+] = {}
+_CMAKE_LIKE_PROFILE_HINTS_CACHE_LIMIT = 1024
+_CMAKE_LIKE_PROFILE_HINTS_CACHE: dict[
+    tuple[str, str, int | None, int | None],
+    tuple[frozenset[str], frozenset[str], frozenset[str]],
+] = {}
+_C_FAMILY_VALA_SOURCE_PATH_CACHE_LIMIT = 128
+_C_FAMILY_VALA_SOURCE_PATH_CACHE: dict[str, tuple[str, ...] | None] = {}
+_C_FAMILY_VALA_ROOT_PRESENCE_CACHE_LIMIT = 1024
+_C_FAMILY_VALA_ROOT_PRESENCE_CACHE: dict[tuple[str, str], bool] = {}
+_VALA_SOURCE_SUFFIXES = (".vala", ".vapi")
+
+
+def clear_c_family_manifest_ecosystem_cache() -> None:
+    _C_FAMILY_MANIFEST_ECOSYSTEM_CACHE.clear()
+    _CMAKE_LIKE_PROFILE_HINTS_CACHE.clear()
+    _C_FAMILY_VALA_SOURCE_PATH_CACHE.clear()
+    _C_FAMILY_VALA_ROOT_PRESENCE_CACHE.clear()
+
+
+def c_family_manifest_ecosystem_cache_size() -> int:
+    return len(_C_FAMILY_MANIFEST_ECOSYSTEM_CACHE)
+
+
+def _cached_repo_vala_source_paths(repo_path: Path) -> tuple[str, ...] | None:
+    cache_key = str(repo_path.resolve())
+    if cache_key in _C_FAMILY_VALA_SOURCE_PATH_CACHE:
+        return _C_FAMILY_VALA_SOURCE_PATH_CACHE[cache_key]
+
+    from benchmarks import repository_intelligence_real_repo_probe_collection_support as collection_support
+
+    relative_paths = collection_support._git_repo_relative_files(repo_path)
+    cached_paths: tuple[str, ...] | None
+    if relative_paths is None:
+        cached_paths = None
+    else:
+        cached_paths = tuple(
+            relative_path
+            for relative_path in relative_paths
+            if str(relative_path).lower().endswith(_VALA_SOURCE_SUFFIXES)
+        )
+    if len(_C_FAMILY_VALA_SOURCE_PATH_CACHE) >= _C_FAMILY_VALA_SOURCE_PATH_CACHE_LIMIT:
+        oldest_key = next(iter(_C_FAMILY_VALA_SOURCE_PATH_CACHE))
+        _C_FAMILY_VALA_SOURCE_PATH_CACHE.pop(oldest_key, None)
+    _C_FAMILY_VALA_SOURCE_PATH_CACHE[cache_key] = cached_paths
+    return cached_paths
+
+
+def _candidate_root_has_vala_sources(repo_path: Path, candidate_root: Path) -> bool:
+    normalized_root = repository_service._normalize_repository_relative_path(
+        str(candidate_root.relative_to(repo_path))
+    )
+    repo_cache_key = str(repo_path.resolve())
+    cache_key = (repo_cache_key, normalized_root)
+    cached_result = _C_FAMILY_VALA_ROOT_PRESENCE_CACHE.get(cache_key)
+    if cached_result is not None:
+        return cached_result
+
+    vala_source_paths = _cached_repo_vala_source_paths(repo_path)
+    if vala_source_paths is None:
+        try:
+            has_vala_sources = any(candidate_root.rglob("*.vala")) or any(
+                candidate_root.rglob("*.vapi")
+            )
+        except OSError:
+            has_vala_sources = False
+    else:
+        root_prefix = f"{normalized_root}/" if normalized_root else ""
+        has_vala_sources = any(
+            relative_path == normalized_root or relative_path.startswith(root_prefix)
+            for relative_path in vala_source_paths
+        )
+    if len(_C_FAMILY_VALA_ROOT_PRESENCE_CACHE) >= _C_FAMILY_VALA_ROOT_PRESENCE_CACHE_LIMIT:
+        oldest_key = next(iter(_C_FAMILY_VALA_ROOT_PRESENCE_CACHE))
+        _C_FAMILY_VALA_ROOT_PRESENCE_CACHE.pop(oldest_key, None)
+    _C_FAMILY_VALA_ROOT_PRESENCE_CACHE[cache_key] = has_vala_sources
+    return has_vala_sources
+
 
 def _normalize_gradle_project_root(project_name: str) -> str:
     normalized = project_name.strip().strip(":")
@@ -174,6 +256,24 @@ def _cmake_like_profile_hints(
     if not normalized_path:
         return set(), set(), set()
     manifest = repo_path / normalized_path
+    try:
+        manifest_stat = manifest.stat()
+        cache_key = (
+            str(repo_path),
+            normalized_path,
+            manifest_stat.st_mtime_ns,
+            manifest_stat.st_size,
+        )
+    except OSError:
+        cache_key = (str(repo_path), normalized_path, None, None)
+    cached_hints = _CMAKE_LIKE_PROFILE_HINTS_CACHE.get(cache_key)
+    if cached_hints is not None:
+        cached_entrypoints, cached_support_roots, cached_config_paths = cached_hints
+        return (
+            set(cached_entrypoints),
+            set(cached_support_roots),
+            set(cached_config_paths),
+        )
     project_dir = PurePosixPath(normalized_path).parent
     root_prefix = "" if str(project_dir) in {"", "."} else f"{project_dir}/"
     support_roots = {
@@ -186,6 +286,7 @@ def _cmake_like_profile_hints(
         f"{root_prefix}libs",
     }
     entrypoint_paths = {
+        normalized_path,
         f"{root_prefix}main.c",
         f"{root_prefix}main.cc",
         f"{root_prefix}main.cpp",
@@ -203,23 +304,38 @@ def _cmake_like_profile_hints(
     try:
         text = manifest.read_text(encoding="utf-8")
     except OSError:
-        return entrypoint_paths, support_roots, config_paths
-    for match in _C_FAMILY_SOURCE_TOKEN_RE.finditer(text):
-        raw_path = match.group("path").strip()
-        if not raw_path or raw_path.startswith(("$", "/")):
-            continue
-        resolved_path = repository_service._normalize_repository_relative_path(
-            str(PurePosixPath(project_dir) / raw_path)
-        )
-        if not resolved_path or resolved_path.startswith("/"):
-            continue
-        entrypoint_paths.add(resolved_path)
-        parent_dir = repository_service._normalize_repository_relative_path(
-            str(PurePosixPath(resolved_path).parent)
-        )
-        if parent_dir:
-            support_roots.add(parent_dir)
-    return entrypoint_paths, support_roots, config_paths
+        result = (entrypoint_paths, support_roots, config_paths)
+    else:
+        for match in _C_FAMILY_SOURCE_TOKEN_RE.finditer(text):
+            raw_path = match.group("path").strip()
+            if not raw_path or raw_path.startswith(("$", "/")):
+                continue
+            resolved_path = repository_service._normalize_repository_relative_path(
+                str(PurePosixPath(project_dir) / raw_path)
+            )
+            if not resolved_path or resolved_path.startswith("/"):
+                continue
+            entrypoint_paths.add(resolved_path)
+            parent_dir = repository_service._normalize_repository_relative_path(
+                str(PurePosixPath(resolved_path).parent)
+            )
+            if parent_dir:
+                support_roots.add(parent_dir)
+        result = (entrypoint_paths, support_roots, config_paths)
+    frozen_result = (
+        frozenset(result[0]),
+        frozenset(result[1]),
+        frozenset(result[2]),
+    )
+    if len(_CMAKE_LIKE_PROFILE_HINTS_CACHE) >= _CMAKE_LIKE_PROFILE_HINTS_CACHE_LIMIT:
+        oldest_key = next(iter(_CMAKE_LIKE_PROFILE_HINTS_CACHE))
+        _CMAKE_LIKE_PROFILE_HINTS_CACHE.pop(oldest_key, None)
+    _CMAKE_LIKE_PROFILE_HINTS_CACHE[cache_key] = frozen_result
+    return (
+        set(frozen_result[0]),
+        set(frozen_result[1]),
+        set(frozen_result[2]),
+    )
 
 
 def _c_family_manifest_ecosystems(
@@ -231,6 +347,19 @@ def _c_family_manifest_ecosystems(
     if not normalized_path:
         return {"cpp"}
     manifest = repo_path / normalized_path
+    try:
+        manifest_stat = manifest.stat()
+        cache_key = (
+            str(repo_path),
+            normalized_path,
+            manifest_stat.st_mtime_ns,
+            manifest_stat.st_size,
+        )
+    except OSError:
+        cache_key = (str(repo_path), normalized_path, None, None)
+    cached_ecosystems = _C_FAMILY_MANIFEST_ECOSYSTEM_CACHE.get(cache_key)
+    if cached_ecosystems is not None:
+        return set(cached_ecosystems)
     try:
         text = manifest.read_text(encoding="utf-8")
     except OSError:
@@ -254,16 +383,15 @@ def _c_family_manifest_ecosystems(
         ):
             if not candidate_root.is_dir():
                 continue
-            try:
-                has_vala_sources = any(candidate_root.rglob("*.vala")) or any(
-                    candidate_root.rglob("*.vapi")
-                )
-            except OSError:
-                continue
-            if has_vala_sources:
+            if _candidate_root_has_vala_sources(repo_path, candidate_root):
                 manifest_ecosystems.add("vala")
                 break
-    return manifest_ecosystems or {"cpp"}
+    result = frozenset(manifest_ecosystems or {"cpp"})
+    if len(_C_FAMILY_MANIFEST_ECOSYSTEM_CACHE) >= _C_FAMILY_MANIFEST_ECOSYSTEM_CACHE_LIMIT:
+        oldest_key = next(iter(_C_FAMILY_MANIFEST_ECOSYSTEM_CACHE))
+        _C_FAMILY_MANIFEST_ECOSYSTEM_CACHE.pop(oldest_key, None)
+    _C_FAMILY_MANIFEST_ECOSYSTEM_CACHE[cache_key] = result
+    return set(result)
 
 
 def _cmake_profile_hints(

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import stat
 from pathlib import Path, PurePosixPath
 
 
@@ -170,6 +171,11 @@ def _dockerfile_profile_hints_from_candidates(
     repo_path: Path,
     candidate_file_paths: list[str],
 ) -> tuple[set[str], set[str], set[str]]:
+    from benchmarks import (
+        repository_intelligence_real_repo_probe_profile_path_classification_support
+        as classification_support,
+    )
+
     dockerfile_files: list[str] = []
     module_index: dict[str, str] = {}
     entrypoint_paths: set[str] = set()
@@ -182,8 +188,15 @@ def _dockerfile_profile_hints_from_candidates(
         )
         if not normalized_candidate:
             continue
-        candidate_file = repo_path / normalized_candidate
-        if candidate_file.is_file() and not candidate_file.is_symlink():
+        candidate_stat = classification_support._repo_file_stat(repo_path, normalized_candidate)
+        candidate_lstat = classification_support._repo_file_lstat(repo_path, normalized_candidate)
+        if (
+            candidate_stat is not None
+            and stat.S_ISREG(candidate_stat.st_mode)
+            and not (
+                candidate_lstat is not None and stat.S_ISLNK(candidate_lstat.st_mode)
+            )
+        ):
             module_index.setdefault(normalized_candidate, normalized_candidate)
     for candidate_path in sorted(candidate_file_paths):
         normalized_candidate = repository_service._normalize_repository_relative_path(
@@ -197,7 +210,13 @@ def _dockerfile_profile_hints_from_candidates(
         ):
             continue
         candidate_file = repo_path / normalized_candidate
-        if not candidate_file.is_file() or candidate_file.is_symlink():
+        candidate_stat = classification_support._repo_file_stat(repo_path, normalized_candidate)
+        candidate_lstat = classification_support._repo_file_lstat(repo_path, normalized_candidate)
+        if (
+            candidate_stat is None
+            or not stat.S_ISREG(candidate_stat.st_mode)
+            or (candidate_lstat is not None and stat.S_ISLNK(candidate_lstat.st_mode))
+        ):
             continue
         try:
             text = candidate_file.read_text(encoding="utf-8", errors="replace")

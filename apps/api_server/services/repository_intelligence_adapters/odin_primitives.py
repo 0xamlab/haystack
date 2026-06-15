@@ -202,21 +202,31 @@ def _is_probable_ols_config(text: str) -> bool:
     )
 
 
-def is_probable_odin_source(*, path: Path | PurePosixPath, text: str) -> bool:
+def is_probable_odin_source(
+    *,
+    path: Path | PurePosixPath,
+    text: str,
+    stripped_text: str | None = None,
+) -> bool:
     normalized_path = PurePosixPath(path)
     basename = normalized_path.name.lower()
     if basename in ODIN_CONFIG_BASENAMES:
         return _is_probable_ols_config(text)
     if normalized_path.suffix.lower() not in ODIN_FILE_SUFFIXES:
         return False
-    stripped_text = strip_comments(text)
+    stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
     if not stripped_text.strip():
         return False
     return bool(ODIN_MARKER_RE.search(stripped_text))
 
 
-def package_name_from_text(text: str, *, file_path: str) -> str:
-    stripped_text = strip_comments(text)
+def package_name_from_text(
+    text: str,
+    *,
+    file_path: str,
+    stripped_text: str | None = None,
+) -> str:
+    stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
     match = PACKAGE_RE.search(stripped_text)
     if match is not None:
         package_name = str(match.group("name") or "").strip()

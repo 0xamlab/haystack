@@ -37,6 +37,7 @@ def _collect_symbols(
     file_path: str,
     text: str,
     stable_identifier: StableIdentifier,
+    stripped_text: str | None = None,
 ) -> tuple[tuple[_Symbol, tuple[str, ...]], ...]:
     final_line = max(1, text.count("\n") + 1)
     module_name = module_name_from_path(file_path)
@@ -66,7 +67,7 @@ def _collect_symbols(
             ),
         )
     ]
-    symbol_entries = iter_symbol_entries(text)
+    symbol_entries = iter_symbol_entries(text, stripped_text=stripped_text)
     for index, entry in enumerate(symbol_entries):
         end_line = (
             max(symbol_entries[index + 1].start_line - 1, entry.start_line)
@@ -103,6 +104,9 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
+    stripped_text: str | None = None,
+    include_symbol_aliases: bool = True,
 ) -> set[str]:
     path = PurePosixPath(file_path)
     if path.suffix.lower() not in DM_SUFFIXES:
@@ -117,16 +121,21 @@ def module_aliases_for_path(
     if module_name:
         aliases.add(module_name)
         aliases.add(module_name.replace("/", "."))
-    try:
-        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        text = ""
-    if not is_probable_dm_source(path=Path(file_path), text=text):
+    if not include_symbol_aliases:
+        return {alias for alias in aliases if alias}
+    if text is None:
+        try:
+            text = (root_path / path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            text = ""
+    stripped_text = strip_comments(text) if stripped_text is None else stripped_text
+    if not is_probable_dm_source(path=Path(file_path), text=text, stripped_text=stripped_text):
         return {alias for alias in aliases if alias}
     for symbol, qualified_names in _collect_symbols(
         file_path=file_path,
         text=text,
         stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
     ):
         aliases.add(symbol.symbol_name)
         aliases.update(qualified_names)
@@ -141,12 +150,14 @@ def parse_dependencies_only(
     stable_identifier: StableIdentifier,
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
+    stripped_text: str | None = None,
 ) -> tuple[_Dependency, ...]:
-    if not is_probable_dm_source(path=Path(file_path), text=text):
+    stripped_text = strip_comments(text) if stripped_text is None else stripped_text
+    if not is_probable_dm_source(path=Path(file_path), text=text, stripped_text=stripped_text):
         return ()
     dependencies: list[_Dependency] = []
     seen: set[tuple[str, int]] = set()
-    for include_target, line_number in parse_include_entries(text):
+    for include_target, line_number in parse_include_entries(text, stripped_text=stripped_text):
         target_file = resolve_include(
             current_file=file_path,
             include_target=include_target,
@@ -186,17 +197,20 @@ def parse_file(
     stable_identifier: StableIdentifier,
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
+    stripped_text: str | None = None,
 ) -> tuple[
     tuple[_Symbol, ...],
     tuple[_Dependency, ...],
     tuple[_SymbolReferenceCandidate, ...],
 ]:
-    if not is_probable_dm_source(path=Path(file_path), text=text):
+    stripped_text = strip_comments(text) if stripped_text is None else stripped_text
+    if not is_probable_dm_source(path=Path(file_path), text=text, stripped_text=stripped_text):
         return (), (), ()
     collected_symbols = _collect_symbols(
         file_path=file_path,
         text=text,
         stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
     )
     symbols = tuple(symbol for symbol, _qualified_names in collected_symbols)
     dependencies = parse_dependencies_only(
@@ -206,8 +220,9 @@ def parse_file(
         stable_identifier=stable_identifier,
         normalize_repository_relative_path=normalize_repository_relative_path,
         resolve_suffix_match=resolve_suffix_match,
+        stripped_text=stripped_text,
     )
-    symbol_entries = iter_symbol_entries(text)
+    symbol_entries = iter_symbol_entries(text, stripped_text=stripped_text)
     local_symbol_ids = {symbol.symbol_name: symbol.symbol_id for symbol in symbols[1:]}
     default_source_symbol_id = symbols[0].symbol_id
     symbol_references: list[_SymbolReferenceCandidate] = []
@@ -239,7 +254,10 @@ def parse_file(
                 reference_type="references_symbol",
             )
         )
-    for target_name, line_number in iter_call_reference_entries(text):
+    for target_name, line_number in iter_call_reference_entries(
+        text,
+        stripped_text=stripped_text,
+    ):
         target_symbol_id = local_symbol_ids.get(target_name)
         if target_symbol_id is None:
             continue
@@ -269,7 +287,10 @@ def parse_file(
                 reference_type="references_symbol",
             )
         )
-    for target_name, line_number in iter_type_reference_entries(text):
+    for target_name, line_number in iter_type_reference_entries(
+        text,
+        stripped_text=stripped_text,
+    ):
         target_symbol_id = local_symbol_ids.get(target_name)
         if target_symbol_id is None:
             continue

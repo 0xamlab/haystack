@@ -161,15 +161,17 @@ def has_haxe_path_hints(path: Path | PurePosixPath) -> bool:
 def is_probable_haxe_source(*, path: Path | PurePosixPath, text: str) -> bool:
     normalized_path = PurePosixPath(path)
     suffix = normalized_path.suffix.lower()
-    stripped_text = strip_comments(text)
     if suffix == ".hx":
+        stripped_text = strip_comments(text)
         return _HAXE_SOURCE_SIGNAL_RE.search(stripped_text) is not None
     if suffix == ".hxml":
+        stripped_text = strip_comments(text)
         return any(
             token in stripped_text
             for token in ("-main", "--main", "-cp", "--class-path", "--cwd")
         )
     if normalized_path.name.lower() == "project.xml":
+        stripped_text = strip_comments(text)
         return _PROJECT_XML_SIGNAL_RE.search(stripped_text) is not None and any(
             marker in stripped_text.lower()
             for marker in ("<source", "<app", "<haxelib", "<haxedef", "openfl", "lime")

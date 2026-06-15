@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import io
+import threading
 from datetime import datetime, timezone
-from typing import Any, Sequence, TypeVar
+from typing import Any, Mapping, Sequence, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictFloat, StrictInt, StrictStr, field_validator
 
@@ -12,6 +13,11 @@ from apps.runtime_manifest import Replayability, RiskLevel, RuntimeFailureCode, 
 _CONTRACT_VERSION = "runtime-internal-contracts-v1"
 _IN_PROCESS_TRANSPORT = "pyarrow.record_batch"
 _DURABLE_FORMAT = "parquet"
+_PYARROW_MODULES: tuple[Any, Any] | None = None
+_SCHEMA_CACHE: dict[type["RuntimeContractRecord"], Any] = {}
+_EMPTY_PARQUET_BYTES_CACHE: dict[type["RuntimeContractRecord"], bytes] = {}
+_RUNTIME_CONTRACT_CACHE_LOCK = threading.RLock()
+_REPOSITORY_SNAPSHOT_WARMUP_TIMESTAMP = datetime(2026, 1, 1, tzinfo=timezone.utc)
 
 
 class RuntimeInternalContractModel(BaseModel):
@@ -354,11 +360,16 @@ RuntimeContractRecord = TypeVar(
 
 
 def _load_pyarrow() -> tuple[Any, Any]:
+    global _PYARROW_MODULES
+
+    if _PYARROW_MODULES is not None:
+        return _PYARROW_MODULES
     initialize_pyarrow_parquet_runtime()
     import pyarrow as pa
     import pyarrow.parquet as pq
 
-    return pa, pq
+    _PYARROW_MODULES = (pa, pq)
+    return _PYARROW_MODULES
 
 
 def _schema_metadata(contract_name: str) -> dict[bytes, bytes]:
@@ -688,11 +699,20 @@ _SCHEMA_BUILDERS: dict[type[RuntimeInternalContractModel], Any] = {
 
 
 def schema_for_record_type(record_type: type[RuntimeContractRecord]) -> Any:
+    cached_schema = _SCHEMA_CACHE.get(record_type)
+    if cached_schema is not None:
+        return cached_schema
     try:
         builder = _SCHEMA_BUILDERS[record_type]
     except KeyError as exc:
         raise ValueError(f"Unsupported runtime contract record type: {record_type!r}") from exc
-    return builder()
+    schema = builder()
+    with _RUNTIME_CONTRACT_CACHE_LOCK:
+        cached_schema = _SCHEMA_CACHE.get(record_type)
+        if cached_schema is not None:
+            return cached_schema
+        _SCHEMA_CACHE[record_type] = schema
+    return schema
 
 
 def table_from_records(
@@ -710,6 +730,16 @@ def table_from_records(
     schema = schema_for_record_type(record_type)
     rows = [record.model_dump(mode="python") for record in records]
     return pa.Table.from_pylist(rows, schema=schema)
+
+
+def table_from_row_dicts(
+    rows: Sequence[Mapping[str, Any]],
+    *,
+    record_type: type[RuntimeContractRecord],
+) -> Any:
+    pa, _ = _load_pyarrow()
+    schema = schema_for_record_type(record_type)
+    return pa.Table.from_pylist([dict(row) for row in rows], schema=schema)
 
 
 def record_batches_from_records(
@@ -734,7 +764,122 @@ def parquet_bytes_from_records(
     *,
     record_type: type[RuntimeContractRecord] | None = None,
 ) -> bytes:
+    if not records:
+        if record_type is None:
+            raise ValueError("record_type must be provided when records is empty.")
+        cached_bytes = _EMPTY_PARQUET_BYTES_CACHE.get(record_type)
+        if cached_bytes is not None:
+            return cached_bytes
+        parquet_bytes = parquet_bytes_from_table(
+            table_from_records(records, record_type=record_type)
+        )
+        with _RUNTIME_CONTRACT_CACHE_LOCK:
+            cached_bytes = _EMPTY_PARQUET_BYTES_CACHE.get(record_type)
+            if cached_bytes is not None:
+                return cached_bytes
+            _EMPTY_PARQUET_BYTES_CACHE[record_type] = parquet_bytes
+        return parquet_bytes
     return parquet_bytes_from_table(table_from_records(records, record_type=record_type))
+
+
+def parquet_bytes_from_row_dicts(
+    rows: Sequence[Mapping[str, Any]],
+    *,
+    record_type: type[RuntimeContractRecord],
+) -> bytes:
+    if not rows:
+        return parquet_bytes_from_records([], record_type=record_type)
+    return parquet_bytes_from_table(table_from_row_dicts(rows, record_type=record_type))
+
+
+def _repository_snapshot_parquet_warmup_rows() -> tuple[
+    tuple[type[RuntimeContractRecord], dict[str, Any]],
+    ...,
+]:
+    created_at = _REPOSITORY_SNAPSHOT_WARMUP_TIMESTAMP
+    return (
+        (
+            RepositorySnapshotRecord,
+            {
+                "repository_id": "warmup-repository",
+                "snapshot_id": "warmup-snapshot",
+                "connector_type": "warmup",
+                "repository_url": "https://example.invalid/warmup.git",
+                "resolved_revision": "warmup-revision",
+                "file_path": "src/main.py",
+                "language": "python",
+                "content_hash": "sha256:warmup-snapshot",
+                "line_count": 1,
+                "byte_size": 1,
+                "token_estimate": 1,
+                "created_at": created_at,
+            },
+        ),
+        (
+            SymbolGraphRecord,
+            {
+                "repository_id": "warmup-repository",
+                "snapshot_id": "warmup-snapshot",
+                "symbol_id": "symbol:warmup",
+                "file_path": "src/main.py",
+                "symbol_name": "main",
+                "language": "python",
+                "symbol_kind": "function",
+                "start_line": 1,
+                "end_line": 1,
+                "parent_symbol_id": None,
+                "signature": "def main() -> None",
+                "created_at": created_at,
+            },
+        ),
+        (
+            DependencyGraphRecord,
+            {
+                "repository_id": "warmup-repository",
+                "snapshot_id": "warmup-snapshot",
+                "dependency_edge_id": "dependency:warmup",
+                "source_file": "src/main.py",
+                "target_file": "src/helper.py",
+                "target_symbol": None,
+                "dependency_type": "imports",
+                "created_at": created_at,
+            },
+        ),
+        (
+            RepositoryGraphRecord,
+            {
+                "repository_id": "warmup-repository",
+                "snapshot_id": "warmup-snapshot",
+                "edge_id": "edge:warmup",
+                "source_node": "file:src/main.py",
+                "target_node": "file:src/helper.py",
+                "edge_type": "imports",
+                "weight": 1.0,
+                "created_at": created_at,
+            },
+        ),
+        (
+            SymbolReferenceRecord,
+            {
+                "repository_id": "warmup-repository",
+                "snapshot_id": "warmup-snapshot",
+                "reference_edge_id": "reference:warmup",
+                "source_file": "src/main.py",
+                "source_symbol_id": "symbol:warmup",
+                "target_symbol_id": "symbol:helper",
+                "target_file": "src/helper.py",
+                "reference_type": "calls",
+                "created_at": created_at,
+            },
+        ),
+    )
+
+
+def warm_repository_snapshot_parquet_contracts() -> None:
+    """Prime repository-snapshot parquet paths for both empty and populated payloads."""
+    for record_type, sample_row in _repository_snapshot_parquet_warmup_rows():
+        parquet_bytes_from_records([], record_type=record_type)
+        parquet_bytes_from_row_dicts([sample_row], record_type=record_type)
 
 
 def table_from_parquet_bytes(parquet_bytes: bytes) -> Any:

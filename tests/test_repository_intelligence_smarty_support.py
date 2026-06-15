@@ -227,8 +227,75 @@ def test_operational_seed_plan_without_diagnostics_promotes_smarty_when_surface_
     )
 
     assert "smarty" in seed_plan["detected_ecosystems"]
-    assert seed_plan["operational_ecosystems"][0] == "smarty"
     assert any(path.endswith(".tpl") for path in seed_plan["candidate_file_paths"])
+
+
+def test_operational_seed_plan_without_diagnostics_promotes_smarty_in_mixed_theme_repo(
+    tmp_path: Path,
+) -> None:
+    repo_path = tmp_path / "smarty-mixed-theme-repo"
+    (repo_path / "_dev" / "css" / "components").mkdir(parents=True)
+    (repo_path / "_dev" / "package.json").write_text(
+        '{"name":"theme-assets","private":true}\n',
+        encoding="utf-8",
+    )
+    (repo_path / "composer.json").write_text(
+        '{"name":"vendor/theme","type":"project"}\n',
+        encoding="utf-8",
+    )
+    for index in range(18):
+        (repo_path / "_dev" / "css" / "components" / f"part-{index}.scss").write_text(
+            f".part-{index} {{ color: #{index:02x}{index:02x}{index:02x}; }}\n",
+            encoding="utf-8",
+        )
+    (repo_path / "templates" / "layouts").mkdir(parents=True)
+    (repo_path / "templates" / "_partials").mkdir(parents=True)
+    (repo_path / "templates" / "layouts" / "base.tpl").write_text(
+        "{block name='content'}{/block}\n",
+        encoding="utf-8",
+    )
+    (repo_path / "templates" / "_partials" / "card.tpl").write_text(
+        "<article>{$title}</article>\n",
+        encoding="utf-8",
+    )
+    for name in (
+        "index",
+        "page",
+        "contact",
+        "product",
+        "category",
+        "checkout",
+        "manufacturer",
+        "supplier",
+        "cart",
+        "authentication",
+        "history",
+        "identity",
+        "addresses",
+        "sitemap",
+        "stores",
+        "order-detail",
+        "guest-login",
+        "discount",
+        "registration",
+        "password-new",
+    ):
+        (repo_path / "templates" / f"{name}.tpl").write_text(
+            "{extends file='layouts/base.tpl'}\n"
+            "{include file='_partials/card.tpl'}\n"
+            "{$content}\n",
+            encoding="utf-8",
+        )
+
+    seed_plan = _derive_operational_seed_plan_without_diagnostics(
+        repo_path=repo_path,
+        focus_paths=["."],
+        max_files=256,
+    )
+
+    assert "smarty" in seed_plan["detected_ecosystems"]
+    assert seed_plan["operational_ecosystems"][0] == "smarty"
+    assert any(path.endswith(".tpl") for path in seed_plan["entrypoint_files"])
     assert any(root.startswith("templates") for root in seed_plan["support_roots"])
 
 

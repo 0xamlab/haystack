@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable, Iterable
+from functools import lru_cache
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -64,7 +65,8 @@ def _looks_binaryish(text: str) -> bool:
     return control_count > max(2, len(sample) // 32)
 
 
-def strip_comments(text: str) -> str:
+@lru_cache(maxsize=1024)
+def _strip_comments_cached(text: str) -> str:
     characters = list(text)
     index = 0
     while index < len(characters):
@@ -81,18 +83,29 @@ def strip_comments(text: str) -> str:
     return "".join(characters)
 
 
+def strip_comments(text: str) -> str:
+    if "{#" not in text:
+        return text
+    return _strip_comments_cached(text)
+
+
 def has_jinja_path_hints(path: Path | PurePosixPath) -> bool:
     return PurePosixPath(path).suffix.lower() in JINJA_SUFFIXES
 
 
-def is_probable_jinja_source(*, path: Path | PurePosixPath, text: str) -> bool:
+def is_probable_jinja_source(
+    *,
+    path: Path | PurePosixPath,
+    text: str,
+    stripped_text: str | None = None,
+) -> bool:
     normalized_path = PurePosixPath(path)
     if normalized_path.suffix.lower() not in JINJA_SUFFIXES or not text or _looks_binaryish(text):
         return False
-    stripped_text = strip_comments(text)
-    if not stripped_text.strip():
+    candidate_stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
+    if not candidate_stripped_text.strip():
         return False
-    return any(marker in stripped_text for marker in ("{{", "{%", "{#"))
+    return any(marker in candidate_stripped_text for marker in ("{{", "{%", "{#"))
 
 
 def normalize_identifier(value: str) -> str:
@@ -129,15 +142,17 @@ def _normalize_import_target(raw_target: str) -> str:
 
 def iter_dependency_entries(
     text: str,
+    *,
+    stripped_text: str | None = None,
 ) -> tuple[tuple[str, str, tuple[tuple[str, tuple[str, ...]], ...], str | None, int], ...]:
-    stripped_text = strip_comments(text)
+    candidate_text = stripped_text if stripped_text is not None else strip_comments(text)
     entries: list[tuple[str, str, tuple[tuple[str, tuple[str, ...]], ...], str | None, int]] = []
     seen: set[tuple[str, str, tuple[tuple[str, tuple[str, ...]], ...], str | None, int]] = set()
-    for match in _STATEMENT_RE.finditer(stripped_text):
+    for match in _STATEMENT_RE.finditer(candidate_text):
         body = str(match.group("body") or "").strip()
         if not body:
             continue
-        line_number = _line_number(stripped_text, match.start())
+        line_number = _line_number(candidate_text, match.start())
         for kind, target, selectors, alias in _dependency_entries_for_statement(body):
             item = (kind, target, selectors, alias, line_number)
             if item in seen:
@@ -206,15 +221,19 @@ def _selector_aliases(raw_selectors: str) -> tuple[tuple[str, tuple[str, ...]], 
     return tuple(entries)
 
 
-def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
-    stripped_text = strip_comments(text)
+def iter_symbol_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, str, int], ...]:
+    candidate_text = stripped_text if stripped_text is not None else strip_comments(text)
     entries: list[tuple[str, str, int]] = []
     seen: set[tuple[str, str, int]] = set()
-    for match in _MACRO_RE.finditer(stripped_text):
+    for match in _MACRO_RE.finditer(candidate_text):
         symbol_name = normalize_identifier(str(match.group("name") or ""))
         if not symbol_name:
             continue
-        item = (symbol_name, "macro", _line_number(stripped_text, match.start()))
+        item = (symbol_name, "macro", _line_number(candidate_text, match.start()))
         if item in seen:
             continue
         seen.add(item)
@@ -222,11 +241,15 @@ def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
     return tuple(entries)
 
 
-def iter_reference_entries(text: str) -> tuple[tuple[str, str | None, str, int], ...]:
-    stripped_text = strip_comments(text)
+def iter_reference_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, str | None, str, int], ...]:
+    candidate_text = stripped_text if stripped_text is not None else strip_comments(text)
     entries: list[tuple[str, str | None, str, int]] = []
     seen: set[tuple[str, str | None, str, int]] = set()
-    for match in _EXPRESSION_RE.finditer(stripped_text):
+    for match in _EXPRESSION_RE.finditer(candidate_text):
         body = str(match.group("expression") or match.group("statement") or "")
         normalized_body = body.strip()
         if not normalized_body or any(
@@ -234,7 +257,7 @@ def iter_reference_entries(text: str) -> tuple[tuple[str, str | None, str, int],
             for prefix in _SKIPPED_REFERENCE_PREFIXES
         ):
             continue
-        line_number = _line_number(stripped_text, match.start())
+        line_number = _line_number(candidate_text, match.start())
         for pattern, owner_key in ((_QUALIFIED_CALL_RE, "owner"), (_CALL_RE, None)):
             for call_match in pattern.finditer(body):
                 owner = (
@@ -272,6 +295,10 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
+    stripped_text: str | None = None,
+    symbol_entries: tuple[tuple[str, str, int], ...] | None = None,
+    include_symbol_aliases: bool = True,
 ) -> set[str]:
     del stable_identifier
     path = PurePosixPath(file_path)
@@ -284,16 +311,31 @@ def module_aliases_for_path(
         str(path.with_suffix("")),
         str(path.with_suffix("")).replace("/", "."),
     }
-    try:
-        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        text = ""
-    if text and not is_probable_jinja_source(path=path, text=text):
+    loaded_text = text
+    if loaded_text is None:
+        try:
+            loaded_text = (root_path / path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            loaded_text = ""
+    candidate_stripped_text = stripped_text if stripped_text is not None else strip_comments(loaded_text)
+    if loaded_text and not is_probable_jinja_source(
+        path=path,
+        text=loaded_text,
+        stripped_text=candidate_stripped_text,
+    ):
         return {alias for alias in aliases if alias}
     module_name = module_name_from_path(file_path)
     aliases.add(module_name)
     aliases.add(module_name.replace("/", "."))
-    for symbol_name, _symbol_kind, _line_number in iter_symbol_entries(text):
+    if not include_symbol_aliases:
+        return {alias for alias in aliases if alias}
+    resolved_symbol_entries = symbol_entries
+    if resolved_symbol_entries is None:
+        resolved_symbol_entries = iter_symbol_entries(
+            loaded_text,
+            stripped_text=candidate_stripped_text,
+        )
+    for symbol_name, _symbol_kind, _line_number in resolved_symbol_entries:
         aliases.add(symbol_name)
         if module_name:
             aliases.add(f"{module_name}.{symbol_name}")
@@ -342,9 +384,13 @@ def imported_symbol_bindings(
     module_index: dict[str, str],
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
+    stripped_text: str | None = None,
 ) -> dict[str, _ImportedSymbolBinding]:
     bindings: dict[str, _ImportedSymbolBinding] = {}
-    for _kind, import_target, selectors, alias, _line_number in iter_dependency_entries(text):
+    for _kind, import_target, selectors, alias, _line_number in iter_dependency_entries(
+        text,
+        stripped_text=stripped_text,
+    ):
         target_file = resolve_import(
             current_file=current_file,
             import_target=import_target,
@@ -392,8 +438,10 @@ def collect_symbols(
     file_path: str,
     text: str,
     stable_identifier: StableIdentifier,
+    stripped_text: str | None = None,
+    symbol_entries: tuple[tuple[str, str, int], ...] | None = None,
 ) -> tuple[_Symbol, ...]:
-    stripped_text = strip_comments(text)
+    candidate_stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
     module_name = module_name_from_path(file_path) or PurePosixPath(file_path).stem
     module_symbol = _Symbol(
         symbol_id=stable_identifier(
@@ -403,12 +451,18 @@ def collect_symbols(
         symbol_name=module_name,
         symbol_kind="jinja",
         start_line=1,
-        end_line=_line_count(stripped_text),
+        end_line=_line_count(candidate_stripped_text),
         parent_symbol_id=None,
         signature=f"jinja {module_name}",
     )
     symbols: list[_Symbol] = [module_symbol]
-    for symbol_name, symbol_kind, line_number in iter_symbol_entries(text):
+    resolved_symbol_entries = symbol_entries
+    if resolved_symbol_entries is None:
+        resolved_symbol_entries = iter_symbol_entries(
+            text,
+            stripped_text=candidate_stripped_text,
+        )
+    for symbol_name, symbol_kind, line_number in resolved_symbol_entries:
         symbols.append(
             _Symbol(
                 symbol_id=stable_identifier(

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import bisect
 import re
 from collections.abc import Callable
 from pathlib import Path, PurePosixPath
@@ -80,9 +81,21 @@ _COMMENT_BLOCK_END_RE = re.compile(r"(?im)^\s*#ce\b")
 _COMMON_MODULE_ROOTS = frozenset({"include", "includes", "lib", "support"})
 
 
-def _line_number(text: str, offset: int) -> int:
-    bounded_offset = max(0, min(offset, len(text)))
-    return text.count("\n", 0, bounded_offset) + 1
+def _coerce_stripped_text(text: str, stripped_text: str | None) -> str:
+    if isinstance(stripped_text, str):
+        return stripped_text
+    return strip_comments(text)
+
+
+def _line_starts(text: str) -> tuple[int, ...]:
+    starts = [0]
+    starts.extend(index + 1 for index, character in enumerate(text) if character == "\n")
+    return tuple(starts)
+
+
+def _line_number(line_starts: tuple[int, ...], offset: int) -> int:
+    bounded_offset = max(0, offset)
+    return max(1, bisect.bisect_right(line_starts, bounded_offset))
 
 
 def _line_count(text: str) -> int:
@@ -97,61 +110,78 @@ def _looks_binaryish(text: str) -> bool:
     return control_count > max(2, len(sample) // 32)
 
 
-def strip_comments(text: str) -> str:
+def _directive_has_boundary(stripped_line: str, marker: str) -> bool:
+    marker_length = len(marker)
+    if not stripped_line[:marker_length].casefold() == marker:
+        return False
+    if len(stripped_line) == marker_length:
+        return True
+    return not (stripped_line[marker_length].isalnum() or stripped_line[marker_length] == "_")
+
+
+def _is_comment_directive(line: str, marker: str) -> bool:
+    stripped_line = line.lstrip()
+    return _directive_has_boundary(stripped_line, marker)
+
+
+def _split_line_ending(line: str) -> tuple[str, str]:
+    content = line.rstrip("\r\n")
+    return content, line[len(content) :]
+
+
+def _strip_inline_comment(line: str) -> str:
+    if ";" not in line:
+        return line
+    if '"' not in line:
+        return line.split(";", 1)[0]
     characters: list[str] = []
     index = 0
     in_string = False
-    string_delimiter = ""
-    in_block_comment = False
-    line_start = True
-    while index < len(text):
-        character = text[index]
-        previous_character = text[index - 1] if index > 0 else "\n"
-        remaining_text = text[index:]
-        if in_block_comment:
-            block_end_match = _COMMENT_BLOCK_END_RE.match(remaining_text)
-            if block_end_match is not None:
-                index += block_end_match.end()
-                in_block_comment = False
-                line_start = False
-                continue
-            if character == "\n":
-                characters.append("\n")
-                line_start = True
-            index += 1
-            continue
-        if line_start:
-            block_start_match = _COMMENT_BLOCK_START_RE.match(remaining_text)
-            if block_start_match is not None:
-                index += block_start_match.end()
-                in_block_comment = True
-                line_start = False
-                continue
+    while index < len(line):
+        character = line[index]
         if in_string:
             characters.append(character)
-            if character == string_delimiter and previous_character != '"':
+            if character == '"':
+                if index + 1 < len(line) and line[index + 1] == '"':
+                    characters.append('"')
+                    index += 2
+                    continue
                 in_string = False
-                string_delimiter = ""
-            if character == "\n":
-                line_start = True
-            else:
-                line_start = False
             index += 1
             continue
         if character == '"':
             in_string = True
-            string_delimiter = character
             characters.append(character)
-            line_start = False
             index += 1
             continue
         if character == ";":
-            while index < len(text) and text[index] != "\n":
-                index += 1
-            continue
+            break
         characters.append(character)
-        line_start = character == "\n"
         index += 1
+    return "".join(characters)
+
+
+def strip_comments(text: str) -> str:
+    in_block_comment = False
+    characters: list[str] = []
+    for raw_line in text.splitlines(keepends=True):
+        line, line_ending = _split_line_ending(raw_line)
+        if in_block_comment:
+            if _is_comment_directive(line, "#ce"):
+                in_block_comment = False
+            characters.append(line_ending)
+            continue
+        stripped_line = line.lstrip()
+        if _directive_has_boundary(stripped_line, "#cs"):
+            in_block_comment = True
+            characters.append(line_ending)
+            continue
+        if ";" not in line:
+            characters.append(line)
+            characters.append(line_ending)
+            continue
+        characters.append(_strip_inline_comment(line))
+        characters.append(line_ending)
     return "".join(characters)
 
 
@@ -159,11 +189,16 @@ def has_autoit_path_hints(path: Path | PurePosixPath) -> bool:
     return PurePosixPath(path).suffix.lower() in _KNOWN_SUFFIXES
 
 
-def is_probable_autoit_source(*, path: Path | PurePosixPath, text: str) -> bool:
+def is_probable_autoit_source(
+    *,
+    path: Path | PurePosixPath,
+    text: str,
+    stripped_text: str | None = None,
+) -> bool:
     normalized_path = PurePosixPath(path)
     if not has_autoit_path_hints(normalized_path) or not text or _looks_binaryish(text):
         return False
-    stripped_text = strip_comments(text)
+    stripped_text = _coerce_stripped_text(text, stripped_text)
     return bool(stripped_text.strip()) and bool(_MARKER_RE.search(stripped_text))
 
 
@@ -208,15 +243,20 @@ def _normalize_include_target(raw_target: str) -> str:
     return normalized_target
 
 
-def import_statements(text: str) -> tuple[tuple[str, int], ...]:
-    stripped_text = strip_comments(text)
+def import_statements(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, int], ...]:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
+    line_starts = _line_starts(stripped_text)
     statements: list[tuple[str, int]] = []
     seen: set[tuple[str, int]] = set()
     for match in _INCLUDE_RE.finditer(stripped_text):
         target = _normalize_include_target(str(match.group("target") or ""))
         if not target:
             continue
-        line_number = _line_number(stripped_text, match.start())
+        line_number = _line_number(line_starts, match.start("target"))
         item = (target, line_number)
         if item in seen:
             continue
@@ -225,15 +265,20 @@ def import_statements(text: str) -> tuple[tuple[str, int], ...]:
     return tuple(statements)
 
 
-def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
-    stripped_text = strip_comments(text)
+def iter_symbol_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, str, int], ...]:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
+    line_starts = _line_starts(stripped_text)
     entries: list[tuple[str, str, int]] = []
     seen: set[tuple[str, str, int]] = set()
     for match in _FUNCTION_RE.finditer(stripped_text):
         name = normalize_identifier(str(match.group("name") or ""))
         if not name:
             continue
-        line_number = _line_number(stripped_text, match.start())
+        line_number = _line_number(line_starts, match.start("name"))
         item = (name, "function", line_number)
         if item in seen:
             continue
@@ -248,10 +293,11 @@ def collect_symbols(
     file_path: str,
     text: str,
     stable_identifier: StableIdentifier,
+    stripped_text: str | None = None,
 ) -> tuple[_Symbol, ...]:
-    if not is_probable_autoit_source(path=Path(file_path), text=text):
+    stripped_text = _coerce_stripped_text(text, stripped_text)
+    if not is_probable_autoit_source(path=Path(file_path), text=text, stripped_text=stripped_text):
         return ()
-    stripped_text = strip_comments(text)
     module_name = module_name_from_path(file_path)
     final_line = _line_count(stripped_text)
     symbols: list[tuple[_Symbol, int]] = [
@@ -276,7 +322,10 @@ def collect_symbols(
             1,
         )
     ]
-    for symbol_name, symbol_kind, start_line in iter_symbol_entries(stripped_text):
+    for symbol_name, symbol_kind, start_line in iter_symbol_entries(
+        text,
+        stripped_text=stripped_text,
+    ):
         symbols.append(
             (
                 _Symbol(
@@ -337,10 +386,12 @@ def module_aliases_for_path(
         text = (root_path / path).read_text(encoding="utf-8", errors="replace")
     except OSError:
         text = ""
+    stripped_text = strip_comments(text)
     for symbol in collect_symbols(
         file_path=file_path,
         text=text,
         stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
     ):
         if symbol.symbol_kind == "module":
             continue
@@ -391,9 +442,11 @@ def imported_symbol_bindings(
     module_index: dict[str, str],
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
+    stripped_text: str | None = None,
 ) -> dict[str, _ImportedSymbolBinding]:
     bindings: dict[str, _ImportedSymbolBinding] = {}
-    for import_target, _line_number in import_statements(text):
+    stripped_text = _coerce_stripped_text(text, stripped_text)
+    for import_target, _line_number in import_statements(text, stripped_text=stripped_text):
         target_file = resolve_include(
             current_file=current_file,
             import_target=import_target,

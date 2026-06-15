@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -140,7 +141,11 @@ def _line_count(text: str) -> int:
     return max(1, text.count("\n") + 1)
 
 
-def strip_comments(text: str) -> str:
+def clear_strip_comments_cache() -> None:
+    strip_comments.cache_clear()
+
+
+def _strip_comments_uncached(text: str) -> str:
     output: list[str] = []
     index = 0
     in_line_comment = False
@@ -195,6 +200,11 @@ def strip_comments(text: str) -> str:
         output.append(character)
         index += 1
     return "".join(output)
+
+
+@lru_cache(maxsize=1024)
+def strip_comments(text: str) -> str:
+    return _strip_comments_uncached(text)
 
 
 def has_xpp_path_hints(path: Path | PurePosixPath) -> bool:

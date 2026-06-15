@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from functools import lru_cache
 from pathlib import Path, PurePosixPath
 
 from apps.api_server.services.repository_intelligence_adapters import (
@@ -27,6 +28,7 @@ _CollectedSymbol = repository_elm_primitives._CollectedSymbol
 
 _line_count = repository_elm_primitives._line_count
 _line_number = repository_elm_primitives._line_number
+_line_start_offsets = repository_elm_primitives._line_start_offsets
 _RESERVED_SYMBOL_NAMES = repository_elm_primitives._RESERVED_SYMBOL_NAMES
 exposing_all = repository_elm_primitives.exposing_all
 has_elm_path_hints = repository_elm_primitives.has_elm_path_hints
@@ -43,13 +45,79 @@ def _without_suffix_path(path: PurePosixPath) -> str:
     return str(path)
 
 
+def _line_segment(text: str, *, start_line: int, end_line: int) -> str:
+    if end_line < start_line:
+        return ""
+    line_offsets = _line_start_offsets(text)
+    start_index = line_offsets[max(0, start_line - 1)]
+    end_index = line_offsets[end_line] if end_line < len(line_offsets) else len(text)
+    return text[start_index:end_index]
+
+
+@lru_cache(maxsize=32768)
+def _symbol_identifier(
+    stable_identifier: StableIdentifier,
+    file_path: str,
+    symbol_name: str,
+    symbol_kind: str,
+    start_line: int,
+) -> str:
+    return stable_identifier(
+        "sym",
+        {
+            "file_path": file_path,
+            "symbol_name": symbol_name,
+            "symbol_kind": symbol_kind,
+            "start_line": start_line,
+        },
+    )
+
+
+@lru_cache(maxsize=32768)
+def _dependency_identifier(
+    stable_identifier: StableIdentifier,
+    file_path: str,
+    import_target: str,
+    line_number: int,
+) -> str:
+    return stable_identifier(
+        "dep",
+        {
+            "file_path": file_path,
+            "target": import_target,
+            "line": line_number,
+        },
+    )
+
+
+@lru_cache(maxsize=65536)
+def _reference_identifier(
+    stable_identifier: StableIdentifier,
+    source_symbol_id: str,
+    target_symbol_id: str | None,
+    target_file: str | None,
+    target_names: tuple[str, ...],
+) -> str:
+    return stable_identifier(
+        "ref",
+        {
+            "source_symbol_id": source_symbol_id,
+            "target_symbol_id": target_symbol_id,
+            "target_file": target_file,
+            "target_names": target_names,
+            "type": "references_symbol",
+        },
+    )
+
+
 def _collect_symbols(
     *,
     file_path: str,
     text: str,
     stable_identifier: StableIdentifier,
+    stripped_text: str | None = None,
 ) -> tuple[_CollectedSymbol, ...]:
-    stripped_text = strip_comments(text)
+    stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
     module_match = _MODULE_RE.search(stripped_text)
     module_name = (
         str(module_match.group("name") or "").strip()
@@ -57,14 +125,12 @@ def _collect_symbols(
         else module_name_from_path(file_path)
     )
     module_symbol = _Symbol(
-        symbol_id=stable_identifier(
-            "sym",
-            {
-                "file_path": file_path,
-                "symbol_name": module_name,
-                "symbol_kind": "module",
-                "start_line": 1,
-            },
+        symbol_id=_symbol_identifier(
+            stable_identifier,
+            file_path,
+            module_name,
+            "module",
+            1,
         ),
         symbol_name=module_name,
         symbol_kind="module",
@@ -80,18 +146,19 @@ def _collect_symbols(
             local_end_line=_line_count(stripped_text),
         )
     ]
-    for symbol_name, symbol_kind, start_line in iter_symbol_entries(stripped_text):
+    for symbol_name, symbol_kind, start_line in iter_symbol_entries(
+        text,
+        stripped_text=stripped_text,
+    ):
         collected_symbols.append(
             _CollectedSymbol(
                 symbol=_Symbol(
-                    symbol_id=stable_identifier(
-                        "sym",
-                        {
-                            "file_path": file_path,
-                            "symbol_name": symbol_name,
-                            "symbol_kind": symbol_kind,
-                            "start_line": start_line,
-                        },
+                    symbol_id=_symbol_identifier(
+                        stable_identifier,
+                        file_path,
+                        symbol_name,
+                        symbol_kind,
+                        start_line,
                     ),
                     symbol_name=symbol_name,
                     symbol_kind=symbol_kind,
@@ -138,6 +205,8 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
+    include_symbol_aliases: bool = True,
 ) -> set[str]:
     path = PurePosixPath(file_path)
     if path.suffix.lower() not in _KNOWN_SUFFIXES:
@@ -148,10 +217,11 @@ def module_aliases_for_path(
         _without_suffix_path(path).replace("/", "."),
         path.stem,
     }
-    try:
-        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        text = ""
+    if text is None:
+        try:
+            text = (root_path / path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            text = ""
     stripped_text = strip_comments(text)
     module_match = _MODULE_RE.search(stripped_text)
     module_name = (
@@ -161,17 +231,19 @@ def module_aliases_for_path(
     )
     if module_name:
         aliases.add(module_name)
-    for collected_symbol in _collect_symbols(
-        file_path=file_path,
-        text=text,
-        stable_identifier=stable_identifier,
-    ):
-        symbol_name = collected_symbol.symbol.symbol_name
-        if not symbol_name:
-            continue
-        aliases.add(symbol_name)
-        if module_name:
-            aliases.add(f"{module_name}.{symbol_name}")
+    if include_symbol_aliases:
+        for collected_symbol in _collect_symbols(
+            file_path=file_path,
+            text=text,
+            stable_identifier=stable_identifier,
+            stripped_text=stripped_text,
+        ):
+            symbol_name = collected_symbol.symbol.symbol_name
+            if not symbol_name:
+                continue
+            aliases.add(symbol_name)
+            if module_name:
+                aliases.add(f"{module_name}.{symbol_name}")
     return {alias for alias in aliases if alias}
 
 
@@ -221,12 +293,13 @@ def extract_import_bindings(
     stable_identifier: StableIdentifier,
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
+    stripped_text: str | None = None,
 ) -> tuple[
     tuple[_Dependency, ...],
     dict[str, _ImportedSymbolBinding],
     tuple[str, ...],
 ]:
-    stripped_text = strip_comments(text)
+    stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
     dependencies: list[_Dependency] = []
     dependency_keys: set[tuple[str | None, str]] = set()
     import_bindings: dict[str, _ImportedSymbolBinding] = {}
@@ -246,13 +319,11 @@ def extract_import_bindings(
             dependency_keys.add(dependency_key)
             dependencies.append(
                 _Dependency(
-                    dependency_edge_id=stable_identifier(
-                        "dep",
-                        {
-                            "file_path": file_path,
-                            "target": import_target,
-                            "line": _line_number(stripped_text, match.start()),
-                        },
+                    dependency_edge_id=_dependency_identifier(
+                        stable_identifier,
+                        file_path,
+                        import_target,
+                        _line_number(stripped_text, match.start()),
                     ),
                     source_file=file_path,
                     target_file=target_file,
@@ -301,6 +372,7 @@ def parse_dependencies_only(
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
 ) -> tuple[_Dependency, ...]:
+    stripped_text = strip_comments(text)
     dependencies, _bindings, _targets = extract_import_bindings(
         file_path,
         text,
@@ -308,6 +380,7 @@ def parse_dependencies_only(
         stable_identifier=stable_identifier,
         normalize_repository_relative_path=normalize_repository_relative_path,
         resolve_suffix_match=resolve_suffix_match,
+        stripped_text=stripped_text,
     )
     return dependencies
 
@@ -325,10 +398,12 @@ def parse_file(
     tuple[_Dependency, ...],
     tuple[_SymbolReferenceCandidate, ...],
 ]:
+    stripped_text = strip_comments(text)
     collected_symbols = _collect_symbols(
         file_path=file_path,
         text=text,
         stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
     )
     symbols = tuple(collected_symbol.symbol for collected_symbol in collected_symbols)
     symbols_by_name: dict[str, list[_Symbol]] = defaultdict(list)
@@ -341,45 +416,36 @@ def parse_file(
         stable_identifier=stable_identifier,
         normalize_repository_relative_path=normalize_repository_relative_path,
         resolve_suffix_match=resolve_suffix_match,
+        stripped_text=stripped_text,
     )
-    reference_candidates: dict[str, _SymbolReferenceCandidate] = {}
-    stripped_text = strip_comments(text)
-    lines = stripped_text.splitlines()
+    module_symbol = collected_symbols[0].symbol
+    reference_keys: dict[tuple[str, str | None, str | None, tuple[str, ...]], None] = {}
 
     def _record_reference_candidate(
         *,
-        source_symbol_id: str,
+        source_symbol: _Symbol,
         target_symbol_id: str | None,
         target_file: str | None,
         target_names: tuple[str, ...],
     ) -> None:
-        edge_id = stable_identifier(
-            "ref",
-            {
-                "source_symbol_id": source_symbol_id,
-                "target_symbol_id": target_symbol_id,
-                "target_file": target_file,
-                "target_names": target_names,
-                "type": "references_symbol",
-            },
-        )
-        reference_candidates.setdefault(
-            edge_id,
-            _SymbolReferenceCandidate(
-                reference_edge_id=edge_id,
-                source_symbol_id=source_symbol_id,
-                source_file=file_path,
-                target_symbol_id=target_symbol_id,
-                target_file=target_file,
-                target_names=target_names,
-                reference_type="references_symbol",
+        reference_keys.setdefault(
+            (
+                source_symbol.symbol_id,
+                target_symbol_id,
+                target_file,
+                target_names,
             ),
+            None,
         )
 
-    for collected_symbol in collected_symbols:
-        symbol = collected_symbol.symbol
-        snippet = "\n".join(lines[symbol.start_line - 1 : symbol.end_line])
-        for match in _QUALIFIED_REFERENCE_RE.finditer(snippet):
+    def _record_segment_references(
+        *,
+        source_symbol: _Symbol,
+        segment_text: str,
+    ) -> None:
+        if not segment_text:
+            return
+        for match in _QUALIFIED_REFERENCE_RE.finditer(segment_text):
             binding = import_bindings.get(str(match.group("alias") or "").strip())
             if binding is None:
                 continue
@@ -387,69 +453,117 @@ def parse_file(
             if not target_name:
                 continue
             _record_reference_candidate(
-                source_symbol_id=symbol.symbol_id,
+                source_symbol=source_symbol,
                 target_symbol_id=None,
                 target_file=binding.target_file,
                 target_names=(target_name,),
             )
-        for match in _TYPE_REFERENCE_RE.finditer(snippet):
+        for match in _TYPE_REFERENCE_RE.finditer(segment_text):
             target_name = str(match.group("name") or "").strip()
             if not target_name or target_name in _RESERVED_SYMBOL_NAMES:
                 continue
             binding = import_bindings.get(target_name)
             if binding is not None and binding.target_file is not None and binding.target_names:
                 _record_reference_candidate(
-                    source_symbol_id=symbol.symbol_id,
+                    source_symbol=source_symbol,
                     target_symbol_id=None,
                     target_file=binding.target_file,
                     target_names=binding.target_names,
                 )
             for target_symbol in symbols_by_name.get(target_name, ()):
-                if target_symbol.symbol_id == symbol.symbol_id:
+                if target_symbol.symbol_id == source_symbol.symbol_id:
                     continue
                 _record_reference_candidate(
-                    source_symbol_id=symbol.symbol_id,
+                    source_symbol=source_symbol,
                     target_symbol_id=target_symbol.symbol_id,
                     target_file=file_path,
                     target_names=(target_symbol.symbol_name,),
                 )
             for target_file in unqualified_import_targets:
                 _record_reference_candidate(
-                    source_symbol_id=symbol.symbol_id,
+                    source_symbol=source_symbol,
                     target_symbol_id=None,
                     target_file=target_file,
                     target_names=(target_name,),
                 )
-        for match in _CALL_RE.finditer(snippet):
+        for match in _CALL_RE.finditer(segment_text):
             target_name = str(match.group("name") or "").strip()
             if not target_name or target_name in _RESERVED_SYMBOL_NAMES:
                 continue
             binding = import_bindings.get(target_name)
             if binding is not None and binding.target_file is not None and binding.target_names:
                 _record_reference_candidate(
-                    source_symbol_id=symbol.symbol_id,
+                    source_symbol=source_symbol,
                     target_symbol_id=None,
                     target_file=binding.target_file,
                     target_names=binding.target_names,
                 )
             for target_symbol in symbols_by_name.get(target_name, ()):
-                if target_symbol.symbol_id == symbol.symbol_id:
+                if target_symbol.symbol_id == source_symbol.symbol_id:
                     continue
                 _record_reference_candidate(
-                    source_symbol_id=symbol.symbol_id,
+                    source_symbol=source_symbol,
                     target_symbol_id=target_symbol.symbol_id,
                     target_file=file_path,
                     target_names=(target_symbol.symbol_name,),
                 )
             for target_file in unqualified_import_targets:
                 _record_reference_candidate(
-                    source_symbol_id=symbol.symbol_id,
+                    source_symbol=source_symbol,
                     target_symbol_id=None,
                     target_file=target_file,
                     target_names=(target_name,),
                 )
+
+    current_line = 1
+    for collected_symbol in collected_symbols[1:]:
+        if current_line < collected_symbol.local_start_line:
+            _record_segment_references(
+                source_symbol=module_symbol,
+                segment_text=_line_segment(
+                    stripped_text,
+                    start_line=current_line,
+                    end_line=collected_symbol.local_start_line - 1,
+                ),
+            )
+        _record_segment_references(
+            source_symbol=collected_symbol.symbol,
+            segment_text=_line_segment(
+                stripped_text,
+                start_line=collected_symbol.local_start_line,
+                end_line=collected_symbol.local_end_line,
+            ),
+        )
+        current_line = collected_symbol.local_end_line + 1
+    if current_line <= module_symbol.end_line:
+        _record_segment_references(
+            source_symbol=module_symbol,
+            segment_text=_line_segment(
+                stripped_text,
+                start_line=current_line,
+                end_line=module_symbol.end_line,
+            ),
+        )
+    reference_candidates = tuple(reference_keys)
     return (
         symbols,
         dependencies,
-        tuple(reference_candidates[key] for key in sorted(reference_candidates)),
+        tuple(
+            _SymbolReferenceCandidate(
+                reference_edge_id=_reference_identifier(
+                    stable_identifier,
+                    source_symbol_id,
+                    target_symbol_id,
+                    target_file,
+                    target_names,
+                ),
+                source_symbol_id=source_symbol_id,
+                source_file=file_path,
+                target_symbol_id=target_symbol_id,
+                target_file=target_file,
+                target_names=target_names,
+                reference_type="references_symbol",
+            )
+            for source_symbol_id, target_symbol_id, target_file, target_names in reference_candidates
+        ),
     )

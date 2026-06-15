@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import re
+from bisect import bisect_right
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -88,16 +90,24 @@ class _CollectedSymbol:
 
 
 def _line_number(text: str, offset: int) -> int:
-    if offset <= 0:
-        return 1
-    return text.count("\n", 0, offset) + 1
+    return bisect_right(_line_start_offsets(text), max(offset, 0))
 
 
 def _line_count(text: str) -> int:
     return max(1, text.count("\n") + 1)
 
 
-def strip_comments(text: str) -> str:
+@lru_cache(maxsize=4096)
+def _line_start_offsets(text: str) -> tuple[int, ...]:
+    offsets = [0]
+    for index, character in enumerate(text):
+        if character == "\n":
+            offsets.append(index + 1)
+    return tuple(offsets)
+
+
+@lru_cache(maxsize=2048)
+def _strip_comments_cached(text: str) -> str:
     characters: list[str] = []
     index = 0
     block_depth = 0
@@ -141,6 +151,12 @@ def strip_comments(text: str) -> str:
             in_string = True
         index += 1
     return "".join(characters)
+
+
+def strip_comments(text: str) -> str:
+    if "--" not in text and "{-" not in text:
+        return text
+    return _strip_comments_cached(text)
 
 
 def has_purescript_path_hints(path: Path | PurePosixPath) -> bool:
@@ -220,8 +236,10 @@ def _ordered_names(*raw_names: str) -> tuple[str, ...]:
     return tuple(ordered)
 
 
-def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
-    stripped_text = strip_comments(text)
+@lru_cache(maxsize=2048)
+def _iter_symbol_entries_from_stripped_text(
+    stripped_text: str,
+) -> tuple[tuple[str, str, int], ...]:
     entries: list[tuple[str, str, int]] = []
     seen_names: set[str] = set()
     for regex, symbol_kind in (
@@ -241,3 +259,12 @@ def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
             seen_names.add(symbol_name)
             entries.append((symbol_name, symbol_kind, _line_number(stripped_text, match.start())))
     return tuple(sorted(entries, key=lambda item: (item[2], item[0], item[1])))
+
+
+def iter_symbol_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, str, int], ...]:
+    resolved_stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
+    return _iter_symbol_entries_from_stripped_text(resolved_stripped_text)

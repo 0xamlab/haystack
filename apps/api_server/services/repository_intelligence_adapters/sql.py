@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from bisect import bisect_right
+from functools import lru_cache
 import re
 from collections.abc import Callable, Sequence
 from pathlib import Path, PurePosixPath
@@ -100,6 +102,7 @@ DBT_REF_RE = re.compile(
 FALLBACK_SYMBOL_RE = re.compile(r"^[a-z_][a-z0-9_]*$")
 
 
+@lru_cache(maxsize=256)
 def strip_comments(text: str) -> str:
     def _replace_block_comment(match: re.Match[str]) -> str:
         return "\n" * str(match.group(0)).count("\n")
@@ -115,6 +118,20 @@ def strip_comments(text: str) -> str:
         for raw_line in without_block_comments.splitlines()
     ]
     return "\n".join(stripped_lines)
+
+
+@lru_cache(maxsize=256)
+def _line_start_offsets(text: str) -> tuple[int, ...]:
+    offsets = [0]
+    for index, character in enumerate(text):
+        if character == "\n":
+            offsets.append(index + 1)
+    return tuple(offsets)
+
+
+def _line_number(text: str, offset: int) -> int:
+    bounded_offset = max(0, min(offset, len(text)))
+    return bisect_right(_line_start_offsets(text), bounded_offset)
 
 
 def normalize_identifier(raw_name: str) -> str:
@@ -141,16 +158,15 @@ def symbol_name_parts(symbol_name: str) -> tuple[str, str]:
     return normalized_name, leaf_name
 
 
-def collect_symbol_entries(
-    text: str,
+def _collect_symbol_entry_templates_uncached(
     *,
     file_path: str,
-    stable_identifier: StableIdentifier,
-) -> list[dict[str, Any]]:
+    stripped_text: str,
+) -> tuple[dict[str, Any], ...]:
     symbol_entries: list[dict[str, Any]] = []
     seen_symbol_keys: set[tuple[str, str, int]] = set()
-    stripped_text = strip_comments(text)
-    final_line = len(stripped_text.splitlines()) if stripped_text else 1
+    line_offsets = _line_start_offsets(stripped_text)
+    final_line = len(line_offsets) if stripped_text else 1
     for match in CREATE_DECL_RE.finditer(stripped_text):
         normalized_name, leaf_name = symbol_name_parts(str(match.group("name") or ""))
         if (
@@ -165,7 +181,7 @@ def collect_symbol_entries(
             if raw_kind in {"function", "proc", "procedure"}
             else "type"
         )
-        line_no = stripped_text.count("\n", 0, match.start()) + 1
+        line_no = bisect_right(line_offsets, match.start())
         symbol_key = (symbol_kind, normalized_name, line_no)
         if symbol_key in seen_symbol_keys:
             continue
@@ -173,15 +189,6 @@ def collect_symbol_entries(
         signature = str(match.group(0) or "").strip()
         symbol_entries.append(
             {
-                "symbol_id": stable_identifier(
-                    "sym",
-                    {
-                        "file_path": file_path,
-                        "name": leaf_name,
-                        "kind": symbol_kind,
-                        "line": line_no,
-                    },
-                ),
                 "symbol_name": leaf_name,
                 "symbol_kind": symbol_kind,
                 "start_line": line_no,
@@ -200,15 +207,6 @@ def collect_symbol_entries(
             ):
                 symbol_entries.append(
                     {
-                        "symbol_id": stable_identifier(
-                            "sym",
-                            {
-                                "file_path": file_path,
-                                "name": fallback_name,
-                                "kind": "type",
-                                "line": 1,
-                            },
-                        ),
                         "symbol_name": fallback_name,
                         "symbol_kind": "type",
                         "start_line": 1,
@@ -225,7 +223,52 @@ def collect_symbol_entries(
             )
         else:
             entry["end_line"] = final_line
-    return symbol_entries
+    return tuple(symbol_entries)
+
+
+@lru_cache(maxsize=256)
+def _collect_symbol_entry_templates_cached(
+    *,
+    file_path: str,
+    stripped_text: str,
+) -> tuple[dict[str, Any], ...]:
+    return _collect_symbol_entry_templates_uncached(
+        file_path=file_path,
+        stripped_text=stripped_text,
+    )
+
+
+def collect_symbol_entries(
+    text: str,
+    *,
+    file_path: str,
+    stable_identifier: StableIdentifier,
+    stripped_text: str | None = None,
+) -> list[dict[str, Any]]:
+    stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
+    return [
+        {
+            "symbol_id": stable_identifier(
+                "sym",
+                {
+                    "file_path": file_path,
+                    "name": str(entry["symbol_name"]),
+                    "kind": str(entry["symbol_kind"]),
+                    "line": int(entry["start_line"]),
+                },
+            ),
+            "symbol_name": entry["symbol_name"],
+            "symbol_kind": entry["symbol_kind"],
+            "start_line": entry["start_line"],
+            "end_line": entry["end_line"],
+            "signature": entry["signature"],
+            "qualified_names": entry["qualified_names"],
+        }
+        for entry in _collect_symbol_entry_templates_cached(
+            file_path=file_path,
+            stripped_text=stripped_text,
+        )
+    ]
 
 
 def module_aliases_for_path(
@@ -233,6 +276,7 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
 ) -> set[str]:
     path = PurePosixPath(file_path)
     if path.suffix.lower() != ".sql":
@@ -244,14 +288,15 @@ def module_aliases_for_path(
     without_suffix_path = str(path.with_suffix("")).lower()
     aliases.add(without_suffix_path)
     aliases.add(without_suffix_path.replace("/", "."))
-    try:
-        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        return {alias for alias in aliases if alias}
-    for symbol_entry in collect_symbol_entries(
-        text,
+    if text is None:
+        try:
+            text = (root_path / path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return {alias for alias in aliases if alias}
+    stripped_text = strip_comments(text)
+    for symbol_entry in _collect_symbol_entry_templates_cached(
         file_path=file_path,
-        stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
     ):
         aliases.update(
             str(alias).lower() for alias in symbol_entry["qualified_names"] if alias
@@ -284,14 +329,19 @@ def resolve_target(
     )
 
 
-def iter_reference_targets(text: str) -> tuple[tuple[int, str, str], ...]:
-    stripped_text = strip_comments(text)
+def iter_reference_targets(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[int, str, str], ...]:
+    stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
+    line_offsets = _line_start_offsets(stripped_text)
     targets: list[tuple[int, str, str]] = []
     for match in DBT_REF_RE.finditer(stripped_text):
         target_name = str(match.group("name") or "").strip()
         if not target_name:
             continue
-        line_no = stripped_text.count("\n", 0, match.start()) + 1
+        line_no = bisect_right(line_offsets, match.start())
         targets.append((line_no, "dbt_ref", target_name))
     for regex, kind in (
         (RELATION_REFERENCE_RE, "relation"),
@@ -301,7 +351,7 @@ def iter_reference_targets(text: str) -> tuple[tuple[int, str, str], ...]:
             target_name = str(match.group("name") or "").strip()
             if not target_name:
                 continue
-            line_no = stripped_text.count("\n", 0, match.start()) + 1
+            line_no = bisect_right(line_offsets, match.start())
             targets.append((line_no, kind, target_name))
     return tuple(targets)
 
@@ -313,10 +363,16 @@ def parse_dependencies_only(
     *,
     stable_identifier: StableIdentifier,
     resolve_target: ResolveTarget,
+    stripped_text: str | None = None,
+    reference_targets: tuple[tuple[int, str, str], ...] | None = None,
 ) -> tuple[dict[str, Any], ...]:
     dependency_entries: list[dict[str, Any]] = []
     dependency_keys: set[tuple[str | None, str, str]] = set()
-    for line_no, reference_kind, raw_target in iter_reference_targets(text):
+    for line_no, reference_kind, raw_target in (
+        reference_targets
+        if reference_targets is not None
+        else iter_reference_targets(text, stripped_text=stripped_text)
+    ):
         normalized_target, leaf_name = symbol_name_parts(raw_target)
         if (
             not normalized_target
@@ -365,20 +421,25 @@ def parse_file(
     tuple[dict[str, Any], ...],
     tuple[dict[str, Any], ...],
 ]:
+    stripped_text = strip_comments(text)
     symbol_entries = collect_symbol_entries(
         text,
         file_path=file_path,
         stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
     )
     reference_candidates: dict[str, dict[str, Any]] = {}
-    stripped_lines = strip_comments(text).splitlines()
+    stripped_lines = stripped_text.splitlines()
     for symbol_entry in symbol_entries:
         start_line = int(symbol_entry["start_line"])
         end_line = int(symbol_entry["end_line"])
         symbol_name = str(symbol_entry["symbol_name"]).lower()
         symbol_id = str(symbol_entry["symbol_id"])
         snippet = "\n".join(stripped_lines[start_line - 1 : end_line])
-        for _line_no, reference_kind, raw_target in iter_reference_targets(snippet):
+        for _line_no, reference_kind, raw_target in iter_reference_targets(
+            snippet,
+            stripped_text=snippet,
+        ):
             normalized_target, leaf_name = symbol_name_parts(raw_target)
             if (
                 not normalized_target
@@ -420,6 +481,7 @@ def parse_file(
             module_index,
             stable_identifier=stable_identifier,
             resolve_target=resolve_target,
+            stripped_text=stripped_text,
         ),
         tuple(reference_candidates[key] for key in sorted(reference_candidates)),
     )

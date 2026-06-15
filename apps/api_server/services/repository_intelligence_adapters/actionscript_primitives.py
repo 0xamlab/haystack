@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -99,7 +100,7 @@ class _ResolvedBinding:
     target_name: str
 
 
-def strip_comments(text: str) -> str:
+def _strip_comments_uncached(text: str) -> str:
     output: list[str] = []
     index = 0
     in_line_comment = False
@@ -156,6 +157,15 @@ def strip_comments(text: str) -> str:
     return "".join(output)
 
 
+@lru_cache(maxsize=256)
+def _strip_comments_cached(text: str) -> str:
+    return _strip_comments_uncached(text)
+
+
+def strip_comments(text: str) -> str:
+    return _strip_comments_cached(text)
+
+
 def _line_number(text: str, offset: int) -> int:
     if offset <= 0:
         return 1
@@ -196,8 +206,11 @@ def has_actionscript_path_hints(path: Path | PurePosixPath) -> bool:
     if pure_path.suffix.lower() not in _KNOWN_SUFFIXES:
         return False
     lowered_parts = {part.lower() for part in pure_path.parts}
-    lowered_name = pure_path.name.lower()
-    return bool(lowered_parts & _PATH_HINT_PARTS) or lowered_name in {"main.as", "app.as"}
+    # Only ActionScript-specific directory hints (flash/flex/actionscript/as3) count.
+    # ``main.as`` / ``app.as`` are NOT distinctive — AngelScript projects use the same
+    # entrypoint names — so treating them as a hint mis-classified AngelScript (and bare
+    # ``.as`` notes) as ActionScript on path alone.
+    return bool(lowered_parts & _PATH_HINT_PARTS)
 
 
 def is_probable_actionscript_source(*, path: Path | PurePosixPath, text: str) -> bool:

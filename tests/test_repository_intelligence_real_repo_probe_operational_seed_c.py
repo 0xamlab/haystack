@@ -744,6 +744,14 @@ def test_operational_seed_plan_without_diagnostics_prefers_robotframework_suites
     (repo_path / "login_tests").mkdir(parents=True)
     (repo_path / "resources").mkdir(parents=True)
     (repo_path / "demoapp").mkdir(parents=True)
+    (repo_path / "README.rst").write_text(
+        "WebDemo\n=======\n\nRobot Framework demo.\n",
+        encoding="utf-8",
+    )
+    (repo_path / "BUILD.rst").write_text(
+        "Build\n=====\n\nRun the demo app.\n",
+        encoding="utf-8",
+    )
     (repo_path / "resources" / "resource.robot").write_text(
         "*** Keywords ***\nOpen Login Page\n    Log    hello\n",
         encoding="utf-8",
@@ -768,5 +776,4 @@ def test_operational_seed_plan_without_diagnostics_prefers_robotframework_suites
     assert "login_tests" in seed_plan["support_roots"]
     assert "login_tests/valid_login.robot" in seed_plan["entrypoint_files"]
     assert "resources/resource.robot" in seed_plan["candidate_file_paths"]
-
 

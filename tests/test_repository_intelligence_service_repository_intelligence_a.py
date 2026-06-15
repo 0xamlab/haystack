@@ -517,6 +517,55 @@ def test_repository_intelligence_objective_c_helpers_are_modularized() -> None:
     )
 
 
+def test_repository_intelligence_objective_c_sanitize_text_reuses_cached_result(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source_text = (
+        '#import <Foundation/Foundation.h>\n'
+        '@interface ACMHelper : NSObject\n'
+        '+ (void)work:(NSString *)value;\n'
+        '@end\n'
+    )
+
+    repository_objective_c_primitives.clear_sanitize_text_cache()
+    first = repository_objective_c_primitives.sanitize_text(source_text)
+
+    def _unexpected_strip_comments(_text: str) -> str:
+        raise AssertionError("expected Objective-C sanitize_text cache hit")
+
+    monkeypatch.setattr(
+        repository_objective_c_primitives,
+        "strip_comments",
+        _unexpected_strip_comments,
+    )
+
+    second = repository_objective_c_primitives.sanitize_text(source_text)
+
+    assert second == first
+
+
+def test_repository_intelligence_objective_c_reference_helpers_reuse_cached_line_offsets() -> None:
+    source_text = (
+        '#import "ACMHelper.h"\n'
+        "@interface ACMHelper : NSObject\n"
+        "+ (void)work:(NSString *)value;\n"
+        "@end\n"
+        "[ACMHelper work:@\"value\"];\n"
+    )
+
+    repository_objective_c_primitives._line_start_offsets.cache_clear()
+    imports = repository_objective_c_primitives.iter_import_targets(source_text)
+    messages = repository_objective_c_primitives.iter_message_sends(source_text)
+    tokens = repository_objective_c_primitives.iter_type_reference_tokens(source_text)
+    cache_info = repository_objective_c_primitives._line_start_offsets.cache_info()
+
+    assert imports
+    assert messages
+    assert tokens
+    assert cache_info.hits >= 1
+    assert cache_info.misses == 1
+
+
 def test_repository_intelligence_contracts_and_shared_helpers_are_modularized() -> None:
     assert repository_service.RepositoryIntelligenceError is (
         repository_contracts.RepositoryIntelligenceError
@@ -526,6 +575,71 @@ def test_repository_intelligence_contracts_and_shared_helpers_are_modularized() 
     )
     assert repository_service._stable_identifier is repository_shared._stable_identifier
     assert repository_service._stable_identifier.__module__ == repository_shared.__name__
+
+
+def test_repository_intelligence_stable_identifier_caches_repeat_payload_hashing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository_shared._payload_ascii_for_cache_key.cache_clear()
+    repository_shared._payload_digest.cache_clear()
+    repository_shared._stable_identifier_from_json.cache_clear()
+    hash_call_count = {"value": 0}
+    original_sha256 = repository_shared.hashlib.sha256
+
+    def _counting_sha256(*args: object, **kwargs: object) -> object:
+        hash_call_count["value"] += 1
+        return original_sha256(*args, **kwargs)
+
+    monkeypatch.setattr(repository_shared.hashlib, "sha256", _counting_sha256)
+    payload = {"file_path": "src/Main.elm", "target_names": ("map",), "type": "references_symbol"}
+
+    first = repository_shared._stable_identifier("ref", payload)
+    first_ascii_cache = repository_shared._payload_ascii_for_cache_key.cache_info()
+    first_digest_cache = repository_shared._payload_digest.cache_info()
+    first_identifier_cache = repository_shared._stable_identifier_from_json.cache_info()
+    second = repository_shared._stable_identifier("ref", payload)
+    second_ascii_cache = repository_shared._payload_ascii_for_cache_key.cache_info()
+    second_digest_cache = repository_shared._payload_digest.cache_info()
+    second_identifier_cache = repository_shared._stable_identifier_from_json.cache_info()
+    third = repository_shared._stable_identifier("sym", payload)
+    third_ascii_cache = repository_shared._payload_ascii_for_cache_key.cache_info()
+    third_digest_cache = repository_shared._payload_digest.cache_info()
+    third_identifier_cache = repository_shared._stable_identifier_from_json.cache_info()
+
+    assert first == second
+    assert first.startswith("ref_")
+    assert third.startswith("sym_")
+    assert hash_call_count["value"] == 1
+    assert first_ascii_cache.misses == 1
+    assert second_ascii_cache.hits >= 1
+    assert third_ascii_cache.hits >= 2
+    assert first_digest_cache.misses == 1
+    assert second_digest_cache.misses == 1
+    assert third_digest_cache.misses == 1
+    assert first_identifier_cache.misses == 1
+    assert second_identifier_cache.hits >= 1
+    assert third_identifier_cache.misses == 2
+
+
+def test_repository_intelligence_stable_identifier_ignores_mapping_and_set_order() -> None:
+    first = repository_shared._stable_identifier(
+        "sym",
+        {
+            "names": {"beta", "alpha"},
+            "location": ["src/main.py", 12],
+            "metadata": {"kind": "function", "exported": True},
+        },
+    )
+    second = repository_shared._stable_identifier(
+        "sym",
+        {
+            "metadata": {"exported": True, "kind": "function"},
+            "location": ["src/main.py", 12],
+            "names": {"alpha", "beta"},
+        },
+    )
+
+    assert first == second
 
 
 def test_repository_intelligence_runtime_and_cache_helpers_are_modularized() -> None:
@@ -569,6 +683,505 @@ def test_repository_intelligence_modules_stay_within_line_budget() -> None:
         )
 
     assert over_budget == []
+
+
+def test_repository_intelligence_core_keeps_compat_exports_lazy() -> None:
+    assert "repository_compat_exports" not in repository_service.__dict__
+    assert repository_service.__getattr__("opencl_adapter") is repository_service.opencl_adapter
+    assert "repository_compat_exports" not in repository_service.__dict__
+
+
+def test_repository_intelligence_core_keeps_adapter_parser_dispatch_lazy_until_needed() -> None:
+    result = subprocess.run(
+        [
+            "python3",
+            "-c",
+            (
+                "import json, sys; "
+                "import apps.api_server.services.repository_intelligence as service; "
+                "adapter='apps.api_server.services.repository_intelligence_adapter_parser_dispatch'; "
+                "compat='apps.api_server.services.repository_intelligence_compat_exports'; "
+                "before=(adapter in sys.modules, compat in sys.modules); "
+                "_ = service._REGISTERED_ADAPTER_FILE_PARSERS; "
+                "after=(adapter in sys.modules, compat in sys.modules); "
+                "print(json.dumps({'before': before, 'after': after}))"
+            ),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    observed = json.loads(result.stdout)
+
+    assert observed == {
+        "before": [False, False],
+        "after": [True, False],
+    }
+
+
+def test_repository_intelligence_adapters_package_stays_lazy_until_named_export_requested() -> None:
+    result = subprocess.run(
+        [
+            "python3",
+            "-c",
+            (
+                "import json, sys; "
+                "pkg='apps.api_server.services.repository_intelligence_adapters'; "
+                "import apps.api_server.services.repository_intelligence_adapters as adapters; "
+                "before=sorted(name for name in sys.modules if name.startswith(pkg + '.')); "
+                "_ = adapters.autoit; "
+                "after=sorted(name for name in sys.modules if name.startswith(pkg + '.')); "
+                "print(json.dumps({'before': before, 'after': after}))"
+            ),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    observed = json.loads(result.stdout)
+
+    assert observed["before"] == []
+    assert "apps.api_server.services.repository_intelligence_adapters.autoit" in observed["after"]
+    assert "apps.api_server.services.repository_intelligence_adapters.abap" not in observed["after"]
+
+
+def test_repository_intelligence_adapters_package_discovers_on_disk_adapter_modules() -> None:
+    result = subprocess.run(
+        [
+            "python3",
+            "-c",
+            (
+                "import json, sys; "
+                "pkg='apps.api_server.services.repository_intelligence_adapters'; "
+                "import apps.api_server.services.repository_intelligence_adapters as adapters; "
+                "before=sorted(name for name in sys.modules if name.startswith(pkg + '.')); "
+                "_ = adapters.emacslisp; "
+                "_ = adapters.vyper; "
+                "after=sorted(name for name in sys.modules if name.startswith(pkg + '.')); "
+                "print(json.dumps({'before': before, 'after': after}))"
+            ),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    observed = json.loads(result.stdout)
+
+    assert observed["before"] == []
+    assert "apps.api_server.services.repository_intelligence_adapters.emacslisp" in observed[
+        "after"
+    ]
+    assert "apps.api_server.services.repository_intelligence_adapters.vyper" in observed["after"]
+    assert "apps.api_server.services.repository_intelligence_adapters.abap" not in observed["after"]
+
+
+def test_repository_intelligence_indexing_stays_lazy_until_specific_adapter_is_used() -> None:
+    result = subprocess.run(
+        [
+            "python3",
+            "-c",
+            (
+                "import json, sys; "
+                "pkg='apps.api_server.services.repository_intelligence_adapters'; "
+                "import apps.api_server.services.repository_intelligence_indexing as indexing; "
+                "before=sorted(name for name in sys.modules if name.startswith(pkg + '.')); "
+                "_ = indexing.autoit_adapter.is_probable_autoit_source; "
+                "after=sorted(name for name in sys.modules if name.startswith(pkg + '.')); "
+                "print(json.dumps({'before': before, 'after': after}))"
+            ),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    observed = json.loads(result.stdout)
+
+    assert observed["before"] == []
+    assert "apps.api_server.services.repository_intelligence_adapters.autoit" in observed["after"]
+    assert "apps.api_server.services.repository_intelligence_adapters.abap" not in observed["after"]
+
+
+def test_repository_intelligence_indexing_lazy_adapter_caches_loaded_module(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sentinel = object()
+
+    class _FakeModule:
+        def __init__(self) -> None:
+            self.attribute_lookups = 0
+
+        def __getattribute__(self, name: str) -> object:
+            if name == "is_probable_autoit_source":
+                object.__setattr__(
+                    self,
+                    "attribute_lookups",
+                    object.__getattribute__(self, "attribute_lookups") + 1,
+                )
+                return sentinel
+            return object.__getattribute__(self, name)
+
+    class _FakeAdapters:
+        def __init__(self) -> None:
+            self.load_count = 0
+            self._module = _FakeModule()
+
+        def __getattr__(self, name: str) -> object:
+            assert name == "autoit"
+            self.load_count += 1
+            return self._module
+
+    fake_adapters = _FakeAdapters()
+    monkeypatch.setattr(repository_indexing, "repository_adapters", fake_adapters)
+    proxy = repository_indexing._lazy_adapter_module("autoit")
+
+    assert proxy.is_probable_autoit_source is sentinel
+    assert proxy.is_probable_autoit_source is sentinel
+    assert fake_adapters.load_count == 1
+    assert fake_adapters._module.attribute_lookups == 1
+
+
+def test_repository_intelligence_native_resolution_lazy_adapter_caches_loaded_module(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sentinel = object()
+
+    class _FakeModule:
+        def __init__(self) -> None:
+            self.attribute_lookups = 0
+
+        def __getattribute__(self, name: str) -> object:
+            if name == "parse_native_dependencies":
+                object.__setattr__(
+                    self,
+                    "attribute_lookups",
+                    object.__getattribute__(self, "attribute_lookups") + 1,
+                )
+                return lambda *_args, **_kwargs: sentinel
+            return object.__getattribute__(self, name)
+
+    class _FakeAdapters:
+        def __init__(self) -> None:
+            self.load_count = 0
+            self._module = _FakeModule()
+
+        def __getattr__(self, name: str) -> object:
+            assert name == "assembly"
+            self.load_count += 1
+            return self._module
+
+    fake_adapters = _FakeAdapters()
+    monkeypatch.setattr(repository_native_resolution, "repository_adapters", fake_adapters)
+    proxy = repository_native_resolution._lazy_adapter_module("assembly")
+
+    assert proxy.parse_native_dependencies() is sentinel
+    assert proxy.parse_native_dependencies() is sentinel
+    assert fake_adapters.load_count == 1
+    assert fake_adapters._module.attribute_lookups == 1
+
+
+def test_repository_intelligence_core_keeps_simulation_imports_lazy() -> None:
+    result = subprocess.run(
+        [
+            "python3",
+            "-c",
+            (
+                "import json, sys; "
+                "simulate='apps.api_server.services.simulation_service'; "
+                "import apps.api_server.services.repository_intelligence_core as core; "
+                "after_import={"
+                "'simulate': simulate in sys.modules"
+                "}; "
+                "_ = core.get_repository_intelligence_capabilities(); "
+                "after_capabilities={"
+                "'simulate': simulate in sys.modules"
+                "}; "
+                "print(json.dumps({'after_import': after_import, 'after_capabilities': after_capabilities}))"
+            ),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    observed = json.loads(result.stdout)
+
+    assert observed == {
+        "after_import": {
+            "simulate": False,
+        },
+        "after_capabilities": {
+            "simulate": False,
+        },
+    }
+
+
+def test_repository_intelligence_runtime_language_support_keeps_registry_imports_lazy() -> None:
+    result = subprocess.run(
+        [
+            "python3",
+            "-c",
+            (
+                "import json, sys; "
+                "dispatch='apps.api_server.services.repository_intelligence_adapter_parser_dispatch'; "
+                "import apps.api_server.services.repository_intelligence_runtime_language_support as runtime_support; "
+                "after_import={"
+                "'dispatch_loaded': dispatch in sys.modules"
+                "}; "
+                "_ = runtime_support.build_repository_runtime_language_support_report(); "
+                "after_report={"
+                "'dispatch_loaded': dispatch in sys.modules"
+                "}; "
+                "print(json.dumps({'after_import': after_import, 'after_report': after_report}))"
+            ),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    observed = json.loads(result.stdout)
+
+    assert observed == {
+        "after_import": {
+            "dispatch_loaded": False,
+        },
+        "after_report": {
+            "dispatch_loaded": True,
+        },
+    }
+
+
+def test_repository_intelligence_core_keeps_decision_plan_workflow_lazy() -> None:
+    result = subprocess.run(
+        [
+            "python3",
+            "-c",
+            (
+                "import json, sys; "
+                "workflow='apps.api_server.services.repository_intelligence_decision_plan_workflow'; "
+                "execution='apps.api_server.services.repository_intelligence_execution_workflow'; "
+                "graph='apps.api_server.services.repository_intelligence_graph_workflow'; "
+                "planner='apps.api_server.services.repository_intelligence_planner_generation'; "
+                "snapshot='apps.api_server.services.repository_intelligence_snapshot_workflow'; "
+                "analysis='apps.api_server.services.repository_intelligence_analysis_workflow'; "
+                "simple='apps.api_server.services.repository_intelligence_simple_parser_dispatch'; "
+                "language='apps.api_server.services.repository_intelligence_language_resolution'; "
+                "aliases='apps.api_server.services.repository_intelligence_module_aliases'; "
+                "autoit='apps.api_server.services.repository_intelligence_autoit_parser_dispatch'; "
+                "fish='apps.api_server.services.repository_intelligence_fish_parser_dispatch'; "
+                "janet='apps.api_server.services.repository_intelligence_janet_parser_dispatch'; "
+                "squirrel='apps.api_server.services.repository_intelligence_squirrel_parser_dispatch'; "
+                "source='apps.api_server.services.repository_intelligence_repository_source'; "
+                "storage='apps.api_server.services.repository_intelligence_storage'; "
+                "connector_model='apps.api_server.models.data_connector'; "
+                "import apps.api_server.services.repository_intelligence_core as core; "
+                "after_import={"
+                "'workflow_loaded': workflow in sys.modules, "
+                "'execution_loaded': execution in sys.modules, "
+                "'graph_loaded': graph in sys.modules, "
+                "'planner_loaded': planner in sys.modules, "
+                "'snapshot_loaded': snapshot in sys.modules, "
+                "'analysis_loaded': analysis in sys.modules, "
+                "'simple_loaded': simple in sys.modules, "
+                "'language_loaded': language in sys.modules, "
+                "'aliases_loaded': aliases in sys.modules, "
+                "'autoit_loaded': autoit in sys.modules, "
+                "'fish_loaded': fish in sys.modules, "
+                "'janet_loaded': janet in sys.modules, "
+                "'squirrel_loaded': squirrel in sys.modules, "
+                "'source_loaded': source in sys.modules, "
+                "'storage_loaded': storage in sys.modules, "
+                "'connector_model_loaded': connector_model in sys.modules"
+                "}; "
+                "_ = core.get_repository_intelligence_capabilities(); "
+                "after_capabilities={"
+                "'workflow_loaded': workflow in sys.modules, "
+                "'execution_loaded': execution in sys.modules, "
+                "'graph_loaded': graph in sys.modules, "
+                "'planner_loaded': planner in sys.modules, "
+                "'snapshot_loaded': snapshot in sys.modules, "
+                "'analysis_loaded': analysis in sys.modules, "
+                "'simple_loaded': simple in sys.modules, "
+                "'language_loaded': language in sys.modules, "
+                "'aliases_loaded': aliases in sys.modules, "
+                "'autoit_loaded': autoit in sys.modules, "
+                "'fish_loaded': fish in sys.modules, "
+                "'janet_loaded': janet in sys.modules, "
+                "'squirrel_loaded': squirrel in sys.modules, "
+                "'source_loaded': source in sys.modules, "
+                "'storage_loaded': storage in sys.modules, "
+                "'connector_model_loaded': connector_model in sys.modules"
+                "}; "
+                "print(json.dumps({'after_import': after_import, 'after_capabilities': after_capabilities}))"
+            ),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    observed = json.loads(result.stdout)
+
+    assert observed == {
+        "after_import": {
+            "workflow_loaded": False,
+            "execution_loaded": False,
+            "graph_loaded": False,
+            "planner_loaded": False,
+            "snapshot_loaded": False,
+            "analysis_loaded": False,
+            "simple_loaded": False,
+            "language_loaded": False,
+            "aliases_loaded": False,
+            "autoit_loaded": False,
+            "fish_loaded": False,
+            "janet_loaded": False,
+            "squirrel_loaded": False,
+            "source_loaded": False,
+            "storage_loaded": False,
+            "connector_model_loaded": False,
+        },
+        "after_capabilities": {
+            "workflow_loaded": False,
+            "execution_loaded": False,
+            "graph_loaded": False,
+            "planner_loaded": False,
+            "snapshot_loaded": False,
+            "analysis_loaded": False,
+            "simple_loaded": False,
+            "language_loaded": False,
+            "aliases_loaded": False,
+            "autoit_loaded": False,
+            "fish_loaded": False,
+            "janet_loaded": False,
+            "squirrel_loaded": False,
+            "source_loaded": False,
+            "storage_loaded": False,
+            "connector_model_loaded": False,
+        },
+    }
+
+
+def test_repository_intelligence_root_scoped_aliases_stays_lazy_until_specific_dependencies_are_used() -> None:
+    result = subprocess.run(
+        [
+            "python3",
+            "-c",
+            (
+                "import json, sys; "
+                "pkg='apps.api_server.services.repository_intelligence_adapters'; "
+                "pas='apps.api_server.services.repository_intelligence_pascal_solidity_dispatch'; "
+                "import apps.api_server.services.repository_intelligence_root_scoped_aliases as aliases; "
+                "before={"
+                "'adapter_modules': sorted(name for name in sys.modules if name.startswith(pkg + '.')), "
+                "'pascal_loaded': pas in sys.modules"
+                "}; "
+                "_ = aliases.jvm_adapter.scala_package_aliases_for_path; "
+                "_ = aliases._normalize_pascal_target('Foo.Bar'); "
+                "after={"
+                "'adapter_modules': sorted(name for name in sys.modules if name.startswith(pkg + '.')), "
+                "'pascal_loaded': pas in sys.modules"
+                "}; "
+                "print(json.dumps({'before': before, 'after': after}))"
+            ),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    observed = json.loads(result.stdout)
+
+    assert observed["before"] == {
+        "adapter_modules": [],
+        "pascal_loaded": False,
+    }
+    assert "apps.api_server.services.repository_intelligence_adapters.jvm" in observed["after"][
+        "adapter_modules"
+    ]
+    assert (
+        "apps.api_server.services.repository_intelligence_adapters.abap"
+        not in observed["after"]["adapter_modules"]
+    )
+    assert observed["after"]["pascal_loaded"] is True
+
+
+def test_repository_intelligence_native_resolution_stays_lazy_until_specific_adapter_is_used() -> None:
+    result = subprocess.run(
+        [
+            "python3",
+            "-c",
+            (
+                "import json, sys; "
+                "pkg='apps.api_server.services.repository_intelligence_adapters'; "
+                "import apps.api_server.services.repository_intelligence_native_resolution as native_resolution; "
+                "before=sorted(name for name in sys.modules if name.startswith(pkg + '.')); "
+                "_ = native_resolution.assembly_adapter.resolve_import; "
+                "after=sorted(name for name in sys.modules if name.startswith(pkg + '.')); "
+                "print(json.dumps({'before': before, 'after': after}))"
+            ),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    observed = json.loads(result.stdout)
+
+    assert observed["before"] == []
+    assert "apps.api_server.services.repository_intelligence_adapters.assembly_support" in observed[
+        "after"
+    ]
+    assert "apps.api_server.services.repository_intelligence_adapters.abap_support" not in observed[
+        "after"
+    ]
+
+
+def test_repository_intelligence_native_dispatch_stays_lazy_until_specific_paths_are_used() -> None:
+    result = subprocess.run(
+        [
+            "python3",
+            "-c",
+            (
+                "import json, sys; "
+                "pkg='apps.api_server.services.repository_intelligence_adapters'; "
+                "native='apps.api_server.services.repository_intelligence_native_resolution'; "
+                "apple='apps.api_server.services.repository_intelligence_applescript_parser_dispatch'; "
+                "vba='apps.api_server.services.repository_intelligence_vba_parser_dispatch'; "
+                "import apps.api_server.services.repository_intelligence_native_dispatch as dispatch; "
+                "before={"
+                "'adapter_modules': sorted(name for name in sys.modules if name.startswith(pkg + '.')), "
+                "'native_loaded': native in sys.modules, "
+                "'apple_loaded': apple in sys.modules, "
+                "'vba_loaded': vba in sys.modules"
+                "}; "
+                "_ = dispatch._parse_applescript_dependencies_only('Script.applescript', '', {}); "
+                "_ = dispatch._parse_assembly_dependencies_only('src/foo.asm', '', {}); "
+                "after={"
+                "'adapter_modules': sorted(name for name in sys.modules if name.startswith(pkg + '.')), "
+                "'native_loaded': native in sys.modules, "
+                "'apple_loaded': apple in sys.modules, "
+                "'vba_loaded': vba in sys.modules"
+                "}; "
+                "print(json.dumps({'before': before, 'after': after}))"
+            ),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    observed = json.loads(result.stdout)
+
+    assert observed["before"] == {
+        "adapter_modules": [],
+        "native_loaded": False,
+        "apple_loaded": False,
+        "vba_loaded": False,
+    }
+    assert "apps.api_server.services.repository_intelligence_adapters.assembly_support" in observed[
+        "after"
+    ]["adapter_modules"]
+    assert "apps.api_server.services.repository_intelligence_adapters.abap_support" not in observed[
+        "after"
+    ]["adapter_modules"]
+    assert observed["after"]["native_loaded"] is True
+    assert observed["after"]["apple_loaded"] is True
+    assert observed["after"]["vba_loaded"] is False
 
 
 def test_repository_intelligence_indexing_helpers_are_modularized() -> None:
@@ -799,5 +1412,3 @@ def test_repository_intelligence_root_scoped_alias_helpers_are_modularized() -> 
     assert repository_module_aliases._ROOT_SCOPED_MODULE_ALIAS_BUILDERS is (
         repository_root_scoped_aliases._ROOT_SCOPED_MODULE_ALIAS_BUILDERS
     )
-
-

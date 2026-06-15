@@ -17,6 +17,7 @@ from apps.api_server.services.repository_intelligence_indexing import (
 )
 from apps.api_server.services.repository_intelligence_inventory import (
     _build_workspace_dart_package_index,
+    _requires_workspace_dart_package_index,
 )
 from apps.api_server.services.repository_intelligence_js_resolution import (
     _candidate_js_like_module_keys,
@@ -363,6 +364,8 @@ def _extend_module_index_with_dart_package_aliases(
     file_paths: Sequence[str],
     index: dict[str, str],
 ) -> None:
+    if not _requires_workspace_dart_package_index(tuple(file_paths)):
+        return
     workspace_dart_package_index = _build_workspace_dart_package_index(root_path)
     if not workspace_dart_package_index:
         return

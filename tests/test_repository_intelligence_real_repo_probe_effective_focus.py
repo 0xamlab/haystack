@@ -64,3 +64,21 @@ def test_effective_focus_paths_for_snapshot_without_diagnostics_prefers_connecte
     ]
 
 
+def test_effective_focus_paths_for_snapshot_compacts_redundant_descendant_scopes() -> None:
+    effective_focus_paths = _effective_focus_paths_for_snapshot(
+        diagnostics=[],
+        connected_files=[],
+        fallback_focus_paths=[
+            "src/gleam",
+            "test",
+            "test/gleam",
+        ],
+        config_focus_paths=["gleam.toml"],
+    )
+
+    assert effective_focus_paths == [
+        "src/gleam",
+        "test",
+        "gleam.toml",
+    ]
+

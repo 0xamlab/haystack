@@ -398,6 +398,45 @@ def test_operational_seed_plan_without_diagnostics_detects_manifestless_cobol_re
     assert "copybooks/PERSON-REC.cpy" in seed_plan["candidate_file_paths"]
 
 
+def test_operational_seed_plan_without_diagnostics_prefers_cobol_over_course_tex_docs(
+    tmp_path: Path,
+) -> None:
+    repo_path = tmp_path / "cobol-course-repo"
+    (repo_path / "Course 1").mkdir(parents=True)
+    (repo_path / "Course 2" / "Labs" / "cbl").mkdir(parents=True)
+    (repo_path / "Course 3" / "Labs" / "cbl").mkdir(parents=True)
+    (repo_path / "Course 4" / "Labs" / "cbl").mkdir(parents=True)
+    for course_name in ("Course 1", "Course 2", "Course 3", "Course 4"):
+        (repo_path / course_name / "Front_Matter.tex").write_text(
+            "\\chapter{Course}\n",
+            encoding="utf-8",
+        )
+    for relative_path, program_id in (
+        ("Course 2/Labs/cbl/HELLO.cobol", "HELLO"),
+        ("Course 2/Labs/cbl/ADDAMT.cobol", "ADDAMT"),
+        ("Course 3/Labs/cbl/DEBUGME.cbl", "DEBUGME"),
+        ("Course 4/Labs/cbl/DEPTPAY.CBL", "DEPTPAY"),
+    ):
+        (repo_path / relative_path).write_text(
+            "       IDENTIFICATION DIVISION.\n"
+            f"       PROGRAM-ID. {program_id}.\n"
+            "       PROCEDURE DIVISION.\n"
+            "           GOBACK.\n",
+            encoding="utf-8",
+        )
+
+    seed_plan = _derive_operational_seed_plan_without_diagnostics(
+        repo_path=repo_path,
+        focus_paths=[],
+        max_files=128,
+    )
+
+    assert "tex" in seed_plan["detected_ecosystems"]
+    assert "cobol" in seed_plan["detected_ecosystems"]
+    assert seed_plan["operational_ecosystems"][0] == "cobol"
+    assert any(path.lower().endswith((".cbl", ".cobol")) for path in seed_plan["entrypoint_files"])
+
+
 def test_operational_seed_plan_without_diagnostics_uses_pascal_project_profile(
     tmp_path: Path,
 ) -> None:
@@ -570,6 +609,47 @@ def test_operational_seed_plan_without_diagnostics_detects_manifestless_foxpro_r
     assert "tests/main_test.prg" not in seed_plan["entrypoint_files"]
     assert "programs/util.prg" in seed_plan["candidate_file_paths"]
     assert "programs" in seed_plan["support_roots"]
+
+
+def test_operational_seed_plan_without_diagnostics_prefers_foxpro_over_package_json_host(
+    tmp_path: Path,
+) -> None:
+    repo_path = tmp_path / "foxpro-node-profile-repo"
+    (repo_path / "nfJson").mkdir(parents=True)
+    (repo_path / "package.json").write_text(
+        '{"name":"nfjson","private":true}',
+        encoding="utf-8",
+    )
+    (repo_path / "nfJson" / "nfOpenJson.prg").write_text(
+        "FUNCTION nfOpenJson(tcJson)\n"
+        "    RETURN tcJson\n"
+        "ENDFUNC\n",
+        encoding="utf-8",
+    )
+    (repo_path / "nfJson" / "nfJsonCreate.prg").write_text(
+        "FUNCTION nfJsonCreate()\n"
+        "    RETURN '{}'\n"
+        "ENDFUNC\n",
+        encoding="utf-8",
+    )
+    (repo_path / "nfJson" / "nfJsonRead.prg").write_text(
+        "FUNCTION nfJsonRead(tcJson)\n"
+        "    RETURN tcJson\n"
+        "ENDFUNC\n",
+        encoding="utf-8",
+    )
+
+    seed_plan = probe_module._derive_operational_seed_plan_without_diagnostics(
+        repo_path=repo_path,
+        focus_paths=[],
+        max_files=128,
+    )
+
+    assert "node" in seed_plan["detected_ecosystems"]
+    assert "foxpro" in seed_plan["detected_ecosystems"]
+    assert seed_plan["operational_ecosystems"][0] == "foxpro"
+    assert "nfJson/nfOpenJson.prg" in seed_plan["entrypoint_files"]
+    assert "package.json" in seed_plan["config_paths"]
 
 
 def test_operational_seed_plan_without_diagnostics_detects_solidity_foundry_repo(
@@ -780,5 +860,3 @@ def test_operational_seed_plan_without_diagnostics_detects_manifestless_objectiv
     assert "src/ACMClient.m" in seed_plan["entrypoint_files"]
     assert "src/ACMHelper.h" in seed_plan["candidate_file_paths"]
     assert "tests/ACMClientTests.m" not in seed_plan["entrypoint_files"]
-
-

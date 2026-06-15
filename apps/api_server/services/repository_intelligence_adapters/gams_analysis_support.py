@@ -63,24 +63,30 @@ def _lookup_target_file(module_index: dict[str, str], target_name: str) -> str |
 def _source_symbol_id_for_line(
     *,
     line_number: int,
-    symbol_entries: tuple[dict[str, Any], ...],
+    source_symbol_ids_by_line: dict[int, str],
 ) -> str | None:
-    matching_symbols = [
-        symbol_entry
-        for symbol_entry in symbol_entries
-        if int(symbol_entry["start_line"]) <= line_number <= int(symbol_entry["end_line"])
-    ]
-    if not matching_symbols:
-        return None
-    ranked_symbols = sorted(
-        matching_symbols,
+    return source_symbol_ids_by_line.get(line_number)
+
+
+def _build_source_symbol_ids_by_line(
+    symbol_entries: tuple[dict[str, Any], ...],
+) -> dict[int, str]:
+    source_symbol_ids_by_line: dict[int, str] = {}
+    ranked_entries = sorted(
+        symbol_entries,
         key=lambda entry: (
             int(entry["end_line"]) - int(entry["start_line"]),
             int(entry["start_line"]),
             str(entry["symbol_id"]),
         ),
     )
-    return str(ranked_symbols[0]["symbol_id"])
+    for symbol_entry in ranked_entries:
+        symbol_id = str(symbol_entry["symbol_id"])
+        start_line = int(symbol_entry["start_line"])
+        end_line = int(symbol_entry["end_line"])
+        for line_number in range(start_line, end_line + 1):
+            source_symbol_ids_by_line.setdefault(line_number, symbol_id)
+    return source_symbol_ids_by_line
 
 
 def module_aliases_for_path(
@@ -234,6 +240,7 @@ def parse_file(
             stable_identifier=stable_identifier,
         )
     )
+    source_symbol_ids_by_line = _build_source_symbol_ids_by_line(symbol_entries)
     dependencies = parse_dependencies_only(
         file_path=file_path,
         text=text,
@@ -265,7 +272,7 @@ def parse_file(
             line_number = start_line + snippet.count("\n", 0, match.start())
             source_symbol_id = _source_symbol_id_for_line(
                 line_number=line_number,
-                symbol_entries=symbol_entries,
+                source_symbol_ids_by_line=source_symbol_ids_by_line,
             )
             if source_symbol_id is None:
                 continue

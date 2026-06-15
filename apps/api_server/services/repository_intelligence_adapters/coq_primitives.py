@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import re
+from bisect import bisect_right
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -17,7 +19,10 @@ COQ_CONFIG_BASENAMES = frozenset({"_coqproject", "_rocqproject"})
 _MODULE_SEGMENT_RE = r"[A-Z][A-Za-z0-9_']*"
 _IDENTIFIER_SEGMENT_RE = r"[A-Za-z_][A-Za-z0-9_']*"
 _REQUIRE_RE = re.compile(
-    rf"(?m)^\s*(?:From\s+(?P<prefix>{_MODULE_SEGMENT_RE}(?:\.{_MODULE_SEGMENT_RE})*)\s+)?"
+    # ``[^\S\n]*`` (horizontal whitespace only) instead of ``\s*`` so a leading blank line
+    # (e.g. a stripped comment line rendered as spaces) is not consumed into the match —
+    # that shifted match.start() onto the previous line and reported the wrong line number.
+    rf"(?m)^[^\S\n]*(?:From\s+(?P<prefix>{_MODULE_SEGMENT_RE}(?:\.{_MODULE_SEGMENT_RE})*)\s+)?"
     rf"Require\s+(?:(?P<qualifier>Import|Export)\s+)?"
     rf"(?P<modules>{_MODULE_SEGMENT_RE}(?:\.{_MODULE_SEGMENT_RE})*(?:\s+{_MODULE_SEGMENT_RE}(?:\.{_MODULE_SEGMENT_RE})*)*)\s*\."
 )
@@ -45,6 +50,22 @@ _PROBABLE_SOURCE_MARKERS = (
     "Proof.",
     "Inductive ",
     "Fixpoint ",
+)
+_RAW_SOURCE_MARKERS = _PROBABLE_SOURCE_MARKERS + (
+    "Definition ",
+    "CoFixpoint ",
+    "Corollary ",
+    "Proposition ",
+    "Fact ",
+    "Example ",
+    "CoInductive ",
+    "Record ",
+    "Class ",
+    "Instance ",
+    "Ltac ",
+    "Module Type ",
+    "Module ",
+    "From ",
 )
 _PROJECT_MARKERS = ("-Q ", "-R ", "-I ", ".v")
 _RESERVED_SYMBOL_NAMES = frozenset(
@@ -122,7 +143,7 @@ class _CollectedSymbol:
 def _line_number(text: str, offset: int) -> int:
     if offset <= 0:
         return 1
-    return text.count("\n", 0, offset) + 1
+    return bisect_right(_line_start_offsets(text), offset)
 
 
 def _line_count(text: str) -> int:
@@ -141,7 +162,21 @@ def _ordered_names(*values: str) -> tuple[str, ...]:
     return tuple(ordered)
 
 
-def strip_comments(text: str) -> str:
+def _coerce_stripped_text(text: str, stripped_text: str | None = None) -> str:
+    return strip_comments(text) if stripped_text is None else stripped_text
+
+
+@lru_cache(maxsize=4096)
+def _line_start_offsets(text: str) -> tuple[int, ...]:
+    offsets = [0]
+    for index, character in enumerate(text):
+        if character == "\n":
+            offsets.append(index + 1)
+    return tuple(offsets)
+
+
+@lru_cache(maxsize=2048)
+def _strip_comments_cached(text: str) -> str:
     characters = list(text)
     depth = 0
     index = 0
@@ -169,6 +204,12 @@ def strip_comments(text: str) -> str:
     return "".join(characters)
 
 
+def strip_comments(text: str) -> str:
+    if "(*" not in text:
+        return text
+    return _strip_comments_cached(text)
+
+
 def has_coq_path_hints(path: Path | PurePosixPath) -> bool:
     normalized_path = PurePosixPath(path)
     return (
@@ -177,11 +218,21 @@ def has_coq_path_hints(path: Path | PurePosixPath) -> bool:
     )
 
 
-def is_probable_coq_source(*, path: Path | PurePosixPath, text: str) -> bool:
+def is_probable_coq_source(
+    *,
+    path: Path | PurePosixPath,
+    text: str,
+    stripped_text: str | None = None,
+) -> bool:
     normalized_path = PurePosixPath(path)
     if not has_coq_path_hints(normalized_path):
         return False
-    stripped_text = strip_comments(text)
+    if (
+        normalized_path.name.lower() not in COQ_CONFIG_BASENAMES
+        and not any(marker in text for marker in _RAW_SOURCE_MARKERS)
+    ):
+        return False
+    stripped_text = _coerce_stripped_text(text, stripped_text)
     if not stripped_text.strip():
         return False
     if normalized_path.name.lower() in COQ_CONFIG_BASENAMES:
@@ -204,8 +255,19 @@ def module_name_from_path(file_path: str) -> str:
     return path.stem
 
 
-def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
-    stripped_text = strip_comments(text)
+def iter_symbol_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, str, int], ...]:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
+    return _iter_symbol_entries_from_stripped_text(stripped_text)
+
+
+@lru_cache(maxsize=2048)
+def _iter_symbol_entries_from_stripped_text(
+    stripped_text: str,
+) -> tuple[tuple[str, str, int], ...]:
     entries: list[tuple[str, str, int]] = []
     seen_names: set[str] = set()
     for match in _SYMBOL_RE.finditer(stripped_text):
@@ -222,8 +284,19 @@ def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
     return tuple(sorted(entries, key=lambda item: (item[2], item[0], item[1])))
 
 
-def parse_require_modules(text: str) -> tuple[tuple[str, int], ...]:
-    stripped_text = strip_comments(text)
+def parse_require_modules(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, int], ...]:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
+    return _parse_require_modules_from_stripped_text(stripped_text)
+
+
+@lru_cache(maxsize=2048)
+def _parse_require_modules_from_stripped_text(
+    stripped_text: str,
+) -> tuple[tuple[str, int], ...]:
     modules: list[tuple[str, int]] = []
     seen: set[tuple[str, int]] = set()
     for match in _REQUIRE_RE.finditer(stripped_text):
@@ -247,8 +320,17 @@ def parse_require_modules(text: str) -> tuple[tuple[str, int], ...]:
     return tuple(modules)
 
 
-def parse_project_roots(text: str) -> tuple[str, ...]:
-    stripped_text = strip_comments(text)
+def parse_project_roots(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[str, ...]:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
+    return _parse_project_roots_from_stripped_text(stripped_text)
+
+
+@lru_cache(maxsize=1024)
+def _parse_project_roots_from_stripped_text(stripped_text: str) -> tuple[str, ...]:
     roots: list[str] = []
     seen: set[str] = set()
     for match in _PROJECT_LOAD_PATH_RE.finditer(stripped_text):
@@ -260,8 +342,17 @@ def parse_project_roots(text: str) -> tuple[str, ...]:
     return tuple(roots)
 
 
-def parse_project_sources(text: str) -> tuple[str, ...]:
-    stripped_text = strip_comments(text)
+def parse_project_sources(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[str, ...]:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
+    return _parse_project_sources_from_stripped_text(stripped_text)
+
+
+@lru_cache(maxsize=1024)
+def _parse_project_sources_from_stripped_text(stripped_text: str) -> tuple[str, ...]:
     sources: list[str] = []
     seen: set[str] = set()
     for match in _PROJECT_SOURCE_FILE_RE.finditer(stripped_text):

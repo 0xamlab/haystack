@@ -17,8 +17,19 @@ NormalizeRepositoryRelativePath = repository_yara_primitives.NormalizeRepository
 ResolveSuffixMatch = repository_yara_primitives.ResolveSuffixMatch
 
 _CollectedSymbol = repository_yara_primitives._CollectedSymbol
+_condition_text_from_stripped_text = repository_yara_primitives._condition_text_from_stripped_text
 _IDENTIFIER_RE = repository_yara_primitives._IDENTIFIER_RE
+_is_probable_yara_source_from_stripped_text = (
+    repository_yara_primitives._is_probable_yara_source_from_stripped_text
+)
+_iter_rule_entries_from_stripped_text = repository_yara_primitives._iter_rule_entries_from_stripped_text
 _QUALIFIED_REFERENCE_RE = repository_yara_primitives._QUALIFIED_REFERENCE_RE
+_parse_import_modules_from_stripped_text = (
+    repository_yara_primitives._parse_import_modules_from_stripped_text
+)
+_parse_include_statements_from_stripped_text = (
+    repository_yara_primitives._parse_include_statements_from_stripped_text
+)
 _RESERVED_SYMBOL_NAMES = repository_yara_primitives._RESERVED_SYMBOL_NAMES
 _line_count = repository_yara_primitives._line_count
 _ordered_names = repository_yara_primitives._ordered_names
@@ -39,10 +50,9 @@ def _without_suffix_path(path: PurePosixPath) -> str:
 def _collect_symbols(
     *,
     file_path: str,
-    text: str,
+    stripped_text: str,
     stable_identifier: StableIdentifier,
 ) -> tuple[_CollectedSymbol, ...]:
-    stripped_text = strip_comments(text)
     module_name = module_name_from_path(file_path)
     module_symbol = _Symbol(
         symbol_id=stable_identifier("sym", {"file_path": file_path, "symbol_name": module_name}),
@@ -65,7 +75,7 @@ def _collect_symbols(
             ),
         )
     ]
-    for symbol_name, start_line in iter_rule_entries(stripped_text):
+    for symbol_name, start_line in _iter_rule_entries_from_stripped_text(stripped_text):
         collected_symbols.append(
             _CollectedSymbol(
                 symbol=_Symbol(
@@ -130,12 +140,13 @@ def module_aliases_for_path(
         text = (root_path / path).read_text(encoding="utf-8", errors="replace")
     except OSError:
         text = ""
-    if not is_probable_yara_source(path=Path(file_path), text=text):
+    stripped_text = strip_comments(text)
+    if not _is_probable_yara_source_from_stripped_text(stripped_text):
         return {alias for alias in aliases if alias}
     aliases.add(module_name_from_path(file_path))
     for collected_symbol in _collect_symbols(
         file_path=file_path,
-        text=text,
+        stripped_text=stripped_text,
         stable_identifier=stable_identifier,
     ):
         aliases.add(collected_symbol.symbol.symbol_name)
@@ -174,10 +185,29 @@ def extract_import_bindings(
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
 ) -> tuple[tuple[_Dependency, ...], dict[str, _ImportedSymbolBinding]]:
+    return _extract_import_bindings_from_stripped_text(
+        file_path=file_path,
+        stripped_text=strip_comments(text),
+        module_index=module_index,
+        stable_identifier=stable_identifier,
+        normalize_repository_relative_path=normalize_repository_relative_path,
+        resolve_suffix_match=resolve_suffix_match,
+    )
+
+
+def _extract_import_bindings_from_stripped_text(
+    *,
+    file_path: str,
+    stripped_text: str,
+    module_index: dict[str, str],
+    stable_identifier: StableIdentifier,
+    normalize_repository_relative_path: NormalizeRepositoryRelativePath,
+    resolve_suffix_match: ResolveSuffixMatch,
+) -> tuple[tuple[_Dependency, ...], dict[str, _ImportedSymbolBinding]]:
     dependencies: list[_Dependency] = []
     dependency_keys: set[tuple[str, str, str | None]] = set()
     import_bindings: dict[str, _ImportedSymbolBinding] = {}
-    for include_target, line_number in parse_include_statements(text):
+    for include_target, line_number in _parse_include_statements_from_stripped_text(stripped_text):
         target_file = resolve_include(
             include_target,
             file_path,
@@ -200,7 +230,7 @@ def extract_import_bindings(
                     dependency_type="includes",
                 )
             )
-    for module_name, line_number in parse_import_modules(text):
+    for module_name, line_number in _parse_import_modules_from_stripped_text(stripped_text):
         dependency_key = ("import", module_name, None)
         if dependency_key not in dependency_keys:
             dependency_keys.add(dependency_key)
@@ -257,17 +287,18 @@ def parse_file(
     tuple[_Dependency, ...],
     tuple[_SymbolReferenceCandidate, ...],
 ]:
-    if not is_probable_yara_source(path=Path(file_path), text=text):
+    stripped_text = strip_comments(text)
+    if not _is_probable_yara_source_from_stripped_text(stripped_text):
         return (), (), ()
     collected_symbols = _collect_symbols(
         file_path=file_path,
-        text=text,
+        stripped_text=stripped_text,
         stable_identifier=stable_identifier,
     )
-    dependencies, import_bindings = extract_import_bindings(
-        file_path,
-        text,
-        module_index,
+    dependencies, import_bindings = _extract_import_bindings_from_stripped_text(
+        file_path=file_path,
+        stripped_text=stripped_text,
+        module_index=module_index,
         stable_identifier=stable_identifier,
         normalize_repository_relative_path=normalize_repository_relative_path,
         resolve_suffix_match=resolve_suffix_match,
@@ -275,6 +306,7 @@ def parse_file(
     local_symbols = {item.symbol.symbol_name: item.symbol for item in collected_symbols}
     symbol_references: list[_SymbolReferenceCandidate] = []
     seen_reference_keys: set[tuple[str, str, str | None, str | None]] = set()
+    stripped_lines = stripped_text.splitlines()
 
     def _record_reference(
         *,
@@ -311,11 +343,9 @@ def parse_file(
         if collected_symbol.symbol.symbol_kind != "rule":
             continue
         rule_text = "\n".join(
-            strip_comments(text).splitlines()[
-                max(collected_symbol.local_start_line - 1, 0) : collected_symbol.local_end_line
-            ]
+            stripped_lines[max(collected_symbol.local_start_line - 1, 0) : collected_symbol.local_end_line]
         )
-        masked_text = list(condition_text(rule_text))
+        masked_text = list(_condition_text_from_stripped_text(rule_text))
         if not masked_text:
             continue
         current_text = "".join(masked_text)

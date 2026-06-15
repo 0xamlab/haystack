@@ -17,7 +17,11 @@ from pathlib import Path
 
 import httpx
 import pytest
+from alembic.config import Config
+from alembic.script import ScriptDirectory
+from alembic.util.exc import CommandError
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import create_engine, text
 from tests.integration.live_local_defaults import (
     DEFAULT_LOCAL_LIVE_API_KEY,
     DEFAULT_LOCAL_LIVE_BASE_URL,
@@ -94,7 +98,48 @@ def _build_live_subprocess_env(**overrides: str) -> dict[str, str]:
     return env
 
 
+def _load_alembic_script_directory() -> ScriptDirectory:
+    config = Config(str(_ROOT / "apps" / "api_server" / "alembic.ini"))
+    return ScriptDirectory.from_config(config)
+
+
+def _read_database_alembic_revision(database_url_sync: str) -> str | None:
+    engine = create_engine(database_url_sync, pool_pre_ping=True)
+    try:
+        with engine.connect() as connection:
+            version_table = connection.execute(
+                text("SELECT to_regclass('public.alembic_version')")
+            ).scalar_one()
+            if version_table is None:
+                return None
+            return connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
+    finally:
+        engine.dispose()
+
+
+def _assert_database_revision_is_known() -> None:
+    revision = _read_database_alembic_revision(os.environ["DATABASE_URL_SYNC"])
+    if revision is None:
+        return
+
+    script_directory = _load_alembic_script_directory()
+    try:
+        script_directory.get_revision(revision)
+    except CommandError as exc:
+        heads = ", ".join(script_directory.get_heads()) or "<none>"
+        raise RuntimeError(
+            "Test database revision is not present in this checkout's Alembic graph. "
+            f"database_revision={revision!r}, checkout_heads={heads!r}, "
+            f"script_location={script_directory.dir!r}. "
+            "This usually means the local database was migrated on a newer branch or ref. "
+            "Update the checkout to a revision that contains this migration, or point "
+            "DATABASE_URL and DATABASE_URL_SYNC at a fresh test database for the current repo state. "
+            "The pytest bootstrap will not auto-reset the default shared local database."
+        ) from exc
+
+
 def _run_migrations() -> None:
+    _assert_database_revision_is_known()
     cmd = [
         sys.executable,
         "-m",

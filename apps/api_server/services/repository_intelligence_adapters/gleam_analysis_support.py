@@ -47,8 +47,9 @@ def _collect_symbols(
     file_path: str,
     text: str,
     stable_identifier: StableIdentifier,
+    stripped_text: str | None = None,
 ) -> tuple[_CollectedSymbol, ...]:
-    stripped_text = strip_comments(text)
+    effective_stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
     module_name = module_name_from_path(file_path)
     module_symbol = _Symbol(
         symbol_id=stable_identifier(
@@ -63,7 +64,7 @@ def _collect_symbols(
         symbol_name=module_name,
         symbol_kind="module",
         start_line=1,
-        end_line=_line_count(stripped_text),
+        end_line=_line_count(effective_stripped_text),
         parent_symbol_id=None,
         signature=f"module {module_name}" if module_name else None,
     )
@@ -71,11 +72,14 @@ def _collect_symbols(
         _CollectedSymbol(
             symbol=module_symbol,
             local_start_line=1,
-            local_end_line=_line_count(stripped_text),
+            local_end_line=_line_count(effective_stripped_text),
             qualified_names=(module_name, module_name.replace("/", ".")) if module_name else (),
         )
     ]
-    for symbol_name, symbol_kind, start_line in iter_symbol_entries(stripped_text):
+    for symbol_name, symbol_kind, start_line in iter_symbol_entries(
+        text,
+        stripped_text=effective_stripped_text,
+    ):
         qualified_names = repository_gleam_primitives._ordered_names(
             symbol_name,
             f"{module_name}/{symbol_name}" if module_name else "",
@@ -105,7 +109,7 @@ def _collect_symbols(
                 qualified_names=qualified_names,
             )
         )
-    final_line = _line_count(stripped_text)
+    final_line = _line_count(effective_stripped_text)
     finalized_symbols: list[_CollectedSymbol] = []
     for index, collected_symbol in enumerate(collected_symbols):
         end_line = (
@@ -141,6 +145,9 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
+    stripped_text: str | None = None,
+    include_symbol_aliases: bool = True,
 ) -> set[str]:
     path = PurePosixPath(file_path)
     if path.suffix.lower() not in _KNOWN_SUFFIXES:
@@ -154,16 +161,31 @@ def module_aliases_for_path(
         module_name,
         module_name.replace("/", "."),
     }
-    try:
-        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        text = ""
-    if not is_probable_gleam_source(path=Path(file_path), text=text):
+    effective_text = text
+    if effective_text is None:
+        try:
+            effective_text = (root_path / path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            effective_text = ""
+    effective_stripped_text = stripped_text
+    if not has_gleam_path_hints(path):
+        if effective_stripped_text is None:
+            effective_stripped_text = strip_comments(effective_text)
+        if not is_probable_gleam_source(
+            path=Path(file_path),
+            text=effective_text,
+            stripped_text=effective_stripped_text,
+        ):
+            return {alias for alias in aliases if alias}
+    if not include_symbol_aliases:
         return {alias for alias in aliases if alias}
+    if effective_stripped_text is None:
+        effective_stripped_text = strip_comments(effective_text)
     for collected_symbol in _collect_symbols(
         file_path=file_path,
-        text=text,
+        text=effective_text,
         stable_identifier=stable_identifier,
+        stripped_text=effective_stripped_text,
     ):
         aliases.add(collected_symbol.symbol.symbol_name)
         aliases.update(collected_symbol.qualified_names)
@@ -212,12 +234,13 @@ def extract_import_bindings(
     stable_identifier: StableIdentifier,
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
+    stripped_text: str | None = None,
 ) -> tuple[tuple[_Dependency, ...], dict[str, _ImportedSymbolBinding]]:
-    stripped_text = strip_comments(text)
+    effective_stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
     dependencies: list[_Dependency] = []
     dependency_keys: set[tuple[str | None, str]] = set()
     import_bindings: dict[str, _ImportedSymbolBinding] = {}
-    for match in _IMPORT_RE.finditer(stripped_text):
+    for match in _IMPORT_RE.finditer(effective_stripped_text):
         import_target = str(match.group("target") or "").strip()
         if not import_target:
             continue
@@ -237,7 +260,7 @@ def extract_import_bindings(
                         {
                             "file_path": file_path,
                             "target": import_target,
-                            "line": _line_number(stripped_text, match.start()),
+                            "line": _line_number(effective_stripped_text, match.start()),
                         },
                     ),
                     source_file=file_path,
@@ -298,12 +321,18 @@ def parse_file(
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
 ) -> tuple[tuple[_Symbol, ...], tuple[_Dependency, ...], tuple[_SymbolReferenceCandidate, ...]]:
-    if not is_probable_gleam_source(path=Path(file_path), text=text):
+    stripped_text = strip_comments(text)
+    if not is_probable_gleam_source(
+        path=Path(file_path),
+        text=text,
+        stripped_text=stripped_text,
+    ):
         return (), (), ()
     collected_symbols = _collect_symbols(
         file_path=file_path,
         text=text,
         stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
     )
     symbols = tuple(collected_symbol.symbol for collected_symbol in collected_symbols)
     symbols_by_name: dict[str, list[_Symbol]] = defaultdict(list)
@@ -316,9 +345,9 @@ def parse_file(
         stable_identifier=stable_identifier,
         normalize_repository_relative_path=normalize_repository_relative_path,
         resolve_suffix_match=resolve_suffix_match,
+        stripped_text=stripped_text,
     )
     reference_candidates: dict[str, _SymbolReferenceCandidate] = {}
-    stripped_text = strip_comments(text)
     lines = stripped_text.splitlines()
 
     def _record_reference_candidate(

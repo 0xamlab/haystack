@@ -28,6 +28,7 @@ ASSIGNMENT_PREFIX_RE = re.compile(
     r"^(?:[A-Za-z_][A-Za-z0-9_]*=(?:\"[^\"]*\"|'[^']*'|[^\s;|&]+)\s+)+"
 )
 COMMAND_NAME_RE = re.compile(r"^(?P<name>[A-Za-z_][A-Za-z0-9_]*)\b")
+SHEBANG_RE = re.compile(r"(?im)^#!.*\b(?:ba|da|k|z)?sh\b")
 SOURCE_SUFFIXES = (".sh", ".bash", ".zsh", ".ksh", ".zsh-theme")
 CONTROL_PREFIXES = (
     "!",
@@ -134,6 +135,12 @@ BUILTIN_COMMAND_NAMES = frozenset(
         "zle",
     }
 )
+
+
+def is_probable_shell_source(*, path: PurePosixPath, text: str) -> bool:
+    if PurePosixPath(path).suffix.lower() in SOURCE_SUFFIXES:
+        return True
+    return bool(SHEBANG_RE.match(text))
 
 
 def is_operational_reference_name(name: str) -> bool:

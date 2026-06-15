@@ -12,6 +12,7 @@ NormalizeRepositoryRelativePath = repository_twig_primitives.NormalizeRepository
 ResolveSuffixMatch = repository_twig_primitives.ResolveSuffixMatch
 
 TWIG_SUFFIXES = repository_twig_primitives.TWIG_SUFFIXES
+_prepared_twig_source_text = repository_twig_primitives._prepared_twig_source_text
 collect_symbols = repository_twig_primitives.collect_symbols
 has_twig_path_hints = repository_twig_primitives.has_twig_path_hints
 imported_symbol_bindings = repository_twig_primitives.imported_symbol_bindings

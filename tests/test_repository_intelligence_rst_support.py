@@ -23,6 +23,10 @@ from apps.api_server.services.repository_intelligence_adapters import (
 from benchmarks.repository_intelligence_real_repo_probe import (
     _derive_operational_seed_plan_without_diagnostics,
 )
+import benchmarks.repository_intelligence_real_repo_probe as probe_module
+from benchmarks.repository_intelligence_real_repo_probe_docs_support import (
+    _rst_profile_hints_from_candidates,
+)
 
 
 def _connector_for_repo(repo_path: Path) -> SimpleNamespace:
@@ -100,6 +104,105 @@ def test_rst_adapter_module_aliases_include_labels_and_sections(tmp_path: Path) 
     assert "docs/guide.rst" in aliases
     assert "guide-start" in aliases
     assert "guide.Guide" in aliases
+
+
+def test_rst_profile_hints_reuse_loaded_text_per_candidate_file(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo_path = tmp_path / "rst-profile-hints-cache-repo"
+    (repo_path / "docs").mkdir(parents=True)
+    index_path = repo_path / "docs" / "index.rst"
+    guide_path = repo_path / "docs" / "guide.rst"
+    index_path.write_text(
+        "Index\n=====\n\n.. toctree::\n   guide\n",
+        encoding="utf-8",
+    )
+    guide_path.write_text("Guide\n=====\n", encoding="utf-8")
+
+    original_read_text = Path.read_text
+    read_counts: dict[Path, int] = {}
+
+    def _counting_read_text(self: Path, *args, **kwargs) -> str:
+        if self in {index_path, guide_path}:
+            read_counts[self] = read_counts.get(self, 0) + 1
+        return original_read_text(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", _counting_read_text)
+
+    entrypoints, roots, configs = _rst_profile_hints_from_candidates(
+        repo_path,
+        ["docs/index.rst", "docs/guide.rst"],
+    )
+
+    assert "docs/index.rst" in entrypoints
+    assert "docs" in roots
+    assert configs == set()
+    assert read_counts[index_path] <= 1
+    assert read_counts[guide_path] <= 1
+
+
+def test_rst_profile_hints_skip_generic_language_probe_for_rst_hinted_files(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo_path = tmp_path / "rst-hint-fast-path-repo"
+    (repo_path / "docs").mkdir(parents=True)
+    (repo_path / "docs" / "index.rst").write_text(
+        "Index\n=====\n\n.. toctree::\n   guide\n",
+        encoding="utf-8",
+    )
+    (repo_path / "docs" / "guide.rst").write_text(
+        "Guide\n=====\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        probe_module,
+        "_probe_language_for_path",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("rst hinted files should not use generic language probing")
+        ),
+    )
+
+    entrypoints, roots, configs = _rst_profile_hints_from_candidates(
+        repo_path,
+        ["docs/index.rst", "docs/guide.rst"],
+    )
+
+    assert "docs/index.rst" in entrypoints
+    assert "docs" in roots
+    assert configs == set()
+
+
+def test_rst_profile_hints_do_not_require_full_symbol_alias_scan(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo_path = tmp_path / "rst-lean-alias-repo"
+    (repo_path / "docs").mkdir(parents=True)
+    (repo_path / "docs" / "index.rst").write_text("Index\n=====\n", encoding="utf-8")
+    (repo_path / "docs" / "guide.rst").write_text(
+        "Guide\n=====\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        repository_service.rst_adapter,
+        "module_aliases_for_path",
+        lambda **_kwargs: (_ for _ in ()).throw(
+            AssertionError("rst profile hints should not need full symbol alias expansion")
+        ),
+    )
+
+    entrypoints, roots, configs = _rst_profile_hints_from_candidates(
+        repo_path,
+        ["docs/index.rst", "docs/guide.rst"],
+    )
+
+    assert "docs/index.rst" in entrypoints
+    assert "docs" in roots
+    assert configs == set()
 
 
 def test_rst_adapter_parse_file_resolves_toctree_and_doc_references(tmp_path: Path) -> None:

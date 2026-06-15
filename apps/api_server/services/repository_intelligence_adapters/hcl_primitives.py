@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from bisect import bisect_right
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -71,9 +73,26 @@ class _CollectedSymbol:
 
 
 def _line_number(text: str, offset: int) -> int:
+    return _line_number_from_offsets(_line_offsets(text), offset)
+
+
+@lru_cache(maxsize=1024)
+def _line_offsets(text: str) -> tuple[int, ...]:
+    offsets = [0]
+    start = 0
+    while True:
+        newline_index = text.find("\n", start)
+        if newline_index < 0:
+            break
+        offsets.append(newline_index + 1)
+        start = newline_index + 1
+    return tuple(offsets)
+
+
+def _line_number_from_offsets(line_offsets: tuple[int, ...], offset: int) -> int:
     if offset <= 0:
         return 1
-    return text.count("\n", 0, offset) + 1
+    return bisect_right(line_offsets, offset)
 
 
 def _line_count(text: str) -> int:
@@ -92,7 +111,8 @@ def _ordered_names(*values: str) -> tuple[str, ...]:
     return tuple(ordered)
 
 
-def strip_comments(text: str) -> str:
+@lru_cache(maxsize=1024)
+def _strip_comments_cached(text: str) -> str:
     characters = list(text)
     index = 0
     in_string: str | None = None
@@ -137,6 +157,10 @@ def strip_comments(text: str) -> str:
             continue
         index += 1
     return "".join(characters)
+
+
+def strip_comments(text: str) -> str:
+    return _strip_comments_cached(text)
 
 
 def has_hcl_path_hints(path: Path | PurePosixPath) -> bool:
@@ -187,6 +211,7 @@ def _scan_block_end(text: str, open_brace_index: int) -> int:
 
 def iter_block_entries(text: str) -> tuple[_BlockEntry, ...]:
     stripped_text = strip_comments(text)
+    line_offsets = _line_offsets(stripped_text)
     entries: list[_BlockEntry] = []
     for match in _BLOCK_HEADER_RE.finditer(stripped_text):
         open_brace_index = max(match.end() - 1, match.start())
@@ -198,10 +223,10 @@ def iter_block_entries(text: str) -> tuple[_BlockEntry, ...]:
                 kind=str(match.group("kind") or "").strip(),
                 label1=str(match.group("label1") or "").strip(),
                 label2=str(match.group("label2") or "").strip(),
-                start_line=_line_number(stripped_text, match.start()),
-                end_line=_line_number(stripped_text, close_brace_index),
-                body_start_line=_line_number(stripped_text, body_start),
-                body_end_line=_line_number(stripped_text, body_end),
+                start_line=_line_number_from_offsets(line_offsets, match.start()),
+                end_line=_line_number_from_offsets(line_offsets, close_brace_index),
+                body_start_line=_line_number_from_offsets(line_offsets, body_start),
+                body_end_line=_line_number_from_offsets(line_offsets, body_end),
                 body_text=stripped_text[body_start:body_end],
             )
         )
@@ -211,6 +236,7 @@ def iter_block_entries(text: str) -> tuple[_BlockEntry, ...]:
 def iter_local_assignments(block: _BlockEntry) -> tuple[tuple[str, int], ...]:
     if block.kind != "locals":
         return ()
+    line_offsets = _line_offsets(block.body_text)
     entries: list[tuple[str, int]] = []
     seen_names: set[str] = set()
     for match in _LOCAL_ASSIGNMENT_RE.finditer(block.body_text):
@@ -221,7 +247,7 @@ def iter_local_assignments(block: _BlockEntry) -> tuple[tuple[str, int], ...]:
         entries.append(
             (
                 name,
-                _line_number(block.body_text, match.start())
+                _line_number_from_offsets(line_offsets, match.start("name"))
                 + block.body_start_line
                 - 1,
             )
@@ -232,6 +258,7 @@ def iter_local_assignments(block: _BlockEntry) -> tuple[tuple[str, int], ...]:
 def iter_module_source_statements(block: _BlockEntry) -> tuple[tuple[str, int], ...]:
     if block.kind != "module":
         return ()
+    line_offsets = _line_offsets(block.body_text)
     statements: list[tuple[str, int]] = []
     for match in _MODULE_SOURCE_RE.finditer(block.body_text):
         source_target = str(match.group("source") or "").strip()
@@ -240,7 +267,7 @@ def iter_module_source_statements(block: _BlockEntry) -> tuple[tuple[str, int], 
         statements.append(
             (
                 source_target,
-                _line_number(block.body_text, match.start())
+                _line_number_from_offsets(line_offsets, match.start("source"))
                 + block.body_start_line
                 - 1,
             )

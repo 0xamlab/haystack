@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import PurePosixPath
+
 from typing import Any
 
 
@@ -9,10 +11,12 @@ def apply_seed_plan_phase_a_2(state: Any) -> None:
     repository_service = probe_module.repository_service
     _accumulate_detected_ecosystem_scores = probe_module._accumulate_detected_ecosystem_scores
     _candidate_ecosystem_counts = probe_module._candidate_ecosystem_counts
+    _candidate_ecosystems_for_path = probe_module._candidate_ecosystems_for_path
     _haml_profile_hints_from_candidates = probe_module._haml_profile_hints_from_candidates
     _handlebars_profile_hints_from_candidates = probe_module._handlebars_profile_hints_from_candidates
     _jinja_profile_hints_from_candidates = probe_module._jinja_profile_hints_from_candidates
     _liquid_profile_hints_from_candidates = probe_module._liquid_profile_hints_from_candidates
+    _mako_profile_hints_from_candidates = probe_module._mako_profile_hints_from_candidates
     _mustache_profile_hints_from_candidates = probe_module._mustache_profile_hints_from_candidates
     _nunjucks_profile_hints_from_candidates = probe_module._nunjucks_profile_hints_from_candidates
     _register_candidate_ecosystems = probe_module._register_candidate_ecosystems
@@ -76,6 +80,65 @@ def apply_seed_plan_phase_a_2(state: Any) -> None:
             )
             if jinja_count >= max(2, host_count):
                 detected_ecosystem_scores["jinja"] += min(120, 30 + jinja_count * 14)
+
+    mako_candidate_file_paths = candidate_file_paths
+    mako_ecosystem_counts = _candidate_ecosystem_counts(
+        mako_candidate_file_paths,
+        repo_path=repo_path,
+        ecosystems={"mako", "python", "shell", "html", "css", "javascript", "typescript"},
+    )
+    if mako_ecosystem_counts["mako"] == 0:
+        supplemented_mako_candidate_file_paths = _supplement_candidate_file_paths_for_suffix_roots(
+            repo_path=repo_path,
+            candidate_file_paths=mako_candidate_file_paths,
+            suffixes={".mako"},
+            root_names=("components", "layouts", "pages", "partials", "templates", "views"),
+            max_extra_files=max(32, min(256, max_files)),
+        )
+        if len(supplemented_mako_candidate_file_paths) > len(mako_candidate_file_paths):
+            mako_candidate_file_paths = supplemented_mako_candidate_file_paths
+            mako_ecosystem_counts = _candidate_ecosystem_counts(
+                mako_candidate_file_paths,
+                repo_path=repo_path,
+                ecosystems={"mako", "python", "shell", "html", "css", "javascript", "typescript"},
+            )
+    if mako_ecosystem_counts["mako"] > 0:
+        entrypoints, roots, configs = _mako_profile_hints_from_candidates(
+            repo_path,
+            mako_candidate_file_paths,
+        )
+        if entrypoints or roots or configs:
+            detected_ecosystems.add("mako")
+            _register_candidate_ecosystems(
+                entrypoint_candidate_ecosystems,
+                values=entrypoints,
+                ecosystems={"mako"},
+            )
+            _register_candidate_ecosystems(
+                support_root_candidate_ecosystems,
+                values=roots,
+                ecosystems={"mako"},
+            )
+            entrypoint_candidates.update(entrypoints)
+            support_root_candidates.update(roots)
+            config_path_candidates.update(configs)
+            _accumulate_detected_ecosystem_scores(
+                detected_ecosystem_scores,
+                ecosystems={"mako"},
+                config_path=sorted(configs or entrypoints or roots or {""})[0],
+                repo_path=repo_path,
+                entrypoints=entrypoints,
+                roots=roots,
+                configs=configs,
+            )
+            mako_count = mako_ecosystem_counts["mako"]
+            host_count = sum(
+                mako_ecosystem_counts[ecosystem]
+                for ecosystem in ("python", "shell", "html", "css", "javascript", "typescript")
+            )
+            if mako_count >= max(2, host_count):
+                detected_ecosystem_scores["mako"] += min(120, 30 + mako_count * 14)
+            candidate_file_paths = list(dict.fromkeys(mako_candidate_file_paths))
 
     liquid_ecosystem_counts = _candidate_ecosystem_counts(
         candidate_file_paths,
@@ -464,12 +527,46 @@ def apply_seed_plan_phase_a_2(state: Any) -> None:
                 smarty_ecosystem_counts[ecosystem]
                 for ecosystem in ("php", "javascript", "typescript", "node", "html", "css", "scss")
             )
+            template_root_count = sum(
+                1
+                for root in roots
+                if {
+                    part.lower() for part in PurePosixPath(root).parts
+                }.intersection({"templates", "views", "mails", "modules", "themes"})
+            )
+            smarty_entrypoint_count = sum(
+                1
+                for entrypoint in entrypoints
+                if "smarty"
+                in {
+                    ecosystem.lower()
+                    for ecosystem in _candidate_ecosystems_for_path(
+                        entrypoint,
+                        repo_path=repo_path,
+                    )
+                }
+            )
+            style_host_count = smarty_ecosystem_counts["scss"] + smarty_ecosystem_counts["css"]
+            script_host_count = (
+                smarty_ecosystem_counts["javascript"]
+                + smarty_ecosystem_counts["typescript"]
+                + smarty_ecosystem_counts["node"]
+            )
+            competitive_template_surface = (
+                smarty_entrypoint_count >= 1
+                and template_root_count >= 1
+                and smarty_count >= 16
+                and smarty_count >= max(8, style_host_count - 2)
+                and smarty_count * 2 >= max(1, script_host_count)
+                and smarty_count >= max(4, smarty_ecosystem_counts["php"])
+            )
             should_operationalize_smarty = (
                 smarty_count >= 2
                 and (
                     host_count == 0
                     or smarty_count >= host_count
                     or (smarty_count >= 6 and smarty_count * 2 >= host_count)
+                    or competitive_template_surface
                 )
             )
             if should_operationalize_smarty:
@@ -497,6 +594,19 @@ def apply_seed_plan_phase_a_2(state: Any) -> None:
                 )
                 if smarty_count >= max(2, host_count):
                     detected_ecosystem_scores["smarty"] += min(140, 32 + smarty_count * 14)
+                elif competitive_template_surface:
+                    non_smarty_max_score = max(
+                        (
+                            score
+                            for ecosystem, score in detected_ecosystem_scores.items()
+                            if ecosystem != "smarty"
+                        ),
+                        default=0,
+                    )
+                    detected_ecosystem_scores["smarty"] = max(
+                        detected_ecosystem_scores["smarty"],
+                        non_smarty_max_score + 16,
+                    )
             candidate_file_paths = list(dict.fromkeys(smarty_candidate_file_paths))
 
     state.bitbake_candidate_file_paths = bitbake_candidate_file_paths

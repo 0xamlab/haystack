@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from bisect import bisect_right
 import re
 from collections.abc import Callable, Sequence
+from functools import lru_cache
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -131,6 +133,7 @@ def _replace_preserving_newlines(match: re.Match[str]) -> str:
     return "".join("\n" if character == "\n" else " " for character in match.group(0))
 
 
+@lru_cache(maxsize=256)
 def strip_comments(text: str) -> str:
     without_block_comments = BLOCK_COMMENT_RE.sub(_replace_preserving_newlines, text)
     return STATEMENT_COMMENT_RE.sub(_replace_preserving_newlines, without_block_comments)
@@ -160,16 +163,26 @@ def _normalize_repository_relative_path(value: str) -> str:
     return "/".join(normalized_parts)
 
 
-def collect_symbol_entries(
-    text: str,
-    *,
-    file_path: str,
-    stable_identifier: StableIdentifier,
-) -> list[dict[str, Any]]:
-    stripped_text = strip_comments(text)
-    symbol_entries: list[dict[str, Any]] = []
+@lru_cache(maxsize=256)
+def _line_start_offsets(text: str) -> tuple[int, ...]:
+    offsets = [0]
+    for index, character in enumerate(text):
+        if character == "\n":
+            offsets.append(index + 1)
+    return tuple(offsets)
+
+
+def _line_number(text: str, offset: int) -> int:
+    bounded_offset = max(0, min(offset, len(text)))
+    return bisect_right(_line_start_offsets(text), bounded_offset)
+
+
+@lru_cache(maxsize=256)
+def _collect_symbol_metadata(
+    stripped_text: str,
+) -> tuple[tuple[str, str, int, str, tuple[str, ...]], ...]:
+    symbol_metadata: list[tuple[str, str, int, str, tuple[str, ...]]] = []
     seen_symbol_keys: set[tuple[str, str, int]] = set()
-    final_line = len(stripped_text.splitlines()) if stripped_text else 1
 
     for regex, symbol_kind in (
         (MACRO_DECL_RE, "function"),
@@ -192,33 +205,59 @@ def collect_symbol_entries(
                 )
             ):
                 continue
-            line_no = stripped_text.count("\n", 0, match.start()) + 1
+            line_no = _line_number(stripped_text, match.start())
             symbol_key = (symbol_kind, normalized_name, line_no)
             if symbol_key in seen_symbol_keys:
                 continue
             seen_symbol_keys.add(symbol_key)
-            qualified_names = {leaf_name}
-            if symbol_kind == "type" and "." in normalized_name:
-                qualified_names.add(normalized_name)
-            symbol_entries.append(
-                {
-                    "symbol_id": stable_identifier(
-                        "sym",
-                        {
-                            "file_path": file_path,
-                            "name": leaf_name,
-                            "kind": symbol_kind,
-                            "line": line_no,
-                        },
-                    ),
-                    "symbol_name": leaf_name,
-                    "symbol_kind": symbol_kind,
-                    "start_line": line_no,
-                    "end_line": final_line,
-                    "signature": str(match.group(0) or "").strip(),
-                    "qualified_names": tuple(sorted(qualified_names)),
-                }
+            qualified_names = (normalized_name, leaf_name) if (
+                symbol_kind == "type" and "." in normalized_name
+            ) else (leaf_name,)
+            symbol_metadata.append(
+                (
+                    symbol_kind,
+                    leaf_name,
+                    line_no,
+                    str(match.group(0) or "").strip(),
+                    tuple(sorted(set(qualified_names))),
+                )
             )
+    return tuple(symbol_metadata)
+
+
+def collect_symbol_entries(
+    text: str,
+    *,
+    file_path: str,
+    stable_identifier: StableIdentifier,
+    stripped_text: str | None = None,
+) -> list[dict[str, Any]]:
+    stripped_text = strip_comments(text) if stripped_text is None else stripped_text
+    symbol_entries: list[dict[str, Any]] = []
+    final_line = len(stripped_text.splitlines()) if stripped_text else 1
+
+    for symbol_kind, leaf_name, line_no, signature, qualified_names in (
+        _collect_symbol_metadata(stripped_text)
+    ):
+        symbol_entries.append(
+            {
+                "symbol_id": stable_identifier(
+                    "sym",
+                    {
+                        "file_path": file_path,
+                        "name": leaf_name,
+                        "kind": symbol_kind,
+                        "line": line_no,
+                    },
+                ),
+                "symbol_name": leaf_name,
+                "symbol_kind": symbol_kind,
+                "start_line": line_no,
+                "end_line": final_line,
+                "signature": signature,
+                "qualified_names": qualified_names,
+            }
+        )
 
     for index, entry in enumerate(symbol_entries):
         if index + 1 < len(symbol_entries):
@@ -236,6 +275,7 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
 ) -> set[str]:
     path = PurePosixPath(file_path)
     if path.suffix.lower() not in _KNOWN_SAS_SUFFIXES:
@@ -249,15 +289,18 @@ def module_aliases_for_path(
     aliases.add(without_suffix_path)
     aliases.add(without_suffix_path.replace("/", "."))
 
-    try:
-        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        return {alias for alias in aliases if alias and alias not in {".", "/"}}
+    if text is None:
+        try:
+            text = (root_path / path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return {alias for alias in aliases if alias and alias not in {".", "/"}}
+    stripped_text = strip_comments(text)
 
     for symbol_entry in collect_symbol_entries(
         text,
         file_path=file_path,
         stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
     ):
         aliases.update(
             str(alias).lower() for alias in symbol_entry["qualified_names"] if alias
@@ -265,8 +308,17 @@ def module_aliases_for_path(
     return {alias for alias in aliases if alias and alias not in {".", "/"}}
 
 
-def iter_include_targets(text: str) -> tuple[tuple[int, str], ...]:
-    stripped_text = strip_comments(text)
+def iter_include_targets(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[int, str], ...]:
+    stripped_text = strip_comments(text) if stripped_text is None else stripped_text
+    return _iter_include_targets_cached(stripped_text)
+
+
+@lru_cache(maxsize=256)
+def _iter_include_targets_cached(stripped_text: str) -> tuple[tuple[int, str], ...]:
     targets: list[tuple[int, str]] = []
     seen_targets: set[tuple[int, str]] = set()
     for match in INCLUDE_RE.finditer(stripped_text):
@@ -274,7 +326,7 @@ def iter_include_targets(text: str) -> tuple[tuple[int, str], ...]:
         normalized_target = normalize_target(raw_target)
         if not normalized_target:
             continue
-        line_no = stripped_text.count("\n", 0, match.start()) + 1
+        line_no = _line_number(stripped_text, match.start())
         target_key = (line_no, normalized_target.lower())
         if target_key in seen_targets:
             continue
@@ -283,15 +335,26 @@ def iter_include_targets(text: str) -> tuple[tuple[int, str], ...]:
     return tuple(targets)
 
 
-def iter_reference_targets(text: str) -> tuple[tuple[int, str, str], ...]:
-    stripped_text = strip_comments(text)
+def iter_reference_targets(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+    text_is_stripped: bool = False,
+) -> tuple[tuple[int, str, str], ...]:
+    if stripped_text is None:
+        stripped_text = text if text_is_stripped else strip_comments(text)
+    return _iter_reference_targets_cached(stripped_text)
+
+
+@lru_cache(maxsize=256)
+def _iter_reference_targets_cached(stripped_text: str) -> tuple[tuple[int, str, str], ...]:
     targets: list[tuple[int, str, str]] = []
     seen_targets: set[tuple[int, str, str]] = set()
     for match in MACRO_CALL_RE.finditer(stripped_text):
         normalized_target = normalize_identifier(str(match.group("name") or ""))
         if not normalized_target or normalized_target in RESERVED_MACRO_CALL_NAMES:
             continue
-        line_no = stripped_text.count("\n", 0, match.start()) + 1
+        line_no = _line_number(stripped_text, match.start())
         target_key = (line_no, "macro_call", normalized_target)
         if target_key in seen_targets:
             continue
@@ -400,11 +463,19 @@ def parse_dependencies_only(
     stable_identifier: StableIdentifier,
     resolve_include: Callable[[str, str, dict[str, str]], str | None],
     resolve_target: Callable[[str, dict[str, str]], str | None],
+    stripped_text: str | None = None,
+    include_targets: tuple[tuple[int, str], ...] | None = None,
+    reference_targets: tuple[tuple[int, str, str], ...] | None = None,
 ) -> tuple[dict[str, Any], ...]:
+    stripped_text = strip_comments(text) if stripped_text is None else stripped_text
     dependency_entries: list[dict[str, Any]] = []
     dependency_keys: set[tuple[str | None, str, str]] = set()
 
-    for line_no, import_target in iter_include_targets(text):
+    for line_no, import_target in (
+        include_targets
+        if include_targets is not None
+        else iter_include_targets(text, stripped_text=stripped_text)
+    ):
         target_file = resolve_include(file_path, import_target, module_index)
         target_symbol = normalize_identifier(PurePosixPath(import_target).stem)
         dependency_key = (target_file, target_symbol, "imports")
@@ -433,7 +504,11 @@ def parse_dependencies_only(
             }
         )
 
-    for line_no, reference_kind, raw_target in iter_reference_targets(text):
+    for line_no, reference_kind, raw_target in (
+        reference_targets
+        if reference_targets is not None
+        else iter_reference_targets(text, stripped_text=stripped_text)
+    ):
         normalized_target = normalize_identifier(raw_target)
         if not normalized_target:
             continue
@@ -480,22 +555,26 @@ def parse_file(
     tuple[dict[str, Any], ...],
     tuple[dict[str, Any], ...],
 ]:
+    stripped_text = strip_comments(text)
     symbol_entries = collect_symbol_entries(
         text,
         file_path=file_path,
         stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
     )
     reference_candidates: dict[str, dict[str, Any]] = {}
-    stripped_lines = strip_comments(text).splitlines()
+    include_targets = iter_include_targets(text, stripped_text=stripped_text)
+    reference_targets = iter_reference_targets(text, stripped_text=stripped_text)
 
     for symbol_entry in symbol_entries:
         start_line = int(symbol_entry["start_line"])
         end_line = int(symbol_entry["end_line"])
         symbol_name = normalize_identifier(str(symbol_entry["symbol_name"]))
         symbol_id = str(symbol_entry["symbol_id"])
-        snippet = "\n".join(stripped_lines[start_line - 1 : end_line])
 
-        for _line_no, _reference_kind, raw_target in iter_reference_targets(snippet):
+        for line_no, _reference_kind, raw_target in reference_targets:
+            if line_no < start_line or line_no > end_line:
+                continue
             normalized_target = normalize_identifier(raw_target)
             if not normalized_target or normalized_target == symbol_name:
                 continue
@@ -533,6 +612,9 @@ def parse_file(
             stable_identifier=stable_identifier,
             resolve_include=resolve_include,
             resolve_target=resolve_target,
+            stripped_text=stripped_text,
+            include_targets=include_targets,
+            reference_targets=reference_targets,
         ),
         tuple(reference_candidates[key] for key in sorted(reference_candidates)),
     )

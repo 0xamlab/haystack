@@ -24,6 +24,7 @@ has_shaderlab_path_hints = primitives.has_shaderlab_path_hints
 iter_function_call_names = primitives.iter_function_call_names
 iter_fallback_targets = primitives.iter_fallback_targets
 iter_shader_declarations = primitives.iter_shader_declarations
+iter_shader_names = primitives.iter_shader_names
 iter_symbol_entries = primitives.iter_symbol_entries
 iter_usepass_targets = primitives.iter_usepass_targets
 parse_include_statements = primitives.parse_include_statements
@@ -40,14 +41,16 @@ def _line_count(text: str) -> int:
     return max(1, text.count("\n") + 1)
 
 
-def is_probable_shaderlab_source(*, path: Path | PurePosixPath, text: str) -> bool:
+def is_probable_shaderlab_source(
+    *,
+    path: Path | PurePosixPath,
+    text: str,
+    stripped_text: str | None = None,
+) -> bool:
     if not has_shaderlab_path_hints(path):
         return False
-    stripped_text = strip_comments(text)
-    return bool(stripped_text.strip()) and bool(
-        primitives.SHADERLAB_MARKER_RE.search(stripped_text)
-        or primitives.SHADERLAB_SHADER_RE.search(stripped_text)
-    )
+    stripped_text = stripped_text if isinstance(stripped_text, str) else strip_comments(text)
+    return bool(stripped_text.strip()) and primitives.SHADERLAB_MARKER_RE.search(stripped_text) is not None
 
 
 def _resolve_shader_target(
@@ -88,11 +91,15 @@ def _collect_symbols(
     *,
     file_path: str,
     text: str,
+    stripped_text: str | None,
     stable_identifier: StableIdentifier,
 ) -> tuple[_CollectedSymbol, ...]:
-    line_count = _line_count(text)
+    line_count = _line_count(stripped_text if isinstance(stripped_text, str) else text)
     collected_symbols: list[_CollectedSymbol] = []
-    for symbol_name, symbol_kind, start_line in iter_symbol_entries(text):
+    for symbol_name, symbol_kind, start_line in iter_symbol_entries(
+        text,
+        stripped_text=stripped_text,
+    ):
         collected_symbols.append(
             _CollectedSymbol(
                 symbol=_Symbol(
@@ -145,22 +152,34 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
+    stripped_text: str | None = None,
+    include_symbol_aliases: bool = True,
+    include_shader_name_aliases: bool = True,
 ) -> set[str]:
     path = PurePosixPath(file_path)
     if not has_shaderlab_path_hints(path):
         return set()
     aliases = {file_path, str(path.with_suffix("")), path.stem}
-    try:
-        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        text = ""
-    if not is_probable_shaderlab_source(path=path, text=text):
+    if not include_symbol_aliases and not include_shader_name_aliases:
         return {alias for alias in aliases if alias}
-    for shader_name, _line_number in iter_shader_declarations(text):
-        aliases.add(shader_name)
+    if text is None:
+        try:
+            text = (root_path / path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            text = ""
+    stripped_text = stripped_text if isinstance(stripped_text, str) else strip_comments(text)
+    if not is_probable_shaderlab_source(path=path, text=text, stripped_text=stripped_text):
+        return {alias for alias in aliases if alias}
+    if not include_symbol_aliases:
+        if include_shader_name_aliases:
+            for shader_name in iter_shader_names(text, stripped_text=stripped_text):
+                aliases.add(shader_name)
+        return {alias for alias in aliases if alias}
     for collected_symbol in _collect_symbols(
         file_path=file_path,
         text=text,
+        stripped_text=stripped_text,
         stable_identifier=stable_identifier,
     ):
         aliases.add(collected_symbol.symbol.symbol_name)
@@ -175,9 +194,11 @@ def parse_dependencies_only(
     stable_identifier: StableIdentifier,
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
+    stripped_text: str | None = None,
 ) -> tuple[_Dependency, ...]:
+    stripped_text = stripped_text if isinstance(stripped_text, str) else strip_comments(text)
     dependencies: list[_Dependency] = []
-    for target_path, line_number in parse_include_statements(text):
+    for target_path, line_number in parse_include_statements(text, stripped_text=stripped_text):
         dependencies.append(
             _Dependency(
                 dependency_edge_id=stable_identifier(
@@ -205,7 +226,7 @@ def parse_dependencies_only(
         ("uses_pass", iter_usepass_targets),
         ("fallback", iter_fallback_targets),
     ):
-        for target_name, line_number in iterator(text):
+        for target_name, line_number in iterator(text, stripped_text=stripped_text):
             dependencies.append(
                 _Dependency(
                     dependency_edge_id=stable_identifier(
@@ -245,9 +266,11 @@ def parse_file(
     tuple[_Dependency, ...],
     tuple[_SymbolReferenceCandidate, ...],
 ]:
+    stripped_text = strip_comments(text)
     collected_symbols = _collect_symbols(
         file_path=file_path,
         text=text,
+        stripped_text=stripped_text,
         stable_identifier=stable_identifier,
     )
     dependencies = parse_dependencies_only(
@@ -257,6 +280,7 @@ def parse_file(
         stable_identifier=stable_identifier,
         normalize_repository_relative_path=normalize_repository_relative_path,
         resolve_suffix_match=resolve_suffix_match,
+        stripped_text=stripped_text,
     )
     local_symbol_lookup = {
         collected_symbol.symbol.symbol_name: collected_symbol.symbol.symbol_id
@@ -268,17 +292,18 @@ def parse_file(
         for dependency in dependencies
         if str(dependency.target_symbol or "").strip() and dependency.target_file
     }
-    lines = text.splitlines()
+    stripped_lines = stripped_text.splitlines()
     symbol_references: list[_SymbolReferenceCandidate] = []
     for collected_symbol in collected_symbols:
         source_symbol = collected_symbol.symbol
         if source_symbol.symbol_kind != "function":
             continue
         end_line = max(source_symbol.end_line, source_symbol.start_line)
-        snippet = "\n".join(lines[max(source_symbol.start_line - 1, 0) : end_line])
+        snippet = "\n".join(stripped_lines[max(source_symbol.start_line - 1, 0) : end_line])
         for call_name, relative_line_number in iter_function_call_names(
             snippet,
             local_function_names={source_symbol.symbol_name},
+            stripped_text=snippet,
         ):
             if not call_name or call_name == source_symbol.symbol_name:
                 continue

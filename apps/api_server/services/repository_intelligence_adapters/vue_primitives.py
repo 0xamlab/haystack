@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable
+from functools import lru_cache
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -98,6 +99,13 @@ def _normalize_repository_relative_path(value: str) -> str:
     return "/".join(normalized_parts)
 
 
+def _append_unique(ordered: list[str], seen: set[str], value: str) -> None:
+    normalized = str(value or "").strip()
+    if normalized and normalized not in seen:
+        seen.add(normalized)
+        ordered.append(normalized)
+
+
 def module_name_from_path(file_path: str) -> str:
     normalized_path = PurePosixPath(file_path)
     without_suffix = normalized_path.with_suffix("")
@@ -105,6 +113,70 @@ def module_name_from_path(file_path: str) -> str:
     if parts and parts[0].lower() in _COMMON_MODULE_ROOTS:
         parts = parts[1:]
     return ".".join(parts) if parts else without_suffix.name
+
+
+@lru_cache(maxsize=32_768)
+def _resolve_import_candidates(
+    current_file: str,
+    import_target: str,
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    normalized_target = normalize_identifier(import_target).replace("\\", "/")
+    if (
+        not normalized_target
+        or normalized_target.startswith("/")
+        or normalized_target.startswith("http:")
+        or normalized_target.startswith("https:")
+        or normalized_target.startswith("@")
+    ):
+        return (), ()
+    current_parent = (
+        current_file.rsplit("/", 1)[0]
+        if "/" in current_file
+        else ""
+    )
+    candidate_keys: list[str] = []
+    seen_candidate_keys: set[str] = set()
+    _append_unique(candidate_keys, seen_candidate_keys, normalized_target)
+    if current_parent:
+        _append_unique(
+            candidate_keys,
+            seen_candidate_keys,
+            f"{current_parent}/{normalized_target}",
+        )
+    if "/" not in normalized_target and not normalized_target.startswith("."):
+        for directory in _RESOLVER_DIRS:
+            _append_unique(
+                candidate_keys,
+                seen_candidate_keys,
+                f"{directory}/{normalized_target}",
+            )
+
+    normalized_candidates: list[str] = []
+    seen_normalized_candidates: set[str] = set()
+    for candidate_key in candidate_keys:
+        normalized_candidate = _normalize_repository_relative_path(candidate_key)
+        if not normalized_candidate:
+            continue
+        _append_unique(
+            normalized_candidates,
+            seen_normalized_candidates,
+            normalized_candidate,
+        )
+        if PurePosixPath(normalized_candidate).suffix.lower() not in VUE_SUFFIXES:
+            _append_unique(
+                normalized_candidates,
+                seen_normalized_candidates,
+                f"{normalized_candidate}.vue",
+            )
+            _append_unique(
+                normalized_candidates,
+                seen_normalized_candidates,
+                f"{normalized_candidate}/index.vue",
+            )
+    suffixes = tuple(
+        f"/{PurePosixPath(candidate).name}" for candidate in normalized_candidates
+    )
+    return tuple(normalized_candidates), suffixes
 
 
 def _normalized_template_tag_name(value: str) -> str:
@@ -242,37 +314,17 @@ def resolve_import(
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
 ) -> str | None:
-    normalized_target = normalize_identifier(import_target).replace("\\", "/")
-    if (
-        not normalized_target
-        or normalized_target.startswith("/")
-        or normalized_target.startswith("http:")
-        or normalized_target.startswith("https:")
-        or normalized_target.startswith("@")
-    ):
+    normalized_current_file = normalize_repository_relative_path(current_file)
+    normalized_candidates, suffixes = _resolve_import_candidates(
+        normalized_current_file,
+        import_target,
+    )
+    if not normalized_candidates:
         return None
-    current_parent = PurePosixPath(current_file).parent
-    candidate_keys = [normalized_target]
-    candidate_keys.append(str(current_parent / normalized_target))
-    if "/" not in normalized_target and not normalized_target.startswith("."):
-        candidate_keys.extend(f"{directory}/{normalized_target}" for directory in _RESOLVER_DIRS)
-    normalized_candidates: list[str] = []
-    for candidate_key in candidate_keys:
-        normalized_candidate = normalize_repository_relative_path(candidate_key)
-        if normalized_candidate:
-            normalized_candidates.append(normalized_candidate)
-            if PurePosixPath(normalized_candidate).suffix.lower() not in VUE_SUFFIXES:
-                normalized_candidates.append(f"{normalized_candidate}.vue")
-                normalized_candidates.append(f"{normalized_candidate}/index.vue")
-    seen_candidates: set[str] = set()
     for candidate in normalized_candidates:
-        if candidate in seen_candidates:
-            continue
-        seen_candidates.add(candidate)
         direct_match = module_index.get(candidate) or module_index.get(candidate.replace("/", "."))
         if direct_match:
             return direct_match
-    suffixes = tuple(f"/{PurePosixPath(candidate).name}" for candidate in seen_candidates)
     return resolve_suffix_match(module_index=module_index, suffixes=suffixes) if suffixes else None
 
 

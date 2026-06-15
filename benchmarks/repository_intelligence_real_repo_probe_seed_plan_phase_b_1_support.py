@@ -13,6 +13,7 @@ def apply_seed_plan_phase_b_1(state: Any) -> None:
     _astro_profile_hints_from_candidates = probe_module._astro_profile_hints_from_candidates
     _blade_profile_hints_from_candidates = probe_module._blade_profile_hints_from_candidates
     _candidate_ecosystem_counts = probe_module._candidate_ecosystem_counts
+    _candidate_ecosystems_for_path = probe_module._candidate_ecosystems_for_path
     _ejs_profile_hints_from_candidates = probe_module._ejs_profile_hints_from_candidates
     _erb_profile_hints_from_candidates = probe_module._erb_profile_hints_from_candidates
     _nextflow_profile_hints_from_candidates = probe_module._nextflow_profile_hints_from_candidates
@@ -104,8 +105,48 @@ def apply_seed_plan_phase_b_1(state: Any) -> None:
                 pug_ecosystem_counts[ecosystem]
                 for ecosystem in ("javascript", "typescript", "node", "html", "css", "scss")
             )
+            template_root_count = sum(
+                1
+                for root in roots
+                if PurePosixPath(root).name.lower()
+                in {"components", "includes", "layouts", "pages", "partials", "templates", "views"}
+            )
+            script_host_file_count = sum(
+                1
+                for candidate_path in candidate_file_paths
+                if {
+                    ecosystem.lower()
+                    for ecosystem in _candidate_ecosystems_for_path(
+                        candidate_path,
+                        repo_path=repo_path,
+                    )
+                }.intersection({"javascript", "typescript", "node", "html"})
+            )
+            style_host_file_count = sum(
+                1
+                for candidate_path in candidate_file_paths
+                if {
+                    ecosystem.lower()
+                    for ecosystem in _candidate_ecosystems_for_path(
+                        candidate_path,
+                        repo_path=repo_path,
+                    )
+                }.intersection({"css", "scss"})
+            )
+            competitive_template_surface = (
+                len(entrypoints) >= 1
+                and template_root_count >= 1
+                and pug_count >= max(4, style_host_file_count)
+                and pug_count >= max(4, script_host_file_count)
+            )
             should_operationalize_pug = (
-                pug_count >= 2 and (host_count == 0 or pug_count >= host_count or (pug_count >= 4 and pug_count * 2 >= host_count))
+                pug_count >= 2
+                and (
+                    host_count == 0
+                    or pug_count >= host_count
+                    or (pug_count >= 4 and pug_count * 2 >= host_count)
+                    or competitive_template_surface
+                )
             )
             if should_operationalize_pug:
                 _register_candidate_ecosystems(entrypoint_candidate_ecosystems, values=entrypoints, ecosystems={"pug"})
@@ -124,6 +165,8 @@ def apply_seed_plan_phase_b_1(state: Any) -> None:
                 )
                 if pug_count >= max(2, host_count):
                     detected_ecosystem_scores["pug"] += min(140, 32 + pug_count * 14)
+                elif competitive_template_surface:
+                    detected_ecosystem_scores["pug"] += min(160, 36 + pug_count * 12)
 
     ejs_ecosystem_counts = _candidate_ecosystem_counts(
         candidate_file_paths,
@@ -224,8 +267,7 @@ def apply_seed_plan_phase_b_1(state: Any) -> None:
                     roots=roots,
                     configs=configs,
                 )
-                if blade_count >= max(2, host_count):
-                    detected_ecosystem_scores["blade"] += min(140, 32 + blade_count * 14)
+                detected_ecosystem_scores["blade"] += min(140, 32 + blade_count * 14)
 
     vue_ecosystem_counts = _candidate_ecosystem_counts(
         candidate_file_paths,
@@ -438,7 +480,7 @@ def apply_seed_plan_phase_b_1(state: Any) -> None:
     robotframework_ecosystem_counts = _candidate_ecosystem_counts(
         candidate_file_paths,
         repo_path=repo_path,
-        ecosystems={"robotframework", "python", "html", "javascript"},
+        ecosystems={"robotframework", "python", "html", "javascript", "rst"},
     )
     if robotframework_ecosystem_counts["robotframework"] > 0:
         entrypoints, roots, configs = _robotframework_profile_hints_from_candidates(
@@ -470,12 +512,23 @@ def apply_seed_plan_phase_b_1(state: Any) -> None:
                 configs=configs,
             )
             robot_count = robotframework_ecosystem_counts["robotframework"]
+            # Documentation surfaces (e.g. README.rst / BUILD.rst) are not competing host code
+            # for a Robot Framework suite — they must not gate the surface-dominance boost.
             host_count = sum(
                 robotframework_ecosystem_counts[ecosystem]
                 for ecosystem in ("python", "html", "javascript")
             )
             if robot_count >= max(2, host_count):
                 detected_ecosystem_scores["robotframework"] += min(120, 30 + robot_count * 14)
+            elif robotframework_ecosystem_counts["rst"] > 0:
+                detected_ecosystem_scores["robotframework"] += min(
+                    120,
+                    24 + robot_count * 14,
+                )
+                detected_ecosystem_scores["rst"] = max(
+                    0,
+                    detected_ecosystem_scores["rst"] - 24,
+                )
 
     state.bitbake_candidate_file_paths = bitbake_candidate_file_paths
     state.candidate_file_paths = candidate_file_paths

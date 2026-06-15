@@ -13,6 +13,7 @@ from apps.api_server.services.repository_intelligence_adapters.dm_analysis_suppo
     resolve_include,
 )
 from apps.api_server.services.repository_intelligence_adapters.dm_primitives import (
+    candidate_include_paths,
     iter_call_reference_entries,
     iter_symbol_entries,
     iter_type_reference_entries,
@@ -25,6 +26,7 @@ __all__ = [
     "DM_CONFIG_SUFFIXES",
     "DM_SOURCE_SUFFIXES",
     "DM_SUFFIXES",
+    "candidate_include_paths",
     "has_dm_path_hints",
     "is_probable_dm_source",
     "iter_call_reference_entries",

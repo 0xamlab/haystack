@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable
+from functools import lru_cache
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -11,6 +12,10 @@ ResolveSuffixMatch = Callable[..., str | None]
 
 QML_SUFFIXES = frozenset({".qml"})
 QML_CONFIG_BASENAMES = frozenset({"qmldir"})
+_BLOCK_COMMENT_RE = re.compile(r"/\*.*?\*/", re.DOTALL)
+_LINE_COMMENT_OR_STRING_RE = re.compile(
+    r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|//[^\n]*'
+)
 _IMPORT_RE = re.compile(
     r"""(?im)^\s*import\s+(?P<target>"[^"]+"|'[^']+'|[A-Za-z_][A-Za-z0-9_.]*)"""
     r"""(?:\s+(?P<version>\d+(?:\.\d+)?))?(?:\s+as\s+(?P<alias>[A-Za-z_][A-Za-z0-9_]*))?\s*$"""
@@ -56,29 +61,31 @@ _IGNORED_REFERENCE_NAMES = frozenset(
 )
 
 
-def strip_comments(text: str) -> str:
-    normalized = re.sub(r"/\*.*?\*/", "", text, flags=re.DOTALL)
+@lru_cache(maxsize=1024)
+def _strip_comments_cached(text: str) -> str:
+    if "//" not in text and "/*" not in text and "#" not in text:
+        return text
+    normalized = _BLOCK_COMMENT_RE.sub("", text)
     lines: list[str] = []
     for raw_line in normalized.splitlines():
         if raw_line.lstrip().startswith("#"):
             lines.append("")
             continue
-        in_quote: str | None = None
-        escaped = False
-        result: list[str] = []
-        index = 0
-        while index < len(raw_line):
-            char = raw_line[index]
-            next_char = raw_line[index + 1] if index + 1 < len(raw_line) else ""
-            if char in {'"', "'"} and not escaped:
-                in_quote = None if in_quote == char else char
-            if char == "/" and next_char == "/" and in_quote is None:
-                break
-            result.append(char)
-            escaped = char == "\\" and not escaped
-            index += 1
-        lines.append("".join(result))
+        lines.append(
+            _LINE_COMMENT_OR_STRING_RE.sub(
+                lambda match: (
+                    match.group(0)
+                    if match.group(0).startswith(('"', "'"))
+                    else ""
+                ),
+                raw_line,
+            )
+        )
     return "\n".join(lines)
+
+
+def strip_comments(text: str) -> str:
+    return _strip_comments_cached(text)
 
 
 def has_qml_path_hints(path: Path | PurePosixPath) -> bool:

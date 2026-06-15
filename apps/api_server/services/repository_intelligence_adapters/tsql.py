@@ -102,27 +102,44 @@ def is_probable_tsql_source(*, path: Path, text: str) -> bool:
     if suffix != ".sql":
         return False
     stripped_text = sql_adapter.strip_comments(text)
+    has_path_hints = has_tsql_path_hints(path)
+    score_threshold = 1 if has_path_hints else 3
     score = 0
-    if _GO_BATCH_RE.search(stripped_text):
+
+    def _matches(pattern: re.Pattern[str]) -> bool:
+        nonlocal score
+        if pattern.search(stripped_text) is None:
+            return False
         score += 2
-    if _DECLARE_VARIABLE_RE.search(stripped_text):
-        score += 2
-    if _TRY_CATCH_RE.search(stripped_text):
-        score += 2
-    if _TSQL_FLOW_RE.search(stripped_text):
-        score += 2
-    if _TSQL_TYPE_RE.search(stripped_text):
+        return score >= score_threshold
+
+    def _matches_lightweight(pattern: re.Pattern[str]) -> bool:
+        nonlocal score
+        if pattern.search(stripped_text) is None:
+            return False
         score += 1
-    if _TSQL_OBJECT_RE.search(stripped_text):
-        score += 1
-    if _TEMP_TABLE_RE.search(stripped_text):
-        score += 1
-    if _EXEC_RE.search(stripped_text):
-        score += 1
-    if re.search(r"(?i)\[[^\]]+\]", stripped_text):
-        score += 1
-    if has_tsql_path_hints(path) and score >= 1:
+        return score >= score_threshold
+
+    if _matches(_GO_BATCH_RE):
         return True
+    if _matches(_DECLARE_VARIABLE_RE):
+        return True
+    if _matches(_TRY_CATCH_RE):
+        return True
+    if _matches(_TSQL_FLOW_RE):
+        return True
+    if _matches_lightweight(_TSQL_TYPE_RE):
+        return True
+    if _matches_lightweight(_TSQL_OBJECT_RE):
+        return True
+    if _matches_lightweight(_TEMP_TABLE_RE):
+        return True
+    if _matches_lightweight(_EXEC_RE):
+        return True
+    if has_path_hints:
+        return re.search(r"(?i)\[[^\]]+\]", stripped_text) is not None
+    if re.search(r"(?i)\[[^\]]+\]", stripped_text):
+        return score + 1 >= score_threshold
     return score >= 3
 
 
@@ -186,6 +203,7 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
 ) -> set[str]:
     path = PurePosixPath(file_path)
     suffix = path.suffix.lower()
@@ -194,6 +212,7 @@ def module_aliases_for_path(
             root_path=root_path,
             file_path=file_path,
             stable_identifier=stable_identifier,
+            text=text,
         )
     if suffix not in {".sqlproj", ".dbproj"}:
         return set()
@@ -212,6 +231,7 @@ def collect_symbol_entries(
     *,
     file_path: str,
     stable_identifier: StableIdentifier,
+    stripped_text: str | None = None,
 ) -> list[dict[str, Any]]:
     if PurePosixPath(file_path).suffix.lower() in {".sqlproj", ".dbproj"}:
         return []
@@ -219,17 +239,22 @@ def collect_symbol_entries(
         text,
         file_path=file_path,
         stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
     )
 
 
-def iter_reference_targets(text: str) -> tuple[tuple[int, str, str], ...]:
-    stripped_text = sql_adapter.strip_comments(text)
-    targets = list(sql_adapter.iter_reference_targets(text))
+def iter_reference_targets(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[int, str, str], ...]:
+    stripped_text = stripped_text if stripped_text is not None else sql_adapter.strip_comments(text)
+    targets = list(sql_adapter.iter_reference_targets(text, stripped_text=stripped_text))
     for match in _EXEC_RE.finditer(stripped_text):
         target_name = str(match.group("name") or "").strip()
         if not target_name:
             continue
-        line_no = stripped_text.count("\n", 0, match.start()) + 1
+        line_no = sql_adapter._line_number(stripped_text, match.start())
         targets.append((line_no, "execute", target_name))
     return tuple(targets)
 
@@ -241,12 +266,18 @@ def parse_dependencies_only(
     *,
     stable_identifier: StableIdentifier,
     resolve_target: ResolveTarget,
+    stripped_text: str | None = None,
+    reference_targets: tuple[tuple[int, str, str], ...] | None = None,
 ) -> tuple[dict[str, Any], ...]:
     if PurePosixPath(file_path).suffix.lower() in {".sqlproj", ".dbproj"}:
         return ()
     dependency_entries: list[dict[str, Any]] = []
     dependency_keys: set[tuple[str | None, str, str]] = set()
-    for line_no, reference_kind, raw_target in iter_reference_targets(text):
+    for line_no, reference_kind, raw_target in (
+        reference_targets
+        if reference_targets is not None
+        else iter_reference_targets(text, stripped_text=stripped_text)
+    ):
         normalized_target, leaf_name = sql_adapter.symbol_name_parts(raw_target)
         if (
             not normalized_target
@@ -297,20 +328,23 @@ def parse_file(
 ]:
     if PurePosixPath(file_path).suffix.lower() in {".sqlproj", ".dbproj"}:
         return [], (), ()
+    stripped_text = sql_adapter.strip_comments(text)
     symbol_entries = collect_symbol_entries(
         text,
         file_path=file_path,
         stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
     )
     reference_candidates: dict[str, dict[str, Any]] = {}
-    stripped_lines = sql_adapter.strip_comments(text).splitlines()
+    reference_targets = iter_reference_targets(text, stripped_text=stripped_text)
     for symbol_entry in symbol_entries:
         start_line = int(symbol_entry["start_line"])
         end_line = int(symbol_entry["end_line"])
         symbol_name = str(symbol_entry["symbol_name"]).lower()
         symbol_id = str(symbol_entry["symbol_id"])
-        snippet = "\n".join(stripped_lines[start_line - 1 : end_line])
-        for _line_no, reference_kind, raw_target in iter_reference_targets(snippet):
+        for line_no, reference_kind, raw_target in reference_targets:
+            if line_no < start_line or line_no > end_line:
+                continue
             normalized_target, leaf_name = sql_adapter.symbol_name_parts(raw_target)
             if (
                 not normalized_target
@@ -352,6 +386,8 @@ def parse_file(
             module_index,
             stable_identifier=stable_identifier,
             resolve_target=resolve_target,
+            stripped_text=stripped_text,
+            reference_targets=reference_targets,
         ),
         tuple(reference_candidates[key] for key in sorted(reference_candidates)),
     )

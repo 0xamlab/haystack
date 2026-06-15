@@ -1,34 +1,102 @@
 # ruff: noqa: I001
 from __future__ import annotations
 from apps.api_server.services import repository_intelligence_agda_parser_dispatch as apd
+from apps.api_server.services import repository_intelligence_ampl_parser_dispatch as amplpd
+from apps.api_server.services import repository_intelligence_apl_parser_dispatch as aplpd
 from apps.api_server.services import repository_intelligence_bicep_parser_dispatch as bpd
 from apps.api_server.services import repository_intelligence_batchfile_parser_dispatch as bfpd
 from apps.api_server.services import repository_intelligence_bitbake_parser_dispatch as bbpd
 from apps.api_server.services import repository_intelligence_chapel_parser_dispatch as chpd
 from apps.api_server.services import repository_intelligence_cmake_parser_dispatch as cmpd
 from apps.api_server.services import repository_intelligence_cfml_parser_dispatch as cpd
+from apps.api_server.services import (
+    repository_intelligence_common_workflow_language_parser_dispatch as cwlpd,
+)
 from apps.api_server.services import repository_intelligence_cue_parser_dispatch as cupd
 from apps.api_server.services import repository_intelligence_coq_parser_dispatch as cqd
+from apps.api_server.services import repository_intelligence_dataweave_parser_dispatch as dwwpd
 from apps.api_server.services import repository_intelligence_dhall_parser_dispatch as dpd
+from apps.api_server.services import repository_intelligence_earthly_parser_dispatch as earthlypd
 from apps.api_server.services import repository_intelligence_eiffel_parser_dispatch as epd
 from apps.api_server.services import repository_intelligence_factor_parser_dispatch as fad
 from apps.api_server.services import repository_intelligence_fish_parser_dispatch as fpd
 from apps.api_server.services import repository_intelligence_glsl_parser_dispatch as gpd
 from apps.api_server.services import repository_intelligence_hack_parser_dispatch as hkd
 from apps.api_server.services import repository_intelligence_hcl_parser_dispatch as hpd
+from apps.api_server.services import repository_intelligence_hoon_parser_dispatch as hoonpd
 from apps.api_server.services import repository_intelligence_hlsl_parser_dispatch as hlpd
 from apps.api_server.services import repository_intelligence_wgsl_parser_dispatch as wpd
 from apps.api_server.services import repository_intelligence_idris_parser_dispatch as ipd
-from apps.api_server.services import repository_intelligence_antlr_parser_dispatch as anpd, repository_intelligence_asciidoc_parser_dispatch as adpd, repository_intelligence_blade_parser_dispatch as blpd, repository_intelligence_cuda_parser_dispatch as ctd, repository_intelligence_cython_parser_dispatch as cypd, repository_intelligence_dm_parser_dispatch as dmpd, repository_intelligence_dockerfile_parser_dispatch as dfd, repository_intelligence_ejs_parser_dispatch as ejpd, repository_intelligence_erb_parser_dispatch as erpd, repository_intelligence_fennel_parser_dispatch as fnpd, repository_intelligence_gherkin_parser_dispatch as ghpd, repository_intelligence_graphviz_parser_dispatch as gvpd, repository_intelligence_haml_parser_dispatch as hmpd, repository_intelligence_handlebars_parser_dispatch as hbpd, repository_intelligence_hy_parser_dispatch as hypd, repository_intelligence_janet_parser_dispatch as jpd, repository_intelligence_jinja_parser_dispatch as jnd, repository_intelligence_just_parser_dispatch as jstd, repository_intelligence_lean_parser_dispatch as lpd, repository_intelligence_liquid_parser_dispatch as lqd, repository_intelligence_logtalk_parser_dispatch as lgd, repository_intelligence_mermaid_parser_dispatch as mmpd, repository_intelligence_modelica_parser_dispatch as mdpd, repository_intelligence_moonbit_parser_dispatch as mbpd, repository_intelligence_move_parser_dispatch as mvpd, repository_intelligence_mustache_parser_dispatch as mpstpd, repository_intelligence_nextflow_parser_dispatch as nfpd, repository_intelligence_nunjucks_parser_dispatch as njpd, repository_intelligence_openqasm_parser_dispatch as oqpd, repository_intelligence_org_parser_dispatch as orgpd, repository_intelligence_plantuml_parser_dispatch as pupd, repository_intelligence_protobuf_parser_dispatch as ppbd, repository_intelligence_pug_parser_dispatch as pugpd, repository_intelligence_rescript_parser_dispatch as rscpd, repository_intelligence_robotframework_parser_dispatch as rfpd, repository_intelligence_roc_parser_dispatch as rocpd, repository_intelligence_rst_parser_dispatch as rspd, repository_intelligence_scss_parser_dispatch as scpd, repository_intelligence_shaderlab_parser_dispatch as shpd, repository_intelligence_slim_parser_dispatch as slpd, repository_intelligence_smarty_parser_dispatch as smpd, repository_intelligence_stan_parser_dispatch as spd, repository_intelligence_tex_parser_dispatch as txpd, repository_intelligence_twig_parser_dispatch as twpd, repository_intelligence_typst_parser_dispatch as tpd2, repository_intelligence_wren_parser_dispatch as wrpd, repository_intelligence_vyper_parser_dispatch as vypd  # noqa: E501
+from apps.api_server.services import repository_intelligence_four_d_parser_dispatch as f4pd
+from apps.api_server.services import repository_intelligence_antlr_parser_dispatch as anpd, repository_intelligence_asciidoc_parser_dispatch as adpd, repository_intelligence_blade_parser_dispatch as blpd, repository_intelligence_cuda_parser_dispatch as ctd, repository_intelligence_cython_parser_dispatch as cypd, repository_intelligence_dm_parser_dispatch as dmpd, repository_intelligence_dockerfile_parser_dispatch as dfd, repository_intelligence_ejs_parser_dispatch as ejpd, repository_intelligence_erb_parser_dispatch as erpd, repository_intelligence_fennel_parser_dispatch as fnpd, repository_intelligence_gherkin_parser_dispatch as ghpd, repository_intelligence_graphviz_parser_dispatch as gvpd, repository_intelligence_haml_parser_dispatch as hmpd, repository_intelligence_handlebars_parser_dispatch as hbpd, repository_intelligence_hy_parser_dispatch as hypd, repository_intelligence_janet_parser_dispatch as jpd, repository_intelligence_jinja_parser_dispatch as jnd, repository_intelligence_just_parser_dispatch as jstd, repository_intelligence_lean_parser_dispatch as lpd, repository_intelligence_liquid_parser_dispatch as lqd, repository_intelligence_logtalk_parser_dispatch as lgd, repository_intelligence_mermaid_parser_dispatch as mmpd, repository_intelligence_modelica_parser_dispatch as mdpd, repository_intelligence_moonbit_parser_dispatch as mbpd, repository_intelligence_move_parser_dispatch as mvpd, repository_intelligence_mustache_parser_dispatch as mpstpd, repository_intelligence_nextflow_parser_dispatch as nfpd, repository_intelligence_nunjucks_parser_dispatch as njpd, repository_intelligence_openqasm_parser_dispatch as oqpd, repository_intelligence_org_parser_dispatch as orgpd, repository_intelligence_plantuml_parser_dispatch as pupd, repository_intelligence_protobuf_parser_dispatch as ppbd, repository_intelligence_pug_parser_dispatch as pugpd, repository_intelligence_reasonml_parser_dispatch as reasonpd, repository_intelligence_rescript_parser_dispatch as rscpd, repository_intelligence_robotframework_parser_dispatch as rfpd, repository_intelligence_roc_parser_dispatch as rocpd, repository_intelligence_rst_parser_dispatch as rspd, repository_intelligence_scss_parser_dispatch as scpd, repository_intelligence_shaderlab_parser_dispatch as shpd, repository_intelligence_slim_parser_dispatch as slpd, repository_intelligence_smarty_parser_dispatch as smpd, repository_intelligence_stan_parser_dispatch as spd, repository_intelligence_tex_parser_dispatch as txpd, repository_intelligence_twig_parser_dispatch as twpd, repository_intelligence_typst_parser_dispatch as tpd2, repository_intelligence_wren_parser_dispatch as wrpd, repository_intelligence_vyper_parser_dispatch as vypd  # noqa: E501
 from apps.api_server.services import repository_intelligence_astro_parser_dispatch as astpd, repository_intelligence_less_parser_dispatch as lepd, repository_intelligence_luau_parser_dispatch as lud, repository_intelligence_makefile_parser_dispatch as mpd, repository_intelligence_meson_parser_dispatch as msd, repository_intelligence_odin_parser_dispatch as opd, repository_intelligence_qmake_parser_dispatch as qpd, repository_intelligence_qml_parser_dispatch as qmd, repository_intelligence_stylus_parser_dispatch as sypd, repository_intelligence_svelte_parser_dispatch as svpd, repository_intelligence_vue_parser_dispatch as vpd  # noqa: E501
 from apps.api_server.services import (
     repository_intelligence_al_parser_dispatch as alpd,
+    repository_intelligence_abapcds_parser_dispatch as abapcdspd,
+    repository_intelligence_aidl_parser_dispatch as aidlpd,
+    repository_intelligence_aiken_parser_dispatch as aikenpd,
+    repository_intelligence_alloy_parser_dispatch as alloypd,
+    repository_intelligence_ballerina_parser_dispatch as blpd2,
+    repository_intelligence_brightscript_parser_dispatch as brightscriptpd,
+    repository_intelligence_bqn_parser_dispatch as bqnpd,
+    repository_intelligence_cairo_parser_dispatch as cairopd,
+    repository_intelligence_circom_parser_dispatch as circompd,
     repository_intelligence_clojurescript_parser_dispatch as cljspd,
+    repository_intelligence_dafny_parser_dispatch as dafnypd,
+    repository_intelligence_forth_parser_dispatch as forthpd,
+    repository_intelligence_freemarker_parser_dispatch as freemarkerpd,
+    repository_intelligence_gnuplot_parser_dispatch as gnupd,
     repository_intelligence_groovy_parser_dispatch as grpd,
+    repository_intelligence_isabelle_parser_dispatch as isabellepd,
+    repository_intelligence_j_parser_dispatch as jlangpd,
+    repository_intelligence_jsonnet_parser_dispatch as jsonnetpd,
+    repository_intelligence_codeql_parser_dispatch as codeqlpd,
+    repository_intelligence_lex_parser_dispatch as lexpd,
+    repository_intelligence_m4_parser_dispatch as m4pd,
+    repository_intelligence_mako_parser_dispatch as makopd,
+    repository_intelligence_metal_parser_dispatch as metalpd,
+    repository_intelligence_mercury_parser_dispatch as mercurypd,
+    repository_intelligence_maven_parser_dispatch as mavenpd,
+    repository_intelligence_motoko_parser_dispatch as motokopd,
+    repository_intelligence_moonscript_parser_dispatch as moonpd,
+    repository_intelligence_nginx_parser_dispatch as nginxpd,
+    repository_intelligence_nsis_parser_dispatch as nsispd,
+    repository_intelligence_ocamllex_parser_dispatch as ocamllexpd,
+    repository_intelligence_ocamlyacc_parser_dispatch as ocamlyaccpd,
     repository_intelligence_opencl_parser_dispatch as oclpd,
+    repository_intelligence_openedge_parser_dispatch as oepd,
+    repository_intelligence_pawn_parser_dispatch as pawnpd,
+    repository_intelligence_plpgsql_parser_dispatch as plpgsqlpd,
+    repository_intelligence_pkl_parser_dispatch as pklpd,
+    repository_intelligence_pony_parser_dispatch as ponypd,
+    repository_intelligence_postscript_parser_dispatch as postscriptpd,
+    repository_intelligence_purebasic_parser_dispatch as pbpd,
+    repository_intelligence_q_parser_dispatch as qlangpd,
     repository_intelligence_qsharp_parser_dispatch as qspd,
+    repository_intelligence_answer_set_programming_parser_dispatch as answer_set_programmingpd,
+    repository_intelligence_apacheconf_parser_dispatch as apacheconfpd,
+    repository_intelligence_aspnet_parser_dispatch as aspnetpd,
+    repository_intelligence_aspectj_parser_dispatch as aspectjpd,
+    repository_intelligence_asl_parser_dispatch as aslpd,
+    repository_intelligence_ats_parser_dispatch as atspd,
+    repository_intelligence_angelscript_parser_dispatch as angelscriptpd,
+    repository_intelligence_onec_enterprise_parser_dispatch as onecenterprisepd,
+    repository_intelligence_graphql_parser_dispatch as graphqlpd,
+    repository_intelligence_rebol_parser_dispatch as rebolpd,
+    repository_intelligence_red_parser_dispatch as redpd,
     repository_intelligence_sass_parser_dispatch as sspd,
+    repository_intelligence_sed_parser_dispatch as sedpd,
+    repository_intelligence_smali_parser_dispatch as smalipd,
     repository_intelligence_sml_parser_dispatch as smlpd,
+    repository_intelligence_sway_parser_dispatch as swaypd,
+    repository_intelligence_templ_parser_dispatch as templpd,
+    repository_intelligence_thrift_parser_dispatch as thriftpd,
+    repository_intelligence_vcl_parser_dispatch as vclpd,
+    repository_intelligence_webassembly_parser_dispatch as webassemblypd,
+    repository_intelligence_xquery_parser_dispatch as xquerypd,
+    repository_intelligence_xtend_parser_dispatch as xtendpd,
+    repository_intelligence_xslt_parser_dispatch as xsltpd,
+    repository_intelligence_yacc_parser_dispatch as yaccpd,
 )
 from apps.api_server.services import repository_intelligence_puppet_parser_dispatch as ppd, repository_intelligence_rego_parser_dispatch as rpd, repository_intelligence_tlaplus_parser_dispatch as tpd  # noqa: E501
 from apps.api_server.services import repository_intelligence_language_resolution as rlr
@@ -81,9 +149,6 @@ from apps.api_server.services.repository_intelligence_adapters import (
     scratch as scratch_adapter,
 )
 from apps.api_server.services.repository_intelligence_adapters import (
-    shell as shell_adapter,
-)
-from apps.api_server.services.repository_intelligence_adapters import (
     systemverilog as systemverilog_adapter,
 )
 from apps.api_server.services.repository_intelligence_adapters import (
@@ -105,775 +170,117 @@ from apps.api_server.services.repository_intelligence_contracts import (
 from apps.api_server.services.repository_intelligence_indexing import (
     _normalize_repository_relative_path,
     _resolve_suffix_match,
+    # Use the shared indexing shell-adapter wrapper (the object exposed as
+    # ``repository_service.shell_adapter``) so monkeypatching it is honoured by the shell
+    # parser wrappers — mirroring powershell_adapter resolving to a single object.
+    shell_adapter,
 )
 from apps.api_server.services.repository_intelligence_shared import _stable_identifier
-_resolve_clojure_import = rlr._resolve_clojure_import
-_resolve_erlang_include, _resolve_erlang_module = (
-    rlr._resolve_erlang_include,
-    rlr._resolve_erlang_module,
+
+# --- parser functions split into a sibling module for size; re-import them
+# (after the imports above, before the registry maps below that reference them) ---
+from apps.api_server.services.repository_intelligence_adapter_parser_dispatch_parsers import (
+    _resolve_clojure_import,
+    _resolve_erlang_include,
+    _resolve_erlang_module,
+    _parse_awk_dependencies_only,
+    _parse_awk_file,
+    _parse_elm_dependencies_only,
+    _parse_elm_file,
+    _parse_actionscript_dependencies_only,
+    _parse_actionscript_file,
+    _parse_scratch_dependencies_only,
+    _parse_scratch_file,
+    _parse_erlang_dependencies_only,
+    _parse_erlang_file,
+    _parse_clojure_dependencies_only,
+    _parse_clojure_file,
+    _parse_shell_dependencies_only,
+    _parse_shell_file,
+    _parse_powershell_dependencies_only,
+    _parse_powershell_file,
+    _extract_perl_dependency_candidates,
+    _parse_perl_dependencies_only,
+    _parse_perl_file,
+    _parse_vbscript_dependencies_only,
+    _parse_rpg_dependencies_only,
+    _parse_apex_dependencies_only,
+    _parse_wolfram_dependencies_only,
+    _parse_ladder_dependencies_only,
+    _parse_labview_dependencies_only,
+    _parse_tcl_dependencies_only,
+    _parse_systemverilog_dependencies_only,
+    _parse_vhdl_dependencies_only,
+    _parse_gdscript_dependencies_only,
+    _parse_gml_dependencies_only,
+    _parse_vbscript_file,
+    _parse_tcl_file,
+    _parse_systemverilog_file,
+    _parse_gdscript_file,
+    _parse_gml_file,
+    _parse_vhdl_file,
+    _parse_rpg_file,
+    _parse_apex_file,
+    _parse_wolfram_file,
+    _parse_ladder_file,
+    _parse_labview_file,
+    _extract_r_dependency_candidates,
+    _parse_r_dependencies_only,
+    _parse_r_file,
+    _parse_ruby_dependencies_only,
+    _extract_ruby_import_bindings,
+    _resolve_ruby_reference_target,
+    _iter_ruby_reference_targets,
+    _parse_ruby_file,
+    _extract_crystal_import_bindings,
+    _resolve_crystal_reference_target,
+    _iter_crystal_reference_targets,
+    _parse_crystal_dependencies_only,
+    _parse_crystal_file,
+    _extract_php_import_bindings,
+    _parse_php_dependencies_only,
+    _parse_php_file,
+    _extract_elixir_import_bindings,
+    _parse_elixir_dependencies_only,
+    _parse_elixir_file,
+    _parse_swift_dependencies_only,
+    _parse_swift_file,
+    _extract_csharp_import_bindings,
+    _parse_csharp_dependencies_only,
+    _parse_csharp_file,
+    _parse_xpp_dependencies_only,
+    _parse_xpp_file,
+    _parse_cfml_dependencies_only,
+    _parse_cfml_file,
+    _parse_fish_dependencies_only,
+    _parse_fish_file,
+    _extract_jvm_import_bindings,
+    _parse_jvm_dependencies_only,
+    _parse_jvm_file,
 )
-def _parse_awk_dependencies_only(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[_Dependency, ...]:
-    return awk_adapter.parse_dependencies_only(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-        normalize_repository_relative_path=_normalize_repository_relative_path,
-        resolve_suffix_match=_resolve_suffix_match,
-    )
-def _parse_awk_file(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[
-    tuple[_Symbol, ...],
-    tuple[_Dependency, ...],
-    tuple[_SymbolReferenceCandidate, ...],
-]:
-    return awk_adapter.parse_file(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-        normalize_repository_relative_path=_normalize_repository_relative_path,
-        resolve_suffix_match=_resolve_suffix_match,
-    )
-def _parse_elm_dependencies_only(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[_Dependency, ...]:
-    return elm_adapter.parse_dependencies_only(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-        normalize_repository_relative_path=_normalize_repository_relative_path,
-        resolve_suffix_match=_resolve_suffix_match,
-    )
-def _parse_elm_file(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[
-    tuple[_Symbol, ...],
-    tuple[_Dependency, ...],
-    tuple[_SymbolReferenceCandidate, ...],
-]:
-    return elm_adapter.parse_file(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-        normalize_repository_relative_path=_normalize_repository_relative_path,
-        resolve_suffix_match=_resolve_suffix_match,
-    )
-def _parse_actionscript_dependencies_only(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[_Dependency, ...]:
-    return as3_adapter.parse_dependencies_only(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-        normalize_repository_relative_path=_normalize_repository_relative_path,
-        resolve_suffix_match=_resolve_suffix_match,
-    )
-def _parse_actionscript_file(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[
-    tuple[_Symbol, ...],
-    tuple[_Dependency, ...],
-    tuple[_SymbolReferenceCandidate, ...],
-]:
-    return as3_adapter.parse_file(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-        normalize_repository_relative_path=_normalize_repository_relative_path,
-        resolve_suffix_match=_resolve_suffix_match,
-    )
-def _parse_scratch_dependencies_only(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[_Dependency, ...]:
-    return scratch_adapter.parse_dependencies_only(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-    )
-def _parse_scratch_file(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[
-    tuple[_Symbol, ...],
-    tuple[_Dependency, ...],
-    tuple[_SymbolReferenceCandidate, ...],
-]:
-    return scratch_adapter.parse_file(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-    )
-def _parse_erlang_dependencies_only(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[_Dependency, ...]:
-    return erlang_adapter.parse_dependencies_only(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-        resolve_module=_resolve_erlang_module,
-        resolve_include=_resolve_erlang_include,
-    )
-def _parse_erlang_file(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[
-    tuple[_Symbol, ...],
-    tuple[_Dependency, ...],
-    tuple[_SymbolReferenceCandidate, ...],
-]:
-    return erlang_adapter.parse_file(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-        resolve_module=_resolve_erlang_module,
-        resolve_include=_resolve_erlang_include,
-    )
-
-
-def _parse_clojure_dependencies_only(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[_Dependency, ...]:
-    return clojure_adapter.parse_dependencies_only(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-        resolve_import=_resolve_clojure_import,
-    )
-
-
-def _parse_clojure_file(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[
-    tuple[_Symbol, ...],
-    tuple[_Dependency, ...],
-    tuple[_SymbolReferenceCandidate, ...],
-]:
-    return clojure_adapter.parse_file(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-        resolve_import=_resolve_clojure_import,
-    )
-
-
-def _parse_shell_dependencies_only(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[_Dependency, ...]:
-    return shell_adapter.parse_dependencies_only(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-        normalize_repository_relative_path=_normalize_repository_relative_path,
-        resolve_suffix_match=_resolve_suffix_match,
-    )
-
-
-def _parse_shell_file(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[
-    tuple[_Symbol, ...],
-    tuple[_Dependency, ...],
-    tuple[_SymbolReferenceCandidate, ...],
-]:
-    return shell_adapter.parse_file(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-        normalize_repository_relative_path=_normalize_repository_relative_path,
-        resolve_suffix_match=_resolve_suffix_match,
-    )
-
-
-def _parse_powershell_dependencies_only(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[_Dependency, ...]:
-    return powershell_adapter.parse_dependencies_only(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-        normalize_repository_relative_path=_normalize_repository_relative_path,
-        resolve_suffix_match=_resolve_suffix_match,
-    )
-
-
-def _parse_powershell_file(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[
-    tuple[_Symbol, ...],
-    tuple[_Dependency, ...],
-    tuple[_SymbolReferenceCandidate, ...],
-]:
-    return powershell_adapter.parse_file(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-        normalize_repository_relative_path=_normalize_repository_relative_path,
-        resolve_suffix_match=_resolve_suffix_match,
-    )
-
-
-def _extract_perl_dependency_candidates(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[tuple[_Dependency, ...], dict[str, _ImportedSymbolBinding]]:
-    return perl_adapter.extract_dependency_candidates(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-        normalize_repository_relative_path=_normalize_repository_relative_path,
-        resolve_suffix_match=_resolve_suffix_match,
-    )
-
-
-def _parse_perl_dependencies_only(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[_Dependency, ...]:
-    return perl_adapter.parse_dependencies_only(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-        normalize_repository_relative_path=_normalize_repository_relative_path,
-        resolve_suffix_match=_resolve_suffix_match,
-    )
-
-
-def _parse_perl_file(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[
-    tuple[_Symbol, ...],
-    tuple[_Dependency, ...],
-    tuple[_SymbolReferenceCandidate, ...],
-]:
-    return perl_adapter.parse_file(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-        normalize_repository_relative_path=_normalize_repository_relative_path,
-        resolve_suffix_match=_resolve_suffix_match,
-    )
-
-
-def _parse_vbscript_dependencies_only(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[_Dependency, ...]:
-    return vbscript_adapter.parse_dependencies_only(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-        normalize_repository_relative_path=_normalize_repository_relative_path,
-        resolve_suffix_match=_resolve_suffix_match,
-    )
-
-
-def _parse_rpg_dependencies_only(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[_Dependency, ...]:
-    return rpg_adapter.parse_dependencies_only(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-        resolve_suffix_match=_resolve_suffix_match,
-    )
-
-
-def _parse_apex_dependencies_only(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[_Dependency, ...]:
-    return apex_adapter.parse_dependencies_only(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-        normalize_repository_relative_path=_normalize_repository_relative_path,
-        resolve_suffix_match=_resolve_suffix_match,
-    )
-
-
-def _parse_wolfram_dependencies_only(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[_Dependency, ...]:
-    return wolfram_adapter.parse_dependencies_only(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-        normalize_repository_relative_path=_normalize_repository_relative_path,
-        resolve_suffix_match=_resolve_suffix_match,
-    )
-
-
-def _parse_ladder_dependencies_only(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[_Dependency, ...]:
-    return ladder_adapter.parse_dependencies_only(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-    )
-
-
-def _parse_labview_dependencies_only(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[_Dependency, ...]:
-    return labview_adapter.parse_dependencies_only(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-        normalize_repository_relative_path=_normalize_repository_relative_path,
-        resolve_suffix_match=_resolve_suffix_match,
-    )
-
-
-def _parse_tcl_dependencies_only(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[_Dependency, ...]:
-    return tcl_adapter.parse_dependencies_only(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-        normalize_repository_relative_path=_normalize_repository_relative_path,
-        resolve_suffix_match=_resolve_suffix_match,
-    )
-
-
-def _parse_systemverilog_dependencies_only(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[_Dependency, ...]:
-    return systemverilog_adapter.parse_dependencies_only(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-        normalize_repository_relative_path=_normalize_repository_relative_path,
-        resolve_suffix_match=_resolve_suffix_match,
-    )
-
-
-def _parse_vhdl_dependencies_only(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[_Dependency, ...]:
-    return vhdl_adapter.parse_dependencies_only(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-        resolve_suffix_match=_resolve_suffix_match,
-    )
-
-
-def _parse_gdscript_dependencies_only(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[_Dependency, ...]:
-    return gdscript_adapter.parse_dependencies_only(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-        normalize_repository_relative_path=_normalize_repository_relative_path,
-        resolve_suffix_match=_resolve_suffix_match,
-    )
-
-
-def _parse_gml_dependencies_only(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[_Dependency, ...]:
-    return gml_adapter.parse_dependencies_only(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-    )
-
-
-def _parse_vbscript_file(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[
-    tuple[_Symbol, ...],
-    tuple[_Dependency, ...],
-    tuple[_SymbolReferenceCandidate, ...],
-]:
-    return vbscript_adapter.parse_file(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-        normalize_repository_relative_path=_normalize_repository_relative_path,
-        resolve_suffix_match=_resolve_suffix_match,
-    )
-
-
-def _parse_tcl_file(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[
-    tuple[_Symbol, ...],
-    tuple[_Dependency, ...],
-    tuple[_SymbolReferenceCandidate, ...],
-]:
-    return tcl_adapter.parse_file(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-        normalize_repository_relative_path=_normalize_repository_relative_path,
-        resolve_suffix_match=_resolve_suffix_match,
-    )
-
-
-def _parse_systemverilog_file(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[
-    tuple[_Symbol, ...],
-    tuple[_Dependency, ...],
-    tuple[_SymbolReferenceCandidate, ...],
-]:
-    return systemverilog_adapter.parse_file(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-        normalize_repository_relative_path=_normalize_repository_relative_path,
-        resolve_suffix_match=_resolve_suffix_match,
-    )
-
-
-def _parse_gdscript_file(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[
-    tuple[_Symbol, ...],
-    tuple[_Dependency, ...],
-    tuple[_SymbolReferenceCandidate, ...],
-]:
-    return gdscript_adapter.parse_file(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-        normalize_repository_relative_path=_normalize_repository_relative_path,
-        resolve_suffix_match=_resolve_suffix_match,
-    )
-
-
-def _parse_gml_file(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[
-    tuple[_Symbol, ...],
-    tuple[_Dependency, ...],
-    tuple[_SymbolReferenceCandidate, ...],
-]:
-    return gml_adapter.parse_file(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-    )
-
-
-def _parse_vhdl_file(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[
-    tuple[_Symbol, ...],
-    tuple[_Dependency, ...],
-    tuple[_SymbolReferenceCandidate, ...],
-]:
-    return vhdl_adapter.parse_file(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-        resolve_suffix_match=_resolve_suffix_match,
-    )
-
-
-def _parse_rpg_file(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[
-    tuple[_Symbol, ...],
-    tuple[_Dependency, ...],
-    tuple[_SymbolReferenceCandidate, ...],
-]:
-    return rpg_adapter.parse_file(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-        resolve_suffix_match=_resolve_suffix_match,
-    )
-
-
-def _parse_apex_file(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[
-    tuple[_Symbol, ...],
-    tuple[_Dependency, ...],
-    tuple[_SymbolReferenceCandidate, ...],
-]:
-    return apex_adapter.parse_file(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-        normalize_repository_relative_path=_normalize_repository_relative_path,
-        resolve_suffix_match=_resolve_suffix_match,
-    )
-
-
-def _parse_wolfram_file(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[
-    tuple[_Symbol, ...],
-    tuple[_Dependency, ...],
-    tuple[_SymbolReferenceCandidate, ...],
-]:
-    return wolfram_adapter.parse_file(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-        normalize_repository_relative_path=_normalize_repository_relative_path,
-        resolve_suffix_match=_resolve_suffix_match,
-    )
-
-
-def _parse_ladder_file(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[
-    tuple[_Symbol, ...],
-    tuple[_Dependency, ...],
-    tuple[_SymbolReferenceCandidate, ...],
-]:
-    return ladder_adapter.parse_file(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-    )
-
-
-def _parse_labview_file(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[
-    tuple[_Symbol, ...],
-    tuple[_Dependency, ...],
-    tuple[_SymbolReferenceCandidate, ...],
-]:
-    return labview_adapter.parse_file(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-        normalize_repository_relative_path=_normalize_repository_relative_path,
-        resolve_suffix_match=_resolve_suffix_match,
-    )
-
-
-def _extract_r_dependency_candidates(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[_Dependency, ...]:
-    return r_language_adapter.extract_dependency_candidates(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-        normalize_repository_relative_path=_normalize_repository_relative_path,
-        resolve_suffix_match=_resolve_suffix_match,
-    )
-
-
-def _parse_r_dependencies_only(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[_Dependency, ...]:
-    return r_language_adapter.parse_dependencies_only(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-        normalize_repository_relative_path=_normalize_repository_relative_path,
-        resolve_suffix_match=_resolve_suffix_match,
-    )
-
-
-def _parse_r_file(
-    file_path: str,
-    text: str,
-    module_index: dict[str, str],
-) -> tuple[
-    tuple[_Symbol, ...],
-    tuple[_Dependency, ...],
-    tuple[_SymbolReferenceCandidate, ...],
-]:
-    return r_language_adapter.parse_file(
-        file_path,
-        text,
-        module_index,
-        stable_identifier=_stable_identifier,
-        normalize_repository_relative_path=_normalize_repository_relative_path,
-        resolve_suffix_match=_resolve_suffix_match,
-    )
-
-
-_parse_ruby_dependencies_only = (
-    repository_scripting_parser_dispatch._parse_ruby_dependencies_only
-)
-_extract_ruby_import_bindings = (
-    repository_scripting_parser_dispatch._extract_ruby_import_bindings
-)
-_resolve_ruby_reference_target = (
-    repository_scripting_parser_dispatch._resolve_ruby_reference_target
-)
-_iter_ruby_reference_targets = (
-    repository_scripting_parser_dispatch._iter_ruby_reference_targets
-)
-_parse_ruby_file = repository_scripting_parser_dispatch._parse_ruby_file
-_extract_crystal_import_bindings = (
-    repository_scripting_parser_dispatch._extract_crystal_import_bindings
-)
-_resolve_crystal_reference_target = (
-    repository_scripting_parser_dispatch._resolve_crystal_reference_target
-)
-_iter_crystal_reference_targets = (
-    repository_scripting_parser_dispatch._iter_crystal_reference_targets
-)
-_parse_crystal_dependencies_only = (
-    repository_scripting_parser_dispatch._parse_crystal_dependencies_only
-)
-_parse_crystal_file = repository_scripting_parser_dispatch._parse_crystal_file
-_extract_php_import_bindings = repository_scripting_parser_dispatch._extract_php_import_bindings
-_parse_php_dependencies_only = repository_scripting_parser_dispatch._parse_php_dependencies_only
-_parse_php_file = repository_scripting_parser_dispatch._parse_php_file
-_extract_elixir_import_bindings = (
-    repository_scripting_parser_dispatch._extract_elixir_import_bindings
-)
-_parse_elixir_dependencies_only = (
-    repository_scripting_parser_dispatch._parse_elixir_dependencies_only
-)
-_parse_elixir_file = repository_scripting_parser_dispatch._parse_elixir_file
-_parse_swift_dependencies_only = repository_typed_parser_dispatch._parse_swift_dependencies_only
-_parse_swift_file = repository_typed_parser_dispatch._parse_swift_file
-_extract_csharp_import_bindings = repository_typed_parser_dispatch._extract_csharp_import_bindings
-_parse_csharp_dependencies_only = repository_typed_parser_dispatch._parse_csharp_dependencies_only
-_parse_csharp_file = repository_typed_parser_dispatch._parse_csharp_file
-_parse_xpp_dependencies_only = repository_xpp_parser_dispatch._parse_xpp_dependencies_only
-_parse_xpp_file = repository_xpp_parser_dispatch._parse_xpp_file
-_parse_cfml_dependencies_only = cpd._parse_cfml_dependencies_only
-_parse_cfml_file = cpd._parse_cfml_file
-_parse_fish_dependencies_only = fpd._parse_fish_dependencies_only
-_parse_fish_file = fpd._parse_fish_file
-_extract_jvm_import_bindings = repository_typed_parser_dispatch._extract_jvm_import_bindings
-_parse_jvm_dependencies_only = repository_typed_parser_dispatch._parse_jvm_dependencies_only
-_parse_jvm_file = repository_typed_parser_dispatch._parse_jvm_file
 REGISTERED_ADAPTER_DEPENDENCY_PARSERS = {
     **rnd.NATIVE_ADAPTER_DEPENDENCY_PARSERS,
     **repository_pascal_solidity_dispatch.PASCAL_SOLIDITY_ADAPTER_DEPENDENCY_PARSERS,
-    "awk": _parse_awk_dependencies_only, "robotframework": rfpd._parse_robotframework_dependencies_only, "gherkin": ghpd._parse_gherkin_dependencies_only, "antlr": anpd._parse_antlr_dependencies_only, "graphviz": gvpd._parse_graphviz_dependencies_only, "mermaid": mmpd._parse_mermaid_dependencies_only, "plantuml": pupd._parse_plantuml_dependencies_only, "openqasm": oqpd._parse_openqasm_dependencies_only, "move": mvpd._parse_move_dependencies_only, "dm": dmpd._parse_dm_dependencies_only, "modelica": mdpd._parse_modelica_dependencies_only, "moonbit": mbpd._parse_moonbit_dependencies_only, "rescript": rscpd._parse_rescript_dependencies_only, "roc": rocpd._parse_roc_dependencies_only, "scss": scpd._parse_scss_dependencies_only, "less": lepd._parse_less_dependencies_only, "stylus": sypd._parse_stylus_dependencies_only, "jinja": jnd._parse_jinja_dependencies_only, "liquid": lqd._parse_liquid_dependencies_only, "handlebars": hbpd._parse_handlebars_dependencies_only, "mustache": mpstpd._parse_mustache_dependencies_only, "nunjucks": njpd._parse_nunjucks_dependencies_only, "twig": twpd._parse_twig_dependencies_only, "haml": hmpd._parse_haml_dependencies_only, "slim": slpd._parse_slim_dependencies_only, "smarty": smpd._parse_smarty_dependencies_only, "erb": erpd._parse_erb_dependencies_only, "pug": pugpd._parse_pug_dependencies_only, "ejs": ejpd._parse_ejs_dependencies_only, "blade": blpd._parse_blade_dependencies_only, "dockerfile": dfd._parse_dockerfile_dependencies_only, "protobuf": ppbd._parse_protobuf_dependencies_only, "tex": txpd._parse_tex_dependencies_only, "rst": rspd._parse_rst_dependencies_only, "asciidoc": adpd._parse_asciidoc_dependencies_only, "org": orgpd._parse_org_dependencies_only,
+    "1centerprise": onecenterprisepd._parse_onec_enterprise_dependencies_only,
+    "abapcds": abapcdspd._parse_abapcds_dependencies_only,
+    "aidl": aidlpd._parse_aidl_dependencies_only,
+    "aiken": aikenpd._parse_aiken_dependencies_only,
+    "alloy": alloypd._parse_alloy_dependencies_only,
+    "brightscript": brightscriptpd._parse_brightscript_dependencies_only,
+    "common workflow language": cwlpd._parse_common_workflow_language_dependencies_only,
+    "dataweave": dwwpd._parse_dataweave_dependencies_only,
+    "earthly": earthlypd._parse_earthly_dependencies_only,
+    "gnuplot": gnupd._parse_gnuplot_dependencies_only,
+    "angelscript": angelscriptpd._parse_angelscript_dependencies_only,
+    "answer set programming": (
+        answer_set_programmingpd._parse_answer_set_programming_dependencies_only
+    ),
+    "apacheconf": apacheconfpd._parse_apacheconf_dependencies_only,
+    "asp.net": aspnetpd._parse_aspnet_dependencies_only,
+    "aspectj": aspectjpd._parse_aspectj_dependencies_only,
+    "asl": aslpd._parse_asl_dependencies_only,
+    "ats": atspd._parse_ats_dependencies_only,
+    "awk": _parse_awk_dependencies_only, "robotframework": rfpd._parse_robotframework_dependencies_only, "gherkin": ghpd._parse_gherkin_dependencies_only, "antlr": anpd._parse_antlr_dependencies_only, "graphviz": gvpd._parse_graphviz_dependencies_only, "mermaid": mmpd._parse_mermaid_dependencies_only, "plantuml": pupd._parse_plantuml_dependencies_only, "openqasm": oqpd._parse_openqasm_dependencies_only, "move": mvpd._parse_move_dependencies_only, "dm": dmpd._parse_dm_dependencies_only, "modelica": mdpd._parse_modelica_dependencies_only, "moonbit": mbpd._parse_moonbit_dependencies_only, "rescript": rscpd._parse_rescript_dependencies_only, "reasonml": reasonpd._parse_reasonml_dependencies_only, "roc": rocpd._parse_roc_dependencies_only, "scss": scpd._parse_scss_dependencies_only, "less": lepd._parse_less_dependencies_only, "stylus": sypd._parse_stylus_dependencies_only, "jinja": jnd._parse_jinja_dependencies_only, "liquid": lqd._parse_liquid_dependencies_only, "handlebars": hbpd._parse_handlebars_dependencies_only, "mustache": mpstpd._parse_mustache_dependencies_only, "nunjucks": njpd._parse_nunjucks_dependencies_only, "twig": twpd._parse_twig_dependencies_only, "haml": hmpd._parse_haml_dependencies_only, "slim": slpd._parse_slim_dependencies_only, "smarty": smpd._parse_smarty_dependencies_only, "erb": erpd._parse_erb_dependencies_only, "pug": pugpd._parse_pug_dependencies_only, "ejs": ejpd._parse_ejs_dependencies_only, "blade": blpd._parse_blade_dependencies_only, "dockerfile": dfd._parse_dockerfile_dependencies_only, "protobuf": ppbd._parse_protobuf_dependencies_only, "tex": txpd._parse_tex_dependencies_only, "rst": rspd._parse_rst_dependencies_only, "asciidoc": adpd._parse_asciidoc_dependencies_only, "org": orgpd._parse_org_dependencies_only,
     "batchfile": bfpd._parse_batchfile_dependencies_only,
     "makefile": mpd._parse_makefile_dependencies_only, "just": jstd._parse_just_dependencies_only,
     "cuda": ctd._parse_cuda_dependencies_only,
@@ -904,21 +311,69 @@ REGISTERED_ADAPTER_DEPENDENCY_PARSERS = {
     "gdscript": _parse_gdscript_dependencies_only,
     "gml": _parse_gml_dependencies_only,
     "fish": _parse_fish_dependencies_only,
+    "forth": forthpd._parse_forth_dependencies_only,
     "hack": hkd._parse_hack_dependencies_only,
     "hcl": hpd._parse_hcl_dependencies_only,
     "haskell": repository_simple_parser_dispatch._parse_haskell_dependencies_only,
     "agda": apd._parse_agda_dependencies_only,
+    "ampl": amplpd._parse_ampl_dependencies_only,
+    "apl": aplpd._parse_apl_dependencies_only,
+    "circom": circompd._parse_circom_dependencies_only,
+    "cairo": cairopd._parse_cairo_dependencies_only,
+    "dafny": dafnypd._parse_dafny_dependencies_only,
+    "hoon": hoonpd._parse_hoon_dependencies_only,
+    "metal": metalpd._parse_metal_dependencies_only,
+    "mercury": mercurypd._parse_mercury_dependencies_only,
     "idris": ipd._parse_idris_dependencies_only,
+    "sway": swaypd._parse_sway_dependencies_only,
     "rego": rpd._parse_rego_dependencies_only, "yara": ypd._parse_yara_dependencies_only,
     "hy": hypd._parse_hy_dependencies_only, "wren": wrpd._parse_wren_dependencies_only, "janet": jpd._parse_janet_dependencies_only, "fennel": fnpd._parse_fennel_dependencies_only, "vyper": vypd._parse_vyper_dependencies_only, "nextflow": nfpd._parse_nextflow_dependencies_only, "bicep": bpd._parse_bicep_dependencies_only,
+    "isabelle": isabellepd._parse_isabelle_dependencies_only,
+    "j": jlangpd._parse_j_dependencies_only,
+    "jsonnet": jsonnetpd._parse_jsonnet_dependencies_only,
+    "codeql": codeqlpd._parse_codeql_dependencies_only,
+    "lex": lexpd._parse_lex_dependencies_only,
+    "m4": m4pd._parse_m4_dependencies_only,
+    "mako": makopd._parse_mako_dependencies_only,
+    "maven": mavenpd._parse_maven_dependencies_only,
+    "motoko": motokopd._parse_motoko_dependencies_only,
+    "moonscript": moonpd._parse_moonscript_dependencies_only,
+    "nginx": nginxpd._parse_nginx_dependencies_only,
+    "nsis": nsispd._parse_nsis_dependencies_only,
+    "ocamllex": ocamllexpd._parse_ocamllex_dependencies_only,
+    "ocamlyacc": ocamlyaccpd._parse_ocamlyacc_dependencies_only,
+    "openedge": oepd._parse_openedge_dependencies_only,
+    "templ": templpd._parse_templ_dependencies_only,
+    "thrift": thriftpd._parse_thrift_dependencies_only,
+    "vcl": vclpd._parse_vcl_dependencies_only,
     "sass": sspd._parse_sass_dependencies_only,
     "qsharp": qspd._parse_qsharp_dependencies_only,
     "opencl": oclpd._parse_opencl_dependencies_only,
+    "graphql": graphqlpd._parse_graphql_dependencies_only,
+    "plpgsql": plpgsqlpd._parse_plpgsql_dependencies_only,
+    "pkl": pklpd._parse_pkl_dependencies_only,
+    "webassembly": webassemblypd._parse_webassembly_dependencies_only,
+    "sed": sedpd._parse_sed_dependencies_only,
+    "ballerina": blpd2._parse_ballerina_dependencies_only,
+    "bqn": bqnpd._parse_bqn_dependencies_only,
+    "rebol": rebolpd._parse_rebol_dependencies_only,
     "clojurescript": cljspd._parse_clojurescript_dependencies_only,
     "al": alpd._parse_al_dependencies_only,
+    "pawn": pawnpd._parse_pawn_dependencies_only,
+    "pony": ponypd._parse_pony_dependencies_only,
+    "postscript": postscriptpd._parse_postscript_dependencies_only,
+    "purebasic": pbpd._parse_purebasic_dependencies_only,
+    "q": qlangpd._parse_q_dependencies_only,
+    "red": redpd._parse_red_dependencies_only,
+    "smali": smalipd._parse_smali_dependencies_only,
     "sml": smlpd._parse_sml_dependencies_only,
+    "xquery": xquerypd._parse_xquery_dependencies_only,
+    "xtend": xtendpd._parse_xtend_dependencies_only,
+    "xslt": xsltpd._parse_xslt_dependencies_only,
+    "yacc": yaccpd._parse_yacc_dependencies_only,
     "groovy": grpd._parse_groovy_dependencies_only,
     "dhall": dpd._parse_dhall_dependencies_only,
+    "freemarker": freemarkerpd._parse_freemarker_dependencies_only,
     "puppet": ppd._parse_puppet_dependencies_only,
     "tlaplus": tpd._parse_tlaplus_dependencies_only,
     "logtalk": lgd._parse_logtalk_dependencies_only,
@@ -943,12 +398,30 @@ REGISTERED_ADAPTER_DEPENDENCY_PARSERS = {
     "rpg": _parse_rpg_dependencies_only,
     "apex": _parse_apex_dependencies_only,
     "wolfram": _parse_wolfram_dependencies_only,
+    "4d": f4pd._parse_four_d_dependencies_only,
     "cs": _parse_csharp_dependencies_only,
 }
 REGISTERED_ADAPTER_FILE_PARSERS = {
     **rnd.NATIVE_ADAPTER_FILE_PARSERS,
     **repository_pascal_solidity_dispatch.PASCAL_SOLIDITY_ADAPTER_FILE_PARSERS,
-    "awk": _parse_awk_file, "robotframework": rfpd._parse_robotframework_file, "gherkin": ghpd._parse_gherkin_file, "antlr": anpd._parse_antlr_file, "graphviz": gvpd._parse_graphviz_file, "mermaid": mmpd._parse_mermaid_file, "plantuml": pupd._parse_plantuml_file, "openqasm": oqpd._parse_openqasm_file, "move": mvpd._parse_move_file, "dm": dmpd._parse_dm_file, "modelica": mdpd._parse_modelica_file, "moonbit": mbpd._parse_moonbit_file, "rescript": rscpd._parse_rescript_file, "roc": rocpd._parse_roc_file, "scss": scpd._parse_scss_file, "less": lepd._parse_less_file, "stylus": sypd._parse_stylus_file, "jinja": jnd._parse_jinja_file, "liquid": lqd._parse_liquid_file, "handlebars": hbpd._parse_handlebars_file, "mustache": mpstpd._parse_mustache_file, "nunjucks": njpd._parse_nunjucks_file, "twig": twpd._parse_twig_file, "haml": hmpd._parse_haml_file, "slim": slpd._parse_slim_file, "smarty": smpd._parse_smarty_file, "erb": erpd._parse_erb_file, "pug": pugpd._parse_pug_file, "ejs": ejpd._parse_ejs_file, "blade": blpd._parse_blade_file, "dockerfile": dfd._parse_dockerfile_file, "protobuf": ppbd._parse_protobuf_file, "tex": txpd._parse_tex_file, "rst": rspd._parse_rst_file, "asciidoc": adpd._parse_asciidoc_file, "org": orgpd._parse_org_file,
+    "1centerprise": onecenterprisepd._parse_onec_enterprise_file,
+    "abapcds": abapcdspd._parse_abapcds_file,
+    "aidl": aidlpd._parse_aidl_file,
+    "aiken": aikenpd._parse_aiken_file,
+    "alloy": alloypd._parse_alloy_file,
+    "brightscript": brightscriptpd._parse_brightscript_file,
+    "common workflow language": cwlpd._parse_common_workflow_language_file,
+    "dataweave": dwwpd._parse_dataweave_file,
+    "earthly": earthlypd._parse_earthly_file,
+    "gnuplot": gnupd._parse_gnuplot_file,
+    "angelscript": angelscriptpd._parse_angelscript_file,
+    "answer set programming": answer_set_programmingpd._parse_answer_set_programming_file,
+    "apacheconf": apacheconfpd._parse_apacheconf_file,
+    "asp.net": aspnetpd._parse_aspnet_file,
+    "aspectj": aspectjpd._parse_aspectj_file,
+    "asl": aslpd._parse_asl_file,
+    "ats": atspd._parse_ats_file,
+    "awk": _parse_awk_file, "robotframework": rfpd._parse_robotframework_file, "gherkin": ghpd._parse_gherkin_file, "antlr": anpd._parse_antlr_file, "graphviz": gvpd._parse_graphviz_file, "mermaid": mmpd._parse_mermaid_file, "plantuml": pupd._parse_plantuml_file, "openqasm": oqpd._parse_openqasm_file, "move": mvpd._parse_move_file, "dm": dmpd._parse_dm_file, "modelica": mdpd._parse_modelica_file, "moonbit": mbpd._parse_moonbit_file, "rescript": rscpd._parse_rescript_file, "reasonml": reasonpd._parse_reasonml_file, "roc": rocpd._parse_roc_file, "scss": scpd._parse_scss_file, "less": lepd._parse_less_file, "stylus": sypd._parse_stylus_file, "jinja": jnd._parse_jinja_file, "liquid": lqd._parse_liquid_file, "handlebars": hbpd._parse_handlebars_file, "mustache": mpstpd._parse_mustache_file, "nunjucks": njpd._parse_nunjucks_file, "twig": twpd._parse_twig_file, "haml": hmpd._parse_haml_file, "slim": slpd._parse_slim_file, "smarty": smpd._parse_smarty_file, "erb": erpd._parse_erb_file, "pug": pugpd._parse_pug_file, "ejs": ejpd._parse_ejs_file, "blade": blpd._parse_blade_file, "dockerfile": dfd._parse_dockerfile_file, "protobuf": ppbd._parse_protobuf_file, "tex": txpd._parse_tex_file, "rst": rspd._parse_rst_file, "asciidoc": adpd._parse_asciidoc_file, "org": orgpd._parse_org_file,
     "batchfile": bfpd._parse_batchfile_file,
     "makefile": mpd._parse_makefile_file, "bitbake": bbpd._parse_bitbake_file, "just": jstd._parse_just_file,
     "cuda": ctd._parse_cuda_file,
@@ -978,17 +451,64 @@ REGISTERED_ADAPTER_FILE_PARSERS = {
     "gdscript": _parse_gdscript_file,
     "gml": _parse_gml_file,
     "fish": _parse_fish_file, "hack": hkd._parse_hack_file, "hcl": hpd._parse_hcl_file,
+    "forth": forthpd._parse_forth_file,
     "haskell": repository_simple_parser_dispatch._parse_haskell_file,
     "agda": apd._parse_agda_file,
-    "idris": ipd._parse_idris_file, "rego": rpd._parse_rego_file, "yara": ypd._parse_yara_file,
+    "ampl": amplpd._parse_ampl_file,
+    "apl": aplpd._parse_apl_file,
+    "circom": circompd._parse_circom_file,
+    "cairo": cairopd._parse_cairo_file,
+    "dafny": dafnypd._parse_dafny_file,
+    "hoon": hoonpd._parse_hoon_file,
+    "metal": metalpd._parse_metal_file,
+    "mercury": mercurypd._parse_mercury_file,
+    "idris": ipd._parse_idris_file, "sway": swaypd._parse_sway_file, "rego": rpd._parse_rego_file, "yara": ypd._parse_yara_file,
     "hy": hypd._parse_hy_file, "wren": wrpd._parse_wren_file, "janet": jpd._parse_janet_file, "fennel": fnpd._parse_fennel_file, "vyper": vypd._parse_vyper_file, "nextflow": nfpd._parse_nextflow_file, "bicep": bpd._parse_bicep_file, "dhall": dpd._parse_dhall_file,
+    "isabelle": isabellepd._parse_isabelle_file,
+    "j": jlangpd._parse_j_file,
+    "jsonnet": jsonnetpd._parse_jsonnet_file,
+    "codeql": codeqlpd._parse_codeql_file,
+    "lex": lexpd._parse_lex_file,
+    "m4": m4pd._parse_m4_file,
+    "mako": makopd._parse_mako_file,
+    "maven": mavenpd._parse_maven_file,
+    "motoko": motokopd._parse_motoko_file,
+    "moonscript": moonpd._parse_moonscript_file,
+    "nginx": nginxpd._parse_nginx_file,
+    "nsis": nsispd._parse_nsis_file,
+    "ocamllex": ocamllexpd._parse_ocamllex_file,
+    "ocamlyacc": ocamlyaccpd._parse_ocamlyacc_file,
+    "openedge": oepd._parse_openedge_file,
+    "templ": templpd._parse_templ_file,
+    "thrift": thriftpd._parse_thrift_file,
+    "vcl": vclpd._parse_vcl_file,
     "sass": sspd._parse_sass_file,
     "qsharp": qspd._parse_qsharp_file,
     "opencl": oclpd._parse_opencl_file,
+    "graphql": graphqlpd._parse_graphql_file,
+    "plpgsql": plpgsqlpd._parse_plpgsql_file,
+    "pkl": pklpd._parse_pkl_file,
+    "webassembly": webassemblypd._parse_webassembly_file,
+    "sed": sedpd._parse_sed_file,
+    "ballerina": blpd2._parse_ballerina_file,
+    "bqn": bqnpd._parse_bqn_file,
+    "rebol": rebolpd._parse_rebol_file,
     "clojurescript": cljspd._parse_clojurescript_file,
+    "pawn": pawnpd._parse_pawn_file,
+    "pony": ponypd._parse_pony_file,
+    "postscript": postscriptpd._parse_postscript_file,
+    "purebasic": pbpd._parse_purebasic_file,
+    "q": qlangpd._parse_q_file,
+    "red": redpd._parse_red_file,
+    "smali": smalipd._parse_smali_file,
     "al": alpd._parse_al_file,
     "sml": smlpd._parse_sml_file,
+    "xquery": xquerypd._parse_xquery_file,
+    "xtend": xtendpd._parse_xtend_file,
+    "xslt": xsltpd._parse_xslt_file,
+    "yacc": yaccpd._parse_yacc_file,
     "groovy": grpd._parse_groovy_file,
+    "freemarker": freemarkerpd._parse_freemarker_file,
     "puppet": ppd._parse_puppet_file,
     "tlaplus": tpd._parse_tlaplus_file,
     "logtalk": lgd._parse_logtalk_file,
@@ -1013,5 +533,6 @@ REGISTERED_ADAPTER_FILE_PARSERS = {
     "rpg": _parse_rpg_file,
     "apex": _parse_apex_file,
     "wolfram": _parse_wolfram_file,
+    "4d": f4pd._parse_four_d_file,
     "cs": _parse_csharp_file,
 }

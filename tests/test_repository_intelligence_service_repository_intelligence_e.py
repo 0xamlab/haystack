@@ -291,6 +291,21 @@ def test_repository_intelligence_patch_analysis_helpers_are_modularized() -> Non
     assert repository_service._is_test_path is repository_patch_analysis._is_test_path
 
 
+def test_repository_intelligence_patch_analysis_test_path_cache_reuses_results() -> None:
+    repository_patch_analysis._is_test_path.cache_clear()
+
+    assert repository_patch_analysis._is_test_path("src/tests/sample_test.ml") is True
+    assert repository_patch_analysis._is_test_path("src/tests/sample_test.ml") is True
+
+    assert repository_patch_analysis._is_test_path.cache_info().hits >= 1
+
+
+def test_repository_intelligence_patch_analysis_test_path_suffixes_cover_power_shell_and_erlang() -> None:
+    assert repository_patch_analysis._is_test_path("scripts/build.spec.ps1") is True
+    assert repository_patch_analysis._is_test_path("apps/demo/suite.erl") is True
+    assert repository_patch_analysis._is_test_path("src/runtime/worker.py") is False
+
+
 def test_repository_intelligence_patch_analysis_validate_wrapper_delegates(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -374,6 +389,186 @@ def test_repository_intelligence_fsharp_parse_wrapper_delegates(
     assert observed["stable_identifier"] is repository_service._stable_identifier
     assert callable(observed["resolve_suffix_match"])
     assert callable(observed["resolve_directory_prefix_match"])
+
+
+def test_repository_intelligence_fsharp_lookup_helpers_resolve_without_generic_fallback() -> None:
+    def _unexpected_suffix_match(*_args: Any, **_kwargs: Any) -> str | None:
+        raise AssertionError("expected F# adapter to use its prebuilt lookup")
+
+    def _unexpected_directory_prefix_match(*_args: Any, **_kwargs: Any) -> str | None:
+        raise AssertionError("expected F# adapter to use its prebuilt lookup")
+
+    module_index = {
+        "Acme.Core": "src/Acme/Core.fs",
+        "Acme.Request": "src/Acme/Core.fs",
+        "Acme.RequestOps": "src/Acme/Core.fs",
+        "Request": "src/Acme/Core.fs",
+        "RequestOps": "src/Acme/Core.fs",
+        "Acme.Http": "src/Acme/Http.fs",
+    }
+    module_index_lookup = repository_service.fsharp_adapter._build_module_index_lookup(
+        module_index
+    )
+
+    resolved_import = repository_service.fsharp_adapter.resolve_import(
+        "Acme.Core",
+        module_index=module_index,
+        module_index_lookup=module_index_lookup,
+        resolve_suffix_match=_unexpected_suffix_match,
+        resolve_directory_prefix_match=_unexpected_directory_prefix_match,
+    )
+    resolved_context_reference = repository_service.fsharp_adapter.resolve_context_reference(
+        current_namespaces=("Acme",),
+        opened_namespaces=("Acme.Core",),
+        target_name="RequestOps",
+        module_index=module_index,
+        module_index_lookup=module_index_lookup,
+        resolve_suffix_match=_unexpected_suffix_match,
+        resolve_directory_prefix_match=_unexpected_directory_prefix_match,
+    )
+
+    assert resolved_import == "src/Acme/Core.fs"
+    assert resolved_context_reference == "src/Acme/Core.fs"
+
+
+def test_repository_intelligence_fsharp_cached_context_lookup_reuses_import_cache(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module_index = {
+        "Acme.Core": "src/Acme/Core.fs",
+        "Acme.RequestOps": "src/Acme/Core.fs",
+        "RequestOps": "src/Acme/Core.fs",
+    }
+    resolve_calls: list[str] = []
+    original_resolve_import = repository_service.fsharp_adapter.resolve_import
+
+    def _counting_resolve_import(
+        import_target: str,
+        *,
+        module_index: dict[str, str],
+        module_index_lookup,
+        resolve_suffix_match,
+        resolve_directory_prefix_match,
+    ) -> str | None:
+        resolve_calls.append(import_target)
+        return original_resolve_import(
+            import_target,
+            module_index=module_index,
+            module_index_lookup=module_index_lookup,
+            resolve_suffix_match=resolve_suffix_match,
+            resolve_directory_prefix_match=resolve_directory_prefix_match,
+        )
+
+    monkeypatch.setattr(repository_service.fsharp_adapter, "resolve_import", _counting_resolve_import)
+
+    resolve_import_target, resolve_context_target = (
+        repository_service.fsharp_adapter._build_cached_resolvers(
+            module_index=module_index,
+            resolve_suffix_match=lambda *_args, **_kwargs: None,
+            resolve_directory_prefix_match=lambda *_args, **_kwargs: None,
+        )
+    )
+
+    assert resolve_import_target("Acme.Core") == "src/Acme/Core.fs"
+    assert resolve_context_target((), (), "Acme.Core") == "src/Acme/Core.fs"
+    assert resolve_calls == ["Acme.Core"]
+
+
+def test_repository_intelligence_fsharp_lookup_path_normalization_reuses_cache() -> None:
+    repository_service.fsharp_adapter._normalize_lookup_path.cache_clear()
+
+    assert (
+        repository_service.fsharp_adapter._normalize_lookup_path("src\\Acme\\Core.fs")
+        == "src/Acme/Core.fs"
+    )
+    assert (
+        repository_service.fsharp_adapter._normalize_lookup_path("src\\Acme\\Core.fs")
+        == "src/Acme/Core.fs"
+    )
+
+    assert repository_service.fsharp_adapter._normalize_lookup_path.cache_info().hits >= 1
+
+
+def test_repository_intelligence_fsharp_lookup_candidate_generation_reuses_cache() -> None:
+    repository_service.fsharp_adapter._import_lookup_suffixes.cache_clear()
+    repository_service.fsharp_adapter._import_lookup_prefixes.cache_clear()
+    repository_service.fsharp_adapter._context_lookup_suffixes.cache_clear()
+
+    assert repository_service.fsharp_adapter._import_lookup_suffixes("Acme.Core") == (
+        "acme.core",
+        "acme/core",
+        "acme/core.fs",
+        "acme/core.fsi",
+        "acme/core.fsx",
+        "core.fs",
+        "core.fsi",
+        "core.fsx",
+    )
+    assert repository_service.fsharp_adapter._import_lookup_suffixes("Acme.Core") == (
+        "acme.core",
+        "acme/core",
+        "acme/core.fs",
+        "acme/core.fsi",
+        "acme/core.fsx",
+        "core.fs",
+        "core.fsi",
+        "core.fsx",
+    )
+    assert repository_service.fsharp_adapter._import_lookup_prefixes("Acme.Core") == (
+        "acme/core",
+        "src/acme/core",
+        "app/acme/core",
+        "lib/acme/core",
+    )
+    assert repository_service.fsharp_adapter._context_lookup_suffixes("Request") == (
+        "request.fs",
+        "request.fsi",
+        "request.fsx",
+    )
+
+    assert repository_service.fsharp_adapter._import_lookup_suffixes.cache_info().hits >= 1
+    assert repository_service.fsharp_adapter._import_lookup_prefixes.cache_info().misses == 1
+    assert repository_service.fsharp_adapter._context_lookup_suffixes.cache_info().misses == 1
+
+
+def test_repository_intelligence_fsharp_type_reference_resolution_reuses_per_name_cache() -> None:
+    observed_targets: list[str] = []
+
+    def _resolve_context_target(
+        current_namespaces,
+        opened_namespaces,
+        target_name: str,
+    ) -> str | None:
+        assert tuple(current_namespaces) == ("Acme",)
+        assert tuple(opened_namespaces) == ("Acme.Core",)
+        observed_targets.append(target_name)
+        if target_name == "Request":
+            return "src/Acme/Core.fs"
+        return None
+
+    dependencies = repository_service.fsharp_adapter._append_type_reference_dependencies(
+        dependencies=(),
+        import_bindings={},
+        opened_namespaces=("Acme.Core",),
+        current_namespaces=("Acme",),
+        declared_symbol_names={"Handler"},
+        file_path="src/Acme/Handler.fs",
+        text=(
+            "type Handler =\n"
+            "    { Primary: Request\n"
+            "      Secondary: Request }\n"
+            "\n"
+            "let promote (value: Request) = value\n"
+        ),
+        stable_identifier=lambda prefix, payload: (
+            f"{prefix}:{payload['file_path']}:{payload['target']}:{payload['line']}"
+        ),
+        resolve_context_target=_resolve_context_target,
+    )
+
+    assert observed_targets.count("Request") == 1
+    assert [dependency.target_symbol for dependency in dependencies] == ["Request"]
+    assert [dependency.target_file for dependency in dependencies] == ["src/Acme/Core.fs"]
 
 
 def test_repository_intelligence_ruby_helpers_are_modularized() -> None:
@@ -796,5 +991,3 @@ def test_repository_intelligence_lua_helpers_are_modularized() -> None:
     assert repository_service._LUA_RESERVED_SYMBOL_NAMES is (
         repository_service.lua_adapter.RESERVED_SYMBOL_NAMES
     )
-
-

@@ -42,17 +42,21 @@ def _extract_import_bindings(
     stable_identifier: StableIdentifier,
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
+    stripped_text: str | None = None,
 ) -> tuple[tuple[_Dependency, ...], dict[str, _ImportedSymbolBinding]]:
+    import_entries = import_statements(text, stripped_text=stripped_text)
     bindings = imported_symbol_bindings(
         current_file=file_path,
         text=text,
         module_index=module_index,
         normalize_repository_relative_path=normalize_repository_relative_path,
         resolve_suffix_match=resolve_suffix_match,
+        stripped_text=stripped_text,
+        import_entries=import_entries,
     )
     dependencies: list[_Dependency] = []
     seen_dependencies: set[tuple[str | None, str]] = set()
-    for import_target, line_number in import_statements(text):
+    for import_target, line_number in import_entries:
         target_file = resolve_include(
             current_file=file_path,
             import_target=import_target,
@@ -93,6 +97,7 @@ def parse_dependencies_only(
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
 ) -> tuple[_Dependency, ...]:
+    stripped_text = strip_comments(text)
     dependencies, _bindings = _extract_import_bindings(
         file_path=file_path,
         text=text,
@@ -100,6 +105,7 @@ def parse_dependencies_only(
         stable_identifier=stable_identifier,
         normalize_repository_relative_path=normalize_repository_relative_path,
         resolve_suffix_match=resolve_suffix_match,
+        stripped_text=stripped_text,
     )
     return dependencies
 
@@ -117,13 +123,19 @@ def parse_file(
     tuple[_Dependency, ...],
     tuple[_SymbolReferenceCandidate, ...],
 ]:
-    if not is_probable_squirrel_source(path=Path(file_path), text=text):
+    stripped_text = strip_comments(text)
+    if not is_probable_squirrel_source(
+        path=Path(file_path),
+        text=text,
+        stripped_text=stripped_text,
+    ):
         return (), (), ()
 
     symbols = collect_symbols(
         file_path=file_path,
         text=text,
         stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
     )
     dependencies, import_bindings = _extract_import_bindings(
         file_path=file_path,
@@ -132,10 +144,10 @@ def parse_file(
         stable_identifier=stable_identifier,
         normalize_repository_relative_path=normalize_repository_relative_path,
         resolve_suffix_match=resolve_suffix_match,
+        stripped_text=stripped_text,
     )
     local_symbol_names = {symbol.symbol_name for symbol in symbols}
     local_symbol_lookup = {symbol.symbol_name: symbol.symbol_id for symbol in symbols}
-    stripped_text = strip_comments(text)
     lines = stripped_text.splitlines()
     symbol_references: list[_SymbolReferenceCandidate] = []
     seen_reference_keys: set[tuple[str | None, str, str]] = set()

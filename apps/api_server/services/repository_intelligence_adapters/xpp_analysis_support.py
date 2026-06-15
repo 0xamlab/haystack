@@ -176,17 +176,20 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
 ) -> set[str]:
     path = PurePosixPath(file_path)
     if path.suffix.lower() not in _KNOWN_SUFFIXES:
         return set()
-    try:
-        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
+    source_text = text
+    if source_text is None:
+        try:
+            source_text = (root_path / path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return set()
+    if is_probable_xpp_descriptor_config(path=path, text=source_text):
         return set()
-    if is_probable_xpp_descriptor_config(path=path, text=text):
-        return set()
-    if not is_probable_xpp_source(path=path, text=text):
+    if not is_probable_xpp_source(path=path, text=source_text):
         return set()
     aliases = {
         file_path,
@@ -195,7 +198,7 @@ def module_aliases_for_path(
     }
     collected_symbols = _collect_symbols(
         file_path=file_path,
-        text=text,
+        text=source_text,
         stable_identifier=stable_identifier,
     )
     class_name = ""

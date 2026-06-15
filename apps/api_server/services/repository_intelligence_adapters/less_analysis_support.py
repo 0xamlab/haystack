@@ -48,6 +48,9 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
+    stripped_text: str | None = None,
+    include_symbol_aliases: bool = True,
 ) -> set[str]:
     del stable_identifier
     path = PurePosixPath(file_path)
@@ -60,13 +63,20 @@ def module_aliases_for_path(
         module_name.replace("/", "."),
         path.stem,
     }
-    try:
-        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        text = ""
-    if text and not is_probable_less_source(path=path, text=text):
+    if not include_symbol_aliases:
         return {alias for alias in aliases if alias}
-    for symbol_name, _symbol_kind, _line_number in iter_symbol_entries(text):
+    if text is None:
+        try:
+            text = (root_path / path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            text = ""
+    stripped_text = strip_comments(text) if stripped_text is None else stripped_text
+    if text and not is_probable_less_source(path=path, text=text, stripped_text=stripped_text):
+        return {alias for alias in aliases if alias}
+    for symbol_name, _symbol_kind, _line_number in iter_symbol_entries(
+        text,
+        stripped_text=stripped_text,
+    ):
         aliases.add(symbol_name)
         aliases.add(f"{module_name.replace('/', '.')}.{symbol_name}")
     return {alias for alias in aliases if alias}
@@ -113,11 +123,12 @@ def _extract_import_bindings(
     stable_identifier: StableIdentifier,
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
+    stripped_text: str | None = None,
 ) -> tuple[tuple[_Dependency, ...], dict[str, _ImportedSymbolBinding], tuple[str, ...]]:
     dependencies: list[_Dependency] = []
     wildcard_targets: list[str] = []
     seen_dependencies: set[tuple[str, str | None, str | None]] = set()
-    for import_target, line_number in iter_import_entries(text):
+    for import_target, line_number in iter_import_entries(text, stripped_text=stripped_text):
         target_file = resolve_import_target(
             current_file=file_path,
             import_target=import_target,
@@ -159,8 +170,14 @@ def parse_dependencies_only(
     stable_identifier: StableIdentifier,
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
+    stripped_text: str | None = None,
 ) -> tuple[_Dependency, ...]:
-    if not is_probable_less_source(path=PurePosixPath(file_path), text=text):
+    stripped_text = strip_comments(text) if stripped_text is None else stripped_text
+    if not is_probable_less_source(
+        path=PurePosixPath(file_path),
+        text=text,
+        stripped_text=stripped_text,
+    ):
         return ()
     dependencies, _bindings, _wildcard_targets = _extract_import_bindings(
         file_path=file_path,
@@ -169,6 +186,7 @@ def parse_dependencies_only(
         stable_identifier=stable_identifier,
         normalize_repository_relative_path=normalize_repository_relative_path,
         resolve_suffix_match=resolve_suffix_match,
+        stripped_text=stripped_text,
     )
     return dependencies
 
@@ -186,10 +204,13 @@ def parse_file(
     tuple[_Dependency, ...],
     tuple[_SymbolReferenceCandidate, ...],
 ]:
-    if not is_probable_less_source(path=PurePosixPath(file_path), text=text):
-        return (), (), ()
-
     stripped_text = strip_comments(text)
+    if not is_probable_less_source(
+        path=PurePosixPath(file_path),
+        text=text,
+        stripped_text=stripped_text,
+    ):
+        return (), (), ()
     module_name = module_name_from_path(file_path)
     module_symbol = _Symbol(
         symbol_id=stable_identifier("sym", {"file_path": file_path, "symbol_name": module_name}),
@@ -201,7 +222,10 @@ def parse_file(
         signature=module_name,
     )
     symbols: list[_Symbol] = [module_symbol]
-    for symbol_name, symbol_kind, line_number in iter_symbol_entries(text):
+    for symbol_name, symbol_kind, line_number in iter_symbol_entries(
+        text,
+        stripped_text=stripped_text,
+    ):
         symbols.append(
             _Symbol(
                 symbol_id=stable_identifier(
@@ -229,9 +253,10 @@ def parse_file(
         stable_identifier=stable_identifier,
         normalize_repository_relative_path=normalize_repository_relative_path,
         resolve_suffix_match=resolve_suffix_match,
+        stripped_text=stripped_text,
     )
     local_symbol_ids = {symbol.symbol_name: symbol.symbol_id for symbol in symbols[1:]}
-    symbol_entries = iter_symbol_entries(text)
+    symbol_entries = iter_symbol_entries(text, stripped_text=stripped_text)
     references: list[_SymbolReferenceCandidate] = []
     seen_references: set[tuple[str, str | None, str, str]] = set()
 
@@ -269,7 +294,10 @@ def parse_file(
             )
         )
 
-    for _reference_kind, owner, target_name, line_number in iter_reference_entries(text):
+    for _reference_kind, owner, target_name, line_number in iter_reference_entries(
+        text,
+        stripped_text=stripped_text,
+    ):
         source_name = source_symbol_name_for_line(symbol_entries, line_number=line_number)
         source_symbol_id = local_symbol_ids.get(source_name or "", module_symbol.symbol_id)
         if owner:

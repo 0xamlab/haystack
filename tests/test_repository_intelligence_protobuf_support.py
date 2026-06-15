@@ -128,6 +128,37 @@ def test_protobuf_adapter_module_aliases_include_package_and_symbol_names(
     assert "demo.common.User" in aliases
 
 
+def test_protobuf_module_aliases_skip_irrelevant_non_proto_paths(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo_path = tmp_path / "protobuf-non-proto-repo"
+    (repo_path / "assets").mkdir(parents=True)
+    (repo_path / "assets" / "project.json").write_text('{"targets":[]}\n', encoding="utf-8")
+
+    def _unexpected_strip_comments(_text: str) -> str:
+        raise AssertionError("protobuf strip_comments should not run for non-proto paths")
+
+    monkeypatch.setattr(
+        repository_protobuf_primitives,
+        "strip_comments",
+        _unexpected_strip_comments,
+    )
+    monkeypatch.setattr(
+        repository_protobuf_analysis_support,
+        "strip_comments",
+        _unexpected_strip_comments,
+    )
+
+    aliases = repository_service.protobuf_adapter.module_aliases_for_path(
+        root_path=repo_path,
+        file_path="assets/project.json",
+        stable_identifier=repository_service._stable_identifier,
+    )
+
+    assert aliases == set()
+
+
 def test_protobuf_adapter_parse_file_resolves_imports_and_references(
     tmp_path: Path,
 ) -> None:
@@ -182,6 +213,78 @@ def test_protobuf_adapter_parse_file_resolves_imports_and_references(
         reference.target_file == "common/types.proto" and "User" in reference.target_names
         for reference in references
     )
+
+
+def test_protobuf_adapter_reuses_single_stripped_text_per_parse(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo_path = tmp_path / "protobuf-strip-reuse-repo"
+    (repo_path / "common").mkdir(parents=True)
+    (repo_path / "service").mkdir(parents=True)
+    (repo_path / "common" / "types.proto").write_text(
+        'syntax = "proto3";\n'
+        "package demo.common;\n"
+        "message User {}\n",
+        encoding="utf-8",
+    )
+    (repo_path / "service" / "api.proto").write_text(
+        'syntax = "proto3";\n'
+        "package demo.service;\n"
+        'import "common/types.proto";\n'
+        "service AccountService {\n"
+        "  rpc GetUser(demo.common.User) returns (demo.common.User);\n"
+        "}\n"
+        "message Wrapper {\n"
+        "  demo.common.User user = 1;\n"
+        "}\n",
+        encoding="utf-8",
+    )
+    module_index = repository_service._build_module_index(
+        ["service/api.proto", "common/types.proto"],
+        root_path=repo_path,
+    )
+    text = (repo_path / "service" / "api.proto").read_text(encoding="utf-8")
+    original_strip_comments = repository_protobuf_primitives.strip_comments
+    strip_call_count = 0
+
+    def counting_strip_comments(text: str) -> str:
+        nonlocal strip_call_count
+        strip_call_count += 1
+        return original_strip_comments(text)
+
+    monkeypatch.setattr(
+        repository_protobuf_primitives,
+        "strip_comments",
+        counting_strip_comments,
+    )
+    monkeypatch.setattr(
+        repository_protobuf_analysis_support,
+        "strip_comments",
+        counting_strip_comments,
+    )
+
+    dependencies = repository_service.protobuf_adapter.parse_dependencies_only(
+        "service/api.proto",
+        text,
+        module_index,
+        stable_identifier=repository_service._stable_identifier,
+        normalize_repository_relative_path=repository_service._normalize_repository_relative_path,
+        resolve_suffix_match=repository_service._resolve_suffix_match,
+    )
+    symbols, _, references = repository_service.protobuf_adapter.parse_file(
+        "service/api.proto",
+        text,
+        module_index,
+        stable_identifier=repository_service._stable_identifier,
+        normalize_repository_relative_path=repository_service._normalize_repository_relative_path,
+        resolve_suffix_match=repository_service._resolve_suffix_match,
+    )
+
+    assert dependencies
+    assert symbols
+    assert references
+    assert strip_call_count == 2
 
 
 def test_protobuf_language_detection_supports_proto_and_buf_configs() -> None:

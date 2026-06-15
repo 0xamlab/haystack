@@ -25,6 +25,10 @@ strip_comments = c_family_adapter.strip_comments
 normalize_symbol_name = c_family_adapter.normalize_symbol_name
 
 
+def _coalesced_stripped_text(text: str, stripped_text: str | None = None) -> str:
+    return stripped_text if stripped_text is not None else strip_comments(text)
+
+
 def _normalize_repository_relative_path(value: str) -> str:
     raw_parts = PurePosixPath(str(value).replace("\\", "/")).parts
     normalized_parts: list[str] = []
@@ -51,14 +55,19 @@ def has_opencl_path_hints(path: Path | PurePosixPath) -> bool:
     return PurePosixPath(path).suffix.lower() in OPENCL_SUFFIXES
 
 
-def is_probable_opencl_source(*, path: Path | PurePosixPath, text: str) -> bool:
+def is_probable_opencl_source(
+    *,
+    path: Path | PurePosixPath,
+    text: str,
+    stripped_text: str | None = None,
+) -> bool:
     normalized_path = PurePosixPath(path)
     if normalized_path.suffix.lower() not in OPENCL_SUFFIXES or not text or _looks_binaryish(text):
         return False
-    stripped_text = strip_comments(text)
-    if not stripped_text.strip():
+    coalesced_stripped_text = _coalesced_stripped_text(text, stripped_text)
+    if not coalesced_stripped_text.strip():
         return False
-    return bool(_OPENCL_MARKER_RE.search(stripped_text))
+    return bool(_OPENCL_MARKER_RE.search(coalesced_stripped_text))
 
 
 def module_name_from_path(file_path: str) -> str:
@@ -98,6 +107,9 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
+    stripped_text: str | None = None,
+    include_symbol_aliases: bool = True,
 ) -> set[str]:
     del stable_identifier
     normalized_path = _normalize_repository_relative_path(file_path)
@@ -117,20 +129,28 @@ def module_aliases_for_path(
             normalize_repository_relative_path=_normalize_repository_relative_path,
         )
     )
-    try:
-        text = (root_path / normalized_path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        text = ""
-    if text and is_probable_opencl_source(path=Path(normalized_path), text=text):
-        sanitized_text = c_family_adapter.strip_attributes(strip_comments(text))
-        for regex in (c_family_adapter.TYPE_DECL_RE, c_family_adapter.FUNCTION_DECL_RE):
-            for match in regex.finditer(sanitized_text):
-                symbol_name = normalize_symbol_name(str(match.group("name") or ""))
-                if not symbol_name or c_family_adapter.is_macro_like_symbol_name(symbol_name):
-                    continue
-                aliases.add(symbol_name)
-                if module_name:
-                    aliases.add(f"{module_name}.{symbol_name}")
+    file_text = text
+    if file_text is None:
+        try:
+            file_text = (root_path / normalized_path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            file_text = ""
+    coalesced_stripped_text = _coalesced_stripped_text(file_text, stripped_text)
+    if file_text and is_probable_opencl_source(
+        path=Path(normalized_path),
+        text=file_text,
+        stripped_text=coalesced_stripped_text,
+    ):
+        if include_symbol_aliases:
+            sanitized_text = c_family_adapter.strip_attributes(coalesced_stripped_text)
+            for regex in (c_family_adapter.TYPE_DECL_RE, c_family_adapter.FUNCTION_DECL_RE):
+                for match in regex.finditer(sanitized_text):
+                    symbol_name = normalize_symbol_name(str(match.group("name") or ""))
+                    if not symbol_name or c_family_adapter.is_macro_like_symbol_name(symbol_name):
+                        continue
+                    aliases.add(symbol_name)
+                    if module_name:
+                        aliases.add(f"{module_name}.{symbol_name}")
     return {alias for alias in aliases if alias}
 
 

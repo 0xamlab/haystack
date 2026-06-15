@@ -40,17 +40,25 @@ def _extract_import_bindings(
     stable_identifier: StableIdentifier,
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
+    include_entries: tuple[tuple[str, int], ...] | None = None,
 ) -> tuple[tuple[_Dependency, ...], dict[str, _ImportedSymbolBinding]]:
-    bindings = imported_symbol_bindings(
+    include_entries = (
+        repository_stan_primitives._include_statements_from_stripped_text(
+            repository_stan_primitives.strip_comments(text)
+        )
+        if include_entries is None
+        else include_entries
+    )
+    bindings = repository_stan_primitives._imported_symbol_bindings_from_include_statements(
         current_file=file_path,
-        text=text,
+        include_entries=include_entries,
         module_index=module_index,
         normalize_repository_relative_path=normalize_repository_relative_path,
         resolve_suffix_match=resolve_suffix_match,
     )
     dependencies: list[_Dependency] = []
     seen_dependencies: set[tuple[str | None, str]] = set()
-    for include_target, line_number in include_statements(text):
+    for include_target, line_number in include_entries:
         target_file = resolve_include(
             current_file=file_path,
             include_target=include_target,
@@ -91,6 +99,9 @@ def parse_dependencies_only(
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
 ) -> tuple[_Dependency, ...]:
+    include_entries = repository_stan_primitives._include_statements_from_stripped_text(
+        repository_stan_primitives.strip_comments(text)
+    )
     dependencies, _bindings = _extract_import_bindings(
         file_path=file_path,
         text=text,
@@ -98,6 +109,7 @@ def parse_dependencies_only(
         stable_identifier=stable_identifier,
         normalize_repository_relative_path=normalize_repository_relative_path,
         resolve_suffix_match=resolve_suffix_match,
+        include_entries=include_entries,
     )
     return dependencies
 
@@ -115,13 +127,20 @@ def parse_file(
     tuple[_Dependency, ...],
     tuple[_SymbolReferenceCandidate, ...],
 ]:
-    if not is_probable_stan_source(path=Path(file_path), text=text):
+    stripped_text = repository_stan_primitives._prepared_stan_source_text(
+        path=Path(file_path),
+        text=text,
+    )
+    if stripped_text is None:
         return (), (), ()
 
-    symbols = collect_symbols(
+    symbols = repository_stan_primitives._collect_symbols_from_stripped_text(
         file_path=file_path,
-        text=text,
+        stripped_text=stripped_text,
         stable_identifier=stable_identifier,
+    )
+    include_entries = repository_stan_primitives._include_statements_from_stripped_text(
+        stripped_text
     )
     dependencies, import_bindings = _extract_import_bindings(
         file_path=file_path,
@@ -130,6 +149,7 @@ def parse_file(
         stable_identifier=stable_identifier,
         normalize_repository_relative_path=normalize_repository_relative_path,
         resolve_suffix_match=resolve_suffix_match,
+        include_entries=include_entries,
     )
     local_symbol_lookup = {
         symbol.symbol_name: symbol.symbol_id
@@ -137,7 +157,6 @@ def parse_file(
         if symbol.symbol_kind != "module"
     }
     local_symbol_names = set(local_symbol_lookup)
-    stripped_text = strip_comments(text)
     lines = stripped_text.splitlines()
     symbol_references: list[_SymbolReferenceCandidate] = []
     seen_reference_keys: set[tuple[str | None, str, str]] = set()
@@ -221,4 +240,3 @@ def parse_file(
                 target_symbol_id=None,
             )
     return symbols, dependencies, tuple(symbol_references)
-

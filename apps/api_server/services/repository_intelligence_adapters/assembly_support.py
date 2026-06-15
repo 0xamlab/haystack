@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from functools import lru_cache
 from pathlib import Path, PurePosixPath
 
 _KNOWN_ASSEMBLY_SUFFIXES = (".a51", ".asm", ".inc", ".s")
@@ -405,7 +406,7 @@ def _strip_inline_comment(raw_line: str) -> str:
     return raw_line
 
 
-def strip_comments(text: str) -> str:
+def _strip_comments_uncached(text: str) -> str:
     without_block_comments = re.sub(
         r"/\*.*?\*/",
         lambda match: _replace_with_spaces(match.group(0)),
@@ -421,6 +422,11 @@ def strip_comments(text: str) -> str:
             continue
         stripped_lines.append(_strip_inline_comment(raw_line))
     return "\n".join(stripped_lines)
+
+
+@lru_cache(maxsize=512)
+def strip_comments(text: str) -> str:
+    return _strip_comments_uncached(text)
 
 
 def _is_probable_instruction(opcode: str) -> bool:

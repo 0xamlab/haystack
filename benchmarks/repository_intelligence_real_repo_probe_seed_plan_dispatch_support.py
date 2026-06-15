@@ -5,6 +5,63 @@ from typing import Any
 
 from apps.api_server.services import repository_intelligence as repository_service
 
+_EIFFEL_PROFILE_HINT_MANIFEST_LIMIT = 64
+_EIFFEL_PROFILE_HINT_STALL_LIMIT = 8
+_EIFFEL_PROFILE_HINT_ENTRYPOINT_SATURATION = 8
+_EIFFEL_PROFILE_HINT_SUPPORT_ROOT_SATURATION = 24
+_EIFFEL_PROFILE_HINT_POST_SATURATION_STALL_LIMIT = 2
+
+
+def _eiffel_entrypoint_hints_expose_creation(
+    repo_path: Any,
+    eiffel_entrypoint_hints: set[str],
+) -> bool:
+    """True when any discovered Eiffel root-class hint declares a creation procedure.
+
+    An Eiffel root class with a ``create`` clause is a complete, scorable entrypoint, so a
+    stalled (non-growing) manifest scan over identical hints is conclusive. Without one the
+    entrypoint surface is still incomplete and the scan should continue to the manifest cap.
+    """
+    for relative_path in eiffel_entrypoint_hints:
+        normalized_path = repository_service._normalize_repository_relative_path(relative_path)
+        if not normalized_path:
+            continue
+        try:
+            text = (repo_path / normalized_path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        for raw_line in text.splitlines():
+            stripped = raw_line.strip().lower()
+            # The creation clause is the ``create`` keyword as a class-level feature header
+            # (``create`` or ``create {SOME_CLASS}``), not an inline ``create x.make`` call.
+            if stripped == "create" or stripped.startswith("create "):
+                return True
+    return False
+
+
+def _nearest_moonbit_dispatch_manifest_path(
+    candidate_path: str,
+    *,
+    moonbit_config_paths: set[str],
+) -> str:
+    normalized_candidate_path = repository_service._normalize_repository_relative_path(candidate_path)
+    if not normalized_candidate_path:
+        return candidate_path
+    candidate_pure_path = PurePosixPath(normalized_candidate_path)
+    if candidate_pure_path.name.lower() == "moon.mod":
+        return normalized_candidate_path
+    current = candidate_pure_path.parent
+    while True:
+        module_manifest_path = repository_service._normalize_repository_relative_path(
+            str(current / "moon.mod")
+        )
+        if module_manifest_path and module_manifest_path in moonbit_config_paths:
+            return module_manifest_path
+        if str(current) in {"", "."} or not current.parts:
+            break
+        current = current.parent
+    return normalized_candidate_path
+
 
 def dispatch_basenames_to_ecosystem(state: Any) -> None:
     from benchmarks import repository_intelligence_real_repo_probe as probe_module
@@ -14,6 +71,7 @@ def dispatch_basenames_to_ecosystem(state: Any) -> None:
     _ada_profile_hints = probe_module._ada_profile_hints
     _agda_profile_hints = probe_module._agda_profile_hints
     _apex_profile_hints = probe_module._apex_profile_hints
+    _ballerina_profile_hints = probe_module._ballerina_profile_hints
     _bicep_profile_hints_from_candidates = probe_module._bicep_profile_hints_from_candidates
     _bitbake_profile_candidate_paths = probe_module._bitbake_profile_candidate_paths
     _bitbake_profile_hints_from_candidates = probe_module._bitbake_profile_hints_from_candidates
@@ -31,6 +89,7 @@ def dispatch_basenames_to_ecosystem(state: Any) -> None:
     _cue_profile_hints_from_candidates = probe_module._cue_profile_hints_from_candidates
     _dbt_project_profile_hints = probe_module._dbt_project_profile_hints
     _delphi_profile_hints = probe_module._delphi_profile_hints
+    _dm_profile_hints = probe_module._dm_profile_hints
     _dhall_profile_hints_from_candidates = probe_module._dhall_profile_hints_from_candidates
     _dockerfile_profile_hints_from_candidates = probe_module._dockerfile_profile_hints_from_candidates
     _dub_profile_hints = probe_module._dub_profile_hints
@@ -55,6 +114,7 @@ def dispatch_basenames_to_ecosystem(state: Any) -> None:
     _is_cfml_box_config_path = probe_module._is_cfml_box_config_path
     _is_cue_module_config_path = probe_module._is_cue_module_config_path
     _is_delphi_project_config_path = probe_module._is_delphi_project_config_path
+    _is_dm_project_config_path = probe_module._is_dm_project_config_path
     _is_eiffel_project_config_path = probe_module._is_eiffel_project_config_path
     _is_non_operational_profile_path = probe_module._is_non_operational_profile_path
     _is_odin_ols_config_path = probe_module._is_odin_ols_config_path
@@ -71,6 +131,7 @@ def dispatch_basenames_to_ecosystem(state: Any) -> None:
     _meson_profile_hints = probe_module._meson_profile_hints
     _mix_profile_hints = probe_module._mix_profile_hints
     _ml_profile_hints = probe_module._ml_profile_hints
+    _moonbit_profile_candidate_paths = probe_module._moonbit_profile_candidate_paths
     _moonbit_profile_hints_from_candidates = probe_module._moonbit_profile_hints_from_candidates
     _mql5_profile_hints = probe_module._mql5_profile_hints
     _nextflow_profile_hints_from_candidates = probe_module._nextflow_profile_hints_from_candidates
@@ -140,11 +201,74 @@ def dispatch_basenames_to_ecosystem(state: Any) -> None:
     detected_ecosystem_scores = state.detected_ecosystem_scores
     entrypoint_candidate_ecosystems = state.entrypoint_candidate_ecosystems
     support_root_candidate_ecosystems = state.support_root_candidate_ecosystems
+    eiffel_profile_hint_manifest_count = 0
+    eiffel_profile_hint_stall_count = 0
+    eiffel_entrypoint_hints: set[str] = set()
+    eiffel_support_root_hints: set[str] = set()
+    moonbit_config_paths = {
+        repository_service._normalize_repository_relative_path(config_path)
+        for config_path in discovered_config_paths
+        if PurePosixPath(config_path).name.lower()
+        in repository_service.moonbit_adapter.MOONBIT_CONFIG_BASENAMES
+    }
+    processed_moonbit_manifest_paths: set[str] = set()
+
+    # A BitBake layer (conf/layer.conf, bblayers.conf, …) governs its recipes; a CMakeLists.txt
+    # that lives under a ``recipes-*/`` recipe directory is a per-recipe build artifact, not an
+    # independent CMake project, so it must not be dispatched as its own cmake/c++ ecosystem.
+    bitbake_layer_present = any(
+        PurePosixPath(config_path).name.lower()
+        in repository_service.bitbake_adapter.BITBAKE_CONFIG_BASENAMES
+        for config_path in discovered_config_paths
+    )
+
+    def _is_bitbake_recipe_subpath(relative_path: str) -> bool:
+        normalized_relative_path = repository_service._normalize_repository_relative_path(
+            relative_path
+        )
+        return any(
+            part.lower().startswith("recipes-")
+            for part in PurePosixPath(normalized_relative_path).parts[:-1]
+        )
+
+    # When the caller pins an explicit directory focus (not the whole repo and not concrete
+    # focus files), the operational ecosystem must reflect that subtree. A governing manifest
+    # outside the focus (e.g. a root CMakeLists.txt while the focus is a scripts package) is
+    # still recorded as a config path, but its profile-hint entrypoints/support roots that
+    # live *outside* the focus subtree must not seed candidates or score an ecosystem — only
+    # the in-focus surface should. (A manifest whose hints fall inside the focus, e.g. a root
+    # pyproject.toml pointing at ``src``, is unaffected.)
+    focus_subtree_prefixes = [
+        normalized_focus_path
+        for raw_focus_path in focus_paths
+        if (
+            normalized_focus_path := repository_service._normalize_repository_relative_path(
+                raw_focus_path
+            )
+        )
+        and normalized_focus_path != "."
+        and not (repo_path / normalized_focus_path).is_file()
+    ]
+
+    def _within_focus_subtree(relative_path: str) -> bool:
+        if not focus_subtree_prefixes:
+            return True
+        normalized_relative_path = repository_service._normalize_repository_relative_path(
+            relative_path
+        )
+        if not normalized_relative_path:
+            return False
+        return any(
+            normalized_relative_path == focus_prefix
+            or normalized_relative_path.startswith(f"{focus_prefix}/")
+            for focus_prefix in focus_subtree_prefixes
+        )
 
     for candidate_path in sorted(discovered_config_paths):
         basename = PurePosixPath(candidate_path).name.lower()
         manifest_ecosystems: set[str]
         preferred_manifest_ecosystems: set[str] = set()
+        should_score_manifest = True
         if _is_xpp_descriptor_config_path(repo_path, candidate_path):
             manifest_ecosystems = {"xpp"}
             entrypoints, roots, configs = _xpp_profile_hints(repo_path, candidate_path)
@@ -218,7 +342,47 @@ def dispatch_basenames_to_ecosystem(state: Any) -> None:
             candidate_path,
         ):
             manifest_ecosystems = {"eiffel"}
-            entrypoints, roots, configs = _eiffel_profile_hints(repo_path, candidate_path)
+            eiffel_surface_saturated = (
+                len(eiffel_entrypoint_hints) >= _EIFFEL_PROFILE_HINT_ENTRYPOINT_SATURATION
+                and len(eiffel_support_root_hints) >= _EIFFEL_PROFILE_HINT_SUPPORT_ROOT_SATURATION
+            )
+            # A stalled hint expansion is only conclusive when the discovered root class already
+            # exposes a creation procedure: that is a complete, scorable entrypoint, so further
+            # identical manifests add nothing. Without a creation procedure the hints are still
+            # incomplete, so keep scanning manifests up to the hard manifest cap to try to find
+            # a richer entrypoint surface.
+            eiffel_root_has_creation_procedure = _eiffel_entrypoint_hints_expose_creation(
+                repo_path,
+                eiffel_entrypoint_hints,
+            )
+            if (
+                eiffel_profile_hint_manifest_count >= _EIFFEL_PROFILE_HINT_MANIFEST_LIMIT
+                or (
+                    eiffel_root_has_creation_procedure
+                    and eiffel_profile_hint_stall_count >= _EIFFEL_PROFILE_HINT_STALL_LIMIT
+                )
+                or (
+                    eiffel_surface_saturated
+                    and eiffel_profile_hint_stall_count
+                    >= _EIFFEL_PROFILE_HINT_POST_SATURATION_STALL_LIMIT
+                )
+            ):
+                entrypoints, roots, configs = set(), set(), set()
+                should_score_manifest = False
+            else:
+                eiffel_profile_hint_manifest_count += 1
+                entrypoints, roots, configs = _eiffel_profile_hints(repo_path, candidate_path)
+                previous_entrypoint_count = len(eiffel_entrypoint_hints)
+                previous_support_root_count = len(eiffel_support_root_hints)
+                eiffel_entrypoint_hints.update(entrypoints)
+                eiffel_support_root_hints.update(roots)
+                if (
+                    len(eiffel_entrypoint_hints) == previous_entrypoint_count
+                    and len(eiffel_support_root_hints) == previous_support_root_count
+                ):
+                    eiffel_profile_hint_stall_count += 1
+                else:
+                    eiffel_profile_hint_stall_count = 0
         elif basename.endswith((".lpi", ".lpk")):
             manifest_ecosystems = {"pascal"}
             entrypoints, roots, configs = _pascal_project_profile_hints(candidate_path)
@@ -237,6 +401,12 @@ def dispatch_basenames_to_ecosystem(state: Any) -> None:
         elif basename == "qsharp.json":
             manifest_ecosystems = {"qsharp"}
             entrypoints, roots, configs = _qsharp_profile_hints(candidate_path)
+        elif basename == "ballerina.toml":
+            manifest_ecosystems = {"ballerina"}
+            entrypoints, roots, configs = _ballerina_profile_hints(
+                repo_path,
+                candidate_path,
+            )
         elif basename.endswith(".cabal"):
             manifest_ecosystems = {"haskell"}
             entrypoints, roots, configs = _haskell_cabal_profile_hints(repo_path, candidate_path)
@@ -244,8 +414,11 @@ def dispatch_basenames_to_ecosystem(state: Any) -> None:
             manifest_ecosystems = {"haskell"}
             entrypoints, roots, configs = _haskell_project_profile_hints(candidate_path)
         elif basename == "pom.xml":
-            manifest_ecosystems = {"java"}
-            entrypoints, roots, configs = _pom_profile_hints(candidate_path)
+            entrypoints, roots, configs, preferred_manifest_ecosystems = _pom_profile_hints(
+                repo_path,
+                candidate_path,
+            )
+            manifest_ecosystems = {"java", "maven", *preferred_manifest_ecosystems}
         elif basename in {"build.gradle", "settings.gradle"}:
             manifest_ecosystems = {"groovy", "java"}
             entrypoints, roots, configs = _gradle_profile_hints(repo_path, candidate_path)
@@ -270,6 +443,9 @@ def dispatch_basenames_to_ecosystem(state: Any) -> None:
                 continue
             manifest_ecosystems = {"sml"}
         elif basename == "cmakelists.txt":
+            if bitbake_layer_present and _is_bitbake_recipe_subpath(candidate_path):
+                # Per-recipe CMakeLists under a BitBake layer is a build artifact, not a project.
+                continue
             manifest_ecosystems = {
                 "cmake",
                 *_c_family_manifest_ecosystems(
@@ -327,6 +503,15 @@ def dispatch_basenames_to_ecosystem(state: Any) -> None:
                 repo_path,
                 candidate_path,
             )
+        elif (
+            PurePosixPath(candidate_path).suffix.lower() == ".dme"
+            and _is_dm_project_config_path(repo_path, candidate_path)
+        ):
+            manifest_ecosystems = {"dm"}
+            entrypoints, roots, configs = _dm_profile_hints(
+                repo_path,
+                candidate_path,
+            )
         elif basename in {"rescript.json", "bsconfig.json"}:
             manifest_ecosystems = {"rescript"}
             entrypoints, roots, configs = _rescript_profile_hints(
@@ -334,8 +519,20 @@ def dispatch_basenames_to_ecosystem(state: Any) -> None:
                 candidate_path,
             )
         elif basename in repository_service.moonbit_adapter.MOONBIT_CONFIG_BASENAMES:
+            moonbit_manifest_path = _nearest_moonbit_dispatch_manifest_path(
+                candidate_path,
+                moonbit_config_paths=moonbit_config_paths,
+            )
+            if moonbit_manifest_path in processed_moonbit_manifest_paths:
+                detected_ecosystems.add("moonbit")
+                continue
+            processed_moonbit_manifest_paths.add(moonbit_manifest_path)
             manifest_ecosystems = {"moonbit"}
-            moonbit_candidate_paths = _seeded_repo_profile_candidate_paths(
+            moonbit_candidate_paths = _moonbit_profile_candidate_paths(
+                repo_path=repo_path,
+                manifest_path=moonbit_manifest_path,
+                max_files=max_files,
+            ) or _seeded_repo_profile_candidate_paths(
                 repo_path=repo_path,
                 focus_paths=focus_paths,
                 max_files=max_files,
@@ -352,7 +549,7 @@ def dispatch_basenames_to_ecosystem(state: Any) -> None:
             entrypoints, roots, configs = _moonbit_profile_hints_from_candidates(
                 repo_path,
                 moonbit_candidate_paths,
-                manifest_path=candidate_path,
+                manifest_path=moonbit_manifest_path,
             )
         elif basename == "gleam.toml":
             manifest_ecosystems = {"gleam"}
@@ -703,11 +900,11 @@ def dispatch_basenames_to_ecosystem(state: Any) -> None:
         elif basename.endswith(".fsproj"):
             manifest_ecosystems = {"dotnet", "fsharp"}
             preferred_manifest_ecosystems = {"fsharp"}
-            entrypoints, roots, configs = _csproj_profile_hints(candidate_path)
+            entrypoints, roots, configs = _csproj_profile_hints(candidate_path, repo_path=repo_path)
         elif basename.endswith(".vbproj"):
             manifest_ecosystems = {"dotnet", "visualbasic"}
             preferred_manifest_ecosystems = {"visualbasic"}
-            entrypoints, roots, configs = _csproj_profile_hints(candidate_path)
+            entrypoints, roots, configs = _csproj_profile_hints(candidate_path, repo_path=repo_path)
         elif basename == "sfdx-project.json":
             manifest_ecosystems = {"apex"}
             entrypoints, roots, configs = _apex_profile_hints(repo_path, candidate_path)
@@ -768,16 +965,27 @@ def dispatch_basenames_to_ecosystem(state: Any) -> None:
             entrypoints, roots, configs = _sln_profile_hints(repo_path, candidate_path)
         elif basename.endswith(".csproj"):
             manifest_ecosystems = {"dotnet"}
-            entrypoints, roots, configs = _csproj_profile_hints(candidate_path)
+            entrypoints, roots, configs = _csproj_profile_hints(candidate_path, repo_path=repo_path)
         else:
             continue
-        detected_ecosystems.update(manifest_ecosystems)
         if _is_non_operational_profile_path(candidate_path):
             entrypoints = set()
             roots = set()
+        if focus_subtree_prefixes:
+            # Drop hint entrypoints/roots that fall outside the explicit focus subtree, and
+            # only let a manifest score / register its ecosystem when it retains in-focus
+            # surface (or the manifest itself lives in focus). This keeps the manifest in
+            # config_paths while preventing an out-of-focus host language from winning rank.
+            entrypoints = {path for path in entrypoints if _within_focus_subtree(str(path))}
+            roots = {path for path in roots if _within_focus_subtree(str(path))}
+            manifest_in_focus = _within_focus_subtree(candidate_path)
+            if not (manifest_in_focus or entrypoints or roots):
+                should_score_manifest = False
+                manifest_ecosystems = set()
+        detected_ecosystems.update(manifest_ecosystems)
         # ReScript manifests are common in JS/TS host repos, so let them seed
         # candidate collection without automatically winning operational rank.
-        if manifest_ecosystems not in ({"rescript"}, {"moonbit"}):
+        if should_score_manifest and manifest_ecosystems not in ({"rescript"}, {"moonbit"}):
             _accumulate_detected_ecosystem_scores(
                 detected_ecosystem_scores,
                 ecosystems=manifest_ecosystems,

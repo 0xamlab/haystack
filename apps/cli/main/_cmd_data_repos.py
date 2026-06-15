@@ -659,10 +659,32 @@ def _print_repository_capabilities_summary(data: dict[str, Any], *, format: str)
         "supported_real_language_count",
         len(supported_languages),
     )
+    ranked_target_language_count = support_progress.get("ranked_target_language_count")
+    requested_ranked_target_language_count = support_progress.get(
+        "requested_ranked_target_language_count"
+    )
+    available_ranked_real_language_count = support_progress.get(
+        "available_ranked_real_language_count"
+    )
     progress_label = support_progress.get("progress_label", "unknown")
     print("\nRepository Intelligence Capabilities")
     print(f"Supported:       {supported_count}")
     print(f"Progress:        {progress_label}")
+    if (
+        isinstance(requested_ranked_target_language_count, int)
+        and isinstance(ranked_target_language_count, int)
+        and requested_ranked_target_language_count != ranked_target_language_count
+    ):
+        availability_suffix = ""
+        if isinstance(available_ranked_real_language_count, int):
+            availability_suffix = (
+                f", available ranked real languages {available_ranked_real_language_count}"
+            )
+        print(
+            "Requested rank: "
+            f"{requested_ranked_target_language_count} "
+            f"(effective {ranked_target_language_count}{availability_suffix})"
+        )
     print(f"Languages:       {', '.join(str(language) for language in supported_languages[:16])}")
     if len(supported_languages) > 16:
         print(f"Language total:  {len(supported_languages)}")

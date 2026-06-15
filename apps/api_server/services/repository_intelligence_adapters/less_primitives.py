@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable, Iterable
+from functools import lru_cache
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -23,7 +24,14 @@ _DECLARATION_LINE_RE = re.compile(r"(?m)^\s*[@.#]")
 _RESERVED_VARIABLE_NAMES = frozenset({"import", "media", "supports"})
 
 
-def strip_comments(text: str) -> str:
+def _coerce_stripped_text(text: str, stripped_text: str | None = None) -> str:
+    return strip_comments(text) if stripped_text is None else stripped_text
+
+
+@lru_cache(maxsize=1024)
+def _strip_comments_cached(text: str) -> str:
+    if "//" not in text and "/*" not in text:
+        return text
     characters = list(text)
     index = 0
     in_string: str | None = None
@@ -65,15 +73,24 @@ def strip_comments(text: str) -> str:
     return "".join(characters)
 
 
+def strip_comments(text: str) -> str:
+    return _strip_comments_cached(text)
+
+
 def has_less_path_hints(path: Path | PurePosixPath) -> bool:
     return PurePosixPath(path).suffix.lower() in _KNOWN_SUFFIXES
 
 
-def is_probable_less_source(*, path: Path | PurePosixPath, text: str) -> bool:
+def is_probable_less_source(
+    *,
+    path: Path | PurePosixPath,
+    text: str,
+    stripped_text: str | None = None,
+) -> bool:
     normalized_path = PurePosixPath(path)
     if not has_less_path_hints(normalized_path):
         return False
-    stripped_text = strip_comments(text)
+    stripped_text = _coerce_stripped_text(text, stripped_text)
     if not stripped_text.strip():
         return False
     return bool(
@@ -114,8 +131,12 @@ def _ordered_names(*values: str) -> tuple[str, ...]:
     return tuple(ordered)
 
 
-def iter_import_entries(text: str) -> tuple[tuple[str, int], ...]:
-    stripped_text = strip_comments(text)
+def iter_import_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, int], ...]:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
     entries: list[tuple[str, int]] = []
     seen: set[tuple[str, int]] = set()
     for match in _IMPORT_RE.finditer(stripped_text):
@@ -132,8 +153,12 @@ def iter_import_entries(text: str) -> tuple[tuple[str, int], ...]:
     return tuple(entries)
 
 
-def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
-    stripped_text = strip_comments(text)
+def iter_symbol_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, str, int], ...]:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
     patterns = (
         (_VARIABLE_RE, "variable"),
         (_MIXIN_RE, "mixin"),
@@ -152,8 +177,12 @@ def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
     return tuple(sorted(entries, key=lambda item: (item[2], item[0], item[1])))
 
 
-def iter_reference_entries(text: str) -> tuple[tuple[str, str | None, str, int], ...]:
-    stripped_text = strip_comments(text)
+def iter_reference_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, str | None, str, int], ...]:
+    stripped_text = _coerce_stripped_text(text, stripped_text)
     entries: list[tuple[str, str | None, str, int]] = []
     seen: set[tuple[str, str | None, str, int]] = set()
     patterns: tuple[tuple[re.Pattern[str], str], ...] = (

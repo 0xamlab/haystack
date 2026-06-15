@@ -8,6 +8,10 @@ from typing import Any
 
 import pytest
 
+from apps.api_server.services.repository_language_priority import (
+    DEFAULT_REAL_LANGUAGE_RANK_TARGET,
+)
+
 ROOT = Path(__file__).resolve().parents[1]
 PYTHON_SDK = ROOT / "packages" / "python-sdk"
 if str(PYTHON_SDK) not in sys.path:
@@ -175,9 +179,9 @@ def _capabilities_payload() -> dict[str, object]:
         "supported_languages": ["python", "typescript", "coq"],
         "support_progress": {
             "supported_real_language_count": 3,
-            "ranked_target_language_count": 200,
-            "progress_fraction": 3 / 200,
-            "progress_label": "3 / 200",
+            "ranked_target_language_count": DEFAULT_REAL_LANGUAGE_RANK_TARGET,
+            "progress_fraction": 3 / DEFAULT_REAL_LANGUAGE_RANK_TARGET,
+            "progress_label": f"3 / {DEFAULT_REAL_LANGUAGE_RANK_TARGET}",
         },
     }
 
@@ -383,7 +387,7 @@ def test_decision_engine_client_repository_methods_return_typed_models(
     assert isinstance(simulation, DecisionEnvelope)
     assert isinstance(apply_result, RepositoryApplyResult)
     assert capabilities.supported_languages == ["python", "typescript", "coq"]
-    assert capabilities.support_progress.progress_label == "3 / 200"
+    assert capabilities.support_progress.progress_label == f"3 / {DEFAULT_REAL_LANGUAGE_RANK_TARGET}"
     assert triage.workspace_evidence_bundle_artifact.artifact_kind == "WorkspaceEvidenceBundle"
     assert plan.decision_plan.repository_analysis is not None
     assert plan.decision_plan.repository_analysis.planner_model_id == "repo-fix-model"
@@ -610,5 +614,5 @@ async def test_async_decision_engine_client_repository_methods_return_typed_mode
     assert isinstance(simulation, DecisionEnvelope)
     assert isinstance(apply_result, RepositoryApplyResult)
     assert capabilities.supported_languages == ["python", "typescript", "coq"]
-    assert capabilities.support_progress.progress_label == "3 / 200"
+    assert capabilities.support_progress.progress_label == f"3 / {DEFAULT_REAL_LANGUAGE_RANK_TARGET}"
     assert graph.graph_edges[0].edge_type == "imports"

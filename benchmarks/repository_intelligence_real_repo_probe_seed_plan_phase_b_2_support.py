@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import PurePosixPath
 from typing import Any
 
 
@@ -10,7 +11,13 @@ def apply_seed_plan_phase_b_2(state: Any) -> None:
     _accumulate_detected_ecosystem_scores = probe_module._accumulate_detected_ecosystem_scores
     _al_profile_hints_from_candidates = probe_module._al_profile_hints_from_candidates
     _antlr_profile_hints_from_candidates = probe_module._antlr_profile_hints_from_candidates
+    _brightscript_profile_hints_from_candidates = (
+        probe_module._brightscript_profile_hints_from_candidates
+    )
     _candidate_ecosystem_counts = probe_module._candidate_ecosystem_counts
+    _codeql_profile_hints_from_candidates = probe_module._codeql_profile_hints_from_candidates
+    _circom_profile_hints_from_candidates = probe_module._circom_profile_hints_from_candidates
+    _dafny_profile_hints_from_candidates = probe_module._dafny_profile_hints_from_candidates
     _gherkin_profile_hints_from_candidates = probe_module._gherkin_profile_hints_from_candidates
     _graphviz_profile_hints_from_candidates = probe_module._graphviz_profile_hints_from_candidates
     _mermaid_profile_hints_from_candidates = probe_module._mermaid_profile_hints_from_candidates
@@ -305,6 +312,92 @@ def apply_seed_plan_phase_b_2(state: Any) -> None:
                 )
                 detected_ecosystem_scores["openqasm"] += min(140, 32 + openqasm_count * 14)
 
+    brightscript_ecosystem_counts = _candidate_ecosystem_counts(
+        candidate_file_paths,
+        repo_path=repo_path,
+        ecosystems={"brightscript", "xml", "javascript", "typescript", "python", "java", "shell"},
+    )
+    if brightscript_ecosystem_counts["brightscript"] > 0:
+        entrypoints, roots, configs = _brightscript_profile_hints_from_candidates(
+            repo_path,
+            candidate_file_paths,
+        )
+        if entrypoints or roots or configs:
+            detected_ecosystems.add("brightscript")
+            brightscript_count = brightscript_ecosystem_counts["brightscript"]
+            host_count = max(
+                brightscript_ecosystem_counts[ecosystem]
+                for ecosystem in ("xml", "javascript", "typescript", "python", "java", "shell")
+            )
+            if brightscript_count >= max(2, host_count):
+                _register_candidate_ecosystems(
+                    entrypoint_candidate_ecosystems,
+                    values=entrypoints,
+                    ecosystems={"brightscript"},
+                )
+                _register_candidate_ecosystems(
+                    support_root_candidate_ecosystems,
+                    values=roots,
+                    ecosystems={"brightscript"},
+                )
+                entrypoint_candidates.update(entrypoints)
+                support_root_candidates.update(roots)
+                config_path_candidates.update(configs)
+                _accumulate_detected_ecosystem_scores(
+                    detected_ecosystem_scores,
+                    ecosystems={"brightscript"},
+                    config_path=sorted(configs or entrypoints or roots or {""})[0],
+                    repo_path=repo_path,
+                    entrypoints=entrypoints,
+                    roots=roots,
+                    configs=configs,
+                )
+                detected_ecosystem_scores["brightscript"] += min(
+                    140, 32 + brightscript_count * 14
+                )
+
+    codeql_ecosystem_counts = _candidate_ecosystem_counts(
+        candidate_file_paths,
+        repo_path=repo_path,
+        ecosystems={"codeql", "python", "javascript", "typescript", "java", "cs", "cpp", "go", "rust", "shell"},
+    )
+    if codeql_ecosystem_counts["codeql"] > 0:
+        entrypoints, roots, configs = _codeql_profile_hints_from_candidates(
+            repo_path,
+            candidate_file_paths,
+        )
+        if entrypoints or roots or configs:
+            detected_ecosystems.add("codeql")
+            codeql_count = codeql_ecosystem_counts["codeql"]
+            host_count = max(
+                codeql_ecosystem_counts[ecosystem]
+                for ecosystem in ("python", "javascript", "typescript", "java", "cs", "cpp", "go", "rust", "shell")
+            )
+            if codeql_count >= max(2, host_count):
+                _register_candidate_ecosystems(
+                    entrypoint_candidate_ecosystems,
+                    values=entrypoints,
+                    ecosystems={"codeql"},
+                )
+                _register_candidate_ecosystems(
+                    support_root_candidate_ecosystems,
+                    values=roots,
+                    ecosystems={"codeql"},
+                )
+                entrypoint_candidates.update(entrypoints)
+                support_root_candidates.update(roots)
+                config_path_candidates.update(configs)
+                _accumulate_detected_ecosystem_scores(
+                    detected_ecosystem_scores,
+                    ecosystems={"codeql"},
+                    config_path=sorted(configs or entrypoints or roots or {""})[0],
+                    repo_path=repo_path,
+                    entrypoints=entrypoints,
+                    roots=roots,
+                    configs=configs,
+                )
+                detected_ecosystem_scores["codeql"] += min(140, 32 + codeql_count * 14)
+
     qsharp_ecosystem_counts = _candidate_ecosystem_counts(
         candidate_file_paths,
         repo_path=repo_path,
@@ -369,6 +462,216 @@ def apply_seed_plan_phase_b_2(state: Any) -> None:
                         0,
                         detected_ecosystem_scores["qsharp"] - 48,
                     )
+
+    circom_ecosystem_counts = _candidate_ecosystem_counts(
+        candidate_file_paths,
+        repo_path=repo_path,
+        ecosystems={"circom", "javascript", "node", "python", "rust", "solidity", "typescript"},
+    )
+    if circom_ecosystem_counts["circom"] > 0:
+        entrypoints, roots, configs = _circom_profile_hints_from_candidates(
+            repo_path,
+            candidate_file_paths,
+        )
+        if entrypoints or roots or configs:
+            detected_ecosystems.add("circom")
+            circom_count = circom_ecosystem_counts["circom"]
+            host_count = sum(
+                circom_ecosystem_counts[ecosystem]
+                for ecosystem in ("javascript", "node", "python", "rust", "solidity", "typescript")
+            )
+            should_operationalize_circom = (
+                circom_count >= 2
+                and (
+                    host_count == 0
+                    or circom_count >= host_count
+                    or circom_count * 3 >= host_count
+                )
+            )
+            if should_operationalize_circom:
+                _register_candidate_ecosystems(
+                    entrypoint_candidate_ecosystems,
+                    values=entrypoints,
+                    ecosystems={"circom"},
+                )
+                _register_candidate_ecosystems(
+                    support_root_candidate_ecosystems,
+                    values=roots,
+                    ecosystems={"circom"},
+                )
+                entrypoint_candidates.update(entrypoints)
+                support_root_candidates.update(roots)
+                config_path_candidates.update(configs)
+                _accumulate_detected_ecosystem_scores(
+                    detected_ecosystem_scores,
+                    ecosystems={"circom"},
+                    config_path=sorted(configs or entrypoints or roots or {""})[0],
+                    repo_path=repo_path,
+                    entrypoints=entrypoints,
+                    roots=roots,
+                    configs=configs,
+                )
+                if circom_count >= max(2, host_count):
+                    detected_ecosystem_scores["circom"] += min(140, 32 + circom_count * 14)
+
+    dafny_ecosystem_counts = _candidate_ecosystem_counts(
+        candidate_file_paths,
+        repo_path=repo_path,
+        ecosystems={"dafny", "cs", "dotnet", "python"},
+    )
+    if dafny_ecosystem_counts["dafny"] > 0:
+        entrypoints, roots, configs = _dafny_profile_hints_from_candidates(
+            repo_path,
+            candidate_file_paths,
+        )
+        if entrypoints or roots or configs:
+            detected_ecosystems.add("dafny")
+            dafny_count = dafny_ecosystem_counts["dafny"]
+            host_count = max(
+                dafny_ecosystem_counts["cs"],
+                dafny_ecosystem_counts["dotnet"],
+            ) + dafny_ecosystem_counts["python"]
+            should_operationalize_dafny = (
+                dafny_count >= 2
+                and (
+                    host_count == 0
+                    or dafny_count >= host_count
+                    or dafny_count * 3 >= host_count
+                )
+            )
+            if should_operationalize_dafny:
+                _register_candidate_ecosystems(
+                    entrypoint_candidate_ecosystems,
+                    values=entrypoints,
+                    ecosystems={"dafny"},
+                )
+                _register_candidate_ecosystems(
+                    support_root_candidate_ecosystems,
+                    values=roots,
+                    ecosystems={"dafny"},
+                )
+                entrypoint_candidates.update(entrypoints)
+                support_root_candidates.update(roots)
+                config_path_candidates.update(configs)
+                _accumulate_detected_ecosystem_scores(
+                    detected_ecosystem_scores,
+                    ecosystems={"dafny"},
+                    config_path=sorted(configs or entrypoints or roots or {""})[0],
+                    repo_path=repo_path,
+                    entrypoints=entrypoints,
+                    roots=roots,
+                    configs=configs,
+                )
+                if dafny_count >= max(2, host_count):
+                    detected_ecosystem_scores["dafny"] += min(140, 32 + dafny_count * 14)
+
+    clojurescript_ecosystem_counts = _candidate_ecosystem_counts(
+        candidate_file_paths,
+        repo_path=repo_path,
+        ecosystems={"clojurescript", "clojure", "javascript", "node"},
+    )
+    if clojurescript_ecosystem_counts["clojurescript"] > 0:
+        clojurescript_config_paths = set(discovered_config_paths) | set(config_path_candidates)
+        has_shadow_cljs = any(
+            PurePosixPath(path).name.lower() == "shadow-cljs.edn"
+            for path in clojurescript_config_paths
+        )
+        if has_shadow_cljs:
+            detected_ecosystems.add("clojurescript")
+            clojurescript_count = clojurescript_ecosystem_counts["clojurescript"]
+            host_count = sum(
+                clojurescript_ecosystem_counts[ecosystem]
+                for ecosystem in ("clojure", "javascript", "node")
+            )
+            should_operationalize_clojurescript = (
+                clojurescript_count >= 2
+                and clojurescript_count >= clojurescript_ecosystem_counts["clojure"]
+                and (
+                    host_count == 0
+                    or clojurescript_count >= host_count
+                    or clojurescript_count * 2 >= host_count
+                )
+            )
+            if should_operationalize_clojurescript:
+                detected_ecosystem_scores["clojurescript"] += min(
+                    160,
+                    48 + clojurescript_count * 12,
+                )
+                non_clojurescript_max_score = max(
+                    (
+                        score
+                        for ecosystem, score in detected_ecosystem_scores.items()
+                        if ecosystem != "clojurescript"
+                    ),
+                    default=0,
+                )
+                detected_ecosystem_scores["clojurescript"] = max(
+                    detected_ecosystem_scores["clojurescript"],
+                    non_clojurescript_max_score + 16,
+                )
+            elif clojurescript_count * 2 <= max(1, host_count):
+                dominant_host = max(
+                    ("clojure", "javascript", "node"),
+                    key=lambda ecosystem: clojurescript_ecosystem_counts[ecosystem],
+                )
+                if clojurescript_ecosystem_counts[dominant_host] > 0:
+                    detected_ecosystem_scores[dominant_host] += min(
+                        140,
+                        24 + clojurescript_ecosystem_counts[dominant_host] * 6,
+                    )
+                    detected_ecosystem_scores["clojurescript"] = max(
+                        0,
+                        detected_ecosystem_scores["clojurescript"] - 48,
+                    )
+
+    dm_ecosystem_counts = _candidate_ecosystem_counts(
+        candidate_file_paths,
+        repo_path=repo_path,
+        ecosystems={"dm", "cs", "dotnet", "javascript", "typescript", "node", "python", "dockerfile"},
+    )
+    if dm_ecosystem_counts["dm"] > 0:
+        detected_ecosystems.add("dm")
+        dm_count = dm_ecosystem_counts["dm"]
+        host_count = sum(
+            dm_ecosystem_counts[ecosystem]
+            for ecosystem in ("cs", "dotnet", "javascript", "typescript", "node", "python", "dockerfile")
+        )
+        should_operationalize_dm = (
+            dm_count >= 2
+            and (
+                host_count == 0
+                or dm_count >= host_count
+                or dm_count * 2 >= host_count
+            )
+        )
+        if should_operationalize_dm:
+            detected_ecosystem_scores["dm"] += min(180, 40 + dm_count * 12)
+            non_dm_max_score = max(
+                (
+                    score
+                    for ecosystem, score in detected_ecosystem_scores.items()
+                    if ecosystem != "dm"
+                ),
+                default=0,
+            )
+            detected_ecosystem_scores["dm"] = max(
+                detected_ecosystem_scores["dm"],
+                non_dm_max_score + 16,
+            )
+        elif dm_count * 2 <= max(1, host_count):
+            dominant_host = max(
+                ("cs", "dotnet", "javascript", "typescript", "node", "python", "dockerfile"),
+                key=lambda ecosystem: dm_ecosystem_counts[ecosystem],
+            )
+            if dm_ecosystem_counts[dominant_host] > 0:
+                detected_ecosystem_scores[dominant_host] += min(
+                    140,
+                    24 + dm_ecosystem_counts[dominant_host] * 6,
+                )
+                detected_ecosystem_scores["dm"] = max(
+                    0,
+                    detected_ecosystem_scores["dm"] - 48,
+                )
 
     al_ecosystem_counts = _candidate_ecosystem_counts(
         candidate_file_paths,

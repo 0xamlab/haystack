@@ -318,25 +318,33 @@ def _labview_profile_hints(
         return entrypoint_paths, support_roots, config_paths
 
     search_root = repo_path / project_dir
-    for pattern in ("*.vi", "*.vim", "*.vit", "*.lvclass", "*.lvlib", "*.ctl"):
-        for candidate_path in sorted(search_root.rglob(pattern)):
-            relative_path = repository_service._normalize_repository_relative_path(
-                str(candidate_path.relative_to(repo_path))
-            )
-            if (
-                not relative_path
-                or repository_service._is_test_path(relative_path)
-                or _is_non_operational_profile_path(relative_path)
-            ):
-                continue
-            parent_dir = repository_service._normalize_repository_relative_path(
-                str(PurePosixPath(relative_path).parent)
-            )
-            if parent_dir:
-                support_roots.add(parent_dir)
-            if PurePosixPath(relative_path).suffix.lower() == ".ctl":
-                continue
-            entrypoint_paths.add(relative_path)
+    allowed_suffixes = {".vi", ".vim", ".vit", ".lvclass", ".lvlib", ".ctl"}
+    fallback_candidates: list[Path] = []
+    for candidate_path in search_root.rglob("*"):
+        if not candidate_path.is_file() or candidate_path.is_symlink():
+            continue
+        if candidate_path.suffix.lower() not in allowed_suffixes:
+            continue
+        fallback_candidates.append(candidate_path)
+    for candidate_path in sorted(fallback_candidates):
+        relative_path = repository_service._normalize_repository_relative_path(
+            str(candidate_path.relative_to(repo_path))
+        )
+        if (
+            not relative_path
+            or repository_service._is_test_path(relative_path)
+            or _is_non_operational_profile_path(relative_path)
+        ):
+            continue
+        pure_relative_path = PurePosixPath(relative_path)
+        parent_dir = repository_service._normalize_repository_relative_path(
+            str(pure_relative_path.parent)
+        )
+        if parent_dir:
+            support_roots.add(parent_dir)
+        if pure_relative_path.suffix.lower() == ".ctl":
+            continue
+        entrypoint_paths.add(relative_path)
 
     return entrypoint_paths, support_roots, config_paths
 
@@ -414,6 +422,9 @@ def _puppet_profile_hints(
     repo_path: Path,
     manifest_path: str,
 ) -> tuple[set[str], set[str], set[str]]:
+    probe_module = _probe_module()
+    _git_repo_relative_files = probe_module._git_repo_relative_files
+
     normalized_path = repository_service._normalize_repository_relative_path(manifest_path)
     if not normalized_path:
         return set(), set(), set()
@@ -437,30 +448,54 @@ def _puppet_profile_hints(
         f"{root_prefix}site.pp",
         f"{root_prefix}plans/init.pp",
     }
-    search_root = repo_path / project_dir
-    try:
-        candidates = sorted(search_root.rglob("*.pp"))
-    except OSError:
-        candidates = []
-    for candidate in candidates:
+    normalized_project_dir = repository_service._normalize_repository_relative_path(str(project_dir))
+    puppet_source_roots = {
+        source_root.lower()
+        for source_root in repository_service.puppet_adapter._PUPPET_SOURCE_ROOTS
+    }
+
+    def _iter_candidate_paths() -> list[str]:
+        git_relative_files = _git_repo_relative_files(repo_path)
+        if git_relative_files is not None:
+            return git_relative_files
+        search_root = repo_path / project_dir
         try:
-            relative_path = repository_service._normalize_repository_relative_path(
-                str(candidate.relative_to(repo_path))
+            return sorted(
+                str(candidate.relative_to(repo_path)).replace("\\", "/")
+                for candidate in search_root.rglob("*.pp")
+                if candidate.is_file() and not candidate.is_symlink()
             )
-        except ValueError:
-            continue
-        if not relative_path or _is_non_operational_profile_path(relative_path):
-            continue
-        try:
-            text = candidate.read_text(encoding="utf-8", errors="replace")
         except OSError:
-            continue
-        if not repository_service.puppet_adapter.is_probable_puppet_source(
-            path=Path(relative_path),
-            text=text,
+            return []
+
+    project_dir_part_count = len(project_dir.parts)
+    for raw_relative_path in _iter_candidate_paths():
+        relative_path = repository_service._normalize_repository_relative_path(raw_relative_path)
+        if (
+            not relative_path
+            or repository_service._is_test_path(relative_path)
+            or _is_non_operational_profile_path(relative_path)
         ):
             continue
-        entrypoint_paths.add(relative_path)
+        if normalized_project_dir and not (
+            relative_path == normalized_project_dir
+            or relative_path.startswith(f"{normalized_project_dir}/")
+        ):
+            continue
+        candidate = repo_path / relative_path
+        if not candidate.is_file() or candidate.is_symlink():
+            continue
+        pure_relative_path = PurePosixPath(relative_path)
+        if pure_relative_path.suffix.lower() != ".pp":
+            continue
+        relative_parts = pure_relative_path.parts[project_dir_part_count:]
+        if not relative_parts:
+            continue
+        if (
+            pure_relative_path.name.lower() == "site.pp"
+            or relative_parts[0].lower() in puppet_source_roots
+        ):
+            entrypoint_paths.add(relative_path)
     return entrypoint_paths, support_roots, config_paths
 
 

@@ -781,5 +781,3 @@ def test_repository_intelligence_autoit_helpers_are_modularized() -> None:
     assert repository_service.autoit_adapter.parse_file is (
         repository_autoit_analysis_support.parse_file
     )
-
-

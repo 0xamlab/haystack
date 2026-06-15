@@ -4,6 +4,16 @@ Extracted from tests/test_repository_intelligence_real_repo_probe.py during modu
 """
 from __future__ import annotations
 
+import benchmarks.repository_intelligence_real_repo_probe as probe_module
+from benchmarks.repository_intelligence_real_repo_probe_profile_manifest_systems_support import (
+    _csproj_profile_hints,
+)
+from benchmarks.repository_intelligence_real_repo_probe_profile_style_candidates_support import (
+    _less_profile_hints_from_candidates,
+    _scss_profile_hints_from_candidates,
+    _stylus_profile_hints_from_candidates,
+)
+
 from tests._repository_intelligence_real_repo_probe_helpers import *  # noqa: F401,F403
 
 
@@ -55,6 +65,91 @@ def test_operational_seed_plan_without_diagnostics_promotes_typst_when_surface_d
     assert "typst.toml" in seed_plan["config_paths"]
 
 
+def test_operational_seed_plan_without_diagnostics_promotes_tex_examples_surface(
+    tmp_path: Path,
+) -> None:
+    repo_path = tmp_path / "tex-examples-profile-repo"
+    (repo_path / "examples" / "cv").mkdir(parents=True)
+    (repo_path / "examples" / "resume").mkdir(parents=True)
+    (repo_path / "examples" / "coverletter.tex").write_text(
+        '\\begin{document}\\nCover letter\\n\\end{document}\\n',
+        encoding="utf-8",
+    )
+    (repo_path / "examples" / "cv.tex").write_text(
+        '\\input{cv/experience}\\n'
+        '\\input{cv/education}\\n'
+        '\\input{cv/skills}\\n'
+        '\\begin{document}\\nCV\\n\\end{document}\\n',
+        encoding="utf-8",
+    )
+    (repo_path / "examples" / "resume.tex").write_text(
+        '\\input{resume/committees}\\n'
+        '\\input{resume/summary}\\n'
+        '\\begin{document}\\nResume\\n\\end{document}\\n',
+        encoding="utf-8",
+    )
+    (repo_path / "examples" / "cv" / "certificates.tex").write_text(
+        '\\section{Certificates}\\n',
+        encoding="utf-8",
+    )
+    (repo_path / "examples" / "cv" / "committees.tex").write_text(
+        '\\section{Committees}\\n',
+        encoding="utf-8",
+    )
+    (repo_path / "examples" / "cv" / "education.tex").write_text(
+        '\\section{Education}\\n',
+        encoding="utf-8",
+    )
+    (repo_path / "examples" / "cv" / "experience.tex").write_text(
+        '\\section{Experience}\\n',
+        encoding="utf-8",
+    )
+    (repo_path / "examples" / "cv" / "honors.tex").write_text(
+        '\\section{Honors}\\n',
+        encoding="utf-8",
+    )
+    (repo_path / "examples" / "cv" / "presentation.tex").write_text(
+        '\\section{Presentations}\\n',
+        encoding="utf-8",
+    )
+    (repo_path / "examples" / "cv" / "skills.tex").write_text(
+        '\\section{Skills}\\n',
+        encoding="utf-8",
+    )
+    (repo_path / "examples" / "cv" / "writing.tex").write_text(
+        '\\section{Writing}\\n',
+        encoding="utf-8",
+    )
+    (repo_path / "examples" / "resume" / "committees.tex").write_text(
+        '\\section{Committees}\\n',
+        encoding="utf-8",
+    )
+    (repo_path / "examples" / "resume" / "education.tex").write_text(
+        '\\section{Education}\\n',
+        encoding="utf-8",
+    )
+    (repo_path / "examples" / "resume" / "experience.tex").write_text(
+        '\\section{Experience}\\n',
+        encoding="utf-8",
+    )
+    (repo_path / "examples" / "resume" / "summary.tex").write_text(
+        '\\section{Summary}\\n',
+        encoding="utf-8",
+    )
+
+    seed_plan = _derive_operational_seed_plan_without_diagnostics(
+        repo_path=repo_path,
+        focus_paths=["examples", "examples/cv", "examples/resume"],
+        max_files=128,
+    )
+
+    assert "tex" in seed_plan["detected_ecosystems"]
+    assert seed_plan["operational_ecosystems"][0] == "tex"
+    assert "examples/coverletter.tex" in seed_plan["entrypoint_files"]
+    assert "examples/cv.tex" in seed_plan["entrypoint_files"]
+    assert "examples" in seed_plan["support_roots"]
+
+
 def test_operational_seed_plan_without_diagnostics_promotes_scss_when_scss_surface_dominates(
     tmp_path: Path,
 ) -> None:
@@ -103,6 +198,124 @@ def test_operational_seed_plan_without_diagnostics_promotes_scss_when_scss_surfa
     assert "app.scss" in seed_plan["entrypoint_files"]
     assert "styles/_mixins.scss" in seed_plan["candidate_file_paths"]
     assert "styles" in seed_plan["support_roots"]
+
+
+def test_scss_profile_hints_reuse_loaded_text_per_candidate_file(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo_path = tmp_path / "scss-profile-hints-cache-repo"
+    (repo_path / "styles").mkdir(parents=True)
+    mixins_path = repo_path / "styles" / "_mixins.scss"
+    app_path = repo_path / "app.scss"
+    mixins_path.write_text(
+        "@mixin button-base {\n"
+        "  color: $brand;\n"
+        "}\n",
+        encoding="utf-8",
+    )
+    app_path.write_text(
+        '@use "styles/mixins" as mixins;\n'
+        ".button {\n"
+        "  @include mixins.button-base;\n"
+        "}\n",
+        encoding="utf-8",
+    )
+
+    original_read_text = Path.read_text
+    read_counts: dict[Path, int] = {}
+
+    def _counting_read_text(self: Path, *args, **kwargs) -> str:
+        if self in {mixins_path, app_path}:
+            read_counts[self] = read_counts.get(self, 0) + 1
+        return original_read_text(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", _counting_read_text)
+    monkeypatch.setattr(
+        probe_module,
+        "_probe_language_for_path",
+        lambda _path, repo_path=None: "scss",
+    )
+
+    entrypoints, roots, configs = _scss_profile_hints_from_candidates(
+        repo_path,
+        ["styles/_mixins.scss", "app.scss"],
+    )
+
+    assert "app.scss" in entrypoints
+    assert "styles" in roots
+    assert configs == set()
+    assert read_counts.get(mixins_path, 0) <= 1
+    assert read_counts.get(app_path, 0) <= 1
+
+
+def test_style_profile_hints_share_candidate_language_buckets(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo_path = tmp_path / "style-profile-shared-buckets-repo"
+    (repo_path / "styles").mkdir(parents=True)
+    (repo_path / "styles" / "theme.less").write_text(
+        "@brand-color: #123456;\n.card { color: @brand-color; }\n",
+        encoding="utf-8",
+    )
+    (repo_path / "styles" / "theme.scss").write_text(
+        "$brand: #123456;\n.card { color: $brand; }\n",
+        encoding="utf-8",
+    )
+    (repo_path / "styles" / "theme.styl").write_text(
+        "brandColor = #123456\n.card\n  color brandColor\n",
+        encoding="utf-8",
+    )
+    (repo_path / "src").mkdir(parents=True)
+    (repo_path / "src" / "main.ts").write_text(
+        "export const run = () => 'ok';\n",
+        encoding="utf-8",
+    )
+
+    language_probe_calls: list[str] = []
+    language_by_suffix = {
+        ".less": "less",
+        ".scss": "scss",
+        ".styl": "stylus",
+        ".ts": "typescript",
+    }
+
+    def _counting_probe_language_for_path(path: str, repo_path: Path | None = None) -> str:
+        del repo_path
+        language_probe_calls.append(path)
+        return language_by_suffix.get(Path(path).suffix.lower(), "unknown")
+
+    monkeypatch.setattr(
+        probe_module,
+        "_probe_language_for_path",
+        _counting_probe_language_for_path,
+    )
+
+    candidate_paths = [
+        "styles/theme.less",
+        "styles/theme.scss",
+        "styles/theme.styl",
+        "src/main.ts",
+    ]
+
+    less_entrypoints, _less_roots, _less_configs = _less_profile_hints_from_candidates(
+        repo_path,
+        candidate_paths,
+    )
+    scss_entrypoints, _scss_roots, _scss_configs = _scss_profile_hints_from_candidates(
+        repo_path,
+        candidate_paths,
+    )
+    stylus_entrypoints, _stylus_roots, _stylus_configs = _stylus_profile_hints_from_candidates(
+        repo_path,
+        candidate_paths,
+    )
+
+    assert "styles/theme.less" in less_entrypoints
+    assert "styles/theme.scss" in scss_entrypoints
+    assert "styles/theme.styl" in stylus_entrypoints
+    assert sorted(language_probe_calls) == sorted(candidate_paths)
 
 
 def test_operational_seed_plan_without_diagnostics_promotes_dockerfile_when_surface_dominates(
@@ -223,6 +436,48 @@ def test_operational_seed_plan_without_diagnostics_does_not_force_typst_first_in
     assert "typst" in seed_plan["detected_ecosystems"]
     assert seed_plan["operational_ecosystems"][0] != "typst"
     assert "rust" in seed_plan["operational_ecosystems"]
+
+
+def test_operational_seed_plan_without_diagnostics_promotes_typst_package_registry_surface(
+    tmp_path: Path,
+) -> None:
+    repo_path = tmp_path / "typst-package-registry-repo"
+    (repo_path / "bundler" / "src").mkdir(parents=True)
+    (repo_path / "bundler" / "Cargo.toml").write_text(
+        "[package]\nname = \"bundler\"\nversion = \"0.1.0\"\n",
+        encoding="utf-8",
+    )
+    (repo_path / "bundler" / "src" / "main.rs").write_text(
+        "fn main() {}\n",
+        encoding="utf-8",
+    )
+    for index in range(12):
+        package_root = repo_path / "packages" / "preview" / f"pkg_{index}" / "0.1.0"
+        (package_root / "src").mkdir(parents=True)
+        (package_root / "template").mkdir(parents=True)
+        (package_root / "src" / "lib.typ").write_text(
+            f"#let render_{index}() = [Package {index}]\n",
+            encoding="utf-8",
+        )
+        (package_root / "template" / "demo.typ").write_text(
+            f'#import "../src/lib.typ": render_{index}\n',
+            encoding="utf-8",
+        )
+        if index < 6:
+            (package_root / "flake.nix").write_text(
+                "{ outputs = _: {}; }\n",
+                encoding="utf-8",
+            )
+
+    seed_plan = _derive_operational_seed_plan_without_diagnostics(
+        repo_path=repo_path,
+        focus_paths=["."],
+        max_files=256,
+    )
+
+    assert seed_plan["operational_ecosystems"][0] == "typst"
+    assert "rust" in seed_plan["detected_ecosystems"]
+    assert any(path.endswith(".typ") for path in seed_plan["entrypoint_files"])
 
 
 def test_operational_seed_plan_without_diagnostics_uses_build_zig_profile(
@@ -432,6 +687,44 @@ def test_operational_seed_plan_without_diagnostics_uses_fsproj_profile(
     assert "src/AcmeApp/Program.fs" in seed_plan["entrypoint_files"]
     assert "src/AcmeApp/Routes.fs" in seed_plan["entrypoint_files"]
     assert "test/AcmeApp.Benchmarks/Program.fs" not in seed_plan["entrypoint_files"]
+
+
+def test_csproj_profile_hints_use_explicit_compile_and_project_references(
+    tmp_path: Path,
+) -> None:
+    repo_path = tmp_path / "fsharp-library-repo"
+    (repo_path / "src" / "Library").mkdir(parents=True)
+    (repo_path / "src" / "Common").mkdir(parents=True)
+    (repo_path / "src" / "Library" / "Library.fsproj").write_text(
+        "<Project Sdk=\"Microsoft.NET.Sdk\">\n"
+        "  <ItemGroup>\n"
+        "    <Compile Include=\"Domain.fs\" />\n"
+        "    <Compile Include=\"Parser.fs\" />\n"
+        "    <ProjectReference Include=\"../Common/Common.fsproj\" />\n"
+        "  </ItemGroup>\n"
+        "</Project>\n",
+        encoding="utf-8",
+    )
+    (repo_path / "src" / "Common" / "Common.fsproj").write_text(
+        "<Project Sdk=\"Microsoft.NET.Sdk\"></Project>\n",
+        encoding="utf-8",
+    )
+
+    entrypoints, roots, configs = _csproj_profile_hints(
+        "src/Library/Library.fsproj",
+        repo_path=repo_path,
+    )
+
+    assert entrypoints == {
+        "src/Library/Domain.fs",
+        "src/Library/Parser.fs",
+    }
+    assert "src/Library" in roots
+    assert "src/Common" in roots
+    assert configs == {
+        "src/Library/Library.fsproj",
+        "src/Common/Common.fsproj",
+    }
 
 
 def test_operational_seed_plan_without_diagnostics_uses_vbproj_profile(
@@ -731,5 +1024,3 @@ def test_operational_seed_plan_without_diagnostics_uses_cfml_box_profile(
     assert "Application.cfc" in seed_plan["entrypoint_files"]
     assert "public/index.cfm" in seed_plan["entrypoint_files"]
     assert "tests/ApplicationTest.cfc" not in seed_plan["entrypoint_files"]
-
-

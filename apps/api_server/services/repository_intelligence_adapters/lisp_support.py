@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable, Sequence
+from functools import lru_cache
 from pathlib import PurePosixPath
 from typing import Any
 
@@ -114,6 +115,8 @@ RESERVED_SYMBOL_NAMES = frozenset(
         "with-slots",
     }
 )
+_STRIPPED_COMMENT_CACHE_LIMIT = 128
+_STRIPPED_COMMENT_CACHE: dict[str, str] = {}
 
 
 def _replace_with_spaces(value: str) -> str:
@@ -134,7 +137,13 @@ def _normalize_repository_relative_path(value: str) -> str:
     return "/".join(normalized_parts)
 
 
-def strip_comments(text: str) -> str:
+def clear_strip_comments_cache() -> None:
+    _STRIPPED_COMMENT_CACHE.clear()
+    _tokenize_form.cache_clear()
+    _extract_top_level_forms.cache_clear()
+
+
+def _strip_comments_uncached(text: str) -> str:
     output: list[str] = []
     index = 0
     block_depth = 0
@@ -188,6 +197,18 @@ def strip_comments(text: str) -> str:
         output.append(character)
         index += 1
     return "".join(output)
+
+
+def strip_comments(text: str) -> str:
+    cached = _STRIPPED_COMMENT_CACHE.get(text)
+    if cached is not None:
+        return cached
+    stripped_text = _strip_comments_uncached(text)
+    if len(_STRIPPED_COMMENT_CACHE) >= _STRIPPED_COMMENT_CACHE_LIMIT:
+        oldest_key = next(iter(_STRIPPED_COMMENT_CACHE))
+        _STRIPPED_COMMENT_CACHE.pop(oldest_key, None)
+    _STRIPPED_COMMENT_CACHE[text] = stripped_text
+    return stripped_text
 
 
 def _normalize_atom(value: str) -> str:
@@ -259,6 +280,7 @@ def _path_aliases(path: PurePosixPath) -> tuple[str, ...]:
     return tuple(sorted(alias for alias in aliases if alias and alias not in {".", "/"}))
 
 
+@lru_cache(maxsize=4096)
 def _tokenize_form(form_text: str) -> tuple[str, ...]:
     tokens: list[str] = []
     index = 0
@@ -333,6 +355,7 @@ def _parse_form(form_text: str) -> Any:
     return _parse_expression()
 
 
+@lru_cache(maxsize=1024)
 def _extract_top_level_forms(text: str) -> tuple[tuple[int, str], ...]:
     forms: list[tuple[int, str]] = []
     stripped_text = strip_comments(text)
@@ -550,4 +573,3 @@ def project_component_entries(
                 }
             )
     return tuple(component_entries)
-

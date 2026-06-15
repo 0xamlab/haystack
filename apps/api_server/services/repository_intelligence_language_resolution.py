@@ -74,9 +74,6 @@ from apps.api_server.services.repository_intelligence_adapters import (
     rust_language as rust_adapter,
 )
 from apps.api_server.services.repository_intelligence_adapters import (
-    shell as shell_adapter,
-)
-from apps.api_server.services.repository_intelligence_adapters import (
     swift as swift_adapter,
 )
 from apps.api_server.services.repository_intelligence_contracts import (
@@ -89,6 +86,10 @@ from apps.api_server.services.repository_intelligence_indexing import (
     _normalize_repository_relative_path,
     _resolve_directory_prefix_match,
     _resolve_suffix_match,
+    # Use the shared indexing shell-adapter wrapper (the object the public API exposes as
+    # ``repository_service.shell_adapter``) so monkeypatching it is honoured by
+    # ``_resolve_shell_source`` — mirroring how powershell_adapter resolves to one object.
+    shell_adapter,
 )
 from apps.api_server.services.repository_intelligence_shared import _stable_identifier
 

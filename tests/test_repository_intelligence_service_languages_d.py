@@ -4,7 +4,37 @@ Extracted from tests/test_repository_intelligence_service.py during modularizati
 """
 from __future__ import annotations
 
+from apps.api_server.services.repository_intelligence_adapters import apex as repository_apex_adapter
+from apps.api_server.services.repository_intelligence_adapters import (
+    classic_visual_basic_analysis_support as repository_classic_visual_basic_analysis_support,
+)
+from apps.api_server.services.repository_intelligence_adapters import (
+    classic_visual_basic_primitives as repository_classic_visual_basic_primitives,
+)
+from apps.api_server.services.repository_intelligence_adapters import plsql as repository_plsql_adapter
+from apps.api_server.services.repository_intelligence_adapters import sql as repository_sql_adapter
 from tests._repository_intelligence_service_helpers import *  # noqa: F401,F403
+
+
+def test_apex_strip_comments_reuses_cached_result() -> None:
+    source_text = (
+        "public class AccountHandler {\n"
+        "    /* block comment */\n"
+        "    // line comment\n"
+        "    public static void run() {\n"
+        "    }\n"
+        "}\n"
+    )
+    repository_apex_adapter._strip_comments_cached.cache_clear()
+
+    first_result = repository_apex_adapter.strip_comments(source_text)
+    first_cache_info = repository_apex_adapter._strip_comments_cached.cache_info()
+    second_result = repository_apex_adapter.strip_comments(source_text)
+    second_cache_info = repository_apex_adapter._strip_comments_cached.cache_info()
+
+    assert first_result == second_result
+    assert first_cache_info.hits == 0
+    assert second_cache_info.hits == 1
 
 
 def test_applescript_adapter_module_aliases_include_script_and_handler_symbols(
@@ -67,6 +97,113 @@ def test_apex_adapter_module_aliases_include_declared_symbols(tmp_path: Path) ->
     assert "AccountTriggerHandler.run" in aliases
 
 
+def test_apex_adapter_module_aliases_can_skip_symbol_names(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo_path = tmp_path / "apex-module-only-repo"
+    (repo_path / "force-app" / "main" / "default" / "classes").mkdir(parents=True)
+    source_text = (
+        "public with sharing class AccountTriggerHandler\n"
+        "{\n"
+        "    public static void run() {\n"
+        "    }\n"
+        "}\n"
+    )
+    (repo_path / "force-app" / "main" / "default" / "classes" / "AccountTriggerHandler.cls").write_text(
+        source_text,
+        encoding="utf-8",
+    )
+
+    class _UnexpectedMethodPattern:
+        def finditer(self, *args: object, **kwargs: object) -> object:
+            raise AssertionError("module-only apex aliases should skip method symbol collection")
+
+    monkeypatch.setattr(repository_apex_adapter, "_METHOD_DECL_RE", _UnexpectedMethodPattern())
+
+    aliases = repository_service.apex_adapter.module_aliases_for_path(
+        root_path=repo_path,
+        file_path="force-app/main/default/classes/AccountTriggerHandler.cls",
+        stable_identifier=repository_service._stable_identifier,
+        text=source_text,
+        include_symbol_aliases=False,
+    )
+
+    assert "force-app/main/default/classes/AccountTriggerHandler.cls" in aliases
+    assert "force-app/main/default/classes/AccountTriggerHandler" in aliases
+    assert "force-app.main.default.classes.AccountTriggerHandler" in aliases
+    assert "AccountTriggerHandler" in aliases
+    assert "run" not in aliases
+    assert "AccountTriggerHandler.run" not in aliases
+
+
+def test_build_module_index_reuses_preloaded_text_for_apex_root_scoped_aliases(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo_path = tmp_path / "apex-module-index-repo"
+    (repo_path / "force-app" / "main" / "default" / "classes").mkdir(parents=True)
+    source_file = (
+        repo_path
+        / "force-app"
+        / "main"
+        / "default"
+        / "classes"
+        / "AccountTriggerHandler.cls"
+    )
+    source_text = (
+        "public with sharing class AccountTriggerHandler\n"
+        "{\n"
+        "    public static void run() {\n"
+        "    }\n"
+        "}\n"
+    )
+    source_file.write_text(source_text, encoding="utf-8")
+
+    original_read_text = Path.read_text
+    read_count = {"value": 0}
+    observed_texts: list[str | None] = []
+    observed_include_symbol_aliases: list[bool | None] = []
+    loaded_adapter = repository_root_scoped_aliases.apex_adapter._load()
+    original_module_aliases_for_path = loaded_adapter.module_aliases_for_path
+
+    def _counting_read_text(self: Path, *args, **kwargs) -> str:
+        if self == source_file:
+            read_count["value"] += 1
+        return original_read_text(self, *args, **kwargs)
+
+    def _recording_module_aliases_for_path(**kwargs) -> set[str]:
+        observed_texts.append(kwargs.get("text"))
+        observed_include_symbol_aliases.append(kwargs.get("include_symbol_aliases"))
+        return original_module_aliases_for_path(**kwargs)
+
+    monkeypatch.setattr(Path, "read_text", _counting_read_text)
+    monkeypatch.setattr(
+        loaded_adapter,
+        "module_aliases_for_path",
+        _recording_module_aliases_for_path,
+    )
+
+    module_index = repository_service._build_module_index(
+        ["force-app/main/default/classes/AccountTriggerHandler.cls"],
+        root_path=repo_path,
+    )
+
+    assert read_count["value"] == 1
+    assert observed_texts == [source_text]
+    assert observed_include_symbol_aliases == [False]
+    assert (
+        module_index["force-app/main/default/classes/AccountTriggerHandler.cls"]
+        == "force-app/main/default/classes/AccountTriggerHandler.cls"
+    )
+    assert (
+        module_index["force-app.main.default.classes.AccountTriggerHandler"]
+        == "force-app/main/default/classes/AccountTriggerHandler.cls"
+    )
+    assert "run" not in module_index
+    assert "AccountTriggerHandler.run" not in module_index
+
+
 def test_wolfram_adapter_module_aliases_include_package_and_declared_symbols(
     tmp_path: Path,
 ) -> None:
@@ -86,6 +223,44 @@ def test_wolfram_adapter_module_aliases_include_package_and_declared_symbols(
         root_path=repo_path,
         file_path="Kernel/Helpers.wl",
         stable_identifier=repository_service._stable_identifier,
+    )
+
+    assert "Kernel/Helpers.wl" in aliases
+    assert "Kernel/Helpers" in aliases
+    assert "Kernel.Helpers" in aliases
+    assert "Helpers" in aliases
+    assert "Acme`Helpers`" in aliases
+    assert "helper" in aliases
+    assert "Acme`helper" in aliases
+
+
+def test_wolfram_adapter_module_aliases_can_use_preloaded_text(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    repo_path = tmp_path / "wolfram-alias-preloaded-text-repo"
+    (repo_path / "Kernel").mkdir(parents=True)
+    source_text = (
+        'BeginPackage["Acme`"];\n'
+        'helper::usage = "helper";\n'
+        'Begin["`Private`"];\n'
+        "helper[] := 1;\n"
+        "End[];\n"
+        "EndPackage[];\n"
+    )
+    (repo_path / "Kernel" / "Helpers.wl").write_text(source_text, encoding="utf-8")
+
+    def _fail_read_text(*args: Any, **kwargs: Any) -> str:
+        raise AssertionError("module_aliases_for_path should reuse preloaded wolfram text")
+
+    monkeypatch.setattr(Path, "read_text", _fail_read_text)
+
+    aliases = repository_service.wolfram_adapter.module_aliases_for_path(
+        root_path=repo_path,
+        file_path="Kernel/Helpers.wl",
+        stable_identifier=repository_service._stable_identifier,
+        text=source_text,
+        stripped_text=repository_service.wolfram_adapter.strip_comments(source_text),
     )
 
     assert "Kernel/Helpers.wl" in aliases
@@ -211,6 +386,126 @@ def test_vba_adapter_module_aliases_include_declared_symbols(tmp_path: Path) -> 
     assert "jsondata.tojson" in aliases
 
 
+def test_classic_visual_basic_adapter_module_aliases_accept_preloaded_text_without_file_read(
+    tmp_path: Path,
+) -> None:
+    repo_path = tmp_path / "vb6-preloaded-text-repo"
+    (repo_path / "src").mkdir(parents=True)
+    source_path = repo_path / "src" / "cHelper.cls"
+    source_text = (
+        "VERSION 1.0 CLASS\n"
+        'Attribute VB_Name = "cHelper"\n'
+        "Option Explicit\n"
+        "\n"
+        "Public Function Helper() As String\n"
+        '    Helper = "ok"\n'
+        "End Function\n"
+    )
+    source_path.write_text(source_text, encoding="utf-8")
+
+    aliases = repository_service.classic_visual_basic_adapter.module_aliases_for_path(
+        root_path=repo_path,
+        file_path="src/cHelper.cls",
+        stable_identifier=repository_service._stable_identifier,
+        text=source_text,
+    )
+
+    assert "chelper" in aliases
+    assert "helper" in aliases
+    source_path.unlink()
+    aliases_without_disk_read = (
+        repository_service.classic_visual_basic_adapter.module_aliases_for_path(
+            root_path=repo_path,
+            file_path="src/cHelper.cls",
+            stable_identifier=repository_service._stable_identifier,
+            text=source_text,
+        )
+    )
+    assert aliases_without_disk_read == aliases
+
+
+def test_vba_adapter_module_aliases_accept_preloaded_text_without_file_read(
+    tmp_path: Path,
+) -> None:
+    repo_path = tmp_path / "vba-preloaded-text-repo"
+    (repo_path / "src").mkdir(parents=True)
+    source_path = repo_path / "src" / "JsonData.cls"
+    source_text = (
+        "VERSION 1.0 CLASS\n"
+        'Attribute VB_Name = "JsonData"\n'
+        "Option Explicit\n"
+        "\n"
+        "Public Function ToJson() As String\n"
+        '    ToJson = "{}"\n'
+        "End Function\n"
+    )
+    source_path.write_text(source_text, encoding="utf-8")
+
+    aliases = repository_service.vba_adapter.module_aliases_for_path(
+        root_path=repo_path,
+        file_path="src/JsonData.cls",
+        stable_identifier=repository_service._stable_identifier,
+        text=source_text,
+    )
+
+    assert "jsondata" in aliases
+    assert "tojson" in aliases
+    source_path.unlink()
+    aliases_without_disk_read = repository_service.vba_adapter.module_aliases_for_path(
+        root_path=repo_path,
+        file_path="src/JsonData.cls",
+        stable_identifier=repository_service._stable_identifier,
+        text=source_text,
+    )
+    assert aliases_without_disk_read == aliases
+
+
+def test_classic_visual_basic_adapter_module_aliases_strip_comments_once_for_symbol_aliases(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    repo_path = tmp_path / "vb6-strip-comments-repo"
+    (repo_path / "src").mkdir(parents=True)
+    source_path = repo_path / "src" / "Helper.bas"
+    text = (
+        "Option Explicit\n"
+        "\n"
+        "' comment before symbol\n"
+        "Public Function Helper() As String\n"
+        '    Helper = "ok"\n'
+        "End Function\n"
+    )
+    source_path.write_text(text, encoding="utf-8")
+
+    original_strip_comments = repository_classic_visual_basic_primitives.strip_comments
+    strip_comments_call_count = 0
+
+    def _counting_strip_comments(value: str) -> str:
+        nonlocal strip_comments_call_count
+        strip_comments_call_count += 1
+        return original_strip_comments(value)
+
+    monkeypatch.setattr(
+        repository_classic_visual_basic_primitives,
+        "strip_comments",
+        _counting_strip_comments,
+    )
+    monkeypatch.setattr(
+        repository_classic_visual_basic_analysis_support,
+        "strip_comments",
+        _counting_strip_comments,
+    )
+
+    aliases = repository_service.classic_visual_basic_adapter.module_aliases_for_path(
+        root_path=repo_path,
+        file_path="src/Helper.bas",
+        stable_identifier=repository_service._stable_identifier,
+    )
+
+    assert "helper" in aliases
+    assert strip_comments_call_count == 1
+
+
 def test_lisp_adapter_module_aliases_include_package_and_declared_symbols(
     tmp_path: Path,
 ) -> None:
@@ -238,6 +533,45 @@ def test_lisp_adapter_module_aliases_include_package_and_declared_symbols(
     assert "acme.helper:helper" in aliases
 
 
+def test_lisp_parse_file_does_not_reinvoke_parse_dependencies_only(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    repo_path = tmp_path / "lisp-parse-file-repo"
+    (repo_path / "src").mkdir(parents=True)
+    (repo_path / "src" / "helper.lisp").write_text(
+        "(defpackage #:acme.helper (:use #:cl) (:export #:helper))\n"
+        "(in-package #:acme.helper)\n"
+        "(defun helper () 1)\n",
+        encoding="utf-8",
+    )
+
+    def _fail_parse_dependencies_only(*args: Any, **kwargs: Any) -> tuple[dict[str, Any], ...]:
+        raise AssertionError("parse_file should build dependencies without a second dependency pass")
+
+    monkeypatch.setattr(
+        repository_lisp_analysis_support,
+        "parse_dependencies_only",
+        _fail_parse_dependencies_only,
+    )
+
+    symbols, dependencies, reference_candidates = repository_service.lisp_adapter.parse_file(
+        "src/helper.lisp",
+        (repo_path / "src" / "helper.lisp").read_text(encoding="utf-8"),
+        {
+            "acme.helper": "src/helper.lisp",
+            "src/helper.lisp": "src/helper.lisp",
+        },
+        stable_identifier=repository_service._stable_identifier,
+        normalize_repository_relative_path=repository_service._normalize_repository_relative_path,
+        resolve_suffix_match=repository_service._resolve_suffix_match,
+    )
+
+    assert symbols
+    assert isinstance(dependencies, tuple)
+    assert isinstance(reference_candidates, tuple)
+
+
 def test_scheme_adapter_module_aliases_include_library_and_declared_symbols(
     tmp_path: Path,
 ) -> None:
@@ -263,6 +597,270 @@ def test_scheme_adapter_module_aliases_include_library_and_declared_symbols(
     assert "helper" in aliases
     assert "acme.helper" in aliases
     assert "acme.helper.helper" in aliases
+
+
+def test_scheme_collect_symbol_entries_uses_provided_library_aliases_without_reparsing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    text = (
+        "(define-library (acme helper)\n"
+        "  (export helper)\n"
+        "  (begin\n"
+        "    (define (helper) 1)))\n"
+    )
+
+    def _fail_declared_library_aliases(*args: Any, **kwargs: Any) -> tuple[str, ...]:
+        raise AssertionError("collect_symbol_entries should reuse provided library aliases")
+
+    monkeypatch.setattr(
+        repository_scheme_primitives,
+        "_declared_library_aliases",
+        _fail_declared_library_aliases,
+    )
+
+    symbol_entries = repository_scheme_primitives.collect_symbol_entries(
+        text,
+        file_path="lib/acme/helper.sld",
+        stable_identifier=repository_service._stable_identifier,
+        stripped_text=repository_scheme_primitives.strip_comments(text),
+        library_aliases=("acme.helper",),
+    )
+
+    assert any(
+        "acme.helper.helper" in entry["qualified_names"] for entry in symbol_entries
+    )
+
+
+def test_scheme_adapter_module_aliases_forward_precomputed_alias_context(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    repo_path = tmp_path / "scheme-forwarding-repo"
+    (repo_path / "lib" / "acme").mkdir(parents=True)
+    (repo_path / "lib" / "acme" / "helper.sld").write_text(
+        "(define-library (acme helper)\n"
+        "  (export helper)\n"
+        "  (begin\n"
+        "    (define (helper) 1)))\n",
+        encoding="utf-8",
+    )
+
+    captured_kwargs: dict[str, Any] = {}
+    original_collect_symbol_entries = repository_scheme_analysis_support.collect_symbol_entries
+
+    def _capture_collect_symbol_entries(text: str, **kwargs: Any) -> list[dict[str, Any]]:
+        captured_kwargs.update(kwargs)
+        return original_collect_symbol_entries(text, **kwargs)
+
+    monkeypatch.setattr(
+        repository_scheme_analysis_support,
+        "collect_symbol_entries",
+        _capture_collect_symbol_entries,
+    )
+
+    aliases = repository_service.scheme_adapter.module_aliases_for_path(
+        root_path=repo_path,
+        file_path="lib/acme/helper.sld",
+        stable_identifier=repository_service._stable_identifier,
+    )
+
+    assert "acme.helper.helper" in aliases
+    assert captured_kwargs["stripped_text"]
+    assert captured_kwargs["library_aliases"] == ("acme.helper",)
+
+
+def test_scheme_adapter_module_aliases_accept_preloaded_text_without_file_read(
+    tmp_path: Path,
+) -> None:
+    repo_path = tmp_path / "scheme-preloaded-text-repo"
+    (repo_path / "lib" / "acme").mkdir(parents=True)
+    source_path = repo_path / "lib" / "acme" / "helper.sld"
+    source_text = (
+        "(define-library (acme helper)\n"
+        "  (export helper)\n"
+        "  (begin\n"
+        "    (define (helper) 1)))\n"
+    )
+    source_path.write_text(source_text, encoding="utf-8")
+
+    aliases = repository_service.scheme_adapter.module_aliases_for_path(
+        root_path=repo_path,
+        file_path="lib/acme/helper.sld",
+        stable_identifier=repository_service._stable_identifier,
+        text=source_text,
+    )
+
+    assert "acme.helper.helper" in aliases
+    source_path.unlink()
+    aliases_without_disk_read = repository_service.scheme_adapter.module_aliases_for_path(
+        root_path=repo_path,
+        file_path="lib/acme/helper.sld",
+        stable_identifier=repository_service._stable_identifier,
+        text=source_text,
+    )
+    assert aliases_without_disk_read == aliases
+
+
+def test_scheme_adapter_module_aliases_can_skip_symbol_names(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo_path = tmp_path / "scheme-module-only-repo"
+    (repo_path / "lib" / "acme").mkdir(parents=True)
+    source_text = (
+        "(define-library (acme helper)\n"
+        "  (export helper)\n"
+        "  (begin\n"
+        "    (define (helper) 1)))\n"
+    )
+    (repo_path / "lib" / "acme" / "helper.sld").write_text(source_text, encoding="utf-8")
+
+    def _unexpected_collect_symbol_entries(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError("module-only scheme aliases should skip symbol collection")
+
+    monkeypatch.setattr(
+        repository_scheme_analysis_support,
+        "collect_symbol_entries",
+        _unexpected_collect_symbol_entries,
+    )
+
+    aliases = repository_service.scheme_adapter.module_aliases_for_path(
+        root_path=repo_path,
+        file_path="lib/acme/helper.sld",
+        stable_identifier=repository_service._stable_identifier,
+        text=source_text,
+        include_symbol_aliases=False,
+    )
+
+    assert "lib/acme/helper.sld" in aliases
+    assert "lib/acme/helper" in aliases
+    assert "lib.acme.helper" in aliases
+    assert "helper" in aliases
+    assert "acme.helper" in aliases
+    assert "acme.helper.helper" not in aliases
+
+
+def test_scheme_parse_file_does_not_reinvoke_parse_dependencies_only(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    repo_path = tmp_path / "scheme-parse-file-repo"
+    (repo_path / "lib" / "acme").mkdir(parents=True)
+    (repo_path / "lib" / "acme" / "helper.sld").write_text(
+        "(define-library (acme helper)\n"
+        "  (export helper)\n"
+        "  (begin\n"
+        "    (define (helper) 1)))\n",
+        encoding="utf-8",
+    )
+
+    def _fail_parse_dependencies_only(*args: Any, **kwargs: Any) -> tuple[dict[str, Any], ...]:
+        raise AssertionError("scheme parse_file should build dependencies without a second dependency pass")
+
+    monkeypatch.setattr(
+        repository_scheme_analysis_support,
+        "parse_dependencies_only",
+        _fail_parse_dependencies_only,
+    )
+
+    symbols, dependencies, reference_candidates = repository_service.scheme_adapter.parse_file(
+        "lib/acme/helper.sld",
+        (repo_path / "lib" / "acme" / "helper.sld").read_text(encoding="utf-8"),
+        {
+            "acme.helper": "lib/acme/helper.sld",
+            "lib/acme/helper.sld": "lib/acme/helper.sld",
+        },
+        stable_identifier=repository_service._stable_identifier,
+        normalize_repository_relative_path=repository_service._normalize_repository_relative_path,
+        resolve_suffix_match=repository_service._resolve_suffix_match,
+    )
+
+    assert symbols
+    assert isinstance(dependencies, tuple)
+    assert isinstance(reference_candidates, tuple)
+
+
+def test_scheme_reference_bindings_cache_repeated_resolution(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    text = (
+        "(define-library (acme consumer)\n"
+        "  (import (acme helper))\n"
+        "  (begin\n"
+        "    (define (run)\n"
+        "      (helper)\n"
+        "      (helper)\n"
+        "      (helper))))\n"
+    )
+    resolve_reference_names: list[str] = []
+    original_resolve_reference_binding = (
+        repository_scheme_analysis_support._resolve_reference_binding
+    )
+
+    def _counting_resolve_reference_binding(**kwargs: Any) -> tuple[str | None, tuple[str, ...]]:
+        resolve_reference_names.append(str(kwargs["reference_name"]))
+        return original_resolve_reference_binding(**kwargs)
+
+    monkeypatch.setattr(
+        repository_scheme_analysis_support,
+        "_resolve_reference_binding",
+        _counting_resolve_reference_binding,
+    )
+
+    stripped_text = repository_scheme_primitives.strip_comments(text)
+    prepared_forms = repository_scheme_primitives._prepared_top_level_forms(
+        text,
+        stripped_text=stripped_text,
+    )
+    library_aliases = repository_scheme_primitives._declared_library_aliases(
+        text,
+        stripped_text=stripped_text,
+        prepared_forms=prepared_forms,
+    )
+    symbol_entries = repository_scheme_primitives.collect_symbol_entries(
+        text,
+        file_path="lib/acme/consumer.sld",
+        stable_identifier=repository_service._stable_identifier,
+        stripped_text=stripped_text,
+        library_aliases=library_aliases,
+    )
+    _dependency_entries, import_bindings, prefix_bindings, imported_files = (
+        repository_scheme_analysis_support._extract_import_context(
+            "lib/acme/consumer.sld",
+            text,
+            {
+                "acme.helper": "lib/acme/helper.sld",
+                "acme.helper.helper": "lib/acme/helper.sld",
+                "helper": "lib/acme/helper.sld",
+                "lib/acme/helper.sld": "lib/acme/helper.sld",
+            },
+            stable_identifier=repository_service._stable_identifier,
+            normalize_repository_relative_path=repository_service._normalize_repository_relative_path,
+            resolve_suffix_match=repository_service._resolve_suffix_match,
+            prepared_forms=prepared_forms,
+        )
+    )
+
+    bindings = repository_scheme_analysis_support._reference_bindings(
+        "lib/acme/consumer.sld",
+        text,
+        {
+            "acme.helper": "lib/acme/helper.sld",
+            "acme.helper.helper": "lib/acme/helper.sld",
+            "helper": "lib/acme/helper.sld",
+            "lib/acme/helper.sld": "lib/acme/helper.sld",
+        },
+        import_bindings=import_bindings,
+        prefix_bindings=prefix_bindings,
+        imported_files=imported_files,
+        normalize_repository_relative_path=repository_service._normalize_repository_relative_path,
+        resolve_suffix_match=repository_service._resolve_suffix_match,
+        symbol_entries=symbol_entries,
+        stripped_text=stripped_text,
+    )
+
+    assert bindings
+    assert resolve_reference_names.count("helper") == 1
 
 
 def test_cobol_adapter_module_aliases_include_program_and_paragraph_symbols(
@@ -319,6 +917,96 @@ def test_plsql_adapter_module_aliases_include_package_and_declared_routines(
     assert "app_util.record_order" in aliases
 
 
+def test_plsql_adapter_parse_file_reuses_cached_line_offsets() -> None:
+    text = (
+        "create or replace package body app_util as\n"
+        "  procedure record_order(p_order_id in number) is\n"
+        "  begin\n"
+        "    app_util.sync_order(p_order_id);\n"
+        "    execute sync_order(p_order_id);\n"
+        "  end record_order;\n"
+        "end app_util;\n"
+        "/\n"
+    )
+
+    repository_plsql_adapter._line_start_offsets.cache_clear()
+    symbols, dependencies, references = repository_plsql_adapter.parse_file(
+        "db/app_util.pkb",
+        text,
+        {
+            "app_util": "db/app_util.pks",
+            "app_util.sync_order": "db/app_util_sync.sql",
+            "sync_order": "db/app_util_sync.sql",
+        },
+        stable_identifier=repository_service._stable_identifier,
+        resolve_import=lambda import_target, module_index: repository_service.plsql_adapter.resolve_import(
+            import_target,
+            module_index=module_index,
+            resolve_suffix_match=repository_service._resolve_suffix_match,
+        ),
+        resolve_target=lambda reference_target, module_index: repository_service.plsql_adapter.resolve_target(
+            reference_target,
+            module_index=module_index,
+            resolve_suffix_match=repository_service._resolve_suffix_match,
+        ),
+    )
+    cache_info = repository_plsql_adapter._line_start_offsets.cache_info()
+
+    assert symbols
+    assert dependencies
+    assert references
+    assert cache_info.hits >= 1
+    assert cache_info.misses == 1
+
+
+def test_plsql_adapter_parse_file_memoizes_repeated_target_resolution() -> None:
+    text = (
+        "create or replace package body app_util as\n"
+        "begin\n"
+        "  app_util.sync_order(p_order_id);\n"
+        "  app_util.sync_order(p_order_id);\n"
+        "  app_util.sync_order(p_order_id);\n"
+        "  app_util.sync_order(p_order_id);\n"
+        "end app_util;\n"
+        "/\n"
+    )
+    resolve_target_calls = 0
+
+    def _counting_resolve_target(
+        reference_target: str,
+        module_index: dict[str, str],
+    ) -> str | None:
+        nonlocal resolve_target_calls
+        resolve_target_calls += 1
+        return repository_service.plsql_adapter.resolve_target(
+            reference_target,
+            module_index=module_index,
+            resolve_suffix_match=repository_service._resolve_suffix_match,
+        )
+
+    symbols, dependencies, references = repository_plsql_adapter.parse_file(
+        "db/app_util.pkb",
+        text,
+        {
+            "app_util": "db/app_util.pks",
+            "app_util.sync_order": "db/app_util_sync.sql",
+            "sync_order": "db/app_util_sync.sql",
+        },
+        stable_identifier=repository_service._stable_identifier,
+        resolve_import=lambda import_target, module_index: repository_service.plsql_adapter.resolve_import(
+            import_target,
+            module_index=module_index,
+            resolve_suffix_match=repository_service._resolve_suffix_match,
+        ),
+        resolve_target=_counting_resolve_target,
+    )
+
+    assert symbols
+    assert dependencies
+    assert references
+    assert resolve_target_calls == 1
+
+
 def test_sas_adapter_module_aliases_include_declared_macros(tmp_path: Path) -> None:
     repo_path = tmp_path / "sas-alias-repo"
     (repo_path / "macros").mkdir(parents=True)
@@ -344,6 +1032,91 @@ def test_sas_adapter_module_aliases_include_declared_macros(tmp_path: Path) -> N
     assert "quality_checks" in aliases
     assert "assert_nonempty" in aliases
     assert "assert_positive" in aliases
+
+
+def test_sas_adapter_module_aliases_accept_preloaded_text_without_file_read(
+    tmp_path: Path,
+) -> None:
+    repo_path = tmp_path / "sas-preloaded-text-repo"
+    (repo_path / "macros").mkdir(parents=True)
+    file_text = (
+        "%macro render_table();\n"
+        "  %put rendering;\n"
+        "%mend render_table;\n"
+    )
+    file_path = repo_path / "macros" / "render_table.sas"
+    file_path.write_text(file_text, encoding="utf-8")
+    file_path.unlink()
+
+    aliases = repository_service.sas_adapter.module_aliases_for_path(
+        root_path=repo_path,
+        file_path="macros/render_table.sas",
+        stable_identifier=repository_service._stable_identifier,
+        text=file_text,
+    )
+
+    assert "macros/render_table.sas" in aliases
+    assert "macros/render_table" in aliases
+    assert "macros.render_table" in aliases
+    assert "render_table" in aliases
+
+
+def test_sas_adapter_parse_file_assigns_macro_references_to_the_correct_symbol(
+    tmp_path: Path,
+) -> None:
+    repo_path = tmp_path / "sas-parse-repo"
+    (repo_path / "macros").mkdir(parents=True)
+    helper_path = repo_path / "macros" / "helper.sas"
+    helper_path.write_text(
+        "%macro helper();\n"
+        "  %put helper;\n"
+        "%mend helper;\n"
+    )
+    source_path = repo_path / "macros" / "quality_checks.sas"
+    source_path.write_text(
+        "%macro assert_nonempty();\n"
+        "  %helper();\n"
+        "%mend assert_nonempty;\n"
+        "%macro assert_positive();\n"
+        "  %put ok;\n"
+        "%mend assert_positive;\n",
+        encoding="utf-8",
+    )
+
+    module_index = repository_service._build_module_index(
+        ["macros/helper.sas", "macros/quality_checks.sas"],
+        root_path=repo_path,
+    )
+    text = source_path.read_text(encoding="utf-8")
+
+    symbols, dependencies, references = repository_service.sas_adapter.parse_file(
+        "macros/quality_checks.sas",
+        text,
+        module_index,
+        stable_identifier=repository_service._stable_identifier,
+        resolve_include=repository_service._resolve_sas_include,
+        resolve_target=repository_service._resolve_sas_target,
+    )
+
+    nonempty_symbol = next(symbol for symbol in symbols if symbol["symbol_name"] == "assert_nonempty")
+    positive_symbol = next(symbol for symbol in symbols if symbol["symbol_name"] == "assert_positive")
+
+    assert any(
+        dependency["target_file"] == "macros/helper.sas"
+        and dependency["target_symbol"] == "helper"
+        for dependency in dependencies
+    )
+    assert any(
+        reference["source_symbol_id"] == nonempty_symbol["symbol_id"]
+        and reference["target_file"] == "macros/helper.sas"
+        and reference["target_names"] == ("helper",)
+        for reference in references
+    )
+    assert not any(
+        reference["source_symbol_id"] == positive_symbol["symbol_id"]
+        and reference["target_names"] == ("helper",)
+        for reference in references
+    )
 
 
 def test_abap_adapter_module_aliases_include_object_and_method_symbols(
@@ -401,6 +1174,105 @@ def test_matlab_adapter_module_aliases_include_package_and_class_symbols(
     assert "acme.pipeline.run" in aliases
 
 
+def test_matlab_strip_comments_preserves_strings_and_removes_block_and_line_comments() -> None:
+    from apps.api_server.services.repository_intelligence_adapters import matlab as repository_matlab
+
+    source_text = (
+        "% leading comment\n"
+        "function value = demo()\n"
+        "text = '100% ready'; % trailing comment\n"
+        "  %{ block comment start\n"
+        "  helper();\n"
+        "  %}\n"
+        "value = text;\n"
+        "end\n"
+    )
+
+    stripped_text = repository_matlab.strip_comments(source_text)
+
+    assert "% leading comment" not in stripped_text
+    assert "trailing comment" not in stripped_text
+    assert "block comment start" not in stripped_text
+    assert "helper();" not in stripped_text
+    assert "'100% ready'" in stripped_text
+    assert "function value = demo()" in stripped_text
+    assert "value = text;" in stripped_text
+
+
+def test_matlab_strip_comments_reuses_cached_result() -> None:
+    from apps.api_server.services.repository_intelligence_adapters import matlab as repository_matlab
+
+    source_text = (
+        "% leading comment\n"
+        "function value = demo()\n"
+        "text = '100% ready'; % trailing comment\n"
+        "value = text;\n"
+        "end\n"
+    )
+    repository_matlab._strip_comments_cached.cache_clear()
+
+    first_result = repository_matlab.strip_comments(source_text)
+    first_cache_info = repository_matlab._strip_comments_cached.cache_info()
+    second_result = repository_matlab.strip_comments(source_text)
+    second_cache_info = repository_matlab._strip_comments_cached.cache_info()
+
+    assert first_result == second_result
+    assert first_cache_info.hits == 0
+    assert second_cache_info.hits == 1
+
+
+def test_matlab_adapter_reuses_single_stripped_text_per_parse(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from apps.api_server.services.repository_intelligence_adapters import matlab as repository_matlab
+
+    original_strip_comments = repository_matlab.strip_comments
+    strip_call_count = {"value": 0}
+
+    def counting_strip_comments(text: str) -> str:
+        strip_call_count["value"] += 1
+        return original_strip_comments(text)
+
+    monkeypatch.setattr(
+        repository_matlab,
+        "strip_comments",
+        counting_strip_comments,
+    )
+
+    source_text = (
+        "function value = main()\n"
+        "import acme.helper\n"
+        "value = helper();\n"
+        "end\n"
+    )
+    module_index = {
+        "acme.helper": "+acme/helper.m",
+        "helper": "+acme/helper.m",
+    }
+
+    repository_service.matlab_adapter.parse_dependencies_only(
+        "main.m",
+        source_text,
+        module_index,
+        stable_identifier=repository_service._stable_identifier,
+        resolve_import=repository_service._resolve_matlab_import,
+        resolve_target=repository_service._resolve_matlab_target,
+    )
+    assert strip_call_count["value"] == 1
+
+    strip_call_count["value"] = 0
+    repository_service.matlab_adapter.parse_file(
+        "main.m",
+        source_text,
+        module_index,
+        stable_identifier=repository_service._stable_identifier,
+        resolve_import=repository_service._resolve_matlab_import,
+        resolve_target=repository_service._resolve_matlab_target,
+    )
+
+    assert strip_call_count["value"] == 1
+
+
 def test_objective_c_adapter_module_aliases_include_declared_types_and_selectors(
     tmp_path: Path,
 ) -> None:
@@ -450,6 +1322,29 @@ def test_sql_adapter_module_aliases_include_declared_symbols(tmp_path: Path) -> 
     assert "sales.customers" in aliases
 
 
+def test_sql_adapter_module_aliases_accept_preloaded_text_without_file_read(tmp_path: Path) -> None:
+    repo_path = tmp_path / "sql-preloaded-text-repo"
+    (repo_path / "models").mkdir(parents=True)
+    target_path = repo_path / "models" / "customers.sql"
+    target_path.write_text(
+        "create table sales.customers as\n"
+        "select 1 as id;\n",
+        encoding="utf-8",
+    )
+    text = target_path.read_text(encoding="utf-8")
+    target_path.unlink()
+
+    aliases = repository_service.sql_adapter.module_aliases_for_path(
+        root_path=repo_path,
+        file_path="models/customers.sql",
+        stable_identifier=repository_service._stable_identifier,
+        text=text,
+    )
+
+    assert "customers" in aliases
+    assert "sales.customers" in aliases
+
+
 def test_tsql_adapter_module_aliases_include_declared_symbols(tmp_path: Path) -> None:
     repo_path = tmp_path / "tsql-alias-repo"
     (repo_path / "dbo" / "Stored Procedures").mkdir(parents=True)
@@ -473,6 +1368,161 @@ def test_tsql_adapter_module_aliases_include_declared_symbols(tmp_path: Path) ->
     assert "dbo/stored procedures/loadcustomers.sql" in aliases
     assert "loadcustomers" in aliases
     assert "dbo.loadcustomers" in aliases
+
+
+def test_tsql_adapter_module_aliases_accept_preloaded_text_without_file_read(tmp_path: Path) -> None:
+    repo_path = tmp_path / "tsql-preloaded-text-repo"
+    (repo_path / "dbo" / "Stored Procedures").mkdir(parents=True)
+    target_path = repo_path / "dbo" / "Stored Procedures" / "LoadCustomers.sql"
+    target_path.write_text(
+        "create or alter procedure dbo.LoadCustomers\n"
+        "as\n"
+        "begin\n"
+        "    set nocount on;\n"
+        "    select 1 as id;\n"
+        "end\n"
+        "go\n",
+        encoding="utf-8",
+    )
+    text = target_path.read_text(encoding="utf-8")
+    target_path.unlink()
+
+    aliases = repository_service.tsql_adapter.module_aliases_for_path(
+        root_path=repo_path,
+        file_path="dbo/Stored Procedures/LoadCustomers.sql",
+        stable_identifier=repository_service._stable_identifier,
+        text=text,
+    )
+
+    assert "loadcustomers" in aliases
+    assert "dbo.loadcustomers" in aliases
+
+
+def test_tsql_adapter_parse_file_assigns_references_to_the_correct_symbol(tmp_path: Path) -> None:
+    repo_path = tmp_path / "tsql-parse-repo"
+    procedures_dir = repo_path / "dbo" / "Stored Procedures"
+    procedures_dir.mkdir(parents=True)
+    source_path = procedures_dir / "LoadCustomers.sql"
+    source_path.write_text(
+        "create or alter procedure dbo.LoadCustomers\n"
+        "as\n"
+        "begin\n"
+        "    exec dbo.SyncCustomers;\n"
+        "end\n"
+        "go\n"
+        "create or alter procedure dbo.UnusedProcedure\n"
+        "as\n"
+        "begin\n"
+        "    select 1 as id;\n"
+        "end\n"
+        "go\n",
+        encoding="utf-8",
+    )
+    (procedures_dir / "SyncCustomers.sql").write_text(
+        "create or alter procedure dbo.SyncCustomers\n"
+        "as\n"
+        "begin\n"
+        "    select 1 as id;\n"
+        "end\n"
+        "go\n",
+        encoding="utf-8",
+    )
+
+    module_index = repository_service._build_module_index(
+        [
+            "dbo/Stored Procedures/LoadCustomers.sql",
+            "dbo/Stored Procedures/SyncCustomers.sql",
+        ],
+        root_path=repo_path,
+    )
+    text = source_path.read_text(encoding="utf-8")
+
+    symbols, dependencies, references = repository_service.tsql_adapter.parse_file(
+        "dbo/Stored Procedures/LoadCustomers.sql",
+        text,
+        module_index,
+        stable_identifier=repository_service._stable_identifier,
+        resolve_target=repository_service._resolve_sql_target,
+    )
+
+    load_customers_symbol = next(
+        symbol for symbol in symbols if symbol["symbol_name"] == "loadcustomers"
+    )
+    unused_symbol = next(
+        symbol for symbol in symbols if symbol["symbol_name"] == "unusedprocedure"
+    )
+
+    assert any(
+        dependency["target_file"] == "dbo/Stored Procedures/SyncCustomers.sql"
+        and dependency["target_symbol"] == "synccustomers"
+        for dependency in dependencies
+    )
+    assert any(
+        reference["source_symbol_id"] == load_customers_symbol["symbol_id"]
+        and reference["target_file"] == "dbo/Stored Procedures/SyncCustomers.sql"
+        and reference["target_names"] == ("synccustomers",)
+        for reference in references
+    )
+    assert not any(
+        reference["source_symbol_id"] == unused_symbol["symbol_id"]
+        and reference["target_names"] == ("synccustomers",)
+        for reference in references
+    )
+
+
+def test_tsql_adapter_reuses_cached_symbol_entry_templates(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo_path = tmp_path / "tsql-cache-repo"
+    (repo_path / "dbo" / "Stored Procedures").mkdir(parents=True)
+    source_path = repo_path / "dbo" / "Stored Procedures" / "LoadCustomers.sql"
+    source_path.write_text(
+        "create or alter procedure dbo.LoadCustomers\n"
+        "as\n"
+        "begin\n"
+        "    exec dbo.SyncCustomers;\n"
+        "end\n"
+        "go\n",
+        encoding="utf-8",
+    )
+    text = source_path.read_text(encoding="utf-8")
+
+    repository_sql_adapter._collect_symbol_entry_templates_cached.cache_clear()
+    original = repository_sql_adapter._collect_symbol_entry_templates_uncached
+    uncached_call_count = 0
+
+    def _counting_collect_symbol_entry_templates_uncached(
+        *,
+        file_path: str,
+        stripped_text: str,
+    ) -> tuple[dict[str, Any], ...]:
+        nonlocal uncached_call_count
+        uncached_call_count += 1
+        return original(file_path=file_path, stripped_text=stripped_text)
+
+    monkeypatch.setattr(
+        repository_sql_adapter,
+        "_collect_symbol_entry_templates_uncached",
+        _counting_collect_symbol_entry_templates_uncached,
+    )
+
+    aliases = repository_service.tsql_adapter.module_aliases_for_path(
+        root_path=repo_path,
+        file_path="dbo/Stored Procedures/LoadCustomers.sql",
+        stable_identifier=repository_service._stable_identifier,
+        text=text,
+    )
+    symbols = repository_service.tsql_adapter.collect_symbol_entries(
+        text,
+        file_path="dbo/Stored Procedures/LoadCustomers.sql",
+        stable_identifier=repository_service._stable_identifier,
+        stripped_text=repository_service.tsql_adapter.strip_comments(text),
+    )
+
+    assert "dbo.loadcustomers" in aliases
+    assert any(symbol["symbol_name"] == "loadcustomers" for symbol in symbols)
+    assert uncached_call_count == 1
 
 
 def test_puppet_adapter_parse_file_resolves_manifest_dependencies(tmp_path: Path) -> None:
@@ -528,6 +1578,17 @@ def test_puppet_adapter_parse_file_resolves_manifest_dependencies(tmp_path: Path
         reference.target_file == "manifests/params.pp"
         and "apache::params" in reference.target_names
         for reference in references
+    )
+
+
+def test_puppet_adapter_is_probable_source_distinguishes_resource_and_pascal_pp() -> None:
+    assert repository_service.puppet_adapter.is_probable_puppet_source(
+        path=Path("manifests/install.pp"),
+        text="class { 'apache::install':\n  ensure => present,\n}\n",
+    )
+    assert not repository_service.puppet_adapter.is_probable_puppet_source(
+        path=Path("src/main.pp"),
+        text="program Main;\nbegin\nend.\n",
     )
 
 
@@ -757,5 +1818,3 @@ def test_cue_adapter_parse_file_resolves_module_dependencies_and_references(
         and "#Answer" in reference.target_names
         for reference in references
     )
-
-

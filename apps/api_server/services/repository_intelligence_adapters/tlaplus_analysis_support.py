@@ -38,9 +38,14 @@ def _collect_symbols(
     file_path: str,
     text: str,
     stable_identifier: StableIdentifier,
+    stripped_text: str | None = None,
 ) -> tuple[_CollectedSymbol, ...]:
-    stripped_text = strip_comments(text)
-    module_name = module_name_from_text(stripped_text, file_path=file_path)
+    normalized_text = stripped_text if stripped_text is not None else strip_comments(text)
+    module_name = module_name_from_text(
+        text,
+        file_path=file_path,
+        stripped_text=normalized_text,
+    )
     module_symbol = _Symbol(
         symbol_id=stable_identifier(
             "sym",
@@ -49,7 +54,7 @@ def _collect_symbols(
         symbol_name=module_name,
         symbol_kind="module",
         start_line=1,
-        end_line=_line_count(stripped_text),
+        end_line=_line_count(normalized_text),
         parent_symbol_id=None,
         signature=module_name,
     )
@@ -57,7 +62,7 @@ def _collect_symbols(
         _CollectedSymbol(
             symbol=module_symbol,
             local_start_line=1,
-            local_end_line=_line_count(stripped_text),
+            local_end_line=_line_count(normalized_text),
             qualified_names=_ordered_names(
                 module_name,
                 file_path,
@@ -67,8 +72,9 @@ def _collect_symbols(
         )
     ]
     for symbol_name, symbol_kind, start_line in iter_symbol_entries(
-        stripped_text,
+        text,
         file_path=file_path,
+        stripped_text=normalized_text,
     ):
         qualified_names = _ordered_names(
             symbol_name,
@@ -99,7 +105,7 @@ def _collect_symbols(
                 qualified_names=qualified_names,
             )
         )
-    final_line = _line_count(stripped_text)
+    final_line = _line_count(normalized_text)
     finalized_symbols: list[_CollectedSymbol] = []
     for index, collected_symbol in enumerate(collected_symbols):
         end_line = (
@@ -135,6 +141,8 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
+    stripped_text: str | None = None,
 ) -> set[str]:
     path = PurePosixPath(file_path)
     if not has_tlaplus_path_hints(path):
@@ -144,18 +152,30 @@ def module_aliases_for_path(
         str(path.with_suffix("")),
         path.stem,
     }
-    try:
-        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        text = ""
-    if not is_probable_tlaplus_source(path=Path(file_path), text=text):
+    loaded_text = text
+    if loaded_text is None:
+        try:
+            loaded_text = (root_path / path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            loaded_text = ""
+    candidate_stripped_text = stripped_text if stripped_text is not None else strip_comments(loaded_text)
+    if not is_probable_tlaplus_source(
+        path=Path(file_path),
+        text=loaded_text,
+        stripped_text=candidate_stripped_text,
+    ):
         return {alias for alias in aliases if alias}
-    module_name = module_name_from_text(text, file_path=file_path)
+    module_name = module_name_from_text(
+        loaded_text,
+        file_path=file_path,
+        stripped_text=candidate_stripped_text,
+    )
     aliases.add(module_name)
     for collected_symbol in _collect_symbols(
         file_path=file_path,
-        text=text,
+        text=loaded_text,
         stable_identifier=stable_identifier,
+        stripped_text=candidate_stripped_text,
     ):
         aliases.add(collected_symbol.symbol.symbol_name)
         aliases.update(collected_symbol.qualified_names)
@@ -186,12 +206,17 @@ def extract_import_bindings(
     *,
     stable_identifier: StableIdentifier,
     resolve_suffix_match: ResolveSuffixMatch,
+    stripped_text: str | None = None,
 ) -> tuple[tuple[_Dependency, ...], dict[str, _ImportedSymbolBinding]]:
     dependencies: list[_Dependency] = []
     dependency_keys: set[tuple[str, str, str | None]] = set()
     import_bindings: dict[str, _ImportedSymbolBinding] = {}
+    normalized_text = stripped_text if stripped_text is not None else strip_comments(text)
 
-    for module_name, line_number in parse_extended_modules(text):
+    for module_name, line_number in parse_extended_modules(
+        text,
+        stripped_text=normalized_text,
+    ):
         target_file = resolve_module_source(
             module_name,
             module_index,
@@ -223,7 +248,10 @@ def extract_import_bindings(
             target_names=(module_name,),
         )
 
-    for alias, module_name, line_number in parse_instance_statements(text):
+    for alias, module_name, line_number in parse_instance_statements(
+        text,
+        stripped_text=normalized_text,
+    ):
         binding_alias = alias or module_name
         target_file = resolve_module_source(
             module_name,
@@ -291,12 +319,18 @@ def parse_file(
     tuple[_SymbolReferenceCandidate, ...],
 ]:
     del normalize_repository_relative_path
-    if not is_probable_tlaplus_source(path=Path(file_path), text=text):
+    stripped_text = strip_comments(text)
+    if not is_probable_tlaplus_source(
+        path=Path(file_path),
+        text=text,
+        stripped_text=stripped_text,
+    ):
         return (), (), ()
     collected_symbols = _collect_symbols(
         file_path=file_path,
         text=text,
         stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
     )
     dependencies, import_bindings = extract_import_bindings(
         file_path,
@@ -304,6 +338,7 @@ def parse_file(
         module_index,
         stable_identifier=stable_identifier,
         resolve_suffix_match=resolve_suffix_match,
+        stripped_text=stripped_text,
     )
     local_symbols_by_alias: dict[str, _Symbol] = {}
     for collected_symbol in collected_symbols:
@@ -313,7 +348,7 @@ def parse_file(
             collected_symbol.symbol.symbol_name,
             collected_symbol.symbol,
         )
-    stripped_lines = strip_comments(text).splitlines()
+    stripped_lines = stripped_text.splitlines()
     reference_candidates: dict[str, _SymbolReferenceCandidate] = {}
 
     def _record_reference(

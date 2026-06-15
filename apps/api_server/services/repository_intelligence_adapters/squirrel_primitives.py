@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -135,6 +136,7 @@ def _looks_binaryish(text: str) -> bool:
     return control_count > max(2, len(sample) // 32)
 
 
+@lru_cache(maxsize=128)
 def strip_comments(text: str) -> str:
     characters: list[str] = []
     index = 0
@@ -184,11 +186,16 @@ def has_squirrel_path_hints(path: Path | PurePosixPath) -> bool:
     return PurePosixPath(path).suffix.lower() in SQUIRREL_SUFFIXES
 
 
-def is_probable_squirrel_source(*, path: Path | PurePosixPath, text: str) -> bool:
+def is_probable_squirrel_source(
+    *,
+    path: Path | PurePosixPath,
+    text: str,
+    stripped_text: str | None = None,
+) -> bool:
     normalized_path = PurePosixPath(path)
     if not has_squirrel_path_hints(normalized_path) or not text or _looks_binaryish(text):
         return False
-    stripped_text = strip_comments(text)
+    stripped_text = strip_comments(text) if stripped_text is None else stripped_text
     return bool(stripped_text.strip()) and bool(_MARKER_RE.search(stripped_text))
 
 
@@ -247,8 +254,10 @@ def _normalize_include_target(raw_target: str) -> str:
     return normalized_target
 
 
-def import_statements(text: str) -> tuple[tuple[str, int], ...]:
-    stripped_text = strip_comments(text)
+@lru_cache(maxsize=256)
+def _import_statements_from_stripped_text(
+    stripped_text: str,
+) -> tuple[tuple[str, int], ...]:
     statements: list[tuple[str, int]] = []
     seen: set[tuple[str, int]] = set()
     for match in _INCLUDE_RE.finditer(stripped_text):
@@ -263,8 +272,17 @@ def import_statements(text: str) -> tuple[tuple[str, int], ...]:
     return tuple(statements)
 
 
-def _symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
-    stripped_text = strip_comments(text)
+def import_statements(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, int], ...]:
+    stripped_text = strip_comments(text) if stripped_text is None else stripped_text
+    return _import_statements_from_stripped_text(stripped_text)
+
+
+@lru_cache(maxsize=256)
+def _symbol_entries(stripped_text: str) -> tuple[tuple[str, str, int], ...]:
     entries: list[tuple[str, str, int]] = []
     seen_names: set[str] = set()
     patterns = (
@@ -288,8 +306,13 @@ def _symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
     return tuple(sorted(entries, key=lambda item: (item[2], item[0], item[1])))
 
 
-def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
-    return _symbol_entries(text)
+def iter_symbol_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, str, int], ...]:
+    stripped_text = strip_comments(text) if stripped_text is None else stripped_text
+    return _symbol_entries(stripped_text)
 
 
 def collect_symbols(
@@ -297,9 +320,11 @@ def collect_symbols(
     file_path: str,
     text: str,
     stable_identifier: StableIdentifier,
+    stripped_text: str | None = None,
 ) -> tuple[_Symbol, ...]:
-    stripped_text = strip_comments(text)
+    stripped_text = strip_comments(text) if stripped_text is None else stripped_text
     module_name = module_name_from_path(file_path)
+    final_line = _line_count(stripped_text)
     module_symbol = _Symbol(
         symbol_id=stable_identifier(
             "sym",
@@ -313,7 +338,7 @@ def collect_symbols(
         symbol_name=module_name,
         symbol_kind="module",
         start_line=1,
-        end_line=_line_count(stripped_text),
+        end_line=final_line,
         parent_symbol_id=None,
         signature=f"module {module_name}" if module_name else None,
     )
@@ -321,7 +346,7 @@ def collect_symbols(
         _CollectedSymbol(
             symbol=module_symbol,
             local_start_line=1,
-            local_end_line=_line_count(stripped_text),
+            local_end_line=final_line,
         )
     ]
     for symbol_name, symbol_kind, start_line in _symbol_entries(stripped_text):
@@ -348,7 +373,6 @@ def collect_symbols(
                 local_end_line=start_line,
             )
         )
-    final_line = _line_count(stripped_text)
     finalized_symbols: list[_Symbol] = []
     for index, collected_symbol in enumerate(collected_symbols):
         end_line = (
@@ -376,6 +400,7 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
 ) -> set[str]:
     path = PurePosixPath(file_path)
     if not has_squirrel_path_hints(path):
@@ -385,14 +410,21 @@ def module_aliases_for_path(
     if without_suffix:
         aliases.add(without_suffix)
         aliases.add(without_suffix.replace("/", "."))
-    try:
-        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        text = ""
+    if text is None:
+        try:
+            text = (root_path / path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            text = ""
+    stripped_text = strip_comments(text) if text else ""
     module_name = module_name_from_path(file_path)
     if module_name:
         aliases.add(module_name)
-    for symbol in collect_symbols(file_path=file_path, text=text, stable_identifier=stable_identifier):
+    for symbol in collect_symbols(
+        file_path=file_path,
+        text=text,
+        stable_identifier=stable_identifier,
+        stripped_text=stripped_text,
+    ):
         symbol_name = symbol.symbol_name
         if not symbol_name:
             continue
@@ -447,9 +479,13 @@ def imported_symbol_bindings(
     module_index: dict[str, str],
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
+    stripped_text: str | None = None,
+    import_entries: tuple[tuple[str, int], ...] | None = None,
 ) -> dict[str, _ImportedSymbolBinding]:
+    if import_entries is None:
+        import_entries = import_statements(text, stripped_text=stripped_text)
     bindings: dict[str, _ImportedSymbolBinding] = {}
-    for import_target, _line_number_value in import_statements(text):
+    for import_target, _line_number_value in import_entries:
         target_file = resolve_include(
             current_file=current_file,
             import_target=import_target,

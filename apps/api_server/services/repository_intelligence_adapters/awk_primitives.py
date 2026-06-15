@@ -26,6 +26,9 @@ _BLOCK_DECL_RE = re.compile(
     r"^\s*(?P<name>BEGINFILE|ENDFILE|BEGIN|END)\b[^\n{]*\{",
     re.MULTILINE,
 )
+_RAW_SOURCE_MARKER_RE = re.compile(
+    r"(?m)^\s*(?:function\s+[A-Za-z_][A-Za-z0-9_]*\s*\(|BEGINFILE|ENDFILE|BEGIN|END\b|@include\b)"
+)
 _CALL_RE = re.compile(r"(?<![@$.A-Za-z0-9_])(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*\(")
 _RESERVED_SYMBOL_NAMES = frozenset(
     {
@@ -149,12 +152,18 @@ def has_awk_shebang(text: str) -> bool:
     return bool(_SHEBANG_AWK_RE.search(first_line))
 
 
+def has_awk_source_markers(text: str) -> bool:
+    return bool(_RAW_SOURCE_MARKER_RE.search(text))
+
+
 def is_probable_awk_source(*, path: Path, text: str) -> bool:
     suffix = path.suffix.lower()
     if suffix in _KNOWN_SUFFIXES:
         return True
     if has_awk_shebang(text):
         return True
+    if not has_awk_source_markers(text):
+        return False
     stripped_text = strip_comments(text)
     return bool(
         _FUNCTION_DECL_RE.search(stripped_text)

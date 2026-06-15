@@ -4,11 +4,46 @@ import json
 from pathlib import Path, PurePosixPath
 from typing import Any
 
+_ML_PROFILE_HINTS_CACHE_LIMIT = 4096
+_ML_PROFILE_HINTS_CACHE: dict[
+    tuple[str, str, int, int],
+    tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]],
+] = {}
+
 
 def _probe_module():
     from benchmarks import repository_intelligence_real_repo_probe as probe_module
 
     return probe_module
+
+
+def _repo_cache_key(repo_path: Path) -> str:
+    from benchmarks import repository_intelligence_real_repo_probe_collection_support as collection_support
+
+    return collection_support._repo_cache_key(repo_path)
+
+
+def clear_ml_profile_hint_cache() -> None:
+    _ML_PROFILE_HINTS_CACHE.clear()
+
+
+def _remember_ml_profile_hints(
+    cache_key: tuple[str, str, int, int],
+    entrypoint_paths: set[str],
+    support_roots: set[str],
+    config_paths: set[str],
+) -> tuple[set[str], set[str], set[str]]:
+    if len(_ML_PROFILE_HINTS_CACHE) >= _ML_PROFILE_HINTS_CACHE_LIMIT:
+        oldest_key = next(iter(_ML_PROFILE_HINTS_CACHE))
+        _ML_PROFILE_HINTS_CACHE.pop(oldest_key, None)
+    cached_result = (
+        tuple(sorted(entrypoint_paths)),
+        tuple(sorted(support_roots)),
+        tuple(sorted(config_paths)),
+    )
+    _ML_PROFILE_HINTS_CACHE[cache_key] = cached_result
+    cached_entrypoints, cached_roots, cached_configs = cached_result
+    return set(cached_entrypoints), set(cached_roots), set(cached_configs)
 
 
 def _elm_profile_hints(
@@ -252,6 +287,20 @@ def _ml_profile_hints(
     project_dir = PurePosixPath(normalized_path).parent
     if _is_non_operational_project_path(str(project_dir)):
         return set(), set(), {normalized_path}
+    try:
+        manifest_stat = manifest_path.stat()
+    except OSError:
+        manifest_stat = None
+    cache_key = (
+        _repo_cache_key(repo_path),
+        normalized_path,
+        int(manifest_stat.st_mtime_ns) if manifest_stat is not None else -1,
+        int(manifest_stat.st_size) if manifest_stat is not None else -1,
+    )
+    cached_result = _ML_PROFILE_HINTS_CACHE.get(cache_key)
+    if cached_result is not None:
+        cached_entrypoints, cached_roots, cached_configs = cached_result
+        return set(cached_entrypoints), set(cached_roots), set(cached_configs)
     root_prefix = "" if str(project_dir) in {"", "."} else f"{project_dir}/"
     config_paths = {normalized_path}
     support_roots = {
@@ -269,7 +318,7 @@ def _ml_profile_hints(
     try:
         text = manifest_path.read_text(encoding="utf-8", errors="replace")
     except OSError:
-        return entrypoint_paths, support_roots, config_paths
+        return _remember_ml_profile_hints(cache_key, entrypoint_paths, support_roots, config_paths)
 
     discovered_paths: list[str] = []
     for match in ml_manifest_path_re.finditer(text):
@@ -284,7 +333,7 @@ def _ml_profile_hints(
         discovered_paths.append(resolved_path)
 
     if manifest_path.suffix.lower() == ".cm" and not discovered_paths:
-        return set(), set(), set()
+        return _remember_ml_profile_hints(cache_key, set(), set(), set())
 
     for resolved_path in discovered_paths:
         if _is_non_operational_profile_path(resolved_path):
@@ -303,7 +352,7 @@ def _ml_profile_hints(
         if parent_dir:
             support_roots.add(parent_dir)
         entrypoint_paths.add(resolved_path)
-    return entrypoint_paths, support_roots, config_paths
+    return _remember_ml_profile_hints(cache_key, entrypoint_paths, support_roots, config_paths)
 
 
 def _classic_visual_basic_profile_hints(

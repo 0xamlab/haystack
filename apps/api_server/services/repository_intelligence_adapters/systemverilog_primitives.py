@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from bisect import bisect_right
+from functools import lru_cache
 import re
 from collections.abc import Callable, Sequence
 from pathlib import Path, PurePosixPath
@@ -186,6 +188,7 @@ def _normalize_repository_relative_path(value: str) -> str:
     return "/".join(normalized_parts)
 
 
+@lru_cache(maxsize=256)
 def strip_comments(text: str) -> str:
     chars: list[str] = []
     index = 0
@@ -229,22 +232,35 @@ def has_systemverilog_path_hints(path: Path | PurePosixPath) -> bool:
     return normalized_path.name.lower() in _PATH_HINT_BASENAMES
 
 
-def is_probable_systemverilog_source(*, path: Path | PurePosixPath, text: str) -> bool:
+def is_probable_systemverilog_source(
+    *,
+    path: Path | PurePosixPath,
+    text: str,
+    stripped_text: str | None = None,
+) -> bool:
     suffix = PurePosixPath(path).suffix.lower()
     if suffix not in _KNOWN_SUFFIXES:
         return False
     if suffix in _DIRECT_SYSTEMVERILOG_SUFFIXES:
         return True
-    stripped_text = strip_comments(text)
+    stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
     if _PROBABLE_SYSTEMVERILOG_RE.search(stripped_text):
         return True
     return has_systemverilog_path_hints(path)
 
 
+@lru_cache(maxsize=256)
+def _line_start_offsets(text: str) -> tuple[int, ...]:
+    offsets = [0]
+    for index, character in enumerate(text):
+        if character == "\n":
+            offsets.append(index + 1)
+    return tuple(offsets)
+
+
 def _line_number(text: str, offset: int) -> int:
-    if offset <= 0:
-        return 1
-    return text.count("\n", 0, offset) + 1
+    bounded_offset = max(0, min(offset, len(text)))
+    return bisect_right(_line_start_offsets(text), bounded_offset)
 
 
 def _normalized_path_aliases(path: PurePosixPath) -> set[str]:

@@ -9,7 +9,7 @@ from tests._repository_intelligence_real_repo_probe_helpers import *  # noqa: F4
 
 def test_repository_language_popularity_order_covers_broad_supported_surface() -> None:
     assert len(REPOSITORY_LANGUAGE_POPULARITY_ORDER) >= 50
-    assert REPOSITORY_LANGUAGE_POPULARITY_ORDER[:14] == (
+    assert REPOSITORY_LANGUAGE_POPULARITY_ORDER[:16] == (
         "typescript",
         "python",
         "javascript",
@@ -20,9 +20,11 @@ def test_repository_language_popularity_order_covers_broad_supported_surface() -
         "java",
         "cs",
         "dotnet",
+        "asp.net",
         "php",
         "hack",
         "shell",
+        "graphql",
         "fish",
     )
     assert "c" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
@@ -33,6 +35,7 @@ def test_repository_language_popularity_order_covers_broad_supported_surface() -
     assert "pug" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
     assert "delphi" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
     assert "plsql" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
+    assert "plpgsql" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
     assert "tsql" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
     assert "sas" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
     assert "ml" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
@@ -65,6 +68,18 @@ def test_repository_language_popularity_order_covers_broad_supported_surface() -
     assert "agda" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
     assert "idris" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
     assert "haxe" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
+    assert "processing" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
+    assert "ampl" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
+    assert "openedge" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
+    assert "nsis" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
+    assert "codeql" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
+    assert "maven" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
+    assert "gnuplot" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
+    assert "dataweave" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
+    assert "brightscript" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
+    assert "common workflow language" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
+    assert "earthly" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
+    assert "xtend" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
     assert "fish" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
     assert "emacslisp" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
     assert "vimscript" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
@@ -80,12 +95,24 @@ def test_repository_language_popularity_order_covers_broad_supported_surface() -
     assert "openscad" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
     assert "purescript" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
     assert "rescript" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
+    assert "reasonml" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
     assert "roc" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
     assert "smarty" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
+    assert "mako" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
     assert "graphviz" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
+    assert "graphql" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
     assert "mermaid" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
     assert "plantuml" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
     assert "openqasm" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
+    assert "xslt" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
+    assert "yacc" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
+    assert "lex" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
+    assert "moonscript" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
+    assert "ocamllex" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
+    assert "ocamlyacc" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
+    assert "xquery" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
+    assert "q" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
+    assert "j" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
     assert "gleam" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
     assert "janet" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
     assert "raku" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
@@ -97,10 +124,10 @@ def test_repository_language_popularity_order_covers_broad_supported_surface() -
     assert "yara" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
     assert "nix" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
     assert "nushell" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
+    assert "pkl" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
     assert "bitbake" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
     assert "jinja" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
     assert "liquid" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
     assert "handlebars" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
     assert "vue" in REPOSITORY_LANGUAGE_POPULARITY_ORDER
-
-
+    assert "webassembly" in REPOSITORY_LANGUAGE_POPULARITY_ORDER

@@ -99,6 +99,74 @@ def test_vyper_adapter_module_aliases_include_module_and_symbol_names(tmp_path: 
     assert "add" in aliases
 
 
+def test_vyper_adapter_module_aliases_accept_preloaded_text_without_file_read(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    repo_path = tmp_path / "vyper-alias-text-repo"
+    (repo_path / "contracts").mkdir(parents=True)
+    source_path = repo_path / "contracts" / "math_utils.vy"
+    source_path.write_text(
+        "def add(a: uint256, b: uint256) -> uint256:\n"
+        "    return a + b\n",
+        encoding="utf-8",
+    )
+
+    def _unexpected_read_text(*args: object, **kwargs: object) -> str:
+        raise AssertionError("module_aliases_for_path reread the file instead of using preloaded text")
+
+    monkeypatch.setattr(Path, "read_text", _unexpected_read_text)
+
+    aliases = repository_service.vyper_adapter.module_aliases_for_path(
+        root_path=repo_path,
+        file_path="contracts/math_utils.vy",
+        stable_identifier=repository_service._stable_identifier,
+        text="def add(a: uint256, b: uint256) -> uint256:\n    return a + b\n",
+    )
+
+    assert "add" in aliases
+
+
+def test_vyper_adapter_module_aliases_can_skip_symbol_alias_scans(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    repo_path = tmp_path / "vyper-path-only-alias-repo"
+    (repo_path / "contracts").mkdir(parents=True)
+    file_path = repo_path / "contracts" / "math_utils.vy"
+    file_path.write_text(
+        "def add(a: uint256, b: uint256) -> uint256:\n"
+        "    return a + b\n",
+        encoding="utf-8",
+    )
+
+    def _unexpected_read_text(self: Path, *args: object, **kwargs: object) -> str:
+        raise AssertionError(f"path-only vyper aliases should not reread {self}")
+
+    def _unexpected_iter_symbol_entries(*args: object, **kwargs: object) -> object:
+        raise AssertionError("path-only vyper aliases should skip symbol scans")
+
+    monkeypatch.setattr(Path, "read_text", _unexpected_read_text)
+    monkeypatch.setattr(
+        repository_vyper_primitives,
+        "iter_symbol_entries",
+        _unexpected_iter_symbol_entries,
+    )
+
+    aliases = repository_service.vyper_adapter.module_aliases_for_path(
+        root_path=repo_path,
+        file_path="contracts/math_utils.vy",
+        stable_identifier=repository_service._stable_identifier,
+        include_symbol_aliases=False,
+    )
+
+    assert "contracts/math_utils.vy" in aliases
+    assert "contracts/math_utils" in aliases
+    assert "contracts.math_utils" in aliases
+    assert "math_utils" in aliases
+    assert "add" not in aliases
+
+
 def test_vyper_adapter_parse_file_extracts_import_dependencies_and_references() -> None:
     module_index = {
         "contracts/math_utils.vy": "contracts/math_utils.vy",
@@ -130,6 +198,81 @@ def test_vyper_adapter_parse_file_extracts_import_dependencies_and_references() 
     assert any(symbol.symbol_name == "run" for symbol in symbols)
     assert any(reference.target_file == "contracts/math_utils.vy" for reference in references)
     assert any(reference.target_names == ("add",) for reference in references)
+
+
+def test_vyper_adapter_parse_dependencies_only_prepares_source_text_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    original = repository_vyper_primitives._prepare_source_text
+    observed_texts: list[str] = []
+
+    def _recording_prepare_source_text(text: str) -> tuple[str, tuple[int, ...]]:
+        observed_texts.append(text)
+        return original(text)
+
+    monkeypatch.setattr(
+        repository_vyper_primitives,
+        "_prepare_source_text",
+        _recording_prepare_source_text,
+    )
+
+    dependencies = repository_service.vyper_adapter.parse_dependencies_only(
+        "contracts/main.vy",
+        "import contracts.math_utils as math_utils\n",
+        {"contracts.math_utils": "contracts/math_utils.vy"},
+        stable_identifier=repository_service._stable_identifier,
+        normalize_repository_relative_path=repository_service._normalize_repository_relative_path,
+        resolve_suffix_match=repository_service._resolve_suffix_match,
+    )
+
+    assert observed_texts == ["import contracts.math_utils as math_utils\n"]
+    assert dependencies
+
+
+def test_vyper_adapter_parse_file_prepares_source_text_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    original = repository_vyper_primitives._prepare_source_text
+    observed_texts: list[str] = []
+
+    def _recording_prepare_source_text(text: str) -> tuple[str, tuple[int, ...]]:
+        observed_texts.append(text)
+        return original(text)
+
+    monkeypatch.setattr(
+        repository_vyper_primitives,
+        "_prepare_source_text",
+        _recording_prepare_source_text,
+    )
+
+    symbols, dependencies, references = repository_service.vyper_adapter.parse_file(
+        "contracts/main.vy",
+        (
+            "import contracts.math_utils as math_utils\n\n"
+            "def run(a: uint256, b: uint256) -> uint256:\n"
+            "    return math_utils.add(a, b)\n"
+        ),
+        {
+            "contracts/math_utils.vy": "contracts/math_utils.vy",
+            "contracts.math_utils": "contracts/math_utils.vy",
+            "math_utils": "contracts/math_utils.vy",
+            "contracts/main.vy": "contracts/main.vy",
+            "main": "contracts/main.vy",
+            "run": "contracts/main.vy",
+        },
+        stable_identifier=repository_service._stable_identifier,
+        normalize_repository_relative_path=repository_service._normalize_repository_relative_path,
+        resolve_suffix_match=repository_service._resolve_suffix_match,
+    )
+
+    assert observed_texts == [
+        "import contracts.math_utils as math_utils\n\n"
+        "def run(a: uint256, b: uint256) -> uint256:\n"
+        "    return math_utils.add(a, b)\n"
+    ]
+    assert symbols
+    assert dependencies
+    assert references
 
 
 def test_vyper_language_detection_supports_sources_without_overclaiming() -> None:

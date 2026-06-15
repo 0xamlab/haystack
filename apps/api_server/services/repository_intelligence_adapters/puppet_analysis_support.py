@@ -312,6 +312,8 @@ def module_aliases_for_path(
     stable_identifier: StableIdentifier,
 ) -> set[str]:
     path = PurePosixPath(file_path)
+    if not has_puppet_path_hints(path):
+        return set()
     aliases = set(path_aliases(path))
     context = _module_context_for_file(root_path, file_path)
     qualified_module_name = _qualified_module_name(context)

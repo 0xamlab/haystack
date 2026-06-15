@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from bisect import bisect_right
 import re
+from functools import lru_cache
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -85,11 +87,19 @@ def _package_form_bindings(
     )
 
 
+@lru_cache(maxsize=1024)
+def _top_level_form_records(text: str) -> tuple[tuple[int, str, Any, str], ...]:
+    records: list[tuple[int, str, Any, str]] = []
+    for line_no, form_text in _extract_top_level_forms(text):
+        parsed_form = _parse_form(form_text)
+        records.append((line_no, form_text, parsed_form, _form_head(parsed_form)))
+    return tuple(records)
+
+
+@lru_cache(maxsize=1024)
 def _current_package_name(text: str) -> str:
     package_name = ""
-    for _line_no, form_text in _extract_top_level_forms(text):
-        parsed_form = _parse_form(form_text)
-        head = _form_head(parsed_form)
+    for _line_no, _form_text, parsed_form, head in _top_level_form_records(text):
         if head in _PACKAGE_FORM_HEADS:
             candidate = normalize_package_name(str(parsed_form[1])) if len(parsed_form) >= 2 else ""
             if candidate and not package_name:
@@ -99,6 +109,24 @@ def _current_package_name(text: str) -> str:
             if candidate:
                 return candidate
     return package_name
+
+
+@lru_cache(maxsize=1024)
+def _line_start_offsets(text: str) -> tuple[int, ...]:
+    offsets = [0]
+    start = 0
+    while True:
+        newline_index = text.find("\n", start)
+        if newline_index < 0:
+            break
+        offsets.append(newline_index + 1)
+        start = newline_index + 1
+    return tuple(offsets)
+
+
+def _line_number(text: str, offset: int) -> int:
+    bounded_offset = max(0, min(offset, len(text)))
+    return bisect_right(_line_start_offsets(text), bounded_offset)
 
 
 def _load_targets(parsed_form: Any) -> tuple[str, ...]:
@@ -117,6 +145,7 @@ def _load_targets(parsed_form: Any) -> tuple[str, ...]:
     return (target,) if target else ()
 
 
+@lru_cache(maxsize=2048)
 def _candidate_import_keys(import_target: str, *, current_file: str) -> tuple[str, ...]:
     normalized_target = normalize_package_name(import_target)
     if not normalized_target:
@@ -161,13 +190,13 @@ def resolve_import(
     if not candidate_keys:
         return None
     for candidate_key in candidate_keys:
-        normalized_candidate = normalize_repository_relative_path(candidate_key).lower()
-        direct_match = module_index.get(normalized_candidate)
+        direct_match = module_index.get(candidate_key)
         if direct_match is not None:
             return direct_match
     return resolve_suffix_match(module_index=module_index, suffixes=candidate_keys)
 
 
+@lru_cache(maxsize=2048)
 def _qualified_target_names(package_name: str, symbol_name: str) -> tuple[str, ...]:
     qualified_names: list[str] = []
     seen_names: set[str] = set()
@@ -205,6 +234,7 @@ def _resolve_reference_binding(
     module_index: dict[str, str],
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
+    resolve_import_cached: Callable[[str], str | None] | None = None,
 ) -> tuple[str | None, tuple[str, ...]]:
     binding = import_bindings.get(normalize_symbol_name(reference_name))
     if binding is not None:
@@ -238,15 +268,19 @@ def _resolve_reference_binding(
             if direct_match is not None and direct_match != current_file:
                 return direct_match, tuple(_qualified_target_names(candidate_package, symbol_name))
     if package_name:
-        target_file = resolve_import(
-            current_file=current_file,
-            import_target=package_aliases.get(package_name, package_name),
-            module_index=module_index,
-            normalize_repository_relative_path=normalize_repository_relative_path,
-            resolve_suffix_match=resolve_suffix_match,
+        resolved_package = package_aliases.get(package_name, package_name)
+        target_file = (
+            resolve_import_cached(resolved_package)
+            if resolve_import_cached is not None
+            else resolve_import(
+                current_file=current_file,
+                import_target=resolved_package,
+                module_index=module_index,
+                normalize_repository_relative_path=normalize_repository_relative_path,
+                resolve_suffix_match=resolve_suffix_match,
+            )
         )
         if target_file is not None and target_file != current_file:
-            resolved_package = package_aliases.get(package_name, package_name)
             return target_file, _qualified_target_names(resolved_package, symbol_name)
     if current_package:
         target_file = resolve_suffix_match(
@@ -283,13 +317,12 @@ def collect_symbol_entries(
 ) -> list[dict[str, Any]]:
     stripped_text = strip_comments(text)
     current_package = _current_package_name(text)
+    form_records = _top_level_form_records(text)
     file_alias = normalize_identifier(PurePosixPath(file_path).stem)
-    final_line = len(stripped_text.splitlines()) if stripped_text else 1
+    final_line = max(1, stripped_text.count("\n") + 1) if stripped_text else 1
     symbol_entries: list[dict[str, Any]] = []
     seen_symbol_keys: set[tuple[str, int]] = set()
-    for line_no, form_text in _extract_top_level_forms(text):
-        parsed_form = _parse_form(form_text)
-        head = _form_head(parsed_form)
+    for line_no, form_text, parsed_form, head in form_records:
         symbol_kind = _DEFINITION_HEAD_KINDS.get(head)
         symbol_name = _definition_name(parsed_form)
         if symbol_kind is None or not symbol_name:
@@ -366,10 +399,8 @@ def module_aliases_for_path(
     if path.suffix.lower() == ".asd":
         aliases.update(project_system_names(text))
         return {alias for alias in aliases if alias}
-    for line_no, form_text in _extract_top_level_forms(text):
-        del line_no
-        parsed_form = _parse_form(form_text)
-        if _form_head(parsed_form) in _PACKAGE_FORM_HEADS:
+    for _line_no, _form_text, parsed_form, head in _top_level_form_records(text):
+        if head in _PACKAGE_FORM_HEADS:
             package_name, _used, _imports, _nicknames = _package_form_bindings(parsed_form)
             if package_name:
                 aliases.add(package_name)
@@ -493,6 +524,7 @@ def _extract_import_context(
     import_bindings: dict[str, dict[str, Any]] = {}
     dependency_entries: list[dict[str, Any]] = []
     dependency_keys: set[tuple[str | None, str, str]] = set()
+    resolve_import_cache: dict[str, str | None] = {}
 
     def _register_dependency(target_file: str | None, target_symbol: str, line_no: int) -> None:
         dependency_key = (target_file, target_symbol, "imports")
@@ -516,6 +548,20 @@ def _extract_import_context(
             }
         )
 
+    def _resolve_import_cached(import_target: str) -> str | None:
+        cached = resolve_import_cache.get(import_target)
+        if import_target in resolve_import_cache:
+            return cached
+        resolved = resolve_import(
+            current_file=file_path,
+            import_target=import_target,
+            module_index=module_index,
+            normalize_repository_relative_path=normalize_repository_relative_path,
+            resolve_suffix_match=resolve_suffix_match,
+        )
+        resolve_import_cache[import_target] = resolved
+        return resolved
+
     def _apply_package_bindings(
         *,
         line_no: int,
@@ -528,23 +574,11 @@ def _extract_import_context(
         if package_name and not current_package:
             current_package = package_name
         for used_package in form_used_packages:
-            target_file = resolve_import(
-                current_file=file_path,
-                import_target=used_package,
-                module_index=module_index,
-                normalize_repository_relative_path=normalize_repository_relative_path,
-                resolve_suffix_match=resolve_suffix_match,
-            )
+            target_file = _resolve_import_cached(used_package)
             _register_dependency(target_file, used_package, line_no)
             used_packages.append(used_package)
         for imported_package, imported_names in imported_specs:
-            target_file = resolve_import(
-                current_file=file_path,
-                import_target=imported_package,
-                module_index=module_index,
-                normalize_repository_relative_path=normalize_repository_relative_path,
-                resolve_suffix_match=resolve_suffix_match,
-            )
+            target_file = _resolve_import_cached(imported_package)
             _register_dependency(target_file, imported_package, line_no)
             for imported_name in imported_names:
                 import_bindings.setdefault(
@@ -557,18 +591,10 @@ def _extract_import_context(
                 )
         for alias, target_package in local_nicknames.items():
             package_aliases[alias] = target_package
-            target_file = resolve_import(
-                current_file=file_path,
-                import_target=target_package,
-                module_index=module_index,
-                normalize_repository_relative_path=normalize_repository_relative_path,
-                resolve_suffix_match=resolve_suffix_match,
-            )
+            target_file = _resolve_import_cached(target_package)
             _register_dependency(target_file, target_package, line_no)
 
-    for line_no, form_text in _extract_top_level_forms(text):
-        parsed_form = _parse_form(form_text)
-        head = _form_head(parsed_form)
+    for line_no, _form_text, parsed_form, head in _top_level_form_records(text):
         if head in _PACKAGE_FORM_HEADS:
             package_name, form_used_packages, imported_specs, local_nicknames = (
                 _package_form_bindings(parsed_form)
@@ -587,13 +613,7 @@ def _extract_import_context(
                 current_package = candidate
             continue
         for load_target in _load_targets(parsed_form):
-            target_file = resolve_import(
-                current_file=file_path,
-                import_target=load_target,
-                module_index=module_index,
-                normalize_repository_relative_path=normalize_repository_relative_path,
-                resolve_suffix_match=resolve_suffix_match,
-            )
+            target_file = _resolve_import_cached(load_target)
             _register_dependency(target_file, load_target, line_no)
 
     normalized_used_packages = tuple(dict.fromkeys(package for package in used_packages if package))
@@ -624,28 +644,56 @@ def _reference_bindings(
         return ()
     bindings: list[dict[str, Any]] = []
     seen_bindings: set[tuple[int, str, tuple[str, ...]]] = set()
+    resolved_reference_cache: dict[str, tuple[str | None, tuple[str, ...]]] = {}
+    resolved_import_cache: dict[str, str | None] = {}
     symbol_entries = collect_symbol_entries(
         text,
         file_path=file_path,
         stable_identifier=lambda *_args, **_kwargs: "",
     )
     stripped_text = strip_comments(text)
-    lines = stripped_text.splitlines(keepends=True)
-    line_offsets: list[int] = []
-    current_offset = 0
-    for line in lines:
-        line_offsets.append(current_offset)
-        current_offset += len(line)
-    if not line_offsets:
-        line_offsets.append(0)
+    line_offsets = _line_start_offsets(stripped_text)
 
     def _line_slice(start_line: int, end_line: int) -> tuple[int, str]:
-        start_index = line_offsets[max(0, start_line - 1)]
+        start_index = line_offsets[max(0, min(start_line - 1, len(line_offsets) - 1))]
         if end_line < len(line_offsets):
             end_index = line_offsets[max(0, end_line)]
         else:
             end_index = len(stripped_text)
         return start_index, stripped_text[start_index:end_index]
+
+    def _resolve_reference_binding_cached(reference_name: str) -> tuple[str | None, tuple[str, ...]]:
+        cached = resolved_reference_cache.get(reference_name)
+        if reference_name in resolved_reference_cache:
+            return cached
+        resolved = _resolve_reference_binding(
+            current_file=file_path,
+            reference_name=reference_name,
+            current_package=current_package,
+            used_packages=used_packages,
+            package_aliases=package_aliases,
+            import_bindings=import_bindings,
+            module_index=module_index,
+            normalize_repository_relative_path=normalize_repository_relative_path,
+            resolve_suffix_match=resolve_suffix_match,
+            resolve_import_cached=_resolve_import_cached,
+        )
+        resolved_reference_cache[reference_name] = resolved
+        return resolved
+
+    def _resolve_import_cached(import_target: str) -> str | None:
+        cached = resolved_import_cache.get(import_target)
+        if import_target in resolved_import_cache:
+            return cached
+        resolved = resolve_import(
+            current_file=file_path,
+            import_target=import_target,
+            module_index=module_index,
+            normalize_repository_relative_path=normalize_repository_relative_path,
+            resolve_suffix_match=resolve_suffix_match,
+        )
+        resolved_import_cache[import_target] = resolved
+        return resolved
 
     for symbol_entry in symbol_entries:
         symbol_start = int(symbol_entry["start_line"])
@@ -658,20 +706,12 @@ def _reference_bindings(
             if not package_name or not _is_candidate_reference_symbol(symbol_name):
                 continue
             qualified_spans.append(match.span())
-            target_file, target_names = _resolve_reference_binding(
-                current_file=file_path,
-                reference_name=f"{package_name}:{symbol_name}",
-                current_package=current_package,
-                used_packages=used_packages,
-                package_aliases=package_aliases,
-                import_bindings=import_bindings,
-                module_index=module_index,
-                normalize_repository_relative_path=normalize_repository_relative_path,
-                resolve_suffix_match=resolve_suffix_match,
+            target_file, target_names = _resolve_reference_binding_cached(
+                f"{package_name}:{symbol_name}"
             )
             if target_file is None or target_file == file_path:
                 continue
-            line_no = stripped_text.count("\n", 0, slice_offset + match.start()) + 1
+            line_no = _line_number(stripped_text, slice_offset + match.start())
             binding_key = (line_no, target_file, tuple(target_names))
             if binding_key in seen_bindings:
                 continue
@@ -690,20 +730,10 @@ def _reference_bindings(
             symbol_name = normalize_symbol_name(str(match.group("name") or ""))
             if not _is_candidate_reference_symbol(symbol_name):
                 continue
-            target_file, target_names = _resolve_reference_binding(
-                current_file=file_path,
-                reference_name=symbol_name,
-                current_package=current_package,
-                used_packages=used_packages,
-                package_aliases=package_aliases,
-                import_bindings=import_bindings,
-                module_index=module_index,
-                normalize_repository_relative_path=normalize_repository_relative_path,
-                resolve_suffix_match=resolve_suffix_match,
-            )
+            target_file, target_names = _resolve_reference_binding_cached(symbol_name)
             if target_file is None or target_file == file_path:
                 continue
-            line_no = stripped_text.count("\n", 0, slice_offset + match.start()) + 1
+            line_no = _line_number(stripped_text, slice_offset + match.start())
             binding_key = (line_no, target_file, tuple(target_names))
             if binding_key in seen_bindings:
                 continue
@@ -719,7 +749,7 @@ def _reference_bindings(
     return tuple(bindings)
 
 
-def parse_dependencies_only(
+def _dependencies_and_reference_bindings(
     file_path: str,
     text: str,
     module_index: dict[str, str],
@@ -727,7 +757,7 @@ def parse_dependencies_only(
     stable_identifier: StableIdentifier,
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
-) -> tuple[dict[str, Any], ...]:
+) -> tuple[tuple[dict[str, Any], ...], tuple[dict[str, Any], ...]]:
     dependency_entries, import_bindings, current_package, used_packages, package_aliases = (
         _extract_import_context(
             file_path,
@@ -738,12 +768,7 @@ def parse_dependencies_only(
             resolve_suffix_match=resolve_suffix_match,
         )
     )
-    dependencies = list(dependency_entries)
-    dependency_keys = {
-        (entry["target_file"], entry["target_symbol"], entry["dependency_type"])
-        for entry in dependencies
-    }
-    for binding in _reference_bindings(
+    reference_bindings = _reference_bindings(
         file_path,
         text,
         module_index,
@@ -753,7 +778,13 @@ def parse_dependencies_only(
         package_aliases=package_aliases,
         normalize_repository_relative_path=normalize_repository_relative_path,
         resolve_suffix_match=resolve_suffix_match,
-    ):
+    )
+    dependencies = list(dependency_entries)
+    dependency_keys = {
+        (entry["target_file"], entry["target_symbol"], entry["dependency_type"])
+        for entry in dependencies
+    }
+    for binding in reference_bindings:
         dependency_key = (binding["target_file"], binding["target_symbol"], "references")
         if dependency_key in dependency_keys:
             continue
@@ -775,7 +806,28 @@ def parse_dependencies_only(
                 "dependency_type": "references",
             }
         )
-    return tuple(dependencies)
+    return tuple(dependencies), reference_bindings
+
+
+def parse_dependencies_only(
+    file_path: str,
+    text: str,
+    module_index: dict[str, str],
+    *,
+    stable_identifier: StableIdentifier,
+    normalize_repository_relative_path: NormalizeRepositoryRelativePath,
+    resolve_suffix_match: ResolveSuffixMatch,
+) -> tuple[dict[str, Any], ...]:
+    dependencies, _reference_bindings_result = _dependencies_and_reference_bindings(
+        file_path,
+        text,
+        module_index,
+        stable_identifier=stable_identifier,
+        normalize_repository_relative_path=normalize_repository_relative_path,
+        resolve_suffix_match=resolve_suffix_match,
+    )
+    del _reference_bindings_result
+    return dependencies
 
 
 def parse_file(
@@ -803,25 +855,13 @@ def parse_file(
         }
         for entry in symbol_entries
     )
-    dependency_entries, import_bindings, current_package, used_packages, package_aliases = (
-        _extract_import_context(
-            file_path,
-            text,
-            module_index,
-            stable_identifier=stable_identifier,
-            normalize_repository_relative_path=normalize_repository_relative_path,
-            resolve_suffix_match=resolve_suffix_match,
-        )
-    )
-    dependencies = list(
-        parse_dependencies_only(
-            file_path,
-            text,
-            module_index,
-            stable_identifier=stable_identifier,
-            normalize_repository_relative_path=normalize_repository_relative_path,
-            resolve_suffix_match=resolve_suffix_match,
-        )
+    dependencies, reference_bindings = _dependencies_and_reference_bindings(
+        file_path,
+        text,
+        module_index,
+        stable_identifier=stable_identifier,
+        normalize_repository_relative_path=normalize_repository_relative_path,
+        resolve_suffix_match=resolve_suffix_match,
     )
 
     def _symbol_for_line(line_no: int) -> dict[str, Any] | None:
@@ -831,17 +871,7 @@ def parse_file(
         return None
 
     reference_candidates: dict[str, dict[str, Any]] = {}
-    for binding in _reference_bindings(
-        file_path,
-        text,
-        module_index,
-        import_bindings=import_bindings,
-        current_package=current_package,
-        used_packages=used_packages,
-        package_aliases=package_aliases,
-        normalize_repository_relative_path=normalize_repository_relative_path,
-        resolve_suffix_match=resolve_suffix_match,
-    ):
+    for binding in reference_bindings:
         source_symbol = _symbol_for_line(int(binding["line_no"]))
         if source_symbol is None:
             continue
@@ -868,6 +898,6 @@ def parse_file(
         )
     return (
         symbols,
-        tuple(dependencies),
+        dependencies,
         tuple(reference_candidates[key] for key in sorted(reference_candidates)),
     )

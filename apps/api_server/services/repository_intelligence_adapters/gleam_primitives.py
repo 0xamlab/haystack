@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -104,14 +105,19 @@ def has_gleam_path_hints(path: Path | PurePosixPath) -> bool:
     return PurePosixPath(path).suffix.lower() in _KNOWN_SUFFIXES
 
 
-def is_probable_gleam_source(*, path: Path | PurePosixPath, text: str) -> bool:
+def is_probable_gleam_source(
+    *,
+    path: Path | PurePosixPath,
+    text: str,
+    stripped_text: str | None = None,
+) -> bool:
     if has_gleam_path_hints(path):
         return True
-    stripped_text = strip_comments(text)
+    effective_stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
     return bool(
-        _IMPORT_RE.search(stripped_text)
-        or _TYPE_RE.search(stripped_text)
-        or _FN_RE.search(stripped_text)
+        _IMPORT_RE.search(effective_stripped_text)
+        or _TYPE_RE.search(effective_stripped_text)
+        or _FN_RE.search(effective_stripped_text)
     )
 
 
@@ -153,8 +159,10 @@ def _ordered_names(*raw_names: str) -> tuple[str, ...]:
     return tuple(ordered)
 
 
-def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
-    stripped_text = strip_comments(text)
+@lru_cache(maxsize=1024)
+def _iter_symbol_entries_from_stripped_text(
+    stripped_text: str,
+) -> tuple[tuple[str, str, int], ...]:
     entries: list[tuple[str, str, int]] = []
     seen_names: set[str] = set()
     for regex, symbol_kind in ((_TYPE_RE, "type"), (_CONST_RE, "constant"), (_FN_RE, "function")):
@@ -167,5 +175,20 @@ def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
             ):
                 continue
             seen_names.add(symbol_name)
-            entries.append((symbol_name, symbol_kind, _line_number(stripped_text, match.start())))
+            entries.append(
+                (
+                    symbol_name,
+                    symbol_kind,
+                    _line_number(stripped_text, match.start()),
+                )
+            )
     return tuple(sorted(entries, key=lambda item: (item[2], item[0], item[1])))
+
+
+def iter_symbol_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, str, int], ...]:
+    effective_stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
+    return _iter_symbol_entries_from_stripped_text(effective_stripped_text)

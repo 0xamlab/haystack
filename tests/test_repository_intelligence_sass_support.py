@@ -228,6 +228,54 @@ def test_operational_seed_plan_without_diagnostics_does_not_force_sass_first_in_
     assert seed_plan["operational_ecosystems"][0] != "sass"
 
 
+def test_operational_seed_plan_without_diagnostics_promotes_sass_in_mixed_build_repo(
+    tmp_path: Path,
+) -> None:
+    repo_path = tmp_path / "sass-mixed-build-repo"
+    repo_path.mkdir(parents=True)
+    (repo_path / "package.json").write_text(
+        '{"name":"sass-mixed-build","private":true,"scripts":{"build":"webpack --mode production"}}\n',
+        encoding="utf-8",
+    )
+    (repo_path / "Dockerfile").write_text(
+        "FROM node:20-alpine\nWORKDIR /app\nCOPY . .\nRUN npm ci\n",
+        encoding="utf-8",
+    )
+    (repo_path / "README.rst").write_text("Theme docs\n=========\n", encoding="utf-8")
+    (repo_path / "src" / "sass").mkdir(parents=True)
+    (repo_path / "src" / "theme.js").write_text(
+        "export const initTheme = () => true;\n",
+        encoding="utf-8",
+    )
+    (repo_path / "src" / "sass" / "theme.sass").write_text(
+        '@use "partials/badge"\nbody\n  color: #111\n',
+        encoding="utf-8",
+    )
+    (repo_path / "src" / "sass" / "badge_only.sass").write_text(
+        '@use "partials/badge"\n.badge\n  display: inline-block\n',
+        encoding="utf-8",
+    )
+    (repo_path / "src" / "sass" / "partials").mkdir(parents=True)
+    for index in range(6):
+        (repo_path / "src" / "sass" / "partials" / f"_module_{index}.sass").write_text(
+            f"$shade-{index}: #{index}{index}{index}\n"
+            f".badge-{index}\n"
+            f"  color: $shade-{index}\n",
+            encoding="utf-8",
+        )
+
+    seed_plan = _derive_operational_seed_plan_without_diagnostics(
+        repo_path=repo_path,
+        focus_paths=["."],
+        max_files=256,
+    )
+
+    assert "sass" in seed_plan["detected_ecosystems"]
+    assert seed_plan["operational_ecosystems"][0] == "sass"
+    assert "src/sass/theme.sass" in seed_plan["entrypoint_files"]
+    assert "src/sass" in seed_plan["support_roots"]
+
+
 def test_repository_snapshot_graph_contains_sass_symbol_reference_edges(tmp_path: Path) -> None:
     initialize_pyarrow_parquet_runtime()
     repo_path = tmp_path / "sass-graph-repo"

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from functools import lru_cache
 from pathlib import Path, PurePosixPath
 
 from apps.api_server.services.repository_intelligence_adapters import (
@@ -40,6 +41,7 @@ _line_count = repository_jinja_primitives._line_count
 _line_number = repository_jinja_primitives._line_number
 _ordered_names = repository_jinja_primitives._ordered_names
 _looks_binaryish = repository_jinja_primitives._looks_binaryish
+_MACRO_RE = repository_jinja_primitives._MACRO_RE
 _normalize_repository_relative_path = repository_jinja_primitives._normalize_repository_relative_path
 _normalize_import_target = repository_jinja_primitives._normalize_import_target
 _quoted_targets = repository_jinja_primitives._quoted_targets
@@ -64,31 +66,39 @@ _SKIPPED_REFERENCE_PREFIXES = frozenset(
 _RESERVED_CALL_NAMES = repository_jinja_primitives._RESERVED_CALL_NAMES
 
 
-def has_twig_path_hints(path: Path | PurePosixPath) -> bool:
-    return PurePosixPath(path).suffix.lower() in TWIG_SUFFIXES
-
-
-def is_probable_twig_source(*, path: Path | PurePosixPath, text: str) -> bool:
+@lru_cache(maxsize=1024)
+def _prepared_twig_source_text(*, path: Path | PurePosixPath, text: str) -> str | None:
     normalized_path = PurePosixPath(path)
     if normalized_path.suffix.lower() not in TWIG_SUFFIXES or not text or _looks_binaryish(text):
-        return False
+        return None
     stripped_text = strip_comments(text)
     if not stripped_text.strip():
-        return False
-    return any(marker in stripped_text for marker in ("{{", "{%", "{#"))
+        return None
+    return stripped_text if any(marker in stripped_text for marker in ("{{", "{%", "{#")) else None
 
 
-def module_name_from_path(file_path: str) -> str:
-    normalized_path = PurePosixPath(file_path)
-    without_suffix = normalized_path.with_suffix("")
-    parts = list(without_suffix.parts)
-    if parts and parts[0].lower() in _COMMON_MODULE_ROOTS:
-        parts = parts[1:]
-    return ".".join(parts) if parts else without_suffix.name
+@lru_cache(maxsize=1024)
+def _iter_symbol_entries_from_stripped_text(
+    stripped_text: str,
+) -> tuple[tuple[str, str, int], ...]:
+    entries: list[tuple[str, str, int]] = []
+    seen: set[tuple[str, str, int]] = set()
+    for match in _MACRO_RE.finditer(stripped_text):
+        symbol_name = normalize_identifier(str(match.group("name") or ""))
+        if not symbol_name:
+            continue
+        item = (symbol_name, "macro", _line_number(stripped_text, match.start()))
+        if item in seen:
+            continue
+        seen.add(item)
+        entries.append(item)
+    return tuple(entries)
 
 
-def iter_reference_entries(text: str) -> tuple[tuple[str, str | None, str, int], ...]:
-    stripped_text = strip_comments(text)
+@lru_cache(maxsize=1024)
+def _iter_reference_entries_from_stripped_text(
+    stripped_text: str,
+) -> tuple[tuple[str, str | None, str, int], ...]:
     entries: list[tuple[str, str | None, str, int]] = []
     seen: set[tuple[str, str | None, str, int]] = set()
     for match in _EXPRESSION_RE.finditer(stripped_text):
@@ -118,10 +128,10 @@ def iter_reference_entries(text: str) -> tuple[tuple[str, str | None, str, int],
     return tuple(entries)
 
 
-def iter_dependency_entries(
-    text: str,
+@lru_cache(maxsize=1024)
+def _iter_dependency_entries_from_stripped_text(
+    stripped_text: str,
 ) -> tuple[tuple[str, str, tuple[tuple[str, tuple[str, ...]], ...], str | None, int], ...]:
-    stripped_text = strip_comments(text)
     entries: list[tuple[str, str, tuple[tuple[str, tuple[str, ...]], ...], str | None, int]] = []
     seen: set[tuple[str, str, tuple[tuple[str, tuple[str, ...]], ...], str | None, int]] = set()
     for match in _STATEMENT_RE.finditer(stripped_text):
@@ -136,6 +146,33 @@ def iter_dependency_entries(
             seen.add(item)
             entries.append(item)
     return tuple(entries)
+
+
+def has_twig_path_hints(path: Path | PurePosixPath) -> bool:
+    return PurePosixPath(path).suffix.lower() in TWIG_SUFFIXES
+
+
+def is_probable_twig_source(*, path: Path | PurePosixPath, text: str) -> bool:
+    return _prepared_twig_source_text(path=path, text=text) is not None
+
+
+def module_name_from_path(file_path: str) -> str:
+    normalized_path = PurePosixPath(file_path)
+    without_suffix = normalized_path.with_suffix("")
+    parts = list(without_suffix.parts)
+    if parts and parts[0].lower() in _COMMON_MODULE_ROOTS:
+        parts = parts[1:]
+    return ".".join(parts) if parts else without_suffix.name
+
+
+def iter_reference_entries(text: str) -> tuple[tuple[str, str | None, str, int], ...]:
+    return _iter_reference_entries_from_stripped_text(strip_comments(text))
+
+
+def iter_dependency_entries(
+    text: str,
+) -> tuple[tuple[str, str, tuple[tuple[str, tuple[str, ...]], ...], str | None, int], ...]:
+    return _iter_dependency_entries_from_stripped_text(strip_comments(text))
 
 
 def _dependency_entries_for_statement(
@@ -212,8 +249,28 @@ def imported_symbol_bindings(
     normalize_repository_relative_path: NormalizeRepositoryRelativePath,
     resolve_suffix_match: ResolveSuffixMatch,
 ) -> dict[str, _ImportedSymbolBinding]:
+    return _imported_symbol_bindings_from_dependency_entries(
+        current_file=current_file,
+        dependency_entries=_iter_dependency_entries_from_stripped_text(strip_comments(text)),
+        module_index=module_index,
+        normalize_repository_relative_path=normalize_repository_relative_path,
+        resolve_suffix_match=resolve_suffix_match,
+    )
+
+
+def _imported_symbol_bindings_from_dependency_entries(
+    *,
+    current_file: str,
+    dependency_entries: tuple[
+        tuple[str, str, tuple[tuple[str, tuple[str, ...]], ...], str | None, int],
+        ...,
+    ],
+    module_index: dict[str, str],
+    normalize_repository_relative_path: NormalizeRepositoryRelativePath,
+    resolve_suffix_match: ResolveSuffixMatch,
+) -> dict[str, _ImportedSymbolBinding]:
     bindings: dict[str, _ImportedSymbolBinding] = {}
-    for _kind, import_target, selectors, alias, _line_number in iter_dependency_entries(text):
+    for _kind, import_target, selectors, alias, _line_number in dependency_entries:
         target_file = resolve_import(
             current_file=current_file,
             import_target=import_target,
@@ -261,6 +318,8 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
+    stripped_text: str | None = None,
 ) -> set[str]:
     del stable_identifier
     path = PurePosixPath(file_path)
@@ -273,16 +332,21 @@ def module_aliases_for_path(
         str(path.with_suffix("")),
         str(path.with_suffix("")).replace("/", "."),
     }
-    try:
-        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        text = ""
-    if text and not is_probable_twig_source(path=path, text=text):
+    if text is None:
+        try:
+            text = (root_path / path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            text = ""
+    if stripped_text is None and text:
+        stripped_text = _prepared_twig_source_text(path=path, text=text)
+    if text and stripped_text is None:
         return {alias for alias in aliases if alias}
     module_name = module_name_from_path(file_path)
     aliases.add(module_name)
     aliases.add(module_name.replace("/", "."))
-    for symbol_name, _symbol_kind, _line_number in iter_symbol_entries(text):
+    for symbol_name, _symbol_kind, _line_number in _iter_symbol_entries_from_stripped_text(
+        stripped_text or ""
+    ):
         aliases.add(symbol_name)
         if module_name:
             aliases.add(f"{module_name}.{symbol_name}")
@@ -294,8 +358,12 @@ def collect_symbols(
     file_path: str,
     text: str,
     stable_identifier: StableIdentifier,
+    stripped_text: str | None = None,
 ) -> tuple[_Symbol, ...]:
-    stripped_text = strip_comments(text)
+    if stripped_text is None:
+        stripped_text = _prepared_twig_source_text(path=PurePosixPath(file_path), text=text)
+    if stripped_text is None:
+        stripped_text = strip_comments(text)
     module_name = module_name_from_path(file_path) or PurePosixPath(file_path).stem
     module_symbol = _Symbol(
         symbol_id=stable_identifier(
@@ -310,7 +378,9 @@ def collect_symbols(
         signature=f"twig {module_name}",
     )
     symbols: list[_Symbol] = [module_symbol]
-    for symbol_name, symbol_kind, line_number in iter_symbol_entries(text):
+    for symbol_name, symbol_kind, line_number in _iter_symbol_entries_from_stripped_text(
+        stripped_text
+    ):
         symbols.append(
             _Symbol(
                 symbol_id=stable_identifier(

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path, PurePosixPath
+from xml.etree import ElementTree
 
 
 def _probe_module():
@@ -279,7 +280,15 @@ def _haskell_project_profile_hints(
     return entrypoint_paths, support_roots, config_paths
 
 
-def _csproj_profile_hints(csproj_path: str) -> tuple[set[str], set[str], set[str]]:
+def _xml_local_name(tag: str) -> str:
+    return tag.rsplit("}", 1)[-1]
+
+
+def _csproj_profile_hints(
+    csproj_path: str,
+    *,
+    repo_path: Path | None = None,
+) -> tuple[set[str], set[str], set[str]]:
     normalized_path = repository_service._normalize_repository_relative_path(csproj_path)
     if not normalized_path:
         return set(), set(), set()
@@ -287,26 +296,66 @@ def _csproj_profile_hints(csproj_path: str) -> tuple[set[str], set[str], set[str
     if _is_non_operational_project_path(str(project_dir)):
         return set(), set(), {normalized_path}
     root_prefix = "" if str(project_dir) in {"", "."} else f"{project_dir}/"
-    support_roots = {
-        root_prefix.rstrip("/"),
-        f"{root_prefix}src",
-    }
-    entrypoint_paths = {
-        f"{root_prefix}Program.cs",
-        f"{root_prefix}Program.fs",
-        f"{root_prefix}Program.vb",
-        f"{root_prefix}Main.cs",
-        f"{root_prefix}Main.fs",
-        f"{root_prefix}Main.vb",
-        f"{root_prefix}Startup.cs",
-        f"{root_prefix}Startup.fs",
-        f"{root_prefix}Startup.vb",
-        f"{root_prefix}App.xaml.cs",
-        f"{root_prefix}App.fs",
-        f"{root_prefix}App.xaml.vb",
-        f"{root_prefix}Application.vb",
-    }
+    support_roots = {root_prefix.rstrip("/")} if root_prefix else set()
+    entrypoint_paths: set[str] = set()
     config_paths = {normalized_path}
+    explicit_compile_entries = False
+    if repo_path is not None:
+        manifest_path = repo_path / normalized_path
+        try:
+            root = ElementTree.fromstring(manifest_path.read_text(encoding="utf-8", errors="replace"))
+        except (ElementTree.ParseError, OSError):
+            root = None
+        if root is not None:
+            for element in root.iter():
+                include_value = str(element.attrib.get("Include") or "").strip()
+                if not include_value:
+                    continue
+                resolved_path = repository_service._normalize_repository_relative_path(
+                    str(project_dir / include_value.replace("\\", "/"))
+                )
+                if not resolved_path:
+                    continue
+                local_name = _xml_local_name(element.tag)
+                if local_name == "Compile":
+                    if _is_non_operational_profile_path(resolved_path):
+                        continue
+                    explicit_compile_entries = True
+                    entrypoint_paths.add(resolved_path)
+                    parent_dir = repository_service._normalize_repository_relative_path(
+                        str(PurePosixPath(resolved_path).parent)
+                    )
+                    if parent_dir:
+                        support_roots.add(parent_dir)
+                    continue
+                if local_name == "ProjectReference":
+                    if _is_non_operational_profile_path(resolved_path):
+                        continue
+                    config_paths.add(resolved_path)
+                    parent_dir = repository_service._normalize_repository_relative_path(
+                        str(PurePosixPath(resolved_path).parent)
+                    )
+                    if parent_dir:
+                        support_roots.add(parent_dir)
+    if not explicit_compile_entries:
+        support_roots.add(f"{root_prefix}src")
+        entrypoint_paths.update(
+            {
+                f"{root_prefix}Program.cs",
+                f"{root_prefix}Program.fs",
+                f"{root_prefix}Program.vb",
+                f"{root_prefix}Main.cs",
+                f"{root_prefix}Main.fs",
+                f"{root_prefix}Main.vb",
+                f"{root_prefix}Startup.cs",
+                f"{root_prefix}Startup.fs",
+                f"{root_prefix}Startup.vb",
+                f"{root_prefix}App.xaml.cs",
+                f"{root_prefix}App.fs",
+                f"{root_prefix}App.xaml.vb",
+                f"{root_prefix}Application.vb",
+            }
+        )
     return entrypoint_paths, support_roots, config_paths
 
 
@@ -351,13 +400,16 @@ def _sln_profile_hints(
     config_paths: set[str] = {normalized_path}
     project_paths = _sln_project_paths(repo_path, normalized_path)
     for project_path in project_paths:
-        project_entrypoints, project_roots, project_configs = _csproj_profile_hints(project_path)
+        project_entrypoints, project_roots, project_configs = _csproj_profile_hints(
+            project_path,
+            repo_path=repo_path,
+        )
         entrypoint_paths.update(project_entrypoints)
         support_roots.update(project_roots)
         config_paths.update(project_configs)
     if entrypoint_paths or support_roots or len(config_paths) > 1:
         return entrypoint_paths, support_roots, config_paths
-    return _csproj_profile_hints(normalized_path)
+    return _csproj_profile_hints(normalized_path, repo_path=repo_path)
 
 
 def _gemfile_profile_hints(

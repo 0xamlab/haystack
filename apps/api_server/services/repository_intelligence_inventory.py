@@ -4,9 +4,10 @@ import json
 import os
 import re
 from collections import defaultdict
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from apps.api_server.services.repository_intelligence_indexing import (
+    _JS_LIKE_SUFFIXES,
     _normalize_repository_relative_path,
 )
 
@@ -38,6 +39,41 @@ _DART_PUBSPEC_NAME_RE = re.compile(
     r"^\s*name\s*:\s*(?P<name>[A-Za-z0-9_-]+)\s*$",
     re.MULTILINE,
 )
+_WORKSPACE_PACKAGE_INDEX_SUFFIXES = frozenset((*_JS_LIKE_SUFFIXES, ".vue", ".svelte", ".astro"))
+_WORKSPACE_GO_MODULE_INDEX_SUFFIXES = frozenset({".go"})
+_WORKSPACE_DART_PACKAGE_INDEX_SUFFIXES = frozenset({".dart"})
+
+
+def _repository_relative_paths_have_suffixes(
+    file_paths: list[str] | tuple[str, ...],
+    *,
+    suffixes: frozenset[str],
+) -> bool:
+    for file_path in file_paths:
+        if PurePosixPath(file_path).suffix.lower() in suffixes:
+            return True
+    return False
+
+
+def _requires_workspace_package_index(file_paths: list[str] | tuple[str, ...]) -> bool:
+    return _repository_relative_paths_have_suffixes(
+        file_paths,
+        suffixes=_WORKSPACE_PACKAGE_INDEX_SUFFIXES,
+    )
+
+
+def _requires_workspace_go_module_index(file_paths: list[str] | tuple[str, ...]) -> bool:
+    return _repository_relative_paths_have_suffixes(
+        file_paths,
+        suffixes=_WORKSPACE_GO_MODULE_INDEX_SUFFIXES,
+    )
+
+
+def _requires_workspace_dart_package_index(file_paths: list[str] | tuple[str, ...]) -> bool:
+    return _repository_relative_paths_have_suffixes(
+        file_paths,
+        suffixes=_WORKSPACE_DART_PACKAGE_INDEX_SUFFIXES,
+    )
 
 
 def _read_dart_pubspec_name(pubspec_path: Path) -> str | None:

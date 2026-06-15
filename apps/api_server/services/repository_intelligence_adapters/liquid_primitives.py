@@ -30,6 +30,7 @@ _COMMON_MODULE_ROOTS = frozenset(
 _STATEMENT_RE = re.compile(r"\{%-?\s*(?P<body>.*?)\s*-?%\}", re.S)
 _EXPRESSION_RE = re.compile(r"\{\{(?P<body>.*?)\}\}", re.S)
 _QUOTED_TARGET_RE = re.compile(r"""['"](?P<target>[^'"]+)['"]""")
+_ENDCOMMENT_RE = re.compile(r"\{%-?\s*endcomment\s*-?%\}", re.S)
 _ASSIGN_RE = re.compile(
     r"\{%-?\s*(?:assign|capture)\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\b",
     re.S,
@@ -102,25 +103,25 @@ def _looks_binaryish(text: str) -> bool:
 
 
 def strip_comments(text: str) -> str:
+    if "{%" not in text or "comment" not in text.lower():
+        return text
     characters = list(text)
-    index = 0
-    while index < len(characters):
-        statement_match = _STATEMENT_RE.match(text, index)
+    search_index = 0
+    while search_index < len(characters):
+        statement_match = _STATEMENT_RE.search(text, search_index)
         if not statement_match:
-            index += 1
-            continue
+            break
         body = str(statement_match.group("body") or "").strip().lower()
         if body != "comment":
-            index = statement_match.end()
+            search_index = statement_match.end()
             continue
-        block_end = re.compile(r"\{%-?\s*endcomment\s*-?%\}", re.S).search(
-            text, statement_match.end()
-        )
+        block_start = statement_match.start()
+        block_end = _ENDCOMMENT_RE.search(text, statement_match.end())
         end_offset = block_end.end() if block_end else len(characters)
-        for replace_index in range(index, min(end_offset, len(characters))):
+        for replace_index in range(block_start, min(end_offset, len(characters))):
             if characters[replace_index] != "\n":
                 characters[replace_index] = " "
-        index = end_offset
+        search_index = end_offset
     return "".join(characters)
 
 
@@ -128,14 +129,19 @@ def has_liquid_path_hints(path: Path | PurePosixPath) -> bool:
     return PurePosixPath(path).suffix.lower() in LIQUID_SUFFIXES
 
 
-def is_probable_liquid_source(*, path: Path | PurePosixPath, text: str) -> bool:
+def is_probable_liquid_source(
+    *,
+    path: Path | PurePosixPath,
+    text: str,
+    stripped_text: str | None = None,
+) -> bool:
     normalized_path = PurePosixPath(path)
     if normalized_path.suffix.lower() not in LIQUID_SUFFIXES or not text or _looks_binaryish(text):
         return False
-    stripped_text = strip_comments(text)
-    if not stripped_text.strip():
+    candidate_stripped_text = stripped_text if stripped_text is not None else strip_comments(text)
+    if not candidate_stripped_text.strip():
         return False
-    return any(marker in stripped_text for marker in ("{{", "{%"))
+    return any(marker in candidate_stripped_text for marker in ("{{", "{%"))
 
 
 def normalize_identifier(value: str) -> str:
@@ -165,15 +171,19 @@ def module_name_from_path(file_path: str) -> str:
     return ".".join(parts) if parts else without_suffix.name
 
 
-def iter_dependency_entries(text: str) -> tuple[tuple[str, str, int], ...]:
-    stripped_text = strip_comments(text)
+def iter_dependency_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, str, int], ...]:
+    candidate_text = stripped_text if stripped_text is not None else strip_comments(text)
     entries: list[tuple[str, str, int]] = []
     seen: set[tuple[str, str, int]] = set()
-    for match in _STATEMENT_RE.finditer(stripped_text):
+    for match in _STATEMENT_RE.finditer(candidate_text):
         body = str(match.group("body") or "").strip()
         if not body:
             continue
-        line_number = stripped_text.count("\n", 0, match.start()) + 1
+        line_number = candidate_text.count("\n", 0, match.start()) + 1
         lowered_body = body.lower()
         kind = None
         if lowered_body.startswith("render "):
@@ -200,15 +210,19 @@ def iter_dependency_entries(text: str) -> tuple[tuple[str, str, int], ...]:
     return tuple(entries)
 
 
-def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
-    stripped_text = strip_comments(text)
+def iter_symbol_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, str, int], ...]:
+    candidate_text = stripped_text if stripped_text is not None else strip_comments(text)
     entries: list[tuple[str, str, int]] = []
     seen: set[tuple[str, str, int]] = set()
-    for match in _ASSIGN_RE.finditer(stripped_text):
+    for match in _ASSIGN_RE.finditer(candidate_text):
         symbol_name = normalize_identifier(str(match.group("name") or ""))
         if not symbol_name:
             continue
-        item = (symbol_name, "binding", stripped_text.count("\n", 0, match.start()) + 1)
+        item = (symbol_name, "binding", candidate_text.count("\n", 0, match.start()) + 1)
         if item in seen:
             continue
         seen.add(item)
@@ -216,13 +230,17 @@ def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
     return tuple(entries)
 
 
-def iter_reference_entries(text: str) -> tuple[tuple[str, int], ...]:
-    stripped_text = strip_comments(text)
+def iter_reference_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, int], ...]:
+    candidate_text = stripped_text if stripped_text is not None else strip_comments(text)
     entries: list[tuple[str, int]] = []
     seen: set[tuple[str, int]] = set()
-    for match in _EXPRESSION_RE.finditer(stripped_text):
+    for match in _EXPRESSION_RE.finditer(candidate_text):
         body = str(match.group("body") or "")
-        line_number = stripped_text.count("\n", 0, match.start()) + 1
+        line_number = candidate_text.count("\n", 0, match.start()) + 1
         for pattern in (_FILTER_RE, _IDENTIFIER_RE):
             for item_match in pattern.finditer(body):
                 name = normalize_identifier(str(item_match.group("name") or ""))
@@ -255,6 +273,9 @@ def module_aliases_for_path(
     root_path: Path,
     file_path: str,
     stable_identifier: StableIdentifier,
+    text: str | None = None,
+    stripped_text: str | None = None,
+    symbol_entries: tuple[tuple[str, str, int], ...] | None = None,
 ) -> set[str]:
     del stable_identifier
     path = PurePosixPath(file_path)
@@ -267,16 +288,31 @@ def module_aliases_for_path(
         str(path.with_suffix("")),
         str(path.with_suffix("")).replace("/", "."),
     }
-    try:
-        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        text = ""
-    if text and not is_probable_liquid_source(path=path, text=text):
+    loaded_text = text
+    if loaded_text is None:
+        try:
+            loaded_text = (root_path / path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            loaded_text = ""
+    candidate_stripped_text = (
+        stripped_text if stripped_text is not None else strip_comments(loaded_text)
+    )
+    if loaded_text and not is_probable_liquid_source(
+        path=path,
+        text=loaded_text,
+        stripped_text=candidate_stripped_text,
+    ):
         return {alias for alias in aliases if alias}
     module_name = module_name_from_path(file_path)
     aliases.add(module_name)
     aliases.add(module_name.replace("/", "."))
-    for symbol_name, _symbol_kind, _line_number in iter_symbol_entries(text):
+    resolved_symbol_entries = symbol_entries
+    if resolved_symbol_entries is None:
+        resolved_symbol_entries = iter_symbol_entries(
+            loaded_text,
+            stripped_text=candidate_stripped_text,
+        )
+    for symbol_name, _symbol_kind, _line_number in resolved_symbol_entries:
         aliases.add(symbol_name)
         if module_name:
             aliases.add(f"{module_name}.{symbol_name}")
@@ -338,6 +374,8 @@ def collect_symbols(
     file_path: str,
     text: str,
     stable_identifier: StableIdentifier,
+    stripped_text: str | None = None,
+    symbol_entries: tuple[tuple[str, str, int], ...] | None = None,
 ) -> tuple[_Symbol, ...]:
     symbols: list[_Symbol] = []
     module_symbol_name = module_name_from_path(file_path)
@@ -361,7 +399,13 @@ def collect_symbols(
     )
     parent_symbol_id = symbols[0].symbol_id
     seen_symbol_names = {module_symbol_name}
-    for symbol_name, symbol_kind, _line_number in iter_symbol_entries(text):
+    resolved_symbol_entries = symbol_entries
+    if resolved_symbol_entries is None:
+        resolved_symbol_entries = iter_symbol_entries(
+            text,
+            stripped_text=stripped_text,
+        )
+    for symbol_name, symbol_kind, _line_number in resolved_symbol_entries:
         if symbol_name in seen_symbol_names:
             continue
         seen_symbol_names.add(symbol_name)

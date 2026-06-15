@@ -74,6 +74,14 @@ class _CollectedSymbol:
     qualified_names: tuple[str, ...]
 
 
+def _looks_binaryish(text: str) -> bool:
+    sample = text[:2048]
+    control_count = sum(
+        1 for character in sample if 0 <= ord(character) < 32 and character not in "\n\r\t"
+    )
+    return control_count > max(2, len(sample) // 32)
+
+
 def _line_number(text: str, offset: int) -> int:
     if offset <= 0:
         return 1
@@ -140,16 +148,20 @@ def has_rescript_path_hints(path: Path | PurePosixPath) -> bool:
 
 def is_probable_rescript_source(*, path: Path | PurePosixPath, text: str) -> bool:
     normalized_path = PurePosixPath(path)
-    if normalized_path.suffix.lower() in RESCRIPT_SUFFIXES:
-        return True
+    if not text or _looks_binaryish(text):
+        return False
     stripped_text = strip_comments(text)
-    return bool(
+    has_rescript_syntax = bool(
         _OPEN_RE.search(stripped_text)
         or _MODULE_ALIAS_RE.search(stripped_text)
+        or _MODULE_DECL_RE.search(stripped_text)
         or _TYPE_RE.search(stripped_text)
         or _LET_RE.search(stripped_text)
         or _EXTERNAL_RE.search(stripped_text)
     )
+    if normalized_path.suffix.lower() in RESCRIPT_SUFFIXES:
+        return has_rescript_syntax
+    return has_rescript_syntax
 
 
 def is_probable_rescript_config(*, path: Path | PurePosixPath, text: str) -> bool:
@@ -205,4 +217,3 @@ def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
             seen_names.add(symbol_name)
             entries.append((symbol_name, symbol_kind, _line_number(stripped_text, match.start())))
     return tuple(sorted(entries, key=lambda item: (item[2], item[0], item[1])))
-

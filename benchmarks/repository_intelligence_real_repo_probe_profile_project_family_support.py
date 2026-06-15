@@ -31,112 +31,357 @@ _is_operational_profile_entrypoint_candidate = _DeferredProbeAttr(
     "_is_operational_profile_entrypoint_candidate"
 )
 _probe_language_for_path = _DeferredProbeAttr("_probe_language_for_path")
+_SMALLTALK_PROFILE_HINT_CACHE_LIMIT = 256
+_SMALLTALK_PROFILE_HINT_CACHE: dict[
+    tuple[str, str],
+    tuple[frozenset[str], frozenset[str]],
+] = {}
+_STARLARK_PROFILE_HINT_CACHE_LIMIT = 256
+_STARLARK_PROFILE_HINT_CACHE: dict[
+    tuple[str, str],
+    tuple[frozenset[str], frozenset[str], frozenset[str]],
+] = {}
+_STARLARK_MODULE_PATH_CACHE_LIMIT = 128
+_STARLARK_MODULE_PATH_CACHE: dict[str, tuple[str, ...] | None] = {}
+_OPENSCAD_MODULE_PATH_CACHE_LIMIT = 128
+_OPENSCAD_MODULE_PATH_CACHE: dict[str, tuple[str, ...] | None] = {}
+_STARLARK_CONFIG_BASENAMES = frozenset(
+    {
+        "build",
+        "build.bazel",
+        "module.bazel",
+        "workspace",
+        "workspace.bazel",
+    }
+)
+_STARLARK_SOURCE_SUFFIXES = frozenset({".bzl", ".star"})
+_LOGTALK_MODULE_PATH_CACHE_LIMIT = 128
+_LOGTALK_MODULE_PATH_CACHE: dict[str, tuple[str, ...] | None] = {}
+_LOGTALK_SOURCE_HINT_CACHE_LIMIT = 128
+_LOGTALK_SOURCE_HINT_CACHE: dict[str, bool] = {}
+_LOGTALK_SOURCE_SUFFIXES = frozenset({".lgt", ".logtalk"})
+_LOGTALK_PREFERRED_ENTRYPOINT_BASENAMES = frozenset(
+    {
+        "loader.lgt",
+        "loader.logtalk",
+        "main.lgt",
+        "main.logtalk",
+        "example_loader.lgt",
+        "example_loader.logtalk",
+    }
+)
+_LOGTALK_DEPRIORITIZED_ENTRYPOINT_BASENAMES = frozenset(
+    {
+        "tester.lgt",
+        "tester.logtalk",
+        "tests.lgt",
+        "tests.logtalk",
+    }
+)
+_LOGTALK_ROOT_PRIORITIES = {
+    "library": 0,
+    "lib": 1,
+    "core": 2,
+    "src": 3,
+    "source": 4,
+    "examples": 5,
+    "contributions": 6,
+    "tools": 7,
+    "ports": 8,
+    "samples": 9,
+    "coding": 10,
+    "scripts": 11,
+}
+_LOGTALK_AUGMENT_PATH_LIMIT = 96
+_LOGTALK_ENTRYPOINT_LIMIT = 16
+_LOGTALK_SUPPORT_ROOT_LIMIT = 8
+
+
+def clear_smalltalk_profile_hint_cache() -> None:
+    _SMALLTALK_PROFILE_HINT_CACHE.clear()
+
+
+def clear_starlark_profile_hint_cache() -> None:
+    _STARLARK_PROFILE_HINT_CACHE.clear()
+    _STARLARK_MODULE_PATH_CACHE.clear()
+    _OPENSCAD_MODULE_PATH_CACHE.clear()
+    _LOGTALK_MODULE_PATH_CACHE.clear()
+    _LOGTALK_SOURCE_HINT_CACHE.clear()
+
+
+def _is_starlark_profile_candidate_path(relative_path: str) -> bool:
+    path = PurePosixPath(relative_path)
+    return path.name.lower() in _STARLARK_CONFIG_BASENAMES or (
+        path.suffix.lower() in _STARLARK_SOURCE_SUFFIXES
+    )
+
+
+def _cached_starlark_module_paths(repo_path: Path) -> list[str] | None:
+    cache_key = str(repo_path.resolve())
+    if cache_key in _STARLARK_MODULE_PATH_CACHE:
+        cached_paths = _STARLARK_MODULE_PATH_CACHE[cache_key]
+        return None if cached_paths is None else list(cached_paths)
+
+    from benchmarks import repository_intelligence_real_repo_probe_collection_support as collection_support
+
+    relative_paths = collection_support._git_repo_relative_files(repo_path)
+    cached_paths: tuple[str, ...] | None
+    if relative_paths is None:
+        cached_paths = None
+    else:
+        cached_paths = tuple(
+            sorted(
+                relative_path
+                for relative_path in relative_paths
+                if _is_starlark_profile_candidate_path(relative_path)
+            )
+        )
+    if len(_STARLARK_MODULE_PATH_CACHE) >= _STARLARK_MODULE_PATH_CACHE_LIMIT:
+        oldest_key = next(iter(_STARLARK_MODULE_PATH_CACHE))
+        _STARLARK_MODULE_PATH_CACHE.pop(oldest_key, None)
+    _STARLARK_MODULE_PATH_CACHE[cache_key] = cached_paths
+    return None if cached_paths is None else list(cached_paths)
+
+
+def _is_logtalk_profile_candidate_path(relative_path: str) -> bool:
+    return PurePosixPath(relative_path).suffix.lower() in _LOGTALK_SOURCE_SUFFIXES
+
+
+def _candidate_paths_include_logtalk_surface_signal(
+    candidate_file_paths: list[str],
+) -> bool:
+    for candidate_path in candidate_file_paths:
+        candidate_pure_path = PurePosixPath(str(candidate_path).lower())
+        if candidate_pure_path.suffix in _LOGTALK_SOURCE_SUFFIXES:
+            return True
+        for part in candidate_pure_path.parts:
+            tokens = [token for token in re.split(r"[^a-z0-9]+", part) if token]
+            if "logtalk" in tokens or "prolog" in tokens:
+                return True
+    return False
+
+
+def _is_openscad_profile_candidate_path(relative_path: str) -> bool:
+    return PurePosixPath(relative_path).suffix.lower() == ".scad"
+
+
+def _cached_openscad_module_paths(repo_path: Path) -> list[str] | None:
+    cache_key = str(repo_path.resolve())
+    if cache_key in _OPENSCAD_MODULE_PATH_CACHE:
+        cached_paths = _OPENSCAD_MODULE_PATH_CACHE[cache_key]
+        return None if cached_paths is None else list(cached_paths)
+
+    from benchmarks import repository_intelligence_real_repo_probe_collection_support as collection_support
+
+    has_cached_repo_relative_files, cached_repo_relative_files = (
+        collection_support._cached_git_repo_relative_files(repo_path)
+    )
+    relative_paths = (
+        cached_repo_relative_files
+        if has_cached_repo_relative_files
+        else collection_support._git_repo_relative_files(repo_path)
+    )
+    cached_paths: tuple[str, ...] | None
+    if relative_paths is None:
+        cached_paths = None
+    else:
+        cached_paths = tuple(
+            sorted(
+                relative_path
+                for relative_path in relative_paths
+                if _is_openscad_profile_candidate_path(relative_path)
+            )
+        )
+    if len(_OPENSCAD_MODULE_PATH_CACHE) >= _OPENSCAD_MODULE_PATH_CACHE_LIMIT:
+        oldest_key = next(iter(_OPENSCAD_MODULE_PATH_CACHE))
+        _OPENSCAD_MODULE_PATH_CACHE.pop(oldest_key, None)
+    _OPENSCAD_MODULE_PATH_CACHE[cache_key] = cached_paths
+    return None if cached_paths is None else list(cached_paths)
+
+
+def _cached_logtalk_module_paths(repo_path: Path) -> list[str] | None:
+    cache_key = str(repo_path.resolve())
+    if cache_key in _LOGTALK_MODULE_PATH_CACHE:
+        cached_paths = _LOGTALK_MODULE_PATH_CACHE[cache_key]
+        return None if cached_paths is None else list(cached_paths)
+
+    from benchmarks import repository_intelligence_real_repo_probe_collection_support as collection_support
+
+    relative_paths = collection_support._git_repo_relative_files(repo_path)
+    cached_paths: tuple[str, ...] | None
+    if relative_paths is None:
+        cached_paths = None
+    else:
+        cached_paths = tuple(
+            sorted(
+                relative_path
+                for relative_path in relative_paths
+                if _is_logtalk_profile_candidate_path(relative_path)
+            )
+        )
+    if len(_LOGTALK_MODULE_PATH_CACHE) >= _LOGTALK_MODULE_PATH_CACHE_LIMIT:
+        oldest_key = next(iter(_LOGTALK_MODULE_PATH_CACHE))
+        _LOGTALK_MODULE_PATH_CACHE.pop(oldest_key, None)
+    _LOGTALK_MODULE_PATH_CACHE[cache_key] = cached_paths
+    return None if cached_paths is None else list(cached_paths)
+
+
+def _repo_has_logtalk_source_hint(repo_path: Path) -> bool:
+    cache_key = str(repo_path.resolve())
+    cached_result = _LOGTALK_SOURCE_HINT_CACHE.get(cache_key)
+    if cached_result is not None:
+        return cached_result
+
+    from benchmarks import repository_intelligence_real_repo_probe_collection_support as collection_support
+
+    has_cached_repo_relative_files, cached_repo_relative_files = (
+        collection_support._cached_git_repo_relative_files(repo_path)
+    )
+    relative_paths = (
+        cached_repo_relative_files
+        if has_cached_repo_relative_files
+        else collection_support._git_repo_relative_files(repo_path)
+    )
+    has_logtalk_sources = bool(
+        relative_paths
+        and any(
+            str(relative_path).lower().endswith((".lgt", ".logtalk"))
+            for relative_path in relative_paths
+        )
+    )
+    if len(_LOGTALK_SOURCE_HINT_CACHE) >= _LOGTALK_SOURCE_HINT_CACHE_LIMIT:
+        oldest_key = next(iter(_LOGTALK_SOURCE_HINT_CACHE))
+        _LOGTALK_SOURCE_HINT_CACHE.pop(oldest_key, None)
+    _LOGTALK_SOURCE_HINT_CACHE[cache_key] = has_logtalk_sources
+    return has_logtalk_sources
+
+
+def _rank_logtalk_profile_candidate_path(relative_path: str) -> tuple[int, int, int, int, str]:
+    path = PurePosixPath(relative_path)
+    basename = path.name.lower()
+    top_level = path.parts[0].lower() if path.parts else ""
+    return (
+        0 if basename in _LOGTALK_PREFERRED_ENTRYPOINT_BASENAMES else 1,
+        1 if basename in _LOGTALK_DEPRIORITIZED_ENTRYPOINT_BASENAMES else 0,
+        _LOGTALK_ROOT_PRIORITIES.get(top_level, len(_LOGTALK_ROOT_PRIORITIES)),
+        len(path.parts),
+        relative_path,
+    )
+
+
+def _rank_logtalk_support_root(root: str) -> tuple[int, int, str]:
+    path = PurePosixPath(root)
+    top_level = path.parts[0].lower() if path.parts else ""
+    return (
+        _LOGTALK_ROOT_PRIORITIES.get(top_level, len(_LOGTALK_ROOT_PRIORITIES)),
+        len(path.parts),
+        root,
+    )
+
+
+def _selected_logtalk_profile_paths(
+    repo_path: Path,
+    candidate_file_paths: list[str],
+) -> list[str]:
+    selected_paths: list[str] = []
+    seen_paths: set[str] = set()
+
+    def _add_candidate(raw_path: str) -> None:
+        normalized_candidate = repository_service._normalize_repository_relative_path(raw_path)
+        if (
+            not normalized_candidate
+            or normalized_candidate in seen_paths
+            or repository_service._is_test_path(normalized_candidate)
+            or _is_non_operational_profile_path(normalized_candidate)
+            or not _is_logtalk_profile_candidate_path(normalized_candidate)
+        ):
+            return
+        candidate_file = repo_path / normalized_candidate
+        if not candidate_file.is_file() or candidate_file.is_symlink():
+            return
+        seen_paths.add(normalized_candidate)
+        selected_paths.append(normalized_candidate)
+
+    for candidate_path in sorted(
+        candidate_file_paths,
+        key=_rank_logtalk_profile_candidate_path,
+    ):
+        _add_candidate(candidate_path)
+
+    preferred_count = sum(
+        1
+        for path in selected_paths
+        if PurePosixPath(path).name.lower() in _LOGTALK_PREFERRED_ENTRYPOINT_BASENAMES
+    )
+    if len(selected_paths) >= 8 and preferred_count >= 2:
+        return list(selected_paths)
+
+    if not selected_paths and not _repo_has_logtalk_source_hint(repo_path):
+        return []
+
+    cached_paths = _cached_logtalk_module_paths(repo_path)
+    if cached_paths is None:
+        return list(selected_paths)
+
+    for candidate_path in sorted(cached_paths, key=_rank_logtalk_profile_candidate_path):
+        _add_candidate(candidate_path)
+        if len(selected_paths) >= _LOGTALK_AUGMENT_PATH_LIMIT:
+            break
+    return list(selected_paths)
 
 
 def _logtalk_profile_hints_from_candidates(
     repo_path: Path,
     candidate_file_paths: list[str],
 ) -> tuple[set[str], set[str], set[str]]:
-    logtalk_files: list[str] = []
-    config_paths: set[str] = set()
-    module_index: dict[str, str] = {}
-    support_roots: set[str] = set()
-    imported_files: set[str] = set()
-    entrypoint_paths: set[str] = set()
-    preferred_basenames = {"loader.lgt", "loader.logtalk", "main.lgt", "main.logtalk"}
-    for candidate_path in sorted(candidate_file_paths):
-        normalized_candidate = repository_service._normalize_repository_relative_path(
-            candidate_path
-        )
-        if (
-            not normalized_candidate
-            or repository_service._is_test_path(normalized_candidate)
-            or _is_non_operational_profile_path(normalized_candidate)
-            or _probe_language_for_path(normalized_candidate, repo_path=repo_path) != "logtalk"
-        ):
-            continue
-        candidate_file = repo_path / normalized_candidate
-        if not candidate_file.is_file() or candidate_file.is_symlink():
-            continue
-        try:
-            text = candidate_file.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            continue
-        if not repository_service.logtalk_adapter.is_probable_logtalk_source(
-            path=candidate_file,
-            text=text,
-        ):
-            continue
-        logtalk_files.append(normalized_candidate)
-        for alias in repository_service.logtalk_adapter.module_aliases_for_path(
-            root_path=repo_path,
-            file_path=normalized_candidate,
-            stable_identifier=repository_service._stable_identifier,
-        ):
-            module_index.setdefault(alias, normalized_candidate)
-    for normalized_candidate in logtalk_files:
-        try:
-            text = (repo_path / normalized_candidate).read_text(
-                encoding="utf-8",
-                errors="replace",
-            )
-        except OSError:
-            continue
-        for target_name, _imports, _line_no in (
-            repository_service.logtalk_adapter.parse_uses_statements(text)
-        ):
-            target_file = repository_service.logtalk_adapter.resolve_import(
-                normalized_candidate,
-                target_name,
-                module_index,
-                resolve_suffix_match=repository_service._resolve_suffix_match,
-            )
-            if target_file and target_file != normalized_candidate:
-                imported_files.add(target_file)
-        for target_name, _line_no in repository_service.logtalk_adapter.parse_load_statements(
-            text
-        ):
-            target_file = repository_service.logtalk_adapter.resolve_import(
-                normalized_candidate,
-                target_name,
-                module_index,
-                resolve_suffix_match=repository_service._resolve_suffix_match,
-            )
-            if target_file and target_file != normalized_candidate:
-                imported_files.add(target_file)
-        for target_name, _line_no in repository_service.logtalk_adapter.parse_relation_statements(
-            text
-        ):
-            target_file = repository_service.logtalk_adapter.resolve_import(
-                normalized_candidate,
-                target_name,
-                module_index,
-                resolve_suffix_match=repository_service._resolve_suffix_match,
-            )
-            if target_file and target_file != normalized_candidate:
-                imported_files.add(target_file)
-    for imported_file in imported_files:
+    logtalk_files = _selected_logtalk_profile_paths(repo_path, candidate_file_paths)
+    if not logtalk_files:
+        return set(), set(), set()
+
+    ranked_logtalk_files = sorted(logtalk_files, key=_rank_logtalk_profile_candidate_path)
+    preferred_entrypoints = [
+        path
+        for path in ranked_logtalk_files
+        if PurePosixPath(path).name.lower() in _LOGTALK_PREFERRED_ENTRYPOINT_BASENAMES
+    ]
+    fallback_entrypoints = [
+        path
+        for path in ranked_logtalk_files
+        if PurePosixPath(path).name.lower() not in _LOGTALK_DEPRIORITIZED_ENTRYPOINT_BASENAMES
+    ]
+    entrypoint_source_paths = (
+        preferred_entrypoints or fallback_entrypoints or ranked_logtalk_files
+    )
+    entrypoint_paths = set(entrypoint_source_paths[:_LOGTALK_ENTRYPOINT_LIMIT])
+
+    support_root_candidates: set[str] = set()
+    for logtalk_path in ranked_logtalk_files:
+        candidate_path = PurePosixPath(logtalk_path)
         parent_dir = repository_service._normalize_repository_relative_path(
-            str(PurePosixPath(imported_file).parent)
+            str(candidate_path.parent)
         )
         if parent_dir:
-            support_roots.add(parent_dir)
-    for normalized_candidate in logtalk_files:
-        if (
-            PurePosixPath(normalized_candidate).name.lower() in preferred_basenames
-            or normalized_candidate not in imported_files
-        ):
-            entrypoint_paths.add(normalized_candidate)
-    if not entrypoint_paths:
-        entrypoint_paths.update(sorted(logtalk_files)[:8])
-    if not support_roots:
-        for entrypoint_path in entrypoint_paths:
-            parent_dir = repository_service._normalize_repository_relative_path(
-                str(PurePosixPath(entrypoint_path).parent)
-            )
-            if parent_dir:
-                support_roots.add(parent_dir)
-    return entrypoint_paths, {root for root in support_roots if root}, config_paths
+            support_root_candidates.add(parent_dir)
+        if candidate_path.parts:
+            top_level = candidate_path.parts[0].lower()
+            if top_level in _LOGTALK_ROOT_PRIORITIES:
+                support_root_candidates.add(top_level)
+    for entrypoint_path in entrypoint_paths:
+        parent_dir = repository_service._normalize_repository_relative_path(
+            str(PurePosixPath(entrypoint_path).parent)
+        )
+        if parent_dir:
+            support_root_candidates.add(parent_dir)
+
+    support_roots = {
+        root
+        for root in sorted(
+            support_root_candidates,
+            key=_rank_logtalk_support_root,
+        )[:_LOGTALK_SUPPORT_ROOT_LIMIT]
+        if root
+    }
+    return entrypoint_paths, support_roots, set()
 
 
 def _smalltalk_profile_hints(
@@ -148,6 +393,14 @@ def _smalltalk_profile_hints(
         return set(), set(), set()
     config_paths = {normalized_path}
     project_dir = PurePosixPath(normalized_path).parent
+    cache_key = (
+        str(repo_path.resolve()),
+        repository_service._normalize_repository_relative_path(str(project_dir)) or ".",
+    )
+    cached_result = _SMALLTALK_PROFILE_HINT_CACHE.get(cache_key)
+    if cached_result is not None:
+        cached_entrypoints, cached_support_roots = cached_result
+        return set(cached_entrypoints), set(cached_support_roots), config_paths
     search_roots: list[Path] = []
     support_roots: set[str] = set()
     for source_root in ("src", "repository", "packages", "tonel"):
@@ -179,10 +432,23 @@ def _smalltalk_profile_hints(
             normalized_candidate = repository_service._normalize_repository_relative_path(
                 str(candidate.relative_to(repo_path))
             )
+            if not normalized_candidate or normalized_candidate in seen_paths:
+                continue
             if (
-                not normalized_candidate
-                or normalized_candidate in seen_paths
-                or _probe_language_for_path(normalized_candidate, repo_path=repo_path)
+                repository_service._is_test_path(normalized_candidate)
+                or _is_non_operational_profile_path(normalized_candidate)
+            ):
+                continue
+            seen_paths.add(normalized_candidate)
+            candidate_path = Path(normalized_candidate)
+            basename = candidate_path.name
+            if basename.startswith("BaselineOf") and basename.endswith(".class.st"):
+                entrypoint_paths.add(normalized_candidate)
+                continue
+            if not repository_service.smalltalk_adapter.has_smalltalk_path_hints(
+                candidate_path
+            ) and (
+                _probe_language_for_path(normalized_candidate, repo_path=repo_path)
                 != "smalltalk"
                 or not _is_operational_profile_entrypoint_candidate(
                     normalized_candidate,
@@ -190,15 +456,17 @@ def _smalltalk_profile_hints(
                 )
             ):
                 continue
-            seen_paths.add(normalized_candidate)
-            basename = PurePosixPath(normalized_candidate).name
-            if basename.startswith("BaselineOf") and basename.endswith(".class.st"):
-                entrypoint_paths.add(normalized_candidate)
-                continue
             if basename != "package.st":
                 fallback_paths.append(normalized_candidate)
     if not entrypoint_paths and fallback_paths:
         entrypoint_paths.update(fallback_paths[:8])
+    if len(_SMALLTALK_PROFILE_HINT_CACHE) >= _SMALLTALK_PROFILE_HINT_CACHE_LIMIT:
+        oldest_key = next(iter(_SMALLTALK_PROFILE_HINT_CACHE))
+        _SMALLTALK_PROFILE_HINT_CACHE.pop(oldest_key, None)
+    _SMALLTALK_PROFILE_HINT_CACHE[cache_key] = (
+        frozenset(entrypoint_paths),
+        frozenset(support_roots),
+    )
     return entrypoint_paths, support_roots, config_paths
 
 
@@ -559,14 +827,22 @@ def _openscad_profile_hints(
         if _is_operational_profile_entrypoint_candidate(normalized_path, repo_path=repo_path):
             entrypoint_paths.add(normalized_path)
     if repo_path.is_dir():
-        for candidate in sorted(repo_path.rglob("*.scad")):
-            if not candidate.is_file() or candidate.is_symlink():
-                continue
-            relative_path = repository_service._normalize_repository_relative_path(
-                str(candidate.relative_to(repo_path))
-            )
+        candidate_relative_paths = _cached_openscad_module_paths(repo_path)
+        if candidate_relative_paths is None:
+            candidate_relative_paths = []
+            for candidate in sorted(repo_path.rglob("*.scad")):
+                if not candidate.is_file() or candidate.is_symlink():
+                    continue
+                relative_path = repository_service._normalize_repository_relative_path(
+                    str(candidate.relative_to(repo_path))
+                )
+                if relative_path:
+                    candidate_relative_paths.append(relative_path)
+        for relative_path in candidate_relative_paths:
+            candidate_file = repo_path / relative_path
             if (
-                not relative_path
+                not candidate_file.is_file()
+                or candidate_file.is_symlink()
                 or _probe_language_for_path(relative_path, repo_path=repo_path) != "openscad"
             ):
                 continue
@@ -662,6 +938,15 @@ def _starlark_profile_hints(
     normalized_path = repository_service._normalize_repository_relative_path(manifest_path)
     if not normalized_path:
         return set(), set(), set()
+    cache_key = (str(repo_path.resolve()), normalized_path)
+    cached_result = _STARLARK_PROFILE_HINT_CACHE.get(cache_key)
+    if cached_result is not None:
+        cached_entrypoints, cached_support_roots, cached_config_paths = cached_result
+        return (
+            set(cached_entrypoints),
+            set(cached_support_roots),
+            set(cached_config_paths),
+        )
     manifest_file = repo_path / normalized_path
     if (
         not manifest_file.is_file()
@@ -706,23 +991,31 @@ def _starlark_profile_hints(
     except OSError:
         text = ""
     starlark_module_index: dict[str, str] = {}
-    for pattern in (
-        "*.bzl",
-        "*.star",
-        "BUILD",
-        "BUILD.bazel",
-        "MODULE.bazel",
-        "WORKSPACE",
-        "WORKSPACE.bazel",
-    ):
-        for candidate in sorted(repo_path.rglob(pattern)):
+    cached_module_paths = _cached_starlark_module_paths(repo_path)
+    if cached_module_paths is None:
+        for pattern in (
+            "*.bzl",
+            "*.star",
+            "BUILD",
+            "BUILD.bazel",
+            "MODULE.bazel",
+            "WORKSPACE",
+            "WORKSPACE.bazel",
+        ):
+            for candidate in sorted(repo_path.rglob(pattern)):
+                if not candidate.is_file() or candidate.is_symlink():
+                    continue
+                relative_path = repository_service._normalize_repository_relative_path(
+                    str(candidate.relative_to(repo_path))
+                )
+                if relative_path:
+                    starlark_module_index[relative_path] = relative_path
+    else:
+        for relative_path in cached_module_paths:
+            candidate = repo_path / relative_path
             if not candidate.is_file() or candidate.is_symlink():
                 continue
-            relative_path = repository_service._normalize_repository_relative_path(
-                str(candidate.relative_to(repo_path))
-            )
-            if relative_path:
-                starlark_module_index[relative_path] = relative_path
+            starlark_module_index[relative_path] = relative_path
     include_like_parts = {"bzl", "defs", "extensions", "include", "lib", "private", "rules"}
     for load_target, _body, _line in repository_service.starlark_adapter.iter_load_statements(text):
         resolved_path = repository_service.starlark_adapter.resolve_load_target(
@@ -748,12 +1041,28 @@ def _starlark_profile_hints(
             repo_path=repo_path,
         ):
             entrypoint_paths.add(resolved_path)
-    for candidate in sorted((repo_path / manifest_parent).rglob("*.bzl")):
-        if not candidate.is_file() or candidate.is_symlink():
-            continue
-        relative_path = repository_service._normalize_repository_relative_path(
-            str(candidate.relative_to(repo_path))
+    manifest_parent_prefix = ""
+    if str(manifest_parent) not in {"", "."}:
+        manifest_parent_prefix = f"{manifest_parent}/"
+    if cached_module_paths is None:
+        candidate_bzl_paths = (
+            repository_service._normalize_repository_relative_path(
+                str(candidate.relative_to(repo_path))
+            )
+            for candidate in sorted((repo_path / manifest_parent).rglob("*.bzl"))
+            if candidate.is_file() and not candidate.is_symlink()
         )
+    else:
+        candidate_bzl_paths = (
+            relative_path
+            for relative_path in cached_module_paths
+            if relative_path.endswith(".bzl")
+            and (
+                not manifest_parent_prefix
+                or relative_path.startswith(manifest_parent_prefix)
+            )
+        )
+    for relative_path in candidate_bzl_paths:
         if (
             not relative_path
             or _probe_language_for_path(relative_path, repo_path=repo_path) != "starlark"
@@ -771,6 +1080,14 @@ def _starlark_profile_hints(
             entrypoint_paths.add(relative_path)
         if len(entrypoint_paths) >= 8:
             break
+    if len(_STARLARK_PROFILE_HINT_CACHE) >= _STARLARK_PROFILE_HINT_CACHE_LIMIT:
+        oldest_key = next(iter(_STARLARK_PROFILE_HINT_CACHE))
+        _STARLARK_PROFILE_HINT_CACHE.pop(oldest_key, None)
+    _STARLARK_PROFILE_HINT_CACHE[cache_key] = (
+        frozenset(entrypoint_paths),
+        frozenset(root for root in support_roots if root),
+        frozenset(config_paths),
+    )
     return entrypoint_paths, support_roots, config_paths
 
 

@@ -23,7 +23,6 @@ def _moonbit_profile_hints_from_candidates(
     _is_operational_profile_entrypoint_candidate = (
         probe_module._is_operational_profile_entrypoint_candidate
     )
-    _probe_language_for_path = probe_module._probe_language_for_path
 
     normalized_manifest_path = repository_service._normalize_repository_relative_path(manifest_path)
     if not normalized_manifest_path:
@@ -31,13 +30,14 @@ def _moonbit_profile_hints_from_candidates(
     manifest_parent = PurePosixPath(normalized_manifest_path).parent
     root_prefix = "" if str(manifest_parent) in {"", "."} else f"{manifest_parent}/"
     moonbit_files: list[str] = []
+    loaded_candidate_text_by_path: dict[str, str] = {}
     config_paths: set[str] = {normalized_manifest_path}
-    module_index: dict[str, str] = {}
     support_roots: set[str] = set()
     entrypoint_paths: set[str] = set()
     fallback_paths: set[str] = set()
     imported_files: set[str] = set()
     preferred_basenames = {"pkg.generated.mbti"}
+    module_index_seed_paths: set[str] = set()
     for candidate_path in sorted(candidate_file_paths):
         normalized_candidate = repository_service._normalize_repository_relative_path(
             candidate_path
@@ -47,6 +47,13 @@ def _moonbit_profile_hints_from_candidates(
             or (root_prefix and not normalized_candidate.startswith(root_prefix))
         ):
             continue
+        pure_candidate_path = PurePosixPath(normalized_candidate)
+        basename = pure_candidate_path.name.lower()
+        suffix = pure_candidate_path.suffix.lower()
+        is_config_candidate = basename in repository_service.moonbit_adapter.MOONBIT_CONFIG_BASENAMES
+        is_source_candidate = suffix in repository_service.moonbit_adapter.MOONBIT_SOURCE_SUFFIXES
+        if not is_config_candidate and not is_source_candidate:
+            continue
         candidate_file = repo_path / normalized_candidate
         if not candidate_file.is_file() or candidate_file.is_symlink():
             continue
@@ -54,8 +61,8 @@ def _moonbit_profile_hints_from_candidates(
             text = candidate_file.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
-        basename = PurePosixPath(normalized_candidate).name.lower()
-        if basename in repository_service.moonbit_adapter.MOONBIT_CONFIG_BASENAMES:
+        loaded_candidate_text_by_path[normalized_candidate] = text
+        if is_config_candidate:
             if repository_service.moonbit_adapter.is_probable_moonbit_config(
                 path=Path(normalized_candidate),
                 text=text,
@@ -67,31 +74,43 @@ def _moonbit_profile_hints_from_candidates(
                 if parent_dir:
                     support_roots.add(parent_dir)
             continue
-        if (
-            _probe_language_for_path(normalized_candidate, repo_path=repo_path) != "moonbit"
-            or not repository_service.moonbit_adapter.is_probable_moonbit_source(
-                path=Path(normalized_candidate),
-                text=text,
-            )
+        if not repository_service.moonbit_adapter.is_probable_moonbit_source(
+            path=Path(normalized_candidate),
+            text=text,
         ):
             continue
         moonbit_files.append(normalized_candidate)
         parent_dir = repository_service._normalize_repository_relative_path(
-            str(PurePosixPath(normalized_candidate).parent)
+            str(pure_candidate_path.parent)
         )
         if parent_dir:
             support_roots.add(parent_dir)
+        package_alias = pure_candidate_path.parent.name.lower()
+        if (
+            basename == f"{package_alias}.mbt"
+            or basename == "main.mbt"
+            or basename in preferred_basenames
+        ):
+            module_index_seed_paths.add(normalized_candidate)
+    module_index: dict[str, str] = {}
+    for normalized_candidate in sorted(module_index_seed_paths):
         for alias in repository_service.moonbit_adapter.module_aliases_for_path(
             root_path=repo_path,
             file_path=normalized_candidate,
             stable_identifier=repository_service._stable_identifier,
+            text=loaded_candidate_text_by_path.get(normalized_candidate),
+            include_symbol_aliases=False,
+            cached_text_by_path=loaded_candidate_text_by_path,
         ):
             module_index.setdefault(alias, normalized_candidate)
     for config_path in sorted(config_paths):
-        try:
-            text = (repo_path / config_path).read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            continue
+        text = loaded_candidate_text_by_path.get(config_path)
+        if text is None:
+            try:
+                text = (repo_path / config_path).read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            loaded_candidate_text_by_path[config_path] = text
         for dependency in repository_service.moonbit_adapter.parse_dependencies_only(
             config_path,
             text,
@@ -131,6 +150,73 @@ def _moonbit_profile_hints_from_candidates(
     return entrypoint_paths, support_roots, config_paths
 
 
+def _moonbit_profile_candidate_paths(
+    repo_path: Path,
+    *,
+    manifest_path: str,
+    max_files: int,
+) -> list[str]:
+    probe_module = _probe_module()
+    repository_service = probe_module.repository_service
+    from benchmarks import repository_intelligence_real_repo_probe_collection_support as collection_support
+
+    normalized_manifest_path = repository_service._normalize_repository_relative_path(manifest_path)
+    if not normalized_manifest_path:
+        return []
+    manifest_parent = PurePosixPath(normalized_manifest_path).parent
+    candidate_root = repo_path / manifest_parent if str(manifest_parent) not in {"", "."} else repo_path
+    if not candidate_root.is_dir() or candidate_root.is_symlink():
+        return []
+    candidate_limit = max(64, min(256, max_files))
+    candidate_paths: list[str] = []
+    manifest_root = repository_service._normalize_repository_relative_path(str(manifest_parent)) or "."
+    has_cached_repo_relative_files, cached_repo_relative_files = (
+        collection_support._cached_git_repo_relative_files(repo_path)
+    )
+    relative_paths = (
+        cached_repo_relative_files
+        if has_cached_repo_relative_files
+        else collection_support._git_repo_relative_files_for_focus_paths(
+            repo_path,
+            focus_paths=[manifest_root],
+        )
+    )
+
+    def _append_candidate_path(relative_path: str) -> None:
+        if len(candidate_paths) >= candidate_limit:
+            return
+        normalized_relative_path = repository_service._normalize_repository_relative_path(relative_path)
+        if not normalized_relative_path:
+            return
+        pure_path = PurePosixPath(normalized_relative_path)
+        basename = pure_path.name.lower()
+        suffix = pure_path.suffix.lower()
+        if (
+            basename in repository_service.moonbit_adapter.MOONBIT_CONFIG_BASENAMES
+            or suffix in repository_service.moonbit_adapter.MOONBIT_SOURCE_SUFFIXES
+        ):
+            candidate_paths.append(normalized_relative_path)
+
+    if relative_paths is not None:
+        for relative_path in relative_paths:
+            if manifest_root != "." and not (
+                relative_path == manifest_root or relative_path.startswith(f"{manifest_root}/")
+            ):
+                continue
+            _append_candidate_path(relative_path)
+            if len(candidate_paths) >= candidate_limit:
+                break
+        return candidate_paths
+
+    for candidate_file in sorted(candidate_root.rglob("*")):
+        if len(candidate_paths) >= candidate_limit:
+            break
+        if not candidate_file.is_file() or candidate_file.is_symlink():
+            continue
+        _append_candidate_path(str(candidate_file.relative_to(repo_path)))
+    return candidate_paths
+
+
 def _gleam_profile_hints(
     repo_path: Path,
     manifest_path: str,
@@ -165,13 +251,14 @@ def _gleam_profile_hints(
     support_roots: set[str] = set()
     search_roots: list[Path] = []
     seen_search_roots: set[Path] = set()
-    for candidate_root in (
+    conventional_candidate_roots = (
         project_dir / "src",
         project_dir / "test",
         project_dir / "tests",
         project_dir / "app",
-        project_dir,
-    ):
+    )
+    project_root_candidate = project_dir
+    for candidate_root in conventional_candidate_roots:
         normalized_root = repository_service._normalize_repository_relative_path(
             str(candidate_root)
         )
@@ -183,6 +270,17 @@ def _gleam_profile_hints(
             continue
         seen_search_roots.add(resolved_search_root)
         search_roots.append(search_root)
+    if not search_roots:
+        normalized_root = repository_service._normalize_repository_relative_path(
+            str(project_root_candidate)
+        )
+        if normalized_root and (repo_path / normalized_root).exists():
+            support_roots.add(normalized_root)
+        search_root = repo_path / project_root_candidate
+        resolved_search_root = search_root.resolve()
+        if search_root.exists() and resolved_search_root not in seen_search_roots:
+            seen_search_roots.add(resolved_search_root)
+            search_roots.append(search_root)
     entrypoint_paths: set[str] = set()
     fallback_paths: set[str] = set()
     preferred_names = {"main.gleam", "app.gleam"}
@@ -221,6 +319,97 @@ def _gleam_profile_hints(
                     entrypoint_paths.add(relative_path)
                 elif not entrypoint_paths:
                     entrypoint_paths.add(relative_path)
+    if not entrypoint_paths and fallback_paths:
+        entrypoint_paths.update(sorted(fallback_paths)[:8])
+    return entrypoint_paths, support_roots, config_paths
+
+
+def _ballerina_profile_hints(
+    repo_path: Path,
+    manifest_path: str,
+) -> tuple[set[str], set[str], set[str]]:
+    probe_module = _probe_module()
+    repository_service = probe_module.repository_service
+    _is_non_operational_profile_path = probe_module._is_non_operational_profile_path
+
+    normalized_path = repository_service._normalize_repository_relative_path(manifest_path)
+    if not normalized_path:
+        return set(), set(), set()
+    manifest_file = repo_path / normalized_path
+    if not manifest_file.is_file() or manifest_file.is_symlink():
+        return set(), set(), set()
+    project_dir = PurePosixPath(normalized_path).parent
+    config_paths = {normalized_path}
+    support_roots: set[str] = set()
+    search_specs: list[tuple[Path, bool]] = []
+    seen_search_roots: set[Path] = set()
+    project_search_root = repo_path / project_dir
+    if project_search_root.is_dir():
+        resolved_project_root = project_search_root.resolve()
+        seen_search_roots.add(resolved_project_root)
+        search_specs.append((project_search_root, False))
+    for candidate_root in (
+        project_dir / "ballerina",
+        project_dir / "modules",
+        project_dir / "generated",
+        project_dir / "tests",
+    ):
+        normalized_root = repository_service._normalize_repository_relative_path(
+            str(candidate_root)
+        )
+        if normalized_root and (repo_path / normalized_root).exists():
+            support_roots.add(normalized_root)
+        search_root = repo_path / candidate_root
+        resolved_search_root = search_root.resolve()
+        if not search_root.exists() or resolved_search_root in seen_search_roots:
+            continue
+        seen_search_roots.add(resolved_search_root)
+        search_specs.append((search_root, True))
+    entrypoint_paths: set[str] = set()
+    fallback_paths: set[str] = set()
+    seen_candidate_paths: set[str] = set()
+    preferred_names = {"main.bal", "service.bal", "init.bal"}
+    for search_root, recursive in search_specs:
+        candidate_iter = (
+            search_root.rglob("*.bal")
+            if recursive
+            else search_root.glob("*.bal")
+        )
+        for candidate in sorted(candidate_iter):
+            if not candidate.is_file() or candidate.is_symlink():
+                continue
+            relative_path = repository_service._normalize_repository_relative_path(
+                str(candidate.relative_to(repo_path))
+            )
+            if not relative_path or relative_path in seen_candidate_paths:
+                continue
+            seen_candidate_paths.add(relative_path)
+            parent_dir = repository_service._normalize_repository_relative_path(
+                str(PurePosixPath(relative_path).parent)
+            )
+            if parent_dir:
+                support_roots.add(parent_dir)
+            if (
+                repository_service._is_test_path(relative_path)
+                or _is_non_operational_profile_path(relative_path)
+            ):
+                continue
+            try:
+                text = candidate.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            stripped_text = repository_service.ballerina_adapter.strip_comments(text)
+            if not repository_service.ballerina_adapter.is_probable_ballerina_source(
+                path=Path(relative_path),
+                text=text,
+                stripped_text=stripped_text,
+            ):
+                continue
+            fallback_paths.add(relative_path)
+            if PurePosixPath(relative_path).name in preferred_names:
+                entrypoint_paths.add(relative_path)
+            elif not entrypoint_paths:
+                entrypoint_paths.add(relative_path)
     if not entrypoint_paths and fallback_paths:
         entrypoint_paths.update(sorted(fallback_paths)[:8])
     return entrypoint_paths, support_roots, config_paths
@@ -511,6 +700,25 @@ def _dhall_profile_hints_from_candidates(
                 normalize_repository_relative_path=repository_service._normalize_repository_relative_path,
                 resolve_suffix_match=repository_service._resolve_suffix_match,
             )
+            if not target_file:
+                # The module index only holds files that classify as probable Dhall sources; a
+                # relative import (``./schemas/Step.dhall``) can still point at a real on-disk
+                # file that did not classify. Fall back to resolving it against the importer's
+                # directory so its parent is still recognized as an operational support root.
+                stripped_target = import_target.strip()
+                if stripped_target.startswith(("./", "../")):
+                    candidate_dir = PurePosixPath(normalized_candidate).parent
+                    for suffix_attempt in ("", ".dhall"):
+                        resolved = repository_service._normalize_repository_relative_path(
+                            str(candidate_dir / (stripped_target + suffix_attempt))
+                        )
+                        if (
+                            resolved
+                            and not repository_service._is_test_path(resolved)
+                            and (repo_path / resolved).is_file()
+                        ):
+                            target_file = resolved
+                            break
             if not target_file or target_file == normalized_candidate:
                 continue
             imported_files.add(target_file)
@@ -801,6 +1009,7 @@ def _apex_profile_hints(
 
     entrypoint_paths: set[str] = set()
     support_roots: set[str] = set()
+    seen_candidate_paths: set[str] = set()
     for search_root in search_roots:
         search_path = repo_path / search_root
         if not search_path.is_dir():
@@ -815,13 +1024,18 @@ def _apex_profile_hints(
             )
             if not relative_path or _is_non_operational_profile_path(relative_path):
                 continue
+            if relative_path in seen_candidate_paths:
+                continue
+            seen_candidate_paths.add(relative_path)
             try:
                 text = candidate_path.read_text(encoding="utf-8", errors="replace")
             except OSError:
                 continue
+            stripped_text = repository_service.apex_adapter.strip_comments(text)
             if not repository_service.apex_adapter.is_probable_apex_source(
                 path=Path(relative_path),
                 text=text,
+                stripped_text=stripped_text,
             ):
                 continue
             parent_dir = repository_service._normalize_repository_relative_path(
@@ -832,6 +1046,7 @@ def _apex_profile_hints(
             if repository_service.apex_adapter.is_probable_test_source(
                 path=Path(relative_path),
                 text=text,
+                stripped_text=stripped_text,
             ):
                 continue
             entrypoint_paths.add(relative_path)
@@ -982,3 +1197,14 @@ def _wolfram_profile_hints(
                 ):
                     fallback_entrypoints.add(relative_path)
     return fallback_entrypoints, support_roots, config_paths
+
+
+# Re-export sibling profile-hint helpers that the repo-profile tests address through this
+# module (they were split into dedicated support modules during modularization, but the
+# tests — and callers — still reference them as ecosystem_support attributes).
+from benchmarks.repository_intelligence_real_repo_probe_profile_candidate_ecosystem_support import (  # noqa: E402,E501
+    _org_profile_hints_from_candidates,
+)
+from benchmarks.repository_intelligence_real_repo_probe_profile_scripting_support import (  # noqa: E402,E501
+    _labview_profile_hints,
+)

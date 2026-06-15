@@ -22,6 +22,9 @@ _MODULE_SOURCE_RE = re.compile(
 )
 _IDENTIFIER_RE = re.compile(r"\b(?P<name>[A-Za-z_][A-Za-z0-9_]*)\b")
 _QUALIFIED_REFERENCE_RE = re.compile(r"\b(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*(?:\.|::)")
+_COMMENT_OR_STRING_RE = re.compile(
+    r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|//[^\n]*|/\*[\s\S]*?\*/'
+)
 _RESERVED_SYMBOL_NAMES = frozenset(
     {
         "existing",
@@ -41,6 +44,7 @@ _RESERVED_SYMBOL_NAMES = frozenset(
     }
 )
 _PREFERRED_DIRECTORY_ENTRY_BASENAMES = frozenset({"main.bicep"})
+_COMMENT_MASK_CACHE: dict[int, str] = {}
 
 
 @dataclass(frozen=True)
@@ -74,55 +78,39 @@ def _ordered_names(*values: str) -> tuple[str, ...]:
 
 
 def strip_comments(text: str) -> str:
-    characters = list(text)
-    index = 0
-    in_string: str | None = None
-    while index < len(characters):
-        current = characters[index]
-        next_char = characters[index + 1] if index + 1 < len(characters) else ""
-        if in_string is not None:
-            if current == "\\":
-                index += 2
-                continue
-            if current == in_string:
-                in_string = None
-            index += 1
-            continue
-        if current in {'"', "'"}:
-            in_string = current
-            index += 1
-            continue
-        if current == "/" and next_char == "/":
-            while index < len(characters) and characters[index] != "\n":
-                characters[index] = " "
-                index += 1
-            continue
-        if current == "/" and next_char == "*":
-            characters[index] = " "
-            characters[index + 1] = " "
-            index += 2
-            while index + 1 < len(characters):
-                if characters[index] == "*" and characters[index + 1] == "/":
-                    characters[index] = " "
-                    characters[index + 1] = " "
-                    index += 2
-                    break
-                if characters[index] != "\n":
-                    characters[index] = " "
-                index += 1
-            continue
-        index += 1
-    return "".join(characters)
+    if "//" not in text and "/*" not in text:
+        return text
+
+    def _mask_comment(match: re.Match[str]) -> str:
+        token = match.group(0)
+        if token.startswith(('"', "'")):
+            return token
+        newline_count = token.count("\n")
+        if newline_count == 0:
+            cached_mask = _COMMENT_MASK_CACHE.get(len(token))
+            if cached_mask is None:
+                cached_mask = " " * len(token)
+                _COMMENT_MASK_CACHE[len(token)] = cached_mask
+            return cached_mask
+        return "".join("\n" if char == "\n" else " " for char in token)
+
+    return _COMMENT_OR_STRING_RE.sub(_mask_comment, text)
 
 
 def has_bicep_path_hints(path: Path | PurePosixPath) -> bool:
     return PurePosixPath(path).suffix.lower() in _KNOWN_SUFFIXES
 
 
-def is_probable_bicep_source(*, path: Path | PurePosixPath, text: str) -> bool:
+def is_probable_bicep_source(
+    *,
+    path: Path | PurePosixPath,
+    text: str,
+    stripped_text: str | None = None,
+) -> bool:
     if not has_bicep_path_hints(path):
         return False
-    stripped_text = strip_comments(text)
+    normalized_text = stripped_text if stripped_text is not None else strip_comments(text)
+    stripped_text = normalized_text
     if not stripped_text.strip():
         return False
     return bool(
@@ -142,8 +130,13 @@ def module_name_from_path(file_path: str) -> str:
     return without_suffix.replace("/", ".")
 
 
-def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
-    stripped_text = strip_comments(text)
+def iter_symbol_entries(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, str, int], ...]:
+    normalized_text = stripped_text if stripped_text is not None else strip_comments(text)
+    stripped_text = normalized_text
     entries: list[tuple[str, str, int]] = []
     seen_names: set[str] = set()
     for match in _DECLARATION_RE.finditer(stripped_text):
@@ -161,8 +154,13 @@ def iter_symbol_entries(text: str) -> tuple[tuple[str, str, int], ...]:
     return tuple(sorted(entries, key=lambda item: (item[2], item[0], item[1])))
 
 
-def parse_module_statements(text: str) -> tuple[tuple[str, str, int], ...]:
-    stripped_text = strip_comments(text)
+def parse_module_statements(
+    text: str,
+    *,
+    stripped_text: str | None = None,
+) -> tuple[tuple[str, str, int], ...]:
+    normalized_text = stripped_text if stripped_text is not None else strip_comments(text)
+    stripped_text = normalized_text
     statements: list[tuple[str, str, int]] = []
     for match in _MODULE_SOURCE_RE.finditer(stripped_text):
         name = str(match.group("name") or "").strip()

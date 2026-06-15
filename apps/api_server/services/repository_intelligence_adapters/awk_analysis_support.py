@@ -26,6 +26,7 @@ _iter_function_entries = repository_awk_primitives._iter_function_entries
 _normalize_import_target = repository_awk_primitives._normalize_import_target
 is_operational_reference_name = repository_awk_primitives.is_operational_reference_name
 has_awk_shebang = repository_awk_primitives.has_awk_shebang
+has_awk_source_markers = repository_awk_primitives.has_awk_source_markers
 is_probable_awk_source = repository_awk_primitives.is_probable_awk_source
 import_targets_for_text = repository_awk_primitives.import_targets_for_text
 module_symbol_name = repository_awk_primitives.module_symbol_name
@@ -162,20 +163,20 @@ def module_aliases_for_path(
     stable_identifier: StableIdentifier,
 ) -> set[str]:
     path = PurePosixPath(file_path)
+    try:
+        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return set()
+    if path.suffix.lower() not in _KNOWN_SUFFIXES:
+        if not has_awk_shebang(text) and not has_awk_source_markers(text):
+            return set()
+        if not is_probable_awk_source(path=Path(file_path), text=text):
+            return set()
     aliases = {file_path, path.stem or path.name}
     without_suffix_path = _without_suffix_path(path)
     if without_suffix_path:
         aliases.add(without_suffix_path)
         aliases.add(without_suffix_path.replace("/", "."))
-    try:
-        text = (root_path / path).read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        return {alias for alias in aliases if alias}
-    if path.suffix.lower() not in _KNOWN_SUFFIXES and not is_probable_awk_source(
-        path=Path(file_path),
-        text=text,
-    ):
-        return {alias for alias in aliases if alias}
     module_name = module_symbol_name(file_path)
     for collected_symbol in _collect_symbols(
         file_path=file_path,

@@ -73,3 +73,32 @@ def test_candidate_existing_leaf_roots_drops_parent_roots_when_children_exist(
     assert leaf_roots == ["app/src/main/groovy", "app/src/main/java"]
 
 
+def test_matches_focus_paths_caches_normalized_focus_specs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    original_normalize = repository_service._normalize_repository_relative_path
+    call_count = {"value": 0}
+
+    def counting_normalize(path: str) -> str:
+        call_count["value"] += 1
+        return original_normalize(path)
+
+    monkeypatch.setattr(
+        repository_service,
+        "_normalize_repository_relative_path",
+        counting_normalize,
+    )
+
+    focus_paths = ["packages/RAD Studio 10.0", "packages/RAD Studio 10.1"]
+
+    assert probe_module._matches_focus_paths(
+        "packages/RAD Studio 10.0/VSoft.DUnitXWinR.dpk",
+        focus_paths,
+    )
+    first_call_count = call_count["value"]
+
+    assert probe_module._matches_focus_paths(
+        "packages/RAD Studio 10.1/VSoft.DUnitXWinR.dpk",
+        list(reversed(focus_paths)),
+    )
+    assert call_count["value"] == first_call_count
