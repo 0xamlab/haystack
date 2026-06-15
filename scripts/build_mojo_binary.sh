@@ -198,6 +198,18 @@ case "$(uname -s)" in
             echo "Python runtime library not found under ${LIB_DIR} for ${PYTHON_RUNTIME_STEM}" >&2
             exit 1
         fi
+        # The pixi env bundles libcxx (libc++.so.1) but conda runtime packages often omit the
+        # unversioned linker symlink that `-lc++` needs. Create libc++.so -> libc++.so.1 (and the
+        # abi equivalent) in LIB_DIR so the link resolves against the SAME libcxx the $ORIGIN rpath
+        # loads at runtime — no system libc++, no ABI skew.
+        for cxx_stem in c++ c++abi; do
+            if ! [[ -e "${LIB_DIR}/lib${cxx_stem}.so" ]]; then
+                cxx_versioned="$(find "${LIB_DIR}" -maxdepth 1 -name "lib${cxx_stem}.so.*" | sort -V | tail -n 1)"
+                if [[ -n "${cxx_versioned}" ]]; then
+                    ln -sf "$(basename "${cxx_versioned}")" "${LIB_DIR}/lib${cxx_stem}.so"
+                fi
+            fi
+        done
         "${CLANG_BIN}" "${TEMP_OBJECT_PATH}" -o "${TEMP_BINARY_PATH}" \
             -L "${LIB_DIR}" \
             -Wl,-rpath,'$ORIGIN/../mojo_env/.pixi/envs/default/lib' \
