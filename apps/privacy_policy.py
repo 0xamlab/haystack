@@ -270,6 +270,7 @@ def build_privacy_policy(
     control_plane_url: object | None = None,
     allow_outbound_network: object | None = None,
     egress_allowlist: object | None = None,
+    agent_core_url: object | None = None,
     base_url_fallback: str | None = None,
 ) -> PrivacyPolicy:
     mode = _normalized_mode(deployment_mode)
@@ -329,6 +330,21 @@ def build_privacy_policy(
         explicit_control_plane = API_BASE_URL
     effective_control_plane_url = (explicit_control_plane or "").rstrip("/")
 
+    # Self-host trust: an operator who explicitly configures the agent-core sidecar
+    # URL has opted into reaching it, so trust that exact host for egress. Without
+    # this, a sidecar on a private/loopback address (the self-hosted default) is
+    # unreachable behind the SSRF guard and agentic planning fails closed with an
+    # opaque EgressPolicyDeniedError. Only the configured host is allowlisted — this
+    # never enables general outbound egress.
+    effective_allowlist = list(_normalized_allowlist(egress_allowlist))
+    if agent_core_url:
+        try:
+            agent_core_host = parse_egress_destination(str(agent_core_url)).host
+        except PrivacyConfigurationError:
+            agent_core_host = ""
+        if agent_core_host and agent_core_host not in effective_allowlist:
+            effective_allowlist.append(agent_core_host)
+
     policy = PrivacyPolicy(
         deployment_mode=mode,
         disable_cloud=effective_disable_cloud,
@@ -338,7 +354,7 @@ def build_privacy_policy(
         require_local_license=effective_require_local_license,
         control_plane_url=effective_control_plane_url,
         allow_outbound_network=effective_allow_outbound,
-        egress_allowlist=_normalized_allowlist(egress_allowlist),
+        egress_allowlist=tuple(effective_allowlist),
         algenta_owned_hosts=_base_host_patterns(),
         algenta_owned_suffixes=_base_owned_suffixes(),
         vendor_telemetry_hosts=_base_vendor_telemetry_hosts(),
@@ -370,6 +386,7 @@ def policy_from_environment(
         control_plane_url=control_plane_url,
         allow_outbound_network=_env(mapping, "ALGENTA_ALLOW_OUTBOUND_NETWORK"),
         egress_allowlist=_env(mapping, "ALGENTA_EGRESS_ALLOWLIST"),
+        agent_core_url=_env(mapping, "ALGENTA_AGENT_CORE_URL"),
         base_url_fallback=base_url_fallback,
     )
 

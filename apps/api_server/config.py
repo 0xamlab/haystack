@@ -102,6 +102,10 @@ class Settings(BaseSettings):
         default=None,
         validation_alias=AliasChoices("ALGENTA_EGRESS_ALLOWLIST"),
     )
+    algenta_agent_core_url: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("ALGENTA_AGENT_CORE_URL"),
+    )
     # ── Managed-LLM pass-through (D3) ─────────────────────────────────────────
     # Hosted multi-tenant deployments set this so orgs may use the platform's pooled provider key
     # (metered + capped) when managed_llm_enabled. OFF (default) preserves single-tenant/BYOK
@@ -180,6 +184,7 @@ class Settings(BaseSettings):
             control_plane_url=self.algenta_control_plane_url,
             allow_outbound_network=self.algenta_allow_outbound_network,
             egress_allowlist=self.algenta_egress_allowlist,
+            agent_core_url=self.algenta_agent_core_url,
         )
 
     # ─── Database ─────────────────────────────────────────────────────────────

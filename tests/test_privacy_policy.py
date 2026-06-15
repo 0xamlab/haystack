@@ -150,3 +150,49 @@ def test_policy_from_environment_accepts_algenta_api_url_for_private_profiles() 
 
 def test_redact_destination_host_treats_home_arpa_as_internal() -> None:
     assert redact_destination_host("gateway.home.arpa") == "internal-host"
+
+
+def test_configured_agent_core_host_is_auto_allowlisted_for_egress() -> None:
+    # A self-hosted operator who points the engine at a local codna sidecar should
+    # not have to also hand-edit ALGENTA_EGRESS_ALLOWLIST: the explicitly configured
+    # ALGENTA_AGENT_CORE_URL host is trusted for egress (otherwise the SSRF guard
+    # blocks the engine from reaching its own sidecar). Only the host is added.
+    policy = build_privacy_policy(
+        deployment_mode="self_hosted",
+        agent_core_url="http://127.0.0.1:8787",
+    )
+    assert "127.0.0.1" in policy.egress_allowlist
+    # general outbound egress stays closed in the private profile
+    assert policy.allow_outbound_network is False
+
+
+def test_agent_core_host_merges_with_explicit_allowlist_without_duplicates() -> None:
+    policy = build_privacy_policy(
+        deployment_mode="self_hosted",
+        egress_allowlist="example.internal",
+        agent_core_url="http://localhost:9000",
+    )
+    assert set(policy.egress_allowlist) == {"example.internal", "localhost"}
+    policy2 = build_privacy_policy(
+        deployment_mode="self_hosted",
+        egress_allowlist="127.0.0.1",
+        agent_core_url="http://127.0.0.1:8787",
+    )
+    assert policy2.egress_allowlist == ("127.0.0.1",)
+
+
+def test_no_agent_core_url_leaves_allowlist_unchanged() -> None:
+    assert build_privacy_policy(deployment_mode="self_hosted").egress_allowlist == ()
+    assert build_privacy_policy(
+        deployment_mode="self_hosted", agent_core_url=None
+    ).egress_allowlist == ()
+
+
+def test_policy_from_environment_trusts_configured_agent_core_host() -> None:
+    policy = policy_from_environment(
+        {
+            "ALGENTA_DEPLOYMENT_MODE": "self_hosted",
+            "ALGENTA_AGENT_CORE_URL": "http://127.0.0.1:8787",
+        }
+    )
+    assert "127.0.0.1" in policy.egress_allowlist

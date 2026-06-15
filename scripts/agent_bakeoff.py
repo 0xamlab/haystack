@@ -201,6 +201,11 @@ def _prepare_checkout(repo: str, dest: Path) -> None:
     """Fresh, isolated checkout per agent. Local paths clone via file:// (fast,
     hardlinked); remote URLs clone shallow."""
     dest.parent.mkdir(parents=True, exist_ok=True)
+    # Idempotent: a stale checkout from a prior run makes `git clone` fail with
+    # "destination path already exists", which silently drops that agent from the
+    # comparison. Remove it so every (re-)run starts from a clean, fair checkout.
+    if dest.exists():
+        shutil.rmtree(dest)
     if Path(repo).exists():
         subprocess.run(["git", "clone", "--quiet", "--local", str(Path(repo).resolve()), str(dest)],
                        check=True, capture_output=True, text=True)
