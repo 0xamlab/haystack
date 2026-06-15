@@ -42,12 +42,15 @@ jobs:
           curl -fsSL https://fly.io/install.sh | sh
           echo "$HOME/.fly/bin" >> "$GITHUB_PATH"
 
+      # The engine image is pushed by CI under the codna PAT (it pulls the private codna sidecar
+      # base), so it is NOT readable by GITHUB_TOKEN. CODNA_GHCR_READ_TOKEN (broad read:packages)
+      # reads all three images (api/worker/engine), so use it for the deploy-time pull.
       - name: Log in to GHCR (pull the private prebuilt images)
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9  # v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.CODNA_GHCR_READ_TOKEN }}
 
       - name: Authenticate Docker to the Fly registry
         run: flyctl auth docker
