@@ -18,7 +18,7 @@ env:
 jobs:
   build:
     name: Build & push Mojo image
-    runs-on: Thyn   # org larger runner: 8-core / 32 GB / 300 GB — the 961-file Mojo compile OOMs 16 GB
+    runs-on: ubuntu-latest   # core-filtered dispatch (catalog excluded) compiles well within 16 GB
     steps:
       - name: Free up disk (the toolchain + libs are large)
         run: |
