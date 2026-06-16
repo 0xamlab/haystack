@@ -121,35 +121,11 @@ def _configure_logging(config: Settings) -> None:
     )
 
 
-def _init_sentry(config: Settings) -> None:
-    """Initialize Sentry error reporting when SENTRY_DSN is set.
-
-    Guarded + lazily imported: a missing ``sentry_sdk`` dependency or an unset DSN is a
-    silent no-op, so the app starts cleanly before the owner provisions SENTRY_DSN.
-    """
-    dsn = config.sentry_dsn
-    if not dsn:
-        return
-    try:
-        import sentry_sdk
-
-        sentry_sdk.init(
-            dsn=dsn,
-            environment=config.api_env,
-            traces_sample_rate=0.0,
-            send_default_pii=False,
-        )
-        structlog.get_logger(__name__).info("sentry_initialized", environment=config.api_env)
-    except Exception as exc:  # pragma: no cover - missing dep / bad DSN must not break startup
-        structlog.get_logger(__name__).warning("sentry_init_failed", error=str(exc))
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     config = get_settings()
     _sync_cors_middleware(app, config)
     _configure_logging(config)
-    _init_sentry(config)
     logger = structlog.get_logger(__name__)
     privacy_policy = config.privacy_policy
     validate_openapi_surface_configuration()
