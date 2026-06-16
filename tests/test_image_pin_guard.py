@@ -157,7 +157,7 @@ def test_sidecar_default_is_digest_pinned() -> None:
     # used to be the one tolerated floating tag; now it's resolved. The override var still lets an
     # operator supply their own ref.
     compose = _SELFHOSTED.read_text(encoding="utf-8")
-    assert "ghcr.io/escrypto-labs/codna/sidecar@sha256:" in compose, (
+    assert "ghcr.io/thyn-ai/codna/sidecar@sha256:" in compose, (
         "the codna sidecar default must be digest-pinned (…/codna/sidecar@sha256:…)"
     )
     assert "codna/sidecar:latest" not in compose, "codna sidecar must not use a floating :latest tag"

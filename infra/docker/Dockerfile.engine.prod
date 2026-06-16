@@ -6,7 +6,7 @@
 # to a single Machine, so the worker and the sidecar must run on the same Machine sharing the volume
 # mounted at /home/app/.algenta. This image runs both via infra/docker/engine-entrypoint.sh.
 #
-# The sidecar is the codna-published, digest-pinned image (built by escrypto-labs/codna CI, NOT here).
+# The sidecar is the codna-published, digest-pinned image (built by thyn-ai/codna CI, NOT here).
 # Bump SIDECAR_IMAGE when adopting a newer sidecar (keep it digest-pinned for reproducible deploys).
 #
 # Build (from repo root):
@@ -14,10 +14,10 @@
 
 # Both ARGs must precede the first FROM to be global (usable in FROM lines); an ARG declared after
 # a FROM is stage-scoped and reads blank in a later FROM (`base name should not be blank`).
-ARG SIDECAR_IMAGE=ghcr.io/escrypto-labs/codna/sidecar@sha256:4a7e873277e3c805e2744cba0dc3e0f192dea5944c2389570361c2dc8a9bca0b
+ARG SIDECAR_IMAGE=ghcr.io/thyn-ai/codna/sidecar@sha256:4a7e873277e3c805e2744cba0dc3e0f192dea5944c2389570361c2dc8a9bca0b
 # The real Mojo engine binary, built by build-mojo.yml on linux/amd64 (core-filtered dispatch,
 # linked against the bundled GNU libstdc++). Pinned by tag; bump when the kernel is rebuilt.
-ARG MOJO_IMAGE=ghcr.io/escrypto-labs/algenta/mojo:git-4b360dd
+ARG MOJO_IMAGE=ghcr.io/thyn-ai/algenta/mojo:git-4b360dd
 FROM ${SIDECAR_IMAGE} AS sidecar
 FROM ${MOJO_IMAGE} AS mojo
 

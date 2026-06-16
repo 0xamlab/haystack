@@ -22,5 +22,5 @@ pnpm --dir packages/ts-sdk test -- --run src/libraries.test.ts src/runtime_daemo
 pnpm --dir apps/gateway test
 pnpm --dir apps/gateway exec tsx --test ../../examples/shared/privacyProfile.test.ts
 
-# agent-core (sidecar) overlay tests now live in escrypto-labs/codna (its CI builds + tests the
+# agent-core (sidecar) overlay tests now live in thyn-ai/codna (its CI builds + tests the
 # vendored Cline SDK). decision-engine consumes the published sidecar image over HTTP.

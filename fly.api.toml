@@ -1,14 +1,14 @@
 # codna-api — public FastAPI app (behind Cloudflare). Stateless: it enqueues the fix pipeline to
 # codna-engine (queue=repository) and serves the GitHub App webhook + REST API. Scales independently.
 #
-# Deploy:  flyctl deploy -c fly.api.toml -i ghcr.io/escrypto-labs/algenta/api:<tag>
+# Deploy:  flyctl deploy -c fly.api.toml -i ghcr.io/thyn-ai/algenta/api:<tag>
 # Secrets: set via `flyctl secrets set -a codna-api ...` (see scripts/bootstrap.sh / DEPLOY.md).
 app = "codna-api"
 primary_region = "iad"
 
 [build]
   # Overridden by scripts/deploy-fly.sh with the pinned git-<sha> tag/digest from CI.
-  image = "ghcr.io/escrypto-labs/algenta/api:latest"
+  image = "ghcr.io/thyn-ai/algenta/api:latest"
 
 [deploy]
   # Run DB migrations once per release on a throwaway Machine before the new version goes live.

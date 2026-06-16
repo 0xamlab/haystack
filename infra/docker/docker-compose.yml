@@ -158,11 +158,11 @@ services:
     restart: unless-stopped
 
   # ─── Agent-core sidecar (forked-Cline execution head) ────────────────────────
-  # Built + published by escrypto-labs/codna (the agent head's home); consumed over the unchanged
+  # Built + published by thyn-ai/codna (the agent head's home); consumed over the unchanged
   # HTTP seam (ALGENTA_AGENT_CORE_URL -> /run). Override the image via ALGENTA_SIDECAR_IMAGE.
   # Digest-pinned default (codna main @ git-696e7cc) for reproducibility; bump when adopting newer.
   sidecar:
-    image: ${ALGENTA_SIDECAR_IMAGE:-ghcr.io/escrypto-labs/codna/sidecar@sha256:4a7e873277e3c805e2744cba0dc3e0f192dea5944c2389570361c2dc8a9bca0b}
+    image: ${ALGENTA_SIDECAR_IMAGE:-ghcr.io/thyn-ai/codna/sidecar@sha256:4a7e873277e3c805e2744cba0dc3e0f192dea5944c2389570361c2dc8a9bca0b}
     container_name: decision-engine-sidecar
     environment:
       AGENT_CORE_HOST: 0.0.0.0

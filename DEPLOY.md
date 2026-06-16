@@ -28,7 +28,7 @@ path. A Fly volume attaches to one Machine, so worker+sidecar must co-locate (th
 - `flyctl`, `tofu` (or `terraform`) installed. `export FLY_API_TOKEN=…`.
 - Images in GHCR: CI builds `…/api`, `…/worker`, `…/engine` on push to main. The **engine** image
   FROMs the private codna sidecar — give CI a `CODNA_GHCR_READ_TOKEN` secret (PAT w/ read:packages on
-  escrypto-labs/codna) **or** make that package public, else the engine build is skipped.
+  thyn-ai/codna) **or** make that package public, else the engine build is skipped.
 - Register the GitHub App (below) to get the `GITHUB_APP_*` values.
 
 ## 1. Bootstrap (idempotent)

@@ -7,7 +7,7 @@
 # build a MINIMAL dispatch (MOJO_RUNTIME_MODULE_FILTER below). Compiling all 457 dead modules into
 # one object is what OOMs a 32GB builder; the core engine alone compiles comfortably on a 16GB box.
 # Built on linux/amd64, so the binary is natively linux (the local darwin/arm64 binary is irrelevant).
-# Output image is consumed via `COPY --from=ghcr.io/escrypto-labs/algenta/mojo:<tag>` by the
+# Output image is consumed via `COPY --from=ghcr.io/thyn-ai/algenta/mojo:<tag>` by the
 # api/worker/engine prod Dockerfiles.
 #
 # Build:  docker build -f infra/docker/Dockerfile.mojo -t mojo .

@@ -263,8 +263,8 @@ jobs:
           cache-to: type=gha,mode=max
 
       # The combined worker+sidecar image for the co-located Fly `codna-engine` app. Its Dockerfile
-      # FROMs the codna-published sidecar (ghcr.io/escrypto-labs/codna/sidecar@sha256:…). That base is
-      # a PRIVATE cross-repo package, so pulling it needs read:packages on escrypto-labs/codna — the
+      # FROMs the codna-published sidecar (ghcr.io/thyn-ai/codna/sidecar@sha256:…). That base is
+      # a PRIVATE cross-repo package, so pulling it needs read:packages on thyn-ai/codna — the
       # default GITHUB_TOKEN here does NOT have it. Provide a CODNA_GHCR_READ_TOKEN secret (a PAT with
       # read:packages) OR make the codna sidecar package public (owner item D1). These steps are
       # skipped when CODNA_TOKEN is empty so the api/worker build still succeeds.
