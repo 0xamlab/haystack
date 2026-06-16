@@ -64,6 +64,15 @@ COMPUTE_TIMEOUT_S = float(os.environ.get("MOJO_COMPUTE_TIMEOUT_S", "60.0"))
 # How long to wait for worker to signal ready after spawn
 WORKER_READY_TIMEOUT_S = float(os.environ.get("MOJO_WORKER_READY_TIMEOUT_S", "5.0"))
 
+# Startup server-mode probe budgets. Generous by default: at API boot the whole VM is under heavy
+# load (large app import + multiple uvicorn workers each starting a pool + DB/Redis connects), so a
+# cold native binary loading its runtime libs can take far longer than the old hardcoded 2s to bind
+# its socket — losing that race made the pool fall back even though the binary works (proven via
+# single-shot + isolated --server). Env-tunable; the probe is also retried a few times.
+PROBE_SOCKET_TIMEOUT_S = float(os.environ.get("MOJO_PROBE_SOCKET_TIMEOUT_S", "30.0"))
+PROBE_FRAME_TIMEOUT_S = float(os.environ.get("MOJO_PROBE_FRAME_TIMEOUT_S", "10.0"))
+PROBE_ATTEMPTS = int(os.environ.get("MOJO_PROBE_ATTEMPTS", "3"))
+
 # Phase 1: Control subprocess fallback policy.
 # "true"  — allow transparent subprocess fallback (dev default, slower but safe)
 # "false" — hard fail if pool cannot start; no subprocess fallback (production)
@@ -302,7 +311,7 @@ class MojoWorkerPool:
             )
 
             # Wait for socket to appear
-            deadline = asyncio.get_event_loop().time() + 2.0
+            deadline = asyncio.get_event_loop().time() + PROBE_SOCKET_TIMEOUT_S
             while asyncio.get_event_loop().time() < deadline:
                 if test_sock.exists():
                     break
@@ -314,11 +323,11 @@ class MojoWorkerPool:
 
             # Connect and exchange handshake
             reader, writer = await asyncio.wait_for(
-                asyncio.open_unix_connection(str(test_sock)), timeout=1.0
+                asyncio.open_unix_connection(str(test_sock)), timeout=PROBE_FRAME_TIMEOUT_S
             )
-            header = await asyncio.wait_for(reader.readexactly(4), timeout=1.0)
+            header = await asyncio.wait_for(reader.readexactly(4), timeout=PROBE_FRAME_TIMEOUT_S)
             length = struct.unpack(">I", header)[0]
-            ready_data = await asyncio.wait_for(reader.readexactly(length), timeout=1.0)
+            ready_data = await asyncio.wait_for(reader.readexactly(length), timeout=PROBE_FRAME_TIMEOUT_S)
             ready = json.loads(ready_data)
             if ready.get("status") != "ready":
                 return False
@@ -341,9 +350,9 @@ class MojoWorkerPool:
             await writer.drain()
 
             # Read result and validate
-            header = await asyncio.wait_for(reader.readexactly(4), timeout=2.0)
+            header = await asyncio.wait_for(reader.readexactly(4), timeout=PROBE_FRAME_TIMEOUT_S)
             length = struct.unpack(">I", header)[0]
-            raw = await asyncio.wait_for(reader.readexactly(length), timeout=2.0)
+            raw = await asyncio.wait_for(reader.readexactly(length), timeout=PROBE_FRAME_TIMEOUT_S)
             result = json.loads(raw)
 
             mean = float(result.get("summary", {}).get("mean", 0.0))
@@ -404,7 +413,18 @@ class MojoWorkerPool:
             self._running = False
             return
 
-        supports_server = await self._binary_supports_server_mode()
+        supports_server = False
+        for _attempt in range(max(1, PROBE_ATTEMPTS)):
+            supports_server = await self._binary_supports_server_mode()
+            if supports_server:
+                break
+            if _attempt + 1 < max(1, PROBE_ATTEMPTS):
+                logger.warning(
+                    "mojo_server_mode_probe_retry",
+                    attempt=_attempt + 1,
+                    attempts=PROBE_ATTEMPTS,
+                )
+                await asyncio.sleep(1.0)
         if not supports_server:
             reason = "binary_does_not_support_server_mode"
             if not _ALLOW_SUBPROCESS_FALLBACK:
