@@ -181,6 +181,26 @@ def test_agent_core_host_merges_with_explicit_allowlist_without_duplicates() -> 
     assert policy2.egress_allowlist == ("127.0.0.1",)
 
 
+def test_supabase_url_host_is_trusted_for_egress() -> None:
+    # The configured Supabase host is auto-allowlisted for the offline JWKS fetch that powers /byok,
+    # so the fail-closed egress guard doesn't block it (no manual allowlist entry needed).
+    policy = build_privacy_policy(
+        deployment_mode="self_hosted",
+        supabase_url="https://abcdefghij.supabase.co",
+    )
+    assert "abcdefghij.supabase.co" in policy.egress_allowlist
+    assert policy.allow_outbound_network is False  # general egress stays closed
+
+
+def test_supabase_host_merges_with_explicit_allowlist_without_duplicates() -> None:
+    policy = build_privacy_policy(
+        deployment_mode="self_hosted",
+        egress_allowlist="example.internal",
+        supabase_url="http://127.0.0.1:54421",
+    )
+    assert set(policy.egress_allowlist) == {"example.internal", "127.0.0.1"}
+
+
 def test_no_agent_core_url_leaves_allowlist_unchanged() -> None:
     assert build_privacy_policy(deployment_mode="self_hosted").egress_allowlist == ()
     assert build_privacy_policy(

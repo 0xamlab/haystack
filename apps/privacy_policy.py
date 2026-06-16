@@ -271,6 +271,7 @@ def build_privacy_policy(
     allow_outbound_network: object | None = None,
     egress_allowlist: object | None = None,
     agent_core_url: object | None = None,
+    supabase_url: object | None = None,
     base_url_fallback: str | None = None,
 ) -> PrivacyPolicy:
     mode = _normalized_mode(deployment_mode)
@@ -344,6 +345,17 @@ def build_privacy_policy(
             agent_core_host = ""
         if agent_core_host and agent_core_host not in effective_allowlist:
             effective_allowlist.append(agent_core_host)
+    # Same self-host trust for the Supabase identity provider: an operator who configures
+    # SUPABASE_URL has opted into reaching it for the offline JWKS fetch that powers /byok. Trust
+    # exactly that host so the fetch isn't blocked by the SSRF/fail-closed guard (which would
+    # otherwise surface as an opaque egress denial). Only the configured host is allowlisted.
+    if supabase_url:
+        try:
+            supabase_host = parse_egress_destination(str(supabase_url)).host
+        except PrivacyConfigurationError:
+            supabase_host = ""
+        if supabase_host and supabase_host not in effective_allowlist:
+            effective_allowlist.append(supabase_host)
 
     policy = PrivacyPolicy(
         deployment_mode=mode,
@@ -387,6 +399,7 @@ def policy_from_environment(
         allow_outbound_network=_env(mapping, "ALGENTA_ALLOW_OUTBOUND_NETWORK"),
         egress_allowlist=_env(mapping, "ALGENTA_EGRESS_ALLOWLIST"),
         agent_core_url=_env(mapping, "ALGENTA_AGENT_CORE_URL"),
+        supabase_url=_env(mapping, "SUPABASE_URL") or _env(mapping, "NEXT_PUBLIC_SUPABASE_URL"),
         base_url_fallback=base_url_fallback,
     )
 

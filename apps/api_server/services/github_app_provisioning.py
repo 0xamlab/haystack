@@ -39,6 +39,21 @@ def _slug_for_account(account_id: int, account_type: str) -> str:
     return f"gh-{kind}-{int(account_id)}"
 
 
+async def lookup_org_for_account(
+    db: AsyncSession, *, account_id: int, account_type: str
+) -> Organization | None:
+    """Lookup-only resolution by the deterministic ``gh-{org|user}-{account_id}`` slug.
+
+    Unlike :func:`provision_or_lookup_org_for_installation`, this NEVER creates an org — it returns
+    the existing org for a GitHub account or ``None`` if that account has never installed the App.
+    Used by the website BYOK bridge to map a logged-in GitHub user (personal install) to their org
+    without minting anything."""
+    slug = _slug_for_account(account_id, account_type)
+    return (
+        await db.execute(select(Organization).where(Organization.slug == slug))
+    ).scalar_one_or_none()
+
+
 async def provision_or_lookup_org_for_installation(
     db: AsyncSession,
     *,

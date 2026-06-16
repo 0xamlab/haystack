@@ -218,6 +218,44 @@ async def _gh_get_app(url: str, audit: Any) -> Any | None:
     return resp.json() or {}
 
 
+async def installation_membership_role(
+    installation_id: int,
+    org_login: str,
+    username: str,
+    *,
+    org_id: uuid.UUID | str,
+    redis: Any | None = None,
+    installation_row: Any | None = None,
+) -> dict[str, Any] | None:
+    """Check a user's org membership using the App's INSTALLATION token (not a user token).
+
+    For the website BYOK bridge we know *who* the caller is (verified Supabase JWT → GitHub login)
+    but hold no GitHub credential for them. So instead of the user-token ``/user/memberships`` path
+    (see :func:`verify_user_administers_installation`), we mint the App's installation token for the
+    org's installation and ask GitHub directly: ``GET /orgs/{org}/memberships/{username}``.
+
+    Returns the membership dict ``{"state": "active"|"pending", "role": "admin"|"member"|...}`` or
+    ``None`` when the user is not a member (404) / the call failed (>=400). The caller decides what
+    counts (BYOK requires ``state == "active"`` and ``role == "admin"``).
+
+    Requires the App's "Organization → Members: read" permission on the installed org. The
+    installation token sees PRIVATE membership of that org, so private members resolve correctly.
+    All egress is guarded (self-hosted/air-gapped fail-closed). Raises
+    :class:`GithubAppNotConfiguredError` if the App is unconfigured and propagates
+    ``EgressPolicyDeniedError`` if egress is denied — both caller-level (not per-org) failures."""
+    org_login = (org_login or "").strip().lower()
+    username = (username or "").strip().lower()
+    if not org_login or not username:
+        return None
+    audit = egress_guard.EgressAuditContext(
+        org_id=org_id if isinstance(org_id, uuid.UUID) else None
+    )
+    token = await get_installation_token(
+        installation_id, org_id=org_id, redis=redis, installation_row=installation_row
+    )
+    return await _gh_get(f"{_GITHUB_API}/orgs/{org_login}/memberships/{username}", token, audit)
+
+
 async def get_installation_token(
     installation_id: int,
     *,

@@ -186,6 +186,7 @@ class Settings(BaseSettings):
             allow_outbound_network=self.algenta_allow_outbound_network,
             egress_allowlist=self.algenta_egress_allowlist,
             agent_core_url=self.algenta_agent_core_url,
+            supabase_url=self.supabase_url,
         )
 
     # ─── Database ─────────────────────────────────────────────────────────────
@@ -255,6 +256,33 @@ class Settings(BaseSettings):
     # one-click install redirect. Optional; the dashboard can build the URL itself.
     github_app_slug: str | None = Field(
         default=None, validation_alias=AliasChoices("GITHUB_APP_SLUG")
+    )
+
+    # ── Supabase identity (codna website BYOK bridge) ─────────────────────────
+    # The codna marketing site signs users in with Supabase (GitHub OAuth) and forwards the
+    # Supabase access_token (a JWT) to the top-level /byok endpoint. The engine verifies that JWT
+    # OFFLINE against the project's JWKS (asymmetric ES256/RS256) — issuer + JWKS URL are derived
+    # from this base URL — to read the caller's GitHub identity (user_metadata.provider_id) and map
+    # them to their engine org. Inert until set (the /byok surface returns 503 while unconfigured).
+    # NOTE: when set, this host is auto-added to the egress allowlist (build_privacy_policy), so the
+    # JWKS fetch isn't blocked by the fail-closed/SSRF guard — no manual ALGENTA_EGRESS_ALLOWLIST
+    # entry is needed for it.
+    supabase_url: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL"),
+    )
+    # Legacy HS256 fallback — ONLY for projects still on the shared symmetric JWT secret (not the
+    # asymmetric default). Leave unset for modern projects; the verifier prefers JWKS and branches
+    # to HS256 only when the token header says alg=HS256.
+    supabase_jwt_secret: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("SUPABASE_JWT_SECRET"),
+    )
+    # Expected `aud` claim. Supabase issues "authenticated" for signed-in users; override only if a
+    # custom GoTrue audience is configured.
+    supabase_jwt_aud: str = Field(
+        default="authenticated",
+        validation_alias=AliasChoices("SUPABASE_JWT_AUD"),
     )
 
     # ─── Cloud Provider Credentials (for per-org deployment provisioning) ──────

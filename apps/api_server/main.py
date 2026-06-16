@@ -397,6 +397,12 @@ from apps.api_server.routers import github_webhooks as _github_webhooks_router  
 
 app.include_router(_github_webhooks_router.router)
 
+# codna website BYOK — top-level POST/DELETE /byok, authenticated by a Supabase JWT (not a codna
+# API key) and mapped to the caller's engine org. Inert until SUPABASE_URL + GITHUB_APP_* are set.
+from apps.api_server.routers import byok as _byok_router  # noqa: E402
+
+app.include_router(_byok_router.router)
+
 if settings.runtime_library_http_api_enabled:
     app.include_router(runtime_libraries.router)
 
