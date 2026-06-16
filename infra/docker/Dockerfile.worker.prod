@@ -35,6 +35,13 @@ COPY --from=builder /install /usr/local
 COPY --from=builder /build/context/apps/ /app/apps/
 COPY --from=builder /build/context/mojo/ /app/mojo/
 
+# Runtime-manifest source artifacts (committed under build/, ~150KB) so /v1/runtime/manifest
+# doesn't 500 on missing files (no tracked .dockerignore excludes build/).
+COPY --from=builder /build/context/build/llm_rollout_proof_bundle.json \
+                    /build/context/build/llm_rollout_parity_benchmark.json \
+                    /build/context/build/llm_compiled_runtime_benchmark.json \
+                    /app/build/
+
 # Real Mojo kernel: the native binary + the runtime libs its $ORIGIN/../mojo_env rpath resolves.
 # RUNTIME_FALLBACK_MODE=deny relies on this being a working binary (no Python fallback).
 COPY --from=mojo /app/mojo_build/simulate /app/mojo_build/simulate
