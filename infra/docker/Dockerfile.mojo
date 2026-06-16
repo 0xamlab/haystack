@@ -45,6 +45,12 @@ RUN cd /build/mojo_env && pixi install --locked
 ARG MOJO_RUNTIME_MODULE_FILTER=ab_testing
 ENV MOJO_RUNTIME_MODULE_FILTER=${MOJO_RUNTIME_MODULE_FILTER}
 
+# Portable target CPU: mojo defaults --target-cpu to the BUILD host (the CI runner is Intel, often
+# with AVX-512), which SIGILLs on the deploy host (Fly = AMD EPYC: avx2/fma/bmi2, no avx512).
+# x86-64-v3 (AVX2/FMA/BMI2) runs across Fly's whole fleet while keeping vectorization.
+ARG MOJO_BUILD_MCPU=x86-64-v3
+ENV MOJO_BUILD_MCPU=${MOJO_BUILD_MCPU}
+
 # Compile + link the native binary. build_mojo_binary.sh handles the Linux clang link with the
 # $ORIGIN/../mojo_env/.pixi/envs/default/lib rpath.
 RUN cd /build && bash scripts/build_mojo_binary.sh && test -x /build/mojo_build/simulate \

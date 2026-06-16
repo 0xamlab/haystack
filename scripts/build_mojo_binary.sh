@@ -17,6 +17,11 @@ TEMP_OBJECT_PATH="${TEMP_OBJECT_PATH:-${DEFAULT_BUILD_DIR}/simulate.o.tmp}"
 TEMP_BINARY_PATH="${TEMP_BINARY_PATH:-${DEFAULT_BUILD_DIR}/simulate.tmp}"
 BUILD_DIR="$(dirname "${BINARY_PATH}")"
 MOJO_RUNTIME_MODULE_FILTER_RAW="${MOJO_RUNTIME_MODULE_FILTER:-}"
+# Optional portable target CPU. `mojo build` defaults --target-cpu to the BUILD host's CPU, which
+# bakes in whatever ISA the builder has (e.g. AVX-512 on an Intel CI runner) — that SIGILLs on a
+# host CPU without it (Fly runs AMD EPYC: avx2/fma/bmi2, NO avx512). Set MOJO_BUILD_MCPU (e.g.
+# x86-64-v3) for a portable deploy binary; unset (local builds) keeps the fast native default.
+MOJO_BUILD_MCPU="${MOJO_BUILD_MCPU:-}"
 
 PIXI_HOME_EXPLICIT=0
 if [[ -n "${PIXI_HOME:-}" ]]; then
@@ -157,12 +162,18 @@ python3 "${DISPATCH_GENERATOR}" "${DISPATCH_GENERATOR_ARGS[@]}" >/dev/null
 
 # Mojo compile must run inside the pixi-managed environment so std/package
 # roots resolve exactly as they do for runtime-owned test and server invocations.
+MOJO_TARGET_ARGS=()
+if [[ -n "${MOJO_BUILD_MCPU}" ]]; then
+    MOJO_TARGET_ARGS+=(--mcpu "${MOJO_BUILD_MCPU}")
+    echo "[build_mojo_binary] target CPU: ${MOJO_BUILD_MCPU} (portable; not host-native)" >&2
+fi
 (
     cd "${PIXI_ENV_DIR}"
     "${PIXI_BIN_RESOLVED}" run mojo build \
         -I "${ENGINE_INCLUDE_DIR}" \
         "${MOJO_SRC}" \
         --emit object \
+        "${MOJO_TARGET_ARGS[@]+"${MOJO_TARGET_ARGS[@]}"}" \
         -o "${TEMP_OBJECT_PATH}"
 )
 
