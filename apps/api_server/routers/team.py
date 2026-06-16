@@ -243,6 +243,18 @@ async def invite_member(
     }
 
 
+async def _count_active_owners(db: AsyncSessionDep, org_id: UUID) -> int:
+    """Number of active owners in the org (used to prevent dropping the last owner)."""
+    result = await db.execute(
+        select(User).where(
+            User.org_id == org_id,
+            User.role == UserRole.OWNER,
+            User.status == UserStatus.ACTIVE,
+        )
+    )
+    return len(result.scalars().all())
+
+
 @router.patch("/v1/team/{user_id}/role", summary="Update a team member's role")
 async def update_member_role(
     user_id: UUID,
@@ -262,6 +274,28 @@ async def update_member_role(
                 }
             },
         )
+    # Block changing your own role (an admin must not self-escalate or self-demote).
+    if auth["user_id"] is not None and auth["user_id"] == user_id:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": {
+                    "code": "self_role_change_forbidden",
+                    "message": "You cannot change your own role.",
+                }
+            },
+        )
+    # Only an existing owner may grant the 'owner' role (prevents admin privilege escalation).
+    if payload.role == UserRole.OWNER.value and auth["role"] != UserRole.OWNER.value:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": {
+                    "code": "owner_grant_forbidden",
+                    "message": "Only an owner can grant the 'owner' role.",
+                }
+            },
+        )
     result = await db.execute(select(User).where(User.id == user_id, User.org_id == auth["org_id"]))
     user = result.scalar_one_or_none()
     if user is None:
@@ -271,6 +305,23 @@ async def update_member_role(
                 "error": {
                     "code": "not_found",
                     "message": "User not found.",
+                }
+            },
+        )
+
+    # Refuse to demote the last active owner (zero-owner guard).
+    demoting_owner = (
+        user.role == UserRole.OWNER
+        and user.status == UserStatus.ACTIVE
+        and payload.role != UserRole.OWNER.value
+    )
+    if demoting_owner and await _count_active_owners(db, auth["org_id"]) <= 1:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "error": {
+                    "code": "last_owner",
+                    "message": "Cannot change the role of the last owner.",
                 }
             },
         )
@@ -297,6 +348,22 @@ async def remove_member(
                 "error": {
                     "code": "not_found",
                     "message": "User not found.",
+                }
+            },
+        )
+
+    # Refuse to remove the last active owner (zero-owner guard).
+    if (
+        user.role == UserRole.OWNER
+        and user.status == UserStatus.ACTIVE
+        and await _count_active_owners(db, auth["org_id"]) <= 1
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "error": {
+                    "code": "last_owner",
+                    "message": "Cannot remove the last owner.",
                 }
             },
         )

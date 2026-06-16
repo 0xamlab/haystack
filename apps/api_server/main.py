@@ -121,11 +121,35 @@ def _configure_logging(config: Settings) -> None:
     )
 
 
+def _init_sentry(config: Settings) -> None:
+    """Initialize Sentry error reporting when SENTRY_DSN is set.
+
+    Guarded + lazily imported: a missing ``sentry_sdk`` dependency or an unset DSN is a
+    silent no-op, so the app starts cleanly before the owner provisions SENTRY_DSN.
+    """
+    dsn = config.sentry_dsn
+    if not dsn:
+        return
+    try:
+        import sentry_sdk
+
+        sentry_sdk.init(
+            dsn=dsn,
+            environment=config.api_env,
+            traces_sample_rate=0.0,
+            send_default_pii=False,
+        )
+        structlog.get_logger(__name__).info("sentry_initialized", environment=config.api_env)
+    except Exception as exc:  # pragma: no cover - missing dep / bad DSN must not break startup
+        structlog.get_logger(__name__).warning("sentry_init_failed", error=str(exc))
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     config = get_settings()
     _sync_cors_middleware(app, config)
     _configure_logging(config)
+    _init_sentry(config)
     logger = structlog.get_logger(__name__)
     privacy_policy = config.privacy_policy
     validate_openapi_surface_configuration()
@@ -619,6 +643,50 @@ async def run_simulation_template(
         "domain": template.domain,
         "result": result,
     }
+
+
+@app.get(
+    "/v1/health/ready",
+    include_in_schema=False,
+    summary="Readiness check (DB + Redis)",
+)
+async def health_ready(request: Request) -> JSONResponse:
+    """Deep readiness check: pings the DB (critical) and Redis (optional, if present).
+
+    Distinct from the liveness ``/v1/health`` route (which the Fly healthcheck contract
+    depends on and which must stay fast + non-throwing). DB is the only critical dep:
+    its failure yields 503. A missing/failing Redis is reported but never fails readiness.
+    """
+    db_status = "down"
+    try:
+        from sqlalchemy import text
+
+        from apps.api_server.db.session import AsyncReadSessionLocal
+
+        async with AsyncReadSessionLocal() as session:
+            await session.execute(text("SELECT 1"))
+        db_status = "ok"
+    except Exception:  # noqa: BLE001 - readiness must report, never raise
+        db_status = "down"
+
+    redis_status: str | None = None
+    redis_client = getattr(request.app.state, "redis", None)
+    if redis_client is not None:
+        try:
+            await redis_client.ping()
+            redis_status = "ok"
+        except Exception:  # noqa: BLE001 - optional dep; degrade, do not fail readiness
+            redis_status = "down"
+
+    ready = db_status == "ok"
+    return JSONResponse(
+        status_code=200 if ready else 503,
+        content={
+            "status": "ok" if ready else "unavailable",
+            "db": db_status,
+            "redis": redis_status,
+        },
+    )
 
 
 @app.get(

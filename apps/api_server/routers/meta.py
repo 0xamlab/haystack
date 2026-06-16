@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 from apps.api_server.config import SettingsProxy
 from apps.api_server.middleware.auth import AuthContext, get_current_org
+from apps.api_server.middleware.rbac import require_role
 from apps.api_server.services.platform_contract_surface import build_platform_contract_surface
 from apps.api_server.services.public_url_policy import request_origin_base_url
 from apps.api_server.services.privacy_service import (
@@ -229,7 +230,7 @@ async def runtime_manifest() -> RuntimeManifestResponse:
     summary="Admin runtime module catalog",
 )
 async def runtime_admin_modules(
-    _auth: Annotated[AuthContext, Depends(get_current_org)],
+    _auth: Annotated[AuthContext, Depends(require_role("admin"))],
 ) -> RuntimeAdminModulesResponse:
     del _auth
     return _validated_runtime_route_response(
@@ -244,7 +245,7 @@ async def runtime_admin_modules(
     summary="Admin runtime benchmark catalog",
 )
 async def runtime_admin_benchmarks(
-    _auth: Annotated[AuthContext, Depends(get_current_org)],
+    _auth: Annotated[AuthContext, Depends(require_role("admin"))],
 ) -> RuntimeAdminBenchmarksResponse:
     del _auth
     return _validated_runtime_route_response(
@@ -259,7 +260,7 @@ async def runtime_admin_benchmarks(
     summary="Admin runtime release validation",
 )
 async def runtime_admin_validation(
-    _auth: Annotated[AuthContext, Depends(get_current_org)],
+    _auth: Annotated[AuthContext, Depends(require_role("admin"))],
 ) -> RuntimeReleaseValidationResponse:
     del _auth
     return _validated_runtime_route_response(
@@ -274,7 +275,7 @@ async def runtime_admin_validation(
     summary="Admin privacy egress policy",
 )
 async def admin_egress_policy(
-    _auth: Annotated[AuthContext, Depends(get_current_org)],
+    _auth: Annotated[AuthContext, Depends(require_role("admin"))],
 ) -> AdminEgressPolicyResponse:
     del _auth
     return AdminEgressPolicyResponse.model_validate(await get_egress_policy_payload())

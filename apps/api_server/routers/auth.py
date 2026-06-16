@@ -149,7 +149,24 @@ async def login(
     request: Request,
     payload: LoginRequest,
     db: AsyncSession = Depends(get_db),
+    redis: object = Depends(get_redis),
 ) -> TokenResponse:
+    # Brute-force protection: throttle login attempts per email + client IP (fails open if
+    # Redis is down). Keyed on a hashed email so the redis key stays bounded and doesn't leak
+    # the address; the IP component uses the same source as the rest of the auth router.
+    client_ip = get_client_ip(request) or "unknown"
+    email_hash = hashlib.sha256(str(payload.email).strip().lower().encode()).hexdigest()[:32]
+    await check_named_rate_limit(
+        f"{email_hash}:{client_ip}",
+        redis,
+        key_prefix="login",
+        limit_per_minute=settings.login_rate_limit_per_minute,
+        request_state=getattr(request, "state", None),
+        error_code="login_rate_limited",
+        error_message="Too many login attempts. Please try again in a minute.",
+        log_context={"ip": client_ip},
+    )
+
     user = await get_user_by_email(str(payload.email), db)
 
     if user is None or not verify_password(payload.password, user.password_hash):

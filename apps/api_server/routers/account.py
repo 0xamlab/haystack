@@ -23,6 +23,7 @@ from sqlalchemy.orm import selectinload
 
 from apps.api_server.config import get_settings
 from apps.api_server.db.session import get_db
+from apps.api_server.error_payloads import access_scope_denied_error
 from apps.api_server.middleware.auth import get_current_org, get_redis
 from apps.api_server.middleware.rbac import require_role
 from apps.api_server.services.quota_service import check_named_rate_limit
@@ -197,8 +198,13 @@ async def update_me(
     auth: AuthContext = Depends(get_current_org),
     db: AsyncSession = Depends(get_db),
 ) -> MeResponse:
+    # Scope the mutation to the caller (auth["user_id"]), never the first-created owner. Service
+    # keys / keys not linked to a user carry user_id=None and match no row -> the 404 below.
     user_result = await db.execute(
-        select(User).where(User.org_id == auth["org_id"]).order_by(User.created_at).limit(1)
+        select(User)
+        .where(User.org_id == auth["org_id"])
+        .where(User.id == auth.get("user_id"))
+        .limit(1)
     )
     user = user_result.scalar_one_or_none()
     if user is None:
@@ -219,6 +225,16 @@ async def update_me(
         user.name = payload.name
 
     if payload.org_name is not None:
+        # Renaming the org is an org-level mutation: require admin+ (admin or owner).
+        if str(auth.get("role", "")).lower() not in ("admin", "owner"):
+            raise HTTPException(
+                status_code=403,
+                detail=access_scope_denied_error(
+                    "Changing the organization name requires the 'admin' role or higher.",
+                    details=[{"field": "org_name", "issue": "insufficient_role"}],
+                    extra={"required_role": "admin", "your_role": str(auth.get("role", ""))},
+                ),
+            )
         org.name = payload.org_name
 
     await db.flush()

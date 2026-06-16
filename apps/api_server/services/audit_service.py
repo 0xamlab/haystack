@@ -243,10 +243,32 @@ async def write_audit_event(
 
 
 def get_client_ip(request: Request) -> str | None:
-    """Extract client IP from request, respecting X-Forwarded-For."""
+    """Extract the client IP, resisting client-supplied spoofing.
+
+    Order of trust:
+      1. ``CF-Connecting-IP`` — set by Cloudflare on the edge; the client
+         cannot forge it because Cloudflare overwrites any inbound value.
+      2. The right-most *trusted* hop of ``X-Forwarded-For``. XFF is appended
+         left-to-right, so the right-most entries are the ones written by our
+         own reverse proxies; the left-most entries are attacker-controlled.
+         ``ALGENTA_TRUSTED_PROXY_HOPS`` (default 1) is how many trailing hops
+         our infra adds — we skip those and read the entry just before them.
+      3. ``request.client`` — the direct peer.
+    """
+    cf_connecting_ip = request.headers.get("CF-Connecting-IP")
+    if cf_connecting_ip and cf_connecting_ip.strip():
+        return cf_connecting_ip.strip()
+
     forwarded_for = request.headers.get("X-Forwarded-For")
     if forwarded_for:
-        return forwarded_for.split(",")[0].strip()
+        hops = [hop.strip() for hop in forwarded_for.split(",") if hop.strip()]
+        if hops:
+            trusted_hops = max(1, int(os.environ.get("ALGENTA_TRUSTED_PROXY_HOPS", "1")))
+            # Index from the right: the last `trusted_hops` entries are written
+            # by our proxies; the one before them is the closest untrusted client.
+            idx = len(hops) - trusted_hops
+            return hops[idx] if idx >= 0 else hops[0]
+
     if request.client:
         return request.client.host
     return None
