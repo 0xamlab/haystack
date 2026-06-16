@@ -16,7 +16,7 @@ logger = structlog.get_logger(__name__)
 async def run_stdio_server() -> None:
     """Run the MCP server over stdio."""
     try:
-        from mcp.server import Server
+        from mcp.server import NotificationOptions, Server
         from mcp.server.models import InitializationOptions
         from mcp.server.stdio import stdio_server
         from mcp.types import TextContent, Tool
@@ -57,7 +57,7 @@ async def run_stdio_server() -> None:
             server_name="algenta-decision-engine",
             server_version="1.0.0",
             capabilities=server.get_capabilities(
-                notification_options=None,
+                notification_options=NotificationOptions(),
                 experimental_capabilities={},
             ),
         )
