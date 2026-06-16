@@ -14,7 +14,7 @@ from typing import Annotated, Any
 
 import structlog
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 
@@ -29,6 +29,9 @@ from apps.api_server.models.job import JobKind
 from apps.api_server.services import github_app_auth
 from apps.api_server.services.auth_service import AuthContext
 from apps.api_server.services.github_app_auth import app_configured
+from apps.api_server.services.github_app_provisioning import (
+    provision_or_lookup_org_for_installation,
+)
 from apps.api_server.services.job_service import create_job
 from apps.api_server.services.webhook_service import verify_webhook_signature
 
@@ -191,6 +194,39 @@ async def github_webhook(
         elif row is not None and action == "unsuspend":
             row.suspended = False
             await db.commit()
+        elif row is None and action in ("created", "new_permissions_accepted", "unsuspend"):
+            # INSTALL-FIRST: a fresh install with no codna org behind it (the user came from the
+            # GitHub Marketplace, not a codna dashboard). Mint an org on the fly from the trusted
+            # App-JWT-resolved account (NOT the attacker-controllable payload) and bind it. Runs
+            # BEFORE the "unknown installation" drop so the funnel works with zero prior signup.
+            account = await github_app_auth.resolve_installation_account(iid)
+            if account is None:
+                return JSONResponse(
+                    status_code=202,
+                    content={"status": "ignored", "reason": "account unresolved"},
+                )
+            org = await provision_or_lookup_org_for_installation(
+                db,
+                account_id=account["id"],
+                account_login=account["login"],
+                account_type=account["type"],
+            )
+            db.add(
+                GithubAppInstallation(
+                    org_id=org.id,
+                    installation_id=iid,
+                    account_login=account["login"],
+                    account_type=account["type"],
+                )
+            )
+            try:
+                await db.commit()
+            except IntegrityError:
+                # A concurrent delivery for the same installation already bound it; ack as ok.
+                await db.rollback()
+            return JSONResponse(
+                status_code=202, content={"status": "ok", "action": action, "provisioned": True}
+            )
         return JSONResponse(status_code=202, content={"status": "ok", "action": action})
 
     if row is None or row.suspended:
@@ -290,8 +326,11 @@ async def github_install_callback(
 ) -> RedirectResponse:
     if not app_configured():
         raise HTTPException(status_code=404, detail="github app not configured")
-    # 1) The codna side: the `state` nonce identifies which org started this install. Consumed
-    #    single-use so it can't be replayed.
+    # 1) The codna side: when present, the `state` nonce identifies which org started this install
+    #    (the dashboard-first flow). Consumed single-use so it can't be replayed. ABSENT state =
+    #    INSTALL-FIRST (the user installed straight from the GitHub Marketplace): we mint/look up
+    #    the org from the App-JWT-verified account instead. Either way the GitHub-side ownership
+    #    check below still gates the bind.
     redis = _redis(request)
     org_id: str | None = None
     if state and redis:
@@ -302,27 +341,43 @@ async def github_install_callback(
             await redis.delete(key)
         except Exception:  # noqa: BLE001 — single-use is best-effort; ownership check still gates
             pass
-    if not org_id:
+    if state and not org_id:
+        # A state nonce was supplied but is unknown/expired — do not silently fall through to the
+        # install-first path (that would let a stale-state retry bind to a different org).
         raise HTTPException(
             status_code=400,
             detail="missing or expired install state — start the install from your codna dashboard",
         )
-    try:
-        org_uuid = uuid.UUID(org_id)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail="invalid install state") from exc
 
     # 2) The GitHub side: `installation_id` is an attacker-controllable query param. Verify the
     #    user who completed the OAuth install actually administers THIS installation before binding,
-    #    else an attacker could bind a victim's (enumerable) installation id to their own org.
-    verified = await github_app_auth.verify_user_administers_installation(
-        installation_id, code or "", org_id=org_uuid
+    #    else an attacker could bind a victim's (enumerable) installation id to their own org. On
+    #    success this returns the trusted App-JWT-resolved account (used to provision install-first
+    #    when there's no codna state nonce).
+    account = await github_app_auth.verify_user_administers_installation(
+        installation_id, code or "", org_id=org_id if org_id else None
     )
-    if not verified:
+    if not account:
         raise HTTPException(
             status_code=403,
             detail="could not verify you administer this GitHub installation",
         )
+
+    if org_id:
+        # Dashboard-first: the org is the one that started the install.
+        try:
+            org_uuid = uuid.UUID(org_id)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="invalid install state") from exc
+    else:
+        # Install-first: mint/look up the org from the verified account (commit deferred to below).
+        org = await provision_or_lookup_org_for_installation(
+            db,
+            account_id=account["id"],
+            account_login=account["login"],
+            account_type=account["type"],
+        )
+        org_uuid = org.id
 
     async def _existing() -> GithubAppInstallation | None:
         return (
@@ -345,7 +400,14 @@ async def github_install_callback(
             ),
         )
     if row is None:
-        db.add(GithubAppInstallation(org_id=org_uuid, installation_id=installation_id))
+        db.add(
+            GithubAppInstallation(
+                org_id=org_uuid,
+                installation_id=installation_id,
+                account_login=account["login"],
+                account_type=account["type"],
+            )
+        )
         try:
             await db.commit()
         except IntegrityError:
@@ -363,4 +425,34 @@ async def github_install_callback(
     else:
         row.suspended = False
         await db.commit()
-    return RedirectResponse(url=f"https://app.codna.ai/integrations/github?installed={installation_id}")
+    return RedirectResponse(
+        url=f"/github/app/setup?installation_id={installation_id}"
+    )
+
+
+@router.get("/github/app/setup", summary="GitHub App post-install success page")
+async def github_app_setup(installation_id: int) -> HTMLResponse:
+    """Dependency-free post-install landing page.
+
+    Confirms codna is installed and a free trial is active. ``installation_id`` is int-cast by
+    FastAPI's path/query coercion AND re-int-cast into the markup below, so nothing user-supplied
+    is interpolated as raw HTML (no XSS surface). Deliberately NO BYOK key form: a freshly
+    install-first-provisioned org has no human admin credential yet, so collecting a provider key
+    here is a separate follow-up — for now we just say they'll be asked when the trial runs out."""
+    iid = int(installation_id)
+    html = (
+        "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
+        "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+        "<title>codna installed</title></head>"
+        "<body style=\"font-family:system-ui,sans-serif;max-width:34rem;margin:4rem auto;"
+        "padding:0 1rem;line-height:1.5\">"
+        "<h1>codna is installed</h1>"
+        "<p>Your GitHub App installation "
+        f"(<code>#{iid}</code>) is connected and a <strong>free trial is active</strong>.</p>"
+        "<p>codna will start fixing failing CI checks and labeled issues automatically — "
+        "there is nothing else to set up right now.</p>"
+        "<p>When your free trial is used up, we&rsquo;ll ask you to add your own Anthropic API "
+        "key so codna can keep running on your account.</p>"
+        "</body></html>"
+    )
+    return HTMLResponse(content=html)

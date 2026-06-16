@@ -95,9 +95,14 @@ async def verify_user_administers_installation(
     code: str,
     *,
     org_id: uuid.UUID | str,
-) -> bool:
+) -> dict[str, Any] | None:
     """Bind-time ownership check: confirm the GitHub user who completed the install is an
     ADMIN of the account that owns ``installation_id`` — not merely someone with access.
+
+    On success returns the App-JWT-resolved installing account
+    ``{"id": int, "login": str(lower), "type": "user"|"organization"}`` (the trusted source
+    for install-first org provisioning); on ANY failure returns ``None`` (still falsy, so the
+    one caller's truthiness check is preserved).
 
     WITHOUT this, the callback would trust an attacker-supplied ``installation_id`` query
     param and let them bind a victim's installation to their own org. A bare
@@ -110,7 +115,7 @@ async def verify_user_administers_installation(
     installation" enabled. All egress is guarded (self-hosted/air-gapped fail-closed)."""
     s = get_settings()
     if not (s.github_app_client_id and s.github_app_client_secret and code):
-        return False
+        return None
     audit = egress_guard.EgressAuditContext(
         org_id=org_id if isinstance(org_id, uuid.UUID) else None
     )
@@ -131,34 +136,65 @@ async def verify_user_administers_installation(
         client_kwargs={"timeout": 30.0},
     )
     if token_resp.status_code >= 400:
-        return False
+        return None
     user_token = str((token_resp.json() or {}).get("access_token") or "").strip()
     if not user_token:
-        return False
+        return None
     # 2) who is the user?
     user = await _gh_get(f"{_GITHUB_API}/user", user_token, audit)
     user_login = str((user or {}).get("login") or "").strip().lower()
     if not user_login:
-        return False
+        return None
     # 3) which account owns this installation? (resolved via the App JWT, not the user)
     inst = await _gh_get_app(f"{_GITHUB_API}/app/installations/{installation_id}", audit)
     account = (inst or {}).get("account") or {}
+    acct_id = account.get("id")
     acct_login = str(account.get("login") or "").strip().lower()
     acct_type = str(account.get("type") or "").strip().lower()
-    if not acct_login:
-        return False
+    if not acct_login or acct_id is None:
+        return None
+    resolved = {"id": int(acct_id), "login": acct_login, "type": acct_type}
     # 4) require ADMIN of that account
     if acct_type == "user":
-        return user_login == acct_login
+        return resolved if user_login == acct_login else None
     if acct_type == "organization":
         membership = await _gh_get(
             f"{_GITHUB_API}/user/memberships/orgs/{acct_login}", user_token, audit
         )
         return (
-            str((membership or {}).get("state")) == "active"
-            and str((membership or {}).get("role")) == "admin"
+            resolved
+            if (
+                str((membership or {}).get("state")) == "active"
+                and str((membership or {}).get("role")) == "admin"
+            )
+            else None
         )
-    return False
+    return None
+
+
+async def resolve_installation_account(
+    installation_id: int,
+    *,
+    org_id: uuid.UUID | str | None = None,
+) -> dict[str, Any] | None:
+    """Resolve the account that owns ``installation_id`` via the App JWT (no OAuth user code).
+
+    The trusted account source for the WEBHOOK install-first path, where there is no OAuth
+    code to verify a human admin — GitHub already authenticated the delivery via the HMAC
+    signature, and the App JWT (not attacker-supplied payload) names the installing account.
+    Returns ``{"id": int, "login": str(lower), "type": "user"|"organization"}`` or ``None``.
+    All egress is guarded (self-hosted/air-gapped fail-closed), same posture as the verify path."""
+    audit = egress_guard.EgressAuditContext(
+        org_id=org_id if isinstance(org_id, uuid.UUID) else None
+    )
+    inst = await _gh_get_app(f"{_GITHUB_API}/app/installations/{installation_id}", audit)
+    account = (inst or {}).get("account") or {}
+    acct_id = account.get("id")
+    acct_login = str(account.get("login") or "").strip().lower()
+    acct_type = str(account.get("type") or "").strip().lower()
+    if acct_id is None or not acct_login or not acct_type:
+        return None
+    return {"id": int(acct_id), "login": acct_login, "type": acct_type}
 
 
 async def _gh_get_app(url: str, audit: Any) -> Any | None:

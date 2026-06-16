@@ -355,6 +355,51 @@ async def test_webhook_dedup_duplicate(monkeypatch):
 
 
 @pytest.mark.anyio
+async def test_webhook_installation_created_provisions_org(monkeypatch):
+    """INSTALL-FIRST via webhook: installation.created with no codna org mints one and binds it,
+    BEFORE the unknown-installation drop."""
+    _configure(monkeypatch)
+    monkeypatch.setattr(ghwh, "_enqueue", lambda _j: pytest.fail("must not enqueue"))
+
+    async def _resolve(iid, *, org_id=None):
+        return {"id": 9999, "login": "acme", "type": "organization"}
+
+    monkeypatch.setattr(ghwh.github_app_auth, "resolve_installation_account", _resolve)
+    body = json.dumps({"action": "created", "installation": {"id": 12345}}).encode()
+    # row lookup -> None (no binding yet); provision SELECT-by-slug -> None (mint)
+    db = _FakeSession([None, None])
+    resp = await ghwh.github_webhook(
+        _FakeRequest(body), db, x_github_event="installation",
+        x_hub_signature_256=_sign(body), x_github_delivery="d-created",
+    )
+    assert resp.status_code == 202
+    assert json.loads(resp.body).get("provisioned") is True
+    kinds = [type(o).__name__ for o in db.added]
+    assert kinds.count("Organization") == 1
+    assert kinds.count("GithubAppInstallation") == 1
+
+
+@pytest.mark.anyio
+async def test_webhook_installation_created_account_unresolved_ignored(monkeypatch):
+    """If the App JWT can't resolve the account, ack + ignore (don't mint a junk org)."""
+    _configure(monkeypatch)
+
+    async def _resolve(iid, *, org_id=None):
+        return None
+
+    monkeypatch.setattr(ghwh.github_app_auth, "resolve_installation_account", _resolve)
+    body = json.dumps({"action": "created", "installation": {"id": 12345}}).encode()
+    db = _FakeSession([None])
+    resp = await ghwh.github_webhook(
+        _FakeRequest(body), db, x_github_event="installation",
+        x_hub_signature_256=_sign(body), x_github_delivery="d-unres",
+    )
+    assert resp.status_code == 202
+    assert json.loads(resp.body)["reason"] == "account unresolved"
+    assert not db.added
+
+
+@pytest.mark.anyio
 async def test_webhook_installation_deleted_removes_binding(monkeypatch):
     _configure(monkeypatch)
     monkeypatch.setattr(ghwh, "_enqueue", lambda _j: pytest.fail("must not enqueue"))
@@ -442,7 +487,8 @@ def _verify_ok(monkeypatch, ok=True):
     monkeypatch.setattr(ghwh, "app_configured", lambda: True)
 
     async def _verify(installation_id, code, *, org_id):
-        return ok
+        # Success now returns the trusted account dict; failure returns None.
+        return {"id": 1234, "login": "acme", "type": "organization"} if ok else None
 
     monkeypatch.setattr(
         ghwh.github_app_auth, "verify_user_administers_installation", _verify
@@ -493,14 +539,60 @@ async def test_install_callback_no_cross_org_rebind_409(monkeypatch):
 
 
 @pytest.mark.anyio
-async def test_install_callback_missing_state_400(monkeypatch):
+async def test_install_callback_expired_state_400(monkeypatch):
+    """A SUPPLIED state that's unknown/expired still 400s (don't fall through to install-first)."""
     _verify_ok(monkeypatch)
     with pytest.raises(HTTPException) as exc:
         await ghwh.github_install_callback(
             _FakeRequest(b"", redis=_FakeRedis(get_value=None)), _FakeSession([]),
-            installation_id=999, code="c", state=None,
+            installation_id=999, code="c", state="stale-nonce",
         )
     assert exc.value.status_code == 400
+
+
+@pytest.mark.anyio
+async def test_install_callback_install_first_provisions_and_binds(monkeypatch):
+    """INSTALL-FIRST: no state nonce => mint an org from the verified account and bind."""
+    _verify_ok(monkeypatch)  # verify returns the trusted account dict
+    # SELECT org-by-slug -> None (provision creates), then SELECT installation -> None (bind).
+    db = _FakeSession([None, None])
+    resp = await ghwh.github_install_callback(
+        _FakeRequest(b"", redis=_FakeRedis()), db, installation_id=999, code="c", state=None,
+    )
+    assert resp.status_code in (302, 307)
+    assert "/github/app/setup?installation_id=999" in resp.headers["location"]
+    # one Organization minted + one service APIKey + one installation binding
+    kinds = [type(o).__name__ for o in db.added]
+    assert kinds.count("Organization") == 1
+    assert kinds.count("APIKey") == 1
+    assert kinds.count("GithubAppInstallation") == 1
+    binding = next(o for o in db.added if type(o).__name__ == "GithubAppInstallation")
+    assert binding.installation_id == 999
+    assert binding.account_login == "acme"
+    assert binding.account_type == "organization"
+
+
+@pytest.mark.anyio
+async def test_install_callback_redirects_to_setup_page(monkeypatch):
+    """The dashboard-first bind also lands on the dependency-free setup page."""
+    _verify_ok(monkeypatch)
+    redis = _FakeRedis(get_value=str(uuid.uuid4()))
+    resp = await ghwh.github_install_callback(
+        _FakeRequest(b"", redis=redis), _FakeSession([None]),
+        installation_id=555, code="c", state="st",
+    )
+    assert resp.status_code in (302, 307)
+    assert "/github/app/setup?installation_id=555" in resp.headers["location"]
+
+
+@pytest.mark.anyio
+async def test_app_setup_page_is_html_and_safe():
+    resp = await ghwh.github_app_setup(installation_id=4242)
+    body = resp.body.decode()
+    assert resp.status_code == 200
+    assert "free trial" in body.lower()
+    assert "#4242" in body  # int-cast installation id, no raw interpolation
+    assert "<input" not in body.lower()  # no BYOK key form yet
 
 
 @pytest.mark.anyio
@@ -610,32 +702,39 @@ def _mock_verify_http(monkeypatch, *, account, user_login="alice", membership=No
 @pytest.mark.anyio
 async def test_verify_org_admin_true(monkeypatch):
     _mock_verify_http(
-        monkeypatch, account={"login": "Acme", "type": "Organization"},
+        monkeypatch, account={"id": 42, "login": "Acme", "type": "Organization"},
         user_login="alice", membership={"state": "active", "role": "admin"},
     )
-    assert await github_app_auth.verify_user_administers_installation(77, "c", org_id=uuid.uuid4()) is True
+    # Success now returns the trusted App-JWT-resolved account (truthy), not bare True.
+    acct = await github_app_auth.verify_user_administers_installation(77, "c", org_id=uuid.uuid4())
+    assert acct == {"id": 42, "login": "acme", "type": "organization"}
 
 
 @pytest.mark.anyio
 async def test_verify_org_member_not_admin_false(monkeypatch):
     # access (member) is NOT enough — must be an org admin
     _mock_verify_http(
-        monkeypatch, account={"login": "Acme", "type": "Organization"},
+        monkeypatch, account={"id": 42, "login": "Acme", "type": "Organization"},
         user_login="bob", membership={"state": "active", "role": "member"},
     )
-    assert await github_app_auth.verify_user_administers_installation(77, "c", org_id=uuid.uuid4()) is False
+    assert await github_app_auth.verify_user_administers_installation(77, "c", org_id=uuid.uuid4()) is None
 
 
 @pytest.mark.anyio
 async def test_verify_user_account_owner_true(monkeypatch):
-    _mock_verify_http(monkeypatch, account={"login": "Alice", "type": "User"}, user_login="alice")
-    assert await github_app_auth.verify_user_administers_installation(77, "c", org_id=uuid.uuid4()) is True
+    _mock_verify_http(
+        monkeypatch, account={"id": 7, "login": "Alice", "type": "User"}, user_login="alice"
+    )
+    acct = await github_app_auth.verify_user_administers_installation(77, "c", org_id=uuid.uuid4())
+    assert acct == {"id": 7, "login": "alice", "type": "user"}
 
 
 @pytest.mark.anyio
 async def test_verify_user_account_other_user_false(monkeypatch):
-    _mock_verify_http(monkeypatch, account={"login": "victim", "type": "User"}, user_login="attacker")
-    assert await github_app_auth.verify_user_administers_installation(77, "c", org_id=uuid.uuid4()) is False
+    _mock_verify_http(
+        monkeypatch, account={"id": 7, "login": "victim", "type": "User"}, user_login="attacker"
+    )
+    assert await github_app_auth.verify_user_administers_installation(77, "c", org_id=uuid.uuid4()) is None
 
 
 @pytest.mark.anyio
@@ -644,7 +743,7 @@ async def test_verify_user_administers_installation_unconfigured(monkeypatch):
         github_app_auth, "get_settings",
         lambda: SimpleNamespace(github_app_client_id=None, github_app_client_secret=None),
     )
-    assert await github_app_auth.verify_user_administers_installation(1, "c", org_id=uuid.uuid4()) is False
+    assert await github_app_auth.verify_user_administers_installation(1, "c", org_id=uuid.uuid4()) is None
 
 
 @pytest.mark.anyio
@@ -653,8 +752,8 @@ async def test_verify_user_administers_installation_no_code(monkeypatch):
         github_app_auth, "get_settings",
         lambda: SimpleNamespace(github_app_client_id="cid", github_app_client_secret="csec"),
     )
-    # No OAuth code => cannot verify => False (do not bind).
-    assert await github_app_auth.verify_user_administers_installation(1, "", org_id=uuid.uuid4()) is False
+    # No OAuth code => cannot verify => None (do not bind).
+    assert await github_app_auth.verify_user_administers_installation(1, "", org_id=uuid.uuid4()) is None
 
 
 # ── event handler (2D) ──────────────────────────────────────────────────────────
