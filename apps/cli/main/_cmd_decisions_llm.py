@@ -39,7 +39,7 @@ from apps.validation_error_details import format_validation_error_message
 
 _RUNTIME_READY_TIMEOUT_SECONDS = 3.0
 _RUNTIME_READY_POLL_SECONDS = 0.1
-_RUNTIME_NOT_RUNNING_MESSAGE = "Codna Runtime is not running. Start with: de runtime start"
+_RUNTIME_NOT_RUNNING_MESSAGE = "Algenta Runtime is not running. Start with: de runtime start"
 
 
 # Facade-routed proxies. Tests monkey-patch these on `apps.cli.main` (the
@@ -510,7 +510,7 @@ def cmd_llm_models(format: str = "table") -> None:
         print(json.dumps(data, indent=2, default=str))
         return
     models = data.get("data", [])
-    print(f"\nCodna models ({len(models)} available)\n")
+    print(f"\nAlgenta models ({len(models)} available)\n")
     for model in models:
         capabilities = ", ".join(model.get("capabilities", []))
         endpoints = ", ".join(model.get("supported_endpoints", []))

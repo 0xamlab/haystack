@@ -9,7 +9,7 @@ from tests._test_platform_contract_helpers import *  # noqa: F401,F403
 
 def test_manifest_declares_canonical_contract() -> None:
     manifest = json.loads(MANIFEST_PATH.read_text())
-    assert manifest["brand"] == "Codna"
+    assert manifest["brand"] == "Algenta"
     assert manifest["api_base_url"] == "https://api.codna.ai"
     assert manifest["mcp_endpoint"] == "https://api.codna.ai/mcp/sse"
     assert manifest["auth_scheme"] == "bearer_api_key"
@@ -242,7 +242,7 @@ def test_direct_api_client_docs_cover_manifest_first_runtime_and_control_plane_h
 def test_openapi_uses_canonical_bearer_contract() -> None:
     schema = app.openapi()
     security = schema["components"]["securitySchemes"]
-    assert schema["info"]["title"] == "Codna API"
+    assert schema["info"]["title"] == "Algenta API"
     assert "governed data discovery" in schema["info"]["description"]
     assert schema["servers"] == [{"url": "https://api.codna.ai"}]
     assert schema["x-canonical-mcp-endpoint"] == "https://api.codna.ai/mcp/sse"
@@ -606,7 +606,7 @@ def test_integration_docs_cover_primary_surfaces() -> None:
     assert "/integrations/local-runtime" in overview
     assert "persisted runtime review" in overview
     assert "persisted runtime follow-up workflows" in overview
-    assert "Add Codna as a tool node" in langgraph
+    assert "Add Algenta as a tool node" in langgraph
     assert 'api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")' in langgraph
     assert 'raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")' in langgraph
     assert 'api_key="de_live_...' not in langgraph

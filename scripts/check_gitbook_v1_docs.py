@@ -157,7 +157,7 @@ def _validate_quickstart() -> None:
         "export ALGENTA_API_KEY='<SELF_HOST_BOOTSTRAP_KEY>'",
         "curl -X POST http://localhost:8000/v1/simulate \\",
         '"objective": "maximize_net_value"',
-        "No SDK or Python install is required to use Codna.",
+        "No SDK or Python install is required to use Algenta.",
         "Next: Configure production setup -> [Operations](/operations)",
     ]
     for snippet in required_snippets:

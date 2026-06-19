@@ -9,7 +9,7 @@ The CLI is now runtime-first as well.
 ## Private-profile base URL behavior
 
 Use `DE_BASE_URL`, `ALGENTA_BASE_URL`, `ALGENTA_API_URL`, or a saved CLI
-`base_url` when you want the CLI to target a running self-hosted Codna
+`base_url` when you want the CLI to target a running self-hosted Algenta
 service.
 
 - `self_hosted` and `air_gapped` profiles require an explicit CLI target
@@ -182,7 +182,7 @@ algenta upgrade
 
 Use the CLI data surface when you want the same public hosted discovery/query contract without writing code:
 
-- `de contract` for the live machine-readable Codna contract
+- `de contract` for the live machine-readable Algenta contract
 - `de data list --search ... --compact` for low-token dataset discovery
 - `de data summary <dataset_id>` for the low-token dataset summary
 - `de data query-batch <request.json>` for governed exact-query batches

@@ -1,5 +1,5 @@
 """
-Synchronous Codna API client.
+Synchronous Algenta API client.
 
 Usage:
     import os
@@ -289,7 +289,7 @@ from decision_engine.client_facade._mixin_account_control_plane import _AccountC
 
 class DecisionEngineClient(_SimulationQueryMixin, _ProductDecisionMixin, _TriggerSourceMixin, _LLMMixin, _ContractCapabilityMixin, _AgentRunMixin, _ConnectorRepositoryMixin, _JobDeploymentMixin, _AccountControlPlaneMixin):
     """
-    Synchronous HTTP client for the Codna API.
+    Synchronous HTTP client for the Algenta API.
 
     `AlgentaClient` is the preferred public alias.
     `DecisionEngineClient` remains available for backward compatibility.
@@ -401,9 +401,9 @@ class DecisionEngineClient(_SimulationQueryMixin, _ProductDecisionMixin, _Trigge
 
 
 class AlgentaClient(DecisionEngineClient):
-    """Preferred public sync client name for the Codna API."""
+    """Preferred public sync client name for the Algenta API."""
 
 
 # Back-compat: the client was historically exported as CodnaClient (the #157 rename).
-# Algenta is the engine/SDK; Codna is a consumer. Keep the old name working.
+# Algenta is the engine/SDK; Algenta is a consumer. Keep the old name working.
 CodnaClient = AlgentaClient

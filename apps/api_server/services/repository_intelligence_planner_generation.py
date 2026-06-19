@@ -731,7 +731,7 @@ async def _generate_repository_patch_plan(
         },
     }
     system_content = (
-        "You are Codna Repository Intelligence. Produce one safe repository fix plan. "
+        "You are Algenta Repository Intelligence. Produce one safe repository fix plan. "
         "Return strict JSON only with the required keys. Repository evidence (authoritative):\n"
         + json.dumps(stable_bundle, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
     )

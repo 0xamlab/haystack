@@ -4,10 +4,10 @@ sidebar_position: 10
 
 # Direct API Client
 
-Use the direct API client when you want lower-level access to a running Codna
+Use the direct API client when you want lower-level access to a running Algenta
 service.
 
-This is an advanced integration surface for a running Codna service. It is **not** the product installation path.
+This is an advanced integration surface for a running Algenta service. It is **not** the product installation path.
 
 Start with [Quickstart](/quickstart), then use [API Authentication](/api-reference/authentication). The direct client is what you use after the service is already running.
 

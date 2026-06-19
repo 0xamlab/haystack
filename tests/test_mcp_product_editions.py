@@ -1,6 +1,6 @@
 """Product-edition routing for the MCP surface (Algenta plugin platform, Phase 0).
 
-Verifies the single-source product registry, the Codna coding allowlist's
+Verifies the single-source product registry, the Algenta coding allowlist's
 integrity against the live tool registry (anti-drift), and the fail-closed
 visibility filter on ``get_tool_specs`` / ``call_tool``.
 """
@@ -17,7 +17,7 @@ from apps.mcp_server.registry import TOOLS, call_tool, get_tool_specs
 
 def test_product_registry_has_all_four_verticals() -> None:
     assert set(products.PRODUCT_EDITIONS) == {"codna", "cohenta", "decimas", "escrypto"}
-    # Codna is the only edition populated so far; the rest fail closed (empty) until shipped.
+    # Algenta is the only edition populated so far; the rest fail closed (empty) until shipped.
     assert products.PRODUCT_EDITIONS["codna"]
     assert products.PRODUCT_EDITIONS["cohenta"] == frozenset()
     assert products.PRODUCT_EDITIONS["decimas"] == frozenset()
@@ -25,9 +25,9 @@ def test_product_registry_has_all_four_verticals() -> None:
 
 
 def test_codna_allowlist_is_subset_of_live_registry() -> None:
-    """Anti-drift: every tool the Codna edition advertises must exist in the registry."""
+    """Anti-drift: every tool the Algenta edition advertises must exist in the registry."""
     missing = products.PRODUCT_EDITIONS["codna"] - set(TOOLS)
-    assert not missing, f"Codna edition references tools absent from the registry: {sorted(missing)}"
+    assert not missing, f"Algenta edition references tools absent from the registry: {sorted(missing)}"
 
 
 def test_product_allowlist_fails_closed() -> None:

@@ -1,5 +1,5 @@
 """
-Credit bucket — local execution quota enforcement for the Codna local runtime.
+Credit bucket — local execution quota enforcement for the Algenta local runtime.
 
 Architecture:
   The server issues a "credit batch" on:
@@ -302,7 +302,7 @@ async def consume_credit(*, allow_background_refresh: bool = True) -> bool:
 
 async def _background_refresh() -> None:
     """
-    Non-blocking credit refresh from the Codna control plane.
+    Non-blocking credit refresh from the Algenta control plane.
     Called automatically when credits drop below 10% or expire.
     Suppresses all errors — execution is never interrupted by a network failure.
     """

@@ -722,12 +722,12 @@ check("Components/schemas section exists with 20+ schemas", test_components_sche
 def test_info_title_and_version_values():
     spec = get_spec()
     info = spec["info"]
-    assert info["title"] == "Codna API", f"Unexpected OpenAPI title: {info['title']}"
+    assert info["title"] == "Algenta API", f"Unexpected OpenAPI title: {info['title']}"
     parts = info["version"].split(".")
     assert len(parts) >= 2, f"Version not semver: {info['version']}"
 
 
-check("Info title is Codna API, version is semver", test_info_title_and_version_values)
+check("Info title is Algenta API, version is semver", test_info_title_and_version_values)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

@@ -364,7 +364,7 @@ def test_runtime_api_mode_real_public_s3_connect_resolve_query(
     assert imported.registration.status == "registered"
     assert imported.registration.row_count is not None
     assert imported.registration.row_count > 0
-    assert "Codna Source Import" in imported.preview
+    assert "Algenta Source Import" in imported.preview
     assert f"Origin: {PUBLIC_S3_SOURCE_REF}" in imported.preview
     assert plan.resolved_plan is not None
     assert result.result_type == "scalar"
@@ -721,7 +721,7 @@ def test_runtime_api_mode_import_bundle_preview_supports_mixed_connector_descrip
     assert len(bundle.registrations) == 2
     assert len(bundle.failures) == 1
     assert bundle.failures[0].code == "upstream_validation_failed"
-    assert "Codna Source Bundle" in bundle.preview
+    assert "Algenta Source Bundle" in bundle.preview
     assert "Imported: 2 | Failures: 1" in bundle.preview
     assert "orders_pg" in bundle.preview
     assert "orders_s3" in bundle.preview

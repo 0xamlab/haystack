@@ -44,7 +44,7 @@ These endpoints back the deterministic data/runtime surface after service instal
 | Method | Path | Purpose |
 |--------|------|---------|
 | `POST` | `/v1/sources/register` | Register a source in the Decision Intelligence Layer |
-| `GET` | `/v1/meta/contract` | Fetch the machine-readable Codna contract |
+| `GET` | `/v1/meta/contract` | Fetch the machine-readable Algenta contract |
 | `GET` | `/v1/data` | Discover authorized datasets with deterministic filters |
 | `GET` | `/v1/data/{dataset_id}/summary` | Fetch a low-token dataset selection summary |
 | `POST` | `/v1/resolve` | Resolve structured intent into an exact plan |
@@ -63,7 +63,7 @@ an objective should route first:
 | `GET` | [`/v1/capability-providers`](/api-reference/capability-plane) | List customer-agnostic provider families |
 | `GET` | [`/v1/capabilities`](/api-reference/capability-plane) | List discovered capabilities across providers |
 | `POST` | [`/v1/capabilities/route`](/api-reference/capability-plane) | Route one objective to the selected capability |
-| `POST` | [`/v1/capabilities/execute`](/api-reference/capability-plane) | Execute one Codna-managed capability |
+| `POST` | [`/v1/capabilities/execute`](/api-reference/capability-plane) | Execute one Algenta-managed capability |
 | `POST` | [`/v1/capabilities/outcomes`](/api-reference/capability-plane) | Record the observed execution outcome |
 
 ## Runtime contract notes

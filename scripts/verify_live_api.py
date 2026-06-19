@@ -208,7 +208,7 @@ def run_verification(base_url: str) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Verify a local or self-hosted Codna API surface without relying on hosted defaults."
+            "Verify a local or self-hosted Algenta API surface without relying on hosted defaults."
         )
     )
     parser.add_argument(

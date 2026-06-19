@@ -33,7 +33,7 @@ def _seed_providers() -> list[dict[str, Any]]:
         {
             "provider_id": "provider.data_connector.algenta",
             "provider_type": "data_connector",
-            "name": "Codna Governed Data",
+            "name": "Algenta Governed Data",
             "description": "Governed data connectors surfaced through the capability plane.",
             "supported_execution_owners": ["algenta_managed"],
             "policy_summary": {"route_authority": "capability_plane"},
@@ -75,7 +75,7 @@ def _seed_providers() -> list[dict[str, Any]]:
         {
             "provider_id": "provider.skill_pack.algenta",
             "provider_type": "skill_pack",
-            "name": "Codna Skill Pack",
+            "name": "Algenta Skill Pack",
             "description": "Instruction and hybrid skills exposed through the capability plane.",
             "supported_execution_owners": ["algenta_managed", "client_managed"],
             "policy_summary": {"route_authority": "capability_plane"},
@@ -117,7 +117,7 @@ def _seed_providers() -> list[dict[str, Any]]:
         {
             "provider_id": "provider.runtime_library_pack.algenta",
             "provider_type": "runtime_library_pack",
-            "name": "Codna Runtime Libraries",
+            "name": "Algenta Runtime Libraries",
             "description": "Runtime libraries exposed through the capability plane.",
             "supported_execution_owners": ["algenta_managed", "client_managed"],
             "policy_summary": {"route_authority": "capability_plane"},

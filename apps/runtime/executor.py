@@ -116,7 +116,7 @@ def _python_fallback(module: str, function: str, args: Any) -> dict[str, str]:
     return {
         "error": (
             f"python_fallback_disabled: Python fallback is disabled for {module}.{function}. "
-            "Start the local Mojo runtime or use governed Codna API endpoints."
+            "Start the local Mojo runtime or use governed Algenta API endpoints."
         ),
         "engine": "unavailable",
     }

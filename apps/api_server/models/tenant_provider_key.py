@@ -17,7 +17,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from apps.api_server.db.base import Base, TimestampMixin, UUIDMixin
 
-# Reserved ``backend`` value for the single per-org Codna-engine key (not a provider backend).
+# Reserved ``backend`` value for the single per-org Algenta-engine key (not a provider backend).
 ENGINE_BACKEND = "algenta_engine"
 
 

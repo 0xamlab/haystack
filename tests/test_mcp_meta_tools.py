@@ -61,7 +61,7 @@ async def test_get_contract_tool_handler_forwards_contract_payload(monkeypatch) 
     raw = await meta.get_contract_handler({})
     body = json.loads(raw)
 
-    assert body["brand"] == "Codna"
+    assert body["brand"] == "Algenta"
     assert body["primary_data_query_contract"]["api"]["contract_endpoint"] == "/v1/meta/contract"
     assert body["primary_data_query_contract"]["mcp"]["contract_tool"] == "get_contract"
     assert body["capability_plane"]["api"]["list_providers_endpoint"] == "/v1/capability-providers"
@@ -75,7 +75,7 @@ async def test_get_contract_tool_handler_rejects_invalid_payload(monkeypatch) ->
         assert kwargs == {}
         return 200, {
             "contract_version": "v1.3",
-            "brand": "Codna",
+            "brand": "Algenta",
             "api_base_url": "https://api.codna.ai",
             "mcp_endpoint": "https://api.codna.ai/mcp/sse",
             "mcp_tools_endpoint": "https://api.codna.ai/mcp/tools",

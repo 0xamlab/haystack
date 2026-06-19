@@ -328,7 +328,7 @@ async def _responses_stream(
     response_model=LLMModelListResponse,
     summary="List currently supported LLM utility models",
     description=(
-        "Returns the truthful, currently executable Codna LLM model catalog. "
+        "Returns the truthful, currently executable Algenta LLM model catalog. "
         "Only runtime-backed or explicitly configured provider-backed models are advertised."
     ),
 )
@@ -402,7 +402,7 @@ async def list_models(
 @router.post(
     "/v1/artifacts/resolve",
     response_model=ArtifactBridgeResolveResponse,
-    summary="Resolve a Hugging Face artifact through the Codna artifact bridge",
+    summary="Resolve a Hugging Face artifact through the Algenta artifact bridge",
     description=(
         "Resolves a Hugging Face artifact path through the compatibility-ring artifact bridge. "
         "The default behavior is cache-only and never downloads from the network unless the "
@@ -520,7 +520,7 @@ async def chat_completions(
 @router.post(
     "/v1/tokenize",
     response_model=TokenizeResponse,
-    summary="Tokenize text with a supported Codna tokenizer model",
+    summary="Tokenize text with a supported Algenta tokenizer model",
     description=(
         "Runs the selected tokenizer model and returns the produced tokens. "
         "This initial LLM API tranche currently exposes deterministic word tokenization."
@@ -552,7 +552,7 @@ async def tokenize(
 @router.post(
     "/v1/count_tokens",
     response_model=CountTokensResponse,
-    summary="Count tokens with a supported Codna tokenizer model",
+    summary="Count tokens with a supported Algenta tokenizer model",
     description=(
         "Runs the selected tokenizer model and returns the deterministic token count."
     ),

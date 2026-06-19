@@ -3,7 +3,7 @@ MCP tools: query_data, query_batch, query_sql_report
 
 Lets an LLM execute governed exact queries and constrained read-only SQL reports
 against the user's authorized datasets. The LLM converts natural-language
-questions to structured intent; Codna handles schema understanding, math
+questions to structured intent; Algenta handles schema understanding, math
 relationships, and execution.
 
 Separation of concerns:

@@ -1,6 +1,6 @@
 """Phase 0d/0e: repository-intelligence usage metering.
 
-The Codna coding-edition repo tools (triage/snapshot/graph/decision-plan/simulate/
+The Algenta coding-edition repo tools (triage/snapshot/graph/decision-plan/simulate/
 pipeline/apply) are now metered + rate-limited. These tests cover the model/enum/
 migration changes (always run) and the `_meter_repository` write+dedupe behavior
 (DB-integration; skips cleanly when no migrated Postgres is reachable).

@@ -403,7 +403,7 @@ def test_sdk_docs_call_out_local_runtime_capability_ownership_boundaries() -> No
 
     assert '`client_managed` capabilities' in typescript_sdk_doc
     assert '`algenta_managed` capabilities remain' in typescript_sdk_doc
-    assert "switch back to the running Codna service" in typescript_sdk_doc
+    assert "switch back to the running Algenta service" in typescript_sdk_doc
 
 
 def test_live_mcp_integration_script_tracks_runtime_proof_catalog() -> None:

@@ -1,7 +1,7 @@
 """
 /v1/metering — local runtime execution analytics ingestion.
 
-Called by the Codna daemon (apps.runtime.metering.MeteringQueue._flush)
+Called by the Algenta daemon (apps.runtime.metering.MeteringQueue._flush)
 every 60 seconds with a batch of local execution events.
 
 This endpoint is analytics-only.  Quota enforcement is handled by the

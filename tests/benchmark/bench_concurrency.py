@@ -193,7 +193,7 @@ def print_concurrency_table(results: list[dict[str, Any]]) -> None:
 
 
 if __name__ == "__main__":
-    print("Codna Concurrency Benchmark")
+    print("Algenta Concurrency Benchmark")
     print(f"Levels: {CONCURRENCY_LEVELS}  |  Requests/level: {REQUESTS_PER_LEVEL}")
     print(
         f"MOJO_ALLOW_SUBPROCESS_FALLBACK={os.environ.get('MOJO_ALLOW_SUBPROCESS_FALLBACK', 'true')}"

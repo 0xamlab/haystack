@@ -1,7 +1,7 @@
 {
   "name": "@algenta/gateway",
   "version": "1.0.0",
-  "description": "Codna API Gateway — Hono on Node.js 22. Auth, rate limiting, proxy.",
+  "description": "Algenta API Gateway — Hono on Node.js 22. Auth, rate limiting, proxy.",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {

@@ -23,7 +23,7 @@ def test_validate_runtime_release_script_reports_a_valid_release() -> None:
     )
 
     assert proc.returncode == 0, proc.stderr or proc.stdout
-    assert "Codna runtime release validation:" in proc.stdout
+    assert "Algenta runtime release validation:" in proc.stdout
     assert "Valid release:   True" in proc.stdout
     assert "manifest-listed: pass" in proc.stdout
 

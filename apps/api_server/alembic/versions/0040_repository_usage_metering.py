@@ -2,7 +2,7 @@
 
 Adds the ``repository`` value to the ``usage_endpoint`` enum and two nullable
 vertical-product dimensions (``product``, ``tool_name``) to ``usage_records`` so
-the Codna coding-edition repo-intelligence tools can be metered and reported
+the Algenta coding-edition repo-intelligence tools can be metered and reported
 per-product. Additive and backward-compatible (existing rows keep NULL dims).
 
 Revision ID: 0040

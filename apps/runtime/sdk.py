@@ -1,5 +1,5 @@
 """
-Codna Python SDK — Runtime class.
+Algenta Python SDK — Runtime class.
 
 Public surface for executing domain libraries and simulation engines.
 
@@ -87,7 +87,7 @@ RuntimeError = SDKRuntimeError
 
 class Runtime:
     """
-    Codna execution runtime.
+    Algenta execution runtime.
 
     Single entry point for all local and cloud execution.
     Thread-safe. Sync methods create a new event loop per call.
@@ -95,7 +95,7 @@ class Runtime:
     Parameters
     ----------
     api_key:
-        Codna API key. Defaults to ALGENTA_API_KEY or DE_API_KEY env var.
+        Algenta API key. Defaults to ALGENTA_API_KEY or DE_API_KEY env var.
     mode:
         Execution mode: "auto" | "local" | "cloud" | "direct"
     timeout:
@@ -106,7 +106,7 @@ class Runtime:
     base_url:
         Cloud API base URL. Reads explicit base_url, ALGENTA_BASE_URL,
         DE_BASE_URL, or ALGENTA_API_URL. Cloud Managed falls back to the
-        canonical Codna API URL only when private-profile policy allows it;
+        canonical Algenta API URL only when private-profile policy allows it;
         self-hosted private profiles must use an explicit self-hosted base URL.
     """
 

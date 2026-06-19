@@ -2,13 +2,13 @@
 sidebar_position: 11
 ---
 
-# How Codna Works Today
+# How Algenta Works Today
 
 This page is the explicit truth-separation page for the repo.
 
 ## Current truth
 
-Codna today is a hybrid system with:
+Algenta today is a hybrid system with:
 
 - a self-hosted service deployment path
 - governed data discovery and query flows

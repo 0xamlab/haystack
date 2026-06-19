@@ -58,7 +58,7 @@ def test_build_import_preview_uses_explicit_source_ref() -> None:
     )
 
     assert preview.registration.name == "orders"
-    assert "Codna Source Import" in preview.preview
+    assert "Algenta Source Import" in preview.preview
     assert "Source: orders" in preview.preview
     assert "Origin: explicit://orders.csv" in preview.preview
     assert "Rows: 3 | Fields: 2" in preview.preview

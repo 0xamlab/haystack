@@ -1,5 +1,5 @@
 """
-Codna Python SDK.
+Algenta Python SDK.
 
 Usage:
     import os

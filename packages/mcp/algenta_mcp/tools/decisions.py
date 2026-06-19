@@ -3,7 +3,7 @@ MCP tools: plan_decision, log_decision, list_decisions, get_decision,
 record_outcome, execute_decision, delete_decision
 
 Decision Memory — persist decisions and close the feedback loop by recording
-actual outcomes. This turns Codna into a self-improving system:
+actual outcomes. This turns Algenta into a self-improving system:
   - What was decided? → log_decision
   - What actually happened? → record_outcome
   - How accurate were our predictions? → list_decisions (with outcome_delta)
@@ -19,7 +19,7 @@ from algenta_mcp.client import api
 PLAN_DECISION_SPEC: dict[str, Any] = {
     "name": "plan_decision",
     "description": (
-        "Build a structured Codna DecisionPlan from a validated simulation-style request. "
+        "Build a structured Algenta DecisionPlan from a validated simulation-style request. "
         "Use this when the caller needs the plan summary without the full decision envelope."
     ),
     "inputSchema": {

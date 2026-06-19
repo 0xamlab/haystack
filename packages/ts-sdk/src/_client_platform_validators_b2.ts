@@ -2,7 +2,7 @@
 /** Auto-split sub-module of client.ts — platform contract validators (part B). */
 
 /**
- * Codna TypeScript SDK — fetch-based client.
+ * Algenta TypeScript SDK — fetch-based client.
  * Works in Node.js 18+ and modern browsers.
  *
  * @example
@@ -364,11 +364,11 @@ export function assertDatasetSummaryResponse(payload: unknown): DatasetSummaryRe
 
 export function normalizeValidationPath(context: string): string {
   const prefixes = [
-    "Codna contract response.",
-    "Codna runtime manifest response.",
-    "Codna runtime admin modules response.",
-    "Codna runtime admin benchmarks response.",
-    "Codna runtime release validation response.",
+    "Algenta contract response.",
+    "Algenta runtime manifest response.",
+    "Algenta runtime admin modules response.",
+    "Algenta runtime admin benchmarks response.",
+    "Algenta runtime release validation response.",
   ];
   let normalized = context;
   for (const prefix of prefixes) {

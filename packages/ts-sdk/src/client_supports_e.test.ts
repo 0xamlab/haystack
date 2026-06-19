@@ -602,10 +602,10 @@ describe("DecisionEngineClient — supports_e", () => {
               providers: [
                 {
                   id: "algenta_shared",
-                  name: "Codna Managed",
+                  name: "Algenta Managed",
                   description: "Multi-tenant shared pool.",
                   icon: "🌐",
-                  regions: [{ id: "algenta-shared", label: "Codna Shared", location: "Global" }],
+                  regions: [{ id: "algenta-shared", label: "Algenta Shared", location: "Global" }],
                 },
               ],
             }),
@@ -688,7 +688,7 @@ describe("DecisionEngineClient — supports_e", () => {
       const deleted = await client.deleteDeployment("dep_123");
 
       expect(regions.providers[0]?.regions[0]?.id).toBe("algenta-shared");
-      expect(regions.providers[0]?.regions[0]?.name).toBe("Codna Shared");
+      expect(regions.providers[0]?.regions[0]?.name).toBe("Algenta Shared");
       expect(deployment?.deployment_id).toBe("dep_123");
       expect(created.status).toBe("requested");
       expect(cost.month).toBe(5);

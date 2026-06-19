@@ -85,7 +85,7 @@ function configuredConsoleBaseUrl(): string | undefined {
   return undefined;
 }
 
-export function isCodnaOwnedBaseUrl(baseUrl: string): boolean {
+export function isAlgentaOwnedBaseUrl(baseUrl: string): boolean {
   const hostname = new URL(baseUrl).hostname.trim().toLowerCase();
   if (ALGENTA_OWNED_HOST_SET.has(hostname)) {
     return true;
@@ -103,7 +103,7 @@ export function resolveClientBaseUrl(
     explicitBaseUrl ?? configuredBaseUrl ?? DEFAULT_BASE_URL,
     component,
   );
-  if (cloudDisabled() && isCodnaOwnedBaseUrl(normalized)) {
+  if (cloudDisabled() && isAlgentaOwnedBaseUrl(normalized)) {
     throw new Error(
       `${component} private profiles cannot target Codna-owned cloud URLs. Configure a self-hosted baseUrl or ALGENTA_BASE_URL / DE_BASE_URL / ALGENTA_API_URL.`,
     );
@@ -118,7 +118,7 @@ export function resolveConsoleBaseUrl(
   const configuredConsoleUrl = configuredConsoleBaseUrl();
   if (configuredConsoleUrl) {
     const normalized = normalizeBaseUrl(configuredConsoleUrl, `${component} console`);
-    if (privateProfileEnabled() && isCodnaOwnedBaseUrl(normalized)) {
+    if (privateProfileEnabled() && isAlgentaOwnedBaseUrl(normalized)) {
       throw new Error(
         `${component} private profiles cannot target Codna-owned cloud URLs. Configure ALGENTA_APP_BASE_URL / APP_BASE_URL / DE_APP_BASE_URL or a self-hosted baseUrl.`,
       );
@@ -141,7 +141,7 @@ export function resolveConsoleBaseUrl(
       rawBaseUrl,
       `${component} console`,
     );
-    if (isCodnaOwnedBaseUrl(normalized)) {
+    if (isAlgentaOwnedBaseUrl(normalized)) {
       throw new Error(
         `${component} private profiles cannot target Codna-owned cloud URLs. Configure ALGENTA_APP_BASE_URL / APP_BASE_URL / DE_APP_BASE_URL or a self-hosted baseUrl.`,
       );

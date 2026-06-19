@@ -178,13 +178,13 @@ async def resolve_org_for_github_user(
     if not eligible:
         raise OrgResolutionError(
             "no_org",
-            "No organization you administer has Codna installed.",
+            "No organization you administer has Algenta installed.",
             http_status=403,
         )
     if len(eligible) > 1:
         raise OrgResolutionError(
             "multiple_orgs",
-            "You administer multiple organizations with Codna installed; "
+            "You administer multiple organizations with Algenta installed; "
             "selecting which one isn't supported yet.",
             http_status=409,
         )

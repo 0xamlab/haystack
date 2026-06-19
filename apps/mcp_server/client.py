@@ -161,7 +161,7 @@ async def api(
     timeout: float | None = None,
     **kwargs: Any,
 ) -> Any:
-    """Make an authenticated request to the Codna API."""
+    """Make an authenticated request to the Algenta API."""
     status_code, payload = await api_with_status(
         method,
         path,
@@ -188,11 +188,11 @@ async def api_with_status(
             response = await getattr(client, method.lower())(f"{base_url}{path}", **kwargs)
     except httpx.TimeoutException as exc:
         raise MCPUpstreamUnavailableError(
-            "Codna API timed out while handling this MCP request.",
+            "Algenta API timed out while handling this MCP request.",
         ) from exc
     except httpx.TransportError as exc:
         raise MCPUpstreamUnavailableError(
-            "Codna API was unavailable while handling this MCP request.",
+            "Algenta API was unavailable while handling this MCP request.",
         ) from exc
 
     try:
@@ -201,6 +201,6 @@ async def api_with_status(
         payload = response.text
     if response.status_code >= 500 and _extract_structured_error_payload(payload) is None:
         raise MCPUpstreamUnavailableError(
-            "Codna API returned a temporary upstream failure for this MCP request.",
+            "Algenta API returned a temporary upstream failure for this MCP request.",
         )
     return response.status_code, payload

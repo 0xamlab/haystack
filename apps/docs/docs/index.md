@@ -5,7 +5,7 @@ sidebar_position: 1
 
 # Overview
 
-Codna is a self-hosted decision and governed data/query runtime you deploy on your infrastructure.
+Algenta is a self-hosted decision and governed data/query runtime you deploy on your infrastructure.
 
 Start the service with one command, verify the API, and then choose the first live lane that matches the job:
 
@@ -22,7 +22,7 @@ Integrate via API, SDK, CLI, or MCP after the service is running.
 If the request needs customer-agnostic routing across data, MCP, skills,
 native tools, or runtime libraries, start with
 [Capability Plane](/api-reference/capability-plane).
-`algenta_managed` routes can execute through Codna; `client_managed` routes
+`algenta_managed` routes can execute through Algenta; `client_managed` routes
 must execute in the customer app or adapter path and fail closed otherwise.
 
 ```bash

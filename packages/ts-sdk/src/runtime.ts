@@ -1,5 +1,5 @@
 /**
- * Codna SDK runtime — TypeScript implementation.
+ * Algenta SDK runtime — TypeScript implementation.
  *
  * Originally a single 6028-line file. Now split into per-domain sub-files
  * for maintainability; this barrel re-exports the public API so external

@@ -188,7 +188,7 @@ describe("DecisionEngineClient — loads_a", () => {
       }
     });
 
-    it("loads the machine-readable Codna contract", async () => {
+    it("loads the machine-readable Algenta contract", async () => {
       const fetchMock = vi.fn().mockResolvedValue(
         new Response(
           JSON.stringify(makeContractPayload()),
@@ -365,7 +365,7 @@ describe("DecisionEngineClient — loads_a", () => {
                 },
               ],
               required_metrics: ["p50"],
-              baselines: ["Codna Mojo-native path"],
+              baselines: ["Algenta Mojo-native path"],
             },
             slo_budgets: [
               {
@@ -454,7 +454,7 @@ describe("DecisionEngineClient — loads_a", () => {
       const memoryFailure: RuntimeFailureCode = "kv_cache_exhausted";
       const proofObligation: RuntimeProofObligation = "numerical parity";
       const benchmarkMetric: RuntimeBenchmarkMetric = "p50";
-      const benchmarkBaseline: RuntimeBenchmarkBaseline = "Codna Mojo-native path";
+      const benchmarkBaseline: RuntimeBenchmarkBaseline = "Algenta Mojo-native path";
       const evaluationDimension: RuntimeEvaluationDimension = "answer correctness";
       const evaluationMethod: RuntimeEvaluationMethod = "bootstrap confidence intervals";
       const releaseBlocker: RuntimeReleaseBlocker = "replay success regression";

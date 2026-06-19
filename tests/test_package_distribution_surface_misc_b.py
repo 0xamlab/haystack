@@ -387,7 +387,7 @@ def test_typescript_package_surface_includes_package_readme_and_registry_metadat
     assert '"cost_per_successful_run";' in shared_types
     assert "export type RuntimeBenchmarkBaseline =" in shared_types
     assert '"Python reference"' in shared_types
-    assert '"Codna Mojo-native path";' in shared_types
+    assert '"Algenta Mojo-native path";' in shared_types
     assert 'export type RuntimeDeploymentMode = "saas" | "vpc" | "self_hosted" | "air_gapped" | "hybrid_provider" | "local_dev_daemon";' in shared_types
     assert 'export type RuntimeLayer = "mojo_llm_runtime_core" | "python_compatibility_ring" | "llm_api_provider_layer" | "agent_runtime" | "decision_runtime" | "enterprise_control_plane";' in shared_types
     assert "export type RuntimeExecutionTransition =" in shared_types

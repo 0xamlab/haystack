@@ -3,7 +3,7 @@ routers/products.py — Simple, jargon-free product API surface.
 
 Five entry points that hide engine complexity and sell outcomes:
 
-  POST /v1/decision   — "What should I do?" (wraps Codna decision analysis)
+  POST /v1/decision   — "What should I do?" (wraps Algenta decision analysis)
   POST /v1/agent/run  — "Do this task for me" (wraps Agent Engine)
   POST /v1/optimize   — "Find the best value" (wraps Optimization Engine)
   POST /v1/retrieve   — "Search my knowledge" (wraps Retrieval Engine)
@@ -132,9 +132,9 @@ async def _run_sim(
     response_model=DecisionResponse,
     summary="Get an optimal decision",
     description=(
-        "Give Codna your inputs and constraints. Get back the optimal action with "
+        "Give Algenta your inputs and constraints. Get back the optimal action with "
         "confidence, risk, and plain-English reasoning.\n\n"
-        "Evaluates thousands of possible scenarios in milliseconds using the Codna "
+        "Evaluates thousands of possible scenarios in milliseconds using the Algenta "
         "API — no statistics or simulation expertise required."
     ),
 )
@@ -272,7 +272,7 @@ async def decision(
     response_model=AgentRunResponse,
     summary="Run an AI agent task",
     description=(
-        "Give the Codna Agent Engine a task. It breaks it down, uses tools "
+        "Give the Algenta Agent Engine a task. It breaks it down, uses tools "
         "(search, simulate, optimize, calculate), and returns a structured result.\n\n"
         "Direct replacement for LangChain and LangGraph agent pipelines."
     ),
@@ -306,7 +306,7 @@ async def agent_run(
     summary="Optimize a business variable",
     description=(
         "Find the optimal value for pricing, routing, scheduling, or resource allocation.\n\n"
-        "Describe your objective and constraints in plain English — Codna finds the best "
+        "Describe your objective and constraints in plain English — Algenta finds the best "
         "configuration across thousands of iterations."
     ),
 )

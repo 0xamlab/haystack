@@ -1,5 +1,5 @@
 """
-algenta.client — Cloud API client for the Codna platform.
+algenta.client — Cloud API client for the Algenta platform.
 
 The upgrade path from local to cloud. When your workload grows beyond
 local processing, switch to the hosted API with one line change.

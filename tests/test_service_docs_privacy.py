@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 _DOC_EXPECTATIONS: dict[str, tuple[str, ...]] = {
     "apps/docs/docs/index.md": (
         "/v1/capabilities/route",
-        "`algenta_managed` routes can execute through Codna",
+        "`algenta_managed` routes can execute through Algenta",
         "`client_managed` routes",
     ),
     "apps/docs/docs/api-reference/index.md": (

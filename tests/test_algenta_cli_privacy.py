@@ -57,7 +57,7 @@ def test_algenta_cmd_upgrade_private_profile_uses_self_hosted_guidance(monkeypat
 
     output = _capture_stdout(algenta_cli.cmd_upgrade)
 
-    assert "Connect Codna SDK to your deployment" in output
+    assert "Connect Algenta SDK to your deployment" in output
     assert 'export ALGENTA_BASE_URL="http://localhost:8000"' in output
     assert 'export DE_BASE_URL="http://localhost:8000"' in output
     assert 'export ALGENTA_API_URL="http://localhost:8000"' in output

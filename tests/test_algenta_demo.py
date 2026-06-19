@@ -27,7 +27,7 @@ def test_algenta_demo_module_runs_cleanly() -> None:
     )
 
     assert proc.returncode == 0, proc.stderr
-    assert "Codna Runtime Demo" in proc.stdout
+    assert "Algenta Runtime Demo" in proc.stdout
     assert "Walkthrough" in proc.stdout
     assert "Step 1/6 - Register bundled source" in proc.stdout
     assert "Step 2/6 - Select scenario" in proc.stdout
@@ -35,7 +35,7 @@ def test_algenta_demo_module_runs_cleanly() -> None:
     assert "Step 4/6 - Verify executable plan" in proc.stdout
     assert "Step 5/6 - Execute deterministic query" in proc.stdout
     assert "Step 6/6 - Reproduce on your own data" in proc.stdout
-    assert "Codna Source Import" not in proc.stdout
+    assert "Algenta Source Import" not in proc.stdout
 
 
 def test_algenta_demo_lists_available_scenarios() -> None:

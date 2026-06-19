@@ -26,7 +26,7 @@ This page separates current safe claims from the target model.
 
 ### API mode
 
-- requests are processed through Codna services
+- requests are processed through Algenta services
 - the direct API client and API-backed runtime mode are explicit choices
 - persisted operator and review surfaces are explicit too: replayable agent runs,
   immutable audit-log artifacts, and execution-policy snapshots are retrieved
@@ -34,7 +34,7 @@ This page separates current safe claims from the target model.
 
 ## Target model
 
-Codna is converging toward:
+Algenta is converging toward:
 
 - service-first deployment
 - self-hosted by default for enterprise

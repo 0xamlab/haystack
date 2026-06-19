@@ -490,7 +490,7 @@ def triage_repository(
         scores = repository_graph._score_snapshot_files(snapshot_manifest, request.signals)
     if sdk_ranking.sdk_ranking_enabled():
         # AR-OPT-6/7 + SDK "DNA": fuse the keyword/diagnostic heuristic, graph
-        # proximity, and (when the Codna Mojo runtime is available) a batched
+        # proximity, and (when the Algenta Mojo runtime is available) a batched
         # Mojo ranking lane via Reciprocal Rank Fusion. Falls back to the pure
         # heuristic ordering when the Mojo lane is unavailable.
         heuristic_rank = repository_graph._ranked_paths_by_score(scores)

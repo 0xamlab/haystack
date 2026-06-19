@@ -234,7 +234,7 @@ def test_decision_engine_root_uses_lazy_exports_for_clients_and_models() -> None
         assert runtime_slo_budget_name_enum.__name__ == "RuntimeSLOBudgetNameResult"
         assert validation_error_cls.__name__ == "ValidationError"
         assert contract_version == "v1.3"
-        assert brand == "Codna"
+        assert brand == "Algenta"
         assert default_base_url == "https://api.codna.ai"
         assert mcp_endpoint == "https://api.codna.ai/mcp/sse"
         assert auth_scheme == "bearer_api_key"

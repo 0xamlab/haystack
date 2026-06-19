@@ -64,7 +64,7 @@ def test_cmd_start_detached_emits_success_after_real_readiness_probe(
 
     daemon.cmd_start(foreground=False)
 
-    assert emitted == ["Codna Runtime started (pid=43210)"]
+    assert emitted == ["Algenta Runtime started (pid=43210)"]
 
 
 def test_cmd_start_detached_emits_failure_when_daemon_never_becomes_ready(
@@ -82,7 +82,7 @@ def test_cmd_start_detached_emits_failure_when_daemon_never_becomes_ready(
 
     daemon.cmd_start(foreground=False)
 
-    assert emitted == [f"Codna Runtime failed to start; check logs: {log_path}"]
+    assert emitted == [f"Algenta Runtime failed to start; check logs: {log_path}"]
 
 
 def test_cmd_status_reports_configured_tcp_target(monkeypatch, tmp_path: Path) -> None:
@@ -100,7 +100,7 @@ def test_cmd_status_reports_configured_tcp_target(monkeypatch, tmp_path: Path) -
     daemon.cmd_status()
 
     assert emitted == [
-        "Codna Runtime running (pid=24680)\n"
+        "Algenta Runtime running (pid=24680)\n"
         f"  gRPC unix socket: {daemon_sock}  (ok)\n"
         f"  Mojo unix socket: {tmp_path / 'mojo.sock'}  (not present)\n"
         "  TCP:              127.0.0.1:51234"
@@ -129,7 +129,7 @@ def test_cmd_start_detached_fails_fast_when_local_license_is_missing(
     ):
         daemon.cmd_start(foreground=False)
 
-    assert emitted == ["Codna Runtime failed to start: offline license missing"]
+    assert emitted == ["Algenta Runtime failed to start: offline license missing"]
 
 
 @pytest.mark.anyio

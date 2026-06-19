@@ -308,7 +308,7 @@ def collect_live_run_proof(
             payload={
                 "working_dir": str(proof_repo),
                 "prompt": (
-                    "Run the Codna proof sequence and stop after simulate_patch."
+                    "Run the Algenta proof sequence and stop after simulate_patch."
                     f"{prompt_suffix}"
                 ),
                 "repository_scope": "proof_repository",
@@ -348,7 +348,7 @@ def collect_live_run_proof(
             f"{base_url}/sessions/{session_id}/start",
             payload={
                 "prompt": (
-                    "Run the deterministic Codna proof plan now."
+                    "Run the deterministic Algenta proof plan now."
                     f"{prompt_suffix}"
                 )
             },

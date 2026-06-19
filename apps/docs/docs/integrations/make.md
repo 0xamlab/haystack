@@ -4,7 +4,7 @@ sidebar_position: 7
 
 # Make (formerly Integromat)
 
-Use the Codna HTTP module pattern in Make scenarios for governed dataset discovery, exact queries, batch exact queries, constrained SQL reports, and simulations.
+Use the Algenta HTTP module pattern in Make scenarios for governed dataset discovery, exact queries, batch exact queries, constrained SQL reports, and simulations.
 
 Use one base URL consistently across every Make HTTP module:
 

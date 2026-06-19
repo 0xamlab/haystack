@@ -1,7 +1,7 @@
 /** Auto-split sub-module of client.ts — the DecisionEngineClient class. */
 
 /**
- * Codna TypeScript SDK — fetch-based client.
+ * Algenta TypeScript SDK — fetch-based client.
  * Works in Node.js 18+ and modern browsers.
  *
  * @example
@@ -333,7 +333,7 @@ export { DecisionEngineClient as AlgentaClient };
 export type { DecisionEngineClientConfig as AlgentaClientConfig };
 
 // Back-compat: historically exported as CodnaClient (#157 rename). Algenta is the engine/SDK;
-// Codna is a consumer. Keep the old name working so existing integrations don't break.
+// Algenta is a consumer. Keep the old name working so existing integrations don't break.
 export { DecisionEngineClient as CodnaClient };
 export type { DecisionEngineClientConfig as CodnaClientConfig };
 

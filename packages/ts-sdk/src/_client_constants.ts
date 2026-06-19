@@ -1,7 +1,7 @@
 /** Auto-split sub-module of client.ts — constants + setup imports. */
 
 /**
- * Codna TypeScript SDK — fetch-based client.
+ * Algenta TypeScript SDK — fetch-based client.
  * Works in Node.js 18+ and modern browsers.
  *
  * @example
@@ -240,7 +240,7 @@ import { apiKeyHelpText, resolveClientBaseUrl } from './privacy_profile.js';
 import { DecisionEngineError } from "./_client_errors.js";
 
 /**
- * Codna TypeScript SDK — fetch-based client.
+ * Algenta TypeScript SDK — fetch-based client.
  * Works in Node.js 18+ and modern browsers.
  *
  * @example
@@ -612,7 +612,7 @@ export const RUNTIME_BENCHMARK_BASELINE_VALUES = [
   "llama.cpp GGUF backend",
   "ONNX Runtime backend",
   "CTranslate2 backend",
-  "Codna Mojo-native path",
+  "Algenta Mojo-native path",
 ] as const;
 export const RUNTIME_EVALUATION_METHOD_VALUES = [
   "bootstrap confidence intervals",

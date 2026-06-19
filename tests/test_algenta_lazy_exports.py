@@ -197,7 +197,7 @@ def test_algenta_root_uses_lazy_exports_for_heavy_surfaces() -> None:
         assert runtime_error_cls.__name__ == "CodnaRuntimeError"
         assert callable(map_data_fn)
         assert contract_version == "v1.3"
-        assert brand == "Codna"
+        assert brand == "Algenta"
         assert default_base_url == "https://api.codna.ai"
         assert mcp_endpoint == "https://api.codna.ai/mcp/sse"
         assert auth_scheme == "bearer_api_key"

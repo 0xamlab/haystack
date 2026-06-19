@@ -4,7 +4,7 @@ sidebar_position: 5
 
 # Power Automate
 
-Use the Codna custom connector in Microsoft Power Automate flows.
+Use the Algenta custom connector in Microsoft Power Automate flows.
 
 ## Setup
 
@@ -24,7 +24,7 @@ Use the Codna custom connector in Microsoft Power Automate flows.
 ## Usage in a flow
 
 1. Add trigger (e.g., "When a form is submitted")
-2. Add **Get Contract** to inspect the live machine-readable Codna surface from `GET /v1/meta/contract`
+2. Add **Get Contract** to inspect the live machine-readable Algenta surface from `GET /v1/meta/contract`
    - Older self-hosted fallback: if that returns `404`, fetch `/openapi.json` and inspect `x-primary-data-query-contract` instead
    - Inspect `primary_data_query_contract.governed_filter_contract` there when the flow must build deterministic exact filters without SQL
 3. Add **List Datasets** with `search = orders` and `compact = true`

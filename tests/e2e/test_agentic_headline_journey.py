@@ -6,7 +6,7 @@ containers) through the journey a user actually runs:
     connect a local_repo -> snapshot -> triage -> verified_agentic decision-plan -> simulate-patch
     -> apply (local branch)
 
-It is DETERMINISTIC and offline: the agent step (the forked-Cline / Codna sidecar + its LLM) is
+It is DETERMINISTIC and offline: the agent step (the forked-Cline / Algenta sidecar + its LLM) is
 replaced by monkeypatching ``verified_agentic._DEFAULT_RUN_AGENT`` with a stub that applies the
 known one-line fix in the materialized checkout — so the planner recomputes a real, authoritative
 diff with no Node, no sidecar, and no live model. The live sidecar + real ANTHROPIC_API_KEY +

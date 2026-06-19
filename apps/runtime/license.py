@@ -402,7 +402,7 @@ def _parse_token(token: str, api_key: str = "") -> DeviceLicense | None:
     Decode and validate a JWT license token.
 
     v1: dev tokens use HMAC-SHA256 with the dev secret.
-    v2+: cloud tokens use RS256 with the Codna public key.
+    v2+: cloud tokens use RS256 with the Algenta public key.
     """
     strict_local_license = _local_license_required()
     try:

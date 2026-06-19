@@ -1,7 +1,7 @@
 """
 Phase 16: Middleware Integration Tests
 
-Comprehensive tests for all middleware layers of the Codna Decision Engine.
+Comprehensive tests for all middleware layers of the Algenta Decision Engine.
 Tests Request ID, Auth, RBAC, Logging, Metrics, and Deployment Router middleware
 both via live HTTP integration tests and direct module imports.
 

@@ -81,7 +81,7 @@ def test_quickstart_is_self_host_first_and_minimal() -> None:
     assert "`expires_at`" in text
     assert "curl -X POST http://localhost:8000/v1/simulate \\" in text
     assert '"objective": "maximize_net_value"' in text
-    assert "No SDK or Python install is required to use Codna." in text
+    assert "No SDK or Python install is required to use Algenta." in text
     assert "Next: Configure production setup -> [Operations](/operations)" in text
     assert "Backup & Recovery" not in text
     assert "pip install algenta-sdk" not in text
@@ -127,7 +127,7 @@ def test_operations_docs_cover_setup_tls_logs_and_upgrade() -> None:
     assert "ALGENTA_ALLOW_OUTBOUND_NETWORK=0" in setup
     assert "ALGENTA_API_PUBLIC_BASE_URL=http://localhost:8000" in setup
     assert "`ALGENTA_DISABLE_TELEMETRY=1` means no outbound or vendor telemetry" in setup
-    assert "Codna keeps user-facing links on the API origin" in setup
+    assert "Algenta keeps user-facing links on the API origin" in setup
     assert "GET /v1/admin/privacy-report" in setup
     assert "`METRICS_SECRET`" in setup
     assert "`RESULT_STORAGE_ENABLED`" in setup
@@ -284,7 +284,7 @@ def test_top_level_docs_position_service_first_and_runtime_as_development_surfac
     assert "primary local-runtime docs and SDK path" in local_runtime
 
     assert "Run your first decision" in quickstart
-    assert "No SDK or Python install is required to use Codna." in quickstart
+    assert "No SDK or Python install is required to use Algenta." in quickstart
     assert "local runtime" not in quickstart.lower()
 
 
@@ -311,7 +311,7 @@ def test_install_script_and_compose_lock_service_only_boundary() -> None:
     assert "paste the bootstrap key above" in install
     assert "Replace it:" in install
     assert "paste the replacement key returned above" in install
-    assert "No SDK or Python install is required to use Codna." in install
+    assert "No SDK or Python install is required to use Algenta." in install
     assert "Portal UI" not in install
     assert "bootstrap_self_host.py" in install
     assert "seed_dev.py" not in install

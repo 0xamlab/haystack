@@ -1,5 +1,5 @@
 """
-gRPC client for the Codna local runtime daemon.
+gRPC client for the Algenta local runtime daemon.
 
 Provides async methods that map directly to the CodnaRuntime gRPC RPCs.
 Used exclusively by sdk.py — not part of the public API.

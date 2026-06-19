@@ -170,7 +170,7 @@ def test_decision_engine_sync_llm_and_agent_methods_return_typed_models(monkeypa
     assert similarity.score == 0.94
     assert reranked.data[0].rank == 1
     assert deployment_regions.providers[0].regions[0].id == "algenta-shared"
-    assert deployment_regions.providers[0].regions[0].name == "Codna Shared"
+    assert deployment_regions.providers[0].regions[0].name == "Algenta Shared"
     assert deployment.deployment_id == "dep_123"
     assert created_deployment.status == "requested"
     assert deployment_cost.month == 5
@@ -473,7 +473,7 @@ async def test_decision_engine_async_account_methods_return_typed_models(monkeyp
     revoked = await client.revoke_api_key("79fc2a0b-6402-4137-b637-b76ee5e745bf")
 
     assert isinstance(me, MeResult)
-    assert me.org.name == "Codna Labs"
+    assert me.org.name == "Algenta Labs"
     assert isinstance(usage, UsageInfo)
     assert usage.api_calls == 340
     assert limits["jobs_enabled"] is True

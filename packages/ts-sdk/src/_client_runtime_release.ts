@@ -1,7 +1,7 @@
 /** Auto-split sub-module of client.ts — runtime release validation response validator. */
 
 /**
- * Codna TypeScript SDK — fetch-based client.
+ * Algenta TypeScript SDK — fetch-based client.
  * Works in Node.js 18+ and modern browsers.
  *
  * @example
@@ -242,56 +242,56 @@ import { assertArray, assertBoolean, assertEnumValue, assertJsonObject, assertNo
 import { assertRuntimeReleaseConditionEvaluation, wrapRuntimeValidation } from "./_client_platform_validators_c.js";
 
 export function assertRuntimeReleaseValidationResponse(payload: unknown): RuntimeReleaseValidationResponse {
-  return wrapRuntimeValidation("Codna runtime release validation endpoint", payload, value => {
-    const obj = assertJsonObject(value, "Codna runtime release validation response");
+  return wrapRuntimeValidation("Algenta runtime release validation endpoint", payload, value => {
+    const obj = assertJsonObject(value, "Algenta runtime release validation response");
     assertNonEmptyString(
       obj.runtime_version,
-      "Codna runtime release validation response.runtime_version",
+      "Algenta runtime release validation response.runtime_version",
     );
     assertNonEmptyString(
       obj.llm_core_manifest,
-      "Codna runtime release validation response.llm_core_manifest",
+      "Algenta runtime release validation response.llm_core_manifest",
     );
     assertNonEmptyString(
       obj.module_manifest_version,
-      "Codna runtime release validation response.module_manifest_version",
+      "Algenta runtime release validation response.module_manifest_version",
     );
     assertNonEmptyString(
       obj.theorem_statement,
-      "Codna runtime release validation response.theorem_statement",
+      "Algenta runtime release validation response.theorem_statement",
     );
-    assertBoolean(obj.valid_release, "Codna runtime release validation response.valid_release");
+    assertBoolean(obj.valid_release, "Algenta runtime release validation response.valid_release");
     const conditions = assertArray(
       obj.conditions,
-      "Codna runtime release validation response.conditions",
+      "Algenta runtime release validation response.conditions",
     );
     conditions.forEach((entry, index) =>
         assertRuntimeReleaseConditionEvaluation(
           entry,
-          `Codna runtime release validation response.conditions[${index}]`,
+          `Algenta runtime release validation response.conditions[${index}]`,
         ),
     );
     assertUniqueRuntimeObjectField(
       conditions,
       "condition",
-      "Codna runtime release validation response.conditions",
+      "Algenta runtime release validation response.conditions",
     );
     if (obj.deployment_mode !== null) {
       assertEnumValue(
         obj.deployment_mode,
         RUNTIME_DEPLOYMENT_MODE_VALUES,
-        "Codna runtime release validation response.deployment_mode",
+        "Algenta runtime release validation response.deployment_mode",
       );
     }
     assertNonEmptyString(
       obj.deployment_mode_raw,
-      "Codna runtime release validation response.deployment_mode_raw",
+      "Algenta runtime release validation response.deployment_mode_raw",
     );
     assertNonEmptyString(
       obj.manifest_digest,
-      "Codna runtime release validation response.manifest_digest",
+      "Algenta runtime release validation response.manifest_digest",
     );
-    assertRuntimeSignature(obj.signature, "Codna runtime release validation response.signature");
+    assertRuntimeSignature(obj.signature, "Algenta runtime release validation response.signature");
     return value as RuntimeReleaseValidationResponse;
   });
 }

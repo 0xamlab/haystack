@@ -7,7 +7,7 @@ Drop in raw CSV, JSON, or multiple tables. Get back a ready-to-run
 simulation payload with auto-detected distributions, objective function,
 and engine selection. Optionally run it immediately.
 
-Powered by the Codna FieldMapper (field_mapper.mojo via the Mojo binary) which:
+Powered by the Algenta FieldMapper (field_mapper.mojo via the Mojo binary) which:
   - Detects variable polarity from field names (revenue → positive, cost → negative)
   - Infers distribution shape from value statistics (skewed → lognormal, bounded → triangular)
   - Detects units (USD, %, count, rate)
@@ -592,7 +592,7 @@ class IngestResponse(BaseModel):
         "- Auto-detects distributions, polarity, units, and objective function\n"
         "- Selects the best simulation engine for your data shape\n"
         "- Set `auto_run: true` to get simulation results immediately\n\n"
-        "Powered by the Codna FieldMapper — same logic as `field_mapper.mojo`."
+        "Powered by the Algenta FieldMapper — same logic as `field_mapper.mojo`."
     ),
 )
 async def ingest(

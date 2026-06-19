@@ -206,7 +206,7 @@ def run(
     Run a Monte Carlo simulation with multiple variables.
 
     mode="local"  → pure Python, instant, offline (default)
-    mode="cloud"  → Codna hosted API (requires api_key)
+    mode="cloud"  → Algenta hosted API (requires api_key)
     """
     if mode == "cloud":
         return _cloud_run(
@@ -286,7 +286,7 @@ def _cloud_run(
     base_url: str | None = None,
     **kwargs: Any,
 ) -> SimulationResult:
-    """Delegate to Codna hosted API."""
+    """Delegate to Algenta hosted API."""
     try:
         import httpx
     except ImportError:

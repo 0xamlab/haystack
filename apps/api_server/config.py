@@ -295,7 +295,7 @@ class Settings(BaseSettings):
     aws_default_region: str = Field(default="us-east-1")
     aws_ecr_image_uri: str | None = Field(
         default=None,
-        description="ECR image URI for Codna engine",
+        description="ECR image URI for Algenta engine",
     )
 
     # Azure

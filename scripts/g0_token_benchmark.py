@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""G0 token benchmark — proves the Codna Repositories token-reduction thesis.
+"""G0 token benchmark — proves the Algenta Repositories token-reduction thesis.
 
 Runs a fixed bug suite through three arms and reports tokens / turns / wall-clock /
 resolution-rate, plus the honest **expected cost = total tokens / resolution_rate**:

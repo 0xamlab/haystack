@@ -388,7 +388,7 @@ class SchemaRequest(BaseModel):
     summary="Infer and return the structural schema of data sources",
     description=(
         "**Call this once when a user connects a data source.**\n\n"
-        "Returns the full Codna structural schema: column roles, detected formulas, "
+        "Returns the full Algenta structural schema: column roles, detected formulas, "
         "cardinality, and `query_hints` the LLM should use when calling `POST /v1/query`.\n\n"
         "The schema is also embedded as Arrow metadata in the returned Parquet bytes "
         "(`parquet_b64`), "

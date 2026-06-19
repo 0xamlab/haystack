@@ -1,6 +1,6 @@
 {
   "contract_version": "v1.3",
-  "brand": "Codna",
+  "brand": "Algenta",
   "api_base_url": "https://api.codna.ai",
   "mcp_endpoint": "https://api.codna.ai/mcp/sse",
   "mcp_tools_endpoint": "https://api.codna.ai/mcp/tools",
@@ -384,7 +384,7 @@
   "integrations": [
     {
       "name": "ChatGPT",
-      "description": "Hosted app and actions surface for Codna discovery, exact query, simulation, persisted runtime follow-up, and control-plane review.",
+      "description": "Hosted app and actions surface for Algenta discovery, exact query, simulation, persisted runtime follow-up, and control-plane review.",
       "icon": "chatgpt",
       "capabilities": [
         "read",

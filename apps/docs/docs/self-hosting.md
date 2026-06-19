@@ -136,7 +136,7 @@ not disable local audit events, local metering records, or local egress logs.
 `ALGENTA_API_PUBLIC_BASE_URL` is the public API origin used in quickstart links,
 billing redirects, and email content. Set `ALGENTA_APP_BASE_URL` only when you
 front a separate dashboard or account UI; when it is blank in a private
-profile, Codna keeps user-facing links on the API origin instead of silently
+profile, Algenta keeps user-facing links on the API origin instead of silently
 pointing at Codna cloud.
 
 Use `ALGENTA_DEPLOYMENT_MODE=air_gapped` for the strict privacy profile. That

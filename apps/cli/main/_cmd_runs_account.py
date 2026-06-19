@@ -39,7 +39,7 @@ from apps.validation_error_details import format_validation_error_message
 
 _RUNTIME_READY_TIMEOUT_SECONDS = 3.0
 _RUNTIME_READY_POLL_SECONDS = 0.1
-_RUNTIME_NOT_RUNNING_MESSAGE = "Codna Runtime is not running. Start with: de runtime start"
+_RUNTIME_NOT_RUNNING_MESSAGE = "Algenta Runtime is not running. Start with: de runtime start"
 
 
 # Facade-routed proxies. Tests monkey-patch these on `apps.cli.main` (the

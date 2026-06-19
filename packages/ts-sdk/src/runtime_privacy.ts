@@ -184,7 +184,7 @@ function destinationHash(normalizedHost: string): string {
   return createHash("sha256").update(normalizedHost).digest("hex");
 }
 
-function isCodnaOwnedHost(host: string): boolean {
+function isAlgentaOwnedHost(host: string): boolean {
   const normalized = host.trim().toLowerCase();
   if (ALGENTA_OWNED_HOST_SET.has(normalized)) {
     return true;
@@ -258,7 +258,7 @@ function privateHost(host: string): boolean {
 
 function redactDestinationHost(host: string): string {
   const normalized = host.trim().toLowerCase();
-  if (isCodnaOwnedHost(normalized) || isVendorTelemetryHost(normalized)) {
+  if (isAlgentaOwnedHost(normalized) || isVendorTelemetryHost(normalized)) {
     return normalized;
   }
   if (privateHost(normalized)) {
@@ -304,7 +304,7 @@ function classifyEgressClass(
   if (explicitClass) {
     return explicitClass;
   }
-  if (isCodnaOwnedHost(target.host)) {
+  if (isAlgentaOwnedHost(target.host)) {
     return "algenta_cloud";
   }
   if (isVendorTelemetryHost(target.host)) {
@@ -537,7 +537,7 @@ export function validatedControlPlaneBaseUrl(
     surface: options.surface,
     fieldName: options.fieldName ?? "ALGENTA_CONTROL_PLANE_URL",
     explicitConfigured: true,
-    egressClass: isCodnaOwnedHost(parseDestination(resolved).host)
+    egressClass: isAlgentaOwnedHost(parseDestination(resolved).host)
       ? "algenta_cloud"
       : "operator_service",
     requestId: options.requestId,

@@ -31,7 +31,7 @@ should own the request first.
 | `GET` | `/v1/capabilities` | List discovered capabilities across all bound providers |
 | `GET` | `/v1/capabilities/{capability_id}` | Inspect one capability, including instruction artifacts when requested |
 | `POST` | `/v1/capabilities/route` | Select the governed capability that should own one objective |
-| `POST` | `/v1/capabilities/execute` | Execute one Codna-managed capability |
+| `POST` | `/v1/capabilities/execute` | Execute one Algenta-managed capability |
 | `POST` | `/v1/capabilities/outcomes` | Record the observed outcome after execution or handoff |
 
 ## Route contract
@@ -54,7 +54,7 @@ Use that response before generic tool planning or app-specific branching.
 
 ## Execution owner rules
 
-- `algenta_managed` means Codna owns the execution path and may return a
+- `algenta_managed` means Algenta owns the execution path and may return a
   direct execution response from `POST /v1/capabilities/execute`
 - `client_managed` means the customer app must execute the selected capability
   through its own adapter or execution node

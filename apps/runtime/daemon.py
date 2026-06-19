@@ -1,5 +1,5 @@
 """
-Codna local runtime daemon.
+Algenta local runtime daemon.
 
 Responsibilities:
   1. Start / manage the Mojo binary subprocess (server mode)
@@ -282,7 +282,7 @@ async def _run_daemon() -> None:
     runtime_mode = "mojo" if mojo_started and library_runtime_available() else "unavailable"
 
     _emit(
-        f"Codna Runtime {_VERSION} started in {elapsed}ms  "
+        f"Algenta Runtime {_VERSION} started in {elapsed}ms  "
         f"[{runtime_mode}]  unix={_DAEMON_SOCK}  tcp={_DAEMON_TCP}"
     )
 
@@ -303,14 +303,14 @@ async def _run_daemon() -> None:
 def cmd_start(foreground: bool = True) -> None:
     """Start the daemon (blocking in foreground mode)."""
     if is_running():
-        _emit(f"Codna Runtime already running (pid={read_pid()})")
+        _emit(f"Algenta Runtime already running (pid={read_pid()})")
         return
 
     if not foreground:
         try:
             _validate_daemon_startup_prerequisites()
         except Exception as exc:
-            _emit(f"Codna Runtime failed to start: {exc}")
+            _emit(f"Algenta Runtime failed to start: {exc}")
             return
         # Spawn detached subprocess
         _RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
@@ -324,9 +324,9 @@ def cmd_start(foreground: bool = True) -> None:
                 cwd=str(_REPO_ROOT),
             )
         if _wait_for_detached_daemon_ready():
-            _emit(f"Codna Runtime started (pid={proc.pid})")
+            _emit(f"Algenta Runtime started (pid={proc.pid})")
         else:
-            _emit(f"Codna Runtime failed to start; check logs: {_LOG_FILE}")
+            _emit(f"Algenta Runtime failed to start; check logs: {_LOG_FILE}")
         return
 
     asyncio.run(_run_daemon())
@@ -336,17 +336,17 @@ def cmd_stop() -> None:
     """Stop the running daemon."""
     pid = read_pid()
     if pid is None or not is_running():
-        _emit("Codna Runtime is not running.")
+        _emit("Algenta Runtime is not running.")
         return
     os.kill(pid, signal.SIGTERM)
     # Wait for pid file to be removed
     deadline = time.monotonic() + 10.0
     while time.monotonic() < deadline:
         if not is_running():
-            _emit("Codna Runtime stopped.")
+            _emit("Algenta Runtime stopped.")
             return
         time.sleep(0.1)
-    _emit("Codna Runtime did not stop cleanly; sending SIGKILL.")
+    _emit("Algenta Runtime did not stop cleanly; sending SIGKILL.")
     os.kill(pid, signal.SIGKILL)
     _remove_pid()
 
@@ -358,13 +358,13 @@ def cmd_status() -> None:
         sock_ok = Path(_DAEMON_SOCK).exists()
         mojo_ok = Path(_MOJO_SOCK).exists()
         _emit(
-            f"Codna Runtime running (pid={pid})\n"
+            f"Algenta Runtime running (pid={pid})\n"
             f"  gRPC unix socket: {_DAEMON_SOCK}  ({'ok' if sock_ok else 'missing'})\n"
             f"  Mojo unix socket: {_MOJO_SOCK}  ({'ok' if mojo_ok else 'not present'})\n"
             f"  TCP:              {_DAEMON_TCP}"
         )
     else:
-        _emit("Codna Runtime is not running.")
+        _emit("Algenta Runtime is not running.")
         _emit("  Start with: algenta runtime start")
 
 

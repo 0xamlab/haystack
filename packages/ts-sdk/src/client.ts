@@ -1,5 +1,5 @@
 /**
- * Codna SDK client — TypeScript implementation.
+ * Algenta SDK client — TypeScript implementation.
  *
  * Originally a single 6603-line file. Now split into per-domain sub-files
  * for maintainability; this barrel re-exports the public API so external

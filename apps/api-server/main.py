@@ -1,5 +1,5 @@
 """
-Codna API — FastAPI application entry point.
+Algenta API — FastAPI application entry point.
 
 Startup sequence:
 1. Configure structured logging
@@ -100,9 +100,9 @@ async def lifespan(app: FastAPI):  # type: ignore[type-arg]
 # ─── FastAPI App ──────────────────────────────────────────────────────────────
 
 app = FastAPI(
-    title="Codna API",
+    title="Algenta API",
     description=(
-        "Hosted and self-hosted Codna API for governed data discovery, exact queries, "
+        "Hosted and self-hosted Algenta API for governed data discovery, exact queries, "
         "read-only SQL reports, and simulation workflows."
     ),
     version="1.0.0",

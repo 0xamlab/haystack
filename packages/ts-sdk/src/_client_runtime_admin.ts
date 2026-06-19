@@ -1,7 +1,7 @@
 /** Auto-split sub-module of client.ts — runtime admin modules + benchmarks validators. */
 
 /**
- * Codna TypeScript SDK — fetch-based client.
+ * Algenta TypeScript SDK — fetch-based client.
  * Works in Node.js 18+ and modern browsers.
  *
  * @example
@@ -263,89 +263,89 @@ import {
 } from "./_client_platform_validators_c.js";
 
 export function assertRuntimeAdminModulesResponse(payload: unknown): RuntimeAdminModulesResponse {
-  return wrapRuntimeValidation("Codna runtime admin modules endpoint", payload, value => {
-    const obj = assertJsonObject(value, "Codna runtime admin modules response");
-    assertNonEmptyString(obj.runtime_version, "Codna runtime admin modules response.runtime_version");
-    assertNonEmptyString(obj.llm_core_manifest, "Codna runtime admin modules response.llm_core_manifest");
+  return wrapRuntimeValidation("Algenta runtime admin modules endpoint", payload, value => {
+    const obj = assertJsonObject(value, "Algenta runtime admin modules response");
+    assertNonEmptyString(obj.runtime_version, "Algenta runtime admin modules response.runtime_version");
+    assertNonEmptyString(obj.llm_core_manifest, "Algenta runtime admin modules response.llm_core_manifest");
     assertNonEmptyString(
       obj.module_manifest_version,
-      "Codna runtime admin modules response.module_manifest_version",
+      "Algenta runtime admin modules response.module_manifest_version",
     );
     const shippingContract = assertRuntimeShippingContractSummary(
       obj.shipping_contract,
-      "Codna runtime admin modules response.shipping_contract",
+      "Algenta runtime admin modules response.shipping_contract",
     );
     const summary = assertRuntimeAdminModuleSummary(
       obj.summary,
-      "Codna runtime admin modules response.summary",
+      "Algenta runtime admin modules response.summary",
     );
     const proofMatrix = assertArray(
       obj.proof_matrix,
-      "Codna runtime admin modules response.proof_matrix",
+      "Algenta runtime admin modules response.proof_matrix",
     );
     proofMatrix.forEach((entry, index) =>
         assertRuntimeLayerProofMatrixEntry(
           entry,
-          `Codna runtime admin modules response.proof_matrix[${index}]`,
+          `Algenta runtime admin modules response.proof_matrix[${index}]`,
         ),
     );
     assertUniqueRuntimeObjectField(
       proofMatrix,
       "layer",
-      "Codna runtime admin modules response.proof_matrix",
+      "Algenta runtime admin modules response.proof_matrix",
     );
-    const modules = assertArray(obj.modules, "Codna runtime admin modules response.modules");
+    const modules = assertArray(obj.modules, "Algenta runtime admin modules response.modules");
     const validatedModules = modules.map((entry, index) =>
       assertRuntimeModuleManifestEntry(
         entry,
-        `Codna runtime admin modules response.modules[${index}]`,
+        `Algenta runtime admin modules response.modules[${index}]`,
       ),
     );
     assertUniqueRuntimeValues(
       validatedModules.map(entry => entry.name),
-      "Codna runtime admin modules response.modules",
+      "Algenta runtime admin modules response.modules",
     );
-    assertNonEmptyString(obj.manifest_digest, "Codna runtime admin modules response.manifest_digest");
-    assertRuntimeSignature(obj.signature, "Codna runtime admin modules response.signature");
+    assertNonEmptyString(obj.manifest_digest, "Algenta runtime admin modules response.manifest_digest");
+    assertRuntimeSignature(obj.signature, "Algenta runtime admin modules response.signature");
     const totalFunctions = validatedModules.reduce((sum, entry) => sum + entry.functionCount, 0);
     if (shippingContract.moduleCount !== validatedModules.length) {
       throw buildStructuredValidationError(
-        "Codna runtime admin modules response.shipping_contract.module_count",
-        "Codna runtime admin modules response.shipping_contract.module_count must equal the number of manifest modules.",
+        "Algenta runtime admin modules response.shipping_contract.module_count",
+        "Algenta runtime admin modules response.shipping_contract.module_count must equal the number of manifest modules.",
         "value_error",
       );
     }
     if (shippingContract.functionCount !== totalFunctions) {
       throw buildStructuredValidationError(
-        "Codna runtime admin modules response.shipping_contract.function_count",
-        "Codna runtime admin modules response.shipping_contract.function_count must equal the total module function_count.",
+        "Algenta runtime admin modules response.shipping_contract.function_count",
+        "Algenta runtime admin modules response.shipping_contract.function_count must equal the total module function_count.",
         "value_error",
       );
     }
     if (summary.moduleCount !== validatedModules.length) {
       throw buildStructuredValidationError(
-        "Codna runtime admin modules response.summary.module_count",
-        "Codna runtime admin modules response.summary.module_count must equal the number of manifest modules.",
+        "Algenta runtime admin modules response.summary.module_count",
+        "Algenta runtime admin modules response.summary.module_count must equal the number of manifest modules.",
         "value_error",
       );
     }
     if (summary.functionCount !== totalFunctions) {
       throw buildStructuredValidationError(
-        "Codna runtime admin modules response.summary.function_count",
-        "Codna runtime admin modules response.summary.function_count must equal the total module function_count.",
+        "Algenta runtime admin modules response.summary.function_count",
+        "Algenta runtime admin modules response.summary.function_count must equal the total module function_count.",
         "value_error",
       );
     }
     assertCountRecordMatches(
       summary.maturityCounts,
       countRuntimeValues(validatedModules.map(entry => entry.maturity)),
-      "Codna runtime admin modules response.summary.maturity_counts",
+      "Algenta runtime admin modules response.summary.maturity_counts",
       "maturity",
     );
     assertCountRecordMatches(
       summary.layerCounts,
       countRuntimeValues(validatedModules.map(entry => entry.layer)),
-      "Codna runtime admin modules response.summary.layer_counts",
+      "Algenta runtime admin modules response.summary.layer_counts",
       "layer",
     );
     return value as RuntimeAdminModulesResponse;
@@ -353,261 +353,261 @@ export function assertRuntimeAdminModulesResponse(payload: unknown): RuntimeAdmi
 }
 
 export function assertRuntimeAdminBenchmarksResponse(payload: unknown): RuntimeAdminBenchmarksResponse {
-  return wrapRuntimeValidation("Codna runtime admin benchmarks endpoint", payload, value => {
-    const obj = assertJsonObject(value, "Codna runtime admin benchmarks response");
+  return wrapRuntimeValidation("Algenta runtime admin benchmarks endpoint", payload, value => {
+    const obj = assertJsonObject(value, "Algenta runtime admin benchmarks response");
     assertNonEmptyString(
       obj.runtime_version,
-      "Codna runtime admin benchmarks response.runtime_version",
+      "Algenta runtime admin benchmarks response.runtime_version",
     );
     assertNonEmptyString(
       obj.llm_core_manifest,
-      "Codna runtime admin benchmarks response.llm_core_manifest",
+      "Algenta runtime admin benchmarks response.llm_core_manifest",
     );
     assertNonEmptyString(
       obj.module_manifest_version,
-      "Codna runtime admin benchmarks response.module_manifest_version",
+      "Algenta runtime admin benchmarks response.module_manifest_version",
     );
     const benchmarkDiscoveryLane = assertRuntimeBenchmarkDiscoveryLane(
       obj.benchmark_discovery_lane,
-      "Codna runtime admin benchmarks response.benchmark_discovery_lane",
+      "Algenta runtime admin benchmarks response.benchmark_discovery_lane",
     );
     assertRuntimeBenchmarkFramework(
       obj.benchmarking,
-      "Codna runtime admin benchmarks response.benchmarking",
+      "Algenta runtime admin benchmarks response.benchmarking",
     );
-    assertArray(obj.slo_budgets, "Codna runtime admin benchmarks response.slo_budgets").forEach(
+    assertArray(obj.slo_budgets, "Algenta runtime admin benchmarks response.slo_budgets").forEach(
       (entry, index) =>
-        assertRuntimeSLOBudget(entry, `Codna runtime admin benchmarks response.slo_budgets[${index}]`),
+        assertRuntimeSLOBudget(entry, `Algenta runtime admin benchmarks response.slo_budgets[${index}]`),
     );
     const qualityGateBenchmarkClasses = assertArray(
       obj.quality_gate_benchmark_classes,
-      "Codna runtime admin benchmarks response.quality_gate_benchmark_classes",
+      "Algenta runtime admin benchmarks response.quality_gate_benchmark_classes",
     );
     qualityGateBenchmarkClasses.forEach((entry, index) =>
       assertRuntimeBenchmarkClassEntry(
         entry,
-        `Codna runtime admin benchmarks response.quality_gate_benchmark_classes[${index}]`,
+        `Algenta runtime admin benchmarks response.quality_gate_benchmark_classes[${index}]`,
       ),
     );
     assertUniqueRuntimeObjectField(
       qualityGateBenchmarkClasses,
       "code",
-      "Codna runtime admin benchmarks response.quality_gate_benchmark_classes",
+      "Algenta runtime admin benchmarks response.quality_gate_benchmark_classes",
     );
     const qualityGateSLOBudgets = assertArray(
       obj.quality_gate_slo_budgets,
-      "Codna runtime admin benchmarks response.quality_gate_slo_budgets",
+      "Algenta runtime admin benchmarks response.quality_gate_slo_budgets",
     );
     qualityGateSLOBudgets.forEach((entry, index) =>
       assertRuntimeSLOBudget(
         entry,
-        `Codna runtime admin benchmarks response.quality_gate_slo_budgets[${index}]`,
+        `Algenta runtime admin benchmarks response.quality_gate_slo_budgets[${index}]`,
       ),
     );
     assertUniqueRuntimeObjectField(
       qualityGateSLOBudgets,
       "name",
-      "Codna runtime admin benchmarks response.quality_gate_slo_budgets",
+      "Algenta runtime admin benchmarks response.quality_gate_slo_budgets",
     );
     assertRuntimeEvaluationScience(
       obj.evaluation_science,
-      "Codna runtime admin benchmarks response.evaluation_science",
+      "Algenta runtime admin benchmarks response.evaluation_science",
     );
     assertRuntimeAdminEvaluationSummary(
       obj.evaluation_summary,
-      "Codna runtime admin benchmarks response.evaluation_summary",
+      "Algenta runtime admin benchmarks response.evaluation_summary",
     );
     const compiledArtifacts = assertArray(
       obj.compiled_artifacts,
-      "Codna runtime admin benchmarks response.compiled_artifacts",
+      "Algenta runtime admin benchmarks response.compiled_artifacts",
     );
     compiledArtifacts.forEach((entry, index) =>
       assertRuntimeArtifactReference(
         entry,
-        `Codna runtime admin benchmarks response.compiled_artifacts[${index}]`,
+        `Algenta runtime admin benchmarks response.compiled_artifacts[${index}]`,
       ),
     );
     assertUniqueRuntimeObjectField(
       compiledArtifacts,
       "path",
-      "Codna runtime admin benchmarks response.compiled_artifacts",
+      "Algenta runtime admin benchmarks response.compiled_artifacts",
     );
     const shippingRuntimeModules = assertEnumArray(
       obj.shipping_runtime_modules,
       RUNTIME_MODULE_ID_VALUES,
-      "Codna runtime admin benchmarks response.shipping_runtime_modules",
+      "Algenta runtime admin benchmarks response.shipping_runtime_modules",
     );
     assertUniqueRuntimeValues(
       shippingRuntimeModules,
-      "Codna runtime admin benchmarks response.shipping_runtime_modules",
+      "Algenta runtime admin benchmarks response.shipping_runtime_modules",
     );
     const shippingRuntimeFunctionCounts = assertArray(
       obj.shipping_runtime_function_counts,
-      "Codna runtime admin benchmarks response.shipping_runtime_function_counts",
+      "Algenta runtime admin benchmarks response.shipping_runtime_function_counts",
     ).map((value, index) =>
       assertInteger(
         value,
-        `Codna runtime admin benchmarks response.shipping_runtime_function_counts[${index}]`,
+        `Algenta runtime admin benchmarks response.shipping_runtime_function_counts[${index}]`,
       ),
     );
     const shippingRuntimeBenchmarkSpeedupsX = assertArray(
       obj.shipping_runtime_benchmark_speedups_x,
-      "Codna runtime admin benchmarks response.shipping_runtime_benchmark_speedups_x",
+      "Algenta runtime admin benchmarks response.shipping_runtime_benchmark_speedups_x",
     ).map((value, index) =>
       assertFiniteNumber(
         value,
-        `Codna runtime admin benchmarks response.shipping_runtime_benchmark_speedups_x[${index}]`,
+        `Algenta runtime admin benchmarks response.shipping_runtime_benchmark_speedups_x[${index}]`,
       ),
     );
     const shippingRuntimeBenchmarkArtifacts = assertArray(
       obj.shipping_runtime_benchmark_artifacts,
-      "Codna runtime admin benchmarks response.shipping_runtime_benchmark_artifacts",
+      "Algenta runtime admin benchmarks response.shipping_runtime_benchmark_artifacts",
     ).map((value, index) =>
       assertNonEmptyString(
         value,
-        `Codna runtime admin benchmarks response.shipping_runtime_benchmark_artifacts[${index}]`,
+        `Algenta runtime admin benchmarks response.shipping_runtime_benchmark_artifacts[${index}]`,
       ),
     );
     const shippingRuntimeCompiledArtifacts = assertArray(
       obj.shipping_runtime_compiled_artifacts,
-      "Codna runtime admin benchmarks response.shipping_runtime_compiled_artifacts",
+      "Algenta runtime admin benchmarks response.shipping_runtime_compiled_artifacts",
     ).map((value, index) =>
       assertNonEmptyString(
         value,
-        `Codna runtime admin benchmarks response.shipping_runtime_compiled_artifacts[${index}]`,
+        `Algenta runtime admin benchmarks response.shipping_runtime_compiled_artifacts[${index}]`,
       ),
     );
     const shippingRuntimeCompiledEngines = assertArray(
       obj.shipping_runtime_compiled_engines,
-      "Codna runtime admin benchmarks response.shipping_runtime_compiled_engines",
+      "Algenta runtime admin benchmarks response.shipping_runtime_compiled_engines",
     ).map((value, index) =>
       assertEnumValue(
         value,
         RUNTIME_COMPILED_ENGINE_VALUES,
-        `Codna runtime admin benchmarks response.shipping_runtime_compiled_engines[${index}]`,
+        `Algenta runtime admin benchmarks response.shipping_runtime_compiled_engines[${index}]`,
       ),
     );
     const shippingRuntimeMaxColdMs = assertArray(
       obj.shipping_runtime_max_cold_ms,
-      "Codna runtime admin benchmarks response.shipping_runtime_max_cold_ms",
+      "Algenta runtime admin benchmarks response.shipping_runtime_max_cold_ms",
     ).map((value, index) =>
       assertFiniteNumber(
         value,
-        `Codna runtime admin benchmarks response.shipping_runtime_max_cold_ms[${index}]`,
+        `Algenta runtime admin benchmarks response.shipping_runtime_max_cold_ms[${index}]`,
       ),
     );
     const shippingRuntimeMaxWarmMs = assertArray(
       obj.shipping_runtime_max_warm_ms,
-      "Codna runtime admin benchmarks response.shipping_runtime_max_warm_ms",
+      "Algenta runtime admin benchmarks response.shipping_runtime_max_warm_ms",
     ).map((value, index) =>
       assertFiniteNumber(
         value,
-        `Codna runtime admin benchmarks response.shipping_runtime_max_warm_ms[${index}]`,
+        `Algenta runtime admin benchmarks response.shipping_runtime_max_warm_ms[${index}]`,
       ),
     );
     const shippingRuntimeMaxHotMs = assertArray(
       obj.shipping_runtime_max_hot_ms,
-      "Codna runtime admin benchmarks response.shipping_runtime_max_hot_ms",
+      "Algenta runtime admin benchmarks response.shipping_runtime_max_hot_ms",
     ).map((value, index) =>
       assertFiniteNumber(
         value,
-        `Codna runtime admin benchmarks response.shipping_runtime_max_hot_ms[${index}]`,
+        `Algenta runtime admin benchmarks response.shipping_runtime_max_hot_ms[${index}]`,
       ),
     );
     const compiledArtifactPaths = new Set(
       compiledArtifacts.map((entry, index) => {
         const artifact = assertJsonObject(
           entry,
-          `Codna runtime admin benchmarks response.compiled_artifacts[${index}]`,
+          `Algenta runtime admin benchmarks response.compiled_artifacts[${index}]`,
         );
         return assertNonEmptyString(
           artifact.path,
-          `Codna runtime admin benchmarks response.compiled_artifacts[${index}].path`,
+          `Algenta runtime admin benchmarks response.compiled_artifacts[${index}].path`,
         );
       }),
     );
     const moduleBenchmarks = assertArray(
       obj.module_benchmarks,
-      "Codna runtime admin benchmarks response.module_benchmarks",
+      "Algenta runtime admin benchmarks response.module_benchmarks",
     );
     const validatedModuleBenchmarks = moduleBenchmarks.map((entry, index) =>
       assertRuntimeBenchmarkModuleEntry(
         entry,
-        `Codna runtime admin benchmarks response.module_benchmarks[${index}]`,
+        `Algenta runtime admin benchmarks response.module_benchmarks[${index}]`,
       ),
     );
     assertUniqueRuntimeObjectField(
       moduleBenchmarks,
       "name",
-      "Codna runtime admin benchmarks response.module_benchmarks",
+      "Algenta runtime admin benchmarks response.module_benchmarks",
     );
     if (benchmarkDiscoveryLane.shippingManifestModules !== validatedModuleBenchmarks.length) {
       throw buildStructuredValidationError(
-        "Codna runtime admin benchmarks response.benchmark_discovery_lane.shipping_manifest_modules",
-        "Codna runtime admin benchmarks response.benchmark_discovery_lane.shipping_manifest_modules must equal the number of benchmark modules.",
+        "Algenta runtime admin benchmarks response.benchmark_discovery_lane.shipping_manifest_modules",
+        "Algenta runtime admin benchmarks response.benchmark_discovery_lane.shipping_manifest_modules must equal the number of benchmark modules.",
         "value_error",
       );
     }
     if (benchmarkDiscoveryLane.shippingManifestModules !== shippingRuntimeModules.length) {
       throw buildStructuredValidationError(
-        "Codna runtime admin benchmarks response.shipping_runtime_modules",
-        "Codna runtime admin benchmarks response.shipping_runtime_modules must contain one entry per shipping benchmark module.",
+        "Algenta runtime admin benchmarks response.shipping_runtime_modules",
+        "Algenta runtime admin benchmarks response.shipping_runtime_modules must contain one entry per shipping benchmark module.",
         "value_error",
       );
     }
     if (benchmarkDiscoveryLane.shippingManifestModules !== shippingRuntimeFunctionCounts.length) {
       throw buildStructuredValidationError(
-        "Codna runtime admin benchmarks response.shipping_runtime_function_counts",
-        "Codna runtime admin benchmarks response.shipping_runtime_function_counts must contain one entry per shipping benchmark module.",
+        "Algenta runtime admin benchmarks response.shipping_runtime_function_counts",
+        "Algenta runtime admin benchmarks response.shipping_runtime_function_counts must contain one entry per shipping benchmark module.",
         "value_error",
       );
     }
     if (benchmarkDiscoveryLane.shippingManifestModules !== shippingRuntimeBenchmarkSpeedupsX.length) {
       throw buildStructuredValidationError(
-        "Codna runtime admin benchmarks response.shipping_runtime_benchmark_speedups_x",
-        "Codna runtime admin benchmarks response.shipping_runtime_benchmark_speedups_x must contain one entry per shipping benchmark module.",
+        "Algenta runtime admin benchmarks response.shipping_runtime_benchmark_speedups_x",
+        "Algenta runtime admin benchmarks response.shipping_runtime_benchmark_speedups_x must contain one entry per shipping benchmark module.",
         "value_error",
       );
     }
     if (benchmarkDiscoveryLane.shippingManifestModules !== shippingRuntimeBenchmarkArtifacts.length) {
       throw buildStructuredValidationError(
-        "Codna runtime admin benchmarks response.shipping_runtime_benchmark_artifacts",
-        "Codna runtime admin benchmarks response.shipping_runtime_benchmark_artifacts must contain one entry per shipping benchmark module.",
+        "Algenta runtime admin benchmarks response.shipping_runtime_benchmark_artifacts",
+        "Algenta runtime admin benchmarks response.shipping_runtime_benchmark_artifacts must contain one entry per shipping benchmark module.",
         "value_error",
       );
     }
     if (benchmarkDiscoveryLane.shippingManifestModules !== shippingRuntimeCompiledArtifacts.length) {
       throw buildStructuredValidationError(
-        "Codna runtime admin benchmarks response.shipping_runtime_compiled_artifacts",
-        "Codna runtime admin benchmarks response.shipping_runtime_compiled_artifacts must contain one entry per shipping benchmark module.",
+        "Algenta runtime admin benchmarks response.shipping_runtime_compiled_artifacts",
+        "Algenta runtime admin benchmarks response.shipping_runtime_compiled_artifacts must contain one entry per shipping benchmark module.",
         "value_error",
       );
     }
     if (benchmarkDiscoveryLane.shippingManifestModules !== shippingRuntimeCompiledEngines.length) {
       throw buildStructuredValidationError(
-        "Codna runtime admin benchmarks response.shipping_runtime_compiled_engines",
-        "Codna runtime admin benchmarks response.shipping_runtime_compiled_engines must contain one entry per shipping benchmark module.",
+        "Algenta runtime admin benchmarks response.shipping_runtime_compiled_engines",
+        "Algenta runtime admin benchmarks response.shipping_runtime_compiled_engines must contain one entry per shipping benchmark module.",
         "value_error",
       );
     }
     if (benchmarkDiscoveryLane.shippingManifestModules !== shippingRuntimeMaxColdMs.length) {
       throw buildStructuredValidationError(
-        "Codna runtime admin benchmarks response.shipping_runtime_max_cold_ms",
-        "Codna runtime admin benchmarks response.shipping_runtime_max_cold_ms must contain one entry per shipping benchmark module.",
+        "Algenta runtime admin benchmarks response.shipping_runtime_max_cold_ms",
+        "Algenta runtime admin benchmarks response.shipping_runtime_max_cold_ms must contain one entry per shipping benchmark module.",
         "value_error",
       );
     }
     if (benchmarkDiscoveryLane.shippingManifestModules !== shippingRuntimeMaxWarmMs.length) {
       throw buildStructuredValidationError(
-        "Codna runtime admin benchmarks response.shipping_runtime_max_warm_ms",
-        "Codna runtime admin benchmarks response.shipping_runtime_max_warm_ms must contain one entry per shipping benchmark module.",
+        "Algenta runtime admin benchmarks response.shipping_runtime_max_warm_ms",
+        "Algenta runtime admin benchmarks response.shipping_runtime_max_warm_ms must contain one entry per shipping benchmark module.",
         "value_error",
       );
     }
     if (benchmarkDiscoveryLane.shippingManifestModules !== shippingRuntimeMaxHotMs.length) {
       throw buildStructuredValidationError(
-        "Codna runtime admin benchmarks response.shipping_runtime_max_hot_ms",
-        "Codna runtime admin benchmarks response.shipping_runtime_max_hot_ms must contain one entry per shipping benchmark module.",
+        "Algenta runtime admin benchmarks response.shipping_runtime_max_hot_ms",
+        "Algenta runtime admin benchmarks response.shipping_runtime_max_hot_ms must contain one entry per shipping benchmark module.",
         "value_error",
       );
     }
@@ -617,107 +617,107 @@ export function assertRuntimeAdminBenchmarksResponse(payload: unknown): RuntimeA
     );
     if (benchmarkDiscoveryLane.shippingManifestFunctions !== totalFunctions) {
       throw buildStructuredValidationError(
-        "Codna runtime admin benchmarks response.benchmark_discovery_lane.shipping_manifest_functions",
-        "Codna runtime admin benchmarks response.benchmark_discovery_lane.shipping_manifest_functions must equal the total benchmark module function_count.",
+        "Algenta runtime admin benchmarks response.benchmark_discovery_lane.shipping_manifest_functions",
+        "Algenta runtime admin benchmarks response.benchmark_discovery_lane.shipping_manifest_functions must equal the total benchmark module function_count.",
         "value_error",
       );
     }
     validatedModuleBenchmarks.forEach((entry, index) => {
       if (!benchmarkDiscoveryLane.discoveredSourceImportPaths.includes(entry.name)) {
         throw buildStructuredValidationError(
-          "Codna runtime admin benchmarks response.benchmark_discovery_lane.discovered_source_inventory",
-          `Codna runtime admin benchmarks response.benchmark_discovery_lane.discovered_source_inventory must include module_benchmarks[${index}].name (${entry.name}).`,
+          "Algenta runtime admin benchmarks response.benchmark_discovery_lane.discovered_source_inventory",
+          `Algenta runtime admin benchmarks response.benchmark_discovery_lane.discovered_source_inventory must include module_benchmarks[${index}].name (${entry.name}).`,
           "value_error",
         );
       }
       if (shippingRuntimeModules[index] !== entry.name) {
         throw buildStructuredValidationError(
-          `Codna runtime admin benchmarks response.shipping_runtime_modules[${index}]`,
-          `Codna runtime admin benchmarks response.shipping_runtime_modules[${index}] must equal module_benchmarks[${index}].name.`,
+          `Algenta runtime admin benchmarks response.shipping_runtime_modules[${index}]`,
+          `Algenta runtime admin benchmarks response.shipping_runtime_modules[${index}] must equal module_benchmarks[${index}].name.`,
           "value_error",
         );
       }
       if (shippingRuntimeFunctionCounts[index] !== entry.functionCount) {
         throw buildStructuredValidationError(
-          `Codna runtime admin benchmarks response.shipping_runtime_function_counts[${index}]`,
-          `Codna runtime admin benchmarks response.shipping_runtime_function_counts[${index}] must equal module_benchmarks[${index}].function_count.`,
+          `Algenta runtime admin benchmarks response.shipping_runtime_function_counts[${index}]`,
+          `Algenta runtime admin benchmarks response.shipping_runtime_function_counts[${index}] must equal module_benchmarks[${index}].function_count.`,
           "value_error",
         );
       }
       if (shippingRuntimeBenchmarkSpeedupsX[index] !== entry.benchmarkSpeedupX) {
         throw buildStructuredValidationError(
-          `Codna runtime admin benchmarks response.shipping_runtime_benchmark_speedups_x[${index}]`,
-          `Codna runtime admin benchmarks response.shipping_runtime_benchmark_speedups_x[${index}] must equal module_benchmarks[${index}].benchmark_speedup_x.`,
+          `Algenta runtime admin benchmarks response.shipping_runtime_benchmark_speedups_x[${index}]`,
+          `Algenta runtime admin benchmarks response.shipping_runtime_benchmark_speedups_x[${index}] must equal module_benchmarks[${index}].benchmark_speedup_x.`,
           "value_error",
         );
       }
       if (shippingRuntimeBenchmarkArtifacts[index] !== entry.benchmarkArtifact) {
         throw buildStructuredValidationError(
-          `Codna runtime admin benchmarks response.shipping_runtime_benchmark_artifacts[${index}]`,
-          `Codna runtime admin benchmarks response.shipping_runtime_benchmark_artifacts[${index}] must equal module_benchmarks[${index}].benchmark_artifact.`,
+          `Algenta runtime admin benchmarks response.shipping_runtime_benchmark_artifacts[${index}]`,
+          `Algenta runtime admin benchmarks response.shipping_runtime_benchmark_artifacts[${index}] must equal module_benchmarks[${index}].benchmark_artifact.`,
           "value_error",
         );
       }
       if (shippingRuntimeCompiledArtifacts[index] !== entry.compiledArtifact) {
         throw buildStructuredValidationError(
-          `Codna runtime admin benchmarks response.shipping_runtime_compiled_artifacts[${index}]`,
-          `Codna runtime admin benchmarks response.shipping_runtime_compiled_artifacts[${index}] must equal module_benchmarks[${index}].compiled_artifact.`,
+          `Algenta runtime admin benchmarks response.shipping_runtime_compiled_artifacts[${index}]`,
+          `Algenta runtime admin benchmarks response.shipping_runtime_compiled_artifacts[${index}] must equal module_benchmarks[${index}].compiled_artifact.`,
           "value_error",
         );
       }
       if (shippingRuntimeCompiledEngines[index] !== entry.compiledEngine) {
         throw buildStructuredValidationError(
-          `Codna runtime admin benchmarks response.shipping_runtime_compiled_engines[${index}]`,
-          `Codna runtime admin benchmarks response.shipping_runtime_compiled_engines[${index}] must equal module_benchmarks[${index}].compiled_engine.`,
+          `Algenta runtime admin benchmarks response.shipping_runtime_compiled_engines[${index}]`,
+          `Algenta runtime admin benchmarks response.shipping_runtime_compiled_engines[${index}] must equal module_benchmarks[${index}].compiled_engine.`,
           "value_error",
         );
       }
       if (shippingRuntimeMaxColdMs[index] !== entry.maxColdMs) {
         throw buildStructuredValidationError(
-          `Codna runtime admin benchmarks response.shipping_runtime_max_cold_ms[${index}]`,
-          `Codna runtime admin benchmarks response.shipping_runtime_max_cold_ms[${index}] must equal module_benchmarks[${index}].max_cold_ms.`,
+          `Algenta runtime admin benchmarks response.shipping_runtime_max_cold_ms[${index}]`,
+          `Algenta runtime admin benchmarks response.shipping_runtime_max_cold_ms[${index}] must equal module_benchmarks[${index}].max_cold_ms.`,
           "value_error",
         );
       }
       if (shippingRuntimeMaxWarmMs[index] !== entry.maxWarmMs) {
         throw buildStructuredValidationError(
-          `Codna runtime admin benchmarks response.shipping_runtime_max_warm_ms[${index}]`,
-          `Codna runtime admin benchmarks response.shipping_runtime_max_warm_ms[${index}] must equal module_benchmarks[${index}].max_warm_ms.`,
+          `Algenta runtime admin benchmarks response.shipping_runtime_max_warm_ms[${index}]`,
+          `Algenta runtime admin benchmarks response.shipping_runtime_max_warm_ms[${index}] must equal module_benchmarks[${index}].max_warm_ms.`,
           "value_error",
         );
       }
       if (shippingRuntimeMaxHotMs[index] !== entry.maxHotMs) {
         throw buildStructuredValidationError(
-          `Codna runtime admin benchmarks response.shipping_runtime_max_hot_ms[${index}]`,
-          `Codna runtime admin benchmarks response.shipping_runtime_max_hot_ms[${index}] must equal module_benchmarks[${index}].max_hot_ms.`,
+          `Algenta runtime admin benchmarks response.shipping_runtime_max_hot_ms[${index}]`,
+          `Algenta runtime admin benchmarks response.shipping_runtime_max_hot_ms[${index}] must equal module_benchmarks[${index}].max_hot_ms.`,
           "value_error",
         );
       }
       if (entry.benchmarkSpeedupX <= 0) {
         throw buildStructuredValidationError(
-          `Codna runtime admin benchmarks response.module_benchmarks[${index}].benchmark_speedup_x`,
-          "Codna runtime admin benchmarks response.module_benchmarks entries must have positive benchmark_speedup_x values.",
+          `Algenta runtime admin benchmarks response.module_benchmarks[${index}].benchmark_speedup_x`,
+          "Algenta runtime admin benchmarks response.module_benchmarks entries must have positive benchmark_speedup_x values.",
           "value_error",
         );
       }
       if (entry.maxColdMs <= 0) {
         throw buildStructuredValidationError(
-          `Codna runtime admin benchmarks response.module_benchmarks[${index}].max_cold_ms`,
-          "Codna runtime admin benchmarks response.module_benchmarks entries must have positive max_cold_ms values.",
+          `Algenta runtime admin benchmarks response.module_benchmarks[${index}].max_cold_ms`,
+          "Algenta runtime admin benchmarks response.module_benchmarks entries must have positive max_cold_ms values.",
           "value_error",
         );
       }
       if (entry.maxWarmMs <= 0) {
         throw buildStructuredValidationError(
-          `Codna runtime admin benchmarks response.module_benchmarks[${index}].max_warm_ms`,
-          "Codna runtime admin benchmarks response.module_benchmarks entries must have positive max_warm_ms values.",
+          `Algenta runtime admin benchmarks response.module_benchmarks[${index}].max_warm_ms`,
+          "Algenta runtime admin benchmarks response.module_benchmarks entries must have positive max_warm_ms values.",
           "value_error",
         );
       }
       if (entry.maxHotMs <= 0) {
         throw buildStructuredValidationError(
-          `Codna runtime admin benchmarks response.module_benchmarks[${index}].max_hot_ms`,
-          "Codna runtime admin benchmarks response.module_benchmarks entries must have positive max_hot_ms values.",
+          `Algenta runtime admin benchmarks response.module_benchmarks[${index}].max_hot_ms`,
+          "Algenta runtime admin benchmarks response.module_benchmarks entries must have positive max_hot_ms values.",
           "value_error",
         );
       }
@@ -727,32 +727,32 @@ export function assertRuntimeAdminBenchmarksResponse(payload: unknown): RuntimeA
       const previousIndex = benchmarkArtifactIndexes.get(entry.benchmarkArtifact);
       if (previousIndex !== undefined) {
         throw buildStructuredValidationError(
-          `Codna runtime admin benchmarks response.module_benchmarks[${index}].benchmark_artifact`,
-          `Codna runtime admin benchmarks response.module_benchmarks[${index}].benchmark_artifact duplicates module_benchmarks[${previousIndex}].benchmark_artifact.`,
+          `Algenta runtime admin benchmarks response.module_benchmarks[${index}].benchmark_artifact`,
+          `Algenta runtime admin benchmarks response.module_benchmarks[${index}].benchmark_artifact duplicates module_benchmarks[${previousIndex}].benchmark_artifact.`,
           "value_error",
         );
       }
       benchmarkArtifactIndexes.set(entry.benchmarkArtifact, index);
       if (!compiledArtifactPaths.has(entry.compiledArtifact)) {
         throw buildStructuredValidationError(
-          `Codna runtime admin benchmarks response.module_benchmarks[${index}].compiled_artifact`,
-          `Codna runtime admin benchmarks response.module_benchmarks[${index}].compiled_artifact must reference a path present in compiled_artifacts.`,
+          `Algenta runtime admin benchmarks response.module_benchmarks[${index}].compiled_artifact`,
+          `Algenta runtime admin benchmarks response.module_benchmarks[${index}].compiled_artifact must reference a path present in compiled_artifacts.`,
           "value_error",
         );
       }
     });
     const declaredBenchmarkClassCodes = new Set(
       assertArray(
-        assertJsonObject(obj.benchmarking, "Codna runtime admin benchmarks response.benchmarking").classes,
-        "Codna runtime admin benchmarks response.benchmarking.classes",
+        assertJsonObject(obj.benchmarking, "Algenta runtime admin benchmarks response.benchmarking").classes,
+        "Algenta runtime admin benchmarks response.benchmarking.classes",
       ).map((entry, index) =>
           assertEnumValue(
           assertJsonObject(
             entry,
-            `Codna runtime admin benchmarks response.benchmarking.classes[${index}]`,
+            `Algenta runtime admin benchmarks response.benchmarking.classes[${index}]`,
           ).code,
           RUNTIME_BENCHMARK_CLASS_VALUES,
-          `Codna runtime admin benchmarks response.benchmarking.classes[${index}].code`,
+          `Algenta runtime admin benchmarks response.benchmarking.classes[${index}].code`,
         ),
       ),
     );
@@ -761,18 +761,18 @@ export function assertRuntimeAdminBenchmarksResponse(payload: unknown): RuntimeA
           assertEnumValue(
           assertJsonObject(
             entry,
-            `Codna runtime admin benchmarks response.quality_gate_benchmark_classes[${index}]`,
+            `Algenta runtime admin benchmarks response.quality_gate_benchmark_classes[${index}]`,
           ).code,
           RUNTIME_BENCHMARK_CLASS_VALUES,
-          `Codna runtime admin benchmarks response.quality_gate_benchmark_classes[${index}].code`,
+          `Algenta runtime admin benchmarks response.quality_gate_benchmark_classes[${index}].code`,
         ),
       ),
     );
     qualityGateClassCodes.forEach(code => {
       if (!declaredBenchmarkClassCodes.has(code)) {
         throw buildStructuredValidationError(
-          "Codna runtime admin benchmarks response.quality_gate_benchmark_classes",
-          "Codna runtime admin benchmarks response.quality_gate_benchmark_classes must be declared in benchmarking.classes.",
+          "Algenta runtime admin benchmarks response.quality_gate_benchmark_classes",
+          "Algenta runtime admin benchmarks response.quality_gate_benchmark_classes must be declared in benchmarking.classes.",
           "value_error",
         );
       }
@@ -780,15 +780,15 @@ export function assertRuntimeAdminBenchmarksResponse(payload: unknown): RuntimeA
     const declaredSLOBudgetNames = new Set(
       assertArray(
         obj.slo_budgets,
-        "Codna runtime admin benchmarks response.slo_budgets",
+        "Algenta runtime admin benchmarks response.slo_budgets",
       ).map((entry, index) =>
         assertEnumValue(
           assertJsonObject(
             entry,
-            `Codna runtime admin benchmarks response.slo_budgets[${index}]`,
+            `Algenta runtime admin benchmarks response.slo_budgets[${index}]`,
           ).name,
           RUNTIME_SLO_BUDGET_NAME_VALUES,
-          `Codna runtime admin benchmarks response.slo_budgets[${index}].name`,
+          `Algenta runtime admin benchmarks response.slo_budgets[${index}].name`,
         ),
       ),
     );
@@ -797,48 +797,48 @@ export function assertRuntimeAdminBenchmarksResponse(payload: unknown): RuntimeA
         assertEnumValue(
           assertJsonObject(
             entry,
-            `Codna runtime admin benchmarks response.quality_gate_slo_budgets[${index}]`,
+            `Algenta runtime admin benchmarks response.quality_gate_slo_budgets[${index}]`,
           ).name,
           RUNTIME_SLO_BUDGET_NAME_VALUES,
-          `Codna runtime admin benchmarks response.quality_gate_slo_budgets[${index}].name`,
+          `Algenta runtime admin benchmarks response.quality_gate_slo_budgets[${index}].name`,
         ),
       ),
     );
     qualityGateBudgetNames.forEach(name => {
       if (!declaredSLOBudgetNames.has(name)) {
         throw buildStructuredValidationError(
-          "Codna runtime admin benchmarks response.quality_gate_slo_budgets",
-          "Codna runtime admin benchmarks response.quality_gate_slo_budgets must be declared in slo_budgets.",
+          "Algenta runtime admin benchmarks response.quality_gate_slo_budgets",
+          "Algenta runtime admin benchmarks response.quality_gate_slo_budgets must be declared in slo_budgets.",
           "value_error",
         );
       }
     });
     const evaluationScience = assertJsonObject(
       obj.evaluation_science,
-      "Codna runtime admin benchmarks response.evaluation_science",
+      "Algenta runtime admin benchmarks response.evaluation_science",
     );
     const evaluationDimensions = new Set(
       assertEnumArray(
         evaluationScience.dimensions,
         RUNTIME_EVALUATION_DIMENSION_VALUES,
-        "Codna runtime admin benchmarks response.evaluation_science.dimensions",
+        "Algenta runtime admin benchmarks response.evaluation_science.dimensions",
       ),
     );
     const evaluationReleaseBlockers = new Set(
       assertEnumArray(
         evaluationScience.release_blockers,
         RUNTIME_RELEASE_BLOCKER_VALUES,
-        "Codna runtime admin benchmarks response.evaluation_science.release_blockers",
+        "Algenta runtime admin benchmarks response.evaluation_science.release_blockers",
       ),
     );
     const evaluationMethods = assertEnumArray(
       evaluationScience.methods,
       RUNTIME_EVALUATION_METHOD_VALUES,
-      "Codna runtime admin benchmarks response.evaluation_science.methods",
+      "Algenta runtime admin benchmarks response.evaluation_science.methods",
     );
     const evaluationSummary = assertJsonObject(
       obj.evaluation_summary,
-      "Codna runtime admin benchmarks response.evaluation_summary",
+      "Algenta runtime admin benchmarks response.evaluation_summary",
     );
     const expectedReplayGate =
       qualityGateClassCodes.has("B6") &&
@@ -859,94 +859,94 @@ export function assertRuntimeAdminBenchmarksResponse(payload: unknown): RuntimeA
       qualityGateBudgetNames.has("decision_plan_creation") &&
       evaluationDimensions.has("decision outcome delta") &&
       evaluationReleaseBlockers.has("decision-plan validity drop");
-    if (assertInteger(evaluationSummary.dimension_count, "Codna runtime admin benchmarks response.evaluation_summary.dimension_count") !== evaluationDimensions.size) {
+    if (assertInteger(evaluationSummary.dimension_count, "Algenta runtime admin benchmarks response.evaluation_summary.dimension_count") !== evaluationDimensions.size) {
       throw buildStructuredValidationError(
-        "Codna runtime admin benchmarks response.evaluation_summary.dimension_count",
-        "Codna runtime admin benchmarks response.evaluation_summary.dimension_count must equal the number of evaluation dimensions.",
+        "Algenta runtime admin benchmarks response.evaluation_summary.dimension_count",
+        "Algenta runtime admin benchmarks response.evaluation_summary.dimension_count must equal the number of evaluation dimensions.",
         "value_error",
       );
     }
-    if (assertInteger(evaluationSummary.method_count, "Codna runtime admin benchmarks response.evaluation_summary.method_count") !== evaluationMethods.length) {
+    if (assertInteger(evaluationSummary.method_count, "Algenta runtime admin benchmarks response.evaluation_summary.method_count") !== evaluationMethods.length) {
       throw buildStructuredValidationError(
-        "Codna runtime admin benchmarks response.evaluation_summary.method_count",
-        "Codna runtime admin benchmarks response.evaluation_summary.method_count must equal the number of evaluation methods.",
+        "Algenta runtime admin benchmarks response.evaluation_summary.method_count",
+        "Algenta runtime admin benchmarks response.evaluation_summary.method_count must equal the number of evaluation methods.",
         "value_error",
       );
     }
-    if (assertInteger(evaluationSummary.release_blocker_count, "Codna runtime admin benchmarks response.evaluation_summary.release_blocker_count") !== evaluationReleaseBlockers.size) {
+    if (assertInteger(evaluationSummary.release_blocker_count, "Algenta runtime admin benchmarks response.evaluation_summary.release_blocker_count") !== evaluationReleaseBlockers.size) {
       throw buildStructuredValidationError(
-        "Codna runtime admin benchmarks response.evaluation_summary.release_blocker_count",
-        "Codna runtime admin benchmarks response.evaluation_summary.release_blocker_count must equal the number of release blockers.",
+        "Algenta runtime admin benchmarks response.evaluation_summary.release_blocker_count",
+        "Algenta runtime admin benchmarks response.evaluation_summary.release_blocker_count must equal the number of release blockers.",
         "value_error",
       );
     }
-    if (assertInteger(evaluationSummary.benchmark_class_count, "Codna runtime admin benchmarks response.evaluation_summary.benchmark_class_count") !== qualityGateClassCodes.size) {
+    if (assertInteger(evaluationSummary.benchmark_class_count, "Algenta runtime admin benchmarks response.evaluation_summary.benchmark_class_count") !== qualityGateClassCodes.size) {
       throw buildStructuredValidationError(
-        "Codna runtime admin benchmarks response.evaluation_summary.benchmark_class_count",
-        "Codna runtime admin benchmarks response.evaluation_summary.benchmark_class_count must equal the number of quality gate benchmark classes.",
+        "Algenta runtime admin benchmarks response.evaluation_summary.benchmark_class_count",
+        "Algenta runtime admin benchmarks response.evaluation_summary.benchmark_class_count must equal the number of quality gate benchmark classes.",
         "value_error",
       );
     }
-    if (assertInteger(evaluationSummary.slo_budget_count, "Codna runtime admin benchmarks response.evaluation_summary.slo_budget_count") !== qualityGateBudgetNames.size) {
+    if (assertInteger(evaluationSummary.slo_budget_count, "Algenta runtime admin benchmarks response.evaluation_summary.slo_budget_count") !== qualityGateBudgetNames.size) {
       throw buildStructuredValidationError(
-        "Codna runtime admin benchmarks response.evaluation_summary.slo_budget_count",
-        "Codna runtime admin benchmarks response.evaluation_summary.slo_budget_count must equal the number of quality gate SLO budgets.",
+        "Algenta runtime admin benchmarks response.evaluation_summary.slo_budget_count",
+        "Algenta runtime admin benchmarks response.evaluation_summary.slo_budget_count must equal the number of quality gate SLO budgets.",
         "value_error",
       );
     }
     if (
       assertBoolean(
         evaluationSummary.replay_gate_enabled,
-        "Codna runtime admin benchmarks response.evaluation_summary.replay_gate_enabled",
+        "Algenta runtime admin benchmarks response.evaluation_summary.replay_gate_enabled",
       ) !== expectedReplayGate
     ) {
       throw buildStructuredValidationError(
-        "Codna runtime admin benchmarks response.evaluation_summary.replay_gate_enabled",
-        "Codna runtime admin benchmarks response.evaluation_summary.replay_gate_enabled must match the replay benchmark, budget, and release blocker coverage.",
+        "Algenta runtime admin benchmarks response.evaluation_summary.replay_gate_enabled",
+        "Algenta runtime admin benchmarks response.evaluation_summary.replay_gate_enabled must match the replay benchmark, budget, and release blocker coverage.",
         "value_error",
       );
     }
     if (
       assertBoolean(
         evaluationSummary.tool_call_quality_gate_enabled,
-        "Codna runtime admin benchmarks response.evaluation_summary.tool_call_quality_gate_enabled",
+        "Algenta runtime admin benchmarks response.evaluation_summary.tool_call_quality_gate_enabled",
       ) !== expectedToolCallGate
     ) {
       throw buildStructuredValidationError(
-        "Codna runtime admin benchmarks response.evaluation_summary.tool_call_quality_gate_enabled",
-        "Codna runtime admin benchmarks response.evaluation_summary.tool_call_quality_gate_enabled must match the tool-call benchmark, budget, and release blocker coverage.",
+        "Algenta runtime admin benchmarks response.evaluation_summary.tool_call_quality_gate_enabled",
+        "Algenta runtime admin benchmarks response.evaluation_summary.tool_call_quality_gate_enabled must match the tool-call benchmark, budget, and release blocker coverage.",
         "value_error",
       );
     }
     if (
       assertBoolean(
         evaluationSummary.rag_quality_gate_enabled,
-        "Codna runtime admin benchmarks response.evaluation_summary.rag_quality_gate_enabled",
+        "Algenta runtime admin benchmarks response.evaluation_summary.rag_quality_gate_enabled",
       ) !== expectedRagGate
     ) {
       throw buildStructuredValidationError(
-        "Codna runtime admin benchmarks response.evaluation_summary.rag_quality_gate_enabled",
-        "Codna runtime admin benchmarks response.evaluation_summary.rag_quality_gate_enabled must match the RAG benchmark and release blocker coverage.",
+        "Algenta runtime admin benchmarks response.evaluation_summary.rag_quality_gate_enabled",
+        "Algenta runtime admin benchmarks response.evaluation_summary.rag_quality_gate_enabled must match the RAG benchmark and release blocker coverage.",
         "value_error",
       );
     }
     if (
       assertBoolean(
         evaluationSummary.decision_quality_gate_enabled,
-        "Codna runtime admin benchmarks response.evaluation_summary.decision_quality_gate_enabled",
+        "Algenta runtime admin benchmarks response.evaluation_summary.decision_quality_gate_enabled",
       ) !== expectedDecisionGate
     ) {
       throw buildStructuredValidationError(
-        "Codna runtime admin benchmarks response.evaluation_summary.decision_quality_gate_enabled",
-        "Codna runtime admin benchmarks response.evaluation_summary.decision_quality_gate_enabled must match the decision benchmark, budget, and release blocker coverage.",
+        "Algenta runtime admin benchmarks response.evaluation_summary.decision_quality_gate_enabled",
+        "Algenta runtime admin benchmarks response.evaluation_summary.decision_quality_gate_enabled must match the decision benchmark, budget, and release blocker coverage.",
         "value_error",
       );
     }
     assertNonEmptyString(
       obj.manifest_digest,
-      "Codna runtime admin benchmarks response.manifest_digest",
+      "Algenta runtime admin benchmarks response.manifest_digest",
     );
-    assertRuntimeSignature(obj.signature, "Codna runtime admin benchmarks response.signature");
+    assertRuntimeSignature(obj.signature, "Algenta runtime admin benchmarks response.signature");
     return value as RuntimeAdminBenchmarksResponse;
   });
 }

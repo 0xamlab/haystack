@@ -189,7 +189,7 @@ async def poll_job_handler(arguments: dict[str, Any]) -> str:
         # api() raises a redacted MCPAPIError on >=400 (no raw-body leak); returns payload on 200.
         status_payload = await api("GET", status_path)
         if not isinstance(status_payload, dict):
-            raise RuntimeError("Codna API returned an unexpected job status payload type.")
+            raise RuntimeError("Algenta API returned an unexpected job status payload type.")
 
         last_status = status_payload
         terminal_status = str(status_payload.get("status", "")).strip().lower()

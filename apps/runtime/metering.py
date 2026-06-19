@@ -8,7 +8,7 @@ Two responsibilities:
      enforce device limits.
 
 v1: events are logged locally only (no network flush).
-v4+: flush to Codna control plane via POST /v1/metering
+v4+: flush to Algenta control plane via POST /v1/metering
      heartbeat to POST /v1/device/heartbeat
 """
 

@@ -75,7 +75,7 @@ def _format_ms(ms: float) -> str:
 def cmd_benchmark() -> None:
     n_samples = 50_000
     print("\n" + "─" * 58)
-    print("  Codna Core — Local Benchmark")
+    print("  Algenta Core — Local Benchmark")
     print("─" * 58)
     print(f"  Sampling {n_samples:,} normal variates\n")
 
@@ -193,7 +193,7 @@ def cmd_import(args: list[str]) -> None:
             print()
             print(
                 runtime_banner(
-                    "Codna Import Failed",
+                    "Algenta Import Failed",
                     [
                         f"Code: {exc.code}",
                         str(exc),
@@ -373,7 +373,7 @@ def cmd_upgrade() -> None:
         )
         print(
             f"""
-  Connect Codna SDK to your deployment
+  Connect Algenta SDK to your deployment
   ──────────────────────────────────────
 
   1. Configure your self-hosted API origin:
@@ -416,7 +416,7 @@ def cmd_upgrade() -> None:
 
     print(
         f"""
-  Upgrade to Codna Cloud
+  Upgrade to Algenta Cloud
   ─────────────────────────
 
   1. {api_key_help_text(component="algenta upgrade")}
@@ -473,7 +473,7 @@ def main() -> None:
     else:
         print(
             runtime_banner(
-                "Codna CLI",
+                "Algenta CLI",
                 [
                     "Primary path: algenta demo",
                     "Brandable import preview: algenta import <file.csv> --name orders",

@@ -315,7 +315,7 @@ async function loadRuntimeGrpc(): Promise<LoadedRuntimeGrpc> {
       if (!Client) {
         throw new MojoRuntimeConfigurationError(
           "compute_runtime_unavailable",
-          "The Codna runtime gRPC contract is unavailable.",
+          "The Algenta runtime gRPC contract is unavailable.",
           { proto_path: RUNTIME_PROTO_PATH },
         );
       }
@@ -351,7 +351,7 @@ async function withRuntimeClient<T>(
           : String(error);
     throw new MojoRuntimeConfigurationError(
       "compute_runtime_unavailable",
-      "The local Codna runtime daemon is unavailable. Start it before accessing runtime-backed Mojo libraries.",
+      "The local Algenta runtime daemon is unavailable. Start it before accessing runtime-backed Mojo libraries.",
       {
         daemon_target: resolveDaemonTarget(config),
         error: message,

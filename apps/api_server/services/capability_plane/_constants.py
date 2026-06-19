@@ -105,9 +105,9 @@ DEFAULT_PROVIDER_SPECS: tuple[dict[str, Any], ...] = (
     {
         "provider_id": DATA_CONNECTOR_PROVIDER_ID,
         "provider_type": ProviderType.DATA_CONNECTOR,
-        "name": "Codna Governed Data",
+        "name": "Algenta Governed Data",
         "description": (
-            "Codna-managed governed dataset inventory derived from registered datasets "
+            "Algenta-managed governed dataset inventory derived from registered datasets "
             "and connector-backed sources."
         ),
         "docs_url": "/v1/data",
@@ -176,8 +176,8 @@ DEFAULT_PROVIDER_SPECS: tuple[dict[str, Any], ...] = (
     {
         "provider_id": RUNTIME_LIBRARY_PROVIDER_ID,
         "provider_type": ProviderType.RUNTIME_LIBRARY_PACK,
-        "name": "Codna Runtime Libraries",
-        "description": "Codna-managed executable runtime-library inventory.",
+        "name": "Algenta Runtime Libraries",
+        "description": "Algenta-managed executable runtime-library inventory.",
         "docs_url": "/v1/libraries",
         "auth_schema_json": {"type": "managed", "fields": []},
         "certification_summary_json": {"owner": "algenta", "certified": True},
@@ -238,7 +238,7 @@ DEFAULT_PROFILE_SPECS: tuple[dict[str, Any], ...] = (
         "profile_id": RUNTIME_LIBRARY_PROFILE_ID,
         "provider_id": RUNTIME_LIBRARY_PROVIDER_ID,
         "name": "Workspace runtime libraries",
-        "description": "System-managed Codna runtime-library binding.",
+        "description": "System-managed Algenta runtime-library binding.",
         "auth_kind": "managed",
         "default_execution_owner": ExecutionOwner.ALGENTA_MANAGED,
         "binding_scope_default": BindingScope.WORKSPACE,

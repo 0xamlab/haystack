@@ -4,11 +4,11 @@ sidebar_position: 12
 
 # Competitor Compatibility
 
-This page explains what Codna intentionally matches, adapts, and rejects in the current developer and agent ecosystem.
+This page explains what Algenta intentionally matches, adapts, and rejects in the current developer and agent ecosystem.
 
 ## Operating rule
 
-Codna is not trying to copy competitor architecture.
+Algenta is not trying to copy competitor architecture.
 
 Compatibility means:
 
@@ -18,7 +18,7 @@ Compatibility means:
 
 ## Current comparison
 
-| Layer | Vanna | Cube | LlamaIndex | Codna (today) | Codna (target) |
+| Layer | Vanna | Cube | LlamaIndex | Algenta (today) | Algenta (target) |
 | --- | --- | --- | --- | --- | --- |
 | SDK | Python-first | JS/API + semantic APIs | Python + TypeScript | Python and TypeScript both expose runtime and direct-client parity, including persisted lineage/replay helpers | clean runtime-first across SDKs |
 | MCP | limited | documented MCP server | strong tool/workflow posture | 30-tool MCP surface | first-class |
@@ -73,7 +73,7 @@ Intentional non-match:
 - probabilistic agent-centric execution
 - LLM reasoning loops as the execution contract
 
-## What this means for Codna docs and SDKs
+## What this means for Algenta docs and SDKs
 
 The primary published path stays:
 

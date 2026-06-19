@@ -1,4 +1,4 @@
-"""Pydantic response models for the Codna Python SDK."""
+"""Pydantic response models for the Algenta Python SDK."""
 
 from __future__ import annotations
 

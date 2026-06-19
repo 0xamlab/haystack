@@ -4,7 +4,7 @@ sidebar_position: 5
 
 # Azure AI Foundry and Studio
 
-Use Codna from Azure-hosted copilots, assistants, and prompt flows with the canonical `v1` contract.
+Use Algenta from Azure-hosted copilots, assistants, and prompt flows with the canonical `v1` contract.
 
 ## Recommended path
 
@@ -24,7 +24,7 @@ Private profiles do not silently fall back to Codna cloud.
 1. Import `https://your-algenta-base-url.example/openapi.json` and replace the
    placeholder with Cloud Managed `https://api.codna.ai` or
    `https://your-algenta-host.example/openapi.json` for `self_hosted` / `air_gapped`.
-2. Configure Bearer auth with your Codna API key. Canonical env vars are
+2. Configure Bearer auth with your Algenta API key. Canonical env vars are
    `ALGENTA_API_KEY` and `ALGENTA_BASE_URL`; legacy `DE_API_KEY`,
    `DE_BASE_URL`, and `ALGENTA_API_URL` remain accepted for compatibility.
 3. Limit the imported actions to what the agent actually needs.
@@ -61,12 +61,12 @@ Use the reference files in [`examples/azure-ai-studio/`](https://github.com/deci
 Try one simple governed data task first:
 
 ```text
-Inspect the live Codna contract, then find the dataset that matches orders, summarize it, and return the total completed orders plus a monthly breakdown for the last 12 months.
+Inspect the live Algenta contract, then find the dataset that matches orders, summarize it, and return the total completed orders plus a monthly breakdown for the last 12 months.
 ```
 
 That proves:
 
-- Azure can call Codna
+- Azure can call Algenta
 - Bearer auth is correct
 - the agent can stay on the read-only data path
 
@@ -87,7 +87,7 @@ For Azure-hosted agents, put those behind an explicit approval step in the orche
 ## Revoke or disconnect
 
 - Remove the imported tool or flow node from Azure
-- Rotate or revoke the Codna API key
+- Rotate or revoke the Algenta API key
 - Remove stored environment variables in the Azure project or deployment
 
 ## Troubleshooting

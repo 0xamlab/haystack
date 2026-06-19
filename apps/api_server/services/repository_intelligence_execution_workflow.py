@@ -652,7 +652,7 @@ def _apply_patch_to_git_checkout(
 ) -> str:
     _ensure_clean_git_worktree(checkout_path, git_command=git_command)
     git_command(
-        ["git", "-C", str(checkout_path), "config", "user.name", "Codna Repository Intelligence"],
+        ["git", "-C", str(checkout_path), "config", "user.name", "Algenta Repository Intelligence"],
         timeout=20.0,
     )
     git_command(
@@ -777,7 +777,7 @@ async def apply_repository_decision(
     branch_name = request.branch_name or f"algenta/{request.decision_plan_id[:12]}"
     commit_message = (
         request.commit_message
-        or f"Codna repository intelligence patch {request.decision_plan_id}"
+        or f"Algenta repository intelligence patch {request.decision_plan_id}"
     )
     validation_summary = {"patch_files": sorted(patch_changed_files(patch_text))}
     target_branch = request.base_branch or str(config.get("default_branch") or "main")

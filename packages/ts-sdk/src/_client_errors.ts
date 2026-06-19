@@ -1,7 +1,7 @@
 /** Auto-split sub-module of client.ts — error classes (DecisionEngineError + subclasses). */
 
 /**
- * Codna TypeScript SDK — fetch-based client.
+ * Algenta TypeScript SDK — fetch-based client.
  * Works in Node.js 18+ and modern browsers.
  *
  * @example

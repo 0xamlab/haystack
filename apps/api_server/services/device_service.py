@@ -87,7 +87,7 @@ HOSTED_DEVICE_PLATFORM_VERSION_HEADER = "X-Algenta-Platform-Version"
 HOSTED_DEVICE_HOSTNAME_HASH_HEADER = "X-Algenta-Hostname-Hash"
 HOSTED_DEVICE_SDK_VERSION_HEADER = "X-Algenta-SDK-Version"
 HOSTED_DEVICE_BINDING_TOKEN_HEADER = "X-Algenta-Device-Binding-Token"  # noqa: S105
-# Legacy device-header names (the #157 Codna rebrand). Algenta is the engine/SDK; these are
+# Legacy device-header names (the #157 Algenta rebrand). Algenta is the engine/SDK; these are
 # still ACCEPTED on read so deployed raw-HTTP callers / older SDK builds keep working. New
 # responses + the bundled SDKs send the canonical X-Algenta-* names above.
 LEGACY_HOSTED_DEVICE_ID_HEADER = "X-Codna-Device-Id"

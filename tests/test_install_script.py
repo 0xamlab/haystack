@@ -253,7 +253,7 @@ def test_install_script_runs_service_first_happy_path_and_prints_key_once(tmp_pa
     )
 
     assert proc.returncode == 0, proc.stderr or proc.stdout
-    assert "Codna is running." in proc.stdout
+    assert "Algenta is running." in proc.stdout
     assert "Authorization: Bearer ${ALGENTA_API_KEY}" in proc.stdout
     assert "Set temporarily:" in proc.stdout
     assert "export ALGENTA_API_KEY='<paste the bootstrap key above>'" in proc.stdout
@@ -268,7 +268,7 @@ def test_install_script_runs_service_first_happy_path_and_prints_key_once(tmp_pa
     assert "Bootstrap key prefix:" in proc.stdout
     assert "Replace it:" in proc.stdout
     assert "export ALGENTA_API_KEY='<paste the replacement key returned above>'" in proc.stdout
-    assert "No SDK or Python install is required to use Codna." in proc.stdout
+    assert "No SDK or Python install is required to use Algenta." in proc.stdout
     assert proc.stdout.count(api_key) == 1
     assert "BOOTSTRAP_API_KEY=" not in proc.stdout
     assert "Next steps:" in proc.stdout
@@ -376,7 +376,7 @@ def test_install_script_fails_if_no_pinned_release_can_be_resolved(tmp_path: Pat
         "Set ALGENTA_VERSION and, if needed, ALGENTA_IMAGE_TAG explicitly before retrying."
         in proc.stdout
     )
-    assert "Downloading Codna Decision Engine..." not in proc.stdout
+    assert "Downloading Algenta Decision Engine..." not in proc.stdout
 
 
 def test_install_script_normalizes_git_sha_release_refs_to_pinned_image_tags(

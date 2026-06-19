@@ -383,7 +383,7 @@ def print_markdown_table(results: list[dict[str, Any]]) -> None:
 
 
 if __name__ == "__main__":
-    print("Codna Engine Benchmark — all 11 engine types")
+    print("Algenta Engine Benchmark — all 11 engine types")
     print(
         f"Warmup: {N_WARMUP} req  |  Measured: {N_MEASURE} req  |  MOJO_ALLOW_SUBPROCESS_FALLBACK={os.environ.get('MOJO_ALLOW_SUBPROCESS_FALLBACK', 'true')}"
     )

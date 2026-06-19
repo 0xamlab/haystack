@@ -90,7 +90,7 @@ def send_quota_alert(
     billing_url = resolve_billing_dashboard_url(settings_obj=settings)
 
     if is_exhausted:
-        subject = f"⚠️ Quota exhausted — Codna ({billing_period})"
+        subject = f"⚠️ Quota exhausted — Algenta ({billing_period})"
         headline = "You've used 100% of your monthly quota"
         body = (
             f"Your organization <strong>{org_name}</strong> has exhausted its "
@@ -100,7 +100,7 @@ def send_quota_alert(
         cta = "Upgrade now"
         cta_color = "#ef4444"
     else:
-        subject = f"⚡ 80% quota used — Codna ({billing_period})"
+        subject = f"⚡ 80% quota used — Algenta ({billing_period})"
         headline = f"You've used {pct:.0f}% of your monthly quota"
         body = (
             f"Your organization <strong>{org_name}</strong> has used "
@@ -126,7 +126,7 @@ def send_quota_alert(
     "
   >
     <div style="font-size: 24px; font-weight: 700; color: #fff; margin-bottom: 8px;">
-      Codna
+      Algenta
     </div>
     <div style="height: 1px; background: #334155; margin-bottom: 24px;"></div>
     <h1 style="font-size: 20px; color: #fff; margin: 0 0 12px;">{headline}</h1>
@@ -195,7 +195,7 @@ def send_welcome_email(
     "
   >
     <div style="font-size: 24px; font-weight: 700; color: #fff; margin-bottom: 24px;">
-      Welcome to Codna
+      Welcome to Algenta
     </div>
     <p style="color: #94a3b8; line-height: 1.6;">Hi {name},</p>
     <p style="color: #94a3b8; line-height: 1.6;">
@@ -238,7 +238,7 @@ curl -X POST {simulate_url} \\
 """
     _send(
         email,
-        "Welcome to Codna — your API key is ready",
+        "Welcome to Algenta — your API key is ready",
         html,
         audit_context=audit_context,
     )
@@ -267,7 +267,7 @@ async def send_verification_email(email: str, token: str) -> None:
       Verify your email
     </div>
     <p style="color: #94a3b8; line-height: 1.6; margin-bottom: 24px;">
-      Click the button below to verify your email address and activate your Codna account.
+      Click the button below to verify your email address and activate your Algenta account.
       This link expires in 24 hours.
     </p>
     <a href="{verify_url}" style="
@@ -283,13 +283,13 @@ async def send_verification_email(email: str, token: str) -> None:
       Verify Email →
     </a>
     <p style="color:#475569;font-size:12px;margin-top:24px;">
-      If you didn't create an Codna account, ignore this email.
+      If you didn't create an Algenta account, ignore this email.
     </p>
   </div>
 </body>
 </html>
 """
-    _send(email, "Verify your email — Codna", html)
+    _send(email, "Verify your email — Algenta", html)
 
 
 async def send_password_reset_email(email: str, token: str) -> None:
@@ -336,4 +336,4 @@ async def send_password_reset_email(email: str, token: str) -> None:
 </body>
 </html>
 """
-    _send(email, "Reset your Codna password", html)
+    _send(email, "Reset your Algenta password", html)

@@ -2,7 +2,7 @@
 algenta.simple — One-line magic entry points.
 
 This is the activation layer. Someone reads a tweet, copies one line,
-and immediately understands why Codna exists.
+and immediately understands why Algenta exists.
 
   from algenta import decision, optimize, simulate
 

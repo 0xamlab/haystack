@@ -1,4 +1,4 @@
-"""Interactive deterministic runtime demo for Codna."""
+"""Interactive deterministic runtime demo for Algenta."""
 
 from __future__ import annotations
 
@@ -220,7 +220,7 @@ def _source_fields(source_schema: dict[str, Any] | None) -> list[str]:
 def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="algenta demo",
-        description="Interactive deterministic Codna runtime demo.",
+        description="Interactive deterministic Algenta runtime demo.",
     )
     mode_group = parser.add_mutually_exclusive_group()
     mode_group.add_argument(
@@ -281,7 +281,7 @@ def _emit_demo_banner(*, interactive: bool) -> None:
             else "No API key required | TTY enables the scenario menu"
         ),
     ]
-    _emit(runtime_banner("Codna Runtime Demo", banner_lines))
+    _emit(runtime_banner("Algenta Runtime Demo", banner_lines))
 
 
 def _emit_walkthrough_intro() -> None:

@@ -158,7 +158,7 @@ def _make_fake_installer(path: Path) -> None:
             mkdir -p "$install_dir"
             printf 'services:\\n  api:\\n    image: algenta-selfhost/api:smoke\\n' > "$install_dir/docker-compose.yml"
             printf 'API_PORT=%s\\n' "${ALGENTA_API_PORT:-18020}" > "$install_dir/.env"
-            printf '%s\\n' "Codna is running."
+            printf '%s\\n' "Algenta is running."
             printf '%s\\n' "API Key: ${ALGENTA_TEST_API_KEY:-de_test_stub_key}"
             printf '%s\\n' "Bootstrap key id: ${ALGENTA_TEST_BOOTSTRAP_KEY_ID:-bbbbbbbb-cccc-dddd-eeee-ffffffffffff}"
             printf '%s\\n' "Bootstrap key prefix: ${ALGENTA_TEST_BOOTSTRAP_KEY_PREFIX:-de_test_stub}"

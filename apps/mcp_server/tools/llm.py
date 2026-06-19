@@ -1,4 +1,4 @@
-"""MCP tools for deterministic Codna utility-model routes."""
+"""MCP tools for deterministic Algenta utility-model routes."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from apps.mcp_server.client import api
 LIST_MODELS_SPEC: dict[str, Any] = {
     "name": "list_models",
     "description": (
-        "List the current Codna model catalog, including deterministic utility models and "
+        "List the current Algenta model catalog, including deterministic utility models and "
         "any provider-backed routed entries with their routing, failover, timeout, and auth "
         "metadata, including capability-specific chat and embedding auth/header readiness. "
         "Use this before calling tokenize, count_tokens, chat_completions, responses, "
@@ -26,7 +26,7 @@ LIST_MODELS_SPEC: dict[str, Any] = {
 RESOLVE_ARTIFACT_BRIDGE_SPEC: dict[str, Any] = {
     "name": "resolve_artifact_bridge",
     "description": (
-        "Resolve a Hugging Face artifact path through the Codna compatibility-ring artifact "
+        "Resolve a Hugging Face artifact path through the Algenta compatibility-ring artifact "
         "bridge. Defaults to cache-only lookup and never downloads unless local_files_only=false."
     ),
     "inputSchema": {
@@ -44,7 +44,7 @@ RESOLVE_ARTIFACT_BRIDGE_SPEC: dict[str, Any] = {
 
 TOKENIZE_SPEC: dict[str, Any] = {
     "name": "tokenize",
-    "description": "Tokenize UTF-8 text with a supported deterministic Codna tokenizer model.",
+    "description": "Tokenize UTF-8 text with a supported deterministic Algenta tokenizer model.",
     "inputSchema": {
         "type": "object",
         "required": ["input"],
@@ -58,7 +58,7 @@ TOKENIZE_SPEC: dict[str, Any] = {
 
 COUNT_TOKENS_SPEC: dict[str, Any] = {
     "name": "count_tokens",
-    "description": "Count tokens with a supported deterministic Codna tokenizer model.",
+    "description": "Count tokens with a supported deterministic Algenta tokenizer model.",
     "inputSchema": {
         "type": "object",
         "required": ["input"],
@@ -73,7 +73,7 @@ COUNT_TOKENS_SPEC: dict[str, Any] = {
 CHAT_COMPLETIONS_SPEC: dict[str, Any] = {
     "name": "chat_completions",
     "description": (
-        "Run the deterministic Codna utility chat surface. This is a tokenizer-backed "
+        "Run the deterministic Algenta utility chat surface. This is a tokenizer-backed "
         "utility route, not a provider-backed generative model."
     ),
     "inputSchema": {
@@ -105,7 +105,7 @@ CHAT_COMPLETIONS_SPEC: dict[str, Any] = {
 RESPONSES_SPEC: dict[str, Any] = {
     "name": "responses",
     "description": (
-        "Run the unified Codna utility response surface over deterministic tokenization "
+        "Run the unified Algenta utility response surface over deterministic tokenization "
         "or lexical embeddings."
     ),
     "inputSchema": {
@@ -127,7 +127,7 @@ RESPONSES_SPEC: dict[str, Any] = {
 
 EMBEDDINGS_SPEC: dict[str, Any] = {
     "name": "embeddings",
-    "description": "Generate deterministic lexical embeddings with the supported Codna model.",
+    "description": "Generate deterministic lexical embeddings with the supported Algenta model.",
     "inputSchema": {
         "type": "object",
         "required": ["input"],

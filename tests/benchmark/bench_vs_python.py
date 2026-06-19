@@ -586,7 +586,7 @@ def print_comparison_table(results: list[dict[str, Any]]) -> None:
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("  Codna: Mojo vs Python/NumPy Baseline Comparison")
+    print("  Algenta: Mojo vs Python/NumPy Baseline Comparison")
     print("  Phase 8 — Multi-Tier Workload Benchmark")
     print("=" * 60)
     print(f"  Warmup: {N_WARMUP}  |  Measured: {N_MEASURE}")

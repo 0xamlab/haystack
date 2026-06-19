@@ -332,7 +332,7 @@ async def test_webhook(
         job_id=uuid.uuid4(),
         run_id=uuid.uuid4(),
         org_id=auth["org_id"],
-        result={"message": "This is a test webhook from the Codna API."},
+        result={"message": "This is a test webhook from the Algenta API."},
     )
     success, status_code, message = await deliver_webhook(
         callback_url=payload.callback_url,

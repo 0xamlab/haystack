@@ -1,5 +1,5 @@
 """
-Codna local runtime daemon package.
+Algenta local runtime daemon package.
 
 Start:  python -m apps.runtime.daemon start
 Stop:   python -m apps.runtime.daemon stop

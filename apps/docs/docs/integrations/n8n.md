@@ -4,11 +4,11 @@ sidebar_position: 4
 
 # n8n
 
-Use Codna in n8n to add governed dataset discovery, exact queries, batch exact queries, constrained SQL reports, and simulations to any workflow.
+Use Algenta in n8n to add governed dataset discovery, exact queries, batch exact queries, constrained SQL reports, and simulations to any workflow.
 
 ## Prerequisites
 
-- An Codna API key
+- An Algenta API key
 - An n8n workflow with HTTP Request or AI-agent nodes
 - Read-only access unless the workflow must mutate datasets
 
@@ -123,10 +123,10 @@ Only add dataset mutations if the workflow needs them:
 ## Revoke or disconnect
 
 - Remove the credential or environment variable from n8n
-- Revoke the Codna API key if the workflow should lose access entirely
+- Revoke the Algenta API key if the workflow should lose access entirely
 
 ## Troubleshooting
 
 - `401 invalid_api_key`: wrong Bearer token or missing header
 - `429 rate_limit_exceeded`: back off and honor `Retry-After`
-- Empty downstream fields: inspect the HTTP node output and confirm you are mapping the Codna response body, not the full transport envelope
+- Empty downstream fields: inspect the HTTP node output and confirm you are mapping the Algenta response body, not the full transport envelope

@@ -2269,7 +2269,7 @@ async function callHostedMe(rawKey, deviceId, overrides = {}) {
 }
 
 async function callHostedMeWithEnvDeviceId(rawKey, deviceId) {
-  const previousCodnaDeviceId = process.env.ALGENTA_DEVICE_ID;
+  const previousAlgentaDeviceId = process.env.ALGENTA_DEVICE_ID;
   const previousDeDeviceId = process.env.DE_DEVICE_ID;
   process.env.ALGENTA_DEVICE_ID = deviceId;
   process.env.DE_DEVICE_ID = deviceId;
@@ -2304,10 +2304,10 @@ async function callHostedMeWithEnvDeviceId(rawKey, deviceId) {
       message,
     };
   } finally {
-    if (previousCodnaDeviceId === undefined) {
+    if (previousAlgentaDeviceId === undefined) {
       delete process.env.ALGENTA_DEVICE_ID;
     } else {
-      process.env.ALGENTA_DEVICE_ID = previousCodnaDeviceId;
+      process.env.ALGENTA_DEVICE_ID = previousAlgentaDeviceId;
     }
     if (previousDeDeviceId === undefined) {
       delete process.env.DE_DEVICE_ID;
@@ -2524,12 +2524,12 @@ def run_typescript_runtime_connector_matrix() -> None:
     assert local_registration["row_count"] > 0
     assert local_count["valid"] is True
     assert float(local_count["scalar"]) == float(local_registration["row_count"])
-    assert "Codna Source Import" in str(local["preview"])
+    assert "Algenta Source Import" in str(local["preview"])
     assert REAL_MARCH_ORDERS.stem in str(local["preview"])
 
     assert local_bundle["registrationCount"] == 3
     assert local_bundle["failureCount"] == 0
-    assert "Codna Source Bundle" in str(local_bundle["preview"])
+    assert "Algenta Source Bundle" in str(local_bundle["preview"])
     assert "orders_detail_bundle" in str(local_bundle["preview"])
     assert "orders_financial_bundle" in str(local_bundle["preview"])
     assert "top_inaccurate_items_bundle" in str(local_bundle["preview"])
@@ -2541,7 +2541,7 @@ def run_typescript_runtime_connector_matrix() -> None:
     assert s3["valid"] is True
     assert s3["rowCount"] > 0
     assert float(s3["scalar"]) == float(s3["rowCount"])
-    assert "Codna Source Import" in str(s3["preview"])
+    assert "Algenta Source Import" in str(s3["preview"])
     assert PUBLIC_S3_SOURCE_REF in str(s3["preview"])
 
     assert sqlite["valid"] is True
@@ -2554,7 +2554,7 @@ def run_typescript_runtime_connector_matrix() -> None:
 
     assert api_bundle["registrationCount"] == 4
     assert api_bundle["failureCount"] == 0
-    assert "Codna Source Bundle" in str(api_bundle["preview"])
+    assert "Algenta Source Bundle" in str(api_bundle["preview"])
     assert "orders_sqlite_bundle" in str(api_bundle["preview"])
     assert "orders_postgres_bundle" in str(api_bundle["preview"])
     assert "noaa_hourly_bundle" in str(api_bundle["preview"])

@@ -4,7 +4,7 @@ sidebar_position: 3
 
 # LangGraph
 
-Add Codna as a tool node in your LangGraph AI agent.
+Add Algenta as a tool node in your LangGraph AI agent.
 
 - Cloud Managed: `https://api.codna.ai`
 - `self_hosted` and `air_gapped`: pass an explicit self-hosted `base_url`
@@ -33,7 +33,7 @@ client = AlgentaClient(api_key=api_key)
 
 @tool
 def inspect_algenta_contract() -> dict:
-    """Fetch the live machine-readable Codna contract before discovery."""
+    """Fetch the live machine-readable Algenta contract before discovery."""
     contract = client.get_contract()
     return {
         "api_base_url": contract.api_base_url,

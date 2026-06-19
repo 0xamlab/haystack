@@ -1,5 +1,5 @@
 """
-Async Codna API client for use with asyncio.
+Async Algenta API client for use with asyncio.
 
 Usage:
     import asyncio
@@ -294,7 +294,7 @@ from decision_engine.async_client_facade._mixin_account_control_plane import _As
 
 class AsyncDecisionEngineClient(_AsyncSimulationQueryMixin, _AsyncProductDecisionMixin, _AsyncTriggerSourceMixin, _AsyncLLMMixin, _AsyncContractCapabilityMixin, _AsyncAgentRunMixin, _AsyncConnectorRepositoryMixin, _AsyncJobDeploymentMixin, _AsyncAccountControlPlaneMixin):
     """
-    Async HTTP client for the Codna API.
+    Async HTTP client for the Algenta API.
 
     `AsyncAlgentaClient` is the preferred public alias.
     `AsyncDecisionEngineClient` remains available for backward compatibility.
@@ -399,7 +399,7 @@ class AsyncDecisionEngineClient(_AsyncSimulationQueryMixin, _AsyncProductDecisio
 
 
 class AsyncAlgentaClient(AsyncDecisionEngineClient):
-    """Preferred public async client name for the Codna API."""
+    """Preferred public async client name for the Algenta API."""
 
 
 AsyncCodnaClient = AsyncAlgentaClient  # back-compat alias

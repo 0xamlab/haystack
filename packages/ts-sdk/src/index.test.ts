@@ -42,8 +42,8 @@ afterEach(() => {
   Object.assign(process.env, ORIGINAL_ENV);
 });
 
-describe("public Codna SDK aliases", () => {
-  it("re-exports the Codna-branded direct client alias without breaking compatibility", () => {
+describe("public Algenta SDK aliases", () => {
+  it("re-exports the Algenta-branded direct client alias without breaking compatibility", () => {
     expect(AlgentaClient).toBe(DecisionEngineClient);
   });
 
@@ -137,7 +137,7 @@ describe("public Codna SDK aliases", () => {
   });
 
   it("re-exports the shared public contract from the package root", () => {
-    expect(BRAND).toBe("Codna");
+    expect(BRAND).toBe("Algenta");
     expect(DEFAULT_BASE_URL).toBe("https://api.codna.ai");
     expect(AUTH_SCHEME).toBe("bearer_api_key");
     expect(API_KEY_PREFIX_LIVE).toBe("de_live_");

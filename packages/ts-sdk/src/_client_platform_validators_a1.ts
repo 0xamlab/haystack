@@ -2,7 +2,7 @@
 /** Auto-split sub-module of client.ts — platform contract validators (part A). */
 
 /**
- * Codna TypeScript SDK — fetch-based client.
+ * Algenta TypeScript SDK — fetch-based client.
  * Works in Node.js 18+ and modern browsers.
  *
  * @example
@@ -244,8 +244,8 @@ import { DecisionEngineError } from "./_client_errors.js";
 import { assertBoolean, assertJsonObject, assertNonEmptyString } from "./_client_platform_validators_b2.js";
 
 export function assertPlatformContractResponse(payload: unknown): PlatformContractResponse {
-  return wrapContractValidation("Codna contract endpoint", payload, value =>
-    assertPlatformContractPayload(value, "Codna contract response"),
+  return wrapContractValidation("Algenta contract endpoint", payload, value =>
+    assertPlatformContractPayload(value, "Algenta contract response"),
   );
 }
 

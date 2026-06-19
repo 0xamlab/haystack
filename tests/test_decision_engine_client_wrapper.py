@@ -176,7 +176,7 @@ def test_decision_engine_client_wrapper_loads_default_base_url_without_facade(mo
                 return SimpleNamespace(
                     DEFAULT_BASE_URL="http://localhost:8000",
                     CONTRACT_VERSION="v1.3",
-                    BRAND="Codna",
+                    BRAND="Algenta",
                     MCP_ENDPOINT="http://localhost:8000/mcp/sse",
                     MCP_TOOLS_ENDPOINT="http://localhost:8000/mcp/tools",
                     AUTH_SCHEME="bearer_api_key",
@@ -245,7 +245,7 @@ def test_async_decision_engine_client_wrapper_loads_default_base_url_without_fac
                 return SimpleNamespace(
                     DEFAULT_BASE_URL="http://localhost:8000",
                     CONTRACT_VERSION="v1.3",
-                    BRAND="Codna",
+                    BRAND="Algenta",
                     MCP_ENDPOINT="http://localhost:8000/mcp/sse",
                     MCP_TOOLS_ENDPOINT="http://localhost:8000/mcp/tools",
                     AUTH_SCHEME="bearer_api_key",

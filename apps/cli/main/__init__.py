@@ -1,5 +1,5 @@
 """
-de — Codna CLI
+de — Algenta CLI
 
 Simulation, optimization, and AI decisions from your terminal.
 
@@ -130,7 +130,7 @@ Usage:
     de deployments cost <deployment_id>    # show current deployment cost
     de deployments delete <deployment_id>  # request deployment teardown
     de config set-key <YOUR_ALGENTA_API_KEY> # save your API key (Cloud Managed example)
-    de contract                            # machine-readable Codna contract
+    de contract                            # machine-readable Algenta contract
     de health                              # check API status
     de version                             # show versions
 
@@ -218,7 +218,7 @@ from apps.validation_error_details import format_validation_error_message
 
 _RUNTIME_READY_TIMEOUT_SECONDS = 3.0
 _RUNTIME_READY_POLL_SECONDS = 0.1
-_RUNTIME_NOT_RUNNING_MESSAGE = "Codna Runtime is not running. Start with: de runtime start"
+_RUNTIME_NOT_RUNNING_MESSAGE = "Algenta Runtime is not running. Start with: de runtime start"
 
 _FACADE_API_REQUEST = api_request
 _FACADE_API_STREAM_REQUEST = api_stream_request

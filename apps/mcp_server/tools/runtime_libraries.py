@@ -75,12 +75,12 @@ async def _list_runtime_modules() -> tuple[dict[str, Any], list[RuntimeLibraryIn
     health = await client.health()
     if health.get("status") == "unreachable":
         raise RuntimeError(
-            "Local Codna runtime daemon is unavailable. "
+            "Local Algenta runtime daemon is unavailable. "
             "Start it before using runtime library MCP tools."
         )
     modules = await client.list_modules()
     if not modules:
-        raise RuntimeError("Local Codna runtime returned no executable Mojo libraries.")
+        raise RuntimeError("Local Algenta runtime returned no executable Mojo libraries.")
     normalized: list[RuntimeLibraryInfo] = []
     for module in modules:
         raw_functions = module.get("functions", [])
@@ -138,7 +138,7 @@ async def execute_runtime_library_handler(arguments: dict[str, Any]) -> str:
     health = await client.health()
     if health.get("status") == "unreachable":
         raise RuntimeError(
-            "Local Codna runtime daemon is unavailable. "
+            "Local Algenta runtime daemon is unavailable. "
             "Start it before using runtime library MCP tools."
         )
 

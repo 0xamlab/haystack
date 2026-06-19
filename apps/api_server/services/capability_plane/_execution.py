@@ -377,7 +377,7 @@ async def execute_capability_service(
         error={
             "code": "algenta_managed_capability_not_executable",
             "message": (
-                "This capability type does not yet have an Codna-managed execution path. "
+                "This capability type does not yet have an Algenta-managed execution path. "
                 "Use routeCapabilities() plus the customer execution node."
             ),
         },

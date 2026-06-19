@@ -4,7 +4,7 @@ sidebar_position: 3
 
 # Claude and Codex
 
-Connect Codna to Claude, Codex, and other MCP clients with the canonical `v1` MCP contract.
+Connect Algenta to Claude, Codex, and other MCP clients with the canonical `v1` MCP contract.
 
 ## Canonical connection
 
@@ -82,7 +82,7 @@ Connect this CSV as a dataset named "Q2 pipeline", then show me the schema.
 
 ## Recommended data flow
 
-Use the same low-token governed path as the rest of Codna:
+Use the same low-token governed path as the rest of Algenta:
 
 1. `get_contract()`
 2. `list_data(search=..., compact=true)`
@@ -95,7 +95,7 @@ Use the same low-token governed path as the rest of Codna:
 ## Revoke or disconnect
 
 - Remove the MCP connection from the client
-- Revoke the Codna API key if the machine or workspace should lose access entirely
+- Revoke the Algenta API key if the machine or workspace should lose access entirely
 - Use `disconnect_data` only when you want to remove a registered dataset
 
 ## Troubleshooting

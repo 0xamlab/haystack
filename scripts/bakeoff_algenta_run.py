@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Codna competitor runner for the bake-off — the REAL Cline-SDK + Mojo path.
+"""Algenta competitor runner for the bake-off — the REAL Cline-SDK + Mojo path.
 
 snapshot -> triage (Mojo-ranked; locates the bug from the failing-test signal)
 -> verified_agentic plan (the Cline agent fixes the located symbol with the
 injected evidence bundle, gated by the Mojo calibrated-risk hook) -> emit the
 patch + token telemetry.
 
-This is the path that makes Codna cheap: triage pinpoints the suspect file in
+This is the path that makes Algenta cheap: triage pinpoints the suspect file in
 milliseconds for ~0 tokens, so the Cline agent edits one symbol instead of
 exploring the whole repo. Emits JSON {timings, tokens, suspect_files, patch_diff}.
 

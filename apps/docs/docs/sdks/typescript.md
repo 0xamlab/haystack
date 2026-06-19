@@ -650,7 +650,7 @@ Every stored repository `DecisionPlan` also records planner provenance in
 
 Use these surfaces as follows:
 
-- `getContract()` when you need the live machine-readable Codna contract from the running service
+- `getContract()` when you need the live machine-readable Algenta contract from the running service
 - `getRuntimeManifest()`, `getRuntimeModules()`, `getRuntimeBenchmarks()`, and `getRuntimeReleaseValidation()` when you need the signed runtime proof surfaces from the running service
 - `getRuntimeBenchmarks()` also includes benchmark-class `evidence_paths`, so benchmark claims retain concrete artifact linkage rather than only code and description labels
 - `getRuntimeBenchmarks()` currently exposes the quality-gate benchmark classes `B6` checkpoint and replay overhead, `B7` MCP tool latency, `B9` RAG retrieval quality and latency, and `B10` decision workflow completion latency
@@ -757,7 +757,7 @@ Use `AlgentaClient` for the running service and `libraries()` only for the local
 
 This surface is local/runtime-backed in this rollout. Customer apps and other
 external clients can execute runtime-owned Mojo libraries without importing
-source files, but they must run the local Codna runtime daemon first.
+source files, but they must run the local Algenta runtime daemon first.
 
 ## Optional local runtime
 
@@ -766,4 +766,4 @@ The local runtime and development CLI remain available through `algenta-core`, b
 For the unified capability plane, local runtime execution only supports
 `client_managed` capabilities. `algenta_managed` capabilities remain
 discoverable and routable in local mode, but execution fails closed until you
-switch back to the running Codna service.
+switch back to the running Algenta service.

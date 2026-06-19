@@ -1,5 +1,5 @@
 """
-Import a customer-agnostic capability-plane bundle into the Codna control plane.
+Import a customer-agnostic capability-plane bundle into the Algenta control plane.
 
 The input payload must conform to the canonical capability-plane import schema exposed by
 `apps.api_server.services.capability_plane_importer`. The command accepts a JSON file or
@@ -28,7 +28,7 @@ from apps.api_server.services.capability_plane_importer import (
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Import a capability-plane bundle into the Codna control plane.",
+        description="Import a capability-plane bundle into the Algenta control plane.",
     )
     parser.add_argument(
         "--file",

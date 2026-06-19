@@ -323,7 +323,7 @@ describe("Runtime — fails", () => {
                 },
               ],
               required_metrics: ["p50"],
-              baselines: ["Codna Mojo-native path"],
+              baselines: ["Algenta Mojo-native path"],
             },
             slo_budgets: [
               {
@@ -429,7 +429,7 @@ describe("Runtime — fails", () => {
                 },
               ],
               required_metrics: ["p50"],
-              baselines: ["Codna Mojo-native path"],
+              baselines: ["Algenta Mojo-native path"],
             },
             slo_budgets: [
               {

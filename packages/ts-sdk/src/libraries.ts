@@ -48,7 +48,7 @@ function validateRuntimeConfig(config: MojoRuntimeConfig): void {
   if (config.mode && config.mode !== "local") {
     throw new MojoRuntimeConfigurationError(
       "compute_runtime_unavailable",
-      "TypeScript MojoRuntime only supports the local Codna runtime daemon in this rollout.",
+      "TypeScript MojoRuntime only supports the local Algenta runtime daemon in this rollout.",
       { mode: config.mode },
     );
   }

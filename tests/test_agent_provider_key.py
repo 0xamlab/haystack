@@ -3,7 +3,7 @@ agent-core sidecar in task_spec.engine.
 
 _agent_provider_key_fields() sends the org OVERRIDE only (never the decision-engine env key — the
 sidecar keeps its own env as the pooled fallback), keyed by the agent's backend, and sets the
-require flag in multi-tenant so the sidecar fails closed. Pairs with the Codna-side plumbing that
+require flag in multi-tenant so the sidecar fails closed. Pairs with the Algenta-side plumbing that
 prefers task_spec.engine.provider_api_key over the sidecar env.
 """
 

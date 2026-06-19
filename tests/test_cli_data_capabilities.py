@@ -27,7 +27,7 @@ def test_cmd_capabilities_providers_prints_inventory(monkeypatch) -> None:
         {
             "provider_id": "provider.skill_pack.algenta",
             "provider_type": "skill_pack",
-            "name": "Codna Skill Pack",
+            "name": "Algenta Skill Pack",
             "active": True,
         }
     ]
@@ -36,7 +36,7 @@ def test_cmd_capabilities_providers_prints_inventory(monkeypatch) -> None:
     output = _capture_stdout(cli.cmd_capabilities_providers, "table")
 
     assert "Capability providers (1):" in output
-    assert "provider.skill_pack.algenta [skill_pack] Codna Skill Pack active=True" in output
+    assert "provider.skill_pack.algenta [skill_pack] Algenta Skill Pack active=True" in output
 
 
 def test_cmd_capabilities_provider_prints_summary(monkeypatch) -> None:
@@ -48,7 +48,7 @@ def test_cmd_capabilities_provider_prints_summary(monkeypatch) -> None:
         return 200, {
             "provider_id": "provider.skill_pack.algenta",
             "provider_type": "skill_pack",
-            "name": "Codna Skill Pack",
+            "name": "Algenta Skill Pack",
             "active": True,
             "supported_execution_owners": ["algenta_managed", "client_managed"],
             "description": "Canonical skill pack provider.",

@@ -681,7 +681,7 @@ def test_algenta_runtime_api_llm_and_agent_methods_return_typed_models(
     assert logged_decision.policy_snapshot_id == "policy-v1"
     assert listed_decisions.decisions[0].schema_snapshot_id == "schema-v1"
     assert fetched_decision.manifest_version == "runtime-manifest-v1"
-    assert deployment_regions.providers[0].regions[0].name == "Codna Shared"
+    assert deployment_regions.providers[0].regions[0].name == "Algenta Shared"
     assert deployment.deployment_id == "dep_123"
     assert created_deployment.status == "requested"
     assert deployment_cost.month == 5

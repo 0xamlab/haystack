@@ -10,9 +10,9 @@ dimension or bridge keys live one or more joins away.
 Start with [Quickstart](/quickstart), then use [Query](/query) and
 [Verify](/verify) as the primary exact-query flow.
 
-## What Codna supports
+## What Algenta supports
 
-Codna already supports explicit multi-hop joins on the exact-query surface.
+Algenta already supports explicit multi-hop joins on the exact-query surface.
 
 - `POST /v1/query` accepts `join_path`
 - `POST /v1/verify` accepts the same exact request body before execution
@@ -45,7 +45,7 @@ calculation shape.
 ## Mission functionality mapping
 
 If you are porting a governed analysis flow from Mission, use the public
-Codna surfaces below. Mission wrappers such as `query_sql_source` and
+Algenta surfaces below. Mission wrappers such as `query_sql_source` and
 `register_sql_source` are **not** public hosted endpoints here.
 
 | Mission functionality | Public HTTP / SDK / CLI surface | MCP tool | Checked-in example | Notes |
@@ -364,7 +364,7 @@ They show the public replacements for:
 
 ## Mission Mojo LLM modules: current status
 
-Mission also exposes the local Codna runtime library lane through
+Mission also exposes the local Algenta runtime library lane through
 `get_algenta_library_health`, `list_algenta_libraries`,
 `inspect_algenta_library`, and `execute_algenta_library`. That lane is real,
 but it is **not** the default replacement for governed multihop data analysis.

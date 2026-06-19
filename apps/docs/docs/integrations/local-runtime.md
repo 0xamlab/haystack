@@ -170,7 +170,7 @@ same public data/query contract as the direct API clients:
 - `query_sql_report()` / `querySqlReport()`
 
 That means the hosted local-runtime path can stay on the same contract-first
-flow as the rest of Codna:
+flow as the rest of Algenta:
 
 1. `GET /v1/meta/contract`
 2. `GET /v1/connectors`, `POST /v1/connectors`, `POST /v1/connectors/{connector_id}/test`, or `GET /v1/connectors/{connector_id}/browse`
@@ -235,7 +235,7 @@ de runtime execute rerank_eval hit_rate_at_k --args-json '[[1,0,1,1,0],5]' --for
 
 ## Mission local library tool mapping
 
-If you are porting a Mission flow that uses the local Codna library tools,
+If you are porting a Mission flow that uses the local Algenta library tools,
 map those calls onto the public local/runtime-backed surfaces below.
 
 | Mission functionality | Python local runtime | TypeScript local runtime | CLI | MCP |

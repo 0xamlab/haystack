@@ -1,5 +1,5 @@
 /**
- * Codna API Gateway — Hono on Node.js 22 LTS
+ * Algenta API Gateway — Hono on Node.js 22 LTS
  *
  * Responsibilities:
  *   1. Bearer token validation (Redis cache, < 1ms on cache hit)

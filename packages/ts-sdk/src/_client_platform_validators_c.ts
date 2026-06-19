@@ -1,7 +1,7 @@
 /** Auto-split sub-module of client.ts — platform contract validators (part C). */
 
 /**
- * Codna TypeScript SDK — fetch-based client.
+ * Algenta TypeScript SDK — fetch-based client.
  * Works in Node.js 18+ and modern browsers.
  *
  * @example

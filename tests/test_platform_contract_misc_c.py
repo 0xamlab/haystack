@@ -239,24 +239,24 @@ def test_public_package_and_export_surfaces_use_algenta_branding() -> None:
     readme = (ROOT / "README.md").read_text()
 
     assert "Python SDK for Algenta" in python_sdk_pyproject
-    assert "Codna Decision Engine" not in python_sdk_pyproject
+    assert "Algenta Decision Engine" not in python_sdk_pyproject
     assert "SDK for Algenta public data, query, and simulation APIs" in ts_sdk_package
     assert '"algenta"' in ts_sdk_package
-    assert "Codna SDK errors" in python_sdk_exceptions
+    assert "Algenta SDK errors" in python_sdk_exceptions
     assert "Decision Engine SDK errors" not in python_sdk_exceptions
-    assert "Codna Python SDK" in python_sdk_models
+    assert "Algenta Python SDK" in python_sdk_models
     assert "Decision Engine SDK" not in python_sdk_models
-    assert "Codna API and runtime" in mcp_init
+    assert "Algenta API and runtime" in mcp_init
     assert "decision engine" not in mcp_init.lower()
-    assert "Quota exhausted — Codna" in email_service
-    assert "80% quota used — Codna" in email_service
+    assert "Quota exhausted — Algenta" in email_service
+    assert "80% quota used — Algenta" in email_service
     assert "Decision Engine (" not in email_service
-    assert "test webhook from the Codna API" in jobs_router
+    assert "test webhook from the Algenta API" in jobs_router
     assert "test webhook from the Decision Engine" not in jobs_router
-    assert "wraps Codna decision analysis" in products_router
+    assert "wraps Algenta decision analysis" in products_router
     assert "API — no statistics or simulation expertise required." in products_router
     assert "wraps Decision Engine" not in products_router
-    assert 'title="Codna API"' in legacy_api_main
+    assert 'title="Algenta API"' in legacy_api_main
     assert "Universal Decision Engine" not in legacy_api_main
     assert "cold `AlgentaClient(api_key=...)` construction" in readme
     assert "cold `AsyncAlgentaClient(api_key=...)` construction" in readme
@@ -265,12 +265,12 @@ def test_public_package_and_export_surfaces_use_algenta_branding() -> None:
     assert "For Cloud Managed API usage," in readme
     assert "private profiles fail closed and do not" in readme
 
-    assert "# Codna — Simulation Run Export" in export_router
-    assert 'pdf.cell(0, 12, "Codna"' in export_router
-    assert "Codna Decision Engine" not in export_router
+    assert "# Algenta — Simulation Run Export" in export_router
+    assert 'pdf.cell(0, 12, "Algenta"' in export_router
+    assert "Algenta Decision Engine" not in export_router
 
-    assert "Universal Domain Template Library for Codna." in simulation_templates
-    assert "Codna Decision Engine" not in simulation_templates
+    assert "Universal Domain Template Library for Algenta." in simulation_templates
+    assert "Algenta Decision Engine" not in simulation_templates
 
 
 def test_readme_documents_self_hosted_saved_connector_and_runtime_library_surfaces() -> None:

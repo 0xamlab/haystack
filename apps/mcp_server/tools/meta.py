@@ -1,4 +1,4 @@
-"""MCP tools for machine-readable Codna platform contract discovery."""
+"""MCP tools for machine-readable Algenta platform contract discovery."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from apps.validation_error_details import format_validation_error_message
 GET_CONTRACT_SPEC: dict[str, Any] = {
     "name": "get_contract",
     "description": (
-        "Get the machine-readable Codna public contract. "
+        "Get the machine-readable Algenta public contract. "
         "Use this when an agent needs the canonical discovery, summary, query, "
         "batch, SQL report, governed filter rules, CLI, or MCP entrypoints "
         "before planning tool use."
@@ -31,7 +31,7 @@ GET_CONTRACT_SPEC: dict[str, Any] = {
 GET_RUNTIME_MANIFEST_SPEC: dict[str, Any] = {
     "name": "get_runtime_manifest",
     "description": (
-        "Get the signed Codna runtime manifest. "
+        "Get the signed Algenta runtime manifest. "
         "Use this when an agent needs the canonical runtime-core inventory, "
         "maturity states, proof matrix, typed failure contract, or release theorem "
         "before using runtime-backed execution paths."
@@ -46,7 +46,7 @@ GET_RUNTIME_MANIFEST_SPEC: dict[str, Any] = {
 GET_RUNTIME_RELEASE_VALIDATION_SPEC: dict[str, Any] = {
     "name": "get_runtime_release_validation",
     "description": (
-        "Get the authenticated Codna runtime release validation result. "
+        "Get the authenticated Algenta runtime release validation result. "
         "Use this when an agent needs the current manifest-listed release verdict, "
         "formal theorem conditions, or fail-closed proof status before using runtime-backed paths."
     ),
@@ -60,7 +60,7 @@ GET_RUNTIME_RELEASE_VALIDATION_SPEC: dict[str, Any] = {
 GET_RUNTIME_MODULES_SPEC: dict[str, Any] = {
     "name": "get_runtime_modules",
     "description": (
-        "Get the authenticated Codna runtime module proof catalog. "
+        "Get the authenticated Algenta runtime module proof catalog. "
         "Use this when an agent needs the shipping module inventory, proof-matrix entries, "
         "maturity counts, or compiled module evidence before using runtime-backed paths."
     ),
@@ -74,7 +74,7 @@ GET_RUNTIME_MODULES_SPEC: dict[str, Any] = {
 GET_RUNTIME_BENCHMARKS_SPEC: dict[str, Any] = {
     "name": "get_runtime_benchmarks",
     "description": (
-        "Get the authenticated Codna runtime benchmark catalog. "
+        "Get the authenticated Algenta runtime benchmark catalog. "
         "Use this when an agent needs benchmark classes, benchmark evidence paths, "
         "evaluation quality gates, SLO budgets, compiled artifacts, or module benchmark "
         "linkage before reasoning about runtime performance claims."
@@ -95,7 +95,7 @@ async def get_contract_handler(arguments: dict[str, Any]) -> str:
         openapi_status, openapi_payload = await api_with_status("GET", "/openapi.json")
         if openapi_status >= 400:
             raise RuntimeError(
-                "Failed to load Codna contract from /v1/meta/contract or /openapi.json."
+                "Failed to load Algenta contract from /v1/meta/contract or /openapi.json."
             )
         try:
             result = build_platform_contract_from_openapi(
@@ -104,7 +104,7 @@ async def get_contract_handler(arguments: dict[str, Any]) -> str:
             )
         except PlatformContractFallbackError as exc:
             raise RuntimeError(
-                f"Codna contract fallback failed [{exc.code}]: {exc}"
+                f"Algenta contract fallback failed [{exc.code}]: {exc}"
             ) from exc
     elif status >= 400:
         raise RuntimeError(f"API error {status}: {result}")
@@ -113,7 +113,7 @@ async def get_contract_handler(arguments: dict[str, Any]) -> str:
     except ValidationError as exc:
         raise RuntimeError(
             format_validation_error_message(
-                "Codna contract endpoint returned an invalid payload.",
+                "Algenta contract endpoint returned an invalid payload.",
                 exc,
             )
         ) from exc
@@ -153,7 +153,7 @@ async def get_runtime_manifest_handler(arguments: dict[str, Any]) -> str:
     except ValidationError as exc:
         raise RuntimeError(
             format_validation_error_message(
-                "Codna runtime manifest endpoint returned an invalid signed payload.",
+                "Algenta runtime manifest endpoint returned an invalid signed payload.",
                 exc,
             )
         ) from exc
@@ -178,7 +178,7 @@ async def get_runtime_release_validation_handler(arguments: dict[str, Any]) -> s
     except ValidationError as exc:
         raise RuntimeError(
             format_validation_error_message(
-                "Codna runtime release validation endpoint returned an invalid signed payload.",
+                "Algenta runtime release validation endpoint returned an invalid signed payload.",
                 exc,
             )
         ) from exc
@@ -203,7 +203,7 @@ async def get_runtime_modules_handler(arguments: dict[str, Any]) -> str:
     except ValidationError as exc:
         raise RuntimeError(
             format_validation_error_message(
-                "Codna runtime modules endpoint returned an invalid signed payload.",
+                "Algenta runtime modules endpoint returned an invalid signed payload.",
                 exc,
             )
         ) from exc
@@ -228,7 +228,7 @@ async def get_runtime_benchmarks_handler(arguments: dict[str, Any]) -> str:
     except ValidationError as exc:
         raise RuntimeError(
             format_validation_error_message(
-                "Codna runtime benchmarks endpoint returned an invalid signed payload.",
+                "Algenta runtime benchmarks endpoint returned an invalid signed payload.",
                 exc,
             )
         ) from exc

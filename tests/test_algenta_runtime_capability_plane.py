@@ -162,7 +162,7 @@ def test_algenta_runtime_local_capability_plane_rejects_algenta_managed_executio
     runtime = Runtime(mode="local")
     skill = runtime.enable_skill(
         skill_name="Governed Skill",
-        instruction="Run through Codna-managed execution.",
+        instruction="Run through Algenta-managed execution.",
         execution_owner="algenta_managed",
     )
 

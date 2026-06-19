@@ -6,7 +6,7 @@ from typing import Any
 from algenta.runtime_errors import RuntimeConfigurationError, RuntimeValidationError
 
 _HOSTED_LOCAL_RUNTIME_UNAVAILABLE_MESSAGE = (
-    "Hosted local runtime limits require the full Codna local runtime components. "
+    "Hosted local runtime limits require the full Algenta local runtime components. "
     "Use the repository runtime path or install the full runtime distribution before "
     "enabling enforce_limits."
 )

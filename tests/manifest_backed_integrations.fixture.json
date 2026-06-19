@@ -1,7 +1,7 @@
 [
   {
     "name": "ChatGPT",
-    "description": "Hosted app and actions surface for Codna discovery, exact query, simulation, persisted runtime follow-up, and control-plane review.",
+    "description": "Hosted app and actions surface for Algenta discovery, exact query, simulation, persisted runtime follow-up, and control-plane review.",
     "icon": "chatgpt",
     "capabilities": [
       "read",

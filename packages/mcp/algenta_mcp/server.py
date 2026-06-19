@@ -1,5 +1,5 @@
 """
-Codna MCP Server — entry point.
+Algenta MCP Server — entry point.
 
 Transports:
   stdio  — for Claude Desktop, Cursor, Zed, Windsurf, VS Code (Cline/Continue)
@@ -57,7 +57,7 @@ def create_fastapi_router() -> APIRouter | None:
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Codna MCP Server")
+    parser = argparse.ArgumentParser(description="Algenta MCP Server")
     parser.add_argument(
         "--mode",
         "--transport",

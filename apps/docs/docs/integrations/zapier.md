@@ -4,7 +4,7 @@ sidebar_position: 6
 
 # Zapier
 
-Connect Codna to 5,000+ apps via Zapier's no-code automation platform.
+Connect Algenta to 5,000+ apps via Zapier's no-code automation platform.
 
 Use one base URL consistently across every Zapier webhook step:
 
@@ -45,7 +45,7 @@ Zapier webhooks can inspect the exact filter model before building requests.
 ## Example Zap
 
 **Trigger**: New form submission (Typeform)  
-**Action 1**: List Codna datasets with `search=orders&compact=1`  
+**Action 1**: List Algenta datasets with `search=orders&compact=1`  
 **Action 2**: Query the selected dataset with `POST /v1/query/batch`  
 **Action 3**: Send Slack message with the returned metrics
 

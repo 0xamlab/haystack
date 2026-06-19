@@ -4,7 +4,7 @@ from typing import Any
 
 
 class DecisionEngineError(Exception):
-    """Base exception for all Codna SDK errors."""
+    """Base exception for all Algenta SDK errors."""
 
     def __init__(
         self,

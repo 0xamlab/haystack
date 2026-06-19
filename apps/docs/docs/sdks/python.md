@@ -519,7 +519,7 @@ Every stored repository `DecisionPlan` also records planner provenance in
 
 Use these surfaces as follows:
 
-- `get_contract()` when you need the live machine-readable Codna contract from the running service
+- `get_contract()` when you need the live machine-readable Algenta contract from the running service
 - `get_runtime_manifest()`, `get_runtime_modules()`, `get_runtime_benchmarks()`, and `get_runtime_release_validation()` when you need the signed runtime proof surfaces from the running service
 - `get_runtime_benchmarks()` also includes benchmark-class `evidence_paths`, so benchmark claims retain concrete artifact linkage rather than only code and description labels
 - `get_runtime_benchmarks()` currently exposes the quality-gate benchmark classes `B6` checkpoint and replay overhead, `B7` MCP tool latency, `B9` RAG retrieval quality and latency, and `B10` decision workflow completion latency

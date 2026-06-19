@@ -7,7 +7,7 @@ slug: /quickstart
 
 In this guide you will:
 
-1. Start Codna locally
+1. Start Algenta locally
 2. Verify the API is running
 3. Run your first decision or first governed dataset query
 
@@ -32,7 +32,7 @@ The installer:
 The installer prints:
 
 ```text
-Codna is running.
+Algenta is running.
 
 API: http://localhost:8000
 Health: curl http://localhost:8000/v1/health
@@ -129,11 +129,11 @@ Expected response:
 }
 ```
 
-No SDK or Python install is required to use Codna.
+No SDK or Python install is required to use Algenta.
 
 ## First governed dataset query
 
-If you are using Codna for governed data/query rather than simulation, start
+If you are using Algenta for governed data/query rather than simulation, start
 with the live machine-readable contract:
 
 ```bash

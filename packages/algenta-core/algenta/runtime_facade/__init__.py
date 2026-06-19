@@ -189,7 +189,7 @@ from algenta.runtime_facade._internal_helpers import _InternalHelpersMixin  # no
 
 class Runtime(_ConnectorsDatasetsMixin, _RepositoryImportsMixin, _ExecutionQueryMixin, _JobsTriggersMixin, _AccountBillingAdminMixin, _DecisionsProductsMixin, _LLMMixin, _AgentRunsMixin, _CapabilityPlaneMixin, _InternalHelpersMixin):
     """
-    Runtime-first Codna facade.
+    Runtime-first Algenta facade.
 
     Local mode executes against connected in-memory or file-backed sources.
     API mode delegates to the lower-level `decision_engine.AlgentaClient`.

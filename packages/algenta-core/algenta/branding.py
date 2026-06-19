@@ -1,4 +1,4 @@
-"""Terminal branding helpers for Codna CLI and demo surfaces."""
+"""Terminal branding helpers for Algenta CLI and demo surfaces."""
 
 from __future__ import annotations
 
@@ -92,7 +92,7 @@ def source_import_banner(
     latency_label = f"{latency_ms:.3f}ms" if latency_ms is not None else "n/a"
     row_label = str(row_count) if row_count is not None else "unknown"
     return runtime_banner(
-        "Codna Source Import",
+        "Algenta Source Import",
         [
             f"Mode: {mode} | Status: {status}",
             f"Source: {source_name}",
@@ -140,4 +140,4 @@ def source_bundle_banner(
     else:
         detail_lines.append("- None")
 
-    return runtime_banner("Codna Source Bundle", detail_lines)
+    return runtime_banner("Algenta Source Bundle", detail_lines)

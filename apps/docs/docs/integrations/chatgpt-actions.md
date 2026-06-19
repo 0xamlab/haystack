@@ -4,11 +4,11 @@ sidebar_position: 2
 
 # ChatGPT Actions
 
-Let ChatGPT call Codna automatically during conversations.
+Let ChatGPT call Algenta automatically during conversations.
 
 ## Prerequisites
 
-- An Codna API key
+- An Algenta API key
 - A GPT with Actions enabled
 - Read access for discovery and query routes
 
@@ -41,7 +41,7 @@ private predicate syntax.
 
 The complete spec is at [`examples/chatgpt-actions/openapi_actions.yaml`](https://github.com/decisionengine/decision-engine/tree/main/examples/chatgpt-actions/openapi_actions.yaml).
 
-That action surface now includes the primary read-only Codna flow plus
+That action surface now includes the primary read-only Algenta flow plus
 persisted runtime and control-plane review:
 
 - `GET /v1/meta/contract`
@@ -78,7 +78,7 @@ After enabling write actions:
 ## Tips
 
 - Keep the GPT read-only by default and let it start with `search + compact` discovery.
-- Use `GET /v1/meta/contract` when the GPT needs the live machine-readable Codna capability map.
+- Use `GET /v1/meta/contract` when the GPT needs the live machine-readable Algenta capability map.
 - For older self-hosted nodes that still return `404` there, use `/openapi.json`
   and read `x-primary-data-query-contract` instead.
 - Read `primary_data_query_contract.governed_filter_contract` when the GPT must
@@ -95,7 +95,7 @@ After enabling write actions:
 ## Revoke or disconnect
 
 - Remove the imported action from the GPT
-- Revoke the Codna API key if the GPT should no longer have access
+- Revoke the Algenta API key if the GPT should no longer have access
 - Use `disconnect_data` only when you want to remove a dataset, not just disconnect ChatGPT
 
 ## Troubleshooting

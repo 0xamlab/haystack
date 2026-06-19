@@ -1,5 +1,5 @@
 """
-Compatibility wrapper for the async Codna API client.
+Compatibility wrapper for the async Algenta API client.
 
 This module exposes the Cloud Managed path by default. In `self_hosted` and `air_gapped`,
 pass an explicit self-hosted `base_url` and use the API key
