@@ -1,9 +1,8 @@
 # Algenta
 
 <p align="center">
-  <strong>Self-hosted decision infrastructure for structured data.</strong><br>
-  Deploy Algenta on your infrastructure, integrate over HTTP API or SDK, and use the local runtime
-  only when you explicitly want a development or embedded surface.
+  <strong>Algenta is the engine — one self-hosted, deterministic computational runtime + SDK that specialized products build on.</strong><br>
+  Deploy on your own infrastructure and integrate over HTTP API or SDK; the local runtime is a development/embedded surface.
 </p>
 
 <p align="center">
@@ -14,18 +13,34 @@
 
 ## What Algenta is
 
+Algenta is the **engine**, not a vertical application. It is a local-first deterministic
+**computational intelligence runtime** — a large library of mathematical/operational functions and
+high-performance libraries, plus simulation, decision planning, an agent runtime, decision memory,
+and governed execution — exposed through one universal **API / SDK / MCP** surface, with metering,
+auth, BYOK, and enterprise controls.
+
+### Algenta and its products
+
+Specialized products **consume the Algenta SDK** — they are surfaces on top of the one engine, not
+the engine itself:
+
+| Product | Domain |
+| --- | --- |
+| **Codna** | coding — repository intelligence: triage, fix / PR-repair, blast-radius, simulate |
+| **Mission** | API-first local integration (`:8000` API + MCP stack) |
+| **Cohenta** | marketing intelligence |
+| **Decimas** | trading / market simulation |
+| **Escrypto** | crypto governance |
+
+This repository is **Algenta** (the engine + its API/worker/SDK/MCP/local-runtime surfaces). Each
+product lives in its own repo and talks to Algenta over the API/SDK.
+
 Algenta is **not**:
 
 - an LLM-to-SQL generator
 - a semantic-model-first BI layer
 - an agent framework
 - a `pip install` product pretending to be a platform
-
-Algenta **is**:
-
-- a self-hosted service you deploy on your infrastructure
-- a deterministic execution layer for structured data
-- a backend/runtime system with API, worker, SDK, and optional local-runtime surfaces
 
 Official position:
 
