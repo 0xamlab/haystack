@@ -4,14 +4,14 @@ Async Codna API client for use with asyncio.
 Usage:
     import asyncio
     import os
-    from decision_engine import AsyncCodnaClient
+    from decision_engine import AsyncAlgentaClient
 
     async def main():
         api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
         if not api_key:
             raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
 
-        async with AsyncCodnaClient(api_key=api_key) as client:
+        async with AsyncAlgentaClient(api_key=api_key) as client:
             result = await client.simulate(
                 mode="auto",
                 scenario={
@@ -296,7 +296,7 @@ class AsyncDecisionEngineClient(_AsyncSimulationQueryMixin, _AsyncProductDecisio
     """
     Async HTTP client for the Codna API.
 
-    `AsyncCodnaClient` is the preferred public alias.
+    `AsyncAlgentaClient` is the preferred public alias.
     `AsyncDecisionEngineClient` remains available for backward compatibility.
     """
 
@@ -398,5 +398,8 @@ class AsyncDecisionEngineClient(_AsyncSimulationQueryMixin, _AsyncProductDecisio
         await self.aclose()
 
 
-class AsyncCodnaClient(AsyncDecisionEngineClient):
+class AsyncAlgentaClient(AsyncDecisionEngineClient):
     """Preferred public async client name for the Codna API."""
+
+
+AsyncCodnaClient = AsyncAlgentaClient  # back-compat alias

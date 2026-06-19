@@ -102,7 +102,7 @@ async def test_get_contract_tool_handler_rejects_invalid_payload(monkeypatch) ->
                 "direct_sdk": {
                     "typescript": {
                         "import_package": "algenta-sdk",
-                        "preferred_client_class": "CodnaClient",
+                        "preferred_client_class": "AlgentaClient",
                         "compatibility_client_class": "DecisionEngineClient",
                         "list_providers_method": "listCapabilityProviders",
                         "get_provider_method": "getCapabilityProvider",

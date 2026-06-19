@@ -57,10 +57,10 @@ a broader key.
 
 The Python and TypeScript SDKs send the required stable device headers
 automatically. Raw HTTP clients using capped keys must send both
-`X-Codna-Device-Id`, `X-Codna-Platform`, and
-`X-Codna-Hostname-Hash` on authenticated requests. On the first successful
+`X-Algenta-Device-Id`, `X-Algenta-Platform`, and
+`X-Algenta-Hostname-Hash` on authenticated requests. On the first successful
 hosted request for a new capped device, the API also returns
-`X-Codna-Device-Binding-Token`. Store that token and replay it on later
+`X-Algenta-Device-Binding-Token`. Store that token and replay it on later
 requests from the same device. If you omit it later, the request fails closed
 with `device_binding_token_required`; if you send the wrong value, it fails
 closed with `invalid_device_binding_token`.

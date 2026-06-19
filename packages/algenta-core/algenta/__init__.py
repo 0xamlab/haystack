@@ -523,6 +523,8 @@ _LAZY_EXPORTS = {
         "MojoFunctionNotRegisteredError",
     ),
     "MojoExecutionError": ("algenta.mojo_errors", "MojoExecutionError"),
+    "AlgentaClient": ("algenta.client", "AlgentaClient"),
+    # Back-compat: historically exported as CodnaClient (#157 rename); Algenta is the engine.
     "CodnaClient": ("algenta.client", "CodnaClient"),
     "Result": ("algenta.simple", "Result"),
     "decision": ("algenta.simple", "decision"),

@@ -1,8 +1,8 @@
 """
-Live CodnaClient integration tests against a real API server.
+Live AlgentaClient integration tests against a real API server.
 
 This validates the direct cloud wrapper path:
-  - CodnaClient health and usage helpers
+  - AlgentaClient health and usage helpers
   - governed contract and runtime-proof routes
   - decision runtime helpers
   - plan-aligned LLM utility routes
@@ -48,7 +48,7 @@ for path in (str(ALGENTA_CORE), str(PYTHON_SDK), str(ROOT)):
         sys.path.insert(0, path)
 
 # ruff: noqa: E402
-from algenta import CodnaClient  # noqa: E402
+from algenta import AlgentaClient  # noqa: E402
 from decision_engine import DecisionEngineError  # noqa: E402
 
 from tests._manifest_backed_integrations import (
@@ -236,7 +236,7 @@ def _assert_empty_provider_trace(result, *, output_items: bool = False) -> None:
 
 
 def _create_live_api_key_with_plan_fallback(
-    client: CodnaClient,
+    client: AlgentaClient,
     *,
     label: str,
 ) -> tuple[dict[str, Any], int]:
@@ -294,7 +294,7 @@ def _live_trigger_request(name: str) -> dict[str, object]:
             },
             "runs": 50,
         },
-        "description": "Live CodnaClient trigger lifecycle check.",
+        "description": "Live AlgentaClient trigger lifecycle check.",
         "auto_execute": False,
     }
 
@@ -305,7 +305,7 @@ def _live_refreshable_dataset_request(prefix: str, source_url: str) -> dict[str,
         "connection_type": "api",
         "provider": "rest",
         "dataset_name": dataset_name,
-        "description": "Live CodnaClient refreshable dataset check.",
+        "description": "Live AlgentaClient refreshable dataset check.",
         "connection_config": {
             "url": source_url,
             "data_path": "items",
@@ -317,7 +317,7 @@ def _live_saved_connector_request(prefix: str, source_url: str) -> dict[str, obj
     return {
         "name": f"{prefix}-{time.time_ns()}",
         "connector_type": "rest",
-        "description": "Live CodnaClient saved connector check.",
+        "description": "Live AlgentaClient saved connector check.",
         "config": {
             "url": source_url,
             "data_path": "items",
@@ -752,19 +752,19 @@ def _missing_live_api_key_reason(exc: BaseException) -> str | None:
         error = payload.get("error") if isinstance(payload, dict) else None
         if status == 401 or (isinstance(error, dict) and error.get("code") == "invalid_api_key"):
             return (
-                "DE_API_KEY is not set; skipping authenticated CodnaClient checks that require a "
+                "DE_API_KEY is not set; skipping authenticated AlgentaClient checks that require a "
                 "real live key."
             )
     status = getattr(exc, "status_code", None)
     if isinstance(status, int) and status == 401:
         return (
-            "DE_API_KEY is not set; skipping authenticated CodnaClient checks that require a "
+            "DE_API_KEY is not set; skipping authenticated AlgentaClient checks that require a "
             "real live key."
         )
     text = str(exc)
     if "invalid_api_key" in text or "invalid, expired, or has been revoked" in text:
         return (
-            "DE_API_KEY is not set; skipping authenticated CodnaClient checks that require a "
+            "DE_API_KEY is not set; skipping authenticated AlgentaClient checks that require a "
             "real live key."
         )
     return None
@@ -835,13 +835,13 @@ def _write_summary() -> Path:
 
 def _preflight() -> None:
     if not API_KEY:
-        raise RuntimeError("DE_API_KEY is required for live CodnaClient integration.")
+        raise RuntimeError("DE_API_KEY is required for live AlgentaClient integration.")
     response = httpx.get(f"{BASE_URL}/v1/health", timeout=5.0)
     assert response.status_code == 200, f"/v1/health returned {response.status_code}"
 
 
 def test_client_health_and_usage() -> None:
-    client = CodnaClient(api_key=API_KEY, base_url=BASE_URL)
+    client = AlgentaClient(api_key=API_KEY, base_url=BASE_URL)
     health = client.health()
     assert health["status"] == "ok", health
     usage = client.usage()
@@ -850,7 +850,7 @@ def test_client_health_and_usage() -> None:
 
 
 def test_client_account_and_api_key_surface() -> None:
-    client = CodnaClient(api_key=API_KEY, base_url=BASE_URL)
+    client = AlgentaClient(api_key=API_KEY, base_url=BASE_URL)
 
     me = client.me()
     assert isinstance(me, dict), type(me)
@@ -895,7 +895,7 @@ def test_client_account_and_api_key_surface() -> None:
 
 
 def test_client_control_plane_surface() -> None:
-    client = CodnaClient(api_key=API_KEY, base_url=BASE_URL)
+    client = AlgentaClient(api_key=API_KEY, base_url=BASE_URL)
 
     team = client.list_team_members(page=1, limit=50)
     assert team.page == 1
@@ -991,7 +991,7 @@ def test_client_control_plane_surface() -> None:
 
 
 def test_client_dataset_surface() -> None:
-    client = CodnaClient(api_key=API_KEY, base_url=BASE_URL)
+    client = AlgentaClient(api_key=API_KEY, base_url=BASE_URL)
     with static_json_server(default_refreshable_dataset_payload()) as source_url:
         connectors = client.list_connectors(page=1, limit=50)
         connector_items = _value(connectors, "connectors")
@@ -1037,7 +1037,7 @@ def test_client_dataset_surface() -> None:
 
 
 def test_client_saved_connector_surface() -> None:
-    client = CodnaClient(api_key=API_KEY, base_url=BASE_URL)
+    client = AlgentaClient(api_key=API_KEY, base_url=BASE_URL)
     connector_id: str | None = None
     with static_json_server(default_refreshable_dataset_payload()) as source_url:
         preview_tested = client.preview_test_connector(
@@ -1072,10 +1072,10 @@ def test_client_saved_connector_surface() -> None:
 
             updated = client.update_connector(
                 connector_id,
-                description="Live CodnaClient connector updated description.",
+                description="Live AlgentaClient connector updated description.",
             )
             assert str(_value(updated, "id")) == connector_id
-            assert _value(updated, "description") == "Live CodnaClient connector updated description."
+            assert _value(updated, "description") == "Live AlgentaClient connector updated description."
 
             tested = client.test_connector(connector_id)
             assert _value(tested, "success") is True
@@ -1094,7 +1094,7 @@ def test_client_repository_surface() -> None:
     if reason is not None:
         raise EnvironmentBlocked(reason)
 
-    client = CodnaClient(api_key=API_KEY, base_url=BASE_URL)
+    client = AlgentaClient(api_key=API_KEY, base_url=BASE_URL)
     capabilities = client.get_repository_intelligence_capabilities()
     assert_repository_intelligence_capabilities_payload(capabilities)
     repository_id: str | None = None
@@ -1247,7 +1247,7 @@ def _value(obj: Any, key: str) -> Any:
 
 
 def test_client_trigger_surface() -> None:
-    client = CodnaClient(api_key=API_KEY, base_url=BASE_URL)
+    client = AlgentaClient(api_key=API_KEY, base_url=BASE_URL)
     created = client.register_trigger(**_live_trigger_request(f"algenta-client-{time.time_ns()}"))
     trigger_id = str(_value(created, "trigger_id"))
     try:
@@ -1277,7 +1277,7 @@ def test_client_trigger_surface() -> None:
 
 
 def test_client_jobs_surface() -> None:
-    client = CodnaClient(api_key=API_KEY, base_url=BASE_URL)
+    client = AlgentaClient(api_key=API_KEY, base_url=BASE_URL)
 
     try:
         submitted = client.submit_job(
@@ -1316,7 +1316,7 @@ def test_client_jobs_surface() -> None:
 
 
 def test_client_contract_and_runtime_proof_routes() -> None:
-    client = CodnaClient(api_key=API_KEY, base_url=BASE_URL)
+    client = AlgentaClient(api_key=API_KEY, base_url=BASE_URL)
     contract = client.get_contract()
     assert isinstance(contract.api_base_url, str) and contract.api_base_url.startswith("http")
     assert contract.mcp_endpoint.endswith("/mcp/sse")
@@ -1411,7 +1411,7 @@ def test_client_contract_and_runtime_proof_routes() -> None:
 
 
 def test_client_llm_utility_surface() -> None:
-    client = CodnaClient(api_key=API_KEY, base_url=BASE_URL)
+    client = AlgentaClient(api_key=API_KEY, base_url=BASE_URL)
 
     models = client.list_models()
     _assert_model_catalog_provider_metadata(models)
@@ -1479,7 +1479,7 @@ def test_client_llm_utility_surface() -> None:
 
 
 def test_client_deployment_control_surface() -> None:
-    client = CodnaClient(api_key=API_KEY, base_url=BASE_URL)
+    client = AlgentaClient(api_key=API_KEY, base_url=BASE_URL)
 
     deployment_regions = client.list_deployment_regions()
     assert deployment_regions.providers
@@ -1501,7 +1501,7 @@ def test_client_deployment_control_surface() -> None:
 
 
 def test_client_deployment_lifecycle_surface() -> None:
-    client = CodnaClient(api_key=API_KEY, base_url=BASE_URL)
+    client = AlgentaClient(api_key=API_KEY, base_url=BASE_URL)
 
     deployment = client.get_deployment()
     if deployment is not None:
@@ -1538,7 +1538,7 @@ def test_client_deployment_lifecycle_surface() -> None:
 
 
 def test_client_decision_runtime_surface() -> None:
-    client = CodnaClient(api_key=API_KEY, base_url=BASE_URL)
+    client = AlgentaClient(api_key=API_KEY, base_url=BASE_URL)
     try:
         recommendation = client.recommend(
             {
@@ -1648,7 +1648,7 @@ def test_client_decision_runtime_surface() -> None:
 
 
 def test_client_streaming_llm_surface() -> None:
-    client = CodnaClient(api_key=API_KEY, base_url=BASE_URL)
+    client = AlgentaClient(api_key=API_KEY, base_url=BASE_URL)
     chat_chunks = list(
         client.stream_chat_completions([{"role": "user", "content": "summarize alpha beta"}])
     )
@@ -1667,7 +1667,7 @@ def test_client_streaming_llm_surface() -> None:
 
 
 def test_client_product_surface() -> None:
-    client = CodnaClient(api_key=API_KEY, base_url=BASE_URL)
+    client = AlgentaClient(api_key=API_KEY, base_url=BASE_URL)
     try:
         decision = client.product_decision(
             {
@@ -1742,7 +1742,7 @@ def test_client_product_surface() -> None:
 
 
 def test_client_plan_decision_and_agent_runs() -> None:
-    client = CodnaClient(api_key=API_KEY, base_url=BASE_URL)
+    client = AlgentaClient(api_key=API_KEY, base_url=BASE_URL)
     try:
         plan = client.plan_decision(
             {
@@ -1790,7 +1790,7 @@ def test_client_plan_decision_and_agent_runs() -> None:
 
 
 def test_client_agent_run_event_stream() -> None:
-    client = CodnaClient(api_key=API_KEY, base_url=BASE_URL)
+    client = AlgentaClient(api_key=API_KEY, base_url=BASE_URL)
     try:
         created = client.create_agent_run(
             task=f"Search benchmark notes {time.time_ns()}",
@@ -1810,7 +1810,7 @@ def test_client_agent_run_event_stream() -> None:
 
 
 def test_client_bound_simulate_cloud_path() -> None:
-    client = CodnaClient(api_key=API_KEY, base_url=BASE_URL)
+    client = AlgentaClient(api_key=API_KEY, base_url=BASE_URL)
     try:
         result = client.simulate.risk(revenue=120000, cost=-70000, runs=200)
     except Exception as exc:  # noqa: BLE001
@@ -1829,27 +1829,27 @@ def main() -> int:
 
     _preflight()
 
-    check("CodnaClient health() + usage()", test_client_health_and_usage)
-    check("CodnaClient account + API-key surface", test_client_account_and_api_key_surface)
-    check("CodnaClient saved connector lifecycle surface", test_client_saved_connector_surface)
-    check("CodnaClient connectors + dataset lifecycle surface", test_client_dataset_surface)
-    check("CodnaClient repository intelligence surface", test_client_repository_surface)
+    check("AlgentaClient health() + usage()", test_client_health_and_usage)
+    check("AlgentaClient account + API-key surface", test_client_account_and_api_key_surface)
+    check("AlgentaClient saved connector lifecycle surface", test_client_saved_connector_surface)
+    check("AlgentaClient connectors + dataset lifecycle surface", test_client_dataset_surface)
+    check("AlgentaClient repository intelligence surface", test_client_repository_surface)
     check(
-        "CodnaClient team/credits/metering/audit/execution-policy helpers",
+        "AlgentaClient team/credits/metering/audit/execution-policy helpers",
         test_client_control_plane_surface,
     )
-    check("CodnaClient async jobs surface", test_client_jobs_surface)
-    check("CodnaClient contract + runtime proof routes", test_client_contract_and_runtime_proof_routes)
-    check("CodnaClient LLM utility surface", test_client_llm_utility_surface)
-    check("CodnaClient trigger lifecycle surface", test_client_trigger_surface)
-    check("CodnaClient deployment control surface", test_client_deployment_control_surface)
-    check("CodnaClient deployment create/delete lifecycle", test_client_deployment_lifecycle_surface)
-    check("CodnaClient decision runtime helpers", test_client_decision_runtime_surface)
-    check("CodnaClient streaming LLM surface", test_client_streaming_llm_surface)
-    check("CodnaClient simplified product surface", test_client_product_surface)
-    check("CodnaClient plan_decision + agent-runs lifecycle", test_client_plan_decision_and_agent_runs)
-    check("CodnaClient agent-run event stream", test_client_agent_run_event_stream)
-    check("CodnaClient bound simulate cloud path", test_client_bound_simulate_cloud_path)
+    check("AlgentaClient async jobs surface", test_client_jobs_surface)
+    check("AlgentaClient contract + runtime proof routes", test_client_contract_and_runtime_proof_routes)
+    check("AlgentaClient LLM utility surface", test_client_llm_utility_surface)
+    check("AlgentaClient trigger lifecycle surface", test_client_trigger_surface)
+    check("AlgentaClient deployment control surface", test_client_deployment_control_surface)
+    check("AlgentaClient deployment create/delete lifecycle", test_client_deployment_lifecycle_surface)
+    check("AlgentaClient decision runtime helpers", test_client_decision_runtime_surface)
+    check("AlgentaClient streaming LLM surface", test_client_streaming_llm_surface)
+    check("AlgentaClient simplified product surface", test_client_product_surface)
+    check("AlgentaClient plan_decision + agent-runs lifecycle", test_client_plan_decision_and_agent_runs)
+    check("AlgentaClient agent-run event stream", test_client_agent_run_event_stream)
+    check("AlgentaClient bound simulate cloud path", test_client_bound_simulate_cloud_path)
 
     passed = sum(1 for status, *_ in results if status == PASS)
     skipped = sum(1 for status, *_ in results if status == SKIP)

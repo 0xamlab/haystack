@@ -313,10 +313,10 @@ def test_decision_engine_root_uses_lazy_exports_for_clients_and_models() -> None
             sys.modules.pop(module_name, None)
 
         async_client_cls = decision_engine.AsyncDecisionEngineClient
-        async_algenta_client_cls = decision_engine.AsyncCodnaClient
+        async_algenta_client_cls = decision_engine.AsyncAlgentaClient
 
         assert async_client_cls.__name__ == "AsyncDecisionEngineClient"
-        assert async_algenta_client_cls.__name__ == "AsyncCodnaClient"
+        assert async_algenta_client_cls.__name__ == "AsyncAlgentaClient"
         assert issubclass(async_algenta_client_cls, async_client_cls)
         assert "decision_engine.async_client" not in sys.modules
         assert "decision_engine.async_client_facade" in sys.modules
@@ -365,10 +365,10 @@ def test_decision_engine_root_uses_lazy_exports_for_clients_and_models() -> None
             sys.modules.pop(module_name, None)
 
         client_cls = decision_engine.DecisionEngineClient
-        algenta_client_cls = decision_engine.CodnaClient
+        algenta_client_cls = decision_engine.AlgentaClient
 
         assert client_cls.__name__ == "DecisionEngineClient"
-        assert algenta_client_cls.__name__ == "CodnaClient"
+        assert algenta_client_cls.__name__ == "AlgentaClient"
         assert issubclass(algenta_client_cls, client_cls)
         assert "decision_engine.client" not in sys.modules
         assert "decision_engine.client_facade" in sys.modules

@@ -16,7 +16,7 @@ from __future__ import annotations
 import json
 import os
 
-from decision_engine import CodnaClient
+from decision_engine import AlgentaClient
 from examples.shared.privacy_profile import resolve_example_api_base_url
 
 
@@ -27,8 +27,8 @@ def _resolve_api_key() -> str:
     return api_key
 
 
-def _client() -> CodnaClient:
-    return CodnaClient(
+def _client() -> AlgentaClient:
+    return AlgentaClient(
         api_key=_resolve_api_key(),
         base_url=resolve_example_api_base_url(
             component="LangGraph capability router example",

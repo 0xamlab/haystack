@@ -192,7 +192,7 @@ class Runtime(_ConnectorsDatasetsMixin, _RepositoryImportsMixin, _ExecutionQuery
     Runtime-first Codna facade.
 
     Local mode executes against connected in-memory or file-backed sources.
-    API mode delegates to the lower-level `decision_engine.CodnaClient`.
+    API mode delegates to the lower-level `decision_engine.AlgentaClient`.
     """
 
     def __init__(

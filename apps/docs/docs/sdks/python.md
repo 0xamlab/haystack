@@ -20,13 +20,13 @@ pip install algenta-sdk
 ```python
 import os
 
-from decision_engine import CodnaClient
+from decision_engine import AlgentaClient
 
 api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
 if not api_key:
     raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
 
-client = CodnaClient(
+client = AlgentaClient(
     api_key=api_key,
     base_url="http://localhost:8000",
 )
@@ -189,13 +189,13 @@ service identity across restarts.
 ```python
 import os
 
-from decision_engine import CodnaClient
+from decision_engine import AlgentaClient
 
 api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
 if not api_key:
     raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
 
-client = CodnaClient(
+client = AlgentaClient(
     api_key=api_key,
     base_url="http://localhost:8000",
 )
@@ -221,13 +221,13 @@ print(result.recommended_action)
 ```python
 import os
 
-from decision_engine import CodnaClient
+from decision_engine import AlgentaClient
 
 api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
 if not api_key:
     raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
 
-client = CodnaClient(
+client = AlgentaClient(
     api_key=api_key,
     base_url="http://localhost:8000",
 )
@@ -284,13 +284,13 @@ print(paused.status)
 ```python
 import os
 
-from decision_engine import CodnaClient, QueryFilterCondition, QueryFilterSpec
+from decision_engine import AlgentaClient, QueryFilterCondition, QueryFilterSpec
 
 api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
 if not api_key:
     raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
 
-client = CodnaClient(
+client = AlgentaClient(
     api_key=api_key,
     base_url="http://localhost:8000",
 )
@@ -384,13 +384,13 @@ tools, and runtime libraries.
 ```python
 import os
 
-from decision_engine import CodnaClient
+from decision_engine import AlgentaClient
 
 api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
 if not api_key:
     raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
 
-client = CodnaClient(
+client = AlgentaClient(
     api_key=api_key,
     base_url="http://localhost:8000",
 )

@@ -43,7 +43,7 @@ async def test_capped_key_requires_device_header_for_hosted_api(client, app) -> 
     body = response.json()
     error = body.get("error") or body["detail"]["error"]
     assert error["code"] == "device_binding_required"
-    assert error["required_header"] == "X-Codna-Device-Id"
+    assert error["required_header"] == "X-Algenta-Device-Id"
 
 
 @pytest.mark.anyio
@@ -77,10 +77,10 @@ async def test_capped_key_requires_hostname_hash_for_hosted_api(client, app) -> 
             "/v1/me",
             headers={
                 "X-API-Key": runtime_key,
-                "X-Codna-Device-Id": "hosted-device-000001",
-                "X-Codna-Platform": "linux",
-                "X-Codna-Platform-Version": "6.8",
-                "X-Codna-SDK-Version": "algenta-test/1.0.0",
+                "X-Algenta-Device-Id": "hosted-device-000001",
+                "X-Algenta-Platform": "linux",
+                "X-Algenta-Platform-Version": "6.8",
+                "X-Algenta-SDK-Version": "algenta-test/1.0.0",
             },
         )
     finally:
@@ -90,7 +90,7 @@ async def test_capped_key_requires_hostname_hash_for_hosted_api(client, app) -> 
     body = response.json()
     error = body.get("error") or body["detail"]["error"]
     assert error["code"] == "device_fingerprint_required"
-    assert error["required_header"] == "X-Codna-Hostname-Hash"
+    assert error["required_header"] == "X-Algenta-Hostname-Hash"
 
 
 @pytest.mark.anyio
@@ -124,11 +124,11 @@ async def test_capped_key_requires_platform_for_hosted_api(client, app) -> None:
             "/v1/me",
             headers={
                 "X-API-Key": runtime_key,
-                "X-Codna-Device-Id": "hosted-device-000001",
-                "X-Codna-Platform": "",
-                "X-Codna-Platform-Version": "6.8",
-                "X-Codna-Hostname-Hash": "deadbeef" * 8,
-                "X-Codna-SDK-Version": "algenta-test/1.0.0",
+                "X-Algenta-Device-Id": "hosted-device-000001",
+                "X-Algenta-Platform": "",
+                "X-Algenta-Platform-Version": "6.8",
+                "X-Algenta-Hostname-Hash": "deadbeef" * 8,
+                "X-Algenta-SDK-Version": "algenta-test/1.0.0",
             },
         )
     finally:
@@ -138,6 +138,6 @@ async def test_capped_key_requires_platform_for_hosted_api(client, app) -> None:
     body = response.json()
     error = body.get("error") or body["detail"]["error"]
     assert error["code"] == "device_platform_required"
-    assert error["required_header"] == "X-Codna-Platform"
+    assert error["required_header"] == "X-Algenta-Platform"
 
 

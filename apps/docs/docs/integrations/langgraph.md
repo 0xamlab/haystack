@@ -23,13 +23,13 @@ pip install algenta-sdk langgraph langchain-openai
 import os
 
 from langchain_core.tools import tool
-from decision_engine import CodnaClient
+from decision_engine import AlgentaClient
 
 api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
 if not api_key:
     raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
 
-client = CodnaClient(api_key=api_key)
+client = AlgentaClient(api_key=api_key)
 
 @tool
 def inspect_algenta_contract() -> dict:
@@ -128,7 +128,7 @@ def route_capability_for_incident(objective: str) -> dict:
 ```
 
 The direct-client snippet above is the Cloud Managed path. In `self_hosted`
-and `air_gapped`, construct `CodnaClient(api_key=..., base_url="http://localhost:8000")`
+and `air_gapped`, construct `AlgentaClient(api_key=..., base_url="http://localhost:8000")`
 or your own self-hosted origin instead.
 
 For wide read-only reports that should return raw columns and rows, use
@@ -167,13 +167,13 @@ that fit naturally into LangGraph approval or follow-up nodes:
 import os
 
 from langchain_core.tools import tool
-from decision_engine import CodnaClient
+from decision_engine import AlgentaClient
 
 api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
 if not api_key:
     raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
 
-client = CodnaClient(api_key=api_key)
+client = AlgentaClient(api_key=api_key)
 
 @tool
 def run_decision_simulation(

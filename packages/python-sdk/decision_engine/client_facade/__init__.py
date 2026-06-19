@@ -4,13 +4,13 @@ Synchronous Codna API client.
 Usage:
     import os
 
-    from decision_engine import CodnaClient
+    from decision_engine import AlgentaClient
 
     api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
     if not api_key:
         raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
 
-    client = CodnaClient(api_key=api_key)
+    client = AlgentaClient(api_key=api_key)
     result = client.simulate(
         mode="auto",
         scenario={
@@ -291,7 +291,7 @@ class DecisionEngineClient(_SimulationQueryMixin, _ProductDecisionMixin, _Trigge
     """
     Synchronous HTTP client for the Codna API.
 
-    `CodnaClient` is the preferred public alias.
+    `AlgentaClient` is the preferred public alias.
     `DecisionEngineClient` remains available for backward compatibility.
 
     Args:
@@ -400,5 +400,10 @@ class DecisionEngineClient(_SimulationQueryMixin, _ProductDecisionMixin, _Trigge
         self.close()
 
 
-class CodnaClient(DecisionEngineClient):
+class AlgentaClient(DecisionEngineClient):
     """Preferred public sync client name for the Codna API."""
+
+
+# Back-compat: the client was historically exported as CodnaClient (the #157 rename).
+# Algenta is the engine/SDK; Codna is a consumer. Keep the old name working.
+CodnaClient = AlgentaClient

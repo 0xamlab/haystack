@@ -1,4 +1,4 @@
-"""_LLMMixin for the CodnaClient class.
+"""_LLMMixin for the AlgentaClient class.
 
 Extracted from packages/algenta-core/algenta/client.py during modularization.
 """

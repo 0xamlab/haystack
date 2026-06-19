@@ -12,9 +12,9 @@ from __future__ import annotations
 from importlib import import_module
 
 _LAZY_EXPORTS = {
-    "AsyncCodnaClient": (
+    "AsyncAlgentaClient": (
         "decision_engine.async_client_facade",
-        "AsyncCodnaClient",
+        "AsyncAlgentaClient",
     ),
     "AsyncDecisionEngineClient": (
         "decision_engine.async_client_facade",

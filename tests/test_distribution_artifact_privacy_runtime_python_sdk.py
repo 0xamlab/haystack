@@ -69,7 +69,7 @@ def test_python_sdk_build_artifact_package_root_client_exports_fail_closed_witho
     monkeypatch.delenv("DE_BASE_URL", raising=False)
     with _artifact_module(artifact_root, "decision_engine", "__init__") as module:
         with pytest.raises(ValueError, match="private profiles cannot target Codna-owned cloud URLs"):
-            module.CodnaClient(api_key="de_live_test")
+            module.AlgentaClient(api_key="de_live_test")
         with pytest.raises(ValueError, match="private profiles cannot target Codna-owned cloud URLs"):
             module.DecisionEngineClient(api_key="de_live_test")
 
@@ -107,7 +107,7 @@ def test_python_sdk_build_artifact_package_root_async_client_exports_fail_closed
     monkeypatch.delenv("DE_BASE_URL", raising=False)
     with _artifact_module(artifact_root, "decision_engine", "__init__") as module:
         with pytest.raises(ValueError, match="private profiles cannot target Codna-owned cloud URLs"):
-            module.AsyncCodnaClient(api_key="de_live_test")
+            module.AsyncAlgentaClient(api_key="de_live_test")
         with pytest.raises(ValueError, match="private profiles cannot target Codna-owned cloud URLs"):
             module.AsyncDecisionEngineClient(api_key="de_live_test")
 

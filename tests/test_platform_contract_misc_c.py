@@ -20,7 +20,7 @@ def test_service_first_docs_keep_runtime_and_sdk_surfaces_distinct() -> None:
     trust_model = (ROOT / "apps" / "docs" / "docs" / "trust-model.md").read_text()
     local_runtime_example = (ROOT / "examples" / "local-runtime" / "README.md").read_text()
 
-    assert 'import { CodnaClient } from "algenta-sdk";' in ts_sdk
+    assert 'import { AlgentaClient } from "algenta-sdk";' in ts_sdk
     assert 'import { DEFAULT_BASE_URL, PRIMARY_DATA_QUERY_CONTRACT } from "algenta-sdk";' in ts_sdk
     assert "await client.simulate({" in ts_sdk
     assert "await client.submitJob({" in ts_sdk
@@ -39,7 +39,7 @@ def test_service_first_docs_keep_runtime_and_sdk_surfaces_distinct() -> None:
     assert 'apiKey: "de_live_xxxxxxxxxxxxxxxxxxxxxxxx"' not in ts_sdk
     assert 'apiKey: "de_test_xxxxxxxxxxxxxxxxxxxxxxxx"' not in ts_sdk
 
-    assert "from decision_engine import CodnaClient" in python_sdk
+    assert "from decision_engine import AlgentaClient" in python_sdk
     assert "from decision_engine import DEFAULT_BASE_URL, PRIMARY_DATA_QUERY_CONTRACT" in python_sdk
     assert "client.simulate(" in python_sdk
     assert "client.submit_job(" in python_sdk
@@ -258,8 +258,8 @@ def test_public_package_and_export_surfaces_use_algenta_branding() -> None:
     assert "wraps Decision Engine" not in products_router
     assert 'title="Codna API"' in legacy_api_main
     assert "Universal Decision Engine" not in legacy_api_main
-    assert "cold `CodnaClient(api_key=...)` construction" in readme
-    assert "cold `AsyncCodnaClient(api_key=...)` construction" in readme
+    assert "cold `AlgentaClient(api_key=...)` construction" in readme
+    assert "cold `AsyncAlgentaClient(api_key=...)` construction" in readme
     assert "cold `DecisionEngineClient(api_key=...)` construction" not in readme
     assert "That constructor is the local/runtime-first surface." in readme
     assert "For Cloud Managed API usage," in readme

@@ -1,4 +1,4 @@
-"""_CapabilitiesSkillsMixin for the CodnaClient class.
+"""_CapabilitiesSkillsMixin for the AlgentaClient class.
 
 Extracted from packages/algenta-core/algenta/client.py during modularization.
 """

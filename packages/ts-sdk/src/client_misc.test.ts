@@ -197,9 +197,9 @@ describe("DecisionEngineClient — misc", () => {
         expect.objectContaining({
           headers: expect.objectContaining({
             Authorization: "Bearer de_test_123",
-            "X-Codna-Device-Id": "ts-device-00000001",
+            "X-Algenta-Device-Id": "ts-device-00000001",
             [HOSTNAME_HASH_HEADER]: expect.any(String),
-            "X-Codna-SDK-Version": "algenta-ts/1.0.0",
+            "X-Algenta-SDK-Version": "algenta-ts/1.0.0",
           }),
         }),
       );
@@ -221,7 +221,7 @@ describe("DecisionEngineClient — misc", () => {
         maxRetries: 0,
         timeout: 1_000,
         defaultHeaders: {
-          "X-Codna-Device-Id": "ts-device-explicit-0001",
+          "X-Algenta-Device-Id": "ts-device-explicit-0001",
         },
       });
 
@@ -235,7 +235,7 @@ describe("DecisionEngineClient — misc", () => {
         "https://example.test/v1/query",
         expect.objectContaining({
           headers: expect.objectContaining({
-            "X-Codna-Device-Id": "ts-device-explicit-0001",
+            "X-Algenta-Device-Id": "ts-device-explicit-0001",
             [HOSTNAME_HASH_HEADER]: expect.any(String),
           }),
         }),

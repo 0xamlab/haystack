@@ -40,7 +40,7 @@ These remain supported. They are simply not the first examples shown anymore.
 The lower-level direct client remains supported:
 
 ```python
-from decision_engine import CodnaClient
+from decision_engine import AlgentaClient
 ```
 
 That direct surface also exposes the governed data/query helpers Mission now needs directly:

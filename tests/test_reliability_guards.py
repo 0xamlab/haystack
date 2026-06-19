@@ -44,7 +44,7 @@ def test_raw_egress_detects_new(tmp_path: Path):
 
 def test_boundary_imports_detects_new(tmp_path: Path):
     _write(tmp_path, "scripts/x.py", "from apps.api_server.services import repository_intelligence_core\n")
-    _write(tmp_path, "scripts/ok.py", "from decision_engine import AsyncCodnaClient\n")
+    _write(tmp_path, "scripts/ok.py", "from decision_engine import AsyncAlgentaClient\n")
     found = {v.path for v in GUARDS["boundary_imports"].scan(tmp_path)}
     assert "scripts/x.py" in found
     assert "scripts/ok.py" not in found

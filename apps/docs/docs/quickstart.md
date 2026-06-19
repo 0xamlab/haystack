@@ -87,10 +87,10 @@ export ALGENTA_API_KEY='<paste the replacement key returned above>'
 An explicit `device_limit` also binds ordinary hosted API traffic for that key,
 not just the device-registration path. The SDKs send the stable device headers
 automatically. If you are calling the API directly with `curl` or a raw HTTP
-client, send `X-Codna-Device-Id`, `X-Codna-Platform`, and
-`X-Codna-Hostname-Hash` on authenticated requests that use a capped key. The
+client, send `X-Algenta-Device-Id`, `X-Algenta-Platform`, and
+`X-Algenta-Hostname-Hash` on authenticated requests that use a capped key. The
 first successful hosted request for a new capped device returns
-`X-Codna-Device-Binding-Token`; store that value and replay it on later
+`X-Algenta-Device-Binding-Token`; store that value and replay it on later
 requests from the same device. The SDKs do this automatically.
 
 ## First request

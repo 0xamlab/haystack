@@ -15,7 +15,7 @@ for path in (str(ALGENTA_CORE), str(PYTHON_SDK), str(ROOT)):
 
 algenta = importlib.import_module("algenta")
 
-CodnaClient = algenta.CodnaClient
+AlgentaClient = algenta.AlgentaClient
 ProductAgentRunOutput = algenta.ProductAgentRunOutput
 ProductDecisionOutput = algenta.ProductDecisionOutput
 ProductForecastOutput = algenta.ProductForecastOutput
@@ -161,7 +161,7 @@ class _FakeRuntimeApiClient:
 
 def test_algenta_client_forwards_product_methods(monkeypatch: pytest.MonkeyPatch) -> None:
     fake_client = _FakeDecisionEngineClient(api_key="de_test", base_url="https://example.test")
-    client = CodnaClient(api_key="de_test", base_url="https://example.test")
+    client = AlgentaClient(api_key="de_test", base_url="https://example.test")
     monkeypatch.setattr(client, "_decision_engine_client", fake_client)
 
     decision = client.product_decision({"inputs": [{"name": "revenue", "value": 120000.0}]})

@@ -86,7 +86,7 @@ an objective should route first:
 - `primary_data_query_contract.governed_filter_contract` declares the selector fields, operator families, type behavior, and validation rules for that same database-agnostic filter model.
 - The canonical OpenAPI document also publishes `x-canonical-mcp-endpoint` and `x-primary-data-query-contract` for machine-readable integration discovery.
 - Official SDKs, the CLI, and MCP tooling automatically fall back to `x-primary-data-query-contract` from `/openapi.json` when an older self-hosted node still returns `404` for `/v1/meta/contract`. Raw HTTP integrations should do the same.
-- That contract now includes the preferred direct-client imports (`decision_engine.CodnaClient`, `decision_engine.AsyncCodnaClient`) and runtime entrypoints (`algenta.Runtime`, `algenta.libraries`, `algenta-sdk` `Runtime`).
+- That contract now includes the preferred direct-client imports (`decision_engine.AlgentaClient`, `decision_engine.AsyncAlgentaClient`) and runtime entrypoints (`algenta.Runtime`, `algenta.libraries`, `algenta-sdk` `Runtime`).
 
 For explicit bridge-table execution, see
 [Multi-hop Joins](/api-reference/multi-hop-joins). That guide covers exact

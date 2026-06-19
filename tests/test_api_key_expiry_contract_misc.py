@@ -147,7 +147,7 @@ async def test_hosted_device_reuse_refreshes_activity_without_consuming_extra_sl
             "/v1/me",
             headers=_hosted_device_headers(runtime_key, device_one),
         )
-        binding_token = first_response.headers["X-Codna-Device-Binding-Token"]
+        binding_token = first_response.headers["X-Algenta-Device-Binding-Token"]
         first_snapshot = await _device_registration_snapshot(
             api_key_id=created["id"],
             device_id=device_one,
@@ -322,7 +322,7 @@ async def test_hosted_device_binding_rejects_reused_device_id_with_mismatched_ho
                 hostname_hash="deadbeef" * 8,
             ),
         )
-        binding_token = first_response.headers["X-Codna-Device-Binding-Token"]
+        binding_token = first_response.headers["X-Algenta-Device-Binding-Token"]
         mismatch_response = await client.get(
             "/v1/me",
             headers=_hosted_device_headers(

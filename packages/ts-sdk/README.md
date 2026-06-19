@@ -57,14 +57,14 @@ Checked-in request artifacts and runnable examples live in
 ## Direct Client Flow
 
 ```ts
-import { CodnaClient, type QueryFilterSpec } from "algenta-sdk";
+import { AlgentaClient, type QueryFilterSpec } from "algenta-sdk";
 
 const apiKey = process.env.ALGENTA_API_KEY ?? process.env.DE_API_KEY;
 if (!apiKey) {
   throw new Error("Set ALGENTA_API_KEY or DE_API_KEY before running this example.");
 }
 
-const client = new CodnaClient({
+const client = new AlgentaClient({
   apiKey,
   baseUrl: "https://api.codna.ai",
 });
@@ -566,14 +566,14 @@ Direct client calls use the same names under `client.*`, including
 ## Decision Runtime Helpers
 
 ```ts
-import { CodnaClient } from "algenta-sdk";
+import { AlgentaClient } from "algenta-sdk";
 
 const apiKey = process.env.ALGENTA_API_KEY ?? process.env.DE_API_KEY;
 if (!apiKey) {
   throw new Error("Set ALGENTA_API_KEY or DE_API_KEY before running this example.");
 }
 
-const client = new CodnaClient({
+const client = new AlgentaClient({
   apiKey,
   baseUrl: "https://api.codna.ai",
 });

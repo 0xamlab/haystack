@@ -42,7 +42,7 @@ async def test_capped_hosted_api_bootstraps_and_requires_binding_token(client, a
             "/v1/me",
             headers=_hosted_device_headers(runtime_key, "hosted-binding-route-0001"),
         )
-        token = first_response.headers.get("X-Codna-Device-Binding-Token", "")
+        token = first_response.headers.get("X-Algenta-Device-Binding-Token", "")
         second_with_token = await client.get(
             "/v1/me",
             headers=_hosted_device_headers(
@@ -62,7 +62,7 @@ async def test_capped_hosted_api_bootstraps_and_requires_binding_token(client, a
         second_without_token.json().get("error") or second_without_token.json()["detail"]["error"]
     )
     assert error["code"] == "device_binding_token_required"
-    assert error["required_header"] == "X-Codna-Device-Binding-Token"
+    assert error["required_header"] == "X-Algenta-Device-Binding-Token"
 
     assert second_with_token.status_code == 200
 
@@ -113,7 +113,7 @@ async def test_capped_hosted_api_rejects_invalid_binding_token(client, app) -> N
     assert bad_token_response.status_code == 403
     error = bad_token_response.json().get("error") or bad_token_response.json()["detail"]["error"]
     assert error["code"] == "invalid_device_binding_token"
-    assert error["required_header"] == "X-Codna-Device-Binding-Token"
+    assert error["required_header"] == "X-Algenta-Device-Binding-Token"
 
 
 @pytest.mark.anyio
@@ -166,7 +166,7 @@ async def test_capped_hosted_api_http_exception_persists_binding_and_replays_hea
                 path,
                 headers=_hosted_device_headers(runtime_key, "hosted-http-error-route-0001"),
             )
-            token = first_response.headers.get("X-Codna-Device-Binding-Token", "")
+            token = first_response.headers.get("X-Algenta-Device-Binding-Token", "")
             snapshot = await _device_registration_snapshot(
                 api_key_id=created["id"],
                 device_id="hosted-http-error-route-0001",
@@ -250,7 +250,7 @@ async def test_capped_hosted_api_validation_error_persists_binding_and_replays_h
                 headers=_hosted_device_headers(runtime_key, "hosted-validation-route-0001"),
                 json={"count": "bad"},
             )
-            token = first_response.headers.get("X-Codna-Device-Binding-Token", "")
+            token = first_response.headers.get("X-Algenta-Device-Binding-Token", "")
             snapshot = await _device_registration_snapshot(
                 api_key_id=created["id"],
                 device_id="hosted-validation-route-0001",
@@ -326,7 +326,7 @@ async def test_capped_hosted_api_generic_error_persists_binding_and_replays_head
                     path,
                     headers=_hosted_device_headers(runtime_key, "hosted-generic-route-0001"),
                 )
-                token = first_response.headers.get("X-Codna-Device-Binding-Token", "")
+                token = first_response.headers.get("X-Algenta-Device-Binding-Token", "")
                 snapshot = await _device_registration_snapshot(
                     api_key_id=created["id"],
                     device_id="hosted-generic-route-0001",
@@ -407,7 +407,7 @@ async def test_capped_hosted_api_success_with_explicit_response_replays_binding_
                 path,
                 headers=_hosted_device_headers(runtime_key, "hosted-explicit-response-0001"),
             )
-            token = first_response.headers.get("X-Codna-Device-Binding-Token", "")
+            token = first_response.headers.get("X-Algenta-Device-Binding-Token", "")
             snapshot = await _device_registration_snapshot(
                 api_key_id=created["id"],
                 device_id="hosted-explicit-response-0001",
@@ -484,7 +484,7 @@ async def test_capped_hosted_api_success_with_streaming_response_replays_binding
                 path,
                 headers=_hosted_device_headers(runtime_key, "hosted-streaming-response-0001"),
             )
-            token = first_response.headers.get("X-Codna-Device-Binding-Token", "")
+            token = first_response.headers.get("X-Algenta-Device-Binding-Token", "")
             snapshot = await _device_registration_snapshot(
                 api_key_id=created["id"],
                 device_id="hosted-streaming-response-0001",

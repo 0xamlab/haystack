@@ -10,12 +10,12 @@ instead. Private profiles fail closed and do not silently fall back to Codna clo
 
 from __future__ import annotations
 
-from decision_engine import CodnaClient
+from decision_engine import AlgentaClient
 from examples.shared.privacy_profile import resolve_example_api_base_url, resolve_example_api_key
 
 
-def _client() -> CodnaClient:
-    return CodnaClient(
+def _client() -> AlgentaClient:
+    return AlgentaClient(
         api_key=resolve_example_api_key(
             component="Multi-hop Python public client example",
         ),

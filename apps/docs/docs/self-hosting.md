@@ -112,10 +112,10 @@ does not return `raw_key` again.
 An explicit `device_limit` also binds ordinary hosted API traffic for that key,
 not just the local runtime/device-register path. The SDKs send the stable
 device headers automatically. Raw HTTP callers using capped keys must send
-`X-Codna-Device-Id`, `X-Codna-Platform`, and
-`X-Codna-Hostname-Hash` on authenticated requests. The first successful
+`X-Algenta-Device-Id`, `X-Algenta-Platform`, and
+`X-Algenta-Hostname-Hash` on authenticated requests. The first successful
 hosted request for a new capped device also returns
-`X-Codna-Device-Binding-Token`; store and replay that token on later
+`X-Algenta-Device-Binding-Token`; store and replay that token on later
 requests from the same device. The SDKs do this automatically.
 
 ## Enterprise privacy defaults

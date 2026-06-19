@@ -1,4 +1,4 @@
-"""_ProductsJobsTriggersMixin for the CodnaClient class.
+"""_ProductsJobsTriggersMixin for the AlgentaClient class.
 
 Extracted from packages/algenta-core/algenta/client.py during modularization.
 """

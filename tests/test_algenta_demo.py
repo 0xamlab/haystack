@@ -109,7 +109,7 @@ def test_runtime_docs_primary_examples_present() -> None:
 
     assert "from algenta import Runtime" in readme
     assert "from algenta import Runtime" in local_runtime
-    assert "from decision_engine import CodnaClient" in python_sdk
+    assert "from decision_engine import AlgentaClient" in python_sdk
     assert "algenta import" in readme
     assert "algenta demo --all --no-interactive" in readme
     assert "algenta demo --scenario region --no-interactive" in readme

@@ -83,18 +83,18 @@ describe("dist artifact privacy contract", () => {
     );
   });
 
-  it("blocks dist DecisionEngineClient and CodnaClient when private profiles lack a self-hosted baseUrl", () => {
+  it("blocks dist DecisionEngineClient and AlgentaClient when private profiles lack a self-hosted baseUrl", () => {
     process.env.ALGENTA_DEPLOYMENT_MODE = "self_hosted";
 
     const client = loadFresh<{
       DecisionEngineClient: new (config?: { apiKey?: string; baseUrl?: string }) => unknown;
-      CodnaClient: new (config?: { apiKey?: string; baseUrl?: string }) => unknown;
+      AlgentaClient: new (config?: { apiKey?: string; baseUrl?: string }) => unknown;
     }>("../dist/client.js");
 
     expect(() => new client.DecisionEngineClient({ apiKey: "de_live_dist_key" })).toThrowError(
       /private profiles cannot target Codna-owned cloud URLs/,
     );
-    expect(() => new client.CodnaClient({ apiKey: "de_live_dist_key" })).toThrowError(
+    expect(() => new client.AlgentaClient({ apiKey: "de_live_dist_key" })).toThrowError(
       /private profiles cannot target Codna-owned cloud URLs/,
     );
   });
@@ -133,12 +133,12 @@ describe("dist artifact privacy contract", () => {
     process.env.ALGENTA_DEPLOYMENT_MODE = "self_hosted";
 
     const sdk = loadFresh<{
-      CodnaClient: new (config?: { apiKey?: string; baseUrl?: string }) => unknown;
+      AlgentaClient: new (config?: { apiKey?: string; baseUrl?: string }) => unknown;
       DecisionEngineClient: new (config?: { apiKey?: string; baseUrl?: string }) => unknown;
       Runtime: new (config?: { mode?: string; apiKey?: string; baseUrl?: string }) => unknown;
     }>("../dist/index.js");
 
-    expect(() => new sdk.CodnaClient({ apiKey: "de_live_dist_key" })).toThrowError(
+    expect(() => new sdk.AlgentaClient({ apiKey: "de_live_dist_key" })).toThrowError(
       /private profiles cannot target Codna-owned cloud URLs/,
     );
     expect(() => new sdk.DecisionEngineClient({ apiKey: "de_live_dist_key" })).toThrowError(

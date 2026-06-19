@@ -15,7 +15,7 @@ for path in (str(ALGENTA_CORE), str(PYTHON_SDK), str(ROOT)):
 
 algenta = importlib.import_module("algenta")
 
-CodnaClient = algenta.CodnaClient
+AlgentaClient = algenta.AlgentaClient
 AuditLogOutput = algenta.AuditLogOutput
 BillingInfoOutput = algenta.BillingInfoOutput
 BillingSessionOutput = algenta.BillingSessionOutput
@@ -558,7 +558,7 @@ def test_algenta_client_control_plane_methods_delegate_to_sdk(monkeypatch: pytes
     client_module = importlib.import_module("algenta.client")
     monkeypatch.setattr(client_module, "import_module", lambda name: fake_module)
 
-    client = CodnaClient(api_key="de_test", base_url="http://localhost:8000")
+    client = AlgentaClient(api_key="de_test", base_url="http://localhost:8000")
 
     assert client.update_me(name="Mission Ops", org_name="Mission Control")["name"] == "update_me"
     assert client.list_team_members(page=2, limit=25)["name"] == "list_team_members"
@@ -706,7 +706,7 @@ def test_algenta_client_account_bridge_converts_sdk_models_to_plain_data(
     client_module = importlib.import_module("algenta.client")
     monkeypatch.setattr(client_module, "import_module", lambda name: fake_module)
 
-    client = CodnaClient(api_key="de_test", base_url="http://localhost:8000")
+    client = AlgentaClient(api_key="de_test", base_url="http://localhost:8000")
 
     assert client.me() == {"user": {"id": "user_123"}, "org": {"id": "org_123"}}
     assert client.update_me(name="Mission Ops", org_name="Mission Control") == {

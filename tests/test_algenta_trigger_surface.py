@@ -16,7 +16,7 @@ for path in (str(ALGENTA_CORE), str(PYTHON_SDK), str(ROOT)):
 algenta = importlib.import_module("algenta")
 sdk_triggers = importlib.import_module("decision_engine.models_triggers")
 
-CodnaClient = algenta.CodnaClient
+AlgentaClient = algenta.AlgentaClient
 Runtime = algenta.Runtime
 RuntimeValidationError = algenta.RuntimeValidationError
 SDKTriggerDeleteResult = sdk_triggers.TriggerDeleteResult
@@ -159,7 +159,7 @@ def test_algenta_client_trigger_methods_delegate_to_sdk(monkeypatch: pytest.Monk
     client_module = importlib.import_module("algenta.client")
     monkeypatch.setattr(client_module, "import_module", lambda name: fake_module)
 
-    client = CodnaClient(api_key="de_test", base_url="http://localhost:8000")
+    client = AlgentaClient(api_key="de_test", base_url="http://localhost:8000")
 
     created = client.register_trigger(
         name="Revenue alert",

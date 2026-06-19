@@ -270,7 +270,7 @@ class DeploymentRoutingMiddleware(BaseHTTPMiddleware):
             k: v for k, v in request.headers.items() if k.lower() not in ("host", "content-length")
         }
         headers["X-Forwarded-For"] = request.client.host if request.client else "unknown"
-        headers["X-Codna-Control-Plane"] = "true"
+        headers["X-Algenta-Control-Plane"] = "true"
 
         body = await request.body()
 

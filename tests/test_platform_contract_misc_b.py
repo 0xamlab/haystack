@@ -252,7 +252,7 @@ def test_ai_and_automation_examples_cover_governed_discovery_and_query_surfaces(
         chatgpt_example["x-primary-data-query-contract"]["direct_sdk"]["python"][
             "preferred_client_class"
         ]
-        == "CodnaClient"
+        == "AlgentaClient"
     )
     assert (
         chatgpt_example["x-primary-data-query-contract"]["runtime_sdk"]["python"]["runtime_class"]

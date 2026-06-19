@@ -387,8 +387,8 @@ export const PRIMARY_DATA_QUERY_CONTRACT = {
   "direct_sdk": {
     "python": {
       "import_root": "decision_engine",
-      "preferred_client_class": "CodnaClient",
-      "preferred_async_client_class": "AsyncCodnaClient",
+      "preferred_client_class": "AlgentaClient",
+      "preferred_async_client_class": "AsyncAlgentaClient",
       "compatibility_client_class": "DecisionEngineClient",
       "compatibility_async_client_class": "AsyncDecisionEngineClient",
       "contract_method": "get_contract",
@@ -400,7 +400,7 @@ export const PRIMARY_DATA_QUERY_CONTRACT = {
     },
     "typescript": {
       "import_package": "algenta-sdk",
-      "preferred_client_class": "CodnaClient",
+      "preferred_client_class": "AlgentaClient",
       "compatibility_client_class": "DecisionEngineClient",
       "contract_method": "getContract",
       "discovery_method": "listDatasets",
@@ -540,7 +540,7 @@ export const CAPABILITY_PLANE_CONTRACT = {
   "direct_sdk": {
     "typescript": {
       "import_package": "algenta-sdk",
-      "preferred_client_class": "CodnaClient",
+      "preferred_client_class": "AlgentaClient",
       "compatibility_client_class": "DecisionEngineClient",
       "list_providers_method": "listCapabilityProviders",
       "get_provider_method": "getCapabilityProvider",

@@ -1,27 +1,27 @@
-# Codna
+# Algenta
 
 <p align="center">
   <strong>Self-hosted decision infrastructure for structured data.</strong><br>
-  Deploy Codna on your infrastructure, integrate over HTTP API or SDK, and use the local runtime
+  Deploy Algenta on your infrastructure, integrate over HTTP API or SDK, and use the local runtime
   only when you explicitly want a development or embedded surface.
 </p>
 
 <p align="center">
-  <a href="https://codna.ai"><img src="https://img.shields.io/badge/website-codna.ai-1d4ed8" alt="Website"></a>
-  <a href="https://docs.codna.ai"><img src="https://img.shields.io/badge/docs-docs.codna.ai-0f172a" alt="Docs"></a>
+  <a href="https://algenta.ai"><img src="https://img.shields.io/badge/website-algenta.ai-1d4ed8" alt="Website"></a>
+  <a href="https://docs.algenta.ai"><img src="https://img.shields.io/badge/docs-docs.algenta.ai-0f172a" alt="Docs"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-ACL_1.0-green" alt="License"></a>
 </p>
 
-## What Codna is
+## What Algenta is
 
-Codna is **not**:
+Algenta is **not**:
 
 - an LLM-to-SQL generator
 - a semantic-model-first BI layer
 - an agent framework
 - a `pip install` product pretending to be a platform
 
-Codna **is**:
+Algenta **is**:
 
 - a self-hosted service you deploy on your infrastructure
 - a deterministic execution layer for structured data
@@ -29,7 +29,7 @@ Codna **is**:
 
 Official position:
 
-> Codna is a self-hosted decision engine you deploy on your infrastructure.
+> Algenta is a self-hosted decision engine you deploy on your infrastructure.
 > Integrate via API or SDK. Run locally for development if needed.
 
 Enterprise deployment defaults are now explicit:
@@ -43,7 +43,7 @@ Enterprise deployment defaults are now explicit:
 
 ## Self-hosted service
 
-If you want to deploy Codna on your own infrastructure, start with the self-hosted service path:
+If you want to deploy Algenta on your own infrastructure, start with the self-hosted service path:
 
 - `api + worker + postgres + redis + object storage`
 - deployed with Docker Compose
@@ -55,7 +55,7 @@ Start with [Quickstart](./apps/docs/docs/quickstart.md), then use [Setup & Confi
 ### First 2-minute success path
 
 ```bash
-curl -sSL https://codna.ai/install.sh | bash
+curl -sSL https://algenta.ai/install.sh | bash
 curl http://localhost:8000/v1/health
 ```
 
@@ -86,10 +86,10 @@ access instead of the bootstrap credential.
 An explicit `device_limit` also binds ordinary hosted API traffic for that key,
 not just local runtime/device registration. The SDKs send the stable device
 headers automatically. Raw HTTP callers using capped keys must send
-`X-Codna-Device-Id`, `X-Codna-Platform`, and
-`X-Codna-Hostname-Hash` on authenticated requests. The first successful
+`X-Algenta-Device-Id`, `X-Algenta-Platform`, and
+`X-Algenta-Hostname-Hash` on authenticated requests. The first successful
 hosted request for a new capped device also returns
-`X-Codna-Device-Binding-Token`; store and replay that token on later
+`X-Algenta-Device-Binding-Token`; store and replay that token on later
 requests from the same device. Reusing the same device ID with different non-empty machine fingerprint
 metadata fails closed with `device_identity_mismatch`.
 
@@ -108,7 +108,7 @@ This repository currently supports multiple real usage modes:
 
 The primary published product path is:
 
-1. deploy the self-hosted service with `curl -sSL https://codna.ai/install.sh | bash`
+1. deploy the self-hosted service with `curl -sSL https://algenta.ai/install.sh | bash`
 2. verify the API with `GET /v1/health`
 3. run the first decision through `POST /v1/simulate`, or run the first governed dataset query through `GET /v1/data?search=...&compact=1` -> `GET /v1/data/{dataset_id}/summary` -> `POST /v1/query`
 4. integrate over HTTP or SDK against the running service
@@ -117,7 +117,7 @@ If the workflow needs customer-agnostic routing across governed data, MCP,
 skills, native tools, or runtime libraries, start with
 `POST /v1/capabilities/route` and the checked-in examples in
 [`examples/capability-plane/README.md`](./examples/capability-plane/README.md).
-`algenta_managed` routes can execute through Codna; `client_managed` routes
+`algenta_managed` routes can execute through Algenta; `client_managed` routes
 must execute in the customer app or adapter path and fail closed otherwise.
 For the focused repo proof bundle, run `make capability-plane-verify`.
 
@@ -125,7 +125,7 @@ The local `Runtime()` path remains fully supported, but it is the development/ru
 
 ### Target model
 
-Codna is converging toward a **service-first deterministic execution system**:
+Algenta is converging toward a **service-first deterministic execution system**:
 
 - self-hosted deployment is the primary product contract
 - HTTP API is the default integration surface
@@ -205,7 +205,7 @@ back to a local Ollama-backed chat route when available.
 ### Repository Intelligence channel parity proof
 
 To run the focused live Repository Intelligence parity proof across the CLI,
-Python SDK, MCP server, Codna client/runtime, and TypeScript client/runtime
+Python SDK, MCP server, Algenta client/runtime, and TypeScript client/runtime
 surfaces, use the repo-owned target:
 
 ```bash
@@ -300,7 +300,7 @@ algenta import orders.csv financial.csv ratings.csv
 
 That prints a branded multi-source summary with imported sources, explicit per-file failures, and deterministic shared-field overlap hints.
 
-For the hosted Codna data/query path from the terminal:
+For the hosted Algenta data/query path from the terminal:
 
 ```bash
 de contract
@@ -363,7 +363,7 @@ Local mode:
 
 ### API mode
 
-API mode uses the direct Codna API through the lower-level SDK:
+API mode uses the direct Algenta API through the lower-level SDK:
 
 ```bash
 pip install "algenta-core[cloud]"
@@ -440,7 +440,7 @@ The same runtime-first `connect(...)` surface is what you use for descriptors li
 
 ### Self-hosted mode
 
-Use `self_hosted` when you want the same governed SDK contract against your own Codna deployment:
+Use `self_hosted` when you want the same governed SDK contract against your own Algenta deployment:
 
 ```python
 import os
@@ -909,14 +909,14 @@ make bench-decision-engine-client-init
 
 That writes `build/decision_engine_client_init_benchmark.json`, including:
 
-- cold `CodnaClient(api_key=...)` construction
-- cold `AsyncCodnaClient(api_key=...)` construction
+- cold `AlgentaClient(api_key=...)` construction
+- cold `AsyncAlgentaClient(api_key=...)` construction
 - whether constructor-only startup still loads `httpx`
 - whether the lazy transport wrapper loads without forcing the real HTTP client
 
 ## MCP integration
 
-Codna already exposes a strong MCP surface for agent workflows. Today it includes tools across:
+Algenta already exposes a strong MCP surface for agent workflows. Today it includes tools across:
 
 - data onboarding and registration
 - deterministic query and verification
@@ -937,7 +937,7 @@ The following surfaces remain supported and tested:
 
 - **Simulation workflows** through `/v1/simulate`, `/v1/recommend`, `/v1/jobs`
 - **Local helper APIs** through `map_data`, `list_datasets`, `get_dataset_summary`, `query_data`, `query_with_metadata`, `query_batch`, `query_sql_report`, `simulate`, `decision`, `optimize`, `forecast`
-- **Direct API client** through `from decision_engine import CodnaClient`
+- **Direct API client** through `from decision_engine import AlgentaClient`
 - **Runtime daemon/device flows** through `apps/runtime` and the local runtime verifier scripts
 
 These are real surfaces. They are not removed. They are just no longer the primary path we recommend first.
@@ -982,9 +982,9 @@ const rt = new Runtime();
 ```
 
 That constructor is the local/runtime-first surface. For Cloud Managed API usage,
-use `CodnaClient` / `DecisionEngineClient`. For `self_hosted` and `air_gapped`,
+use `AlgentaClient` / `DecisionEngineClient`. For `self_hosted` and `air_gapped`,
 pass an explicit self-hosted `baseUrl`; private profiles fail closed and do not
-silently fall back to Codna cloud.
+silently fall back to Algenta cloud.
 
 Repo-root JavaScript package commands are now valid for the shipped JS surfaces
 in this checkout:
@@ -1002,12 +1002,12 @@ Use Node.js 22+ from the repo root so both packages share one operator path.
 Advanced/direct API docs use:
 
 ```python
-from decision_engine import CodnaClient
+from decision_engine import AlgentaClient
 ```
 
 ## Competitor fit
 
-Codna aims to be:
+Algenta aims to be:
 
 - as easy to start in Python as Vanna
 - as disciplined to integrate as Cube

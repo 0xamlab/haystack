@@ -106,7 +106,7 @@ def test_multihop_python_public_client_uses_privacy_aware_base_url(
             captured["api_key"] = api_key
             captured["base_url"] = base_url
 
-    monkeypatch.setattr(module, "CodnaClient", _FakeClient)
+    monkeypatch.setattr(module, "AlgentaClient", _FakeClient)
     monkeypatch.setenv("ALGENTA_API_KEY", "de_test_example")
     monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "self_hosted")
     monkeypatch.setenv("ALGENTA_DISABLE_CLOUD", "1")
@@ -135,7 +135,7 @@ def test_multihop_python_public_client_accepts_legacy_api_key_env(
             captured["api_key"] = api_key
             captured["base_url"] = base_url
 
-    monkeypatch.setattr(module, "CodnaClient", _FakeClient)
+    monkeypatch.setattr(module, "AlgentaClient", _FakeClient)
     monkeypatch.delenv("ALGENTA_API_KEY", raising=False)
     monkeypatch.setenv("DE_API_KEY", "de_legacy_example")
     monkeypatch.delenv("ALGENTA_DEPLOYMENT_MODE", raising=False)

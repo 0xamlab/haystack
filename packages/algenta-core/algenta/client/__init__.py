@@ -13,11 +13,11 @@ Usage:
   result = simulate.risk(revenue=100000, cost=70000)
 
   # Cloud — same API, infinite scale
-  from algenta import CodnaClient
+  from algenta import AlgentaClient
   api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
   if not api_key:
       raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
-  client = CodnaClient(api_key=api_key)
+  client = AlgentaClient(api_key=api_key)
   result = client.simulate.risk(revenue=100000, cost=70000, runs=1_000_000)
 
 The cloud example above is the Cloud Managed path. In `self_hosted` and
@@ -48,7 +48,7 @@ from algenta.client._llm import _LLMMixin  # noqa: E402
 from algenta.client._agent_runs import _AgentRunsMixin  # noqa: E402
 
 
-class CodnaClient(_AccountBillingMixin, _DecisionsMixin, _ProductsJobsTriggersMixin, _CapabilitiesSkillsMixin, _QueryResolveMixin, _ConnectorsDatasetsRepositoryMixin, _DeploymentsModelsMixin, _LLMMixin, _AgentRunsMixin):
+class AlgentaClient(_AccountBillingMixin, _DecisionsMixin, _ProductsJobsTriggersMixin, _CapabilitiesSkillsMixin, _QueryResolveMixin, _ConnectorsDatasetsRepositoryMixin, _DeploymentsModelsMixin, _LLMMixin, _AgentRunsMixin):
     """
     Codna cloud API client.
 
@@ -62,7 +62,7 @@ class CodnaClient(_AccountBillingMixin, _DecisionsMixin, _ProductsJobsTriggersMi
         api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
         if not api_key:
             raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
-        client = CodnaClient(api_key=api_key)
+        client = AlgentaClient(api_key=api_key)
         result = client.simulate.risk(revenue=100000, cost=70000, runs=500000)
         print(result.expected_value, result.probability_of_loss)
 
@@ -79,14 +79,14 @@ class CodnaClient(_AccountBillingMixin, _DecisionsMixin, _ProductsJobsTriggersMi
         self.api_key = api_key or os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
         self.base_url = resolve_cloud_base_url(
             explicit_base_url=base_url,
-            component="CodnaClient",
+            component="AlgentaClient",
         )
 
         if not self.api_key:
             raise ValueError(
                 "API key required. Pass api_key explicitly or set ALGENTA_API_KEY / DE_API_KEY environment variables.\n"
                 + api_key_help_text(
-                    component="CodnaClient",
+                    component="AlgentaClient",
                     fallback_base_url=self.base_url,
                 )
             )
@@ -145,3 +145,6 @@ class _BoundModule:
             return fn(*args, **kwargs)
 
         return _bound
+
+
+CodnaClient = AlgentaClient  # back-compat alias

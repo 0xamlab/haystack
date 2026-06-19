@@ -61,13 +61,13 @@ Checked-in request artifacts and runnable examples live in
 ```python
 import os
 
-from decision_engine import CodnaClient, QueryFilterCondition, QueryFilterSpec
+from decision_engine import AlgentaClient, QueryFilterCondition, QueryFilterSpec
 
 api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
 if not api_key:
     raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
 
-client = CodnaClient(
+client = AlgentaClient(
     api_key=api_key,
     base_url="https://api.codna.ai",
 )

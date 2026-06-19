@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
   AUTH_SCHEME,
-  CodnaClient,
+  AlgentaClient,
   API_KEY_PREFIX_LIVE,
   BRAND,
   DEPRECATION_WINDOW_DAYS,
@@ -44,7 +44,7 @@ afterEach(() => {
 
 describe("public Codna SDK aliases", () => {
   it("re-exports the Codna-branded direct client alias without breaking compatibility", () => {
-    expect(CodnaClient).toBe(DecisionEngineClient);
+    expect(AlgentaClient).toBe(DecisionEngineClient);
   });
 
   it("keeps the runtime-backed Mojo surface on the package root", () => {
@@ -53,7 +53,7 @@ describe("public Codna SDK aliases", () => {
   });
 
   it("keeps the governed data/query helpers on the public direct client alias", () => {
-    const client = new CodnaClient({
+    const client = new AlgentaClient({
       apiKey: "de_test_surface",
       baseUrl: "https://api.codna.ai",
     });
@@ -103,7 +103,7 @@ describe("public Codna SDK aliases", () => {
   it("fails closed on the package root for direct clients in private profiles without a self-hosted baseUrl", () => {
     process.env.ALGENTA_DEPLOYMENT_MODE = "self_hosted";
 
-    expect(() => new CodnaClient({ apiKey: "de_live_surface" })).toThrow(
+    expect(() => new AlgentaClient({ apiKey: "de_live_surface" })).toThrow(
       "private profiles cannot target Codna-owned cloud URLs",
     );
     expect(() => new DecisionEngineClient({ apiKey: "de_live_surface" })).toThrow(
@@ -122,7 +122,7 @@ describe("public Codna SDK aliases", () => {
   it("allows the package root to target an explicit self-hosted baseUrl in private profiles", () => {
     process.env.ALGENTA_DEPLOYMENT_MODE = "self_hosted";
 
-    const client = new CodnaClient({
+    const client = new AlgentaClient({
       apiKey: "de_live_surface",
       baseUrl: "http://localhost:8000",
     });

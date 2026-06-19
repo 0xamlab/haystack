@@ -650,7 +650,7 @@ def test_repository_intelligence_live_scripts_cover_public_surfaces() -> None:
     assert "repository_analysis.planner_provider_backend is None" in python_sdk_live
 
     assert "test_client_repository_surface" in algenta_client_live
-    assert 'check("CodnaClient repository intelligence surface"' in algenta_client_live
+    assert 'check("AlgentaClient repository intelligence surface"' in algenta_client_live
     assert '("/v1/repositories/{repository_id}/decision-plans", "post")' in algenta_client_live
     assert "local_repository_live_support_reason(BASE_URL)" in algenta_client_live
     assert "ALGENTA_REPOSITORY_INTELLIGENCE_MODEL" in algenta_client_live

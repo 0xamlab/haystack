@@ -50,23 +50,23 @@ def test_decision_engine_client_wrapper_loads_facade_once_on_class_access(
 
         load_calls: list[str] = []
         fake_client = type("FakeDecisionEngineClient", (), {})
-        fake_algenta_client = type("FakeCodnaClient", (fake_client,), {})
+        fake_algenta_client = type("FakeAlgentaClient", (fake_client,), {})
 
         def _fake_import(name: str):
             load_calls.append(name)
             if name == "decision_engine.client_facade":
                 return SimpleNamespace(
                     DecisionEngineClient=fake_client,
-                    CodnaClient=fake_algenta_client,
+                    AlgentaClient=fake_algenta_client,
                 )
             raise AssertionError(f"unexpected lazy import: {name}")
 
         monkeypatch.setattr(module, "import_module", _fake_import)
 
         assert module.DecisionEngineClient is fake_client
-        assert module.CodnaClient is fake_algenta_client
+        assert module.AlgentaClient is fake_algenta_client
         assert module.DecisionEngineClient is fake_client
-        assert module.CodnaClient is fake_algenta_client
+        assert module.AlgentaClient is fake_algenta_client
         assert load_calls == ["decision_engine.client_facade"]
     finally:
         for module_name in list(sys.modules):
@@ -117,23 +117,23 @@ def test_async_decision_engine_client_wrapper_loads_facade_once_on_class_access(
 
         load_calls: list[str] = []
         fake_client = type("FakeAsyncDecisionEngineClient", (), {})
-        fake_algenta_client = type("FakeAsyncCodnaClient", (fake_client,), {})
+        fake_algenta_client = type("FakeAsyncAlgentaClient", (fake_client,), {})
 
         def _fake_import(name: str):
             load_calls.append(name)
             if name == "decision_engine.async_client_facade":
                 return SimpleNamespace(
                     AsyncDecisionEngineClient=fake_client,
-                    AsyncCodnaClient=fake_algenta_client,
+                    AsyncAlgentaClient=fake_algenta_client,
                 )
             raise AssertionError(f"unexpected lazy import: {name}")
 
         monkeypatch.setattr(module, "import_module", _fake_import)
 
         assert module.AsyncDecisionEngineClient is fake_client
-        assert module.AsyncCodnaClient is fake_algenta_client
+        assert module.AsyncAlgentaClient is fake_algenta_client
         assert module.AsyncDecisionEngineClient is fake_client
-        assert module.AsyncCodnaClient is fake_algenta_client
+        assert module.AsyncAlgentaClient is fake_algenta_client
         assert load_calls == ["decision_engine.async_client_facade"]
     finally:
         for module_name in list(sys.modules):

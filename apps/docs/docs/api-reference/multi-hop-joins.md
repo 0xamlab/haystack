@@ -164,13 +164,13 @@ The example request uses:
 ```python
 import os
 
-from decision_engine import CodnaClient
+from decision_engine import AlgentaClient
 
 api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
 if not api_key:
     raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
 
-client = CodnaClient(api_key=api_key)
+client = AlgentaClient(api_key=api_key)
 
 request = {
     "source_name": "orders_facts",
@@ -224,14 +224,14 @@ print(result.join_path)
 ## TypeScript SDK example
 
 ```typescript
-import { CodnaClient } from "algenta-sdk";
+import { AlgentaClient } from "algenta-sdk";
 
 const apiKey = process.env.ALGENTA_API_KEY ?? process.env.DE_API_KEY;
 if (!apiKey) {
   throw new Error("Set ALGENTA_API_KEY or DE_API_KEY before running this example.");
 }
 
-const client = new CodnaClient({
+const client = new AlgentaClient({
   apiKey,
 });
 

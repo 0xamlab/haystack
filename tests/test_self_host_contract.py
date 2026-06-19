@@ -114,10 +114,10 @@ def test_operations_docs_cover_setup_tls_logs_and_upgrade() -> None:
     assert "`raw_key` again" in setup
     assert "ongoing operator and service access" in setup
     assert "ordinary hosted API traffic" in setup
-    assert "`X-Codna-Device-Id`" in setup
-    assert "`X-Codna-Platform`" in setup
-    assert "`X-Codna-Hostname-Hash`" in setup
-    assert "`X-Codna-Device-Binding-Token`" in setup
+    assert "`X-Algenta-Device-Id`" in setup
+    assert "`X-Algenta-Platform`" in setup
+    assert "`X-Algenta-Hostname-Hash`" in setup
+    assert "`X-Algenta-Device-Binding-Token`" in setup
     assert "ALGENTA_IMAGE_TAG=git-YOUR_RELEASE_TAG" in setup
     assert "ALGENTA_DEPLOYMENT_MODE=self_hosted" in setup
     assert "ALGENTA_DISABLE_CLOUD=1" in setup
@@ -229,7 +229,7 @@ def test_auth_and_sdk_docs_are_secondary_to_running_service() -> None:
     assert "# Python SDK" in python_sdk
     assert "Use the Python SDK after the service is already running." in python_sdk
     assert "pip install algenta-sdk" in python_sdk
-    assert "from decision_engine import CodnaClient" in python_sdk
+    assert "from decision_engine import AlgentaClient" in python_sdk
     assert "submit_job" in python_sdk
     assert "[Quickstart](/quickstart)" in python_sdk
     assert "[API Authentication](/api-reference/authentication)" in python_sdk
@@ -239,7 +239,7 @@ def test_auth_and_sdk_docs_are_secondary_to_running_service() -> None:
     assert "# TypeScript SDK" in ts_sdk
     assert "Use the TypeScript SDK after the service is already running." in ts_sdk
     assert "npm install algenta-sdk" in ts_sdk
-    assert 'import { CodnaClient } from "algenta-sdk";' in ts_sdk
+    assert 'import { AlgentaClient } from "algenta-sdk";' in ts_sdk
     assert "submitJob" in ts_sdk
     assert "[Quickstart](/quickstart)" in ts_sdk
     assert "[API Authentication](/api-reference/authentication)" in ts_sdk

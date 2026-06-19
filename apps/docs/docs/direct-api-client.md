@@ -29,13 +29,13 @@ pip install algenta-sdk
 ```python
 import os
 
-from decision_engine import CodnaClient, QueryFilterCondition, QueryFilterSpec
+from decision_engine import AlgentaClient, QueryFilterCondition, QueryFilterSpec
 
 api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
 if not api_key:
     raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
 
-client = CodnaClient(api_key=api_key)
+client = AlgentaClient(api_key=api_key)
 created = client.create_api_key(
     label="mission-runtime",
     expires_at="2028-05-19T00:00:00Z",
@@ -86,7 +86,7 @@ print(PRIMARY_DATA_QUERY_CONTRACT["governed_filter_contract"]["operators"]["scal
 ```
 
 The Python example above is the Cloud Managed path. In `self_hosted` and
-`air_gapped`, construct `CodnaClient(api_key=..., base_url="http://localhost:8000")`
+`air_gapped`, construct `AlgentaClient(api_key=..., base_url="http://localhost:8000")`
 or your own self-hosted origin instead.
 
 ## TypeScript
@@ -96,14 +96,14 @@ npm install algenta-sdk
 ```
 
 ```typescript
-import { CodnaClient, type QueryFilterSpec } from 'algenta-sdk'
+import { AlgentaClient, type QueryFilterSpec } from 'algenta-sdk'
 
 const apiKey = process.env.ALGENTA_API_KEY ?? process.env.DE_API_KEY
 if (!apiKey) {
   throw new Error('Set ALGENTA_API_KEY or DE_API_KEY before running this example.')
 }
 
-const client = new CodnaClient({
+const client = new AlgentaClient({
   apiKey,
 })
 
@@ -149,7 +149,7 @@ console.log(PRIMARY_DATA_QUERY_CONTRACT.governed_filter_contract.operators.scala
 ```
 
 The TypeScript example above is also the Cloud Managed path. In `self_hosted`
-and `air_gapped`, construct `new CodnaClient({ apiKey: ..., baseUrl:
+and `air_gapped`, construct `new AlgentaClient({ apiKey: ..., baseUrl:
 "http://localhost:8000" })` or your own self-hosted origin instead.
 
 ## Unified capability-plane helpers
@@ -189,10 +189,10 @@ once on creation. Store it, along with `id`, `key_prefix`, `device_limit`, and
 
 An explicit `device_limit` also binds ordinary hosted API traffic for that key.
 The SDK helpers send the stable device headers automatically. If you are making
-raw HTTP requests with a capped key, send `X-Codna-Device-Id`,
-`X-Codna-Platform`, and `X-Codna-Hostname-Hash` on authenticated
+raw HTTP requests with a capped key, send `X-Algenta-Device-Id`,
+`X-Algenta-Platform`, and `X-Algenta-Hostname-Hash` on authenticated
 requests. The first successful hosted request for a new capped device also returns
-`X-Codna-Device-Binding-Token`; store and replay that token on later
+`X-Algenta-Device-Binding-Token`; store and replay that token on later
 requests from the same device.
 
 ## Persisted runtime and control-plane helpers

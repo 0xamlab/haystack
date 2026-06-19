@@ -12,7 +12,7 @@ def test_go_live_suite_keeps_live_typescript_runtime_gate() -> None:
         encoding="utf-8"
     )
 
-    assert "Live CodnaClient integration" in go_live
+    assert "Live AlgentaClient integration" in go_live
     assert "tests/integration/test_algenta_client_live.py" in go_live
     assert "Live Python Mojo library integration" in go_live
     assert "tests/integration/test_algenta_mojo_library_live.py" in go_live

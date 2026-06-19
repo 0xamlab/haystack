@@ -5,13 +5,13 @@
  * Works in Node.js 18+ and modern browsers.
  *
  * @example
- * import { CodnaClient } from 'algenta-sdk';
+ * import { AlgentaClient } from 'algenta-sdk';
  *
  * const apiKey = process.env.ALGENTA_API_KEY ?? process.env.DE_API_KEY;
  * if (!apiKey) {
  *   throw new Error('Set ALGENTA_API_KEY or DE_API_KEY before running this example.');
  * }
- * const client = new CodnaClient({ apiKey });
+ * const client = new AlgentaClient({ apiKey });
  * const result = await client.simulate({
  *   mode: 'auto',
  *   scenario: {
@@ -329,6 +329,11 @@ export class DecisionEngineClient {
   }
 }
 
+export { DecisionEngineClient as AlgentaClient };
+export type { DecisionEngineClientConfig as AlgentaClientConfig };
+
+// Back-compat: historically exported as CodnaClient (#157 rename). Algenta is the engine/SDK;
+// Codna is a consumer. Keep the old name working so existing integrations don't break.
 export { DecisionEngineClient as CodnaClient };
 export type { DecisionEngineClientConfig as CodnaClientConfig };
 

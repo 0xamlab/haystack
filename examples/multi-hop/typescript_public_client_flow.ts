@@ -8,7 +8,7 @@
  * instead. Private profiles fail closed and do not silently fall back to Codna cloud.
  */
 
-import { CodnaClient } from "algenta-sdk";
+import { AlgentaClient } from "algenta-sdk";
 import { resolveExampleApiKey, resolveExampleBaseUrl } from "../shared/privacyProfile.ts";
 
 async function main(): Promise<void> {
@@ -16,7 +16,7 @@ async function main(): Promise<void> {
     component: "Multi-hop TypeScript public client example",
   });
 
-  const client = new CodnaClient({
+  const client = new AlgentaClient({
     apiKey,
     baseUrl: resolveExampleBaseUrl({
       component: "Multi-hop TypeScript public client example",

@@ -272,7 +272,7 @@ For the current plan-aligned utility and agent surfaces, the runtime also expose
 
 ## Provider-Backed LLM Registry
 
-`Runtime(mode="api")` and `CodnaClient` use the same provider-backed model
+`Runtime(mode="api")` and `AlgentaClient` use the same provider-backed model
 registry configured through `ALGENTA_LLM_PROVIDER_MODELS_JSON`. Each entry must
 declare `id`, `backend`, `model_name`, `base_url`, and `api_key_env` unless the
 backend explicitly allows local no-auth access.
@@ -502,7 +502,7 @@ the hosted or self-hosted governed data/query API, but it can accept local
 `api_key` and `base_url` when you want the local daemon to enforce a hosted
 device license.
 
-For hosted direct cloud access without the runtime facade, `CodnaClient`
+For hosted direct cloud access without the runtime facade, `AlgentaClient`
 also exposes the governed contract and query helpers:
 `get_contract()`, `get_runtime_manifest()`, `get_runtime_modules()`,
 `get_runtime_benchmarks()`, `get_runtime_release_validation()`,

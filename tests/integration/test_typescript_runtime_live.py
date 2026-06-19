@@ -2204,9 +2204,9 @@ def _node_api_key_probe() -> dict[str, Any]:
         candidates = ", ".join(str(path) for path in TS_DIST_ENTRY_CANDIDATES)
         raise RuntimeError(f"TypeScript SDK dist entry missing. Checked: {candidates}")
     script = """
-import { CodnaClient } from %DIST_ENTRY%;
+import { AlgentaClient } from %DIST_ENTRY%;
 
-const client = new CodnaClient({
+const client = new AlgentaClient({
   apiKey: process.env.DE_API_KEY,
   baseUrl: process.env.DE_BASE_URL,
   maxRetries: 0,
@@ -2225,16 +2225,16 @@ function deviceHeaders(deviceId, overrides = {}) {
       ? overrides.hostnameHash
       : "deadbeef".repeat(8);
   return {
-    "X-Codna-Device-Id": deviceId,
-    "X-Codna-Platform": "linux",
-    "X-Codna-Platform-Version": "6.8",
-    "X-Codna-Hostname-Hash": hostnameHash,
-    "X-Codna-SDK-Version": "algenta-ts-live/1.0.0",
+    "X-Algenta-Device-Id": deviceId,
+    "X-Algenta-Platform": "linux",
+    "X-Algenta-Platform-Version": "6.8",
+    "X-Algenta-Hostname-Hash": hostnameHash,
+    "X-Algenta-SDK-Version": "algenta-ts-live/1.0.0",
   };
 }
 
 async function callHostedMe(rawKey, deviceId, overrides = {}) {
-  const boundClient = new CodnaClient({
+  const boundClient = new AlgentaClient({
     apiKey: rawKey,
     baseUrl: process.env.DE_BASE_URL,
     maxRetries: 0,
@@ -2274,7 +2274,7 @@ async function callHostedMeWithEnvDeviceId(rawKey, deviceId) {
   process.env.ALGENTA_DEVICE_ID = deviceId;
   process.env.DE_DEVICE_ID = deviceId;
   try {
-    const boundClient = new CodnaClient({
+    const boundClient = new AlgentaClient({
       apiKey: rawKey,
       baseUrl: process.env.DE_BASE_URL,
       maxRetries: 0,

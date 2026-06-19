@@ -15,19 +15,19 @@ Start with [Quickstart](/quickstart), then authenticate with [API Authentication
 npm install algenta-sdk
 ```
 
-`CodnaClient` is the preferred public name. `DecisionEngineClient` remains available as a compatibility alias.
+`AlgentaClient` is the preferred public name. `DecisionEngineClient` remains available as a compatibility alias.
 
 ## API keys
 
 ```typescript
-import { CodnaClient } from "algenta-sdk";
+import { AlgentaClient } from "algenta-sdk";
 
 const apiKey = process.env.ALGENTA_API_KEY ?? process.env.DE_API_KEY;
 if (!apiKey) {
   throw new Error("Set ALGENTA_API_KEY or DE_API_KEY before running this example.");
 }
 
-const client = new CodnaClient({
+const client = new AlgentaClient({
   apiKey,
   baseUrl: "http://localhost:8000",
 });
@@ -212,14 +212,14 @@ service identity across restarts.
 ## Simulate
 
 ```typescript
-import { CodnaClient } from "algenta-sdk";
+import { AlgentaClient } from "algenta-sdk";
 
 const apiKey = process.env.ALGENTA_API_KEY ?? process.env.DE_API_KEY;
 if (!apiKey) {
   throw new Error("Set ALGENTA_API_KEY or DE_API_KEY before running this example.");
 }
 
-const client = new CodnaClient({
+const client = new AlgentaClient({
   apiKey,
   baseUrl: "http://localhost:8000",
 });
@@ -243,14 +243,14 @@ console.log(result.recommended_action);
 ## Async jobs
 
 ```typescript
-import { CodnaClient } from "algenta-sdk";
+import { AlgentaClient } from "algenta-sdk";
 
 const apiKey = process.env.ALGENTA_API_KEY ?? process.env.DE_API_KEY;
 if (!apiKey) {
   throw new Error("Set ALGENTA_API_KEY or DE_API_KEY before running this example.");
 }
 
-const client = new CodnaClient({
+const client = new AlgentaClient({
   apiKey,
   baseUrl: "http://localhost:8000",
 });
@@ -314,14 +314,14 @@ including:
 ## Decision runtime helpers
 
 ```typescript
-import { CodnaClient } from "algenta-sdk";
+import { AlgentaClient } from "algenta-sdk";
 
 const apiKey = process.env.ALGENTA_API_KEY ?? process.env.DE_API_KEY;
 if (!apiKey) {
   throw new Error("Set ALGENTA_API_KEY or DE_API_KEY before running this example.");
 }
 
-const client = new CodnaClient({
+const client = new AlgentaClient({
   apiKey,
   baseUrl: "http://localhost:8000",
 });
@@ -440,14 +440,14 @@ console.log(executionReceipt.execution_status);
 ## Discovery and governed query helpers
 
 ```typescript
-import { CodnaClient, type QueryFilterSpec } from "algenta-sdk";
+import { AlgentaClient, type QueryFilterSpec } from "algenta-sdk";
 
 const apiKey = process.env.ALGENTA_API_KEY ?? process.env.DE_API_KEY;
 if (!apiKey) {
   throw new Error("Set ALGENTA_API_KEY or DE_API_KEY before running this example.");
 }
 
-const client = new CodnaClient({
+const client = new AlgentaClient({
   apiKey,
   baseUrl: "http://localhost:8000",
 });
@@ -534,14 +534,14 @@ and routing surface across connectors, MCP providers, prompt-skills, native
 tools, and runtime libraries.
 
 ```typescript
-import { CodnaClient } from "algenta-sdk";
+import { AlgentaClient } from "algenta-sdk";
 
 const apiKey = process.env.ALGENTA_API_KEY ?? process.env.DE_API_KEY;
 if (!apiKey) {
   throw new Error("Set ALGENTA_API_KEY or DE_API_KEY before running this example.");
 }
 
-const client = new CodnaClient({
+const client = new AlgentaClient({
   apiKey,
   baseUrl: "http://localhost:8000",
 });
@@ -753,7 +753,7 @@ const sample = await catalog.ab_testing.sample_size_proportion({
 console.log(modules.length, sample);
 ```
 
-Use `CodnaClient` for the running service and `libraries()` only for the local daemon-backed Mojo catalog.
+Use `AlgentaClient` for the running service and `libraries()` only for the local daemon-backed Mojo catalog.
 
 This surface is local/runtime-backed in this rollout. Customer apps and other
 external clients can execute runtime-owned Mojo libraries without importing

@@ -42,7 +42,7 @@ import json
 import os
 from typing import Any
 
-from decision_engine import CodnaClient
+from decision_engine import AlgentaClient
 from examples.shared.privacy_profile import resolve_example_api_base_url
 
 
@@ -62,8 +62,8 @@ def _resolve_base_url() -> str:
     )
 
 
-def _client() -> CodnaClient:
-    return CodnaClient(
+def _client() -> AlgentaClient:
+    return AlgentaClient(
         api_key=_resolve_api_key(),
         base_url=_resolve_base_url(),
     )
@@ -81,7 +81,7 @@ def _dataset_not_found_payload(dataset_search: str) -> str:
     )
 
 
-def _contract_payload(client: CodnaClient) -> dict[str, Any]:
+def _contract_payload(client: AlgentaClient) -> dict[str, Any]:
     contract = client.get_contract()
     primary = contract.primary_data_query_contract
     return {

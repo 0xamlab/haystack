@@ -139,7 +139,7 @@ describe("DecisionEngineClient — loads_a", () => {
             status: 200,
             headers: {
               "Content-Type": "application/json",
-              "X-Codna-Device-Binding-Token": "binding-token-000000000000000001",
+              "X-Algenta-Device-Binding-Token": "binding-token-000000000000000001",
             },
           }),
         )
@@ -179,7 +179,7 @@ describe("DecisionEngineClient — loads_a", () => {
         expect(fetchMock.mock.calls[1]?.[1]).toEqual(
           expect.objectContaining({
             headers: expect.objectContaining({
-              "X-Codna-Device-Binding-Token": "binding-token-000000000000000001",
+              "X-Algenta-Device-Binding-Token": "binding-token-000000000000000001",
             }),
           }),
         );

@@ -503,8 +503,8 @@ NODE_RUNNER_SOURCE = """
 import { pathToFileURL } from 'node:url';
 
 const sdkModule = await import(pathToFileURL(process.env.TS_SDK_DIST_ENTRY).href);
-const { CodnaClient } = sdkModule;
-const client = new CodnaClient({
+const { AlgentaClient } = sdkModule;
+const client = new AlgentaClient({
   apiKey: process.env.DE_API_KEY,
   baseUrl: process.env.DE_BASE_URL,
   maxRetries: 0,

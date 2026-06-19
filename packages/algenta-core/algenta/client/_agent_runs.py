@@ -1,4 +1,4 @@
-"""_AgentRunsMixin for the CodnaClient class.
+"""_AgentRunsMixin for the AlgentaClient class.
 
 Extracted from packages/algenta-core/algenta/client.py during modularization.
 """

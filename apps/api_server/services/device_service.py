@@ -81,12 +81,21 @@ _JWT_ALGORITHM = "HS256"
 _JWT_ISSUER = "algenta-control-plane"
 _GRACE_DAYS = 14
 _LICENSE_TTL_DAYS = 365  # fallback TTL for keys without an explicit expiry
-HOSTED_DEVICE_ID_HEADER = "X-Codna-Device-Id"
-HOSTED_DEVICE_PLATFORM_HEADER = "X-Codna-Platform"
-HOSTED_DEVICE_PLATFORM_VERSION_HEADER = "X-Codna-Platform-Version"
-HOSTED_DEVICE_HOSTNAME_HASH_HEADER = "X-Codna-Hostname-Hash"
-HOSTED_DEVICE_SDK_VERSION_HEADER = "X-Codna-SDK-Version"
-HOSTED_DEVICE_BINDING_TOKEN_HEADER = "X-Codna-Device-Binding-Token"  # noqa: S105
+HOSTED_DEVICE_ID_HEADER = "X-Algenta-Device-Id"
+HOSTED_DEVICE_PLATFORM_HEADER = "X-Algenta-Platform"
+HOSTED_DEVICE_PLATFORM_VERSION_HEADER = "X-Algenta-Platform-Version"
+HOSTED_DEVICE_HOSTNAME_HASH_HEADER = "X-Algenta-Hostname-Hash"
+HOSTED_DEVICE_SDK_VERSION_HEADER = "X-Algenta-SDK-Version"
+HOSTED_DEVICE_BINDING_TOKEN_HEADER = "X-Algenta-Device-Binding-Token"  # noqa: S105
+# Legacy device-header names (the #157 Codna rebrand). Algenta is the engine/SDK; these are
+# still ACCEPTED on read so deployed raw-HTTP callers / older SDK builds keep working. New
+# responses + the bundled SDKs send the canonical X-Algenta-* names above.
+LEGACY_HOSTED_DEVICE_ID_HEADER = "X-Codna-Device-Id"
+LEGACY_HOSTED_DEVICE_PLATFORM_HEADER = "X-Codna-Platform"
+LEGACY_HOSTED_DEVICE_PLATFORM_VERSION_HEADER = "X-Codna-Platform-Version"
+LEGACY_HOSTED_DEVICE_HOSTNAME_HASH_HEADER = "X-Codna-Hostname-Hash"
+LEGACY_HOSTED_DEVICE_SDK_VERSION_HEADER = "X-Codna-SDK-Version"
+LEGACY_HOSTED_DEVICE_BINDING_TOKEN_HEADER = "X-Codna-Device-Binding-Token"  # noqa: S105
 _HOSTED_DEVICE_MIN_LENGTH = 16
 _HOSTED_DEVICE_BINDING_TOKEN_MIN_LENGTH = 24
 _HOSTED_DEVICE_BINDING_EXEMPT_PATHS = frozenset(
@@ -281,7 +290,7 @@ def _device_binding_token_required_error(
         code="device_binding_token_required",
         message=(
             f"Device '{device_id}' is already bound for this API key. "
-            f"Send the {HOSTED_DEVICE_BINDING_TOKEN_HEADER} header or use the Codna SDK."
+            f"Send the {HOSTED_DEVICE_BINDING_TOKEN_HEADER} header or use the Algenta SDK."
         ),
         details={
             "device_id": device_id,
@@ -310,15 +319,26 @@ def _invalid_device_binding_token_error(
     )
 
 
+def _device_header(request: Request, primary: str, legacy: str, default: str = "") -> str:
+    """Read a device header, preferring the canonical X-Algenta-* name and falling back to the
+    legacy X-Codna-* name (back-compat for deployed raw-HTTP callers / older SDK builds)."""
+    primary_val = request.headers.get(primary, "")
+    if primary_val.strip():
+        return primary_val
+    return request.headers.get(legacy, default)
+
+
 def _hosted_request_device_info(request: Request) -> dict[str, str]:
-    device_id = request.headers.get(HOSTED_DEVICE_ID_HEADER, "").strip()
+    device_id = _device_header(
+        request, HOSTED_DEVICE_ID_HEADER, LEGACY_HOSTED_DEVICE_ID_HEADER
+    ).strip()
     if not device_id:
         raise DeviceBindingError(
             status_code=401,
             code="device_binding_required",
             message=(
                 "This API key is bound to a finite number of devices. "
-                f"Send the {HOSTED_DEVICE_ID_HEADER} header or use the Codna SDK."
+                f"Send the {HOSTED_DEVICE_ID_HEADER} header or use the Algenta SDK."
             ),
             details={"required_header": HOSTED_DEVICE_ID_HEADER},
         )
@@ -335,17 +355,23 @@ def _hosted_request_device_info(request: Request) -> dict[str, str]:
 
     device_info = {
         "device_id": device_id,
-        "platform": request.headers.get(HOSTED_DEVICE_PLATFORM_HEADER, "").strip(),
-        "platform_version": request.headers.get(
+        "platform": _device_header(
+            request, HOSTED_DEVICE_PLATFORM_HEADER, LEGACY_HOSTED_DEVICE_PLATFORM_HEADER
+        ).strip(),
+        "platform_version": _device_header(
+            request,
             HOSTED_DEVICE_PLATFORM_VERSION_HEADER,
-            "",
+            LEGACY_HOSTED_DEVICE_PLATFORM_VERSION_HEADER,
         ).strip(),
-        "hostname_hash": request.headers.get(
+        "hostname_hash": _device_header(
+            request,
             HOSTED_DEVICE_HOSTNAME_HASH_HEADER,
-            "",
+            LEGACY_HOSTED_DEVICE_HOSTNAME_HASH_HEADER,
         ).strip(),
-        "sdk_version": request.headers.get(
+        "sdk_version": _device_header(
+            request,
             HOSTED_DEVICE_SDK_VERSION_HEADER,
+            LEGACY_HOSTED_DEVICE_SDK_VERSION_HEADER,
             request.headers.get("User-Agent", ""),
         ).strip()[:DEVICE_SDK_VERSION_MAX_LENGTH],
     }
@@ -363,7 +389,7 @@ def _hosted_request_device_info(request: Request) -> dict[str, str]:
             code="device_platform_required",
             message=(
                 "This API key is bound to a finite number of devices. "
-                f"Send the {HOSTED_DEVICE_PLATFORM_HEADER} header or use the Codna SDK."
+                f"Send the {HOSTED_DEVICE_PLATFORM_HEADER} header or use the Algenta SDK."
             ),
             details={"required_header": HOSTED_DEVICE_PLATFORM_HEADER},
         )
@@ -373,7 +399,7 @@ def _hosted_request_device_info(request: Request) -> dict[str, str]:
             code="device_fingerprint_required",
             message=(
                 "This API key is bound to a finite number of devices. "
-                f"Send the {HOSTED_DEVICE_HOSTNAME_HASH_HEADER} header or use the Codna SDK."
+                f"Send the {HOSTED_DEVICE_HOSTNAME_HASH_HEADER} header or use the Algenta SDK."
             ),
             details={"required_header": HOSTED_DEVICE_HOSTNAME_HASH_HEADER},
         )
@@ -381,7 +407,9 @@ def _hosted_request_device_info(request: Request) -> dict[str, str]:
 
 
 def _hosted_request_binding_token(request: Request) -> str:
-    token = request.headers.get(HOSTED_DEVICE_BINDING_TOKEN_HEADER, "").strip()
+    token = _device_header(
+        request, HOSTED_DEVICE_BINDING_TOKEN_HEADER, LEGACY_HOSTED_DEVICE_BINDING_TOKEN_HEADER
+    ).strip()
     if not token:
         return ""
     if len(token) < _HOSTED_DEVICE_BINDING_TOKEN_MIN_LENGTH:

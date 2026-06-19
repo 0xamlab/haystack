@@ -88,7 +88,7 @@ def test_sync_client_loads_persisted_binding_token(
     )
     built = client._build_http_client()
 
-    assert built["headers"]["X-Codna-Device-Binding-Token"] == "binding-token-000000000000000001"
+    assert built["headers"]["X-Algenta-Device-Binding-Token"] == "binding-token-000000000000000001"
 
 
 def test_sync_client_persists_binding_token_from_response(
@@ -114,7 +114,7 @@ def test_sync_client_persists_binding_token_from_response(
 
     response = SimpleNamespace(
         headers={
-            "X-Codna-Device-Binding-Token": "binding-token-000000000000000001",
+            "X-Algenta-Device-Binding-Token": "binding-token-000000000000000001",
         }
     )
     client._store_device_binding_token(response)
@@ -125,7 +125,7 @@ def test_sync_client_persists_binding_token_from_response(
         device_id="python-device-0001",
     )
     assert stored == "binding-token-000000000000000001"
-    assert client._client.headers["X-Codna-Device-Binding-Token"] == stored
+    assert client._client.headers["X-Algenta-Device-Binding-Token"] == stored
 
 
 @pytest.mark.anyio
@@ -157,4 +157,4 @@ async def test_async_client_loads_persisted_binding_token(
     )
     built = client._build_http_client()
 
-    assert built["headers"]["X-Codna-Device-Binding-Token"] == "binding-token-000000000000000001"
+    assert built["headers"]["X-Algenta-Device-Binding-Token"] == "binding-token-000000000000000001"

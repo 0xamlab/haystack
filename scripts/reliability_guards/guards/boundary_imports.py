@@ -1,7 +1,7 @@
 """boundary_imports — customer/channel code importing algenta PRODUCT internals.
 
 Customer/channel trees (scripts/, benchmarks/, apps/cli, apps/mcp_server) must
-consume only the public boundary (Runtime SDK / AsyncCodnaClient / /v1/repositories/*
+consume only the public boundary (Runtime SDK / AsyncAlgentaClient / /v1/repositories/*
 / run_agent_via_sidecar), never the repository_intelligence_* internals or
 mojo_library_runner. Wave D fails new channel code; Wave E shrinks the baseline to
 zero (all become fatal)."""
