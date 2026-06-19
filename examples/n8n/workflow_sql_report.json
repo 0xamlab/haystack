@@ -1,5 +1,5 @@
 {
-  "name": "Codna — Discover Dataset and SQL Report",
+  "name": "Algenta — Discover Dataset and SQL Report",
   "nodes": [
     {
       "parameters": {},
@@ -25,7 +25,7 @@
       "credentials": {
         "httpHeaderAuth": {
           "id": "algenta-api-key",
-          "name": "Codna API Key"
+          "name": "Algenta API Key"
         }
       }
     },
@@ -45,7 +45,7 @@
       "credentials": {
         "httpHeaderAuth": {
           "id": "algenta-api-key",
-          "name": "Codna API Key"
+          "name": "Algenta API Key"
         }
       }
     },
@@ -65,7 +65,7 @@
       "credentials": {
         "httpHeaderAuth": {
           "id": "algenta-api-key",
-          "name": "Codna API Key"
+          "name": "Algenta API Key"
         }
       }
     },
@@ -97,7 +97,7 @@
       "credentials": {
         "httpHeaderAuth": {
           "id": "algenta-api-key",
-          "name": "Codna API Key"
+          "name": "Algenta API Key"
         }
       }
     },

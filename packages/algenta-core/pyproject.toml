@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "algenta-core"
 version = "1.0.0"
-description = "Codna core runtime — local-first deterministic resolve and query execution."
+description = "Algenta core runtime — local-first deterministic resolve and query execution."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
@@ -36,9 +36,9 @@ all = ["algenta-sdk>=1.0.0", "numpy"]
 algenta = "algenta.cli:main"
 
 [project.urls]
-Homepage = "https://codna.ai"
-Documentation = "https://docs.codna.ai/core"
-Repository = "https://github.com/algenta/decision-engine"
+Homepage = "https://algenta.ai"
+Documentation = "https://docs.algenta.ai/core"
+Repository = "https://github.com/thyn-ai/algenta"
 
 [tool.setuptools.packages.find]
 where = ["."]

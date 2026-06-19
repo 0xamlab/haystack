@@ -1,6 +1,6 @@
-# Codna MCP Server
+# Algenta MCP Server
 
-**Model Context Protocol (MCP)** bridge for the Codna runtime and public API surface. Connects AI agents to governed dataset discovery, exact queries, deterministic utility-model routes, simplified product helpers, persisted agent runs, simulations, jobs, and connector-backed datasets.
+**Model Context Protocol (MCP)** bridge for the Algenta runtime and public API surface. Connects AI agents to governed dataset discovery, exact queries, deterministic utility-model routes, simplified product helpers, persisted agent runs, simulations, jobs, and connector-backed datasets.
 
 ## Install
 
@@ -8,7 +8,7 @@
 pipx install algenta-mcp        # or: pip install algenta-mcp
 ```
 
-Point it at your Codna deployment with `ALGENTA_BASE_URL` + `ALGENTA_API_KEY`. `algenta-mcp` runs the **stdio** transport by default (for Cursor / Claude Desktop); for HTTP/SSE (OpenWebUI, LibreChat) use `algenta-mcp --mode http --port 8001`.
+Point it at your Algenta deployment with `ALGENTA_BASE_URL` + `ALGENTA_API_KEY`. `algenta-mcp` runs the **stdio** transport by default (for Cursor / Claude Desktop); for HTTP/SSE (OpenWebUI, LibreChat) use `algenta-mcp --mode http --port 8001`.
 
 ### Cursor / Claude Desktop
 
@@ -32,7 +32,7 @@ Add to your MCP config (Cursor `~/.cursor/mcp.json`, or Claude Desktop `claude_d
 
 | Tool | Description |
 |------|-------------|
-| `get_contract` | Machine-readable Codna contract for tool/API/SDK discovery. |
+| `get_contract` | Machine-readable Algenta contract for tool/API/SDK discovery. |
 | `connect_data` | High-level dataset onboarding. Connect once and get a reusable `dataset_id`. |
 | `list_data` | Canonical dataset discovery. Supports `search`, `status`, `source_name`, and `compact`. |
 | `get_data_summary` | Low-token summary for a selected dataset before loading full schema. |
@@ -368,7 +368,7 @@ python -m algenta_mcp.server --transport http --port 8001
 ALGENTA_MCP_PORT=8001 python -m algenta_mcp.server --transport http
 ```
 
-Or if you have the Codna API server running, the MCP is already mounted at:
+Or if you have the Algenta API server running, the MCP is already mounted at:
 - **`GET  /mcp/tools`** — List tools (JSON, no auth needed, always available)
 - **`GET  /mcp/sse`** — SSE connection endpoint when the optional MCP transport dependencies are installed
 - **`POST /mcp/messages`** — Message handler when the optional MCP transport dependencies are installed
@@ -388,7 +388,7 @@ If the optional MCP transport dependencies are not installed, the API still moun
 3. Set **URL**: `<YOUR_ALGENTA_BASE_URL>/mcp/sse`
 4. Set **Header**: `Authorization: Bearer <YOUR_ALGENTA_API_KEY>`
 
-Example workflow: *Trigger → Codna list_data/search → get_data_summary → query_data or query_batch → Send Slack notification*
+Example workflow: *Trigger → Algenta list_data/search → get_data_summary → query_data or query_batch → Send Slack notification*
 
 ---
 
@@ -483,7 +483,7 @@ config = {
 }
 
 algenta_agent = MCPAgent(
-    name="CodnaDecisionAgent",
+    name="AlgentaDecisionAgent",
     system_message="You help make data-driven decisions using Monte Carlo simulations.",
     mcp_config=config,
 )
@@ -576,7 +576,7 @@ mcp-server:
 ## Security Notes
 
 - The stdio transport runs locally — API key is only in your environment
-- The HTTP transport authenticates downstream to the Codna API with your key
+- The HTTP transport authenticates downstream to the Algenta API with your key
 - Add your own authentication layer (API gateway / Nginx) in front of the MCP HTTP port in production
 - The `/mcp/tools` list endpoint on the FastAPI server is public (no sensitive data)
 - All actual tool calls require `ALGENTA_API_KEY` or `DE_API_KEY` to be set

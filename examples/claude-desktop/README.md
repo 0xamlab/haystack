@@ -1,6 +1,6 @@
-# Codna — Claude Desktop and Codex MCP
+# Algenta — Claude Desktop and Codex MCP
 
-Use Codna from Claude Desktop, Codex, and other MCP clients.
+Use Algenta from Claude Desktop, Codex, and other MCP clients.
 
 ## Recommended split
 
@@ -17,7 +17,7 @@ Edit your Claude Desktop config file:
 - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 
-Add the Codna MCP server:
+Add the Algenta MCP server:
 
 ```json
 {
@@ -58,7 +58,7 @@ Start read-only if your client supports tool scoping.
 
 | Tool | Description |
 |------|-------------|
-| `get_contract` | Machine-readable Codna contract for live API/SDK/CLI/MCP discovery |
+| `get_contract` | Machine-readable Algenta contract for live API/SDK/CLI/MCP discovery |
 | `list_data` | Canonical dataset discovery with `search`, `status`, `source_name`, and `compact` |
 | `get_data_summary` | Low-token summary for a selected dataset before full schema |
 | `get_data_schema` | Full schema, roles, formulas, and query hints |

@@ -1,7 +1,7 @@
 # Capability Plane Examples
 
 These files show the canonical customer-agnostic capability-plane surfaces that
-Codna now exposes for providers, bindings, discovery, routing, execution, and
+Algenta now exposes for providers, bindings, discovery, routing, execution, and
 outcome recording.
 
 ## Files
@@ -81,7 +81,7 @@ curl -X POST "${ALGENTA_BASE_URL}/v1/capabilities/outcomes" \
 - `binding_discover_request.json` uses a manifest-backed skill-pack preview so
   the request validates without assuming any app-owned registry.
 - `capability_execute_request.json` targets a skill capability because that path
-  is Codna-managed and deterministic: execution returns the instruction
+  is Algenta-managed and deterministic: execution returns the instruction
   artifact and instruction text for the selected capability.
 - Replace placeholder ids such as `00000000-0000-0000-0000-000000000123` with
   real binding ids returned by your own environment before executing or

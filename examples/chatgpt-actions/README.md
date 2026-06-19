@@ -1,6 +1,6 @@
-# Codna — ChatGPT Actions
+# Algenta — ChatGPT Actions
 
-Use the hosted Codna OpenAPI contract inside ChatGPT Actions.
+Use the hosted Algenta OpenAPI contract inside ChatGPT Actions.
 
 - Cloud Managed: `https://api.codna.ai`
 - `self_hosted` and `air_gapped`: replace the hosted base URL with your self-hosted base URL
@@ -58,4 +58,4 @@ execution-policy snapshot history without mutating the system.
 ## Revoke or disconnect
 
 - Remove the imported action from the GPT
-- Revoke the Codna API key if the GPT should no longer have access
+- Revoke the Algenta API key if the GPT should no longer have access

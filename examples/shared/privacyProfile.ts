@@ -48,7 +48,7 @@ function cloudDisabled(env: ExamplePrivacyEnv): boolean {
   return PRIVATE_DEPLOYMENT_MODES.has((envValue(env, "ALGENTA_DEPLOYMENT_MODE") ?? "saas").toLowerCase());
 }
 
-function isCodnaOwnedBaseUrl(baseUrl: string): boolean {
+function isAlgentaOwnedBaseUrl(baseUrl: string): boolean {
   const hostname = new URL(baseUrl).hostname.trim().toLowerCase();
   if (ALGENTA_OWNED_HOST_SET.has(hostname)) {
     return true;
@@ -81,7 +81,7 @@ export function resolveExampleBaseUrl(options: {
     configuredBaseUrl ?? options.defaultBaseUrl ?? "https://api.codna.ai",
     options.component,
   );
-  if (cloudDisabled(env) && isCodnaOwnedBaseUrl(normalized)) {
+  if (cloudDisabled(env) && isAlgentaOwnedBaseUrl(normalized)) {
     throw new Error(
       `${options.component} private profiles cannot target Codna-owned cloud URLs. Configure a self-hosted baseUrl or ALGENTA_BASE_URL / DE_BASE_URL / ALGENTA_API_URL.`,
     );

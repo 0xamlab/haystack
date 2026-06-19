@@ -1,6 +1,6 @@
 # algenta-core
 
-High-level Codna runtime SDK for governed data/query flows, local runtime control, and local Mojo libraries.
+High-level Algenta runtime SDK for governed data/query flows, local runtime control, and local Mojo libraries.
 
 ## Install
 
@@ -570,5 +570,5 @@ quality-gate SLO budgets `mcp_call_first_party`, `decision_plan_creation`, and
 
 ## Docs
 
-- [Codna core docs](https://docs.codna.ai/core)
-- [Local runtime guide](https://docs.codna.ai/integrations/local-runtime)
+- [Algenta core docs](https://docs.algenta.ai/core)
+- [Local runtime guide](https://docs.algenta.ai/integrations/local-runtime)

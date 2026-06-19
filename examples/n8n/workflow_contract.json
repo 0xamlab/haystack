@@ -1,5 +1,5 @@
 {
-  "name": "Codna — Inspect Live Contract",
+  "name": "Algenta — Inspect Live Contract",
   "nodes": [
     {
       "parameters": {},
@@ -25,7 +25,7 @@
       "credentials": {
         "httpHeaderAuth": {
           "id": "algenta-api-key",
-          "name": "Codna API Key"
+          "name": "Algenta API Key"
         }
       }
     },

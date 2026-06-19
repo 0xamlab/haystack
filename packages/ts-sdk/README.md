@@ -1,6 +1,6 @@
 # algenta-sdk
 
-TypeScript and JavaScript SDK for Codna public data, query, and simulation APIs.
+TypeScript and JavaScript SDK for Algenta public data, query, and simulation APIs.
 
 ## Install
 
@@ -49,7 +49,7 @@ const mcpProviders = await client.listMcpProviders();
 The direct client now exposes a single customer-agnostic capability plane over
 data connectors, MCP providers, skills, native tools, and runtime libraries.
 Execution ownership remains authoritative: `algenta_managed` capabilities must
-execute through the Codna service, while local runtime adapters only execute
+execute through the Algenta service, while local runtime adapters only execute
 `client_managed` capabilities and fail closed otherwise.
 Checked-in request artifacts and runnable examples live in
 `examples/capability-plane/` and `examples/langgraph/capability_router.py`.
@@ -885,5 +885,5 @@ Cloud Managed URLs only with `mode: "api"`. `mode: "self_hosted"` and private pr
 
 ## Docs
 
-- [Codna TypeScript docs](https://docs.codna.ai/sdks/typescript)
-- [Direct API client guide](https://docs.codna.ai/direct-api-client)
+- [Algenta TypeScript docs](https://docs.algenta.ai/sdks/typescript)
+- [Direct API client guide](https://docs.algenta.ai/direct-api-client)

@@ -1,5 +1,5 @@
 """
-LangGraph capability-router example for the unified Codna capability plane.
+LangGraph capability-router example for the unified Algenta capability plane.
 
 Setup:
     pip install algenta-sdk langgraph langchain-openai
@@ -40,7 +40,7 @@ def _client() -> AlgentaClient:
 def route_and_execute_capability(objective: str) -> dict[str, object]:
     """
     Route one objective through the capability plane, fetch the selected
-    capability record, and execute it when the selected path is Codna-managed.
+    capability record, and execute it when the selected path is Algenta-managed.
     """
     client = _client()
     route = client.route_capabilities(

@@ -152,7 +152,7 @@ def test_service_first_docs_keep_runtime_and_sdk_surfaces_distinct() -> None:
     assert "immutable audit-log artifacts" in trust_model
     assert "execution-policy snapshots" in trust_model
     assert 'de_live_...' not in trust_model
-    assert "Codna — Local Runtime" in local_runtime_example
+    assert "Algenta — Local Runtime" in local_runtime_example
     assert 'pip install "algenta-core[cloud]"' in local_runtime_example
     assert 'Runtime(mode="api")' in local_runtime_example
     assert "algenta-sdk" in local_runtime_example
@@ -238,9 +238,9 @@ def test_public_package_and_export_surfaces_use_algenta_branding() -> None:
     legacy_api_main = (ROOT / "apps" / "api-server" / "main.py").read_text()
     readme = (ROOT / "README.md").read_text()
 
-    assert "Python SDK for Codna" in python_sdk_pyproject
+    assert "Python SDK for Algenta" in python_sdk_pyproject
     assert "Codna Decision Engine" not in python_sdk_pyproject
-    assert "SDK for Codna public data, query, and simulation APIs" in ts_sdk_package
+    assert "SDK for Algenta public data, query, and simulation APIs" in ts_sdk_package
     assert '"algenta"' in ts_sdk_package
     assert "Codna SDK errors" in python_sdk_exceptions
     assert "Decision Engine SDK errors" not in python_sdk_exceptions

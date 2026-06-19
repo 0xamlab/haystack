@@ -1,6 +1,6 @@
-# Power Automate — Codna
+# Power Automate — Algenta
 
-Use the Power Automate custom connector to call Codna's hosted data, query,
+Use the Power Automate custom connector to call Algenta's hosted data, query,
 and simulation surfaces from Microsoft flows.
 
 - Cloud Managed: `https://api.codna.ai`
@@ -40,7 +40,7 @@ checked-in request specs and bodies in `contract_request.json`,
 
 ## First flow
 
-The primary Codna data/query path in Power Automate is:
+The primary Algenta data/query path in Power Automate is:
 
 - `GET /v1/meta/contract`
 - `/openapi.json` plus `x-primary-data-query-contract` as the fallback on older self-hosted nodes that still return `404` there
@@ -65,4 +65,4 @@ dataset-query path.
 - Use `contract_request.json`, `query_batch_request.json`, and
   `sql_report_request.json` when you want copy-pasteable HTTP request payloads
   alongside the custom connector.
-- Revoke the Codna API key if the connector should lose access entirely.
+- Revoke the Algenta API key if the connector should lose access entirely.

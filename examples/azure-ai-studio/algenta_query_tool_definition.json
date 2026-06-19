@@ -1,6 +1,6 @@
 {
   "name": "algenta_query_dataset",
-  "description": "Use the companion algenta_get_contract tool first to inspect the live machine-readable contract, then discover datasets with lexical search, fetch a low-token dataset summary, and run one governed exact query or a governed exact-query batch against an authorized Codna dataset. Use this tool for operational facts, KPIs, and time-series questions over connected data.",
+  "description": "Use the companion algenta_get_contract tool first to inspect the live machine-readable contract, then discover datasets with lexical search, fetch a low-token dataset summary, and run one governed exact query or a governed exact-query batch against an authorized Algenta dataset. Use this tool for operational facts, KPIs, and time-series questions over connected data.",
   "parameters": {
     "type": "object",
     "properties": {

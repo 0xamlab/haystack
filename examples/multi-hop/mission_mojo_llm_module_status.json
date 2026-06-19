@@ -160,7 +160,7 @@
     }
   ],
   "notes": [
-    "Mission mounts the local Codna runtime library tools on the main /api/agent path.",
+    "Mission mounts the local Algenta runtime library tools on the main /api/agent path.",
     "Mission keeps governed multihop SQL analytics on list_data/get_data_schema/query_data/query_sql_source/query_sql_report/register_sql_source, not on execute_algenta_library by default.",
     "Use the local runtime library lane for direct deterministic compute after governed retrieval, not as the default replacement for governed dataset joins."
   ]

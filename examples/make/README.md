@@ -1,6 +1,6 @@
-# Make (Integromat) Integration — Codna
+# Make (Integromat) Integration — Algenta
 
-Use Make's **HTTP** module to call Codna's hosted data, query, and simulation surfaces in any scenario.
+Use Make's **HTTP** module to call Algenta's hosted data, query, and simulation surfaces in any scenario.
 
 - Cloud Managed: `https://api.codna.ai`
 - `self_hosted` and `air_gapped`: replace the hosted base URL with your self-hosted base URL
@@ -109,7 +109,7 @@ Authorization: Bearer <YOUR_ALGENTA_API_KEY>
 ### Step 2: Configure Webhook Module
 
 Add a **Webhooks → Custom Webhook** as your trigger.
-Codna will POST the result to your webhook when the job completes.
+Algenta will POST the result to your webhook when the job completes.
 
 ### Step 3: Parse Webhook Payload
 

@@ -1,6 +1,6 @@
 openapi: "3.1.0"
 info:
-  title: "Codna"
+  title: "Algenta"
   description: |
     Discover datasets, fetch low-token summaries, run governed exact queries,
     run governed exact-query batches, execute constrained read-only SQL reports,
@@ -154,13 +154,13 @@ paths:
   /v1/meta/contract:
     get:
       operationId: "getContract"
-      summary: "Get machine-readable Codna contract"
+      summary: "Get machine-readable Algenta contract"
       description: "Fetch the live machine-readable contract for API, SDK, CLI, and MCP discovery."
       security:
         - BearerAuth: []
       responses:
         "200":
-          description: "Machine-readable Codna contract"
+          description: "Machine-readable Algenta contract"
           content:
             application/json:
               schema:
@@ -777,7 +777,7 @@ components:
     BearerAuth:
       type: http
       scheme: bearer
-      description: "Use your Codna API key as Bearer token."
+      description: "Use your Algenta API key as Bearer token."
 
 security:
   - BearerAuth: []

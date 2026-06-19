@@ -1,6 +1,6 @@
 {
   "name": "algenta_simulate",
-  "description": "Run probabilistic Monte Carlo simulations using Codna. Returns structured recommendations (PROCEED/CAUTION/REJECT/HEDGE) with confidence, expected value, probability of loss, VaR, and percentile distribution. Use this tool when you need to quantify decision risk, model uncertainty in business outcomes, or get data-driven recommendations.",
+  "description": "Run probabilistic Monte Carlo simulations using Algenta. Returns structured recommendations (PROCEED/CAUTION/REJECT/HEDGE) with confidence, expected value, probability of loss, VaR, and percentile distribution. Use this tool when you need to quantify decision risk, model uncertainty in business outcomes, or get data-driven recommendations.",
   "parameters": {
     "type": "object",
     "properties": {

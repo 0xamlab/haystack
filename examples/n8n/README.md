@@ -1,6 +1,6 @@
-# Codna — n8n
+# Algenta — n8n
 
-Use Codna from n8n with HTTP Request nodes or MCP-aware AI flows.
+Use Algenta from n8n with HTTP Request nodes or MCP-aware AI flows.
 
 - Cloud Managed: `https://api.codna.ai`
 - `self_hosted` and `air_gapped`: replace the hosted base URL with your self-hosted base URL
@@ -66,4 +66,4 @@ policy snapshots before it fans out into Slack, approvals, or downstream APIs.
 ## Revoke or disconnect
 
 - Remove the node credentials or environment variable
-- Revoke the Codna API key if the workflow should lose access entirely
+- Revoke the Algenta API key if the workflow should lose access entirely

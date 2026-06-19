@@ -1056,8 +1056,8 @@ python3 -u tests/integration/test_go_live_full_real.py --parallel-tasks 4 --mojo
 ## Development
 
 ```bash
-git clone https://github.com/algenta/decision-engine
-cd decision-engine
+git clone https://github.com/thyn-ai/algenta
+cd algenta
 
 python3 -m pytest tests -q
 python3 -u tests/integration/test_go_live_full_real.py --parallel-tasks 4 --mojo-workers 4 --mojo-timeout 30

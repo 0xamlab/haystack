@@ -1,13 +1,13 @@
-Codna Community License (ACL)
+Algenta Community License (ACL)
 Version 1.0 — March 2026
 
-Copyright (c) 2026 Codna, Inc.
+Copyright (c) 2026 Algenta, Inc.
 
 TERMS AND CONDITIONS
 
 1. DEFINITIONS
 
-"Software" means the Codna Decision Engine source code, documentation, and associated files
+"Software" means the Algenta Decision Engine source code, documentation, and associated files
 distributed under this license.
 
 "Community Use" means use of the Software for non-commercial purposes, personal projects,
@@ -16,14 +16,14 @@ with fewer than 50 employees AND annual gross revenue under $5,000,000 USD.
 
 "Commercial Self-Hosting" means deploying the Software as part of a commercial product or
 service offered to external customers, OR use by organizations exceeding the Community Use
-thresholds, without purchasing a commercial license from Codna.
+thresholds, without purchasing a commercial license from Algenta.
 
 "Engine Binary" means the compiled Mojo simulation engine binary (`mojo_build/simulate`)
 distributed alongside this Software.
 
 2. COMMUNITY USE GRANT
 
-Subject to the terms of this license, Codna grants you a worldwide, royalty-free,
+Subject to the terms of this license, Algenta grants you a worldwide, royalty-free,
 non-exclusive license to:
 
   (a) Use, copy, modify, and distribute the Software for Community Use;
@@ -32,7 +32,7 @@ non-exclusive license to:
 
 3. RESTRICTIONS
 
-You may NOT, without a commercial license from Codna:
+You may NOT, without a commercial license from Algenta:
 
   (a) Use the Software for Commercial Self-Hosting;
   (b) Remove or modify license notices or attribution;
@@ -42,7 +42,7 @@ You may NOT, without a commercial license from Codna:
 4. COMMERCIAL LICENSE
 
 Organizations requiring Commercial Self-Hosting must obtain a commercial license.
-Contact: licensing@codna.ai | https://codna.ai/pricing
+Contact: licensing@algenta.ai | https://algenta.ai/pricing
 
 5. ENGINE BINARY
 
@@ -53,13 +53,13 @@ The Mojo source code for the engine is proprietary and not covered by this licen
 6. CONTRIBUTIONS
 
 Contributions to this Software are welcome. By submitting a contribution, you agree to
-the Codna Contributor License Agreement (CLA) at https://codna.ai/cla.
-Contributed code is licensed back to Codna under this same license.
+the Algenta Contributor License Agreement (CLA) at https://algenta.ai/cla.
+Contributed code is licensed back to Algenta under this same license.
 
 7. CLOUD SERVICE
 
-Codna operates a hosted version of this Software at https://api.codna.ai.
-Use of the hosted service is governed by the Codna Terms of Service, not this license.
+Algenta operates a hosted version of this Software at https://api.algenta.ai.
+Use of the hosted service is governed by the Algenta Terms of Service, not this license.
 
 8. DISCLAIMER
 
@@ -71,7 +71,7 @@ DAMAGES OR OTHER LIABILITY ARISING FROM THE USE OF THE SOFTWARE.
 9. ATTRIBUTION
 
 If you distribute the Software or a derivative work, you must retain this copyright notice
-and a link to https://codna.ai in your documentation.
+and a link to https://algenta.ai in your documentation.
 
 ---
 
@@ -80,7 +80,7 @@ Why this license? (not legal advice)
 We follow the open-core model used by Supabase, n8n, Reown, and others:
 - The framework, integrations, portal, and SDKs are source-available
 - The simulation engine core remains proprietary
-- Community builders get full access to build on top of Codna
+- Community builders get full access to build on top of Algenta
 - Commercial deployment beyond the thresholds requires a paid license
 
-Questions? licensing@codna.ai
+Questions? licensing@algenta.ai

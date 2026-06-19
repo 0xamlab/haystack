@@ -1,6 +1,6 @@
 # algenta-sdk
 
-Python SDK for Codna public data, query, and simulation APIs.
+Python SDK for Algenta public data, query, and simulation APIs.
 
 ## Install
 
@@ -51,7 +51,7 @@ mcp_providers = client.list_mcp_providers()
 The direct client now exposes a single customer-agnostic capability plane over
 data connectors, MCP providers, skills, native tools, and runtime libraries.
 Execution ownership remains authoritative: `algenta_managed` capabilities must
-execute through the Codna service, while local runtime adapters only execute
+execute through the Algenta service, while local runtime adapters only execute
 `client_managed` capabilities and fail closed otherwise.
 Checked-in request artifacts and runnable examples live in
 `examples/capability-plane/` and `examples/langgraph/capability_router.py`.
@@ -502,5 +502,5 @@ hand-rolling ad hoc dictionaries.
 
 ## Docs
 
-- [Codna docs](https://docs.codna.ai)
-- [Direct API client guide](https://docs.codna.ai/direct-api-client)
+- [Algenta docs](https://docs.algenta.ai)
+- [Direct API client guide](https://docs.algenta.ai/direct-api-client)

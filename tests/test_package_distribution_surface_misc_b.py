@@ -37,9 +37,9 @@ def test_typescript_package_surface_includes_package_readme_and_registry_metadat
     assert package_json["name"] == "algenta-sdk"
     # LICENSE is published with the package (Apache-2.0, per GTM D2).
     assert package_json["files"] == ["dist", "proto", "README.md", "LICENSE"]
-    assert package_json["homepage"] == "https://codna.ai"
+    assert package_json["homepage"] == "https://algenta.ai"
     assert package_json["repository"]["directory"] == "packages/ts-sdk"
-    assert package_json["bugs"]["url"] == "https://github.com/algenta/decision-engine/issues"
+    assert package_json["bugs"]["url"] == "https://github.com/thyn-ai/algenta/issues"
     assert "src/**/*.test.ts" in tsconfig["exclude"]
     assert_manifest_backed_integration_texts_equal(contract_text, source_contract_text)
     assert "PRIMARY_DATA_QUERY_CONTRACT" in readme_text

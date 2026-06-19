@@ -1,6 +1,6 @@
 # Multi-hop Query Examples
 
-These files show the canonical multihop query surfaces that Codna already
+These files show the canonical multihop query surfaces that Algenta already
 ships.
 
 ## Files
@@ -124,7 +124,7 @@ Both files show the public replacements for:
 - `query_sql_source` / `query_sql_report`
 
 8. Use the local-runtime examples when the Mission path you are porting uses
-the direct local Codna library tools instead of governed hosted query
+the direct local Algenta library tools instead of governed hosted query
 surfaces:
 
 ```bash
@@ -146,9 +146,9 @@ Those files show the public replacements for:
 9. Use the MCP sequences when you are wiring an agent client that talks to the
 public MCP server directly instead of using the HTTP, CLI, or SDK surfaces:
 
-- [`mcp_governed_exact_sequence.json`](/Users/angel/Developer/decision-engine/examples/multi-hop/mcp_governed_exact_sequence.json)
-- [`mcp_governed_sql_report_sequence.json`](/Users/angel/Developer/decision-engine/examples/multi-hop/mcp_governed_sql_report_sequence.json)
-- [`mcp_runtime_library_sequence.json`](/Users/angel/Developer/decision-engine/examples/multi-hop/mcp_runtime_library_sequence.json)
+- [`mcp_governed_exact_sequence.json`](mcp_governed_exact_sequence.json)
+- [`mcp_governed_sql_report_sequence.json`](mcp_governed_sql_report_sequence.json)
+- [`mcp_runtime_library_sequence.json`](mcp_runtime_library_sequence.json)
 
 Those files show the public replacements for:
 
@@ -161,7 +161,7 @@ Those files show the public replacements for:
 
 ## Mission Mojo LLM module note
 
-Mission does mount the local Codna runtime library tools, but that does not
+Mission does mount the local Algenta runtime library tools, but that does not
 mean the Mojo LLM modules are the default path for governed multihop analytics.
 
 - Use governed discovery plus `query` / `query-batch` / `sql-report` for
@@ -176,17 +176,17 @@ mean the Mojo LLM modules are the default path for governed multihop analytics.
 If you do need the same local runtime-library lane Mission mounts for direct
 deterministic compute, use:
 
-- [`python_runtime_library_flow.py`](/Users/angel/Developer/decision-engine/examples/multi-hop/python_runtime_library_flow.py)
-- [`typescript_runtime_library_flow.ts`](/Users/angel/Developer/decision-engine/examples/multi-hop/typescript_runtime_library_flow.ts)
-- [`apps/docs/docs/integrations/local-runtime.md`](/Users/angel/Developer/decision-engine/apps/docs/docs/integrations/local-runtime.md)
+- [`python_runtime_library_flow.py`](python_runtime_library_flow.py)
+- [`typescript_runtime_library_flow.ts`](typescript_runtime_library_flow.ts)
+- [`apps/docs/docs/integrations/local-runtime.md`](../../apps/docs/docs/integrations/local-runtime.md)
 
 The exact module-by-module status lives in:
 
-- [`mission_mojo_llm_module_status.json`](/Users/angel/Developer/decision-engine/examples/multi-hop/mission_mojo_llm_module_status.json)
+- [`mission_mojo_llm_module_status.json`](mission_mojo_llm_module_status.json)
 
 The full machine-readable Mission functionality map lives in:
 
-- [`mission_functionality_surface_map.json`](/Users/angel/Developer/decision-engine/examples/multi-hop/mission_functionality_surface_map.json)
+- [`mission_functionality_surface_map.json`](mission_functionality_surface_map.json)
 
 ## What not to do
 
@@ -197,4 +197,4 @@ The full machine-readable Mission functionality map lives in:
   `register_sql_source`, `get_sources_graph`, or `map_data_sources`.
 
 For the full guide, see
-[`apps/docs/docs/api-reference/multi-hop-joins.md`](/Users/angel/Developer/decision-engine/apps/docs/docs/api-reference/multi-hop-joins.md).
+[`apps/docs/docs/api-reference/multi-hop-joins.md`](../../apps/docs/docs/api-reference/multi-hop-joins.md).

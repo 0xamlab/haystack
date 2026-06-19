@@ -1,5 +1,5 @@
 {
-  "name": "Codna — Simulate Decision",
+  "name": "Algenta — Simulate Decision",
   "nodes": [
     {
       "parameters": {},
@@ -37,7 +37,7 @@
       "credentials": {
         "httpHeaderAuth": {
           "id": "decision-engine-key",
-          "name": "Codna API Key"
+          "name": "Algenta API Key"
         }
       }
     },

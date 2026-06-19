@@ -1,6 +1,6 @@
-# Codna — Azure AI Foundry and Studio
+# Algenta — Azure AI Foundry and Studio
 
-Use Codna from Azure-hosted copilots, prompt flows, and assistant-style agents.
+Use Algenta from Azure-hosted copilots, prompt flows, and assistant-style agents.
 
 - Cloud Managed: `https://api.codna.ai`
 - `self_hosted` and `air_gapped`: replace the hosted base URL with your self-hosted base URL
@@ -216,8 +216,8 @@ with open("algenta_contract_tool_definition.json") as f:
 assistant = client.beta.assistants.create(
     model="gpt-4o",
     instructions=(
-        "You are a data analyst. Inspect the live Codna contract first, then use "
-        "the Codna query tool for KPIs, metrics, or operational facts over connected "
+        "You are a data analyst. Inspect the live Algenta contract first, then use "
+        "the Algenta query tool for KPIs, metrics, or operational facts over connected "
         "data. Start with dataset discovery, use low-token summaries, then run governed "
         "exact queries."
     ),
@@ -232,7 +232,7 @@ client.beta.threads.messages.create(
     thread_id=thread.id,
     role="user",
     content=(
-        "Inspect the live Codna contract, then find the dataset that matches OTP, "
+        "Inspect the live Algenta contract, then find the dataset that matches OTP, "
         "summarize it, and return the overall OTP rate plus a monthly breakdown for "
         "the last 12 months."
     ),
@@ -384,7 +384,7 @@ def algenta_simulate(
     runs: int = 50000
 ) -> dict:
     """
-    Codna simulation tool for Azure Prompt Flow.
+    Algenta simulation tool for Azure Prompt Flow.
 
     Args:
         variables: Dict of variable name → {low, high} ranges
