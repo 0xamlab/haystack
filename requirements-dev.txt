@@ -18,10 +18,11 @@ snowflake-connector-python>=3.9.0      # Snowflake connector
 # Core web framework (needed for import resolution even in unit tests)
 fastapi==0.133.1
 uvicorn[standard]==0.27.1
-# starlette 1.0.1+ pairs with fastapi 0.133+ (requires starlette>=0.40.0) and closes the
-# remaining starlette dependabot CVEs. fastapi 0.133+ also requires pydantic>=2.7,
-# which is satisfied by the pydantic 2.10.x bump below.
-starlette==1.0.1
+# starlette 1.3.1 pairs with fastapi 0.133+ (requires starlette>=0.40.0, no upper bound) and
+# closes ALL starlette dependabot CVEs: <1.1.0 (SSRF/UNC + getattr method dispatch),
+# <1.3.0 (url.hostname poisoning), <1.3.1 (urlencoded form() DoS). fastapi 0.133+ also
+# requires pydantic>=2.7, satisfied by the pydantic 2.10.x bump below.
+starlette==1.3.1
 
 # Validation
 pydantic[email]==2.10.6
@@ -41,14 +42,14 @@ celery[redis]==5.4.0
 
 # Auth
 bcrypt==4.1.2
-PyJWT>=2.12.0,<3.0.0
+PyJWT>=2.13.0,<3.0.0                     # >=2.13.0 closes the PyJWT algo-confusion/SSRF/DoS CVEs
 
 # Metrics
 prometheus-client==0.21.0
 
 # HTTP client
 httpx==0.27.0
-python-multipart==0.0.27
+python-multipart==0.0.31                 # >=0.0.31 closes the multipart DoS/smuggling CVEs
 
 # MCP — Model Context Protocol (AI agent / chatbot connectivity)
 # NOTE: mcp requires pydantic>=2.7.2 which conflicts with pinned pydantic==2.6.4

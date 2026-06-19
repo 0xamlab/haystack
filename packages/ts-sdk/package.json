@@ -43,13 +43,16 @@
   },
   "license": "Apache-2.0",
   "dependencies": {
-    "@grpc/grpc-js": "^1.14.3",
+    "@grpc/grpc-js": "^1.14.4",
     "@grpc/proto-loader": "^0.8.1"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
     "typescript": "^5.4.0",
     "vitest": "^3.2.6"
+  },
+  "overrides": {
+    "esbuild": "^0.28.1"
   },
   "engines": {
     "node": ">=18.0.0"
