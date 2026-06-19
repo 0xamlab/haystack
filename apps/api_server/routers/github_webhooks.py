@@ -425,8 +425,12 @@ async def github_install_callback(
     else:
         row.suspended = False
         await db.commit()
+    # installation_id is a FastAPI-coerced int (see the handler signature). Re-cast it so the
+    # redirect target is provably a constant, local relative path with an integer query value —
+    # there is no attacker-controllable host/scheme/path here (closes the CodeQL py/url-redirection
+    # finding, which doesn't model the int coercion as a sanitizer).
     return RedirectResponse(
-        url=f"/github/app/setup?installation_id={installation_id}"
+        url=f"/github/app/setup?installation_id={int(installation_id)}"
     )
 
 
