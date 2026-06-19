@@ -27,8 +27,15 @@ async def run_stdio_server() -> None:
         )
         raise
 
+    import os
+
     from apps.mcp_server.errors import serialize_tool_error
+    from apps.mcp_server.products import resolve_visible_tools
     from apps.mcp_server.registry import call_tool, get_tool_specs
+
+    # stdio is a single-tenant process: the product edition is fixed for the whole
+    # session via ALGENTA_PRODUCT (set by the self-hosted/enterprise plugin package).
+    allowed = resolve_visible_tools((os.environ.get("ALGENTA_PRODUCT") or "").strip() or None)
 
     server = Server("algenta-decision-engine")
 
@@ -40,13 +47,13 @@ async def run_stdio_server() -> None:
                 description=spec["description"],
                 inputSchema=spec["inputSchema"],
             )
-            for spec in get_tool_specs()
+            for spec in get_tool_specs(allowed)
         ]
 
     @server.call_tool()  # type: ignore[misc]
     async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         try:
-            result = await call_tool(name, arguments or {})
+            result = await call_tool(name, arguments or {}, allowed)
         except Exception as exc:
             logger.error("tool_error", tool=name, error=str(exc))
             result = serialize_tool_error(exc, tool_name=name)

@@ -565,12 +565,29 @@ TOOLS: dict[str, ToolEntry] = {
 }
 
 
-def get_tool_specs() -> list[ToolSpec]:
-    """Return list of MCP tool spec dicts (for list_tools response)."""
-    return [entry["spec"] for entry in TOOLS.values()]
+def get_tool_specs(allowed: frozenset[str] | None = None) -> list[ToolSpec]:
+    """Return MCP tool spec dicts for the list_tools response.
+
+    ``allowed`` is the caller's visible tool set (product edition ∩ entitlements,
+    resolved upstream by the transport/auth layer). ``None`` means no restriction
+    (unscoped/trusted key → full registry). An empty set yields no tools — the
+    fail-closed result for an unknown/unentitled product.
+    """
+    if allowed is None:
+        return [entry["spec"] for entry in TOOLS.values()]
+    return [entry["spec"] for name, entry in TOOLS.items() if name in allowed]
 
 
-async def call_tool(name: str, arguments: dict[str, Any]) -> str:
-    """Dispatch a tool call by name. Raises KeyError for unknown tools."""
+async def call_tool(
+    name: str, arguments: dict[str, Any], allowed: frozenset[str] | None = None
+) -> str:
+    """Dispatch a tool call by name. Raises KeyError for unknown tools.
+
+    When ``allowed`` is provided, a tool outside that visible set is rejected as if
+    it did not exist (fail closed) — a product edition is a hard boundary, not a
+    hint the caller can bypass.
+    """
+    if allowed is not None and name not in allowed:
+        raise KeyError(name)
     entry = TOOLS[name]
     return await entry["handler"](arguments)

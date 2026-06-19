@@ -78,6 +78,22 @@ def _scope_base_url(scope: Scope) -> str | None:
     return f"{scheme}://{host}".rstrip("/")
 
 
+def _scope_product(scope: Scope) -> str | None:
+    """The ``X-Algenta-Product`` routing hint (e.g. ``codna``) — selects an edition."""
+    return _scope_headers(scope).get("x-algenta-product", "").strip() or None
+
+
+def _request_product(server: Any) -> str | None:
+    """Pull the product hint off the active MCP request's HTTP scope (if any)."""
+    try:
+        request = server.request_context.request
+    except LookupError:
+        return None
+    if request is not None and hasattr(request, "scope"):
+        return _scope_product(request.scope)
+    return None
+
+
 async def run_http_server(host: str = "0.0.0.0", port: int = 8001) -> None:
     """Run the MCP server over HTTP/SSE."""
     try:
@@ -104,6 +120,7 @@ def _build_http_app() -> ASGIApp:
 
     from algenta_mcp.client import request_overrides
     from algenta_mcp.errors import serialize_tool_error
+    from algenta_mcp.products import resolve_visible_tools
     from algenta_mcp.registry import call_tool, get_tool_specs
 
     def _build_transport_endpoints(
@@ -115,13 +132,14 @@ def _build_http_app() -> ASGIApp:
 
         @server.list_tools()  # type: ignore[misc]
         async def handle_list_tools() -> list[Tool]:
+            allowed = resolve_visible_tools(_request_product(server))
             return [
                 Tool(
                     name=spec["name"],
                     description=spec["description"],
                     inputSchema=spec["inputSchema"],
                 )
-                for spec in get_tool_specs()
+                for spec in get_tool_specs(allowed)
             ]
 
         @server.call_tool()  # type: ignore[misc]
@@ -129,6 +147,7 @@ def _build_http_app() -> ASGIApp:
             request: object | None = None
             api_key: str | None = None
             base_url: str | None = None
+            product: str | None = None
             try:
                 request = server.request_context.request
             except LookupError:
@@ -136,9 +155,10 @@ def _build_http_app() -> ASGIApp:
             if request is not None and hasattr(request, "scope"):
                 api_key = _scope_api_key(request.scope)
                 base_url = _scope_base_url(request.scope)
+                product = _scope_product(request.scope)
             try:
                 with request_overrides(api_key=api_key, base_url=base_url):
-                    result = await call_tool(name, arguments or {})
+                    result = await call_tool(name, arguments or {}, resolve_visible_tools(product))
             except Exception as exc:
                 logger.error("tool_error", tool=name, error=str(exc))
                 result = serialize_tool_error(exc, tool_name=name)
@@ -169,7 +189,10 @@ def _build_http_app() -> ASGIApp:
     legacy_sse, legacy_messages = _build_transport_endpoints(messages_path="/messages")
 
     async def handle_tools(request: Request) -> JSONResponse:
-        return JSONResponse({"tools": get_tool_specs()})
+        allowed = resolve_visible_tools(
+            (request.headers.get("x-algenta-product") or "").strip() or None
+        )
+        return JSONResponse({"tools": get_tool_specs(allowed)})
 
     return Starlette(
         routes=[
@@ -191,8 +214,10 @@ def _build_fastapi_router() -> APIRouter | None:
     """
     try:
         from fastapi import APIRouter
+        from starlette.requests import Request
         from starlette.responses import JSONResponse
 
+        from algenta_mcp.products import resolve_visible_tools
         from algenta_mcp.registry import get_tool_specs
     except ImportError:
         return None
@@ -200,8 +225,11 @@ def _build_fastapi_router() -> APIRouter | None:
     router = APIRouter(tags=["MCP"])
 
     @router.get("/mcp/tools", summary="List available MCP tools")
-    async def list_tools() -> JSONResponse:
-        return JSONResponse({"tools": get_tool_specs()})
+    async def list_tools(request: Request) -> JSONResponse:
+        allowed = resolve_visible_tools(
+            (request.headers.get("x-algenta-product") or "").strip() or None
+        )
+        return JSONResponse({"tools": get_tool_specs(allowed)})
 
     try:
         from mcp.server import NotificationOptions, Server
@@ -286,13 +314,14 @@ def _build_fastapi_router() -> APIRouter | None:
 
     @mcp_server.list_tools()  # type: ignore[misc]
     async def _list_tools() -> list[Tool]:
+        allowed = resolve_visible_tools(_request_product(mcp_server))
         return [
             Tool(
                 name=spec["name"],
                 description=spec["description"],
                 inputSchema=spec["inputSchema"],
             )
-            for spec in get_tool_specs()
+            for spec in get_tool_specs(allowed)
         ]
 
     @mcp_server.call_tool()  # type: ignore[misc]
@@ -300,6 +329,7 @@ def _build_fastapi_router() -> APIRouter | None:
         request: object | None = None
         api_key: str | None = None
         base_url: str | None = None
+        product: str | None = None
         try:
             request = mcp_server.request_context.request
         except LookupError:
@@ -307,9 +337,10 @@ def _build_fastapi_router() -> APIRouter | None:
         if request is not None and hasattr(request, "scope"):
             api_key = _scope_api_key(request.scope)
             base_url = _scope_base_url(request.scope)
+            product = _scope_product(request.scope)
         try:
             with request_overrides(api_key=api_key, base_url=base_url):
-                result = await call_tool(name, arguments or {})
+                result = await call_tool(name, arguments or {}, resolve_visible_tools(product))
         except Exception as exc:
             logger.error("tool_error", tool=name, error=str(exc))
             result = serialize_tool_error(exc, tool_name=name)
