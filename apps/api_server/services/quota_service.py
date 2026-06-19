@@ -320,6 +320,8 @@ async def record_usage(
     org_email: str | None = None,
     org_name: str | None = None,
     workspace_id: uuid.UUID | None = None,
+    product: str | None = None,
+    tool_name: str | None = None,
 ) -> UsageRecord:
     """
     Write one UsageRecord row for a completed billable API call.
@@ -338,6 +340,8 @@ async def record_usage(
         endpoint=endpoint,
         billing_units=billing_units,
         scenarios_run=scenarios_run,
+        product=product,
+        tool_name=tool_name,
     )
     db.add(record)
     await db.flush()

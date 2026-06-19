@@ -17,6 +17,9 @@ class UsageEndpoint(StrEnum):
     BATCH = "batch"
     COMPARE = "compare"
     JOB = "job"
+    # Repository-intelligence compute (Codna coding edition): triage/snapshot/graph/
+    # decision-plan/simulate-patch/pipeline/apply. The specific tool is in ``tool_name``.
+    REPOSITORY = "repository"
 
 
 class UsageRecord(UUIDMixin, TimestampMixin, Base):
@@ -74,6 +77,12 @@ class UsageRecord(UUIDMixin, TimestampMixin, Base):
     # persist upserts exactly ONE UsageRecord per logical run. Nullable + PARTIAL-unique (see
     # migration 0034): NULL-keyed rows (heartbeat / credits writers) are exempt from the constraint.
     usage_key: Mapped[str | None] = mapped_column(String(128), nullable=True)
+
+    # Vertical-product dimension for per-edition reporting/billing (Codna/Cohenta/…).
+    # NULL for legacy/core rows (e.g. simulate). ``tool_name`` is the specific MCP/REST
+    # tool (e.g. "triage_repository") within a coarse ``endpoint`` (e.g. REPOSITORY).
+    product: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    tool_name: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     organization: Mapped["Organization"] = relationship(  # type: ignore[name-defined]  # noqa: F821
         "Organization", lazy="noload"

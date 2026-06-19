@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC, datetime
 from typing import Annotated, Any
 from uuid import UUID
 
@@ -9,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from apps.api_server.db.session import AsyncSessionDep
-from apps.api_server.middleware.auth import get_current_org, require_verified_email
+from apps.api_server.middleware.auth import get_current_org, get_redis, require_verified_email
 from apps.api_server.middleware.rbac import forbid_service_key
 from apps.api_server.middleware.tenant_key_binding import bind_tenant_keys
 from apps.api_server.schemas.repositories import (
@@ -30,8 +31,14 @@ from apps.api_server.schemas.repositories import (
     RepositoryTriageResponse,
 )
 from apps.api_server.schemas.response import DecisionEnvelope
+from apps.api_server.models.usage_record import UsageEndpoint, UsageRecord
 from apps.api_server.services.auth_service import AuthContext
 from apps.api_server.services.data_visibility import get_visible_connector
+from apps.api_server.services.quota_service import (
+    check_quota_redis,
+    check_rate_limit,
+    incr_quota_counter,
+)
 from apps.api_server.services.storage_accounting_service import gate_storage_cap
 from apps.api_server.services.repository_intelligence import (
     RepositoryIntelligenceError,
@@ -140,6 +147,67 @@ async def _submit_repository_job(
     )
 
 
+async def _repo_preflight(auth: AuthContext, request: Request, redis_client: object) -> None:
+    """Per-minute rate limit + monthly quota gate for a billable repository compute call.
+
+    Raises HTTP 429 when the org's plan cap is exceeded (mirrors routers/simulate.py). Run at
+    the START of a billable handler, before any compute, so an over-cap caller short-circuits.
+    """
+    await check_rate_limit(auth["org_id"], auth["plan"], redis_client, request_state=request.state)
+    await check_quota_redis(auth["org_id"], auth["plan"], redis_client)
+
+
+async def _meter_repository(
+    *,
+    tool_name: str,
+    auth: AuthContext,
+    db: AsyncSessionDep,
+    redis_client: object,
+    usage_key: str | None = None,
+) -> None:
+    """Record ONE ``REPOSITORY`` UsageRecord (product=codna, tool_name=<tool>) for a successful
+    billable repo-intelligence call and bump the monthly quota counter.
+
+    Mirrors the canonical ``_persist_helpers`` sequence: insert inside a SAVEPOINT so a
+    ``usage_key`` duplicate (retry / cross-replica race) rolls back ONLY this insert, and the
+    quota counter is incremented ONLY on a genuine first insert. The row commits with the request
+    session on success and rolls back if the request later fails — so failed calls are not billed.
+    Call AFTER the compute succeeds.
+    """
+    from sqlalchemy.exc import IntegrityError
+
+    period = datetime.now(UTC).strftime("%Y-%m")
+    inserted = False
+    try:
+        async with db.begin_nested():
+            db.add(
+                UsageRecord(
+                    org_id=auth["org_id"],
+                    workspace_id=workspace_id_for_write(auth),
+                    api_key_id=auth.get("key_id"),
+                    billing_period=period,
+                    endpoint=UsageEndpoint.REPOSITORY,
+                    billing_units=1,
+                    product="codna",
+                    tool_name=tool_name,
+                    usage_key=usage_key,
+                )
+            )
+            await db.flush()
+        inserted = True
+    except IntegrityError:
+        logger.info("repository_usage_already_billed", tool=tool_name, org_id=str(auth["org_id"]))
+    if inserted and redis_client is not None:
+        try:
+            await incr_quota_counter(auth["org_id"], period, redis_client)
+        except Exception as exc:  # noqa: BLE001 — counter is best-effort; never fail the call
+            logger.warning(
+                "repository_quota_counter_incr_failed",
+                org_id=str(auth["org_id"]),
+                error=str(exc),
+            )
+
+
 @router.get(
     "/v1/repositories/capabilities",
     response_model=RepositoryIntelligenceCapabilitiesResponse,
@@ -164,13 +232,19 @@ async def create_snapshot(
     request: Request,
     db: AsyncSessionDep,
     auth: Annotated[AuthContext, Depends(get_current_org)],
+    redis_client: object = Depends(get_redis),
 ) -> RepositorySnapshotResponse:
     connector = await get_visible_connector(db, repository_id, auth)
     await gate_storage_cap(auth["org_id"], auth["plan"])  # free-tier storage cap (off by default)
+    await _repo_preflight(auth, request, redis_client)
     try:
-        return create_repository_snapshot(connector=connector, request=payload)
+        result = create_repository_snapshot(connector=connector, request=payload)
     except RepositoryIntelligenceError as exc:
         raise _repository_http_exception(exc, request) from exc
+    await _meter_repository(
+        tool_name="create_repository_snapshot", auth=auth, db=db, redis_client=redis_client
+    )
+    return result
 
 
 @router.get(
@@ -203,13 +277,19 @@ async def triage_repository_snapshot(
     request: Request,
     db: AsyncSessionDep,
     auth: Annotated[AuthContext, Depends(get_current_org)],
+    redis_client: object = Depends(get_redis),
 ) -> RepositoryTriageResponse:
     connector = await get_visible_connector(db, repository_id, auth)
     await gate_storage_cap(auth["org_id"], auth["plan"])  # free-tier storage cap (off by default)
+    await _repo_preflight(auth, request, redis_client)
     try:
-        return triage_repository(connector=connector, request=payload)
+        result = triage_repository(connector=connector, request=payload)
     except RepositoryIntelligenceError as exc:
         raise _repository_http_exception(exc, request) from exc
+    await _meter_repository(
+        tool_name="triage_repository", auth=auth, db=db, redis_client=redis_client
+    )
+    return result
 
 
 @router.post(
@@ -223,15 +303,21 @@ async def query_repository_snapshot_graph(
     request: Request,
     db: AsyncSessionDep,
     auth: Annotated[AuthContext, Depends(get_current_org)],
+    redis_client: object = Depends(get_redis),
 ) -> RepositoryGraphQueryResponse:
     connector = await get_visible_connector(db, repository_id, auth)
     # graph-query writes a durable lookup artifact (graph_query_lookup) under the tenant prefix, so
     # it counts toward the storage sum — gate it too, keeping the agent-callback set uniformly gated.
     await gate_storage_cap(auth["org_id"], auth["plan"])  # free-tier storage cap (off by default)
+    await _repo_preflight(auth, request, redis_client)
     try:
-        return query_repository_graph(connector=connector, request=payload)
+        result = query_repository_graph(connector=connector, request=payload)
     except RepositoryIntelligenceError as exc:
         raise _repository_http_exception(exc, request) from exc
+    await _meter_repository(
+        tool_name="query_repository_graph", auth=auth, db=db, redis_client=redis_client
+    )
+    return result
 
 
 @router.post(
@@ -246,11 +332,21 @@ async def create_decision_plan(
     db: AsyncSessionDep,
     auth: Annotated[AuthContext, Depends(get_current_org)],
     async_execution: bool = False,
+    redis_client: object = Depends(get_redis),
 ) -> RepositoryDecisionPlanResponse | JSONResponse:
     # Visibility is enforced on the request (with the caller's auth) before queuing.
     connector = await get_visible_connector(db, repository_id, auth)
     await gate_storage_cap(auth["org_id"], auth["plan"])  # free-tier storage cap (off by default)
+    await _repo_preflight(auth, request, redis_client)
     if async_execution:
+        # Meter on accept: the UsageRecord is added to the session and committed together with the
+        # job by _submit_repository_job's commit (the worker does not re-meter the job today).
+        await _meter_repository(
+            tool_name="create_repository_decision_plan",
+            auth=auth,
+            db=db,
+            redis_client=redis_client,
+        )
         return await _submit_repository_job(
             job_kind=JobKind.REPOSITORY_DECISION_PLAN,
             repository_id=repository_id,
@@ -260,9 +356,13 @@ async def create_decision_plan(
             auth=auth,
         )
     try:
-        return await create_repository_decision_plan(connector=connector, request=payload)
+        result = await create_repository_decision_plan(connector=connector, request=payload)
     except RepositoryIntelligenceError as exc:
         raise _repository_http_exception(exc, request) from exc
+    await _meter_repository(
+        tool_name="create_repository_decision_plan", auth=auth, db=db, redis_client=redis_client
+    )
+    return result
 
 
 @router.post(
@@ -276,13 +376,19 @@ async def simulate_repository_patch(
     request: Request,
     db: AsyncSessionDep,
     auth: Annotated[AuthContext, Depends(get_current_org)],
+    redis_client: object = Depends(get_redis),
 ) -> DecisionEnvelope:
     connector = await get_visible_connector(db, repository_id, auth)
     await gate_storage_cap(auth["org_id"], auth["plan"])  # free-tier storage cap (off by default)
+    await _repo_preflight(auth, request, redis_client)
     try:
-        return await simulate_repository_decision(connector=connector, request=payload)
+        result = await simulate_repository_decision(connector=connector, request=payload)
     except RepositoryIntelligenceError as exc:
         raise _repository_http_exception(exc, request) from exc
+    await _meter_repository(
+        tool_name="simulate_repository", auth=auth, db=db, redis_client=redis_client
+    )
+    return result
 
 
 @router.post(
@@ -296,13 +402,19 @@ async def simulate_repository_working_tree_patch(
     request: Request,
     db: AsyncSessionDep,
     auth: Annotated[AuthContext, Depends(get_current_org)],
+    redis_client: object = Depends(get_redis),
 ) -> DecisionEnvelope:
     connector = await get_visible_connector(db, repository_id, auth)
     await gate_storage_cap(auth["org_id"], auth["plan"])  # free-tier storage cap (off by default)
+    await _repo_preflight(auth, request, redis_client)
     try:
-        return await run_repository_patch_simulation(connector=connector, request=payload)
+        result = await run_repository_patch_simulation(connector=connector, request=payload)
     except RepositoryIntelligenceError as exc:
         raise _repository_http_exception(exc, request) from exc
+    await _meter_repository(
+        tool_name="simulate_repository_patch", auth=auth, db=db, redis_client=redis_client
+    )
+    return result
 
 
 @router.post(
@@ -317,10 +429,15 @@ async def run_repository_intelligence_pipeline(
     db: AsyncSessionDep,
     auth: Annotated[AuthContext, Depends(get_current_org)],
     async_execution: bool = False,
+    redis_client: object = Depends(get_redis),
 ) -> RepositoryPipelineResponse | JSONResponse:
     connector = await get_visible_connector(db, repository_id, auth)
     await gate_storage_cap(auth["org_id"], auth["plan"])  # free-tier storage cap (off by default)
+    await _repo_preflight(auth, request, redis_client)
     if async_execution:
+        await _meter_repository(
+            tool_name="run_repository_pipeline", auth=auth, db=db, redis_client=redis_client
+        )
         return await _submit_repository_job(
             job_kind=JobKind.REPOSITORY_PIPELINE,
             repository_id=repository_id,
@@ -330,9 +447,13 @@ async def run_repository_intelligence_pipeline(
             auth=auth,
         )
     try:
-        return await run_repository_pipeline(connector=connector, request=payload)
+        result = await run_repository_pipeline(connector=connector, request=payload)
     except RepositoryIntelligenceError as exc:
         raise _repository_http_exception(exc, request) from exc
+    await _meter_repository(
+        tool_name="run_repository_pipeline", auth=auth, db=db, redis_client=redis_client
+    )
+    return result
 
 
 @router.post(
@@ -346,13 +467,19 @@ async def apply_repository_patch(
     request: Request,
     db: AsyncSessionDep,
     auth: Annotated[AuthContext, Depends(get_current_org)],
+    redis_client: object = Depends(get_redis),
 ) -> RepositoryApplyResponse:
     # /apply performs an EXTERNAL write (patch / local branch / remote PR push). It authorizes only
     # on connector visibility, so the service-key repo-read allowance must be explicitly excluded
     # here — the agent's callback set (triage/graph-query/simulate-patch) never includes apply.
     forbid_service_key(auth, "repository apply (writes a patch / pushes a branch / opens a PR)")
     connector = await get_visible_connector(db, repository_id, auth)
+    await _repo_preflight(auth, request, redis_client)
     try:
-        return await apply_repository_decision(connector=connector, request=payload)
+        result = await apply_repository_decision(connector=connector, request=payload)
     except RepositoryIntelligenceError as exc:
         raise _repository_http_exception(exc, request) from exc
+    await _meter_repository(
+        tool_name="apply_repository", auth=auth, db=db, redis_client=redis_client
+    )
+    return result
