@@ -5,6 +5,10 @@ name: "CodeQL"
 # tree (tests + generated benchmark libs + examples) and "Analyze (python)" ran >90 min.
 # Produces the same check names — Analyze (python) / (javascript-typescript) / (actions) —
 # that the branch ruleset requires. Default setup MUST be disabled for this to run.
+#
+# Runs on the org's GitHub-hosted larger runner `thyn` (8-core/32 GB) instead of the standard
+# 2-core/7 GB `ubuntu-latest`: a workflow only lands on a larger runner when its `runs-on:`
+# matches the runner's name/label, so `ubuntu-latest` never picks it up.
 
 on:
   push:
@@ -20,7 +24,7 @@ permissions:
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
-    runs-on: ubuntu-latest
+    runs-on: thyn
     permissions:
       security-events: write
       packages: read
