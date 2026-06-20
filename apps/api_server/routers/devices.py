@@ -243,6 +243,7 @@ async def device_register(
         db.add(row)
         await db.flush()
         current_count += 1
+        bound_thumbprint = body.device.device_pubkey_thumbprint
     else:
         if existing_row.status == DeviceStatus.REVOKED:
             raise HTTPException(
@@ -314,6 +315,9 @@ async def device_register(
             )
         )
         current_count = await _active_device_count(api_key_row.id, db)
+        bound_thumbprint = (
+            body.device.device_pubkey_thumbprint or existing_row.device_pubkey_thumbprint
+        )
 
     await db.commit()
     logger.info(
@@ -331,6 +335,7 @@ async def device_register(
         device_limit=device_limit,
         org_id=str(api_key_row.org_id),
         api_key_expires_at=api_key_row.expires_at,
+        device_pubkey_thumbprint=bound_thumbprint,
     )
 
     # ── Issue initial credit batch ─────────────────────────────────────────

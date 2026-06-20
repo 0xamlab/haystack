@@ -40,7 +40,6 @@ from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import TypedDict
 
-import jwt
 import structlog
 from fastapi import Request
 from sqlalchemy import func, select, update
@@ -514,6 +513,21 @@ async def _active_device_count(api_key_id: uuid.UUID, db: AsyncSession) -> int:
     return result.scalar_one() or 0
 
 
+def _activation_id(org_id: str, device_id: str) -> str:
+    """Deterministic, stable, opaque activation id for an (org, device).
+
+    ``uuid5(org_id, device_id)`` — stable across license renewals (so the CRL can name a
+    device once), org-scoped, and reversible to nothing about the machine. FROZEN: changing
+    this derivation orphans every issued activation_id. Falls back to a NIL-namespace form
+    only if org_id is not a UUID (shouldn't happen — it's always ``str(org.id)``).
+    """
+    try:
+        namespace = uuid.UUID(str(org_id))
+    except (ValueError, AttributeError, TypeError):
+        return str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{org_id}:{device_id}"))
+    return str(uuid.uuid5(namespace, device_id))
+
+
 def _issue_license_jwt(
     device_id: str,
     api_key_prefix: str,
@@ -521,6 +535,7 @@ def _issue_license_jwt(
     device_limit: int,
     org_id: str,
     api_key_expires_at: datetime | None = None,
+    device_pubkey_thumbprint: str = "",
 ) -> str:
     now = int(time.time())
     effective_expires_at = now + (_LICENSE_TTL_DAYS * 86400)
@@ -533,6 +548,7 @@ def _issue_license_jwt(
         )
         key_expires_at = int(normalized_expiry.timestamp())
         effective_expires_at = key_expires_at
+    license_id = str(uuid.uuid4())
     payload = {
         "api_key_prefix": api_key_prefix,
         "device_id": device_id,
@@ -547,6 +563,14 @@ def _issue_license_jwt(
         "iss": _JWT_ISSUER,
         "sub": "device-license",
         "ver": 1,
+        # Identity claims (additive, back-compat): the runtime already parses these.
+        # activation_id is stable per (org, device) — the CRL revokes by it; license_id/jti
+        # are per-issuance (audit / future per-token revocation). device_pubkey_thumbprint
+        # echoes the bound device key into the license.
+        "license_id": license_id,
+        "jti": license_id,
+        "activation_id": _activation_id(org_id, device_id),
+        "device_pubkey_thumbprint": device_pubkey_thumbprint,
     }
     # Sign via the pluggable signer (P1). Default backend is dev_hmac, which produces
     # the exact same HS256 token as before; pem/cf_worker switch issuance to RS256
@@ -686,6 +710,7 @@ async def register_device(
         device_limit=device_limit_val,
         org_id=str(api_key_row.org_id),
         api_key_expires_at=api_key_row.expires_at,
+        device_pubkey_thumbprint=_device_info_value(device_info, "device_pubkey_thumbprint"),
     )
     logger.info(
         "device_registered",
