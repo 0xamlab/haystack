@@ -734,6 +734,85 @@ def _exchange_api_key_for_license(
     return None
 
 
+def _license_post_request(
+    url: str, api_key: str, body: bytes
+) -> urllib.request.Request:
+    return urllib.request.Request(  # noqa: S310
+        url,
+        data=body,
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
+        method="POST",
+    )
+
+
+def renew_license(api_key: str, device_info: Mapping[str, object] | None = None) -> str | None:
+    """Renew the device license via proof-of-possession (challenge → sign → renew).
+
+    The preferred refresh for an already-bound device: it proves possession of the device
+    private key (signing a server nonce) and returns a fresh license WITHOUT a full
+    re-registration. Returns the new token on success, or None on ANY failure (an old server
+    that 404s on /v1/license/*, an egress denial, a missing keypair, a bad response) so the
+    caller transparently falls back to ``_exchange_api_key_for_license`` (full re-register).
+    """
+    try:
+        import base64 as _b64
+
+        from apps.runtime.device import get_device_info
+        from apps.runtime.device_keypair import device_public_key_pem, sign
+
+        if device_info is None:
+            device_info = get_device_info()
+        device_id = _coerce_str(device_info.get("device_id"))
+        if not device_id:
+            return None
+        control_plane_url = _validated_control_plane_url(surface="license_renew", record=False)
+
+        # 1. Challenge → single-use nonce.
+        chal_req = _license_post_request(
+            f"{control_plane_url}/v1/license/challenge",
+            api_key,
+            json.dumps({"device_id": device_id}).encode(),
+        )
+        with runtime_urlopen(
+            chal_req, surface="license_renew", timeout=_CONTROL_PLANE_TIMEOUT_SECONDS
+        ) as resp:
+            chal = _decoded_payload(json.loads(resp.read()))
+        nonce_b64 = _coerce_str(chal.get("nonce")) if chal else ""
+        if not nonce_b64:
+            return None
+
+        # 2. Sign the server nonce with the device private key (never transmitted).
+        signature = _b64.b64encode(sign(_b64.b64decode(nonce_b64))).decode()
+
+        # 3. Renew → fresh license.
+        renew_req = _license_post_request(
+            f"{control_plane_url}/v1/license/renew",
+            api_key,
+            json.dumps(
+                {
+                    "device_id": device_id,
+                    "public_key_pem": device_public_key_pem(),
+                    "signature": signature,
+                }
+            ).encode(),
+        )
+        with runtime_urlopen(
+            renew_req, surface="license_renew", timeout=_CONTROL_PLANE_TIMEOUT_SECONDS
+        ) as resp:
+            data = _decoded_payload(json.loads(resp.read()))
+        token = _coerce_str(data.get("license_token")) if data else ""
+        if not token:
+            return None
+        from apps.runtime.trusted_time import observe_time
+
+        observe_time(_coerce_float(data.get("server_time"), time.time()), source="control-plane-renew")
+        logger.info("license_renewed_via_pop", device_id=device_id[:8])
+        return token
+    except Exception:  # noqa: BLE001 — renewal is best-effort; caller falls back to register
+        logger.debug("license_renew_failed", exc_info=True)
+        return None
+
+
 # ── Public API ────────────────────────────────────────────────────────────────
 
 
@@ -756,6 +835,17 @@ def load_license(api_key: str = "") -> DeviceLicense:
         if parsed:
             if parsed.is_hard_expired():
                 logger.warning("license_hard_expired", device_id=parsed.device_id)
+                # Preferred refresh: prove possession of the bound device key → a fresh license
+                # WITHOUT a full re-login. Dark: any failure (old server, unbound device, egress
+                # denial) falls through to the existing expired message.
+                if api_key and not _local_license_required():
+                    renewed = renew_license(api_key)
+                    if renewed:
+                        _save_license(renewed)
+                        fresh = _parse_token(renewed, api_key)
+                        if fresh and not fresh.is_hard_expired():
+                            logger.info("license_auto_renewed", device_id=fresh.device_id[:8])
+                            return fresh
                 parsed.valid = False
                 parsed.message = "License expired — run `algenta login` to renew."
                 return parsed
