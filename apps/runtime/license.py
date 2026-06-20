@@ -557,6 +557,134 @@ def _parse_token(token: str, api_key: str = "") -> DeviceLicense | None:
     return None
 
 
+# ── Revocation list (CRL) enforcement (P3b-D2) ─────────────────────────────────
+#
+# DARK + fail-open-on-uncertainty: a license is revoked ONLY when a positively-VERIFIED CRL
+# explicitly lists its activation_id. v1 (legacy) licenses are exempt (the authoritative flip
+# is P5). Any uncertainty — offline, fetch/parse/verify failure, expired CRL — KEEPS the
+# license valid. This is the only path that can falsely break a paying customer, so it errs
+# entirely toward NOT revoking.
+
+_CRL_CACHE_TTL_SECONDS = 600
+_crl_cache: dict[str, object] = {}
+
+
+def _verify_control_plane_jwt(token: str) -> dict[str, object] | None:
+    """Verify a control-plane-signed JWT (e.g. the CRL) with the SAME key material as licenses.
+
+    Mirrors ``_parse_token``'s verification (RS256 via offline public keys; else HS256 via the
+    dev + control-plane secrets). Returns the payload, or None if no trusted key verifies it.
+    """
+    try:
+        header = jwt.get_unverified_header(token)
+    except jwt.InvalidTokenError:
+        return None
+    if _coerce_str(header.get("alg")) == "RS256":
+        for key_text, _ in _offline_license_public_keys():
+            try:
+                return _decoded_payload(
+                    jwt.decode(token, key_text, algorithms=["RS256"], options={"verify_exp": False})
+                )
+            except jwt.InvalidTokenError:
+                continue
+        return None
+    if _local_license_required():
+        return None  # strict deployments accept RS256 only
+    # NOTE: the CRL is NEVER signed with the public dev stub secret — only with the control-plane
+    # secret (or RS256 above). Excluding _DEV_SECRET here prevents an attacker from forging a CRL
+    # with the hardcoded, source-visible dev secret to revoke a victim's activation.
+    for secret, _ in _control_plane_verification_secrets():
+        try:
+            return _decoded_payload(
+                jwt.decode(token, secret, algorithms=["HS256"], options={"verify_exp": False})
+            )
+        except jwt.InvalidTokenError:
+            continue
+    return None
+
+
+def _crl_get_request(
+    url: str,
+) -> urllib.request.Request:
+    return urllib.request.Request(  # noqa: S310
+        url,
+        headers={"Accept": "application/json"},
+        method="GET",
+    )
+
+
+def _fetch_revocation_list() -> dict[str, object] | None:
+    """Fetch + verify the signed CRL. Returns the VERIFIED payload, or None on any uncertainty.
+
+    Cached in-process with a monotonic TTL. None means "do not trust / do not revoke" — every
+    failure mode (offline, bad/missing signature, expired valid_until) returns None.
+    """
+    cached = _crl_cache.get("payload")
+    fetched = _crl_cache.get("fetched_monotonic", 0.0)
+    if cached is not None and (time.monotonic() - float(fetched)) < _CRL_CACHE_TTL_SECONDS:
+        cached_valid_until = _coerce_int(cached.get("valid_until"), 0)  # type: ignore[union-attr]
+        if not cached_valid_until or cached_valid_until >= int(time.time()):
+            return cached  # type: ignore[return-value]
+        _crl_cache.clear()  # cached CRL passed its valid_until → re-fetch (fail-open if that fails)
+    try:
+        control_plane_url = _validated_control_plane_url(surface="crl_fetch", record=False)
+        req = _crl_get_request(f"{control_plane_url}/v1/license/revocations")
+        with runtime_urlopen(
+            req, surface="crl_fetch", timeout=_CONTROL_PLANE_TIMEOUT_SECONDS
+        ) as resp:
+            body = _decoded_payload(json.loads(resp.read()))
+        crl_jwt = _coerce_str(body.get("crl")) if body else ""
+        if not crl_jwt:
+            return None
+        payload = _verify_control_plane_jwt(crl_jwt)
+        if payload is None:
+            logger.warning("crl_signature_unverified")  # fail-open: do not revoke on bad sig
+            return None
+        valid_until = _coerce_int(payload.get("valid_until"), 0)
+        if valid_until and valid_until < int(time.time()):
+            logger.warning("crl_expired")  # stale CRL → do not trust (fail-open)
+            return None
+        _crl_cache["payload"] = payload
+        _crl_cache["fetched_monotonic"] = time.monotonic()
+        return payload
+    except Exception:  # noqa: BLE001 — any failure → do not revoke (fail-open)
+        logger.debug("crl_fetch_failed", exc_info=True)
+        return None
+
+
+def _deny_if_revoked(parsed: DeviceLicense) -> DeviceLicense | None:
+    """If the license is revoked, mark it invalid and return it; else None. Centralizes the
+    revocation verdict so every load path (stored / auto-renewed / freshly-issued) enforces it."""
+    if _is_license_revoked(parsed):
+        logger.warning("license_revoked", device_id=parsed.device_id)
+        parsed.valid = False
+        parsed.message = "License revoked by the control plane."
+        return parsed
+    return None
+
+
+def _is_license_revoked(parsed: DeviceLicense) -> bool:
+    """True ONLY when a positively-verified CRL explicitly lists this license's activation_id.
+
+    DARK: v1/legacy or no activation_id → never revoked (current production licenses are v1, so
+    this is dormant until the P5 v2 flip). Every uncertainty → False (keep the license).
+    """
+    if parsed.is_legacy_v1() or not parsed.activation_id:
+        return False
+    crl = _fetch_revocation_list()
+    if not crl:
+        return False  # offline / unverifiable / expired → keep the license
+    revoked = crl.get("revoked")
+    if not isinstance(revoked, list):
+        return False
+    revoked_ids = {
+        _coerce_str(entry.get("activation_id"))
+        for entry in revoked
+        if isinstance(entry, dict)
+    }
+    return parsed.activation_id in revoked_ids
+
+
 def stored_offline_execution_entitlement(
     api_key: str = "",
     *,
@@ -567,6 +695,8 @@ def stored_offline_execution_entitlement(
         return False
     parsed = _parse_token(token, api_key)
     if parsed is None or not parsed.valid or parsed.key_expires_at <= 0:
+        return False
+    if _is_license_revoked(parsed):
         return False
     return not parsed.is_hard_expired()
 
@@ -845,10 +975,14 @@ def load_license(api_key: str = "") -> DeviceLicense:
                         fresh = _parse_token(renewed, api_key)
                         if fresh and not fresh.is_hard_expired():
                             logger.info("license_auto_renewed", device_id=fresh.device_id[:8])
-                            return fresh
+                            return _deny_if_revoked(fresh) or fresh
                 parsed.valid = False
                 parsed.message = "License expired — run `algenta login` to renew."
                 return parsed
+            # Revocation (P3b-D2): dormant for v1 (current); v2 → CRL-checked, fail-open.
+            denied = _deny_if_revoked(parsed)
+            if denied:
+                return denied
             if parsed.is_in_grace():
                 parsed.message = "License in grace period — run `algenta login` to renew."
                 logger.info("license_in_grace_period")
@@ -870,7 +1004,7 @@ def load_license(api_key: str = "") -> DeviceLicense:
             parsed = _parse_token(token, api_key)
             if parsed:
                 logger.info("license_issued", plan=parsed.plan, device_id=parsed.device_id[:8])
-                return parsed
+                return _deny_if_revoked(parsed) or parsed
             logger.warning(
                 "license_token_unverifiable",
                 hint=(
