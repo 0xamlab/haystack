@@ -281,14 +281,24 @@ def _emit_list_parse_function(type_name: str) -> list[str]:
     inner_parse = _parse_fn_name(inner_type)
     fn_name = _parse_fn_name(type_name)
     suffix = "^" if _is_list_type(inner_type) else ""
+    # List[Float64] is the hot path (flat pixel buffers for the image kernels). Route it to the
+    # single-pass parser that ALSO accepts a "@u8:<base64>" binary buffer — O(n), no per-element
+    # text parse. The generic list path below is likewise single-pass (json_array_tokens), so no
+    # list type pays the old O(n^2) `json_array_get(arr, i)`-per-index re-scan.
+    if type_name == "List[Float64]":
+        return [
+            f"fn {fn_name}(token: String) raises -> {type_name}:",
+            f"{INDENT}return json_parse_float64_list(token)",
+            "",
+        ]
     return [
         f"fn {fn_name}(token: String) raises -> {type_name}:",
         f'{INDENT}var wrapped = "{{\\"v\\":" + token + "}}"',
         f'{INDENT}var array_json = json_get_array(wrapped, "v")',
-        f"{INDENT}var count = json_array_len(array_json)",
+        f"{INDENT}var _elem_tokens = json_array_tokens(array_json)",
         f"{INDENT}var result = {type_name}()",
-        f"{INDENT}for i in range(count):",
-        f"{INDENT * 2}result.append({inner_parse}(json_array_get(array_json, i)){suffix})",
+        f"{INDENT}for _i in range(len(_elem_tokens)):",
+        f"{INDENT * 2}result.append({inner_parse}(_elem_tokens[_i]){suffix})",
         f"{INDENT}return result^",
         "",
     ]
@@ -668,7 +678,7 @@ def render_dispatch_source(modules: tuple[RuntimeLibraryModule, ...]) -> str:
         "Do not edit by hand.",
         '"""',
         "from conv import parse_float64, parse_int",
-        "from json.parser import json_get_array, json_get_string, json_array_len, json_array_get",
+        "from json.parser import json_get_array, json_get_string, json_array_len, json_array_get, json_array_tokens, json_parse_float64_list",
         "",
     ]
     lines.extend(_emit_imports(filtered_modules))

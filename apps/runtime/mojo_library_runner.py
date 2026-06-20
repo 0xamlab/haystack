@@ -282,6 +282,17 @@ def _normalize_runtime_value(
             )
         return float(value)
     if _is_list_type(type_name):
+        # Binary-buffer fast path: a "@u8:<base64>" string is a packed uint8 buffer (pixel data
+        # 0-255) that the Mojo dispatch decodes for List[Float64] in one O(n) pass
+        # (json_parse_float64_list). Pass it through verbatim — validating/normalizing it
+        # element-by-element here would itself be an O(n) Python loop, defeating the purpose.
+        # Only List[Float64] has the Mojo-side binary decoder.
+        if (
+            type_name == "List[Float64]"
+            and isinstance(value, str)
+            and value.startswith("@u8:")
+        ):
+            return value
         if not isinstance(value, list):
             raise MojoLibraryError(
                 "invalid_arguments",

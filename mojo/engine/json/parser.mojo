@@ -52,6 +52,11 @@ comptime _CHAR_E_UP = UInt8(69)   # E
 comptime _CHAR_PLUS = UInt8(43)   # +
 comptime _DIGIT_0 = UInt8(48)     # 0
 comptime _DIGIT_9 = UInt8(57)     # 9
+comptime _AT = UInt8(64)          # @  (binary-buffer arg marker, e.g. "@u8:<base64>")
+comptime _CHAR_U = UInt8(117)     # u
+comptime _CHAR_8 = UInt8(56)      # 8
+comptime _SLASH = UInt8(47)       # /
+comptime _EQUALS = UInt8(61)      # =
 
 
 # ── Whitespace skipping ──────────────────────────────────────────────────────
@@ -535,3 +540,121 @@ fn json_array_get(arr: String, index: Int) -> String:
         current += 1
 
     return String("")
+
+
+# ── Single-pass array tokenizer (O(n), replaces per-index json_array_get) ───────
+
+
+fn json_array_tokens(arr: String) raises -> List[String]:
+    """Split a JSON array string into its raw element strings in ONE pass — O(n) total.
+
+    The old pattern `for i in range(json_array_len(arr)): json_array_get(arr, i)` re-scans
+    the array from position 0 on every index, so parsing an n-element array is O(n^2)
+    (e.g. ~6 s for a 39k-element pixel buffer). This walks the array once instead.
+    """
+    var bytes = arr.as_bytes()
+    var n = len(arr)
+    var result = List[String]()
+
+    var p = skip_whitespace(arr, 0)
+    if p >= n or bytes[p] != _LBRACKET:
+        return result^
+    p += 1
+
+    while p < n:
+        p = skip_whitespace(arr, p)
+        if p >= n or bytes[p] == _RBRACKET:
+            break
+        var start = p
+        var end = skip_json_value(arr, p)
+        var elem = String("")
+        for i in range(start, end):
+            elem += chr(Int(bytes[i]))
+        result.append(elem)
+        p = skip_whitespace(arr, end)
+        if p < n and bytes[p] == _COMMA:
+            p += 1
+
+    return result^
+
+
+# ── Binary buffer decode (base64) for bulk numeric args ─────────────────────────
+
+
+@always_inline
+fn _b64_sextet(c: UInt8) -> Int:
+    """Base64 alphabet → 6-bit value; -1 for padding/whitespace/invalid (skipped)."""
+    if c >= UInt8(65) and c <= UInt8(90):      # A-Z
+        return Int(c) - 65
+    if c >= UInt8(97) and c <= UInt8(122):     # a-z
+        return Int(c) - 97 + 26
+    if c >= _DIGIT_0 and c <= _DIGIT_9:        # 0-9
+        return Int(c) - 48 + 52
+    if c == _CHAR_PLUS:                        # +
+        return 62
+    if c == _SLASH:                            # /
+        return 63
+    return -1                                  # '=', whitespace, anything else → skip
+
+
+fn json_decode_base64_bytes(s: String) -> List[UInt8]:
+    """Standard base64 → raw bytes, single pass O(n). Non-alphabet chars are skipped."""
+    var bytes = s.as_bytes()
+    var n = len(s)
+    var out = List[UInt8]()
+    var acc: Int = 0
+    var nbits: Int = 0
+    for i in range(n):
+        var v = _b64_sextet(bytes[i])
+        if v < 0:
+            continue
+        acc = (acc << 6) | v
+        nbits += 6
+        if nbits >= 8:
+            nbits -= 8
+            out.append(UInt8((acc >> nbits) & 0xFF))
+    return out^
+
+
+fn json_parse_float64_list(token: String) raises -> List[Float64]:
+    """Parse a `List[Float64]` arg with a binary fast path.
+
+    A JSON-string token of the form `"@u8:<base64>"` is decoded as raw uint8 bytes (pixel
+    values 0-255) in one O(n) pass — no per-element text parsing. Any other token falls back
+    to a single-pass JSON-array parse. This is the hot path for image kernels, where the arg
+    is a flat pixel buffer; shipping it as a u8 buffer is ~13x smaller than JSON text and
+    avoids the float tokenizer entirely.
+    """
+    var bytes = token.as_bytes()
+    var n = len(token)
+    var p = skip_whitespace(token, 0)
+    if p < n and bytes[p] == _QUOTE:
+        # JSON string token → look for the "@u8:" binary-buffer marker.
+        var start = p + 1
+        var q = start
+        while q < n and bytes[q] != _QUOTE:
+            q += 1
+        if (
+            q - start >= 4
+            and bytes[start] == _AT
+            and bytes[start + 1] == _CHAR_U
+            and bytes[start + 2] == _CHAR_8
+            and bytes[start + 3] == _COLON
+        ):
+            var b64 = String("")
+            for i in range(start + 4, q):
+                b64 += chr(Int(bytes[i]))
+            var raw = json_decode_base64_bytes(b64)
+            var out = List[Float64]()
+            for i in range(len(raw)):
+                out.append(Float64(Int(raw[i])))
+            return out^
+
+    # Array path — single pass (O(n)), not the old per-index re-scan.
+    var wrapped = "{\"v\":" + token + "}"
+    var array_json = json_get_array(wrapped, "v")
+    var tokens = json_array_tokens(array_json)
+    var result = List[Float64]()
+    for i in range(len(tokens)):
+        result.append(parse_float64(tokens[i]))
+    return result^
