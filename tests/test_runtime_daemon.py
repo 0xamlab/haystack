@@ -9,6 +9,32 @@ import pytest
 import apps.runtime.daemon as daemon
 
 
+def test_daemon_startup_prereqs_noop_by_default(monkeypatch) -> None:
+    # P5: require_local_license OFF + enforce_license_validation OFF (defaults) → the daemon
+    # starts with no license required, exactly as today (no load_license call).
+    monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "self_hosted")
+    monkeypatch.delenv("ALGENTA_ENFORCE_LICENSE_VALIDATION", raising=False)
+    monkeypatch.delenv("ALGENTA_REQUIRE_LOCAL_LICENSE", raising=False)
+    with patch("apps.runtime.license.load_license") as mocked:
+        daemon._validate_daemon_startup_prerequisites()
+    mocked.assert_not_called()
+
+
+def test_daemon_startup_prereqs_enforced_when_flag_on(monkeypatch) -> None:
+    # P5: opting into enforce_license_validation makes the daemon fail closed without a valid
+    # license — even though require_local_license is still OFF.
+    monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "self_hosted")
+    monkeypatch.setenv("ALGENTA_ENFORCE_LICENSE_VALIDATION", "1")
+    monkeypatch.delenv("ALGENTA_REQUIRE_LOCAL_LICENSE", raising=False)
+    invalid = SimpleNamespace(valid=False, message="license required")
+    with patch("apps.runtime.license.load_license", return_value=invalid):
+        with pytest.raises(RuntimeError):
+            daemon._validate_daemon_startup_prerequisites()
+    valid = SimpleNamespace(valid=True, message="")
+    with patch("apps.runtime.license.load_license", return_value=valid):
+        daemon._validate_daemon_startup_prerequisites()  # valid license → no raise
+
+
 def test_wait_for_detached_daemon_ready_retries_until_health_ok(monkeypatch) -> None:
     health_results = iter([False, True])
     monotonic_values = iter([0.0, 0.0, 0.1, 0.2])

@@ -31,7 +31,9 @@ def ensure_local_execution_entitlement(
 
     policy = policy_from_environment()
     require_local_license = policy.require_local_license
-    if not enabled and not require_local_license:
+    # P5: the default-OFF enforce_license_validation opt-in also gates pure-local execution, so a
+    # later default-flip makes Runtime() fail closed too. Default OFF → unchanged early return.
+    if not enabled and not require_local_license and not policy.enforce_license_validation:
         return current_license
     if enabled and not api_key and not require_local_license:
         raise RuntimeConfigurationError(

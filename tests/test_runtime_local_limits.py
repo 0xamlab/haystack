@@ -66,6 +66,46 @@ def test_ensure_local_execution_entitlement_loads_when_missing() -> None:
     assert result is loaded_license
 
 
+def test_ensure_local_execution_entitlement_noop_when_all_off(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # P5: not enabled + require_local OFF + enforce OFF (defaults) → returns the existing license
+    # untouched, no load_license call — today's behavior.
+    monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "self_hosted")
+    monkeypatch.delenv("ALGENTA_ENFORCE_LICENSE_VALIDATION", raising=False)
+    monkeypatch.delenv("ALGENTA_REQUIRE_LOCAL_LICENSE", raising=False)
+    sentinel = object()
+    with patch("apps.runtime.license.load_license") as mocked:
+        result = ensure_local_execution_entitlement(
+            enabled=False, api_key=None, current_license=sentinel
+        )
+    mocked.assert_not_called()
+    assert result is sentinel
+
+
+def test_ensure_local_execution_entitlement_enforce_flag_gates_pure_local(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # P5: opting into enforce_license_validation gates pure-local Runtime() too — even with
+    # enabled=False and require_local OFF, it must validate a license.
+    monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "self_hosted")
+    monkeypatch.setenv("ALGENTA_ENFORCE_LICENSE_VALIDATION", "1")
+    monkeypatch.delenv("ALGENTA_REQUIRE_LOCAL_LICENSE", raising=False)
+    invalid = SimpleNamespace(valid=False, message="x", source="none", plan="none")
+    with patch("apps.runtime.license.load_license", return_value=invalid):
+        with pytest.raises(RuntimeConfigurationError) as excinfo:
+            ensure_local_execution_entitlement(
+                enabled=False, api_key="", current_license=None
+            )
+    assert excinfo.value.code == "license_required"
+    valid = SimpleNamespace(valid=True, message="", source="offline-local", plan="enterprise")
+    with patch("apps.runtime.license.load_license", return_value=valid):
+        result = ensure_local_execution_entitlement(
+            enabled=False, api_key="", current_license=None
+        )
+    assert result is valid
+
+
 def test_ensure_local_execution_entitlement_requires_api_key_when_enabled() -> None:
     with pytest.raises(RuntimeConfigurationError) as excinfo:
         ensure_local_execution_entitlement(

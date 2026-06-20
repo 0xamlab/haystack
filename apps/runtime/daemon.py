@@ -123,7 +123,10 @@ def _validate_daemon_startup_prerequisites() -> None:
     from apps.runtime.license import load_license
 
     privacy_policy = policy_from_environment()
-    if not privacy_policy.require_local_license:
+    # P5: gate on EITHER the require_local_license profile OR the (default-OFF)
+    # enforce_license_validation opt-in, so flipping enforce ON later makes the daemon fail
+    # closed too — not just the credits path. Both default OFF → returns early, unchanged.
+    if not privacy_policy.require_local_license and not privacy_policy.enforce_license_validation:
         return
 
     api_key = os.environ.get("ALGENTA_API_KEY", "") or os.environ.get("DE_API_KEY", "")
