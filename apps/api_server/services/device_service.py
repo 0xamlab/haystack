@@ -54,6 +54,7 @@ from apps.api_server.models.device import (
     DEVICE_ID_MAX_LENGTH,
     DEVICE_PLATFORM_MAX_LENGTH,
     DEVICE_PLATFORM_VERSION_MAX_LENGTH,
+    DEVICE_PUBKEY_THUMBPRINT_MAX_LENGTH,
     DEVICE_SDK_VERSION_MAX_LENGTH,
     DeviceRegistration,
     DeviceStatus,
@@ -112,6 +113,7 @@ _DEVICE_INFO_LENGTH_LIMITS: tuple[tuple[str, int], ...] = (
     ("platform_version", DEVICE_PLATFORM_VERSION_MAX_LENGTH),
     ("hostname_hash", DEVICE_HOSTNAME_HASH_MAX_LENGTH),
     ("sdk_version", DEVICE_SDK_VERSION_MAX_LENGTH),
+    ("device_pubkey_thumbprint", DEVICE_PUBKEY_THUMBPRINT_MAX_LENGTH),
 )
 _DEVICE_IDENTITY_CONSISTENCY_FIELDS: tuple[str, ...] = (
     "hostname_hash",
@@ -209,6 +211,22 @@ def _device_identity_mismatched_fields(
         if existing_value and incoming_value and existing_value != incoming_value:
             mismatches.append(field_name)
     return tuple(mismatches)
+
+
+def _check_device_key_binding(existing_row: DeviceRegistration, incoming_thumbprint: str) -> None:
+    """Enforce cryptographic device binding on re-registration.
+
+    Bound on first keypair-aware registration; thereafter the same device_id presenting a
+    DIFFERENT non-empty thumbprint is a clone attempt and is rejected. Empty incoming (legacy
+    fingerprint-only client) is allowed and never re-binds.
+    """
+    bound = (existing_row.device_pubkey_thumbprint or "").strip()
+    incoming = (incoming_thumbprint or "").strip()
+    if bound and incoming and bound != incoming:
+        raise ValueError(
+            "Device key mismatch: this device id is already activated on a different device "
+            "key. Re-binding requires revoking the existing activation first."
+        )
 
 
 def hosted_api_device_binding_required(auth: AuthContext) -> bool:
@@ -603,6 +621,7 @@ async def register_device(
             platform_version=_device_info_value(device_info, "platform_version"),
             hostname_hash=_device_info_value(device_info, "hostname_hash"),
             sdk_version=_device_info_value(device_info, "sdk_version"),
+            device_pubkey_thumbprint=_device_info_value(device_info, "device_pubkey_thumbprint"),
             status=DeviceStatus.ACTIVE,
             last_heartbeat_at=datetime.now(UTC),
             heartbeat_count=1,
@@ -622,6 +641,8 @@ async def register_device(
                 mismatched_fields=mismatched_fields,
             )
             raise ValueError(mismatch_error.message)
+        incoming_thumbprint = _device_info_value(device_info, "device_pubkey_thumbprint")
+        _check_device_key_binding(existing_row, incoming_thumbprint)
         await db.execute(
             update(DeviceRegistration)
             .where(DeviceRegistration.id == existing_row.id)
@@ -646,6 +667,9 @@ async def register_device(
                     device_info,
                     "sdk_version",
                     default=existing_row.sdk_version,
+                ),
+                device_pubkey_thumbprint=(
+                    incoming_thumbprint or existing_row.device_pubkey_thumbprint
                 ),
                 last_heartbeat_at=datetime.now(UTC),
                 heartbeat_count=DeviceRegistration.heartbeat_count + 1,

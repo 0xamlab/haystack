@@ -33,6 +33,7 @@ DEVICE_PLATFORM_VERSION_MAX_LENGTH = 50
 DEVICE_HOSTNAME_HASH_MAX_LENGTH = 64
 DEVICE_SDK_VERSION_MAX_LENGTH = 128
 DEVICE_BINDING_TOKEN_HASH_MAX_LENGTH = 128
+DEVICE_PUBKEY_THUMBPRINT_MAX_LENGTH = 128
 
 
 class DeviceStatus(StrEnum):
@@ -88,6 +89,15 @@ class DeviceRegistration(UUIDMixin, TimestampMixin, Base):
     )
     binding_token_hash: Mapped[str] = mapped_column(
         String(DEVICE_BINDING_TOKEN_HASH_MAX_LENGTH),
+        nullable=False,
+        default="",
+    )
+    # Cryptographic activation binding: the device's Ed25519 public-key thumbprint
+    # ("ed25519:<b64url(sha256(pub))>"). Bound on first keypair-aware registration; a
+    # later registration of the same device that presents a DIFFERENT thumbprint is a
+    # clone attempt and is rejected. Empty = legacy/fingerprint-only client (unbound).
+    device_pubkey_thumbprint: Mapped[str] = mapped_column(
+        String(DEVICE_PUBKEY_THUMBPRINT_MAX_LENGTH),
         nullable=False,
         default="",
     )

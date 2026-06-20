@@ -27,6 +27,7 @@ from apps.api_server.models.device import (
     DEVICE_ID_MAX_LENGTH,
     DEVICE_PLATFORM_MAX_LENGTH,
     DEVICE_PLATFORM_VERSION_MAX_LENGTH,
+    DEVICE_PUBKEY_THUMBPRINT_MAX_LENGTH,
     DEVICE_SDK_VERSION_MAX_LENGTH,
     DeviceRegistration,
     DeviceStatus,
@@ -35,6 +36,7 @@ from apps.api_server.pagination import paginate_sequence
 from apps.api_server.services.auth_service import AuthContext
 from apps.api_server.services.device_service import (
     _api_key_effective_device_limit,
+    _check_device_key_binding,
     _device_identity_mismatch_error,
     _device_identity_mismatched_fields,
     _plan_name,
@@ -55,6 +57,11 @@ class DeviceInfo(BaseModel):
     platform_version: str = Field(default="", max_length=DEVICE_PLATFORM_VERSION_MAX_LENGTH)
     hostname_hash: str = Field(default="", max_length=DEVICE_HOSTNAME_HASH_MAX_LENGTH)
     sdk_version: str = Field(default="", max_length=DEVICE_SDK_VERSION_MAX_LENGTH)
+    # Ed25519 public-key thumbprint ("ed25519:<b64url(sha256(pub))>"). Optional/back-compat:
+    # bound on first keypair-aware register; a later mismatch is rejected as a clone.
+    device_pubkey_thumbprint: str = Field(
+        default="", max_length=DEVICE_PUBKEY_THUMBPRINT_MAX_LENGTH
+    )
 
 
 class RegisterRequest(BaseModel):
@@ -69,6 +76,7 @@ class RegisterResponse(BaseModel):
     device_count: int
     api_key_prefix: str
     message: str
+    device_pubkey_thumbprint: str = ""  # echo of the bound device key (if any)
     # Credit bucket — initial grant at registration
     credits_granted: int = 0
     credits_expires_at: float = 0.0
@@ -227,6 +235,7 @@ async def device_register(
             platform_version=body.device.platform_version,
             hostname_hash=body.device.hostname_hash,
             sdk_version=body.device.sdk_version,
+            device_pubkey_thumbprint=body.device.device_pubkey_thumbprint,
             status=DeviceStatus.ACTIVE,
             last_heartbeat_at=datetime.now(UTC),
             heartbeat_count=1,
@@ -268,6 +277,23 @@ async def device_register(
                     }
                 },
             )
+        # Cryptographic device binding: reject a re-register that presents a DIFFERENT
+        # device key than the one this device is bound to (clone attempt). Empty incoming
+        # (legacy fingerprint-only client) is allowed and never re-binds.
+        try:
+            _check_device_key_binding(existing_row, body.device.device_pubkey_thumbprint)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "error": {
+                        "code": "device_key_mismatch",
+                        "message": str(exc),
+                        "device_id": device_id,
+                        "plan": plan,
+                    }
+                },
+            ) from exc
         from sqlalchemy import update as sa_update
 
         await db.execute(
@@ -279,6 +305,10 @@ async def device_register(
                 platform_version=body.device.platform_version or existing_row.platform_version,
                 hostname_hash=body.device.hostname_hash or existing_row.hostname_hash,
                 sdk_version=body.device.sdk_version or existing_row.sdk_version,
+                device_pubkey_thumbprint=(
+                    body.device.device_pubkey_thumbprint
+                    or existing_row.device_pubkey_thumbprint
+                ),
                 last_heartbeat_at=datetime.now(UTC),
                 heartbeat_count=DeviceRegistration.heartbeat_count + 1,
             )
@@ -336,6 +366,7 @@ async def device_register(
         device_count=current_count,
         api_key_prefix=api_key_row.key_prefix,
         message=f"Device registered. {current_count}/{device_limit or '∞'} devices on {plan} plan.",
+        device_pubkey_thumbprint=body.device.device_pubkey_thumbprint,
         credits_granted=credit_batch,
         credits_expires_at=credit_expires,
         credits_billing_period=billing_period,
