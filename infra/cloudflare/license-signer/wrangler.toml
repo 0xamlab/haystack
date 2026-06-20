@@ -1,0 +1,30 @@
+# Algenta license-signer Worker (P4). Holds the RS256 private key; signs ver:2 licenses for the
+# Fly control plane and publishes JWKS. Deploy: cd infra/cloudflare/license-signer && wrangler deploy
+name = "algenta-license-signer"
+main = "worker.js"
+compatibility_date = "2024-11-01"
+
+# Bound to license.algenta.ai (the signer never traverses Fly). Set zone_name to the algenta.ai zone.
+routes = [
+  { pattern = "license.algenta.ai/sign", zone_name = "algenta.ai" },
+  { pattern = "license.algenta.ai/.well-known/jwks.json", zone_name = "algenta.ai" },
+]
+
+# Non-secret vars (public). The kid ties licenses + JWKS + the control-plane JWKS endpoint together.
+[vars]
+KID = "algenta-license-2026"
+LICENSE_ISS = "https://license.algenta.ai"
+LICENSE_AUD = "algenta-runtime"
+# RS256_PUBLIC_KEY (SPKI PEM) is published in JWKS — public, fine as a var (or a secret). Set via
+# `wrangler secret put RS256_PUBLIC_KEY` if you prefer to keep it out of the toml.
+
+# KV for jti idempotency + monotonic entitlement_version. OWNER: create + paste the id:
+#   wrangler kv namespace create LICENSES
+[[kv_namespaces]]
+binding = "LICENSES"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+# OWNER secrets (NEVER in the repo):
+#   wrangler secret put RS256_PRIVATE_KEY   # PKCS8 PEM — the private signing key
+#   wrangler secret put SERVICE_TOKEN       # Bearer the Fly app holds (LICENSE_SIGNER_AUTH_TOKEN)
+#   wrangler secret put RS256_PUBLIC_KEY     # (optional) if not set as a [var]
