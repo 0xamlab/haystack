@@ -118,6 +118,12 @@ _ENTRYPOINT_DEMOTED_LANGUAGES = frozenset(
 # Lazy submodule loaders + compat re-export bindings live in
 # repository_intelligence_core_bindings (split out to keep this module within the
 # per-module line budget). Star-import them so callers keep resolving them from core.
+from apps.api_server.schemas.repositories import (  # noqa: E402
+    SecurityAnalysisClosureRequest,
+    SecurityAnalysisClosureResponse,
+    SecurityAnalysisRequest,
+    SecurityAnalysisResponse,
+)
 from apps.api_server.services.repository_intelligence_core_bindings import *  # noqa: E402,F401,F403
 from apps.api_server.services.repository_intelligence_core_bindings import (  # noqa: E402
     _LAZY_MODULE_ATTR_EXPORTS,
@@ -127,6 +133,7 @@ from apps.api_server.services.repository_intelligence_core_bindings import (  # 
     _registered_adapter_dependency_parsers,
     _registered_adapter_file_parsers,
     _repository_source_module,
+    _security_analysis_workflow_module,
 )
 
 
@@ -538,6 +545,175 @@ def triage_repository(
         load_snapshot_manifest=_repository_storage_module()._load_snapshot_manifest,
         read_json=_read_json,
         materialized_snapshot=_repository_storage_module().materialized_snapshot,
+    )
+
+
+# --- Security-analyses reachability proofs (codna contract) -----------------------
+
+
+def _security_safe_id(value: str) -> str:
+    import re
+
+    return re.sub(r"[^A-Za-z0-9._-]", "_", str(value))[:200] or "finding"
+
+
+def _codna_patch_digest(diff: str) -> str:
+    """Match codna's findings.digest_of(diff): 'sha256:' + sha256(json.dumps(diff)). The engine
+    stores diffs with its own raw hash, so closure must recompute codna's scheme to match."""
+    import hashlib
+    import json
+
+    payload = json.dumps(diff, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return "sha256:" + hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _persist_security_proofs(
+    *, connector: DataConnector, response: SecurityAnalysisResponse
+) -> None:
+    """Best-effort: persist each per-finding proof so closure can recover the obligation later.
+    If this fails, closure simply degrades to 'unknown' (never crashes the endpoint)."""
+    from apps.api_server.services import repository_intelligence_runtime as repository_runtime
+
+    org_id = str(connector.org_id)
+    repository_id = str(connector.id)
+    base = repository_runtime._security_analyses_dir(org_id, repository_id) / "by_finding"
+    try:
+        base.mkdir(parents=True, exist_ok=True)
+        for proof in response.proofs:
+            repository_runtime._write_json(
+                base / f"{_security_safe_id(proof.canonical_finding_id)}.json",
+                {
+                    "analysis_id": response.analysis_id,
+                    "snapshot_id": response.snapshot.id,
+                    "proof": proof.model_dump(mode="json"),
+                },
+            )
+    except OSError:
+        pass
+
+
+def _load_security_proof_by_finding(
+    *, org_id: str, repository_id: str, canonical_finding_id: str, snapshot_id: str | None = None
+) -> dict[str, Any] | None:
+    from apps.api_server.services import repository_intelligence_runtime as repository_runtime
+
+    path = (
+        repository_runtime._security_analyses_dir(org_id, repository_id)
+        / "by_finding"
+        / f"{_security_safe_id(canonical_finding_id)}.json"
+    )
+    try:
+        if path.exists():
+            return repository_runtime._read_json(path).get("proof")
+    except (OSError, ValueError):
+        pass
+    return None
+
+
+def _load_patch_diff_by_digest(*, org_id: str, repository_id: str, patch_digest: str) -> str | None:
+    from apps.api_server.services import repository_intelligence_runtime as repository_runtime
+
+    plans_dir = repository_runtime._decision_plans_dir(org_id, repository_id)
+    try:
+        manifests = sorted(plans_dir.glob("*.json"))
+    except OSError:
+        return None
+    for manifest_path in manifests:
+        try:
+            manifest = repository_runtime._read_json(manifest_path)
+        except (OSError, ValueError):
+            continue
+        diff = manifest.get("patch_diff")
+        if not diff and manifest.get("patch_path"):
+            try:
+                diff = Path(manifest["patch_path"]).read_text(encoding="utf-8")
+            except OSError:
+                diff = None
+        if diff and _codna_patch_digest(diff) == patch_digest:
+            return diff
+    return None
+
+
+def _security_analysis_lookup_key(request: SecurityAnalysisRequest) -> str:
+    from apps.api_server.services.repository_intelligence_shared import _stable_identifier
+
+    return _stable_identifier(
+        "security_analysis_lookup",
+        {
+            "engine_revision": _REPOSITORY_INTELLIGENCE_ENGINE_REVISION,
+            "snapshot_id": request.snapshot_id,
+            "sarif_digest": request.sarif_digest,
+            "policy_digest": request.policy_digest,
+            "model_pack_digest": request.model_pack_digest,
+            "scanner": request.scanner.model_dump(mode="json"),
+            "findings": sorted(f.canonical_id for f in request.findings),
+        },
+    )
+
+
+def analyze_repository_security(
+    *, connector: DataConnector, request: SecurityAnalysisRequest
+) -> SecurityAnalysisResponse:
+    from apps.api_server.services import repository_intelligence_runtime as repository_runtime
+    from apps.api_server.services.repository_intelligence_lookup_store import (
+        mirror_lookup,
+        read_lookup_shared,
+    )
+
+    _require_repository_connector(connector)
+    org_id = str(connector.org_id)
+    repository_id = str(connector.id)
+    lookup_key = _security_analysis_lookup_key(request)
+    lookup_dir = repository_runtime._security_analysis_lookup_dir(org_id, repository_id)
+    lookup_path = lookup_dir / f"{lookup_key}.json"
+
+    # build-once / query-many: node-local cache first (warm fast path), then the shared
+    # cross-replica cache (s3 only). A miss/fault just recomputes the identical result.
+    try:
+        if lookup_path.exists():
+            cached = repository_runtime._read_json(lookup_path).get("response")
+            if cached:
+                return SecurityAnalysisResponse.model_validate(cached)
+    except (OSError, ValueError):
+        pass
+    shared = read_lookup_shared(
+        org_id=org_id, repository_id=repository_id,
+        kind="security_analysis_lookup", lookup_key=lookup_key,
+    )
+    if shared and shared.get("response"):
+        return SecurityAnalysisResponse.model_validate(shared["response"])
+
+    response = _security_analysis_workflow_module().analyze_repository_security_batch(
+        connector=connector,
+        request=request,
+        engine_revision=_REPOSITORY_INTELLIGENCE_ENGINE_REVISION,
+        require_repository_connector=_require_repository_connector,
+        load_snapshot_manifest=_repository_storage_module()._load_snapshot_manifest,
+    )
+    _persist_security_proofs(connector=connector, response=response)
+    payload = {"lookup_key": lookup_key, "response": response.model_dump(mode="json")}
+    try:
+        lookup_dir.mkdir(parents=True, exist_ok=True)
+        repository_runtime._write_json(lookup_path, payload)
+    except OSError:
+        pass
+    mirror_lookup(
+        org_id=org_id, repository_id=repository_id,
+        kind="security_analysis_lookup", lookup_key=lookup_key, payload=payload,
+    )
+    return response
+
+
+def analyze_repository_security_closure(
+    *, connector: DataConnector, request: SecurityAnalysisClosureRequest
+) -> SecurityAnalysisClosureResponse:
+    return _security_analysis_workflow_module().analyze_repository_security_closure(
+        connector=connector,
+        request=request,
+        engine_revision=_REPOSITORY_INTELLIGENCE_ENGINE_REVISION,
+        require_repository_connector=_require_repository_connector,
+        load_security_proof_by_finding=_load_security_proof_by_finding,
+        load_patch_diff_by_digest=_load_patch_diff_by_digest,
     )
 
 

@@ -200,6 +200,14 @@ def _graph_query_lookup_dir(org_id: str, repository_id: str) -> Path:
     return _repo_root_dir(org_id, repository_id) / "graph_query_lookup"
 
 
+def _security_analyses_dir(org_id: str, repository_id: str) -> Path:
+    return _repo_root_dir(org_id, repository_id) / "security_analyses"
+
+
+def _security_analysis_lookup_dir(org_id: str, repository_id: str) -> Path:
+    return _repo_root_dir(org_id, repository_id) / "security_analysis_lookup"
+
+
 def _shared_repository_intelligence_dir() -> Path:
     return _shared_runtime_dir() / "repository_intelligence_shared"
 

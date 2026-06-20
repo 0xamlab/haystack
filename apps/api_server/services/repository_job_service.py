@@ -82,6 +82,27 @@ async def _run_repository_kind(job: Job, connector: DataConnector) -> dict[str, 
         request = RepositoryPipelineRequest.model_validate(body)
         response = await run_repository_pipeline(connector=connector, request=request)
         return response.model_dump(mode="json")
+    if job.job_kind == JobKind.REPOSITORY_SECURITY_ANALYSES.value:
+        from apps.api_server.schemas.repositories import SecurityAnalysisRequest
+        from apps.api_server.services.repository_intelligence import (
+            analyze_repository_security,
+        )
+
+        # the reachability proof is sync CPU/graph work (no await)
+        response = analyze_repository_security(
+            connector=connector, request=SecurityAnalysisRequest.model_validate(body)
+        )
+        return response.model_dump(mode="json")
+    if job.job_kind == JobKind.REPOSITORY_SECURITY_ANALYSES_CLOSURE.value:
+        from apps.api_server.schemas.repositories import SecurityAnalysisClosureRequest
+        from apps.api_server.services.repository_intelligence import (
+            analyze_repository_security_closure,
+        )
+
+        response = analyze_repository_security_closure(
+            connector=connector, request=SecurityAnalysisClosureRequest.model_validate(body)
+        )
+        return response.model_dump(mode="json")
     raise ValueError(f"unsupported repository job_kind: {job.job_kind}")
 
 

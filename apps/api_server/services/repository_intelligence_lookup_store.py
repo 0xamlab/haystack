@@ -31,7 +31,15 @@ logger = structlog.get_logger(__name__)
 # Only the deterministic lookup families belong here. decision_plan_lookup is intentionally absent:
 # it is non-deterministic and uses fail-closed helpers in the decision-plan workflow.
 _DETERMINISTIC_LOOKUP_KINDS = frozenset(
-    {"snapshot_lookup", "triage_lookup", "simulation_lookup", "graph_query_lookup"}
+    {
+        "snapshot_lookup",
+        "triage_lookup",
+        "simulation_lookup",
+        "graph_query_lookup",
+        # security-analyses is deterministic over (snapshot, sarif/scanner/policy/model digests,
+        # findings) — safe to share-cache. Closure is NOT (depends on patch + re-analysis).
+        "security_analysis_lookup",
+    }
 )
 
 

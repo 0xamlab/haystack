@@ -866,6 +866,9 @@ async def create_repository_decision_plan(
                 "decision_plan_id": decision_plan_id,
                 "workspace_evidence_bundle_ref": request.workspace_evidence_bundle_ref,
                 "patch_path": str(patch_path),
+                # Surface the validated diff inline for codna's EnginePatchGenerator (the .diff
+                # at patch_path stays the durable node-local artifact for /apply).
+                "patch_diff": patch_diff,
                 "created_at": created_at.isoformat(),
                 "decision_plan": decision_plan.model_dump(mode="json"),
                 "planner_usage": planner_usage,

@@ -134,6 +134,15 @@ def _planner_generation_module() -> Any:
 
 
 @lru_cache(maxsize=1)
+def _security_analysis_workflow_module() -> Any:
+    from apps.api_server.services import (
+        repository_intelligence_security_analysis_workflow as repository_security_analysis_workflow,
+    )
+
+    return repository_security_analysis_workflow
+
+
+@lru_cache(maxsize=1)
 def _snapshot_workflow_module() -> Any:
     from apps.api_server.services import (
         repository_intelligence_snapshot_workflow as repository_snapshot_workflow,
@@ -356,6 +365,7 @@ __all__ = [
     "_language_resolution_module",
     "_module_aliases_module",
     "_planner_generation_module",
+    "_security_analysis_workflow_module",
     "_snapshot_workflow_module",
     "_simple_parser_dispatch_module",
     "_repository_source_module",

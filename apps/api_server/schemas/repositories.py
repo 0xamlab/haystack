@@ -224,6 +224,9 @@ class RepositoryDecisionPlanResponse(BaseModel):
     decision_plan_id: str
     created_at: datetime
     decision_plan: DecisionPlan
+    # The validated unified diff, surfaced inline so codna's EnginePatchGenerator can read it
+    # without a second fetch. Optional => legacy stored manifests still validate.
+    patch_diff: str | None = None
     planner_usage: dict[str, Any] = Field(default_factory=dict)
     agent_run_id: str | None = None
     session_id: str | None = None
@@ -356,3 +359,153 @@ class RepositoryPipelineResponse(BaseModel):
     simulation: DecisionEnvelope | None = None
     stage_timings: list[RepositoryPipelineStageTiming] = Field(default_factory=list)
     telemetry: dict[str, Any] = Field(default_factory=dict)
+
+
+# --------------------------------------------------------------------------- #
+# Security-analyses: reachability proof for scanner findings (codna contract).  #
+# Request shape is pinned by codna's build_security_analysis_request; the two   #
+# binding echoes (snapshot.id, sarif_digest) are mandatory in the response.     #
+# --------------------------------------------------------------------------- #
+
+SecurityClassification = Literal["exploitable", "production-reachable", "unreachable", "unknown"]
+SecurityClosureStatus = Literal["closed", "open", "unknown"]
+
+
+class SecurityAnalysisScanner(BaseModel):
+    model_config = ConfigDict(strict=False)
+
+    name: str
+    version: str | None = None
+    rules_digest: str | None = None
+    configuration_digest: str | None = None
+
+
+class SecurityFindingLocation(BaseModel):
+    model_config = ConfigDict(strict=False)
+
+    uri: str
+    start_line: int | None = None
+    start_column: int | None = None
+    logical: str | None = None
+
+
+class SecurityFinding(BaseModel):
+    model_config = ConfigDict(strict=False)
+
+    canonical_id: str
+    rule_id: str
+    finding_kind: str
+    severity: str | None = None
+    primary_location: SecurityFindingLocation | None = None
+    code_flows: list[list[SecurityFindingLocation]] = Field(default_factory=list)
+
+
+class SecurityAnalysisRequest(BaseModel):
+    model_config = ConfigDict(strict=False)
+
+    snapshot_id: str
+    sarif_digest: str
+    scanner: SecurityAnalysisScanner
+    policy_digest: str | None = None
+    model_pack_digest: str | None = None
+    findings: list[SecurityFinding] = Field(default_factory=list)
+
+
+class AnalysisEnvelope(BaseModel):
+    model_config = ConfigDict(strict=False)
+
+    is_complete_sound: bool
+    language: str | None = None
+    framework: str | None = None
+    build_mode: str | None = None
+    route_kind: str | None = None
+    on_matrix: bool = False
+    sound_language: bool = False
+    all_edges_resolved: bool = True
+    node_budget_exhausted: bool = False
+    incomplete_reasons: list[str] = Field(default_factory=list)
+
+
+class ProofLocation(BaseModel):
+    model_config = ConfigDict(strict=False)
+
+    uri: str
+    start_line: int | None = None
+    logical: str | None = None
+    symbol_id: str | None = None
+
+
+class PropagationEdge(BaseModel):
+    model_config = ConfigDict(strict=False)
+
+    from_file: str
+    to_file: str
+    edge_type: str
+
+
+class ScannerFlowValidation(BaseModel):
+    model_config = ConfigDict(strict=False)
+
+    provided: bool
+    corroborates_engine_path: bool = False
+    note: str | None = None
+
+
+class SecurityProof(BaseModel):
+    model_config = ConfigDict(strict=False)
+
+    canonical_finding_id: str
+    finding_kind: str
+    classification: SecurityClassification
+    proof_type: Literal[
+        "dataflow", "entrypoint_reachability", "absence_proof", "off_matrix", "no_evidence"
+    ]
+    analysis_envelope: AnalysisEnvelope
+    entrypoints: list[ProofLocation] = Field(default_factory=list)
+    sinks: list[ProofLocation] = Field(default_factory=list)
+    propagation_paths: list[list[PropagationEdge]] = Field(default_factory=list)
+    sanitizers: list[ProofLocation] = Field(default_factory=list)
+    assumptions: list[str] = Field(default_factory=list)
+    unresolved_edges: list[PropagationEdge] = Field(default_factory=list)
+    scanner_flow_validation: ScannerFlowValidation | None = None
+
+
+class SecuritySnapshotRef(BaseModel):
+    model_config = ConfigDict(strict=False)
+
+    id: str
+    commit: str | None = None
+    tree_digest: str | None = None
+
+
+class SecurityEngineRef(BaseModel):
+    model_config = ConfigDict(strict=False)
+
+    version: str
+    model_pack_digest: str | None = None
+
+
+class SecurityAnalysisResponse(BaseModel):
+    model_config = ConfigDict(strict=False)
+
+    analysis_id: str
+    snapshot: SecuritySnapshotRef
+    sarif_digest: str
+    engine: SecurityEngineRef
+    proofs: list[SecurityProof] = Field(default_factory=list)
+
+
+class SecurityAnalysisClosureRequest(BaseModel):
+    model_config = ConfigDict(strict=False)
+
+    snapshot_id: str
+    canonical_finding_id: str
+    patch_digest: str | None = None
+
+
+class SecurityAnalysisClosureResponse(BaseModel):
+    model_config = ConfigDict(strict=False)
+
+    closure_status: SecurityClosureStatus
+    alternate_path_found: bool = False
+    new_blocking_findings: list[str] = Field(default_factory=list)

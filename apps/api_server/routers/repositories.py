@@ -29,6 +29,10 @@ from apps.api_server.schemas.repositories import (
     RepositorySnapshotResponse,
     RepositoryTriageRequest,
     RepositoryTriageResponse,
+    SecurityAnalysisClosureRequest,
+    SecurityAnalysisClosureResponse,
+    SecurityAnalysisRequest,
+    SecurityAnalysisResponse,
 )
 from apps.api_server.schemas.response import DecisionEnvelope
 from apps.api_server.models.usage_record import UsageEndpoint, UsageRecord
@@ -51,6 +55,8 @@ from apps.api_server.services.repository_intelligence import (
     simulate_repository_decision,
     simulate_repository_patch as run_repository_patch_simulation,
     triage_repository,
+    analyze_repository_security,
+    analyze_repository_security_closure,
 )
 from apps.api_server.services.repository_intelligence_pipeline import (
     run_repository_pipeline,
@@ -318,6 +324,56 @@ async def query_repository_snapshot_graph(
         tool_name="query_repository_graph", auth=auth, db=db, redis_client=redis_client
     )
     return result
+
+
+@router.post(
+    "/v1/repositories/{repository_id}/security-analyses",
+    response_model=SecurityAnalysisResponse,
+    summary="Prove reachability for a batch of scanner findings (snapshot-cached)",
+)
+async def analyze_repository_security_findings(
+    repository_id: UUID,
+    payload: SecurityAnalysisRequest,
+    request: Request,
+    db: AsyncSessionDep,
+    auth: Annotated[AuthContext, Depends(get_current_org)],
+    async_execution: bool = False,
+) -> SecurityAnalysisResponse | JSONResponse:
+    connector = await get_visible_connector(db, repository_id, auth)
+    await gate_storage_cap(auth["org_id"], auth["plan"])  # writes a durable analysis manifest
+    if async_execution:
+        # large SARIF runs can be slow — take the proof off the request path (202 + poll handle)
+        return await _submit_repository_job(
+            job_kind=JobKind.REPOSITORY_SECURITY_ANALYSES,
+            repository_id=repository_id,
+            request_body=payload,
+            request=request,
+            db=db,
+            auth=auth,
+        )
+    try:
+        return analyze_repository_security(connector=connector, request=payload)
+    except RepositoryIntelligenceError as exc:
+        raise _repository_http_exception(exc, request) from exc
+
+
+@router.post(
+    "/v1/repositories/{repository_id}/security-analyses/closure",
+    response_model=SecurityAnalysisClosureResponse,
+    summary="Re-prove that a patch closes the original finding obligation",
+)
+async def close_repository_security_finding(
+    repository_id: UUID,
+    payload: SecurityAnalysisClosureRequest,
+    request: Request,
+    db: AsyncSessionDep,
+    auth: Annotated[AuthContext, Depends(get_current_org)],
+) -> SecurityAnalysisClosureResponse:
+    connector = await get_visible_connector(db, repository_id, auth)
+    try:
+        return analyze_repository_security_closure(connector=connector, request=payload)
+    except RepositoryIntelligenceError as exc:
+        raise _repository_http_exception(exc, request) from exc
 
 
 @router.post(

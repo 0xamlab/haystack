@@ -36,6 +36,8 @@ class JobKind(StrEnum):
     SIMULATION = "simulation"
     REPOSITORY_DECISION_PLAN = "repository_decision_plan"
     REPOSITORY_PIPELINE = "repository_pipeline"
+    REPOSITORY_SECURITY_ANALYSES = "repository_security_analyses"
+    REPOSITORY_SECURITY_ANALYSES_CLOSURE = "repository_security_analyses_closure"
     # GitHub App events (codna watches CI / issues / PR reviews). The raw event is
     # carried in request_payload; the worker drives the fix->PR pipeline.
     GITHUB_EVENT_CHECK = "github_event_check"
