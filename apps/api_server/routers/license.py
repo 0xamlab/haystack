@@ -37,8 +37,10 @@ from apps.api_server.services.device_service import (
     _issue_license_jwt,
     _load_api_key_with_org,
     _plan_name,
+    build_revocation_payload,
 )
 from apps.api_server.services.license_jwk import get_active_license_jwks
+from apps.api_server.services.license_signer import get_license_signer
 from apps.api_server.services.quota_service import check_named_rate_limit
 from apps.runtime.device_keypair import thumbprint_for_public_pem, verify_signature
 
@@ -57,6 +59,22 @@ router = APIRouter(tags=["license"])
 async def jwks() -> dict[str, list[dict[str, str]]]:
     """Public JWKS for the active license signer (empty under dev_hmac/HS256)."""
     return get_active_license_jwks()
+
+
+@router.get(
+    "/v1/license/revocations",
+    include_in_schema=False,
+    summary="Signed device-license revocation list (CRL)",
+)
+async def revocations(db: Annotated[AsyncSession, Depends(get_db)]) -> dict[str, str]:
+    """Signed CRL of revoked activation_ids.
+
+    Unauthenticated + self-authenticating: a JWT signed by the license signer (same kid/secret
+    as device licenses), so a runtime verifies it with the JWKS/secret it already trusts. The
+    runtime enforces it fail-open-on-uncertainty (P3b-D2); the authoritative flip is P5.
+    """
+    payload = await build_revocation_payload(db)
+    return {"crl": get_license_signer().sign(payload)}
 
 
 # ── Renewal proof-of-possession (C1) ───────────────────────────────────────────

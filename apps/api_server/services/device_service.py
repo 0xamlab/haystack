@@ -974,8 +974,46 @@ async def revoke_device(
             DeviceRegistration.id == registration_id,
             DeviceRegistration.org_id == org_id,
         )
-        .values(status=DeviceStatus.REVOKED)
+        # Explicit updated_at bump so the CRL version (max updated_at over REVOKED rows)
+        # advances deterministically on every revoke.
+        .values(status=DeviceStatus.REVOKED, updated_at=datetime.now(UTC))
         .returning(DeviceRegistration.id)
     )
     await db.commit()
     return result.scalar_one_or_none() is not None
+
+
+async def build_revocation_payload(db: AsyncSession) -> dict[str, object]:
+    """Build the (unsigned) CRL payload from REVOKED device rows.
+
+    Each revoked device maps to its stable ``activation_id`` (uuid5(org, device) — matches the
+    license claim). ``version`` is the max revoke time (epoch) so a runtime can detect changes;
+    ``valid_until`` bounds how long a fetched CRL may be trusted offline. The caller signs this
+    via the license signer so the runtime can verify it with the same kid/secret as licenses.
+    """
+    rows = (
+        await db.execute(
+            select(
+                DeviceRegistration.org_id,
+                DeviceRegistration.device_id,
+                DeviceRegistration.updated_at,
+            ).where(DeviceRegistration.status == DeviceStatus.REVOKED)
+        )
+    ).all()
+    revoked: list[dict[str, object]] = []
+    version = 0
+    for org_id, device_id, updated_at in rows:
+        revoked_at = int(updated_at.timestamp()) if updated_at else 0
+        version = max(version, revoked_at)
+        revoked.append(
+            {"activation_id": _activation_id(str(org_id), device_id), "revoked_at": revoked_at}
+        )
+    now = int(time.time())
+    return {
+        "revoked": revoked,
+        "version": version,
+        "issued_at": now,
+        "valid_until": now + 86400,
+        "iss": _JWT_ISSUER,
+        "sub": "device-license-revocation-list",
+    }
