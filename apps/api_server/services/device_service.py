@@ -530,7 +530,12 @@ def _issue_license_jwt(
         "sub": "device-license",
         "ver": 1,
     }
-    return jwt.encode(payload, _get_license_secret(), algorithm=_JWT_ALGORITHM)
+    # Sign via the pluggable signer (P1). Default backend is dev_hmac, which produces
+    # the exact same HS256 token as before; pem/cf_worker switch issuance to RS256
+    # with the private key off-host.
+    from apps.api_server.services.license_signer import get_license_signer
+
+    return get_license_signer().sign(payload)
 
 
 # ── Public service functions ──────────────────────────────────────────────────

@@ -213,6 +213,15 @@ class Settings(BaseSettings):
     jwt_algorithm: str = Field(default="HS256")
     jwt_expire_minutes: int = Field(default=10080)
     license_signing_secret: str | None = Field(default=None)
+    # ─── License signer (P1) — keeps the private key out of the app/Fly ────────
+    # backend: dev_hmac (default, legacy HS256) | pem (local RSA) | cf_worker (Cloudflare
+    # Worker holds the key, app only calls it). See services/license_signer.py.
+    license_signer_backend: str | None = Field(default=None)
+    license_signing_private_key: str | None = Field(default=None)
+    license_signing_private_key_file: str | None = Field(default=None)
+    license_signer_kid: str | None = Field(default=None)
+    license_signer_url: str | None = Field(default=None)
+    license_signer_auth_token: str | None = Field(default=None)
     api_key_prefix: str = Field(default=API_KEY_PREFIX_LIVE)
     api_key_test_prefix: str = Field(default=API_KEY_PREFIX_TEST)
 
