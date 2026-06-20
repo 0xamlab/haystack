@@ -91,6 +91,12 @@ class Settings(BaseSettings):
         default=None,
         validation_alias=AliasChoices("ALGENTA_REQUIRE_LOCAL_LICENSE"),
     )
+    # P5 enforcement opt-in (default None = OFF). When set, the runtime requires a valid local
+    # license even on self-hosted (the fail-closed machinery; DARK until the flip). See P5.
+    algenta_enforce_license_validation: bool | None = Field(
+        default=None,
+        validation_alias=AliasChoices("ALGENTA_ENFORCE_LICENSE_VALIDATION"),
+    )
     algenta_control_plane_url: str | None = Field(
         default=None,
         validation_alias=AliasChoices("ALGENTA_CONTROL_PLANE_URL"),
@@ -201,6 +207,7 @@ class Settings(BaseSettings):
             telemetry_mode=self.algenta_telemetry_mode,
             metering_mode=self.algenta_metering_mode,
             require_local_license=self.algenta_require_local_license,
+            enforce_license_validation=self.algenta_enforce_license_validation,
             control_plane_url=self.algenta_control_plane_url,
             allow_outbound_network=self.algenta_allow_outbound_network,
             egress_allowlist=self.algenta_egress_allowlist,

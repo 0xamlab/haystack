@@ -523,7 +523,7 @@ def _parse_token(token: str, api_key: str = "") -> DeviceLicense | None:
                     token,
                     key_text,
                     algorithms=["RS256"],
-                    options={"verify_exp": False},
+                    options={"verify_exp": False, "verify_aud": False},
                 )
                 payload = _decoded_payload(decoded)
                 if payload is None:
@@ -544,7 +544,7 @@ def _parse_token(token: str, api_key: str = "") -> DeviceLicense | None:
                 token,
                 secret,
                 algorithms=["HS256"],
-                options={"verify_exp": False},  # we handle expiry ourselves
+                options={"verify_exp": False, "verify_aud": False},  # we handle expiry ourselves
             )
             payload = _decoded_payload(decoded)
             if payload is None:
@@ -583,7 +583,7 @@ def _verify_control_plane_jwt(token: str) -> dict[str, object] | None:
         for key_text, _ in _offline_license_public_keys():
             try:
                 return _decoded_payload(
-                    jwt.decode(token, key_text, algorithms=["RS256"], options={"verify_exp": False})
+                    jwt.decode(token, key_text, algorithms=["RS256"], options={"verify_exp": False, "verify_aud": False})
                 )
             except jwt.InvalidTokenError:
                 continue
@@ -596,7 +596,7 @@ def _verify_control_plane_jwt(token: str) -> dict[str, object] | None:
     for secret, _ in _control_plane_verification_secrets():
         try:
             return _decoded_payload(
-                jwt.decode(token, secret, algorithms=["HS256"], options={"verify_exp": False})
+                jwt.decode(token, secret, algorithms=["HS256"], options={"verify_exp": False, "verify_aud": False})
             )
         except jwt.InvalidTokenError:
             continue

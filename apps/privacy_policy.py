@@ -74,6 +74,11 @@ class PrivacyPolicy:
     algenta_owned_suffixes: tuple[str, ...]
     vendor_telemetry_hosts: tuple[str, ...]
     private_host_suffixes: tuple[str, ...]
+    # P5 enforcement opt-in (default False = today's behavior). When True, the runtime stops
+    # treating a self-hosted download as free: execution requires a valid local license (the
+    # machinery is wired but DARK until an operator/release flips it ON). Defaulted + last so
+    # existing PrivacyPolicy constructions are unaffected.
+    enforce_license_validation: bool = False
 
     @property
     def private_profile(self) -> bool:
@@ -267,6 +272,7 @@ def build_privacy_policy(
     telemetry_mode: object | None = None,
     metering_mode: object | None = None,
     require_local_license: object | None = None,
+    enforce_license_validation: object | None = None,
     control_plane_url: object | None = None,
     allow_outbound_network: object | None = None,
     egress_allowlist: object | None = None,
@@ -300,6 +306,14 @@ def build_privacy_policy(
         else mode == "air_gapped"
     )
     assert effective_require_local_license is not None
+    # P5 enforcement opt-in — defaults False (no behavior change) unless explicitly set. This
+    # `else False` is load-bearing: it keeps every current deployment free-to-run until the flip.
+    effective_enforce_license_validation = (
+        _parse_optional_bool(enforce_license_validation)
+        if enforce_license_validation is not None
+        else False
+    )
+    assert effective_enforce_license_validation is not None
 
     if effective_disable_telemetry:
         default_telemetry_mode: TelemetryMode = "local_audit" if private_profile else "disabled"
@@ -364,6 +378,7 @@ def build_privacy_policy(
         telemetry_mode=effective_telemetry_mode,
         metering_mode=effective_metering_mode,
         require_local_license=effective_require_local_license,
+        enforce_license_validation=effective_enforce_license_validation,
         control_plane_url=effective_control_plane_url,
         allow_outbound_network=effective_allow_outbound,
         egress_allowlist=tuple(effective_allowlist),
@@ -395,6 +410,7 @@ def policy_from_environment(
         telemetry_mode=_env(mapping, "ALGENTA_TELEMETRY_MODE"),
         metering_mode=_env(mapping, "ALGENTA_METERING_MODE"),
         require_local_license=_env(mapping, "ALGENTA_REQUIRE_LOCAL_LICENSE"),
+        enforce_license_validation=_env(mapping, "ALGENTA_ENFORCE_LICENSE_VALIDATION"),
         control_plane_url=control_plane_url,
         allow_outbound_network=_env(mapping, "ALGENTA_ALLOW_OUTBOUND_NETWORK"),
         egress_allowlist=_env(mapping, "ALGENTA_EGRESS_ALLOWLIST"),

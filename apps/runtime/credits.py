@@ -256,7 +256,10 @@ def _coerce_credit_float(value: object, default: float = 0.0) -> float:
 def _offline_execution_entitled() -> bool:
     policy = policy_from_environment()
     if policy.deployment_mode == "self_hosted" and not policy.require_local_license:
-        return True
+        # Free self-host bypass — DARK by default. P5: when enforce_license_validation is opted in,
+        # fall through to the stored-license check below instead of granting unconditionally.
+        if not policy.enforce_license_validation:
+            return True
     try:
         from apps.runtime.license import load_license, stored_offline_execution_entitlement
 
