@@ -81,7 +81,10 @@ _ENTRYPOINT_SIGNATURE_RE = re.compile(
 )
 _SANITIZER_RE = re.compile(
     r"(parameteri|saniti[sz]e|escape|shlex\.quote|bleach\.clean|html\.escape|quote\("
-    r"|prepared\s*statement|bindparam|placeholder|validate|allowlist|whitelist)",
+    r"|prepared\s*statement|bindparam|placeholder|validate|allowlist|whitelist"
+    # any `.execute(<sql>, (params))` / `(<sql>, [params])` — a bound-parameter query
+    # (greedy across the SQL literal so commas inside it don't break the match)
+    r"|\.execute\(.+,\s*[(\[])",
     re.IGNORECASE,
 )
 _DYNAMIC_REFERENCE_TYPES: frozenset[str] = frozenset({"reflection", "dynamic", "eval", "indirect"})

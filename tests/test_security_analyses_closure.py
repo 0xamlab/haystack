@@ -41,10 +41,22 @@ def _close(*, patch_digest="sha256:p", diff=DIFF_SANITIZED, proof=ORIGINAL_PROOF
     )
 
 
+DIFF_PARAMETERIZED = (
+    "diff --git a/db.py b/db.py\n--- a/db.py\n+++ b/db.py\n@@ -10 +10 @@\n"
+    "-    cur.execute(\"SELECT id, email FROM users WHERE id = '\" + u + \"'\")\n"
+    "+    cur.execute(\"SELECT id, email FROM users WHERE id = ?\", (u,))\n"
+)
+
+
 def test_sanitizer_on_path_closes_even_if_still_reachable():
     resp = _close(diff=DIFF_SANITIZED)
     assert resp.closure_status == "closed"
     assert resp.alternate_path_found is False
+
+
+def test_parameterized_query_closes():
+    # bound-parameter query (cur.execute(sql, (u,))) with commas inside the SQL literal
+    assert _close(diff=DIFF_PARAMETERIZED).closure_status == "closed"
 
 
 def test_path_touched_without_barrier_stays_open():
