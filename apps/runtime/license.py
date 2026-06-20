@@ -592,6 +592,38 @@ def local_license_status(api_key: str = "") -> dict[str, object]:
 # ── Control plane exchange ────────────────────────────────────────────────────
 
 
+def _device_pubkey_thumbprint() -> str:
+    """This device's Ed25519 public-key thumbprint for activation binding (P3b).
+
+    Generated + persisted on first call (the activation moment). Guarded: any keypair/store
+    failure returns "" so registration falls back to a legacy fingerprint-only (unbound)
+    activation rather than breaking login.
+    """
+    try:
+        from apps.runtime.device_keypair import public_key_thumbprint
+
+        return public_key_thumbprint()
+    except Exception:  # noqa: BLE001 — never let key binding break license exchange
+        logger.warning("device_pubkey_thumbprint_unavailable", exc_info=True)
+        return ""
+
+
+def _device_register_body(device_info: Mapping[str, object]) -> bytes:
+    """Build the /v1/device/register request body, including the device-key thumbprint."""
+    return json.dumps(
+        {
+            "device": {
+                "device_id": device_info.get("device_id", ""),
+                "platform": device_info.get("platform", ""),
+                "platform_version": device_info.get("platform_version", ""),
+                "hostname_hash": device_info.get("hostname_hash", ""),
+                "sdk_version": device_info.get("sdk_version", ""),
+                "device_pubkey_thumbprint": _device_pubkey_thumbprint(),
+            }
+        }
+    ).encode()
+
+
 def _exchange_api_key_for_license(
     api_key: str,
     device_info: Mapping[str, object],
@@ -603,17 +635,7 @@ def _exchange_api_key_for_license(
     """
     # shape-validate only; runtime_urlopen below is the single enforce + audit point
     control_plane_url = _validated_control_plane_url(surface="license_exchange", record=False)
-    body = json.dumps(
-        {
-            "device": {
-                "device_id": device_info.get("device_id", ""),
-                "platform": device_info.get("platform", ""),
-                "platform_version": device_info.get("platform_version", ""),
-                "hostname_hash": device_info.get("hostname_hash", ""),
-                "sdk_version": device_info.get("sdk_version", ""),
-            }
-        }
-    ).encode()
+    body = _device_register_body(device_info)
     for attempt in range(1, _CONTROL_PLANE_MAX_ATTEMPTS + 1):
         req = _device_register_request(control_plane_url, api_key, device_info, body)
         try:
