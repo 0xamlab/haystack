@@ -104,6 +104,10 @@ _HOSTED_DEVICE_BINDING_EXEMPT_PATHS = frozenset(
         "/v1/device/heartbeat",
         "/v1/credits/refresh",
         "/v1/metering",
+        # License renewal carries its OWN device proof (keypair proof-of-possession), so it
+        # is exempt from the hosted binding-token mechanism — same as register/heartbeat.
+        "/v1/license/challenge",
+        "/v1/license/renew",
     }
 )
 _DEVICE_INFO_LENGTH_LIMITS: tuple[tuple[str, int], ...] = (
