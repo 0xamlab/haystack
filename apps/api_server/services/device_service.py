@@ -42,7 +42,7 @@ from typing import TypedDict
 
 import structlog
 from fastapi import Request
-from sqlalchemy import func, select, update
+from sqlalchemy import func, nulls_last, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -1017,3 +1017,56 @@ async def build_revocation_payload(db: AsyncSession) -> dict[str, object]:
         "iss": _JWT_ISSUER,
         "sub": "device-license-revocation-list",
     }
+
+
+async def revoke_org_devices(org_id: uuid.UUID, db: AsyncSession) -> int:
+    """Revoke ALL non-revoked devices for an org (e.g. on subscription cancellation).
+
+    Org-scoped bulk UPDATE; bumps updated_at so the CRL version advances once for the batch.
+    FLUSH-ONLY (no commit) — the caller commits atomically (e.g. with the Stripe event ledger
+    row). Idempotent: already-revoked rows are excluded, so a replay revokes 0.
+    """
+    result = await db.execute(
+        update(DeviceRegistration)
+        .where(
+            DeviceRegistration.org_id == org_id,
+            DeviceRegistration.status != DeviceStatus.REVOKED,
+        )
+        .values(status=DeviceStatus.REVOKED, updated_at=datetime.now(UTC))
+        .returning(DeviceRegistration.id)
+    )
+    return len(result.all())
+
+
+async def revoke_excess_org_devices(org_id: uuid.UUID, keep_limit: int, db: AsyncSession) -> int:
+    """Revoke an org's non-revoked devices beyond ``keep_limit``, keeping the most-recently-active.
+
+    For a paid→paid downgrade where the device cap shrank. ``keep_limit <= 0`` is a no-op (0 =
+    unlimited / enterprise — never revoke). Keeps the ``keep_limit`` devices with the most recent
+    ``last_heartbeat_at`` (NULLs — never-heartbeated — revoked first). Org-scoped, FLUSH-ONLY.
+    """
+    if keep_limit <= 0:
+        return 0
+    ids = (
+        (
+            await db.execute(
+                select(DeviceRegistration.id)
+                .where(
+                    DeviceRegistration.org_id == org_id,
+                    DeviceRegistration.status != DeviceStatus.REVOKED,
+                )
+                .order_by(nulls_last(DeviceRegistration.last_heartbeat_at.desc()))
+            )
+        )
+        .scalars()
+        .all()
+    )
+    excess = list(ids[keep_limit:])
+    if not excess:
+        return 0
+    await db.execute(
+        update(DeviceRegistration)
+        .where(DeviceRegistration.id.in_(excess))
+        .values(status=DeviceStatus.REVOKED, updated_at=datetime.now(UTC))
+    )
+    return len(excess)

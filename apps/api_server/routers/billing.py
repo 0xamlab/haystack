@@ -20,11 +20,20 @@ from apps.api_server.config import get_settings as _get_settings
 from apps.api_server.db.session import get_db
 from apps.api_server.middleware.auth import get_current_org
 from apps.api_server.middleware.rbac import require_role
+from apps.api_server.models.audit_event import AuditAction
 from apps.api_server.models.organization import Organization, OrgPlan
 from apps.api_server.models.stripe_webhook_event import StripeWebhookEvent
 from apps.api_server.models.user import User
+from apps.api_server.services.audit_service import write_audit_event
 from apps.api_server.services.auth_service import AuthContext
+from apps.api_server.services.device_service import (
+    revoke_excess_org_devices,
+    revoke_org_devices,
+)
 from apps.api_server.services.egress_guard import audit_context_from_auth
+from apps.api_server.services.entitlement_service import entitlement_for_org
+from apps.api_server.services.plan_limits import device_limit as _plan_device_limit
+from apps.api_server.services.plan_limits import local_runtime_allowed as _plan_local_runtime
 from apps.api_server.services.public_url_policy import (
     request_origin_base_url,
     resolve_billing_redirect_urls,
@@ -217,6 +226,8 @@ async def _process_stripe_event(db: AsyncSession, event: dict[str, Any]) -> None
                         plan,
                         "active",
                     )
+                # Entitlement expands (upgrade) — recompute + audit, no revocation.
+                await _audit_entitlement_recompute(db, org, event_type, event.get("id"))
 
     # ── Subscription updated / created ────────────────────────────────────────
     elif event_type in ("customer.subscription.created", "customer.subscription.updated"):
@@ -235,10 +246,25 @@ async def _process_stripe_event(db: AsyncSession, event: dict[str, Any]) -> None
         )
         org = org_result.scalar_one_or_none()
         if org:
-            try:
-                org.plan = OrgPlan(plan_name)
-            except ValueError:
-                pass
+            # An ACTIVE subscription should map to a KNOWN paid price. plan_name=='free' here means
+            # an unknown/misconfigured price_id (see _plan_from_subscription's fallback) — do NOT
+            # downgrade-and-de-entitle a paying customer on a parse failure. A genuine cancellation
+            # always arrives as customer.subscription.deleted (handled below). Keep the current plan
+            # and surface the misconfiguration loudly.
+            if plan_name == "free":
+                logger.warning(
+                    "subscription_updated_unknown_price_id_plan_kept",
+                    org_id=str(org.id),
+                    customer_id=customer_id,
+                    current_plan=_org_plan_name(org),
+                    status=status,
+                    event_id=event.get("id"),
+                )
+            else:
+                try:
+                    org.plan = OrgPlan(plan_name)
+                except ValueError:
+                    pass
             await db.flush()
             await _upsert_subscription(
                 db,
@@ -251,6 +277,36 @@ async def _process_stripe_event(db: AsyncSession, event: dict[str, Any]) -> None
                 cancel_at_end=cancel_at_end,
             )
             logger.info("subscription_updated", org_id=str(org.id), plan=plan_name, status=status)
+            await _audit_entitlement_recompute(db, org, event_type, event.get("id"))
+            # Conservative downgrade enforcement: on `updated` we ONLY revoke devices BEYOND the
+            # new finite cap of a still-runtime paid plan. We never full-revoke here — a
+            # misconfigured price_id falls back to 'free' (see _plan_from_subscription), and a
+            # genuine cancellation always arrives as `customer.subscription.deleted` (below).
+            if _plan_local_runtime(plan_name) and _plan_device_limit(plan_name) > 0:
+                revoked = await revoke_excess_org_devices(
+                    org.id, _plan_device_limit(plan_name), db
+                )
+                if revoked:
+                    logger.info(
+                        "subscription_downgrade_excess_revoked",
+                        org_id=str(org.id),
+                        plan=plan_name,
+                        count=revoked,
+                    )
+                    await write_audit_event(
+                        db,
+                        org.id,
+                        AuditAction.DEVICE_REVOKED,
+                        actor_email="stripe-webhook",
+                        resource_type="device",
+                        resource_id=str(org.id),
+                        metadata={
+                            "count": revoked,
+                            "reason": "plan_downgrade",
+                            "new_plan": plan_name,
+                            "event_id": event.get("id"),
+                        },
+                    )
 
     # ── Subscription deleted / cancelled ─────────────────────────────────────
     elif event_type == "customer.subscription.deleted":
@@ -260,9 +316,42 @@ async def _process_stripe_event(db: AsyncSession, event: dict[str, Any]) -> None
         )
         org = org_result.scalar_one_or_none()
         if org:
+            prev_plan = _org_plan_name(org)
             org.plan = OrgPlan.FREE
             await db.flush()
-            logger.info("subscription_cancelled", org_id=str(org.id))
+            # Cancellation is unambiguous → revoke ALL the org's devices. free has no local
+            # runtime, so every device becomes unauthorized; the revoked rows land in the signed
+            # CRL (build_revocation_payload) and can no longer renew/re-register.
+            revoked = await revoke_org_devices(org.id, db)
+            logger.info("subscription_cancelled", org_id=str(org.id), devices_revoked=revoked)
+            await write_audit_event(
+                db,
+                org.id,
+                AuditAction.ENTITLEMENT_REVOKED,
+                actor_email="stripe-webhook",
+                resource_type="subscription",
+                resource_id=obj.get("id") or str(org.id),
+                metadata={
+                    "old_plan": prev_plan,
+                    "new_plan": "free",
+                    "reason": "subscription.deleted",
+                    "event_id": event.get("id"),
+                },
+            )
+            if revoked:
+                await write_audit_event(
+                    db,
+                    org.id,
+                    AuditAction.DEVICE_REVOKED,
+                    actor_email="stripe-webhook",
+                    resource_type="device",
+                    resource_id=str(org.id),
+                    metadata={
+                        "count": revoked,
+                        "reason": "subscription.deleted",
+                        "event_id": event.get("id"),
+                    },
+                )
 
     # ── Invoice paid → reset usage counter ───────────────────────────────────
     elif event_type == "invoice.paid":
@@ -286,6 +375,37 @@ async def _process_stripe_event(db: AsyncSession, event: dict[str, Any]) -> None
             )
             # Keep current month's records; the new period will start fresh
             logger.info("invoice_paid_usage_reset_noted", org_id=str(org.id), period=prev_period)
+
+
+def _org_plan_name(org: Organization) -> str:
+    return getattr(org.plan, "value", str(org.plan))
+
+
+async def _audit_entitlement_recompute(
+    db: AsyncSession, org: Organization, event_type: str, event_id: str | None
+) -> None:
+    """Audit that the org's entitlement was re-resolved from its (now-current) plan.
+
+    The entitlement is derived live from org.plan (entitlement_service); license issuance +
+    renewal read it at issue time, so no license rows need touching — this records the change.
+    """
+    plan_name = _org_plan_name(org)
+    record = entitlement_for_org(org)
+    await write_audit_event(
+        db,
+        org.id,
+        AuditAction.ENTITLEMENT_RECOMPUTE,
+        actor_email="stripe-webhook",
+        resource_type="organization",
+        resource_id=str(org.id),
+        metadata={
+            "plan": plan_name,
+            "event_type": event_type,
+            "event_id": event_id,
+            "deployment_class": record.deployment_class,
+            "device_limit": _plan_device_limit(plan_name),
+        },
+    )
 
 
 def _plan_from_subscription(sub_obj: dict[str, Any]) -> str:

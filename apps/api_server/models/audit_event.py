@@ -25,6 +25,10 @@ class AuditAction(StrEnum):
     # Billing
     PLAN_UPGRADE = "plan.upgrade"
     PLAN_DOWNGRADE = "plan.downgrade"
+    # Licensing entitlements (P3c) — Stripe-driven entitlement recompute + cancellation revoke
+    ENTITLEMENT_RECOMPUTE = "entitlement.recompute"
+    ENTITLEMENT_REVOKED = "entitlement.revoked"
+    DEVICE_REVOKED = "device.revoked"
     # Org / team
     MEMBER_INVITE = "member.invite"
     MEMBER_REMOVE = "member.remove"
