@@ -496,6 +496,25 @@ def _load_raw_token(runtime_dir: Path | None = None) -> str | None:
             return target_file.read_text().strip()
     except Exception as exc:
         logger.debug("license_read_failed", error=str(exc))
+    # Durable env fallback so a hosted/air-gapped engine keeps a valid offline license across
+    # redeploys WITHOUT a persistent volume — the license JWT lives in a platform secret
+    # (e.g. a Fly secret), which survives machine/image redeploys where the local file does not.
+    # The file still takes precedence; env is only used when no file is present. Mirrors the
+    # public-key env/_FILE resolution. Verification is unchanged (RS256, fully offline).
+    for env_name in ("ALGENTA_LICENSE_JWT", "ALGENTA_LOCAL_LICENSE"):
+        value = os.environ.get(env_name, "").strip()
+        if value:
+            return value
+    for env_name in ("ALGENTA_LICENSE_JWT_FILE", "ALGENTA_LOCAL_LICENSE_FILE"):
+        path = os.environ.get(env_name, "").strip()
+        if not path:
+            continue
+        try:
+            candidate = Path(path)
+            if candidate.exists():
+                return candidate.read_text().strip()
+        except Exception as exc:
+            logger.debug("license_env_file_read_failed", error=str(exc))
     return None
 
 
