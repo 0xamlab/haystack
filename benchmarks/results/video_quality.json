@@ -1,0 +1,81 @@
+{
+  "lib": "video_quality",
+  "status": "ok",
+  "n_functions": 6,
+  "n_compared": 6,
+  "n_timed": 6,
+  "overall_speedup_x": 14.59,
+  "total_py_ns": 480129.45,
+  "total_mojo_ns": 32907.0,
+  "elapsed_s": 4.82,
+  "n_iterations": 5000,
+  "mojo_error": null,
+  "functions": [
+    {
+      "function": "frame_quality_series",
+      "py_ns": 82941.108,
+      "mojo_ns": 8040.8,
+      "speedup_x": 10.32,
+      "py_result": null,
+      "py_summary": "list:3:629458975",
+      "mojo_summary": "list:3:629458975",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "average_frame_quality",
+      "py_ns": 87783.233,
+      "mojo_ns": 7822.6,
+      "speedup_x": 11.22,
+      "py_result": 0.238497,
+      "py_summary": "float:0.23849749767446063",
+      "mojo_summary": "float:0.23849749767557638",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "brightness_flicker_score",
+      "py_ns": 23511.867,
+      "mojo_ns": 172.4,
+      "speedup_x": 136.38,
+      "py_result": 95.0,
+      "py_summary": "float:95.0",
+      "mojo_summary": "float:95.0",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "temporal_stability_score",
+      "py_ns": 11352.267,
+      "mojo_ns": 173.6,
+      "speedup_x": 65.39,
+      "py_result": 0.335664,
+      "py_summary": "float:0.3356643356643356",
+      "mojo_summary": "float:0.3356643356643356",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "video_quality_score",
+      "py_ns": 145182.733,
+      "mojo_ns": 8291.8,
+      "speedup_x": 17.51,
+      "py_result": 0.334081,
+      "py_summary": "float:0.33408111550498953",
+      "mojo_summary": "float:0.3340811155057706",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "is_usable_video",
+      "py_ns": 129358.242,
+      "mojo_ns": 8405.8,
+      "speedup_x": 15.39,
+      "py_result": 0.0,
+      "py_summary": "bool:0",
+      "mojo_summary": "bool:0",
+      "result_match": true,
+      "py_error": null
+    }
+  ]
+}

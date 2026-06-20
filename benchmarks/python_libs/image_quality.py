@@ -237,12 +237,12 @@ def shannon_entropy(image):
         total += bins[i]
     if total == 0:
         return 0.0
-    ln2 = math.math.log(2.0)
+    ln2 = math.log(2.0)
     ent = 0.0
     for i in range(len(bins)):
         if bins[i] > 0:
             p = float(bins[i]) / float(total)
-            ent -= p * (math.math.log(p) / ln2)
+            ent -= p * (math.log(p) / ln2)
     return ent
 
 

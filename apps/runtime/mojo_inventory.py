@@ -19,7 +19,7 @@ DEFAULT_RUNTIME_LIBRARY_CACHE = (
 _RUNTIME_LIBRARY_CACHE_SCHEMA_VERSION = 6
 
 _IMPORT_RE = re.compile(r"^\s*from\s+([A-Za-z_][A-Za-z0-9_.]*)\s+import\s+", re.MULTILINE)
-_FUNCTION_RE = re.compile(r"^\s*fn\s+([A-Za-z][A-Za-z0-9_]*)\s*\(")
+_FUNCTION_RE = re.compile(r"^\s*(?:fn|def)\s+([A-Za-z][A-Za-z0-9_]*)\s*\(")
 _ALLOWED_IMPORT_ROOTS = {"std", "math", "memory", "mojo", "sys"}
 _SKIP_PUBLIC_FUNCTIONS = {"main", "check"}
 _SKIP_RUNTIME_IMPORT_PATHS = {
@@ -77,6 +77,7 @@ _NON_STRING_RUNTIME_TYPES = {
     "UInt8",
 }
 _STRING_RETURN_RUNTIME_IMPORT_PATHS = {
+    "color_check",
     "column_rank",
     "crypto.base64",
     "crypto.uuid",
@@ -496,7 +497,11 @@ def is_runtime_supported_return_type(
     struct_specs: dict[str, RuntimeStructSpec] | None = None,
 ) -> bool:
     allowed_struct_specs = struct_specs or {}
-    if allow_struct_types and type_name in allow_struct_types and type_name not in allowed_struct_specs:
+    if (
+        allow_struct_types
+        and type_name in allow_struct_types
+        and type_name not in allowed_struct_specs
+    ):
         return True
     return _is_runtime_supported_type(
         type_name,

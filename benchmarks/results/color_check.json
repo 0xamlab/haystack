@@ -1,0 +1,191 @@
+{
+  "lib": "color_check",
+  "status": "ok",
+  "n_functions": 16,
+  "n_compared": 16,
+  "n_timed": 16,
+  "overall_speedup_x": 13.81,
+  "total_py_ns": 62497.23,
+  "total_mojo_ns": 4527.0,
+  "elapsed_s": 2.71,
+  "n_iterations": 5000,
+  "mojo_error": null,
+  "functions": [
+    {
+      "function": "wcag_relative_luminance_rgb255",
+      "py_ns": 976.975,
+      "mojo_ns": 0.8,
+      "speedup_x": 1221.22,
+      "py_result": 0.000152,
+      "py_summary": "float:0.00015176349177441876",
+      "mojo_summary": "float:0.00015176349177441876",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "wcag_relative_luminance_hex",
+      "py_ns": 1028.083,
+      "mojo_ns": 45.0,
+      "speedup_x": 22.85,
+      "py_result": 0.215861,
+      "py_summary": "float:0.21586050011389923",
+      "mojo_summary": "float:0.2158605001136574",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "wcag_aa_required_contrast",
+      "py_ns": 50.717,
+      "mojo_ns": 0.6,
+      "speedup_x": 84.53,
+      "py_result": 4.5,
+      "py_summary": "float:4.5",
+      "mojo_summary": "float:4.5",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "wcag_contrast_ratio_rgb255",
+      "py_ns": 1976.217,
+      "mojo_ns": 0.8,
+      "speedup_x": 2470.27,
+      "py_result": 1.0,
+      "py_summary": "float:1.0",
+      "mojo_summary": "float:1.0",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "wcag_contrast_ratio_hex",
+      "py_ns": 2501.775,
+      "mojo_ns": 57.4,
+      "speedup_x": 43.58,
+      "py_result": 21.0,
+      "py_summary": "float:21.0",
+      "mojo_summary": "float:21.0",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "wcag_text_pass_rgb255",
+      "py_ns": 1716.867,
+      "mojo_ns": 0.6,
+      "speedup_x": 2861.44,
+      "py_result": 0.0,
+      "py_summary": "bool:0",
+      "mojo_summary": "bool:0",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "wcag_text_pass_hex",
+      "py_ns": 2299.792,
+      "mojo_ns": 60.8,
+      "speedup_x": 37.83,
+      "py_result": 1.0,
+      "py_summary": "bool:1",
+      "mojo_summary": "bool:1",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "preferred_text_color_rgb255",
+      "py_ns": 3533.017,
+      "mojo_ns": 0.0,
+      "speedup_x": null,
+      "py_result": null,
+      "py_summary": "str:7:347467827",
+      "mojo_summary": "str:7:347467827",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "preferred_text_color_hex",
+      "py_ns": 4290.167,
+      "mojo_ns": 107.6,
+      "speedup_x": 39.87,
+      "py_result": null,
+      "py_summary": "str:7:347467827",
+      "mojo_summary": "str:7:347467827",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "dominant_background_rgb255",
+      "py_ns": 4153.9,
+      "mojo_ns": 525.0,
+      "speedup_x": 7.91,
+      "py_result": null,
+      "py_summary": "list:4:1076017362",
+      "mojo_summary": "list:4:1076017362",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "dominant_background_hex",
+      "py_ns": 5223.792,
+      "mojo_ns": 572.0,
+      "speedup_x": 9.13,
+      "py_result": null,
+      "py_summary": "str:7:697562634",
+      "mojo_summary": "str:7:697562634",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "dominant_background_contrast_ratio_hex",
+      "py_ns": 6915.992,
+      "mojo_ns": 625.8,
+      "speedup_x": 11.05,
+      "py_result": 5.888892,
+      "py_summary": "float:5.8888921644276735",
+      "mojo_summary": "float:5.888892162374212",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "dominant_background_wcag_pass_hex",
+      "py_ns": 6706.758,
+      "mojo_ns": 634.8,
+      "speedup_x": 10.57,
+      "py_result": 1.0,
+      "py_summary": "bool:1",
+      "mojo_summary": "bool:1",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "preferred_text_color_for_image",
+      "py_ns": 8157.7,
+      "mojo_ns": 626.2,
+      "speedup_x": 13.03,
+      "py_result": null,
+      "py_summary": "str:7:347467827",
+      "mojo_summary": "str:7:347467827",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "preferred_text_contrast_for_image",
+      "py_ns": 8308.917,
+      "mojo_ns": 637.0,
+      "speedup_x": 13.04,
+      "py_result": 5.888892,
+      "py_summary": "float:5.8888921644276735",
+      "mojo_summary": "float:5.888892162374212",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "preferred_text_pass_for_image",
+      "py_ns": 8189.575,
+      "mojo_ns": 632.6,
+      "speedup_x": 12.95,
+      "py_result": 1.0,
+      "py_summary": "bool:1",
+      "mojo_summary": "bool:1",
+      "result_match": true,
+      "py_error": null
+    }
+  ]
+}

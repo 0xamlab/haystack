@@ -229,6 +229,36 @@ fn url_parse(raw: String) -> Int:
     ]
 
 
+def test_parse_library_supports_def_signatures(tmp_path) -> None:
+    module_path = tmp_path / "color_science.mojo"
+    module_path.write_text(
+        """def rgb_to_luminance(r: Float64, g: Float64, b: Float64) -> Float64:
+    return r + g + b
+""",
+        encoding="utf-8",
+    )
+
+    sigs = mojo_gen.parse_library(
+        module_path,
+        module_id="color_science",
+        import_path="color_science",
+    )
+
+    assert sigs == [
+        mojo_gen.FnSig(
+            name="rgb_to_luminance",
+            params=[
+                mojo_gen.Param(name="r", typ="Float64", has_default=False, is_mut=False),
+                mojo_gen.Param(name="g", typ="Float64", has_default=False, is_mut=False),
+                mojo_gen.Param(name="b", typ="Float64", has_default=False, is_mut=False),
+            ],
+            ret="Float64",
+            module_id="color_science",
+            import_path="color_science",
+        )
+    ]
+
+
 def test_discover_library_modules_skips_internal_compatibility_modules(tmp_path) -> None:
     (tmp_path / "conv.mojo").write_text("fn parse_float64(s: String) -> Float64:\n    return 0.0\n")
     (tmp_path / "math_ext.mojo").write_text(

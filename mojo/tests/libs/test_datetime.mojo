@@ -1,6 +1,6 @@
 """test_datetime.mojo — auto-generated tests for datetime."""
 from std.math import isnan, isinf
-from datetime import is_leap_year, year, month, day, hour, minute, second, epoch_to_iso, iso_to_epoch, format_duration_ms, days_between, add_days, day_of_week
+from datetime import now_epoch, is_leap_year, year, month, day, hour, minute, second, epoch_to_iso, iso_to_epoch, format_duration_ms, days_between, add_days, day_of_week
 
 fn is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
@@ -42,6 +42,8 @@ def main() raises:
     var passed: Int = 0
     var failed: Int = 0
 
+    _ = now_epoch()
+    passed += 1; print("  ✅ datetime::now_epoch")
     _ = is_leap_year(5)
     passed += 1; print("  ✅ datetime::is_leap_year")
     _ = year(5)

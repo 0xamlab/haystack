@@ -1,0 +1,114 @@
+{
+  "lib": "document_vision",
+  "status": "ok",
+  "n_functions": 9,
+  "n_compared": 9,
+  "n_timed": 9,
+  "overall_speedup_x": 17.94,
+  "total_py_ns": 249612.09,
+  "total_mojo_ns": 13917.2,
+  "elapsed_s": 3.92,
+  "n_iterations": 5000,
+  "mojo_error": null,
+  "functions": [
+    {
+      "function": "otsu_threshold_flat",
+      "py_ns": 82590.933,
+      "mojo_ns": 1080.8,
+      "speedup_x": 76.42,
+      "py_result": 20.0,
+      "py_summary": "float:20.0",
+      "mojo_summary": "float:20.0",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "binarize_otsu_flat",
+      "py_ns": 45753.908,
+      "mojo_ns": 1416.4,
+      "speedup_x": 32.3,
+      "py_result": null,
+      "py_summary": "list:64:1287063160",
+      "mojo_summary": "list:64:1287063160",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "adaptive_mean_binarize_flat",
+      "py_ns": 11340.242,
+      "mojo_ns": 3420.2,
+      "speedup_x": 3.32,
+      "py_result": null,
+      "py_summary": "list:36:1011222051",
+      "mojo_summary": "list:36:1011222051",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "horizontal_projection",
+      "py_ns": 3054.908,
+      "mojo_ns": 192.4,
+      "speedup_x": 15.88,
+      "py_result": null,
+      "py_summary": "list:8:765343050",
+      "mojo_summary": "list:8:765343050",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "vertical_projection",
+      "py_ns": 3189.092,
+      "mojo_ns": 188.4,
+      "speedup_x": 16.93,
+      "py_result": null,
+      "py_summary": "list:8:74206503",
+      "mojo_summary": "list:8:74206503",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "mask_content_bbox_flat",
+      "py_ns": 3180.742,
+      "mojo_ns": 242.2,
+      "speedup_x": 13.13,
+      "py_result": null,
+      "py_summary": "list:5:1833581610",
+      "mojo_summary": "list:5:1833581610",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "skew_angle_estimate_flat",
+      "py_ns": 2258.158,
+      "mojo_ns": 25.6,
+      "speedup_x": 88.21,
+      "py_result": 45.0,
+      "py_summary": "float:45.0",
+      "mojo_summary": "float:45.0",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "horizontal_text_score_flat",
+      "py_ns": 7386.85,
+      "mojo_ns": 393.0,
+      "speedup_x": 18.8,
+      "py_result": 0.728253,
+      "py_summary": "float:0.7282528537357742",
+      "mojo_summary": "float:0.7282528537357742",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "document_scan_quality_flat",
+      "py_ns": 90857.258,
+      "mojo_ns": 6958.2,
+      "speedup_x": 13.06,
+      "py_result": 0.726367,
+      "py_summary": "float:0.726366878369306",
+      "mojo_summary": "float:0.726366878371034",
+      "result_match": true,
+      "py_error": null
+    }
+  ]
+}

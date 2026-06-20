@@ -1,0 +1,70 @@
+{
+  "lib": "video_features",
+  "status": "ok",
+  "n_functions": 5,
+  "n_compared": 5,
+  "n_timed": 5,
+  "overall_speedup_x": 94.46,
+  "total_py_ns": 78115.08,
+  "total_mojo_ns": 827.0,
+  "elapsed_s": 2.65,
+  "n_iterations": 5000,
+  "mojo_error": null,
+  "functions": [
+    {
+      "function": "scene_change_scores",
+      "py_ns": 14737.725,
+      "mojo_ns": 139.2,
+      "speedup_x": 105.87,
+      "py_result": null,
+      "py_summary": "list:2:1136970655",
+      "mojo_summary": "list:2:1136970655",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "scene_cut_count",
+      "py_ns": 12399.692,
+      "mojo_ns": 219.6,
+      "speedup_x": 56.46,
+      "py_result": 1.0,
+      "py_summary": "int:1",
+      "mojo_summary": "int:1",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "scene_cut_rate",
+      "py_ns": 17617.9,
+      "mojo_ns": 210.8,
+      "speedup_x": 83.58,
+      "py_result": 0.5,
+      "py_summary": "float:0.5",
+      "mojo_summary": "float:0.5",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "peak_motion_frame",
+      "py_ns": 15952.383,
+      "mojo_ns": 41.8,
+      "speedup_x": 381.64,
+      "py_result": 2.0,
+      "py_summary": "int:2",
+      "mojo_summary": "int:2",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "keyframe_indices",
+      "py_ns": 17407.375,
+      "mojo_ns": 215.6,
+      "speedup_x": 80.74,
+      "py_result": null,
+      "py_summary": "list:2:1372441100",
+      "mojo_summary": "list:2:1372441100",
+      "result_match": true,
+      "py_error": null
+    }
+  ]
+}

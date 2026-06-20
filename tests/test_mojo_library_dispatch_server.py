@@ -157,6 +157,165 @@ LLM_TABLE_FIXTURE = (
     '{"id":2,"source":"BACKLOG","role":"derived_measure","name":"extended_price"},'
     '{"id":3,"source":"INVOICE","role":"derived_measure","name":"invoice_total"}]'
 )
+COLORCHECK_RGB_2X2 = [
+    200.0, 20.0, 20.0,
+    200.0, 20.0, 20.0,
+    200.0, 20.0, 20.0,
+    20.0, 20.0, 200.0,
+]
+VIDEO_THREE_FRAMES_4X4 = (
+    [10.0] * 16
+    + [200.0 if i < 4 else 10.0 for i in range(16)]
+    + [200.0] * 16
+)
+VIDEO_RGB_THREE_FRAMES_2X2 = (
+    [200.0, 20.0, 20.0] * 4
+    + [200.0, 20.0, 20.0] * 3
+    + [20.0, 20.0, 200.0]
+    + [20.0, 20.0, 200.0] * 4
+)
+VIDEO_ACCESSIBILITY_THREE_FRAMES_2X2 = (
+    [20.0, 20.0, 20.0] * 4
+    + [
+        20.0,
+        20.0,
+        20.0,
+        20.0,
+        20.0,
+        20.0,
+        20.0,
+        20.0,
+        20.0,
+        220.0,
+        220.0,
+        220.0,
+    ]
+    + [220.0, 220.0, 220.0] * 4
+)
+DOC_MASK_8X8 = [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    255.0,
+    255.0,
+    255.0,
+    255.0,
+    255.0,
+    255.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    255.0,
+    255.0,
+    255.0,
+    255.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+]
+BLOCK_5X5 = [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    255.0,
+    255.0,
+    255.0,
+    0.0,
+    0.0,
+    255.0,
+    255.0,
+    255.0,
+    0.0,
+    0.0,
+    255.0,
+    255.0,
+    255.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+]
+DOC_COLUMNS_8X8 = [
+    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+    0.0, 255.0, 255.0, 0.0, 0.0, 255.0, 255.0, 0.0,
+    0.0, 255.0, 255.0, 0.0, 0.0, 255.0, 255.0, 0.0,
+    0.0, 255.0, 255.0, 0.0, 0.0, 255.0, 255.0, 0.0,
+    0.0, 255.0, 255.0, 0.0, 0.0, 255.0, 255.0, 0.0,
+    0.0, 255.0, 255.0, 0.0, 0.0, 255.0, 255.0, 0.0,
+    0.0, 255.0, 255.0, 0.0, 0.0, 255.0, 255.0, 0.0,
+    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+]
+VIDEO_MOTION_3X5X5 = (
+    [10.0] * 25
+    + [
+        200.0 if 1 <= (index // 5) <= 2 and 1 <= (index % 5) <= 2 else 10.0
+        for index in range(25)
+    ]
+    + [
+        200.0
+        if (
+            (1 <= (index // 5) <= 2 and 1 <= (index % 5) <= 2)
+            or ((index // 5) == 4 and (index % 5) == 4)
+        )
+        else 10.0
+        for index in range(25)
+    ]
+)
+VIDEO_SIMILAR_3X4X4_ALT = (
+    [12.0] * 16
+    + [188.0 if index < 4 else 12.0 for index in range(16)]
+    + [192.0] * 16
+)
 
 
 def _dispatch_runtime_call(
@@ -284,15 +443,227 @@ def test_mojo_server_dispatches_inference_cost_latency_kernel_functions(
 @pytest.mark.parametrize(
     ("module_name", "function_name", "args", "expected"),
     [
+        ("color_science", "rgb_to_luminance", [1.0, 1.0, 1.0], 1.0),
+        ("color_science", "contrast_ratio", [0.0, 1.0], 21.0),
+        ("color_check", "preferred_text_color_hex", ["#336699"], "#FFFFFF"),
+        (
+            "color_check",
+            "preferred_text_color_for_image",
+            [COLORCHECK_RGB_2X2, 2, 2, 4],
+            "#FFFFFF",
+        ),
+        ("image_palette", "palette_size_estimate", [COLORCHECK_RGB_2X2, 2, 2, 4, 0.2], 2),
+        ("image_palette", "warm_color_ratio_rgb255", [COLORCHECK_RGB_2X2, 2, 2, 0.25], 0.75),
+        ("image_palette", "accent_color_hex", [COLORCHECK_RGB_2X2, 2, 2, 4], "#C81414"),
         ("image_ops", "mean_pixel", [[[0.0, 255.0], [255.0, 0.0]]], 127.5),
         ("image_features", "histogram_intersection", [[0.5, 0.5], [1.0, 0.0]], 0.5),
         ("image_resize", "reshape_to_grid", [[1.0, 2.0, 3.0, 4.0], 2, 2], [[1.0, 2.0], [3.0, 4.0]]),
         ("image_quality", "brightness_flat", [[0.0, 255.0, 255.0, 0.0], 2, 2], 127.5),
+        ("image_morphology", "foreground_area_ratio_flat", [BLOCK_5X5, 5, 5, 128.0], 9.0 / 25.0),
+        (
+            "document_vision",
+            "horizontal_projection",
+            [DOC_MASK_8X8, 8, 8, 128.0],
+            [0.0, 0.0, 6.0, 0.0, 0.0, 4.0, 0.0, 0.0],
+        ),
+        ("document_layout", "line_count_flat", [DOC_MASK_8X8, 8, 8, 128.0, 1], 2),
+        ("document_layout", "column_count_flat", [DOC_COLUMNS_8X8, 8, 8, 128.0, 2], 2),
+        (
+            "image_similarity",
+            "mean_squared_error_flat",
+            [[0.0, 10.0, 20.0, 30.0], [0.0, 10.0, 30.0, 30.0], 2, 2],
+            25.0,
+        ),
+        ("image_regions", "box_iou", [[0, 0, 2, 2], [1, 1, 3, 3]], 4.0 / 14.0),
         ("perceptual_hash", "hamming_distance", [0, 3], 2),
         ("vision_gate", "route_image_request", [120.0, 128.0, 4.0, 0.2, False, 0], 5),
     ],
 )
 def test_mojo_server_dispatches_image_runtime_library_requests(
+    llm_dispatch_server: tuple[subprocess.Popen[str], Path],
+    module_name: str,
+    function_name: str,
+    args: list[object],
+    expected: object,
+) -> None:
+    _, socket_path = llm_dispatch_server
+    result = _dispatch_runtime_call(socket_path, module_name, function_name, args)
+    if isinstance(expected, float):
+        assert result == pytest.approx(expected)
+    else:
+        assert result == expected
+
+
+@pytest.mark.parametrize(
+    ("module_name", "function_name", "args", "expected"),
+    [
+        (
+            "video_ops",
+            "frame_count_from_flat",
+            [VIDEO_THREE_FRAMES_4X4, 4, 4, 1],
+            3,
+        ),
+        (
+            "video_features",
+            "scene_cut_count",
+            [VIDEO_THREE_FRAMES_4X4, 4, 4, 1, 0.4],
+            1,
+        ),
+        (
+            "video_storyboard",
+            "scene_start_indices",
+            [VIDEO_THREE_FRAMES_4X4, 4, 4, 1, 0.4],
+            [0, 2],
+        ),
+        (
+            "video_storyboard",
+            "storyboard_frame_indices",
+            [VIDEO_THREE_FRAMES_4X4, 4, 4, 1, 0.4, 2],
+            [0, 2],
+        ),
+        (
+            "video_storyboard",
+            "longest_scene_index",
+            [VIDEO_THREE_FRAMES_4X4, 4, 4, 1, 0.4],
+            0,
+        ),
+        (
+            "video_color",
+            "frame_mean_rgb255",
+            [VIDEO_RGB_THREE_FRAMES_2X2, 2, 2, 3, 1],
+            [155.0, 20.0, 65.0],
+        ),
+        (
+            "video_color",
+            "clip_mean_rgb255",
+            [VIDEO_RGB_THREE_FRAMES_2X2, 2, 2, 3],
+            [125.0, 20.0, 95.0],
+        ),
+        (
+            "video_color",
+            "dominant_clip_color_rgb255",
+            [VIDEO_RGB_THREE_FRAMES_2X2, 2, 2, 3, 4, 3],
+            [200.0, 20.0, 20.0, 7.0 / 12.0],
+        ),
+        (
+            "video_color",
+            "clip_mean_saturation_rgb255",
+            [VIDEO_RGB_THREE_FRAMES_2X2, 2, 2, 3],
+            0.9,
+        ),
+        (
+            "video_color",
+            "warm_frame_ratio_rgb255",
+            [VIDEO_RGB_THREE_FRAMES_2X2, 2, 2, 3, 0.25],
+            2.0 / 3.0,
+        ),
+        (
+            "video_color",
+            "preferred_text_color_for_video",
+            [VIDEO_RGB_THREE_FRAMES_2X2, 2, 2, 3, 4, 3],
+            "#FFFFFF",
+        ),
+        (
+            "video_accessibility",
+            "frame_min_preferred_text_contrast_for_video",
+            [VIDEO_ACCESSIBILITY_THREE_FRAMES_2X2, 2, 2, 3, 1],
+            1.3713058806238527,
+        ),
+        (
+            "video_accessibility",
+            "frame_preferred_text_color_for_video",
+            [VIDEO_ACCESSIBILITY_THREE_FRAMES_2X2, 2, 2, 3, 1],
+            "#FFFFFF",
+        ),
+        (
+            "video_accessibility",
+            "sampled_video_min_text_contrast",
+            [VIDEO_ACCESSIBILITY_THREE_FRAMES_2X2, 2, 2, 3, 3],
+            1.3713058806238527,
+        ),
+        (
+            "video_accessibility",
+            "sampled_video_wcag_safe_ratio",
+            [VIDEO_ACCESSIBILITY_THREE_FRAMES_2X2, 2, 2, 3, 3, 16.0, False],
+            2.0 / 3.0,
+        ),
+        (
+            "video_accessibility",
+            "needs_text_backplate_for_video",
+            [VIDEO_ACCESSIBILITY_THREE_FRAMES_2X2, 2, 2, 3, 3, 16.0, False],
+            True,
+        ),
+        (
+            "video_accessibility",
+            "subtitle_band_min_preferred_text_contrast_for_video",
+            [VIDEO_ACCESSIBILITY_THREE_FRAMES_2X2, 2, 2, 3, 3, 1],
+            1.3713058806238527,
+        ),
+        (
+            "video_accessibility",
+            "subtitle_band_preferred_text_color_for_video",
+            [VIDEO_ACCESSIBILITY_THREE_FRAMES_2X2, 2, 2, 3, 3, 1],
+            "#FFFFFF",
+        ),
+        (
+            "video_accessibility",
+            "sampled_subtitle_band_wcag_safe_ratio",
+            [VIDEO_ACCESSIBILITY_THREE_FRAMES_2X2, 2, 2, 3, 3, 1, 16.0, False],
+            2.0 / 3.0,
+        ),
+        (
+            "video_accessibility",
+            "subtitle_band_needs_backplate_for_video",
+            [VIDEO_ACCESSIBILITY_THREE_FRAMES_2X2, 2, 2, 3, 3, 1, 16.0, False],
+            True,
+        ),
+        (
+            "video_quality",
+            "brightness_flicker_score",
+            [VIDEO_THREE_FRAMES_4X4, 4, 4, 1],
+            95.0,
+        ),
+        (
+            "video_gate",
+            "route_video_request",
+            [0.8, 40.0, 0.1, 10.0, 0.05, False, 0],
+            5,
+        ),
+        (
+            "video_regions",
+            "largest_motion_box_between_frames",
+            [VIDEO_MOTION_3X5X5, 5, 5, 1, 1, 2, 50.0],
+            [4, 4, 4, 4, 1],
+        ),
+        (
+            "video_regions",
+            "motion_coverage_ratio_flat",
+            [VIDEO_MOTION_3X5X5, 5, 5, 1, 50.0],
+            0.2,
+        ),
+        (
+            "video_similarity",
+            "clip_duplicate_score_flat",
+            [VIDEO_THREE_FRAMES_4X4,
+             VIDEO_THREE_FRAMES_4X4,
+             4,
+             4,
+             1],
+            1.0,
+        ),
+        (
+            "video_similarity",
+            "average_frame_hash_hamming",
+            [VIDEO_THREE_FRAMES_4X4,
+             VIDEO_THREE_FRAMES_4X4,
+             4,
+             4,
+             1],
+            0.0,
+        ),
+    ],
+)
+def test_mojo_server_dispatches_video_runtime_library_requests(
     llm_dispatch_server: tuple[subprocess.Popen[str], Path],
     module_name: str,
     function_name: str,

@@ -1,0 +1,103 @@
+{
+  "lib": "image_palette",
+  "status": "ok",
+  "n_functions": 8,
+  "n_compared": 8,
+  "n_timed": 8,
+  "overall_speedup_x": 6.4,
+  "total_py_ns": 43410.59,
+  "total_mojo_ns": 6783.7,
+  "elapsed_s": 2.54,
+  "n_iterations": 10000,
+  "mojo_error": null,
+  "functions": [
+    {
+      "function": "dominant_palette_rgb255",
+      "py_ns": 5238.904,
+      "mojo_ns": 1512.8,
+      "speedup_x": 3.46,
+      "py_result": null,
+      "py_summary": "list:8:1946832782",
+      "mojo_summary": "list:8:1946832782",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "palette_size_estimate",
+      "py_ns": 4846.746,
+      "mojo_ns": 609.6,
+      "speedup_x": 7.95,
+      "py_result": 2.0,
+      "py_summary": "int:2",
+      "mojo_summary": "int:2",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "palette_entropy",
+      "py_ns": 3467.254,
+      "mojo_ns": 650.8,
+      "speedup_x": 5.33,
+      "py_result": 0.811278,
+      "py_summary": "float:0.8112781244591328",
+      "mojo_summary": "float:0.8112781245483914",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "mean_saturation_rgb255",
+      "py_ns": 3158.342,
+      "mojo_ns": 18.4,
+      "speedup_x": 171.65,
+      "py_result": 0.9,
+      "py_summary": "float:0.8999999999999999",
+      "mojo_summary": "float:0.8999999999999999",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "warm_color_ratio_rgb255",
+      "py_ns": 3229.967,
+      "mojo_ns": 32.5,
+      "speedup_x": 99.38,
+      "py_result": 0.75,
+      "py_summary": "float:0.75",
+      "mojo_summary": "float:0.75",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "palette_contrast_score",
+      "py_ns": 6521.871,
+      "mojo_ns": 1550.1,
+      "speedup_x": 4.21,
+      "py_result": 0.040793,
+      "py_summary": "float:0.040792744983608506",
+      "mojo_summary": "float:0.040792744995753236",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "accent_color_hex",
+      "py_ns": 8854.104,
+      "mojo_ns": 1747.1,
+      "speedup_x": 5.07,
+      "py_result": null,
+      "py_summary": "str:7:697562634",
+      "mojo_summary": "str:7:697562634",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "is_monochrome_palette",
+      "py_ns": 8093.4,
+      "mojo_ns": 662.4,
+      "speedup_x": 12.22,
+      "py_result": 0.0,
+      "py_summary": "bool:0",
+      "mojo_summary": "bool:0",
+      "result_match": true,
+      "py_error": null
+    }
+  ]
+}

@@ -13,7 +13,7 @@ def _write(path: Path, text: str) -> None:
 
 def test_discover_source_modules_collects_recursive_modules(tmp_path: Path) -> None:
     engine_root = tmp_path / "mojo" / "engine"
-    _write(engine_root / "finance.mojo", "fn npv() -> Float64:\n    return 1.0\n")
+    _write(engine_root / "finance.mojo", "def npv() -> Float64:\n    return 1.0\n")
     _write(engine_root / "crypto" / "hash.mojo", "fn digest() -> Int:\n    return 1\n")
     _write(engine_root / "crypto" / "__init__.mojo", "")
 
@@ -202,6 +202,178 @@ def test_llm_rollout_modules_are_runtime_executable() -> None:
         "build_table_json",
     )
     assert modules["column_rank"] == ("run_column_rank",)
+    assert modules["color_science"] == (
+        "delta_e_76",
+        "lab_to_lch_l",
+        "lab_to_lch_c",
+        "lab_to_lch_h",
+        "rgb_to_luminance",
+        "contrast_ratio",
+        "wcag_aa_pass",
+        "color_temperature_approx",
+        "metamerism_index",
+        "chromatic_adaptation_von_kries",
+        "cri_from_delta_e",
+        "whiteness_index_cie",
+    )
+    assert modules["color_check"] == (
+        "wcag_relative_luminance_rgb255",
+        "wcag_relative_luminance_hex",
+        "wcag_aa_required_contrast",
+        "wcag_contrast_ratio_rgb255",
+        "wcag_contrast_ratio_hex",
+        "wcag_text_pass_rgb255",
+        "wcag_text_pass_hex",
+        "preferred_text_color_rgb255",
+        "preferred_text_color_hex",
+        "dominant_background_rgb255",
+        "dominant_background_hex",
+        "dominant_background_contrast_ratio_hex",
+        "dominant_background_wcag_pass_hex",
+        "preferred_text_color_for_image",
+        "preferred_text_contrast_for_image",
+        "preferred_text_pass_for_image",
+    )
+    assert modules["image_palette"] == (
+        "dominant_palette_rgb255",
+        "palette_size_estimate",
+        "palette_entropy",
+        "mean_saturation_rgb255",
+        "warm_color_ratio_rgb255",
+        "palette_contrast_score",
+        "accent_color_hex",
+        "is_monochrome_palette",
+    )
+    assert modules["image_morphology"] == (
+        "binary_erode_flat",
+        "binary_dilate_flat",
+        "binary_open_flat",
+        "binary_close_flat",
+        "binary_fill_holes_flat",
+        "connected_components_4_flat",
+        "largest_component_bbox_flat",
+        "distance_transform_cityblock_flat",
+        "foreground_area_ratio_flat",
+    )
+    assert modules["document_vision"] == (
+        "otsu_threshold_flat",
+        "binarize_otsu_flat",
+        "adaptive_mean_binarize_flat",
+        "horizontal_projection",
+        "vertical_projection",
+        "mask_content_bbox_flat",
+        "skew_angle_estimate_flat",
+        "horizontal_text_score_flat",
+        "document_scan_quality_flat",
+    )
+    assert modules["document_layout"] == (
+        "text_line_boxes_flat",
+        "line_count_flat",
+        "column_boxes_flat",
+        "column_count_flat",
+        "text_density_grid_flat",
+        "multi_column_score_flat",
+        "table_like_score_flat",
+    )
+    assert modules["image_similarity"] == (
+        "mean_squared_error_flat",
+        "mean_abs_error_flat",
+        "psnr_flat",
+        "normalized_cross_correlation_flat",
+        "ssim_global_flat",
+        "diff_fraction_flat",
+        "crop_region_similarity_flat",
+        "duplicate_score_flat",
+    )
+    assert modules["image_regions"] == (
+        "foreground_mask_otsu_flat",
+        "connected_component_boxes_flat",
+        "largest_foreground_box_flat",
+        "saliency_box_flat",
+        "extract_box_flat",
+        "box_iou",
+    )
+    assert modules["video_ops"] == (
+        "frame_count_from_flat",
+        "frame_mean_intensity",
+        "frame_mean_intensities",
+        "frame_mean_abs_diff",
+        "temporal_mean_abs_diff",
+        "temporal_max_abs_diff",
+        "freeze_frame_ratio",
+        "sample_frame_indices",
+    )
+    assert modules["video_features"] == (
+        "scene_change_scores",
+        "scene_cut_count",
+        "scene_cut_rate",
+        "peak_motion_frame",
+        "keyframe_indices",
+    )
+    assert modules["video_color"] == (
+        "frame_mean_rgb255",
+        "frame_mean_rgb_series",
+        "clip_mean_rgb255",
+        "dominant_clip_color_rgb255",
+        "clip_mean_saturation_rgb255",
+        "warm_frame_ratio_rgb255",
+        "color_drift_score_rgb255",
+        "preferred_text_contrast_for_video",
+        "preferred_text_color_for_video",
+    )
+    assert modules["video_accessibility"] == (
+        "frame_min_preferred_text_contrast_for_video",
+        "frame_preferred_text_color_for_video",
+        "sampled_video_min_text_contrast",
+        "sampled_video_wcag_safe_ratio",
+        "needs_text_backplate_for_video",
+        "subtitle_band_min_preferred_text_contrast_for_video",
+        "subtitle_band_preferred_text_color_for_video",
+        "sampled_subtitle_band_wcag_safe_ratio",
+        "subtitle_band_needs_backplate_for_video",
+    )
+    assert modules["video_storyboard"] == (
+        "scene_start_indices",
+        "scene_end_indices",
+        "scene_lengths_frames",
+        "scene_representative_frames",
+        "longest_scene_index",
+        "storyboard_frame_indices",
+    )
+    assert modules["video_quality"] == (
+        "frame_quality_series",
+        "average_frame_quality",
+        "brightness_flicker_score",
+        "temporal_stability_score",
+        "video_quality_score",
+        "is_usable_video",
+    )
+    assert modules["video_gate"] == (
+        "should_use_cached_video",
+        "needs_clearer_video",
+        "quality_gate_passed_video",
+        "is_mostly_static_video",
+        "should_extract_keyframes",
+        "route_video_request",
+    )
+    assert modules["video_regions"] == (
+        "frame_diff_mask_flat",
+        "motion_boxes_between_frames",
+        "largest_motion_box_between_frames",
+        "temporal_motion_area_series",
+        "peak_motion_box_flat",
+        "temporal_union_motion_box_flat",
+        "motion_coverage_ratio_flat",
+    )
+    assert modules["video_similarity"] == (
+        "frame_duplicate_scores",
+        "average_frame_duplicate_score",
+        "frame_hash_hamming_series",
+        "average_frame_hash_hamming",
+        "temporal_signature_distance",
+        "clip_duplicate_score_flat",
+        "is_duplicate_clip_flat",
+    )
     assert modules["crypto.base64"] == (
         "b64_encode",
         "b64_decode",
@@ -287,10 +459,13 @@ def test_current_repo_non_executable_benchmark_gap_does_not_regress() -> None:
         for module in mojo_inventory.discover_runtime_library_modules(executable_only=False)
     }
     runtime_exec_ids = {
-        module.lib_id for module in mojo_inventory.discover_runtime_library_modules(executable_only=True)
+        module.lib_id
+        for module in mojo_inventory.discover_runtime_library_modules(executable_only=True)
     }
 
-    benchmark_ids = set(report.artifact_benchmark_result_libs) | set(report.artifact_benchmark_bench_libs)
+    benchmark_ids = set(report.artifact_benchmark_result_libs) | set(
+        report.artifact_benchmark_bench_libs
+    )
     non_executable_gap = sorted(
         lib_id
         for lib_id in benchmark_ids

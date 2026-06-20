@@ -1,0 +1,114 @@
+{
+  "lib": "video_accessibility",
+  "status": "ok",
+  "n_functions": 9,
+  "n_compared": 9,
+  "n_timed": 9,
+  "overall_speedup_x": 9.26,
+  "total_py_ns": 45279.33,
+  "total_mojo_ns": 4888.6,
+  "elapsed_s": 2.49,
+  "n_iterations": 10000,
+  "mojo_error": null,
+  "functions": [
+    {
+      "function": "frame_min_preferred_text_contrast_for_video",
+      "py_ns": 2398.471,
+      "mojo_ns": 192.3,
+      "speedup_x": 12.47,
+      "py_result": 5.888892,
+      "py_summary": "float:5.8888921644276735",
+      "mojo_summary": "float:5.888892162374212",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "frame_preferred_text_color_for_video",
+      "py_ns": 2412.013,
+      "mojo_ns": 191.6,
+      "speedup_x": 12.59,
+      "py_result": null,
+      "py_summary": "str:7:347467827",
+      "mojo_summary": "str:7:347467827",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "sampled_video_min_text_contrast",
+      "py_ns": 7484.933,
+      "mojo_ns": 720.2,
+      "speedup_x": 10.39,
+      "py_result": 5.888892,
+      "py_summary": "float:5.8888921644276735",
+      "mojo_summary": "float:5.888892162374212",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "sampled_video_wcag_safe_ratio",
+      "py_ns": 7515.079,
+      "mojo_ns": 735.5,
+      "speedup_x": 10.22,
+      "py_result": 1.0,
+      "py_summary": "float:1.0",
+      "mojo_summary": "float:1.0",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "needs_text_backplate_for_video",
+      "py_ns": 7608.608,
+      "mojo_ns": 738.2,
+      "speedup_x": 10.31,
+      "py_result": 0.0,
+      "py_summary": "bool:0",
+      "mojo_summary": "bool:0",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "subtitle_band_min_preferred_text_contrast_for_video",
+      "py_ns": 4380.271,
+      "mojo_ns": 591.2,
+      "speedup_x": 7.41,
+      "py_result": 5.888892,
+      "py_summary": "float:5.8888921644276735",
+      "mojo_summary": "float:5.888892162374212",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "subtitle_band_preferred_text_color_for_video",
+      "py_ns": 4454.133,
+      "mojo_ns": 568.6,
+      "speedup_x": 7.83,
+      "py_result": null,
+      "py_summary": "str:7:347467827",
+      "mojo_summary": "str:7:347467827",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "sampled_subtitle_band_wcag_safe_ratio",
+      "py_ns": 4438.237,
+      "mojo_ns": 572.0,
+      "speedup_x": 7.76,
+      "py_result": 1.0,
+      "py_summary": "float:1.0",
+      "mojo_summary": "float:1.0",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "subtitle_band_needs_backplate_for_video",
+      "py_ns": 4587.583,
+      "mojo_ns": 579.0,
+      "speedup_x": 7.92,
+      "py_result": 0.0,
+      "py_summary": "bool:0",
+      "mojo_summary": "bool:0",
+      "result_match": true,
+      "py_error": null
+    }
+  ]
+}

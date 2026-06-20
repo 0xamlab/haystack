@@ -9,6 +9,14 @@ from image_features import (
     edge_density_flat,
     most_salient_cell_flat,
 )
+from image_palette import (
+    dominant_palette_rgb255,
+    mean_saturation_rgb255,
+    palette_contrast_score,
+    palette_entropy,
+    palette_size_estimate,
+    warm_color_ratio_rgb255,
+)
 from image_quality import (
     blur_score_flat,
     brightness_flat,
@@ -109,6 +117,10 @@ def main() raises:
     var list_iters = _iters_for_pixels(pixels, 120000, 1, 200)
     var hash_iters = _iters_for_pixels(pixels, 150000, 1, 200)
     var route_iters = 200000
+    var palette_levels = 8
+    var palette_top_k = 3
+    var palette_min_weight = 0.02
+    var warm_min_saturation = 0.25
 
     _emit_meta("blur_score_flat", scalar_iters)
     var _acc_blur_score_flat: Float64 = 0.0
@@ -234,6 +246,111 @@ def main() raises:
     print(
         "MOJO_RESULT dominant_colors",
         _summary_list_float64_rounded6(dominant_colors(flat_rgb, width, height, 8)),
+    )
+
+    _emit_meta("dominant_palette_rgb255", list_iters)
+    var _acc_dominant_palette_rgb255: Float64 = 0.0
+    var _t0_dominant_palette_rgb255 = perf_counter_ns()
+    for _ in range(list_iters):
+        var result = dominant_palette_rgb255(flat_rgb, width, height, palette_levels, palette_top_k)
+        _acc_dominant_palette_rgb255 += Float64(len(result))
+    var _t1_dominant_palette_rgb255 = perf_counter_ns()
+    print(
+        "MOJO_TIMING dominant_palette_rgb255",
+        Float64(_t1_dominant_palette_rgb255 - _t0_dominant_palette_rgb255) / Float64(list_iters),
+    )
+    print(
+        "MOJO_RESULT dominant_palette_rgb255",
+        _summary_list_float64_rounded6(
+            dominant_palette_rgb255(flat_rgb, width, height, palette_levels, palette_top_k)
+        ),
+    )
+
+    _emit_meta("palette_size_estimate", list_iters)
+    var _acc_palette_size_estimate: Float64 = 0.0
+    var _t0_palette_size_estimate = perf_counter_ns()
+    for _ in range(list_iters):
+        _acc_palette_size_estimate += Float64(
+            palette_size_estimate(flat_rgb, width, height, palette_levels, palette_min_weight)
+        )
+    var _t1_palette_size_estimate = perf_counter_ns()
+    print(
+        "MOJO_TIMING palette_size_estimate",
+        Float64(_t1_palette_size_estimate - _t0_palette_size_estimate) / Float64(list_iters),
+    )
+    print(
+        "MOJO_RESULT palette_size_estimate",
+        _summary_int(
+            palette_size_estimate(flat_rgb, width, height, palette_levels, palette_min_weight)
+        ),
+    )
+
+    _emit_meta("palette_entropy", list_iters)
+    var _acc_palette_entropy: Float64 = 0.0
+    var _t0_palette_entropy = perf_counter_ns()
+    for _ in range(list_iters):
+        _acc_palette_entropy += palette_entropy(flat_rgb, width, height, palette_levels)
+    var _t1_palette_entropy = perf_counter_ns()
+    print(
+        "MOJO_TIMING palette_entropy",
+        Float64(_t1_palette_entropy - _t0_palette_entropy) / Float64(list_iters),
+    )
+    print(
+        "MOJO_RESULT palette_entropy",
+        _summary_float64_rounded6(palette_entropy(flat_rgb, width, height, palette_levels)),
+    )
+
+    _emit_meta("mean_saturation_rgb255", list_iters)
+    var _acc_mean_saturation_rgb255: Float64 = 0.0
+    var _t0_mean_saturation_rgb255 = perf_counter_ns()
+    for _ in range(list_iters):
+        _acc_mean_saturation_rgb255 += mean_saturation_rgb255(flat_rgb, width, height)
+    var _t1_mean_saturation_rgb255 = perf_counter_ns()
+    print(
+        "MOJO_TIMING mean_saturation_rgb255",
+        Float64(_t1_mean_saturation_rgb255 - _t0_mean_saturation_rgb255) / Float64(list_iters),
+    )
+    print(
+        "MOJO_RESULT mean_saturation_rgb255",
+        _summary_float64_rounded6(mean_saturation_rgb255(flat_rgb, width, height)),
+    )
+
+    _emit_meta("warm_color_ratio_rgb255", list_iters)
+    var _acc_warm_color_ratio_rgb255: Float64 = 0.0
+    var _t0_warm_color_ratio_rgb255 = perf_counter_ns()
+    for _ in range(list_iters):
+        _acc_warm_color_ratio_rgb255 += warm_color_ratio_rgb255(
+            flat_rgb, width, height, warm_min_saturation
+        )
+    var _t1_warm_color_ratio_rgb255 = perf_counter_ns()
+    print(
+        "MOJO_TIMING warm_color_ratio_rgb255",
+        Float64(_t1_warm_color_ratio_rgb255 - _t0_warm_color_ratio_rgb255) / Float64(list_iters),
+    )
+    print(
+        "MOJO_RESULT warm_color_ratio_rgb255",
+        _summary_float64_rounded6(
+            warm_color_ratio_rgb255(flat_rgb, width, height, warm_min_saturation)
+        ),
+    )
+
+    _emit_meta("palette_contrast_score", list_iters)
+    var _acc_palette_contrast_score: Float64 = 0.0
+    var _t0_palette_contrast_score = perf_counter_ns()
+    for _ in range(list_iters):
+        _acc_palette_contrast_score += palette_contrast_score(
+            flat_rgb, width, height, palette_levels, palette_top_k
+        )
+    var _t1_palette_contrast_score = perf_counter_ns()
+    print(
+        "MOJO_TIMING palette_contrast_score",
+        Float64(_t1_palette_contrast_score - _t0_palette_contrast_score) / Float64(list_iters),
+    )
+    print(
+        "MOJO_RESULT palette_contrast_score",
+        _summary_float64_rounded6(
+            palette_contrast_score(flat_rgb, width, height, palette_levels, palette_top_k)
+        ),
     )
 
     _emit_meta("route_image_request", route_iters)

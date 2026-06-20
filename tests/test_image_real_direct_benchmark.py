@@ -2,7 +2,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from benchmarks.image_real_direct_benchmark import parse_mojo_benchmark_output, summarize_value
+from benchmarks.image_real_direct_benchmark import (
+    _build_mojo_build_command,
+    build_python_cases,
+    load_png_image,
+    parse_mojo_benchmark_output,
+    summarize_value,
+)
 from benchmarks.png_loader import load_png_rgb
 
 
@@ -47,3 +53,40 @@ def test_load_png_rgb_reads_repo_fixture() -> None:
     assert payload["height"] == 64
     assert len(payload["flat_rgb"]) == 64 * 64 * 3
     assert len(payload["flat_gray"]) == 64 * 64
+
+
+def test_build_mojo_build_command_uses_repo_pixi_layout() -> None:
+    binary_path = Path("/tmp/bench_image_real_direct")
+    command = _build_mojo_build_command("/usr/local/bin/pixi", binary_path)
+
+    assert command == [
+        "/usr/local/bin/pixi",
+        "run",
+        "mojo",
+        "build",
+        "-I",
+        "../mojo/engine",
+        "../benchmarks/mojo_benchmarks/bench_image_real_direct.mojo",
+        "-o",
+        "/tmp/bench_image_real_direct",
+    ]
+
+
+def test_build_python_cases_includes_palette_analysis_cases() -> None:
+    fixture = load_png_image(
+        "mojo_logo_64",
+        Path(
+            "/Users/angel/Developer/decision-engine/"
+            "mojo_env/.pixi/envs/default/share/jupyter/kernels/mojo/logo-64x64.png"
+        ),
+    )
+    case_names = {case.name for case in build_python_cases(fixture)}
+
+    assert {
+        "dominant_palette_rgb255",
+        "palette_size_estimate",
+        "palette_entropy",
+        "mean_saturation_rgb255",
+        "warm_color_ratio_rgb255",
+        "palette_contrast_score",
+    } <= case_names

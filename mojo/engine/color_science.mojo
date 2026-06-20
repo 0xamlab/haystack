@@ -2,16 +2,16 @@
 color_science.mojo — Color Science / Colorimetry Library. Zero Python imports.
 
 Pure Mojo implementations of fundamental colorimetry equations
-including CIE76 delta-E, Lab-to-LCH conversion, sRGB luminance,
-WCAG contrast ratio, colour temperature, metamerism index,
-chromatic adaptation, CRI, and CIE whiteness index.
+including CIE76 delta-E, Lab-to-LCH conversion, gamma-corrected
+sRGB luminance, WCAG contrast ratio, colour temperature, metamerism
+index, chromatic adaptation, CRI, and CIE whiteness index.
 
 Public API:
   delta_e_76                  — CIE76 colour difference
   lab_to_lch_l                — L* passthrough
   lab_to_lch_c                — chroma C*
   lab_to_lch_h                — hue angle h°
-  rgb_to_luminance            — sRGB relative luminance Y
+  rgb_to_luminance            — WCAG relative luminance from sRGB inputs in [0, 1]
   contrast_ratio              — WCAG contrast ratio
   wcag_aa_pass                — WCAG AA compliance check
   color_temperature_approx    — simplified CCT from R,B
@@ -20,7 +20,7 @@ Public API:
   cri_from_delta_e            — CRI ≈ 100 - 4.6*ΔE
   whiteness_index_cie         — CIE whiteness W
 """
-from std.math import sqrt, abs as fabs, atan2
+from std.math import sqrt, abs as fabs, atan2, pow
 
 
 # ── delta_e_76 ───────────────────────────────────────────────────────────────
@@ -67,9 +67,23 @@ fn lab_to_lch_h(a: Float64, b: Float64) -> Float64:
 # ── rgb_to_luminance ─────────────────────────────────────────────────────────
 
 
+fn _srgb_channel_to_linear(channel: Float64) -> Float64:
+    var c = channel
+    if c < 0.0:
+        c = 0.0
+    elif c > 1.0:
+        c = 1.0
+    if c <= 0.04045:
+        return c / 12.92
+    return pow((c + 0.055) / 1.055, 2.4)
+
+
 fn rgb_to_luminance(r: Float64, g: Float64, b: Float64) -> Float64:
-    """sRGB relative luminance Y = 0.2126*R + 0.7152*G + 0.0722*B."""
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+    """WCAG relative luminance from gamma-encoded sRGB channels in [0, 1]."""
+    var rl = _srgb_channel_to_linear(r)
+    var gl = _srgb_channel_to_linear(g)
+    var bl = _srgb_channel_to_linear(b)
+    return 0.2126 * rl + 0.7152 * gl + 0.0722 * bl
 
 
 # ── contrast_ratio ───────────────────────────────────────────────────────────

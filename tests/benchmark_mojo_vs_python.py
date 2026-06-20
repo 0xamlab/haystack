@@ -57,6 +57,155 @@ WORKERS = int(os.environ.get("DE_BENCH_WORKERS", "8"))
 TIMEOUT = int(os.environ.get("DE_BENCH_TIMEOUT", "30"))
 ONLY_LIBS = set(os.environ.get("DE_BENCH_LIBS", "").split(",")) - {""}
 
+_BLOCK_5X5_EXPR = repr(
+    [255.0 if 1 <= (index // 5) <= 3 and 1 <= (index % 5) <= 3 else 0.0 for index in range(25)]
+)
+_RING_5X5_EXPR = repr(
+    [
+        255.0
+        if 1 <= (index // 5) <= 3 and 1 <= (index % 5) <= 3 and not ((index // 5) == 2 and (index % 5) == 2)
+        else 0.0
+        for index in range(25)
+    ]
+)
+_COMPONENTS_6X6_EXPR = repr(
+    [
+        255.0
+        if (
+            (index % 6 == 0 and index // 6 in {1, 2})
+            or (index % 6 == 3 and index // 6 in {1, 2, 3})
+            or (index % 6 == 4 and index // 6 == 1)
+        )
+        else 0.0
+        for index in range(36)
+    ]
+)
+_DOC_8X8_EXPR = repr(
+    [
+        20.0
+        if (
+            (index // 8 == 2 and 1 <= (index % 8) <= 6)
+            or (index // 8 == 5 and 2 <= (index % 8) <= 5)
+        )
+        else 240.0
+        for index in range(64)
+    ]
+)
+_DOC_8X8_ALT_EXPR = repr(
+    [
+        60.0
+        if (
+            (index // 8 == 2 and 1 <= (index % 8) <= 6)
+            or (index // 8 == 5 and 2 <= (index % 8) <= 5)
+        )
+        else 235.0
+        for index in range(64)
+    ]
+)
+_DOC_MASK_8X8_EXPR = repr(
+    [
+        255.0
+        if (
+            (index // 8 == 2 and 1 <= (index % 8) <= 6)
+            or (index // 8 == 5 and 2 <= (index % 8) <= 5)
+        )
+        else 0.0
+        for index in range(64)
+    ]
+)
+_ADAPTIVE_DOC_6X6_EXPR = repr(
+    [
+        40.0
+        if (index // 6 == 2 and 2 <= (index % 6) <= 3)
+        else (220.0 if (index % 6) < 3 else 245.0)
+        for index in range(36)
+    ]
+)
+_SKEW_MASK_6X6_EXPR = repr(
+    [255.0 if 1 <= (index // 6) <= 4 and (index % 6) == (index // 6) else 0.0 for index in range(36)]
+)
+_BLOB_DOC_8X8_EXPR = repr(
+    [
+        20.0
+        if (
+            (2 <= (index // 8) <= 4 and 1 <= (index % 8) <= 3)
+            or ((index % 8) == 6 and (index // 8 in {1, 2}))
+        )
+        else 235.0
+        for index in range(64)
+    ]
+)
+_DOC_COLUMNS_8X8_EXPR = repr(
+    [
+        255.0
+        if 1 <= (index // 8) <= 6 and ((1 <= (index % 8) <= 2) or (5 <= (index % 8) <= 6))
+        else 0.0
+        for index in range(64)
+    ]
+)
+_DOC_TABLE_9X9_EXPR = repr(
+    [
+        255.0
+        if (
+            (((1 <= (index // 9) <= 2) or (4 <= (index // 9) <= 5) or (7 <= (index // 9) <= 8)))
+            and (((1 <= (index % 9) <= 2) or (4 <= (index % 9) <= 5) or (7 <= (index % 9) <= 8)))
+        )
+        else 0.0
+        for index in range(81)
+    ]
+)
+_TEXTURE_16X16_EXPR = repr(
+    [
+        (255.0 if ((index // 16) + (index % 16)) % 2 == 0 else 0.0)
+        if (index // 16) >= 8 and (index % 16) >= 8
+        else 64.0
+        for index in range(256)
+    ]
+)
+_GRID_4X4_EXPR = repr([float(index) for index in range(16)])
+_BOX_A_EXPR = "[0, 0, 2, 2]"
+_BOX_B_EXPR = "[1, 1, 3, 3]"
+_VIDEO_3X4X4_EXPR = repr(
+    [10.0 for _ in range(16)]
+    + [200.0 if pixel < 4 else 10.0 for pixel in range(16)]
+    + [200.0 for _ in range(16)]
+)
+_VIDEO_3X4X4_ALT_EXPR = repr(
+    [12.0 for _ in range(16)]
+    + [188.0 if pixel < 4 else 12.0 for pixel in range(16)]
+    + [192.0 for _ in range(16)]
+)
+_VIDEO_RGB_3X2X2_EXPR = repr(
+    [200.0, 20.0, 20.0] * 4
+    + [200.0, 20.0, 20.0] * 3
+    + [20.0, 20.0, 200.0]
+    + [20.0, 20.0, 200.0] * 4
+)
+_VIDEO_MOTION_3X5X5_EXPR = repr(
+    [10.0 for _ in range(25)]
+    + [
+        200.0 if 1 <= (index // 5) <= 2 and 1 <= (index % 5) <= 2 else 10.0
+        for index in range(25)
+    ]
+    + [
+        200.0
+        if (
+            (1 <= (index // 5) <= 2 and 1 <= (index % 5) <= 2)
+            or ((index // 5) == 4 and (index % 5) == 4)
+        )
+        else 10.0
+        for index in range(25)
+    ]
+)
+_COLOR_CHECK_IMAGE_2X2_EXPR = repr(
+    [
+        200.0, 20.0, 20.0,
+        200.0, 20.0, 20.0,
+        200.0, 20.0, 20.0,
+        20.0, 20.0, 200.0,
+    ]
+)
+
 SKIP_FILES = {
     "main",
     "types",
@@ -175,7 +324,9 @@ def get_shipping_runtime_contract_counts() -> dict[str, int | str]:
     return {
         "kind": "shipping_runtime_contract",
         "module_count": len(LLM_ROLLOUT_FUNCTIONS_BY_MODULE),
-        "function_count": sum(len(functions) for functions in LLM_ROLLOUT_FUNCTIONS_BY_MODULE.values()),
+        "function_count": sum(
+            len(functions) for functions in LLM_ROLLOUT_FUNCTIONS_BY_MODULE.values()
+        ),
     }
 
 
@@ -217,6 +368,322 @@ _PARAM_OVERRIDES: dict[tuple[str, str], list[str]] = {
     ("correlation", "sample_correlated_normal"): [
         "[[1.0,0.0,0.0],[0.0,1.0,0.0],[0.0,0.0,1.0]]",
         "3",
+    ],
+    ("color", "hex_to_rgb"): ['"#336699"'],
+    ("color_check", "wcag_relative_luminance_hex"): ['"#808080"'],
+    ("color_check", "wcag_contrast_ratio_hex"): ['"#000000"', '"#FFFFFF"'],
+    ("color_check", "wcag_text_pass_hex"): ['"#000000"', '"#FFFFFF"', "12.0", "False"],
+    ("color_check", "preferred_text_color_hex"): ['"#336699"'],
+    ("color_check", "dominant_background_rgb255"): [_COLOR_CHECK_IMAGE_2X2_EXPR, "2", "2", "4"],
+    ("color_check", "dominant_background_hex"): [_COLOR_CHECK_IMAGE_2X2_EXPR, "2", "2", "4"],
+    ("color_check", "dominant_background_contrast_ratio_hex"): [
+        _COLOR_CHECK_IMAGE_2X2_EXPR,
+        "2",
+        "2",
+        "4",
+        '"#FFFFFF"',
+    ],
+    ("color_check", "dominant_background_wcag_pass_hex"): [
+        _COLOR_CHECK_IMAGE_2X2_EXPR,
+        "2",
+        "2",
+        "4",
+        '"#FFFFFF"',
+        "12.0",
+        "False",
+    ],
+    ("color_check", "preferred_text_color_for_image"): [_COLOR_CHECK_IMAGE_2X2_EXPR, "2", "2", "4"],
+    ("color_check", "preferred_text_contrast_for_image"): [
+        _COLOR_CHECK_IMAGE_2X2_EXPR,
+        "2",
+        "2",
+        "4",
+    ],
+    ("color_check", "preferred_text_pass_for_image"): [
+        _COLOR_CHECK_IMAGE_2X2_EXPR,
+        "2",
+        "2",
+        "4",
+        "12.0",
+        "False",
+    ],
+    ("image_palette", "dominant_palette_rgb255"): [_COLOR_CHECK_IMAGE_2X2_EXPR, "2", "2", "4", "2"],
+    ("image_palette", "palette_size_estimate"): [_COLOR_CHECK_IMAGE_2X2_EXPR, "2", "2", "4", "0.2"],
+    ("image_palette", "palette_entropy"): [_COLOR_CHECK_IMAGE_2X2_EXPR, "2", "2", "4"],
+    ("image_palette", "mean_saturation_rgb255"): [_COLOR_CHECK_IMAGE_2X2_EXPR, "2", "2"],
+    ("image_palette", "warm_color_ratio_rgb255"): [_COLOR_CHECK_IMAGE_2X2_EXPR, "2", "2", "0.25"],
+    ("image_palette", "palette_contrast_score"): [_COLOR_CHECK_IMAGE_2X2_EXPR, "2", "2", "4", "2"],
+    ("image_palette", "accent_color_hex"): [_COLOR_CHECK_IMAGE_2X2_EXPR, "2", "2", "4"],
+    ("image_palette", "is_monochrome_palette"): [
+        _COLOR_CHECK_IMAGE_2X2_EXPR,
+        "2",
+        "2",
+        "4",
+        "0.2",
+        "0.15",
+    ],
+    ("image_ops", "convolve_2d"): ["[[0.5,0.6,0.7],[0.4,0.3,0.2],[0.1,0.2,0.3]]", "[[0.5,0.6,0.7],[0.4,0.3,0.2],[0.1,0.2,0.3]]"],
+    ("image_ops", "histogram"): ["[[0.5,0.6,0.7],[0.4,0.3,0.2],[0.1,0.2,0.3]]", "5"],
+    ("image_ops", "threshold"): ["[[0.5,0.6,0.7],[0.4,0.3,0.2],[0.1,0.2,0.3]]", "0.5"],
+    ("image_ops", "invert"): ["[[0.5,0.6,0.7],[0.4,0.3,0.2],[0.1,0.2,0.3]]"],
+    ("image_ops", "brightness"): ["[[0.5,0.6,0.7],[0.4,0.3,0.2],[0.1,0.2,0.3]]", "0.5"],
+    ("image_ops", "contrast"): ["[[0.5,0.6,0.7],[0.4,0.3,0.2],[0.1,0.2,0.3]]", "0.5"],
+    ("image_ops", "mean_pixel"): ["[[0.5,0.6,0.7],[0.4,0.3,0.2],[0.1,0.2,0.3]]"],
+    ("video_ops", "frame_count_from_flat"): [_VIDEO_3X4X4_EXPR, "4", "4", "1"],
+    ("video_ops", "frame_mean_intensity"): [_VIDEO_3X4X4_EXPR, "4", "4", "1", "1"],
+    ("video_ops", "frame_mean_intensities"): [_VIDEO_3X4X4_EXPR, "4", "4", "1"],
+    ("video_ops", "frame_mean_abs_diff"): [_VIDEO_3X4X4_EXPR, "4", "4", "1", "0", "1"],
+    ("video_ops", "temporal_mean_abs_diff"): [_VIDEO_3X4X4_EXPR, "4", "4", "1"],
+    ("video_ops", "temporal_max_abs_diff"): [_VIDEO_3X4X4_EXPR, "4", "4", "1"],
+    ("video_ops", "freeze_frame_ratio"): [_VIDEO_3X4X4_EXPR, "4", "4", "1", "50.0"],
+    ("video_ops", "sample_frame_indices"): [_VIDEO_3X4X4_EXPR, "4", "4", "1", "2"],
+    ("video_features", "scene_change_scores"): [_VIDEO_3X4X4_EXPR, "4", "4", "1"],
+    ("video_features", "scene_cut_count"): [_VIDEO_3X4X4_EXPR, "4", "4", "1", "0.4"],
+    ("video_features", "scene_cut_rate"): [_VIDEO_3X4X4_EXPR, "4", "4", "1", "0.4"],
+    ("video_features", "peak_motion_frame"): [_VIDEO_3X4X4_EXPR, "4", "4", "1"],
+    ("video_features", "keyframe_indices"): [_VIDEO_3X4X4_EXPR, "4", "4", "1", "0.4", "4"],
+    ("video_storyboard", "scene_start_indices"): [_VIDEO_3X4X4_EXPR, "4", "4", "1", "0.4"],
+    ("video_storyboard", "scene_end_indices"): [_VIDEO_3X4X4_EXPR, "4", "4", "1", "0.4"],
+    ("video_storyboard", "scene_lengths_frames"): [_VIDEO_3X4X4_EXPR, "4", "4", "1", "0.4"],
+    ("video_storyboard", "scene_representative_frames"): [_VIDEO_3X4X4_EXPR, "4", "4", "1", "0.4"],
+    ("video_storyboard", "longest_scene_index"): [_VIDEO_3X4X4_EXPR, "4", "4", "1", "0.4"],
+    ("video_storyboard", "storyboard_frame_indices"): [
+        _VIDEO_3X4X4_EXPR,
+        "4",
+        "4",
+        "1",
+        "0.4",
+        "2",
+    ],
+    ("video_color", "frame_mean_rgb255"): [_VIDEO_RGB_3X2X2_EXPR, "2", "2", "3", "1"],
+    ("video_color", "frame_mean_rgb_series"): [_VIDEO_RGB_3X2X2_EXPR, "2", "2", "3"],
+    ("video_color", "clip_mean_rgb255"): [_VIDEO_RGB_3X2X2_EXPR, "2", "2", "3"],
+    ("video_color", "dominant_clip_color_rgb255"): [
+        _VIDEO_RGB_3X2X2_EXPR,
+        "2",
+        "2",
+        "3",
+        "4",
+        "3",
+    ],
+    ("video_color", "clip_mean_saturation_rgb255"): [_VIDEO_RGB_3X2X2_EXPR, "2", "2", "3"],
+    ("video_color", "warm_frame_ratio_rgb255"): [
+        _VIDEO_RGB_3X2X2_EXPR,
+        "2",
+        "2",
+        "3",
+        "0.25",
+    ],
+    ("video_color", "color_drift_score_rgb255"): [_VIDEO_RGB_3X2X2_EXPR, "2", "2", "3"],
+    ("video_color", "preferred_text_contrast_for_video"): [
+        _VIDEO_RGB_3X2X2_EXPR,
+        "2",
+        "2",
+        "3",
+        "4",
+        "3",
+    ],
+    ("video_color", "preferred_text_color_for_video"): [
+        _VIDEO_RGB_3X2X2_EXPR,
+        "2",
+        "2",
+        "3",
+        "4",
+        "3",
+    ],
+    ("video_accessibility", "frame_min_preferred_text_contrast_for_video"): [
+        _VIDEO_RGB_3X2X2_EXPR,
+        "2",
+        "2",
+        "3",
+        "1",
+    ],
+    ("video_accessibility", "frame_preferred_text_color_for_video"): [
+        _VIDEO_RGB_3X2X2_EXPR,
+        "2",
+        "2",
+        "3",
+        "1",
+    ],
+    ("video_accessibility", "sampled_video_min_text_contrast"): [
+        _VIDEO_RGB_3X2X2_EXPR,
+        "2",
+        "2",
+        "3",
+        "3",
+    ],
+    ("video_accessibility", "sampled_video_wcag_safe_ratio"): [
+        _VIDEO_RGB_3X2X2_EXPR,
+        "2",
+        "2",
+        "3",
+        "3",
+        "16.0",
+        "False",
+    ],
+    ("video_accessibility", "needs_text_backplate_for_video"): [
+        _VIDEO_RGB_3X2X2_EXPR,
+        "2",
+        "2",
+        "3",
+        "3",
+        "16.0",
+        "False",
+    ],
+    ("video_accessibility", "subtitle_band_min_preferred_text_contrast_for_video"): [
+        _VIDEO_RGB_3X2X2_EXPR,
+        "2",
+        "2",
+        "3",
+        "3",
+        "1",
+    ],
+    ("video_accessibility", "subtitle_band_preferred_text_color_for_video"): [
+        _VIDEO_RGB_3X2X2_EXPR,
+        "2",
+        "2",
+        "3",
+        "3",
+        "1",
+    ],
+    ("video_accessibility", "sampled_subtitle_band_wcag_safe_ratio"): [
+        _VIDEO_RGB_3X2X2_EXPR,
+        "2",
+        "2",
+        "3",
+        "3",
+        "1",
+        "16.0",
+        "False",
+    ],
+    ("video_accessibility", "subtitle_band_needs_backplate_for_video"): [
+        _VIDEO_RGB_3X2X2_EXPR,
+        "2",
+        "2",
+        "3",
+        "3",
+        "1",
+        "16.0",
+        "False",
+    ],
+    ("video_quality", "frame_quality_series"): [_VIDEO_3X4X4_EXPR, "4", "4", "1", "3"],
+    ("video_quality", "average_frame_quality"): [_VIDEO_3X4X4_EXPR, "4", "4", "1", "3"],
+    ("video_quality", "brightness_flicker_score"): [_VIDEO_3X4X4_EXPR, "4", "4", "1"],
+    ("video_quality", "temporal_stability_score"): [_VIDEO_3X4X4_EXPR, "4", "4", "1"],
+    ("video_quality", "video_quality_score"): [_VIDEO_3X4X4_EXPR, "4", "4", "1", "3"],
+    ("video_quality", "is_usable_video"): [_VIDEO_3X4X4_EXPR, "4", "4", "1", "3", "0.35"],
+    ("image_morphology", "binary_erode_flat"): [_BLOCK_5X5_EXPR, "5", "5", "3", "128.0"],
+    ("image_morphology", "binary_dilate_flat"): [_BLOCK_5X5_EXPR, "5", "5", "3", "128.0"],
+    ("image_morphology", "binary_open_flat"): [_BLOCK_5X5_EXPR, "5", "5", "3", "128.0"],
+    ("image_morphology", "binary_close_flat"): [_RING_5X5_EXPR, "5", "5", "3", "128.0"],
+    ("image_morphology", "binary_fill_holes_flat"): [_RING_5X5_EXPR, "5", "5", "128.0"],
+    ("image_morphology", "connected_components_4_flat"): [_COMPONENTS_6X6_EXPR, "6", "6", "128.0"],
+    ("image_morphology", "largest_component_bbox_flat"): [_COMPONENTS_6X6_EXPR, "6", "6", "128.0"],
+    ("image_morphology", "distance_transform_cityblock_flat"): [_BLOCK_5X5_EXPR, "5", "5", "128.0"],
+    ("image_morphology", "foreground_area_ratio_flat"): [_BLOCK_5X5_EXPR, "5", "5", "128.0"],
+    ("document_vision", "otsu_threshold_flat"): [_DOC_8X8_EXPR, "8", "8"],
+    ("document_vision", "binarize_otsu_flat"): [_DOC_8X8_EXPR, "8", "8"],
+    ("document_vision", "adaptive_mean_binarize_flat"): [_ADAPTIVE_DOC_6X6_EXPR, "6", "6", "1", "20.0"],
+    ("document_vision", "horizontal_projection"): [_DOC_MASK_8X8_EXPR, "8", "8", "128.0"],
+    ("document_vision", "vertical_projection"): [_DOC_MASK_8X8_EXPR, "8", "8", "128.0"],
+    ("document_vision", "mask_content_bbox_flat"): [_DOC_MASK_8X8_EXPR, "8", "8", "128.0"],
+    ("document_vision", "skew_angle_estimate_flat"): [_SKEW_MASK_6X6_EXPR, "6", "6", "128.0"],
+    ("document_vision", "horizontal_text_score_flat"): [_DOC_MASK_8X8_EXPR, "8", "8", "128.0"],
+    ("document_vision", "document_scan_quality_flat"): [_DOC_8X8_EXPR, "8", "8"],
+    ("document_layout", "text_line_boxes_flat"): [_DOC_MASK_8X8_EXPR, "8", "8", "128.0", "1"],
+    ("document_layout", "line_count_flat"): [_DOC_MASK_8X8_EXPR, "8", "8", "128.0", "1"],
+    ("document_layout", "column_boxes_flat"): [_DOC_COLUMNS_8X8_EXPR, "8", "8", "128.0", "2"],
+    ("document_layout", "column_count_flat"): [_DOC_COLUMNS_8X8_EXPR, "8", "8", "128.0", "2"],
+    ("document_layout", "text_density_grid_flat"): [_DOC_MASK_8X8_EXPR, "8", "8", "128.0", "2", "2"],
+    ("document_layout", "multi_column_score_flat"): [_DOC_COLUMNS_8X8_EXPR, "8", "8", "128.0"],
+    ("document_layout", "table_like_score_flat"): [_DOC_TABLE_9X9_EXPR, "9", "9", "128.0"],
+    ("image_similarity", "mean_squared_error_flat"): [_DOC_8X8_EXPR, _DOC_8X8_ALT_EXPR, "8", "8"],
+    ("image_similarity", "mean_abs_error_flat"): [_DOC_8X8_EXPR, _DOC_8X8_ALT_EXPR, "8", "8"],
+    ("image_similarity", "psnr_flat"): [_DOC_8X8_EXPR, _DOC_8X8_ALT_EXPR, "8", "8", "255.0"],
+    ("image_similarity", "normalized_cross_correlation_flat"): [_DOC_8X8_EXPR, _DOC_8X8_ALT_EXPR, "8", "8"],
+    ("image_similarity", "ssim_global_flat"): [_DOC_8X8_EXPR, _DOC_8X8_ALT_EXPR, "8", "8"],
+    ("image_similarity", "diff_fraction_flat"): [_DOC_8X8_EXPR, _DOC_8X8_ALT_EXPR, "8", "8", "5.0"],
+    ("image_similarity", "crop_region_similarity_flat"): [_DOC_8X8_EXPR, _DOC_8X8_ALT_EXPR, "8", "8", "2", "2", "5", "5"],
+    ("image_similarity", "duplicate_score_flat"): [_DOC_8X8_EXPR, _DOC_8X8_ALT_EXPR, "8", "8"],
+    ("image_regions", "foreground_mask_otsu_flat"): [_BLOB_DOC_8X8_EXPR, "8", "8"],
+    ("image_regions", "connected_component_boxes_flat"): [_COMPONENTS_6X6_EXPR, "6", "6", "128.0", "4"],
+    ("image_regions", "largest_foreground_box_flat"): [_BLOB_DOC_8X8_EXPR, "8", "8"],
+    ("image_regions", "saliency_box_flat"): [_TEXTURE_16X16_EXPR, "16", "16", "2", "2"],
+    ("image_regions", "extract_box_flat"): [_GRID_4X4_EXPR, "4", "4", "1", "1", "2", "2"],
+    ("image_regions", "box_iou"): [_BOX_A_EXPR, _BOX_B_EXPR],
+    ("video_regions", "frame_diff_mask_flat"): [_VIDEO_MOTION_3X5X5_EXPR, "5", "5", "1", "0", "1", "50.0"],
+    ("video_regions", "motion_boxes_between_frames"): [
+        _VIDEO_MOTION_3X5X5_EXPR,
+        "5",
+        "5",
+        "1",
+        "0",
+        "1",
+        "50.0",
+        "4",
+    ],
+    ("video_regions", "largest_motion_box_between_frames"): [
+        _VIDEO_MOTION_3X5X5_EXPR,
+        "5",
+        "5",
+        "1",
+        "1",
+        "2",
+        "50.0",
+    ],
+    ("video_regions", "temporal_motion_area_series"): [_VIDEO_MOTION_3X5X5_EXPR, "5", "5", "1", "50.0"],
+    ("video_regions", "peak_motion_box_flat"): [_VIDEO_MOTION_3X5X5_EXPR, "5", "5", "1", "50.0"],
+    ("video_regions", "temporal_union_motion_box_flat"): [_VIDEO_MOTION_3X5X5_EXPR, "5", "5", "1", "50.0"],
+    ("video_regions", "motion_coverage_ratio_flat"): [_VIDEO_MOTION_3X5X5_EXPR, "5", "5", "1", "50.0"],
+    ("video_similarity", "frame_duplicate_scores"): [
+        _VIDEO_3X4X4_EXPR,
+        _VIDEO_3X4X4_ALT_EXPR,
+        "4",
+        "4",
+        "1",
+    ],
+    ("video_similarity", "average_frame_duplicate_score"): [
+        _VIDEO_3X4X4_EXPR,
+        _VIDEO_3X4X4_ALT_EXPR,
+        "4",
+        "4",
+        "1",
+    ],
+    ("video_similarity", "frame_hash_hamming_series"): [
+        _VIDEO_3X4X4_EXPR,
+        _VIDEO_3X4X4_ALT_EXPR,
+        "4",
+        "4",
+        "1",
+    ],
+    ("video_similarity", "average_frame_hash_hamming"): [
+        _VIDEO_3X4X4_EXPR,
+        _VIDEO_3X4X4_ALT_EXPR,
+        "4",
+        "4",
+        "1",
+    ],
+    ("video_similarity", "temporal_signature_distance"): [
+        _VIDEO_3X4X4_EXPR,
+        _VIDEO_3X4X4_ALT_EXPR,
+        "4",
+        "4",
+        "1",
+    ],
+    ("video_similarity", "clip_duplicate_score_flat"): [
+        _VIDEO_3X4X4_EXPR,
+        _VIDEO_3X4X4_ALT_EXPR,
+        "4",
+        "4",
+        "1",
+    ],
+    ("video_similarity", "is_duplicate_clip_flat"): [
+        _VIDEO_3X4X4_EXPR,
+        _VIDEO_3X4X4_ALT_EXPR,
+        "4",
+        "4",
+        "1",
+        "0.85",
     ],
     # scheduling_algo: processes = [arrival, burst, priority]; results = [pid, start, finish, wait]
     ("scheduling_algo", "fcfs"): ["[[0,3,1],[1,5,2],[2,2,3]]"],
@@ -361,6 +828,312 @@ _MOJO_PARAM_OVERRIDES: dict[tuple[str, str], list[str]] = {
     ("recommender", "item_overlap"): ["_llf3", "0", "1"],
     ("recommender", "cold_start_recommend"): ["_llf3", "2"],
     ("recommender", "rmse_ratings"): ["_lf5", "_lf5"],
+    ("image_ops", "convolve_2d"): ["_llf3_imageops", "_llf3_imageops"],
+    ("image_ops", "histogram"): ["_llf3_imageops", "5"],
+    ("image_ops", "threshold"): ["_llf3_imageops", "0.5"],
+    ("image_ops", "invert"): ["_llf3_imageops"],
+    ("image_ops", "brightness"): ["_llf3_imageops", "0.5"],
+    ("image_ops", "contrast"): ["_llf3_imageops", "0.5"],
+    ("image_ops", "mean_pixel"): ["_llf3_imageops"],
+    ("color_check", "dominant_background_rgb255"): ["_lf12_colorcheck2x2", "2", "2", "4"],
+    ("color_check", "dominant_background_hex"): ["_lf12_colorcheck2x2", "2", "2", "4"],
+    ("color_check", "dominant_background_contrast_ratio_hex"): [
+        "_lf12_colorcheck2x2",
+        "2",
+        "2",
+        "4",
+        '"#FFFFFF"',
+    ],
+    ("color_check", "dominant_background_wcag_pass_hex"): [
+        "_lf12_colorcheck2x2",
+        "2",
+        "2",
+        "4",
+        '"#FFFFFF"',
+        "12.0",
+        "False",
+    ],
+    ("color_check", "preferred_text_color_for_image"): ["_lf12_colorcheck2x2", "2", "2", "4"],
+    ("color_check", "preferred_text_contrast_for_image"): ["_lf12_colorcheck2x2", "2", "2", "4"],
+    ("color_check", "preferred_text_pass_for_image"): [
+        "_lf12_colorcheck2x2",
+        "2",
+        "2",
+        "4",
+        "12.0",
+        "False",
+    ],
+    ("image_palette", "dominant_palette_rgb255"): ["_lf12_colorcheck2x2", "2", "2", "4", "2"],
+    ("image_palette", "palette_size_estimate"): ["_lf12_colorcheck2x2", "2", "2", "4", "0.2"],
+    ("image_palette", "palette_entropy"): ["_lf12_colorcheck2x2", "2", "2", "4"],
+    ("image_palette", "mean_saturation_rgb255"): ["_lf12_colorcheck2x2", "2", "2"],
+    ("image_palette", "warm_color_ratio_rgb255"): ["_lf12_colorcheck2x2", "2", "2", "0.25"],
+    ("image_palette", "palette_contrast_score"): ["_lf12_colorcheck2x2", "2", "2", "4", "2"],
+    ("image_palette", "accent_color_hex"): ["_lf12_colorcheck2x2", "2", "2", "4"],
+    ("image_palette", "is_monochrome_palette"): [
+        "_lf12_colorcheck2x2",
+        "2",
+        "2",
+        "4",
+        "0.2",
+        "0.15",
+    ],
+    ("video_ops", "frame_count_from_flat"): ["_lf48_video3x4x4", "4", "4", "1"],
+    ("video_ops", "frame_mean_intensity"): ["_lf48_video3x4x4", "4", "4", "1", "1"],
+    ("video_ops", "frame_mean_intensities"): ["_lf48_video3x4x4", "4", "4", "1"],
+    ("video_ops", "frame_mean_abs_diff"): ["_lf48_video3x4x4", "4", "4", "1", "0", "1"],
+    ("video_ops", "temporal_mean_abs_diff"): ["_lf48_video3x4x4", "4", "4", "1"],
+    ("video_ops", "temporal_max_abs_diff"): ["_lf48_video3x4x4", "4", "4", "1"],
+    ("video_ops", "freeze_frame_ratio"): ["_lf48_video3x4x4", "4", "4", "1", "50.0"],
+    ("video_ops", "sample_frame_indices"): ["_lf48_video3x4x4", "4", "4", "1", "2"],
+    ("video_features", "scene_change_scores"): ["_lf48_video3x4x4", "4", "4", "1"],
+    ("video_features", "scene_cut_count"): ["_lf48_video3x4x4", "4", "4", "1", "0.4"],
+    ("video_features", "scene_cut_rate"): ["_lf48_video3x4x4", "4", "4", "1", "0.4"],
+    ("video_features", "peak_motion_frame"): ["_lf48_video3x4x4", "4", "4", "1"],
+    ("video_features", "keyframe_indices"): ["_lf48_video3x4x4", "4", "4", "1", "0.4", "4"],
+    ("video_storyboard", "scene_start_indices"): ["_lf48_video3x4x4", "4", "4", "1", "0.4"],
+    ("video_storyboard", "scene_end_indices"): ["_lf48_video3x4x4", "4", "4", "1", "0.4"],
+    ("video_storyboard", "scene_lengths_frames"): ["_lf48_video3x4x4", "4", "4", "1", "0.4"],
+    ("video_storyboard", "scene_representative_frames"): ["_lf48_video3x4x4", "4", "4", "1", "0.4"],
+    ("video_storyboard", "longest_scene_index"): ["_lf48_video3x4x4", "4", "4", "1", "0.4"],
+    ("video_storyboard", "storyboard_frame_indices"): [
+        "_lf48_video3x4x4",
+        "4",
+        "4",
+        "1",
+        "0.4",
+        "2",
+    ],
+    ("video_color", "frame_mean_rgb255"): ["_lf36_video_rgb3x2x2", "2", "2", "3", "1"],
+    ("video_color", "frame_mean_rgb_series"): ["_lf36_video_rgb3x2x2", "2", "2", "3"],
+    ("video_color", "clip_mean_rgb255"): ["_lf36_video_rgb3x2x2", "2", "2", "3"],
+    ("video_color", "dominant_clip_color_rgb255"): [
+        "_lf36_video_rgb3x2x2",
+        "2",
+        "2",
+        "3",
+        "4",
+        "3",
+    ],
+    ("video_color", "clip_mean_saturation_rgb255"): ["_lf36_video_rgb3x2x2", "2", "2", "3"],
+    ("video_color", "warm_frame_ratio_rgb255"): [
+        "_lf36_video_rgb3x2x2",
+        "2",
+        "2",
+        "3",
+        "0.25",
+    ],
+    ("video_color", "color_drift_score_rgb255"): ["_lf36_video_rgb3x2x2", "2", "2", "3"],
+    ("video_color", "preferred_text_contrast_for_video"): [
+        "_lf36_video_rgb3x2x2",
+        "2",
+        "2",
+        "3",
+        "4",
+        "3",
+    ],
+    ("video_color", "preferred_text_color_for_video"): [
+        "_lf36_video_rgb3x2x2",
+        "2",
+        "2",
+        "3",
+        "4",
+        "3",
+    ],
+    ("video_accessibility", "frame_min_preferred_text_contrast_for_video"): [
+        "_lf36_video_rgb3x2x2",
+        "2",
+        "2",
+        "3",
+        "1",
+    ],
+    ("video_accessibility", "frame_preferred_text_color_for_video"): [
+        "_lf36_video_rgb3x2x2",
+        "2",
+        "2",
+        "3",
+        "1",
+    ],
+    ("video_accessibility", "sampled_video_min_text_contrast"): [
+        "_lf36_video_rgb3x2x2",
+        "2",
+        "2",
+        "3",
+        "3",
+    ],
+    ("video_accessibility", "sampled_video_wcag_safe_ratio"): [
+        "_lf36_video_rgb3x2x2",
+        "2",
+        "2",
+        "3",
+        "3",
+        "16.0",
+        "False",
+    ],
+    ("video_accessibility", "needs_text_backplate_for_video"): [
+        "_lf36_video_rgb3x2x2",
+        "2",
+        "2",
+        "3",
+        "3",
+        "16.0",
+        "False",
+    ],
+    ("video_accessibility", "subtitle_band_min_preferred_text_contrast_for_video"): [
+        "_lf36_video_rgb3x2x2",
+        "2",
+        "2",
+        "3",
+        "3",
+        "1",
+    ],
+    ("video_accessibility", "subtitle_band_preferred_text_color_for_video"): [
+        "_lf36_video_rgb3x2x2",
+        "2",
+        "2",
+        "3",
+        "3",
+        "1",
+    ],
+    ("video_accessibility", "sampled_subtitle_band_wcag_safe_ratio"): [
+        "_lf36_video_rgb3x2x2",
+        "2",
+        "2",
+        "3",
+        "3",
+        "1",
+        "16.0",
+        "False",
+    ],
+    ("video_accessibility", "subtitle_band_needs_backplate_for_video"): [
+        "_lf36_video_rgb3x2x2",
+        "2",
+        "2",
+        "3",
+        "3",
+        "1",
+        "16.0",
+        "False",
+    ],
+    ("video_quality", "frame_quality_series"): ["_lf48_video3x4x4", "4", "4", "1", "3"],
+    ("video_quality", "average_frame_quality"): ["_lf48_video3x4x4", "4", "4", "1", "3"],
+    ("video_quality", "brightness_flicker_score"): ["_lf48_video3x4x4", "4", "4", "1"],
+    ("video_quality", "temporal_stability_score"): ["_lf48_video3x4x4", "4", "4", "1"],
+    ("video_quality", "video_quality_score"): ["_lf48_video3x4x4", "4", "4", "1", "3"],
+    ("video_quality", "is_usable_video"): ["_lf48_video3x4x4", "4", "4", "1", "3", "0.35"],
+    ("image_morphology", "binary_erode_flat"): ["_lf25_block5x5", "5", "5", "3", "128.0"],
+    ("image_morphology", "binary_dilate_flat"): ["_lf25_block5x5", "5", "5", "3", "128.0"],
+    ("image_morphology", "binary_open_flat"): ["_lf25_block5x5", "5", "5", "3", "128.0"],
+    ("image_morphology", "binary_close_flat"): ["_lf25_ring5x5", "5", "5", "3", "128.0"],
+    ("image_morphology", "binary_fill_holes_flat"): ["_lf25_ring5x5", "5", "5", "128.0"],
+    ("image_morphology", "connected_components_4_flat"): ["_lf36_components6x6", "6", "6", "128.0"],
+    ("image_morphology", "largest_component_bbox_flat"): ["_lf36_components6x6", "6", "6", "128.0"],
+    ("image_morphology", "distance_transform_cityblock_flat"): ["_lf25_block5x5", "5", "5", "128.0"],
+    ("image_morphology", "foreground_area_ratio_flat"): ["_lf25_block5x5", "5", "5", "128.0"],
+    ("document_vision", "otsu_threshold_flat"): ["_lf64_doc8x8", "8", "8"],
+    ("document_vision", "binarize_otsu_flat"): ["_lf64_doc8x8", "8", "8"],
+    ("document_vision", "adaptive_mean_binarize_flat"): ["_lf36_adaptive_doc6x6", "6", "6", "1", "20.0"],
+    ("document_vision", "horizontal_projection"): ["_lf64_docmask8x8", "8", "8", "128.0"],
+    ("document_vision", "vertical_projection"): ["_lf64_docmask8x8", "8", "8", "128.0"],
+    ("document_vision", "mask_content_bbox_flat"): ["_lf64_docmask8x8", "8", "8", "128.0"],
+    ("document_vision", "skew_angle_estimate_flat"): ["_lf36_skewmask6x6", "6", "6", "128.0"],
+    ("document_vision", "horizontal_text_score_flat"): ["_lf64_docmask8x8", "8", "8", "128.0"],
+    ("document_vision", "document_scan_quality_flat"): ["_lf64_doc8x8", "8", "8"],
+    ("document_layout", "text_line_boxes_flat"): ["_lf64_docmask8x8", "8", "8", "128.0", "1"],
+    ("document_layout", "line_count_flat"): ["_lf64_docmask8x8", "8", "8", "128.0", "1"],
+    ("document_layout", "column_boxes_flat"): ["_lf64_doccolumns8x8", "8", "8", "128.0", "2"],
+    ("document_layout", "column_count_flat"): ["_lf64_doccolumns8x8", "8", "8", "128.0", "2"],
+    ("document_layout", "text_density_grid_flat"): ["_lf64_docmask8x8", "8", "8", "128.0", "2", "2"],
+    ("document_layout", "multi_column_score_flat"): ["_lf64_doccolumns8x8", "8", "8", "128.0"],
+    ("document_layout", "table_like_score_flat"): ["_lf81_doctable9x9", "9", "9", "128.0"],
+    ("image_similarity", "mean_squared_error_flat"): ["_lf64_doc8x8", "_lf64_doc8x8_alt", "8", "8"],
+    ("image_similarity", "mean_abs_error_flat"): ["_lf64_doc8x8", "_lf64_doc8x8_alt", "8", "8"],
+    ("image_similarity", "psnr_flat"): ["_lf64_doc8x8", "_lf64_doc8x8_alt", "8", "8", "255.0"],
+    ("image_similarity", "normalized_cross_correlation_flat"): ["_lf64_doc8x8", "_lf64_doc8x8_alt", "8", "8"],
+    ("image_similarity", "ssim_global_flat"): ["_lf64_doc8x8", "_lf64_doc8x8_alt", "8", "8"],
+    ("image_similarity", "diff_fraction_flat"): ["_lf64_doc8x8", "_lf64_doc8x8_alt", "8", "8", "5.0"],
+    ("image_similarity", "crop_region_similarity_flat"): ["_lf64_doc8x8", "_lf64_doc8x8_alt", "8", "8", "2", "2", "5", "5"],
+    ("image_similarity", "duplicate_score_flat"): ["_lf64_doc8x8", "_lf64_doc8x8_alt", "8", "8"],
+    ("image_regions", "foreground_mask_otsu_flat"): ["_lf64_blobdoc8x8", "8", "8"],
+    ("image_regions", "connected_component_boxes_flat"): ["_lf36_components6x6", "6", "6", "128.0", "4"],
+    ("image_regions", "largest_foreground_box_flat"): ["_lf64_blobdoc8x8", "8", "8"],
+    ("image_regions", "saliency_box_flat"): ["_lf256_texture16x16", "16", "16", "2", "2"],
+    ("image_regions", "extract_box_flat"): ["_lf16_grid4x4", "4", "4", "1", "1", "2", "2"],
+    ("image_regions", "box_iou"): ["_li4_box_a", "_li4_box_b"],
+    ("video_regions", "frame_diff_mask_flat"): ["_lf75_video_motion3x5x5", "5", "5", "1", "0", "1", "50.0"],
+    ("video_regions", "motion_boxes_between_frames"): [
+        "_lf75_video_motion3x5x5",
+        "5",
+        "5",
+        "1",
+        "0",
+        "1",
+        "50.0",
+        "4",
+    ],
+    ("video_regions", "largest_motion_box_between_frames"): [
+        "_lf75_video_motion3x5x5",
+        "5",
+        "5",
+        "1",
+        "1",
+        "2",
+        "50.0",
+    ],
+    ("video_regions", "temporal_motion_area_series"): ["_lf75_video_motion3x5x5", "5", "5", "1", "50.0"],
+    ("video_regions", "peak_motion_box_flat"): ["_lf75_video_motion3x5x5", "5", "5", "1", "50.0"],
+    ("video_regions", "temporal_union_motion_box_flat"): ["_lf75_video_motion3x5x5", "5", "5", "1", "50.0"],
+    ("video_regions", "motion_coverage_ratio_flat"): ["_lf75_video_motion3x5x5", "5", "5", "1", "50.0"],
+    ("video_similarity", "frame_duplicate_scores"): [
+        "_lf48_video3x4x4",
+        "_lf48_video3x4x4_alt",
+        "4",
+        "4",
+        "1",
+    ],
+    ("video_similarity", "average_frame_duplicate_score"): [
+        "_lf48_video3x4x4",
+        "_lf48_video3x4x4_alt",
+        "4",
+        "4",
+        "1",
+    ],
+    ("video_similarity", "frame_hash_hamming_series"): [
+        "_lf48_video3x4x4",
+        "_lf48_video3x4x4_alt",
+        "4",
+        "4",
+        "1",
+    ],
+    ("video_similarity", "average_frame_hash_hamming"): [
+        "_lf48_video3x4x4",
+        "_lf48_video3x4x4_alt",
+        "4",
+        "4",
+        "1",
+    ],
+    ("video_similarity", "temporal_signature_distance"): [
+        "_lf48_video3x4x4",
+        "_lf48_video3x4x4_alt",
+        "4",
+        "4",
+        "1",
+    ],
+    ("video_similarity", "clip_duplicate_score_flat"): [
+        "_lf48_video3x4x4",
+        "_lf48_video3x4x4_alt",
+        "4",
+        "4",
+        "1",
+    ],
+    ("video_similarity", "is_duplicate_clip_flat"): [
+        "_lf48_video3x4x4",
+        "_lf48_video3x4x4_alt",
+        "4",
+        "4",
+        "1",
+        "0.85",
+    ],
 }
 
 SCALAR_VAL = "0.5"
@@ -623,18 +1396,18 @@ def _mojo_expr_to_python(expr: str) -> str:
     # bound them by length and limit nesting to a single level using a
     # non-quantified outer group, which is what the benchmark actually needs.
     # Real Mojo source never approaches the cap.
-    _LIST_INNER = r"(?:[^\[\]]{0,512}(?:\[[^\[\]]{0,512}\][^\[\]]{0,512})?)"
+    list_inner = r"(?:[^\[\]]{0,512}(?:\[[^\[\]]{0,512}\][^\[\]]{0,512})?)"
     # List constructor: List[T]() → []  (handles nested like List[List[Bool]]())
-    expr = re.sub(rf"\bList\[{_LIST_INNER}\]\(\)", "[]", expr)
+    expr = re.sub(rf"\bList\[{list_inner}\]\(\)", "[]", expr)
     # List with capacity hint: List[T](capacity=N) → []
     # (handles a single level of nested parens like len(...))
     expr = re.sub(
-        rf"\bList\[{_LIST_INNER}\]\((?:[^()]{{0,512}}(?:\([^()]{{0,512}}\)[^()]{{0,512}})?)\)",
+        rf"\bList\[{list_inner}\]\((?:[^()]{{0,512}}(?:\([^()]{{0,512}}\)[^()]{{0,512}})?)\)",
         "[]",
         expr,
     )
     # Bare List[] type reference (not constructor) → list
-    expr = re.sub(rf"\bList\[{_LIST_INNER}\](?!\()", "list", expr)
+    expr = re.sub(rf"\bList\[{list_inner}\](?!\()", "list", expr)
 
     # Mojo String methods
     expr = re.sub(r"\.as_bytes\(\)", ".encode('utf-8')", expr)
@@ -678,6 +1451,7 @@ def _mojo_expr_to_python(expr: str) -> str:
 
     # Strip any Mojo 'var' keyword in compound statements (e.g. "x = a; var y = b")
     expr = re.sub(r"\bvar\s+(\w+)\s*(?::[^=;]+)?\s*=", r"\1 =", expr)
+    expr = expr.replace("math.math.", "math.")
 
     return expr
 
@@ -791,7 +1565,12 @@ def _mojo_line_to_python(line: str, indent_base: int = 0) -> str | None:
     # Assignment (including compound: +=, -=, *=, /=, ^=, |=, &=, //=)
     # Use (?!=) to avoid matching == as an assignment (first = of ==)
     m = re.match(r"(\w+)\s*(?:\+|-|\*|/|\^|\||\&|//)?=(?!=)\s*(.+)", stripped)
-    if m and not stripped.startswith("fn ") and not stripped.startswith("struct "):
+    if (
+        m
+        and not stripped.startswith("fn ")
+        and not stripped.startswith("def ")
+        and not stripped.startswith("struct ")
+    ):
         indent = " " * (len(line) - len(line.lstrip()) - indent_base + 4)
         op_match = re.match(r"\w+\s*(\+|-|\*|/|\^|\||\&|//)?=(?!=)", stripped)
         op = op_match.group(1) if op_match and op_match.group(1) else ""
@@ -1138,7 +1917,7 @@ def _extract_struct_stubs(lib_path: Path) -> str:
                         continue
 
                     # Detect method declarations
-                    fn_m = re.match(r"fn\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(", inner_s)
+                    fn_m = re.match(r"(?:fn|def)\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(", inner_s)
                     if fn_m:
                         method_nm = fn_m.group(1)
                         method_indent = len(inner_ln) - len(inner_ln.lstrip())
@@ -1153,7 +1932,7 @@ def _extract_struct_stubs(lib_path: Path) -> str:
                                     i += 1
                                     continue
                                 skip_ind = len(skip_ln) - len(skip_ln.lstrip())
-                                if skip_ind <= method_indent and re.match(r"fn\s+", skip_s):
+                                if skip_ind <= method_indent and re.match(r"(?:fn|def)\s+", skip_s):
                                     break
                                 if not skip_ln.startswith(" ") and not skip_ln.startswith("\t"):
                                     break
@@ -1202,7 +1981,7 @@ def _extract_struct_stubs(lib_path: Path) -> str:
                                     i += 1
                                     continue
                                 skip_ind = len(skip_ln) - len(skip_ln.lstrip())
-                                if skip_ind <= method_indent and re.match(r"fn\s+", skip_s):
+                                if skip_ind <= method_indent and re.match(r"(?:fn|def)\s+", skip_s):
                                     break
                                 if not skip_ln.startswith(" ") and not skip_ln.startswith("\t"):
                                     break
@@ -1736,6 +2515,11 @@ def _rounded_float_matrix_summary(value: list[list[float]]) -> str:
     return f"list:{len(value)}:{_stable_hash_bytes('|'.join(child_parts).encode('utf-8'))}"
 
 
+def _rounded_float_list_summary(value: list[float]) -> str:
+    rounded = [f"float:{round(float(item), 6)}" for item in value]
+    return f"list:{len(value)}:{_stable_hash_bytes('|'.join(rounded).encode('utf-8'))}"
+
+
 def _python_result_summary(value: Any, *, lib: str, function: str) -> str | None:
     if lib == "vector_kernels_table" and function == "build_table_json":
         return _candidate_table_summary(value)
@@ -1743,6 +2527,10 @@ def _python_result_summary(value: Any, *, lib: str, function: str) -> str | None
         return _rank_request_summary(value)
     if lib == "embeddings" and function == "cosine_similarity_matrix":
         return _rounded_float_matrix_summary(value)
+    if lib == "image_resize" and function == "bilinear_downscale":
+        return _rounded_float_matrix_summary(value)
+    if lib == "video_quality" and function == "frame_quality_series":
+        return _rounded_float_list_summary(value)
     if value is None:
         return "none"
     if isinstance(value, bool):
@@ -1840,6 +2628,13 @@ def _emit_mojo_summary_helpers(include_vector_kernels_table_helpers: bool) -> li
         "        joined += _summary_float64(value[i])",
         '    return "list:" + String(len(value)) + ":" + String(_summary_hash_string(joined))',
         "",
+        "fn _summary_list_float64_rounded6(value: List[Float64]) -> String:",
+        '    var joined = String("")',
+        "    for i in range(len(value)):",
+        '        if i > 0: joined += "|"',
+        "        joined += _summary_float64_rounded6(value[i])",
+        '    return "list:" + String(len(value)) + ":" + String(_summary_hash_string(joined))',
+        "",
         "fn _summary_list_float32(value: List[Float32]) -> String:",
         '    var joined = String("")',
         "    for i in range(len(value)):",
@@ -1933,6 +2728,10 @@ def _mojo_summary_call_expression(lib: str, fn: FnInfo, value_name: str) -> str 
         return f"_summary_candidate_table({value_name})"
     if lib == "embeddings" and fn.name == "cosine_similarity_matrix":
         return f"_summary_list_list_float64_rounded6({value_name})"
+    if lib == "image_resize" and fn.name == "bilinear_downscale":
+        return f"_summary_list_list_float64_rounded6({value_name})"
+    if lib == "video_quality" and fn.name == "frame_quality_series":
+        return f"_summary_list_float64_rounded6({value_name})"
     if fn.ret == "None":
         return '"none"'
     if fn.ret == "Bool":
@@ -2049,9 +2848,144 @@ def generate_mojo_benchmark(
             "    var _lf5 = List[Float64]()",
             "    _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)",
             "    _lf5.append(0.4); _lf5.append(0.3)",
+            "    var _lf12_colorcheck2x2 = List[Float64]()",
+            "    _lf12_colorcheck2x2.append(200.0); _lf12_colorcheck2x2.append(20.0); _lf12_colorcheck2x2.append(20.0)",
+            "    _lf12_colorcheck2x2.append(200.0); _lf12_colorcheck2x2.append(20.0); _lf12_colorcheck2x2.append(20.0)",
+            "    _lf12_colorcheck2x2.append(200.0); _lf12_colorcheck2x2.append(20.0); _lf12_colorcheck2x2.append(20.0)",
+            "    _lf12_colorcheck2x2.append(20.0); _lf12_colorcheck2x2.append(20.0); _lf12_colorcheck2x2.append(200.0)",
+            "    var _lf48_video3x4x4 = List[Float64]()",
+            "    for _ in range(16):",
+            "        _lf48_video3x4x4.append(10.0)",
+            "    for pixel in range(16):",
+            "        if pixel < 4:",
+            "            _lf48_video3x4x4.append(200.0)",
+            "        else:",
+            "            _lf48_video3x4x4.append(10.0)",
+            "    for _ in range(16):",
+            "        _lf48_video3x4x4.append(200.0)",
+            "    var _lf48_video3x4x4_alt = List[Float64]()",
+            "    for _ in range(16):",
+            "        _lf48_video3x4x4_alt.append(12.0)",
+            "    for pixel in range(16):",
+            "        if pixel < 4:",
+            "            _lf48_video3x4x4_alt.append(188.0)",
+            "        else:",
+            "            _lf48_video3x4x4_alt.append(12.0)",
+            "    for _ in range(16):",
+            "        _lf48_video3x4x4_alt.append(192.0)",
+            "    var _lf36_video_rgb3x2x2 = List[Float64]()",
+            "    for _ in range(4):",
+            "        _lf36_video_rgb3x2x2.append(200.0); _lf36_video_rgb3x2x2.append(20.0); _lf36_video_rgb3x2x2.append(20.0)",
+            "    for pixel in range(4):",
+            "        if pixel < 3:",
+            "            _lf36_video_rgb3x2x2.append(200.0); _lf36_video_rgb3x2x2.append(20.0); _lf36_video_rgb3x2x2.append(20.0)",
+            "        else:",
+            "            _lf36_video_rgb3x2x2.append(20.0); _lf36_video_rgb3x2x2.append(20.0); _lf36_video_rgb3x2x2.append(200.0)",
+            "    for _ in range(4):",
+            "        _lf36_video_rgb3x2x2.append(20.0); _lf36_video_rgb3x2x2.append(20.0); _lf36_video_rgb3x2x2.append(200.0)",
+            "    var _lf25_block5x5 = List[Float64]()",
+            "    for y in range(5):",
+            "        for x in range(5):",
+            "            if y >= 1 and y <= 3 and x >= 1 and x <= 3:",
+            "                _lf25_block5x5.append(255.0)",
+            "            else:",
+            "                _lf25_block5x5.append(0.0)",
+            "    var _lf25_ring5x5 = List[Float64]()",
+            "    for y in range(5):",
+            "        for x in range(5):",
+            "            if y >= 1 and y <= 3 and x >= 1 and x <= 3 and not (y == 2 and x == 2):",
+            "                _lf25_ring5x5.append(255.0)",
+            "            else:",
+            "                _lf25_ring5x5.append(0.0)",
+            "    var _lf36_components6x6 = List[Float64]()",
+            "    for y in range(6):",
+            "        for x in range(6):",
+            "            if (x == 0 and (y == 1 or y == 2)) or ((x == 3 and (y == 1 or y == 2 or y == 3)) or (x == 4 and y == 1)):",
+            "                _lf36_components6x6.append(255.0)",
+            "            else:",
+            "                _lf36_components6x6.append(0.0)",
+            "    var _lf64_doc8x8 = List[Float64]()",
+            "    var _lf64_doc8x8_alt = List[Float64]()",
+            "    var _lf64_docmask8x8 = List[Float64]()",
+            "    for y in range(8):",
+            "        for x in range(8):",
+            "            if (y == 2 and x >= 1 and x <= 6) or (y == 5 and x >= 2 and x <= 5):",
+            "                _lf64_doc8x8.append(20.0)",
+            "                _lf64_doc8x8_alt.append(60.0)",
+            "                _lf64_docmask8x8.append(255.0)",
+            "            else:",
+            "                _lf64_doc8x8.append(240.0)",
+            "                _lf64_doc8x8_alt.append(235.0)",
+            "                _lf64_docmask8x8.append(0.0)",
+            "    var _lf36_adaptive_doc6x6 = List[Float64]()",
+            "    for y in range(6):",
+            "        for x in range(6):",
+            "            if y == 2 and x >= 2 and x <= 3:",
+            "                _lf36_adaptive_doc6x6.append(40.0)",
+            "            elif x < 3:",
+            "                _lf36_adaptive_doc6x6.append(220.0)",
+            "            else:",
+            "                _lf36_adaptive_doc6x6.append(245.0)",
+            "    var _lf36_skewmask6x6 = List[Float64]()",
+            "    for y in range(6):",
+            "        for x in range(6):",
+            "            if y >= 1 and y <= 4 and x == y:",
+            "                _lf36_skewmask6x6.append(255.0)",
+            "            else:",
+            "                _lf36_skewmask6x6.append(0.0)",
+            "    var _lf64_blobdoc8x8 = List[Float64]()",
+            "    for y in range(8):",
+            "        for x in range(8):",
+            "            if (y >= 2 and y <= 4 and x >= 1 and x <= 3) or (x == 6 and (y == 1 or y == 2)):",
+            "                _lf64_blobdoc8x8.append(20.0)",
+            "            else:",
+            "                _lf64_blobdoc8x8.append(235.0)",
+            "    var _lf64_doccolumns8x8 = List[Float64]()",
+            "    for y in range(8):",
+            "        for x in range(8):",
+            "            if y >= 1 and y <= 6 and ((x >= 1 and x <= 2) or (x >= 5 and x <= 6)):",
+            "                _lf64_doccolumns8x8.append(255.0)",
+            "            else:",
+            "                _lf64_doccolumns8x8.append(0.0)",
+            "    var _lf81_doctable9x9 = List[Float64]()",
+            "    for y in range(9):",
+            "        for x in range(9):",
+            "            if ((y >= 1 and y <= 2) or (y >= 4 and y <= 5) or (y >= 7 and y <= 8)) and ((x >= 1 and x <= 2) or (x >= 4 and x <= 5) or (x >= 7 and x <= 8)):",
+            "                _lf81_doctable9x9.append(255.0)",
+            "            else:",
+            "                _lf81_doctable9x9.append(0.0)",
+            "    var _lf256_texture16x16 = List[Float64]()",
+            "    for y in range(16):",
+            "        for x in range(16):",
+            "            if y >= 8 and x >= 8:",
+            "                _lf256_texture16x16.append(255.0 if (x + y) % 2 == 0 else 0.0)",
+            "            else:",
+            "                _lf256_texture16x16.append(64.0)",
+            "    var _lf75_video_motion3x5x5 = List[Float64]()",
+            "    for _ in range(25):",
+            "        _lf75_video_motion3x5x5.append(10.0)",
+            "    for y in range(5):",
+            "        for x in range(5):",
+            "            if y >= 1 and y <= 2 and x >= 1 and x <= 2:",
+            "                _lf75_video_motion3x5x5.append(200.0)",
+            "            else:",
+            "                _lf75_video_motion3x5x5.append(10.0)",
+            "    for y in range(5):",
+            "        for x in range(5):",
+            "            if (y >= 1 and y <= 2 and x >= 1 and x <= 2) or (x == 4 and y == 4):",
+            "                _lf75_video_motion3x5x5.append(200.0)",
+            "            else:",
+            "                _lf75_video_motion3x5x5.append(10.0)",
+            "    var _lf16_grid4x4 = List[Float64]()",
+            "    for i in range(16):",
+            "        _lf16_grid4x4.append(Float64(i))",
             "    var _li5 = List[Int]()",
             "    _li5.append(0); _li5.append(1); _li5.append(2)",
             "    _li5.append(3); _li5.append(4)",
+            "    var _li4_box_a = List[Int]()",
+            "    _li4_box_a.append(0); _li4_box_a.append(0); _li4_box_a.append(2); _li4_box_a.append(2)",
+            "    var _li4_box_b = List[Int]()",
+            "    _li4_box_b.append(1); _li4_box_b.append(1); _li4_box_b.append(3); _li4_box_b.append(3)",
             "    var _lb5 = List[Bool]()",
             "    _lb5.append(True); _lb5.append(False); _lb5.append(True)",
             "    _lb5.append(True); _lb5.append(False)",
@@ -2064,6 +2998,11 @@ def generate_mojo_benchmark(
             "    _llf3[0].append(4.0); _llf3[0].append(0.0); _llf3[0].append(5.0)",
             "    _llf3[1].append(0.0); _llf3[1].append(3.0); _llf3[1].append(4.0)",
             "    _llf3[2].append(3.0); _llf3[2].append(4.0); _llf3[2].append(0.0)",
+            "    var _llf3_imageops = List[List[Float64]]()",
+            "    _llf3_imageops.append(List[Float64]()); _llf3_imageops.append(List[Float64]()); _llf3_imageops.append(List[Float64]())",
+            "    _llf3_imageops[0].append(0.5); _llf3_imageops[0].append(0.6); _llf3_imageops[0].append(0.7)",
+            "    _llf3_imageops[1].append(0.4); _llf3_imageops[1].append(0.3); _llf3_imageops[1].append(0.2)",
+            "    _llf3_imageops[2].append(0.1); _llf3_imageops[2].append(0.2); _llf3_imageops[2].append(0.3)",
             # Pre-built 3x3 Matrix (linalg and linalg_ext overrides reference _mat3)
             *(
                 [
@@ -2269,6 +3208,7 @@ def run_library_benchmark(entry: LibEntry) -> dict[str, Any]:
     testable = [
         f
         for f in fns
+        if not f.name.startswith("_")
         if _arg_values(f) is not None
         and not f.ret.startswith("SIMD[")
         and not any(p.is_mut and not p.typ.startswith("List[") for p in f.params)

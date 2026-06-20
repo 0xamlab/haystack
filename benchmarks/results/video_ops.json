@@ -1,0 +1,103 @@
+{
+  "lib": "video_ops",
+  "status": "ok",
+  "n_functions": 8,
+  "n_compared": 8,
+  "n_timed": 8,
+  "overall_speedup_x": 153.45,
+  "total_py_ns": 65123.9,
+  "total_mojo_ns": 424.4,
+  "elapsed_s": 2.6,
+  "n_iterations": 5000,
+  "mojo_error": null,
+  "functions": [
+    {
+      "function": "frame_count_from_flat",
+      "py_ns": 168.333,
+      "mojo_ns": 0.8,
+      "speedup_x": 210.42,
+      "py_result": 3.0,
+      "py_summary": "int:3",
+      "mojo_summary": "int:3",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "frame_mean_intensity",
+      "py_ns": 2686.65,
+      "mojo_ns": 10.6,
+      "speedup_x": 253.46,
+      "py_result": 57.5,
+      "py_summary": "float:57.5",
+      "mojo_summary": "float:57.5",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "frame_mean_intensities",
+      "py_ns": 9904.35,
+      "mojo_ns": 176.0,
+      "speedup_x": 56.27,
+      "py_result": null,
+      "py_summary": "list:3:754196339",
+      "mojo_summary": "list:3:754196339",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "frame_mean_abs_diff",
+      "py_ns": 7064.417,
+      "mojo_ns": 21.6,
+      "speedup_x": 327.06,
+      "py_result": 47.5,
+      "py_summary": "float:47.5",
+      "mojo_summary": "float:47.5",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "temporal_mean_abs_diff",
+      "py_ns": 14657.092,
+      "mojo_ns": 43.0,
+      "speedup_x": 340.86,
+      "py_result": 95.0,
+      "py_summary": "float:95.0",
+      "mojo_summary": "float:95.0",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "temporal_max_abs_diff",
+      "py_ns": 14956.217,
+      "mojo_ns": 43.0,
+      "speedup_x": 347.82,
+      "py_result": 142.5,
+      "py_summary": "float:142.5",
+      "mojo_summary": "float:142.5",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "freeze_frame_ratio",
+      "py_ns": 15403.433,
+      "mojo_ns": 43.0,
+      "speedup_x": 358.22,
+      "py_result": 0.5,
+      "py_summary": "float:0.5",
+      "mojo_summary": "float:0.5",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "sample_frame_indices",
+      "py_ns": 283.408,
+      "mojo_ns": 86.4,
+      "speedup_x": 3.28,
+      "py_result": null,
+      "py_summary": "list:2:1372441100",
+      "mojo_summary": "list:2:1372441100",
+      "result_match": true,
+      "py_error": null
+    }
+  ]
+}

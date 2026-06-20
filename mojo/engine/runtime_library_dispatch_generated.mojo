@@ -755,6 +755,25 @@ from color import (
     complement as _color__complement,
 )
 
+from color_check import (
+    wcag_relative_luminance_rgb255 as _color_check__wcag_relative_luminance_rgb255,
+    wcag_relative_luminance_hex as _color_check__wcag_relative_luminance_hex,
+    wcag_aa_required_contrast as _color_check__wcag_aa_required_contrast,
+    wcag_contrast_ratio_rgb255 as _color_check__wcag_contrast_ratio_rgb255,
+    wcag_contrast_ratio_hex as _color_check__wcag_contrast_ratio_hex,
+    wcag_text_pass_rgb255 as _color_check__wcag_text_pass_rgb255,
+    wcag_text_pass_hex as _color_check__wcag_text_pass_hex,
+    preferred_text_color_rgb255 as _color_check__preferred_text_color_rgb255,
+    preferred_text_color_hex as _color_check__preferred_text_color_hex,
+    dominant_background_rgb255 as _color_check__dominant_background_rgb255,
+    dominant_background_hex as _color_check__dominant_background_hex,
+    dominant_background_contrast_ratio_hex as _color_check__dominant_background_contrast_ratio_hex,
+    dominant_background_wcag_pass_hex as _color_check__dominant_background_wcag_pass_hex,
+    preferred_text_color_for_image as _color_check__preferred_text_color_for_image,
+    preferred_text_contrast_for_image as _color_check__preferred_text_contrast_for_image,
+    preferred_text_pass_for_image as _color_check__preferred_text_pass_for_image,
+)
+
 from color_science import (
     delta_e_76 as _color_science__delta_e_76,
     lab_to_lch_l as _color_science__lab_to_lch_l,
@@ -1463,6 +1482,28 @@ from distributions import (
     sample_neg_binomial as _distributions__sample_neg_binomial,
     sample_hypergeometric as _distributions__sample_hypergeometric,
     sample_one as _distributions__sample_one,
+)
+
+from document_layout import (
+    text_line_boxes_flat as _document_layout__text_line_boxes_flat,
+    line_count_flat as _document_layout__line_count_flat,
+    column_boxes_flat as _document_layout__column_boxes_flat,
+    column_count_flat as _document_layout__column_count_flat,
+    text_density_grid_flat as _document_layout__text_density_grid_flat,
+    multi_column_score_flat as _document_layout__multi_column_score_flat,
+    table_like_score_flat as _document_layout__table_like_score_flat,
+)
+
+from document_vision import (
+    otsu_threshold_flat as _document_vision__otsu_threshold_flat,
+    binarize_otsu_flat as _document_vision__binarize_otsu_flat,
+    adaptive_mean_binarize_flat as _document_vision__adaptive_mean_binarize_flat,
+    horizontal_projection as _document_vision__horizontal_projection,
+    vertical_projection as _document_vision__vertical_projection,
+    mask_content_bbox_flat as _document_vision__mask_content_bbox_flat,
+    skew_angle_estimate_flat as _document_vision__skew_angle_estimate_flat,
+    horizontal_text_score_flat as _document_vision__horizontal_text_score_flat,
+    document_scan_quality_flat as _document_vision__document_scan_quality_flat,
 )
 
 from dosimetry import (
@@ -2430,6 +2471,18 @@ from image_features import (
     most_salient_cell_flat as _image_features__most_salient_cell_flat,
 )
 
+from image_morphology import (
+    binary_erode_flat as _image_morphology__binary_erode_flat,
+    binary_dilate_flat as _image_morphology__binary_dilate_flat,
+    binary_open_flat as _image_morphology__binary_open_flat,
+    binary_close_flat as _image_morphology__binary_close_flat,
+    binary_fill_holes_flat as _image_morphology__binary_fill_holes_flat,
+    connected_components_4_flat as _image_morphology__connected_components_4_flat,
+    largest_component_bbox_flat as _image_morphology__largest_component_bbox_flat,
+    distance_transform_cityblock_flat as _image_morphology__distance_transform_cityblock_flat,
+    foreground_area_ratio_flat as _image_morphology__foreground_area_ratio_flat,
+)
+
 from image_ops import (
     convolve_2d as _image_ops__convolve_2d,
     sobel_x_kernel as _image_ops__sobel_x_kernel,
@@ -2442,6 +2495,17 @@ from image_ops import (
     brightness as _image_ops__brightness,
     contrast as _image_ops__contrast,
     mean_pixel as _image_ops__mean_pixel,
+)
+
+from image_palette import (
+    dominant_palette_rgb255 as _image_palette__dominant_palette_rgb255,
+    palette_size_estimate as _image_palette__palette_size_estimate,
+    palette_entropy as _image_palette__palette_entropy,
+    mean_saturation_rgb255 as _image_palette__mean_saturation_rgb255,
+    warm_color_ratio_rgb255 as _image_palette__warm_color_ratio_rgb255,
+    palette_contrast_score as _image_palette__palette_contrast_score,
+    accent_color_hex as _image_palette__accent_color_hex,
+    is_monochrome_palette as _image_palette__is_monochrome_palette,
 )
 
 from image_quality import (
@@ -2462,6 +2526,15 @@ from image_quality import (
     quality_score_flat as _image_quality__quality_score_flat,
 )
 
+from image_regions import (
+    foreground_mask_otsu_flat as _image_regions__foreground_mask_otsu_flat,
+    connected_component_boxes_flat as _image_regions__connected_component_boxes_flat,
+    largest_foreground_box_flat as _image_regions__largest_foreground_box_flat,
+    saliency_box_flat as _image_regions__saliency_box_flat,
+    extract_box_flat as _image_regions__extract_box_flat,
+    box_iou as _image_regions__box_iou,
+)
+
 from image_resize import (
     reshape_to_grid as _image_resize__reshape_to_grid,
     flatten_grid as _image_resize__flatten_grid,
@@ -2472,6 +2545,17 @@ from image_resize import (
     integral_image as _image_resize__integral_image,
     box_sum as _image_resize__box_sum,
     downscale_flat as _image_resize__downscale_flat,
+)
+
+from image_similarity import (
+    mean_squared_error_flat as _image_similarity__mean_squared_error_flat,
+    mean_abs_error_flat as _image_similarity__mean_abs_error_flat,
+    psnr_flat as _image_similarity__psnr_flat,
+    normalized_cross_correlation_flat as _image_similarity__normalized_cross_correlation_flat,
+    ssim_global_flat as _image_similarity__ssim_global_flat,
+    diff_fraction_flat as _image_similarity__diff_fraction_flat,
+    crop_region_similarity_flat as _image_similarity__crop_region_similarity_flat,
+    duplicate_score_flat as _image_similarity__duplicate_score_flat,
 )
 
 from immunology import (
@@ -2914,10 +2998,6 @@ from magnetism import (
     cyclotron_radius as _magnetism__cyclotron_radius,
     larmor_frequency as _magnetism__larmor_frequency,
     hall_voltage as _magnetism__hall_voltage,
-)
-
-from main_testfiltered import (
-    run_server_loop as _main_testfiltered__run_server_loop,
 )
 
 from marine import (
@@ -4684,10 +4764,6 @@ from runtime_library_dispatch_generated import (
     dispatch_runtime_library as _runtime_library_dispatch_generated__dispatch_runtime_library,
 )
 
-from runtime_library_dispatch_generated_testfiltered import (
-    dispatch_runtime_library as _runtime_library_dispatch_generated_testfiltered__dispatch_runtime_library,
-)
-
 from sampling import (
     halton_sequence as _sampling__halton_sequence,
     halton_2d as _sampling__halton_2d,
@@ -5821,6 +5897,96 @@ from veterinary import (
     heart_rate_normal_range_high as _veterinary__heart_rate_normal_range_high,
     packed_cell_volume_normal as _veterinary__packed_cell_volume_normal,
     blood_volume_estimate as _veterinary__blood_volume_estimate,
+)
+
+from video_accessibility import (
+    frame_min_preferred_text_contrast_for_video as _video_accessibility__frame_min_preferred_text_contrast_for_video,
+    frame_preferred_text_color_for_video as _video_accessibility__frame_preferred_text_color_for_video,
+    sampled_video_min_text_contrast as _video_accessibility__sampled_video_min_text_contrast,
+    sampled_video_wcag_safe_ratio as _video_accessibility__sampled_video_wcag_safe_ratio,
+    needs_text_backplate_for_video as _video_accessibility__needs_text_backplate_for_video,
+    subtitle_band_min_preferred_text_contrast_for_video as _video_accessibility__subtitle_band_min_preferred_text_contrast_for_video,
+    subtitle_band_preferred_text_color_for_video as _video_accessibility__subtitle_band_preferred_text_color_for_video,
+    sampled_subtitle_band_wcag_safe_ratio as _video_accessibility__sampled_subtitle_band_wcag_safe_ratio,
+    subtitle_band_needs_backplate_for_video as _video_accessibility__subtitle_band_needs_backplate_for_video,
+)
+
+from video_color import (
+    frame_mean_rgb255 as _video_color__frame_mean_rgb255,
+    frame_mean_rgb_series as _video_color__frame_mean_rgb_series,
+    clip_mean_rgb255 as _video_color__clip_mean_rgb255,
+    dominant_clip_color_rgb255 as _video_color__dominant_clip_color_rgb255,
+    clip_mean_saturation_rgb255 as _video_color__clip_mean_saturation_rgb255,
+    warm_frame_ratio_rgb255 as _video_color__warm_frame_ratio_rgb255,
+    color_drift_score_rgb255 as _video_color__color_drift_score_rgb255,
+    preferred_text_contrast_for_video as _video_color__preferred_text_contrast_for_video,
+    preferred_text_color_for_video as _video_color__preferred_text_color_for_video,
+)
+
+from video_features import (
+    scene_change_scores as _video_features__scene_change_scores,
+    scene_cut_count as _video_features__scene_cut_count,
+    scene_cut_rate as _video_features__scene_cut_rate,
+    peak_motion_frame as _video_features__peak_motion_frame,
+    keyframe_indices as _video_features__keyframe_indices,
+)
+
+from video_gate import (
+    should_use_cached_video as _video_gate__should_use_cached_video,
+    needs_clearer_video as _video_gate__needs_clearer_video,
+    quality_gate_passed_video as _video_gate__quality_gate_passed_video,
+    is_mostly_static_video as _video_gate__is_mostly_static_video,
+    should_extract_keyframes as _video_gate__should_extract_keyframes,
+    route_video_request as _video_gate__route_video_request,
+)
+
+from video_ops import (
+    frame_count_from_flat as _video_ops__frame_count_from_flat,
+    frame_mean_intensity as _video_ops__frame_mean_intensity,
+    frame_mean_intensities as _video_ops__frame_mean_intensities,
+    frame_mean_abs_diff as _video_ops__frame_mean_abs_diff,
+    temporal_mean_abs_diff as _video_ops__temporal_mean_abs_diff,
+    temporal_max_abs_diff as _video_ops__temporal_max_abs_diff,
+    freeze_frame_ratio as _video_ops__freeze_frame_ratio,
+    sample_frame_indices as _video_ops__sample_frame_indices,
+)
+
+from video_quality import (
+    frame_quality_series as _video_quality__frame_quality_series,
+    average_frame_quality as _video_quality__average_frame_quality,
+    brightness_flicker_score as _video_quality__brightness_flicker_score,
+    temporal_stability_score as _video_quality__temporal_stability_score,
+    video_quality_score as _video_quality__video_quality_score,
+    is_usable_video as _video_quality__is_usable_video,
+)
+
+from video_regions import (
+    frame_diff_mask_flat as _video_regions__frame_diff_mask_flat,
+    motion_boxes_between_frames as _video_regions__motion_boxes_between_frames,
+    largest_motion_box_between_frames as _video_regions__largest_motion_box_between_frames,
+    temporal_motion_area_series as _video_regions__temporal_motion_area_series,
+    peak_motion_box_flat as _video_regions__peak_motion_box_flat,
+    temporal_union_motion_box_flat as _video_regions__temporal_union_motion_box_flat,
+    motion_coverage_ratio_flat as _video_regions__motion_coverage_ratio_flat,
+)
+
+from video_similarity import (
+    frame_duplicate_scores as _video_similarity__frame_duplicate_scores,
+    average_frame_duplicate_score as _video_similarity__average_frame_duplicate_score,
+    frame_hash_hamming_series as _video_similarity__frame_hash_hamming_series,
+    average_frame_hash_hamming as _video_similarity__average_frame_hash_hamming,
+    temporal_signature_distance as _video_similarity__temporal_signature_distance,
+    clip_duplicate_score_flat as _video_similarity__clip_duplicate_score_flat,
+    is_duplicate_clip_flat as _video_similarity__is_duplicate_clip_flat,
+)
+
+from video_storyboard import (
+    scene_start_indices as _video_storyboard__scene_start_indices,
+    scene_end_indices as _video_storyboard__scene_end_indices,
+    scene_lengths_frames as _video_storyboard__scene_lengths_frames,
+    scene_representative_frames as _video_storyboard__scene_representative_frames,
+    longest_scene_index as _video_storyboard__longest_scene_index,
+    storyboard_frame_indices as _video_storyboard__storyboard_frame_indices,
 )
 
 from virology import (
@@ -18890,6 +19056,317 @@ fn _dispatch_color(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module color."
     )
 
+fn _dispatch_color_check(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "wcag_relative_luminance_rgb255":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _color_check__wcag_relative_luminance_rgb255(arg_0, arg_1, arg_2)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for color_check.wcag_relative_luminance_rgb255."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function color_check.wcag_relative_luminance_rgb255 expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "wcag_relative_luminance_hex":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
+                var result = _color_check__wcag_relative_luminance_hex(arg_0)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for color_check.wcag_relative_luminance_hex."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function color_check.wcag_relative_luminance_hex expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "wcag_aa_required_contrast":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_bool_token(json_array_get(args_array, 1))
+                var result = _color_check__wcag_aa_required_contrast(arg_0, arg_1)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for color_check.wcag_aa_required_contrast."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function color_check.wcag_aa_required_contrast expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "wcag_contrast_ratio_rgb255":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_float64_token(json_array_get(args_array, 5))
+                var result = _color_check__wcag_contrast_ratio_rgb255(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for color_check.wcag_contrast_ratio_rgb255."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function color_check.wcag_contrast_ratio_rgb255 expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "wcag_contrast_ratio_hex":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_string_token(json_array_get(args_array, 1))
+                var result = _color_check__wcag_contrast_ratio_hex(arg_0, arg_1)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for color_check.wcag_contrast_ratio_hex."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function color_check.wcag_contrast_ratio_hex expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "wcag_text_pass_rgb255":
+        if arg_count == 8:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_float64_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_bool_token(json_array_get(args_array, 7))
+                var result = _color_check__wcag_text_pass_rgb255(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for color_check.wcag_text_pass_rgb255."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function color_check.wcag_text_pass_rgb255 expected 8 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "wcag_text_pass_hex":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_string_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_bool_token(json_array_get(args_array, 3))
+                var result = _color_check__wcag_text_pass_hex(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for color_check.wcag_text_pass_hex."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function color_check.wcag_text_pass_hex expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "preferred_text_color_rgb255":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _color_check__preferred_text_color_rgb255(arg_0, arg_1, arg_2)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for color_check.preferred_text_color_rgb255."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function color_check.preferred_text_color_rgb255 expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "preferred_text_color_hex":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
+                var result = _color_check__preferred_text_color_hex(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for color_check.preferred_text_color_hex."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function color_check.preferred_text_color_hex expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dominant_background_rgb255":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _color_check__dominant_background_rgb255(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for color_check.dominant_background_rgb255."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function color_check.dominant_background_rgb255 expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dominant_background_hex":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _color_check__dominant_background_hex(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for color_check.dominant_background_hex."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function color_check.dominant_background_hex expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dominant_background_contrast_ratio_hex":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_string_token(json_array_get(args_array, 4))
+                var result = _color_check__dominant_background_contrast_ratio_hex(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for color_check.dominant_background_contrast_ratio_hex."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function color_check.dominant_background_contrast_ratio_hex expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dominant_background_wcag_pass_hex":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_string_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_float64_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_bool_token(json_array_get(args_array, 6))
+                var result = _color_check__dominant_background_wcag_pass_hex(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for color_check.dominant_background_wcag_pass_hex."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function color_check.dominant_background_wcag_pass_hex expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "preferred_text_color_for_image":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _color_check__preferred_text_color_for_image(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for color_check.preferred_text_color_for_image."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function color_check.preferred_text_color_for_image expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "preferred_text_contrast_for_image":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _color_check__preferred_text_contrast_for_image(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for color_check.preferred_text_contrast_for_image."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function color_check.preferred_text_contrast_for_image expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "preferred_text_pass_for_image":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_bool_token(json_array_get(args_array, 5))
+                var result = _color_check__preferred_text_pass_for_image(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for color_check.preferred_text_pass_for_image."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function color_check.preferred_text_pass_for_image expected 6 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module color_check."
+    )
+
 fn _dispatch_color_science(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "delta_e_76":
@@ -28723,6 +29200,328 @@ fn _dispatch_distributions(function_name: String, args_array: String) raises -> 
     return _error_json(
         "function_not_registered",
         "Function '" + function_name + "' is not registered for module distributions."
+    )
+
+fn _dispatch_document_layout(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "text_line_boxes_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _document_layout__text_line_boxes_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for document_layout.text_line_boxes_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function document_layout.text_line_boxes_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "line_count_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _document_layout__line_count_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for document_layout.line_count_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function document_layout.line_count_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "column_boxes_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _document_layout__column_boxes_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for document_layout.column_boxes_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function document_layout.column_boxes_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "column_count_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _document_layout__column_count_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for document_layout.column_count_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function document_layout.column_count_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "text_density_grid_flat":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var result = _document_layout__text_density_grid_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for document_layout.text_density_grid_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function document_layout.text_density_grid_flat expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "multi_column_score_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var result = _document_layout__multi_column_score_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for document_layout.multi_column_score_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function document_layout.multi_column_score_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "table_like_score_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var result = _document_layout__table_like_score_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for document_layout.table_like_score_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function document_layout.table_like_score_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module document_layout."
+    )
+
+fn _dispatch_document_vision(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "otsu_threshold_flat":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _document_vision__otsu_threshold_flat(arg_0, arg_1, arg_2)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for document_vision.otsu_threshold_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function document_vision.otsu_threshold_flat expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "binarize_otsu_flat":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _document_vision__binarize_otsu_flat(arg_0, arg_1, arg_2)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for document_vision.binarize_otsu_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function document_vision.binarize_otsu_flat expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "adaptive_mean_binarize_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _document_vision__adaptive_mean_binarize_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for document_vision.adaptive_mean_binarize_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function document_vision.adaptive_mean_binarize_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "horizontal_projection":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var result = _document_vision__horizontal_projection(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for document_vision.horizontal_projection."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function document_vision.horizontal_projection expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "vertical_projection":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var result = _document_vision__vertical_projection(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for document_vision.vertical_projection."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function document_vision.vertical_projection expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "mask_content_bbox_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var result = _document_vision__mask_content_bbox_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for document_vision.mask_content_bbox_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function document_vision.mask_content_bbox_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "skew_angle_estimate_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var result = _document_vision__skew_angle_estimate_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for document_vision.skew_angle_estimate_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function document_vision.skew_angle_estimate_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "horizontal_text_score_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var result = _document_vision__horizontal_text_score_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for document_vision.horizontal_text_score_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function document_vision.horizontal_text_score_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "document_scan_quality_flat":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _document_vision__document_scan_quality_flat(arg_0, arg_1, arg_2)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for document_vision.document_scan_quality_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function document_vision.document_scan_quality_flat expected 3 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module document_vision."
     )
 
 fn _dispatch_dosimetry(function_name: String, args_array: String) raises -> String:
@@ -42585,6 +43384,188 @@ fn _dispatch_image_features(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module image_features."
     )
 
+fn _dispatch_image_morphology(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "binary_erode_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _image_morphology__binary_erode_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_morphology.binary_erode_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_morphology.binary_erode_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "binary_dilate_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _image_morphology__binary_dilate_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_morphology.binary_dilate_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_morphology.binary_dilate_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "binary_open_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _image_morphology__binary_open_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_morphology.binary_open_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_morphology.binary_open_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "binary_close_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _image_morphology__binary_close_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_morphology.binary_close_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_morphology.binary_close_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "binary_fill_holes_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var result = _image_morphology__binary_fill_holes_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_morphology.binary_fill_holes_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_morphology.binary_fill_holes_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "connected_components_4_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var result = _image_morphology__connected_components_4_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_morphology.connected_components_4_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_morphology.connected_components_4_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "largest_component_bbox_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var result = _image_morphology__largest_component_bbox_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_morphology.largest_component_bbox_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_morphology.largest_component_bbox_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "distance_transform_cityblock_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var result = _image_morphology__distance_transform_cityblock_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_morphology.distance_transform_cityblock_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_morphology.distance_transform_cityblock_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "foreground_area_ratio_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var result = _image_morphology__foreground_area_ratio_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_morphology.foreground_area_ratio_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_morphology.foreground_area_ratio_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module image_morphology."
+    )
+
 fn _dispatch_image_ops(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "convolve_2d":
@@ -42767,6 +43748,169 @@ fn _dispatch_image_ops(function_name: String, args_array: String) raises -> Stri
     return _error_json(
         "function_not_registered",
         "Function '" + function_name + "' is not registered for module image_ops."
+    )
+
+fn _dispatch_image_palette(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "dominant_palette_rgb255":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _image_palette__dominant_palette_rgb255(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_palette.dominant_palette_rgb255."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_palette.dominant_palette_rgb255 expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "palette_size_estimate":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _image_palette__palette_size_estimate(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_palette.palette_size_estimate."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_palette.palette_size_estimate expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "palette_entropy":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _image_palette__palette_entropy(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_palette.palette_entropy."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_palette.palette_entropy expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "mean_saturation_rgb255":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _image_palette__mean_saturation_rgb255(arg_0, arg_1, arg_2)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_palette.mean_saturation_rgb255."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_palette.mean_saturation_rgb255 expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "warm_color_ratio_rgb255":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var result = _image_palette__warm_color_ratio_rgb255(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_palette.warm_color_ratio_rgb255."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_palette.warm_color_ratio_rgb255 expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "palette_contrast_score":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _image_palette__palette_contrast_score(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_palette.palette_contrast_score."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_palette.palette_contrast_score expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "accent_color_hex":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _image_palette__accent_color_hex(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_palette.accent_color_hex."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_palette.accent_color_hex expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "is_monochrome_palette":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_float64_token(json_array_get(args_array, 5))
+                var result = _image_palette__is_monochrome_palette(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_palette.is_monochrome_palette."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_palette.is_monochrome_palette expected 6 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module image_palette."
     )
 
 fn _dispatch_image_quality(function_name: String, args_array: String) raises -> String:
@@ -43030,6 +44174,128 @@ fn _dispatch_image_quality(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module image_quality."
     )
 
+fn _dispatch_image_regions(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "foreground_mask_otsu_flat":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _image_regions__foreground_mask_otsu_flat(arg_0, arg_1, arg_2)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_regions.foreground_mask_otsu_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_regions.foreground_mask_otsu_flat expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "connected_component_boxes_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _image_regions__connected_component_boxes_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_regions.connected_component_boxes_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_regions.connected_component_boxes_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "largest_foreground_box_flat":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _image_regions__largest_foreground_box_flat(arg_0, arg_1, arg_2)
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_regions.largest_foreground_box_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_regions.largest_foreground_box_flat expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "saliency_box_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _image_regions__saliency_box_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_regions.saliency_box_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_regions.saliency_box_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "extract_box_flat":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var result = _image_regions__extract_box_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_regions.extract_box_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_regions.extract_box_flat expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "box_iou":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var result = _image_regions__box_iou(arg_0, arg_1)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_regions.box_iou."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_regions.box_iou expected 2 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module image_regions."
+    )
+
 fn _dispatch_image_resize(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "reshape_to_grid":
@@ -43196,6 +44462,171 @@ fn _dispatch_image_resize(function_name: String, args_array: String) raises -> S
     return _error_json(
         "function_not_registered",
         "Function '" + function_name + "' is not registered for module image_resize."
+    )
+
+fn _dispatch_image_similarity(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "mean_squared_error_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _image_similarity__mean_squared_error_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_similarity.mean_squared_error_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_similarity.mean_squared_error_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "mean_abs_error_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _image_similarity__mean_abs_error_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_similarity.mean_abs_error_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_similarity.mean_abs_error_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "psnr_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _image_similarity__psnr_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_similarity.psnr_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_similarity.psnr_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "normalized_cross_correlation_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _image_similarity__normalized_cross_correlation_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_similarity.normalized_cross_correlation_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_similarity.normalized_cross_correlation_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "ssim_global_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _image_similarity__ssim_global_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_similarity.ssim_global_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_similarity.ssim_global_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "diff_fraction_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _image_similarity__diff_fraction_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_similarity.diff_fraction_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_similarity.diff_fraction_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "crop_region_similarity_flat":
+        if arg_count == 8:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_int_token(json_array_get(args_array, 7))
+                var result = _image_similarity__crop_region_similarity_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_similarity.crop_region_similarity_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_similarity.crop_region_similarity_flat expected 8 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "duplicate_score_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _image_similarity__duplicate_score_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for image_similarity.duplicate_score_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function image_similarity.duplicate_score_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module image_similarity."
     )
 
 fn _dispatch_immunology(function_name: String, args_array: String) raises -> String:
@@ -49462,29 +50893,6 @@ fn _dispatch_magnetism(function_name: String, args_array: String) raises -> Stri
     return _error_json(
         "function_not_registered",
         "Function '" + function_name + "' is not registered for module magnetism."
-    )
-
-fn _dispatch_main_testfiltered(function_name: String, args_array: String) raises -> String:
-    var arg_count = json_array_len(args_array)
-    if function_name == "run_server_loop":
-        if arg_count == 1:
-            try:
-                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
-                _ = _main_testfiltered__run_server_loop(arg_0)
-                var result_json = "null"
-                return _success_json(result_json)
-            except:
-                return _error_json(
-                    "mojo_library_execution_failed",
-                    "Mojo library execution failed for main_testfiltered.run_server_loop."
-                )
-        return _error_json(
-            "invalid_arguments",
-            "Function main_testfiltered.run_server_loop expected 1 arguments, received " + String(arg_count) + "."
-        )
-    return _error_json(
-        "function_not_registered",
-        "Function '" + function_name + "' is not registered for module main_testfiltered."
     )
 
 fn _dispatch_marine(function_name: String, args_array: String) raises -> String:
@@ -74929,29 +76337,6 @@ fn _dispatch_runtime_library_dispatch_generated(function_name: String, args_arra
         "Function '" + function_name + "' is not registered for module runtime_library_dispatch_generated."
     )
 
-fn _dispatch_runtime_library_dispatch_generated_testfiltered(function_name: String, args_array: String) raises -> String:
-    var arg_count = json_array_len(args_array)
-    if function_name == "dispatch_runtime_library":
-        if arg_count == 1:
-            try:
-                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
-                var result = _runtime_library_dispatch_generated_testfiltered__dispatch_runtime_library(arg_0)
-                var result_json = _to_json_string(result)
-                return _success_json(result_json)
-            except:
-                return _error_json(
-                    "mojo_library_execution_failed",
-                    "Mojo library execution failed for runtime_library_dispatch_generated_testfiltered.dispatch_runtime_library."
-                )
-        return _error_json(
-            "invalid_arguments",
-            "Function runtime_library_dispatch_generated_testfiltered.dispatch_runtime_library expected 1 arguments, received " + String(arg_count) + "."
-        )
-    return _error_json(
-        "function_not_registered",
-        "Function '" + function_name + "' is not registered for module runtime_library_dispatch_generated_testfiltered."
-    )
-
 fn _dispatch_sampling(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "halton_sequence":
@@ -91039,6 +92424,1331 @@ fn _dispatch_veterinary(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module veterinary."
     )
 
+fn _dispatch_video_accessibility(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "frame_min_preferred_text_contrast_for_video":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _video_accessibility__frame_min_preferred_text_contrast_for_video(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_accessibility.frame_min_preferred_text_contrast_for_video."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_accessibility.frame_min_preferred_text_contrast_for_video expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "frame_preferred_text_color_for_video":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _video_accessibility__frame_preferred_text_color_for_video(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_accessibility.frame_preferred_text_color_for_video."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_accessibility.frame_preferred_text_color_for_video expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "sampled_video_min_text_contrast":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _video_accessibility__sampled_video_min_text_contrast(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_accessibility.sampled_video_min_text_contrast."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_accessibility.sampled_video_min_text_contrast expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "sampled_video_wcag_safe_ratio":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_float64_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_bool_token(json_array_get(args_array, 6))
+                var result = _video_accessibility__sampled_video_wcag_safe_ratio(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_accessibility.sampled_video_wcag_safe_ratio."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_accessibility.sampled_video_wcag_safe_ratio expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "needs_text_backplate_for_video":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_float64_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_bool_token(json_array_get(args_array, 6))
+                var result = _video_accessibility__needs_text_backplate_for_video(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_accessibility.needs_text_backplate_for_video."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_accessibility.needs_text_backplate_for_video expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "subtitle_band_min_preferred_text_contrast_for_video":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var result = _video_accessibility__subtitle_band_min_preferred_text_contrast_for_video(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_accessibility.subtitle_band_min_preferred_text_contrast_for_video."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_accessibility.subtitle_band_min_preferred_text_contrast_for_video expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "subtitle_band_preferred_text_color_for_video":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var result = _video_accessibility__subtitle_band_preferred_text_color_for_video(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_accessibility.subtitle_band_preferred_text_color_for_video."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_accessibility.subtitle_band_preferred_text_color_for_video expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "sampled_subtitle_band_wcag_safe_ratio":
+        if arg_count == 8:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_bool_token(json_array_get(args_array, 7))
+                var result = _video_accessibility__sampled_subtitle_band_wcag_safe_ratio(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_accessibility.sampled_subtitle_band_wcag_safe_ratio."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_accessibility.sampled_subtitle_band_wcag_safe_ratio expected 8 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "subtitle_band_needs_backplate_for_video":
+        if arg_count == 8:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_bool_token(json_array_get(args_array, 7))
+                var result = _video_accessibility__subtitle_band_needs_backplate_for_video(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_accessibility.subtitle_band_needs_backplate_for_video."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_accessibility.subtitle_band_needs_backplate_for_video expected 8 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module video_accessibility."
+    )
+
+fn _dispatch_video_color(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "frame_mean_rgb255":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _video_color__frame_mean_rgb255(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_color.frame_mean_rgb255."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_color.frame_mean_rgb255 expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "frame_mean_rgb_series":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _video_color__frame_mean_rgb_series(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_color.frame_mean_rgb_series."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_color.frame_mean_rgb_series expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "clip_mean_rgb255":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _video_color__clip_mean_rgb255(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_color.clip_mean_rgb255."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_color.clip_mean_rgb255 expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dominant_clip_color_rgb255":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var result = _video_color__dominant_clip_color_rgb255(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_color.dominant_clip_color_rgb255."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_color.dominant_clip_color_rgb255 expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "clip_mean_saturation_rgb255":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _video_color__clip_mean_saturation_rgb255(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_color.clip_mean_saturation_rgb255."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_color.clip_mean_saturation_rgb255 expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "warm_frame_ratio_rgb255":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _video_color__warm_frame_ratio_rgb255(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_color.warm_frame_ratio_rgb255."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_color.warm_frame_ratio_rgb255 expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "color_drift_score_rgb255":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _video_color__color_drift_score_rgb255(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_color.color_drift_score_rgb255."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_color.color_drift_score_rgb255 expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "preferred_text_contrast_for_video":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var result = _video_color__preferred_text_contrast_for_video(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_color.preferred_text_contrast_for_video."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_color.preferred_text_contrast_for_video expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "preferred_text_color_for_video":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var result = _video_color__preferred_text_color_for_video(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_color.preferred_text_color_for_video."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_color.preferred_text_color_for_video expected 6 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module video_color."
+    )
+
+fn _dispatch_video_features(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "scene_change_scores":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _video_features__scene_change_scores(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_features.scene_change_scores."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_features.scene_change_scores expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "scene_cut_count":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _video_features__scene_cut_count(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_features.scene_cut_count."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_features.scene_cut_count expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "scene_cut_rate":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _video_features__scene_cut_rate(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_features.scene_cut_rate."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_features.scene_cut_rate expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "peak_motion_frame":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _video_features__peak_motion_frame(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_features.peak_motion_frame."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_features.peak_motion_frame expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "keyframe_indices":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var result = _video_features__keyframe_indices(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_features.keyframe_indices."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_features.keyframe_indices expected 6 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module video_features."
+    )
+
+fn _dispatch_video_gate(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "should_use_cached_video":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_bool_token(json_array_get(args_array, 0))
+                var result = _video_gate__should_use_cached_video(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_gate.should_use_cached_video."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_gate.should_use_cached_video expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "needs_clearer_video":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _video_gate__needs_clearer_video(arg_0, arg_1)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_gate.needs_clearer_video."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_gate.needs_clearer_video expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "quality_gate_passed_video":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _video_gate__quality_gate_passed_video(arg_0, arg_1)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_gate.quality_gate_passed_video."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_gate.quality_gate_passed_video expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "is_mostly_static_video":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _video_gate__is_mostly_static_video(arg_0, arg_1)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_gate.is_mostly_static_video."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_gate.is_mostly_static_video expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "should_extract_keyframes":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _video_gate__should_extract_keyframes(arg_0, arg_1, arg_2)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_gate.should_extract_keyframes."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_gate.should_extract_keyframes expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "route_video_request":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_bool_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var result = _video_gate__route_video_request(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_gate.route_video_request."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_gate.route_video_request expected 7 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module video_gate."
+    )
+
+fn _dispatch_video_ops(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "frame_count_from_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _video_ops__frame_count_from_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_ops.frame_count_from_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_ops.frame_count_from_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "frame_mean_intensity":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _video_ops__frame_mean_intensity(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_ops.frame_mean_intensity."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_ops.frame_mean_intensity expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "frame_mean_intensities":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _video_ops__frame_mean_intensities(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_ops.frame_mean_intensities."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_ops.frame_mean_intensities expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "frame_mean_abs_diff":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var result = _video_ops__frame_mean_abs_diff(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_ops.frame_mean_abs_diff."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_ops.frame_mean_abs_diff expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "temporal_mean_abs_diff":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _video_ops__temporal_mean_abs_diff(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_ops.temporal_mean_abs_diff."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_ops.temporal_mean_abs_diff expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "temporal_max_abs_diff":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _video_ops__temporal_max_abs_diff(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_ops.temporal_max_abs_diff."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_ops.temporal_max_abs_diff expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "freeze_frame_ratio":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _video_ops__freeze_frame_ratio(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_ops.freeze_frame_ratio."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_ops.freeze_frame_ratio expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "sample_frame_indices":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _video_ops__sample_frame_indices(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_ops.sample_frame_indices."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_ops.sample_frame_indices expected 5 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module video_ops."
+    )
+
+fn _dispatch_video_quality(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "frame_quality_series":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _video_quality__frame_quality_series(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_quality.frame_quality_series."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_quality.frame_quality_series expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "average_frame_quality":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _video_quality__average_frame_quality(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_quality.average_frame_quality."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_quality.average_frame_quality expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "brightness_flicker_score":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _video_quality__brightness_flicker_score(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_quality.brightness_flicker_score."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_quality.brightness_flicker_score expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "temporal_stability_score":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _video_quality__temporal_stability_score(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_quality.temporal_stability_score."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_quality.temporal_stability_score expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "video_quality_score":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _video_quality__video_quality_score(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_quality.video_quality_score."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_quality.video_quality_score expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "is_usable_video":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_float64_token(json_array_get(args_array, 5))
+                var result = _video_quality__is_usable_video(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_quality.is_usable_video."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_quality.is_usable_video expected 6 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module video_quality."
+    )
+
+fn _dispatch_video_regions(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "frame_diff_mask_flat":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var result = _video_regions__frame_diff_mask_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_regions.frame_diff_mask_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_regions.frame_diff_mask_flat expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "motion_boxes_between_frames":
+        if arg_count == 8:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_int_token(json_array_get(args_array, 7))
+                var result = _video_regions__motion_boxes_between_frames(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7)
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_regions.motion_boxes_between_frames."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_regions.motion_boxes_between_frames expected 8 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "largest_motion_box_between_frames":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var result = _video_regions__largest_motion_box_between_frames(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_regions.largest_motion_box_between_frames."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_regions.largest_motion_box_between_frames expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "temporal_motion_area_series":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _video_regions__temporal_motion_area_series(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_regions.temporal_motion_area_series."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_regions.temporal_motion_area_series expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "peak_motion_box_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _video_regions__peak_motion_box_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_regions.peak_motion_box_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_regions.peak_motion_box_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "temporal_union_motion_box_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _video_regions__temporal_union_motion_box_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_regions.temporal_union_motion_box_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_regions.temporal_union_motion_box_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "motion_coverage_ratio_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _video_regions__motion_coverage_ratio_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_regions.motion_coverage_ratio_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_regions.motion_coverage_ratio_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module video_regions."
+    )
+
+fn _dispatch_video_similarity(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "frame_duplicate_scores":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _video_similarity__frame_duplicate_scores(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_similarity.frame_duplicate_scores."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_similarity.frame_duplicate_scores expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "average_frame_duplicate_score":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _video_similarity__average_frame_duplicate_score(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_similarity.average_frame_duplicate_score."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_similarity.average_frame_duplicate_score expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "frame_hash_hamming_series":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _video_similarity__frame_hash_hamming_series(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_similarity.frame_hash_hamming_series."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_similarity.frame_hash_hamming_series expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "average_frame_hash_hamming":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _video_similarity__average_frame_hash_hamming(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_similarity.average_frame_hash_hamming."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_similarity.average_frame_hash_hamming expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "temporal_signature_distance":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _video_similarity__temporal_signature_distance(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_similarity.temporal_signature_distance."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_similarity.temporal_signature_distance expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "clip_duplicate_score_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _video_similarity__clip_duplicate_score_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_similarity.clip_duplicate_score_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_similarity.clip_duplicate_score_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "is_duplicate_clip_flat":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_float64_token(json_array_get(args_array, 5))
+                var result = _video_similarity__is_duplicate_clip_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_similarity.is_duplicate_clip_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_similarity.is_duplicate_clip_flat expected 6 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module video_similarity."
+    )
+
+fn _dispatch_video_storyboard(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "scene_start_indices":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _video_storyboard__scene_start_indices(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_storyboard.scene_start_indices."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_storyboard.scene_start_indices expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "scene_end_indices":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _video_storyboard__scene_end_indices(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_storyboard.scene_end_indices."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_storyboard.scene_end_indices expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "scene_lengths_frames":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _video_storyboard__scene_lengths_frames(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_storyboard.scene_lengths_frames."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_storyboard.scene_lengths_frames expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "scene_representative_frames":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _video_storyboard__scene_representative_frames(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_storyboard.scene_representative_frames."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_storyboard.scene_representative_frames expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "longest_scene_index":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _video_storyboard__longest_scene_index(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_storyboard.longest_scene_index."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_storyboard.longest_scene_index expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "storyboard_frame_indices":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var result = _video_storyboard__storyboard_frame_indices(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for video_storyboard.storyboard_frame_indices."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function video_storyboard.storyboard_frame_indices expected 6 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module video_storyboard."
+    )
+
 fn _dispatch_virology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "basic_reproduction_number":
@@ -93826,6 +96536,8 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_clustering_metrics(function_name, args_array)
     if module_name == "color":
         return _dispatch_color(function_name, args_array)
+    if module_name == "color_check":
+        return _dispatch_color_check(function_name, args_array)
     if module_name == "color_science":
         return _dispatch_color_science(function_name, args_array)
     if module_name == "column_rank":
@@ -93944,6 +96656,10 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_distribution_fit(function_name, args_array)
     if module_name == "distributions":
         return _dispatch_distributions(function_name, args_array)
+    if module_name == "document_layout":
+        return _dispatch_document_layout(function_name, args_array)
+    if module_name == "document_vision":
+        return _dispatch_document_vision(function_name, args_array)
     if module_name == "dosimetry":
         return _dispatch_dosimetry(function_name, args_array)
     if module_name == "drones":
@@ -94088,12 +96804,20 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_hypothesis(function_name, args_array)
     if module_name == "image_features":
         return _dispatch_image_features(function_name, args_array)
+    if module_name == "image_morphology":
+        return _dispatch_image_morphology(function_name, args_array)
     if module_name == "image_ops":
         return _dispatch_image_ops(function_name, args_array)
+    if module_name == "image_palette":
+        return _dispatch_image_palette(function_name, args_array)
     if module_name == "image_quality":
         return _dispatch_image_quality(function_name, args_array)
+    if module_name == "image_regions":
+        return _dispatch_image_regions(function_name, args_array)
     if module_name == "image_resize":
         return _dispatch_image_resize(function_name, args_array)
+    if module_name == "image_similarity":
+        return _dispatch_image_similarity(function_name, args_array)
     if module_name == "immunology":
         return _dispatch_immunology(function_name, args_array)
     if module_name == "inference_cost_latency":
@@ -94160,8 +96884,6 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_lottery(function_name, args_array)
     if module_name == "magnetism":
         return _dispatch_magnetism(function_name, args_array)
-    if module_name == "main_testfiltered":
-        return _dispatch_main_testfiltered(function_name, args_array)
     if module_name == "marine":
         return _dispatch_marine(function_name, args_array)
     if module_name == "materials":
@@ -94428,8 +97150,6 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_rubber(function_name, args_array)
     if module_name == "runtime_library_dispatch_generated":
         return _dispatch_runtime_library_dispatch_generated(function_name, args_array)
-    if module_name == "runtime_library_dispatch_generated_testfiltered":
-        return _dispatch_runtime_library_dispatch_generated_testfiltered(function_name, args_array)
     if module_name == "sampling":
         return _dispatch_sampling(function_name, args_array)
     if module_name == "scheduler_ops":
@@ -94608,6 +97328,24 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_vector_similarity(function_name, args_array)
     if module_name == "veterinary":
         return _dispatch_veterinary(function_name, args_array)
+    if module_name == "video_accessibility":
+        return _dispatch_video_accessibility(function_name, args_array)
+    if module_name == "video_color":
+        return _dispatch_video_color(function_name, args_array)
+    if module_name == "video_features":
+        return _dispatch_video_features(function_name, args_array)
+    if module_name == "video_gate":
+        return _dispatch_video_gate(function_name, args_array)
+    if module_name == "video_ops":
+        return _dispatch_video_ops(function_name, args_array)
+    if module_name == "video_quality":
+        return _dispatch_video_quality(function_name, args_array)
+    if module_name == "video_regions":
+        return _dispatch_video_regions(function_name, args_array)
+    if module_name == "video_similarity":
+        return _dispatch_video_similarity(function_name, args_array)
+    if module_name == "video_storyboard":
+        return _dispatch_video_storyboard(function_name, args_array)
     if module_name == "virology":
         return _dispatch_virology(function_name, args_array)
     if module_name == "vision_gate":

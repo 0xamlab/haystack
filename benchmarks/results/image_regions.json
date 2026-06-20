@@ -1,0 +1,81 @@
+{
+  "lib": "image_regions",
+  "status": "ok",
+  "n_functions": 6,
+  "n_compared": 6,
+  "n_timed": 6,
+  "overall_speedup_x": 16.15,
+  "total_py_ns": 380218.22,
+  "total_mojo_ns": 23543.0,
+  "elapsed_s": 4.26,
+  "n_iterations": 5000,
+  "mojo_error": null,
+  "functions": [
+    {
+      "function": "foreground_mask_otsu_flat",
+      "py_ns": 42718.017,
+      "mojo_ns": 1409.8,
+      "speedup_x": 30.3,
+      "py_result": null,
+      "py_summary": "list:64:798491755",
+      "mojo_summary": "list:64:798491755",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "connected_component_boxes_flat",
+      "py_ns": 5737.183,
+      "mojo_ns": 1494.0,
+      "speedup_x": 3.84,
+      "py_result": null,
+      "py_summary": "list:10:308269516",
+      "mojo_summary": "list:10:308269516",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "largest_foreground_box_flat",
+      "py_ns": 52245.083,
+      "mojo_ns": 3172.8,
+      "speedup_x": 16.47,
+      "py_result": null,
+      "py_summary": "list:5:322205964",
+      "mojo_summary": "list:5:322205964",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "saliency_box_flat",
+      "py_ns": 278833.792,
+      "mojo_ns": 17347.6,
+      "speedup_x": 16.07,
+      "py_result": null,
+      "py_summary": "list:5:1320420701",
+      "mojo_summary": "list:5:1320420701",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "extract_box_flat",
+      "py_ns": 424.367,
+      "mojo_ns": 116.8,
+      "speedup_x": 3.63,
+      "py_result": null,
+      "py_summary": "list:4:494096001",
+      "mojo_summary": "list:4:494096001",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "box_iou",
+      "py_ns": 259.775,
+      "mojo_ns": 2.0,
+      "speedup_x": 129.89,
+      "py_result": 0.285714,
+      "py_summary": "float:0.2857142857142857",
+      "mojo_summary": "float:0.2857142857142857",
+      "result_match": true,
+      "py_error": null
+    }
+  ]
+}

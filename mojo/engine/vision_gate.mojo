@@ -36,13 +36,13 @@ Public API:
 # ── Tunable thresholds (documented defaults for 0-255 grayscale) ────────────────
 
 
-alias _BLUR_MIN = 100.0          # Laplacian variance below this ⇒ blurry
-alias _BRIGHT_LOW = 20.0         # mean brightness below this ⇒ under-exposed
-alias _BRIGHT_HIGH = 235.0       # mean brightness above this ⇒ over-exposed
-alias _ENTROPY_MIN = 0.5         # 256-bin entropy below this ⇒ near-blank
-alias _TEXT_EDGE_MIN = 0.10      # edge density above this with text intent ⇒ OCR
-alias _TEXT_ENTROPY_MIN = 3.0    # entropy floor for "text-like"
-alias _CROP_EDGE_MIN = 0.15      # edge density above this ⇒ a region dominates
+comptime _BLUR_MIN: Float64 = 100.0          # Laplacian variance below this ⇒ blurry
+comptime _BRIGHT_LOW: Float64 = 20.0         # mean brightness below this ⇒ under-exposed
+comptime _BRIGHT_HIGH: Float64 = 235.0       # mean brightness above this ⇒ over-exposed
+comptime _ENTROPY_MIN: Float64 = 0.5         # 256-bin entropy below this ⇒ near-blank
+comptime _TEXT_EDGE_MIN: Float64 = 0.10      # edge density above this with text intent ⇒ OCR
+comptime _TEXT_ENTROPY_MIN: Float64 = 3.0    # entropy floor for "text-like"
+comptime _CROP_EDGE_MIN: Float64 = 0.15      # edge density above this ⇒ a region dominates
 
 
 # ── Predicate helpers ───────────────────────────────────────────────────────────

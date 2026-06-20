@@ -1,0 +1,92 @@
+{
+  "lib": "video_similarity",
+  "status": "ok",
+  "n_functions": 7,
+  "n_compared": 7,
+  "n_timed": 7,
+  "overall_speedup_x": 9.42,
+  "total_py_ns": 734283.74,
+  "total_mojo_ns": 77975.4,
+  "elapsed_s": 7.51,
+  "n_iterations": 5000,
+  "mojo_error": null,
+  "functions": [
+    {
+      "function": "frame_duplicate_scores",
+      "py_ns": 46345.858,
+      "mojo_ns": 1609.0,
+      "speedup_x": 28.8,
+      "py_result": null,
+      "py_summary": "list:3:1467384490",
+      "mojo_summary": "list:3:1467384490",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "average_frame_duplicate_score",
+      "py_ns": 37011.317,
+      "mojo_ns": 1608.2,
+      "speedup_x": 23.01,
+      "py_result": 0.91299,
+      "py_summary": "float:0.9129895705391157",
+      "mojo_summary": "float:0.9129895705391157",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "frame_hash_hamming_series",
+      "py_ns": 128470.7,
+      "mojo_ns": 17544.4,
+      "speedup_x": 7.32,
+      "py_result": null,
+      "py_summary": "list:3:267669082",
+      "mojo_summary": "list:3:267669082",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "average_frame_hash_hamming",
+      "py_ns": 129582.342,
+      "mojo_ns": 17767.0,
+      "speedup_x": 7.29,
+      "py_result": 0.0,
+      "py_summary": "float:0.0",
+      "mojo_summary": "float:0.0",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "temporal_signature_distance",
+      "py_ns": 25155.5,
+      "mojo_ns": 321.4,
+      "speedup_x": 78.27,
+      "py_result": 0.01415,
+      "py_summary": "float:0.014150326797385628",
+      "mojo_summary": "float:0.014150326797385626",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "clip_duplicate_score_flat",
+      "py_ns": 183542.983,
+      "mojo_ns": 19716.6,
+      "speedup_x": 9.31,
+      "py_result": 0.949314,
+      "py_summary": "float:0.9493141984370366",
+      "mojo_summary": "float:0.9493141984370366",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "is_duplicate_clip_flat",
+      "py_ns": 184175.042,
+      "mojo_ns": 19408.8,
+      "speedup_x": 9.49,
+      "py_result": 1.0,
+      "py_summary": "bool:1",
+      "mojo_summary": "bool:1",
+      "result_match": true,
+      "py_error": null
+    }
+  ]
+}

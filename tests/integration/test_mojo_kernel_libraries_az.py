@@ -63,6 +63,22 @@ _SAMPLE_VARIABLES: dict[str, Any] = {
     "_lf5": [0.5, 0.6, 0.7, 0.4, 0.3],
     "_lf6_matrix": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
     "_lf8_coalitions": [0.0, 1.0, 2.0, 4.0, 3.0, 5.0, 6.0, 9.0],
+    "_lf48_video3x4x4": (
+        [10.0 for _ in range(16)]
+        + [200.0 if pixel < 4 else 10.0 for pixel in range(16)]
+        + [200.0 for _ in range(16)]
+    ),
+    "_lf48_video3x4x4_alt": (
+        [12.0 for _ in range(16)]
+        + [188.0 if pixel < 4 else 12.0 for pixel in range(16)]
+        + [192.0 for _ in range(16)]
+    ),
+    "_lf36_video_rgb3x2x2": (
+        [200.0, 20.0, 20.0] * 4
+        + [200.0, 20.0, 20.0] * 3
+        + [20.0, 20.0, 200.0]
+        + [20.0, 20.0, 200.0] * 4
+    ),
     "_li5": [1, 2, 3, 4, 5],
     "_li2_zero": [0, 1],
     "_li3": [1, 2, 3],
@@ -72,6 +88,124 @@ _SAMPLE_VARIABLES: dict[str, Any] = {
     "_li10_borda": [0, 1, 2, 3, 4, 1, 0, 2, 4, 3],
     "_li16": list(range(16)),
     "_lb5": [True, False, True, True, False],
+    "_lf25_block5x5": [
+        255.0 if 1 <= (index // 5) <= 3 and 1 <= (index % 5) <= 3 else 0.0
+        for index in range(25)
+    ],
+    "_lf25_ring5x5": [
+        255.0
+        if 1 <= (index // 5) <= 3
+        and 1 <= (index % 5) <= 3
+        and not ((index // 5) == 2 and (index % 5) == 2)
+        else 0.0
+        for index in range(25)
+    ],
+    "_lf36_components6x6": [
+        255.0
+        if (
+            (index % 6 == 0 and (index // 6 in {1, 2}))
+            or (index % 6 == 3 and (index // 6 in {1, 2, 3}))
+            or (index % 6 == 4 and index // 6 == 1)
+        )
+        else 0.0
+        for index in range(36)
+    ],
+    "_lf64_doc8x8": [
+        20.0
+        if (
+            (index // 8 == 2 and 1 <= (index % 8) <= 6)
+            or (index // 8 == 5 and 2 <= (index % 8) <= 5)
+        )
+        else 240.0
+        for index in range(64)
+    ],
+    "_lf64_doc8x8_alt": [
+        60.0
+        if (
+            (index // 8 == 2 and 1 <= (index % 8) <= 6)
+            or (index // 8 == 5 and 2 <= (index % 8) <= 5)
+        )
+        else 235.0
+        for index in range(64)
+    ],
+    "_lf64_docmask8x8": [
+        255.0
+        if (
+            (index // 8 == 2 and 1 <= (index % 8) <= 6)
+            or (index // 8 == 5 and 2 <= (index % 8) <= 5)
+        )
+        else 0.0
+        for index in range(64)
+    ],
+    "_lf36_adaptive_doc6x6": [
+        40.0
+        if (index // 6 == 2 and 2 <= (index % 6) <= 3)
+        else (220.0 if (index % 6) < 3 else 245.0)
+        for index in range(36)
+    ],
+    "_lf36_skewmask6x6": [
+        255.0 if 1 <= (index // 6) <= 4 and (index % 6) == (index // 6) else 0.0
+        for index in range(36)
+    ],
+    "_lf64_blobdoc8x8": [
+        20.0
+        if (
+            (2 <= (index // 8) <= 4 and 1 <= (index % 8) <= 3)
+            or ((index % 8) == 6 and (index // 8 in {1, 2}))
+        )
+        else 235.0
+        for index in range(64)
+    ],
+    "_lf64_doccolumns8x8": [
+        255.0
+        if 1 <= (index // 8) <= 6 and ((1 <= (index % 8) <= 2) or (5 <= (index % 8) <= 6))
+        else 0.0
+        for index in range(64)
+    ],
+    "_lf81_doctable9x9": [
+        255.0
+        if (
+            (((1 <= (index // 9) <= 2) or (4 <= (index // 9) <= 5) or (7 <= (index // 9) <= 8)))
+            and (((1 <= (index % 9) <= 2) or (4 <= (index % 9) <= 5) or (7 <= (index % 9) <= 8)))
+        )
+        else 0.0
+        for index in range(81)
+    ],
+    "_lf256_texture16x16": [
+        (
+            255.0
+            if ((index // 16) + (index % 16)) % 2 == 0
+            else 0.0
+        )
+        if (index // 16) >= 8 and (index % 16) >= 8
+        else 64.0
+        for index in range(256)
+    ],
+    "_lf16_grid4x4": [float(index) for index in range(16)],
+    "_li4_box_a": [0, 0, 2, 2],
+    "_li4_box_b": [1, 1, 3, 3],
+    "_lf12_colorcheck2x2": [
+        200.0, 20.0, 20.0,
+        200.0, 20.0, 20.0,
+        200.0, 20.0, 20.0,
+        20.0, 20.0, 200.0,
+    ],
+    "_lf75_video_motion3x5x5": (
+        [10.0 for _ in range(25)]
+        + [
+            200.0 if 1 <= (index // 5) <= 2 and 1 <= (index % 5) <= 2 else 10.0
+            for index in range(25)
+        ]
+        + [
+            200.0
+            if (
+                (1 <= (index // 5) <= 2 and 1 <= (index % 5) <= 2)
+                or ((index // 5) == 4 and (index % 5) == 4)
+            )
+            else 10.0
+            for index in range(25)
+        ]
+    ),
 }
 _SAFE_INDEX_NAMES = {
     "candidate_idx",
@@ -83,9 +217,572 @@ _SAFE_INDEX_NAMES = {
     "x",
 }
 _SAFE_SECOND_INDEX_NAMES = {"i", "item", "j", "u1", "u2", "y"}
+_RUNTIME_STRUCT_SPECS: dict[str, Any] | None = None
 
 
 _MANUAL_KERNEL_OVERRIDES: dict[tuple[str, str], list[Any]] = {
+    ("color_check", "dominant_background_rgb255"): [
+        _SAMPLE_VARIABLES["_lf12_colorcheck2x2"],
+        2,
+        2,
+        4,
+    ],
+    ("color_check", "dominant_background_hex"): [
+        _SAMPLE_VARIABLES["_lf12_colorcheck2x2"],
+        2,
+        2,
+        4,
+    ],
+    ("color_check", "dominant_background_contrast_ratio_hex"): [
+        _SAMPLE_VARIABLES["_lf12_colorcheck2x2"],
+        2,
+        2,
+        4,
+        "#FFFFFF",
+    ],
+    ("color_check", "dominant_background_wcag_pass_hex"): [
+        _SAMPLE_VARIABLES["_lf12_colorcheck2x2"],
+        2,
+        2,
+        4,
+        "#FFFFFF",
+        12.0,
+        False,
+    ],
+    ("color_check", "preferred_text_color_for_image"): [
+        _SAMPLE_VARIABLES["_lf12_colorcheck2x2"],
+        2,
+        2,
+        4,
+    ],
+    ("color_check", "preferred_text_contrast_for_image"): [
+        _SAMPLE_VARIABLES["_lf12_colorcheck2x2"],
+        2,
+        2,
+        4,
+    ],
+    ("color_check", "preferred_text_pass_for_image"): [
+        _SAMPLE_VARIABLES["_lf12_colorcheck2x2"],
+        2,
+        2,
+        4,
+        12.0,
+        False,
+    ],
+    ("image_palette", "dominant_palette_rgb255"): [
+        _SAMPLE_VARIABLES["_lf12_colorcheck2x2"],
+        2,
+        2,
+        4,
+        2,
+    ],
+    ("image_palette", "palette_size_estimate"): [
+        _SAMPLE_VARIABLES["_lf12_colorcheck2x2"],
+        2,
+        2,
+        4,
+        0.2,
+    ],
+    ("image_palette", "palette_entropy"): [
+        _SAMPLE_VARIABLES["_lf12_colorcheck2x2"],
+        2,
+        2,
+        4,
+    ],
+    ("image_palette", "mean_saturation_rgb255"): [
+        _SAMPLE_VARIABLES["_lf12_colorcheck2x2"],
+        2,
+        2,
+    ],
+    ("image_palette", "warm_color_ratio_rgb255"): [
+        _SAMPLE_VARIABLES["_lf12_colorcheck2x2"],
+        2,
+        2,
+        0.25,
+    ],
+    ("image_palette", "palette_contrast_score"): [
+        _SAMPLE_VARIABLES["_lf12_colorcheck2x2"],
+        2,
+        2,
+        4,
+        2,
+    ],
+    ("image_palette", "accent_color_hex"): [
+        _SAMPLE_VARIABLES["_lf12_colorcheck2x2"],
+        2,
+        2,
+        4,
+    ],
+    ("image_palette", "is_monochrome_palette"): [
+        _SAMPLE_VARIABLES["_lf12_colorcheck2x2"],
+        2,
+        2,
+        4,
+        0.2,
+        0.15,
+    ],
+    ("video_ops", "frame_count_from_flat"): [
+        _SAMPLE_VARIABLES["_lf48_video3x4x4"],
+        4,
+        4,
+        1,
+    ],
+    ("video_ops", "frame_mean_intensity"): [
+        _SAMPLE_VARIABLES["_lf48_video3x4x4"],
+        4,
+        4,
+        1,
+        1,
+    ],
+    ("video_ops", "frame_mean_intensities"): [
+        _SAMPLE_VARIABLES["_lf48_video3x4x4"],
+        4,
+        4,
+        1,
+    ],
+    ("video_ops", "frame_mean_abs_diff"): [
+        _SAMPLE_VARIABLES["_lf48_video3x4x4"],
+        4,
+        4,
+        1,
+        0,
+        1,
+    ],
+    ("video_ops", "temporal_mean_abs_diff"): [
+        _SAMPLE_VARIABLES["_lf48_video3x4x4"],
+        4,
+        4,
+        1,
+    ],
+    ("video_ops", "temporal_max_abs_diff"): [
+        _SAMPLE_VARIABLES["_lf48_video3x4x4"],
+        4,
+        4,
+        1,
+    ],
+    ("video_ops", "freeze_frame_ratio"): [
+        _SAMPLE_VARIABLES["_lf48_video3x4x4"],
+        4,
+        4,
+        1,
+        50.0,
+    ],
+    ("video_ops", "sample_frame_indices"): [
+        _SAMPLE_VARIABLES["_lf48_video3x4x4"],
+        4,
+        4,
+        1,
+        2,
+    ],
+    ("video_features", "scene_change_scores"): [
+        _SAMPLE_VARIABLES["_lf48_video3x4x4"],
+        4,
+        4,
+        1,
+    ],
+    ("video_features", "scene_cut_count"): [
+        _SAMPLE_VARIABLES["_lf48_video3x4x4"],
+        4,
+        4,
+        1,
+        0.4,
+    ],
+    ("video_features", "scene_cut_rate"): [
+        _SAMPLE_VARIABLES["_lf48_video3x4x4"],
+        4,
+        4,
+        1,
+        0.4,
+    ],
+    ("video_features", "peak_motion_frame"): [
+        _SAMPLE_VARIABLES["_lf48_video3x4x4"],
+        4,
+        4,
+        1,
+    ],
+    ("video_features", "keyframe_indices"): [
+        _SAMPLE_VARIABLES["_lf48_video3x4x4"],
+        4,
+        4,
+        1,
+        0.4,
+        4,
+    ],
+    ("video_storyboard", "scene_start_indices"): [
+        _SAMPLE_VARIABLES["_lf48_video3x4x4"],
+        4,
+        4,
+        1,
+        0.4,
+    ],
+    ("video_storyboard", "scene_end_indices"): [
+        _SAMPLE_VARIABLES["_lf48_video3x4x4"],
+        4,
+        4,
+        1,
+        0.4,
+    ],
+    ("video_storyboard", "scene_lengths_frames"): [
+        _SAMPLE_VARIABLES["_lf48_video3x4x4"],
+        4,
+        4,
+        1,
+        0.4,
+    ],
+    ("video_storyboard", "scene_representative_frames"): [
+        _SAMPLE_VARIABLES["_lf48_video3x4x4"],
+        4,
+        4,
+        1,
+        0.4,
+    ],
+    ("video_storyboard", "longest_scene_index"): [
+        _SAMPLE_VARIABLES["_lf48_video3x4x4"],
+        4,
+        4,
+        1,
+        0.4,
+    ],
+    ("video_storyboard", "storyboard_frame_indices"): [
+        _SAMPLE_VARIABLES["_lf48_video3x4x4"],
+        4,
+        4,
+        1,
+        0.4,
+        2,
+    ],
+    ("video_color", "frame_mean_rgb255"): [
+        _SAMPLE_VARIABLES["_lf36_video_rgb3x2x2"],
+        2,
+        2,
+        3,
+        1,
+    ],
+    ("video_color", "frame_mean_rgb_series"): [
+        _SAMPLE_VARIABLES["_lf36_video_rgb3x2x2"],
+        2,
+        2,
+        3,
+    ],
+    ("video_color", "clip_mean_rgb255"): [
+        _SAMPLE_VARIABLES["_lf36_video_rgb3x2x2"],
+        2,
+        2,
+        3,
+    ],
+    ("video_color", "dominant_clip_color_rgb255"): [
+        _SAMPLE_VARIABLES["_lf36_video_rgb3x2x2"],
+        2,
+        2,
+        3,
+        4,
+        3,
+    ],
+    ("video_color", "clip_mean_saturation_rgb255"): [
+        _SAMPLE_VARIABLES["_lf36_video_rgb3x2x2"],
+        2,
+        2,
+        3,
+    ],
+    ("video_color", "warm_frame_ratio_rgb255"): [
+        _SAMPLE_VARIABLES["_lf36_video_rgb3x2x2"],
+        2,
+        2,
+        3,
+        0.25,
+    ],
+    ("video_color", "color_drift_score_rgb255"): [
+        _SAMPLE_VARIABLES["_lf36_video_rgb3x2x2"],
+        2,
+        2,
+        3,
+    ],
+    ("video_color", "preferred_text_contrast_for_video"): [
+        _SAMPLE_VARIABLES["_lf36_video_rgb3x2x2"],
+        2,
+        2,
+        3,
+        4,
+        3,
+    ],
+    ("video_color", "preferred_text_color_for_video"): [
+        _SAMPLE_VARIABLES["_lf36_video_rgb3x2x2"],
+        2,
+        2,
+        3,
+        4,
+        3,
+    ],
+    ("video_accessibility", "frame_min_preferred_text_contrast_for_video"): [
+        _SAMPLE_VARIABLES["_lf36_video_rgb3x2x2"],
+        2,
+        2,
+        3,
+        1,
+    ],
+    ("video_accessibility", "frame_preferred_text_color_for_video"): [
+        _SAMPLE_VARIABLES["_lf36_video_rgb3x2x2"],
+        2,
+        2,
+        3,
+        1,
+    ],
+    ("video_accessibility", "sampled_video_min_text_contrast"): [
+        _SAMPLE_VARIABLES["_lf36_video_rgb3x2x2"],
+        2,
+        2,
+        3,
+        3,
+    ],
+    ("video_accessibility", "sampled_video_wcag_safe_ratio"): [
+        _SAMPLE_VARIABLES["_lf36_video_rgb3x2x2"],
+        2,
+        2,
+        3,
+        3,
+        16.0,
+        False,
+    ],
+    ("video_accessibility", "needs_text_backplate_for_video"): [
+        _SAMPLE_VARIABLES["_lf36_video_rgb3x2x2"],
+        2,
+        2,
+        3,
+        3,
+        16.0,
+        False,
+    ],
+    ("video_accessibility", "subtitle_band_min_preferred_text_contrast_for_video"): [
+        _SAMPLE_VARIABLES["_lf36_video_rgb3x2x2"],
+        2,
+        2,
+        3,
+        3,
+        1,
+    ],
+    ("video_accessibility", "subtitle_band_preferred_text_color_for_video"): [
+        _SAMPLE_VARIABLES["_lf36_video_rgb3x2x2"],
+        2,
+        2,
+        3,
+        3,
+        1,
+    ],
+    ("video_accessibility", "sampled_subtitle_band_wcag_safe_ratio"): [
+        _SAMPLE_VARIABLES["_lf36_video_rgb3x2x2"],
+        2,
+        2,
+        3,
+        3,
+        1,
+        16.0,
+        False,
+    ],
+    ("video_accessibility", "subtitle_band_needs_backplate_for_video"): [
+        _SAMPLE_VARIABLES["_lf36_video_rgb3x2x2"],
+        2,
+        2,
+        3,
+        3,
+        1,
+        16.0,
+        False,
+    ],
+    ("video_quality", "frame_quality_series"): [
+        _SAMPLE_VARIABLES["_lf48_video3x4x4"],
+        4,
+        4,
+        1,
+        3,
+    ],
+    ("video_quality", "average_frame_quality"): [
+        _SAMPLE_VARIABLES["_lf48_video3x4x4"],
+        4,
+        4,
+        1,
+        3,
+    ],
+    ("video_quality", "brightness_flicker_score"): [
+        _SAMPLE_VARIABLES["_lf48_video3x4x4"],
+        4,
+        4,
+        1,
+    ],
+    ("video_quality", "temporal_stability_score"): [
+        _SAMPLE_VARIABLES["_lf48_video3x4x4"],
+        4,
+        4,
+        1,
+    ],
+    ("video_quality", "video_quality_score"): [
+        _SAMPLE_VARIABLES["_lf48_video3x4x4"],
+        4,
+        4,
+        1,
+        3,
+    ],
+    ("video_quality", "is_usable_video"): [
+        _SAMPLE_VARIABLES["_lf48_video3x4x4"],
+        4,
+        4,
+        1,
+        3,
+        0.35,
+    ],
+    ("document_layout", "text_line_boxes_flat"): [
+        _SAMPLE_VARIABLES["_lf64_docmask8x8"],
+        8,
+        8,
+        128.0,
+        1,
+    ],
+    ("document_layout", "line_count_flat"): [
+        _SAMPLE_VARIABLES["_lf64_docmask8x8"],
+        8,
+        8,
+        128.0,
+        1,
+    ],
+    ("document_layout", "column_boxes_flat"): [
+        _SAMPLE_VARIABLES["_lf64_doccolumns8x8"],
+        8,
+        8,
+        128.0,
+        2,
+    ],
+    ("document_layout", "column_count_flat"): [
+        _SAMPLE_VARIABLES["_lf64_doccolumns8x8"],
+        8,
+        8,
+        128.0,
+        2,
+    ],
+    ("document_layout", "text_density_grid_flat"): [
+        _SAMPLE_VARIABLES["_lf64_docmask8x8"],
+        8,
+        8,
+        128.0,
+        2,
+        2,
+    ],
+    ("document_layout", "multi_column_score_flat"): [
+        _SAMPLE_VARIABLES["_lf64_doccolumns8x8"],
+        8,
+        8,
+        128.0,
+    ],
+    ("document_layout", "table_like_score_flat"): [
+        _SAMPLE_VARIABLES["_lf81_doctable9x9"],
+        9,
+        9,
+        128.0,
+    ],
+    ("video_regions", "frame_diff_mask_flat"): [
+        _SAMPLE_VARIABLES["_lf75_video_motion3x5x5"],
+        5,
+        5,
+        1,
+        0,
+        1,
+        50.0,
+    ],
+    ("video_regions", "motion_boxes_between_frames"): [
+        _SAMPLE_VARIABLES["_lf75_video_motion3x5x5"],
+        5,
+        5,
+        1,
+        0,
+        1,
+        50.0,
+        4,
+    ],
+    ("video_regions", "largest_motion_box_between_frames"): [
+        _SAMPLE_VARIABLES["_lf75_video_motion3x5x5"],
+        5,
+        5,
+        1,
+        1,
+        2,
+        50.0,
+    ],
+    ("video_regions", "temporal_motion_area_series"): [
+        _SAMPLE_VARIABLES["_lf75_video_motion3x5x5"],
+        5,
+        5,
+        1,
+        50.0,
+    ],
+    ("video_regions", "peak_motion_box_flat"): [
+        _SAMPLE_VARIABLES["_lf75_video_motion3x5x5"],
+        5,
+        5,
+        1,
+        50.0,
+    ],
+    ("video_regions", "temporal_union_motion_box_flat"): [
+        _SAMPLE_VARIABLES["_lf75_video_motion3x5x5"],
+        5,
+        5,
+        1,
+        50.0,
+    ],
+    ("video_regions", "motion_coverage_ratio_flat"): [
+        _SAMPLE_VARIABLES["_lf75_video_motion3x5x5"],
+        5,
+        5,
+        1,
+        50.0,
+    ],
+    ("video_similarity", "frame_duplicate_scores"): [
+        _SAMPLE_VARIABLES["_lf48_video3x4x4"],
+        _SAMPLE_VARIABLES["_lf48_video3x4x4_alt"],
+        4,
+        4,
+        1,
+    ],
+    ("video_similarity", "average_frame_duplicate_score"): [
+        _SAMPLE_VARIABLES["_lf48_video3x4x4"],
+        _SAMPLE_VARIABLES["_lf48_video3x4x4_alt"],
+        4,
+        4,
+        1,
+    ],
+    ("video_similarity", "frame_hash_hamming_series"): [
+        _SAMPLE_VARIABLES["_lf48_video3x4x4"],
+        _SAMPLE_VARIABLES["_lf48_video3x4x4_alt"],
+        4,
+        4,
+        1,
+    ],
+    ("video_similarity", "average_frame_hash_hamming"): [
+        _SAMPLE_VARIABLES["_lf48_video3x4x4"],
+        _SAMPLE_VARIABLES["_lf48_video3x4x4_alt"],
+        4,
+        4,
+        1,
+    ],
+    ("video_similarity", "temporal_signature_distance"): [
+        _SAMPLE_VARIABLES["_lf48_video3x4x4"],
+        _SAMPLE_VARIABLES["_lf48_video3x4x4_alt"],
+        4,
+        4,
+        1,
+    ],
+    ("video_similarity", "clip_duplicate_score_flat"): [
+        _SAMPLE_VARIABLES["_lf48_video3x4x4"],
+        _SAMPLE_VARIABLES["_lf48_video3x4x4_alt"],
+        4,
+        4,
+        1,
+    ],
+    ("video_similarity", "is_duplicate_clip_flat"): [
+        _SAMPLE_VARIABLES["_lf48_video3x4x4"],
+        _SAMPLE_VARIABLES["_lf48_video3x4x4_alt"],
+        4,
+        4,
+        1,
+        0.85,
+    ],
     ("cellular_automata", "game_of_life_step"): [
         [
             0,
@@ -442,6 +1139,28 @@ def _default_scalar_value(type_name: str) -> Any:
     raise ValueError(f"Unsupported scalar runtime type '{type_name}'.")
 
 
+def _runtime_struct_specs() -> dict[str, Any]:
+    global _RUNTIME_STRUCT_SPECS
+    if _RUNTIME_STRUCT_SPECS is not None:
+        return _RUNTIME_STRUCT_SPECS
+
+    specs: dict[str, Any] = {}
+    for module in mojo_inventory.discover_runtime_library_modules(executable_only=True):
+        try:
+            specs.update(mojo_inventory.parse_runtime_struct_specs(module.path))
+        except OSError:
+            continue
+    _RUNTIME_STRUCT_SPECS = specs
+    return specs
+
+
+def _default_struct_value(type_name: str) -> dict[str, Any]:
+    spec = _runtime_struct_specs().get(type_name)
+    if spec is None:
+        raise ValueError(f"Unsupported struct runtime type '{type_name}'.")
+    return {field.name: _default_value(field.typ) for field in spec.fields}
+
+
 def _default_list_value(inner_type: str) -> list[Any]:
     if inner_type == "Bool":
         return copy.deepcopy(_SAMPLE_VARIABLES["_lb5"])
@@ -504,6 +1223,8 @@ def _default_value(type_name: str) -> Any:
     if mojo_inventory._is_list_type(type_name):
         inner_type = mojo_inventory._list_inner_type(type_name)
         return _default_list_value(inner_type)
+    if type_name in _runtime_struct_specs():
+        return _default_struct_value(type_name)
     return _default_scalar_value(type_name)
 
 

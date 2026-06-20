@@ -1,0 +1,114 @@
+{
+  "lib": "image_morphology",
+  "status": "ok",
+  "n_functions": 9,
+  "n_compared": 9,
+  "n_timed": 9,
+  "overall_speedup_x": 20.01,
+  "total_py_ns": 80781.09,
+  "total_mojo_ns": 4037.8,
+  "elapsed_s": 2.74,
+  "n_iterations": 5000,
+  "mojo_error": null,
+  "functions": [
+    {
+      "function": "binary_erode_flat",
+      "py_ns": 6319.567,
+      "mojo_ns": 294.6,
+      "speedup_x": 21.45,
+      "py_result": null,
+      "py_summary": "list:25:1965119635",
+      "mojo_summary": "list:25:1965119635",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "binary_dilate_flat",
+      "py_ns": 8483.342,
+      "mojo_ns": 310.8,
+      "speedup_x": 27.3,
+      "py_result": null,
+      "py_summary": "list:25:81807899",
+      "mojo_summary": "list:25:81807899",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "binary_open_flat",
+      "py_ns": 21808.617,
+      "mojo_ns": 663.0,
+      "speedup_x": 32.89,
+      "py_result": null,
+      "py_summary": "list:25:1779726168",
+      "mojo_summary": "list:25:1779726168",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "binary_close_flat",
+      "py_ns": 21494.4,
+      "mojo_ns": 656.2,
+      "speedup_x": 32.76,
+      "py_result": null,
+      "py_summary": "list:25:1779726168",
+      "mojo_summary": "list:25:1779726168",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "binary_fill_holes_flat",
+      "py_ns": 7925.75,
+      "mojo_ns": 819.0,
+      "speedup_x": 9.68,
+      "py_result": null,
+      "py_summary": "list:25:1779726168",
+      "mojo_summary": "list:25:1779726168",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "connected_components_4_flat",
+      "py_ns": 4110.308,
+      "mojo_ns": 412.6,
+      "speedup_x": 9.96,
+      "py_result": null,
+      "py_summary": "list:36:338134490",
+      "mojo_summary": "list:36:338134490",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "largest_component_bbox_flat",
+      "py_ns": 4734.383,
+      "mojo_ns": 570.8,
+      "speedup_x": 8.29,
+      "py_result": null,
+      "py_summary": "list:5:1362138378",
+      "mojo_summary": "list:5:1362138378",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "distance_transform_cityblock_flat",
+      "py_ns": 4490.875,
+      "mojo_ns": 303.2,
+      "speedup_x": 14.81,
+      "py_result": null,
+      "py_summary": "list:25:413472578",
+      "mojo_summary": "list:25:413472578",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "foreground_area_ratio_flat",
+      "py_ns": 1413.85,
+      "mojo_ns": 7.6,
+      "speedup_x": 186.03,
+      "py_result": 0.36,
+      "py_summary": "float:0.36",
+      "mojo_summary": "float:0.36",
+      "result_match": true,
+      "py_error": null
+    }
+  ]
+}

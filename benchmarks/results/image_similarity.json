@@ -1,0 +1,103 @@
+{
+  "lib": "image_similarity",
+  "status": "ok",
+  "n_functions": 8,
+  "n_compared": 8,
+  "n_timed": 8,
+  "overall_speedup_x": 548.06,
+  "total_py_ns": 148961.97,
+  "total_mojo_ns": 271.8,
+  "elapsed_s": 3.2,
+  "n_iterations": 5000,
+  "mojo_error": null,
+  "functions": [
+    {
+      "function": "mean_squared_error_flat",
+      "py_ns": 12023.975,
+      "mojo_ns": 39.0,
+      "speedup_x": 308.31,
+      "py_result": 271.09375,
+      "py_summary": "float:271.09375",
+      "mojo_summary": "float:271.09375",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "mean_abs_error_flat",
+      "py_ns": 12523.542,
+      "mojo_ns": 34.6,
+      "speedup_x": 361.95,
+      "py_result": 10.46875,
+      "py_summary": "float:10.46875",
+      "mojo_summary": "float:10.46875",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "psnr_flat",
+      "py_ns": 7569.675,
+      "mojo_ns": 52.8,
+      "speedup_x": 143.37,
+      "py_result": 23.799609,
+      "py_summary": "float:23.799608557249048",
+      "mojo_summary": "float:23.799608559945366",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "normalized_cross_correlation_flat",
+      "py_ns": 22803.017,
+      "mojo_ns": 0.6,
+      "speedup_x": 38005.03,
+      "py_result": 1.0,
+      "py_summary": "float:1.0",
+      "mojo_summary": "float:1.0",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "ssim_global_flat",
+      "py_ns": 20258.383,
+      "mojo_ns": 94.2,
+      "speedup_x": 215.06,
+      "py_result": 0.974471,
+      "py_summary": "float:0.9744712575416824",
+      "mojo_summary": "float:0.9744712575416824",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "diff_fraction_flat",
+      "py_ns": 14651.008,
+      "mojo_ns": 39.4,
+      "speedup_x": 371.85,
+      "py_result": 0.15625,
+      "py_summary": "float:0.15625",
+      "mojo_summary": "float:0.15625",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "crop_region_similarity_flat",
+      "py_ns": 4555.933,
+      "mojo_ns": 10.6,
+      "speedup_x": 429.81,
+      "py_result": 0.911765,
+      "py_summary": "float:0.9117647058823529",
+      "mojo_summary": "float:0.9117647058823529",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "duplicate_score_flat",
+      "py_ns": 54576.433,
+      "mojo_ns": 0.6,
+      "speedup_x": 90960.72,
+      "py_result": 0.954709,
+      "py_summary": "float:0.9547091916479253",
+      "mojo_summary": "float:0.9547091916479253",
+      "result_match": true,
+      "py_error": null
+    }
+  ]
+}

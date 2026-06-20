@@ -1,0 +1,81 @@
+{
+  "lib": "video_gate",
+  "status": "ok",
+  "n_functions": 6,
+  "n_compared": 6,
+  "n_timed": 6,
+  "overall_speedup_x": 205.09,
+  "total_py_ns": 369.17,
+  "total_mojo_ns": 1.8,
+  "elapsed_s": 2.19,
+  "n_iterations": 5000,
+  "mojo_error": null,
+  "functions": [
+    {
+      "function": "should_use_cached_video",
+      "py_ns": 90.858,
+      "mojo_ns": 0.6,
+      "speedup_x": 151.43,
+      "py_result": 1.0,
+      "py_summary": "bool:1",
+      "mojo_summary": "bool:1",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "needs_clearer_video",
+      "py_ns": 101.458,
+      "mojo_ns": 0.0,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_summary": "bool:0",
+      "mojo_summary": "bool:0",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "quality_gate_passed_video",
+      "py_ns": 117.225,
+      "mojo_ns": 0.6,
+      "speedup_x": 195.37,
+      "py_result": 1.0,
+      "py_summary": "bool:1",
+      "mojo_summary": "bool:1",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "is_mostly_static_video",
+      "py_ns": 117.408,
+      "mojo_ns": 0.0,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_summary": "bool:0",
+      "mojo_summary": "bool:0",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "should_extract_keyframes",
+      "py_ns": 161.083,
+      "mojo_ns": 0.6,
+      "speedup_x": 268.47,
+      "py_result": 1.0,
+      "py_summary": "bool:1",
+      "mojo_summary": "bool:1",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "route_video_request",
+      "py_ns": 166.308,
+      "mojo_ns": 0.0,
+      "speedup_x": null,
+      "py_result": 0.0,
+      "py_summary": "int:0",
+      "mojo_summary": "int:0",
+      "result_match": true,
+      "py_error": null
+    }
+  ]
+}

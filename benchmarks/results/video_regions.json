@@ -1,0 +1,92 @@
+{
+  "lib": "video_regions",
+  "status": "ok",
+  "n_functions": 7,
+  "n_compared": 7,
+  "n_timed": 7,
+  "overall_speedup_x": 29.04,
+  "total_py_ns": 248992.09,
+  "total_mojo_ns": 8574.8,
+  "elapsed_s": 4.15,
+  "n_iterations": 5000,
+  "mojo_error": null,
+  "functions": [
+    {
+      "function": "frame_diff_mask_flat",
+      "py_ns": 16931.042,
+      "mojo_ns": 300.8,
+      "speedup_x": 56.29,
+      "py_result": null,
+      "py_summary": "list:25:185324706",
+      "mojo_summary": "list:25:185324706",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "motion_boxes_between_frames",
+      "py_ns": 34698.6,
+      "mojo_ns": 1433.4,
+      "speedup_x": 24.21,
+      "py_result": null,
+      "py_summary": "list:5:1934677050",
+      "mojo_summary": "list:5:1934677050",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "largest_motion_box_between_frames",
+      "py_ns": 21062.583,
+      "mojo_ns": 1618.8,
+      "speedup_x": 13.01,
+      "py_result": null,
+      "py_summary": "list:5:905234650",
+      "mojo_summary": "list:5:905234650",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "temporal_motion_area_series",
+      "py_ns": 37126.725,
+      "mojo_ns": 844.6,
+      "speedup_x": 43.96,
+      "py_result": null,
+      "py_summary": "list:2:1887653480",
+      "mojo_summary": "list:2:1887653480",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "peak_motion_box_flat",
+      "py_ns": 61151.342,
+      "mojo_ns": 2073.2,
+      "speedup_x": 29.5,
+      "py_result": null,
+      "py_summary": "list:5:1934677050",
+      "mojo_summary": "list:5:1934677050",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "temporal_union_motion_box_flat",
+      "py_ns": 40394.433,
+      "mojo_ns": 1260.4,
+      "speedup_x": 32.05,
+      "py_result": null,
+      "py_summary": "list:5:11937265",
+      "mojo_summary": "list:5:11937265",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "motion_coverage_ratio_flat",
+      "py_ns": 37627.367,
+      "mojo_ns": 1043.6,
+      "speedup_x": 36.06,
+      "py_result": 0.2,
+      "py_summary": "float:0.2",
+      "mojo_summary": "float:0.2",
+      "result_match": true,
+      "py_error": null
+    }
+  ]
+}

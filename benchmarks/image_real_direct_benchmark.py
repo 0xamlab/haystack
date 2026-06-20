@@ -5,6 +5,7 @@ import json
 import math
 import os
 import re
+import shutil
 import statistics
 import subprocess
 import sys
@@ -19,6 +20,7 @@ if str(ROOT) not in sys.path:
 
 from benchmarks.png_loader import load_png_rgb
 
+MOJO_ENV = ROOT / "mojo_env"
 MOJO_DIR = ROOT / "mojo" / "engine"
 MOJO_BENCH_SRC = ROOT / "benchmarks" / "mojo_benchmarks" / "bench_image_real_direct.mojo"
 ARTIFACT_PATH = ROOT / "build" / "image_real_direct_benchmark_repo_env.json"
@@ -30,6 +32,7 @@ PY_LIBS = ROOT / "benchmarks" / "python_libs"
 # (and into spawned ProcessPool workers, which re-import on a polluted path).
 # Defer the path mutation + bare-name imports until the benchmark actually runs.
 py_image_features = None
+py_image_palette = None
 py_image_quality = None
 py_image_resize = None
 py_perceptual_hash = None
@@ -38,7 +41,7 @@ py_vision_gate = None
 
 def _load_python_libs() -> None:
     """Bind the python_libs equivalents lazily (no import-time sys.path pollution)."""
-    global py_image_features, py_image_quality, py_image_resize
+    global py_image_features, py_image_palette, py_image_quality, py_image_resize
     global py_perceptual_hash, py_vision_gate
     if py_image_features is not None:
         return
@@ -49,11 +52,13 @@ def _load_python_libs() -> None:
     import image_resize
     import perceptual_hash
     import vision_gate
+    from benchmarks.python_manual_libs import image_palette
 
     # image_quality.py currently references math.math.log
     math.math = math
 
     py_image_features = image_features
+    py_image_palette = image_palette
     py_image_quality = image_quality
     py_image_resize = image_resize
     py_perceptual_hash = perceptual_hash
@@ -123,6 +128,10 @@ def build_python_cases(image: LoadedImage) -> list[PythonCase]:
     brightness = py_image_quality.brightness_flat(image.flat_gray, image.width, image.height)
     entropy = py_image_quality.entropy_flat(image.flat_gray, image.width, image.height)
     edge = py_image_features.edge_density_flat(image.flat_gray, image.width, image.height, 32.0)
+    palette_levels = 8
+    palette_top_k = 3
+    palette_min_weight = 0.02
+    warm_min_saturation = 0.25
 
     return [
         PythonCase(
@@ -179,6 +188,68 @@ def build_python_cases(image: LoadedImage) -> list[PythonCase]:
             kind="list",
             fn=lambda: py_image_features.dominant_colors(
                 image.flat_rgb, image.width, image.height, 8
+            ),
+        ),
+        PythonCase(
+            name="dominant_palette_rgb255",
+            kind="list",
+            fn=lambda: py_image_palette.dominant_palette_rgb255(
+                image.flat_rgb,
+                image.width,
+                image.height,
+                palette_levels,
+                palette_top_k,
+            ),
+        ),
+        PythonCase(
+            name="palette_size_estimate",
+            kind="int",
+            fn=lambda: py_image_palette.palette_size_estimate(
+                image.flat_rgb,
+                image.width,
+                image.height,
+                palette_levels,
+                palette_min_weight,
+            ),
+        ),
+        PythonCase(
+            name="palette_entropy",
+            kind="float",
+            fn=lambda: py_image_palette.palette_entropy(
+                image.flat_rgb,
+                image.width,
+                image.height,
+                palette_levels,
+            ),
+        ),
+        PythonCase(
+            name="mean_saturation_rgb255",
+            kind="float",
+            fn=lambda: py_image_palette.mean_saturation_rgb255(
+                image.flat_rgb,
+                image.width,
+                image.height,
+            ),
+        ),
+        PythonCase(
+            name="warm_color_ratio_rgb255",
+            kind="float",
+            fn=lambda: py_image_palette.warm_color_ratio_rgb255(
+                image.flat_rgb,
+                image.width,
+                image.height,
+                warm_min_saturation,
+            ),
+        ),
+        PythonCase(
+            name="palette_contrast_score",
+            kind="float",
+            fn=lambda: py_image_palette.palette_contrast_score(
+                image.flat_rgb,
+                image.width,
+                image.height,
+                palette_levels,
+                palette_top_k,
             ),
         ),
         PythonCase(
@@ -289,16 +360,67 @@ def parse_mojo_benchmark_output(stdout: str) -> dict[str, Any]:
     return {"image_meta": image_meta, "iters": iters, "timings": timings, "results": results}
 
 
-def build_mojo_benchmark_binary(mojo_bin: Path) -> Path:
+def _pixi_env_binary() -> str | None:
+    pixi_home = os.environ.get("PIXI_HOME")
+    if not pixi_home:
+        return None
+    candidate = Path(pixi_home).expanduser() / "bin" / "pixi"
+    if candidate.exists():
+        return str(candidate)
+    return None
+
+
+def _repo_local_pixi_binary() -> str | None:
+    candidate = ROOT / ".pixi" / "bin" / "pixi"
+    if candidate.exists():
+        return str(candidate)
+    return None
+
+
+def _resolve_pixi() -> str:
+    explicit = os.environ.get("PIXI_BIN", "").strip()
+    if explicit:
+        return explicit
+    pixi_on_path = shutil.which("pixi")
+    if pixi_on_path:
+        return pixi_on_path
+    pixi_from_env = _pixi_env_binary()
+    if pixi_from_env:
+        return pixi_from_env
+    repo_local_pixi = _repo_local_pixi_binary()
+    if repo_local_pixi:
+        return repo_local_pixi
+    home_pixi = Path.home() / ".pixi" / "bin" / "pixi"
+    if home_pixi.exists():
+        return str(home_pixi)
+    raise RuntimeError("pixi is not available; real-image Mojo benchmark requires mojo_env/pixi.")
+
+
+def _build_mojo_build_command(pixi_binary: str, binary_path: Path) -> list[str]:
+    return [
+        pixi_binary,
+        "run",
+        "mojo",
+        "build",
+        "-I",
+        "../mojo/engine",
+        "../benchmarks/mojo_benchmarks/bench_image_real_direct.mojo",
+        "-o",
+        str(binary_path),
+    ]
+
+
+def build_mojo_benchmark_binary() -> tuple[Path, str]:
     binary_path = ROOT / "build" / "bench_image_real_direct"
+    pixi_binary = _resolve_pixi()
     subprocess.run(
-        [str(mojo_bin), "build", f"-I{MOJO_DIR}", str(MOJO_BENCH_SRC), "-o", str(binary_path)],
-        cwd=str(ROOT),
+        _build_mojo_build_command(pixi_binary, binary_path),
+        cwd=str(MOJO_ENV),
         check=True,
         capture_output=True,
         text=True,
     )
-    return binary_path
+    return binary_path, pixi_binary
 
 
 def run_mojo_direct(binary_path: Path, image: LoadedImage) -> dict[str, Any]:
@@ -315,20 +437,14 @@ def run_mojo_direct(binary_path: Path, image: LoadedImage) -> dict[str, Any]:
 
 
 def main() -> int:
-    if sys.executable.startswith("/usr/local/"):
-        raise RuntimeError(
-            "Run benchmarks/image_real_direct_benchmark.py via ./scripts/run_repo_python.sh "
-            "so it uses the repo Pixi environment."
-        )
-
-    mojo_bin = Path(sys.executable).with_name("mojo")
-    binary_path = build_mojo_benchmark_binary(mojo_bin)
+    binary_path, pixi_binary = build_mojo_benchmark_binary()
     images = [load_png_image(name, path) for name, path in _image_selection().items()]
 
     artifact: dict[str, Any] = {
         "kind": "image_real_direct_benchmark",
         "controller_python": sys.executable,
-        "mojo_binary": str(mojo_bin),
+        "pixi_binary": pixi_binary,
+        "mojo_binary": str(MOJO_ENV / ".pixi" / "envs" / "default" / "bin" / "mojo"),
         "bench_binary": str(binary_path),
         "images": [],
         "summary": {},

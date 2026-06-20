@@ -14,6 +14,10 @@ try:
     from std.math import atan2
 except Exception:
     pass
+try:
+    from std.math import pow
+except Exception:
+    pass
 
 def random_float64(lo=0.0, hi=1.0): return _rng.uniform(lo, hi)
 def random_si64(): return _rng.randint(-2**31, 2**31)
@@ -113,6 +117,18 @@ class Python:
     def import_module(name):
         import importlib; return importlib.import_module(name)
 
+def _srgb_channel_to_linear(channel):
+    c = channel
+    if c < 0.0:
+        c = 0.0
+    elif c > 1.0:
+        c = 1.0
+    if c <= 0.04045:
+        return c / 12.92
+    return ((c + 0.055) / 1.055) ** (2.4)
+
+
+
 def delta_e_76(l1, a1, b1, l2, a2, b2):
     dl = l1 - l2
     da = a1 - a2
@@ -152,7 +168,10 @@ def lab_to_lch_h(a, b):
 
 
 def rgb_to_luminance(r, g, b):
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+    rl = _srgb_channel_to_linear(r)
+    gl = _srgb_channel_to_linear(g)
+    bl = _srgb_channel_to_linear(b)
+    return 0.2126 * rl + 0.7152 * gl + 0.0722 * bl
 
 
 

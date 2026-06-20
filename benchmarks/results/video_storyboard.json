@@ -1,0 +1,81 @@
+{
+  "lib": "video_storyboard",
+  "status": "ok",
+  "n_functions": 6,
+  "n_compared": 6,
+  "n_timed": 6,
+  "overall_speedup_x": 29.26,
+  "total_py_ns": 52487.73,
+  "total_mojo_ns": 1794.1,
+  "elapsed_s": 2.23,
+  "n_iterations": 10000,
+  "mojo_error": null,
+  "functions": [
+    {
+      "function": "scene_start_indices",
+      "py_ns": 8435.654,
+      "mojo_ns": 222.1,
+      "speedup_x": 37.98,
+      "py_result": null,
+      "py_summary": "list:2:1372441100",
+      "mojo_summary": "list:2:1372441100",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "scene_end_indices",
+      "py_ns": 8729.429,
+      "mojo_ns": 315.4,
+      "speedup_x": 27.68,
+      "py_result": null,
+      "py_summary": "list:2:109080343",
+      "mojo_summary": "list:2:109080343",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "scene_lengths_frames",
+      "py_ns": 8766.779,
+      "mojo_ns": 311.4,
+      "speedup_x": 28.15,
+      "py_result": null,
+      "py_summary": "list:2:993203232",
+      "mojo_summary": "list:2:993203232",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "scene_representative_frames",
+      "py_ns": 8935.633,
+      "mojo_ns": 312.8,
+      "speedup_x": 28.57,
+      "py_result": null,
+      "py_summary": "list:2:1372441100",
+      "mojo_summary": "list:2:1372441100",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "longest_scene_index",
+      "py_ns": 8843.454,
+      "mojo_ns": 314.9,
+      "speedup_x": 28.08,
+      "py_result": 0.0,
+      "py_summary": "int:0",
+      "mojo_summary": "int:0",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "storyboard_frame_indices",
+      "py_ns": 8776.779,
+      "mojo_ns": 317.5,
+      "speedup_x": 27.64,
+      "py_result": null,
+      "py_summary": "list:2:1372441100",
+      "mojo_summary": "list:2:1372441100",
+      "result_match": true,
+      "py_error": null
+    }
+  ]
+}

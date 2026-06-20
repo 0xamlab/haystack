@@ -1,0 +1,114 @@
+{
+  "lib": "video_color",
+  "status": "ok",
+  "n_functions": 9,
+  "n_compared": 9,
+  "n_timed": 9,
+  "overall_speedup_x": 10.09,
+  "total_py_ns": 48084.95,
+  "total_mojo_ns": 4765.9,
+  "elapsed_s": 2.66,
+  "n_iterations": 10000,
+  "mojo_error": null,
+  "functions": [
+    {
+      "function": "frame_mean_rgb255",
+      "py_ns": 966.796,
+      "mojo_ns": 139.6,
+      "speedup_x": 6.93,
+      "py_result": null,
+      "py_summary": "list:3:1157493584",
+      "mojo_summary": "list:3:1157493584",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "frame_mean_rgb_series",
+      "py_ns": 2995.012,
+      "mojo_ns": 655.7,
+      "speedup_x": 4.57,
+      "py_result": null,
+      "py_summary": "list:9:1589222838",
+      "mojo_summary": "list:9:1589222838",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "clip_mean_rgb255",
+      "py_ns": 2361.296,
+      "mojo_ns": 153.5,
+      "speedup_x": 15.38,
+      "py_result": null,
+      "py_summary": "list:3:206235059",
+      "mojo_summary": "list:3:206235059",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "dominant_clip_color_rgb255",
+      "py_ns": 7487.042,
+      "mojo_ns": 969.4,
+      "speedup_x": 7.72,
+      "py_result": null,
+      "py_summary": "list:4:1382363508",
+      "mojo_summary": "list:4:1382363508",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "clip_mean_saturation_rgb255",
+      "py_ns": 10102.712,
+      "mojo_ns": 36.5,
+      "speedup_x": 276.79,
+      "py_result": 0.9,
+      "py_summary": "float:0.9000000000000002",
+      "mojo_summary": "float:0.9000000000000002",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "warm_frame_ratio_rgb255",
+      "py_ns": 5056.417,
+      "mojo_ns": 395.5,
+      "speedup_x": 12.78,
+      "py_result": 0.666667,
+      "py_summary": "float:0.6666666666666666",
+      "mojo_summary": "float:0.6666666666666666",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "color_drift_score_rgb255",
+      "py_ns": 3203.229,
+      "mojo_ns": 386.6,
+      "speedup_x": 8.29,
+      "py_result": 0.288175,
+      "py_summary": "float:0.2881752638568445",
+      "mojo_summary": "float:0.2881752638568445",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "preferred_text_contrast_for_video",
+      "py_ns": 7939.417,
+      "mojo_ns": 981.4,
+      "speedup_x": 8.09,
+      "py_result": 5.888892,
+      "py_summary": "float:5.8888921644276735",
+      "mojo_summary": "float:5.888892162374212",
+      "result_match": true,
+      "py_error": null
+    },
+    {
+      "function": "preferred_text_color_for_video",
+      "py_ns": 7973.025,
+      "mojo_ns": 1047.7,
+      "speedup_x": 7.61,
+      "py_result": null,
+      "py_summary": "str:7:347467827",
+      "mojo_summary": "str:7:347467827",
+      "result_match": true,
+      "py_error": null
+    }
+  ]
+}
