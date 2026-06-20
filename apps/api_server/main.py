@@ -2,8 +2,6 @@
 Algenta API — FastAPI application entry point.
 """
 
-import logging
-import sys
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from typing import Any, cast
@@ -16,7 +14,13 @@ from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse, PlainTextResponse
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
-from apps.api_server.config import Settings, SettingsProxy, get_settings
+from apps.api_server.app_support import configure_logging as _configure_logging
+from apps.api_server.app_support import cors_middleware_kwargs as _cors_middleware_kwargs
+from apps.api_server.app_support import (
+    redact_log_secrets as _redact_log_secrets,  # noqa: F401 — back-compat re-export
+)
+from apps.api_server.app_support import sync_cors_middleware as _sync_cors_middleware
+from apps.api_server.config import SettingsProxy, get_settings
 from apps.api_server.middleware.auth import get_current_org
 from apps.api_server.middleware.idempotency import IdempotencyMiddleware
 from apps.api_server.middleware.logging import StructuredLoggingMiddleware
@@ -24,7 +28,6 @@ from apps.api_server.middleware.request_id import RequestIDMiddleware
 from apps.api_server.middleware.response_contract import ResponseContractMiddleware
 from apps.api_server.openapi_surface import apply_openapi_surface, validate_openapi_surface_configuration
 from apps.api_server.pagination import paginate_sequence
-from apps.api_server.services.public_url_policy import validate_public_url_configuration
 from apps.api_server.routers import (
     account,
     agent_runs,
@@ -46,79 +49,13 @@ from apps.api_server.routers import (
     team,
 )
 from apps.api_server.routers import engines as engines_router
+from apps.api_server.services.public_url_policy import validate_public_url_configuration
 from apps.platform_contract_constants import (
     CAPABILITY_PLANE_CONTRACT,
     PRIMARY_DATA_QUERY_CONTRACT,
 )
 
 settings = SettingsProxy()
-
-_CORS_EXPOSE_HEADERS = [
-    "X-Request-Id",
-    "X-Decision-Hash",
-    "X-Execution-Ms",
-    "X-Mojo-Ms",
-    "X-RateLimit-Limit",
-    "X-RateLimit-Remaining",
-]
-
-
-def _cors_middleware_kwargs(config: Settings) -> dict[str, Any]:
-    return {
-        "allow_origins": config.cors_origins_list,
-        "allow_credentials": True,
-        "allow_methods": ["*"],
-        "allow_headers": ["*"],
-        "expose_headers": list(_CORS_EXPOSE_HEADERS),
-    }
-
-
-def _sync_cors_middleware(app: FastAPI, config: Settings) -> None:
-    desired_kwargs = _cors_middleware_kwargs(config)
-    for middleware in app.user_middleware:
-        if middleware.cls is not CORSMiddleware:
-            continue
-        if middleware.kwargs != desired_kwargs:
-            middleware.kwargs = desired_kwargs
-            app.middleware_stack = None
-        return
-    raise RuntimeError("CORSMiddleware not registered on FastAPI application.")
-
-
-def _redact_log_secrets(_logger: Any, _method: str, event_dict: dict[str, Any]) -> dict[str, Any]:
-    """B10: scrub credential-shaped keys from every structured log event before it is rendered, so
-    an auth header / API key / token can never reach stdout or the log pipeline."""
-    from apps.api_server.services.secret_redaction import redact_secret_fields
-
-    return redact_secret_fields(event_dict)
-
-
-def _configure_logging(config: Settings) -> None:
-    shared_processors: list[Any] = [
-        structlog.contextvars.merge_contextvars,
-        structlog.stdlib.add_logger_name,
-        structlog.stdlib.add_log_level,
-        structlog.processors.TimeStamper(fmt="iso"),
-        structlog.processors.StackInfoRenderer(),
-        _redact_log_secrets,
-    ]
-    renderer = (
-        structlog.dev.ConsoleRenderer()
-        if config.is_development
-        else structlog.processors.JSONRenderer()
-    )
-    structlog.configure(
-        processors=shared_processors + [renderer],
-        wrapper_class=structlog.stdlib.BoundLogger,
-        context_class=dict,
-        logger_factory=structlog.stdlib.LoggerFactory(),
-        cache_logger_on_first_use=True,
-    )
-    logging.basicConfig(
-        format="%(message)s",
-        stream=sys.stdout,
-        level=getattr(logging, config.log_level.upper(), logging.INFO),
-    )
 
 
 @asynccontextmanager

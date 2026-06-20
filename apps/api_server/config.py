@@ -2,7 +2,7 @@
 
 from functools import lru_cache
 
-from pydantic import AliasChoices, Field, computed_field
+from pydantic import AliasChoices, Field, computed_field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from apps.platform_contract_constants import API_KEY_PREFIX_LIVE, API_KEY_PREFIX_TEST
@@ -95,6 +95,25 @@ class Settings(BaseSettings):
         default=None,
         validation_alias=AliasChoices("ALGENTA_CONTROL_PLANE_URL"),
     )
+    # Service role (P4): 'full' = the complete engine + control-plane API (default, today's
+    # behavior); 'control_plane' = ONLY the hosted control-plane surfaces (auth/account/billing/
+    # devices/team/credits/metering/license/meta) — no engine routers, no Mojo, no /mcp. The
+    # control-plane Fly app sets ALGENTA_SERVICE_ROLE=control_plane. An unrecognized value
+    # fails closed (refuse to start) rather than silently running the wrong surface set.
+    algenta_service_role: str = Field(
+        default="full",
+        validation_alias=AliasChoices("ALGENTA_SERVICE_ROLE"),
+    )
+
+    @field_validator("algenta_service_role")
+    @classmethod
+    def _validate_service_role(cls, value: str) -> str:
+        normalized = (value or "full").strip().lower()
+        if normalized not in {"full", "control_plane"}:
+            raise ValueError(
+                f"ALGENTA_SERVICE_ROLE must be 'full' or 'control_plane', got {value!r}."
+            )
+        return normalized
     algenta_allow_outbound_network: bool | None = Field(
         default=None,
         validation_alias=AliasChoices("ALGENTA_ALLOW_OUTBOUND_NETWORK"),

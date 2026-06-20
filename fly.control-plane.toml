@@ -1,0 +1,73 @@
+# algenta-control-plane — the hosted Algenta CONTROL PLANE (P4), behind Cloudflare.
+#
+# ONE image, role flag: same ghcr image as codna-api, but ALGENTA_SERVICE_ROLE=control_plane +
+# the asgi entrypoint (apps.api_server.asgi:app) selects the engine-free control-plane app —
+# auth / account / team / billing / credits / metering / devices / license (JWKS·CRL·renewal) /
+# meta. NO engine, NO Mojo, NO /mcp. It owns its OWN Postgres (NEVER codna's) and runs the same
+# alembic migrations against it.
+#
+# Deploy:  flyctl deploy -c fly.control-plane.toml -i ghcr.io/thyn-ai/algenta/api:<tag>
+#
+# OWNER-ONLY provisioning (real resources + secrets — see the PR body / DEPLOY notes):
+#   fly apps create algenta-control-plane
+#   fly postgres create (algenta-control-plane-pg) && fly postgres attach --app algenta-control-plane
+#   fly secrets set -a algenta-control-plane \
+#       DATABASE_URL=postgresql+asyncpg://... DATABASE_URL_SYNC=postgresql://... \
+#       JWT_SECRET=... STRIPE_SECRET_KEY=... STRIPE_WEBHOOK_SECRET=... \
+#       STRIPE_PRICE_DEVELOPER=... STRIPE_PRICE_PRO=... METRICS_SECRET=... REDIS_URL=... \
+#       LICENSE_SIGNER_BACKEND=cf_worker LICENSE_SIGNER_URL=https://license.algenta.ai/sign \
+#       LICENSE_SIGNER_AUTH_TOKEN=... LICENSE_SIGNER_KID=... LICENSE_SIGNER_WORKER_PUBLIC_KEY=...
+#   fly certs add api.algenta.ai -a algenta-control-plane   (+ Cloudflare DNS in infra/cloudflare)
+# The RS256 PRIVATE key lives ONLY in the Cloudflare signer Worker (P4c), never on Fly.
+
+app = "algenta-control-plane"
+primary_region = "iad"
+
+[build]
+  # Reuses the codna-api image (role flag — no separate build). Overridden by deploy-fly.sh with
+  # the pinned git-<sha> tag from CI.
+  image = "ghcr.io/thyn-ai/algenta/api:latest"
+
+[processes]
+  # Role-selecting entrypoint: asgi:app reads ALGENTA_SERVICE_ROLE → the control-plane app.
+  app = "python -m uvicorn apps.api_server.asgi:app --host 0.0.0.0 --port 8000 --workers 2 --no-access-log"
+
+[deploy]
+  # Migrate the control plane's OWN Postgres (DATABASE_URL_SYNC secret → algenta-control-plane-pg),
+  # once per release on a throwaway Machine. Same migration chain; never touches codna-pg.
+  release_command = "python -m alembic -c apps/api_server/alembic.ini upgrade head"
+  strategy = "rolling"
+
+[env]
+  API_ENV = "production"
+  LOG_LEVEL = "info"
+  ALGENTA_SERVICE_ROLE = "control_plane"
+  # Multi-replica idempotency/coordination via the shared Redis (REDIS_URL is a secret; degrades
+  # to local store if unset). NO engine env (no Mojo / S3 / agent-core / sources / runtime dirs).
+  ALGENTA_COORDINATION = "redis"
+  CORS_ORIGINS = "https://app.algenta.ai,https://algenta.ai"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  # Stateless; scales horizontally behind Cloudflare. Stay warm (auth/billing/licensing latency).
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 200
+    hard_limit = 250
+
+  [[http_service.checks]]
+    method = "GET"
+    path = "/v1/health"
+    interval = "15s"
+    timeout = "5s"
+    grace_period = "30s"
+
+[[vm]]
+  # Small/cheap: the control plane does no engine work (no Mojo pool). Resizable in place.
+  size = "shared-cpu-2x"
+  memory = "1gb"
