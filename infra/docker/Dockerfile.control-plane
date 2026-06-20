@@ -1,0 +1,42 @@
+# Slim, ENGINE-FREE image for the Algenta CONTROL PLANE (auth / account / team / billing /
+# credits / metering / devices / license JWKS·CRL·renewal / meta). It deliberately does NOT
+# bundle the Mojo engine — the control-plane app (ALGENTA_SERVICE_ROLE=control_plane, asgi
+# entrypoint) imports zero engine modules, so it needs none of it.
+#
+# Consequence: this builds entirely from the PUBLIC python base with no private GHCR pull, so
+# `flyctl deploy --remote-only -c fly.control-plane.toml` works without local docker, without a
+# GHCR read token, and without the heavy shared api/mojo images. Smaller + faster to deploy too.
+
+# ── Stage 1: Builder ──────────────────────────────────────────────────────────
+FROM python:3.12-slim AS builder
+WORKDIR /build
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential libpq-dev curl \
+    && rm -rf /var/lib/apt/lists/*
+COPY requirements-dev.txt ./
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir --prefix=/install -r requirements-dev.txt
+
+# ── Stage 2: Runtime ──────────────────────────────────────────────────────────
+FROM python:3.12-slim AS runtime
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 curl \
+    && rm -rf /var/lib/apt/lists/*
+RUN groupadd --system app && useradd --system --gid app --home-dir /home/app --create-home app
+COPY --from=builder /install /usr/local
+# Engine-free payload: the application package + operator scripts. Alembic migrations live under
+# apps/api_server/alembic and run via the deploy release_command. No engines/ training/ mojo/.
+COPY apps/ /app/apps/
+COPY scripts/ /app/scripts/
+RUN mkdir -p /home/app/.algenta && chown -R app:app /app /home/app
+ENV HOME=/home/app \
+    ALGENTA_SERVICE_ROLE=control_plane \
+    PYTHONUNBUFFERED=1
+USER app
+EXPOSE 8000
+# The role-selecting entrypoint reads ALGENTA_SERVICE_ROLE → the engine-free control-plane app.
+# (fly.control-plane.toml [processes] overrides this with the same command + worker count.)
+CMD ["python", "-m", "uvicorn", "apps.api_server.asgi:app", \
+    "--host", "0.0.0.0", "--port", "8000", \
+    "--workers", "2", "--no-access-log"]

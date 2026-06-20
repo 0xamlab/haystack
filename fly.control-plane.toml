@@ -24,9 +24,11 @@ app = "algenta-control-plane"
 primary_region = "iad"
 
 [build]
-  # Reuses the codna-api image (role flag — no separate build). Overridden by deploy-fly.sh with
-  # the pinned git-<sha> tag from CI.
-  image = "ghcr.io/thyn-ai/algenta/api:latest"
+  # Dedicated ENGINE-FREE image (no Mojo, no private GHCR base) so the control plane is small and
+  # deploys with `flyctl deploy --remote-only` — no local docker, no GHCR read token, no heavy
+  # shared api/mojo image. The control-plane app imports zero engine modules (verified by
+  # test_control_plane_role), so it needs none of the engine payload.
+  dockerfile = "infra/docker/Dockerfile.control-plane"
 
 [processes]
   # Role-selecting entrypoint: asgi:app reads ALGENTA_SERVICE_ROLE → the control-plane app.
