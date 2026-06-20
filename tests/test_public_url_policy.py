@@ -27,8 +27,8 @@ def test_saas_public_url_policy_uses_cloud_defaults(
         monkeypatch.delenv("DE_BASE_URL", raising=False)
         _refresh_settings()
 
-        assert resolve_api_public_base_url() == "https://api.codna.ai"
-        assert resolve_app_public_base_url() == "https://app.codna.ai"
+        assert resolve_api_public_base_url() == "https://api.algenta.ai"
+        assert resolve_app_public_base_url() == "https://app.algenta.ai"
     finally:
         _refresh_settings()
 
@@ -43,7 +43,7 @@ def test_saas_public_url_policy_ignores_transport_base_url_without_public_overri
         monkeypatch.setenv("ALGENTA_BASE_URL", "https://internal.customer.example")
         _refresh_settings()
 
-        assert resolve_api_public_base_url() == "https://api.codna.ai"
+        assert resolve_api_public_base_url() == "https://api.algenta.ai"
     finally:
         _refresh_settings()
 
@@ -189,12 +189,12 @@ def test_private_public_url_policy_rejects_algenta_owned_hosts(
 ) -> None:
     try:
         monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "air_gapped")
-        monkeypatch.setenv("ALGENTA_API_PUBLIC_BASE_URL", "https://api.codna.ai")
+        monkeypatch.setenv("ALGENTA_API_PUBLIC_BASE_URL", "https://api.algenta.ai")
         _refresh_settings()
 
         with pytest.raises(
             PublicUrlConfigurationError,
-            match="ALGENTA_API_PUBLIC_BASE_URL / API_PUBLIC_BASE_URL must not point to an Codna-owned host",
+            match="ALGENTA_API_PUBLIC_BASE_URL / API_PUBLIC_BASE_URL must not point to an Algenta-owned host",
         ):
             validate_public_url_configuration()
     finally:
@@ -207,12 +207,12 @@ def test_private_public_url_policy_rejects_legacy_public_api_alias_on_algenta_ho
     try:
         monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "self_hosted")
         monkeypatch.delenv("ALGENTA_API_PUBLIC_BASE_URL", raising=False)
-        monkeypatch.setenv("API_PUBLIC_BASE_URL", "https://api.codna.ai")
+        monkeypatch.setenv("API_PUBLIC_BASE_URL", "https://api.algenta.ai")
         _refresh_settings()
 
         with pytest.raises(
             PublicUrlConfigurationError,
-            match="ALGENTA_API_PUBLIC_BASE_URL / API_PUBLIC_BASE_URL must not point to an Codna-owned host",
+            match="ALGENTA_API_PUBLIC_BASE_URL / API_PUBLIC_BASE_URL must not point to an Algenta-owned host",
         ):
             validate_public_url_configuration()
     finally:

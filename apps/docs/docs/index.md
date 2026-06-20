@@ -26,7 +26,7 @@ native tools, or runtime libraries, start with
 must execute in the customer app or adapter path and fail closed otherwise.
 
 ```bash
-curl -sSL https://codna.ai/install.sh | bash
+curl -sSL https://algenta.ai/install.sh | bash
 ```
 
 Open [Quickstart](/quickstart).

@@ -70,10 +70,10 @@ def test_get_base_url_private_profile_rejects_algenta_cloud(monkeypatch) -> None
     monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "self_hosted")
     monkeypatch.delenv("ALGENTA_BASE_URL", raising=False)
     monkeypatch.delenv("ALGENTA_API_URL", raising=False)
-    monkeypatch.setenv("DE_BASE_URL", "https://api.codna.ai")
+    monkeypatch.setenv("DE_BASE_URL", "https://api.algenta.ai")
     monkeypatch.setattr(support, "load_config", lambda: {})
 
-    with pytest.raises(ValueError, match="Codna-owned cloud URLs"):
+    with pytest.raises(ValueError, match="Algenta-owned cloud URLs"):
         support.get_base_url()
 
 
@@ -97,7 +97,7 @@ def test_get_dashboard_url_defaults_to_cloud_managed_dashboard(monkeypatch) -> N
     monkeypatch.delenv("ALGENTA_BASE_URL", raising=False)
     monkeypatch.setattr(support, "load_config", lambda: {})
 
-    assert support.get_dashboard_url() == "https://app.codna.ai/dashboard"
+    assert support.get_dashboard_url() == "https://app.algenta.ai/dashboard"
 
 
 def test_get_dashboard_url_private_profile_falls_back_to_self_hosted_api_origin(monkeypatch) -> None:

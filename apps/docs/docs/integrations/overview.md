@@ -22,10 +22,10 @@ Algenta connects to your existing tools with one canonical API contract.
 
 ## Base URL
 
-- Cloud Managed: `https://api.codna.ai`
+- Cloud Managed: `https://api.algenta.ai`
 - `self_hosted` and `air_gapped`: replace the hosted base URL with your self-hosted base URL
 
-Private profiles do not silently fall back to Codna cloud.
+Private profiles do not silently fall back to Algenta cloud.
 
 ## Live contract discovery
 

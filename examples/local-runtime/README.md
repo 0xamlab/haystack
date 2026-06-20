@@ -170,7 +170,7 @@ const report = await rt.querySqlReport({
 
 These hosted local-execution examples are the Cloud Managed path. In
 `self_hosted` and `air_gapped`, pass an explicit self-hosted `base_url` /
-`baseUrl` and fail closed instead of silently falling back to Codna cloud.
+`baseUrl` and fail closed instead of silently falling back to Algenta cloud.
 
 That keeps the local runtime example aligned with the same public contract as
 the API, direct SDKs, CLI, and MCP:

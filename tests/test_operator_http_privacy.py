@@ -34,7 +34,7 @@ def test_resolve_operator_console_base_url_requires_explicit_origin_in_private_p
 def test_validate_operator_api_base_url_rejects_algenta_cloud_for_private_profiles() -> None:
     env = {
         "ALGENTA_DEPLOYMENT_MODE": "self_hosted",
-        "DE_BASE_URL": "https://api.codna.ai",
+        "DE_BASE_URL": "https://api.algenta.ai",
     }
 
     with pytest.raises(
@@ -42,7 +42,7 @@ def test_validate_operator_api_base_url_rejects_algenta_cloud_for_private_profil
         match="ALGENTA_BASE_URL / DE_BASE_URL / ALGENTA_API_URL",
     ):
         validate_operator_api_base_url(
-            "https://api.codna.ai",
+            "https://api.algenta.ai",
             env=env,
             surface="CLI",
         )

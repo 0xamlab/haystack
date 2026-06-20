@@ -3,12 +3,12 @@
 Use the Power Automate custom connector to call Algenta's hosted data, query,
 and simulation surfaces from Microsoft flows.
 
-- Cloud Managed: `https://api.codna.ai`
+- Cloud Managed: `https://api.algenta.ai`
 - `self_hosted` and `air_gapped`: replace the hosted base URL with your self-hosted base URL
 
-Private profiles do not silently fall back to Codna cloud.
+Private profiles do not silently fall back to Algenta cloud.
 
-The checked-in JSON templates intentionally use `https://your-algenta-base-url.example`; replace it with Cloud Managed `https://api.codna.ai` or your self-hosted base URL before import.
+The checked-in JSON templates intentionally use `https://your-algenta-base-url.example`; replace it with Cloud Managed `https://api.algenta.ai` or your self-hosted base URL before import.
 
 ## Files
 
@@ -25,7 +25,7 @@ The checked-in JSON templates intentionally use `https://your-algenta-base-url.e
    -> Import an OpenAPI file**
 2. Upload `connector_definition.json`
 3. Configure `Authorization: Bearer <YOUR_ALGENTA_API_KEY>`
-   Use a Cloud Managed key only when the flow targets `https://api.codna.ai`.
+   Use a Cloud Managed key only when the flow targets `https://api.algenta.ai`.
    In `self_hosted` and `air_gapped`, use the API key provisioned by your
    self-hosted operator deployment instead.
 4. Start with **Get Contract**

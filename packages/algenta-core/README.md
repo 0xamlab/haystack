@@ -188,7 +188,7 @@ rt.delete_connector(connector.id)
 
 Use Cloud Managed URLs only with `Runtime(mode="api")`. `Runtime(mode="self_hosted")`
 and private profiles must point `base_url` at your own self-hosted service and
-fail closed instead of silently falling back to Codna cloud.
+fail closed instead of silently falling back to Algenta cloud.
 
 `rt.get_contract()` also handles older self-hosted nodes that still return
 `404` for `/v1/meta/contract` by falling back to `/openapi.json` and reading

@@ -12,7 +12,7 @@ from apps.api_server.config import get_settings
 from apps.platform_contract_constants import API_BASE_URL
 from apps.privacy_policy import PrivacyPolicy, is_algenta_owned_destination
 
-_CLOUD_APP_BASE_URL = "https://app.codna.ai"
+_CLOUD_APP_BASE_URL = "https://app.algenta.ai"
 _LOCAL_API_BASE_URL = "http://localhost:8000"
 _EXPLICIT_API_PUBLIC_BASE_URL_ENV_KEYS = (
     "ALGENTA_API_PUBLIC_BASE_URL",
@@ -148,7 +148,7 @@ def _validate_private_profile_base_url(
         raise PublicUrlConfigurationError(
             "private_profile_public_url_forbidden",
             (
-                f"{field_name} must not point to an Codna-owned host in "
+                f"{field_name} must not point to an Algenta-owned host in "
                 f"{policy.deployment_mode} mode."
             ),
             details={

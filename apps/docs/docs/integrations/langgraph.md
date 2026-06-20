@@ -6,10 +6,10 @@ sidebar_position: 3
 
 Add Algenta as a tool node in your LangGraph AI agent.
 
-- Cloud Managed: `https://api.codna.ai`
+- Cloud Managed: `https://api.algenta.ai`
 - `self_hosted` and `air_gapped`: pass an explicit self-hosted `base_url`
 
-Private profiles do not silently fall back to Codna cloud.
+Private profiles do not silently fall back to Algenta cloud.
 
 ## Installation
 

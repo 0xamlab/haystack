@@ -193,7 +193,7 @@ def test_python_algenta_package_exports_runtime_library_surface() -> None:
     assert hasattr(decision_engine, "RuntimeThreatClassResult")
     assert hasattr(decision_engine, "RuntimeThreatControlResult")
     assert hasattr(decision_engine, "RuntimeThreatRuleResult")
-    assert algenta.DEFAULT_BASE_URL == "https://api.codna.ai"
+    assert algenta.DEFAULT_BASE_URL == "https://api.algenta.ai"
     assert algenta.AUTH_SCHEME == "bearer_api_key"
     assert (
         algenta.PRIMARY_DATA_QUERY_CONTRACT["api"]["query_sql_report_endpoint"]

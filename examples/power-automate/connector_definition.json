@@ -2,7 +2,7 @@
   "swagger": "2.0",
   "info": {
     "title": "Algenta",
-    "description": "Discover datasets, fetch low-token summaries, run governed exact queries and query batches, execute constrained read-only SQL reports, and optionally run simulations. Replace your-algenta-base-url.example with Cloud Managed https://api.codna.ai or your self-hosted base URL before import. Private profiles do not silently fall back to Codna cloud.",
+    "description": "Discover datasets, fetch low-token summaries, run governed exact queries and query batches, execute constrained read-only SQL reports, and optionally run simulations. Replace your-algenta-base-url.example with Cloud Managed https://api.algenta.ai or your self-hosted base URL before import. Private profiles do not silently fall back to Algenta cloud.",
     "version": "1.1.0"
   },
   "host": "your-algenta-base-url.example",

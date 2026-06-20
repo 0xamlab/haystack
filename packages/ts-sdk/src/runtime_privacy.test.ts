@@ -113,9 +113,9 @@ describe("runtime privacy policy", () => {
     });
   });
 
-  it("rejects Codna-owned control-plane urls when cloud is disabled", () => {
+  it("rejects Algenta-owned control-plane urls when cloud is disabled", () => {
     process.env.ALGENTA_DISABLE_CLOUD = "1";
-    process.env.ALGENTA_CONTROL_PLANE_URL = "https://api.codna.ai";
+    process.env.ALGENTA_CONTROL_PLANE_URL = "https://api.algenta.ai";
 
     expect(() =>
       validatedControlPlaneBaseUrl(undefined, {

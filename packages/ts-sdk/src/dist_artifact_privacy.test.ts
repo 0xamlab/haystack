@@ -32,7 +32,7 @@ afterEach(() => {
 });
 
 describe("dist artifact privacy contract", () => {
-  it("blocks Codna-owned cloud defaults in dist privacy profile helpers", () => {
+  it("blocks Algenta-owned cloud defaults in dist privacy profile helpers", () => {
     process.env.ALGENTA_DEPLOYMENT_MODE = "self_hosted";
 
     const privacy = loadFresh<{
@@ -43,7 +43,7 @@ describe("dist artifact privacy contract", () => {
       privacy.resolveClientBaseUrl(undefined, "dist client");
       throw new Error("expected dist privacy profile helper to fail closed");
     } catch (error) {
-      expect(String(error)).toContain("private profiles cannot target Codna-owned cloud URLs");
+      expect(String(error)).toContain("private profiles cannot target Algenta-owned cloud URLs");
       expect(String(error)).toContain("ALGENTA_BASE_URL / DE_BASE_URL / ALGENTA_API_URL");
     }
     expect(privacy.resolveClientBaseUrl("http://localhost:8000", "dist client")).toBe(
@@ -69,10 +69,10 @@ describe("dist artifact privacy contract", () => {
     expect(privacy.resolveConsoleBaseUrl("dist client")).toBe("https://console.customer.internal");
   });
 
-  it("rejects Codna-owned dashboard aliases in dist private-profile console helpers", () => {
+  it("rejects Algenta-owned dashboard aliases in dist private-profile console helpers", () => {
     process.env.ALGENTA_DEPLOYMENT_MODE = "self_hosted";
     process.env.ALGENTA_DISABLE_CLOUD = "1";
-    process.env.ALGENTA_APP_BASE_URL = "https://app.codna.ai";
+    process.env.ALGENTA_APP_BASE_URL = "https://app.algenta.ai";
 
     const privacy = loadFresh<{
       resolveConsoleBaseUrl(component: string, fallbackBaseUrl?: string): string;
@@ -92,10 +92,10 @@ describe("dist artifact privacy contract", () => {
     }>("../dist/client.js");
 
     expect(() => new client.DecisionEngineClient({ apiKey: "de_live_dist_key" })).toThrowError(
-      /private profiles cannot target Codna-owned cloud URLs/,
+      /private profiles cannot target Algenta-owned cloud URLs/,
     );
     expect(() => new client.AlgentaClient({ apiKey: "de_live_dist_key" })).toThrowError(
-      /private profiles cannot target Codna-owned cloud URLs/,
+      /private profiles cannot target Algenta-owned cloud URLs/,
     );
   });
 
@@ -107,7 +107,7 @@ describe("dist artifact privacy contract", () => {
     }>("../dist/runtime.js");
 
     expect(() => new runtimeModule.Runtime({ mode: "api", apiKey: "de_live_dist_key" })).toThrowError(
-      /private profiles cannot target Codna-owned cloud URLs/,
+      /private profiles cannot target Algenta-owned cloud URLs/,
     );
   });
 
@@ -139,13 +139,13 @@ describe("dist artifact privacy contract", () => {
     }>("../dist/index.js");
 
     expect(() => new sdk.AlgentaClient({ apiKey: "de_live_dist_key" })).toThrowError(
-      /private profiles cannot target Codna-owned cloud URLs/,
+      /private profiles cannot target Algenta-owned cloud URLs/,
     );
     expect(() => new sdk.DecisionEngineClient({ apiKey: "de_live_dist_key" })).toThrowError(
-      /private profiles cannot target Codna-owned cloud URLs/,
+      /private profiles cannot target Algenta-owned cloud URLs/,
     );
     expect(() => new sdk.Runtime({ mode: "api", apiKey: "de_live_dist_key" })).toThrowError(
-      /private profiles cannot target Codna-owned cloud URLs/,
+      /private profiles cannot target Algenta-owned cloud URLs/,
     );
   });
 

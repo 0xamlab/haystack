@@ -4,7 +4,7 @@ Compatibility wrapper for the synchronous Algenta API client.
 This module exposes the Cloud Managed path by default. In `self_hosted` and `air_gapped`,
 pass an explicit self-hosted `base_url` and use the API key
 provisioned by your self-hosted operator deployment instead. Private profiles
-fail closed and do not silently fall back to Codna cloud.
+fail closed and do not silently fall back to Algenta cloud.
 """
 
 from __future__ import annotations

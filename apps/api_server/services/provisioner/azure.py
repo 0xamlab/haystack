@@ -42,7 +42,7 @@ class AzureProvisioner(BaseProvisioner):
             )
 
         deploy_name = f"algenta-{str(deployment_id)[:8]}"
-        endpoint_url = f"https://{str(deployment_id)[:8]}.deploy.codna.ai"
+        endpoint_url = f"https://{str(deployment_id)[:8]}.deploy.algenta.ai"
 
         resource_ids = {
             "resource_group": f"algenta-{str(deployment_id)[:8]}",

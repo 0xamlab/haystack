@@ -508,7 +508,7 @@ def test_ai_and_automation_examples_cover_governed_discovery_and_query_surfaces(
     assert EXAMPLE_BASE_URL in batch_nodes["Query Batch"]["parameters"]["url"]
     assert "/openapi.json" in n8n_query_batch_workflow["_comment"]
     assert "x-primary-data-query-contract" in n8n_query_batch_workflow["_comment"]
-    assert "Private profiles do not silently fall back to Codna cloud." in n8n_query_batch_workflow[
+    assert "Private profiles do not silently fall back to Algenta cloud." in n8n_query_batch_workflow[
         "_comment"
     ]
 
@@ -536,7 +536,7 @@ def test_ai_and_automation_examples_cover_governed_discovery_and_query_surfaces(
     assert "query_sql_report_endpoint" in sql_report_nodes["Query SQL Report"]["parameters"]["url"]
     assert "/openapi.json" in n8n_sql_report_workflow["_comment"]
     assert "x-primary-data-query-contract" in n8n_sql_report_workflow["_comment"]
-    assert "Private profiles do not silently fall back to Codna cloud." in n8n_sql_report_workflow[
+    assert "Private profiles do not silently fall back to Algenta cloud." in n8n_sql_report_workflow[
         "_comment"
     ]
 
@@ -597,6 +597,6 @@ def test_ai_and_automation_examples_cover_governed_discovery_and_query_surfaces(
     assert "/v1/query/sql-report" in colab_text
     assert "/v1/simulate" in colab_text
     assert 'BASE_URL = "https://your-algenta-base-url.example"' in colab_text
-    assert "Private profiles do not silently fall back to Codna cloud." in colab_text
+    assert "Private profiles do not silently fall back to Algenta cloud." in colab_text
 
 

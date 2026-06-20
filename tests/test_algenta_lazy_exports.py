@@ -198,8 +198,8 @@ def test_algenta_root_uses_lazy_exports_for_heavy_surfaces() -> None:
         assert callable(map_data_fn)
         assert contract_version == "v1.3"
         assert brand == "Algenta"
-        assert default_base_url == "https://api.codna.ai"
-        assert mcp_endpoint == "https://api.codna.ai/mcp/sse"
+        assert default_base_url == "https://api.algenta.ai"
+        assert mcp_endpoint == "https://api.algenta.ai/mcp/sse"
         assert auth_scheme == "bearer_api_key"
         assert legacy_headers == ("X-API-Key",)
         assert deprecation_window_days == 90

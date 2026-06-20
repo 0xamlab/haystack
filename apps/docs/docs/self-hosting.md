@@ -137,7 +137,7 @@ not disable local audit events, local metering records, or local egress logs.
 billing redirects, and email content. Set `ALGENTA_APP_BASE_URL` only when you
 front a separate dashboard or account UI; when it is blank in a private
 profile, Algenta keeps user-facing links on the API origin instead of silently
-pointing at Codna cloud.
+pointing at Algenta cloud.
 
 Use `ALGENTA_DEPLOYMENT_MODE=air_gapped` for the strict privacy profile. That
 profile inherits the self-hosted defaults, requires a local signed license, and
@@ -171,13 +171,13 @@ The buyer-facing proof endpoints are:
 | `RUNTIME_FALLBACK_MODE` | Set to `allow` for the default self-hosted install so the API can start when the bundled Mojo binary cannot serve pool mode |
 | `ALGENTA_SOURCES_DIR` | Local registry path for uploaded/queryable datasets |
 | `ALGENTA_DEPLOYMENT_MODE` | `self_hosted` for the private enterprise default, `air_gapped` for the strict privacy profile |
-| `ALGENTA_DISABLE_CLOUD` | Set to `1` to block Codna-owned cloud egress |
+| `ALGENTA_DISABLE_CLOUD` | Set to `1` to block Algenta-owned cloud egress |
 | `ALGENTA_DISABLE_TELEMETRY` | Set to `1` to disable outbound/vendor telemetry while keeping local audit enabled |
 | `ALGENTA_TELEMETRY_MODE` | `local_audit` for local-only audit, `control_plane_sync` only when an allowed control plane URL is configured |
 | `ALGENTA_METERING_MODE` | `local_audit` for local-only metering, `control_plane_sync` only when explicitly permitted |
 | `ALGENTA_REQUIRE_LOCAL_LICENSE` | Set to `1` for strict local signed license enforcement; required by the `air_gapped` profile |
 | `ALGENTA_CONTROL_PLANE_URL` | Optional explicit control-plane URL; leave blank in the default private self-hosted profile |
-| `ALGENTA_ALLOW_OUTBOUND_NETWORK` | Set to `0` to block Codna-owned and undeclared public egress |
+| `ALGENTA_ALLOW_OUTBOUND_NETWORK` | Set to `0` to block Algenta-owned and undeclared public egress |
 | `ALGENTA_EGRESS_ALLOWLIST` | Comma-separated allowlist for explicit connector/operator egress such as `minio:9000,*.customer.internal,postgres.internal:5432` |
 | `ALGENTA_LOCAL_LICENSE_PUBLIC_KEY_FILE` | PEM public key file used to verify offline local licenses in strict private profiles |
 | `ALGENTA_API_PUBLIC_BASE_URL` | Public API origin used in generated quickstart URLs, billing redirects, and user-facing email content |

@@ -2,17 +2,17 @@
 
 export const CONTRACT_VERSION = "v1.3";
 export const BRAND = "Algenta";
-export const DEFAULT_BASE_URL = "https://api.codna.ai";
-export const MCP_ENDPOINT = "https://api.codna.ai/mcp/sse";
-export const MCP_TOOLS_ENDPOINT = "https://api.codna.ai/mcp/tools";
+export const DEFAULT_BASE_URL = "https://api.algenta.ai";
+export const MCP_ENDPOINT = "https://api.algenta.ai/mcp/sse";
+export const MCP_TOOLS_ENDPOINT = "https://api.algenta.ai/mcp/tools";
 export const AUTH_SCHEME = "bearer_api_key";
 export const API_KEY_PREFIX_LIVE = "de_live_";
 export const API_KEY_PREFIX_TEST = "de_test_";
 export const LEGACY_HEADERS = ["X-API-Key"] as const;
 export const LEGACY_ENV_VARS = ["DE_API_KEY", "DE_BASE_URL", "ALGENTA_API_URL"] as const;
 export const LEGACY_DOMAINS = ["api.algenta.io", "api.decisionengine.io"] as const;
-export const ALGENTA_OWNED_HOSTS = ["codna.ai", "api.codna.ai", "docs.codna.ai", "app.codna.ai", "cdn.codna.ai", "api.algenta.io", "api.decisionengine.io"] as const;
-export const ALGENTA_OWNED_SUFFIXES = [".codna.ai", ".algenta.io", ".decisionengine.io"] as const;
+export const ALGENTA_OWNED_HOSTS = ["algenta.ai", "api.algenta.ai", "docs.algenta.ai", "app.algenta.ai", "cdn.algenta.ai", "api.algenta.io", "api.decisionengine.io"] as const;
+export const ALGENTA_OWNED_SUFFIXES = [".algenta.ai", ".algenta.io", ".decisionengine.io"] as const;
 export const VENDOR_TELEMETRY_HOSTS = ["sentry.io", "o443.ingest.sentry.io", "api.stripe.com"] as const;
 export const PRIVATE_HOST_SUFFIXES = [".internal", ".local", ".localdomain", ".lan", ".corp", ".home", ".localhost", ".home.arpa"] as const;
 export const DEPRECATION_WINDOW_DAYS = 90;
@@ -60,10 +60,10 @@ export const INTEGRATIONS = [
       "read_only_mode",
       "dataset_scope"
     ],
-    "docs_url": "https://docs.codna.ai/integrations/chatgpt-actions",
-    "privacy_url": "https://codna.ai/privacy",
-    "terms_url": "https://codna.ai/terms",
-    "support_url": "https://codna.ai/support",
+    "docs_url": "https://docs.algenta.ai/integrations/chatgpt-actions",
+    "privacy_url": "https://algenta.ai/privacy",
+    "terms_url": "https://algenta.ai/terms",
+    "support_url": "https://algenta.ai/support",
     "regions": [
       "global"
     ],
@@ -92,10 +92,10 @@ export const INTEGRATIONS = [
       "read_only_mode",
       "dataset_scope"
     ],
-    "docs_url": "https://docs.codna.ai/integrations/claude-codex",
-    "privacy_url": "https://codna.ai/privacy",
-    "terms_url": "https://codna.ai/terms",
-    "support_url": "https://codna.ai/support",
+    "docs_url": "https://docs.algenta.ai/integrations/claude-codex",
+    "privacy_url": "https://algenta.ai/privacy",
+    "terms_url": "https://algenta.ai/terms",
+    "support_url": "https://algenta.ai/support",
     "regions": [
       "global"
     ],
@@ -122,10 +122,10 @@ export const INTEGRATIONS = [
       "read_only_mode",
       "dataset_scope"
     ],
-    "docs_url": "https://docs.codna.ai/integrations/n8n",
-    "privacy_url": "https://codna.ai/privacy",
-    "terms_url": "https://codna.ai/terms",
-    "support_url": "https://codna.ai/support",
+    "docs_url": "https://docs.algenta.ai/integrations/n8n",
+    "privacy_url": "https://algenta.ai/privacy",
+    "terms_url": "https://algenta.ai/terms",
+    "support_url": "https://algenta.ai/support",
     "regions": [
       "global"
     ],
@@ -153,10 +153,10 @@ export const INTEGRATIONS = [
       "tool_allowlist",
       "dataset_scope"
     ],
-    "docs_url": "https://docs.codna.ai/integrations/azure-ai-studio",
-    "privacy_url": "https://codna.ai/privacy",
-    "terms_url": "https://codna.ai/terms",
-    "support_url": "https://codna.ai/support",
+    "docs_url": "https://docs.algenta.ai/integrations/azure-ai-studio",
+    "privacy_url": "https://algenta.ai/privacy",
+    "terms_url": "https://algenta.ai/terms",
+    "support_url": "https://algenta.ai/support",
     "regions": [
       "global"
     ],
@@ -185,10 +185,10 @@ export const INTEGRATIONS = [
       "read_only_mode",
       "dataset_scope"
     ],
-    "docs_url": "https://docs.codna.ai/integrations/langgraph",
-    "privacy_url": "https://codna.ai/privacy",
-    "terms_url": "https://codna.ai/terms",
-    "support_url": "https://codna.ai/support",
+    "docs_url": "https://docs.algenta.ai/integrations/langgraph",
+    "privacy_url": "https://algenta.ai/privacy",
+    "terms_url": "https://algenta.ai/terms",
+    "support_url": "https://algenta.ai/support",
     "regions": [
       "global"
     ],
@@ -214,10 +214,10 @@ export const INTEGRATIONS = [
     "admin_controls": [
       "read_only_mode"
     ],
-    "docs_url": "https://docs.codna.ai/integrations/local-runtime",
-    "privacy_url": "https://codna.ai/privacy",
-    "terms_url": "https://codna.ai/terms",
-    "support_url": "https://codna.ai/support",
+    "docs_url": "https://docs.algenta.ai/integrations/local-runtime",
+    "privacy_url": "https://algenta.ai/privacy",
+    "terms_url": "https://algenta.ai/terms",
+    "support_url": "https://algenta.ai/support",
     "regions": [
       "global"
     ],
@@ -240,10 +240,10 @@ export const INTEGRATIONS = [
       "read_only_mode",
       "dataset_scope"
     ],
-    "docs_url": "https://docs.codna.ai/integrations/power-automate",
-    "privacy_url": "https://codna.ai/privacy",
-    "terms_url": "https://codna.ai/terms",
-    "support_url": "https://codna.ai/support",
+    "docs_url": "https://docs.algenta.ai/integrations/power-automate",
+    "privacy_url": "https://algenta.ai/privacy",
+    "terms_url": "https://algenta.ai/terms",
+    "support_url": "https://algenta.ai/support",
     "regions": [
       "global"
     ],
@@ -266,10 +266,10 @@ export const INTEGRATIONS = [
       "read_only_mode",
       "dataset_scope"
     ],
-    "docs_url": "https://docs.codna.ai/integrations/zapier",
-    "privacy_url": "https://codna.ai/privacy",
-    "terms_url": "https://codna.ai/terms",
-    "support_url": "https://codna.ai/support",
+    "docs_url": "https://docs.algenta.ai/integrations/zapier",
+    "privacy_url": "https://algenta.ai/privacy",
+    "terms_url": "https://algenta.ai/terms",
+    "support_url": "https://algenta.ai/support",
     "regions": [
       "global"
     ],
@@ -292,10 +292,10 @@ export const INTEGRATIONS = [
       "read_only_mode",
       "dataset_scope"
     ],
-    "docs_url": "https://docs.codna.ai/integrations/make",
-    "privacy_url": "https://codna.ai/privacy",
-    "terms_url": "https://codna.ai/terms",
-    "support_url": "https://codna.ai/support",
+    "docs_url": "https://docs.algenta.ai/integrations/make",
+    "privacy_url": "https://algenta.ai/privacy",
+    "terms_url": "https://algenta.ai/terms",
+    "support_url": "https://algenta.ai/support",
     "regions": [
       "global"
     ],

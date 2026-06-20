@@ -9,7 +9,7 @@ from algenta._contract import ALGENTA_OWNED_HOSTS, ALGENTA_OWNED_SUFFIXES, DEFAU
 _PRIVATE_DEPLOYMENT_MODES = {"self_hosted", "air_gapped"}
 _ALGENTA_OWNED_HOSTS = frozenset(ALGENTA_OWNED_HOSTS)
 _ALGENTA_OWNED_SUFFIXES = tuple(ALGENTA_OWNED_SUFFIXES)
-_DEFAULT_CONSOLE_BASE_URL = "https://app.codna.ai"
+_DEFAULT_CONSOLE_BASE_URL = "https://app.algenta.ai"
 _CONSOLE_BASE_URL_ENV_KEYS = ("ALGENTA_APP_BASE_URL", "APP_BASE_URL", "DE_APP_BASE_URL")
 
 
@@ -96,7 +96,7 @@ def resolve_cloud_base_url(
     normalized = normalize_base_url(raw_base_url, component=component)
     if cloud_disabled(mapping) and is_algenta_owned_base_url(normalized):
         raise ValueError(
-            f"{component} private profiles cannot target Codna-owned cloud URLs. "
+            f"{component} private profiles cannot target Algenta-owned cloud URLs. "
             "Configure a self-hosted base_url or ALGENTA_BASE_URL / DE_BASE_URL / ALGENTA_API_URL."
         )
     return normalized
@@ -117,7 +117,7 @@ def resolve_console_base_url(
         )
         if private_profile_enabled(mapping) and is_algenta_owned_base_url(normalized):
             raise ValueError(
-                f"{component} private profiles cannot target Codna-owned cloud URLs. "
+                f"{component} private profiles cannot target Algenta-owned cloud URLs. "
                 "Configure ALGENTA_APP_BASE_URL / APP_BASE_URL / DE_APP_BASE_URL or a self-hosted base_url."
             )
         return normalized
@@ -138,7 +138,7 @@ def resolve_console_base_url(
         normalized = normalize_base_url(raw_base_url, component=f"{component} console")
         if is_algenta_owned_base_url(normalized):
             raise ValueError(
-                f"{component} private profiles cannot target Codna-owned cloud URLs. "
+                f"{component} private profiles cannot target Algenta-owned cloud URLs. "
                 "Configure ALGENTA_APP_BASE_URL / APP_BASE_URL / DE_APP_BASE_URL or a self-hosted base_url."
             )
         return normalized

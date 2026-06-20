@@ -69,7 +69,7 @@ if not api_key:
 
 client = AlgentaClient(
     api_key=api_key,
-    base_url="https://api.codna.ai",
+    base_url="https://api.algenta.ai",
 )
 
 datasets = client.list_datasets(search="orders", compact=True)
@@ -172,10 +172,10 @@ client.delete_connector(connector.id)
 
 `query()` remains available and unchanged when you only need the response body.
 
-Use `https://api.codna.ai` only in Cloud Managed. `ALGENTA_DEPLOYMENT_MODE=self_hosted`
+Use `https://api.algenta.ai` only in Cloud Managed. `ALGENTA_DEPLOYMENT_MODE=self_hosted`
 and `ALGENTA_DEPLOYMENT_MODE=air_gapped` must point `base_url` at your own
 self-hosted service and fail closed instead of silently falling back to
-Codna cloud.
+Algenta cloud.
 
 `client.get_contract()` also handles older self-hosted nodes that still return
 `404` for `/v1/meta/contract` by falling back to `/openapi.json` and reading

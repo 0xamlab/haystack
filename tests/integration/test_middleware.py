@@ -419,9 +419,9 @@ def test_auth_middleware():
         assert s == 401
         err = b.get("error", {})
         assert "docs_url" in err, f"Missing 'docs_url' in error: {err}"
-        assert "codna.ai" in err["docs_url"], f"Unexpected docs_url: {err['docs_url']}"
+        assert "algenta.ai" in err["docs_url"], f"Unexpected docs_url: {err['docs_url']}"
 
-    check("401 response includes docs_url with codna.ai", t_401_docs_url)
+    check("401 response includes docs_url with algenta.ai", t_401_docs_url)
 
     # 12. 401 response includes request_id
     def t_401_request_id_in_body():

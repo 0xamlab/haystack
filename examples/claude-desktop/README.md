@@ -4,11 +4,11 @@ Use Algenta from Claude Desktop, Codex, and other MCP clients.
 
 ## Recommended split
 
-- Cloud Managed remote-MCP clients: `https://api.codna.ai/mcp/sse`
+- Cloud Managed remote-MCP clients: `https://api.algenta.ai/mcp/sse`
 - `self_hosted` and `air_gapped`: replace the hosted base URL with your self-hosted base URL
 - Claude Desktop local-process hosts: use the bundled stdio bridge below
 
-Private profiles do not silently fall back to Codna cloud.
+Private profiles do not silently fall back to Algenta cloud.
 
 ## Claude Desktop local bridge
 
@@ -41,14 +41,14 @@ Then restart Claude Desktop fully.
 Use:
 
 ```text
-URL: https://api.codna.ai/mcp/sse
+URL: https://api.algenta.ai/mcp/sse
 Header: Authorization: Bearer <YOUR_ALGENTA_API_KEY>
 ```
 
 Use the hosted URL only in Cloud Managed. `self_hosted` and `air_gapped` must
 point `ALGENTA_BASE_URL`, `DE_BASE_URL`, or `ALGENTA_API_URL` or the remote
 MCP URL at the self-hosted deployment. Canonical env vars are `ALGENTA_API_KEY` and `ALGENTA_BASE_URL`; legacy `DE_API_KEY`, `DE_BASE_URL`, and `ALGENTA_API_URL` remain accepted for compatibility.
-Cloud Managed API keys come from `https://app.codna.ai/dashboard/api-keys`.
+Cloud Managed API keys come from `https://app.algenta.ai/dashboard/api-keys`.
 In `self_hosted` and `air_gapped`, use the API key provisioned by your
 self-hosted operator deployment instead.
 
@@ -173,7 +173,7 @@ for machine-readable selector fields, operator families, and validation rules.
 **"ALGENTA_API_KEY not set"** — Check the env block in your claude_desktop_config.json has the correct key.
 
 **"API error 401"** — Your API key is invalid or expired. In Cloud Managed,
-rotate it at `https://app.codna.ai/dashboard/api-keys`. In `self_hosted` and
+rotate it at `https://app.algenta.ai/dashboard/api-keys`. In `self_hosted` and
 `air_gapped`, rotate the API key in your self-hosted operator deployment.
 
 **Tools not appearing** — Restart Claude Desktop fully after editing the config file.

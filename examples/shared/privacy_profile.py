@@ -7,7 +7,7 @@ examples must point at an explicit self-hosted base URL and use the API key
 provisioned by the self-hosted operator deployment. `ALGENTA_*` env vars stay
 canonical, while legacy `DE_*` env vars and `ALGENTA_API_URL` remain accepted
 for compatibility.
-Private profiles fail closed and do not silently fall back to Codna cloud.
+Private profiles fail closed and do not silently fall back to Algenta cloud.
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ def _env(mapping: Mapping[str, str], key: str) -> str | None:
 def resolve_example_api_base_url(
     *,
     component: str,
-    default_base_url: str = "https://api.codna.ai",
+    default_base_url: str = "https://api.algenta.ai",
     env: Mapping[str, str] | None = None,
 ) -> str:
     mapping = os.environ if env is None else env

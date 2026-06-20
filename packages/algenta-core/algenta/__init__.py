@@ -17,7 +17,7 @@ Supported secondary modes remain available:
 Cloud/API examples under this package are the Cloud Managed path by default. In
 `self_hosted` and `air_gapped`, pass an explicit self-hosted `base_url` and use
 the API key provisioned by your self-hosted operator deployment instead.
-Private profiles fail closed and do not silently fall back to Codna cloud.
+Private profiles fail closed and do not silently fall back to Algenta cloud.
 """
 
 from __future__ import annotations

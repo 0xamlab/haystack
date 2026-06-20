@@ -68,7 +68,7 @@ def _validated_base_url(base_url: str) -> str:
         ) from exc
     if cloud_disabled() and is_algenta_owned_base_url(normalized):
         raise MCPPrivacyConfigurationError(
-            "MCP private profiles cannot target Codna-owned cloud URLs. "
+            "MCP private profiles cannot target Algenta-owned cloud URLs. "
             "Configure ALGENTA_BASE_URL / DE_BASE_URL / ALGENTA_API_URL "
             "or a request base URL for your self-hosted deployment."
         )

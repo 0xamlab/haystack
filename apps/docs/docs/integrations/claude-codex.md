@@ -11,7 +11,7 @@ Connect Algenta to Claude, Codex, and other MCP clients with the canonical `v1` 
 - Cloud Managed endpoint:
 
 ```text
-https://api.codna.ai/mcp/sse
+https://api.algenta.ai/mcp/sse
 ```
 
 - `self_hosted` and `air_gapped`: replace the hosted base URL with your self-hosted base URL
@@ -20,7 +20,7 @@ https://api.codna.ai/mcp/sse
 https://your-algenta-host.example/mcp/sse
 ```
 
-Private profiles do not silently fall back to Codna cloud.
+Private profiles do not silently fall back to Algenta cloud.
 
 Auth:
 
@@ -65,7 +65,7 @@ Use this when your MCP host expects a local process:
 }
 ```
 
-Use `https://api.codna.ai` only in Cloud Managed. `self_hosted` and
+Use `https://api.algenta.ai` only in Cloud Managed. `self_hosted` and
 `air_gapped` must point `ALGENTA_BASE_URL`, `DE_BASE_URL`, or
 `ALGENTA_API_URL` at the self-hosted base URL.
 Canonical env vars are `ALGENTA_API_KEY` and `ALGENTA_BASE_URL`; legacy `DE_API_KEY`, `DE_BASE_URL`, and `ALGENTA_API_URL` remain accepted for compatibility.

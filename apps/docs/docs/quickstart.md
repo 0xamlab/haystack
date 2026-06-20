@@ -14,7 +14,7 @@ In this guide you will:
 ## Install
 
 ```bash
-curl -sSL https://codna.ai/install.sh | bash
+curl -sSL https://algenta.ai/install.sh | bash
 ```
 
 The installer:

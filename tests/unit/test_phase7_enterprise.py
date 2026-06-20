@@ -157,13 +157,13 @@ def test_member_info_schema():
     member = MemberInfo(
         user_id=str(uuid4()),
         name="Angel Burgess",
-        email="angel@codna.ai",
+        email="angel@algenta.ai",
         role="owner",
         status="active",
         last_active=None,
     )
     assert member.role == "owner"
-    assert member.email == "angel@codna.ai"
+    assert member.email == "angel@algenta.ai"
     assert member.last_active is None
 
 
@@ -196,7 +196,7 @@ def test_audit_log_entry_schema():
     entry = AuditLogEntry(
         id=str(uuid4()),
         timestamp=datetime.now(tz=UTC),
-        actor_email="angel@codna.ai",
+        actor_email="angel@algenta.ai",
         action="simulate",
         resource_type="simulation_run",
         resource_id=str(uuid4()),

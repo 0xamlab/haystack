@@ -32,7 +32,7 @@ class GCPProvisioner(BaseProvisioner):
         config: dict[str, Any],
     ) -> ProvisionResult:
         deploy_name = f"algenta-{str(deployment_id)[:8]}"
-        endpoint_url = f"https://{str(deployment_id)[:8]}.deploy.codna.ai"
+        endpoint_url = f"https://{str(deployment_id)[:8]}.deploy.algenta.ai"
 
         resource_ids = {
             "cloud_run_service": (

@@ -76,7 +76,7 @@ def _generate_demo_audit_log(org_id: UUID) -> list[AuditLogEntry]:
         AuditLogEntry(
             id=str(uuid4()),
             timestamp=now,
-            actor_email="owner@codna.ai",
+            actor_email="owner@algenta.ai",
             action="simulate",
             resource_type="simulation_run",
             resource_id=str(org_id),
@@ -87,7 +87,7 @@ def _generate_demo_audit_log(org_id: UUID) -> list[AuditLogEntry]:
         AuditLogEntry(
             id=str(uuid4()),
             timestamp=now,
-            actor_email="admin@codna.ai",
+            actor_email="admin@algenta.ai",
             action="invite_member",
             resource_type="team_member",
             resource_id=str(uuid4()),
@@ -98,7 +98,7 @@ def _generate_demo_audit_log(org_id: UUID) -> list[AuditLogEntry]:
         AuditLogEntry(
             id=str(uuid4()),
             timestamp=now,
-            actor_email="viewer@codna.ai",
+            actor_email="viewer@algenta.ai",
             action="access_denied",
             resource_type="audit_log",
             resource_id=str(org_id),

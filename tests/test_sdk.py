@@ -235,7 +235,7 @@ def test_runtime_cloud_private_profile_rejects_algenta_owned_base_url(
     monkeypatch.setenv("ALGENTA_DISABLE_CLOUD", "1")
 
     with pytest.raises(SDKRuntimeError, match="blocked by the active privacy policy"):
-        Runtime(mode="cloud", base_url="https://api.codna.ai")
+        Runtime(mode="cloud", base_url="https://api.algenta.ai")
 
 
 # ══════════════════════════════════════════════════════════════════════════════

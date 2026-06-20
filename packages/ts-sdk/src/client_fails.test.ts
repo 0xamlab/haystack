@@ -138,7 +138,7 @@ describe("DecisionEngineClient — fails", () => {
         });
         throw new Error("expected DecisionEngineClient to fail closed");
       } catch (error) {
-        expect(String(error)).toContain("private profiles cannot target Codna-owned cloud URLs");
+        expect(String(error)).toContain("private profiles cannot target Algenta-owned cloud URLs");
         expect(String(error)).toContain("ALGENTA_BASE_URL / DE_BASE_URL / ALGENTA_API_URL");
       }
     });

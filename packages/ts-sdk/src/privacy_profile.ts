@@ -12,7 +12,7 @@ function trimTrailingSlashes(value: string): string {
 
 const PRIVATE_DEPLOYMENT_MODES = new Set(["self_hosted", "air_gapped"]);
 const ALGENTA_OWNED_HOST_SET = new Set<string>(ALGENTA_OWNED_HOSTS);
-const DEFAULT_CONSOLE_BASE_URL = "https://app.codna.ai";
+const DEFAULT_CONSOLE_BASE_URL = "https://app.algenta.ai";
 const CONSOLE_BASE_URL_ENV_VARS = ["ALGENTA_APP_BASE_URL", "APP_BASE_URL", "DE_APP_BASE_URL"] as const;
 
 function envValue(name: string): string | undefined {
@@ -105,7 +105,7 @@ export function resolveClientBaseUrl(
   );
   if (cloudDisabled() && isAlgentaOwnedBaseUrl(normalized)) {
     throw new Error(
-      `${component} private profiles cannot target Codna-owned cloud URLs. Configure a self-hosted baseUrl or ALGENTA_BASE_URL / DE_BASE_URL / ALGENTA_API_URL.`,
+      `${component} private profiles cannot target Algenta-owned cloud URLs. Configure a self-hosted baseUrl or ALGENTA_BASE_URL / DE_BASE_URL / ALGENTA_API_URL.`,
     );
   }
   return normalized;
@@ -120,7 +120,7 @@ export function resolveConsoleBaseUrl(
     const normalized = normalizeBaseUrl(configuredConsoleUrl, `${component} console`);
     if (privateProfileEnabled() && isAlgentaOwnedBaseUrl(normalized)) {
       throw new Error(
-        `${component} private profiles cannot target Codna-owned cloud URLs. Configure ALGENTA_APP_BASE_URL / APP_BASE_URL / DE_APP_BASE_URL or a self-hosted baseUrl.`,
+        `${component} private profiles cannot target Algenta-owned cloud URLs. Configure ALGENTA_APP_BASE_URL / APP_BASE_URL / DE_APP_BASE_URL or a self-hosted baseUrl.`,
       );
     }
     return normalized;
@@ -143,7 +143,7 @@ export function resolveConsoleBaseUrl(
     );
     if (isAlgentaOwnedBaseUrl(normalized)) {
       throw new Error(
-        `${component} private profiles cannot target Codna-owned cloud URLs. Configure ALGENTA_APP_BASE_URL / APP_BASE_URL / DE_APP_BASE_URL or a self-hosted baseUrl.`,
+        `${component} private profiles cannot target Algenta-owned cloud URLs. Configure ALGENTA_APP_BASE_URL / APP_BASE_URL / DE_APP_BASE_URL or a self-hosted baseUrl.`,
       );
     }
     return normalized;

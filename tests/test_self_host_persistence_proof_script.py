@@ -246,7 +246,7 @@ def _run_persistence_script(
                 [
                     "ALGENTA_BOOTSTRAP_READY=1",
                     "BOOTSTRAP_ORG_SLUG=self-hosted-org",
-                    "BOOTSTRAP_USER_EMAIL=owner@selfhost.codna.ai",
+                    "BOOTSTRAP_USER_EMAIL=owner@selfhost.algenta.ai",
                     "BOOTSTRAP_USER_CREATED=1",
                     "BOOTSTRAP_API_KEY_ID=bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
                     "BOOTSTRAP_API_KEY_PREFIX=de_test_stub",

@@ -115,8 +115,8 @@ def test_unknown_tool_raises_keyerror() -> None:
 
 
 def test_egress_guard_refuses_cloud_url_under_private_profile(monkeypatch) -> None:
-    # Reused from the SDK: a private profile must not target an Codna-owned cloud URL.
+    # Reused from the SDK: a private profile must not target an Algenta-owned cloud URL.
     monkeypatch.setenv("ALGENTA_DISABLE_CLOUD", "1")
-    monkeypatch.setenv("ALGENTA_BASE_URL", "https://api.codna.ai")
+    monkeypatch.setenv("ALGENTA_BASE_URL", "https://api.algenta.ai")
     with pytest.raises(MCPToolError):
         asyncio.run(registry.call_tool("get_contract", {}))

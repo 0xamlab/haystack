@@ -115,7 +115,7 @@ def test_ensure_bootstrapped_local_live_api_key_rejects_remote_base(
     key, configured, reason = bootstrap.ensure_bootstrapped_local_live_api_key(
         api_key=DEFAULT_LOCAL_LIVE_API_KEY,
         api_key_configured=False,
-        active_base_url="https://api.codna.ai",
+        active_base_url="https://api.algenta.ai",
     )
 
     assert key == DEFAULT_LOCAL_LIVE_API_KEY

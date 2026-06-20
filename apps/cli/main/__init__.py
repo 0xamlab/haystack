@@ -155,7 +155,7 @@ Install:
 Credential examples above are Cloud Managed examples. In `self_hosted` and
 `air_gapped`, use the API key provisioned by your self-hosted operator
 deployment instead. Private profiles fail closed and do not silently fall back
-to Codna cloud.
+to Algenta cloud.
 """
 
 import json

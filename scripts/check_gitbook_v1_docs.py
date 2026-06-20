@@ -138,7 +138,7 @@ def _validate_title_contract(pages: list[ManifestPage]) -> None:
 
 def _validate_overview() -> None:
     text = _read_text(DOCS_ROOT / "index.md")
-    if "curl -sSL https://codna.ai/install.sh | bash" not in text:
+    if "curl -sSL https://algenta.ai/install.sh | bash" not in text:
         raise GitBookValidationError("Overview must contain the install command")
     if "Open [Quickstart](/quickstart)." not in text:
         raise GitBookValidationError("Overview must link directly to Quickstart")
@@ -152,7 +152,7 @@ def _validate_quickstart() -> None:
     text = _read_text(DOCS_ROOT / "quickstart.md")
     required_snippets = [
         "In this guide you will:",
-        "curl -sSL https://codna.ai/install.sh | bash",
+        "curl -sSL https://algenta.ai/install.sh | bash",
         "curl http://localhost:8000/v1/health",
         "export ALGENTA_API_KEY='<SELF_HOST_BOOTSTRAP_KEY>'",
         "curl -X POST http://localhost:8000/v1/simulate \\",

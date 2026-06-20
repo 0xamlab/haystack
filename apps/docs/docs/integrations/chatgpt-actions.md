@@ -15,16 +15,16 @@ Let ChatGPT call Algenta automatically during conversations.
 Use one base URL consistently for the OpenAPI import and every subsequent
 request:
 
-- Cloud Managed: `https://api.codna.ai`
+- Cloud Managed: `https://api.algenta.ai`
 - `self_hosted` and `air_gapped`: replace the hosted base URL with your self-hosted base URL
 
-Private profiles do not silently fall back to Codna cloud.
+Private profiles do not silently fall back to Algenta cloud.
 
 ## Setup
 
 1. In ChatGPT, go to **Explore** → **Create** → **Configure** → **Actions**
 2. Click **Import from URL**: `https://your-algenta-base-url.example/openapi.json`
-   and replace the placeholder with Cloud Managed `https://api.codna.ai` or
+   and replace the placeholder with Cloud Managed `https://api.algenta.ai` or
    `https://your-algenta-host.example/openapi.json` for `self_hosted` / `air_gapped`
 3. Configure authentication as `Authorization: Bearer <api_key>`
 4. Start read-only unless the GPT must connect or refresh datasets

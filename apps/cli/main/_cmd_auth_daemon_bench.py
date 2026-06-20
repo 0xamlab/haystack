@@ -178,7 +178,7 @@ def _login_api_key_help_text() -> str:
             "No API key provided. Create one from your self-hosted admin surface or API base URL: "
             f"{base_url}"
         )
-    return "No API key provided. Get one from https://app.codna.ai/dashboard/api-keys"
+    return "No API key provided. Get one from https://app.algenta.ai/dashboard/api-keys"
 
 
 def cmd_login(api_key: str = "") -> None:

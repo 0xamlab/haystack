@@ -2,12 +2,12 @@
 
 Use the hosted Algenta OpenAPI contract inside ChatGPT Actions.
 
-- Cloud Managed: `https://api.codna.ai`
+- Cloud Managed: `https://api.algenta.ai`
 - `self_hosted` and `air_gapped`: replace the hosted base URL with your self-hosted base URL
 
-Private profiles do not silently fall back to Codna cloud.
+Private profiles do not silently fall back to Algenta cloud.
 
-The checked-in `openapi_actions.yaml` template intentionally uses `https://your-algenta-base-url.example`; replace it with Cloud Managed `https://api.codna.ai` or your self-hosted base URL before import.
+The checked-in `openapi_actions.yaml` template intentionally uses `https://your-algenta-base-url.example`; replace it with Cloud Managed `https://api.algenta.ai` or your self-hosted base URL before import.
 
 ## Files
 
@@ -17,7 +17,7 @@ The checked-in `openapi_actions.yaml` template intentionally uses `https://your-
 
 1. Create or edit an Action-enabled GPT.
 2. Import `https://your-algenta-base-url.example/openapi.json`. Replace the
-   placeholder with Cloud Managed `https://api.codna.ai` or your self-hosted
+   placeholder with Cloud Managed `https://api.algenta.ai` or your self-hosted
    `/openapi.json` URL for `self_hosted` / `air_gapped`. You can also use
    `openapi_actions.yaml`.
 3. Configure auth as `Authorization: Bearer <YOUR_ALGENTA_API_KEY>`.

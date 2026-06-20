@@ -15,7 +15,7 @@ _DOC_EXPECTATIONS: dict[str, tuple[str, ...]] = {
     "apps/docs/docs/api-reference/index.md": (
         "Cloud Managed",
         "`self_hosted` and `air_gapped`",
-        "Private profiles do not silently fall back to Codna cloud.",
+        "Private profiles do not silently fall back to Algenta cloud.",
         "self-hosted operator",
     ),
     "apps/docs/docs/api-reference/simulate.md": (
@@ -24,7 +24,7 @@ _DOC_EXPECTATIONS: dict[str, tuple[str, ...]] = {
         "`air_gapped`",
         "self-hosted operator",
         'ALGENTA_API_KEY="${ALGENTA_API_KEY:-${DE_API_KEY:-}}"',
-        'ALGENTA_BASE_URL="${ALGENTA_BASE_URL:-${DE_BASE_URL:-${ALGENTA_API_URL:-https://api.codna.ai}}}"',
+        'ALGENTA_BASE_URL="${ALGENTA_BASE_URL:-${DE_BASE_URL:-${ALGENTA_API_URL:-https://api.algenta.ai}}}"',
     ),
     "apps/docs/docs/api-reference/multi-hop-joins.md": (
         "Cloud Managed defaults",
@@ -32,12 +32,12 @@ _DOC_EXPECTATIONS: dict[str, tuple[str, ...]] = {
         "`base_url` / `baseUrl`",
         "self-hosted operator",
         'ALGENTA_API_KEY="${ALGENTA_API_KEY:-${DE_API_KEY:-}}"',
-        'ALGENTA_BASE_URL="${ALGENTA_BASE_URL:-${DE_BASE_URL:-${ALGENTA_API_URL:-https://api.codna.ai}}}"',
+        'ALGENTA_BASE_URL="${ALGENTA_BASE_URL:-${DE_BASE_URL:-${ALGENTA_API_URL:-https://api.algenta.ai}}}"',
     ),
     "apps/docs/docs/api-reference/capability-plane.md": (
         "Cloud Managed",
         "`self_hosted` and `air_gapped`",
-        "Private profiles do not silently fall back to Codna cloud.",
+        "Private profiles do not silently fall back to Algenta cloud.",
         "/v1/capabilities/route",
         "/v1/capabilities/execute",
         "examples/capability-plane/README.md",
@@ -46,7 +46,7 @@ _DOC_EXPECTATIONS: dict[str, tuple[str, ...]] = {
     "apps/docs/docs/direct-api-client.md": (
         "Cloud Managed",
         "`self_hosted` and `air_gapped`",
-        "Private profiles fail closed and do not silently fall back to Codna cloud.",
+        "Private profiles fail closed and do not silently fall back to Algenta cloud.",
         "self-hosted operator",
         'AlgentaClient(api_key=..., base_url="http://localhost:8000")',
         'new AlgentaClient({ apiKey: ..., baseUrl:',
@@ -70,7 +70,7 @@ _DOC_EXPECTATIONS: dict[str, tuple[str, ...]] = {
     "apps/docs/docs/integrations/langgraph.md": (
         "Cloud Managed",
         "`self_hosted` and `air_gapped`",
-        "Private profiles do not silently fall back to Codna cloud.",
+        "Private profiles do not silently fall back to Algenta cloud.",
         "The direct-client snippet above is the Cloud Managed path.",
         'AlgentaClient(api_key=..., base_url="http://localhost:8000")',
         "client.route_capabilities(",

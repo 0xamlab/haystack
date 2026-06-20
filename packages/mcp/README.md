@@ -262,7 +262,7 @@ if [ -z "$ALGENTA_API_KEY" ]; then
   exit 1
 fi
 
-export ALGENTA_BASE_URL="${ALGENTA_BASE_URL:-${DE_BASE_URL:-${ALGENTA_API_URL:-https://api.codna.ai}}}"   # Cloud Managed default only; replace for self-hosted private profiles
+export ALGENTA_BASE_URL="${ALGENTA_BASE_URL:-${DE_BASE_URL:-${ALGENTA_API_URL:-https://api.algenta.ai}}}"   # Cloud Managed default only; replace for self-hosted private profiles
 ```
 
 Canonical MCP env vars are `ALGENTA_API_KEY` and `ALGENTA_BASE_URL`. Legacy
@@ -270,12 +270,12 @@ Canonical MCP env vars are `ALGENTA_API_KEY` and `ALGENTA_BASE_URL`. Legacy
 
 Choose the base URL for your deployment mode:
 
-- Cloud Managed: `https://api.codna.ai`
+- Cloud Managed: `https://api.algenta.ai`
 - `self_hosted` and `air_gapped`: replace the hosted base URL with your self-hosted base URL via `ALGENTA_BASE_URL`, `DE_BASE_URL`, or `ALGENTA_API_URL`
 
-Private profiles fail closed and will not silently fall back to Codna cloud.
+Private profiles fail closed and will not silently fall back to Algenta cloud.
 
-Use `https://app.codna.ai/dashboard/api-keys` only in Cloud Managed. In
+Use `https://app.algenta.ai/dashboard/api-keys` only in Cloud Managed. In
 `self_hosted` and `air_gapped`, use the API key provisioned by your
 self-hosted operator deployment.
 
@@ -302,7 +302,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 }
 ```
 
-Use `https://api.codna.ai` only in Cloud Managed. `self_hosted` and
+Use `https://api.algenta.ai` only in Cloud Managed. `self_hosted` and
 `air_gapped` must point `ALGENTA_BASE_URL`, `DE_BASE_URL`, or `ALGENTA_API_URL`
 at the self-hosted base URL.
 
@@ -456,7 +456,7 @@ base_url = (
 if not base_url:
     raise RuntimeError(
         "Set ALGENTA_BASE_URL, DE_BASE_URL, or ALGENTA_API_URL before running this example. "
-        "Use https://api.codna.ai only in Cloud Managed."
+        "Use https://api.algenta.ai only in Cloud Managed."
     )
 
 # Get tools list
@@ -509,7 +509,7 @@ base_url = (
 if not base_url:
     raise RuntimeError(
         "Set ALGENTA_BASE_URL, DE_BASE_URL, or ALGENTA_API_URL before running this example. "
-        "Use https://api.codna.ai only in Cloud Managed."
+        "Use https://api.algenta.ai only in Cloud Managed."
     )
 
 # Run a simulation
@@ -593,7 +593,7 @@ mcp-server:
 
 **`API error 401: Unauthorized`**
 → In Cloud Managed, check or rotate the key at
-  `https://app.codna.ai/dashboard/api-keys`. In `self_hosted` and
+  `https://app.algenta.ai/dashboard/api-keys`. In `self_hosted` and
   `air_gapped`, validate or rotate the key in your self-hosted operator
   deployment.
 

@@ -10,14 +10,14 @@ from tests._test_platform_contract_helpers import *  # noqa: F401,F403
 def test_manifest_declares_canonical_contract() -> None:
     manifest = json.loads(MANIFEST_PATH.read_text())
     assert manifest["brand"] == "Algenta"
-    assert manifest["api_base_url"] == "https://api.codna.ai"
-    assert manifest["mcp_endpoint"] == "https://api.codna.ai/mcp/sse"
+    assert manifest["api_base_url"] == "https://api.algenta.ai"
+    assert manifest["mcp_endpoint"] == "https://api.algenta.ai/mcp/sse"
     assert manifest["auth_scheme"] == "bearer_api_key"
     assert manifest["api_key_prefixes"] == {"live": "de_live_", "test": "de_test_"}
     assert manifest["compatibility"]["deprecation_window_days"] == 90
-    assert manifest["privacy_registry"]["algenta_owned_hosts"][0] == "codna.ai"
+    assert manifest["privacy_registry"]["algenta_owned_hosts"][0] == "algenta.ai"
     assert manifest["privacy_registry"]["algenta_owned_suffixes"] == [
-        ".codna.ai",
+        ".algenta.ai",
         ".algenta.io",
         ".decisionengine.io",
     ]
@@ -244,8 +244,8 @@ def test_openapi_uses_canonical_bearer_contract() -> None:
     security = schema["components"]["securitySchemes"]
     assert schema["info"]["title"] == "Algenta API"
     assert "governed data discovery" in schema["info"]["description"]
-    assert schema["servers"] == [{"url": "https://api.codna.ai"}]
-    assert schema["x-canonical-mcp-endpoint"] == "https://api.codna.ai/mcp/sse"
+    assert schema["servers"] == [{"url": "https://api.algenta.ai"}]
+    assert schema["x-canonical-mcp-endpoint"] == "https://api.algenta.ai/mcp/sse"
     assert (
         schema["x-primary-data-query-contract"]["api"]["contract_endpoint"] == "/v1/meta/contract"
     )

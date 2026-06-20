@@ -21,7 +21,7 @@ def test_runtime_api_mode_runtime_proof_surfaces_preserve_upstream_error_details
     method_name: str,
     client_method_name: str,
 ) -> None:
-    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.codna.ai")
+    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.algenta.ai")
 
     class _FakeRuntimeProofError(Exception):
         def __init__(self) -> None:
@@ -75,7 +75,7 @@ def test_runtime_api_mode_get_runtime_manifest_uses_typed_output(
 ) -> None:
     from apps.runtime_manifest import get_runtime_manifest
 
-    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.codna.ai")
+    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.algenta.ai")
     manifest_payload = get_runtime_manifest().model_dump(mode="json")
 
     class _FakeClient:
@@ -247,7 +247,7 @@ def test_runtime_api_mode_get_runtime_modules_uses_typed_output(
 ) -> None:
     from apps.runtime_manifest import get_runtime_admin_modules
 
-    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.codna.ai")
+    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.algenta.ai")
     payload = get_runtime_admin_modules().model_dump(mode="json")
 
     class _FakeClient:
@@ -282,7 +282,7 @@ def test_runtime_api_mode_get_runtime_benchmarks_uses_typed_output(
 ) -> None:
     from apps.runtime_manifest import get_runtime_admin_benchmarks
 
-    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.codna.ai")
+    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.algenta.ai")
     payload = get_runtime_admin_benchmarks().model_dump(mode="json")
 
     class _FakeClient:
@@ -386,7 +386,7 @@ def test_runtime_api_mode_get_runtime_release_validation_uses_typed_output(
 ) -> None:
     from apps.runtime_manifest import get_runtime_release_validation
 
-    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.codna.ai")
+    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.algenta.ai")
     payload = get_runtime_release_validation().model_dump(mode="json")
 
     class _FakeClient:
@@ -410,7 +410,7 @@ def test_runtime_api_mode_get_runtime_release_validation_rejects_boolean_coercio
 ) -> None:
     from apps.runtime_manifest import get_runtime_release_validation
 
-    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.codna.ai")
+    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.algenta.ai")
     payload = get_runtime_release_validation().model_dump(mode="json")
     payload["valid_release"] = "yes"
     payload["conditions"][0]["satisfied"] = "no"
@@ -435,7 +435,7 @@ def test_runtime_api_mode_get_runtime_manifest_rejects_tuple_backed_supported_ch
 ) -> None:
     from apps.runtime_manifest import get_runtime_manifest
 
-    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.codna.ai")
+    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.algenta.ai")
     payload = get_runtime_manifest().model_dump(mode="json")
     payload["supported_channels"] = ("python_sdk", "typescript_sdk", "cli", "mcp")
 
@@ -458,7 +458,7 @@ def test_runtime_api_mode_get_runtime_manifest_rejects_duplicate_release_conditi
 ) -> None:
     from apps.runtime_manifest import get_runtime_manifest
 
-    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.codna.ai")
+    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.algenta.ai")
     payload = get_runtime_manifest().model_dump(mode="json")
     payload["formal_release_theorem"]["required_conditions"].append("manifest-listed")
 
@@ -483,7 +483,7 @@ def test_runtime_api_mode_get_runtime_manifest_rejects_duplicate_module_public_c
 ) -> None:
     from apps.runtime_manifest import get_runtime_manifest
 
-    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.codna.ai")
+    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.algenta.ai")
     payload = get_runtime_manifest().model_dump(mode="json")
     payload["modules"][0]["public_supported_channels"].append("python_sdk")
 
@@ -506,7 +506,7 @@ def test_runtime_api_mode_get_runtime_manifest_rejects_duplicate_module_function
 ) -> None:
     from apps.runtime_manifest import get_runtime_manifest
 
-    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.codna.ai")
+    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.algenta.ai")
     payload = get_runtime_manifest().model_dump(mode="json")
     payload["modules"][0]["functions"].append(payload["modules"][0]["functions"][0])
 
@@ -529,7 +529,7 @@ def test_runtime_api_mode_get_runtime_manifest_rejects_invalid_artifact_kind(
 ) -> None:
     from apps.runtime_manifest import get_runtime_manifest
 
-    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.codna.ai")
+    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.algenta.ai")
     payload = get_runtime_manifest().model_dump(mode="json")
     payload["compiled_artifacts"][0]["kind"] = "ghost_bundle"
 
@@ -552,7 +552,7 @@ def test_runtime_api_mode_get_runtime_manifest_rejects_invalid_benchmark_discove
 ) -> None:
     from apps.runtime_manifest import get_runtime_manifest
 
-    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.codna.ai")
+    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.algenta.ai")
     payload = get_runtime_manifest().model_dump(mode="json")
     payload["shipping_contract"]["benchmark_discovery_rule"] = "shadow_runtime_contract"
 
@@ -581,7 +581,7 @@ def test_runtime_api_mode_get_runtime_manifest_rejects_benchmark_shipping_functi
 ) -> None:
     from apps.runtime_manifest import get_runtime_manifest
 
-    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.codna.ai")
+    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.algenta.ai")
     payload = get_runtime_manifest().model_dump(mode="json")
     payload["benchmark_discovery_lane"]["shipping_manifest_functions"] += 1
 
@@ -608,7 +608,7 @@ def test_runtime_api_mode_get_runtime_modules_rejects_duplicate_proof_matrix_lay
 ) -> None:
     from apps.runtime_manifest import get_runtime_admin_modules
 
-    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.codna.ai")
+    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.algenta.ai")
     payload = get_runtime_admin_modules().model_dump(mode="json")
     payload["proof_matrix"].append(dict(payload["proof_matrix"][0]))
 
@@ -631,7 +631,7 @@ def test_runtime_api_mode_get_runtime_modules_rejects_invalid_benchmark_discover
 ) -> None:
     from apps.runtime_manifest import get_runtime_admin_modules
 
-    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.codna.ai")
+    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.algenta.ai")
     payload = get_runtime_admin_modules().model_dump(mode="json")
     payload["shipping_contract"]["benchmark_discovery_rule"] = "shadow_runtime_contract"
 
@@ -660,7 +660,7 @@ def test_runtime_api_mode_get_runtime_modules_rejects_summary_function_count_mis
 ) -> None:
     from apps.runtime_manifest import get_runtime_admin_modules
 
-    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.codna.ai")
+    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.algenta.ai")
     payload = get_runtime_admin_modules().model_dump(mode="json")
     payload["summary"]["function_count"] += 1
 
@@ -683,7 +683,7 @@ def test_runtime_api_mode_get_runtime_benchmarks_rejects_duplicate_benchmark_cla
 ) -> None:
     from apps.runtime_manifest import get_runtime_admin_benchmarks
 
-    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.codna.ai")
+    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.algenta.ai")
     payload = get_runtime_admin_benchmarks().model_dump(mode="json")
     payload["benchmarking"]["classes"].append(dict(payload["benchmarking"]["classes"][0]))
 
@@ -706,7 +706,7 @@ def test_runtime_api_mode_get_runtime_benchmarks_rejects_shipping_function_count
 ) -> None:
     from apps.runtime_manifest import get_runtime_admin_benchmarks
 
-    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.codna.ai")
+    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.algenta.ai")
     payload = get_runtime_admin_benchmarks().model_dump(mode="json")
     payload["shipping_runtime_function_counts"][0] += 1
 
@@ -729,7 +729,7 @@ def test_runtime_api_mode_get_runtime_benchmarks_rejects_shipping_module_identit
 ) -> None:
     from apps.runtime_manifest import get_runtime_admin_benchmarks
 
-    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.codna.ai")
+    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.algenta.ai")
     payload = get_runtime_admin_benchmarks().model_dump(mode="json")
     payload["shipping_runtime_modules"][0], payload["shipping_runtime_modules"][1] = (
         payload["shipping_runtime_modules"][1],
@@ -755,7 +755,7 @@ def test_runtime_api_mode_get_runtime_benchmarks_rejects_quality_gate_summary_mi
 ) -> None:
     from apps.runtime_manifest import get_runtime_admin_benchmarks
 
-    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.codna.ai")
+    runtime = Runtime(mode="api", api_key="de_live_test", base_url="https://api.algenta.ai")
     payload = get_runtime_admin_benchmarks().model_dump(mode="json")
     payload["evaluation_summary"]["benchmark_class_count"] += 1
 

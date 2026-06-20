@@ -257,7 +257,7 @@ def test_user_visible_source_surfaces_call_out_private_profile_boundaries(
     [
         (
             "packages/algenta-core/build/lib/algenta/client.py",
-            "https://codna.ai/dashboard/api-keys",
+            "https://algenta.ai/dashboard/api-keys",
         ),
     ],
 )

@@ -260,9 +260,9 @@ def test_cmd_contract_rejects_invalid_payload(monkeypatch) -> None:
             {
                 "contract_version": "v1.3",
                 "brand": "Algenta",
-                "api_base_url": "https://api.codna.ai",
-                "mcp_endpoint": "https://api.codna.ai/mcp/sse",
-                "mcp_tools_endpoint": "https://api.codna.ai/mcp/tools",
+                "api_base_url": "https://api.algenta.ai",
+                "mcp_endpoint": "https://api.algenta.ai/mcp/sse",
+                "mcp_tools_endpoint": "https://api.algenta.ai/mcp/tools",
                 "auth_scheme": "bearer_api_key",
                 "api_key_prefixes": {"live": "de_live_"},
                 "compatibility": {

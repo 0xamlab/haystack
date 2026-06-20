@@ -198,9 +198,9 @@ describe("DecisionEngineClient — uses", () => {
       expect(
         () =>
           new DecisionEngineClient({
-            baseUrl: "https://api.codna.ai",
+            baseUrl: "https://api.algenta.ai",
           }),
-      ).toThrow("https://app.codna.ai/dashboard/api-keys");
+      ).toThrow("https://app.algenta.ai/dashboard/api-keys");
     });
 
     it("uses self-hosted API key guidance in private profiles when apiKey is missing", () => {

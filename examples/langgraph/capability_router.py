@@ -8,7 +8,7 @@ Setup:
 In `self_hosted` and `air_gapped`, keep `ALGENTA_API_KEY` pointed at the API
 key provisioned by your self-hosted operator deployment and configure the
 example to use your self-hosted base URL. Private profiles fail closed and do
-not silently fall back to Codna cloud.
+not silently fall back to Algenta cloud.
 """
 
 from __future__ import annotations

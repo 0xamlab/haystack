@@ -13,7 +13,7 @@ Use `DE_BASE_URL`, `ALGENTA_BASE_URL`, `ALGENTA_API_URL`, or a saved CLI
 service.
 
 - `self_hosted` and `air_gapped` profiles require an explicit CLI target
-- `self_hosted` and `air_gapped` profiles fail closed for Codna-owned cloud URLs
+- `self_hosted` and `air_gapped` profiles fail closed for Algenta-owned cloud URLs
 - private profiles allow private/internal origins by default and public customer
   origins only when they are present in `ALGENTA_EGRESS_ALLOWLIST`
 

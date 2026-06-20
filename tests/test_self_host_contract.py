@@ -56,7 +56,7 @@ def test_overview_is_short_and_points_to_quickstart() -> None:
     text = DOCS_INDEX.read_text(encoding="utf-8")
 
     assert "# Overview" in text
-    assert "curl -sSL https://codna.ai/install.sh | bash" in text
+    assert "curl -sSL https://algenta.ai/install.sh | bash" in text
     assert "Open [Quickstart](/quickstart)." in text
     assert "from algenta import Runtime" not in text
     assert "Backup & Recovery" not in text
@@ -68,7 +68,7 @@ def test_quickstart_is_self_host_first_and_minimal() -> None:
 
     assert "# Quickstart" in text
     assert "In this guide you will:" in text
-    assert "curl -sSL https://codna.ai/install.sh | bash" in text
+    assert "curl -sSL https://algenta.ai/install.sh | bash" in text
     assert "curl http://localhost:8000/v1/health" in text
     assert "API Key: <SELF_HOST_BOOTSTRAP_KEY>" in text
     assert "export ALGENTA_API_KEY='<SELF_HOST_BOOTSTRAP_KEY>'" in text
@@ -295,7 +295,7 @@ def test_install_script_and_compose_lock_service_only_boundary() -> None:
     worker_dockerfile = WORKER_DOCKERFILE.read_text(encoding="utf-8")
     makefile = MAKEFILE.read_text(encoding="utf-8")
 
-    assert "https://codna.ai/install.sh" in install
+    assert "https://algenta.ai/install.sh" in install
     assert "/v1/health" in install
     assert "/v1/api-keys" in install
     assert "mission-runtime" in install
@@ -399,7 +399,7 @@ def test_makefile_mcp_targets_do_not_force_cloud_base_url() -> None:
 
     assert "mcp-stdio:" in text
     assert "mcp-http:" in text
-    assert "ALGENTA_BASE_URL=$${ALGENTA_BASE_URL:-https://api.codna.ai}" not in text
+    assert "ALGENTA_BASE_URL=$${ALGENTA_BASE_URL:-https://api.algenta.ai}" not in text
     assert "\tALGENTA_API_KEY=$(ALGENTA_API_KEY) \\" in text
     assert "apps.mcp_server.server --transport stdio" in text
     assert "apps.mcp_server.server --transport http" in text

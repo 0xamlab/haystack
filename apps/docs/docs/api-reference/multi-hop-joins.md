@@ -83,7 +83,7 @@ Replace every source name, dataset id, key, and column in the examples below
 with the exact names from your own schema summary. Do not guess names.
 
 The HTTP and SDK examples below use Cloud Managed defaults. In `self_hosted`
-and `air_gapped`, replace `https://api.codna.ai` with your self-hosted base
+and `air_gapped`, replace `https://api.algenta.ai` with your self-hosted base
 URL, pass an explicit self-hosted `base_url` / `baseUrl` when constructing
 clients, and use the API key provisioned by your self-hosted operator
 deployment.
@@ -97,7 +97,7 @@ if [ -z "$ALGENTA_API_KEY" ]; then
   exit 1
 fi
 
-ALGENTA_BASE_URL="${ALGENTA_BASE_URL:-${DE_BASE_URL:-${ALGENTA_API_URL:-https://api.codna.ai}}}"
+ALGENTA_BASE_URL="${ALGENTA_BASE_URL:-${DE_BASE_URL:-${ALGENTA_API_URL:-https://api.algenta.ai}}}"
 ```
 
 ## HTTP example: discover the exact datasets first

@@ -12,7 +12,7 @@ All error responses use the same JSON structure:
     "code": "quota_exceeded",
     "message": "Monthly simulation quota exhausted (500/500). Upgrade your plan.",
     "request_id": "req_abc123",
-    "docs_url": "https://docs.codna.ai/errors/quota_exceeded"
+    "docs_url": "https://docs.algenta.ai/errors/quota_exceeded"
   }
 }
 ```
@@ -80,7 +80,7 @@ from decision_engine.exceptions import (
 try:
     result = client.simulate(...)
 except QuotaExceededError:
-    print("Upgrade your plan at codna.ai/pricing")
+    print("Upgrade your plan at algenta.ai/pricing")
 except RateLimitError as e:
     time.sleep(e.retry_after)
     result = client.simulate(...)

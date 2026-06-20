@@ -255,7 +255,7 @@ def test_typescript_package_surface_includes_package_readme_and_registry_metadat
     assert "Promise<DeviceListResponse>;" in runtime_types
     assert "revokeDevice(registrationId: string): Promise<DeviceRevokeResponse>;" in runtime_types
     assert 'baseUrl: "http://localhost:8000"' in readme_text
-    assert 'baseUrl: "https://api.codna.ai"' not in readme_text[
+    assert 'baseUrl: "https://api.algenta.ai"' not in readme_text[
         readme_text.index('const rt = new Runtime({') : readme_text.index("`libraries()` remains")
     ]
     assert "const models = await rt.listModels();" in readme_text

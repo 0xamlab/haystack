@@ -146,7 +146,7 @@ def test_service_first_docs_keep_runtime_and_sdk_surfaces_distinct() -> None:
     assert "`ALGENTA_BASE_URL`. Legacy `DE_API_KEY`, `DE_BASE_URL`, and `ALGENTA_API_URL`" in local_runtime
     assert "remain accepted for compatibility." in local_runtime
     assert "fail closed" in local_runtime
-    assert "silently falling back to Codna cloud." in local_runtime
+    assert "silently falling back to Algenta cloud." in local_runtime
     assert 'new Runtime({ apiKey: "<YOUR_ALGENTA_API_KEY>" })' in trust_model
     assert 'Runtime(api_key="<YOUR_ALGENTA_API_KEY>")' in trust_model
     assert "immutable audit-log artifacts" in trust_model
@@ -213,7 +213,7 @@ def test_service_first_docs_keep_runtime_and_sdk_surfaces_distinct() -> None:
     assert 'Authorization: Bearer <YOUR_ALGENTA_API_KEY>' in multi_hop_readme
     assert "de_live_YOUR_KEY" not in multi_hop_readme
     assert "fail closed" in local_runtime_example
-    assert "silently falling back to Codna cloud." in local_runtime_example
+    assert "silently falling back to Algenta cloud." in local_runtime_example
     assert "GET /v1/meta/contract" in local_runtime_example
     assert "/openapi.json" in local_runtime_example
     assert "x-primary-data-query-contract" in local_runtime_example

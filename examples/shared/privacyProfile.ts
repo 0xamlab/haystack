@@ -7,7 +7,7 @@
  * provisioned by the self-hosted operator deployment. `ALGENTA_*` env vars stay
  * canonical, while legacy `DE_*` env vars and `ALGENTA_API_URL` remain accepted
  * for compatibility.
- * Private profiles fail closed and do not silently fall back to Codna cloud.
+ * Private profiles fail closed and do not silently fall back to Algenta cloud.
  */
 
 import { ALGENTA_OWNED_HOSTS, ALGENTA_OWNED_SUFFIXES } from "../../packages/ts-sdk/src/contract.js";
@@ -78,12 +78,12 @@ export function resolveExampleBaseUrl(options: {
   const configuredBaseUrl =
     envValue(env, "ALGENTA_BASE_URL") ?? envValue(env, "DE_BASE_URL") ?? envValue(env, "ALGENTA_API_URL");
   const normalized = normalizeBaseUrl(
-    configuredBaseUrl ?? options.defaultBaseUrl ?? "https://api.codna.ai",
+    configuredBaseUrl ?? options.defaultBaseUrl ?? "https://api.algenta.ai",
     options.component,
   );
   if (cloudDisabled(env) && isAlgentaOwnedBaseUrl(normalized)) {
     throw new Error(
-      `${options.component} private profiles cannot target Codna-owned cloud URLs. Configure a self-hosted baseUrl or ALGENTA_BASE_URL / DE_BASE_URL / ALGENTA_API_URL.`,
+      `${options.component} private profiles cannot target Algenta-owned cloud URLs. Configure a self-hosted baseUrl or ALGENTA_BASE_URL / DE_BASE_URL / ALGENTA_API_URL.`,
     );
   }
   return normalized;

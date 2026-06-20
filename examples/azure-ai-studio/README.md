@@ -2,14 +2,14 @@
 
 Use Algenta from Azure-hosted copilots, prompt flows, and assistant-style agents.
 
-- Cloud Managed: `https://api.codna.ai`
+- Cloud Managed: `https://api.algenta.ai`
 - `self_hosted` and `air_gapped`: replace the hosted base URL with your self-hosted base URL
 
-Private profiles do not silently fall back to Codna cloud.
+Private profiles do not silently fall back to Algenta cloud.
 
 All snippets below resolve `ALGENTA_URL` from `ALGENTA_BASE_URL`,
 `DE_BASE_URL`, or `ALGENTA_API_URL`. In Cloud Managed, set that to
-`https://api.codna.ai`. In `self_hosted` and `air_gapped`, set it to your
+`https://api.algenta.ai`. In `self_hosted` and `air_gapped`, set it to your
 self-hosted base URL and use the API key provisioned by your self-hosted
 operator deployment.
 
@@ -47,7 +47,7 @@ ALGENTA_URL = (
 if not ALGENTA_URL:
     raise RuntimeError(
         "Set ALGENTA_BASE_URL, DE_BASE_URL, or ALGENTA_API_URL before running this example. "
-        "Use https://api.codna.ai only in Cloud Managed."
+        "Use https://api.algenta.ai only in Cloud Managed."
     )
 
 
@@ -97,7 +97,7 @@ ALGENTA_URL = (
 if not ALGENTA_URL:
     raise RuntimeError(
         "Set ALGENTA_BASE_URL, DE_BASE_URL, or ALGENTA_API_URL before running this example. "
-        "Use https://api.codna.ai only in Cloud Managed."
+        "Use https://api.algenta.ai only in Cloud Managed."
     )
 
 
@@ -292,7 +292,7 @@ ALGENTA_URL = (
 if not ALGENTA_URL:
     raise RuntimeError(
         "Set ALGENTA_BASE_URL, DE_BASE_URL, or ALGENTA_API_URL before running this example. "
-        "Use https://api.codna.ai only in Cloud Managed."
+        "Use https://api.algenta.ai only in Cloud Managed."
     )
 
 
@@ -405,7 +405,7 @@ def algenta_simulate(
     if not base_url:
         raise RuntimeError(
             "Set ALGENTA_BASE_URL, DE_BASE_URL, or ALGENTA_API_URL before running this example. "
-            "Use https://api.codna.ai only in Cloud Managed."
+            "Use https://api.algenta.ai only in Cloud Managed."
         )
     resp = requests.post(
         f"{base_url}/v1/simulate",
@@ -442,7 +442,7 @@ Set in your Azure AI Studio environment:
 
 ```bash
 ALGENTA_API_KEY=<YOUR_ALGENTA_API_KEY>  # Cloud Managed only; use a self-hosted-issued key in private profiles
-ALGENTA_BASE_URL=https://api.codna.ai  # Cloud Managed only; replace with your self-hosted base URL in private profiles
+ALGENTA_BASE_URL=https://api.algenta.ai  # Cloud Managed only; replace with your self-hosted base URL in private profiles
 AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
 AZURE_OPENAI_KEY=...
 ```

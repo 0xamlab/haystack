@@ -2,11 +2,11 @@
  * Multi-hop local runtime-library flow example.
  *
  * This module demonstrates the local runtime-library path. It defaults to a
- * local daemon and does not silently fall back to Codna cloud. If you
+ * local daemon and does not silently fall back to Algenta cloud. If you
  * provide `ALGENTA_BASE_URL` / `DE_BASE_URL` / `ALGENTA_API_URL` or
  * `ALGENTA_API_KEY` / `DE_API_KEY` for daemon bootstrap or self-hosted control
  * surfaces, point them at your self-hosted operator deployment instead of
- * Codna cloud in `self_hosted` and `air_gapped`.
+ * Algenta cloud in `self_hosted` and `air_gapped`.
  */
 
 import { MojoRuntime, libraries } from "algenta-sdk";

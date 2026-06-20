@@ -87,7 +87,7 @@ result = rt.query(plan)
 
 This hosted local-execution example is the Cloud Managed path. In `self_hosted`
 and `air_gapped`, pass an explicit self-hosted `base_url` and fail closed
-instead of silently falling back to Codna cloud.
+instead of silently falling back to Algenta cloud.
 
 The same licensed local path also works for the Python Mojo package surface:
 
@@ -128,7 +128,7 @@ const result = await rt.query(plan);
 
 This TypeScript snippet is also the Cloud Managed path. In `self_hosted` and
 `air_gapped`, pass an explicit self-hosted `baseUrl` and fail closed instead
-of silently falling back to Codna cloud.
+of silently falling back to Algenta cloud.
 
 For local database-backed development, the public runtimes now diverge slightly:
 
@@ -145,7 +145,7 @@ flush. In that profile:
 
 - a valid local signed license file is required
 - `ALGENTA_DISABLE_TELEMETRY=1` still allows local audit and local metering
-- `ALGENTA_ALLOW_OUTBOUND_NETWORK=0` blocks Codna-owned and undeclared public egress
+- `ALGENTA_ALLOW_OUTBOUND_NETWORK=0` blocks Algenta-owned and undeclared public egress
 - `ALGENTA_EGRESS_ALLOWLIST` is the only way to permit explicit connector/operator egress
 
 ### Hosted data/query contract on the runtime surface

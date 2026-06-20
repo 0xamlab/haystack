@@ -3,7 +3,7 @@ Deployment routing middleware — routes authenticated requests to the correct
 org data plane endpoint when a dedicated cloud deployment is active.
 
 Flow:
-  1. Request arrives at control plane (api.codna.ai)
+  1. Request arrives at control plane (api.algenta.ai)
   2. Auth middleware resolves org_id from API key
   3. This middleware checks if org has an active deployment with endpoint_url
   4. If yes: proxy the request to the data plane endpoint

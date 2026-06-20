@@ -8,10 +8,10 @@ Use the Algenta HTTP module pattern in Make scenarios for governed dataset disco
 
 Use one base URL consistently across every Make HTTP module:
 
-- Cloud Managed: `https://api.codna.ai`
+- Cloud Managed: `https://api.algenta.ai`
 - `self_hosted` and `air_gapped`: replace the hosted base URL with your self-hosted base URL
 
-Private profiles do not silently fall back to Codna cloud.
+Private profiles do not silently fall back to Algenta cloud.
 
 ## Setup
 
@@ -50,7 +50,7 @@ Private profiles do not silently fall back to Codna cloud.
 5. Parse the response and use `result`, `request_id`, and `latency_ms` in downstream modules
 
 Replace `https://your-algenta-base-url.example` with Cloud Managed
-`https://api.codna.ai` or your self-hosted base URL before enabling the
+`https://api.algenta.ai` or your self-hosted base URL before enabling the
 scenario.
 
 If an older self-hosted node still returns `404` for `/v1/meta/contract`, use

@@ -23,11 +23,11 @@ test("gateway private profiles reject algenta cloud origin", () => {
     () =>
       resolveGatewayApiOrigin({
         ALGENTA_DEPLOYMENT_MODE: "self_hosted",
-        API_ORIGIN: "https://api.codna.ai",
+        API_ORIGIN: "https://api.algenta.ai",
       }),
     (error) =>
       error instanceof GatewayPrivacyConfigurationError &&
-      /Codna-owned cloud URLs/.test(error.message),
+      /Algenta-owned cloud URLs/.test(error.message),
   );
 });
 

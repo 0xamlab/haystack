@@ -511,11 +511,11 @@ def test_package_readmes_cover_unified_capability_plane_surface() -> None:
     assert "revoke_device()" in text
     assert 'mode="self_hosted"' in text
     assert 'base_url="http://localhost:8000"' in text
-    assert 'base_url="https://api.codna.ai"' not in text[
+    assert 'base_url="https://api.algenta.ai"' not in text[
         text.index('rt = Runtime(') : text.index("`rt.get_contract()`")
     ]
     assert "Runtime(mode=\"self_hosted\")" in text
     assert "must point `base_url` at your own self-hosted service" in text
-    assert "fail closed instead of silently falling back to Codna cloud" in text
+    assert "fail closed instead of silently falling back to Algenta cloud" in text
 
 

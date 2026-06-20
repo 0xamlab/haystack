@@ -1,6 +1,6 @@
 #!/bin/bash
 # Algenta Decision Engine — one-line self-hosted installer
-# Usage: curl -fsSL https://codna.ai/install.sh | bash
+# Usage: curl -fsSL https://algenta.ai/install.sh | bash
 # Or:    curl -fsSL https://raw.githubusercontent.com/algenta/decision-engine/main/install.sh | bash
 
 set -euo pipefail
@@ -8,7 +8,7 @@ set -euo pipefail
 REPO="algenta/decision-engine"
 INSTALL_DIR="${ALGENTA_DIR:-$HOME/.algenta}"
 API_PORT="${ALGENTA_API_PORT:-8000}"
-DOCS_URL="${ALGENTA_DOCS_URL:-https://docs.codna.ai/self-hosting}"
+DOCS_URL="${ALGENTA_DOCS_URL:-https://docs.algenta.ai/self-hosting}"
 IMAGE_REGISTRY="${ALGENTA_IMAGE_REGISTRY:-ghcr.io/algenta/decision-engine}"
 RELEASE_REF="${ALGENTA_VERSION:-}"
 IMAGE_TAG="${ALGENTA_IMAGE_TAG:-}"
@@ -496,7 +496,7 @@ seed_initial_user() {
     echo -e "  ${BOLD}Note:${NC}         No SDK or Python install is required to use Algenta."
     echo ""
     echo -e "  ${BOLD}Docs:${NC}         ${DOCS_URL}"
-    echo -e "  ${BOLD}Support:${NC}      https://codna.ai/support"
+    echo -e "  ${BOLD}Support:${NC}      https://algenta.ai/support"
     echo ""
     return 0
   fi

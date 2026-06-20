@@ -23,13 +23,13 @@ def test_admin_egress_policy_endpoint_returns_effective_policy() -> None:
         "control_plane_url": "",
         "allow_outbound_network": False,
         "egress_allowlist": [],
-        "algenta_owned_hosts": ["api.codna.ai"],
-        "algenta_owned_suffixes": [".codna.ai"],
+        "algenta_owned_hosts": ["api.algenta.ai"],
+        "algenta_owned_suffixes": [".algenta.ai"],
         "vendor_telemetry_hosts": ["sentry.io"],
         "private_host_suffixes": [".internal", ".localhost"],
         "privacy_registry": {
-            "algenta_owned_hosts": ["api.codna.ai"],
-            "algenta_owned_suffixes": [".codna.ai"],
+            "algenta_owned_hosts": ["api.algenta.ai"],
+            "algenta_owned_suffixes": [".algenta.ai"],
             "vendor_telemetry_hosts": ["sentry.io"],
             "private_host_suffixes": [".internal", ".localhost"],
         },
@@ -39,7 +39,7 @@ def test_admin_egress_policy_endpoint_returns_effective_policy() -> None:
         "undeclared_public_egress_allowed": False,
         "mandatory_heartbeat_enabled": False,
         "metering_flush_enabled": False,
-        "algenta_owned_host_patterns": ["api.codna.ai"],
+        "algenta_owned_host_patterns": ["api.algenta.ai"],
         "vpc_mode_note": "vpc remains managed.",
     }
     app.dependency_overrides[get_current_org] = _fake_auth
@@ -53,7 +53,7 @@ def test_admin_egress_policy_endpoint_returns_effective_policy() -> None:
         body = response.json()
         assert body["deployment_mode"] == "self_hosted"
         assert body["algenta_cloud_enabled"] is False
-        assert body["privacy_registry"]["algenta_owned_suffixes"] == [".codna.ai"]
+        assert body["privacy_registry"]["algenta_owned_suffixes"] == [".algenta.ai"]
         assert body["vendor_telemetry_hosts"] == ["sentry.io"]
     finally:
         app.dependency_overrides.clear()

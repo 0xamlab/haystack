@@ -337,7 +337,7 @@ class Settings(BaseSettings):
         ),
     )
     deployment_base_domain: str = Field(
-        default="deploy.codna.ai",
+        default="deploy.algenta.ai",
         description="Base domain for per-org deployment endpoints",
     )
     deployment_billing_markup_pct: float = Field(
@@ -358,7 +358,7 @@ class Settings(BaseSettings):
     smtp_port: int = Field(default=1025)
     smtp_username: str = Field(default="")
     smtp_password: str = Field(default="")
-    email_from: str = Field(default="noreply@codna.ai")
+    email_from: str = Field(default="noreply@algenta.ai")
 
     # ─── Webhooks ─────────────────────────────────────────────────────────────
     webhook_signing_secret: str = Field(default="change-me-in-production")

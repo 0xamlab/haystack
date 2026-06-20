@@ -23,7 +23,7 @@ Usage:
 The cloud example above is the Cloud Managed path. In `self_hosted` and
 `air_gapped`, pass an explicit self-hosted `base_url` and use the API key
 provisioned by your self-hosted operator deployment instead. Private profiles
-fail closed and do not silently fall back to Codna cloud.
+fail closed and do not silently fall back to Algenta cloud.
 """
 
 from __future__ import annotations
@@ -50,7 +50,7 @@ from algenta.client._agent_runs import _AgentRunsMixin  # noqa: E402
 
 class AlgentaClient(_AccountBillingMixin, _DecisionsMixin, _ProductsJobsTriggersMixin, _CapabilitiesSkillsMixin, _QueryResolveMixin, _ConnectorsDatasetsRepositoryMixin, _DeploymentsModelsMixin, _LLMMixin, _AgentRunsMixin):
     """
-    Codna cloud API client.
+    Algenta cloud API client.
 
     Wraps all local algenta functions with cloud execution.
     All methods have the same signature as their local equivalents,

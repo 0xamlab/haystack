@@ -32,7 +32,7 @@ def test_render_result_uses_machine_readable_lines() -> None:
     module = _load_module()
     result = module.BootstrapResult(
         org_slug="self-hosted-org",
-        user_email="owner@selfhost.codna.ai",
+        user_email="owner@selfhost.algenta.ai",
         user_password="secret-password",
         user_created=True,
         api_key_id="11111111-2222-3333-4444-555555555555",
@@ -45,7 +45,7 @@ def test_render_result_uses_machine_readable_lines() -> None:
 
     assert "ALGENTA_BOOTSTRAP_READY=1" in rendered
     assert "BOOTSTRAP_ORG_SLUG=self-hosted-org" in rendered
-    assert "BOOTSTRAP_USER_EMAIL=owner@selfhost.codna.ai" in rendered
+    assert "BOOTSTRAP_USER_EMAIL=owner@selfhost.algenta.ai" in rendered
     assert "BOOTSTRAP_USER_CREATED=1" in rendered
     assert "BOOTSTRAP_API_KEY_ID=11111111-2222-3333-4444-555555555555" in rendered
     assert "BOOTSTRAP_API_KEY_PREFIX=de_test_abcd" in rendered
@@ -60,7 +60,7 @@ def test_render_result_omits_engine_key_line_when_absent() -> None:
     module = _load_module()
     result = module.BootstrapResult(
         org_slug="self-hosted-org",
-        user_email="owner@selfhost.codna.ai",
+        user_email="owner@selfhost.algenta.ai",
         user_password=None,
         user_created=False,
         api_key_id="11111111-2222-3333-4444-555555555555",

@@ -38,10 +38,10 @@ ships.
 
 ## How to use them
 
-- Cloud Managed: `https://api.codna.ai`
+- Cloud Managed: `https://api.algenta.ai`
 - `self_hosted` and `air_gapped`: replace the hosted base URL with your self-hosted base URL
 
-Private profiles do not silently fall back to Codna cloud.
+Private profiles do not silently fall back to Algenta cloud.
 
 1. Replace every placeholder source name, dataset id, join key, and column with
    exact values from:
@@ -57,7 +57,7 @@ if [ -z "$ALGENTA_API_KEY" ]; then
   exit 1
 fi
 
-ALGENTA_BASE_URL="${ALGENTA_BASE_URL:-${DE_BASE_URL:-${ALGENTA_API_URL:-https://api.codna.ai}}}"
+ALGENTA_BASE_URL="${ALGENTA_BASE_URL:-${DE_BASE_URL:-${ALGENTA_API_URL:-https://api.algenta.ai}}}"
 
 curl -X POST "${ALGENTA_BASE_URL}/v1/data/connect" \
   -H "Authorization: Bearer ${ALGENTA_API_KEY}" \

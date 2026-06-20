@@ -66,7 +66,7 @@ if (!apiKey) {
 
 const client = new AlgentaClient({
   apiKey,
-  baseUrl: "https://api.codna.ai",
+  baseUrl: "https://api.algenta.ai",
 });
 
 const datasets = await client.listDatasets({ search: "orders", compact: true });
@@ -247,10 +247,10 @@ Every stored repository `DecisionPlan` records planner provenance in
 
 `query()` remains available and unchanged when you only need the governed query body.
 
-Use `https://api.codna.ai` only in Cloud Managed. `ALGENTA_DEPLOYMENT_MODE=self_hosted`
+Use `https://api.algenta.ai` only in Cloud Managed. `ALGENTA_DEPLOYMENT_MODE=self_hosted`
 and `ALGENTA_DEPLOYMENT_MODE=air_gapped` must point `baseUrl` at your own
 self-hosted service and fail closed instead of silently falling back to
-Codna cloud.
+Algenta cloud.
 
 `client.getContract()` also handles older self-hosted nodes that still return
 `404` for `/v1/meta/contract` by falling back to `/openapi.json` and reading
@@ -575,7 +575,7 @@ if (!apiKey) {
 
 const client = new AlgentaClient({
   apiKey,
-  baseUrl: "https://api.codna.ai",
+  baseUrl: "https://api.algenta.ai",
 });
 
 const recommendation = await client.recommend(
@@ -796,7 +796,7 @@ console.log(usage.billing_period, usage.quota_used_pct);
 ```
 
 `Runtime` uses the governed hosted or self-hosted data/query surface. Use
-Cloud Managed URLs only with `mode: "api"`. `mode: "self_hosted"` and private profiles must point `baseUrl` at your own self-hosted service and fail closed instead of silently falling back to Codna cloud. In `mode: "api"` or `mode: "self_hosted"`, it now forwards the plan-aligned helper routes too:
+Cloud Managed URLs only with `mode: "api"`. `mode: "self_hosted"` and private profiles must point `baseUrl` at your own self-hosted service and fail closed instead of silently falling back to Algenta cloud. In `mode: "api"` or `mode: "self_hosted"`, it now forwards the plan-aligned helper routes too:
 
 - `rt.listModels()`
 - `rt.resolveArtifactBridge({ repo_id, filename, revision, local_files_only })`

@@ -14,15 +14,15 @@ Use Algenta from Azure-hosted copilots, assistants, and prompt flows with the ca
 
 Base URL:
 
-- Cloud Managed: `https://api.codna.ai`
+- Cloud Managed: `https://api.algenta.ai`
 - `self_hosted` and `air_gapped`: replace the hosted base URL with your self-hosted base URL
 
-Private profiles do not silently fall back to Codna cloud.
+Private profiles do not silently fall back to Algenta cloud.
 
 ## Option A: OpenAPI import
 
 1. Import `https://your-algenta-base-url.example/openapi.json` and replace the
-   placeholder with Cloud Managed `https://api.codna.ai` or
+   placeholder with Cloud Managed `https://api.algenta.ai` or
    `https://your-algenta-host.example/openapi.json` for `self_hosted` / `air_gapped`.
 2. Configure Bearer auth with your Algenta API key. Canonical env vars are
    `ALGENTA_API_KEY` and `ALGENTA_BASE_URL`; legacy `DE_API_KEY`,

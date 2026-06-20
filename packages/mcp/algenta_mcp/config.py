@@ -11,7 +11,7 @@ from decision_engine.privacy_profile import cloud_disabled
 VERSION: Final[str] = "1.0.0"
 # Public default API base URL (same value the SDK uses); only used when nothing is configured and
 # cloud is not disabled.
-_DEFAULT_API_BASE_URL: Final[str] = "https://api.codna.ai"
+_DEFAULT_API_BASE_URL: Final[str] = "https://api.algenta.ai"
 
 for _legacy_dynamic_name in ("BASE_URL", "API_KEY", "TIMEOUT", "CONNECT_TIMEOUT", "PORT"):
     globals().pop(_legacy_dynamic_name, None)

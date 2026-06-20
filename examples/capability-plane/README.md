@@ -14,10 +14,10 @@ outcome recording.
 
 ## How to use them
 
-- Cloud Managed: `https://api.codna.ai`
+- Cloud Managed: `https://api.algenta.ai`
 - `self_hosted` and `air_gapped`: replace the hosted base URL with your own self-hosted base URL
 
-Private profiles do not silently fall back to Codna cloud.
+Private profiles do not silently fall back to Algenta cloud.
 
 1. Create or reuse one binding before discovery:
 
@@ -28,7 +28,7 @@ if [ -z "$ALGENTA_API_KEY" ]; then
   exit 1
 fi
 
-ALGENTA_BASE_URL="${ALGENTA_BASE_URL:-${DE_BASE_URL:-${ALGENTA_API_URL:-https://api.codna.ai}}}"
+ALGENTA_BASE_URL="${ALGENTA_BASE_URL:-${DE_BASE_URL:-${ALGENTA_API_URL:-https://api.algenta.ai}}}"
 
 curl -X POST "${ALGENTA_BASE_URL}/v1/capability-bindings" \
   -H "Authorization: Bearer ${ALGENTA_API_KEY}" \

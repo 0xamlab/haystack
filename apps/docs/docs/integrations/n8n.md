@@ -14,10 +14,10 @@ Use Algenta in n8n to add governed dataset discovery, exact queries, batch exact
 
 Use one base URL consistently across every n8n HTTP node:
 
-- Cloud Managed: `https://api.codna.ai`
+- Cloud Managed: `https://api.algenta.ai`
 - `self_hosted` and `air_gapped`: replace the hosted base URL with your self-hosted base URL
 
-Private profiles do not silently fall back to Codna cloud.
+Private profiles do not silently fall back to Algenta cloud.
 
 ## Setup
 
@@ -54,7 +54,7 @@ Private profiles do not silently fall back to Codna cloud.
 For multi-metric prompts, call `POST /v1/query/batch` instead of chaining many single-query nodes. For wide rowsets, use `POST /v1/query/sql-report`.
 
 Replace `https://your-algenta-base-url.example` with Cloud Managed
-`https://api.codna.ai` or your self-hosted base URL before enabling the
+`https://api.algenta.ai` or your self-hosted base URL before enabling the
 workflow.
 
 Example artifacts:

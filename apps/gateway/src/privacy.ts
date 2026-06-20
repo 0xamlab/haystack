@@ -169,7 +169,7 @@ export function resolveGatewayApiOrigin(env: EnvMap = process.env): string {
 
   if (cloudDisabled(env) && isAlgentaOwnedHost(host)) {
     throw new GatewayPrivacyConfigurationError(
-      "Gateway private profiles cannot target Codna-owned cloud URLs. Configure API_ORIGIN for your self-hosted deployment.",
+      "Gateway private profiles cannot target Algenta-owned cloud URLs. Configure API_ORIGIN for your self-hosted deployment.",
     );
   }
 

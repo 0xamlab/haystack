@@ -26,7 +26,7 @@ def test_sync_client_private_profile_requires_self_hosted_base_url(
         module.DecisionEngineClient(api_key="de_test_abc123")
 
     message = str(excinfo.value)
-    assert "private profiles cannot target Codna-owned cloud URLs" in message
+    assert "private profiles cannot target Algenta-owned cloud URLs" in message
     assert "ALGENTA_BASE_URL / DE_BASE_URL / ALGENTA_API_URL" in message
 
 
@@ -59,7 +59,7 @@ def test_async_client_private_profile_requires_self_hosted_base_url(
         module.AsyncDecisionEngineClient(api_key="de_test_abc123")
 
     message = str(excinfo.value)
-    assert "private profiles cannot target Codna-owned cloud URLs" in message
+    assert "private profiles cannot target Algenta-owned cloud URLs" in message
     assert "ALGENTA_BASE_URL / DE_BASE_URL / ALGENTA_API_URL" in message
 
 
@@ -86,10 +86,10 @@ def test_async_client_private_profile_rejects_algenta_owned_base_url(
     monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "self_hosted")
     monkeypatch.setenv("ALGENTA_DISABLE_CLOUD", "1")
 
-    with pytest.raises(ValueError, match="private profiles cannot target Codna-owned cloud URLs"):
+    with pytest.raises(ValueError, match="private profiles cannot target Algenta-owned cloud URLs"):
         module.AsyncDecisionEngineClient(
             api_key="de_test_abc123",
-            base_url="https://api.codna.ai",
+            base_url="https://api.algenta.ai",
         )
 
 
@@ -103,7 +103,7 @@ def test_sync_client_missing_api_key_uses_cloud_managed_dashboard_url(
     monkeypatch.delenv("DE_API_KEY", raising=False)
 
     with pytest.raises(ValueError, match=r"https://app\.algenta\.ai/dashboard/api-keys"):
-        module.DecisionEngineClient(base_url="https://api.codna.ai")
+        module.DecisionEngineClient(base_url="https://api.algenta.ai")
 
 
 def test_sync_client_missing_api_key_private_profile_uses_self_hosted_guidance(
@@ -125,7 +125,7 @@ def test_sync_client_missing_api_key_private_profile_uses_self_hosted_guidance(
     message = str(excinfo.value)
     assert "ALGENTA_API_KEY / DE_API_KEY environment variables" in message
     assert "self-hosted admin surface or API base URL: http://localhost:8000" in message
-    assert "codna.ai/dashboard/api-keys" not in message
+    assert "algenta.ai/dashboard/api-keys" not in message
 
 
 def test_async_client_missing_api_key_uses_cloud_managed_dashboard_url(
@@ -138,7 +138,7 @@ def test_async_client_missing_api_key_uses_cloud_managed_dashboard_url(
     monkeypatch.delenv("DE_API_KEY", raising=False)
 
     with pytest.raises(ValueError, match=r"https://app\.algenta\.ai/dashboard/api-keys"):
-        module.AsyncDecisionEngineClient(base_url="https://api.codna.ai")
+        module.AsyncDecisionEngineClient(base_url="https://api.algenta.ai")
 
 
 def test_async_client_missing_api_key_private_profile_uses_self_hosted_guidance(
@@ -160,7 +160,7 @@ def test_async_client_missing_api_key_private_profile_uses_self_hosted_guidance(
     message = str(excinfo.value)
     assert "ALGENTA_API_KEY / DE_API_KEY environment variables" in message
     assert "self-hosted admin surface or API base URL: http://localhost:8000" in message
-    assert "codna.ai/dashboard/api-keys" not in message
+    assert "algenta.ai/dashboard/api-keys" not in message
 
 
 def test_privacy_profile_console_base_url_requires_explicit_origin_in_private_profiles() -> None:
@@ -204,6 +204,6 @@ def test_privacy_profile_console_base_url_rejects_algenta_owned_dashboard_alias(
             env={
                 "ALGENTA_DEPLOYMENT_MODE": "self_hosted",
                 "ALGENTA_DISABLE_CLOUD": "1",
-                "ALGENTA_APP_BASE_URL": "https://app.codna.ai",
+                "ALGENTA_APP_BASE_URL": "https://app.algenta.ai",
             },
         )

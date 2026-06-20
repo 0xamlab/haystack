@@ -34,7 +34,7 @@ settings = get_settings()
 
 DEFAULT_ORG_NAME = "Self-Hosted Organization"
 DEFAULT_ORG_SLUG = "self-hosted-org"
-DEFAULT_USER_EMAIL = "owner@selfhost.codna.ai"
+DEFAULT_USER_EMAIL = "owner@selfhost.algenta.ai"
 DEFAULT_USER_NAME = "Self-Hosted Owner"
 PASSWORD_LENGTH = 32
 

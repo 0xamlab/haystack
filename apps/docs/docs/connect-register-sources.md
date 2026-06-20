@@ -105,7 +105,7 @@ In API mode, registration delegates to the direct API client and expects a struc
 This API-mode example is the Cloud Managed path. In `self_hosted` and
 `air_gapped`, keep `mode="api"` only if you also pass an explicit self-hosted
 `base_url`; private profiles fail closed instead of silently falling back to
-Codna cloud.
+Algenta cloud.
 
 ```python
 import os

@@ -8,10 +8,10 @@ Use the capability plane when you want one customer-agnostic control surface
 across governed datasets, MCP providers, prompt-skills, native tools, and
 runtime libraries.
 
-- Cloud Managed: `https://api.codna.ai`
+- Cloud Managed: `https://api.algenta.ai`
 - `self_hosted` and `air_gapped`: replace the hosted base URL with your self-hosted base URL
 
-Private profiles do not silently fall back to Codna cloud.
+Private profiles do not silently fall back to Algenta cloud.
 
 The capability plane is the canonical route-selection layer above the existing
 connector and governed data surfaces. It does not replace `/v1/data`,

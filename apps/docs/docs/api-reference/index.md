@@ -6,12 +6,12 @@ sidebar_position: 1
 
 Start with [Quickstart](/quickstart) if you are bringing up a self-hosted service for the first time.
 
-**Base URL:** `https://api.codna.ai`
+**Base URL:** `https://api.algenta.ai`
 
-- Cloud Managed: `https://api.codna.ai`
+- Cloud Managed: `https://api.algenta.ai`
 - `self_hosted` and `air_gapped`: replace the hosted base URL with your self-hosted base URL
 
-Private profiles do not silently fall back to Codna cloud.
+Private profiles do not silently fall back to Algenta cloud.
 
 **Authentication:** API requests require an API key via:
 

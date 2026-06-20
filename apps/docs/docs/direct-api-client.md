@@ -13,10 +13,10 @@ Start with [Quickstart](/quickstart), then use [API Authentication](/api-referen
 
 Use this surface when you want raw API control instead of the higher-level SDK helpers or local runtime surfaces.
 
-- Cloud Managed: `https://api.codna.ai`
+- Cloud Managed: `https://api.algenta.ai`
 - `self_hosted` and `air_gapped`: pass an explicit self-hosted `base_url` / `baseUrl`
 
-Private profiles fail closed and do not silently fall back to Codna cloud.
+Private profiles fail closed and do not silently fall back to Algenta cloud.
 Use the API key provisioned by your self-hosted operator deployment in private
 profiles instead of Cloud Managed dashboard-issued keys.
 

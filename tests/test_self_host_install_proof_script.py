@@ -134,7 +134,7 @@ def _make_stub_binaries(bin_dir: Path) -> None:
               cat >/dev/null
               printf 'API_KEY=%s\\n' "${ALGENTA_TEST_API_KEY:-de_test_stub_key}"
               printf 'BOOTSTRAP_KEY_ID=%s\\n' "${ALGENTA_TEST_BOOTSTRAP_KEY_ID:-bbbbbbbb-cccc-dddd-eeee-ffffffffffff}"
-              printf 'BOOTSTRAP_EMAIL=%s\\n' "${ALGENTA_TEST_BOOTSTRAP_EMAIL:-owner@selfhost.codna.ai}"
+              printf 'BOOTSTRAP_EMAIL=%s\\n' "${ALGENTA_TEST_BOOTSTRAP_EMAIL:-owner@selfhost.algenta.ai}"
               printf 'BOOTSTRAP_PASSWORD=%s\\n' "${ALGENTA_TEST_BOOTSTRAP_PASSWORD:-stub-password-123}"
               exit 0
             fi
@@ -162,7 +162,7 @@ def _make_fake_installer(path: Path) -> None:
             printf '%s\\n' "API Key: ${ALGENTA_TEST_API_KEY:-de_test_stub_key}"
             printf '%s\\n' "Bootstrap key id: ${ALGENTA_TEST_BOOTSTRAP_KEY_ID:-bbbbbbbb-cccc-dddd-eeee-ffffffffffff}"
             printf '%s\\n' "Bootstrap key prefix: ${ALGENTA_TEST_BOOTSTRAP_KEY_PREFIX:-de_test_stub}"
-            printf '%s\\n' "Bootstrap user: ${ALGENTA_TEST_BOOTSTRAP_EMAIL:-owner@selfhost.codna.ai}"
+            printf '%s\\n' "Bootstrap user: ${ALGENTA_TEST_BOOTSTRAP_EMAIL:-owner@selfhost.algenta.ai}"
             printf '%s\\n' "Bootstrap password: ${ALGENTA_TEST_BOOTSTRAP_PASSWORD:-stub-password-123}"
             printf '%s\\n' "curl -X POST http://localhost:${ALGENTA_API_PORT:-18020}/v1/api-keys"
             printf '%s\\n' '{"label":"mission-runtime","expires_at":"2028-05-19T00:00:00Z"}'
@@ -200,7 +200,7 @@ def _run_install_proof_script(
             "ALGENTA_TEST_ROTATED_API_KEY_ID": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
             "ALGENTA_TEST_ROTATED_API_KEY_PREFIX": "de_live_inst",
             "ALGENTA_TEST_ROTATED_EXPIRES_AT": "2028-05-19T00:00:00Z",
-            "ALGENTA_TEST_BOOTSTRAP_EMAIL": "owner@selfhost.codna.ai",
+            "ALGENTA_TEST_BOOTSTRAP_EMAIL": "owner@selfhost.algenta.ai",
             "ALGENTA_TEST_BOOTSTRAP_PASSWORD": "stub-password-123",
             "ALGENTA_TEST_ASYNC_JOB_OUTPUT": "\n".join(
                 [

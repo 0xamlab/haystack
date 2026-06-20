@@ -2,17 +2,17 @@
 
 CONTRACT_VERSION = 'v1.3'
 BRAND = 'Algenta'
-API_BASE_URL = 'https://api.codna.ai'
-MCP_ENDPOINT = 'https://api.codna.ai/mcp/sse'
-MCP_TOOLS_ENDPOINT = 'https://api.codna.ai/mcp/tools'
+API_BASE_URL = 'https://api.algenta.ai'
+MCP_ENDPOINT = 'https://api.algenta.ai/mcp/sse'
+MCP_TOOLS_ENDPOINT = 'https://api.algenta.ai/mcp/tools'
 AUTH_SCHEME = 'bearer_api_key'
 API_KEY_PREFIX_LIVE = 'de_live_'
 API_KEY_PREFIX_TEST = 'de_test_'
 LEGACY_HEADERS = ('X-API-Key',)
 LEGACY_ENV_VARS = ('DE_API_KEY', 'DE_BASE_URL', 'ALGENTA_API_URL')
 LEGACY_DOMAINS = ('api.algenta.io', 'api.decisionengine.io')
-ALGENTA_OWNED_HOSTS = ('codna.ai', 'api.codna.ai', 'docs.codna.ai', 'app.codna.ai', 'cdn.codna.ai', 'api.algenta.io', 'api.decisionengine.io')
-ALGENTA_OWNED_SUFFIXES = ('.codna.ai', '.algenta.io', '.decisionengine.io')
+ALGENTA_OWNED_HOSTS = ('algenta.ai', 'api.algenta.ai', 'docs.algenta.ai', 'app.algenta.ai', 'cdn.algenta.ai', 'api.algenta.io', 'api.decisionengine.io')
+ALGENTA_OWNED_SUFFIXES = ('.algenta.ai', '.algenta.io', '.decisionengine.io')
 VENDOR_TELEMETRY_HOSTS = ('sentry.io', 'o443.ingest.sentry.io', 'api.stripe.com')
 PRIVATE_HOST_SUFFIXES = ('.internal', '.local', '.localdomain', '.lan', '.corp', '.home', '.localhost', '.home.arpa')
 DEPRECATION_WINDOW_DAYS = 90

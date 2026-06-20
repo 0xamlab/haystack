@@ -2,12 +2,12 @@
 
 Use Make's **HTTP** module to call Algenta's hosted data, query, and simulation surfaces in any scenario.
 
-- Cloud Managed: `https://api.codna.ai`
+- Cloud Managed: `https://api.algenta.ai`
 - `self_hosted` and `air_gapped`: replace the hosted base URL with your self-hosted base URL
 
-Private profiles do not silently fall back to Codna cloud.
+Private profiles do not silently fall back to Algenta cloud.
 
-The checked-in JSON templates intentionally use `https://your-algenta-base-url.example`; replace it with Cloud Managed `https://api.codna.ai` or your self-hosted base URL before import.
+The checked-in JSON templates intentionally use `https://your-algenta-base-url.example`; replace it with Cloud Managed `https://api.algenta.ai` or your self-hosted base URL before import.
 
 ## Files
 
@@ -33,11 +33,11 @@ Add an **HTTP → Make a Request** module.
 | Content Type | application/json |
 | Request Content | Use a second HTTP module for `/v1/data`, `/v1/query`, `/v1/query/batch`, or `/v1/query/sql-report` |
 
-Use `https://app.codna.ai/dashboard/api-keys` only in Cloud Managed. In
+Use `https://app.algenta.ai/dashboard/api-keys` only in Cloud Managed. In
 `self_hosted` and `air_gapped`, replace `https://your-algenta-base-url.example`
 with your self-hosted base URL and use the API key provisioned by your
 self-hosted operator deployment. For Cloud Managed, replace it with
-`https://api.codna.ai`.
+`https://api.algenta.ai`.
 
 ### 3. Sample Query Payload
 
@@ -125,7 +125,7 @@ Verify the `X-Webhook-Signature` header:
 `sha256=HMAC-SHA256(payload, YOUR_WEBHOOK_SECRET)`
 
 Replace `https://your-algenta-base-url.example` with Cloud Managed
-`https://api.codna.ai` or your self-hosted deployment before running the
+`https://api.algenta.ai` or your self-hosted deployment before running the
 async job flow. The bearer key follows the same rule.
 
 ## Example Scenario: Dataset Discovery → Batch Query → CRM Update

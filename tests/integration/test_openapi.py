@@ -2408,8 +2408,8 @@ check("Security scheme declares HTTP Bearer auth", test_bearer_auth_scheme)
 
 def test_openapi_server_and_mcp_endpoint_are_canonical():
     spec = get_spec()
-    assert spec.get("servers") == [{"url": "https://api.codna.ai"}], spec.get("servers")
-    assert spec.get("x-canonical-mcp-endpoint") == "https://api.codna.ai/mcp/sse"
+    assert spec.get("servers") == [{"url": "https://api.algenta.ai"}], spec.get("servers")
+    assert spec.get("x-canonical-mcp-endpoint") == "https://api.algenta.ai/mcp/sse"
 
 
 check(

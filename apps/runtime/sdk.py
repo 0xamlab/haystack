@@ -231,7 +231,7 @@ class Runtime:
             )
         if not self._base_url:
             raise SDKRuntimeError(
-                "Codna cloud fallback is disabled in this deployment profile. "
+                "Algenta cloud fallback is disabled in this deployment profile. "
                 "Start the local daemon or set an explicit self-hosted base URL."
             )
         self._validated_cloud_base_url(surface="sdk_cloud_resolve", record=False)
@@ -436,7 +436,7 @@ class Runtime:
         normalized = self._base_url.rstrip("/")
         if not normalized:
             raise SDKRuntimeError(
-                "Codna cloud fallback is disabled in this deployment profile. "
+                "Algenta cloud fallback is disabled in this deployment profile. "
                 "Start the local daemon or set an explicit self-hosted base URL."
             )
         parsed = urlparse(normalized)

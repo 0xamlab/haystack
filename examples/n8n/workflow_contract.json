@@ -75,5 +75,5 @@
   "meta": {
     "instanceId": "algenta-contract-example"
   },
-  "_comment": "Import this workflow into n8n. Replace https://your-algenta-base-url.example with Cloud Managed https://api.codna.ai or your self-hosted base URL before enabling the workflow. Set credentials: HTTP Header Auth with name 'Authorization' and value 'Bearer <YOUR_ALGENTA_API_KEY>'. It fetches /openapi.json and extracts x-primary-data-query-contract so the workflow stays compatible with older self-hosted nodes that still return 404 for /v1/meta/contract. Private profiles do not silently fall back to Codna cloud."
+  "_comment": "Import this workflow into n8n. Replace https://your-algenta-base-url.example with Cloud Managed https://api.algenta.ai or your self-hosted base URL before enabling the workflow. Set credentials: HTTP Header Auth with name 'Authorization' and value 'Bearer <YOUR_ALGENTA_API_KEY>'. It fetches /openapi.json and extracts x-primary-data-query-contract so the workflow stays compatible with older self-hosted nodes that still return 404 for /v1/meta/contract. Private profiles do not silently fall back to Algenta cloud."
 }

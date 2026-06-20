@@ -116,7 +116,7 @@ def test_cmd_benchmark_private_profile_uses_self_hosted_guidance(
     assert "Configured deployment:" in output
     assert "http://localhost:8000/dashboard" in output
     assert "Free tier: 500 simulations/month" not in output
-    assert "codna.ai/dashboard" not in output
+    assert "algenta.ai/dashboard" not in output
 
 
 def test_cmd_benchmark_cloud_managed_mentions_free_tier(
@@ -135,10 +135,10 @@ def test_cmd_benchmark_cloud_managed_mentions_free_tier(
         lambda root: (rollout_summary, Path("/tmp/build/llm_rollout_parity_benchmark.json")),
     )
     monkeypatch.setattr(cli_main, "_private_profile_enabled", lambda: False)
-    monkeypatch.setattr(cli_main, "_get_dashboard_url", lambda: "https://app.codna.ai/dashboard")
+    monkeypatch.setattr(cli_main, "_get_dashboard_url", lambda: "https://app.algenta.ai/dashboard")
 
     cli_main.cmd_benchmark()
     output = capsys.readouterr().out
 
     assert "Free tier: 500 simulations/month" in output
-    assert "https://app.codna.ai/dashboard" in output
+    assert "https://app.algenta.ai/dashboard" in output

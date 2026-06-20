@@ -241,7 +241,7 @@ async def _drive_fix(
             base_branch=default_branch,
             pull_request_title=title,
             pull_request_body=(
-                f"Automated fix opened by [codna](https://codna.ai) for {label}.\n\n"
+                f"Automated fix opened by [codna](https://algenta.ai) for {label}.\n\n"
                 "Generated from the repository decision plan + simulation; review before merging."
             ),
         ),

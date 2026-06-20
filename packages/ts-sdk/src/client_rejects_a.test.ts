@@ -128,7 +128,7 @@ describe("DecisionEngineClient — rejects_a", () => {
       delete process.env.ALGENTA_RUNTIME_DIR;
     });
 
-    it("rejects Codna-owned baseUrl in private profiles even when passed explicitly", () => {
+    it("rejects Algenta-owned baseUrl in private profiles even when passed explicitly", () => {
       process.env.ALGENTA_DEPLOYMENT_MODE = "air_gapped";
       process.env.ALGENTA_DISABLE_CLOUD = "1";
 
@@ -138,7 +138,7 @@ describe("DecisionEngineClient — rejects_a", () => {
             apiKey: "de_test_123",
             baseUrl: DEFAULT_BASE_URL,
           }),
-      ).toThrow("private profiles cannot target Codna-owned cloud URLs");
+      ).toThrow("private profiles cannot target Algenta-owned cloud URLs");
     });
 
     it("rejects invalid env device ids before sending requests", async () => {
