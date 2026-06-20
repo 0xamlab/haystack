@@ -29,6 +29,7 @@ from apps.runtime.entitlement import check_entitlement, is_module_permitted
 from apps.runtime.executor import Executor
 from apps.runtime.metering import UsageEvent, metering
 from apps.runtime.proto import runtime_pb2, runtime_pb2_grpc
+from apps.runtime.worker_broker import worker_slot
 
 logger = structlog.get_logger(__name__)
 runtime_pb2_module: Any = runtime_pb2
@@ -136,12 +137,17 @@ class _CodnaRuntimeServicer(runtime_pb2_grpc_module.CodnaRuntimeServicer):  # ty
         except json.JSONDecodeError:
             await context.abort(grpc.StatusCode.INVALID_ARGUMENT, "args_json is not valid JSON.")
 
-        result = await self._executor.execute_module(
-            module=request.module,
-            function=request.function,
-            args=args,
-            request_id=request.request_id,
-        )
+        # Hold one licensed worker slot for the execution. Dark by default: a license
+        # with concurrent_worker_limit==0 (every v1/current license) makes this a no-op;
+        # a v2 license with a real cap bounds this node's concurrent executions (excess
+        # callers queue here until a slot frees).
+        async with worker_slot():
+            result = await self._executor.execute_module(
+                module=request.module,
+                function=request.function,
+                args=args,
+                request_id=request.request_id,
+            )
         metering.record(
             UsageEvent(
                 event_type="execute_module",
