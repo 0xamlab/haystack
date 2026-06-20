@@ -356,6 +356,11 @@ from apps.api_server.routers import devices as _devices_router  # noqa: E402
 
 app.include_router(_devices_router.router)
 
+# License control-plane surfaces — GET /.well-known/jwks.json (+ renewal/CRL in P3b)
+from apps.api_server.routers import license as _license_router  # noqa: E402
+
+app.include_router(_license_router.router)
+
 # Credit bucket — POST /v1/credits/refresh
 from apps.api_server.routers import credits as _credits_router  # noqa: E402
 

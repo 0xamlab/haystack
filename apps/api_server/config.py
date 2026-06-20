@@ -5,8 +5,8 @@ from functools import lru_cache
 from pydantic import AliasChoices, Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from apps.privacy_policy import PrivacyPolicy, build_privacy_policy
 from apps.platform_contract_constants import API_KEY_PREFIX_LIVE, API_KEY_PREFIX_TEST
+from apps.privacy_policy import PrivacyPolicy, build_privacy_policy
 
 
 class Settings(BaseSettings):
@@ -222,6 +222,11 @@ class Settings(BaseSettings):
     license_signer_kid: str | None = Field(default=None)
     license_signer_url: str | None = Field(default=None)
     license_signer_auth_token: str | None = Field(default=None)
+    # cf_worker backend: the app never holds the Worker's private key, so to publish JWKS
+    # it needs the Worker's PUBLIC key (PEM). Optional; if unset, JWKS is empty for cf_worker
+    # (the Worker may expose its own JWKS in P4). See services/license_jwk.py.
+    license_signer_worker_public_key: str | None = Field(default=None)
+    license_signer_worker_public_key_file: str | None = Field(default=None)
     api_key_prefix: str = Field(default=API_KEY_PREFIX_LIVE)
     api_key_test_prefix: str = Field(default=API_KEY_PREFIX_TEST)
 
