@@ -63,7 +63,66 @@ def _build_parser() -> argparse.ArgumentParser:
         default="",
         help="Optional operator note embedded in the license payload.",
     )
+    # ── v2 commercial-capacity + product entitlement claims ──
+    parser.add_argument(
+        "--license-version", type=int, default=2,
+        help="License schema version. 2 = product-bearing (default); 1 = legacy.",
+    )
+    parser.add_argument("--license-id", default="", help="License identifier claim (v2).")
+    parser.add_argument("--activation-id", default="", help="Per-device activation id claim (v2).")
+    parser.add_argument(
+        "--entitlement-version", type=int, default=0,
+        help="Monotonic entitlement version (v2); signer rejects regressions.",
+    )
+    parser.add_argument(
+        "--deployment-class", default="",
+        help="v2: desktop | server | ci | airgapped | oem.",
+    )
+    parser.add_argument(
+        "--device-pubkey-thumbprint", default="",
+        help="v2: device public-key thumbprint to bind the license to.",
+    )
+    parser.add_argument(
+        "--products-file", default="",
+        help='v2: JSON file mapping {product: {"tier": str, "features": [str, ...]}}.',
+    )
+    parser.add_argument(
+        "--product-entitlement", action="append", default=[],
+        help="v2: repeatable 'product:tier:feat1,feat2' (alternative to --products-file).",
+    )
+    parser.add_argument("--named-seat-limit", type=int, default=0, help="v2 capacity claim.")
+    parser.add_argument("--active-node-limit", type=int, default=0, help="v2 capacity claim.")
+    parser.add_argument("--concurrent-worker-limit", type=int, default=0, help="v2 capacity claim.")
+    parser.add_argument(
+        "--device-allowance-per-seat", type=int, default=0, help="v2 capacity claim.",
+    )
+    parser.add_argument("--commercial-use", action="store_true", help="v2: commercial-use grant.")
+    parser.add_argument(
+        "--redistribution-allowed", action="store_true", help="v2: redistribution grant.",
+    )
+    parser.add_argument("--offline-grace-days", type=int, default=0, help="v2 offline grace claim.")
     return parser
+
+
+def _parse_products(args: argparse.Namespace) -> dict[str, dict[str, object]]:
+    """Build the v2 ``products`` blob from --products-file and/or --product-entitlement."""
+    products: dict[str, dict[str, object]] = {}
+    if args.products_file:
+        data = json.loads(Path(args.products_file).expanduser().read_text(encoding="utf-8"))
+        if isinstance(data, dict):
+            for name, spec in data.items():
+                if isinstance(spec, dict):
+                    feats = [str(f) for f in (spec.get("features") or []) if str(f).strip()]
+                    products[str(name)] = {"tier": str(spec.get("tier", "")), "features": feats}
+    for entry in args.product_entitlement:
+        parts = entry.split(":", 2)
+        if len(parts) < 2 or not parts[0]:
+            raise ValueError(
+                f"--product-entitlement must be 'product:tier[:feat1,feat2]', got: {entry}"
+            )
+        feats = [f.strip() for f in (parts[2].split(",") if len(parts) == 3 else []) if f.strip()]
+        products[parts[0]] = {"tier": parts[1], "features": feats}
+    return products
 
 
 def _read_private_key(path_value: str) -> str:
@@ -82,7 +141,8 @@ def _build_claims(args: argparse.Namespace) -> dict[str, object]:
     expires_at = max(0, int(args.expires_at))
     key_expires_at = expires_at if args.key_expires_at is None else max(0, int(args.key_expires_at))
     permitted_modules = args.permitted_module if args.permitted_module else ["*"]
-    return {
+    version = max(1, int(args.license_version))
+    claims: dict[str, object] = {
         "api_key_prefix": args.api_key_prefix,
         "device_id": args.device_id,
         "plan": args.plan,
@@ -95,9 +155,28 @@ def _build_claims(args: argparse.Namespace) -> dict[str, object]:
         "grace_days": max(0, int(args.grace_days)),
         "iss": "algenta-offline-license",
         "sub": "device-license",
-        "ver": 1,
+        "ver": version,
         "message": args.message,
     }
+    if version >= 2:
+        claims.update(
+            {
+                "license_id": args.license_id,
+                "activation_id": args.activation_id,
+                "entitlement_version": max(0, int(args.entitlement_version)),
+                "deployment_class": args.deployment_class,
+                "device_pubkey_thumbprint": args.device_pubkey_thumbprint,
+                "products": _parse_products(args),
+                "named_seat_limit": max(0, int(args.named_seat_limit)),
+                "active_node_limit": max(0, int(args.active_node_limit)),
+                "concurrent_worker_limit": max(0, int(args.concurrent_worker_limit)),
+                "device_allowance_per_seat": max(0, int(args.device_allowance_per_seat)),
+                "commercial_use": bool(args.commercial_use),
+                "redistribution_allowed": bool(args.redistribution_allowed),
+                "offline_grace_days": max(0, int(args.offline_grace_days)),
+            }
+        )
+    return claims
 
 
 def main() -> int:

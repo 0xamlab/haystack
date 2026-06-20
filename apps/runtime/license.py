@@ -37,7 +37,7 @@ import time
 import urllib.error
 import urllib.request
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import cast
 from urllib.parse import urlparse
@@ -262,6 +262,19 @@ def _decoded_payload(value: object) -> dict[str, object] | None:
     return cast(dict[str, object], value)
 
 
+@dataclass(frozen=True)
+class ProductEntitlement:
+    """A single product edition entitlement carried in a v2 license.
+
+    ``tier`` is a coarse plan label for the product (e.g. ``pro``/``team``);
+    ``features`` is the set of granted feature identifiers the local engine
+    intersects with the product allowlist to compute available tools.
+    """
+
+    tier: str
+    features: frozenset[str]
+
+
 @dataclass
 class DeviceLicense:
     valid: bool
@@ -276,6 +289,24 @@ class DeviceLicense:
     issued_at: int
     message: str = ""
     source: str = "unknown"  # "cloud" | "dev-stub" | "expired-grace"
+    # ── v2 commercial-capacity claims (defaults preserve v1 legacy behavior) ──
+    # license_version 1 = legacy-permissive (transition only; rejected after the
+    # firm v1 sunset). 2 = authoritative: only granted products/features apply.
+    license_version: int = 1
+    org_id: str = ""
+    license_id: str = ""
+    activation_id: str = ""
+    entitlement_version: int = 0
+    deployment_class: str = ""  # desktop | server | ci | airgapped | oem
+    device_pubkey_thumbprint: str = ""
+    products: dict[str, ProductEntitlement] = field(default_factory=dict)
+    named_seat_limit: int = 0  # 0 = unspecified (control-plane enforced)
+    active_node_limit: int = 0
+    concurrent_worker_limit: int = 0  # 0 = unspecified; local broker enforces when > 0
+    device_allowance_per_seat: int = 0
+    commercial_use: bool = False
+    redistribution_allowed: bool = False
+    offline_grace_days: int = 0
 
     def is_expired(self) -> bool:
         from apps.runtime.trusted_time import trusted_now_epoch
@@ -307,6 +338,80 @@ class DeviceLicense:
         if "*" in self.permitted_modules:
             return True
         return module_name in self.permitted_modules
+
+    def is_legacy_v1(self) -> bool:
+        """True for pre-products (v1) licenses — legacy-permissive during the
+        transition window, rejected by production after the firm v1 sunset."""
+        return self.license_version < 2
+
+    def has_product(self, product: str) -> bool:
+        if not self.valid:
+            return False
+        # v1 licenses predate product entitlements → legacy-permissive.
+        if self.is_legacy_v1():
+            return True
+        return product in self.products
+
+    def product_features(self, product: str) -> frozenset[str]:
+        ent = self.products.get(product)
+        return ent.features if ent is not None else frozenset()
+
+    def product_tier(self, product: str) -> str:
+        ent = self.products.get(product)
+        return ent.tier if ent is not None else ""
+
+    def worker_limit(self) -> int:
+        """Local worker-concurrency cap (0 = unspecified; broker does not cap)."""
+        return self.concurrent_worker_limit
+
+
+def _coerce_products(value: object) -> dict[str, ProductEntitlement]:
+    """Parse the v2 ``products`` claim, fail-closed: malformed entries are dropped."""
+    out: dict[str, ProductEntitlement] = {}
+    if not isinstance(value, dict):
+        return out
+    for name, spec in value.items():
+        if not isinstance(name, str) or not name or not isinstance(spec, dict):
+            continue
+        features = frozenset(_coerce_str_list(spec.get("features"), []))
+        out[name] = ProductEntitlement(tier=_coerce_str(spec.get("tier")), features=features)
+    return out
+
+
+def _device_license_from_payload(
+    payload: dict[str, object], *, source: str, api_key: str, default_plan: str
+) -> DeviceLicense:
+    """Build a DeviceLicense from a decoded JWT payload (v1 + v2 claims)."""
+    return DeviceLicense(
+        valid=True,
+        plan=_coerce_str(payload.get("plan"), default_plan),
+        device_id=_coerce_str(payload.get("device_id")),
+        device_limit=_coerce_int(payload.get("device_limit"), 0),
+        permitted_modules=_coerce_str_list(payload.get("permitted_modules"), ["*"]),
+        expires_at=_coerce_int(payload.get("expires_at"), 0),
+        key_expires_at=_coerce_int(payload.get("key_expires_at"), 0),
+        grace_days=_coerce_int(payload.get("grace_days"), _DEFAULT_GRACE_DAYS),
+        api_key_prefix=_coerce_str(payload.get("api_key_prefix"), api_key[:12]),
+        issued_at=_coerce_int(payload.get("issued_at"), 0),
+        message=_coerce_str(payload.get("message")),
+        source=source,
+        # ── v2 commercial-capacity claims ──
+        license_version=_coerce_int(payload.get("ver"), 1),
+        org_id=_coerce_str(payload.get("org_id")),
+        license_id=_coerce_str(payload.get("license_id")),
+        activation_id=_coerce_str(payload.get("activation_id")),
+        entitlement_version=_coerce_int(payload.get("entitlement_version"), 0),
+        deployment_class=_coerce_str(payload.get("deployment_class")),
+        device_pubkey_thumbprint=_coerce_str(payload.get("device_pubkey_thumbprint")),
+        products=_coerce_products(payload.get("products")),
+        named_seat_limit=_coerce_int(payload.get("named_seat_limit"), 0),
+        active_node_limit=_coerce_int(payload.get("active_node_limit"), 0),
+        concurrent_worker_limit=_coerce_int(payload.get("concurrent_worker_limit"), 0),
+        device_allowance_per_seat=_coerce_int(payload.get("device_allowance_per_seat"), 0),
+        commercial_use=bool(payload.get("commercial_use", False)),
+        redistribution_allowed=bool(payload.get("redistribution_allowed", False)),
+        offline_grace_days=_coerce_int(payload.get("offline_grace_days"), 0),
+    )
 
 
 # ── Dev stub license ──────────────────────────────────────────────────────────
@@ -423,19 +528,8 @@ def _parse_token(token: str, api_key: str = "") -> DeviceLicense | None:
                 payload = _decoded_payload(decoded)
                 if payload is None:
                     continue
-                return DeviceLicense(
-                    valid=True,
-                    plan=_coerce_str(payload.get("plan"), "enterprise"),
-                    device_id=_coerce_str(payload.get("device_id")),
-                    device_limit=_coerce_int(payload.get("device_limit"), 0),
-                    permitted_modules=_coerce_str_list(payload.get("permitted_modules"), ["*"]),
-                    expires_at=_coerce_int(payload.get("expires_at"), 0),
-                    key_expires_at=_coerce_int(payload.get("key_expires_at"), 0),
-                    grace_days=_coerce_int(payload.get("grace_days"), _DEFAULT_GRACE_DAYS),
-                    api_key_prefix=_coerce_str(payload.get("api_key_prefix"), api_key[:12]),
-                    issued_at=_coerce_int(payload.get("issued_at"), 0),
-                    message=_coerce_str(payload.get("message")),
-                    source=source,
+                return _device_license_from_payload(
+                    payload, source=source, api_key=api_key, default_plan="enterprise"
                 )
             except jwt.InvalidTokenError:
                 continue
@@ -455,19 +549,8 @@ def _parse_token(token: str, api_key: str = "") -> DeviceLicense | None:
             payload = _decoded_payload(decoded)
             if payload is None:
                 continue
-            return DeviceLicense(
-                valid=True,
-                plan=_coerce_str(payload.get("plan"), "dev"),
-                device_id=_coerce_str(payload.get("device_id")),
-                device_limit=_coerce_int(payload.get("device_limit"), 0),
-                permitted_modules=_coerce_str_list(payload.get("permitted_modules"), ["*"]),
-                expires_at=_coerce_int(payload.get("expires_at"), 0),
-                key_expires_at=_coerce_int(payload.get("key_expires_at"), 0),
-                grace_days=_coerce_int(payload.get("grace_days"), _DEFAULT_GRACE_DAYS),
-                api_key_prefix=_coerce_str(payload.get("api_key_prefix")),
-                issued_at=_coerce_int(payload.get("issued_at"), 0),
-                message=_coerce_str(payload.get("message")),
-                source=source,
+            return _device_license_from_payload(
+                payload, source=source, api_key=api_key, default_plan="dev"
             )
         except jwt.InvalidTokenError:
             continue

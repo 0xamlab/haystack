@@ -480,3 +480,148 @@ def test_stored_offline_entitlement_tracks_active_runtime_dir_without_reload(
     assert license_mod.stored_offline_execution_entitlement() is False
 
     get_settings.cache_clear()
+
+
+# ── P0: v2 product/capacity license schema ──────────────────────────────────
+
+
+def test_parse_v2_license_carries_product_and_capacity_claims(monkeypatch):
+    monkeypatch.setenv("ALGENTA_REQUIRE_LOCAL_LICENSE", "1")
+    monkeypatch.delenv("LICENSE_SIGNING_SECRET", raising=False)
+    monkeypatch.delenv("JWT_SECRET", raising=False)
+    private_key, public_key = _rsa_keypair()
+    monkeypatch.setenv("ALGENTA_LOCAL_LICENSE_PUBLIC_KEY", public_key)
+
+    token = importlib.import_module("jwt").encode(
+        {
+            "api_key_prefix": "offline",
+            "device_id": "device-v2",
+            "plan": "enterprise",
+            "issued_at": 1_900_000_000,
+            "expires_at": 1_999_999_999,
+            "key_expires_at": 1_999_999_999,
+            "grace_days": 14,
+            "iss": "algenta-offline-license",
+            "sub": "device-license",
+            "ver": 2,
+            "org_id": "org_test",
+            "license_id": "lic_test",
+            "activation_id": "act_test",
+            "entitlement_version": 7,
+            "deployment_class": "server",
+            "device_pubkey_thumbprint": "thumb123",
+            "products": {
+                "codna": {"tier": "pro", "features": ["repo_graph", "triage"]},
+                "cohenta": {"tier": "team", "features": ["campaigns"]},
+            },
+            "named_seat_limit": 25,
+            "active_node_limit": 3,
+            "concurrent_worker_limit": 12,
+            "device_allowance_per_seat": 3,
+            "commercial_use": True,
+            "redistribution_allowed": False,
+            "offline_grace_days": 3,
+        },
+        private_key,
+        algorithm="RS256",
+    )
+
+    parsed = _reload_runtime_license()._parse_token(token, "")
+    assert parsed is not None and parsed.valid is True
+    assert parsed.license_version == 2
+    assert parsed.is_legacy_v1() is False
+    assert parsed.org_id == "org_test"
+    assert parsed.activation_id == "act_test"
+    assert parsed.entitlement_version == 7
+    assert parsed.deployment_class == "server"
+    assert parsed.device_pubkey_thumbprint == "thumb123"
+    assert parsed.named_seat_limit == 25
+    assert parsed.active_node_limit == 3
+    assert parsed.concurrent_worker_limit == 12 and parsed.worker_limit() == 12
+    assert parsed.device_allowance_per_seat == 3
+    assert parsed.commercial_use is True and parsed.redistribution_allowed is False
+    assert parsed.offline_grace_days == 3
+    # product gating: granted → allowed; absent under a v2 license → denied
+    assert parsed.has_product("codna") is True
+    assert parsed.product_tier("codna") == "pro"
+    assert parsed.product_features("codna") == frozenset({"repo_graph", "triage"})
+    assert parsed.has_product("cohenta") is True
+    assert parsed.has_product("decimas") is False
+    assert parsed.product_features("decimas") == frozenset()
+
+    get_settings.cache_clear()
+
+
+def test_v1_license_is_legacy_permissive_for_products(monkeypatch):
+    monkeypatch.setenv("ALGENTA_REQUIRE_LOCAL_LICENSE", "1")
+    monkeypatch.delenv("LICENSE_SIGNING_SECRET", raising=False)
+    monkeypatch.delenv("JWT_SECRET", raising=False)
+    private_key, public_key = _rsa_keypair()
+    monkeypatch.setenv("ALGENTA_LOCAL_LICENSE_PUBLIC_KEY", public_key)
+
+    token = importlib.import_module("jwt").encode(
+        {
+            "device_id": "device-v1",
+            "plan": "enterprise",
+            "permitted_modules": ["*"],
+            "expires_at": 1_999_999_999,
+            "grace_days": 14,
+            "iss": "algenta-offline-license",
+            "sub": "device-license",
+            "ver": 1,
+        },
+        private_key,
+        algorithm="RS256",
+    )
+
+    parsed = _reload_runtime_license()._parse_token(token, "")
+    assert parsed is not None and parsed.valid is True
+    assert parsed.license_version == 1
+    assert parsed.is_legacy_v1() is True
+    # v1 predates product entitlements → legacy-permissive (transition only)
+    assert parsed.has_product("codna") is True
+    assert parsed.products == {}
+
+    get_settings.cache_clear()
+
+
+def test_offline_issuer_emits_v2_product_and_capacity_claims():
+    import importlib.util
+    from pathlib import Path as _Path
+
+    spec = importlib.util.spec_from_file_location(
+        "_issue_offline_license_under_test",
+        _Path(__file__).resolve().parents[1] / "scripts" / "issue_offline_license.py",
+    )
+    issuer = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(issuer)
+
+    args = issuer._build_parser().parse_args(
+        [
+            "--device-id", "device-x",
+            "--plan", "enterprise",
+            "--output", "/dev/null",
+            "--deployment-class", "server",
+            "--product-entitlement", "codna:pro:repo_graph,triage,apply",
+            "--active-node-limit", "3",
+            "--concurrent-worker-limit", "12",
+            "--commercial-use",
+        ]
+    )
+    claims = issuer._build_claims(args)
+    assert claims["ver"] == 2
+    assert claims["deployment_class"] == "server"
+    assert claims["active_node_limit"] == 3
+    assert claims["concurrent_worker_limit"] == 12
+    assert claims["commercial_use"] is True
+    assert claims["products"]["codna"]["tier"] == "pro"
+    assert claims["products"]["codna"]["features"] == ["repo_graph", "triage", "apply"]
+
+    # round-trip the issued claims through the runtime parser → DeviceLicense
+    runtime_license = importlib.import_module("apps.runtime.license")
+    lic = runtime_license._device_license_from_payload(
+        claims, source="offline-local", api_key="", default_plan="enterprise"
+    )
+    assert lic.license_version == 2
+    assert lic.has_product("codna")
+    assert lic.product_features("codna") == frozenset({"repo_graph", "triage", "apply"})
