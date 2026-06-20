@@ -41,6 +41,7 @@ Mint a v2 license per internal deployment — **Mission, Codna, Cohenta, CI**, p
 machine running the engine. Example (server deployment, Codna pro):
 
 ```sh
+EXP=$(( $(date +%s) + 31536000 ))   # +1y; renew/re-mint before this
 python3 scripts/issue_offline_license.py \
   --private-key-file algenta-license.key \
   --device-id "<this machine's device id>" \
@@ -53,9 +54,18 @@ python3 scripts/issue_offline_license.py \
   --product-entitlement "codna:pro:repo_graph,triage,simulate,fix,apply" \
   --named-seat-limit 25 --active-node-limit 3 --concurrent-worker-limit 12 \
   --commercial-use \
+  --expires-at "$EXP" --key-expires-at "$EXP" \
   --offline-grace-days 3 \
   --output license.jwt
 ```
+
+> **`--key-expires-at` is REQUIRED, not optional.** The CLI defaults `--expires-at` to `0`
+> ("no expiry") and `--key-expires-at` to whatever `--expires-at` is — so omitting both yields
+> `key_expires_at=0`. Such a token *verifies* (and older `license_status.py` reported `OK`), but
+> the `stored_offline_execution_entitlement` enforcement sub-path (the `require_local_license`-OFF
+> + enforce-ON profile) **rejects** `key_expires_at <= 0`. Always pass a positive `--key-expires-at`.
+> (`scripts/license_status.py` now fails the gate on `key_expires_at<=0`; `--allow-no-key-expiry`
+> overrides it only when the deployment will run exclusively under `require_local_license`.)
 
 (CI runners get `--deployment-class ci`; air-gapped boxes get a long `--expires-at` +
 larger `--offline-grace-days`. Use `--products-file` for multi-product editions.)
@@ -95,13 +105,19 @@ removing `~/.algenta/runtime/license.jwt`.
 Ship these **only after the gate is green**, one at a time, watching each deployment's
 `license_status.py` between steps. Each is a separate reviewed PR.
 
-| Step | Change | If wrong, exposure |
-|---|---|---|
-| **P5.3** | Replace `ALGENTA_REQUIRE_LOCAL_LICENSE=0` with a **release-excluded build flag** + test-only signing key; flip `enforce_license_validation` default **ON** for downloaded/self-hosted release profiles. Drop the HS256 verification fallback in release. | A machine without a valid v2 license goes inert — caught by P5.1 if the gate was honored. |
-| **P5.4** | Close the free-self-host branch in `privacy_policy.py` (`private_profile`/self-hosted permissive path) + audit callers. Download with no Algenta license = inert. | Same as P5.3; this removes the last permissive path. |
-| **P5.5** | Set `ALGENTA_V1_LICENSE_SUNSET`; past the cutoff, `load_license`/`_parse_token` **reject** v1 tokens (no more legacy-permissive). v2-only thereafter. | Any still-v1 deployment goes inert — re-mint as v2 (P5.1) first. |
-| **P5.6** | Make the signer + verifier **RS256-only** in production (reject HS256/`alg=none`/unexpected alg; require a recognized `kid`; pin `iss`). | A token signed with a non-RS256/dev path stops verifying. |
-| **P5.7** | **Require `aud`**: emit `aud` on issuance and flip verification to `verify_aud=True` + `audience="device-license"` (P5.2 already made the verifier *accept* aud; this makes it *required*). Pin `iss`+`aud` together. | Tokens minted before aud-emission stop verifying — re-mint with the aud claim. |
+| Step | Change | Anchor(s) | If wrong, exposure |
+|---|---|---|---|
+| **P5.3** | Replace the `ALGENTA_REQUIRE_LOCAL_LICENSE` env bypass with a **release-excluded build flag** + test-only signing key; flip the default **ON** for self-hosted release profiles; drop the HS256 fallback in release. | env read `privacy_policy.py:412`; resolve `:303`; runtime gate `license.py:96`; dev key `license.py:60` (`_DEV_SECRET`); HS256 loop `license.py:541`; API mirror `config.py:90` | A machine without a valid v2 license goes inert — caught by P5.1 if the gate was honored. |
+| **P5.4** | Close the free-self-host grant. **The real branch is `credits.py:256-262`** (`_offline_execution_entitled`'s `return True`), *not* `privacy_policy.py` (the plan's cited line was wrong; `privacy_policy.py:475` helper is dead code). | `credits.py:261` (the grant); sole caller `credits.py:286` | Same as P5.3; removes the last permissive path. |
+| **P5.5** | Add + honor `ALGENTA_V1_LICENSE_SUNSET` (**greenfield — no code reads it today**); past the cutoff `_parse_token`/`load_license` **reject** v1. | `license.py:342` (`is_legacy_v1`); `:399` (`ver` default 1); reject in `:505` + `:949` | Any still-v1 deployment goes inert — re-mint as v2 (P5.1) first. |
+| **P5.6** | Make the verifier **RS256-only** in prod (reject HS256/`alg=none`; require recognized `kid`; pin `iss`) in **both** `_parse_token` *and* the CRL `_verify_control_plane_jwt`. | `license.py:519` (RS256), `:541` (HS256), `:582`+`:596` (CRL); `:100` (`_offline_license_public_keys` carry **no kid**) | A non-RS256/dev token stops verifying; **requiring `kid` breaks every offline token** (issuer emits none) — see prereqs. |
+| **P5.7** | **Require `aud`**: emit `aud` on issuance and flip the four decode sites to `verify_aud=True` + `audience="device-license"` (P5.2 made them *accept* aud; this makes it *required*). | decode sites `license.py:526/547/586/599`; issuers `device_service.py:556`, `issue_offline_license.py`, `_issue_dev_jwt` `license.py:462`, CRL `device_service.py:1012` | Any token minted before aud-emission stops verifying — re-mint with the aud claim. |
+
+### Prerequisites surfaced by the readiness audit (do these *inside* the relevant PR, before the flip lands)
+
+- **P5.3 is bigger than one flag.** `enforce_license_validation` has exactly **one** consumer today — `credits.py:261` (the credits/execution path). Flipping its default ON does **not** by itself make the **daemon** (`daemon.py:126`) or the **pure-local `Runtime()`** (`runtime_local_limits.py:50`) fail closed — those still gate on `require_local_license`. So "self-hosted release = inert without a license" requires **either** flipping `require_local_license`'s default for release profiles **or** wiring `enforce_license_validation` into `daemon.py:126` + `runtime_local_limits.py:50`. Decide explicitly; don't assume the one flag covers all entry points.
+- **P5.6 `kid`:** `issue_offline_license.py` emits no `kid` header and `_offline_license_public_keys()` carries no `kid`. Requiring `kid` means first adding a `kid` header to the issuer + JWKS selection on the offline path, then re-minting (P5.1) **before** the flip. Pin `iss` to accept **both** `algenta-control-plane` and `algenta-offline-license`.
+- **P5.7 `aud`:** today the intended `audience="device-license"` is placed in the `sub` claim, not `aud` — no issuer emits `aud`. Add `aud` to **all** issuers (control-plane `_issue_license_jwt`, offline CLI, dev stub, CRL) and re-mint/propagate **before** flipping `verify_aud=True`, or every installed token fails.
 
 ### Rollback
 

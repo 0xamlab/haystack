@@ -48,6 +48,7 @@ def _gather() -> dict[str, object]:
         "activation_id": lic.activation_id,
         "entitlement_version": lic.entitlement_version,
         "expires_at": lic.expires_at,
+        "key_expires_at": lic.key_expires_at,
         "is_expired": lic.is_expired(),
         "is_in_grace": lic.is_in_grace(),
         "is_hard_expired": lic.is_hard_expired(),
@@ -64,12 +65,19 @@ def _gather() -> dict[str, object]:
     }
 
 
-def _satisfied(info: dict[str, object], *, allow_v1: bool) -> bool:
+def _satisfied(info: dict[str, object], *, allow_v1: bool, allow_no_key_expiry: bool) -> bool:
     if not info["valid"]:
         return False
     if info["is_hard_expired"]:
         return False
     if not allow_v1 and not info["is_v2"]:
+        return False
+    # key_expires_at<=0 (the issue_offline_license.py default) verifies fine, but the
+    # stored_offline_execution_entitlement enforcement sub-path (require_local_license OFF +
+    # enforce ON) REJECTS it. Fail the gate conservatively so it never green-lights a machine
+    # the runtime would then deny; --allow-no-key-expiry for a deliberate no-expiry license
+    # that will only ever run under the require_local_license/load_license path.
+    if not allow_no_key_expiry and int(info["key_expires_at"]) <= 0:  # type: ignore[arg-type]
         return False
     return True
 
@@ -79,6 +87,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--json", action="store_true", help="emit machine-readable JSON")
     parser.add_argument(
         "--allow-v1", action="store_true", help="treat a valid v1 token as satisfying the gate"
+    )
+    parser.add_argument(
+        "--allow-no-key-expiry",
+        action="store_true",
+        help="accept key_expires_at<=0 (only safe under the require_local_license path)",
     )
     args = parser.parse_args(argv)
 
@@ -91,7 +104,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"FAIL  could not load license: {exc}")
         return 1
 
-    ok = _satisfied(info, allow_v1=args.allow_v1)
+    ok = _satisfied(info, allow_v1=args.allow_v1, allow_no_key_expiry=args.allow_no_key_expiry)
 
     if args.json:
         print(json.dumps({**info, "gate_satisfied": ok}, indent=2, sort_keys=True))
@@ -108,8 +121,9 @@ def main(argv: list[str] | None = None) -> int:
             print(f"      product {name}: tier={ent['tier']} features={','.join(ent['features'])}")
     print(f"      caps: seats={info['named_seat_limit']} nodes={info['active_node_limit']} "
           f"workers={info['concurrent_worker_limit']}")
-    print(f"      expiry: expires_at={info['expires_at']} expired={info['is_expired']} "
-          f"in_grace={info['is_in_grace']} hard_expired={info['is_hard_expired']}")
+    print(f"      expiry: expires_at={info['expires_at']} key_expires_at={info['key_expires_at']} "
+          f"expired={info['is_expired']} in_grace={info['is_in_grace']} "
+          f"hard_expired={info['is_hard_expired']}")
     if not ok:
         if not info["valid"]:
             print(f"      → not valid: {info['message'] or 'no installed license'}")
@@ -117,6 +131,9 @@ def main(argv: list[str] | None = None) -> int:
             print("      → past grace; runtime would block")
         elif not info["is_v2"]:
             print("      → legacy v1; mint+install a v2 license before the fail-closed flip")
+        elif int(info["key_expires_at"]) <= 0:  # type: ignore[arg-type]
+            print("      → key_expires_at<=0; the stored-offline enforcement path would DENY this. "
+                  "Re-mint with --key-expires-at (or pass --allow-no-key-expiry if require_local).")
     return 0 if ok else 1
 
 

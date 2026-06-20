@@ -22,8 +22,8 @@ def _mk(**over: object) -> DeviceLicense:
         "device_id": "d",
         "device_limit": 0,
         "permitted_modules": ["*"],
-        "expires_at": 0,  # no expiry
-        "key_expires_at": 0,
+        "expires_at": 0,  # no entitlement expiry
+        "key_expires_at": 9_999_999_999,  # key expiry set (stored-offline path requires > 0)
         "grace_days": 14,
         "api_key_prefix": "",
         "issued_at": 0,
@@ -53,6 +53,15 @@ def test_invalid_license_fails(monkeypatch, capsys) -> None:
     )
     assert cli.main([]) == 1
     assert "FAIL" in capsys.readouterr().out
+
+
+def test_no_key_expiry_fails_unless_allowed(monkeypatch, capsys) -> None:
+    # key_expires_at<=0 (issue_offline_license.py default) verifies but the stored-offline
+    # enforcement path denies it — the gate must NOT green-light it by default.
+    monkeypatch.setattr(license_mod, "load_license", lambda *a, **k: _mk(key_expires_at=0))
+    assert cli.main([]) == 1
+    assert "key_expires_at<=0" in capsys.readouterr().out
+    assert cli.main(["--allow-no-key-expiry"]) == 0  # deliberate no-expiry under require_local
 
 
 def test_hard_expired_v2_fails(monkeypatch) -> None:
