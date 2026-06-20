@@ -11,7 +11,10 @@ from __future__ import annotations
 
 try:  # standalone/published env: algenta_mcp is installed
     from algenta_mcp.products import (  # type: ignore[import-not-found]
+        PRODUCT_BASE_TOOLS,
         PRODUCT_EDITIONS,
+        PRODUCT_FEATURE_TOOLS,
+        feature_tool_constraint,
         product_allowlist,
         resolve_visible_tools,
     )
@@ -28,11 +31,23 @@ except ModuleNotFoundError:  # in-monorepo: load the canonical file by path
     )
     _spec = importlib.util.spec_from_file_location("_algenta_products_canonical", _canonical)
     if _spec is None or _spec.loader is None:  # pragma: no cover - defensive
-        raise ModuleNotFoundError(f"canonical product editions not found at {_canonical}")
+        raise ModuleNotFoundError(
+            f"canonical product editions not found at {_canonical}"
+        ) from None
     _mod = importlib.util.module_from_spec(_spec)
     _spec.loader.exec_module(_mod)
+    PRODUCT_BASE_TOOLS = _mod.PRODUCT_BASE_TOOLS
     PRODUCT_EDITIONS = _mod.PRODUCT_EDITIONS
+    PRODUCT_FEATURE_TOOLS = _mod.PRODUCT_FEATURE_TOOLS
+    feature_tool_constraint = _mod.feature_tool_constraint
     product_allowlist = _mod.product_allowlist
     resolve_visible_tools = _mod.resolve_visible_tools
 
-__all__ = ["PRODUCT_EDITIONS", "product_allowlist", "resolve_visible_tools"]
+__all__ = [
+    "PRODUCT_BASE_TOOLS",
+    "PRODUCT_EDITIONS",
+    "PRODUCT_FEATURE_TOOLS",
+    "feature_tool_constraint",
+    "product_allowlist",
+    "resolve_visible_tools",
+]

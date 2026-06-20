@@ -71,6 +71,50 @@ PRODUCT_EDITIONS: dict[str, frozenset[str]] = {
     "escrypto": ESCRYPTO_GOVERNANCE_TOOLS,
 }
 
+# ── Feature → tool map ───────────────────────────────────────────────────────
+# A v2 license grants per-product *features*; this maps each granted feature to the
+# concrete tools it unlocks. The local engine intersects this with the product
+# allowlist: available_tools = installed ∩ product_allowlist ∩ license_feature_tools.
+# Every codna tool is reachable via exactly one base/feature bucket (invariant-tested:
+# base ∪ all-feature-tools == CODNA_CODING_TOOLS), so a fully-featured license == the
+# full edition.
+_CODNA_BASE_TOOLS: frozenset[str] = frozenset(
+    {"get_me", "get_limits", "get_usage", "get_repository_intelligence_capabilities"}
+)
+_CODNA_FEATURE_TOOLS: dict[str, frozenset[str]] = {
+    "repo_graph": frozenset(
+        {"query_repository_graph", "create_repository_snapshot", "get_repository_snapshot"}
+    ),
+    "triage": frozenset({"triage_repository", "create_repository_decision_plan"}),
+    "simulate": frozenset(
+        {
+            "simulate_repository",
+            "simulate_repository_patch",
+            "simulate",
+            "plan_decision",
+            "recommend",
+            "log_decision",
+            "list_decisions",
+            "get_decision",
+            "record_outcome",
+        }
+    ),
+    "fix": frozenset(
+        {
+            "run_repository_fix",
+            "run_repository_pipeline",
+            "create_agent_run",
+            "get_agent_run",
+            "get_agent_run_events",
+            "cancel_agent_run",
+        }
+    ),
+    "apply": frozenset({"apply_repository"}),
+}
+
+PRODUCT_BASE_TOOLS: dict[str, frozenset[str]] = {"codna": _CODNA_BASE_TOOLS}
+PRODUCT_FEATURE_TOOLS: dict[str, dict[str, frozenset[str]]] = {"codna": _CODNA_FEATURE_TOOLS}
+
 
 def product_allowlist(product: str | None) -> frozenset[str] | None:
     """Curated allowlist for a product edition.
@@ -107,3 +151,29 @@ def resolve_visible_tools(
             continue
         effective = c if effective is None else (effective & c)
     return effective
+
+
+def feature_tool_constraint(
+    product: str | None, features: Iterable[str] | None
+) -> frozenset[str] | None:
+    """Map a v2 license's granted *features* for a product to the tools they unlock.
+
+    Returns ``None`` when there is no feature-level narrowing to apply (the product has
+    no feature map, or the license grants the product with no specific feature list — the
+    full product allowlist stands). Pass the result straight into ``resolve_visible_tools``
+    as a constraint (``None`` = no narrowing from this dimension).
+
+    Returns a concrete frozenset (base tools ∪ the tools for each granted feature) when
+    features are specified, narrowing the product allowlist to exactly the licensed
+    features — fail-closed for any unknown feature (it contributes no tools).
+    """
+    feat_map = PRODUCT_FEATURE_TOOLS.get(product) if product else None
+    if feat_map is None:
+        return None
+    feats = frozenset(features or ())
+    if not feats:
+        return None
+    tools: set[str] = set(PRODUCT_BASE_TOOLS.get(product or "", frozenset()))
+    for feature in feats:
+        tools |= feat_map.get(feature, frozenset())
+    return frozenset(tools)

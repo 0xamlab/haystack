@@ -30,12 +30,34 @@ async def run_stdio_server() -> None:
     import os
 
     from apps.mcp_server.errors import serialize_tool_error
-    from apps.mcp_server.products import resolve_visible_tools
+    from apps.mcp_server.products import feature_tool_constraint, resolve_visible_tools
     from apps.mcp_server.registry import call_tool, get_tool_specs
+
+    def _license_feature_constraints(product: str | None) -> tuple[frozenset[str] | None, ...]:
+        # Narrow visible tools by the local license's product/feature entitlements.
+        # Dark by default: no license or a legacy v1 license → no constraint (product-only
+        # gating, unchanged). A v2 license narrows to its granted features; a v2 license
+        # that does NOT grant the selected product fails closed (empty set → no tools).
+        if not product:
+            return ()
+        try:
+            from apps.runtime.license import load_license
+
+            lic = load_license(
+                os.environ.get("ALGENTA_API_KEY", "") or os.environ.get("DE_API_KEY", "")
+            )
+        except Exception:  # noqa: BLE001 — never let license resolution break tool listing
+            return ()
+        if lic is None or not getattr(lic, "valid", False) or lic.is_legacy_v1():
+            return ()
+        if not lic.has_product(product):
+            return (frozenset(),)
+        return (feature_tool_constraint(product, lic.product_features(product)),)
 
     # stdio is a single-tenant process: the product edition is fixed for the whole
     # session via ALGENTA_PRODUCT (set by the self-hosted/enterprise plugin package).
-    allowed = resolve_visible_tools((os.environ.get("ALGENTA_PRODUCT") or "").strip() or None)
+    _product = (os.environ.get("ALGENTA_PRODUCT") or "").strip() or None
+    allowed = resolve_visible_tools(_product, constraints=_license_feature_constraints(_product))
 
     server = Server("algenta-decision-engine")
 

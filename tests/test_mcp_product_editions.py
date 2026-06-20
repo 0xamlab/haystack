@@ -107,3 +107,52 @@ def test_call_tool_rejects_out_of_edition() -> None:
     # An entirely unknown tool is rejected too.
     with pytest.raises(KeyError):
         asyncio.run(call_tool("does_not_exist", {}, allowed=codna))
+
+
+# ── P2: license product/feature → tool-gating ───────────────────────────────
+
+
+def test_feature_tool_constraint_maps_features_to_tools() -> None:
+    got = products.feature_tool_constraint("codna", ["repo_graph", "triage"])
+    base = products.PRODUCT_BASE_TOOLS["codna"]
+    feat = products.PRODUCT_FEATURE_TOOLS["codna"]
+    assert got == base | feat["repo_graph"] | feat["triage"]
+    assert got <= products.PRODUCT_EDITIONS["codna"]  # never exceeds the edition
+    assert "apply_repository" not in got  # ungranted feature's tools excluded
+
+
+def test_feature_tool_constraint_full_features_equals_edition() -> None:
+    # Invariant: every codna tool is reachable via base ∪ exactly the granted features,
+    # so a fully-featured license == the full edition (no orphaned/unreachable tools).
+    base = products.PRODUCT_BASE_TOOLS["codna"]
+    union = set(base)
+    for tools in products.PRODUCT_FEATURE_TOOLS["codna"].values():
+        union |= tools
+    assert frozenset(union) == products.PRODUCT_EDITIONS["codna"]
+    all_features = list(products.PRODUCT_FEATURE_TOOLS["codna"].keys())
+    assert products.feature_tool_constraint("codna", all_features) == products.PRODUCT_EDITIONS[
+        "codna"
+    ]
+
+
+def test_feature_tool_constraint_none_when_no_narrowing() -> None:
+    assert products.feature_tool_constraint("codna", []) is None  # product, no feature list
+    assert products.feature_tool_constraint("codna", None) is None
+    assert products.feature_tool_constraint("cohenta", ["x"]) is None  # no feature map
+    assert products.feature_tool_constraint(None, ["repo_graph"]) is None
+
+
+def test_feature_tool_constraint_unknown_feature_yields_base_only() -> None:
+    # A license granting only an unknown feature gets base tools only — fail closed.
+    assert products.feature_tool_constraint("codna", ["bogus"]) == products.PRODUCT_BASE_TOOLS[
+        "codna"
+    ]
+
+
+def test_resolve_visible_tools_narrows_by_license_feature_constraint() -> None:
+    constraint = products.feature_tool_constraint("codna", ["triage"])
+    visible = products.resolve_visible_tools("codna", constraints=[constraint])
+    feat = products.PRODUCT_FEATURE_TOOLS["codna"]
+    assert visible == products.PRODUCT_BASE_TOOLS["codna"] | feat["triage"]
+    assert "run_repository_fix" not in visible  # fix not licensed → not visible
+    assert visible <= products.PRODUCT_EDITIONS["codna"]
