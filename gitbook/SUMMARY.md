@@ -31,3 +31,4 @@
 ## Help
 
 * [Troubleshooting](troubleshooting.md)
+* [Changelog](changelog.md)

@@ -15,5 +15,6 @@
   "api/overview.md": "index",
   "api/reference.md": "reference",
   "api/explorer.md": "reference",
-  "troubleshooting.md": "troubleshooting"
+  "troubleshooting.md": "troubleshooting",
+  "changelog.md": "reference"
 }
