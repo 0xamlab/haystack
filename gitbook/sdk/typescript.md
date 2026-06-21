@@ -442,6 +442,176 @@ try {
 Set credentials in the environment rather than hard-coding them. The client and runtime both read `ALGENTA_API_KEY` first and `DE_API_KEY` as a fallback, so the same shell setup works across the SDK, CLI, and Python SDK.
 {% endhint %}
 
+## Agent runs
+
+Agent runs drive a task through the engine's tool loop with deterministic, replayable checkpoints. You create a run, watch its events stream in, approve or resume it when it pauses for a gated action, and fork or replay it from any checkpoint. Every run carries a `request_hash` so the same task against the same snapshots is reproducible. See the [agent runs guide](../guides/agent-runs.md) for the full lifecycle.
+
+```ts title="agent_run.ts"
+const run = await client.createAgentRun({
+  task: "Summarize the latest incident report and propose a remediation",
+  max_steps: 8,
+  approval_mode: "auto",
+  start_paused: false,
+});
+
+// Stream events as the run progresses.
+for await (const message of client.streamAgentRunEvents(run.run_id)) {
+  if (message.type === "agent.run.completed") {
+    console.log("done:", message.status);
+    break;
+  }
+  console.log(message.event?.event_type, message.event?.summary);
+}
+
+// Read the final state, including request_hash and decision_hash.
+const finished = await client.getAgentRun(run.run_id);
+console.log(finished.status, finished.request_hash);
+```
+
+When a run pauses for a gated action, advance it with `approveAgentRun` (or override with `resumeAgentRun`); stop it early with `cancelAgentRun`. Branch a new run from a checkpoint with `forkAgentRun`, or re-execute deterministically from one with `replayAgentRun`.
+
+```ts
+await client.approveAgentRun(run.run_id);          // approve the pending action
+await client.resumeAgentRun(run.run_id);           // continue a paused run
+await client.cancelAgentRun(run.run_id);           // stop the run
+
+const branch = await client.forkAgentRun(run.run_id, { checkpoint_id: "ckpt_3" });
+const replay = await client.replayAgentRun(run.run_id, { checkpoint_id: "ckpt_3" });
+```
+
+{% hint style="info" %}
+`forkAgentRun` and `replayAgentRun` take an optional `checkpoint_id`. Omit it (or pass `null`) to fork or replay from the latest checkpoint.
+{% endhint %}
+
+| Method | HTTP | Notes |
+| --- | --- | --- |
+| `createAgentRun(request)` | `POST /v1/agent/runs` | `request` is an `AgentRunCreateRequest` (`task`, `max_steps`, `approval_mode`, `tools`, `start_paused`). |
+| `getAgentRun(runId)` | `GET /v1/agent/runs/{id}` | Current run state, including `request_hash`. |
+| `streamAgentRunEvents(runId, { limit })` | `GET /v1/agent/runs/{id}/events?stream=true` | Async generator of `agent.run.event` / `agent.run.completed` messages. |
+| `approveAgentRun(runId)` | `POST /v1/agent/runs/{id}/approve` | Approve a pending gated action. |
+| `resumeAgentRun(runId)` | `POST /v1/agent/runs/{id}/resume` | Continue a paused run. |
+| `cancelAgentRun(runId)` | `POST /v1/agent/runs/{id}/cancel` | Stop the run. |
+| `forkAgentRun(runId, { checkpoint_id })` | `POST /v1/agent/runs/{id}/fork` | New run branched from a checkpoint. |
+| `replayAgentRun(runId, { checkpoint_id })` | `POST /v1/agent/runs/{id}/replay` | Deterministic re-execution from a checkpoint. |
+
+## Async jobs
+
+Long-running simulations run as async jobs: you submit a `SimulateRequest`, get back a `job_id` and `poll_url`, then poll until the result is ready. `pollJob` is the convenience wrapper that polls `getJob` for you and returns the result once the job completes. An optional `callbackUrl` lets the engine deliver a webhook instead of (or alongside) polling. See the [async jobs guide](../guides/async-jobs.md).
+
+**Expected result:** `submitJob` returns a `JobSubmitResponse` with `job_id`, `status: "queued"`, and a `poll_url`.
+
+```ts title="async_job.ts"
+const job = await client.submitJob(
+  {
+    mode: "auto",
+    scenario: {
+      name: "pricing",
+      variables: {
+        unit_price: { low: 9, high: 19, description: "candidate list price" },
+        units_sold: { low: 1000, high: 5000 },
+      },
+      objective: "maximize_net_value",
+    },
+    runs: 10_000,
+    seed: 42,
+  },
+  "https://example.com/algenta/webhook", // optional callback_url
+);
+
+console.log(job.job_id, job.status, job.poll_url);
+
+// Block until the job finishes (or check progress manually).
+const result = await client.pollJob(job.job_id, { timeoutMs: 60_000, pollIntervalMs: 1_000 });
+console.log(result);
+```
+
+To poll by hand, read the status with `getJob`, fetch the payload with `getJobResult` once `status === "completed"`, browse history with `listJobs`, and stop in-flight work with `cancelJob`.
+
+```ts
+const status = await client.getJob(job.job_id);
+if (status.status === "completed") {
+  const payload = await client.getJobResult(job.job_id);
+  console.log(payload);
+}
+
+const page = await client.listJobs({ page: 1, limit: 25, status: "queued" });
+await client.cancelJob(job.job_id);
+```
+
+| Method | HTTP | Notes |
+| --- | --- | --- |
+| `submitJob(request, callbackUrl?)` | `POST /v1/jobs` | `request` is a `SimulateRequest`; `callbackUrl` maps to `callback_url`. |
+| `getJob(jobId)` | `GET /v1/jobs/{id}` | Job status (`job_id`, `run_id`, `status`). |
+| `getJobResult(jobId)` | `GET /v1/jobs/{id}/result` | The completed result payload. |
+| `pollJob(jobId, { timeoutMs, pollIntervalMs })` | polls `GET /v1/jobs/{id}` | Resolves to the result once the job completes. |
+| `listJobs({ page, limit, status })` | `GET /v1/jobs/list` | Paginated job history, filterable by status. |
+| `cancelJob(jobId)` | `POST /v1/jobs/{id}/cancel` | Cancels a queued or running job. |
+
+## Repository intelligence
+
+Repository intelligence turns a code repository into governed, queryable evidence. You snapshot the repo, triage an issue against it to get ranked evidence, query the symbol graph, simulate a candidate decision plan, and apply the result as a patch, branch, or pull request. Start by checking which languages the engine supports with `getRepositoryIntelligenceCapabilities`. See the [repository intelligence guide](../guides/repository-intelligence.md).
+
+```ts title="repository_intelligence.ts"
+const capabilities = await client.getRepositoryIntelligenceCapabilities();
+console.log(capabilities.supported_languages.length, capabilities.support_progress.progress_label);
+
+// 1. Snapshot the repository.
+const snapshot = await client.createRepositorySnapshot("repo_42", {
+  ref: "main",
+  include_patterns: ["src/**"],
+  max_files: 5_000,
+});
+
+// 2. Triage an issue into ranked evidence.
+const triage = await client.triageRepository("repo_42", {
+  snapshot_id: snapshot.snapshot_id,
+  signals: {
+    issue_text: "Null pointer when the cart is empty at checkout",
+    failing_tests: ["test_checkout_empty_cart"],
+  },
+  max_evidence_items: 20,
+});
+
+// 3. Walk the symbol graph around a file or symbol.
+const graph = await client.queryRepositoryGraph("repo_42", {
+  snapshot_id: snapshot.snapshot_id,
+  symbol_name: "checkout",
+  direction: "both",
+  max_depth: 2,
+});
+
+// 4. Simulate a decision plan, then 5. apply it as a pull request.
+const decision = await client.simulateRepository("repo_42", {
+  snapshot_id: snapshot.snapshot_id,
+  decision_plan_id: "plan_7",
+  runs: 256,
+});
+
+const applied = await client.applyRepository("repo_42", {
+  snapshot_id: snapshot.snapshot_id,
+  decision_plan_id: "plan_7",
+  simulation_id: decision.simulation_id,
+  mode: "remote_pr",
+  write_permission: true,
+  pull_request_title: "Fix empty-cart checkout crash",
+});
+
+console.log(triage.evidence?.length, graph.nodes?.length, applied.pull_request_url);
+```
+
+{% hint style="warning" %}
+`applyRepository` with `mode: "remote_pr"` (or `"local_branch"`) writes to your repository. It requires `write_permission: true` and a `simulation_id` from a prior `simulateRepository` call. Use `mode: "patch_only"` to get the `.diff` without writing anything.
+{% endhint %}
+
+| Method | HTTP | Notes |
+| --- | --- | --- |
+| `getRepositoryIntelligenceCapabilities()` | `GET /v1/repositories/capabilities` | Supported languages and support progress. |
+| `createRepositorySnapshot(repositoryId, request)` | `POST /v1/repositories/{id}/snapshots` | `request` is a `RepositorySnapshotCreateRequest`. |
+| `triageRepository(repositoryId, request)` | `POST /v1/repositories/{id}/triage` | Ranked evidence from `signals` (`issue_text`, `failing_tests`, `changed_files`). |
+| `queryRepositoryGraph(repositoryId, request)` | `POST /v1/repositories/{id}/graph-query` | Symbol/file graph; `direction` is `inbound`, `outbound`, or `both`. |
+| `simulateRepository(repositoryId, request)` | `POST /v1/repositories/{id}/simulate` | Returns a `DecisionEnvelope` for a `decision_plan_id`. |
+| `applyRepository(repositoryId, request)` | `POST /v1/repositories/{id}/apply` | `mode` is `patch_only`, `local_branch`, or `remote_pr`. |
+
 ## Related pages
 
 {% content-ref url="../authentication.md" %}

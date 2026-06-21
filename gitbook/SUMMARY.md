@@ -47,6 +47,7 @@
 * [Python SDK](sdk/python.md)
 * [TypeScript SDK](sdk/typescript.md)
 * [MCP server](sdk/mcp.md)
+* [Testing with Algenta](sdk/testing.md)
 * [CLI reference](cli.md)
 
 ## Deploy & Operate

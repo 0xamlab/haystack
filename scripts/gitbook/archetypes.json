@@ -32,6 +32,7 @@
   "sdk/python.md": "integration",
   "sdk/typescript.md": "integration",
   "sdk/mcp.md": "integration",
+  "sdk/testing.md": "integration",
   "cli.md": "reference",
   "self-hosting.md": "task",
   "licensing.md": "concept",
