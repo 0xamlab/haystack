@@ -16,6 +16,8 @@
   "guides/simulate.md": "task",
   "guides/governed-query.md": "task",
   "guides/decision-memory.md": "task",
+  "guides/connect-data.md": "task",
+  "guides/capabilities.md": "task",
   "install.md": "task",
   "quickstart.md": "task",
   "concepts.md": "concept",

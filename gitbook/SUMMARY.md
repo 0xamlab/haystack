@@ -32,6 +32,8 @@
 * [Simulate a scenario](guides/simulate.md)
 * [Query governed data](guides/governed-query.md)
 * [Log decisions & record outcomes](guides/decision-memory.md)
+* [Connect a data source](guides/connect-data.md)
+* [Route & execute capabilities](guides/capabilities.md)
 
 ## SDKs
 
