@@ -35,7 +35,7 @@ Log a decision, then close the loop once the real number is known.
 
 ```bash title="Log a decision, then record its outcome"
 # 1. Log a decision (optionally linked to a simulation run_id)
-DECISION_ID=$(curl -s -X POST https://api.algenta.com/v1/decisions \
+DECISION_ID=$(curl -s -X POST https://api.algenta.ai/v1/decisions \
   -H "Authorization: Bearer $ALGENTA_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -50,7 +50,7 @@ DECISION_ID=$(curl -s -X POST https://api.algenta.com/v1/decisions \
       }' | jq -r .id)
 
 # 2. Weeks later: record what actually happened (closes the loop)
-curl -s -X PATCH "https://api.algenta.com/v1/decisions/$DECISION_ID/outcome" \
+curl -s -X PATCH "https://api.algenta.ai/v1/decisions/$DECISION_ID/outcome" \
   -H "Authorization: Bearer $ALGENTA_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"actual_outcome": 131500, "outcome_notes": "Lower conversion than modeled."}'

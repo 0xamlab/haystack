@@ -20,7 +20,10 @@
 
 * [Governed data & query](concepts/governed-data.md)
 * [The capability plane](concepts/capability-plane.md)
+* [Simulation models & distributions](concepts/simulation-models.md)
 * [Decision memory](concepts/decision-memory.md)
+* [Execution ownership & fail-closed](concepts/execution-ownership.md)
+* [Deployment modes & privacy](concepts/deployment-modes.md)
 
 ## SDKs
 
