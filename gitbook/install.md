@@ -26,6 +26,10 @@ To make a first call against the self-hosted service, you do not need to install
 The self-hosted service is the complete Algenta deployment: the API, the worker, Postgres, Redis, and MinIO object storage, wired together with Docker Compose. One command installs and starts everything.
 
 {% hint style="info" %}
+The compiled **Mojo engine ships inside the image** — the installer brings it up automatically. To confirm it's running on the fast worker pool (and to fix the build/startup issues you're most likely to hit), see [Run the Mojo engine](engine/mojo-sidecar.md).
+{% endhint %}
+
+{% hint style="info" %}
 **Prerequisites.** Docker, with the daemon running, plus Docker Compose. Either the Compose v2 plugin (`docker compose`) or the standalone `docker-compose` binary works; the installer detects whichever is present.
 {% endhint %}
 

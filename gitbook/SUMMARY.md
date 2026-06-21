@@ -9,6 +9,12 @@
 * [Core concepts](concepts.md)
 * [Authentication & API keys](authentication.md)
 
+## Run the engine
+
+* [Run the Mojo engine](engine/mojo-sidecar.md)
+* [Engine health & verification](engine/health.md)
+* [How the engine works](concepts/engine.md)
+
 ## SDKs
 
 * [Python SDK](sdk/python.md)
