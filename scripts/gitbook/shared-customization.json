@@ -12,7 +12,7 @@
     "links": "accent",
     "font": "Inter",
     "monospaceFont": "JetBrainsMono",
-    "icons": "regular",
+    "icons": "light",
     "codeTheme": {
       "default": { "light": "github-light", "dark": "github-dark" },
       "openapi": { "light": "github-light", "dark": "github-dark" }
