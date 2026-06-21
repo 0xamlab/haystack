@@ -35,20 +35,39 @@ The sidecar default is a private, digest-pinned GHCR image (`ghcr.io/thyn-ai/cod
 
 ## Install in one command
 
-```bash
+{% stepper %}
+{% step %}
+### Run the installer
+
+```bash title="install.sh"
 curl -fsSL https://algenta.ai/install.sh | bash
 ```
 
 The installer resolves a pinned image tag, downloads `infra/docker/docker-compose.selfhosted.yml` into `~/.algenta`, generates `~/.algenta/.env` with fresh secrets, starts the stack, runs migrations, and bootstraps an owner. It finishes by printing your API URL, the bootstrap API key, and the bootstrap user credentials.
+{% endstep %}
+
+{% step %}
+### Capture the printed credentials
+
+The final output includes your API URL, the bootstrap API key, and the bootstrap user login. Store the bootstrap key in your secret manager now — the raw value is shown once.
+{% endstep %}
+
+{% step %}
+### Back up the encryption key
+
+Copy `ALGENTA_CONFIG_ENCRYPTION_KEY` out of `~/.algenta/.env` into durable backup before you do anything else. See [Durable secrets](#durable-secrets) for why this matters.
+{% endstep %}
+{% endstepper %}
 
 You can steer the installer with environment variables:
 
-```bash
+```bash title="pin-and-relocate.sh"
 # Pin a specific release and put the install somewhere other than ~/.algenta
 ALGENTA_VERSION=git-1a2b3c4 ALGENTA_DIR=/opt/algenta \
   bash -c "$(curl -fsSL https://algenta.ai/install.sh)"
 ```
 
+{% expandable title="Installer environment variables" %}
 | Variable | Default | Effect |
 | --- | --- | --- |
 | `ALGENTA_DIR` | `$HOME/.algenta` | Install directory (holds `.env` and `docker-compose.yml`) |
@@ -57,18 +76,23 @@ ALGENTA_VERSION=git-1a2b3c4 ALGENTA_DIR=/opt/algenta \
 | `ALGENTA_IMAGE_TAG` | derived from version | Pinned image tag (e.g. `git-1a2b3c4`) |
 | `ALGENTA_IMAGE_REGISTRY` | `ghcr.io/algenta/decision-engine` | Image registry prefix |
 | `ALGENTA_SKIP_IMAGE_PULL` | `0` | Set `1` to skip `compose pull` (use local images) |
+{% endexpandable %}
 
 ### Manual install
 
 Use the manual path when you want to inspect or modify the Compose bundle before starting it.
 
-```bash
+```bash title="manual-install.sh"
 git clone https://github.com/algenta/decision-engine
 cd decision-engine
 docker compose -f infra/docker/docker-compose.selfhosted.yml up -d
 ```
 
-Then run migrations and bootstrap (see below). The Compose file requires `ALGENTA_IMAGE_TAG` to be set to a pinned tag — it never ships a floating `:latest`. Provide it through an `.env` file in the same directory or `--env-file`.
+Then run migrations and bootstrap (see below).
+
+{% hint style="warning" %}
+The Compose file requires `ALGENTA_IMAGE_TAG` to be set to a pinned tag — it never ships a floating `:latest`. Provide it through an `.env` file in the same directory or `--env-file`.
+{% endhint %}
 
 ## Durable secrets
 
@@ -84,7 +108,7 @@ Compose reads the `.env` file next to the Compose file — not your shell. Anyth
 | `ALGENTA_ENGINE_URL` | `http://api:8000` | Loopback URL the agent head dials to call back into `/v1` (must be the docker-network DNS name, not `localhost`) |
 | `ALGENTA_ENGINE_API_KEY` | The dedicated **Engine Callback Key** | The agent head presents it (with `ALGENTA_ENGINE_URL`) to call back into `/v1` during a run |
 
-{% hint style="warning" %}
+{% hint style="danger" %}
 Back up `ALGENTA_CONFIG_ENCRYPTION_KEY` immediately after install. If you reinstall over an existing database, restore your **previous** key into `.env` before starting, or stored per-tenant provider keys become unreadable.
 {% endhint %}
 
@@ -117,14 +141,14 @@ When you front the API with a public hostname, set `ALGENTA_API_PUBLIC_BASE_URL`
 
 If you used the one-line installer, this already ran and the credentials were printed. To run it manually (or re-run it idempotently):
 
-```bash
+```bash title="bootstrap.sh"
 cd ~/.algenta
 docker compose exec -T api python scripts/bootstrap_self_host.py
 ```
 
 The script prints machine-readable output. On the run that mints them, it includes the bootstrap key and the Engine Callback Key:
 
-```
+```text title="bootstrap-output.txt"
 ALGENTA_BOOTSTRAP_READY=1
 BOOTSTRAP_ORG_SLUG=self-hosted-org
 BOOTSTRAP_USER_EMAIL=owner@selfhost.algenta.ai
@@ -136,6 +160,7 @@ BOOTSTRAP_ENGINE_API_KEY=de_live_...
 BOOTSTRAP_USER_PASSWORD=...
 ```
 
+{% expandable title="Override the bootstrap identity" %}
 Override the bootstrap identity with environment variables if the defaults do not fit:
 
 | Variable | Default |
@@ -144,12 +169,17 @@ Override the bootstrap identity with environment variables if the defaults do no
 | `ALGENTA_BOOTSTRAP_ORG_SLUG` | `self-hosted-org` |
 | `ALGENTA_BOOTSTRAP_ORG_NAME` | `Self-Hosted Organization` |
 | `ALGENTA_BOOTSTRAP_PASSWORD` | generated 32-char value |
+{% endexpandable %}
 
 ### Rotate the bootstrap key
 
 The bootstrap key is a one-time credential. Rotate it to a bounded-lifetime replacement, then revoke the original. The Engine Callback Key is separate and is not affected.
 
-```bash
+{% stepper %}
+{% step %}
+### Mint a replacement
+
+```bash title="mint-replacement.sh"
 export ALGENTA_API_KEY='<paste the bootstrap key>'
 
 # Mint a replacement
@@ -159,17 +189,27 @@ curl -X POST http://localhost:8000/v1/api-keys \
   -d '{"label":"mission-runtime","expires_at":"2028-05-19T00:00:00Z"}'
 ```
 
-The response returns `raw_key`, `id`, `key_prefix`, and `expires_at`. The `raw_key` is shown once. Store the non-secret identity fields, switch your callers to the replacement, then revoke the bootstrap key by id:
+The response returns `raw_key`, `id`, `key_prefix`, and `expires_at`. The `raw_key` is shown once. Store the non-secret identity fields and switch your callers to the replacement.
+{% endstep %}
 
-```bash
+{% step %}
+### Revoke the original
+
+```bash title="revoke-bootstrap.sh"
 export ALGENTA_API_KEY='<paste the replacement raw_key>'
 
 curl -X DELETE http://localhost:8000/v1/api-keys/${BOOTSTRAP_API_KEY_ID} \
   -H "Authorization: Bearer ${ALGENTA_API_KEY}"
 ```
+{% endstep %}
+{% endstepper %}
 
 ## Run your first decision
 
+No SDK or Python install is required to use Algenta; the SDKs are a convenience over the same `/v1` surface. The response includes `status` and `recommended_action`.
+
+{% tabs %}
+{% tab title="cURL" %}
 ```bash
 curl -X POST http://localhost:8000/v1/simulate \
   -H "Authorization: Bearer ${ALGENTA_API_KEY}" \
@@ -187,14 +227,67 @@ curl -X POST http://localhost:8000/v1/simulate \
     "seed": 42
   }'
 ```
+{% endtab %}
 
-The response includes `status` and `recommended_action`. No SDK or Python install is required to use Algenta; the SDKs are a convenience over the same `/v1` surface.
+{% tab title="Python" %}
+```python title="first_decision.py"
+import os
+import httpx
+
+resp = httpx.post(
+    "http://localhost:8000/v1/simulate",
+    headers={"Authorization": f"Bearer {os.environ['ALGENTA_API_KEY']}"},
+    json={
+        "mode": "auto",
+        "scenario": {
+            "variables": {
+                "revenue": {"low": 80000, "high": 200000},
+                "cost": {"low": 30000, "high": 90000},
+            },
+            "objective": "maximize_net_value",
+        },
+        "runs": 10000,
+        "seed": 42,
+    },
+)
+result = resp.json()
+print(result["status"], result["recommended_action"])
+```
+{% endtab %}
+
+{% tab title="TypeScript" %}
+```typescript title="firstDecision.ts"
+const resp = await fetch("http://localhost:8000/v1/simulate", {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${process.env.ALGENTA_API_KEY}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    mode: "auto",
+    scenario: {
+      variables: {
+        revenue: { low: 80000, high: 200000 },
+        cost: { low: 30000, high: 90000 },
+      },
+      objective: "maximize_net_value",
+    },
+    runs: 10000,
+    seed: 42,
+  }),
+});
+
+const result = await resp.json();
+console.log(result.status, result.recommended_action);
+```
+{% endtab %}
+{% endtabs %}
 
 ## Verify the deployment
 
 ### Health
 
-```bash
+```bash title="health.sh"
 curl http://localhost:8000/v1/health
 # {"status":"ok","timestamp":"..."}
 ```
@@ -203,11 +296,15 @@ curl http://localhost:8000/v1/health
 
 The privacy report is the buyer-facing proof that the deployment is cloud-free. It returns the active deployment mode and a 24-hour egress summary.
 
+{% tabs %}
+{% tab title="Request" %}
 ```bash
 curl http://localhost:8000/v1/admin/privacy-report \
   -H "Authorization: Bearer ${ALGENTA_API_KEY}"
 ```
+{% endtab %}
 
+{% tab title="Response" %}
 ```json
 {
   "deployment_mode": "self_hosted",
@@ -221,6 +318,8 @@ curl http://localhost:8000/v1/admin/privacy-report \
   "last_algenta_owned_egress_at": null
 }
 ```
+{% endtab %}
+{% endtabs %}
 
 Two companion endpoints give the full picture:
 
@@ -229,29 +328,37 @@ Two companion endpoints give the full picture:
 
 ### Smoke and persistence proofs
 
-Two scripts exercise the full stack end to end against a local build. The smoke script builds the prod images, starts the stack, bootstraps, rotates and revokes the key, runs a synchronous decision, and runs an async job to completion:
+Two scripts exercise the full stack end to end against a local build.
 
-```bash
+{% expandable title="Smoke proof: full lifecycle in one run" %}
+The smoke script builds the prod images, starts the stack, bootstraps, rotates and revokes the key, runs a synchronous decision, and runs an async job to completion:
+
+```bash title="self_host_smoke.sh"
 bash scripts/self_host_smoke.sh
 # or
 make self-host-smoke
 ```
+{% endexpandable %}
 
+{% expandable title="Persistence proof: survive a backup-and-restore cycle" %}
 The persistence proof additionally seeds a dataset, query, and run, then restarts the stack, takes a PostgreSQL dump and volume backups, recreates the stack from those backups, and re-verifies that the dataset, query result, run, and object-storage artifacts all survive:
 
-```bash
+```bash title="self_host_persistence_proof.sh"
 bash scripts/self_host_persistence_proof.sh
 # or
 make self-host-persistence-proof
 ```
+{% endexpandable %}
 
-Both scripts run on isolated ports and project names so they will not collide with a running install.
+{% hint style="success" %}
+Both scripts run on isolated ports and project names, so they will not collide with a running install.
+{% endhint %}
 
 ## Operations
 
 Run these from the install directory (`~/.algenta` by default):
 
-```bash
+```bash title="operations.sh"
 cd ~/.algenta
 
 docker compose ps                 # service status
@@ -262,28 +369,32 @@ docker compose pull && docker compose up -d   # upgrade to a new pinned tag
 docker compose stop               # stop the stack
 ```
 
+{% hint style="info" %}
 After changing `.env`, run `docker compose up -d` again — Compose recreates only the services whose environment changed.
+{% endhint %}
 
 ### TLS and exposure
 
+{% hint style="warning" %}
 PostgreSQL, Redis, and MinIO bind to `127.0.0.1` only and must not be exposed publicly. Put nginx or Caddy in front of the API on port `8000` for TLS termination, and set `CORS_ORIGINS` and `ALGENTA_API_PUBLIC_BASE_URL` to your public origin.
+{% endhint %}
 
 ### Agentic repository flow
 
 To enable the agentic repository / GitHub flow, set an LLM provider key in `.env` and re-up:
 
-```bash
+```bash title=".env"
 # in ~/.algenta/.env
 ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-```bash
+```bash title="reup.sh"
 cd ~/.algenta && docker compose up -d
 ```
 
 Scale the agent head horizontally when needed — the api and worker reach it through the round-robin `sidecar` service DNS:
 
-```bash
+```bash title="scale-sidecar.sh"
 docker compose up -d --scale sidecar=3
 ```
 
@@ -291,11 +402,33 @@ docker compose up -d --scale sidecar=3
 
 For a managed origin on Fly.io with Cloudflare at the edge, the engine splits into a public `api` app and a private `engine` app (worker + co-located sidecar sharing one volume). The full runbook lives in `DEPLOY.md`, with `fly.api.toml`, `fly.engine.toml`, and `fly.control-plane.toml` defining the apps.
 
-```bash
+```bash title="fly-deploy.sh"
 export FLY_API_TOKEN=…
 make bootstrap        # create apps, Postgres, Redis, object storage, request cert
 make deploy-fly       # deploy engine first, then api (runs alembic upgrade head)
 make status           # fly status + /v1/health + secrets check
 ```
 
-On Fly, set the same durable secrets per app: both apps need `ALGENTA_CONFIG_ENCRYPTION_KEY`, `ALGENTA_AGENT_CORE_TOKEN`, and the `DATABASE_URL`/`REDIS_URL`/`S3_*` set; the api app additionally needs `ALGENTA_ENGINE_URL`, `ALGENTA_ENGINE_API_KEY`, and `JWT_SECRET`; the engine app needs the matching `AGENT_CORE_AUTH_TOKEN`, `AGENT_CORE_REQUIRE_AUTH=1`, and the LLM key. Do not scale the engine app past one Machine — it holds the single shared working-directory volume.
+{% hint style="danger" %}
+Do not scale the engine app past one Machine — it holds the single shared working-directory volume.
+{% endhint %}
+
+On Fly, set the same durable secrets per app: both apps need `ALGENTA_CONFIG_ENCRYPTION_KEY`, `ALGENTA_AGENT_CORE_TOKEN`, and the `DATABASE_URL`/`REDIS_URL`/`S3_*` set; the api app additionally needs `ALGENTA_ENGINE_URL`, `ALGENTA_ENGINE_API_KEY`, and `JWT_SECRET`; the engine app needs the matching `AGENT_CORE_AUTH_TOKEN`, `AGENT_CORE_REQUIRE_AUTH=1`, and the LLM key.
+
+## Related pages
+
+{% content-ref url="install.md" %}
+[install.md](install.md)
+{% endcontent-ref %}
+
+{% content-ref url="authentication.md" %}
+[authentication.md](authentication.md)
+{% endcontent-ref %}
+
+{% content-ref url="licensing.md" %}
+[licensing.md](licensing.md)
+{% endcontent-ref %}
+
+{% content-ref url="troubleshooting.md" %}
+[troubleshooting.md](troubleshooting.md)
+{% endcontent-ref %}

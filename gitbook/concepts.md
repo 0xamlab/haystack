@@ -8,13 +8,17 @@ This page builds the mental model you need to use Algenta well. It explains the 
 
 The engine is the same whether you run it locally, call a hosted control plane, or point at your own deployment. What changes is where execution happens and what leaves your process. Algenta makes that boundary explicit and enforces it.
 
+{% hint style="info" %}
+If you only read one section, read [Execution ownership: the fail-closed rule](#execution-ownership-the-fail-closed-rule). It is the single rule that explains why the same code is safe to move from `local` to `self_hosted` without changing behavior.
+{% endhint %}
+
 ## The Runtime
 
 Everything starts with a `Runtime`. It is the single entry point in both SDKs.
 
 {% tabs %}
 {% tab title="Python" %}
-```python
+```python title="runtime.py"
 from algenta import Runtime
 
 rt = Runtime()  # mode="local" by default
@@ -22,7 +26,7 @@ rt = Runtime()  # mode="local" by default
 {% endtab %}
 
 {% tab title="TypeScript" %}
-```ts
+```typescript title="runtime.ts"
 import { Runtime } from "algenta-sdk";
 
 const rt = new Runtime(); // mode "local" by default
@@ -46,7 +50,7 @@ A `Runtime` runs in exactly one of three modes. The mode decides where execution
 
 `local` is the default and needs no API key. It executes deterministically in-process against sources you connect. Local mode reads CSV, JSON, Parquet, Excel, in-memory rows, and local SQLite — no cloud, no egress.
 
-```python
+```python title="local_mode.py"
 from algenta import Runtime
 
 rt = Runtime()
@@ -57,33 +61,43 @@ result = rt.query(plan)
 
 You can also connect in-memory rows directly:
 
-```python
+```python title="connect_rows.py"
 rt.connect(
     [{"product_line": "pro", "revenue": 120000}, {"product_line": "free", "revenue": 0}],
     name="orders",
 )
 ```
 
-Methods that require a server — billing, agent runs, the full control plane — are not available in `local` mode. Calling them raises a typed error pointing you at `api` or `self_hosted`:
+Methods that require a server — billing, agent runs, the full control plane — are not available in `local` mode. Calling them raises a typed error pointing you at `api` or `self_hosted`.
 
+{% expandable title="The local_mode_not_supported error" %}
 ```text
 local_mode_not_supported: <method>() is not supported for Runtime({ mode: 'local' }).
 Use Runtime({ mode: 'api', apiKey: '...' }) or Runtime({ mode: 'self_hosted', baseUrl: '...' }).
 ```
 
+The error names the method you called and the two modes that support it. This is fail-closed by design: a server-only capability never silently degrades in `local` mode.
+{% endexpandable %}
+
 ### API mode
 
 `api` mode delegates to the Algenta hosted control plane. Set a key once and Algenta resolves the base URL for you.
 
-```bash
-export ALGENTA_API_KEY="sk_live_..."   # or DE_API_KEY
-```
-
-```python
+{% tabs %}
+{% tab title="Python" %}
+```python title="api_mode.py"
 from algenta import Runtime
 
 rt = Runtime(mode="api")  # api_key read from ALGENTA_API_KEY / DE_API_KEY
 ```
+{% endtab %}
+
+{% tab title="cURL" %}
+```bash
+export ALGENTA_API_KEY="sk_live_..."   # or DE_API_KEY
+```
+{% endtab %}
+{% endtabs %}
 
 ### Self-hosted mode
 
@@ -91,7 +105,7 @@ rt = Runtime(mode="api")  # api_key read from ALGENTA_API_KEY / DE_API_KEY
 
 {% tabs %}
 {% tab title="Python" %}
-```python
+```python title="self_hosted.py"
 import os
 from algenta import Runtime
 
@@ -104,7 +118,7 @@ rt = Runtime(
 {% endtab %}
 
 {% tab title="TypeScript" %}
-```ts
+```typescript title="self_hosted.ts"
 import { Runtime } from "algenta-sdk";
 
 const rt = new Runtime({
@@ -135,23 +149,44 @@ Algenta does not hard-code which tool answers a request. Instead it exposes a **
 
 The plane has three core verbs. Discover with `list_capabilities` / `get_capability`, plan with `route_capabilities`, and run with `execute_capability`.
 
-```python
-# Discover
+{% stepper %}
+{% step %}
+### Discover
+
+List the catalog, optionally narrowing by kind, then fetch full detail for one capability.
+
+```python title="discover.py"
 caps = rt.list_capabilities(kinds=["skill", "mcp_tool"])
 detail = rt.get_capability(caps[0].capability_id, include_instruction=True)
+```
+{% endstep %}
 
-# Route: pick the best capability for an objective
+{% step %}
+### Route
+
+Ask the plane to pick the best capability for an objective.
+
+```python title="route.py"
 plan = rt.route_capabilities({
     "objective": "summarize the latest orders",
     "kinds": ["skill"],
 })
+```
+{% endstep %}
 
-# Execute the selected capability
+{% step %}
+### Execute
+
+Run the selected capability with its input.
+
+```python title="execute.py"
 result = rt.execute_capability({
     "capability_id": plan.selected_capability_id,
     "input": {"window": "last_7d"},
 })
 ```
+{% endstep %}
+{% endstepper %}
 
 ### Execution ownership: the fail-closed rule
 
@@ -171,11 +206,13 @@ Local runtime execution only supports client_managed capabilities.
 
 `algenta_managed` capabilities remain discoverable and routable from `local` mode — `route_capabilities` will still return them — but executing one must go through `api` or `self_hosted`. To run a `client_managed` capability locally, register a customer-owned handler first:
 
-```python
+```python title="register_adapter.py"
 rt.register_capability_adapter(adapter)  # provides the local `execute` for the capability
 ```
 
-If a `client_managed` capability is selected for local execution and no adapter is registered, you get `capability_adapter_missing` rather than a silent no-op.
+{% hint style="danger" %}
+If a `client_managed` capability is selected for local execution and no adapter is registered, you get `capability_adapter_missing` rather than a silent no-op. The runtime never guesses an executor.
+{% endhint %}
 
 {% hint style="info" %}
 Read the rule as a one-liner: **managed runs on the server; local adapters run only what you own.** This is why the same code can move from `local` to `self_hosted` without changing behavior — only the set of executable capabilities widens.
@@ -185,27 +222,51 @@ Read the rule as a one-liner: **managed runs on the server; local adapters run o
 
 Querying is a deliberate four-step flow: **connect → dataset_id → resolve → query**. You never query a raw table; you query a resolved plan against a governed dataset.
 
-```python
+{% stepper %}
+{% step %}
+### Connect
+
+Register a source and receive a `dataset_id`.
+
+```python title="flow.py"
 from algenta import Runtime
 
 rt = Runtime()
-reg = rt.connect("orders.csv", name="orders")   # 1. connect -> dataset_id
+reg = rt.connect("orders.csv", name="orders")   # connect -> dataset_id
 dataset_id = reg.dataset_id
+```
+{% endstep %}
 
-plan = rt.resolve({                              # 2. resolve an intent into a plan
+{% step %}
+### Resolve
+
+Turn an intent into a governed plan.
+
+```python title="flow.py"
+plan = rt.resolve({
     "dataset_id": dataset_id,
     "metric": "revenue",
     "group_by": "product_line",
 })
-
-result = rt.query(plan)                          # 3. execute the plan
 ```
+{% endstep %}
+
+{% step %}
+### Query
+
+Execute the resolved plan.
+
+```python title="flow.py"
+result = rt.query(plan)
+```
+{% endstep %}
+{% endstepper %}
 
 ### Filtering with QueryFilterSpec
 
 Filters are typed, not free-form strings. Build them with `QueryFilterSpec` and `QueryFilterCondition`.
 
-```python
+```python title="filtering.py"
 from algenta import QueryFilterCondition, QueryFilterSpec
 
 completed_orders = QueryFilterSpec(
@@ -223,13 +284,24 @@ query = rt.query_with_metadata({
 })
 ```
 
-A `QueryFilterCondition` targets a `column` or a `dimension_hint` and uses one of the supported operators: `eq`, `in`, `gt`, `gte`, `lt`, `lte`, `is_null`, `is_not_null`. Conditions are validated on construction — `op="in"` requires `values`; `is_null` / `is_not_null` accept neither `value` nor `values`.
+{% expandable title="Supported operators and construction rules" %}
+A `QueryFilterCondition` targets a `column` or a `dimension_hint` and uses one of the supported operators:
+
+`eq`, `in`, `gt`, `gte`, `lt`, `lte`, `is_null`, `is_not_null`.
+
+Conditions are validated on construction:
+
+- `op="in"` requires `values`.
+- `is_null` / `is_not_null` accept neither `value` nor `values`.
+
+Validation happens when you build the condition, not at query time, so malformed filters fail before they reach the engine.
+{% endexpandable %}
 
 ### Batch and SQL-report queries
 
 When you need many related results in one round trip, use `query_batch`. Shared keys go in `defaults`; each entry overrides as needed.
 
-```python
+```python title="query_batch.py"
 batch = rt.query_batch({
     "defaults": {
         "dataset_id": dataset_id,
@@ -264,7 +336,7 @@ On top of the data flow, Algenta exposes higher-order primitives. They share the
 
 Turn a structured decision request into a ranked plan with options and risk profile.
 
-```python
+```python title="plan_decision.py"
 plan = rt.plan_decision({
     "objective": "choose a fulfillment region",
     "options": ["us-east", "eu-west"],
@@ -276,13 +348,13 @@ plan = rt.plan_decision({
 
 `simulate` runs Monte Carlo scenarios; `recommend` scores candidate actions and returns the best one.
 
-```python
+```python title="simulate.py"
 from algenta import simulate
 
 outcome = simulate(revenue=120000, cost=70000, runs=50000)
 ```
 
-```python
+```python title="recommend.py"
 recommendation = rt.recommend([
     {"name": "expand", "request": {...}},
     {"name": "hold", "request": {...}},
@@ -293,7 +365,7 @@ recommendation = rt.recommend([
 
 Decisions can be logged, listed, and reconciled against real outcomes — a durable record of what was decided and how it turned out.
 
-```python
+```python title="decision_memory.py"
 logged = rt.log_decision({"objective": "choose a fulfillment region", "selected": "us-east"})
 rt.record_outcome(logged.decision_id, actual_outcome=142000.0, outcome_notes="Q3 actuals")
 history = rt.list_decisions(with_outcome_only=True)
@@ -303,7 +375,7 @@ history = rt.list_decisions(with_outcome_only=True)
 
 Agent runs are long-lived, governed executions with checkpoints, events, and approval gates. They require `api` or `self_hosted` mode.
 
-```python
+```python title="agent_run.py"
 run = rt.create_agent_run(
     task="triage the failing orders pipeline",
     tools=["dataset.orders", "skill.diagnose"],
@@ -314,12 +386,16 @@ status = rt.get_agent_run(run.run_id)
 events = rt.get_agent_run_events(run.run_id)
 ```
 
+{% hint style="info" %}
 Runs support `resume_agent_run`, `cancel_agent_run`, `approve_agent_run`, checkpoints, telemetry, and `replay_agent_run` for deterministic re-execution.
+{% endhint %}
 
 ## Determinism and the runtime contract
 
 Algenta is built to be replayable. Given the same inputs, the same plan, and the same engine version, you get the same result. Two endpoints make the engine's behavior machine-readable so you can pin and verify it.
 
+{% tabs %}
+{% tab title="cURL" %}
 ```bash
 # The machine-readable platform contract: endpoints, enums, query/filter rules
 curl http://localhost:8000/v1/meta/contract
@@ -327,17 +403,19 @@ curl http://localhost:8000/v1/meta/contract
 # The signed runtime manifest: modules, versions, determinism guarantees
 curl http://localhost:8000/v1/runtime/manifest
 ```
+{% endtab %}
 
-From the SDK these are `rt.get_contract()` and `rt.get_runtime_manifest()`:
-
-```python
+{% tab title="Python" %}
+```python title="contract.py"
 contract = rt.get_contract()
 manifest = rt.get_runtime_manifest()
 ```
+{% endtab %}
+{% endtabs %}
 
 The contract is also available as a static export, so you can assert against it in tests without a network call:
 
-```python
+```python title="static_contract.py"
 from algenta import PRIMARY_DATA_QUERY_CONTRACT, CAPABILITY_PLANE_CONTRACT
 
 print(PRIMARY_DATA_QUERY_CONTRACT["governed_filter_contract"]["operators"]["scalar"])
@@ -364,7 +442,7 @@ export ALGENTA_TELEMETRY_MODE=local_audit
 export ALGENTA_METERING_MODE=local_audit
 ```
 
-{% hint style="info" %}
+{% hint style="warning" %}
 `air_gapped` is the strictest profile: `control_plane_sync` for telemetry or metering is rejected outright (`air_gapped_control_plane_sync_forbidden`). To force cloud off regardless of profile, set `ALGENTA_DISABLE_CLOUD=1`.
 {% endhint %}
 
@@ -372,8 +450,20 @@ These defaults compose with the mode rules above. A `self_hosted` runtime under 
 
 ## Where to go next
 
-This page is intentionally conceptual. For exact signatures, parameters, and return types, follow the reference pages:
+This page is intentionally conceptual. For exact signatures, parameters, and return types, follow the reference pages below.
 
-- **SDK reference** — every `Runtime` method, the model types (`QueryFilterSpec`, `ResolvedPlan`, `QueryOutput`, capability and agent-run models), and async variants.
-- **CLI reference** — the `algenta` command (`algenta import`, `algenta map`, `algenta query`) for local previews and queries straight from the shell.
-- **API reference** — the HTTP surface behind `api` and `self_hosted` modes, including `/v1/meta/contract`, `/v1/runtime/manifest`, the query endpoints, and the capability plane routes.
+{% content-ref url="sdk/python.md" %}
+[sdk/python.md](sdk/python.md)
+{% endcontent-ref %}
+
+{% content-ref url="cli.md" %}
+[cli.md](cli.md)
+{% endcontent-ref %}
+
+{% content-ref url="api/reference.md" %}
+[api/reference.md](api/reference.md)
+{% endcontent-ref %}
+
+{% content-ref url="self-hosting.md" %}
+[self-hosting.md](self-hosting.md)
+{% endcontent-ref %}

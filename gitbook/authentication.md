@@ -27,43 +27,53 @@ An Algenta key looks like `de_live_...` (or `de_test_...` for test keys). It is 
 
 ### Sending the key
 
-Send the key as a Bearer token. This is the canonical header and the one the SDKs use:
+Send the key as a Bearer token. This is the canonical header and the one the SDKs use. For older clients the engine also accepts `X-API-Key`.
 
+{% tabs %}
+{% tab title="Bearer (canonical)" %}
 ```bash
 curl https://api.algenta.ai/v1/me \
   -H "Authorization: Bearer de_live_YOUR_KEY"
 ```
+{% endtab %}
 
-For older clients the engine also accepts `X-API-Key`:
-
+{% tab title="X-API-Key (legacy)" %}
 ```bash
 curl https://api.algenta.ai/v1/me \
   -H "X-API-Key: de_live_YOUR_KEY"
 ```
+{% endtab %}
+{% endtabs %}
 
+{% hint style="warning" %}
 If neither header is present, the engine returns `401 authentication_required`. An invalid, expired, or revoked key returns `401 invalid_api_key`.
+{% endhint %}
 
 ### Environment variables
 
-The SDKs and CLI read the key and base URL from the environment:
+The SDKs and CLI read the key and base URL from the environment.
 
 | Variable | Purpose | Fallbacks |
 | --- | --- | --- |
 | `ALGENTA_API_KEY` | Your API key | `DE_API_KEY` (legacy) |
 | `ALGENTA_BASE_URL` | API base URL (override for self-hosted) | `DE_BASE_URL`, `ALGENTA_API_URL` |
 
-```bash
+```bash title="set-env.sh"
 export ALGENTA_API_KEY="de_live_YOUR_KEY"
 export ALGENTA_BASE_URL="https://api.algenta.ai"
 ```
 
+{% hint style="info" %}
 `DE_API_KEY` is accepted everywhere `ALGENTA_API_KEY` is, but `ALGENTA_API_KEY` wins if both are set.
+{% endhint %}
 
 ### Using the key from the SDKs
 
 Both SDKs resolve the key from the constructor argument first, then `ALGENTA_API_KEY`, then `DE_API_KEY`. They attach `Authorization: Bearer <key>` to every request automatically.
 
-```python
+{% tabs %}
+{% tab title="Python" %}
+```python title="client.py"
 import os
 from decision_engine import AlgentaClient
 
@@ -73,8 +83,10 @@ client = AlgentaClient(
     base_url=os.environ.get("ALGENTA_BASE_URL"),  # omit for the default cloud URL
 )
 ```
+{% endtab %}
 
-```typescript
+{% tab title="TypeScript" %}
+```typescript title="client.ts"
 import { AlgentaClient } from "@algenta/sdk";
 
 const apiKey = process.env.ALGENTA_API_KEY ?? process.env.DE_API_KEY;
@@ -84,6 +96,8 @@ if (!apiKey) {
 
 const client = new AlgentaClient({ apiKey });
 ```
+{% endtab %}
+{% endtabs %}
 
 {% hint style="info" %}
 `AlgentaClient` is the preferred name. `DecisionEngineClient` remains exported as an alias for backward compatibility — they are the same client.
@@ -95,10 +109,20 @@ Your first key is your **bootstrap key** — created with your account at sign-u
 
 ### List keys
 
+{% tabs %}
+{% tab title="cURL" %}
 ```bash
 curl https://api.algenta.ai/v1/api-keys \
   -H "Authorization: Bearer de_live_YOUR_KEY"
 ```
+{% endtab %}
+
+{% tab title="CLI" %}
+```bash
+de keys list
+```
+{% endtab %}
+{% endtabs %}
 
 The response lists active keys with their prefix, label, device limit, and timestamps. Key material is never returned — only `key_prefix` (the first 12 characters) so you can identify a key.
 
@@ -106,6 +130,8 @@ The response lists active keys with their prefix, label, device limit, and times
 
 `POST /v1/api-keys` accepts a label and, optionally, an expiry and a device limit. Creating a key requires at least the `member` role.
 
+{% tabs %}
+{% tab title="cURL" %}
 ```bash
 curl -X POST https://api.algenta.ai/v1/api-keys \
   -H "Authorization: Bearer de_live_YOUR_KEY" \
@@ -116,6 +142,16 @@ curl -X POST https://api.algenta.ai/v1/api-keys \
     "device_limit": 3
   }'
 ```
+{% endtab %}
+
+{% tab title="CLI" %}
+```bash
+de keys create "CI runner" \
+  --device-limit 3 \
+  --expires-at 2026-12-31T23:59:59Z
+```
+{% endtab %}
+{% endtabs %}
 
 | Field | Type | Notes |
 | --- | --- | --- |
@@ -123,8 +159,13 @@ curl -X POST https://api.algenta.ai/v1/api-keys \
 | `expires_at` | RFC 3339 timestamp, optional | After this time the key returns `401 invalid_api_key`. |
 | `device_limit` | integer, optional | Max distinct devices that may bind to this key. `0` = unlimited. Validated against your plan. |
 
-The response includes `raw_key` — the full secret. **It is returned exactly once.** Store it immediately; you cannot retrieve it again.
+The response includes `raw_key` — the full secret.
 
+{% hint style="danger" %}
+`raw_key` is returned **exactly once**. Store it immediately; you cannot retrieve it again. If you lose it, revoke the key and mint a new one.
+{% endhint %}
+
+{% expandable title="Example create response" %}
 ```json
 {
   "id": "0f4c...",
@@ -136,6 +177,7 @@ The response includes `raw_key` — the full secret. **It is returned exactly on
   "expires_at": "2026-12-31T23:59:59Z"
 }
 ```
+{% endexpandable %}
 
 {% hint style="info" %}
 A `device_limit` greater than zero makes the key a **capped key**. Capped keys enforce device binding (see below). A bootstrap or broad key with `device_limit: 0` skips binding entirely.
@@ -143,19 +185,61 @@ A `device_limit` greater than zero makes the key a **capped key**. Capped keys e
 
 ### Revoke a key
 
+{% tabs %}
+{% tab title="cURL" %}
 ```bash
 curl -X DELETE https://api.algenta.ai/v1/api-keys/0f4c... \
   -H "Authorization: Bearer de_live_YOUR_KEY"
 ```
+{% endtab %}
+
+{% tab title="CLI" %}
+```bash
+de keys revoke <key_id>
+```
+{% endtab %}
+{% endtabs %}
 
 Revocation is immediate and audited. Two guards apply:
 
 - You **cannot revoke the last active key** (`400 cannot_revoke_last_key`). Create a replacement first.
 - Revoking a key that does not belong to your org returns `404 api_key_not_found`.
 
+### Rotate a key safely
+
+{% stepper %}
+{% step %}
+### Mint the replacement
+Create a new bounded key with the same scope. Capture its `raw_key` from the one-time response.
+
+```bash
+de keys create "prod-2026-q3" --device-limit 5
+```
+{% endstep %}
+
+{% step %}
+### Cut traffic over
+Update `ALGENTA_API_KEY` (or your secret manager) in every service and CI runner to the new key, and roll your deployments.
+{% endstep %}
+
+{% step %}
+### Verify the old key is idle
+Confirm no traffic is still authenticating with the old key before removing it. Until then, leave both active.
+{% endstep %}
+
+{% step %}
+### Revoke the old key
+Once the new key carries all traffic, revoke the old one. Revocation is immediate.
+
+```bash
+de keys revoke <old_key_id>
+```
+{% endstep %}
+{% endstepper %}
+
 ## CLI authentication
 
-The CLI is invoked as `de`. It stores credentials locally and sends them on every call.
+The CLI is invoked as `de`. It stores credentials locally and sends them on every call. The CLI ships with the SDK.
 
 ```bash
 # Install the SDK (ships the CLI)
@@ -196,7 +280,9 @@ de keys create "CI" --device-limit 3 --expires-at 2026-12-31T23:59:59Z
 de keys revoke <key_id>                            # revoke a key
 ```
 
+{% hint style="info" %}
 Add `--format json` to any of these for machine-readable output.
+{% endhint %}
 
 ## Device binding (capped keys)
 
@@ -216,13 +302,18 @@ The headers they send:
 | `X-Algenta-Hostname-Hash` | Salted hash of the machine fingerprint. |
 | `X-Algenta-SDK-Version` | SDK / client version. |
 
+{% hint style="info" %}
 You can pin the device id explicitly with `ALGENTA_DEVICE_ID` (or legacy `DE_DEVICE_ID`) — useful for ephemeral CI workers that need a deterministic identity.
+{% endhint %}
 
 ### From raw HTTP
 
-If you call the engine directly with a capped key, you must send the device headers yourself. On the **first** request that binds a device, the engine returns an `X-Algenta-Device-Binding-Token` response header. **Replay that token** on every subsequent request from the same device.
+If you call the engine directly with a capped key, you must send the device headers yourself. On the **first** request that binds a device, the engine returns an `X-Algenta-Device-Binding-Token` response header. Replay that token on every subsequent request from the same device.
 
-First request (binds the device):
+{% stepper %}
+{% step %}
+### First request (binds the device)
+Send the device headers. The response carries `X-Algenta-Device-Binding-Token`.
 
 ```bash
 curl -i -X POST https://api.algenta.ai/v1/simulate \
@@ -234,8 +325,11 @@ curl -i -X POST https://api.algenta.ai/v1/simulate \
   -d '{ "...": "..." }'
 # Response includes:  X-Algenta-Device-Binding-Token: <token>
 ```
+{% endstep %}
 
-Subsequent requests (replay the token):
+{% step %}
+### Subsequent requests (replay the token)
+Add the binding token from step one to every later call from the same device.
 
 ```bash
 curl -X POST https://api.algenta.ai/v1/simulate \
@@ -247,20 +341,30 @@ curl -X POST https://api.algenta.ai/v1/simulate \
   -H "Content-Type: application/json" \
   -d '{ "...": "..." }'
 ```
+{% endstep %}
+{% endstepper %}
 
-{% hint style="warning" %}
-Reusing a device id with a different fingerprint fails closed with `403 device_identity_mismatch`. Other binding errors you may see: `401 device_binding_required` (missing `X-Algenta-Device-Id`), `401 device_binding_token_required` (already bound; replay the token), `403 invalid_device_binding_token`, and `402 device_limit_reached` (the key's device slots are full — revoke a device or create a broader key).
-{% endhint %}
+{% expandable title="Device binding error reference" %}
+Binding fails closed. The errors you may encounter:
+
+- `403 device_identity_mismatch` — reusing a device id with a different fingerprint.
+- `401 device_binding_required` — missing `X-Algenta-Device-Id`.
+- `401 device_binding_token_required` — the device is already bound; replay the token.
+- `403 invalid_device_binding_token` — the supplied token does not match.
+- `402 device_limit_reached` — the key's device slots are full; revoke a device or create a broader key.
+{% endexpandable %}
 
 ### Manage devices
 
+{% tabs %}
+{% tab title="CLI" %}
 ```bash
 de devices list                          # list registered devices
 de devices revoke <registration_id>      # free up one device slot
 ```
+{% endtab %}
 
-Equivalent HTTP endpoints:
-
+{% tab title="cURL" %}
 ```bash
 # List devices registered under this key's org
 curl https://api.algenta.ai/v1/device/list \
@@ -270,8 +374,12 @@ curl https://api.algenta.ai/v1/device/list \
 curl -X DELETE https://api.algenta.ai/v1/device/<registration_id> \
   -H "Authorization: Bearer de_live_YOUR_KEY"
 ```
+{% endtab %}
+{% endtabs %}
 
+{% hint style="info" %}
 `de login` corresponds to `POST /v1/device/register`, which checks the plan's device limit and returns a signed license token.
+{% endhint %}
 
 ## Hosted sign-up and login
 
@@ -295,18 +403,25 @@ curl -X POST https://api.algenta.ai/auth/signup \
 
 Returns a JWT bearer token. Use it as `Authorization: Bearer <token>`.
 
+{% tabs %}
+{% tab title="Request" %}
 ```bash
 curl -X POST https://api.algenta.ai/auth/login \
   -H "Content-Type: application/json" \
   -d '{ "email": "you@example.com", "password": "a-strong-password" }'
 ```
+{% endtab %}
 
+{% tab title="Response" %}
 ```json
 { "access_token": "eyJ...", "token_type": "bearer", "expires_in": 604800 }
 ```
+{% endtab %}
+{% endtabs %}
 
 ### Verify email, forgot, and reset password
 
+{% expandable title="Verify, forgot-password, and reset-password requests" %}
 ```bash
 # Verify an email via the token from the verification link
 curl "https://api.algenta.ai/auth/verify?token=<verification_token>"
@@ -321,6 +436,7 @@ curl -X POST https://api.algenta.ai/auth/reset-password \
   -H "Content-Type: application/json" \
   -d '{ "token": "<reset_token>", "new_password": "a-new-strong-password" }'
 ```
+{% endexpandable %}
 
 | Endpoint | Method | Purpose |
 | --- | --- | --- |
@@ -359,14 +475,20 @@ curl -X POST https://api.algenta.ai/v1/provider-keys \
 
 Returns the configured backends and when each was last updated — no key material.
 
+{% tabs %}
+{% tab title="Request" %}
 ```bash
 curl https://api.algenta.ai/v1/provider-keys \
   -H "Authorization: Bearer de_live_YOUR_KEY"
 ```
+{% endtab %}
 
+{% tab title="Response" %}
 ```json
 { "keys": [ { "backend": "anthropic", "updated_at": "2026-06-20T10:00:00Z" } ] }
 ```
+{% endtab %}
+{% endtabs %}
 
 ### Delete a provider key
 
@@ -375,7 +497,9 @@ curl -X DELETE https://api.algenta.ai/v1/provider-keys/anthropic \
   -H "Authorization: Bearer de_live_YOUR_KEY"
 ```
 
+{% hint style="info" %}
 A backend with no configured key returns `404 provider_key_not_found`.
+{% endhint %}
 
 ## Quick reference
 
@@ -384,9 +508,27 @@ A backend with no configured key returns `404 provider_key_not_found`.
 | Send a key | `Authorization: Bearer de_live_...` (or legacy `X-API-Key`) |
 | Set the key for SDK/CLI | `export ALGENTA_API_KEY=...` (fallback `DE_API_KEY`) |
 | Set a self-hosted base URL | `export ALGENTA_BASE_URL=...` (fallbacks `DE_BASE_URL`, `ALGENTA_API_URL`) |
-| List / create / revoke keys | `GET` / `POST` / `DELETE /v1/api-keys`, or `de keys list|create|revoke` |
+| List / create / revoke keys | `GET` / `POST` / `DELETE /v1/api-keys`, or `de keys list\|create\|revoke` |
 | Register / log out a machine | `de login` / `de logout` |
 | Save a key without binding | `de config set-key <key> [base_url]` |
-| List / revoke devices | `de devices list|revoke`, or `/v1/device/list`, `DELETE /v1/device/{id}` |
+| List / revoke devices | `de devices list\|revoke`, or `/v1/device/list`, `DELETE /v1/device/{id}` |
 | Hosted auth | `POST /auth/signup`, `/auth/login`, `GET /auth/verify`, `POST /auth/forgot-password`, `/auth/reset-password` |
 | BYOK provider keys | `GET` / `POST` / `DELETE /v1/provider-keys` (admin; needs `ALGENTA_CONFIG_ENCRYPTION_KEY`) |
+
+## Related pages
+
+{% content-ref url="quickstart.md" %}
+[quickstart.md](quickstart.md)
+{% endcontent-ref %}
+
+{% content-ref url="cli.md" %}
+[cli.md](cli.md)
+{% endcontent-ref %}
+
+{% content-ref url="api/reference.md" %}
+[api/reference.md](api/reference.md)
+{% endcontent-ref %}
+
+{% content-ref url="licensing.md" %}
+[licensing.md](licensing.md)
+{% endcontent-ref %}

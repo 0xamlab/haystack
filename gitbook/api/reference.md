@@ -4,7 +4,11 @@ icon: code
 
 # API endpoint reference
 
-This page is the working reference for the Algenta HTTP API. Every endpoint below is served under the `/v1` prefix by the API server (`apps/api_server`) and is reachable the same way whether you run the engine yourself or call the hosted control plane. You can drive everything here directly with `curl`, or through the `algenta-sdk` clients for Python and TypeScript. Each section lists the real method, path, and purpose; the high-traffic endpoints include copy-pasteable `curl` examples.
+This page is the working reference for the Algenta HTTP API. Every endpoint below is served under the `/v1` prefix by the API server (`apps/api_server`) and is reachable the same way whether you run the engine yourself or call the hosted control plane. You can drive everything here directly with `curl`, or through the `algenta-sdk` clients for Python and TypeScript. Each section lists the real method, path, and purpose; the high-traffic endpoints include copy-pasteable examples.
+
+{% hint style="info" %}
+The complete, always-current schema for every endpoint, including request and response models, is published by the running server. Point your tooling at the engine's generated OpenAPI document to stay in sync with the deployed version.
+{% endhint %}
 
 ## Base URL and authentication
 
@@ -12,38 +16,89 @@ All requests go to your engine base URL plus the endpoint path. For a local engi
 
 Authenticate with your API key as a bearer token. `X-API-Key` is also accepted for legacy clients.
 
-```bash
+{% stepper %}
+{% step %}
+### Set your base URL and key
+
+```bash title="env.sh"
 export ALGENTA_API_URL="http://localhost:8000"
 export ALGENTA_API_KEY="sk_live_..."
 ```
+{% endstep %}
 
+{% step %}
+### Make an authenticated call
+
+Use the bearer token form. The legacy `X-API-Key` header has the same effect for older clients.
+
+{% tabs %}
+{% tab title="cURL (preferred)" %}
 ```bash
-# Preferred
 curl -H "Authorization: Bearer ${ALGENTA_API_KEY}" "${ALGENTA_API_URL}/v1/me"
+```
+{% endtab %}
 
+{% tab title="cURL (legacy)" %}
+```bash
 # Legacy header, same effect
 curl -H "X-API-Key: ${ALGENTA_API_KEY}" "${ALGENTA_API_URL}/v1/me"
 ```
+{% endtab %}
+
+{% tab title="Python" %}
+```python title="auth.py"
+from decision_engine import CodnaClient   # AlgentaClient is a back-compat alias
+
+client = CodnaClient(api_key="sk_live_...", base_url="http://localhost:8000")
+client.me()
+```
+{% endtab %}
+
+{% tab title="TypeScript" %}
+```typescript title="auth.ts"
+import { Runtime } from "algenta-sdk";
+
+const rt = new Runtime({
+  apiKey: process.env.ALGENTA_API_KEY,
+  baseUrl: process.env.ALGENTA_API_URL,
+});
+```
+{% endtab %}
+{% endtabs %}
+{% endstep %}
+{% endstepper %}
 
 {% hint style="info" %}
 The same key works across the API, the SDKs, and the CLI. The Python SDK reads `ALGENTA_API_KEY`; the TypeScript SDK reads `ALGENTA_API_KEY` plus `ALGENTA_API_URL` / `ALGENTA_BASE_URL` for the endpoint. The `algenta` CLI (from `algenta-core`) uses the same credentials.
 {% endhint %}
 
-### SDK clients
+{% expandable title="Installing the SDK clients" %}
+{% tabs %}
+{% tab title="Python" %}
+```bash
+pip install algenta-sdk
+```
 
 ```python
-# Python — pip install algenta-sdk
 from decision_engine import CodnaClient   # AlgentaClient is a back-compat alias
 
 client = CodnaClient(api_key="sk_live_...", base_url="http://localhost:8000")
 ```
+{% endtab %}
+
+{% tab title="TypeScript" %}
+```bash
+npm install algenta-sdk
+```
 
 ```typescript
-// TypeScript — npm install algenta-sdk
 import { Runtime } from "algenta-sdk";
 
 const rt = new Runtime({ apiKey: process.env.ALGENTA_API_KEY, baseUrl: process.env.ALGENTA_API_URL });
 ```
+{% endtab %}
+{% endtabs %}
+{% endexpandable %}
 
 ---
 
@@ -63,31 +118,32 @@ Onboard governed datasets, check their state, and resolve or query across them.
 | `POST` | `/v1/query/batch` | Run multiple queries in one request |
 | `POST` | `/v1/query/sql-report` | Produce a structured SQL report |
 
+{% tabs %}
+{% tab title="cURL" %}
 ```bash
 # List datasets
 curl -H "Authorization: Bearer ${ALGENTA_API_KEY}" \
   "${ALGENTA_API_URL}/v1/datasets"
-```
 
-```bash
 # Resolve a plain-language ask into a query plan
 curl -X POST "${ALGENTA_API_URL}/v1/resolve" \
   -H "Authorization: Bearer ${ALGENTA_API_KEY}" \
   -H "Content-Type: application/json" \
   -d '{"query": "top 10 customers by revenue last quarter"}'
-```
 
-```bash
 # Poll dataset status
 curl -H "Authorization: Bearer ${ALGENTA_API_KEY}" \
   "${ALGENTA_API_URL}/v1/datasets/ds_123/status"
 ```
+{% endtab %}
 
-```python
-# SDK equivalents
+{% tab title="Python" %}
+```python title="query.py"
 plan = client.resolve(query="top 10 customers by revenue last quarter")
 rows = client.query(...)
 ```
+{% endtab %}
+{% endtabs %}
 
 {% hint style="info" %}
 The query surface also exposes `GET /v1/sources/schema` (governed schema discovery) and `POST /v1/verify` (verify a resolved plan before execution).
@@ -98,6 +154,10 @@ The query surface also exposes `GET /v1/sources/schema` (governed schema discove
 ## Decisions and simulation
 
 The simulation engine runs Monte Carlo and related models natively. `POST /v1/simulate` is the hot path: p50 under 15ms server-side, with async persistence. Each successful call consumes one simulation from your monthly quota and returns `429` when quota or rate limit is exceeded.
+
+{% hint style="warning" %}
+A successful `POST /v1/simulate` decrements your monthly simulation quota. When quota or the rate limit is exceeded the endpoint returns `429`. Track consumption with `GET /v1/usage` and the ceilings with `GET /v1/limits`.
+{% endhint %}
 
 | Method | Path | Purpose |
 | --- | --- | --- |
@@ -115,6 +175,8 @@ The simulation engine runs Monte Carlo and related models natively. `POST /v1/si
 
 ### POST /v1/simulate
 
+{% tabs %}
+{% tab title="cURL" %}
 ```bash
 curl -X POST "${ALGENTA_API_URL}/v1/simulate" \
   -H "Authorization: Bearer ${ALGENTA_API_KEY}" \
@@ -131,13 +193,10 @@ curl -X POST "${ALGENTA_API_URL}/v1/simulate" \
     }
   }'
 ```
+{% endtab %}
 
-Auto mode takes `low`/`high` ranges per variable and picks distributions for you. Expert mode (`"mode": "expert"`) accepts an explicit `distribution` and `params` per variable across the full distribution set (normal, lognormal, triangular, beta, poisson, pareto, and more) and a `simulation_model` such as `monte_carlo`, `qmc_sobol`, `lhs`, `bootstrap`, `mcmc`, or `sensitivity`.
-
-The response is a decision envelope: `recommended_action`, `confidence`, `rationale`, `metrics` (e.g. `expected_value`, `probability_of_loss`), `percentiles`, `scenarios_run`, a structured `decision_plan`, and `request_id`.
-
-```python
-# Python SDK
+{% tab title="Python" %}
+```python title="simulate.py"
 result = client.simulate(
     mode="auto",
     runs=50000,
@@ -151,9 +210,10 @@ result = client.simulate(
 )
 print(result.recommended_action, result.confidence)
 ```
+{% endtab %}
 
-```typescript
-// TypeScript SDK
+{% tab title="TypeScript" %}
+```typescript title="simulate.ts"
 const result = await rt.simulate({
   mode: "auto",
   runs: 50000,
@@ -166,10 +226,35 @@ const result = await rt.simulate({
   },
 });
 ```
+{% endtab %}
+{% endtabs %}
+
+Auto mode takes `low`/`high` ranges per variable and picks distributions for you. The response is a decision envelope: `recommended_action`, `confidence`, `rationale`, `metrics` (e.g. `expected_value`, `probability_of_loss`), `percentiles`, `scenarios_run`, a structured `decision_plan`, and `request_id`.
+
+{% expandable title="Advanced: expert mode, distributions, and simulation models" %}
+Expert mode (`"mode": "expert"`) accepts an explicit `distribution` and `params` per variable across the full distribution set:
+
+- `normal`
+- `lognormal`
+- `triangular`
+- `beta`
+- `poisson`
+- `pareto`
+- and more
+
+It also accepts a `simulation_model`:
+
+- `monte_carlo`
+- `qmc_sobol`
+- `lhs`
+- `bootstrap`
+- `mcmc`
+- `sensitivity`
+{% endexpandable %}
 
 ### POST /v1/recommend
 
-```bash
+```bash title="recommend.sh"
 curl -X POST "${ALGENTA_API_URL}/v1/recommend" \
   -H "Authorization: Bearer ${ALGENTA_API_KEY}" \
   -H "Content-Type: application/json" \
@@ -198,6 +283,8 @@ A provider-neutral surface for chat, structured responses, embeddings, reranking
 | `POST` | `/v1/count_tokens` | Count tokens without generating |
 | `POST` | `/v1/artifacts/resolve` | Resolve an artifact reference |
 
+{% tabs %}
+{% tab title="cURL" %}
 ```bash
 # Chat completion
 curl -X POST "${ALGENTA_API_URL}/v1/chat/completions" \
@@ -206,20 +293,22 @@ curl -X POST "${ALGENTA_API_URL}/v1/chat/completions" \
   -d '{
     "messages": [{"role": "user", "content": "Summarize the decision envelope."}]
   }'
-```
 
-```bash
 # Count tokens
 curl -X POST "${ALGENTA_API_URL}/v1/count_tokens" \
   -H "Authorization: Bearer ${ALGENTA_API_KEY}" \
   -H "Content-Type: application/json" \
   -d '{"text": "how many tokens is this"}'
 ```
+{% endtab %}
 
-```python
+{% tab title="Python" %}
+```python title="llm.py"
 client.count_tokens(text="how many tokens is this")
 client.rerank(...)
 ```
+{% endtab %}
+{% endtabs %}
 
 ---
 
@@ -242,9 +331,11 @@ Create, observe, and control agent runs. Read endpoints (events, telemetry, chec
 | `POST` | `/v1/agent/runs/{run_id}/fork` | Fork a run |
 | `POST` | `/v1/agent/runs/{run_id}/replay` | Replay a run |
 
+{% hint style="info" %}
 There are also collection-level read endpoints — `GET /v1/agent/runs/events`, `/checkpoints`, `/telemetry`, `/mission-events` — that aggregate across runs, useful for dashboards and webhook-style polling.
+{% endhint %}
 
-```bash
+```bash title="agent_runs.sh"
 # Create a run
 curl -X POST "${ALGENTA_API_URL}/v1/agent/runs" \
   -H "Authorization: Bearer ${ALGENTA_API_KEY}" \
@@ -281,6 +372,8 @@ Repository intelligence: snapshot a repo, query its graph, triage, plan and simu
 | `POST` | `/v1/repositories/{repository_id}/security-analyses` | Run a security analysis |
 | `POST` | `/v1/repositories/{repository_id}/security-analyses/closure` | Compute analysis closure |
 
+{% tabs %}
+{% tab title="cURL" %}
 ```bash
 # Capabilities
 curl -H "Authorization: Bearer ${ALGENTA_API_KEY}" \
@@ -292,13 +385,17 @@ curl -X POST "${ALGENTA_API_URL}/v1/repositories/repo_42/triage" \
   -H "Content-Type: application/json" \
   -d '{ "...": "triage request" }'
 ```
+{% endtab %}
 
-```python
-# Python SDK — the repository capability plane
+{% tab title="Python" %}
+```python title="repositories.py"
+# The repository capability plane
 client.triage_repository(...)
 ```
+{% endtab %}
+{% endtabs %}
 
-{% hint style="info" %}
+{% hint style="warning" %}
 Trigger repository work through the SDK (`triage_repository`) or the HTTP endpoints above. The engine runs the analysis server-side. Do not call the internal repository core directly in a cold process — that is the wrong plane and forces a cold reparse.
 {% endhint %}
 
@@ -317,7 +414,7 @@ Identity, keys, devices, billing, credits, licensing, and bring-your-own-key pro
 | `GET` | `/v1/usage` | Usage to date |
 | `GET` | `/v1/limits` | Plan limits |
 
-```bash
+```bash title="identity.sh"
 curl -H "Authorization: Bearer ${ALGENTA_API_KEY}" "${ALGENTA_API_URL}/v1/me"
 curl -H "Authorization: Bearer ${ALGENTA_API_KEY}" "${ALGENTA_API_URL}/v1/usage"
 ```
@@ -330,7 +427,7 @@ curl -H "Authorization: Bearer ${ALGENTA_API_KEY}" "${ALGENTA_API_URL}/v1/usage"
 | `POST` | `/v1/api-keys` | Create an API key |
 | `DELETE` | `/v1/api-keys/{key_id}` | Revoke an API key |
 
-```bash
+```bash title="create_key.sh"
 curl -X POST "${ALGENTA_API_URL}/v1/api-keys" \
   -H "Authorization: Bearer ${ALGENTA_API_KEY}" \
   -H "Content-Type: application/json" \
@@ -374,7 +471,7 @@ Store your own LLM provider credentials per backend so calls route through your 
 | `POST` | `/v1/provider-keys` | Add a provider key |
 | `DELETE` | `/v1/provider-keys/{backend}` | Remove a provider key for a backend |
 
-```bash
+```bash title="provider_keys.sh"
 curl -X POST "${ALGENTA_API_URL}/v1/provider-keys" \
   -H "Authorization: Bearer ${ALGENTA_API_KEY}" \
   -H "Content-Type: application/json" \
@@ -387,6 +484,10 @@ curl -X POST "${ALGENTA_API_URL}/v1/provider-keys" \
 
 Operator-only endpoints for privacy reporting, runtime introspection, and egress policy. These require an admin-scoped key.
 
+{% hint style="danger" %}
+Admin endpoints require an admin-scoped key (`ALGENTA_ADMIN_KEY`), not an ordinary API key. Keep it out of application code and client-side surfaces.
+{% endhint %}
+
 | Method | Path | Purpose |
 | --- | --- | --- |
 | `GET` | `/v1/admin/privacy-report` | Tenant privacy report |
@@ -396,7 +497,7 @@ Operator-only endpoints for privacy reporting, runtime introspection, and egress
 | `GET` | `/v1/admin/egress-policy` | Active egress allowlist policy |
 | `GET` | `/v1/admin/egress-log` | Recent egress decisions |
 
-```bash
+```bash title="admin.sh"
 curl -H "Authorization: Bearer ${ALGENTA_ADMIN_KEY}" \
   "${ALGENTA_API_URL}/v1/admin/egress-policy"
 ```
@@ -415,11 +516,31 @@ Unauthenticated or low-privilege endpoints for service discovery and health chec
 | `GET` | `/v1/runtime/manifest` | Runtime manifest |
 | `GET` | `/v1/control-plane/meta` | Control-plane metadata |
 
-```bash
+```bash title="health.sh"
 curl "${ALGENTA_API_URL}/v1/health"
 curl "${ALGENTA_API_URL}/v1/version"
 ```
 
-{% hint style="info" %}
+{% hint style="success" %}
 The complete, always-current schema for every endpoint, including request and response models, is published by the running server. Point your tooling at the engine's generated OpenAPI document to stay in sync with the deployed version.
 {% endhint %}
+
+---
+
+## Related pages
+
+{% content-ref url="overview.md" %}
+[overview.md](overview.md)
+{% endcontent-ref %}
+
+{% content-ref url="../authentication.md" %}
+[authentication.md](../authentication.md)
+{% endcontent-ref %}
+
+{% content-ref url="../sdk/python.md" %}
+[python.md](../sdk/python.md)
+{% endcontent-ref %}
+
+{% content-ref url="../sdk/typescript.md" %}
+[typescript.md](../sdk/typescript.md)
+{% endcontent-ref %}

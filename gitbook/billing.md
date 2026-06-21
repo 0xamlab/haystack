@@ -31,39 +31,57 @@ Revenue has three components: the per-org subscription, compute overages billed 
 
 Start by confirming who you are, what plan you are on, your usage this period, and your hard limits.
 
-### Current account
+{% stepper %}
+{% step %}
+### Confirm the current account
 
+`GET /v1/me` returns the current user and organization, including the active plan.
+
+{% tabs %}
+{% tab title="CLI" %}
 ```bash
 algenta account me
 ```
+{% endtab %}
 
-This calls `GET /v1/me` and returns the current user and organization, including the active plan.
-
+{% tab title="cURL" %}
 ```bash
 curl -s https://api.algenta.ai/v1/me \
   -H "Authorization: Bearer $ALGENTA_API_KEY"
 ```
+{% endtab %}
 
+{% tab title="Response" %}
 ```json
 {
   "user": { "id": "...", "email": "you@example.com", "role": "owner" },
   "org":  { "id": "...", "name": "Acme", "slug": "acme", "plan": "developer", "status": "active" }
 }
 ```
+{% endtab %}
+{% endtabs %}
+{% endstep %}
 
-### Usage this billing period
-
-```bash
-algenta account usage
-```
+{% step %}
+### Read usage this billing period
 
 `GET /v1/usage` returns the simulation count, quota, and percent used for the current `YYYY-MM` period, plus managed-LLM spend and storage footprint.
 
+{% tabs %}
+{% tab title="CLI" %}
+```bash
+algenta account usage
+```
+{% endtab %}
+
+{% tab title="cURL" %}
 ```bash
 curl -s https://api.algenta.ai/v1/usage \
   -H "Authorization: Bearer $ALGENTA_API_KEY"
 ```
+{% endtab %}
 
+{% tab title="Response" %}
 ```json
 {
   "billing_period": "2026-06",
@@ -77,15 +95,23 @@ curl -s https://api.algenta.ai/v1/usage \
   "storage_gb_limit": 10
 }
 ```
+{% endtab %}
+{% endtabs %}
+{% endstep %}
 
-### Plan limits
-
-```bash
-algenta account limits
-```
+{% step %}
+### Check your plan limits
 
 `GET /v1/limits` returns the enforced caps for your plan.
 
+{% tabs %}
+{% tab title="CLI" %}
+```bash
+algenta account limits
+```
+{% endtab %}
+
+{% tab title="Response" %}
 ```json
 {
   "plan": "developer",
@@ -100,8 +126,14 @@ algenta account limits
   "llm_spend_cap_usd_month": 50
 }
 ```
+{% endtab %}
+{% endtabs %}
+{% endstep %}
+{% endstepper %}
 
+{% hint style="success" %}
 Add `--format json` to any `account` command for raw output suitable for scripting.
+{% endhint %}
 
 ## Subscriptions and Stripe
 
@@ -115,15 +147,21 @@ Subscriptions are created and managed through Stripe. The control plane exposes 
 
 ### View current billing state
 
+{% tabs %}
+{% tab title="CLI" %}
 ```bash
 algenta billing info
 ```
+{% endtab %}
 
+{% tab title="cURL" %}
 ```bash
 curl -s https://api.algenta.ai/v1/billing/info \
   -H "Authorization: Bearer $ALGENTA_API_KEY"
 ```
+{% endtab %}
 
+{% tab title="Response" %}
 ```json
 {
   "plan": "developer",
@@ -132,59 +170,83 @@ curl -s https://api.algenta.ai/v1/billing/info \
   "current_period_end": null
 }
 ```
+{% endtab %}
+{% endtabs %}
 
 ### Start a checkout (subscribe or upgrade)
 
+The plan argument must be `developer` or `pro`. The command returns a Stripe Checkout URL; open it to complete payment.
+
+{% tabs %}
+{% tab title="CLI" %}
 ```bash
 algenta billing checkout developer
 # or
 algenta billing checkout pro
 ```
+{% endtab %}
 
-The plan argument must be `developer` or `pro`. The command returns a Stripe Checkout URL; open it to complete payment.
-
+{% tab title="cURL" %}
 ```bash
 curl -s -X POST https://api.algenta.ai/v1/billing/checkout \
   -H "Authorization: Bearer $ALGENTA_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"plan": "pro"}'
 ```
+{% endtab %}
 
+{% tab title="Response" %}
 ```json
 { "url": "https://checkout.stripe.com/c/pay/cs_..." }
 ```
+{% endtab %}
+{% endtabs %}
 
-An invalid plan returns `400 invalid_plan`.
+{% hint style="warning" %}
+An invalid plan returns `400 invalid_plan`. Only `developer` and `pro` are accepted; Enterprise is provisioned through a sales contract, not Checkout.
+{% endhint %}
 
 ### Manage an existing subscription
 
 Once an org has a Stripe customer (after a first checkout), open the Billing Portal to change card, view invoices, or cancel.
 
+{% tabs %}
+{% tab title="CLI" %}
 ```bash
 algenta billing portal
 ```
+{% endtab %}
 
+{% tab title="cURL" %}
 ```bash
 curl -s -X POST https://api.algenta.ai/v1/billing/portal \
   -H "Authorization: Bearer $ALGENTA_API_KEY" \
   -d '{}'
 ```
+{% endtab %}
 
+{% tab title="Response" %}
 ```json
 { "url": "https://billing.stripe.com/p/session/..." }
 ```
+{% endtab %}
+{% endtabs %}
 
+{% hint style="warning" %}
 If the org has never completed a checkout, this returns `400 no_billing_account` — run a checkout first.
-
-{% hint style="info" %}
-Plan transitions are applied by a signed Stripe webhook (`POST /v1/billing/webhook`), processed exactly once. On `checkout.session.completed` or `customer.subscription.updated` the org plan is upgraded and its entitlement recomputed. On `customer.subscription.deleted` the org is downgraded to Free and its local-runtime devices are revoked. You do not call the webhook yourself; Stripe does.
 {% endhint %}
+
+{% expandable title="How plan transitions are applied (Stripe webhook)" %}
+Plan transitions are applied by a signed Stripe webhook (`POST /v1/billing/webhook`), processed exactly once. On `checkout.session.completed` or `customer.subscription.updated` the org plan is upgraded and its entitlement recomputed. On `customer.subscription.deleted` the org is downgraded to Free and its local-runtime devices are revoked. You do not call the webhook yourself; Stripe does.
+{% endexpandable %}
 
 ### From the SDK
 
-The Python SDK exposes the same operations on the client. `AlgentaClient` is the preferred alias; `DecisionEngineClient` remains for compatibility.
+The SDK exposes the same operations on the client. In Python, `AlgentaClient` is the preferred alias; `DecisionEngineClient` remains for compatibility.
 
-```python
+{% tabs %}
+{% tab title="Python" %}
+```python title="billing_example.py"
 from decision_engine import AlgentaClient
 
 # api_key falls back to ALGENTA_API_KEY; base_url to ALGENTA_BASE_URL.
@@ -200,10 +262,10 @@ print(session.url)
 portal = client.create_billing_portal()
 print(portal.url)
 ```
+{% endtab %}
 
-TypeScript:
-
-```ts
+{% tab title="TypeScript" %}
+```typescript title="billing_example.ts"
 import { AlgentaClient } from "algenta-sdk";
 
 const client = new AlgentaClient({
@@ -215,6 +277,8 @@ await client.getBillingInfo();
 const session = await client.createBillingCheckout({ plan: "pro" });
 console.log(session.url);
 ```
+{% endtab %}
+{% endtabs %}
 
 ## Credits (execution credit bucket)
 
@@ -232,29 +296,41 @@ A refresh grants `min(batch_size, monthly_remaining)` credits. When the monthly 
 
 The daemon issues refreshes automatically. You can also drive a refresh manually for testing or scripted provisioning.
 
+{% tabs %}
+{% tab title="CLI" %}
 ```bash
 algenta credits refresh refresh-request.json
 ```
 
-`refresh-request.json`:
-
-```json
+```json title="refresh-request.json"
 {
   "device_id": "dev-7f3c9a21",
   "billing_period": "2026-06",
   "credits_used": 0
 }
 ```
+{% endtab %}
 
-The same payload over HTTP:
-
+{% tab title="cURL" %}
 ```bash
 curl -s -X POST https://api.algenta.ai/v1/credits/refresh \
   -H "Authorization: Bearer $ALGENTA_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"device_id": "dev-7f3c9a21", "billing_period": "2026-06", "credits_used": 0}'
 ```
+{% endtab %}
 
+{% tab title="Python" %}
+```python
+result = client.refresh_credits(
+    device_id="dev-7f3c9a21",
+    billing_period="2026-06",
+)
+print(result.credits_granted, result.monthly_remaining)
+```
+{% endtab %}
+
+{% tab title="Response" %}
 ```json
 {
   "credits_granted": 10000,
@@ -267,8 +343,11 @@ curl -s -X POST https://api.algenta.ai/v1/credits/refresh \
   "server_time": 1750444800.0
 }
 ```
+{% endtab %}
+{% endtabs %}
 
-When the monthly quota is gone:
+{% expandable title="What a quota-exhausted refresh returns" %}
+When the monthly quota is gone, the refresh fails closed with `429 quota_exhausted`:
 
 ```json
 {
@@ -280,16 +359,7 @@ When the monthly quota is gone:
   "upgrade_url": "https://algenta.io/pricing"
 }
 ```
-
-From the SDK:
-
-```python
-result = client.refresh_credits(
-    device_id="dev-7f3c9a21",
-    billing_period="2026-06",
-)
-print(result.credits_granted, result.monthly_remaining)
-```
+{% endexpandable %}
 
 {% hint style="info" %}
 `billing_period` must be a `YYYY-MM` string (the CLI validates the format before sending). Credits expire 24 hours after issue (`expires_at`), and the daemon refreshes again after `refresh_after`. Enterprise plans have an unlimited monthly quota and always receive a full batch.
@@ -299,13 +369,13 @@ print(result.credits_granted, result.monthly_remaining)
 
 Separate from credit enforcement, the daemon flushes a batch of execution events to `POST /v1/metering` roughly every 60 seconds. This endpoint is **analytics-only** — it powers usage dashboards and does not enforce quota (that is the credit bucket's job), so it never double-counts against cloud-API usage.
 
+{% tabs %}
+{% tab title="CLI" %}
 ```bash
 algenta metering ingest metering-batch.json
 ```
 
-`metering-batch.json`:
-
-```json
+```json title="metering-batch.json"
 {
   "device_id": "dev-7f3c9a21",
   "events": [
@@ -322,22 +392,18 @@ algenta metering ingest metering-batch.json
   ]
 }
 ```
+{% endtab %}
 
+{% tab title="cURL" %}
 ```bash
 curl -s -X POST https://api.algenta.ai/v1/metering \
   -H "Authorization: Bearer $ALGENTA_API_KEY" \
   -H "Content-Type: application/json" \
   -d @metering-batch.json
 ```
+{% endtab %}
 
-```json
-{ "accepted": 1, "billing_period": "2026-06" }
-```
-
-The events list cannot be empty (`400 empty_events`). Each event accepts only the fields shown above; the billing period is derived per-event from the `timestamp`.
-
-From the SDK:
-
+{% tab title="Python" %}
 ```python
 client.ingest_metering_events(
     device_id="dev-7f3c9a21",
@@ -353,10 +419,26 @@ client.ingest_metering_events(
     }],
 )
 ```
+{% endtab %}
+
+{% tab title="Response" %}
+```json
+{ "accepted": 1, "billing_period": "2026-06" }
+```
+{% endtab %}
+{% endtabs %}
+
+{% hint style="warning" %}
+The events list cannot be empty (`400 empty_events`). Each event accepts only the fields shown above; the billing period is derived per-event from the `timestamp`.
+{% endhint %}
 
 ## Local mode and hosted enforcement
 
-A local runtime that runs purely embedded — no control-plane `base_url`, no API key — is not subject to device licensing or the credit bucket. You opt **into** hosted enforcement explicitly by configuring credentials:
+A local runtime that runs purely embedded — no control-plane `base_url`, no API key — is not subject to device licensing or the credit bucket. You opt **into** hosted enforcement explicitly by configuring credentials.
+
+{% stepper %}
+{% step %}
+### Set the credentials
 
 ```bash
 export ALGENTA_API_KEY="ak_live_..."
@@ -367,8 +449,14 @@ export ALGENTA_BASE_URL="https://api.algenta.ai"
 | --- | --- |
 | `ALGENTA_API_KEY` | API key used as the `Bearer` token (legacy `DE_API_KEY` still accepted) |
 | `ALGENTA_BASE_URL` | Control-plane base URL (legacy `DE_BASE_URL` / `ALGENTA_API_URL` still accepted) |
+{% endstep %}
+
+{% step %}
+### Hosted enforcement activates
 
 With these set, the daemon registers a device, refreshes credits, and flushes metering against the hosted control plane — and the plan limits and overage rules on this page apply. Without them, the local runtime stays offline and outside hosted billing.
+{% endstep %}
+{% endstepper %}
 
 {% hint style="info" %}
 Managed LLM pass-through (where Algenta provides the model key and meters spend) is a separate, off-by-default capability gated by `ALGENTA_MANAGED_LLM` plus a per-org `managed_llm_enabled` flag. When enabled, spend is metered and surfaced under `managed_llm_spend_usd_month` in `GET /v1/usage` and capped per plan (`llm_spend_cap_usd_month`). Self-hosted and BYOK keys record $0 pass-through cost.
@@ -386,3 +474,21 @@ Managed LLM pass-through (where Algenta provides the model key and meters spend)
 | Manage subscription | `algenta billing portal` | `POST /v1/billing/portal` | `client.create_billing_portal()` |
 | Refresh credits | `algenta credits refresh <file>` | `POST /v1/credits/refresh` | `client.refresh_credits(...)` |
 | Ingest metering | `algenta metering ingest <file>` | `POST /v1/metering` | `client.ingest_metering_events(...)` |
+
+## Related pages
+
+{% content-ref url="licensing.md" %}
+[licensing.md](licensing.md)
+{% endcontent-ref %}
+
+{% content-ref url="authentication.md" %}
+[authentication.md](authentication.md)
+{% endcontent-ref %}
+
+{% content-ref url="self-hosting.md" %}
+[self-hosting.md](self-hosting.md)
+{% endcontent-ref %}
+
+{% content-ref url="api/reference.md" %}
+[api/reference.md](api/reference.md)
+{% endcontent-ref %}

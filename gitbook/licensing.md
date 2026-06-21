@@ -43,19 +43,29 @@ Verification is identical regardless of source: RS256, fully offline.
 
 ## Issue an offline license (operator box only)
 
-The RS256 private key must **never** live in the repo or on a server. Generate the keypair once, on an offline operator box:
+{% hint style="danger" %}
+The RS256 private key must **never** live in the repo or on a server. Generate the keypair once, on an offline operator box, and distribute only the public key to runtime machines.
+{% endhint %}
 
-```sh
+{% stepper %}
+{% step %}
+### Generate the keypair (once, operator box only)
+
+```sh title="generate-keypair.sh"
 # Operator box only. Keep algenta-license.key OFF every repo and server.
 openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out algenta-license.key
 openssl rsa -in algenta-license.key -pubout -out algenta-license.pub
 ```
 
 Distribute **only** `algenta-license.pub` to runtime machines.
+{% endstep %}
 
-Mint a license with `scripts/issue_offline_license.py`. A typical server deployment (Codna, enterprise plan, one-year validity):
+{% step %}
+### Mint a license
 
-```sh
+Mint with `scripts/issue_offline_license.py`. A typical server deployment (Codna, enterprise plan, one-year validity):
+
+```sh title="mint-license.sh"
 EXP=$(( $(date +%s) + 31536000 ))   # +1 year; re-mint before this
 
 python3 scripts/issue_offline_license.py \
@@ -80,20 +90,25 @@ The script writes the signed token to `--output` (mode `0600`) and prints a JSON
 ```json
 {"status": "ok", "output": "license.jwt", "device_id": "<...>", "plan": "enterprise", "algorithm": "RS256"}
 ```
+{% endstep %}
 
-You can also supply the private key by environment variable instead of `--private-key-file`:
+{% step %}
+### (Optional) Supply the key by environment variable
+
+You can supply the private key by environment variable instead of `--private-key-file`:
 
 ```sh
 export ALGENTA_LOCAL_LICENSE_PRIVATE_KEY_FILE=algenta-license.key
 python3 scripts/issue_offline_license.py --device-id "<...>" --plan enterprise --output license.jwt
 ```
+{% endstep %}
+{% endstepper %}
 
 {% hint style="warning" %}
 **`--key-expires-at` is effectively required.** The CLI defaults `--expires-at` to `0` ("no expiry"), and `--key-expires-at` defaults to whatever `--expires-at` is. Omitting both yields `key_expires_at=0`. That token *verifies*, but the stored-offline enforcement sub-path (the `require_local_license`-OFF + enforce-ON profile) **rejects** `key_expires_at <= 0`. Always pass a positive `--key-expires-at`.
 {% endhint %}
 
-### Issuer options
-
+{% expandable title="Issuer options (full flag reference)" %}
 | Flag | Meaning |
 |---|---|
 | `--device-id` (required) | Target runtime device identifier |
@@ -115,12 +130,12 @@ python3 scripts/issue_offline_license.py --device-id "<...>" --plan enterprise -
 | `--commercial-use` | Grant commercial use |
 | `--offline-grace-days` | v2 offline grace claim |
 | `--message` | Operator note embedded in the payload |
+{% endexpandable %}
 
-### Multi-product editions with `--products-file`
-
+{% expandable title="Multi-product editions with --products-file" %}
 For a single license that spans more than one edition, pass a JSON file instead of repeating `--product-entitlement`:
 
-```json
+```json title="editions.json"
 {
   "codna":   { "tier": "pro",  "features": ["repo_graph", "triage", "simulate", "fix", "apply"] },
   "decimas": { "tier": "team", "features": [] }
@@ -138,12 +153,13 @@ python3 scripts/issue_offline_license.py \
 ```
 
 `--products-file` and `--product-entitlement` can be combined; entries merge by product name.
+{% endexpandable %}
 
 ## Install on each runtime machine
 
 Copy the token into place and set the verifying public key:
 
-```sh
+```sh title="install-license.sh"
 mkdir -p ~/.algenta/runtime
 cp license.jwt ~/.algenta/runtime/license.jwt
 
@@ -153,17 +169,21 @@ export ALGENTA_LOCAL_LICENSE_PUBLIC_KEY="$(cat algenta-license.pub)"
 export ALGENTA_LOCAL_LICENSE_PUBLIC_KEY_FILE=/etc/algenta/algenta-license.pub
 ```
 
+{% hint style="info" %}
 The runtime also accepts `ALGENTA_LICENSE_PUBLIC_KEY` / `ALGENTA_LICENSE_PUBLIC_KEY_FILE` as aliases. Multiple keys are supported (deduplicated) for key rotation.
+{% endhint %}
 
 ## Verify the gate
 
 `scripts/license_status.py` loads the installed token through the exact `load_license` path the runtime uses — so it verifies precisely what the engine would see. No secrets, no network, no mutation.
 
+A satisfied gate prints `OK` and exits `0`. The same check is available as human-readable text or machine-readable JSON:
+
+{% tabs %}
+{% tab title="Text" %}
 ```sh
 python3 scripts/license_status.py
 ```
-
-A satisfied gate prints `OK` and exits `0`:
 
 ```
 OK  license valid=True version=2 source=offline-local plan=enterprise
@@ -172,9 +192,9 @@ OK  license valid=True version=2 source=offline-local plan=enterprise
       caps: seats=25 nodes=3 workers=12
       expiry: expires_at=... key_expires_at=... expired=False in_grace=False hard_expired=False
 ```
+{% endtab %}
 
-Machine-readable form:
-
+{% tab title="JSON" %}
 ```sh
 python3 scripts/license_status.py --json
 ```
@@ -190,6 +210,8 @@ python3 scripts/license_status.py --json
   "products": { "codna": { "tier": "pro", "features": ["apply", "fix", "repo_graph", "simulate", "triage"] } }
 }
 ```
+{% endtab %}
+{% endtabs %}
 
 Exit codes: `0` = gate satisfied, `1` = not satisfied (invalid, expired past grace, or v1 when v2 is required).
 
@@ -222,9 +244,9 @@ Turning these on is a staged, partly **release-irreversible** rollout (P5.3–P5
 
 For machines that will never reach a control plane, mint long-lived tokens with a generous offline grace and the `ci` or `airgapped` deployment class. The token is signed once on the operator box and carried in by file.
 
-A CI runner:
-
-```sh
+{% tabs %}
+{% tab title="CI runner" %}
+```sh title="mint-ci-license.sh"
 EXP=$(( $(date +%s) + 31536000 ))
 python3 scripts/issue_offline_license.py \
   --private-key-file algenta-license.key \
@@ -236,10 +258,12 @@ python3 scripts/issue_offline_license.py \
   --offline-grace-days 7 \
   --output license.jwt
 ```
+{% endtab %}
 
-A fully air-gapped box — longer validity, larger grace so an unreachable machine never hard-blocks between maintenance windows:
+{% tab title="Fully air-gapped box" %}
+Longer validity, larger grace so an unreachable machine never hard-blocks between maintenance windows:
 
-```sh
+```sh title="mint-airgapped-license.sh"
 EXP=$(( $(date +%s) + 94608000 ))   # +3 years
 python3 scripts/issue_offline_license.py \
   --private-key-file algenta-license.key \
@@ -251,6 +275,8 @@ python3 scripts/issue_offline_license.py \
   --grace-days 30 --offline-grace-days 30 \
   --output license.jwt
 ```
+{% endtab %}
+{% endtabs %}
 
 Then install the token and public key on the box exactly as above, and confirm with `python3 scripts/license_status.py`. No network is required at any step.
 
@@ -288,7 +314,9 @@ A license granting all five features (`codna:pro:repo_graph,triage,simulate,fix,
 The product selector (`X-Algenta-Product` / `ALGENTA_PRODUCT`) is a routing hint, not authorization. Visibility is the intersection of the product allowlist, the verified key's entitlements, organization policy, and the license's feature grants. An unknown or unentitled product resolves to the **empty** set — never the full registry.
 {% endhint %}
 
+{% expandable title="Advanced: the legacy --permitted-module claim" %}
 The legacy `--permitted-module` claim is a coarser, v1-style allowlist (default `*` = all modules). v2 product entitlements are the precise mechanism; reach for `--permitted-module` only when you deliberately want a blunt module restriction independent of editions.
+{% endexpandable %}
 
 ## Open-core terms (ACL 1.0)
 
@@ -298,11 +326,31 @@ Self-hosting is governed by the Algenta Community License (ACL) 1.0, in `LICENSE
 - **Commercial Self-Hosting** — deploying Algenta inside a product or service offered to external customers, or use by organizations above those thresholds — requires a paid commercial license.
 - The framework, integrations, portal, and SDKs are source-available; the compiled Mojo engine binary (`mojo_build/simulate`) ships under a separate binary license and may be redistributed for Community Use only.
 
+{% hint style="success" %}
 The signed license described on this page is the **enforcement** mechanism (per-machine, offline, fail-closed) that backs those commercial terms once enabled. Enforcement and pricing are independent: a license can be present and verified long before any enforcement flag is flipped.
+{% endhint %}
 
-## See also
-
+{% expandable title="See also (source of truth on disk)" %}
 - `docs/LICENSE_ENFORCEMENT_RUNBOOK.md` — the full P5 fail-closed rollout, the go/no-go gate, the irreversible flips (P5.3–P5.7), and rollback.
 - `scripts/issue_offline_license.py` — the offline issuer (operator box only).
 - `scripts/license_status.py` — the local verification gate.
 - `LICENSE` — ACL 1.0 open-core terms and thresholds.
+{% endexpandable %}
+
+## Related pages
+
+{% content-ref url="self-hosting.md" %}
+[self-hosting.md](self-hosting.md)
+{% endcontent-ref %}
+
+{% content-ref url="billing.md" %}
+[billing.md](billing.md)
+{% endcontent-ref %}
+
+{% content-ref url="authentication.md" %}
+[authentication.md](authentication.md)
+{% endcontent-ref %}
+
+{% content-ref url="troubleshooting.md" %}
+[troubleshooting.md](troubleshooting.md)
+{% endcontent-ref %}

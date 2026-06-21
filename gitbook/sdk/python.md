@@ -6,11 +6,15 @@ icon: python
 
 This page is the reference for the two Python packages Algenta ships: `algenta-sdk` (imported as `decision_engine`), a thin typed HTTP client for the Algenta API, and `algenta-core` (imported as `algenta`), a runtime-first package whose `Runtime` object runs locally, against the hosted API, or against a self-hosted engine. Use the client when you want direct, typed access to a single endpoint. Use the `Runtime` when you want one object that resolves and queries structured data the same way regardless of where execution happens.
 
+{% hint style="info" %}
+Two packages, one mental model. `algenta-sdk` is the endpoint-level client; `algenta-core` is the runtime that wraps it. You can adopt either independently, or use both — the runtime delegates to the client in `api` and `self_hosted` modes.
+{% endhint %}
+
 ## Install
 
 The client and the runtime are separate distributions on PyPI.
 
-```bash
+```bash title="install.sh"
 # Typed HTTP client. Imported as `decision_engine`.
 pip install algenta-sdk
 
@@ -23,7 +27,7 @@ pip install "algenta-core[cloud]"
 
 Both packages require Python 3.10 or newer. `algenta-sdk` depends only on `httpx>=0.28` and `pydantic>=2.7`.
 
-{% hint style="info" %}
+{% hint style="warning" %}
 The import name is `decision_engine`, not `algenta_sdk`. This is the historical module name and is stable. The runtime package imports as `algenta`.
 {% endhint %}
 
@@ -31,13 +35,25 @@ The import name is `decision_engine`, not `algenta_sdk`. This is the historical 
 
 The client reads its API key, in order, from the `api_key=` argument, then `ALGENTA_API_KEY`, then the legacy `DE_API_KEY`. If none are set, the constructor raises `ValueError`.
 
-```bash
+{% stepper %}
+{% step %}
+### Set your API key
+
+Export a live or sandbox key into the environment. Live keys carry the `de_live_` prefix; sandbox keys carry `de_test_`.
+
+```bash title="env.sh"
 export ALGENTA_API_KEY="de_live_..."        # production key
 # or, for the sandbox:
 export ALGENTA_API_KEY="de_test_..."
 ```
+{% endstep %}
 
-```python
+{% step %}
+### Construct the client
+
+Point `base_url` at the hosted API (the default) or at your own engine.
+
+```python title="client.py"
 import os
 from decision_engine import AlgentaClient
 
@@ -46,6 +62,19 @@ client = AlgentaClient(
     base_url="https://api.algenta.ai",   # default; override for self-hosted
 )
 ```
+{% endstep %}
+
+{% step %}
+### Verify the connection
+
+Read the live contract version as a cheap round-trip. The client is a context manager that holds a pooled `httpx.Client`.
+
+```python title="verify.py"
+with AlgentaClient(api_key=os.environ["ALGENTA_API_KEY"]) as client:
+    print(client.get_contract().contract_version)
+```
+{% endstep %}
+{% endstepper %}
 
 The constructor accepts four arguments.
 
@@ -56,18 +85,14 @@ The constructor accepts four arguments.
 | `timeout` | `float` | `120.0` | Request timeout in seconds. |
 | `max_retries` | `int` | `3` | Retries on `429` and `5xx`. |
 
-`AlgentaClient` is the preferred name. `DecisionEngineClient` and `CodnaClient` are accepted aliases for backward compatibility; all three are the same class. The client is a context manager and holds a pooled `httpx.Client`:
+{% hint style="info" %}
+`AlgentaClient` is the preferred name. `DecisionEngineClient` and `CodnaClient` are accepted aliases for backward compatibility; all three are the same class.
+{% endhint %}
 
-```python
-with AlgentaClient(api_key=os.environ["ALGENTA_API_KEY"]) as client:
-    print(client.get_contract().contract_version)
-```
-
-### Contract constants
-
+{% expandable title="Advanced: contract constants" %}
 The package re-exports the platform contract so you can read endpoint paths and defaults without hard-coding them.
 
-```python
+```python title="contract_constants.py"
 from decision_engine import (
     DEFAULT_BASE_URL,             # "https://api.algenta.ai"
     CONTRACT_VERSION,             # "v1.3"
@@ -79,12 +104,13 @@ from decision_engine import (
 
 print(PRIMARY_DATA_QUERY_CONTRACT["api"]["contract_endpoint"])  # /v1/meta/contract
 ```
+{% endexpandable %}
 
 ## Datasets and the data contract
 
 ### list_datasets
 
-```python
+```python title="list_datasets.py"
 datasets = client.list_datasets(search="orders", compact=True)
 for ds in datasets.datasets:
     print(ds.dataset_id, ds.name)
@@ -99,11 +125,13 @@ for ds in datasets.datasets:
 | `source_name` | `str \| None` | `None` | Filter by source. |
 | `compact` | `bool` | `False` | Drop heavy fields for a lighter list. |
 
+{% hint style="info" %}
 For large catalogs, `iter_datasets(...)` yields across pages and accepts a `max_items` cap.
+{% endhint %}
 
 ### get_dataset_summary
 
-```python
+```python title="dataset_summary.py"
 summary = client.get_dataset_summary(datasets.datasets[0].dataset_id)
 print(summary.dataset_id, summary.row_count)
 ```
@@ -112,7 +140,7 @@ print(summary.dataset_id, summary.row_count)
 
 `get_contract()` returns the live platform contract. If the deployment predates the `/v1/meta/contract` endpoint, the client falls back to deriving the contract from the OpenAPI document.
 
-```python
+```python title="get_contract.py"
 contract = client.get_contract()
 print(contract.contract_version)
 ```
@@ -125,7 +153,9 @@ The query surface targets the `/v1/query` family. Requests are plain dicts; you 
 
 Returns the query result plus execution metadata (request id, timing) and the raw response headers.
 
-```python
+{% tabs %}
+{% tab title="Python" %}
+```python title="query_with_metadata.py"
 result = client.query_with_metadata(
     {
         "dataset_id": summary.dataset_id,
@@ -136,12 +166,27 @@ result = client.query_with_metadata(
 print(result.metadata.request_id)
 print(result.data)
 ```
+{% endtab %}
+
+{% tab title="cURL" %}
+```bash title="query.sh"
+curl -sS https://api.algenta.ai/v1/query \
+  -H "Authorization: Bearer $ALGENTA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "dataset_id": "ds_orders",
+    "metric": {"hint": "completed_order_count"},
+    "aggregation": "sum"
+  }'
+```
+{% endtab %}
+{% endtabs %}
 
 ### query_batch
 
 Send several queries in one round trip to `/v1/query/batch`.
 
-```python
+```python title="query_batch.py"
 batch = client.query_batch(
     {
         "queries": [
@@ -156,7 +201,7 @@ batch = client.query_batch(
 
 Run a structured SQL-style report against `/v1/query/sql-report`.
 
-```python
+```python title="query_sql_report.py"
 report = client.query_sql_report(
     {
         "dataset_id": summary.dataset_id,
@@ -172,7 +217,9 @@ report = client.query_sql_report(
 
 `QueryFilterSpec` and `QueryFilterCondition` are exported for building filters with types rather than raw dicts.
 
-```python
+{% tabs %}
+{% tab title="Python" %}
+```python title="typed_filters.py"
 from decision_engine import QueryFilterSpec, QueryFilterCondition
 
 filters = QueryFilterSpec(
@@ -191,10 +238,10 @@ result = client.query_with_metadata(
     }
 )
 ```
+{% endtab %}
 
-The matching HTTP call is a plain POST:
-
-```bash
+{% tab title="cURL" %}
+```bash title="filtered_query.sh"
 curl -sS https://api.algenta.ai/v1/query \
   -H "Authorization: Bearer $ALGENTA_API_KEY" \
   -H "Content-Type: application/json" \
@@ -205,12 +252,14 @@ curl -sS https://api.algenta.ai/v1/query \
     "filters": {"conditions": [{"field": "status", "operator": "eq", "value": "completed"}]}
   }'
 ```
+{% endtab %}
+{% endtabs %}
 
 ## Decisions and simulation
 
 These methods target the decision and simulation endpoints. `simulate` and `recommend` take keyword arguments; `plan_decision` takes a request dict.
 
-```python
+```python title="decisions.py"
 # /v1/simulate — returns a DecisionEnvelope
 envelope = client.simulate(
     mode="auto",
@@ -238,7 +287,7 @@ ranking = client.recommend(
 
 `verify` (POST `/v1/verify`) and `explain` (which runs a query and annotates it) complete the decision surface:
 
-```python
+```python title="verify_explain.py"
 verdict = client.verify({"dataset_id": summary.dataset_id, "claim": {"metric": "revenue", "op": "gt", "value": 0}})
 trace = client.explain({"dataset_id": summary.dataset_id, "metric": {"hint": "revenue"}, "aggregation": "sum"})
 ```
@@ -247,7 +296,7 @@ trace = client.explain({"dataset_id": summary.dataset_id, "metric": {"hint": "re
 
 The capability plane lets an agent discover, route, and execute capabilities (tools, skills, MCP-backed providers).
 
-```python
+```python title="capability_plane.py"
 # List providers, then narrow to MCP-backed ones.
 providers = client.list_capability_providers()
 mcp = client.list_mcp_providers()      # providers whose provider_type == "mcp_provider"
@@ -266,6 +315,7 @@ outcome = client.execute_capability(
 )
 ```
 
+{% expandable title="Capability plane method reference" %}
 | Method | Endpoint | Returns |
 | --- | --- | --- |
 | `list_capability_providers()` | `GET /v1/capability-providers` | list of `CapabilityProviderResult` |
@@ -275,12 +325,13 @@ outcome = client.execute_capability(
 | `execute_capability(request)` | `POST /v1/capabilities/execute` | `CapabilityExecutionResult` |
 | `list_skills()` | `GET /v1/capabilities?kinds=skill` | skill catalog |
 | `list_mcp_providers()` | filtered providers | MCP providers |
+{% endexpandable %}
 
 ## Agent runs
 
 Create a run, then poll its state and event log.
 
-```python
+```python title="agent_runs.py"
 run = client.create_agent_run(
     task="Triage the failing checkout test and propose a fix",
     context={"repository_id": "repo_42"},
@@ -296,13 +347,17 @@ for event in events.events:
     print(event.type, event.created_at)
 ```
 
-`create_agent_run` posts to `/v1/agent/runs`. `get_agent_run` reads `/v1/agent/runs/{run_id}`; `get_agent_run_events` reads `/v1/agent/runs/{run_id}/events`. For a live feed, `stream_agent_run_events(run_id)` returns an iterator over server-sent events. Lifecycle controls (`approve_agent_run`, `resume_agent_run`, `cancel_agent_run`, `fork_agent_run`, `replay_agent_run`) round out the surface.
+`create_agent_run` posts to `/v1/agent/runs`. `get_agent_run` reads `/v1/agent/runs/{run_id}`; `get_agent_run_events` reads `/v1/agent/runs/{run_id}/events`. For a live feed, `stream_agent_run_events(run_id)` returns an iterator over server-sent events.
+
+{% hint style="info" %}
+Lifecycle controls — `approve_agent_run`, `resume_agent_run`, `cancel_agent_run`, `fork_agent_run`, and `replay_agent_run` — round out the surface for human-in-the-loop and reproducibility workflows.
+{% endhint %}
 
 ## Repository intelligence
 
 The repository methods take a `repository_id` and a request dict. `triage_repository` and `apply_repository` map to the same endpoints the agent uses internally.
 
-```python
+```python title="repository_intelligence.py"
 # Rank likely-broken files / propose where to act. POST /v1/repositories/{id}/triage
 triage = client.triage_repository(
     "repo_42",
@@ -323,7 +378,7 @@ applied = client.apply_repository(
 print(applied.diff_uri)
 ```
 
-{% hint style="warning" %}
+{% hint style="danger" %}
 `apply_repository` is a write. The platform contract is read-only by default and write operations require explicit confirmation, so pass the confirmation field your deployment expects rather than relying on defaults.
 {% endhint %}
 
@@ -331,7 +386,7 @@ print(applied.diff_uri)
 
 Every method above has an async equivalent on `AsyncAlgentaClient`. The async client is an async context manager and exposes the same surface, split across the `async_client_*` modules internally.
 
-```python
+```python title="async_client.py"
 import asyncio
 import os
 from decision_engine import AsyncAlgentaClient
@@ -348,13 +403,15 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
+{% hint style="info" %}
 `AsyncDecisionEngineClient` and `AsyncCodnaClient` are aliases of `AsyncAlgentaClient`.
+{% endhint %}
 
 ## The Runtime (`algenta-core`)
 
 `Runtime` is the runtime-first object. It connects to sources, resolves a request into an executable plan, and runs the query. The same three calls work in every mode; only the constructor changes.
 
-```python
+```python title="runtime_local.py"
 from algenta import Runtime
 
 # Local: execute against connected files / in-memory data. No network.
@@ -366,17 +423,32 @@ result = rt.query(plan)
 
 ### Modes
 
-```python
-# Cloud Managed: delegate to the hosted Algenta API.
-rt = Runtime(mode="api", api_key="de_live_...")
+{% tabs %}
+{% tab title="Local" %}
+```python title="mode_local.py"
+# In-process, against connected sources. No network.
+rt = Runtime()                          # mode="local" by default
+```
+{% endtab %}
 
-# Self-hosted: delegate to your own engine. base_url is REQUIRED here.
+{% tab title="Cloud Managed" %}
+```python title="mode_api.py"
+# Delegate to the hosted Algenta API.
+rt = Runtime(mode="api", api_key="de_live_...")
+```
+{% endtab %}
+
+{% tab title="Self-hosted" %}
+```python title="mode_self_hosted.py"
+# Delegate to your own engine. base_url is REQUIRED here.
 rt = Runtime(
     mode="self_hosted",
     api_key="de_live_...",
     base_url="http://localhost:8000",
 )
 ```
+{% endtab %}
+{% endtabs %}
 
 | `mode` | Execution | `base_url` | `api_key` |
 | --- | --- | --- | --- |
@@ -391,15 +463,17 @@ rt = Runtime(
 | `base_url` | `str \| None` | `None` |
 | `enforce_limits` | `bool \| None` | `None` (auto) |
 
-{% hint style="info" %}
+{% hint style="warning" %}
 Private profiles fail closed. `Runtime(mode="self_hosted")` raises `RuntimeConfigurationError` if `base_url` is missing, and never silently falls back to Algenta cloud.
 {% endhint %}
 
+{% hint style="info" %}
 Passing an invalid `mode` raises `ValueError`. `Runtime(mode="api")` requires the `algenta-sdk` client, which is installed by the `[cloud]` extra.
+{% endhint %}
 
 ### connect, resolve, query
 
-```python
+```python title="connect_resolve_query.py"
 rt = Runtime()
 
 # Connect by file path (CSV, TSV, JSON, Excel, Parquet are recognized).
@@ -432,9 +506,9 @@ batched = rt.query_batch({"queries": [{"source_name": "orders", "metric": "order
 
 Local mode accepts local files and SQLite. The other SQL providers (Postgres, MySQL, and so on) require `mode="api"` or `mode="self_hosted"`. Descriptors use a canonical envelope with `type`, `location`, and `auth` sections.
 
-SQLite, local:
-
-```python
+{% tabs %}
+{% tab title="SQLite (local)" %}
+```python title="connector_sqlite.py"
 rt = Runtime()
 rt.connect(
     connector={
@@ -447,10 +521,10 @@ rt.connect(
 plan = rt.resolve({"source_name": "orders", "metric": "revenue", "group_by": "product_line"})
 result = rt.query(plan)
 ```
+{% endtab %}
 
-Postgres, self-hosted engine:
-
-```python
+{% tab title="Postgres (self-hosted)" %}
+```python title="connector_postgres.py"
 rt = Runtime(mode="self_hosted", api_key="de_live_...", base_url="http://localhost:8000")
 rt.connect(
     connector={
@@ -472,6 +546,8 @@ rt.connect(
 )
 result = rt.query({"source_name": "orders", "metric": "revenue", "group_by": "product_line"})
 ```
+{% endtab %}
+{% endtabs %}
 
 The engine builds the connection string from the structured `location` and `auth` fields. You may instead supply a ready `connection_string` inside the descriptor; for non-SQLite providers a structured `host`/`database` descriptor or an explicit `connection_string` is required.
 
@@ -483,7 +559,7 @@ A descriptor is recognized as canonical when it carries any of `location`, `auth
 
 `algenta-core` installs the `algenta` console command for quick checks without writing code.
 
-```bash
+```bash title="cli.sh"
 algenta version
 algenta query orders.csv --metric revenue --group-by product_line
 algenta import ./data
@@ -494,7 +570,7 @@ algenta simulate            # quick built-in simulation
 
 The client raises typed exceptions, all subclasses of `DecisionEngineError`.
 
-```python
+```python title="errors.py"
 from decision_engine import (
     AuthenticationError,
     NotFoundError,
@@ -514,4 +590,24 @@ except DecisionEngineError as exc:
     print(exc)
 ```
 
+{% hint style="info" %}
 The runtime raises `CodnaRuntimeError`, `RuntimeConfigurationError`, and `RuntimeValidationError` (all importable from `algenta`) for local-execution and descriptor problems.
+{% endhint %}
+
+## Related pages
+
+{% content-ref url="../authentication.md" %}
+[authentication.md](../authentication.md)
+{% endcontent-ref %}
+
+{% content-ref url="../cli.md" %}
+[cli.md](../cli.md)
+{% endcontent-ref %}
+
+{% content-ref url="../self-hosting.md" %}
+[self-hosting.md](../self-hosting.md)
+{% endcontent-ref %}
+
+{% content-ref url="../api/reference.md" %}
+[api/reference.md](../api/reference.md)
+{% endcontent-ref %}

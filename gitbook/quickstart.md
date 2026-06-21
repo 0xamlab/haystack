@@ -15,11 +15,15 @@ There are two ways to start, and they are complementary:
 The engine reads your key from `ALGENTA_API_KEY` (or the legacy `DE_API_KEY`). Export one of them once and every example below works unchanged.
 {% endhint %}
 
-## Step 1 — Install the engine and check health
+## Self-host the engine in three steps
+
+{% stepper %}
+{% step %}
+### Install the engine and check health
 
 Run the installer. It checks for Docker and Docker Compose, pulls pinned images, writes a self-hosted `.env`, runs migrations, and bootstraps an owner plus a first API key.
 
-```bash
+```bash title="install.sh"
 curl -sSL https://algenta.ai/install.sh | bash
 ```
 
@@ -40,13 +44,17 @@ When it finishes, it prints the API URL, a bootstrap API key, and a ready-to-run
 
 Confirm the engine is up:
 
+{% tabs %}
+{% tab title="cURL" %}
 ```bash
 curl http://localhost:8000/v1/health
 ```
+{% endtab %}
+{% endtabs %}
 
 A healthy engine returns:
 
-```json
+```json title="health.json"
 { "status": "ok", "timestamp": "2026-06-20T12:00:00Z" }
 ```
 
@@ -77,10 +85,12 @@ curl -X POST http://localhost:8000/v1/simulate \
 ```
 
 {% hint style="info" %}
-No SDK or Python install is required to use the engine. Everything in Steps 1 through 2 is plain `curl` against `/v1`. Browse the full interactive API at `http://localhost:8000/docs`.
+No SDK or Python install is required to use the engine. Everything in the first two steps is plain `curl` against `/v1`. Browse the full interactive API at `http://localhost:8000/docs`.
 {% endhint %}
+{% endstep %}
 
-## Step 2 — Mint a bounded replacement key
+{% step %}
+### Mint a bounded replacement key
 
 The bootstrap key is for first contact. Replace it with a key you control: give it a label, an expiry, and a device limit for the local-runtime path. Create it with `POST /v1/api-keys`, authenticating with the bootstrap key you just exported.
 
@@ -97,7 +107,7 @@ curl -X POST http://localhost:8000/v1/api-keys \
 
 The response is returned once and contains the raw key. Capture `raw_key`, `id`, and `key_prefix` before you move on — the raw key is never shown again.
 
-```json
+```json title="api-key-response.json"
 {
   "id": "f2a1c0de-1234-4abc-9def-0123456789ab",
   "label": "mission-runtime",
@@ -109,13 +119,17 @@ The response is returned once and contains the raw key. Capture `raw_key`, `id`,
 }
 ```
 
-Request body fields:
+{% hint style="warning" %}
+The `raw_key` is shown exactly once and is never recoverable. Capture it now. If you lose it, mint a new key and revoke the old one.
+{% endhint %}
 
+{% expandable title="Request body fields" %}
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `label` | string | yes | Human-readable name (1–255 chars), e.g. `mission-runtime`. |
 | `expires_at` | RFC 3339 timestamp | no | Must be in the future. Omit for a non-expiring key. |
 | `device_limit` | integer (`>= 0`) | no | Max registered devices on the local-runtime path. `0` keeps the plan default. |
+{% endexpandable %}
 
 Swap your shell over to the replacement key:
 
@@ -123,21 +137,25 @@ Swap your shell over to the replacement key:
 export ALGENTA_API_KEY='de_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'  # the raw_key returned above
 ```
 
-{% hint style="info" %}
+{% hint style="success" %}
 Rotating the bootstrap key does not break the agentic repository flow. The engine-callback key is a separate, long-lived key the installer wires into `.env` as `ALGENTA_ENGINE_API_KEY`. Leave it alone.
 {% endhint %}
 
 You can store the `id` to revoke the key later with `DELETE /v1/api-keys/{id}`. The engine refuses to revoke your last active key, so you cannot lock yourself out.
+{% endstep %}
 
-## Step 3 — Your first call in code
+{% step %}
+### Your first call in code
 
 For programmatic use, install `algenta-core` and drive the `Runtime`. The default `Runtime()` runs locally and in-process — register a source, resolve a plan, and run the query. No server or key required.
 
+{% tabs %}
+{% tab title="Python" %}
 ```bash
 pip install algenta-core
 ```
 
-```python
+```python title="first_call.py"
 from algenta import Runtime
 
 rt = Runtime()
@@ -148,10 +166,12 @@ result = rt.query(plan)
 
 print(result)
 ```
+{% endtab %}
+{% endtabs %}
 
 The flow is always the same three calls: `connect` registers a source under a name, `resolve` turns an intent into a typed plan, and `query` executes it. Adding `group_by` is one more key:
 
-```python
+```python title="group_by.py"
 plan = rt.resolve({
     "source_name": "orders",
     "metric": "revenue",
@@ -163,7 +183,7 @@ result = rt.query(plan)
 {% hint style="info" %}
 When you are ready to point the same code at your self-hosted engine instead of the in-process runtime, construct it in API mode and pass your key:
 
-```python
+```python title="api_mode.py"
 import os
 from algenta import Runtime
 
@@ -173,6 +193,8 @@ plan = rt.resolve({"source_name": "orders", "metric": "revenue", "group_by": "pr
 result = rt.query(plan)
 ```
 {% endhint %}
+{% endstep %}
+{% endstepper %}
 
 ## Zero-friction demo (no server, no key)
 
@@ -204,9 +226,10 @@ To preview your own data, import a CSV. This validates local registration and sc
 algenta import orders.csv --name orders
 ```
 
-The import preview ends with copy-pasteable code that mirrors Step 3:
+{% expandable title="Importing several sources at once" %}
+The import preview ends with copy-pasteable code that mirrors the code step above:
 
-```python
+```python title="import_preview.py"
 from algenta import Runtime
 
 rt = Runtime()
@@ -220,8 +243,9 @@ You can import several sources at once to discover cross-table relationships:
 ```bash
 algenta import orders.csv financial.csv ratings.csv
 ```
+{% endexpandable %}
 
-{% hint style="info" %}
+{% hint style="warning" %}
 The demo and `import` run entirely on your machine. Private profiles fail closed: Algenta does not silently fall back to the cloud. To connect the CLI or SDK to your engine later, run `algenta upgrade` for the exact `ALGENTA_BASE_URL` and key steps.
 {% endhint %}
 
@@ -230,3 +254,19 @@ The demo and `import` run entirely on your machine. Private profiles fail closed
 - Run the engine in production: see the self-hosting guide for TLS, secrets, and the `.env` reference written by the installer.
 - Call `/v1` directly without the SDK: the engine exposes the full surface at `http://localhost:8000/docs`.
 - Manage keys: list with `GET /v1/api-keys`, revoke with `DELETE /v1/api-keys/{id}`.
+
+{% content-ref url="self-hosting.md" %}
+[self-hosting.md](self-hosting.md)
+{% endcontent-ref %}
+
+{% content-ref url="authentication.md" %}
+[authentication.md](authentication.md)
+{% endcontent-ref %}
+
+{% content-ref url="sdk/python.md" %}
+[sdk/python.md](sdk/python.md)
+{% endcontent-ref %}
+
+{% content-ref url="api/reference.md" %}
+[api/reference.md](api/reference.md)
+{% endcontent-ref %}

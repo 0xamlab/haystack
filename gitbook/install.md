@@ -24,12 +24,13 @@ To make a first call against the self-hosted service, you do not need to install
 
 The self-hosted service is the complete Algenta deployment: the API, the worker, Postgres, Redis, and MinIO object storage, wired together with Docker Compose. One command installs and starts everything.
 
-### Prerequisites
+{% hint style="info" %}
+**Prerequisites.** Docker, with the daemon running, plus Docker Compose. Either the Compose v2 plugin (`docker compose`) or the standalone `docker-compose` binary works; the installer detects whichever is present.
+{% endhint %}
 
-- Docker, with the daemon running.
-- Docker Compose. Either the Compose v2 plugin (`docker compose`) or the standalone `docker-compose` binary works; the installer detects whichever is present.
-
-### Install
+{% stepper %}
+{% step %}
+### Run the installer
 
 ```bash
 curl -sSL https://algenta.ai/install.sh | bash
@@ -42,36 +43,20 @@ The installer:
 3. Generates a `.env` with stable secrets (kept owner-only at mode `600`).
 4. Pulls the `ghcr.io/algenta/decision-engine` image and starts the stack.
 5. Waits for the API, runs database migrations, and bootstraps an owner plus an API key.
+{% endstep %}
 
-When it finishes, it prints your API endpoint, your bootstrap API key, and a ready-to-run `curl` command. Save the API key. It is shown once.
+{% step %}
+### Save the bootstrap key
 
-### Configure the install with environment variables
+When it finishes, the installer prints your API endpoint, your bootstrap API key, and a ready-to-run `curl` command. Save the API key.
 
-Set these before running the installer to control where it installs, which port it binds, and which image it pins.
-
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `ALGENTA_DIR` | `$HOME/.algenta` | Install directory. Holds `docker-compose.yml` and `.env`. |
-| `ALGENTA_API_PORT` | `8000` | Host port the API binds to. |
-| `ALGENTA_VERSION` | latest `main` | Release ref to pin. A git SHA or a release tag. |
-| `ALGENTA_IMAGE_TAG` | derived from the ref | Exact image tag to pull. |
-| `ALGENTA_IMAGE_REGISTRY` | `ghcr.io/algenta/decision-engine` | Image registry and repository. |
-| `ALGENTA_SKIP_IMAGE_PULL` | `0` | Set to `1` to skip `compose pull` (use an already-pulled image). |
-
-Pin a specific build and bind a non-default port:
-
-```bash
-ALGENTA_VERSION=v1.0.0 \
-ALGENTA_IMAGE_TAG=v1.0.0 \
-ALGENTA_API_PORT=8080 \
-  bash -c "curl -sSL https://algenta.ai/install.sh | bash"
-```
-
-{% hint style="info" %}
-The generated `.env` contains `ALGENTA_CONFIG_ENCRYPTION_KEY`, which encrypts every stored per-tenant provider key at rest. Back it up. If you reinstall over an existing database with a different key, the previously stored keys become undecryptable. Restore your prior key into `.env` before starting.
+{% hint style="warning" %}
+The bootstrap API key is shown once. Copy it before you close the terminal. To recover from a lost key, rotate it (see [Next steps](#next-steps)).
 {% endhint %}
+{% endstep %}
 
-### Verify
+{% step %}
+### Verify the install
 
 The liveness endpoint returns `{"status":"ok"}`:
 
@@ -79,13 +64,13 @@ The liveness endpoint returns `{"status":"ok"}`:
 curl http://localhost:8000/v1/health
 ```
 
-```json
+```json title="health response"
 { "status": "ok", "timestamp": "2026-06-20T00:00:00Z" }
 ```
 
-Run your first decision with the bootstrap key the installer printed:
+Then run your first decision with the bootstrap key the installer printed.
 
-```bash
+```bash title="first-simulation.sh"
 export ALGENTA_API_KEY='<paste the bootstrap key>'
 
 curl -X POST http://localhost:8000/v1/simulate \
@@ -104,34 +89,64 @@ curl -X POST http://localhost:8000/v1/simulate \
     "seed": 42
   }'
 ```
+{% endstep %}
+{% endstepper %}
+
+### Configure the install with environment variables
+
+Set these before running the installer to control where it installs, which port it binds, and which image it pins.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `ALGENTA_DIR` | `$HOME/.algenta` | Install directory. Holds `docker-compose.yml` and `.env`. |
+| `ALGENTA_API_PORT` | `8000` | Host port the API binds to. |
+| `ALGENTA_VERSION` | latest `main` | Release ref to pin. A git SHA or a release tag. |
+| `ALGENTA_IMAGE_TAG` | derived from the ref | Exact image tag to pull. |
+| `ALGENTA_IMAGE_REGISTRY` | `ghcr.io/algenta/decision-engine` | Image registry and repository. |
+| `ALGENTA_SKIP_IMAGE_PULL` | `0` | Set to `1` to skip `compose pull` (use an already-pulled image). |
+
+{% expandable title="Pin a specific build and bind a non-default port" %}
+```bash
+ALGENTA_VERSION=v1.0.0 \
+ALGENTA_IMAGE_TAG=v1.0.0 \
+ALGENTA_API_PORT=8080 \
+  bash -c "curl -sSL https://algenta.ai/install.sh | bash"
+```
+{% endexpandable %}
+
+{% hint style="danger" %}
+The generated `.env` contains `ALGENTA_CONFIG_ENCRYPTION_KEY`, which encrypts every stored per-tenant provider key at rest. Back it up. If you reinstall over an existing database with a different key, the previously stored keys become undecryptable. Restore your prior key into `.env` before starting.
+{% endhint %}
 
 ### Manage the stack
 
 The installer prints these too. Run them from your install directory.
 
-```bash
+```bash title="manage-stack.sh"
 cd ~/.algenta && docker compose ps
 cd ~/.algenta && docker compose logs -f api
 cd ~/.algenta && docker compose pull && docker compose up -d   # upgrade
 cd ~/.algenta && docker compose stop
 ```
 
+{% hint style="info" %}
 If you are on the standalone binary, substitute `docker-compose` for `docker compose`.
+{% endhint %}
 
 ## Local runtime package
 
 `algenta-core` is the Algenta runtime as a Python package. Use it to run deterministic resolve and query flows in-process, or to drive a remote API through one `Runtime` object.
 
-### Local only
-
+{% tabs %}
+{% tab title="Local only" %}
 ```bash
 pip install algenta-core
 ```
 
 This installs `algenta-core` with no external dependencies. It is enough for `Runtime(mode="local")` and the local Mojo libraries.
+{% endtab %}
 
-### API-backed mode
-
+{% tab title="API-backed" %}
 `Runtime(mode="api")` and `Runtime(mode="self_hosted")` fail closed unless `algenta-sdk` is installed. Add it with the `cloud` extra:
 
 ```bash
@@ -143,6 +158,8 @@ Or install the SDK directly:
 ```bash
 pip install algenta-sdk
 ```
+{% endtab %}
+{% endtabs %}
 
 ### Verify
 
@@ -160,7 +177,7 @@ algenta demo
 
 Drive a remote engine from Python:
 
-```python
+```python title="remote_runtime.py"
 import os
 from algenta import Runtime
 
@@ -185,7 +202,7 @@ pip install algenta-sdk
 
 The client reads `ALGENTA_API_KEY` from the environment and accepts a `base_url` for self-hosted deployments. `AlgentaClient` is the preferred name; `DecisionEngineClient` remains as a compatibility alias.
 
-```python
+```python title="verify_python_sdk.py"
 import os
 from decision_engine import AlgentaClient
 
@@ -210,7 +227,7 @@ envelope = client.simulate(
 )
 ```
 
-{% hint style="info" %}
+{% hint style="warning" %}
 If you call `AlgentaClient()` with no `api_key` and no `ALGENTA_API_KEY` set, construction raises immediately with a message telling you which environment variable to set. The legacy `DE_API_KEY` is also accepted.
 {% endhint %}
 
@@ -226,7 +243,7 @@ npm install algenta-sdk
 
 The client reads `ALGENTA_API_KEY` in Node, and takes `apiKey` and `baseUrl` in its config. `AlgentaClient` and `DecisionEngineClient` are both exported.
 
-```typescript
+```typescript title="verify-ts-sdk.ts"
 import { AlgentaClient } from 'algenta-sdk';
 
 const client = new AlgentaClient({
@@ -251,33 +268,47 @@ const envelope = await client.simulate({
 });
 ```
 
+{% hint style="info" %}
 The package requires Node 18 or newer.
+{% endhint %}
 
 ## MCP server
 
-`algenta-mcp` exposes the Algenta API as Model Context Protocol tools for Cursor, Claude Desktop, and other MCP clients. Install it as an isolated CLI with `pipx`:
+`algenta-mcp` exposes the Algenta API as Model Context Protocol tools for Cursor, Claude Desktop, and other MCP clients.
+
+{% stepper %}
+{% step %}
+### Install the server
+
+Install it as an isolated CLI with `pipx`:
 
 ```bash
 pipx install algenta-mcp
 ```
 
-Or with `pip` into the current environment:
-
+{% expandable title="Alternative: install with pip into the current environment" %}
 ```bash
 pip install algenta-mcp
 ```
+{% endexpandable %}
+{% endstep %}
+
+{% step %}
+### Choose a transport
 
 Point it at your deployment with `ALGENTA_BASE_URL` and `ALGENTA_API_KEY`. It runs the stdio transport by default. For HTTP/SSE clients, run it as a server:
 
 ```bash
 algenta-mcp --mode http --port 8001
 ```
+{% endstep %}
 
+{% step %}
 ### Wire it into Cursor or Claude Desktop
 
 Add this to your MCP config (Cursor `~/.cursor/mcp.json`, or Claude Desktop `claude_desktop_config.json`):
 
-```json
+```json title="mcp.json"
 {
   "mcpServers": {
     "algenta": {
@@ -292,8 +323,30 @@ Add this to your MCP config (Cursor `~/.cursor/mcp.json`, or Claude Desktop `cla
 ```
 
 The server connects your agent to governed dataset discovery, exact queries, deterministic utility-model routes, product helpers, simulations, and persisted agent runs.
+{% endstep %}
+{% endstepper %}
 
 ## Next steps
 
+{% hint style="success" %}
+The install is done. Before production, walk through the operator checklist below, then continue to the quickstart for a first end-to-end decision.
+{% endhint %}
+
 - Self-hosted operators: review `~/.algenta/.env` before production, set `ANTHROPIC_API_KEY` for the agentic repository flow, and put TLS in front of the API port.
 - Rotate the bootstrap key with `POST /v1/api-keys` and a bounded `expires_at`, then store the returned `raw_key` (shown once) before revoking the bootstrap key.
+
+{% content-ref url="quickstart.md" %}
+[quickstart.md](quickstart.md)
+{% endcontent-ref %}
+
+{% content-ref url="self-hosting.md" %}
+[self-hosting.md](self-hosting.md)
+{% endcontent-ref %}
+
+{% content-ref url="authentication.md" %}
+[authentication.md](authentication.md)
+{% endcontent-ref %}
+
+{% content-ref url="sdk/python.md" %}
+[sdk/python.md](sdk/python.md)
+{% endcontent-ref %}

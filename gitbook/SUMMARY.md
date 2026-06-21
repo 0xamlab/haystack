@@ -26,6 +26,7 @@
 
 * [API overview](api/overview.md)
 * [API endpoint reference](api/reference.md)
+* [API explorer (live)](api/explorer.md)
 
 ## Help
 

@@ -6,11 +6,15 @@ icon: terminal
 
 The Algenta CLI puts the entire platform behind one verb. From a terminal you can register a device, manage API keys and execution policy, connect data and run governed queries, route capabilities, score decisions, drive agent runs and async jobs, triage and fix repositories, and control the local Mojo runtime. Every command is a thin, faithful wrapper over the same `/v1` HTTP surface the SDKs use, so anything you do here you can reproduce with `curl` or the Python/TypeScript clients. This page is the complete reference: every subcommand, its arguments, the endpoint it calls, and copy-pasteable examples.
 
+{% hint style="info" %}
+Every command maps one-to-one to a `/v1` endpoint. If you can do it in the CLI, you can do it from any SDK or from raw `curl` — the CLI invents no behavior of its own.
+{% endhint %}
+
 ## Invocation
 
 The CLI lives in `apps.cli.main`. Run it as a module from the repository root, or expose it as `de` with a shell alias.
 
-```bash
+```bash title="setup-alias.sh"
 # From the repository root
 PYTHONPATH=. python3 -m apps.cli.main version
 
@@ -47,7 +51,9 @@ export ALGENTA_API_KEY="sk_live_..."
 de account me
 ```
 
+{% hint style="success" %}
 API keys saved through the CLI are stored securely: it uses the OS keyring when available, falls back to a Fernet-encrypted file (`~/.de/secrets.bin`), and only stores plaintext in `config.json` as a last resort.
+{% endhint %}
 
 {% hint style="warning" %}
 Private profiles (`self_hosted`, `air_gapped`) fail closed. The CLI will not silently fall back to Algenta cloud — you must set an explicit `ALGENTA_BASE_URL` (or save `base_url` in config). Credential examples that reference `app.algenta.ai` are the Cloud Managed path; on a private profile, use the API key your operator deployment provisions.
@@ -84,17 +90,30 @@ de data connect --request connect.json
 
 ### Login and device registration
 
-`de login` registers this machine, issues a device license (JWT), and stores it locally.
+`de login` registers this machine, issues a device license (JWT), and stores it locally. Pick the form that matches your environment:
 
+{% tabs %}
+{% tab title="Interactive" %}
 ```bash
-de login                                  # prompts for the API key
-de login sk_live_yourkey                  # key as argument (CI-safe)
-ALGENTA_API_KEY=sk_live_yourkey de login  # key from the environment
-
-de logout                                 # remove the stored device license
-de license                                # show device license status
-de license status                         # explicit alias
+de login                  # prompts for the API key
+de logout                 # remove the stored device license
+de license                # show device license status
+de license status         # explicit alias
 ```
+{% endtab %}
+
+{% tab title="Argument (CI-safe)" %}
+```bash
+de login sk_live_yourkey  # key passed as an argument
+```
+{% endtab %}
+
+{% tab title="Environment" %}
+```bash
+ALGENTA_API_KEY=sk_live_yourkey de login  # key from the environment
+```
+{% endtab %}
+{% endtabs %}
 
 `de license` prints the device ID, plan, device limit, permitted modules, license source, and expiry (including grace-period and hard-expiry flags).
 
@@ -121,12 +140,14 @@ de keys create "Mission Key" --device-limit 5 --expires-at 2027-01-01T00:00:00Z
 de keys revoke key_01H...
 ```
 
-The raw key is shown only once, at creation:
+{% hint style="danger" %}
+The raw key is shown only once, at creation. Capture it then — there is no way to retrieve it afterward.
 
 ```bash
 de keys create "CI runner" --format json
 # {"id": "...", "label": "CI runner", "key_prefix": "sk_live_ab", "raw_key": "sk_live_..."}
 ```
+{% endhint %}
 
 ### `account` — identity, usage, and limits
 
@@ -196,14 +217,24 @@ de data refresh orders_facts
 de data disconnect orders_facts --yes
 ```
 
-The equivalent HTTP for a connect:
+The connect call is the same request whether you reach it through the CLI or HTTP directly:
 
+{% tabs %}
+{% tab title="CLI" %}
+```bash
+de data connect --request connect.json
+```
+{% endtab %}
+
+{% tab title="cURL" %}
 ```bash
 curl -s -X POST "$ALGENTA_BASE_URL/v1/data/connect" \
   -H "Authorization: Bearer $ALGENTA_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"connection_type":"file_upload","dataset_name":"Sales","csv":"amount\n10\n20\n"}'
 ```
+{% endtab %}
+{% endtabs %}
 
 ### `connectors` — saved and inline connectors
 
@@ -244,7 +275,9 @@ de capabilities route route_objective.json
 de capabilities execute selected_capability.json
 ```
 
+{% hint style="info" %}
 `--provider-id`, `--binding-id`, and `--kind` accept comma-separated values. `--scope` is one of `user`, `workspace`, `organization`.
+{% endhint %}
 
 ---
 
@@ -309,7 +342,9 @@ de llm embeddings embeddings_request.json
 de llm rerank rerank_request.json
 ```
 
+{% hint style="info" %}
 `--stream` consumes a Server-Sent Events stream (`Accept: text/event-stream`) and renders deltas as they arrive.
+{% endhint %}
 
 ### `product` — high-level helpers
 
@@ -349,18 +384,44 @@ de product forecast forecast.json
 | `de agent-runs cancel <run_id>` | `POST /v1/agent/runs/{id}/cancel` |
 | `de agent-runs approve <run_id>` | `POST /v1/agent/runs/{id}/approve` |
 
+Drive a run through its full lifecycle:
+
+{% stepper %}
+{% step %}
+### Create the run
+
 ```bash
 de agent-runs create run_request.json
+```
+{% endstep %}
+
+{% step %}
+### Watch it execute
+
+List active runs, fetch one by ID, and stream its event log.
+
+```bash
 de agent-runs list --status running --limit 25
 de agent-runs get run_01H...
 de agent-runs events run_01H... --stream
 de agent-runs checkpoints run_01H...
-de agent-runs approve run_01H...        # release a run waiting for approval
+```
+{% endstep %}
+
+{% step %}
+### Release, resume, or cancel
+
+```bash
+de agent-runs approve run_01H...   # release a run waiting for approval
 de agent-runs resume run_01H...
 de agent-runs cancel run_01H...
 ```
+{% endstep %}
+{% endstepper %}
 
+{% expandable title="Advanced: shared filters across list and query-* commands" %}
 `list` and the `query-*` commands share filters: `--status`, `--request-hash`, `--policy-snapshot-id`, `--schema-snapshot-id`, plus `--run-id`, `--checkpoint-id`, `--event-type`, `--telemetry-kind`, `--module-name` on the relevant variants.
+{% endexpandable %}
 
 ### `job` — async jobs for large runs
 
@@ -426,26 +487,50 @@ The `repositories` group is the code-intelligence and autonomous-fix surface. Mo
 | `de repositories fix <repo_id> <request.json>` | pipeline then apply (composite) |
 | `de repositories apply <repo_id> <request.json>` | `POST /v1/repositories/{id}/apply` |
 
-```bash
-# Discover supported languages
-de repositories capabilities --format json
+Work a repository from discovery through a gated apply:
 
-# Build an immutable snapshot, then triage and plan against it
+{% stepper %}
+{% step %}
+### Discover supported languages
+
+```bash
+de repositories capabilities --format json
+```
+{% endstep %}
+
+{% step %}
+### Snapshot, triage, and plan
+
+Build an immutable snapshot, then triage and plan against it.
+
+```bash
 de repositories snapshot repo_01H... snapshot_request.json
 de repositories triage repo_01H... triage_request.json
 de repositories decision-plan repo_01H... plan_request.json
+```
+{% endstep %}
 
-# Inspect dependency / change-risk edges
+{% step %}
+### Inspect change-risk edges
+
+```bash
 de repositories graph-query repo_01H... graph_query.json
+```
+{% endstep %}
 
-# Simulate patch risk, then gate the apply
+{% step %}
+### Simulate, then gate the apply
+
+```bash
 de repositories simulate-patch repo_01H... simulate_patch.json
 de repositories apply repo_01H... apply_request.json
 ```
+{% endstep %}
+{% endstepper %}
 
 `de repositories fix` is a composite: it runs the pipeline (snapshot, plan, simulate) and then applies the result. The request file may carry a `pipeline` block and an `apply` block; the `apply` block selects the output channel:
 
-```json
+```json title="fix_request.json"
 {
   "pipeline": { "ref": "main", "objective": "fix failing tests" },
   "apply": {
@@ -501,7 +586,9 @@ de runtime history --limit 20
 de runtime stop
 ```
 
+{% hint style="warning" %}
 Provide exactly one of `--args-json` or `--args-file` to `runtime execute`; passing both is an error.
+{% endhint %}
 
 ### `deployments` — managed regions and provisioning
 
@@ -561,7 +648,7 @@ de template get finance_npv
 
 The CLI is built for pipelines. `--format json` plus `jq` gives clean machine output, and exit codes are non-zero on API errors.
 
-```bash
+```bash title="ci-patterns.sh"
 # Capture a new key prefix
 PREFIX=$(de keys create "Batch worker" --format json | jq -r '.key_prefix')
 
@@ -580,3 +667,21 @@ Because each command maps one-to-one to a `/v1` endpoint, you can always reprodu
 curl -s "$ALGENTA_BASE_URL/v1/me" \
   -H "Authorization: Bearer $ALGENTA_API_KEY" | jq
 ```
+
+---
+
+{% content-ref url="authentication.md" %}
+[authentication.md](authentication.md)
+{% endcontent-ref %}
+
+{% content-ref url="api/reference.md" %}
+[api/reference.md](api/reference.md)
+{% endcontent-ref %}
+
+{% content-ref url="self-hosting.md" %}
+[self-hosting.md](self-hosting.md)
+{% endcontent-ref %}
+
+{% content-ref url="troubleshooting.md" %}
+[troubleshooting.md](troubleshooting.md)
+{% endcontent-ref %}

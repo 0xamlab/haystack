@@ -6,25 +6,37 @@ icon: js
 
 The `algenta-sdk` package is the official TypeScript and JavaScript client for Algenta. It gives you a single `AlgentaClient` for the hosted control plane and self-hosted engines, a `Runtime` class for local and self-hosted execution, and exported contract constants so your code can stay in lockstep with the API. It runs on Node.js 18+ and modern browsers, uses `fetch` with no required dependencies, and ships full type definitions. This page is the reference: imports, configuration, every method group, and copy-pasteable examples.
 
+{% hint style="info" %}
+The package is ESM-first and ships its own types. `main`, `module`, and `types` all resolve from `dist/`, so it works the same whether you import or require it.
+{% endhint %}
+
 ## Install
 
+{% tabs %}
+{% tab title="npm" %}
 ```bash
 npm install algenta-sdk
 ```
+{% endtab %}
 
+{% tab title="pnpm" %}
 ```bash
 pnpm add algenta-sdk
 ```
+{% endtab %}
 
+{% tab title="yarn" %}
 ```bash
 yarn add algenta-sdk
 ```
-
-The package is ESM-first and ships its own types. `main`, `module`, and `types` all resolve from `dist/`, so it works the same whether you import or require it.
+{% endtab %}
+{% endtabs %}
 
 ## Quick start
 
-```ts
+The client reads your API key from `config.apiKey` first, then `ALGENTA_API_KEY`, then the legacy `DE_API_KEY`. Set it once in the environment and the example below runs end to end.
+
+```ts title="quickstart.ts"
 import { AlgentaClient } from "algenta-sdk";
 
 const apiKey = process.env.ALGENTA_API_KEY ?? process.env.DE_API_KEY;
@@ -68,13 +80,13 @@ const client = new AlgentaClient({
 });
 ```
 
-### Compatibility names
-
-`AlgentaClient` is the canonical export. The same class is also exported as `DecisionEngineClient` and `CodnaClient` (with matching `AlgentaClientConfig` / `DecisionEngineClientConfig` / `CodnaClientConfig` types) so older integrations keep working. All three are the same constructor.
-
-{% hint style="info" %}
+{% hint style="success" %}
 Methods are camelCase, but request bodies and query parameters stay snake_case. You call `getDatasetSummary(...)`, `queryWithMetadata(...)`, and `querySqlReport(...)`, and the payloads you pass and receive use fields like `dataset_id`, `source_name`, `metric_column`, and `max_rows`. This mirrors the HTTP contract exactly.
 {% endhint %}
+
+{% expandable title="Compatibility names for older integrations" %}
+`AlgentaClient` is the canonical export. The same class is also exported as `DecisionEngineClient` and `CodnaClient` (with matching `AlgentaClientConfig` / `DecisionEngineClientConfig` / `CodnaClientConfig` types) so older integrations keep working. All three are the same constructor.
+{% endexpandable %}
 
 ## Exports
 
@@ -138,6 +150,10 @@ The query family is the governed data path. Bodies stay snake_case.
 
 ### Single query with metadata
 
+`queryWithMetadata` returns `{ data, metadata, headers }` so you get the response alongside its execution metadata and raw headers.
+
+{% tabs %}
+{% tab title="TypeScript" %}
 ```ts
 const result = await client.queryWithMetadata({
   source_name: "nps_scores",
@@ -150,6 +166,22 @@ console.log(result.data);      // the query response
 console.log(result.metadata);  // execution metadata (latency, plan, etc.)
 console.log(result.headers);   // raw response headers
 ```
+{% endtab %}
+
+{% tab title="cURL" %}
+```bash
+curl -s https://api.algenta.ai/v1/query \
+  -H "Authorization: Bearer $ALGENTA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "source_name": "nps_scores",
+    "metric_column": "nps_score",
+    "group_column": "origin_airport_code",
+    "aggregation": "avg"
+  }'
+```
+{% endtab %}
+{% endtabs %}
 
 ### Batch query
 
@@ -183,12 +215,16 @@ const filter: QueryFilterSpec = {
 };
 ```
 
+{% expandable title="Supported filter operators" %}
 The governed filter contract supports `eq`, `gt`, `gte`, `lt`, `lte`, `in`, `is_null`, and `is_not_null`. Filters apply to normalized rows before aggregation and are valid across SQL and non-SQL backends.
+{% endexpandable %}
 
 ### SQL report
 
 `querySqlReport` runs a read-only SQL report over one or more governed datasets, each given an alias.
 
+{% tabs %}
+{% tab title="TypeScript" %}
 ```ts
 const report = await client.querySqlReport({
   sources: [
@@ -205,15 +241,9 @@ const report = await client.querySqlReport({
 
 console.log(report.columns, report.row_count, report.truncated);
 ```
+{% endtab %}
 
-| Method | HTTP |
-| --- | --- |
-| `queryWithMetadata(request)` | `POST /v1/query` (returns `{ data, metadata, headers }`) |
-| `queryBatch({ defaults, queries })` | `POST /v1/query/batch` |
-| `querySqlReport({ sources, sql, max_rows })` | `POST /v1/query/sql-report` |
-
-The equivalent raw HTTP call:
-
+{% tab title="cURL" %}
 ```bash
 curl -s https://api.algenta.ai/v1/query/sql-report \
   -H "Authorization: Bearer $ALGENTA_API_KEY" \
@@ -224,6 +254,14 @@ curl -s https://api.algenta.ai/v1/query/sql-report \
     "max_rows": 500
   }'
 ```
+{% endtab %}
+{% endtabs %}
+
+| Method | HTTP |
+| --- | --- |
+| `queryWithMetadata(request)` | `POST /v1/query` (returns `{ data, metadata, headers }`) |
+| `queryBatch({ defaults, queries })` | `POST /v1/query/batch` |
+| `querySqlReport({ sources, sql, max_rows })` | `POST /v1/query/sql-report` |
 
 ## Capability plane
 
@@ -263,7 +301,11 @@ const skills = await client.listSkills();                 // listCapabilities({ 
 const mcp = await client.listMcpProviders();              // providers where provider_type === "mcp_provider"
 ```
 
-`listMcpProviders()` is a convenience filter over `listCapabilityProviders()`, and `listSkills()` is `listCapabilities({ kinds: ["skill"] })`. There are also full binding lifecycle methods (`createCapabilityBinding`, `testCapabilityBinding`, `discoverCapabilityBinding`, `startCapabilityAuthorization`, `completeCapabilityAuthorization`) plus `enableSkill` / `disableSkill` helpers.
+`listMcpProviders()` is a convenience filter over `listCapabilityProviders()`, and `listSkills()` is `listCapabilities({ kinds: ["skill"] })`.
+
+{% expandable title="Binding lifecycle and skill toggle helpers" %}
+There are also full binding lifecycle methods (`createCapabilityBinding`, `testCapabilityBinding`, `discoverCapabilityBinding`, `startCapabilityAuthorization`, `completeCapabilityAuthorization`) plus `enableSkill` / `disableSkill` helpers.
+{% endexpandable %}
 
 ## The Runtime class
 
@@ -294,15 +336,15 @@ const hosted = new Runtime({ mode: "api", apiKey: process.env.ALGENTA_API_KEY })
 const local = new Runtime();
 ```
 
-{% hint style="info" %}
+{% hint style="warning" %}
 `self_hosted` mode requires an explicit `baseUrl` and throws `RuntimeConfigurationError` (`self_hosted_base_url_required`) without one. Private profiles fail closed: the runtime never silently falls back to Algenta cloud.
 {% endhint %}
 
-### Runtime introspection (`_runtime_class.ts`)
+### Runtime introspection
 
 These methods read the engine's signed runtime manifest and validation artifacts. They require API transport (`api` or `self_hosted`); calling them in `local` mode throws `local_mode_not_supported`.
 
-```ts
+```ts title="_runtime_class.ts"
 const manifest = await runtime.getRuntimeManifest();            // GET /v1/runtime/manifest
 const modules = await runtime.getRuntimeModules();              // GET /v1/admin/runtime/modules
 const benchmarks = await runtime.getRuntimeBenchmarks();        // GET /v1/admin/runtime/benchmarks
@@ -316,7 +358,9 @@ const validation = await runtime.getRuntimeReleaseValidation(); // GET /v1/admin
 | `getRuntimeBenchmarks()` | `GET /v1/admin/runtime/benchmarks` | Published runtime benchmarks. |
 | `getRuntimeReleaseValidation()` | `GET /v1/admin/runtime/validation` | Release-validation proof. |
 
+{% hint style="success" %}
 Each response is validated against the runtime-proof contract. An invalid or tampered payload raises `RuntimeValidationError` (`invalid_runtime_contract_payload`) rather than returning unverified data.
+{% endhint %}
 
 The Runtime also re-exposes the data and capability surface (`getContract`, `listDatasets`, `getDatasetSummary`, `queryWithMetadata`, `queryBatch`, `querySqlReport`, `routeCapabilities`, `executeCapability`, and more), delegating to the underlying client when in `api` or `self_hosted` mode.
 
@@ -332,6 +376,7 @@ Every request carries automatic device-binding headers, computed by `resolveClie
 | `X-Algenta-Platform-Version` | Node version, when available. |
 | `X-Algenta-Hostname-Hash` | FNV-1a hash of the hostname seed (never the raw hostname). |
 
+{% expandable title="How the device id is derived and how to override it" %}
 On Node, the device id is derived from the machine id (`/etc/machine-id` on Linux), the hostname, or a persisted install id under `~/.algenta/runtime/install_id`. In the browser it is generated once and stored in `localStorage`. You can override it with the `ALGENTA_DEVICE_ID` (or legacy `DE_DEVICE_ID`) environment variable, or by passing `X-Algenta-Device-Id` in `defaultHeaders`:
 
 ```ts
@@ -340,8 +385,11 @@ const client = new AlgentaClient({
   defaultHeaders: { "X-Algenta-Device-Id": "my-stable-device-id-0001" },
 });
 ```
+{% endexpandable %}
 
+{% hint style="info" %}
 The hostname is never sent in clear text; only a hash is. When the control plane returns a device-binding token, the client persists it and replays it on subsequent requests automatically.
+{% endhint %}
 
 ## Errors
 
@@ -392,3 +440,21 @@ try {
 {% hint style="info" %}
 Set credentials in the environment rather than hard-coding them. The client and runtime both read `ALGENTA_API_KEY` first and `DE_API_KEY` as a fallback, so the same shell setup works across the SDK, CLI, and Python SDK.
 {% endhint %}
+
+## Related pages
+
+{% content-ref url="../authentication.md" %}
+[authentication.md](../authentication.md)
+{% endcontent-ref %}
+
+{% content-ref url="python.md" %}
+[python.md](python.md)
+{% endcontent-ref %}
+
+{% content-ref url="../api/reference.md" %}
+[reference.md](../api/reference.md)
+{% endcontent-ref %}
+
+{% content-ref url="../self-hosting.md" %}
+[self-hosting.md](../self-hosting.md)
+{% endcontent-ref %}

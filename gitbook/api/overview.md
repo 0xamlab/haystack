@@ -6,6 +6,10 @@ icon: book-open
 
 This page orients you to the Algenta REST API: where it lives, how to authenticate, how to discover what an instance supports, and how the endpoints are organized. Everything here is a copy-pasteable starting point. The same HTTP contract backs the Python and TypeScript SDKs, the `algenta` CLI, and the MCP server, so anything you can do over HTTP you can also do through those clients without changing semantics.
 
+{% hint style="info" %}
+The HTTP API is the contract. Every other surface — Python, TypeScript, CLI, MCP — is a thin, faithful client over it. If you understand the endpoints below, you understand all of them.
+{% endhint %}
+
 ## Base URL
 
 Every request targets one base URL. There is no global default that points at someone else's data; you choose explicitly.
@@ -17,7 +21,7 @@ Every request targets one base URL. There is no global default that points at so
 
 All routes live under `/v1`. A few operational routes are unversioned (`/metrics`, `/v1/health/ready` for liveness/readiness, `/docs`, `/redoc`, `/openapi.json`).
 
-```bash
+```bash title="env.sh"
 export ALGENTA_BASE_URL="https://api.algenta.ai"   # or http://localhost:8000
 export ALGENTA_API_KEY="de_live_..."
 ```
@@ -30,38 +34,51 @@ The interactive OpenAPI explorer is served from the running instance at `/docs` 
 
 Authenticate with a bearer API key:
 
-```
+```http
 Authorization: Bearer ${ALGENTA_API_KEY}
 ```
 
 Live keys are prefixed `de_live_` and test keys `de_test_`. A legacy `X-API-Key:` header is also accepted for older clients, but `Authorization: Bearer` is the canonical scheme.
 
-```bash
-curl -sS "${ALGENTA_BASE_URL}/v1/me" \
-  -H "Authorization: Bearer ${ALGENTA_API_KEY}"
-```
+The SDKs read the key from the environment automatically. The variable is `ALGENTA_API_KEY` (the older `DE_API_KEY` still works).
 
-The SDKs read the key from the environment automatically. The variable is `ALGENTA_API_KEY` (the older `DE_API_KEY` still works):
-
-```python
+{% tabs %}
+{% tab title="Python" %}
+```python title="auth.py"
 import os
 from decision_engine import AlgentaClient
 
 client = AlgentaClient(api_key=os.environ["ALGENTA_API_KEY"])
 me = client.get_contract()  # GET /v1/meta/contract
 ```
+{% endtab %}
 
-```typescript
+{% tab title="TypeScript" %}
+```typescript title="auth.ts"
 import { AlgentaClient } from "algenta-sdk";
 
 const client = new AlgentaClient({ apiKey: process.env.ALGENTA_API_KEY });
 const contract = await client.getContract();
 ```
+{% endtab %}
+
+{% tab title="cURL" %}
+```bash
+curl -sS "${ALGENTA_BASE_URL}/v1/me" \
+  -H "Authorization: Bearer ${ALGENTA_API_KEY}"
+```
+{% endtab %}
+{% endtabs %}
+
+{% hint style="warning" %}
+Treat `de_live_` keys as secrets. Keep them in environment variables or a secrets manager, never in source control. Use `de_test_` keys for development and CI.
+{% endhint %}
 
 ### Device headers for capped keys
 
 Some keys are bound to a device (for example, an installed runtime or a capped seat). When a request is made with such a key, the engine requires device-identity headers and a binding token. Sending them yourself is only necessary if you are calling the API directly; the SDKs and CLI manage device binding for you.
 
+{% expandable title="Advanced: device-identity headers for bound keys" %}
 | Header | Meaning |
 | --- | --- |
 | `X-Algenta-Device-Id` | Stable device identifier (minimum 16 characters). |
@@ -81,6 +98,7 @@ curl -sS "${ALGENTA_BASE_URL}/v1/simulate" \
 ```
 
 On the first bound request the engine issues a fresh `X-Algenta-Device-Binding-Token` in the response headers; store it and send it on subsequent calls. If a device header is missing, the error body names the exact `required_header`.
+{% endexpandable %}
 
 ## Discovery endpoints
 
@@ -93,24 +111,54 @@ Before hardcoding anything, ask the instance what it is and what it supports. Th
 | `GET /v1/runtime/manifest` | Signed runtime manifest describing the engine build. |
 | `GET /v1/models` | The LLM utility-model catalog this instance can actually execute. |
 
-```bash
-# Is it up?
-curl -sS "${ALGENTA_BASE_URL}/v1/health"
+Run the bootstrap sequence in order: confirm the instance is up, learn what it supports, confirm the build, then read the model catalog.
 
-# What does it support? (drives the SDKs)
+{% stepper %}
+{% step %}
+### Confirm the instance is up
+
+No auth required. A healthy instance returns `{ "status": "ok", "timestamp": ... }`.
+
+```bash
+curl -sS "${ALGENTA_BASE_URL}/v1/health"
+```
+{% endstep %}
+
+{% step %}
+### Read the platform contract
+
+This is what drives the SDKs — endpoint families, method names, and governed-filter rules.
+
+```bash
 curl -sS "${ALGENTA_BASE_URL}/v1/meta/contract" \
   -H "Authorization: Bearer ${ALGENTA_API_KEY}"
+```
+{% endstep %}
 
-# Which runtime build is running?
+{% step %}
+### Confirm the runtime build
+
+The signed runtime manifest tells you exactly which engine build is serving requests.
+
+```bash
 curl -sS "${ALGENTA_BASE_URL}/v1/runtime/manifest" \
   -H "Authorization: Bearer ${ALGENTA_API_KEY}"
+```
+{% endstep %}
 
-# Which models can I call here?
+{% step %}
+### Read the model catalog
+
+Discover which LLM utility models you can actually call on this instance.
+
+```bash
 curl -sS "${ALGENTA_BASE_URL}/v1/models" \
   -H "Authorization: Bearer ${ALGENTA_API_KEY}"
 ```
+{% endstep %}
+{% endstepper %}
 
-{% hint style="info" %}
+{% hint style="success" %}
 `GET /v1/models` advertises only models that are truly executable on the instance: runtime-backed or explicitly configured provider-backed. If a model is not listed, calling it will not work. Read the catalog, then route to it.
 {% endhint %}
 
@@ -135,8 +183,28 @@ The full, current set is always available at `/openapi.json` and described machi
 
 ## Request and response shape
 
-Requests and responses are JSON. Send `Content-Type: application/json` on bodies. A typical write — an auto-mode simulation:
+Requests and responses are JSON. Send `Content-Type: application/json` on bodies. A typical write is an auto-mode simulation — here is the same call across HTTP and the SDKs.
 
+{% tabs %}
+{% tab title="Python" %}
+```python title="simulate.py"
+envelope = client.simulate({
+    "mode": "auto",
+    "simulation_model": "monte_carlo",
+    "scenario": {
+        "name": "Product launch decision",
+        "variables": {
+            "revenue": {"low": 80000, "high": 200000},
+            "cost": {"low": 40000, "high": 90000},
+        },
+        "objective": "maximize_net_value",
+    },
+    "runs": 10000,
+})
+```
+{% endtab %}
+
+{% tab title="cURL" %}
 ```bash
 curl -sS "${ALGENTA_BASE_URL}/v1/simulate" \
   -H "Authorization: Bearer ${ALGENTA_API_KEY}" \
@@ -155,24 +223,8 @@ curl -sS "${ALGENTA_BASE_URL}/v1/simulate" \
     "runs": 10000
   }'
 ```
-
-The same call through the SDK:
-
-```python
-envelope = client.simulate({
-    "mode": "auto",
-    "simulation_model": "monte_carlo",
-    "scenario": {
-        "name": "Product launch decision",
-        "variables": {
-            "revenue": {"low": 80000, "high": 200000},
-            "cost": {"low": 40000, "high": 90000},
-        },
-        "objective": "maximize_net_value",
-    },
-    "runs": 10000,
-})
-```
+{% endtab %}
+{% endtabs %}
 
 Successful responses carry the resource shape documented for each endpoint (for `/v1/simulate`, a decision envelope with `expected_value`, `percentiles`, `recommended_action`, `confidence`, `execution_ms`, and a structured `decision_plan`). Every response includes a `request_id` you can quote in support requests.
 
@@ -180,7 +232,7 @@ Successful responses carry the resource shape documented for each endpoint (for 
 
 Every error — auth, validation, not found, rate limit, server — is returned in one envelope:
 
-```json
+```json title="error.json"
 {
   "error": {
     "code": "invalid_api_key",
@@ -199,6 +251,9 @@ Every error — auth, validation, not found, rate limit, server — is returned 
 | 429 | rate limit / quota exceeded | Slow down or upgrade your plan. |
 | 500 | `internal_error` | Unexpected server error; quote the `request_id`. |
 
+{% expandable title="Example: a 422 validation error with field-level details" %}
+On a validation failure the `details` array names each offending `field` and the `issue`, so you can map errors back to your request precisely.
+
 ```json
 {
   "error": {
@@ -212,34 +267,60 @@ Every error — auth, validation, not found, rate limit, server — is returned 
   }
 }
 ```
+{% endexpandable %}
 
-{% hint style="info" %}
+{% hint style="warning" %}
 Branch on `error.code`, not on the human-readable `message`. Codes are stable; messages are not.
 {% endhint %}
 
 ## One contract, many clients
 
-The HTTP API is the contract. The SDKs, the CLI, and MCP are thin, faithful surfaces over it — the method and tool names are themselves published in `/v1/meta/contract`.
+The HTTP API is the contract. The SDKs, the CLI, and MCP are thin, faithful surfaces over it — the method and tool names are themselves published in `/v1/meta/contract`. The same operation looks like this on each surface.
 
-```python
-# Python SDK — direct client over HTTP
+{% tabs %}
+{% tab title="Python" %}
+```python title="list_datasets.py"
 from decision_engine import AlgentaClient
+
 client = AlgentaClient(api_key="de_live_...")
 datasets = client.list_datasets(search="orders", compact=True)
 ```
+{% endtab %}
 
-```typescript
-// TypeScript SDK
+{% tab title="TypeScript" %}
+```typescript title="listDatasets.ts"
 import { AlgentaClient } from "algenta-sdk";
+
 const client = new AlgentaClient({ apiKey: "de_live_..." });
 const datasets = await client.listDatasets({ search: "orders", compact: true });
 ```
+{% endtab %}
 
+{% tab title="CLI" %}
 ```bash
-# CLI — same operations
 de contract
 de data list --search orders --compact --limit 10
 de data summary <dataset_id>
 ```
+{% endtab %}
+{% endtabs %}
 
 MCP clients (Claude Desktop, Codex, and other MCP hosts) connect to the same instance at `/mcp/sse` with the matching tools at `/mcp/tools`, exposing tools such as `get_contract`, `list_data`, `query_data`, `route_capabilities`, and `execute_capability`. Whichever surface you choose, you are speaking the same `/v1` contract — pick the one that fits your stack and start from the discovery endpoints above.
+
+## Next steps
+
+{% content-ref url="reference.md" %}
+[reference.md](reference.md)
+{% endcontent-ref %}
+
+{% content-ref url="../authentication.md" %}
+[authentication.md](../authentication.md)
+{% endcontent-ref %}
+
+{% content-ref url="../sdk/python.md" %}
+[python.md](../sdk/python.md)
+{% endcontent-ref %}
+
+{% content-ref url="../sdk/mcp.md" %}
+[mcp.md](../sdk/mcp.md)
+{% endcontent-ref %}
