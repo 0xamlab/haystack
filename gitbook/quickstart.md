@@ -1,5 +1,5 @@
 ---
-icon: rocket-launch
+icon: bolt
 description: Run Algenta end to end in minutes — start the engine, mint an API key, and make your first decision call.
 ---
 

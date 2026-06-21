@@ -1,5 +1,5 @@
 ---
-icon: house
+icon: compass
 description: Algenta is a self-hosted decision engine — deploy it, then integrate over the HTTP API, the Python and TypeScript SDKs, or MCP. Start here to pick your path.
 cover: .gitbook/assets/brand/algenta-hero.png
 coverY: 0
