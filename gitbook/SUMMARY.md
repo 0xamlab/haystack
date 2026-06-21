@@ -25,6 +25,14 @@
 * [Execution ownership & fail-closed](concepts/execution-ownership.md)
 * [Deployment modes & privacy](concepts/deployment-modes.md)
 
+## Guides
+
+* [Make your first query](guides/first-query.md)
+* [Run a decision](guides/run-a-decision.md)
+* [Simulate a scenario](guides/simulate.md)
+* [Query governed data](guides/governed-query.md)
+* [Log decisions & record outcomes](guides/decision-memory.md)
+
 ## SDKs
 
 * [Python SDK](sdk/python.md)
