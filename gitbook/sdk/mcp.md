@@ -1,0 +1,355 @@
+---
+icon: plug
+---
+
+# MCP server
+
+`algenta-mcp` is a Model Context Protocol bridge for Algenta. Install it once, point it at your engine with two environment variables, and your AI assistant gains a governed set of Algenta tools: dataset discovery and exact queries, deterministic utility-model routes, the simplified product helpers, persisted decision memory, and agent runs. This page is the reference for installing, configuring, and connecting the server from Cursor, Claude Desktop, Zed, and HTTP/SSE clients such as OpenWebUI and LibreChat, plus the full catalog of tools it exposes.
+
+## Install
+
+```bash
+pipx install algenta-mcp        # or: pip install algenta-mcp
+```
+
+The package installs a single console script, `algenta-mcp`. It depends on the published `algenta-sdk` for the API client and egress guard, plus the `mcp` protocol library; there is no monorepo dependency.
+
+{% hint style="info" %}
+`algenta-mcp` is a thin client. It calls your Algenta engine over HTTP using your API key. It does not run the engine itself, so the engine (self-hosted or hosted) must be reachable at the configured base URL.
+{% endhint %}
+
+## Configure
+
+Point the server at your deployment with two environment variables:
+
+```bash
+export ALGENTA_BASE_URL="http://localhost:8000"   # your engine; https://api.algenta.ai for Cloud Managed
+export ALGENTA_API_KEY="<your-api-key>"
+```
+
+`ALGENTA_BASE_URL` and `ALGENTA_API_KEY` are the canonical variables. Legacy `DE_BASE_URL`, `ALGENTA_API_URL`, and `DE_API_KEY` remain accepted for compatibility.
+
+| Variable | Required | Default | Purpose |
+|----------|----------|---------|---------|
+| `ALGENTA_API_KEY` | Yes | — | Bearer credential sent to the engine. Legacy `DE_API_KEY` accepted. |
+| `ALGENTA_BASE_URL` | Self-hosted: yes | `https://api.algenta.ai` (Cloud Managed only) | Engine base URL. Legacy `DE_BASE_URL` / `ALGENTA_API_URL` accepted. |
+| `ALGENTA_MCP_PORT` | No | `8001` | HTTP/SSE listen port. |
+| `ALGENTA_MCP_TIMEOUT` | No | `60` | Per-request read timeout in seconds. |
+| `ALGENTA_MCP_CONNECT_TIMEOUT` | No | `120` | Connect timeout for slow onboarding calls. |
+
+Choose the base URL by deployment mode:
+
+- **Cloud Managed**: `https://api.algenta.ai`. Manage keys at `https://app.algenta.ai/dashboard/api-keys`.
+- **`self_hosted` and `air_gapped`**: set `ALGENTA_BASE_URL` to your own base URL and use the key provisioned by your operator deployment.
+
+{% hint style="warning" %}
+Private profiles fail closed. When cloud is disabled, the server refuses to target an Algenta-owned URL and raises a privacy configuration error rather than silently falling back to Algenta cloud. There is no implicit default base URL in that mode.
+{% endhint %}
+
+## Transports
+
+`algenta-mcp` runs the **stdio** transport by default, which is what local editors expect. For remote agents and web UIs, run the **HTTP/SSE** transport.
+
+```bash
+# stdio (default) — Cursor, Claude Desktop, Zed
+algenta-mcp
+
+# HTTP/SSE — OpenWebUI, LibreChat, n8n, remote agents
+algenta-mcp --mode http --port 8001
+```
+
+`--transport` is an accepted alias for `--mode`. The port resolves from `--port`, then `ALGENTA_MCP_PORT`, then `8001`.
+
+```bash
+# Equivalent invocations
+algenta-mcp --transport http --port 9000
+ALGENTA_MCP_PORT=9000 algenta-mcp --mode http
+```
+
+You can also invoke the module directly, which is convenient for editor configs that prefer an explicit interpreter:
+
+```bash
+python -m algenta_mcp.server --mode http --port 8001
+```
+
+## Connect an editor (stdio)
+
+### Cursor and Claude Desktop
+
+Add the server to your MCP config. The simplest form uses the installed `algenta-mcp` command with the two environment variables.
+
+```json
+{
+  "mcpServers": {
+    "algenta": {
+      "command": "algenta-mcp",
+      "env": {
+        "ALGENTA_BASE_URL": "http://localhost:8000",
+        "ALGENTA_API_KEY": "<your-api-key>"
+      }
+    }
+  }
+}
+```
+
+Config file locations:
+
+| Client | Path |
+|--------|------|
+| Cursor | `~/.cursor/mcp.json` |
+| Claude Desktop (macOS) | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+
+If you prefer an explicit interpreter over the console script, use `python -m algenta_mcp.server`:
+
+```json
+{
+  "mcpServers": {
+    "algenta": {
+      "command": "python",
+      "args": ["-m", "algenta_mcp.server"],
+      "env": {
+        "ALGENTA_API_KEY": "<your-api-key>",
+        "ALGENTA_BASE_URL": "http://localhost:8000"
+      }
+    }
+  }
+}
+```
+
+Restart the client. The `algenta` tools appear in the tools panel. A good first prompt:
+
+> Inspect get_contract(), find the orders dataset with list_data(search='orders', compact=true), inspect its summary, then query completed orders by month for the last 12 months.
+
+### Zed
+
+Add to `~/.config/zed/settings.json`:
+
+```json
+{
+  "context_servers": {
+    "algenta": {
+      "command": {
+        "path": "algenta-mcp",
+        "args": [],
+        "env": {
+          "ALGENTA_API_KEY": "<your-api-key>",
+          "ALGENTA_BASE_URL": "http://localhost:8000"
+        }
+      }
+    }
+  }
+}
+```
+
+## Connect a web UI or remote agent (HTTP/SSE)
+
+Start the HTTP transport:
+
+```bash
+algenta-mcp --mode http --port 8001
+```
+
+If you already run the Algenta API server, the MCP surface is mounted there too:
+
+| Route | Purpose |
+|-------|---------|
+| `GET /mcp/tools` | List tools as JSON. Always available, no auth required. |
+| `GET /mcp/sse` | SSE connection endpoint. |
+| `POST /mcp/messages` | Message handler. |
+
+```bash
+curl -s http://localhost:8000/mcp/tools | jq '.tools | length'
+```
+
+{% hint style="info" %}
+The SSE and message routes require the optional MCP transport dependencies. If they are not installed, the API still mounts all three routes, `GET /mcp/tools` stays available, and the two transport routes return `503` with `error.code = "mcp_transport_unavailable"` plus a hint to install `requirements-mcp.txt`.
+{% endhint %}
+
+### n8n
+
+1. Add an **MCP Client** node.
+2. Set **Transport** to `SSE`.
+3. Set **URL** to `<ALGENTA_BASE_URL>/mcp/sse`.
+4. Set **Header** to `Authorization: Bearer <ALGENTA_API_KEY>`.
+
+### LangChain / LangGraph
+
+```python
+from langchain_mcp_adapters.client import MultiServerMCPClient
+
+client = MultiServerMCPClient({
+    "algenta": {
+        "url": "http://localhost:8001/mcp/sse",
+        "transport": "sse",
+    }
+})
+
+tools = await client.get_tools()
+```
+
+## Tool catalog
+
+The server exposes one MCP tool per capability. Tool names, descriptions, and input schemas are returned by `GET /mcp/tools` and by the MCP `list_tools` call. The core groups below cover the primary data, utility-model, product, and decision-memory lanes.
+
+### Discovery and data
+
+| Tool | Description |
+|------|-------------|
+| `get_contract` | Machine-readable Algenta contract for tool/API/SDK discovery. |
+| `connect_data` | High-level dataset onboarding. Connect once and get a reusable `dataset_id`. |
+| `list_data` | Canonical dataset discovery. Supports `search`, `status`, `source_name`, and `compact`. |
+| `get_data_summary` | Low-token summary for a dataset before loading the full schema. |
+| `get_data_schema` | Full schema, roles, formulas, and query hints for a dataset. |
+| `query_data` | Governed exact query over a chosen dataset. |
+| `query_batch` | Governed multi-metric exact query in one API call. |
+| `query_sql_report` | Constrained read-only SQL rowset over authorized datasets. |
+
+### Utility models
+
+| Tool | Description |
+|------|-------------|
+| `list_models` | Truthful model catalog with routed provider targets, failover policy, timeout budgets, and auth-header readiness. |
+| `resolve_artifact_bridge` | Resolve one Hugging Face artifact path through the cache-safe compatibility bridge. |
+| `tokenize` | Deterministic tokenizer utility route. |
+| `count_tokens` | Deterministic token-count utility route. |
+| `chat_completions` | Tokenizer-backed utility chat contract. |
+| `responses` | Unified deterministic utility response surface. |
+| `embeddings` | Deterministic lexical embedding route. |
+| `embedding_similarity` | Score caller-supplied vectors with a supported similarity model. |
+| `rerank` | Rank caller-supplied document embeddings deterministically. |
+
+### Simplified product helpers
+
+| Tool | Description |
+|------|-------------|
+| `product_decision` | Run the product decision helper and return the chosen action plus risk summary. |
+| `product_agent_run` | Run the product task-execution helper and return a compact task result. |
+| `product_optimize` | Run the product optimization helper and return the best variable values. |
+| `product_retrieve` | Run the product retrieval helper over caller-supplied documents or a collection id. |
+| `product_forecast` | Run the product forecast helper over a historical metric series. |
+
+### Decision memory
+
+| Tool | Description |
+|------|-------------|
+| `plan_decision` | Return the structured DecisionPlan without the full decision envelope. |
+| `log_decision` | Persist one decision-memory record for later outcome review. |
+| `list_decisions` | List persisted decision-memory records with optional outcome-only filtering. |
+| `get_decision` | Fetch one persisted decision-memory record by id. |
+
+{% hint style="info" %}
+The server exposes more tools than the groups above — including agent-run lifecycle, simulations, async jobs, triggers, connectors, repository intelligence, deployments, billing, team, and execution-policy tools. Enumerate the live set for your deployment with `curl -s $ALGENTA_BASE_URL/mcp/tools | jq -r '.tools[].name'`.
+{% endhint %}
+
+## Recommended data flow
+
+The tools are designed to be chained low-token first, then exact:
+
+1. `get_contract()` to discover capabilities.
+2. `list_data(search=..., compact=true)` for low-token dataset discovery.
+3. `get_data_summary(dataset_id)` before paying for the full schema.
+4. `get_data_schema(dataset_id)` only when you need the full schema payload.
+5. `query_data(dataset_id=...)` for a single governed exact query.
+6. `query_batch(...)` for multi-metric governed exact queries.
+7. `query_sql_report(...)` only for wide read-only rowsets.
+
+{% hint style="info" %}
+The governed filter behind `query_data` and `query_batch` is a record-predicate contract over normalized rows, not SQL. The same tool contract therefore applies to SQL backends, Redis snapshots, files, and API-fed data. The operator families and validation rules are exposed through `get_contract()` under `primary_data_query_contract.governed_filter_contract`.
+{% endhint %}
+
+## What the tools call
+
+Each MCP tool maps to a single authenticated Algenta API endpoint. Because the mapping is one-to-one, you can call the same endpoints directly to verify behavior outside an MCP client. The table lists representative tools and their endpoints.
+
+| Tool | Method | Endpoint |
+|------|--------|----------|
+| `get_contract` | `GET` | `/v1/meta/contract` |
+| `connect_data` | `POST` | `/v1/data/connect` |
+| `list_data` | `GET` | `/v1/data` |
+| `get_data_summary` | `GET` | `/v1/data/{dataset_id}/summary` |
+| `get_data_schema` | `GET` | `/v1/data/{dataset_id}` |
+| `query_data` | `POST` | `/v1/query` |
+| `query_batch` | `POST` | `/v1/query/batch` |
+| `query_sql_report` | `POST` | `/v1/query/sql-report` |
+| `list_models` | `GET` | `/v1/models` |
+| `tokenize` | `POST` | `/v1/tokenize` |
+| `count_tokens` | `POST` | `/v1/count_tokens` |
+| `embeddings` | `POST` | `/v1/embeddings` |
+| `product_decision` | `POST` | `/v1/decision` |
+| `product_forecast` | `POST` | `/v1/forecast` |
+| `plan_decision` | `POST` | `/v1/decisions/plan` |
+| `log_decision` | `POST` | `/v1/decisions` |
+| `list_decisions` | `GET` | `/v1/decisions` |
+| `get_decision` | `GET` | `/v1/decisions/{decision_id}` |
+
+### Verify the mapping with curl
+
+Discover datasets the same way `list_data(search="orders", compact=true)` does:
+
+```bash
+curl -s "$ALGENTA_BASE_URL/v1/data?search=orders&compact=true" \
+  -H "Authorization: Bearer $ALGENTA_API_KEY" | jq '.datasets[].dataset_id'
+```
+
+Count tokens the same way `count_tokens` does:
+
+```bash
+curl -s "$ALGENTA_BASE_URL/v1/count_tokens" \
+  -H "Authorization: Bearer $ALGENTA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"input": "the quick brown fox", "model": "text.tokenizer"}'
+```
+
+Run the product decision helper the same way `product_decision` does:
+
+```bash
+curl -s "$ALGENTA_BASE_URL/v1/decision" \
+  -H "Authorization: Bearer $ALGENTA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "objective": "Maximize Q3 margin",
+        "risk_tolerance": "medium",
+        "inputs": [
+          {"name": "revenue", "value": 500000, "low": 400000, "high": 650000},
+          {"name": "cost", "value": 300000}
+        ]
+      }'
+```
+
+## Direct Python, no MCP client
+
+Because the server is a thin client over the API, you can drive Algenta from plain Python when you do not need an MCP host:
+
+```python
+import os
+import httpx
+
+api_key = os.environ["ALGENTA_API_KEY"]
+base_url = os.environ["ALGENTA_BASE_URL"]
+
+resp = httpx.post(
+    f"{base_url}/v1/forecast",
+    headers={"Authorization": f"Bearer {api_key}"},
+    json={"metric": "mrr", "history": [100, 110, 121, 133], "horizon": 3},
+)
+print(resp.json())
+```
+
+## Security notes
+
+- **stdio** runs locally. Your API key stays in the editor process environment.
+- **HTTP/SSE** authenticates downstream to the Algenta API with your key. Put your own gateway (API gateway or Nginx) in front of the MCP HTTP port in production.
+- `GET /mcp/tools` is a public list endpoint and exposes no sensitive data. Every actual tool call requires `ALGENTA_API_KEY` (or legacy `DE_API_KEY`).
+- Error messages and logs scrub key material, so a misbehaving upstream that reflects a credential cannot leak it through an MCP error.
+
+## Troubleshooting
+
+| Symptom | Resolution |
+|---------|------------|
+| `ALGENTA_API_KEY / DE_API_KEY environment variables are not set` | Export `ALGENTA_API_KEY` (or pass `Authorization: Bearer <key>` over HTTP) before launching. |
+| `mcp package not installed` | `pip install mcp`. |
+| `API error 401` | Rotate the key at `https://app.algenta.ai/dashboard/api-keys` (Cloud Managed) or in your operator deployment (self-hosted). |
+| `API error 429` | You are over the plan's requests/minute limit. Space out calls or upgrade. |
+| `503 mcp_transport_unavailable` on `/mcp/sse` | Install the optional MCP transport dependencies (`requirements-mcp.txt`). |
+| Tool not showing in Claude Desktop | Check JSON config syntax, restart the client, inspect `~/Library/Logs/Claude/`. |
+| MCP private profile error targeting an Algenta URL | In `self_hosted` / `air_gapped`, set `ALGENTA_BASE_URL` to your own engine; private profiles refuse Algenta-owned URLs. |
