@@ -252,6 +252,8 @@ Every error — auth, validation, not found, rate limit, server — is returned 
 | 429 | rate limit / quota exceeded | Slow down or upgrade your plan. |
 | 500 | `internal_error` | Unexpected server error; quote the `request_id`. |
 
+The complete, generated list of every code the API can return is on [Error codes](errors.md).
+
 {% expandable title="Example: a 422 validation error with field-level details" %}
 On a validation failure the `details` array names each offending `field` and the `issue`, so you can map errors back to your request precisely.
 
@@ -273,6 +275,18 @@ On a validation failure the `details` array names each offending `field` and the
 {% hint style="warning" %}
 Branch on `error.code`, not on the human-readable `message`. Codes are stable; messages are not.
 {% endhint %}
+
+## Conventions
+
+A few patterns hold across the API:
+
+- **Versioning** — all routes are under `/v1`; the path version only changes on a breaking revision.
+- **Pagination** — list endpoints accept `limit`/`offset` and report totals; page until you have what you need.
+- **Idempotency** — mutating calls accept an idempotency key so a retry is safe (a reused key with a different body returns `idempotency_key_conflict`).
+- **Async jobs** — long-running work goes to `POST /v1/jobs`; poll `GET /v1/jobs/{id}` and fetch `GET /v1/jobs/{id}/result`.
+- **Rate limits & quotas** — see [Rate limits & quotas](rate-limits.md); back off with jitter on `429`.
+
+The complete operation list is in the [endpoint reference](reference.md); try any of it live in the [API explorer](explorer.md).
 
 ## One contract, many clients
 

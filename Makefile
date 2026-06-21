@@ -222,12 +222,14 @@ docs-gen:
 	$(REPO_PYTHON) scripts/docs/gen_config_reference.py
 	$(REPO_PYTHON) scripts/docs/gen_error_reference.py
 	$(REPO_PYTHON) scripts/docs/gen_limits_reference.py
+	$(REPO_PYTHON) scripts/docs/gen_openapi_pages.py
 
 ## CI no-drift gate: fail if any generated reference page is stale vs the code
 docs-check:
 	$(REPO_PYTHON) scripts/docs/gen_config_reference.py --check
 	$(REPO_PYTHON) scripts/docs/gen_error_reference.py --check
 	$(REPO_PYTHON) scripts/docs/gen_limits_reference.py --check
+	$(REPO_PYTHON) scripts/docs/gen_openapi_pages.py --check
 
 ## capability-plane-verify: run the focused capability-plane proof bundle across contract, API, MCP, runtime, CLI, and docs
 capability-plane-verify:
