@@ -54,6 +54,8 @@
 
 * [Self-hosting](self-hosting.md)
 * [Configuration reference](configuration.md)
+* [Monitoring & observability](operate/monitoring.md)
+* [Encryption at rest (BYOK)](operate/byok-kms.md)
 * [Licensing & editions](licensing.md)
 * [Plans, billing & credits](billing.md)
 

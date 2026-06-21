@@ -434,6 +434,14 @@ On Fly, set the same durable secrets per app: both apps need `ALGENTA_CONFIG_ENC
 [licensing.md](licensing.md)
 {% endcontent-ref %}
 
+{% content-ref url="operate/monitoring.md" %}
+[monitoring.md](operate/monitoring.md)
+{% endcontent-ref %}
+
+{% content-ref url="operate/byok-kms.md" %}
+[byok-kms.md](operate/byok-kms.md)
+{% endcontent-ref %}
+
 {% content-ref url="troubleshooting.md" %}
 [troubleshooting.md](troubleshooting.md)
 {% endcontent-ref %}

@@ -35,6 +35,8 @@
   "sdk/testing.md": "integration",
   "cli.md": "reference",
   "self-hosting.md": "task",
+  "operate/monitoring.md": "task",
+  "operate/byok-kms.md": "task",
   "licensing.md": "concept",
   "billing.md": "concept",
   "api/overview.md": "index",
