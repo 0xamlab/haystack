@@ -52,7 +52,7 @@ async def get_current_org(
                     "code": "authentication_required",
                     "message": "API key required. Provide X-API-Key header or Authorization: Bearer <key>.",
                     "request_id": getattr(request.state, "request_id", None),
-                    "docs_url": "https://docs.decisionengine.io/errors/authentication_required",
+                    "docs_url": "https://docs.algenta.ai/errors/authentication_required",
                 }
             },
         )
@@ -66,7 +66,7 @@ async def get_current_org(
                     "code": "invalid_api_key",
                     "message": "The API key provided is invalid or has been revoked.",
                     "request_id": getattr(request.state, "request_id", None),
-                    "docs_url": "https://docs.decisionengine.io/errors/invalid_api_key",
+                    "docs_url": "https://docs.algenta.ai/errors/invalid_api_key",
                 }
             },
         )

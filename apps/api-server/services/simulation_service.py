@@ -259,7 +259,7 @@ async def run_simulation(
                 "error": {
                     "code": "engine_error",
                     "message": "The simulation engine encountered an error.",
-                    "docs_url": "https://docs.decisionengine.io/errors/engine_error",
+                    "docs_url": "https://docs.algenta.ai/errors/engine_error",
                 }
             },
         ) from exc

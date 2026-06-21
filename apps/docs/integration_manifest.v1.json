@@ -19,8 +19,7 @@
       "ALGENTA_API_URL"
     ],
     "legacy_domains": [
-      "api.algenta.io",
-      "api.decisionengine.io"
+      "api.algenta.io"
     ],
     "deprecation_window_days": 90
   },
@@ -31,13 +30,11 @@
       "docs.algenta.ai",
       "app.algenta.ai",
       "cdn.algenta.ai",
-      "api.algenta.io",
-      "api.decisionengine.io"
+      "api.algenta.io"
     ],
     "algenta_owned_suffixes": [
       ".algenta.ai",
-      ".algenta.io",
-      ".decisionengine.io"
+      ".algenta.io"
     ],
     "vendor_telemetry_hosts": [
       "sentry.io",

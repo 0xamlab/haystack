@@ -160,7 +160,7 @@ def _spend_cap_detail(spent_micros: int, cap_micros: int, period: str) -> dict:
         "spent_usd": round(spent_micros / USD_MICROS, 4),
         "limit_usd": round(cap_micros / USD_MICROS, 2),
         "billing_period": period,
-        "upgrade_url": "https://decisionengine.io/pricing",
+        "upgrade_url": "https://algenta.ai/pricing",
     }
 
 

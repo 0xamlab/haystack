@@ -178,7 +178,7 @@ async def login(
                     "code": "invalid_credentials",
                     "message": "Invalid email or password.",
                     "request_id": getattr(request.state, "request_id", None),
-                    "docs_url": "https://docs.decisionengine.io/errors/invalid_credentials",
+                    "docs_url": "https://docs.algenta.ai/errors/invalid_credentials",
                 }
             },
         )

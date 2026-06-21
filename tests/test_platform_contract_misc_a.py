@@ -19,7 +19,6 @@ def test_manifest_declares_canonical_contract() -> None:
     assert manifest["privacy_registry"]["algenta_owned_suffixes"] == [
         ".algenta.ai",
         ".algenta.io",
-        ".decisionengine.io",
     ]
     assert "api.stripe.com" in manifest["privacy_registry"]["vendor_telemetry_hosts"]
     assert ".home.arpa" in manifest["privacy_registry"]["private_host_suffixes"]

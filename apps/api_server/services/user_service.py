@@ -59,7 +59,7 @@ async def create_user_and_org(
                 "error": {
                     "code": "email_already_exists",
                     "message": f"An account with email '{request.email}' already exists.",
-                    "docs_url": "https://docs.decisionengine.io/errors/email_already_exists",
+                    "docs_url": "https://docs.algenta.ai/errors/email_already_exists",
                 }
             },
         )

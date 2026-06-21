@@ -161,7 +161,7 @@ async def validation_exception_handler(
                 "message": "Request validation failed. Check the 'details' field for specifics.",
                 "details": details,
                 "request_id": request_id,
-                "docs_url": "https://docs.decisionengine.io/errors/validation_error",
+                "docs_url": "https://docs.algenta.ai/errors/validation_error",
             }
         },
     )
@@ -186,7 +186,7 @@ async def generic_exception_handler(request: Request, exc: Exception) -> JSONRes
                 "code": "internal_error",
                 "message": "An unexpected error occurred. Our team has been notified.",
                 "request_id": request_id,
-                "docs_url": "https://docs.decisionengine.io/errors/internal_error",
+                "docs_url": "https://docs.algenta.ai/errors/internal_error",
             }
         },
     )

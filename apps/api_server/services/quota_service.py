@@ -187,7 +187,7 @@ async def check_monthly_quota(
                     "used": used,
                     "limit": limit,
                     "billing_period": period,
-                    "upgrade_url": "https://decisionengine.io/pricing",
+                    "upgrade_url": "https://algenta.ai/pricing",
                 }
             },
         )
@@ -574,7 +574,7 @@ async def check_quota_redis(
                         "used": raw,
                         "limit": limit,
                         "billing_period": period,
-                        "upgrade_url": "https://decisionengine.io/pricing",
+                        "upgrade_url": "https://algenta.ai/pricing",
                     }
                 },
             )

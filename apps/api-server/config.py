@@ -78,7 +78,7 @@ class Settings(BaseSettings):
     smtp_port: int = Field(default=1025)
     smtp_username: str = Field(default="")
     smtp_password: str = Field(default="")
-    email_from: str = Field(default="noreply@decisionengine.io")
+    email_from: str = Field(default="noreply@algenta.ai")
 
     # ─── Webhooks ─────────────────────────────────────────────────────────────
     webhook_signing_secret: str = Field(default="change-me-in-production")
