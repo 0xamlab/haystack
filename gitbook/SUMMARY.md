@@ -37,6 +37,10 @@
 * [Run an agent](guides/agent-runs.md)
 * [Run an async job](guides/async-jobs.md)
 * [Triage a repository](guides/repository-intelligence.md)
+* [Bring your own key (BYOK)](guides/byok.md)
+* [Device binding](guides/device-binding.md)
+* [Run air-gapped](guides/air-gapped.md)
+* [Use Algenta in CI/CD](guides/ci-cd.md)
 
 ## SDKs
 
