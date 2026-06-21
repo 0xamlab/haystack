@@ -81,4 +81,5 @@
 * [Troubleshooting](troubleshooting.md)
 * [Glossary](help/glossary.md)
 * [Quick reference](help/quick-reference.md)
+* [Using these docs with AI](help/ai-access.md)
 * [Changelog](changelog.md)

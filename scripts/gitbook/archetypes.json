@@ -54,5 +54,6 @@
   "troubleshooting.md": "troubleshooting",
   "changelog.md": "reference",
   "help/glossary.md": "reference",
-  "help/quick-reference.md": "reference"
+  "help/quick-reference.md": "reference",
+  "help/ai-access.md": "reference"
 }

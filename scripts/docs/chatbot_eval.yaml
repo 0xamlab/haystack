@@ -1,0 +1,176 @@
+# Chatbot evaluation set for the Algenta documentation.
+#
+# Purpose: an objective, repeatable check that an AI assistant grounded on these
+# docs (via /llms-full.txt or the docs MCP server at /~gitbook/mcp) answers the
+# hard, high-stakes questions correctly.
+#
+# How to run: feed the docs to the model under test (attach llms-full.txt, or
+# connect the docs MCP), ask each `question`, then score the answer:
+#   PASS  iff  every string in `required_facts` appears (case-insensitive)
+#         AND  no string in `prohibited` appears
+#         AND  at least one page in `expected_pages` is cited or is the clear source.
+# The set passes only when every question passes.
+#
+# Fields:
+#   id             stable identifier
+#   question       the user prompt, verbatim
+#   required_facts substrings that MUST appear in a correct answer
+#   prohibited     misconceptions that MUST NOT appear
+#   expected_pages docs pages the answer should be derivable from / cite
+
+evaluations:
+  - id: what-is-algenta
+    question: "What is Algenta, in one paragraph?"
+    required_facts: ["deterministic", "decision", "engine"]
+    prohibited: ["large language model", "it is an LLM", "chatbot framework"]
+    expected_pages: ["overview.md", "concepts.md", "help/glossary.md"]
+
+  - id: run-mojo-engine
+    question: "How do I get the Mojo sidecar engine running on a self-hosted deployment?"
+    required_facts: ["build", "RUNTIME_FALLBACK_MODE", "/v1/infrastructure", "engine_mode"]
+    prohibited: ["pip install mojo", "no build step required"]
+    expected_pages: ["engine/mojo-sidecar.md", "engine/health.md", "concepts/engine.md"]
+
+  - id: mojo-sigill
+    question: "The Mojo build crashes with SIGILL on my CPU. What do I set?"
+    required_facts: ["MOJO_BUILD_MCPU", "x86-64-v3"]
+    prohibited: ["reinstall the OS", "unsupported CPU, give up"]
+    expected_pages: ["engine/mojo-sidecar.md", "troubleshooting.md"]
+
+  - id: install-sdk-only
+    question: "I only want the HTTP client, not the whole engine. What do I install?"
+    required_facts: ["algenta-sdk"]
+    prohibited: ["17GB", "must build Mojo", "Docker Compose is required"]
+    expected_pages: ["engine/filtered-install.md", "install.md", "sdk/python.md"]
+
+  - id: filter-runtime-modules
+    question: "How do I build a smaller engine binary with only some runtime modules?"
+    required_facts: ["MOJO_RUNTIME_MODULE_FILTER"]
+    prohibited: ["you cannot filter modules", "always builds everything"]
+    expected_pages: ["engine/filtered-install.md", "engine/mojo-sidecar.md"]
+
+  - id: device-identity-mismatch
+    question: "What does the error device_identity_mismatch mean and how do I fix it?"
+    required_facts: ["device", "license", "bound", "machine"]
+    prohibited: ["expired API key", "wrong password", "rate limit"]
+    expected_pages: ["guides/device-binding.md", "licensing.md", "troubleshooting.md"]
+
+  - id: air-gapped
+    question: "Can Algenta run fully air-gapped with no outbound network, and how?"
+    required_facts: ["offline", "license", "fail closed", "no phone home"]
+    prohibited: ["requires internet", "must reach Algenta cloud", "phones home"]
+    expected_pages: ["guides/air-gapped.md", "concepts/deployment-modes.md"]
+
+  - id: async-large-job
+    question: "How do I run a 1,000,000-run simulation without the request timing out?"
+    required_facts: ["POST /v1/jobs", "poll", "/v1/jobs/", "result"]
+    prohibited: ["keep the HTTP request open", "synchronous only"]
+    expected_pages: ["guides/async-jobs.md", "api/reference.md"]
+
+  - id: connect-snowflake
+    question: "How do I connect a Snowflake warehouse as a data source?"
+    required_facts: ["connector", "test", "live", "account"]
+    prohibited: ["upload a CSV export", "Snowflake is not supported"]
+    expected_pages: ["connectors/snowflake.md", "connectors/overview.md", "guides/connect-data.md"]
+
+  - id: supported-connectors
+    question: "Which data connector types does Algenta support?"
+    required_facts: ["postgres", "snowflake", "bigquery", "s3", "rest"]
+    prohibited: ["databricks"]
+    expected_pages: ["connectors/reference.md", "connectors/overview.md"]
+
+  - id: byok-provider-key
+    question: "How do I use my own Anthropic API key instead of a platform-pooled one?"
+    required_facts: ["/v1/provider-keys", "encrypted", "backend"]
+    prohibited: ["the key is returned in the response", "stored in plaintext"]
+    expected_pages: ["guides/byok.md", "api/reference.md"]
+
+  - id: encryption-at-rest
+    question: "How are secrets encrypted at rest, and can I supply my own key?"
+    required_facts: ["ALGENTA_CONFIG_ENCRYPTION_KEY", "AES-256-GCM"]
+    prohibited: ["built-in AWS KMS integration", "keys are never encrypted"]
+    expected_pages: ["operate/byok-kms.md", "guides/byok.md"]
+
+  - id: encryption-key-rotation
+    question: "What happens if I change ALGENTA_CONFIG_ENCRYPTION_KEY?"
+    required_facts: ["undecryptable", "re-encrypt", "no key-versioning"]
+    prohibited: ["rotates automatically", "old data migrates by itself"]
+    expected_pages: ["operate/byok-kms.md"]
+
+  - id: agent-run-lifecycle
+    question: "How do I start an agent run and wait for it to finish?"
+    required_facts: ["POST /v1/agent/runs", "status", "completed"]
+    prohibited: ["agent runs are not persisted", "fire and forget only"]
+    expected_pages: ["guides/agent-runs.md", "api/reference.md"]
+
+  - id: repository-triage
+    question: "How do I triage a code repository with Algenta?"
+    required_facts: ["snapshot", "triage", "/v1/repositories/"]
+    prohibited: ["upload your whole repo to a third party", "not supported"]
+    expected_pages: ["guides/repository-intelligence.md"]
+
+  - id: determinism
+    question: "Why is the same Algenta query reproducible, and how do I test that?"
+    required_facts: ["decision_hash", "deterministic", "same"]
+    prohibited: ["results are random", "non-deterministic"]
+    expected_pages: ["sdk/testing.md", "concepts/governed-data.md"]
+
+  - id: rate-limits-source
+    question: "Where do rate limits and quotas come from?"
+    required_facts: ["plan", "limit"]
+    prohibited: ["unlimited for everyone", "no quotas exist"]
+    expected_pages: ["api/rate-limits.md", "billing.md"]
+
+  - id: error-codes
+    question: "How are API errors structured?"
+    required_facts: ["error", "code", "message"]
+    prohibited: ["plain text only", "errors have no codes"]
+    expected_pages: ["api/errors.md", "api/overview.md"]
+
+  - id: auth
+    question: "How do I authenticate an API request?"
+    required_facts: ["Authorization: Bearer", "API key"]
+    prohibited: ["username and password", "no authentication needed"]
+    expected_pages: ["authentication.md", "api/overview.md"]
+
+  - id: monitoring-metrics
+    question: "How do I scrape Prometheus metrics from a self-hosted Algenta?"
+    required_facts: ["/metrics", "X-Metrics-Secret"]
+    prohibited: ["metrics are sent to Datadog", "no metrics endpoint"]
+    expected_pages: ["operate/monitoring.md"]
+
+  - id: no-phone-home
+    question: "Does Algenta send telemetry to Sentry, Datadog, or PostHog?"
+    required_facts: ["no", "self-hosted", "structlog"]
+    prohibited: ["yes, it uses Sentry", "telemetry is sent to Datadog"]
+    expected_pages: ["operate/monitoring.md", "concepts/deployment-modes.md"]
+
+  - id: simulate
+    question: "How do I run a Monte Carlo simulation of a scenario?"
+    required_facts: ["POST /v1/simulate", "distribution"]
+    prohibited: ["simulation is not supported"]
+    expected_pages: ["guides/simulate.md", "concepts/simulation-models.md"]
+
+  - id: governed-query
+    question: "What makes a query governed and auditable?"
+    required_facts: ["contract", "schema", "deterministic"]
+    prohibited: ["queries run arbitrary SQL with no checks"]
+    expected_pages: ["guides/governed-query.md", "concepts/governed-data.md"]
+
+  - id: decision-memory
+    question: "How do I log a decision and record its outcome later?"
+    required_facts: ["log", "decision", "outcome"]
+    prohibited: ["decisions cannot be recorded"]
+    expected_pages: ["guides/decision-memory.md", "concepts/decision-memory.md"]
+
+  - id: cli
+    question: "How do I run a decision from the terminal?"
+    required_facts: ["de ", "API key"]
+    prohibited: ["there is no CLI"]
+    expected_pages: ["cli.md", "guides/ci-cd.md"]
+
+  - id: docs-for-ai
+    question: "How can I point my own AI assistant at the Algenta docs?"
+    required_facts: ["llms-full.txt", "MCP"]
+    prohibited: ["scrape the HTML", "no machine-readable docs"]
+    expected_pages: ["help/ai-access.md"]

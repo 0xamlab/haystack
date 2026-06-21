@@ -20,6 +20,11 @@ A full documentation refresh on a shared, audited docs system — plus a simpler
 
 - A live, interactive [API explorer](api/explorer.md) — set your key and base URL, then call every endpoint from the browser.
 - A friendlier, help-center-style [Troubleshooting](troubleshooting.md) page: a quick-fix table plus expandable cards by symptom.
+- A [Connectors](connectors/overview.md) section — overview, full reference, and per-source guides (Snowflake, BigQuery, ClickHouse, REST).
+- Agentic and long-running guides: [run an agent](guides/agent-runs.md), [async jobs](guides/async-jobs.md), and [repository intelligence](guides/repository-intelligence.md).
+- Deploy-and-integrate guides: [BYOK](guides/byok.md), [device binding](guides/device-binding.md), [air-gapped](guides/air-gapped.md), and [CI/CD](guides/ci-cd.md).
+- [Testing with Algenta](sdk/testing.md) and deeper SDK coverage, plus operate guides for [monitoring](operate/monitoring.md) and [encryption at rest](operate/byok-kms.md).
+- [Using these docs with AI](help/ai-access.md) — the `llms.txt` context files, per-page Markdown, and the docs MCP server.
 
 **Improved**
 
