@@ -8,7 +8,7 @@ description: Get the Mojo engine running as a warm worker pool (sidecar) — Doc
 The **Mojo engine** is the compiled binary (`mojo_build/simulate`) that runs Algenta's simulations. In production the API talks to a **pool of long-lived Mojo workers** over local sockets — the "sidecar" — instead of forking a process per request. Getting that pool up and confirmed-healthy is the single most important step in a self-hosted deployment, and the one most likely to trip you up. This page gets you there.
 
 {% hint style="info" %}
-Most users never build the binary: the Docker image **ships it pre-compiled**, so `./install.sh` just works. Build from source only for local engine development or a custom module set (selecting which runtime modules to compile via `MOJO_RUNTIME_MODULE_FILTER`).
+Most users never build the binary: the Docker image **ships it pre-compiled**, so `./install.sh` just works. Build from source only for local engine development or a custom module set — see [Filtered & selective install](filtered-install.md).
 {% endhint %}
 
 ## Prerequisites
@@ -130,6 +130,10 @@ The requested simulation engine wasn't compiled into the binary. Either it was f
 
 {% content-ref url="health.md" %}
 [health.md](health.md)
+{% endcontent-ref %}
+
+{% content-ref url="filtered-install.md" %}
+[filtered-install.md](filtered-install.md)
 {% endcontent-ref %}
 
 {% content-ref url="../concepts/engine.md" %}

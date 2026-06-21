@@ -12,6 +12,7 @@
 ## Run the engine
 
 * [Run the Mojo engine](engine/mojo-sidecar.md)
+* [Filtered & selective install](engine/filtered-install.md)
 * [Engine health & verification](engine/health.md)
 * [How the engine works](concepts/engine.md)
 
