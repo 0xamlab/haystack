@@ -19,303 +19,52 @@ layout:
     visible: true
 ---
 
-# What Algenta is
+# Simulate. Decide. Prove.
 
-This page explains what Algenta is, where it sits in your stack, and how you talk to it. By the end you will know the four ways to reach the engine — HTTP API, the `algenta-core` Runtime, the `algenta-sdk` clients, and the `algenta-mcp` server — and you will have copy-pasteable examples for each. When you are ready to run it, the Install and Quickstart pages take over.
+Algenta is a deterministic decision engine you run yourself — feed it scenarios and governed data, get decisions you can audit, reached over the HTTP API, the SDKs, or MCP.
 
-## Algenta is the engine, not an app
+## Start here
 
-Algenta is the **engine**. It is a local-first, deterministic **computational intelligence runtime**: a large library of mathematical and operational functions and high-performance libraries, plus simulation, decision planning, an agent runtime, decision memory, and governed execution. All of it sits behind one universal surface — **API / SDK / MCP** — with metering, auth, BYOK, and enterprise controls built in.
+<table data-view="cards">
+<thead><tr><th></th><th></th><th data-hidden data-card-target data-type="content-ref"></th></tr></thead>
+<tbody>
+<tr><td><strong>Run your first decision</strong></td><td>Install the engine, mint a key, and make your first call in minutes.</td><td><a href="quickstart.md">quickstart.md</a></td></tr>
+</tbody>
+</table>
 
-You do not adopt Algenta as a finished vertical product. You deploy the engine and integrate against it. Specialized products are surfaces on top of the one engine.
+## Build with Algenta
 
-{% hint style="info" %}
-**Official position.** Algenta is a self-hosted decision engine you deploy on your infrastructure. Integrate via API or SDK. Run locally for development if needed.
-{% endhint %}
+<table data-view="cards">
+<thead><tr><th></th><th></th><th data-hidden data-card-target data-type="content-ref"></th></tr></thead>
+<tbody>
+<tr><td><strong>Python SDK</strong></td><td>A typed client for the engine, plus the in-process runtime.</td><td><a href="sdk/python.md">sdk/python.md</a></td></tr>
+<tr><td><strong>TypeScript SDK</strong></td><td>The same engine from Node and the browser, fully typed.</td><td><a href="sdk/typescript.md">sdk/typescript.md</a></td></tr>
+<tr><td><strong>MCP / IDE</strong></td><td>Give Cursor or Claude Desktop direct access to the engine.</td><td><a href="sdk/mcp.md">sdk/mcp.md</a></td></tr>
+</tbody>
+</table>
 
-## What lives inside the engine
+## Deploy and operate
 
-A single backend and runtime core powers every surface:
+<table data-view="cards">
+<thead><tr><th></th><th></th><th data-hidden data-card-target data-type="content-ref"></th></tr></thead>
+<tbody>
+<tr><td><strong>Self-host the engine</strong></td><td>Run Algenta on your own infrastructure in one command.</td><td><a href="self-hosting.md">self-hosting.md</a></td></tr>
+<tr><td><strong>Authenticate requests</strong></td><td>Mint, scope, and rotate API keys; bind devices.</td><td><a href="authentication.md">authentication.md</a></td></tr>
+<tr><td><strong>Licensing</strong></td><td>Offline RS256 licenses, capacity, and product entitlements.</td><td><a href="licensing.md">licensing.md</a></td></tr>
+</tbody>
+</table>
 
-| Capability | What it does |
-| --- | --- |
-| Math / operational libraries | A large catalog of deterministic functions and high-performance libraries, addressable by name. |
-| Simulation | Monte Carlo simulation returning a structured decision envelope (`POST /v1/simulate`). |
-| Decision planning | Structured `DecisionPlan` and decision envelopes. |
-| Agent runtime | Persisted agent runs with events, checkpoints, telemetry, and lifecycle control. |
-| Decision memory | Log decisions, record outcomes, and review them later. |
-| Governed execution | Discover, summarize, resolve, verify, and query data under a governed contract. |
+## Understand and explore
 
-Around that core sit the cross-cutting controls every deployment gets: **metering** (each `POST /v1/simulate` consumes one simulation from your quota), **auth** (API keys, optional device binding), **BYOK** (bring your own provider keys), and **enterprise controls** (air-gapped profile, telemetry disable, operator proof endpoints).
-
-## The four surfaces
-
-Pick the surface that fits your caller. They all reach the same engine and honor the same governance and metering.
-
-{% hint style="success" %}
-Every surface is interchangeable at the contract level. Start with the HTTP API to prove the engine is reachable, then move your callers to the SDK, Runtime, or MCP without changing the underlying governance or metering behavior.
-{% endhint %}
-
-### 1. HTTP API (`/v1`)
-
-The default integration surface. Every route is versioned under `/v1`. No SDK or Python install required.
-
-```bash title="health-check.sh"
-# Health check — confirm the engine is up
-curl http://localhost:8000/v1/health
-```
-
-Run your first decision with a single `POST`:
-
-{% tabs %}
-{% tab title="cURL" %}
-```bash title="first-decision.sh"
-# Run your first decision
-curl -X POST http://localhost:8000/v1/simulate \
-  -H "Authorization: Bearer ${ALGENTA_API_KEY}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "mode": "auto",
-    "scenario": {
-      "variables": {
-        "revenue": { "low": 80000, "high": 200000 },
-        "cost": { "low": 30000, "high": 90000 }
-      },
-      "objective": "maximize_net_value"
-    },
-    "runs": 10000,
-    "seed": 42
-  }'
-```
-{% endtab %}
-{% endtabs %}
+<table data-view="cards">
+<thead><tr><th></th><th></th><th data-hidden data-card-target data-type="content-ref"></th></tr></thead>
+<tbody>
+<tr><td><strong>How Algenta works</strong></td><td>The engine, runtime, decisions, and simulations — and how the surfaces fit.</td><td><a href="concepts.md">concepts.md</a></td></tr>
+<tr><td><strong>HTTP API</strong></td><td>Base URL, conventions, the full reference, and a live explorer.</td><td><a href="api/overview.md">api/overview.md</a></td></tr>
+<tr><td><strong>Troubleshooting</strong></td><td>Recognizable errors and the shortest fix for each.</td><td><a href="troubleshooting.md">troubleshooting.md</a></td></tr>
+</tbody>
+</table>
 
 {% hint style="info" %}
-The governed data path follows the same versioned shape: `GET /v1/data?search=...&compact=1`, then `GET /v1/data/{dataset_id}/summary`, then `POST /v1/query`.
+You run the Algenta engine yourself and reach it over one universal surface — the HTTP API, the Python and TypeScript SDKs, or the MCP server. See **How Algenta works** for the model and **Self-host the engine** to run it.
 {% endhint %}
-
-### 2. The `algenta-core` Runtime
-
-A high-level Python runtime for governed data/query flows, local runtime control, and local Mojo libraries. The `Runtime` object selects how it reaches the engine via `mode`.
-
-{% tabs %}
-{% tab title="Python" %}
-```python title="runtime_example.py"
-import os
-from algenta import QueryFilterCondition, QueryFilterSpec, Runtime
-
-api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
-if not api_key:
-    raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
-
-rt = Runtime(
-    mode="self_hosted",
-    api_key=api_key,
-    base_url="http://localhost:8000",
-)
-
-datasets = rt.list_datasets(search="orders", compact=True)
-summary = rt.get_dataset_summary(datasets.datasets[0].dataset_id)
-```
-{% endtab %}
-{% endtabs %}
-
-Install the variant that matches your deployment:
-
-```bash title="install.sh"
-pip install algenta-core            # pure local runtime
-pip install "algenta-core[cloud]"   # adds the API-backed transport
-```
-
-| `mode` | Reaches the engine via | Use when |
-| --- | --- | --- |
-| `local` | In-process pure-Python runtime | Development, offline, embedded work. |
-| `self_hosted` | HTTP to your own deployment | Production on your infrastructure. Never falls back to the hosted control plane. |
-| `api` | HTTP to the Algenta cloud control plane | Cloud Managed path. |
-
-{% hint style="warning" %}
-`Runtime(mode="api")` and `Runtime(mode="self_hosted")` fail closed if `algenta-sdk` is not installed. Private profiles (`self_hosted`, `air_gapped`) never silently fall back to Algenta cloud.
-{% endhint %}
-
-### 3. The `algenta-sdk` clients (Python + TypeScript)
-
-Thin, typed clients over the HTTP API. Same name on both languages: `AlgentaClient`.
-
-{% tabs %}
-{% tab title="Python" %}
-```bash
-pip install algenta-sdk
-```
-
-```python title="client_example.py"
-import os
-from decision_engine import AlgentaClient
-
-api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
-client = AlgentaClient(api_key=api_key, base_url="https://api.algenta.ai")
-
-datasets = client.list_datasets(search="orders", compact=True)
-```
-{% endtab %}
-
-{% tab title="TypeScript" %}
-```bash
-npm install algenta-sdk
-```
-
-```typescript title="client-example.ts"
-import { AlgentaClient } from 'algenta-sdk';
-
-const apiKey = process.env.ALGENTA_API_KEY ?? process.env.DE_API_KEY;
-if (!apiKey) {
-  throw new Error('Set ALGENTA_API_KEY or DE_API_KEY before running this example.');
-}
-
-const client = new AlgentaClient({ apiKey });
-const result = await client.simulate({
-  mode: 'auto',
-  scenario: {
-    variables: { revenue: { low: 80000, high: 200000 } },
-    objective: 'maximize_net_value',
-  },
-});
-console.log(result.recommended_action, result.confidence);
-```
-{% endtab %}
-{% endtabs %}
-
-{% expandable title="Also available: the de CLI" %}
-The Python SDK ships the `de` CLI for the same surface:
-
-```bash title="de-cli.sh"
-de contract
-de data list --search orders --compact --limit 5
-de data summary orders_facts
-de runtime execute rerank_eval hit_rate_at_k --args-json '[[1,0,1,1,0],5]' --format json
-```
-{% endexpandable %}
-
-### 4. The `algenta-mcp` server
-
-A Model Context Protocol bridge so AI agents can reach governed datasets, exact queries, simulations, decision memory, and agent runs as tools. Point it at any Algenta deployment.
-
-{% stepper %}
-{% step %}
-### Install the server
-
-```bash title="install-mcp.sh"
-pipx install algenta-mcp        # or: pip install algenta-mcp
-```
-{% endstep %}
-
-{% step %}
-### Choose a transport
-
-`algenta-mcp` runs the **stdio** transport by default (Cursor, Claude Desktop). For HTTP/SSE clients use:
-
-```bash
-algenta-mcp --mode http --port 8001
-```
-{% endstep %}
-
-{% step %}
-### Register it with your client
-
-Point the server at any Algenta deployment via environment variables:
-
-```json title="mcp-config.json"
-{
-  "mcpServers": {
-    "algenta": {
-      "command": "algenta-mcp",
-      "env": {
-        "ALGENTA_BASE_URL": "http://localhost:8000",
-        "ALGENTA_API_KEY": "de_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-      }
-    }
-  }
-}
-```
-{% endstep %}
-{% endstepper %}
-
-## What Algenta is not
-
-Knowing the boundaries keeps your architecture honest. Algenta is **not**:
-
-- an LLM-to-SQL generator
-- a semantic-model-first BI layer
-- an agent framework
-- a `pip install` product pretending to be a platform
-
-It is a deterministic execution engine you deploy and integrate against.
-
-## Products that consume the SDK
-
-Specialized products are surfaces on top of the one engine. Each lives in its own repository and talks to Algenta over the API/SDK — they are not the engine itself.
-
-| Product | Domain |
-| --- | --- |
-| **Codna** | Coding — repository intelligence: triage, fix / PR-repair, blast-radius, simulate. |
-| **Mission** | API-first local integration (the `:8000` API + MCP stack). |
-| **Cohenta** | Marketing intelligence. |
-| **Decimas** | Trading / market simulation. |
-| **Escrypto** | Crypto governance. |
-
-{% hint style="info" %}
-One plugin platform, multiple editions — not multiple codebases.
-{% endhint %}
-
-## Deployment defaults
-
-Self-hosted is the default. Cloud is optional.
-
-| Setting | Effect |
-| --- | --- |
-| `api + worker + postgres + redis + object storage` | The self-hosted service stack, deployed with Docker Compose. |
-| `ALGENTA_DEPLOYMENT_MODE=air_gapped` | Strict privacy profile. |
-| `ALGENTA_DISABLE_TELEMETRY=1` | Disables outbound/vendor telemetry; keeps local audit. |
-| `ALGENTA_API_PUBLIC_BASE_URL` / `ALGENTA_APP_BASE_URL` | Control user-facing self-hosted links without cloud fallback. |
-| `GET /v1/admin/privacy-report` | The operator proof endpoint. |
-
-{% hint style="success" %}
-Self-hosted by default, cloud optional. The local `Runtime()` path is a development and embedded surface; the self-hosted service is the primary product contract.
-{% endhint %}
-
-## Next steps
-
-{% stepper %}
-{% step %}
-### Install
-
-Deploy the engine on your infrastructure. The fastest start is:
-
-```bash
-curl -sSL https://algenta.ai/install.sh | bash
-```
-
-This prints the API URL, a bootstrap API key, and a ready-to-run `POST /v1/simulate` example.
-{% endstep %}
-
-{% step %}
-### Quickstart
-
-Verify with `GET /v1/health`, then run your first decision through `POST /v1/simulate` or your first governed query through the `/v1/data` flow.
-{% endstep %}
-{% endstepper %}
-
-{% content-ref url="install.md" %}
-[install.md](install.md)
-{% endcontent-ref %}
-
-{% content-ref url="quickstart.md" %}
-[quickstart.md](quickstart.md)
-{% endcontent-ref %}
-
-{% content-ref url="concepts.md" %}
-[concepts.md](concepts.md)
-{% endcontent-ref %}
-
-{% content-ref url="self-hosting.md" %}
-[self-hosting.md](self-hosting.md)
-{% endcontent-ref %}
