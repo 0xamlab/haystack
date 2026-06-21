@@ -34,6 +34,9 @@
 * [Log decisions & record outcomes](guides/decision-memory.md)
 * [Connect a data source](guides/connect-data.md)
 * [Route & execute capabilities](guides/capabilities.md)
+* [Run an agent](guides/agent-runs.md)
+* [Run an async job](guides/async-jobs.md)
+* [Triage a repository](guides/repository-intelligence.md)
 
 ## SDKs
 
