@@ -57,6 +57,15 @@
 * [Error codes](api/errors.md)
 * [Rate limits & quotas](api/rate-limits.md)
 
+## Connectors
+
+* [Connectors overview](connectors/overview.md)
+* [Connectors reference](connectors/reference.md)
+* [Snowflake](connectors/snowflake.md)
+* [BigQuery](connectors/bigquery.md)
+* [ClickHouse](connectors/clickhouse.md)
+* [REST API](connectors/rest-api.md)
+
 ## Help
 
 * [Troubleshooting](troubleshooting.md)
