@@ -113,6 +113,9 @@ jobs:
       - name: Verify GitBook v1 docs pack
         run: make docs-gitbook-verify
 
+      - name: Verify generated docs references are current (no drift)
+        run: make docs-check
+
       # Start MinIO (object store) and wait for it + Dragonfly so the s3 / coordination integration
       # runs against ready backends. MinIO needs the `server /data` arg, which GitHub service
       # containers can't pass, so it's launched here via docker run.

@@ -35,6 +35,7 @@
 ## Deploy & Operate
 
 * [Self-hosting](self-hosting.md)
+* [Configuration reference](configuration.md)
 * [Licensing & editions](licensing.md)
 * [Plans, billing & credits](billing.md)
 
@@ -43,6 +44,8 @@
 * [API overview](api/overview.md)
 * [API endpoint reference](api/reference.md)
 * [API explorer (live)](api/explorer.md)
+* [Error codes](api/errors.md)
+* [Rate limits & quotas](api/rate-limits.md)
 
 ## Help
 

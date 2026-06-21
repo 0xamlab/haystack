@@ -1,4 +1,4 @@
-.PHONY: dev dev-api dev-local dev-up dev-build down logs seed self-host-smoke self-host-persistence-proof self-host-install-proof self-host-endpoint-matrix self-host-status self-host-verify docs-gitbook-status docs-gitbook-pack docs-gitbook-verify capability-plane-verify repository-intelligence-channel-parity \
+.PHONY: dev dev-api dev-local dev-up dev-build down logs seed self-host-smoke self-host-persistence-proof self-host-install-proof self-host-endpoint-matrix self-host-status self-host-verify docs-gitbook-status docs-gitbook-pack docs-gitbook-verify docs-gen docs-check capability-plane-verify repository-intelligence-channel-parity \
         migrate migrate-down migrate-new mcp-setup mcp-stdio mcp-http \
         test test-unit test-integration test-contract test-load \
         lint format typecheck openapi clean help stop-api logs-api-local \
@@ -216,6 +216,18 @@ docs-gitbook-pack:
 
 ## Validate and export the GitBook v1 publishing pack
 docs-gitbook-verify: docs-gitbook-status docs-gitbook-pack
+
+## Regenerate the source-driven docs reference pages (config, errors, rate limits)
+docs-gen:
+	$(REPO_PYTHON) scripts/docs/gen_config_reference.py
+	$(REPO_PYTHON) scripts/docs/gen_error_reference.py
+	$(REPO_PYTHON) scripts/docs/gen_limits_reference.py
+
+## CI no-drift gate: fail if any generated reference page is stale vs the code
+docs-check:
+	$(REPO_PYTHON) scripts/docs/gen_config_reference.py --check
+	$(REPO_PYTHON) scripts/docs/gen_error_reference.py --check
+	$(REPO_PYTHON) scripts/docs/gen_limits_reference.py --check
 
 ## capability-plane-verify: run the focused capability-plane proof bundle across contract, API, MCP, runtime, CLI, and docs
 capability-plane-verify:
