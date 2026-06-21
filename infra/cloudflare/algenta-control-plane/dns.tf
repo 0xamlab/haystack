@@ -17,3 +17,16 @@ resource "cloudflare_record" "control_plane_api" {
   ttl     = 1
   comment = "Algenta control plane API → Fly algenta-control-plane"
 }
+
+# docs.algenta.ai → GitBook (Algenta site). Target confirmed from the org's existing custom
+# domain docs.cohenta.ai, which resolves to hosting.gitbook.io. DNS-only (grey): GitBook
+# terminates TLS and issues the cert once the domain is registered on the Algenta site + published.
+resource "cloudflare_record" "docs" {
+  zone_id = var.algenta_zone_id
+  name    = "docs"
+  type    = "CNAME"
+  content = "hosting.gitbook.io"
+  proxied = false
+  ttl     = 300
+  comment = "Algenta docs → GitBook (hosting.gitbook.io)"
+}

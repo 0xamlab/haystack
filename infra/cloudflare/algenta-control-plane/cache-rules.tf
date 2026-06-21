@@ -23,8 +23,8 @@ resource "cloudflare_ruleset" "control_plane_cache" {
         (starts_with(http.request.uri.path, "/v1/credits")) or
         (starts_with(http.request.uri.path, "/v1/metering")) or
         (starts_with(http.request.uri.path, "/v1/device")) or
-        (eq(http.request.uri.path, "/v1/license/challenge")) or
-        (eq(http.request.uri.path, "/v1/license/renew")) or
+        (http.request.uri.path eq "/v1/license/challenge") or
+        (http.request.uri.path eq "/v1/license/renew") or
         (starts_with(http.request.uri.path, "/v1/control-plane")) or
         (len(http.request.headers["authorization"]) > 0) or
         (len(http.request.headers["cookie"]) > 0)
@@ -42,8 +42,8 @@ resource "cloudflare_ruleset" "control_plane_cache" {
     enabled     = true
     expression  = <<-EOT
       (http.host eq "api.algenta.ai") and (http.request.method eq "GET") and (
-        (eq(http.request.uri.path, "/.well-known/jwks.json")) or
-        (eq(http.request.uri.path, "/v1/license/revocations"))
+        (http.request.uri.path eq "/.well-known/jwks.json") or
+        (http.request.uri.path eq "/v1/license/revocations")
       )
     EOT
     action      = "set_cache_settings"

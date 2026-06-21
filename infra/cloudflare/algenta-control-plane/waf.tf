@@ -18,7 +18,7 @@ resource "cloudflare_ruleset" "control_plane_ratelimit" {
       (http.host eq "api.algenta.ai") and (
         starts_with(http.request.uri.path, "/v1/auth") or
         starts_with(http.request.uri.path, "/auth") or
-        eq(http.request.uri.path, "/v1/device/register")
+        http.request.uri.path eq "/v1/device/register"
       )
     EOT
     action      = "block"
@@ -37,7 +37,7 @@ resource "cloudflare_ruleset" "control_plane_ratelimit" {
     expression  = <<-EOT
       (http.host eq "api.algenta.ai") and
       (starts_with(http.request.uri.path, "/v1/")) and
-      not (eq(http.request.uri.path, "/v1/billing/webhook"))
+      not (http.request.uri.path eq "/v1/billing/webhook")
     EOT
     action      = "block"
     ratelimit {
