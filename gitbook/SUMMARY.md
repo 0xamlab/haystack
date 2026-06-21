@@ -16,6 +16,12 @@
 * [Engine health & verification](engine/health.md)
 * [How the engine works](concepts/engine.md)
 
+## Concepts
+
+* [Governed data & query](concepts/governed-data.md)
+* [The capability plane](concepts/capability-plane.md)
+* [Decision memory](concepts/decision-memory.md)
+
 ## SDKs
 
 * [Python SDK](sdk/python.md)
