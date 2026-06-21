@@ -31,4 +31,6 @@
 ## Help
 
 * [Troubleshooting](troubleshooting.md)
+* [Glossary](help/glossary.md)
+* [Quick reference](help/quick-reference.md)
 * [Changelog](changelog.md)

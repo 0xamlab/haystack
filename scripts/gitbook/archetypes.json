@@ -16,5 +16,7 @@
   "api/reference.md": "reference",
   "api/explorer.md": "reference",
   "troubleshooting.md": "troubleshooting",
-  "changelog.md": "reference"
+  "changelog.md": "reference",
+  "help/glossary.md": "reference",
+  "help/quick-reference.md": "reference"
 }
