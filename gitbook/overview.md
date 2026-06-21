@@ -1,5 +1,22 @@
 ---
 icon: house
+description: Algenta is a self-hosted decision engine — deploy it, then integrate over the HTTP API, the Python and TypeScript SDKs, or MCP. Start here to pick your path.
+cover: .gitbook/assets/brand/algenta-hero.png
+coverY: 0
+layout:
+  cover:
+    visible: true
+    size: hero
+  title:
+    visible: true
+  description:
+    visible: true
+  tableOfContents:
+    visible: false
+  outline:
+    visible: false
+  pagination:
+    visible: true
 ---
 
 # What Algenta is
@@ -213,7 +230,7 @@ Point the server at any Algenta deployment via environment variables:
       "command": "algenta-mcp",
       "env": {
         "ALGENTA_BASE_URL": "http://localhost:8000",
-        "ALGENTA_API_KEY": "<your-api-key>"
+        "ALGENTA_API_KEY": "de_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
       }
     }
   }

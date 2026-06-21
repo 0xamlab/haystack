@@ -1,5 +1,6 @@
 ---
 icon: python
+description: Use Algenta from Python — install algenta-sdk, authenticate, and call the engine with a typed client. Includes runnable examples.
 ---
 
 # Python SDK

@@ -1,5 +1,6 @@
 ---
 icon: js
+description: Use Algenta from TypeScript or JavaScript — install the SDK, authenticate, and call the engine with a typed client. Includes runnable examples.
 ---
 
 # TypeScript SDK

@@ -1,0 +1,24 @@
+{
+  "_comment": "Shared GitBook design system for all Thyn product docs (Codna golden template). Apply with gitbook/apply-customization.py. Per-product brand overrides live in gitbook/products/<product>.json. Fixed across products: visual system, interaction grammar, page archetypes, QA gates. Do not edit per-product.",
+  "styling": {
+    "theme": "clean",
+    "primaryColor": { "light": "#0071E3", "dark": "#2997FF" },
+    "infoColor": { "light": "#0071E3", "dark": "#2997FF" },
+    "successColor": { "light": "#34C759", "dark": "#30D158" },
+    "warningColor": { "light": "#FF9500", "dark": "#FF9F0A" },
+    "dangerColor": { "light": "#FF3B30", "dark": "#FF453A" },
+    "corners": "rounded",
+    "depth": "subtle",
+    "links": "accent",
+    "font": "Inter",
+    "monospaceFont": "JetBrainsMono",
+    "icons": "regular",
+    "codeTheme": {
+      "default": { "light": "github-light", "dark": "github-dark" },
+      "openapi": { "light": "github-light", "dark": "github-dark" }
+    },
+    "sidebar": { "background": "default", "list": "line" },
+    "search": "prominent",
+    "background": "plain"
+  }
+}

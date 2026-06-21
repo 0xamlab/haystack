@@ -1,5 +1,6 @@
 ---
 icon: server
+description: Deploy and operate the Algenta engine on your own infrastructure — configure it, run it, and verify a self-hosted instance is healthy.
 ---
 
 # Self-hosting
@@ -291,6 +292,10 @@ console.log(result.status, result.recommended_action);
 curl http://localhost:8000/v1/health
 # {"status":"ok","timestamp":"..."}
 ```
+
+{% hint style="success" %}
+**Expected result** — `/v1/health` returns `{"status":"ok"}` with a current timestamp. A non-200 or connection error means the engine is not up yet.
+{% endhint %}
 
 ### Privacy proof
 

@@ -1,5 +1,6 @@
 ---
 icon: download
+description: Install the Algenta SDK or run the self-hosted engine. Pick your platform, install in one command, and verify the version.
 ---
 
 # Install
@@ -89,6 +90,10 @@ curl -X POST http://localhost:8000/v1/simulate \
     "seed": 42
   }'
 ```
+
+{% hint style="success" %}
+**Expected result** — the health check returns `{"status":"ok"}` and the simulate call returns a decision envelope (a `decision` plus a `summary`). Your engine is live.
+{% endhint %}
 {% endstep %}
 {% endstepper %}
 
@@ -161,7 +166,7 @@ pip install algenta-sdk
 {% endtab %}
 {% endtabs %}
 
-### Verify
+### Verify the runtime package
 
 `algenta-core` ships an `algenta` CLI. Confirm the install and inspect capabilities:
 
@@ -198,7 +203,7 @@ Use Cloud Managed base URLs only with `Runtime(mode="api")`. For self-hosted dep
 pip install algenta-sdk
 ```
 
-### Verify
+### Verify the Python SDK
 
 The client reads `ALGENTA_API_KEY` from the environment and accepts a `base_url` for self-hosted deployments. `AlgentaClient` is the preferred name; `DecisionEngineClient` remains as a compatibility alias.
 
@@ -239,7 +244,7 @@ The TypeScript SDK is published under the same name on npm.
 npm install algenta-sdk
 ```
 
-### Verify
+### Verify the TypeScript SDK
 
 The client reads `ALGENTA_API_KEY` in Node, and takes `apiKey` and `baseUrl` in its config. `AlgentaClient` and `DecisionEngineClient` are both exported.
 
@@ -315,7 +320,7 @@ Add this to your MCP config (Cursor `~/.cursor/mcp.json`, or Claude Desktop `cla
       "command": "algenta-mcp",
       "env": {
         "ALGENTA_BASE_URL": "http://localhost:8000",
-        "ALGENTA_API_KEY": "<your-api-key>"
+        "ALGENTA_API_KEY": "de_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
       }
     }
   }

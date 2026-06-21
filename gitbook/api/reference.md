@@ -1,5 +1,6 @@
 ---
 icon: code
+description: Complete Algenta HTTP API reference — every endpoint with parameters, request and response schemas, and status codes.
 ---
 
 # API endpoint reference

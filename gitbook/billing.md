@@ -1,5 +1,6 @@
 ---
 icon: credit-card
+description: Algenta plans, usage metering, and limits — what each tier includes, how usage is counted, and how to manage your subscription.
 ---
 
 # Plans, billing & credits

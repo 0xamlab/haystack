@@ -1,5 +1,6 @@
 ---
 icon: code
+description: Try the Algenta HTTP API live — set your key and base URL, then send real requests to every endpoint from the browser.
 ---
 
 # API explorer

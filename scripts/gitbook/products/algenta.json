@@ -1,0 +1,15 @@
+{
+  "_comment": "Per-product brand override for Algenta. The shared design system + interaction grammar + page archetypes + QA gates are FIXED in scripts/gitbook/shared-customization.json. Only brand varies here.",
+  "product": "Algenta",
+  "org": "o33uJH8DVq2cATtrgKVy",
+  "siteId": "site_1Ujf5",
+  "domain": "docs.algenta.ai",
+  "primaryColor": { "light": "#0071E3", "dark": "#2997FF" },
+  "_favicon_logo": "UI-MANAGED. GitBook has no upload API and this repo is private (raw URLs 404), so the favicon + Algenta wordmark (light + dark) are uploaded once in GitBook -> Customization -> Basic -> Icon/Logo. apply-customization.py never sets favicon/logo so re-running it can't clobber them.",
+  "hero": "gitbook/.gitbook/assets/brand/algenta-hero.png",
+  "headerLinks": [
+    { "title": "algenta.ai", "href": "https://algenta.ai" },
+    { "title": "GitHub", "href": "https://github.com/thyn-ai/algenta" },
+    { "title": "Get your API key", "href": "https://app.algenta.ai", "variant": "primary" }
+  ]
+}

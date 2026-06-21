@@ -1,5 +1,6 @@
 ---
 icon: key
+description: Create and use Algenta API keys. Mint a key, send it as a Bearer token, and confirm an authenticated request succeeds.
 ---
 
 # Authentication & API keys
@@ -33,14 +34,14 @@ Send the key as a Bearer token. This is the canonical header and the one the SDK
 {% tab title="Bearer (canonical)" %}
 ```bash
 curl https://api.algenta.ai/v1/me \
-  -H "Authorization: Bearer de_live_YOUR_KEY"
+  -H "Authorization: Bearer $ALGENTA_API_KEY"
 ```
 {% endtab %}
 
 {% tab title="X-API-Key (legacy)" %}
 ```bash
 curl https://api.algenta.ai/v1/me \
-  -H "X-API-Key: de_live_YOUR_KEY"
+  -H "X-API-Key: $ALGENTA_API_KEY"
 ```
 {% endtab %}
 {% endtabs %}
@@ -59,7 +60,7 @@ The SDKs and CLI read the key and base URL from the environment.
 | `ALGENTA_BASE_URL` | API base URL (override for self-hosted) | `DE_BASE_URL`, `ALGENTA_API_URL` |
 
 ```bash title="set-env.sh"
-export ALGENTA_API_KEY="de_live_YOUR_KEY"
+export ALGENTA_API_KEY="de_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 export ALGENTA_BASE_URL="https://api.algenta.ai"
 ```
 
@@ -113,7 +114,7 @@ Your first key is your **bootstrap key** — created with your account at sign-u
 {% tab title="cURL" %}
 ```bash
 curl https://api.algenta.ai/v1/api-keys \
-  -H "Authorization: Bearer de_live_YOUR_KEY"
+  -H "Authorization: Bearer $ALGENTA_API_KEY"
 ```
 {% endtab %}
 
@@ -134,7 +135,7 @@ The response lists active keys with their prefix, label, device limit, and times
 {% tab title="cURL" %}
 ```bash
 curl -X POST https://api.algenta.ai/v1/api-keys \
-  -H "Authorization: Bearer de_live_YOUR_KEY" \
+  -H "Authorization: Bearer $ALGENTA_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "label": "CI runner",
@@ -189,13 +190,13 @@ A `device_limit` greater than zero makes the key a **capped key**. Capped keys e
 {% tab title="cURL" %}
 ```bash
 curl -X DELETE https://api.algenta.ai/v1/api-keys/0f4c... \
-  -H "Authorization: Bearer de_live_YOUR_KEY"
+  -H "Authorization: Bearer $ALGENTA_API_KEY"
 ```
 {% endtab %}
 
 {% tab title="CLI" %}
 ```bash
-de keys revoke <key_id>
+de keys revoke $KEY_ID
 ```
 {% endtab %}
 {% endtabs %}
@@ -232,10 +233,14 @@ Confirm no traffic is still authenticating with the old key before removing it. 
 Once the new key carries all traffic, revoke the old one. Revocation is immediate.
 
 ```bash
-de keys revoke <old_key_id>
+de keys revoke $OLD_KEY_ID
 ```
 {% endstep %}
 {% endstepper %}
+
+{% hint style="success" %}
+**Expected result** — during cutover, requests with the new key succeed; once you revoke the old key it returns `401 Unauthorized`. Traffic is never interrupted.
+{% endhint %}
 
 ## CLI authentication
 
@@ -252,8 +257,8 @@ pip install algenta-sdk
 
 ```bash
 de login                                 # prompts for the API key
-de login de_live_YOUR_KEY                # key as an argument (CI-safe)
-ALGENTA_API_KEY=de_live_YOUR_KEY de login
+de login $ALGENTA_API_KEY                # key as an argument (CI-safe)
+ALGENTA_API_KEY=de_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx de login
 ```
 
 ### Log out
@@ -267,8 +272,8 @@ de logout                                # removes the stored device license
 `de config set-key` writes the key (and optionally a base URL) to the CLI config. Use it for plain API access when you do not need a local device license.
 
 ```bash
-de config set-key de_live_YOUR_KEY
-de config set-key de_live_YOUR_KEY https://api.algenta.ai
+de config set-key $ALGENTA_API_KEY
+de config set-key $ALGENTA_API_KEY https://api.algenta.ai
 ```
 
 ### Manage keys from the CLI
@@ -277,7 +282,7 @@ de config set-key de_live_YOUR_KEY https://api.algenta.ai
 de keys list                                       # list active API keys
 de keys create "Mission Key"                       # mint a new key
 de keys create "CI" --device-limit 3 --expires-at 2026-12-31T23:59:59Z
-de keys revoke <key_id>                            # revoke a key
+de keys revoke $KEY_ID                            # revoke a key
 ```
 
 {% hint style="info" %}
@@ -360,7 +365,7 @@ Binding fails closed. The errors you may encounter:
 {% tab title="CLI" %}
 ```bash
 de devices list                          # list registered devices
-de devices revoke <registration_id>      # free up one device slot
+de devices revoke $REGISTRATION_ID      # free up one device slot
 ```
 {% endtab %}
 
@@ -368,11 +373,11 @@ de devices revoke <registration_id>      # free up one device slot
 ```bash
 # List devices registered under this key's org
 curl https://api.algenta.ai/v1/device/list \
-  -H "Authorization: Bearer de_live_YOUR_KEY"
+  -H "Authorization: Bearer $ALGENTA_API_KEY"
 
 # Revoke a device by its registration id (frees a slot)
-curl -X DELETE https://api.algenta.ai/v1/device/<registration_id> \
-  -H "Authorization: Bearer de_live_YOUR_KEY"
+curl -X DELETE https://api.algenta.ai/v1/device/$REGISTRATION_ID \
+  -H "Authorization: Bearer $ALGENTA_API_KEY"
 ```
 {% endtab %}
 {% endtabs %}
@@ -424,7 +429,7 @@ curl -X POST https://api.algenta.ai/auth/login \
 {% expandable title="Verify, forgot-password, and reset-password requests" %}
 ```bash
 # Verify an email via the token from the verification link
-curl "https://api.algenta.ai/auth/verify?token=<verification_token>"
+curl "https://api.algenta.ai/auth/verify?token=$VERIFICATION_TOKEN"
 
 # Request a reset email (always returns success; never reveals whether the email exists)
 curl -X POST https://api.algenta.ai/auth/forgot-password \
@@ -434,7 +439,7 @@ curl -X POST https://api.algenta.ai/auth/forgot-password \
 # Complete the reset with the token from the email
 curl -X POST https://api.algenta.ai/auth/reset-password \
   -H "Content-Type: application/json" \
-  -d '{ "token": "<reset_token>", "new_password": "a-new-strong-password" }'
+  -d '{ "token": "$RESET_TOKEN", "new_password": "a-new-strong-password" }'
 ```
 {% endexpandable %}
 
@@ -458,7 +463,7 @@ Setting or rotating a provider key requires the engine to be configured with `AL
 
 ```bash
 curl -X POST https://api.algenta.ai/v1/provider-keys \
-  -H "Authorization: Bearer de_live_YOUR_KEY" \
+  -H "Authorization: Bearer $ALGENTA_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "backend": "anthropic",
@@ -479,7 +484,7 @@ Returns the configured backends and when each was last updated — no key materi
 {% tab title="Request" %}
 ```bash
 curl https://api.algenta.ai/v1/provider-keys \
-  -H "Authorization: Bearer de_live_YOUR_KEY"
+  -H "Authorization: Bearer $ALGENTA_API_KEY"
 ```
 {% endtab %}
 
@@ -494,7 +499,7 @@ curl https://api.algenta.ai/v1/provider-keys \
 
 ```bash
 curl -X DELETE https://api.algenta.ai/v1/provider-keys/anthropic \
-  -H "Authorization: Bearer de_live_YOUR_KEY"
+  -H "Authorization: Bearer $ALGENTA_API_KEY"
 ```
 
 {% hint style="info" %}

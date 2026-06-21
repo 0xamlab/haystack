@@ -1,5 +1,6 @@
 ---
 icon: plug
+description: Connect Algenta to MCP-compatible tools like Cursor and Claude Desktop. Configure the MCP server, authenticate, and verify the tools appear.
 ---
 
 # MCP server
@@ -24,7 +25,7 @@ Point the server at your deployment with two environment variables:
 
 ```bash title=".env"
 export ALGENTA_BASE_URL="http://localhost:8000"   # your engine; https://api.algenta.ai for Cloud Managed
-export ALGENTA_API_KEY="<your-api-key>"
+export ALGENTA_API_KEY="de_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 ```
 
 `ALGENTA_BASE_URL` and `ALGENTA_API_KEY` are the canonical variables. Legacy `DE_BASE_URL`, `ALGENTA_API_URL`, and `DE_API_KEY` remain accepted for compatibility.
@@ -98,7 +99,7 @@ For Cursor and Claude Desktop, the simplest form uses the installed `algenta-mcp
       "command": "algenta-mcp",
       "env": {
         "ALGENTA_BASE_URL": "http://localhost:8000",
-        "ALGENTA_API_KEY": "<your-api-key>"
+        "ALGENTA_API_KEY": "de_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
       }
     }
   }
@@ -122,7 +123,7 @@ If you prefer an explicit interpreter over the console script, use `python -m al
       "command": "python",
       "args": ["-m", "algenta_mcp.server"],
       "env": {
-        "ALGENTA_API_KEY": "<your-api-key>",
+        "ALGENTA_API_KEY": "de_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
         "ALGENTA_BASE_URL": "http://localhost:8000"
       }
     }
@@ -142,7 +143,7 @@ Zed uses `context_servers` rather than `mcpServers`. Add to `~/.config/zed/setti
         "path": "algenta-mcp",
         "args": [],
         "env": {
-          "ALGENTA_API_KEY": "<your-api-key>",
+          "ALGENTA_API_KEY": "de_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
           "ALGENTA_BASE_URL": "http://localhost:8000"
         }
       }
@@ -200,8 +201,8 @@ The SSE and message routes require the optional MCP transport dependencies. If t
 {% tab title="n8n" %}
 1. Add an **MCP Client** node.
 2. Set **Transport** to `SSE`.
-3. Set **URL** to `<ALGENTA_BASE_URL>/mcp/sse`.
-4. Set **Header** to `Authorization: Bearer <ALGENTA_API_KEY>`.
+3. Set **URL** to `$ALGENTA_BASE_URL/mcp/sse`.
+4. Set **Header** to `Authorization: Bearer $ALGENTA_API_KEY`.
 {% endtab %}
 
 {% tab title="LangChain / LangGraph" %}

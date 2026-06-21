@@ -1,5 +1,6 @@
 ---
 icon: book-open
+description: The Algenta HTTP API — base URL, authentication, conventions, and where to find the full reference and the live explorer.
 ---
 
 # API overview
@@ -300,7 +301,7 @@ const datasets = await client.listDatasets({ search: "orders", compact: true });
 ```bash
 de contract
 de data list --search orders --compact --limit 10
-de data summary <dataset_id>
+de data summary $DATASET_ID
 ```
 {% endtab %}
 {% endtabs %}

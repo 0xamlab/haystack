@@ -1,5 +1,6 @@
 ---
 icon: screwdriver-wrench
+description: Fix common Algenta problems by symptom — what you see, the likely cause, the resolution, and how to verify it is resolved.
 ---
 
 # Troubleshooting
@@ -41,9 +42,9 @@ The server returns HTTP `403` with `code: "device_identity_mismatch"`:
 {
   "error": {
     "code": "device_identity_mismatch",
-    "message": "Device '<device_id>' is already bound to different identity metadata for this API key. Reuse the original device identity or register a different device ID.",
+    "message": "Device '$DEVICE_ID' is already bound to different identity metadata for this API key. Reuse the original device identity or register a different device ID.",
     "details": {
-      "device_id": "<device_id>",
+      "device_id": "$DEVICE_ID",
       "plan": "<plan>",
       "mismatched_fields": ["hostname_hash", "platform"]
     }
@@ -65,7 +66,7 @@ The fields that must stay consistent for a given device id are exactly:
 Use the Algenta SDK. It derives a stable per-machine device id, computes the platform and hostname-hash headers, and persists the binding token for you. The Python SDK builds these via `decision_engine.device_headers.build_device_headers` and stores the binding token through `store_device_binding_token` / `load_device_binding_token`. You only hit `device_identity_mismatch` when you craft headers by hand.
 {% endhint %}
 
-### Fix
+### Fix the device identity
 
 {% stepper %}
 {% step %}
@@ -122,7 +123,7 @@ python3 scripts/license_status.py
 
 A satisfied gate prints a line like this and exits `0`:
 
-```
+```text
 OK  license valid=True version=2 source=offline-local plan=enterprise
 ```
 {% endtab %}
@@ -193,12 +194,12 @@ Run `python3 scripts/license_status.py` on every machine before flipping a deplo
 
 If cloud is disabled and you do not supply a base_url, the SDK raises rather than defaulting to an Algenta-owned host:
 
-```
+```text
 Cloud is disabled but the resolved base_url points at an Algenta-owned host.
 Configure a self-hosted base_url or ALGENTA_BASE_URL / DE_BASE_URL / ALGENTA_API_URL.
 ```
 
-### Fix
+### Fix the cloud fallback
 
 Set the base_url explicitly. The SDK and CLI resolve it from the first of `ALGENTA_BASE_URL`, `DE_BASE_URL`, `ALGENTA_API_URL`:
 
@@ -251,7 +252,7 @@ if not ALGENTA_KEY:
     raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
 ```
 
-### Fix
+### Fix the missing key
 
 Export one of the accepted variables before running:
 
@@ -264,7 +265,7 @@ export DE_API_KEY="<your key>"
 For the CLI, you can persist it instead of exporting each session:
 
 ```bash title="persist-key.sh"
-de config set-key <YOUR_ALGENTA_API_KEY>
+de config set-key <$ALGENTA_API_KEY>
 ```
 
 ## Health and contract checks
@@ -300,17 +301,17 @@ de contract    # prints the resolved Algenta contract (add --json for raw)
 
 Per-tenant provider keys are encrypted at rest with `ALGENTA_CONFIG_ENCRYPTION_KEY`. Encryption is opt-in: it is on only when that variable is set. If you set it, store a tenant key, then restart the stack with the variable missing or changed, the engine cannot decrypt the stored secret and surfaces errors such as:
 
-```
+```text
 secret is encrypted but ALGENTA_CONFIG_ENCRYPTION_KEY is not set
 ```
 
 Setting a per-tenant key also refuses to store a plaintext value when the key is absent:
 
-```
+```text
 per-tenant keys require ALGENTA_CONFIG_ENCRYPTION_KEY (refusing to store a plaintext key)
 ```
 
-### Fix
+### Fix the persistence
 
 Treat `ALGENTA_CONFIG_ENCRYPTION_KEY` as durable secret material. Put it in your Compose `.env` and never rotate it without re-encrypting existing rows.
 
@@ -345,7 +346,7 @@ The server reads the same environment as the SDK:
 | `ALGENTA_API_KEY` | required credential | `DE_API_KEY` accepted for compatibility |
 | `ALGENTA_BASE_URL` | engine URL | `DE_BASE_URL` / `ALGENTA_API_URL` accepted; defaults to the cloud in Cloud Managed |
 
-### Fix
+### Fix the MCP connection
 
 {% stepper %}
 {% step %}
@@ -385,7 +386,7 @@ scripts/self_host_smoke.sh
 
 A passing run ends with:
 
-```
+```text
 ==> Self-hosted smoke passed
 API=http://localhost:18000
 API_KEY=...

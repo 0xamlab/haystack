@@ -1,0 +1,19 @@
+{
+  "_comment": "Maps each Algenta docs page (path relative to the GitBook root, gitbook/) to its archetype so audit.py applies archetype-specific rules. Archetypes: landing | index | task | concept | integration | reference | troubleshooting | guide. Update when pages are added/moved. Run: python3 scripts/gitbook/audit.py gitbook/",
+  "overview.md": "landing",
+  "install.md": "task",
+  "quickstart.md": "task",
+  "concepts.md": "concept",
+  "authentication.md": "task",
+  "sdk/python.md": "integration",
+  "sdk/typescript.md": "integration",
+  "sdk/mcp.md": "integration",
+  "cli.md": "reference",
+  "self-hosting.md": "task",
+  "licensing.md": "concept",
+  "billing.md": "concept",
+  "api/overview.md": "index",
+  "api/reference.md": "reference",
+  "api/explorer.md": "reference",
+  "troubleshooting.md": "troubleshooting"
+}

@@ -1,5 +1,6 @@
 ---
 icon: terminal
+description: Algenta CLI reference — every command, flag, and environment variable for running and managing the engine from the terminal.
 ---
 
 # CLI reference
@@ -132,7 +133,7 @@ de config set-key sk_live_yourkey https://api.algenta.ai
 | --- | --- | --- |
 | `de keys list` | `GET /v1/api-keys` | List active keys. |
 | `de keys create "<label>"` | `POST /v1/api-keys` | `--expires-at`, `--device-limit`. |
-| `de keys revoke <key_id>` | `DELETE /v1/api-keys/{key_id}` | |
+| `de keys revoke $KEY_ID` | `DELETE /v1/api-keys/{key_id}` | |
 
 ```bash
 de keys list
@@ -171,7 +172,7 @@ de account update rename.json
 
 ```bash
 de devices list                       # GET /v1/device/list
-de devices revoke <registration_id>   # DELETE /v1/device/{registration_id}
+de devices revoke $REGISTRATION_ID   # DELETE /v1/device/{registration_id}
 ```
 
 ### `execution-policy` — governance thresholds
@@ -200,12 +201,12 @@ de execution-policy update policy.json
 | --- | --- | --- |
 | `de data connect --request <file>` | `POST /v1/data/connect` | Connect a dataset. |
 | `de data list` | `GET /v1/data` | `--search`, `--status`, `--source-name`, `--page`, `--limit`, `--compact`. |
-| `de data summary <dataset_id>` | low-token summary | |
-| `de data inspect <dataset_id>` | one-dataset detail | |
+| `de data summary $DATASET_ID` | low-token summary | |
+| `de data inspect $DATASET_ID` | one-dataset detail | |
 | `de data query-batch <request.json>` | governed exact-query batch | |
 | `de data sql-report <request.json>` | read-only SQL report | |
-| `de data refresh <dataset_id>` | refresh schema/contents | |
-| `de data disconnect <dataset_id>` | delete; `--yes` to skip prompt | |
+| `de data refresh $DATASET_ID` | refresh schema/contents | |
+| `de data disconnect $DATASET_ID` | delete; `--yes` to skip prompt | |
 
 ```bash
 de data list --search orders --compact --limit 5
@@ -242,13 +243,13 @@ curl -s -X POST "$ALGENTA_BASE_URL/v1/data/connect" \
 | --- | --- |
 | `de connectors create <request.json>` | `POST /v1/connectors` |
 | `de connectors list` | `GET /v1/connectors` (`--page`, `--limit`) |
-| `de connectors get <connector_id>` | `GET /v1/connectors/{id}` |
-| `de connectors update <connector_id> <request.json>` | `PATCH /v1/connectors/{id}` |
-| `de connectors test <connector_id>` | `POST /v1/connectors/{id}/test` |
-| `de connectors browse <connector_id>` | `GET /v1/connectors/{id}/browse` |
+| `de connectors get $CONNECTOR_ID` | `GET /v1/connectors/{id}` |
+| `de connectors update $CONNECTOR_ID <request.json>` | `PATCH /v1/connectors/{id}` |
+| `de connectors test $CONNECTOR_ID` | `POST /v1/connectors/{id}/test` |
+| `de connectors browse $CONNECTOR_ID` | `GET /v1/connectors/{id}/browse` |
 | `de connectors preview-test <request.json>` | `POST /v1/connectors/test` (inline, unsaved) |
 | `de connectors preview-browse <request.json>` | `POST /v1/connectors/browse` (inline, unsaved) |
-| `de connectors delete <connector_id>` | `DELETE /v1/connectors/{id}` |
+| `de connectors delete $CONNECTOR_ID` | `DELETE /v1/connectors/{id}` |
 
 ```bash
 de connectors create connector.json
@@ -262,7 +263,7 @@ de connectors preview-test inline_connector.json
 | Command | Endpoint |
 | --- | --- |
 | `de capabilities providers` | `GET /v1/capability-providers` |
-| `de capabilities provider <provider_id>` | `GET /v1/capability-providers/{id}` |
+| `de capabilities provider $PROVIDER_ID` | `GET /v1/capability-providers/{id}` |
 | `de capabilities bindings` | bindings list (`--provider-id`, `--scope`) |
 | `de capabilities list` | unified capabilities (`--kind`, `--provider-id`, `--binding-id`) |
 | `de capabilities route <request.json>` | `POST /v1/capabilities/route` |
@@ -305,10 +306,10 @@ de decision compare scenarios.json
 | --- | --- |
 | `de decisions log <request.json>` | `POST /v1/decisions` |
 | `de decisions list` | `GET /v1/decisions` (`--page`, `--limit`, `--page-size`, `--with-outcome-only`) |
-| `de decisions get <decision_id>` | `GET /v1/decisions/{id}` |
-| `de decisions outcome <decision_id> <request.json>` | `PATCH /v1/decisions/{id}/outcome` |
-| `de decisions execute <decision_id> <request.json>` | `POST /v1/decisions/{id}/execute` |
-| `de decisions delete <decision_id>` | `DELETE /v1/decisions/{id}` |
+| `de decisions get $DECISION_ID` | `GET /v1/decisions/{id}` |
+| `de decisions outcome $DECISION_ID <request.json>` | `PATCH /v1/decisions/{id}/outcome` |
+| `de decisions execute $DECISION_ID <request.json>` | `POST /v1/decisions/{id}/execute` |
+| `de decisions delete $DECISION_ID` | `DELETE /v1/decisions/{id}` |
 
 ```bash
 de decisions log record.json
@@ -372,17 +373,17 @@ de product forecast forecast.json
 | --- | --- |
 | `de agent-runs list` | `GET /v1/agent/runs` |
 | `de agent-runs create <request.json>` | `POST /v1/agent/runs` |
-| `de agent-runs get <run_id>` | `GET /v1/agent/runs/{id}` |
-| `de agent-runs events <run_id>` | `GET /v1/agent/runs/{id}/events` (`--stream`) |
-| `de agent-runs checkpoints <run_id>` | `GET /v1/agent/runs/{id}/checkpoints` |
+| `de agent-runs get $RUN_ID` | `GET /v1/agent/runs/{id}` |
+| `de agent-runs events $RUN_ID` | `GET /v1/agent/runs/{id}/events` (`--stream`) |
+| `de agent-runs checkpoints $RUN_ID` | `GET /v1/agent/runs/{id}/checkpoints` |
 | `de agent-runs query-checkpoints` | `GET /v1/agent/runs/checkpoints` |
-| `de agent-runs mission-events <run_id>` | `GET /v1/agent/runs/{id}/mission-events` |
-| `de agent-runs telemetry <run_id>` | `GET /v1/agent/runs/{id}/telemetry` |
+| `de agent-runs mission-events $RUN_ID` | `GET /v1/agent/runs/{id}/mission-events` |
+| `de agent-runs telemetry $RUN_ID` | `GET /v1/agent/runs/{id}/telemetry` |
 | `de agent-runs query-mission-events` | cross-run mission events |
 | `de agent-runs query-telemetry` | cross-run telemetry batches |
-| `de agent-runs resume <run_id>` | `POST /v1/agent/runs/{id}/resume` |
-| `de agent-runs cancel <run_id>` | `POST /v1/agent/runs/{id}/cancel` |
-| `de agent-runs approve <run_id>` | `POST /v1/agent/runs/{id}/approve` |
+| `de agent-runs resume $RUN_ID` | `POST /v1/agent/runs/{id}/resume` |
+| `de agent-runs cancel $RUN_ID` | `POST /v1/agent/runs/{id}/cancel` |
+| `de agent-runs approve $RUN_ID` | `POST /v1/agent/runs/{id}/approve` |
 
 Drive a run through its full lifecycle:
 
@@ -429,10 +430,10 @@ de agent-runs cancel run_01H...
 | --- | --- |
 | `de job submit <request.json>` | `POST /v1/jobs` (`--callback <url>`) |
 | `de job list` | `GET /v1/jobs/list` (`--page`, `--limit`, `--status`) |
-| `de job status <job_id>` | `GET /v1/jobs/{id}` |
-| `de job result <job_id>` | `GET /v1/jobs/{id}/result` |
-| `de job cancel <job_id>` | `POST /v1/jobs/{id}/cancel` |
-| `de job wait <job_id>` | polls `GET /v1/jobs/{id}` (`--timeout`, default 300s) |
+| `de job status $JOB_ID` | `GET /v1/jobs/{id}` |
+| `de job result $JOB_ID` | `GET /v1/jobs/{id}/result` |
+| `de job cancel $JOB_ID` | `POST /v1/jobs/{id}/cancel` |
+| `de job wait $JOB_ID` | polls `GET /v1/jobs/{id}` (`--timeout`, default 300s) |
 
 ```bash
 de job submit large.json --callback https://example.com/hooks/de
@@ -448,10 +449,10 @@ de job cancel job_01H...
 | --- | --- |
 | `de triggers register <request.json>` | `POST /v1/triggers` |
 | `de triggers list` | triggers list (`--status`, `--page`, `--limit`) |
-| `de triggers fire <trigger_id>` | `POST /v1/triggers/{id}/fire` (`--force`) |
-| `de triggers pause <trigger_id>` | `PATCH /v1/triggers/{id}/pause?paused=true` |
-| `de triggers resume <trigger_id>` | `PATCH /v1/triggers/{id}/pause?paused=false` |
-| `de triggers delete <trigger_id>` | `DELETE /v1/triggers/{id}` |
+| `de triggers fire $TRIGGER_ID` | `POST /v1/triggers/{id}/fire` (`--force`) |
+| `de triggers pause $TRIGGER_ID` | `PATCH /v1/triggers/{id}/pause?paused=true` |
+| `de triggers resume $TRIGGER_ID` | `PATCH /v1/triggers/{id}/pause?paused=false` |
+| `de triggers delete $TRIGGER_ID` | `DELETE /v1/triggers/{id}` |
 
 ```bash
 de triggers register trigger.json
@@ -471,21 +472,21 @@ de webhook test https://example.com/hooks/de   # POST /v1/webhooks/test
 
 ## Repositories (Codna surface)
 
-The `repositories` group is the code-intelligence and autonomous-fix surface. Most subcommands take a `<repository_id>` and a `<request.json>` body.
+The `repositories` group is the code-intelligence and autonomous-fix surface. Most subcommands take a `$REPOSITORY_ID` and a `<request.json>` body.
 
 | Command | Endpoint |
 | --- | --- |
 | `de repositories capabilities` | `GET /v1/repositories/capabilities` |
-| `de repositories snapshot <repo_id> <request.json>` | `POST /v1/repositories/{id}/snapshots` |
-| `de repositories get-snapshot <repo_id> <snapshot_id>` | `GET /v1/repositories/{id}/snapshots/{snapshot_id}` |
-| `de repositories triage <repo_id> <request.json>` | `POST /v1/repositories/{id}/triage` |
-| `de repositories decision-plan <repo_id> <request.json>` | `POST /v1/repositories/{id}/decision-plans` |
-| `de repositories graph-query <repo_id> <request.json>` | `POST /v1/repositories/{id}/graph-query` |
-| `de repositories pipeline <repo_id> <request.json>` | `POST /v1/repositories/{id}/pipeline` |
-| `de repositories simulate <repo_id> <request.json>` | `POST /v1/repositories/{id}/simulate` |
-| `de repositories simulate-patch <repo_id> <request.json>` | `POST /v1/repositories/{id}/simulate-patch` |
-| `de repositories fix <repo_id> <request.json>` | pipeline then apply (composite) |
-| `de repositories apply <repo_id> <request.json>` | `POST /v1/repositories/{id}/apply` |
+| `de repositories snapshot $REPO_ID <request.json>` | `POST /v1/repositories/{id}/snapshots` |
+| `de repositories get-snapshot $REPO_ID $SNAPSHOT_ID` | `GET /v1/repositories/{id}/snapshots/{snapshot_id}` |
+| `de repositories triage $REPO_ID <request.json>` | `POST /v1/repositories/{id}/triage` |
+| `de repositories decision-plan $REPO_ID <request.json>` | `POST /v1/repositories/{id}/decision-plans` |
+| `de repositories graph-query $REPO_ID <request.json>` | `POST /v1/repositories/{id}/graph-query` |
+| `de repositories pipeline $REPO_ID <request.json>` | `POST /v1/repositories/{id}/pipeline` |
+| `de repositories simulate $REPO_ID <request.json>` | `POST /v1/repositories/{id}/simulate` |
+| `de repositories simulate-patch $REPO_ID <request.json>` | `POST /v1/repositories/{id}/simulate-patch` |
+| `de repositories fix $REPO_ID <request.json>` | pipeline then apply (composite) |
+| `de repositories apply $REPO_ID <request.json>` | `POST /v1/repositories/{id}/apply` |
 
 Work a repository from discovery through a gated apply:
 
@@ -597,8 +598,8 @@ Provide exactly one of `--args-json` or `--args-file` to `runtime execute`; pass
 | `de deployments regions` | `GET /v1/deployments/regions` |
 | `de deployments get` | `GET /v1/deployments` |
 | `de deployments create <request.json>` | `POST /v1/deployments` |
-| `de deployments cost <deployment_id>` | `GET /v1/deployments/{id}/cost` |
-| `de deployments delete <deployment_id>` | `DELETE /v1/deployments/{id}` |
+| `de deployments cost $DEPLOYMENT_ID` | `GET /v1/deployments/{id}/cost` |
+| `de deployments delete $DEPLOYMENT_ID` | `DELETE /v1/deployments/{id}` |
 
 ```bash
 de deployments regions --format json

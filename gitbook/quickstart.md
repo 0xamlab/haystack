@@ -1,5 +1,6 @@
 ---
 icon: rocket-launch
+description: Run Algenta end to end in minutes — start the engine, mint an API key, and make your first decision call.
 ---
 
 # Quickstart
@@ -57,6 +58,10 @@ A healthy engine returns:
 ```json title="health.json"
 { "status": "ok", "timestamp": "2026-06-20T12:00:00Z" }
 ```
+
+{% hint style="success" %}
+**Expected result** — the health endpoint returns `{"status":"ok"}`. The engine is running and ready for authenticated calls.
+{% endhint %}
 
 Export the bootstrap key the installer printed so the rest of the commands authenticate:
 

@@ -1,5 +1,6 @@
 ---
 icon: scale-balanced
+description: How Algenta licensing works — license types, offline validation, capacity units, and what a license grants for self-hosted and air-gapped use.
 ---
 
 # Licensing & editions
@@ -10,7 +11,7 @@ This page shows operators how Algenta licensing works end to end: how the durabl
 
 An Algenta license is a signed JSON Web Token. It is installed at:
 
-```
+```text
 ~/.algenta/runtime/license.jwt
 ```
 
@@ -185,7 +186,7 @@ A satisfied gate prints `OK` and exits `0`. The same check is available as human
 python3 scripts/license_status.py
 ```
 
-```
+```text
 OK  license valid=True version=2 source=offline-local plan=enterprise
       deployment_class=server commercial_use=True
       product codna: tier=pro features=apply,fix,repo_graph,simulate,triage
@@ -284,7 +285,7 @@ Then install the token and public key on the box exactly as above, and confirm w
 
 Algenta is the engine; each product is a curated **edition** over the same MCP/API core. A v2 license grants per-product **features**, and the local engine maps each granted feature to the concrete tools it unlocks:
 
-```
+```text
 available_tools = installed ∩ product_allowlist ∩ license_feature_tools
 ```
 

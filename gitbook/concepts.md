@@ -1,5 +1,6 @@
 ---
 icon: diagram-project
+description: The core ideas behind Algenta — the engine, runtime, decisions, and simulations, and how the HTTP API, SDKs, and MCP fit together.
 ---
 
 # Core concepts
