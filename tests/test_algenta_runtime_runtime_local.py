@@ -546,7 +546,7 @@ def test_runtime_local_air_gapped_profile_accepts_offline_local_license(
             "grace_days": 14,
             "iss": "algenta-offline-license",
             "sub": "device-license",
-            "ver": 1,
+            "ver": 2,
         },
         private_key,
         algorithm="RS256",

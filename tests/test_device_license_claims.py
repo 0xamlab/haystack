@@ -2,7 +2,7 @@
 
 The issued license now carries: activation_id (stable per org+device — the CRL revokes by
 it), license_id + jti (per-issuance), and device_pubkey_thumbprint. Additive + back-compat
-(ver stays 1); the runtime already parses these. Foundation for renewal PoP + CRL.
+(ver=2); the runtime already parses these. Foundation for renewal PoP + CRL.
 """
 
 from __future__ import annotations
@@ -59,7 +59,7 @@ def test_license_carries_identity_claims() -> None:
     uuid.UUID(c["license_id"])
     assert c["device_pubkey_thumbprint"] == "ed25519:THUMB"
     # back-compat: existing claims intact
-    assert c["ver"] == 1
+    assert c["ver"] == 2
     assert c["device_id"] == _DEVICE
     assert c["org_id"] == _ORG
     assert c["plan"] == "pro"

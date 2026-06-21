@@ -35,9 +35,10 @@ async def run_stdio_server() -> None:
 
     def _license_feature_constraints(product: str | None) -> tuple[frozenset[str] | None, ...]:
         # Narrow visible tools by the local license's product/feature entitlements.
-        # Dark by default: no license or a legacy v1 license → no constraint (product-only
-        # gating, unchanged). A v2 license narrows to its granted features; a v2 license
-        # that does NOT grant the selected product fails closed (empty set → no tools).
+        # Dark by default: no license, an invalid one, or a license with NO product
+        # entitlements → no constraint (product-only gating, unchanged). A license that
+        # DOES carry product entitlements narrows to its granted features; one that does
+        # NOT grant the selected product fails closed (empty set → no tools).
         if not product:
             return ()
         try:
@@ -48,7 +49,7 @@ async def run_stdio_server() -> None:
             )
         except Exception:  # noqa: BLE001 — never let license resolution break tool listing
             return ()
-        if lic is None or not getattr(lic, "valid", False) or lic.is_legacy_v1():
+        if lic is None or not getattr(lic, "valid", False) or not getattr(lic, "products", None):
             return ()
         if not lic.has_product(product):
             return (frozenset(),)

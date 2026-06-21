@@ -15,10 +15,10 @@ The daemon is the per-node choke point: every local execution funnels through on
 daemon, so bounding concurrency here bounds the node — 100 client processes on one box
 cannot exceed the licensed worker count.
 
-DARK BY DEFAULT — a limit of ``0`` ("unspecified": every v1/legacy license, and any v2
-license that does not set ``concurrent_worker_limit``) makes the broker a transparent
-no-op that never caps or queues. Only a v2 license with ``concurrent_worker_limit > 0``
-activates the cap. Enforcement of *missing* licenses (fail-closed) stays P5.
+DARK BY DEFAULT — a limit of ``0`` ("unspecified": any license that does not set
+``concurrent_worker_limit``) makes the broker a transparent no-op that never caps or
+queues. Only a license with ``concurrent_worker_limit > 0`` activates the cap.
+Enforcement of *missing* licenses (fail-closed) stays P5.
 """
 
 from __future__ import annotations

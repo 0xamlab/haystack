@@ -2,8 +2,7 @@
 
 The owner runs this on each internal deployment before any fail-closed flip; the exit
 code IS the gate (0 = ready). These tests pin the gate logic across the license states
-that matter: valid v2 (ready), valid v1 (not ready unless --allow-v1), invalid, and
-past-grace expiry.
+that matter: valid (ready), invalid, and past-grace expiry.
 """
 
 from __future__ import annotations
@@ -37,12 +36,6 @@ def test_valid_v2_satisfies_gate(monkeypatch, capsys) -> None:
     monkeypatch.setattr(license_mod, "load_license", lambda *a, **k: _mk())
     assert cli.main([]) == 0
     assert capsys.readouterr().out.startswith("OK")
-
-
-def test_valid_v1_fails_unless_allowed(monkeypatch) -> None:
-    monkeypatch.setattr(license_mod, "load_license", lambda *a, **k: _mk(license_version=1))
-    assert cli.main([]) == 1  # v2 required by default
-    assert cli.main(["--allow-v1"]) == 0  # explicit transition opt-in
 
 
 def test_invalid_license_fails(monkeypatch, capsys) -> None:
@@ -90,5 +83,4 @@ def test_json_output_is_parseable(monkeypatch, capsys) -> None:
     payload = json.loads(capsys.readouterr().out)
     assert rc == 0
     assert payload["gate_satisfied"] is True
-    assert payload["is_v2"] is True
     assert payload["active_node_limit"] == 3

@@ -63,11 +63,7 @@ def _build_parser() -> argparse.ArgumentParser:
         default="",
         help="Optional operator note embedded in the license payload.",
     )
-    # ── v2 commercial-capacity + product entitlement claims ──
-    parser.add_argument(
-        "--license-version", type=int, default=2,
-        help="License schema version. 2 = product-bearing (default); 1 = legacy.",
-    )
+    # ── v2 commercial-capacity + product entitlement claims (v2 is the only format) ──
     parser.add_argument("--license-id", default="", help="License identifier claim (v2).")
     parser.add_argument("--activation-id", default="", help="Per-device activation id claim (v2).")
     parser.add_argument(
@@ -141,7 +137,6 @@ def _build_claims(args: argparse.Namespace) -> dict[str, object]:
     expires_at = max(0, int(args.expires_at))
     key_expires_at = expires_at if args.key_expires_at is None else max(0, int(args.key_expires_at))
     permitted_modules = args.permitted_module if args.permitted_module else ["*"]
-    version = max(1, int(args.license_version))
     claims: dict[str, object] = {
         "api_key_prefix": args.api_key_prefix,
         "device_id": args.device_id,
@@ -155,27 +150,22 @@ def _build_claims(args: argparse.Namespace) -> dict[str, object]:
         "grace_days": max(0, int(args.grace_days)),
         "iss": "algenta-offline-license",
         "sub": "device-license",
-        "ver": version,
+        "ver": 2,
         "message": args.message,
+        "license_id": args.license_id,
+        "activation_id": args.activation_id,
+        "entitlement_version": max(0, int(args.entitlement_version)),
+        "deployment_class": args.deployment_class,
+        "device_pubkey_thumbprint": args.device_pubkey_thumbprint,
+        "products": _parse_products(args),
+        "named_seat_limit": max(0, int(args.named_seat_limit)),
+        "active_node_limit": max(0, int(args.active_node_limit)),
+        "concurrent_worker_limit": max(0, int(args.concurrent_worker_limit)),
+        "device_allowance_per_seat": max(0, int(args.device_allowance_per_seat)),
+        "commercial_use": bool(args.commercial_use),
+        "redistribution_allowed": bool(args.redistribution_allowed),
+        "offline_grace_days": max(0, int(args.offline_grace_days)),
     }
-    if version >= 2:
-        claims.update(
-            {
-                "license_id": args.license_id,
-                "activation_id": args.activation_id,
-                "entitlement_version": max(0, int(args.entitlement_version)),
-                "deployment_class": args.deployment_class,
-                "device_pubkey_thumbprint": args.device_pubkey_thumbprint,
-                "products": _parse_products(args),
-                "named_seat_limit": max(0, int(args.named_seat_limit)),
-                "active_node_limit": max(0, int(args.active_node_limit)),
-                "concurrent_worker_limit": max(0, int(args.concurrent_worker_limit)),
-                "device_allowance_per_seat": max(0, int(args.device_allowance_per_seat)),
-                "commercial_use": bool(args.commercial_use),
-                "redistribution_allowed": bool(args.redistribution_allowed),
-                "offline_grace_days": max(0, int(args.offline_grace_days)),
-            }
-        )
     return claims
 
 

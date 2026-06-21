@@ -138,8 +138,8 @@ class _CodnaRuntimeServicer(runtime_pb2_grpc_module.CodnaRuntimeServicer):  # ty
             await context.abort(grpc.StatusCode.INVALID_ARGUMENT, "args_json is not valid JSON.")
 
         # Hold one licensed worker slot for the execution. Dark by default: a license
-        # with concurrent_worker_limit==0 (every v1/current license) makes this a no-op;
-        # a v2 license with a real cap bounds this node's concurrent executions (excess
+        # with concurrent_worker_limit==0 (the current default) makes this a no-op;
+        # a license with a real cap bounds this node's concurrent executions (excess
         # callers queue here until a slot frees).
         async with worker_slot():
             result = await self._executor.execute_module(

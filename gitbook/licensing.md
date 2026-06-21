@@ -17,14 +17,7 @@ An Algenta license is a signed JSON Web Token. It is installed at:
 
 The runtime verifies it **locally on every startup with no network call**. Production and offline licenses are RS256 (asymmetric): the operator box signs with a private key, and each runtime machine verifies with the matching public key. The public key can verify a token; it cannot mint one.
 
-Two license schema versions exist:
-
-| Version | What it carries | Status |
-|---|---|---|
-| **v1** (legacy) | plan, device limit, permitted modules, expiry | Legacy-permissive during the transition window; rejected after the firm v1 sunset |
-| **v2** (current) | everything in v1 plus product entitlements, capacity caps, deployment class, commercial-use grant | The authoritative, product-bearing format. Issue v2. |
-
-`scripts/issue_offline_license.py` defaults to `--license-version 2`. Always mint v2.
+A license carries: plan, device limit, permitted modules, expiry, **product entitlements**, capacity caps, deployment class, and the commercial-use grant. `scripts/issue_offline_license.py` emits this format.
 
 {% hint style="info" %}
 The license is a **device entitlement**, not your data plane. The issuer signs license claims only — it never reads customer data, schema data, or runtime payloads. Verification is fully offline; nothing about your repositories or simulations leaves the machine.
@@ -73,7 +66,6 @@ python3 scripts/issue_offline_license.py \
   --private-key-file algenta-license.key \
   --device-id "<this machine's device id>" \
   --plan enterprise \
-  --license-version 2 \
   --deployment-class server \
   --org-id org_algenta_internal \
   --license-id lic_codna_prod \
@@ -122,7 +114,6 @@ python3 scripts/issue_offline_license.py --device-id "<...>" --plan enterprise -
 | `--key-expires-at` | Unix epoch expiry of the backing commercial key; defaults to `--expires-at` |
 | `--grace-days` | Offline grace after expiry before a hard block (default `14`) |
 | `--permitted-module` | Repeatable; restricts permitted modules (default `*`) |
-| `--license-version` | `2` = product-bearing (default); `1` = legacy |
 | `--deployment-class` | `desktop` \| `server` \| `ci` \| `airgapped` \| `oem` |
 | `--product-entitlement` | Repeatable `product:tier[:feat1,feat2]` |
 | `--products-file` | JSON file mapping products to tiers and features (multi-product editions) |
@@ -146,7 +137,7 @@ For a single license that spans more than one edition, pass a JSON file instead 
 ```sh
 python3 scripts/issue_offline_license.py \
   --private-key-file algenta-license.key \
-  --device-id "<...>" --plan enterprise --license-version 2 \
+  --device-id "<...>" --plan enterprise \
   --deployment-class server \
   --products-file editions.json \
   --key-expires-at "$EXP" --expires-at "$EXP" \
@@ -203,7 +194,6 @@ python3 scripts/license_status.py --json
 ```json
 {
   "valid": true,
-  "is_v2": true,
   "source": "offline-local",
   "plan": "enterprise",
   "deployment_class": "server",
@@ -214,16 +204,15 @@ python3 scripts/license_status.py --json
 {% endtab %}
 {% endtabs %}
 
-Exit codes: `0` = gate satisfied, `1` = not satisfied (invalid, expired past grace, or v1 when v2 is required).
+Exit codes: `0` = gate satisfied, `1` = not satisfied (invalid, or expired past grace).
 
 | Flag | Effect |
 |---|---|
 | `--json` | Emit machine-readable JSON |
-| `--allow-v1` | Treat a valid v1 token as satisfying the gate |
 | `--allow-no-key-expiry` | Accept `key_expires_at <= 0` (only safe under the `require_local_license` path) |
 
 {% hint style="info" %}
-If the gate fails, the output tells you why: `not valid` (no installed license or wrong key), `past grace; runtime would block`, `legacy v1` (re-mint as v2), or `key_expires_at<=0` (re-mint with `--key-expires-at`). The bottom hint line is the next action.
+If the gate fails, the output tells you why: `not valid` (no installed license or wrong key), `past grace; runtime would block`, or `key_expires_at<=0` (re-mint with `--key-expires-at`). The bottom hint line is the next action.
 {% endhint %}
 
 ## Enforcement flags (default OFF / dark)
@@ -252,7 +241,7 @@ EXP=$(( $(date +%s) + 31536000 ))
 python3 scripts/issue_offline_license.py \
   --private-key-file algenta-license.key \
   --device-id "$(python3 scripts/license_status.py --json >/dev/null; echo ci-runner-01)" \
-  --plan enterprise --license-version 2 \
+  --plan enterprise \
   --deployment-class ci \
   --product-entitlement "codna:pro:repo_graph,triage,simulate,fix,apply" \
   --expires-at "$EXP" --key-expires-at "$EXP" \
@@ -269,7 +258,7 @@ EXP=$(( $(date +%s) + 94608000 ))   # +3 years
 python3 scripts/issue_offline_license.py \
   --private-key-file algenta-license.key \
   --device-id "<airgapped device id>" \
-  --plan enterprise --license-version 2 \
+  --plan enterprise \
   --deployment-class airgapped \
   --product-entitlement "codna:pro:repo_graph,triage,simulate,fix,apply" \
   --expires-at "$EXP" --key-expires-at "$EXP" \
@@ -283,7 +272,7 @@ Then install the token and public key on the box exactly as above, and confirm w
 
 ## Editions and permitted modules
 
-Algenta is the engine; each product is a curated **edition** over the same MCP/API core. A v2 license grants per-product **features**, and the local engine maps each granted feature to the concrete tools it unlocks:
+Algenta is the engine; each product is a curated **edition** over the same MCP/API core. A license grants per-product **features**, and the local engine maps each granted feature to the concrete tools it unlocks:
 
 ```text
 available_tools = installed ∩ product_allowlist ∩ license_feature_tools
@@ -315,8 +304,8 @@ A license granting all five features (`codna:pro:repo_graph,triage,simulate,fix,
 The product selector (`X-Algenta-Product` / `ALGENTA_PRODUCT`) is a routing hint, not authorization. Visibility is the intersection of the product allowlist, the verified key's entitlements, organization policy, and the license's feature grants. An unknown or unentitled product resolves to the **empty** set — never the full registry.
 {% endhint %}
 
-{% expandable title="Advanced: the legacy --permitted-module claim" %}
-The legacy `--permitted-module` claim is a coarser, v1-style allowlist (default `*` = all modules). v2 product entitlements are the precise mechanism; reach for `--permitted-module` only when you deliberately want a blunt module restriction independent of editions.
+{% expandable title="Advanced: the --permitted-module claim" %}
+The `--permitted-module` claim is a coarse engine-module allowlist (default `*` = all modules). Product entitlements are the precise mechanism; reach for `--permitted-module` only when you deliberately want a blunt module restriction independent of editions.
 {% endexpandable %}
 
 ## Open-core terms (ACL 1.0)

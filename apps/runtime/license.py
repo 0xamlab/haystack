@@ -22,7 +22,9 @@ JWT payload:
     "key_expires_at": 1743881678,          # backing API key expiry; 0 = no expiry
     "grace_days": 14,
     "iss": "algenta-control-plane",
-    "sub": "device-license"
+    "sub": "device-license",
+    "ver": 2,                              # license schema version; v2 is required
+    "products": {"codna": {"tier": "pro", "features": ["triage", "fix"]}}
   }
 
 Dev-stub mode is allowed only when explicitly enabled for local development.
@@ -54,7 +56,7 @@ from apps.runtime.privacy_guard import (
 
 logger = structlog.get_logger(__name__)
 
-_LICENSE_VERSION = 1
+_LICENSE_VERSION = 2
 
 # Secret used for self-signed dev licenses (never used for cloud validation)
 _DEV_SECRET = "algenta-dev-local-v1-not-for-production"  # noqa: S105
@@ -289,10 +291,8 @@ class DeviceLicense:
     issued_at: int
     message: str = ""
     source: str = "unknown"  # "cloud" | "dev-stub" | "expired-grace"
-    # ── v2 commercial-capacity claims (defaults preserve v1 legacy behavior) ──
-    # license_version 1 = legacy-permissive (transition only; rejected after the
-    # firm v1 sunset). 2 = authoritative: only granted products/features apply.
-    license_version: int = 1
+    # ── v2 commercial-capacity claims (v2 is the only supported format) ──
+    license_version: int = 2
     org_id: str = ""
     license_id: str = ""
     activation_id: str = ""
@@ -339,17 +339,9 @@ class DeviceLicense:
             return True
         return module_name in self.permitted_modules
 
-    def is_legacy_v1(self) -> bool:
-        """True for pre-products (v1) licenses — legacy-permissive during the
-        transition window, rejected by production after the firm v1 sunset."""
-        return self.license_version < 2
-
     def has_product(self, product: str) -> bool:
         if not self.valid:
             return False
-        # v1 licenses predate product entitlements → legacy-permissive.
-        if self.is_legacy_v1():
-            return True
         return product in self.products
 
     def product_features(self, product: str) -> frozenset[str]:
@@ -380,8 +372,11 @@ def _coerce_products(value: object) -> dict[str, ProductEntitlement]:
 
 def _device_license_from_payload(
     payload: dict[str, object], *, source: str, api_key: str, default_plan: str
-) -> DeviceLicense:
-    """Build a DeviceLicense from a decoded JWT payload (v1 + v2 claims)."""
+) -> DeviceLicense | None:
+    """Build a DeviceLicense from a decoded JWT payload. v2 is the only supported
+    format: a token without a v2 (``ver`` >= 2) claim is rejected (returns None)."""
+    if _coerce_int(payload.get("ver"), 0) < 2:
+        return None
     return DeviceLicense(
         valid=True,
         plan=_coerce_str(payload.get("plan"), default_plan),
@@ -396,7 +391,7 @@ def _device_license_from_payload(
         message=_coerce_str(payload.get("message")),
         source=source,
         # ── v2 commercial-capacity claims ──
-        license_version=_coerce_int(payload.get("ver"), 1),
+        license_version=_coerce_int(payload.get("ver"), 2),
         org_id=_coerce_str(payload.get("org_id")),
         license_id=_coerce_str(payload.get("license_id")),
         activation_id=_coerce_str(payload.get("activation_id")),
@@ -523,10 +518,11 @@ def _load_raw_token(runtime_dir: Path | None = None) -> str | None:
 
 def _parse_token(token: str, api_key: str = "") -> DeviceLicense | None:
     """
-    Decode and validate a JWT license token.
+    Decode and validate a JWT license token. v2 is the only supported format
+    (tokens without ``ver`` >= 2 are rejected).
 
-    v1: dev tokens use HMAC-SHA256 with the dev secret.
-    v2+: cloud tokens use RS256 with the Algenta public key.
+    Dev tokens use HMAC-SHA256 with the dev secret; cloud/offline tokens use
+    RS256 with the Algenta public key.
     """
     strict_local_license = _local_license_required()
     try:
@@ -579,8 +575,8 @@ def _parse_token(token: str, api_key: str = "") -> DeviceLicense | None:
 # ── Revocation list (CRL) enforcement (P3b-D2) ─────────────────────────────────
 #
 # DARK + fail-open-on-uncertainty: a license is revoked ONLY when a positively-VERIFIED CRL
-# explicitly lists its activation_id. v1 (legacy) licenses are exempt (the authoritative flip
-# is P5). Any uncertainty — offline, fetch/parse/verify failure, expired CRL — KEEPS the
+# explicitly lists its activation_id. Any uncertainty — offline, fetch/parse/verify failure,
+# expired CRL — KEEPS the
 # license valid. This is the only path that can falsely break a paying customer, so it errs
 # entirely toward NOT revoking.
 
@@ -685,10 +681,9 @@ def _deny_if_revoked(parsed: DeviceLicense) -> DeviceLicense | None:
 def _is_license_revoked(parsed: DeviceLicense) -> bool:
     """True ONLY when a positively-verified CRL explicitly lists this license's activation_id.
 
-    DARK: v1/legacy or no activation_id → never revoked (current production licenses are v1, so
-    this is dormant until the P5 v2 flip). Every uncertainty → False (keep the license).
+    DARK: no activation_id → never revoked. Every uncertainty → False (keep the license).
     """
-    if parsed.is_legacy_v1() or not parsed.activation_id:
+    if not parsed.activation_id:
         return False
     crl = _fetch_revocation_list()
     if not crl:

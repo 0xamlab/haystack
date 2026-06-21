@@ -10,11 +10,10 @@ Reads the installed token (``~/.algenta/runtime/license.jwt`` by default) via th
 same ``load_license`` path the runtime uses — so this verifies exactly what the
 engine would see. No secrets, no network, no mutation.
 
-    python3 scripts/license_status.py            # human-readable, exit 0 iff valid+v2
+    python3 scripts/license_status.py            # human-readable, exit 0 iff valid
     python3 scripts/license_status.py --json      # machine-readable
-    python3 scripts/license_status.py --allow-v1  # don't fail on a valid v1 token
 
-Exit codes: 0 = gate satisfied · 1 = not satisfied (invalid / expired / v1 when v2 required).
+Exit codes: 0 = gate satisfied · 1 = not satisfied (invalid / expired).
 """
 
 from __future__ import annotations
@@ -38,7 +37,6 @@ def _gather() -> dict[str, object]:
     return {
         "valid": bool(lic.valid),
         "license_version": int(lic.license_version),
-        "is_v2": lic.license_version >= 2,
         "source": lic.source,
         "plan": lic.plan,
         "message": lic.message,
@@ -65,12 +63,10 @@ def _gather() -> dict[str, object]:
     }
 
 
-def _satisfied(info: dict[str, object], *, allow_v1: bool, allow_no_key_expiry: bool) -> bool:
+def _satisfied(info: dict[str, object], *, allow_no_key_expiry: bool) -> bool:
     if not info["valid"]:
         return False
     if info["is_hard_expired"]:
-        return False
-    if not allow_v1 and not info["is_v2"]:
         return False
     # key_expires_at<=0 (the issue_offline_license.py default) verifies fine, but the
     # stored_offline_execution_entitlement enforcement sub-path (require_local_license OFF +
@@ -85,9 +81,6 @@ def _satisfied(info: dict[str, object], *, allow_v1: bool, allow_no_key_expiry: 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", action="store_true", help="emit machine-readable JSON")
-    parser.add_argument(
-        "--allow-v1", action="store_true", help="treat a valid v1 token as satisfying the gate"
-    )
     parser.add_argument(
         "--allow-no-key-expiry",
         action="store_true",
@@ -104,7 +97,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"FAIL  could not load license: {exc}")
         return 1
 
-    ok = _satisfied(info, allow_v1=args.allow_v1, allow_no_key_expiry=args.allow_no_key_expiry)
+    ok = _satisfied(info, allow_no_key_expiry=args.allow_no_key_expiry)
 
     if args.json:
         print(json.dumps({**info, "gate_satisfied": ok}, indent=2, sort_keys=True))
@@ -129,8 +122,6 @@ def main(argv: list[str] | None = None) -> int:
             print(f"      → not valid: {info['message'] or 'no installed license'}")
         elif info["is_hard_expired"]:
             print("      → past grace; runtime would block")
-        elif not info["is_v2"]:
-            print("      → legacy v1; mint+install a v2 license before the fail-closed flip")
         elif int(info["key_expires_at"]) <= 0:  # type: ignore[arg-type]
             print("      → key_expires_at<=0; the stored-offline enforcement path would DENY this. "
                   "Re-mint with --key-expires-at (or pass --allow-no-key-expiry if require_local).")

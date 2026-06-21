@@ -174,7 +174,6 @@ def test_claims_round_trip_into_runtime_device_license() -> None:
     )
 
     assert lic.license_version == 2
-    assert lic.is_legacy_v1() is False
     assert lic.has_product("codna") is True
     assert lic.product_features("codna") == frozenset(CODNA_FEATURES_FULL)
     assert lic.product_tier("codna") == "team"

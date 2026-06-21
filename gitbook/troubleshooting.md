@@ -142,7 +142,6 @@ Exit `0` means the gate is satisfied. Exit `1` means it is not (invalid, expired
 | Cause | What you see | Fix |
 | --- | --- | --- |
 | Invalid or expired token | `FAIL  license valid=False ...` | Reissue and reinstall a valid token |
-| A `v1` token where `v2` is required | `FAIL ... version=1` | Issue a `v2` token, or pass `--allow-v1` only if your deployment runs the v1-tolerant path |
 | `key_expires_at <= 0` | `FAIL` even though the token verifies | Issue with a real `--key-expires-at`, or accept no-expiry with `--allow-no-key-expiry` |
 | Public key not installed | `FAIL  could not load license: ...` | Install `ALGENTA_LOCAL_LICENSE_PUBLIC_KEY` (or the `_FILE` variant) |
 

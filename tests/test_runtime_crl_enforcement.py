@@ -41,12 +41,7 @@ def _license(*, version: int, activation_id: str) -> DeviceLicense:
     )
 
 
-# ── the DARK gate: v1 / unbound never revoked, never even fetches ──────────────
-
-
-def test_v1_license_never_revoked_and_skips_fetch(monkeypatch) -> None:
-    monkeypatch.setattr(rt, "_fetch_revocation_list", lambda: pytest.fail("v1 must not fetch CRL"))
-    assert rt._is_license_revoked(_license(version=1, activation_id="act-1")) is False
+# ── the DARK gate: unbound (no activation_id) never revoked, never even fetches ──────────────
 
 
 def test_v2_without_activation_id_never_revoked(monkeypatch) -> None:
@@ -178,16 +173,3 @@ def test_load_license_revokes_v2(monkeypatch) -> None:
     result = rt.load_license("de_live_key")
     assert result.valid is False
     assert "revoked" in result.message.lower()
-
-
-def test_load_license_v1_stays_valid_even_if_listed(monkeypatch) -> None:
-    # A v1 license whose activation_id happens to be in the CRL is NOT revoked (dormant).
-    v1 = _license(version=1, activation_id="act-REVOKED")
-    monkeypatch.setattr(rt, "_load_raw_token", lambda *a, **k: "STORED")
-    monkeypatch.setattr(rt, "_parse_token", lambda token, api_key="": v1)
-    monkeypatch.setattr(rt, "_local_license_required", lambda: False)
-    monkeypatch.setattr(
-        rt, "_fetch_revocation_list", lambda: {"revoked": [{"activation_id": "act-REVOKED"}]}
-    )
-    result = rt.load_license("de_live_key")
-    assert result.valid is True  # v1 dormant — never revoked pre-P5

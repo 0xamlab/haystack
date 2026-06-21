@@ -46,7 +46,6 @@ python3 scripts/issue_offline_license.py \
   --private-key-file algenta-license.key \
   --device-id "<this machine's device id>" \
   --plan enterprise \
-  --license-version 2 \
   --deployment-class server \
   --org-id org_algenta_internal \
   --license-id lic_codna_prod \
@@ -100,7 +99,7 @@ removing `~/.algenta/runtime/license.jwt`.
 
 ---
 
-## P5.3–P5.7 — the irreversible flips (release-irreversible; one PR each, staged)
+## P5.3–P5.7 — the irreversible flips (P5.5 already done; release-irreversible; one PR each, staged)
 
 Ship these **only after the gate is green**, one at a time, watching each deployment's
 `license_status.py` between steps. Each is a separate reviewed PR.
@@ -109,7 +108,7 @@ Ship these **only after the gate is green**, one at a time, watching each deploy
 |---|---|---|---|
 | **P5.3** | Replace the `ALGENTA_REQUIRE_LOCAL_LICENSE` env bypass with a **release-excluded build flag** + test-only signing key; flip the default **ON** for self-hosted release profiles; drop the HS256 fallback in release. | env read `privacy_policy.py:412`; resolve `:303`; runtime gate `license.py:96`; dev key `license.py:60` (`_DEV_SECRET`); HS256 loop `license.py:541`; API mirror `config.py:90` | A machine without a valid v2 license goes inert — caught by P5.1 if the gate was honored. |
 | **P5.4** | Close the free-self-host grant. **The real branch is `credits.py:256-262`** (`_offline_execution_entitled`'s `return True`), *not* `privacy_policy.py` (the plan's cited line was wrong; `privacy_policy.py:475` helper is dead code). | `credits.py:261` (the grant); sole caller `credits.py:286` | Same as P5.3; removes the last permissive path. |
-| **P5.5** | Add + honor `ALGENTA_V1_LICENSE_SUNSET` (**greenfield — no code reads it today**); past the cutoff `_parse_token`/`load_license` **reject** v1. | `license.py:342` (`is_legacy_v1`); `:399` (`ver` default 1); reject in `:505` + `:949` | Any still-v1 deployment goes inert — re-mint as v2 (P5.1) first. |
+| **P5.5** | **DONE (pre-launch).** v1 was removed outright — `_device_license_from_payload` rejects any non-v2 (`ver` < 2) token and `is_legacy_v1` / the v1 legacy-permissive branches are gone. No future flip and no `ALGENTA_V1_LICENSE_SUNSET`. | `license.py` (`_device_license_from_payload` rejects `ver` < 2) | n/a — no v1 licenses exist (pre-launch). |
 | **P5.6** | Make the verifier **RS256-only** in prod (reject HS256/`alg=none`; require recognized `kid`; pin `iss`) in **both** `_parse_token` *and* the CRL `_verify_control_plane_jwt`. | `license.py:519` (RS256), `:541` (HS256), `:582`+`:596` (CRL); `:100` (`_offline_license_public_keys` carry **no kid**) | A non-RS256/dev token stops verifying; **requiring `kid` breaks every offline token** (issuer emits none) — see prereqs. |
 | **P5.7** | **Require `aud`**: emit `aud` on issuance and flip the four decode sites to `verify_aud=True` + `audience="device-license"` (P5.2 made them *accept* aud; this makes it *required*). | decode sites `license.py:526/547/586/599`; issuers `device_service.py:556`, `issue_offline_license.py`, `_issue_dev_jwt` `license.py:462`, CRL `device_service.py:1012` | Any token minted before aud-emission stops verifying — re-mint with the aud claim. |
 
@@ -132,6 +131,6 @@ disable enforcement. Roll back the *source* before cutting a new release if a st
 
 1. Clean machine, no license, **release build** → `Runtime()` + daemon refuse; no env var re-enables them.
 2. Install a valid v2 license → work resumes.
-3. v1 token past `ALGENTA_V1_LICENSE_SUNSET` → rejected.
+3. Non-v2 token (`ver` < 2) → rejected (v1 removed; the parser requires `ver` >= 2).
 4. HS256 / `alg=none` / bad `kid` / bad `aud` → rejected; valid RS256 + `kid` + `aud` offline → accepted.
 5. `scripts/self_host_smoke.sh` / `self_host_persistence_proof.sh` pass with a license, fail-closed without.

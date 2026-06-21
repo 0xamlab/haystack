@@ -566,7 +566,7 @@ def _issue_license_jwt(
         "grace_days": _GRACE_DAYS,
         "iss": _JWT_ISSUER,
         "sub": "device-license",
-        "ver": 1,
+        "ver": 2,
         # Identity claims (additive, back-compat): the runtime already parses these.
         # activation_id is stable per (org, device) — the CRL revokes by it; license_id/jti
         # are per-issuance (audit / future per-token revocation). device_pubkey_thumbprint

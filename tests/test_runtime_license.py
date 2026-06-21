@@ -81,7 +81,7 @@ def test_parse_offline_local_license_with_public_key(monkeypatch):
             "grace_days": 14,
             "iss": "algenta-offline-license",
             "sub": "device-license",
-            "ver": 1,
+            "ver": 2,
         },
         private_key,
         algorithm="RS256",
@@ -529,7 +529,6 @@ def test_parse_v2_license_carries_product_and_capacity_claims(monkeypatch):
     parsed = _reload_runtime_license()._parse_token(token, "")
     assert parsed is not None and parsed.valid is True
     assert parsed.license_version == 2
-    assert parsed.is_legacy_v1() is False
     assert parsed.org_id == "org_test"
     assert parsed.activation_id == "act_test"
     assert parsed.entitlement_version == 7
@@ -551,38 +550,6 @@ def test_parse_v2_license_carries_product_and_capacity_claims(monkeypatch):
 
     get_settings.cache_clear()
 
-
-def test_v1_license_is_legacy_permissive_for_products(monkeypatch):
-    monkeypatch.setenv("ALGENTA_REQUIRE_LOCAL_LICENSE", "1")
-    monkeypatch.delenv("LICENSE_SIGNING_SECRET", raising=False)
-    monkeypatch.delenv("JWT_SECRET", raising=False)
-    private_key, public_key = _rsa_keypair()
-    monkeypatch.setenv("ALGENTA_LOCAL_LICENSE_PUBLIC_KEY", public_key)
-
-    token = importlib.import_module("jwt").encode(
-        {
-            "device_id": "device-v1",
-            "plan": "enterprise",
-            "permitted_modules": ["*"],
-            "expires_at": 1_999_999_999,
-            "grace_days": 14,
-            "iss": "algenta-offline-license",
-            "sub": "device-license",
-            "ver": 1,
-        },
-        private_key,
-        algorithm="RS256",
-    )
-
-    parsed = _reload_runtime_license()._parse_token(token, "")
-    assert parsed is not None and parsed.valid is True
-    assert parsed.license_version == 1
-    assert parsed.is_legacy_v1() is True
-    # v1 predates product entitlements → legacy-permissive (transition only)
-    assert parsed.has_product("codna") is True
-    assert parsed.products == {}
-
-    get_settings.cache_clear()
 
 
 def test_offline_issuer_emits_v2_product_and_capacity_claims():
