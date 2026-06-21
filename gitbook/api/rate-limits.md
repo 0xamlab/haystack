@@ -1,11 +1,11 @@
 ---
 icon: gauge-high
-description: Algenta rate limits and plan quotas — generated from the server settings so the numbers are authoritative and current, with how to handle 429 and quota errors.
+description: Algenta rate limits and plan quotas — the authoritative numbers the engine enforces, with how to handle 429 and quota errors.
 ---
 
 # Rate limits & quotas
 
-Algenta enforces per-plan **quotas** (monthly usage) and per-endpoint **rate limits** (abuse protection). The values below are generated from the server settings (`apps/api_server/config.py`), so they match what the engine actually enforces. Plan tiers are on [Plans, billing & credits](../billing.md).
+Algenta enforces per-plan **quotas** (monthly usage) and per-endpoint **rate limits** (abuse protection). The values below are the authoritative numbers the engine enforces. Plan tiers are on [Plans, billing & credits](../billing.md).
 
 | Setting | Default | What it limits |
 | --- | --- | --- |

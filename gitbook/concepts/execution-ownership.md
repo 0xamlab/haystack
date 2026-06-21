@@ -22,42 +22,51 @@ Execution ownership removes that ambiguity. Every capability carries its owner e
 
 ## A concrete example
 
-`execute_capability_service` resolves the capability, opens an execution session, and branches on the owner. A `client_managed` capability fails closed before any provider call:
+`POST /v1/capabilities/execute` resolves the capability, opens an execution session, and branches on the owner. You call it with the routed capability:
 
-```python title="apps/api_server/services/capability_plane/_execution.py"
-if capability.execution_owner is ExecutionOwner.CLIENT_MANAGED:
-    return await _complete_execution_session(
-        db, auth,
-        session=session,
-        capability=capability,
-        status=ExecutionSessionStatus.FAILED,
-        error={
-            "code": "client_managed_capability_requires_adapter",
-            "message": (
-                "This capability is marked client_managed and must execute "
-                "through a customer-provided adapter."
-            ),
-        },
-    )
+```json
+POST /v1/capabilities/execute
+{
+  "capability_id": "cap_01h...",
+  "binding_id": "bnd_01h...",
+  "input": { }
+}
+```
+
+A `client_managed` capability fails closed before any provider call — the engine returns a `200` with a failed session and the deferral error code:
+
+```json
+{
+  "execution_session_id": "ses_01h...",
+  "capability_id": "cap_01h...",
+  "provider_id": "prv_01h...",
+  "binding_id": "bnd_01h...",
+  "execution_owner": "client_managed",
+  "status": "failed",
+  "output": null,
+  "error": {
+    "code": "client_managed_capability_requires_adapter",
+    "message": "This capability is marked client_managed and must execute through a customer-provided adapter."
+  }
+}
 ```
 
 An `algenta_managed` capability whose kind has no server-side path also fails closed rather than running on a guessed path:
 
-```python title="apps/api_server/services/capability_plane/_execution.py"
-return await _complete_execution_session(
-    db, auth,
-    session=session,
-    capability=capability,
-    status=ExecutionSessionStatus.FAILED,
-    error={
-        "code": "algenta_managed_capability_not_executable",
-        "message": (
-            "This capability type does not yet have an Algenta-managed "
-            "execution path. Use routeCapabilities() plus the customer "
-            "execution node."
-        ),
-    },
-)
+```json
+{
+  "execution_session_id": "ses_01h...",
+  "capability_id": "cap_01h...",
+  "provider_id": "prv_01h...",
+  "binding_id": "bnd_01h...",
+  "execution_owner": "algenta_managed",
+  "status": "failed",
+  "output": null,
+  "error": {
+    "code": "algenta_managed_capability_not_executable",
+    "message": "This capability type does not have an Algenta-managed execution path. Use routeCapabilities() plus the customer execution node."
+  }
+}
 ```
 
 A failed session surfaces over the API as a normal `200` execution response with `status: "failed"` and a populated `error` object (`code` + `message`); routing-level rejections raise the capability-plane error envelope `{"error": {"code", "message", "details"}}`. The owner-related error codes are:

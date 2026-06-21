@@ -417,23 +417,6 @@ Generated from the canonical OpenAPI spec, so it always matches the deployed eng
 {% openapi-operation spec="algenta-api" path="/v1/logs" method="get" %}
 {% endopenapi-operation %}
 
-## MCP
-
-### `GET /mcp/tools`
-
-{% openapi-operation spec="algenta-api" path="/mcp/tools" method="get" %}
-{% endopenapi-operation %}
-
-### `GET /mcp/sse`
-
-{% openapi-operation spec="algenta-api" path="/mcp/sse" method="get" %}
-{% endopenapi-operation %}
-
-### `POST /mcp/messages`
-
-{% openapi-operation spec="algenta-api" path="/mcp/messages" method="post" %}
-{% endopenapi-operation %}
-
 ## Playground
 
 ### `POST /v1/playground`

@@ -72,19 +72,19 @@ Restart the engine so it picks up the new environment, then confirm encryption i
 
 ## Confirm encryption is enabled
 
-Algenta exposes the on/off state through `is_config_encryption_enabled()`, which returns `True` exactly when the key is set. The most direct check is to evaluate it in the engine's environment:
+Encryption is on whenever `ALGENTA_CONFIG_ENCRYPTION_KEY` is set in the engine's environment, and off when it is unset. There is no separate switch to flip — the presence of the key is the state. The most reliable confirmation is the engine's own observable behavior rather than a config readout.
 
-```python
-import os
-from apps.api_server.services.config_crypto import is_config_encryption_enabled
+The clearest behavioral signal is a per-tenant key write. While `ALGENTA_CONFIG_ENCRYPTION_KEY` is unset, attempting to set a tenant provider or engine key returns HTTP `409` with the code `encryption_key_required` — the engine refuses to store the key as plaintext. Once the key is configured and the engine is restarted, that same request succeeds:
 
-print("encryption enabled:", is_config_encryption_enabled())
-print("key present:", bool(os.environ.get("ALGENTA_CONFIG_ENCRYPTION_KEY")))
+```bash
+curl -sS -o /dev/null -w "%{http_code}\n" \
+  -X PUT https://api.algenta.ai/v1/provider-keys/openai \
+  -H "Authorization: Bearer $ALGENTA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"api_key": "sk-example"}'
 ```
 
-**Expected result:** `encryption enabled: True`. From that point, newly written provider keys, connector configs, and capability-binding configs are stored as `enc:v1:` ciphertext.
-
-You can also confirm it behaviorally: attempting to set a per-tenant key while the variable is unset returns HTTP `409` with the code `encryption_key_required`. Once the key is configured, that same request succeeds — a clear runtime signal that encryption is on. See [../guides/byok.md](../guides/byok.md) for the key-management API.
+**Expected result:** `409` (body code `encryption_key_required`) when the variable is unset, and `200` once it is configured. From that point, newly written provider keys, connector configs, and capability-binding configs are stored with the `enc:v1:` ciphertext prefix in the database. See [../guides/byok.md](../guides/byok.md) for the key-management API.
 
 ## Key rotation — handle with care
 

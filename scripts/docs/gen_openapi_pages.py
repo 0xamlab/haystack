@@ -33,6 +33,10 @@ def load():
     tag_order = [t["name"] for t in spec.get("tags", []) if isinstance(t, dict) and t.get("name")]
     groups: dict[str, list[tuple[str, str, str]]] = {}
     for path, item in (spec.get("paths") or {}).items():
+        # The MCP-over-HTTP transport endpoints are documented separately (sdk/mcp.md) and the spec
+        # marks them unavailable — keep them out of the public API explorer/reference.
+        if path.startswith("/mcp"):
+            continue
         for method, op in (item or {}).items():
             if method not in _METHODS or not isinstance(op, dict):
                 continue

@@ -25,7 +25,7 @@ Algenta subscriptions are per-organization. There are four tiers.
 The two self-serve paid tiers are `developer` and `pro`. These are the only values accepted by Stripe Checkout (below). Enterprise is a sales-assisted contract.
 
 {% hint style="info" %}
-Revenue has three components: the per-org subscription, compute overages billed above the monthly simulation quota (metered, invoiced monthly), and Enterprise contracts. Overages are tracked per billing period and surfaced through `GET /v1/usage`.
+You're billed for your subscription plus any compute overage above your monthly simulation quota (metered, invoiced monthly); Enterprise is a custom contract. Overages are tracked per billing period and surfaced through `GET /v1/usage`.
 {% endhint %}
 
 ## Inspect your account
@@ -290,7 +290,6 @@ The local runtime daemon does not phone home on every execution. Instead it draw
 | Free | 1,000 |
 | Developer | 10,000 |
 | Pro | 10,000 |
-| Team | 25,000 |
 | Enterprise | 100,000 (unlimited monthly quota) |
 
 A refresh grants `min(batch_size, monthly_remaining)` credits. When the monthly quota is exhausted, the endpoint returns `429 quota_exhausted`.
@@ -336,8 +335,8 @@ print(result.credits_granted, result.monthly_remaining)
 {
   "credits_granted": 10000,
   "credits_issued_this_month": 10000,
-  "monthly_limit": 500000,
-  "monthly_remaining": 490000,
+  "monthly_limit": 100000,
+  "monthly_remaining": 90000,
   "billing_period": "2026-06",
   "expires_at": 1750531200.0,
   "refresh_after": 1750521600.0,
@@ -353,9 +352,9 @@ When the monthly quota is gone, the refresh fails closed with `429 quota_exhaust
 ```json
 {
   "error": "quota_exhausted",
-  "message": "Monthly execution quota exhausted for plan 'developer' (500,000 executions/mo). Upgrade your plan or wait for the next billing period.",
-  "monthly_limit": 500000,
-  "issued_this_month": 500000,
+  "message": "Monthly execution quota exhausted for plan 'pro' (100,000 executions/mo). Upgrade your plan or wait for the next billing period.",
+  "monthly_limit": 100000,
+  "issued_this_month": 100000,
   "billing_period": "2026-06",
   "upgrade_url": "https://algenta.io/pricing"
 }
@@ -460,7 +459,7 @@ With these set, the daemon registers a device, refreshes credits, and flushes me
 {% endstepper %}
 
 {% hint style="info" %}
-Managed LLM pass-through (where Algenta provides the model key and meters spend) is a separate, off-by-default capability gated by `ALGENTA_MANAGED_LLM` plus a per-org `managed_llm_enabled` flag. When enabled, spend is metered and surfaced under `managed_llm_spend_usd_month` in `GET /v1/usage` and capped per plan (`llm_spend_cap_usd_month`). Self-hosted and BYOK keys record $0 pass-through cost.
+Managed LLM pass-through (where Algenta provides the model key and meters spend) is an optional capability you can enable for your organization. When enabled, spend is metered and surfaced under `managed_llm_spend_usd_month` in `GET /v1/usage` and capped per plan (`llm_spend_cap_usd_month`). Self-hosted and BYOK keys record $0 pass-through cost.
 {% endhint %}
 
 ## Quick reference

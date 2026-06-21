@@ -13,14 +13,14 @@ Every command maps one-to-one to a `/v1` endpoint. If you can do it in the CLI, 
 
 ## Invocation
 
-The CLI lives in `apps.cli.main`. Run it as a module from the repository root, or expose it as `de` with a shell alias.
+Install the SDK and the `de` command is on your PATH. Every example below uses `de`.
 
-```bash title="setup-alias.sh"
-# From the repository root
-PYTHONPATH=. python3 -m apps.cli.main version
+```bash title="install-cli.sh"
+# Python
+pip install algenta-sdk
 
-# Recommended alias — every example below uses `de`
-alias de='PYTHONPATH=. python3 -m apps.cli.main'
+# Or TypeScript/Node
+npm i -g @algenta/sdk
 
 de version
 de health

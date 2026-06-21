@@ -184,7 +184,7 @@ The log level is controlled by the `log_level` setting (for example `info`, `war
 Observability stays inside your network. Algenta does **not** ship logs, metrics, traces, or events to any third party:
 
 - There is no Sentry, Datadog, PostHog, or OpenTelemetry exporter wired into the application. `sentry_dsn` and `otel_exporter_otlp_endpoint` exist only as inert configuration fields and emit nothing.
-- A test (`tests/test_telemetry_fail_closed.py`) enforces that the application code never imports a telemetry/analytics SDK, so this property cannot regress.
+- The application imports no telemetry/analytics SDK at all — the released product carries no such dependency, and this property is enforced and tested so it cannot regress.
 - Metrics are pull-based: Prometheus scrapes `/metrics` from inside your network. Algenta never pushes data out.
 
 You own the entire observability pipeline. See [Configuration](../configuration.md) for every related setting and [Self-hosting](../self-hosting.md) for the deployment topology.

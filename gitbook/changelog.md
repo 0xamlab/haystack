@@ -8,7 +8,7 @@ description: What's new in Algenta — notable releases, improvements, and fixes
 What's new in Algenta — the engine and the four ways to reach it (HTTP API, SDKs, MCP, self-hosted deployment), newest first. Each entry is dated and tagged; follow the links for the full detail.
 
 {% hint style="info" %}
-Algenta is in active preview. Anything that changes existing behavior is called out with a **Changed** tag — pin your SDK version and read these before upgrading.
+We call out behavior changes with a **Changed** tag — pin your SDK version and read these before upgrading.
 {% endhint %}
 
 {% update date="2026-06-21" tags="documentation,improvements,changed" %}
@@ -32,7 +32,7 @@ A full documentation refresh on a shared, audited docs system — plus a simpler
 
 **Changed**
 
-- Licensing is now a **single v2 format**. The legacy v1 license format and its flags (`--license-version`, `--allow-v1`) were removed — always mint v2. See [Licensing](licensing.md).
+- Licensing now uses a **single v2 format** — install the v2 license file Algenta provides. The legacy v1 format was retired. See [Licensing](licensing.md).
 {% endupdate %}
 
 {% update date="2026-06-19" tags="new-releases" %}
@@ -43,13 +43,13 @@ Everything needed to run Algenta on your own infrastructure — and to prove it 
 **New**
 
 - One-command [self-hosted install](self-hosting.md) (Docker Compose: api + worker + Postgres + Redis + object storage).
-- The operator **privacy report** (`GET /v1/admin/privacy-report`) — buyer-facing proof a deployment is cloud-free, with a 24-hour egress summary.
+- A **privacy report** (`GET /v1/admin/privacy-report`) that proves a deployment is cloud-free, with a 24-hour egress summary.
 - Smoke and persistence proof scripts that exercise the full stack end to end (`self_host_smoke.sh`, `self_host_persistence_proof.sh`).
 - The strict **air-gapped** profile (`ALGENTA_DEPLOYMENT_MODE=air_gapped`) and a telemetry-disable switch.
 {% endupdate %}
 
 {% update date="2026-06-15" tags="new-releases" %}
-## Preview: the engine, four surfaces, and offline licensing
+## The engine, four surfaces, and offline licensing
 
 The Algenta engine and every surface that reaches it.
 

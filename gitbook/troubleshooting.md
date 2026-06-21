@@ -90,7 +90,7 @@ The SDK and CLI resolve the URL from the first of `ALGENTA_BASE_URL`, `DE_BASE_U
 
 <summary>"license_status.py prints FAIL" — the local gate isn't satisfied</summary>
 
-Self-hosted deployments validate a local license; under enforcement the engine fails closed. `scripts/license_status.py` loads the token through the exact runtime path — no network, no mutation.
+Self-hosted deployments validate a local license and fail closed when the license is missing or invalid. `scripts/license_status.py` loads the token through the exact runtime path — no network, no mutation.
 
 ```bash title="license-status.sh"
 python3 scripts/license_status.py          # OK + exit 0 = satisfied
@@ -121,12 +121,12 @@ The runtime reads `ALGENTA_LOCAL_LICENSE_PUBLIC_KEY` then `ALGENTA_LICENSE_PUBLI
 
 <summary>"FAIL" even though the token verifies — key_expires_at ≤ 0</summary>
 
-`issue_offline_license.py` defaults `key_expires_at` to `0`. That verifies under the `require_local_license` path but is rejected by the stored-entitlement enforcement sub-path, so `license_status.py` fails the gate conservatively — it never green-lights a machine the runtime would then deny.
+A license with no key expiry can fail the gate. Use a license that has a real key expiry, or pass `--allow-no-key-expiry` if a no-expiry license is intended.
 
 ```bash title="fix-key-expiry.sh"
-# mint with a real key expiry (unix seconds):
-python3 scripts/issue_offline_license.py --key-expires-at 1782950400
-# or accept a deliberate no-expiry license (require_local_license path only):
+# obtain a reissued license with a real key expiry from whoever provisions your license, then verify:
+python3 scripts/license_status.py
+# or accept a deliberate no-expiry license:
 python3 scripts/license_status.py --allow-no-key-expiry
 ```
 

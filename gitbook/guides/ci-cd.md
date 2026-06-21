@@ -22,8 +22,6 @@ You need:
 
 ```bash
 pip install algenta-sdk
-# or, from a checkout of the engine repo:
-alias de='PYTHONPATH=. python3 -m apps.cli.main'
 ```
 
 ## Authenticate from a CI secret

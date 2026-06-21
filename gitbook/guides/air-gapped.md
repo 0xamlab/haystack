@@ -21,49 +21,29 @@ The `air_gapped` mode is the strict sibling of `self_hosted`. Both disable cloud
 
 * A working self-hosted install on the isolated host (see [Self-hosting](../self-hosting.md)).
 * The Mojo engine pool running locally (see [Run the Mojo engine](../engine/mojo-sidecar.md)).
-* On a **connected** machine you control: an RSA key pair whose **private** key signs licenses and whose **public** key the air-gapped runtime trusts. Only the public key and the resulting signed license file cross the air gap.
+* An offline license **issued by Algenta** for this host, plus the matching **public key** that verifies it. Only the signed license file and the public key cross the air gap. (Community Use needs no license — see [Licensing](../licensing.md).)
 
-## Provision the offline license
+## Install the offline license
 
-The signing step happens off the air-gapped box. `scripts/issue_offline_license.py` signs license claims into an RS256 JWT and never reads customer data, schema data, or runtime payloads.
+An air-gapped license is bound to the host's device identity and verified locally with no network. You read the device id on the isolated host, give it to Algenta, and install the signed license file you receive.
 
 {% stepper %}
 {% step %}
 ### Get the device id of the air-gapped host
 
-On the isolated host, read the stable device identifier the runtime will bind the license to. The raw machine id is hashed and never leaves the machine.
+On the isolated host, read the stable device identifier the license is bound to. The raw machine id is hashed and never leaves the machine.
 
 ```bash
 de license
 ```
 
-`de license` prints the device id, plan, device limit, permitted modules, license source, and expiry. Copy the device id across the air gap (e.g. on removable media) to the signing machine.
-{% endstep %}
-
-{% step %}
-### Sign the license on the connected machine
-
-On the machine that holds the **private** key, mint a v2 license bound to that device id. `key_expires_at` defaults to `expires_at`; set a real expiry (with a grace period) rather than `0` so the license behaves identically under every enforcement path.
-
-```bash
-python3 scripts/issue_offline_license.py \
-  --device-id "$ALGENTA_DEVICE_ID" \
-  --plan enterprise \
-  --deployment-class airgapped \
-  --commercial-use \
-  --expires-at 1788220800 \
-  --grace-days 14 \
-  --private-key-file "$ALGENTA_LOCAL_LICENSE_PRIVATE_KEY_FILE" \
-  --output ./license.jwt
-```
-
-The script prints a JSON status line — `{"status": "ok", ..., "algorithm": "RS256"}` — and writes a `0600` JWT to `./license.jwt`. Carry `license.jwt` (and the **public** key) across the air gap. The private key never crosses.
+`de license` prints the device id, plan, device limit, permitted modules, license source, and expiry. Send the device id to Algenta (across the air gap, e.g. on removable media) so your license can be issued for this exact machine.
 {% endstep %}
 
 {% step %}
 ### Install the license and the trust anchor on the air-gapped host
 
-Place the signed token where the runtime loads it and point the runtime at the public key that verifies it. The default license path is `~/.algenta/runtime/license.jwt` (override the directory with `ALGENTA_RUNTIME_DIR`).
+Algenta provides a signed license file (`license.jwt`) bound to that device id, and the matching **public key** that verifies it. Carry both across the air gap, place the token where the runtime loads it, and point the runtime at the public key. The default license path is `~/.algenta/runtime/license.jwt` (override the directory with `ALGENTA_RUNTIME_DIR`).
 
 ```bash
 mkdir -p ~/.algenta/runtime
@@ -84,7 +64,7 @@ The token may instead live in a platform secret via `ALGENTA_LICENSE_JWT` (or `A
 {% step %}
 ### Verify the license offline
 
-Confirm the runtime accepts the installed token without any network. `scripts/license_status.py` loads the token through the exact `load_license` path the engine uses — no secrets, no network, no mutation.
+Confirm the runtime accepts the installed token without any network. `scripts/license_status.py` loads the token the same way the engine does at startup — no secrets, no network, no mutation.
 
 ```bash
 python3 scripts/license_status.py
@@ -106,12 +86,12 @@ OK  license valid=True version=2 source=offline-local plan=enterprise
 {% endhint %}
 
 {% hint style="warning" %}
-A `FAIL` with `key_expires_at<=0` means the token was minted with `--expires-at 0`. That verifies under the `require_local_license` path but is rejected by the stored-offline enforcement sub-path. Re-mint with a real `--key-expires-at` (or, only for a deliberate no-expiry license that runs solely under `require_local_license`, pass `--allow-no-key-expiry`).
+If the gate reports `FAIL` with `key_expires_at<=0`, the issued license has no key expiry. Request a license with a real key expiry (or, only for a deliberately no-expiry license, run `scripts/license_status.py --allow-no-key-expiry`).
 {% endhint %}
 
 ## How the egress policy fails closed
 
-In the `air_gapped` profile the runtime derives a `private_profile` that sets `disable_cloud`, `disable_telemetry`, and **`allow_outbound_network=False`** by default. Every outbound attempt is classified by `evaluate_egress` into one of five classes and checked against the policy:
+In the `air_gapped` profile the runtime applies a private profile that sets `disable_cloud`, `disable_telemetry`, and **`allow_outbound_network=False`** by default. Every outbound attempt is classified into one of five classes and checked against the policy:
 
 | Egress class | Air-gapped verdict |
 | --- | --- |

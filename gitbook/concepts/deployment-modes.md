@@ -13,7 +13,7 @@ Algenta runs in places with very different network trust: a multi-tenant hosted 
 
 ## Example
 
-The profile is derived in `apps/privacy_policy.py` from the mode. The two private modes set `private_profile = True`, which changes the cloud, telemetry, metering, and outbound-network defaults. Each default can still be overridden by its own environment variable.
+The privacy profile is derived from the mode. The two private modes set `private_profile = True`, which changes the cloud, telemetry, metering, and outbound-network defaults. Each default can still be overridden by its own environment variable.
 
 | Mode | Default cloud | Default telemetry | Default metering | Default outbound network | Local license |
 | --- | --- | --- | --- | --- | --- |
@@ -31,7 +31,7 @@ export ALGENTA_DEPLOYMENT_MODE=air_gapped
 export ALGENTA_TELEMETRY_MODE=control_plane_sync   # raises air_gapped_control_plane_sync_forbidden
 ```
 
-Egress is classified before it is allowed. `evaluate_egress` sorts each destination into one of five classes — `algenta_cloud`, `vendor_telemetry`, `customer_connector`, `operator_service`, or `undeclared_public` — and returns an `allow`/`deny` decision with a reason. In a private profile with `allow_outbound_network=False`, an explicitly configured connector or operator service is still reachable only when its host appears in `ALGENTA_EGRESS_ALLOWLIST`; everything else is denied (`destination_not_allowlisted` or `undeclared_public_egress_disabled`).
+Egress is classified before it is allowed. Each outbound destination is classified into one of five classes — `algenta_cloud`, `vendor_telemetry`, `customer_connector`, `operator_service`, or `undeclared_public` — and returns an `allow`/`deny` decision with a reason. In a private profile with `allow_outbound_network=False`, an explicitly configured connector or operator service is still reachable only when its host appears in `ALGENTA_EGRESS_ALLOWLIST`; everything else is denied (`destination_not_allowlisted` or `undeclared_public_egress_disabled`).
 
 ```bash title="Allowlisting a private connector under a fail-closed profile"
 export ALGENTA_DEPLOYMENT_MODE=self_hosted

@@ -18,7 +18,7 @@ Binding is enforced only when there is something to enforce against: a device-ca
 
 ## How the device id is derived
 
-The runtime builds a stable, hashed device id in `apps/runtime/device.py`. It reads the best-available OS-native machine id, then hashes it so the raw value never leaves the machine:
+The runtime builds a stable, hashed device id locally. It reads the best-available OS-native machine id, then hashes it so the raw value never leaves the machine:
 
 ```text
 device_id = SHA-256( raw_machine_id + ":algenta-device-v1" )[:32]   # hexdigest, first 32 chars
@@ -132,16 +132,13 @@ export ALGENTA_DEVICE_ID="ci-runner-amd64-pool-01-stable"   # 16–64 chars; DE_
 Keep `X-Algenta-Device-Id`, `X-Algenta-Platform`, and `X-Algenta-Hostname-Hash` identical across jobs and persist `ALGENTA_RUNTIME_DIR` so the fallback `install_id` survives. Without the original binding token, an already-bound id returns `401 device_binding_token_required`.
 {% endtab %}
 {% tab title="Offline license" %}
-For air-gapped hosts, mint a license bound to the target machine's device id (print it on that host with `de license status`) and load it locally:
+For air-gapped hosts, print the target machine's device id on that host with `de license` and send it to Algenta. Algenta returns an offline-signed license bound to that exact device id; load it locally:
 
 ```bash
-python3 scripts/issue_offline_license.py \
-  --device-id 3f9a1c2b...8e04 \
-  --plan enterprise \
-  --output license.jwt
+cp ./license.jwt ~/.algenta/runtime/license.jwt
 ```
 
-Copy `license.jwt` to `~/.algenta/runtime/license.jwt` (or set `ALGENTA_LICENSE_JWT_FILE`). Set `ALGENTA_REQUIRE_LOCAL_LICENSE=1` to require a signed local license and disable any hosted registration. See [Run air-gapped](air-gapped.md).
+Copy the license to `~/.algenta/runtime/license.jwt` (or set `ALGENTA_LICENSE_JWT_FILE`). Set `ALGENTA_REQUIRE_LOCAL_LICENSE=1` to require a signed local license and disable any hosted registration. See [Run air-gapped](air-gapped.md).
 {% endtab %}
 {% endtabs %}
 

@@ -299,7 +299,7 @@ curl http://localhost:8000/v1/health
 
 ### Privacy proof
 
-The privacy report is the buyer-facing proof that the deployment is cloud-free. It returns the active deployment mode and a 24-hour egress summary.
+The privacy report proves the deployment is cloud-free. It returns the active deployment mode and a 24-hour egress summary.
 
 {% tabs %}
 {% tab title="Request" %}
@@ -403,22 +403,15 @@ Scale the agent head horizontally when needed — the api and worker reach it th
 docker compose up -d --scale sidecar=3
 ```
 
-## Managed-host deploy (Fly.io)
+## Split-app deploy (optional reference pattern)
 
-For a managed origin on Fly.io with Cloudflare at the edge, the engine splits into a public `api` app and a private `engine` app (worker + co-located sidecar sharing one volume). The full runbook lives in `DEPLOY.md`, with `fly.api.toml`, `fly.engine.toml`, and `fly.control-plane.toml` defining the apps.
-
-```bash title="fly-deploy.sh"
-export FLY_API_TOKEN=…
-make bootstrap        # create apps, Postgres, Redis, object storage, request cert
-make deploy-fly       # deploy engine first, then api (runs alembic upgrade head)
-make status           # fly status + /v1/health + secrets check
-```
+The single Compose stack above is the supported deployment. If your platform (a managed container host, your own Kubernetes cluster, or similar) needs a public/private split, an optional pattern is to run the FastAPI backend as a public-facing app and the worker plus its co-located agent-core sidecar as a private app behind it, with a TLS-terminating edge (nginx, Caddy, or your platform's load balancer) in front. Adapt this to your own infrastructure and your platform's own deployment tooling.
 
 {% hint style="danger" %}
-Do not scale the engine app past one Machine — it holds the single shared working-directory volume.
+Do not run more than one instance of the private worker/sidecar app when it holds a single shared working-directory volume — that volume cannot be mounted by multiple instances at once. Scale the public API app freely.
 {% endhint %}
 
-On Fly, set the same durable secrets per app: both apps need `ALGENTA_CONFIG_ENCRYPTION_KEY`, `ALGENTA_AGENT_CORE_TOKEN`, and the `DATABASE_URL`/`REDIS_URL`/`S3_*` set; the api app additionally needs `ALGENTA_ENGINE_URL`, `ALGENTA_ENGINE_API_KEY`, and `JWT_SECRET`; the engine app needs the matching `AGENT_CORE_AUTH_TOKEN`, `AGENT_CORE_REQUIRE_AUTH=1`, and the LLM key.
+Set the same durable secrets on each app: both need `ALGENTA_CONFIG_ENCRYPTION_KEY`, the shared agent-core auth token, and the `DATABASE_URL`/`REDIS_URL`/`S3_*` connection settings; the public API app additionally needs `ALGENTA_ENGINE_URL`, `ALGENTA_ENGINE_API_KEY`, and `JWT_SECRET`; the private worker/sidecar app needs `AGENT_CORE_REQUIRE_AUTH=1` and the LLM provider key.
 
 ## Related pages
 

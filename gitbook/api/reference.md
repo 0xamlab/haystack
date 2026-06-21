@@ -175,14 +175,6 @@ To call any endpoint live (parameters, schemas, Test it), use the [API explorer]
 | --- | --- | --- |
 | `GET` | `/v1/logs` | Stream structured logs via Server-Sent Events |
 
-## MCP
-
-| Method | Path | Summary |
-| --- | --- | --- |
-| `GET` | `/mcp/tools` | List available MCP tools |
-| `GET` | `/mcp/sse` | MCP SSE transport unavailable |
-| `POST` | `/mcp/messages` | MCP message transport unavailable |
-
 ## Playground
 
 | Method | Path | Summary |
