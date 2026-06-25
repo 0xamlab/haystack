@@ -1,8 +1,13 @@
 # WAF for the control plane: a baseline per-IP API rate limit + a STRICTER limit on the
-# brute-force-sensitive surfaces (login/signup + device registration), plus the Cloudflare
-# Managed Ruleset. The Stripe webhook is excluded from rate-limiting (Stripe bursts + retries
-# legitimately and the origin dedupes via the StripeWebhookEvent ledger — edge throttling would
-# drop real deliveries). Managed ruleset + advanced rate-limiting need a paid plan.
+# brute-force-sensitive surfaces (login/signup + the device activation / license-minting flow),
+# plus the Cloudflare Managed Ruleset. The Stripe webhook is excluded from rate-limiting (Stripe
+# bursts + retries legitimately and the origin dedupes via the StripeWebhookEvent ledger — edge
+# throttling would drop real deliveries). Managed ruleset + advanced rate-limiting need a paid plan.
+#
+# Defense-in-depth ONLY: this edge layer protects the connected/hosted path. The authoritative
+# anti-cheat lives in the engine (DB-counted install rate-limit + active-node cap), which works
+# self-hosted and air-gapped where Cloudflare is never in the path. Per-IP edge limits are a coarse
+# backstop against scripted hammering of the activation surfaces — they are NOT the device cap.
 
 resource "cloudflare_ruleset" "control_plane_ratelimit" {
   zone_id = var.algenta_zone_id
@@ -10,15 +15,20 @@ resource "cloudflare_ruleset" "control_plane_ratelimit" {
   kind    = "zone"
   phase   = "http_ratelimit"
 
-  # Tight limit on auth + device registration (anti brute-force / signup abuse).
+  # Tight limit on auth + the full device activation flow: registration AND license minting
+  # (challenge + renew). The PUBLIC license read surfaces — /v1/license/revocations (the signed
+  # CRL) and /.well-known/jwks.json — are deliberately NOT included here: runtimes poll them and
+  # many devices share one egress IP, so the baseline limit below governs them instead.
   rules {
-    description = "Strict per-IP limit on auth + device registration"
+    description = "Strict per-IP limit on auth + device activation (register + license mint)"
     enabled     = true
     expression  = <<-EOT
       (http.host eq "api.algenta.ai") and (
         starts_with(http.request.uri.path, "/v1/auth") or
         starts_with(http.request.uri.path, "/auth") or
-        http.request.uri.path eq "/v1/device/register"
+        http.request.uri.path eq "/v1/device/register" or
+        http.request.uri.path eq "/v1/license/challenge" or
+        http.request.uri.path eq "/v1/license/renew"
       )
     EOT
     action      = "block"
