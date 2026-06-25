@@ -285,6 +285,39 @@ def test_ssrf_guard_blocks_link_local_metadata_even_when_allowlisted(
         get_settings.cache_clear()
 
 
+@pytest.mark.parametrize(
+    "metadata_ip",
+    [
+        "::ffff:169.254.169.254",  # IPv4-mapped IPv6
+        "64:ff9b::a9fe:a9fe",      # NAT64-embedded 169.254.169.254
+        "fd00:ec2::254",           # AWS IMDSv6
+    ],
+)
+def test_ssrf_guard_blocks_metadata_ipv6_encodings_even_when_allowlisted(
+    monkeypatch: pytest.MonkeyPatch,
+    metadata_ip: str,
+) -> None:
+    # IPv6 encodings that smuggle the cloud-metadata endpoint past a naive link-local check must
+    # still be denied, even for an allowlisted host.
+    monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "self_hosted")
+    monkeypatch.setenv("ALGENTA_ALLOW_OUTBOUND_NETWORK", "false")
+    monkeypatch.setenv("ALGENTA_EGRESS_ALLOWLIST", "*.evil.example")
+    get_settings.cache_clear()
+
+    def _resolver(host, *args, **kwargs):
+        return [(10, 1, 6, "", (metadata_ip, 0, 0, 0))]
+
+    monkeypatch.setattr(
+        "apps.api_server.services.egress_guard.socket.getaddrinfo", _resolver
+    )
+    try:
+        with pytest.raises(EgressPolicyDeniedError) as exc_info:
+            read_url_text("https://attacker.evil.example/x")
+        assert exc_info.value.decision.reason == "ssrf_guard_link_local_destination"
+    finally:
+        get_settings.cache_clear()
+
+
 def test_read_url_text_allows_allowlisted_loopback_destination_under_permissive_outbound(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

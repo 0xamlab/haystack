@@ -202,16 +202,29 @@ def _resolve_destination_addresses(host: str) -> list[str]:
     return list({info[4][0] for info in infos if info and info[4]})
 
 
+# IPv6 cloud-metadata endpoints that are NOT caught by is_link_local (they sit in private/ULA space)
+# but are never a legitimate egress target. 169.254.169.254 (AWS/GCP/Azure IPv4) is already link-local.
+_EXPLICIT_METADATA_IPS = frozenset({"fd00:ec2::254"})  # AWS IMDSv6
+_NAT64_PREFIX = ipaddress.ip_network("64:ff9b::/96")
+
+
 def _is_never_legitimate_ip(ip_str: str) -> bool:
     """Addresses that are never a legitimate egress target — even an operator allowlist must not
-    reach them. Notably link-local 169.254.0.0/16 (the cloud-metadata endpoint 169.254.169.254)."""
+    reach them. Covers link-local (169.254.0.0/16 cloud metadata), multicast, unspecified, and the
+    IPv6 encodings that smuggle those past a naive check: IPv4-mapped (::ffff:169.254.169.254),
+    NAT64 (64:ff9b::a9fe:a9fe), and the IPv6 metadata endpoint. (Loopback/reserved/private stay
+    operator-allowlist-gated: ::1 is is_reserved and an internal sidecar at 10.x is legitimate.)"""
     try:
         ip = ipaddress.ip_address(ip_str)
     except ValueError:
         return False
-    # Link-local (incl. 169.254.169.254), multicast, and unspecified are never a legitimate egress
-    # target. (Loopback/reserved are NOT included here: ::1 is is_reserved, and an operator may
-    # legitimately allowlist a loopback/private sidecar — those stay gated by the reason check below.)
+    if isinstance(ip, ipaddress.IPv6Address):
+        if str(ip) in _EXPLICIT_METADATA_IPS:
+            return True
+        if ip.ipv4_mapped is not None:  # ::ffff:169.254.169.254
+            return _is_never_legitimate_ip(str(ip.ipv4_mapped))
+        if ip in _NAT64_PREFIX:  # 64:ff9b::a9fe:a9fe -> embedded IPv4
+            return _is_never_legitimate_ip(str(ipaddress.ip_address(int(ip) & 0xFFFFFFFF)))
     return ip.is_link_local or ip.is_multicast or ip.is_unspecified
 
 
