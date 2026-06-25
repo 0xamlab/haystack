@@ -41,6 +41,14 @@ from apps.api_server.services.config_crypto import (
     decrypt_config_json,
     encrypt_config_dict,
 )
+from apps.api_server.services.egress_guard import (
+    EgressPolicyDeniedError,
+    audit_context_from_auth,
+)
+from apps.api_server.services.capability_plane._mcp_client import (
+    MCPClientError,
+    call_remote_tool,
+)
 from apps.api_server.services.auth_service import AuthContext
 from apps.api_server.services.workspace_scope import (
     workspace_id_for_write,
@@ -353,6 +361,72 @@ async def execute_capability_service(
                 "engine_used": execution.engine_used,
                 "request_id": execution.request_id,
             },
+        )
+    if capability.kind is CapabilityKind.MCP_TOOL:
+        tool_name = capability.selected_tool_name or (
+            capability.customer_metadata.get("tool_name")
+            if isinstance(capability.customer_metadata, dict)
+            else None
+        )
+        if not isinstance(tool_name, str) or not tool_name:
+            return await _complete_execution_session(
+                db, auth, session=session, capability=capability,
+                status=ExecutionSessionStatus.FAILED,
+                error={"code": "mcp_tool_name_missing", "message": "MCP capability is missing its tool name."},
+            )
+        # Re-read the external server + auth from the binding's ENCRYPTED config, scoped to the
+        # caller's org/workspace (_require_binding 404s a foreign binding — no cross-tenant IDOR).
+        binding = await _require_binding(db, auth, capability.binding_id)
+        binding_config = dict(decrypt_config_dict(binding.config_json, org_id=binding.org_id) or {})
+        server_url = str(binding_config.get("server_url") or "").strip()
+        if not server_url:
+            return await _complete_execution_session(
+                db, auth, session=session, capability=capability,
+                status=ExecutionSessionStatus.FAILED,
+                error={"code": "mcp_server_url_missing", "message": "MCP binding is missing config.server_url."},
+            )
+        auth_config = binding_config.get("auth") if isinstance(binding_config.get("auth"), dict) else None
+        arguments = request_input.get("arguments")
+        if not isinstance(arguments, dict):
+            arguments = {k: v for k, v in request_input.items() if k != "arguments"}
+        try:
+            result = await call_remote_tool(
+                server_url,
+                tool_name=tool_name,
+                arguments=arguments,
+                auth=auth_config,
+                audit=audit_context_from_auth(auth),
+                request_id=payload.request_id,
+            )
+        except EgressPolicyDeniedError:
+            return await _complete_execution_session(
+                db, auth, session=session, capability=capability,
+                status=ExecutionSessionStatus.FAILED,
+                error={
+                    "code": "mcp_egress_denied",
+                    "message": (
+                        "The MCP server destination is not permitted by this deployment's egress "
+                        "policy. Add its host to ALGENTA_EGRESS_ALLOWLIST."
+                    ),
+                },
+            )
+        except MCPClientError as exc:
+            return await _complete_execution_session(
+                db, auth, session=session, capability=capability,
+                status=ExecutionSessionStatus.FAILED,
+                error={"code": "mcp_tool_execution_failed", "message": exc.message},
+            )
+        if result.get("isError"):
+            return await _complete_execution_session(
+                db, auth, session=session, capability=capability,
+                status=ExecutionSessionStatus.FAILED,
+                error={"code": "mcp_tool_reported_error", "message": "The MCP tool reported an error."},
+                output={"tool": tool_name, "result": result},
+            )
+        return await _complete_execution_session(
+            db, auth, session=session, capability=capability,
+            status=ExecutionSessionStatus.SUCCEEDED,
+            output={"tool": tool_name, "result": result},
         )
     if capability.kind in {CapabilityKind.SKILL, CapabilityKind.MCP_PROMPT, CapabilityKind.MCP_RESOURCE}:
         payload_output: dict[str, Any] = {

@@ -89,6 +89,11 @@ For symptom-first help, see [Troubleshooting](../troubleshooting.md).
 | `last_owner` | You cannot remove or demote the last org owner. |
 | `load_error` | — |
 | `managed_llm_spend_cap_exceeded` | The managed-LLM spend cap for the org was reached. |
+| `mcp_egress_denied` | The external MCP server's host is not permitted by the deployment's egress policy. Add it to `ALGENTA_EGRESS_ALLOWLIST`. |
+| `mcp_server_url_missing` | The MCP capability binding has no `config.server_url` to connect to. |
+| `mcp_tool_execution_failed` | Calling the tool on the external MCP server failed (unreachable, transport error, or a protocol error). |
+| `mcp_tool_name_missing` | The MCP capability is missing the remote tool name to invoke. |
+| `mcp_tool_reported_error` | The external MCP tool ran but returned an error result. |
 | `missing_connection_string` | — |
 | `missing_dataset_name` | — |
 | `missing_org_context` | — |

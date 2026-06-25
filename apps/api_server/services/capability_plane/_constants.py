@@ -204,7 +204,10 @@ DEFAULT_PROFILE_SPECS: tuple[dict[str, Any], ...] = (
         "name": "Workspace MCP profile",
         "description": "Customer-provided MCP capability manifest and auth state.",
         "auth_kind": "oauth_or_api_key",
-        "default_execution_owner": ExecutionOwner.CLIENT_MANAGED,
+        # Algenta proxies external MCP tools/call on the agent's behalf, so the default is
+        # algenta_managed. Create a binding with execution_owner=client_managed to only route
+        # (advertise) the tools for a customer-provided execution node to call instead.
+        "default_execution_owner": ExecutionOwner.ALGENTA_MANAGED,
         "binding_scope_default": BindingScope.WORKSPACE,
         "supported_binding_scopes_json": [
             BindingScope.WORKSPACE.value,
@@ -252,6 +255,7 @@ SECRET_FIELD_NAMES = {
     "authorization",
     "bearer_token",
     "client_secret",
+    "key",
     "password",
     "refresh_token",
     "secret",

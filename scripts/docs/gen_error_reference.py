@@ -24,6 +24,11 @@ _CODE_RE = re.compile(r'"code"\s*:\s*"([a-z][a-z0-9_]*)"')
 _DOCS_RE = re.compile(r'docs_code\s*:\s*str\s*=\s*"([a-z][a-z0-9_]*)"')
 
 MEANINGS = {
+    "mcp_egress_denied": "The external MCP server's host is not permitted by the deployment's egress policy. Add it to `ALGENTA_EGRESS_ALLOWLIST`.",
+    "mcp_server_url_missing": "The MCP capability binding has no `config.server_url` to connect to.",
+    "mcp_tool_name_missing": "The MCP capability is missing the remote tool name to invoke.",
+    "mcp_tool_execution_failed": "Calling the tool on the external MCP server failed (unreachable, transport error, or a protocol error).",
+    "mcp_tool_reported_error": "The external MCP tool ran but returned an error result.",
     "authentication_required": "No valid credential was supplied. Send `Authorization: Bearer <key>`.",
     "invalid_api_key": "The API key is malformed or not recognized.",
     "api_key_not_found": "The referenced API key does not exist.",

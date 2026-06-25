@@ -59,6 +59,14 @@ from apps.api_server.services.runtime_library_service import (
     list_public_runtime_library_descriptors,
 )
 from apps.runtime_manifest import Replayability, RiskLevel, SideEffectClass
+from apps.api_server.services.egress_guard import (
+    EgressPolicyDeniedError,
+    audit_context_from_auth,
+)
+from apps.api_server.services.capability_plane._mcp_client import (
+    MCPClientError,
+    list_remote_tools,
+)
 
 POLICY_SNAPSHOT_ID = "capability-plane-policy-v1"
 SYSTEM_BINDING_REFRESH_TTL = timedelta(minutes=5)
@@ -310,6 +318,87 @@ async def _discover_runtime_library_binding(
     )
 
 
+async def _discover_mcp_provider_binding(
+    auth: AuthContext,
+    binding: ResolvedBindingContext,
+) -> tuple[list[CapabilityCatalogEntry], dict[str, Any], str]:
+    """Connect to a customer-registered external MCP server, list its tools, and persist them as
+    MCP_TOOL capabilities. All egress flows through the deployment's egress guard (fail-closed)."""
+    config = dict(binding.config)
+    server_url = str(config.get("server_url") or "").strip()
+    if not server_url:
+        _raise_error(422, "mcp_server_url_required", "MCP provider bindings require config.server_url.")
+    auth_config = config.get("auth") if isinstance(config.get("auth"), dict) else None
+    audit = audit_context_from_auth(auth)
+    try:
+        tools = await list_remote_tools(server_url, auth=auth_config, audit=audit)
+    except EgressPolicyDeniedError:
+        _raise_error(
+            403,
+            "mcp_egress_denied",
+            "The MCP server destination is not permitted by this deployment's egress policy. "
+            "Add its host to ALGENTA_EGRESS_ALLOWLIST.",
+        )
+    except MCPClientError as exc:
+        _raise_error(
+            502,
+            "mcp_discovery_failed",
+            f"Could not discover tools from the MCP server: {exc.message}",
+        )
+    discovered_at = _utc_now()
+    manifest_hash = _stable_hash(
+        [{"name": tool.get("name"), "description": tool.get("description")} for tool in tools]
+    )
+    _MAX_TOOLS = 500
+    _MAX_SCHEMA_BYTES = 64 * 1024
+    capabilities: list[CapabilityCatalogEntry] = []
+    for tool in tools[:_MAX_TOOLS]:  # bound a hostile server's tool count
+        tool_name = str(tool.get("name") or "").strip()
+        if not tool_name:
+            continue
+        safe_name = re.sub(r"[^A-Za-z0-9_.-]", "_", tool_name)[:64]
+        input_schema = tool.get("inputSchema") if isinstance(tool.get("inputSchema"), dict) else None
+        if input_schema is not None and len(json.dumps(input_schema, default=str)) > _MAX_SCHEMA_BYTES:
+            input_schema = None  # drop an oversized/hostile schema from the persisted catalog
+        capabilities.append(
+            CapabilityCatalogEntry(
+                capability_id=f"cap.mcp_tool.{safe_name}.{_stable_hash([str(binding.binding_id), tool_name])[:8]}",
+                provider_id=binding.provider_id,
+                profile_id=binding.profile_id,
+                binding_id=str(binding.binding_id or ""),
+                kind=CapabilityKind.MCP_TOOL,
+                name=tool_name,
+                description=(
+                    str(tool.get("description")).strip()
+                    if isinstance(tool.get("description"), str)
+                    else None
+                ),
+                implementation_kind=ImplementationKind.CALLABLE,
+                execution_owner=binding.execution_owner,
+                input_schema_ref=f"mcp://{safe_name}/input",
+                output_schema_ref=f"mcp://{safe_name}/output",
+                side_effect_class=SideEffectClass.network_external,
+                risk_level=RiskLevel.medium,
+                required_policy="policy.capability.mcp_tool",
+                replayability=Replayability.non_replayable,
+                approval_required=False,
+                trust_tier="customer_external_mcp",
+                manifest_hash=manifest_hash,
+                artifact_affinities=_dedupe_strings([tool_name]),
+                tags=_dedupe_strings([tool_name, "mcp"]),
+                required_binding_ids=[str(binding.binding_id)] if binding.binding_id else [],
+                selected_tool_name=tool_name,
+                binding_status=binding.status,
+                discovered_at=discovered_at,
+                # No secrets here: this is persisted in the snapshot + returned in catalog responses.
+                # Execution re-reads server_url + auth from the encrypted binding config, not from here.
+                customer_metadata={"tool_name": tool_name, "input_schema": input_schema},
+            )
+        )
+    message = f"Discovered {len(capabilities)} MCP tool capabilities."
+    return capabilities, {"tool_count": len(capabilities), "server_configured": True}, message
+
+
 def _discover_manifest_binding(
     binding: ResolvedBindingContext,
 ) -> tuple[list[CapabilityCatalogEntry], dict[str, Any], str]:
@@ -356,6 +445,8 @@ async def _discover_binding_capabilities(
 ) -> tuple[list[CapabilityCatalogEntry], dict[str, Any], str]:
     if binding.provider_id == DATA_CONNECTOR_PROVIDER_ID:
         return await _discover_data_connector_binding(db, auth, binding)
+    if binding.provider_id == MCP_PROVIDER_ID:
+        return await _discover_mcp_provider_binding(auth, binding)
     if binding.provider_id == RUNTIME_LIBRARY_PROVIDER_ID:
         return await _discover_runtime_library_binding(binding)
     return _discover_manifest_binding(binding)

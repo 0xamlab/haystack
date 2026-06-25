@@ -137,6 +137,10 @@ def _redact_binding_config(value: Any) -> Any:
             if lowered in SECRET_FIELD_NAMES:
                 redacted[key] = "***redacted***"
                 continue
+            if lowered == "headers" and isinstance(item, dict):
+                # Auth/custom headers can carry a token under any header name — mask every value.
+                redacted[key] = {hk: "***redacted***" for hk in item}
+                continue
             if lowered == "manifest" and isinstance(item, dict):
                 capabilities = item.get("capabilities")
                 count = len(capabilities) if isinstance(capabilities, list) else 0

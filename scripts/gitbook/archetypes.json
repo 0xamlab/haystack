@@ -18,6 +18,7 @@
   "guides/decision-memory.md": "task",
   "guides/connect-data.md": "task",
   "guides/capabilities.md": "task",
+  "guides/external-mcp.md": "task",
   "guides/agent-runs.md": "task",
   "guides/async-jobs.md": "task",
   "guides/repository-intelligence.md": "task",
