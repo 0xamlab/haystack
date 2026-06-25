@@ -32,12 +32,13 @@ from apps.api_server.models.device import (
 )
 from apps.api_server.services.auth_service import AuthContext
 from apps.api_server.services.device_service import (
-    _active_device_count,
     _api_key_effective_device_limit,
     _issue_license_jwt,
     _load_api_key_with_org,
     _plan_name,
     build_revocation_payload,
+    effective_node_count,
+    node_admission_block_count,
 )
 from apps.api_server.services.license_jwk import get_active_license_jwks
 from apps.api_server.services.license_signer import get_license_signer
@@ -267,6 +268,20 @@ async def license_renew(
 
     plan = _plan_name(api_key_row.organization.plan)
     device_limit = _api_key_effective_device_limit(api_key_row, plan)
+    # Concurrent-cap gate: a renewal refreshes the heartbeat clock, so a STALE device renewing while
+    # other live nodes already fill the cap would reclaim a slot it had already freed — reject it
+    # instead. A device still inside the active window is excluded from the count, so a live
+    # device's normal renewal is unaffected. No-op when active-node enforcement is off.
+    renew_block = await node_admission_block_count(
+        api_key_row.id, db, device_id=body.device_id, device_limit=device_limit
+    )
+    if renew_block is not None:
+        raise _err(
+            402,
+            "device_limit_reached",
+            f"{renew_block}/{device_limit} devices are currently active; this device's slot was "
+            "reassigned while it was offline. Revoke an active device to renew this one.",
+        )
     # Guarded update FIRST (TOCTOU): if the device was revoked between load and now, this
     # matches 0 rows → reject WITHOUT issuing a token. Only mint the license once the row is
     # confirmed still ACTIVE under this same transaction.
@@ -294,7 +309,7 @@ async def license_renew(
         api_key_expires_at=api_key_row.expires_at,
         device_pubkey_thumbprint=row.device_pubkey_thumbprint,
     )
-    device_count = await _active_device_count(api_key_row.id, db)
+    device_count = await effective_node_count(api_key_row.id, db)
     logger.info("license_renewed", device_id=body.device_id[:8], org_id=str(api_key_row.org_id))
     return RenewResponse(
         license_token=token,

@@ -561,6 +561,154 @@ async def recent_new_registration_count(
     return result.scalar_one() or 0
 
 
+# ── Active-node-cap enforcement (heartbeat-based; the cap counts only RECENTLY-ACTIVE nodes) ──
+# The device cap (device_limit) is normally counted against EVERY non-revoked device ever
+# registered. With this enforcement on, the cap is counted against only nodes that have
+# heartbeated within the active window — so a decommissioned / scaled-down node (its heartbeat
+# stops) automatically frees its slot after the window, while running MORE than the cap
+# CONCURRENTLY is still blocked. This is what makes "I have 3 devices and want to drop 1" work
+# without a manual revoke (and without cheating the cap), and what stops fleet abuse on
+# cloud/server (AWS) deployments. The client heartbeats every 24h (apps/runtime/metering.py) and
+# the offline grace is 14 days, so the window sits between the two: > one heartbeat interval (a
+# node that missed a single beat still counts) and < the offline grace. Fully dynamic;
+# default-DARK (env opt-in) so today's all-non-revoked semantics are unchanged until the flip.
+# Free tier cannot register a device at all, so this never touches the always-free path.
+_ACTIVE_NODE_WINDOW_SECONDS = 3 * 86_400  # 3 days
+
+
+def _env_truthy(name: str) -> bool:
+    """A flag env var is on when set to a recognized truthy token (1/true/yes/on)."""
+    val = os.environ.get(name)
+    return val is not None and val.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def active_node_cap_enforced() -> bool:
+    """Whether the device cap is counted against only recently-active (heartbeating) nodes.
+
+    Default OFF — when off, the cap counts every non-revoked device (today's behavior).
+    """
+    return _env_truthy("ALGENTA_ENFORCE_ACTIVE_NODE_CAP")
+
+
+def active_node_window_seconds() -> int:
+    """Rolling window within which a node must have heartbeated to still count against the cap.
+
+    Override with ALGENTA_ACTIVE_NODE_WINDOW_SECONDS (floored at 60s so it can never be 0/negative).
+    """
+    override = os.environ.get("ALGENTA_ACTIVE_NODE_WINDOW_SECONDS")
+    if override is not None:
+        try:
+            return max(60, int(override.strip()))
+        except ValueError:
+            pass
+    return _ACTIVE_NODE_WINDOW_SECONDS
+
+
+async def active_node_count(
+    api_key_id: uuid.UUID,
+    db: AsyncSession,
+    *,
+    window_seconds: int | None = None,
+    exclude_device_id: str | None = None,
+) -> int:
+    """Count non-revoked devices that have heartbeated within the active window.
+
+    A node whose heartbeat has lapsed (decommissioned / scaled down) no longer counts, freeing its
+    slot. A device that has never heartbeated (NULL last_heartbeat_at) does not count — but every
+    register and heartbeat stamps last_heartbeat_at, so a healthy node always has a recent value.
+
+    ``exclude_device_id`` omits one device from the count — used by the admission gate so a device's
+    own idempotent refresh never blocks itself (it asks "are the OTHER active nodes already full?").
+    """
+    window = window_seconds if window_seconds is not None else active_node_window_seconds()
+    cutoff = datetime.now(UTC) - timedelta(seconds=window)
+    conditions = [
+        DeviceRegistration.api_key_id == api_key_id,
+        DeviceRegistration.status != DeviceStatus.REVOKED,
+        DeviceRegistration.last_heartbeat_at.is_not(None),
+        DeviceRegistration.last_heartbeat_at >= cutoff,
+    ]
+    if exclude_device_id is not None:
+        conditions.append(DeviceRegistration.device_id != exclude_device_id)
+    result = await db.execute(select(func.count()).where(*conditions))
+    return result.scalar_one() or 0
+
+
+async def _device_is_active(
+    api_key_id: uuid.UUID,
+    db: AsyncSession,
+    device_id: str,
+    *,
+    window_seconds: int | None = None,
+) -> bool:
+    """Whether this device currently holds a live slot (non-revoked + heartbeated in the window).
+
+    Used by the admission gate to never evict a node that is already running — only NEW or
+    returning-stale devices are blocked when the cap is full.
+    """
+    window = window_seconds if window_seconds is not None else active_node_window_seconds()
+    cutoff = datetime.now(UTC) - timedelta(seconds=window)
+    result = await db.execute(
+        select(func.count()).where(
+            DeviceRegistration.api_key_id == api_key_id,
+            DeviceRegistration.device_id == device_id,
+            DeviceRegistration.status != DeviceStatus.REVOKED,
+            DeviceRegistration.last_heartbeat_at.is_not(None),
+            DeviceRegistration.last_heartbeat_at >= cutoff,
+        )
+    )
+    return (result.scalar_one() or 0) > 0
+
+
+async def effective_node_count(api_key_id: uuid.UUID, db: AsyncSession) -> int:
+    """The count the device cap is enforced/reported against.
+
+    Active-node count when active-node-cap enforcement is on, else the legacy all-non-revoked count.
+    The single chokepoint every cap counter + count report goes through (the register cap, the
+    re-register and heartbeat status reports, the hosted-API binding cap, and the license-renew
+    report) so they never disagree on the semantics in force.
+    """
+    if active_node_cap_enforced():
+        return await active_node_count(api_key_id, db)
+    return await _active_device_count(api_key_id, db)
+
+
+async def node_admission_block_count(
+    api_key_id: uuid.UUID,
+    db: AsyncSession,
+    *,
+    device_id: str,
+    device_limit: int,
+) -> int | None:
+    """Gate for any path that would (re)mark a device ACTIVE — register, re-register, heartbeat,
+    hosted-API bind, license renew.
+
+    Returns the count of OTHER currently-active nodes when admitting/refreshing ``device_id`` would
+    push the concurrent active set past ``device_limit`` (so the caller rejects with 402
+    ``device_limit_reached`` or withholds the slot); otherwise None.
+
+    This is what turns the cap into a true CONCURRENT ceiling rather than a registration-only gate:
+    a node that lapsed and "freed its slot" cannot silently reclaim it once another node has taken
+    it. Returns None when enforcement is OFF or the cap is unlimited — the revival paths then behave
+    exactly as before (no concurrency gate), preserving default-dark.
+
+    A device that ALREADY holds a live slot is never blocked (we never evict a running node — only
+    NEW or returning-stale devices are gated). So when the active set already sits at/over the cap
+    (e.g. the moment enforcement is flipped on for a fleet that exceeds it), the running nodes keep
+    refreshing and the set drains naturally as nodes go stale, rather than all being shed at once.
+    """
+    if not active_node_cap_enforced() or device_limit <= 0:
+        return None
+    others_active = await active_node_count(api_key_id, db, exclude_device_id=device_id)
+    if others_active < device_limit:
+        return None
+    # Cap is full of OTHER live nodes. Admit only if THIS device already holds a live slot; block a
+    # brand-new or returning-stale device from joining over the cap.
+    if await _device_is_active(api_key_id, db, device_id):
+        return None
+    return others_active
+
+
 def _activation_id(org_id: str, device_id: str) -> str:
     """Deterministic, stable, opaque activation id for an (org, device).
 
@@ -889,7 +1037,10 @@ async def bind_hosted_api_device(
     existing_row = existing.scalar_one_or_none()
     now = datetime.now(UTC)
     if existing_row is None:
-        current_count = await _active_device_count(api_key_row.id, db)
+        # New device binding on the live hosted-API path. Count via the shared chokepoint so this
+        # plane honors the same active-node semantics as register/heartbeat (a freed slot is freed
+        # here too when enforcement is on; all-non-revoked when off).
+        current_count = await effective_node_count(api_key_row.id, db)
         if current_count >= device_limit:
             raise _device_limit_error(
                 api_key_row=api_key_row,
@@ -949,6 +1100,20 @@ async def bind_hosted_api_device(
             )
     else:
         token_to_return = _generate_binding_token()
+    # Concurrent-cap gate: an already-active device re-binding is admitted (it is excluded from the
+    # count), but a STALE device returning to do work while other live nodes already fill the cap is
+    # rejected here — this is the true concurrent ceiling on the path that actually serves requests.
+    # No-op when enforcement is off (returns None), so legacy bind behavior is unchanged.
+    blocked_count = await node_admission_block_count(
+        api_key_row.id, db, device_id=device_info["device_id"], device_limit=device_limit
+    )
+    if blocked_count is not None:
+        raise _device_limit_error(
+            api_key_row=api_key_row,
+            plan=plan,
+            device_limit=device_limit,
+            device_count=blocked_count,
+        )
     await db.execute(
         update(DeviceRegistration)
         .where(DeviceRegistration.id == existing_row.id)

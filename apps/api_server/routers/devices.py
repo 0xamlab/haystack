@@ -40,8 +40,11 @@ from apps.api_server.services.device_service import (
     _device_identity_mismatch_error,
     _device_identity_mismatched_fields,
     _plan_name,
+    active_node_cap_enforced,
+    effective_node_count,
     installs_per_hour,
     list_devices,
+    node_admission_block_count,
     recent_new_registration_count,
     revoke_device,
 )
@@ -138,7 +141,6 @@ async def device_register(
     from datetime import datetime
 
     from apps.api_server.services.device_service import (
-        _active_device_count,
         _issue_license_jwt,
         _load_api_key_with_org,
         _plan_name,
@@ -232,15 +234,19 @@ async def device_register(
                     },
                     headers={"Retry-After": "3600"},
                 )
-        current_count = await _active_device_count(api_key_row.id, db)
+        # Enforce the cap against recently-ACTIVE nodes when active-node-cap enforcement is on
+        # (a scaled-down node frees its slot automatically); else against all non-revoked devices.
+        current_count = await effective_node_count(api_key_row.id, db)
         if device_limit > 0 and current_count >= device_limit:
+            _enforced = active_node_cap_enforced()
             raise HTTPException(
                 status_code=402,
                 detail={
                     "error": "device_limit_reached",
                     "message": (
                         f"API key '{api_key_row.label}' allows {device_limit} device(s). "
-                        f"You have {current_count} registered. "
+                        f"You have {current_count} "
+                        f"{'currently active' if _enforced else 'registered'}. "
                         "Revoke an existing device or create a broader key."
                     ),
                     "device_count": current_count,
@@ -318,6 +324,31 @@ async def device_register(
                     }
                 },
             ) from exc
+
+        # Concurrent-cap gate (active-node enforcement only): re-registering an already-active
+        # device is admitted (excluded from the count), but a STALE device whose slot was reclaimed
+        # cannot come back while other live nodes already fill the cap — reject instead of reviving
+        # it. No-op when enforcement is off, so a plain re-register/refresh is unchanged.
+        revival_block = await node_admission_block_count(
+            api_key_row.id, db, device_id=device_id, device_limit=device_limit
+        )
+        if revival_block is not None:
+            raise HTTPException(
+                status_code=402,
+                detail={
+                    "error": "device_limit_reached",
+                    "message": (
+                        f"API key '{api_key_row.label}' allows {device_limit} device(s) and "
+                        f"{revival_block} are currently active. This device's slot was reassigned "
+                        "while it was offline — revoke an active device to bring it back."
+                    ),
+                    "device_count": revival_block,
+                    "device_limit": device_limit,
+                    "plan": plan,
+                    "upgrade_url": "https://algenta.io/pricing",
+                },
+            )
+
         from sqlalchemy import update as sa_update
 
         await db.execute(
@@ -337,7 +368,7 @@ async def device_register(
                 heartbeat_count=DeviceRegistration.heartbeat_count + 1,
             )
         )
-        current_count = await _active_device_count(api_key_row.id, db)
+        current_count = await effective_node_count(api_key_row.id, db)
         bound_thumbprint = (
             body.device.device_pubkey_thumbprint or existing_row.device_pubkey_thumbprint
         )
@@ -419,7 +450,10 @@ async def device_heartbeat(
     from sqlalchemy.orm import selectinload
 
     from apps.api_server.models.api_key import APIKey
-    from apps.api_server.services.device_service import _active_device_count
+    from apps.api_server.services.device_service import (
+        effective_node_count,
+        node_admission_block_count,
+    )
 
     result = await db.execute(
         select(APIKey).options(selectinload(APIKey.organization)).where(APIKey.id == ctx["key_id"])
@@ -428,20 +462,32 @@ async def device_heartbeat(
     plan = _plan_name(api_key_row.organization.plan)
     device_limit = _api_key_effective_device_limit(api_key_row, plan)
 
-    await db.execute(
-        sa_update(DeviceRegistration)
-        .where(
-            DeviceRegistration.api_key_id == api_key_row.id,
-            DeviceRegistration.device_id == body.device_id,
-        )
-        .values(
-            last_heartbeat_at=datetime.now(UTC),
-            heartbeat_count=DeviceRegistration.heartbeat_count + 1,
-            status=DeviceStatus.ACTIVE,
-        )
+    # Concurrent-cap gate: if this is a STALE device returning while other live nodes already fill
+    # the cap, withhold the active SLOT (don't refresh it to ACTIVE) — a heartbeat must not silently
+    # push the active set past the cap. A currently-active node is never withheld (see
+    # node_admission_block_count: it admits a device that already holds a live slot). Usage is
+    # reconciled either way below — work already performed is billed regardless of cap status. No-op
+    # when enforcement is off: the refresh then always proceeds exactly as before.
+    revival_block = await node_admission_block_count(
+        api_key_row.id, db, device_id=body.device_id, device_limit=device_limit
     )
 
-    # ── Reconcile local execution count into usage_records ─────────────────
+    if revival_block is None:
+        await db.execute(
+            sa_update(DeviceRegistration)
+            .where(
+                DeviceRegistration.api_key_id == api_key_row.id,
+                DeviceRegistration.device_id == body.device_id,
+            )
+            .values(
+                last_heartbeat_at=datetime.now(UTC),
+                heartbeat_count=DeviceRegistration.heartbeat_count + 1,
+                status=DeviceStatus.ACTIVE,
+            )
+        )
+
+    # ── Reconcile local execution count into usage_records — ALWAYS, even when the slot is
+    # withheld: an over-cap node's already-performed executions must still be billed, never dropped.
     raw_executions_since = body.usage.get("executions_since_last_heartbeat", 0)
     if isinstance(raw_executions_since, bool):
         executions_since = 0
@@ -466,7 +512,22 @@ async def device_heartbeat(
 
     await db.commit()
 
-    device_count = await _active_device_count(api_key_row.id, db)
+    if revival_block is not None:
+        # Slot withheld — the device stays stale; report it is over the concurrent cap.
+        return HeartbeatResponse(
+            device_id=body.device_id,
+            plan=plan,
+            device_limit=device_limit,
+            device_count=revival_block,
+            status="over_limit",
+            message=(
+                f"{revival_block}/{device_limit} active — this device's slot was reassigned while "
+                "it was offline; revoke an active device to bring it back."
+            ),
+            server_time=datetime.now(UTC).timestamp(),
+        )
+
+    device_count = await effective_node_count(api_key_row.id, db)
 
     if device_limit == 0:
         status, message = "ok", f"{device_count} active — unlimited plan"
