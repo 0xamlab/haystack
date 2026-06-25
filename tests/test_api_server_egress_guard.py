@@ -169,7 +169,9 @@ def test_read_url_text_blocks_private_destination_under_permissive_outbound(
     with pytest.raises(EgressPolicyDeniedError) as exc_info:
         read_url_text(private_url)
 
-    assert exc_info.value.decision.reason == "ssrf_guard_private_destination"
+    # link-local (169.254.x) is denied as ssrf_guard_link_local_destination; other private/loopback
+    # ranges as ssrf_guard_private_destination — both are the SSRF guard blocking before any socket.
+    assert exc_info.value.decision.reason.startswith("ssrf_guard")
     get_settings.cache_clear()
 
 
@@ -256,6 +258,31 @@ def test_ssrf_guard_skipped_for_explicit_allowlist(
     assert body == "ok"
     assert content_type == "text/plain"
     get_settings.cache_clear()
+
+
+def test_ssrf_guard_blocks_link_local_metadata_even_when_allowlisted(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # A wildcard-allowlisted host whose DNS resolves to the cloud-metadata endpoint must be denied —
+    # link-local is never a legitimate egress target, even on an operator allowlist.
+    monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "self_hosted")
+    monkeypatch.setenv("ALGENTA_ALLOW_OUTBOUND_NETWORK", "false")
+    monkeypatch.setenv("ALGENTA_EGRESS_ALLOWLIST", "*.evil.example")
+    get_settings.cache_clear()
+
+    def _resolver_to_metadata(host, *args, **kwargs):
+        return [(2, 1, 6, "", ("169.254.169.254", 0))]
+
+    monkeypatch.setattr(
+        "apps.api_server.services.egress_guard.socket.getaddrinfo",
+        _resolver_to_metadata,
+    )
+    try:
+        with pytest.raises(EgressPolicyDeniedError) as exc_info:
+            read_url_text("https://attacker.evil.example/latest/meta-data/")
+        assert exc_info.value.decision.reason == "ssrf_guard_link_local_destination"
+    finally:
+        get_settings.cache_clear()
 
 
 def test_read_url_text_allows_allowlisted_loopback_destination_under_permissive_outbound(

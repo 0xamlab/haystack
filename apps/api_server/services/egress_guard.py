@@ -202,19 +202,40 @@ def _resolve_destination_addresses(host: str) -> list[str]:
     return list({info[4][0] for info in infos if info and info[4]})
 
 
+def _is_never_legitimate_ip(ip_str: str) -> bool:
+    """Addresses that are never a legitimate egress target — even an operator allowlist must not
+    reach them. Notably link-local 169.254.0.0/16 (the cloud-metadata endpoint 169.254.169.254)."""
+    try:
+        ip = ipaddress.ip_address(ip_str)
+    except ValueError:
+        return False
+    # Link-local (incl. 169.254.169.254), multicast, and unspecified are never a legitimate egress
+    # target. (Loopback/reserved are NOT included here: ::1 is is_reserved, and an operator may
+    # legitimately allowlist a loopback/private sidecar — those stay gated by the reason check below.)
+    return ip.is_link_local or ip.is_multicast or ip.is_unspecified
+
+
 def _enforce_no_private_destination(
     destination: str,
     *,
     decision: EgressDecision,
 ) -> None:
-    if decision.reason not in _SSRF_GUARDED_REASONS:
-        return
     target = parse_egress_destination(destination)
     host = target.host
     if not host:
         return
     addrs = _resolve_destination_addresses(host)
     if not addrs:
+        return
+    # ALWAYS block never-legitimate (link-local/metadata/multicast/...) destinations, regardless of
+    # the allow reason — so an allowlisted (e.g. wildcard) host that resolves to 169.254.169.254
+    # cannot reach the cloud-metadata endpoint. Private/loopback hosts stay operator-allowlist-gated
+    # below (an internal sidecar at 10.x or Supabase is a legitimate, opted-in destination).
+    if any(_is_never_legitimate_ip(ip) for ip in addrs):
+        raise EgressPolicyDeniedError(
+            replace(decision, decision="deny", reason="ssrf_guard_link_local_destination")
+        )
+    if decision.reason not in _SSRF_GUARDED_REASONS:
         return
     if not any(_is_private_or_local_ip(ip) for ip in addrs):
         return
