@@ -345,6 +345,12 @@ from apps.api_server.routers import byok as _byok_router  # noqa: E402
 
 app.include_router(_byok_router.router)
 
+# Website subscription dashboard — self-service device/seat mgmt (GET/DELETE /account/devices),
+# Supabase-authenticated (the user's OAuth session), org-scoped. Inert until SUPABASE_URL is set.
+from apps.api_server.routers import website_devices as _website_devices_router  # noqa: E402
+
+app.include_router(_website_devices_router.router)
+
 if settings.runtime_library_http_api_enabled:
     app.include_router(runtime_libraries.router)
 

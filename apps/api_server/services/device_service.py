@@ -1171,6 +1171,41 @@ async def list_devices(org_id: uuid.UUID, db: AsyncSession) -> list[dict[str, ob
     ]
 
 
+async def list_devices_with_activity(
+    org_id: uuid.UUID,
+    db: AsyncSession,
+    *,
+    window_seconds: int | None = None,
+) -> dict[str, object]:
+    """Dashboard view of an org's devices for self-service subscription management.
+
+    Returns the same per-device rows as :func:`list_devices`, each annotated with ``active`` (it has
+    heartbeated within the active window — i.e. holds a seat now vs. is idle/decommissioned), plus a
+    seat summary (``total`` registered, ``active`` live) so a dashboard can show how many seats are
+    live and which idle device to revoke. Read-only; the active window mirrors the cap window.
+    """
+    window = window_seconds if window_seconds is not None else active_node_window_seconds()
+    cutoff = datetime.now(UTC) - timedelta(seconds=window)
+    devices = await list_devices(org_id, db)
+    active = 0
+    for d in devices:
+        hb = d.get("last_heartbeat_at")
+        is_active = False
+        if isinstance(hb, str) and hb:
+            try:
+                is_active = datetime.fromisoformat(hb) >= cutoff
+            except ValueError:
+                is_active = False
+        d["active"] = is_active
+        active += 1 if is_active else 0
+    return {
+        "devices": devices,
+        "total": len(devices),
+        "active": active,
+        "active_window_seconds": window,
+    }
+
+
 async def revoke_device(
     org_id: uuid.UUID,
     registration_id: uuid.UUID,

@@ -21,8 +21,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api_server.db.session import get_db
 from apps.api_server.middleware.auth import get_redis
-from apps.api_server.services import byok_org_resolver, supabase_auth
 from apps.api_server.services import tenant_key_management as tk_mgmt
+from apps.api_server.services import website_identity
 
 logger = structlog.get_logger(__name__)
 
@@ -59,50 +59,17 @@ class ByokRequest(BaseModel):
     key: str = Field(min_length=1)
 
 
-def _bearer(authorization: str | None) -> str:
-    if not authorization or not authorization.lower().startswith("bearer "):
-        raise HTTPException(
-            status_code=401,
-            detail=_err("missing_bearer", "Authorization: Bearer <token> required."),
-        )
-    token = authorization[7:].strip()
-    if not token:
-        raise HTTPException(status_code=401, detail=_err("missing_bearer", "Empty bearer token."))
-    return token
-
-
 async def _verify_and_resolve(
     authorization: str | None, db: AsyncSession, redis: Any
 ) -> tuple[Any, dict[str, Any]]:
-    """Verify the Supabase JWT + resolve the caller's engine org, or raise an HTTPException."""
-    if not supabase_auth.supabase_configured():
-        raise HTTPException(
-            status_code=503,
-            detail=_err("supabase_not_configured", "Website identity is not configured here."),
-        )
-    token = _bearer(authorization)
-    try:
-        claims = await supabase_auth.verify_supabase_jwt(token)
-        identity = supabase_auth.extract_github_identity(claims)
-    except supabase_auth.SupabaseAuthError as exc:
-        # Service/config failures (JWKS unreachable, unconfigured) are 503 — not the user's fault;
-        # token-validity failures are 401.
-        status_code = 503 if exc.code in supabase_auth.SERVICE_ERROR_CODES else 401
-        raise HTTPException(status_code=status_code, detail=_err(exc.code, str(exc))) from exc
-    try:
-        org = await byok_org_resolver.resolve_org_for_github_user(
-            db,
-            github_user_id=identity["github_user_id"],
-            github_login=identity["github_login"],
-            redis=redis,
-        )
-    except byok_org_resolver.OrgResolutionError as exc:
-        raise HTTPException(status_code=exc.http_status, detail=_err(exc.code, str(exc))) from exc
-    # Note: there is an inherent (millisecond) TOCTOU window between this org-admin check and the
-    # key write below — a GitHub admin revoked mid-request would still complete this one call. The
-    # blast radius is one's-own-org BYOK key (re-addable, audited), so we accept it rather than take
-    # a distributed lock; the short Redis cache also bounds re-checks.
-    return org, identity
+    """Verify the Supabase JWT + resolve the caller's engine org (shared website identity path).
+
+    Note: an inherent (millisecond) TOCTOU window exists between this org-admin resolution and the
+    key write below — a GitHub admin revoked mid-request would still complete this one call. The
+    blast radius is one's-own-org BYOK key (re-addable, audited), so we accept it rather than take a
+    distributed lock; the short Redis cache also bounds re-checks.
+    """
+    return await website_identity.verify_and_resolve_org(authorization, db, redis)
 
 
 def _actor_email(identity: dict[str, Any]) -> str:
