@@ -47,6 +47,7 @@
 * [Python SDK](sdk/python.md)
 * [TypeScript SDK](sdk/typescript.md)
 * [MCP server](sdk/mcp.md)
+* [Tool discovery](sdk/tool-discovery.md)
 * [Testing with Algenta](sdk/testing.md)
 * [CLI reference](cli.md)
 
@@ -70,6 +71,7 @@
 ## Connectors
 
 * [Connectors overview](connectors/overview.md)
+* [Connect a database](connectors/databases.md)
 * [Connectors reference](connectors/reference.md)
 * [Snowflake](connectors/snowflake.md)
 * [BigQuery](connectors/bigquery.md)
