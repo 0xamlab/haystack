@@ -40,7 +40,9 @@ from apps.api_server.services.device_service import (
     _device_identity_mismatch_error,
     _device_identity_mismatched_fields,
     _plan_name,
+    installs_per_hour,
     list_devices,
+    recent_new_registration_count,
     revoke_device,
 )
 
@@ -209,6 +211,27 @@ async def device_register(
     existing_row = existing.scalar_one_or_none()
 
     if existing_row is None:
+        # Install/registration abuse protection: rate-limit brand-NEW device installs (not usage,
+        # not license refreshes). Dynamic per plan; generous so legit fleet scale-up never trips it.
+        install_budget = installs_per_hour(plan)
+        if install_budget > 0:
+            recent = await recent_new_registration_count(api_key_row.id, db)
+            if recent >= install_budget:
+                raise HTTPException(
+                    status_code=429,
+                    detail={
+                        "error": "device_registration_rate_limited",
+                        "message": (
+                            f"Too many new device registrations for API key '{api_key_row.label}' "
+                            f"(limit {install_budget}/hour). Re-registering an existing device is "
+                            "unaffected; wait and retry to add a brand-new device."
+                        ),
+                        "limit": install_budget,
+                        "window_seconds": 3600,
+                        "plan": plan,
+                    },
+                    headers={"Retry-After": "3600"},
+                )
         current_count = await _active_device_count(api_key_row.id, db)
         if device_limit > 0 and current_count >= device_limit:
             raise HTTPException(

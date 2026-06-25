@@ -33,11 +33,12 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import os
 import secrets
 import time
 import uuid
 from collections.abc import Mapping
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import TypedDict
 
 import structlog
@@ -512,6 +513,49 @@ async def _active_device_count(api_key_id: uuid.UUID, db: AsyncSession) -> int:
         select(func.count()).where(
             DeviceRegistration.api_key_id == api_key_id,
             DeviceRegistration.status != DeviceStatus.REVOKED,
+        )
+    )
+    return result.scalar_one() or 0
+
+
+# ── Install/registration rate-limit (abuse protection on NEW device installs, not usage) ──────────
+# Dynamic per plan; 0 = unlimited. Generous so a legitimate fleet scale-up + normal hardware swaps
+# never trip it — this only stops scripted hammering of the register endpoint. Tune globally with
+# ALGENTA_DEVICE_INSTALLS_PER_HOUR. Re-registering an EXISTING device (license refresh) updates the
+# row in place and is NOT counted; only brand-new device registrations count toward the budget.
+_DEFAULT_INSTALLS_PER_HOUR: dict[str, int] = {
+    "free": 20,        # free is cloud-only (cannot register a local device) — a safety net only
+    "pro": 100,
+    "team": 200,
+    "enterprise": 0,   # unlimited — large fleets / big autoscaling events
+}
+_INSTALL_RATE_WINDOW_SECONDS = 3600
+
+
+def installs_per_hour(plan: str) -> int:
+    """Dynamic per-plan new-device install budget (0 = unlimited). A global env override wins."""
+    override = os.environ.get("ALGENTA_DEVICE_INSTALLS_PER_HOUR")
+    if override is not None:
+        try:
+            return max(0, int(override.strip()))
+        except ValueError:
+            pass
+    return _DEFAULT_INSTALLS_PER_HOUR.get(plan, 100)
+
+
+async def recent_new_registration_count(
+    api_key_id: uuid.UUID,
+    db: AsyncSession,
+    *,
+    window_seconds: int = _INSTALL_RATE_WINDOW_SECONDS,
+) -> int:
+    """Count NEW device registrations created for this key within the rolling window. Refreshes of an
+    existing device update the row in place (created_at unchanged) and are therefore excluded."""
+    cutoff = datetime.now(UTC) - timedelta(seconds=window_seconds)
+    result = await db.execute(
+        select(func.count()).where(
+            DeviceRegistration.api_key_id == api_key_id,
+            DeviceRegistration.created_at >= cutoff,
         )
     )
     return result.scalar_one() or 0
