@@ -146,6 +146,20 @@ Copy the license to `~/.algenta/runtime/license.jwt` (or set `ALGENTA_LICENSE_JW
 After rebinding, run `de license status` again. A populated `Device ID:` with `Source: cloud` (or `offline-local`) and no `[HARD EXPIRED]` marker means the bound license validates on this machine.
 {% endhint %}
 
+## Manage your devices and seats
+
+Each machine you register uses one **seat**, up to your plan's device limit. When you replace a laptop, rotate a server, or simply hit the limit, you free a seat by **revoking** a device you no longer use.
+
+Manage your devices yourself from your **account dashboard**, no API key required — you sign in with your normal account. The dashboard lists every machine on your plan with its platform and when it was last active (marked **active** or **idle**), and a **Revoke** action next to each one:
+
+- **See your seats.** The list shows how many of your devices are currently active versus idle, so you can tell at a glance which machine to retire.
+- **Revoke to free a seat.** Revoking a device frees its seat immediately for a new machine. The revoked device loses access on its next license refresh.
+- **Add the replacement.** Once a seat is free, run `de login` on the new machine (see [Fix a device_identity_mismatch](#fix-a-device_identity_mismatch) above) and it registers into the freed seat.
+
+{% hint style="info" %}
+Revoking is scoped to your own account: you only ever see and revoke devices on your own plan. A revoked device can re-register later if a seat is available — revoking frees the seat, it does not permanently ban the machine.
+{% endhint %}
+
 ## Next steps
 
 - [Licensing](../licensing.md) — plans, the license JWT, grace periods, and how binding fits the offline model.
