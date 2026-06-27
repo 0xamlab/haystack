@@ -20,6 +20,8 @@ on:
           - both
           - engine
           - api
+          - control-plane
+          - all
 
 permissions:
   contents: read
@@ -56,7 +58,7 @@ jobs:
         run: flyctl auth docker
 
       - name: Deploy engine (worker + sidecar)
-        if: ${{ inputs.target == 'both' || inputs.target == 'engine' }}
+        if: ${{ inputs.target == 'both' || inputs.target == 'engine' || inputs.target == 'all' }}
         run: |
           set -euo pipefail
           docker pull  "$SRC/engine:$TAG"
@@ -66,10 +68,22 @@ jobs:
           flyctl scale count 1 -a codna-engine --yes
 
       - name: Deploy api
-        if: ${{ inputs.target == 'both' || inputs.target == 'api' }}
+        if: ${{ inputs.target == 'both' || inputs.target == 'api' || inputs.target == 'all' }}
         run: |
           set -euo pipefail
           docker pull  "$SRC/api:$TAG"
           docker tag   "$SRC/api:$TAG" "registry.fly.io/codna-api:$TAG"
           docker push  "registry.fly.io/codna-api:$TAG"
           flyctl deploy -c fly.api.toml -a codna-api -i "registry.fly.io/codna-api:$TAG"
+
+      # The control plane reuses the SAME api image (role flag) but owns its OWN Postgres, so its
+      # release_command runs `alembic upgrade head` against algenta-control-plane-pg — this is what
+      # applies 0042 to the DB that backs api.algenta.ai billing/devices/license.
+      - name: Deploy control-plane
+        if: ${{ inputs.target == 'control-plane' || inputs.target == 'all' }}
+        run: |
+          set -euo pipefail
+          docker pull  "$SRC/api:$TAG"
+          docker tag   "$SRC/api:$TAG" "registry.fly.io/algenta-control-plane:$TAG"
+          docker push  "registry.fly.io/algenta-control-plane:$TAG"
+          flyctl deploy -c fly.control-plane.toml -a algenta-control-plane -i "registry.fly.io/algenta-control-plane:$TAG"
