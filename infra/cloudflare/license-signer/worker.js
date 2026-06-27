@@ -17,7 +17,7 @@
  *   LICENSES           KV namespace (jti idempotency + monotonic entitlement_version)
  */
 
-const KNOWN_PRODUCTS = new Set(["codna", "cohenta", "decimas", "escrypto", "mission"]);
+const KNOWN_PRODUCTS = new Set(["codna", "cohenta", "decimas", "escrypto", "mission", "telys"]);
 const WILDCARD = new Set(["*", "all", "any", "ALL", "*.*"]);
 const MAX_TTL_SECONDS = 90 * 86400; // no signed license may outlive 90 days
 // Absolute sanity ceilings (NOT per-org entitlement — that is enforced server-side). The Worker

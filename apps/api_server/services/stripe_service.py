@@ -50,6 +50,18 @@ class _PlanPriceIdMapping(Mapping[str, str | None]):
                 else None
             ),
             "enterprise": None,  # sales-assisted only
+            # Telys runtime plans: telys_developer is free (no Stripe SKU); pro/team are paid.
+            "telys_developer": None,
+            "telys_pro": (
+                current_settings.stripe_price_telys_pro
+                if hasattr(current_settings, "stripe_price_telys_pro")
+                else None
+            ),
+            "telys_team": (
+                current_settings.stripe_price_telys_team
+                if hasattr(current_settings, "stripe_price_telys_team")
+                else None
+            ),
         }
 
     def __getitem__(self, key: str) -> str | None:

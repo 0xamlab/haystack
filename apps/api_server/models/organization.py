@@ -14,6 +14,9 @@ class OrgPlan(StrEnum):
     PRO = "pro"
     TEAM = "team"
     ENTERPRISE = "enterprise"
+    TELYS_DEVELOPER = "telys_developer"  # free, 1-device, local/non-commercial Telys runtime dev license
+    TELYS_PRO = "telys_pro"      # paid Telys runtime — commercial, multi-device
+    TELYS_TEAM = "telys_team"    # paid Telys runtime — team/server seats
 
 
 class OrgStatus(StrEnum):

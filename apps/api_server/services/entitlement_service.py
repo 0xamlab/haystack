@@ -33,6 +33,9 @@ logger = structlog.get_logger(__name__)
 # Codna's full feature set — must match the keys of PRODUCT_FEATURE_TOOLS in
 # packages/mcp/algenta_mcp/products.py (the feature→tool map the runtime gates on).
 CODNA_FEATURES_FULL: tuple[str, ...] = ("repo_graph", "triage", "simulate", "fix", "apply")
+# Telys (on-device memory/retrieval runtime) feature set — gates the same way (telys.verify checks
+# products.telys.features). Mirror of telys-sdk telys/verify.py TELYS_FEATURES.
+TELYS_FEATURES_FULL: tuple[str, ...] = ("local_runtime", "partitioned_vector", "ivf_partition")
 
 # Self-service ceiling (anti-underpayment): at or below this, an org may self-serve;
 # above it requires an enterprise contract (negotiated pools via per-org overrides).
@@ -78,11 +81,41 @@ def _codna_full(tier: str) -> dict[str, ProductGrant]:
     return {"codna": ProductGrant(tier=tier, features=frozenset(CODNA_FEATURES_FULL))}
 
 
+def _telys_full(tier: str) -> dict[str, ProductGrant]:
+    return {"telys": ProductGrant(tier=tier, features=frozenset(TELYS_FEATURES_FULL))}
+
+
+
 # Per-tier capacity — keyed by the internal plan name (OrgPlan values). ``developer`` and
 # ``pro`` are the same commercial tier (see plan_limits). Unknown plans resolve to ``free``.
 _TIER_CAPACITY: dict[str, EntitlementRecord] = {
     # Cloud-API only: no local engine license at all (free download stays inert).
     "free": EntitlementRecord(plan="free"),
+    # Telys free developer license — account required, NO card; 1 device, local/non-commercial.
+    "telys_developer": EntitlementRecord(
+        plan="telys_developer",
+        deployment_class="desktop",
+        products=_telys_full("developer"),
+        named_seat_limit=1,
+        active_node_limit=1,
+        concurrent_worker_limit=1,
+        device_allowance_per_seat=1,
+        commercial_use=False,
+        offline_grace_days=30,
+    ),
+    "telys_pro": EntitlementRecord(
+        plan="telys_pro", deployment_class="desktop",
+        products=_telys_full("pro"),
+        named_seat_limit=1, active_node_limit=1, concurrent_worker_limit=2,
+        device_allowance_per_seat=3, commercial_use=True, offline_grace_days=14,
+    ),
+    "telys_team": EntitlementRecord(
+        plan="telys_team", deployment_class="server",
+        products=_telys_full("team"),
+        named_seat_limit=SELF_SERVICE_MAX_SEATS, active_node_limit=SELF_SERVICE_MAX_NODES,
+        concurrent_worker_limit=SELF_SERVICE_MAX_WORKERS,
+        device_allowance_per_seat=3, commercial_use=True, offline_grace_days=14,
+    ),
     # Individual / small — desktop, within the self-service ceiling.
     "developer": EntitlementRecord(
         plan="developer",

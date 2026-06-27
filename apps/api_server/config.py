@@ -253,6 +253,11 @@ class Settings(BaseSettings):
     # (the Worker may expose its own JWKS in P4). See services/license_jwk.py.
     license_signer_worker_public_key: str | None = Field(default=None)
     license_signer_worker_public_key_file: str | None = Field(default=None)
+    # When True, _issue_license_jwt emits the ver:2 entitlement claim shape (products/limits via
+    # entitlement_service.to_license_claims) required by the cf_worker signer + the Telys verifier. Default
+    # False preserves the legacy ver:1 license for existing Codna/Algenta consumers — flip ON only after
+    # confirming every consumer accepts ver:2 (see docs in telys SHARED-PLATFORM-INTEGRATION.md).
+    license_v2_issuance: bool = Field(default=False)
     api_key_prefix: str = Field(default=API_KEY_PREFIX_LIVE)
     api_key_test_prefix: str = Field(default=API_KEY_PREFIX_TEST)
 
@@ -273,6 +278,9 @@ class Settings(BaseSettings):
     stripe_webhook_secret: str = Field(default="whsec_replace_me")
     stripe_price_developer: str = Field(default="price_developer_replace_me")
     stripe_price_pro: str = Field(default="price_pro_replace_me")
+    # Telys runtime paid tiers (telys_developer is free → no Stripe price). Create these in Stripe + set the env.
+    stripe_price_telys_pro: str = Field(default="price_telys_pro_replace_me")
+    stripe_price_telys_team: str = Field(default="price_telys_team_replace_me")
 
     # ─── GitHub App (codna "watch CI / open fix PRs") ─────────────────────────
     # Inert until configured: webhook route, token minter, and event handlers all

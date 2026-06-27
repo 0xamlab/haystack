@@ -768,6 +768,18 @@ def _issue_license_jwt(
         "activation_id": _activation_id(org_id, device_id),
         "device_pubkey_thumbprint": device_pubkey_thumbprint,
     }
+    # Enrich with the ver:2 ENTITLEMENT claim shape (products{name:{tier,features}} + capacity caps) from the
+    # resolved tier — required by the Telys verifier (products.telys) and for product feature gating. Gated by
+    # license_v2_issuance (default OFF): off = the legacy claim set with NO products map, so existing
+    # Codna/Algenta consumers are unaffected; flip ON only after confirming every consumer handles a products
+    # map (see telys docs/SHARED-PLATFORM-INTEGRATION.md). Additive merge — never drops the identity claims.
+    from apps.api_server.config import get_settings
+
+    if get_settings().license_v2_issuance:
+        from apps.api_server.services.entitlement_service import resolve_entitlement, to_license_claims
+
+        payload.update(to_license_claims(resolve_entitlement(plan)))
+
     # Sign via the pluggable signer (P1). Default backend is dev_hmac, which produces
     # the exact same HS256 token as before; pem/cf_worker switch issuance to RS256
     # with the private key off-host.
