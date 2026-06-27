@@ -278,6 +278,7 @@ class Settings(BaseSettings):
     stripe_webhook_secret: str = Field(default="whsec_replace_me")
     stripe_price_developer: str = Field(default="price_developer_replace_me")
     stripe_price_pro: str = Field(default="price_pro_replace_me")
+    stripe_price_team: str = Field(default="price_team_replace_me")
     # Telys runtime paid tiers (telys_developer is free → no Stripe price). Create these in Stripe + set the env.
     stripe_price_telys_pro: str = Field(default="price_telys_pro_replace_me")
     stripe_price_telys_team: str = Field(default="price_telys_team_replace_me")

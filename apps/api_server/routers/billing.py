@@ -57,7 +57,7 @@ async def checkout(
 ) -> dict[str, Any]:
     body = await request.json()
     plan = body.get("plan", "developer")
-    if plan not in ("developer", "pro"):
+    if plan not in ("developer", "pro", "team", "telys_pro", "telys_team"):
         raise HTTPException(
             status_code=400,
             detail={
@@ -422,6 +422,25 @@ def _plan_from_subscription(sub_obj: dict[str, Any]) -> str:
                 return "developer"
             if hasattr(_settings, "stripe_price_pro") and price_id == _settings.stripe_price_pro:
                 return "pro"
+            if (
+                hasattr(_settings, "stripe_price_team")
+                and price_id == _settings.stripe_price_team
+            ):
+                return "team"
+            # Telys runtime paid tiers (telys_developer is free → no Stripe price). Without these a
+            # paid Telys subscription's price_id falls through to "free", and the handler's
+            # unknown-price branch keeps the org on its current (free) plan — silently de-entitling
+            # a paying customer. Keep this map in lockstep with stripe_service.PLAN_PRICE_IDS.
+            if (
+                hasattr(_settings, "stripe_price_telys_pro")
+                and price_id == _settings.stripe_price_telys_pro
+            ):
+                return "telys_pro"
+            if (
+                hasattr(_settings, "stripe_price_telys_team")
+                and price_id == _settings.stripe_price_telys_team
+            ):
+                return "telys_team"
     except Exception as exc:
         logger.debug("subscription_plan_parse_failed", error=str(exc))
     return "free"

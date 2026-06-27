@@ -769,13 +769,20 @@ def _issue_license_jwt(
         "device_pubkey_thumbprint": device_pubkey_thumbprint,
     }
     # Enrich with the ver:2 ENTITLEMENT claim shape (products{name:{tier,features}} + capacity caps) from the
-    # resolved tier — required by the Telys verifier (products.telys) and for product feature gating. Gated by
-    # license_v2_issuance (default OFF): off = the legacy claim set with NO products map, so existing
-    # Codna/Algenta consumers are unaffected; flip ON only after confirming every consumer handles a products
-    # map (see telys docs/SHARED-PLATFORM-INTEGRATION.md). Additive merge — never drops the identity claims.
+    # resolved tier — required by the Telys verifier (products.telys) and for product feature gating. Additive
+    # merge — never drops the identity claims.
+    #
+    # Gating is product-aware so Telys works WITHOUT a global flip:
+    #   * Telys plans (telys_developer/pro/team) ALWAYS emit the products map — a paid Telys customer's local
+    #     runtime fails closed (no products.telys → no features) without it, and the Telys verifier is the only
+    #     consumer of a telys_* license, so this cannot affect Codna/Algenta.
+    #   * All other plans stay gated on license_v2_issuance (default OFF): off = legacy claim set with NO products
+    #     map, so existing Codna/Algenta consumers are unaffected; flip ON only after confirming every consumer
+    #     handles a products map (see telys docs/SHARED-PLATFORM-INTEGRATION.md).
     from apps.api_server.config import get_settings
 
-    if get_settings().license_v2_issuance:
+    _is_telys_plan = str(plan or "").startswith("telys")
+    if _is_telys_plan or get_settings().license_v2_issuance:
         from apps.api_server.services.entitlement_service import resolve_entitlement, to_license_claims
 
         payload.update(to_license_claims(resolve_entitlement(plan)))

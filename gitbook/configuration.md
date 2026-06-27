@@ -99,6 +99,7 @@ Where a variable has accepted aliases (for example a legacy `DE_` name), they ap
 | `SMTP_USERNAME` | — | — | — |
 | `STRIPE_PRICE_DEVELOPER` | `price_developer_replace_me` | — | — |
 | `STRIPE_PRICE_PRO` | `price_pro_replace_me` | — | — |
+| `STRIPE_PRICE_TEAM` | `price_team_replace_me` | — | — |
 | `STRIPE_PRICE_TELYS_PRO` | `price_telys_pro_replace_me` | — | — |
 | `STRIPE_PRICE_TELYS_TEAM` | `price_telys_team_replace_me` | — | — |
 | `STRIPE_PUBLISHABLE_KEY` | `pk_test_replace_me` | — | — |

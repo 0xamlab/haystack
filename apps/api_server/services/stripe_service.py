@@ -49,17 +49,25 @@ class _PlanPriceIdMapping(Mapping[str, str | None]):
                 if hasattr(current_settings, "stripe_price_pro")
                 else None
             ),
+            "team": (
+                current_settings.stripe_price_team
+                if hasattr(current_settings, "stripe_price_team")
+                and not _is_placeholder(current_settings.stripe_price_team)
+                else None
+            ),
             "enterprise": None,  # sales-assisted only
             # Telys runtime plans: telys_developer is free (no Stripe SKU); pro/team are paid.
             "telys_developer": None,
             "telys_pro": (
                 current_settings.stripe_price_telys_pro
                 if hasattr(current_settings, "stripe_price_telys_pro")
+                and not _is_placeholder(current_settings.stripe_price_telys_pro)
                 else None
             ),
             "telys_team": (
                 current_settings.stripe_price_telys_team
                 if hasattr(current_settings, "stripe_price_telys_team")
+                and not _is_placeholder(current_settings.stripe_price_telys_team)
                 else None
             ),
         }
@@ -175,7 +183,7 @@ async def create_checkout_session(
     Returns {"url": "https://checkout.stripe.com/..."}
     """
     price_id = PLAN_PRICE_IDS.get(plan)
-    if not price_id:
+    if not price_id or _is_placeholder(price_id):
         raise HTTPException(
             status_code=400,
             detail={

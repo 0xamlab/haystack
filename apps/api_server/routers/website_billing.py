@@ -1,0 +1,188 @@
+"""Website/dashboard self-service billing — Supabase-authenticated.
+
+Companion to ``/byok`` and ``/account/devices``: a signed-in user sees their current plan + managed-
+LLM usage and can upgrade (Stripe Checkout) or manage billing (Stripe Customer Portal) WITHOUT an
+engine API key. Authenticated by the user's Supabase access_token (the site's OAuth session),
+resolved to the caller's engine org via the shared website-identity path; everything is org-scoped.
+
+Distinct from the API-key ``/v1/billing/*`` (``require_role('owner')``, for the SDK/CLI) — this
+surface is account management for the website and delegates to the SAME Stripe service. Inert until
+``SUPABASE_URL`` (+ the GitHub App) is configured → 503; and 503 when Stripe billing is not
+configured (placeholder key) so the dashboard card degrades to a "billing not enabled yet" state,
+exactly like ``/account/devices``.
+"""
+
+from __future__ import annotations
+
+from typing import Annotated, Any
+
+import structlog
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
+from pydantic import BaseModel, Field
+from sqlalchemy import select, text
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from apps.api_server.db.session import get_db
+from apps.api_server.middleware.auth import get_redis
+from apps.api_server.models.llm_usage_record import USD_MICROS
+from apps.api_server.models.user import User
+from apps.api_server.services import llm_spend_service, plan_limits, website_identity
+from apps.api_server.services.public_url_policy import (
+    request_origin_base_url,
+    resolve_billing_redirect_urls,
+)
+from apps.api_server.services.stripe_service import (
+    billing_configured,
+    create_billing_portal_session,
+    create_checkout_session,
+)
+
+logger = structlog.get_logger(__name__)
+router = APIRouter(tags=["account"])
+
+# Plans purchasable from the website Upgrade buttons (mirrors codna plans.ts checkout tiers).
+# Free is $0 and Enterprise is sales-assisted, so neither goes through Checkout here. Telys runtime
+# paid tiers (telys_developer is free, no SKU) are sellable too — keep in sync with plans.ts + the
+# stripe_service.PLAN_PRICE_IDS map.
+_CHECKOUT_PLANS = frozenset({"pro", "team", "telys_pro", "telys_team"})
+
+
+def _require_billing() -> None:
+    """503 when Stripe isn't configured (placeholder key) so the dashboard card shows
+    "billing not enabled yet", exactly like /account/devices when SUPABASE_URL is unset."""
+    if not billing_configured():
+        raise HTTPException(
+            status_code=503,
+            detail=website_identity.error_body(
+                "billing_not_configured", "Billing is not enabled yet."
+            ),
+        )
+
+
+class CheckoutRequest(BaseModel):
+    plan: str = Field(min_length=1, max_length=32)
+
+
+@router.get(
+    "/account/billing",
+    summary="Current plan + managed-LLM usage for the signed-in user (website / Supabase auth)",
+    description=(
+        "Returns the caller's current plan, subscription status + renewal, and managed-LLM spend "
+        "vs the plan's monthly cap. Powers the subscription dashboard's billing card."
+    ),
+)
+async def account_billing_info(
+    response: Response,
+    authorization: Annotated[str | None, Header()] = None,
+    db: AsyncSession = Depends(get_db),
+    redis: Any = Depends(get_redis),
+) -> dict[str, Any]:
+    response.headers["Cache-Control"] = "no-store"  # private billing data — never cache
+    org, _identity = await website_identity.verify_and_resolve_org(authorization, db, redis)
+    _require_billing()
+
+    plan = org.plan.value
+    cap_usd = plan_limits.get(plan).llm_spend_cap_usd_month
+    spend_micros = await llm_spend_service.get_monthly_llm_spend_micros(org.id, db)
+
+    # Subscription status + renewal come from the subscriptions row (the engine's mirror of the
+    # Stripe subscription), most-recent first. Free orgs have no row → active / no renewal. Wrapped
+    # defensively: a missing/empty subscriptions table must not break the plan read.
+    status = "active"
+    renews_at: str | None = None
+    try:
+        row = (
+            await db.execute(
+                text(
+                    "SELECT status, current_period_end FROM subscriptions "
+                    "WHERE org_id = :org_id ORDER BY updated_at DESC LIMIT 1"
+                ),
+                {"org_id": str(org.id)},
+            )
+        ).first()
+        if row is not None:
+            status = row[0] or status
+            renews_at = row[1].isoformat() if row[1] else None
+    except Exception as exc:  # noqa: BLE001 — billing info must degrade, not 500
+        logger.debug("account_billing_subscription_read_failed", error=str(exc))
+
+    return {
+        "plan": plan,
+        "status": status,
+        "renews_at": renews_at,
+        "usage_usd": round(spend_micros / USD_MICROS, 2),
+        "cap_usd": cap_usd if cap_usd and cap_usd > 0 else None,
+    }
+
+
+@router.post(
+    "/account/billing/checkout",
+    summary="Start Stripe Checkout for a plan upgrade (website / Supabase auth)",
+)
+async def account_billing_checkout(
+    payload: CheckoutRequest,
+    request: Request,
+    response: Response,
+    authorization: Annotated[str | None, Header()] = None,
+    db: AsyncSession = Depends(get_db),
+    redis: Any = Depends(get_redis),
+) -> dict[str, Any]:
+    response.headers["Cache-Control"] = "no-store"
+    org, identity = await website_identity.verify_and_resolve_org(authorization, db, redis)
+    _require_billing()
+
+    plan = payload.plan.strip().lower()
+    if plan not in _CHECKOUT_PLANS:
+        raise HTTPException(
+            status_code=400,
+            detail=website_identity.error_body(
+                "invalid_plan", "This plan cannot be purchased here."
+            ),
+        )
+
+    # Billing email: the resolved identity's email, else the org's first user, else a placeholder.
+    email = identity.get("email")
+    if not email:
+        user = (
+            await db.execute(
+                select(User).where(User.org_id == org.id).order_by(User.created_at).limit(1)
+            )
+        ).scalar_one_or_none()
+        email = user.email if user else "unknown@example.com"
+
+    redirect_urls = resolve_billing_redirect_urls(request_origin=request_origin_base_url(request))
+    return await create_checkout_session(
+        str(org.id),
+        email,
+        plan,
+        success_url=redirect_urls.success_url,
+        cancel_url=redirect_urls.cancel_url,
+    )
+
+
+@router.post(
+    "/account/billing/portal",
+    summary="Open the Stripe Customer Portal (website / Supabase auth)",
+)
+async def account_billing_portal(
+    request: Request,
+    response: Response,
+    authorization: Annotated[str | None, Header()] = None,
+    db: AsyncSession = Depends(get_db),
+    redis: Any = Depends(get_redis),
+) -> dict[str, Any]:
+    response.headers["Cache-Control"] = "no-store"
+    org, _identity = await website_identity.verify_and_resolve_org(authorization, db, redis)
+    _require_billing()
+
+    if not org.stripe_customer_id:
+        raise HTTPException(
+            status_code=400,
+            detail=website_identity.error_body(
+                "no_billing_account", "No billing account yet — upgrade first."
+            ),
+        )
+    redirect_urls = resolve_billing_redirect_urls(request_origin=request_origin_base_url(request))
+    return await create_billing_portal_session(
+        org.stripe_customer_id, return_url=redirect_urls.return_url
+    )
