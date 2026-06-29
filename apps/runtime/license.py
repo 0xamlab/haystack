@@ -470,6 +470,91 @@ def _issue_dev_jwt(device_id: str, api_key: str = "") -> str:
     return jwt.encode(payload, _DEV_SECRET, algorithm="HS256")
 
 
+# ── RS256 device-token signer (control-plane / operator mint side) ──────────────
+# The DEVICE only ever VERIFIES — it holds the PUBLIC key (ALGENTA_LOCAL_LICENSE_PUBLIC_KEY).
+# This signer runs where the PRIVATE key lives: the control plane (Fly) or an operator mint tool,
+# NEVER shipped to a device. It supersedes the HS256 dev stub for any real (commercial / go-dark)
+# token — HS256 is forgeable by anyone holding the shared secret; RS256 is not.
+
+
+def _signing_private_key(private_key_pem: str | None = None) -> str:
+    """The RS256 private key, from (in order) an explicit PEM arg, ALGENTA_LICENSE_SIGNING_PRIVATE_KEY,
+    or ALGENTA_LICENSE_SIGNING_PRIVATE_KEY_FILE. Mirrors the public-key env convention."""
+    if private_key_pem and private_key_pem.strip():
+        return private_key_pem.strip()
+    value = (os.environ.get("ALGENTA_LICENSE_SIGNING_PRIVATE_KEY") or "").strip()
+    if value:
+        return value
+    path_value = (os.environ.get("ALGENTA_LICENSE_SIGNING_PRIVATE_KEY_FILE") or "").strip()
+    if path_value:
+        return Path(path_value).expanduser().read_text().strip()
+    raise ValueError(
+        "RS256 device-token signing requires ALGENTA_LICENSE_SIGNING_PRIVATE_KEY (or _FILE) — the "
+        "control-plane private key. It must never be present on a device."
+    )
+
+
+def mint_device_token(
+    *,
+    org_id: str,
+    plan: str = "pro",
+    ttl_days: int = 14,
+    grace_days: int = _DEFAULT_GRACE_DAYS,
+    device_id: str = "",
+    api_key_prefix: str = "",
+    permitted_modules: list[str] | None = None,
+    products: dict[str, object] | None = None,
+    license_version: int = 2,
+    license_id: str = "",
+    activation_id: str = "",
+    deployment_class: str = "desktop",
+    issued_at: int | None = None,
+    private_key_pem: str | None = None,
+    extra_claims: dict[str, object] | None = None,
+) -> str:
+    """Mint an RS256-signed offline device token the runtime verifies with its public key.
+
+    TTL + grace (go-dark): the token's working life is ``ttl_days``; past ``expires_at`` the device
+    keeps operating through ``grace_days`` before hard denial. Enforcement is via the ``expires_at`` +
+    ``grace_days`` claims (the RS256 decode path runs ``verify_exp=False`` — the runtime owns expiry,
+    see ``DeviceLicense.is_hard_expired`` / ``offline_token``); the JWT ``exp`` is set to the hard-deny
+    boundary so external tooling agrees with the runtime.
+    """
+    if not org_id:
+        raise ValueError("org_id is required for a device token")
+    now = int(issued_at if issued_at is not None else time.time())
+    grace = max(0, int(grace_days))
+    expires_at = 0 if ttl_days <= 0 else now + int(ttl_days) * 86400
+    payload: dict[str, object] = {
+        "org_id": org_id,
+        "plan": plan,
+        "device_id": device_id,
+        "device_limit": 0,
+        "permitted_modules": permitted_modules or ["*"],
+        "issued_at": now,
+        "iat": now,
+        "expires_at": expires_at,
+        "grace_days": grace,
+        "ver": int(license_version),
+        "license_id": license_id,
+        "activation_id": activation_id,
+        "deployment_class": deployment_class,
+        "iss": "algenta-control-plane",
+        "sub": "device-license",
+    }
+    if api_key_prefix:
+        payload["api_key_prefix"] = api_key_prefix
+    if products:
+        payload["products"] = products
+    if expires_at:
+        # JWT exp = the HARD-deny boundary (expiry + grace), so a verifier that DOES check exp agrees
+        # with the runtime's is_hard_expired(); the runtime itself decodes with verify_exp=False.
+        payload["exp"] = expires_at + grace * 86400
+    if extra_claims:
+        payload.update(extra_claims)
+    return jwt.encode(payload, _signing_private_key(private_key_pem), algorithm="RS256")
+
+
 # ── Disk I/O ──────────────────────────────────────────────────────────────────
 
 

@@ -153,12 +153,21 @@ async def _submit_repository_job(
     )
 
 
+def _is_offline_auth(auth: AuthContext) -> bool:
+    """True for a device/offline-license token. Such requests do NO central DB/Redis metering or
+    quota — usage is metered PER DEVICE locally and reconciled out-of-band — so the fix hot path
+    stays free of Postgres/Redis (works on a device gone dark)."""
+    return auth.get("email") == "offline_license"
+
+
 async def _repo_preflight(auth: AuthContext, request: Request, redis_client: object) -> None:
     """Per-minute rate limit + monthly quota gate for a billable repository compute call.
 
     Raises HTTP 429 when the org's plan cap is exceeded (mirrors routers/simulate.py). Run at
     the START of a billable handler, before any compute, so an over-cap caller short-circuits.
     """
+    if _is_offline_auth(auth):
+        return  # per-device: no central rate-limit/quota DB on the device hot path
     await check_rate_limit(auth["org_id"], auth["plan"], redis_client, request_state=request.state)
     await check_quota_redis(auth["org_id"], auth["plan"], redis_client)
 
@@ -180,6 +189,8 @@ async def _meter_repository(
     session on success and rolls back if the request later fails — so failed calls are not billed.
     Call AFTER the compute succeeds.
     """
+    if _is_offline_auth(auth):
+        return  # per-device metering: usage recorded locally on the device, never in Postgres
     from sqlalchemy.exc import IntegrityError
 
     period = datetime.now(UTC).strftime("%Y-%m")

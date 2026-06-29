@@ -400,7 +400,14 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
         else:
             response_scope_key = ""
 
-        token = await store.acquire_write_lock(write_scope_key, _WRITE_LOCK_TTL_SECONDS)
+        # Single-flight write lock scoped to the request IDENTITY, not just METHOD:PATH:principal.
+        # Keying only on path+principal serialized ALL concurrent same-endpoint writes from one org
+        # (e.g. registering / decision-planning DIFFERENT repos in parallel), so distinct fixes got a
+        # spurious 409 resource_write_conflict — the concurrency bottleneck. Scope to the idempotency
+        # key (true-retry dedup) or the payload hash (identical-body dedup) so distinct concurrent
+        # writes run in parallel while real duplicates still serialize.
+        lock_key = response_scope_key if idempotency_key else f"{write_scope_key}:{payload_hash}"
+        token = await store.acquire_write_lock(lock_key, _WRITE_LOCK_TTL_SECONDS)
         if token is None:
             return _write_conflict_response(request)
 
@@ -427,4 +434,4 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
                 await store.store_response(response_scope_key, payload_hash, stored)
             return _rebuild_response(stored)
         finally:
-            await store.release_write_lock(write_scope_key, token)
+            await store.release_write_lock(lock_key, token)

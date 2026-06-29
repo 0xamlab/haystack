@@ -26,7 +26,7 @@ _HEARTBEAT_INTERVAL = 0.02
 async def test_blocking_run_agent_does_not_starve_event_loop(monkeypatch, tmp_path: Path):
     # Stub the heavy I/O so we reach run_agent with minimal setup.
     @contextlib.contextmanager
-    def _fake_materialized(_manifest):
+    def _fake_materialized(_manifest, **_kwargs):
         yield str(tmp_path)
 
     monkeypatch.setattr(va.repository_storage, "materialized_snapshot", _fake_materialized)
@@ -80,7 +80,7 @@ async def test_async_run_agent_is_awaited_and_non_blocking(monkeypatch, tmp_path
     a slow async run_agent (non-blocking I/O) still lets the loop serve co-tenants."""
 
     @contextlib.contextmanager
-    def _fake_materialized(_manifest):
+    def _fake_materialized(_manifest, **_kwargs):
         yield str(tmp_path)
 
     monkeypatch.setattr(va.repository_storage, "materialized_snapshot", _fake_materialized)

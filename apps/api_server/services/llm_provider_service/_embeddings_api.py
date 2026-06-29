@@ -195,7 +195,9 @@ async def provider_embeddings(
                         {
                             "model": model_resource,
                             "content": {"parts": [{"text": text}]},
-                            "embedContentConfig": {"outputDimensionality": dimensions},
+                            # REST v1beta takes outputDimensionality top-level (embedContentConfig is
+                            # a python-genai SDK construct the REST endpoint rejects as an unknown field).
+                            "outputDimensionality": dimensions,
                         }
                         for text in inputs
                     ],
@@ -211,7 +213,7 @@ async def provider_embeddings(
             )
             try:
                 raw_embeddings = data["embeddings"]
-                usage = data["usageMetadata"]
+                usage = data.get("usageMetadata") or {}  # embedContent/batch may omit usage — metering only
                 total_tokens = int(usage.get("promptTokenCount") or usage.get("totalTokenCount") or 0)
             except (KeyError, TypeError, ValueError) as exc:
                 raise LLMAPIError(
@@ -265,7 +267,8 @@ async def provider_embeddings(
                 payload={
                     "model": model_resource,
                     "content": {"parts": [{"text": text}]},
-                    "embedContentConfig": {"outputDimensionality": dimensions},
+                    # REST v1beta: outputDimensionality is top-level (not under embedContentConfig).
+                    "outputDimensionality": dimensions,
                 },
                 timeout_seconds=(
                     timeout_seconds
@@ -278,8 +281,8 @@ async def provider_embeddings(
             )
             try:
                 embedding = data["embedding"]["values"]
-                usage = data["usageMetadata"]
-                token_count = int(usage["promptTokenCount"])
+                usage = data.get("usageMetadata") or {}  # embedContent may omit usage — metering only
+                token_count = int(usage.get("promptTokenCount") or 0)
             except (KeyError, TypeError, ValueError) as exc:
                 raise LLMAPIError(
                     "invalid_provider_response",

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import time
 import uuid
 from typing import Any
 
@@ -227,18 +228,59 @@ async def list_visible_connectors(db: AsyncSession, auth: AuthContext) -> list[D
     return [connector for connector in result.scalars().all() if connector_visible(connector, auth)]
 
 
+# In-process connector cache: (connector_id, workspace) -> (detached DataConnector, monotonic_expiry).
+# The fix pipeline calls get_visible_connector on EVERY engine step (register/triage/plan/simulate/
+# apply) for the SAME connector, so without this the data_connectors row is re-SELECTed ~8x per fix.
+# Visibility (connector_visible) is STILL re-checked per request; only the row read is cached. Callers
+# read columns only (id, org_id, owner_key_id, config), so a detached instance is safe.
+_CONNECTOR_CACHE: dict = {}
+# 15 min: a connector is immutable for a fix's lifetime (even the slow rust/clap fixes run <900s),
+# so one cold read serves every engine step (register/triage/plan/simulate/apply) of that fix and
+# subsequent fixes on the same repo. Visibility is still re-checked per request.
+_CONNECTOR_CACHE_TTL = 900.0
+
+
 async def get_visible_connector(
     db: AsyncSession,
     connector_id: uuid.UUID,
     auth: AuthContext,
 ) -> DataConnector:
-    result = await db.execute(
-        select(DataConnector).where(
-            DataConnector.id == connector_id,
-            *workspace_scope_clauses(DataConnector, auth),
+    # Offline (device-token) mode: the connector lives in the LOCAL registry, not Postgres — read it
+    # there and synthesize an in-memory DataConnector, so the fix hot path issues ZERO data_connectors
+    # SELECT. org_id match + connector_visible still gate access.
+    if auth.get("email") == "offline_license":
+        from apps.api_server.services import local_connector_store as _lcs
+
+        rec = _lcs.get_connector(str(connector_id))
+        if rec is None or rec.get("org_id") != str(auth["org_id"]):
+            raise HTTPException(
+                status_code=404,
+                detail={"error": {"code": "not_found", "message": "Connection not found."}},
+            )
+        connector = _lcs.synthesize_connector(rec)
+        if not connector_visible(connector, auth):
+            raise HTTPException(
+                status_code=404,
+                detail={"error": {"code": "not_found", "message": "Connection not found."}},
+            )
+        return connector
+
+    ck = (str(connector_id), str(auth.get("workspace_id") or ""))
+    now = time.monotonic()
+    hit = _CONNECTOR_CACHE.get(ck)
+    if hit is not None and hit[1] > now:
+        connector = hit[0]
+    else:
+        result = await db.execute(
+            select(DataConnector).where(
+                DataConnector.id == connector_id,
+                *workspace_scope_clauses(DataConnector, auth),
+            )
         )
-    )
-    connector = result.scalar_one_or_none()
+        connector = result.scalar_one_or_none()
+        if connector is not None:
+            db.expunge(connector)  # detach so the row is reusable across requests/sessions
+            _CONNECTOR_CACHE[ck] = (connector, now + _CONNECTOR_CACHE_TTL)
     if connector is None or not connector_visible(connector, auth):
         raise HTTPException(
             status_code=404,

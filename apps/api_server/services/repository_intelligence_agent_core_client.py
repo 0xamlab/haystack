@@ -32,7 +32,13 @@ from httpx import AsyncClient
 
 from apps.api_server.services.egress_guard import EgressAuditContext, async_http_request
 
-DEFAULT_TIMEOUT_S = 120.0
+# IDLE / no-progress window on the streaming sidecar response — NOT a total-run cap. Every NDJSON
+# telemetry frame resets it; it only fires when the sidecar goes silent this long (a dead/stalled run).
+# Agentic coding runs take minutes-to-tens-of-minutes and are bounded by the agent's TURN limits, not a
+# wall clock (Cursor/Claude-Code-class) — so the right knob is a generous no-progress window, default
+# 600s (covers a long single model turn or a full test-suite step), env-tunable for heavier self-hosting.
+# (Proper complement: sidecar heartbeats during long model calls so an ACTIVE run never approaches it.)
+DEFAULT_TIMEOUT_S = float(os.environ.get("ALGENTA_AGENT_CORE_TIMEOUT_S", "600"))
 _AGENT_CORE_URL_ENV = "ALGENTA_AGENT_CORE_URL"
 _MAX_CONNECT_RETRIES = int(os.environ.get("ALGENTA_AGENT_CORE_CONNECT_RETRIES", "2"))
 _CONNECT_TIMEOUT_S = 10.0
@@ -127,6 +133,9 @@ async def run_agent_via_sidecar(
         "injected_context": injected_context,
         "limits": limits,
     }
+    # BYOM provider/model are carried in task_spec.engine (set by the verified_agentic planner, which
+    # also drives per-provider FAILOVER) — the sidecar reads task_spec.engine.provider, so the engine
+    # owns the single source of truth and can switch providers on overload.
     timeout = httpx.Timeout(connect=_CONNECT_TIMEOUT_S, read=timeout_s, write=30.0, pool=_CONNECT_TIMEOUT_S)
 
     # B7: authenticate to the sidecar with the shared internal bearer when configured

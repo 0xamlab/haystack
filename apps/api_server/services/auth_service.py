@@ -2,6 +2,7 @@
 
 import hashlib
 import secrets
+import time
 import uuid
 from collections.abc import Awaitable
 from datetime import UTC, datetime
@@ -18,6 +19,12 @@ settings = SettingsProxy()
 _CACHE_TTL_SECONDS = 300
 _CACHE_KEY_PREFIX = "apikey:"
 _SESSION_DIRTY_INFO_KEY = "auth_session_dirty"
+
+# In-process auth cache: hashed_key -> (AuthContext, monotonic_expiry). Removes the per-request
+# apikey+organizations Postgres SELECT from the fix hot path and works with NO Redis (offline /
+# single-device). Bounded staleness == _CACHE_TTL_SECONDS, same as the Redis cache; cleared
+# alongside Redis on revocation (invalidate_api_key_cache).
+_INPROC_AUTH_CACHE: dict = {}
 
 
 class AuthContext(TypedDict):
@@ -114,6 +121,28 @@ def api_key_expiry_epoch(expires_at: datetime | None) -> int | None:
 
 
 async def verify_api_key(
+    raw_key: str,
+    db: object,
+    redis_client: object,
+) -> AuthContext | None:
+    """Verify an API key.
+
+    In-process TTL cache FIRST (no Redis, no Postgres on a hit) so the per-request
+    apikey+organizations SELECT never lands on the fix hot path — and it works with NO
+    Redis (offline / single-device). Falls through to Redis+DB on a cold/expired entry.
+    """
+    hashed = hash_api_key(raw_key)
+    now = time.monotonic()
+    hit = _INPROC_AUTH_CACHE.get(hashed)
+    if hit is not None and hit[1] > now:
+        return hit[0]
+    ctx = await _verify_api_key_impl(raw_key, db, redis_client)
+    if ctx is not None:
+        _INPROC_AUTH_CACHE[hashed] = (ctx, now + _CACHE_TTL_SECONDS)
+    return ctx
+
+
+async def _verify_api_key_impl(
     raw_key: str,
     db: object,
     redis_client: object,
@@ -327,7 +356,8 @@ async def verify_api_key(
 
 
 async def invalidate_api_key_cache(hashed_key: str, redis_client: object) -> None:
-    """Remove a revoked key from Redis cache."""
+    """Remove a revoked key from BOTH the in-process cache and Redis."""
+    _INPROC_AUTH_CACHE.pop(hashed_key, None)
     try:
         import redis.asyncio as aioredis
 

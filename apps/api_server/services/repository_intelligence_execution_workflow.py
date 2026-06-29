@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import os
 from collections.abc import Callable
 from pathlib import Path
@@ -668,7 +669,9 @@ def _apply_patch_to_git_checkout(
     )
     if base_branch:
         git_command(["git", "-C", str(checkout_path), "checkout", base_branch], timeout=60.0)
-    git_command(["git", "-C", str(checkout_path), "checkout", "-b", branch_name], timeout=60.0)
+    # -B (create-or-reset) instead of -b: the apply branch is engine-generated, so re-applying the
+    # same plan (or a stale leftover branch) must not fatal with 'branch already exists' — reset it.
+    git_command(["git", "-C", str(checkout_path), "checkout", "-B", branch_name], timeout=60.0)
     patch_path = checkout_path / ".algenta.patch.diff"
     patch_path.write_text(patch_text, encoding="utf-8")
     git_command(
@@ -703,18 +706,34 @@ async def apply_repository_decision(
     config = parse_connector_config(connector)
     org_id = str(connector.org_id)
     repository_id = str(connector.id)
-    plan_manifest = load_decision_plan_manifest(
-        org_id=org_id,
-        repository_id=repository_id,
-        decision_plan_id=request.decision_plan_id,
-    )
-    simulation_manifest = load_simulation_manifest(
-        org_id=org_id,
-        repository_id=repository_id,
-        simulation_id=request.simulation_id,
-    )
+    # Read-after-write resilience (concurrency): a just-deduped simulation manifest can be observed
+    # before its snapshot_id is flushed, which surfaced as a spurious 409 repository_apply_snapshot_
+    # missing under parallel applies. Re-load briefly before failing closed — the load is idempotent
+    # and a transient consistency lag must not reject a valid apply.
+    def _load_apply_manifests() -> tuple[dict[str, Any], dict[str, Any]]:
+        return (
+            load_decision_plan_manifest(
+                org_id=org_id,
+                repository_id=repository_id,
+                decision_plan_id=request.decision_plan_id,
+            ),
+            load_simulation_manifest(
+                org_id=org_id,
+                repository_id=repository_id,
+                simulation_id=request.simulation_id,
+            ),
+        )
+
+    plan_manifest, simulation_manifest = _load_apply_manifests()
     plan_snapshot_id = str(plan_manifest.get("snapshot_id") or "").strip()
     simulation_snapshot_id = str(simulation_manifest.get("snapshot_id") or "").strip()
+    for _attempt in range(5):
+        if plan_snapshot_id and simulation_snapshot_id:
+            break
+        await asyncio.sleep(0.1 * (_attempt + 1))
+        plan_manifest, simulation_manifest = _load_apply_manifests()
+        plan_snapshot_id = str(plan_manifest.get("snapshot_id") or "").strip()
+        simulation_snapshot_id = str(simulation_manifest.get("snapshot_id") or "").strip()
     if not plan_snapshot_id or not simulation_snapshot_id:
         raise RepositoryIntelligenceError(
             code="repository_apply_snapshot_missing",
@@ -774,7 +793,12 @@ async def apply_repository_decision(
         decision_plan_manifest=plan_manifest,
     )
     created_at = utc_now()
-    branch_name = request.branch_name or f"algenta/{request.decision_plan_id[:12]}"
+    # Use the UNIQUE part of the decision_plan_id, not decision_plan_id[:12] — every id starts with
+    # the literal "decision_plan_" prefix, so [:12] == "decision_pla" for ALL plans, producing the
+    # SAME branch 'algenta/decision_pla' every time → 'branch already exists' on re-apply / concurrent
+    # same-repo applies. Key the branch off the unique hash suffix so each apply gets its own branch.
+    _plan_suffix = (request.decision_plan_id.removeprefix("decision_plan_") or request.decision_plan_id)[:16]
+    branch_name = request.branch_name or f"algenta/{_plan_suffix}"
     commit_message = (
         request.commit_message
         or f"Algenta repository intelligence patch {request.decision_plan_id}"

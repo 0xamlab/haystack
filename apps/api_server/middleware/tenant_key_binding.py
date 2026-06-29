@@ -22,6 +22,12 @@ from apps.api_server.services.tenant_keys import reset_org_keys_override, set_or
 async def bind_tenant_keys(
     auth: Annotated[AuthContext, Depends(get_current_org)],
 ) -> AsyncIterator[None]:
+    # Per-device (offline-license) requests resolve provider keys from LOCAL config (the env /
+    # self-host tier in tenant_keys), never the tenant_provider_keys table — the fix hot path stays
+    # DB-free on a device gone dark.
+    if auth.get("email") == "offline_license":
+        yield
+        return
     # resolve_org_keys reads on its own session, so a key-store error never poisons the request
     # session (the route handler's get_db session stays clean).
     token = set_org_keys_override(await resolve_org_keys(auth["org_id"]))

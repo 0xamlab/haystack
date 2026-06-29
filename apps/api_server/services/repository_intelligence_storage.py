@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import os
 import shutil
+import subprocess
 import tarfile
 import tempfile
 import zipfile
@@ -210,8 +211,29 @@ def _fetch_source_archive_from_object_store(snapshot_manifest: dict[str, Any]) -
     return Path(handle.name)
 
 
+def _git_init_baseline(root: Path) -> None:
+    """Init a git working tree over the extracted files and commit them as the baseline, so the
+    agent-core govern hook (mojo-gate) can compute the agent's patch via ``git add -A && git diff
+    --cached``. Without this the materialized dir is just extracted files (no ``.git``) and the
+    govern gate sees an empty diff → never reaches ``observed`` → the run fails ``plugin_evidence_missing``.
+    Best-effort: a git failure must never break materialization. ``.git`` is ignored by the engine's
+    authoritative tree-state diff (``_capture_repository_tree_state``), so this does not pollute it."""
+    env = {**os.environ,
+           "GIT_AUTHOR_NAME": "algenta", "GIT_AUTHOR_EMAIL": "engine@algenta.local",
+           "GIT_COMMITTER_NAME": "algenta", "GIT_COMMITTER_EMAIL": "engine@algenta.local"}
+    try:
+        subprocess.run(["git", "init", "-q"], cwd=root, check=True, env=env, capture_output=True)
+        subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=env, capture_output=True)
+        subprocess.run(["git", "-c", "commit.gpgsign=false", "commit", "-q", "--allow-empty",
+                        "-m", "snapshot baseline"], cwd=root, check=True, env=env, capture_output=True)
+    except Exception:  # noqa: BLE001 — best-effort; the govern gate degrades, materialization must not
+        pass
+
+
 @contextmanager
-def materialized_snapshot(snapshot_manifest: dict[str, Any]) -> Iterator[Path]:
+def materialized_snapshot(
+    snapshot_manifest: dict[str, Any], *, git_baseline: bool = False
+) -> Iterator[Path]:
     temp_dir = Path(tempfile.mkdtemp(prefix="algenta-repository-snapshot-"))
     fetched_archive: Path | None = None
     try:
@@ -222,6 +244,9 @@ def materialized_snapshot(snapshot_manifest: dict[str, Any]) -> Iterator[Path]:
             fetched_archive = _fetch_source_archive_from_object_store(snapshot_manifest)
             archive_path = fetched_archive
         _extract_tar(archive_path, temp_dir)
+        if git_baseline:
+            # Agentic (verified_agentic) runs edit here and the govern hook diffs via git.
+            _git_init_baseline(temp_dir)
         yield temp_dir
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)

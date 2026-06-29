@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import fcntl
 import hashlib
 import os
@@ -538,7 +539,11 @@ async def create_repository_decision_plan(
     org_id = str(connector.org_id)
     repository_id = str(connector.id)
     model_id = resolve_repository_model(request.model)
-    triage_manifest = repository_storage._load_triage_manifest(
+    # Parquet/JSON hydration is CPU-bound + blocking; run it off the event loop so the
+    # single API loop keeps servicing other requests (this sync read on the loop was the
+    # /docs-freezer under concurrent fixes).
+    triage_manifest = await asyncio.to_thread(
+        repository_storage._load_triage_manifest,
         org_id=org_id,
         repository_id=repository_id,
         evidence_bundle_ref=request.workspace_evidence_bundle_ref,
@@ -654,7 +659,10 @@ async def create_repository_decision_plan(
         if cached is not None:
             return cached
 
-        snapshot_manifest = repository_storage._load_snapshot_manifest(
+        # Snapshot manifest is a multi-MB Parquet hydration → to_thread so the deserialize
+        # (to_pylist) never blocks the event loop while other fixes run concurrently.
+        snapshot_manifest = await asyncio.to_thread(
+            repository_storage._load_snapshot_manifest,
             org_id=org_id,
             repository_id=repository_id,
             snapshot_id=resolved_snapshot_id,

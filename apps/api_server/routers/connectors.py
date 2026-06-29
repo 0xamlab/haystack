@@ -222,6 +222,32 @@ async def create_connector(
     config_json = json.dumps(payload.config) if payload.config else None
     visibility = normalize_visibility(payload.visibility, auth)
 
+    if auth.get("email") == "offline_license":
+        # Offline (device-token): persist the connector to the LOCAL registry, not Postgres, so the
+        # whole repo flow (register + every fix) is DB-free on the device hot path. config_json is
+        # encrypted exactly like the DB row, so parse_connector_config decrypts it unchanged.
+        import uuid as _uuid
+
+        from apps.api_server.services import local_connector_store as _lcs
+
+        record = {
+            "id": str(_uuid.uuid4()),
+            "org_id": str(auth["org_id"]),
+            "workspace_id": str(auth["workspace_id"]) if auth.get("workspace_id") else None,
+            "name": payload.name,
+            "description": payload.description,
+            "connector_type": ct,
+            "config_json": encrypt_config_json(config_json, org_id=auth["org_id"]),
+            "config_fingerprint": config_fingerprint(payload.config),
+            "status": ConnectorStatus.UNTESTED.value,
+            "visibility": visibility,
+            "owner_user_id": str(auth["user_id"]) if auth.get("user_id") else None,
+            "owner_key_id": str(auth["key_id"]) if auth.get("key_id") else None,
+            "created_at": datetime.now(UTC).isoformat(),
+        }
+        _lcs.save_connector(record)
+        return _to_response(_lcs.synthesize_connector(record))
+
     connector = DataConnector(
         org_id=auth["org_id"],
         name=payload.name,

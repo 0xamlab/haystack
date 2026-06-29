@@ -9,9 +9,13 @@ from __future__ import annotations
 
 import asyncio
 import difflib
+import logging
 import os
+import subprocess
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 from apps.api_server.services import (
     repository_intelligence_storage as repository_storage,
@@ -396,6 +400,111 @@ def _dedupe_bundled_evidence(
     return deduped
 
 
+def _agent_provider_chain() -> list[tuple[str | None, str | None]]:
+    """BYOM failover chain: the primary provider/model + any in ALGENTA_AGENT_FALLBACK_MODELS
+    ('openai-native:gpt-5.4,gemini:gemini-2.5-pro'). On overload/stall/failure of one provider the run
+    fails over to the next — a single provider outage (e.g. an Anthropic 529) must not stall the fix.
+    Codna is LLM-agnostic, so failover is just a config of which models to try, in order."""
+    chain: list[tuple[str | None, str | None]] = [
+        (os.environ.get("ALGENTA_AGENT_PROVIDER") or None, os.environ.get("ALGENTA_AGENT_MODEL") or None)
+    ]
+    for spec in (os.environ.get("ALGENTA_AGENT_FALLBACK_MODELS") or "").split(","):
+        spec = spec.strip()
+        if not spec:
+            continue
+        prov, _, model = spec.partition(":")
+        chain.append((prov.strip() or None, model.strip() or None))
+    return chain
+
+
+def _reset_worktree(root_path: Path) -> None:
+    """Reset the materialized snapshot to its git baseline (materialized_snapshot(git_baseline=True)) so a
+    failover attempt on a new provider starts clean, not from a prior attempt's partial edits."""
+    for argv in (["reset", "--hard", "-q"], ["clean", "-fdq"]):
+        try:
+            subprocess.run(["git", "-C", str(root_path), *argv], check=False, capture_output=True, timeout=60)
+        except Exception:  # noqa: BLE001 — best-effort
+            pass
+
+
+# Markers that distinguish a genuine LLM-PROVIDER failure (worth switching models for) from an
+# infra/govern/tool abort (switching the model CANNOT fix it — so surface it, don't mask it). Misclassifying
+# the latter as a provider failure is exactly what made a govern-hook connect abort look like "Anthropic
+# keeps failing" and silently swap to another model.
+_PROVIDER_FAILURE_MARKERS = (
+    "overload", "529", "503", "service unavailable", "rate limit", "rate_limit", "429",
+    "too many requests", "capacity", "insufficient_quota", "quota", "authentication error", "401",
+    "invalid api key", "invalid_api_key", "model is currently", "upstream", "provider error",
+)
+_INFRA_ABORT_MARKERS = (  # NOT a provider problem; a model switch is pointless → surface the real error
+    "govern", "unable to connect", "able to access the url", "simulate-patch", "plugin_evidence",
+    "econnrefused", "connection refused", "agent_core", "agentruntimeabort",
+)
+
+
+def _is_provider_failure(text: str) -> bool:
+    """True ONLY when a failure looks like a real LLM-provider problem (overload / rate-limit / auth /
+    a hung model turn) worth failing over for. Govern/tool/connectivity aborts return False so the run
+    surfaces the true error instead of pointlessly swapping providers and hiding it."""
+    t = (text or "").lower()
+    if any(m in t for m in _INFRA_ABORT_MARKERS):
+        return False
+    if any(m in t for m in _PROVIDER_FAILURE_MARKERS):
+        return True
+    return ("timeout" in t or "timed out" in t or "stall" in t)  # a hung turn, with no infra marker
+
+
+async def _run_agent_with_failover(run_agent, *, working_dir, task_spec, injected_context, limits, root_path):
+    """Run the agent, failing over across the BYOM provider chain ONLY on genuine provider errors
+    (overload/rate-limit/auth/hung turn) so one provider's outage doesn't stall the run — while
+    infra/govern/tool aborts are surfaced, NOT masked by a pointless model switch. Mutates
+    task_spec.engine.provider/model per attempt; resets the worktree between attempts."""
+    chain = _agent_provider_chain()
+    engine_blk = task_spec.get("engine") if isinstance(task_spec.get("engine"), dict) else None
+    last_exc: Exception | None = None
+    for attempt, (prov, model) in enumerate(chain):
+        if engine_blk is not None:
+            if prov is not None:
+                engine_blk["provider"] = prov
+            if model is not None:
+                engine_blk["model"] = model
+        if attempt > 0:
+            _reset_worktree(root_path)
+            logger.warning("verified_agentic: failover -> provider=%s model=%s (attempt %d/%d)",
+                           prov, model, attempt + 1, len(chain))
+        try:
+            if asyncio.iscoroutinefunction(run_agent):
+                result = await run_agent(working_dir=working_dir, task_spec=task_spec,
+                                         injected_context=injected_context, limits=limits)
+            else:
+                result = await asyncio.to_thread(run_agent, working_dir=working_dir, task_spec=task_spec,
+                                                  injected_context=injected_context, limits=limits)
+        except Exception as exc:  # noqa: BLE001
+            last_exc = exc
+            if attempt < len(chain) - 1 and _is_provider_failure(str(exc)):
+                logger.warning("verified_agentic: provider=%s provider-error (%s); failing over", prov, exc)
+                continue
+            raise  # infra/transport/unknown — surface it, don't mask with a model switch
+        status = str(result.get("status") or "completed") if isinstance(result, dict) else "failed"
+        if status in {"failed", "aborted"}:
+            reason = ""
+            if isinstance(result, dict):
+                reason = str(result.get("error") or result.get("error_message")
+                             or result.get("abort_reason") or result.get("message") or "")
+            if attempt < len(chain) - 1 and _is_provider_failure(reason):
+                logger.warning("verified_agentic: provider=%s provider-error status=%s (%s); failing over",
+                               prov, status, reason[:160])
+                continue
+            # NOT a provider failure (govern/tool/infra abort) — return it so the real error surfaces
+            # downstream instead of being hidden behind a pointless provider swap.
+            logger.error("verified_agentic: provider=%s status=%s is NOT a provider failure (%r) — "
+                         "surfacing rather than failing over", prov, status, reason[:200])
+        return result
+    if last_exc:
+        raise last_exc
+    return None
+
+
 async def _generate_verified_agentic_repository_patch_plan(
     *,
     model_id: str,
@@ -467,9 +576,24 @@ async def _generate_verified_agentic_repository_patch_plan(
             # flag (override-only; the sidecar keeps its env as the pooled fallback).
             **_agent_provider_key_fields(),
         }
-    limits = {"token_budget": 6_000, "max_turns": 8}
+    # Agentic run bounds — NOT a wall clock. ``max_turns`` caps the agent's edit→verify
+    # iterations; ``timeout_ms`` is the PER-TURN budget (one model turn + the tool calls it
+    # drives — including a full test step), reset every turn. The agent-core sidecar's own
+    # fallback is a stingy 150s per turn (a turn that runs a test suite blows past it and the
+    # whole run is marked failed) — so we pass a generous, Cursor/Claude-Code-class default
+    # here (10 min/turn, 24 turns) and let a harder fix converge instead of dying mid-iteration.
+    # All three are env-tunable for heavier self-hosting; raising them costs tokens/latency,
+    # never correctness. (Total run time is bounded by max_turns × turns actually taken, not a
+    # single guillotine — the proper complement is sidecar heartbeats during long model calls.)
+    limits = {
+        "token_budget": int(os.environ.get("ALGENTA_AGENT_TOKEN_BUDGET", "6000")),
+        "max_turns": int(os.environ.get("ALGENTA_AGENT_MAX_TURNS", "50")),
+        "timeout_ms": int(os.environ.get("ALGENTA_AGENT_TURN_TIMEOUT_MS", "600000")),
+    }
 
-    with repository_storage.materialized_snapshot(snapshot_manifest) as root_path:
+    with repository_storage.materialized_snapshot(
+        snapshot_manifest, git_baseline=True
+    ) as root_path:
         root_path = Path(root_path)
         before_state = _capture_repository_tree_state(root_path)
         # AR-OPT-4: attach the full line-context bundle so the agent edits the suspect
@@ -488,21 +612,16 @@ async def _generate_verified_agentic_repository_patch_plan(
         # the worker off the request path). Await it directly. A legacy SYNCHRONOUS
         # runner is kept off the event loop via to_thread (the A1 unconditional wrap is
         # gone — the async path no longer needs it).
-        if asyncio.iscoroutinefunction(run_agent):
-            agent_result = await run_agent(
-                working_dir=str(root_path),
-                task_spec=task_spec,
-                injected_context=injected_context,
-                limits=limits,
-            )
-        else:
-            agent_result = await asyncio.to_thread(
-                run_agent,
-                working_dir=str(root_path),
-                task_spec=task_spec,
-                injected_context=injected_context,
-                limits=limits,
-            )
+        # BYOM failover: try the provider chain (primary + ALGENTA_AGENT_FALLBACK_MODELS), switching on
+        # a stalled/failed provider so an Anthropic 529 overload doesn't stall the run — fall over to GPT/Gemini.
+        agent_result = await _run_agent_with_failover(
+            run_agent,
+            working_dir=str(root_path),
+            task_spec=task_spec,
+            injected_context=injected_context,
+            limits=limits,
+            root_path=root_path,
+        )
         if not isinstance(agent_result, dict):
             raise RepositoryIntelligenceError(
                 code="repository_agent_invalid_result",

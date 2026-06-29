@@ -8,6 +8,7 @@ from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBea
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api_server.db.session import get_db
+from apps.api_server.services.offline_token import verify_offline_token
 from apps.api_server.models.organization import OrgStatus
 from apps.api_server.models.user import UserStatus
 from apps.api_server.services.auth_service import (
@@ -69,7 +70,13 @@ async def get_current_org(
             },
         )
 
-    ctx = await verify_api_key(raw_key, db, redis_client)
+    # OFFLINE-FIRST AUTH: verify a signed license JWT LOCALLY (signature + expiry) and map its
+    # claims to an AuthContext — ZERO Postgres/Redis/network on the hot path (the per-request
+    # apikey+organizations SELECT is skipped entirely; works on a device gone dark). Fall back to the
+    # DB-backed api-key path only for non-JWT (legacy/hosted) credentials.
+    ctx = verify_offline_token(raw_key)
+    if ctx is None:
+        ctx = await verify_api_key(raw_key, db, redis_client)
     if ctx is None:
         raise HTTPException(
             status_code=401,

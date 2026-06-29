@@ -100,6 +100,31 @@ def current_org_keys() -> OrgKeys | None:
     return _org_keys_override.get()
 
 
+_KEYRING_SERVICE = "algenta"
+
+
+def _local_secret(env_name: str | None) -> str | None:
+    """Resolve a local (device / self-host) secret named ``env_name``, preferring the OS keychain
+    over a plaintext env var so a user can keep BYOK keys out of their shell profile / process env.
+
+    Precedence: OS keychain (``keyring``, service ``algenta``, username == ``env_name``) → env var.
+    ``keyring`` is a SOFT dependency — if it's not installed, has no backend, or has no entry, this
+    falls through to ``os.environ`` exactly as before (zero behavior change when unused). Opt out of
+    the keychain probe entirely with ``ALGENTA_KEYRING=0``."""
+    if not env_name:
+        return None
+    if os.environ.get("ALGENTA_KEYRING", "").strip().lower() not in {"0", "off", "false", "no"}:
+        try:
+            import keyring  # soft dep — absent on most installs
+
+            secret = keyring.get_password(_KEYRING_SERVICE, env_name)
+            if secret:
+                return secret
+        except Exception:  # noqa: BLE001 — no keyring / no backend / locked → fall back to env
+            pass
+    return os.environ.get(env_name) or None
+
+
 def _classify_provider_key(
     api_key_env: str | None, backend: str | None
 ) -> tuple[str, str | None]:
@@ -132,10 +157,11 @@ def _classify_provider_key(
             if env:
                 return KEY_TYPE_MANAGED, env
         return KEY_TYPE_NONE, None  # managed mode + not-allowed / no env → fail closed
-    # Tier 4: legacy single-tenant self-host
+    # Tier 4: legacy single-tenant self-host / per-device offline. Resolve via the OS keychain first
+    # (so a device's BYOK key need not sit in a plaintext env var), then the env var.
     if not api_key_env:
         return KEY_TYPE_NONE, None
-    env = os.environ.get(api_key_env) or None
+    env = _local_secret(api_key_env)
     return (KEY_TYPE_SELF_HOST, env) if env else (KEY_TYPE_NONE, None)
 
 
@@ -160,4 +186,4 @@ def resolve_engine_api_key() -> str | None:
         return keys.engine_key
     if require_per_tenant_keys():
         return None
-    return os.environ.get("ALGENTA_ENGINE_API_KEY") or os.environ.get("ALGENTA_API_KEY") or None
+    return _local_secret("ALGENTA_ENGINE_API_KEY") or _local_secret("ALGENTA_API_KEY") or None
