@@ -173,7 +173,18 @@ def _runtime_capability_plane_module():
     return _facade._runtime_capability_plane_module()
 
 
+def _runtime_repository_intelligence_module():
+    from algenta import runtime_facade as _facade
+    return _facade._runtime_repository_intelligence_module()
+
+
 class _RepositoryImportsMixin:
+    def register_repository_intelligence_backend(self, backend: Any) -> None:
+        _runtime_repository_intelligence_module().register_repository_intelligence_backend(
+            self,
+            backend,
+        )
+
     def create_repository_snapshot(
         self,
         repository_id: str,

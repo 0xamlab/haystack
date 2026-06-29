@@ -119,6 +119,11 @@ def _runtime_model_control_plane_module() -> ModuleType:
     return import_module("algenta.runtime_model_control_plane")
 
 
+@cache
+def _runtime_repository_intelligence_module_runtime() -> ModuleType:
+    return import_module("algenta.runtime_repository_intelligence")
+
+
 from algenta.runtime_execution_surface._api_client_local import *  # noqa: F401, F403
 from algenta.runtime_execution_surface._api_client_local import (
     _run_sync,
@@ -230,19 +235,39 @@ def create_repository_snapshot_runtime_request(
     repository_id: str,
     request: Mapping[str, Any],
 ) -> Any:
-    runtime._require_api_transport("create_repository_snapshot")
-    return _validate_runtime_api_payload(
+    if runtime._uses_api_transport():
+        return _validate_runtime_api_payload(
+            "create_repository_snapshot",
+            runtime._client().create_repository_snapshot(repository_id, dict(request)),
+            _runtime_model_repository_intelligence_module().RepositorySnapshotOutput,
+        )
+    payload = _call_local_repository_intelligence_backend(
+        runtime,
         "create_repository_snapshot",
-        runtime._client().create_repository_snapshot(repository_id, dict(request)),
+        repository_id,
+        dict(request),
+    )
+    return _coerce_repository_backend_result(
+        "create_repository_snapshot",
+        payload,
         _runtime_model_repository_intelligence_module().RepositorySnapshotOutput,
     )
 
 
 def get_repository_intelligence_capabilities_runtime_request(runtime: Any) -> Any:
-    runtime._require_api_transport("get_repository_intelligence_capabilities")
-    return _validate_runtime_api_payload(
+    if runtime._uses_api_transport():
+        return _validate_runtime_api_payload(
+            "get_repository_intelligence_capabilities",
+            runtime._client().get_repository_intelligence_capabilities(),
+            _runtime_model_repository_intelligence_module().RepositoryIntelligenceCapabilitiesOutput,
+        )
+    payload = _call_local_repository_intelligence_backend(
+        runtime,
         "get_repository_intelligence_capabilities",
-        runtime._client().get_repository_intelligence_capabilities(),
+    )
+    return _coerce_repository_backend_result(
+        "get_repository_intelligence_capabilities",
+        payload,
         _runtime_model_repository_intelligence_module().RepositoryIntelligenceCapabilitiesOutput,
     )
 
@@ -252,10 +277,21 @@ def get_repository_snapshot_runtime_request(
     repository_id: str,
     snapshot_id: str,
 ) -> Any:
-    runtime._require_api_transport("get_repository_snapshot")
-    return _validate_runtime_api_payload(
+    if runtime._uses_api_transport():
+        return _validate_runtime_api_payload(
+            "get_repository_snapshot",
+            runtime._client().get_repository_snapshot(repository_id, snapshot_id),
+            _runtime_model_repository_intelligence_module().RepositorySnapshotOutput,
+        )
+    payload = _call_local_repository_intelligence_backend(
+        runtime,
         "get_repository_snapshot",
-        runtime._client().get_repository_snapshot(repository_id, snapshot_id),
+        repository_id,
+        snapshot_id,
+    )
+    return _coerce_repository_backend_result(
+        "get_repository_snapshot",
+        payload,
         _runtime_model_repository_intelligence_module().RepositorySnapshotOutput,
     )
 
@@ -265,10 +301,21 @@ def triage_repository_runtime_request(
     repository_id: str,
     request: Mapping[str, Any],
 ) -> Any:
-    runtime._require_api_transport("triage_repository")
-    return _validate_runtime_api_payload(
+    if runtime._uses_api_transport():
+        return _validate_runtime_api_payload(
+            "triage_repository",
+            runtime._client().triage_repository(repository_id, dict(request)),
+            _runtime_model_repository_intelligence_module().RepositoryTriageOutput,
+        )
+    payload = _call_local_repository_intelligence_backend(
+        runtime,
         "triage_repository",
-        runtime._client().triage_repository(repository_id, dict(request)),
+        repository_id,
+        dict(request),
+    )
+    return _coerce_repository_backend_result(
+        "triage_repository",
+        payload,
         _runtime_model_repository_intelligence_module().RepositoryTriageOutput,
     )
 
@@ -278,10 +325,21 @@ def create_repository_decision_plan_runtime_request(
     repository_id: str,
     request: Mapping[str, Any],
 ) -> Any:
-    runtime._require_api_transport("create_repository_decision_plan")
-    return _validate_runtime_api_payload(
+    if runtime._uses_api_transport():
+        return _validate_runtime_api_payload(
+            "create_repository_decision_plan",
+            runtime._client().create_repository_decision_plan(repository_id, dict(request)),
+            _runtime_model_repository_intelligence_module().RepositoryDecisionPlanRevisionOutput,
+        )
+    payload = _call_local_repository_intelligence_backend(
+        runtime,
         "create_repository_decision_plan",
-        runtime._client().create_repository_decision_plan(repository_id, dict(request)),
+        repository_id,
+        dict(request),
+    )
+    return _coerce_repository_backend_result(
+        "create_repository_decision_plan",
+        payload,
         _runtime_model_repository_intelligence_module().RepositoryDecisionPlanRevisionOutput,
     )
 
@@ -291,10 +349,21 @@ def query_repository_graph_runtime_request(
     repository_id: str,
     request: Mapping[str, Any],
 ) -> Any:
-    runtime._require_api_transport("query_repository_graph")
-    return _validate_runtime_api_payload(
+    if runtime._uses_api_transport():
+        return _validate_runtime_api_payload(
+            "query_repository_graph",
+            runtime._client().query_repository_graph(repository_id, dict(request)),
+            _runtime_model_repository_intelligence_module().RepositoryGraphQueryOutput,
+        )
+    payload = _call_local_repository_intelligence_backend(
+        runtime,
         "query_repository_graph",
-        runtime._client().query_repository_graph(repository_id, dict(request)),
+        repository_id,
+        dict(request),
+    )
+    return _coerce_repository_backend_result(
+        "query_repository_graph",
+        payload,
         _runtime_model_repository_intelligence_module().RepositoryGraphQueryOutput,
     )
 
@@ -304,10 +373,21 @@ def simulate_repository_runtime_request(
     repository_id: str,
     request: Mapping[str, Any],
 ) -> Any:
-    runtime._require_api_transport("simulate_repository")
-    return _validate_runtime_api_payload(
+    if runtime._uses_api_transport():
+        return _validate_runtime_api_payload(
+            "simulate_repository",
+            runtime._client().simulate_repository(repository_id, dict(request)),
+            _runtime_model_decision_envelope_module().DecisionEnvelopeOutput,
+        )
+    payload = _call_local_repository_intelligence_backend(
+        runtime,
         "simulate_repository",
-        runtime._client().simulate_repository(repository_id, dict(request)),
+        repository_id,
+        dict(request),
+    )
+    return _coerce_repository_backend_result(
+        "simulate_repository",
+        payload,
         _runtime_model_decision_envelope_module().DecisionEnvelopeOutput,
     )
 
@@ -317,12 +397,45 @@ def apply_repository_runtime_request(
     repository_id: str,
     request: Mapping[str, Any],
 ) -> Any:
-    runtime._require_api_transport("apply_repository")
-    return _validate_runtime_api_payload(
+    if runtime._uses_api_transport():
+        return _validate_runtime_api_payload(
+            "apply_repository",
+            runtime._client().apply_repository(repository_id, dict(request)),
+            _runtime_model_repository_intelligence_module().RepositoryApplyOutput,
+        )
+    payload = _call_local_repository_intelligence_backend(
+        runtime,
         "apply_repository",
-        runtime._client().apply_repository(repository_id, dict(request)),
+        repository_id,
+        dict(request),
+    )
+    return _coerce_repository_backend_result(
+        "apply_repository",
+        payload,
         _runtime_model_repository_intelligence_module().RepositoryApplyOutput,
     )
+
+
+def _call_local_repository_intelligence_backend(
+    runtime: Any,
+    method_name: str,
+    *args: Any,
+) -> Any:
+    backend = _runtime_repository_intelligence_module_runtime().require_repository_intelligence_backend(
+        runtime,
+        method_name,
+    )
+    return getattr(backend, method_name)(*args)
+
+
+def _coerce_repository_backend_result(
+    method_name: str,
+    payload: Any,
+    parser: Any,
+) -> Any:
+    if isinstance(payload, parser):
+        return payload
+    return _validate_runtime_api_payload(method_name, payload, parser)
 
 
 def product_decision_runtime_request(runtime: Any, request: Mapping[str, Any]) -> Any:
@@ -555,4 +668,3 @@ def deployment_cost_runtime_request(runtime: Any, deployment_id: str) -> Any:
         runtime._client().get_deployment_cost(deployment_id),
         _runtime_model_deployments_module().DeploymentCostOutput,
     )
-

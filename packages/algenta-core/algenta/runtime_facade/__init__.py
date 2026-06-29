@@ -175,6 +175,11 @@ def _runtime_capability_plane_module() -> ModuleType:
     return import_module("algenta.runtime_capability_plane")
 
 
+@cache
+def _runtime_repository_intelligence_module() -> ModuleType:
+    return import_module("algenta.runtime_repository_intelligence")
+
+
 from algenta.runtime_facade._connectors_datasets import _ConnectorsDatasetsMixin  # noqa: E402
 from algenta.runtime_facade._repository_imports import _RepositoryImportsMixin  # noqa: E402
 from algenta.runtime_facade._execution_query import _ExecutionQueryMixin  # noqa: E402
@@ -202,6 +207,7 @@ class Runtime(_ConnectorsDatasetsMixin, _RepositoryImportsMixin, _ExecutionQuery
         api_key: str | None = None,
         base_url: str | None = None,
         enforce_limits: bool | None = None,
+        repository_intelligence_backend: Any | str | None = None,
     ) -> None:
         if mode not in {"local", "api", "self_hosted"}:
             raise ValueError("Invalid mode. Expected 'local', 'api', or 'self_hosted'.")
@@ -248,6 +254,17 @@ class Runtime(_ConnectorsDatasetsMixin, _RepositoryImportsMixin, _ExecutionQuery
         self._local_capability_auth_sessions: dict[str, dict[str, Any]] = {}
         self._local_capability_outcomes: list[dict[str, Any]] = []
         self._local_capability_executions: dict[str, dict[str, Any]] = {}
+        self._local_repository_intelligence_backend: Any | None = None
+        self._local_repository_intelligence_backend_spec: str | None = None
+        if isinstance(repository_intelligence_backend, str):
+            self._local_repository_intelligence_backend_spec = (
+                repository_intelligence_backend.strip() or None
+            )
+        elif repository_intelligence_backend is not None:
+            _runtime_repository_intelligence_module().register_repository_intelligence_backend(
+                self,
+                repository_intelligence_backend,
+            )
         if enforce_limits is None:
             self._enforce_limits = mode == "local" and explicit_api_key
         else:
@@ -272,4 +289,3 @@ class Runtime(_ConnectorsDatasetsMixin, _RepositoryImportsMixin, _ExecutionQuery
     @staticmethod
     def _perf_counter() -> float:
         return time.perf_counter()
-

@@ -100,6 +100,12 @@ def test_competitor_compatibility_docs_lock_match_and_non_match_decisions() -> N
     assert "ALGENTA_REPOSITORY_INTELLIGENCE_MODEL=repository.deterministic_local_v1" in (
         local_runtime
     )
+    assert "ALGENTA_RUNTIME_REPOSITORY_INTELLIGENCE_BACKEND" in local_runtime
+    assert 'repository_intelligence_backend="my_repo_backend.module:build_backend"' in (
+        local_runtime
+    )
+    assert "register_repository_intelligence_backend" in local_runtime
+    assert "local_repository_intelligence_backend_required" in local_runtime
     assert "repository_local_planner_unsupported" in local_runtime
     assert "planner_model_id" in local_runtime
     assert "planner_execution_mode" in local_runtime
@@ -472,4 +478,3 @@ def test_live_mcp_integration_script_tracks_runtime_proof_catalog() -> None:
         mcp_integration
     )
     assert "resolve_local_live_base_url" not in mcp_integration
-

@@ -187,6 +187,36 @@ deterministic Python return-literal mismatch workflow used by the live
 repository proof lane, and it fails closed with
 `repository_local_planner_unsupported` outside that contract.
 
+For local SDK or daemon-backed repository intelligence without a hosted API
+hop, configure a repository backend on the unified runtime surface instead of
+branching per channel. The generic environment contract is
+`ALGENTA_RUNTIME_REPOSITORY_INTELLIGENCE_BACKEND=package.module:attribute`.
+The attribute can be either:
+
+- a backend instance exposing the full repository runtime contract
+- a zero-argument factory or class returning that backend
+
+Python callers can also pass the same spec directly when constructing the
+runtime:
+
+```python
+from algenta import Runtime
+
+rt = Runtime(
+    mode="local",
+    repository_intelligence_backend="my_repo_backend.module:build_backend",
+)
+```
+
+or register an already-instantiated backend explicitly:
+
+```python
+rt.register_repository_intelligence_backend(build_backend())
+```
+
+If neither a backend object nor a valid import spec is configured, repository
+methods fail closed with `local_repository_intelligence_backend_required`.
+
 Stored repository `DecisionPlan` revisions expose
 `repository_analysis.planner_model_id`,
 `repository_analysis.planner_execution_mode`, and

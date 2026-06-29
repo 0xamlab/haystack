@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import sys
+import types
 import uuid
 from pathlib import Path
 from typing import Any
@@ -28,6 +29,7 @@ RepositoryGraphQueryOutput = algenta.RepositoryGraphQueryOutput
 RepositorySnapshotOutput = algenta.RepositorySnapshotOutput
 RepositoryTriageOutput = algenta.RepositoryTriageOutput
 Runtime = algenta.Runtime
+RuntimeConfigurationError = algenta.RuntimeConfigurationError
 RuntimeValidationError = algenta.RuntimeValidationError
 
 
@@ -528,6 +530,567 @@ def test_runtime_api_mode_simulate_repository_rejects_invalid_nested_repository_
     assert exc_info.value.validation_errors[0]["path"] == (
         "repository_analysis.token_reduction_metrics.reduction_ratio"
     )
+
+
+def test_runtime_local_mode_repository_methods_use_registered_backend_and_return_typed_outputs() -> None:
+    runtime = Runtime(mode="local")
+    repository_id = "repo_local_123"
+    calls: list[tuple[str, str | None, dict[str, Any] | None]] = []
+
+    class _LocalRepositoryBackend:
+        def get_repository_intelligence_capabilities(self) -> dict[str, object]:
+            calls.append(("get_repository_intelligence_capabilities", None, None))
+            return _capabilities_payload()
+
+        def create_repository_snapshot(
+            self,
+            received_repository_id: str,
+            request: dict[str, Any],
+        ) -> dict[str, object]:
+            calls.append(("create_repository_snapshot", received_repository_id, request))
+            return {
+                "repository_id": received_repository_id,
+                "snapshot_id": "snapshot_local_123",
+                "connector_type": "local_repo",
+                "ref": "main",
+                "resolved_revision": "local123",
+                "content_hash": "repo_hash_local_123",
+                "status": "created",
+                "created_at": "2026-05-29T12:00:00Z",
+                "file_count": 8,
+                "language_counts": {"python": 6, "markdown": 2},
+                "raw_repo_token_estimate": 900,
+                "repository_snapshot_artifact": _artifact_payload(
+                    "RepositorySnapshot",
+                    "artifact_snapshot_local_123",
+                ),
+                "repository_graph_artifact": _artifact_payload(
+                    "RepositoryGraph",
+                    "artifact_graph_local_123",
+                ),
+                "symbol_graph_artifact": _artifact_payload(
+                    "SymbolGraph",
+                    "artifact_symbol_local_123",
+                ),
+                "dependency_graph_artifact": _artifact_payload(
+                    "DependencyGraph",
+                    "artifact_dependency_local_123",
+                ),
+            }
+
+        def get_repository_snapshot(
+            self,
+            received_repository_id: str,
+            snapshot_id: str,
+        ) -> dict[str, object]:
+            calls.append(
+                (
+                    "get_repository_snapshot",
+                    received_repository_id,
+                    {"snapshot_id": snapshot_id},
+                )
+            )
+            return {
+                "repository_id": received_repository_id,
+                "snapshot_id": snapshot_id,
+                "connector_type": "local_repo",
+                "ref": "main",
+                "resolved_revision": "local123",
+                "content_hash": "repo_hash_local_123",
+                "status": "existing",
+                "created_at": "2026-05-29T12:00:00Z",
+                "file_count": 8,
+                "language_counts": {"python": 6, "markdown": 2},
+                "raw_repo_token_estimate": 900,
+                "repository_snapshot_artifact": _artifact_payload(
+                    "RepositorySnapshot",
+                    "artifact_snapshot_local_123",
+                ),
+                "repository_graph_artifact": _artifact_payload(
+                    "RepositoryGraph",
+                    "artifact_graph_local_123",
+                ),
+                "symbol_graph_artifact": _artifact_payload(
+                    "SymbolGraph",
+                    "artifact_symbol_local_123",
+                ),
+                "dependency_graph_artifact": _artifact_payload(
+                    "DependencyGraph",
+                    "artifact_dependency_local_123",
+                ),
+            }
+
+        def triage_repository(
+            self,
+            received_repository_id: str,
+            request: dict[str, Any],
+        ) -> dict[str, object]:
+            calls.append(("triage_repository", received_repository_id, request))
+            return {
+                "repository_id": received_repository_id,
+                "snapshot_id": request["snapshot_id"],
+                "workspace_evidence_bundle_ref": "evidence_bundle_local_123",
+                "created_at": "2026-05-29T12:05:00Z",
+                "suspect_files": ["src/service.py"],
+                "suspect_symbols": ["handle_request"],
+                "raw_repo_token_estimate": 900,
+                "evidence_bundle_token_count": 150,
+                "reduction_ratio": 6.0,
+                "evidence_items": [
+                    {
+                        "evidence_id": "evidence_local_123",
+                        "rank": 1,
+                        "source_type": "diagnostic",
+                        "source_ref": "src/service.py:14",
+                        "file_path": "src/service.py",
+                        "symbol_name": "handle_request",
+                        "summary": "Null dereference when user is absent.",
+                        "snippet": "return user.name",
+                        "token_count": 20,
+                        "score": 0.97,
+                    }
+                ],
+                "workspace_evidence_bundle_artifact": _artifact_payload(
+                    "WorkspaceEvidenceBundle",
+                    "artifact_evidence_local_123",
+                ),
+            }
+
+        def create_repository_decision_plan(
+            self,
+            received_repository_id: str,
+            request: dict[str, Any],
+        ) -> dict[str, object]:
+            calls.append(("create_repository_decision_plan", received_repository_id, request))
+            return {
+                "repository_id": received_repository_id,
+                "snapshot_id": request["snapshot_id"],
+                "decision_plan_id": "decision_plan_local_123",
+                "created_at": "2026-05-29T12:10:00Z",
+                "decision_plan": _decision_plan_payload(),
+            }
+
+        def query_repository_graph(
+            self,
+            received_repository_id: str,
+            request: dict[str, Any],
+        ) -> dict[str, object]:
+            calls.append(("query_repository_graph", received_repository_id, request))
+            return _graph_query_payload() | {
+                "repository_id": received_repository_id,
+                "snapshot_id": request["snapshot_id"],
+            }
+
+        def simulate_repository(
+            self,
+            received_repository_id: str,
+            request: dict[str, Any],
+        ) -> dict[str, object]:
+            calls.append(("simulate_repository", received_repository_id, request))
+            return _simulation_payload()
+
+        def apply_repository(
+            self,
+            received_repository_id: str,
+            request: dict[str, Any],
+        ) -> dict[str, object]:
+            calls.append(("apply_repository", received_repository_id, request))
+            return {
+                "repository_id": received_repository_id,
+                "snapshot_id": request["snapshot_id"],
+                "decision_plan_id": request["decision_plan_id"],
+                "simulation_id": request["simulation_id"],
+                "mode": request["mode"],
+                "applied": False,
+                "created_at": "2026-05-29T12:15:00Z",
+                "patch": "--- a/src/service.py\n+++ b/src/service.py\n@@\n-return user.name\n+return user.name if user else \"anonymous\"\n",
+                "apply_gate": {"passed": True, "policy_snapshot_id": "policy_local_123"},
+                "validation_summary": {"patch_files": ["src/service.py"]},
+            }
+
+    runtime.register_repository_intelligence_backend(_LocalRepositoryBackend())
+
+    capabilities = runtime.get_repository_intelligence_capabilities()
+    snapshot = runtime.create_repository_snapshot(repository_id, {"ref": "main"})
+    fetched_snapshot = runtime.get_repository_snapshot(repository_id, "snapshot_local_123")
+    triage = runtime.triage_repository(
+        repository_id,
+        {
+            "snapshot_id": "snapshot_local_123",
+            "signals": {"issue_text": "Regression after latest deploy."},
+        },
+    )
+    plan_revision = runtime.create_repository_decision_plan(
+        repository_id,
+        {
+            "snapshot_id": "snapshot_local_123",
+            "workspace_evidence_bundle_ref": "evidence_bundle_local_123",
+        },
+    )
+    graph = runtime.query_repository_graph(
+        repository_id,
+        {
+            "snapshot_id": "snapshot_local_123",
+            "file_path": "src/service.py",
+            "direction": "both",
+        },
+    )
+    simulation = runtime.simulate_repository(
+        repository_id,
+        {
+            "snapshot_id": "snapshot_local_123",
+            "decision_plan_id": "decision_plan_local_123",
+            "runs": 5000,
+            "seed": 42,
+        },
+    )
+    applied = runtime.apply_repository(
+        repository_id,
+        {
+            "snapshot_id": "snapshot_local_123",
+            "decision_plan_id": "decision_plan_local_123",
+            "simulation_id": "simulation_123",
+            "mode": "patch_only",
+        },
+    )
+
+    assert isinstance(capabilities, RepositoryIntelligenceCapabilitiesOutput)
+    assert isinstance(snapshot, RepositorySnapshotOutput)
+    assert isinstance(fetched_snapshot, RepositorySnapshotOutput)
+    assert isinstance(triage, RepositoryTriageOutput)
+    assert isinstance(plan_revision, RepositoryDecisionPlanRevisionOutput)
+    assert isinstance(graph, RepositoryGraphQueryOutput)
+    assert isinstance(simulation, DecisionEnvelopeOutput)
+    assert isinstance(applied, RepositoryApplyOutput)
+    assert fetched_snapshot.status == "existing"
+    assert applied.apply_gate["policy_snapshot_id"] == "policy_local_123"
+    assert calls[0] == ("get_repository_intelligence_capabilities", None, None)
+    assert calls[-1] == (
+        "apply_repository",
+        repository_id,
+        {
+            "snapshot_id": "snapshot_local_123",
+            "decision_plan_id": "decision_plan_local_123",
+            "simulation_id": "simulation_123",
+            "mode": "patch_only",
+        },
+    )
+
+
+def test_runtime_local_mode_repository_methods_fail_closed_without_backend() -> None:
+    runtime = Runtime(mode="local")
+
+    with pytest.raises(RuntimeConfigurationError) as exc_info:
+        runtime.get_repository_intelligence_capabilities()
+
+    assert exc_info.value.code == "local_repository_intelligence_backend_required"
+
+
+def test_runtime_local_mode_repository_backend_registration_rejects_partial_contract() -> None:
+    runtime = Runtime(mode="local")
+
+    class _PartialBackend:
+        def get_repository_intelligence_capabilities(self) -> dict[str, object]:
+            return _capabilities_payload()
+
+    with pytest.raises(RuntimeValidationError) as exc_info:
+        runtime.register_repository_intelligence_backend(_PartialBackend())
+
+    assert exc_info.value.code == "invalid_repository_intelligence_backend"
+    assert "create_repository_snapshot" in exc_info.value.details["missing_methods"]
+
+
+def test_runtime_local_mode_repository_backend_loads_from_constructor_spec() -> None:
+    module_name = "tests.fake_repository_backend_constructor"
+    fake_module = types.ModuleType(module_name)
+
+    class _Backend:
+        def get_repository_intelligence_capabilities(self) -> dict[str, object]:
+            return _capabilities_payload()
+
+        def create_repository_snapshot(
+            self,
+            repository_id: str,
+            request: dict[str, Any],
+        ) -> dict[str, object]:
+            del request
+            return {
+                "repository_id": repository_id,
+                "snapshot_id": "snapshot_constructor_123",
+                "connector_type": "local_repo",
+                "ref": "main",
+                "resolved_revision": "constructor123",
+                "content_hash": "repo_hash_constructor_123",
+                "status": "created",
+                "created_at": "2026-05-29T12:00:00Z",
+                "file_count": 2,
+                "language_counts": {"python": 2},
+                "raw_repo_token_estimate": 20,
+                "repository_snapshot_artifact": _artifact_payload(
+                    "RepositorySnapshot",
+                    "artifact_snapshot_constructor_123",
+                ),
+                "repository_graph_artifact": _artifact_payload(
+                    "RepositoryGraph",
+                    "artifact_graph_constructor_123",
+                ),
+                "symbol_graph_artifact": _artifact_payload(
+                    "SymbolGraph",
+                    "artifact_symbol_constructor_123",
+                ),
+                "dependency_graph_artifact": _artifact_payload(
+                    "DependencyGraph",
+                    "artifact_dependency_constructor_123",
+                ),
+            }
+
+        def get_repository_snapshot(
+            self,
+            repository_id: str,
+            snapshot_id: str,
+        ) -> dict[str, object]:
+            return self.create_repository_snapshot(repository_id, {}) | {
+                "snapshot_id": snapshot_id,
+                "status": "existing",
+            }
+
+        def triage_repository(
+            self,
+            repository_id: str,
+            request: dict[str, Any],
+        ) -> dict[str, object]:
+            del repository_id
+            return {
+                "repository_id": "repo_constructor_123",
+                "snapshot_id": request["snapshot_id"],
+                "workspace_evidence_bundle_ref": "evidence_bundle_constructor_123",
+                "created_at": "2026-05-29T12:05:00Z",
+                "suspect_files": ["src/service.py"],
+                "suspect_symbols": ["handle_request"],
+                "raw_repo_token_estimate": 20,
+                "evidence_bundle_token_count": 5,
+                "reduction_ratio": 4.0,
+                "evidence_items": [],
+                "workspace_evidence_bundle_artifact": _artifact_payload(
+                    "WorkspaceEvidenceBundle",
+                    "artifact_evidence_constructor_123",
+                ),
+            }
+
+        def create_repository_decision_plan(
+            self,
+            repository_id: str,
+            request: dict[str, Any],
+        ) -> dict[str, object]:
+            del repository_id
+            return {
+                "repository_id": "repo_constructor_123",
+                "snapshot_id": request["snapshot_id"],
+                "decision_plan_id": "decision_plan_constructor_123",
+                "created_at": "2026-05-29T12:10:00Z",
+                "decision_plan": _decision_plan_payload(),
+            }
+
+        def query_repository_graph(
+            self,
+            repository_id: str,
+            request: dict[str, Any],
+        ) -> dict[str, object]:
+            del repository_id
+            return _graph_query_payload() | {"snapshot_id": request["snapshot_id"]}
+
+        def simulate_repository(
+            self,
+            repository_id: str,
+            request: dict[str, Any],
+        ) -> dict[str, object]:
+            del repository_id, request
+            return _simulation_payload()
+
+        def apply_repository(
+            self,
+            repository_id: str,
+            request: dict[str, Any],
+        ) -> dict[str, object]:
+            del repository_id
+            return {
+                "repository_id": "repo_constructor_123",
+                "snapshot_id": request["snapshot_id"],
+                "decision_plan_id": request["decision_plan_id"],
+                "simulation_id": request["simulation_id"],
+                "mode": request["mode"],
+                "applied": False,
+                "created_at": "2026-05-29T12:15:00Z",
+                "patch": "",
+                "apply_gate": {"passed": True},
+                "validation_summary": {},
+            }
+
+    fake_module.build_backend = _Backend
+    original = sys.modules.get(module_name)
+    sys.modules[module_name] = fake_module
+    try:
+        runtime = Runtime(
+            mode="local",
+            repository_intelligence_backend=f"{module_name}:build_backend",
+        )
+        capabilities = runtime.get_repository_intelligence_capabilities()
+        snapshot = runtime.create_repository_snapshot("repo_constructor_123", {"ref": "main"})
+        assert isinstance(capabilities, RepositoryIntelligenceCapabilitiesOutput)
+        assert isinstance(snapshot, RepositorySnapshotOutput)
+        assert snapshot.snapshot_id == "snapshot_constructor_123"
+    finally:
+        if original is None:
+            sys.modules.pop(module_name, None)
+        else:
+            sys.modules[module_name] = original
+
+
+def test_runtime_local_mode_repository_backend_loads_from_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module_name = "tests.fake_repository_backend_env"
+    fake_module = types.ModuleType(module_name)
+
+    class _Backend:
+        def get_repository_intelligence_capabilities(self) -> dict[str, object]:
+            return _capabilities_payload()
+
+        def create_repository_snapshot(
+            self,
+            repository_id: str,
+            request: dict[str, Any],
+        ) -> dict[str, object]:
+            del request
+            return {
+                "repository_id": repository_id,
+                "snapshot_id": "snapshot_env_123",
+                "connector_type": "local_repo",
+                "ref": "main",
+                "resolved_revision": "env123",
+                "content_hash": "repo_hash_env_123",
+                "status": "created",
+                "created_at": "2026-05-29T12:00:00Z",
+                "file_count": 1,
+                "language_counts": {"python": 1},
+                "raw_repo_token_estimate": 10,
+                "repository_snapshot_artifact": _artifact_payload(
+                    "RepositorySnapshot",
+                    "artifact_snapshot_env_123",
+                ),
+                "repository_graph_artifact": _artifact_payload(
+                    "RepositoryGraph",
+                    "artifact_graph_env_123",
+                ),
+                "symbol_graph_artifact": _artifact_payload(
+                    "SymbolGraph",
+                    "artifact_symbol_env_123",
+                ),
+                "dependency_graph_artifact": _artifact_payload(
+                    "DependencyGraph",
+                    "artifact_dependency_env_123",
+                ),
+            }
+
+        def get_repository_snapshot(
+            self,
+            repository_id: str,
+            snapshot_id: str,
+        ) -> dict[str, object]:
+            return self.create_repository_snapshot(repository_id, {}) | {
+                "snapshot_id": snapshot_id,
+                "status": "existing",
+            }
+
+        def triage_repository(
+            self,
+            repository_id: str,
+            request: dict[str, Any],
+        ) -> dict[str, object]:
+            del repository_id
+            return {
+                "repository_id": "repo_env_123",
+                "snapshot_id": request["snapshot_id"],
+                "workspace_evidence_bundle_ref": "evidence_bundle_env_123",
+                "created_at": "2026-05-29T12:05:00Z",
+                "suspect_files": [],
+                "suspect_symbols": [],
+                "raw_repo_token_estimate": 10,
+                "evidence_bundle_token_count": 2,
+                "reduction_ratio": 5.0,
+                "evidence_items": [],
+                "workspace_evidence_bundle_artifact": _artifact_payload(
+                    "WorkspaceEvidenceBundle",
+                    "artifact_evidence_env_123",
+                ),
+            }
+
+        def create_repository_decision_plan(
+            self,
+            repository_id: str,
+            request: dict[str, Any],
+        ) -> dict[str, object]:
+            del repository_id
+            return {
+                "repository_id": "repo_env_123",
+                "snapshot_id": request["snapshot_id"],
+                "decision_plan_id": "decision_plan_env_123",
+                "created_at": "2026-05-29T12:10:00Z",
+                "decision_plan": _decision_plan_payload(),
+            }
+
+        def query_repository_graph(
+            self,
+            repository_id: str,
+            request: dict[str, Any],
+        ) -> dict[str, object]:
+            del repository_id
+            return _graph_query_payload() | {"snapshot_id": request["snapshot_id"]}
+
+        def simulate_repository(
+            self,
+            repository_id: str,
+            request: dict[str, Any],
+        ) -> dict[str, object]:
+            del repository_id, request
+            return _simulation_payload()
+
+        def apply_repository(
+            self,
+            repository_id: str,
+            request: dict[str, Any],
+        ) -> dict[str, object]:
+            del repository_id
+            return {
+                "repository_id": "repo_env_123",
+                "snapshot_id": request["snapshot_id"],
+                "decision_plan_id": request["decision_plan_id"],
+                "simulation_id": request["simulation_id"],
+                "mode": request["mode"],
+                "applied": False,
+                "created_at": "2026-05-29T12:15:00Z",
+                "patch": "",
+                "apply_gate": {"passed": True},
+                "validation_summary": {},
+            }
+
+    fake_module.backend = _Backend()
+    original = sys.modules.get(module_name)
+    sys.modules[module_name] = fake_module
+    monkeypatch.setenv(
+        "ALGENTA_RUNTIME_REPOSITORY_INTELLIGENCE_BACKEND",
+        f"{module_name}:backend",
+    )
+    try:
+        runtime = Runtime(mode="local")
+        snapshot = runtime.create_repository_snapshot("repo_env_123", {"ref": "main"})
+        assert isinstance(snapshot, RepositorySnapshotOutput)
+        assert snapshot.snapshot_id == "snapshot_env_123"
+    finally:
+        if original is None:
+            sys.modules.pop(module_name, None)
+        else:
+            sys.modules[module_name] = original
 
 
 def test_algenta_root_exports_repository_runtime_models() -> None:

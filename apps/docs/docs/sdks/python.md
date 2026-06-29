@@ -546,6 +546,13 @@ the runtime-first surface instead of the direct `DecisionEngineClient` facade:
 `create_repository_snapshot(...)`, `get_repository_snapshot(...)`,
 `triage_repository(...)`, `create_repository_decision_plan(...)`,
 `simulate_repository(...)`, and `apply_repository(...)`.
+
+For `algenta.Runtime(mode="local")`, keep the repository-backend wiring on the
+runtime side rather than mixing it into the service-first SDK page. The local
+runtime guide documents the unified backend contract, including
+`ALGENTA_RUNTIME_REPOSITORY_INTELLIGENCE_BACKEND`,
+`repository_intelligence_backend="my_repo_backend.module:build_backend"`, and
+the fail-closed `local_repository_intelligence_backend_required` behavior.
 - `list_datasets(..., compact=True)` and `get_dataset_summary()` for low-token dataset discovery
 - `preview_test_connector(connector={...})` and `preview_browse_connector(connector={...})` for one-shot connector validation before saving a reusable connector or starting an import
 - `connect_data(...)`, `get_dataset(...)`, `refresh_dataset(...)`, and `delete_dataset(...)` for the refreshable dataset lifecycle
