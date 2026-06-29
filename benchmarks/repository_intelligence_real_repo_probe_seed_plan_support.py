@@ -6,6 +6,9 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 from apps.api_server.services import repository_intelligence as repository_service
+from apps.api_server.services.repository_intelligence_mojo_repo_classifier import (
+    classify_repository_paths_with_mojo,
+)
 from apps.api_server.services.repository_language_priority import (
     canonical_repository_language,
     repository_language_priority,
@@ -582,8 +585,24 @@ def candidate_ecosystem_counts(
     cached_counts = _CANDIDATE_ECOSYSTEM_COUNT_CACHE.get(cache_key)
     if cached_counts is None:
         cached_counts = Counter()
+        mojo_results = classify_repository_paths_with_mojo(
+            candidate_file_paths,
+            repo_path=repo_path,
+        )
         for candidate_path in candidate_file_paths:
-            for ecosystem in candidate_ecosystems_for_path(candidate_path, repo_path=repo_path):
+            normalized_candidate = repository_service._normalize_repository_relative_path(
+                candidate_path
+            )
+            if not normalized_candidate:
+                continue
+            mojo_result = mojo_results.get(normalized_candidate)
+            if mojo_result is None:
+                continue
+            detected_ecosystems = {mojo_result.primary_language}
+            detected_ecosystems.update(
+                _CANDIDATE_ECOSYSTEM_LANGUAGE_ALIASES.get(mojo_result.primary_language, ())
+            )
+            for ecosystem in detected_ecosystems:
                 canonical = canonical_repository_language(ecosystem)
                 if canonical:
                     cached_counts[canonical] += 1

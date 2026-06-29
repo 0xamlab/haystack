@@ -401,7 +401,7 @@ class SecurityFinding(BaseModel):
 
 
 class SecurityAnalysisRequest(BaseModel):
-    model_config = ConfigDict(strict=False)
+    model_config = ConfigDict(strict=False, protected_namespaces=())
 
     snapshot_id: str
     sarif_digest: str
@@ -479,7 +479,7 @@ class SecuritySnapshotRef(BaseModel):
 
 
 class SecurityEngineRef(BaseModel):
-    model_config = ConfigDict(strict=False)
+    model_config = ConfigDict(strict=False, protected_namespaces=())
 
     version: str
     model_pack_digest: str | None = None
