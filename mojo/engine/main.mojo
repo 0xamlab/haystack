@@ -49,6 +49,7 @@ from engines.column_profiler    import run_column_profile
 from engines.column_matcher     import run_column_match
 from engines.join_detector      import run_join_detect
 from engines.relation_detector  import run_relation_detect
+from engines.repo_classifier    import run_repo_classifier
 from engines.string_similarity  import run_string_similarity
 from runtime_library_dispatch_generated import dispatch_runtime_library
 
@@ -73,6 +74,8 @@ def _run_raw(raw: String) raises -> String:
         return run_join_detect(raw)
     elif et == "relation_detect":
         return run_relation_detect(raw)
+    elif et == "repo_classifier":
+        return run_repo_classifier(raw)
     elif et == "string_similarity":
         return run_string_similarity(raw)
     elif et == "importance_sampling":

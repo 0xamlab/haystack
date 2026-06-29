@@ -2,12 +2,17 @@
 
 import os
 import sys
+import warnings
 
 import pytest
 from pydantic import ValidationError
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
+from apps.api_server.schemas.repositories import (
+    SecurityAnalysisRequest,
+    SecurityEngineRef,
+)
 from apps.api_server.schemas.simulate import (
     AutoVariable,
     ScoringWeights,
@@ -209,3 +214,19 @@ class TestScoringWeights:
         w = ScoringWeights()
         total = w.expected_value + w.downside_risk
         assert abs(total - 1.0) < 0.001
+
+
+def test_repository_security_models_allow_model_prefixed_fields_without_warning() -> None:
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        request = SecurityAnalysisRequest(
+            snapshot_id="snapshot",
+            sarif_digest="sarif",
+            scanner={"vendor": "vendor", "name": "scanner", "version": "1.0"},
+            model_pack_digest="digest",
+            findings=[],
+        )
+        engine = SecurityEngineRef(version="1.0", model_pack_digest="digest")
+
+    assert request.model_pack_digest == "digest"
+    assert engine.model_pack_digest == "digest"
