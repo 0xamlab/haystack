@@ -302,17 +302,42 @@ jobs:
           cache-to: type=gha,mode=max
 
   # ── Deploy to Fly (AUTOMATIC on merge to main) ────────────────────────────
-  # Runs only after the image is built + pushed (needs: build), and only on a push to main —
-  # never on PRs. Calls the reusable deploy.yml, which mirrors the fresh `latest` image into the
-  # Fly registry and runs `flyctl deploy` (whose release_command applies alembic migrations).
-  # Deploys codna-api by default; widen to `all` to also auto-deploy codna-engine + the
-  # algenta control-plane. Manual `workflow_dispatch` on deploy.yml still works for ad-hoc deploys.
+  # Self-contained (not a reusable-workflow call): mirror the freshly-built `latest` API image into
+  # the Fly registry and `flyctl deploy` codna-api, whose release_command applies alembic migrations.
+  # Runs only after the image is pushed (needs: build) and only on a push to main — never on PRs.
+  # Manual, wider-scope deploys (engine/control-plane, specific tags) still go through deploy.yml.
   deploy:
-    name: Deploy to Fly
+    name: Deploy to Fly (codna-api)
+    runs-on: ubuntu-latest
     needs: build
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    uses: ./.github/workflows/deploy.yml
-    with:
-      tag: latest
-      target: api
-    secrets: inherit
+    permissions:
+      contents: read
+      packages: read
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      SRC: ghcr.io/${{ github.repository }}
+      TAG: latest
+    steps:
+      - name: Install flyctl
+        run: |
+          curl -fsSL https://fly.io/install.sh | sh
+          echo "$HOME/.fly/bin" >> "$GITHUB_PATH"
+
+      - name: Log in to GHCR (pull the prebuilt api image)
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9  # v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.CODNA_GHCR_READ_TOKEN }}
+
+      - name: Authenticate Docker to the Fly registry
+        run: flyctl auth docker
+
+      - name: Deploy codna-api
+        run: |
+          set -euo pipefail
+          docker pull "$SRC/api:$TAG"
+          docker tag  "$SRC/api:$TAG" "registry.fly.io/codna-api:$TAG"
+          docker push "registry.fly.io/codna-api:$TAG"
+          flyctl deploy -c fly.api.toml -a codna-api -i "registry.fly.io/codna-api:$TAG"

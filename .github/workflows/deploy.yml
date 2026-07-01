@@ -22,20 +22,6 @@ on:
           - api
           - control-plane
           - all
-  # Reusable: ci.yml calls this after a successful build on main so a merge auto-deploys
-  # (no manual dispatch). `type: choice` isn't allowed for workflow_call, so target is a string.
-  workflow_call:
-    inputs:
-      tag:
-        description: "Image tag to deploy"
-        required: false
-        default: "latest"
-        type: string
-      target:
-        description: "Which app(s) to deploy: both|engine|api|control-plane|all"
-        required: false
-        default: "api"
-        type: string
 
 permissions:
   contents: read
