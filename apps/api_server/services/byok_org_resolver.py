@@ -42,9 +42,11 @@ _MAX_ORG_INSTALLS_SCANNED = 200
 class OrgResolutionError(Exception):
     """No single eligible org for the caller (mapped to ``http_status`` by the router)."""
 
-    def __init__(self, code: str, message: str, *, http_status: int) -> None:
+    def __init__(self, code: str, message: str, *, http_status: int, orgs: list | None = None) -> None:
         self.code = code
         self.http_status = http_status
+        # For 'multiple_orgs': the eligible orgs [{id, name}] so the caller can show a picker.
+        self.orgs = orgs or []
         super().__init__(message)
 
 
@@ -85,14 +87,19 @@ async def resolve_org_for_github_user(
     github_user_id: int,
     github_login: str,
     redis: Any | None = None,
+    selected_org_id: uuid.UUID | None = None,
 ) -> Organization:
-    """Return the one engine org the caller may manage BYOK for, or raise ``OrgResolutionError``."""
-    # 0) cache (bounds repeated GitHub fan-out for org-install users)
-    cached = await _cached_org_id(redis, github_user_id)
-    if cached is not None:
-        org = await _org_by_id(db, cached)
-        if org is not None:
-            return org
+    """Return the engine org the caller may manage, or raise ``OrgResolutionError``. When the caller
+    administers several eligible orgs, `selected_org_id` picks one (if valid); otherwise a
+    ``multiple_orgs`` error carries the options for a picker."""
+    # 0) cache (bounds repeated GitHub fan-out for org-install users). Skip when the caller is
+    # explicitly picking an org — an earlier pick must not pin them to it.
+    if selected_org_id is None:
+        cached = await _cached_org_id(redis, github_user_id)
+        if cached is not None:
+            org = await _org_by_id(db, cached)
+            if org is not None:
+                return org
 
     # 1) personal install — the caller's own id is the install account (no GitHub call)
     personal = await lookup_org_for_account(
@@ -182,11 +189,22 @@ async def resolve_org_for_github_user(
             http_status=403,
         )
     if len(eligible) > 1:
+        # The caller picked one and it's a valid choice — honour it.
+        if selected_org_id is not None and selected_org_id in eligible:
+            org = eligible[selected_org_id]
+            await _cache_org_id(redis, github_user_id, org.id)
+            return org
+        # Otherwise hand the options back so the caller can render a picker. (Ordered by name for
+        # a stable, human-friendly list.)
+        options = sorted(
+            ({"id": str(o.id), "name": o.name} for o in eligible.values()),
+            key=lambda o: (o["name"] or "").lower(),
+        )
         raise OrgResolutionError(
             "multiple_orgs",
-            "You administer multiple organizations with Algenta installed; "
-            "selecting which one isn't supported yet.",
+            "You administer multiple organizations; choose which one to manage.",
             http_status=409,
+            orgs=options,
         )
     org = next(iter(eligible.values()))
     await _cache_org_id(redis, github_user_id, org.id)

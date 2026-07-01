@@ -49,15 +49,30 @@ def test_billing_not_configured_skips_validation():
 
 
 def test_partial_billing_config_fails_closed():
-    # Real secret key but placeholder webhook/prices → refuse to start.
+    # Real secret key but placeholder webhook + entry price → refuse to start.
     s = _settings(stripe_secret_key="sk_live_real")
     assert billing_configured(s) is True
     with pytest.raises(RuntimeError) as exc:
         validate_billing_configuration(s)
     msg = str(exc.value)
     assert "STRIPE_WEBHOOK_SECRET" in msg
-    assert "STRIPE_PRICE_DEVELOPER" in msg
     assert "STRIPE_PRICE_PRO" in msg
+    # The archived Algenta "Developer" tier is NOT required — demanding it fails-closed on a price
+    # that no longer exists in the Stripe catalog (this crashed billing startup on codna-api).
+    assert "STRIPE_PRICE_DEVELOPER" not in msg
+
+
+def test_placeholder_developer_price_does_not_block_startup():
+    # Regression (codna-api): real secret + webhook + entry price, but the legacy developer price is
+    # still a placeholder → must start cleanly. Enabling billing here previously crashed the app.
+    s = _settings(
+        stripe_secret_key="sk_live_real",
+        stripe_webhook_secret="whsec_real",
+        stripe_price_pro="price_pro_real",
+        # stripe_price_developer stays "price_developer_replace_me" (archived tier, not set)
+    )
+    assert billing_configured(s) is True
+    validate_billing_configuration(s)  # must not raise
 
 
 def test_ci_placeholder_values_are_unconfigured():

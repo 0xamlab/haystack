@@ -33,6 +33,10 @@ def _auth_context(is_platform: bool = False) -> auth_module.AuthContext:
         "email": "api_key",
         "is_platform": is_platform,
         "workspace_id": None,
+        # AuthContext requires the account-status fields; _enforce_account_status()
+        # (run on every request via get_current_org) reads them. Active = not suspended.
+        "org_status": "active",
+        "user_status": "active",
     }
 
 

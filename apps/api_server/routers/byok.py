@@ -60,16 +60,22 @@ class ByokRequest(BaseModel):
 
 
 async def _verify_and_resolve(
-    authorization: str | None, db: AsyncSession, redis: Any
+    authorization: str | None,
+    db: AsyncSession,
+    redis: Any,
+    selected_org_id: Any | None = None,
 ) -> tuple[Any, dict[str, Any]]:
     """Verify the Supabase JWT + resolve the caller's engine org (shared website identity path).
 
-    Note: an inherent (millisecond) TOCTOU window exists between this org-admin resolution and the
-    key write below — a GitHub admin revoked mid-request would still complete this one call. The
+    ``selected_org_id`` (from the ``X-Org-Id`` header) disambiguates when the caller admins several
+    orgs. Note: an inherent (millisecond) TOCTOU window exists between this org-admin resolution and
+    the key write below — a GitHub admin revoked mid-request would still complete this one call. The
     blast radius is one's-own-org BYOK key (re-addable, audited), so we accept it rather than take a
     distributed lock; the short Redis cache also bounds re-checks.
     """
-    return await website_identity.verify_and_resolve_org(authorization, db, redis)
+    return await website_identity.verify_and_resolve_org(
+        authorization, db, redis, selected_org_id=selected_org_id
+    )
 
 
 def _actor_email(identity: dict[str, Any]) -> str:
@@ -86,12 +92,15 @@ async def set_byok(
     payload: ByokRequest,
     response: Response,
     authorization: Annotated[str | None, Header()] = None,
+    x_org_id: Annotated[str | None, Header()] = None,
     db: AsyncSession = Depends(get_db),
     redis: Any = Depends(get_redis),
 ) -> None:
     response.headers["Cache-Control"] = "no-store"  # never cache a key-management mutation
     provider = _check_provider(payload.provider)
-    org, identity = await _verify_and_resolve(authorization, db, redis)
+    org, identity = await _verify_and_resolve(
+        authorization, db, redis, website_identity.parse_org_id(x_org_id)
+    )
     try:
         await tk_mgmt.set_org_key(
             db,
@@ -114,13 +123,16 @@ async def set_byok(
 async def delete_byok(
     response: Response,
     authorization: Annotated[str | None, Header()] = None,
+    x_org_id: Annotated[str | None, Header()] = None,
     provider: str = "anthropic",
     db: AsyncSession = Depends(get_db),
     redis: Any = Depends(get_redis),
 ) -> None:
     response.headers["Cache-Control"] = "no-store"  # never cache a key-management mutation
     provider = _check_provider(provider)
-    org, identity = await _verify_and_resolve(authorization, db, redis)
+    org, identity = await _verify_and_resolve(
+        authorization, db, redis, website_identity.parse_org_id(x_org_id)
+    )
     try:
         await tk_mgmt.delete_org_key(
             db, org_id=org.id, api_backend=provider, actor_email=_actor_email(identity)

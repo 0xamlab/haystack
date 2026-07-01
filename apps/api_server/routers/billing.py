@@ -23,7 +23,7 @@ from apps.api_server.middleware.rbac import require_role
 from apps.api_server.models.audit_event import AuditAction
 from apps.api_server.models.organization import Organization, OrgPlan
 from apps.api_server.models.stripe_webhook_event import StripeWebhookEvent
-from apps.api_server.models.user import User
+from apps.api_server.models.user import User, UserRole, UserStatus
 from apps.api_server.services.audit_service import write_audit_event
 from apps.api_server.services.auth_service import AuthContext
 from apps.api_server.services.device_service import (
@@ -34,6 +34,7 @@ from apps.api_server.services.egress_guard import audit_context_from_auth
 from apps.api_server.services.entitlement_service import entitlement_for_org
 from apps.api_server.services.plan_limits import device_limit as _plan_device_limit
 from apps.api_server.services.plan_limits import local_runtime_allowed as _plan_local_runtime
+from apps.api_server.services.team_seats import seat_limit as _seat_limit
 from apps.api_server.services.public_url_policy import (
     request_origin_base_url,
     resolve_billing_redirect_urls,
@@ -49,6 +50,38 @@ logger = structlog.get_logger(__name__)
 router = APIRouter(tags=["Billing"])
 
 
+async def _suspend_excess_members(db: AsyncSession, org_id: Any, seat_cap: int) -> int:
+    """On downgrade, suspend active NON-OWNER members beyond the new plan's seat cap.
+    Owners are always kept; the oldest members fill the remaining seats. Mirrors the
+    conservative device-revocation policy. seat_cap <= 0 means unlimited → no-op."""
+    if seat_cap <= 0:
+        return 0
+    result = await db.execute(
+        select(User)
+        .where(User.org_id == org_id, User.status == UserStatus.ACTIVE)
+        .order_by(User.created_at)
+    )
+    members = list(result.scalars().all())
+    owners = [u for u in members if u.role == UserRole.OWNER]
+    non_owners = [u for u in members if u.role != UserRole.OWNER]
+    keep = {u.id for u in non_owners[: max(0, seat_cap - len(owners))]}
+    suspended = 0
+    for u in non_owners:
+        if u.id not in keep:
+            u.status = UserStatus.SUSPENDED
+            suspended += 1
+    return suspended
+
+
+@router.get("/billing/plans", summary="Public — active plans for an app, dynamic from Stripe")
+async def public_plans(app: str = "codna") -> dict[str, Any]:
+    """Plan titles/prices/descriptions/features straight from Stripe (no hardcoding). Public —
+    pricing is public. Free + Enterprise (no Stripe price) are added by the frontend as bookends."""
+    from apps.api_server.services.stripe_catalog import list_plans
+
+    return {"app": app, "plans": await list_plans(app)}
+
+
 @router.post("/v1/billing/checkout", summary="Create Stripe Checkout session")
 async def checkout(
     request: Request,
@@ -57,7 +90,11 @@ async def checkout(
 ) -> dict[str, Any]:
     body = await request.json()
     plan = body.get("plan", "developer")
-    if plan not in ("developer", "pro", "team", "telys_pro", "telys_team"):
+    try:
+        seats = max(1, int(body.get("seats", 1)))
+    except (TypeError, ValueError):
+        seats = 1
+    if plan not in ("developer", "pro", "proplus", "ultra", "team", "telys_pro", "telys_team"):
         raise HTTPException(
             status_code=400,
             detail={
@@ -81,6 +118,7 @@ async def checkout(
         str(auth["org_id"]),
         email,
         plan,
+        quantity=seats if plan in ("team", "telys_team") else 1,
         success_url=redirect_urls.success_url,
         cancel_url=redirect_urls.cancel_url,
         audit_context=audit_context_from_auth(
@@ -265,6 +303,8 @@ async def _process_stripe_event(db: AsyncSession, event: dict[str, Any]) -> None
                     org.plan = OrgPlan(plan_name)
                 except ValueError:
                     pass
+            # Per-seat Team billing: sync purchased seats from the subscription item quantity.
+            org.seats = _seats_from_subscription(obj)
             await db.flush()
             await _upsert_subscription(
                 db,
@@ -307,6 +347,32 @@ async def _process_stripe_event(db: AsyncSession, event: dict[str, Any]) -> None
                             "event_id": event.get("id"),
                         },
                     )
+
+            # Suspend members beyond the new plan's seat cap (owners always kept). Runs for
+            # ANY downgrade — including to a non-runtime/solo plan — mirroring the device policy.
+            seat_cap = _seat_limit(plan_name)
+            suspended_members = await _suspend_excess_members(db, org.id, seat_cap)
+            if suspended_members:
+                logger.info(
+                    "subscription_downgrade_excess_members_suspended",
+                    org_id=str(org.id),
+                    plan=plan_name,
+                    count=suspended_members,
+                )
+                await write_audit_event(
+                    db,
+                    org.id,
+                    AuditAction.PLAN_DOWNGRADE,
+                    actor_email="stripe-webhook",
+                    resource_type="team_member",
+                    resource_id=str(org.id),
+                    metadata={
+                        "suspended_members": suspended_members,
+                        "new_plan": plan_name,
+                        "seat_cap": seat_cap,
+                        "event_id": event.get("id"),
+                    },
+                )
 
     # ── Subscription deleted / cancelled ─────────────────────────────────────
     elif event_type == "customer.subscription.deleted":
@@ -406,6 +472,16 @@ async def _audit_entitlement_recompute(
             "device_limit": _plan_device_limit(plan_name),
         },
     )
+
+
+def _seats_from_subscription(sub_obj: dict[str, Any]) -> int:
+    """Purchased seats = the subscription item quantity (per-seat Team billing). Defaults to 1."""
+    try:
+        items = sub_obj.get("items", {}).get("data", [])
+        qty = items[0].get("quantity") if items else None
+        return max(1, int(qty)) if qty else 1
+    except (KeyError, IndexError, TypeError, ValueError):
+        return 1
 
 
 def _plan_from_subscription(sub_obj: dict[str, Any]) -> str:

@@ -46,7 +46,7 @@ def test_post_byok_happy_path_stores_mapped_key(monkeypatch):
     org_id = uuid.uuid4()
     _stub_auth(monkeypatch)
 
-    async def _resolve(db, *, github_user_id, github_login, redis):
+    async def _resolve(db, *, github_user_id, github_login, redis, selected_org_id=None):
         assert github_user_id == 583231 and github_login == "octocat"
         return _Org(org_id)
 
@@ -160,7 +160,7 @@ def test_post_byok_invalid_jwt_is_401(monkeypatch):
 def test_post_byok_resolution_error_maps_status(monkeypatch):
     _stub_auth(monkeypatch)
 
-    async def _resolve(db, *, github_user_id, github_login, redis):
+    async def _resolve(db, *, github_user_id, github_login, redis, selected_org_id=None):
         raise OrgResolutionError("no_org", "none", http_status=403)
 
     monkeypatch.setattr(byok_org_resolver, "resolve_org_for_github_user", _resolve)
@@ -181,7 +181,7 @@ def test_post_byok_resolution_error_maps_status(monkeypatch):
 def test_post_byok_encryption_required_is_409(monkeypatch):
     _stub_auth(monkeypatch)
 
-    async def _resolve(db, *, github_user_id, github_login, redis):
+    async def _resolve(db, *, github_user_id, github_login, redis, selected_org_id=None):
         return _Org(uuid.uuid4())
 
     async def _set(db, **k):
@@ -207,7 +207,7 @@ def test_post_byok_rejects_engine_backend(monkeypatch):
     # The reserved engine key must NOT be manageable from the public website surface.
     _stub_auth(monkeypatch)
 
-    async def _resolve(db, *, github_user_id, github_login, redis):
+    async def _resolve(db, *, github_user_id, github_login, redis, selected_org_id=None):
         raise AssertionError("must reject the engine backend before resolving an org")
 
     async def _set(db, **k):
@@ -233,7 +233,7 @@ def test_delete_byok_is_idempotent_204(monkeypatch):
     org_id = uuid.uuid4()
     _stub_auth(monkeypatch)
 
-    async def _resolve(db, *, github_user_id, github_login, redis):
+    async def _resolve(db, *, github_user_id, github_login, redis, selected_org_id=None):
         return _Org(org_id)
 
     captured = {}

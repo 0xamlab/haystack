@@ -42,7 +42,7 @@ def _stub_supabase(monkeypatch: pytest.MonkeyPatch, *, configured: bool = True, 
     monkeypatch.setattr(supabase_auth, "verify_supabase_jwt", _verify)
     monkeypatch.setattr(supabase_auth, "extract_github_identity", lambda _claims: _IDENT)
 
-    async def _resolve(_db, *, github_user_id, github_login, redis):  # noqa: ANN001
+    async def _resolve(_db, *, github_user_id, github_login, redis, selected_org_id=None):  # noqa: ANN001
         return org
 
     monkeypatch.setattr(byok_org_resolver, "resolve_org_for_github_user", _resolve)

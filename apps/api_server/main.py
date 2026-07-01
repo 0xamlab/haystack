@@ -358,6 +358,12 @@ from apps.api_server.routers import website_billing as _website_billing_router  
 
 app.include_router(_website_billing_router.router)
 
+# codna website team management — Supabase-authenticated /account/team (list/invite/role/remove),
+# org-scoped + admin-gated by verify_and_resolve_org. Seat-enforced. Inert (503) until SUPABASE_URL.
+from apps.api_server.routers import website_team as _website_team_router  # noqa: E402
+
+app.include_router(_website_team_router.router)
+
 if settings.runtime_library_http_api_enabled:
     app.include_router(runtime_libraries.router)
 

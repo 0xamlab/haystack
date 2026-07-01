@@ -83,6 +83,8 @@ Where a variable has accepted aliases (for example a legacy `DE_` name), they ap
 | `QUOTA_FREE_SIMULATIONS_MONTH` | `500` | — | — |
 | `QUOTA_PRO_SIMULATIONS_MONTH` | `100000` | — | — |
 | `REDIS_URL` | `redis://localhost:6379/0` | — | Redis connection (cache / queue / coordination). |
+| `RESEND_API_KEY` | — | — | — |
+| `RESEND_FROM_EMAIL` | `Codna <noreply@codna.ai>` | — | — |
 | `RESULT_STORAGE_ENABLED` | `False` | — | — |
 | `RUNTIME_FALLBACK_MODE` | `auto` | — | Engine fallback policy: deny (prod) \| allow \| auto (dev only). |
 | `S3_ACCESS_KEY_ID` | `minioadmin` | — | — |
@@ -99,14 +101,17 @@ Where a variable has accepted aliases (for example a legacy `DE_` name), they ap
 | `SMTP_USERNAME` | — | — | — |
 | `STRIPE_PRICE_DEVELOPER` | `price_developer_replace_me` | — | — |
 | `STRIPE_PRICE_PRO` | `price_pro_replace_me` | — | — |
+| `STRIPE_PRICE_PROPLUS` | `price_proplus_replace_me` | — | — |
 | `STRIPE_PRICE_TEAM` | `price_team_replace_me` | — | — |
 | `STRIPE_PRICE_TELYS_PRO` | `price_telys_pro_replace_me` | — | — |
 | `STRIPE_PRICE_TELYS_TEAM` | `price_telys_team_replace_me` | — | — |
+| `STRIPE_PRICE_ULTRA` | `price_ultra_replace_me` | — | — |
 | `STRIPE_PUBLISHABLE_KEY` | `pk_test_replace_me` | — | — |
 | `STRIPE_SECRET_KEY` | `sk_test_replace_me` | — | Stripe API secret key (billing). |
 | `STRIPE_WEBHOOK_SECRET` | `whsec_replace_me` | — | Stripe webhook signing secret. |
 | `SUPABASE_JWT_AUD` | `authenticated` | — | — |
 | `SUPABASE_JWT_SECRET` | — | — | — |
+| `SUPABASE_SERVICE_ROLE_KEY` | — | — | — |
 | `SUPABASE_URL` | — | `NEXT_PUBLIC_SUPABASE_URL` | — |
 | `TURNSTILE_SECRET_KEY` | — | `ALGENTA_TURNSTILE_SECRET_KEY` | — |
 | `WEBHOOK_MAX_RETRIES` | `3` | — | — |

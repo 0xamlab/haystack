@@ -273,8 +273,9 @@ async def forgot_password(
 
     email = str(payload.email).lower().strip()
 
-    result = await db.execute(select(User).where(User.email == email))
-    user = result.scalar_one_or_none()
+    # Email is per-org now (can match multiple orgs); reset the earliest match.
+    result = await db.execute(select(User).where(User.email == email).order_by(User.created_at))
+    user = result.scalars().first()
 
     # Always return success (don't reveal if email exists)
     if user is not None:

@@ -143,6 +143,22 @@ _PLANS: dict[str, PlanConfig] = {
         storage_gb=100,
         llm_spend_cap_usd_month=200,
     ),
+    # Power-solo ($60) and max-solo ($200) — single seat, escalating managed-usage headroom
+    # (Codna's Cursor Pro+/Ultra analogues). Not multi-seat (see team_seats).
+    "proplus": PlanConfig(
+        display_name="PRO+", price_usd_month=60, executions_month=2_000_000,
+        devices=5, local_runtime=True, rate_per_minute=2_000, async_jobs=True, webhooks=True,
+        max_runs_per_call=1_000_000, max_batch=100, audit_trail=True, rbac=False,
+        permitted_modules=["*"], credit_batch_size=10_000, concurrent_jobs=40, storage_gb=200,
+        llm_spend_cap_usd_month=500,
+    ),
+    "ultra": PlanConfig(
+        display_name="ULTRA", price_usd_month=200, executions_month=10_000_000,
+        devices=10, local_runtime=True, rate_per_minute=5_000, async_jobs=True, webhooks=True,
+        max_runs_per_call=1_000_000, max_batch=100, audit_trail=True, rbac=False,
+        permitted_modules=["*"], credit_batch_size=10_000, concurrent_jobs=100, storage_gb=500,
+        llm_spend_cap_usd_month=2_000,
+    ),
     "team": PlanConfig(
         display_name="TEAM",
         price_usd_month=499,

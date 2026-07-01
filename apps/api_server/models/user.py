@@ -3,7 +3,7 @@
 import uuid
 from enum import StrEnum
 
-from sqlalchemy import Boolean, Enum, ForeignKey, String
+from sqlalchemy import Boolean, Enum, ForeignKey, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -25,6 +25,10 @@ class UserStatus(StrEnum):
 
 class User(UUIDMixin, TimestampMixin, Base):
     __tablename__ = "users"
+    # Email is unique PER ORG (not globally): one person (identity in Supabase) can be a
+    # member of multiple orgs — their own + any team(s) they're invited to — and hold
+    # subscriptions across them. The Supabase project owns the single global identity.
+    __table_args__ = (UniqueConstraint("org_id", "email", name="uq_users_org_email"),)
 
     org_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -32,7 +36,7 @@ class User(UUIDMixin, TimestampMixin, Base):
         nullable=False,
         index=True,
     )
-    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
+    email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[UserRole] = mapped_column(

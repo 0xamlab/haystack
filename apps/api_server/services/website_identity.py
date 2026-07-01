@@ -11,6 +11,7 @@ Inert until ``SUPABASE_URL`` (+ the GitHub App) is configured → 503, never a s
 
 from __future__ import annotations
 
+import uuid
 from typing import Any
 
 from fastapi import HTTPException
@@ -38,14 +39,11 @@ def bearer_token(authorization: str | None) -> str:
     return token
 
 
-async def verify_and_resolve_org(
-    authorization: str | None, db: AsyncSession, redis: Any
-) -> tuple[Any, dict[str, Any]]:
-    """Verify the Supabase JWT + resolve the caller's engine org, or raise an HTTPException.
+async def verify_identity(authorization: str | None) -> dict[str, Any]:
+    """Verify the Supabase JWT and return the caller's GitHub identity (no org resolution).
 
-    503 when the website identity is not configured or the verifier's backing service is unreachable
-    (not the user's fault); 401 for an invalid/expired token; the resolver's own ``http_status`` if
-    the identity maps to no single eligible org (403/404/409/…).
+    503 when website identity isn't configured or the verifier is unreachable; 401 for an
+    invalid/expired token. Shared by both the resolve-one and list-all paths below.
     """
     if not supabase_auth.supabase_configured():
         raise HTTPException(
@@ -55,10 +53,63 @@ async def verify_and_resolve_org(
     token = bearer_token(authorization)
     try:
         claims = await supabase_auth.verify_supabase_jwt(token)
-        identity = supabase_auth.extract_github_identity(claims)
+        return supabase_auth.extract_github_identity(claims)
     except supabase_auth.SupabaseAuthError as exc:
         status_code = 503 if exc.code in supabase_auth.SERVICE_ERROR_CODES else 401
         raise HTTPException(status_code=status_code, detail=error_body(exc.code, str(exc))) from exc
+
+
+def parse_org_id(raw: str | None) -> uuid.UUID | None:
+    """Parse an ``X-Org-Id`` header value; ignore blanks/garbage (fall back to auto-resolution)."""
+    if not raw or not raw.strip():
+        return None
+    try:
+        return uuid.UUID(raw.strip())
+    except ValueError:
+        return None
+
+
+async def verify_and_resolve_org(
+    authorization: str | None,
+    db: AsyncSession,
+    redis: Any,
+    *,
+    selected_org_id: uuid.UUID | None = None,
+) -> tuple[Any, dict[str, Any]]:
+    """Verify the Supabase JWT + resolve the caller's engine org, or raise an HTTPException.
+
+    503 when the website identity is not configured or the verifier's backing service is unreachable
+    (not the user's fault); 401 for an invalid/expired token; the resolver's own ``http_status`` if
+    the identity maps to no single eligible org (403/404/409/…). When the caller administers several
+    orgs, pass ``selected_org_id`` (from the ``X-Org-Id`` header) to pick one; without it a 409
+    carrying the eligible orgs is raised so the UI can prompt for a choice.
+    """
+    identity = await verify_identity(authorization)
+    try:
+        org = await byok_org_resolver.resolve_org_for_github_user(
+            db,
+            github_user_id=identity["github_user_id"],
+            github_login=identity["github_login"],
+            redis=redis,
+            selected_org_id=selected_org_id,
+        )
+    except byok_org_resolver.OrgResolutionError as exc:
+        detail = error_body(exc.code, str(exc))
+        if exc.orgs:
+            detail["error"]["orgs"] = exc.orgs
+        raise HTTPException(status_code=exc.http_status, detail=detail) from exc
+    return org, identity
+
+
+async def list_eligible_orgs(
+    authorization: str | None, db: AsyncSession, redis: Any
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Verify the JWT and return every org the caller may act in (0, 1, or many), plus identity.
+
+    Backs the org-picker: a single org resolves normally; multiple orgs come back via the resolver's
+    ``multiple_orgs`` options instead of a 409; no org yields an empty list (not an error here).
+    """
+    identity = await verify_identity(authorization)
     try:
         org = await byok_org_resolver.resolve_org_for_github_user(
             db,
@@ -66,8 +117,13 @@ async def verify_and_resolve_org(
             github_login=identity["github_login"],
             redis=redis,
         )
+        return [{"id": str(org.id), "name": org.name}], identity
     except byok_org_resolver.OrgResolutionError as exc:
+        if exc.code == "multiple_orgs":
+            return exc.orgs, identity
+        if exc.code == "no_org":
+            return [], identity
+        # A real service failure (App unconfigured / GitHub unreachable) — surface it.
         raise HTTPException(
             status_code=exc.http_status, detail=error_body(exc.code, str(exc))
         ) from exc
-    return org, identity

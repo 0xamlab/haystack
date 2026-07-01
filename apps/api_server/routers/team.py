@@ -1,22 +1,32 @@
 """Team management endpoints — /v1/team, /v1/audit-logs, /v1/audit-logs/artifacts."""
 
 import json
-from datetime import UTC, datetime
+import secrets
+from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.params import Param
 from pydantic import BaseModel, EmailStr
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from apps.api_server.db.session import AsyncSessionDep
 from apps.api_server.middleware.auth import get_current_org, get_redis
 from apps.api_server.middleware.rbac import require_role
+from apps.api_server.models.organization import Organization
+from apps.api_server.models.team_invite import InviteStatus, TeamInvite
 from apps.api_server.models.user import User, UserRole, UserStatus
 from apps.api_server.pagination import paginate_sequence
+from apps.api_server.services import resend_email
 from apps.api_server.services.auth_service import AuthContext, invalidate_user_api_key_caches
+from apps.api_server.services.team_seats import can_add_member, is_multi_seat, seat_limit
 from apps.api_server.services.workspace_scope import workspace_scope_clauses
+
+# Where the invite-accept UI lives (the shared accounts portal). The emailed link
+# lands here; the page calls POST /v1/team/accept with the token.
+INVITE_ACCEPT_BASE = "https://accounts.thyn.ai/team/accept"
+INVITE_TTL_DAYS = 7
 
 router = APIRouter(tags=["Team"])
 
@@ -39,6 +49,10 @@ class InviteRequest(BaseModel):
 
 class RoleUpdateRequest(BaseModel):
     role: str
+
+
+class AcceptRequest(BaseModel):
+    token: str
 
 
 class AuditLogEntry(BaseModel):
@@ -219,28 +233,115 @@ async def list_team(
     )
 
 
+async def _seats_used(db: AsyncSessionDep, org_id: UUID) -> int:
+    """Seats consumed = active/invited users + pending invites (a pending invite reserves a seat)."""
+    n_users = await db.scalar(
+        select(func.count()).select_from(User).where(
+            User.org_id == org_id,
+            User.status.in_([UserStatus.ACTIVE, UserStatus.INVITED]),
+        )
+    )
+    n_pending = await db.scalar(
+        select(func.count()).select_from(TeamInvite).where(
+            TeamInvite.org_id == org_id,
+            TeamInvite.status == InviteStatus.PENDING.value,
+        )
+    )
+    return int(n_users or 0) + int(n_pending or 0)
+
+
 @router.post("/v1/team/invite", status_code=201, summary="Invite a team member")
 async def invite_member(
     payload: InviteRequest,
+    db: AsyncSessionDep,
     auth: Annotated[AuthContext, Depends(require_role("admin"))],
 ) -> dict[str, Any]:
-    """Send an invitation email to a new team member (stub — email not implemented)."""
+    """Create a pending invite + email an accept link. Seat-enforced: solo plans
+    (Free/Pro/Pro+/Ultra) cannot add members; Team is capped at its purchased seats."""
     valid_roles = {"owner", "admin", "member", "viewer"}
     if payload.role not in valid_roles:
         raise HTTPException(
             status_code=422,
-            detail={
-                "error": {
-                    "code": "invalid_role",
-                    "message": f"Role must be one of: {sorted(valid_roles)}",
-                }
-            },
+            detail={"error": {"code": "invalid_role", "message": f"Role must be one of: {sorted(valid_roles)}"}},
         )
-    # In production: create pending invite record + send email
+
+    org_id = auth["org_id"]
+    plan = auth.get("plan", "free")
+    if not is_multi_seat(plan):
+        raise HTTPException(
+            status_code=403,
+            detail={"error": {"code": "seats_not_available",
+                              "message": "Your plan is single-seat. Upgrade to Team to invite members."}},
+        )
+
+    email = payload.email.lower()
+    if await db.scalar(select(User).where(User.org_id == org_id, func.lower(User.email) == email)):
+        raise HTTPException(status_code=409, detail={"error": {"code": "already_member", "message": f"{email} is already on this team."}})
+
+    # Seat cap = the seats purchased on the Stripe subscription (per-seat Team billing).
+    purchased = await db.scalar(select(Organization.seats).where(Organization.id == org_id)) or 1
+    used = await _seats_used(db, org_id)
+    if not can_add_member(plan, used, purchased):
+        raise HTTPException(
+            status_code=403,
+            detail={"error": {"code": "seat_limit_reached",
+                              "message": f"All {seat_limit(plan, purchased)} seats are in use. Add seats or remove a member first."}},
+        )
+
+    invite = TeamInvite(
+        org_id=org_id, email=email, role=payload.role, token=secrets.token_urlsafe(32),
+        status=InviteStatus.PENDING.value,
+        invited_by=UUID(auth["user_id"]) if auth.get("user_id") else None,
+        expires_at=datetime.now(UTC) + timedelta(days=INVITE_TTL_DAYS),
+    )
+    db.add(invite)
+    await db.commit()
+    await db.refresh(invite)
+
+    # Best-effort email (no-op + logs if Resend unconfigured — flow still works).
+    await resend_email.send_team_invite_email(
+        to=email, org_name=str(org_id), role=payload.role,
+        accept_url=f"{INVITE_ACCEPT_BASE}?token={invite.token}",
+    )
     return {
-        "message": f"Invitation sent to {payload.email} with role '{payload.role}'.",
-        "invite_id": str(uuid4()),
+        "invite_id": str(invite.id), "email": email, "role": payload.role,
+        "status": invite.status, "expires_at": invite.expires_at.isoformat(),
+        "seats_used": used + 1, "seat_limit": seat_limit(plan, purchased),
     }
+
+
+@router.post("/v1/team/accept", status_code=201, summary="Accept a team invitation")
+async def accept_invite(payload: AcceptRequest, db: AsyncSessionDep) -> dict[str, Any]:
+    """Consume an invite token → add the invitee as an active org member. Token-authed
+    (the token proves the invitation); single-use + expiring."""
+    invite = await db.scalar(select(TeamInvite).where(TeamInvite.token == payload.token))
+    if invite is None or invite.status != InviteStatus.PENDING.value:
+        raise HTTPException(status_code=404, detail={"error": {"code": "invite_invalid", "message": "This invitation is invalid or already used."}})
+    if invite.expires_at < datetime.now(UTC):
+        invite.status = InviteStatus.EXPIRED.value
+        await db.commit()
+        raise HTTPException(status_code=410, detail={"error": {"code": "invite_expired", "message": "This invitation has expired."}})
+
+    existing = await db.scalar(select(User).where(User.org_id == invite.org_id, func.lower(User.email) == invite.email.lower()))
+    if existing:
+        invite.status = InviteStatus.ACCEPTED.value
+        invite.accepted_at = datetime.now(UTC)
+        await db.commit()
+        return {"user_id": str(existing.id), "org_id": str(invite.org_id), "already_member": True}
+
+    user = User(
+        org_id=invite.org_id, email=invite.email, name=invite.email.split("@")[0],
+        # invited members authenticate via the shared identity (OAuth), not a local
+        # password — password_hash is a NOT NULL column, so store an empty sentinel.
+        password_hash="",
+        role=UserRole(invite.role), status=UserStatus.ACTIVE,
+    )
+    db.add(user)
+    invite.status = InviteStatus.ACCEPTED.value
+    invite.accepted_at = datetime.now(UTC)
+    await db.commit()
+    await db.refresh(user)
+    return {"user_id": str(user.id), "org_id": str(invite.org_id), "email": user.email, "role": invite.role}
 
 
 async def _count_active_owners(db: AsyncSessionDep, org_id: UUID) -> int:

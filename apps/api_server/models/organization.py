@@ -12,6 +12,8 @@ class OrgPlan(StrEnum):
     FREE = "free"  # maps to STARTER tier on pricing page
     DEVELOPER = "developer"  # legacy / internal — treat as PRO for billing
     PRO = "pro"
+    PROPLUS = "proplus"  # power-solo tier ($60) — bigger managed-usage pool, single seat
+    ULTRA = "ultra"  # max-solo tier ($200) — highest single-seat throughput
     TEAM = "team"
     ENTERPRISE = "enterprise"
     TELYS_DEVELOPER = "telys_developer"  # free, 1-device, local/non-commercial Telys runtime dev license
@@ -41,6 +43,9 @@ class Organization(UUIDMixin, TimestampMixin, Base):
         nullable=False,
     )
     stripe_customer_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    # Seats purchased on the Team (per-seat) subscription — synced from the Stripe
+    # subscription item quantity by the webhook; drives the team seat cap. 1 for solo plans.
+    seats: Mapped[int] = mapped_column(Integer(), nullable=False, default=1, server_default="1")
 
     # ── Managed-LLM pass-through (D3) ─────────────────────────────────────────
     # When the deployment runs in managed-LLM mode (ALGENTA_MANAGED_LLM=1, hosted), an org may use

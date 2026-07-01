@@ -40,11 +40,14 @@ router = APIRouter(tags=["account"])
 async def list_account_devices(
     response: Response,
     authorization: Annotated[str | None, Header()] = None,
+    x_org_id: Annotated[str | None, Header()] = None,
     db: AsyncSession = Depends(get_db),
     redis: Any = Depends(get_redis),
 ) -> dict[str, object]:
     response.headers["Cache-Control"] = "no-store"  # private account data — never cache
-    org, _identity = await website_identity.verify_and_resolve_org(authorization, db, redis)
+    org, _identity = await website_identity.verify_and_resolve_org(
+        authorization, db, redis, selected_org_id=website_identity.parse_org_id(x_org_id)
+    )
     return await list_devices_with_activity(org.id, db)
 
 
@@ -61,11 +64,14 @@ async def revoke_account_device(
     registration_id: uuid.UUID,
     response: Response,
     authorization: Annotated[str | None, Header()] = None,
+    x_org_id: Annotated[str | None, Header()] = None,
     db: AsyncSession = Depends(get_db),
     redis: Any = Depends(get_redis),
 ) -> dict[str, object]:
     response.headers["Cache-Control"] = "no-store"
-    org, identity = await website_identity.verify_and_resolve_org(authorization, db, redis)
+    org, identity = await website_identity.verify_and_resolve_org(
+        authorization, db, redis, selected_org_id=website_identity.parse_org_id(x_org_id)
+    )
     found = await revoke_device(org.id, registration_id, db)
     if not found:
         # Org-scoped: a registration that isn't in the caller's org is indistinguishable from one

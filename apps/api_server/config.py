@@ -278,6 +278,8 @@ class Settings(BaseSettings):
     stripe_webhook_secret: str = Field(default="whsec_replace_me")
     stripe_price_developer: str = Field(default="price_developer_replace_me")
     stripe_price_pro: str = Field(default="price_pro_replace_me")
+    stripe_price_proplus: str = Field(default="price_proplus_replace_me")
+    stripe_price_ultra: str = Field(default="price_ultra_replace_me")
     stripe_price_team: str = Field(default="price_team_replace_me")
     # Telys runtime paid tiers (telys_developer is free → no Stripe price). Create these in Stripe + set the env.
     stripe_price_telys_pro: str = Field(default="price_telys_pro_replace_me")
@@ -319,6 +321,12 @@ class Settings(BaseSettings):
     supabase_url: str | None = Field(
         default=None,
         validation_alias=AliasChoices("SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL"),
+    )
+    # Service/secret key for Supabase ADMIN operations (dormant-account sweep: list + delete users).
+    # New sb_secret_… or legacy service_role JWT. Empty → the sweep can't list/delete (no-op).
+    supabase_service_role_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("SUPABASE_SERVICE_ROLE_KEY"),
     )
     # Legacy HS256 fallback — ONLY for projects still on the shared symmetric JWT secret (not the
     # asymmetric default). Leave unset for modern projects; the verifier prefers JWKS and branches
@@ -408,6 +416,10 @@ class Settings(BaseSettings):
     smtp_username: str = Field(default="")
     smtp_password: str = Field(default="")
     email_from: str = Field(default="noreply@algenta.ai")
+    # Resend (transactional email — team invites, dormant-account notices). Empty = disabled
+    # (send_* helpers no-op + log a warning instead of raising).
+    resend_api_key: str = Field(default="")
+    resend_from_email: str = Field(default="Codna <noreply@codna.ai>")
 
     # ─── Webhooks ─────────────────────────────────────────────────────────────
     webhook_signing_secret: str = Field(default="change-me-in-production")

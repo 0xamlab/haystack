@@ -49,6 +49,18 @@ class _PlanPriceIdMapping(Mapping[str, str | None]):
                 if hasattr(current_settings, "stripe_price_pro")
                 else None
             ),
+            "proplus": (
+                current_settings.stripe_price_proplus
+                if hasattr(current_settings, "stripe_price_proplus")
+                and not _is_placeholder(current_settings.stripe_price_proplus)
+                else None
+            ),
+            "ultra": (
+                current_settings.stripe_price_ultra
+                if hasattr(current_settings, "stripe_price_ultra")
+                and not _is_placeholder(current_settings.stripe_price_ultra)
+                else None
+            ),
             "team": (
                 current_settings.stripe_price_team
                 if hasattr(current_settings, "stripe_price_team")
@@ -114,11 +126,16 @@ def validate_billing_configuration(current_settings: object | None = None) -> No
     s = current_settings or get_settings()
     if not billing_configured(s):
         return
+    # Require the webhook secret + the live entry price (Pro). STRIPE_PRICE_DEVELOPER is intentionally
+    # NOT required: the legacy Algenta "Developer" tier was archived from the Stripe catalog during the
+    # Codna consolidation, so demanding it here fails-closed on a price that no longer exists (it broke
+    # billing startup on codna-api). The higher Codna tiers (proplus/ultra/team) degrade gracefully —
+    # a placeholder there just makes that one upgrade unavailable, not a silent mis-handle — so they
+    # aren't hard-required either.
     missing = [
         env
         for attr, env in (
             ("stripe_webhook_secret", "STRIPE_WEBHOOK_SECRET"),
-            ("stripe_price_developer", "STRIPE_PRICE_DEVELOPER"),
             ("stripe_price_pro", "STRIPE_PRICE_PRO"),
         )
         if _is_placeholder(getattr(s, attr, ""))
@@ -177,6 +194,7 @@ async def create_checkout_session(
     success_url: str | None = None,
     cancel_url: str | None = None,
     audit_context: EgressAuditContext | None = None,
+    quantity: int = 1,
 ) -> dict[str, str]:
     """
     Create a Stripe Checkout Session for upgrading to the given plan.
@@ -208,12 +226,21 @@ async def create_checkout_session(
             data={
                 "mode": "subscription",
                 "line_items[0][price]": price_id,
-                "line_items[0][quantity]": "1",
+                # per-seat plans (team) bill by quantity; solo plans stay at 1
+                "line_items[0][quantity]": str(max(1, quantity)),
                 "success_url": resolved_success_url,
                 "cancel_url": resolved_cancel_url,
                 "customer_email": org_email,
                 "metadata[org_id]": org_id,
                 "metadata[plan]": plan,
+                **(
+                    {
+                        "line_items[0][adjustable_quantity][enabled]": "true",
+                        "line_items[0][adjustable_quantity][minimum]": "1",
+                    }
+                    if plan in ("team", "telys_team")
+                    else {}
+                ),
             },
         )
     except EgressPolicyDeniedError as exc:

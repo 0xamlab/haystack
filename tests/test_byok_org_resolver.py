@@ -18,8 +18,9 @@ from apps.api_server.services.egress_guard import EgressPolicyDeniedError
 
 
 class _Org:
-    def __init__(self, org_id: uuid.UUID) -> None:
+    def __init__(self, org_id: uuid.UUID, name: str | None = None) -> None:
         self.id = org_id
+        self.name = name or f"org-{str(org_id)[:8]}"
 
 
 class _Install:
@@ -187,6 +188,63 @@ async def test_multiple_admin_orgs_is_ambiguous(patch_helpers):
     with pytest.raises(OrgResolutionError) as exc:
         await r.resolve_org_for_github_user(db, github_user_id=1, github_login="x", redis=None)
     assert exc.value.code == "multiple_orgs" and exc.value.http_status == 409
+    # The eligible orgs come back so the caller can render a picker (id+name, name-sorted).
+    assert {o["id"] for o in exc.value.orgs} == {str(o1), str(o2)}
+    assert [o["name"] for o in exc.value.orgs] == sorted(o["name"] for o in exc.value.orgs)
+
+
+async def test_selected_org_id_disambiguates_multiple_orgs(patch_helpers):
+    monkeypatch = patch_helpers
+    o1, o2 = uuid.uuid4(), uuid.uuid4()
+    db = _DB([_Install(11, "acme", o1), _Install(22, "globex", o2)])
+    redis = _FakeRedis()
+
+    async def _membership(*a, **k):
+        return {"state": "active", "role": "admin"}
+
+    monkeypatch.setattr(github_app_auth, "installation_membership_role", _membership)
+
+    org = await r.resolve_org_for_github_user(
+        db, github_user_id=1, github_login="x", redis=redis, selected_org_id=o2
+    )
+    assert org.id == o2
+    assert redis.store.get(f"{r._CACHE_PREFIX}1") == str(o2)  # pick is cached
+
+
+async def test_invalid_selected_org_id_still_ambiguous(patch_helpers):
+    monkeypatch = patch_helpers
+    o1, o2 = uuid.uuid4(), uuid.uuid4()
+    db = _DB([_Install(11, "acme", o1), _Install(22, "globex", o2)])
+
+    async def _membership(*a, **k):
+        return {"state": "active", "role": "admin"}
+
+    monkeypatch.setattr(github_app_auth, "installation_membership_role", _membership)
+
+    # A selection the caller doesn't actually administer must NOT grant access — still 409.
+    with pytest.raises(OrgResolutionError) as exc:
+        await r.resolve_org_for_github_user(
+            db, github_user_id=1, github_login="x", redis=None, selected_org_id=uuid.uuid4()
+        )
+    assert exc.value.code == "multiple_orgs"
+
+
+async def test_selected_org_id_bypasses_stale_cache(patch_helpers):
+    monkeypatch = patch_helpers
+    o1, o2 = uuid.uuid4(), uuid.uuid4()
+    db = _DB([_Install(11, "acme", o1), _Install(22, "globex", o2)])
+    # Cache is pinned to o1, but the caller explicitly picks o2 — the pick must win.
+    redis = _FakeRedis({f"{r._CACHE_PREFIX}1": str(o1)})
+
+    async def _membership(*a, **k):
+        return {"state": "active", "role": "admin"}
+
+    monkeypatch.setattr(github_app_auth, "installation_membership_role", _membership)
+
+    org = await r.resolve_org_for_github_user(
+        db, github_user_id=1, github_login="x", redis=redis, selected_org_id=o2
+    )
+    assert org.id == o2
 
 
 async def test_app_unconfigured_surfaces_503(patch_helpers):

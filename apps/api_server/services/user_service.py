@@ -50,19 +50,10 @@ async def create_user_and_org(
 ) -> SignUpResponse:
     """Create org + user + first API key in a single transaction."""
 
-    # ── Check duplicate email ─────────────────────────────────────────────────
-    existing = await db.execute(select(User).where(User.email == request.email.lower()))
-    if existing.scalar_one_or_none() is not None:
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "error": {
-                    "code": "email_already_exists",
-                    "message": f"An account with email '{request.email}' already exists.",
-                    "docs_url": "https://docs.algenta.ai/errors/email_already_exists",
-                }
-            },
-        )
+    # Email is unique PER ORG now (not globally): a person (single Supabase identity) may
+    # own and/or be a member of multiple orgs and hold subscriptions across them, so we do
+    # NOT block sign-up when the email exists in another org. Per-org uniqueness is enforced
+    # by the uq_users_org_email DB constraint + the invite/accept flow.
 
     # ── Create Organization ───────────────────────────────────────────────────
     base_slug = _slug_from_email(str(request.email))
@@ -162,5 +153,10 @@ async def create_user_and_org(
 
 
 async def get_user_by_email(email: str, db: AsyncSession) -> User | None:
-    result = await db.execute(select(User).where(User.email == email.lower()))
-    return result.scalar_one_or_none()
+    # Email is per-org now, so an email can match multiple rows across orgs. Return the
+    # earliest match (legacy email/password login is single-org; the shared identity lives
+    # in Supabase). Org-scoped callers should query by (org_id, email) directly.
+    result = await db.execute(
+        select(User).where(User.email == email.lower()).order_by(User.created_at)
+    )
+    return result.scalars().first()

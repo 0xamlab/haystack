@@ -74,11 +74,14 @@ class CheckoutRequest(BaseModel):
 async def account_billing_info(
     response: Response,
     authorization: Annotated[str | None, Header()] = None,
+    x_org_id: Annotated[str | None, Header()] = None,
     db: AsyncSession = Depends(get_db),
     redis: Any = Depends(get_redis),
 ) -> dict[str, Any]:
     response.headers["Cache-Control"] = "no-store"  # private billing data — never cache
-    org, _identity = await website_identity.verify_and_resolve_org(authorization, db, redis)
+    org, _identity = await website_identity.verify_and_resolve_org(
+        authorization, db, redis, selected_org_id=website_identity.parse_org_id(x_org_id)
+    )
     _require_billing()
 
     plan = org.plan.value
@@ -124,11 +127,14 @@ async def account_billing_checkout(
     request: Request,
     response: Response,
     authorization: Annotated[str | None, Header()] = None,
+    x_org_id: Annotated[str | None, Header()] = None,
     db: AsyncSession = Depends(get_db),
     redis: Any = Depends(get_redis),
 ) -> dict[str, Any]:
     response.headers["Cache-Control"] = "no-store"
-    org, identity = await website_identity.verify_and_resolve_org(authorization, db, redis)
+    org, identity = await website_identity.verify_and_resolve_org(
+        authorization, db, redis, selected_org_id=website_identity.parse_org_id(x_org_id)
+    )
     _require_billing()
 
     plan = payload.plan.strip().lower()
@@ -168,11 +174,14 @@ async def account_billing_portal(
     request: Request,
     response: Response,
     authorization: Annotated[str | None, Header()] = None,
+    x_org_id: Annotated[str | None, Header()] = None,
     db: AsyncSession = Depends(get_db),
     redis: Any = Depends(get_redis),
 ) -> dict[str, Any]:
     response.headers["Cache-Control"] = "no-store"
-    org, _identity = await website_identity.verify_and_resolve_org(authorization, db, redis)
+    org, _identity = await website_identity.verify_and_resolve_org(
+        authorization, db, redis, selected_org_id=website_identity.parse_org_id(x_org_id)
+    )
     _require_billing()
 
     if not org.stripe_customer_id:

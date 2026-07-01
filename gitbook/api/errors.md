@@ -30,6 +30,7 @@ For symptom-first help, see [Troubleshooting](../troubleshooting.md).
 | `account_suspended` | — |
 | `algenta_managed_capability_not_executable` | — |
 | `already_deprovisioned` | — |
+| `already_member` | — |
 | `api_key_not_found` | The referenced API key does not exist. |
 | `authentication_required` | No valid credential was supplied. Send `Authorization: Bearer <key>`. |
 | `browse_failed` | — |
@@ -48,7 +49,6 @@ For symptom-first help, see [Troubleshooting](../troubleshooting.md).
 | `device_platform_required` | The device-capped key needs `X-Algenta-Platform`. |
 | `device_revoked` | The device activation was revoked by an owner. |
 | `egress_policy_denied` | The deployment's egress policy blocked an outbound destination. |
-| `email_already_exists` | Sign-up: the email is already registered. |
 | `email_verification_required` | The account email must be verified first. |
 | `empty_events` | — |
 | `empty_source` | — |
@@ -79,6 +79,8 @@ For symptom-first help, see [Troubleshooting](../troubleshooting.md).
 | `invalid_type` | — |
 | `invalid_visibility` | — |
 | `invalid_workspace_id` | — |
+| `invite_expired` | — |
+| `invite_invalid` | — |
 | `job_access_denied` | — |
 | `job_already_terminal` | — |
 | `job_cannot_be_cancelled` | — |
@@ -118,6 +120,8 @@ For symptom-first help, see [Troubleshooting](../troubleshooting.md).
 | `rate_limit_backend_unavailable` | The rate-limit backend (Redis) is unreachable. |
 | `resource_write_conflict` | A concurrent write conflicted; retry. |
 | `runtime_library_metadata_missing` | — |
+| `seat_limit_reached` | — |
+| `seats_not_available` | — |
 | `selection_required` | — |
 | `self_role_change_forbidden` | — |
 | `semantic_training_unavailable` | — |
