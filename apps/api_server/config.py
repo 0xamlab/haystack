@@ -258,6 +258,12 @@ class Settings(BaseSettings):
     # False preserves the legacy ver:1 license for existing Codna/Algenta consumers — flip ON only after
     # confirming every consumer accepts ver:2 (see docs in telys SHARED-PLATFORM-INTEGRATION.md).
     license_v2_issuance: bool = Field(default=False)
+    # Per-product signer routing: comma-separated product names whose license is signed by the cf_worker
+    # (RS256, license.algenta.ai) instead of the global default (dev_hmac/HS256) — because their on-device
+    # runtime verifies the platform license OFFLINE. Default (None) = Telys only. **Algenta external users**
+    # follow the same model: add "algenta" here (e.g. "telys,algenta") once its runtime verifies RS256 — no
+    # code change, and Codna stays HS256. Only takes effect where license_signer_url is configured.
+    rs256_license_products: str | None = Field(default=None)
     api_key_prefix: str = Field(default=API_KEY_PREFIX_LIVE)
     api_key_test_prefix: str = Field(default=API_KEY_PREFIX_TEST)
 

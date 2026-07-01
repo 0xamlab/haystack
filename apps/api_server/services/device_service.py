@@ -39,7 +39,7 @@ import time
 import uuid
 from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
-from typing import TypedDict
+from typing import Any, TypedDict
 
 import structlog
 from fastapi import Request
@@ -724,6 +724,56 @@ def _activation_id(org_id: str, device_id: str) -> str:
     return str(uuid.uuid5(namespace, device_id))
 
 
+# Products whose on-device runtime verifies the platform RS256 (ver:2) license OFFLINE and therefore MUST be
+# signed by the shared cf_worker (license.algenta.ai), NOT the legacy dev_hmac HS256. Telys is the first such
+# externally-consumed product; **Algenta external users follow the SAME onboarding model next** (pip/login →
+# API key → device → offline RS256 license) — so this is deliberately product-generic, not telys-only. Enable a
+# product by adding it here or via settings.rs256_license_products (env-overridable, no code change). Codna and
+# Algenta's *internal* consumers still verify HS256, so they keep the global default until their runtime verifies
+# RS256 — flipping them before then would break live installs. This is why selection is per-product, not global.
+_RS256_LICENSE_PRODUCTS: frozenset[str] = frozenset({"telys"})
+
+# The cf_worker (license.algenta.ai) signs claims VERBATIM and enforces its own policy: iss must be the platform
+# issuer, aud must be the platform-runtime audience, and a standard `exp` is REQUIRED and capped (worker.js
+# MAX_TTL_SECONDS = 90d). Telys.verify independently requires the same iss + an accepted aud + a finite exp. So a
+# license routed to cf_worker MUST carry these exact claims (the legacy dev_hmac/Codna path keeps
+# iss=_JWT_ISSUER + expires_at and is never reshaped). Keep in sync with infra/cloudflare/license-signer/worker.js
+# and telys-sdk telys/verify.py (DEFAULT_LICENSE_ISSUER / DEFAULT_LICENSE_AUDIENCES).
+_PLATFORM_LICENSE_ISSUER = "https://license.algenta.ai"
+_PLATFORM_LICENSE_AUDIENCE = "algenta-runtime"
+_CF_WORKER_MAX_TTL_SECONDS = 89 * 86400  # stay safely under the worker's 90-day ceiling (clock-skew margin)
+
+
+def _rs256_products(settings: Any) -> set[str]:
+    """The set of products whose license is signed by the cf_worker (RS256). Config-extensible via
+    settings.rs256_license_products (comma-separated env string or an iterable); default = Telys only."""
+    configured = getattr(settings, "rs256_license_products", None)
+    if isinstance(configured, str):
+        return {p.strip() for p in configured.split(",") if p.strip()}
+    if configured:  # an explicit iterable (e.g. a set from a caller/test)
+        return set(configured)
+    return set(_RS256_LICENSE_PRODUCTS)
+
+
+def _use_cf_worker_signer(plan: str, settings: Any) -> bool:
+    """True when this plan's product(s) must be signed by the shared cf_worker (RS256, license.algenta.ai).
+
+    An externally-consumed product whose on-device runtime verifies the platform license OFFLINE (Telys now;
+    Algenta external next) routes here; everyone else stays on dev_hmac/HS256 so Codna/Algenta internal consumers
+    are untouched. Requires cf_worker to actually be configured (``license_signer_url``), else we fall back to
+    HS256 so dev/test never break. This is the SINGLE source of truth for RS256 routing — the global
+    ``license_signer_backend`` deliberately does NOT widen it (that would silently flip Codna/Algenta to RS256)."""
+    if not (getattr(settings, "license_signer_url", "") or ""):
+        return False
+    try:
+        from apps.api_server.services.entitlement_service import resolve_entitlement
+
+        products = set(getattr(resolve_entitlement(plan), "products", {}) or {})
+    except Exception:  # unknown/legacy plan: fall back to the plan-name signal, never crash issuance
+        products = {"telys"} if str(plan or "").startswith("telys") else set()
+    return bool(products & _rs256_products(settings))
+
+
 def _issue_license_jwt(
     device_id: str,
     api_key_prefix: str,
@@ -781,18 +831,30 @@ def _issue_license_jwt(
     #     handles a products map (see telys docs/SHARED-PLATFORM-INTEGRATION.md).
     from apps.api_server.config import get_settings
 
+    settings = get_settings()
     _is_telys_plan = str(plan or "").startswith("telys")
-    if _is_telys_plan or get_settings().license_v2_issuance:
+    if _is_telys_plan or settings.license_v2_issuance:
         from apps.api_server.services.entitlement_service import resolve_entitlement, to_license_claims
 
         payload.update(to_license_claims(resolve_entitlement(plan)))
 
-    # Sign via the pluggable signer (P1). Default backend is dev_hmac, which produces
-    # the exact same HS256 token as before; pem/cf_worker switch issuance to RS256
-    # with the private key off-host.
+    # PER-PRODUCT signing. Externally-consumed products whose runtime verifies RS256 OFFLINE (Telys now, Algenta
+    # external next) are signed by the shared cf_worker (license.algenta.ai); everyone else is signed with an
+    # EXPLICIT dev_hmac (HS256) — never the ambient global backend — so setting LICENSE_SIGNER_BACKEND=cf_worker
+    # can't silently flip Codna/Algenta to RS256 (which their HS256 runtimes would reject). See _use_cf_worker_signer.
     from apps.api_server.services.license_signer import get_license_signer
 
-    return get_license_signer().sign(payload)
+    if _use_cf_worker_signer(plan, settings):
+        # The cf_worker signs verbatim + enforces policy, and telys.verify enforces the same: platform iss, an
+        # accepted aud, and a finite `exp` capped at the worker's TTL ceiling. Shape ONLY this RS256 path — the
+        # Codna/Algenta dev_hmac path above keeps iss=_JWT_ISSUER + expires_at exactly as before.
+        capped_exp = min(effective_expires_at, now + _CF_WORKER_MAX_TTL_SECONDS)
+        payload["iss"] = _PLATFORM_LICENSE_ISSUER
+        payload["aud"] = _PLATFORM_LICENSE_AUDIENCE
+        payload["exp"] = capped_exp
+        payload["expires_at"] = capped_exp  # keep the token internally consistent (verify prefers exp)
+        return get_license_signer(backend="cf_worker").sign(payload)
+    return get_license_signer(backend="dev_hmac").sign(payload)
 
 
 # ── Public service functions ──────────────────────────────────────────────────

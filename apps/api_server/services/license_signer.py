@@ -146,12 +146,14 @@ def _read_private_key_pem(settings: Any) -> str:
     )
 
 
-def get_license_signer() -> LicenseSigner:
-    """Resolve the active signer from settings. Defaults to dev_hmac (legacy HS256)."""
+def get_license_signer(backend: str | None = None) -> LicenseSigner:
+    """Resolve a signer. Defaults to the settings backend (dev_hmac/legacy HS256); pass ``backend`` to force a
+    specific one — used for per-product routing (Telys plans force ``cf_worker`` so telys.verify accepts the
+    RS256 token, while Codna/Algenta keep the global default untouched)."""
     from apps.api_server.config import get_settings
 
     settings = get_settings()
-    backend = (getattr(settings, "license_signer_backend", None) or "dev_hmac").strip().lower()
+    backend = (backend or getattr(settings, "license_signer_backend", None) or "dev_hmac").strip().lower()
     if backend == "cf_worker":
         return CloudflareWorkerSigner(
             str(getattr(settings, "license_signer_url", "") or ""),

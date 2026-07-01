@@ -86,6 +86,7 @@ Where a variable has accepted aliases (for example a legacy `DE_` name), they ap
 | `RESEND_API_KEY` | — | — | — |
 | `RESEND_FROM_EMAIL` | `Codna <noreply@codna.ai>` | — | — |
 | `RESULT_STORAGE_ENABLED` | `False` | — | — |
+| `RS256_LICENSE_PRODUCTS` | — | — | — |
 | `RUNTIME_FALLBACK_MODE` | `auto` | — | Engine fallback policy: deny (prod) \| allow \| auto (dev only). |
 | `S3_ACCESS_KEY_ID` | `minioadmin` | — | — |
 | `S3_BUCKET_NAME` | `decision-engine-results` | — | — |

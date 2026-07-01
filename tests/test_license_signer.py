@@ -141,3 +141,17 @@ def test_factory_rejects_unknown_backend():
     ):
         with pytest.raises(ls.LicenseSignerError):
             ls.get_license_signer()
+
+
+def test_factory_backend_override_wins_over_settings_default():
+    # Per-product routing: an explicit backend= forces that signer even though settings default to dev_hmac,
+    # while backend=None keeps the settings default. This is how Telys plans get RS256 without a global flip.
+    with patch(
+        "apps.api_server.config.get_settings",
+        return_value=_settings(
+            license_signer_url="https://license.algenta.ai/sign",
+            license_signer_auth_token="tok",
+        ),
+    ):
+        assert isinstance(ls.get_license_signer(backend="cf_worker"), ls.CloudflareWorkerSigner)
+        assert isinstance(ls.get_license_signer(backend=None), ls.DevHmacSigner)
