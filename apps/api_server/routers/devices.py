@@ -604,3 +604,33 @@ async def device_revoke(
         raise HTTPException(status_code=404, detail="Device registration not found")
     logger.info("device_revoked", registration_id=str(registration_id), org_id=str(ctx["org_id"]))
     return {"revoked": True, "registration_id": str(registration_id)}
+
+
+@router.get(
+    "/v1/runtime/authorize",
+    summary="Authorize a runtime bundle download for the calling API key",
+    description=(
+        "Called server-to-server by the packages.telys.ai runtime host to gate a self-service download: a "
+        "valid API key whose plan grants the Telys runtime (products.telys) gets 200 + the entitlement; "
+        "otherwise 401 (bad key) / 403 (no runtime entitlement). Mints nothing — a pure authorization check."
+    ),
+)
+async def runtime_authorize(
+    ctx: Annotated[AuthContext, Depends(get_current_org)],
+) -> dict[str, object]:
+    from apps.api_server.services.entitlement_service import resolve_entitlement
+
+    plan = str(ctx.get("plan") or "")
+    grant = resolve_entitlement(plan).products.get("telys")
+    if grant is None:
+        raise HTTPException(
+            status_code=403,
+            detail={"error": "no_runtime_entitlement", "message": "plan does not grant the Telys runtime"},
+        )
+    return {
+        "authorized": True,
+        "product": "telys",
+        "tier": grant.tier,
+        "features": sorted(grant.features),
+        "plan": plan,
+    }
