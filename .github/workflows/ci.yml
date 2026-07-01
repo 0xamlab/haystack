@@ -301,18 +301,18 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # ── Deploy (Cloud Run / ECS) ──────────────────────────────────────────────
-  # Uncomment and configure for your cloud provider
-  # deploy:
-  #   name: Deploy to Production
-  #   runs-on: ubuntu-latest
-  #   needs: build
-  #   if: github.ref == 'refs/heads/main'
-  #   environment: production
-  #   steps:
-  #     - name: Deploy to Cloud Run
-  #       uses: google-github-actions/deploy-cloudrun@v2
-  #       with:
-  #         service: algenta-api
-  #         image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/api:latest
-  #         region: us-central1
+  # ── Deploy to Fly (AUTOMATIC on merge to main) ────────────────────────────
+  # Runs only after the image is built + pushed (needs: build), and only on a push to main —
+  # never on PRs. Calls the reusable deploy.yml, which mirrors the fresh `latest` image into the
+  # Fly registry and runs `flyctl deploy` (whose release_command applies alembic migrations).
+  # Deploys codna-api by default; widen to `all` to also auto-deploy codna-engine + the
+  # algenta control-plane. Manual `workflow_dispatch` on deploy.yml still works for ad-hoc deploys.
+  deploy:
+    name: Deploy to Fly
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    uses: ./.github/workflows/deploy.yml
+    with:
+      tag: latest
+      target: api
+    secrets: inherit
