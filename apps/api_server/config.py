@@ -449,6 +449,12 @@ class Settings(BaseSettings):
         default=None,
         validation_alias=AliasChoices("ALGENTA_BASE_URL", "DE_BASE_URL", "ALGENTA_API_URL"),
     )
+    # Shared identity portal (accounts.thyn.ai) — the RFC-8628 device-login verification_uri points here
+    # (…/device). Brand-aware via ?app=<slug>, resolved from the device grant's client_id.
+    accounts_base_url: str = Field(
+        default="https://accounts.thyn.ai",
+        validation_alias=AliasChoices("ALGENTA_ACCOUNTS_BASE_URL", "ACCOUNTS_BASE_URL"),
+    )
 
 
 @lru_cache

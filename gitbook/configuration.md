@@ -13,6 +13,7 @@ Where a variable has accepted aliases (for example a legacy `DE_` name), they ap
 
 | Variable | Default | Aliases | Description |
 | --- | --- | --- | --- |
+| `ALGENTA_ACCOUNTS_BASE_URL` | `https://accounts.thyn.ai` | `ACCOUNTS_BASE_URL` | — |
 | `ALGENTA_AGENT_CORE_URL` | — | — | Optional agent-runtime (sidecar) endpoint. |
 | `ALGENTA_ALLOW_OUTBOUND_NETWORK` | — | — | Permit egress (default false in air-gapped). |
 | `ALGENTA_API_PUBLIC_BASE_URL` | — | `API_PUBLIC_BASE_URL` | Public-facing API base URL (cloud). |

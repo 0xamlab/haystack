@@ -24,6 +24,7 @@ from .llm_usage_record import USD_MICROS, LLMKeyType, LLMUsageRecord
 from .organization import Organization, OrgPlan, OrgStatus
 from .simulation_run import ExecutionType, RunStatus, SimulationMode, SimulationRun
 from .dormant_notification import DormantNotification
+from .device_grant import DeviceGrant
 from .team_invite import InviteStatus, TeamInvite
 from .tenant_provider_key import ENGINE_BACKEND, TenantProviderKey
 from .usage_record import UsageEndpoint, UsageRecord
@@ -31,6 +32,7 @@ from .user import User, UserRole, UserStatus
 
 __all__ = [
     "DormantNotification",
+    "DeviceGrant",
     "TeamInvite",
     "InviteStatus",
     "Organization",

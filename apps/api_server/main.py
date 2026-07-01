@@ -293,6 +293,11 @@ from apps.api_server.routers import devices as _devices_router  # noqa: E402
 
 app.include_router(_devices_router.router)
 
+# CLI device-login (RFC 8628) — POST /oauth/device/{code,token,approve}, GET /oauth/device/grant
+from apps.api_server.routers import oauth_device as _oauth_device_router  # noqa: E402
+
+app.include_router(_oauth_device_router.router)
+
 # License control-plane surfaces — GET /.well-known/jwks.json (+ renewal/CRL in P3b)
 from apps.api_server.routers import license as _license_router  # noqa: E402
 
