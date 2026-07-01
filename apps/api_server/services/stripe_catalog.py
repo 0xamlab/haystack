@@ -14,7 +14,7 @@ from typing import Any
 
 import structlog
 
-from apps.api_server.services.stripe_service import _is_placeholder, stripe_api_request
+from apps.api_server.services.stripe_service import _is_placeholder, _stripe_headers, stripe_api_request
 
 log = structlog.get_logger(__name__)
 
@@ -51,6 +51,9 @@ async def list_plans(app: str, *, use_cache: bool = True) -> list[dict[str, Any]
         method="GET",
         path="/v1/prices?active=true&limit=100&expand[]=data.product",
         surface="billing_catalog",
+        # stripe_api_request does NOT auto-attach auth — each caller passes it (like checkout/portal).
+        # Without this the catalog call hit Stripe unauthenticated → 401 → empty plans.
+        headers=_stripe_headers(),
     )
     data = resp.json().get("data", []) if resp.status_code < 400 else []
     plans: list[dict[str, Any]] = []
