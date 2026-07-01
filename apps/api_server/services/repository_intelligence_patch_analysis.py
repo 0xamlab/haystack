@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import re
 from collections import defaultdict
 from collections.abc import Callable
@@ -7,8 +8,11 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-_PATCH_FILE_RE = re.compile(r"^\+\+\+ b/(.+)$", re.MULTILINE)
-_PATCH_HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@", re.MULTILINE)
+from apps.api_server.services.repository_intelligence_contracts import (
+    RepositoryIntelligenceError,
+)
+
+_PATCH_HUNK_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 _TEST_PATH_SEGMENTS = ("/tests/", "/test/", "/t/", "/src/test/")
 _TEST_PATH_PREFIXES = ("tests/", "test/", "t/")
 _TEST_PATH_SUFFIXES = (
@@ -233,6 +237,48 @@ _MaterializedSnapshot = Callable[[dict[str, Any]], Any]
 _GitCommand = Callable[..., str]
 
 
+def _patch_header_path(raw_value: str, *, expected_prefix: str) -> str | None:
+    value = raw_value.strip()
+    if value == "/dev/null":
+        return None
+    if value.startswith(expected_prefix):
+        return value[len(expected_prefix) :]
+    return value
+
+
+def _record_changed_line(
+    changed_lines: dict[str, set[int]],
+    *,
+    file_path: str | None,
+    line_number: int,
+) -> None:
+    if file_path is None or line_number < 1:
+        return
+    changed_lines[file_path].add(line_number)
+
+
+def _compress_changed_line_sets(
+    changed_lines: dict[str, set[int]],
+) -> dict[str, list[tuple[int, int]]]:
+    compressed: dict[str, list[tuple[int, int]]] = {}
+    for file_path, line_numbers in changed_lines.items():
+        if not line_numbers:
+            continue
+        ranges: list[tuple[int, int]] = []
+        sorted_lines = sorted(line_numbers)
+        start = sorted_lines[0]
+        end = start
+        for line_number in sorted_lines[1:]:
+            if line_number == end + 1:
+                end = line_number
+                continue
+            ranges.append((start, end))
+            start = end = line_number
+        ranges.append((start, end))
+        compressed[file_path] = ranges
+    return compressed
+
+
 def _validate_patch_against_snapshot(
     *,
     snapshot_manifest: dict[str, Any],
@@ -240,32 +286,94 @@ def _validate_patch_against_snapshot(
     materialized_snapshot: _MaterializedSnapshot,
     git_command: _GitCommand,
 ) -> None:
+    patch_files = sorted(_patch_changed_files(patch_diff))
+    patch_hash = hashlib.sha256(patch_diff.encode("utf-8")).hexdigest()
     with materialized_snapshot(snapshot_manifest) as root_path:
-        git_command(["git", "-C", str(root_path), "init", "-q"], timeout=30.0)
         patch_path = root_path / ".algenta.patch.diff"
         patch_path.write_text(patch_diff, encoding="utf-8")
-        git_command(
-            ["git", "-C", str(root_path), "apply", "--check", str(patch_path)],
-            timeout=30.0,
-        )
+        init_command = ["git", "-C", str(root_path), "init", "-q"]
+        validate_command = ["git", "-C", str(root_path), "apply", "--check", str(patch_path)]
+        try:
+            git_command(init_command, timeout=30.0)
+            git_command(validate_command, timeout=30.0)
+        except RepositoryIntelligenceError as exc:
+            details = dict(exc.details or {})
+            details.update(
+                {
+                    "snapshot_id": snapshot_manifest.get("snapshot_id"),
+                    "resolved_revision": snapshot_manifest.get("resolved_revision"),
+                    "source_archive_path": snapshot_manifest.get("source_archive_path"),
+                    "patch_hash": patch_hash,
+                    "patch_files": patch_files,
+                    "validation_command": validate_command,
+                }
+            )
+            raise RepositoryIntelligenceError(
+                code="repository_patch_validation_failed",
+                message=(
+                    "Generated patch failed validation against the materialized snapshot baseline: "
+                    f"{exc.message}"
+                ),
+                status_code=422,
+                details=details,
+            ) from exc
 
 
 def _patch_changed_files(patch_diff: str) -> dict[str, list[tuple[int, int]]]:
-    changed_files: dict[str, list[tuple[int, int]]] = defaultdict(list)
-    current_file: str | None = None
+    changed_lines: dict[str, set[int]] = defaultdict(set)
+    old_file_path: str | None = None
+    new_file_path: str | None = None
+    old_line: int | None = None
+    new_line: int | None = None
     for line in patch_diff.splitlines():
-        file_match = _PATCH_FILE_RE.match(line)
-        if file_match:
-            current_file = file_match.group(1)
+        if line.startswith("diff --git "):
+            old_file_path = None
+            new_file_path = None
+            old_line = None
+            new_line = None
+            continue
+        if line.startswith("--- "):
+            old_file_path = _patch_header_path(line[4:], expected_prefix="a/")
+            old_line = None
+            new_line = None
+            continue
+        if line.startswith("+++ "):
+            new_file_path = _patch_header_path(line[4:], expected_prefix="b/")
+            old_line = None
+            new_line = None
             continue
         hunk_match = _PATCH_HUNK_RE.match(line)
-        if hunk_match and current_file is not None:
-            start_line = int(hunk_match.group(1))
-            line_count = int(hunk_match.group(2) or "1")
-            changed_files[current_file].append(
-                (start_line, start_line + max(line_count, 1) - 1)
+        if hunk_match:
+            old_line = int(hunk_match.group(1))
+            new_line = int(hunk_match.group(3))
+            continue
+        if old_line is None or new_line is None:
+            continue
+        if line.startswith("\\"):
+            continue
+        if line.startswith(" "):
+            old_line += 1
+            new_line += 1
+            continue
+        if line.startswith("-"):
+            _record_changed_line(
+                changed_lines,
+                file_path=old_file_path or new_file_path,
+                line_number=old_line,
             )
-    return dict(changed_files)
+            old_line += 1
+            continue
+        if line.startswith("+"):
+            _record_changed_line(
+                changed_lines,
+                file_path=new_file_path or old_file_path,
+                line_number=new_line,
+            )
+            new_line += 1
+            continue
+        old_line = None
+        new_line = None
+    return _compress_changed_line_sets(changed_lines)
 
 
 def _top_level_service(file_path: str) -> str:

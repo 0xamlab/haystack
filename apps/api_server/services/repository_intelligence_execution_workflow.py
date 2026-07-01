@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 from collections.abc import Callable
 from pathlib import Path
@@ -30,11 +31,13 @@ from apps.api_server.services.repository_intelligence_remote_pr import (
 )
 from apps.api_server.services.repository_intelligence_shared import _coerce_scope_uuid
 
+logger = logging.getLogger(__name__)
+
 _RequireRepositoryConnector = Callable[[DataConnector], None]
 _GetPolicy = Callable[[str], Any]
 
 
-def _resolve_get_policy(get_policy: "_GetPolicy | None") -> "_GetPolicy":
+def _resolve_get_policy(get_policy: _GetPolicy | None) -> _GetPolicy:
     # The core re-export slot (``repository_intelligence.get_policy``) is ``None`` until a
     # caller injects a policy provider; fall back to the execution-policy service so the
     # simulation path works without explicit wiring while still honouring an injected slot.
@@ -45,7 +48,7 @@ def _resolve_get_policy(get_policy: "_GetPolicy | None") -> "_GetPolicy":
     return _service_get_policy
 
 
-def _resolve_run_simulation_fast(run_simulation_fast: "Any | None") -> "Any":
+def _resolve_run_simulation_fast(run_simulation_fast: Any | None) -> Any:
     if run_simulation_fast is not None:
         return run_simulation_fast
     from apps.api_server.services.simulation_service import (
@@ -228,6 +231,87 @@ def _simulation_request_from_patch_impact(
         impacted_symbol_count=len(impact.get("impacted_symbols", [])),
         likely_failing_test_count=len(impact.get("likely_failing_tests", [])),
         confidence=confidence,
+    )
+
+
+def _simulation_variables_payload(
+    simulation_request: SimulateRequestExpert,
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "name": variable.name,
+            "distribution": variable.distribution,
+            "params": dict(variable.params),
+        }
+        for variable in simulation_request.simulation.variables
+    ]
+
+
+def _simulation_request_summary(
+    *,
+    simulation_request: SimulateRequestExpert,
+    patch_impact: dict[str, Any],
+) -> dict[str, Any]:
+    impacted_symbol_count = len(patch_impact.get("impacted_symbols", []))
+    variables = _simulation_variables_payload(simulation_request)
+    return {
+        "runs": simulation_request.runs,
+        "seed": simulation_request.seed,
+        "blast_radius": patch_impact["blast_radius"],
+        "rollback_complexity": patch_impact["rollback_complexity"],
+        "impacted_symbol_count": impacted_symbol_count,
+        "dependency_fanout": patch_impact["dependency_fanout"],
+        "api_break_candidates": patch_impact["api_break_candidates"],
+        "variables": variables,
+        "objective_function": simulation_request.simulation.objective_function,
+    }
+
+
+def _risk_input_summary(
+    *,
+    simulation_request: SimulateRequestExpert,
+    patch_impact: dict[str, Any],
+) -> dict[str, Any]:
+    variable_names = [
+        variable["name"]
+        for variable in _simulation_variables_payload(simulation_request)
+    ]
+    return {
+        "runs": simulation_request.runs,
+        "seed": simulation_request.seed,
+        "blast_radius": patch_impact["blast_radius"],
+        "rollback_complexity": patch_impact["rollback_complexity"],
+        "impacted_symbol_count": len(patch_impact.get("impacted_symbols", [])),
+        "dependency_fanout": patch_impact["dependency_fanout"],
+        "api_break_candidates": patch_impact["api_break_candidates"],
+        "variable_names": variable_names,
+        "objective_function": simulation_request.simulation.objective_function,
+    }
+
+
+def _log_repository_simulation_computed(
+    *,
+    operation_id: str,
+    repository_id: str,
+    decision_plan_id: str,
+    simulation_id: str,
+    raw_recommended_action: str,
+    final_recommended_action: str,
+    gate_passed: bool,
+) -> None:
+    logger.info(
+        "simulation_computed",
+        extra={
+            "action_scope": "repository_apply_gate",
+            "operation_id": operation_id,
+            "repository_id": repository_id,
+            "decision_plan_id": decision_plan_id,
+            "simulation_id": simulation_id,
+            "raw_recommended_action": raw_recommended_action,
+            "final_recommended_action": final_recommended_action,
+            "recommended_action": final_recommended_action,
+            "gate_passed": gate_passed,
+        },
     )
 
 
@@ -471,12 +555,17 @@ async def simulate_repository_decision(
         org_id=_coerce_scope_uuid(connector.org_id),
         api_key_id=_coerce_scope_uuid(connector.owner_key_id) if connector.owner_key_id else None,
     )
+    raw_recommended_action = str(envelope.recommended_action)
     risk_floor = policy.risk_floor
     var_95 = abs(float(envelope.metrics.var_95 or 0.0))
     gate_passed = envelope.confidence >= policy.min_confidence and (
         risk_floor is None or var_95 <= risk_floor
     )
     action = "apply_patch" if gate_passed else "hold_patch"
+    simulation_request_summary = _simulation_request_summary(
+        simulation_request=simulation_request,
+        patch_impact=patch_impact_manifest,
+    )
     decision_plan = decision_plan.model_copy(
         update={
             "confidence": envelope.confidence,
@@ -501,6 +590,9 @@ async def simulate_repository_decision(
     )
     score_breakdown = {
         "repository_risk_score": float(patch_impact_manifest["risk_score"]),
+        "repository_raw_risk_score": float(
+            patch_impact_manifest.get("raw_risk_score", patch_impact_manifest["risk_score"])
+        ),
         "apply_gate": {
             "passed": gate_passed,
             "policy_snapshot_id": policy.snapshot_id,
@@ -508,12 +600,17 @@ async def simulate_repository_decision(
             "risk_floor": risk_floor,
             "var_95": envelope.metrics.var_95,
         },
+        "risk_input_summary": _risk_input_summary(
+            simulation_request=simulation_request,
+            patch_impact=patch_impact_manifest,
+        ),
         "patch_impact": {
             "changed_files": patch_impact_manifest["changed_files"],
             "blast_radius": patch_impact_manifest["blast_radius"],
             "rollback_complexity": patch_impact_manifest["rollback_complexity"],
             "dependency_fanout": patch_impact_manifest["dependency_fanout"],
             "api_break_candidates": patch_impact_manifest["api_break_candidates"],
+            "risk_adjustments": patch_impact_manifest.get("risk_adjustments", []),
         },
     }
     validated_inputs = dict(envelope.validated_inputs or {})
@@ -548,6 +645,7 @@ async def simulate_repository_decision(
             "decision_plan_id": request.decision_plan_id,
             "simulation_id": simulation_id,
             "apply_gate": score_breakdown["apply_gate"],
+            "simulation_request": simulation_request_summary,
             "created_at": utc_now().isoformat(),
             "envelope": envelope.model_dump(mode="json"),
         }
@@ -585,6 +683,15 @@ async def simulate_repository_decision(
             lookup_key=lookup_key,
             payload=simulation_lookup_payload,
         )
+    _log_repository_simulation_computed(
+        operation_id=str(envelope.run_id),
+        repository_id=repository_id,
+        decision_plan_id=request.decision_plan_id,
+        simulation_id=simulation_id,
+        raw_recommended_action=raw_recommended_action,
+        final_recommended_action=action,
+        gate_passed=gate_passed,
+    )
     return envelope
 
 

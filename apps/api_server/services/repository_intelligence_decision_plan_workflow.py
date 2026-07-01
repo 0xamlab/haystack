@@ -56,6 +56,45 @@ _ValidatePatchAgainstSnapshot = Callable[..., None]
 _PatchChangedFiles = Callable[[str], dict[str, list[tuple[int, int]]]]
 _TopLevelService = Callable[[str], str]
 _IsTestPath = Callable[[str], bool]
+_SURGICAL_RISK_FLOOR = 0.05
+_SURGICAL_RISK_DELTA = 0.08
+_NON_SOURCE_PATH_SEGMENTS = frozenset(
+    {
+        ".github",
+        ".gitlab",
+        ".idea",
+        ".vscode",
+        "ci",
+        "config",
+        "configs",
+        "docs",
+        "fixtures",
+        "generated",
+        "infra",
+        "migrations",
+        "scripts",
+        "secrets",
+        "vendor",
+        "workflows",
+    }
+)
+_NON_SOURCE_PATH_SUFFIXES = (
+    ".cfg",
+    ".conf",
+    ".crt",
+    ".env",
+    ".ini",
+    ".json",
+    ".key",
+    ".md",
+    ".pem",
+    ".srl",
+    ".toml",
+    ".txt",
+    ".xml",
+    ".yaml",
+    ".yml",
+)
 
 
 def _planner_usage_from_telemetry(data: dict[str, Any]) -> dict[str, Any]:
@@ -286,8 +325,6 @@ def _patch_impact_summary(
                 for start, end in ranges
             )
         ]
-        if not matched_symbols:
-            matched_symbols = list(file_symbols)
         for symbol in matched_symbols:
             impacted_symbols.add(symbol["symbol_name"])
             if Path(file_path).parts[:1] in [("packages",), ("src",)]:
@@ -302,6 +339,17 @@ def _patch_impact_summary(
                         if symbol["symbol_kind"] in {"class", "function", "async_function"}
                         else "medium"
                     ),
+                    "likely_failing_test": None,
+                    "dependency_target": None,
+                }
+            )
+        if not matched_symbols:
+            records.append(
+                {
+                    "impacted_file": file_path,
+                    "impacted_symbol": None,
+                    "risk_type": "file_change",
+                    "severity": "low",
                     "likely_failing_test": None,
                     "dependency_target": None,
                 }
@@ -355,10 +403,83 @@ def _patch_impact_summary(
         "likely_failing_tests": sorted(likely_failing_tests),
         "rollback_complexity": rollback_complexity,
         "blast_radius": blast_radius,
+        "raw_risk_score": risk_score,
         "risk_score": risk_score,
+        "risk_adjustments": [],
         "api_break_candidates": api_break_candidates,
         "dependency_fanout": dependency_fanout,
         "records": records,
+    }
+
+
+def _is_non_source_patch_path(file_path: str, *, is_test_path: _IsTestPath) -> bool:
+    if is_test_path(file_path):
+        return True
+    path = Path(file_path)
+    lower_parts = {part.lower() for part in path.parts}
+    lower_name = path.name.lower()
+    lower_path = file_path.lower()
+    return (
+        any(part in _NON_SOURCE_PATH_SEGMENTS for part in lower_parts)
+        or lower_name.endswith(_NON_SOURCE_PATH_SUFFIXES)
+        or "/generated/" in f"/{lower_path}"
+    )
+
+
+def _diagnostic_target_paths(triage_manifest: dict[str, Any]) -> set[str]:
+    signals = triage_manifest.get("signals")
+    if not isinstance(signals, dict):
+        return set()
+    diagnostics = signals.get("diagnostics")
+    if not isinstance(diagnostics, list):
+        return set()
+    return {
+        str(item["path"])
+        for item in diagnostics
+        if isinstance(item, dict) and str(item.get("path") or "").strip()
+    }
+
+
+def _calibrate_patch_impact_risk(
+    impact_summary: dict[str, Any],
+    *,
+    triage_manifest: dict[str, Any],
+    is_test_path: _IsTestPath,
+) -> dict[str, Any]:
+    raw_risk_score = float(impact_summary.get("raw_risk_score", impact_summary["risk_score"]))
+    changed_files = [str(path) for path in impact_summary.get("changed_files", [])]
+    impacted_symbols = [str(symbol) for symbol in impact_summary.get("impacted_symbols", [])]
+    diagnostic_paths = _diagnostic_target_paths(triage_manifest)
+    risk_adjustments: list[dict[str, Any]] = []
+    risk_score = raw_risk_score
+    is_verified_surgical_patch = (
+        len(changed_files) == 1
+        and len(impacted_symbols) == 1
+        and int(impact_summary.get("dependency_fanout", 0)) == 0
+        and not impact_summary.get("likely_failing_tests")
+        and changed_files[0] in diagnostic_paths
+        and not _is_non_source_patch_path(changed_files[0], is_test_path=is_test_path)
+    )
+    if is_verified_surgical_patch:
+        delta = min(_SURGICAL_RISK_DELTA, max(raw_risk_score - _SURGICAL_RISK_FLOOR, 0.0))
+        if delta > 0.0:
+            risk_score = round(max(_SURGICAL_RISK_FLOOR, raw_risk_score - delta), 4)
+            risk_adjustments.append(
+                {
+                    "kind": "verified_surgical_patch",
+                    "delta": round(-delta, 4),
+                    "reason": (
+                        "Single-file, single-symbol source fix matches the diagnostic target with "
+                        "no dependency fanout or additional failing tests."
+                    ),
+                    "matched_file": changed_files[0],
+                }
+            )
+    return {
+        **impact_summary,
+        "raw_risk_score": round(raw_risk_score, 4),
+        "risk_score": risk_score,
+        "risk_adjustments": risk_adjustments,
     }
 
 
@@ -534,6 +655,7 @@ async def create_repository_decision_plan(
     generate_repository_patch_plan: _GenerateRepositoryPatchPlan,
     validate_patch_against_snapshot: _ValidatePatchAgainstSnapshot,
     patch_impact_summary: Callable[[dict[str, Any], str], dict[str, Any]],
+    is_test_path: _IsTestPath,
 ) -> RepositoryDecisionPlanResponse:
     require_repository_connector(connector)
     org_id = str(connector.org_id)
@@ -711,7 +833,11 @@ async def create_repository_decision_plan(
             patch_diff=patch_diff,
         )
 
-        impact_summary = patch_impact_summary(snapshot_manifest, patch_diff)
+        impact_summary = _calibrate_patch_impact_risk(
+            patch_impact_summary(snapshot_manifest, patch_diff),
+            triage_manifest=triage_manifest,
+            is_test_path=is_test_path,
+        )
         patch_impact_report_id = _stable_identifier(
             "patch_impact",
             {

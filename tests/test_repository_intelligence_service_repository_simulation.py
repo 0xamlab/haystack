@@ -223,3 +223,97 @@ async def test_repository_simulation_snapshot_mismatch_fails_closed(
     assert excinfo.value.code == "repository_simulation_snapshot_mismatch"
 
 
+@pytest.mark.anyio
+async def test_repository_simulation_persists_risk_inputs_and_logs_final_action(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ALGENTA_RUNTIME_DIR", str(tmp_path / "runtime"))
+    repo_path = _literal_mismatch_repo(tmp_path)
+    connector = _connector_for_repo(repo_path)
+    logged: list[tuple[str, dict[str, Any]]] = []
+
+    snapshot = repository_service.create_repository_snapshot(
+        connector=connector,
+        request=RepositorySnapshotCreateRequest(),
+    )
+    triage = repository_service.triage_repository(
+        connector=connector,
+        request=RepositoryTriageRequest(
+            snapshot_id=snapshot.snapshot_id,
+            signals={
+                "issue_text": (
+                    "Production regression: normalize_status returns closed for OPEN inputs."
+                ),
+                "diagnostics": [
+                    {
+                        "path": "src/service.py",
+                        "line": 4,
+                        "severity": "error",
+                        "message": "normalize_status('OPEN') returns 'closed' instead of 'open'.",
+                    }
+                ],
+            },
+        ),
+    )
+
+    async def _fake_run_simulation_fast(*args, **kwargs):  # type: ignore[no-untyped-def]
+        envelope = _decision_envelope()
+        envelope.recommended_action = "reject"
+        return envelope, {"execution_ms": 11}
+
+    monkeypatch.setattr(repository_service, "run_simulation_fast", _fake_run_simulation_fast)
+    monkeypatch.setattr(
+        repository_service,
+        "get_policy",
+        lambda _org_id: SimpleNamespace(
+            snapshot_id="policy-1", min_confidence=0.8, risk_floor=20.0
+        ),
+    )
+    monkeypatch.setattr(
+        repository_execution_workflow.logger,
+        "info",
+        lambda event, **kwargs: logged.append((event, kwargs)),
+    )
+
+    decision_plan = await repository_service.create_repository_decision_plan(
+        connector=connector,
+        request=RepositoryDecisionPlanCreateRequest(
+            snapshot_id=snapshot.snapshot_id,
+            workspace_evidence_bundle_ref=triage.workspace_evidence_bundle_ref,
+            model=repository_service._DETERMINISTIC_LOCAL_REPOSITORY_MODEL_ID,
+        ),
+    )
+    envelope = await repository_service.simulate_repository_decision(
+        connector=connector,
+        request=RepositorySimulationRequest(
+            snapshot_id=snapshot.snapshot_id,
+            decision_plan_id=decision_plan.decision_plan_id,
+        ),
+    )
+
+    simulation_id = str(envelope.validated_inputs["simulation_id"])
+    simulation_manifest = repository_service._read_json(
+        repository_service._simulations_dir(str(connector.org_id), str(connector.id))
+        / f"{simulation_id}.json"
+    )
+    repository_log = next(
+        kwargs["extra"]
+        for event, kwargs in logged
+        if event == "simulation_computed"
+        and kwargs.get("extra", {}).get("action_scope") == "repository_apply_gate"
+    )
+
+    assert envelope.recommended_action == "apply_patch"
+    assert simulation_manifest["simulation_request"]["runs"] >= 1_000
+    assert simulation_manifest["simulation_request"]["seed"] == 42
+    assert simulation_manifest["simulation_request"]["objective_function"]
+    assert (
+        envelope.score_breakdown["risk_input_summary"]["objective_function"]
+        == simulation_manifest["simulation_request"]["objective_function"]
+    )
+    assert isinstance(envelope.score_breakdown["patch_impact"]["risk_adjustments"], list)
+    assert repository_log["repository_id"] == str(connector.id)
+    assert repository_log["simulation_id"] == simulation_id
+    assert repository_log["raw_recommended_action"] == "reject"
+    assert repository_log["final_recommended_action"] == "apply_patch"

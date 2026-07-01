@@ -818,6 +818,7 @@ async def create_repository_decision_plan(
         generate_repository_patch_plan=_generate_repository_patch_plan,
         validate_patch_against_snapshot=_validate_patch_against_snapshot,
         patch_impact_summary=_patch_impact_summary,
+        is_test_path=_is_test_path,
     )
 
 

@@ -196,9 +196,14 @@ async def run_simulation_fast(
 
     logger.info(
         "simulation_computed",
-        run_id=str(run_id),
-        execution_ms=execution_ms,
-        recommended_action=envelope.recommended_action,
+        extra={
+            "run_id": str(run_id),
+            "execution_ms": execution_ms,
+            "action_scope": "engine",
+            "raw_recommended_action": envelope.recommended_action,
+            "final_recommended_action": envelope.recommended_action,
+            "recommended_action": envelope.recommended_action,
+        },
     )
 
     persist_meta: dict[str, Any] = {

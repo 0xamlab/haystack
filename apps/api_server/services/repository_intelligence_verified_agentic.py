@@ -9,13 +9,12 @@ from __future__ import annotations
 
 import asyncio
 import difflib
+import inspect
 import logging
 import os
 import subprocess
 from pathlib import Path
 from typing import Any
-
-logger = logging.getLogger(__name__)
 
 from apps.api_server.services import (
     repository_intelligence_storage as repository_storage,
@@ -28,6 +27,8 @@ from apps.api_server.services.tenant_keys import (
     resolve_engine_api_key,
     resolve_provider_api_key,
 )
+
+logger = logging.getLogger(__name__)
 
 
 # ─── verified_agentic planner tier (forked-Cline agent-core; engine "cline_fork") ──
@@ -190,7 +191,9 @@ def _capture_repository_tree_state(root_path: Path) -> dict[str, str]:
 
     Binary, oversized, symlinked, and VCS-internal files are skipped. Used to
     compute the authoritative diff in Python (the agent's own ``working_tree_diff``
-    is advisory/debug only).
+    is advisory/debug only). Files are read with ``newline=""`` so CRLF/LF bytes
+    are preserved exactly; newline normalization here would generate patches that
+    cannot be validated against the materialized snapshot baseline later on.
     """
     state: dict[str, str] = {}
     root_abs = root_path.resolve()
@@ -203,7 +206,8 @@ def _capture_repository_tree_state(root_path: Path) -> dict[str, str]:
         try:
             if path.stat().st_size > _VERIFIED_AGENTIC_MAX_CAPTURE_FILE_BYTES:
                 continue
-            state[relative] = path.read_text(encoding="utf-8")
+            with path.open("r", encoding="utf-8", newline="") as handle:
+                state[relative] = handle.read()
         except (UnicodeDecodeError, OSError):
             continue
     return state
@@ -417,6 +421,20 @@ def _agent_provider_chain() -> list[tuple[str | None, str | None]]:
     return chain
 
 
+def _materialized_snapshot_with_git_baseline(snapshot_manifest: dict[str, Any]):
+    """Use the git-baseline materialization contract when the provider supports it.
+
+    The production storage helper accepts ``git_baseline=...``. Some seam tests
+    monkeypatch ``materialized_snapshot`` with older one-arg contextmanager fakes,
+    so detect that explicitly instead of assuming every injected callable already
+    speaks the newer kwarg.
+    """
+    materialize = repository_storage.materialized_snapshot
+    if "git_baseline" in inspect.signature(materialize).parameters:
+        return materialize(snapshot_manifest, git_baseline=True)
+    return materialize(snapshot_manifest)
+
+
 def _reset_worktree(root_path: Path) -> None:
     """Reset the materialized snapshot to its git baseline (materialized_snapshot(git_baseline=True)) so a
     failover attempt on a new provider starts clean, not from a prior attempt's partial edits."""
@@ -591,9 +609,7 @@ async def _generate_verified_agentic_repository_patch_plan(
         "timeout_ms": int(os.environ.get("ALGENTA_AGENT_TURN_TIMEOUT_MS", "600000")),
     }
 
-    with repository_storage.materialized_snapshot(
-        snapshot_manifest, git_baseline=True
-    ) as root_path:
+    with _materialized_snapshot_with_git_baseline(snapshot_manifest) as root_path:
         root_path = Path(root_path)
         before_state = _capture_repository_tree_state(root_path)
         # AR-OPT-4: attach the full line-context bundle so the agent edits the suspect
