@@ -39,6 +39,7 @@ from apps.api_server.routers import (
     credits,
     devices,
     metering,
+    oauth_device,
     team,
 )
 from apps.api_server.routers import license as license_router
@@ -58,6 +59,7 @@ _CONTROL_PLANE_ROUTERS = (
     credits.router,
     metering.router,
     devices.router,
+    oauth_device.router,
     license_router.router,
     meta_router.router,
     control_plane.router,

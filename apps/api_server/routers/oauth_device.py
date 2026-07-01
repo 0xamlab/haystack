@@ -95,17 +95,23 @@ def _client_ip(request: Request) -> str:
 
 
 async def _rate_limit(key: str, redis: Any, *, prefix: str, per_minute: int) -> None:
-    """Best-effort rate limit — never fail the flow if Redis is down (raises 429 only on a real breach)."""
+    """Best-effort rate limit for the login path: surface a real 429 breach, but FAIL OPEN on a limiter outage.
+
+    The control plane runs Redis-optional (degrades to app.state.redis=None), and check_named_rate_limit
+    fail-CLOSES with 503 rate_limit_backend_unavailable under the strict policy. Blocking device-login on a
+    rate-limiter outage would make `telys login` unavailable whenever Redis is down — so we swallow anything
+    that isn't a genuine 429 (the actual over-limit signal)."""
+    from fastapi import HTTPException
+
     try:
         await check_named_rate_limit(
             key, redis, key_prefix=prefix, limit_per_minute=per_minute, error_code="slow_down"
         )
-    except Exception as exc:  # noqa: BLE001
-        from fastapi import HTTPException
-
-        if isinstance(exc, HTTPException):
-            raise
-        # Redis unavailable / misconfigured → don't block logins on the limiter.
+    except HTTPException as exc:
+        if exc.status_code == 429:
+            raise  # real over-limit breach — surface it
+        return  # 503 backend-unavailable / misconfigured → don't block logins on the limiter
+    except Exception:  # noqa: BLE001
         return
 
 

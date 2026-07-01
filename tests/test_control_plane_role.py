@@ -71,6 +71,10 @@ def test_control_plane_has_required_surfaces() -> None:
         "/v1/control-plane/meta",
         "/v1/device/register",
         "/v1/billing/webhook",
+        "/oauth/device/code",  # RFC 8628 CLI device-login (telys login)
+        "/oauth/device/token",
+        "/oauth/device/approve",
+        "/v1/runtime/authorize",  # self-service runtime-download gate (packages.telys.ai)
     ):
         assert required in cp, f"control plane missing required surface: {required}"
 

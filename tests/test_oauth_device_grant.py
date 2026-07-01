@@ -133,3 +133,36 @@ async def test_approve_unknown_code_404(client, app, monkeypatch):
         assert r.status_code == 404
     finally:
         app.dependency_overrides.pop(get_redis, None)
+
+
+async def test_code_fails_open_when_rate_limiter_backend_down(client, app, monkeypatch):
+    # The control plane runs Redis-optional; the limiter fail-closes 503. Device-login must fail OPEN so
+    # `telys login` keeps working when Redis is down.
+    from fastapi import HTTPException
+
+    async def _boom(*_a, **_k):
+        raise HTTPException(status_code=503, detail={"error": "rate_limit_backend_unavailable"})
+
+    monkeypatch.setattr(oauth_device, "check_named_rate_limit", _boom)
+    app.dependency_overrides[get_redis] = _fake_redis
+    try:
+        r = await client.post("/oauth/device/code", json={"client_id": "telys-cli", "scope": "telys"})
+        assert r.status_code == 200, r.text
+        assert r.json()["user_code"]
+    finally:
+        app.dependency_overrides.pop(get_redis, None)
+
+
+async def test_code_surfaces_real_rate_limit_breach(client, app, monkeypatch):
+    from fastapi import HTTPException
+
+    async def _limited(*_a, **_k):
+        raise HTTPException(status_code=429, detail={"error": "slow_down"})
+
+    monkeypatch.setattr(oauth_device, "check_named_rate_limit", _limited)
+    app.dependency_overrides[get_redis] = _fake_redis
+    try:
+        r = await client.post("/oauth/device/code", json={"client_id": "telys-cli", "scope": "telys"})
+        assert r.status_code == 429
+    finally:
+        app.dependency_overrides.pop(get_redis, None)
