@@ -199,6 +199,10 @@ jobs:
         uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: ${{ matrix.node-version }}
+          # setup-node@v5 defaults package-manager-cache:true, which auto-detects the repo's pnpm
+          # (packageManager field / lockfile) and hard-fails here with "Unable to locate executable
+          # file: pnpm" — this job installs its own fresh npm project and needs no pnpm cache.
+          package-manager-cache: false
       - name: Pack + fresh-project install + CJS/ESM/gRPC/strict-types smoke
         run: node scripts/verify_ts_sdk_artifact_install.mjs
 
