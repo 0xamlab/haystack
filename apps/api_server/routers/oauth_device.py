@@ -36,7 +36,11 @@ from apps.api_server.models.device_grant import (
     DeviceGrant,
 )
 from apps.api_server.services.quota_service import check_named_rate_limit
-from apps.api_server.services.supabase_auth import SupabaseAuthError, verify_supabase_jwt
+from apps.api_server.services.supabase_auth import (
+    SERVICE_ERROR_CODES,
+    SupabaseAuthError,
+    verify_supabase_jwt,
+)
 from apps.api_server.services.website_identity import bearer_token, error_body
 
 router = APIRouter(tags=["oauth-device"])
@@ -224,7 +228,12 @@ async def _authed_subject(authorization: str | None) -> dict[str, Any]:
     try:
         claims = await verify_supabase_jwt(token)
     except SupabaseAuthError as exc:
-        raise HTTPException(status_code=401, detail=error_body(exc.code, str(exc))) from exc
+        # Distinguish a SERVICE misconfig (SUPABASE_URL unset, JWKS unreachable/invalid) from a genuine
+        # bad/expired token: the former is 503 (our fault — an operator must fix config), the latter 401.
+        # Collapsing both to 401 previously made an unset SUPABASE_URL look like an expired user session,
+        # sending debugging to the browser instead of the deployment.
+        status = 503 if exc.code in SERVICE_ERROR_CODES else 401
+        raise HTTPException(status_code=status, detail=error_body(exc.code, str(exc))) from exc
     return {"token": token, "claims": claims}
 
 

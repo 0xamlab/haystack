@@ -48,6 +48,12 @@ primary_region = "iad"
   # to local store if unset). NO engine env (no Mojo / S3 / agent-core / sources / runtime dirs).
   ALGENTA_COORDINATION = "redis"
   CORS_ORIGINS = "https://app.algenta.ai,https://algenta.ai"
+  # Shared Supabase identity project — required to verify the Supabase JWTs forwarded by accounts.thyn.ai /
+  # app.algenta.ai (device-grant approve + /v1/telys/onboard). It is a PUBLIC URL (shipped in every browser
+  # bundle), so it lives here as plain config, not a secret. WITHOUT it, verify_supabase_jwt() raises
+  # "not_configured" and every /oauth/device/approve + onboard call 401s — which the CLI/portal surfaces as a
+  # bogus "session expired". Tracked here so a reprovision never drops it again.
+  SUPABASE_URL = "https://qxxnqenpvutophhcmebr.supabase.co"
 
 [http_service]
   internal_port = 8000

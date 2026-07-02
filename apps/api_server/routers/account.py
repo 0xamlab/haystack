@@ -52,7 +52,11 @@ from apps.api_server.schemas.tenant_keys import (
     SetProviderKeyRequest,
 )
 from apps.api_server.services import tenant_key_management as tk_mgmt
-from apps.api_server.services.supabase_auth import SupabaseAuthError, verify_supabase_jwt
+from apps.api_server.services.supabase_auth import (
+    SERVICE_ERROR_CODES,
+    SupabaseAuthError,
+    verify_supabase_jwt,
+)
 from apps.api_server.services.user_service import activate_telys_developer
 from apps.api_server.services.website_identity import bearer_token, error_body
 from apps.api_server.services.auth_service import (
@@ -654,7 +658,10 @@ async def telys_onboard(
     try:
         claims = await verify_supabase_jwt(token)
     except SupabaseAuthError as exc:
-        raise HTTPException(status_code=401, detail=error_body(exc.code, str(exc))) from exc
+        # 503 for a SERVICE misconfig (SUPABASE_URL unset / JWKS unreachable), 401 only for a genuine
+        # bad/expired token — so a deployment gap can't masquerade as a user auth failure. See oauth_device.
+        status = 503 if exc.code in SERVICE_ERROR_CODES else 401
+        raise HTTPException(status_code=status, detail=error_body(exc.code, str(exc))) from exc
 
     meta = claims.get("user_metadata") or {}
     email = (claims.get("email") or meta.get("email") or "").strip().lower()
