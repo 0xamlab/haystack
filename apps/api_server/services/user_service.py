@@ -160,3 +160,70 @@ async def get_user_by_email(email: str, db: AsyncSession) -> User | None:
         select(User).where(User.email == email.lower()).order_by(User.created_at)
     )
     return result.scalars().first()
+
+
+async def activate_telys_developer(
+    db: AsyncSession, *, email: str, name: str | None = None
+) -> tuple[Organization, User]:
+    """Self-service Telys onboarding: resolve-or-create the caller's org (by Supabase email) and ensure it
+    carries the free ``telys_developer`` entitlement (so the issued device license has ``products.telys``).
+
+    Idempotent by email. NEVER downgrades a paid plan — it only lifts a brand-new/``free`` org onto the free
+    Telys tier; a caller who already holds a paid plan without Telys keeps it (that cross-product upgrade is a
+    separate billing concern). Returns ``(org, user)``. The mint of the API key is the caller's job.
+    """
+    from apps.api_server.services.entitlement_service import resolve_entitlement
+
+    email = (email or "").strip().lower()
+    if not email:
+        raise HTTPException(status_code=400, detail="a verified email is required to activate Telys")
+
+    existing = await get_user_by_email(email, db)
+    if existing is not None:
+        org = (
+            await db.execute(select(Organization).where(Organization.id == existing.org_id))
+        ).scalar_one()
+        # Grant the free Telys tier only if the org has NO Telys entitlement AND is on the free plan — never
+        # clobber a paid plan.
+        has_telys = "telys" in getattr(resolve_entitlement(org.plan.value), "products", {})
+        if not has_telys and org.plan == OrgPlan.FREE:
+            org.plan = OrgPlan.TELYS_DEVELOPER
+            await db.flush()
+            logger.info("telys_developer_activated_existing_org", org_id=str(org.id), email=email)
+        return org, existing
+
+    # Brand-new identity → create an org on the free Telys tier + an owner user (OAuth: no usable password).
+    base_slug = _slug_from_email(email)
+    slug = base_slug
+    suffix = 1
+    while (
+        await db.execute(select(Organization).where(Organization.slug == slug))
+    ).scalar_one_or_none() is not None:
+        slug = f"{base_slug}-{suffix}"
+        suffix += 1
+
+    display = name or email.split("@")[0]
+    org = Organization(
+        name=f"{display}'s Organization",
+        slug=slug,
+        plan=OrgPlan.TELYS_DEVELOPER,
+        status=OrgStatus.ACTIVE,
+    )
+    db.add(org)
+    await db.flush()
+
+    import secrets as _secrets
+
+    user = User(
+        org_id=org.id,
+        email=email,
+        password_hash=hash_password(_secrets.token_urlsafe(32)),  # unusable — OAuth identity, no password login
+        name=display,
+        role=UserRole.OWNER,
+        status=UserStatus.ACTIVE,
+        email_verified=True,  # the OAuth provider already verified the email
+    )
+    db.add(user)
+    await db.flush()
+    logger.info("telys_developer_org_created", org_id=str(org.id), email=email, slug=slug)
+    return org, user

@@ -13,9 +13,10 @@ Account endpoints:
 
 import uuid
 from datetime import UTC, datetime
+from typing import Annotated
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -51,6 +52,9 @@ from apps.api_server.schemas.tenant_keys import (
     SetProviderKeyRequest,
 )
 from apps.api_server.services import tenant_key_management as tk_mgmt
+from apps.api_server.services.supabase_auth import SupabaseAuthError, verify_supabase_jwt
+from apps.api_server.services.user_service import activate_telys_developer
+from apps.api_server.services.website_identity import bearer_token, error_body
 from apps.api_server.services.auth_service import (
     AuthContext,
     generate_api_key,
@@ -615,6 +619,69 @@ async def create_api_key(
         label=api_key.label,
         key_prefix=api_key.key_prefix,
         device_limit=device_limit,
+        raw_key=raw_key,
+        created_at=api_key.created_at,
+        expires_at=api_key.expires_at,
+    )
+
+
+class TelysOnboardRequest(BaseModel):
+    # All optional — the client (`telys login`) sends {name, product, plan}, but the free Telys tier is enforced
+    # server-side (a requested paid plan is ignored). name seeds the org display name on first activation.
+    name: str | None = None
+    product: str | None = None
+    plan: str | None = None
+
+
+@router.post(
+    "/v1/telys/onboard",
+    response_model=APIKeyCreated,
+    status_code=201,
+    summary="Self-service Telys onboarding (Supabase-authed): activate telys_developer + mint the first API key",
+    description=(
+        "Called by `telys login` with a Supabase access_token. Verifies the token, resolves-or-creates the "
+        "caller's org on the free `telys_developer` tier (so the device license carries `products.telys`), and "
+        "returns a freshly minted API key. Idempotent per email; never downgrades a paid plan. This is the "
+        "Supabase-JWT entry point — distinct from POST /v1/api-keys, which requires an existing API key/license."
+    ),
+)
+async def telys_onboard(
+    payload: TelysOnboardRequest,
+    authorization: Annotated[str | None, Header()] = None,
+    db: AsyncSession = Depends(get_db),
+) -> APIKeyCreated:
+    token = bearer_token(authorization)  # raises 401 if absent
+    try:
+        claims = await verify_supabase_jwt(token)
+    except SupabaseAuthError as exc:
+        raise HTTPException(status_code=401, detail=error_body(exc.code, str(exc))) from exc
+
+    meta = claims.get("user_metadata") or {}
+    email = (claims.get("email") or meta.get("email") or "").strip().lower()
+    if not email:
+        raise HTTPException(
+            status_code=400, detail=error_body("no_email", "the signed-in identity has no email")
+        )
+    name = payload.name or meta.get("full_name") or meta.get("name") or meta.get("user_name")
+
+    org, user = await activate_telys_developer(db, email=email, name=name)
+
+    raw_key, key_prefix, hashed_key = generate_api_key()
+    api_key = APIKey(
+        org_id=org.id,
+        user_id=user.id,
+        label=(payload.name or "Telys CLI"),
+        key_prefix=key_prefix,
+        hashed_key=hashed_key,
+    )
+    db.add(api_key)
+    await db.flush()
+    logger.info("telys_onboard_key_minted", org_id=str(org.id), plan=org.plan.value, key_prefix=key_prefix)
+    return APIKeyCreated(
+        id=api_key.id,
+        label=api_key.label,
+        key_prefix=api_key.key_prefix,
+        device_limit=effective_device_limit(org.plan.value, api_key.device_limit),
         raw_key=raw_key,
         created_at=api_key.created_at,
         expires_at=api_key.expires_at,
