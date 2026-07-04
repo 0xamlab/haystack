@@ -92,7 +92,7 @@ _PLANS: dict[str, PlanConfig] = {
         llm_spend_cap_usd_month=0,
     ),
     "telys_pro": PlanConfig(
-        display_name="TELYS PRO", price_usd_month=29, executions_month=500_000,
+        display_name="TELYS PRO", price_usd_month=25, executions_month=500_000,
         devices=3, local_runtime=True, rate_per_minute=300, async_jobs=True, webhooks=True,
         max_runs_per_call=1_000_000, max_batch=100, audit_trail=True, rbac=False,
         permitted_modules=["*"], credit_batch_size=10_000, concurrent_jobs=4, storage_gb=10,

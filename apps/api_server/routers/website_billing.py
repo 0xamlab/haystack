@@ -41,10 +41,11 @@ logger = structlog.get_logger(__name__)
 router = APIRouter(tags=["account"])
 
 # Plans purchasable from the website Upgrade buttons (mirrors codna plans.ts checkout tiers).
-# Free is $0 and Enterprise is sales-assisted, so neither goes through Checkout here. Telys runtime
-# paid tiers (telys_developer is free, no SKU) are sellable too — keep in sync with plans.ts + the
-# stripe_service.PLAN_PRICE_IDS map.
-_CHECKOUT_PLANS = frozenset({"pro", "team", "telys_pro", "telys_team"})
+# Free is $0 and Enterprise is sales-assisted, so neither goes through Checkout here. Telys's public
+# ladder is Developer (free) / Pro / Enterprise (contact-sales) — telys_team is retained for existing
+# orgs + enforcement but is NOT publicly sellable, so it's excluded from self-serve checkout.
+# Keep in sync with the Stripe catalog (product.metadata.source=telys) + stripe_service.PLAN_PRICE_IDS.
+_CHECKOUT_PLANS = frozenset({"pro", "team", "telys_pro"})
 
 
 def _require_billing() -> None:
