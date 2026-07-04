@@ -38,6 +38,9 @@ def _shape(price: dict[str, Any]) -> dict[str, Any] | None:
         "interval": (price.get("recurring") or {}).get("interval"),
         "lookup_key": price.get("lookup_key"),
         "source": pmeta.get("source"),
+        # The user-facing fix allowance ("150" | "unlimited" | absent) — the
+        # unit customers are billed/limited by (simulations etc. are internal).
+        "cloud_fix_prs": pmeta.get("cloud_fix_prs"),
     }
 
 

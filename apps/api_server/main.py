@@ -356,6 +356,13 @@ from apps.api_server.routers import website_devices as _website_devices_router  
 
 app.include_router(_website_devices_router.router)
 
+# Website subscription dashboard — usage read (GET /account/usage): current-period
+# usage_records count vs the plan allowance, the same numbers quota enforcement
+# uses. Supabase-authenticated, org-scoped. Inert until SUPABASE_URL is set.
+from apps.api_server.routers import website_usage as _website_usage_router  # noqa: E402
+
+app.include_router(_website_usage_router.router)
+
 # Website subscription dashboard — self-service billing (GET /account/billing + checkout/portal),
 # Supabase-authenticated, org-scoped. Same Stripe service as /v1/billing/*. Inert (503) until
 # SUPABASE_URL is set; also 503 until Stripe is configured, so the dashboard card degrades.
