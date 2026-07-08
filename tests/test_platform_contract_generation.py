@@ -103,7 +103,7 @@ def test_generated_sdk_contract_artifacts_match_manifest() -> None:
         "decision_engine._contract",
     )
     algenta_contract = _import_from_path(
-        ROOT / "packages" / "algenta-core",
+        ROOT / "packages" / "algenta",
         "algenta._contract",
     )
 

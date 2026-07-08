@@ -1,0 +1,60 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "algenta"
+version = "1.0.0"
+description = "Algenta — repository intelligence & decision engine. pip install algenta -> algenta login -> algenta ... (bundled in-process runtime; no Mojo/Docker/daemon)."
+readme = "README.md"
+requires-python = ">=3.10"
+# The Python here (CLI, login, SDK client, runtime loader/doctor) is Apache-2.0. The proprietary native
+# runtime ships SEPARATELY in the `algenta-runtime-native` sidecar (per-platform), so THIS distribution
+# stays pure-Python + Apache-2.0 and platform-agnostic — the sidecar carries the proprietary binary.
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+keywords = [
+    "algenta", "repository-intelligence", "decision-engine", "cli", "mcp",
+    "runtime", "deterministic", "structured-data", "query", "resolve", "agent"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+# The native runtime is an AUTOMATIC required dependency (not an extra) — `pip install algenta` pulls the
+# matching per-platform sidecar. On an unsupported platform this fails at pip resolution (a generic "no
+# matching distribution"), never a broken install that later asks for Mojo. Pinned == to keep the ABI in
+# lockstep. cryptography backs offline manifest/license verification.
+dependencies = [
+    "algenta-runtime-native==1.0.0",
+    "cryptography>=42",
+]
+
+[project.optional-dependencies]
+cloud = ["algenta-sdk>=1.0.0"]
+mcp = ["algenta-mcp>=1.0.0"]
+benchmark = ["numpy"]
+all = ["algenta-sdk>=1.0.0", "numpy"]
+
+[project.scripts]
+algenta = "algenta.cli:main"
+
+[project.urls]
+Homepage = "https://algenta.ai"
+Documentation = "https://docs.algenta.ai"
+Repository = "https://github.com/thyn-ai/algenta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["algenta*"]
+exclude = ["build*", "tests*"]
+
+[tool.setuptools.package-data]
+# Force the embedded PUBLIC trust anchors past the repo-wide *.pem gitignore (only *_pub.pem).
+algenta = ["_keys/*_pub.pem"]

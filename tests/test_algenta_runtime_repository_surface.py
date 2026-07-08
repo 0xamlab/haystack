@@ -14,7 +14,7 @@ from apps.api_server.services.repository_language_priority import (
 )
 
 ROOT = Path(__file__).resolve().parents[1]
-ALGENTA_CORE = ROOT / "packages" / "algenta-core"
+ALGENTA_CORE = ROOT / "packages" / "algenta"
 PYTHON_SDK = ROOT / "packages" / "python-sdk"
 for path in (str(ALGENTA_CORE), str(PYTHON_SDK), str(ROOT)):
     if path not in sys.path:

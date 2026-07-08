@@ -20,7 +20,10 @@ _PACKAGES = _REPO_ROOT / "packages"
 
 # The public client SDKs + CLI + MCP server. The engine + server are NOT here and keep the ACL.
 _EXPECTED_LICENSE = "Apache-2.0"
-_PYPROJECT_PKGS = ("python-sdk", "algenta-core", "mcp")
+# `algenta` (graduated CLI+SDK, owns the `algenta` import/command) + `algenta-core` (compatibility shim) are
+# both Apache-2.0. The proprietary native runtime lives in `algenta-runtime-native` (a SEPARATE dist) and is
+# intentionally NOT in this Apache/version guard.
+_PYPROJECT_PKGS = ("python-sdk", "algenta", "algenta-core", "mcp")
 _TS_PKG = "ts-sdk"
 
 
@@ -94,7 +97,9 @@ def test_ts_package_builds_dist_before_publish() -> None:
 _INIT_VERSION_RE = re.compile(r'^__version__\s*=\s*["\']([^"\']+)["\']', re.MULTILINE)
 _RUNTIME_VERSION_INITS = {
     "python-sdk": "decision_engine/__init__.py",
-    "algenta-core": "algenta/__init__.py",
+    # `algenta` now owns the `algenta` import package (graduated from algenta-core). The algenta-core shim
+    # ships NO package files, so it has no __version__ to check here.
+    "algenta": "algenta/__init__.py",
 }
 
 

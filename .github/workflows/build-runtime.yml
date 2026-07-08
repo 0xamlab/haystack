@@ -1,0 +1,173 @@
+# Build + sign + package the Algenta native runtime into the per-platform `algenta-runtime-native` sidecar.
+#
+# The public contract: `pip install algenta` pulls the matching per-platform sidecar wheel, which CONTAINS
+# the prebuilt native runtime — no Mojo, no Modular, no Docker, no compiler on the user's machine. This
+# workflow is where that native lib is compiled in CI, RS256-signed, and bundled. Mirrors the telys
+# build-runtime.yml (compile → strip → relink to a self-contained loader path → sign → wheel), but bundles
+# the lib INTO the wheel (Algenta's model) rather than shipping it out-of-band.
+#
+# OWNER PREREQUISITES:
+#   - The Mojo/pixi toolchain available on the runners (this repo's mojo_env/pixi setup).
+#   - The C-ABI runtime source that exports algenta_runtime_{version,platform,init,execute,free,shutdown}
+#     (see packages/algenta/algenta/native/loader.py for the ABI). Set MOJO_RUNTIME_SRC below.
+#   - Secret ALGENTA_SIGNING_KEY = the RS256 PKCS8 private release key (the matching public key is embedded
+#     as packages/algenta/algenta/_keys/algenta_release_pub.pem). Without it, a release build FAILS CLOSED
+#     (never emits an unsigned runtime).
+#   - PyPI Trusted Publishing for `algenta-runtime-native` (per-platform wheels), if publishing here.
+name: build-runtime
+
+on:
+  # Owner/release-time only: this needs the Mojo toolchain on the runners + the ALGENTA_SIGNING_KEY secret,
+  # so it is NOT a per-PR gate (it would fail-closed on a normal PR). Trigger it explicitly, or on a
+  # runtime-v* tag, once those prerequisites are in place.
+  workflow_dispatch:
+  push:
+    tags: ["runtime-v*"]
+
+permissions:
+  contents: read
+
+env:
+  # The Mojo source implementing the algenta_runtime_* C ABI (owner-provided; see loader.py for the ABI).
+  MOJO_RUNTIME_SRC: mojo/engine/algenta_runtime.mojo
+
+jobs:
+  build:
+    name: build native runtime + sidecar wheel (${{ matrix.target }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: macos-arm64
+            runs-on: macos-14
+            ext: dylib
+            mcpu: ""
+          - target: linux-x86_64
+            runs-on: ubuntu-latest
+            ext: so
+            mcpu: "--mcpu x86-64-v3"
+    runs-on: ${{ matrix.runs-on }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # 1) Compile the Mojo runtime → mojo_build/libalgenta_runtime.<ext>. (Owner: wire the repo's pixi/mojo
+      #    toolchain here — mirrors the local build. The source must export the algenta_runtime_* C ABI.)
+      - name: Compile Mojo runtime
+        run: |
+          set -euo pipefail
+          mkdir -p mojo_build
+          if [ ! -f "${MOJO_RUNTIME_SRC}" ]; then
+            echo "::error::${MOJO_RUNTIME_SRC} not found — provide the C-ABI runtime source (exports "
+            echo "::error::algenta_runtime_version/platform/init/execute/free/shutdown). See native/loader.py."
+            exit 1
+          fi
+          # OWNER: replace with the repo's real Mojo build, e.g.:
+          #   pixi run mojo build ${{ matrix.mcpu }} --emit shared-lib "${MOJO_RUNTIME_SRC}" \
+          #       -o "mojo_build/libalgenta_runtime.${{ matrix.ext }}"
+          echo "::error::Mojo compile step is not wired yet (owner step). See the comment above."
+          exit 1
+
+      # 2) Strip symbols + relink the Mojo runtime closure to a self-contained loader path (@loader_path on
+      #    macOS / $ORIGIN on linux) so the shipped lib loads with no toolchain on the target machine.
+      - name: Strip + relink for self-contained load
+        run: |
+          set -euo pipefail
+          LIB="mojo_build/libalgenta_runtime.${{ matrix.ext }}"
+          if [ "${{ matrix.ext }}" = "dylib" ]; then
+            strip -x "$LIB" || true
+            install_name_tool -id "@loader_path/$(basename "$LIB")" "$LIB" || true
+          else
+            strip --strip-unneeded "$LIB" || true
+            command -v patchelf >/dev/null && patchelf --set-rpath '$ORIGIN' "$LIB" || true
+          fi
+
+      # 3) Build the canonical manifest (compact, sorted keys = the EXACT bytes verify.py checks) + RS256-sign
+      #    it. Fail closed on a release tag if the signing key is absent.
+      - name: Build + sign manifest
+        env:
+          ALGENTA_SIGNING_KEY: ${{ secrets.ALGENTA_SIGNING_KEY }}
+        run: |
+          set -euo pipefail
+          cd mojo_build
+          LIB="libalgenta_runtime.${{ matrix.ext }}"
+          SHA=$(python3 -c "import hashlib;print(hashlib.sha256(open('$LIB','rb').read()).hexdigest())")
+          SIZE=$(python3 -c "import os;print(os.path.getsize('$LIB'))")
+          python3 - "$LIB" "$SHA" "$SIZE" "${{ matrix.target }}" > manifest.json <<'PY'
+          import json, sys
+          name, sha, size, plat = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4]
+          m = {"format_version": 1, "platform": plat,
+               "artifacts": [{"name": name, "sha256": sha, "size_bytes": size}]}
+          sys.stdout.write(json.dumps(m, sort_keys=True, separators=(",", ":")))
+          PY
+          if [ -z "${ALGENTA_SIGNING_KEY:-}" ]; then
+            if [[ "${GITHUB_REF:-}" == refs/tags/* ]]; then
+              echo "::error::ALGENTA_SIGNING_KEY is unset on a release tag — refusing to emit an UNSIGNED runtime."
+              exit 1
+            fi
+            echo "::warning::ALGENTA_SIGNING_KEY unset (non-tag build) — writing a placeholder .sig; NOT publishable."
+            : > manifest.sig
+          else
+            umask 077; KEYFILE=$(mktemp); printf '%s' "$ALGENTA_SIGNING_KEY" > "$KEYFILE"
+            trap 'rm -f "$KEYFILE"' EXIT
+            openssl dgst -sha256 -sign "$KEYFILE" -out manifest.sig manifest.json
+          fi
+
+      # 4) Build the PLATFORM-TAGGED sidecar wheel (native lib + manifest force-included by the hatch hook).
+      - name: Build sidecar wheel
+        env:
+          ALGENTA_BUNDLE_RUNTIME: "1"
+          ALGENTA_RUNTIME_SRC: ${{ github.workspace }}/mojo_build
+        run: |
+          python -m pip install --upgrade build
+          python -m build --wheel packages/algenta-runtime-native --outdir dist-runtime
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: algenta-runtime-native-${{ matrix.target }}
+          path: dist-runtime/*.whl
+
+  clean-machine-contract:
+    name: clean-machine contract (no Mojo/Modular/Docker)
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          name: algenta-runtime-native-linux-x86_64
+          path: dist-runtime
+      # Build the pure-Python `algenta` wheel here (no native) and install it alongside the CI-built sidecar
+      # wheel in a FRESH venv with NO Mojo/Modular/Docker present — the true "a user can pip install it" gate.
+      - name: Clean-machine install + runtime doctor
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade build
+          python -m build --wheel packages/algenta --outdir dist-algenta
+          python -m venv /tmp/clean && . /tmp/clean/bin/activate
+          pip install --quiet dist-runtime/*.whl dist-algenta/*.whl
+          # Assert the toolchain is genuinely absent — yet the runtime still works.
+          ! command -v mojo && ! command -v modular || (echo "toolchain unexpectedly present" && exit 1)
+          out=$(algenta runtime doctor || true)
+          echo "$out"
+          echo "$out" | grep -q "mode:            in-process"
+          echo "$out" | grep -q "runtime source:  bundled sidecar"
+          echo "$out" | grep -q "fallback:        denied"
+          echo "$out" | grep -q "tcp listeners:   none"
+          echo "$out" | grep -q "status:          READY"
+          # Forbidden strings must NEVER appear.
+          for bad in "mojo command not found" "install Mojo" "install Modular" "start daemon" "docker run"; do
+            if echo "$out" | grep -qi "$bad"; then echo "::error::doctor leaked '$bad'"; exit 1; fi
+          done
+          # No local TCP listeners for the in-process runtime path.
+          python - <<'PY'
+          import subprocess, sys
+          # `algenta runtime doctor` opened no sockets; a belt-and-braces check on the process is left to the
+          # runtime; here we assert doctor reported none (grepped above).
+          print("clean-machine contract OK")
+          PY

@@ -37,49 +37,49 @@ _SOURCE_EXPECTATIONS: dict[str, tuple[str, ...]] = {
         "self-hosted operator deployment",
         "fail closed",
     ),
-    "packages/algenta-core/algenta/client/__init__.py": (
+    "packages/algenta/algenta/client/__init__.py": (
         "Cloud Managed path",
         "`self_hosted` and `air_gapped`",
         "self-hosted operator deployment",
         "fail closed",
         "explicit self-hosted `base_url`",
     ),
-    "packages/algenta-core/algenta/__init__.py": (
+    "packages/algenta/algenta/__init__.py": (
         "Cloud Managed path",
         "`self_hosted` and `air_gapped`",
         "self-hosted operator deployment",
         "fail closed",
         "explicit self-hosted `base_url`",
     ),
-    "packages/algenta-core/algenta/runtime.py": (
+    "packages/algenta/algenta/runtime.py": (
         "Cloud Managed path",
         "`self_hosted` and `air_gapped`",
         "self-hosted operator deployment",
         "fail closed",
         "explicit self-hosted `base_url`",
     ),
-    "packages/algenta-core/algenta/decision.py": (
+    "packages/algenta/algenta/decision.py": (
         "Cloud Managed path",
         "`self_hosted`",
         "`air_gapped`",
         "self-hosted operator deployment",
         "fail closed",
     ),
-    "packages/algenta-core/algenta/forecast.py": (
+    "packages/algenta/algenta/forecast.py": (
         "Cloud Managed path",
         "`self_hosted`",
         "`air_gapped`",
         "self-hosted operator deployment",
         "fail closed",
     ),
-    "packages/algenta-core/algenta/simple.py": (
+    "packages/algenta/algenta/simple.py": (
         "Cloud Managed path",
         "`self_hosted`",
         "`air_gapped`",
         "self-hosted operator",
         "fail closed",
     ),
-    "packages/algenta-core/algenta/simulate.py": (
+    "packages/algenta/algenta/simulate.py": (
         "Cloud Managed path",
         "`self_hosted`",
         "`air_gapped`",
@@ -121,12 +121,12 @@ _SOURCE_EXPECTATIONS: dict[str, tuple[str, ...]] = {
     "apps/cli/main/_cmd_auth_daemon_bench.py": (
         "<YOUR_LEGACY_DECISION_ENGINE_API_KEY>",
     ),
-    "packages/algenta-core/algenta/cli.py": (
+    "packages/algenta/algenta/cli.py": (
         "Cloud Managed path",
         "`self_hosted` and",
         "self-hosted operator",
     ),
-    "packages/algenta-core/algenta/demo.py": (
+    "packages/algenta/algenta/demo.py": (
         "Cloud Managed example",
         "self_hosted/air_gapped",
         "self-hosted origin",
@@ -168,62 +168,62 @@ _SOURCE_EXPECTATIONS: dict[str, tuple[str, ...]] = {
         "self-hosted operator deployment",
         "fail closed",
     ),
-    "packages/algenta-core/build/lib/algenta/client.py": (
+    "packages/algenta/build/lib/algenta/client.py": (
         "Cloud Managed path",
         "`self_hosted` and `air_gapped`",
         "self-hosted operator deployment",
         "fail closed",
         "explicit self-hosted `base_url`",
     ),
-    "packages/algenta-core/build/lib/algenta/__init__.py": (
+    "packages/algenta/build/lib/algenta/__init__.py": (
         "Cloud Managed path",
         "`self_hosted` and `air_gapped`",
         "self-hosted operator deployment",
         "fail closed",
         "explicit self-hosted `base_url`",
     ),
-    "packages/algenta-core/build/lib/algenta/runtime.py": (
+    "packages/algenta/build/lib/algenta/runtime.py": (
         "Cloud Managed path",
         "`self_hosted` and `air_gapped`",
         "self-hosted operator deployment",
         "fail closed",
         "explicit self-hosted `base_url`",
     ),
-    "packages/algenta-core/build/lib/algenta/decision.py": (
+    "packages/algenta/build/lib/algenta/decision.py": (
         "Cloud Managed path",
         "`self_hosted`",
         "`air_gapped`",
         "self-hosted operator deployment",
         "fail closed",
     ),
-    "packages/algenta-core/build/lib/algenta/forecast.py": (
+    "packages/algenta/build/lib/algenta/forecast.py": (
         "Cloud Managed path",
         "`self_hosted`",
         "`air_gapped`",
         "self-hosted operator deployment",
         "fail closed",
     ),
-    "packages/algenta-core/build/lib/algenta/simple.py": (
+    "packages/algenta/build/lib/algenta/simple.py": (
         "Cloud Managed path",
         "`self_hosted`",
         "`air_gapped`",
         "self-hosted operator",
         "fail closed",
     ),
-    "packages/algenta-core/build/lib/algenta/simulate.py": (
+    "packages/algenta/build/lib/algenta/simulate.py": (
         "Cloud Managed path",
         "`self_hosted`",
         "`air_gapped`",
         "self-hosted operator deployment",
         "fail closed",
     ),
-    "packages/algenta-core/build/lib/algenta/cli.py": (
+    "packages/algenta/build/lib/algenta/cli.py": (
         "Cloud Managed path",
         "`self_hosted` and `air_gapped`",
         "self-hosted operator",
         "fail closed",
     ),
-    "packages/algenta-core/build/lib/algenta/demo.py": (
+    "packages/algenta/build/lib/algenta/demo.py": (
         "Cloud Managed example",
         "self_hosted/air_gapped",
         "self-hosted origin",
@@ -256,7 +256,7 @@ def test_user_visible_source_surfaces_call_out_private_profile_boundaries(
     ("relative_path", "forbidden_snippet"),
     [
         (
-            "packages/algenta-core/build/lib/algenta/client.py",
+            "packages/algenta/build/lib/algenta/client.py",
             "https://algenta.ai/dashboard/api-keys",
         ),
     ],
@@ -275,21 +275,21 @@ def test_distribution_surfaces_do_not_keep_stale_hosted_only_key_links(
         "packages/python-sdk/decision_engine/__init__.py",
         "packages/python-sdk/decision_engine/client_facade/__init__.py",
         "packages/python-sdk/decision_engine/async_client_facade/__init__.py",
-        "packages/algenta-core/algenta/client/__init__.py",
-        "packages/algenta-core/algenta/decision.py",
-        "packages/algenta-core/algenta/forecast.py",
-        "packages/algenta-core/algenta/simulate.py",
-        "packages/algenta-core/algenta/cli.py",
-        "packages/algenta-core/algenta/demo.py",
+        "packages/algenta/algenta/client/__init__.py",
+        "packages/algenta/algenta/decision.py",
+        "packages/algenta/algenta/forecast.py",
+        "packages/algenta/algenta/simulate.py",
+        "packages/algenta/algenta/cli.py",
+        "packages/algenta/algenta/demo.py",
         "packages/python-sdk/build/lib/decision_engine/__init__.py",
         "packages/python-sdk/build/lib/decision_engine/client_facade.py",
         "packages/python-sdk/build/lib/decision_engine/async_client_facade.py",
-        "packages/algenta-core/build/lib/algenta/client.py",
-        "packages/algenta-core/build/lib/algenta/decision.py",
-        "packages/algenta-core/build/lib/algenta/forecast.py",
-        "packages/algenta-core/build/lib/algenta/simulate.py",
-        "packages/algenta-core/build/lib/algenta/cli.py",
-        "packages/algenta-core/build/lib/algenta/demo.py",
+        "packages/algenta/build/lib/algenta/client.py",
+        "packages/algenta/build/lib/algenta/decision.py",
+        "packages/algenta/build/lib/algenta/forecast.py",
+        "packages/algenta/build/lib/algenta/simulate.py",
+        "packages/algenta/build/lib/algenta/cli.py",
+        "packages/algenta/build/lib/algenta/demo.py",
         "packages/ts-sdk/src/_client_class.ts",
         "packages/ts-sdk/dist/_client_class.js",
         "packages/ts-sdk/dist/_client_class.d.ts",

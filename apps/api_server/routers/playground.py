@@ -153,7 +153,7 @@ async def playground(request: Request, payload: PlaygroundRequest) -> Playground
     import sys
 
     _core_path = os.path.join(
-        os.path.dirname(__file__), "..", "..", "..", "packages", "algenta-core"
+        os.path.dirname(__file__), "..", "..", "..", "packages", "algenta"
     )
     if _core_path not in sys.path:
         sys.path.insert(0, _core_path)

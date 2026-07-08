@@ -6,7 +6,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parents[1]
-ALGENTA_CORE = ROOT / "packages" / "algenta-core"
+ALGENTA_CORE = ROOT / "packages" / "algenta"
 for path in (str(ALGENTA_CORE), str(ROOT)):
     if path not in sys.path:
         sys.path.insert(0, path)

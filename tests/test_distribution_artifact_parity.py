@@ -39,6 +39,6 @@ def test_python_sdk_build_artifacts_match_source_package_surfaces() -> None:
 
 def test_algenta_core_build_artifacts_match_source_package_surfaces() -> None:
     assert _python_package_diffs(
-        "packages/algenta-core/algenta",
-        "packages/algenta-core/build/lib/algenta",
+        "packages/algenta/algenta",
+        "packages/algenta/build/lib/algenta",
     ) == []

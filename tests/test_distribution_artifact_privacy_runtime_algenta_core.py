@@ -8,7 +8,7 @@ from tests._test_distribution_artifact_privacy_runtime_helpers import *  # noqa:
 
 
 def test_algenta_core_build_artifact_resolve_cloud_base_url_blocks_algenta_cloud_in_private_profiles():
-    artifact_root = ROOT / "packages/algenta-core/build/lib"
+    artifact_root = ROOT / "packages/algenta/build/lib"
     with _artifact_module(artifact_root, "algenta", "privacy_profile") as module:
         with pytest.raises(ValueError, match="private profiles cannot target Algenta-owned cloud URLs"):
             module.resolve_cloud_base_url(
@@ -41,7 +41,7 @@ def test_algenta_core_build_artifact_resolve_cloud_base_url_blocks_algenta_cloud
 def test_algenta_core_build_artifact_runtime_api_mode_fails_closed_without_private_base_url(
     monkeypatch: pytest.MonkeyPatch,
 ):
-    artifact_root = ROOT / "packages/algenta-core/build/lib"
+    artifact_root = ROOT / "packages/algenta/build/lib"
     monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "self_hosted")
     monkeypatch.delenv("ALGENTA_BASE_URL", raising=False)
     monkeypatch.delenv("DE_BASE_URL", raising=False)
@@ -53,7 +53,7 @@ def test_algenta_core_build_artifact_runtime_api_mode_fails_closed_without_priva
 def test_algenta_core_build_artifact_runtime_wrapper_api_mode_fails_closed_without_private_base_url(
     monkeypatch: pytest.MonkeyPatch,
 ):
-    artifact_root = ROOT / "packages/algenta-core/build/lib"
+    artifact_root = ROOT / "packages/algenta/build/lib"
     monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "self_hosted")
     monkeypatch.delenv("ALGENTA_BASE_URL", raising=False)
     monkeypatch.delenv("DE_BASE_URL", raising=False)
@@ -65,7 +65,7 @@ def test_algenta_core_build_artifact_runtime_wrapper_api_mode_fails_closed_witho
 def test_algenta_core_build_artifact_package_root_runtime_export_fails_closed_without_private_base_url(
     monkeypatch: pytest.MonkeyPatch,
 ):
-    artifact_root = ROOT / "packages/algenta-core/build/lib"
+    artifact_root = ROOT / "packages/algenta/build/lib"
     monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "self_hosted")
     monkeypatch.delenv("ALGENTA_BASE_URL", raising=False)
     monkeypatch.delenv("DE_BASE_URL", raising=False)
@@ -77,7 +77,7 @@ def test_algenta_core_build_artifact_package_root_runtime_export_fails_closed_wi
 def test_algenta_core_build_artifact_client_fails_closed_without_private_base_url(
     monkeypatch: pytest.MonkeyPatch,
 ):
-    artifact_root = ROOT / "packages/algenta-core/build/lib"
+    artifact_root = ROOT / "packages/algenta/build/lib"
     monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "self_hosted")
     monkeypatch.delenv("ALGENTA_BASE_URL", raising=False)
     monkeypatch.delenv("DE_BASE_URL", raising=False)
@@ -89,7 +89,7 @@ def test_algenta_core_build_artifact_client_fails_closed_without_private_base_ur
 def test_algenta_core_build_artifact_package_root_client_export_fails_closed_without_private_base_url(
     monkeypatch: pytest.MonkeyPatch,
 ):
-    artifact_root = ROOT / "packages/algenta-core/build/lib"
+    artifact_root = ROOT / "packages/algenta/build/lib"
     monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "self_hosted")
     monkeypatch.delenv("ALGENTA_BASE_URL", raising=False)
     monkeypatch.delenv("DE_BASE_URL", raising=False)
@@ -101,7 +101,7 @@ def test_algenta_core_build_artifact_package_root_client_export_fails_closed_wit
 def test_algenta_core_build_artifact_decision_cloud_mode_fails_closed_without_private_base_url(
     monkeypatch: pytest.MonkeyPatch,
 ):
-    artifact_root = ROOT / "packages/algenta-core/build/lib"
+    artifact_root = ROOT / "packages/algenta/build/lib"
     monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "air_gapped")
     monkeypatch.delenv("ALGENTA_BASE_URL", raising=False)
     monkeypatch.delenv("DE_BASE_URL", raising=False)
@@ -117,7 +117,7 @@ def test_algenta_core_build_artifact_decision_cloud_mode_fails_closed_without_pr
 def test_algenta_core_build_artifact_forecast_cloud_mode_fails_closed_without_private_base_url(
     monkeypatch: pytest.MonkeyPatch,
 ):
-    artifact_root = ROOT / "packages/algenta-core/build/lib"
+    artifact_root = ROOT / "packages/algenta/build/lib"
     monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "air_gapped")
     monkeypatch.delenv("ALGENTA_BASE_URL", raising=False)
     monkeypatch.delenv("DE_BASE_URL", raising=False)
@@ -133,7 +133,7 @@ def test_algenta_core_build_artifact_forecast_cloud_mode_fails_closed_without_pr
 def test_algenta_core_build_artifact_simulate_cloud_mode_fails_closed_without_private_base_url(
     monkeypatch: pytest.MonkeyPatch,
 ):
-    artifact_root = ROOT / "packages/algenta-core/build/lib"
+    artifact_root = ROOT / "packages/algenta/build/lib"
     monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "air_gapped")
     monkeypatch.delenv("ALGENTA_BASE_URL", raising=False)
     monkeypatch.delenv("DE_BASE_URL", raising=False)
@@ -149,7 +149,7 @@ def test_algenta_core_build_artifact_simulate_cloud_mode_fails_closed_without_pr
 def test_algenta_core_build_artifact_runtime_local_mode_stays_offline(
     monkeypatch: pytest.MonkeyPatch,
 ):
-    artifact_root = ROOT / "packages/algenta-core/build/lib"
+    artifact_root = ROOT / "packages/algenta/build/lib"
     monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "air_gapped")
     with _artifact_module(artifact_root, "algenta", "runtime_facade") as module:
         runtime = module.Runtime(mode="local")
@@ -157,7 +157,7 @@ def test_algenta_core_build_artifact_runtime_local_mode_stays_offline(
 
 
 def test_algenta_core_build_artifact_client_exposes_extended_public_surface():
-    artifact_root = ROOT / "packages/algenta-core/build/lib"
+    artifact_root = ROOT / "packages/algenta/build/lib"
     with _artifact_module(artifact_root, "algenta", "client") as module:
         client = module.AlgentaClient(api_key="de_live_test", base_url="http://localhost:8000")
         for name in (
@@ -211,7 +211,7 @@ def test_algenta_core_build_artifact_client_exposes_extended_public_surface():
 
 
 def test_algenta_core_build_artifact_runtime_exposes_account_and_proof_helpers():
-    artifact_root = ROOT / "packages/algenta-core/build/lib"
+    artifact_root = ROOT / "packages/algenta/build/lib"
     with _artifact_module(artifact_root, "algenta", "runtime_facade") as module:
         events: list[str] = []
 
@@ -259,7 +259,7 @@ def test_algenta_core_build_artifact_runtime_exposes_account_and_proof_helpers()
 
 
 def test_algenta_core_build_artifact_runtime_exposes_repository_intelligence_helpers():
-    artifact_root = ROOT / "packages/algenta-core/build/lib"
+    artifact_root = ROOT / "packages/algenta/build/lib"
     with _artifact_module(artifact_root, "algenta", "runtime_facade") as module:
         events: list[tuple[str, str, object]] = []
         repository_models = importlib.import_module("algenta.runtime_model_repository_intelligence")
@@ -558,7 +558,7 @@ def test_algenta_core_build_artifact_runtime_exposes_repository_intelligence_hel
 
 
 def test_algenta_core_build_artifact_runtime_error_exposes_nested_validation_details():
-    artifact_root = ROOT / "packages/algenta-core/build/lib"
+    artifact_root = ROOT / "packages/algenta/build/lib"
     with _artifact_module(artifact_root, "algenta", "__init__") as module:
         error = module.RuntimeValidationError(
             "invalid_release",
@@ -578,7 +578,7 @@ def test_algenta_core_build_artifact_runtime_error_exposes_nested_validation_det
 
 
 def test_algenta_core_build_artifact_package_root_exposes_extended_contract_exports():
-    artifact_root = ROOT / "packages/algenta-core/build/lib"
+    artifact_root = ROOT / "packages/algenta/build/lib"
     with _artifact_module(artifact_root, "algenta", "__init__") as module:
         for name in (
             "UsageOutput",
@@ -602,15 +602,15 @@ def test_algenta_core_build_artifact_package_root_exposes_extended_contract_expo
 
 
 def test_algenta_core_build_artifact_package_root_matches_source_contract_inventory():
-    artifact_root = ROOT / "packages/algenta-core/build/lib"
-    source_root = ROOT / "packages/algenta-core"
+    artifact_root = ROOT / "packages/algenta/build/lib"
+    source_root = ROOT / "packages/algenta"
     with _artifact_module(artifact_root, "algenta", "__init__") as artifact_module:
         with _artifact_module(source_root, "algenta", "__init__") as source_module:
             _assert_artifact_contract_inventory_matches_source(artifact_module, source_module)
 
 
 def test_algenta_core_build_artifact_contract_module_matches_manifest_inventory():
-    artifact_root = ROOT / "packages/algenta-core/build/lib"
+    artifact_root = ROOT / "packages/algenta/build/lib"
     with _artifact_module(artifact_root, "algenta", "_contract") as module:
         assert module.DEFAULT_BASE_URL == "https://api.algenta.ai"
         assert module.MCP_ENDPOINT == "https://api.algenta.ai/mcp/sse"
@@ -621,15 +621,15 @@ def test_algenta_core_build_artifact_contract_module_matches_manifest_inventory(
 
 
 def test_algenta_core_build_artifact_contract_module_matches_source_contract_inventory():
-    artifact_root = ROOT / "packages/algenta-core/build/lib"
-    source_root = ROOT / "packages/algenta-core"
+    artifact_root = ROOT / "packages/algenta/build/lib"
+    source_root = ROOT / "packages/algenta"
     with _artifact_module(artifact_root, "algenta", "_contract") as artifact_module:
         with _artifact_module(source_root, "algenta", "_contract") as source_module:
             _assert_artifact_contract_inventory_matches_source(artifact_module, source_module)
 
 
 def test_algenta_core_build_artifact_resolved_plan_models_expose_filter_contract_types():
-    artifact_root = ROOT / "packages/algenta-core/build/lib"
+    artifact_root = ROOT / "packages/algenta/build/lib"
     with _artifact_module(artifact_root, "algenta", "runtime_model_resolved_plan") as module:
         condition = module.QueryFilterCondition(
             column="region",
@@ -655,7 +655,7 @@ def test_algenta_core_build_artifact_resolved_plan_models_expose_filter_contract
 
 
 def test_algenta_core_build_artifact_privacy_profile_exposes_dashboard_resolution():
-    artifact_root = ROOT / "packages/algenta-core/build/lib"
+    artifact_root = ROOT / "packages/algenta/build/lib"
     with _artifact_module(artifact_root, "algenta", "privacy_profile") as module:
         with pytest.raises(ValueError, match="explicit self-hosted dashboard or API base_url"):
             module.resolve_dashboard_url(
@@ -698,7 +698,7 @@ def test_algenta_core_build_artifact_privacy_profile_exposes_dashboard_resolutio
 
 
 def test_algenta_core_build_artifact_local_execution_exports_filter_and_plan_helpers():
-    artifact_root = ROOT / "packages/algenta-core/build/lib"
+    artifact_root = ROOT / "packages/algenta/build/lib"
     with _artifact_module(artifact_root, "algenta", "runtime_local_execution") as module:
         condition = module.LocalFilterCondition(column="status", op="eq", value="closed")
         result = module.LocalExecutionResult(value=123, result_type="scalar", row_count=1)
@@ -710,7 +710,7 @@ def test_algenta_core_build_artifact_local_execution_exports_filter_and_plan_hel
 
 
 def test_algenta_core_build_artifact_runtime_models_root_exposes_account_and_decision_exports():
-    artifact_root = ROOT / "packages/algenta-core/build/lib"
+    artifact_root = ROOT / "packages/algenta/build/lib"
     with _artifact_module(artifact_root, "algenta", "runtime_models") as module:
         for name in (
             "UsageOutput",
@@ -728,7 +728,7 @@ def test_algenta_core_build_artifact_runtime_models_root_exposes_account_and_dec
 def test_algenta_core_build_artifact_runtime_local_limits_disable_hosted_limits_in_private_profiles(
     monkeypatch: pytest.MonkeyPatch,
 ):
-    artifact_root = ROOT / "packages/algenta-core/build/lib"
+    artifact_root = ROOT / "packages/algenta/build/lib"
     monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "self_hosted")
     with _artifact_module(artifact_root, "algenta", "runtime_local_limits") as module:
         assert module.uses_hosted_local_limits(mode="local", enforce_limits=True) is False
@@ -738,7 +738,7 @@ def test_algenta_core_build_artifact_runtime_local_limits_disable_hosted_limits_
 
 
 def test_algenta_core_build_artifact_demo_exports_scenarios():
-    artifact_root = ROOT / "packages/algenta-core/build/lib"
+    artifact_root = ROOT / "packages/algenta/build/lib"
     with _artifact_module(artifact_root, "algenta", "demo") as module:
         scenario = module.DemoScenario(
             key="top_products",

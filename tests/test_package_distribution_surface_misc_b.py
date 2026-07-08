@@ -367,7 +367,7 @@ def test_typescript_package_surface_includes_package_readme_and_registry_metadat
     # definitions live in _runtime_manifest_*.py submodules. Concatenate the
     # facade with every submodule so the textual surface checks below still
     # cover the whole public-API source.
-    algenta_dir = ROOT / "packages" / "algenta-core" / "algenta"
+    algenta_dir = ROOT / "packages" / "algenta" / "algenta"
     algenta_runtime_manifest_models = "\n".join(
         [(algenta_dir / "runtime_model_manifest.py").read_text()]
         + [p.read_text() for p in sorted(algenta_dir.glob("_runtime_manifest_*.py"))]

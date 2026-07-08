@@ -41,7 +41,7 @@ import httpx
 socket.setdefaulttimeout(15)
 
 ROOT = Path(__file__).resolve().parents[2]
-ALGENTA_CORE = ROOT / "packages" / "algenta-core"
+ALGENTA_CORE = ROOT / "packages" / "algenta"
 PYTHON_SDK = ROOT / "packages" / "python-sdk"
 for path in (str(ALGENTA_CORE), str(PYTHON_SDK), str(ROOT)):
     if path not in sys.path:

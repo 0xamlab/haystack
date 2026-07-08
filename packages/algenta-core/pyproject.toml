@@ -1,45 +1,32 @@
 [build-system]
-requires = ["setuptools>=68.0", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "algenta-core"
 version = "1.0.0"
-description = "Algenta core runtime — local-first deterministic resolve and query execution."
+description = "DEPRECATED — algenta-core graduated into the `algenta` distribution. This is a compatibility shim that just installs `algenta` (same import name, same `algenta` command)."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
-keywords = [
-    "runtime", "deterministic", "structured-data", "query", "resolve",
-    "simulation", "optimization", "decision", "algenta", "mojo"
-]
+keywords = ["algenta", "deprecated", "shim"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Intended Audience :: Developers",
-    "Intended Audience :: Science/Research",
+    "Development Status :: 7 - Inactive",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Topic :: Scientific/Engineering :: Mathematics",
-    "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
-dependencies = []
-
-[project.optional-dependencies]
-cloud = ["algenta-sdk>=1.0.0"]
-benchmark = ["numpy"]
-all = ["algenta-sdk>=1.0.0", "numpy"]
-
-[project.scripts]
-algenta = "algenta.cli:main"
+# The whole point of the shim: pull in the graduated distribution. Pinned == so an upgrade lands the matching
+# `algenta`. algenta now OWNS the `algenta` import + the `algenta` command; this ships NO package files.
+dependencies = ["algenta==1.0.0"]
 
 [project.urls]
 Homepage = "https://algenta.ai"
-Documentation = "https://docs.algenta.ai/core"
 Repository = "https://github.com/thyn-ai/algenta"
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["algenta*"]
+# Metadata-only shim: ship NO importable files — `algenta` owns the `algenta/` package now. bypass-selection
+# keeps hatchling from auto-collecting anything.
+[tool.hatch.build.targets.wheel]
+bypass-selection = true
+
+[tool.hatch.build.targets.sdist]
+exclude = ["*"]

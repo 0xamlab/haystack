@@ -11,7 +11,7 @@ _FILES = (
     "apps/docs/docs/sdks/python.md",
     "apps/docs/docs/sdks/typescript.md",
     "apps/docs/docs/integrations/langgraph.md",
-    "packages/algenta-core/README.md",
+    "packages/algenta/README.md",
 )
 
 _SECTION_FILES = (

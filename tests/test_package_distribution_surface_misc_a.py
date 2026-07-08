@@ -8,7 +8,7 @@ from tests._test_package_distribution_surface_helpers import *  # noqa: F401,F40
 
 
 def test_python_package_readmes_exist_and_match_declared_metadata() -> None:
-    for package_dir in ("packages/python-sdk", "packages/algenta-core"):
+    for package_dir in ("packages/python-sdk", "packages/algenta"):
         project_root = ROOT / package_dir
         pyproject = tomllib.loads((project_root / "pyproject.toml").read_text())
         assert pyproject["build-system"]["build-backend"] == "setuptools.build_meta"
@@ -223,7 +223,7 @@ def test_python_sdk_readme_covers_direct_client_contract() -> None:
 
 
 def test_algenta_core_readme_covers_runtime_and_local_library_contracts() -> None:
-    text = (ROOT / "packages" / "algenta-core" / "README.md").read_text()
+    text = (ROOT / "packages" / "algenta" / "README.md").read_text()
     assert "Runtime" in text
     assert "de_live_" not in text
     assert 'pip install "algenta-core[cloud]"' in text
@@ -423,7 +423,7 @@ def test_algenta_core_readme_covers_runtime_and_local_library_contracts() -> Non
 def test_package_readmes_cover_unified_capability_plane_surface() -> None:
     python_readme = (ROOT / "packages" / "python-sdk" / "README.md").read_text()
     ts_readme = (ROOT / "packages" / "ts-sdk" / "README.md").read_text()
-    core_readme = (ROOT / "packages" / "algenta-core" / "README.md").read_text()
+    core_readme = (ROOT / "packages" / "algenta" / "README.md").read_text()
     text = core_readme
 
     assert "## Unified Capability Plane" in python_readme

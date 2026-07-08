@@ -3,12 +3,12 @@
 # Flow: guard (license/version drift) -> build + dry-run checks (always) -> publish. A tag push
 # (sdk-v*) publishes to the REAL indexes; workflow_dispatch picks `target`: dry-run (checks only),
 # testpypi (rehearse the Python publish against test.pypi.org), or pypi (real publish, same as a tag).
-# Publishing uses PyPI Trusted Publishing (OIDC) and npm provenance — no long-lived tokens for PyPI.
+# PyPI publishing uses an API TOKEN (secret PYPI_TOKEN); npm uses provenance.
 #
 # PREREQUISITES:
-#   - Configure PyPI Trusted Publishing for `algenta-sdk` and `algenta-core` bound to this repo,
-#     workflow `release-sdks.yml`, environment `release`. For the TestPyPI rehearsal, configure the
-#     SAME trusted publisher on test.pypi.org.
+#   - Repo secret `PYPI_TOKEN` = a PyPI API token with upload rights for algenta-sdk / algenta /
+#     algenta-core (+ algenta-mcp). The real-publish job reads it via `secrets.PYPI_TOKEN`. For the
+#     optional TestPyPI rehearsal, add a separate `TEST_PYPI_TOKEN` (a test.pypi.org token).
 #   - The GitHub `release` environment (the manual-approval gate) must exist with REQUIRED REVIEWERS —
 #     publish jobs (including the TestPyPI rehearsal) block until a reviewer approves.
 #   - For npm: either configure npm OIDC trusted publishing, or set the `NPM_TOKEN` secret (an
@@ -67,8 +67,10 @@ jobs:
       - name: Build + check the Python SDKs (wheel + sdist + metadata)
         run: |
           python -m pip install --upgrade build twine
-          # NB: packages/mcp builds the `algenta-mcp` distribution.
-          for pkg in python-sdk algenta-core mcp; do
+          # `algenta` = the graduated CLI+SDK (owns the `algenta` import/command); `algenta-core` = the
+          # compatibility shim; `mcp` builds `algenta-mcp`. The proprietary `algenta-runtime-native` sidecar
+          # is built by build-runtime.yml.
+          for pkg in python-sdk algenta algenta-core mcp; do
             python -m build "packages/$pkg"
             twine check "packages/$pkg"/dist/*
           done
@@ -85,13 +87,12 @@ jobs:
           npm pack --dry-run
 
   publish-testpypi:
-    name: rehearse publish to TestPyPI (OIDC, manual approval)
+    name: rehearse publish to TestPyPI (token, manual approval)
     needs: build
     if: ${{ inputs.target == 'testpypi' }}
     environment: release # same manual-approval gate as the real publish — a faithful rehearsal
     permissions:
-      id-token: write # TestPyPI Trusted Publishing
-      contents: read
+      contents: read # token auth via TEST_PYPI_TOKEN — no id-token / Trusted Publishing
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
@@ -100,34 +101,43 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: |
           python -m pip install --upgrade build
-          for pkg in python-sdk algenta-core mcp; do python -m build "packages/$pkg"; done
+          for pkg in python-sdk algenta algenta-core mcp; do python -m build "packages/$pkg"; done
       - name: Publish algenta-sdk to TestPyPI
         uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
         with:
           packages-dir: packages/python-sdk/dist
           repository-url: https://test.pypi.org/legacy/
+          password: ${{ secrets.TEST_PYPI_TOKEN }}
           skip-existing: true # re-runs of the same version no-op instead of erroring
-      - name: Publish algenta-core to TestPyPI
+      - name: Publish algenta to TestPyPI
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
+        with:
+          packages-dir: packages/algenta/dist
+          repository-url: https://test.pypi.org/legacy/
+          password: ${{ secrets.TEST_PYPI_TOKEN }}
+          skip-existing: true
+      - name: Publish algenta-core (shim) to TestPyPI
         uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
         with:
           packages-dir: packages/algenta-core/dist
           repository-url: https://test.pypi.org/legacy/
+          password: ${{ secrets.TEST_PYPI_TOKEN }}
           skip-existing: true
       - name: Publish algenta-mcp to TestPyPI
         uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
         with:
           packages-dir: packages/mcp/dist
           repository-url: https://test.pypi.org/legacy/
+          password: ${{ secrets.TEST_PYPI_TOKEN }}
           skip-existing: true
 
   publish-pypi:
-    name: publish to PyPI (OIDC, manual approval)
+    name: publish to PyPI (token, manual approval)
     needs: build
     if: ${{ github.event_name == 'push' || inputs.target == 'pypi' }}
     environment: release # required reviewers on this env = the manual-approval gate
     permissions:
-      id-token: write # PyPI Trusted Publishing
-      contents: read
+      contents: read # token auth via PYPI_TOKEN — no id-token / Trusted Publishing
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
@@ -136,19 +146,27 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: |
           python -m pip install --upgrade build
-          for pkg in python-sdk algenta-core mcp; do python -m build "packages/$pkg"; done
+          for pkg in python-sdk algenta algenta-core mcp; do python -m build "packages/$pkg"; done
       - name: Publish algenta-sdk
         uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
         with:
           packages-dir: packages/python-sdk/dist
-      - name: Publish algenta-core
+          password: ${{ secrets.PYPI_TOKEN }}
+      - name: Publish algenta
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
+        with:
+          packages-dir: packages/algenta/dist
+          password: ${{ secrets.PYPI_TOKEN }}
+      - name: Publish algenta-core (shim)
         uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
         with:
           packages-dir: packages/algenta-core/dist
+          password: ${{ secrets.PYPI_TOKEN }}
       - name: Publish algenta-mcp
         uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
         with:
           packages-dir: packages/mcp/dist
+          password: ${{ secrets.PYPI_TOKEN }}
 
   publish-npm:
     name: publish to npm (provenance, manual approval)

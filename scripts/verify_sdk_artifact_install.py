@@ -28,13 +28,8 @@ _SMOKES: dict[str, str] = {
         "assert DecisionEngineClient and AlgentaClient; "
         "print('python-sdk', m.__version__, 'OK')"
     ),
-    "algenta-core": (
-        "import algenta as m; "
-        "from algenta import Runtime; "
-        f"assert m.__version__ == {_EXPECTED_VERSION!r}, m.__version__; "
-        "assert Runtime; "
-        "print('algenta-core', m.__version__, 'OK')"
-    ),
+    # NB: `algenta` (graduated) is verified by _verify_algenta() below (it hard-deps the sidecar, so needs a
+    # local sidecar wheel first). The `algenta-core` shim ships no importable files, so it has no smoke here.
 }
 
 
@@ -91,9 +86,55 @@ def _verify_mcp() -> None:
         print("[ok] algenta-mcp: built + installed + import + console-script + protocol tests OK")
 
 
+def _verify_algenta() -> None:
+    """The graduated `algenta` CLI hard-depends on the proprietary `algenta-runtime-native` sidecar. In CI
+    the sidecar isn't on PyPI, so build BOTH wheels locally (the sidecar WITHOUT ALGENTA_BUNDLE_RUNTIME → no
+    native binary — fine, the loader fails closed only on execute, not import), install them together, then
+    import-smoke + run `algenta runtime doctor` (which must fail closed WITHOUT ever mentioning Mojo)."""
+    import os
+
+    with tempfile.TemporaryDirectory(prefix="artifact-algenta-") as tmp:
+        dist = Path(tmp) / "dist"
+        env = {k: v for k, v in os.environ.items() if k != "ALGENTA_BUNDLE_RUNTIME"}
+        for pkg in ("algenta-runtime-native", "algenta"):
+            _run([sys.executable, "-m", "build", "--outdir", str(dist), str(_ROOT / "packages" / pkg)], env=env)
+        env_dir = Path(tmp) / "venv"
+        venv.create(env_dir, with_pip=True)
+        bindir = env_dir / ("Scripts" if sys.platform == "win32" else "bin")
+        py = bindir / "python"
+        wheels = [str(p) for p in dist.glob("*.whl")]
+        assert wheels, "algenta: no wheels built"
+        # Install both local wheels together so the sidecar hard-dep resolves locally (cryptography from PyPI).
+        _run([str(py), "-m", "pip", "install", "--quiet", *wheels])
+        _run(
+            [
+                str(py),
+                "-c",
+                "import algenta as m; from algenta import Runtime; "
+                "from algenta.native import loader, doctor, verify; "
+                f"assert m.__version__ == {_EXPECTED_VERSION!r}, m.__version__; "
+                "assert Runtime and doctor and verify; "
+                "assert loader.available() is False; "  # no native bundled in this dev sidecar → fail closed
+                "print('algenta', m.__version__, 'OK')",
+            ],
+            cwd=tmp,
+        )
+        # The console script + `runtime doctor` run without the native lib; doctor must emit the invariant
+        # lines and NEVER leak Mojo/Modular/Docker (the clean-machine contract, mini version).
+        r = subprocess.run(
+            [str(bindir / "algenta"), "runtime", "doctor"], cwd=tmp, capture_output=True, text=True
+        )
+        out = (r.stdout + r.stderr).lower()
+        assert "in-process" in out and "denied" in out and "tcp listeners" in out, out
+        for forbidden in ("mojo", "modular", "docker", "command not found"):
+            assert forbidden not in out, f"algenta runtime doctor leaked {forbidden!r}: {out}"
+        print("[ok] algenta: sidecar + CLI wheels install + import + runtime doctor (fail-closed, no Mojo) OK")
+
+
 def main() -> int:
     for pkg, smoke in _SMOKES.items():
         _verify(pkg, smoke)
+    _verify_algenta()
     _verify_mcp()
     print("\nAll Python SDK + MCP artifacts install + import from the wheel.")
     return 0

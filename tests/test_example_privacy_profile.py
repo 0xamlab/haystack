@@ -9,7 +9,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 PYTHON_SDK = ROOT / "packages" / "python-sdk"
-ALGENTA_CORE = ROOT / "packages" / "algenta-core"
+ALGENTA_CORE = ROOT / "packages" / "algenta"
 for path in (str(ROOT), str(PYTHON_SDK), str(ALGENTA_CORE)):
     if path not in sys.path:
         sys.path.insert(0, path)

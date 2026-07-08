@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def test_capability_plane_runtime_typed_failures_stay_aligned_across_python_and_typescript() -> None:
     python_runtime = (
-        ROOT / "packages" / "algenta-core" / "algenta" / "runtime_capability_plane.py"
+        ROOT / "packages" / "algenta" / "algenta" / "runtime_capability_plane.py"
     ).read_text(encoding="utf-8")
     # runtime.ts is now a barrel re-exporting per-domain sub-modules; concat
     # the barrel + every _runtime_*.ts so textual surface checks cover the

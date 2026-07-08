@@ -69,7 +69,7 @@ CAPABILITY_PLANE_CONTRACT = {_python_dict(contract.capability_plane)}
 
     for rel_path in (
         ("packages", "python-sdk", "decision_engine", "_contract.py"),
-        ("packages", "algenta-core", "algenta", "_contract.py"),
+        ("packages", "algenta", "algenta", "_contract.py"),
     ):
         _write(
             ROOT.joinpath(*rel_path),

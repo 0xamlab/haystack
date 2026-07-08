@@ -41,7 +41,7 @@ socket.setdefaulttimeout(20)
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8000
 ROOT = Path(__file__).resolve().parents[2]
-ALGENTA_CORE = ROOT / "packages" / "algenta-core"
+ALGENTA_CORE = ROOT / "packages" / "algenta"
 PYTHON_SDK = ROOT / "packages" / "python-sdk"
 TEST_FILES = ROOT / "test_files"
 for path in (str(ALGENTA_CORE), str(PYTHON_SDK), str(ROOT)):
