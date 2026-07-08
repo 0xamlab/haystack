@@ -48,6 +48,7 @@ from apps.api_server.services.llm_api_service import (
     create_utility_response,
     embedding_similarity_score,
     list_llm_model_descriptors,
+    list_provider_discovered_descriptors,
     rerank_embeddings,
     tokenize_text,
 )
@@ -342,6 +343,9 @@ async def list_models(
         auth=auth,
         redis_client=redis_client,
     )
+    # Static runtime/provider catalog + LIVE per-provider discovery (model_name "*" entries expand into
+    # the models each backend currently offers, queried from its list-models API — never a stale hardcoded list).
+    descriptors = list(list_llm_model_descriptors()) + list(await list_provider_discovered_descriptors())
     return LLMModelListResponse(
         data=[
             LLMModelResponse(
@@ -394,7 +398,7 @@ async def list_models(
                 bridge_artifact_backends=list(descriptor.bridge_artifact_backends),
                 available=descriptor.available,
             )
-            for descriptor in list_llm_model_descriptors()
+            for descriptor in descriptors
         ]
     )
 

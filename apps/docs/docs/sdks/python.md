@@ -57,6 +57,16 @@ is still accepted for backward compatibility.
 `capabilities` is optional; when omitted, the runtime defaults to the full
 capability set supported by that backend.
 
+**Dynamic discovery (no static model list):** set `model_name` to `"*"` and the
+engine queries that backend's own list-models API for the models it *currently*
+offers, instead of a hardcoded name. `GET /v1/models` then lists one live entry
+per discovered model as `<id>:<model>` (e.g. `provider.openai:gpt-5`), and a
+chat/embeddings request to that id routes to the backend with that model as the
+upstream. Discovery is egress-guarded and cached (TTL `ALGENTA_LLM_DISCOVERY_TTL_SECONDS`,
+default 600s); a provider hiccup degrades to "no discovered models" for that entry,
+never an error. Example: `{"id": "provider.openai", "backend": "openai",
+"model_name": "*", "base_url": "https://api.openai.com/v1", "api_key_env": "OPENAI_API_KEY"}`.
+
 Supported backends:
 
 - `openai_compatible`

@@ -466,8 +466,15 @@ def list_llm_model_descriptors() -> tuple[LLMModelDescriptor, ...]:
             {"cause": str(exc)},
         ) from exc
 
+    from apps.api_server.services.llm_provider_service._discovery import is_discovery_entry
+
     for provider_config in provider_configs:
         if provider_config.model_id in seen_model_ids:
+            continue
+        # A discovery entry (model_name "*") is not itself a model — it's expanded into one live descriptor
+        # per discovered model by the async /v1/models path (list_provider_discovered_descriptors). Skip the
+        # "*" placeholder so it never appears as a (non-callable) catalog entry.
+        if is_discovery_entry(provider_config):
             continue
         supported_endpoints = ["/v1/models"]
         if "chat_completions" in provider_config.capabilities:
@@ -568,6 +575,70 @@ def list_llm_model_descriptors() -> tuple[LLMModelDescriptor, ...]:
 
     descriptors.sort(key=lambda item: item.model_id)
     return tuple(descriptors)
+
+
+async def list_provider_discovered_descriptors() -> tuple["LLMModelDescriptor", ...]:
+    """Expand each discovery provider entry (model_name "*") into one LIVE descriptor per model its backend
+    currently offers — queried from the provider's list-models API (egress-guarded, TTL-cached). Best-effort
+    per entry: a provider hiccup yields no discovered models for that entry, never an error. This is the
+    "not static" catalog: the async /v1/models path appends these to the static descriptors."""
+    import os
+
+    from apps.api_server.services import llm_provider_service
+    from apps.api_server.services.llm_provider_service._discovery import (
+        discover_provider_models,
+        discovered_model_id,
+        is_discovery_entry,
+    )
+
+    try:
+        provider_configs = llm_provider_service.load_provider_model_configs()
+    except ValueError:
+        return ()
+
+    out: list[LLMModelDescriptor] = []
+    for entry in provider_configs:
+        if not is_discovery_entry(entry):
+            continue
+        models = await discover_provider_models(entry)
+        auth_env = (entry.api_key_env,) if entry.api_key_env else ()
+        auth_ok = entry.api_key_env is None or bool(os.environ.get(entry.api_key_env, "").strip())
+        header_names = tuple(name for name, _ in entry.header_envs)
+        for model in models:
+            endpoints = ["/v1/models"]
+            if "chat_completions" in entry.capabilities:
+                endpoints.append("/v1/chat/completions")
+            if "embeddings" in entry.capabilities:
+                endpoints.append("/v1/embeddings")
+            if entry.capabilities:
+                endpoints.append("/v1/responses")
+            out.append(
+                LLMModelDescriptor(
+                    model_id=discovered_model_id(entry, model),
+                    runtime_module=f"provider.{entry.backend}",
+                    description=f"Discovered {entry.backend} model: {model}",
+                    capabilities=entry.capabilities,
+                    supported_endpoints=tuple(endpoints),
+                    tokenizer_kind=None,
+                    similarity_metric=None,
+                    runtime_functions=(),
+                    available=True,
+                    provider_backend=entry.backend,
+                    timeout_seconds=entry.timeout_seconds,
+                    chat_timeout_seconds=entry.chat_timeout_seconds,
+                    embedding_timeout_seconds=entry.embedding_timeout_seconds,
+                    required_provider_headers=header_names,
+                    chat_required_provider_headers=header_names,
+                    embedding_required_provider_headers=header_names,
+                    provider_auth_env_vars=auth_env,
+                    chat_provider_auth_env_vars=auth_env,
+                    embedding_provider_auth_env_vars=auth_env,
+                    provider_auth_configured=auth_ok,
+                    chat_provider_auth_configured=auth_ok,
+                    embedding_provider_auth_configured=auth_ok,
+                )
+            )
+    return tuple(out)
 
 
 def get_llm_model_descriptor(model_id: str) -> LLMModelDescriptor:

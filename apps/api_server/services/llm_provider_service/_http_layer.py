@@ -302,12 +302,99 @@ async def _provider_post_json(
     return data
 
 
+async def _provider_get_json(
+    *,
+    config: ProviderModelConfig,
+    path: str,
+    timeout_seconds: float,
+) -> dict[str, Any]:
+    """GET a provider endpoint through the egress guard (used by model discovery). Mirrors
+    _provider_post_json's egress routing + typed error handling; no request body. The (customer-configured)
+    provider base_url still goes through the fail-closed/SSRF policy — deny raises before any socket opens."""
+    from apps.api_server.services import egress_guard
+    from apps.api_server.services.egress_guard import EgressPolicyDeniedError
+    from apps.api_server.services.llm_api_service import LLMAPIError
+
+    try:
+        response = await egress_guard.async_http_request(
+            method="GET",
+            url=f"{config.base_url}{path}",
+            surface="llm_provider_discover",
+            egress_class="customer_connector",
+            explicit_configured=True,
+            headers=_provider_auth_headers(config),
+            client_kwargs={"timeout": timeout_seconds},
+        )
+    except EgressPolicyDeniedError as exc:
+        raise LLMAPIError(
+            "egress_denied",
+            f"Provider egress denied by privacy policy for model '{config.model_id}'.",
+            {"model": config.model_id, "backend": config.backend},
+        ) from exc
+    except httpx.TimeoutException as exc:
+        raise LLMAPIError(
+            "provider_timeout",
+            f"Provider backend timed out for model '{config.model_id}'.",
+            {"model": config.model_id, "backend": config.backend},
+        ) from exc
+    except httpx.HTTPError as exc:
+        raise LLMAPIError(
+            "backend_unavailable",
+            f"Provider backend is unavailable for model '{config.model_id}'.",
+            {"model": config.model_id, "backend": config.backend},
+        ) from exc
+
+    if response.status_code >= 400:
+        detail: Any
+        try:
+            detail = response.json()
+        except Exception:
+            detail = response.text
+        if response.status_code == 429:
+            raise LLMAPIError("provider_rate_limited",
+                              f"Provider backend rate limited discovery for '{config.model_id}'.",
+                              {"model": config.model_id, "status_code": response.status_code, "response": detail})
+        if response.status_code in {401, 403}:
+            raise LLMAPIError("provider_authentication_failed",
+                              f"Provider backend rejected credentials for '{config.model_id}'.",
+                              {"model": config.model_id, "status_code": response.status_code, "response": detail})
+        if 400 <= response.status_code < 500:
+            raise LLMAPIError("invalid_provider_request",
+                              f"Provider backend rejected the discovery request for '{config.model_id}'.",
+                              {"model": config.model_id, "status_code": response.status_code, "response": detail})
+        raise LLMAPIError("provider_backend_error",
+                          f"Provider backend returned HTTP {response.status_code} for '{config.model_id}'.",
+                          {"model": config.model_id, "status_code": response.status_code, "response": detail})
+
+    try:
+        data = response.json()
+    except ValueError as exc:
+        raise LLMAPIError("invalid_provider_response",
+                          f"Provider backend returned invalid JSON for '{config.model_id}'.",
+                          {"model": config.model_id, "backend": config.backend}) from exc
+    if not isinstance(data, dict):
+        raise LLMAPIError("invalid_provider_response",
+                          f"Provider backend returned an invalid discovery payload for '{config.model_id}'.",
+                          {"model": config.model_id, "backend": config.backend})
+    return data
+
+
 def get_configured_provider_model(model_id: str) -> ProviderModelConfig | None:
     from apps.api_server.services import llm_provider_service as _facade_module
+    from apps.api_server.services.llm_provider_service._discovery import (
+        is_discovery_entry,
+        resolve_discovered_model,
+    )
+
     for config in _facade_module.load_provider_model_configs():
         if config.model_id == model_id:
+            # A discovery entry (model_name "*") is not itself a callable model — only its discovered
+            # <entry-id>:<model> children are — so fall through to discovery resolution below.
+            if is_discovery_entry(config):
+                break
             return config
-    return None
+    # Dynamic discovery: a `<entry-id>:<model>` id routes to the entry's backend with that upstream model.
+    return resolve_discovered_model(model_id)
 
 
 def get_provider_route_targets(
