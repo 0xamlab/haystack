@@ -1,5 +1,7 @@
 # Algenta MCP Server
 
+<!-- mcp-name: io.github.thyn-ai/algenta -->
+
 **Model Context Protocol (MCP)** bridge for the Algenta runtime and public API surface. Connects AI agents to governed dataset discovery, exact queries, deterministic utility-model routes, simplified product helpers, persisted agent runs, simulations, jobs, and connector-backed datasets.
 
 ## Install
@@ -332,6 +334,20 @@ Add to `~/.cursor/mcp.json`:
 Then in Cursor chat: *"@algenta simulate this business case..."*
 For repository fixing, prefer:
 > *"@algenta run_repository_fix repository_id='repo_123' pipeline={\"signals\":{\"issue_text\":\"Null dereference in src/service.py\"}} apply={\"mode\":\"patch_only\"}"*
+
+---
+
+### Codex CLI
+
+Add to `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.algenta]
+command = "algenta-mcp"
+env = { ALGENTA_API_KEY = "<SET ALGENTA_API_KEY BEFORE LAUNCH>", ALGENTA_BASE_URL = "https://api.algenta.ai" }
+```
+
+After `pip install algenta-mcp` (or `algenta login` once the bundled CLI ships), Codex discovers the Algenta tools over stdio.
 
 ---
 

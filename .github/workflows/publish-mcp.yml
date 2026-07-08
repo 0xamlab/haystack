@@ -1,0 +1,47 @@
+# Publish the Algenta MCP server to the Official MCP Registry (registry.modelcontextprotocol.io).
+#
+# The registry is metadata-only — it points at the PyPI package `algenta-mcp` (published separately by
+# release-sdks.yml). Ownership of the `io.github.thyn-ai/*` namespace is proven by GitHub Actions OIDC
+# (no stored secrets) and by the `<!-- mcp-name: io.github.thyn-ai/algenta -->` marker in the PyPI README
+# (packages/mcp/README.md → the package's long_description on PyPI).
+#
+# Run AFTER the matching `algenta-mcp` version is live on PyPI: publish is gated to a manual dispatch (or a
+# GitHub Release) so it never races the package upload. Keep server.json's version in sync with the
+# published PyPI version before dispatching. Mirrors telys' publish-mcp.yml.
+name: publish-mcp
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # mint the OIDC token mcp-publisher exchanges for a registry JWT (namespace auth)
+
+jobs:
+  publish-mcp:
+    name: publish to the Official MCP Registry
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install mcp-publisher
+        run: |
+          set -euo pipefail
+          curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" \
+            | tar xz mcp-publisher
+          sudo mv mcp-publisher /usr/local/bin/mcp-publisher
+          mcp-publisher --help >/dev/null
+
+      - name: Authenticate (GitHub Actions OIDC → registry JWT)
+        run: mcp-publisher login github-oidc
+
+      - name: Publish server.json
+        run: mcp-publisher publish
+
+      - name: Confirm it resolves
+        run: |
+          sleep 5
+          curl -fsS "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.thyn-ai/algenta" \
+            | head -c 800 || echo "::warning::registry search did not return yet (may lag); check manually."

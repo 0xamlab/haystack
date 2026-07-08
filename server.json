@@ -1,0 +1,22 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.thyn-ai/algenta",
+  "title": "Algenta — repository intelligence & decision engine",
+  "description": "Model Context Protocol server for the Algenta engine: repository intelligence (triage, simulate, fix, apply), decision primitives, and agent runs — for Cursor, Claude, Codex and any MCP client.",
+  "repository": {
+    "url": "https://github.com/thyn-ai/algenta",
+    "source": "github"
+  },
+  "websiteUrl": "https://algenta.ai",
+  "version": "1.0.0",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "algenta-mcp",
+      "version": "1.0.0",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}
