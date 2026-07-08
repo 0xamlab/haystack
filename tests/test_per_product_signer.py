@@ -68,6 +68,38 @@ def test_no_routing_without_cf_configured():
         assert ds._use_cf_worker_signer("telys_pro", s) is False
 
 
+def test_algenta_plan_routes_to_cf_worker_when_configured():
+    # Algenta joins telys on RS256/cf_worker (external users, same offline model).
+    s = _settings(**_CF)
+    with patch("apps.api_server.config.get_settings", return_value=s):
+        assert ds._use_cf_worker_signer("algenta_free", s) is True
+        assert ds._use_cf_worker_signer("algenta_pro", s) is True
+
+
+def test_products_map_emitted_for_telys_even_when_signer_override_excludes_it():
+    # Regression for the review footgun: emission follows the REGISTRY, not the operator signer override.
+    # A narrowed rs256_license_products (here dropping telys) must NEVER suppress telys' required
+    # products.telys claim — else a paying telys runtime fails closed. Emission != signer routing.
+    s = _settings(rs256_license_products="algenta")  # deliberately excludes telys from the SIGNER set
+    with patch("apps.api_server.config.get_settings", return_value=s):
+        token = ds._issue_license_jwt("dev-1", "ak_abc", "telys_pro", 1, "org-1")
+    claims = jwt.decode(token, options={"verify_signature": False})
+    assert "telys" in claims.get("products", {}), "telys products map suppressed by a signer override!"
+    assert claims["products"]["telys"]["features"]
+
+
+def test_algenta_plan_emits_products_map_even_without_cf_worker():
+    # algenta_* plans always carry products.algenta (with non-empty features), independent of whether the
+    # cf_worker signer is configured — its bundled runtime verifies the license offline and needs the claim.
+    s = _settings()  # no signer configured (dev/test) → dev_hmac HS256
+    with patch("apps.api_server.config.get_settings", return_value=s):
+        token = ds._issue_license_jwt("dev-1", "ak_abc", "algenta_pro", 1, "org-1")
+    claims = jwt.decode(token, options={"verify_signature": False})
+    assert "algenta" in claims.get("products", {})
+    assert claims["products"]["algenta"]["features"]
+    assert jwt.get_unverified_header(token)["alg"] == "HS256"  # emission ≠ signing: still dev_hmac here
+
+
 def test_rs256_product_set_extensible_via_env_string():
     # The exact hook Algenta external will use: RS256_LICENSE_PRODUCTS="telys,algenta" (comma-separated env
     # string). Here we opt "codna" in purely to prove the mechanism routes by config, no code change.

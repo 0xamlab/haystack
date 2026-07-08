@@ -105,6 +105,42 @@ _PLANS: dict[str, PlanConfig] = {
         permitted_modules=["*"], credit_batch_size=10_000, concurrent_jobs=8, storage_gb=10,
         llm_spend_cap_usd_month=0,
     ),
+    # Algenta (the engine as a product) — free/pro/team, mirroring the telys shape. local_runtime is ON at
+    # every tier (the bundled in-process Mojo runtime is the whole point). price_usd_month is a display
+    # value; the real charge is the Stripe price. algenta_free = free, no card, 1 device, non-commercial.
+    "algenta_free": PlanConfig(
+        display_name="ALGENTA FREE",
+        price_usd_month=0,
+        executions_month=10_000,
+        devices=1,
+        local_runtime=True,
+        rate_per_minute=60,
+        async_jobs=False,
+        webhooks=False,
+        max_runs_per_call=10_000,
+        max_batch=10,
+        audit_trail=False,
+        rbac=False,
+        permitted_modules=["*"],
+        credit_batch_size=1_000,
+        concurrent_jobs=1,
+        storage_gb=1,
+        llm_spend_cap_usd_month=0,
+    ),
+    "algenta_pro": PlanConfig(
+        display_name="ALGENTA PRO", price_usd_month=25, executions_month=500_000,
+        devices=3, local_runtime=True, rate_per_minute=300, async_jobs=True, webhooks=True,
+        max_runs_per_call=1_000_000, max_batch=100, audit_trail=True, rbac=False,
+        permitted_modules=["*"], credit_batch_size=10_000, concurrent_jobs=4, storage_gb=10,
+        llm_spend_cap_usd_month=0,
+    ),
+    "algenta_team": PlanConfig(
+        display_name="ALGENTA TEAM", price_usd_month=99, executions_month=500_000,
+        devices=10, local_runtime=True, rate_per_minute=1000, async_jobs=True, webhooks=True,
+        max_runs_per_call=1_000_000, max_batch=100, audit_trail=True, rbac=True,
+        permitted_modules=["*"], credit_batch_size=10_000, concurrent_jobs=8, storage_gb=10,
+        llm_spend_cap_usd_month=0,
+    ),
     "developer": PlanConfig(
         display_name="PRO",
         price_usd_month=99,

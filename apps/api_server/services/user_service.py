@@ -162,37 +162,51 @@ async def get_user_by_email(email: str, db: AsyncSession) -> User | None:
     return result.scalars().first()
 
 
-async def activate_telys_developer(
-    db: AsyncSession, *, email: str, name: str | None = None
+async def activate_product_free_tier(
+    db: AsyncSession, *, product: str, email: str, name: str | None = None
 ) -> tuple[Organization, User]:
-    """Self-service Telys onboarding: resolve-or-create the caller's org (by Supabase email) and ensure it
-    carries the free ``telys_developer`` entitlement (so the issued device license has ``products.telys``).
+    """Self-service onboarding for ANY product: resolve-or-create the caller's org (by Supabase email) and
+    ensure it carries that product's free entitlement (so the issued device license has ``products.<id>``).
 
-    Idempotent by email. NEVER downgrades a paid plan — it only lifts a brand-new/``free`` org onto the free
-    Telys tier; a caller who already holds a paid plan without Telys keeps it (that cross-product upgrade is a
-    separate billing concern). Returns ``(org, user)``. The mint of the API key is the caller's job.
+    The product AND its free tier come from the product registry — never a caller-supplied string. Idempotent
+    by email. NEVER downgrades a paid plan — it only lifts a brand-new/``free`` org onto the product's default
+    free tier; a caller who already holds a plan without this product keeps it (that cross-product upgrade is
+    a separate billing concern). Returns ``(org, user)``; minting the API key is the caller's job.
     """
     from apps.api_server.services.entitlement_service import resolve_entitlement
+    from apps.api_server.services.product_registry import get_product
+
+    cfg = get_product(product)
+    if cfg is None:
+        raise HTTPException(status_code=404, detail=f"unknown product {product!r}")
+    free_plan = OrgPlan(cfg.default_free_tier)  # the enum value must exist (plan_limits + 0049 migration)
 
     email = (email or "").strip().lower()
     if not email:
-        raise HTTPException(status_code=400, detail="a verified email is required to activate Telys")
+        raise HTTPException(
+            status_code=400, detail=f"a verified email is required to activate {cfg.display_name}"
+        )
 
     existing = await get_user_by_email(email, db)
     if existing is not None:
         org = (
             await db.execute(select(Organization).where(Organization.id == existing.org_id))
         ).scalar_one()
-        # Grant the free Telys tier only if the org has NO Telys entitlement AND is on the free plan — never
-        # clobber a paid plan.
-        has_telys = "telys" in getattr(resolve_entitlement(org.plan.value), "products", {})
-        if not has_telys and org.plan == OrgPlan.FREE:
-            org.plan = OrgPlan.TELYS_DEVELOPER
+        # Grant the free tier only if the org has NO entitlement for THIS product AND is on the free plan —
+        # never clobber a paid plan (of any brand).
+        has_product = cfg.id in getattr(resolve_entitlement(org.plan.value), "products", {})
+        if not has_product and org.plan == OrgPlan.FREE:
+            org.plan = free_plan
             await db.flush()
-            logger.info("telys_developer_activated_existing_org", org_id=str(org.id), email=email)
+            logger.info(
+                "product_free_tier_activated_existing_org",
+                product=cfg.id,
+                org_id=str(org.id),
+                email=email,
+            )
         return org, existing
 
-    # Brand-new identity → create an org on the free Telys tier + an owner user (OAuth: no usable password).
+    # Brand-new identity → create an org on the product's free tier + an owner user (OAuth: no usable password).
     base_slug = _slug_from_email(email)
     slug = base_slug
     suffix = 1
@@ -206,7 +220,7 @@ async def activate_telys_developer(
     org = Organization(
         name=f"{display}'s Organization",
         slug=slug,
-        plan=OrgPlan.TELYS_DEVELOPER,
+        plan=free_plan,
         status=OrgStatus.ACTIVE,
     )
     db.add(org)
@@ -225,5 +239,15 @@ async def activate_telys_developer(
     )
     db.add(user)
     await db.flush()
-    logger.info("telys_developer_org_created", org_id=str(org.id), email=email, slug=slug)
+    logger.info("product_free_tier_org_created", product=cfg.id, org_id=str(org.id), email=email, slug=slug)
     return org, user
+
+
+async def activate_telys_developer(
+    db: AsyncSession, *, email: str, name: str | None = None
+) -> tuple[Organization, User]:
+    """Back-compat shim: Telys onboarding is the generic product free-tier activation for ``telys``.
+
+    Kept so existing callers/tests (POST /v1/telys/onboard) are unchanged; behavior is byte-identical
+    (telys' registry ``default_free_tier`` is ``telys_developer``)."""
+    return await activate_product_free_tier(db, product="telys", email=email, name=name)

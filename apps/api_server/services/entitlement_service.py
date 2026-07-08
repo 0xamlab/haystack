@@ -28,14 +28,16 @@ from dataclasses import dataclass, field, replace
 
 import structlog
 
-logger = structlog.get_logger(__name__)
+# Per-product feature sets are owned by the product registry (single source of truth). Re-exported through
+# this import so existing importers/tests (`from entitlement_service import CODNA_FEATURES_FULL`) still work,
+# and so the MCP feature→tool map in packages/mcp/algenta_mcp/products.py stays the mirror of codna's keys.
+from apps.api_server.services.product_registry import (
+    ALGENTA_FEATURES_FULL,
+    CODNA_FEATURES_FULL,
+    TELYS_FEATURES_FULL,
+)
 
-# Codna's full feature set — must match the keys of PRODUCT_FEATURE_TOOLS in
-# packages/mcp/algenta_mcp/products.py (the feature→tool map the runtime gates on).
-CODNA_FEATURES_FULL: tuple[str, ...] = ("repo_graph", "triage", "simulate", "fix", "apply")
-# Telys (on-device memory/retrieval runtime) feature set — gates the same way (telys.verify checks
-# products.telys.features). Mirror of telys-sdk telys/verify.py TELYS_FEATURES.
-TELYS_FEATURES_FULL: tuple[str, ...] = ("local_runtime", "partitioned_vector", "ivf_partition")
+logger = structlog.get_logger(__name__)
 
 # Self-service ceiling (anti-underpayment): at or below this, an org may self-serve;
 # above it requires an enterprise contract (negotiated pools via per-org overrides).
@@ -85,6 +87,10 @@ def _telys_full(tier: str) -> dict[str, ProductGrant]:
     return {"telys": ProductGrant(tier=tier, features=frozenset(TELYS_FEATURES_FULL))}
 
 
+def _algenta_full(tier: str) -> dict[str, ProductGrant]:
+    return {"algenta": ProductGrant(tier=tier, features=frozenset(ALGENTA_FEATURES_FULL))}
+
+
 
 # Per-tier capacity — keyed by the internal plan name (OrgPlan values). ``developer`` and
 # ``pro`` are the same commercial tier (see plan_limits). Unknown plans resolve to ``free``.
@@ -112,6 +118,33 @@ _TIER_CAPACITY: dict[str, EntitlementRecord] = {
     "telys_team": EntitlementRecord(
         plan="telys_team", deployment_class="server",
         products=_telys_full("team"),
+        named_seat_limit=SELF_SERVICE_MAX_SEATS, active_node_limit=SELF_SERVICE_MAX_NODES,
+        concurrent_worker_limit=SELF_SERVICE_MAX_WORKERS,
+        device_allowance_per_seat=3, commercial_use=True, offline_grace_days=14,
+    ),
+    # Algenta (the engine, as a first-class product) — mirrors the telys developer/pro/team shape so the
+    # bundled in-process runtime gets products.algenta. algenta_free is the free, no-card, 1-device,
+    # local/non-commercial tier a fresh `algenta login` lands on.
+    "algenta_free": EntitlementRecord(
+        plan="algenta_free",
+        deployment_class="desktop",
+        products=_algenta_full("developer"),
+        named_seat_limit=1,
+        active_node_limit=1,
+        concurrent_worker_limit=1,
+        device_allowance_per_seat=1,
+        commercial_use=False,
+        offline_grace_days=30,
+    ),
+    "algenta_pro": EntitlementRecord(
+        plan="algenta_pro", deployment_class="desktop",
+        products=_algenta_full("pro"),
+        named_seat_limit=1, active_node_limit=1, concurrent_worker_limit=2,
+        device_allowance_per_seat=3, commercial_use=True, offline_grace_days=14,
+    ),
+    "algenta_team": EntitlementRecord(
+        plan="algenta_team", deployment_class="server",
+        products=_algenta_full("team"),
         named_seat_limit=SELF_SERVICE_MAX_SEATS, active_node_limit=SELF_SERVICE_MAX_NODES,
         concurrent_worker_limit=SELF_SERVICE_MAX_WORKERS,
         device_allowance_per_seat=3, commercial_use=True, offline_grace_days=14,

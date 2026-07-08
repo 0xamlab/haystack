@@ -41,6 +41,7 @@ from apps.api_server.services.supabase_auth import (
     SupabaseAuthError,
     verify_supabase_jwt,
 )
+from apps.api_server.services.product_registry import get_product, product_for_client_id
 from apps.api_server.services.website_identity import bearer_token, error_body
 
 router = APIRouter(tags=["oauth-device"])
@@ -52,8 +53,10 @@ _DEFAULT_INTERVAL = 5
 _USER_CODE_ALPHABET = "BCDFGHJKMNPQRSTVWXYZ23456789"
 _USER_CODE_LEN = 8  # rendered "XXXX-XXXX"
 
-# client_id → app slug (drives the brand-aware verification_uri ?app=). Extend for `algenta-cli` etc.
-_KNOWN_CLIENTS: dict[str, str] = {"telys-cli": "telys"}
+# client_id → product is resolved via the product registry (product_for_client_id): device-login and every
+# other product-aware surface share one map. A product participates only when its `device_login` flag is set
+# (telys-cli, algenta-cli today; codna-cli is reserved but off until codna cuts over). The verification_uri
+# ?app= slug is the product's accounts_app_slug.
 
 
 # ── request bodies ────────────────────────────────────────────────────────────
@@ -141,9 +144,10 @@ async def device_code(
     db: AsyncSession = Depends(get_db),
     redis: Any = Depends(get_redis),
 ) -> Any:
-    app_slug = _KNOWN_CLIENTS.get(payload.client_id)
-    if app_slug is None:
+    product = get_product(product_for_client_id(payload.client_id))
+    if product is None:
         return _oauth_error(400, "invalid_client", f"unknown client_id {payload.client_id!r}")
+    app_slug = product.accounts_app_slug
     await _rate_limit(_client_ip(request), redis, prefix="device_code_req", per_minute=30)
 
     now = datetime.now(UTC)

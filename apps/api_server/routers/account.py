@@ -57,7 +57,7 @@ from apps.api_server.services.supabase_auth import (
     SupabaseAuthError,
     verify_supabase_jwt,
 )
-from apps.api_server.services.user_service import activate_telys_developer
+from apps.api_server.services.user_service import activate_product_free_tier
 from apps.api_server.services.website_identity import bearer_token, error_body
 from apps.api_server.services.auth_service import (
     AuthContext,
@@ -630,30 +630,37 @@ async def create_api_key(
 
 
 class TelysOnboardRequest(BaseModel):
-    # All optional — the client (`telys login`) sends {name, product, plan}, but the free Telys tier is enforced
-    # server-side (a requested paid plan is ignored). name seeds the org display name on first activation.
+    # All optional — the client (`<brand> login`) sends {name, product, plan}, but the free tier is enforced
+    # server-side from the ROUTE's product (a requested paid plan / body ``product`` is ignored — never
+    # trusted). name seeds the org display name on first activation.
     name: str | None = None
     product: str | None = None
     plan: str | None = None
 
 
-@router.post(
-    "/v1/telys/onboard",
-    response_model=APIKeyCreated,
-    status_code=201,
-    summary="Self-service Telys onboarding (Supabase-authed): activate telys_developer + mint the first API key",
-    description=(
-        "Called by `telys login` with a Supabase access_token. Verifies the token, resolves-or-creates the "
-        "caller's org on the free `telys_developer` tier (so the device license carries `products.telys`), and "
-        "returns a freshly minted API key. Idempotent per email; never downgrades a paid plan. This is the "
-        "Supabase-JWT entry point — distinct from POST /v1/api-keys, which requires an existing API key/license."
-    ),
-)
-async def telys_onboard(
+async def _do_product_onboard(
+    product: str,
     payload: TelysOnboardRequest,
-    authorization: Annotated[str | None, Header()] = None,
-    db: AsyncSession = Depends(get_db),
+    authorization: str | None,
+    db: AsyncSession,
 ) -> APIKeyCreated:
+    """Shared self-service onboarding: verify the Supabase JWT, resolve-or-create the caller's org on the
+    product's free tier (so the device license carries ``products.<id>``), and mint the first API key.
+
+    ``product`` comes from the TRUSTED caller (the route path / a fixed literal), validated against the
+    product registry — never the request body. Idempotent per email at the org level; never downgrades a
+    paid plan. The Supabase-JWT entry point — distinct from POST /v1/api-keys (which needs an existing key).
+    """
+    from apps.api_server.services.product_registry import get_product, product_flag
+
+    cfg = get_product(product)
+    # Self-serve onboarding is the server side of `<brand> login`; a product that isn't opted into device-
+    # login (codna today uses the GitHub App, device_login=False) is NOT onboardable here → 404. This keeps
+    # onboard aligned with the reserved-off intent and never exposes an ungated signup for a not-yet-live brand.
+    if cfg is None or not product_flag(cfg.id, "device_login"):
+        raise HTTPException(
+            status_code=404, detail=error_body("unknown_product", f"unknown product {product!r}")
+        )
     token = bearer_token(authorization)  # raises 401 if absent
     try:
         claims = await verify_supabase_jwt(token)
@@ -671,19 +678,25 @@ async def telys_onboard(
         )
     name = payload.name or meta.get("full_name") or meta.get("name") or meta.get("user_name")
 
-    org, user = await activate_telys_developer(db, email=email, name=name)
+    org, user = await activate_product_free_tier(db, product=cfg.id, email=email, name=name)
 
     raw_key, key_prefix, hashed_key = generate_api_key()
     api_key = APIKey(
         org_id=org.id,
         user_id=user.id,
-        label=(payload.name or "Telys CLI"),
+        label=(payload.name or f"{cfg.display_name} CLI"),
         key_prefix=key_prefix,
         hashed_key=hashed_key,
     )
     db.add(api_key)
     await db.flush()
-    logger.info("telys_onboard_key_minted", org_id=str(org.id), plan=org.plan.value, key_prefix=key_prefix)
+    logger.info(
+        "product_onboard_key_minted",
+        product=cfg.id,
+        org_id=str(org.id),
+        plan=org.plan.value,
+        key_prefix=key_prefix,
+    )
     return APIKeyCreated(
         id=api_key.id,
         label=api_key.label,
@@ -693,6 +706,48 @@ async def telys_onboard(
         created_at=api_key.created_at,
         expires_at=api_key.expires_at,
     )
+
+
+@router.post(
+    "/v1/products/{product}/onboard",
+    response_model=APIKeyCreated,
+    status_code=201,
+    summary="Self-service product onboarding (Supabase-authed): activate the free tier + mint the first API key",
+    description=(
+        "Called by `<product> login` with a Supabase access_token. The product comes from the URL path "
+        "(validated against the product registry — an unknown product 404s), never a request body. Verifies "
+        "the token, resolves-or-creates the caller's org on that product's free tier (so the device license "
+        "carries `products.<product>`), and returns a freshly minted API key. Idempotent per email at the org "
+        "level; never downgrades a paid plan."
+    ),
+)
+async def product_onboard(
+    product: str,
+    payload: TelysOnboardRequest,
+    authorization: Annotated[str | None, Header()] = None,
+    db: AsyncSession = Depends(get_db),
+) -> APIKeyCreated:
+    return await _do_product_onboard(product, payload, authorization, db)
+
+
+@router.post(
+    "/v1/telys/onboard",
+    response_model=APIKeyCreated,
+    status_code=201,
+    summary="Self-service Telys onboarding (Supabase-authed): activate telys_developer + mint the first API key",
+    description=(
+        "Back-compat alias of POST /v1/products/telys/onboard (the shipped `telys login` calls this exact "
+        "path). Verifies the Supabase token, resolves-or-creates the caller's org on the free `telys_developer` "
+        "tier (so the device license carries `products.telys`), and returns a freshly minted API key. "
+        "Idempotent per email; never downgrades a paid plan."
+    ),
+)
+async def telys_onboard(
+    payload: TelysOnboardRequest,
+    authorization: Annotated[str | None, Header()] = None,
+    db: AsyncSession = Depends(get_db),
+) -> APIKeyCreated:
+    return await _do_product_onboard("telys", payload, authorization, db)
 
 
 @router.delete("/v1/api-keys/{key_id}", status_code=204, summary="Revoke an API key")

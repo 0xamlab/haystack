@@ -731,7 +731,13 @@ def _activation_id(org_id: str, device_id: str) -> str:
 # product by adding it here or via settings.rs256_license_products (env-overridable, no code change). Codna and
 # Algenta's *internal* consumers still verify HS256, so they keep the global default until their runtime verifies
 # RS256 — flipping them before then would break live installs. This is why selection is per-product, not global.
-_RS256_LICENSE_PRODUCTS: frozenset[str] = frozenset({"telys"})
+from apps.api_server.services.product_registry import (  # noqa: E402
+    rs256_license_products as _registry_rs256_license_products,
+)
+
+# Default = every product the registry marks rs256_license=True (telys, algenta today). Codna stays off
+# (its runtime still verifies HS256). Env-overridable via settings.rs256_license_products (see _rs256_products).
+_RS256_LICENSE_PRODUCTS: frozenset[str] = _registry_rs256_license_products()
 
 # The cf_worker (license.algenta.ai) signs claims VERBATIM and enforces its own policy: iss must be the platform
 # issuer, aud must be the platform-runtime audience, and a standard `exp` is REQUIRED and capped (worker.js
@@ -745,14 +751,44 @@ _CF_WORKER_MAX_TTL_SECONDS = 89 * 86400  # stay safely under the worker's 90-day
 
 
 def _rs256_products(settings: Any) -> set[str]:
-    """The set of products whose license is signed by the cf_worker (RS256). Config-extensible via
-    settings.rs256_license_products (comma-separated env string or an iterable); default = Telys only."""
+    """The set of products whose license is SIGNED by the cf_worker (RS256). Config-extensible via
+    settings.rs256_license_products (comma-separated env string or an iterable) as an operator escape hatch;
+    default = the product registry's rs256 products (telys + algenta today; codna stays HS256).
+
+    IMPORTANT: this override affects SIGNER ROUTING only — it does NOT gate whether the products.<id>
+    entitlement map is emitted. Emission follows the registry via _plan_needs_products_map, so a narrowed
+    override (e.g. rs256_license_products="algenta") can NEVER suppress telys/algenta's required entitlement
+    claim and break their offline runtime."""
     configured = getattr(settings, "rs256_license_products", None)
     if isinstance(configured, str):
         return {p.strip() for p in configured.split(",") if p.strip()}
     if configured:  # an explicit iterable (e.g. a set from a caller/test)
         return set(configured)
     return set(_RS256_LICENSE_PRODUCTS)
+
+
+def _plan_products(plan: str) -> set[str]:
+    """The product ids this plan grants (from the entitlement tier), with a plan-name fallback on error."""
+    try:
+        from apps.api_server.services.entitlement_service import resolve_entitlement
+
+        return set(getattr(resolve_entitlement(plan), "products", {}) or {})
+    except Exception:  # unknown/legacy plan: fall back to the plan-name signal, never crash issuance
+        return {"telys"} if str(plan or "").startswith("telys") else set()
+
+
+def _plan_rs256_products(plan: str, settings: Any) -> set[str]:
+    """The RS256/offline products this plan grants under the current SIGNER routing (plan products ∩ the
+    operator-overridable signer set). Used to decide cf_worker signing — NOT products-map emission."""
+    return _plan_products(plan) & _rs256_products(settings)
+
+
+def _plan_needs_products_map(plan: str) -> bool:
+    """Whether this plan MUST emit the products.<id> entitlement claim map: true iff it grants a product the
+    REGISTRY marks rs256/offline (telys, algenta). Registry-based + env-INDEPENDENT on purpose — neither an
+    operator's signer override (rs256_license_products) nor a missing cf_worker (dev/test) can suppress a
+    product's required entitlement claim (emission ≠ signing). Generalizes the old telys-only startswith gate."""
+    return bool(_plan_products(plan) & set(_RS256_LICENSE_PRODUCTS))
 
 
 def _use_cf_worker_signer(plan: str, settings: Any) -> bool:
@@ -765,13 +801,7 @@ def _use_cf_worker_signer(plan: str, settings: Any) -> bool:
     ``license_signer_backend`` deliberately does NOT widen it (that would silently flip Codna/Algenta to RS256)."""
     if not (getattr(settings, "license_signer_url", "") or ""):
         return False
-    try:
-        from apps.api_server.services.entitlement_service import resolve_entitlement
-
-        products = set(getattr(resolve_entitlement(plan), "products", {}) or {})
-    except Exception:  # unknown/legacy plan: fall back to the plan-name signal, never crash issuance
-        products = {"telys"} if str(plan or "").startswith("telys") else set()
-    return bool(products & _rs256_products(settings))
+    return bool(_plan_rs256_products(plan, settings))
 
 
 def _issue_license_jwt(
@@ -822,18 +852,18 @@ def _issue_license_jwt(
     # resolved tier — required by the Telys verifier (products.telys) and for product feature gating. Additive
     # merge — never drops the identity claims.
     #
-    # Gating is product-aware so Telys works WITHOUT a global flip:
-    #   * Telys plans (telys_developer/pro/team) ALWAYS emit the products map — a paid Telys customer's local
-    #     runtime fails closed (no products.telys → no features) without it, and the Telys verifier is the only
-    #     consumer of a telys_* license, so this cannot affect Codna/Algenta.
+    # Gating is product-aware so RS256/offline products work WITHOUT a global flip:
+    #   * An RS256-product plan (telys_* AND algenta_* — anything whose product is in the RS256 set) ALWAYS
+    #     emits the products map — that product's local runtime fails closed (no products.<id> → no features)
+    #     without it, and only that product's own offline verifier consumes its license, so this cannot affect
+    #     Codna. url-independent (dev/test with no cf_worker still emit it).
     #   * All other plans stay gated on license_v2_issuance (default OFF): off = legacy claim set with NO products
-    #     map, so existing Codna/Algenta consumers are unaffected; flip ON only after confirming every consumer
-    #     handles a products map (see telys docs/SHARED-PLATFORM-INTEGRATION.md).
+    #     map, so existing Codna/Algenta-internal consumers are unaffected; flip ON only after confirming every
+    #     consumer handles a products map (see telys docs/SHARED-PLATFORM-INTEGRATION.md).
     from apps.api_server.config import get_settings
 
     settings = get_settings()
-    _is_telys_plan = str(plan or "").startswith("telys")
-    if _is_telys_plan or settings.license_v2_issuance:
+    if _plan_needs_products_map(plan) or settings.license_v2_issuance:
         from apps.api_server.services.entitlement_service import resolve_entitlement, to_license_claims
 
         payload.update(to_license_claims(resolve_entitlement(plan)))

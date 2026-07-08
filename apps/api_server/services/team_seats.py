@@ -13,7 +13,7 @@ is synced. `enterprise` is unlimited.
 DEFAULT_TEAM_SEATS = 5
 _UNLIMITED = 0  # sentinel: 0 means "no cap"
 
-_MULTI_SEAT_PLANS = {"team", "telys_team"}
+_MULTI_SEAT_PLANS = {"team", "telys_team", "algenta_team"}
 _UNLIMITED_PLANS = {"enterprise"}
 
 
