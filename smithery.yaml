@@ -1,0 +1,29 @@
+# Smithery marketplace config (https://smithery.ai/docs). Smithery indexes this repo's MCP server;
+# the config schema drives the one-click install form, and commandFunction launches the stdio server.
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    required: ["algentaApiKey"]
+    properties:
+      algentaApiKey:
+        type: string
+        title: Algenta API key
+        description: "Get one with `algenta login`, or from https://app.algenta.ai/dashboard/api-keys."
+      algentaBaseUrl:
+        type: string
+        title: Algenta base URL
+        description: "Cloud Managed default; set your own for self-hosted / air-gapped."
+        default: "https://api.algenta.ai"
+  commandFunction: |
+    (config) => ({
+      command: 'algenta-mcp',
+      args: [],
+      env: {
+        ALGENTA_API_KEY: config.algentaApiKey,
+        ALGENTA_BASE_URL: config.algentaBaseUrl || 'https://api.algenta.ai'
+      }
+    })
+  exampleConfig:
+    algentaApiKey: de_live_xxxxxxxx
+    algentaBaseUrl: https://api.algenta.ai
