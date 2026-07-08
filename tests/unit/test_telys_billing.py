@@ -56,7 +56,10 @@ class TestPlanFromSubscription:
 
 # ── checkout allowlists permit telys ──────────────────────────────────────────────────────────
 def test_website_checkout_allowlist_includes_telys():
-    assert "telys_pro" in _CHECKOUT_PLANS and "telys_team" in _CHECKOUT_PLANS
+    assert "telys_pro" in _CHECKOUT_PLANS
+    # telys_team is deliberately EXCLUDED from public self-serve (#287 dropped Team from the ladder;
+    # it's retained for existing orgs + enforcement, not sold here). See website_billing._CHECKOUT_PLANS.
+    assert "telys_team" not in _CHECKOUT_PLANS
     # Codna tiers still sellable (no regression)
     assert "pro" in _CHECKOUT_PLANS and "team" in _CHECKOUT_PLANS
 

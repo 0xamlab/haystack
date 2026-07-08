@@ -33,6 +33,7 @@ For symptom-first help, see [Troubleshooting](../troubleshooting.md).
 | `already_member` | — |
 | `api_key_not_found` | The referenced API key does not exist. |
 | `authentication_required` | No valid credential was supplied. Send `Authorization: Bearer <key>`. |
+| `billing_not_enabled` | — |
 | `browse_failed` | — |
 | `cannot_revoke_last_key` | You cannot revoke your last active key (it would lock you out). |
 | `captcha_required` | Sign-up requires a captcha (Turnstile) token. |

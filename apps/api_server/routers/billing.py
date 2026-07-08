@@ -94,13 +94,35 @@ async def checkout(
         seats = max(1, int(body.get("seats", 1)))
     except (TypeError, ValueError):
         seats = 1
-    if plan not in ("developer", "pro", "proplus", "ultra", "team", "telys_pro", "telys_team"):
+    if plan not in (
+        "developer", "pro", "proplus", "ultra", "team",
+        "telys_pro", "telys_team",
+        "algenta_pro", "algenta_team",
+    ):
         raise HTTPException(
             status_code=400,
             detail={
                 "error": {
                     "code": "invalid_plan",
                     "message": "Invalid plan",
+                }
+            },
+        )
+
+    # Product-scoped billing gate: a brand's checkout is live only when its `billing` flag is on. Algenta
+    # ships billing DARK (Stripe test-mode first) — its plans are in the allow-list above (machinery
+    # deployed) but checkout is refused until the owner flips product_registry algenta.billing on.
+    # codna/telys are on, so this is a no-op for them.
+    from apps.api_server.services.product_registry import product_flag, product_for_plan
+
+    _plan_product = product_for_plan(plan)
+    if not product_flag(_plan_product, "billing", default=True):
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": {
+                    "code": "billing_not_enabled",
+                    "message": f"Billing is not yet enabled for {_plan_product}.",
                 }
             },
         )
@@ -118,7 +140,7 @@ async def checkout(
         str(auth["org_id"]),
         email,
         plan,
-        quantity=seats if plan in ("team", "telys_team") else 1,
+        quantity=seats if plan in ("team", "telys_team", "algenta_team") else 1,
         success_url=redirect_urls.success_url,
         cancel_url=redirect_urls.cancel_url,
         audit_context=audit_context_from_auth(
@@ -517,6 +539,19 @@ def _plan_from_subscription(sub_obj: dict[str, Any]) -> str:
                 and price_id == _settings.stripe_price_telys_team
             ):
                 return "telys_team"
+            # Algenta engine paid tiers (algenta_free is free → no Stripe price). Same rationale as telys:
+            # without these an algenta subscription's price_id falls through to "free" and silently
+            # de-entitles a paying customer. Keep in lockstep with stripe_service.PLAN_PRICE_IDS.
+            if (
+                hasattr(_settings, "stripe_price_algenta_pro")
+                and price_id == _settings.stripe_price_algenta_pro
+            ):
+                return "algenta_pro"
+            if (
+                hasattr(_settings, "stripe_price_algenta_team")
+                and price_id == _settings.stripe_price_algenta_team
+            ):
+                return "algenta_team"
     except Exception as exc:
         logger.debug("subscription_plan_parse_failed", error=str(exc))
     return "free"

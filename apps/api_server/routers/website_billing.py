@@ -45,7 +45,7 @@ router = APIRouter(tags=["account"])
 # ladder is Developer (free) / Pro / Enterprise (contact-sales) — telys_team is retained for existing
 # orgs + enforcement but is NOT publicly sellable, so it's excluded from self-serve checkout.
 # Keep in sync with the Stripe catalog (product.metadata.source=telys) + stripe_service.PLAN_PRICE_IDS.
-_CHECKOUT_PLANS = frozenset({"pro", "team", "telys_pro"})
+_CHECKOUT_PLANS = frozenset({"pro", "team", "telys_pro", "algenta_pro"})
 
 
 def _require_billing() -> None:
@@ -144,6 +144,19 @@ async def account_billing_checkout(
             status_code=400,
             detail=website_identity.error_body(
                 "invalid_plan", "This plan cannot be purchased here."
+            ),
+        )
+    # Product-scoped billing gate (mirrors POST /v1/billing/checkout): a brand's checkout is live only when
+    # its `billing` flag is on. Algenta ships billing DARK until the owner flips product_registry
+    # algenta.billing; codna/telys are on, so this is a no-op for them.
+    from apps.api_server.services.product_registry import product_flag, product_for_plan
+
+    _plan_product = product_for_plan(plan)
+    if not product_flag(_plan_product, "billing", default=True):
+        raise HTTPException(
+            status_code=403,
+            detail=website_identity.error_body(
+                "billing_not_enabled", f"Billing is not yet enabled for {_plan_product}."
             ),
         )
 

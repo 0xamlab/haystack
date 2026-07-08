@@ -82,6 +82,20 @@ class _PlanPriceIdMapping(Mapping[str, str | None]):
                 and not _is_placeholder(current_settings.stripe_price_telys_team)
                 else None
             ),
+            # Algenta engine plans: algenta_free is free (no SKU); pro/team are paid.
+            "algenta_free": None,
+            "algenta_pro": (
+                current_settings.stripe_price_algenta_pro
+                if hasattr(current_settings, "stripe_price_algenta_pro")
+                and not _is_placeholder(current_settings.stripe_price_algenta_pro)
+                else None
+            ),
+            "algenta_team": (
+                current_settings.stripe_price_algenta_team
+                if hasattr(current_settings, "stripe_price_algenta_team")
+                and not _is_placeholder(current_settings.stripe_price_algenta_team)
+                else None
+            ),
         }
 
     def __getitem__(self, key: str) -> str | None:
@@ -238,7 +252,7 @@ async def create_checkout_session(
                         "line_items[0][adjustable_quantity][enabled]": "true",
                         "line_items[0][adjustable_quantity][minimum]": "1",
                     }
-                    if plan in ("team", "telys_team")
+                    if plan in ("team", "telys_team", "algenta_team")
                     else {}
                 ),
             },

@@ -101,6 +101,8 @@ Where a variable has accepted aliases (for example a legacy `DE_` name), they ap
 | `SMTP_PASSWORD` | — | — | — |
 | `SMTP_PORT` | `1025` | — | — |
 | `SMTP_USERNAME` | — | — | — |
+| `STRIPE_PRICE_ALGENTA_PRO` | `price_algenta_pro_replace_me` | — | — |
+| `STRIPE_PRICE_ALGENTA_TEAM` | `price_algenta_team_replace_me` | — | — |
 | `STRIPE_PRICE_DEVELOPER` | `price_developer_replace_me` | — | — |
 | `STRIPE_PRICE_PRO` | `price_pro_replace_me` | — | — |
 | `STRIPE_PRICE_PROPLUS` | `price_proplus_replace_me` | — | — |
