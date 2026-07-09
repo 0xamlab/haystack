@@ -117,6 +117,10 @@ jobs:
 
       # 3c) macOS only: build + code-sign + RS256-sign the Secure Enclave helper into <src>/se so the sidecar
       #     wheel bundles it. The runtime then verifies + runs this PREBUILT binary — never JIT-compiles swiftc.
+      #     Signing: AD-HOC by default (all an internal, wheel-bundled, Python-invoked binary needs to run on
+      #     Apple Silicon). ALGENTA_SE_CODESIGN_IDENTITY is OPTIONAL (a Developer ID for standalone
+      #     distribution / notarization); if set but its cert isn't in the keychain, the script falls back to
+      #     ad-hoc — a stray identity secret never breaks the build. The RS256 manifest is the trust anchor.
       - name: Build + sign Secure Enclave helper (macOS)
         if: runner.os == 'macOS'
         env:

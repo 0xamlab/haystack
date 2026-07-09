@@ -258,6 +258,28 @@ def test_se_env_override(tmp_path, monkeypatch) -> None:
     assert store._resolve() == (str(p), "env")
 
 
+# ── a stray Developer ID identity without a cert must NOT break the build (falls back to ad-hoc) ──
+@pytest.mark.skipif(sys.platform != "darwin", reason="codesign is macOS-only")
+def test_build_se_helper_falls_back_to_adhoc_on_bad_identity(tmp_path) -> None:
+    if hks._swiftc() is None:
+        pytest.skip("swiftc not available to build the helper")
+    priv = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    keyfile = tmp_path / "k.pem"
+    keyfile.write_bytes(priv.private_bytes(
+        serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()
+    ))
+    env = {**__import__("os").environ, "ALGENTA_SE_CODESIGN_IDENTITY": "Developer ID Application: nope (ZZZZ)"}
+    out = tmp_path / "se"
+    res = subprocess.run(
+        [sys.executable, "scripts/build_se_helper.py", "--out", str(out), "--key", str(keyfile),
+         "--platform", "macos-test"],
+        cwd=str(_REPO_ROOT), capture_output=True, text=True, env=env,
+    )
+    assert res.returncode == 0, res.stderr  # a missing Developer ID cert must fall back to ad-hoc, not abort
+    assert (out / "algenta-se-helper").exists()
+    assert (out / "manifest.sig").exists()
+
+
 # ── REAL Secure Enclave through the VERIFIED PREBUILT helper (macOS, no runtime swiftc) ──
 @pytest.mark.skipif(sys.platform != "darwin", reason="Secure Enclave is macOS-only")
 def test_real_secure_enclave_via_prebuilt_signed_helper(tmp_path, monkeypatch) -> None:

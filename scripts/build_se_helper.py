@@ -70,19 +70,28 @@ def _compile(swiftc: str, out_binary: Path) -> None:
         src.unlink(missing_ok=True)
 
 
-def _codesign(binary: Path, identity: str | None) -> None:
-    # Hardened runtime + timestamp with a Developer ID for release; ad-hoc ('-') for local/dev.
-    ident = identity or "-"
-    args = ["codesign", "--force", "--options", "runtime", "--sign", ident, str(binary)]
-    if identity:
+def _codesign_once(binary: Path, identity: str) -> subprocess.CompletedProcess:
+    args = ["codesign", "--force", "--options", "runtime", "--sign", identity, str(binary)]
+    if identity != "-":
         args.insert(1, "--timestamp")
-    res = subprocess.run(args, capture_output=True, text=True)  # noqa: S603
-    if res.returncode != 0:
-        # ad-hoc signing failures are non-fatal for dev; a real identity failing IS fatal
-        msg = f"codesign ({'identity' if identity else 'ad-hoc'}) failed: {res.stderr.strip()}"
-        if identity:
-            raise SystemExit(msg)
-        print(f"warning: {msg}", file=sys.stderr)
+    return subprocess.run(args, capture_output=True, text=True)  # noqa: S603
+
+
+def _codesign(binary: Path, identity: str | None) -> None:
+    """Sign the helper. Ad-hoc (``-``) is the intended default and is all an internal, wheel-bundled,
+    Python-invoked binary needs to execute on Apple Silicon. A Developer ID is OPTIONAL (only for
+    distributing / notarizing a standalone binary). If a Developer ID is set but signing with it fails
+    (e.g. the cert isn't in the runner keychain), fall back to ad-hoc with a warning — a stray identity
+    secret must NEVER break the build."""
+    if identity:
+        res = _codesign_once(binary, identity)
+        if res.returncode == 0:
+            return
+        print(f"warning: Developer ID codesign failed ({res.stderr.strip()}); falling back to ad-hoc",
+              file=sys.stderr)
+    res = _codesign_once(binary, "-")
+    if res.returncode != 0:  # ad-hoc failing is unusual; warn but don't abort (manifest still binds sha256)
+        print(f"warning: ad-hoc codesign failed: {res.stderr.strip()}", file=sys.stderr)
 
 
 def _sign_manifest(manifest_bytes: bytes, key_pem: str) -> bytes:

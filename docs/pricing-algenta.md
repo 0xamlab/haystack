@@ -97,9 +97,12 @@ the strongest practical posture rather than overcoming it:
   physically cannot activate on a second machine — **near-prevention for `active_node_limit=1`.** Hardware is
   opt-in (so a device's thumbprint stays stable); absent/failed hardware degrades to the software key, whose
   differing thumbprint fails a hardware-bound license closed rather than silently running. The Secure Enclave
-  helper ships **prebuilt + code-signed + RS256-manifest-signed** in the sidecar wheel
-  (`algenta_runtime_native/se/`), resolved + verified (signature + SHA-256, fail-closed) before execution —
-  **no runtime compiler** (the clean-machine contract); `swiftc` JIT is a dev-only fallback. Built by
+  helper ships **prebuilt + RS256-manifest-signed** in the sidecar wheel (`algenta_runtime_native/se/`),
+  resolved + verified (manifest signature + SHA-256, fail-closed) before execution — **no runtime compiler**
+  (the clean-machine contract); `swiftc` JIT is a dev-only fallback. The RS256 manifest is the trust anchor;
+  the Mach-O is **ad-hoc code-signed** by default (all an internal, wheel-bundled, Python-invoked binary needs
+  to run on Apple Silicon), with an **optional** Developer ID (`ALGENTA_SE_CODESIGN_IDENTITY`, for standalone
+  distribution / notarization) that falls back to ad-hoc if its cert is absent. Built by
   `scripts/build_se_helper.py` in `build-runtime.yml`. See `apps/runtime/hardware_key_store.py` +
   `apps/runtime/native_manifest.py`.
 - **Air-gap disables revocation** — a leaked bound token is aged out by short TTL + go-dark grace, not revoked.
