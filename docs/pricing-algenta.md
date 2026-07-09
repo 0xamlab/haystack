@@ -109,6 +109,13 @@ the strongest practical posture rather than overcoming it:
 - A determined operator can still mint-guard-violate (unbound tokens), disable the flags, or spin a fresh
   VM per node — none of which any offline scheme prevents; all are deliberate, auditable circumvention that
   voids the license (matching how HashiCorp/Elastic/Cloudera monetize air-gapped deployments).
+- **TPM path validation.** `TpmKeyStore` (P-256 via `tpm2-pytss`) is validated against **swtpm** (a real
+  TPM 2.0 software stack — libtpms) in CI (`.github/workflows/tpm.yml`): create → sign → ECDSA-SHA256
+  verify → `secp256r1:` thumbprint → cross-process reload. swtpm proves the ESAPI code is **correct**; it
+  does **not** prove the anti-clone SECURITY property — swtpm keys live in a state directory, not tamper-
+  resistant silicon. The non-exportable guarantee only holds on a **discrete/firmware TPM** (`FIXEDTPM`),
+  which must be confirmed once on real hardware (an fTPM Linux box / self-hosted runner). macOS has no
+  libtss2, so the TPM path is Linux/Windows only; on macOS use Secure Enclave.
 
 ## Other follow-ups
 

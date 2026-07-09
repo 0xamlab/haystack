@@ -295,31 +295,67 @@ class SecureEnclaveKeyStore:
 # ── TPM 2.0 (Linux / Windows) — feature-detected, opt-in, degrade-safe ────────────────────────────
 
 
+_TPM_PRIV_BLOB = "tpm_signing_key.priv"
+_TPM_PUB_BLOB = "tpm_signing_key.pub"
+
+
 class TpmKeyStore:
-    """TPM 2.0 P-256 signing key via ``tpm2-pytss``. Opt-in (``ALGENTA_TPM_ENABLE=1``) and feature-detected
-    — validated on TPM hardware. Any error makes ``available()`` False so the caller degrades to software
-    (which fails closed on a hardware-bound license). Never activates accidentally on a host without a TPM."""
+    """TPM 2.0 P-256 signing key via ``tpm2-pytss`` (Linux/Windows). Opt-in + feature-detected: activates
+    only when tpm2-pytss imports AND a TCTI connects (``ALGENTA_TPM_TCTI`` set — e.g. ``device:/dev/tpmrm0``
+    on real HW or ``swtpm:host=localhost,port=2321`` for a simulator — or ``ALGENTA_TPM_ENABLE=1`` to use the
+    library's default TCTI chain). Any error makes ``available()`` False, so the caller degrades to the
+    software key (which fails a hardware-bound license CLOSED). Never activates accidentally on a host with
+    no TPM.
+
+    The key is a leaf ECDSA/SHA-256 P-256 signing key under an SRK-like ECC primary. The private half is
+    parent-wrapped by the TPM (``FIXEDTPM`` — non-exportable on a discrete/firmware TPM); we persist only the
+    TPM-encrypted priv+pub blobs under the runtime dir and reload them each process (the primary is
+    deterministic from the owner seed), so the identity is stable across processes + reboots.
+
+    Validated against ``swtpm`` (a real TPM 2.0 software stack) in CI (.github/workflows/tpm.yml). swtpm
+    proves the ESAPI code is CORRECT; the anti-clone SECURITY property (non-exportable key) only holds on a
+    discrete/firmware TPM, validated separately on real hardware."""
 
     algorithm = "secp256r1"
 
     def __init__(self) -> None:
         self._avail: bool | None = None
 
+    # -- connection --
+    @staticmethod
+    def _tcti() -> str | None:
+        # Be EXPLICIT: ESAPI(None) ignores $TSS2_TCTI and probes /dev/tpmrm0 first. Return the configured
+        # TCTI so tests (swtpm) + real HW both work; None ⇒ the library default chain (ALGENTA_TPM_ENABLE).
+        return (os.environ.get("ALGENTA_TPM_TCTI") or "").strip() or None
+
+    def _esapi(self):
+        from tpm2_pytss import ESAPI  # type: ignore[import-not-found]
+
+        return ESAPI(self._tcti())
+
+    @staticmethod
+    def _startup(ectx) -> None:  # noqa: ANN001
+        from tpm2_pytss.constants import TPM2_SU  # type: ignore[import-not-found]
+
+        try:
+            ectx.startup(TPM2_SU.CLEAR)  # already-started TPM / swtpm startup-clear ⇒ TPM2_RC_INITIALIZE
+        except Exception:  # noqa: BLE001, S110 — harmless when already started
+            pass
+
     def available(self) -> bool:
         if self._avail is not None:
             return self._avail
         avail = False
-        if (os.environ.get("ALGENTA_TPM_ENABLE") or "").strip().lower() in {"1", "true", "yes", "on"}:
+        opted_in = self._tcti() is not None or _env_truthy("ALGENTA_TPM_ENABLE")
+        if opted_in:
             try:
                 import tpm2_pytss  # type: ignore[import-not-found]  # noqa: F401
 
-                # A TCTI must resolve (real /dev/tpmrm0, swtpm, or ALGENTA_TPM_TCTI). Construction of the
-                # ESAPI context is the real availability probe.
-                from tpm2_pytss import ESAPI  # type: ignore[import-not-found]
-
-                tcti = os.environ.get("ALGENTA_TPM_TCTI") or None
-                ctx = ESAPI(tcti)
-                ctx.close()
+                ectx = self._esapi()  # constructing + connecting the ESAPI context is the real probe
+                try:
+                    self._startup(ectx)
+                finally:
+                    ectx.close()
                 avail = True
             except Exception as exc:  # noqa: BLE001 — no lib / no TPM / no TCTI ⇒ unavailable
                 logger.info("tpm_keystore_unavailable", error=str(exc))
@@ -327,16 +363,120 @@ class TpmKeyStore:
         self._avail = avail
         return avail
 
-    def public_pem(self) -> str:  # pragma: no cover - requires TPM hardware
-        raise RuntimeError(
-            "TpmKeyStore.public_pem must run on TPM hardware (tpm2-pytss). It is feature-detected + "
-            "validated on a TPM; on this host it reports available()=False and the caller degrades."
+    # -- key material (persisted TPM-wrapped blobs; reloaded each process) --
+    def _blob_paths(self) -> tuple[Path, Path]:
+        d = _runtime_dir()
+        return d / _TPM_PRIV_BLOB, d / _TPM_PUB_BLOB
+
+    def _primary_template(self):
+        from tpm2_pytss.constants import TPMA_OBJECT  # type: ignore[import-not-found]
+        from tpm2_pytss.types import TPM2B_PUBLIC, TPMT_PUBLIC  # type: ignore[import-not-found]
+
+        # SRK-like ECC restricted-decrypt parent (matches tpm2-tools' default primary → deterministic).
+        return TPM2B_PUBLIC(
+            TPMT_PUBLIC.parse(
+                alg="ecc:aes128cfb",
+                objectAttributes=TPMA_OBJECT.DEFAULT_TPM2_TOOLS_CREATEPRIMARY_ATTRS,
+            )
         )
 
-    def sign(self, data: bytes) -> bytes:  # pragma: no cover - requires TPM hardware
-        raise RuntimeError("TpmKeyStore.sign requires TPM hardware")
+    def _signing_template(self):
+        from tpm2_pytss.constants import TPMA_OBJECT  # type: ignore[import-not-found]
+        from tpm2_pytss.types import TPM2B_PUBLIC, TPMT_PUBLIC  # type: ignore[import-not-found]
+
+        # Explicit P-256 + ECDSA/SHA-256 LEAF signing key: not restricted, not decrypt, non-exportable.
+        return TPM2B_PUBLIC(
+            TPMT_PUBLIC.parse(
+                alg="ecc_nist_p256:ecdsa-sha256",
+                objectAttributes=(
+                    TPMA_OBJECT.USERWITHAUTH
+                    | TPMA_OBJECT.SIGN_ENCRYPT
+                    | TPMA_OBJECT.FIXEDTPM
+                    | TPMA_OBJECT.FIXEDPARENT
+                    | TPMA_OBJECT.SENSITIVEDATAORIGIN
+                ),
+            )
+        )
+
+    def _ensure_key(self, ectx):  # noqa: ANN001
+        from tpm2_pytss.constants import ESYS_TR  # type: ignore[import-not-found]
+        from tpm2_pytss.types import (  # type: ignore[import-not-found]
+            TPM2B_PRIVATE,
+            TPM2B_PUBLIC,
+            TPM2B_SENSITIVE_CREATE,
+        )
+
+        primary = ectx.create_primary(
+            TPM2B_SENSITIVE_CREATE(), self._primary_template(), primary_handle=ESYS_TR.OWNER
+        )[0]
+        priv_path, pub_path = self._blob_paths()
+        if priv_path.exists() and pub_path.exists():
+            priv = TPM2B_PRIVATE.unmarshal(priv_path.read_bytes())[0]
+            pub = TPM2B_PUBLIC.unmarshal(pub_path.read_bytes())[0]
+        else:
+            created = ectx.create(primary, TPM2B_SENSITIVE_CREATE(), self._signing_template())
+            priv, pub = created[0], created[1]
+            priv_path.write_bytes(priv.marshal())
+            pub_path.write_bytes(pub.marshal())
+            for p in (priv_path, pub_path):
+                try:
+                    p.chmod(stat.S_IRUSR | stat.S_IWUSR)  # 0600 (priv blob is TPM-encrypted regardless)
+                except OSError:
+                    pass
+            logger.info("tpm_device_key_created")
+        key = ectx.load(primary, priv, pub)
+        return primary, key
+
+    def public_pem(self) -> str:
+        ectx = self._esapi()
+        try:
+            self._startup(ectx)
+            primary, key = self._ensure_key(ectx)
+            try:
+                pub = ectx.read_public(key)[0]  # TPM2B_PUBLIC
+                return pub.to_pem().decode()  # secp256r1 SubjectPublicKeyInfo PEM
+            finally:
+                ectx.flush_context(key)
+                ectx.flush_context(primary)
+        finally:
+            ectx.close()
+
+    def sign(self, data: bytes) -> bytes:
+        import hashlib
+
+        from tpm2_pytss.constants import TPM2_ALG, TPM2_RH, TPM2_ST  # type: ignore[import-not-found]
+        from tpm2_pytss.types import TPMT_SIG_SCHEME, TPMT_TK_HASHCHECK  # type: ignore[import-not-found]
+
+        digest = hashlib.sha256(data).digest()  # TPM2_Sign signs a DIGEST — hash in software first
+        scheme = TPMT_SIG_SCHEME(scheme=TPM2_ALG.ECDSA)
+        scheme.details.any.hashAlg = TPM2_ALG.SHA256
+        # Explicit NULL hashcheck — the data was hashed OUTSIDE the TPM by a non-restricted key, so no
+        # TPM-generated hash ticket exists. (tpm2-pytss requires the ticket object; it rejects None.)
+        validation = TPMT_TK_HASHCHECK(tag=TPM2_ST.HASHCHECK, hierarchy=TPM2_RH.NULL)
+        ectx = self._esapi()
+        try:
+            self._startup(ectx)
+            primary, key = self._ensure_key(ectx)
+            try:
+                sig = ectx.sign(key, digest, scheme, validation)
+                return bytes(sig)  # ASN.1 DER Ecdsa-Sig-Value (cryptography ec.ECDSA(SHA256) verifies it)
+            finally:
+                ectx.flush_context(key)
+                ectx.flush_context(primary)
+        finally:
+            ectx.close()
+
+    def public_key_thumbprint(self) -> str:
+        from apps.runtime.device_keypair import thumbprint_for_public_pem
+
+        return thumbprint_for_public_pem(self.public_pem()) or ""
 
     def reset(self) -> None:
+        for p in self._blob_paths():
+            try:
+                p.unlink(missing_ok=True)
+            except OSError:
+                pass
         self._avail = None
 
 

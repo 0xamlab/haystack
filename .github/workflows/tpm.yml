@@ -1,0 +1,119 @@
+# Validate the TPM 2.0 device-key backend (apps/runtime/hardware_key_store.TpmKeyStore) against a real
+# TPM 2.0 software stack (swtpm + libtss2 + tpm2-pytss) — the same ESAPI code a discrete/firmware TPM runs.
+# This is the authoritative validation of the TPM path (a discrete TPM chip is unavailable on GitHub runners
+# and on the macOS dev box, where libtss2 doesn't exist). swtpm proves the code is CORRECT; the anti-clone
+# SECURITY property (non-exportable key) only holds on real hardware — validate that separately once on a
+# self-hosted TPM/fTPM runner.
+name: tpm-device-key
+
+on:
+  push:
+    paths:
+      - 'apps/runtime/hardware_key_store.py'
+      - 'apps/runtime/device_keypair.py'
+      - 'tests/test_tpm_key_store.py'
+      - '.github/workflows/tpm.yml'
+  pull_request:
+    paths:
+      - 'apps/runtime/hardware_key_store.py'
+      - 'apps/runtime/device_keypair.py'
+      - 'tests/test_tpm_key_store.py'
+      - '.github/workflows/tpm.yml'
+  workflow_dispatch:
+
+jobs:
+  tpm-roundtrip:
+    name: TpmKeyStore round-trip on swtpm (P-256 / ECDSA-SHA256)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install TPM 2.0 stack (swtpm + libtss2) + build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            swtpm swtpm-tools tpm2-tools libtss2-dev \
+            build-essential pkg-config python3-dev
+
+      - name: Install python deps (tpm2-pytss is an optional extra)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "tpm2-pytss" cryptography structlog
+
+      - name: Start swtpm (TCP, daemonized so it survives across steps)
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/swtpm"; mkdir -p "$STATE"
+          swtpm_setup --tpm2 --tpmstate "$STATE" --create-ek-cert --lock-nvram || true
+          swtpm socket --tpm2 --tpmstate dir="$STATE" \
+            --server type=tcp,port=2321,bindaddr=127.0.0.1 \
+            --ctrl type=tcp,port=2322,bindaddr=127.0.0.1 \
+            --flags not-need-init,startup-clear \
+            --pid file="$STATE/swtpm.pid" --daemon
+          for i in $(seq 1 40); do
+            if (exec 3<>/dev/tcp/127.0.0.1/2321) 2>/dev/null; then exec 3>&- 3<&-; echo "swtpm up"; break; fi
+            sleep 0.25
+          done
+
+      - name: TpmKeyStore round-trip (create → sign → verify → thumbprint → cross-process reload)
+        env:
+          ALGENTA_TPM_TCTI: "swtpm:host=localhost,port=2321"
+          ALGENTA_RUNTIME_DIR: ${{ runner.temp }}/algenta-runtime
+        run: |
+          python - <<'PY'
+          from cryptography.hazmat.primitives import hashes, serialization
+          from cryptography.hazmat.primitives.asymmetric import ec
+          from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature
+          from cryptography.exceptions import InvalidSignature
+
+          from apps.runtime.hardware_key_store import TpmKeyStore
+          from apps.runtime.device_keypair import thumbprint_for_public_pem, verify_signature
+
+          ks = TpmKeyStore()
+          assert ks.available(), "TPM backend must be available (swtpm) in CI"
+
+          # public key is a genuine secp256r1 SPKI
+          pem = ks.public_pem()
+          pub = serialization.load_pem_public_key(pem.encode())
+          assert isinstance(pub, ec.EllipticCurvePublicKey) and isinstance(pub.curve, ec.SECP256R1), "not P-256"
+
+          # sign in the TPM; verify with the exported public key; tamper must fail
+          msg = b"algenta license nonce"
+          der = ks.sign(msg)
+          pub.verify(der, msg, ec.ECDSA(hashes.SHA256()))            # raises InvalidSignature on failure
+          r, s = decode_dss_signature(der)                           # valid DER if this parses
+          assert 0 < r < (1 << 256) and 0 < s < (1 << 256), "DER Ecdsa-Sig-Value out of range"
+          try:
+              pub.verify(der, b"tampered", ec.ECDSA(hashes.SHA256())); raise AssertionError("tamper verified!")
+          except InvalidSignature:
+              pass
+
+          # algorithm-agnostic verify path + thumbprint (matches the SE / server convention)
+          assert verify_signature(pem, msg, der) is True
+          tp = ks.public_key_thumbprint()
+          assert tp.startswith("secp256r1:"), tp
+          assert thumbprint_for_public_pem(pem) == tp                # server recompute agrees
+
+          # many signs don't exhaust TPM transient slots (leaf+primary flushed each call)
+          for _ in range(12):
+              d = ks.sign(b"beat")
+              pub.verify(d, b"beat", ec.ECDSA(hashes.SHA256()))
+
+          # cross-process reload: a fresh store instance yields the SAME key (persisted blobs)
+          assert TpmKeyStore().public_pem() == pem
+          assert TpmKeyStore().public_key_thumbprint() == tp
+          print("TPM round-trip OK:", tp)
+          PY
+
+      - name: Cross-PROCESS reload (separate interpreter, same swtpm state)
+        env:
+          ALGENTA_TPM_TCTI: "swtpm:host=localhost,port=2321"
+          ALGENTA_RUNTIME_DIR: ${{ runner.temp }}/algenta-runtime
+        run: |
+          A=$(python -c "from apps.runtime.hardware_key_store import TpmKeyStore; print(TpmKeyStore().public_key_thumbprint())")
+          B=$(python -c "from apps.runtime.hardware_key_store import TpmKeyStore; print(TpmKeyStore().public_key_thumbprint())")
+          echo "proc A: $A"; echo "proc B: $B"
+          test -n "$A" && test "$A" = "$B" || { echo "cross-process thumbprint mismatch"; exit 1; }
