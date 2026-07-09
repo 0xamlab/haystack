@@ -289,6 +289,13 @@ class RuntimeServer:
         self._server: grpc.aio.Server | None = None
 
     async def start(self) -> None:
+        # Offline node-cap L2: for shared-token clusters, count peers via the customer's own coordination
+        # Redis and refuse the node past active_node_limit (fail closed BEFORE we bind/serve). No-op unless
+        # enforcing + ALGENTA_ENFORCE_PEER_NODE_CAP + a reachable backend; bound tokens are already L1-gated.
+        from apps.runtime import node_broker
+
+        await node_broker.admit_node_and_start_heartbeat()
+
         self._server = grpc.aio.server()
         runtime_pb2_grpc_module.add_CodnaRuntimeServicer_to_server(
             _CodnaRuntimeServicer(self._executor, self._start_time),
@@ -318,6 +325,9 @@ class RuntimeServer:
         )
 
     async def stop(self, grace: float = 5.0) -> None:
+        from apps.runtime import node_broker
+
+        await node_broker.stop_node_census_heartbeat()  # release this node's census slot immediately
         if self._server:
             await self._server.stop(grace)
             logger.info("daemon_stopped")

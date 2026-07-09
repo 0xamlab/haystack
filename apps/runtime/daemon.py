@@ -137,6 +137,13 @@ def _validate_daemon_startup_prerequisites() -> None:
             or "A valid local signed license is required before starting the runtime daemon."
         )
 
+    # Offline node-cap L1: a device-bound self-host license may run only on its bound node. Fail closed at
+    # boot (air-gap-safe, no network). Enforcing is True here — the dark predicate returned early above.
+    # The L2 peer census (shared-Redis clusters) runs later in RuntimeServer.start().
+    from apps.runtime import node_broker
+
+    node_broker.assert_node_binding(license_record, enforcing=True)
+
 
 # ── Mojo process manager ──────────────────────────────────────────────────────
 

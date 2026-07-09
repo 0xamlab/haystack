@@ -60,20 +60,55 @@ The enforcement is **not** the price — it's the **active-node-cap + minting wi
 
 Golden tests: `tests/test_license_mint_guard.py` (incl. proving OEM claims are rejected as paid self-host).
 
-## Known enforcement gaps / follow-ups
+## Offline `active_node_limit` enforcement (runtime node_broker)
 
-- **Offline node-count is not runtime-enforced.** `active_node_limit` is a signed claim but offline only
-  `concurrent_worker_limit` self-enforces. Air-gapped "N nodes" is therefore sold as device-bound,
-  one-per-node tokens with a finite worker cap (enforced by the guard) until the runtime enforces
-  `active_node_limit` offline.
+`active_node_limit` is now **runtime-enforced offline**, no phone-home, via `apps/runtime/node_broker.py`,
+layered strongest-to-weakest and fail-closed:
+
+- **L1 — device binding (air-gap-safe, primary).** At daemon boot (`_validate_daemon_startup_prerequisites`,
+  before anything binds) a device-bound license (`device_pubkey_thumbprint` set) must run on the machine
+  whose Ed25519 private key reproduces that thumbprint (`device_keypair.public_key_thumbprint`); mismatch →
+  `NodeAdmissionError`, refuse to boot. For the `algenta_selfhost` unit (`active_node_limit=1`) this alone is
+  an offline node cap of 1 with zero coordination — the token can't run on a second machine.
+- **L2 — peer census (shared-Redis clusters, opt-in `ALGENTA_ENFORCE_PEER_NODE_CAP`).** For a shared-token
+  cluster (`active_node_limit=N`), nodes count each other in an atomic sorted-set census keyed by
+  `license_id` on the customer's OWN coordination Redis (`apps/runtime/coordination.py`), refreshed by a
+  heartbeat; the N+1-th node is refused. A single Lua eval (prune-stale → refresh-if-present → admit-if-under-
+  cap) makes it a true concurrent ceiling with no last-slot race, and it never evicts a live node.
+
+Dark by default: no-op unless license enforcement is on (`require_local_license` **or**
+`enforce_license_validation`) and `active_node_limit > 0`; L2 additionally needs `ALGENTA_ENFORCE_PEER_NODE_CAP`
++ a reachable `ALGENTA_COORDINATION=redis`. Free-tier / single-node / dev untouched.
+
+## Honest residual (what still can't be enforced, and why)
+
+The fundamental limit stands: **mutually-unreachable nodes that share zero state and never phone home cannot
+be globally counted** (the monotonic-counter / rollback impossibility). This design degrades gracefully to
+the strongest practical posture rather than overcoming it:
+
+- **L2 counts only REACHABLE peers** — two network partitions / isolated LAN islands each admit up to N (a
+  partition is a per-segment ceiling, never global). Never marketed as a global cap.
+- **L1 is tamper-EVIDENT, not tamper-proof today** — the node key lives in the OS keychain or a machine-id-
+  encrypted file, so a root operator who clones a VM *preserving `/etc/machine-id`* and copies the key store
+  gets a working identity. **Opt-in hardening (follow-up):** back the key with **TPM 2.0** (Linux/Windows,
+  `tpm2-pytss`) or **Apple Secure Enclave** (macOS, non-exportable P-256) via `ALGENTA_DEVICE_KEY_STORE`, which
+  makes the key non-exportable — near-prevention for `active_node_limit=1`. Absent hardware falls back to the
+  software key.
+- **Air-gap disables revocation** — a leaked bound token is aged out by short TTL + go-dark grace, not revoked.
+- A determined operator can still mint-guard-violate (unbound tokens), disable the flags, or spin a fresh
+  VM per node — none of which any offline scheme prevents; all are deliberate, auditable circumvention that
+  voids the license (matching how HashiCorp/Elastic/Cloudera monetize air-gapped deployments).
+
+## Other follow-ups
+
 - **Default-off cap is a provisioning footgun.** A paid self-host deployment that forgets
-  `ALGENTA_ENFORCE_ACTIVE_NODE_CAP=1` is uncapped. The mint output prints a reminder; deployment automation
-  must set it.
-- **Multi-node self-serve** currently provisions one node via Stripe checkout; larger node counts scale
+  `ALGENTA_ENFORCE_ACTIVE_NODE_CAP=1` (connected) / `ALGENTA_ENFORCE_PEER_NODE_CAP=1` (cluster) is uncapped.
+  The mint output prints a reminder; deployment automation must set it.
+- **Multi-node self-serve** provisions one node via Stripe checkout; larger node counts scale
   `active_node_limit` via per-org `entitlement_overrides` (enterprise) + an offline per-node mint. Tightly
   coupling Stripe subscription quantity → `active_node_limit` needs persisted overrides (future).
 - Autoscale burst/grace + a documented node definition (pod vs VM) so an over-cap scale-up degrades
-  gracefully rather than `402`-ing customer prod.
+  gracefully rather than refusing to boot.
 
 ## Sibling consistency
 

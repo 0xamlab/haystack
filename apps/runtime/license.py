@@ -356,6 +356,12 @@ class DeviceLicense:
         """Local worker-concurrency cap (0 = unspecified; broker does not cap)."""
         return self.concurrent_worker_limit
 
+    def node_limit(self) -> int:
+        """Active-node cap (0 = unspecified; node_broker does not cap). Enforced offline by the runtime
+        node_broker (device-binding + peer census), symmetric to ``worker_limit`` — see
+        ``apps/runtime/node_broker.py``."""
+        return self.active_node_limit
+
 
 def _coerce_products(value: object) -> dict[str, ProductEntitlement]:
     """Parse the v2 ``products`` claim, fail-closed: malformed entries are dropped."""

@@ -17,9 +17,11 @@ What a paid self-host license MUST look like (else it's the fleet hole):
     ``concurrent_worker_limit`` for the runtime broker). A license with every cap 0 is uncapped = fleet-
     portable = exactly what we're preventing.
   * AIR-GAPPED deployments must be DEVICE-BOUND (``device_pubkey_thumbprint`` set) AND carry a finite
-    ``concurrent_worker_limit`` > 0 — because offline the runtime self-enforces only the worker cap, not
-    ``active_node_limit`` (a signed-but-not-runtime-enforced claim offline). Without binding, an air-gap
-    token is portable across any machine within its worker cap.
+    ``concurrent_worker_limit`` > 0. ``active_node_limit`` IS now runtime-enforced offline by the runtime
+    node_broker: L1 device-binding refuses to run a bound token on any machine but its own (air-gap-safe,
+    the primary node cap), and L2 the peer census caps shared-token clusters on a shared Redis. Binding is
+    therefore required so that L1 can enforce it — an unbound air-gap token can only be counted by L2, which
+    needs a coordination backend the air-gapped node may not have, so it fails closed at runtime.
   * ``offline_grace_days`` bounded (<= ``MAX_PAID_OFFLINE_GRACE_DAYS``) — indefinite offline grace is the
     OEM/never-phone-home shape, not a metered paid license.
 
