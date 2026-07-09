@@ -29,9 +29,11 @@ FROM python:3.12-slim AS runtime
 
 WORKDIR /app
 
-# Runtime system deps only (libpq for asyncpg)
+# Runtime system deps only (libpq for asyncpg; git for remote-repo source resolution —
+# resolved_repository_source() shells out to `git ls-remote`/clone, so a missing git binary
+# 500s every remote (github_repo) snapshot).
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq5 curl \
+    libpq5 curl git \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user with a writable home for persistent service state.

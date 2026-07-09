@@ -25,8 +25,9 @@ FROM python:3.12-slim AS runtime
 
 WORKDIR /app
 
+# libpq for asyncpg; git for remote-repo source resolution + clones (git ls-remote/clone).
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq5 \
+    libpq5 git \
     && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd --system app && useradd --system --gid app --home-dir /home/app --create-home app
