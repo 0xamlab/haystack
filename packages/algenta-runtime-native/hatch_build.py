@@ -43,5 +43,25 @@ class CustomBuildHook(BuildHookInterface):
         force_include[manifest] = "algenta_runtime_native/manifest.json"
         force_include[sig] = "algenta_runtime_native/manifest.sig"
 
+        # macOS only: bundle the PREBUILT + code-signed + RS256-manifest-signed Secure Enclave helper
+        # (scripts/build_se_helper.py wrote it under <src>/se) so the runtime verifies + runs it instead of
+        # JIT-compiling swiftc — the clean-machine contract (no runtime compiler). The runtime resolves it
+        # via importlib.resources("algenta_runtime_native")/se and fails closed if the manifest doesn't verify.
+        if sys.platform == "darwin":
+            se_dir = os.path.join(src_dir, "se")
+            se_bin = os.path.join(se_dir, "algenta-se-helper")
+            se_manifest = os.path.join(se_dir, "manifest.json")
+            se_sig = os.path.join(se_dir, "manifest.sig")
+            if all(os.path.exists(p) for p in (se_bin, se_manifest, se_sig)):
+                force_include[se_bin] = "algenta_runtime_native/se/algenta-se-helper"
+                force_include[se_manifest] = "algenta_runtime_native/se/manifest.json"
+                force_include[se_sig] = "algenta_runtime_native/se/manifest.sig"
+            elif os.environ.get("GITHUB_REF", "").startswith("refs/tags/"):
+                raise FileNotFoundError(
+                    "macOS sidecar tag build is missing the Secure Enclave helper "
+                    "(se/algenta-se-helper + manifest.json + manifest.sig). Run scripts/build_se_helper.py "
+                    "before building the sidecar wheel."
+                )
+
         build_data["pure_python"] = False
         build_data["infer_tag"] = True

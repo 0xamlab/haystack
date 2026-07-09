@@ -7,10 +7,13 @@ cannot be activated on a second machine.
 
 Two backends, selected by ``ALGENTA_DEVICE_KEY_STORE``:
 
-* ``secure_enclave`` — Apple Secure Enclave (macOS, Apple Silicon / T2). Real, via a tiny CryptoKit helper
-  (``SecureEnclave.P256.Signing.PrivateKey``); the private key is generated in and never leaves the Enclave,
-  we persist only its opaque, Enclave-bound ``dataRepresentation``. Available when ``swiftc`` + an Enclave
-  are present.
+* ``secure_enclave`` — Apple Secure Enclave (macOS, Apple Silicon / T2). A tiny CryptoKit helper
+  (``SecureEnclave.P256.Signing.PrivateKey``) generates the key IN the Enclave; it never leaves — we persist
+  only its opaque, Enclave-bound ``dataRepresentation``. The helper ships as a PREBUILT, code-signed +
+  RS256-manifest-signed binary in the sidecar wheel (``algenta_runtime_native/se/``), resolved and VERIFIED
+  (signature + SHA-256, fail-closed) before it is ever executed — no runtime compiler (the clean-machine
+  contract). ``swiftc`` JIT compilation is a DEV-ONLY fallback (``ALGENTA_RUNTIME_DEV_MODE`` /
+  ``ALGENTA_SE_ALLOW_JIT``); ``ALGENTA_SE_HELPER`` points at an explicit binary for debugging.
 * ``tpm`` — TPM 2.0 (Linux / Windows) via ``tpm2-pytss``. Feature-detected + opt-in (``ALGENTA_TPM_ENABLE=1``
   + a resolvable TCTI); validated on TPM hardware. Degrade-safe (any error ⇒ ``available()`` False).
 
@@ -39,7 +42,20 @@ import structlog
 logger = structlog.get_logger(__name__)
 
 _SE_BLOB_FILENAME = "device_se_key.b64"
+_SE_HELPER_NAME = "algenta-se-helper"
+_SE_MANIFEST_NAME = "manifest.json"
+_SE_SIG_NAME = "manifest.sig"
 _SUBPROCESS_TIMEOUT = 30
+
+
+def _env_truthy(name: str) -> bool:
+    return (os.environ.get(name) or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _dev_jit_allowed() -> bool:
+    """swiftc JIT compilation of the helper is DEV-ONLY. A release ships a prebuilt, signed helper in the
+    sidecar wheel — the clean-machine contract forbids a runtime compiler. Opt in for local dev only."""
+    return _env_truthy("ALGENTA_RUNTIME_DEV_MODE") or _env_truthy("ALGENTA_SE_ALLOW_JIT")
 
 
 def _runtime_dir() -> Path:
@@ -70,40 +86,13 @@ class HardwareKeyStore(Protocol):
 
 # ── Apple Secure Enclave (macOS) — real, via a CryptoKit helper ───────────────────────────────────
 
-# One self-contained Swift program: create / pubkey / sign / check against a SecureEnclave P-256 key.
-_SE_HELPER_SWIFT = r"""
-import Foundation
-import CryptoKit
+# The Swift helper source is a committed file (single source of truth for the release build script AND the
+# dev-JIT fallback). apps/runtime/se_helper.swift: create / pubkey / sign / check against a SecureEnclave key.
+_SE_HELPER_SWIFT_PATH = Path(__file__).resolve().parent / "se_helper.swift"
 
-func die(_ m: String) -> Never { FileHandle.standardError.write(Data((m + "\n").utf8)); exit(2) }
-let a = CommandLine.arguments
-guard a.count >= 2 else { die("usage: <check|create|pubkey|sign> [blob]") }
-let cmd = a[1]
-if cmd == "check" { print(SecureEnclave.isAvailable ? "available" : "unavailable"); exit(0) }
-guard a.count >= 3 else { die("missing blob path") }
-let blob = a[2]
-func load() -> SecureEnclave.P256.Signing.PrivateKey {
-  do {
-    let s = try String(contentsOfFile: blob, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines)
-    guard let d = Data(base64Encoded: s) else { die("bad blob") }
-    return try SecureEnclave.P256.Signing.PrivateKey(dataRepresentation: d)
-  } catch { die("load failed: \(error)") }
-}
-do {
-  switch cmd {
-  case "create":
-    let k = try SecureEnclave.P256.Signing.PrivateKey()
-    try k.dataRepresentation.base64EncodedString().write(toFile: blob, atomically: true, encoding: .utf8)
-    print(k.publicKey.pemRepresentation)
-  case "pubkey":
-    print(load().publicKey.pemRepresentation)
-  case "sign":
-    let sig = try load().signature(for: FileHandle.standardInput.readDataToEndOfFile())
-    print(sig.derRepresentation.base64EncodedString())
-  default: die("unknown cmd \(cmd)")
-  }
-} catch { die("op failed: \(error)") }
-"""
+
+def _se_helper_source() -> str:
+    return _SE_HELPER_SWIFT_PATH.read_text(encoding="utf-8")
 
 
 def _swiftc() -> str | None:
@@ -132,20 +121,79 @@ class SecureEnclaveKeyStore:
     def __init__(self) -> None:
         self._avail: bool | None = None
         self._helper: str | None = None
+        self._source: str = ""
+        self._resolved: bool = False
 
-    # -- helper compilation (cached by source hash) --
+    # -- resolution: prefer a VERIFIED prebuilt helper (in the wheel); JIT is dev-only --
+    def _sidecar_se_dir(self) -> Path | None:
+        """The SE helper dir inside the installed ``algenta-runtime-native`` sidecar (i.e. in the wheel)."""
+        try:
+            from importlib import resources
+
+            d = Path(str(resources.files("algenta_runtime_native"))) / "se"
+            return d if d.exists() else None
+        except Exception:  # noqa: BLE001 — sidecar not installed (e.g. engine-only host)
+            return None
+
+    def _repo_se_dir(self) -> Path | None:
+        """Engine-repo bundle location (local builds / tests): apps/runtime/_native/se/."""
+        d = Path(__file__).resolve().parent / "_native" / "se"
+        return d if d.exists() else None
+
+    def _verify_bundled(self, d: Path) -> str | None:
+        """Verify the prebuilt helper in ``d`` against its RS256-signed manifest + SHA-256. Returns the
+        executable path when trusted, else None (fail-closed: a present-but-unverifiable helper is refused,
+        never executed)."""
+        binp = d / _SE_HELPER_NAME
+        if not binp.exists():
+            return None
+        try:
+            from apps.runtime import native_manifest
+
+            native_manifest.verify_bundled_artifact(
+                str(binp), str(d / _SE_MANIFEST_NAME), str(d / _SE_SIG_NAME), expected_name=_SE_HELPER_NAME
+            )
+        except Exception as exc:  # noqa: BLE001 — unverifiable ⇒ do NOT run it
+            logger.error("se_helper_bundled_verify_failed", dir=str(d), error=str(exc))
+            return None
+        try:
+            binp.chmod(binp.stat().st_mode | stat.S_IXUSR)
+        except OSError:
+            pass
+        return str(binp)
+
+    def _resolve(self) -> tuple[str, str] | None:
+        # 1) explicit override (dev / debug)
+        env = os.environ.get("ALGENTA_SE_HELPER")
+        if env and Path(env).exists():
+            return env, "env"
+        # 2) prebuilt + SIGNED helper bundled in the wheel (sidecar) or the engine repo — the release path
+        for d, src in ((self._sidecar_se_dir(), "sidecar"), (self._repo_se_dir(), "repo")):
+            if d is not None:
+                verified = self._verify_bundled(d)
+                if verified:
+                    return verified, src
+        # 3) DEV ONLY: JIT-compile with swiftc (never in a release; clean-machine contract forbids it)
+        if _dev_jit_allowed():
+            binp = self._compile_helper()
+            if binp:
+                return binp, "jit-dev"
+        return None
+
+    # -- helper compilation (DEV ONLY; cached by source hash) --
     def _compile_helper(self) -> str | None:
         swiftc = _swiftc()
         if swiftc is None:
             return None
         rt = _runtime_dir()
-        src_hash = hashlib.sha256(_SE_HELPER_SWIFT.encode()).hexdigest()[:12]
+        swift_src = _se_helper_source()
+        src_hash = hashlib.sha256(swift_src.encode()).hexdigest()[:12]
         binary = rt / f".se_helper_{src_hash}"
         if binary.exists() and os.access(binary, os.X_OK):
             return str(binary)
         src = rt / f".se_helper_{src_hash}.swift"
         try:
-            src.write_text(_SE_HELPER_SWIFT, encoding="utf-8")
+            src.write_text(swift_src, encoding="utf-8")
             res = subprocess.run(  # noqa: S603
                 [swiftc, "-O", str(src), "-o", str(binary)],
                 capture_output=True, text=True, timeout=180,
@@ -165,9 +213,18 @@ class SecureEnclaveKeyStore:
                 pass
 
     def _get_helper(self) -> str | None:
-        if self._helper is None:
-            self._helper = self._compile_helper()
+        if not self._resolved:
+            resolved = self._resolve()
+            self._resolved = True
+            if resolved is not None:
+                self._helper, self._source = resolved
         return self._helper
+
+    def source(self) -> str:
+        """Where the active helper came from (``sidecar`` | ``repo`` | ``env`` | ``jit-dev`` | ``""``),
+        for ``doctor`` diagnostics."""
+        self._get_helper()
+        return self._source
 
     def _run(self, args: list[str], *, stdin: bytes | None = None) -> str | None:
         helper = self._get_helper()
@@ -230,6 +287,9 @@ class SecureEnclaveKeyStore:
         except OSError:
             pass
         self._avail = None
+        self._helper = None
+        self._source = ""
+        self._resolved = False
 
 
 # ── TPM 2.0 (Linux / Windows) — feature-detected, opt-in, degrade-safe ────────────────────────────

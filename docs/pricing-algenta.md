@@ -96,8 +96,12 @@ the strongest practical posture rather than overcoming it:
   security element (a non-exportable secp256r1 key, `secp256r1:` thumbprint + ECDSA), so the bound token
   physically cannot activate on a second machine — **near-prevention for `active_node_limit=1`.** Hardware is
   opt-in (so a device's thumbprint stays stable); absent/failed hardware degrades to the software key, whose
-  differing thumbprint fails a hardware-bound license closed rather than silently running. See
-  `apps/runtime/hardware_key_store.py`.
+  differing thumbprint fails a hardware-bound license closed rather than silently running. The Secure Enclave
+  helper ships **prebuilt + code-signed + RS256-manifest-signed** in the sidecar wheel
+  (`algenta_runtime_native/se/`), resolved + verified (signature + SHA-256, fail-closed) before execution —
+  **no runtime compiler** (the clean-machine contract); `swiftc` JIT is a dev-only fallback. Built by
+  `scripts/build_se_helper.py` in `build-runtime.yml`. See `apps/runtime/hardware_key_store.py` +
+  `apps/runtime/native_manifest.py`.
 - **Air-gap disables revocation** — a leaked bound token is aged out by short TTL + go-dark grace, not revoked.
 - A determined operator can still mint-guard-violate (unbound tokens), disable the flags, or spin a fresh
   VM per node — none of which any offline scheme prevents; all are deliberate, auditable circumvention that

@@ -115,6 +115,25 @@ jobs:
             openssl dgst -sha256 -sign "$KEYFILE" -out manifest.sig manifest.json
           fi
 
+      # 3c) macOS only: build + code-sign + RS256-sign the Secure Enclave helper into <src>/se so the sidecar
+      #     wheel bundles it. The runtime then verifies + runs this PREBUILT binary — never JIT-compiles swiftc.
+      - name: Build + sign Secure Enclave helper (macOS)
+        if: runner.os == 'macOS'
+        env:
+          ALGENTA_SIGNING_KEY: ${{ secrets.ALGENTA_SIGNING_KEY }}
+          ALGENTA_SE_CODESIGN_IDENTITY: ${{ secrets.ALGENTA_SE_CODESIGN_IDENTITY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${ALGENTA_SIGNING_KEY:-}" ]; then
+            if [[ "${GITHUB_REF:-}" == refs/tags/* ]]; then
+              echo "::error::ALGENTA_SIGNING_KEY unset on a release tag — refusing to emit an UNSIGNED SE helper."
+              exit 1
+            fi
+            echo "::warning::ALGENTA_SIGNING_KEY unset (non-tag build) — skipping the SE helper."
+            exit 0
+          fi
+          python3 scripts/build_se_helper.py --out mojo_build/se --platform "${{ matrix.target }}"
+
       # 4) Build the PLATFORM-TAGGED sidecar wheel (native lib + manifest force-included by the hatch hook).
       - name: Build sidecar wheel
         env:

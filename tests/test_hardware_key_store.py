@@ -7,15 +7,22 @@ host that actually has an Enclave + swiftc (runs on Apple Silicon, skipped on CI
 """
 from __future__ import annotations
 
+import hashlib
+import json
+import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from apps.runtime import device_keypair as dk
 from apps.runtime import hardware_key_store as hks
+from apps.runtime import native_manifest
+
+_REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _pem(pub) -> str:  # noqa: ANN001
@@ -155,20 +162,135 @@ def test_tpm_unavailable_without_optin() -> None:
     assert store.available() is False  # opt-in (ALGENTA_TPM_ENABLE) + lib + TCTI required
 
 
-# ── REAL Secure Enclave (macOS, Apple Silicon / T2 with swiftc) ─────────────────────
-@pytest.mark.skipif(sys.platform != "darwin", reason="Secure Enclave is macOS-only")
-def test_real_secure_enclave_roundtrip() -> None:
+# ── prebuilt + signed helper resolution (no runtime swiftc) ─────────────────────────
+def _rsa_keypair():
+    priv = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    pub = priv.public_key().public_bytes(
+        serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo
+    ).decode()
+    return priv, pub
+
+
+def _write_signed_helper(d: Path, binary_bytes: bytes, priv, *, platform: str = "macos-arm64") -> Path:
+    d.mkdir(parents=True, exist_ok=True)
+    binp = d / "algenta-se-helper"
+    binp.write_bytes(binary_bytes)
+    manifest = {
+        "format_version": 1,
+        "platform": platform,
+        "artifacts": [
+            {"name": "algenta-se-helper", "sha256": hashlib.sha256(binary_bytes).hexdigest(),
+             "size_bytes": len(binary_bytes)},
+        ],
+    }
+    mbytes = json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode()
+    (d / "manifest.json").write_bytes(mbytes)
+    (d / "manifest.sig").write_bytes(priv.sign(mbytes, padding.PKCS1v15(), hashes.SHA256()))
+    return binp
+
+
+def test_native_manifest_verifies_and_fails_closed(tmp_path, monkeypatch) -> None:
+    priv, pub = _rsa_keypair()
+    monkeypatch.setenv("ALGENTA_RELEASE_PUBKEY", pub)
+    d = tmp_path / "se"
+    binp = _write_signed_helper(d, b"\x7fELF-ish-helper-bytes", priv)
+    args = (str(binp), str(d / "manifest.json"), str(d / "manifest.sig"))
+
+    native_manifest.verify_bundled_artifact(*args, expected_name="algenta-se-helper")  # valid → no raise
+
+    binp.write_bytes(b"\x7fELF-ish-helper-bytes-TAMPERED")  # integrity break
+    with pytest.raises(native_manifest.NativeVerificationError, match="integrity"):
+        native_manifest.verify_bundled_artifact(*args, expected_name="algenta-se-helper")
+
+    _write_signed_helper(d, b"\x7fELF-ish-helper-bytes", priv)  # restore
+    other_priv, other_pub = _rsa_keypair()  # wrong trust anchor
+    monkeypatch.setenv("ALGENTA_RELEASE_PUBKEY", other_pub)
+    with pytest.raises(native_manifest.NativeVerificationError, match="signature"):
+        native_manifest.verify_bundled_artifact(*args, expected_name="algenta-se-helper")
+
+
+def test_se_resolves_verified_prebuilt_not_jit(tmp_path, monkeypatch) -> None:
+    priv, pub = _rsa_keypair()
+    monkeypatch.setenv("ALGENTA_RELEASE_PUBKEY", pub)
+    monkeypatch.delenv("ALGENTA_RUNTIME_DEV_MODE", raising=False)
+    monkeypatch.delenv("ALGENTA_SE_ALLOW_JIT", raising=False)
+    d = tmp_path / "se"
+    _write_signed_helper(d, b"prebuilt-helper", priv)
     store = hks.SecureEnclaveKeyStore()
+    monkeypatch.setattr(store, "_repo_se_dir", lambda: d)
+    monkeypatch.setattr(store, "_sidecar_se_dir", lambda: None)
+
+    resolved = store._resolve()
+    assert resolved is not None and resolved[1] == "repo"  # the VERIFIED prebuilt binary, not jit-dev
+
+
+def test_se_tampered_bundle_fails_closed_no_jit_fallback(tmp_path, monkeypatch) -> None:
+    priv, pub = _rsa_keypair()
+    monkeypatch.setenv("ALGENTA_RELEASE_PUBKEY", pub)
+    monkeypatch.delenv("ALGENTA_RUNTIME_DEV_MODE", raising=False)
+    monkeypatch.delenv("ALGENTA_SE_ALLOW_JIT", raising=False)
+    d = tmp_path / "se"
+    binp = _write_signed_helper(d, b"prebuilt-helper", priv)
+    binp.write_bytes(b"prebuilt-helper-TAMPERED")  # tamper after signing
+    store = hks.SecureEnclaveKeyStore()
+    monkeypatch.setattr(store, "_repo_se_dir", lambda: d)
+    monkeypatch.setattr(store, "_sidecar_se_dir", lambda: None)
+
+    assert store._resolve() is None  # refused (fail-closed) AND no runtime-swiftc fallback
+
+
+def test_se_dev_jit_gated_off_by_default(monkeypatch) -> None:
+    monkeypatch.delenv("ALGENTA_RUNTIME_DEV_MODE", raising=False)
+    monkeypatch.delenv("ALGENTA_SE_ALLOW_JIT", raising=False)
+    monkeypatch.delenv("ALGENTA_SE_HELPER", raising=False)
+    store = hks.SecureEnclaveKeyStore()
+    monkeypatch.setattr(store, "_repo_se_dir", lambda: None)
+    monkeypatch.setattr(store, "_sidecar_se_dir", lambda: None)
+    assert store._resolve() is None  # release: no bundle + no runtime compiler ⇒ SE simply unavailable
+    assert hks._dev_jit_allowed() is False
+
+
+def test_se_env_override(tmp_path, monkeypatch) -> None:
+    p = tmp_path / "myhelper"
+    p.write_text("x")
+    monkeypatch.setenv("ALGENTA_SE_HELPER", str(p))
+    store = hks.SecureEnclaveKeyStore()
+    assert store._resolve() == (str(p), "env")
+
+
+# ── REAL Secure Enclave through the VERIFIED PREBUILT helper (macOS, no runtime swiftc) ──
+@pytest.mark.skipif(sys.platform != "darwin", reason="Secure Enclave is macOS-only")
+def test_real_secure_enclave_via_prebuilt_signed_helper(tmp_path, monkeypatch) -> None:
+    if hks._swiftc() is None:
+        pytest.skip("swiftc not available to build the helper")
+    # build + RS256-sign the helper with a test release key via the actual release script
+    priv, pub = _rsa_keypair()
+    keyfile = tmp_path / "release_priv.pem"
+    keyfile.write_bytes(priv.private_bytes(
+        serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()
+    ))
+    se_dir = tmp_path / "se"
+    build = subprocess.run(
+        [sys.executable, "scripts/build_se_helper.py", "--out", str(se_dir),
+         "--key", str(keyfile), "--platform", "macos-test"],
+        cwd=str(_REPO_ROOT), capture_output=True, text=True,
+    )
+    assert build.returncode == 0, build.stderr
+
+    monkeypatch.setenv("ALGENTA_RELEASE_PUBKEY", pub)
+    monkeypatch.setenv("ALGENTA_RUNTIME_DIR", str(tmp_path))  # Enclave blob location
+    monkeypatch.delenv("ALGENTA_RUNTIME_DEV_MODE", raising=False)
+    monkeypatch.delenv("ALGENTA_SE_ALLOW_JIT", raising=False)  # prove JIT is NOT what's used
+    store = hks.SecureEnclaveKeyStore()
+    monkeypatch.setattr(store, "_repo_se_dir", lambda: se_dir)
+    monkeypatch.setattr(store, "_sidecar_se_dir", lambda: None)
+
     if not store.available():
-        pytest.skip("no Secure Enclave / swiftc on this host")
+        pytest.skip("no Secure Enclave on this host")
+    assert store.source() == "repo"  # ran the VERIFIED PREBUILT helper, not a runtime compile
 
     pem = store.public_pem()
-    assert "BEGIN PUBLIC KEY" in pem
     assert dk.thumbprint_for_public_pem(pem).startswith("secp256r1:")
-
-    sig = store.sign(b"hello-enclave")  # signed INSIDE the Secure Enclave (key never exported)
+    sig = store.sign(b"hello-enclave")  # signed INSIDE the Enclave via the prebuilt helper
     assert dk.verify_signature(pem, b"hello-enclave", sig) is True
     assert dk.verify_signature(pem, b"tampered", sig) is False
-
-    # the Enclave-bound blob persists: a fresh instance reloads the SAME key
-    assert hks.SecureEnclaveKeyStore().public_pem() == pem
