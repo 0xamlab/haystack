@@ -41,7 +41,7 @@ The sidecar default is a private, digest-pinned GHCR image (`ghcr.io/thyn-ai/cod
 ### Run the installer
 
 ```bash title="install.sh"
-curl -fsSL https://algenta.ai/install.sh | bash
+curl -sSL https://algenta.ai/install.sh | bash
 ```
 
 The installer resolves a pinned image tag, downloads `infra/docker/docker-compose.selfhosted.yml` into `~/.algenta`, generates `~/.algenta/.env` with fresh secrets, starts the stack, runs migrations, and bootstraps an owner. It finishes by printing your API URL, the bootstrap API key, and the bootstrap user credentials.
@@ -65,7 +65,7 @@ You can steer the installer with environment variables:
 ```bash title="pin-and-relocate.sh"
 # Pin a specific release and put the install somewhere other than ~/.algenta
 ALGENTA_VERSION=git-1a2b3c4 ALGENTA_DIR=/opt/algenta \
-  bash -c "$(curl -fsSL https://algenta.ai/install.sh)"
+  bash -c "$(curl -sSL https://algenta.ai/install.sh)"
 ```
 
 {% expandable title="Installer environment variables" %}
@@ -81,12 +81,12 @@ ALGENTA_VERSION=git-1a2b3c4 ALGENTA_DIR=/opt/algenta \
 
 ### Manual install
 
-Use the manual path when you want to inspect or modify the Compose bundle before starting it.
+Use the manual path when you want to inspect or modify the Compose bundle before starting it. The installer downloads the pinned bundle to `~/.algenta/docker-compose.selfhosted.yml` — review or edit it there, then bring the stack up yourself:
 
 ```bash title="manual-install.sh"
-git clone https://github.com/algenta/decision-engine
-cd decision-engine
-docker compose -f infra/docker/docker-compose.selfhosted.yml up -d
+cd ~/.algenta
+# review or edit docker-compose.selfhosted.yml, then (ALGENTA_IMAGE_TAG is read from ~/.algenta/.env):
+docker compose -f docker-compose.selfhosted.yml up -d
 ```
 
 Then run migrations and bootstrap (see below).

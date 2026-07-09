@@ -79,7 +79,8 @@ def main() -> int:
             {"title": l["title"],
              "style": "button-primary" if l.get("variant") == "primary" else "link",
              "to": _contentref(l["href"], domain),
-             "links": []}  # required by the API (sub-links for dropdowns), empty for a flat link
+             "links": [],  # required by the API (sub-links for dropdowns), empty for a flat link
+             **({"icon": l["icon"]} if l.get("icon") else {})}  # optional Font Awesome (brand) icon
             for l in hl
         ]
         current["header"] = header

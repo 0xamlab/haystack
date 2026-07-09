@@ -119,7 +119,7 @@
 * [Teams & roles (RBAC)](operate/teams-rbac.md)
 * [Deployments & nodes](operate/deployments-and-nodes.md)
 * [Licensing & editions](licensing.md)
-* [Plans, billing & credits](billing.md)
+* [Usage & limits](billing.md)
 
 ## HTTP API
 

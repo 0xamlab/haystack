@@ -9,7 +9,7 @@
   "hero": "gitbook/.gitbook/assets/brand/algenta-hero.png",
   "headerLinks": [
     { "title": "algenta.ai", "href": "https://algenta.ai" },
-    { "title": "GitHub", "href": "https://github.com/thyn-ai/algenta" },
+    { "title": "Discord", "href": "https://discord.gg/w8NDsph9an", "icon": "discord" },
     { "title": "Get your API key", "href": "https://app.algenta.ai", "variant": "primary" }
   ]
 }

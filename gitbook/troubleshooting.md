@@ -201,7 +201,7 @@ curl -s http://localhost:8000/v1/health
 python3 scripts/license_status.py --json
 ```
 
-Then open an issue at [github.com/thyn-ai/algenta](https://github.com/thyn-ai/algenta/issues) with the exact error, the command you ran, and that output — and we'll get you unblocked.
+Then reach us from [algenta.ai](https://algenta.ai) with the exact error, the command you ran, and that output — and we'll get you unblocked.
 
 {% hint style="info" %}
 Want proof the whole self-hosted stack works end to end? `scripts/self_host_smoke.sh` builds the stack, bootstraps a key, and runs a real synchronous and asynchronous decision — ending in `==> Self-hosted smoke passed`. If the smoke passes but your own client fails, the difference is almost always credentials, base_url, or transport.
