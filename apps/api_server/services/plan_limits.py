@@ -105,9 +105,12 @@ _PLANS: dict[str, PlanConfig] = {
         permitted_modules=["*"], credit_batch_size=10_000, concurrent_jobs=8, storage_gb=10,
         llm_spend_cap_usd_month=0,
     ),
-    # Algenta (the engine as a product) — free/pro/team, mirroring the telys shape. local_runtime is ON at
-    # every tier (the bundled in-process Mojo runtime is the whole point). price_usd_month is a display
-    # value; the real charge is the Stripe price. algenta_free = free, no card, 1 device, non-commercial.
+    # Algenta (the engine as a product). local_runtime is ON at every tier (the bundled in-process runtime
+    # is the whole point). price_usd_month is a display value; the real charge is the Stripe price.
+    # Two priced axes (see docs/pricing-algenta.md): HOSTED is per-SEAT (control plane counts seats);
+    # SELF-HOSTED is per-NODE (once the customer holds the binary, seats are unenforceable — the only
+    # enforceable unit is the running engine, capped by the active-node-cap). algenta_free is the free-
+    # FOREVER, no-card baseline: it always includes exactly ONE self-hosted node, non-commercial.
     "algenta_free": PlanConfig(
         display_name="ALGENTA FREE",
         price_usd_month=0,
@@ -127,18 +130,37 @@ _PLANS: dict[str, PlanConfig] = {
         storage_gb=1,
         llm_spend_cap_usd_month=0,
     ),
+    # Hosted, single commercial seat. Anchored to the repo-intelligence band (CodeRabbit/Greptile/Qodo
+    # $24–30); $29 is the top charm point of that band, below Codna proplus $60.
     "algenta_pro": PlanConfig(
-        display_name="ALGENTA PRO", price_usd_month=25, executions_month=500_000,
+        display_name="ALGENTA PRO", price_usd_month=29, executions_month=500_000,
         devices=3, local_runtime=True, rate_per_minute=300, async_jobs=True, webhooks=True,
         max_runs_per_call=1_000_000, max_batch=100, audit_trail=True, rbac=False,
         permitted_modules=["*"], credit_batch_size=10_000, concurrent_jobs=4, storage_gb=10,
         llm_spend_cap_usd_month=0,
     ),
+    # Hosted, PER-SEAT. price_usd_month is the per-seat price; the bill = price × seats (Stripe adjustable
+    # quantity, see stripe_service.create_checkout_session). Market Team band is $30–40/seat (Cursor/
+    # Graphite $40, Greptile $30); $39 lands at center. Was a $99 flat plan (~$20 effective/seat).
     "algenta_team": PlanConfig(
-        display_name="ALGENTA TEAM", price_usd_month=99, executions_month=500_000,
+        display_name="ALGENTA TEAM", price_usd_month=39, executions_month=500_000,
         devices=10, local_runtime=True, rate_per_minute=1000, async_jobs=True, webhooks=True,
         max_runs_per_call=1_000_000, max_batch=100, audit_trail=True, rbac=True,
         permitted_modules=["*"], credit_batch_size=10_000, concurrent_jobs=8, storage_gb=10,
+        llm_spend_cap_usd_month=0,
+    ),
+    # SELF-HOSTED, PER ACTIVE NODE. price_usd_month is the price per running engine node ($199/node/mo).
+    # The enforceable unit self-hosted is the node (device), NOT the seat — otherwise one cheap license
+    # runs across an entire fleet. Enforced by the active-node-cap (device_service.node_admission_block_count,
+    # ALGENTA_ENFORCE_ACTIVE_NODE_CAP=1) for connected deployments; multi-node / air-gapped / >2-node self-
+    # host is minted as an OFFLINE per-node license (scripts/issue_offline_license.py --paid-selfhost, which
+    # requires finite caps + non-OEM via scripts/license_mint_guard), NEVER an OEM license. seats within a
+    # node are not separately charged. anthropic/openai/google are BYOK (llm_spend_cap=0).
+    "algenta_selfhost": PlanConfig(
+        display_name="ALGENTA SELF-HOSTED", price_usd_month=199, executions_month=2_000_000,
+        devices=1, local_runtime=True, rate_per_minute=2000, async_jobs=True, webhooks=True,
+        max_runs_per_call=1_000_000, max_batch=100, audit_trail=True, rbac=True,
+        permitted_modules=["*"], credit_batch_size=25_000, concurrent_jobs=20, storage_gb=100,
         llm_spend_cap_usd_month=0,
     ),
     "developer": PlanConfig(

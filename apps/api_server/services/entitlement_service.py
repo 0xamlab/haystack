@@ -149,6 +149,19 @@ _TIER_CAPACITY: dict[str, EntitlementRecord] = {
         concurrent_worker_limit=SELF_SERVICE_MAX_WORKERS,
         device_allowance_per_seat=3, commercial_use=True, offline_grace_days=14,
     ),
+    # Self-hosted, priced PER ACTIVE NODE. The base self-serve unit is ONE commercial node (active_node_limit
+    # =1), enforced by the active-node-cap. Buying more nodes, or air-gapped / offline deployments, scales
+    # active_node_limit via a negotiated per-org override (enterprise) and an OFFLINE per-node mint — NEVER an
+    # OEM license (caps=0 / redistribution). Seats inside a node are not separately capped for billing, but a
+    # finite named_seat_limit keeps a single self-serve node within the self-service ceiling (above ⇒
+    # enterprise site license). commercial_use=True; this is the paid, non-OEM self-host tier.
+    "algenta_selfhost": EntitlementRecord(
+        plan="algenta_selfhost", deployment_class="server",
+        products=_algenta_full("selfhost"),
+        named_seat_limit=SELF_SERVICE_MAX_SEATS, active_node_limit=1,
+        concurrent_worker_limit=SELF_SERVICE_MAX_WORKERS,
+        device_allowance_per_seat=3, commercial_use=True, offline_grace_days=14,
+    ),
     # Individual / small — desktop, within the self-service ceiling.
     "developer": EntitlementRecord(
         plan="developer",

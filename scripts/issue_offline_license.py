@@ -10,6 +10,23 @@ from pathlib import Path
 
 import jwt
 
+# The anti-fleet-abuse guardrail lives next to this script (pure stdlib). Import it whether this file is run
+# as ``python scripts/issue_offline_license.py`` (sys.path[0] = scripts/) or imported as
+# ``scripts.issue_offline_license`` (repo root on sys.path).
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+try:
+    from scripts.license_mint_guard import (
+        ACTIVE_NODE_CAP_ENFORCE_ENV,
+        LicenseMintGuardError,
+        assert_paid_selfhost_claims,
+    )
+except ImportError:  # run-as-script fallback (scripts/ dir on the path, not the repo root)
+    from license_mint_guard import (  # type: ignore[no-redef]
+        ACTIVE_NODE_CAP_ENFORCE_ENV,
+        LicenseMintGuardError,
+        assert_paid_selfhost_claims,
+    )
+
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -97,6 +114,16 @@ def _build_parser() -> argparse.ArgumentParser:
         "--redistribution-allowed", action="store_true", help="v2: redistribution grant.",
     )
     parser.add_argument("--offline-grace-days", type=int, default=0, help="v2 offline grace claim.")
+    parser.add_argument(
+        "--paid-selfhost",
+        action="store_true",
+        help=(
+            "Enforce the paid self-host anti-fleet-abuse guardrail before signing: reject OEM / "
+            "redistribution / uncapped (all-zero-cap) claims, require commercial_use, and require an "
+            "air-gapped mint to be device-bound with a finite worker cap. Use this for EVERY paying "
+            "self-host customer so one license can't run across a whole fleet."
+        ),
+    )
     return parser
 
 
@@ -176,6 +203,9 @@ def main() -> int:
     try:
         private_key = _read_private_key(args.private_key_file)
         claims = _build_claims(args)
+        if args.paid_selfhost:
+            # Fails closed (raises) if these claims would be an abusable paid self-host license.
+            assert_paid_selfhost_claims(claims)
         token = jwt.encode(claims, private_key, algorithm="RS256")
         output_path = Path(args.output).expanduser()
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -184,19 +214,27 @@ def main() -> int:
             output_path.chmod(0o600)
         except OSError:
             pass
-        sys.stdout.write(
-            json.dumps(
-                {
-                    "status": "ok",
-                    "output": str(output_path),
-                    "device_id": args.device_id,
-                    "plan": args.plan,
-                    "algorithm": "RS256",
-                }
+        result: dict[str, object] = {
+            "status": "ok",
+            "output": str(output_path),
+            "device_id": args.device_id,
+            "plan": args.plan,
+            "algorithm": "RS256",
+        }
+        if args.paid_selfhost:
+            result["paid_selfhost_guard"] = "passed"
+            result["active_node_limit"] = int(args.active_node_limit)
+            result["concurrent_worker_limit"] = int(args.concurrent_worker_limit)
+            # Enforcement is deployment-side: the cap only binds when the customer runs with this on.
+            result["reminder"] = (
+                f"Connected self-host must run with {ACTIVE_NODE_CAP_ENFORCE_ENV}=1 for the active-node-cap "
+                "to bind; otherwise the node count is not enforced."
             )
-            + "\n"
-        )
+        sys.stdout.write(json.dumps(result) + "\n")
         return 0
+    except LicenseMintGuardError as exc:
+        sys.stderr.write(f"{exc}\n")
+        return 2
     except Exception as exc:
         sys.stderr.write(f"{exc}\n")
         return 1

@@ -82,7 +82,8 @@ class _PlanPriceIdMapping(Mapping[str, str | None]):
                 and not _is_placeholder(current_settings.stripe_price_telys_team)
                 else None
             ),
-            # Algenta engine plans: algenta_free is free (no SKU); pro/team are paid.
+            # Algenta engine plans: algenta_free is free (no SKU); pro/team are hosted per-seat; selfhost is
+            # per-node ($199/node, self-serve provisions one node — see create_checkout_session).
             "algenta_free": None,
             "algenta_pro": (
                 current_settings.stripe_price_algenta_pro
@@ -94,6 +95,12 @@ class _PlanPriceIdMapping(Mapping[str, str | None]):
                 current_settings.stripe_price_algenta_team
                 if hasattr(current_settings, "stripe_price_algenta_team")
                 and not _is_placeholder(current_settings.stripe_price_algenta_team)
+                else None
+            ),
+            "algenta_selfhost": (
+                current_settings.stripe_price_algenta_selfhost
+                if hasattr(current_settings, "stripe_price_algenta_selfhost")
+                and not _is_placeholder(current_settings.stripe_price_algenta_selfhost)
                 else None
             ),
         }

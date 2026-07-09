@@ -19,9 +19,10 @@ class OrgPlan(StrEnum):
     TELYS_DEVELOPER = "telys_developer"  # free, 1-device, local/non-commercial Telys runtime dev license
     TELYS_PRO = "telys_pro"      # paid Telys runtime — commercial, multi-device
     TELYS_TEAM = "telys_team"    # paid Telys runtime — team/server seats
-    ALGENTA_FREE = "algenta_free"    # free, 1-device, local/non-commercial Algenta engine dev license
-    ALGENTA_PRO = "algenta_pro"      # paid Algenta engine — commercial, multi-device
-    ALGENTA_TEAM = "algenta_team"    # paid Algenta engine — team/server seats
+    ALGENTA_FREE = "algenta_free"    # free forever, 1 self-hosted node, local/non-commercial Algenta engine
+    ALGENTA_PRO = "algenta_pro"      # paid Algenta engine — hosted, commercial, single seat
+    ALGENTA_TEAM = "algenta_team"    # paid Algenta engine — hosted, per-seat team
+    ALGENTA_SELFHOST = "algenta_selfhost"  # paid Algenta engine — self-hosted, PER ACTIVE NODE ($199/node)
 
 
 class OrgStatus(StrEnum):

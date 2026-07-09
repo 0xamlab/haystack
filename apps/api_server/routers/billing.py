@@ -97,7 +97,7 @@ async def checkout(
     if plan not in (
         "developer", "pro", "proplus", "ultra", "team",
         "telys_pro", "telys_team",
-        "algenta_pro", "algenta_team",
+        "algenta_pro", "algenta_team", "algenta_selfhost",
     ):
         raise HTTPException(
             status_code=400,
