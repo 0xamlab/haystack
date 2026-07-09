@@ -5,7 +5,7 @@ description: The runtime library surface — list, health-check, and execute ind
 
 # Runtime libraries
 
-Beyond the high-level engines, Algenta can expose its individual **runtime libraries** — the compiled functions that the engines are built from — so you can call one directly. This is the low-level compute surface: you name a `module` and a `function`, pass JSON args, and get the result plus its latency. It is distinct from the governed data and query APIs; nothing here touches a dataset.
+Beyond the high-level engines, Algenta can expose its individual **runtime libraries** — the compiled functions that the engines are built from — so you can call one directly. This is the low-level compute surface: you name a `module` and a `function`, pass JSON args, and get the result plus its latency. It is distinct from the governed data and query APIs; nothing here touches a dataset. For the complete list of modules grouped by domain (vision, LLM, ML, statistics, signal, crypto, and more), see the [Runtime library catalog](runtime-library-catalog.md).
 
 There are three ways to reach it: the HTTP routes, the `de` CLI, and the MCP tools. All three run against a live runtime and return the same results.
 

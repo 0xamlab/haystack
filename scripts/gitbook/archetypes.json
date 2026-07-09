@@ -44,6 +44,7 @@
   "engine/health.md": "reference",
   "engine/mojo-sidecar.md": "task",
   "engine/runtime-libraries.md": "reference",
+  "engine/runtime-library-catalog.md": "reference",
   "guides/agent-runs.md": "task",
   "guides/air-gapped.md": "task",
   "guides/async-jobs.md": "task",

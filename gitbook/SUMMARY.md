@@ -18,6 +18,7 @@
 * [Engine health & verification](engine/health.md)
 * [Engine catalog](engine/catalog.md)
 * [Runtime libraries](engine/runtime-libraries.md)
+* [Runtime library catalog](engine/runtime-library-catalog.md)
 * [How the engine works](concepts/engine.md)
 
 ## Concepts

@@ -40,6 +40,7 @@ FLOORS = {
     "connector_types": 20,
     "llm_backends": 9,
     "openapi_paths": 90,
+    "runtime_library_modules": 400,
 }
 
 
@@ -103,6 +104,16 @@ def llm_backends() -> set[str]:
     return set(re.findall(r'"([a-z0-9_]+)"', body))
 
 
+def runtime_library_modules() -> set[str]:
+    """Every runtime-library module the engine dispatches (``as _<module>__<function>``)."""
+    text = _read(ROOT / "mojo/engine/runtime_library_dispatch_generated.mojo")
+    mods: set[str] = set()
+    for alias in re.findall(r"as _(\w+)", text):
+        if "__" in alias:
+            mods.add(alias.split("__", 1)[0])
+    return mods
+
+
 def openapi_paths() -> set[str]:
     text = _read(ROOT / "schemas/openapi/openapi.yaml")
     # top-level path keys under `paths:` — two-space indented, starting with /
@@ -119,6 +130,7 @@ EXTRACTORS = {
     "connector_types": connector_types,
     "llm_backends": llm_backends,
     "openapi_paths": openapi_paths,
+    "runtime_library_modules": runtime_library_modules,
 }
 
 
