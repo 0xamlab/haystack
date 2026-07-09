@@ -43,6 +43,18 @@ Algenta is a deterministic decision engine you run yourself — feed it scenario
 </tbody>
 </table>
 
+## Choose an outcome
+
+<table data-view="cards">
+<thead><tr><th></th><th></th><th data-hidden data-card-target data-type="content-ref"></th></tr></thead>
+<tbody>
+<tr><td><strong>Fix a repository</strong></td><td>Triage a repo, prove a patch, and open a pull request.</td><td><a href="guides/repository-fix.md">guides/repository-fix.md</a></td></tr>
+<tr><td><strong>Call models &amp; embeddings</strong></td><td>Chat, responses, embeddings, and live model discovery over BYOK keys.</td><td><a href="llm/models.md">llm/models.md</a></td></tr>
+<tr><td><strong>Use every MCP tool</strong></td><td>All 140 engine tools, grouped and documented for your AI client.</td><td><a href="mcp-tools/overview.md">mcp-tools/overview.md</a></td></tr>
+<tr><td><strong>Log in from the terminal</strong></td><td>Authenticate a machine with the device flow — no key pasting.</td><td><a href="login.md">login.md</a></td></tr>
+</tbody>
+</table>
+
 ## Deploy and operate
 
 <table data-view="cards">

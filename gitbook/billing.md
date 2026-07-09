@@ -11,21 +11,21 @@ This page is the commercial surface for the Algenta hosted control plane. It cov
 Billing and credit enforcement apply to the **hosted control plane** path. A purely local runtime that never authenticates against a control plane stays outside device-license and credit-bucket enforcement. You opt into hosted enforcement by attaching an API key (`ALGENTA_API_KEY`) and a control-plane `base_url` — see [Local mode and hosted enforcement](#local-mode-and-hosted-enforcement).
 {% endhint %}
 
-## Pricing tiers
+## Plan tiers
 
-Algenta subscriptions are per-organization. There are four tiers.
+Algenta plans are per-organization. Each tier maps to an enforced set of capabilities and quotas.
 
-| Tier | Price | Monthly simulations | Rate limit | Engines | Notable |
-| --- | --- | --- | --- | --- | --- |
-| Free | $0 | 500 / month | 60 req/min | Core Decision Engine only | No async jobs, no webhooks, community support |
-| Developer | paid | 10,000 / month | 300 req/min | All 6 Core engines | Async jobs + webhook callbacks, up to 100,000 Monte Carlo runs per request, email support |
-| Pro | paid | 100,000 / month | 1,000 req/min | All 10 Core + Advanced engines | Data connectors, up to 1,000,000 runs per request, priority support + SLA |
-| Enterprise | custom contract | Unlimited | 10,000 req/min | All 12 engines incl. Security & Governance + Hybrid Intelligence | Dedicated deployment, SSO/SAML, audit exports, custom SLA |
+| Tier | Monthly simulations | Rate limit | Engines | Notable |
+| --- | --- | --- | --- | --- |
+| Free | 500 / month | 60 req/min | Core Decision Engine only | No async jobs, no webhooks, community support |
+| Developer | 10,000 / month | 300 req/min | All 6 Core engines | Async jobs + webhook callbacks, up to 100,000 Monte Carlo runs per request, email support |
+| Pro | 100,000 / month | 1,000 req/min | All 10 Core + Advanced engines | Data connectors, up to 1,000,000 runs per request, priority support + SLA |
+| Enterprise | Unlimited | 10,000 req/min | All 12 engines incl. Security & Governance + Hybrid Intelligence | Dedicated deployment, SSO/SAML, audit exports, custom SLA |
 
-The two self-serve paid tiers are `developer` and `pro`. These are the only values accepted by Stripe Checkout (below). Enterprise is a sales-assisted contract.
+Read your organization's live plan and remaining quota any time with `GET /v1/limits` and `GET /v1/usage`. For current plans and how to subscribe, see [algenta.ai](https://algenta.ai). Enterprise is a sales-assisted contract.
 
 {% hint style="info" %}
-You're billed for your subscription plus any compute overage above your monthly simulation quota (metered, invoiced monthly); Enterprise is a custom contract. Overages are tracked per billing period and surfaced through `GET /v1/usage`.
+Usage is metered per billing period and surfaced through `GET /v1/usage` — your subscription plus any compute overage above the monthly simulation quota.
 {% endhint %}
 
 ## Inspect your account

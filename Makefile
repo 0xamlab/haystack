@@ -224,12 +224,18 @@ docs-gen:
 	$(REPO_PYTHON) scripts/docs/gen_limits_reference.py
 	$(REPO_PYTHON) scripts/docs/gen_openapi_pages.py
 
+## Docs coverage gate: fail if any source-derived name (MCP tool, SDK method, CLI command,
+## connector, backend, OpenAPI path, error meaning) is absent from gitbook/. Proves 100% coverage.
+docs-coverage:
+	$(REPO_PYTHON) scripts/docs/check_docs_coverage.py
+
 ## CI no-drift gate: fail if any generated reference page is stale vs the code
 docs-check:
 	$(REPO_PYTHON) scripts/docs/gen_config_reference.py --check
 	$(REPO_PYTHON) scripts/docs/gen_error_reference.py --check
 	$(REPO_PYTHON) scripts/docs/gen_limits_reference.py --check
 	$(REPO_PYTHON) scripts/docs/gen_openapi_pages.py --check
+	$(REPO_PYTHON) scripts/docs/check_docs_coverage.py
 
 ## capability-plane-verify: run the focused capability-plane proof bundle across contract, API, MCP, runtime, CLI, and docs
 capability-plane-verify:

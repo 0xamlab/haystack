@@ -1,11 +1,11 @@
 ---
 icon: terminal
-description: Algenta CLI reference — every command, flag, and environment variable for running and managing the engine from the terminal.
+description: The complete de CLI reference — every command group, subcommand, flag, and the /v1 endpoint it calls, with a copy-ready titled example for each.
 ---
 
 # CLI reference
 
-The Algenta CLI puts the entire platform behind one verb. From a terminal you can register a device, manage API keys and execution policy, connect data and run governed queries, route capabilities, score decisions, drive agent runs and async jobs, triage and fix repositories, and control the local Mojo runtime. Every command is a thin, faithful wrapper over the same `/v1` HTTP surface the SDKs use, so anything you do here you can reproduce with `curl` or the Python/TypeScript clients. This page is the complete reference: every subcommand, its arguments, the endpoint it calls, and copy-pasteable examples.
+The `de` CLI puts the entire Algenta platform behind one verb. From a terminal you register a device, manage API keys and execution policy, connect data and run governed queries, route capabilities, score decisions, drive agent runs and async jobs, triage and fix repositories, manage billing and your team, and control the local Mojo runtime. Every command is a thin, faithful wrapper over the same `/v1` HTTP surface the SDKs use — anything you do here you can reproduce with `curl` or the Python/TypeScript clients. This page is the complete reference: every subcommand, the endpoint it calls, and a titled example.
 
 {% hint style="info" %}
 Every command maps one-to-one to a `/v1` endpoint. If you can do it in the CLI, you can do it from any SDK or from raw `curl` — the CLI invents no behavior of its own.
@@ -13,14 +13,14 @@ Every command maps one-to-one to a `/v1` endpoint. If you can do it in the CLI, 
 
 ## Invocation
 
-Install the SDK and the `de` command is on your PATH. Every example below uses `de`.
+Install the SDK and the `de` command is on your PATH.
 
-```bash title="install-cli.sh"
-# Python
+```bash title="install-de.sh"
+# Python (ships the de CLI)
 pip install algenta-sdk
 
-# Or TypeScript/Node
-npm i -g @algenta/sdk
+# Or TypeScript / Node
+npm i -g algenta-sdk
 
 de version
 de health
@@ -30,7 +30,7 @@ de contract
 Running `de` with no arguments prints the full usage banner.
 
 {% hint style="info" %}
-The lightweight `algenta` command shipped by `algenta-core` (`algenta demo`, `algenta import`, `algenta map`, `algenta query`, `algenta benchmark`, `algenta simulate`) is a separate, fully local entrypoint for offline previews and the runtime demo. The `de` CLI documented here is the full control-plane surface. The two do not overlap.
+`de` is the full control-plane CLI documented here. The separate, local-first `algenta` command (`algenta demo`, `algenta import`, `algenta map`, `algenta query`, …) runs offline previews and the runtime demo with no key — see the [algenta CLI reference](sdk/algenta-cli.md). The two do not overlap.
 {% endhint %}
 
 ## Configuration and environment
@@ -45,26 +45,26 @@ The CLI reads credentials and the API origin from environment variables first, t
 | `ALGENTA_APP_BASE_URL` | Dashboard/app origin. Also `APP_BASE_URL`, `DE_APP_BASE_URL`. |
 | `DE_CONFIG_DIR` | Override the config directory (default `~/.de`). |
 
-```bash
+```bash title="set-env.sh"
 export ALGENTA_BASE_URL="https://api.algenta.ai"
-export ALGENTA_API_KEY="sk_live_..."
+export ALGENTA_API_KEY="de_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
 de account me
 ```
 
 {% hint style="success" %}
-API keys saved through the CLI are stored securely: it uses the OS keyring when available, falls back to a Fernet-encrypted file (`~/.de/secrets.bin`), and only stores plaintext in `config.json` as a last resort.
+Keys saved through the CLI are stored securely: it uses the OS keyring when available, falls back to a Fernet-encrypted file (`~/.de/secrets.bin`), and only stores plaintext in `config.json` as a last resort.
 {% endhint %}
 
 {% hint style="warning" %}
-Private profiles (`self_hosted`, `air_gapped`) fail closed. The CLI will not silently fall back to Algenta cloud — you must set an explicit `ALGENTA_BASE_URL` (or save `base_url` in config). Credential examples that reference `app.algenta.ai` are the Cloud Managed path; on a private profile, use the API key your operator deployment provisions.
+Private profiles (`self_hosted`, `air_gapped`) fail closed. The CLI will not silently fall back to the Algenta cloud — set an explicit `ALGENTA_BASE_URL` (or save `base_url` in config). Credential examples that reference `app.algenta.ai` are the Cloud Managed path; on a private profile, use the API key your operator deployment provisions.
 {% endhint %}
 
 ### Output format
 
 Nearly every read command accepts `--format table` (default) or `--format json`. Use `json` for scripting.
 
-```bash
+```bash title="output-format.sh"
 de keys list --format json | jq '.api_keys[].key_prefix'
 de data list --format json
 ```
@@ -73,7 +73,7 @@ de data list --format json
 
 Commands that create or update resources take a path to a JSON file rather than inline flags. The file is the request body sent to the endpoint.
 
-```bash
+```bash title="request-file.sh"
 cat > connect.json <<'JSON'
 {
   "connection_type": "file_upload",
@@ -91,11 +91,11 @@ de data connect --request connect.json
 
 ### Login and device registration
 
-`de login` registers this machine, issues a device license (JWT), and stores it locally. Pick the form that matches your environment:
+`de login` registers this machine, issues a device license (JWT), and stores it locally. `POST /v1/device/register`.
 
 {% tabs %}
 {% tab title="Interactive" %}
-```bash
+```bash title="de-login.sh"
 de login                  # prompts for the API key
 de logout                 # remove the stored device license
 de license                # show device license status
@@ -104,49 +104,49 @@ de license status         # explicit alias
 {% endtab %}
 
 {% tab title="Argument (CI-safe)" %}
-```bash
-de login sk_live_yourkey  # key passed as an argument
+```bash title="de-login-arg.sh"
+de login $ALGENTA_API_KEY
 ```
 {% endtab %}
 
 {% tab title="Environment" %}
-```bash
-ALGENTA_API_KEY=sk_live_yourkey de login  # key from the environment
+```bash title="de-login-env.sh"
+ALGENTA_API_KEY=$ALGENTA_API_KEY de login
 ```
 {% endtab %}
 {% endtabs %}
 
-`de license` prints the device ID, plan, device limit, permitted modules, license source, and expiry (including grace-period and hard-expiry flags).
+`de license` prints the device id, plan, device limit, permitted modules, license source, and expiry.
 
 ### `config set-key`
 
 Save an API key (and optionally a base URL) to the secure CLI config store.
 
-```bash
-de config set-key sk_live_yourkey
-de config set-key sk_live_yourkey https://api.algenta.ai
+```bash title="de-config-set-key.sh"
+de config set-key $ALGENTA_API_KEY
+de config set-key $ALGENTA_API_KEY https://api.algenta.ai
 ```
 
 ### `keys` — API key lifecycle
 
-| Command | Endpoint | Notes |
-| --- | --- | --- |
-| `de keys list` | `GET /v1/api-keys` | List active keys. |
-| `de keys create "<label>"` | `POST /v1/api-keys` | `--expires-at`, `--device-limit`. |
-| `de keys revoke $KEY_ID` | `DELETE /v1/api-keys/{key_id}` | |
+| Command | Endpoint |
+| --- | --- |
+| `de keys list` | `GET /v1/api-keys` |
+| `de keys create "<label>"` | `POST /v1/api-keys` (`--expires-at`, `--device-limit`) |
+| `de keys revoke $KEY_ID` | `DELETE /v1/api-keys/{key_id}` |
 
-```bash
+```bash title="de-keys.sh"
 de keys list
 de keys create "Mission Key" --device-limit 5 --expires-at 2027-01-01T00:00:00Z
-de keys revoke key_01H...
+de keys revoke $KEY_ID
 ```
 
 {% hint style="danger" %}
 The raw key is shown only once, at creation. Capture it then — there is no way to retrieve it afterward.
 
-```bash
+```bash title="de-keys-create-json.sh"
 de keys create "CI runner" --format json
-# {"id": "...", "label": "CI runner", "key_prefix": "sk_live_ab", "raw_key": "sk_live_..."}
+# {"id": "...", "label": "CI runner", "key_prefix": "de_live_ab", "raw_key": "de_live_..."}
 ```
 {% endhint %}
 
@@ -161,7 +161,7 @@ de keys create "CI runner" --format json
 | `de account distributions` | `GET /v1/distributions` |
 | `de account templates` | `GET /v1/templates` |
 
-```bash
+```bash title="de-account.sh"
 de account me
 de account usage --format json
 echo '{"org_name": "Acme Decisioning"}' > rename.json
@@ -170,9 +170,14 @@ de account update rename.json
 
 ### `devices` — registered machines
 
-```bash
-de devices list                       # GET /v1/device/list
-de devices revoke $REGISTRATION_ID   # DELETE /v1/device/{registration_id}
+| Command | Endpoint |
+| --- | --- |
+| `de devices list` | `GET /v1/device/list` |
+| `de devices revoke $REGISTRATION_ID` | `DELETE /v1/device/{registration_id}` |
+
+```bash title="de-devices.sh"
+de devices list
+de devices revoke $REGISTRATION_ID
 ```
 
 ### `execution-policy` — governance thresholds
@@ -183,7 +188,7 @@ de devices revoke $REGISTRATION_ID   # DELETE /v1/device/{registration_id}
 | `de execution-policy snapshots` | `GET /v1/execution/policy/snapshots` |
 | `de execution-policy update <request.json>` | `PATCH /v1/execution/policy` |
 
-```bash
+```bash title="de-execution-policy.sh"
 de execution-policy get
 cat > policy.json <<'JSON'
 {"min_confidence": 0.8, "risk_floor": 0.05, "require_calibration": true}
@@ -208,7 +213,7 @@ de execution-policy update policy.json
 | `de data refresh $DATASET_ID` | refresh schema/contents | |
 | `de data disconnect $DATASET_ID` | delete; `--yes` to skip prompt | |
 
-```bash
+```bash title="de-data.sh"
 de data list --search orders --compact --limit 5
 de data summary orders_facts
 de data inspect orders_facts --format json
@@ -217,25 +222,6 @@ de data sql-report sql_report_request.json
 de data refresh orders_facts
 de data disconnect orders_facts --yes
 ```
-
-The connect call is the same request whether you reach it through the CLI or HTTP directly:
-
-{% tabs %}
-{% tab title="CLI" %}
-```bash
-de data connect --request connect.json
-```
-{% endtab %}
-
-{% tab title="cURL" %}
-```bash
-curl -s -X POST "$ALGENTA_BASE_URL/v1/data/connect" \
-  -H "Authorization: Bearer $ALGENTA_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"connection_type":"file_upload","dataset_name":"Sales","csv":"amount\n10\n20\n"}'
-```
-{% endtab %}
-{% endtabs %}
 
 ### `connectors` — saved and inline connectors
 
@@ -251,11 +237,16 @@ curl -s -X POST "$ALGENTA_BASE_URL/v1/data/connect" \
 | `de connectors preview-browse <request.json>` | `POST /v1/connectors/browse` (inline, unsaved) |
 | `de connectors delete $CONNECTOR_ID` | `DELETE /v1/connectors/{id}` |
 
-```bash
+```bash title="de-connectors.sh"
 de connectors create connector.json
 de connectors list --limit 25 --format json
-de connectors test conn_01H...
+de connectors get $CONNECTOR_ID
+de connectors update $CONNECTOR_ID connector_update.json
+de connectors test $CONNECTOR_ID
+de connectors browse $CONNECTOR_ID
 de connectors preview-test inline_connector.json
+de connectors preview-browse inline_connector.json
+de connectors delete $CONNECTOR_ID
 ```
 
 ### `capabilities` — unified capability plane
@@ -269,8 +260,10 @@ de connectors preview-test inline_connector.json
 | `de capabilities route <request.json>` | `POST /v1/capabilities/route` |
 | `de capabilities execute <request.json>` | `POST /v1/capabilities/execute` |
 
-```bash
+```bash title="de-capabilities.sh"
 de capabilities providers
+de capabilities provider $PROVIDER_ID
+de capabilities bindings --scope organization
 de capabilities list --kind retrieval,forecast --format json
 de capabilities route route_objective.json
 de capabilities execute selected_capability.json
@@ -293,7 +286,7 @@ de capabilities execute selected_capability.json
 | `de decision batch <request.json>` | `POST /v1/batch` |
 | `de decision compare <request.json>` | `POST /v1/compare` |
 
-```bash
+```bash title="de-decision.sh"
 de decision plan plan_request.json --format json
 de decision score score_request.json
 de decision batch batch_request.json
@@ -311,12 +304,13 @@ de decision compare scenarios.json
 | `de decisions execute $DECISION_ID <request.json>` | `POST /v1/decisions/{id}/execute` |
 | `de decisions delete $DECISION_ID` | `DELETE /v1/decisions/{id}` |
 
-```bash
+```bash title="de-decisions.sh"
 de decisions log record.json
 de decisions list --with-outcome-only --limit 50
-de decisions get dec_01H...
-de decisions outcome dec_01H... actual_outcome.json
-de decisions execute dec_01H... dispatch.json
+de decisions get $DECISION_ID
+de decisions outcome $DECISION_ID actual_outcome.json
+de decisions execute $DECISION_ID dispatch.json
+de decisions delete $DECISION_ID
 ```
 
 ### `llm` — deterministic utility surface
@@ -333,13 +327,14 @@ de decisions execute dec_01H... dispatch.json
 | `de llm embedding-similarity <request.json>` | `POST /v1/embeddings/similarity` | |
 | `de llm rerank <request.json>` | `POST /v1/rerank` | |
 
-```bash
+```bash title="de-llm.sh"
 de llm models
 de llm tokenize --input "hello world"
 de llm count-tokens --input "hello world" --model text.tokenizer --format json
 de llm chat chat_request.json --stream
 de llm responses responses_request.json --stream
 de llm embeddings embeddings_request.json
+de llm embedding-similarity similarity_request.json
 de llm rerank rerank_request.json
 ```
 
@@ -357,9 +352,11 @@ de llm rerank rerank_request.json
 | `de product retrieve <request.json>` | `POST /v1/retrieve` |
 | `de product forecast <request.json>` | `POST /v1/forecast` |
 
-```bash
+```bash title="de-product.sh"
 de product decision decision.json
+de product agent-run agent_task.json
 de product optimize optimize.json --format json
+de product retrieve retrieve.json
 de product forecast forecast.json
 ```
 
@@ -391,7 +388,7 @@ Drive a run through its full lifecycle:
 {% step %}
 ### Create the run
 
-```bash
+```bash title="de-agent-runs-create.sh"
 de agent-runs create run_request.json
 ```
 {% endstep %}
@@ -399,28 +396,26 @@ de agent-runs create run_request.json
 {% step %}
 ### Watch it execute
 
-List active runs, fetch one by ID, and stream its event log.
-
-```bash
+```bash title="de-agent-runs-watch.sh"
 de agent-runs list --status running --limit 25
-de agent-runs get run_01H...
-de agent-runs events run_01H... --stream
-de agent-runs checkpoints run_01H...
+de agent-runs get $RUN_ID
+de agent-runs events $RUN_ID --stream
+de agent-runs checkpoints $RUN_ID
 ```
 {% endstep %}
 
 {% step %}
 ### Release, resume, or cancel
 
-```bash
-de agent-runs approve run_01H...   # release a run waiting for approval
-de agent-runs resume run_01H...
-de agent-runs cancel run_01H...
+```bash title="de-agent-runs-transition.sh"
+de agent-runs approve $RUN_ID   # release a run waiting for approval
+de agent-runs resume $RUN_ID
+de agent-runs cancel $RUN_ID
 ```
 {% endstep %}
 {% endstepper %}
 
-{% expandable title="Advanced: shared filters across list and query-* commands" %}
+{% expandable title="Shared filters across list and query-* commands" %}
 `list` and the `query-*` commands share filters: `--status`, `--request-hash`, `--policy-snapshot-id`, `--schema-snapshot-id`, plus `--run-id`, `--checkpoint-id`, `--event-type`, `--telemetry-kind`, `--module-name` on the relevant variants.
 {% endexpandable %}
 
@@ -435,12 +430,13 @@ de agent-runs cancel run_01H...
 | `de job cancel $JOB_ID` | `POST /v1/jobs/{id}/cancel` |
 | `de job wait $JOB_ID` | polls `GET /v1/jobs/{id}` (`--timeout`, default 300s) |
 
-```bash
+```bash title="de-job.sh"
 de job submit large.json --callback https://example.com/hooks/de
 de job list --status running
-de job wait job_01H... --timeout 600
-de job result job_01H... --format json
-de job cancel job_01H...
+de job status $JOB_ID
+de job wait $JOB_ID --timeout 600
+de job result $JOB_ID --format json
+de job cancel $JOB_ID
 ```
 
 ### `triggers` — scheduled and event triggers
@@ -454,39 +450,40 @@ de job cancel job_01H...
 | `de triggers resume $TRIGGER_ID` | `PATCH /v1/triggers/{id}/pause?paused=false` |
 | `de triggers delete $TRIGGER_ID` | `DELETE /v1/triggers/{id}` |
 
-```bash
+```bash title="de-triggers.sh"
 de triggers register trigger.json
 de triggers list --status active
-de triggers fire trg_01H... --force
-de triggers pause trg_01H...
-de triggers resume trg_01H...
+de triggers fire $TRIGGER_ID --force
+de triggers pause $TRIGGER_ID
+de triggers resume $TRIGGER_ID
+de triggers delete $TRIGGER_ID
 ```
 
 ### `webhook` — delivery test
 
-```bash
+```bash title="de-webhook.sh"
 de webhook test https://example.com/hooks/de   # POST /v1/webhooks/test
 ```
 
 ---
 
-## Repositories (Codna surface)
+## Repositories
 
 The `repositories` group is the code-intelligence and autonomous-fix surface. Most subcommands take a `$REPOSITORY_ID` and a `<request.json>` body.
 
 | Command | Endpoint |
 | --- | --- |
 | `de repositories capabilities` | `GET /v1/repositories/capabilities` |
-| `de repositories snapshot $REPO_ID <request.json>` | `POST /v1/repositories/{id}/snapshots` |
-| `de repositories get-snapshot $REPO_ID $SNAPSHOT_ID` | `GET /v1/repositories/{id}/snapshots/{snapshot_id}` |
-| `de repositories triage $REPO_ID <request.json>` | `POST /v1/repositories/{id}/triage` |
-| `de repositories decision-plan $REPO_ID <request.json>` | `POST /v1/repositories/{id}/decision-plans` |
-| `de repositories graph-query $REPO_ID <request.json>` | `POST /v1/repositories/{id}/graph-query` |
-| `de repositories pipeline $REPO_ID <request.json>` | `POST /v1/repositories/{id}/pipeline` |
-| `de repositories simulate $REPO_ID <request.json>` | `POST /v1/repositories/{id}/simulate` |
-| `de repositories simulate-patch $REPO_ID <request.json>` | `POST /v1/repositories/{id}/simulate-patch` |
-| `de repositories fix $REPO_ID <request.json>` | pipeline then apply (composite) |
-| `de repositories apply $REPO_ID <request.json>` | `POST /v1/repositories/{id}/apply` |
+| `de repositories snapshot $REPOSITORY_ID <request.json>` | `POST /v1/repositories/{id}/snapshots` |
+| `de repositories get-snapshot $REPOSITORY_ID $SNAPSHOT_ID` | `GET /v1/repositories/{id}/snapshots/{snapshot_id}` |
+| `de repositories triage $REPOSITORY_ID <request.json>` | `POST /v1/repositories/{id}/triage` |
+| `de repositories decision-plan $REPOSITORY_ID <request.json>` | `POST /v1/repositories/{id}/decision-plans` |
+| `de repositories graph-query $REPOSITORY_ID <request.json>` | `POST /v1/repositories/{id}/graph-query` |
+| `de repositories pipeline $REPOSITORY_ID <request.json>` | `POST /v1/repositories/{id}/pipeline` |
+| `de repositories simulate $REPOSITORY_ID <request.json>` | `POST /v1/repositories/{id}/simulate` |
+| `de repositories simulate-patch $REPOSITORY_ID <request.json>` | `POST /v1/repositories/{id}/simulate-patch` |
+| `de repositories fix $REPOSITORY_ID <request.json>` | pipeline then apply (composite) |
+| `de repositories apply $REPOSITORY_ID <request.json>` | `POST /v1/repositories/{id}/apply` |
 
 Work a repository from discovery through a gated apply:
 
@@ -494,7 +491,7 @@ Work a repository from discovery through a gated apply:
 {% step %}
 ### Discover supported languages
 
-```bash
+```bash title="de-repositories-capabilities.sh"
 de repositories capabilities --format json
 ```
 {% endstep %}
@@ -502,29 +499,27 @@ de repositories capabilities --format json
 {% step %}
 ### Snapshot, triage, and plan
 
-Build an immutable snapshot, then triage and plan against it.
-
-```bash
-de repositories snapshot repo_01H... snapshot_request.json
-de repositories triage repo_01H... triage_request.json
-de repositories decision-plan repo_01H... plan_request.json
+```bash title="de-repositories-plan.sh"
+de repositories snapshot $REPOSITORY_ID snapshot_request.json
+de repositories triage $REPOSITORY_ID triage_request.json
+de repositories decision-plan $REPOSITORY_ID plan_request.json
 ```
 {% endstep %}
 
 {% step %}
 ### Inspect change-risk edges
 
-```bash
-de repositories graph-query repo_01H... graph_query.json
+```bash title="de-repositories-graph.sh"
+de repositories graph-query $REPOSITORY_ID graph_query.json
 ```
 {% endstep %}
 
 {% step %}
 ### Simulate, then gate the apply
 
-```bash
-de repositories simulate-patch repo_01H... simulate_patch.json
-de repositories apply repo_01H... apply_request.json
+```bash title="de-repositories-apply.sh"
+de repositories simulate-patch $REPOSITORY_ID simulate_patch.json
+de repositories apply $REPOSITORY_ID apply_request.json
 ```
 {% endstep %}
 {% endstepper %}
@@ -536,7 +531,7 @@ de repositories apply repo_01H... apply_request.json
   "pipeline": { "ref": "main", "objective": "fix failing tests" },
   "apply": {
     "mode": "remote_pr",
-    "write_permission": "granted",
+    "write_permission": true,
     "branch_name": "algenta/fix-flaky-tests",
     "commit_message": "Fix flaky retry test",
     "pull_request_title": "Fix flaky retry test",
@@ -545,12 +540,66 @@ de repositories apply repo_01H... apply_request.json
 }
 ```
 
-```bash
-de repositories fix repo_01H... fix_request.json --format json
+```bash title="de-repositories-fix.sh"
+de repositories fix $REPOSITORY_ID fix_request.json --format json
 ```
 
 {% hint style="info" %}
 `apply` modes range from `patch_only` (emit a `.diff`) through a local branch to a remote pull request. The pipeline must complete through `simulate` before `fix` will apply — the CLI refuses to apply a plan that has no simulation result.
+{% endhint %}
+
+---
+
+## Billing, team, and governance
+
+### `billing` — plan and subscription
+
+| Command | Endpoint |
+| --- | --- |
+| `de billing info` | `GET /v1/billing/info` |
+| `de billing checkout [developer\|pro]` | `POST /v1/billing/checkout` |
+| `de billing portal` | `POST /v1/billing/portal` |
+
+```bash title="de-billing.sh"
+de billing info
+de billing checkout developer
+de billing portal
+```
+
+### `credits` and `metering` — runtime accounting
+
+| Command | Endpoint |
+| --- | --- |
+| `de credits refresh <request.json>` | `POST /v1/credits/refresh` |
+| `de metering ingest <request.json>` | `POST /v1/metering` |
+
+```bash title="de-credits.sh"
+de credits refresh credit_batch.json
+de metering ingest metering_batch.json
+```
+
+### `team` — members and audit
+
+| Command | Endpoint |
+| --- | --- |
+| `de team list` | `GET /v1/team` |
+| `de team invite <email> [role]` | `POST /v1/team/invite` |
+| `de team update-role $USER_ID <role>` | `PATCH /v1/team/{user_id}/role` |
+| `de team remove $USER_ID` | `DELETE /v1/team/{user_id}` |
+| `de team audit-logs` | `GET /v1/audit-logs` |
+| `de team audit-artifacts` | `GET /v1/audit-logs/artifacts` |
+
+```bash title="de-team.sh"
+de team list
+de team invite teammate@example.com admin
+de team update-role $USER_ID member
+de team remove $USER_ID
+de team audit-logs --action api_key.create --limit 50
+de team audit-artifacts --resource-type api_key
+```
+
+{% hint style="info" %}
+`audit-logs` and `audit-artifacts` share filters: `--actor-email`, `--action`, `--resource-type`, `--result`, `--policy-snapshot-id`, `--schema-snapshot-id`, `--manifest-version`, `--request-hash` (plus `--content-hash` on artifacts).
 {% endhint %}
 
 ---
@@ -573,7 +622,7 @@ de repositories fix repo_01H... fix_request.json --format json
 | `de runtime execute <module> <function>` | execute a runtime-library function |
 | `de runtime history` | local runtime ledger (`--limit`) |
 
-```bash
+```bash title="de-runtime.sh"
 de runtime start
 de runtime status
 de runtime modules --format json
@@ -601,12 +650,12 @@ Provide exactly one of `--args-json` or `--args-file` to `runtime execute`; pass
 | `de deployments cost $DEPLOYMENT_ID` | `GET /v1/deployments/{id}/cost` |
 | `de deployments delete $DEPLOYMENT_ID` | `DELETE /v1/deployments/{id}` |
 
-```bash
+```bash title="de-deployments.sh"
 de deployments regions --format json
 de deployments create deployment.json
 de deployments get
-de deployments cost dep_01H...
-de deployments delete dep_01H...
+de deployments cost $DEPLOYMENT_ID
+de deployments delete $DEPLOYMENT_ID
 ```
 
 ### Meta and quick runs
@@ -620,7 +669,7 @@ de deployments delete dep_01H...
 | `de simulate <file.json>` | `POST /v1/simulate` (`--format`) |
 | `de recommend <file.json>` | `POST /v1/recommend` |
 
-```bash
+```bash title="de-meta.sh"
 de health
 de contract --format json
 de version
@@ -637,7 +686,7 @@ de recommend examples/compare.json
 | `de template run <id>` | `POST /v1/templates/{id}/run` (`--runs`) |
 | `de template get <id>` | `GET /v1/simulate/templates/{id}` |
 
-```bash
+```bash title="de-template.sh"
 de template list
 de template run finance_npv --runs 100000
 de template get finance_npv
@@ -664,23 +713,25 @@ de health --format json | jq -e '.status == "ok"' > /dev/null
 
 Because each command maps one-to-one to a `/v1` endpoint, you can always reproduce a step directly:
 
-```bash
+```bash title="curl-equivalent.sh"
 curl -s "$ALGENTA_BASE_URL/v1/me" \
   -H "Authorization: Bearer $ALGENTA_API_KEY" | jq
 ```
 
 ---
 
+## Related pages
+
 {% content-ref url="authentication.md" %}
 [authentication.md](authentication.md)
 {% endcontent-ref %}
 
-{% content-ref url="api/reference.md" %}
-[api/reference.md](api/reference.md)
+{% content-ref url="sdk/algenta-cli.md" %}
+[sdk/algenta-cli.md](sdk/algenta-cli.md)
 {% endcontent-ref %}
 
-{% content-ref url="self-hosting.md" %}
-[self-hosting.md](self-hosting.md)
+{% content-ref url="api/reference.md" %}
+[api/reference.md](api/reference.md)
 {% endcontent-ref %}
 
 {% content-ref url="troubleshooting.md" %}

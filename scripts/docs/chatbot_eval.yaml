@@ -174,3 +174,93 @@ evaluations:
     required_facts: ["llms-full.txt", "MCP"]
     prohibited: ["scrape the HTML", "no machine-readable docs"]
     expected_pages: ["help/ai-access.md"]
+
+  - id: device-login
+    question: "How do I log in from a terminal or CI machine without pasting an API key?"
+    required_facts: ["algenta login", "device", "--no-browser"]
+    prohibited: ["only API keys", "no terminal login"]
+    expected_pages: ["login.md", "authentication.md"]
+
+  - id: model-discovery
+    question: "How does Algenta discover the latest models from my provider, and how are they named?"
+    required_facts: ["/v1/models", "provider.", "*"]
+    prohibited: ["static list", "hardcoded models"]
+    expected_pages: ["llm/models.md"]
+
+  - id: mcp-registry
+    question: "How do I install the Algenta MCP server in Cursor or Claude?"
+    required_facts: ["io.github.thyn-ai/algenta", "MCP", "ALGENTA_API_KEY"]
+    prohibited: ["not available", "no MCP server"]
+    expected_pages: ["sdk/mcp-registry.md", "sdk/mcp.md"]
+
+  - id: repository-fix
+    question: "How do I fix a repository and open a pull request?"
+    required_facts: ["triage", "apply", "pull request"]
+    prohibited: ["cannot open a PR"]
+    expected_pages: ["guides/repository-fix.md", "guides/repository-intelligence.md"]
+
+  - id: security-closure
+    question: "How do I prove a security finding is closed after a fix?"
+    required_facts: ["security", "closure", "snapshot"]
+    prohibited: ["cannot verify closure"]
+    expected_pages: ["guides/security-analysis.md"]
+
+  - id: webhooks-test
+    question: "How do I test that my webhook receiver gets Algenta callbacks?"
+    required_facts: ["/v1/webhooks/test", "callback_url"]
+    prohibited: ["no webhook testing"]
+    expected_pages: ["guides/webhooks.md", "guides/async-jobs.md"]
+
+  - id: device-key-store
+    question: "How do I store the device key in a TPM or Apple Secure Enclave?"
+    required_facts: ["ALGENTA_DEVICE_KEY_STORE", "secure_enclave", "tpm"]
+    prohibited: ["keys cannot be hardware-backed"]
+    expected_pages: ["operate/device-key-store.md"]
+
+  - id: byok-keys
+    question: "How do I use my own OpenAI or Anthropic key with Algenta?"
+    required_facts: ["/v1/provider-keys", "BYOK"]
+    prohibited: ["keys are shared", "no BYOK"]
+    expected_pages: ["guides/byok.md", "llm/models.md"]
+
+  - id: playground
+    question: "Can I try Algenta without signing up or getting a key?"
+    required_facts: ["/v1/playground", "rate"]
+    prohibited: ["signup required", "API key required to try"]
+    expected_pages: ["playground.md"]
+
+  - id: mcp-tools-count
+    question: "What tools does the Algenta MCP server expose for data and repositories?"
+    required_facts: ["triage_repository", "connect_data"]
+    prohibited: ["no tools"]
+    expected_pages: ["mcp-tools/overview.md", "mcp-tools/repository-intelligence.md", "mcp-tools/data.md"]
+
+  - id: triggers
+    question: "How do I register a trigger that fires a decision automatically?"
+    required_facts: ["/v1/triggers", "fire"]
+    prohibited: ["no triggers"]
+    expected_pages: ["guides/triggers.md"]
+
+  - id: egress-privacy
+    question: "How do I see and tighten what my self-hosted engine sends outbound?"
+    required_facts: ["egress", "privacy", "policy"]
+    prohibited: ["no egress controls"]
+    expected_pages: ["operate/privacy-egress.md"]
+
+  - id: instant-map
+    question: "How do I query a CSV or dataset without setting up a connector?"
+    required_facts: ["/v1/map", "map"]
+    prohibited: ["connector required first"]
+    expected_pages: ["guides/instant-map.md"]
+
+  - id: connectors-postgres
+    question: "How do I connect a PostgreSQL database to Algenta?"
+    required_facts: ["postgres", "connector"]
+    prohibited: ["postgres is not supported"]
+    expected_pages: ["connectors/postgres.md", "connectors/databases.md"]
+
+  - id: streaming
+    question: "How do I stream simulation or agent-run events?"
+    required_facts: ["stream", "event"]
+    prohibited: ["no streaming"]
+    expected_pages: ["api/streaming.md"]
