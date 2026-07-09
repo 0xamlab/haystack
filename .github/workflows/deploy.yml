@@ -64,7 +64,7 @@ jobs:
           docker pull  "$SRC/engine:$TAG"
           docker tag   "$SRC/engine:$TAG" "registry.fly.io/codna-engine:$TAG"
           docker push  "registry.fly.io/codna-engine:$TAG"
-          flyctl deploy -c fly.engine.toml -a codna-engine -i "registry.fly.io/codna-engine:$TAG"
+          flyctl deploy -c fly.engine.toml -a codna-engine -i "registry.fly.io/codna-engine:$TAG" --wait-timeout 15m
           flyctl scale count 1 -a codna-engine --yes
 
       - name: Deploy api
@@ -74,7 +74,7 @@ jobs:
           docker pull  "$SRC/api:$TAG"
           docker tag   "$SRC/api:$TAG" "registry.fly.io/codna-api:$TAG"
           docker push  "registry.fly.io/codna-api:$TAG"
-          flyctl deploy -c fly.api.toml -a codna-api -i "registry.fly.io/codna-api:$TAG"
+          flyctl deploy -c fly.api.toml -a codna-api -i "registry.fly.io/codna-api:$TAG" --wait-timeout 15m
 
       # The control plane reuses the SAME api image (role flag) but owns its OWN Postgres, so its
       # release_command runs `alembic upgrade head` against algenta-control-plane-pg — this is what
@@ -86,4 +86,4 @@ jobs:
           docker pull  "$SRC/api:$TAG"
           docker tag   "$SRC/api:$TAG" "registry.fly.io/algenta-control-plane:$TAG"
           docker push  "registry.fly.io/algenta-control-plane:$TAG"
-          flyctl deploy -c fly.control-plane.toml -a algenta-control-plane -i "registry.fly.io/algenta-control-plane:$TAG"
+          flyctl deploy -c fly.control-plane.toml -a algenta-control-plane -i "registry.fly.io/algenta-control-plane:$TAG" --wait-timeout 15m
