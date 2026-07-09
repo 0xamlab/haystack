@@ -88,12 +88,16 @@ the strongest practical posture rather than overcoming it:
 
 - **L2 counts only REACHABLE peers** — two network partitions / isolated LAN islands each admit up to N (a
   partition is a per-segment ceiling, never global). Never marketed as a global cap.
-- **L1 is tamper-EVIDENT, not tamper-proof today** — the node key lives in the OS keychain or a machine-id-
-  encrypted file, so a root operator who clones a VM *preserving `/etc/machine-id`* and copies the key store
-  gets a working identity. **Opt-in hardening (follow-up):** back the key with **TPM 2.0** (Linux/Windows,
-  `tpm2-pytss`) or **Apple Secure Enclave** (macOS, non-exportable P-256) via `ALGENTA_DEVICE_KEY_STORE`, which
-  makes the key non-exportable — near-prevention for `active_node_limit=1`. Absent hardware falls back to the
-  software key.
+- **L1 strength depends on the key store.** With the default software store (OS keychain / machine-id-
+  encrypted file) it is tamper-EVIDENT: a root operator who clones a VM *preserving `/etc/machine-id`* and
+  copies the key store gets a working identity. **Hardware backing (shipped) makes it tamper-PROOF:** set
+  `ALGENTA_DEVICE_KEY_STORE=secure_enclave` (Apple Secure Enclave, macOS) or `tpm` (TPM 2.0, Linux/Windows —
+  `ALGENTA_TPM_ENABLE=1` + `tpm2-pytss`). The per-node private key is generated in and never leaves the
+  security element (a non-exportable secp256r1 key, `secp256r1:` thumbprint + ECDSA), so the bound token
+  physically cannot activate on a second machine — **near-prevention for `active_node_limit=1`.** Hardware is
+  opt-in (so a device's thumbprint stays stable); absent/failed hardware degrades to the software key, whose
+  differing thumbprint fails a hardware-bound license closed rather than silently running. See
+  `apps/runtime/hardware_key_store.py`.
 - **Air-gap disables revocation** — a leaked bound token is aged out by short TTL + go-dark grace, not revoked.
 - A determined operator can still mint-guard-violate (unbound tokens), disable the flags, or spin a fresh
   VM per node — none of which any offline scheme prevents; all are deliberate, auditable circumvention that
