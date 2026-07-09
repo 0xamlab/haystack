@@ -93,6 +93,8 @@ env = { ALGENTA_API_KEY = "$ALGENTA_API_KEY", ALGENTA_BASE_URL = "https://api.al
 ```
 
 Restart Codex so it picks up the new server.
+
+For repo-specific Codex workflows, keep durable project instructions in `AGENTS.md` and keep MCP credentials in `~/.codex/config.toml` or a trusted project `.codex/config.toml`. Codex reads the `AGENTS.md` instruction chain when it starts a run, and the same MCP config is shared by the CLI and IDE extension. The `algenta-mcp` command above is a stdio server; if you expose an HTTP/SSE MCP endpoint instead, configure it as a streamable HTTP server and keep the bearer token in an environment variable rather than inline text.
 {% endtab %}
 {% endtabs %}
 

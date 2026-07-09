@@ -5,7 +5,7 @@ description: Use the Algenta docs with any AI — the auto-generated llms.txt co
 
 # Using these docs with AI
 
-These docs are built to be read by machines as well as people. Algenta is a deep product, so the documentation is structured so that an AI assistant — Claude, ChatGPT, Cursor, or your own bot — can pull in accurate, current context and answer questions about the engine without guessing.
+These docs are built to be read by machines as well as people. Algenta is a deep product, so the documentation is structured so that an AI assistant — Claude, ChatGPT, Cursor, Codex, Google Gemini, NotebookLM, or your own bot — can pull in accurate, current context and answer questions about the engine without guessing.
 
 Everything here works against the published Algenta docs site (for example `https://docs.algenta.ai`). Swap in your own docs domain if you are reading a self-published copy.
 
@@ -73,6 +73,20 @@ To ground a custom assistant, you have three good options, smallest effort first
 3. **MCP tool** — connect the assistant to `/~gitbook/mcp` so it reads pages on demand. Best when you want always-fresh answers with no re-indexing.
 
 Because the context files and the MCP server regenerate from the same source as this site, every approach stays in sync with the published docs.
+
+## Search and AI-ingestion checks
+
+For Google Search and Google AI surfaces, treat the docs like a public developer portal, not an app shell:
+
+* Keep every page reachable from the GitBook sitemap and from a normal link path.
+* Keep `robots.txt` crawlable for the public docs pages.
+* Keep page titles, frontmatter descriptions, and first paragraphs specific enough that Google can understand the page without executing product commands.
+* Keep `/llms.txt`, `/llms-full.txt`, and per-page `.md` output free of non-public filesystem paths, local usernames, raw credentials, and draft operator notes.
+* Use the docs MCP endpoint only for documentation questions; do not mix it with the product MCP server that can execute engine tools.
+
+{% hint style="info" %}
+Gemini, NotebookLM, and Google-style retrieval systems work best when the answer is visible in the Markdown source and not only implied by navigation. If a page explains a setup path for Cursor, Codex, or another agent client, include the exact config file, command, environment variables, expected result, and troubleshooting path on that page.
+{% endhint %}
 
 ## For documentation owners
 

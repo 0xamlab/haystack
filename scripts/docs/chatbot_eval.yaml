@@ -175,6 +175,18 @@ evaluations:
     prohibited: ["scrape the HTML", "no machine-readable docs"]
     expected_pages: ["help/ai-access.md"]
 
+  - id: google-search-crawlability
+    question: "What should I check so Google can crawl and understand the Algenta docs?"
+    required_facts: ["sitemap", "robots.txt", "description"]
+    prohibited: ["block Googlebot", "hide content in app-only navigation"]
+    expected_pages: ["help/ai-access.md"]
+
+  - id: gemini-docs-ingestion
+    question: "How should I give Gemini or NotebookLM the Algenta documentation as current context?"
+    required_facts: ["llms.txt", "llms-full.txt", ".md"]
+    prohibited: ["scrape rendered HTML only", "guess from training data"]
+    expected_pages: ["help/ai-access.md"]
+
   - id: device-login
     question: "How do I log in from a terminal or CI machine without pasting an API key?"
     required_facts: ["algenta login", "device", "--no-browser"]
@@ -192,6 +204,18 @@ evaluations:
     required_facts: ["io.github.thyn-ai/algenta", "MCP", "ALGENTA_API_KEY"]
     prohibited: ["not available", "no MCP server"]
     expected_pages: ["sdk/mcp-registry.md", "sdk/mcp.md"]
+
+  - id: cursor-mcp-install
+    question: "How do I configure Algenta MCP in Cursor and verify that tools are visible?"
+    required_facts: ["~/.cursor/mcp.json", "ALGENTA_API_KEY", "get_contract"]
+    prohibited: ["paste the key into chat", "no restart needed"]
+    expected_pages: ["sdk/mcp-registry.md", "sdk/mcp.md", "troubleshooting.md"]
+
+  - id: codex-mcp-install
+    question: "How do I configure Algenta MCP in Codex without leaking credentials into repo docs?"
+    required_facts: ["~/.codex/config.toml", "AGENTS.md", "stdio"]
+    prohibited: ["commit the API key", "put secrets in AGENTS.md"]
+    expected_pages: ["sdk/mcp-registry.md", "help/ai-access.md"]
 
   - id: repository-fix
     question: "How do I fix a repository and open a pull request?"

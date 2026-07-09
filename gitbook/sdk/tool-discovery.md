@@ -5,7 +5,7 @@ description: How an AI agent or MCP client discovers Algenta's tools — list th
 
 # Tool discovery
 
-Algenta exposes **117 tools across 12 categories** over MCP and HTTP. A good agent never hardcodes them — it discovers the set it is allowed to use at runtime, reads a machine-readable contract to plan, and checks the signed runtime manifest before reaching for execution paths. This page explains the three discovery surfaces — the live tool list, `get_contract`, and `get_runtime_manifest` — how the visible set is gated by your edition and license, and how to drive discovery from an MCP client or straight over HTTP.
+Algenta exposes a broad, gated tool catalog over MCP and HTTP. A good agent never hardcodes the count — it discovers the set it is allowed to use at runtime, reads a machine-readable contract to plan, and checks the signed runtime manifest before reaching for execution paths. This page explains the three discovery surfaces — the live tool list, `get_contract`, and `get_runtime_manifest` — how the visible set is gated by your edition and license, and how to drive discovery from an MCP client or straight over HTTP.
 
 {% hint style="info" %}
 Discovery is how Algenta stays safe to hand to an autonomous agent: the agent asks what it can do, gets back exactly the tools its key and edition permit, and reads the contract that tells it how to use them — instead of guessing at endpoints.
@@ -13,18 +13,20 @@ Discovery is how Algenta stays safe to hand to an autonomous agent: the agent as
 
 ## The tool catalog
 
-The full surface is grouped into twelve categories. An MCP client sees these as a flat tool list; the categories are how to reason about them.
+An MCP client sees the live surface as a flat tool list; the groups below are how to reason about the catalog. The exact list is source-of-truth at runtime because editions and licenses can intentionally hide tools from a given key.
 
 | Category | What it covers |
 | --- | --- |
 | Data onboarding | `onboard_dataset`, `list_datasets`, `get_dataset_status`, `retrain_dataset` |
 | Data access | `connect_data`, `list_data`, `get_data_summary`, `get_data_schema`, `refresh_data`, `disconnect_data` |
 | Schema discovery | `list_connectors`, `create_connector`, `test_connector`, `browse_connector`, `register_source`, `get_source_schema` |
+| Repository intelligence | `triage_repository`, `create_repository_snapshot`, `query_repository_graph`, `run_repository_fix`, `apply_repository` |
 | Query & ingest | `query_data`, `query_batch`, `query_sql_report`, `ingest_data` |
 | LLM utilities | `list_models`, `tokenize`, `count_tokens`, `chat_completions`, `responses`, `embeddings`, `rerank` |
 | Runtime libraries | `list_runtime_libraries`, `execute_runtime_library` |
 | Decisions | `simulate`, `recommend`, `score`, `plan_decision`, `submit_job`, `poll_job`, the product helpers |
 | Agent runtime | `create_agent_run`, `get_agent_run`, `get_agent_run_events`, `resume_agent_run`, `cancel_agent_run` |
+| Capability plane | `list_capability_providers`, `route_capability`, `execute_capability`, `list_skills`, `create_skill` |
 | Control plane | deployments, team, devices, audit logs, execution policy, billing |
 | Observability | `get_contract`, `get_runtime_manifest`, `get_me`, `get_limits`, `get_usage` |
 | Decision Memory | `log_decision`, `list_decisions`, `record_outcome` |
