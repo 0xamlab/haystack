@@ -21,7 +21,9 @@
     "apps/api_server/connectors/neo4j_connector.py :: return GraphDatabase.driver(",
     "apps/api_server/services/connectors/tester_databases.py :: conn = await asyncpg.connect(",
     "apps/api_server/services/data_connection_browse.py :: service = BlobServiceClient(account_url=account_url, credential=None)",
-    "apps/api_server/services/data_connection_browse.py :: service = BlobServiceClient.from_connection_string(connection_string)"
+    "apps/api_server/services/data_connection_browse.py :: service = BlobServiceClient.from_connection_string(connection_string)",
+    "apps/api_server/services/repository_intelligence_object_store.py :: svc = BlobServiceClient(",
+    "apps/api_server/services/repository_intelligence_object_store.py :: svc = BlobServiceClient.from_connection_string(self._connection_string)"
   ],
   "raw_egress": [
     "apps/api_server/connectors/cloud_connector.py :: _PUBLIC_SYNC_CLIENT = httpx.Client(",

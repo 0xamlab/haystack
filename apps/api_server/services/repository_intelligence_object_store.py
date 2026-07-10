@@ -25,6 +25,7 @@ materialized_snapshot/worktree scratch, which stays node-local) is staged on top
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import re
@@ -176,6 +177,103 @@ class S3Backend:
         return self.get_bytes(key) is not None
 
 
+class AzureBlobBackend:
+    """Azure Blob Storage backend — the native store for a customer-hosted Azure gateway.
+
+    Mirrors :class:`S3Backend`'s contract, including its fail-closed ``get_bytes`` semantics: a
+    genuine not-found returns ``None``, but any availability fault (auth/throttle/connectivity)
+    PROPAGATES so a caller maps it to a retryable 503 — a missing-because-unreachable object is
+    never confused with a definitively-absent one.
+
+    Auth prefers a **connection string** (``AZURE_STORAGE_CONNECTION_STRING``); otherwise it uses
+    the account URL (``AZURE_STORAGE_ACCOUNT_URL``) with ``DefaultAzureCredential`` — i.e. the
+    ACA container's **managed identity**, so no storage secret is distributed. ``client_factory``
+    is injectable for tests, so this is unit-testable without the Azure SDK installed.
+    """
+
+    name = "azure_blob"
+
+    def __init__(
+        self,
+        container: str,
+        *,
+        account_url: str | None = None,
+        connection_string: str | None = None,
+        client_factory: Any | None = None,
+    ) -> None:
+        self._container = container
+        self._account_url = account_url
+        self._connection_string = connection_string
+        self._client_factory = client_factory
+        self._cc: Any | None = None
+
+    def _container_client(self) -> Any:
+        if self._cc is not None:
+            return self._cc
+        if self._client_factory is not None:
+            self._cc = self._client_factory()
+            return self._cc
+        try:
+            from azure.storage.blob import BlobServiceClient
+        except ImportError as exc:  # pragma: no cover - exercised only on a real Azure deploy
+            raise RuntimeError(
+                "azure-storage-blob is required for ALGENTA_RI_OBJECT_STORE=azure_blob"
+            ) from exc
+        if self._connection_string:
+            svc = BlobServiceClient.from_connection_string(self._connection_string)
+        elif self._account_url:
+            from azure.identity import DefaultAzureCredential
+
+            svc = BlobServiceClient(
+                account_url=self._account_url, credential=DefaultAzureCredential()
+            )
+        else:
+            raise RuntimeError(
+                "Azure Blob backend needs AZURE_STORAGE_CONNECTION_STRING or "
+                "AZURE_STORAGE_ACCOUNT_URL"
+            )
+        cc = svc.get_container_client(self._container)
+        with contextlib.suppress(Exception):  # container already exists is the normal case
+            cc.create_container()
+        self._cc = cc
+        return cc
+
+    def put_json(self, key: str, payload: dict[str, Any]) -> None:
+        self.put_bytes(
+            key,
+            json.dumps(redact_secret_fields(payload), indent=2, sort_keys=True).encode("utf-8"),
+            content_type="application/json",
+        )
+
+    def get_json(self, key: str) -> dict[str, Any] | None:
+        data = self.get_bytes(key)
+        return json.loads(data.decode("utf-8")) if data is not None else None
+
+    def put_bytes(self, key: str, data: bytes, content_type: str = "application/octet-stream") -> None:
+        self._container_client().upload_blob(name=key, data=data, overwrite=True)
+
+    def get_bytes(self, key: str) -> bytes | None:
+        cc = self._container_client()
+        try:
+            return cc.download_blob(key).readall()
+        except Exception as exc:  # noqa: BLE001 - distinguish not-found from a real fault
+            if _is_azure_not_found(exc):
+                logger.debug("ri_object_store_get_miss", key=key, backend="azure_blob")
+                return None
+            # Auth/throttle/connectivity/5xx: PROPAGATE (never mask as a miss).
+            raise
+
+    def exists(self, key: str) -> bool:
+        return self.get_bytes(key) is not None
+
+
+def _is_azure_not_found(exc: Exception) -> bool:
+    """True only for a definitive blob-not-found (ResourceNotFoundError / HTTP 404)."""
+    if type(exc).__name__ == "ResourceNotFoundError":
+        return True
+    return getattr(exc, "status_code", None) == 404
+
+
 def object_store_mode() -> str:
     return (os.environ.get("ALGENTA_RI_OBJECT_STORE") or "local").strip().lower()
 
@@ -183,10 +281,21 @@ def object_store_mode() -> str:
 def get_object_store() -> ObjectStoreBackend:
     """Select the artifact backend. Opt-in S3 via ALGENTA_RI_OBJECT_STORE=s3 (fail-closed: a
     configured-but-unavailable S3 client raises); otherwise the node-local filesystem."""
-    if object_store_mode() == "s3":
+    mode = object_store_mode()
+    if mode == "s3":
         from apps.api_server.services.storage_service import _bucket_name
 
         return S3Backend(_bucket_name())
+    if mode == "azure_blob":
+        container = (os.environ.get("AZURE_BLOB_CONTAINER") or "").strip()
+        if not container:
+            raise RuntimeError("ALGENTA_RI_OBJECT_STORE=azure_blob requires AZURE_BLOB_CONTAINER")
+        return AzureBlobBackend(
+            container,
+            account_url=(os.environ.get("AZURE_STORAGE_ACCOUNT_URL") or "").strip() or None,
+            connection_string=(os.environ.get("AZURE_STORAGE_CONNECTION_STRING") or "").strip()
+            or None,
+        )
     from apps.api_server.services.repository_intelligence_runtime import _runtime_dir
 
     return LocalFsBackend(_runtime_dir() / "object_store")
