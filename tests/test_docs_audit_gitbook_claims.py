@@ -33,6 +33,22 @@ def test_gitbook_a_z_source_audit_passes_without_live_network(tmp_path: Path) ->
     assert report["agent_readability"]["google_ai_ready"] is True
     assert report["snippets"]["static_or_guarded_commands"] > 0
 
+    totals = report["totals"]
+    summary = report["summary"]
+    assert totals["pages"] == summary["pages_checked"]
+    assert totals["links"] == summary["links_checked"]
+    assert totals["code_fences"] == summary["snippets_checked"]
+    assert totals["shell_commands"] == summary["commands_classified"]
+    assert totals["runnable_commands"] == report["snippets"]["runnable_safe_commands"]
+    assert totals["static_or_guarded_commands"] == report["snippets"]["static_or_guarded_commands"]
+    assert totals["claim_mentions"] == summary["claim_mentions"]
+    assert totals["claim_mentions"] == sum(totals["product_claims"].values())
+    assert totals["failures"] == summary["failures"] == 0
+    assert totals["warnings"] == summary["warnings"] == 0
+    assert totals["fixes"] == summary["fixes"] == 0
+    assert totals["skips"] == summary["skips"]
+    assert totals["blockers"] == summary["blockers"] == 0
+
 
 def test_secret_scanner_rejects_concrete_bearer_tokens(tmp_path: Path) -> None:
     audit = _load_module()

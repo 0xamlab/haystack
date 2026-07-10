@@ -721,6 +721,20 @@ def run_audit(source: Path, live_url: str | None, skip_live: bool) -> dict[str, 
         + int(totals["external_or_mutating_commands"])
         + int(totals["destructive_mutation_commands"])
     )
+    skips = static_only + (1 if skip_live else 0)
+    claim_mentions = sum(int(value) for value in totals["product_claims"].values())
+    totals.update(
+        {
+            "claim_mentions": claim_mentions,
+            "runnable_commands": totals["safe_static_commands"],
+            "static_or_guarded_commands": static_only,
+            "failures": failures,
+            "warnings": warnings,
+            "fixes": 0,
+            "skips": skips,
+            "blockers": failures,
+        }
+    )
     return {
         "status": "pass" if failures == 0 else "fail",
         "source": str(source),
@@ -743,9 +757,10 @@ def run_audit(source: Path, live_url: str | None, skip_live: bool) -> dict[str, 
             "links_checked": totals["links"],
             "snippets_checked": totals["code_fences"],
             "commands_classified": totals["shell_commands"],
-            "blockers": failures,
-            "fixes": 0,
-            "skips": static_only + (1 if skip_live else 0),
+            "blockers": totals["blockers"],
+            "claim_mentions": claim_mentions,
+            "fixes": totals["fixes"],
+            "skips": totals["skips"],
         },
         "pages": page_reports,
     }
@@ -774,8 +789,11 @@ def main() -> int:
         f"links={summary['links_checked']} "
         f"snippets={summary['snippets_checked']} "
         f"commands={summary['commands_classified']} "
+        f"claims={summary['claim_mentions']} "
         f"failures={summary['failures']} "
-        f"skips={summary['skips']}"
+        f"warnings={summary['warnings']} "
+        f"skips={summary['skips']} "
+        f"blockers={summary['blockers']}"
     )
     for issue in report["issues"][:50]:
         location = f" {issue.get('path', '')}:{issue.get('line', '')}".rstrip(":")
