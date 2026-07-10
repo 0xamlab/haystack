@@ -13,13 +13,14 @@ adds the operational layer:
 The JSON report is deterministic for the same source tree and live responses: no timestamps,
 random ids, or host-local paths are embedded beyond the provided source/live arguments.
 """
+
 from __future__ import annotations
 
 import argparse
 import ast
+import concurrent.futures
 import json
 import re
-import sys
 import tomllib
 import urllib.error
 import urllib.parse
@@ -54,13 +55,6 @@ REQUIRED_AGENT_EVAL_IDS = {
     "gemini-docs-ingestion",
 }
 
-LIVE_MARKDOWN_SAMPLES = (
-    "/overview.md",
-    "/getting-started/quickstart.md",
-    "/help/ai-access.md",
-    "/sdks/mcp-registry.md",
-)
-
 SECRET_PATTERNS = (
     re.compile(r"\bde_(?:live|test)_[A-Za-z0-9_=-]{16,}\b"),
     re.compile(r"\bsk-[A-Za-z0-9][A-Za-z0-9_-]{18,}\b"),
@@ -88,6 +82,17 @@ PRIVATE_LEAK_PATTERNS = (
     re.compile(r"\bangel@[A-Za-z0-9_.-]+\b", re.IGNORECASE),
     re.compile(r"\bglobet\.io\b", re.IGNORECASE),
     re.compile(r"\b(private repo|internal-only|do not publish)\b", re.IGNORECASE),
+)
+
+DISALLOWED_PUBLIC_PACKAGE_PATTERNS = (
+    (
+        re.compile(r"@algenta/sdk"),
+        "unpublished_scoped_typescript_sdk_package",
+        (
+            "Docs reference @algenta/sdk, but the current TypeScript package name is "
+            "algenta-sdk and the scoped npm package is not live."
+        ),
+    ),
 )
 
 
@@ -266,13 +271,27 @@ def _classify_shell_command(command: str) -> str:
     lowered = command.lower()
     if any(token in lowered for token in (" rm ", " rm -", " delete ", " revoke ", "destroy")):
         return "destructive_mutation"
-    if re.search(r"\bcurl\b", lowered) and re.search(r"\b(-x|--request)\s+(post|put|patch|delete)\b", lowered):
+    if re.search(r"\bcurl\b", lowered) and re.search(
+        r"\b(-x|--request)\s+(post|put|patch|delete)\b", lowered
+    ):
         return "external_or_mutating"
-    if any(token in lowered for token in ("docker compose up", "pip install", "pipx install", "npm install", "pnpm install", "npx ")):
+    if any(
+        token in lowered
+        for token in (
+            "docker compose up",
+            "pip install",
+            "pipx install",
+            "npm install",
+            "pnpm install",
+            "npx ",
+        )
+    ):
         return "environment_mutating"
     if lowered.startswith("export ") or lowered.startswith("echo ") or lowered.startswith("cat "):
         return "safe_static"
-    if lowered.startswith(("curl ", "python3 ", "python ", "de ", "algenta ", "codex ", "claude ", "npx ")):
+    if lowered.startswith(
+        ("curl ", "python3 ", "python ", "de ", "algenta ", "codex ", "claude ", "npx ")
+    ):
         return "requires_environment"
     return "static_only"
 
@@ -312,7 +331,10 @@ def _find_secret_issues(path: Path, rel_path: str, text: str) -> list[Issue]:
                 Issue(
                     severity="ERROR",
                     code="secret_like_placeholder_prefix",
-                    message="Docs contain a provider-specific secret prefix placeholder; use a neutral environment-variable placeholder instead.",
+                    message=(
+                        "Docs contain a provider-specific secret prefix placeholder; "
+                        "use a neutral environment-variable placeholder instead."
+                    ),
                     path=rel_path,
                     line=_line_for_offset(text, match.start()),
                     details={"prefix": token[:16]},
@@ -328,6 +350,23 @@ def _find_secret_issues(path: Path, rel_path: str, text: str) -> list[Issue]:
                     path=rel_path,
                     line=_line_for_offset(text, match.start()),
                     details={"match": match.group(0)[:80]},
+                )
+            )
+    return issues
+
+
+def _find_public_package_issues(path: Path, rel_path: str, text: str) -> list[Issue]:
+    issues: list[Issue] = []
+    for regex, code, message in DISALLOWED_PUBLIC_PACKAGE_PATTERNS:
+        for match in regex.finditer(text):
+            issues.append(
+                Issue(
+                    severity="ERROR",
+                    code=code,
+                    message=message,
+                    path=rel_path,
+                    line=_line_for_offset(text, match.start()),
+                    details={"reference": match.group(0)},
                 )
             )
     return issues
@@ -382,7 +421,9 @@ def _validate_internal_link(source: Path, link: Link, all_pages: set[Path]) -> I
     return None
 
 
-def _audit_page(source: Path, path: Path, all_pages: set[Path]) -> tuple[list[Issue], dict[str, Any]]:
+def _audit_page(
+    source: Path, path: Path, all_pages: set[Path]
+) -> tuple[list[Issue], dict[str, Any]]:
     text = _read(path)
     rel_path = _rel(path, source)
     frontmatter, body = _strip_frontmatter(text)
@@ -398,7 +439,14 @@ def _audit_page(source: Path, path: Path, all_pages: set[Path]) -> tuple[list[Is
 
     if rel_path != "SUMMARY.md":
         if not frontmatter.get("description"):
-            issues.append(Issue("ERROR", "missing_description", "Page is missing frontmatter description.", rel_path))
+            issues.append(
+                Issue(
+                    "ERROR",
+                    "missing_description",
+                    "Page is missing frontmatter description.",
+                    rel_path,
+                )
+            )
         if len(h1s) != 1:
             issues.append(
                 Issue(
@@ -410,6 +458,7 @@ def _audit_page(source: Path, path: Path, all_pages: set[Path]) -> tuple[list[Is
             )
 
     issues.extend(_find_secret_issues(path, rel_path, text))
+    issues.extend(_find_public_package_issues(path, rel_path, text))
     for link in links:
         internal_issue = _validate_internal_link(source, link, all_pages)
         if internal_issue:
@@ -433,7 +482,11 @@ def _audit_page(source: Path, path: Path, all_pages: set[Path]) -> tuple[list[Is
                 command_counts[_classify_shell_command(command)] += 1
 
     product_claims = {
-        term: len(re.findall(rf"(?<![A-Za-z0-9_-]){re.escape(term)}(?![A-Za-z0-9_-])", text, re.IGNORECASE))
+        term: len(
+            re.findall(
+                rf"(?<![A-Za-z0-9_-]){re.escape(term)}(?![A-Za-z0-9_-])", text, re.IGNORECASE
+            )
+        )
         for term in sorted(PRODUCT_TERMS)
     }
     return issues, {
@@ -487,7 +540,9 @@ def _audit_agent_readability(source: Path, pages: list[Path]) -> tuple[list[Issu
 
     chatbot_eval = ROOT / "scripts" / "docs" / "chatbot_eval.yaml"
     eval_text = _read(chatbot_eval) if chatbot_eval.is_file() else ""
-    missing_eval_ids = sorted(eval_id for eval_id in REQUIRED_AGENT_EVAL_IDS if f"id: {eval_id}" not in eval_text)
+    missing_eval_ids = sorted(
+        eval_id for eval_id in REQUIRED_AGENT_EVAL_IDS if f"id: {eval_id}" not in eval_text
+    )
     for eval_id in missing_eval_ids:
         issues.append(
             Issue(
@@ -501,7 +556,9 @@ def _audit_agent_readability(source: Path, pages: list[Path]) -> tuple[list[Issu
     return issues, {
         "cursor_ready": not any(issue.code.startswith("cursor_") for issue in issues),
         "codex_ready": not any(issue.code.startswith("codex_") for issue in issues),
-        "google_ai_ready": not any(issue.code.startswith("google_") or issue.code.startswith("gemini_") for issue in issues),
+        "google_ai_ready": not any(
+            issue.code.startswith("google_") or issue.code.startswith("gemini_") for issue in issues
+        ),
         "required_prompt_evals": sorted(REQUIRED_AGENT_EVAL_IDS),
         "missing_prompt_evals": missing_eval_ids,
     }
@@ -525,7 +582,11 @@ def _source_registry_tool_count() -> int | None:
             target = node.targets[0]
             value = node.value
         if isinstance(target, ast.Name) and target.id == "TOOLS" and isinstance(value, ast.Dict):
-            return sum(1 for key in value.keys if isinstance(key, ast.Constant) and isinstance(key.value, str))
+            return sum(
+                1
+                for key in value.keys
+                if isinstance(key, ast.Constant) and isinstance(key.value, str)
+            )
     return None
 
 
@@ -542,7 +603,10 @@ def _audit_source_claims(source: Path, pages: list[Path]) -> tuple[list[Issue], 
                 "apps/mcp_server/registry.py",
             )
         )
-        return issues, {"mcp_registry_tool_count": None, "hardcoded_mcp_tool_count_claims": hardcoded_mcp_tool_count_claims}
+        return issues, {
+            "mcp_registry_tool_count": None,
+            "hardcoded_mcp_tool_count_claims": hardcoded_mcp_tool_count_claims,
+        }
 
     for page in pages:
         rel_path = _rel(page, source)
@@ -571,8 +635,13 @@ def _audit_source_claims(source: Path, pages: list[Path]) -> tuple[list[Issue], 
     }
 
 
-def _fetch(url: str, *, max_bytes: int = 2_000_000, timeout: float = 30.0) -> tuple[int, bytes, str]:
-    req = urllib.request.Request(url, headers={"User-Agent": "algenta-docs-audit/1.0"})
+def _fetch(
+    url: str, *, max_bytes: int = 2_000_000, timeout: float = 30.0
+) -> tuple[int, bytes, str]:
+    req = urllib.request.Request(  # noqa: S310 - live audit accepts http(s) URLs only.
+        url,
+        headers={"User-Agent": "algenta-docs-audit/1.0"},
+    )
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310 - caller controls URL.
             data = resp.read(max_bytes + 1)
@@ -581,26 +650,49 @@ def _fetch(url: str, *, max_bytes: int = 2_000_000, timeout: float = 30.0) -> tu
         return int(exc.code), exc.read(max_bytes + 1), exc.headers.get("content-type", "")
 
 
+def _sitemap_url_to_markdown_route(base_url: str, page_url: str) -> str | None:
+    base = urllib.parse.urlparse(base_url.rstrip("/"))
+    parsed = urllib.parse.urlparse(page_url)
+    if parsed.scheme != base.scheme or parsed.netloc != base.netloc:
+        return None
+    path = parsed.path or "/"
+    if path == "/":
+        return "/.md"
+    return f"{path.rstrip('/')}.md"
+
+
 def _audit_live(live_url: str, public_page_count: int) -> tuple[list[Issue], dict[str, Any]]:
     base = live_url.rstrip("/")
     issues: list[Issue] = []
+    sitemap_urls: list[str] = []
     result: dict[str, Any] = {
         "base_url": base,
         "sitemap_urls": 0,
         "robots_status": None,
         "llms_txt_status": None,
         "llms_full_status": None,
-        "markdown_samples_checked": 0,
+        "markdown_pages_checked": 0,
         "docs_mcp_status": None,
     }
 
     sitemap_status, sitemap_body, _ = _fetch(f"{base}/sitemap-pages.xml")
     if sitemap_status != 200:
-        issues.append(Issue("ERROR", "live_sitemap_unavailable", "Live sitemap-pages.xml is unavailable.", details={"status": sitemap_status}))
+        issues.append(
+            Issue(
+                "ERROR",
+                "live_sitemap_unavailable",
+                "Live sitemap-pages.xml is unavailable.",
+                details={"status": sitemap_status},
+            )
+        )
     else:
         try:
-            root = ET.fromstring(sitemap_body)
-            urls = [elem.text or "" for elem in root.findall(".//{http://www.sitemaps.org/schemas/sitemap/0.9}loc")]
+            root = ET.fromstring(sitemap_body)  # noqa: S314 - bounded public sitemap fetch.
+            urls = [
+                elem.text or ""
+                for elem in root.findall(".//{http://www.sitemaps.org/schemas/sitemap/0.9}loc")
+            ]
+            sitemap_urls = [url for url in urls if url]
             result["sitemap_urls"] = len(urls)
             if len(urls) < public_page_count:
                 issues.append(
@@ -608,48 +700,102 @@ def _audit_live(live_url: str, public_page_count: int) -> tuple[list[Issue], dic
                         "ERROR",
                         "live_sitemap_missing_pages",
                         "Live sitemap has fewer URLs than public source pages.",
-                        details={"sitemap_urls": len(urls), "public_source_pages": public_page_count},
+                        details={
+                            "sitemap_urls": len(urls),
+                            "public_source_pages": public_page_count,
+                        },
                     )
                 )
         except ET.ParseError as exc:
-            issues.append(Issue("ERROR", "live_sitemap_invalid_xml", f"Live sitemap XML is invalid: {exc}"))
+            issues.append(
+                Issue("ERROR", "live_sitemap_invalid_xml", f"Live sitemap XML is invalid: {exc}")
+            )
 
     robots_status, robots_body, _ = _fetch(f"{base}/robots.txt", max_bytes=100_000)
     result["robots_status"] = robots_status
     robots_text = robots_body.decode("utf-8", "replace")
     if robots_status != 200:
-        issues.append(Issue("ERROR", "robots_unavailable", "robots.txt is unavailable.", details={"status": robots_status}))
+        issues.append(
+            Issue(
+                "ERROR",
+                "robots_unavailable",
+                "robots.txt is unavailable.",
+                details={"status": robots_status},
+            )
+        )
     if re.search(r"(?im)^disallow:\s*/\s*$", robots_text):
-        issues.append(Issue("ERROR", "robots_blocks_site", "robots.txt blocks the entire docs site."))
+        issues.append(
+            Issue("ERROR", "robots_blocks_site", "robots.txt blocks the entire docs site.")
+        )
 
     llms_status, llms_body, _ = _fetch(f"{base}/llms.txt")
     result["llms_txt_status"] = llms_status
     llms_text = llms_body.decode("utf-8", "replace")
-    if llms_status != 200 or "Algenta" not in llms_text or "https://docs.algenta.ai" not in llms_text:
-        issues.append(Issue("ERROR", "llms_txt_invalid", "llms.txt is missing or does not identify Algenta docs."))
+    if (
+        llms_status != 200
+        or "Algenta" not in llms_text
+        or "https://docs.algenta.ai" not in llms_text
+    ):
+        issues.append(
+            Issue(
+                "ERROR",
+                "llms_txt_invalid",
+                "llms.txt is missing or does not identify Algenta docs.",
+            )
+        )
     issues.extend(_find_secret_issues(Path("llms.txt"), "live:llms.txt", llms_text))
+    issues.extend(_find_public_package_issues(Path("llms.txt"), "live:llms.txt", llms_text))
 
     llms_full_status, llms_full_body, _ = _fetch(f"{base}/llms-full.txt", max_bytes=3_000_000)
     result["llms_full_status"] = llms_full_status
     llms_full_text = llms_full_body.decode("utf-8", "replace")
     if llms_full_status != 200 or "Using these docs with AI" not in llms_full_text:
-        issues.append(Issue("ERROR", "llms_full_invalid", "llms-full.txt is missing the AI access page content."))
+        issues.append(
+            Issue(
+                "ERROR", "llms_full_invalid", "llms-full.txt is missing the AI access page content."
+            )
+        )
     issues.extend(_find_secret_issues(Path("llms-full.txt"), "live:llms-full.txt", llms_full_text))
+    issues.extend(
+        _find_public_package_issues(Path("llms-full.txt"), "live:llms-full.txt", llms_full_text)
+    )
 
-    for route in LIVE_MARKDOWN_SAMPLES:
+    markdown_routes = [
+        route
+        for route in (_sitemap_url_to_markdown_route(base, url) for url in sitemap_urls)
+        if route
+    ]
+
+    def fetch_markdown_route(route: str) -> list[Issue]:
         status, body, content_type = _fetch(f"{base}{route}", max_bytes=500_000)
         text = body.decode("utf-8", "replace")
-        result["markdown_samples_checked"] += 1
-        if status != 200 or "# " not in text or "text" not in content_type:
-            issues.append(
+        route_issues: list[Issue] = []
+        if (
+            status != 200
+            or "markdown" not in content_type.lower()
+            or "<!doctype html" in text[:500].lower()
+        ):
+            route_issues.append(
                 Issue(
                     "ERROR",
-                    "live_markdown_sample_invalid",
-                    "Representative live Markdown page is unavailable or malformed.",
+                    "live_markdown_page_invalid",
+                    "Live sitemap page Markdown route is unavailable or malformed.",
                     details={"route": route, "status": status, "content_type": content_type},
                 )
             )
-        issues.extend(_find_secret_issues(Path(route.lstrip("/")), f"live:{route}", text))
+        route_issues.extend(_find_secret_issues(Path(route.lstrip("/")), f"live:{route}", text))
+        route_issues.extend(
+            _find_public_package_issues(Path(route.lstrip("/")), f"live:{route}", text)
+        )
+        return route_issues
+
+    if markdown_routes:
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=min(8, len(markdown_routes))
+        ) as executor:
+            for route_issues in executor.map(fetch_markdown_route, markdown_routes):
+                result["markdown_pages_checked"] += 1
+                issues.extend(route_issues)
 
     mcp_status, mcp_body, _ = _fetch(f"{base}/~gitbook/mcp", max_bytes=100_000)
     result["docs_mcp_status"] = mcp_status
@@ -685,7 +831,7 @@ def run_audit(source: Path, live_url: str | None, skip_live: bool) -> dict[str, 
         "external_or_mutating_commands": 0,
         "destructive_mutation_commands": 0,
         "static_only_commands": 0,
-        "product_claims": {term: 0 for term in sorted(PRODUCT_TERMS)},
+        "product_claims": dict.fromkeys(sorted(PRODUCT_TERMS), 0),
     }
 
     for page in pages:
@@ -769,10 +915,16 @@ def run_audit(source: Path, live_url: str | None, skip_live: bool) -> dict[str, 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", default=str(DEFAULT_SOURCE), help="GitBook source directory.")
-    parser.add_argument("--live", default="", help="Published GitBook base URL, e.g. https://docs.algenta.ai.")
+    parser.add_argument(
+        "--live", default="", help="Published GitBook base URL, e.g. https://docs.algenta.ai."
+    )
     parser.add_argument("--skip-live", action="store_true", help="Disable network checks.")
-    parser.add_argument("--strict", action="store_true", help="Exit non-zero when any ERROR is found.")
-    parser.add_argument("--json-report", default="", help="Write the full JSON report to this path.")
+    parser.add_argument(
+        "--strict", action="store_true", help="Exit non-zero when any ERROR is found."
+    )
+    parser.add_argument(
+        "--json-report", default="", help="Write the full JSON report to this path."
+    )
     args = parser.parse_args()
 
     report = run_audit(Path(args.source), args.live.strip() or None, args.skip_live)

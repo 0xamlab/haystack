@@ -70,7 +70,7 @@ export ALGENTA_BASE_URL="https://api.algenta.ai"
 
 ### Using the key from the SDKs
 
-Both SDKs resolve the key from the constructor argument first, then `ALGENTA_API_KEY`, then `DE_API_KEY`. They attach `Authorization: Bearer <key>` to every request automatically.
+Both SDKs resolve the key from the constructor argument first, then `ALGENTA_API_KEY`, then `DE_API_KEY`. They attach `Authorization: Bearer <key>` to every request automatically. The TypeScript package name below is the source-built repository package; the public npm package is not live yet.
 
 {% tabs %}
 {% tab title="Python" %}
@@ -88,7 +88,7 @@ client = AlgentaClient(
 
 {% tab title="TypeScript" %}
 ```typescript title="client.ts"
-import { AlgentaClient } from "@algenta/sdk";
+import { AlgentaClient } from "algenta-sdk";
 
 const apiKey = process.env.ALGENTA_API_KEY ?? process.env.DE_API_KEY;
 if (!apiKey) {
